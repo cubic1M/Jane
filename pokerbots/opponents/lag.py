@@ -148,7 +148,8 @@ class LagBot(Bot):
         # opponent aggression on earlier postflop streets narrows its range
         for st in range(1, obs.street):
             if C.acted_on(obs.history, st, opp, RAISE):
-                frac *= 0.6
+                # a raise over our bet is much stronger than a bet
+                frac *= 0.3 if C.acted_on(obs.history, st, me, RAISE) else 0.55
             elif C.acted_on(obs.history, st, opp, CALL):
                 frac *= 0.8
         return max(frac, 0.12)
@@ -200,6 +201,10 @@ class LagBot(Bot):
                 size = 0.85
             if eq < 0.12:
                 bp *= 0.6
+            # it called our last bet: versus a frequent folder that range is strong
+            if was_aggr and C.acted_on(obs.history, prev, opp, CALL):
+                f = self.fold_n / self.fold_d
+                bp *= float(np.clip(1.25 - f, 0.45, 1.0))
             if self.rng.random() < bp * ff:
                 if spr < 1.6:
                     return RaiseTo(lg.max_raise_to)

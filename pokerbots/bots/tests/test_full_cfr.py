@@ -329,5 +329,34 @@ class TestPolicyAndBot(unittest.TestCase):
         self.assertIsInstance(make_bot(), FullCFRBot)
 
 
+class TestDecisionLatency(unittest.TestCase):
+    """Lazy evaluator tables (fasteval) must be built in new_match, not inside the first
+    timed decision: after new_match no decision may take more than 100 ms."""
+
+    def test_no_slow_first_decision(self):
+        from bots.cfr_full import fasteval
+        from bots import full_cfr
+        from engine.variants import ALL_VARIANTS
+        tmp = tempfile.mkdtemp(prefix="full_cfr_lat_")
+        try:
+            cfg = AbstractionConfig(n_fit=200, table_seconds=0.3, n_post=16, n_disc=8)
+            for v in ("a_nlhe100", "k_irish"):
+                spec = ALL_VARIANTS[v]
+                written, *_ = train(spec, minutes=0.03, seed=0, out_dir=tmp, abs_cfg=cfg, batch=64,
+                                    log=lambda s: None)
+                fasteval._CACHE.clear()          # as in a fresh process
+                full_cfr._POLICY_CACHE.clear()
+                for seat in (0, 1):
+                    bot = make_bot(policy_path=written[0])
+                    pair = (bot, RandomLegalBot()) if seat == 0 else (RandomLegalBot(), bot)
+                    r = play_match(pair[0], pair[1], spec, deal_seed=11 + seat, hands=100)
+                    st = r.stats[seat].summary()
+                    self.assertFalse(bot.using_fallback)
+                    self.assertEqual(st["illegal"] + st["errors"], 0, st["first_error"])
+                    self.assertLess(st["max_ms"], 100.0, f"{v} seat {seat}: {st}")
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
 if __name__ == "__main__":
     unittest.main()

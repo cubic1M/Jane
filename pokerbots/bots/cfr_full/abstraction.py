@@ -394,6 +394,14 @@ class CardAbstraction:
         return bk, outcome
 
     # ---- play time --------------------------------------------------------------------
+    def warm(self) -> float:
+        """Build every lazy table play-time bucketing needs (fast-evaluator rank tables for
+        each hand size, combo index lists) by simulating two deals through every street and
+        discard. Call before the first timed decision; returns the seconds it took."""
+        t0 = time.perf_counter()
+        self.simulate(2, np.random.default_rng(0))
+        return time.perf_counter() - t0
+
     def obs_feature(self, obs, rng) -> float:
         board = set(obs.board)
         dead = [c for c in tuple(obs.my_discards) + tuple(obs.opp_discards) if c not in board]

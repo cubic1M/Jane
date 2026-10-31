@@ -41,20 +41,6 @@ def _rules_key(spec: GameSpec):
     return (tuple(sorted(spec.deck_ranks)), tuple(spec.category_order), bool(spec.ace_low_straight))
 
 
-def _multisets(ranks, n: int) -> np.ndarray:
-    """All rank-count vectors (M, 13) over `ranks` with total n and every count <= 4."""
-    cnt = np.zeros((1, 13), dtype=np.int64)
-    tot = np.zeros(1, dtype=np.int64)
-    for r in ranks:
-        c = np.arange(5)
-        new_tot = (tot[:, None] + c[None, :]).ravel()
-        keep = new_tot <= n
-        rep = np.repeat(cnt, 5, axis=0)
-        rep[:, r] = np.tile(c, len(cnt))
-        cnt, tot = rep[keep], new_tot[keep]
-    return cnt[tot == n]
-
-
 def _rep_cards(counts: np.ndarray) -> np.ndarray:
     """Representative cards (M, n) for rank-count vectors, ranks ascending and card j in
     suit j % 4: equal ranks are adjacent (<= 4 of them) so they get distinct suits, and no
@@ -66,16 +52,40 @@ def _rep_cards(counts: np.ndarray) -> np.ndarray:
 
 
 def _rank_table(spec: GameSpec, n: int):
-    """Sorted codes (sum 5**rank) of all valid n-rank multisets, their non-flush scores
-    and count vectors. Vectorised (well under 100 ms for n <= 9) and cached per rule set."""
+    """(sorted codes, non-flush scores, count vectors (M, 13) int8) of all n-rank multisets
+    of the deck's ranks with every count <= 4; code = sum 5**rank.
+    Built recursively from n-1 (add one rank) and cached per rule set: only n = 5 calls the
+    engine evaluator; a larger n takes the best of its (n-1)-subsets, which is the best
+    5-card non-flush hand."""
     key = ("rank", _rules_key(spec), n)
     tab = _CACHE.get(key)
-    if tab is None:
-        counts = _multisets(sorted(spec.deck_ranks), n)
-        codes = counts @ _P5
-        scores = get_evaluator(spec).eval_any(_rep_cards(counts)) if n >= 5 else np.zeros(len(codes), np.int64)
-        order = np.argsort(codes)
-        tab = _CACHE[key] = (codes[order], scores[order], counts[order])
+    if tab is not None:
+        return tab
+    if n == 0:
+        tab = (np.zeros(1, np.int64), np.zeros(1, np.int64), np.zeros((1, 13), np.int8))
+    else:
+        pc, ps, pcnt = _rank_table(spec, n - 1)
+        cs, ks = [], []
+        for r in sorted(spec.deck_ranks):
+            ok = pcnt[:, r] < 4
+            cs.append(pc[ok] + _P5[r])
+            k = pcnt[ok].copy()
+            k[:, r] += 1
+            ks.append(k)
+        codes, first = np.unique(np.concatenate(cs), return_index=True)
+        counts = np.concatenate(ks)[first]
+        if n < 5:
+            scores = np.zeros(len(codes), np.int64)
+        elif n == 5:
+            scores = get_evaluator(spec).eval_any(_rep_cards(counts.astype(np.int64)))
+        else:
+            scores = np.zeros(len(codes), np.int64)
+            for r in sorted(spec.deck_ranks):
+                has = np.flatnonzero(counts[:, r] > 0)
+                sub = ps[np.searchsorted(pc, codes[has] - _P5[r])]
+                scores[has] = np.maximum(scores[has], sub)
+        tab = (codes, scores, counts)
+    _CACHE[key] = tab
     return tab
 
 
@@ -86,7 +96,7 @@ def _exact_table(spec: GameSpec, k: int):
     if tab is None:
         hc, _, hcnt = _rank_table(spec, k)
         bc, _, bcnt = _rank_table(spec, 5 - k)
-        comb = (hcnt[:, None, :] + bcnt[None, :, :]).reshape(-1, 13)
+        comb = (hcnt[:, None, :].astype(np.int64) + bcnt[None, :, :]).reshape(-1, 13)
         ok = comb.max(axis=1) <= 4
         T = np.zeros(len(comb), dtype=np.int64)
         T[ok] = get_evaluator(spec).eval_any(_rep_cards(comb[ok]))

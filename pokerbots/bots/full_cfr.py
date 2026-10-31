@@ -86,6 +86,11 @@ class FullCFRBot(Bot):
                 print(f"[full_cfr] WARNING: no usable policy at {path} ({type(e).__name__}: {e}); "
                       f"using the equity fallback", file=sys.stderr)
         if self.policy is not None:
+            if not getattr(self.policy, "_warm", False):
+                # lazy evaluator tables would otherwise be built inside the first postflop
+                # decision (0.1-2 s): do it here, once per loaded policy
+                self.policy.abs.warm()
+                self.policy._warm = True
             tr = self.policy.tree
             self._cands = {}
             for n in tr.decision_nodes:
