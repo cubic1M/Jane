@@ -11,20 +11,33 @@ import { inDays, sentence, snoozeButton, type MessageSource } from "./source";
 
 const open = (label: string, href: string) => ({ id: "open", label, kind: "link", href }) as const;
 
+// The same words, whatever the full stop and case.
+const sameWords = (title: string) =>
+  title
+    .trim()
+    .replace(/[.!]+$/, "")
+    .toLowerCase();
+
 function urgentAlerts(snapshot: Snapshot): Candidate[] {
-  return snapshot.urgentAlerts.map((alert) => ({
-    kind: "heads_up",
-    body: `${sentence(alert.title)} ${alert.body}`,
-    refs: { alertId: alert.id, ...(alert.confidence ? { confidence: alert.confidence } : {}) },
-    // Spec step 83: "Got it" marks it read, as opening Alerts does.
-    actions: [
-      { id: "alert.got_it", label: "Got it", kind: "primary" },
-      snoozeButton(),
-      open("See alerts", "/jane#alerts"),
-    ],
-    dedupeKey: `alert:${alert.id}`,
-    priority: MESSAGE_PRIORITY.urgent_alert,
-  }));
+  // Said once: an alert that is an open finding's own words is left to the finding's card, as
+  // the weekly email does (debugger 10-31: "Capital One 360 could drop to -$449.25 around Nov 3"
+  // was in the dock twice).
+  const found = new Set(snapshot.findings.map((f) => sameWords(f.title)));
+  return snapshot.urgentAlerts
+    .filter((alert) => !found.has(sameWords(alert.title)))
+    .map((alert) => ({
+      kind: "heads_up",
+      body: `${sentence(alert.title)} ${alert.body}`,
+      refs: { alertId: alert.id, ...(alert.confidence ? { confidence: alert.confidence } : {}) },
+      // Spec step 83: "Got it" marks it read, as opening Alerts does.
+      actions: [
+        { id: "alert.got_it", label: "Got it", kind: "primary" },
+        snoozeButton(),
+        open("See alerts", "/jane#alerts"),
+      ],
+      dedupeKey: `alert:${alert.id}`,
+      priority: MESSAGE_PRIORITY.urgent_alert,
+    }));
 }
 
 // "Coming up in 3 days: Return window for Apple ($1,349.00).", counted from asOf. Said again
