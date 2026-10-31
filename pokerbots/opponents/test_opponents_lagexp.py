@@ -11,7 +11,7 @@ from types import SimpleNamespace
 import numpy as np
 
 from engine.bot import Bot
-from engine.game import CALL, CHECK, FOLD, RAISE, ActionRecord, Fold, HandResult, LegalActions
+from engine.game import CALL, CHECK, FOLD, RAISE, ActionRecord, Discard, Fold, HandResult, LegalActions
 from engine.match import play_match
 from engine.variants import ALL_VARIANTS, get_variant
 
@@ -29,7 +29,7 @@ class Folder(Bot):
     def act(self, obs):
         lg = obs.legal
         if lg.discard_count:
-            return SimpleNamespace  # never reached in variant a
+            return Discard(obs.my_cards[:lg.discard_count])
         if obs.street == 0:
             return lg.passive()
         return lg.passive() if lg.can_check else Fold()
@@ -175,9 +175,6 @@ class TestBehaviour(unittest.TestCase):
         bot = make_exploit()
         r = play_match(bot, opp_cls(), self.spec, deal_seed=5, hands=hands, record=True)
         bets = chances = 0
-        for L in r.logs:
-            for (seat, st, kind, amt, _c) in L["actions"]:
-                pass
         # count our postflop bets when the opponent checked to us or we act first
         for L in r.logs:
             acts = L["actions"]
@@ -202,7 +199,6 @@ class TestBehaviour(unittest.TestCase):
         big = 0
         for L in r.logs:
             pot = 3
-            pips = {0: 0, 1: 0}
             street = 0
             pips = {L["button_seat"]: 1, 1 - L["button_seat"]: 2}
             for (seat, st, kind, amt, _c) in L["actions"]:
