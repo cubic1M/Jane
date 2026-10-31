@@ -348,10 +348,14 @@ class TestDecisionLatency(unittest.TestCase):
                 full_cfr._POLICY_CACHE.clear()
                 for seat in (0, 1):
                     bot = make_bot(policy_path=written[0])
+                    bot.new_match(spec, 0)
+                    built = len(fasteval._CACHE)
                     pair = (bot, RandomLegalBot()) if seat == 0 else (RandomLegalBot(), bot)
                     r = play_match(pair[0], pair[1], spec, deal_seed=11 + seat, hands=100)
                     st = r.stats[seat].summary()
                     self.assertFalse(bot.using_fallback)
+                    # nothing lazily built during play (the robust check: timing is noisy)
+                    self.assertEqual(len(fasteval._CACHE), built, f"{v}: tables built during play")
                     self.assertEqual(st["illegal"] + st["errors"], 0, st["first_error"])
                     self.assertLess(st["max_ms"], 100.0, f"{v} seat {seat}: {st}")
         finally:

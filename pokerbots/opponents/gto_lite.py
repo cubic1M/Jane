@@ -42,7 +42,7 @@ PARAMS = dict(
     realize_ip=0.92, realize_oop=0.78,
     cbet_base=0.55, mix_w=0.03,
     river_value=0.7, river_air=0.3,
-    defend_scale=0.85, bluff_scale=1.0,
+    defend_scale=0.7, bluff_scale=1.0,
     pre_budget_ms=3.0, post_budget_ms=4.5,
 )
 
@@ -135,7 +135,7 @@ class GtoLiteBot(Bot):
         deep = not allin_call and eff_bb > 18
         realize = (p["realize_ip"] if obs.position == 0 else p["realize_oop"]) if deep else 1.0
         # continue by MDF relative to the opponent's range width, or by pot odds
-        defend_thr = 1 - min(0.95, mdf * min(1.0, 0.45 + r)) if deep else 1.0
+        defend_thr = 1 - min(0.95, mdf * min(1.0, 0.1 + r)) if deep else 1.0
         cont = self._mix(eq * realize, req) or (deep and hv.pf_raises == 1 and self._mix(pct, defend_thr))
         if lg.can_raise and obs.opp_stack > 0:
             my_total = obs.my_stack + obs.my_pip
