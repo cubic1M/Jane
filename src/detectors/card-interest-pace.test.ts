@@ -22,7 +22,7 @@ const lastDays = (days: number): ProfileInput => {
   return {
     ...d,
     transactions: d.transactions.filter((t) => t.date >= from),
-    extras: { ...d.extras, cardInterestYearCents: null },
+    extras: { ...d.extras!, cardInterestYearCents: null },
   };
 };
 
@@ -46,7 +46,7 @@ describe("card interest, counted as the report counts it", () => {
     const seen = sum(interestOf(d).filter((t) => t.accountId === card));
     const mixed = {
       ...d,
-      extras: { ...d.extras, cardInterestYearCents: 150_000, cardInterestUnknownCards: [card] },
+      extras: { ...d.extras!, cardInterestYearCents: 150_000, cardInterestUnknownCards: [card] },
     };
     expect(worth(mixed)).toBe(150_000 + seen);
   });
