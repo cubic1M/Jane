@@ -6,6 +6,9 @@ import {
   PROCESSOR_FEE_PAYEE,
 } from "@/config/detection";
 import { bankFeesYear } from "@/planning/bank-fees";
+import { LOOKBACK_MONTHS } from "@/config/detection";
+import { paceMonths } from "@/detection/rules/fee-totals";
+import { daysBetween, monthsBefore } from "@/detection/units";
 import { idleCashOf } from "@/planning/idle-cash";
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { emergencyTarget } from "@/planning/emergency-fund";
@@ -200,16 +203,29 @@ const cardInterest: Detector = {
   topic: "card_interest",
   needs: [],
   detect({ profile, data }) {
-    const charges = tx(data, (t) => t.pfc === "BANK_FEES_INTEREST_CHARGE");
     // A year of interest from the cards' balances and rates when known (the loans page and the
-    // chat's figure); otherwise the interest charges seen, at a year's pace as the report puts
-    // it (debugger 10-30: $141 in four months is the report's "$423 a year", but compared as $141
-    // against a yearly minimum it was no suggestion at all).
-    const yearly = data.extras?.cardInterestYearCents;
+    // chat's figure); otherwise the interest charges seen, counted as the report counts them:
+    // the last LOOKBACK_MONTHS, at a year's pace when the history is short (debugger 10-30:
+    // $141 in four months is the report's "$423 a year", but compared as $141 against a yearly
+    // minimum it was no suggestion at all).
+    const first = data.transactions.reduce((min, t) => (t.date < min ? t.date : min), data.today);
+    const { short, months } = paceMonths(daysBetween(first, data.today));
+    const cutoff = monthsBefore(data.today, LOOKBACK_MONTHS);
+    const charges = tx(
+      data,
+      (t) => t.pfc === "BANK_FEES_INTEREST_CHARGE" && t.date > cutoff && t.date <= data.today,
+    );
+    const known = data.extras?.cardInterestYearCents;
+    const unknown = new Set(data.extras?.cardInterestUnknownCards ?? []);
+    const pace = (cents: number) => (short ? Math.round((cents * 12) / months) : cents);
+    // Known cards from their balances and rates, plus the unknown ones' charges at their pace
+    // (review 10-31: one unknown card made the known ones' $1,500 fall back to $490 seen).
+    const yearly =
+      typeof known === "number"
+        ? known + pace(outCents(charges.filter((c) => unknown.has(c.accountId))))
+        : null;
     const seen = outCents(charges);
-    const months = rateMonthsOf(profile);
-    const total =
-      typeof yearly === "number" ? yearly : Math.round((seen * 12) / Math.min(12, months));
+    const total = yearly ?? pace(seen);
     if (total < R.interestMinCents) return null;
     return {
       id: suggestionId("debt", "card_interest"),
@@ -220,7 +236,7 @@ const cardInterest: Detector = {
       short:
         typeof yearly === "number"
           ? `Your cards cost you about ${formatCents(total)} a year in interest.`
-          : `You paid ${formatCents(seen)} in card interest over ${profile.months} months.`,
+          : `You paid ${formatCents(seen)} in card interest over ${months} months.`,
       worthCents: total,
       worthKind: "saves",
       confidence: evidence("seen", profile.months, charges.length, "interest charges"),
@@ -231,7 +247,7 @@ const cardInterest: Detector = {
       why: `${
         typeof yearly === "number"
           ? `At your balances and rates your cards cost about ${formatCents(total)} a year in interest`
-          : `You paid ${formatCents(seen)} in card interest over ${profile.months} months, about ${formatCents(total)} a year`
+          : `You paid ${formatCents(seen)} in card interest over ${months} months${short ? `, about ${formatCents(total)} a year` : ""}`
       }; ${
         profile.facts.debt_trouble.value === true
           ? "a payoff plan that starts with the highest rate stops it, a card at a time"
