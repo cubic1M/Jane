@@ -22,10 +22,15 @@ class HybridBot(Bot):
     name = "hybrid"
 
     def __init__(self, budget: str = "30m", gate: float = 0.35, ad_params: dict | None = None,
-                 ad_adapt: dict | None = None, **cfr_kw):
+                 ad_adapt: dict | None = None, gate_mode: str = "max", **cfr_kw):
         self.cfr = FullCFRBot(budget=budget, **cfr_kw)
         self.ad = AdaptiveBot(params=ad_params, adapt=ad_adapt)
         self.gate = gate
+        # "max": any exploit score >= gate (original). "nofold": only an opponent that
+        # (almost) never folds, postflop (F) or to our preflop raises (PF) - stations,
+        # maniacs, pushers. Strong aggressive bots fold sometimes, so CFR keeps playing
+        # them (the "max" gate was exploited by an adaptive opponent, REPORT §7).
+        self.gate_mode = gate_mode
         self.using_fallback = False
         self._hand = None
         self._who = None
@@ -41,7 +46,11 @@ class HybridBot(Bot):
 
     def gate_open(self) -> bool:
         dims = getattr(self.ad, "dims", {}) or {}
-        return bool(dims) and max(abs(v) for v in dims.values()) >= self.gate
+        if not dims:
+            return False
+        if self.gate_mode == "nofold":
+            return min(dims.get("F", 0.0), dims.get("PF", 0.0)) <= -self.gate
+        return max(abs(v) for v in dims.values()) >= self.gate
 
     def act(self, obs):
         if obs.hand_index != self._hand:
