@@ -151,9 +151,14 @@ export function billName(s: Stream, accounts: readonly DetectionAccount[] = []):
 // still takes it out of checking.
 const isOwnTransfer = (s: Stream) => OWN_ACCOUNT_TRANSFERS.includes(s.pfcDetailed ?? "");
 
-export function scheduledTransfers(input: DetectionInput, days: number): Expected[] {
+// `kinds`: which transfer categories (all of OWN_ACCOUNT_TRANSFERS by default).
+export function scheduledTransfers(
+  input: DetectionInput,
+  days: number,
+  kinds: readonly string[] = OWN_ACCOUNT_TRANSFERS,
+): Expected[] {
   return expand(
-    buildStreams(input).filter(isOwnTransfer),
+    buildStreams(input).filter((s) => isOwnTransfer(s) && kinds.includes(s.pfcDetailed ?? "")),
     input.asOf,
     addDays(input.asOf, days),
   ).map((t) => ({ ...t, transfer: true as const }));

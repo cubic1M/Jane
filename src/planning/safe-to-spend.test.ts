@@ -123,4 +123,61 @@ describe("safeToSpend", () => {
     const dayBefore = checking.days.find((x) => x.date === "2026-10-31")!;
     expect(safe.safeCents).toBe(dayBefore.balanceCents);
   });
+
+  // Review 10-31 of the change above: a move between two of the person's own checking accounts
+  // was held back on one side and never added on the other, and an automatic move to savings
+  // was held back on top of the goal amount it pays for.
+  const JOINT = {
+    ...CHECKING,
+    id: "acct_joint",
+    name: "Joint Checking",
+    currentBalanceCents: 100_000,
+  };
+  const move = (accountId: string, amountCents: number, description: string, pfcDetailed: string) =>
+    [3, 2, 1].map((m) =>
+      tx({
+        accountId,
+        date: monthsAgo(m, 25),
+        amountCents,
+        description,
+        merchantName: null,
+        pfcPrimary: pfcDetailed.startsWith("TRANSFER_IN") ? "TRANSFER_IN" : "TRANSFER_OUT",
+        pfcDetailed,
+      }),
+    );
+
+  it("leaves a move between the person's own checking accounts alone", () => {
+    const d = input({
+      accounts: [{ ...CHECKING, currentBalanceCents: 150_000 }, JOINT, CARD],
+      transactions: [
+        ...pay,
+        ...geico,
+        ...move(
+          CHECKING.id,
+          100_000,
+          "ONLINE TRANSFER TO CHK 1234",
+          "TRANSFER_OUT_ACCOUNT_TRANSFER",
+        ),
+        ...move(
+          JOINT.id,
+          -100_000,
+          "ONLINE TRANSFER FROM CHK 9876",
+          "TRANSFER_IN_ACCOUNT_TRANSFER",
+        ),
+      ],
+    });
+    const safe = safeToSpend(d, { budgetsLeftCents: 0, goalsCents: 0 });
+    expect(safe.safeCents).toBe(150_000 + 100_000 - 9_800);
+  });
+
+  it("doesn't hold back a move to savings: the goal amount already does", () => {
+    const d = data([
+      ...pay,
+      ...geico,
+      ...move(CHECKING.id, 50_000, "TRANSFER TO SAVINGS 4410", "TRANSFER_OUT_SAVINGS"),
+    ]);
+    const safe = safeToSpend(d, { budgetsLeftCents: 0, goalsCents: 50_000 });
+    expect(safe.bills.map((b) => b.merchant)).toEqual(["Geico"]);
+    expect(safe.safeCents).toBe(150_000 - 9_800 - 50_000);
+  });
 });
