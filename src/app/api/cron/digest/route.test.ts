@@ -18,6 +18,8 @@ vi.mock("@/lib/news/store", () => ({ runNews: vi.fn(async () => ({ batches: 0 })
 import { CONTROLLER_RUN_RESERVE_MS } from "@/config/controller";
 import { runDigests } from "@/lib/digest/send";
 import { runDueJobs } from "@/lib/jobs";
+import { runJaneAgentForAll } from "@/lib/jane-agent/run";
+import { CHAT_CRON_BUDGET_MS } from "@/config/agent-chat";
 import { GET, maxDuration } from "./route";
 
 const call = (authorization?: string, query = "") =>
@@ -48,5 +50,9 @@ describe("GET /api/cron/digest", () => {
     const budget = vi.mocked(runDueJobs).mock.calls[0][0]!.budgetMs!;
     expect(budget).toBeGreaterThan(0);
     expect(budget).toBeLessThanOrEqual(maxDuration * 1000 - CONTROLLER_RUN_RESERVE_MS);
+    // The daily chat for everyone has its own budget, well inside the limit (it timed out at
+    // 300 s in production on 10-31).
+    expect(vi.mocked(runJaneAgentForAll)).toHaveBeenCalledWith({ budgetMs: CHAT_CRON_BUDGET_MS });
+    expect(CHAT_CRON_BUDGET_MS).toBeLessThan(maxDuration * 1000 - CONTROLLER_RUN_RESERVE_MS);
   });
 });

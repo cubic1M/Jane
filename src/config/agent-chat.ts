@@ -275,6 +275,9 @@ export const CHAT_PAGE_SIZE = 50;
 // The daily run (the digest cron) reaches at most this many people, the longest since
 // Jane last talked to them first.
 export const CHAT_CRON_LIMIT = 200;
+// ...and at most this long, inside the digest cron's 300 s (debugger 10-31: production timed
+// out after 300 seconds); who's left goes first tomorrow.
+export const CHAT_CRON_BUDGET_MS = 120_000;
 
 // Messages read from the last this-many hours to count today's and find the last one.
 export const CHAT_HISTORY_HOURS = 48;

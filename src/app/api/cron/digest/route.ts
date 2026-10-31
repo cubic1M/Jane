@@ -7,6 +7,7 @@ import { runJaneAgentForAll } from "@/lib/jane-agent/run";
 import { runMonthlyReports } from "@/lib/monthly-report";
 import { runNews } from "@/lib/news/store";
 import { CONTROLLER_RUN_RESERVE_MS } from "@/config/controller";
+import { CHAT_CRON_BUDGET_MS } from "@/config/agent-chat";
 
 // The function's limit, declared like the other long crons; the due jobs at the end get only
 // what's left of it (debugger 10-31: the health check called this job stale for over a day).
@@ -47,7 +48,7 @@ export async function GET(request: Request) {
         }),
         // Jane's daily look at everyone's money, in the chat (spec step 82). A problem
         // there never stops the rest of the run.
-        chat: await runJaneAgentForAll().catch((error) => {
+        chat: await runJaneAgentForAll({ budgetMs: CHAT_CRON_BUDGET_MS }).catch((error) => {
           console.error("Jane's daily chat run failed", { error: String(error) });
           return null;
         }),
