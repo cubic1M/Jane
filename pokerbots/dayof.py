@@ -169,7 +169,8 @@ def main(argv=None):
     from experiments.common import make_bot
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--variant", required=True)
-    ap.add_argument("--bots", default="balanced,equity", help="bots to conformance-check; the first is the main bot")
+    ap.add_argument("--bots", default="balanced,champion@15m,equity",
+                    help="bots to conformance-check; the first is the main bot (CFR bots report NO POLICY until trained)")
     ap.add_argument("--hands", type=int, default=60, help="conformance hands per match")
     ap.add_argument("--pairs", type=int, default=2)
     ap.add_argument("--strength-hands", type=int, default=300)
