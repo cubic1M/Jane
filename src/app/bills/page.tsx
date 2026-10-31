@@ -44,8 +44,12 @@ async function Bills() {
           >
             <h2 className="font-semibold">{f.accountName}</h2>
             <p className="text-sm">
-              {formatCents(f.startCents)} today. Lowest point about{" "}
-              <strong>{formatCents(f.lowest.balanceCents)}</strong> on {dayLabel(f.lowest.date)}.
+              {formatCents(f.startCents)}{" "}
+              {f.startOn === f.days[0]?.date
+                ? "today"
+                : `on ${dayLabel(f.startOn)}, when your statement ends`}
+              . Lowest point about <strong>{formatCents(f.lowest.balanceCents)}</strong> on{" "}
+              {dayLabel(f.lowest.date)}.
             </p>
             {low && (
               <p className="text-sm">
