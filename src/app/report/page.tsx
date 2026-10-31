@@ -22,8 +22,16 @@ import { scanInProgress } from "@/lib/scan";
 import { RefreshWhenScanned } from "./refresh-when-scanned";
 import { Checkup } from "./checkup";
 import { loadCheckup } from "@/lib/checkup";
-import { findingSure, foundLine, reportOrder, reportState, shortUploadDays } from "./state";
+import {
+  findingSure,
+  foundLine,
+  reportOrder,
+  reportState,
+  shortUploadDays,
+  staleStatementsEnd,
+} from "./state";
 import { isoDay } from "@/lib/dates";
+import { dayLabel } from "@/lib/day-label";
 import { monthsCovered, statementsEnd } from "@/profile/build";
 import { ShareButton } from "./share-button";
 import { cardFor } from "@/lib/share-card";
@@ -82,6 +90,7 @@ async function ReportContent() {
         )
       : 0;
   const uploadDays = shortUploadDays(uploaded._min.date, uploaded._max.date);
+  const oldStatements = staleStatementsEnd(read._max.date, new Date());
   const transactions = accounts.reduce((sum, a) => sum + a.transactionCount, 0);
   const state = reportState({
     transactions,
@@ -184,6 +193,7 @@ async function ReportContent() {
             what it looked at.
           </p>
           {uploadDays !== null && <MoreMonths days={uploadDays} />}
+          {oldStatements && <OldStatements day={oldStatements} />}
           <Checkup lines={checks} />
           {share}
           <ShownLink href="/actions" className="font-medium text-emerald-700 hover:underline">
@@ -208,6 +218,7 @@ async function ReportContent() {
             </p>
           </div>
           {uploadDays !== null && <MoreMonths days={uploadDays} />}
+          {oldStatements && <OldStatements day={oldStatements} />}
           {/* What matters now (docs/design/area-pages.md): the three worth the most, open; the
               rest behind "more". */}
           <h2 className="text-xl font-semibold">What matters now</h2>
@@ -254,6 +265,21 @@ function MoreMonths({ days }: { days: number }) {
       months and Jane can find more.{" "}
       <Link href="/import" className="font-medium underline">
         Upload more statements
+      </Link>
+    </p>
+  );
+}
+
+// The newest statement line is weeks old: what Jane found describes then, not now.
+function OldStatements({ day }: { day: string }) {
+  return (
+    <p
+      data-old-statements=""
+      className="rounded-lg bg-zinc-100 p-3 text-sm text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
+    >
+      Your statements end {dayLabel(day, { year: true })}, so this is what was happening then.{" "}
+      <Link href="/import" className="font-medium underline">
+        Upload newer statements
       </Link>
     </p>
   );

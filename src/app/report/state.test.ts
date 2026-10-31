@@ -7,6 +7,7 @@ import {
   reportOrder,
   reportState,
   shortUploadDays,
+  staleStatementsEnd,
 } from "./state";
 
 const base = { transactions: 240, findings: 0, firstDetectionDone: true, scanRunning: false };
@@ -150,5 +151,18 @@ describe("a finding's % sure on the report", () => {
 
   it("is surer with more history", () => {
     expect(findingSure(fees, [], 2).percent).toBeLessThan(findingSure(fees, [], 12).percent);
+  });
+});
+
+// Debugger 10-30: statements from January to April uploaded in October got findings with no
+// word that they describe the spring.
+describe("staleStatementsEnd", () => {
+  const now = new Date("2026-10-31T12:00:00Z");
+  it("names the last day when the newest statement line is over STALE_UPLOAD_DAYS old", () => {
+    expect(staleStatementsEnd(new Date("2026-04-23T00:00:00Z"), now)).toBe("2026-04-23");
+  });
+  it("says nothing for statements reaching this month, or none at all", () => {
+    expect(staleStatementsEnd(new Date("2026-10-20T00:00:00Z"), now)).toBeNull();
+    expect(staleStatementsEnd(null, now)).toBeNull();
   });
 });
