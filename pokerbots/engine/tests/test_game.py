@@ -317,3 +317,20 @@ class TestSpecValidation(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestShowdownVisibility(unittest.TestCase):
+    def test_face_down_discards_stay_hidden_at_showdown(self):
+        sp = VARIANTS["g_pineapple"]
+        h = HandState(sp, deck("AsAdAh KcKdKh 2c3c4d 5c 9d", sp))
+        sc = Script([(0, Call()), (1, Check()), (1, lambda o: Discard([o.my_cards[0]])),
+                     (0, lambda o: Discard([o.my_cards[0]])), (1, Check()), (0, Check()),
+                     (1, Check()), (0, Check()), (1, Check()), (0, Check())])
+        h.play(sc)
+        self.assertTrue(h.showdown)
+        r = h.result_for(0)
+        opp_disc = [rec for rec in r.history if rec.kind == DISCARD and rec.position == 1]
+        self.assertEqual(opp_disc[0].cards, ())
+        own_disc = [rec for rec in r.history if rec.kind == DISCARD and rec.position == 0]
+        self.assertEqual(len(own_disc[0].cards), 1)
+        self.assertEqual(len(r.opp_cards), 2)

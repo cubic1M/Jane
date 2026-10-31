@@ -368,7 +368,9 @@ class HandState:
     def result_for(self, p: int) -> HandResult:
         o = 1 - p
         hist = tuple(
-            ActionRecord(pos, st, kind, amt, tuple(cards if (pos == p or fu or self.showdown) else ()))
+            # face-down discards stay hidden even at showdown (as on real servers);
+            # the opponent's remaining hole cards are revealed via opp_cards
+            ActionRecord(pos, st, kind, amt, tuple(cards if (pos == p or fu) else ()))
             for (pos, st, kind, amt, cards, fu) in self.history)
         return HandResult(position=p, delta=self.deltas[p], showdown=self.showdown,
                           my_cards=tuple(self.hole[p]),
