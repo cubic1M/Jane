@@ -4,7 +4,7 @@ import { isHiddenPage } from "@/config/hidden-pages";
 import { ALERT_TYPES, ALERTS_PAGE_LIMIT } from "@/config/alerts";
 import { DIGEST_CHANGE_KINDS } from "@/config/digest";
 import { TRIAL_ID_PREFIX } from "@/config/trial";
-import { loadDetectionInput, moneyFound } from "@/detection/engine";
+import { loadDetectionInput, moneyFoundParts } from "@/detection/engine";
 import { alertPrefs } from "@/lib/alerts";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
@@ -87,7 +87,7 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
         confidence: true,
       },
     }),
-    moneyFound(userId, { client }),
+    moneyFoundParts(userId, { client }),
     savedToDate(userId, { client }),
     db.digests.findFirst({
       where: { sentAt: { not: null } },
@@ -135,7 +135,8 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
   return buildDigest({
     now,
     lastSentAt: last?.sentAt ?? null,
-    moneyFoundCents: found,
+    moneyFoundCents: found.cents,
+    moneyFoundOnceCents: found.onceCents,
     savedToDateCents: saved,
     membershipOffer: offer.show,
     actions: actions.map((a) => ({

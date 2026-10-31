@@ -133,6 +133,12 @@ describe("the hero row", () => {
     expect(flat.netWorth?.trend).toBe("flat");
   });
 
+  // Debugger 10-31: a $210 double charge read "$210/yr".
+  it("leaves /yr off money found when some of it comes back once", () => {
+    expect(heroView(hero()).saved.perYear).toBe(true);
+    expect(heroView(hero({ foundOnceCents: 21_000 })).saved.perYear).toBe(false);
+  });
+
   it("shows money saved once there is some, and money found before", () => {
     expect(heroView(hero()).saved).toMatchObject({ label: "Money found", cents: 290_000 });
     expect(heroView(hero({ savedCents: 64_000, confirmedCents: 21_588 })).saved.share).toBeCloseTo(

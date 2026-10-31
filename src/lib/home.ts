@@ -7,7 +7,7 @@ import { budgetSummary } from "@/insights/budgets";
 import { comingUp } from "@/insights/coming-up";
 import { irregularCosts } from "@/insights/irregular";
 import { loadInsightTransactions } from "@/insights/load";
-import { loadDetectionInput, moneyFound } from "@/detection/engine";
+import { loadDetectionInput, moneyFoundParts } from "@/detection/engine";
 import { loadInvestingLeak } from "@/lib/investments/leak";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { unreadAlertCount } from "@/lib/alerts";
@@ -50,7 +50,7 @@ export async function homeSummary(
     plan,
     leak,
   ] = await Promise.all([
-    moneyFound(userId, { client }),
+    moneyFoundParts(userId, { client }),
     savedItems(userId, { client }),
     db.actions.findMany({
       where: { status: "waiting_on_user" },
@@ -120,7 +120,9 @@ export async function homeSummary(
   return {
     // Money found: the findings, plus what investing loses each year (fees, waiting cash, an
     // unused match, avoidable tax), counted once.
-    moneyFoundCents: found + leak.totalCents,
+    moneyFoundCents: found.cents + leak.totalCents,
+    // The part of it that comes back once (a double charge), not every year.
+    moneyFoundOnceCents: found.onceCents,
     investingLeakCents: leak.totalCents,
     savedToDateCents: saved.reduce((sum, i) => sum + i.cents, 0),
     confirmedSavedCents: verified.confirmedCents,
