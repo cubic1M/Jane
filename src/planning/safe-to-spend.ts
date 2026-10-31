@@ -5,6 +5,8 @@ import {
   PAYMENT_TRANSFERS,
 } from "@/config/detection";
 import {
+  balanceDay,
+  expectedBetween,
   scheduledTransfers,
   scheduledTransfersIn,
   upcomingBills,
@@ -47,7 +49,15 @@ export function safeToSpend(
       a.currentBalanceCents !== null,
   );
   const checkingIds = new Set(checking.map((a) => a.id));
-  const balance = checking.reduce((sum, a) => sum + (a.currentBalanceCents ?? 0), 0);
+  // Today's balance: an uploaded statement's, walked forward with what was due since, as the
+  // forecast does (debugger 10-31).
+  const balance = checking.reduce(
+    (sum, a) =>
+      sum +
+      (a.currentBalanceCents ?? 0) +
+      expectedBetween(input, a.id, balanceDay(a, input.asOf), input.asOf),
+    0,
+  );
 
   // The next paycheck (spec step 182): payroll deposits only, never interest or a refund.
   const payday = nextPayday(input, FORECAST_DAYS)?.date ?? null;

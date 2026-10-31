@@ -2,6 +2,7 @@ import { cardPaymentNameFromWords } from "@/categorize/card-payments";
 import { BNPL_AMOUNT_TOLERANCE_CENTS, BNPL_PAY_IN_4_STEP_DAYS } from "@/config/debt";
 import { bnplPlans, bnplProviderOf } from "@/insights/bnpl";
 import {
+  BALANCE_ROLL_MAX_DAYS,
   FORECAST_SUBTYPES,
   NOT_BILL_CATEGORIES,
   NOT_BILL_HABIT_FREQUENCIES,
@@ -17,7 +18,7 @@ import {
   type Stream,
 } from "./streams";
 import type { DetectionAccount, DetectionInput, DetectionTransaction } from "./types";
-import { addDays, dayOfMonth, nextOccurrence } from "./units";
+import { addDays, dayOfMonth, daysBetween, nextOccurrence } from "./units";
 
 // Upcoming bills and income, and a day-by-day balance forecast for checking accounts.
 // Pure: built from the same recurring streams the detection rules use.
@@ -37,7 +38,9 @@ export type Expected = {
 export type AccountForecast = {
   accountId: string;
   accountName: string;
+  // The balance known, and its day: today's, or an uploaded statement's closing balance.
   startCents: number;
+  startOn: string;
   lowest: { date: string; balanceCents: number };
   bills: Expected[];
   income: Expected[];
@@ -266,6 +269,39 @@ function newPayIn4(input: DetectionInput, streams: Stream[], until: string): Exp
   });
 }
 
+// The day a balance is from, when the forecast should walk it forward to today: an uploaded
+// statement's closing day, up to BALANCE_ROLL_MAX_DAYS back. Otherwise today.
+export function balanceDay(account: DetectionAccount, asOf: string): string {
+  const day = account.balanceAsOf;
+  return day && day < asOf && daysBetween(day, asOf) <= BALANCE_ROLL_MAX_DAYS ? day : asOf;
+}
+
+// What came in and went out of one account after `from` and before `to`, as expected from the
+// person's history (paychecks, bills, regular moves), for a balance from an earlier day
+// (debugger 10-31: a statement ending Oct 28 left out the Oct 30 paycheck, so the forecast said
+// "could drop to -$622.87" where it was about -$10).
+export function expectedBetween(
+  input: DetectionInput,
+  accountId: string,
+  from: string,
+  to: string,
+): number {
+  if (from >= to) return 0;
+  const then = { ...input, asOf: addDays(from, 1) };
+  const days = daysBetween(then.asOf, to) - 1;
+  if (days < 0) return 0;
+  const inGap = (rows: Expected[]) =>
+    rows
+      .filter((r) => r.accountId === accountId && r.date > from && r.date < to)
+      .reduce((s, r) => s + r.amountCents, 0);
+  return (
+    inGap(expectedIncome(then, addDays(then.asOf, days))) +
+    inGap(scheduledTransfersIn(then, days)) -
+    inGap(upcomingBills(then, days)) -
+    inGap(scheduledTransfers(then, days))
+  );
+}
+
 export function forecastAccounts(input: DetectionInput, days: number): AccountForecast[] {
   const until = addDays(input.asOf, days);
   const bills = upcomingBills(input, days);
@@ -286,7 +322,9 @@ export function forecastAccounts(input: DetectionInput, days: number): AccountFo
       const accountIncome = mine(income);
       const accountTransfers = mine(transfers);
       const accountTransfersIn = mine(transfersIn);
-      let balance = account.currentBalanceCents!;
+      const startOn = balanceDay(account, input.asOf);
+      let balance =
+        account.currentBalanceCents! + expectedBetween(input, account.id, startOn, input.asOf);
       const series: { date: string; balanceCents: number }[] = [];
       for (let i = 0; i <= days; i += 1) {
         const date = addDays(input.asOf, i);
@@ -301,6 +339,7 @@ export function forecastAccounts(input: DetectionInput, days: number): AccountFo
         accountId: account.id,
         accountName: account.name,
         startCents: account.currentBalanceCents!,
+        startOn,
         lowest,
         bills: accountBills,
         income: accountIncome,

@@ -512,6 +512,10 @@ export const NON_SPENDING_CATEGORIES: readonly PfcDetailed[] = [
 
 // How far ahead the forecast looks: a month, including the same date next month.
 export const FORECAST_DAYS = 31;
+// A balance from an uploaded statement that ends at most this many days before today is walked
+// forward to today with what was due in between (a paycheck, a bill) before the forecast starts;
+// an older one isn't (its statements describe then, src/app/report/state.ts).
+export const BALANCE_ROLL_MAX_DAYS = 35;
 // A checking account forecast to dip below this before more income arrives is a risk.
 export const LOW_BALANCE_CUSHION_CENTS = 10_000;
 // Below zero is high confidence; between zero and the cushion is medium.

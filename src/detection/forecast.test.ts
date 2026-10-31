@@ -200,6 +200,25 @@ describe("forecastAccounts", () => {
     expect(f.lowest).toEqual({ date: "2026-10-15", balanceCents: 20_000 });
   });
 
+  // Debugger 10-31: a statement ending Oct 28 with $84.12, a paycheck every two weeks due Oct
+  // 30, and today Oct 31: the forecast started today from Oct 28's balance and left the paycheck
+  // out, so "could drop to -$622.87" where it was about -$10. What's due between the balance's
+  // day and today is counted.
+  it("counts what was due between the balance's day and today", () => {
+    const pay = [3, 2, 1].map((m) => tx({ ...PAY, date: monthsAgo(m, 12), amountCents: -300_000 }));
+    const geico = [3, 2, 1].map((m) =>
+      tx({ ...GEICO, date: monthsAgo(m, 13), amountCents: 9_800 }),
+    );
+    const data = input({
+      accounts: [{ ...CHECKING, currentBalanceCents: 20_000, balanceAsOf: "2026-10-10" }],
+      transactions: [...pay, ...geico],
+    });
+    const [f] = forecastAccounts(data, 31);
+    // Pay on the 12th and Geico on the 13th came after the balance, before today (the 15th).
+    expect(f.days[0]).toEqual({ date: "2026-10-15", balanceCents: 20_000 + 300_000 - 9_800 });
+    expect(f.lowest.date >= "2026-10-15").toBe(true);
+  });
+
   // Messy-bank QA: a monthly move to savings is no bill, but it still leaves checking.
   it("takes scheduled moves to savings out of checking without calling them bills", () => {
     const toSavings = {

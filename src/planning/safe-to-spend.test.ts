@@ -180,4 +180,20 @@ describe("safeToSpend", () => {
     expect(safe.bills.map((b) => b.merchant)).toEqual(["Geico"]);
     expect(safe.safeCents).toBe(150_000 - 9_800 - 50_000);
   });
+
+  // Debugger 10-31: a statement's balance from before a paycheck that came since.
+  it("starts from the balance walked forward to today, as the forecast does", () => {
+    const d = input({
+      accounts: [{ ...CHECKING, currentBalanceCents: 150_000, balanceAsOf: "2026-10-10" }, CARD],
+      transactions: [
+        ...pay,
+        ...[3, 2, 1].map((m) => tx({ ...GEICO, date: monthsAgo(m, 12), amountCents: 9_800 })),
+      ],
+    });
+    const safe = safeToSpend(d, { budgetsLeftCents: 0, goalsCents: 0 });
+    // Geico on the 12th came after the balance's day: it's already out.
+    expect(safe.balanceCents).toBe(150_000 - 9_800);
+    const [checking] = forecastAccounts(d, 31);
+    expect(safe.safeCents).toBe(checking.days.find((x) => x.date === "2026-10-31")!.balanceCents);
+  });
 });

@@ -11,6 +11,9 @@ export type DetectionAccount = {
   type: string;
   subtype: string | null;
   currentBalanceCents: number | null;
+  // The day currentBalanceCents is from (YYYY-MM-DD), when it isn't today: an uploaded
+  // statement's closing balance. Absent: today's.
+  balanceAsOf?: string;
 };
 
 export type DetectionTransaction = {

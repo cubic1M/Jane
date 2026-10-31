@@ -35,6 +35,7 @@ import type { Candidate, DetectionInput, DetectionTransaction } from "./types";
 import { isoDate, monthsBefore } from "./units";
 import { copiesToLeaveOut } from "@/planning/books";
 import { cachedRead } from "@/lib/read-cache";
+import { FILE_SOURCE, GIVEN_SOURCE } from "@/lib/import/balances";
 
 // Findings the person can still act on, and the ones where they've said yes.
 const OPEN_STATUSES: FindingStatus[] = ["new", "shown", "approved", "in_progress"];
@@ -161,45 +162,58 @@ async function loadInput(
   client: PrismaClient,
 ): Promise<DetectionInput> {
   const cutoff = monthsBefore(asOf, LOOKBACK_MONTHS);
-  const [allAccounts, allTransactions, streams, cancelled, directory, first] = await Promise.all([
-    db.accounts.findMany({
-      select: {
-        id: true,
-        name: true,
-        type: true,
-        subtype: true,
-        currentBalanceCents: true,
-        itemId: true,
-        mask: true,
-        item: { select: { plaidItemId: true } },
-      },
-      orderBy: { id: "asc" },
-    }),
-    db.transactions.findMany({
-      where: {
-        pending: false,
-        date: { gt: new Date(`${cutoff}T00:00:00Z`), lte: new Date(`${asOf}T00:00:00Z`) },
-      },
-      select: TRANSACTION_SELECT,
-      orderBy: [{ date: "asc" }, { id: "asc" }],
-    }),
-    db.recurringStreams.findMany({ orderBy: { id: "asc" } }),
-    // Subscriptions our team finished cancelling, for charges that come after.
-    db.actions.findMany({
-      where: {
-        type: "cancel_subscription",
-        status: "done",
-        completedAt: { not: null },
-        decision: { finding: { type: "subscription_review" } },
-      },
-      select: { completedAt: true, decision: { select: { finding: { select: { key: true } } } } },
-      orderBy: { completedAt: "asc" },
-    }),
-    // The merchant directory is shared, not user data, so it's read without scoping.
-    client.merchant.findMany({ select: { key: true, name: true, aliases: true, category: true } }),
-    // How far back the person's data goes, before the lookback window too.
-    db.transactions.aggregate({ where: { pending: false }, _min: { date: true } }),
-  ]);
+  const [allAccounts, allTransactions, streams, cancelled, directory, first, balanceDays] =
+    await Promise.all([
+      db.accounts.findMany({
+        select: {
+          id: true,
+          name: true,
+          type: true,
+          subtype: true,
+          currentBalanceCents: true,
+          itemId: true,
+          mask: true,
+          item: { select: { plaidItemId: true } },
+        },
+        orderBy: { id: "asc" },
+      }),
+      db.transactions.findMany({
+        where: {
+          pending: false,
+          date: { gt: new Date(`${cutoff}T00:00:00Z`), lte: new Date(`${asOf}T00:00:00Z`) },
+        },
+        select: TRANSACTION_SELECT,
+        orderBy: [{ date: "asc" }, { id: "asc" }],
+      }),
+      db.recurringStreams.findMany({ orderBy: { id: "asc" } }),
+      // Subscriptions our team finished cancelling, for charges that come after.
+      db.actions.findMany({
+        where: {
+          type: "cancel_subscription",
+          status: "done",
+          completedAt: { not: null },
+          decision: { finding: { type: "subscription_review" } },
+        },
+        select: { completedAt: true, decision: { select: { finding: { select: { key: true } } } } },
+        orderBy: { completedAt: "asc" },
+      }),
+      // The merchant directory is shared, not user data, so it's read without scoping.
+      client.merchant.findMany({
+        select: { key: true, name: true, aliases: true, category: true },
+      }),
+      // How far back the person's data goes, before the lookback window too.
+      db.transactions.aggregate({ where: { pending: false }, _min: { date: true } }),
+      // The day each uploaded account's balance is from: its statement's or the person's
+      // (src/lib/import/balances.ts), so the forecast walks it forward to today.
+      db.balanceSnapshots.groupBy({
+        by: ["accountId"],
+        where: { source: { in: [FILE_SOURCE, GIVEN_SOURCE] } },
+        _max: { date: true },
+      }),
+    ]);
+  const balanceOn = new Map(
+    balanceDays.flatMap((b) => (b._max.date ? [[b.accountId, isoDate(b._max.date)]] : [])),
+  );
 
   // Books QA: an account linked twice (through two logins) counts once.
   const copies = copiesToLeaveOut(allAccounts);
@@ -217,6 +231,7 @@ async function loadInput(
         type: a.type,
         subtype: a.subtype,
         currentBalanceCents: a.currentBalanceCents,
+        ...(balanceOn.has(a.id) ? { balanceAsOf: balanceOn.get(a.id)! } : {}),
       })),
       // Spec step 152: the cards that come with cover.
       cardProducts: cardProducts(
