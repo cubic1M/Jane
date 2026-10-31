@@ -12,3 +12,4 @@ results_quick/
 report/tables_quick.md
 results/bughunt/progress.json
 rehearsal/ORGANISER_NOTES.md
+results/logs/*.rc
