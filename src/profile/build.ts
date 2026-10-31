@@ -256,10 +256,34 @@ export function monthsCovered(first: string, today: string): number {
   return Math.min(PROFILE_MONTHS, Math.max(1, months));
 }
 
+// The last day the statements reach, never past today (review 10-30: statements from Jan to Mar
+// seen in October read as "10 months of data", and rates were spread over ten months).
+// Statements whose newest line is within STALE_AFTER_DAYS of today still reach today (a quiet
+// week isn't missing data); older ones end a few days after their last line, where a statement
+// period closes.
+const STALE_AFTER_DAYS = 35;
+const STATEMENT_TAIL_DAYS = 7;
+function lastDayOf(txs: readonly ProfileTx[], today: string): string {
+  return statementsEnd(
+    txs.reduce((a, t) => (t.date > a && t.date <= today ? t.date : a), ""),
+    today,
+  );
+}
+
+// Where statements whose newest line is `last` reach. Also the report page's (one count).
+export function statementsEnd(last: string, today: string): string {
+  if (!last || last >= today) return today;
+  const gap = (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${last}T00:00:00Z`)) / 86_400_000;
+  if (gap <= STALE_AFTER_DAYS) return today;
+  return new Date(Date.parse(`${last}T00:00:00Z`) + STATEMENT_TAIL_DAYS * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+}
+
 export function monthsOfData(txs: readonly ProfileTx[], today: string): number {
   if (txs.length === 0) return 0;
   const first = txs.reduce((a, t) => (t.date < a ? t.date : a), today);
-  return monthsCovered(first, today);
+  return monthsCovered(first, lastDayOf(txs, today));
 }
 
 // The months a monthly rate is spread over. A full year is the calendar count; a shorter history
@@ -269,7 +293,8 @@ export function monthsForRate(txs: readonly ProfileTx[], today: string): number 
   const whole = monthsOfData(txs, today);
   if (whole === 0 || whole >= PROFILE_MONTHS) return whole;
   const first = txs.reduce((a, t) => (t.date < a ? t.date : a), today);
-  const days = (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${first}T00:00:00Z`)) / 86_400_000;
+  const last = lastDayOf(txs, today);
+  const days = (Date.parse(`${last}T00:00:00Z`) - Date.parse(`${first}T00:00:00Z`)) / 86_400_000;
   return Math.max(1, (days + 1) / (365.25 / 12));
 }
 

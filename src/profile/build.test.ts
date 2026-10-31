@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PEOPLE } from "@/config/people";
-import { buildProfile, monthsCovered, monthsOfData } from "./build";
+import { buildProfile, monthsCovered, monthsForRate, monthsOfData } from "./build";
 import { confidenceOf, sureWords } from "./confidence";
 import { FACT_KEYS } from "./facts";
 import { inputFor, SAMPLE_TODAY } from "./sample";
@@ -209,5 +209,18 @@ describe("months of data, one count", () => {
     // A part month never rounds up: three and a half months is three (thin data stays modest).
     expect(monthsCovered("2026-06-12", "2026-10-28")).toBe(4);
     expect(monthsCovered("2026-07-12", "2026-10-28")).toBe(3);
+  });
+});
+
+// Review 10-30: months counted to today, so statements from Jan to Mar seen in October read as
+// "10 months of data", and monthly rates were spread over ten months. They count to the last day
+// the statements reach (never past today).
+describe("months of data, for statements that stopped a while ago", () => {
+  const tx = (date: string) => ({ date }) as Parameters<typeof monthsOfData>[0][number];
+  it("counts to the last statement day, not to today", () => {
+    const stale = [tx("2026-01-05"), tx("2026-02-14"), tx("2026-03-30")];
+    expect(monthsOfData(stale, "2026-10-26")).toBe(3);
+    expect(monthsForRate(stale, "2026-10-26")).toBeGreaterThan(2.7);
+    expect(monthsForRate(stale, "2026-10-26")).toBeLessThan(3.1);
   });
 });

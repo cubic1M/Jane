@@ -24,7 +24,7 @@ import { Checkup } from "./checkup";
 import { loadCheckup } from "@/lib/checkup";
 import { findingSure, foundLine, reportOrder, reportState, shortUploadDays } from "./state";
 import { isoDay } from "@/lib/dates";
-import { monthsCovered } from "@/profile/build";
+import { monthsCovered, statementsEnd } from "@/profile/build";
 import { ShareButton } from "./share-button";
 import { cardFor } from "@/lib/share-card";
 import { isTrialUser } from "@/lib/trial-ids";
@@ -73,7 +73,14 @@ async function ReportContent() {
       }),
     ]);
   // The profile's own count (src/profile/build.ts), so every "N months of data" agrees.
-  const months = read._min.date ? monthsCovered(isoDay(read._min.date), isoDay(new Date())) : 0;
+  // To the last day the statements reach, never past today, as the profile counts.
+  const months =
+    read._min.date && read._max.date
+      ? monthsCovered(
+          isoDay(read._min.date),
+          statementsEnd(isoDay(read._max.date), isoDay(new Date())),
+        )
+      : 0;
   const uploadDays = shortUploadDays(uploaded._min.date, uploaded._max.date);
   const transactions = accounts.reduce((sum, a) => sum + a.transactionCount, 0);
   const state = reportState({
