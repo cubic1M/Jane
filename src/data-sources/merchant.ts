@@ -27,6 +27,9 @@ const BOILERPLATE = [
   // Navy Federal's "PAID TO - USAA P&C INS" and "DEPOSIT - DFAS-CLEVELAND MIL PAY" (debugger
   // 10-30: the insurance card read "You pay Paid To Usaa P&C Ins").
   /^(?:PAID TO|DEPOSIT)\s+-\s+/,
+  // Capital One 360's "Withdrawal to ROCKET MORTGAGE PMT" and "Deposit from STARK INDUSTRIES
+  // PAYROLL" (debugger 10-31: "Withdrawal To Rocket Mortgage Pmt $2,280.00 monthly").
+  /^(?:WITHDRAWAL TO|DEPOSIT FROM)\s+/,
 ];
 
 // A payment app in front of the person or company paid: "ZELLE TO OAK RIDGE APTS RENT" is Oak

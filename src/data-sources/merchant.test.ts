@@ -109,3 +109,16 @@ describe("Navy Federal's prefixes", () => {
     );
   });
 });
+
+// Debugger 10-31: Capital One 360 writes "Withdrawal to ROCKET MORTGAGE PMT" and "Deposit from
+// STARK INDUSTRIES PAYROLL" (the CSV bench has the same): /subscriptions listed "Withdrawal To
+// Rocket Mortgage Pmt $2,280.00 monthly".
+describe("Capital One 360's prefixes", () => {
+  it("leaves out Withdrawal to and Deposit from before the name", () => {
+    expect(normalizeMerchant("Withdrawal to ROCKET MORTGAGE PMT")?.name).toMatch(
+      /^Rocket Mortgage/,
+    );
+    expect(normalizeMerchant("Withdrawal to VENMO PAYMENT")?.name).toMatch(/^Venmo/);
+    expect(normalizeMerchant("Deposit from STARK INDUSTRIES PAYROLL")?.name).toMatch(/^Stark/);
+  });
+});
