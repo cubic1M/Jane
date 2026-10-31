@@ -73,7 +73,15 @@ K_IRISH = GameSpec(
 
 DAY_VARIANTS: tuple = (H_PLO5, I_DOUBLE_DISCARD, J_3STREET, K_IRISH)
 
-ALL_VARIANTS = {**VARIANTS, **{s.name: s for s in DAY_VARIANTS}}
+# ---- policy library: likely extra variants with pre-trained CFR policies --------------
+# If the announced game matches one of these exactly, use its name: the policy is ready.
+L_NLHE50 = GameSpec(name="l_nlhe50", starting_stack=100, notes="LIBRARY: heads-up NLHE, 50bb.")
+M_NLHE150 = GameSpec(name="m_nlhe150", starting_stack=300, notes="LIBRARY: heads-up NLHE, 150bb.")
+N_PLO4 = GameSpec(name="n_plo4", hole_cards=4, hole_usage="exactly", hole_exact=2, betting="pot_limit",
+                  starting_stack=200, notes="LIBRARY: heads-up pot-limit Omaha (4 cards, exactly 2), 100bb.")
+LIBRARY_VARIANTS: tuple = (L_NLHE50, M_NLHE150, N_PLO4)
+
+ALL_VARIANTS = {**VARIANTS, **{s.name: s for s in DAY_VARIANTS}, **{s.name: s for s in LIBRARY_VARIANTS}}
 
 
 def get_variant(name: str) -> GameSpec:
