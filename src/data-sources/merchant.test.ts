@@ -97,3 +97,15 @@ describe("withoutAchDetails", () => {
     expect(withoutAchDetails("DES:ONLY")).toBe("DES:ONLY");
   });
 });
+
+// Debugger 10-30: Navy Federal writes "PAID TO - USAA P&C INS" and "DEPOSIT - DFAS-CLEVELAND MIL
+// PAY": the insurance card read "You pay Paid To Usaa P&C Ins $1,656.00 a year".
+describe("Navy Federal's prefixes", () => {
+  it("leaves out PAID TO - and DEPOSIT - before the name", () => {
+    expect(normalizeMerchant("PAID TO - USAA P&C INS")?.key).toBe("usaa p&c ins");
+    expect(normalizeMerchant("PAID TO - OAKWOOD APTS RENT")?.name).toMatch(/^Oakwood/);
+    expect(normalizeMerchant("DEPOSIT - DFAS-CLEVELAND MIL PAY")?.key).toBe(
+      "dfas-cleveland mil pay",
+    );
+  });
+});

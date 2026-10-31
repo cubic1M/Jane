@@ -21,7 +21,10 @@ describe("savings text", () => {
   });
 
   it("explains a missing estimate", () => {
-    expect(savingsLine("insurance_reshop", null)).toBe("Savings depend on the quotes we find");
+    // Debugger 10-30: "the quotes we find" beside do-it-yourself steps in the read-only beta.
+    expect(savingsLine("insurance_reshop", null)).toBe(
+      "Savings depend on what other insurers quote",
+    );
     expect(savingsLine("low_balance_risk", null)).toBe("No dollar estimate for this one");
   });
 });

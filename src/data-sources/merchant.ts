@@ -24,6 +24,9 @@ const BOILERPLATE = [
   /^(?:POS|DEBIT CARD|CHECKCARD|CHECK CARD|RECURRING)\s+(?:PURCHASE\s+)?(?:-\s+)?(?:\d{4}\s+)?/,
   /^PURCHASE AUTHORIZED ON \d{1,2}\/\d{1,2}\s+/,
   /^ORIG CO NAME:\s*/,
+  // Navy Federal's "PAID TO - USAA P&C INS" and "DEPOSIT - DFAS-CLEVELAND MIL PAY" (debugger
+  // 10-30: the insurance card read "You pay Paid To Usaa P&C Ins").
+  /^(?:PAID TO|DEPOSIT)\s+-\s+/,
 ];
 
 // A payment app in front of the person or company paid: "ZELLE TO OAK RIDGE APTS RENT" is Oak
