@@ -1,5 +1,5 @@
 import { cardPaymentNameFromWords } from "@/categorize/card-payments";
-import { BNPL_AMOUNT_TOLERANCE_CENTS } from "@/config/debt";
+import { BNPL_AMOUNT_TOLERANCE_CENTS, BNPL_PAY_IN_4_STEP_DAYS } from "@/config/debt";
 import { bnplPlans, bnplProviderOf } from "@/insights/bnpl";
 import {
   FORECAST_SUBTYPES,
@@ -217,15 +217,48 @@ export function upcomingBills(
 ): Expected[] {
   const left = bnplPaymentsLeft(input);
   const until = addDays(input.asOf, days);
-  return buildStreams(input)
-    .filter(isComingUp)
-    .filter((s) => !remindedElsewhere.has(s.pfcDetailed ?? ""))
-    .flatMap((s) => {
-      const rows = expand([{ ...s, merchant: billName(s, input.accounts) }], input.asOf, until);
-      const n = left(s);
-      return n === null ? rows : rows.slice(0, n);
-    })
-    .sort((a, b) => a.date.localeCompare(b.date) || a.merchant.localeCompare(b.merchant));
+  const streams = buildStreams(input);
+  return [
+    ...streams
+      .filter(isComingUp)
+      .filter((s) => !remindedElsewhere.has(s.pfcDetailed ?? ""))
+      .flatMap((s) => {
+        const rows = expand([{ ...s, merchant: billName(s, input.accounts) }], input.asOf, until);
+        const n = left(s);
+        return n === null ? rows : rows.slice(0, n);
+      }),
+    ...newPayIn4(input, streams, until),
+  ].sort((a, b) => a.date.localeCompare(b.date) || a.merchant.localeCompare(b.merchant));
+}
+
+// A Pay in 4 with one or two payments made has no stream yet, so nothing above expects it; its
+// payments left follow its own schedule, every two weeks (debugger 10-31).
+function newPayIn4(input: DetectionInput, streams: Stream[], until: string): Expected[] {
+  return bnplPlans(input.transactions, input.asOf).flatMap((plan) => {
+    if (plan.kind !== "pay_in_4" || !plan.nextDate || !plan.paymentsLeft) return [];
+    const same = (cents: number) =>
+      Math.abs(cents - plan.paymentCents) <= BNPL_AMOUNT_TOLERANCE_CENTS;
+    const covered = streams.some((s) => {
+      const last = s.charges.at(-1);
+      return last && bnplProviderOf(last)?.key === plan.provider && same(s.lastAmountCents);
+    });
+    if (covered) return [];
+    const paid = input.transactions
+      .filter(
+        (t) => t.amountCents > 0 && bnplProviderOf(t)?.key === plan.provider && same(t.amountCents),
+      )
+      .sort((a, b) => b.date.localeCompare(a.date))[0];
+    return Array.from({ length: plan.paymentsLeft }, (_, i) =>
+      addDays(plan.nextDate!, BNPL_PAY_IN_4_STEP_DAYS * i),
+    )
+      .filter((date) => date >= input.asOf && date <= until)
+      .map((date) => ({
+        merchant: plan.providerName,
+        date,
+        amountCents: plan.paymentCents,
+        accountId: paid?.accountId ?? null,
+      }));
+  });
 }
 
 export function forecastAccounts(input: DetectionInput, days: number): AccountForecast[] {

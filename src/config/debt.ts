@@ -15,6 +15,8 @@ export type BnplProviderKey = (typeof BNPL_PROVIDERS)[number]["key"];
 // A Pay in 4 plan: four equal payments two weeks apart, the first at checkout. Every one of
 // these companies offers it interest-free; that's where its 0% rate comes from.
 export const BNPL_PAY_IN_4_PAYMENTS = 4;
+// Days between a Pay in 4's payments.
+export const BNPL_PAY_IN_4_STEP_DAYS = 14;
 export const BNPL_PAY_IN_4_RATE_SOURCE =
   "Pay in 4 plans charge no interest under the company's own terms";
 // Days between payments that read as every two weeks, and as monthly.

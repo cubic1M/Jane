@@ -357,6 +357,18 @@ describe("upcomingBills, for buy now, pay later", () => {
       }),
     );
 
+  // Debugger 10-31: a Pay in 4 with one or two payments made had no stream yet, so its
+  // payments left weren't expected at all, though src/insights/bnpl.ts knows their dates.
+  it("expects the payments left on a new Pay in 4", () => {
+    const bills = upcomingBills(input({ transactions: payIn4(2, 7) }), 61);
+    expect(
+      bills.filter((b) => /klarna/i.test(b.merchant)).map((b) => [b.date, b.amountCents]),
+    ).toEqual([
+      ["2026-10-22", 3_249],
+      ["2026-11-05", 3_249],
+    ]);
+  });
+
   it("leaves out a Pay in 4 that has made its four payments", () => {
     const bills = upcomingBills(input({ transactions: payIn4(4, 1) }), 61);
     expect(bills.filter((b) => /klarna/i.test(b.merchant))).toEqual([]);

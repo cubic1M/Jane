@@ -5,6 +5,7 @@ import {
   BNPL_LOOKBACK_DAYS,
   BNPL_MONTHLY_DAYS,
   BNPL_PAY_IN_4_PAYMENTS,
+  BNPL_PAY_IN_4_STEP_DAYS,
   BNPL_PROVIDERS,
   type BnplProviderKey,
 } from "@/config/debt";
@@ -59,7 +60,7 @@ const between = (n: number, range: { min: number; max: number }) =>
   n >= range.min && n <= range.max;
 
 // The step between payments: two weeks for Pay in 4, a month for monthly plans.
-const STEP_DAYS = { pay_in_4: 14, monthly: 30 } as const;
+const STEP_DAYS = { pay_in_4: BNPL_PAY_IN_4_STEP_DAYS, monthly: 30 } as const;
 
 function planOf(
   provider: (typeof BNPL_PROVIDERS)[number],
