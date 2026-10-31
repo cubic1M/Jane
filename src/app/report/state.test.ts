@@ -157,6 +157,25 @@ describe("a finding's % sure on the report", () => {
     expect(findingSure(card, [suggestion], 3, 1).reason).toBe("5 bank fees in 3 months of data");
   });
 
+  // Debugger 10-31 (demo bank): a MasterClass trial's finding was stored "low" (not counted in
+  // money found, "under 50% sure" in the email) while the report showed its suggestion's "83%
+  // sure". A card's percent stays inside its stored level's band.
+  it("keeps the percent inside the band of the finding's own level", () => {
+    const suggestion = {
+      topic: "trial_conversion",
+      confidencePercent: 83,
+      confidenceReason: "1 charge after a trial in 12 months of data",
+    };
+    const trial = (confidence: "low" | "medium" | "high") => ({
+      type: "trial_conversion",
+      evidence: {},
+      confidence,
+    });
+    expect(findingSure(trial("low"), [suggestion], 12).percent).toBe(49);
+    expect(findingSure(trial("medium"), [suggestion], 12).percent).toBe(79);
+    expect(findingSure(trial("high"), [suggestion], 12).percent).toBe(83);
+  });
+
   it("goes by the months alone when it rests on balances, not charges", () => {
     expect(findingSure({ type: "idle_cash", evidence: { accounts: [] } }, [], 4).reason).toBe(
       "4 months of data",

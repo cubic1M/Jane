@@ -1,7 +1,11 @@
 import { formatCents } from "@/lib/money";
 import { COUNT_ONLY_WHEN_APPROVED } from "@/config/detection";
 import { PLAN_URGENT_FINDING_TYPES } from "@/config/plan";
-import { CONFIDENCE_SCORE, REPORT_LIKELIHOOD } from "@/config/priorities";
+import {
+  CONFIDENCE_SCORE,
+  REPORT_LIKELIHOOD,
+  SUGGESTION_CONFIDENCE_FROM,
+} from "@/config/priorities";
 import { confidenceOf, counted } from "@/profile/confidence";
 import { STALE_UPLOAD_DAYS, SUGGESTED_UPLOAD_DAYS } from "@/config/import";
 import type { FindingType } from "@/generated/prisma/client";
@@ -105,19 +109,32 @@ export type SuggestionSure = { topic: string; confidencePercent: number; confide
 // (debugger 10-30: fees on two accounts, "5 bank fees" on the card whose own finding rests on 1),
 // so with more than one each counts its own charges.
 export function findingSure(
-  finding: { type: string; evidence: unknown },
+  finding: { type: string; evidence: unknown; confidence?: "high" | "medium" | "low" },
   suggestions: readonly SuggestionSure[],
   months: number,
   sameType = 1,
 ): { percent: number; reason: string } {
+  // Inside the band of the finding's own level, which decides whether it counts in money found
+  // and what the weekly email says (debugger 10-31: a trial stored "low", not counted and "under
+  // 50% sure" in the email, read "83% sure" here from its suggestion).
+  const ceiling =
+    finding.confidence === "low"
+      ? SUGGESTION_CONFIDENCE_FROM.medium - 1
+      : finding.confidence === "medium"
+        ? SUGGESTION_CONFIDENCE_FROM.high - 1
+        : 100;
+  const inBand = (sure: { percent: number; reason: string }) => ({
+    ...sure,
+    percent: Math.min(sure.percent, ceiling),
+  });
   const same = sameType === 1 ? suggestions.find((s) => s.topic === finding.type) : undefined;
-  if (same) return { percent: same.confidencePercent, reason: same.confidenceReason };
+  if (same) return inBand({ percent: same.confidencePercent, reason: same.confidenceReason });
   const charges = evidenceCharges(finding.evidence);
   const span = `${months} month${months === 1 ? "" : "s"} of data`;
-  return {
+  return inBand({
     percent: confidenceOf("seen", { months, matches: charges || months }),
     reason: charges > 0 ? `${counted(charges, "charges")} in ${span}` : span,
-  };
+  });
 }
 
 // Every dated charge a finding rests on: all of them, not the few its card lists.
