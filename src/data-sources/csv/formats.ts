@@ -11,6 +11,9 @@ export type ParsedRow = {
   // Positive is money out (Plaid's convention), whatever sign the bank uses.
   amountCents: number;
   description: string;
+  // The merchant's name where the export gives one of its own (Apple Card's Merchant column):
+  // cleaner than the description's ("SPOTIFY P2D3F STOCKHOLM" is "Spotify"; debugger 10-31).
+  merchant?: string;
   hints: { bankCategory?: string; bankType?: string };
   // The account's balance after this row, where the export has a running-balance column.
   balanceCents?: number;
@@ -425,6 +428,7 @@ export const appleCard: CsvFormat = {
         date: common.date,
         amountCents: common.cents,
         description: common.description,
+        ...(get("merchant").trim() ? { merchant: get("merchant").trim() } : {}),
         hints: { bankCategory: optional(get("category")), bankType: optional(get("type")) },
       },
     };
