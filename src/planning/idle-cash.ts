@@ -5,12 +5,15 @@ import {
   IDLE_CASH_MONTHS_OF_SPENDING,
   IDLE_CASH_SUBTYPES,
   IDLE_CASH_TAX_DATE_DAYS,
+  IDLE_CASH_YEARLY_CATEGORIES,
   NON_SPENDING_CATEGORIES,
   NON_SPENDING_PRIMARIES,
   REFERENCE_HIGH_YIELD_RATE_BPS,
 } from "@/config/detection";
 import { categoryOf } from "@/categorize/taxonomy";
+import { ANNUAL_FEE_WORDS } from "@/config/found-policies";
 import { ESTIMATED_TAX_DATES } from "@/config/tax-pack";
+import { normalizeMerchant } from "@/data-sources/merchant";
 import { addDays, monthsBefore } from "@/detection/units";
 import { oneOffCharges, withoutOneOffs } from "@/insights/typical-month";
 import { daysBetween } from "@/lib/dates";
@@ -85,8 +88,11 @@ export function cashCushionOf(input: IdleInput): Omit<IdleCash, "earnsCents"> | 
   const estimated = input.transactions.filter(
     (t) => t.date > cutoff && t.date <= input.asOf && isEstimatedTax(t),
   );
+  const until = addDays(input.asOf, Math.round(IDLE_CASH_MONTHS_OF_SPENDING * DAYS_PER_MONTH));
+  const yearly = yearlyDue(input.transactions, input.asOf, until);
+  const heldYearly = new Set(yearly);
   const usual = withoutOneOffsOf(
-    spending.filter((t) => !isEstimatedTax(t)),
+    spending.filter((t) => !isEstimatedTax(t) && !heldYearly.has(t)),
     input.asOf,
   );
   // Average monthly spending, per account over that account's own history, then added up.
@@ -104,10 +110,9 @@ export function cashCushionOf(input: IdleInput): Omit<IdleCash, "earnsCents"> | 
   const balanceCents = accounts.reduce((sum, a) => sum + (a.balanceCents ?? 0), 0);
   const cushionCents = monthlyCents * IDLE_CASH_MONTHS_OF_SPENDING;
   const last = [...estimated].sort((a, b) => a.date.localeCompare(b.date)).at(-1);
-  const until = addDays(input.asOf, Math.round(IDLE_CASH_MONTHS_OF_SPENDING * DAYS_PER_MONTH));
-  const setAsideCents = last
-    ? last.amountCents * estimatedDatesBetween(input.asOf, until).length
-    : 0;
+  const setAsideCents =
+    (last ? last.amountCents * estimatedDatesBetween(input.asOf, until).length : 0) +
+    yearly.reduce((sum, t) => sum + t.amountCents, 0);
   return {
     accountIds: accounts.map((a) => a.id),
     balanceCents,
@@ -164,4 +169,27 @@ function isEstimatedTax(t: IdleTx): boolean {
   return estimatedDatesBetween(`${year - 1}-12-31`, `${year + 1}-01-31`).some(
     (d) => Math.abs(daysBetween(d, t.date)) <= IDLE_CASH_TAX_DATE_DAYS,
   );
+}
+
+// Yearly bills due again inside the window: a charge seen once in the past year, in a yearly
+// category (insurance, a property tax) or with annual-fee words, whose anniversary falls after
+// `from` and by `until`. Estimated tax is held back on its own dates.
+function yearlyDue(txs: readonly IdleTx[], from: string, until: string): IdleTx[] {
+  const yearAgo = addDays(from, -365);
+  const byMerchant = new Map<string, IdleTx[]>();
+  for (const t of txs) {
+    if (t.amountCents <= 0 || t.date <= addDays(yearAgo, -35) || t.date > from) continue;
+    const key = normalizeMerchant(t.description ?? "")?.key;
+    if (key) byMerchant.set(key, [...(byMerchant.get(key) ?? []), t]);
+  }
+  return [...byMerchant.values()].flatMap((charges) => {
+    if (charges.length !== 1) return [];
+    const [t] = charges;
+    const yearlyKind =
+      IDLE_CASH_YEARLY_CATEGORIES.includes(t.pfc ?? "") ||
+      ANNUAL_FEE_WORDS.test(t.description ?? "");
+    if (!yearlyKind || isEstimatedTax(t)) return [];
+    const next = addDays(t.date, 365);
+    return next > from && next <= until ? [t] : [];
+  });
 }

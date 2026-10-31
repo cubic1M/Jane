@@ -111,3 +111,43 @@ describe("cash held back for estimated tax", () => {
     expect(withTax.setAsideCents).toBe(0);
   });
 });
+
+// Manager 10-30: before calling cash idle, hold back other dated obligations too. A yearly car
+// insurance premium paid last December comes again this December.
+describe("cash held back for a yearly bill", () => {
+  const premium = (
+    date: string,
+    pfc = "GENERAL_SERVICES_INSURANCE",
+    description = "GEICO ANNUAL PREMIUM",
+  ): IdleTx => ({
+    date,
+    amountCents: 160_000,
+    accountId: "chk",
+    pfc,
+    description,
+  });
+
+  it("holds back a yearly premium due inside the cushion's months", () => {
+    const withPremium = cashCushionOf({
+      asOf: AS_OF,
+      accounts: [CHECKING],
+      transactions: [...usual(), premium("2025-12-10")],
+    })!;
+    expect(withPremium.setAsideCents).toBe(160_000);
+  });
+
+  it("holds back nothing for a premium due later, or a one-off purchase a year ago", () => {
+    const later = cashCushionOf({
+      asOf: AS_OF,
+      accounts: [CHECKING],
+      transactions: [...usual(), premium("2026-04-10")],
+    })!;
+    expect(later.setAsideCents).toBe(0);
+    const sofa = cashCushionOf({
+      asOf: AS_OF,
+      accounts: [CHECKING],
+      transactions: [...usual(), premium("2025-12-10", "HOME_IMPROVEMENT_FURNITURE", "WEST ELM")],
+    })!;
+    expect(sofa.setAsideCents).toBe(0);
+  });
+});

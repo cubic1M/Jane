@@ -487,6 +487,13 @@ export const IDLE_CASH_HIGH_CONFIDENCE_MONTHS = 6;
 // payment: idle cash holds the same back for each date still to come inside its cushion months
 // (debugger 10-30: a freelancer's $1,884 "idle" with the Jan 15 payment of $3,800 to make).
 export const IDLE_CASH_TAX_DATE_DAYS = 10;
+// A charge seen once in the past year in these categories (or with annual-fee words) is a yearly
+// bill: idle cash holds it back when its anniversary falls inside the cushion months (manager
+// 10-30: count dated obligations before calling cash idle). A one-off purchase never qualifies.
+export const IDLE_CASH_YEARLY_CATEGORIES: readonly string[] = [
+  "GENERAL_SERVICES_INSURANCE",
+  "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
+];
 export const NON_SPENDING_PRIMARIES: readonly PfcPrimary[] = [
   "TRANSFER_OUT",
   "TRANSFER_IN",
