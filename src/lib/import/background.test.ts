@@ -17,7 +17,7 @@ vi.mock("@/categorize/categorize", () => ({
 }));
 vi.mock("@/detection/engine", () => ({
   runDetection: (m.detect = log("detect")),
-  moneyFound: (m.found = log("found", 36000)),
+  moneyFoundYearly: (m.found = log("found", 36000)),
 }));
 vi.mock("@/lib/import/balances", () => ({
   rebuildUploadedBalances: (m.balances = log("balances", 4)),

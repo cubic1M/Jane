@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { AccountList } from "@/components/account-list";
 import { AppHeader, PageLoading } from "@/components/app-header";
 import { ViewTracker } from "@/components/view-tracker";
-import { isFirstDetectionComplete, moneyFoundParts } from "@/detection/engine";
+import { isFirstDetectionComplete, moneyFoundParts, yearlyFoundCents } from "@/detection/engine";
 import { listAccountSummaries } from "@/lib/accounts";
 import { CARD_SELECT } from "@/lib/cards";
 import { scopedDb } from "@/lib/db-scoped";
@@ -110,7 +110,9 @@ async function ReportContent() {
   // The time-sensitive first, then what each is likely to be worth (src/app/report/state.ts).
   const ordered = reportOrder(findings);
   // The shareable result card (src/lib/share-card.ts); sample data never shares.
-  const card = isTrialUser(user.id) ? null : cardFor({ foundCents: found, checks: checks.length });
+  const card = isTrialUser(user.id)
+    ? null
+    : cardFor({ foundCents: yearlyFoundCents(parts), checks: checks.length });
   const share = card && <ShareButton card={card} />;
   const top = ordered.slice(0, TOP);
   const rest = ordered.slice(TOP);
