@@ -585,9 +585,23 @@ identical because the champion's gate never trips against a strong bot: it then 
 pure full CFR, deal for deal. Decisions take 0.18 ms (hold'em) and 0.95 ms (discard
 hold'em) on average, and at most 9 ms.
 
-Iterations per 15-minute library policy, with training sharing the machine with tests:
-a_nlhe100 5,818; c_discard3 3,545; k_irish 4,020; n_plo4 5,374 (the rest are in
-`results/logs/library.log`). `bots/tests/test_library.py` checks every listed file:
+All 14 are trained. Iterations (×1024 sampled deals) and information sets per 15-minute
+policy, with training sharing the machine with tests at times:
+
+| game | iterations | infosets | game | iterations | infosets |
+|---|---|---|---|---|---|
+| a_nlhe100 | 5,818 | 38,616 | h_plo5 | 4,527 | 37,524 |
+| b_nlhe200 | 3,815 | 60,136 | i_double_discard | 2,940 | 18,776 |
+| c_discard3 | 3,545 | 60,136 | j_3street | 14,290 | 8,576 |
+| d_omaha4x2 | 4,897 | 38,616 | k_irish | 4,020 | 49,044 |
+| e_shortdeck | 5,721 | 38,616 | l_nlhe50 | 8,150 | 22,856 |
+| f_nlhe20 | 13,784 | 10,552 | m_nlhe150 | 5,193 | 49,176 |
+| g_pineapple | 5,363 | 38,616 | n_plo4 | 5,374 | 37,524 |
+
+For a–g every library policy has 1.5–2.7× the iterations of the old single-core
+30-minute policy (old: a 3,031, b 2,256, c 1,760, d 1,820, e 3,840, f 7,507,
+g 2,883). The lowest count is i_double_discard (2,940): two discard rounds make each
+iteration expensive. `bots/tests/test_library.py` checks every listed file:
 the hash, that it was trained for the variant in its name, more than 1,000 iterations,
 and legal, fast play from both seats.
 
