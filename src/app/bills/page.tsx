@@ -7,6 +7,7 @@ import { forecastAccounts, upcomingBills } from "@/detection/forecast";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { EmptyState } from "@/components/empty-state";
+import { balanceLine } from "./balance-line";
 
 const dayLabel = (iso: string) =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
@@ -44,12 +45,8 @@ async function Bills() {
           >
             <h2 className="font-semibold">{f.accountName}</h2>
             <p className="text-sm">
-              {formatCents(f.startCents)}{" "}
-              {f.startOn === f.days[0]?.date
-                ? "today"
-                : `on ${dayLabel(f.startOn)}, about ${formatCents(f.todayCents)} today`}
-              . Lowest point about <strong>{formatCents(f.lowest.balanceCents)}</strong> on{" "}
-              {dayLabel(f.lowest.date)}.
+              {balanceLine(f, dayLabel)}. Lowest point about{" "}
+              <strong>{formatCents(f.lowest.balanceCents)}</strong> on {dayLabel(f.lowest.date)}.
             </p>
             {low && (
               <p className="text-sm">
