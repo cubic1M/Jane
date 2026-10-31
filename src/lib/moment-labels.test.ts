@@ -27,7 +27,9 @@ const UTC_READS = [
   new RegExp(String.raw`${MOMENT}\.toLocale(?:Date)?String\([^)]*timeZone: "UTC"`, "g"),
 ];
 // On a page, a moment cut to its UTC day ("2026-10-31"): both the wrong day and a raw date.
-const PAGE_UTC_READS = [new RegExp(String.raw`${MOMENT}\.toISOString\(\)\.slice\(0, 10\)`, "g")];
+const PAGE_UTC_READS = [
+  new RegExp(String.raw`${MOMENT}(?:\.toISOString\(\))?\.slice\(0, 10\)`, "g"),
+];
 const isPage = (file: string) =>
   /\.tsx$/.test(file) && !file.includes("/admin/") && /\/(app|components)\//.test(file);
 

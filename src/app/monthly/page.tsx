@@ -109,7 +109,7 @@ async function MonthlyContent({
         ))}
       </section>
 
-      {close && <MonthClose view={close} />}
+      {close && <MonthClose view={close} timezone={timezone} />}
 
       {report && (
         <ul className="flex flex-col gap-3">
@@ -204,7 +204,7 @@ async function MonthlyContent({
 }
 
 // Spec step 244: the month as Jane closed it. Its figures are kept; only a correction changes them.
-function MonthClose({ view }: { view: CloseView }) {
+function MonthClose({ view, timezone }: { view: CloseView; timezone: string }) {
   const f = view.figures;
   return (
     <section
@@ -251,7 +251,10 @@ function MonthClose({ view }: { view: CloseView }) {
         </dl>
       )}
       {view.correctedAt && (
-        <p className={MUTED}>Updated after your correction on {view.correctedAt.slice(0, 10)}.</p>
+        <p className={MUTED}>
+          Updated after your correction on {momentLabel(view.correctedAt, timezone, { year: true })}
+          .
+        </p>
       )}
     </section>
   );

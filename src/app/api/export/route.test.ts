@@ -51,4 +51,16 @@ describe("GET /api/export", () => {
     vi.mocked(limitOrNull).mockResolvedValue(new Response(null, { status: 429 }) as never);
     expect((await GET()).status).toBe(429);
   });
+
+  // Debugger 10-30: downloaded at 9:54pm in Los Angeles on Oct 30, the file said Oct 31.
+  it("names the file for the person's own day, in their timezone", async () => {
+    vi.mocked(exportUserData).mockResolvedValueOnce({
+      exportedAt: "2026-10-31T04:54:00.000Z",
+      profile: { timezone: "America/Los_Angeles" },
+      transactions: [],
+    } as never);
+    expect((await GET()).headers.get("content-disposition")).toBe(
+      'attachment; filename="jane-data-2026-10-30.json"',
+    );
+  });
 });
