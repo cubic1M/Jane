@@ -187,7 +187,9 @@ const billNegotiation: Detector = {
       id: suggestionId("cost", "bill_negotiation"),
       capability: "cost",
       topic: "bill_negotiation",
-      title: "Ask for a lower rate on your internet or phone bill",
+      // Worth asking, never "too high": the checkup may call the same bill a typical price
+      // (manager decision 10-30).
+      title: "Worth asking for a lower rate on your internet or phone bill",
       headline: headlineOf(
         "Ask for a lower bill rate",
         Math.round(yearly * S.negotiationShare),
@@ -205,7 +207,7 @@ const billNegotiation: Detector = {
         "bill payments",
       ),
       urgency: "later",
-      why: `You pay ${bills.map((b) => `${nice(b.s.description)} ${formatCents(last(b.s))} a month`).join(" and ")}, ${formatCents(yearly)} a year. People who ask usually get about ${Math.round(S.negotiationShare * 100)}% off.`,
+      why: `You pay ${bills.map((b) => `${nice(b.s.description)} ${formatCents(last(b.s))} a month`).join(" and ")}, ${formatCents(yearly)} a year. Even at a typical price it's still worth asking: people who ask usually get about ${Math.round(S.negotiationShare * 100)}% off.`,
       action: { label: "See your bills", href: "/bills" },
       watch: {
         kind: "bill_drops",

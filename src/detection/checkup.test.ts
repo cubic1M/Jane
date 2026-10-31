@@ -78,6 +78,26 @@ describe("checkup", () => {
     });
   });
 
+  // Manager decision 10-30: the checkup said "2 bills at typical prices" while the plan said "Ask
+  // for a lower rate". The two lines agree: typical, and still worth asking.
+  it("says a typical phone bill could still get a lower rate", () => {
+    const data = doingWell();
+    const phone = {
+      description: "VERIZON WIRELESS",
+      merchantName: "Verizon Wireless",
+      pfcPrimary: "RENT_AND_UTILITIES",
+      pfcDetailed: "RENT_AND_UTILITIES_TELEPHONE",
+      accountId: CHECKING.id,
+    };
+    for (let m = 5; m >= 0; m -= 1)
+      data.transactions.push(
+        tx({ ...phone, date: addDays(AS_OF, -m * 30 - 3), amountCents: 7_000 }),
+      );
+    const line = byType(checkup(data)).get("bill_negotiation")!;
+    expect(line.status).toBe("passed");
+    expect(line.line).toBe("1 bill at typical prices; you could still ask for a lower rate");
+  });
+
   it("says not enough data, not passed, where there's nothing to judge by", () => {
     const lines = byType(checkup(doingWell()));
 

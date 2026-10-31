@@ -254,7 +254,9 @@ export const CHECKS: Record<FindingType, Check> = {
       bills(f).length === 0 ? "No phone or internet bill in your statements yet." : null,
     ),
     passed: (f) => ({
-      line: `${plural(bills(f).length, "bill")} at typical prices`,
+      // A typical price is still worth a call: the plan's suggestion says so too (manager
+      // decision 10-30: the two lines read as a contradiction).
+      line: `${plural(bills(f).length, "bill")} at typical prices; you could still ask for a lower rate`,
       detail: bills(f)
         .map(
           ({ stream, benchmark }) =>
