@@ -188,6 +188,30 @@ export function stillChosen<T extends { key: string }>(
 // Today's picks that still fire take the new figures, and so does the chat message each was
 // offered in (overnight upload QA: idle cash said "$548/yr" from the checking file alone and
 // kept saying it after the card's spending made it $473). Their place and status don't change.
+// A suggestion's stored fields, as tonight's scan found it.
+function suggestionData(s: Suggestion, score: number, now: Date) {
+  return {
+    capability: s.capability,
+    topic: s.topic,
+    title: s.title,
+    headline: s.headline,
+    short: s.short,
+    worthCents: s.worthCents,
+    worthKind: s.worthKind,
+    confidencePercent: s.confidence.percent,
+    confidenceReason: s.confidence.reason,
+    urgency: s.urgency,
+    why: s.why,
+    actionLabel: s.action.label,
+    // A bare area link opens the suggestion's own node on that area's tree.
+    actionHref: landing(s.action.href, { key: s.id, topic: s.topic }),
+    score,
+    lastSeenAt: now,
+    // What later transactions should show if the person acts (the verified savings record).
+    watch: s.watch ? (s.watch as unknown as Prisma.InputJsonObject) : Prisma.DbNull,
+  };
+}
+
 async function refreshFigures(
   userId: string,
   keep: readonly { id: string; key: string }[],
@@ -275,6 +299,16 @@ async function scanSuggestionsWork(
       });
     }
     await refreshFigures(userId, keep, found, { client, now });
+    // What fires for the first time today (a second file, or a scan that ran mid-import) is
+    // stored as waiting, so the area pages and the report's tree have it today, not tomorrow
+    // (debugger 10-31: a card's interest was the report's top card while Loans said "All
+    // good"). Today's picks stay; tomorrow's scan ranks it with the rest.
+    for (const s of found) {
+      if (byKey.has(s.id)) continue;
+      await client.suggestion.create({
+        data: { userId, key: s.id, ...suggestionData(s, 0, now), status: "waiting" },
+      });
+    }
     return { fired: found.length, selected: keep.map((c) => c.key) };
   }
 
@@ -316,26 +350,7 @@ async function scanSuggestionsWork(
   const scores = new Map(ranked.map((r) => [r.suggestion.id, r.score]));
 
   for (const s of found) {
-    const data = {
-      capability: s.capability,
-      topic: s.topic,
-      title: s.title,
-      headline: s.headline,
-      short: s.short,
-      worthCents: s.worthCents,
-      worthKind: s.worthKind,
-      confidencePercent: s.confidence.percent,
-      confidenceReason: s.confidence.reason,
-      urgency: s.urgency,
-      why: s.why,
-      actionLabel: s.action.label,
-      // A bare area link opens the suggestion's own node on that area's tree.
-      actionHref: landing(s.action.href, { key: s.id, topic: s.topic }),
-      score: scores.get(s.id) ?? 0,
-      lastSeenAt: now,
-      // What later transactions should show if the person acts (the verified savings record).
-      watch: s.watch ? (s.watch as unknown as Prisma.InputJsonObject) : Prisma.DbNull,
-    };
+    const data = suggestionData(s, scores.get(s.id) ?? 0, now);
     const have = byKey.get(s.id);
     const answered = have?.status === "yes" || have?.status === "no";
     const selected = pickedIds.has(s.id);
