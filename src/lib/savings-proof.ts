@@ -346,7 +346,12 @@ export async function sharedTotal(
   if (!/^[A-Za-z0-9_-]{16,64}$/.test(token)) return null;
   const share = await client.savedShare.findUnique({
     where: { tokenHash: sha256Hex(token) },
-    select: { totalCents: true, createdAt: true, revokedAt: true, user: { select: { timezone: true } } },
+    select: {
+      totalCents: true,
+      createdAt: true,
+      revokedAt: true,
+      user: { select: { timezone: true } },
+    },
   });
   return share && !share.revokedAt
     ? {

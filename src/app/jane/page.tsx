@@ -205,9 +205,7 @@ async function JaneContent() {
               <li key={e.id} className={ROW}>
                 <span className="font-semibold [overflow-wrap:anywhere]">{e.what}</span>
                 <span className={`text-sm ${MUTED}`}>
-                  <time dateTime={e.at.toISOString()}>
-                    {momentLabel(e.at, timezone)}
-                  </time>
+                  <time dateTime={e.at.toISOString()}>{momentLabel(e.at, timezone)}</time>
                   {" · "}
                   {e.sectorLabel}
                   {" · "}

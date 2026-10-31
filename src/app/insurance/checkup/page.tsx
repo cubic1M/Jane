@@ -65,7 +65,9 @@ async function CheckupContent() {
                   ? "Nothing to change"
                   : `${checkup.recommendations.length} ${checkup.recommendations.length === 1 ? "thing" : "things"} worth a look`}
               </h2>
-              <p className="text-sm text-zinc-500">Checked {momentLabel(checkup.createdAt, timezone, { year: true })}.</p>
+              <p className="text-sm text-zinc-500">
+                Checked {momentLabel(checkup.createdAt, timezone, { year: true })}.
+              </p>
               <ul className="flex flex-col gap-3">
                 {checkup.recommendations.map((r) => (
                   <li
