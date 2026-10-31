@@ -1,10 +1,12 @@
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import { alertDayOf } from "@/detection/alerts";
 import { parseKey } from "@/detection/unusual";
 import { daysBetween } from "@/detection/units";
 import type { Deadline } from "@/insights/deadlines";
 import type { BudgetProposal, GoalProposal } from "@/planning/proposals";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { todayOf } from "@/lib/today";
 import { deadlineHeadsUp } from "./sources/heads-ups";
 import { setupBody } from "./sources/setup";
 import { suggestionCard } from "./sources/suggestions";
@@ -58,13 +60,18 @@ const comingUp = (userId: string, client: PrismaClient, now: Date) =>
   import("@/lib/coming-up").then((m) => m.loadComingUp(userId, { client, now, days: 0 }));
 
 // Whether each alert still holds: one about a charge (src/detection/unusual.ts keyOf names its
-// transaction) while the charge is in the accounts, a deadline reminder while its deadline is.
+// transaction) while the charge is in the accounts, a deadline reminder while its deadline is,
+// and a dated one (a bill due, a renewal) through its day, the person's today.
 async function holding(
   userId: string,
   alerts: readonly AlertRow[],
   deadlines: ReadonlyMap<string, Deadline>,
   client: PrismaClient,
+  now: Date,
 ): Promise<Map<string, boolean>> {
+  const today = alerts.some((a) => alertDayOf(a) !== null)
+    ? await todayOf(userId, { client, now })
+    : "";
   const charged = alerts.flatMap((a) => {
     const parsed = a.type === "unusual_activity" ? parseKey(a.key) : null;
     return parsed ? [parsed.transactionId] : [];
@@ -82,6 +89,8 @@ async function holding(
   return new Map(
     alerts.map((a) => {
       if (a.type === "deadline_soon") return [a.id, deadlines.has(a.key)];
+      const day = alertDayOf(a);
+      if (day !== null) return [a.id, day >= today];
       const parsed = a.type === "unusual_activity" ? parseKey(a.key) : null;
       return [a.id, !parsed || present.has(parsed.transactionId)];
     }),
@@ -97,7 +106,7 @@ export async function alertsThatHold<T extends AlertRow>(
   const deadlines = alerts.some((a) => a.type === "deadline_soon")
     ? new Map((await comingUp(userId, client, now)).deadlines.map((d) => [d.key, d]))
     : new Map<string, Deadline>();
-  const held = await holding(userId, alerts, deadlines, client);
+  const held = await holding(userId, alerts, deadlines, client, now);
   return alerts.filter((a) => held.get(a.id) !== false);
 }
 
@@ -157,7 +166,7 @@ async function factsFor(
   return {
     asOf: coming?.asOf ?? now.toISOString().slice(0, 10),
     deadlines,
-    alerts: await holding(userId, alerts, deadlines, client),
+    alerts: await holding(userId, alerts, deadlines, client, now),
     changes: changes && new Map(changes.map((c) => [c.key, c.title])),
     suggestions: new Map(suggestions.map((r) => [r.key, r])),
     proposals:

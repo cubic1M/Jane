@@ -98,17 +98,29 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
     client.user.findUnique({ where: { id: userId }, select: { alertPrefs: true } }),
   ]);
   const prefs = alertPrefs(user?.alertPrefs);
-  // Alerts since the last digest that weren't already emailed.
-  const alerts = await db.alerts.findMany({
+  // Alerts since the last digest that weren't already emailed, and still hold as the dock says
+  // (src/lib/jane-agent/still-true.ts): a reminder for a bill due Nov 1 isn't news on Nov 2.
+  const raised = await db.alerts.findMany({
     where: {
       type: { in: ALERT_TYPES.filter((t) => prefs[t] !== "off") },
       createdAt: { gt: last?.sentAt ?? new Date(0) },
       emailedAt: null,
     },
-    select: { title: true, createdAt: true, emailedAt: true, confidencePercent: true },
+    select: {
+      id: true,
+      type: true,
+      key: true,
+      title: true,
+      createdAt: true,
+      emailedAt: true,
+      confidencePercent: true,
+    },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     take: ALERTS_PAGE_LIMIT,
   });
+  // Loaded here: the chat's checks reach most of the app.
+  const { alertsThatHold } = await import("@/lib/jane-agent/still-true");
+  const alerts = await alertsThatHold(userId, raised, { client, now });
   const [plans, concierge] = await Promise.all([
     plansFor(userId, now, client),
     conciergeMode(userId, { client }),
