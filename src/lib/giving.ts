@@ -10,6 +10,7 @@ import { donorFundPartnerFor } from "@/lib/donor-fund";
 import { loadInvestmentTaxes } from "@/lib/investment-taxes";
 import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
 import { loadTaxTags } from "@/lib/tax-organizer";
+import { localDate } from "@/lib/today";
 import { givingOptions, needsReceipt, type GivingOption } from "@/planning/giving";
 import { DAY_MS, isoDay as iso } from "@/lib/dates";
 
@@ -42,7 +43,8 @@ export type GivingView = {
   // Demo advice: worth bringing up (saving at least GIVING.minSavingCents).
   options: GivingOption[];
   receiptsMissing: Gift[];
-  fund: { name: string; partner: string; openedAt: string } | null;
+  // openedOn: the person's own day the fund was opened, in their timezone.
+  fund: { name: string; partner: string; openedOn: string } | null;
   // Said no to the options this year.
   dismissed: boolean;
   // From GIVING.from to the year's end: when Jane brings the options up.
@@ -62,7 +64,7 @@ export async function loadGiving(
     : await Promise.all([loadTaxEstimate(userId, { client, now }), adviceMode(userId, { client })]);
   const year = estimate.year;
   const db = scopedFor(userId, client);
-  const [tags, lastYear, profile, investments] = await Promise.all([
+  const [tags, lastYear, profile, investments, user] = await Promise.all([
     loadTaxTags(userId, year, { client }),
     loadTaxTags(userId, year - 1, { client }),
     db.taxProfiles.findFirst({
@@ -75,6 +77,7 @@ export async function loadGiving(
       },
     }),
     advice ? loadInvestmentTaxes(userId, year, { client, now }) : null,
+    client.user.findUnique({ where: { id: userId }, select: { timezone: true } }),
   ]);
   const receipts = new Set(profile?.givingReceipts ?? []);
   const gifts: Gift[] = tags.tagged
@@ -118,7 +121,7 @@ export async function loadGiving(
         ? {
             name: profile.donorFundName,
             partner: profile.donorFundPartner,
-            openedAt: iso(profile.donorFundOpenedAt),
+            openedOn: localDate(profile.donorFundOpenedAt, user?.timezone),
           }
         : null,
     dismissed: profile?.givingDismissedYear === year,

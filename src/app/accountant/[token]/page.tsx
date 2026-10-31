@@ -184,8 +184,8 @@ async function Shared({ params }: { params: Promise<{ token: string }> }) {
             <li key={q.key} className="flex flex-col gap-2 text-sm">
               <strong>{q.text}</strong>
               {q.answers.map((a) => (
-                <span key={a.at + a.body} className="rounded-lg bg-zinc-100 p-2 dark:bg-zinc-900">
-                  {a.fromName}, {dayLabel(a.at, { year: true })}: {a.body}
+                <span key={a.on + a.body} className="rounded-lg bg-zinc-100 p-2 dark:bg-zinc-900">
+                  {a.fromName}, {dayLabel(a.on, { year: true })}: {a.body}
                 </span>
               ))}
               <AnswerForm token={token} questionKey={q.key} label="Your answer" />
@@ -194,8 +194,8 @@ async function Shared({ params }: { params: Promise<{ token: string }> }) {
         </ul>
         <h3 className="font-semibold">Anything else for your client</h3>
         {v.notes.map((n) => (
-          <span key={n.at + n.body} className="rounded-lg bg-zinc-100 p-2 text-sm dark:bg-zinc-900">
-            {n.fromName}, {dayLabel(n.at, { year: true })}: {n.body}
+          <span key={n.on + n.body} className="rounded-lg bg-zinc-100 p-2 text-sm dark:bg-zinc-900">
+            {n.fromName}, {dayLabel(n.on, { year: true })}: {n.body}
           </span>
         ))}
         <AnswerForm token={token} questionKey={null} label="A note" />

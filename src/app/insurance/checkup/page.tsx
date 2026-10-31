@@ -7,6 +7,8 @@ import { CHECKUP_EVERY_DAYS } from "@/config/insurance";
 import { adviceMode } from "@/lib/advice-mode";
 import { latestCheckup, markCheckupSeen } from "@/lib/insurance/checkups";
 import { requireUser } from "@/lib/session";
+import { timezoneOf } from "@/lib/today";
+import { momentLabel } from "@/lib/day-label";
 import { checkAgain } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 
@@ -17,18 +19,14 @@ const LINK = "font-medium text-emerald-700 hover:underline";
 const BUTTON =
   "inline-flex h-11 items-center justify-center rounded-full bg-emerald-700 px-6 font-semibold text-white hover:bg-emerald-800";
 
-const dateLabel = (date: Date) =>
-  date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-
 async function CheckupContent() {
   const user = await requireUser();
   await connection();
-  const [advice, checkup] = await Promise.all([adviceMode(user.id), latestCheckup(user.id)]);
+  const [advice, checkup, timezone] = await Promise.all([
+    adviceMode(user.id),
+    latestCheckup(user.id),
+    timezoneOf(user.id),
+  ]);
   // Opening the page counts as seeing it.
   if (advice && checkup && !checkup.seenAt) await markCheckupSeen(user.id, checkup.id);
 
@@ -67,7 +65,9 @@ async function CheckupContent() {
                   ? "Nothing to change"
                   : `${checkup.recommendations.length} ${checkup.recommendations.length === 1 ? "thing" : "things"} worth a look`}
               </h2>
-              <p className="text-sm text-zinc-500">Checked {dateLabel(checkup.createdAt)}.</p>
+              <p className="text-sm text-zinc-500">
+                Checked {momentLabel(checkup.createdAt, timezone, { year: true })}.
+              </p>
               <ul className="flex flex-col gap-3">
                 {checkup.recommendations.map((r) => (
                   <li

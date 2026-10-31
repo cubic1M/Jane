@@ -171,7 +171,7 @@ describe.runIf(url)(
       expect(page.links[0]).toMatchObject({
         state: "active",
         viewCount: 2,
-        lastViewedAt: "2026-10-18",
+        lastViewedOn: "2026-10-18",
       });
     });
 
@@ -317,10 +317,10 @@ describe.runIf(url)(
       const again = await viewByToken(token, { client, now: LINKED });
       if (again.state !== "ok") throw new Error("expected ok");
       expect(again.view.questions[0].answers).toEqual([
-        { fromName: "Dana Hill", body: "Yes, that is enough.", at: "2026-10-18" },
+        { fromName: "Dana Hill", body: "Yes, that is enough.", on: "2026-10-18" },
       ]);
       expect(again.view.notes).toEqual([
-        { fromName: "Dana Hill", body: "Please send the 1098.", at: "2026-10-18" },
+        { fromName: "Dana Hill", body: "Please send the 1098.", on: "2026-10-18" },
       ]);
 
       // Back in Jane: a message with a Got it button, and the owner's page.

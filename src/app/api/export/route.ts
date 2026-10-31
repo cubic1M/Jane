@@ -3,6 +3,7 @@ import { logAudit } from "@/lib/audit";
 import { exportUserData } from "@/lib/data-export";
 import { limitOrNull } from "@/lib/rate-limit";
 import { getCurrentUser } from "@/lib/session";
+import { localDate } from "@/lib/today";
 
 // "Download my data" from /settings: a JSON file of everything we hold about the person.
 export async function GET() {
@@ -20,7 +21,8 @@ export async function GET() {
       transactions: data.transactions.length,
     },
   );
-  const day = data.exportedAt.slice(0, 10);
+  // The person's own day, not UTC's: at 9:54pm in Los Angeles the file said tomorrow.
+  const day = localDate(new Date(data.exportedAt), data.profile?.timezone);
   return new NextResponse(JSON.stringify(data, null, 2), {
     headers: {
       "content-type": "application/json; charset=utf-8",

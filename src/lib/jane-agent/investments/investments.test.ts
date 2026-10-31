@@ -1250,7 +1250,8 @@ describe("the monthly note, drift and the paused nudge in Jane's messages", () =
       accountId: "b",
       status: "paused",
       lastPaydayOn: null,
-      updatedAt: new Date("2026-09-01T00:00:00Z"),
+      // Midday: the nudge names the person's own day (US Pacific when unknown).
+      updatedAt: new Date("2026-09-01T18:00:00Z"),
     };
     const auto = { plan, runs: [], suggestion: null, accounts: [] };
     const nudge = gatherAll({ profile: FULL, autoInvest: auto }).find((c) =>

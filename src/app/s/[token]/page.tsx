@@ -31,7 +31,7 @@ async function Shared({ params }: { params: Promise<{ token: string }> }) {
     month: "long",
     day: "numeric",
     year: "numeric",
-    timeZone: "UTC",
+    timeZone: shared.timezone,
   });
   return (
     <section className="flex flex-col gap-4">

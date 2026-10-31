@@ -13,6 +13,7 @@ import { scopedDb } from "@/lib/db-scoped";
 import { balancesToAsk } from "@/lib/import/account-balance";
 import { listUploads, uploadedTotals } from "@/lib/import/remove";
 import { requireUser } from "@/lib/session";
+import { timezoneOf } from "@/lib/today";
 import {
   BANK_DOWNLOADS,
   KNOWN_BANKS_LINE,
@@ -24,7 +25,7 @@ async function ImportContent() {
   const user = await requireUser();
   if (!canImportCsv(user)) redirect("/connect");
   const db = await scopedDb();
-  const [accounts, history, totals, uploaded, asks, linkedRows] = await Promise.all([
+  const [accounts, history, totals, uploaded, asks, linkedRows, timezone] = await Promise.all([
     listAccountSummaries(db),
     listUploads(db),
     uploadedTotals(db),
@@ -42,6 +43,7 @@ async function ImportContent() {
         item: { select: { institutionName: true } },
       },
     }),
+    timezoneOf(user.id),
   ]);
   const linked = linkedRows.map((a) => ({
     name: a.name,
@@ -111,6 +113,7 @@ async function ImportContent() {
 
       <UploadHistory
         uploads={history.uploads}
+        timezone={timezone}
         earlier={history.earlier}
         accounts={accounts
           .filter((a) => uploadedIds.has(a.id))

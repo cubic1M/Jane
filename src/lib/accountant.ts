@@ -17,6 +17,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { dayLabel } from "@/lib/day-label";
 import { appBase } from "@/lib/digest/links";
+import { localDate } from "@/lib/today";
 import { formatCents } from "@/lib/money";
 import { loadAuditRecords } from "@/lib/audit-records";
 import { loadEquityTax, type EquityTaxView } from "@/lib/equity-tax";
@@ -47,7 +48,8 @@ export type LinkView = {
   state: LinkState;
   expiresOn: string;
   viewCount: number;
-  lastViewedAt: string | null;
+  // Days, the person's own (their timezone), like everything the page shows.
+  lastViewedOn: string | null;
 };
 
 export type NoteView = {
@@ -56,7 +58,7 @@ export type NoteView = {
   questionText: string | null;
   body: string;
   seen: boolean;
-  createdAt: string;
+  createdOn: string;
 };
 
 export type AccountantPageView = {
@@ -170,19 +172,21 @@ export async function loadAccountantPage(
 ): Promise<AccountantPageView> {
   const estimate = loaded?.estimate ?? (await loadTaxEstimate(userId, { client, now }));
   const db = scopedFor(userId, client);
-  const [links, notes, comp, questions] = await Promise.all([
+  const [links, notes, comp, questions, user] = await Promise.all([
     db.accountantLinks.findMany({ orderBy: [{ createdAt: "desc" }, { id: "asc" }] }),
     db.accountantNotes.findMany({ orderBy: [{ createdAt: "desc" }, { id: "asc" }] }),
     loadComplexity(userId, { client, now, loaded: loaded && { ...loaded, estimate } }),
     withQuestions ? loadQuestions(userId, estimate.year, { client, now }) : Promise.resolve([]),
+    client.user.findUnique({ where: { id: userId }, select: { timezone: true } }),
   ]);
+  const dayOf = (at: Date) => localDate(at, user?.timezone);
   const views = links.map((l) => ({
     id: l.id,
     label: l.label,
     state: linkState(l, now),
     expiresOn: iso(l.expiresAt),
     viewCount: l.viewCount,
-    lastViewedAt: l.lastViewedAt ? iso(l.lastViewedAt) : null,
+    lastViewedOn: l.lastViewedAt ? dayOf(l.lastViewedAt) : null,
   }));
   return {
     year: estimate.year,
@@ -194,7 +198,7 @@ export async function loadAccountantPage(
       questionText: n.questionText,
       body: n.body,
       seen: n.seenAt !== null,
-      createdAt: iso(n.createdAt),
+      createdOn: dayOf(n.createdAt),
     })),
     unseen: notes.filter((n) => n.seenAt === null).length,
     complexity: comp,
@@ -293,8 +297,8 @@ export type AccountantView = {
   collected: { form: string; from: string; boxes: Record<string, number>; matches: string }[];
   deductions: { label: string; claimedCents: number; sources: number; needs: string[] }[];
   complexity: string | null;
-  questions: (Question & { answers: { fromName: string; body: string; at: string }[] })[];
-  notes: { fromName: string; body: string; at: string }[];
+  questions: (Question & { answers: { fromName: string; body: string; on: string }[] })[];
+  notes: { fromName: string; body: string; on: string }[];
 };
 
 export async function viewByToken(
@@ -304,6 +308,10 @@ export async function viewByToken(
   const link = await findLink(token, client, now);
   if (!link) return { state: "unavailable" };
   const userId = link.userId;
+  // A note's day is the client's own, as on their accountant page (not UTC's): only the day
+  // reaches the accountant, not the timezone.
+  const owner = await client.user.findUnique({ where: { id: userId }, select: { timezone: true } });
+  const noteDay = (at: Date) => localDate(at, owner?.timezone);
   const estimate = await loadTaxEstimate(userId, { client, now });
   const year = estimate.year;
   const [pack, docs, records, questions, comp, notes] = await Promise.all([
@@ -371,11 +379,11 @@ export async function viewByToken(
         ...q,
         answers: notes
           .filter((n) => n.questionKey === q.key)
-          .map((n) => ({ fromName: n.fromName, body: n.body, at: iso(n.createdAt) })),
+          .map((n) => ({ fromName: n.fromName, body: n.body, on: noteDay(n.createdAt) })),
       })),
       notes: notes
         .filter((n) => n.questionKey === null)
-        .map((n) => ({ fromName: n.fromName, body: n.body, at: iso(n.createdAt) })),
+        .map((n) => ({ fromName: n.fromName, body: n.body, on: noteDay(n.createdAt) })),
     },
   };
 }

@@ -7,6 +7,8 @@ import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { getApplication, statusLine } from "@/lib/loan-applications";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { timezoneOf } from "@/lib/today";
+import { momentLabel } from "@/lib/day-label";
 import { acceptAction, submitAction, withdrawAction } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { formatRate } from "@/lib/percent";
@@ -25,16 +27,6 @@ const DONE: Record<string, string> = {
   withdrawn: "Withdrawn. Nothing changes on your loan.",
 };
 
-const when = (date: Date | null) =>
-  date
-    ? date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-        timeZone: "UTC",
-      })
-    : null;
-
 async function ApplicationContent({
   params,
   searchParams,
@@ -46,7 +38,7 @@ async function ApplicationContent({
   await connection();
   const { id } = await params;
   const query = await searchParams;
-  const app = await getApplication(user.id, id);
+  const [app, timezone] = await Promise.all([getApplication(user.id, id), timezoneOf(user.id)]);
   if (!app) notFound();
   const done = typeof query.done === "string" ? DONE[query.done] : undefined;
   const error = typeof query.error === "string" ? query.error : "";
@@ -174,7 +166,7 @@ async function ApplicationContent({
         <ol aria-label="Steps" className="flex flex-col gap-1 text-sm">
           {steps.map(([label, at]) => (
             <li key={label} className={at ? "" : "text-zinc-500"}>
-              {label}: {when(at) ?? "not yet"}
+              {label}: {at ? momentLabel(at, timezone, { year: true }) : "not yet"}
             </li>
           ))}
         </ol>

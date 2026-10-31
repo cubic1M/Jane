@@ -62,7 +62,7 @@ async function Content() {
                   {STATE_WORDS[l.state]}
                   {l.state === "revoked" ? "" : ` ${dayLabel(l.expiresOn, { year: true })}`}. Opened{" "}
                   {l.viewCount} {l.viewCount === 1 ? "time" : "times"}
-                  {l.lastViewedAt ? `, last on ${dayLabel(l.lastViewedAt, { year: true })}` : ""}.
+                  {l.lastViewedOn ? `, last on ${dayLabel(l.lastViewedOn, { year: true })}` : ""}.
                 </span>
                 {l.state === "active" && <RevokeButton id={l.id} label={l.label} />}
               </li>
@@ -99,7 +99,7 @@ async function Content() {
                 )}
                 <span className="[overflow-wrap:anywhere]">{n.body}</span>
                 <span className="text-xs text-zinc-500">
-                  {n.fromName}, {dayLabel(n.createdAt, { year: true })}
+                  {n.fromName}, {dayLabel(n.createdOn, { year: true })}
                   {n.seen ? "" : " (new)"}
                 </span>
               </li>

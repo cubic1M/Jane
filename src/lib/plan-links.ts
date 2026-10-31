@@ -12,6 +12,7 @@ import { planFor, type PlanItem } from "@/lib/plan";
 import { undoApproval } from "@/lib/standing-rules";
 import { DAY_MS } from "@/lib/dates";
 import { sha256Hex } from "@/lib/hash";
+import { localDate } from "@/lib/today";
 
 // One-tap approval links (spec step 60) for the weekly email and notifications. A link
 // opens a small page with one button, so email scanners that open links can't approve
@@ -64,7 +65,8 @@ export type LinkView =
   | { state: "invalid" }
   | { state: "expired" }
   | { state: "ready"; items: { title: string }[] }
-  | { state: "used"; approved: number; usedAt: Date; canTakeBack: boolean };
+  // usedOn: the person's own day the link was used, in their timezone.
+  | { state: "used"; approved: number; usedOn: string; canTakeBack: boolean };
 
 // A system lookup by the token's hash: the token is the credential.
 async function findLink(token: string, client: PrismaClient) {
@@ -80,13 +82,16 @@ export async function viewPlanLink(
   if (!link) return { state: "invalid" };
   if (link.usedAt) {
     // Still on: approved by the link and not taken back since.
-    const approved = await client.decision.count({
-      where: { id: { in: link.decisionIds }, userId: link.userId, undoneAt: null },
-    });
+    const [approved, owner] = await Promise.all([
+      client.decision.count({
+        where: { id: { in: link.decisionIds }, userId: link.userId, undoneAt: null },
+      }),
+      client.user.findUnique({ where: { id: link.userId }, select: { timezone: true } }),
+    ]);
     return {
       state: "used",
       approved,
-      usedAt: link.usedAt,
+      usedOn: localDate(link.usedAt, owner?.timezone),
       canTakeBack:
         approved > 0 && now.getTime() - link.usedAt.getTime() < LINK_UNDO_HOURS * 3_600_000,
     };

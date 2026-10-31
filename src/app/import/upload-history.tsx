@@ -10,7 +10,7 @@ import {
 } from "./actions";
 import { BalanceAskForm } from "./balance-ask";
 import { IMPORT_STARTED_EVENT } from "@/config/import";
-import { dayLabel } from "@/lib/day-label";
+import { dayLabel, momentLabel } from "@/lib/day-label";
 import type { BalanceAsk } from "@/lib/import/balance-question";
 import { formatCents } from "@/lib/money";
 import type { EarlierRows, UploadView } from "@/lib/import/remove";
@@ -120,8 +120,11 @@ export function UploadHistory({
   accounts,
   totals,
   asks = [],
+  timezone,
 }: {
   uploads: UploadView[];
+  // The person's timezone: an upload's day is theirs, not UTC's.
+  timezone: string;
   earlier: EarlierRows[];
   accounts: Account[];
   totals: { accounts: number; rows: number };
@@ -142,7 +145,7 @@ export function UploadHistory({
             <p className="font-medium">{u.fileNames.join(", ") || "Statement"}</p>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
               {u.accountName} · {range(u.from, u.to)} · {plural(u.rows, "transaction")} added{" "}
-              {dayLabel(new Date(u.at), { year: true })}
+              {momentLabel(u.at, timezone, { year: true })}
             </p>
             <Confirm
               label="Remove this upload"

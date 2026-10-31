@@ -236,7 +236,7 @@ export function TradePopup() {
               <p>
                 {sideWord} {dollars(signal.amountCents)} of {signal.ticker} at the last close,{" "}
                 {dollars(signal.priceCents)} a share, on{" "}
-                {new Date(signal.createdAt).toLocaleDateString("en-US", { timeZone: "UTC" })}.
+                {new Date(signal.createdAt).toLocaleDateString("en-US")}.
               </p>
               <p>
                 {signal.source === "news"
