@@ -113,8 +113,15 @@ class FullCFRBot(Bot):
     def act(self, obs):
         lg = obs.legal
         if obs.phase == "discard" or lg.discard_count:
-            opts = self.eqm.discard_options(obs, n=self._disc_n, rng=self.np_rng)
-            return Discard(opts[0][0])
+            try:
+                opts = self.eqm.discard_options(obs, n=self._disc_n, rng=self.np_rng)
+                return Discard(opts[0][0])
+            except Exception as e:  # an exception here would fold the whole pot
+                if self.verbose:
+                    print(f"[full_cfr] discard error {type(e).__name__}: {e}; discarding the lowest card(s)",
+                          file=sys.stderr)
+                k = lg.discard_count
+                return Discard(sorted(obs.my_cards, key=lambda c: (c >> 2, c & 3))[:k])
         try:
             a = self._fallback(obs) if self.using_fallback else self._policy_action(obs)
         except Exception as e:  # never return garbage: degrade to the equity rule
@@ -148,7 +155,7 @@ class FullCFRBot(Bot):
         self._state = BetState(self.spec, stacks=st)
         self._node = 0
         self._done = 0
-        self._mine = None  # (node, action index) of our last decision
+        self._mine = None  # (node, action index, real amount) of our last decision
         self._buckets = {}
 
     def _advance(self, obs):
@@ -169,7 +176,9 @@ class FullCFRBot(Bot):
                 acts = tr.actions[n]
                 if rec.position == obs.position and self._mine and self._mine[0] == n:
                     idx = self._mine[1]
-                    if acts[idx][0] != k:
+                    # only if the real action is the one we returned (a wrapper such as lead
+                    # protection may have changed it; then map it by its real size)
+                    if acts[idx][0] != k or (k == A_RAISE and rec.amount != self._mine[2]):
                         idx = None
                 if idx is None:
                     idx = self._translate(n, st, rec, k)
@@ -238,8 +247,9 @@ class FullCFRBot(Bot):
         i = min(i, len(p) - 1)
         while p[i] <= 0:  # guard against rounding at the end of the cdf
             i -= 1
-        self._mine = (n, i)
-        return self._to_real(n, i, obs)
+        a = self._to_real(n, i, obs)
+        self._mine = (n, i, a.amount)
+        return a
 
     def _to_real(self, n, i, obs):
         tr = self.policy.tree
