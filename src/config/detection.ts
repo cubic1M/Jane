@@ -91,9 +91,13 @@ export const SHORT_RUN_MIN_CHARGES = 2;
 // ...and only at these gaps: a month, or a quarter (a water bill or insurance paid every three
 // months, seen twice in a short history; CSV bench, second tuning set). A week apart is a second
 // purchase.
-// Or six months: a car insurance premium or a property tax instalment, seen twice in a year
-// of statements (debugger 10-31).
-export const SHORT_RUN_FREQUENCIES: readonly Frequency[] = ["MONTHLY", "QUARTERLY", "SEMIANNUALLY"];
+export const SHORT_RUN_FREQUENCIES: readonly Frequency[] = ["MONTHLY", "QUARTERLY"];
+// Two charges six months apart are a bill only for a fixed premium at an insurer (a six-month
+// car policy): a card paid twice, two estimated tax payments or a quarterly bill with a quarter
+// missing look the same and aren't (review 10-31).
+export const SEMIANNUAL_SHORT_RUN_CATEGORIES: readonly PfcDetailed[] = [
+  "GENERAL_SERVICES_INSURANCE",
+];
 export const SHORT_RUN_CATEGORIES: readonly PfcDetailed[] = [
   "RENT_AND_UTILITIES_RENT",
   "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY",
@@ -103,7 +107,6 @@ export const SHORT_RUN_CATEGORIES: readonly PfcDetailed[] = [
   "RENT_AND_UTILITIES_SEWAGE_AND_WASTE_MANAGEMENT",
   "RENT_AND_UTILITIES_OTHER_UTILITIES",
   "GENERAL_SERVICES_INSURANCE",
-  "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
   "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
   "LOAN_PAYMENTS_CAR_PAYMENT",
   "LOAN_PAYMENTS_MORTGAGE_PAYMENT",

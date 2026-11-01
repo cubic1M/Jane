@@ -322,7 +322,7 @@ export function renewalAlerts(input: DetectionInput, streams: Stream[]): AlertCa
           type: "renews_soon",
           key: `${s.key}:${date}`,
           title: `${s.merchant} renews ${dayLabel(date)}, about ${formatCents(s.lastAmountCents)}`,
-          body: "If you don't want another year (or quarter), cancel before then. It's on your subscriptions page.",
+          body: "If you don't want it again, cancel before then. It's on your subscriptions page.",
           confidence: seenConfidence(input, s.charges.length, "earlier charges"),
         })),
     );
