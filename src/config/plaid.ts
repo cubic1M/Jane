@@ -54,6 +54,9 @@ export const WEBHOOK_EVENT_DAYS = 7;
 
 // Items synced per daily job run, so one run stays well inside the function time limit.
 export const CRON_SYNC_LIMIT = 25;
+// And at most this long on them (debugger 11-01: a 504 at 10:18Z after #1103, the syncs having
+// no clock): the rest, oldest first, wait for tomorrow's run (or a webhook before it).
+export const CRON_SYNC_BUDGET_MS = 120_000;
 
 // Webhooks signed longer ago than this are rejected as possible replays (Plaid's advice).
 export const WEBHOOK_MAX_AGE_SECONDS = 5 * 60;

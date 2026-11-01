@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { CRON_SYNC_LIMIT, STALE_SYNC_HOURS } from "@/config/plaid";
+import { CRON_SYNC_BUDGET_MS, CRON_SYNC_LIMIT, STALE_SYNC_HOURS } from "@/config/plaid";
 import { db } from "@/lib/db";
 import { plaidEnabled } from "@/lib/plaid/client";
 import { runInactiveCleanup } from "@/lib/plaid/inactive";
@@ -59,6 +59,16 @@ async function checkHealth() {
 
 // The nightly controller, with the time left before the limit (none left: it only queues, and
 // the job runner takes the runs up next).
+// The due jobs: their usual minute, or what's left of the limit, less one controller run.
+const jobsBudget = (startedAt: number) =>
+  Math.max(
+    0,
+    Math.min(
+      CRON_JOBS_BUDGET_MS,
+      maxDuration * 1000 - CONTROLLER_RUN_RESERVE_MS - (Date.now() - startedAt),
+    ),
+  );
+
 const controller = (startedAt: number) =>
   queueNightlyRuns({
     budgetMs: Math.max(
@@ -75,9 +85,10 @@ async function dailyWork(startedAt: number) {
     return {
       synced: 0,
       failed: 0,
+      deferred: 0,
       inactive: null,
       snapshots: await takeSnapshots(),
-      jobs: await runDueJobs({ budgetMs: CRON_JOBS_BUDGET_MS }),
+      jobs: await runDueJobs({ budgetMs: jobsBudget(startedAt) }),
       agent: await runAgentFollowUps(),
       outcomes: await refreshMerchantOutcomes(),
       retention: await runRetention(),
@@ -123,7 +134,12 @@ async function dailyWork(startedAt: number) {
 
   let synced = 0;
   let failed = 0;
+  let deferred = 0;
   for (const item of items) {
+    if (Date.now() - startedAt >= CRON_SYNC_BUDGET_MS) {
+      deferred += 1;
+      continue;
+    }
     try {
       await syncItem(item.id);
       synced += 1;
@@ -136,9 +152,10 @@ async function dailyWork(startedAt: number) {
   return {
     synced,
     failed,
+    deferred,
     inactive,
     snapshots: await takeSnapshots(),
-    jobs: await runDueJobs({ budgetMs: CRON_JOBS_BUDGET_MS }),
+    jobs: await runDueJobs({ budgetMs: jobsBudget(startedAt) }),
     agent: await runAgentFollowUps(),
     outcomes: await refreshMerchantOutcomes(),
     retention: await runRetention(),
