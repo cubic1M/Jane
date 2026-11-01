@@ -367,4 +367,16 @@ describe("moneyTree", () => {
     expect(low(false)).toMatch(/^\$1,200\.00 today\./);
     expect(low(true)).toMatch(/^About \$1,200\.00 today\./);
   });
+
+  // Debugger 11-01: on the 1st, with nothing spent yet this month, "Where it goes" vanished;
+  // it shows the latest month that has spending, by its name.
+  it("shows last month's spending by name when this month has none yet", () => {
+    const tree = moneyTree({ ...FULL, spending: { ...FULL.spending!, current: false } });
+    const where = tree.tree.branches.find((b) => b.id === "spending");
+    expect(where?.items.map((i) => i.label)).toContain("October");
+    expect(tree.summaries["spending:month"]).toBe("$2,310.00 spent and $4,000.00 in, in October.");
+    expect(tree.summaries["spending:top"]).toBe(
+      "Rent and utilities was your biggest in October, at $1,450.00.",
+    );
+  });
 });

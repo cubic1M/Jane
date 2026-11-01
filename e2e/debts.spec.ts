@@ -119,8 +119,17 @@ test("the payoff plan picks an order for the demo bank and starts with one tap",
   await expect(page.getByRole("region", { name: "Your way out of debt" })).toContainText(
     "This is your plan (highest rate first).",
   );
-  // The planner below starts from the same debts.
-  await expect(page.getByLabel("Card or loan").first()).toHaveValue(/Demo/);
+  // The planner below starts from the same debts: the demo card is among them (not always
+  // first: on some days the demo bank's Klarna Pay in 4 is running and listed too; debugger 11-01).
+  await expect
+    .poll(async () =>
+      (
+        await page
+          .getByLabel("Card or loan")
+          .evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value))
+      ).some((v) => /Demo/.test(v)),
+    )
+    .toBe(true);
 });
 
 // Spec step 111: refinance offers from the stand-in lender catalog, compared over the same
