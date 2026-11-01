@@ -21,7 +21,7 @@ from pathlib import Path
 import numpy as np
 
 from sng.registry import field_weights, make
-from sng.rules import PAYOUT_SETS, SngRules
+from sng.rules import BLIND_SETS, PAYOUT_SETS, SngRules
 from sng.table import play_table
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -121,9 +121,19 @@ def main(argv=None):
     ap.add_argument("--payouts", default="synthetic", choices=sorted(PAYOUT_SETS))
     ap.add_argument("--no-enforce", action="store_true", help="do not fold over-time decisions")
     ap.add_argument("--out", default=None, help="write raw results JSON here")
+    ap.add_argument("--variant", default=None, help="card rules from engine.variants (default NLHE)")
+    ap.add_argument("--betting", default=None, choices=[None, "no_limit", "pot_limit"])
+    ap.add_argument("--blinds", default="synthetic", choices=sorted(BLIND_SETS))
     a = ap.parse_args(argv)
     cands = a.candidates.split(",")
-    rules_kw = dict(payouts=PAYOUT_SETS[a.payouts], enforce_time=not a.no_enforce)
+    rules_kw = dict(payouts=PAYOUT_SETS[a.payouts], enforce_time=not a.no_enforce, blinds=BLIND_SETS[a.blinds])
+    if a.variant or a.betting:
+        from engine.variants import get_variant
+        from sng.rules import NLHE
+        spec = get_variant(a.variant).with_(stack_reset_per_hand=False) if a.variant else NLHE
+        if a.betting:
+            spec = spec.with_(betting=a.betting)
+        rules_kw["spec"] = spec
     field = field_weights(a.field)
     t0 = time.time()
     out = run(cands, field, rules_kw, a.tables, a.seed0, a.workers)

@@ -20,6 +20,13 @@ NLHE = GameSpec(name="sng_nlhe", starting_stack=2000, small_blind=10, big_blind=
 
 # SYNTHETIC: a common turbo-like progression from the confirmed first level 10/20
 SYNTHETIC_BLINDS = ((10, 20), (15, 30), (25, 50), (50, 100), (75, 150), (100, 200), (150, 300), (200, 400))
+BLIND_SETS = {
+    "synthetic": SYNTHETIC_BLINDS,
+    # doubling every level: 10/20 .. 1280/2560 (very fast; lots of push/fold)
+    "fast": tuple((10 * 2 ** i, 20 * 2 ** i) for i in range(8)),
+    # +25% per level, rounded: a slow, deep structure
+    "slow": ((10, 20), (15, 25), (15, 30), (20, 40), (25, 50), (30, 60), (40, 80), (50, 100)),
+}
 # SYNTHETIC: points by finishing place 1..8
 SYNTHETIC_PAYOUTS = (100, 65, 45, 30, 20, 12, 6, 0)
 PAYOUT_SETS = {
