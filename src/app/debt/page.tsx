@@ -8,6 +8,7 @@ import { MAX_PLANNER_CARDS } from "@/config/planning";
 import { loadPayoff } from "@/lib/debt-plan";
 import { parseMoneyToCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { todayOf } from "@/lib/today";
 import { PLANNER_COPY } from "@/planning/debt-copy";
 import { DebtPlanner } from "./planner";
 import { YourPlan } from "./your-plan";
@@ -29,7 +30,7 @@ async function Planner({ searchParams }: { searchParams: PageProps<"/debt">["sea
     typed !== null && typed >= 0 && typed <= MAX_DEBT_EXTRA_CENTS ? typed : undefined;
   const payoff = await loadPayoff(user.id, { extraCents });
   const now = new Date();
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await todayOf(user.id, { now });
   const leftOutMortgage = payoff.summary.leftOut.some((l) => l.reason === "mortgage");
   // Every debt the plan uses, then the ones still missing a rate or payment to fill in.
   const planned = new Set(payoff.summary.cards.map((c) => c.id));

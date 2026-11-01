@@ -8,6 +8,7 @@ import { HOME_OFFICE_SIMPLIFIED, MILEAGE_RATE_CENTS } from "@/config/tax-rates";
 import { formatCents } from "@/lib/money";
 import { loadSelfEmployed } from "@/lib/self-employed";
 import { requireUser } from "@/lib/session";
+import { todayOf } from "@/lib/today";
 import { roundDollars } from "@/planning/tax-estimate-copy";
 import { HelperForm } from "./helper-form";
 import { dayLabel } from "@/lib/day-label";
@@ -22,6 +23,7 @@ async function Content() {
   const user = await requireUser();
   await connection();
   const now = new Date();
+  const today = await todayOf(user.id, { now });
   const v = await loadSelfEmployed(user.id, { now });
   return (
     <>
@@ -152,7 +154,7 @@ async function Content() {
                   {
                     name: "date",
                     label: "Paid on",
-                    value: now.toISOString().slice(0, 10),
+                    value: today,
                     type: "date",
                   },
                   { name: "amount", label: "Amount ($)", value: "" },

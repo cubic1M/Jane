@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { BudgetProgress } from "@/insights/budgets";
+import { daysLeftWords, type BudgetProgress } from "@/insights/budgets";
 import { formatCents } from "@/lib/money";
 
 // A compact view of this month's budgets, for Home and Insights.
@@ -29,9 +29,7 @@ export function BudgetList({
           </li>
         ))}
       </ul>
-      <p className="text-xs text-zinc-500">
-        {daysLeft} day{daysLeft === 1 ? "" : "s"} left this month.
-      </p>
+      <p className="text-xs text-zinc-500">{daysLeftWords(daysLeft)}</p>
     </section>
   );
 }

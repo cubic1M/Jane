@@ -13,6 +13,7 @@ import {
 import { loadCompanyStock } from "@/lib/investments/company-stock";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { todayOf } from "@/lib/today";
 import { linkStockPlan, sellNow } from "./actions";
 import { GrantForm } from "./grant-form";
 import { SubmitButton } from "@/components/submit-button";
@@ -37,6 +38,7 @@ async function CompanyContent({
   searchParams: PageProps<"/investments/company-stock">["searchParams"];
 }) {
   const user = await requireUser();
+  const today = await todayOf(user.id);
   await connection();
   const { done } = await searchParams;
   const view = await loadCompanyStock(user.id);
@@ -140,7 +142,7 @@ async function CompanyContent({
               ))}
             </tbody>
           </table>
-          {view.plan.parts[0].on <= new Date().toISOString().slice(0, 10) && (
+          {view.plan.parts[0].on <= today && (
             <form action={sellNow}>
               <input type="hidden" name="key" value={view.plan.key} />
               <SubmitButton className={BUTTON}>Sell the first part (simulated)</SubmitButton>

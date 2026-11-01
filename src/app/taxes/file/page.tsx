@@ -6,6 +6,7 @@ import { FILING_STATUSES, TAX_TAGS, isFilingStatus, isTaxTagKind } from "@/confi
 import { filingPartnerFor } from "@/lib/filing";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { todayOf } from "@/lib/today";
 import { filingYear, inFilingSeason, loadReturn } from "@/lib/tax-filing";
 import { balancePhrase } from "@/planning/tax-estimate-copy";
 import { stateName } from "@/planning/tax-profile";
@@ -31,7 +32,7 @@ async function Content() {
   const user = await requireUser();
   await connection();
   const now = new Date();
-  const today = now.toISOString().slice(0, 10);
+  const today = await todayOf(user.id, { now });
   const year = filingYear(today);
   const [partner, ret] = await Promise.all([
     filingPartnerFor(user.id),

@@ -2,7 +2,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader, PageLoading } from "@/components/app-header";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
-import { budgetSummary } from "@/insights/budgets";
+import { budgetSummary, daysLeftWords } from "@/insights/budgets";
 import type { IrregularItem } from "@/insights/irregular";
 import { loadInsightTransactions } from "@/insights/load";
 import { BUDGET_CATEGORIES } from "@/lib/budgets";
@@ -10,6 +10,7 @@ import { scopedDb } from "@/lib/db-scoped";
 import { irregularCosts } from "@/lib/irregular";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { todayOf } from "@/lib/today";
 import { deleteBudget } from "./actions";
 import { BudgetForm } from "./budget-form";
 import { SubmitButton } from "@/components/submit-button";
@@ -27,7 +28,7 @@ async function Budgets() {
   const user = await requireUser();
   const db = await scopedDb();
   const now = new Date();
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await todayOf(user.id, { now });
   const [transactions, budgets, irregular] = await Promise.all([
     loadInsightTransactions(db, asOf, BUDGET_SUGGESTION_MONTHS + 1),
     db.budgets.findMany({ select: { category: true, amountCents: true } }),
@@ -42,7 +43,7 @@ async function Budgets() {
         <h1 className="text-3xl font-semibold tracking-tight">Budgets</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           A monthly limit for any category you choose. Spending is counted the same way as on
-          Insights. {summary.daysLeft} day{summary.daysLeft === 1 ? "" : "s"} left this month.
+          Insights. {daysLeftWords(summary.daysLeft)}
         </p>
       </div>
 

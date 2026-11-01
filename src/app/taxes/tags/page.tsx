@@ -5,6 +5,7 @@ import { AppHeader, PageLoading } from "@/components/app-header";
 import { TAX_TAG_ORDER, TAX_TAGS, TAX_TAG_SEARCH_LIMIT } from "@/config/tax";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { todayOf } from "@/lib/today";
 import { loadTaxTags, searchToTag } from "@/lib/tax-organizer";
 import { taxYearFrom } from "@/planning/tax-pack";
 import type { TagSource } from "@/planning/tax-tags";
@@ -31,7 +32,7 @@ async function TagsContent({
   const user = await requireUser();
   await connection();
   const params = await searchParams;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = await todayOf(user.id);
   const year = taxYearFrom(typeof params.year === "string" ? params.year : undefined, today);
   const q = typeof params.q === "string" ? params.q : "";
   const [view, found] = await Promise.all([
