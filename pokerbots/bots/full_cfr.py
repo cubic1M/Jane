@@ -33,7 +33,7 @@ from engine.equity import get_equity_model
 from engine.game import Call, Check, Discard, Fold, RaiseTo
 
 from bots.cfr_full.policy import load_policy
-from bots.cfr_full.tree import A_CALL, A_CHECK, A_FOLD, A_RAISE, DECISION, BetState, map_raise
+from bots.cfr_full.tree import A_CALL, A_CHECK, A_FOLD, A_RAISE, DECISION, BetState, map_raise, pseudo_harmonic
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_DIR = os.path.join(ROOT, "cache", "cfr")
@@ -59,8 +59,13 @@ def _load_cached(path, spec):
 class FullCFRBot(Bot):
     name = "full_cfr"
 
-    def __init__(self, budget="15m", policy_path=None, threshold=0.05, cache_dir=None, verbose=True):
+    def __init__(self, budget="15m", policy_path=None, threshold=0.05, cache_dir=None, verbose=True,
+                 small_map=True):
         self.budget = str(budget)
+        # map a real bet smaller than the tree's smallest size to the passive action with
+        # pseudo-harmonic probability (between 0 and the smallest size) instead of always
+        # to the smallest bet, which over-folds to small probing bets
+        self.small_map = bool(int(small_map)) if isinstance(small_map, str) else bool(small_map)
         self.policy_path = policy_path
         self.threshold = float(threshold)
         self.cache_dir = cache_dir or DEFAULT_DIR
@@ -68,7 +73,7 @@ class FullCFRBot(Bot):
         self.using_fallback = True
         self.policy = None
         self._scale = None
-        self.stats = dict(decisions=0, resyncs=0, offtree_maps=0)
+        self.stats = dict(decisions=0, resyncs=0, offtree_maps=0, small_maps=0)
 
     # ---- lifecycle ----------------------------------------------------------------------
     def new_match(self, spec, seed=0):
@@ -192,11 +197,13 @@ class FullCFRBot(Bot):
         self._done = 0
         self._mine = None  # (node, action index, real amount) of our last decision
         self._buckets = {}
+        self._passive_map = None  # street on which an opponent bet was mapped to check/call
 
     def _advance(self, obs):
         tr = self.policy.tree
         st = self._state
         hist = obs.history
+        self._me = obs.position
         for rec in hist[self._done:]:
             if rec.kind == "discard":
                 continue
@@ -207,6 +214,18 @@ class FullCFRBot(Bot):
                                   or tr.street[n] != st.street):
                 n = None
             idx = None
+            facing_node = (n is not None and tr.kind[n] == DECISION and tr.player[n] == rec.position
+                           and tr.facing[n])
+            if (self._passive_map == st.street and rec.position == obs.position and k == A_CALL
+                    and not facing_node):
+                # our call of a bet the tree saw as a check: in the tree it is a check, or the
+                # tree's street is already over (keep the node)
+                if n is not None and tr.kind[n] == DECISION and tr.player[n] == rec.position:
+                    j = next((i for i, a in enumerate(tr.actions[n]) if a[0] == A_CHECK), None)
+                    n = tr.children[n][j] if j is not None else None
+                self._node = n
+                st.apply(k, rec.amount)
+                continue
             if n is not None:
                 acts = tr.actions[n]
                 if rec.position == obs.position and self._mine and self._mine[0] == n:
@@ -217,7 +236,8 @@ class FullCFRBot(Bot):
                         idx = None
                 if idx is None:
                     idx = self._translate(n, st, rec, k)
-                if idx is not None and acts[idx][0] != k:
+                if idx is not None and acts[idx][0] != k and not (
+                        k == A_RAISE and self._passive_map == st.street and acts[idx][0] in (A_CHECK, A_CALL)):
                     idx = None
             self._node = tr.children[n][idx] if (n is not None and idx is not None) else None
             st.apply(k, rec.amount)
@@ -236,6 +256,14 @@ class FullCFRBot(Bot):
         mp = max(st.pips)
         x = (rec.amount - mp) / max(1, st.pot + call)
         fr = tr.raise_fracs(n, st)
+        if self.small_map and fr and rec.amount < hi and rec.position != getattr(self, "_me", -1):
+            lo = min(f for _, f, a in fr if not a) if any(not a for _, f, a in fr) else None
+            passive = next((i for i, a in enumerate(acts) if a[0] in (A_CHECK, A_CALL)), None)
+            if lo is not None and passive is not None and x < lo:
+                if self.rng.random() < pseudo_harmonic(x, 0.0, lo):
+                    self.stats["small_maps"] += 1
+                    self._passive_map = st.street
+                    return passive
         i = map_raise(fr, x, rec.amount >= hi, self.rng.random())
         if i is not None:
             fx = [f for j, f, _ in fr if j == i][0]
@@ -263,12 +291,22 @@ class FullCFRBot(Bot):
         tr = self.policy.tree
         lg = obs.legal
         n = self._node
+        if self._passive_map == obs.street and lg.call_amount > 0:
+            # we face a bet the tree saw as a check/call: answer from that node (check ->
+            # call, bet -> raise), or with the equity rule if the tree's street is over
+            if (n is None or tr.kind[n] != DECISION or tr.player[n] != obs.position
+                    or tr.street[n] != obs.street):
+                return self._fallback(obs)
+            return self._sample(n, obs)
         if (n is None or tr.kind[n] != DECISION or tr.player[n] != obs.position
                 or tr.street[n] != obs.street or tr.facing[n] != (lg.call_amount > 0)):
             n = self._resync(obs)
             if n is None:
                 return self._fallback(obs)
             self._node = n
+        return self._sample(n, obs)
+
+    def _sample(self, n, obs):
         self.stats["decisions"] += 1
         b = self._buckets.get(obs.street)
         if b is None:

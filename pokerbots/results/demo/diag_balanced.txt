@@ -1,0 +1,26 @@
+champion@15m_w4 vs balanced on a_nlhe100: 6000 hands
+
+facing a bet postflop: fold / call / raise share (MDF = defend at least pot/(pot+bet))
+  street 1 40-80%   n=  791  fold   31%  call   62%  raise    8%   max fold by MDF  33%
+  street 1 80-130%  n=  581  fold   48%  call   51%  raise    2%   max fold by MDF  50%
+  street 1 >130%    n=   48  fold   69%  call   31%  raise    0%   max fold by MDF  74%
+  street 2 <40%     n=    1  fold  100%  call    0%  raise    0%   max fold by MDF  19%   OVERFOLD
+  street 2 40-80%   n=  480  fold   35%  call   60%  raise    4%   max fold by MDF  33%
+  street 2 80-130%  n=  401  fold   56%  call   42%  raise    2%   max fold by MDF  50%
+  street 2 >130%    n=   12  fold   42%  call   58%  raise    0%   max fold by MDF  67%
+  street 3 <40%     n=    5  fold   40%  call   60%  raise    0%   max fold by MDF  22%   OVERFOLD
+  street 3 40-80%   n=  298  fold   35%  call   50%  raise   15%   max fold by MDF  33%
+  street 3 80-130%  n=  270  fold   53%  call   42%  raise    5%   max fold by MDF  51%
+  street 3 >130%    n=   22  fold   77%  call   23%  raise    0%   max fold by MDF  68%   OVERFOLD
+
+chips by how the hand ended (bb per 100 hands of the whole match):
+  showdown         1398 hands     +62.0 bb/100
+  they fold st0     489 hands      +7.3 bb/100
+  they fold st1     301 hands     +14.6 bb/100
+  they fold st2     555 hands     +41.2 bb/100
+  they fold st3     484 hands     +53.5 bb/100
+  we fold st0      1553 hands     -28.7 bb/100
+  we fold st1       553 hands     -33.0 bb/100
+  we fold st2       401 hands     -42.0 bb/100
+  we fold st3       266 hands     -50.5 bb/100
+  total            6000 hands     +24.2 bb/100

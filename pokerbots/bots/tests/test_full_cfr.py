@@ -376,6 +376,53 @@ class TestPolicyAndBot(unittest.TestCase):
         # and it stays legal against arbitrary bet sizes, from both seats
         self._check_play(lambda: make_bot(budget=budget, cache_dir=self.tmp, verbose=False), scaled(50))
 
+    def test_small_bets_are_not_over_folded(self):
+        """A real bet below the tree's smallest size is sometimes read as a check/call
+        (small_map), so a bot that always bets the minimum is folded to less, and play
+        stays legal from both seats."""
+        from engine.bot import Bot
+        from engine.game import RaiseTo
+
+        class MinBettor(Bot):
+            name = "min_bettor"
+
+            def act(self, obs):
+                lg = obs.legal
+                if lg.discard_count:
+                    from engine.game import Discard
+                    return Discard(obs.my_cards[:lg.discard_count])
+                if lg.can_raise and obs.street > 0:
+                    return RaiseTo(lg.min_raise_to)
+                return lg.passive()
+        path = self.paths["c_discard3"][0]
+        spec = VARIANTS["c_discard3"]
+        for sm in (True, False):
+            for seat in (0, 1):
+                bot = make_bot(policy_path=path, small_map=sm, verbose=False)
+                pair = (bot, MinBettor()) if seat == 0 else (MinBettor(), bot)
+                r = play_match(pair[0], pair[1], spec, deal_seed=21 + seat, hands=150)
+                st = r.stats[seat].summary()
+                self.assertEqual((st["illegal"], st["errors"]), (0, 0), st["first_error"])
+                if sm:
+                    self.assertGreater(bot.stats["small_maps"], 0)
+                else:
+                    self.assertEqual(bot.stats["small_maps"], 0)
+        folds = {}  # fold rate facing postflop min-bets
+        for sm in (True, False):
+            bot = make_bot(policy_path=path, small_map=sm, verbose=False)
+            faced = []
+            orig = bot.act
+
+            def spy(obs, orig=orig, faced=faced):
+                a = orig(obs)
+                if obs.phase == "bet" and obs.street > 0 and obs.legal.call_amount > 0:
+                    faced.append(a.kind == "fold")
+                return a
+            bot.act = spy
+            play_match(bot, MinBettor(), spec, deal_seed=31, hands=300)
+            folds[sm] = float(np.mean(faced))
+        self.assertLess(folds[True], folds[False])
+
     def test_bot_without_policy_falls_back(self):
         for v in ("a_nlhe100", "c_discard3", "d_omaha4x2", "g_pineapple"):
             bot = self._check_play(lambda: make_bot(budget="no_such_budget", verbose=False), VARIANTS[v],
