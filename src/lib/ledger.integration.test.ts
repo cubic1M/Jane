@@ -87,6 +87,41 @@ describe.runIf(url)("the savings ledger, on a sample person", { timeout: 240_000
     expect(moves()).toEqual([]);
   });
 
+  // Debugger 11-01: a trial-turned-paid refund Jane was asked to get read "about $120.00/yr" on
+  // /saved, where the card said "Could get back about $120.00": a refund comes back once.
+  it("says a refund Jane is getting back once, not a year", async () => {
+    const finding = await client.finding.create({
+      data: {
+        userId,
+        type: "trial_conversion",
+        key: "merchant:masterclass-test",
+        title: "Your MasterClass trial turned into a $120.00 charge",
+        annualSavingsCents: 12_000,
+        confidence: "medium",
+        evidence: {},
+        status: "in_progress",
+      },
+    });
+    const decision = await client.decision.create({
+      data: {
+        userId,
+        findingId: finding.id,
+        choice: "yes",
+        cardSnapshot: { annualSavingsCents: 12_000, title: finding.title },
+      },
+    });
+    await client.action.create({
+      data: { userId, decisionId: decision.id, type: "request_refund", status: "in_progress" },
+    });
+    try {
+      const ledger = await savingsLedger(userId, { client, now: NOW });
+      const entry = ledger.entries.find((e) => e.title === finding.title);
+      expect(entry).toMatchObject({ by: "jane", cents: 12_000, yearly: false });
+    } finally {
+      await client.finding.delete({ where: { id: finding.id } });
+    }
+  });
+
   it("walks her own fix from Estimated to Held on her dated transactions", async () => {
     // Her own fix of the same class pass: Jane's win for it is set aside, so the transactions
     // alone decide.

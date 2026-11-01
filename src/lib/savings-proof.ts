@@ -15,6 +15,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { snapshotTitle } from "@/lib/hubs/jane";
 import { formatCents } from "@/lib/money";
+import { isRefund } from "@/lib/savings-text";
 import { savingsRecord, statementCoverage, type SavingsRecord } from "@/lib/outcomes";
 import { dayLabel } from "@/lib/day-label";
 import { validTimezone } from "@/lib/digest/week";
@@ -48,7 +49,14 @@ export type Receipt = {
   heldOn: string | null;
 };
 
-export type Estimate = { actionId: string; title: string; cents: number; why: string };
+// yearly: false for money that comes back once (a refund), as the card says "Could get back".
+export type Estimate = {
+  actionId: string;
+  title: string;
+  cents: number;
+  yearly: boolean;
+  why: string;
+};
 
 export type ProvenSavings = {
   confirmed: Receipt[];
@@ -96,7 +104,11 @@ export async function provenSavings(
         confirmedAnnualCents: true,
         savingMissedAt: true,
         decision: {
-          select: { cardSnapshot: true, options: true, finding: { select: { evidence: true } } },
+          select: {
+            cardSnapshot: true,
+            options: true,
+            finding: { select: { evidence: true, type: true } },
+          },
         },
       },
       orderBy: [{ completedAt: "asc" }, { id: "asc" }],
@@ -255,6 +267,8 @@ export async function provenSavings(
       actionId: action.id,
       title,
       cents: actionWorthCents(action, estimate) ?? 0,
+      // Debugger 11-01: a refund read "about $120.00/yr" on /saved.
+      yearly: !isRefund(action.decision.finding.type),
       why:
         action.savingMissedAt && done
           ? "It never showed up in your transactions, so it doesn't count as saved."
