@@ -235,11 +235,19 @@ describe("a loan seen only in payments", () => {
         paid("Pennymac Loan Services Mortgage", "mortgage"),
         paid("Navient Student Loan", "student"),
         paid("Toyota Motor Cr", "auto"),
+        // Debugger 11-01: banks' short forms ("Ln", "Mtg") said it too: "Sallie Mae Student Ln
+        // Pmt student loan".
+        paid("Sallie Mae Student Ln Pmt", "student"),
+        paid("WF Home Mtg Auto Pay", "mortgage"),
+        paid("Ally Auto Loan Payment", "auto"),
       ).sort(),
     ).toEqual([
+      "Ally Auto Loan Payment",
       "Navient Student Loan",
       "Pennymac Loan Services Mortgage",
+      "Sallie Mae Student Ln Pmt",
       "Toyota Motor Cr car loan",
+      "WF Home Mtg Auto Pay",
     ]);
   });
 });
