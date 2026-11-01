@@ -31,6 +31,28 @@ describe("bankFeesYear", () => {
     });
   });
 
+  // Debugger 11-01: three $3 service fees on checking and one $41 late fee on a card. The report
+  // said $36 + $41 a year (it paces each account); /saved said "about $200.00/yr", the late fee
+  // paced along with the others.
+  it("paces each account's fees on their own, as the report's findings do", () => {
+    const service = (date: string): FeeTx => ({
+      date,
+      amountCents: 300,
+      description: "MONTHLY SERVICE FEE",
+      pfc: "BANK_FEES_OTHER_BANK_FEES",
+      accountId: "checking",
+    });
+    const late: FeeTx = {
+      date: "2026-09-28",
+      amountCents: 4100,
+      description: "LATE FEE - PAYMENT DUE 09/25",
+      pfc: "BANK_FEES_LATE_FEES",
+      accountId: "card",
+    };
+    const fees = [service("2026-08-25"), service("2026-09-25"), service("2026-10-25"), late];
+    expect(bankFeesYear(fees, 3)).toMatchObject({ seenCents: 5000, yearCents: 3600 + 4100 });
+  });
+
   // Night QA 10-30: a $95 annual fee in 3 months of statements counted as $380 a year.
   it("counts a card's annual fee once a year, not scaled up with the rest", () => {
     const annual: FeeTx = {
