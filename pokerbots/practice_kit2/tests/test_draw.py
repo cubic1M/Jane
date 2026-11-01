@@ -10,7 +10,7 @@ BOARD = ["3C", "8D", "9H", "JC", "4S"]
 HOLES = [["AS", "2D"], ["KS", "KD"], ["QH", "5C"]]
 
 
-def three(draws_by_seat, deck_draws=("AD", "QC"), replies=None, logs=None):
+def three(draws_by_seat, deck_draws=(), replies=None, logs=None):
     logs = logs if logs is not None else {0: [], 1: [], 2: []}
     replies = replies or {}
     bots = [agent(f"s{i}", script(replies.get(i, []),
@@ -23,7 +23,7 @@ def three(draws_by_seat, deck_draws=("AD", "QC"), replies=None, logs=None):
 
 class TestDraw(unittest.TestCase):
     def test_replacement_comes_from_deck_and_hand_improves(self):
-        t, logs = three({0: {"discard": "2D"}})
+        t, logs = three({0: {"discard": "2D"}}, deck_draws=["AD"])
         # seat 0 drew the first replacement card (AD): aces beat kings
         self.assertEqual(t.last_hand["holes"][0], ["AS", "AD"])
         self.assertEqual(t.last_hand["dead"], ["2D"])
@@ -34,7 +34,8 @@ class TestDraw(unittest.TestCase):
         self.assertEqual(later[0]["hole_cards"], ["AS", "AD"])
 
     def test_draw_request_shape_and_order(self):
-        t, logs = three({1: {"discard": "KD"}, 2: {"discard": None}})
+        t, logs = three({1: {"discard": "KD"}, 2: {"discard": None}},
+                        deck_draws=["AD"])
         reqs = {i: [s for s in logs[i] if s["type"] == "draw"] for i in range(3)}
         for i in range(3):
             self.assertEqual(len(reqs[i]), 1)
@@ -71,7 +72,7 @@ class TestDraw(unittest.TestCase):
 
     def test_all_in_players_still_draw(self):
         logs = {0: [], 1: [], 2: []}
-        t, logs = three({0: {"discard": "2D"}},
+        t, logs = three({0: {"discard": "2D"}}, deck_draws=["AD"],
                         replies={0: [SHOVE], 1: [CALL], 2: [FOLD]}, logs=logs)
         draw_reqs = [s for s in logs[0] if s["type"] == "draw"]
         self.assertEqual(len(draw_reqs), 1)

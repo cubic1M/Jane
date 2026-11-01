@@ -58,14 +58,16 @@ class TestSidePots(unittest.TestCase):
         self.assertEqual(pot["winners"], [1, 2])
         self.assertEqual(t.last_hand["won"], {0: 0, 1: 12, 2: 11})
 
-    def test_heads_up_odd_chip_goes_to_big_blind(self):
-        schedule = [(1, 5, 10, 1)]
-        bots = [agent("btn", script([])), agent("bb", script([]))]
-        holes = [["2C", "3D"], ["2D", "3C"]]
+    def test_odd_chip_skips_the_button(self):
+        schedule = [(1, 5, 10, 2)]                      # pot of 31
+        bots = [agent("btn", script([CALL])), agent("sb", script([FOLD])),
+                agent("bb", script([]))]
+        holes = [["2C", "3D"], ["2D", "3C"], ["4D", "5C"]]
         t = table(bots, schedule=schedule, deck_factory=rig(holes, ROYAL))
         t.play_hand()
-        self.assertEqual(t.last_hand["won"], {0: 10, 1: 12 - 1})
-        self.assertEqual(t.last_hand["pots"][0]["winners"], [1, 0])
+        self.assertEqual(t.last_hand["pots"][0]["amount"], 31)
+        self.assertEqual(t.last_hand["pots"][0]["winners"], [2, 0])
+        self.assertEqual(t.last_hand["won"], {0: 15, 1: 0, 2: 16})
 
     def test_uncalled_bet_returned(self):
         bots = [agent("btn", script([{"action": "raise", "amount": 300}])),
