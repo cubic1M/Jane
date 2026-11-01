@@ -122,3 +122,22 @@ describe("Capital One 360's prefixes", () => {
     expect(normalizeMerchant("Deposit from STARK INDUSTRIES PAYROLL")?.name).toMatch(/^Stark/);
   });
 });
+
+// Debugger 11-01: a service member's /subscriptions listed "Usaa P&C Ins Autopay" and "Nfcu Auto
+// Loan Pmt"; the IRS's "IRS USATAXPYMT" read "Irs". Known acronyms and "AT&T" stay in capitals;
+// the key is unchanged.
+describe("acronyms in names", () => {
+  it("keeps well-known acronyms and AT&T in capitals", () => {
+    expect(normalizeMerchant("USAA P&C INS AUTOPAY")?.name).toBe("USAA P&C Ins Autopay");
+    expect(normalizeMerchant("NFCU AUTO LOAN PMT")?.name).toBe("NFCU Auto Loan Pmt");
+    expect(normalizeMerchant("IRS USATAXPYMT")?.name).toBe("IRS Usataxpymt");
+    expect(normalizeMerchant("CVS/PHARMACY #4321")?.name).toBe("CVS Pharmacy");
+    expect(normalizeMerchant("AT&T BILL PAYMENT")?.name).toBe("AT&T Bill Payment");
+    expect(normalizeMerchant("USAA P&C INS AUTOPAY")?.key).toBe("usaa p&c ins autopay");
+  });
+
+  it("leaves ordinary words as they were", () => {
+    expect(normalizeMerchant("PLANET FITNESS CLUB FEES")?.name).toBe("Planet Fitness Club Fees");
+    expect(normalizeMerchant("IRSA HOLDINGS")?.name).toBe("Irsa Holdings");
+  });
+});
