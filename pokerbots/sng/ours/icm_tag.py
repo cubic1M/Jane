@@ -19,7 +19,7 @@ import random
 from engine.game import Call, Check, Fold, RaiseTo
 
 PARAMS = dict(
-    open_mult=1.30,      # open if equity >= open_mult / (players to act + 1)
+    open_mult=1.18,      # open if equity >= open_mult / (players to act + 1)
     open_size=2.5,       # open-raise to this many big blinds (+1 per limper)
     push_bb=12.0,        # shove-or-fold at or below this effective stack (bb)
     push_mult=1.10,      # shove if equity >= push_mult / (players to act + 1) (scaled by stack)
@@ -31,7 +31,7 @@ PARAMS = dict(
     cbet=0.55,           # c-bet frequency heads-up as the preflop aggressor
     bet_frac=0.65,       # postflop bet size (fraction of pot)
     bet_discount=0.6,   # opponent's bet/raise: our equity x this (their range is stronger)
-    steal_bonus=0.25,
+    steal_bonus=0.40,
     reshove_bb=24.0,     # facing a raise with a 3-bet hand: shove (not 3-bet) at or below this stack    # lower the open bar by up to this much vs seats that fold to steals
 )
 
