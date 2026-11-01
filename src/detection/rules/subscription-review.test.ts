@@ -299,6 +299,35 @@ describe("subscription_review", () => {
       },
     );
 
+    // Debugger 11-01: an $80 paper check each month ("CHECK # 1208", 1209, 1210) read as
+    // "Review your Check subscription, about $960.00 a year". A check pays anyone.
+    it.each(["CHECK # {n}", "CHECK {n}", "Check Paid #{n}", "CHK {n}", "CHECK NO. {n}"])(
+      "never calls a paper check (%s) a subscription",
+      (shape) => {
+        const transactions = monthly(4, 8000, {
+          description: "",
+          merchantName: null,
+          pfcPrimary: null,
+          pfcDetailed: null,
+        }).map((t, i) => ({ ...t, description: shape.replace("{n}", String(1208 + i)) }));
+        expect(run(input({ transactions }))).toEqual([]);
+        // Nor when Claude was asked about it and said yes.
+        const checks = input({ transactions, subscriptionMerchantKeys: ["check"] });
+        expect(run(checks)).toEqual([]);
+        expect(buildStreams(checks).some(isAmbiguousRecurring)).toBe(false);
+      },
+    );
+
+    it("still reads a plan paid with a check card", () => {
+      const transactions = monthly(4, 1299, {
+        description: "CHECK CARD 0818 MYSTERY CLUB",
+        merchantName: null,
+        pfcPrimary: null,
+        pfcDetailed: null,
+      });
+      expect(run(input({ transactions }))).toHaveLength(1);
+    });
+
     it("needs the very same price every month, and under FIXED_PRICE_SUBSCRIPTION_MAX_CENTS", () => {
       const mystery = { description: "MYSTERY CLUB", pfcPrimary: null, pfcDetailed: null };
       expect(run(input({ transactions: monthly(4, 2000, mystery) }))).toHaveLength(1);
