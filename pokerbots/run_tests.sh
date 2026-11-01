@@ -10,6 +10,9 @@ declare -A CMD=(
   [opponents]="python3 -m unittest opponents.test_opponents_claude opponents.test_opponents_lagexp opponents.test_opponents_tagteam"
   [tournament]="python3 -m unittest discover -s tournament -t . -p test*.py"
   [server]="bash -c 'cd rehearsal/server && python3 -m unittest discover -s tests'"
+  [sng]="python3 -m unittest discover -s sng/tests -t ."
+  [sng_field]="python3 -m unittest discover -s sng/field/tests -t ."
+  [sng_ours]="python3 -m unittest discover -s sng/ours/tests -t ."
 )
 for s in "${!CMD[@]}"; do
   ( S=$(date +%s); eval "${CMD[$s]}" > results/logs/test_$s.log 2>&1; rc=$?
@@ -17,7 +20,7 @@ for s in "${!CMD[@]}"; do
 done
 wait
 fail=0
-for s in engine bots opponents tournament server; do
+for s in engine bots opponents tournament server sng sng_field sng_ours; do
   read rc name secs ran < results/logs/test_$s.rc
   if [ "$rc" = 0 ]; then st=OK; else st=FAIL; fail=1; fi
   printf "%-11s %-4s %6s  %s\n" "$name" "$st" "$secs" "$ran"
