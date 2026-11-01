@@ -26,6 +26,8 @@ PARAMS = dict(
     range_k=4.0,         # a raiser's range ~ this many random hands
     call_margin=0.06,    # extra equity needed above pot odds to call
     threebet_eq=0.62,    # 3-bet (or shove when short) if equity vs the raiser range clears this
+                         # (NB: vs range_k=4 random hands even AA is ~0.56, so this alone never fires)
+    threebet_rel=99.0,   # ... or if equity x (range_k + 1) clears this (2.4 ~ KK+, 2.2 ~ QQ+, 2.0 ~ JJ+)
     risk=0.10,           # ICM risk premium on all-in calls at 8 players left (grows as players bust)
     value_eq=0.62,       # postflop: bet for value above this (adjusted) equity
     cbet=0.55,           # c-bet frequency heads-up as the preflop aggressor
@@ -184,7 +186,7 @@ class IcmTag:
         allin_call = call >= obs.my_stack or any(seats[s].all_in for s in in_pot)
         if allin_call or call > 0.4 * obs.my_stack:
             need += self._risk(obs)
-        if eq >= p["threebet_eq"] and lg.can_raise:
+        if (eq >= p["threebet_eq"] or eq * (kf + 1) >= p["threebet_rel"]) and lg.can_raise:
             if eff_bb <= p["reshove_bb"]:
                 return RaiseTo(lg.max_raise_to)
             last = raises[-1][3]
