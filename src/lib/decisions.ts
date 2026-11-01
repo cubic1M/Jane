@@ -116,7 +116,7 @@ async function switchChoice(
 export async function recordDecision(
   userId: string,
   answer: Answer,
-  { client = defaultClient }: Options = {},
+  { client = defaultClient, now }: Options = {},
 ): Promise<DecisionResult> {
   const db = scopedFor(userId, client);
   const finding = await db.findings.findFirst({
@@ -174,6 +174,10 @@ export async function recordDecision(
         ...((source === "rule" || source === "auto") && answer.ruleKey
           ? { ruleKey: answer.ruleKey }
           : {}),
+        // The caller's clock when it has one: a rule's monthly limit counts decisions from the
+        // month of its `now` (debugger 11-01: stamped with the database's clock, a rule run "on
+        // Oct 18" counted against November, and standing-rules.integration failed from Nov 1).
+        ...(now ? { createdAt: now } : {}),
       },
       select: { id: true },
     });

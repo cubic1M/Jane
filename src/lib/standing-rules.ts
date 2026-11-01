@@ -170,7 +170,7 @@ export async function applyStandingRules(
           source: "rule",
           ruleKey: rule.key,
         },
-        { client },
+        { client, now },
       );
       used.set(rule.key, (used.get(rule.key) ?? 0) + 1);
       await recordAct(userId, "bills", 0, `${RULE_ACT_PREFIX}${finding.title}`, {
