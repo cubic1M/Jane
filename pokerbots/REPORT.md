@@ -800,6 +800,20 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   The edge is real but much smaller than against field 1 (+10 to +20), which it was
   tuned on. 181 of its 236 busts against field 2 are short-stack preflop shoves.
   Tuning on field 2 with validation back on field 1 is next.
+* **The two fields want opposite fixed settings** (`results/sng_adaptive.md`). Tuning on
+  field 2 asked for looser calls (a raiser = 3.2 hands, a 3% margin), tighter opens and
+  smaller bets, the reverse of field 1. On fresh seeds the field-2 tuning was +3.6 ± 3.5
+  on field 2 but −1.0 and −1.6 on field 1's default and mirror fields: overfitting
+  again.
+
+  Table-adaptive rules were all within noise:
+  - opens tighten against seats that don't fold (`steal_sym`);
+  - a raiser's range widens with their observed raise rate (`read_alpha`).
+
+  Together: +0.2 / +1.2 / +2.1 on field 2 / default / mirror, never negative and
+  never significant. **Conclusion: the current defaults sit near a robust optimum across
+  two independently written fields.** Gains left in single knobs are below what 400–600
+  paired tables can detect (±2–4 points).
 * The tuner (`sng/tune.py`) is reusable on the day with the real rules as a preset
   (`--preset`), at 10–20 minutes per round. Robustness
   to other fields and point tables is next, since both are guesses until the day.
