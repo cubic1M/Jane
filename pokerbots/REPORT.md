@@ -692,6 +692,35 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
 * In a points-by-place game that pays everyone who survives, not busting is worth
   more than winning hands. Even a bot that always times out and folds scores
   near average.
+* Tuning (`sng/tune.py`, 3 rounds, 400 fresh paired tables each) accepted:
+  - stealing wider against blinds that fold (+5.6 ± 1.9; the timeout-folders);
+  - opening a little wider (+2.9).
+
+  Then it plateaued at about 64 points per table.
+* **Robustness** (`results/sng_robust.md`): fresh seeds, 300 paired tables per cell,
+  points per table, with `icm_tag`'s gain over each bot shown below. `icm_tag` beats
+  all three of the field's best bots **in all 12 field × point-table cells**; 35 of the
+  36 differences are significant.
+
+| field | point table | `icm_tag` | vs pushfold_icm | vs adaptive | vs chen_tag |
+|---|---|---|---|---|---|
+| default | synthetic 100/65/45/30/20/12/6/0 | 62.0 | +10.3 | +12.5 | +13.3 |
+| default | top 3 (50/30/20) | 27.3 | +5.6 | +6.4 | +9.0 |
+| default | winner takes all | 45.2 | +21.6 | +26.5 | +28.1 |
+| default | linear 7..0 | 5.31 | +0.52 | +0.65 | +0.67 |
+| strong | synthetic | 58.1 | +15.7 | +18.1 | +21.5 |
+| strong | top 3 | 25.0 | +7.8 | +11.3 | +13.5 |
+| strong | winner | 40.5 | +20.3 | +29.8 | +32.3 |
+| strong | linear | 4.94 | +0.72 | +0.99 | +1.15 |
+| weak | synthetic | 64.3 | +12.1 | +11.8 | +11.3 |
+| weak | top 3 | 25.1 | +4.8 | +3.4 | +2.2 (n.s.) |
+| weak | winner | 39.3 | +18.1 | +17.6 | +20.6 |
+| weak | linear | 5.35 | +0.49 | +0.38 | +0.33 |
+
+  The edge is largest against the *strong* field, so it is not only exploiting weak
+  bots. It is smallest with top-3 payouts against a weak field. Timing: p99 is
+  0.04–0.06 ms. Up to 10 decisions in 300 tables went over 1 ms, only while 4 arena
+  workers shared the machine.
 * A coordinate-descent tuner (`sng/tune.py`) continues from here. Robustness
   to other fields and point tables is next, since both are guesses until the day.
 
