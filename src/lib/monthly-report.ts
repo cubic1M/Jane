@@ -1,4 +1,5 @@
 import { MONTHLY_REPORT_DAYS } from "@/config/monthly-report";
+import { TRIAL_ID_PREFIX } from "@/config/trial";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { previousMonth } from "@/insights/check-in";
 import { track } from "@/lib/analytics";
@@ -243,23 +244,38 @@ export async function runMonthlyReports({
   now = new Date(),
   send = sendEmail,
   userIds,
-}: Options & { send?: typeof sendEmail; userIds?: readonly string[] } = {}): Promise<{
+  budgetMs = Infinity,
+}: Options & {
+  send?: typeof sendEmail;
+  userIds?: readonly string[];
+  budgetMs?: number;
+} = {}): Promise<{
   sent: number;
   skipped: number;
   failed: number;
+  deferred: number;
 }> {
+  const startedAt = Date.now();
+  // Never a sample person (spec step 138): no email, so no report to build either (debugger
+  // 11-01: every Try Jane person got one built on the 1st, and the cron ran out of time).
   const users = await client.user.findMany({
     where: {
       digestEnabled: true,
       deletedAt: null,
       accounts: { some: {} },
+      NOT: { id: { startsWith: TRIAL_ID_PREFIX } },
       ...(userIds ? { id: { in: [...userIds] } } : {}),
     },
     select: { id: true, email: true },
     orderBy: { id: "asc" },
   });
-  const run = { sent: 0, skipped: 0, failed: 0 };
+  const run = { sent: 0, skipped: 0, failed: 0, deferred: 0 };
   for (const user of users) {
+    // Past its budget: the rest are made on a later day of the first week.
+    if (Date.now() - startedAt >= budgetMs) {
+      run.deferred += 1;
+      continue;
+    }
     try {
       const kept = await monthlyReportFor(user.id, { client, now });
       const db = scopedFor(user.id, client);

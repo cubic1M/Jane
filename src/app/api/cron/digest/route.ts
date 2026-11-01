@@ -5,6 +5,7 @@ import { recordRun, reportMissedJobs } from "@/lib/health";
 import { runDueJobs } from "@/lib/jobs";
 import { runJaneAgentForAll } from "@/lib/jane-agent/run";
 import { runMonthlyReports } from "@/lib/monthly-report";
+import { MONTHLY_REPORTS_CRON_BUDGET_MS } from "@/config/monthly-report";
 import { runNews } from "@/lib/news/store";
 import { CONTROLLER_RUN_RESERVE_MS } from "@/config/controller";
 import { CHAT_CRON_BUDGET_MS } from "@/config/agent-chat";
@@ -42,7 +43,15 @@ export async function GET(request: Request) {
         previews: undefined,
         // Spec step 148: last month's money report, once, in the first days of the month. It is
         // the one monthly email: the check-in (spec step 45) is part of it.
-        monthlyReports: await runMonthlyReports().catch((error) => {
+        monthlyReports: await runMonthlyReports({
+          budgetMs: Math.max(
+            0,
+            Math.min(
+              MONTHLY_REPORTS_CRON_BUDGET_MS,
+              maxDuration * 1000 - CONTROLLER_RUN_RESERVE_MS - (Date.now() - startedAt),
+            ),
+          ),
+        }).catch((error) => {
           console.error("Monthly reports failed", { error: String(error) });
           return null;
         }),

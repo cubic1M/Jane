@@ -1,3 +1,4 @@
+import { MONTHLY_REPORTS_CRON_BUDGET_MS } from "@/config/monthly-report";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/digest/send", () => ({
@@ -17,6 +18,7 @@ vi.mock("@/lib/news/store", () => ({ runNews: vi.fn(async () => ({ batches: 0 })
 
 import { CONTROLLER_RUN_RESERVE_MS } from "@/config/controller";
 import { runDigests } from "@/lib/digest/send";
+import { runMonthlyReports } from "@/lib/monthly-report";
 import { runDueJobs } from "@/lib/jobs";
 import { runJaneAgentForAll } from "@/lib/jane-agent/run";
 import { CHAT_CRON_BUDGET_MS } from "@/config/agent-chat";
@@ -62,5 +64,18 @@ describe("GET /api/cron/digest", () => {
     vi.restoreAllMocks();
     expect(vi.mocked(runJaneAgentForAll).mock.calls[0][0]!.budgetMs).toBe(0);
     expect(CHAT_CRON_BUDGET_MS).toBeLessThan(maxDuration * 1000 - CONTROLLER_RUN_RESERVE_MS);
+  });
+
+  // Debugger 11-01 (production): a 504 at 300 s on the 1st, the monthly reports first and with
+  // no clock. They get their own budget, never more than the time left.
+  it("gives the monthly reports a budget inside the time left", async () => {
+    vi.mocked(runMonthlyReports).mockClear();
+    await call("Bearer cron-secret");
+    const budget = vi.mocked(runMonthlyReports).mock.calls[0][0]!.budgetMs!;
+    expect(budget).toBeGreaterThan(0);
+    expect(budget).toBeLessThanOrEqual(MONTHLY_REPORTS_CRON_BUDGET_MS);
+    expect(MONTHLY_REPORTS_CRON_BUDGET_MS + CHAT_CRON_BUDGET_MS).toBeLessThan(
+      maxDuration * 1000 - CONTROLLER_RUN_RESERVE_MS,
+    );
   });
 });
