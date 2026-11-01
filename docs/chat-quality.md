@@ -167,7 +167,10 @@ chat and this grading together), so the nightly run is small by design:
 Written by the nightly run (.github/workflows/chat-quality.yml).
 
 <!-- nightly:start -->
-| Night | Mode | Score | Graded | Skipped | Failing | First words (median) | Cost |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 2026-10-20 | rules only | 100 | 158 | 22 | 0 | 15 ms | $0.00 |
+**The depth bar**: understood at least 95%, figures right 100%, follow-ups and two-part questions at least 90%, three nights in a row. Not met yet.
+
+| Night | Mode | Understood | Figures right | Follow-ups | First words | Full answer | Score | Graded | Failing | Cost | Bar |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :-: |
+| 2026-11-01 | rules only | 100% | 100% | 100% | 0.1 s | 0.1 s | 100 | 354 | 0 | $0.00 | yes |
+| 2026-10-20 | rules only | – | – | – | 0.0 s | – | 100 | 158 | 0 | $0.00 | no |
 <!-- nightly:end -->
