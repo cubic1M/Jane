@@ -70,6 +70,20 @@ describe("buildKit", () => {
     expect(checkGuardrails(words, allowed)).toEqual({ ok: true });
     expect(text).not.toMatch(/guarantee|will save|promise/i);
   });
+
+  // Debugger 11-01: the overlapping-services card names no one service (the person picks which
+  // to cancel), and its email read "Please cancel my your company subscription".
+  it.each(cases)("%s: reads as a sentence when the company isn't named", (type, finding) => {
+    const kit = buildKit(ACTION_FOR_FINDING[type], finding, null);
+    const words = [kit?.email?.body, ...(kit?.script ?? [])].join("\n");
+    expect(words).not.toMatch(/\bmy your\b/i);
+  });
+
+  it("asks to cancel the subscription on the overlapping-services card", () => {
+    const body = buildKit("cancel_subscription", findingOfType("duplicate_subscription"), null)
+      ?.email?.body;
+    expect(body).toContain("Please cancel my subscription and confirm");
+  });
 });
 
 describe("selfServe (read-only mode)", () => {

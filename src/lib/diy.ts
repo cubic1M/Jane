@@ -50,17 +50,20 @@ function chargeLines(payload: DraftPayload): string {
 
 function email(actionType: ActionType, findingType: FindingType, p: DraftPayload) {
   const merchant = p.facts.merchant ?? "your company";
+  // "my Netflix subscription", or just "my subscription" when no one company is named (the
+  // overlapping-services card: the person picks which; debugger 11-01, "my your company").
+  const my = p.facts.merchant ? `my ${p.facts.merchant}` : "my";
   const charges = chargeLines(p);
   switch (actionType) {
     case "cancel_subscription":
       return {
         subject: "Please cancel my subscription",
-        body: `Hello,\n\nPlease cancel my ${merchant} subscription${p.facts.latestCharge ? ` (most recently charged ${p.facts.latestCharge})` : ""} and confirm the cancellation by email.\n\nThank you,`,
+        body: `Hello,\n\nPlease cancel ${my} subscription${p.facts.latestCharge ? ` (most recently charged ${p.facts.latestCharge})` : ""} and confirm the cancellation by email.\n\nThank you,`,
       };
     case "fight_price_increase":
       return {
         subject: "Question about my new price",
-        body: `Hello,\n\nMy ${merchant} price went up${p.facts.previousPrice && p.facts.latestCharge ? ` from ${p.facts.previousPrice} to ${p.facts.latestCharge}` : ""}. Could you keep my previous price, or offer a cheaper plan with the same service?\n\nThank you,`,
+        body: `Hello,\n\n${my[0].toUpperCase()}${my.slice(1)} price went up${p.facts.previousPrice && p.facts.latestCharge ? ` from ${p.facts.previousPrice} to ${p.facts.latestCharge}` : ""}. Could you keep my previous price, or offer a cheaper plan with the same service?\n\nThank you,`,
       };
     case "request_refund": {
       // A double charge: one purchase stays, only the extra is owed back (debugger 10-30: the
@@ -114,9 +117,9 @@ function script(actionType: ActionType, p: DraftPayload | null): string[] {
       "What would the new rate be, from when, and for how long?",
     ];
   }
-  const merchant = p?.facts.merchant ?? "your company";
+  const my = p?.facts.merchant ? `my ${p.facts.merchant}` : "my";
   return [
-    `Hi, I'd like to talk about my ${merchant} bill${p?.facts.perMonth ? `, which is about ${p.facts.perMonth} a month` : ""}.`,
+    `Hi, I'd like to talk about ${my} bill${p?.facts.perMonth ? `, which is about ${p.facts.perMonth} a month` : ""}.`,
     "That's more than similar plans cost, and I'm looking at other providers.",
     "Is there a loyalty discount, a current promotion, or a cheaper plan with the same service?",
     "What would the new monthly price be, for how long, and is there a contract or any fee?",
