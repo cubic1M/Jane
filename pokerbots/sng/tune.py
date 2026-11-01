@@ -57,6 +57,7 @@ def main(argv=None):
     ap.add_argument("--field", default="default")
     ap.add_argument("--payouts", default="synthetic")
     ap.add_argument("--accept-se", type=float, default=1.0)
+    ap.add_argument("--multi-se", type=float, default=2.0)
     ap.add_argument("--tag", default="")
     a = ap.parse_args(argv)
     import importlib
@@ -96,6 +97,16 @@ def main(argv=None):
         if accepted:
             k, v = best[3]
             state["params"][k] = v
+            # also take every other clearly better change (>= multi_se SE) on other parameters;
+            # the next round re-tests the combination against the new incumbent
+            taken = {k}
+            extra = []
+            for m, se, n, (k2, v2) in rows[1:]:
+                if k2 not in taken and m > a.multi_se * se:
+                    state["params"][k2] = v2
+                    taken.add(k2)
+                    extra.append(n)
+            rec["also_taken"] = extra
         state["history"].append(rec)
         state["round"] = r + 1
         state_f.write_text(json.dumps(state, indent=1))
