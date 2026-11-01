@@ -64,6 +64,8 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   questions: 1,
   // CSV bench round 24: "Is this your rent?", one payee at a time.
   rent_question: 1,
+  // Debugger 11-01: "Is it rent you collect?", one payer at a time.
+  rent_in_question: 1,
   // Spec step 208.
   unusual: 2,
   // Spec step 148.
@@ -206,6 +208,8 @@ export const MESSAGE_PRIORITY = {
   questions: 36,
   // CSV bench round 24: rent read as a transfer leaves spending and the cushion short.
   rent_question: 38,
+  // Debugger 11-01: rent collected read as a transfer leaves income and taxes short.
+  rent_in_question: 38,
   // Spec step 208: a charge that may not be theirs; as urgent as an alert.
   unusual: 95,
   // Spec step 148: the monthly money report, once a month, after what needs the person.

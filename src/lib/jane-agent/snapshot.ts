@@ -24,7 +24,7 @@ import type { PriceRise } from "@/planning/price-rises";
 import { loadMoneyForTwo, type MoneyForTwoView } from "@/lib/money-for-two";
 import { loadTradeoffs, type TradeoffView } from "@/lib/goal-tradeoffs";
 import { nextQuestion, type OpenQuestion } from "@/lib/questions";
-import { loadRentQuestion } from "@/lib/rent-question";
+import { loadRentInQuestion, loadRentQuestion } from "@/lib/rent-question";
 import type { RentTransfer } from "@/detection/rent-transfers";
 import { adoptedPlans, type AdoptedPlan } from "@/lib/what-if";
 import { openLean, recentlyEnded, type LeanState } from "@/lib/lean-plan";
@@ -163,6 +163,9 @@ export type Snapshot = {
   // CSV bench round 24: a payee sent about the same amount near each month's start, to ask
   // "Is this your rent?". Optional, like changes.
   rentQuestion?: RentTransfer | null;
+  // Debugger 11-01: a payer who sends about the same amount near each month's start, to ask "Is it
+  // rent you collect?". Optional, like changes.
+  rentInQuestion?: RentTransfer | null;
   // Spec step 208: unusual-activity alerts waiting for "this was me" or "not me".
   unusual?: { id: string; key: string; title: string; body: string }[];
   // Spec step 207: what the person says yes to and what worked, by kind of finding.
@@ -359,6 +362,7 @@ export async function loadSnapshot(
     tradeoffs,
     close,
     rentQuestion,
+    rentInQuestion,
   ] = await Promise.all([
     light ? NO_MORE : loadMore(userId, { client, now, input }),
     light ? {} : loadTaxSnapshot(userId, { client, now }),
@@ -381,6 +385,7 @@ export async function loadSnapshot(
     light ? null : loadTradeoffs(userId, { client, now, input }),
     loadClose(userId, { client }),
     light ? null : loadRentQuestion(userId, { client, now, input }),
+    light ? null : loadRentInQuestion(userId, { client, now, input }),
   ]);
 
   return {
@@ -464,6 +469,7 @@ export async function loadSnapshot(
     tradeoffs,
     close,
     rentQuestion,
+    rentInQuestion,
     lean: light
       ? { open: [], ended: [] }
       : {

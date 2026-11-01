@@ -346,6 +346,9 @@ export const ACTION_IDS = [
   // CSV bench round 24: "Is this your rent?" (refs.rentKey).
   "rent.yes",
   "rent.no",
+  // Debugger 11-01: "Is it rent you collect?" (refs.rentKey).
+  "rent_in.yes",
+  "rent_in.no",
   "suggestion.yes",
   "suggestion.no",
   "suggestion.why",
