@@ -109,6 +109,11 @@ describe("categorizeByRules", () => {
     ["GEICO *AUTO 800-841-3000 DC", "GENERAL_SERVICES_INSURANCE"],
     ["T-MOBILE AUTO PAY", "RENT_AND_UTILITIES_TELEPHONE"],
     ["MONTHLY SERVICE FEE", "BANK_FEES_OTHER_BANK_FEES"],
+    // Debugger 11-01: a credit union's $5 "PAPER STATEMENT FEE" read as "Review your Paper
+    // Statement Fee subscription", a plan to cancel instead of a fee to have waived.
+    ["PAPER STATEMENT FEE", "BANK_FEES_OTHER_BANK_FEES"],
+    ["STATEMENT FEE", "BANK_FEES_OTHER_BANK_FEES"],
+    ["STOP PAYMENT FEE", "BANK_FEES_OTHER_BANK_FEES"],
     ["NON-CHASE ATM FEE-WITH", "BANK_FEES_ATM_FEES"],
     ["OVERDRAFT FEE FOR A $40.00 ITEM", "BANK_FEES_OVERDRAFT_FEES"],
     ["PURCHASE INTEREST CHARGE", "BANK_FEES_INTEREST_CHARGE"],
