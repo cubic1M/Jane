@@ -4,19 +4,19 @@ import { normalizeMerchant, withoutCity, withoutPaymentApp, withoutAchDetails } 
 describe("normalizeMerchant", () => {
   it.each([
     ["NETFLIX.COM NETFLIX.COM CA 10/03", "Netflix"],
-    ["SQ *BLUE BOTTLE COFFEE #123 OAKLAND CA", "Blue Bottle Coffee Oakland"],
-    ["STARBUCKS STORE 06235 NEW YORK NY", "Starbucks New York"],
+    ["SQ *BLUE BOTTLE COFFEE #123 OAKLAND CA", "Blue Bottle Coffee"],
+    ["STARBUCKS STORE 06235 NEW YORK NY", "Starbucks"],
     ["AMZN Mktp US*2K4L91RT0", "Amzn Mktp Us"],
     ["TST* JOE'S PIZZA 10/02", "Joe's Pizza"],
     ["PAYPAL *HULU 402-935-7733 CA", "Hulu"],
     ["UBER   *TRIP HELP.UBER.COM CA", "Uber"],
     ["APPLE.COM/BILL 866-712-7753 CA", "Apple"],
-    ["7-ELEVEN 34567 SAN JOSE CA", "7-Eleven San Jose"],
+    ["7-ELEVEN 34567 SAN JOSE CA", "7-Eleven"],
     // CSV bench: Citi pads the merchant to a column before the city; Capital One 360's dash.
     ["SPOTIFY USA              SAN FRANCISCO CA", "Spotify Usa"],
-    ["Debit Card Purchase - PAYPAL *HULU CHICAGO IL", "Hulu Chicago"],
-    ["Debit Card Purchase - HULU 877-8244858 CHICAGO IL", "Hulu Chicago"],
-    ["CHECKCARD 0818 PAYPAL *HULU DENVER CO 81486510203861977402251", "Hulu Denver"],
+    ["Debit Card Purchase - PAYPAL *HULU CHICAGO IL", "Hulu"],
+    ["Debit Card Purchase - HULU 877-8244858 CHICAGO IL", "Hulu"],
+    ["CHECKCARD 0818 PAYPAL *HULU DENVER CO 81486510203861977402251", "Hulu"],
     ["76 - CHEVRON 0091", "76 Chevron"],
     ["ORIG CO NAME:ACME CORP PAYROLL", "Acme Corp Payroll"],
     ["POS PURCHASE TARGET T-1234", "Target"],
@@ -24,7 +24,7 @@ describe("normalizeMerchant", () => {
     // Bank of America's ACH lines, Capital One 360's and Wells Fargo's card lines.
     ["NETFLIX.COM DES:NETFLIX.COM ID:XXXXX12345 INDN:SAM EXAMPLE CO ID:XXXXX WEB", "Netflix"],
     ["Debit Card Purchase - PLANET FITNESS 800-123-4567 NH", "Planet Fitness"],
-    ["PURCHASE AUTHORIZED ON 09/11 SAFEWAY #1234 OAKLAND CA S386254 CARD 1234", "Safeway Oakland"],
+    ["PURCHASE AUTHORIZED ON 09/11 SAFEWAY #1234 OAKLAND CA S386254 CARD 1234", "Safeway"],
   ])("cleans %j to %j", (description, name) => {
     expect(normalizeMerchant(description)?.name).toBe(name);
   });
@@ -37,11 +37,14 @@ describe("normalizeMerchant", () => {
   });
 
   it("offers the key without the city, only after a state", () => {
-    expect(withoutCity("SPOTIFY P1A2B3C4D5 CHICAGO IL")).toEqual(["spotify"]);
+    expect(withoutCity("SPOTIFY P1A2B3C4D5 EVANSTON IL")).toEqual(["spotify"]);
     expect(
-      withoutCity("CHECKCARD 0821 SPOTIFY P1A2B3C4D5 CHICAGO IL 17419018686842282428012"),
+      withoutCity("CHECKCARD 0821 SPOTIFY P1A2B3C4D5 EVANSTON IL 17419018686842282428012"),
     ).toEqual(["spotify"]);
-    expect(withoutCity("HULU 877-8244858 SAN FRANCISCO CA")).toEqual(["hulu san", "hulu"]);
+    expect(withoutCity("HULU 877-8244858 SANTA CLARA CA")).toEqual(["hulu santa", "hulu"]);
+    // A well-known city is already out of the key (CARD_CITIES).
+    expect(withoutCity("SPOTIFY P1A2B3C4D5 CHICAGO IL")).toEqual([]);
+    expect(normalizeMerchant("SPOTIFY P1A2B3C4D5 CHICAGO IL")?.key).toBe("spotify");
     expect(withoutCity("APPLE STORE R123")).toEqual([]);
   });
 
@@ -139,5 +142,33 @@ describe("acronyms in names", () => {
   it("leaves ordinary words as they were", () => {
     expect(normalizeMerchant("PLANET FITNESS CLUB FEES")?.name).toBe("Planet Fitness Club Fees");
     expect(normalizeMerchant("IRSA HOLDINGS")?.name).toBe("Irsa Holdings");
+  });
+});
+
+// Debugger 11-01: "Review your Doordash Dashpass San Francisco subscription" and "Peloton App
+// Membership New York": the city a card writes before its state stayed in the name and the key.
+// A well-known city goes from both, with or without the state after it, so a name saved before
+// ("Doordash Dashpass San Francisco") gives the same key as the bank's line. The migration
+// 20270419000000_merchant_without_card_city moves saved keys.
+describe("a city at the end", () => {
+  it("leaves a well-known city out of the name and the key", () => {
+    expect(normalizeMerchant("DOORDASH DASHPASS SAN FRANCISCO CA")).toEqual({
+      name: "Doordash Dashpass",
+      key: "doordash dashpass",
+    });
+    expect(normalizeMerchant("PELOTON APP MEMBERSHIP NEW YORK NY")?.name).toBe(
+      "Peloton App Membership",
+    );
+    expect(normalizeMerchant("NETFLIX.COM LOS GATOS CA")?.key).toBe("netflix");
+    // A name saved before this, read again.
+    expect(normalizeMerchant("Doordash Dashpass San Francisco")?.key).toBe("doordash dashpass");
+  });
+
+  it("keeps a city that is the name, or part of it", () => {
+    expect(normalizeMerchant("SEATTLE CA")?.name).toBe("Seattle");
+    expect(normalizeMerchant("NEW YORK TIMES DIGITAL")?.name).toBe("New York Times Digital");
+    expect(normalizeMerchant("UNIVERSITY OF CHICAGO")?.name).toBe("University Of Chicago");
+    expect(normalizeMerchant("CITY OF SAN JOSE")?.name).toBe("City Of San Jose");
+    expect(normalizeMerchant("ZELLE FROM CHICAGO")?.key).toBe("from chicago");
   });
 });

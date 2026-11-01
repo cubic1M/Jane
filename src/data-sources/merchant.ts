@@ -58,6 +58,58 @@ const US_STATES = new Set(
   ),
 );
 
+// Cities a card most often writes after the company ("DOORDASH DASHPASS SAN FRANCISCO CA",
+// debugger 11-01): left out of the name and the key, with or without the state after them, so a
+// name saved before gives the same key as the bank's line. Never the whole name, nor a city that
+// is part of it ("University of Chicago", "From Chicago"). The migration
+// 20270419000000_merchant_without_card_city does the same to saved keys: keep them in step.
+export const CARD_CITIES: readonly string[] = [
+  "NEW YORK",
+  "BROOKLYN",
+  "SAN FRANCISCO",
+  "LOS ANGELES",
+  "LOS GATOS",
+  "SAN JOSE",
+  "OAKLAND",
+  "SANTA MONICA",
+  "PALO ALTO",
+  "MOUNTAIN VIEW",
+  "MENLO PARK",
+  "CUPERTINO",
+  "SUNNYVALE",
+  "SAN DIEGO",
+  "SEATTLE",
+  "REDMOND",
+  "PORTLAND",
+  "CHICAGO",
+  "BOSTON",
+  "AUSTIN",
+  "DALLAS",
+  "HOUSTON",
+  "DENVER",
+  "PHOENIX",
+  "ATLANTA",
+  "MIAMI",
+  "PHILADELPHIA",
+];
+const BEFORE_A_CITY_IN_A_NAME = new Set(["OF", "IN", "AT", "THE", "&", "FROM", "TO"]);
+
+function withoutCardCity(text: string): string {
+  const words = text.split(" ");
+  for (const city of CARD_CITIES) {
+    const n = city.split(" ").length;
+    const rest = words.slice(0, -n);
+    if (
+      rest.length > 0 &&
+      words.slice(-n).join(" ") === city &&
+      !BEFORE_A_CITY_IN_A_NAME.has(rest[rest.length - 1])
+    ) {
+      return rest.join(" ");
+    }
+  }
+  return text;
+}
+
 // Reference codes and long numbers ("2K4L91", "000123") rather than names like "7-Eleven"
 // or "76": three or more digits, or a mix with at least two digits in five characters or more.
 function isCode(word: string): boolean {
@@ -138,7 +190,7 @@ export function normalizeMerchant(description: string): Merchant | null {
   if (Number.isInteger(half) && words.slice(0, half).join(" ") === words.slice(half).join(" ")) {
     words = words.slice(0, half);
   }
-  text = withoutPaymentApp(words.join(" "));
+  text = withoutCardCity(withoutPaymentApp(words.join(" ")));
 
   if (!text) return null;
   return { name: titleCase(text), key: text.toLowerCase() };
