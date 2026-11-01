@@ -684,7 +684,8 @@ const RULES: readonly Rule[] = [
   { category: "GENERAL_MERCHANDISE_CONVENIENCE_STORES", keywords: ["7-ELEVEN", "7 ELEVEN"] },
   {
     category: "GENERAL_MERCHANDISE_ELECTRONICS",
-    keywords: ["BEST BUY", "APPLE STORE", "MICRO CENTER"],
+    // "BESTBUY.COM": Best Buy's online orders, one word (debugger 11-01).
+    keywords: ["BEST BUY", "BESTBUY", "APPLE STORE", "MICRO CENTER"],
   },
   {
     category: "GENERAL_MERCHANDISE_CLOTHING_AND_ACCESSORIES",

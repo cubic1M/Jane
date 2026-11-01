@@ -194,6 +194,8 @@ describe("return windows", () => {
   it("uses the default window for shops not listed", () => {
     expect(returnWindowDays("corner shop")).toBe(RETURN_WINDOW_DAYS);
     expect(returnWindowDays("best buy 123")).toBe(15);
+    // Debugger 11-01: an online order's key is "bestbuy" ("BESTBUY.COM"); same shop, same window.
+    expect(returnWindowDays("bestbuy")).toBe(15);
     expect(returnWindowDays(undefined)).toBe(RETURN_WINDOW_DAYS);
   });
 
