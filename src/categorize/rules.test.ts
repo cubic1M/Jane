@@ -361,6 +361,19 @@ describe("categorizeByRules", () => {
     expect(out(description)).toBe(category);
   });
 
+  // Debugger 11-01: a freelancer's Bank of America lines put "DES:" between the company and the
+  // entry: six Stripe payouts ($14,086) read as transfers between her own accounts, so the tax
+  // estimate saw a fraction of her income, and the IRS estimated payment had no category.
+  it("reads a Bank of America ACH line's company and entry as one phrase", () => {
+    const stripe = "STRIPE DES:TRANSFER ID:ST-XXXXX INDN:TAYLOR EXAMPLE CO ID:XXXXX CCD";
+    expect(
+      categorizeByRules({ description: stripe, amountCents: -285_000, hints: {} })?.detailed,
+    ).toBe("INCOME_CONTRACTOR");
+    expect(out("IRS DES:USATAXPYMT ID:XXXXX7781 INDN:TAYLOR EXAMPLE CO ID:XXXXX CCD")).toBe(
+      "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
+    );
+  });
+
   // Night QA 10-30: a driver's pay from Uber, Lyft and DoorDash read as refunds of rides and meals.
   it.each([
     ["UBER USA 6787 EDI PAYMNT"],
