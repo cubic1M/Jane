@@ -104,8 +104,10 @@ class BotStats:
     errors: int = 0
     illegal: int = 0
     first_error: Optional[str] = None
+    times: list = field(default_factory=list)
 
     def add(self, dt: float, limit: float):
+        self.times.append(dt)
         self.decisions += 1
         self.total_time += dt
         self.max_time = max(self.max_time, dt)

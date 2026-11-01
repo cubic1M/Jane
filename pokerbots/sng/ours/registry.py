@@ -1,0 +1,4 @@
+"""Our sit-and-go candidates for sng.registry (merged automatically)."""
+BOTS = {
+    "icm_tag": ("sng.ours.icm_tag", "IcmTag"),
+}
