@@ -1,5 +1,6 @@
 import { MONTH_CLOSE_DAY } from "@/config/month-close";
 import { BOOKS_WORRYING_KINDS } from "@/config/books";
+import { nice } from "@/detectors/helpers";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { previousMonth } from "@/insights/check-in";
 
@@ -32,7 +33,8 @@ export type CloseView = {
   status: "waiting" | "closed";
   figures: CloseFigures;
   // While waiting: the charges asked about.
-  uncertain: { id: string; date: string; description: string; amountCents: number }[];
+  // Each charge asked about, with the name people read: its merchant, or the cleaned bank line.
+  uncertain: { id: string; date: string; description: string; name: string; amountCents: number }[];
   closedAt: string | null;
   correctedAt: string | null;
 };
@@ -238,11 +240,21 @@ export async function loadClose(
       ? []
       : await db.transactions.findMany({
           where: { id: { in: row.uncertain } },
-          select: { id: true, date: true, description: true, amountCents: true },
+          select: {
+            id: true,
+            date: true,
+            description: true,
+            merchantName: true,
+            amountCents: true,
+          },
           orderBy: { amountCents: "desc" },
         });
   return viewOf(
     row,
-    asked.map((t) => ({ ...t, date: t.date.toISOString().slice(0, 10) })),
+    asked.map(({ merchantName, ...t }) => ({
+      ...t,
+      date: t.date.toISOString().slice(0, 10),
+      name: merchantName ?? nice(t.description),
+    })),
   );
 }

@@ -991,7 +991,7 @@ async function runChatToolWork(
         plan: f.plan,
         worked: f.worked,
         waitingOn: view.uncertain.map((t) => ({
-          what: t.description,
+          what: t.name,
           on: t.date,
           amount: money(t.amountCents),
         })),

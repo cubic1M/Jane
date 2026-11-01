@@ -157,6 +157,8 @@ describe.runIf(url)("the monthly close", { timeout: 120_000 }, () => {
     const waiting = (await loadClose(userId, { client }))!;
     expect(waiting.status).toBe("waiting");
     expect(waiting.uncertain.map((t) => t.description)).toEqual(["WEWORK"]);
+    // Named for people (debugger 11-01): the merchant, or the cleaned bank line without one.
+    expect(waiting.uncertain.map((t) => t.name)).toEqual(["Wework"]);
 
     expect(parseIntent("is last month closed?", "2026-11-02")).toEqual({ kind: "month_close" });
     const reply = (await answerByRules(userId, { kind: "month_close" }, { client, now: NOW }))!;

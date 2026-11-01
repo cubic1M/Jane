@@ -84,7 +84,11 @@ const monthClose: Detector = {
     );
     if (unsure.length === 0) return null;
     const total = unsure.reduce((s, t) => s + t.amountCents, 0);
-    const names = unsure.map((t) => `${nice(t.description)} ${formatCents(t.amountCents)}`);
+    // The merchant's name where there is one, not the bank's line ("Debit Card Purchase - …").
+    const names = unsure.map(
+      (t) =>
+        `${data.transactions[Number(t.id)].merchantName ?? nice(t.description)} ${formatCents(t.amountCents)}`,
+    );
     return {
       id: suggestionId("close", "month_close"),
       capability: "close",
