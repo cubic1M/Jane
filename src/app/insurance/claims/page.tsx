@@ -7,6 +7,7 @@ import { eventLabel, guideFor, listClaims, nextStep, type Claim } from "@/lib/in
 import { kindWords } from "@/lib/insurance/gaps";
 import { listPolicies } from "@/lib/insurance/policies";
 import { requireUser } from "@/lib/session";
+import { todayOf } from "@/lib/today";
 import {
   claimNumber,
   draftClaimForm,
@@ -249,7 +250,7 @@ async function ClaimsContent({
   for (const c of claims) {
     if (await canFile(user.id, c, { partner })) filable.add(c.id);
   }
-  const today = new Date().toISOString().slice(0, 10);
+  const today = await todayOf(user.id);
   return (
     <>
       <AppHeader user={user} />

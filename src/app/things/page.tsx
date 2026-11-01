@@ -8,6 +8,7 @@ import { scopedDb } from "@/lib/db-scoped";
 import { formatCents, centsToInput } from "@/lib/money";
 import { isAssetKind, listAssets, type AssetLine } from "@/lib/owned-assets";
 import { requireUser } from "@/lib/session";
+import { todayOf } from "@/lib/today";
 import { deleteAsset } from "./actions";
 import { AssetForm } from "./asset-form";
 import { SubmitButton } from "@/components/submit-button";
@@ -63,7 +64,7 @@ async function ThingsContent({
     return typeof v === "string" ? v : "";
   };
   const db = await scopedDb();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = await todayOf(user.id);
   const [assets, loanRows] = await Promise.all([
     listAssets(user.id),
     db.accounts.findMany({

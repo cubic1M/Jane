@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { AppHeader, PageLoading } from "@/components/app-header";
 import { profileOf } from "@/lib/investments/profile";
 import { requireUser } from "@/lib/session";
+import { todayOf } from "@/lib/today";
 import { currentAge, profileSummary } from "@/planning/investor-profile";
 import { ProfileForm } from "./profile-form";
 
@@ -18,7 +19,7 @@ async function ProfileContent({
   const user = await requireUser();
   await connection();
   const { saved } = await searchParams;
-  const asOf = new Date().toISOString().slice(0, 10);
+  const asOf = await todayOf(user.id);
   const answers = await profileOf(user.id);
   const summary = profileSummary(answers, asOf);
   const age = currentAge(answers, asOf);

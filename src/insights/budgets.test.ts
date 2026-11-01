@@ -1,6 +1,6 @@
 import { OVER_BUDGET_CONFIDENCE } from "@/config/detection";
 import { describe, expect, it } from "vitest";
-import { budgetSummary, overBudgetAlerts } from "./budgets";
+import { budgetSummary, daysLeftWords, overBudgetAlerts } from "./budgets";
 import { spendingInsights, type InsightTransaction } from "./spending";
 
 const ASOF = "2026-10-20";
@@ -139,5 +139,25 @@ describe("budget suggestions are for flexible spending only", () => {
     // They're still categories a person can budget by hand.
     expect(categories).toContain("Loan payments");
     expect(categories).toContain("Rent and utilities");
+  });
+});
+
+// Debugger 11-01: on the month's last day /budgets said "0 days left this month".
+describe("daysLeftWords", () => {
+  it("says the last day as such, and counts the rest", () => {
+    expect(daysLeftWords(0)).toBe("Today is the last day of the month.");
+    expect(daysLeftWords(1)).toBe("1 day left this month.");
+    expect(daysLeftWords(11)).toBe("11 days left this month.");
+  });
+
+  it("an alert on the last day says so", () => {
+    const summary = budgetSummary(
+      transactions,
+      [{ category: "Food and drink", amountCents: 20_000 }],
+      "2026-10-31",
+    );
+    expect(overBudgetAlerts(summary)[0].body).toBe(
+      "You've spent $230.00 of your $200.00 budget, on the month's last day.",
+    );
   });
 });

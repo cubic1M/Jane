@@ -6,6 +6,7 @@ import { AppHeader, PageLoading } from "@/components/app-header";
 import { IRS_ESTIMATED_TAX_URL, type PreparerGroup } from "@/config/tax-pack";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { todayOf } from "@/lib/today";
 import { loadTaxPack } from "@/lib/tax-pack";
 import { selectableYears, taxYearFrom, type PackGroup } from "@/planning/tax-pack";
 import { QUARTER_LABELS, TAX_PACK_COPY as COPY } from "@/planning/tax-pack-copy";
@@ -73,7 +74,7 @@ async function TaxPackContent({
   const user = await requireUser();
   await connection();
   const now = new Date();
-  const today = now.toISOString().slice(0, 10);
+  const today = await todayOf(user.id, { now });
   const { year: asked } = await searchParams;
   const year = taxYearFrom(typeof asked === "string" ? asked : undefined, today);
   const pack = await loadTaxPack(user.id, year, { now });

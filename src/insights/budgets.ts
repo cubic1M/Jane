@@ -106,6 +106,13 @@ export type BudgetAlert = {
   confidence: { percent: number; reason: string };
 };
 
+// "11 days left this month."; on the last day, said as such rather than "0 days left".
+export function daysLeftWords(daysLeft: number): string {
+  return daysLeft === 0
+    ? "Today is the last day of the month."
+    : `${daysLeft} day${daysLeft === 1 ? "" : "s"} left this month.`;
+}
+
 // One alert per category per month, the first time spending passes the budget. The key
 // names the month, so later scans that month raise nothing new.
 export function overBudgetAlerts(summary: BudgetSummary): BudgetAlert[] {
@@ -115,7 +122,7 @@ export function overBudgetAlerts(summary: BudgetSummary): BudgetAlert[] {
       type: "over_budget",
       key: `${p.category}:${summary.month}`,
       title: `${p.category} is over budget this month`,
-      body: `You've spent ${formatCents(p.spentCents)} of your ${formatCents(p.budgetCents)} budget, with ${summary.daysLeft} day${summary.daysLeft === 1 ? "" : "s"} left in the month.`,
+      body: `You've spent ${formatCents(p.spentCents)} of your ${formatCents(p.budgetCents)} budget, ${summary.daysLeft === 0 ? "on the month's last day" : `with ${summary.daysLeft} day${summary.daysLeft === 1 ? "" : "s"} left in the month`}.`,
       confidence: { ...OVER_BUDGET_CONFIDENCE },
     }));
 }

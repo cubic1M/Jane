@@ -7,7 +7,7 @@ import { formatCents } from "@/lib/money";
 import { loadClose, type CloseView } from "@/lib/month-close";
 import { storedReport } from "@/lib/monthly-report-store";
 import { requireUser } from "@/lib/session";
-import { timezoneOf } from "@/lib/today";
+import { timezoneOf, todayOf } from "@/lib/today";
 import { categoryWords } from "@/planning/month-close";
 import { reportLines } from "@/planning/monthly-report";
 import { momentLabel, monthLabel } from "@/lib/day-label";
@@ -38,7 +38,7 @@ async function MonthlyContent({
 }) {
   const user = await requireUser();
   const { m } = await searchParams;
-  const latest = previousMonth(new Date().toISOString().slice(0, 10));
+  const latest = previousMonth(await todayOf(user.id));
   const asked = typeof m === "string" && MONTH.test(m) && m <= latest ? m : null;
   // With no month asked for, the newest report made, or else the month just ended.
   const [stored, timezone] = await Promise.all([storedReport(user.id, asked), timezoneOf(user.id)]);

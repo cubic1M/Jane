@@ -5,6 +5,7 @@ import { AppHeader, PageLoading } from "@/components/app-header";
 import { US_STATES } from "@/config/referrals";
 import { INCOME_KIND_ORDER, TAX_YEAR } from "@/config/tax";
 import { requireUser } from "@/lib/session";
+import { todayOf } from "@/lib/today";
 import { loadTaxProfile } from "@/lib/tax-profile";
 import { stateName } from "@/planning/tax-profile";
 import { scopedDb } from "@/lib/db-scoped";
@@ -29,7 +30,7 @@ async function ProfileContent() {
   const user = await requireUser();
   await connection();
   const db = await scopedDb();
-  const year = defaultTaxYear(new Date().toISOString().slice(0, 10));
+  const year = defaultTaxYear(await todayOf(user.id));
   const [view, demo, pay, residency] = await Promise.all([
     loadTaxProfile(user.id),
     hasDemoBank(user.id),

@@ -42,6 +42,7 @@ import { coverBody, coverActions } from "@/lib/jane-agent/insurance/cover-words"
 import { conditionWords, limitWords } from "@/lib/insurance/card-cover";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { todayOf } from "@/lib/today";
 import { autopilotOf } from "@/lib/autopilot";
 import { autopilotFor } from "@/lib/sector-autopilot";
 import { autopilotReply } from "@/lib/jane-agent/insurance/autopilot";
@@ -198,7 +199,7 @@ async function InsuranceContent({
     return typeof v === "string" ? v : "";
   };
   const now = new Date();
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await todayOf(user.id, { now });
   const [loaded, autopilot, insuranceArea] = await Promise.all([
     loadInsuranceArea(user.id, {
       now,

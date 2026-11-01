@@ -12,6 +12,7 @@ import { formatCents } from "@/lib/money";
 import { assetPrompts } from "@/lib/owned-assets";
 import { cryptoTotal } from "@/lib/crypto/crypto";
 import { requireUser } from "@/lib/session";
+import { todayOf } from "@/lib/today";
 import { BooksNotice } from "@/components/books-notice";
 import { openBooks } from "@/lib/books";
 import { monthLabel } from "@/lib/day-label";
@@ -20,7 +21,7 @@ async function NetWorthContent() {
   const user = await requireUser();
   await connection();
   const db = await scopedDb();
-  const asOf = new Date().toISOString().slice(0, 10);
+  const asOf = await todayOf(user.id);
   const [first] = monthsEnding(asOf, NET_WORTH_MONTHS);
   const [accounts, snapshots, ownedRows, crypto] = await Promise.all([
     db.accounts.findMany({

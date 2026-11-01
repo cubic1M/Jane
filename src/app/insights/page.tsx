@@ -12,13 +12,14 @@ import { spendingInsights, spendingLines } from "@/insights/spending";
 import { accountLabels } from "@/lib/account-labels";
 import { scopedDb } from "@/lib/db-scoped";
 import { requireUser } from "@/lib/session";
+import { todayOf } from "@/lib/today";
 import { CashIncomeNote } from "./cash-income";
 import { SpendingExplorer } from "./explorer";
 
 async function Insights() {
   const user = await requireUser();
   const db = await scopedDb();
-  const asOf = new Date().toISOString().slice(0, 10);
+  const asOf = await todayOf(user.id);
   const transactions = await loadInsightTransactions(db, asOf, INSIGHT_MONTHS);
   if (transactions.length === 0) redirect("/home");
 
