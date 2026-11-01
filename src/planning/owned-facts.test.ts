@@ -69,7 +69,10 @@ describe("what a person owns, as facts", () => {
     expect(f.sentences.join(" ")).toMatch(
       /cost about \$52\.50 a year in fees, mostly ARKK at \$37\.50/,
     );
-    expect(f.sentences.join(" ")).toMatch(/don't know the yearly cost of XYZFX/);
+    // One fund is "it", not "they" (debugger 11-01).
+    expect(f.sentences.join(" ")).toMatch(
+      /don't know the yearly cost of XYZFX, so it's not in that total\./,
+    );
     expect(f.sentences.join(" ")).toMatch(/\$6,000\.00 \(8%\) is uninvested cash/);
   });
 

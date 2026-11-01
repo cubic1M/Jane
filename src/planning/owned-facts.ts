@@ -98,7 +98,7 @@ export function ownedFacts(accounts: readonly InvestmentAccountView[]): OwnedFac
   }
   if (fees.unknownNames.length > 0) {
     sentences.push(
-      `I don't know the yearly cost of ${fees.unknownNames.slice(0, 4).join(", ")}${fees.unknownNames.length > 4 ? " and others" : ""}, so they're not in that total.`,
+      `I don't know the yearly cost of ${fees.unknownNames.slice(0, 4).join(", ")}${fees.unknownNames.length > 4 ? " and others" : ""}, so ${fees.unknownNames.length === 1 ? "it's" : "they're"} not in that total.`,
     );
   }
   if (cashCents > 0) {

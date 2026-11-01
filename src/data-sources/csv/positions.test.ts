@@ -8,6 +8,7 @@ import {
   parseNumber,
   readPositionsFile,
   subtypeFromName,
+  typeFromName,
   type PositionsFile,
 } from "./positions";
 
@@ -231,5 +232,49 @@ describe("helpers", () => {
     expect(subtypeFromName("ACME 401(K) PLAN")).toBe("401k");
     expect(subtypeFromName("Roth 401(k)")).toBe("roth 401k");
     expect(subtypeFromName("Individual")).toBe("brokerage");
+  });
+});
+
+// Debugger 11-01: a Fidelity file doesn't say what each holding is, so Apple was stored with no
+// type: /investments said "I don't know the yearly cost of FMAGX, AAPL" (a stock has none) and
+// counted it as "other", not US stocks. The file's own words tell funds, ETFs and stocks apart.
+describe("what each holding is, when the file doesn't say", () => {
+  const types = (file: PositionsFile, account = 0) =>
+    file.accounts[account].positions.map((p) => [p.ticker, p.type]);
+
+  it("reads mutual funds, ETFs and stocks from the ticker and the name", () => {
+    expect(typeFromName("FMAGX", "FIDELITY MAGELLAN")).toBe("mutual fund");
+    expect(typeFromName("VTI", "VANGUARD INDEX FDS VANGUARD TOTAL STK MKT ETF")).toBe("etf");
+    expect(typeFromName("SPY", "SPDR S&P 500 ETF TRUST")).toBe("etf");
+    expect(typeFromName("AAPL", "APPLE INC")).toBe("equity");
+    expect(typeFromName("MSFT", "MICROSOFT CORP")).toBe("equity");
+    expect(typeFromName("BRK/B", "BERKSHIRE HATHAWAY INC CL B")).toBe("equity");
+    // A fund's words without a fund ticker: a fund, but which kind isn't known.
+    expect(typeFromName("QQQ", "INVESCO QQQ TRUST SERIES 1")).toBeNull();
+    expect(typeFromName("XYZ", "SOMETHING")).toBeNull();
+  });
+
+  it("types Fidelity's and Vanguard's rows, and Robinhood's stocks as stocks", () => {
+    expect(types(read("fidelity.csv"))).toEqual([
+      ["SPAXX", "cash"],
+      ["FMAGX", "mutual fund"],
+      ["FXAIX", "mutual fund"],
+    ]);
+    expect(types(read("fidelity.csv"), 1)).toEqual([
+      [null, "cash"],
+      ["VTI", "etf"],
+    ]);
+    expect(types(read("vanguard.csv"))).toContainEqual(["VTSAX", "mutual fund"]);
+    expect(types(read("robinhood.csv"))).toEqual([
+      ["AAPL", "equity"],
+      ["VOO", "etf"],
+      [null, "cash"],
+    ]);
+    // A fund Robinhood names without "ETF" isn't called a stock.
+    const qqq = readPositionsFile(
+      text("robinhood.csv").replace(/"VOO","Vanguard S&P 500 ETF/g, '"QQQ","Invesco QQQ Trust'),
+    );
+    if ("error" in qqq) throw new Error(qqq.error);
+    expect(types(qqq)).toContainEqual(["QQQ", null]);
   });
 });
