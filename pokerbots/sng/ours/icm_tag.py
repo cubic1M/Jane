@@ -38,6 +38,7 @@ PARAMS = dict(
     reshove_bb=24.0,
     read_alpha=0.0,      # per-seat raise-rate read: raiser range_k x (base_pfr / their pfr)^alpha
     base_pfr=0.12,
+    raiser_discount=1.0, # postflop: equity x this when an opponent still in raised preflop
     bluff_bonus=0.0,     # postflop: bet half pot with prob bluff_bonus x (2 x opponents' fold-to-bet - 1)
     bluff_max_opp=2,     # ... only with at most this many opponents in the hand
     cap_risk=0.0,        # near the hand cap: risk premium + cap_risk x (my stack / average - 1)
@@ -219,6 +220,9 @@ class IcmTag:
         opp = [s for s in range(len(seats)) if s != obs.seat and seats[s].in_hand and not seats[s].folded]
         k = len(opp)
         eq = self._eq(obs, k)
+        if p["raiser_discount"] != 1.0 and any(
+                h[1] == 0 and h[2] == "raise" and h[0] in opp for h in obs.history):
+            eq *= p["raiser_discount"]
         street_acts = [h for h in obs.history if h[1] == obs.street]
         facing = lg.call_amount > 0
         pot = obs.pot
