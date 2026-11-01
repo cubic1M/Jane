@@ -31,7 +31,8 @@ PARAMS = dict(
     cbet=0.55,           # c-bet frequency heads-up as the preflop aggressor
     bet_frac=0.65,       # postflop bet size (fraction of pot)
     bet_discount=0.6,   # opponent's bet/raise: our equity x this (their range is stronger)
-    steal_bonus=0.25,    # lower the open bar by up to this much vs seats that fold to steals
+    steal_bonus=0.25,
+    reshove_bb=24.0,     # facing a raise with a 3-bet hand: shove (not 3-bet) at or below this stack    # lower the open bar by up to this much vs seats that fold to steals
 )
 
 
@@ -153,7 +154,7 @@ class IcmTag:
         if allin_call or call > 0.4 * obs.my_stack:
             need += self._risk(obs)
         if eq >= p["threebet_eq"] and lg.can_raise:
-            if eff_bb <= p["push_bb"] * 2:
+            if eff_bb <= p["reshove_bb"]:
                 return RaiseTo(lg.max_raise_to)
             last = raises[-1][3]
             self.aggressor = obs.seat
