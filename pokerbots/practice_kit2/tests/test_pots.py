@@ -19,10 +19,21 @@ class TestSidePots(unittest.TestCase):
         t = table(bots, stacks=[100, 300, 1000], deck_factory=rig(holes, BOARD))
         t.play_hand()
         pots = t.last_hand["pots"]
-        self.assertEqual([p["amount"] for p in pots], [300, 400, 700])
-        self.assertEqual([p["eligible"] for p in pots], [[0, 1, 2], [1, 2], [2]])
-        self.assertEqual([p["winners"] for p in pots], [[0], [1], [2]])
+        # the big stack acts last facing two all-ins: its raise is a call
+        self.assertEqual([p["amount"] for p in pots], [300, 400])
+        self.assertEqual([p["eligible"] for p in pots], [[0, 1, 2], [1, 2]])
+        self.assertEqual([p["winners"] for p in pots], [[0], [1]])
         self.assertEqual([e.stack for e in t.entrants], [300, 400, 700])
+
+    def test_unmatched_all_in_comes_back(self):
+        holes = [["2C", "7D"], ["AS", "AD"]]
+        bots = [agent("big", script([SHOVE])), agent("small", script([CALL]))]
+        t = table(bots, stacks=[2000, 500], deck_factory=rig(holes, BOARD))
+        t.play_hand()
+        pots = t.last_hand["pots"]
+        self.assertEqual([(p["amount"], p["winners"]) for p in pots],
+                         [(1000, [1]), (1500, [0])])
+        self.assertEqual([e.stack for e in t.entrants], [1500, 1000])
 
     def test_short_stack_loses_main_but_side_pot_paid_separately(self):
         holes = [["2C", "7D"], ["AS", "AD"], ["KS", "KD"]]
