@@ -70,6 +70,7 @@ async function Insights() {
         categoriesByMonth={insights.categoriesByMonth}
         initialMonth={latest}
         changes={insights.changes}
+        changeMonths={insights.changeMonths}
         topMerchants={insights.topMerchants}
         lines={lines}
         incomeNote={cash && <CashIncomeNote status={cash} />}

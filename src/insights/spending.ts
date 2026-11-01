@@ -35,8 +35,10 @@ export type SpendingInsights = {
   // Spending by category in each month, largest first.
   categoriesByMonth: Record<string, CategoryTotal[]>;
   topMerchants: MerchantTotal[];
-  // The latest month compared with the one before, biggest changes first.
+  // The newest month with spending compared with the one before, biggest changes first.
   changes: CategoryChange[];
+  // Which two months those are; null with only one month.
+  changeMonths: { before: string; after: string } | null;
 };
 
 const TOP_MERCHANTS = 10;
@@ -129,8 +131,12 @@ export function spendingInsights(
     ]),
   );
 
-  // The last two months compared; with only one month there's nothing to compare.
-  const [before, after] = months.length >= 2 ? months.slice(-2) : [];
+  // The newest month with spending against the one before it; with only one month there's
+  // nothing to compare. On the 1st, this month has nothing yet: comparing it made every
+  // category "down" by all of last month (debugger 11-01).
+  const newest = months.findLastIndex((m) => totals.get(m)!.spendingCents > 0);
+  const end = newest >= 1 ? newest + 1 : months.length;
+  const [before, after] = end >= 2 ? months.slice(end - 2, end) : [];
   const changes = before
     ? [...new Set([...byCategory.get(before)!.keys(), ...byCategory.get(after)!.keys()])]
         .map((category) => {
@@ -155,6 +161,7 @@ export function spendingInsights(
       TOP_MERCHANTS,
     ),
     changes,
+    changeMonths: before ? { before, after } : null,
   };
 }
 
