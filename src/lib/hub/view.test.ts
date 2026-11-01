@@ -371,6 +371,23 @@ describe("the area tiles", () => {
     ]);
   });
 
+  // Debugger 11-01: a new person uploaded three months on the 1st and Home said "$0 Spent this
+  // month" beside October's bar.
+  it("show last month's spending by name on the 1st, before anything is spent", () => {
+    const first = areas({
+      money: {
+        months: [
+          { month: "2026-09", spendingCents: 410_000 },
+          { month: "2026-10", spendingCents: 231_000 },
+          { month: "2026-11", spendingCents: 0 },
+        ],
+        budgetsOver: 0,
+      },
+    });
+    expect(tileOf(first, "money")).toMatchObject({ value: "$2.3k", caption: "Spent in October" });
+    expect(tileOf(areas(), "money")).toMatchObject({ caption: "Spent this month" });
+  });
+
   it("show one number each, short", () => {
     expect(tilesView(areas()).map((t) => t.value)).toEqual([
       "$2.3k",
