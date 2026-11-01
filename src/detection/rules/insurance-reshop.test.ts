@@ -43,6 +43,31 @@ describe("insurance_reshop", () => {
     expect(finding?.title).toBe("Your State Farm insurance could cost less");
   });
 
+  // Debugger 11-01: a soldier's USAA car and renters policies, both "USAA Insurance" on the
+  // statement, made two cards both titled "Your USAA insurance could cost less".
+  it("tells two policies from one insurer apart by their price", () => {
+    const usaa = {
+      description: "USAA Insurance",
+      merchantName: null,
+      pfcPrimary: "GENERAL_SERVICES",
+      pfcDetailed: "GENERAL_SERVICES_INSURANCE",
+    };
+    const transactions = [
+      ...monthly(4, 13_822, { ...usaa, id: "car" }),
+      ...monthly(4, 1_450, { ...usaa, id: "renters" }),
+    ].map((t, i) => ({ ...t, id: `usaa-${i}` }));
+    const titles = run(input({ transactions }))
+      .map((f) => f.title)
+      .sort();
+    expect(titles).toEqual([
+      "Your USAA insurance at $138.22 could cost less",
+      "Your USAA insurance at $14.50 could cost less",
+    ]);
+    expect(run(input({ transactions: monthly(4, 9800, GEICO) }))[0].title).toBe(
+      "Your GEICO insurance could cost less",
+    );
+  });
+
   it("finds nothing without insurance payments", () => {
     expect(run(input({ transactions: monthly(4, 1549, NETFLIX) }))).toEqual([]);
   });
