@@ -3,7 +3,7 @@
   "open_mult": 0.9727,
   "open_size": 2.0,
   "push_bb": 9.0,
-  "push_mult": 1.0,
+  "push_mult": 0.9091,
   "range_k": 4.0,
   "call_margin": 0.06,
   "threebet_eq": 0.62,
@@ -135,7 +135,45 @@
    ],
    "seconds": 943,
    "also_taken": []
+  },
+  {
+   "round": 3,
+   "incumbent": "icm_tag:open_mult=0.9727;read_alpha=0.25;steal_max_behind=7",
+   "incumbent_points": 60.94983261887742,
+   "best": "icm_tag:open_mult=0.9727;push_mult=0.9091;read_alpha=0.25;steal_max_behind=7",
+   "gain": 1.3576539984013538,
+   "se": 1.2717336535176846,
+   "accepted": true,
+   "top5": [
+    [
+     "icm_tag:open_mult=0.9727;push_mult=0.9091;read_alpha=0.25;steal_max_behind=7",
+     1.36,
+     1.27
+    ],
+    [
+     "icm_tag:open_mult=0.9727;open_size=1.5;read_alpha=0.25;steal_max_behind=7",
+     0.77,
+     1.29
+    ],
+    [
+     "icm_tag:bet_frac=0.8;open_mult=0.9727;read_alpha=0.25;steal_max_behind=7",
+     0.7,
+     1.35
+    ],
+    [
+     "icm_tag:bet_frac=0.5;open_mult=0.9727;read_alpha=0.25;steal_max_behind=7",
+     0.64,
+     1.47
+    ],
+    [
+     "icm_tag:open_mult=0.9727;read_alpha=0.25;steal_max_behind=7;threebet_rel=2.8",
+     0.37,
+     1.18
+    ]
+   ],
+   "seconds": 969,
+   "also_taken": []
   }
  ],
- "round": 3
+ "round": 4
 }
