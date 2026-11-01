@@ -68,14 +68,31 @@ def post_key(ctx, hole, board, street) -> str:
 
 
 # ---- discard / draw policy (shared by the simulator and the bot) -----------------------
-def _kept_value(ctx, kept, board, draw: bool):
+_HC = {}
+
+
+def _hc_code(ctx):
+    """The category code of a high-card hand under this spec's evaluator (not always 0)."""
+    if ctx.sig not in _HC:
+        lo = ctx.ranks
+        _HC[ctx.sig] = F.evaluate(ctx, (lo[0] << 2 | 0, lo[2] << 2 | 1), ())[0] >> 20
+    return _HC[ctx.sig]
+
+
+def _kept_value(ctx, kept, board, draw: bool, out=(), to_board=False):
     """Score a kept set. Without a draw: the full score of kept + board. With a draw:
     the category made now (kickers ignored), then four-to-a-flush / -straight, then
     high cards, so that drawing to a pair beats holding a weak kicker."""
     score = F.evaluate(ctx, kept, board)[0] if (len(kept) + len(board)) else 0
+    hc = _hc_code(ctx)
     if not draw:
+        if to_board:
+            # cards sent to the board help everyone: value my category over the board's,
+            # then my score, then throw the lowest card
+            bcat = (F.evaluate(ctx, (), board)[0] >> 20) if board else hc
+            return ((score >> 20) - bcat, score, -max((c >> 2 for c in out), default=-1))
         return (score,)
-    cat = score >> 20
+    cat = (score >> 20) - hc          # 0 = high card, 1 = pair, ...
     cards = list(kept) + list(board)
     suits = [0, 0, 0, 0]
     for c in cards:
@@ -99,7 +116,7 @@ def choose_discard(ctx, hole, board, n_min, n_max, draw, to_board):
         for out in combinations(hole, n):
             kept = tuple(c for c in hole if c not in out)
             b = tuple(board) + (out if to_board else ())
-            v = _kept_value(ctx, kept, b, draw)
+            v = _kept_value(ctx, kept, b, draw, out, to_board)
             if best_v is None or v > best_v:
                 best, best_v = out, v
     return best if best is not None else ()
