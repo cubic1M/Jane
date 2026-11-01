@@ -816,6 +816,17 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   real table, and never lost significantly in 9 cells. **Conclusion: the defaults sit near
   a robust optimum across two independently written fields.** Gains left in single knobs are below what 400–600
   paired tables can detect (±2–4 points).
+* **ICM push/fold equilibrium charts** (`sng/ours/pushfold.py`): the short-stack game is
+  solved by fictitious play (shove or fold first in; call or fold a shove) with ICM payoffs.
+  It covers 169 hand classes, 2–8 players and 2–20bb, on an equity matrix from 89M deals.
+  - **Sanity:** heads-up at 10bb the solver shoves 59% / calls 37%, matching published
+    Nash ranges. On the day, rebuilding for the real point table takes 13 s.
+  - **Not adopted** (`results/sng_pushfold_ab.md`). Used at ≤ 10bb the charts are neutral
+    (+1.5 / −0.0 / −0.9 on field 2 / default / mirror). Used deeper they lose (mirror
+    −6.8 at ≤ 15bb, −9.5 at ≤ 20bb, both significant).
+  - The charts assume opponents call like an equilibrium bot. Real fields fold to all-ins
+    far more (87–98% in field 3), so `icm_tag`'s tuned, steal-reading shove rule earns more
+    than the equilibrium does.
 * The tuner (`sng/tune.py`) is reusable on the day with the real rules as a preset
   (`--preset`), at 10–20 minutes per round. Robustness
   to other fields and point tables is next, since both are guesses until the day.
