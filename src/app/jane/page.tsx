@@ -1,4 +1,4 @@
-import { SAVED_SO_FAR_LABEL } from "@/lib/saved-amount";
+import { SAVED_SO_FAR_LABEL, doneSummary } from "@/lib/saved-amount";
 import { isHiddenPage } from "@/config/hidden-pages";
 import Link from "next/link";
 import { connection } from "next/server";
@@ -328,13 +328,7 @@ async function JaneContent() {
 
       <Section
         title="Done"
-        summary={
-          done.savedToDateCents > 0
-            ? `about ${formatCents(done.savedToDateCents)} a year saved`
-            : done.items.length === 0
-              ? "nothing yet"
-              : `${done.items.length} finished`
-        }
+        summary={doneSummary(done.savedToDateCents, done.items.length)}
         links={[
           { href: "/actions", label: "See all" },
           { href: "/saved", label: "What Jane saved you" },

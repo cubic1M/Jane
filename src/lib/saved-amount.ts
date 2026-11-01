@@ -1,3 +1,5 @@
+import { formatCents } from "@/lib/money";
+
 // What a finished action is worth, by one rule everywhere (docs/feature-audit.md, cluster 9): a
 // refund the company sent, else a lower price the company agreed to (a year of it), else the
 // estimate on the card. "Confirmed" is kept for what the person's own transactions show
@@ -16,3 +18,10 @@ export const BACK_OR_AGREED = "back or agreed";
 // expected savings, not what the transactions confirmed (/saved): it's labelled so wherever it's
 // shown, so the two totals never look like the same number.
 export const SAVED_SO_FAR_LABEL = "Saved so far (expected)";
+
+// The "Done" section's one line on /jane: the saved-to-date total is expected, as above, never
+// "saved" before the transactions show it (debugger 11-01).
+export function doneSummary(savedToDateCents: number, finished: number): string {
+  if (savedToDateCents > 0) return `about ${formatCents(savedToDateCents)} a year expected`;
+  return finished === 0 ? "nothing yet" : `${finished} finished`;
+}
