@@ -69,6 +69,14 @@ const RULES: readonly Rule[] = [
       "NON-WF ATM",
     ],
   },
+  // A card's own annual fee: the line is the fee ("ANNUAL FEE", Bank of America's way; debugger
+  // 11-01: it read as "Review your Annual Fee subscription"). Not a gym's "PLANET FITNESS ANNUAL
+  // FEE", which is the membership's yearly price.
+  {
+    category: "BANK_FEES_OTHER_BANK_FEES",
+    pattern: /^(?:ANNUAL (?:CARD )?FEE|YEARLY FEE)\b/,
+    direction: "out",
+  },
   // A fee given back, however the bank words it (Chase's "FEE REVERSAL"): it nets against the
   // fee, so the fees finding doesn't ask for money already returned (CSV bench).
   {

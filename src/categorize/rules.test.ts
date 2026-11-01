@@ -114,6 +114,12 @@ describe("categorizeByRules", () => {
     ["PAPER STATEMENT FEE", "BANK_FEES_OTHER_BANK_FEES"],
     ["STATEMENT FEE", "BANK_FEES_OTHER_BANK_FEES"],
     ["STOP PAYMENT FEE", "BANK_FEES_OTHER_BANK_FEES"],
+    // Debugger 11-01: a Bank of America card's "ANNUAL FEE" read as "Review your Annual Fee
+    // subscription", a plan to cancel rather than a card's fee to have waived.
+    ["ANNUAL FEE", "BANK_FEES_OTHER_BANK_FEES"],
+    ["ANNUAL CARD FEE", "BANK_FEES_OTHER_BANK_FEES"],
+    ["YEARLY FEE", "BANK_FEES_OTHER_BANK_FEES"],
+    ["ANNUAL FEE FOR 10/2026", "BANK_FEES_OTHER_BANK_FEES"],
     ["NON-CHASE ATM FEE-WITH", "BANK_FEES_ATM_FEES"],
     ["OVERDRAFT FEE FOR A $40.00 ITEM", "BANK_FEES_OVERDRAFT_FEES"],
     ["PURCHASE INTEREST CHARGE", "BANK_FEES_INTEREST_CHARGE"],
@@ -377,6 +383,15 @@ describe("categorizeByRules", () => {
     expect(out("IRS DES:USATAXPYMT ID:XXXXX7781 INDN:TAYLOR EXAMPLE CO ID:XXXXX CCD")).toBe(
       "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
     );
+  });
+
+  it("leaves a gym's yearly fee to the gym", () => {
+    const out = categorizeByRules({
+      description: "PLANET FITNESS ANNUAL FEE AUSTIN TX",
+      amountCents: 4_900,
+      hints: {},
+    })?.detailed;
+    expect(out).not.toMatch(/^BANK_FEES/);
   });
 
   // Night QA 10-30: a driver's pay from Uber, Lyft and DoorDash read as refunds of rides and meals.
