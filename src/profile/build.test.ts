@@ -75,6 +75,32 @@ describe("the picture of you", () => {
     expect(facts("ACME MUTUAL PREMIUM").insurance_auto).toMatchObject({ value: false });
   });
 
+  // Debugger 11-01: a couple's "BANNER LIFE INSURANCE CO PREMIUM AUTOPAY" read as car cover ("AUTO"
+  // in "AUTOPAY"), and words inside other words counted ("TERM" in "TERMINIX").
+  it("reads cover words as whole words, and AUTOPAY isn't car cover", () => {
+    const base = inputFor("renter");
+    const others = base.transactions.filter((t) => t.pfc !== "GENERAL_SERVICES_INSURANCE");
+    const facts = (description: string) =>
+      buildProfile({
+        ...base,
+        transactions: [
+          ...others,
+          ...["2026-08-12", "2026-09-12", "2026-10-12"].map((date) => ({
+            date,
+            amountCents: 4_830,
+            description,
+            pfc: "GENERAL_SERVICES_INSURANCE",
+            accountId: base.accounts[0].id,
+          })),
+        ],
+      }).facts;
+    const life = facts("BANNER LIFE INSURANCE CO PREMIUM AUTOPAY");
+    expect(life.insurance_auto).toMatchObject({ value: false });
+    expect(life.insurance_life).toMatchObject({ value: true });
+    expect(facts("ACME AUTO INSURANCE").insurance_auto).toMatchObject({ value: true });
+    expect(facts("TERMINIX PEST PLAN").insurance_life).toMatchObject({ value: false });
+  });
+
   it("puts what the person told Jane first, at 100%", () => {
     const base = buildProfile(inputFor("family")).facts;
     const told = buildProfile(inputFor("family", { has_children: false, age: 41 })).facts;

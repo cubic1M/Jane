@@ -698,16 +698,27 @@ export function buildProfile(input: ProfileInput): Profile {
       return pattern.test(t.description) || (insurer !== null && kinds.includes(insurer));
     });
   for (const [key, pattern, kinds, what] of [
-    ["insurance_auto", /AUTO|GEICO|PROGRESSIVE/i, ["auto"], "car-cover charges"],
-    ["insurance_home", /HOME|HOMEOWNERS|RENTERS/i, ["home", "renters"], "home-cover charges"],
-    ["insurance_life", /LIFE|NEW YORK LIFE|TERM/i, ["life"], "life-cover charges"],
+    // Whole words, and "AUTOPAY" isn't car cover (debugger 11-01: a life premium's "AUTOPAY").
+    [
+      "insurance_auto",
+      /\b(?:AUTO(?![ -]?PAY)|GEICO|PROGRESSIVE)\b/i,
+      ["auto"],
+      "car-cover charges",
+    ],
+    [
+      "insurance_home",
+      /\b(?:HOME|HOMEOWNERS|RENTERS)\b/i,
+      ["home", "renters"],
+      "home-cover charges",
+    ],
+    ["insurance_life", /\b(?:LIFE|TERM)\b/i, ["life"], "life-cover charges"],
     [
       "insurance_health",
-      /HEALTHCARE|MARKETPLACE|BLUE CROSS|AETNA/i,
+      /\b(?:HEALTHCARE|MARKETPLACE|BLUE CROSS|AETNA)\b/i,
       ["health"],
       "health-cover charges",
     ],
-    ["insurance_medigap", /MEDIGAP|SUPPLEMENT|MEDICARE/i, [], "Medicare cover charges"],
+    ["insurance_medigap", /\b(?:MEDIGAP|SUPPLEMENT|MEDICARE)\b/i, [], "Medicare cover charges"],
   ] as const) {
     const n = cover(pattern, kinds);
     set(key, n > 0, "seen", what, n);
