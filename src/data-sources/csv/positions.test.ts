@@ -278,3 +278,13 @@ describe("what each holding is, when the file doesn't say", () => {
     expect(types(qqq)).toContainEqual(["QQQ", null]);
   });
 });
+
+// Debugger 11-01: "Schwab Us Broad Market Etf", "Vanguard S&P 500 Etf": a fund's abbreviations
+// keep their capitals once its name is no longer all capitals.
+describe("fund names", () => {
+  it("keeps US, ETF and the like in capitals", () => {
+    const schwab = read("schwab-all-accounts.csv");
+    expect(schwab.accounts[1].positions[0].name).toBe("Schwab US Broad Market ETF");
+    expect(schwab.accounts[0].positions[0].name).toBe("Schwab S&P 500 Index");
+  });
+});
