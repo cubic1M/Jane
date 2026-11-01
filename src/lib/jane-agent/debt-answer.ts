@@ -1,3 +1,4 @@
+import { conciergeMode } from "@/lib/concierge-mode";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { loadPayoff } from "@/lib/debt-plan";
 import { loadDebts } from "@/lib/debts";
@@ -150,7 +151,9 @@ export async function answerDebt(
     case "family_credit":
       return familyCreditReply(await loadFamilyCredit(userId, { client, now }));
     case "renting":
-      return rentingReply(await loadRenting(userId, { client, now }));
+      return rentingReply(await loadRenting(userId, { client, now }), {
+        actsForYou: await conciergeMode(userId, { client }),
+      });
     case "mortgage_money": {
       try {
         return mortgageMoneyReply(

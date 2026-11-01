@@ -39,7 +39,12 @@ export function depositLines(d: Renting): string[] {
   });
 }
 
-export function rentingReply(d: Renting): Reply {
+// `actsForYou`: whether Jane acts for the person (src/lib/concierge-mode.ts). A real account in
+// the read-only beta gets the fact, not an offer to report through the stand-in partner.
+export function rentingReply(
+  d: Renting,
+  { actsForYou = true }: { actsForYou?: boolean } = {},
+): Reply {
   if (!d.renter && d.deposits.length === 0) {
     return {
       body: "I don't see rent payments in your bank data, so there's nothing to report or compare yet. If you've moved out and want a deposit followed, add it on your rent page.",
@@ -55,11 +60,13 @@ export function rentingReply(d: Renting): Reply {
       lines.push(
         `Your rent is being reported to the credit bureaus (since ${dayLabel(d.reporting.since!)}). You can turn it off on your rent page.`,
       );
-    } else {
+    } else if (actsForYou) {
       lines.push(
         `It isn't on your credit file. ${d.reporting.note} It costs about ${formatCents(d.reporting.monthlyFeeCents)} a month and only starts if you say yes.`,
       );
       actions.push(reportOnButton());
+    } else {
+      lines.push(`It isn't on your credit file. ${d.reporting.note}`);
     }
     if (d.rise) {
       lines.push(

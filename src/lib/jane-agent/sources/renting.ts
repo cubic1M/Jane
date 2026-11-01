@@ -40,7 +40,9 @@ export const rentingSource: MessageSource = {
         priority: MESSAGE_PRIORITY.rent_rise,
       });
     }
-    if (d.renter && !d.reporting.on) {
+    // Only where Jane acts for the person (debugger 11-01: a real account was offered reporting
+    // through the stand-in partner, which reports nothing; read-only mode, src/lib/concierge-mode.ts).
+    if (d.renter && !d.reporting.on && snapshot.concierge !== false) {
       out.push({
         kind: "heads_up",
         body: `You pay ${formatCents(d.monthlyCents!)} in rent on time and it isn't building your credit. I can have it reported to the credit bureaus; it costs about ${formatCents(d.reporting.monthlyFeeCents)} a month and only starts if you say yes.`,
