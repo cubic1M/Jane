@@ -213,3 +213,33 @@ describe("every debt in one place", () => {
     expect(sourceLabel(null)).toBe("not known yet");
   });
 });
+
+// Debugger 11-01: "Pennymac Loan Services Mortgage mortgage" on /loans: the lender's name already
+// said what the loan was, and the kind was added again.
+describe("a loan seen only in payments", () => {
+  const paid = (lender: string, kind: "student" | "auto" | "mortgage") => ({
+    key: `${kind}:${lender.toLowerCase()}`,
+    lender,
+    kind,
+    paymentCents: 265_040,
+    paymentsMade: 3,
+    lastDate: "2026-10-01",
+    nextDate: "2026-11-01",
+  });
+  const names = (...loans: ReturnType<typeof paid>[]) =>
+    debtBook({ accounts: [], plans: [], typed: [], paid: loans }, AS_OF).debts.map((d) => d.name);
+
+  it("says what it is once", () => {
+    expect(
+      names(
+        paid("Pennymac Loan Services Mortgage", "mortgage"),
+        paid("Navient Student Loan", "student"),
+        paid("Toyota Motor Cr", "auto"),
+      ).sort(),
+    ).toEqual([
+      "Navient Student Loan",
+      "Pennymac Loan Services Mortgage",
+      "Toyota Motor Cr car loan",
+    ]);
+  });
+});

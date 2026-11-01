@@ -276,7 +276,8 @@ function paidDebt(p: PaidLoan, typed: TypedTerms | undefined, asOf: string): Deb
   return {
     key: `paid:${p.key}`,
     accountId: null,
-    name: `${p.lender} ${words}`,
+    // Once: "Pennymac Loan Services Mortgage", not "… Mortgage mortgage" (debugger 11-01).
+    name: p.lender.toLowerCase().includes(words) ? p.lender : `${p.lender} ${words}`,
     kind: p.kind,
     kindLabel: `${words.charAt(0).toUpperCase()}${words.slice(1)}, seen in your payments`,
     balanceCents,

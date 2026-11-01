@@ -54,6 +54,9 @@ export type SettingsTreeInput = {
   // Accounts imported from a file, and the books check's words when the file has ended.
   imports: { id: string; name: string; lastImport: string; ended: string | null }[];
   autopilot: string | null;
+  // Whether Jane acts for this person (src/lib/concierge-mode.ts): false for a real account in
+  // the read-only beta, where the levels, caps and standing rules would do nothing.
+  actsForYou?: boolean;
   sectorsOn: number;
   sectors: number;
   rulesOn: number;
@@ -75,6 +78,9 @@ const asLabel = (name: string) => name.trim().split(/\s+/).slice(0, 6).join(" ")
 // #banks and #your-accounts open the first bank or file, when there is one.
 export function anchorFocus(anchor: string, tree: AreaTree): string | undefined {
   const to = SETTINGS_ANCHORS[anchor];
+  // An item this person's tree doesn't have (a real account's standing rules) opens its branch.
+  const items = tree.tree.branches.flatMap((b) => b.items.map((i) => i.id));
+  if (to?.includes(":") && !items.includes(to)) return to.split(":")[0];
   if (to !== "banks") return to;
   return tree.tree.branches.find((b) => b.id === "banks")?.items[0]?.id ?? to;
 }
@@ -117,26 +123,38 @@ export function settingsTree(input: SettingsTreeInput): AreaTree {
     }),
   ];
 
-  const autopilot = [
-    item("autopilot", "level", {
-      label: "How much Jane does alone",
-      status: input.autopilot ? "good" : "look",
-      figure: input.autopilot ?? "Not chosen",
-      summary: input.autopilot
-        ? `Now: ${input.autopilot}. Pick a level to change it.`
-        : "You haven't chosen yet, so Jane asks before everything.",
-    }),
-    item("autopilot", "sectors", {
-      label: "Area by area",
-      figure: `${input.sectorsOn} of ${input.sectors}`,
-      summary: `Jane may act on its own in ${plural(input.sectorsOn, "area")}, up to the caps you set.`,
-    }),
-    item("autopilot", "rules", {
-      label: "Standing rules",
-      figure: `${input.rulesOn} on`,
-      summary: "Things Jane may do without asking each time.",
+  // Debugger 11-01: a real account was offered standing rules and caps that never run for it.
+  const yourself = [
+    item("autopilot", "yourself", {
+      label: "You act, with Jane's steps",
+      figure: "Read-only beta",
+      summary:
+        "In this beta Jane reads your accounts and gives you the steps and drafts; it doesn't act or contact anyone for you, so nothing here runs on its own.",
     }),
   ];
+  const autopilot =
+    input.actsForYou === false
+      ? yourself
+      : [
+          item("autopilot", "level", {
+            label: "How much Jane does alone",
+            status: input.autopilot ? "good" : "look",
+            figure: input.autopilot ?? "Not chosen",
+            summary: input.autopilot
+              ? `Now: ${input.autopilot}. Pick a level to change it.`
+              : "You haven't chosen yet, so Jane asks before everything.",
+          }),
+          item("autopilot", "sectors", {
+            label: "Area by area",
+            figure: `${input.sectorsOn} of ${input.sectors}`,
+            summary: `Jane may act on its own in ${plural(input.sectorsOn, "area")}, up to the caps you set.`,
+          }),
+          item("autopilot", "rules", {
+            label: "Standing rules",
+            figure: `${input.rulesOn} on`,
+            summary: "Things Jane may do without asking each time.",
+          }),
+        ];
 
   const notify = [
     item("notify", "messages", {
