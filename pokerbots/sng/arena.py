@@ -124,6 +124,7 @@ def main(argv=None):
     ap.add_argument("--variant", default=None, help="card rules from engine.variants (default NLHE)")
     ap.add_argument("--betting", default=None, choices=[None, "no_limit", "pot_limit"])
     ap.add_argument("--blinds", default="synthetic", choices=sorted(BLIND_SETS))
+    ap.add_argument("--preset", default=None, help="full rule set from sng.presets (overrides the above)")
     a = ap.parse_args(argv)
     cands = a.candidates.split(",")
     rules_kw = dict(payouts=PAYOUT_SETS[a.payouts], enforce_time=not a.no_enforce, blinds=BLIND_SETS[a.blinds])
@@ -134,6 +135,9 @@ def main(argv=None):
         if a.betting:
             spec = spec.with_(betting=a.betting)
         rules_kw["spec"] = spec
+    if a.preset:
+        from sng.presets import PRESETS
+        rules_kw.update(PRESETS[a.preset])
     field = field_weights(a.field)
     t0 = time.time()
     out = run(cands, field, rules_kw, a.tables, a.seed0, a.workers)

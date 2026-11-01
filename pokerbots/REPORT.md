@@ -721,6 +721,23 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   bots. It is smallest with top-3 payouts against a weak field. Timing: p99 is
   0.04–0.06 ms. Up to 10 decisions in 300 tables went over 1 ms, only while 4 arena
   workers shared the machine.
+* **Variants and blind schedules** (`results/sng_robust2.md`, default field, 300 paired
+  tables): `icm_tag` beats all three in all 5 cells, every difference significant.
+  - short deck: +21 to +24;
+  - Omaha (4 hole cards, exactly 2): +21 to +26;
+  - pot-limit: +10 to +18;
+  - fast doubling blinds: +6 to +15;
+  - slow blinds: +8 to +10.
+* **Timed dress rehearsal of the real format** (`report/rehearsal_sng_log.md`). An
+  independently written fake kit had six-plus hold'em, antes and its own Agent
+  interface, single-file submission, and 15 hidden gotchas.
+  - **Kit to verified submission: 8 minutes.**
+  - **15/15 gotchas handled.**
+  - 21,848 decisions checked for the observation mapping, with 0 violations.
+  - +23 points per table over the kit-rules field on our arena.
+  - **Bug found and fixed:** our one-file bundle took the module name `engine`, which
+    the kit's simulator also uses. Bundled code now lives under a private package
+    (`_nlb`), tested in both import orders.
 * A coordinate-descent tuner (`sng/tune.py`) continues from here. Robustness
   to other fields and point tables is next, since both are guesses until the day.
 

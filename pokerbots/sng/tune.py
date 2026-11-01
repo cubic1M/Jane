@@ -59,6 +59,7 @@ def main(argv=None):
     ap.add_argument("--accept-se", type=float, default=1.0)
     ap.add_argument("--multi-se", type=float, default=2.0)
     ap.add_argument("--tag", default="")
+    ap.add_argument("--preset", default=None)
     a = ap.parse_args(argv)
     import importlib
     base = dict(importlib.import_module(f"sng.ours.{a.bot}").PARAMS)
@@ -70,6 +71,9 @@ def main(argv=None):
     state["params"] = {**base, **state["params"]}   # parameters added since the last run
     field = field_weights(a.field)
     rules_kw = dict(payouts=PAYOUT_SETS[a.payouts])
+    if a.preset:
+        from sng.presets import PRESETS
+        rules_kw.update(PRESETS[a.preset])
     while state["round"] < a.rounds:
         r = state["round"]
         inc = dict(state["params"])

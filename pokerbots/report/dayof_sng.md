@@ -51,8 +51,9 @@ after it; 3.4 speaks of the build phase).
 |---|---|
 | 0–10 | Read the variant, the point table, the blind schedule and the Agent interface. Encode the variant: a `GameSpec` (card rules) plus an `SngRules` (blinds, antes, payouts). |
 | 10–15 | Start `python3 -m sng.ours.build_tables --variant <v> --minutes 3 --workers <cores>` for the strength tables. |
-| 10–25 | Write the adapter from their Agent interface to `SngObservation` (`sng/adapter_template.py`). Check it with their local simulator: 0 errors, 0 timeouts. |
-| 25 | **Submit `icm_tag` with the default parameters through the adapter.** |
+| 10–20 | Write the adapter from their Agent interface (copy `rehearsal_sng/adapter.py`: it rebuilds hand totals and pot from the kit history, and maps cards, statuses and legal actions). Encode the day's rules as a preset in `sng/presets.py`. |
+| 20–25 | Bundle into one file: `python3 -m sng.bundle --adapter <adapter.py> --variant <table> --out submission/bot.py`. Run the kit's own local runner on it, plus the invariant wrapper (`rehearsal_sng/submission/check_bot.py` pattern: pot = Σ committed, chips constant, raise bounds, card ranks): 0 violations, 0 errors. |
+| 25 | **Submit `icm_tag` with the default parameters through the adapter.** (Rehearsal: kit → verified submission in 8 minutes.) |
 | 25–55 | Arena: `python3 -m sng.arena --candidates icm_tag,<variants> --tables 2000` against the field mix on the day's rules. Submit the best one. |
 | 60–160 | Between rounds: tune (push range, open bar, ICM risk) on paired tables; submit only a paired win at 95%. Re-check the timing (p99 well under 1 ms) before every submit. |
 
