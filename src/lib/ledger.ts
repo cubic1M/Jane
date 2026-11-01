@@ -5,7 +5,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { dayLabel } from "@/lib/day-label";
 import { asWatch, outcomeYearly } from "@/planning/outcomes";
 import { HELD_RULE, verifyRule, type LedgerState } from "@/planning/ledger";
-import { verifiedSavings, type Receipt } from "@/lib/savings-proof";
+import { verifiedSavings, type Estimate, type Receipt } from "@/lib/savings-proof";
 
 // The savings ledger: every finding the person saw, in one of four states (src/planning/ledger.ts),
 // with the transaction lines that prove it. It reads the verified savings record that already
@@ -126,12 +126,12 @@ export async function savingsLedger(userId: string, options: Options = {}): Prom
       href: null,
     });
   }
-  const plain = (e: { actionId: string; title: string; cents: number; why: string }) => ({
+  const plain = (e: Estimate) => ({
     key: `action:${e.actionId}`,
     by: "jane" as const,
     title: e.title,
     cents: e.cents,
-    yearly: true,
+    yearly: e.yearly,
     confidencePercent: null,
     verifiedPercent: null,
     rule: e.why,
