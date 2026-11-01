@@ -542,14 +542,22 @@ export function tilesView(input: AreasInput): AreaTile[] {
   const tiles: Record<AreaKey, AreaTile> = {
     money: (() => {
       const m = input.money;
-      const thisMonth = m?.months.at(-1)?.spendingCents ?? 0;
+      // On the 1st nothing is spent yet: last month, by name (debugger 11-01: a new person's
+      // three months read "$0 Spent this month").
+      const [before, latest] = m?.months.slice(-2) ?? [];
+      const shown =
+        latest && latest.spendingCents <= 0 && (before?.spendingCents ?? 0) > 0 ? before : latest;
       return tile(
         "money",
         input,
         m !== null,
         {
-          value: m ? shortMoney(thisMonth) : null,
-          caption: m ? "Spent this month" : "Add your accounts to see it",
+          value: m ? shortMoney(shown?.spendingCents ?? 0) : null,
+          caption: !m
+            ? "Add your accounts to see it"
+            : shown === latest
+              ? "Spent this month"
+              : `Spent in ${monthLabel(shown.month, { long: true, year: false })}`,
           chart: m
             ? {
                 kind: "bars",
