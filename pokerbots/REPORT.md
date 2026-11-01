@@ -811,8 +811,10 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   - a raiser's range widens with their observed raise rate (`read_alpha`).
 
   Together: +0.2 / +1.2 / +2.1 on field 2 / default / mirror, never negative and
-  never significant. **Conclusion: the current defaults sit near a robust optimum across
-  two independently written fields.** Gains left in single knobs are below what 400–600
+  never significant. On field 1's six validation cells the pair was −1.4 to +2.2, mean
+  +0.3 (`results/sng_validate_adaptive.md`). Adopted as cheap insurance: it adapts to the
+  real table, and never lost significantly in 9 cells. **Conclusion: the defaults sit near
+  a robust optimum across two independently written fields.** Gains left in single knobs are below what 400–600
   paired tables can detect (±2–4 points).
 * The tuner (`sng/tune.py`) is reusable on the day with the real rules as a preset
   (`--preset`), at 10–20 minutes per round. Robustness

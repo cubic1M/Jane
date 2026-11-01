@@ -76,6 +76,8 @@ effective stack in big blinds.
 | bet_discount | 0.6 | multiply equity by 0.6 per bet/raise faced this street |
 | cbet | 0.55 | heads-up flop c-bet frequency, half pot |
 | bet_frac | 0.65 | value bet size (pot fraction) |
+| steal_sym | 0.5 | also tighten opens vs players behind who rarely fold: bar × (1 + 0.5·(1 − 2f)) when f < 0.5 |
+| read_alpha | 0.5 | a raiser's range: range_k × (0.12 / their raise rate)^0.5, shrunk to a prior, bounded 1.2–8 |
 | bluff_bonus | 0.4 | not facing a bet with ≤ 2 opponents: bet half pot with prob 0.4 × max(0, 2·f − 1), f = their postflop fold-to-bet rate (marginal: +0.6 mean over 6 cells, none significant) |
 
 ## The numbers that mattered most (paired tables, 400–600 per cell)
