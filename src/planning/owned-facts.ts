@@ -83,9 +83,26 @@ export function ownedFacts(accounts: readonly InvestmentAccountView[]): OwnedFac
   const sentences: string[] = [];
   // "Bonds" reads "bonds" mid-sentence; "US stocks" stays "US" (night QA 10-30: "50% us stocks").
   const inSentence = (label: string) => label.replace(/^[A-Z](?=[a-z])/, (c) => c.toLowerCase());
-  sentences.push(
-    `You own ${formatCents(total)}: ${mix.map((m) => `${pct(m.share)} ${inSentence(m.label)}`).join(", ")}.`,
+  // "Other" that is only funds the table doesn't know is said as such, by name, after the rest
+  // (debugger 11-01: "50% other" was a target-date fund and a stock fund).
+  const unseen = holdings.filter(
+    (h) => !h.isCash && h.type !== "equity" && h.expenseRatioBps === null && (h.mix.other ?? 0) > 0,
   );
+  const otherCents = byClass.get("other") ?? 0;
+  const unseenCents = unseen.reduce((s, h) => s + h.valueCents * (h.mix.other ?? 0), 0);
+  const onlyUnseen = unseen.length > 0 && Math.abs(otherCents - unseenCents) < 1;
+  const parts = onlyUnseen
+    ? [
+        ...mix
+          .filter((m) => m.assetClass !== "other")
+          .map((m) => `${pct(m.share)} ${inSentence(m.label)}`),
+        `${pct(otherCents / total)} in funds whose mix I don't know (${unseen
+          .slice(0, 4)
+          .map((h) => h.ticker ?? h.name)
+          .join(", ")}${unseen.length > 4 ? " and others" : ""})`,
+      ]
+    : mix.map((m) => `${pct(m.share)} ${inSentence(m.label)}`);
+  sentences.push(`You own ${formatCents(total)}: ${parts.join(", ")}.`);
   if (biggestStock) {
     sentences.push(
       `Your largest single stock is ${biggestStock.name}${biggestStock.ticker ? ` (${biggestStock.ticker})` : ""}, ${formatCents(biggestStock.valueCents)}, which is ${pct(biggestStock.share)} of everything you own.`,
