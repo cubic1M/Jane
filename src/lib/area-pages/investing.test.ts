@@ -1,5 +1,6 @@
+import { ADVICE_TOPICS } from "@/config/suggestions";
 import { describe, expect, it } from "vitest";
-import { investingTree, type InvestingTreeInput } from "./investing";
+import { TOPIC_LABELS, investingTree, type InvestingTreeInput } from "./investing";
 import { LABEL_MAX_WORDS, SUMMARY_MAX_SENTENCES, sentences, words } from "./tree";
 
 // The Investing page as a tree (docs/design/area-pages.md): few words per node, Jane's ideas
@@ -61,7 +62,7 @@ describe("the investing tree", () => {
     for (const l of labels) expect(words(l), l).toBeLessThanOrEqual(LABEL_MAX_WORDS);
     for (const [id, s] of Object.entries(summaries))
       expect(sentences(s), id).toBeLessThanOrEqual(SUMMARY_MAX_SENTENCES);
-    expect(tree.branches[0].items[0].label).toBe("Lower your fund fees");
+    expect(tree.branches[0].items[0].label).toBe("What your funds cost");
   });
 
   it("puts ideas on real money first and reference last", () => {
@@ -186,5 +187,18 @@ describe("the investing tree", () => {
       input({ suggestions: [], accounts: [], totalCents: 0, toAnswer: 2, practice: null }),
     );
     expect(tree.sub).toBe("2 to answer");
+  });
+});
+
+// Debugger 11-01: a real account (Schwab positions) saw "Put waiting cash to work · $73/yr" among
+// Jane's ideas. The topic is kept for everyone because it is a fact (what the cash earns), but its
+// label told them to invest it. A topic a real account sees is labelled as a fact.
+describe("labels of the ideas a real account sees", () => {
+  it.each(
+    Object.entries(TOPIC_LABELS).filter(
+      ([topic]) => !(ADVICE_TOPICS as readonly string[]).includes(topic),
+    ),
+  )("%s reads as a fact: %s", (_topic, label) => {
+    expect(label).not.toMatch(/^(?:put|invest|lower|switch|move|rebalance|roll|buy|sell)\b/i);
   });
 });

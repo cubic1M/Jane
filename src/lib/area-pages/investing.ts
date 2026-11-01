@@ -197,11 +197,13 @@ export const TOPIC_LABELS: Record<string, string> = {
   asset_location: "Right account for each fund",
   auto_invest: "Invest automatically",
   costly_products: "A costly product",
-  investment_fees: "Lower your fund fees",
+  // Facts for everyone (ADVICE_TOPICS keeps the moves for demo advice), so said as facts
+  // (debugger 11-01: a real account read "Put waiting cash to work").
+  investment_fees: "What your funds cost",
   old_accounts: "Roll over an old account",
   rebalance: "Rebalance your mix",
-  idle_cash: "Put idle cash to work",
-  invested_cash: "Put waiting cash to work",
+  idle_cash: "Cash earning little",
+  invested_cash: "Cash waiting in your investments",
   beneficiaries: "Name a beneficiary",
   plan_menu: "Cheaper funds in your plan",
   short_term_cash: "Short-term money",
