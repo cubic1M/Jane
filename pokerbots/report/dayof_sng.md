@@ -59,7 +59,9 @@ after it; 3.4 speaks of the build phase).
 
 ## Plan B (from scratch)
 
-The same timeline, with Codex writing from `report/sng_bot_spec.md`: the decision
+Paste the four prompts in `report/sng_codex_prompt.md` in order. They rebuild `icm_lite`,
+measured at −4 points per table vs the full bot and +14 vs the field's best. The same
+timeline, with Codex writing from `report/sng_bot_spec.md`: the decision
 rules, the parameter values, and the 10 tests that catch the common bugs. Hand-strength
 tables come from the starter kit's simulator, or from a short Monte Carlo built in the
 first 15 minutes, cached to a file and loaded at import.

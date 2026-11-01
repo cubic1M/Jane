@@ -10,6 +10,7 @@ cache/cfr/*
 !cache/sng/
 cache/sng/*
 !cache/sng/strength_*.npz
+!cache/sng/lite_*.json
 *.log
 results_quick/
 report/tables_quick.md

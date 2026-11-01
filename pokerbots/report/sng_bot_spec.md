@@ -5,6 +5,18 @@ rather than code: what to build, in what order, which numbers to use, and which 
 catch the bugs that cost the most. The reference implementation is
 `sng/ours/icm_tag.py`; parameter values come from the tuner (`results/sng_tune/`).
 
+## Measured: how much of the strength a simple rebuild keeps
+
+`icm_lite` (`sng/ours/lite.py`) is the target for a from-scratch rebuild. It uses the
+same decision rules as `icm_tag`, on two tables generated in 2 minutes by Monte Carlo:
+- preflop: 169 classes × k;
+- postflop: (street, my hand category, the board's own category, k).
+
+On 500 paired tables of the default field it scores **−4.0 ± 3.6 points per table vs the
+full `icm_tag`, and still +14 vs the field's best bot (`pushfold_icm`)**. Its p99 is
+0.25 ms, against 0.06 ms for the full bot, because each new board costs one evaluator
+call. So the decision rules carry most of the edge, and a simple strength table is enough.
+
 ## Order of work (minutes from the start of the build)
 
 1. **0–10. Safe bot first.** It must never time out and never raise an error:

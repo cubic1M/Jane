@@ -754,6 +754,11 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   - rehearsal rules **+4.6**.
 
   Now the defaults.
+* **Plan B measured** (in case prepared code may not be brought; the organisers'
+  announcement says "from scratch"). `icm_lite` uses the same decision rules on a strength
+  table any team can generate in 2 minutes: preflop classes, and (street, hand category,
+  board category). It scores **−4.0 ± 3.6 points per table vs `icm_tag`, and +14 vs the
+  field's best**. Rebuild prompts for Codex: `report/sng_codex_prompt.md`.
 * The tuner (`sng/tune.py`) is reusable on the day with the real rules as a preset
   (`--preset`), at 10–20 minutes per round. Robustness
   to other fields and point tables is next, since both are guesses until the day.
