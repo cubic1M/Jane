@@ -74,8 +74,7 @@ AA vs 1 ≈ 0.85 in hold'em (≈ 0.76 in short deck); a weak offsuit hand vs 1 �
 >   - The raiser counts as kf = 4 random hands, + 0.8 for each other opponent still in
 >     the hand (not folded) beyond one. Interpolate equity linearly between integer k.
 >   - Re-raise if equity × (kf + 1) ≥ RERAISE: all-in when eff ≤ 24 bb, else raise to
->     3 × the last raise-to amount. RERAISE is 99, i.e. off: never re-raise, only call or
->     fold. (Being validated: 2.6, roughly AA only.)
+>     3 × the last raise-to amount. RERAISE = 2.6 (roughly AA only).
 >   - Else call if equity ≥ call/(pot + call) + 0.06, plus 0.10·(1 + 0.15·(8 − players
 >     left at the table)) when the call puts me all-in or is over 40% of my stack.
 >   - Else fold.

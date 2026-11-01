@@ -70,7 +70,7 @@ effective stack in big blinds.
 | push_mult | 1.00 | shove bar 1.00/(k+1), scaled 0.75–1.0 by depth |
 | range_k | 4.0 | a raiser = 4 random hands (+0.8 per extra player in) |
 | call_margin | 0.06 | equity needed above pot odds |
-| threebet_eq | 0.62 | 3-bet / re-shove (re-shove at ≤ 24bb) |
+| threebet_rel | 2.6 | re-raise if equity × (raiser's range + 1) ≥ 2.6 (≈ AA only); all-in at ≤ 24bb, else 3× (the old 0.62 absolute bar never fired against a 4-hand range) |
 | risk | 0.10 | ICM premium on big calls at 8 left, +15% per busted player |
 | value_eq | 0.62 | postflop value-bet bar |
 | bet_discount | 0.6 | multiply equity by 0.6 per bet/raise faced this street |

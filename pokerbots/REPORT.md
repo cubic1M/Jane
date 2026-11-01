@@ -759,6 +759,14 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   table any team can generate in 2 minutes: preflop classes, and (street, hand category,
   board category). It scores **−4.0 ± 3.6 points per table vs `icm_tag`, and +14 vs the
   field's best**. Rebuild prompts for Codex: `report/sng_codex_prompt.md`.
+* **Plan B rehearsed:** a fresh agent with only the fake kit and the prompts built a
+  verified bot in 15 minutes, scoring 79.5 points per table vs the kit's bots with 0
+  errors. Its 15 ambiguity reports are folded into the prompts.
+  - One was a real bug in `icm_tag` too: the absolute 3-bet bar (0.62) could never fire
+    against a 4-random-hand range, since AA has only 0.56.
+  - The fix is a relative bar, equity × (range + 1) ≥ 2.6, roughly AA only. Validated on
+    6 fresh-seed cells: −1.0 to +2.3 (significant only on the mirror field, +2.3); none
+    lose. Adopted as a small, sound fix.
 * The tuner (`sng/tune.py`) is reusable on the day with the real rules as a preset
   (`--preset`), at 10–20 minutes per round. Robustness
   to other fields and point tables is next, since both are guesses until the day.
