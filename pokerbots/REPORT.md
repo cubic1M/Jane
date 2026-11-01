@@ -775,6 +775,10 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   copies of our own bot) pulled it towards looser opens. The defaults stay. Lesson: once
   per-round gains are near 1 SE, accepting at 1 SE overfits; on the day use
   `--accept-se 2`.
+* **Postflop bluff read** (`bluff_bonus` 0.4): bet more often into 1–2 opponents who fold
+  to postflop bets, which includes bots that time out and auto-fold. The first A/B gave
+  +3.6 ± 2.8, but fresh-seed validation gave only −1.6 to +1.4 per cell (mean +0.6, none
+  significant; `results/sng_validate_bluff.md`). Adopted as a small, low-risk exploit.
 * The tuner (`sng/tune.py`) is reusable on the day with the real rules as a preset
   (`--preset`), at 10–20 minutes per round. Robustness
   to other fields and point tables is next, since both are guesses until the day.

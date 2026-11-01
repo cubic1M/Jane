@@ -84,7 +84,10 @@ AA vs 1 ≈ 0.85 in hold'em (≈ 0.76 in short deck); a weak offsuit hand vs 1 �
 >     adjusted ≥ need, where need = call/(pot+call) + 0.06, plus the ICM premium above
 >     when the call is ≥ 50% of my stack. Else fold.
 >   - Not facing a bet: bet 65% of the pot if equity ≥ 0.62. As the preflop raiser,
->     heads-up on the flop, bet half the pot 55% of the time. Otherwise check.
+>     heads-up on the flop, bet half the pot 55% of the time. Otherwise, with 1–2
+>     opponents, bet half the pot with probability 0.4·max(0, 2f − 1), where f = their
+>     postflop fold-to-bet rate this table, (folds + 1)/(bets faced + 2) (optional, small
+>     gain). Otherwise check.
 > * Never fold when checking is free.
 
 Done when: 0 errors; p99 < 0.3 ms (the kit runner shows only the slowest and mean, so
