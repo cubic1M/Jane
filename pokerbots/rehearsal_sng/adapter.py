@@ -74,6 +74,7 @@ class _Obs:
     seats: tuple
     history: tuple
     players_left: int
+    hands_left: int
 
 
 def _hist(events):
@@ -125,7 +126,7 @@ class Bot(KAgent):
         return _Obs(o.hand_number - 1, _STREET[o.street], o.seat, o.button, o.small_blind_seat,
                     o.big_blind_seat, o.big_blind, tuple(_pc(c) for c in o.hole),
                     tuple(_pc(c) for c in o.board), pot, me.stack, me.committed, legal, seats, hist,
-                    sum(1 for p in o.players if p.status != "out"))
+                    sum(1 for p in o.players if p.status != "out"), o.max_hands - o.hand_number)
 
     def decide(self, o):
         try:
