@@ -779,6 +779,27 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   to postflop bets, which includes bots that time out and auto-fold. The first A/B gave
   +3.6 ± 2.8, but fresh-seed validation gave only −1.6 to +1.4 per cell (mean +0.6, none
   significant; `results/sng_validate_bluff.md`). Adopted as a small, low-risk exploit.
+* **Out-of-sample check against an independent second field** (`sng/field2/`). Six
+  strong-team designs, written without seeing our bot or field 1:
+  - a Nash push/fold ICM specialist;
+  - a balanced TAG;
+  - an exploitative opponent modeller;
+  - a stack-rank bubble bot;
+  - an equity-table bot;
+  - a "shark".
+
+  On 500 paired tables `icm_tag` scores 41.6 points per table (average seat 34.75):
+
+| compared with | `icm_tag`'s edge |
+|---|---|
+| f2_shark | **+3.9 ± 3.7** |
+| f2_nash | **+5.5 ± 3.6** |
+| pushfold_icm | +0.4 ± 3.3 (a tie) |
+| icm_lite | +2.9 ± 3.0 |
+
+  The edge is real but much smaller than against field 1 (+10 to +20), which it was
+  tuned on. 181 of its 236 busts against field 2 are short-stack preflop shoves.
+  Tuning on field 2 with validation back on field 1 is next.
 * The tuner (`sng/tune.py`) is reusable on the day with the real rules as a preset
   (`--preset`), at 10–20 minutes per round. Robustness
   to other fields and point tables is next, since both are guesses until the day.
