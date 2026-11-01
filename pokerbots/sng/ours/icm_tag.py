@@ -32,7 +32,9 @@ PARAMS = dict(
     bet_frac=0.65,       # postflop bet size (fraction of pot)
     bet_discount=0.6,   # opponent's bet/raise: our equity x this (their range is stronger)
     steal_bonus=0.40,
-    reshove_bb=24.0,     # facing a raise with a 3-bet hand: shove (not 3-bet) at or below this stack    # lower the open bar by up to this much vs seats that fold to steals
+    reshove_bb=24.0,
+    read_alpha=0.0,      # per-seat raise-rate read: raiser range_k x (base_pfr / their pfr)^alpha
+    base_pfr=0.12,       # the raise rate at which a raiser counts as exactly range_k     # facing a raise with a 3-bet hand: shove (not 3-bet) at or below this stack    # lower the open bar by up to this much vs seats that fold to steals
 )
 
 
@@ -56,11 +58,20 @@ class IcmTag:
         self.steal_seen = [0] * rules.num_players     # steal attempts faced in the blinds
         self.steal_fold = [0] * rules.num_players
         self.aggressor = None                          # seat of the last preflop raiser this hand
+        self.dealt = [0] * rules.num_players           # hands seen per seat
+        self.pre_raises = [0] * rules.num_players      # hands with a voluntary preflop raise
         self._hand = -1
 
     def end_hand(self, info):
-        # fold-to-steal: blinds facing a single late-position open and no other caller
         hist = info["history"]
+        # per-seat preflop raise rate (seats that posted or acted were dealt in)
+        seen = {h[0] for h in hist if h[1] == 0}
+        raised = {h[0] for h in hist if h[1] == 0 and h[2] == "raise"}
+        for s in seen:
+            self.dealt[s] += 1
+            if s in raised:
+                self.pre_raises[s] += 1
+        # fold-to-steal: blinds facing a single late-position open and no other caller
         pre = [h for h in hist if h[1] == 0 and h[2] != "post"]
         raises = [h for h in pre if h[2] == "raise"]
         if len(raises) >= 1:
@@ -145,7 +156,12 @@ class IcmTag:
             return lg.passive() if lg.can_check else Fold()
         # facing a raise
         others = len(in_pot)
-        kf = p["range_k"] + max(0, others - 1) * 0.8
+        rk = p["range_k"]
+        if p["read_alpha"] > 0:
+            r = raises[-1][0]
+            pfr = (self.pre_raises[r] + p["base_pfr"] * 8) / (self.dealt[r] + 8)   # shrink to the prior
+            rk = min(8.0, max(1.2, rk * (p["base_pfr"] / max(pfr, 0.01)) ** p["read_alpha"]))
+        kf = rk + max(0, others - 1) * 0.8
         eq = self._eq_k(obs, kf)
         call = lg.call_amount
         pot = obs.pot
