@@ -65,6 +65,21 @@ class TestBundle(unittest.TestCase):
                         "b = bot.Bot(); print(bot.TABLE_OK, round(b.equity(), 2))")
         self.assertEqual(out.split(), ["True", "0.85"])
 
+    def test_runs_without_numpy_on_older_pythons(self):
+        """The sandbox may lack numpy or run another Python: the bundle needs stdlib only."""
+        import shutil
+        for py in ("python3.11", "python3.12"):
+            exe = shutil.which(py)
+            if not exe:
+                continue
+            env = dict(os.environ, PYTHONPATH=self.tmp)
+            code = ("import sys; sys.modules['numpy'] = None; import bot; b = bot.Bot();"
+                    "print(bot.TABLE_OK, round(b.equity(), 2))")
+            r = subprocess.run([exe, "-c", code], cwd=self.tmp, env=env, capture_output=True, text=True,
+                               timeout=60)
+            self.assertEqual(r.returncode, 0, f"{py}: {r.stderr[-1500:]}")
+            self.assertEqual(r.stdout.split(), ["True", "0.85"], py)
+
     def test_no_public_module_names_taken(self):
         out = self._run("import sys; before = set(sys.modules); import bot;"
                         "new = set(sys.modules) - before;"
