@@ -5,7 +5,21 @@ smoke run). Full tables: `report/tables.md`. Every duplicate pair behind them:
 `results/pairs.csv`. Methods, engine and bot details: `report/methods.md`.
 Adaptation drill: `report/drill_log.md`. Day-of tool: `dayof.py`.
 
-## 1. Recommendation (updated after round 2, §7)
+## 0. Round 3 supersedes the heads-up study: the real format is an 8-bot sit-and-go
+
+The tournament is **No Limit: A Bot Building Tournament** (Sequoia, OpenAI, Citadel
+Securities). Its official rules (§8, `report/dayof_sng.md`) are not heads-up:
+* 8 bots per table, 2,000 chips, blinds 10/20 rising every 25 hands, to the last bot
+  or 200 hands;
+* points by finishing place, ICM for survivors at the cap;
+* **1 ms per decision** in Python, auto-fold on a timeout;
+* six scored rounds, weighted 1 to 6.
+
+Sections 1–7 below remain a valid study of heads-up play, but **the bot to bring is
+`icm_tag` from `sng/`** (§8). The heads-up CFR work does not transfer: it is
+heads-up only and far too slow for 1 ms.
+
+## 1. Recommendation for heads-up play (round 2, §7)
 
 **Bring `champion`: full-game CFR (`bots/full_cfr.py`) that hands a hand to the
 adaptive bot only when the opponent shows a measured weak-bot signature (it almost
@@ -633,6 +647,53 @@ and legal, fast play from both seats.
 
 The champion's one losing matchup remains `opp_exploit` (−0.39 ± 0.27 on hold'em in
 this demo; −0.23 ± 0.20 over 5 variants in §7a).
+
+## 8. Round 3: the real format (8-bot sit-and-gos, 1 ms per decision)
+
+Code in `sng/`, plan in `report/dayof_sng.md`.
+* **Engine** (`sng/table.py`, 17 tests): multiway no-limit / pot-limit hand engine,
+  covering
+  - side pots, and short all-in raises that do not reopen the betting;
+  - heads-up blind order, antes, knock-outs ranked by stack at the start of the hand;
+  - ICM at the 200-hand cap;
+  - the 1 ms rule enforced exactly as the rules state: errors and timeouts check,
+    otherwise fold.
+
+  It runs 0.3–0.4 ms per hand and reuses the card layer (deck, hole cards, board,
+  ranking, limit), so variants are a spec change.
+* **Field** (`sng/field/`, written independently, 19 tests): 9 archetypes of
+  60-minute student bots: Monte Carlo equity (fixed samples, often over 1 ms; and a
+  time-boxed version), Chen-formula TAG, LAG, nit, station, maniac, ICM push/fold, and
+  a per-seat adaptive bot. Default weights favour mediocre TAG and Monte Carlo bots.
+* **Strength layer** (`sng/ours/strength.py`, 25 tests): equity against 1–7 random
+  hands from Monte Carlo-trained lookup tables.
+  - Hold'em calls take 1–3 µs preflop and at most 47 µs p99 postflop.
+  - Mean error is 0.007 preflop and 0.013–0.018 postflop.
+  - Tables for hold'em, short deck and Omaha are in git; a new variant rebuilds in
+    about 4 minutes.
+* **Arena** (`sng/arena.py`): every candidate plays exactly the same tables (deal
+  seed, seat, opponents), so differences are paired.
+
+**Results so far** (default field, synthetic point table 100/65/45/30/20/12/6/0;
+34.75 = average seat):
+
+| bot | points/table | top 3 | busts | p99 decision |
+|---|---|---|---|---|
+| `icm_tag` (tuned) | **60.5 ± 2.7** | 72% | 45% | 0.05 ms |
+| field's best, `pushfold_icm` | 50.6 ± 2.7 | 59% | 58% | 0.17 ms |
+| Chen TAG | 46.0 ± 2.1 | 60% | 62% | 0.17 ms |
+| Monte Carlo vs random hands | 18–28 | | | 2 ms (times out) |
+
+* The first `icm_tag` draft lost to the Chen TAG (−3.0). On paired tables the fix
+  was to call far tighter:
+  - treat a raiser as about 4 random hands (+8.8);
+  - need 6% more equity than pot odds to call (+5.4);
+  - discount equity sharply against bets (+3.8, +4.2 more at 0.6).
+* In a points-by-place game that pays everyone who survives, not busting is worth
+  more than winning hands. Even a bot that always times out and folds scores
+  near average.
+* A coordinate-descent tuner (`sng/tune.py`) continues from here. Robustness
+  to other fields and point tables is next, since both are guesses until the day.
 
 ## Appendix: assumptions and defaults chosen
 * Scoring: total chips (lead protection off). If matches are won/lost, switch it on.
