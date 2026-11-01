@@ -262,6 +262,14 @@ const PAID_LOAN_WORDS: Record<PaidLoan["kind"], string> = {
   mortgage: "mortgage",
 };
 
+// A lender's name that already says what the loan is, the banks' short forms too ("Student Ln
+// Pmt", "Home Mtg", "Auto Loan"): the kind isn't added again (debugger 11-01).
+const SAYS_KIND: Record<PaidLoan["kind"], RegExp> = {
+  student: /\bstudent\b/i,
+  auto: /\b(?:auto|car) (?:loan|ln)\b/i,
+  mortgage: /\b(?:mortgage|mtg)\b/i,
+};
+
 // A loan seen only in payments from checking (./paid-loans.ts): its payment and next date from
 // those, what's owed, the rate and the payoff date only as the person types them.
 function paidDebt(p: PaidLoan, typed: TypedTerms | undefined, asOf: string): Debt {
@@ -277,7 +285,7 @@ function paidDebt(p: PaidLoan, typed: TypedTerms | undefined, asOf: string): Deb
     key: `paid:${p.key}`,
     accountId: null,
     // Once: "Pennymac Loan Services Mortgage", not "… Mortgage mortgage" (debugger 11-01).
-    name: p.lender.toLowerCase().includes(words) ? p.lender : `${p.lender} ${words}`,
+    name: SAYS_KIND[p.kind].test(p.lender) ? p.lender : `${p.lender} ${words}`,
     kind: p.kind,
     kindLabel: `${words.charAt(0).toUpperCase()}${words.slice(1)}, seen in your payments`,
     balanceCents,

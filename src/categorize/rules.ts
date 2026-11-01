@@ -101,6 +101,9 @@ const RULES: readonly Rule[] = [
       "MAINTENANCE FEE",
       "ANNUAL MEMBERSHIP FEE",
       "WIRE FEE",
+      // Debugger 11-01: a credit union's "PAPER STATEMENT FEE" read as a subscription.
+      "STATEMENT FEE",
+      "STOP PAYMENT FEE",
     ],
   },
 
