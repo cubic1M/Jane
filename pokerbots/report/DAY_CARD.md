@@ -35,7 +35,7 @@ Fill in each line:
    - our arena on the preset: `python3 -m sng.arena --preset <p> --candidates icm_tag,pushfold_icm --tables 300`.
 6. **Submit by minute ~25.**
 7. Minutes 25–160:
-   - tune: `python3 -m sng.tune --preset <p> --field blend --rounds 3 --tables 500 --tag _day` (about 15–25 min per round);
+   - tune: `python3 -m sng.tune --preset <p> --field blend --rounds 3 --tables 500 --accept-se 2 --tag _day` (about 15–25 min per round);
    - validate: `results/sng_validate.sh "icm_tag:<tuned>" --preset <p>`;
    - submit only a paired gain > 2 SE with no field losing.
 

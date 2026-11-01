@@ -56,7 +56,7 @@ def main(argv=None):
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--field", default="default")
     ap.add_argument("--payouts", default="synthetic")
-    ap.add_argument("--accept-se", type=float, default=1.0)
+    ap.add_argument("--accept-se", type=float, default=2.0)   # 1.0 overfit once gains got small
     ap.add_argument("--multi-se", type=float, default=2.0)
     ap.add_argument("--tag", default="")
     ap.add_argument("--preset", default=None)

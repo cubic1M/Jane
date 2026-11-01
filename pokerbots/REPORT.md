@@ -767,6 +767,14 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   - The fix is a relative bar, equity × (range + 1) ≥ 2.6, roughly AA only. Validated on
     6 fresh-seed cells: −1.0 to +2.3 (significant only on the mirror field, +2.3); none
     lose. Adopted as a small, sound fix.
+* **Third tuning run rejected** (`results/sng_validate_run3_rejected.md`). It pushed
+  further in the same direction: open bar 0.97, a wider shove, a steal read up to 7 behind,
+  a light per-seat raise-rate read. Each round gained only about 1 SE. On fresh seeds it
+  won the mirror field (+9.5) but **lost significantly with top-3 payouts (−2.7 ± 2.5)**
+  and was negative on default (−2.5) and strong (−3.6). The blend's mirror share (tight
+  copies of our own bot) pulled it towards looser opens. The defaults stay. Lesson: once
+  per-round gains are near 1 SE, accepting at 1 SE overfits; on the day use
+  `--accept-se 2`.
 * The tuner (`sng/tune.py`) is reusable on the day with the real rules as a preset
   (`--preset`), at 10–20 minutes per round. Robustness
   to other fields and point tables is next, since both are guesses until the day.
