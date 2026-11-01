@@ -198,9 +198,18 @@ const lastFour = (number: string) => {
   return chars.length >= 2 ? chars.slice(-4) : null;
 };
 
+// A fund's abbreviations keep their capitals (debugger 11-01: "Schwab Us Broad Market Etf").
+const FUND_CAPITALS = new Set(
+  "US USA ETF ETN REIT ADR ESG TIPS MSCI FTSE CRSP II III IV".split(" "),
+);
 const titleCase = (s: string) =>
   s.length > 3 && s === s.toUpperCase()
-    ? s.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase())
+    ? s
+        .toLowerCase()
+        .replace(/\b[a-z]/g, (c) => c.toUpperCase())
+        .replace(/\b[A-Za-z]+\b/g, (w) =>
+          FUND_CAPITALS.has(w.toUpperCase()) ? w.toUpperCase() : w,
+        )
     : s;
 
 function accountOf(
