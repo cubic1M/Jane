@@ -236,6 +236,49 @@ describe.runIf(url)("the monthly money report", { timeout: 120_000 }, () => {
     expect(mail.text).toContain("In September you spent $45.00");
   });
 
+  // Debugger 11-01 (production): the digest cron timed out at 300 s on the 1st. The monthly
+  // reports ran first with no clock, for everyone with an account, every Try Jane sample person
+  // included (never emailed, but each report built in full).
+  it("leaves out sample people, and stops at its budget for tomorrow's run", async () => {
+    const person = async (id?: string) => {
+      const user = await client.user.create({
+        data: { ...(id ? { id } : {}), email: `report-clock-${crypto.randomUUID()}@example.com` },
+      });
+      created.push(user.id);
+      const account = await client.account.create({
+        data: { userId: user.id, source: "csv", name: "Card", type: "credit" },
+      });
+      await client.transaction.create({
+        data: {
+          userId: user.id,
+          accountId: account.id,
+          source: "csv",
+          dedupeKey: "x",
+          date: new Date("2026-09-10"),
+          amountCents: 4_500,
+          description: "GROCER",
+          pfcPrimary: "FOOD_AND_DRINK",
+        },
+      });
+      return user;
+    };
+    const sample = await person(`trial_${crypto.randomUUID()}`);
+    const real = await person();
+    const send = vi.fn<(e: Email) => Promise<void>>(async () => {});
+    const none = await runMonthlyReports({
+      client,
+      now: NOW,
+      send,
+      userIds: [sample.id, real.id],
+      budgetMs: 0,
+    });
+    expect(none).toMatchObject({ sent: 0, deferred: 1 });
+    expect(await client.monthlyReport.count({ where: { userId: real.id } })).toBe(0);
+    const run = await runMonthlyReports({ client, now: NOW, send, userIds: [sample.id, real.id] });
+    expect(run).toMatchObject({ sent: 1, deferred: 0 });
+    expect(await client.monthlyReport.count({ where: { userId: sample.id } })).toBe(0);
+  });
+
   it("isn't made after the first days of the month, or for an empty month", async () => {
     expect(
       await monthlyReportFor(userId, { client, now: new Date("2026-10-12T15:00:00Z") }),
