@@ -12,6 +12,7 @@ import { AutopilotChooser } from "@/components/autopilot-chooser";
 import { CallOffersForm } from "./call-offers-form";
 import { db } from "@/lib/db";
 import { scopedDb } from "@/lib/db-scoped";
+import { conciergeMode } from "@/lib/concierge-mode";
 import { requireUser } from "@/lib/session";
 import { isTrialUser } from "@/lib/trial-ids";
 import { formatCents } from "@/lib/money";
@@ -95,6 +96,7 @@ async function SettingsContent({
     owned,
     documents,
     sessions,
+    actsForYou,
   ] = await Promise.all([
     db.user.findUniqueOrThrow({
       where: { id: user.id },
@@ -147,6 +149,7 @@ async function SettingsContent({
     mine.ownedAssets.count(),
     mine.documents.count(),
     listSessions(user.id, token),
+    conciergeMode(user.id),
   ]);
   const csvUpdated = new Map(lastCsv.map((row) => [row.accountId, row.createdAt]));
   const alerts = alertPrefs(prefs.alertPrefs);
@@ -180,6 +183,7 @@ async function SettingsContent({
       ended: ended.get(a.id) ?? null,
     })),
     autopilot: autopilotLabel,
+    actsForYou,
     sectorsOn: sectors.filter((s) => s.level !== "ask").length,
     sectors: sectors.length,
     rulesOn: rules.filter((r) => r.enabled).length,

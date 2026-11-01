@@ -3,6 +3,7 @@ import {
   SETTINGS_ANCHORS,
   SETTINGS_BRANCHES,
   anchorFocus,
+  itemId,
   settingsTree,
   type SettingsTreeInput,
 } from "./settings";
@@ -112,5 +113,25 @@ describe("settingsTree", () => {
     expect(settingsTree(ALL_GOOD).summaries["banks:add"]).toBe(
       "Link another bank, or import a statement file.",
     );
+  });
+});
+
+// Debugger 11-01: a real (uploaded) account's Settings offered "Standing rules: things Jane may
+// do without asking each time" and caps per area, though in the read-only beta Jane acts for no
+// real account (conciergeMode; standing rules never run for one). It says what happens instead.
+describe("how much Jane does, for a real account", () => {
+  const area = settingsTree({ ...ALL_GOOD, actsForYou: false });
+  const autopilot = area.tree.branches.find((b) => b.id === "autopilot")!;
+
+  it("offers no switches that do nothing, and says the person acts", () => {
+    expect(autopilot.items.map((i) => i.id)).toEqual([itemId("autopilot", "yourself")]);
+    expect(area.summaries[itemId("autopilot", "yourself")]).toMatch(
+      /doesn't act or contact anyone for you/,
+    );
+  });
+
+  it("opens the branch from the old anchors", () => {
+    expect(anchorFocus("rules", area)).toBe("autopilot");
+    expect(anchorFocus("autopilot", area)).toBe("autopilot");
   });
 });
