@@ -109,3 +109,34 @@ Then between scored rounds, A/B one change at a time, **paired**:
 
 Candidates in order of expected value: open bar 1.07 → 1.18 / 0.97; push depth
 9 → 12 / 6; calling margin 0.06 → 0.03 / 0.09.
+
+## Prompt 5 (only if the variant has discards or draws): discard / draw phase
+Use this after prompt 1 if players throw away or replace cards. Measured version:
+`sng/ours/anyvar.py` (`icm_any`) beats the field's best bots by 14–36 points per table
+on four such variants, and gains +13 over plain hold'em logic in five-card draw.
+
+> Extend the bot for the discard/draw phase described in the README.
+> **Never time out or crash here:** on any error, discard the lowest-ranked cards (the
+> minimum number allowed).
+>
+> To choose: enumerate every legal set of cards to discard (at most a few dozen) and
+> score what each keeps, using the kit's evaluator:
+> * **No replacement** (the cards go to the muck or the board): keep the set with the
+>   best hand. If the discards go to the shared board, score my hand's category minus
+>   the category the board alone would then make (a card on the board helps everyone),
+>   then my score, then prefer throwing the lowest card.
+> * **Draw** (replacements are dealt): score each kept set by the category it makes now,
+>   ignoring kickers. If it makes nothing: four to a flush beats four to a straight,
+>   which beats the highest single card. When equal, prefer discarding more. Check the
+>   evaluator's code for "high card" first; it is not always 0.
+>
+> For strength, rebuild prompt 2's table by **simulating this variant**: deal the hands,
+> run every discard/draw phase with this same policy for all players, and key equity by
+> (street, my hand category now, the board's own category, a flush-draw flag, k).
+> Preflop, key by hole-card shape: for more than 2 cards, (pair structure, top rank,
+> second rank, most of one suit, longest run).
+
+Done when:
+- 0 errors over 50 tables;
+- in five-card draw it keeps a pair and draws three, draws one to a four-flush, and stands pat with a straight;
+- discarding to the board, holding A A 7 it throws the 7.
