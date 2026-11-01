@@ -27,6 +27,32 @@ from sng.table import play_table
 ROOT = Path(__file__).resolve().parents[1]
 
 
+class DiscardHelper:
+    """Wraps a bot that does not know discard phases: answers them with the shared policy."""
+
+    def __init__(self, inner):
+        self.inner = inner
+
+    def new_table(self, rules, seat, seed=0):
+        from sng.ours import features as F
+        self.rules, self.ctx = rules, F.get_ctx(rules.spec)
+        self.inner.new_table(rules, seat, seed)
+
+    def act(self, obs):
+        lg = obs.legal
+        if getattr(lg, "discard_count", 0):
+            from engine.game import Discard
+            from sng.ours.anyvar import choose_discard
+            rule = next(iter(self.rules.spec.discards_on_street(obs.street)), None)
+            return Discard(choose_discard(self.ctx, obs.hole, obs.board, lg.discard_min, lg.discard_count,
+                                          bool(rule and rule.draw), bool(rule and rule.to_board)))
+        return self.inner.act(obs)
+
+    def end_hand(self, info):
+        if hasattr(self.inner, "end_hand"):
+            self.inner.end_hand(info)
+
+
 def _table_job(args):
     t, cand, seed0, rules_kw, field = args
     rules = SngRules(**rules_kw)
@@ -37,6 +63,11 @@ def _table_job(args):
     my_seat = t % n
     lineup = seats[:my_seat] + [cand] + seats[my_seat:]
     bots = [make(x) for x in lineup]
+    if rules.spec.discards:
+        # field bots were written for hold'em: give them our sensible discard policy so a
+        # comparison measures betting, not their engine-fallback discards
+        bots = [b if i == my_seat or hasattr(b, "choose_discard_ok") else DiscardHelper(b)
+                for i, b in enumerate(bots)]
     res = play_table(bots, rules, seed=seed0 * 100003 + t, deal_seed=seed0 * 100003 + t)
     st = res.stats[my_seat]
     times = np.array(st.times) if st.times else np.zeros(1)
