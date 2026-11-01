@@ -71,6 +71,9 @@ export const FALLBACK_INTERVAL_DAYS: Readonly<
 > = {
   WEEKLY: [6, 8],
   BIWEEKLY: [13, 16],
+  // Twice a month on two set days (the 1st and 15th, the 2nd and 16th): gaps of 13 to 17 days,
+  // checked after every two weeks (debugger 11-01: a couple's transfers to joint checking).
+  SEMI_MONTHLY: [12, 18],
   MONTHLY: [26, 35],
   QUARTERLY: [84, 98],
   SEMIANNUALLY: [175, 190],
