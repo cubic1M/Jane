@@ -38,6 +38,8 @@ PARAMS = dict(
     reshove_bb=24.0,
     read_alpha=0.0,      # per-seat raise-rate read: raiser range_k x (base_pfr / their pfr)^alpha
     base_pfr=0.12,
+    bluff_bonus=0.0,     # postflop: bet half pot with prob bluff_bonus x (2 x opponents' fold-to-bet - 1)
+    bluff_max_opp=2,     # ... only with at most this many opponents in the hand
     cap_risk=0.0,        # near the hand cap: risk premium + cap_risk x (my stack / average - 1)
     cap_window=25,       # ... in the last this many hands       # the raise rate at which a raiser counts as exactly range_k     # facing a raise with a 3-bet hand: shove (not 3-bet) at or below this stack    # lower the open bar by up to this much vs seats that fold to steals
 )
@@ -64,6 +66,8 @@ class IcmTag:
         self.steal_fold = [0] * rules.num_players
         self.aggressor = None                          # seat of the last preflop raiser this hand
         self.dealt = [0] * rules.num_players           # hands seen per seat
+        self.pf_faced = [0] * rules.num_players        # postflop bets faced per seat
+        self.pf_fold = [0] * rules.num_players         # ... and folded to
         self.pre_raises = [0] * rules.num_players      # hands with a voluntary preflop raise
         self._hand = -1
 
@@ -76,6 +80,19 @@ class IcmTag:
             self.dealt[s] += 1
             if s in raised:
                 self.pre_raises[s] += 1
+        # postflop fold-to-bet: after the first bet on a street, each later responder
+        for st in sorted({h[1] for h in hist if h[1] > 0}):
+            acts = [h for h in hist if h[1] == st]
+            first = next((i for i, h in enumerate(acts) if h[2] == "raise"), None)
+            if first is None:
+                continue
+            bettor = acts[first][0]
+            for sv, _, kind, _ in acts[first + 1:]:
+                if sv == bettor or kind == "raise":
+                    break
+                self.pf_faced[sv] += 1
+                if kind == "fold":
+                    self.pf_fold[sv] += 1
         # fold-to-steal: blinds facing a single late-position open and no other caller
         pre = [h for h in hist if h[1] == 0 and h[2] != "post"]
         raises = [h for h in pre if h[2] == "raise"]
@@ -223,4 +240,8 @@ class IcmTag:
         if (k == 1 and self.aggressor == obs.seat and lg.can_raise
                 and self.rng.random() < p["cbet"] and obs.street == 1):
             return RaiseTo(lg.clamp(0.5 * pot))
+        if p["bluff_bonus"] > 0 and lg.can_raise and 1 <= k <= p["bluff_max_opp"]:
+            fr = (sum(self.pf_fold[s] for s in opp) + 1.0) / (sum(self.pf_faced[s] for s in opp) + 2.0)
+            if self.rng.random() < p["bluff_bonus"] * max(0.0, 2 * fr - 1):
+                return RaiseTo(lg.clamp(0.5 * pot))
         return Check()
