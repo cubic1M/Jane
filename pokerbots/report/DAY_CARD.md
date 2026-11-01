@@ -25,8 +25,17 @@ Fill in each line:
 ## Plan A: our code allowed (rehearsed: 8 minutes from kit to verified submission)
 
 1. Rules → `sng/presets.py` (one entry: card rules `GameSpec`, blinds, antes, points 1st-first).
-2. Strength table: if the deck and ranking are hold'em, short deck or Omaha it is already in git.
-   Otherwise: `python3 -m sng.ours.build_tables --variant <v> --minutes 4 --workers 4`.
+2. Strength table. **12 card variants are already in git** (`cache/sng/strength_*.npz`):
+   hold'em, short deck (both rankings), flush > full house, six-plus ranking on 52 cards,
+   3 hole cards (any / exactly 2), Omaha 4 (exactly 2 / any), PLO5, no river, a 4-card flop.
+   A table is matched by card rules, not by name. Otherwise:
+   `python3 -m sng.ours.build_tables --variant <v> --minutes 4 --workers 4`.
+   **Discard or draw variant** (players throw or replace cards):
+   - play `icm_any` instead of `icm_tag`;
+   - build its table by simulating the variant: `python3 -m sng.ours.anyvar --spec <module:SPEC> --seconds 120`;
+   - bundle with `--any-table cache/sng/any_<sig>.json`;
+   - in the adapter, answer discard requests with the bot's `Discard(cards)`.
+   Four shapes are prebuilt: discard to the board, face-down discards, hold'em with a 0–1 draw, five-card draw.
 3. Adapter: copy `rehearsal_sng/adapter.py`, then map their Observation and Action.
 4. Bundle: `python3 -m sng.bundle --adapter adapter.py --variant <table> --out submission/bot.py`.
 5. Prove it, all three required:
