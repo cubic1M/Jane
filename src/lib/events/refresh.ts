@@ -1,6 +1,8 @@
 import {
   EVENT_SOURCE_LABELS,
   EVENT_TYPE_IDS,
+  EVENTS_CRON_BUDGET_MS,
+  EVENTS_GDELT_BUDGET_MS,
   EVENTS_LOCK_SECONDS,
   EVENTS_REFRESH_MINUTES,
   EVENTS_VIEW_GDELT_TYPES,
@@ -134,13 +136,26 @@ export async function refreshEventsIfStale(
 }
 
 // Vercel Cron: today's events from every source, then every paper account with the overlay on (all
-// but those switched off), one at a time; one failing stops none.
+// but those switched off), one at a time; one failing stops none. On a clock (debugger 11-01, a
+// 504): GDELT is asked about no new type after EVENTS_GDELT_BUDGET_MS, and no overlay starts after
+// `deadline` (EVENTS_CRON_BUDGET_MS from the start); the overlays left are counted as deferred and
+// catch up on the next run.
 export async function runEventsForAll({
   client = defaultClient,
   now = new Date(),
+  deadline,
   ...rest
 }: Options = {}) {
-  const collected = await refreshEvents({ ...rest, client, now, force: true }).catch((error) => {
+  const startedAt = Date.now();
+  const stopAt = deadline ?? startedAt + EVENTS_CRON_BUDGET_MS;
+  const gdeltStopAt = Math.min(stopAt, startedAt + EVENTS_GDELT_BUDGET_MS);
+  const collected = await refreshEvents({
+    ...rest,
+    client,
+    now,
+    force: true,
+    deadline: gdeltStopAt,
+  }).catch((error) => {
     console.error("Collecting events failed", { error: String(error) });
     return null;
   });
@@ -151,7 +166,12 @@ export async function runEventsForAll({
   });
   let ran = 0;
   let failed = 0;
+  let deferred = 0;
   for (const { userId } of overlays) {
+    if (Date.now() >= stopAt) {
+      deferred += 1;
+      continue;
+    }
     try {
       if ((await runEventOverlay(userId, { client, now, ...rest })).ran) ran += 1;
     } catch (error) {
@@ -159,5 +179,5 @@ export async function runEventsForAll({
       console.error("An events overlay run failed", { error: String(error) });
     }
   }
-  return { collected, overlays: overlays.length, ran, failed };
+  return { collected, overlays: overlays.length, ran, failed, deferred };
 }

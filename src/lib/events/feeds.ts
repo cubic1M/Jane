@@ -1,4 +1,10 @@
-import { CPI_HOT_MONTHLY_PCT, EVENT_FEEDS, EVENTS_USER_AGENT, EVENT_TYPES } from "@/config/events";
+import {
+  CPI_HOT_MONTHLY_PCT,
+  EVENT_FEEDS,
+  EVENTS_REQUEST_TIMEOUT_MS,
+  EVENTS_USER_AGENT,
+  EVENT_TYPES,
+} from "@/config/events";
 import { classifyText, nextDay, type MarketEvent } from "@/planning/event-detect";
 import type { Fetcher } from "./gdelt";
 
@@ -165,7 +171,10 @@ export function headlineEvents(
 
 async function text(url: string, fetcher: Fetcher): Promise<string | null> {
   try {
-    const res = await fetcher(url, { headers: { "User-Agent": EVENTS_USER_AGENT } });
+    const res = await fetcher(url, {
+      headers: { "User-Agent": EVENTS_USER_AGENT },
+      signal: AbortSignal.timeout(EVENTS_REQUEST_TIMEOUT_MS),
+    });
     return res.ok ? await res.text() : null;
   } catch {
     return null;
