@@ -80,7 +80,7 @@ def _heur_post1(ctx, hole, board):
     p = _HEUR_CAT[min(8, (score >> 20) - 1)]
     if f[1] == 2 or f[1] == 3:              # pocket pair / pair with the board: by position
         p += 0.08 - 0.06 * f[2]
-    if f[1] in (1, 6, 9):                   # board made the hand: hero has little
+    if f[1] in (1, 6, 9, 23, 24, 25, 26):   # board made the hand: hero has little
         p -= 0.12
     if ctx.total_board > len(board):        # draws: f[5] flush draw, f[6] straight outs
         p += (0.10 if f[5] in (1, 2) else 0.0) + 0.05 * f[6]
@@ -99,6 +99,7 @@ class Table:
         self.pv = pre_vals.ravel().tolist()
         self.post = dict(zip(post_keys.tolist(), range(len(post_keys))))
         self.qv = post_vals.ravel().tolist()
+        self._memo = {}           # (hole, board) -> row: repeated calls for other k are free
 
     def _kv(self, vals, i, k):
         K = self.K
@@ -120,16 +121,25 @@ class Table:
         return self._kv(self.pv, i, k)
 
     def postflop(self, hole, board, k):
-        f = _post_features(self.ctx, hole, board)
-        d = self.post
-        i = d.get(_fine_key(f))
+        mk = (tuple(hole), tuple(board))
+        memo = self._memo
+        i = memo.get(mk)
         if i is None:
-            for key in _all_keys(f)[1:]:
-                i = d.get(key)
-                if i is not None:
-                    break
-            else:
-                return _multiway(_heur_post1(self.ctx, hole, board), k)
+            f = _post_features(self.ctx, hole, board)
+            d = self.post
+            i = d.get(_fine_key(f))
+            if i is None:
+                for key in _all_keys(f)[1:]:
+                    i = d.get(key)
+                    if i is not None:
+                        break
+                else:
+                    i = -1
+            if len(memo) > 50000:
+                memo.clear()
+            memo[mk] = i
+        if i < 0:
+            return _multiway(_heur_post1(self.ctx, hole, board), k)
         return self._kv(self.qv, i, k)
 
     def equity(self, hole, board, k):
@@ -250,22 +260,28 @@ def use_table(spec, tab):
 
 # ---- public API ---------------------------------------------------------------------------
 def equity(hole, board, k, spec) -> float:
-    """All-in equity of hole (+ board) vs k random opponent hands; preflop if no board."""
+    """All-in equity of hole (+ board) vs k random opponent hands; preflop if no board.
+    k is rounded to an int (interpolate between k values yourself if you need to)."""
     try:
+        k = int(round(k))
         return _get(spec).equity(hole, board, k)
     except Exception:
         return 1.0 / (k + 1) if k >= 0 else 1.0
 
 
 def preflop_equity(hole, k, spec) -> float:
+    """Equity of the hole cards vs k random hands, before any board card."""
     try:
+        k = int(round(k))
         return 1.0 if k <= 0 else _get(spec).preflop(hole, k)
     except Exception:
         return 1.0 / (k + 1) if k >= 0 else 1.0
 
 
 def postflop_equity(hole, board, k, spec) -> float:
+    """Equity vs k random hands given the board so far (any street after preflop)."""
     try:
+        k = int(round(k))
         if k <= 0:
             return 1.0
         tab = _get(spec)

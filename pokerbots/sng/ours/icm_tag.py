@@ -51,6 +51,7 @@ class IcmTag:
         self.spec = rules.spec
         self.rng = random.Random(seed)
         self.S = strength
+        strength.preload(rules.spec)          # never pay the table load inside a 1 ms decision
         self.steal_seen = [0] * rules.num_players     # steal attempts faced in the blinds
         self.steal_fold = [0] * rules.num_players
         self.aggressor = None                          # seat of the last preflop raiser this hand

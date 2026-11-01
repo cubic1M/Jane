@@ -10,10 +10,13 @@ Method (one file per spec: cache/sng/strength_<spec.name>.npz):
     x (preflop + every postflop street) training rows, each with the all-in share
     (win = 1, m-way tie = 1/m) against k = 1..k_max random opponents.
   * Preflop rows are bucketed by the suit-isomorphism class of the hole cards (169 for
-    two cards, 16,432 for four); postflop rows by sng.ours.features keys (fine / medium /
-    coarse). Bucket means are shrunk toward the parent bucket (empirical-Bayes prior
-    strength n0 per level, estimated from the data), which handles rare buckets such as
-    the 1-combo Omaha classes.
+    two cards, 16,432 for four) and 3 coarser keys (features.pre_keys); postflop rows by
+    the 6 nested feature levels of features.post_keys. Every bucket mean is shrunk toward
+    its parent bucket (empirical-Bayes prior strength n0 per level, estimated from the
+    data), which handles rare buckets such as the 1-combo Omaha classes. The runtime
+    looks up the finest level that was seen in training.
+  * Discard variants are refused (the sit-and-go engine has none); strength.py then
+    uses its heuristic.
   * Validation: fresh random situations per street with "true" equity from a large MC
     (n rollouts vs k_max opponents, every k read off the same rollouts); the table is
     queried through the runtime code path and the mean absolute error is reported per
@@ -370,19 +373,26 @@ def _report(tab, val, K, n_mc):
     by = {}
     for nb, hole, board, eq, se in val:
         pred = [tab.equity(hole, board, k) for k in range(1, K + 1)]
-        r = by.setdefault(nb, {"n": 0, "abs": np.zeros(K), "se": np.zeros(K), "bias": np.zeros(K)})
-        r["n"] += 1
+        r = by.setdefault(nb, {k_: np.zeros(K) for k_ in ("abs", "se", "bias", "sq", "se2")})
+        r["n"] = r.get("n", 0) + 1
         d = np.array(pred) - np.array(eq)
         r["abs"] += np.abs(d)
         r["bias"] += d
+        r["sq"] += d * d
         r["se"] += np.array(se)
+        r["se2"] += np.array(se) ** 2
     rep = {}
     for nb in sorted(by):
         r = by[nb]
         n = max(1, r["n"])
+        rmse = np.sqrt(r["sq"] / n)
+        # the validation MC is itself noisy: remove its variance from the squared error
+        rmse_c = np.sqrt(np.maximum(r["sq"] - r["se2"], 0) / n)
         rep[str(nb)] = dict(n=r["n"], mae=np.round(r["abs"] / n, 4).tolist(),
                             bias=np.round(r["bias"] / n, 4).tolist(),
-                            mc_se=np.round(r["se"] / n, 4).tolist())
+                            mc_se=np.round(r["se"] / n, 4).tolist(),
+                            rmse=np.round(rmse, 4).tolist(),
+                            rmse_noise_corrected=np.round(rmse_c, 4).tolist())
     rep["n_mc"] = n_mc
     return rep
 
@@ -395,6 +405,7 @@ def format_report(meta) -> str:
             continue
         name = "preflop" if nb == "0" else f"board {nb}"
         lines.append(f"  {name:8s} (n={r['n']:4d}) mae " + " ".join(f"{x:.3f}" for x in r["mae"])
+                     + "  | rmse-noise " + " ".join(f"{x:.3f}" for x in r["rmse_noise_corrected"])
                      + "  | mc se " + " ".join(f"{x:.3f}" for x in r["mc_se"]))
     return "\n".join(lines)
 

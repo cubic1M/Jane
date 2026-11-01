@@ -6,7 +6,7 @@ Cards are ints 0..51, rank = c >> 2 (0 = '2' .. 12 = 'A'), suit = c & 3.
 Two things are computed from (hole, board):
   * pre_keys(ctx, hole): the suit-isomorphism class of the hole cards (169 classes for 2
     cards, 16,432 for 4) plus three coarser keys for shrinkage (see pre_keys).
-  * post_keys(ctx, hole, board): five nested bucket keys (LEVELS) built from
+  * post_keys(ctx, hole, board): six nested bucket keys (LEVELS, finest first) built from
       - the made hand under the spec (category order, deck, 'any' / 'exactly N' hole usage),
         evaluated by a pure-Python evaluator that reproduces engine.evaluator scores,
       - how the hole cards make it (board pair vs pocket pair vs pairing the board, set vs
@@ -124,6 +124,7 @@ class Ctx:
         self.total_board = cum
         # how many board ranks an opponent needs in a window to hold a straight / flush
         self.need_b = (5 - self.e) if self.exact else max(0, 5 - self.h)
+        self.sd_cap = 2 if self.h <= 2 else 4      # straight-out ranks (wraps with 3+ cards)
         if self.exact:
             self.r5 = self._rank5_table()
             self._combo_idx = {}
@@ -362,15 +363,18 @@ def class_label(hole) -> str:
 # ---- postflop bucket keys -----------------------------------------------------------
 # Feature tuple fields (each < 32, packed 5 bits apiece):
 #   0 street  1 t (hand type)  2 a  3 b  4 c (type-specific details)
-#   5 fd (flush draw: 0 none, 1 non-nut, 2 nut, 3 backdoor)  6 sd (straight-out ranks 0/1/2+)
-#   7 tf (max board suit count)  8 tp (board pairedness)  9 ts (board connectedness)
+#   5 fd (flush draw: 0 none, 1 non-nut, 2 nut, 3 backdoor)
+#   6 sd (straight-out ranks: 0/1/2+, or 0..4+ with 3+ hole cards)
+#   7 tf (max board suit count, cap 4)  8 tp (board pairedness: none/pair/two pair/trips+)
+#   9 ts (board connectedness: most board ranks in one straight window, 0 = <=2, 1..3 = 3..5)
 # Levels, finest first; each level's fields include its parent's, so a parent key is the
 # child key with fields masked off and the level tag replaced.
 NFIELDS = 10
 LEVELS = (
     (0, 1, 2, 3, 4, 5, 6, 7, 8, 9),
-    (0, 1, 2, 3, 5, 6, 7, 8),
-    (0, 1, 2, 5, 6, 7),
+    (0, 1, 2, 3, 4, 5, 6, 7, 8),
+    (0, 1, 2, 3, 5, 6, 7),
+    (0, 1, 2, 5, 6),
     (0, 1, 2),
     (0, 1),
 )
@@ -389,6 +393,10 @@ def parent_key(key: int) -> int:
     if lv + 1 >= NLEVELS:
         return -1
     return ((lv + 1) << _LVL_SHIFT) | (key & _FIELD_MASK[lv + 1])
+
+
+# hand types made by the board alone -> 'hero plays the board' types (complete board)
+PLAYS_BOARD = {0: 23, 1: 24, 6: 25, 9: 26}
 
 
 def _cls(n, cap):
@@ -459,7 +467,7 @@ def post_features(ctx, hole, board):
             c = kclass(HIGH[sec_m], bm | (1 << top_h), 5) if sec_m else 5
         elif brc[pr] == 0:                    # pocket pair
             t = 2
-            a = pos(pr)
+            a = _cls((bm & ABOVE[pr]).bit_count(), 5)
             b = kclass(pr, bm, 8)             # how many ranks could make a better pocket pair
         else:                                 # one hole card pairs the board
             t = 3
@@ -533,11 +541,22 @@ def post_features(ctx, hole, board):
         t = 15 + (2 if hrc[tr] else 0) + (1 if hrc[pr] else 0)
         a = _cls((bm & ABOVE[tr]).bit_count(), 2)
         b = 1 if tr > pr else 0
+        if t == 16:                           # board trips + hero's pair: what beats it
+            a = _cls((bm & ~(1 << tr) & ABOVE[pr]).bit_count(), 2)   # board ranks above pair
+            c = kclass(pr, bm, 4)                                    # better pocket pairs
     elif cat == "quads":
         t = 19 + (1 if hrc[d0] else 0)
         a = kclass(top_h, bm | (1 << d0)) if not hrc[d0] else 0
     else:                                      # straight flush
         t = 21 + (1 if fsuit >= 0 and hs[fsuit] else 0)
+    if t in PLAYS_BOARD and not exact and nb >= 5 and eval_any(ctx, board)[0] == score:
+        # hero's hole cards do not play: hero ties every opponent who cannot play over
+        # the board's lowest playing card -> count the ranks that can (not on the board)
+        t = PLAYS_BOARD[t]
+        low = score & 15 if t == 23 else ((score >> 4) & 15 if t == 24 else (score >> 8) & 15)
+        a = 0
+        b = kclass(low, bm, 9)
+        c = 0
     cur = score >> 20
     # ---- draws -----------------------------------------------------------------
     fd = sd = 0
@@ -584,7 +603,7 @@ def post_features(ctx, hole, board):
                     miss = w & ~hb
                     if miss.bit_count() == 1 and (w & hm & ~bm):
                         outs |= miss
-            sd = _cls((outs & dm).bit_count(), 2)
+            sd = _cls((outs & dm).bit_count(), ctx.sd_cap)
     # ---- board texture -----------------------------------------------------------
     tf = _cls(max(bsc), 4)
     mc = max(brc)
@@ -595,7 +614,7 @@ def post_features(ctx, hole, board):
     else:
         tp = 0
     sw = ctx.swin[bm]
-    ts = 0 if sw <= 2 else (1 if sw == 3 else 2)
+    ts = sw - 2 if sw > 2 else 0               # 0: <= 2 board ranks in any straight window, 1/2/3: 3/4/5
     return street, t, a, b, c, fd, sd, tf, tp, ts
 
 
