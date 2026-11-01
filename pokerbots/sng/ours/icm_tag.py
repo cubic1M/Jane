@@ -32,6 +32,7 @@ PARAMS = dict(
     bet_frac=0.65,       # postflop bet size (fraction of pot)
     bet_discount=0.6,   # opponent's bet/raise: our equity x this (their range is stronger)
     steal_bonus=0.40,
+    steal_max_behind=3,  # use the fold-to-steal read when at most this many players are behind
     reshove_bb=24.0,
     read_alpha=0.0,      # per-seat raise-rate read: raiser range_k x (base_pfr / their pfr)^alpha
     base_pfr=0.12,       # the raise rate at which a raiser counts as exactly range_k     # facing a raise with a 3-bet hand: shove (not 3-bet) at or below this stack    # lower the open bar by up to this much vs seats that fold to steals
@@ -140,8 +141,8 @@ class IcmTag:
             limpers = sum(1 for h in obs.history if h[1] == 0 and h[2] == "call")
             bar = p["open_mult"] / (k + 1 + limpers)
             # steal wider vs blinds that fold
-            if not limpers and len(behind) <= 3:
-                fr = self._fold_rate([obs.sb_seat, obs.bb_seat])
+            if not limpers and len(behind) <= p["steal_max_behind"]:
+                fr = self._fold_rate(behind if len(behind) > 2 else [obs.sb_seat, obs.bb_seat])
                 bar *= 1.0 - p["steal_bonus"] * max(0.0, fr - 0.5) * 2
             eq = self._eq(obs, k + limpers)
             if eff_bb <= p["push_bb"]:

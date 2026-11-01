@@ -27,6 +27,9 @@ FIELDS = {
                ("mc_fast", 10)],
     # many teams converge on a tight ICM style (includes copies of our own bot)
     "mirror": [("icm_tag", 40), ("pushfold_icm", 25), ("chen_tag", 20), ("adaptive", 15)],
+    # tuning blend: the default, strong and mirror fields in equal parts
+    "blend": [("mc_equity", 4), ("mc_slow", 2), ("mc_fast", 6), ("chen_tag", 16), ("lag", 6), ("nit", 6),
+              ("station", 3), ("maniac", 2), ("pushfold_icm", 20), ("adaptive", 12), ("icm_tag", 13)],
     # a weak field: many slow / loose bots
     "weak": [("mc_equity", 20), ("mc_slow", 15), ("station", 20), ("maniac", 15), ("chen_tag", 15),
              ("lag", 15)],
