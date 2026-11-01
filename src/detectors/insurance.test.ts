@@ -249,6 +249,29 @@ describe("how sure Jane is", () => {
   });
 });
 
+// Debugger 11-01: a nurse paying "ACH ALLY AUTO PAYMENT" (a car payment) each month was asked
+// "Check your car is insured". A lender requires cover, as with a linked car loan.
+describe("a car loan paid from the statements", () => {
+  it("means the car is insured somewhere Jane can't see", () => {
+    const data = inputFor("freelancer");
+    expect(firedFor("freelancer", "auto_insurance")).toHaveLength(1);
+    const payments = ["2026-08-04", "2026-09-04", "2026-10-04"].map((date) => ({
+      date,
+      amountCents: 41_288,
+      description: "ACH ALLY AUTO PAYMENT",
+      pfc: "LOAN_PAYMENTS_CAR_PAYMENT",
+      accountId: data.accounts[0].id,
+    }));
+    const withLoan = { ...data, transactions: [...data.transactions, ...payments] };
+    const profile = buildProfile(withLoan);
+    const fired = INSURANCE_DETECTORS.filter((d) => d.topic === "auto_insurance").flatMap((d) => {
+      const s = d.detect({ profile, data: withLoan });
+      return s ? [s] : [];
+    });
+    expect(fired).toEqual([]);
+  });
+});
+
 describe("the umbrella suggestion follows the need calculator (insurance QA pass)", () => {
   it("is not offered on gross balances when the net worth after debts is under the line", () => {
     // The sample family has $108k in the bank and investments, a home and a $338k mortgage.

@@ -85,6 +85,22 @@ describe("what a person owns, as facts", () => {
     expect(text).not.toMatch(/\bwill\b/i);
   });
 
+  // Debugger 11-01: "You own $86,233.99: 50% other, 41% US stocks, 10% cash." The "other" was a
+  // target-date fund and a stock fund the table doesn't know. Say so, by name, after the rest.
+  it("names the funds whose mix it doesn't know instead of calling them other", () => {
+    const f = ownedFacts([
+      account([
+        hold("VFIAX", 3_500_000, "mutual fund"),
+        hold("VFFVX", 3_550_000, "mutual fund"),
+        hold("VPMCX", 730_000, "mutual fund"),
+        hold("VMFXX", 840_000, "cash", { isCash: true, mix: { cash: 1 } }),
+      ]),
+    ])!;
+    expect(f.sentences[0]).toBe(
+      "You own $86,200.00: 41% US stocks, 10% cash, 50% in funds whose mix I don't know (VFFVX, VPMCX).",
+    );
+  });
+
   it("says nothing without holdings", () => {
     expect(ownedFacts([account([])])).toBeNull();
   });

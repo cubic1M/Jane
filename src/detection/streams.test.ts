@@ -149,7 +149,7 @@ describe("fallback recurring detection", () => {
         at(2, "DIRECTV.COM SEATTLE WA"),
         at(1, "DIRECTV STREAM SEATTLE WA"),
       ]),
-    ).toEqual(["merchant:directv stream seattle"]);
+    ).toEqual(["merchant:directv stream"]);
     // Rides and food from one company, at prices that don't match, stay apart.
     expect(
       keys([
