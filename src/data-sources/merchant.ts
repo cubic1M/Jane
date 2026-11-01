@@ -120,7 +120,7 @@ function isCode(word: string): boolean {
 // Names written in capitals, so "USAA" isn't "Usaa" (debugger 11-01): the companies and agencies
 // that statements most often show by their initials (not GEICO or IKEA, read as words).
 const ACRONYMS = new Set(
-  "IRS USAA NFCU DFAS CVS HBO ADP AARP UPS USPS DMV HOA ATM BP KFC IHOP".split(" "),
+  "IRS USAA NFCU DFAS CVS HBO ADP AARP UPS USPS DMV HOA ATM BP KFC IHOP ATT".split(" "),
 );
 
 function titleCase(text: string): string {
