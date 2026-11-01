@@ -27,6 +27,22 @@ describe("withDirectory", () => {
     expect(named).toEqual(["Spotify", null]);
   });
 
+  // Debugger 11-01: "APPLE.COM/BILL ONE APPLE PARK WAY CA" read "Review your Apple One Apple Park
+  // Way subscription": the company's street address followed its name.
+  it("knows a company when the card wrote its street address after it", () => {
+    const named = withDirectory(
+      input({
+        transactions: [
+          tx({ description: "APPLE.COM/BILL ONE APPLE PARK WAY CA", merchantName: null }),
+          tx({ description: "BLUE BOTTLE 1 FERRY BUILDING WAY", merchantName: null }),
+          tx({ description: "PARK WAY DINER", merchantName: null }),
+        ],
+      }),
+      MERCHANT_SEED,
+    ).transactions.map((t) => t.merchantName);
+    expect(named).toEqual(["Apple", null, null]);
+  });
+
   it("joins a company's different statement names into one subscription", () => {
     // A CSV export with no categories, where Spotify shows up two ways.
     const charge = (m: number, description: string) =>
