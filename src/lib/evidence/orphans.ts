@@ -271,6 +271,9 @@ export async function forgetSince(
     db.suggestionOutcomes.deleteMany({ where: { createdAt: after } }),
     db.healthScores.deleteMany({ where: { createdAt: after } }),
     db.monthCloses.deleteMany({ where: { createdAt: after } }),
+    // Last month's report, made in this month's first days from what was linked then (debugger
+    // 11-01: the demo bank's figures stayed in /monthly and the chat); the next run remakes it.
+    db.monthlyReports.deleteMany({ where: { createdAt: after } }),
     db.yearPlans.deleteMany({ where: { createdAt: after } }),
     // Securities nothing holds or traded any more (their holdings went with the accounts).
     db.securities.deleteMany({
