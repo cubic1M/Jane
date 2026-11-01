@@ -36,6 +36,7 @@ import {
   type ChatTurn,
 } from "./claude";
 import { resolvePronoun, type Topic } from "./context";
+import { fakeChatClaude } from "./fake-chat-claude";
 import { typedFlowReply } from "./flows/chat";
 import { parseIntent } from "./intents";
 import { sinceSignIn, storeReply } from "./messages";
@@ -283,8 +284,10 @@ async function answer(
     await recordLimitHit(userId, { client, now }).catch(() => {});
     return { reply: await backup({ limited: true }), intent: intent.kind, source: "capped" };
   }
+  // The end-to-end tests' scripted Claude, for their scripted messages only (./fake-chat-claude.ts).
+  const scripted = claude ? null : fakeChatClaude(text);
   // No Claude (no key: dev, tests): the rules answer, as before.
-  if (!llmEnabled()) {
+  if (!llmEnabled() && !scripted) {
     const byRules = await rules();
     if (byRules) return { reply: byRules.reply, intent: intent.kind, source: "rules" };
     return { reply: unknownReply(text, asOf), intent: intent.kind, source: "fallback" };
@@ -306,7 +309,7 @@ async function answer(
   const result = await askClaudeInChat(userId, history, text, {
     client,
     now,
-    claude,
+    claude: claude ?? scripted ?? undefined,
     onEvent,
     primerMs,
     advice: await adviceMode(userId, { client }),
