@@ -100,8 +100,12 @@ const autoInsurance: Detector = {
     const car = profile.facts.has_car;
     const cover = profile.facts.insurance_auto;
     if (car.value !== true || cover.value !== false) return null;
-    // A car loan means the lender requires cover, so it exists somewhere Jane can't see.
+    // A car loan means the lender requires cover, so it exists somewhere Jane can't see: a
+    // linked loan, or its payments in the statements (debugger 11-01: "ACH ALLY AUTO PAYMENT").
     if (data.accounts.some((a) => a.subtype === "auto")) return null;
+    if (data.transactions.some((t) => t.amountCents > 0 && t.pfc === "LOAN_PAYMENTS_CAR_PAYMENT")) {
+      return null;
+    }
     return {
       id: suggestionId("insurance", "auto_insurance"),
       capability: "insurance",
