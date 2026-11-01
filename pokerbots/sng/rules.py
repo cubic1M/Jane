@@ -64,9 +64,9 @@ class SngRules:
         return replace(self, **kw)
 
     def validate(self):
-        if self.spec.discards:
-            raise ValueError("discard variants are not supported by the sit-and-go engine yet")
         if len(self.payouts) < self.num_players:
             raise ValueError("need one payout per finishing place")
-        if self.spec.hole_cards * self.num_players + self.spec.total_board_dealt > len(self.spec.deck):
+        n, sp = self.num_players, self.spec
+        if sp.hole_cards * n + sp.total_board_dealt > len(sp.deck):
             raise ValueError("deck too small for this many players")
+        # draws beyond the stub reuse the dead discards (reshuffled), as in real draw games

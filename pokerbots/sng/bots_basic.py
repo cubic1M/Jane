@@ -3,7 +3,14 @@ from __future__ import annotations
 
 import random
 
-from engine.game import Call, Check, Fold, RaiseTo
+from engine.game import Call, Check, Discard, Fold, RaiseTo
+
+
+def random_discard(obs, rng):
+    """A legal random discard for a discard/draw phase."""
+    lg = obs.legal
+    k = rng.randint(lg.discard_min, lg.discard_count)
+    return Discard(rng.sample(list(obs.hole), k))
 
 
 class SngBot:
@@ -14,13 +21,18 @@ class SngBot:
         self.rng = random.Random(seed)
 
     def act(self, obs):
+        if getattr(obs.legal, "discard_count", 0):
+            return random_discard(obs, self.rng)
+        return self.decide(obs)
+
+    def decide(self, obs):
         return obs.legal.passive()
 
 
 class RandomSng(SngBot):
     name = "random"
 
-    def act(self, obs):
+    def decide(self, obs):
         lg = obs.legal
         r = self.rng.random()
         if lg.can_raise and r < 0.25:
@@ -38,6 +50,6 @@ class StationSng(SngBot):
 class PushSng(SngBot):
     name = "push"
 
-    def act(self, obs):
+    def decide(self, obs):
         lg = obs.legal
         return RaiseTo(lg.max_raise_to) if lg.can_raise else lg.passive()

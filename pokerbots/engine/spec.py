@@ -33,6 +33,11 @@ class DiscardRule:
     to_board: bool = True
     face_up: bool = True
     order: str = "oop_first"  # or "ip_first"
+    # draw: discarded cards are replaced from the deck (draw poker / "replace" twists)
+    draw: bool = False
+    # variable discards: a player may discard any number from min_count to count
+    # (-1 = exactly count)
+    min_count: int = -1
 
 
 @dataclass(frozen=True)
@@ -84,7 +89,9 @@ class GameSpec:
 
     @property
     def final_hole_cards(self) -> int:
-        return self.hole_cards - sum(d.count for d in self.discards)
+        """Hole cards at showdown (draws replace what they discard; a variable discard
+        counts at its maximum)."""
+        return self.hole_cards - sum(d.count for d in self.discards if not d.draw)
 
     @property
     def final_board_cards(self) -> int:
@@ -119,6 +126,10 @@ class GameSpec:
                 raise ValueError("discard order must be oop_first or ip_first")
             if d.to_board and not d.face_up:
                 raise ValueError("discards to the board are face up")
+            if d.min_count > d.count:
+                raise ValueError("discard min_count above count")
+            if d.min_count >= 0 and not d.draw and d.min_count != d.count:
+                raise ValueError("a variable discard without draw changes hole-card counts: use draw=True")
         fh = self.final_hole_cards
         if fh < 0:
             raise ValueError("more discards than hole cards")

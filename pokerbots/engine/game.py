@@ -155,6 +155,8 @@ class HandState:
 
     def __init__(self, spec: GameSpec, deck_order, stacks=None, hand_index=0,
                  bankrolls=(0, 0), time_left=(None, None)):
+        if any(d.draw or d.min_count >= 0 for d in spec.discards):
+            raise NotImplementedError("draw / variable discards: use the sit-and-go engine (sng/table.py)")
         self.spec = spec
         self.ev = get_evaluator(spec)
         d = [int(c) for c in deck_order]

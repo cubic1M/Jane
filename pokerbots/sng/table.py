@@ -23,7 +23,7 @@ from typing import Optional
 import numpy as np
 
 from engine.evaluator import get_evaluator
-from engine.game import CALL, CHECK, FOLD, RAISE, Action, Call, Check, Fold
+from engine.game import CALL, CHECK, DISCARD, FOLD, RAISE, Action, Call, Check, Discard, Fold
 
 from .icm import icm
 from .rules import SngRules
@@ -48,6 +48,8 @@ class Legal:
     can_raise: bool
     min_raise_to: int   # total bet on this street
     max_raise_to: int
+    discard_count: int = 0   # > 0 only in a discard phase: discard up to this many cards
+    discard_min: int = 0     # ... and at least this many (== discard_count unless variable)
 
     def passive(self) -> Action:
         return Check() if self.can_check else Call()
@@ -58,12 +60,16 @@ class Legal:
     def is_legal(self, a) -> bool:
         if not isinstance(a, Action):
             return False
+        if self.discard_count and a.kind != DISCARD:
+            return False
         if a.kind == FOLD:
             return True
         if a.kind == CHECK:
             return self.can_check
         if a.kind == CALL:
             return self.can_call
+        if self.discard_count:
+            return a.kind == DISCARD and self.discard_min <= len(a.cards) <= self.discard_count
         if a.kind == RAISE:
             return self.can_raise and self.min_raise_to <= a.amount <= self.max_raise_to
         return False
@@ -93,6 +99,9 @@ class SngObservation:
     players_left: int           # players with chips at the table (incl. me)
     payouts: tuple              # points by finishing place
     places_paid: tuple          # (place, points) still to be awarded = 1..players_left
+    phase: str = "bet"          # "bet" or "discard"
+    my_discards: tuple = ()     # my discarded cards this hand
+    visible_discards: tuple = ()  # per seat: that seat's discards I can see (face up / board)
 
 
 @dataclass
@@ -134,8 +143,11 @@ class Hand:
         self.ev = evaluator or get_evaluator(self.spec)
         h = self.spec.hole_cards
         self.hole = [tuple(deck[i * h:(i + 1) * h]) if self.in_hand[i] else () for i in range(self.n)]
-        self.board_deck = list(deck[self.n * h:])
+        self.board_deck = list(deck[self.n * h:])   # board cards and draw replacements, in order
         self.board = []
+        self.discards = [[] for _ in range(self.n)]
+        self.visible = [[] for _ in range(self.n)]     # discards everyone can see
+        self.muck = []                                  # dead discards (reshuffled if a draw runs the stub out)
         self.street = 0
         self.history = []
         self.ended = False
@@ -199,7 +211,7 @@ class Hand:
         return Legal(can_check=to_call == 0, can_call=to_call > 0, call_amount=call_amt,
                      can_raise=can_raise, min_raise_to=lo, max_raise_to=hi)
 
-    def observe(self, j, legal: Legal, players_left: int) -> SngObservation:
+    def observe(self, j, legal: Legal, players_left: int, phase: str = "bet") -> SngObservation:
         seats = tuple(SeatView(k, self.stack[k], self.bet[k], self.committed[k], self.folded[k],
                                self.in_hand[k] and not self.folded[k] and self.stack[k] == 0, self.in_hand[k])
                       for k in range(self.n))
@@ -211,7 +223,9 @@ class Hand:
             hole=self.hole[j], board=tuple(self.board), pot=sum(self.committed), my_stack=self.stack[j],
             my_bet=self.bet[j], legal=legal, seats=seats, history=tuple(self.history),
             players_left=players_left, payouts=pays,
-            places_paid=tuple((p, pays[p - 1]) for p in range(1, players_left + 1)))
+            places_paid=tuple((p, pays[p - 1]) for p in range(1, players_left + 1)),
+            phase=phase, my_discards=tuple(self.discards[j]),
+            visible_discards=tuple(tuple(v) for v in self.visible))
 
     def betting_round(self, decide, players_left: int):
         n = self.n
@@ -266,6 +280,49 @@ class Hand:
         for k in range(n):
             self.bet[k] = 0
 
+    # ---- discard / draw phase -----------------------------------------------------------
+    def discard_round(self, rule, decide, players_left: int):
+        """Every player still in the hand (all-in included) discards, in rule.order:
+        'oop_first' = clockwise from the first seat after the button, 'ip_first' = the
+        reverse (button first)."""
+        cw = []
+        j = self._next(self.button, lambda k: self.in_hand[k] and not self.folded[k])
+        while j is not None and j not in cw:
+            cw.append(j)
+            j = self._next(j, lambda k: self.in_hand[k] and not self.folded[k])
+        order = cw if rule.order == "oop_first" else list(reversed(cw))
+        lo = rule.count if rule.min_count < 0 else rule.min_count
+        for j in order:
+            lg = Legal(False, False, 0, False, 0, 0, discard_count=min(rule.count, len(self.hole[j])),
+                       discard_min=min(lo, len(self.hole[j])))
+            a = decide(j, self.observe(j, lg, players_left, phase="discard"), lg)
+            cards = tuple(a.cards)
+            if (a.kind != DISCARD or len(set(cards)) != len(cards) or not set(cards) <= set(self.hole[j])
+                    or not lg.discard_min <= len(cards) <= lg.discard_count):
+                cards = lowest_cards(self.hole[j], lg.discard_min)
+            self.hole[j] = tuple(c for c in self.hole[j] if c not in cards)
+            self.discards[j] += cards
+            if rule.to_board:
+                self.board += cards
+                self.visible[j] += cards
+            elif rule.face_up:
+                self.visible[j] += cards
+            if rule.draw and cards:
+                if len(self.board_deck) < len(cards) + self._board_still_due():
+                    # stub ran out: shuffle the dead discards (not this player's own) back in
+                    pool = sorted(self.muck)
+                    np.random.default_rng([self.hand_number, len(self.history), 31]).shuffle(pool)
+                    self.board_deck += pool
+                    self.muck = []
+                self.hole[j] = self.hole[j] + tuple(self.board_deck[:len(cards)])
+                self.board_deck = self.board_deck[len(cards):]
+            if not rule.to_board:
+                self.muck += cards
+            self.history.append((j, self.street, "discard", len(cards)))
+
+    def _board_still_due(self):
+        return sum(self.spec.board_cards_per_street[self.street + 1:])
+
     # ---- showdown / payout --------------------------------------------------------------
     def award(self):
         """Distribute the pot(s). Returns per-seat chip deltas for this hand."""
@@ -275,13 +332,17 @@ class Hand:
         win = [0] * self.n
         scores = None
         if len(cont) > 1:
-            need = self.spec.total_board_dealt - len(self.board)
+            need = self.spec.total_board_dealt - self.dealt_board
             if need > 0:
                 self.board += self.board_deck[:need]
-            holes = np.array([self.hole[j] for j in cont], dtype=np.int64)
-            boards = np.array([self.board] * len(cont), dtype=np.int64)
-            sc = self.ev.evaluate_batch(holes, boards)
-            scores = {j: int(s) for j, s in zip(cont, sc)}
+                self.dealt_board += need
+            if len({len(self.hole[j]) for j in cont}) == 1:
+                holes = np.array([self.hole[j] for j in cont], dtype=np.int64)
+                boards = np.array([self.board] * len(cont), dtype=np.int64)
+                sc = self.ev.evaluate_batch(holes, boards)
+                scores = {j: int(s) for j, s in zip(cont, sc)}
+            else:
+                scores = {j: int(self.ev.evaluate(list(self.hole[j]), list(self.board))) for j in cont}
         for lv in levels:
             contrib = [j for j in range(self.n) if self.committed[j] >= lv]
             pot = (lv - prev) * len(contrib)
@@ -306,17 +367,26 @@ class Hand:
     def play(self, decide, players_left: int):
         self.post()
         streets = self.spec.board_cards_per_street
+        self.dealt_board = 0
         for st in range(len(streets)):
             self.street = st
             if st > 0:
                 k = streets[st]
                 self.board += self.board_deck[:k]
                 self.board_deck = self.board_deck[k:]
+                self.dealt_board += k
             if len(self._contending()) <= 1:
                 break
+            for rule in self.spec.discards_on_street(st):
+                self.discard_round(rule, decide, players_left)
             if sum(self._live(j) for j in self._contending()) >= 1:
                 self.betting_round(decide, players_left)
         return self.award()
+
+
+def lowest_cards(hole, k):
+    """The k lowest-ranked cards (the automatic discard on an error or timeout)."""
+    return tuple(sorted(hole, key=lambda c: (c >> 2, c & 3))[:k])
 
 
 @dataclass
@@ -370,7 +440,10 @@ def play_table(bots, rules: SngRules, seed: int, deal_seed: Optional[int] = None
                 st.first_error = f"illegal {a} with {lg}"
             a = None
         if a is None or (rules.enforce_time and dt > limit):
-            a = Check() if lg.can_check else Fold()
+            if lg.discard_count:
+                a = Discard(lowest_cards(obs.hole, lg.discard_min))
+            else:
+                a = Check() if lg.can_check else Fold()
         return a
 
     hand_no = 0
