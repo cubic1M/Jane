@@ -43,6 +43,27 @@ describe("fallback recurring detection", () => {
     expect(stream.confidence).toBe("high");
   });
 
+  // Debugger 11-01: a couple moved $1,800 from personal to joint checking on the 2nd and 16th. The
+  // gaps (14, 17, 14, 16 days) were neither every two weeks nor monthly, so no stream, and the
+  // joint account's forecast left the money out ("lowest point about $762.73").
+  it("finds a twice-a-month transfer on two set days", () => {
+    const transactions = [3, 2, 1].flatMap((m) =>
+      [2, 16].map((day) =>
+        tx({
+          description: "Online Transfer from CHK ...7731",
+          merchantName: null,
+          pfcPrimary: "TRANSFER_IN",
+          pfcDetailed: "TRANSFER_IN_ACCOUNT_TRANSFER",
+          date: monthsAgo(m, day),
+          amountCents: 180_000,
+        }),
+      ),
+    );
+    const streams = buildStreams(input({ transactions }));
+    expect(streams.map((s) => s.frequency)).toEqual(["SEMI_MONTHLY"]);
+    expect(streams[0].charges).toHaveLength(6);
+  });
+
   it("finds weekly charges", () => {
     const transactions = ["2026-09-17", "2026-09-24", "2026-10-01", "2026-10-08"].map((date) =>
       tx({ ...NETFLIX, date }),
