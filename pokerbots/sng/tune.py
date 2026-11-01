@@ -67,6 +67,7 @@ def main(argv=None):
     out_dir.mkdir(parents=True, exist_ok=True)
     state_f = out_dir / f"{a.bot}{a.tag}.json"
     state = json.loads(state_f.read_text()) if state_f.exists() else dict(params=base, history=[], round=0)
+    state["params"] = {**base, **state["params"]}   # parameters added since the last run
     field = field_weights(a.field)
     rules_kw = dict(payouts=PAYOUT_SETS[a.payouts])
     while state["round"] < a.rounds:
