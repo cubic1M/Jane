@@ -827,6 +827,49 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   - The charts assume opponents call like an equilibrium bot. Real fields fold to all-ins
     far more (87–98% in field 3), so `icm_tag`'s tuned, steal-reading shove rule earns more
     than the equilibrium does.
+* **Out of sample against a third field** (`sng/field3/`, `results/sng_field3.md`): 8
+  independently written bots in a realistic regional mix. It includes generic Codex
+  builds, a buggy bot, a slow Monte Carlo bot, a shover, a survival bot, and strong ICM
+  and exploit bots. 400 paired tables:
+
+| compared with | synthetic payouts | top-3 payouts |
+|---|---|---|
+| f3_exploiter (field 3's best) | **+8.6 ± 4.6** | **+6.2 ± 2.6** |
+| f3_quant_icm | +17.6 | +11.5 |
+| f3_ladder_pro | +20.1 | +13.8 |
+| pushfold_icm | +20.6 | +14.5 |
+| icm_lite (plan B) | +1.4 ± 3.2 | +2.5 ± 2.0 |
+
+  So `icm_tag` beats the best bot of all three independently written fields, and plan B
+  keeps almost all of that.
+* **Discard and draw variants** (round 4). The engine now plays them:
+  - discards to the board;
+  - face-up or face-down dead discards;
+  - draws with a reshuffled muck;
+  - variable 0..n counts and either order;
+  - a lowest-card fallback.
+
+  `icm_any` (`sng/ours/anyvar.py`) learns strength by simulating the actual variant and
+  has its own discard/draw policy. Its tests caught two policy bugs before any results
+  counted:
+  - high-card hands score as category 1, so it never drew to flushes;
+  - it threw aces onto the board.
+
+  Fair comparison (`results/sng_discards.md`): every bot without its own discard logic
+  uses the shared policy, so it measures betting. 300 paired tables per variant:
+
+| variant | icm_any vs icm_tag | vs pushfold_icm / chen_tag |
+|---|---|---|
+| 3 cards, discard 1 to the board | +1.5 ± 4.5 | +14 / +22 |
+| Omaha, discard 2 face down | +0.8 ± 4.8 | +19 / +20 |
+| hold'em with a 0–1 draw | +4.2 ± 4.4 | +21 / +22 |
+| five-card draw | **+13.0 ± 4.2** | +35 / +36 |
+
+  Use `icm_any` for any discard/draw variant. It bundles numpy-free with its table.
+* **More strength tables:** 12 card variants are now prebuilt (`sng/ours/build_more.py`).
+* **Practice kit 2** (`practice_kit2/`), for blind human practice. It has a dict
+  interface, raise-by amounts, '10H' cards and its own twist. Its organiser notes are
+  kept out of the repo.
 * The tuner (`sng/tune.py`) is reusable on the day with the real rules as a preset
   (`--preset`), at 10–20 minutes per round. Robustness
   to other fields and point tables is next, since both are guesses until the day.

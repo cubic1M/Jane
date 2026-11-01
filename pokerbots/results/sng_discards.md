@@ -34,3 +34,32 @@ field archetypes (points/table):
 
 ## draw_holdem
 
+| bot | points/table | P(1st) | P(top 3) | busts | p99 ms | max ms | >1ms | errors+illegal |
+|---|---|---|---|---|---|---|---|---|
+| icm_any | 72.25 ± 3.70 | 27% | 78% | 33% | 0.060 | 3.99 | 5 | 0 |
+| icm_tag | 68.08 ± 3.99 | 28% | 72% | 38% | 0.064 | 3.18 | 2 | 0 |
+| pushfold_icm | 50.84 ± 3.42 | 6% | 58% | 60% | 0.175 | 1.88 | 3 | 0 |
+| chen_tag | 49.89 ± 3.14 | 4% | 66% | 56% | 0.185 | 2.08 | 2 | 0 |
+
+paired difference vs icm_any (same tables):
+  icm_tag                      -4.17 ± 4.39
+  pushfold_icm                 -21.42 ± 4.94 *
+  chen_tag                     -22.37 ± 4.94 *
+
+field archetypes (points/table):
+
+## five_draw
+
+| bot | points/table | P(1st) | P(top 3) | busts | p99 ms | max ms | >1ms | errors+illegal |
+|---|---|---|---|---|---|---|---|---|
+| icm_any | 76.46 ± 3.61 | 28% | 85% | 26% | 0.200 | 4.09 | 6 | 0 |
+| icm_tag | 63.44 ± 3.39 | 10% | 78% | 50% | 0.205 | 2.66 | 6 | 0 |
+| pushfold_icm | 41.70 ± 3.73 | 6% | 47% | 70% | 0.211 | 1.56 | 5 | 1924 |
+| chen_tag | 40.26 ± 2.86 | 0% | 54% | 68% | 0.214 | 2.30 | 10 | 2604 |
+
+paired difference vs icm_any (same tables):
+  icm_tag                      -13.01 ± 4.18 *
+  pushfold_icm                 -34.75 ± 4.80 *
+  chen_tag                     -36.20 ± 4.52 *
+
+first error: Traceback (most recent call last):
