@@ -11,6 +11,7 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 import { logAudit } from "@/lib/audit";
 import { takeChatAction } from "@/lib/jane-agent/actions";
 import { runChatTool } from "@/lib/jane-agent/claude-tools";
+import { rentingReply } from "@/lib/jane-agent/renting-replies";
 import { rentingSource } from "@/lib/jane-agent/sources/renting";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
 import { sendToJane } from "@/lib/jane-agent/typing";
@@ -114,6 +115,24 @@ describe.runIf(url)("renting against a real database", { timeout: 120_000 }, () 
     expect(rentingSource.gather(after, context).map((m) => m.dedupeKey)).not.toContain(
       "rent-report:2026",
     );
+  });
+
+  // Debugger 11-01: a real account (an upload) was told "I can have it reported to the credit
+  // bureaus; it costs about $6.95 a month" with a yes button. The partner is a stand-in and Jane
+  // acts for no real account in the read-only beta: no offer, no button; the fact stays.
+  it("makes no reporting offer to a real account", async () => {
+    const snapshot = (await loadSnapshot(userId, opts()))!;
+    // The test before this one opted in: as someone who hasn't.
+    const renting = await loadRenting(userId, opts());
+    const notOn = { ...renting, reporting: { ...renting.reporting, on: false } };
+    const real = { ...snapshot, concierge: false, renting: notOn };
+    expect(rentingSource.gather(real, context).map((m) => m.dedupeKey)).not.toContain(
+      "rent-report:2026",
+    );
+    const reply = rentingReply(notOn, { actsForYou: false });
+    expect(reply.body).toContain("It isn't on your credit file.");
+    expect(reply.body).not.toContain("only starts if you say yes");
+    expect(reply.actions.map((a) => a.id)).not.toContain("rent.report_on");
   });
 
   it("can be turned off, and nothing else of anyone's changes", async () => {
