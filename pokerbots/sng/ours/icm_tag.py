@@ -23,14 +23,14 @@ PARAMS = dict(
     open_size=2.5,       # open-raise to this many big blinds (+1 per limper)
     push_bb=12.0,        # shove-or-fold at or below this effective stack (bb)
     push_mult=1.10,      # shove if equity >= push_mult / (players to act + 1) (scaled by stack)
-    range_k=2.5,         # a raiser's range ~ this many random hands
-    call_margin=0.02,    # extra equity needed above pot odds to call
+    range_k=4.0,         # a raiser's range ~ this many random hands
+    call_margin=0.06,    # extra equity needed above pot odds to call
     threebet_eq=0.62,    # 3-bet (or shove when short) if equity vs the raiser range clears this
     risk=0.10,           # ICM risk premium on all-in calls at 8 players left (grows as players bust)
     value_eq=0.62,       # postflop: bet for value above this (adjusted) equity
     cbet=0.55,           # c-bet frequency heads-up as the preflop aggressor
     bet_frac=0.65,       # postflop bet size (fraction of pot)
-    bet_discount=0.85,   # opponent's bet/raise: our equity x this (their range is stronger)
+    bet_discount=0.6,   # opponent's bet/raise: our equity x this (their range is stronger)
     steal_bonus=0.25,    # lower the open bar by up to this much vs seats that fold to steals
 )
 
