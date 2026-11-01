@@ -48,7 +48,16 @@ export async function GET(request: Request) {
         }),
         // Jane's daily look at everyone's money, in the chat (spec step 82). A problem
         // there never stops the rest of the run.
-        chat: await runJaneAgentForAll({ budgetMs: CHAT_CRON_BUDGET_MS }).catch((error) => {
+        // Its own budget, but never more than what's left (review 10-31).
+        chat: await runJaneAgentForAll({
+          budgetMs: Math.max(
+            0,
+            Math.min(
+              CHAT_CRON_BUDGET_MS,
+              maxDuration * 1000 - CONTROLLER_RUN_RESERVE_MS - (Date.now() - startedAt),
+            ),
+          ),
+        }).catch((error) => {
           console.error("Jane's daily chat run failed", { error: String(error) });
           return null;
         }),
