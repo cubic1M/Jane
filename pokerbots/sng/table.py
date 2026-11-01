@@ -410,8 +410,12 @@ def play_table(bots, rules: SngRules, seed: int, deal_seed: Optional[int] = None
     ev = get_evaluator(rules.spec)
     stacks = [rules.starting_stack] * n
     stats = [BotStats() for _ in range(n)]
+    broken = set()                 # a bot whose setup failed checks / folds / auto-discards all table
     for s, b in enumerate(bots):
-        b.new_table(rules, s, seed * 1000 + s)
+        try:
+            b.new_table(rules, s, seed * 1000 + s)
+        except Exception:  # noqa: BLE001
+            broken.add(s)
     rng = np.random.default_rng([deal_seed, 99])
     button = int(rng.integers(n))
     deck_all = np.array(rules.spec.deck, dtype=np.int64)
@@ -423,6 +427,12 @@ def play_table(bots, rules: SngRules, seed: int, deal_seed: Optional[int] = None
     def decide(j, obs, lg):
         b = bots[j]
         st = stats[j]
+        if j in broken:
+            st.errors += 1
+            if st.first_error is None:
+                st.first_error = "new_table failed: the bot checks / folds / auto-discards all table"
+            return Discard(lowest_cards(obs.hole, lg.discard_min)) if lg.discard_count else (
+                Check() if lg.can_check else Fold())
         t0 = time.perf_counter()
         try:
             a = b.act(obs)

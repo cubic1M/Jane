@@ -215,6 +215,15 @@ class TestTable(unittest.TestCase):
         # the slow pusher never got an all-in through: it only ever checked/folded
         self.assertLessEqual(res.final_stacks[0], 2000 + 60 * 20)
 
+    def test_bot_whose_setup_fails_checks_or_folds_all_table(self):
+        class NoSetup(SngBot):
+            def new_table(self, rules, seat, seed=0):
+                raise RuntimeError("setup crash")
+        r = SngRules(num_players=3, payouts=(50, 30, 20), max_hands=30, enforce_time=False)
+        res = play_table([NoSetup(), StationSng(), StationSng()], r, 2)
+        self.assertGreater(res.stats[0].errors, 0)
+        self.assertEqual(sum(res.final_stacks), 6000)
+
     def test_duplicate_deal_same_cards_per_seat(self):
         seen = {}
 

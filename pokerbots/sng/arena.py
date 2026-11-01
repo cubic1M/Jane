@@ -66,8 +66,7 @@ def _table_job(args):
     if rules.spec.discards:
         # field bots were written for hold'em: give them our sensible discard policy so a
         # comparison measures betting, not their engine-fallback discards
-        bots = [b if i == my_seat or hasattr(b, "choose_discard_ok") else DiscardHelper(b)
-                for i, b in enumerate(bots)]
+        bots = [b if getattr(b, "handles_discards", False) else DiscardHelper(b) for b in bots]
     res = play_table(bots, rules, seed=seed0 * 100003 + t, deal_seed=seed0 * 100003 + t)
     st = res.stats[my_seat]
     times = np.array(st.times) if st.times else np.zeros(1)

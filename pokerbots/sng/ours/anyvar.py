@@ -215,6 +215,7 @@ class IcmAny(IcmTag):
     """icm_tag's betting rules on the simulated any-variant strength, plus a discard/draw
     policy. Use for discard/draw variants or any spec without a feature table."""
     name = "icm_any"
+    handles_discards = True
 
     def new_table(self, rules, seat, seed=0):
         super().new_table(rules, seat, seed)
