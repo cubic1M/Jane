@@ -59,7 +59,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Open, update or close the outage issue
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           FAILED: ${{ steps.check.outputs.failed }}
         with:
