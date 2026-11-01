@@ -170,7 +170,7 @@ import { attentionResume } from "./attention";
 import { whatIfAdopt } from "./whatif";
 import { leanNotNow, leanStart } from "./lean";
 import { askAnswer } from "./ask";
-import { rentAnswer } from "./rent";
+import { rentAnswer, rentInAnswer } from "./rent";
 import { suggestionNo, suggestionWhy, suggestionYes } from "./suggestion";
 import { steadyOn, steadyPay, steadySkip } from "./steady";
 import { priceCalled } from "./price-rises";
@@ -453,6 +453,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "ask.answer.5": askAnswer(5),
   "rent.yes": rentAnswer(true),
   "rent.no": rentAnswer(false),
+  "rent_in.yes": rentInAnswer(true),
+  "rent_in.no": rentInAnswer(false),
   "suggestion.yes": suggestionYes,
   "suggestion.no": suggestionNo,
   "suggestion.why": suggestionWhy,
