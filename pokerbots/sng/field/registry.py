@@ -25,6 +25,8 @@ FIELDS = {
     # a stronger regional: fewer broken bots, more short-stack specialists and TAGs
     "strong": [("pushfold_icm", 25), ("adaptive", 20), ("chen_tag", 25), ("lag", 10), ("nit", 10),
                ("mc_fast", 10)],
+    # many teams converge on a tight ICM style (includes copies of our own bot)
+    "mirror": [("icm_tag", 40), ("pushfold_icm", 25), ("chen_tag", 20), ("adaptive", 15)],
     # a weak field: many slow / loose bots
     "weak": [("mc_equity", 20), ("mc_slow", 15), ("station", 20), ("maniac", 15), ("chen_tag", 15),
              ("lag", 15)],

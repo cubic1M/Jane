@@ -46,10 +46,30 @@ effective stack in big blinds.
   - Call at pot odds + margin (+ ICM premium for big calls). Raise only very strong
     hands.
 
+## Tuned parameter values (default field, synthetic points; robust across 12 field × point-table cells)
+
+| parameter | value | meaning |
+|---|---|---|
+| open_mult | 1.18 | open if equity vs the k players behind ≥ 1.18/(k+1) |
+| open_size | 2.5 bb | +1 bb per limper |
+| steal_bonus | 0.40 | lower the open bar by up to 40% vs blinds that fold to steals |
+| push_bb | 12 | shove-or-fold at or below 12bb effective |
+| push_mult | 1.10 | shove bar 1.10/(k+1), scaled 0.75–1.0 by depth |
+| range_k | 4.0 | a raiser = 4 random hands (+0.8 per extra player in) |
+| call_margin | 0.06 | equity needed above pot odds |
+| threebet_eq | 0.62 | 3-bet / re-shove (re-shove at ≤ 24bb) |
+| risk | 0.10 | ICM premium on big calls at 8 left, +15% per busted player |
+| value_eq | 0.62 | postflop value-bet bar |
+| bet_discount | 0.6 | multiply equity by 0.6 per bet/raise faced this street |
+| cbet | 0.55 | heads-up flop c-bet frequency, half pot |
+| bet_frac | 0.65 | value bet size (pot fraction) |
+
 ## The numbers that mattered most (paired tables, 400–600 per cell)
 
 * Calling tightness is the biggest lever. Treating the raiser as 4 random hands
   instead of 2.5 was worth +8.8 points per table, and a 6% calling margin +5.4.
+* Stealing wider against blinds that fold was worth +5.6. Bots that time out auto-fold,
+  so they are the easiest seats to steal from.
 * Monte Carlo bots that compare against random hands call too much and finish last.
   A bot that only ever folds still scores near average: survival is paid.
 
