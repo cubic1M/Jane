@@ -325,4 +325,23 @@ describe.runIf(url)("derived data never outlives its evidence", { timeout: 240_0
     expect(await count(demo)).toBe(0);
     expect(await count(real)).toBe(4);
   });
+
+  it("forgets the monthly report made while a source was there, and keeps an older one", async () => {
+    // Debugger 11-01: in a month's first days the agent made last month's report from the demo
+    // bank's figures, and it stayed for /monthly and the chat once the demo bank went.
+    const userId = await person();
+    const linked = new Date(Date.now() - 60_000);
+    await client.monthlyReport.createMany({
+      data: [
+        { userId, month: "2026-09", figures: {}, createdAt: new Date(linked.getTime() - 1000) },
+        { userId, month: "2026-10", figures: {}, createdAt: new Date() },
+      ],
+    });
+    await forgetSince(scopedFor(userId, client), linked, "bank", { demo: true });
+    const left = await client.monthlyReport.findMany({
+      where: { userId },
+      select: { month: true },
+    });
+    expect(left.map((r) => r.month)).toEqual(["2026-09"]);
+  });
 });
