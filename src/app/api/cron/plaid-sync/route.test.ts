@@ -71,6 +71,8 @@ vi.mock("@/lib/controller", () => ({
 
 import { queueNightlyRuns } from "@/lib/controller";
 import { syncItem } from "@/lib/plaid/sync";
+import { runDueJobs } from "@/lib/jobs";
+import { CRON_SYNC_BUDGET_MS } from "@/config/plaid";
 import { CONTROLLER_CRON_BUDGET_MS, CONTROLLER_RUN_RESERVE_MS } from "@/config/controller";
 import { GET, maxDuration } from "./route";
 
@@ -109,6 +111,7 @@ describe("GET /api/cron/plaid-sync", () => {
     expect(await response.json()).toEqual({
       synced: 1,
       failed: 1,
+      deferred: 0,
       inactive: { warned: 0, removed: 1, failed: 0 },
       snapshots: { saved: 3, removed: 0 },
       jobs: { done: 1, retried: 0, failed: 0 },
@@ -145,6 +148,7 @@ describe("GET /api/cron/plaid-sync", () => {
     expect(await (await call("Bearer cron-secret")).json()).toEqual({
       synced: 0,
       failed: 0,
+      deferred: 0,
       inactive: null,
       snapshots: { saved: 3, removed: 0 },
       jobs: { done: 1, retried: 0, failed: 0 },
@@ -191,5 +195,32 @@ describe("GET /api/cron/plaid-sync", () => {
     expect(budget).toBeLessThanOrEqual(
       Math.min(CONTROLLER_CRON_BUDGET_MS, maxDuration * 1000 - CONTROLLER_RUN_RESERVE_MS),
     );
+  });
+
+  // Debugger 11-01 (production logs): a 504 again at 10:18Z after #1103. The bank syncs ran one
+  // after another with no clock (up to CRON_SYNC_LIMIT, each a full rescan), then the due jobs
+  // took a fixed minute. The syncs stop at their budget, oldest first, the rest wait for
+  // tomorrow; the jobs get no more than the time left.
+  it("stops syncing at its budget, leaves the rest for tomorrow, and gives the jobs the time left", async () => {
+    let clock = 1_000_000;
+    const now = vi.spyOn(Date, "now").mockImplementation(() => clock);
+    findMany.mockResolvedValue([{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }]);
+    vi.mocked(syncItem).mockImplementation(async () => {
+      clock += 100_000;
+      return undefined as never;
+    });
+    vi.mocked(runDueJobs).mockClear();
+    try {
+      const body = await (await call("Bearer cron-secret")).json();
+      expect(CRON_SYNC_BUDGET_MS).toBeLessThan(maxDuration * 1000);
+      expect(body.synced + body.deferred).toBe(4);
+      expect(body.deferred).toBeGreaterThan(0);
+      const elapsed = body.synced * 100_000;
+      expect(elapsed).toBeLessThanOrEqual(CRON_SYNC_BUDGET_MS + 100_000);
+      const jobs = vi.mocked(runDueJobs).mock.calls[0][0]!.budgetMs!;
+      expect(jobs).toBeLessThanOrEqual(maxDuration * 1000 - CONTROLLER_RUN_RESERVE_MS - elapsed);
+    } finally {
+      now.mockRestore();
+    }
   });
 });
