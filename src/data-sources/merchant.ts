@@ -65,10 +65,23 @@ function isCode(word: string): boolean {
   return /^\d{3,}$/.test(word) || (word.length >= 5 && digits >= 2);
 }
 
+// Names written in capitals, so "USAA" isn't "Usaa" (debugger 11-01): the companies and agencies
+// that statements most often show by their initials (not GEICO or IKEA, read as words).
+const ACRONYMS = new Set(
+  "IRS USAA NFCU DFAS CVS HBO ADP AARP UPS USPS DMV HOA ATM BP KFC IHOP".split(" "),
+);
+
 function titleCase(text: string): string {
-  return text.toLowerCase().replace(/(^|[\s&/-])([a-z])/g, (_, sep: string, ch: string) => {
-    return sep + ch.toUpperCase();
-  });
+  return text
+    .split(" ")
+    .map((word) =>
+      ACRONYMS.has(word.toUpperCase()) || /^\w{1,2}&\w{1,2}$/.test(word)
+        ? word.toUpperCase()
+        : word.toLowerCase().replace(/(^|[&/-])([a-z])/g, (_, sep: string, ch: string) => {
+            return sep + ch.toUpperCase();
+          }),
+    )
+    .join(" ");
 }
 
 export function normalizeDescription(description: string): string {
