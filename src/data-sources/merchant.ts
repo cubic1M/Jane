@@ -210,3 +210,17 @@ export function withoutCity(description: string): string[] {
   const words = normalizeMerchant(description)?.key.split(" ") ?? [];
   return [1, 2].filter((n) => words.length > n).map((n) => words.slice(0, -n).join(" "));
 }
+
+// A street address after the company ("APPLE.COM/BILL ONE APPLE PARK WAY CA" is "apple one apple
+// park way"): the key before it, for matching a known company (src/detection/merchants.ts), like
+// withoutCity. Only a number (or one to five) to a street word at the end, and something before it.
+const STREET_NUMBER = /^(?:\d+|one|two|three|four|five)$/;
+const STREET_WORD =
+  /^(?:way|st|street|ave|avenue|blvd|boulevard|rd|road|dr|drive|ln|lane|pkwy|parkway|hwy|ct|plz|plaza|cir)$/;
+
+export function withoutAddress(description: string): string[] {
+  const words = normalizeMerchant(description)?.key.split(" ") ?? [];
+  if (!STREET_WORD.test(words.at(-1) ?? "")) return [];
+  const start = words.findIndex((w, i) => i > 0 && STREET_NUMBER.test(w));
+  return start > 0 && start < words.length - 1 ? [words.slice(0, start).join(" ")] : [];
+}

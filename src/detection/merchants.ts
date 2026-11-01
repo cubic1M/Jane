@@ -1,6 +1,6 @@
 import { categoryOf } from "@/categorize/taxonomy";
 import { findInDirectory, type DirectoryMerchant } from "@/data-sources/merchant-directory";
-import { normalizeMerchant, withoutCity } from "@/data-sources/merchant";
+import { normalizeMerchant, withoutAddress, withoutCity } from "@/data-sources/merchant";
 import type { DetectionInput } from "./types";
 
 type Named = {
@@ -14,10 +14,11 @@ function directoryLookup(directory: readonly DirectoryMerchant[]) {
   return (text: string | null) => {
     const key = text ? normalizeMerchant(text)?.key : undefined;
     if (!key) return null;
-    // The city a card wrote after the company, when the company is one the directory knows.
+    // The city or street address a card wrote after the company, when the company is one the
+    // directory knows.
     return (
       findInDirectory(key, directory) ??
-      withoutCity(text!)
+      [...withoutCity(text!), ...withoutAddress(text!)]
         .map((shorter) => findInDirectory(shorter, directory))
         .find((match) => match !== null) ??
       null
