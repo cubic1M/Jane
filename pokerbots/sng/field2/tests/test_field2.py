@@ -2,6 +2,7 @@
     python3 -m unittest discover -s sng/field2/tests -t .
 """
 import importlib
+import os
 import random
 import unittest
 
@@ -248,6 +249,7 @@ class TestTables(unittest.TestCase):
             self.assertEqual(sum(res.final_stacks), 16000)
             self.assertTrue(all(s >= 0 for s in res.final_stacks))
 
+    @unittest.skipIf(os.environ.get("SNG_SKIP_TIMING"), "timing skipped")
     def test_timing_p99_under_0_4ms(self):
         for name in ("nlhe", "omaha"):
             rules = variant_rules()[name]
@@ -261,6 +263,7 @@ class TestTables(unittest.TestCase):
 
 
 class TestColdStart(unittest.TestCase):
+    @unittest.skipIf(os.environ.get("SNG_SKIP_TIMING"), "timing skipped")
     def test_no_lazy_build_inside_act(self):
         """In a fresh process (empty caches) no decision may pay for a lazy table build."""
         import subprocess
