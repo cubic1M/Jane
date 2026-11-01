@@ -80,6 +80,34 @@ class TestIcmTag(unittest.TestCase):
         self.assertTrue(raises)
         self.assertTrue(all(raises))
 
+    def test_works_without_history(self):
+        """A kit that gives no action history: still legal, still sees raises from the bets."""
+        from dataclasses import replace
+
+        class NoHist(IcmTag):
+            def act(self, obs):
+                return super().act(replace(obs, history=()))
+        r = rules_for("a_nlhe100", enforce_time=False)
+        for t in range(4):
+            bots = [make(x) for x in FIELD]
+            bots.insert(t, NoHist())
+            res = play_table(bots, r, seed=700 + t)
+            st = res.stats[t]
+            self.assertEqual((st.errors, st.illegal), (0, 0), st.first_error)
+        # facing a big raise with a weak hand and no history: fold, not an open-raise
+        b = IcmTag()
+        b.new_table(SngRules(enforce_time=False), 3, 0)
+        from engine.cards import parse_cards
+        from sng.table import Legal, SeatView, SngObservation
+        seats = tuple(SeatView(i, 2000 - (200 if i == 2 else 0), 200 if i == 2 else 0, 200 if i == 2 else 0,
+                               False, False, True) for i in range(8))
+        lg = Legal(False, True, 200, True, 380, 2000)
+        o = SngObservation(hand_number=0, hands_left=199, level=0, small_blind=10, big_blind=20, ante=0, seat=3,
+                           button=0, sb_seat=1, bb_seat=2, street=0, hole=tuple(parse_cards("7c2d")), board=(),
+                           pot=200, my_stack=2000, my_bet=0, legal=lg, seats=seats, history=(), players_left=8,
+                           payouts=SngRules().payouts, places_paid=())
+        self.assertEqual(b.act(o).kind, "fold")
+
     def test_steals_wider_against_folders(self):
         """With blinds that always fold, the open bar drops (fold-to-steal read)."""
         b = IcmTag()

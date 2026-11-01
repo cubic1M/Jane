@@ -124,6 +124,11 @@ class IcmTag:
         seats = obs.seats
         n = len(seats)
         raises = [h for h in obs.history if h[1] == 0 and h[2] == "raise"]
+        if not raises and not obs.history:
+            # no action history from the kit: a bet above the big blind means a raise
+            top = max(range(n), key=lambda s: seats[s].bet)
+            if seats[top].bet > bb and top != obs.seat:
+                raises = [(top, 0, "raise", seats[top].bet)]
         if raises:
             self.aggressor = raises[-1][0]
         # players still to act after me (not folded, with chips, not yet acted this round)
@@ -190,7 +195,7 @@ class IcmTag:
         facing = lg.call_amount > 0
         pot = obs.pot
         if facing:
-            n_aggr = sum(1 for h in street_acts if h[2] == "raise")
+            n_aggr = sum(1 for h in street_acts if h[2] == "raise") if obs.history else 1
             eq_adj = eq * (p["bet_discount"] ** n_aggr)
             call = lg.call_amount
             need = call / (pot + call) + p["call_margin"]
