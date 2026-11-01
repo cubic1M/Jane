@@ -228,3 +228,20 @@ describe("outcomeYearly", () => {
     expect(outcomeYearly(null, true)).toBe(true);
   });
 });
+
+// Review 10-31: a six-month premium's review card made no watch ("Mark done" never verified),
+// because the frequency wasn't one the watch knew.
+describe("watchOfFinding, for a charge every six months", () => {
+  it("watches a six-month premium like any other charge", () => {
+    expect(
+      watchOfFinding("subscription_review", {
+        frequency: "SEMIANNUALLY",
+        lastAmountCents: 61_240,
+        charges: [{ description: "GEICO AUTO PAY 6MO PREMIUM", amountCents: 61_240 }],
+      }),
+    ).toEqual({
+      kind: "charge_stops",
+      payees: [{ description: "GEICO AUTO PAY 6MO PREMIUM", amountCents: 61_240, perYear: 2 }],
+    });
+  });
+});

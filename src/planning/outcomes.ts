@@ -490,6 +490,7 @@ const PER_YEAR: Readonly<Record<string, number>> = {
   SEMI_MONTHLY: 24,
   MONTHLY: 12,
   QUARTERLY: 4,
+  SEMIANNUALLY: 2,
   ANNUALLY: 1,
 };
 

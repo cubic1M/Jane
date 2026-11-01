@@ -35,6 +35,9 @@ const MONTHLY: Record<string, number> = {
   BIWEEKLY: 26 / 12,
   SEMI_MONTHLY: 2,
   MONTHLY: 1,
+  // Review 10-31: missing, a six-month premium counted as monthly (the lookup falls back to 1).
+  QUARTERLY: 1 / 3,
+  SEMIANNUALLY: 1 / 6,
   ANNUALLY: 1 / 12,
 };
 

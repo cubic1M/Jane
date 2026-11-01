@@ -9,6 +9,7 @@ import {
   USAGE_BILL_DAY_SPREAD,
   USAGE_BILL_MIN_CHARGES,
   SHORT_RUN_CATEGORIES,
+  SEMIANNUAL_SHORT_RUN_CATEGORIES,
   SHORT_RUN_MIN_CHARGES,
   SUBSCRIPTION_MERCHANTS,
   TWIN_PLAN_MIN_MONTHS,
@@ -228,8 +229,13 @@ function detectRun(charges: DetectionTransaction[], asOf: string): Stream | null
   const frequency = frequencyOf(gaps);
   const range = frequency && FALLBACK_INTERVAL_DAYS[frequency];
   if (!frequency || !range) return null;
-  // Two charges are only a run a month or a quarter apart (SHORT_RUN_FREQUENCIES).
-  if (short && !SHORT_RUN_FREQUENCIES.includes(frequency)) return null;
+  // Two charges are only a run a month or a quarter apart (SHORT_RUN_FREQUENCIES), or six months
+  // apart for a fixed insurance premium (SEMIANNUAL_SHORT_RUN_CATEGORIES).
+  const semiannualPremium =
+    frequency === "SEMIANNUALLY" &&
+    !variable &&
+    inList(mostCommon(charges.map((c) => c.pfcDetailed)), SEMIANNUAL_SHORT_RUN_CATEGORIES);
+  if (short && !SHORT_RUN_FREQUENCIES.includes(frequency) && !semiannualPremium) return null;
   const [min, max] = range;
 
   const run = [...core];

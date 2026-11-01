@@ -80,6 +80,38 @@ describe("upcomingBills", () => {
     ]);
   });
 
+  // Review 10-31 of the above: only a fixed premium seen twice makes a six-month bill. Two
+  // estimated tax payments, a card paid twice, or a quarterly water bill with a quarter missing
+  // aren't bills on that rhythm.
+  it("doesn't make a six-month bill of tax payments, card payments or a gappy quarterly bill", () => {
+    const pair = (fields: Record<string, unknown>, a: [string, number], b: [string, number]) => [
+      tx({ ...fields, date: a[0], amountCents: a[1] }),
+      tx({ ...fields, date: b[0], amountCents: b[1] }),
+    ];
+    const irs = {
+      description: "IRS USATAXPYMT",
+      pfcPrimary: "GOVERNMENT_AND_NON_PROFIT",
+      pfcDetailed: "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
+    };
+    const card = {
+      description: "CHASE CREDIT CRD AUTOPAY",
+      pfcPrimary: "LOAN_PAYMENTS",
+      pfcDetailed: "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
+    };
+    const water = {
+      description: "EAST BAY WATER DEPT",
+      pfcPrimary: "RENT_AND_UTILITIES",
+      pfcDetailed: "RENT_AND_UTILITIES_WATER",
+    };
+    for (const transactions of [
+      pair(irs, ["2026-06-15", 250_000], ["2026-09-15", 250_000]),
+      pair(card, ["2026-03-01", 4_500], ["2026-08-28", 120_000]),
+      pair(water, ["2026-01-20", 9_100], ["2026-07-20", 9_300]),
+    ]) {
+      expect(upcomingBills(input({ transactions }), 200)).toEqual([]);
+    }
+  });
+
   it("expands each active stream across the window", () => {
     const bills = upcomingBills(input({ transactions: monthly(4, 1549, NETFLIX) }), 61);
 
