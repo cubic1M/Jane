@@ -26,7 +26,9 @@ import { countyFromPayments, countyOf } from "@/planning/disasters";
 import { confidenceOf, evidenceText, type Source } from "./confidence";
 import { FACT_SPECS, type FactKey, factSpec } from "./facts";
 import { addDays } from "@/lib/dates";
-import { withoutAchDetails } from "@/data-sources/merchant";
+import { normalizeMerchant, withoutAchDetails } from "@/data-sources/merchant";
+import type { PolicyKind } from "@/config/insurance";
+import { insurerKind } from "@/insights/found-policies";
 import { lifeEventGuesses } from "@/insights/life-signals";
 import type { DetectionInput } from "@/detection/types";
 import { CAR_SIGNAL, KIDS_SIGNALS, NEW_BABY_RECENT_DAYS } from "@/config/life-facts";
@@ -682,20 +684,32 @@ export function buildProfile(input: ProfileInput): Profile {
     "stock plans",
     accounts.filter((a) => a.subtype === "stock plan").length,
   );
-  const cover = (pattern: RegExp) =>
-    count(
-      (t) =>
-        (t.pfc === "GENERAL_SERVICES_INSURANCE" || t.pfc === "MEDICAL_OTHER_MEDICAL") &&
-        pattern.test(t.description),
-    );
-  for (const [key, pattern, what] of [
-    ["insurance_auto", /AUTO|GEICO|PROGRESSIVE/i, "car-cover charges"],
-    ["insurance_home", /HOME|HOMEOWNERS|RENTERS/i, "home-cover charges"],
-    ["insurance_life", /LIFE|NEW YORK LIFE|TERM/i, "life-cover charges"],
-    ["insurance_health", /HEALTHCARE|MARKETPLACE|BLUE CROSS|AETNA/i, "health-cover charges"],
-    ["insurance_medigap", /MEDIGAP|SUPPLEMENT|MEDICARE/i, "Medicare cover charges"],
+  // The cover's words, or a known insurer of that kind (src/config/found-policies.ts): State
+  // Farm's "STATE FARM RO 27 SFPP" is car cover (debugger 11-01: a driver paying it was told
+  // "Check your car is insured").
+  const insurerOf = (t: ProfileTx) => {
+    const key = normalizeMerchant(t.description)?.key;
+    return key ? insurerKind(key) : null;
+  };
+  const cover = (pattern: RegExp, kinds: readonly PolicyKind[]) =>
+    count((t) => {
+      if (t.pfc !== "GENERAL_SERVICES_INSURANCE" && t.pfc !== "MEDICAL_OTHER_MEDICAL") return false;
+      const insurer = insurerOf(t);
+      return pattern.test(t.description) || (insurer !== null && kinds.includes(insurer));
+    });
+  for (const [key, pattern, kinds, what] of [
+    ["insurance_auto", /AUTO|GEICO|PROGRESSIVE/i, ["auto"], "car-cover charges"],
+    ["insurance_home", /HOME|HOMEOWNERS|RENTERS/i, ["home", "renters"], "home-cover charges"],
+    ["insurance_life", /LIFE|NEW YORK LIFE|TERM/i, ["life"], "life-cover charges"],
+    [
+      "insurance_health",
+      /HEALTHCARE|MARKETPLACE|BLUE CROSS|AETNA/i,
+      ["health"],
+      "health-cover charges",
+    ],
+    ["insurance_medigap", /MEDIGAP|SUPPLEMENT|MEDICARE/i, [], "Medicare cover charges"],
   ] as const) {
-    const n = cover(pattern);
+    const n = cover(pattern, kinds);
     set(key, n > 0, "seen", what, n);
   }
 

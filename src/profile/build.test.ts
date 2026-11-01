@@ -49,6 +49,32 @@ describe("the picture of you", () => {
     expect(buildProfile(inputFor("renter")).facts.has_401k.value).toBe(true);
   });
 
+  // Debugger 11-01: a driver paying "STATE FARM RO 27 SFPP" $212.40 a month was told "Check
+  // your car is insured" (urgent) beside "Your State Farm insurance could cost less".
+  it("counts a known insurer's payments as its cover, without the word AUTO", () => {
+    const base = inputFor("renter");
+    const premium = (date: string, description: string) => ({
+      date,
+      amountCents: 21_240,
+      description,
+      pfc: "GENERAL_SERVICES_INSURANCE",
+      accountId: base.accounts[0].id,
+    });
+    const others = base.transactions.filter((t) => t.pfc !== "GENERAL_SERVICES_INSURANCE");
+    const facts = (description: string) =>
+      buildProfile({
+        ...base,
+        transactions: [
+          ...others,
+          ...["2026-08-06", "2026-09-06", "2026-10-06"].map((d) => premium(d, description)),
+        ],
+      }).facts;
+    expect(facts("STATE FARM RO 27 SFPP").insurance_auto).toMatchObject({ value: true });
+    expect(facts("ALLSTATE INS CO PAYMENT").insurance_auto).toMatchObject({ value: true });
+    expect(facts("LEMONADE INC").insurance_home).toMatchObject({ value: true });
+    expect(facts("ACME MUTUAL PREMIUM").insurance_auto).toMatchObject({ value: false });
+  });
+
   it("puts what the person told Jane first, at 100%", () => {
     const base = buildProfile(inputFor("family")).facts;
     const told = buildProfile(inputFor("family", { has_children: false, age: 41 })).facts;
