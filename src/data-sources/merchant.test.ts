@@ -133,7 +133,6 @@ describe("acronyms in names", () => {
   it("keeps well-known acronyms and AT&T in capitals", () => {
     expect(normalizeMerchant("USAA P&C INS AUTOPAY")?.name).toBe("USAA P&C Ins Autopay");
     expect(normalizeMerchant("NFCU AUTO LOAN PMT")?.name).toBe("NFCU Auto Loan Pmt");
-    expect(normalizeMerchant("IRS USATAXPYMT")?.name).toBe("IRS Usataxpymt");
     expect(normalizeMerchant("CVS/PHARMACY #4321")?.name).toBe("CVS Pharmacy");
     expect(normalizeMerchant("AT&T BILL PAYMENT")?.name).toBe("AT&T Bill Payment");
     // Debugger 11-01: "ATT*BILL PAYMENT 800-331-0500 TX" read "Att" on /subscriptions.
@@ -147,6 +146,30 @@ describe("acronyms in names", () => {
   it("leaves ordinary words as they were", () => {
     expect(normalizeMerchant("PLANET FITNESS CLUB FEES")?.name).toBe("Planet Fitness Club Fees");
     expect(normalizeMerchant("IRSA HOLDINGS")?.name).toBe("Irsa Holdings");
+  });
+});
+
+// Debugger 11-01: the tax pack a person hands their preparer listed "IRS Usataxpymt" three
+// times, and the chat said "IRS Usataxpymt is $150.00 a month". USATAXPYMT is the IRS's ACH entry
+// description ("USA tax payment"), not part of the payee: it goes from the name and the key, so
+// every bank's line gives the key Bank of America's "IRS DES:USATAXPYMT" already gives. The
+// migration 20270420000000_merchant_irs_tax_payment moves saved keys and names.
+describe("the IRS's tax payment line", () => {
+  it("is the IRS, on every bank's line", () => {
+    for (const line of [
+      "IRS USATAXPYMT",
+      "Withdrawal to IRS USATAXPYMT",
+      "IRS  USATAXPYMT 270611111111111",
+      "IRS DES:USATAXPYMT ID:XXXXX INDN:SAM DOE CO ID:3387702000 PPD",
+      // A name saved the old way gives the new key too.
+      "IRS Usataxpymt",
+    ]) {
+      expect(normalizeMerchant(line), line).toEqual({ name: "IRS", key: "irs" });
+    }
+  });
+
+  it("keeps the word when it is all there is", () => {
+    expect(normalizeMerchant("USATAXPYMT")).toEqual({ name: "Usataxpymt", key: "usataxpymt" });
   });
 });
 
