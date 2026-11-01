@@ -2,6 +2,7 @@ import type { TreeStatus } from "@/components/tree/interactive-tree";
 import { shortMoney } from "@/lib/hub/view";
 import { notCounting, type Unbalanced } from "@/insights/net-worth";
 import { formatCents } from "@/lib/money";
+import { monthLabel } from "@/lib/day-label";
 import { CATEGORY_UP_MIN_CENTS, CATEGORY_UP_MIN_SHARE } from "@/config/insights";
 import { buildAreaTree, firstSentences, type AreaItem, type AreaTree } from "./tree";
 
@@ -124,6 +125,8 @@ export type MoneyTreeInput = {
   }[];
   spending: {
     month: string;
+    // False when it's an earlier month: nothing has come in or gone out this month yet (the 1st).
+    current?: boolean;
     spendingCents: number;
     incomeCents: number;
     categories: { category: string; cents: number }[];
@@ -305,12 +308,17 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
 
   const spend = input.spending;
   if (spend && (spend.spendingCents > 0 || spend.incomeCents > 0)) {
+    // An earlier month (nothing yet this month, debugger 11-01) is said by its name.
+    const earlier = spend.current === false;
+    const name = monthLabel(spend.month, { long: true, year: false });
     items.spending.push(
       item("spending", "month", {
-        label: "This month so far",
+        label: earlier ? name : "This month so far",
         status: "good",
         figure: shortMoney(spend.spendingCents),
-        summary: `${formatCents(spend.spendingCents)} spent and ${formatCents(spend.incomeCents)} in so far this month.`,
+        summary: earlier
+          ? `${formatCents(spend.spendingCents)} spent and ${formatCents(spend.incomeCents)} in, in ${name}.`
+          : `${formatCents(spend.spendingCents)} spent and ${formatCents(spend.incomeCents)} in so far this month.`,
       }),
     );
     const top = spend.categories[0];
@@ -321,7 +329,9 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
           line: top.category,
           status: "good",
           figure: shortMoney(top.cents),
-          summary: `${top.category} is your biggest this month, at ${formatCents(top.cents)}.`,
+          summary: earlier
+            ? `${top.category} was your biggest in ${name}, at ${formatCents(top.cents)}.`
+            : `${top.category} is your biggest this month, at ${formatCents(top.cents)}.`,
         }),
       );
     }
@@ -330,7 +340,8 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
         c.changeCents >= CATEGORY_UP_MIN_CENTS &&
         c.changeCents >= c.beforeCents * CATEGORY_UP_MIN_SHARE,
     );
-    for (const c of up.slice(0, 3)) {
+    // "Up" compares this month with last: not said for an earlier month.
+    for (const c of earlier ? [] : up.slice(0, 3)) {
       items.spending.push(
         item("spending", `up-${c.category}`, {
           label: `${c.category} is up`,

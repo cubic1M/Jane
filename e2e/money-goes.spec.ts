@@ -66,10 +66,13 @@ test("rows open to their transactions and the month chart shows and picks months
   const months = chart.getByRole("button");
   const count = await months.count();
   let other: string | null = null;
-  for (let i = count - 2; i >= 0; i--) {
+  // Not the one shown: on the 1st the newest bar is empty and the breakdown already shows the
+  // month before it (debugger 11-01).
+  for (let i = count - 1; i >= 0; i--) {
     const label = (await months.nth(i).getAttribute("aria-label")) ?? "";
-    if (!/out \$0\.00$/.test(label)) {
-      other = await months.nth(i).getAttribute("data-month");
+    const month = await months.nth(i).getAttribute("data-month");
+    if (!/out \$0\.00$/.test(label) && month !== before) {
+      other = month;
       break;
     }
   }

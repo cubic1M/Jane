@@ -195,8 +195,9 @@ test("trial people (sample data) can't upload", async ({ page, baseURL }) => {
   await client.connect();
   try {
     await client.query(
-      `INSERT INTO users (id, email, role, terms_version, terms_accepted_at, updated_at)
-       VALUES ($1, $2, 'user', $3, now(), now())`,
+      // In UTC, as e2e/db.ts makes people (the first hours of each month, debugger 11-01).
+      `INSERT INTO users (id, email, role, terms_version, terms_accepted_at, updated_at, timezone)
+       VALUES ($1, $2, 'user', $3, now(), now(), 'UTC')`,
       [id, `${id}@try.jane.invalid`, TERMS_VERSION],
     );
     await client.query(
