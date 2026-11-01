@@ -35,7 +35,9 @@ PARAMS = dict(
     steal_max_behind=3,  # use the fold-to-steal read when at most this many players are behind
     reshove_bb=24.0,
     read_alpha=0.0,      # per-seat raise-rate read: raiser range_k x (base_pfr / their pfr)^alpha
-    base_pfr=0.12,       # the raise rate at which a raiser counts as exactly range_k     # facing a raise with a 3-bet hand: shove (not 3-bet) at or below this stack    # lower the open bar by up to this much vs seats that fold to steals
+    base_pfr=0.12,
+    cap_risk=0.0,        # near the hand cap: risk premium + cap_risk x (my stack / average - 1)
+    cap_window=25,       # ... in the last this many hands       # the raise rate at which a raiser counts as exactly range_k     # facing a raise with a 3-bet hand: shove (not 3-bet) at or below this stack    # lower the open bar by up to this much vs seats that fold to steals
 )
 
 
@@ -106,7 +108,14 @@ class IcmTag:
     def _risk(self, obs):
         # premium on putting the stack at risk: larger with fewer players left (bubble / pay jumps)
         left = obs.players_left
-        return self.p["risk"] * (1.0 + (8 - left) * 0.15) if left > 1 else 0.0
+        r = self.p["risk"] * (1.0 + (8 - left) * 0.15) if left > 1 else 0.0
+        hl = getattr(obs, "hands_left", None)
+        if self.p["cap_risk"] and hl is not None and hl < self.p["cap_window"] and left > 1:
+            live = [sv.stack + sv.committed for sv in obs.seats if sv.in_hand]
+            avg = sum(live) / len(live)
+            mine = obs.my_stack + obs.seats[obs.seat].committed
+            r += self.p["cap_risk"] * (mine / avg - 1.0)
+        return max(0.0, r)
 
     # ---- decision -----------------------------------------------------------------------
     def act(self, obs):

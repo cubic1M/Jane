@@ -28,7 +28,7 @@ STEPS = {
     "icm_tag": dict(open_mult=("m", 1.1), open_size=("a", 0.5), push_bb=("a", 3.0), push_mult=("m", 1.1),
                     range_k=("m", 1.25), call_margin=("a", 0.03), threebet_eq=("a", 0.04), risk=("a", 0.08),
                     value_eq=("a", 0.05), cbet=("a", 0.2), bet_frac=("a", 0.15), bet_discount=("a", 0.1),
-                    steal_bonus=("a", 0.15), reshove_bb=("a", 6.0), read_alpha=("a", 0.25), steal_max_behind=("a", 2)),
+                    steal_bonus=("a", 0.15), reshove_bb=("a", 6.0), read_alpha=("a", 0.25), steal_max_behind=("a", 2), cap_risk=("a", 0.05)),
 }
 
 
