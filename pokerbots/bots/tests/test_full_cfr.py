@@ -343,6 +343,39 @@ class TestPolicyAndBot(unittest.TestCase):
         name, p, d = nearest(deeper, budget, self.tmp)[0]
         self.assertEqual((name, d), ("f_nlhe20", ["starting_stack"]))
 
+    def test_library_plays_the_same_game_at_another_chip_scale(self):
+        from fractions import Fraction
+        from bots.cfr_full.library import chip_scale, find_scaled_policy
+        from bots.dummies import StationBot
+        path = self.paths["f_nlhe20"][0]
+        budget = os.path.basename(path)[len("full_f_nlhe20_"):-len(".pkl")]
+        lib = VARIANTS["f_nlhe20"]
+
+        def scaled(k, **kw):
+            return lib.with_(name="day_scaled", small_blind=int(lib.small_blind * k),
+                             big_blind=int(lib.big_blind * k), starting_stack=int(lib.starting_stack * k), **kw)
+        self.assertEqual(chip_scale(scaled(50), lib), 50)
+        self.assertEqual(chip_scale(lib.with_(name="x"), lib), 1)
+        self.assertIsNone(chip_scale(scaled(50).with_(starting_stack=lib.starting_stack * 60), lib))
+        self.assertIsNone(chip_scale(scaled(50, betting="pot_limit"), lib))
+        k_down = lib.with_(name="x", small_blind=lib.small_blind * 5, big_blind=lib.big_blind * 5,
+                           starting_stack=lib.starting_stack * 5)
+        self.assertEqual(chip_scale(lib, k_down), Fraction(1, 5))
+        self.assertEqual(find_scaled_policy(scaled(50), budget, self.tmp)[::2], (path, 50))
+        # against a calling station every hand is exactly k times the library game's
+        out = []
+        for spec in (lib, scaled(50)):
+            bot = make_bot(budget=budget, cache_dir=self.tmp, verbose=False)
+            r = play_match(bot, StationBot(), spec, deal_seed=4, hands=60)
+            st = r.stats[0].summary()
+            self.assertEqual((st["illegal"], st["errors"]), (0, 0), st["first_error"])
+            self.assertFalse(bot.using_fallback)
+            out.append(r.deltas)
+        np.testing.assert_array_equal(out[1], 50 * out[0])
+        self.assertTrue(np.any(out[0] != 0))
+        # and it stays legal against arbitrary bet sizes, from both seats
+        self._check_play(lambda: make_bot(budget=budget, cache_dir=self.tmp, verbose=False), scaled(50))
+
     def test_bot_without_policy_falls_back(self):
         for v in ("a_nlhe100", "c_discard3", "d_omaha4x2", "g_pineapple"):
             bot = self._check_play(lambda: make_bot(budget="no_such_budget", verbose=False), VARIANTS[v],

@@ -143,6 +143,14 @@ def library_spec(rng: random.Random):
     if not names:
         return None
     base = ALL_VARIANTS[rng.choice(names)]
+    if rng.random() < 0.5:   # the same game in other chips (library match up to scale)
+        from fractions import Fraction
+        ks = [k for k in (Fraction(1, 5), Fraction(1, 2), 5, 10, 25, 50, 100)
+              if all((getattr(base, f) * k).denominator == 1 for f in ("small_blind", "big_blind", "ante", "starting_stack"))
+              and base.small_blind * k >= 1]
+        k = rng.choice(ks)
+        base = base.with_(small_blind=int(base.small_blind * k), big_blind=int(base.big_blind * k),
+                          ante=int(base.ante * k), starting_stack=int(base.starting_stack * k))
     return base.with_(name=f"day{rng.randrange(10**6)}", hands_per_match=rng.choice([200, 500, 1000]),
                       time_per_decision=rng.choice([None, 0.5, 1.0, 2.0]), notes="renamed library game")
 

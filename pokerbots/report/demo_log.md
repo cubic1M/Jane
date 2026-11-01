@@ -57,6 +57,14 @@ matchup and the next thing to study.
 **A library miss puts the champion's switch about 16 minutes after the spec,
 i.e. minute 20–25 of the hour, well inside the plan's minute-35 slot.**
 
+**Follow-up (fixed):** this game no longer counts as a miss. The library now matches
+games up to chip scale (REPORT §7e), so `dayof.py` reports "same game as
+full_a_nlhe100_15m_w4.pkl with every chip amount x50" and the champion plays at once.
+On the same seeds, with no training: +0.38 ± 0.29 vs balanced, +0.09 ± 0.29 vs opp_tag,
+−0.36 ± 0.34 vs opp_exploit. That equals the 15-minute day-trained policy above. A true
+miss (a new structure such as 6 hole cards or a new discard rule) still takes the
+16-minute path.
+
 ## Tests
 
 `./run_tests.sh` (also `make test`) runs all 5 suites in parallel:

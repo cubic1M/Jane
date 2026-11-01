@@ -63,3 +63,26 @@ def nearest(spec, budget: str, cache_dir: str, n: int = 3):
     """The n library games closest to `spec`: [(spec_name, path, differing fields)]."""
     rows = [(s.name, p, diff(spec, s)) for p, s in library(budget, cache_dir)]
     return sorted(rows, key=lambda r: len(r[2]))[:n]
+
+
+CHIP_FIELDS = ("small_blind", "big_blind", "ante", "starting_stack")
+
+
+def chip_scale(spec, lib):
+    """k (a Fraction) when `spec` is the library game `lib` with every chip amount times k
+    (blinds, ante, stack), else None. k == 1 is an exact match (find_policy)."""
+    from fractions import Fraction
+    k = Fraction(spec.big_blind, lib.big_blind)
+    if any(Fraction(getattr(spec, f)) != k * getattr(lib, f) for f in CHIP_FIELDS):
+        return None
+    same = spec.with_(**{f: getattr(lib, f) for f in CHIP_FIELDS})
+    return k if game_key(same) == game_key(lib) else None
+
+
+def find_scaled_policy(spec, budget: str, cache_dir: str):
+    """(path, library spec, k) for a library game equal to `spec` up to chip scale k != 1."""
+    for p, s in library(budget, cache_dir):
+        k = chip_scale(spec, s)
+        if k is not None and k != 1:
+            return p, s, k
+    return None

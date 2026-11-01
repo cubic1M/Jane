@@ -158,6 +158,11 @@ def library_status(spec, budget: str = LIBRARY_BUDGET) -> str:
     if p:
         return (f"\n  LIBRARY: same game as {os.path.basename(p)}: champion@{budget} plays this trained "
                 f"policy NOW (no training needed; still check it in C+D)")
+    from bots.cfr_full.library import find_scaled_policy
+    hit = find_scaled_policy(spec, budget, DEFAULT_DIR)
+    if hit:
+        return (f"\n  LIBRARY: same game as {os.path.basename(hit[0])} with every chip amount x{hit[2]}: "
+                f"champion@{budget} plays it NOW in scaled chips (no training needed; still check it in C+D)")
     near = nearest(spec, budget, DEFAULT_DIR)
     if not near:
         return f"\n  LIBRARY: no {budget} policies in {DEFAULT_DIR}: train (--train-full 15 --workers <cores>)"

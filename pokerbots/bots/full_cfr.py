@@ -67,6 +67,7 @@ class FullCFRBot(Bot):
         self.verbose = verbose
         self.using_fallback = True
         self.policy = None
+        self._scale = None
         self.stats = dict(decisions=0, resyncs=0, offtree_maps=0)
 
     # ---- lifecycle ----------------------------------------------------------------------
@@ -85,6 +86,20 @@ class FullCFRBot(Bot):
                     print(f"[full_cfr] no {os.path.basename(path)}; using the library policy "
                           f"{os.path.basename(lib)} (same game)", file=sys.stderr)
                 path = lib
+        self._scale = None
+        if not self.policy_path and not os.path.exists(path):
+            # the same library game at another chip scale (e.g. blinds 50/100 instead of 1/2)
+            from bots.cfr_full.library import find_scaled_policy
+            hit = find_scaled_policy(spec, self.budget, self.cache_dir)
+            if hit:
+                lib, lib_spec, k = hit
+                if self.verbose and (path, lib) not in _WARNED:
+                    _WARNED.add((path, lib))
+                    print(f"[full_cfr] no {os.path.basename(path)}; using the library policy "
+                          f"{os.path.basename(lib)} (same game, chips x{k})", file=sys.stderr)
+                path, self._scale = lib, k
+                self.spec = spec = lib_spec      # play in library chips (see act)
+                self.eqm = get_equity_model(spec)
         self.policy = None
         self.using_fallback = True
         try:
@@ -121,6 +136,16 @@ class FullCFRBot(Bot):
 
     # ---- acting -------------------------------------------------------------------------
     def act(self, obs):
+        if self._scale is None:
+            return self._act(obs)
+        from bots.cfr_full.scaling import scale_obs, unscale_action
+        if obs.phase == "discard" or obs.legal.discard_count:
+            return self._act(obs)            # cards only
+        so = scale_obs(obs, self._scale, self.spec)
+        a = unscale_action(self._act(so), obs, self._scale, so.legal)
+        return a if obs.legal.is_legal(a) else obs.legal.passive()
+
+    def _act(self, obs):
         lg = obs.legal
         if obs.phase == "discard" or lg.discard_count:
             try:
