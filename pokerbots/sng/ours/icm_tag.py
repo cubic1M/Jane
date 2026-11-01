@@ -34,7 +34,8 @@ PARAMS = dict(
     bet_frac=0.65,       # postflop bet size (fraction of pot)
     bet_discount=0.6,   # opponent's bet/raise: our equity x this (their range is stronger)
     steal_bonus=0.55,
-    steal_max_behind=5,  # use the fold-to-steal read when at most this many players are behind
+    steal_max_behind=5,
+    steal_sym=0.0,       # also RAISE the open bar vs seats that do not fold: bar x (1 + steal_sym x (1 - 2f))  # use the fold-to-steal read when at most this many players are behind
     reshove_bb=24.0,
     read_alpha=0.0,      # per-seat raise-rate read: raiser range_k x (base_pfr / their pfr)^alpha
     base_pfr=0.12,
@@ -178,6 +179,8 @@ class IcmTag:
             if not limpers and len(behind) <= p["steal_max_behind"]:
                 fr = self._fold_rate(behind if len(behind) > 2 else [obs.sb_seat, obs.bb_seat])
                 bar *= 1.0 - p["steal_bonus"] * max(0.0, fr - 0.5) * 2
+                if p["steal_sym"] > 0 and fr < 0.5:
+                    bar *= 1.0 + p["steal_sym"] * (1.0 - 2 * fr)
             eq = self._eq(obs, k + limpers)
             if eff_bb <= p["push_bb"]:
                 scale = 0.75 + 0.25 * eff_bb / p["push_bb"]       # shorter = wider
