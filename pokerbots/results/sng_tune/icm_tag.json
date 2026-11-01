@@ -1,0 +1,57 @@
+{
+ "params": {
+  "open_mult": 1.3,
+  "open_size": 2.5,
+  "push_bb": 12.0,
+  "push_mult": 1.1,
+  "range_k": 4.0,
+  "call_margin": 0.06,
+  "threebet_eq": 0.62,
+  "risk": 0.1,
+  "value_eq": 0.62,
+  "cbet": 0.55,
+  "bet_frac": 0.65,
+  "bet_discount": 0.6,
+  "steal_bonus": 0.4
+ },
+ "history": [
+  {
+   "round": 0,
+   "incumbent": "icm_tag",
+   "incumbent_points": 55.222455679913956,
+   "best": "icm_tag:steal_bonus=0.4",
+   "gain": 5.601509476919839,
+   "se": 1.851467142197286,
+   "accepted": true,
+   "top5": [
+    [
+     "icm_tag:steal_bonus=0.4",
+     5.6,
+     1.85
+    ],
+    [
+     "icm_tag:cbet=0.35",
+     3.3,
+     1.69
+    ],
+    [
+     "icm_tag:push_bb=9.0",
+     3.16,
+     1.75
+    ],
+    [
+     "icm_tag:open_size=2.0",
+     1.54,
+     1.9
+    ],
+    [
+     "icm_tag:threebet_eq=0.58",
+     1.42,
+     1.76
+    ]
+   ],
+   "seconds": 1236
+  }
+ ],
+ "round": 1
+}
