@@ -11,6 +11,9 @@ cache/cfr/*
 cache/sng/*
 !cache/sng/strength_*.npz
 !cache/sng/lite_*.json
+!cache/sng/pushfold_*.json
+!cache/sng/pushfold_equity.npy
+!cache/sng/any_*.json
 *.log
 results_quick/
 report/tables_quick.md

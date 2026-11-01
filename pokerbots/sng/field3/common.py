@@ -95,14 +95,9 @@ class Spot:
         self.i_was_pf_aggressor = self.pf_aggressor == me
         lr = self.last_raiser
         self.facing_allin = bool(self.to_call > 0 and lr is not None and seats[lr].stack == 0)
-        # chips I need to put in to get it all in, and the pot odds of a call
         self.pot_odds = self.to_call / (self.pot + self.to_call) if self.to_call > 0 else 0.0
         self.spr = (self.my_stack / max(1, self.pot))
         self.players_left = obs.players_left
-
-    def commits(self, raise_to, my_bet, frac=0.4) -> bool:
-        """True if putting raise_to in would commit more than frac of my chips."""
-        return (raise_to - my_bet) >= frac * (self.my_total - my_bet)
 
 
 def raise_to_pot_frac(obs, frac: float) -> int:
