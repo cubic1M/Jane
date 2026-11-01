@@ -155,6 +155,27 @@ const cents = (text: string | undefined) => {
   return n === null ? null : Math.round(n * 100);
 };
 
+// What a holding is when the file doesn't say (Fidelity, Vanguard, Robinhood), in Plaid's
+// words: a mutual fund by its ticker (five letters ending in X), an ETF by its name, a company's
+// stock by its name's ending ("APPLE INC", "MICROSOFT CORP", "... INC CL B"). Null when the words
+// don't tell, so the fund-cost note still says it doesn't know (debugger 11-01: a Fidelity file's
+// Apple was "a fund whose yearly cost Jane doesn't know" and counted as "other").
+const FUND_WORDS = /\b(?:FUNDS?|FDS|INDEX|TRUST|PORTFOLIO|ISHARES|SPDR)\b/i;
+
+export function typeFromName(ticker: string | null, name: string): string | null {
+  const n = name.toUpperCase();
+  if (ticker && /^[A-Z]{4}X$/.test(ticker)) return "mutual fund";
+  if (/\b(?:ETF|ETN)\b/.test(n)) return "etf";
+  if (FUND_WORDS.test(n)) return null;
+  if (
+    /\b(?:INC|CORP|CORPORATION|CO|COMPANY|LTD|PLC|HOLDINGS|GROUP|N\.?V|AG|SA|SE)\.?(?:\s+(?:CL|CLASS)\s+[A-C]|\s+COM)?\s*$/.test(
+      n,
+    )
+  )
+    return "equity";
+  return null;
+}
+
 // Plaid's investment subtypes from an account's name ("ROTH IRA", "Health Savings Account").
 export function subtypeFromName(name: string): string {
   const n = name.toLowerCase();
@@ -312,7 +333,7 @@ const readFidelity: Reader = (records, at) => {
       valueCents,
       costBasisCents: isCash ? null : cents(basis === null ? undefined : fields[basis]),
       isCash,
-      type: isCash ? "cash" : null,
+      type: isCash ? "cash" : typeFromName(ticker, name),
     });
   }
   return { asOf, accounts: [...accounts.values()], skipped, notes: [] };
@@ -433,7 +454,7 @@ const readVanguard: Reader = (records, at) => {
       valueCents,
       costBasisCents: null,
       isCash,
-      type: isCash ? "cash" : null,
+      type: isCash ? "cash" : typeFromName(ticker, name),
     });
   }
   return {
@@ -518,7 +539,8 @@ const readRobinhood: Reader = (records, at) => {
       valueCents: Math.round(quantity * held.priceCents),
       costBasisCents: held.costCents > 0 ? held.costCents : null,
       isCash: false,
-      type: null,
+      // Robinhood trades stocks and ETFs (options are left out above): a stock unless named a fund.
+      type: typeFromName(ticker, held.name) ?? (FUND_WORDS.test(held.name) ? null : "equity"),
     });
   }
   const notes = [
