@@ -28,8 +28,11 @@ export async function signedInUser(
   await client.connect();
   try {
     await client.query(
-      `INSERT INTO users (id, email, role, terms_version, terms_accepted_at, updated_at)
-       VALUES ($1, $2, $3, $4, now(), now())`,
+      // In UTC, the runner's clock: with no timezone Jane uses US Pacific, so for the first
+      // hours of each month (00:00-07:00Z) "this month" was October to Jane and November to the
+      // specs, and six specs failed on every PR (debugger 11-01).
+      `INSERT INTO users (id, email, role, terms_version, terms_accepted_at, updated_at, timezone)
+       VALUES ($1, $2, $3, $4, now(), now(), 'UTC')`,
       [userId, `${userId}@example.test`, role, termsVersion],
     );
     await client.query(

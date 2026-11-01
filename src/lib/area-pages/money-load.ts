@@ -145,7 +145,12 @@ export async function loadMoneyArea(
   const budget = budgetSummary(transactions, budgets, asOf);
   // This month against last, as the hub counts it.
   const insights = spendingInsights(transactions, { asOf, monthCount: 2 });
-  const latest = insights.months.at(-1);
+  // The newest month with money in or out: on the 1st, this month has none yet and the branch
+  // vanished (debugger 11-01), so it's last month, said as such.
+  const active = (m: { spendingCents: number; incomeCents: number }) =>
+    m.spendingCents > 0 || m.incomeCents > 0;
+  const latest = insights.months.findLast(active) ?? insights.months.at(-1);
+  const current = latest === insights.months.at(-1);
   const mine = suggestions.filter((s) => areaOfCapability(s.capability) === "money");
   const open = books.open.filter((o) => o.kind !== "transfer");
 
@@ -197,6 +202,7 @@ export async function loadMoneyArea(
     spending: latest
       ? {
           month: latest.month,
+          current,
           spendingCents: latest.spendingCents,
           incomeCents: latest.incomeCents,
           categories: insights.categoriesByMonth[latest.month] ?? [],

@@ -3,7 +3,7 @@ import { liquidCents, monthlySpendCents } from "@/detectors/helpers";
 import { buildProfile, type ProfileInput } from "@/profile/build";
 import { cashCushionCents } from "./emergency-fund";
 import type { FitPerson } from "./fit";
-import { DAY_MS } from "@/lib/dates";
+import { monthsBefore } from "@/detection/units";
 
 // The person the fit engine (./fit.ts) works for, read from what the profile already holds:
 // take-home pay, the debt payments seen in the last three months (and loans they co-signed),
@@ -14,9 +14,9 @@ const MONTHS = 3;
 export function fitPersonFrom(input: ProfileInput, creditScore: number | null = null): FitPerson {
   const profile = buildProfile(input);
   const income = profile.facts.monthly_income.value;
-  const since = new Date(Date.parse(`${input.today}T00:00:00Z`) - MONTHS * 31 * DAY_MS)
-    .toISOString()
-    .slice(0, 10);
+  // Three calendar months back, not 93 days: on the 1st, that took in four payments made on the
+  // 1st (debugger 11-01).
+  const since = monthsBefore(input.today, MONTHS);
   // Debt service: loan payments seen, and a card's minimum, not the statement paid in full (a
   // card cleared each month is spending, not a debt payment a lender counts).
   const paid = input.transactions
