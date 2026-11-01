@@ -19,7 +19,13 @@ import { PrismaClient } from "@/generated/prisma/client";
 import type { Bar } from "@/lib/market/types";
 import type { PaperPrices } from "@/lib/paper/prices";
 import type { Fetcher } from "./gdelt";
-import { lastRefresh, refreshEvents, refreshEventsIfStale, stalestTypes } from "./refresh";
+import {
+  lastRefresh,
+  refreshEvents,
+  refreshEventsIfStale,
+  runEventsForAll,
+  stalestTypes,
+} from "./refresh";
 
 // The shared events refresh against a real, migrated Postgres, on recorded-shape answers (no
 // network): the first view runs it at once; then not again within EVENTS_REFRESH_MINUTES; of two
@@ -148,6 +154,26 @@ describe.runIf(url)("the shared events refresh", () => {
     expect(f.gdelt).toHaveLength(0);
     expect(await lastRefresh({ client })).toBeNull();
     expect((await run(NOW, f, { force: true })).ran).toBe(true);
+  });
+
+  // Debugger 11-01: the daily job ran past Vercel's limit (a 504), so nothing it did was recorded.
+  // Out of time, it asks GDELT about no more types and leaves the overlays for the next run.
+  it("stops starting work once the cron's time is up, and says what it left", async () => {
+    const f = fakeFetcher();
+    const out = await runEventsForAll({
+      client,
+      now: NOW,
+      fetcher: f.fetcher,
+      prices: quietPrices,
+      spacingMs: 0,
+      deadline: Date.now() - 1,
+    });
+    expect(f.gdelt).toHaveLength(0);
+    expect(out.ran).toBe(0);
+    expect(out.deferred).toBe(out.overlays);
+    const report = (await lastRefresh({ client }))!;
+    expect(report.sources.gdelt).toBe("failed");
+    expect(report.gdeltAt).toEqual({});
   });
 
   it("never fails the page: an error comes back as nothing", async () => {

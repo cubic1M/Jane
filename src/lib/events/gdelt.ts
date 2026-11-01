@@ -1,5 +1,6 @@
 import {
   EVENT_TYPES,
+  EVENTS_REQUEST_TIMEOUT_MS,
   EVENTS_USER_AGENT,
   GDELT_DOC_URL,
   GDELT_SPACING_MS,
@@ -34,31 +35,62 @@ export function parseTimeline(json: Timeline): Coverage[] {
 
 export type Fetcher = (
   url: string,
-  init: { headers: Record<string, string> },
+  init: { headers: Record<string, string>; signal?: AbortSignal },
 ) => Promise<{ ok: boolean; status: number; text(): Promise<string> }>;
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+export type GdeltOptions = {
+  fetcher?: Fetcher;
+  spacingMs?: number;
+  // A request not answered in this long counts as failed (EVENTS_REQUEST_TIMEOUT_MS by default).
+  timeoutMs?: number;
+  // Epoch ms: no request starts after it; the types left count as failed.
+  deadline?: number;
+};
+
+// One type's answer, as text; a refusal, a non-JSON note (GDELT answers a too-fast caller with a
+// plain-text note) or no answer in time throws.
+async function ask(url: string, fetcher: Fetcher, timeoutMs: number) {
+  const res = await fetcher(url, {
+    headers: { "User-Agent": EVENTS_USER_AGENT },
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  const text = await res.text();
+  if (!res.ok || !text.trim().startsWith("{")) throw new Error(`GDELT ${res.status}`);
+  return JSON.parse(text) as Timeline;
+}
+
+const outOfTime = (deadline: number | undefined, pauseMs: number) =>
+  deadline !== undefined && Date.now() + pauseMs >= deadline;
+
 // Each type's coverage from..to, one request per type, GDELT_SPACING_MS apart. A type whose
-// request fails is left out (and named), so one slow answer doesn't stop the rest.
+// request fails, or isn't asked before the deadline, is left out (and named), so one slow answer
+// doesn't stop the rest.
 export async function fetchCoverage(
   types: readonly EventTypeId[],
   from: string,
   to: string,
-  { fetcher = fetch as unknown as Fetcher, spacingMs = GDELT_SPACING_MS } = {},
+  {
+    fetcher = fetch as unknown as Fetcher,
+    spacingMs = GDELT_SPACING_MS,
+    timeoutMs = EVENTS_REQUEST_TIMEOUT_MS,
+    deadline,
+  }: GdeltOptions = {},
 ): Promise<{ coverage: Partial<Record<EventTypeId, Coverage[]>>; failed: EventTypeId[] }> {
   const coverage: Partial<Record<EventTypeId, Coverage[]>> = {};
   const failed: EventTypeId[] = [];
   for (const [i, type] of types.entries()) {
-    if (i > 0 && spacingMs > 0) await wait(spacingMs);
+    const pause = i > 0 ? spacingMs : 0;
+    if (outOfTime(deadline, pause)) {
+      failed.push(type);
+      continue;
+    }
+    if (pause > 0) await wait(pause);
     try {
-      const res = await fetcher(gdeltUrl(EVENT_TYPES[type].gdelt, from, to), {
-        headers: { "User-Agent": EVENTS_USER_AGENT },
-      });
-      const text = await res.text();
-      // GDELT answers a too-fast caller with a plain-text note, not JSON.
-      if (!res.ok || !text.trim().startsWith("{")) throw new Error(`GDELT ${res.status}`);
-      coverage[type] = parseTimeline(JSON.parse(text) as Timeline);
+      coverage[type] = parseTimeline(
+        await ask(gdeltUrl(EVENT_TYPES[type].gdelt, from, to), fetcher, timeoutMs),
+      );
     } catch {
       failed.push(type);
     }
@@ -96,21 +128,24 @@ export async function fetchIntraday(
   {
     fetcher = fetch as unknown as Fetcher,
     spacingMs = GDELT_SPACING_MS,
+    timeoutMs = EVENTS_REQUEST_TIMEOUT_MS,
+    deadline,
     leadMs = 0,
-  }: { fetcher?: Fetcher; spacingMs?: number; leadMs?: number } = {},
+  }: GdeltOptions & { leadMs?: number } = {},
 ): Promise<{ coverage: Partial<Record<EventTypeId, CoverageAt[]>>; failed: EventTypeId[] }> {
   const coverage: Partial<Record<EventTypeId, CoverageAt[]>> = {};
   const failed: EventTypeId[] = [];
   for (const [i, type] of types.entries()) {
     const pause = i === 0 ? leadMs : spacingMs;
+    if (outOfTime(deadline, pause)) {
+      failed.push(type);
+      continue;
+    }
     if (pause > 0) await wait(pause);
     try {
-      const res = await fetcher(gdeltUrlAt(EVENT_TYPES[type].gdelt, fromIso, toIso), {
-        headers: { "User-Agent": EVENTS_USER_AGENT },
-      });
-      const text = await res.text();
-      if (!res.ok || !text.trim().startsWith("{")) throw new Error(`GDELT ${res.status}`);
-      coverage[type] = parseTimelineAt(JSON.parse(text) as Timeline);
+      coverage[type] = parseTimelineAt(
+        await ask(gdeltUrlAt(EVENT_TYPES[type].gdelt, fromIso, toIso), fetcher, timeoutMs),
+      );
     } catch {
       failed.push(type);
     }

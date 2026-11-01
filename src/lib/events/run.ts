@@ -54,6 +54,8 @@ export type Options = {
   fetcher?: Fetcher;
   // Between GDELT requests (GDELT_SPACING_MS by default; tests pass 0).
   spacingMs?: number;
+  // Epoch ms: the daily job's clock; no GDELT request or overlay starts after it.
+  deadline?: number;
 };
 
 const DAY_MS = 86_400_000;
@@ -76,6 +78,7 @@ export async function collectEvents({
   prices,
   fetcher = fetch as unknown as Fetcher,
   spacingMs,
+  deadline,
   types = EVENT_TYPE_IDS,
 }: Options & { types?: readonly EventTypeId[] } = {}): Promise<CollectReport> {
   const today = dayOf(now);
@@ -88,7 +91,7 @@ export async function collectEvents({
     types,
     daysBefore(yesterday, GDELT_BASELINE_DAYS + 10),
     yesterday,
-    { fetcher, ...(spacingMs === undefined ? {} : { spacingMs }) },
+    { fetcher, deadline, ...(spacingMs === undefined ? {} : { spacingMs }) },
   );
   failed.push(...gdelt.failed.map((t) => `gdelt:${t}`));
   const spikes = types.flatMap((t) => coverageSpikes(t, gdelt.coverage[t] ?? []));
@@ -102,6 +105,7 @@ export async function collectEvents({
       now.toISOString(),
       {
         fetcher,
+        deadline,
         ...(spacingMs === undefined ? {} : { spacingMs }),
         leadMs: spacingMs ?? GDELT_SPACING_MS,
       },

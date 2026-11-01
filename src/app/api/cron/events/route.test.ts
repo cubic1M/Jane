@@ -13,6 +13,11 @@ vi.mock("@/lib/events/refresh", () => ({
   })),
 }));
 
+import {
+  EVENTS_CRON_BUDGET_MS,
+  EVENTS_GDELT_BUDGET_MS,
+  EVENTS_REQUEST_TIMEOUT_MS,
+} from "@/config/events";
 import { recordRun } from "@/lib/health";
 import { runEventsForAll } from "@/lib/events/refresh";
 import { GET, maxDuration } from "./route";
@@ -53,5 +58,11 @@ describe("GET /api/cron/events", () => {
     expect(crons).toContainEqual({ path: "/api/cron/events", schedule: "30 22 * * *" });
     expect(crons).toContainEqual({ path: "/api/cron/paper-run", schedule: "0 22 * * *" });
     expect(maxDuration).toBeGreaterThanOrEqual(120);
+  });
+
+  // Debugger 11-01: a 504. The job's clock stops new work with time left for the last request.
+  it("stops starting work in time to finish inside Vercel's limit", () => {
+    expect(EVENTS_GDELT_BUDGET_MS).toBeLessThan(EVENTS_CRON_BUDGET_MS);
+    expect(EVENTS_CRON_BUDGET_MS + EVENTS_REQUEST_TIMEOUT_MS).toBeLessThan(maxDuration * 1000);
   });
 });

@@ -11,7 +11,7 @@ import {
   headlineEvents,
   parseFeed,
 } from "./feeds";
-import { fetchCoverage, gdeltUrl, parseTimeline, type Fetcher } from "./gdelt";
+import { fetchCoverage, fetchIntraday, gdeltUrl, parseTimeline, type Fetcher } from "./gdelt";
 
 // The events overlay's sources, on recorded responses only (./__fixtures__, recorded 2026-10-26):
 // the Fed's monetary feed and one FOMC statement, BLS's CPI feed, EIA's Today in Energy, and a
@@ -144,5 +144,44 @@ describe("GDELT, on a recorded response", () => {
     expect(fetcher).toHaveBeenCalledTimes(2);
     expect(out.coverage.me_conflict).toHaveLength(45);
     expect(out.failed).toEqual(["war"]);
+  });
+
+  // Debugger 11-01: the daily events job ran out of Vercel's time (a 504): a GDELT request that
+  // never answered held the job, and the ones after it waited their turn.
+  it("gives up on a request that doesn't answer, and goes on to the next type", async () => {
+    const recorded = fixture("gdelt-me-conflict-2017.json");
+    const hangs: Fetcher = (_url, init) =>
+      new Promise((_, reject) =>
+        init.signal?.addEventListener("abort", () => reject(new Error("timed out"))),
+      );
+    const fetcher = vi
+      .fn<Fetcher>()
+      .mockImplementationOnce(hangs)
+      .mockResolvedValueOnce({ ok: true, status: 200, text: async () => recorded });
+    const out = await fetchCoverage(["war", "me_conflict"], "2017-01-01", "2017-02-14", {
+      fetcher,
+      spacingMs: 0,
+      timeoutMs: 20,
+    });
+    expect(out.failed).toEqual(["war"]);
+    expect(out.coverage.me_conflict).toHaveLength(45);
+  });
+
+  it("starts no request once the job's deadline has passed, and names those types", async () => {
+    const fetcher = vi.fn<Fetcher>();
+    const past = Date.now() - 1;
+    const daily = await fetchCoverage(["war", "me_conflict"], "2017-01-01", "2017-02-14", {
+      fetcher,
+      spacingMs: 0,
+      deadline: past,
+    });
+    const hourly = await fetchIntraday(["war"], "2017-01-01T00:00:00Z", "2017-01-02T00:00:00Z", {
+      fetcher,
+      spacingMs: 0,
+      deadline: past,
+    });
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(daily.failed).toEqual(["war", "me_conflict"]);
+    expect(hourly.failed).toEqual(["war"]);
   });
 });

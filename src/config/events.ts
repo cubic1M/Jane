@@ -387,5 +387,13 @@ export const EVENT_FEEDS = {
 export const GDELT_DOC_URL = "https://api.gdeltproject.org/api/v2/doc/doc";
 // GDELT asks for one request every 5 seconds.
 export const GDELT_SPACING_MS = 5_500;
+// A source request that hasn't answered in this long counts as failed (debugger 11-01: one that
+// never answered held the daily job past Vercel's limit).
+export const EVENTS_REQUEST_TIMEOUT_MS = 20_000;
+// The daily job's clock (its route allows 300 s): GDELT is asked about no new type after
+// EVENTS_GDELT_BUDGET_MS, and no new overlay starts after EVENTS_CRON_BUDGET_MS; what is left waits
+// for the next run (a type not asked stays the stalest, so the next refresh asks it first).
+export const EVENTS_GDELT_BUDGET_MS = 150_000;
+export const EVENTS_CRON_BUDGET_MS = 240_000;
 // Every caller names itself; no key is needed.
 export const EVENTS_USER_AGENT = "Jane (personal finance app; events overlay)";
