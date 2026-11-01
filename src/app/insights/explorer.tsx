@@ -307,6 +307,7 @@ export function SpendingExplorer({
   categoriesByMonth,
   initialMonth,
   changes,
+  changeMonths,
   topMerchants,
   lines,
   incomeNote,
@@ -315,6 +316,8 @@ export function SpendingExplorer({
   categoriesByMonth: Record<string, CategoryTotal[]>;
   initialMonth: string;
   changes: CategoryChange[];
+  // The two months the changes compare (on the 1st, last month and the one before).
+  changeMonths: { before: string; after: string } | null;
   topMerchants: MerchantTotal[];
   lines: SpendingLine[];
   // Said under the chart: cash deposits counted as income, and how sure (./cash-income.tsx).
@@ -339,7 +342,7 @@ export function SpendingExplorer({
 
   const first = months[0].month;
   const last = months.at(-1)!.month;
-  const [before, after] = months.length >= 2 ? months.slice(-2).map((m) => m.month) : [];
+  const { before, after } = changeMonths ?? { before: "", after: "" };
   const categories = categoriesByMonth[month] ?? [];
   const monthTotal = months.find((m) => m.month === month)?.spendingCents ?? 0;
   const rangeTotal = months.reduce((s, m) => s + m.spendingCents, 0);
@@ -378,9 +381,13 @@ export function SpendingExplorer({
         )}
       </section>
 
-      {changes.length > 0 && before && (
+      {changes.length > 0 && changeMonths && (
         <section className="flex flex-col gap-3">
-          <h2 className="text-xl font-semibold">Biggest changes from last month</h2>
+          <h2 className="text-xl font-semibold">
+            {after === last
+              ? "Biggest changes from last month"
+              : `Biggest changes in ${monthLabel(after, { long: true, year: false })} from ${monthLabel(before, { long: true, year: false })}`}
+          </h2>
           <Rows
             label="Changes"
             rows={changes.map((c) => ({

@@ -354,3 +354,34 @@ describe("typicalMonthlySpending", () => {
     expect(typicalMonthlySpending(rows.slice(0, 1), "2026-08-18", 1)).toBe(0);
   });
 });
+
+// Debugger 11-01: on the 1st, /insights showed October by category but "Biggest changes from last
+// month" compared November (nothing yet) with October: rent "down $1,794.99", food "down
+// $795.09". The changes are the newest month with spending against the one before it.
+describe("changes on the 1st", () => {
+  const rows = [
+    t({ date: "2026-09-03", amountCents: 150_000, pfcPrimary: "RENT_AND_UTILITIES" }),
+    t({ date: "2026-09-10", amountCents: 40_000, pfcPrimary: "FOOD_AND_DRINK" }),
+    t({ date: "2026-10-03", amountCents: 150_000, pfcPrimary: "RENT_AND_UTILITIES" }),
+    t({ date: "2026-10-10", amountCents: 55_000, pfcPrimary: "FOOD_AND_DRINK" }),
+  ];
+
+  it("compares October with September, not an empty November with October", () => {
+    const { changes } = spendingInsights(rows, { asOf: "2026-11-01", monthCount: 3 });
+    expect(changes).toEqual([
+      { category: "Food and drink", beforeCents: 40_000, afterCents: 55_000, changeCents: 15_000 },
+    ]);
+  });
+
+  it("still compares this month once it has spending", () => {
+    const later = [
+      ...rows,
+      t({ date: "2026-11-02", amountCents: 9_000, pfcPrimary: "FOOD_AND_DRINK" }),
+    ];
+    const { changes } = spendingInsights(later, { asOf: "2026-11-02", monthCount: 3 });
+    expect(changes.map((c) => [c.category, c.beforeCents, c.afterCents])).toEqual([
+      ["Rent and utilities", 150_000, 0],
+      ["Food and drink", 55_000, 9_000],
+    ]);
+  });
+});
