@@ -738,7 +738,24 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   - **Bug found and fixed:** our one-file bundle took the module name `engine`, which
     the kit's simulator also uses. Bundled code now lives under a private package
     (`_nlb`), tested in both import orders.
-* A coordinate-descent tuner (`sng/tune.py`) continues from here. Robustness
+* **Second tuning on a blend of fields** (`results/logs/sng_tune_blend.log`, 4 rounds).
+  On the blend field, play rose from 51.6 to about 65 points per table:
+  - open smaller and wider (2bb, `open_mult` 1.07);
+  - push/fold from 9bb;
+  - use the fold-to-steal read against up to 5 players behind.
+
+  **Validated on fresh seeds against the previous values** (`results/sng_validate.md`,
+  400 paired tables per cell): positive in all 6 cells, significant in 4.
+  - default +4.2 ± 4.2;
+  - strong **+10.1**;
+  - weak +2.9;
+  - mirror **+15.3**;
+  - top-3 payouts **+4.1**;
+  - rehearsal rules **+4.6**.
+
+  Now the defaults.
+* The tuner (`sng/tune.py`) is reusable on the day with the real rules as a preset
+  (`--preset`), at 10–20 minutes per round. Robustness
   to other fields and point tables is next, since both are guesses until the day.
 
 ## Appendix: assumptions and defaults chosen

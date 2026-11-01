@@ -46,15 +46,16 @@ effective stack in big blinds.
   - Call at pot odds + margin (+ ICM premium for big calls). Raise only very strong
     hands.
 
-## Tuned parameter values (default field, synthetic points; robust across 12 field × point-table cells)
+## Tuned parameter values (blend field; beats the previous values in all 6 validation cells)
 
 | parameter | value | meaning |
 |---|---|---|
-| open_mult | 1.18 | open if equity vs the k players behind ≥ 1.18/(k+1) |
-| open_size | 2.5 bb | +1 bb per limper |
-| steal_bonus | 0.40 | lower the open bar by up to 40% vs blinds that fold to steals |
-| push_bb | 12 | shove-or-fold at or below 12bb effective |
-| push_mult | 1.10 | shove bar 1.10/(k+1), scaled 0.75–1.0 by depth |
+| open_mult | 1.07 | open if equity vs the k players behind ≥ 1.07/(k+1) |
+| open_size | 2.0 bb | +1 bb per limper |
+| steal_bonus | 0.55 | lower the open bar by up to 55% vs players behind who fold to opens |
+| steal_max_behind | 5 | use that read with up to 5 players behind (blinds only when ≤ 2) |
+| push_bb | 9 | shove-or-fold at or below 9bb effective |
+| push_mult | 1.00 | shove bar 1.00/(k+1), scaled 0.75–1.0 by depth |
 | range_k | 4.0 | a raiser = 4 random hands (+0.8 per extra player in) |
 | call_margin | 0.06 | equity needed above pot odds |
 | threebet_eq | 0.62 | 3-bet / re-shove (re-shove at ≤ 24bb) |
@@ -68,6 +69,9 @@ effective stack in big blinds.
 
 * Calling tightness is the biggest lever. Treating the raiser as 4 random hands
   instead of 2.5 was worth +8.8 points per table, and a 6% calling margin +5.4.
+* Second tuning, on a blend of fields: open smaller (2bb) and wider, push/fold from 9bb,
+  and steal against any folding table. That was +4 to +15 over the first tuning on every
+  field, most on tight fields (mirror +15, strong +10).
 * Stealing wider against blinds that fold was worth +5.6. Bots that time out auto-fold,
   so they are the easiest seats to steal from.
 * Monte Carlo bots that compare against random hands call too much and finish last.

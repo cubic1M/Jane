@@ -19,10 +19,10 @@ import random
 from engine.game import Call, Check, Fold, RaiseTo
 
 PARAMS = dict(
-    open_mult=1.18,      # open if equity >= open_mult / (players to act + 1)
-    open_size=2.5,       # open-raise to this many big blinds (+1 per limper)
-    push_bb=12.0,        # shove-or-fold at or below this effective stack (bb)
-    push_mult=1.10,      # shove if equity >= push_mult / (players to act + 1) (scaled by stack)
+    open_mult=1.07,      # open if equity >= open_mult / (players to act + 1)
+    open_size=2.0,       # open-raise to this many big blinds (+1 per limper)
+    push_bb=9.0,        # shove-or-fold at or below this effective stack (bb)
+    push_mult=1.00,      # shove if equity >= push_mult / (players to act + 1) (scaled by stack)
     range_k=4.0,         # a raiser's range ~ this many random hands
     call_margin=0.06,    # extra equity needed above pot odds to call
     threebet_eq=0.62,    # 3-bet (or shove when short) if equity vs the raiser range clears this
@@ -31,8 +31,8 @@ PARAMS = dict(
     cbet=0.55,           # c-bet frequency heads-up as the preflop aggressor
     bet_frac=0.65,       # postflop bet size (fraction of pot)
     bet_discount=0.6,   # opponent's bet/raise: our equity x this (their range is stronger)
-    steal_bonus=0.40,
-    steal_max_behind=3,  # use the fold-to-steal read when at most this many players are behind
+    steal_bonus=0.55,
+    steal_max_behind=5,  # use the fold-to-steal read when at most this many players are behind
     reshove_bb=24.0,
     read_alpha=0.0,      # per-seat raise-rate read: raiser range_k x (base_pfr / their pfr)^alpha
     base_pfr=0.12,
