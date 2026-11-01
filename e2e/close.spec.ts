@@ -39,10 +39,16 @@ test("a sample person's monthly close, from Home", async ({ page }) => {
   }
 
   // Back through the months until one has a verified win, with its lines behind a click.
+  // Each step waits for the earlier month's heading: the address changes before its page is in,
+  // and counting the old page's empty Verified clicked back past the wins (debugger 11-01: on the
+  // 1st, Home opens October, with none, so this loop runs; it reached August and timed out).
   let verified = page.getByRole("region", { name: "Verified", exact: true });
+  const heading = page.getByRole("heading", { level: 1 });
   for (let i = 0; i < 6 && (await verified.locator("[data-ledger-entry]").count()) === 0; i += 1) {
+    const was = await heading.innerText();
     await page.getByRole("navigation", { name: "Months" }).getByRole("link").first().click();
     await expect(page).not.toHaveURL(new RegExp(`${month}$`));
+    await expect(heading).not.toHaveText(was);
     verified = page.getByRole("region", { name: "Verified", exact: true });
   }
   const win = verified.locator("[data-ledger-entry]").first();
