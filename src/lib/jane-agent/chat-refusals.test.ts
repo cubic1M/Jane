@@ -303,7 +303,8 @@ describe("a blocked draft is rewritten by Claude, not replaced by a canned line"
   it("uses the canned line when the rewrite errors", async () => {
     create
       .mockResolvedValueOnce(final("Buy Apple stock."))
-      .mockRejectedValueOnce(new Anthropic.APIError(400, { type: "error" }, "bad", new Headers()));
+      // Every try after it fails (a 400 is tried once more without the refusal fallback).
+      .mockRejectedValue(new Anthropic.APIError(400, { type: "error" }, "bad", new Headers()));
     const result = await ask("which stock should I buy");
     expect(result.kind).toBe("unavailable");
     expect(result.reply.body).not.toMatch(/Apple/);

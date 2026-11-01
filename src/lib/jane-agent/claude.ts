@@ -37,6 +37,15 @@ import { CHANGE_PRACTICE_TOOL, proposePracticeChange } from "./practice-tools";
 import { BLOCK_KINDS, buildBlock, type BlockKind } from "./block-data";
 import { blockCents, drawBlock, type AnswerBlock } from "./blocks";
 import { GuardedText } from "./guarded-text";
+import {
+  afterFallback,
+  refusalFallbackOn,
+  servedByFallback,
+  setRefusalFallbackRejected,
+  textOf,
+  usageOf,
+  withRefusalFallback,
+} from "./refusal-fallback";
 import { INVESTMENT_TOOL_STATUS } from "./investments/tools";
 import type { Reply } from "./replies";
 import { OPTION_ACTIONS } from "./actions/options";
@@ -449,6 +458,8 @@ type ChatTiming = {
   guardrailRules: string[];
   // Why each rewrite happened: "guardrail", "shape" or "button_only".
   rewriteReasons: string[];
+  // The model that answered after a safety classifier declined (./refusal-fallback.ts).
+  fallbackModel?: string;
 };
 
 // What the last answer was about, in words for Claude (spec step 193).
@@ -656,6 +667,9 @@ async function askClaude(
   let retriesLeft = 1;
   let startRetries = 1;
   let refusalRetries = 1;
+  // Whether this round asks for the refusal fallback, and whether it is the retry without it.
+  let fallbackOn = false;
+  let fallbackRetried = false;
   const partialAnswer = (): ClaudeAnswer | null => {
     const kept = withoutButtonTalk(draft.shownText()).trim();
     if (kept.length < 20) return null;
@@ -737,20 +751,27 @@ async function askClaude(
       const turnStarted = Date.now();
       const totalLeft = CHAT_CLAUDE_TOTAL_MS - (Date.now() - started);
       if (Math.min(deadlineMs, totalLeft) <= 0) return fail("no_time");
+      // A safety classifier's decline runs on another model in the same call (./refusal-fallback.ts).
+      fallbackOn = refusalFallbackOn(chatModel());
       const stream = claude()
-        .messages.stream({
-          model: chatModel(),
-          max_tokens: CHAT_CLAUDE_MAX_TOKENS,
-          system,
-          tools,
-          // The last round answers from what it has: a lookup there would leave no answer.
-          tool_choice: turn === turnLimit - 1 ? { type: "none" } : { type: "auto" },
-          // Adaptive thinking at low effort (the request that worked). Turning thinking off
-          // made the nightly's every chat request fail with a 400.
-          thinking: { type: "adaptive" },
-          output_config: { effort: CHAT_CLAUDE_EFFORT },
-          messages,
-        })
+        .messages.stream(
+          ...withRefusalFallback(
+            {
+              model: chatModel(),
+              max_tokens: CHAT_CLAUDE_MAX_TOKENS,
+              system,
+              tools,
+              // The last round answers from what it has: a lookup there would leave no answer.
+              tool_choice: turn === turnLimit - 1 ? { type: "none" } : { type: "auto" },
+              // Adaptive thinking at low effort (the request that worked). Turning thinking off
+              // made the nightly's every chat request fail with a 400.
+              thinking: { type: "adaptive" },
+              output_config: { effort: CHAT_CLAUDE_EFFORT },
+              messages,
+            },
+            fallbackOn,
+          ),
+        )
         .on("streamEvent", (event) => {
           heard = true;
           timing.firstEventMs ??= Date.now() - timing.startedAt;
@@ -806,6 +827,23 @@ async function askClaude(
     } catch (error) {
       // Our own abort can surface as any error type: it is "too slow", never a crash.
       if (!stopped && !(error instanceof Anthropic.APIError)) throw error;
+      // The API turned down the request with the refusal fallback: once more without it. If that
+      // works, the fallback was the cause and stays off on this server; if not, it wasn't.
+      if (!stopped && fallbackOn && error instanceof Anthropic.APIError && error.status === 400) {
+        if (draft.shownText().trim() === "") {
+          console.error("chat_refusal_fallback_rejected", {
+            reason: String(error.message).slice(0, 300),
+          });
+          setRefusalFallbackRejected(true);
+          fallbackRetried = true;
+          turn -= 1;
+          continue;
+        }
+      }
+      if (fallbackRetried && error instanceof Anthropic.APIError && error.status === 400) {
+        setRefusalFallbackRejected(false);
+        fallbackRetried = false;
+      }
       if (stopped && !heard && turn === 0 && startRetries > 0) {
         // Claude never started (a cold start on a long prompt): once more, which usually finds
         // the prompt cached by the first try.
@@ -851,29 +889,27 @@ async function askClaude(
       clearTimeout(timer);
     }
 
-    timing.inputTokens += response.usage?.input_tokens ?? 0;
-    timing.cachedInputTokens += response.usage?.cache_read_input_tokens ?? 0;
-    timing.cacheWriteTokens += response.usage?.cache_creation_input_tokens ?? 0;
-    timing.outputTokens += response.usage?.output_tokens ?? 0;
-    const used = {
-      model: chatModel(),
-      inputTokens: response.usage?.input_tokens ?? 0,
-      outputTokens: response.usage?.output_tokens ?? 0,
-      cacheReadTokens: response.usage?.cache_read_input_tokens ?? 0,
-      cacheWriteTokens: response.usage?.cache_creation_input_tokens ?? 0,
-    };
-    timing.costHundredths += costInHundredthsOfCents(used);
-    await addSpend(userId, used, { client, now });
+    fallbackRetried = false;
+    // Every attempt counts, a declined one and the fallback model's too (./refusal-fallback.ts).
+    for (const used of usageOf(response.usage, chatModel())) {
+      timing.inputTokens += used.inputTokens;
+      timing.cachedInputTokens += used.cacheReadTokens;
+      timing.cacheWriteTokens += used.cacheWriteTokens;
+      timing.outputTokens += used.outputTokens;
+      timing.costHundredths += costInHundredthsOfCents(used);
+      await addSpend(userId, used, { client, now });
+    }
+    if (servedByFallback(response.usage)) timing.fallbackModel = response.model ?? "fallback";
+    // Past a switch to the fallback model, the declined model's thinking and tool calls are
+    // neither run nor sent back.
+    const content = afterFallback(response.content);
     // The answer was written and only a button or a picture was asked for after it: that text
     // IS the answer, so there is no extra round just to be told "noted".
-    const writtenText = response.content
-      .flatMap((b) => (b.type === "text" ? [b.text] : []))
-      .join("\n")
-      .trim();
+    const writtenText = textOf(content);
     const decorationOnly =
       response.stop_reason === "tool_use" &&
       writtenText.length > 0 &&
-      response.content.every(
+      content.every(
         (b) => b.type !== "tool_use" || b.name === "propose_action" || b.name === "show_block",
       );
     if (response.stop_reason === "tool_use") {
@@ -881,10 +917,10 @@ async function askClaude(
         // Any text so far led into the lookup; the answer comes after it.
         draft.reset();
         onEvent({ type: "reset" });
-        messages.push({ role: "assistant", content: response.content });
+        messages.push({ role: "assistant", content });
       }
       const results: Anthropic.ToolResultBlockParam[] = [];
-      for (const block of response.content) {
+      for (const block of content) {
         if (block.type !== "tool_use") continue;
         // Spec step 94: one block, built from the person's numbers, not Claude's.
         if (block.name === "show_block") {
@@ -1033,10 +1069,7 @@ async function askClaude(
       return fail(`stop_${response.stop_reason}`);
     }
     draft.finish();
-    const text = response.content
-      .flatMap((b) => (b.type === "text" ? [b.text] : []))
-      .join("\n")
-      .trim();
+    const text = textOf(content);
     if (!text) return fail("empty");
     // Sentences about a button or link "under this answer" are dropped; an answer that was
     // only that (no figure, hardly a sentence) isn't an answer, so the rules answer instead.
@@ -1077,7 +1110,7 @@ async function askClaude(
       // without one is a 400.
       messages.push({
         role: "assistant",
-        content: response.content.filter((b) => b.type === "text"),
+        content: content.filter((b) => b.type === "text"),
       });
       messages.push({
         role: "user",
@@ -1095,7 +1128,7 @@ async function askClaude(
       onEvent({ type: "reset" });
       messages.push({
         role: "assistant",
-        content: response.content.filter((b) => b.type === "text"),
+        content: content.filter((b) => b.type === "text"),
       });
       messages.push({
         role: "user",
