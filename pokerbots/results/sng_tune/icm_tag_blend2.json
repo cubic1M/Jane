@@ -1,0 +1,141 @@
+{
+ "params": {
+  "open_mult": 0.9727,
+  "open_size": 2.0,
+  "push_bb": 9.0,
+  "push_mult": 1.0,
+  "range_k": 4.0,
+  "call_margin": 0.06,
+  "threebet_eq": 0.62,
+  "threebet_rel": 2.6,
+  "risk": 0.1,
+  "value_eq": 0.62,
+  "cbet": 0.55,
+  "bet_frac": 0.65,
+  "bet_discount": 0.6,
+  "steal_bonus": 0.55,
+  "steal_max_behind": 7,
+  "reshove_bb": 24.0,
+  "read_alpha": 0.25,
+  "base_pfr": 0.12,
+  "cap_risk": 0.0,
+  "cap_window": 25
+ },
+ "history": [
+  {
+   "round": 0,
+   "incumbent": "icm_tag",
+   "incumbent_points": 58.62777038647924,
+   "best": "icm_tag:steal_max_behind=7",
+   "gain": 1.782528069836807,
+   "se": 1.4697495947264207,
+   "accepted": true,
+   "top5": [
+    [
+     "icm_tag:steal_max_behind=7",
+     1.78,
+     1.47
+    ],
+    [
+     "icm_tag:open_mult=0.9727",
+     1.34,
+     1.44
+    ],
+    [
+     "icm_tag:bet_discount=0.5",
+     0.83,
+     1.36
+    ],
+    [
+     "icm_tag:push_mult=0.9091",
+     0.56,
+     1.15
+    ],
+    [
+     "icm_tag:bet_frac=0.5",
+     0.42,
+     1.32
+    ]
+   ],
+   "seconds": 988,
+   "also_taken": []
+  },
+  {
+   "round": 1,
+   "incumbent": "icm_tag:steal_max_behind=7",
+   "incumbent_points": 55.982229760535965,
+   "best": "icm_tag:open_mult=0.9727;steal_max_behind=7",
+   "gain": 2.594451505797084,
+   "se": 1.4073790172849836,
+   "accepted": true,
+   "top5": [
+    [
+     "icm_tag:open_mult=0.9727;steal_max_behind=7",
+     2.59,
+     1.41
+    ],
+    [
+     "icm_tag:read_alpha=0.25;steal_max_behind=7",
+     2.3,
+     1.42
+    ],
+    [
+     "icm_tag:bet_frac=0.5;steal_max_behind=7",
+     1.7,
+     1.55
+    ],
+    [
+     "icm_tag:push_bb=6.0;steal_max_behind=7",
+     1.61,
+     1.51
+    ],
+    [
+     "icm_tag:reshove_bb=18.0;steal_max_behind=7",
+     1.46,
+     1.32
+    ]
+   ],
+   "seconds": 918,
+   "also_taken": []
+  },
+  {
+   "round": 2,
+   "incumbent": "icm_tag:open_mult=0.9727;steal_max_behind=7",
+   "incumbent_points": 59.93226186003593,
+   "best": "icm_tag:open_mult=0.9727;read_alpha=0.25;steal_max_behind=7",
+   "gain": 1.6047891526895242,
+   "se": 1.4231172308356006,
+   "accepted": true,
+   "top5": [
+    [
+     "icm_tag:open_mult=0.9727;read_alpha=0.25;steal_max_behind=7",
+     1.6,
+     1.42
+    ],
+    [
+     "icm_tag:open_mult=0.9727;steal_max_behind=7;threebet_rel=2.4",
+     0.62,
+     1.2
+    ],
+    [
+     "icm_tag:open_mult=0.9727;push_mult=0.9091;steal_max_behind=7",
+     0.47,
+     1.32
+    ],
+    [
+     "icm_tag:open_mult=0.9727;range_k=5.0;steal_max_behind=7",
+     0.39,
+     1.38
+    ],
+    [
+     "icm_tag:cap_risk=0.05;open_mult=0.9727;steal_max_behind=7",
+     0.37,
+     1.19
+    ]
+   ],
+   "seconds": 943,
+   "also_taken": []
+  }
+ ],
+ "round": 3
+}
