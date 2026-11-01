@@ -64,7 +64,7 @@ const INVESTMENT = [
 const DEDUCTIONS =
   /(?<!(?:payroll|paycheck|pay) )\bdeductions?\b(?! (?:from|on|in) (?:your|my|the|their) (?:pay|paycheck|paychecks|wages)\b)/i;
 const LIABLE =
-  /(?<!(?:injury|damage|personal|zero) )\bliab(le|ility)\b(?! (?:cover|coverage|insurance|limits?|only)\b)(?!, per\b)/i;
+  /(?<!(?:injury|damage|personal|zero) )\bliab(le|ility)\b(?! (?:cover|coverage|insurance|limits?|only)\b)(?!, per\b)(?! for (?:unauthori[sz]ed|fraudulent) (?:card |debit |credit )?(?:charges|transactions|purchases|use)\b)/i;
 const TAX_WORD = /\btax(es|ed|able)?\b/i;
 // The IRS named as a payee ("a $412.00 payment to the IRS") is a fact; telling the person what to
 // do with it, or what it allows, is advice.
