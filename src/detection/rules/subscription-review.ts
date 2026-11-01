@@ -15,6 +15,7 @@ import {
   SUBSCRIPTION_CATEGORIES,
   SUBSCRIPTION_MERCHANTS,
 } from "@/config/detection";
+import { PAPER_CHECK } from "@/config/paper-check";
 import { formatCents } from "@/lib/money";
 import { inList, lowest, merchantMatches } from "../helpers";
 import { isSubscriptionBox, saysPlan, type Stream } from "../streams";
@@ -25,7 +26,9 @@ function isRecurringCost(stream: Stream): boolean {
   return (
     stream.active &&
     stream.annualCostCents !== null &&
-    !inList(stream.pfcDetailed, INSURANCE_CATEGORIES)
+    !inList(stream.pfcDetailed, INSURANCE_CATEGORIES) &&
+    // Paid by paper check: who it paid is unknown, so it's nothing to cancel.
+    !stream.charges.some((c) => PAPER_CHECK.test(c.description.trim()))
   );
 }
 
