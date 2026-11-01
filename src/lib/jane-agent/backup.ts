@@ -13,6 +13,20 @@ import { SPENDING_NOT_FOUND, type Reply } from "./replies";
 // Otherwise Jane says it couldn't write the answer and gives what it can see for the names the
 // person typed (what came in from them and what went out to them), never an unrelated breakdown.
 
+// Asking Jane to help hide money, forge or get around something: when Claude's own refusal
+// couldn't be shown, a short refusal that needs no model. Someone it was done to ("I got hacked",
+// "is this charge fraud?", "my ex forged my signature") is asking for help, not refused (11-01):
+// the words that both sides use count only after an ask to do it ("how do I", "help me").
+const ALWAYS_UNSAFE =
+  /\b(?:hide (?:money|income|assets|cash)|launder\w*|evad(?:e|ing) (?:tax|taxes|the irs)|tax evasion|commit(?:ting)? fraud|fake (?:a |an |my )?(?:id|document|signature|receipt|paystub|pay stub))\b/i;
+const ASK_TO =
+  /\b(?:how (?:do|can|could|would|should|might) (?:i|we|you)|help me|can you|could you|will you|teach me|show me|i (?:want|need|plan|'m going|am going) to|is there a way to|way to|best way to|make me)\b[^.?!]{0,40}?\b(?:hack\w*|steal\w*|forg(?:e|ing|ery)|cheat\w*|bypass\w*|lie to|defraud\w*|scam\w*|break into)\b/i;
+export function unsafeRequest(text: string): boolean {
+  return ALWAYS_UNSAFE.test(text) || ASK_TO.test(text);
+}
+export const UNSAFE_TEXT =
+  "I can't help with that. I'm glad to help with your spending, bills, savings or taxes the honest way.";
+
 // A new question inside the message: "?", ";", a new line, or ", how much…" / "and what…".
 const QUESTION_WORD =
   "(?:how|what|when|where|why|which|who|can|could|do|does|did|is|are|should|will|would)\\b";
