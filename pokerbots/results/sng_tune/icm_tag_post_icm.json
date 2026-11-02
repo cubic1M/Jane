@@ -1,0 +1,92 @@
+{
+ "params": {
+  "open_mult": 1.07,
+  "open_size": 2.0,
+  "push_bb": 9.0,
+  "push_mult": 1.0,
+  "range_k": 4.0,
+  "call_margin": 0.06,
+  "threebet_eq": 0.62,
+  "threebet_rel": 2.6,
+  "risk": 0.1,
+  "value_eq": 0.62,
+  "cbet": 0.55,
+  "bet_frac": 0.65,
+  "bet_discount": 0.5,
+  "steal_bonus": 0.55,
+  "steal_max_behind": 5,
+  "steal_sym": 0.5,
+  "reshove_bb": 24.0,
+  "read_alpha": 0.5,
+  "base_pfr": 0.12,
+  "raiser_discount": 1.0,
+  "raise_eq": 99.0,
+  "bluff_bonus": 0.4,
+  "bluff_max_opp": 2,
+  "pf_chart": 0,
+  "pf_max_bb": 15.0,
+  "pf_file": "",
+  "cap_risk": 0.0,
+  "cap_window": 25,
+  "risk_payout": 1,
+  "hu_open_mult": 0.6,
+  "hu_range_k": 2.0,
+  "sh_open_mult": 0.0,
+  "sh_range_k": 0.0,
+  "icm_call": 1,
+  "icm_margin": 0.02,
+  "pev": 0,
+  "pev_bb": 15.0,
+  "pev_margin": 0.0,
+  "pev_loose": 1.0,
+  "pev_risk": 1.0,
+  "rk_floor": 1.2,
+  "agg_alpha": 0.0,
+  "base_agg": 0.35,
+  "agg_raise": 99.0,
+  "agg_seat": 0.6,
+  "station_size": 0.0,
+  "thin_value": 0.0
+ },
+ "history": [
+  {
+   "round": 0,
+   "incumbent": "icm_tag",
+   "incumbent_points": 58.00406417904444,
+   "best": "icm_tag:bet_discount=0.5",
+   "gain": 3.573787099560829,
+   "se": 1.6968910598383402,
+   "accepted": true,
+   "top5": [
+    [
+     "icm_tag:bet_discount=0.5",
+     3.57,
+     1.7
+    ],
+    [
+     "icm_tag:call_margin=0.09",
+     3.22,
+     1.69
+    ],
+    [
+     "icm_tag:value_eq=0.57",
+     2.21,
+     1.65
+    ],
+    [
+     "icm_tag:threebet_rel=2.8",
+     2.1,
+     1.51
+    ],
+    [
+     "icm_tag:cbet=0.35",
+     2.05,
+     1.57
+    ]
+   ],
+   "seconds": 1597,
+   "also_taken": []
+  }
+ ],
+ "round": 1
+}
