@@ -102,6 +102,34 @@ const find = (headers: string[], pattern: RegExp, keep: (i: number) => boolean =
   return i === -1 ? null : i;
 };
 
+// Which column has the words, best first: the bank's own line where an app kept it (Monarch's
+// "Original Statement", Mint's "Original Description"), then the usual names, then a memo. Never
+// the account's own name (debugger 11-02: Rocket Money's "Account Name" comes first in its file,
+// and every row read "Checking").
+const DESCRIPTION_COLUMNS = [
+  /original (?:statement|description)/,
+  /description|payee|merchant|details|narrative/,
+  /name/,
+  /memo|notes?/,
+];
+const NOT_DESCRIPTION = /account|institution|custom|bank name/;
+const MEMO_COLUMN = /^(?:memo|notes?|details?|narrative)$/;
+// A description with this many times fewer different values than the memo beside it only says
+// what kind of entry it is: a credit union's "Withdrawal ACH", with the payee in Memo.
+const MEMO_NAMES_MORE = 3;
+
+function descriptionColumn(headers: string[], rows: string[][], varies: (i: number) => boolean) {
+  const keep = (i: number) => varies(i) && !NOT_DESCRIPTION.test(headers[i]);
+  const best = DESCRIPTION_COLUMNS.map((pattern) => find(headers, pattern, keep)).find(
+    (i) => i !== null,
+  );
+  if (best === undefined || best === null) return null;
+  const different = (i: number) =>
+    new Set(rows.map((r) => (r[i] ?? "").trim().toLowerCase()).filter(Boolean)).size;
+  const memo = find(headers, MEMO_COLUMN, (i) => i !== best);
+  return memo !== null && different(memo) >= MEMO_NAMES_MORE * different(best) ? memo : best;
+}
+
 // An amount as banks outside the US write it too: "€12,50", "1.234,56", "12.50 USD".
 export function parseAmount(text: string): number | null {
   const plain = text.replace(/[€£¥]|\b(?:USD|EUR|GBP|CAD)\b/gi, "").trim();
@@ -219,16 +247,22 @@ export function mappingChoices(all: CsvRecord[]): MappingChoices {
   if (hasHeader) {
     // From the column names, falling back on the values.
     const headers = first.map(normalizeHeader);
-    const debit = find(headers, /debit|withdrawal|money out|paid out/);
-    const credit = find(headers, /credit|deposit|money in|paid in/);
-    const amount = find(headers, /amount|value|betrag|montant|importe/);
+    // YNAB's Outflow and Inflow too (debugger 11-02: reading Outflow alone lost all of a
+    // person's pay).
+    const debit = find(headers, /debit|withdrawal|money out|paid out|outflow/);
+    const credit = find(headers, /credit|deposit|money in|paid in|inflow/);
+    // "Amount Debit" and "Amount Credit" are the two columns, not an amount and a spare.
+    const split = debit !== null && credit !== null && debit !== credit;
+    const amount = find(
+      headers,
+      /amount|value|betrag|montant|importe/,
+      (i) => !split || (i !== debit && i !== credit),
+    );
     guess = {
       date: find(headers, /date|booked|posted/) ?? byValue.date,
       // A column that says the same on every row ("No Description" in a Fidelity file, whose
       // words are under "Action") names nothing (debugger 11-02).
-      description:
-        find(headers, /description|payee|merchant|memo|details|name|narrative/, varies) ??
-        byValue.description,
+      description: descriptionColumn(headers, rows, varies) ?? byValue.description,
       amount: amount ?? (debit !== null && credit !== null ? null : byValue.amount),
       debit,
       credit,
