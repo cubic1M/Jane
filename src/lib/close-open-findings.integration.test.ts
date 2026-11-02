@@ -1,0 +1,152 @@
+import { PrismaPg } from "@prisma/adapter-pg";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { PrismaClient } from "@/generated/prisma/client";
+
+vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
+vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
+vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
+
+import { loadMonthClose } from "./close";
+
+// Debugger 11-02: a person with 4 findings waiting on /jane read "Found 0 · Open 0" and "Nothing
+// new this month" on their close: findings nobody had acted on never reached it. And a finding
+// made in a US evening is already tomorrow in UTC, so "up to today" left it out.
+const url = process.env.TEST_DATABASE_URL;
+// 11:35pm on Nov 1 in Los Angeles.
+const NOW = new Date("2026-11-02T06:35:00Z");
+
+describe.runIf(url)("a close and the findings waiting for an answer", { timeout: 60_000 }, () => {
+  let client: PrismaClient;
+  const made: string[] = [];
+  beforeAll(() => {
+    client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
+  });
+  afterAll(async () => {
+    await client.user.deleteMany({ where: { id: { in: made } } });
+    await client.$disconnect();
+  });
+
+  async function person() {
+    const user = await client.user.create({
+      data: {
+        email: `close-open-${crypto.randomUUID()}@example.com`,
+        timezone: "America/Los_Angeles",
+      },
+    });
+    made.push(user.id);
+    const account = await client.account.create({
+      data: { userId: user.id, source: "csv", name: "Checking", type: "depository" },
+    });
+    const tx = await client.transaction.create({
+      data: {
+        userId: user.id,
+        accountId: account.id,
+        source: "csv",
+        dedupeKey: "t1",
+        date: new Date("2026-10-05T00:00:00Z"),
+        amountCents: 2_299,
+        description: "NETFLIX.COM",
+        merchantName: "Netflix",
+      },
+    });
+    const finding = (
+      type: "subscription_review" | "bank_fees" | "price_increase" | "insurance_reshop",
+      key: string,
+      status: "new" | "shown" | "declined" | "approved",
+      amountCents: number,
+      createdAt = NOW,
+      annualSavingsCents: number | null = amountCents,
+    ) =>
+      client.finding.create({
+        data: {
+          userId: user.id,
+          type,
+          key,
+          status,
+          title: `Finding ${key}`,
+          explanation: "Why it matters.",
+          amountCents,
+          annualSavingsCents,
+          confidence: "medium",
+          evidence: { transactionIds: [tx.id] },
+          createdAt,
+        },
+      });
+    return { userId: user.id, finding };
+  }
+
+  it("counts a waiting finding as found in its own month, by the person's day, and open", async () => {
+    const { userId, finding } = await person();
+    await finding("subscription_review", "merchant:netflix", "new", 27_588);
+    await finding("bank_fees", "fees", "shown", 3_500);
+    const october = await loadMonthClose(userId, "2026-10", { client, now: NOW });
+    const november = await loadMonthClose(userId, "2026-11", { client, now: NOW });
+
+    // Nov 1 for this person, though the clock in UTC says Nov 2.
+    expect(october.found).toEqual([]);
+    expect(october.open.map((e) => e.title)).toEqual(["Finding merchant:netflix", "Finding fees"]);
+    expect(november.found.map((e) => e.title)).toEqual([
+      "Finding merchant:netflix",
+      "Finding fees",
+    ]);
+    expect(november.quiet).toBe(false);
+    expect(november.allGood).toBe(false);
+    expect(november.found[0]).toMatchObject({
+      state: "estimated",
+      cents: 27_588,
+      yearly: true,
+      foundOn: "2026-11-01",
+    });
+    expect(november.found[0].confidencePercent).toBeGreaterThan(0);
+    expect(november.found[0].href).toMatch(/^\/report\//);
+  });
+
+  // Seen in the app: "State Farm could cost less, about $1,698.00/yr" was the premium, the top chip.
+  it("shows what could be saved, not what the bill is, and no chip with no dollar figure", async () => {
+    const { userId, finding } = await person();
+    await finding("insurance_reshop", "merchant:state farm", "new", 169_800, NOW, null);
+    await finding("subscription_review", "merchant:netflix", "new", 2_299, NOW, 27_588);
+    const november = await loadMonthClose(userId, "2026-11", { client, now: NOW });
+    const byTitle = new Map(november.open.map((e) => [e.title, e]));
+    expect(byTitle.get("Finding merchant:netflix")?.cents).toBe(27_588);
+    expect(byTitle.get("Finding merchant:state farm")?.cents).toBe(0);
+    expect(november.chips.map((c) => c.figure)).toEqual(["$276/yr"]);
+    expect(november.foundCents).toBe(27_588);
+  });
+
+  // Seen in the app: Netflix "Stays an estimate: your transactions can't show this one".
+  it("says a waiting finding is an estimate until they act, not that it can't be shown", async () => {
+    const { userId, finding } = await person();
+    await finding("subscription_review", "merchant:netflix", "new", 27_588);
+    const [entry] = (await loadMonthClose(userId, "2026-11", { client, now: NOW })).open;
+    expect(entry.rule).toBe("An estimate until you act on it.");
+  });
+
+  it("dates a finding from a US evening on the last day of a month in that month", async () => {
+    const { userId, finding } = await person();
+    // 5pm on Oct 31 in Los Angeles: Nov 1 in UTC.
+    await finding("bank_fees", "fees", "new", 3_500, new Date("2026-11-01T00:00:00Z"));
+    const october = await loadMonthClose(userId, "2026-10", { client, now: NOW });
+    const november = await loadMonthClose(userId, "2026-11", { client, now: NOW });
+    expect(october.found.map((e) => e.title)).toEqual(["Finding fees"]);
+    expect(november.found).toEqual([]);
+  });
+
+  it("leaves out what the person said no to or already said yes to", async () => {
+    const { userId, finding } = await person();
+    await finding("bank_fees", "fees", "declined", 3_500);
+    await finding("subscription_review", "merchant:netflix", "approved", 27_588);
+    const november = await loadMonthClose(userId, "2026-11", { client, now: NOW });
+    expect(november.open.map((e) => e.title)).not.toContain("Finding fees");
+    expect(november.open.map((e) => e.title)).not.toContain("Finding merchant:netflix");
+  });
+
+  it("shows a price rise made in a US evening once, under Changed", async () => {
+    const { userId, finding } = await person();
+    await finding("price_increase", "merchant:netflix", "new", 400);
+    const november = await loadMonthClose(userId, "2026-11", { client, now: NOW });
+    expect(november.changed.map((c) => c.title)).toEqual(["Finding merchant:netflix"]);
+    expect(november.found).toEqual([]);
+    expect(november.open).toEqual([]);
+  });
+});
