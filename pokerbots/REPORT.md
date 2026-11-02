@@ -977,7 +977,7 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   - **Speed:** 0.12 ms per decision at 8-handed (subset DP with prebuilt mask tables, imported at load). It matches brute-force Harville over all finishing orders (tested).
   - **Exploration:** positive in 5 of 5 cells.
   - **Fresh seeds 39000+, 600 paired tables:** default +1.6, field 2 +0.7, mirror +0.8, all3/top3 **+1.6**, hackathon-like **+2.2**, all3/winner +0.3. Positive everywhere, two cells significant.
-* **Bug hunter:** 284k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
+* **Bug hunter:** 318k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
   - looser calls (a raiser = 3.2 hands, a 3% margin);
