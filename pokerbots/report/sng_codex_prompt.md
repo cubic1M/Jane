@@ -18,6 +18,23 @@ these prompts had a verified bot in **15 minutes**:
 It scored 79.5 points per table vs the kit's sample bots (our full bot: 78–85), with
 0 errors. This version folds in the 15 ambiguities it reported.
 
+**Rehearsed twice.**
+
+| kit | interface | verified bot | result |
+|---|---|---|---|
+| kit 1 | Agent class, raise-to | 15 min | 79.5 points per table |
+| kit 2 | module functions, raise-by, renumbered seats, a draw twist | **10 min** | 333 points per table vs the samples' 32–152; won 196/200 tables |
+
+Kit-2 lessons, already folded into the prompts below:
+- **Interface.** It may be plain functions (`get_action(state)`), not a class.
+- **Raise size.** Convert our "raise-to" amounts:
+  - raise-by = raise-to − current bet;
+  - all-in is the kit's own maximum, not "my stack";
+  - our "3× the last raise-to" is raise-by = 3 × current bet − current bet.
+- **Imports.** The kit's modules may not be importable on the grader, and `os`/`sys` may be banned. Then write your own hand-category function, verify it against the kit's evaluator on many random hands, and switch debug mode on from a harness, not an environment variable.
+- **Seats.** If seats renumber every hand (relative to the button), track opponents by a stable identity (their position relative to me), not by seat number.
+- **Timing.** A/B runs of 800 tables per side take minutes each: use every core and budget for it.
+
 ## Prompt 1 (minutes 0–5): safe bot
 > Write the kit's submission file (the file name and the class name the README asks
 > for) implementing its Agent interface. Every decision must never raise and must return
@@ -44,8 +61,12 @@ of decisions) can be machine jitter: even the kit's own bots get them. **Submit.
 > bot. In the bot, look up a missing postflop key by averaging the same (street, category, k)
 > over board categories, then fall back to 1/(k+1).
 
+If the variant has a discard or draw phase, build this table by simulating the variant
+(prompt 5's strength part) now, keyed before the discard on the street where it happens.
+
 Done when: AA is the best class for every k; equity falls as k rises for every key;
-AA vs 1 ≈ 0.85 in hold'em (≈ 0.76 in short deck); a weak offsuit hand vs 1 ≈ 0.35.
+values are plausible for the variant. Hold'em: AA vs 1 ≈ 0.85, a weak offsuit hand ≈ 0.35.
+Short deck: AA ≈ 0.76. A draw variant: AA ≈ 0.80, weak hands 0.38–0.43.
 
 ## Prompt 3 (minutes 10–25): decision rules
 > In the bot, embed the tables as dicts and implement `equity(hole, board, k)`. Preflop,
@@ -80,7 +101,8 @@ AA vs 1 ≈ 0.85 in hold'em (≈ 0.76 in short deck); a weak offsuit hand vs 1 �
 >   - Else fold.
 > * **Postflop,** k = opponents not folded.
 >   - Facing a bet: adjusted equity = equity × 0.6 per bet or raise this street (the
->     first bet counts). Pot-size raise if adjusted ≥ max(0.77, need + 0.25). Call if
+>     first bet counts). Pot-size raise if the RAW equity ≥ 0.85 and adjusted ≥ need (an
+>     "adjusted ≥ 0.77" bar can never fire; being A/B tested, see REPORT §8). Call if
 >     adjusted ≥ need, where need = call/(pot+call) + 0.06, plus the ICM premium above
 >     when the call is ≥ 50% of my stack. Else fold.
 >   - Not facing a bet: bet 65% of the pot if equity ≥ 0.62. As the preflop raiser,
@@ -95,10 +117,16 @@ wrap `decide` in a small timer that prints p99); clearly above the kit's sample 
 200 tables. **Submit.**
 
 ## Prompt 4 (minutes 25+): verify, then tune between rounds
-> Add a debug mode (environment variable) that checks every decision: my rebuilt pot equals
-> the sum of all players' chips put in this hand (antes and earlier streets included);
-> stacks + this hand's chips + anything else in the middle sum to the starting total
-> × players; my raise-to amounts are within the kit's bounds. Run 100 tables with it on.
+> Add a debug mode (switched on by a harness flag; environment variables may be banned)
+> that checks every decision:
+> * my rebuilt pot equals the sum of all players' chips put in this hand, antes and
+>   earlier streets included;
+> * every stack + its chips in this hand, plus the pot from earlier streets if the kit
+>   reports it separately, sums to the starting total × players;
+> * my raise amounts are within the kit's own bounds, in the kit's own convention
+>   (raise-to or raise-by).
+>
+> Run 100 tables with it on.
 
 Then between scored rounds, A/B one change at a time, **paired**:
 - same seeds, with every random generator seeded (copy the kit's random bot with a seed if
@@ -116,8 +144,11 @@ Use this after prompt 1 if players throw away or replace cards. Measured version
 on four such variants, and gains +13 over plain hold'em logic in five-card draw.
 
 > Extend the bot for the discard/draw phase described in the README.
-> **Never time out or crash here:** on any error, discard the lowest-ranked cards (the
-> minimum number allowed).
+> **Never time out or crash here:** on any error, discard the minimum number allowed,
+> lowest-ranked first (if the minimum is 0, keep everything).
+> If the kit's evaluator cannot score partial hands (3–4 cards), write a small category
+> function (pairs / trips / quads / flush / straight counts) and check it against the
+> kit's evaluator on complete hands.
 >
 > To choose: enumerate every legal set of cards to discard (at most a few dozen) and
 > score what each keeps, using the kit's evaluator:
