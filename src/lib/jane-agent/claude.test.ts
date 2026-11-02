@@ -618,15 +618,17 @@ describe("askClaudeInChat", () => {
     expect(create).toHaveBeenCalledTimes(2);
   });
 
-  it("is unavailable on an API error or a refusal", async () => {
+  it("is unavailable on an API error or a refusal that is refused again", async () => {
     // A server error is tried once more, then it is unavailable.
     create.mockRejectedValue(new Anthropic.APIError(500, undefined, "boom", new Headers()));
     expect((await askClaudeInChat("u1", [], "Hi", options)).kind).toBe("unavailable");
     expect(create).toHaveBeenCalledTimes(2);
     create.mockReset();
     resetClaudeHealth();
-    create.mockResolvedValueOnce({ stop_reason: "refusal", content: [] });
+    // A refusal is asked once more (./chat-refusals.test.ts); refused twice, it is unavailable.
+    create.mockResolvedValue({ stop_reason: "refusal", content: [] });
     expect((await askClaudeInChat("u1", [], "Hi", options)).kind).toBe("unavailable");
+    expect(create).toHaveBeenCalledTimes(2);
   });
 
   it("sends recent messages only, starting with the person's, one turn per side", async () => {

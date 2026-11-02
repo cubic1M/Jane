@@ -260,7 +260,8 @@ function rewriteRequest(
       case "unsupported_dollar_figure":
         return `It has amounts that aren't in their numbers or the tool results: ${unsupportedFigures(text, allowedCents).join(", ")}. Use those amounts exactly as they appear there instead, or leave just that amount out. (A total or difference you worked out yourself can't be shown: say it without the amount, or leave it out.)`;
       case "investment_advice":
-        return "It mentions investing or investments. Say you can't advise on that here and leave it out.";
+        // The person still gets an answer in Jane's words (11-01), not a canned line.
+        return "It talks about investing or investments, which you can't advise on for this person. Leave out what to invest in or do with investments (stocks, funds, crypto, retirement accounts). If they asked about investing, say so in one short sentence of its own, exactly: \"I can't advise on investments here.\" Then answer the rest from their numbers (their debts and rates, their cash cushion, their goals) and say what you can help with.";
       case "tax_or_legal_advice": {
         if (advice) {
           return "It gives legal advice. Don't draft or advise on legal matters: say plainly you can't, and point to a lawyer in one sentence, then say what you can do with their numbers.";
@@ -287,6 +288,11 @@ export const CANT_ADVISE_TAX =
 export const CANT_ADVISE_LEGAL = "I can't advise on the legal side; a lawyer can.";
 export const CANT_ADVISE_INVESTING = "I can't advise on investments here.";
 
+// (From the app, not the person.) What Claude is told after a safety classifier stopped its answer
+// (stop_reason "refusal"): the refused draft is dropped and it answers once more, in its own words.
+export const REFUSAL_RETRY =
+  "(From the app, not the person.) Your last answer was stopped by a safety check before it finished, so the person saw nothing. Answer their message again, briefly and in your own words. If you can help within your rules, do: their numbers and tools are here. If you can't, say in one plain sentence what you can't help with and why, then what you can do for them with their money. Don't mention this note or the check.";
+
 // A blocked answer with only its sentences that pass, and one line saying what Jane can't advise
 // on: null when what's left isn't an answer (no figure, hardly a sentence) or still doesn't pass.
 export function factsOnly(
@@ -296,7 +302,11 @@ export function factsOnly(
 ): string | null {
   const { kept, dropped } = splitByGuardrails(text, allowedCents, profile);
   const body = kept.join(" ");
-  if (dropped.length === 0 || body.length < 40 || !/\d/.test(body)) return null;
+  // Two whole sentences are an answer even without a figure ("Pay off the card first. It costs
+  // more than it earns."); one short one isn't.
+  if (dropped.length === 0 || body.length < 40 || (!/\d/.test(body) && kept.length < 2)) {
+    return null;
+  }
   const lost = new Set(dropped.flatMap((d) => d.issues));
   const taxy = dropped.some((d) =>
     /\b(?:tax|deduct|claim|file|filing|write|irs|itemi)/i.test(d.sentence),
@@ -645,6 +655,7 @@ async function askClaude(
   let decisionUsed = false;
   let retriesLeft = 1;
   let startRetries = 1;
+  let refusalRetries = 1;
   const partialAnswer = (): ClaudeAnswer | null => {
     const kept = withoutButtonTalk(draft.shownText()).trim();
     if (kept.length < 20) return null;
@@ -997,6 +1008,27 @@ async function askClaude(
       }
     }
 
+    // A safety classifier stopped the answer (11-01): its partial draft is never shown, and Claude
+    // answers once more without it, so the person gets Claude's own words, not a canned line.
+    if (response.stop_reason === "refusal") {
+      draft.reset();
+      onEvent({ type: "reset" });
+      if (refusalRetries === 0) return fail("stop_refusal");
+      refusalRetries -= 1;
+      timing.rewrites += 1;
+      timing.rewriteReasons.push("refusal");
+      if (turn + 1 >= turnLimit) turnLimit += 1;
+      messages.push({ role: "user", content: REFUSAL_RETRY });
+      continue;
+    }
+    // Cut off by the token limit: what was already shown (each sentence passed) is the answer.
+    if (response.stop_reason === "max_tokens") {
+      const partial = partialAnswer();
+      if (partial) {
+        timing.reason ??= "max_tokens_partial";
+        return partial;
+      }
+    }
     if (response.stop_reason !== "end_turn" && !decorationOnly) {
       return fail(`stop_${response.stop_reason}`);
     }

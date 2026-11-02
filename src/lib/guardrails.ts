@@ -18,16 +18,19 @@ export type GuardrailResult = { ok: true } | { ok: false; issues: GuardrailIssue
 
 // (a) Specific securities, investments or crypto. High-yield savings accounts and CDs are
 // bank deposits, not investments, so they're allowed.
+// Everyday words that share a spelling stay allowed (11-01: chat answers were blocked for them):
+// a bank that will "investigate", "in stock", someone who "shares the plan", "home equity", a
+// "bail bond" or "Bond Street Coffee", a "Treasury offset" or refund, and "Ira" the person.
 const INVESTMENT = [
-  /\binvest/i,
-  /\bstocks?\b/i,
-  /\bshares\b/i,
-  /\bequit(y|ies)\b/i,
-  /\bbonds?\b/i,
+  /\binvest(?!igat)/i,
+  /(?<!\b(?:in|of) )\bstocks?\b(?! up\b)/i,
+  /\bshares\b(?!\s+(?:the|your|my|a|an|this|that|their|his|her|its|it|with)\b)/i,
+  /(?<!\bhome )\bequit(y|ies)\b(?! (?:line|loan)s?\b)(?! in (?:your|the|my|their) (?:home|house|condo|car)\b)/i,
+  /(?<!\b(?:bail|surety|security|performance|fidelity) )\bbonds?\b(?! (?:street|st)\b)/i,
   /\bsecurities\b/i,
   /\betfs?\b/i,
   /\b(index|mutual|money[- ]market|hedge) funds?\b/i,
-  /\btreasur(y|ies)\b/i,
+  /\btreasur(y|ies)\b(?! (?:offset|refund|check|department|tax)s?\b)/i,
   /\bt-bills?\b/i,
   /\bbrokerage\b/i,
   /\bportfolio/i,
@@ -36,12 +39,19 @@ const INVESTMENT = [
   /\b(bitcoin|ethereum|btc|eth|solana|dogecoin|stablecoins?)\b/i,
   /\b(nyse|nasdaq|s&p ?500|dow jones|ticker)\b/i,
   /\b401\(?k\)?/i,
-  /\b(roth|ira)\b/i,
+  // An IRA is written in capitals; "Ira" is a person.
+  /\broth\b/i,
+  /\bIRAs?\b/,
+  /\b(?:traditional|rollover|sep|simple|inherited|spousal) iras?\b/i,
+  /\b(?:an|your|their|my) iras?\b/i,
   /\bannuit(y|ies)\b/i,
   // What to buy, sell or hold, and how investments did (spec step 66: balances only).
-  /\b(buy|buying|sell|selling|hold|holding|dump|trim)\b[^.!?]{0,40}\b(positions?|holdings?|funds?|shares?|stocks?|assets?)\b/i,
+  // A bank "holding the funds" from a deposit is a hold, not a holding.
+  /\b(buy|buying|sell|selling|dump|trim)\b[^.!?]{0,40}\b(positions?|holdings?|funds?|shares?|stocks?|assets?)\b/i,
+  /\b(hold|holding)\b[^.!?]{0,40}\b(positions?|holdings?|shares?|stocks?)\b/i,
   /\brebalanc/i,
-  /\b(asset )?allocation\b/i,
+  // "Your budget allocation" is a budget.
+  /\b(?:asset|portfolio|investment|fund) allocation\b/i,
   /\b(outperform\w*|underperform\w*|beat the market|market timing|capital gains?)\b/i,
 ];
 
@@ -54,8 +64,16 @@ const INVESTMENT = [
 const DEDUCTIONS =
   /(?<!(?:payroll|paycheck|pay) )\bdeductions?\b(?! (?:from|on|in) (?:your|my|the|their) (?:pay|paycheck|paychecks|wages)\b)/i;
 const LIABLE =
-  /(?<!(?:injury|damage|personal) )\bliab(le|ility)\b(?! (?:cover|coverage|insurance|limits?|only)\b)(?!, per\b)/i;
+  /(?<!(?:injury|damage|personal|zero) )\bliab(le|ility)\b(?! (?:cover|coverage|insurance|limits?|only)\b)(?!, per\b)(?! for (?:unauthori[sz]ed|fraudulent) (?:card |debit |credit )?(?:charges|transactions|purchases|use)\b)/i;
 const TAX_WORD = /\btax(es|ed|able)?\b/i;
+// The IRS named as a payee ("a $412.00 payment to the IRS") is a fact; telling the person what to
+// do with it, or what it allows, is advice.
+const IRS = /\birs\b/i;
+const IRS_ADVICE = [
+  /\b(?:ask|call|contact|check with|write to|report|declare|disclose|tell)\b[^.!?]{0,30}\bthe irs\b/i,
+  /\b(?:hide|hiding|keep|keeping|shield|protect|conceal|avoid)\b[^.!?]{0,30}\bfrom the irs\b/i,
+  /\b(?:the )?irs (?:allows?|lets|requires?|treats?|considers?|counts?|says|wants|expects|accepts?|will (?:see|treat|count|tax|audit|flag|accept|allow)|won(?:'|’)t)\b/i,
+];
 // What marks text as tax talk, for the demo advice label (isAdvice).
 const TAX = [
   TAX_WORD,
@@ -72,38 +90,56 @@ const TAX = [
 const TAX_ADVICE = [
   DEDUCTIONS,
   /\bwrit(?:e|es|ing|ten)[- ](?:[\w$.,']+ ){0,3}?offs?\b/i,
-  /\birs\b/i,
+  ...IRS_ADVICE,
   LIABLE,
   /\btax[- ]deductible\b/i,
-  /\bdeduct(?:s|ed|ing)?\b(?! (?:from|out of) (?:your|my|the|their|each) (?:pay|paycheck|paychecks|wages)\b)/i,
+  // Money a company took from an account or paycheck ("Netflix deducted $15.49 from your
+  // checking", "it was deducted on Oct 3") is a charge, not a tax deduction.
+  /(?<!\b(?:was|were|been|be|being|is|are|get|gets|got|automatically|auto)[- ])\bdeduct(?:s|ed|ing)?\b(?! (?:\$[\d,.]+ )?(?:automatically )?(?:from|out of) (?:your|my|the|their|each|this|that) (?:\w+ )?(?:pay|paycheck|paychecks|wages|account|checking|savings|balance|card)\b)/i,
   /\bitemi[sz]\w*/i,
   /\bclaim(?:s|ed|ing)?\b[^.!?]{0,40}\b(?:deductions?|credits?|expenses?|dependents?|exemptions?|losses|as a (?:business|loss|dependent))\b/i,
   /\btax[- ](?:free|break|breaks|loophole|shelter|strateg\w+|advantaged?|planning)\b/i,
   /\b(?:lower|reduce|cut|shrink|minimi[sz]e|avoid|save on|pay less)\b[^.!?]{0,40}\btax/i,
-  /\b(?:file|filing|amend\w*)\b[^.!?]{0,30}\b(?:returns?|taxes|schedule|form|1040|extension|jointly|separately)\b/i,
+  // Filing taxes. Filing a complaint form or a return request with a store is not (11-01).
+  /\b(?:file|filing|amend\w*)\b[^.!?]{0,30}\b(?:tax returns?|taxes|1040|jointly|separately)\b/i,
+  /\bamend\w*\b[^.!?]{0,30}\breturns?\b/i,
+  /\bfil(?:e|ing)\b (?:your|their|my|the|a joint|an amended|a federal|a state|federal|state) (?:\w+ )?returns?\b(?! (?:request|label|policy|window|shipping))/i,
   /\bschedule [a-z]\b/i,
 ];
 // In a sentence that talks about tax: telling them to do something, or what the rules say
 // their money counts as. "You'll owe about $X" is a figure; "you should set aside $X" is advice.
 const TAX_DIRECTIVE = [
-  /\b(?:you should|you need to|you must|you(?:'|’)?d (?:want|need) to|you (?:could|can|may|might) (?:also )?(?:want to|try|consider|use|count|treat|report|put|move|open|contribute)|i(?:'|’)?d|i would|i (?:recommend|suggest|advise)|consider|make sure|be sure to|don(?:'|’)?t forget|remember to|try to)\b/i,
+  // "I'd need your 1099 to be exact" is Jane saying what it lacks, not what they should do.
+  /\b(?:you should|you need to|you must|you(?:'|’)?d (?:want|need) to|you (?:could|can|may|might) (?:also )?(?:want to|try|consider|use|count|treat|report|put|move|open|contribute)|i(?:'|’)?d(?! (?:need|be|have|like|love|guess|say|expect))|i would(?! (?:need|be|have|like|love|guess))|i (?:recommend|suggest|advise)|consider|make sure|be sure to|don(?:'|’)?t forget|remember to|try to)\b/i,
   /\b(?:set|put) (?:aside|away)\b/i,
   /\b(?:counts?|treated|reported|qualif\w*|considered) as\b/i,
   /\b(?:is|are) (?:taxable|tax[- ]free|not taxable|deductible)\b/i,
+  // In a tax sentence: filing a return, a schedule, a form or an extension.
+  /\b(?:file|filing|amend\w*)\b[^.!?]{0,30}\b(?:returns?|schedule|form|extension)\b/i,
 ];
 
 // The sentences that talk about tax and tell the person what to do about it.
+// "My estimate of the tax is $367.20. You should set aside $367.20 for it." sets money aside for
+// the tax of the sentence before.
+const SET_ASIDE_FOR_IT =
+  /\b(?:set|put) (?:aside|away)\b(?:[^.!?]|\.\d)*\b(?:it|that|this|them|those)\b/i;
 function taxDirectives(text: string): boolean {
-  return text
-    .split(/(?<=[.!?])\s+/)
-    .some((s) => TAX_WORD.test(s) && TAX_DIRECTIVE.some((p) => p.test(s)));
+  const sentences = text.split(/(?<=[.!?])\s+/);
+  const taxy = (s: string | undefined) => Boolean(s) && (TAX_WORD.test(s!) || IRS.test(s!));
+  return sentences.some(
+    (s, i) =>
+      (taxy(s) && TAX_DIRECTIVE.some((p) => p.test(s))) ||
+      (taxy(sentences[i - 1]) && SET_ASIDE_FOR_IT.test(s)),
+  );
 }
 // Legal ADVICE, meaning directives and claims about the law: suing, going to court, a case
 // the person could win, what they are legally entitled to. Mentioning a lawyer or an attorney,
 // or the word "legal" on its own ("legal deductions", "the legal side"), is the opposite of
 // advice, so it is not here (spec step 93 narrowed this too: a food court is a place to eat).
 const LEGAL = [
-  /\bsue (?:them|him|her|you|it|the|a|an|for|over)\b|\bsu(?:ed|ing)\b/i,
+  // The verb, never Sue the person ("You sent $40.00 to Sue for rent").
+  /\bsue (?:them|him|her|you|it|the|a|an|for|over)\b/,
+  /\b(?:you|we|they) (?:could|can|should|might|may|could also|can also) sue\b|\bsu(?:ed|ing)\b/i,
   /\blegal (?:grounds|action|claim|case|recourse|remedy|remedies)\b/i,
   /\blegally (?:required|obligated|bound|entitled|allowed to|can)\b/i,
   /\b(?:take|took|taken|drag|dragged) (?:you |them |him |her |it |the \w+ )?to (?:small claims )?court\b/i,
@@ -155,6 +191,14 @@ const HANDLERS = [
   /\b(?:estate (?:attorney|lawyer)|probate (?:attorney|lawyer)|attorney|lawyer|bereavement team|estate team|executor)s?\b[^.!?]{0,60}\b(?:handles?|can help|can walk you|will walk you|knows how|is the right|are the right|can explain)\b/i,
 ];
 const ADVICE_OF_ITS_OWN = /\b(?:you should|you need to|you must|file for|sue)\b/i;
+// Jane saying it can't advise on investments ("I can't advise on investments here.") is the
+// opposite of investment advice, in the standard profile too (11-01: the rewrite it was asked
+// for was blocked again, so a real account got a canned line). Only a sentence that is nothing
+// but the refusal: no "but…", no "I'd…", no suggestion after it.
+const PURE_REFUSAL =
+  /^\s*(?:i|jane) (?:can(?:'|’)?t|cannot|can not|won(?:'|’)?t|am not able to|(?:'|’)m not able to|am unable to|(?:'|’)m unable to)\s+(?:\w+\s+){0,2}?(?:advise|recommend|suggest|tell you|say|pick|choose|give (?:you )?(?:advice|recommendations?|a recommendation)|help (?:with|you (?:pick|choose)))\b/i;
+const ADVICE_IN_REFUSAL =
+  /\b(?:but|though|however|although|instead|except|i(?:'|’)?d|i would|you should|you could|you can|consider|try)\b|[;:]/i;
 
 // "Legal deductions", "legal ways": the word as an adjective for what is allowed, not advice.
 const BENIGN_LEGAL =
@@ -174,6 +218,11 @@ function withoutReferrals(text: string, refusalsOnly = false): string {
           sensitive.some((p) => p.test(sentence)) &&
           patterns.some((p) => p.test(sentence)) &&
           !ADVICE_OF_ITS_OWN.test(sentence)
+        ) &&
+        !(
+          INVESTMENT.some((p) => p.test(sentence)) &&
+          PURE_REFUSAL.test(sentence) &&
+          !ADVICE_IN_REFUSAL.test(sentence)
         ),
     )
     .join(" ");
@@ -201,7 +250,8 @@ const GUARANTEE = [
   /\b(definitely|certainly|surely)\b/i,
   /\brisk[- ]free\b/i,
   /\bno risk\b/i,
-  /\b100 ?%/,
+  // "100% of your dining budget" is a figure; "100% sure" is a promise.
+  /\b100 ?% (?:sure|certain|guaranteed|safe|risk[- ]free|chance|likely|covered|of the time)\b/i,
   // Getting paid on payday is a date, not a promise (spec step 93).
   /\b(will|you'll|you will) (save|get|recover|receive|earn)\b(?! paid\b)/i,
 ];

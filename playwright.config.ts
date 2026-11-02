@@ -44,6 +44,9 @@ export default defineConfig({
           // A fixed test-only key for encrypting secrets (admin two-factor, Plaid tokens).
           TOKEN_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString("base64"),
           ANTHROPIC_API_KEY: "",
+          // Jane's chat answers a few scripted messages with a fake Claude (no key, no cost):
+          // src/lib/jane-agent/fake-chat-claude.ts.
+          CHAT_FAKE_CLAUDE: "1",
           // The paper account's prices: the sample market, never a price service, in tests.
           PAPER_SAMPLE_PRICES: "1",
           // The events box reads seeded events; a page view never asks GDELT or the feeds.

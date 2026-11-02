@@ -18,7 +18,14 @@ import { hit } from "@/lib/rate-limit";
 import { claudeLimit, refundClaudeUse } from "./claude-limits";
 import { overDailyCap, recordLimitHit } from "./spend";
 import { answerByRules } from "./answer";
-import { payeeFactsReply, payeesInQuestion, questionParts, rulesCoverQuestion } from "./backup";
+import {
+  UNSAFE_TEXT,
+  payeeFactsReply,
+  payeesInQuestion,
+  questionParts,
+  rulesCoverQuestion,
+  unsafeRequest,
+} from "./backup";
 import { listPreferences } from "./preferences";
 import { shapeReply, styleInstructions, styleOf } from "./style";
 import { joinReplies, splitQuestions } from "./two-parts";
@@ -29,6 +36,7 @@ import {
   type ChatTurn,
 } from "./claude";
 import { resolvePronoun, type Topic } from "./context";
+import { fakeChatClaude } from "./fake-chat-claude";
 import { typedFlowReply } from "./flows/chat";
 import { parseIntent } from "./intents";
 import { sinceSignIn, storeReply } from "./messages";
@@ -173,12 +181,6 @@ const UNFINISHED_TEXT = "Sorry, I couldn't finish an answer to that. Please ask 
 // "How am I doing", "what should I do": the questions where the whole picture is the answer.
 const STATUS_QUESTION =
   /\b(?:how am i doing|how are (?:things|we)|where (?:do|am) i stand|what (?:should|do) i do|where (?:should|do) i start|what now|what matters|my (?:money )?situation|overview|summary)\b/i;
-// Asking Jane to help hide money, forge or get around something: when Claude's own refusal
-// couldn't be shown, a short refusal that needs no model.
-const UNSAFE_REQUEST =
-  /\b(?:hide (?:money|income|assets|cash)|forg(?:e|ing|ery)|launder\w*|evad(?:e|ing) (?:tax|taxes|the irs)|tax evasion|cheat|bypass|hack|steal|fake (?:a |an |my )?(?:id|document|signature|receipt|paystub|pay stub)|lie to|fraud\w*)\b/i;
-const UNSAFE_TEXT =
-  "I can't help with that. I'm glad to help with your spending, bills, savings or taxes the honest way.";
 // The person's daily allowance of written answers is used up (founder, 2026-10-26): short and
 // honest, then whatever the data answers for free.
 export const DAILY_LIMIT_NOTE = "I've hit today's limit for written answers, back tomorrow.";
@@ -252,7 +254,7 @@ async function answer(
       const { reply } = byRules;
       return limited ? { ...reply, body: `${DAILY_LIMIT_NOTE} ${reply.body}` } : reply;
     }
-    if (UNSAFE_REQUEST.test(text)) return { body: UNSAFE_TEXT, actions: [], refs: {} };
+    if (unsafeRequest(text)) return { body: UNSAFE_TEXT, actions: [], refs: {} };
     if (payees.length > 0) {
       return payeeFactsReply(text, payees, limited ? { limitNote: DAILY_LIMIT_NOTE } : {});
     }
@@ -282,8 +284,10 @@ async function answer(
     await recordLimitHit(userId, { client, now }).catch(() => {});
     return { reply: await backup({ limited: true }), intent: intent.kind, source: "capped" };
   }
+  // The end-to-end tests' scripted Claude, for their scripted messages only (./fake-chat-claude.ts).
+  const scripted = claude ? null : fakeChatClaude(text);
   // No Claude (no key: dev, tests): the rules answer, as before.
-  if (!llmEnabled()) {
+  if (!llmEnabled() && !scripted) {
     const byRules = await rules();
     if (byRules) return { reply: byRules.reply, intent: intent.kind, source: "rules" };
     return { reply: unknownReply(text, asOf), intent: intent.kind, source: "fallback" };
@@ -305,7 +309,7 @@ async function answer(
   const result = await askClaudeInChat(userId, history, text, {
     client,
     now,
-    claude,
+    claude: claude ?? scripted ?? undefined,
     onEvent,
     primerMs,
     advice: await adviceMode(userId, { client }),

@@ -13,6 +13,39 @@ import { SPENDING_NOT_FOUND, type Reply } from "./replies";
 // Otherwise Jane says it couldn't write the answer and gives what it can see for the names the
 // person typed (what came in from them and what went out to them), never an unrelated breakdown.
 
+// Asking Jane to help hide money, forge or get around something: when Claude's own refusal
+// couldn't be shown, a short refusal that needs no model. Someone it was done to ("I got hacked",
+// "is this charge fraud?", "my ex forged my signature") is asking for help, not refused (11-01):
+// the words that both sides use count only after an ask to do it ("how do I", "help me").
+const ALWAYS_UNSAFE =
+  /\b(?:hide (?:money|income|assets|cash)|launder\w*|evad(?:e|ing) (?:tax|taxes|the irs)|tax evasion|commit(?:ting)? fraud|fake (?:a |an |my )?(?:id|document|signature|receipt|paystub|pay stub))\b/i;
+// The harm as the thing the person wants to do: the verb with what it's done to ("hack into",
+// "steal my brother's card", "scam people"), never what was done to them ("hacked", "scammed",
+// "scammers", "a scam call": night debugger 11-01).
+const OBJECT =
+  "(?:a|an|my|his|her|their|our|the|this|that|someone|somebody|people|them|him|me|into|from|\\w+'s)";
+const HARM_VERB = [
+  `hack ${OBJECT}`,
+  `steal ${OBJECT}`,
+  "steal (?:money|cash|cards?|identit(?:y|ies))",
+  `forge ${OBJECT}`,
+  "cheat (?:on|the|my|his|her|their|someone|people)",
+  `defraud ${OBJECT}`,
+  "scam (?:people|someone|somebody|them|him|her|customers|my|his|her|their|the|\\w+'s)",
+  "bypass (?:the |a |my |their |his |her |\\w+'s )?(?:bank's )?(?:two[- ]factor|2fa|security|verification|id check|identity check|login|password|fraud (?:checks?|alerts?)|kyc)",
+  "lie to",
+  "break into",
+].join("|");
+const ASK_TO = new RegExp(
+  `\\b(?:how (?:do|can|could|would|should|might) (?:i|we|you)|help me|can you|could you|will you|teach me|show me|i (?:want|need|plan|'m going|am going) to|is there a way to|way to|best way to|make me)\\b[^.?!]{0,40}?\\b(?:${HARM_VERB})\\b`,
+  "i",
+);
+export function unsafeRequest(text: string): boolean {
+  return ALWAYS_UNSAFE.test(text) || ASK_TO.test(text);
+}
+export const UNSAFE_TEXT =
+  "I can't help with that. I'm glad to help with your spending, bills, savings or taxes the honest way.";
+
 // A new question inside the message: "?", ";", a new line, or ", how much…" / "and what…".
 const QUESTION_WORD =
   "(?:how|what|when|where|why|which|who|can|could|do|does|did|is|are|should|will|would)\\b";
