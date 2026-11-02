@@ -101,6 +101,82 @@ describe.runIf(url)("everything Jane did, against a real database", () => {
     ]);
   });
 
+  // Debugger 11-02: on the path founders record, /jane said "Everything Jane did: nothing yet"
+  // right after a Yes, with an action underway and money saved.
+  it("includes what Jane did after a person's yes", async () => {
+    const userId = await person("timeline-yes");
+    const action = async (
+      title: string,
+      status: "waiting_on_user" | "done" | "failed",
+      extra: { refundCents?: number } = {},
+      undoneAt: Date | null = null,
+    ) => {
+      const finding = await client.finding.create({
+        data: {
+          userId,
+          type: "subscription_review",
+          key: `merchant:${title}`,
+          title,
+          explanation: "x",
+          confidence: "high",
+          evidence: {},
+        },
+      });
+      const decision = await client.decision.create({
+        data: {
+          userId,
+          findingId: finding.id,
+          choice: "yes",
+          cardSnapshot: { title, annualSavingsCents: 35_988 },
+          undoneAt,
+        },
+      });
+      return client.action.create({
+        data: { userId, decisionId: decision.id, type: "cancel_subscription", status, ...extra },
+      });
+    };
+    const adobe = await action("Review your Adobe subscription", "waiting_on_user");
+    await client.agentMessage.create({
+      data: {
+        actionId: adobe.id,
+        userId,
+        direction: "note",
+        toAddress: "",
+        fromAddress: "Jane",
+        subject: "",
+        body: "Asked you to cancel on Adobe's own page.",
+      },
+    });
+    await action("Review your Hulu subscription", "done");
+    await action("B&H Photo: the refund", "done", { refundCents: 12_900 });
+    await action("Could not finish", "failed");
+    await action("Undone one", "waiting_on_user", {}, new Date());
+
+    const timeline = await loadTimeline(userId, { client });
+    expect(timeline.map((e) => e.what).sort()).toEqual([
+      "B&H Photo: the refund",
+      "Could not finish",
+      "Review your Adobe subscription",
+      "Review your Hulu subscription",
+    ]);
+    const of = (what: string) => timeline.find((e) => e.what === what)!;
+    expect(of("Review your Adobe subscription")).toMatchObject({
+      by: "you",
+      why: "Asked you to cancel on Adobe's own page.",
+      cents: null,
+    });
+    expect(of("Review your Hulu subscription").why).toBe(
+      "You said yes. Done: about $359.88 a year.",
+    );
+    expect(of("B&H Photo: the refund")).toMatchObject({
+      why: "You said yes. Done: got back $129.00.",
+      cents: 12_900,
+    });
+
+    expect(of("Could not finish").why).toBe("You said yes. Couldn't complete.");
+    expect(of("Review your Adobe subscription").sectorLabel).toBe("Subscriptions and bills");
+  });
+
   it("includes what the person tapped, with undo while it's pending", async () => {
     const userId = await person("timeline-transfer");
     const account = await client.account.create({
