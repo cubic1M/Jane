@@ -18,7 +18,7 @@ function pickSentence(pick: NonNullable<SnapshotFinding["pick"]>): string {
 
 // Spec step 92: what a bundle's button calls it ("Yes: Netflix").
 const NAMES: readonly RegExp[] = [
-  /^Review your (.+?) subscription$/,
+  /^Review your (.+?) subscription(?: at \S+| on .+)?$/,
   /^Your (.+?) (?:phone |internet and TV |internet |TV )?bill is above/,
   /^(.+?) went up from/,
   /^Charged twice\? .* at (.+)$/,
