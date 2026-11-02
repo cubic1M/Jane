@@ -223,10 +223,15 @@ class TestBehaviour(unittest.TestCase):
     def test_both_beat_station_and_random(self):
         from bots.dummies import make_bot as dummy
         from bots.random_legal import RandomLegalBot
-        for mk in (make_lag, make_exploit):
-            with self.subTest(bot=mk().name):
-                self.assertGreater(dup(mk, lambda: dummy("station"), self.spec, 21, 150), 0.5)
-                self.assertGreater(dup(mk, RandomLegalBot, self.spec, 22, 150), 0.5)
+        from unittest import mock
+        model = C.get_equity_model(self.spec)
+        # pin the measured speed: on a loaded machine mc_n drops to its floor and the bots get
+        # noisy (this checks strategy, not timing)
+        with mock.patch.object(model, "ms_per_sample", return_value=0.006):
+            for mk in (make_lag, make_exploit):
+                with self.subTest(bot=mk().name):
+                    self.assertGreater(dup(mk, lambda: dummy("station"), self.spec, 21, 150), 0.5)
+                    self.assertGreater(dup(mk, RandomLegalBot, self.spec, 22, 150), 0.5)
 
 
 if __name__ == "__main__":

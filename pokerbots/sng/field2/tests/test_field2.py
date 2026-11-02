@@ -126,6 +126,17 @@ class TestHelpers(unittest.TestCase):
             for i in range(len(st)):
                 self.assertAlmostEqual(icm_one(st, pays[:len(st)], i), ref[i], places=6)
 
+    def test_fast_icm_matches_the_recursive_reference(self):
+        """icm_one (iterative, for arena speed) equals the original recursion, zero stacks and
+        short point tables included."""
+        rng = random.Random(4)
+        for _ in range(400):
+            n = rng.randint(1, 8)
+            st = [0 if rng.random() < 0.15 else rng.randint(1, 9000) for _ in range(n)]
+            pays = sorted((rng.randint(0, 100) for _ in range(rng.randint(1, 9))), reverse=True)
+            i = rng.randrange(n)
+            self.assertAlmostEqual(icm_one(st, pays, i), common._icm_one_ref(st, pays, i), places=9)
+
     def test_bubble_factor_above_one(self):
         base, bf = bubble_factors([2000] * 8, SngRules().payouts, 0)
         self.assertAlmostEqual(base, 278 / 8, places=6)

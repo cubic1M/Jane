@@ -793,8 +793,56 @@ def call_pct(stack_bb: float, behind: int = 0, shrink=0.8) -> float:
 # ---------------------------------------------------------------------------------------
 # ICM
 # ---------------------------------------------------------------------------------------
+_ICM_MASKS: dict = {}
+
+
+def _icm_masks(k):
+    t = _ICM_MASKS.get(k)
+    if t is None:
+        size = 1 << k
+        low = [0] * size
+        pop = [0] * size
+        bits = [()] * size
+        for m in range(1, size):
+            low[m] = (m & -m).bit_length() - 1
+            pop[m] = pop[m & (m - 1)] + 1
+            bits[m] = tuple(j for j in range(k) if m >> j & 1)
+        t = _ICM_MASKS[k] = (size, low, pop, bits)
+    return t
+
+
 def icm_one(stacks, payouts, i) -> float:
-    """Malmuth-Harville ICM equity of player i (stacks of the players still in)."""
+    """Malmuth-Harville ICM equity of player i (stacks of the players still in).
+
+    Iterative subset DP over the other positive stacks (same numbers as _icm_one_ref, about
+    5x faster): f[m] = value for i when the opponents in mask m are still alive. Players
+    with no chips take the last places."""
+    n = len(stacks)
+    me = float(stacks[i])
+    if me <= 0:
+        return 0.0
+    pay = [float(x) for x in payouts[:n]] + [0.0] * max(0, n - len(payouts))
+    others = [float(s) for j, s in enumerate(stacks) if j != i and s > 0]
+    k = len(others)
+    if k == 0:
+        return pay[0]
+    size, low, pop, bits = _icm_masks(k)
+    sums = [0.0] * size
+    for m in range(1, size):
+        sums[m] = sums[m & (m - 1)] + others[low[m]]
+    f = [0.0] * size
+    for m in range(size):
+        place = k - pop[m]                      # 0-based place i takes if it wins now
+        tot = me + sums[m]
+        v = me * pay[place]
+        for j in bits[m]:
+            v += others[j] * f[m ^ (1 << j)]
+        f[m] = v / tot
+    return f[size - 1]
+
+
+def _icm_one_ref(stacks, payouts, i) -> float:
+    """The original recursive version (kept as the reference for tests)."""
     n = len(stacks)
     st = [float(s) for s in stacks]
     if st[i] <= 0:
@@ -824,6 +872,7 @@ def icm_one(stacks, payouts, i) -> float:
         return res
 
     return f(full, 0) if full & bit_i else 0.0
+
 
 
 def bubble_factors(stacks, payouts, i):
