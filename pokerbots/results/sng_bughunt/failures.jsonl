@@ -219,3 +219,4 @@
 {"kind": "slow", "seed": 124625, "variant": "a_nlhe100", "bot": "icm_lite", "p99_ms": 0.084, "over_1ms": 2, "decisions": 225, "t": "2026-11-02 02:23:36"}
 {"kind": "slow", "seed": 124837, "variant": "h_plo5", "bot": "icm_tag", "p99_ms": 2.386, "over_1ms": 2, "decisions": 144, "t": "2026-11-02 02:23:56"}
 {"kind": "slow", "seed": 124881, "variant": "P:draw_holdem", "bot": "icm_lite", "p99_ms": 0.704, "over_1ms": 1, "decisions": 127, "t": "2026-11-02 02:24:01"}
+{"kind": "slow", "seed": 125323, "variant": "n_plo4", "bot": "icm_tag", "p99_ms": 1.77, "over_1ms": 2, "decisions": 159, "t": "2026-11-02 02:24:38"}
