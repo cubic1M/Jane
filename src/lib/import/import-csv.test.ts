@@ -78,6 +78,7 @@ describe("importCsvFiles", () => {
       parsed: 9,
       inserted: 9,
       duplicates: 0,
+      corrected: 0,
       skipped: 1,
       // For upload_succeeded: each file's format and transaction count.
       files: [{ format: "chase_checking", rows: 9 }],
@@ -132,6 +133,7 @@ describe("importCsvFiles", () => {
       parsed: 9,
       inserted: 0,
       duplicates: 9,
+      corrected: 0,
       skipped: 1,
       files: [{ format: "chase_checking", rows: 9 }],
       balances: expect.any(Array),

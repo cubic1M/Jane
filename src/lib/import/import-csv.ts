@@ -11,6 +11,8 @@ import {
 import { accountKindOf, type AccountKind, type SkippedRow } from "@/data-sources/types";
 import type { ScopedDb } from "@/lib/db-scoped";
 import { addDays, isoDay } from "@/lib/dates";
+import type { Prisma } from "@/generated/prisma/client";
+import { planCorrections, type IncomingRow } from "@/lib/import/corrections";
 import { crossFormatTwins } from "@/lib/import/cross-format";
 
 export const MAX_FILES = 10;
@@ -86,6 +88,8 @@ export type ImportCounts = {
   inserted: number;
   duplicates: number;
   skipped: number;
+  // Rows already here that this upload's reading put right (./corrections.ts).
+  corrected: number;
 };
 
 // Each file's format and transaction count, for the upload_succeeded event.
@@ -146,36 +150,77 @@ export async function importCsvFiles(
   const categorized = await categorizeTransactions(fresh, db, { askClaude: false });
 
   onStage?.({ stage: "saving" });
+  const { corrections, rekeyed } = await correctStoredRows(db, account.id, categorized);
   const { count } = await db.transactions.createMany({
-    data: categorized.map((t) => ({
-      userId: db.userId,
-      accountId: account.id,
-      source: "csv" as const,
-      dedupeKey: t.externalId,
-      date: new Date(`${t.date}T00:00:00Z`),
-      amountCents: t.amountCents,
-      description: t.description,
-      merchantName: t.merchantName,
-      pfcPrimary: t.category?.primary ?? null,
-      pfcDetailed: t.category?.detailed ?? null,
-      categorySource: t.categorySource,
-      pending: t.pending,
-      importRunId: importRunId ?? null,
-    })),
+    data: categorized
+      .filter((t) => !rekeyed.has(t.externalId))
+      .map((t) => ({
+        userId: db.userId,
+        accountId: account.id,
+        source: "csv" as const,
+        dedupeKey: t.externalId,
+        date: new Date(`${t.date}T00:00:00Z`),
+        amountCents: t.amountCents,
+        description: t.description,
+        merchantName: t.merchantName,
+        pfcPrimary: t.category?.primary ?? null,
+        pfcDetailed: t.category?.detailed ?? null,
+        categorySource: t.categorySource,
+        pending: t.pending,
+        importRunId: importRunId ?? null,
+      })),
     // Rows already imported (same account and dedupe key) are skipped by the database.
     skipDuplicates: true,
   });
   return {
     parsed: unique.length,
     inserted: count,
-    duplicates: unique.length - count,
+    duplicates: unique.length - count - rekeyed.size,
     skipped: batch.skipped.length,
+    corrected: corrections,
     files: batch.files,
     balances: batch.balances,
     // What the files cover, twins or not.
     from: unique.reduce<string | null>((a, t) => (a === null || t.date < a ? t.date : a), null),
     to: unique.reduce<string | null>((a, t) => (a === null || t.date > a ? t.date : a), null),
   };
+}
+
+// Puts right the stored rows this upload reads differently; returns how many, and the keys now
+// taken by rows it corrected, which aren't saved again.
+async function correctStoredRows(db: ScopedDb, accountId: string, rows: IncomingRow[]) {
+  if (rows.length === 0) return { corrections: 0, rekeyed: new Set<string>() };
+  const dates = rows.map((r) => r.date).sort();
+  const there = await db.transactions.findMany({
+    where: {
+      accountId,
+      date: {
+        gte: new Date(`${dates[0]}T00:00:00Z`),
+        lte: new Date(`${dates[dates.length - 1]}T00:00:00Z`),
+      },
+    },
+    select: {
+      id: true,
+      dedupeKey: true,
+      date: true,
+      amountCents: true,
+      description: true,
+      merchantName: true,
+      pfcDetailed: true,
+      categorySource: true,
+    },
+  });
+  const { corrections, rekeyed } = planCorrections(
+    there.map((t) => ({ ...t, date: isoDay(t.date) })),
+    rows,
+  );
+  for (const { id, data } of corrections) {
+    await db.transactions.updateMany({
+      where: { id },
+      data: data as Prisma.TransactionUpdateManyMutationInput,
+    });
+  }
+  return { corrections: corrections.length, rekeyed };
 }
 
 // The rows less those whose twin from the other format is in the account already, or earlier in
