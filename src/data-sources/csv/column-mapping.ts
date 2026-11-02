@@ -97,8 +97,8 @@ export function markerColumns(headers: string[], rows: string[][]): MappingChoic
   return markers;
 }
 
-const find = (headers: string[], pattern: RegExp) => {
-  const i = headers.findIndex((h) => pattern.test(h));
+const find = (headers: string[], pattern: RegExp, keep: (i: number) => boolean = () => true) => {
+  const i = headers.findIndex((h, at) => pattern.test(h) && keep(at));
   return i === -1 ? null : i;
 };
 
@@ -214,6 +214,8 @@ export function mappingChoices(all: CsvRecord[]): MappingChoices {
     balance: null,
     marker: null,
   };
+  const varies = (i: number) =>
+    rows.length < 2 || new Set(rows.map((r) => (r[i] ?? "").trim())).size > 1;
   if (hasHeader) {
     // From the column names, falling back on the values.
     const headers = first.map(normalizeHeader);
@@ -222,8 +224,10 @@ export function mappingChoices(all: CsvRecord[]): MappingChoices {
     const amount = find(headers, /amount|value|betrag|montant|importe/);
     guess = {
       date: find(headers, /date|booked|posted/) ?? byValue.date,
+      // A column that says the same on every row ("No Description" in a Fidelity file, whose
+      // words are under "Action") names nothing (debugger 11-02).
       description:
-        find(headers, /description|payee|merchant|memo|details|name|narrative/) ??
+        find(headers, /description|payee|merchant|memo|details|name|narrative/, varies) ??
         byValue.description,
       amount: amount ?? (debit !== null && credit !== null ? null : byValue.amount),
       debit,

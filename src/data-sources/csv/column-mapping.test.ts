@@ -462,3 +462,15 @@ describe("a title above the table and small print below it", () => {
     expect(mapped.ok && mapped.skipped).toEqual([]);
   });
 });
+
+// Debugger 11-02: in a Fidelity cash account's file the "Description" column says "No Description"
+// on every row; the words are under "Action". The picker guessed Description, so the sign guess
+// had nothing to read and $1,369 of deposits read as spending.
+describe("a description column that says the same on every row", () => {
+  it("guesses the column with the words instead, and reads the sign from them", () => {
+    const result = read("preamble-fidelity-cash.csv");
+    if (result.ok) throw new Error("expected the picker");
+    expect(result.choices?.guess.description).toBe(1);
+    expect(result.choices?.signs[10]?.moneyOut).toBe("negative");
+  });
+});
