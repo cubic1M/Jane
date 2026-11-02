@@ -62,13 +62,13 @@ Fill in each line:
    - validate: `results/sng_validate.sh "icm_tag:<tuned>" --preset <p>`;
    - submit only a paired gain > 2 SE with no field losing.
 
-## Plan B: from scratch (rehearsed: 15 minutes to a verified bot)
+## Plan B: from scratch (rehearsed 3 times: 15, 10, 7 minutes to a verified bot)
 
 - Paste the 4 prompts in `report/sng_codex_prompt.md` in order; check each "done when".
 - **Submit after prompt 1 (safe bot), again after prompt 3.**
 - Between rounds: paired A/B (seeded, time limit raised, ≥ 800 tables, > 2 SE).
 
-## Gotchas that cost points (from 2 rehearsals)
+## Gotchas that cost points (from 3 rehearsals)
 
 | gotcha | check |
 |---|---|
@@ -85,6 +85,10 @@ Fill in each line:
 | seats renumbered every hand (button = 0, close up after knockouts) | stable-identity ring keyed from my seat; remove `knocked_out_seats` |
 | submission rules ban exec / imports / size | `sng/bundle_flat.py`; check the rules before bundling |
 | a file passes the checker but crashes at load | run the kit's runner; no `__future__` annotations with dataclasses |
+| amounts in big blinds, rounded (e.g. 0.5bb) | convert units; all-in = their max, rounded UP |
+| 3+ hole cards with a discard before the flop | key preflop on the 2 cards kept; preflop discard by table equity |
+| import whitelist, `open` banned, 32 KB cap | compact digit-string tables; no `hash()` seeds |
+| named positions, stable player ids | track opponents by id, not seat |
 
 ## Where we stand (current `icm_tag`, fresh seeds)
 

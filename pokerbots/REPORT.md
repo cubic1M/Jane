@@ -899,6 +899,19 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
 * **Plan B rehearsed on practice kit 2** (function interface, raise-by, renumbered seats,
   a draw twist): a verified bot in 10 minutes, 333 points per table vs the samples'
   32–152. Its 30 notes are folded into the prompts.
+* **Plan B rehearsed on practice kit 3**:
+  - the kit: amounts in big blinds with 0.5bb rounding, integer card codes, named positions, three hole cards with a discard before the flop, a 13-module whitelist, a 32 KB file cap;
+  - result: a verified bot in **7 minutes**, 10.3 points per table out of a maximum of 12 (the samples: 4.5 / 0.4 / 0.04), 0 errors, p99 0.05 ms.
+
+  Its lessons are in the prompts:
+  - round an all-in up;
+  - key the preflop table on the two kept cards;
+  - store tables compactly;
+  - no `hash()` seeds;
+  - track opponents by stable id.
+
+  Plan B has now worked on three unfamiliar interfaces: 15, 10 and 7 minutes.
+* **Bug hunter:** 188k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
   - looser calls (a raiser = 3.2 hands, a 3% margin);
