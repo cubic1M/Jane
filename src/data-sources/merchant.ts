@@ -30,6 +30,10 @@ const BOILERPLATE = [
   // Capital One 360's "Withdrawal to ROCKET MORTGAGE PMT" and "Deposit from STARK INDUSTRIES
   // PAYROLL" (debugger 10-31: "Withdrawal To Rocket Mortgage Pmt $2,280.00 monthly").
   /^(?:WITHDRAWAL TO|DEPOSIT FROM)\s+/,
+  // Truist's and others' "ACH DEBIT ROCKET MORTGAGE PMT" and "ACH CREDIT DUKE ENERGY CORP
+  // PAYROLL" (debugger 11-02: pay read "Ach Credit Duke Energy Corp Payroll"). Saved keys moved in
+  // prisma/migrations/20270421000000_merchant_without_ach_prefix: keep them in step.
+  /^ACH (?:DEBIT|CREDIT)\s+(?=\S)/,
 ];
 
 // A payment app in front of the person or company paid: "ZELLE TO OAK RIDGE APTS RENT" is Oak
