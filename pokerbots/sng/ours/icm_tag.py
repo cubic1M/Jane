@@ -68,6 +68,16 @@ PARAMS = dict(
     pev_margin=0.0,      # shove if the EV (in big blinds) exceeds this
     pev_loose=1.0,       # scale every calling width (1 = approximate Nash widths)
     pev_risk=1.0,        # scale the ICM risk premium charged on a called shove
+    resteal=0,           # 1: facing a lone open (no callers, opener not all-in) at resteal_lo..resteal_hi bb,
+                         #   re-shove when the fold-equity EV (big blinds) > resteal_margin
+    resteal_lo=10.0,
+    resteal_hi=25.0,
+    resteal_margin=0.0,
+    resteal_cw=0.6,      # the opener calls a re-shove with this share of a first-in shove's calling width
+    resteal_wake=0.3,    # players still to act wake up with this share of their calling width
+    resteal_risk=0.25,   # scale of the ICM risk premium charged on a called re-shove
+    range_map=0.65,      # equity vs one hand from the top-c share of hands ~ equity vs
+                         #   k = 1 + range_map x log2(0.5 / c) random hands (pev, resteal)
     rk_floor=1.2,        # facing a raise: the raiser counts as at least this many random hands
     agg_alpha=0.0,       # postflop: discount a bet less from seats that bet often when checked to:
                          #   discount -> discount + (1 - discount) x agg_alpha x excess aggression
@@ -241,10 +251,16 @@ class IcmTag:
                 return y0 + (y1 - y0) * (eff_bb - x0) / (x1 - x0)
         return w[-1][1]
 
+    def _k_for_top(self, c):
+        """Random-hand count whose equity matches one opponent holding a top-c share of hands.
+        (Beating k random hands multiway is harder than beating one strong hand, so this is
+        far below the k whose best hand sits at the top-c cut.)"""
+        return min(7.0, max(1.0, 1.0 + self.p["range_map"] * math.log2(0.5 / max(c, 1e-3))))
+
     def _push_ev(self, obs, behind):
         """EV (big blinds) of shoving first-in vs folding: fold equity from each player
         behind (calling width by their stack, scaled by their observed raise rate), equity vs
-        a caller's top-c range as vs k random hands with (1 - c)^k = 1/2, a loss charged the
+        a caller's top-c range via _k_for_top, a loss charged the
         ICM risk premium. Only the first caller is modelled."""
         p = self.p
         seats = obs.seats
@@ -262,14 +278,44 @@ class IcmTag:
             pfr = (self.pre_raises[j] + p["base_pfr"] * 8) / (self.dealt[j] + 8)
             loose = min(1.8, max(0.6, (pfr / p["base_pfr"]) ** 0.5))
             c = min(0.95, max(0.02, self._call_width(r_chips / bb) * loose * p["pev_loose"]))
-            k = min(7.0, max(1.0, math.log(0.5) / math.log(1.0 - c)))
-            eq = self._eq_k(obs, k)
+            eq = self._eq_k(obs, self._k_for_top(c))
             risk = r_chips - obs.my_bet                              # chips I add beyond my blind
             win = pot + min(their, mine) - sj.bet                    # their call joins the pot
             ev_call = eq * win - (1.0 - eq) * risk - risk_prem * (2 * risk + pot)
             ev += p_reach * c * ev_call
             p_reach *= 1.0 - c
         ev += p_reach * pot
+        return ev / bb
+
+    def _resteal_ev(self, obs, r, behind):
+        """EV (big blinds) of re-shoving over a lone open by seat r vs folding. The opener calls
+        with the top call-width share of all hands, i.e. P(call | opened) = width / their open
+        rate; players still to act wake up with half their Nash calling width. Equity vs the
+        opener's calling range via _k_for_top; a loss is charged
+        the ICM risk premium. Only the opener's call is modelled for equity."""
+        p = self.p
+        seats = obs.seats
+        bb = obs.big_blind
+        mine = obs.my_stack + obs.my_bet
+        sr = seats[r]
+        their = sr.stack + sr.bet
+        r_chips = min(mine, their)
+        open_rate = (self.pre_raises[r] + p["base_pfr"] * 8) / (self.dealt[r] + 8)
+        w = self._call_width(r_chips / bb) * p["resteal_cw"]
+        p_call = min(1.0, w / max(open_rate, 0.02))
+        p_fold_behind = 1.0
+        for j in behind:
+            sj = seats[j]
+            p_fold_behind *= 1.0 - p["resteal_wake"] * self._call_width(min(mine, sj.stack + sj.bet) / bb)
+        c = min(0.95, max(0.02, w))
+        eq = self._eq_k(obs, self._k_for_top(c))
+        pot = obs.pot
+        risk = r_chips - obs.my_bet
+        win = pot + r_chips - sr.bet
+        prem = self._risk(obs) * p["resteal_risk"]
+        ev_called = eq * win - (1.0 - eq) * risk - prem * (2 * risk + pot)
+        ev_woken = -risk * 0.75                                  # a wake-up behind: mostly lose
+        ev = p_fold_behind * ((1.0 - p_call) * pot + p_call * ev_called) + (1.0 - p_fold_behind) * ev_woken
         return ev / bb
 
     # ---- decision -----------------------------------------------------------------------
@@ -393,6 +439,12 @@ class IcmTag:
                 n_icm = self._icm_need(obs, r)
                 if n_icm is not None:
                     need = n_icm + p["icm_margin"]
+        if (p["resteal"] and lg.can_raise and len(raises) == 1 and not seats[raises[0][0]].all_in
+                and p["resteal_lo"] <= eff_bb <= p["resteal_hi"]
+                and not any(h[1] == 0 and h[2] == "call" for h in obs.history if h[0] != obs.seat)):
+            ev = self._resteal_ev(obs, raises[0][0], behind)
+            if ev is not None and ev > p["resteal_margin"]:
+                return RaiseTo(lg.max_raise_to)
         if (eq >= p["threebet_eq"] or eq * (kf + 1) >= p["threebet_rel"]) and lg.can_raise:
             if eff_bb <= p["reshove_bb"]:
                 return RaiseTo(lg.max_raise_to)
