@@ -4401,3 +4401,11 @@
 {"kind": "slow", "seed": 21480, "variant": "P:five_draw", "bot": "icm_lite", "p99_ms": 0.617, "t": "2026-11-02 00:31:42"}
 {"kind": "slow", "seed": 21586, "variant": "h_plo5", "bot": "icm_lite", "p99_ms": 1.944, "t": "2026-11-02 00:31:49"}
 {"kind": "slow", "seed": 21665, "variant": "P:rehearsal_sixplus", "bot": "icm_tag", "p99_ms": 8.961, "t": "2026-11-02 00:31:54"}
+{"kind": "slow", "seed": 21748, "variant": "n_plo4", "bot": "icm_tag", "p99_ms": 1.051, "t": "2026-11-02 00:32:00"}
+{"kind": "slow", "seed": 21912, "variant": "P:five_draw", "bot": "icm_any", "p99_ms": 2.571, "t": "2026-11-02 00:32:09"}
+{"kind": "slow", "seed": 21925, "variant": "n_plo4", "bot": "icm_tag", "p99_ms": 2.506, "t": "2026-11-02 00:32:10"}
+{"kind": "slow", "seed": 21930, "variant": "b_nlhe200", "bot": "icm_tag", "p99_ms": 1.97, "t": "2026-11-02 00:32:11"}
+{"kind": "slow", "seed": 21939, "variant": "demo_nlhe_scaled", "bot": "icm_lite", "p99_ms": 2.78, "t": "2026-11-02 00:32:12"}
+{"kind": "slow", "seed": 21945, "variant": "j_3street", "bot": "icm_lite", "p99_ms": 3.293, "t": "2026-11-02 00:32:15"}
+{"kind": "slow", "seed": 21946, "variant": "demo_nlhe_scaled", "bot": "icm_lite", "p99_ms": 3.922, "t": "2026-11-02 00:32:15"}
+{"kind": "slow", "seed": 21948, "variant": "P:discard_to_board", "bot": "icm_tag", "p99_ms": 0.592, "t": "2026-11-02 00:32:15"}
