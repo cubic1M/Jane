@@ -114,4 +114,5 @@ table over the strongest bot in each field:
 - **Call tight:** a raiser = 4 random hands; need pot odds + 6%; ICM premium on big calls.
 - **Open small (2bb) and fairly wide; steal more from seats that fold** (the bots that time out fold).
 - Push or fold at ≤ 9bb. Re-raise preflop only with AA.
+- **Heads-up, open and defend much wider** (open bar 0.6/2, a raiser = 2 random hands): +2 to +12 per heads-up table.
 - Surviving pays: even an always-fold bot scores mid-table. Busting early is the costly mistake.

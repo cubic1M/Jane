@@ -947,6 +947,13 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   - Fresh seeds, 500 paired tables per field: +1.8 / +1.0 / **+3.8** (significant) / −0.3 on default / field 2 / field 3 / hackathon-like, mean +1.6, no field losing.
   - Each half alone is weaker.
   - Not a default: it is specific to winner-heavy point tables. **Use it when the real point table gives (nearly) everything to 1st**, after confirming with the day-of tuner.
+* **Heads-up leak found and fixed** (`results/sng_headsup*.md`).
+  - Arena `--players N` now plays short-handed tables.
+  - Heads-up, `f3_exploiter` beat `icm_tag` by +4.2 (all3) and +1.5 (default), both significant. 3-handed, nothing beat us significantly.
+  - Cause: heads-up we opened and defended as if 8-handed (open bar `open_mult`/2, a raiser = 4 random hands).
+  - New heads-up-only parameters: `hu_open_mult`, `hu_range_k`. Exploration on heads-up tables gave monotone gains, with a plateau at 0.6–0.7 / 2.0.
+  - **Adopted: `hu_open_mult=0.6`, `hu_range_k=2.0`** (fresh seeds 33000+). Heads-up: **+1.5 / +11.6 / +1.8 / +4.5** on default / field 2 / field 3 / hackathon-like, all significant. 8-player tables: +1.0 / +2.1 / +2.3 on default / field 3 / all3 (they act only once a table is heads-up; none negative).
+  - The switches key on 2 players dealt in, not on a pot folded to two (tested).
 * **Bug hunter:** 247k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
