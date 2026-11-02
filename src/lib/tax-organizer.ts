@@ -1,3 +1,4 @@
+import { accountKindOf } from "@/data-sources/types";
 import { cache } from "react";
 import { INCOME_KINDS, UNTAGGED, isTaxTagKind, type TaxTagKind } from "@/config/tax";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -6,7 +7,11 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { expectedForms, type ExpectedForm } from "@/planning/tax-documents";
+import {
+  expectedForms,
+  LOAN_PAYMENT_CATEGORIES,
+  type ExpectedForm,
+} from "@/planning/tax-documents";
 import {
   merchantKeyOf,
   tagAll,
@@ -256,11 +261,14 @@ async function loadTaxFormsFrom(
   const incomeCategories = Object.values(INCOME_KINDS).flatMap((k) => [...k.categories]);
   const [transactions, accounts, loans, received] = await Promise.all([
     db.transactions.findMany({
+      // Income, and payments on loans, whose lenders send a 1098 or 1098-E (debugger 11-02).
       where: {
         pending: false,
-        amountCents: { lt: 0 },
         date: yearRange(year),
-        pfcDetailed: { in: incomeCategories },
+        OR: [
+          { amountCents: { lt: 0 }, pfcDetailed: { in: incomeCategories } },
+          { amountCents: { gt: 0 }, pfcDetailed: { in: [...LOAN_PAYMENT_CATEGORIES] } },
+        ],
       },
       select: {
         date: true,
@@ -268,7 +276,7 @@ async function loadTaxFormsFrom(
         pfcDetailed: true,
         description: true,
         merchantName: true,
-        account: { select: { name: true } },
+        account: { select: { name: true, type: true, subtype: true } },
       },
       orderBy: [{ date: "asc" }, { id: "asc" }],
     }),
@@ -294,6 +302,7 @@ async function loadTaxFormsFrom(
       description: t.description,
       merchantName: t.merchantName,
       accountName: t.account.name,
+      inPaymentApp: accountKindOf(t.account.type, t.account.subtype) === "payment_app",
     })),
     accounts,
     loans: loans.map((l) => ({
