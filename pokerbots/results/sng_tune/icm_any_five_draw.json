@@ -1,0 +1,72 @@
+{
+ "params": {
+  "open_mult": 1.07,
+  "open_size": 2.0,
+  "push_bb": 9.0,
+  "push_mult": 1.0,
+  "range_k": 4.0,
+  "call_margin": 0.06,
+  "threebet_eq": 0.62,
+  "threebet_rel": 2.6,
+  "risk": 0.1,
+  "value_eq": 0.62,
+  "cbet": 0.55,
+  "bet_frac": 0.65,
+  "bet_discount": 0.6,
+  "steal_bonus": 0.55,
+  "steal_max_behind": 5,
+  "steal_sym": 0.5,
+  "reshove_bb": 24.0,
+  "read_alpha": 0.5,
+  "base_pfr": 0.12,
+  "raiser_discount": 1.0,
+  "raise_eq": 99.0,
+  "bluff_bonus": 0.4,
+  "bluff_max_opp": 2,
+  "pf_chart": 0,
+  "pf_max_bb": 15.0,
+  "pf_file": "",
+  "cap_risk": 0.0,
+  "cap_window": 25
+ },
+ "history": [
+  {
+   "round": 0,
+   "incumbent": "icm_any",
+   "incumbent_points": 76.11075564294809,
+   "best": "icm_any:bluff_bonus=0.7",
+   "gain": 2.33406402177136,
+   "se": 1.2376640371278527,
+   "accepted": false,
+   "top5": [
+    [
+     "icm_any:bluff_bonus=0.7",
+     2.33,
+     1.24
+    ],
+    [
+     "icm_any:bet_discount=0.7",
+     2.1,
+     1.21
+    ],
+    [
+     "icm_any:steal_bonus=0.7",
+     1.85,
+     1.51
+    ],
+    [
+     "icm_any:read_alpha=0.25",
+     1.55,
+     1.53
+    ],
+    [
+     "icm_any:cbet=0.75",
+     1.54,
+     1.2
+    ]
+   ],
+   "seconds": 2672
+  }
+ ],
+ "round": 1
+}
