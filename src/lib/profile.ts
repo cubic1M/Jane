@@ -9,7 +9,7 @@ import { markPrimerStale } from "@/lib/jane-agent/primer-store";
 import { deletePreference, savePreference } from "@/lib/jane-agent/preferences";
 import { listFacts, toldFromFacts } from "@/lib/memory/facts";
 import { buildProfile, type Profile, type ProfileInput, type Told } from "@/profile/build";
-import { FACT_KEYS, type FactKey, factSpec } from "@/profile/facts";
+import { FACT_KEYS, type FactKey, factSpec, factWords } from "@/profile/facts";
 import { isoDay as dayOf } from "@/lib/dates";
 import { cachedCopy } from "@/lib/read-cache";
 import { formatWholeDollars as dollars } from "@/lib/money";
@@ -443,7 +443,7 @@ export function parseAnswer(key: string, raw: string): string | number | boolean
 const say = (key: string, value: string | number | boolean) => {
   const spec = factSpec(key)!;
   if (typeof value === "boolean") return value ? "yes" : "no";
-  return spec.kind === "cents" ? dollars(Number(value)) : String(value);
+  return spec.kind === "cents" ? dollars(Number(value)) : factWords(key, value);
 };
 
 // The person corrects a fact. It is saved as theirs (a "told" fact at 100%), and written to

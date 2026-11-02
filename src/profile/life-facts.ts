@@ -22,6 +22,7 @@ import {
   REMOTE_MIN_MONTHS,
   SIDE_GIG_SIGNAL,
   STUDENT_CAMPUS_WORDS,
+  STUDENT_NOT_SCHOOL,
   STUDENT_SEEN_CAMPUS_MATCHES,
   STUDENT_SIGNAL,
   TRAVEL_SIGNAL,
@@ -116,7 +117,10 @@ export function petReading(txs: readonly LifeTx[]): Reading {
 
 // --- School -------------------------------------------------------------------------------
 export function studentReading(txs: readonly LifeTx[]): Reading {
-  const h = hitsOf(txs, STUDENT_SIGNAL);
+  const h = hitsOf(
+    txs.filter((t) => !STUDENT_NOT_SCHOOL.test(t.description.toUpperCase())),
+    STUDENT_SIGNAL,
+  );
   if (!meets(h, STUDENT_SIGNAL)) {
     return {
       value: false,

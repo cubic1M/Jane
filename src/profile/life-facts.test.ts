@@ -92,6 +92,28 @@ describe("school", () => {
     ).toMatchObject({ value: true, source: "seen" });
   });
 
+  // Debugger 11-02: a parent's 529 read "You're a student: yes" on 12 "tuition and campus payments".
+  it.each([
+    "OREGON COLLEGE SAVINGS PLAN",
+    "COLLEGE SAVINGS PLAN OF NEVADA",
+    "COLLEGEINVEST 529",
+    "COLLEGEADVANTAGE 529 PLAN",
+    "COLLEGE ILLINOIS 529",
+    "NC 529 PLAN UNIVERSITY SAVINGS",
+    "UNIVERSITY SAVINGS PLAN",
+  ])("saving for college isn't being a student: %s", (description) => {
+    expect(studentReading(monthly(description, null, 12, 25000)).value).toBe(false);
+  });
+
+  it("still reads a college's own charges", () => {
+    expect(
+      studentReading([
+        ...monthly("PORTLAND COMMUNITY COLLEGE", null, 2, 90000),
+        ...monthly("OREGON COLLEGE SAVINGS PLAN", null, 12, 25000),
+      ]).value,
+    ).toBe(true);
+  });
+
   it("student-loan payments do not make someone a student", () => {
     expect(
       studentReading(monthly("NAVIENT", "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT", 12, 30000)).value,

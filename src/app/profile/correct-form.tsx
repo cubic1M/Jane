@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { choiceWords } from "@/profile/facts";
 import { correctProfileFact, type CorrectState } from "./actions";
 
 // One fact's correction box: the answer is typed (or yes/no, or one of the choices).
@@ -28,7 +29,7 @@ export function CorrectForm({
         >
           {choices.map((c) => (
             <option key={c} value={c}>
-              {c}
+              {choiceWords(c)}
             </option>
           ))}
         </select>
