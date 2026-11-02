@@ -111,8 +111,8 @@ heads-up and payout changes):
 | default | +23 / +19 |
 | strong | +27 / +32 |
 | our own copies (mirror) | +5 / +7 |
-| field 3 (written independently) | +10 / +6 |
-| field 2 (written independently) | +7 / +1 (not significant) |
+| field 3 (written independently) | +10 / +6 / +12.8 |
+| field 2 (written independently) | +7 / +1 / +0.8 (tie with `f2_shark`, 800 tables) |
 | all three fields, top-3 payouts | +4.5 / +2.3 (not significant) |
 | hackathon-like field, all three under winner payouts | tie with `f3_exploiter` (±1) |
 

@@ -986,7 +986,17 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   - Heads-up ranges off: +0.3 / +0.5 / +0.3 on Omaha 4 / PLO5 / short deck (noise).
   - `icm_call` off: +0.2 / −2.3 / −1.3 (exact ICM leans helpful).
   - Nothing significant, so no gating needed. The discard presets were the exception, handled by `icm_any`'s own defaults.
-* **Bug hunter:** 385k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
+* **Regression check 3** (`results/sng_final_check3.md`, fresh seeds 43000+, 800 paired tables) on the thin cells:
+  - field 3: +12.8 over `f3_exploiter`;
+  - all3/top3: +2.6 over `f3_exploiter`;
+  - field 2: +2.8 over `f2_nash`, but only +0.8 ± 3.0 over `f2_shark`, a tie (the earlier +7.4 was a lucky seed set).
+* **Fold-equity push model: equivalent, not adopted** (`pev`; `results/sng_pev_*.md`).
+  - Both strong independent bots shove at 15bb or less by an EV model, so `icm_tag` got one: approximate Nash calling widths per seat behind (scaled by observed raise rate), equity vs a top-c caller as vs k random hands with (1 − c)^k = 1/2, and an optional ICM charge on the loss.
+  - With the full risk premium it shoved far too tight; `pev_risk` scales that charge.
+  - Fresh seeds, 600 paired tables on field 2 / field 3 / all3-top3 / mirror / hackathon-like: `pev_risk=0` +0.9 / +0.7 / −0.6 / +0.4 / −0.5 (mean +0.2); `pev_risk=0.25` −0.6 / +0.5 / +0.1 / −1.0 / +1.1 (mean 0.0).
+  - Same strength as the tuned fixed bar, so we keep the simpler rule; `pev` stays available to the day-of tuner.
+  - So the field-2 tie with `f2_shark` does not come from short-stack shoving.
+* **Bug hunter:** 410k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
   - looser calls (a raiser = 3.2 hands, a 3% margin);
