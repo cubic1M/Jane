@@ -101,6 +101,32 @@ describe.runIf(url)("regular pay with no pay word", { timeout: 30_000 }, () => {
     expect(await details(placed)).toEqual(["GENERAL_MERCHANDISE_SUPERSTORES"]);
   });
 
+  it("leaves money moved in from another of their accounts", async () => {
+    const userId = await person({ name: "Home Fund", cents: -50_000 });
+    const other = await client.account.create({
+      data: { userId, source: "csv", name: "Other", type: "depository" },
+    });
+    const money = await client.transaction.findMany({ where: { userId } });
+    await client.transaction.createMany({
+      data: money.map((row, i) => ({
+        userId,
+        accountId: other.id,
+        source: "csv",
+        dedupeKey: `out-${i}`,
+        date: row.date,
+        amountCents: 50_000,
+        description: "TO HOME FUND",
+        merchantName: "To Home Fund",
+        pfcPrimary: "TRANSFER_OUT",
+        pfcDetailed: "TRANSFER_OUT_SAVINGS",
+        categorySource: "rule",
+      })),
+    });
+    await markCashIncome(scopedFor(userId, client));
+    const moved = await client.transaction.findMany({ where: { userId, amountCents: -50_000 } });
+    expect(new Set(moved.map((r) => r.pfcDetailed))).toEqual(new Set([null]));
+  });
+
   it("leaves money going out", async () => {
     const out = await person({ name: "Planet Fitness", cents: 261_025 });
     await markCashIncome(scopedFor(out, client));

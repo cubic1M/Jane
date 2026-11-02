@@ -7,6 +7,8 @@ import {
   CASH_INCOME_MIN_SPAN_DAYS,
   REGULAR_PAYER_MIN_CENTS,
   REGULAR_PAYER_NOT_INCOME,
+  REGULAR_PAYER_OWN_MONEY_DAYS,
+  REGULAR_PAYER_OWN_MONEY_SHARE,
 } from "@/config/detection";
 import { DAY_MS, isoDay } from "@/lib/dates";
 import type { ScopedDb } from "@/lib/db-scoped";
@@ -16,7 +18,8 @@ import type { ScopedDb } from "@/lib/db-scoped";
 // page, and the forecast ran short. Money in from one payer, at a steady cadence and a similar
 // amount, is income. Stricter than cash deposits (./cash-income.ts), which need only one of the
 // two: a named payer could be many things. Banks, card companies, brokers and payment apps are
-// left out, since that money is likely the person's own. Rows the rules or the person placed stay.
+// left out, since that money is likely the person's own, and so is money that just left another of
+// their accounts, whatever it's called. Rows the rules or the person placed stay.
 
 const INCOME = { pfcPrimary: "INCOME", pfcDetailed: "INCOME_OTHER" } as const;
 
@@ -26,7 +29,11 @@ export type PayerRow = {
   // Plaid's sign: money in is negative.
   amountCents: number;
   merchantName: string | null;
+  accountId?: string;
 };
+
+// Money leaving an account (Plaid's sign: positive).
+export type MoneyOutRow = { accountId: string; date: string; amountCents: number };
 
 const median = (xs: number[]) => {
   const s = [...xs].sort((a, b) => a - b);
@@ -60,8 +67,25 @@ function isRegularPay(rows: readonly PayerRow[]): boolean {
 const notIncome = (name: string) =>
   REGULAR_PAYER_NOT_INCOME.test(name) || CARD_ISSUERS.some(([pattern]) => pattern.test(name));
 
+// The same amount left a different account at about the same time. Leaving the account it came
+// into doesn't count: that's pay being spent.
+function isOwnMoney(rows: readonly PayerRow[], moneyOut: readonly MoneyOutRow[]): boolean {
+  const moved = rows.filter((r) =>
+    moneyOut.some(
+      (o) =>
+        o.accountId !== r.accountId &&
+        o.amountCents === -r.amountCents &&
+        Math.abs(dayNumber(o.date) - dayNumber(r.date)) <= REGULAR_PAYER_OWN_MONEY_DAYS,
+    ),
+  );
+  return moved.length >= rows.length * REGULAR_PAYER_OWN_MONEY_SHARE;
+}
+
 // The ids of the rows that are regular pay.
-export function regularPayers(rows: readonly PayerRow[]): string[] {
+export function regularPayers(
+  rows: readonly PayerRow[],
+  moneyOut: readonly MoneyOutRow[] = [],
+): string[] {
   const byPayer = new Map<string, PayerRow[]>();
   for (const row of rows) {
     if (row.amountCents >= 0 || !row.merchantName || notIncome(row.merchantName)) continue;
@@ -69,7 +93,7 @@ export function regularPayers(rows: readonly PayerRow[]): string[] {
     byPayer.set(key, [...(byPayer.get(key) ?? []), row]);
   }
   return [...byPayer.values()]
-    .filter(isRegularPay)
+    .filter((payer) => isRegularPay(payer) && !isOwnMoney(payer, moneyOut))
     .flat()
     .map((r) => r.id);
 }
@@ -84,9 +108,17 @@ export async function markRegularPayers(db: Pick<ScopedDb, "transactions">): Pro
       amountCents: { lt: 0 },
       OR: [{ pfcDetailed: null }, { categorySource: "llm", NOT: { pfcPrimary: "INCOME" } }],
     },
-    select: { id: true, date: true, amountCents: true, merchantName: true },
+    select: { id: true, accountId: true, date: true, amountCents: true, merchantName: true },
   });
-  const ids = regularPayers(rows.map((r) => ({ ...r, date: isoDay(r.date) })));
+  if (rows.length === 0) return 0;
+  const moneyOut = await db.transactions.findMany({
+    where: { pending: false, amountCents: { in: [...new Set(rows.map((r) => -r.amountCents))] } },
+    select: { accountId: true, date: true, amountCents: true },
+  });
+  const ids = regularPayers(
+    rows.map((r) => ({ ...r, date: isoDay(r.date) })),
+    moneyOut.map((o) => ({ ...o, date: isoDay(o.date) })),
+  );
   if (ids.length === 0) return 0;
   const { count } = await db.transactions.updateMany({
     where: { id: { in: ids } },

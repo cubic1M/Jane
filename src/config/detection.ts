@@ -1060,7 +1060,12 @@ export const CASH_INCOME_ONE_OFF_FACTOR = 3;
 export const REGULAR_PAYER_MIN_CENTS = 20_000;
 // Likely the person's own money moving: a bank, a broker or a payment app.
 export const REGULAR_PAYER_NOT_INCOME =
-  /\b(?:bank|savings|transfer|credit union|fcu|investments?|brokerage|schwab|fidelity|vanguard|robinhood|coinbase|venmo|paypal|zelle|cash ?app|apple cash)\b/i;
+  /\b(?:bank|savings|checking|transfer|credit union|fcu|investments?|brokerage|schwab|fidelity|vanguard|robinhood|coinbase|venmo|paypal|zelle|cash ?app|apple cash)\b/i;
+
+// Also their own money: the same amount left another of their accounts within this many days, on
+// at least this share of the deposits.
+export const REGULAR_PAYER_OWN_MONEY_DAYS = 3;
+export const REGULAR_PAYER_OWN_MONEY_SHARE = 0.5;
 
 export const RENT_TRANSFER_MIN_MONTHS = 2;
 export const RENT_TRANSFER_MIN_CENTS = 50_000;
