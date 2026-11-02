@@ -11,3 +11,10 @@ export function balanceLine(
   const on = `${formatCents(f.startCents)} on ${dayLabel(f.startOn)}`;
   return f.todayCents === f.startCents ? on : `${on}, about ${formatCents(f.todayCents)} today`;
 }
+
+// Pay at uneven times has no date to forecast, so the low point counts none of it (debugger 11-02).
+export function unevenPayLine(monthlyCents: number | null): string | null {
+  return monthlyCents === null
+    ? null
+    : `That counts none of your pay, because it comes at uneven times: about ${formatCents(monthlyCents)} a month lately.`;
+}
