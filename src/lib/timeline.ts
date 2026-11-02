@@ -28,10 +28,18 @@ export type TimelineEntry = {
   undoHref: string | null;
   // Through a stand-in: nothing real happened, and the record says so.
   simulated: boolean;
+  // The agent's work on it, oldest first: what was sent and what came back.
+  steps: { label: "Sent" | "Came back" | "Note"; text: string }[];
+  // The act a mistake can be reported on, or null.
+  actId: string | null;
+  // Reported as wrong already.
+  reported: boolean;
 };
 
 // An act and its older row (a recordAct, or a transfer) are one thing when they match this closely.
 const SAME_ACT_MS = 5 * 60 * 1000;
+// How much of an action's back-and-forth is shown.
+const MAX_STEPS = 6;
 
 // The older rows left once each is matched, one to one, against an act that already says it.
 export function notYetListed<T extends { sector: string; cents: number | null; at: Date }>(
@@ -72,7 +80,12 @@ function actionWhy(action: {
   refundCents: number | null;
   confirmedAnnualCents: number | null;
   decision: { cardSnapshot: unknown };
-  agentMessages: { body: string; summary: string | null; direction: string }[];
+  agentMessages: {
+    body: string;
+    summary: string | null;
+    direction: string;
+    subject: string | null;
+  }[];
 }): string {
   if (action.status === "done") {
     const saving = doneSaving({ ...action, cardSnapshot: action.decision.cardSnapshot });
@@ -82,6 +95,24 @@ function actionWhy(action: {
   const latest = action.agentMessages[0];
   const said = latest?.direction === "note" ? latest.body : latest?.summary;
   return said || `You said yes. ${ACTION_STATUS_LABELS[action.status].label}.`;
+}
+
+// What was sent and what came back, oldest first.
+function stepsOf(
+  messages: readonly {
+    direction: string;
+    subject: string | null;
+    summary: string | null;
+    body: string;
+  }[],
+): TimelineEntry["steps"] {
+  return [...messages].reverse().map((m) => ({
+    label: m.direction === "outbound" ? "Sent" : m.direction === "inbound" ? "Came back" : "Note",
+    text:
+      m.direction === "outbound"
+        ? (m.subject ?? m.body).slice(0, 200)
+        : (m.summary ?? m.body).slice(0, 200),
+  }));
 }
 
 export async function loadTimeline(
@@ -98,6 +129,7 @@ export async function loadTimeline(
       where: { status: "done" },
       orderBy: [{ createdAt: "desc" }, { id: "asc" }],
       take: limit,
+      include: { mistake: { select: { id: true } } },
     }),
     db.autopilotActs.findMany({
       // A rule's yes is listed once, as the rule's decision below (gap audit: it showed twice).
@@ -140,24 +172,33 @@ export async function loadTimeline(
         decision: { select: { cardSnapshot: true } },
         agentMessages: {
           orderBy: { createdAt: "desc" },
-          take: 1,
-          select: { body: true, summary: true, direction: true },
+          take: MAX_STEPS,
+          select: { id: true, body: true, summary: true, direction: true, subject: true },
         },
       },
     }),
   ]);
-  const recorded: TimelineEntry[] = janeActs.map((a) => ({
-    id: `jane:${a.id}`,
-    at: a.createdAt,
-    sector: a.sector,
-    sectorLabel: labelOf(a.sector),
-    by: a.authority === "yes" ? "you" : "jane",
-    what: a.what,
-    why: a.why,
-    cents: a.cents > 0 ? a.cents : null,
-    undoHref: a.undoHref && a.undoUntil && a.undoUntil > now ? a.undoHref : null,
-    simulated: a.simulated,
-  }));
+  // An act on one of the actions below is listed there, as one of its steps.
+  const onAction = new Map<string, (typeof janeActs)[number]>();
+  for (const a of janeActs)
+    if (a.actionId && !onAction.has(a.actionId)) onAction.set(a.actionId, a);
+  const recorded: TimelineEntry[] = janeActs
+    .filter((a) => !a.actionId)
+    .map((a) => ({
+      id: `jane:${a.id}`,
+      at: a.createdAt,
+      sector: a.sector,
+      sectorLabel: labelOf(a.sector),
+      by: a.authority === "yes" ? "you" : "jane",
+      what: a.what,
+      why: a.why,
+      cents: a.cents > 0 ? a.cents : null,
+      undoHref: a.undoHref && a.undoUntil && a.undoUntil > now ? a.undoHref : null,
+      simulated: a.simulated,
+      steps: [],
+      actId: a.id,
+      reported: a.mistake !== null,
+    }));
   const said = janeActs.map((a) => ({ sector: a.sector, cents: a.cents, at: a.createdAt }));
   const older: TimelineEntry[] = [
     ...acts.map((a): TimelineEntry => ({
@@ -172,6 +213,9 @@ export async function loadTimeline(
       undoHref: null,
       // No real partner has ever been connected: every older act was a stand-in's.
       simulated: true,
+      steps: [],
+      actId: null,
+      reported: false,
     })),
     ...transfers.map((t): TimelineEntry => ({
       id: `transfer:${t.id}`,
@@ -186,6 +230,9 @@ export async function loadTimeline(
       cents: t.amountCents,
       undoHref: t.status === "pending" ? "/transfers" : null,
       simulated: true,
+      steps: [],
+      actId: null,
+      reported: false,
     })),
   ];
   const ruleYeses: TimelineEntry[] = [
@@ -202,6 +249,9 @@ export async function loadTimeline(
         cents: null,
         undoHref: null,
         simulated: false,
+        steps: [],
+        actId: null,
+        reported: false,
       };
     }),
     ...actions.map((a): TimelineEntry => ({
@@ -215,7 +265,10 @@ export async function loadTimeline(
       cents: a.refundCents ?? a.confirmedAnnualCents,
       undoHref: null,
       // Actions only run for the demo bank and sample people (src/config/concierge.ts).
-      simulated: true,
+      simulated: onAction.get(a.id)?.simulated ?? true,
+      steps: stepsOf(a.agentMessages),
+      actId: onAction.get(a.id)?.id ?? null,
+      reported: Boolean(onAction.get(a.id)?.mistake),
     })),
   ];
   return [...recorded, ...notYetListed(older, said), ...ruleYeses]

@@ -59,6 +59,9 @@ export function AdminNav({ email }: { email: string | null | undefined }) {
         <Link href="/admin/learning" className="hover:underline">
           Learning
         </Link>
+        <Link href="/admin/mistakes" className="hover:underline">
+          Mistakes
+        </Link>
         <Link href="/admin/launch" className="hover:underline">
           Launch check
         </Link>

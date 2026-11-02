@@ -56,6 +56,7 @@ export async function exportUserData(
     autopilotSectors,
     autopilotActs,
     janeActs,
+    actMistakes,
     controllerRuns,
     moneyTransfers,
     paycheckPlans,
@@ -432,6 +433,9 @@ export async function exportUserData(
         createdAt: true,
       },
     }),
+    db.actMistakes.findMany({
+      select: { note: true, status: true, resolution: true, handledAt: true, createdAt: true },
+    }),
     // The nightly controller run's log (spec step 142).
     db.controllerRuns.findMany({
       select: { day: true, startedAt: true, finishedAt: true, steps: true },
@@ -758,6 +762,7 @@ export async function exportUserData(
     autopilotSectors,
     autopilotActs,
     janeActs,
+    actMistakes,
     controllerRuns,
     moneyTransfers,
     paycheckPlans,

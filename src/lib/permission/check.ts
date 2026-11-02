@@ -1,6 +1,7 @@
+import { AGENT_FIRST_TYPES, agentRehearsal } from "@/config/agent-rollout";
 import { SECTOR_LABELS, type Sector } from "@/config/autopilot-sectors";
 import { specialistInfo, YES_CAP_CENTS, type SpecialistKey } from "@/config/specialists";
-import type { PrismaClient } from "@/generated/prisma/client";
+import type { ActionType, DecisionSource, PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { logAudit, SYSTEM_ACTOR } from "@/lib/audit";
 import { conciergeMode } from "@/lib/concierge-mode";
@@ -27,6 +28,8 @@ export type Authority =
 export type Undo =
   // Until when it can be taken back, and where.
   | { kind: "window"; until: Date; href?: string }
+  // It waited out its hold (AGENT_HOLD_HOURS): the time to take it back runs until then.
+  | { kind: "held"; until: Date }
   // Nothing to take back (a simulated fill). Never enough for a real specialist on a standing limit.
   | { kind: "none"; why: string };
 
@@ -39,6 +42,8 @@ export type ActRequest = {
   cents: number;
   authority: Authority;
   undo: Undo;
+  // The agent's action this is part of, and what the rollout asks about it.
+  agent?: { actionId: string; actionType: ActionType; source: DecisionSource };
 };
 
 export type RefuseReason =
@@ -49,7 +54,8 @@ export type RefuseReason =
   | "action_cap"
   | "monthly_cap"
   | "over_cap"
-  | "no_undo";
+  | "no_undo"
+  | "not_yet";
 
 export type Verdict =
   | { ok: true; simulated: boolean; why: string; undoUntil: Date | null }
@@ -64,6 +70,7 @@ const REFUSED_WORDS: Record<RefuseReason, string> = {
   monthly_cap: "That's over your limit for this month.",
   over_cap: "That's over what Jane can do in one go.",
   no_undo: "Jane can't do that on its own without a way to undo it.",
+  not_yet: "Jane doesn't handle that kind of request yet, so that's yours to do.",
 };
 
 export class PermissionRefused extends Error {
@@ -82,6 +89,22 @@ async function allowedFor(userId: string, key: SpecialistKey, client: PrismaClie
   return (await conciergeMode(userId, { client })) || (await adviceMode(userId, { client }));
 }
 
+// How the email agent starts on real accounts (src/config/agent-rollout.ts): low-risk requests first,
+// one yes per action, and a rule's yes only with the area handed over and its hold waited out.
+async function rolloutRefusal(
+  userId: string,
+  request: ActRequest,
+  { client, now }: { client: PrismaClient; now: Date },
+): Promise<RefuseReason | null> {
+  const { agent, undo } = request;
+  if (!agent) return null;
+  if (!AGENT_FIRST_TYPES.includes(agent.actionType)) return "not_yet";
+  if (agent.source !== "rule" && agent.source !== "auto") return null;
+  const may = await mayAct(userId, "bills", { needs: "safe", cents: 0 }, { client, now });
+  if (!may.ok) return may.reason === "stopped" ? "stopped" : "level";
+  return undo.kind === "held" && undo.until.getTime() <= now.getTime() ? null : "no_undo";
+}
+
 // The check alone: no side effects. throughPermission is the only way to act on it.
 export async function checkPermission(
   userId: string,
@@ -92,6 +115,10 @@ export async function checkPermission(
   if (await actsStopped(userId, { client })) return { ok: false, reason: "stopped" };
   if (!(await allowedFor(userId, request.specialist, client))) {
     return { ok: false, reason: "read_only" };
+  }
+  if (info.kind === "real" || agentRehearsal()) {
+    const refusal = await rolloutRefusal(userId, request, { client, now });
+    if (refusal) return { ok: false, reason: refusal };
   }
   const { authority, undo } = request;
   const hasWindow = undo.kind === "window" && undo.until.getTime() > now.getTime();
@@ -115,7 +142,9 @@ export async function checkPermission(
     );
     if (!may.ok) return { ok: false, reason: may.reason === "stopped" ? "stopped" : may.reason };
     // Always with an undo window; a stand-in has nothing real to take back.
-    if (!hasWindow && info.kind === "real") return { ok: false, reason: "no_undo" };
+    if (!hasWindow && undo.kind !== "held" && info.kind === "real") {
+      return { ok: false, reason: "no_undo" };
+    }
     why = `${SECTOR_LABELS[authority.sector]} is on your autopilot, and this was within the limits you set.`;
   }
   return {
@@ -168,6 +197,7 @@ export async function throughPermission<T>(
       authority: request.authority.kind,
       undoUntil: verdict.undoUntil,
       undoHref: request.undo.kind === "window" ? (request.undo.href ?? null) : null,
+      actionId: request.agent?.actionId ?? null,
       status: "started",
       createdAt: now,
     },
