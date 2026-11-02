@@ -382,11 +382,12 @@ function babyReading(input: ProfileInput, txs: readonly ProfileTx[], today: stri
   };
 }
 
-// The payer on a paycheck line: no ACH details, no bank's "Deposit from" (Capital One 360) or
-// "DEPOSIT - " (Navy Federal) in front, and nothing from "PAYROLL" on (debugger 11-01).
+// The payer on a paycheck line: no ACH details, no bank's "Deposit from" (Capital One 360),
+// "DEPOSIT - " (Navy Federal) or "ACH CREDIT" (Truist) in front, and nothing from "PAYROLL" on
+// (debugger 11-01, 11-02).
 function employerName(description: string): string {
   return withoutAchDetails(description)
-    .replace(/^(?:DEPOSIT FROM|DEPOSIT -)\s+/i, "")
+    .replace(/^(?:DEPOSIT FROM|DEPOSIT -|ACH CREDIT)\s+/i, "")
     .replace(/\s+PAYROLL.*$/i, "")
     .trim();
 }

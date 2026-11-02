@@ -283,6 +283,8 @@ describe("the employer's name", () => {
   it.each([
     ["Deposit from BLUE BOTTLE COFFEE PAYROLL", "BLUE BOTTLE COFFEE"],
     ["DEPOSIT - DFAS-CLEVELAND MIL PAY", "DFAS-CLEVELAND MIL PAY"],
+    // Debugger 11-02: Truist's "ACH CREDIT DUKE ENERGY CORP PAYROLL".
+    ["ACH CREDIT DUKE ENERGY CORP PAYROLL", "DUKE ENERGY CORP"],
     ["GLOBEX LLC DES:PAYROLL ID:XXXXX9028 INDN:SAM CO ID:XXXXX PPD", "GLOBEX LLC"],
   ])("reads %s as %s", (description, employer) => {
     const data = inputFor("family");

@@ -113,6 +113,29 @@ describe("Navy Federal's prefixes", () => {
   });
 });
 
+// Debugger 11-02: Truist (and other banks) write "ACH DEBIT ROCKET MORTGAGE PMT" and "ACH CREDIT
+// DUKE ENERGY CORP PAYROLL": the person's pay read "Ach Credit Duke Energy Corp Payroll". The
+// entry's direction isn't the payee; it goes from the name and the key. The migration
+// 20270421000000_merchant_without_ach_prefix moves saved keys and names.
+describe("an ACH line's direction in front", () => {
+  it("leaves out ACH DEBIT and ACH CREDIT before the name", () => {
+    expect(normalizeMerchant("ACH DEBIT ROCKET MORTGAGE PMT")).toEqual({
+      name: "Rocket Mortgage Pmt",
+      key: "rocket mortgage pmt",
+    });
+    expect(normalizeMerchant("ACH CREDIT DUKE ENERGY CORP PAYROLL")?.name).toBe(
+      "Duke Energy Corp Payroll",
+    );
+    // A name saved the old way gives the new key too.
+    expect(normalizeMerchant("Ach Debit Rocket Mortgage Pmt")?.key).toBe("rocket mortgage pmt");
+  });
+
+  it("keeps the words when they are all there is, or not in front", () => {
+    expect(normalizeMerchant("ACH DEBIT")?.key).toBe("ach debit");
+    expect(normalizeMerchant("ACME ACH DEBIT SERVICES")?.key).toBe("acme ach debit services");
+  });
+});
+
 // Debugger 10-31: Capital One 360 writes "Withdrawal to ROCKET MORTGAGE PMT" and "Deposit from
 // STARK INDUSTRIES PAYROLL" (the CSV bench has the same): /subscriptions listed "Withdrawal To
 // Rocket Mortgage Pmt $2,280.00 monthly".

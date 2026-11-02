@@ -15,7 +15,8 @@ const MIGRATION = "prisma/migrations/20270420000000_merchant_irs_tax_payment/mig
 const OLD_KEYS: [string, string][] = [
   ["IRS USATAXPYMT", "irs usataxpymt"],
   ["Withdrawal to IRS USATAXPYMT", "irs usataxpymt"],
-  ["ACH DEBIT IRS USATAXPYMT", "ach debit irs usataxpymt"],
+  // Another word in front stays ("ACH DEBIT" in front goes too, by the next migration).
+  ["EFTPS IRS USATAXPYMT", "eftps irs usataxpymt"],
   ["USATAXPYMT", "usataxpymt"],
   ["IRS TREAS 310 TAX REF", "irs treas tax ref"],
 ];
