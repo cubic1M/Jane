@@ -53,6 +53,8 @@ PARAMS = dict(
                          #   1 - (1st's share of the points); winner-take-all -> 0, top-3 50/30/20 -> 1
     hu_open_mult=0.6,    # heads-up tables (2 players dealt in): open_mult becomes this (0 = off)
     hu_range_k=2.0,      # heads-up tables: a raiser's range_k (before the read) becomes this (0 = off)
+    sh_open_mult=0.0,    # 3-4 players dealt in: open_mult becomes this (0 = off)
+    sh_range_k=0.0,      # 3-4 players dealt in: a raiser's range_k becomes this (0 = off)
     rk_floor=1.2,        # facing a raise: the raiser counts as at least this many random hands
     agg_alpha=0.0,       # postflop: discount a bet less from seats that bet often when checked to:
                          #   discount -> discount + (1 - discount) x agg_alpha x excess aggression
@@ -247,11 +249,15 @@ class IcmTag:
             a = self.chart.decide(obs, raises, eff_bb)
             if a is not None:
                 return a
-        hu = sum(1 for sv in seats if sv.in_hand) == 2           # a heads-up table, not a folded-to-2 pot
+        dealt = sum(1 for sv in seats if sv.in_hand)
+        hu = dealt == 2                                          # a heads-up table, not a folded-to-2 pot
+        sh = 3 <= dealt <= 4
         if not raises:
             k = max(1, len(behind))
             limpers = sum(1 for h in obs.history if h[1] == 0 and h[2] == "call")
             om = p["hu_open_mult"] if hu and p["hu_open_mult"] > 0 else p["open_mult"]
+            if sh and p["sh_open_mult"] > 0:
+                om = p["sh_open_mult"]
             bar = om / (k + 1 + limpers)
             # steal wider vs blinds that fold
             if not limpers and len(behind) <= p["steal_max_behind"]:
@@ -282,6 +288,8 @@ class IcmTag:
         # facing a raise
         others = len(in_pot)
         rk = p["hu_range_k"] if hu and p["hu_range_k"] > 0 else p["range_k"]
+        if sh and p["sh_range_k"] > 0:
+            rk = p["sh_range_k"]
         if p["read_alpha"] > 0:
             r = raises[-1][0]
             pfr = (self.pre_raises[r] + p["base_pfr"] * 8) / (self.dealt[r] + 8)   # shrink to the prior
