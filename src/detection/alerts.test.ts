@@ -175,6 +175,22 @@ describe("fee_charged", () => {
     );
   });
 
+  // Debugger 11-02: "$14.50 fee on Discover" and "Banks often take a fee back when asked" about the
+  // month's interest on a balance.
+  it("calls interest interest, and promises nothing about getting it back", () => {
+    const interest = fee({
+      amountCents: 1_450,
+      description: "INTEREST CHARGE ON PURCHASES",
+      pfcDetailed: "BANK_FEES_INTEREST_CHARGE",
+      accountId: CARD.id,
+    });
+    const [alert] = feeAlerts(input({ transactions: [interest] }));
+    expect(alert.title).toMatch(/^\$14\.50 in interest on /);
+    expect(alert.body).toContain("INTEREST CHARGE ON PURCHASES");
+    expect(alert.body).not.toMatch(/take a fee back/);
+    expect(alert.body).toMatch(/report/);
+  });
+
   it("says nothing for an old fee, a refunded fee, or a purchase", () => {
     expect(
       feeAlerts(

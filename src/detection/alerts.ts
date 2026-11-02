@@ -156,8 +156,16 @@ export function feeAlerts(input: DetectionInput): AlertCandidate[] {
     .map((t): AlertCandidate => ({
       type: "fee_charged",
       key: t.id,
-      title: `${formatCents(t.amountCents)} fee on ${accountName(input, t.accountId)}`,
-      body: `"${t.description}" on ${dayLabel(t.date)}. Banks often take a fee back when asked; it's on your report.`,
+      // Interest isn't a fee: there's no asking for it back as there is with a one-off charge.
+      ...(inList(t.pfcDetailed, CARD_INTEREST_CATEGORIES)
+        ? {
+            title: `${formatCents(t.amountCents)} in interest on ${accountName(input, t.accountId)}`,
+            body: `"${t.description}" on ${dayLabel(t.date)}. It's on your report.`,
+          }
+        : {
+            title: `${formatCents(t.amountCents)} fee on ${accountName(input, t.accountId)}`,
+            body: `"${t.description}" on ${dayLabel(t.date)}. Banks often take a fee back when asked; it's on your report.`,
+          }),
       confidence,
     }));
 }
