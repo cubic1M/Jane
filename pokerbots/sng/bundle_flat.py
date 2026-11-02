@@ -86,6 +86,7 @@ MODULES = [
     ("engine.game", GAME_STUB),
     ("sng.ours.features", "sng/ours/features.py"),
     ("sng.ours.strength", STRENGTH_STUB),
+    ("sng.ours.icm_exact", "sng/ours/icm_exact.py"),
     ("sng.ours.icm_tag", "sng/ours/icm_tag.py"),
     ("sng.ours.anyvar", "sng/ours/anyvar.py"),
 ]

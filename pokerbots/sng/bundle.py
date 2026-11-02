@@ -25,6 +25,7 @@ MODULES = [  # (module name, source file, is_package)
     ("sng.ours", None, True),
     ("sng.ours.features", "sng/ours/features.py", False),
     ("sng.ours.strength", "sng/ours/strength.py", False),
+    ("sng.ours.icm_exact", "sng/ours/icm_exact.py", False),
     ("sng.ours.icm_tag", "sng/ours/icm_tag.py", False),
     ("sng.ours.anyvar", "sng/ours/anyvar.py", False),
 ]

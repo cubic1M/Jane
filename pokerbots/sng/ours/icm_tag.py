@@ -17,6 +17,7 @@ from __future__ import annotations
 import random
 
 from engine.game import Call, Check, Fold, RaiseTo
+from sng.ours.icm_exact import allin_call_need       # imported here: never inside a timed decision
 
 PARAMS = dict(
     open_mult=1.07,      # open if equity >= open_mult / (players to act + 1)
@@ -55,6 +56,10 @@ PARAMS = dict(
     hu_range_k=2.0,      # heads-up tables: a raiser's range_k (before the read) becomes this (0 = off)
     sh_open_mult=0.0,    # 3-4 players dealt in: open_mult becomes this (0 = off)
     sh_range_k=0.0,      # 3-4 players dealt in: a raiser's range_k becomes this (0 = off)
+    icm_call=0,          # 1: all-in calls (one all-in opponent, no other caller) need the exact ICM
+                         #   break-even equity (sng/ours/icm_exact.py) + icm_margin, instead of
+                         #   pot odds + call_margin + the risk premium
+    icm_margin=0.02,
     rk_floor=1.2,        # facing a raise: the raiser counts as at least this many random hands
     agg_alpha=0.0,       # postflop: discount a bet less from seats that bet often when checked to:
                          #   discount -> discount + (1 - discount) x agg_alpha x excess aggression
@@ -196,6 +201,23 @@ class IcmTag:
             r += self.p["cap_risk"] * (mine / avg - 1.0)
         return max(0.0, r)
 
+    def _icm_need(self, obs, r):
+        """Exact ICM break-even equity for calling the all-in (or my all-in call) of seat r."""
+        pays = getattr(self.rules, "payouts", None)
+        if not pays:
+            return None
+        seats = obs.seats
+        totals = [None if (s == obs.seat or not sv.in_hand) else sv.stack + sv.committed
+                  for s, sv in enumerate(seats)]
+        committed = [0 if (s == obs.seat or not sv.in_hand) else sv.committed for s, sv in enumerate(seats)]
+        left = sum(1 for sv in seats if sv.in_hand)
+        me = seats[obs.seat]
+        try:
+            return allin_call_need(obs.my_stack + me.committed, me.committed, r, totals, committed,
+                                   tuple(pays)[:left])
+        except Exception:  # noqa: BLE001  never fail a decision over ICM
+            return None
+
     # ---- decision -----------------------------------------------------------------------
     def act(self, obs):
         lg = obs.legal
@@ -302,6 +324,14 @@ class IcmTag:
         allin_call = call >= obs.my_stack or any(seats[s].all_in for s in in_pot)
         if allin_call or call > 0.4 * obs.my_stack:
             need += self._risk(obs)
+        if p["icm_call"] and allin_call and raises[-1] in obs.history:
+            hist = list(obs.history)
+            last = len(hist) - 1 - hist[::-1].index(raises[-1])
+            r = raises[-1][0]
+            if not any(h[1] == 0 and h[2] == "call" and h[0] != obs.seat for h in hist[last + 1:]):
+                n_icm = self._icm_need(obs, r)
+                if n_icm is not None:
+                    need = n_icm + p["icm_margin"]
         if (eq >= p["threebet_eq"] or eq * (kf + 1) >= p["threebet_rel"]) and lg.can_raise:
             if eff_bb <= p["reshove_bb"]:
                 return RaiseTo(lg.max_raise_to)
@@ -338,6 +368,11 @@ class IcmTag:
             need = call / (pot + call) + p["call_margin"]
             if call >= obs.my_stack * 0.5:
                 need += self._risk(obs)
+            if (p["icm_call"] and k == 1 and bettor is not None
+                    and (call >= obs.my_stack or seats[bettor].all_in)):
+                n_icm = self._icm_need(obs, bettor)
+                if n_icm is not None:
+                    need = n_icm + p["icm_margin"]
             if lg.can_raise and (eq_adj >= max(p["value_eq"] + 0.15, need + 0.25)
                                  or (eq >= p["raise_eq"] and eq_adj >= need)
                                  or (eq >= p["agg_raise"] and ag >= p["agg_seat"] and eq_adj >= need)):
