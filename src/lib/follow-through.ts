@@ -167,25 +167,29 @@ const dayOf = (now: Date) => now.toISOString().slice(0, 10);
 export const followUpKeyOf = (alertKey: string): string | null =>
   /^(?:nudge|failed):(.+):\d+$/.exec(alertKey)?.[1] ?? null;
 
-// Which of these keys still need the person: a Yes with nothing done, or a failure not acted on.
+// Which of these follow-up alerts still need the person, by alert key: a nudge while the Yes is
+// open with nothing done, a failure while the data still says so.
 export async function stillFollowingUp(
   userId: string,
-  keys: readonly string[],
+  alertKeys: readonly string[],
   { client = defaultClient }: { client?: PrismaClient } = {},
 ): Promise<Set<string>> {
+  const keys = alertKeys.flatMap((a) => followUpKeyOf(a) ?? []);
   if (keys.length === 0) return new Set();
   const rows = await scopedFor(userId, client).suggestionOutcomes.findMany({
-    where: {
-      suggestionKey: { in: [...new Set(keys)] },
-      answer: "yes",
-      OR: [
-        { status: { in: OPEN_STATUSES as string[] }, doneAt: null },
-        { status: { in: FAILED_STATUSES as string[] } },
-      ],
-    },
-    select: { suggestionKey: true },
+    where: { suggestionKey: { in: [...new Set(keys)] }, answer: "yes" },
+    select: { suggestionKey: true, status: true, doneAt: true },
   });
-  return new Set(rows.map((r) => r.suggestionKey));
+  const byKey = new Map(rows.map((r) => [r.suggestionKey, r]));
+  return new Set(
+    alertKeys.filter((a) => {
+      const row = byKey.get(followUpKeyOf(a) ?? "");
+      if (!row) return false;
+      return a.startsWith("failed:")
+        ? FAILED_STATUSES.includes(row.status)
+        : OPEN_STATUSES.includes(row.status) && row.doneAt === null;
+    }),
+  );
 }
 
 // What was settled no longer reads as new on /jane: the person acted, said no, or the data did.

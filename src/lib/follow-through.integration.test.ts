@@ -178,11 +178,12 @@ describe.runIf(url)("following through on a Yes", { timeout: 120_000 }, () => {
         status: "open",
       },
     });
-    expect((await stillFollowingUp(userId, [key], { client })).has(key)).toBe(true);
+    const alertKey = `nudge:${key}:1`;
+    expect((await stillFollowingUp(userId, [alertKey], { client })).has(alertKey)).toBe(true);
 
     await markFollowUpDone(userId, key, { client, now: at(addDays(ANSWERED, 8)) });
 
-    expect((await stillFollowingUp(userId, [key], { client })).has(key)).toBe(false);
+    expect((await stillFollowingUp(userId, [alertKey], { client })).has(alertKey)).toBe(false);
     expect(await loadFollowUps(userId, { client, now: at(addDays(ANSWERED, 8)) })).toEqual([]);
     await closeAnsweredElsewhere(userId, { client, now: at(addDays(ANSWERED, 8)) });
     expect((await client.janeMessage.findUniqueOrThrow({ where: { id: message.id } })).status).toBe(
@@ -234,6 +235,9 @@ describe.runIf(url)("following through on a Yes", { timeout: 120_000 }, () => {
     expect(failed.failedAt).not.toBeNull();
 
     expect((await runFollowThrough(userId, { client, now: night })).cameBack).toBe(1);
+    // A nudge from before it failed stops being news; the failure is what's said now.
+    const held = await stillFollowingUp(userId, [`nudge:${key}:1`, `failed:${key}:1`], { client });
+    expect([...held]).toEqual([`failed:${key}:1`]);
     const [alert] = (await alertsOf(userId)).filter((a) => a.key.startsWith("failed:"));
     expect(alert.key).toBe(`failed:${key}:1`);
     expect(alert.body).toContain("Still charged: $17.99 on Jun 20");

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  STATEMENT_ASK_AFTER_UPLOAD_DAYS,
   STATEMENT_ASK_GRACE_DAYS,
   STATEMENT_ASK_MAX_CYCLES,
   STATEMENT_CYCLE_DAYS,
@@ -45,6 +46,20 @@ describe("statementAsk", () => {
       statementAsk(one(addDays(dueOn, STATEMENT_CYCLE_DAYS)), addDays(dueOn, STATEMENT_CYCLE_DAYS))!
         .key,
     ).not.toBe(ask.key);
+  });
+
+  it("waits a while after an upload, even of an old file, though the run says it's old", () => {
+    const file = (uploadedOn: string) =>
+      freshnessOf([{ id: "a", name: "Chase", coveredThrough: ends, uploadedOn }], {
+        hasBank: false,
+        asOf: dueOn,
+      });
+    const justNow = file(addDays(dueOn, 1 - STATEMENT_ASK_AFTER_UPLOAD_DAYS));
+    expect(statementAsk(justNow, dueOn)).toBeNull();
+    expect(oldDataLine(justNow)).toContain("only had old data");
+    expect(
+      statementAsk(file(addDays(dueOn, -STATEMENT_ASK_AFTER_UPLOAD_DAYS)), dueOn),
+    ).not.toBeNull();
   });
 
   it("stops asking someone who stopped uploading", () => {

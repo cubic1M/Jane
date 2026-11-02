@@ -46,8 +46,19 @@ export async function loadFreshness(
     },
     { client, now },
   );
+  const runs = await db.importRuns.findMany({
+    where: { kind: "upload", accountId: { in: uploaded.map((a) => a.id) } },
+    orderBy: { createdAt: "asc" },
+    select: { accountId: true, createdAt: true },
+  });
+  const uploadedOn = new Map(runs.map((r) => [r.accountId, isoDay(r.createdAt)]));
   return freshnessOf(
-    uploaded.map((a) => ({ id: a.id, name: a.name, coveredThrough: coverage[a.id] ?? null })),
+    uploaded.map((a) => ({
+      id: a.id,
+      name: a.name,
+      coveredThrough: coverage[a.id] ?? null,
+      uploadedOn: uploadedOn.get(a.id) ?? null,
+    })),
     { hasBank, asOf },
   );
 }

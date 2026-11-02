@@ -200,3 +200,6 @@ export const STALE_UPLOAD_DAYS = 45;
 export const STATEMENT_CYCLE_DAYS = 30;
 export const STATEMENT_ASK_GRACE_DAYS = 3;
 export const STATEMENT_ASK_MAX_CYCLES = 3;
+// Not this soon after an upload: they just gave what they had, even if it was an old file (the
+// nightly run still says the data is old).
+export const STATEMENT_ASK_AFTER_UPLOAD_DAYS = 7;

@@ -1,4 +1,5 @@
 import {
+  STATEMENT_ASK_AFTER_UPLOAD_DAYS,
   STATEMENT_ASK_GRACE_DAYS,
   STATEMENT_ASK_MAX_CYCLES,
   STATEMENT_CYCLE_DAYS,
@@ -11,15 +12,21 @@ import { dayLabel } from "@/lib/day-label";
 // only accounts with no link count. For the ask when a cycle ends, and for the nightly run saying
 // plainly when it only has old data.
 
-export type UploadedAccount = { id: string; name: string; coveredThrough: string | null };
+export type UploadedAccount = {
+  id: string;
+  name: string;
+  coveredThrough: string | null;
+  // The day of its latest upload, when known.
+  uploadedOn?: string | null;
+};
 
 export type Freshness = {
   // Accounts with uploaded data.
-  uploaded: { id: string; name: string; coveredThrough: string }[];
+  uploaded: { id: string; name: string; coveredThrough: string; uploadedOn?: string | null }[];
   // No bank link at all: everything Jane knows came from files.
   uploadOnly: boolean;
   // Those with a new statement ready, oldest first.
-  due: { id: string; name: string; coveredThrough: string }[];
+  due: { id: string; name: string; coveredThrough: string; uploadedOn?: string | null }[];
   // The newest day any uploaded statement reaches, or null with none.
   newest: string | null;
 };
@@ -35,7 +42,7 @@ export function freshnessOf(
   { hasBank, asOf }: { hasBank: boolean; asOf: string },
 ): Freshness {
   const uploaded = accounts.flatMap((a) =>
-    a.coveredThrough ? [{ id: a.id, name: a.name, coveredThrough: a.coveredThrough }] : [],
+    a.coveredThrough ? [{ ...a, coveredThrough: a.coveredThrough }] : [],
   );
   const due = uploaded
     .filter((a) => isDue(a.coveredThrough, asOf))
@@ -53,12 +60,15 @@ export type StatementAsk = { key: string; title: string; body: string; dueDays: 
 // Null when nothing is due, or after STATEMENT_ASK_MAX_CYCLES (someone who stopped uploading isn't
 // asked forever; the nightly run still says the data is old).
 export function statementAsk(freshness: Freshness, asOf: string): StatementAsk | null {
-  if (freshness.due.length === 0) return null;
-  const newestDue = freshness.due.at(-1)!.coveredThrough;
+  const due = freshness.due.filter(
+    (a) => !a.uploadedOn || daysBetween(a.uploadedOn, asOf) >= STATEMENT_ASK_AFTER_UPLOAD_DAYS,
+  );
+  if (due.length === 0) return null;
+  const newestDue = due.at(-1)!.coveredThrough;
   const late = daysBetween(newestDue, asOf) - STATEMENT_ASK_GRACE_DAYS;
   const cycle = Math.floor(late / STATEMENT_CYCLE_DAYS);
   if (cycle > STATEMENT_ASK_MAX_CYCLES) return null;
-  const names = freshness.due.map((a) => a.name);
+  const names = due.map((a) => a.name);
   const those =
     names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
   const day = dayLabel(newestDue);
@@ -69,7 +79,7 @@ export function statementAsk(freshness: Freshness, asOf: string): StatementAsk |
         ? `A new statement for ${those} should be ready`
         : `New statements for ${those} should be ready`,
     body: `What I have ends ${day}, so I can't check anything after it. Upload the new one and I'll pick up from there.`,
-    dueDays: freshness.due.map((a) => a.coveredThrough),
+    dueDays: due.map((a) => a.coveredThrough),
   };
 }
 
