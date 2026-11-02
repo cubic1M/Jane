@@ -165,7 +165,14 @@ describe("the gap a yes opens, and how Jane asks", () => {
   });
   it("asks each as one question with what it saw", () => {
     expect(riskQuestion(risk({}))).toBe(
-      "Are you driving for Uber? I saw $412.00 come in from Uber Driver on Oct 7. A personal car policy may not cover you while you drive for pay.",
+      "Are you driving for Uber? I saw $412.00 come in from Uber on Oct 7. A personal car policy may not cover you while you drive for pay.",
+    );
+    // Debugger 11-02: "Are you driving for Lyft Inc Driver Pay? I saw $276.89 come in from Lyft Inc
+    // Driver Pay on Oct 25."
+    const lyft = riskQuestion(risk({ merchant: "Lyft Inc Driver Pay" }));
+    expect(lyft).toMatch(/^Are you driving for Lyft\? I saw .* come in from Lyft on /);
+    expect(riskQuestion(risk({ merchant: "Uber Technologies Payout" }))).toMatch(
+      /^Are you driving for Uber Technologies\? I saw .* from Uber Technologies on /,
     );
     expect(riskQuestion(risk({ kind: "new_dog", merchant: "VCA", amountCents: 18_400 }))).toMatch(
       /^Did you get a dog, or another pet\? I saw \$184\.00 went to VCA on Oct 7\./,

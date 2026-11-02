@@ -69,6 +69,26 @@ describe("subscription_review", () => {
     expect(finding.title).toBe("Review your Etsy Plus subscription");
   });
 
+  // Debugger 11-02: "MISTER CAR WASH UNLIMITED" at $39.99 every month, $480 a year, wasn't raised,
+  // its category being automotive. One price every month there is a plan; visits at their own
+  // prices aren't.
+  it("finds a monthly plan at a car wash, and not visits at their own prices", () => {
+    const wash = {
+      description: "MISTER CAR WASH UNLIMITED",
+      pfcPrimary: "GENERAL_SERVICES",
+      pfcDetailed: "GENERAL_SERVICES_AUTOMOTIVE",
+    };
+    const [plan] = run(input({ transactions: monthly(4, 3999, wash) }));
+    expect(plan).toMatchObject({ annualSavingsCents: 3999 * 12, confidence: "low" });
+    const visits = [1200, 1800, 900, 2400].flatMap((cents, i) =>
+      monthly(1, cents, { ...wash, description: "JIFFY LUBE" }).map((t) => ({
+        ...t,
+        date: monthsAgo(i + 1),
+      })),
+    );
+    expect(run(input({ transactions: visits }))).toEqual([]);
+  });
+
   // CSV bench, second tuning set: one plan with most of the charges doesn't hide the other.
   it("keeps both plans when one of them has most of the charges", () => {
     const google = { description: "GOOGLE *GOOGLE ONE", pfcPrimary: null, pfcDetailed: null };
