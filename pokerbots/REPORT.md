@@ -986,7 +986,7 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   - Heads-up ranges off: +0.3 / +0.5 / +0.3 on Omaha 4 / PLO5 / short deck (noise).
   - `icm_call` off: +0.2 / −2.3 / −1.3 (exact ICM leans helpful).
   - Nothing significant, so no gating needed. The discard presets were the exception, handled by `icm_any`'s own defaults.
-* **Bug hunter:** 349k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
+* **Bug hunter:** 385k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
   - looser calls (a raiser = 3.2 hands, a 3% margin);
