@@ -51,6 +51,8 @@ PARAMS = dict(
     pf_file="",          #    chart file cache/sng/pushfold_<pf_file>.json ("" = equilibrium for the payouts)
     cap_risk=0.0,        # near the hand cap: risk premium + cap_risk x (my stack / average - 1)
     cap_window=25,
+    cbet_size=0.5,       # flop continuation bet, x pot
+    bluff_size=0.5,      # read-based bluff bet, x pot
     hu_risk=1.0,         # risk premium x this with 2 players left (heads-up ICM is linear in chips)
     cap_fade=0,          # > 0: risk premium x min(1, hands_left / cap_fade) (the cap pays ICM of the stacks)
     risk_payout=1,       # 1: scale `risk` by the payout shape: x min(1, flatness / 0.5), where flatness =
@@ -512,9 +514,9 @@ class IcmTag:
             return RaiseTo(lg.clamp(frac * pot))
         if (k == 1 and self.aggressor == obs.seat and lg.can_raise
                 and self.rng.random() < p["cbet"] and obs.street == 1):
-            return RaiseTo(lg.clamp(0.5 * pot))
+            return RaiseTo(lg.clamp(p["cbet_size"] * pot))
         if p["bluff_bonus"] > 0 and lg.can_raise and 1 <= k <= p["bluff_max_opp"]:
             fr = (sum(self.pf_fold[s] for s in opp) + 1.0) / (sum(self.pf_faced[s] for s in opp) + 2.0)
             if self.rng.random() < p["bluff_bonus"] * max(0.0, 2 * fr - 1):
-                return RaiseTo(lg.clamp(0.5 * pot))
+                return RaiseTo(lg.clamp(p["bluff_size"] * pot))
         return Check()
