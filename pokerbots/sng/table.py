@@ -383,9 +383,14 @@ class Hand:
             if len(self._contending()) <= 1:
                 break
             for rule in self.spec.discards_on_street(st):
-                self.discard_round(rule, decide, players_left)
+                if not rule.after_betting:
+                    self.discard_round(rule, decide, players_left)
+            after = [r for r in self.spec.discards_on_street(st) if r.after_betting]
             if sum(self._live(j) for j in self._contending()) >= 1:
                 self.betting_round(decide, players_left)
+            if after and len(self._contending()) > 1:
+                for rule in after:
+                    self.discard_round(rule, decide, players_left)
         return self.award()
 
 

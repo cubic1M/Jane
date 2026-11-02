@@ -38,6 +38,9 @@ class DiscardRule:
     # variable discards: a player may discard any number from min_count to count
     # (-1 = exactly count)
     min_count: int = -1
+    # after_betting: the discard/draw happens after this street's betting round (before the
+    # next street's cards), instead of before it
+    after_betting: bool = False
 
 
 @dataclass(frozen=True)

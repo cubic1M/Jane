@@ -27,11 +27,12 @@ from engine.cards import parse_card as _pc
 from engine.spec import DiscardRule as _DR, GameSpec as _GS
 from sng.ours.anyvar import IcmAny as _IcmAny
 
-# our model of the kit's variant: sng/presets.py "draw_holdem" (same card signature, so
-# the same cache/sng/any_<sig>.json strength table)
+# our model of the kit's variant: sng/presets.py "draw_after_flop" (the 0-1 draw comes AFTER the
+# flop betting; same card signature, so the same cache/sng/any_<sig>.json strength table)
 _SPEC = _GS(name="kit2_draw_holdem", starting_stack=2000, small_blind=10, big_blind=20,
             stack_reset_per_hand=False,
-            discards=(_DR(street=1, count=1, to_board=False, face_up=False, draw=True, min_count=0),))
+            discards=(_DR(street=1, count=1, to_board=False, face_up=False, draw=True, min_count=0,
+                          after_betting=True),))
 _STREET = {"preflop": 0, "flop": 1, "draw": 1, "turn": 2, "river": 3}
 _PAYOUTS = (350, 220, 150, 100, 75, 50, 35, 20)     # kit lists 1st place first
 INVARIANTS = False        # True: check every observation (tests / the invariant run)

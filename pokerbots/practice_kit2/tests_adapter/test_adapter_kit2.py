@@ -58,12 +58,12 @@ class Cards(unittest.TestCase):
         kit = [r + s for r in ("2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A") for s in "CDHS"]
         self.assertEqual(sorted(m.kit_card(c) for c in kit), list(range(52)))
 
-    def test_spec_matches_draw_holdem_preset_and_table(self):
+    def test_spec_matches_draw_after_flop_preset_and_table(self):
         from sng.ours import features as F
         from sng.ours.anyvar import table_path
         from sng.presets import PRESETS
         m = load_adapter()
-        self.assertEqual(F.card_signature(m._SPEC), F.card_signature(PRESETS["draw_holdem"]["spec"]))
+        self.assertEqual(F.card_signature(m._SPEC), F.card_signature(PRESETS["draw_after_flop"]["spec"]))
         self.assertTrue(table_path(m._SPEC).exists())
 
 

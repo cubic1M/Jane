@@ -162,6 +162,24 @@ class TestDiscards(unittest.TestCase):
             self.assertFalse(set(own[j]) & set(h.hole[j]))         # never your own discards back
         self.assertEqual(sum(h.stack), 16000)
 
+    def test_after_betting_draw_happens_after_the_streets_betting(self):
+        spec = DRAW_HOLDEM.with_(discards=(DiscardRule(street=1, count=1, to_board=False, face_up=False,
+                                                        draw=True, min_count=0, after_betting=True),))
+        r = SngRules(spec=spec, num_players=3, payouts=(3, 2, 1), enforce_time=False)
+        h = Hand(r, [2000] * 3, button=0, hand_number=0, deck=list(spec.deck))
+        seq = []
+
+        def decide(j, o, lg):
+            seq.append((o.street, o.phase))
+            if lg.discard_count:
+                return Discard(o.hole[:1])
+            return lg.passive()
+        h.play(decide, 3)
+        flop = [p for st, p in seq if st == 1]
+        self.assertEqual(flop[:3], ["bet", "bet", "bet"])          # flop betting first ...
+        self.assertEqual(flop[3:], ["discard"] * 3)               # ... then the draw
+        self.assertEqual(sum(h.stack), 6000)
+
     def test_deck_capacity(self):
         big = GameSpec(name="t_big", hole_cards=7, board_cards_per_street=(0, 0), **BASE)
         with self.assertRaises(ValueError):

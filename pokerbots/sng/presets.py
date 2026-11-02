@@ -21,6 +21,11 @@ PRESETS = {
                                       stack_reset_per_hand=False,
                                       discards=(DiscardRule(street=1, count=1, to_board=False, face_up=False,
                                                             draw=True, min_count=0),))),
+    # practice-kit-2 style: the 0-1 card draw happens AFTER the flop betting
+    "draw_after_flop": dict(spec=GameSpec(name="t_draw_after_flop", starting_stack=2000, small_blind=10,
+                                          big_blind=20, stack_reset_per_hand=False,
+                                          discards=(DiscardRule(street=1, count=1, to_board=False, face_up=False,
+                                                                draw=True, min_count=0, after_betting=True),))),
     "five_draw": dict(spec=GameSpec(name="t_five_draw", hole_cards=5, board_cards_per_street=(0, 0),
                                     starting_stack=2000, small_blind=10, big_blind=20, stack_reset_per_hand=False,
                                     discards=(DiscardRule(street=1, count=3, to_board=False, face_up=False,

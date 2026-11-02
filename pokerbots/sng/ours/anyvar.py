@@ -193,6 +193,10 @@ def build(spec, seconds=120.0, seed=0, players=8):
             if st > 0:
                 board += stub[:streets[st]]
                 stub = stub[streets[st]:]
+            if st > 0 and any(r.after_betting for r in spec.discards_on_street(st)):
+                # this street's betting happens BEFORE its draw: key the street on the pre-draw hand
+                for i in range(players):
+                    keys[i].append(post_key(ctx, holes[i], board, st))
             for rule in spec.discards_on_street(st):
                 lo = rule.count if rule.min_count < 0 else rule.min_count
                 for i in range(players):
@@ -211,7 +215,7 @@ def build(spec, seconds=120.0, seed=0, players=8):
                     if not rule.to_board:
                         muck += out
                     holes[i] = kept
-            if st > 0:
+            if st > 0 and not any(r.after_betting for r in spec.discards_on_street(st)):
                 for i in range(players):
                     keys[i].append(post_key(ctx, holes[i], board, st))
         scores = [int(ev.evaluate(list(holes[i]), list(board))) for i in range(players)]
