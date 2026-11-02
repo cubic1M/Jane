@@ -296,6 +296,33 @@ class TestIcmTag(unittest.TestCase):
         b.new_table(Rules, 0, 1)
         self.assertEqual(b.risk_scale, 1.0)
 
+    def test_heads_up_switches_only_on_heads_up_tables(self):
+        """hu_open_mult opens wider heads-up, and never changes 8-handed play."""
+        from sng.registry import make as mk
+        r2 = SngRules(enforce_time=False, num_players=2, payouts=(100, 0), max_hands=80)
+        r8 = SngRules(enforce_time=False, max_hands=40)
+        def opens(bot_name, rules, seed):
+            b = mk(bot_name)
+            others = [mk("station") for _ in range(rules.num_players - 1)]
+            log = []
+            class Spy:
+                def __init__(s, inner): s.inner = inner
+                def new_table(s, *a): s.inner.new_table(*a)
+                def end_hand(s, i): s.inner.end_hand(i)
+                def act(s, obs):
+                    a = s.inner.act(obs)
+                    log.append(type(a).__name__)
+                    return a
+            res = play_table([Spy(b)] + others, rules, seed=seed)
+            return log, res
+        base2, _ = opens("icm_tag", r2, 3)
+        wide2, res = opens("icm_tag:hu_open_mult=0.8;hu_range_k=2.0", r2, 3)
+        self.assertEqual(res.stats[0].errors + res.stats[0].illegal, 0)
+        self.assertNotEqual(base2, wide2)
+        base8, _ = opens("icm_tag", r8, 3)
+        same8, _ = opens("icm_tag:hu_open_mult=0.8;hu_range_k=2.0", r8, 3)
+        self.assertEqual(base8[:150], same8[:150])            # no change until the table is heads-up
+
 
 if __name__ == "__main__":
     unittest.main()

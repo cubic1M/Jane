@@ -51,6 +51,8 @@ PARAMS = dict(
     cap_window=25,
     risk_payout=1,       # 1: scale `risk` by the payout shape: x min(1, flatness / 0.5), where flatness =
                          #   1 - (1st's share of the points); winner-take-all -> 0, top-3 50/30/20 -> 1
+    hu_open_mult=0.0,    # heads-up hands (2 players dealt in): open_mult instead of this (0 = off)
+    hu_range_k=0.0,      # heads-up hands: a raiser's range_k (before the read) instead of this (0 = off)
     rk_floor=1.2,        # facing a raise: the raiser counts as at least this many random hands
     agg_alpha=0.0,       # postflop: discount a bet less from seats that bet often when checked to:
                          #   discount -> discount + (1 - discount) x agg_alpha x excess aggression
@@ -245,10 +247,12 @@ class IcmTag:
             a = self.chart.decide(obs, raises, eff_bb)
             if a is not None:
                 return a
+        hu = sum(1 for sv in seats if sv.in_hand) == 2           # a heads-up table, not a folded-to-2 pot
         if not raises:
             k = max(1, len(behind))
             limpers = sum(1 for h in obs.history if h[1] == 0 and h[2] == "call")
-            bar = p["open_mult"] / (k + 1 + limpers)
+            om = p["hu_open_mult"] if hu and p["hu_open_mult"] > 0 else p["open_mult"]
+            bar = om / (k + 1 + limpers)
             # steal wider vs blinds that fold
             if not limpers and len(behind) <= p["steal_max_behind"]:
                 blinds = [s for s in (obs.sb_seat, obs.bb_seat) if s != obs.seat]   # never my own read
@@ -277,7 +281,7 @@ class IcmTag:
             return lg.passive() if lg.can_check else Fold()
         # facing a raise
         others = len(in_pot)
-        rk = p["range_k"]
+        rk = p["hu_range_k"] if hu and p["hu_range_k"] > 0 else p["range_k"]
         if p["read_alpha"] > 0:
             r = raises[-1][0]
             pfr = (self.pre_raises[r] + p["base_pfr"] * 8) / (self.dealt[r] + 8)   # shrink to the prior
