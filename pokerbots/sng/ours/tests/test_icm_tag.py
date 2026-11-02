@@ -348,6 +348,27 @@ class TestIcmTag(unittest.TestCase):
                 ts = sorted(st.times)
                 self.assertLess(ts[len(ts) // 2], 0.2e-3)
 
+    def test_heads_up_and_cap_risk_scaling(self):
+        """hu_risk scales the premium with 2 players left; cap_fade shrinks it as the cap nears."""
+        from types import SimpleNamespace as NS
+        self.assertEqual((PARAMS["hu_risk"], PARAMS["cap_fade"]), (1.0, 0))
+        r = SngRules(enforce_time=False, payouts=(50, 30, 20, 0, 0, 0, 0, 0))
+
+        def risk(left, hl, **kw):
+            b = IcmTag(**kw)
+            b.new_table(r, 0, 0)
+            return b._risk(NS(players_left=left, hands_left=hl, seats=(), my_stack=0, seat=0))
+
+        base2, base4 = risk(2, 100), risk(4, 100)
+        self.assertGreater(base2, 0)
+        self.assertEqual(risk(2, 100, hu_risk=0), 0.0)
+        self.assertAlmostEqual(risk(2, 100, hu_risk=0.5), base2 / 2)
+        self.assertAlmostEqual(risk(4, 100, hu_risk=0), base4)          # only heads-up
+        self.assertAlmostEqual(risk(4, 100, cap_fade=50), base4)        # far from the cap: unchanged
+        self.assertAlmostEqual(risk(4, 10, cap_fade=50), base4 * 0.2)
+        self.assertEqual(risk(4, 0, cap_fade=50), 0.0)                  # the last hand
+        self.assertEqual(risk(4, None, cap_fade=50), base4)             # a kit without hands_left
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -51,6 +51,8 @@ PARAMS = dict(
     pf_file="",          #    chart file cache/sng/pushfold_<pf_file>.json ("" = equilibrium for the payouts)
     cap_risk=0.0,        # near the hand cap: risk premium + cap_risk x (my stack / average - 1)
     cap_window=25,
+    hu_risk=1.0,         # risk premium x this with 2 players left (heads-up ICM is linear in chips)
+    cap_fade=0,          # > 0: risk premium x min(1, hands_left / cap_fade) (the cap pays ICM of the stacks)
     risk_payout=1,       # 1: scale `risk` by the payout shape: x min(1, flatness / 0.5), where flatness =
                          #   1 - (1st's share of the points); winner-take-all -> 0, top-3 50/30/20 -> 1
     hu_open_mult=0.6,    # heads-up tables (2 players dealt in): open_mult becomes this (0 = off)
@@ -219,6 +221,10 @@ class IcmTag:
             avg = sum(live) / len(live)
             mine = obs.my_stack + obs.seats[obs.seat].committed
             r += self.p["cap_risk"] * (mine / avg - 1.0)
+        if left == 2:
+            r *= self.p["hu_risk"]
+        if self.p["cap_fade"] > 0 and hl is not None:
+            r *= min(1.0, max(0, hl) / self.p["cap_fade"])
         return max(0.0, r)
 
     def _icm_need(self, obs, r):
