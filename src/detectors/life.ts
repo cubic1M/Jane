@@ -1,4 +1,5 @@
 import { DETECTOR_RATES as R } from "@/config/detectors";
+import { EARNER_ACTIVE_DAYS, SALARY_DEPOSITS_MIN } from "@/config/profile";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
@@ -8,6 +9,9 @@ import { evidence, factEvidence, headlineOf, tx, weakest } from "./helpers";
 
 // "MERIDIAN MEDICAL" as people say it: "Meridian Medical".
 const nice = (name: string) => name.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase());
+
+const daysBetween = (from: string, to: string) =>
+  (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000;
 
 const addDays = (day: string, days: number) =>
   new Date(Date.parse(`${day}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
@@ -122,4 +126,56 @@ const householdSetup: Detector = {
   },
 };
 
-export const LIFE_DETECTORS: readonly Detector[] = [lifeChecklist, householdSetup];
+// A paycheck that stopped, with no new one. The late-paycheck change only looks at the last few days,
+// so someone uploading months later heard nothing (debugger 11-02). It says what it can see and not
+// why: they may have left, retired or moved their pay to another bank.
+const payStopped: Detector = {
+  covers: [],
+  capability: "life_event",
+  topic: "pay_stopped",
+  needs: [],
+  detect({ profile, data }) {
+    const last = new Map<string, string>();
+    const paid = new Map<string, number>();
+    const pay = tx(data, (x) => x.amountCents < 0 && x.pfc === "INCOME_SALARY");
+    for (const t of pay) {
+      const name = t.description.replace(/\s+PAYROLL.*$/i, "").trim();
+      if ((last.get(name) ?? "") < t.date) last.set(name, t.date);
+      paid.set(name, (paid.get(name) ?? 0) + 1);
+    }
+    if (last.size === 0) return null;
+    const dataEnds = data.transactions.reduce((m, t) => (t.date > m ? t.date : m), "");
+    const stillPaidSince = addDays(dataEnds, -EARNER_ACTIVE_DAYS);
+    const [name, lastDay] = [...last].sort((a, b) => b[1].localeCompare(a[1]))[0];
+    if (lastDay > stillPaidSince || (paid.get(name) ?? 0) < SALARY_DEPOSITS_MIN) return null;
+    const now =
+      typeof profile.facts.monthly_income.value === "number"
+        ? profile.facts.monthly_income.value
+        : 0;
+    const paychecks = pay.filter((t) => t.description.startsWith(name));
+    const total = paychecks.reduce((s, t) => s - t.amountCents, 0);
+    const firstDay = paychecks.reduce((m, t) => (t.date < m ? t.date : m), lastDay);
+    const months = Math.max(1, daysBetween(firstDay, lastDay) / 30);
+    // The first to the last paycheck spans one gap fewer than there are paychecks.
+    const before = Math.round((total * (paychecks.length - 1)) / paychecks.length / months);
+    const less = Math.max(0, before - now);
+    return {
+      id: suggestionId("life_event", "pay_stopped"),
+      capability: "life_event",
+      topic: "pay_stopped",
+      title: `I don't see a paycheck from ${nice(name)} since ${dayLabel(lastDay)}`,
+      headline: headlineOf("Your pay looks like it stopped", less, "risk"),
+      short: `About ${formatCents(now)} a month is coming in now, about ${formatCents(less)} less.`,
+      worthCents: less,
+      worthKind: "risk",
+      confidence: evidence("seen", profile.months, paid.get(name) ?? 0, "paychecks"),
+      urgency: "now",
+      // A month's shortfall against a year's savings tip: as a year, so it comes first.
+      rankCents: less * 12,
+      why: `I don't see a paycheck from ${nice(name)} since ${dayLabel(lastDay)}, and about ${formatCents(now)} a month is coming in now. Your bills are all on Coming up, so you can see what can wait. If your pay moved to another bank, add that account and this goes away.`,
+      action: { label: "See what's coming up", href: "/bills" },
+    };
+  },
+};
+
+export const LIFE_DETECTORS: readonly Detector[] = [lifeChecklist, householdSetup, payStopped];
