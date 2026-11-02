@@ -996,7 +996,7 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   - Fresh seeds, 600 paired tables on field 2 / field 3 / all3-top3 / mirror / hackathon-like: `pev_risk=0` +0.9 / +0.7 / −0.6 / +0.4 / −0.5 (mean +0.2); `pev_risk=0.25` −0.6 / +0.5 / +0.1 / −1.0 / +1.1 (mean 0.0).
   - Same strength as the tuned fixed bar, so we keep the simpler rule; `pev` stays available to the day-of tuner.
   - So the field-2 tie with `f2_shark` does not come from short-stack shoving.
-* **Bug hunter:** 410k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
+* **Bug hunter:** 454k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
   - looser calls (a raiser = 3.2 hands, a 3% margin);
