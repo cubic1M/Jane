@@ -564,3 +564,114 @@ describe("a payee column beside a memo", () => {
     expect(noHeader.transactions[0].description).toBe("BRIGHTLINE INC");
   });
 });
+
+// Debugger 11-02: the first guess silently lost money. A person sees it to check, but nothing
+// says it's wrong: YNAB's Inflow was left out ($24,103 of pay read $0.00), a credit union's
+// Amount Credit too (8 paychecks skipped), and Rocket Money's rows were named "Checking".
+describe("the first guess, on layouts from budgeting apps and credit unions", () => {
+  const guessOf = (text: string) => mappingChoices(parseCsv(text)).guess;
+
+  it("takes Outflow and Inflow as money out and in (YNAB)", () => {
+    const guess = guessOf(
+      [
+        '"Account","Flag","Date","Payee","Category","Memo","Outflow","Inflow","Cleared"',
+        '"Checking","","10/28/2026","Maple Court","Rent","rent","$1,425.00","$0.00","Cleared"',
+        '"Checking","","10/17/2026","Northwind Labs","Pay","","$0.00","$2,610.25","Cleared"',
+      ].join("\n"),
+    );
+    expect(guess).toMatchObject({ date: 2, description: 3, amount: null, debit: 6, credit: 7 });
+    const result = readCsvFile({
+      name: "ynab.csv",
+      text: [
+        "Account,Date,Payee,Memo,Outflow,Inflow",
+        'Checking,10/28/2026,Maple Court,rent,"$1,425.00",$0.00',
+        "Checking,10/17/2026,Northwind Labs,,$0.00,$2610.25",
+      ].join("\n"),
+      mapping: {
+        hasHeader: true,
+        date: 1,
+        description: 2,
+        amount: { kind: "split", debit: 4, credit: 5 },
+      },
+    });
+    if (!result.ok) throw new Error(result.error);
+    expect(result.transactions.map((t) => [t.description, t.amountCents])).toEqual([
+      ["Maple Court rent", 142_500],
+      ["Northwind Labs", -261_025],
+    ]);
+  });
+
+  const creditUnion = [
+    "Transaction Number,Date,Description,Memo,Amount Debit,Amount Credit,Balance,Check Number,Fees",
+    "2026001,10/28/2026,Withdrawal ACH,MAPLE COURT APTS RENT,-1425.00,,3000.00,,0.00",
+    "2026002,10/17/2026,Deposit ACH,NORTHWIND LABS PAYROLL,,2610.25,4425.00,,0.00",
+    "2026003,10/11/2026,Withdrawal ACH,XCEL ENERGY PAYMENT,-92.40,,1814.75,,0.00",
+    "2026004,10/09/2026,Withdrawal ACH,STATE FARM INSURANCE,-141.50,,1907.15,,0.00",
+    "2026005,10/05/2026,Deposit ACH,NORTHWIND LABS PAYROLL,,2610.25,2048.65,,0.00",
+    "2026006,10/01/2026,Withdrawal ACH,CHASE CREDIT CRD EPAY,-600.00,,-561.60,,0.00",
+    "2026007,09/28/2026,Withdrawal ACH,ONLINE TRANSFER TO SAV,-200.00,,38.40,,0.00",
+  ].join("\n");
+
+  it("takes Amount Debit and Amount Credit as two columns, not one amount", () => {
+    expect(guessOf(creditUnion)).toMatchObject({ amount: null, debit: 4, credit: 5, balance: 6 });
+  });
+
+  it("reads the memo when the description only says Withdrawal or Deposit", () => {
+    expect(guessOf(creditUnion).description).toBe(3);
+  });
+
+  it("leaves a description that names things, beside a memo that does too", () => {
+    expect(
+      guessOf(
+        [
+          "Date,Description,Memo,Amount",
+          "10/28/2026,MAPLE COURT,a,-1.00",
+          "10/17/2026,NORTHWIND LABS,b,2.00",
+          "10/16/2026,XCEL ENERGY,c,-3.00",
+          "10/15/2026,STATE FARM,d,-4.00",
+        ].join("\n"),
+      ).description,
+    ).toBe(1);
+  });
+
+  it("doesn't name rows after the account (Rocket Money)", () => {
+    const guess = guessOf(
+      [
+        "Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note",
+        "2026-10-28,2026-10-28,Cash,Checking,8812,First Bank,Maple Court,,1425.00,ACH MAPLE COURT APTS RENT,Rent,",
+        "2026-10-27,2026-10-27,Credit Card,Visa,4411,First Bank,Netflix,,22.99,NETFLIX.COM,Fun,",
+      ].join("\n"),
+    );
+    expect(guess.description).toBe(9);
+    expect(guess.amount).toBe(8);
+  });
+
+  it("prefers the bank's own line to an app's tidied name (Monarch, Mint)", () => {
+    const monarch = guessOf(
+      [
+        "Date,Merchant,Category,Account,Original Statement,Notes,Amount,Tags",
+        "2026-10-17,Northwind Labs,Paychecks,Checking,NORTHWIND LABS PAYROLL PPD,,2610.25,",
+        "2026-10-05,Netflix,Fun,Visa,NETFLIX.COM,,-22.99,",
+      ].join("\n"),
+    );
+    expect(monarch.description).toBe(4);
+    const mint = guessOf(
+      [
+        "Date,Description,Original Description,Amount,Transaction Type,Category,Account Name,Labels,Notes",
+        "10/17/2026,Northwind Labs,NORTHWIND LABS PAYROLL,2610.25,credit,Paycheck,Checking,,",
+        "10/05/2026,Netflix,NETFLIX.COM,22.99,debit,Movies,Visa,,",
+      ].join("\n"),
+    );
+    expect(mint.description).toBe(2);
+  });
+
+  it("still prefers a payee to the memo that comes first in the file", () => {
+    expect(
+      guessOf(
+        ["Date,Memo,Payee,Amount", "10/17/2026,x,NORTHWIND,2.00", "10/16/2026,y,XCEL,-1.00"].join(
+          "\n",
+        ),
+      ).description,
+    ).toBe(2);
+  });
+});

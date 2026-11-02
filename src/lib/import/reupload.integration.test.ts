@@ -148,6 +148,95 @@ describe.runIf(url)("uploading a file again", { timeout: 60_000 }, () => {
     ).toMatchObject({ inserted: 0, corrected: 0, duplicates: 4 });
   });
 
+  // Debugger 11-02: YNAB read with Outflow alone stored all pay at $0.00. Those rows couldn't pair
+  // by amount, so a re-upload added them again beside the $0.00 ones, and the rent twice: 75 rows
+  // for 54, and $5,700 too much spending.
+  it("puts right rows stored at $0.00 with money that was never read: no duplicates", async () => {
+    const { db, userId, accountId } = await account();
+    const before = [
+      "Account,Date,Payee,Outflow,Inflow",
+      'Checking,10/28/2026,Maple Court,"$1,425.00",$0.00',
+      "Checking,10/22/2026,Chipotle,$0.00,$21.40",
+      "Checking,10/19/2026,Chipotle,$48.60,$0.00",
+      "Checking,10/17/2026,Northwind Labs,$0.00,$2610.25",
+      "Checking,10/03/2026,Northwind Labs,$0.00,$2610.25",
+    ].join("\n");
+    await importCsvFiles(db, accountId, [
+      {
+        name: "y.csv",
+        text: before,
+        mapping: {
+          hasHeader: true,
+          date: 1,
+          description: 2,
+          amount: { kind: "signed", column: 3, moneyOut: "positive" },
+        },
+      },
+    ]);
+    const stored = await rowsOf(userId);
+    expect(stored).toHaveLength(5);
+    expect(stored.filter((r) => r.amountCents === 0)).toHaveLength(3);
+
+    const now = [
+      "Account,Date,Payee,Memo,Outflow,Inflow",
+      'Checking,10/28/2026,Maple Court,rent,"$1,425.00",$0.00',
+      "Checking,10/22/2026,Chipotle,,$0.00,$21.40",
+      "Checking,10/19/2026,Chipotle,,$48.60,$0.00",
+      "Checking,10/17/2026,Northwind Labs,,$0.00,$2610.25",
+      "Checking,10/03/2026,Northwind Labs,,$0.00,$2610.25",
+    ].join("\n");
+    const split: ColumnMapping = {
+      hasHeader: true,
+      date: 1,
+      description: 2,
+      amount: { kind: "split", debit: 4, credit: 5 },
+    };
+    const again = await importCsvFiles(db, accountId, [
+      { name: "y.csv", text: now, mapping: split },
+    ]);
+    expect(again).toMatchObject({ inserted: 0 });
+    const after = await rowsOf(userId);
+    expect(after.map((r) => r.id).sort()).toEqual(stored.map((r) => r.id).sort());
+    expect(after.map((r) => r.amountCents)).toEqual([142_500, -2_140, 4_860, -261_025, -261_025]);
+    expect(after[0].description).toBe("Maple Court rent");
+    expect(
+      await importCsvFiles(db, accountId, [{ name: "y.csv", text: now, mapping: split }]),
+    ).toMatchObject({ inserted: 0, corrected: 0, duplicates: 5 });
+  });
+
+  it("doesn't take a new row for an old $0.00 row of another name", async () => {
+    const { db, userId, accountId } = await account();
+    const header = "Date,Payee,Outflow,Inflow";
+    await importCsvFiles(db, accountId, [
+      {
+        name: "z.csv",
+        text: [header, "10/22/2026,Pending Hold,$0.00,$5.00", "10/23/2026,Coffee,$4.00,$0.00"].join(
+          "\n",
+        ),
+        mapping: {
+          hasHeader: true,
+          date: 0,
+          description: 1,
+          amount: { kind: "signed", column: 2, moneyOut: "positive" },
+        },
+      },
+    ]);
+    const again = await importCsvFiles(db, accountId, [
+      {
+        name: "z.csv",
+        text: [header, "10/22/2026,Tea,$3.00,$0.00", "10/24/2026,Lunch,$9.00,$0.00"].join("\n"),
+        mapping: {
+          hasHeader: true,
+          date: 0,
+          description: 1,
+          amount: { kind: "signed", column: 2, moneyOut: "positive" },
+        },
+      },
+    ]);
+    expect(again).toMatchObject({ inserted: 2, corrected: 0 });
+    expect(await rowsOf(userId)).toHaveLength(4);
+  });
+
   it("keeps a person's own category when the rules would say otherwise", async () => {
     const { db, userId, accountId } = await account();
     const text = chase(

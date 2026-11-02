@@ -12,6 +12,9 @@ import { normalizeDescription } from "@/data-sources/merchant";
 // it. A row pairs with a stored row of that day and amount, sign aside, that the file doesn't have
 // and whose description is on none of the file's rows. Only when much of what's new pairs, as it
 // does when a whole file was misread: one new -$50 beside an old +$50 is two real transactions.
+//
+// A row stored at $0.00 had its money missed (debugger 11-02: YNAB read with Outflow alone), so it
+// pairs by day and words instead: the file has its description, with the amount at last.
 
 const CARD_PAYMENT = "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT";
 const USER = "user";
@@ -72,6 +75,11 @@ function sameRow(stored: StoredRow, row: IncomingRow): Correction | null {
   return Object.keys(data).length > 0 ? { id: stored.id, data } : null;
 }
 
+const pairsWith = (stored: StoredRow, row: IncomingRow) =>
+  stored.amountCents === 0
+    ? normalizeDescription(row.description).startsWith(normalizeDescription(stored.description))
+    : Math.abs(stored.amountCents) === Math.abs(row.amountCents);
+
 export function planCorrections(
   stored: readonly StoredRow[],
   incoming: readonly IncomingRow[],
@@ -87,14 +95,14 @@ export function planCorrections(
 
   const inFile = new Set(incoming.map((r) => normalizeDescription(r.description)));
   const unused = stored.filter(
-    (s) => !keys.has(s.dedupeKey ?? "") && !inFile.has(normalizeDescription(s.description)),
+    (s) =>
+      !keys.has(s.dedupeKey ?? "") &&
+      (s.amountCents === 0 || !inFile.has(normalizeDescription(s.description))),
   );
   const fresh = incoming.filter((r) => !byKey.has(r.externalId));
   const pairs: [StoredRow, IncomingRow][] = [];
   for (const row of fresh) {
-    const at = unused.findIndex(
-      (s) => s.date === row.date && Math.abs(s.amountCents) === Math.abs(row.amountCents),
-    );
+    const at = unused.findIndex((s) => s.date === row.date && pairsWith(s, row));
     if (at === -1) continue;
     pairs.push([unused[at], row]);
     unused.splice(at, 1);
