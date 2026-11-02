@@ -319,3 +319,4 @@
 {"kind": "slow", "seed": 187029, "variant": "a_nlhe100", "bot": "icm_tag", "p99_ms": 0.78, "over_1ms": 0, "decisions": 125, "t": "2026-11-02 04:03:28"}
 {"kind": "slow", "seed": 188989, "variant": "b_nlhe200", "bot": "icm_tag", "p99_ms": 0.805, "over_1ms": 1, "decisions": 102, "t": "2026-11-02 04:06:38"}
 {"kind": "slow", "seed": 189331, "variant": "P:discard_to_board", "bot": "icm_tag", "p99_ms": 1.296, "over_1ms": 2, "decisions": 113, "t": "2026-11-02 04:07:13"}
+{"kind": "slow", "seed": 189438, "variant": "P:draw_holdem", "bot": "icm_tag", "p99_ms": 1.244, "over_1ms": 2, "decisions": 144, "t": "2026-11-02 04:07:25"}
