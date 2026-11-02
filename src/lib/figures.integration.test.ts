@@ -88,6 +88,28 @@ describe.runIf(url)("every figure explained and correctable", { timeout: 120_000
     );
   });
 
+  // Debugger 11-02: "How I got this" showed "categories: TRANSFER_OUT, TRANSFER_IN,
+  // LOAN_DISBURSEMENTS", "in HOME_IMPROVEMENT, MEDICAL…", the spending rules on the income page, and
+  // dates like "due before 2026-11-03". The words people read have no codes and no ISO dates.
+  it("explains each figure in words, with no category codes or ISO dates", async () => {
+    const CODE = /\b[A-Z]{3,}_[A-Z_]+\b/;
+    const ISO = /\b\d{4}-\d{2}-\d{2}\b/;
+    for (const id of FIGURE_IDS) {
+      const w = (await explainFigure(userId, id, { client, now: NOW }))!;
+      const words = [
+        w.summary,
+        ...w.rows.flatMap((r) => [r.label, r.value, r.note ?? ""]),
+        ...w.rules.flatMap((r) => [r.label, r.value]),
+      ];
+      for (const text of words) {
+        expect(text, `${id}: ${text}`).not.toMatch(CODE);
+        expect(text, `${id}: ${text}`).not.toMatch(ISO);
+      }
+    }
+    const income = (await explainFigure(userId, "monthly_income", { client, now: NOW }))!;
+    expect(income.rules.map((r) => r.label).join(" ")).not.toMatch(/spending/i);
+  });
+
   it("a category fixed on a transaction changes the working and every figure that used it", async () => {
     const before = (await explainFigure(userId, "monthly_spending", { client, now: NOW }))!;
     const biggest = before.transactions[0];
