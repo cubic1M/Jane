@@ -55,7 +55,7 @@ const LOAN_PAYMENT_FORMS: readonly ["mortgage" | "student", string][] = [
 // Who sends the form, as a person reads it: without the bank's word for how the money came
 // (debugger 11-02: "1099-NEC or 1099-K from Stripe Transfer", "W-2 from Blue Bottle Coffee
 // Payroll"). For display only: forms are matched to documents and checks by `from` as it is.
-const HOW_IT_CAME = / (?:payroll|payouts?|transfers?|direct dep(?:osit)?|dir dep)$/i;
+const HOW_IT_CAME = / (?:payroll|payouts?|transfers?|direct dep(?:osit)?|dir dep|driver pay)$/i;
 export const formPayer = (name: string) => name.replace(HOW_IT_CAME, "").trim() || name;
 
 const PAYER_FORMS: readonly [IncomeKind, TaxFormKey][] = [

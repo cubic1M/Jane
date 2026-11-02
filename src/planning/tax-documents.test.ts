@@ -181,6 +181,9 @@ describe("who sends each form, as pages say it", () => {
     expect(formPayer("Stripe Transfer")).toBe("Stripe");
     expect(formPayer("Shopify Payouts")).toBe("Shopify");
     expect(formPayer("ACME CORP DIRECT DEP")).toBe("ACME CORP");
+    // Debugger 11-02: a driver's 1099s, "Uber Technologies Payout" and "Lyft Inc Driver Pay".
+    expect(formPayer("Uber Technologies Payout")).toBe("Uber Technologies");
+    expect(formPayer("Lyft Inc Driver Pay")).toBe("Lyft Inc");
     // A name that is only those words, or has them in the middle, stays as it is.
     expect(formPayer("Payroll")).toBe("Payroll");
     expect(formPayer("Transfer Wise Ltd")).toBe("Transfer Wise Ltd");

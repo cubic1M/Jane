@@ -109,11 +109,9 @@ test("the tax profile shows what Jane found and saves the person's answers", asy
   // Spec step 119: the forms to expect, ticked off from the page.
   await pickItem(page, "Taxes", "Records and forms", "Forms to expect");
   const forms = page.getByRole("region", { name: /Tax forms to expect/ });
-  await expect(forms.getByText("ACME CORP PAYROLL")).toBeVisible();
-  await forms.getByRole("button", { name: "I have it: W-2 from ACME CORP PAYROLL" }).click();
-  await expect(forms.getByRole("status").first()).toHaveText(
-    "Ticked off: W-2 from ACME CORP PAYROLL.",
-  );
+  await expect(forms.getByText("ACME CORP")).toBeVisible();
+  await forms.getByRole("button", { name: "I have it: W-2 from ACME CORP" }).click();
+  await expect(forms.getByRole("status").first()).toHaveText("Ticked off: W-2 from ACME CORP.");
 });
 
 test("tax tags: Jane's tags, its questions, and tagging a work expense", async ({
@@ -152,7 +150,7 @@ test("tax tags: Jane's tags, its questions, and tagging a work expense", async (
   await page.goto("/tax-pack");
   await expect(page.getByRole("region", { name: "Summary" })).toContainText("Work expenses");
   await expect(page.getByRole("region", { name: "Tax forms to expect" })).toContainText(
-    "W-2 from ACME CORP PAYROLL",
+    "W-2 from ACME CORP",
   );
   expect(await axe(page)).toEqual([]);
 });
