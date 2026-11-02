@@ -1575,7 +1575,7 @@ const RULES: readonly Rule[] = [
       "NICOR",
       "PEOPLES GAS",
       "WASHINGTON GAS",
-      "PUGET SOUND",
+      "PUGET SOUND ENERGY",
       "PSE",
       "PORTLAND GENERAL",
       "PACIFIC POWER",

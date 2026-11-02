@@ -1028,6 +1028,9 @@ export const ONE_OFF_NEVER_DETAILED: readonly string[] = [
 ];
 // Another charge from the same merchant of at least this share of the amount makes it recur.
 export const ONE_OFF_REPEAT_SHARE = 0.5;
+// A charge with no category can be a one-off only at this many usual months of spending: rent by check
+// has no category and a new name each month ("CHECK 1042"), so the usual floor would take it out.
+export const ONE_OFF_UNPLACED_MONTHS = 2;
 
 // --- Thin data -----------------------------------------------------------------------
 

@@ -242,3 +242,21 @@ describe("severance", () => {
     ).toBe("INCOME_OTHER");
   });
 });
+
+// Debugger 11-02: a car dealer's $8,000 down payment was gas and electricity, for "PUGET SOUND".
+describe("a name that starts like a utility's", () => {
+  it.each(["PUGET SOUND TOYOTA DOWN PMT", "PUGET SOUND BLOOD CENTER"])(
+    "%s isn't one",
+    (description) => {
+      expect(
+        categorizeByRules({ description, amountCents: 800_000, hints: {} })?.detailed,
+      ).not.toBe("RENT_AND_UTILITIES_GAS_AND_ELECTRICITY");
+    },
+  );
+
+  it.each(["PUGET SOUND ENERGY", "PUGET SOUND ENERGY BILL PAY"])("%s is", (description) => {
+    expect(categorizeByRules({ description, amountCents: 12_000, hints: {} })?.detailed).toBe(
+      "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY",
+    );
+  });
+});
