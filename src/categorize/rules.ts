@@ -172,6 +172,14 @@ const RULES: readonly Rule[] = [
       "CREDIT CARD PMT",
     ],
   },
+  // Store cards name the shop, so "AMAZON" further down would call paying one shopping (debugger
+  // 11-02: $1,200 on top of the card's own purchases). The lender's name plus a payment word, as a
+  // lender's name alone can be a savings account (Synchrony).
+  {
+    category: "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
+    pattern:
+      /(?<![A-Z0-9])(?:SYNCHRONY|SYNCB|SYF|COMENITY|CBNA|STORECRD|STORE CARD|TARGET CARD|CREDIT SERVICES)(?![A-Z0-9]).*(?<![A-Z0-9])(?:PAYMENT|PAYMNT|PYMT|PMT)(?![A-Z0-9])/,
+  },
   // The card's own side, as the card companies write a payment received (CSV bench: Capital
   // One's "MOBILE PYMT", Bank of America's "BA ELECTRONIC PAYMENT", Citi's "AUTOPAY …
   // AUTO-PMT", Discover's "DIRECTPAY FULL BALANCE", Chase's "AUTOMATIC PAYMENT - THANK", cut
