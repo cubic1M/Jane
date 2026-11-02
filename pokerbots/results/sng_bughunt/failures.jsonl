@@ -286,3 +286,6 @@
 {"kind": "slow", "seed": 132329, "variant": "demo_nlhe_scaled", "bot": "icm_any", "p99_ms": 3.062, "over_1ms": 2, "decisions": 126, "t": "2026-11-02 02:36:12"}
 {"kind": "slow", "seed": 133235, "variant": "P:five_draw", "bot": "icm_any", "p99_ms": 0.248, "over_1ms": 2, "decisions": 252, "t": "2026-11-02 02:37:47"}
 {"kind": "slow", "seed": 135328, "variant": "h_plo5", "bot": "icm_any", "p99_ms": 1.602, "over_1ms": 2, "decisions": 111, "t": "2026-11-02 02:41:17"}
+{"kind": "slow", "seed": 139297, "variant": "P:omaha_discard2", "bot": "icm_lite", "p99_ms": 1.626, "over_1ms": 2, "decisions": 162, "t": "2026-11-02 02:47:41"}
+{"kind": "slow", "seed": 139793, "variant": "j_3street", "bot": "icm_tag", "p99_ms": 0.131, "over_1ms": 2, "decisions": 326, "t": "2026-11-02 02:48:28"}
+{"kind": "slow", "seed": 142003, "variant": "m_nlhe150", "bot": "icm_tag", "p99_ms": 1.211, "over_1ms": 2, "decisions": 146, "t": "2026-11-02 02:52:02"}

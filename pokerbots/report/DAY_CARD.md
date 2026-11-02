@@ -37,7 +37,21 @@ Fill in each line:
    - in the adapter, answer discard requests with the bot's `Discard(cards)`.
    Four shapes are prebuilt: discard to the board, face-down discards, hold'em with a 0–1 draw, five-card draw.
 3. Adapter: copy `rehearsal_sng/adapter.py`, then map their Observation and Action.
-4. Bundle: `python3 -m sng.bundle --adapter adapter.py --variant <table> --out submission/bot.py`.
+4. Bundle. **Read the submission rules first:**
+   - banned builtins (`exec`, `compile`, `setattr`, `eval`, `open`)?
+   - an import whitelist?
+   - a file-size cap?
+
+   - Permissive kit: `python3 -m sng.bundle --adapter adapter.py --variant <table> --out submission/bot.py`.
+   - **Restrictive kit** (like practice kit 2: no exec, whitelisted imports, 100 KB):
+     `python3 -m sng.bundle_flat --adapter adapter.py --any-table <table.json> --out submission.py`
+     (no exec, allowed imports only, only reachable code, about 60 KB).
+   - Templates: `rehearsal_sng/adapter.py` (Agent class, raise-to) and
+     `practice_kit2/adapter_kit2.py` (module functions, raise-by, seats renumbered every hand,
+     handled with a stable-identity ring; draw protocol).
+   - **Always run the kit's local runner, not only its checker.** A file can pass the checker and
+     still crash at load: `@dataclass` + `from __future__ import annotations` fails when the kit
+     loads the module unregistered. The bot then folds every table.
 5. Prove it, all three required:
    - their runner on the bundle: 0 errors;
    - the invariant wrapper (`check_bot.py` pattern): 0 violations;
@@ -68,6 +82,9 @@ Fill in each line:
 | timing counts first-call setup and GC | load tables at import / `__init__`; `gc.freeze()` |
 | **our bundle's module names vs theirs** (the kit's `engine.py`!) | the bundle uses the private `_nlb` package (tested) |
 | unseeded randomness makes A/B on "same seeds" lie | seed everything; raise the time limit for A/B |
+| seats renumbered every hand (button = 0, close up after knockouts) | stable-identity ring keyed from my seat; remove `knocked_out_seats` |
+| submission rules ban exec / imports / size | `sng/bundle_flat.py`; check the rules before bundling |
+| a file passes the checker but crashes at load | run the kit's runner; no `__future__` annotations with dataclasses |
 
 ## Rules of thumb that held on every field we tested
 
