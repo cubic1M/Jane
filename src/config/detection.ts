@@ -540,6 +540,14 @@ export const FORECAST_DAYS = 31;
 // an older one isn't (its statements describe then, src/app/report/state.ts).
 export const BALANCE_ROLL_MAX_DAYS = 35;
 // A checking account forecast to dip below this before more income arrives is a risk.
+// A deposit this big from a name that sounds like a cafe or a salon is a client paying, not a
+// refund: nothing bought there costs that much (src/categorize/rules.ts).
+export const NOT_A_REFUND_MIN_CENTS = 50_000;
+export const NOT_A_REFUND_PRIMARIES: readonly string[] = [
+  "FOOD_AND_DRINK",
+  "PERSONAL_CARE",
+  "ENTERTAINMENT",
+];
 export const LOW_BALANCE_CUSHION_CENTS = 10_000;
 // Pay at uneven times has no date to forecast (src/detection/forecast.ts, unevenPay): at least this
 // many deposits and this much a month, over the last this many days, with no payday expected.
