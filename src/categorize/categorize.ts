@@ -1,3 +1,4 @@
+import { NOT_A_REFUND_MIN_CENTS } from "@/config/detection";
 import { classifyMerchants } from "./llm";
 import { categorizeByRules, payoutByRules } from "./rules";
 import { categoryOf, type Category } from "./taxonomy";
@@ -88,6 +89,9 @@ export async function categorizeTransactions<T extends NormalizedTransaction>(
 
   return results.map((result) => {
     if (result.category) return result;
+    // Claude's answer is what a typical purchase there is. A big deposit isn't a refund of one: it's
+    // a client paying, and money in with no category doesn't net against spending (debugger 11-02).
+    if (result.amountCents <= -NOT_A_REFUND_MIN_CENTS) return result;
     const key = merchantKeyOf(result);
     const category = key ? known.get(key) : undefined;
     return category ? { ...result, category, categorySource: "llm" } : result;
