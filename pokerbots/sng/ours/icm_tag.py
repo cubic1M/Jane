@@ -17,6 +17,7 @@ from __future__ import annotations
 import bisect
 import math
 import random
+from itertools import combinations
 
 from engine.game import Call, Check, Fold, RaiseTo
 from sng.ours.icm_exact import allin_call_need       # imported here: never inside a timed decision
@@ -129,7 +130,6 @@ def hand_pct_table(spec, S):
     key = (tuple(spec.deck_ranks), getattr(spec, "category_order", None), getattr(spec, "ace_low_straight", None))
     t = _PCT.get(key)
     if t is None:
-        from itertools import combinations
         deck = spec.deck                      # a property
         t = _PCT[key] = sorted(S.equity(h, (), 1, spec) for h in combinations(deck, 2))
     return t
