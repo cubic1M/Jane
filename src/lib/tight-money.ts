@@ -6,7 +6,7 @@ import {
 } from "@/config/tight-money";
 import { FORECAST_DAYS } from "@/config/detection";
 import { loadDetectionInput } from "@/detection/engine";
-import { forecastAccounts, upcomingBills } from "@/detection/forecast";
+import { forecastAccounts, comingUpBills } from "@/detection/forecast";
 import { nextPayday } from "@/detection/paydays";
 import type { DetectionInput } from "@/detection/types";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -121,7 +121,8 @@ export async function loadTightMoney(
   const payday = nextPayday(input, FORECAST_DAYS);
   // The bills to get through: from today to the shortfall or the next payday, whichever is later.
   const until = payday && payday.date > shortfall.date ? payday.date : shortfall.date;
-  const bills = upcomingBills(input, FORECAST_DAYS)
+  // As the forecast has them, so a shortfall from a rare bill lists that bill.
+  const bills = comingUpBills(input, FORECAST_DAYS)
     .filter((b) => b.accountId === forecast.accountId && b.date <= until)
     .map((b) => ({ payee: b.merchant, date: b.date, amountCents: b.amountCents }));
   const debts: TightDebt[] = book.debts.flatMap((d) =>

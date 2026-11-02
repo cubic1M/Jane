@@ -13,6 +13,7 @@ import {
 } from "./__fixtures__/build";
 import {
   billName,
+  comingUpBills,
   expectedDates,
   forecastAccounts,
   incomeStreams,
@@ -498,5 +499,62 @@ describe("upcomingBills, for buy now, pay later", () => {
     expect(bills.filter((b) => /klarna/i.test(b.merchant)).map((b) => b.date)).toEqual([
       "2026-10-22",
     ]);
+  });
+});
+
+// Debugger 11-02: /budgets knew a $2,210.50 property tax was due in 12 days, while /bills left it
+// out and said the lowest balance was $6,377.93, $2,210.50 too high. Two charges a year are too few
+// for the recurring check.
+describe("a bill that comes twice a year", () => {
+  const TAX = {
+    description: "MULTNOMAH COUNTY PROPERTY TAX",
+    merchantName: "Multnomah County Property Tax",
+    pfcPrimary: "GOVERNMENT_AND_NON_PROFIT",
+    pfcDetailed: "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
+    amountCents: 221_050,
+  };
+  // Due in about 12 days: six months and a year (less 12 days) ago.
+  const taxes = (first: number, second: number) => [
+    tx({ ...TAX, date: addDays(AS_OF, -first) }),
+    tx({ ...TAX, date: addDays(AS_OF, -second) }),
+  ];
+  const dueSoon = () => taxes(353, 170);
+  const account = { ...CHECKING, currentBalanceCents: 500_000 };
+
+  it("comes up, with its date and amount", () => {
+    const [bill] = comingUpBills(input({ transactions: dueSoon(), accounts: [account] }), 31);
+    expect(bill).toMatchObject({
+      merchant: "Multnomah County Property Tax",
+      amountCents: 221_050,
+      accountId: account.id,
+    });
+    expect(bill.date > AS_OF && bill.date <= addDays(AS_OF, 31)).toBe(true);
+  });
+
+  it("brings the lowest balance down by it", () => {
+    const [forecast] = forecastAccounts(
+      input({ transactions: dueSoon(), accounts: [account] }),
+      31,
+    );
+    expect(forecast.lowest.balanceCents).toBe(forecast.todayCents - 221_050);
+    expect(forecast.bills.map((b) => b.merchant)).toContain("Multnomah County Property Tax");
+  });
+
+  it("stays out of upcomingBills, which safe to spend reads: the set-aside already covers it", () => {
+    expect(upcomingBills(input({ transactions: dueSoon(), accounts: [account] }), 31)).toEqual([]);
+  });
+
+  it("doesn't come up when it's further off than the window", () => {
+    const later = taxes(300, 120);
+    expect(comingUpBills(input({ transactions: later, accounts: [account] }), 31)).toEqual([]);
+  });
+
+  it("isn't listed twice beside a monthly bill, and keeps the order by date", () => {
+    const transactions = [...dueSoon(), ...monthly(6, 1549, NETFLIX)];
+    const bills = comingUpBills(input({ transactions, accounts: [account] }), 31);
+    const dates = bills.map((b) => b.date);
+    expect(dates).toEqual([...dates].sort());
+    expect(bills.filter((b) => /Multnomah/.test(b.merchant))).toHaveLength(1);
+    expect(bills.some((b) => /Netflix/i.test(b.merchant))).toBe(true);
   });
 });

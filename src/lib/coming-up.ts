@@ -1,5 +1,5 @@
 import { loadDetectionInput } from "@/detection/engine";
-import { expectedIncome, upcomingBills } from "@/detection/forecast";
+import { expectedIncome, comingUpBills } from "@/detection/forecast";
 import type { DetectionInput } from "@/detection/types";
 import { addDays } from "@/detection/units";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -33,7 +33,7 @@ export type ComingUp = {
 
 // The regular bills expected in the next `days` days, soonest first. Pure.
 export function billsAhead(input: DetectionInput, days: number): ComingUpBill[] {
-  return upcomingBills(input, days).map(({ merchant, date, amountCents }) => ({
+  return comingUpBills(input, days).map(({ merchant, date, amountCents }) => ({
     merchant,
     date,
     amountCents,

@@ -9,7 +9,7 @@ import { INSIGHT_MONTHS } from "@/config/insights";
 import { CARD_PAYMENT_NAME, NON_SPENDING_PRIMARIES } from "@/config/detection";
 import { normalizeMerchant } from "@/data-sources/merchant";
 import { loadDetectionInput, loadTransactionsBetween } from "@/detection/engine";
-import { upcomingBills } from "@/detection/forecast";
+import { comingUpBills } from "@/detection/forecast";
 import { addDays, isoDate } from "@/detection/units";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { categoryLabel } from "@/insights/labels";
@@ -336,7 +336,7 @@ export async function runAskTool(
       const detection = await loadDetectionInput(userId, { client, now });
       return out({
         days,
-        bills: upcomingBills(detection, days).map((b) => ({
+        bills: comingUpBills(detection, days).map((b) => ({
           date: b.date,
           merchant: b.merchant,
           amount: money(b.amountCents),

@@ -9,12 +9,15 @@ import {
   NOT_BILL_HABIT_PRIMARIES,
   OWN_ACCOUNT_TRANSFERS,
 } from "@/config/detection";
+import { irregularCosts } from "@/insights/irregular";
+import { expectedDates } from "./expected-dates";
 import { expectedPaydays, isPaycheck } from "./paydays";
 import {
   buildStreams,
   detectRecurring,
   fromPlaidStream,
   isSubscriptionBox,
+  merchantOf,
   type Stream,
 } from "./streams";
 import type { DetectionAccount, DetectionInput, DetectionTransaction } from "./types";
@@ -33,6 +36,9 @@ export type Expected = {
   // A regular move out that isn't a bill (to savings, or by Zelle before Jane knows it's rent):
   // the forecast and safe to spend take it out of checking, "Coming up" doesn't list it.
   transfer?: true;
+  // A rare bill: its monthly slice of the set-aside, which safe to spend stops counting once it
+  // takes the whole bill.
+  setAsideCents?: number;
 };
 
 export type AccountForecast = {
@@ -53,29 +59,7 @@ export type AccountForecast = {
   days: { date: string; balanceCents: number }[];
 };
 
-export { addDays };
-
-// Every date the stream is expected on, from today through `until`.
-export function expectedDates(stream: Stream, asOf: string, until: string): string[] {
-  const frequency = stream.frequency;
-  // Plaid's prediction when it's still ahead, else the last charge; later dates keep that
-  // day of the month.
-  const predicted =
-    stream.predictedNextDate && stream.predictedNextDate >= asOf ? stream.predictedNextDate : null;
-  const from = predicted ?? stream.lastDate;
-  if (!from) return [];
-  const anchor = dayOfMonth(from);
-  const step = (date: string) => (frequency ? nextOccurrence(date, frequency, anchor) : null);
-
-  let next: string | null = predicted ?? step(from);
-  while (next && next < asOf) next = step(next);
-  const dates: string[] = [];
-  while (next && next <= until) {
-    dates.push(next);
-    next = step(next);
-  }
-  return dates;
-}
+export { addDays, expectedDates };
 
 function expand(streams: Stream[], asOf: string, until: string): Expected[] {
   return streams
@@ -310,9 +294,42 @@ export function expectedBetween(
   );
 }
 
+// A bill that comes twice a year or less: too few charges for the recurring check, but known to the
+// set-aside (src/insights/irregular.ts). It leaves the account all the same, so it's in the balance
+// and on what's coming up (debugger 11-02: a $2,210.50 property tax 12 days off was on neither).
+// Not in upcomingBills: the bench and the recurring checks read that.
+export function irregularDue(input: DetectionInput, days: number): Expected[] {
+  const until = addDays(input.asOf, days);
+  return irregularCosts(input)
+    .items.filter((i) => i.kind === "bill" && i.nextDate >= input.asOf && i.nextDate <= until)
+    .map((i) => {
+      const last = input.transactions
+        .filter((t) => `merchant:${merchantOf(t)?.key}` === i.key)
+        .reduce<DetectionTransaction | null>((a, t) => (!a || t.date > a.date ? t : a), null);
+      return {
+        merchant: i.name,
+        date: i.nextDate,
+        amountCents: i.nextAmountCents,
+        accountId: last?.accountId ?? null,
+        setAsideCents: i.monthlyCents,
+      };
+    });
+}
+
+// What's coming up on the pages that list bills: the regular ones and the rare ones.
+export function comingUpBills(input: DetectionInput, days: number): Expected[] {
+  const regular = upcomingBills(input, days);
+  const rare = irregularDue(input, days).filter(
+    (r) => !regular.some((b) => b.merchant === r.merchant && b.date === r.date),
+  );
+  return [...regular, ...rare].sort(
+    (a, b) => a.date.localeCompare(b.date) || a.merchant.localeCompare(b.merchant),
+  );
+}
+
 export function forecastAccounts(input: DetectionInput, days: number): AccountForecast[] {
   const until = addDays(input.asOf, days);
-  const bills = upcomingBills(input, days);
+  const bills = comingUpBills(input, days);
   const transfers = scheduledTransfers(input, days);
   const transfersIn = scheduledTransfersIn(input, days);
   const income = expectedIncome(input, until);
