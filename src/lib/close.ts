@@ -162,7 +162,16 @@ export async function loadMonthClose(
     read._min.date && read._max.date
       ? monthsCovered(isoDay(read._min.date), statementsEnd(isoDay(read._max.date), isoDay(now)))
       : 0;
-  const standing = await withEvidence(userId, waiting, (f) => evidenceRefs(f.evidence), { client });
+  // A suggestion on the record can be the same money as these findings: "Stop paying bank fees"
+  // adds up the fee findings. It's listed once, as /saved lists it (debugger 11-02). Its key ends
+  // in the topic, and a topic with the name of a finding type is that finding's money.
+  const onRecord = new Set(ledger.entries.map((e) => e.key.split(":").at(-1)));
+  const standing = await withEvidence(
+    userId,
+    waiting.filter((f) => !onRecord.has(f.type)),
+    (f) => evidenceRefs(f.evidence),
+    { client },
+  );
   const unanswered: LedgerEntry[] = standing.map((f) => ({
     key: `finding:${f.id}`,
     by: "you",

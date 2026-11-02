@@ -7,6 +7,7 @@ vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
 import { loadMonthClose } from "./close";
+import { recordShown } from "./outcomes";
 
 // Debugger 11-02: a person with 4 findings waiting on /jane read "Found 0 · Open 0" and "Nothing
 // new this month" on their close: findings nobody had acted on never reached it. And a finding
@@ -115,6 +116,74 @@ describe.runIf(url)("a close and the findings waiting for an answer", { timeout:
   });
 
   // Seen in the app: Netflix "Stays an estimate: your transactions can't show this one".
+  // Seen in the app: "Stop paying overdraft and bank fees, about $257/yr" and the two fee findings
+  // it adds up ($216 and $41), one under the other, where /saved shows the $257 once.
+  it("lists money once when a suggestion on the record is the same money as a finding", async () => {
+    const { userId, finding } = await person();
+    await finding("bank_fees", "fees:checking", "new", 21_600);
+    await finding("bank_fees", "fees:card", "new", 4_100);
+    await finding("subscription_review", "merchant:netflix", "new", 27_588);
+    const key = "cost:bank_fees";
+    const base = {
+      capability: "cost",
+      topic: "bank_fees",
+      title: "Stop paying bank fees",
+      worthKind: "saves" as const,
+      watch: { kind: "fee_stops" as const, pfcs: ["BANK_FEES_ATM_FEES"], monthlyCents: 2_142 },
+    };
+    await client.suggestion.create({
+      data: {
+        userId,
+        key,
+        ...base,
+        worthCents: 25_700,
+        confidencePercent: 79,
+        confidenceReason: "8 bank fees in 6 months of data",
+        urgency: "soon",
+        why: "x",
+        actionLabel: "See the fees",
+        actionHref: "/insights",
+      },
+    });
+    await recordShown(userId, [{ key, ...base, worthCents: 25_700, confidencePercent: 79 }], {
+      client,
+      now: NOW,
+    });
+
+    const close = await loadMonthClose(userId, "2026-11", { client, now: NOW });
+    expect(close.open.map((e) => e.title).sort()).toEqual([
+      "Finding merchant:netflix",
+      "Stop paying bank fees",
+    ]);
+    expect(close.open.reduce((sum, e) => sum + e.cents, 0)).toBe(25_700 + 27_588);
+  });
+
+  it("still lists the findings when the person said no to the suggestion", async () => {
+    const { userId, finding } = await person();
+    await finding("bank_fees", "fees:checking", "new", 21_600);
+    const key = "cost:bank_fees";
+    await client.suggestion.create({
+      data: {
+        userId,
+        key,
+        capability: "cost",
+        topic: "bank_fees",
+        title: "Stop paying bank fees",
+        status: "no",
+        worthCents: 21_600,
+        worthKind: "saves",
+        confidencePercent: 79,
+        confidenceReason: "8 bank fees in 6 months of data",
+        urgency: "soon",
+        why: "x",
+        actionLabel: "See the fees",
+        actionHref: "/insights",
+      },
+    });
+    const close = await loadMonthClose(userId, "2026-11", { client, now: NOW });
+    expect(close.open.map((e) => e.title)).toEqual(["Finding fees:checking"]);
+  });
+
   it("says a waiting finding is an estimate until they act, not that it can't be shown", async () => {
     const { userId, finding } = await person();
     await finding("subscription_review", "merchant:netflix", "new", 27_588);
