@@ -80,7 +80,10 @@ export async function refreshEvents(options: RefreshOptions = {}): Promise<Refre
     };
   }
   const before = (await lastRefresh({ client }))?.gdeltAt ?? {};
-  const types = force ? EVENT_TYPE_IDS : stalestTypes(before, EVENTS_VIEW_GDELT_TYPES);
+  // The least recently asked first, on the cron too: its clock reaches only some of the types in a
+  // run (GDELT answers in 10-13 s), and the next run takes up where this one stopped (debugger
+  // 11-02).
+  const types = stalestTypes(before, force ? EVENT_TYPE_IDS.length : EVENTS_VIEW_GDELT_TYPES);
   let collected: CollectReport | null = null;
   try {
     collected = await collectEvents({ ...options, client, now, types });
