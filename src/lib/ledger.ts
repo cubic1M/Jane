@@ -6,7 +6,6 @@ import { dayLabel } from "@/lib/day-label";
 import { FINDING_OUTCOME_PREFIX } from "@/lib/outcomes";
 import { asWatch, outcomeYearly } from "@/planning/outcomes";
 import { HELD_RULE, verifyRule, type LedgerState } from "@/planning/ledger";
-import { FINDING_OUTCOME_PREFIX } from "@/lib/outcomes";
 import { verifiedSavings, type Estimate, type Receipt } from "@/lib/savings-proof";
 
 // The savings ledger: every finding the person saw, in one of four states (src/planning/ledger.ts),
