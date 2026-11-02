@@ -1,0 +1,120 @@
+{
+ "params": {
+  "open_mult": 1.07,
+  "open_size": 2.0,
+  "push_bb": 9.0,
+  "push_mult": 1.0,
+  "range_k": 3.2,
+  "call_margin": 0.09,
+  "threebet_eq": 0.62,
+  "threebet_rel": 2.6,
+  "risk": 0.1,
+  "value_eq": 0.62,
+  "cbet": 0.55,
+  "bet_frac": 0.65,
+  "bet_discount": 0.6,
+  "steal_bonus": 0.55,
+  "steal_max_behind": 5,
+  "steal_sym": 0.5,
+  "reshove_bb": 24.0,
+  "read_alpha": 0.5,
+  "base_pfr": 0.12,
+  "raiser_discount": 1.0,
+  "raise_eq": 99.0,
+  "bluff_bonus": 0.4,
+  "bluff_max_opp": 2,
+  "pf_chart": 0,
+  "pf_max_bb": 15.0,
+  "pf_file": "",
+  "cap_risk": 0.0,
+  "cap_window": 25,
+  "risk_payout": 1,
+  "rk_floor": 1.2,
+  "agg_alpha": 0.0,
+  "base_agg": 0.35,
+  "agg_raise": 99.0,
+  "agg_seat": 0.6,
+  "station_size": 0.0,
+  "thin_value": 0.0
+ },
+ "history": [
+  {
+   "round": 0,
+   "incumbent": "icm_tag",
+   "incumbent_points": 32.944275000000005,
+   "best": "icm_tag:push_mult=0.9091",
+   "gain": 3.3176624999999995,
+   "se": 1.7376681375923726,
+   "accepted": false,
+   "top5": [
+    [
+     "icm_tag:push_mult=0.9091",
+     3.32,
+     1.74
+    ],
+    [
+     "icm_tag:call_margin=0.09",
+     2.97,
+     1.9
+    ],
+    [
+     "icm_tag:range_k=3.2",
+     1.93,
+     2.09
+    ],
+    [
+     "icm_tag:reshove_bb=30.0",
+     1.76,
+     1.65
+    ],
+    [
+     "icm_tag:push_bb=6.0",
+     1.64,
+     1.67
+    ]
+   ],
+   "seconds": 653
+  },
+  {
+   "round": 1,
+   "incumbent": "icm_tag",
+   "incumbent_points": 29.341150000000003,
+   "best": "icm_tag:call_margin=0.09",
+   "gain": 4.973,
+   "se": 1.7923961740578043,
+   "accepted": true,
+   "top5": [
+    [
+     "icm_tag:call_margin=0.09",
+     4.97,
+     1.79
+    ],
+    [
+     "icm_tag:range_k=3.2",
+     4.23,
+     1.95
+    ],
+    [
+     "icm_tag:steal_bonus=0.7",
+     3.33,
+     1.84
+    ],
+    [
+     "icm_tag:open_mult=0.9727",
+     3.31,
+     1.97
+    ],
+    [
+     "icm_tag:reshove_bb=18.0",
+     2.31,
+     1.59
+    ]
+   ],
+   "seconds": 618,
+   "also_taken": [
+    "icm_tag:range_k=3.2"
+   ]
+  }
+ ],
+ "round": 2
+}
