@@ -285,6 +285,10 @@ describe("the employer's name", () => {
     ["DEPOSIT - DFAS-CLEVELAND MIL PAY", "DFAS-CLEVELAND MIL PAY"],
     // Debugger 11-02: Truist's "ACH CREDIT DUKE ENERGY CORP PAYROLL".
     ["ACH CREDIT DUKE ENERGY CORP PAYROLL", "DUKE ENERGY CORP"],
+    // TD's, Fifth Third's and Chime's words in front.
+    ["ACH DEPOSIT, BRIGHTLINE INC PAYROLL", "BRIGHTLINE INC"],
+    ["DIRECT DEP BRIGHTLINE INC", "BRIGHTLINE INC"],
+    ["Direct Deposit From BRIGHTLINE INC", "BRIGHTLINE INC"],
     ["GLOBEX LLC DES:PAYROLL ID:XXXXX9028 INDN:SAM CO ID:XXXXX PPD", "GLOBEX LLC"],
   ])("reads %s as %s", (description, employer) => {
     const data = inputFor("family");
