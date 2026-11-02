@@ -52,6 +52,7 @@ describe.runIf(url)("Stage 3", { timeout: 120_000 }, () => {
 
   beforeAll(() => {
     vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
+    vi.stubEnv("AUTH_SECRET", "test-secret");
     vi.stubEnv("PLAID_CLIENT_ID", "");
     vi.stubEnv("PLAID_SECRET", "");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url! }) });
