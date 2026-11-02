@@ -387,7 +387,10 @@ function babyReading(input: ProfileInput, txs: readonly ProfileTx[], today: stri
 // (debugger 11-01, 11-02).
 function employerName(description: string): string {
   return withoutAchDetails(description)
-    .replace(/^(?:DEPOSIT FROM|DEPOSIT -|ACH CREDIT)\s+/i, "")
+    .replace(
+      /^(?:DEPOSIT FROM|DEPOSIT -|ACH CREDIT|ACH DEPOSIT,?|DIRECT DEP(?:OSIT)?(?: FROM)?)\s+/i,
+      "",
+    )
     .replace(/\s+PAYROLL.*$/i, "")
     .trim();
 }

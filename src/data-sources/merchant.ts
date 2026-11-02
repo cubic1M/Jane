@@ -18,6 +18,13 @@ const PROCESSOR_PREFIXES = [
 
 // Bank boilerplate around the merchant.
 const BOILERPLATE = [
+  // A statement's words in front, before the patterns below: TD's "DEBIT CARD PURCHASE, AUT 100526
+  // VISA DDA PUR ..." and "ELECTRONIC PMT-WEB, ...", PNC's "ACH WEB", Fifth Third's "WEB PAYMENT",
+  // and "DIRECT DEPOSIT FROM" (debugger 11-02: "Review your Purchase Aut Netflix subscription").
+  // Saved keys moved in prisma/migrations/20270422000000_merchant_without_statement_prefix: keep
+  // them in step.
+  /^(?:DEBIT POS|DEBIT CARD PURCHASE|DEBIT CARD CREDIT|ELECTRONIC PMT-(?:WEB|PHONE)|ACH DEPOSIT|ACH DEBIT|ACH CREDIT),\s+(?:AUT \d+\s+)?(?:(?:VISA\s+)?DDA\s+(?:PURCHASE|PUR|REF)\s+)?(?=\S)/,
+  /^(?:DEBIT POS|ELECTRONIC PMT-(?:WEB|PHONE)|ACH DEPOSIT|ACH WEB|WEB PAYMENT|DIRECT DEP(?:OSIT)?(?: FROM)?)\s+(?=\S)/,
   // Capital One 360 writes "Debit Card Purchase - PAYPAL *HULU": the dash goes too, or the
   // processor prefix after it isn't seen (CSV bench: Hulu read as "Paypal").
   // Bank of America's "CHECKCARD 0818 PAYPAL *HULU": the date goes too, for the same reason.
