@@ -1,0 +1,16 @@
+#!/bin/bash
+# Exploration: vs3b (my open re-raised: re-raiser's range from their re-raise rate vs opens).
+cd "$(dirname "$0")/.."
+OUT=results/sng_vs3b_ab.md
+H="custom:push=2,maniac=2,station=2,random=1,f3_buggy=1,f3_shover=1,mc_slow=1,nit=1,lag=1,chen_tag=1,f2_shark=1,f3_exploiter=1,pushfold_icm=1"
+C="icm_tag,icm_tag:vs3b=1,icm_tag:vs3b=1.5,icm_tag:vs3b=2"
+{
+echo "# vs3b exploration (seeds 82000+, 400 paired tables)"
+i=0
+for cell in "--field field4" "--field all3" "--field field3" "--field field2" "--field $H" "--field mirror" "--preset rehearsal_sixplus --field custom:planb_sd=1"; do
+  i=$((i+1)); echo -e "\n## ${cell:0:50}\n"
+  python3 -m sng.arena $cell --candidates "$C" --baseline icm_tag --tables 400 --workers 3 --seed0 $((82000+100*i)) 2>&1 | grep -A5 "paired"
+done
+echo done
+} > results/logs/sng_vs3b_ab.tmp
+mv results/logs/sng_vs3b_ab.tmp $OUT

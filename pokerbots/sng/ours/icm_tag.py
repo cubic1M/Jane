@@ -54,6 +54,8 @@ PARAMS = dict(
     cap_risk=0.0,        # near the hand cap: risk premium + cap_risk x (my stack / average - 1)
     cap_window=25,
     steal_floor=0.0,     # the steal factor never cuts the open / shove bar below this share (0 = no floor)
+    vs3b=0.0,            # > 0: my open re-raised: the re-raiser holds the top vs3b x (their re-raise
+    vs3b_prior=0.05,     #   rate vs opens, prior 5%) of hands, as random-hand count (never tighter); 0 = off
     resteal_rel=0.35,    # > 0: facing a lone open at <= resteal_rel_bb, re-shove the top
     resteal_rel_bb=28.0, #   resteal_rel x (opener's open rate) of hands (f3_exploiter's rule); 0 = off.
                          #   0.35 validated on fresh seeds (results/sng_restealrel_validate.md)
@@ -177,6 +179,7 @@ class IcmTag:
             self.chart = load_chart(rules, self.p["pf_file"] or None)
         self.steal_seen = [0] * rules.num_players     # steal attempts faced in the blinds
         self.steal_fold = [0] * rules.num_players
+        self.rr_made = [0] * rules.num_players           # re-raised a first open (vs3b read)
         self.aggressor = None                          # seat of the last preflop raiser this hand
         self.dealt = [0] * rules.num_players           # hands seen per seat
         self.pf_faced = [0] * rules.num_players        # postflop bets faced per seat
@@ -227,6 +230,8 @@ class IcmTag:
                 self.steal_seen[s] += 1
                 if kind == "fold":
                     self.steal_fold[s] += 1
+                elif kind == "raise":
+                    self.rr_made[s] += 1
 
 
     def _fold_rate(self, seats):
@@ -471,6 +476,11 @@ class IcmTag:
             r = raises[-1][0]
             pfr = (self.pre_raises[r] + p["base_pfr"] * 8) / (self.dealt[r] + 8)   # shrink to the prior
             rk = min(8.0, max(p["rk_floor"], rk * (p["base_pfr"] / max(pfr, 0.01)) ** p["read_alpha"]))
+        if p["vs3b"] > 0 and len(raises) >= 2 and raises[0][0] == obs.seat and raises[-1][0] != obs.seat:
+            # my open was re-raised: the re-raiser's range from how often that seat re-raises opens
+            r3 = raises[-1][0]
+            c = (self.rr_made[r3] + p["vs3b_prior"] * 8) / (self.steal_seen[r3] + 8)
+            rk = min(rk, self._k_for_top(c * p["vs3b"]))
         if p["behind_k"] != 0.8:
             r0 = raises[-1][0]
             vol = {h[0] for h in obs.history if h[1] == 0 and h[2] in ("call", "raise")
