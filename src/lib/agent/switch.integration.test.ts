@@ -13,7 +13,7 @@ vi.mock("@/lib/action-emails", async (importOriginal) => ({
 }));
 
 import { CARD_SELECT, buildCard, cardHash } from "@/lib/cards";
-import { comparisonFor } from "@/lib/compare";
+import { comparisonFor, ensureDemoOptions } from "@/lib/compare";
 import { DecisionError, recordDecision } from "@/lib/decisions";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
@@ -148,6 +148,19 @@ describe.runIf(url)("switching to the best option, on the demo bank", () => {
     // No sync in between, so no new bill.
     await confirmSwitches({ client, now: later(9 + 46), userId });
     expect((await action(actionId)).handoffReason).toContain("No sign of the switch");
+  });
+
+  // Debugger 11-02: another test file's demo sync dated 2020 moved every demo option's "checked on"
+  // back, so they all read as stale and nobody had anything to compare (#1202 caused it).
+  it("never moves an option's checked date back", async () => {
+    const later = new Date("2026-10-18T15:00:00Z");
+    await ensureDemoOptions({ client, now: later });
+    await ensureDemoOptions({ client, now: new Date("2020-01-15T15:00:00Z") });
+    const rows = await client.switchOption.findMany({ where: { demo: true } });
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      expect(row.checkedAt.getTime()).toBeGreaterThanOrEqual(new Date("2026-10-18").getTime());
+    }
   });
 
   it("refuses an option that wasn't compared", async () => {
