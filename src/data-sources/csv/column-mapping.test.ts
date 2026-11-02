@@ -746,3 +746,72 @@ describe("an amount with its sign after it", () => {
     expect(signs[2].moneyOut).toBe("negative");
   });
 });
+
+// Debugger 11-02: a Revolut-style file's picker imported its reverted, declined and pending rows,
+// $623 that never left the account, counted as spending. The known formats already leave them out.
+describe("a file with a column saying whether the payment went through", () => {
+  const file = (header: string, states: string[]) =>
+    [
+      `Date,Description,Amount,${header}`,
+      ...states.map((state, i) => `2026-07-${10 + i},Airbnb,-482.00,${state}`),
+    ].join("\n");
+  const of = (content: string, mapping = signed("negative")) => {
+    const result = readCsvFile({ name: "app.csv", text: content, mapping });
+    if (!result.ok) throw new Error(result.error);
+    return result;
+  };
+
+  it.each(["State", "Status", "TRANSACTION STATUS", " state "])(
+    "keeps what completed and says what it left out, from a column called %s",
+    (header) => {
+      const result = of(file(header, ["COMPLETED", "REVERTED", "Declined", "pending"]));
+      expect(result.transactions).toHaveLength(1);
+      expect(result.skipped.map((s) => s.reason)).toEqual([
+        "Not completed (REVERTED)",
+        "Not completed (Declined)",
+        "Not completed (pending)",
+      ]);
+    },
+  );
+
+  it.each([
+    "FAILED",
+    "Cancelled",
+    "canceled",
+    "Reversed",
+    "Rejected",
+    "Denied",
+    "Void",
+    "Returned",
+  ])("leaves out %s", (state) => {
+    const result = of(file("Status", ["Completed", state]));
+    expect(result.transactions).toHaveLength(1);
+    expect(result.skipped.map((s) => s.reason)).toEqual([`Not completed (${state})`]);
+  });
+
+  it.each(["Completed", "Complete", "Posted", "Cleared", "Settled", "Paid", "", "Uncleared"])(
+    "keeps %j",
+    (state) => {
+      expect(of(file("Status", [state])).transactions).toHaveLength(1);
+    },
+  );
+
+  it("says why when nothing in the file went through", () => {
+    const result = readCsvFile({
+      name: "app.csv",
+      text: file("Status", ["FAILED"]),
+      mapping: signed("negative"),
+    });
+    expect(result.ok ? null : result.error).toContain("Not completed (FAILED)");
+  });
+
+  it("doesn't read a column with another name as saying that", () => {
+    expect(of(file("Notes", ["Declined by me at first"])).transactions).toHaveLength(1);
+  });
+
+  it("doesn't read the words in a file with no column names", () => {
+    const content = "2026-07-10,Airbnb,-482.00,pending\n2026-07-11,Airbnb,-12.00,posted";
+    const result = of(content, signed("negative", { hasHeader: false }));
+    expect(result.transactions).toHaveLength(2);
+  });
+});
