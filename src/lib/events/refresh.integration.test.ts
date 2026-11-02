@@ -104,9 +104,23 @@ describe.runIf(url)("the shared events refresh", () => {
     const slow = fakeFetcher(150);
     const [a, b] = await Promise.all([run(NOW, slow), run(NOW, slow)]);
     expect([a.ran, b.ran].sort()).toEqual([false, true]);
-    expect([a, b].find((r) => !r.ran)).toEqual({ ran: false, why: "locked" });
+    // Why the other skipped depends on timing, and either is true: "locked" while the winner runs,
+    // "fresh" if it finished before the loser read the row (debugger 11-02: failed on a busy
+    // machine). The promise is that one ran. "Locked" alone is tested with a held lock below.
+    expect(["locked", "fresh"]).toContain([a, b].find((r) => !r.ran)?.why);
     // Only the one that ran asked GDELT.
     expect(slow.gdelt).toHaveLength(EVENTS_VIEW_GDELT_TYPES);
+  });
+
+  // The claim and the freshness check are one UPDATE, so no timing lets two run.
+  it("never lets two run, however many come at once and however fast the winner is", async () => {
+    for (const delay of [0, 1, 5, 25]) {
+      await client.refreshLock.deleteMany({ where: { key: "events" } });
+      const fetcher = fakeFetcher(delay);
+      const results = await Promise.all(Array.from({ length: 12 }, () => run(NOW, fetcher)));
+      expect(results.filter((r) => r.ran)).toHaveLength(1);
+      expect(fetcher.gdelt).toHaveLength(EVENTS_VIEW_GDELT_TYPES);
+    }
   });
 
   it("frees a lock left by a refresh that died", async () => {
