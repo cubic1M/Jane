@@ -11,6 +11,26 @@ type Email = {
   replyTo?: string;
 };
 
+// Words from Resend, for the log and for errors: its messages can name the address ("send testing
+// emails to your own email address (you@…)") and carry links, and neither belongs on a log.
+const MAX_DETAIL_CHARS = 300;
+function safeDetail(body: string): string {
+  let words = body;
+  try {
+    const parsed = JSON.parse(body) as { name?: unknown; message?: unknown };
+    if (typeof parsed.message === "string") {
+      words =
+        typeof parsed.name === "string" ? `${parsed.name}: ${parsed.message}` : parsed.message;
+    }
+  } catch {
+    // Not JSON (a gateway's page): the words as they came, scrubbed and cut short below.
+  }
+  return words
+    .replace(/https?:\/\/\S+/g, "<link>")
+    .replace(/[^\s@<>()"']+@[^\s@<>()"']+/g, "<address>")
+    .slice(0, MAX_DETAIL_CHARS);
+}
+
 // Resend's id for a sent email, so its webhook events (an open, a bounce) can be matched back.
 export type SentEmail = { id: string | null };
 
@@ -42,7 +62,9 @@ export async function sendEmail({
     }),
   });
   if (!response.ok) {
-    throw new Error(`Resend rejected the email (${response.status}): ${await response.text()}`);
+    throw new Error(
+      `Resend rejected the email (${response.status}): ${safeDetail(await response.text())}`,
+    );
   }
   const body = (await response.json().catch(() => null)) as { id?: unknown } | null;
   return { id: typeof body?.id === "string" ? body.id : null };
@@ -65,12 +87,20 @@ export async function sendMagicLink({ to, url }: { to: string; url: string }): P
   }
 
   const link = escapeHtml(url);
-  await sendEmail({
-    to,
-    subject: "Your sign-in link for Jane",
-    text: `Sign in to Jane:\n${url}\n\nThis link expires in 24 hours and works once. If you didn't ask for it, ignore this email.`,
-    html: `<p>Sign in to Jane:</p>
-<p><a href="${link}">Sign in</a></p>
-<p>This link expires in 24 hours and works once. If you didn't ask for it, ignore this email.</p>`,
-  });
+  try {
+    await sendEmail({
+      to,
+      subject: "Your sign-in link for Jane",
+      text: `Sign in to Jane:\n${url}\n\nThis link expires in 24 hours and works once. If you didn't ask for it, ignore this email.`,
+      html: `<p>Sign in to Jane:</p>
+  <p><a href="${link}">Sign in</a></p>
+  <p>This link expires in 24 hours and works once. If you didn't ask for it, ignore this email.</p>`,
+    });
+  } catch (error) {
+    // Auth.js logs only "Error": why a sign-in email failed is said here, once, with no address or
+    // link in it. The address can be in a failure from anywhere, so it's scrubbed again.
+    const words = error instanceof Error ? error.message : "unknown";
+    console.error("[magic-link] send failed:", safeDetail(words));
+    throw error;
+  }
 }

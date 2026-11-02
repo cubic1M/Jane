@@ -8,6 +8,7 @@ import { logAuthError, recordSignIn } from "@/lib/auth-events";
 import { sessionPayload } from "@/lib/auth-session";
 import { db } from "@/lib/db";
 import { sendMagicLink } from "@/lib/email";
+import { MagicLinkSendError } from "@/lib/magic-link-error";
 
 // Google is optional until its OAuth client is set up (docs/setup/google-sign-in.md): without
 // both keys the provider isn't registered and the button hides.
@@ -21,7 +22,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Resend({
       apiKey: process.env.RESEND_API_KEY,
       from: process.env.EMAIL_FROM,
-      sendVerificationRequest: ({ identifier, url }) => sendMagicLink({ to: identifier, url }),
+      sendVerificationRequest: ({ identifier, url }) =>
+        sendMagicLink({ to: identifier, url }).catch(() => {
+          // Already logged, with the reason. Nothing of the failure goes further: it can name the
+          // address.
+          throw new MagicLinkSendError();
+        }),
     }),
     // Google only hands out verified emails, so a Google sign-in may join an account
     // first created with a magic link to the same address.

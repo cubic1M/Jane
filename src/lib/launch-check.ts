@@ -136,6 +136,20 @@ export function launchChecks(env: Env): Check[] {
   ];
 }
 
+// A sign-in email Resend refused passes every check above: the settings are there. So what really
+// happened in the last day is a check too (founder's admin sign-in, 11-02).
+export function signInEmailCheck(failures: number): Check {
+  return {
+    name: "Sign-in emails",
+    ok: failures === 0,
+    required: true,
+    detail:
+      failures === 0
+        ? "None failed to send in the last day"
+        : `${failures} sign-in email${failures === 1 ? "" : "s"} failed to send in the last day. The reason is on the server log, after [magic-link].`,
+  };
+}
+
 export function launchReady(checks: Check[]): boolean {
   return checks.every((c) => c.ok || !c.required);
 }

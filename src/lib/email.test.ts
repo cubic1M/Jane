@@ -18,6 +18,70 @@ describe("sendMagicLink", () => {
     vi.unstubAllEnvs();
   });
 
+  // Founder's admin sign-in, 11-02: production logged "[auth][error] Error" three times and nothing
+  // said why. Resend's own words can name the address, as this one does.
+  describe("when the send fails", () => {
+    const rejected = JSON.stringify({
+      statusCode: 403,
+      name: "validation_error",
+      message:
+        "You can only send testing emails to your own email address (owner@secret.test). Verify a domain at https://resend.com/domains?token=abc",
+    });
+    let logged: unknown[][];
+
+    beforeEach(() => {
+      logged = [];
+      vi.spyOn(console, "error").mockImplementation((...args) => void logged.push(args));
+    });
+    afterEach(() => vi.restoreAllMocks());
+
+    const logText = () => JSON.stringify(logged);
+
+    it("logs Resend's status and words, with no address or link", async () => {
+      fetchMock.mockResolvedValue(new Response(rejected, { status: 403 }));
+      await expect(sendMagicLink({ to: "a@b.com", url: URL_WITH_QUERY })).rejects.toThrow();
+      expect(logText()).toContain("[magic-link]");
+      expect(logText()).toContain("403");
+      expect(logText()).toContain("validation_error");
+      expect(logText()).toContain("You can only send testing emails");
+      for (const secret of ["owner@secret.test", "a@b.com", "token=abc", "resend.com/domains"]) {
+        expect(logText()).not.toContain(secret);
+      }
+    });
+
+    it("keeps the address and link out of what it throws too", async () => {
+      fetchMock.mockResolvedValue(new Response(rejected, { status: 403 }));
+      const error = await sendMagicLink({ to: "a@b.com", url: URL_WITH_QUERY }).catch((e) => e);
+      expect(error.message).toContain("403");
+      expect(error.message).not.toContain("owner@secret.test");
+      expect(error.message).not.toContain("token=abc");
+    });
+
+    it("logs a body that isn't JSON, scrubbed and cut short", async () => {
+      fetchMock.mockResolvedValue(
+        new Response(`<html>bad gateway x@y.co ${"z".repeat(2000)}</html>`, { status: 502 }),
+      );
+      await expect(sendMagicLink({ to: "a@b.com", url: URL_WITH_QUERY })).rejects.toThrow();
+      expect(logText()).toContain("502");
+      expect(logText()).not.toContain("x@y.co");
+      expect(logText().length).toBeLessThan(600);
+    });
+
+    it("logs a send that never reached Resend", async () => {
+      fetchMock.mockRejectedValue(new Error("connect ETIMEDOUT for a@b.com"));
+      await expect(sendMagicLink({ to: "a@b.com", url: URL_WITH_QUERY })).rejects.toThrow();
+      expect(logText()).toContain("[magic-link]");
+      expect(logText()).toContain("ETIMEDOUT");
+      expect(logText()).not.toContain("a@b.com");
+    });
+
+    it("logs missing settings as that", async () => {
+      vi.stubEnv("EMAIL_FROM", "");
+      await expect(sendMagicLink({ to: "a@b.com", url: URL_WITH_QUERY })).rejects.toThrow();
+      expect(logText()).toContain("RESEND_API_KEY and EMAIL_FROM must be set");
+    });
+  });
+
   it("sends the link through Resend", async () => {
     await sendMagicLink({ to: "a@b.com", url: URL_WITH_QUERY });
 

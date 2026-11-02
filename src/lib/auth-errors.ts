@@ -14,6 +14,7 @@ const MESSAGES: Record<string, string> = {
   InviteWrongEmail:
     "That invite code is for a different email address. Sign up with the address it was sent to.",
   TooManyRequests: "Too many sign-in attempts. Wait a few minutes and try again.",
+  EmailSignInError: "We couldn't send your sign-in email. Please try again in a few minutes.",
 };
 
 const FALLBACK = "Something went wrong signing you in. Please try again.";

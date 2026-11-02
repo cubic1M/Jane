@@ -1,8 +1,10 @@
 import { cookies } from "next/headers";
+import type { PrismaClient } from "@/generated/prisma/client";
 import { after } from "next/server";
 import { track } from "@/lib/analytics";
 import { ANONYMOUS_ID_COOKIE } from "@/lib/analytics-events";
 import { SYSTEM_ACTOR, logAudit } from "@/lib/audit";
+import { DAY_MS } from "@/lib/dates";
 import { db } from "@/lib/db";
 import { isAdminEmail } from "@/lib/invites";
 import { recordInviteJoined } from "@/lib/share-invites";
@@ -70,6 +72,20 @@ const FAILED_SIGN_IN_TYPES = new Set([
 // A sign-in that didn't work: on the access log with the request's IP and browser.
 export async function recordFailedSignIn(reason: string): Promise<void> {
   await logAudit(SYSTEM_ACTOR, "sign_in_failed", null, { reason: reason.slice(0, 40) });
+}
+
+// Sign-in emails that failed to send in the last day, for the launch check.
+export async function failedSignInEmails({
+  client = db,
+  now = new Date(),
+}: { client?: PrismaClient; now?: Date } = {}): Promise<number> {
+  return client.auditLog.count({
+    where: {
+      event: "sign_in_failed",
+      metadata: { path: ["reason"], equals: "EmailSignInError" },
+      createdAt: { gte: new Date(now.getTime() - DAY_MS) },
+    },
+  });
 }
 
 // Auth.js's logger.error: the kind of error on the server log (not its details, which can

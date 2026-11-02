@@ -1,5 +1,6 @@
 import { Suspense } from "react";
-import { launchChecks, launchReady } from "@/lib/launch-check";
+import { failedSignInEmails } from "@/lib/auth-events";
+import { launchChecks, launchReady, signInEmailCheck } from "@/lib/launch-check";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
 import { LoadingBar } from "@/components/loading-bar";
@@ -7,7 +8,8 @@ import { LoadingBar } from "@/components/loading-bar";
 // The production switch checklist, run against this deployment's own environment.
 async function Launch() {
   const admin = await requireAdmin();
-  const checks = launchChecks(process.env);
+  const failures = await failedSignInEmails();
+  const checks = [...launchChecks(process.env), signInEmailCheck(failures)];
   const ready = launchReady(checks);
   return (
     <>
