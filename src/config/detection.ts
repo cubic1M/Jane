@@ -265,6 +265,9 @@ export const AMBIGUOUS_SUBSCRIPTION_CATEGORIES: readonly PfcDetailed[] = [
   "GENERAL_MERCHANDISE_OTHER_GENERAL_MERCHANDISE",
   "GENERAL_SERVICES_EDUCATION",
   "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+  // A car wash's monthly plan at one price (debugger 11-02: "MISTER CAR WASH UNLIMITED" was missed);
+  // repairs and visits come at their own prices, so they don't count as one.
+  "GENERAL_SERVICES_AUTOMOTIVE",
   "PERSONAL_CARE_OTHER_PERSONAL_CARE",
   "OTHER_OTHER",
 ];

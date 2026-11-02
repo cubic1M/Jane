@@ -10,11 +10,16 @@ import { dayLabel } from "@/lib/day-label";
 const SEEN = (r: Risk, verb: string) =>
   `I saw ${formatCents(r.amountCents)} ${verb} ${r.merchant} on ${dayLabel(r.seenOn)}.`;
 
+// The company, without the bank's words for the payout (debugger 11-02: "Are you driving for Lyft
+// Inc Driver Pay?").
+const gigCompany = (name: string) =>
+  name.replace(/(?: inc)?(?: driver)?(?: pay| payout| payouts)?$/i, "").trim() || name;
+
 // Pure: the question, with what Jane saw and why it matters to the cover.
 export function riskQuestion(r: Risk): string {
   switch (r.kind) {
     case "rideshare":
-      return `Are you driving for ${r.merchant.replace(/ driver$/i, "")}? ${SEEN(r, "come in from")} A personal car policy may not cover you while you drive for pay.`;
+      return `Are you driving for ${gigCompany(r.merchant)}? ${SEEN({ ...r, merchant: gigCompany(r.merchant) }, "come in from")} A personal car policy may not cover you while you drive for pay.`;
     case "home_business":
       return `Do you run a business from home? ${SEEN(r, "came in from")} A home policy pays little for a business.`;
     case "new_dog":

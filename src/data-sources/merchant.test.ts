@@ -157,6 +157,11 @@ describe("acronyms in names", () => {
     expect(normalizeMerchant("USAA P&C INS AUTOPAY")?.name).toBe("USAA P&C Ins Autopay");
     expect(normalizeMerchant("NFCU AUTO LOAN PMT")?.name).toBe("NFCU Auto Loan Pmt");
     expect(normalizeMerchant("CVS/PHARMACY #4321")?.name).toBe("CVS Pharmacy");
+    // Debugger 11-02: "Review your Aaa Roadside Plus subscription".
+    expect(normalizeMerchant("AAA ROADSIDE PLUS")).toEqual({
+      name: "AAA Roadside Plus",
+      key: "aaa roadside plus",
+    });
     expect(normalizeMerchant("AT&T BILL PAYMENT")?.name).toBe("AT&T Bill Payment");
     // Debugger 11-01: "ATT*BILL PAYMENT 800-331-0500 TX" read "Att" on /subscriptions.
     expect(normalizeMerchant("ATT*BILL PAYMENT 800-331-0500 TX")).toEqual({

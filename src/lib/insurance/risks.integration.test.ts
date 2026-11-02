@@ -113,7 +113,7 @@ describe.runIf(url)("risks seen in how they live, against a real database", () =
       question = await questionOf();
     }
     expect(question?.body).toBe(
-      "Are you driving for Uber? I saw $412.00 come in from Uber Driver on Oct 6. A personal car policy may not cover you while you drive for pay.",
+      "Are you driving for Uber? I saw $412.00 come in from Uber on Oct 6. A personal car policy may not cover you while you drive for pay.",
     );
     expect(parseActions(question!.actions).map((a) => a.id)).toEqual(["risk.yes", "risk.no"]);
     const { message } = await takeChatAction(me, question!.id, "risk.yes", o());
