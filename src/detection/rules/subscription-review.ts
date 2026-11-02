@@ -128,7 +128,8 @@ export const subscriptionReview: Rule = (input, streams) => {
   for (const s of found) named.set(s.merchant, (named.get(s.merchant) ?? 0) + 1);
   const accountName = new Map(input.accounts.map((a) => [a.id, a.name]));
   const titleOf = (stream: Stream) => {
-    const base = `Review your ${stream.merchant} subscription`;
+    // A name that already says it ("Etsy Plus Subscription") says it once (debugger 11-02).
+    const base = `Review your ${stream.merchant.replace(/ subscription$/i, "")} subscription`;
     if ((named.get(stream.merchant) ?? 0) <= 1) return base;
     const samePrice = found.filter(
       (o) => o.merchant === stream.merchant && o.lastAmountCents === stream.lastAmountCents,
