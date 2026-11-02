@@ -1,7 +1,7 @@
 import { categorizeByRules } from "@/categorize/rules";
 import type { PfcPrimary } from "@/categorize/taxonomy";
 import { detectDateOrder, looksLikeDate, parseDate, type DateOrder } from "./dates";
-import { debitCreditCents, normalizeHeader, type Layout } from "./formats";
+import { debitCreditCents, HEADER_SEARCH_ROWS, normalizeHeader, type Layout } from "./formats";
 import type { CsvRecord } from "./parse-csv";
 import { parseMoneyToCents } from "@/lib/money";
 
@@ -168,7 +168,31 @@ export function guessSign(rows: string[][], amount: number, description: number 
   return { moneyOut: null, why: "The rows don't say which" };
 }
 
-export function mappingChoices(records: CsvRecord[]): MappingChoices {
+// A table has at least a date, a description and an amount; a file narrower than that has no
+// lines above it to drop.
+const PREAMBLE_MIN_TABLE_WIDTH = 3;
+
+// Lines above the table (Barclays: the bank's name, the account number and the balance, then the
+// column names; debugger 11-01): at the top, narrower than most of the file's rows. And the small
+// print after the rows (Fidelity's "The data and information in this spreadsheet…"; debugger
+// 11-02): a last run of lines under half as wide, so a short row in the middle is still reported.
+// The picker and the read both use the same rows, so their column numbers agree.
+export function withoutPreamble(records: CsvRecord[]): CsvRecord[] {
+  const counts = new Map<number, number>();
+  for (const r of records) counts.set(r.fields.length, (counts.get(r.fields.length) ?? 0) + 1);
+  const width = [...counts.entries()].sort((a, b) => b[1] - a[1] || b[0] - a[0])[0]?.[0] ?? 0;
+  if (width < PREAMBLE_MIN_TABLE_WIDTH) return records;
+  const start = Math.max(
+    0,
+    records.slice(0, HEADER_SEARCH_ROWS).findIndex((r) => r.fields.length >= width),
+  );
+  let end = records.length;
+  while (end > start + 1 && records[end - 1].fields.length * 2 < width) end -= 1;
+  return start > 0 || end < records.length ? records.slice(start, end) : records;
+}
+
+export function mappingChoices(all: CsvRecord[]): MappingChoices {
+  const records = withoutPreamble(all);
   const first = records[0]?.fields ?? [];
   // A first row with a date in it is a transaction, not column names.
   const hasHeader = !first.some(looksLikeDate);
@@ -249,7 +273,8 @@ function guessFromValues(row: string[]) {
 
 // The rows read with the person's choices, in the same shape as a bank's layout. A string
 // when the dates can't be read without asking which comes first, the day or the month.
-export function mappedLayout(records: CsvRecord[], mapping: ColumnMapping): Layout | string {
+export function mappedLayout(all: CsvRecord[], mapping: ColumnMapping): Layout | string {
+  const records = withoutPreamble(all);
   const rows = mapping.hasHeader ? records.slice(1) : records;
   const detected = detectDateOrder(rows.map((r) => r.fields[mapping.date] ?? ""));
   const order = mapping.dateOrder ?? (detected === "unknown" ? null : detected);
