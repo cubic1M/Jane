@@ -60,7 +60,9 @@ Fill in each line:
    - the invariant wrapper (`check_bot.py` pattern): 0 violations;
    - our arena on the preset: `python3 -m sng.arena --preset <p> --candidates icm_tag,pushfold_icm --tables 300`.
 6. **Submit by minute ~25.**
-7. Minutes 25–160:
+7. Minutes 25–160 (validated switches worth adding as tuner candidates on the day:
+   `resteal=1;resteal_risk=0.5;pev=1;pev_risk=0.5` (it beats tight fields, +5 vs our own copies);
+   `call_margin=0.09;range_k=3.2` if 1st takes most points):
    - tune: `python3 -m sng.tune --preset <p> --field blend --rounds 3 --tables 500 --accept-se 2 --tag _day` (about 15–25 min per round);
    - validate: `results/sng_validate.sh "icm_tag:<tuned>" --preset <p>`;
    - submit only a paired gain > 2 SE with no field losing.

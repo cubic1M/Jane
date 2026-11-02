@@ -1005,7 +1005,14 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   - The comparison: the current `icm_tag` vs the start-of-night bot (`risk_payout`, heads-up ranges, `icm_call` off; `bet_discount` 0.6).
   - Results: default +1.6, field 2 −1.3, field 3 **+4.6**, all3/top3 +1.4, all3/winner **+5.4**, hackathon-like −0.4. Mean +1.9 per table, two cells significant, none losing significantly.
   - Where the gain comes from: heads-up endings and winner-heavy payouts, as each change predicted. In 8-handed play under flat payouts it is small, consistent with a bot already near a local optimum there.
-* **Bug hunter:** 454k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
+* **Re-steal shoves and fold-equity pushes, with a corrected range model: not adopted** (`results/sng_resteal_*.md`).
+  - **The bug:** both models needed equity vs one opponent holding a top-c share of hands. The first version used k random hands with (1 − c)^k = 1/2, which is far too pessimistic: beating k random hands multiway is much harder than beating one strong hand (A4o vs a top-8% range: 0.15 instead of about 0.30). It is now k = 1 + 0.65 · log2(0.5 / c), so 3 hands for top 5%, 2.5 for top 10%, 1.9 for top 20%.
+  - **Re-steal model** (`resteal`): facing a lone open at 10–25bb, shove if the EV is positive. The opener calls with 0.6 × the Nash calling width out of their observed open rate; players behind wake up with 0.3 × their width; a called shove is charged `resteal_risk` × the ICM premium.
+  - **Exploration** (500 tables): field 2 +1.5 / +3.2 / +2.9 (resteal / pev / both, significant), all3-top3 −0.2 to −1.5.
+  - **Fresh seeds, both at risk 0.5:** field 2 +1.3, field 3 −2.2, default +0.7, mirror **+5.1**, all3-top3 +0.9, hackathon-like +0.3.
+  - **Confirmation** (800 tables): field 3 −0.9, all3-top3 −0.8, all3 +0.4.
+  - **Verdict:** the pooled gain (+0.5) comes from the mirror field, i.e. from exploiting our own tight folding (`icm_tag` folds 93% to a lone open at 10–25bb). Against the independent fields it averages about 0. Off by default; a day-of tuner candidate if the real field folds a lot.
+* **Bug hunter:** 503k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
   - looser calls (a raiser = 3.2 hands, a 3% margin);
