@@ -1,0 +1,2 @@
+{"kind": "slow", "seed": 33047, "variant": "P:omaha_discard2", "bot": "icm_any", "p99_ms": 0.092, "over_1ms": 2, "decisions": 221, "t": "2026-11-02 00:44:13"}
+{"kind": "slow", "seed": 34561, "variant": "P:discard_to_board", "bot": "icm_lite", "p99_ms": 0.14, "over_1ms": 2, "decisions": 260, "t": "2026-11-02 00:45:39"}

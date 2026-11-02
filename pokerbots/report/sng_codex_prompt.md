@@ -101,9 +101,8 @@ Short deck: AA ≈ 0.76. A draw variant: AA ≈ 0.80, weak hands 0.38–0.43.
 >   - Else fold.
 > * **Postflop,** k = opponents not folded.
 >   - Facing a bet: adjusted equity = equity × 0.6 per bet or raise this street (the
->     first bet counts). Pot-size raise if the RAW equity ≥ 0.85 and adjusted ≥ need (an
->     "adjusted ≥ 0.77" bar can never fire; being A/B tested, see REPORT §8). Call if
->     adjusted ≥ need, where need = call/(pot+call) + 0.06, plus the ICM premium above
+>     first bet counts). **Never raise a postflop bet**: every raise rule we tried lost on
+>     all three fields (−1 to −7 points per table). Call if adjusted ≥ need, where need = call/(pot+call) + 0.06, plus the ICM premium above
 >     when the call is ≥ 50% of my stack. Else fold.
 >   - Not facing a bet: bet 65% of the pot if equity ≥ 0.62. As the preflop raiser,
 >     heads-up on the flop, bet half the pot 55% of the time. Otherwise, with 1–2

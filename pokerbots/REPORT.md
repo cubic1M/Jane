@@ -870,6 +870,35 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
 * **Practice kit 2** (`practice_kit2/`), for blind human practice. It has a dict
   interface, raise-by amounts, '10H' cards and its own twist. Its organiser notes are
   kept out of the repo.
+* **Debugging pass 3** (`sng/bughunt.py` plus a debugging agent).
+  - **The bug-hunter** plays random variants, including discard and draw games, with
+    2–8 players, random blinds, antes and point tables, and random line-ups from all
+    three fields. It found:
+    - `icm_tag` made illegal discards;
+    - `icm_lite` crashed on Omaha and discard games (every error is an auto-fold);
+    - `icm_lite` had a p99 of 4 ms (numpy evaluator).
+  - **The debugging agent** found 6 more:
+    - the one-file bundle crashed on every discard;
+    - `icm_tag` folded when it could not raise (AA folded 5 chips into a 25-chip pot);
+    - the steal read used our own seat;
+    - the discard policy loaded inside a timed decision (2.6 ms);
+    - the default chart could load a best-response file;
+    - a short big blind could be called for less than the full blind.
+
+  All are fixed with regression tests. After the fixes: **32,096 random rounds, 0
+  failures other than timing** (scheduler pauses of one 4 ms tick under load). The draw
+  policy now prunes to sensible keeps: the same choice as a full search in 99.7% of
+  hands, p99 0.12 ms on five-card draw.
+* **Best-response shove charts** against measured call rates: fields call a lone all-in
+  only 5–13% of the time. Not adopted: −3.1 to +2.3 over 10 comparisons
+  (`results/sng_br_ab.md`). `icm_tag`'s own shove rule is already near-optimal.
+* **Postflop raising** (`raise_eq`): the old raise bar could never fire. A working rule
+  **loses on all three fields**, −1 to −7 points per table (`results/sng_raise_ab.md`),
+  so the bot only calls or folds facing a postflop bet. Equity against random hands
+  overstates our strength against a bettor.
+* **Plan B rehearsed on practice kit 2** (function interface, raise-by, renumbered seats,
+  a draw twist): a verified bot in 10 minutes, 333 points per table vs the samples'
+  32–152. Its 30 notes are folded into the prompts.
 * The tuner (`sng/tune.py`) is reusable on the day with the real rules as a preset
   (`--preset`), at 10–20 minutes per round. Robustness
   to other fields and point tables is next, since both are guesses until the day.
