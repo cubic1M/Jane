@@ -53,6 +53,10 @@ PARAMS = dict(
     agg_alpha=0.0,       # postflop: discount a bet less from seats that bet often when checked to:
                          #   discount -> discount + (1 - discount) x agg_alpha x excess aggression
     base_agg=0.35,       # ... the bet-when-checked-to rate that counts as normal
+    agg_raise=99.0,      # postflop: raise a bet from a seat whose bet-when-checked-to rate >= agg_seat
+                         #   when RAW equity >= this (99 = off)
+    agg_seat=0.6,
+    station_size=0.0,    # postflop value bet: bet_frac + station_size x (1 - 2 x opponents' fold-to-bet)
     thin_value=0.0,      # postflop: value bar - thin_value x (1 - 2 x opponents' fold-to-bet), vs stations       # ... in the last this many hands       # the raise rate at which a raiser counts as exactly range_k     # facing a raise with a 3-bet hand: shove (not 3-bet) at or below this stack    # lower the open bar by up to this much vs seats that fold to steals
 )
 
@@ -287,10 +291,10 @@ class IcmTag:
         if facing:
             n_aggr = sum(1 for h in street_acts if h[2] == "raise") if obs.history else 1
             disc = p["bet_discount"]
-            if p["agg_alpha"] > 0 and obs.history:
-                bettor = next((h[0] for h in reversed(street_acts) if h[2] == "raise"), None)
+            bettor = next((h[0] for h in reversed(street_acts) if h[2] == "raise"), None) if obs.history else None
+            ag = (self.bet_made[bettor] + p["base_agg"] * 6) / (self.bet_opp[bettor] + 6) if bettor is not None else 0.0
+            if p["agg_alpha"] > 0:
                 if bettor is not None:
-                    ag = (self.bet_made[bettor] + p["base_agg"] * 6) / (self.bet_opp[bettor] + 6)
                     xs = max(0.0, min(1.0, (ag - p["base_agg"]) / (1.0 - p["base_agg"])))
                     disc = disc + (1.0 - disc) * min(1.0, p["agg_alpha"] * xs)
             eq_adj = eq * (disc ** n_aggr)
@@ -299,7 +303,8 @@ class IcmTag:
             if call >= obs.my_stack * 0.5:
                 need += self._risk(obs)
             if lg.can_raise and (eq_adj >= max(p["value_eq"] + 0.15, need + 0.25)
-                                 or (eq >= p["raise_eq"] and eq_adj >= need)):
+                                 or (eq >= p["raise_eq"] and eq_adj >= need)
+                                 or (eq >= p["agg_raise"] and ag >= p["agg_seat"] and eq_adj >= need)):
                 return RaiseTo(lg.clamp(obs.my_bet + call + pot))
             if eq_adj >= need:
                 return Call()
@@ -310,7 +315,11 @@ class IcmTag:
             fr = (sum(self.pf_fold[s] for s in opp) + 1.0) / (sum(self.pf_faced[s] for s in opp) + 2.0)
             vbar -= p["thin_value"] * max(0.0, 1.0 - 2 * fr)
         if eq >= vbar and lg.can_raise:
-            return RaiseTo(lg.clamp(p["bet_frac"] * pot))
+            frac = p["bet_frac"]
+            if p["station_size"] > 0 and opp:
+                fr = (sum(self.pf_fold[s] for s in opp) + 1.0) / (sum(self.pf_faced[s] for s in opp) + 2.0)
+                frac += p["station_size"] * max(0.0, 1.0 - 2 * fr)
+            return RaiseTo(lg.clamp(frac * pot))
         if (k == 1 and self.aggressor == obs.seat and lg.can_raise
                 and self.rng.random() < p["cbet"] and obs.street == 1):
             return RaiseTo(lg.clamp(0.5 * pot))
