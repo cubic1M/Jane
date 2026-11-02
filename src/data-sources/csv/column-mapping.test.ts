@@ -400,3 +400,40 @@ describe("the sign in a column of its own", () => {
     expect(result.ok && result.format.id).toBe("navy_federal");
   });
 });
+
+// Debugger 11-01: a Barclays card file starts with the bank's name, the account number and the
+// balance, a blank line, then the column names. The picker offered "Barclays Bank Delaware" as
+// the only column, so the file couldn't be imported. Lines above the table, narrower than its
+// rows, aren't the column names.
+describe("bank details above the column names", () => {
+  it("offers the table's columns, not the bank's name", () => {
+    const result = read("preamble-barclays.csv");
+    expect(result).toMatchObject({ ok: false, reason: "unknown_format" });
+    if (result.ok) return;
+    expect(result.choices).toMatchObject({
+      columns: [
+        "Transaction Date (10/28/2026)",
+        "Description (UBER   *TRIP)",
+        "Category (DEBIT)",
+        "Amount (-28.91)",
+      ],
+      hasHeader: true,
+      guess: { date: 0, description: 1, amount: 3 },
+    });
+  });
+
+  it("reads the rows with the columns picked", () => {
+    const result = read(
+      "preamble-barclays.csv",
+      signed("negative", { amount: { kind: "signed", column: 3, moneyOut: "negative" } }),
+    );
+    expect(rows(result)).toEqual([
+      ["2026-10-28", 2891],
+      ["2026-10-26", -40_000],
+      ["2026-10-21", 2700],
+      ["2026-09-01", 9900],
+    ]);
+    // The bank's details aren't rows that failed to read.
+    expect(result.ok && result.skipped).toEqual([]);
+  });
+});
