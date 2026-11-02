@@ -125,9 +125,9 @@ heads-up and payout changes):
 | hackathon-like field, all three under winner payouts | tie with `f3_exploiter` (±1) |
 | **field 4** (six adaptive bots written blind, the hardest) | mid-pack: 33.5–36.5 per table (fair 34.75); `f3_exploiter` about +11 there |
 
-Tonight's seven changes, measured together on fresh seeds against the start-of-night bot: **+4.0 per table on
-average**, none negative: field 3 +7.4, winner payouts +8.4, the Plan B field +7.5, default +3.5
-(`results/sng_night_total2.md`).
+Tonight's eight changes, measured together on fresh seeds against the start-of-night bot: **+5.7 per table on
+average** over 9 fields, eight significant, none negative: the Plan B field +14.5, our copies +9.2, field 3 +6.7,
+winner payouts +6.3, default +4.1, field 4 +3.3 (`results/sng_night_total3.md`).
 
 So we clearly beat our own fields, and beat or tie the best independently written bots. The edge
 over a strong independent bot is a few points per table, not a landslide. That is why the day-of
