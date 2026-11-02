@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { findingOfType, sampleFindings } from "./__fixtures__/findings";
-import { buildCard, cardHash, ownAccountCancel, type CardFinding } from "./cards";
+import {
+  buildCard,
+  cardHash,
+  ownAccountCancel,
+  ownAccountWords,
+  serviceNames,
+  type CardFinding,
+} from "./cards";
 
 const asStored = (type: Parameters<typeof findingOfType>[0]): CardFinding => {
   const f = findingOfType(type);
@@ -104,5 +111,49 @@ describe("a company that only cancels from the person's own account", () => {
     expect(words.whatChanges).not.toMatch(/We cancel/);
     expect(words.yesLabel).toBe("Yes, help me cancel");
     expect(words.approvedWords).not.toMatch(/on it/);
+  });
+});
+
+// Debugger 11-02: "then cancel the others for you", at companies that only cancel from the
+// person's own account.
+describe("the other cards that cancel", () => {
+  it("names the companies that cancel from the person's own account, on two services", () => {
+    expect(ownAccountWords("duplicate_subscription", "We ask…", ["Hulu", "Netflix"])).toEqual({
+      whatChanges:
+        "We ask which service you want to keep. Hulu and Netflix only cancel from your own account, so Jane gives you the cancel pages, then watches for the next charges to confirm they stopped.",
+      yesLabel: "Yes, help me cancel",
+      approvedWords: "Approved. Jane has your next step.",
+    });
+    expect(ownAccountWords("duplicate_subscription", "We ask…", ["Hulu"])?.whatChanges).toContain(
+      "Hulu only cancels from your own account, so Jane gives you the cancel page, then watches for the next charge to confirm it stopped.",
+    );
+  });
+
+  it("keeps what a plan's card says about the card's cover", () => {
+    const words = ownAccountWords(
+      "covered_by_card",
+      "We cancel your Asurion plan for you. Your Demo Card keeps covering you as long as it's open.",
+      ["Asurion"],
+    );
+    expect(words?.whatChanges).toBe(
+      "Asurion only cancels from your own account, so Jane gives you their cancel page, then watches for the next charge to confirm it stopped. Your Demo Card keeps covering you as long as it's open.",
+    );
+  });
+
+  it("leaves a card alone when Jane can cancel for them", () => {
+    expect(ownAccountWords("duplicate_subscription", "We ask…", [])).toBeNull();
+    expect(ownAccountWords("covered_by_card", "We cancel…", [])).toBeNull();
+    expect(ownAccountWords("subscription_review", "We cancel…", [])).toBeNull();
+  });
+
+  it("reads the service names from a finding", () => {
+    expect(
+      serviceNames("duplicate_subscription", {
+        services: [{ merchant: "Hulu" }, { merchant: "Netflix" }, { merchant: "Hulu" }],
+      }),
+    ).toEqual(["Hulu", "Netflix"]);
+    expect(serviceNames("subscription_review", { merchant: "Adobe" })).toEqual(["Adobe"]);
+    expect(serviceNames("covered_by_card", { merchant: "Asurion" })).toEqual(["Asurion"]);
+    expect(serviceNames("bank_fees", { merchant: "Chase" })).toEqual([]);
   });
 });

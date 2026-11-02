@@ -69,6 +69,46 @@ export function ownAccountCancel(company: string): {
   };
 }
 
+// The companies a cancelling card is about, to look up who cancels from the person's own account.
+export function serviceNames(type: FindingType, evidence: unknown): string[] {
+  const e = obj(evidence);
+  if (type === "subscription_review" || type === "covered_by_card") {
+    const merchant = text(e.merchant);
+    return merchant ? [merchant] : [];
+  }
+  if (type !== "duplicate_subscription") return [];
+  const names = list(e.services).map((s) => text(obj(s).merchant));
+  return [...new Set(names.filter((n): n is string => n !== null))];
+}
+
+// What a cancelling card says when `own` of its companies only cancel from the person's own
+// account: null when Jane can cancel for them, so the card's own words stand.
+export function ownAccountWords(
+  type: FindingType,
+  cardWords: string,
+  own: readonly string[],
+): ReturnType<typeof ownAccountCancel> | null {
+  if (own.length === 0) return null;
+  const words = ownAccountCancel(own[0]);
+  if (type === "subscription_review") return words;
+  if (type === "covered_by_card") {
+    // The card's first sentence is the cancelling; the rest is what the person's card still covers.
+    const rest = cardWords.slice(cardWords.indexOf(". ") + 2);
+    return { ...words, whatChanges: `${words.whatChanges} ${rest}` };
+  }
+  if (type !== "duplicate_subscription") return null;
+  const one = own.length === 1;
+  const names = one ? own[0] : `${own.slice(0, -1).join(", ")} and ${own.at(-1)}`;
+  return {
+    ...words,
+    whatChanges: `We ask which service you want to keep. ${names} only ${
+      one ? "cancels" : "cancel"
+    } from your own account, so Jane gives you the cancel ${one ? "page" : "pages"}, then watches for the next ${
+      one ? "charge" : "charges"
+    } to confirm ${one ? "it" : "they"} stopped.`,
+  };
+}
+
 function whatChanges(type: FindingType, evidence: Json): string {
   const merchant = text(evidence.merchant) ?? "the company";
   switch (type) {

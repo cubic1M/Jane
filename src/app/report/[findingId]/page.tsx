@@ -10,7 +10,8 @@ import {
   CARD_SELECT,
   buildCard,
   cardHash,
-  ownAccountCancel,
+  ownAccountWords,
+  serviceNames,
 } from "@/lib/cards";
 import { partnerForUser } from "@/lib/referrals";
 import { scopedDb } from "@/lib/db-scoped";
@@ -74,17 +75,15 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
         })
       : null;
   const outcome = company?.outcome ?? null;
-  // A company that only cancels from the person's own account: said before the yes, and still
+  // Companies that only cancel from the person's own account: said before the yes, and still
   // after it, once the card no longer looks the company up for its kit.
-  const ownAccount =
-    !readOnly &&
-    finding.type === "subscription_review" &&
-    typeof merchantName === "string" &&
-    cancelsFromOwnAccountOnly(
-      company ? company.merchant : (await companyFacts(merchantName)).merchant,
-    )
-      ? ownAccountCancel(merchantName)
-      : null;
+  const services = readOnly ? [] : serviceNames(finding.type, finding.evidence);
+  const facts = await Promise.all(services.map((name) => companyFacts(name)));
+  const ownAccount = ownAccountWords(
+    finding.type,
+    card.whatChanges,
+    services.filter((_, i) => cancelsFromOwnAccountOnly(facts[i].merchant)),
+  );
   // What it shows: for a real account, what they'd do, never "We ...". The hash is the card's.
   const shown = readOnly
     ? selfServe(card)

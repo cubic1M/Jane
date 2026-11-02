@@ -28,3 +28,28 @@ describe("merchant directory matching", () => {
     }
   });
 });
+
+// Debugger 11-02: "Disney+" normalised to "disney", which isn't "disney plus", so Jane treated it
+// as a company it didn't know: on the card, and for the agent after a yes.
+describe("a name written with a plus", () => {
+  const directory = [
+    { key: "disney plus", aliases: ["disneyplus"] },
+    { key: "paramount plus", aliases: ["paramountplus"] },
+    { key: "disney", aliases: [] },
+  ] as unknown as Parameters<typeof findInDirectory>[1];
+
+  it.each([
+    ["Disney+", "disney plus"],
+    ["Paramount+", "paramount plus"],
+    ["Disney Plus", "disney plus"],
+    ["Netflix", "netflix"],
+    ["AT&T", "at&t"],
+  ])("%s reads as %s", (name, key) => {
+    expect(normalizeAlias(name)).toBe(key);
+  });
+
+  it("finds the company", () => {
+    expect(findInDirectory(normalizeAlias("Disney+")!, directory)?.key).toBe("disney plus");
+    expect(findInDirectory(normalizeAlias("Paramount+")!, directory)?.key).toBe("paramount plus");
+  });
+});
