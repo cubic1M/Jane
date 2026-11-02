@@ -723,6 +723,47 @@ export const paypal: CsvFormat = {
   },
 };
 
+// Cash App (Activity → Statements → Export CSV): "Transaction ID,Date,Transaction Type,Currency,
+// Amount,Fee,Net Amount,…,Status,Notes,Name of sender/receiver,Account". Dates carry a time and a
+// zone ("2026-10-20 13:22:10 EDT"), money is "-$500.00", and Net Amount includes the fee. These
+// headers are from memory, not checked against a real file or an importer, so only the ones that
+// matter are required: a file that differs goes to the column picker (debugger 11-02).
+const CASH_APP_NOT_DONE = /fail|cancel|declin|waiting|pending|reject/i;
+
+export const cashApp: CsvFormat = {
+  id: "cash_app",
+  bank: "Cash App",
+  label: "Cash App",
+  account: { name: "Cash App", kind: "payment_app" },
+  requiredHeaders: ["transaction id", "transaction type", "net amount", "status"],
+  shortRows: "skip",
+  parseRow(get) {
+    const when = get("date").trim();
+    if (!get("transaction id").trim() || !when) {
+      return { ok: false, reason: "Not a transaction", silent: true };
+    }
+    const status = get("status").trim();
+    if (CASH_APP_NOT_DONE.test(status)) {
+      return { ok: false, reason: `Not completed (${status})`, silent: true };
+    }
+    const date = parseIsoDate(when.slice(0, 10));
+    if (!date) return { ok: false, reason: `Unreadable date "${when}"` };
+    const cents = parseMoneyToCents(get("net amount"));
+    if (cents === null) return { ok: false, reason: `Unreadable amount "${get("net amount")}"` };
+    const type = get("transaction type").trim();
+    const note = get("notes").trim();
+    const who = get("name of sender/receiver").trim();
+    // A direct deposit is pay, whoever sent it: "Doordash Inc" alone reads as a restaurant.
+    const description = /cash ?out/i.test(type)
+      ? `Transfer to bank${note ? `: ${note}` : ""}`
+      : /direct deposit/i.test(type) && who
+        ? `Direct deposit from ${who}`
+        : [who, note].filter(Boolean).join(": ") || type;
+    if (!description) return { ok: false, reason: "Missing description" };
+    return { ok: true, row: { date, amountCents: -cents || 0, description, hints: {} } };
+  },
+};
+
 // Most specific first: a file matches the first format whose headers it all has.
 export const CSV_FORMATS: readonly CsvFormat[] = [
   chaseChecking,
@@ -742,6 +783,7 @@ export const CSV_FORMATS: readonly CsvFormat[] = [
   usaa,
   venmo,
   paypal,
+  cashApp,
 ];
 
 export const HEADERLESS_FORMATS: readonly HeaderlessFormat[] = [wellsFargo];

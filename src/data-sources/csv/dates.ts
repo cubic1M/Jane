@@ -30,15 +30,22 @@ function isoOf(year: number, month: number, day: number): string | null {
 
 const fullYear = (year: string) => (year.length === 2 ? 2000 + Number(year) : Number(year));
 
+// A time after the date, with its seconds, AM or PM and zone: "13:22:10 EDT", "T13:22:10-04:00",
+// "1:22 PM". The day is the one written, in the bank's own zone: moving it would put a late
+// evening's charge on another day than the statement says (debugger 11-02: Cash App).
+const TIME_AFTER =
+  /[T ]\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?: ?[AP]M)?(?: ?(?:Z|[A-Z]{2,5}|[+-]\d{2}:?\d{2}))?$/i;
+const dayOnly = (value: string) => value.trim().replace(TIME_AFTER, "");
+
 // 05/09/2026, 5-9-26, 05.09.2026: the two numbers before the year, in the order written.
 export function numericParts(value: string): [number, number, number] | null {
-  const match = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|\d{4})$/.exec(value.trim());
+  const match = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|\d{4})$/.exec(dayOnly(value));
   return match ? [Number(match[1]), Number(match[2]), fullYear(match[3])] : null;
 }
 
 // YYYY-MM-DD, also with slashes or dots, with an optional time after it.
 function parseIso(value: string): string | null {
-  const match = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[T ][\d:.]+Z?)?$/.exec(value.trim());
+  const match = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/.exec(dayOnly(value));
   return match ? isoOf(Number(match[1]), Number(match[2]), Number(match[3])) : null;
 }
 
