@@ -12,6 +12,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { isTrialUser } from "@/lib/trial-ids";
 import { plaidEnvironment } from "./client";
+import { COUNTER_ID, itemSlotUse } from "./item-count";
 
 // Plaid's Trial plan allows a fixed number of Production Items, ever (docs/setup/plaid-trial.md).
 // A lasting counter says how many are used, since plaid_items rows go when a bank is removed, and
@@ -21,8 +22,6 @@ import { plaidEnvironment } from "./client";
 //
 // audit_log wouldn't do: its item_linked entries are deleted after RETENTION_PERIODS.accessLog,
 // carry an IP address and browser, and can't refuse the 11th of two at once.
-
-const COUNTER_ID = "production";
 
 type Options = { client?: PrismaClient };
 
@@ -42,23 +41,6 @@ export function linkClosedAnswer(reason: ClosedReason) {
     ? { error: LINKING_TRIAL_WORDS }
     : { error: `${LINKING_FULL_WORDS} ${LINKING_UPLOAD_WORDS}`, code: LINKING_FULL_CODE };
 }
-
-// The founders' number. System-wide and with no personal data, so it isn't a scoped table.
-export async function itemSlotUse({ client = defaultClient }: Options = {}) {
-  const limit = plaidItemLimit();
-  const row = await client.plaidItemCounter.findUnique({
-    where: { id: COUNTER_ID },
-    select: { used: true },
-  });
-  return {
-    used: row?.used ?? 0,
-    limit,
-    warnAt: plaidItemWarnAt(limit),
-  };
-}
-
-export const bankConnectionsLine = ({ used, limit }: { used: number; limit: number }) =>
-  `${used} of ${limit} bank connections used`;
 
 // Whether a new bank could be linked right now. A guard before opening Link; only
 // reserveItemSlot decides. Trial people are sample data: a real Item for them would spend a slot

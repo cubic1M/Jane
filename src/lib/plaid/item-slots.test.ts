@@ -11,7 +11,8 @@ import {
   plaidItemWarnAt,
 } from "@/config/plaid-items";
 import { scopedFor } from "@/lib/db-scoped";
-import { bankConnectionsLine, linkAvailability, linkClosedAnswer } from "./item-slots";
+import { bankConnectionsLine } from "./item-count";
+import { linkAvailability, linkClosedAnswer } from "./item-slots";
 
 afterEach(() => {
   vi.unstubAllEnvs();

@@ -5,7 +5,14 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh: 
 
 import { LinkChoice } from "./link-choice";
 
-const open = { plaidOn: true, uploadFirst: true, linkOpen: true, hasBanks: false, demoOn: false };
+const open = {
+  plaidOn: true,
+  uploadFirst: true,
+  linkOpen: true,
+  hasBanks: false,
+  demoOn: false,
+  primaryClassName: "primary",
+};
 
 const render = (over: Partial<typeof open> = {}) =>
   renderToStaticMarkup(<LinkChoice {...open} {...over} />);

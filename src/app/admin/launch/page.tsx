@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { failedSignInEmails } from "@/lib/auth-events";
 import { launchChecks, launchReady, signInEmailCheck } from "@/lib/launch-check";
-import { itemSlotUse } from "@/lib/plaid/item-slots";
+import { itemSlotUse } from "@/lib/plaid/item-count";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
 import { LoadingBar } from "@/components/loading-bar";

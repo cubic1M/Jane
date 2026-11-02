@@ -12,7 +12,8 @@ import { deleteAllData } from "@/lib/account-deletion";
 import { track } from "@/lib/analytics";
 import { encrypt } from "@/lib/crypto";
 import { linkDemoBank } from "./demo";
-import { LinkingClosedError, itemSlotUse, linkAvailability, reserveItemSlot } from "./item-slots";
+import { itemSlotUse } from "./item-count";
+import { LinkingClosedError, linkAvailability, reserveItemSlot } from "./item-slots";
 import { createLinkToken, exchangePublicToken } from "./link";
 import { removePlaidItem } from "./remove";
 

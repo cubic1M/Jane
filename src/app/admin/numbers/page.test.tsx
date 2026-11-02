@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/session", () => ({ requireAdmin: vi.fn() }));
 vi.mock("@/lib/founder-numbers", () => ({ loadFounderNumbers: vi.fn() }));
-vi.mock("@/lib/plaid/item-slots", () => ({
+vi.mock("@/lib/plaid/item-count", () => ({
   itemSlotUse: vi.fn(async () => ({ used: 3, limit: 10, warnAt: 8 })),
   bankConnectionsLine: ({ used, limit }: { used: number; limit: number }) =>
     `${used} of ${limit} bank connections used`,

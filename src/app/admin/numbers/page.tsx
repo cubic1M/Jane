@@ -1,6 +1,6 @@
 import { FOUNDER_NUMBERS } from "@/config/founder-numbers";
 import { loadFounderNumbers } from "@/lib/founder-numbers";
-import { bankConnectionsLine, itemSlotUse } from "@/lib/plaid/item-slots";
+import { bankConnectionsLine, itemSlotUse } from "@/lib/plaid/item-count";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
 import { change, LINES } from "./lines";

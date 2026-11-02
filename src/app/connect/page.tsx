@@ -10,9 +10,12 @@ import { linkAvailability } from "@/lib/plaid/item-slots";
 import { requireUser } from "@/lib/session";
 import { linkDemo } from "./demo-actions";
 import { LinkButton } from "./link-button";
-import { LinkChoice, PRIMARY_BUTTON, Promises, SECONDARY_BUTTON } from "./link-choice";
+import { LinkChoice, Promises, SECONDARY_BUTTON } from "./link-choice";
 import { SubmitButton } from "@/components/submit-button";
 import { SUGGESTED_UPLOAD_MONTHS, UPLOAD_REASSURANCE } from "@/config/import";
+
+const PRIMARY_BUTTON =
+  "inline-flex h-12 w-full items-center justify-center rounded-full bg-emerald-700 px-6 font-semibold text-white hover:bg-emerald-800 disabled:opacity-50 sm:w-auto";
 
 async function ConnectContent() {
   const user = await requireUser();
@@ -139,6 +142,7 @@ async function ConnectContent() {
           linkOpen={link.open}
           hasBanks={items.length > 0}
           demoOn={demoBankEnabled()}
+          primaryClassName={PRIMARY_BUTTON}
         />
         {demoBankEnabled() && (
           <form

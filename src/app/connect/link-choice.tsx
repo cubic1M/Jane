@@ -2,8 +2,6 @@ import Link from "next/link";
 import { LINKING_FULL_WORDS, LINKING_UPLOAD_WORDS } from "@/config/plaid-items";
 import { LinkButton } from "./link-button";
 
-export const PRIMARY_BUTTON =
-  "inline-flex h-12 w-full items-center justify-center rounded-full bg-emerald-700 px-6 font-semibold text-white hover:bg-emerald-800 disabled:opacity-50 sm:w-auto";
 export const SECONDARY_BUTTON =
   "inline-flex h-11 items-center justify-center rounded-full border border-zinc-300 px-5 text-sm font-semibold hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900";
 
@@ -34,12 +32,14 @@ export function LinkChoice({
   linkOpen,
   hasBanks,
   demoOn,
+  primaryClassName,
 }: {
   plaidOn: boolean;
   uploadFirst: boolean;
   linkOpen: boolean;
   hasBanks: boolean;
   demoOn: boolean;
+  primaryClassName: string;
 }) {
   if (plaidOn && !linkOpen) {
     // Trial people can't upload (src/lib/csv-access.ts): they keep the demo bank below.
@@ -47,7 +47,7 @@ export function LinkChoice({
     return (
       <p data-link-full="" className="text-sm text-zinc-600 dark:text-zinc-400">
         {LINKING_FULL_WORDS}{" "}
-        <Link href="/import" className="font-medium text-emerald-700 hover:underline">
+        <Link href="/import" className="font-medium underline">
           {LINKING_UPLOAD_WORDS}
         </Link>
       </p>
@@ -78,7 +78,7 @@ export function LinkChoice({
     return (
       <LinkButton
         label={hasBanks ? "Add another account" : "Link an account"}
-        className={PRIMARY_BUTTON}
+        className={primaryClassName}
       />
     );
   }

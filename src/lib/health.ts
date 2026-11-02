@@ -5,7 +5,7 @@ import type { Admin } from "@/lib/concierge";
 import { db as defaultClient } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { plaidEnvironment } from "@/lib/plaid/client";
-import { bankConnectionsLine, itemSlotUse } from "@/lib/plaid/item-slots";
+import { bankConnectionsLine, itemSlotUse } from "@/lib/plaid/item-count";
 import { rlsCoverage, rlsSwitchWorks } from "@/lib/rls-coverage";
 import { scrub } from "@/lib/scrub";
 

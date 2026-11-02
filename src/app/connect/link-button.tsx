@@ -111,7 +111,7 @@ export function LinkButton({
     return (
       <p role="status" className="text-sm">
         {LINKING_FULL_WORDS}{" "}
-        <Link href="/import" className="font-medium text-emerald-700 hover:underline">
+        <Link href="/import" className="font-medium underline">
           {LINKING_UPLOAD_WORDS}
         </Link>
       </p>
