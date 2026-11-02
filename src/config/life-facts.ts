@@ -90,6 +90,10 @@ export const STUDENT_SIGNAL: Signal = {
 };
 // Campus-only words: with enough of these across months it is seen (a parent paying tuition
 // does not shop the campus bookstore every month).
+// Saving for college isn't going there: a parent's 529 said "COLLEGE" every month and read as a
+// student (debugger 11-02).
+export const STUDENT_NOT_SCHOOL =
+  /\b529\b|COLLEGE ?(?:SAVINGS|INVEST|ADVANTAGE|BOUND|ILLINOIS|FUND)|UNIVERSITY SAVINGS|SCHOLARSHARE/;
 export const STUDENT_CAMPUS_WORDS =
   /BOOKSTORE|CAMPUS|STUDENT (?:FEE|HOUSING|UNION)|MEAL PLAN|DINING PLAN/;
 export const STUDENT_SEEN_CAMPUS_MATCHES = 3;

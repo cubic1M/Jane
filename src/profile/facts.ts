@@ -37,7 +37,7 @@ export const FACT_SPECS = [
   F("has_children", "You have children at home", "boolean"),
   F("housing", "Where you live", "choice", { choices: ["own", "rent", "unknown"] }),
   F("county", "The county you live in", "text"),
-  F("mortgage_rate_bps", "Your mortgage rate (in basis points)", "number", { correctable: false }),
+  F("mortgage_rate_bps", "Your mortgage rate", "number", { correctable: false }),
   F("has_pmi", "Your mortgage includes PMI", "boolean", { correctable: false }),
   F("has_car", "You have a car", "boolean"),
   F("has_pet", "You have a pet", "boolean"),
@@ -93,6 +93,16 @@ export const FACT_SPECS = [
 ] as const satisfies readonly FactSpec[];
 
 export type FactKey = (typeof FACT_SPECS)[number]["key"];
+// A choice as a person reads it: its stored value is a code ("eats_out").
+export const choiceWords = (choice: string) => choice.replaceAll("_", " ");
+
+// A fact's value in words, where the stored value isn't how anyone says it. Money and yes or no are
+// said where they're shown.
+export function factWords(key: string, value: string | number): string {
+  if (key === "mortgage_rate_bps") return `${(Number(value) / 100).toFixed(2)}%`;
+  return factSpec(key)?.kind === "choice" ? choiceWords(String(value)) : String(value);
+}
+
 export const FACT_KEYS = FACT_SPECS.map((f) => f.key) as readonly FactKey[];
 export const factSpec = (key: string): FactSpec | undefined =>
   FACT_SPECS.find((f) => f.key === key);
