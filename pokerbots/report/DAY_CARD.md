@@ -122,8 +122,9 @@ heads-up and payout changes):
 | all three fields, top-3 payouts | +4.5 / +2.3 (not significant) |
 | hackathon-like field, all three under winner payouts | tie with `f3_exploiter` (±1) |
 
-Tonight's five changes, measured together on fresh seeds: **+1.9 per table on average**, with +4.6 on field 3 and
-+5.4 under winner payouts (`results/sng_tonight_total.md`).
+Tonight's seven changes, measured together on fresh seeds against the start-of-night bot: **+4.0 per table on
+average**, none negative: field 3 +7.4, winner payouts +8.4, the Plan B field +7.5, default +3.5
+(`results/sng_night_total2.md`).
 
 So we clearly beat our own fields, and beat or tie the best independently written bots. The edge
 over a strong independent bot is a few points per table, not a landslide. That is why the day-of
