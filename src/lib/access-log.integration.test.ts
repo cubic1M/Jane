@@ -28,7 +28,7 @@ vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 import { PrismaClient } from "@/generated/prisma/client";
 import { logAdminAccess } from "./admin-access";
 import { logAudit } from "./audit";
-import { logAuthError, recordFailedSignIn, recordSignIn } from "./auth-events";
+import { failedSignInEmails, logAuthError, recordFailedSignIn, recordSignIn } from "./auth-events";
 import { parseFilters, recentActivity, searchAccessLog } from "./access-log";
 import { signOutToHome } from "./auth-actions";
 
@@ -242,5 +242,24 @@ describe.runIf(url)("the access log against a real database", () => {
       expect(stored).not.toContain(secret);
     }
     expect(stored).not.toContain("eyJ");
+  });
+
+  // Founder's admin sign-in, 11-02: counted for the launch check, and nothing else is.
+  it("counts sign-in emails that failed in the last day, and only those", async () => {
+    const now = new Date();
+    const before = await failedSignInEmails({ client, now });
+    const row = (reason: string, createdAt: Date) =>
+      client.auditLog.create({
+        data: {
+          actorType: "system",
+          event: "sign_in_failed",
+          metadata: { reason },
+          createdAt,
+        },
+      });
+    await row("EmailSignInError", new Date(now.getTime() - 60_000));
+    await row("Verification", new Date(now.getTime() - 60_000));
+    await row("EmailSignInError", new Date(now.getTime() - 3 * 86_400_000));
+    expect(await failedSignInEmails({ client, now })).toBe(before + 1);
   });
 });

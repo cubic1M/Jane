@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { launchChecks, launchReady } from "./launch-check";
+import { launchChecks, launchReady, signInEmailCheck } from "./launch-check";
 
 const READY = {
   DATABASE_URL: "postgresql://u:p@db.example.neon.tech/neondb",
@@ -77,5 +77,23 @@ describe("launchChecks", () => {
       READY.ADMIN_EMAILS,
     ];
     for (const value of secrets) expect(output).not.toContain(value);
+  });
+});
+
+// Founder's admin sign-in, 11-02: the settings were there and every check passed while Resend
+// refused the mail.
+describe("sign-in emails that failed", () => {
+  it("passes with none in the last day", () => {
+    expect(signInEmailCheck(0)).toMatchObject({ name: "Sign-in emails", ok: true, required: true });
+  });
+
+  it("fails, saying how many and where to look", () => {
+    const check = signInEmailCheck(3);
+    expect(check.ok).toBe(false);
+    expect(check.detail).toBe(
+      "3 sign-in emails failed to send in the last day. The reason is on the server log, after [magic-link].",
+    );
+    expect(signInEmailCheck(1).detail).toMatch(/^1 sign-in email failed/);
+    expect(launchReady([signInEmailCheck(1)])).toBe(false);
   });
 });
