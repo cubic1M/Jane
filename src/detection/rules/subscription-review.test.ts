@@ -48,6 +48,20 @@ describe("subscription_review", () => {
     );
   });
 
+  // Debugger 11-02: Netflix at $15.49 on two cards read "Review your Netflix subscription at
+  // $15.49" twice, with nothing to say which card each one was.
+  it("tells one merchant at one price on two cards apart by the card", () => {
+    const transactions = [
+      ...monthly(4, 1549, NETFLIX),
+      ...monthly(4, 1549, { ...NETFLIX, accountId: CARD.id }),
+    ];
+    const titles = run(input({ transactions })).map((f) => f.title);
+    expect(titles.sort()).toEqual([
+      `Review your Netflix subscription on ${CHECKING.name}`,
+      `Review your Netflix subscription on ${CARD.name}`,
+    ]);
+  });
+
   // CSV bench, second tuning set: one plan with most of the charges doesn't hide the other.
   it("keeps both plans when one of them has most of the charges", () => {
     const google = { description: "GOOGLE *GOOGLE ONE", pfcPrimary: null, pfcDetailed: null };

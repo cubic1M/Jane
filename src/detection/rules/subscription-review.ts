@@ -122,16 +122,26 @@ export const subscriptionReview: Rule = (input, streams) => {
       (isAmbiguousRecurring(s) && confirmed.has(s.merchantKey)),
   );
   // Two plans of one merchant at two prices are told apart by their price (QA round 31: both
-  // read "Review your Spotify subscription").
+  // read "Review your Spotify subscription"); one price on two cards, by the card (debugger 11-02:
+  // Netflix on two cards read "… at $15.49" twice).
   const named = new Map<string, number>();
   for (const s of found) named.set(s.merchant, (named.get(s.merchant) ?? 0) + 1);
+  const accountName = new Map(input.accounts.map((a) => [a.id, a.name]));
+  const titleOf = (stream: Stream) => {
+    const base = `Review your ${stream.merchant} subscription`;
+    if ((named.get(stream.merchant) ?? 0) < 2) return base;
+    const samePrice = found.filter(
+      (o) => o.merchant === stream.merchant && o.lastAmountCents === stream.lastAmountCents,
+    );
+    const card = stream.accountId ? accountName.get(stream.accountId) : undefined;
+    return samePrice.length > 1 && card
+      ? `${base} on ${card}`
+      : `${base} at ${formatCents(stream.lastAmountCents)}`;
+  };
   return found.map((stream) => ({
     type: "subscription_review",
     key: stream.key,
-    title:
-      (named.get(stream.merchant) ?? 0) > 1
-        ? `Review your ${stream.merchant} subscription at ${formatCents(stream.lastAmountCents)}`
-        : `Review your ${stream.merchant} subscription`,
+    title: titleOf(stream),
     annualSavingsCents: stream.annualCostCents,
     amountCents: stream.annualCostCents,
     // Known by name or category: its own confidence. Claude said yes: up to medium. Only its
