@@ -919,7 +919,18 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   - `icm_tag` beats `pushfold_icm`, `f2_shark` and `adaptive` significantly under all three payout sets;
   - it does **not** beat `f3_exploiter`: −1.7 / −0.8 / −6.4, not significant, and the exploiter wins 26% of tables to our 10%.
 
-  The exploiter reads each seat's shove range, bet frequency and stations. Our reads are milder, so three switches (off by default) are being A/B tested: `rk_floor`, `agg_alpha`, `thin_value`.
+  The exploiter reads each seat's shove range, bet frequency and stations. So five
+  opponent-read switches were A/B tested on this field (`results/sng_exploit_ab*.md`,
+  500 paired tables each):
+  - `rk_floor`: call shoves from always-raisers wider;
+  - `agg_alpha`: discount bets less from frequent bettors;
+  - `thin_value`: bet thinner vs stations;
+  - `agg_raise`: raise frequent bettors;
+  - `station_size`: bet bigger vs stations.
+
+  **None helped:** the best were +1.0 ± 1.4 and +0.8 ± 1.3, the combination +0.3 ± 1.6.
+  The bot's existing reads already capture this field, and the tie with `f3_exploiter`
+  is noise. All switches stay off; they remain available to the day-of tuner.
 * **Bug hunter:** 188k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
