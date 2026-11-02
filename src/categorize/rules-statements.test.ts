@@ -83,6 +83,21 @@ describe("a card payment on a checking statement", () => {
     "MERRICK BANK PAYMENT",
     "CARDMEMBER SERV WEB PYMT",
     "NAVY FEDERAL CREDIT CARD PMT",
+    // Store cards, which name the shop: "AMAZON" alone made these shopping (debugger 11-02: $1,200
+    // on top of the card's own purchases, and listed as a regular bill).
+    "SYNCHRONY BANK AMAZON PAYMENT",
+    "AMAZON CORP SYF PAYMNT",
+    "AMZ_STORECRD_PMT PAYMENT",
+    "AMAZON STORE CARD PAYMENT",
+    "SYNCHRONY BANK LOWES PAYMENT",
+    "SYNCB/AMAZON PAYMENT",
+    "LOWES SYF PAYMNT",
+    "COMENITY PAY VI WEB PYMT",
+    "COMENITY BANK PAYMENT",
+    "BEST BUY CBNA PAYMENT",
+    "TARGET CARD PAYMENT",
+    "HOME DEPOT CREDIT SERVICES PAYMENT",
+    "MACYS CREDIT CARD PAYMENT",
   ])("%s isn't spending", (description) => {
     expect(categorizeByRules({ description, amountCents: 30_000, hints: {} })?.detailed).toBe(
       "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
@@ -93,6 +108,9 @@ describe("a card payment on a checking statement", () => {
     ["TARGET T-1234 CHERRY HILL NJ", "GENERAL_MERCHANDISE_SUPERSTORES"],
     ["KOHLS 0442 MARLTON NJ", "GENERAL_MERCHANDISE_DEPARTMENT_STORES"],
     ["CAPITAL ONE AUTO CARPAY", "LOAN_PAYMENTS_CAR_PAYMENT"],
+    ["AMAZON.COM*RT4Y1 SEATTLE WA", "GENERAL_MERCHANDISE_ONLINE_MARKETPLACES"],
+    ["AMZN MKTP US*2K4", "GENERAL_MERCHANDISE_ONLINE_MARKETPLACES"],
+    ["SYNCHRONY BANK SAVINGS TRANSFER", "TRANSFER_OUT_SAVINGS"],
   ])("%s stays what it is", (description, category) => {
     expect(categorizeByRules({ description, amountCents: 3_000, hints: {} })?.detailed).toBe(
       category,
