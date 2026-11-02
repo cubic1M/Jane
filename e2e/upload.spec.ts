@@ -124,6 +124,14 @@ test("a real account's area pages say what the read-only beta does", async ({ pa
 
   await page.goto("/taxes/calendar");
   await expect(page.getByText(READ_ONLY_TAX_CALENDAR)).toBeVisible();
+
+  // Debugger 11-02: the same on /jane, and in the money health score's small print.
+  await page.goto("/jane");
+  const jane = page.getByRole("main");
+  await expect(jane.getByRole("heading", { level: 1 })).toHaveText("What's on your list with Jane");
+  await expect(jane.getByText("schedule card payments")).toHaveCount(0);
+  await expect(jane.getByText("Nothing changes until you say yes")).toHaveCount(0);
+  await expect(jane.getByText("What Jane gets done")).toHaveCount(0);
 });
 
 test("a CSV in an unknown layout gets a column picker instead of failing", async ({

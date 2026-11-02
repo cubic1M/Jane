@@ -261,7 +261,11 @@ async function JaneContent() {
           </p>
         ) : (
           <>
-            <p className={MUTED}>Nothing changes until you say yes.</p>
+            <p className={MUTED}>
+              {snapshot?.concierge === false
+                ? "Nothing changes unless you do it."
+                : "Nothing changes until you say yes."}
+            </p>
             <ul className="flex flex-col gap-3">
               {decide.items.map((item) => (
                 <li key={item.findingId}>
@@ -347,7 +351,9 @@ async function JaneContent() {
         )}
         {done.items.length === 0 ? (
           <p className={MUTED}>
-            Nothing finished yet. What Jane gets done, and what it saved you, shows up here.
+            {snapshot?.concierge === false
+              ? "Nothing finished yet. What you get done, and what it saved you, shows up here."
+              : "Nothing finished yet. What Jane gets done, and what it saved you, shows up here."}
           </p>
         ) : (
           <ul className="flex flex-col gap-3">

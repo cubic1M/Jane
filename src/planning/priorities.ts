@@ -64,7 +64,7 @@ export function scoreOf(item: PriorityItem, asOf: string): { score: number; urge
 }
 
 const timeWords = (minutes: number) =>
-  minutes <= 1 ? "takes one tap" : `takes about ${minutes} minutes`;
+  minutes <= 1 ? "takes about a minute" : `takes about ${minutes} minutes`;
 
 // Why an item is where it is, in a few words: what stands out about it against the rest.
 function reasonFor(item: Ranked, all: Ranked[], asOf: string): string {

@@ -238,6 +238,10 @@ export function renderDigest(p: DigestPayload, links: DigestLinks) {
     // Nor "Still to look at: $0.00 a year" when what's left has no dollar estimate (night QA
     // 10-30: an insurance reshop on its own).
     stillToLook(p),
+    // Listed below at their yearly cost, but not in that total (debugger 11-02).
+    stillToLook(p) !== false &&
+      p.newFindings.some((f) => f.onlyOnceApproved) &&
+      "Subscriptions count toward the total once you decide to cancel them.",
   ].filter((line): line is string => typeof line === "string");
   const body = sections(p, links);
   const close = { label: "See your monthly close", url: links.close };
