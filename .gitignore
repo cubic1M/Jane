@@ -43,3 +43,5 @@ next-env.d.ts
 
 # Licensed font files: their licences forbid sharing them, and this repo is public.
 /public/fonts/
+results/sng_bughunt/progress.json
+results/sng_bughunt/failures.jsonl
