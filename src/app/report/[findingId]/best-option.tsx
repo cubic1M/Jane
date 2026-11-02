@@ -96,6 +96,7 @@ function OptionRow({
 export function BestOption({
   comparison,
   keepLabel,
+  approvedWords,
   findingId,
   cardHash,
   undoSeconds,
@@ -104,6 +105,7 @@ export function BestOption({
 }: {
   comparison: Comparison;
   keepLabel: string;
+  approvedWords?: string;
   findingId: string;
   cardHash: string;
   undoSeconds: number;
@@ -161,6 +163,7 @@ export function BestOption({
         diy={diy}
         switchTo={picked}
         yesLabel={chosen ? `Yes, switch to ${chosen.option.name}` : "Yes, do this for me"}
+        approvedWords={approvedWords}
         readOnly={readOnly}
         showLabel={chosen ? `Show me how to switch to ${chosen.option.name}` : "Show me how"}
       />

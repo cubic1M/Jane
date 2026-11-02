@@ -148,6 +148,7 @@ async function ReportContent() {
   };
   // While the first scan runs, what's found so far, in the same order.
   const list = <ul className="flex flex-col gap-3">{ordered.map(row)}</ul>;
+  const headerBar = state === "scanning" && (await scanInProgress(user.id));
 
   return (
     <>
@@ -158,7 +159,9 @@ async function ReportContent() {
         <section className="flex flex-col gap-3" data-report-scanning="">
           <RefreshWhenScanned />
           <h1 className="text-3xl font-semibold tracking-tight">Still reading your accounts</h1>
-          <LoadingBar label="Reading your transactions" />
+          {/* One bar at a time: the header's follows the real stages while a bank is first read,
+              and this one is only a timer, so the two read 73% and 36% (debugger 11-02). */}
+          {!headerBar && <LoadingBar label="Reading your transactions" />}
           <p className="text-zinc-600 dark:text-zinc-400">
             {transactions > 0
               ? `Jane has read ${transactions} transactions so far. What it finds shows here as it goes.`

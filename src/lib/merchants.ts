@@ -133,6 +133,14 @@ export type CompanyFacts = { merchant: Merchant | null; outcome: Outcome | null 
 // which is only ever one the team added or confirmed, spec step 64), and, for a kind of
 // action, how those usually go there (spec step 40), shown from OUTCOME_MIN_CASES cases. The
 // name is as the bank or the person wrote it; it's matched the same way detection matches.
+// A company with a cancel page and nobody to write to only cancels from the person's own account:
+// the agent gives them the page, and the card says so before they say yes.
+export function cancelsFromOwnAccountOnly(
+  company: { cancelUrl: string | null; supportEmail: string | null } | null,
+): boolean {
+  return Boolean(company?.cancelUrl && !company.supportEmail);
+}
+
 export async function companyFacts(
   name: string | null,
   { client = defaultClient, actionType }: { client?: PrismaClient; actionType?: ActionType } = {},
