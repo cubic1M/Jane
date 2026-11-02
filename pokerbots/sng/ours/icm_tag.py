@@ -51,6 +51,7 @@ PARAMS = dict(
     pf_file="",          #    chart file cache/sng/pushfold_<pf_file>.json ("" = equilibrium for the payouts)
     cap_risk=0.0,        # near the hand cap: risk premium + cap_risk x (my stack / average - 1)
     cap_window=25,
+    steal_floor=0.0,     # the steal factor never cuts the open / shove bar below this share (0 = no floor)
     push_steal=0.5,      # short-stack shoves use this share of the steal factor (fold read); 0 = off.
                          #   0.5 validated on fresh seeds (results/sng_pushsteal_validate.md)
     behind_k=0.2,        # facing a preflop raise: extra random hands per opponent still to act
@@ -402,6 +403,7 @@ class IcmTag:
                 sf *= 1.0 - p["steal_bonus"] * max(0.0, fr - 0.5) * 2
                 if p["steal_sym"] > 0 and fr < 0.5:
                     sf *= 1.0 + p["steal_sym"] * (1.0 - 2 * fr)
+                sf = max(sf, p["steal_floor"])
             bar *= sf
             eq = self._eq(obs, k + limpers)
             if not lg.can_raise and lg.can_call:
