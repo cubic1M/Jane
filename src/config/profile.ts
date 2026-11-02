@@ -20,6 +20,9 @@ export const UNSURE_BELOW = 50;
 
 // Income.
 export const SALARY_DEPOSITS_MIN = 6;
+// Companies that run payroll for others: their name on a paycheck isn't the person's employer.
+export const PAYROLL_SERVICES =
+  /\b(?:GUSTO|ADP|PAYCHEX|TRINET|RIPPLING|JUSTWORKS|PAYCOM|PAYLOCITY|PAYCOR|ONPAY)\b/i;
 export const UNEVEN_DEPOSITS_MIN = 3;
 export const BUSINESS_DEPOSITS_MIN = 24;
 // A payment that says it's for a car ("GEICO *AUTO", "AUTOZONE", "AUTO LOAN"), not one that

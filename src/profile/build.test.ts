@@ -318,11 +318,38 @@ describe("the employer's name", () => {
     ["DIRECT DEP BRIGHTLINE INC", "BRIGHTLINE INC"],
     ["Direct Deposit From BRIGHTLINE INC", "BRIGHTLINE INC"],
     ["GLOBEX LLC DES:PAYROLL ID:XXXXX9028 INDN:SAM CO ID:XXXXX PPD", "GLOBEX LLC"],
+    // Debugger 11-02: Chase's ending, "Your employer: BRIGHTLINE DIRECT DEP PPD ID: 4270465600".
+    ["BRIGHTLINE INC PPD ID: 4270465600", "BRIGHTLINE INC"],
+    ["BRIGHTLINE INC WEB ID: 4270465600", "BRIGHTLINE INC"],
   ])("reads %s as %s", (description, employer) => {
     const data = inputFor("family");
     const transactions = data.transactions.map((t) =>
       t.pfc === "INCOME_SALARY" ? { ...t, description } : t,
     );
     expect(buildProfile({ ...data, transactions }).facts.employer.value).toBe(employer);
+  });
+
+  // Debugger 11-02: "Your employer: GUSTO PAY 123456 PPD ID: 4270465600", and from it "You work for
+  // Gusto Pay". A payroll service pays people for thousands of companies; it isn't who they work for.
+  it.each([
+    "GUSTO PAY 123456 PPD ID: 4270465600",
+    "GUSTO PAYROLL",
+    "ADP WAGE PAY 998811",
+    "ADP TOTALSOURCE PAYROLL",
+    "PAYCHEX PAYROLL 442",
+    "TRINET HR III PAYROLL",
+    "RIPPLING PAYROLL",
+    "JUSTWORKS PAYROLL",
+    "PAYCOM PAYROLL",
+    "PAYLOCITY CORPORATION PAYROLL",
+  ])("doesn't take the payroll service in %s for the employer", (description) => {
+    const data = inputFor("family");
+    const transactions = data.transactions.map((t) =>
+      t.pfc === "INCOME_SALARY" ? { ...t, description } : t,
+    );
+    const { facts } = buildProfile({ ...data, transactions });
+    expect(facts.employer.value).toBeNull();
+    // They're still paid: one job, as seen.
+    expect(facts.earners.value).toBe(1);
   });
 });

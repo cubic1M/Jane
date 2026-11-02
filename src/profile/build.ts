@@ -10,6 +10,7 @@ import {
   CAR_WORDS,
   PENSION_PATTERN,
   PROFILE_MONTHS,
+  PAYROLL_SERVICES,
   SALARY_DEPOSITS_MIN,
   STARTING_MAX_INCOME_CENTS,
   STARTING_MAX_SAVED_CENTS,
@@ -393,6 +394,7 @@ function employerName(description: string): string {
       "",
     )
     .replace(/\s+PAYROLL.*$/i, "")
+    .replace(/\s+(?:PPD|WEB|CCD)\s+ID:\s*\d+\s*$/i, "")
     .trim();
 }
 
@@ -479,7 +481,10 @@ export function buildProfile(input: ProfileInput): Profile {
     const name = employerName(t.description);
     if (lastPaid.get(name)! >= activeSince) employers.set(name, (employers.get(name) ?? 0) + 1);
   }
-  const topEmployer = [...employers.entries()].sort((a, b) => b[1] - a[1])[0];
+  // A payroll service still counts as a job below, but it isn't who they work for.
+  const topEmployer = [...employers.entries()]
+    .filter(([name]) => !PAYROLL_SERVICES.test(name))
+    .sort((a, b) => b[1] - a[1])[0];
   if (topEmployer) set("employer", topEmployer[0], "seen", "paychecks", topEmployer[1]);
   else unknown("employer");
   const earners = employers.size;
