@@ -43,6 +43,19 @@ describe("insurance_reshop", () => {
     expect(finding?.title).toBe("Your State Farm insurance could cost less");
   });
 
+  // Debugger 11-02: a food truck's "NEXT INSURANCE DES:INS PREM" read "Your Next Insurance
+  // insurance could cost less": the company's name already says insurance.
+  it("says insurance once when the company's name does", () => {
+    const next = {
+      description: "NEXT INSURANCE DES:INS PREM ID:NX88 INDN:SAM DOE",
+      merchantName: null,
+      pfcPrimary: "GENERAL_SERVICES",
+      pfcDetailed: "GENERAL_SERVICES_INSURANCE",
+    };
+    const [finding] = run(input({ transactions: monthly(4, 21240, next) }));
+    expect(finding?.title).toBe("Your Next Insurance policy could cost less");
+  });
+
   // Debugger 11-01: a soldier's USAA car and renters policies, both "USAA Insurance" on the
   // statement, made two cards both titled "Your USAA insurance could cost less".
   it("tells two policies from one insurer apart by their price", () => {

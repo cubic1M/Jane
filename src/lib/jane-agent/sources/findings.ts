@@ -18,12 +18,12 @@ function pickSentence(pick: NonNullable<SnapshotFinding["pick"]>): string {
 
 // Spec step 92: what a bundle's button calls it ("Yes: Netflix").
 const NAMES: readonly RegExp[] = [
-  /^Review your (.+?) subscription$/,
+  /^Review your (.+?) subscription(?: at \S+| on .+)?$/,
   /^Your (.+?) (?:phone |internet and TV |internet |TV )?bill is above/,
   /^(.+?) went up from/,
   /^Charged twice\? .* at (.+)$/,
   /in fees on (.+?) in the last/,
-  /^Your (.+?) insurance could cost less$/,
+  /^Your (.+?) (?:insurance|policy)(?: at \S+)? could cost less$/,
 ];
 export function shortName(title: string): string {
   for (const pattern of NAMES) {
