@@ -64,7 +64,8 @@ Fill in each line:
 6. **Submit by minute ~25.**
 7. Minutes 25–160 (validated switches worth adding as tuner candidates on the day:
    `resteal=1;resteal_risk=0.5;pev=1;pev_risk=0.5` (it beats tight fields, +5 vs our own copies);
-   `call_margin=0.09;range_k=3.2` if 1st takes most points):
+   `call_margin=0.09;range_k=3.2` if 1st takes most points;
+   `behind_k=0` if the field is tight (+2.9 vs Plan B copies, +3.4 vs our copies, −2.9 on the default field)):
    - tune: `python3 -m sng.tune --preset <p> --field blend --rounds 3 --tables 500 --accept-se 2 --tag _day` (about 15–25 min per round);
    - validate: `results/sng_validate.sh "icm_tag:<tuned>" --preset <p>`;
    - submit only a paired gain > 2 SE with no field losing.
@@ -129,7 +130,7 @@ loop (tune on the real rules, validate, resubmit) matters.
 
 ## Rules of thumb that held on every field we tested
 
-- **Call tight:** a raiser = 4 random hands; need pot odds + 6%; ICM premium on big calls.
+- **Call tight, but count only who is in:** a raiser = 4 random hands, +0.8 per caller, +0.2 per player still to act (was 0.8 for everyone: +0.7 per table, +1.2 vs the Plan B bot); need pot odds + 6%; ICM premium on big calls.
 - **Respect postflop bets:** our equity x 0.5 per bet or raise faced (was 0.6; +1.0 per table on fresh seeds).
 - **All-in calls use exact ICM** (break-even from the real stacks and point table, +2%): +0.3 to +2.2 per table.
 - **Open small (2bb) and fairly wide; steal more from seats that fold** (the bots that time out fold).
