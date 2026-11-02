@@ -353,3 +353,117 @@ describe("the employer's name", () => {
     expect(facts.earners.value).toBe(1);
   });
 });
+
+// Debugger 11-02: someone laid off in August, on $1,950 a month of benefits, read "Money coming in:
+// $5,818 a month" and "How you're paid: salary, 92% sure": a year's average, with the old job and
+// the severance in it.
+describe("income after a paycheck stops", () => {
+  const TODAY = "2026-11-02";
+  const every = (days: number, from: string, to: string) => {
+    const out: string[] = [];
+    for (let d = Date.parse(`${from}T00:00:00Z`); d <= Date.parse(`${to}T00:00:00Z`);) {
+      out.push(new Date(d).toISOString().slice(0, 10));
+      d += days * 86_400_000;
+    }
+    return out;
+  };
+  const person = (rows: { date: string; cents: number; pfc: string; description: string }[]) => {
+    const data = inputFor("family");
+    const accountId = data.accounts.find((a) => a.type === "depository")!.id;
+    return {
+      ...data,
+      today: TODAY,
+      transactions: rows.map((r, i) => ({
+        id: `t${i}`,
+        date: r.date,
+        amountCents: r.cents,
+        description: r.description,
+        pfc: r.pfc,
+        accountId,
+      })),
+    };
+  };
+  const job = (from: string, to: string, name = "ACME LOGISTICS INC PAYROLL", cents = 264_018) =>
+    every(14, from, to).map((date) => ({
+      date,
+      cents: -cents,
+      pfc: "INCOME_SALARY",
+      description: name,
+    }));
+  const benefits = every(7, "2026-09-08", "2026-10-27").map((date) => ({
+    date,
+    cents: -45_000,
+    pfc: "INCOME_UNEMPLOYMENT",
+    description: "CA EDD UI DIRECT DEP",
+  }));
+  const severance = {
+    date: "2026-08-28",
+    cents: -1_200_000,
+    pfc: "INCOME_OTHER",
+    description: "ACME LOGISTICS INC SEVERANCE",
+  };
+  const shopping = every(7, "2026-02-01", "2026-10-30").map((date) => ({
+    date,
+    cents: 5_000,
+    pfc: "FOOD_AND_DRINK_GROCERIES",
+    description: "SAFEWAY",
+  }));
+
+  it("reads what's coming in now, not the year's average", () => {
+    const { facts } = buildProfile(
+      person([...job("2026-02-06", "2026-08-07"), severance, ...benefits, ...shopping]),
+    );
+    const monthly = facts.monthly_income.value as number;
+    // 6 of the $450 weekly deposits in the last 45 days of data, as a month.
+    expect(monthly).toBeGreaterThan(150_000);
+    expect(monthly).toBeLessThan(220_000);
+  });
+
+  it("isn't salaried once the only job has stopped", () => {
+    const { facts } = buildProfile(
+      person([...job("2026-02-06", "2026-08-07"), severance, ...benefits, ...shopping]),
+    );
+    expect(facts.income_pattern.value).not.toBe("salary");
+    expect(facts.employer.value).toBeNull();
+  });
+
+  it("reads the new job's pay after a change of job, and stays salaried", () => {
+    const { facts } = buildProfile(
+      person([
+        ...job("2026-02-06", "2026-07-10"),
+        ...job("2026-08-14", "2026-10-23", "NEWCO INC PAYROLL", 320_000),
+        ...shopping,
+      ]),
+    );
+    expect(facts.income_pattern.value).toBe("salary");
+    expect(facts.employer.value).toBe("NEWCO INC");
+    expect(facts.monthly_income.value as number).toBeGreaterThan(600_000);
+  });
+
+  it("doesn't take an old statement for a lost job: it goes by where the data ends", () => {
+    const old = (rows: ReturnType<typeof job>) => rows.filter((r) => r.date <= "2026-08-07");
+    const { facts } = buildProfile(
+      person([
+        ...old(job("2026-02-06", "2026-08-07")),
+        ...shopping.filter((r) => r.date <= "2026-08-07"),
+      ]),
+    );
+    expect(facts.income_pattern.value).toBe("salary");
+    expect(facts.monthly_income.value as number).toBeGreaterThan(500_000);
+  });
+
+  it("is what's left when nothing has come in since: nothing", () => {
+    const { facts } = buildProfile(person([...job("2026-02-06", "2026-08-07"), ...shopping]));
+    expect(facts.monthly_income.value).toBe(0);
+  });
+
+  it("leaves someone still paid at their average, without a severance in it", () => {
+    const { facts } = buildProfile(person([...job("2026-02-06", "2026-10-30"), ...shopping]));
+    expect(facts.income_pattern.value).toBe("salary");
+    const steady = facts.monthly_income.value as number;
+    const withBonus = buildProfile(
+      person([...job("2026-02-06", "2026-10-30"), severance, ...shopping]),
+    ).facts.monthly_income.value;
+    expect(withBonus).toBe(steady);
+  });
+});
