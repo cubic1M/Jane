@@ -9,6 +9,7 @@ import {
   REGULAR_PAYER_NOT_INCOME,
   REGULAR_PAYER_OWN_MONEY_DAYS,
   REGULAR_PAYER_OWN_MONEY_SHARE,
+  REGULAR_PAYER_PERSON_WORD,
 } from "@/config/detection";
 import { DAY_MS, isoDay } from "@/lib/dates";
 import type { ScopedDb } from "@/lib/db-scoped";
@@ -106,7 +107,17 @@ export async function markRegularPayers(db: Pick<ScopedDb, "transactions">): Pro
     where: {
       pending: false,
       amountCents: { lt: 0 },
-      OR: [{ pfcDetailed: null }, { categorySource: "llm", NOT: { pfcPrimary: "INCOME" } }],
+      OR: [
+        { pfcDetailed: null },
+        { categorySource: "llm", NOT: { pfcPrimary: "INCOME" } },
+        // Regular money by Zelle from someone: a tenant's rent, not a move of their own (debugger
+        // 11-02). The rules call all of it a transfer. Moves of their own are left out below.
+        {
+          categorySource: "rule",
+          pfcDetailed: "TRANSFER_IN_ACCOUNT_TRANSFER",
+          description: { contains: REGULAR_PAYER_PERSON_WORD, mode: "insensitive" },
+        },
+      ],
     },
     select: { id: true, accountId: true, date: true, amountCents: true, merchantName: true },
   });

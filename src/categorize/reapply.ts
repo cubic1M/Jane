@@ -41,6 +41,11 @@ export async function reapplyRules(
     if (placedByOthers && t.pfcPrimary === "INCOME") continue;
     const category = placedByOthers ? payoutByRules(input) : categorizeByRules(input);
     if (!category || category.detailed === t.pfcDetailed) continue;
+    // Regular money by Zelle that regular-payers.ts made income: the rules only see a transfer, and
+    // moving it back would re-sort it, and run detection again, every night (debugger 11-02).
+    if (t.pfcDetailed === "INCOME_OTHER" && category.detailed === "TRANSFER_IN_ACCOUNT_TRANSFER") {
+      continue;
+    }
     const move = moves.get(category.detailed) ?? { primary: category.primary, ids: [] };
     move.ids.push(t.id);
     moves.set(category.detailed, move);
