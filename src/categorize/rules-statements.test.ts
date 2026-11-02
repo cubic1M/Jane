@@ -62,3 +62,40 @@ describe("rules for statement uploads", () => {
     expect(into("ATM CASH DEPOSIT 1234 MAIN ST")).toBe("TRANSFER_IN_DEPOSIT");
   });
 });
+
+// Debugger 11-02: paying a card from checking, as issuers write it. With no card file to pair it
+// with, each counted as spending ($1,200 for one person on "CAPITAL ONE CRCARDPMT").
+describe("a card payment on a checking statement", () => {
+  it.each([
+    "CAPITAL ONE CRCARDPMT",
+    "ELECTRONIC PMT-WEB, CAPITAL ONE CRCARDPMT",
+    "CAPITAL ONE PAYMENT",
+    "WELLS FARGO CARD CCPYMT",
+    "BK OF AMER VI/MC ONLINE PMT",
+    "CITI CARD ONLINE TYPE: BILL PAY",
+    "CHASE CARD EPAY",
+    "DISCOVER CARD E-PAYMENT",
+    "BARCLAYCARD US CREDITCARD",
+    "TARGET CARD SRVC PAYMENT",
+    "KOHLS PAYMENT",
+    "SYNCB PAYMENT",
+    "CREDIT ONE BANK PAYMENT",
+    "MERRICK BANK PAYMENT",
+    "CARDMEMBER SERV WEB PYMT",
+    "NAVY FEDERAL CREDIT CARD PMT",
+  ])("%s isn't spending", (description) => {
+    expect(categorizeByRules({ description, amountCents: 30_000, hints: {} })?.detailed).toBe(
+      "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
+    );
+  });
+
+  it.each([
+    ["TARGET T-1234 CHERRY HILL NJ", "GENERAL_MERCHANDISE_SUPERSTORES"],
+    ["KOHLS 0442 MARLTON NJ", "GENERAL_MERCHANDISE_DEPARTMENT_STORES"],
+    ["CAPITAL ONE AUTO CARPAY", "LOAN_PAYMENTS_CAR_PAYMENT"],
+  ])("%s stays what it is", (description, category) => {
+    expect(categorizeByRules({ description, amountCents: 3_000, hints: {} })?.detailed).toBe(
+      category,
+    );
+  });
+});

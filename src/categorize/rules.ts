@@ -153,6 +153,23 @@ const RULES: readonly Rule[] = [
       // Barclays' cards, from checking (debugger 11-01: counted as $1,200 of spending).
       "BARCLAYCARD US PAYMENT",
       "BARCLAYCARD PAYMENT",
+      // As issuers write it on a checking statement (debugger 11-02: a TD file's "CAPITAL ONE
+      // CRCARDPMT" counted as $1,200 of spending).
+      "CRCARDPMT",
+      "CCPYMT",
+      "CAPITAL ONE PAYMENT",
+      "VI/MC ONLINE PMT",
+      "CITI CARD ONLINE",
+      "CARD EPAY",
+      "DISCOVER CARD E-PAYMENT",
+      "BARCLAYCARD US CREDITCARD",
+      "TARGET CARD SRVC",
+      "KOHLS PAYMENT",
+      "SYNCB PAYMENT",
+      "CREDIT ONE BANK PAYMENT",
+      "MERRICK BANK PAYMENT",
+      "CARDMEMBER SERV",
+      "CREDIT CARD PMT",
     ],
   },
   // The card's own side, as the card companies write a payment received (CSV bench: Capital
