@@ -23,6 +23,9 @@ import {
 import type { PrismaClient } from "@/generated/prisma/client";
 import { loadDetectionInput } from "@/detection/engine";
 import { categoryLabel } from "@/insights/labels";
+import { categoryOf } from "@/categorize/taxonomy";
+import { detailedLabel } from "@/lib/categories";
+import { dayLabel } from "@/lib/day-label";
 import { netWorth, notCounting } from "@/insights/net-worth";
 import { oneOffNote } from "@/insights/typical-month";
 import { kindOf } from "@/insights/spending";
@@ -63,6 +66,12 @@ export type Working = {
   rules: { label: string; value: string }[];
   corrections: readonly ("category" | "income")[];
 };
+
+// A detailed category in words: "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT" is "credit card payment".
+function detailedWords(detailed: string): string {
+  const category = categoryOf(detailed);
+  return (category ? detailedLabel(category.primary, detailed) : detailed).toLowerCase();
+}
 
 export async function explainFigure(
   userId: string,
@@ -107,13 +116,13 @@ export async function explainFigure(
       ...base,
       ...empty,
       value: formatCents(safe.safeCents),
-      summary: `What's in checking, less the bills and regular transfers due before ${safe.payday ?? "your next paycheck"}, what's left in this month's budgets, this month's goal amounts and the set-aside for yearly bills.`,
+      summary: `What's in checking, less the bills and regular transfers due before ${safe.payday ? dayLabel(safe.payday) : "your next paycheck"}, what's left in this month's budgets, this month's goal amounts and the set-aside for yearly bills.`,
       rows: [
         { label: "In checking today", value: formatCents(safe.balanceCents) },
         ...safe.bills.map((b) => ({
           label: b.transfer ? `Regular transfer: ${b.merchant}` : `Bill: ${b.merchant}`,
           value: `−${formatCents(b.amountCents)}`,
-          note: b.date,
+          note: `due ${dayLabel(b.date)}`,
         })),
         { label: "Budgets still to spend", value: `−${formatCents(safe.budgetsLeftCents)}` },
         { label: "Toward goals this month", value: `−${formatCents(safe.goalsCents)}` },
@@ -176,7 +185,7 @@ export async function explainFigure(
         },
         ...(id === "monthly_spending"
           ? (health.oneOffs ?? []).map((o) => ({
-              label: `Left out: ${o.merchant}, ${o.date} (a one-off)`,
+              label: `Left out: ${o.merchant}, ${dayLabel(o.date)} (a one-off)`,
               value: formatCents(o.amountCents),
             }))
           : []),
@@ -186,14 +195,34 @@ export async function explainFigure(
         },
       ],
       transactions: txs(wanted),
-      rules: [
-        { label: "Not counted as spending: categories", value: NON_SPENDING_PRIMARIES.join(", ") },
-        { label: "Not counted as spending: payments", value: NON_SPENDING_CATEGORIES.join(", ") },
-        {
-          label: "One-off costs left out",
-          value: `from ${formatCents(ONE_OFF_MIN_CENTS)} and ${ONE_OFF_SHARE * 100}% of a usual month, in ${ONE_OFF_PRIMARIES.join(", ")}, from a merchant not charged that much again`,
-        },
-      ],
+      // In the words the rest of the app uses for categories, never their codes (debugger 11-02:
+      // "TRANSFER_OUT, TRANSFER_IN, LOAN_DISBURSEMENTS" on the page), and only the rules this figure
+      // uses: the income page showed the spending rules.
+      rules:
+        id === "monthly_spending"
+          ? [
+              {
+                label: "Not counted as spending",
+                value: [
+                  ...NON_SPENDING_PRIMARIES.map((p) => categoryLabel(p).toLowerCase()),
+                  ...NON_SPENDING_CATEGORIES.map((d) => detailedWords(d)),
+                ].join(", "),
+              },
+              {
+                label: "One-off costs left out",
+                value: `from ${formatCents(ONE_OFF_MIN_CENTS)} and ${ONE_OFF_SHARE * 100}% of a usual month, in ${ONE_OFF_PRIMARIES.map((p) => categoryLabel(p).toLowerCase()).join(", ")}, from a merchant not charged that much again`,
+              },
+            ]
+          : [
+              {
+                label: "Counted as income",
+                value: "money in that's in the Income category, like pay and benefits",
+              },
+              {
+                label: "Not counted as income",
+                value: `${(["TRANSFER_IN", "LOAN_DISBURSEMENTS"] as const).map((p) => categoryLabel(p).toLowerCase()).join(", ")}, refunds and money in with no category`,
+              },
+            ],
     };
   }
 
@@ -236,7 +265,7 @@ export async function explainFigure(
         ...owned.map((o) => ({
           label: `${o.name} (your value)`,
           value: formatCents(o.valueCents),
-          note: `valued ${iso(o.valuedOn)}`,
+          note: `valued ${dayLabel(o.valuedOn, { year: true })}`,
         })),
         { label: "Net worth", value: formatCents(worth.netCents) },
       ],
