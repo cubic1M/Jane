@@ -151,6 +151,37 @@ describe.runIf(url)("regular pay with no pay word", { timeout: 30_000 }, () => {
     });
   });
 
+  it("keeps a payer with a steady schedule as other income beside the clients", async () => {
+    const id = await person({ name: "Northwind Labs", cents: -261_025 });
+    const account = await client.account.findFirstOrThrow({ where: { userId: id } });
+    const irregular = [
+      ["BRIGHT PATH CLINIC", "2026-07-07", -610_000],
+      ["BRIGHT PATH CLINIC", "2026-09-25", -740_000],
+      ["HALCYON COFFEE", "2026-05-29", -420_000],
+      ["HALCYON COFFEE", "2026-08-27", -295_000],
+    ] as const;
+    for (const [i, [name, day, cents]] of irregular.entries()) {
+      await client.transaction.create({
+        data: {
+          userId: id,
+          accountId: account.id,
+          source: "csv",
+          dedupeKey: `mix-${i}`,
+          date: new Date(`${day}T00:00:00Z`),
+          amountCents: cents,
+          description: name,
+          merchantName: name.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase()),
+        },
+      });
+    }
+    await markCashIncome(scopedFor(id, client));
+    const rows = await client.transaction.findMany({ where: { userId: id } });
+    expect(
+      rows.filter((r) => r.merchantName === "Northwind Labs").map((r) => r.pfcDetailed),
+    ).toEqual(Array(6).fill("INCOME_OTHER"));
+    expect(rows.filter((r) => r.pfcDetailed === "INCOME_CONTRACTOR")).toHaveLength(4);
+  });
+
   it("makes income of clients who pay at uneven times, through the same pass", async () => {
     const user = await client.user.create({
       data: { email: `client-deposits-${crypto.randomUUID()}@example.com` },
@@ -183,7 +214,10 @@ describe.runIf(url)("regular pay with no pay word", { timeout: 30_000 }, () => {
     const db = scopedFor(user.id, client);
     expect(await markCashIncome(db)).toBe(4);
     const rows = await client.transaction.findMany({ where: { userId: user.id } });
-    expect(rows.filter((r) => r.pfcDetailed === "INCOME_OTHER")).toHaveLength(4);
+    // Contractor income: what the side-gig fact and the tax estimate read (debugger 11-02: "You have
+    // a side gig: no" with $20,650 of invoices).
+    expect(rows.filter((r) => r.pfcDetailed === "INCOME_CONTRACTOR")).toHaveLength(4);
+    expect(rows.filter((r) => r.pfcPrimary === "INCOME")).toHaveLength(4);
     expect(rows.find((r) => r.description.startsWith("ESTATE"))?.pfcDetailed).toBeNull();
     // Nightly: nothing moves back and forth.
     expect(await reapplyRules(user.id, { client })).toBe(0);

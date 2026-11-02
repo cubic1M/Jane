@@ -28,6 +28,7 @@ import type { ScopedDb } from "@/lib/db-scoped";
 // their accounts, whatever it's called. Rows the rules or the person placed stay.
 
 const INCOME = { pfcPrimary: "INCOME", pfcDetailed: "INCOME_OTHER" } as const;
+const CLIENT_INCOME = { pfcPrimary: "INCOME", pfcDetailed: "INCOME_CONTRACTOR" } as const;
 
 export type PayerRow = {
   id: string;
@@ -163,20 +164,24 @@ export async function markRegularPayers(db: Pick<ScopedDb, "transactions">): Pro
   });
   const out = moneyOut.map((o) => ({ ...o, date: isoDay(o.date) }));
   const dated = rows.map((r) => ({ ...r, date: isoDay(r.date) }));
-  const ids = [
-    ...new Set([
-      ...regularPayers(dated, out),
-      // Not a Zelle line the rules called a transfer: it names a person, not a client.
-      ...clientDeposits(
-        dated.filter((r) => r.pfcDetailed !== "TRANSFER_IN_ACCOUNT_TRANSFER"),
-        out,
-      ),
-    ]),
-  ];
-  if (ids.length === 0) return 0;
-  const { count } = await db.transactions.updateMany({
-    where: { id: { in: ids } },
-    data: { ...INCOME, categorySource: "rule" },
-  });
-  return count;
+  const regular = regularPayers(dated, out);
+  const paying = new Set(regular);
+  // Not a Zelle line the rules called a transfer: it names a person, not a client.
+  const clients = clientDeposits(
+    dated.filter((r) => r.pfcDetailed !== "TRANSFER_IN_ACCOUNT_TRANSFER"),
+    out,
+  ).filter((id) => !paying.has(id));
+  if (regular.length + clients.length === 0) return 0;
+  const [other, contractor] = await Promise.all([
+    db.transactions.updateMany({
+      where: { id: { in: regular } },
+      data: { ...INCOME, categorySource: "rule" },
+    }),
+    // Contractor income: what the side-gig fact and the tax estimate read.
+    db.transactions.updateMany({
+      where: { id: { in: clients } },
+      data: { ...CLIENT_INCOME, categorySource: "rule" },
+    }),
+  ]);
+  return other.count + contractor.count;
 }
