@@ -275,6 +275,25 @@ function guessFromValues(row: string[]) {
   return { date, description, amount };
 }
 
+// A payee column with a memo beside it: the memo often says what it was ("OVERDRAFT FEE",
+// "PAYROLL") where the payee only says who (debugger 11-02: reading the payee alone lost a
+// Huntington person's fees and pay). Null when the columns aren't named or the person picked the
+// memo itself as the description.
+function memoBeside(headers: string[], mapping: ColumnMapping): number | null {
+  if (!/payee|merchant|name/i.test(headers[mapping.description] ?? "")) return null;
+  const memo = headers.findIndex((h) => /^(memo|notes?|details?|narrative)$/i.test(h.trim()));
+  return memo === -1 ? null : memo;
+}
+
+// A memo that only says how it was paid adds nothing but a worse name ("Skyline Chili Pos").
+const HOW_PAID = /^(pos|debit|debit card|check card|card|purchase|ach|web|web pmt)$/i;
+
+function withMemo(payee: string, memo: string): string {
+  const said = memo.trim();
+  const adds = said && !HOW_PAID.test(said) && !payee.toLowerCase().includes(said.toLowerCase());
+  return adds ? `${payee} ${said}` : payee;
+}
+
 // The rows read with the person's choices, in the same shape as a bank's layout. A string
 // when the dates can't be read without asking which comes first, the day or the month.
 export function mappedLayout(all: CsvRecord[], mapping: ColumnMapping): Layout | string {
@@ -289,6 +308,7 @@ export function mappedLayout(all: CsvRecord[], mapping: ColumnMapping): Layout |
   const width = Math.max(0, ...records.map((r) => r.fields.length));
   const columns = Array.from({ length: width }, (_, i) => `c${i}`);
   const at = (get: (column: string) => string, i: number) => get(`c${i}`);
+  const memo = mapping.hasHeader ? memoBeside(records[0]?.fields ?? [], mapping) : null;
   return {
     format: {
       ...CUSTOM_FORMAT,
@@ -302,8 +322,9 @@ export function mappedLayout(all: CsvRecord[], mapping: ColumnMapping): Layout |
             reason: `"${dateText}" in the date column isn't a date Jane can read`,
           };
         }
-        const description = at(get, mapping.description).trim();
-        if (!description) return { ok: false, reason: "The description column is empty" };
+        const payee = at(get, mapping.description).trim();
+        if (!payee) return { ok: false, reason: "The description column is empty" };
+        const description = memo === null ? payee : withMemo(payee, at(get, memo));
         let amountCents: number;
         if (mapping.amount.kind === "split") {
           const cents = debitCreditCents(

@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { categorizeByRules } from "@/categorize/rules";
 import {
   guessSign,
   mappingChoices,
@@ -472,5 +473,94 @@ describe("a description column that says the same on every row", () => {
     if (result.ok) throw new Error("expected the picker");
     expect(result.choices?.guess.description).toBe(1);
     expect(result.choices?.signs[10]?.moneyOut).toBe("negative");
+  });
+});
+
+// Debugger 11-02: a Huntington file has Payee Name and Memo. Reading only the payee lost
+// "OVERDRAFT FEE" and "PAYROLL": no fee card, and the person's pay wasn't income.
+describe("a payee column beside a memo", () => {
+  const text = [
+    "Date,Reference Number,Payee Name,Memo,Amount,Category Name",
+    "10/17/2026,9107,BRIGHTLINE INC,PAYROLL,2840.50,",
+    "10/10/2026,9110,HUNTINGTON,SERVICE CHARGE,-12.00,",
+    "10/08/2026,9108,SPOTIFY,POS,-11.99,",
+    "10/05/2026,9105,NETFLIX.COM,NETFLIX.COM,-15.49,",
+    "10/03/2026,9103,DISCOVER,E-PAYMENT,-300.00,",
+    "10/02/2026,9102,CORNER CAFE,,-6.50,",
+  ].join("\n");
+  const picked = (description: number, extra: Partial<ColumnMapping> = {}): ColumnMapping => ({
+    hasHeader: true,
+    date: 0,
+    description,
+    amount: { kind: "signed", column: 4, moneyOut: "negative" },
+    ...extra,
+  });
+  const descriptions = (mapping: ColumnMapping) => {
+    const result = readCsvFile({ name: "huntington.csv", text, mapping });
+    if (!result.ok) throw new Error(result.error);
+    return result.transactions.map((t) => t.description);
+  };
+
+  it("reads both, once when they say the same, and just the payee when the memo is empty", () => {
+    expect(descriptions(picked(2))).toEqual([
+      "BRIGHTLINE INC PAYROLL",
+      "HUNTINGTON SERVICE CHARGE",
+      "SPOTIFY",
+      "NETFLIX.COM",
+      "DISCOVER E-PAYMENT",
+      "CORNER CAFE",
+    ]);
+  });
+
+  // Seen in the app: "Review your Skyline Chili Pos subscription".
+  it.each(["POS", "pos", "Debit", "DEBIT CARD", "Purchase", "CHECK CARD", "WEB PMT", "ACH"])(
+    "adds nothing from a memo that only says how it was paid: %s",
+    (memo) => {
+      const result = readCsvFile({
+        name: "memo.csv",
+        text: `Date,Payee Name,Memo,Amount\n10/17/2026,SKYLINE CHILI,${memo},-11.99\n`,
+        mapping: {
+          hasHeader: true,
+          date: 0,
+          description: 1,
+          amount: { kind: "signed", column: 3, moneyOut: "negative" },
+        },
+      });
+      if (!result.ok) throw new Error(result.error);
+      expect(result.transactions[0].description).toBe("SKYLINE CHILI");
+    },
+  );
+
+  it("finds the pay, the fee and the card payment that the memo says", () => {
+    const result = readCsvFile({ name: "huntington.csv", text, mapping: picked(2) });
+    if (!result.ok) throw new Error(result.error);
+    const category = (i: number) =>
+      categorizeByRules({
+        description: result.transactions[i].description,
+        amountCents: result.transactions[i].amountCents,
+        hints: {},
+      })?.detailed;
+    expect(category(0)).toBe("INCOME_SALARY");
+    expect(category(1)).toBe("BANK_FEES_OTHER_BANK_FEES");
+    expect(category(4)).toBe("LOAN_PAYMENTS_CREDIT_CARD_PAYMENT");
+  });
+
+  it("leaves a person's own pick alone when they chose the memo as the description", () => {
+    expect(descriptions(picked(3)).slice(0, 2)).toEqual(["PAYROLL", "SERVICE CHARGE"]);
+  });
+
+  it("doesn't add a column the person picked for something else", () => {
+    const noHeader = readCsvFile({
+      name: "plain.csv",
+      text: "10/17/2026,BRIGHTLINE INC,PAYROLL,2840.50\n",
+      mapping: {
+        hasHeader: false,
+        date: 0,
+        description: 1,
+        amount: { kind: "signed", column: 3, moneyOut: "negative" },
+      },
+    });
+    if (!noHeader.ok) throw new Error(noHeader.error);
+    expect(noHeader.transactions[0].description).toBe("BRIGHTLINE INC");
   });
 });
