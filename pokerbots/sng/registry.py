@@ -10,6 +10,8 @@ BOTS = {
     "random": ("sng.bots_basic", "RandomSng"),
     "station0": ("sng.bots_basic", "StationSng"),
     "push": ("sng.bots_basic", "PushSng"),
+    # the Plan B rehearsal bot (rehearsal_sng/planb) through the reverse kit adapter; six-plus only
+    "planb_sd": ("sng.kitbot", "KitBot"),
 }
 
 

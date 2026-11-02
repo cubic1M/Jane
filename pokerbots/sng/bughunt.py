@@ -71,7 +71,7 @@ def _round(args):
         rules, pick = random_rules(rng)
     except Exception:  # noqa: BLE001
         return [dict(kind="rules_error", seed=seed, tb=traceback.format_exc()[-1500:])]
-    field_names = [b for b in BOTS if b not in OURS and b not in ("mc_slow", "f3_mc_slow")]
+    field_names = [b for b in BOTS if b not in OURS and b not in ("mc_slow", "f3_mc_slow", "planb_sd")]
     lineup = [rng.choice(field_names) for _ in range(rules.num_players)]
     for _ in range(rng.randint(1, 3)):
         lineup[rng.randrange(rules.num_players)] = rng.choice(OURS)

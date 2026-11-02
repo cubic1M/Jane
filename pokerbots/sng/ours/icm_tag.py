@@ -51,6 +51,8 @@ PARAMS = dict(
     pf_file="",          #    chart file cache/sng/pushfold_<pf_file>.json ("" = equilibrium for the payouts)
     cap_risk=0.0,        # near the hand cap: risk premium + cap_risk x (my stack / average - 1)
     cap_window=25,
+    behind_k=0.8,        # facing a preflop raise: extra random hands per opponent still to act
+                         #   (callers / re-raisers count 0.8 each); 0.8 = everyone counted alike
     cbet_size=0.5,       # flop continuation bet, x pot
     bluff_size=0.5,      # read-based bluff bet, x pot
     hu_risk=1.0,         # risk premium x this with 2 players left (heads-up ICM is linear in chips)
@@ -431,7 +433,13 @@ class IcmTag:
             r = raises[-1][0]
             pfr = (self.pre_raises[r] + p["base_pfr"] * 8) / (self.dealt[r] + 8)   # shrink to the prior
             rk = min(8.0, max(p["rk_floor"], rk * (p["base_pfr"] / max(pfr, 0.01)) ** p["read_alpha"]))
-        kf = rk + max(0, others - 1) * 0.8
+        if p["behind_k"] != 0.8:
+            r0 = raises[-1][0]
+            vol = {h[0] for h in obs.history if h[1] == 0 and h[2] in ("call", "raise")
+                   and h[0] not in (r0, obs.seat) and not seats[h[0]].folded}
+            kf = rk + len(vol) * 0.8 + max(0, others - 1 - len(vol)) * p["behind_k"]
+        else:
+            kf = rk + max(0, others - 1) * 0.8
         eq = self._eq_k(obs, kf)
         call = lg.call_amount
         pot = obs.pot

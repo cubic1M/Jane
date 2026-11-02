@@ -8,7 +8,7 @@ import unittest
 import numpy as np
 
 from engine.variants import get_variant
-from engine.game import Fold
+from engine.game import Fold, RaiseTo
 from sng.ours.icm_tag import PARAMS, IcmTag
 from sng.registry import make
 from sng.rules import SngRules
@@ -368,6 +368,34 @@ class TestIcmTag(unittest.TestCase):
         self.assertAlmostEqual(risk(4, 10, cap_fade=50), base4 * 0.2)
         self.assertEqual(risk(4, 0, cap_fade=50), 0.0)                  # the last hand
         self.assertEqual(risk(4, None, cap_fade=50), base4)             # a kit without hands_left
+
+    def test_behind_k_counts_only_players_still_to_act(self):
+        """UTG opens, I am next with six players still to act: the old rule models the raiser as
+        4 + 6 x 0.8 random hands; behind_k=0 counts only players who put chips in (4)."""
+        from sng.table import Hand
+        from sng.tests.test_table import make_deck
+        r = SngRules(enforce_time=False)
+        got = {}
+        for bk in (0.8, 0.0):
+            b = IcmTag(behind_k=bk)
+            b.new_table(r, 4, 1)
+            seen = []
+            real = b._eq_k
+            b._eq_k = lambda obs, kf, _r=real, _s=seen: (_s.append(kf), _r(obs, kf))[1]
+
+            def decide(j, o, lg, b=b):
+                if j == 3 and o.street == 0 and not any(h[2] == "raise" for h in o.history):
+                    return RaiseTo(60)
+                if j == 4:
+                    return b.act(o)
+                return lg.passive() if lg.can_check else Fold()
+            h = Hand(r, [2000] * 8, button=0, hand_number=0,
+                     deck=make_deck(["2c 3d", "4c 5d", "6c 7d", "8c 9d", "Kh Qs", "Tc Jd", "2h 3h", "4h 5h"],
+                                    "Kd 9h 4s 3c 8h", r.spec))
+            h.play(decide, 8)
+            got[bk] = seen[0]
+        self.assertAlmostEqual(got[0.8], 4.0 + 6 * 0.8, places=6)
+        self.assertAlmostEqual(got[0.0], 4.0, places=6)
 
 
 if __name__ == "__main__":
