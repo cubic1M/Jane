@@ -138,6 +138,7 @@ async function execute(job: Claimed, client: PrismaClient, now: Date, handlers: 
       kind: job.kind,
       attempts: job.attempts,
       final: failed,
+      error: lastError,
     });
     return failed ? ("failed" as const) : ("retried" as const);
   }

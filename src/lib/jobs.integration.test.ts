@@ -49,10 +49,14 @@ describe.runIf(url)("the job queue against a real database", () => {
         throw new Error("Claude timed out for jordan@example.com");
       },
     };
-    vi.spyOn(console, "error").mockImplementation(() => {});
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
     const id = await queue();
 
     expect(await runJob(id, { client, now: at(0), handlers: failing })).toBe("retried");
+    // The log says why it failed, also scrubbed: production's only view of a failing job.
+    const line = JSON.stringify(logged.mock.calls.find(([m]) => m === "Job failed"));
+    expect(line).toContain("[email]");
+    expect(line).not.toContain("jordan@example.com");
     let row = await job(id);
     expect(row).toMatchObject({ status: "queued", attempts: 1 });
     expect(row.runAt).toEqual(new Date(at(0).getTime() + backoffMs(1)));
