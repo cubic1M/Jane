@@ -11,6 +11,7 @@ import { DAYS_PER_MONTH } from "@/detection/units";
 import { DAY_MS, isoDay } from "@/lib/dates";
 import type { ScopedDb } from "@/lib/db-scoped";
 import { confidenceOf } from "@/profile/confidence";
+import { markRegularPayers } from "./regular-payers";
 
 // Cash deposits as income (founder, 10-30). Plaid and the keyword rules call cash paid in moved
 // money (TRANSFER_IN_DEPOSIT), so a server who lives on tips read as earning half of what they
@@ -147,7 +148,7 @@ export async function markCashIncome(db: Pick<ScopedDb, "transactions">): Promis
         })
       : { count: 0 },
   ]);
-  return a.count + b.count;
+  return a.count + b.count + (await markRegularPayers(db));
 }
 
 export type CashIncomeStatus =
