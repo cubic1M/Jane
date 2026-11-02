@@ -89,12 +89,14 @@ def payout_risk_scale(payouts) -> float:
 
 class IcmTag:
     name = "icm_tag"
+    OVERRIDES: dict = {}          # per-subclass defaults on top of PARAMS (explicit kwargs still win)
 
     def __init__(self, **kw):
         bad = set(kw) - set(PARAMS)
         if bad:
             raise ValueError(f"unknown icm_tag params {sorted(bad)}")
-        self.p = dict(PARAMS, **kw)
+        self.p = dict(PARAMS, **self.OVERRIDES)
+        self.p.update(kw)
 
     # ---- table lifecycle ------------------------------------------------------------
     def new_table(self, rules, seat, seed=0):

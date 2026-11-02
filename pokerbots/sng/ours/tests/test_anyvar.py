@@ -92,5 +92,17 @@ class TestIcmAny(unittest.TestCase):
         self.assertEqual(r.stdout.split(), ["True", "True"])
 
 
+class TestIcmAnyDefaults(unittest.TestCase):
+    def test_overrides_and_explicit_kwargs(self):
+        from sng.ours.anyvar import IcmAny
+        from sng.ours.icm_tag import IcmTag
+        a = IcmAny()
+        self.assertEqual((a.p["hu_open_mult"], a.p["hu_range_k"], a.p["icm_call"]), (0.0, 0.0, 0))
+        self.assertEqual(a.p["risk_payout"], 1)
+        self.assertEqual(IcmAny(icm_call=1).p["icm_call"], 1)            # explicit kwargs win
+        t = IcmTag()
+        self.assertEqual((t.p["hu_open_mult"], t.p["icm_call"]), (0.6, 1))   # icm_tag unchanged
+
+
 if __name__ == "__main__":
     unittest.main()

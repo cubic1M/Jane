@@ -36,6 +36,9 @@ Fill in each line:
    - bundle with `--any-table cache/sng/any_<sig>.json`;
    - in the adapter, answer discard requests with the bot's `Discard(cards)`.
    Four shapes are prebuilt: discard to the board, face-down discards, hold'em with a 0–1 draw, five-card draw.
+   `icm_any` leaves the heads-up ranges and exact-ICM calls off: they helped hold'em, but not most
+   discard presets. Add `hu_open_mult=0.6;hu_range_k=2.0` and `icm_call=1` as tuner candidates
+   (five-card draw liked the heads-up ranges).
 3. Adapter: copy `rehearsal_sng/adapter.py`, then map their Observation and Action.
 4. Bundle. **Read the submission rules first:**
    - banned builtins (`exec`, `compile`, `setattr`, `eval`, `open`)?

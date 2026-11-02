@@ -977,6 +977,11 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   - **Speed:** 0.12 ms per decision at 8-handed (subset DP with prebuilt mask tables, imported at load). It matches brute-force Harville over all finishing orders (tested).
   - **Exploration:** positive in 5 of 5 cells.
   - **Fresh seeds 39000+, 600 paired tables:** default +1.6, field 2 +0.7, mirror +0.8, all3/top3 **+1.6**, hackathon-like **+2.2**, all3/winner +0.3. Positive everywhere, two cells significant.
+* **Tonight's defaults on discard/draw variants** (`results/sng_anyvar_newdefaults*.md`, two fresh-seed runs, 400 + 600 paired tables).
+  - `icm_any` with the heads-up ranges, `risk_payout` and `icm_call` switched off scored: five-draw −0.8 / −1.8, draw hold'em +1.3 / +2.5, discard-to-board +1.7 / +1.1, Omaha discard-2 +0.8 / **+2.9**.
+  - Per switch: the heads-up ranges help five-draw (−2.0 when off) but hurt Omaha discard-2 (+2.2 when off). Their equity bars were tuned on hold'em's equity spread, and Omaha equities run closer together. Exact-ICM calls lean negative there too (off: −0.9 / +0.2 / +0.5 / +2.0).
+  - So `icm_any` now has its own defaults (`IcmAny.OVERRIDES`): heads-up ranges and `icm_call` off, `risk_payout` on. `icm_tag` keeps all of them.
+  - On a discard/draw day, the tuner can try `hu_open_mult` / `hu_range_k` / `icm_call` as candidates.
 * **Bug hunter:** 318k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
