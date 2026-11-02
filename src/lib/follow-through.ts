@@ -13,6 +13,7 @@ import { raiseAlerts } from "@/lib/alerts";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { DAY_MS } from "@/lib/dates";
+import { localDate } from "@/lib/digest/week";
 import { loadFreshness } from "@/lib/freshness";
 import { FINDING_OUTCOME_PREFIX } from "@/lib/outcomes";
 import { isTrialUser } from "@/lib/trial-ids";
@@ -64,14 +65,29 @@ async function followedUp(userId: string, client: PrismaClient) {
     (advice || !(ADVICE_TOPICS as readonly string[]).includes(row.topic));
 }
 
-const wordsOf = (row: {
-  answeredAt: Date | null;
-  doneAt: Date | null;
-  status: string;
-  proof: string | null;
-  heldProof: string | null;
-  watch: unknown;
-}) => comebackWords({ ...row, watch: asWatch(row.watch) });
+export const personTimezone = async (userId: string, client: PrismaClient) =>
+  (await client.user.findUnique({ where: { id: userId }, select: { timezone: true } }))?.timezone ??
+  null;
+
+// What a failed fix says, on the person's own day (src/lib/digest/week.ts).
+export const failedWords = (
+  row: {
+    answeredAt: Date | null;
+    doneAt: Date | null;
+    status: string;
+    proof: string | null;
+    heldProof: string | null;
+    watch: unknown;
+  },
+  timezone: string | null,
+) => {
+  const acted = row.doneAt ?? row.answeredAt;
+  return comebackWords({
+    ...row,
+    actedOn: acted ? localDate(acted, timezone) : null,
+    watch: asWatch(row.watch),
+  });
+};
 
 export type FollowThroughRun = { nudged: number; cameBack: number; asked: boolean };
 
@@ -94,6 +110,7 @@ export async function runFollowThrough(
     })
   ).filter(allowed);
   const alerts: AlertCandidate[] = [];
+  const timezone = await personTimezone(userId, client);
   for (const row of rows) {
     if (nudgeDue(row, now)) {
       const nudge = row.nudgeCount + 1;
@@ -105,7 +122,7 @@ export async function runFollowThrough(
         type: "follow_up",
         key: `nudge:${row.suggestionKey}:${nudge}`,
         title: `Still to do: ${row.title}`,
-        body: nudgeWords(row.title, row.answeredAt!),
+        body: nudgeWords(row.title, localDate(row.answeredAt!, timezone)),
         confidence: NUDGE_CONFIDENCE,
       });
       run.nudged += 1;
@@ -119,7 +136,7 @@ export async function runFollowThrough(
         type: "follow_up",
         key: `failed:${row.suggestionKey}:${comeback}`,
         title: `Didn't hold: ${row.title}`,
-        body: wordsOf(row),
+        body: failedWords(row, timezone),
         confidence: {
           percent: row.confidencePercent || NUDGE_CONFIDENCE.percent,
           reason: FAILED_CONFIDENCE_REASON,
@@ -221,6 +238,7 @@ export async function loadFollowUps(
   });
   if (rows.length === 0) return [];
   const allowed = await followedUp(userId, client);
+  const timezone = await personTimezone(userId, client);
   const suggestions = new Map(
     (
       await db.suggestions.findMany({
@@ -244,7 +262,7 @@ export async function loadFollowUps(
           key: r.suggestionKey,
           kind: "nudge",
           round: r.nudgeCount,
-          body: nudgeWords(r.title, r.answeredAt!),
+          body: nudgeWords(r.title, localDate(r.answeredAt!, timezone)),
           href: hrefOf(r.suggestionKey, r.topic),
         },
       ];
@@ -257,7 +275,7 @@ export async function loadFollowUps(
         key: r.suggestionKey,
         kind: "failed",
         round: r.comebacks,
-        body: `${r.title.trim().replace(/[.!]+$/, "")}: ${wordsOf(r)}`,
+        body: `${r.title.trim().replace(/[.!]+$/, "")}: ${failedWords(r, timezone)}`,
         href: hrefOf(r.suggestionKey, r.topic),
       },
     ];

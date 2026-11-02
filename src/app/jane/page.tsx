@@ -412,7 +412,10 @@ async function JaneContent() {
         open={oldData !== null}
       >
         {oldData && (
-          <p data-old-data="" className="rounded-lg bg-amber-50 p-3 text-sm dark:bg-amber-950">
+          <p
+            data-old-data=""
+            className="rounded-lg border border-zinc-300 p-3 text-sm dark:border-zinc-700"
+          >
             {oldData}{" "}
             <Link href="/import" className={LINK}>
               Upload a statement

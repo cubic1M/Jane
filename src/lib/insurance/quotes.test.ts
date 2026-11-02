@@ -1,3 +1,4 @@
+import { withGrant } from "@/lib/permission/gate";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
@@ -101,11 +102,15 @@ describe("the stand-in partner's pricing", () => {
 
   it("binds, takes the first payment on the start day and cancels, all as a demo", async () => {
     const [quote] = await demoPartner.quote(request(), { now: NOW });
-    const binding = await demoPartner.bind(quote, {
-      startDate: "2026-11-28",
-      holderName: "Alex",
-      now: NOW,
-    });
+    const permitted = <T>(act: () => Promise<T>) =>
+      withGrant({ specialist: "insurance", userId: "u" }, act);
+    const binding = await permitted(() =>
+      demoPartner.bind(quote, {
+        startDate: "2026-11-28",
+        holderName: "Alex",
+        now: NOW,
+      }),
+    );
     expect(binding.policyNumber).toMatch(/^DEMO-NORTHSTAR-[0-9A-F]{8}$/);
     expect(binding.firstPaymentCents).toBe(quote.premiumCents);
     expect(binding.documents[0].text).toMatch(/^DEMO POLICY/);
@@ -117,9 +122,11 @@ describe("the stand-in partner's pricing", () => {
     expect(await status("2026-11-27T23:00:00Z")).toBe("pending");
     expect(await status("2026-11-28T09:00:00Z")).toBe("paid");
     expect(
-      await demoPartner.cancel(
-        { carrier: "GEICO", policyNumber: null },
-        { effectiveDate: "2026-11-28", now: NOW },
+      await permitted(() =>
+        demoPartner.cancel(
+          { carrier: "GEICO", policyNumber: null },
+          { effectiveDate: "2026-11-28", now: NOW },
+        ),
       ),
     ).toMatchObject({ status: "cancelled", effectiveDate: "2026-11-28" });
   });

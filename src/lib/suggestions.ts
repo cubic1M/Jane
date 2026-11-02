@@ -13,8 +13,8 @@ import { scopedFor } from "@/lib/db-scoped";
 import { loadProfileInput } from "@/lib/profile";
 import { recordAnswer, recordOpened, recordShown } from "@/lib/outcomes";
 import { loadFreshness } from "@/lib/freshness";
-import { comebackWords, comesBack, FAILED_STATUSES } from "@/planning/follow-through";
-import { asWatch } from "@/planning/outcomes";
+import { failedWords, personTimezone } from "@/lib/follow-through";
+import { comesBack, FAILED_STATUSES } from "@/planning/follow-through";
 import { loadKindStats } from "@/lib/learning";
 import type { CardExtras } from "@/lib/jane-agent/types";
 import { scrub } from "@/lib/scrub";
@@ -267,12 +267,10 @@ async function followThroughFor(
       });
     }
   }
+  const coming = rows.filter(comesBack);
+  const timezone = coming.length > 0 ? await personTimezone(userId, client) : null;
   return {
-    back: new Map(
-      rows
-        .filter(comesBack)
-        .map((r) => [r.suggestionKey, comebackWords({ ...r, watch: asWatch(r.watch) })]),
-    ),
+    back: new Map(coming.map((r) => [r.suggestionKey, failedWords(r, timezone)])),
     verified: new Set(
       rows
         .filter((r) => r.status === "confirmed" || r.status === "partial")

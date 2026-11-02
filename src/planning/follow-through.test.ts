@@ -84,7 +84,7 @@ describe("a fix that failed", () => {
 
   it("says what the data showed and the next step", () => {
     const words = comebackWords({
-      answeredAt: day(0),
+      actedOn: "2026-09-03",
       doneAt: day(2),
       status: "not_seen",
       proof: "Still charged: $15.99 on Oct 30.",
@@ -98,7 +98,7 @@ describe("a fix that failed", () => {
 
   it("reads what came back from the Held proof", () => {
     const words = comebackWords({
-      answeredAt: day(0),
+      actedOn: "2026-09-01",
       doneAt: null,
       status: "lapsed",
       proof: "Stopped.",
@@ -126,5 +126,7 @@ describe("a fix that failed", () => {
 });
 
 it("the nudge says what they said yes to, and when", () => {
-  expect(nudgeWords("Cancel Hulu.", day(0))).toMatch(/^You said yes to "Cancel Hulu" on Sep 1\./);
+  expect(nudgeWords("Cancel Hulu.", "2026-09-01")).toMatch(
+    /^You said yes to "Cancel Hulu" on Sep 1\./,
+  );
 });

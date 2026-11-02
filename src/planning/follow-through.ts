@@ -76,20 +76,20 @@ export function nextStepOf(watch: Watch | null): string | null {
 
 // Why it's back, from what the data showed: "You said yes on Sep 3. Still charged: $15.99 on Oct
 // 30. Next: ...".
+// actedOn: the person's own day they acted (YYYY-MM-DD).
 export function comebackWords(row: {
-  answeredAt: Date | null;
+  actedOn: string | null;
   doneAt: Date | null;
   status: string;
   proof: string | null;
   heldProof: string | null;
   watch: Watch | null;
 }): string {
-  const acted = row.doneAt ?? row.answeredAt;
   const said = row.doneAt ? "You did it" : "You said yes";
   const shown = row.status === "lapsed" ? (row.heldProof ?? row.proof) : row.proof;
   const next = nextStepOf(row.watch);
   return [
-    `${said}${acted ? ` on ${dayLabel(acted.toISOString().slice(0, 10))}` : ""}, and it didn't hold.`,
+    `${said}${row.actedOn ? ` on ${dayLabel(row.actedOn)}` : ""}, and it didn't hold.`,
     shown,
     next ? `Next: ${next}` : null,
   ]
@@ -97,8 +97,8 @@ export function comebackWords(row: {
     .join(" ");
 }
 
-// The nudge's words.
-export function nudgeWords(title: string, answeredAt: Date): string {
+// The nudge's words, with the person's own day they said yes (YYYY-MM-DD).
+export function nudgeWords(title: string, answeredOn: string): string {
   const name = title.trim().replace(/[.!]+$/, "");
-  return `You said yes to "${name}" on ${dayLabel(answeredAt.toISOString().slice(0, 10))}. Done it yet? Tell me and I'll check it against your next statement. Changed your mind? Say so and I'll drop it.`;
+  return `You said yes to "${name}" on ${dayLabel(answeredOn)}. Done it yet? Tell me and I'll check it against your next statement. Changed your mind? Say so and I'll drop it.`;
 }

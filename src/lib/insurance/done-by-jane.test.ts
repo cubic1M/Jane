@@ -1,3 +1,4 @@
+import { withGrant } from "@/lib/permission/gate";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
@@ -21,15 +22,17 @@ const DAY = 86_400_000;
 
 describe("the stand-in carrier on a renewal call", () => {
   const ask = (competing: number | null) =>
-    demoPartner.negotiateRenewal(
-      {
-        carrier: "GEICO",
-        kind: "auto",
-        currentAnnualCents: 170_400,
-        renewalAnnualCents: 204_000,
-        competingAnnualCents: competing,
-      },
-      { now: NOW },
+    withGrant({ specialist: "insurance", userId: "u" }, () =>
+      demoPartner.negotiateRenewal(
+        {
+          carrier: "GEICO",
+          kind: "auto",
+          currentAnnualCents: 170_400,
+          renewalAnnualCents: 204_000,
+          competingAnnualCents: competing,
+        },
+        { now: NOW },
+      ),
     );
 
   it("meets a cheaper like-for-like quote closely, never below today's price", async () => {
