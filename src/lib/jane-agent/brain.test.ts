@@ -220,6 +220,20 @@ describe("the week's plan", () => {
     });
   });
 
+  // Debugger 11-02: a real account in the read-only beta read "1 thing … It's safe for me to just
+  // do." with "Approve all safe ones", which answers "I'm on it": Jane doesn't act for a real
+  // account; the person does each step.
+  it("tells a real account the steps are theirs, with no approve button", () => {
+    const [message] = bySource(
+      snapshot({ concierge: false, plan: { items: 1, annualSavingsCents: 28_000, safeItems: 1 } }),
+      "plan",
+    );
+    expect(message.body).toBe(
+      "Your plan for this week is ready: 1 thing, worth up to $280.00 a year if you say yes to all. Each one comes with Jane's steps for you to do.",
+    );
+    expect(message.actions).toEqual([{ id: "open", label: "Review", kind: "link", href: "/plan" }]);
+  });
+
   it("only offers Review when nothing is safe to just do", () => {
     const [message] = bySource(
       snapshot({ plan: { items: 1, annualSavingsCents: 0, safeItems: 0 } }),

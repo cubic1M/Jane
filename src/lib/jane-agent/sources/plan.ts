@@ -16,14 +16,18 @@ export const planSource: MessageSource = {
       annualSavingsCents > 0
         ? `Your plan for this week is ready: ${things(items)}, worth up to ${formatCents(annualSavingsCents)} a year if you say yes to all.`
         : `Your plan for this week is ready: ${things(items)}.`;
-    const safe =
-      safeItems === 0
+    // A real account in the read-only beta: Jane doesn't act for it, so nothing is "safe for me to
+    // just do" and there's nothing to approve; each step is the person's (debugger 11-02).
+    const actsForYou = snapshot.concierge !== false;
+    const safe = !actsForYou
+      ? "Each one comes with Jane's steps for you to do."
+      : safeItems === 0
         ? "Each one needs a look from you."
         : safeItems === items
           ? `${items === 1 ? "It's" : "All of them are"} safe for me to just do.`
           : `${safeItems} of them ${safeItems === 1 ? "is" : "are"} safe for me to just do; the rest need a look from you.`;
     const actions: MessageAction[] = [
-      ...(safeItems > 0
+      ...(actsForYou && safeItems > 0
         ? [
             {
               id: "plan.approve_safe" as const,
