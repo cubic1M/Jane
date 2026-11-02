@@ -415,6 +415,8 @@ const debtPlan: Detector = {
     if (trouble.value !== true) return null;
     const charges = tx(data, (t) => t.pfc === "BANK_FEES_INTEREST_CHARGE");
     const interest = outCents(charges);
+    // No interest in the accounts: nothing for "biggest interest first" to stand on.
+    if (interest === 0) return null;
     // With no card linked the card debt isn't known (src/profile/build.ts), so the plan speaks of
     // the interest alone and doesn't rest on the unknown balance (QA: "Your cards hold $0.00").
     const card = profile.facts.card_debt_cents;
@@ -452,19 +454,24 @@ const hardshipPlan: Detector = {
     const trouble = profile.facts.debt_trouble;
     if (trouble.value !== true) return null;
     const costs = outCents(tx(data, (t) => (t.pfc ?? "").startsWith("BANK_FEES_")));
+    // The reason in their own figures; with no fees or interest, what made it trouble.
+    const said =
+      costs > 0
+        ? `Fees and interest cost you ${formatCents(costs)} in ${profile.months} months.`
+        : "Your debt payments take more of your income than lenders like to see.";
     return {
       id: suggestionId("debt", "hardship_plan"),
       capability: "debt",
       topic: "hardship_plan",
       title: "Ask your lenders for a hardship plan",
       headline: headlineOf("Ask lenders for a hardship plan", costs, "risk"),
-      short: `Fees and interest cost you ${formatCents(costs)} in ${profile.months} months.`,
+      short: said,
       worthCents: costs,
       worthKind: "risk",
       confidence: factEvidence(trouble),
       urgency: "now",
       rankCents: Math.round(costs * D.troubleHardshipRank),
-      why: `Fees and interest cost you ${formatCents(costs)} in ${profile.months} months. Lenders often lower rates or waive fees for people who ask.`,
+      why: `${said} Lenders often lower rates or waive fees for people who ask.`,
       action: { label: "See your options", href: "/loans/help" },
     };
   },

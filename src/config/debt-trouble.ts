@@ -14,6 +14,11 @@ export const TROUBLE_PAYMENT_SHARE = 0.4;
 // mortgage on a big income, with cash to carry it, isn't trouble). One rule for this message,
 // the profile's debt_trouble fact and everything that reads it.
 export const TROUBLE_CASH_MONTHS = 3;
+// ...or unless they've had money left over across this many days, with this many months of those
+// payments in cash (debugger 11-02: a nurse's mortgage, ahead by about $1,000 a month, read as
+// "struggling with debt"). The cash keeps someone with nothing behind them in the rule.
+export const TROUBLE_MONEY_LEFT_DAYS = 90;
+export const TROUBLE_MONEY_LEFT_CASH_MONTHS = 1;
 // Income is the average of this many full months before this one.
 export const TROUBLE_INCOME_MONTHS = 3;
 

@@ -34,6 +34,26 @@ describe("the debt plan", () => {
     expect(plan!.confidence.percent).toBeGreaterThan(0);
   });
 
+  // Debugger 11-02: "Your debts cost you $0.00 in interest a year" and "Fees and interest cost you
+  // $0.00 in 6 months. Lenders often lower rates or waive fees".
+  describe("with no fees or interest in the accounts", () => {
+    const noCosts = (d: ProfileInput) => ({
+      ...d,
+      transactions: d.transactions.filter((t) => !(t.pfc ?? "").startsWith("BANK_FEES_")),
+    });
+
+    it("offers no plan to pay down interest there's none of", () => {
+      expect(run("debt", noCosts).find((s) => s.topic === "debt_plan")).toBeUndefined();
+    });
+
+    it("asks about hardship without claiming $0.00 of costs", () => {
+      const hardship = run("debt", noCosts).find((s) => s.topic === "hardship_plan");
+      expect(hardship).toBeDefined();
+      expect(`${hardship!.short} ${hardship!.why} ${hardship!.headline}`).not.toContain("$0.00");
+      expect(hardship!.why).toMatch(/more of your income than lenders like to see/);
+    });
+  });
+
   it("names the card balance when cards are linked", () => {
     const plan = run("debt").find((s) => s.topic === "debt_plan");
     expect(plan!.short).toMatch(/^Your cards hold \$[\d,.]+ and cost you \$/);

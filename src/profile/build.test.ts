@@ -201,6 +201,34 @@ describe("how the percentage spreads with the evidence", () => {
     expect(fact.value).toBe(true);
     expect(fact.evidence).toMatch(/debt payments over 40% of income, without the cash/);
   });
+
+  it("isn't debt trouble over the line with money left over and a month of payments in cash", () => {
+    const priya = inputFor("equity");
+    const checking = priya.accounts.find((a) => a.type === "depository")!.id;
+    const monthly = priya.transactions
+      .filter((t) => t.pfc === "LOAN_PAYMENTS_MORTGAGE_PAYMENT" && t.date.startsWith("2026-09"))
+      .reduce((s, t) => s + t.amountCents, 0);
+    const lean = (cash: number, extra: number) => ({
+      ...priya,
+      accounts: priya.accounts.map((a) =>
+        a.type === "depository" ? { ...a, balanceCents: a.id === checking ? cash : 0 } : a,
+      ),
+      transactions: [
+        ...priya.transactions,
+        {
+          id: "made-up",
+          date: priya.today ?? "2026-10-15",
+          amountCents: extra,
+          description: "MADE UP",
+          pfc: null,
+          accountId: checking,
+        },
+      ],
+    });
+    // Far ahead, with two months of payments in cash; then far behind, with the same cash.
+    expect(buildProfile(lean(monthly * 2, -100_000_000)).facts.debt_trouble.value).toBe(false);
+    expect(buildProfile(lean(monthly * 2, 100_000_000)).facts.debt_trouble.value).toBe(true);
+  });
 });
 
 describe("monthly income on a short history", () => {
