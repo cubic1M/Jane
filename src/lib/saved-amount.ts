@@ -21,7 +21,25 @@ export const SAVED_SO_FAR_LABEL = "Saved so far (expected)";
 
 // The "Done" section's one line on /jane: the saved-to-date total is expected, as above, never
 // "saved" before the transactions show it (debugger 11-01).
-export function doneSummary(savedToDateCents: number, finished: number): string {
+export function doneSummary(
+  savedToDateCents: number,
+  finished: number,
+  confirmedCents = 0,
+): string {
+  if (confirmedCents > 0) return `${formatCents(confirmedCents)} confirmed`;
   if (savedToDateCents > 0) return `about ${formatCents(savedToDateCents)} a year expected`;
   return finished === 0 ? "nothing yet" : `${finished} finished`;
+}
+
+// The line over /jane's "Done": what the transactions confirm, as Home says it, and no "a year",
+// since a refund is in it (debugger 11-02); what's only expected is said apart.
+export function savedSoFarLine(savedToDateCents: number, confirmedCents: number): string | null {
+  if (confirmedCents > 0) {
+    const more = savedToDateCents - confirmedCents;
+    const confirmed = `Saved so far: ${formatCents(confirmedCents)}, confirmed in your transactions`;
+    return more > 0 ? `${confirmed}. About ${formatCents(more)} more expected.` : confirmed;
+  }
+  return savedToDateCents > 0
+    ? `${SAVED_SO_FAR_LABEL}: about ${formatCents(savedToDateCents)} a year`
+    : null;
 }

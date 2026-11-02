@@ -1,4 +1,4 @@
-import { SAVED_SO_FAR_LABEL, doneSummary } from "@/lib/saved-amount";
+import { doneSummary, savedSoFarLine } from "@/lib/saved-amount";
 import { isHiddenPage } from "@/config/hidden-pages";
 import Link from "next/link";
 import { connection } from "next/server";
@@ -117,6 +117,7 @@ async function JaneContent() {
   // Spec step 143: the one to three things that matter most, and why.
   const top = snapshot ? rankedFor(snapshot).slice(0, TOP_THINGS) : [];
   const { decide, inProgress, done, alerts } = hub;
+  const savedLine = savedSoFarLine(done.savedToDateCents, done.confirmedCents);
 
   return (
     <>
@@ -337,18 +338,14 @@ async function JaneContent() {
 
       <Section
         title="Done"
-        summary={doneSummary(done.savedToDateCents, done.items.length)}
+        summary={doneSummary(done.savedToDateCents, done.items.length, done.confirmedCents)}
         links={[
           { href: "/actions", label: "See all" },
           { href: "/saved", label: "What Jane saved you" },
           { href: "/profile", label: "What Jane knows about you" },
         ]}
       >
-        {done.savedToDateCents > 0 && (
-          <p className="text-lg">
-            {SAVED_SO_FAR_LABEL}: about <strong>{formatCents(done.savedToDateCents)}</strong> a year
-          </p>
-        )}
+        {savedLine && <p className="text-lg">{savedLine}</p>}
         {done.items.length === 0 ? (
           <p className={MUTED}>
             {snapshot?.concierge === false

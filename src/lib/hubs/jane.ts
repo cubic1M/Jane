@@ -13,6 +13,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { savedToDate } from "@/lib/membership/service";
 import { formatCents } from "@/lib/money";
 import { planFor, planTotalCents } from "@/lib/plan";
+import { verifiedSavings } from "@/lib/savings-proof";
 import { savingsLine } from "@/lib/savings-text";
 import type { Comparison } from "@/planning/compare";
 
@@ -90,7 +91,7 @@ export async function loadJaneHub(
   { client = defaultClient, now = new Date() }: Options = {},
 ) {
   const db = scopedFor(userId, client);
-  const [plan, open, doneCount, done, saved, alerts, unread] = await Promise.all([
+  const [plan, open, doneCount, done, saved, alerts, unread, verified] = await Promise.all([
     planFor(userId, { client }),
     db.actions.findMany({
       where: { status: { in: OPEN_STATUSES } },
@@ -117,6 +118,8 @@ export async function loadJaneHub(
     savedToDate(userId, { client }),
     newestUnreadAlerts(userId, { client, limit: HUB_ALERTS_LIMIT }),
     unreadAlertCount(userId, { client }),
+    // What the person's transactions confirm, as Home's Saved tile says it.
+    verifiedSavings(userId, { client, now }),
   ]);
 
   // Jane's pick for the cards shown, from the finding's own evidence.
@@ -157,6 +160,7 @@ export async function loadJaneHub(
     done: {
       total: doneCount,
       savedToDateCents: saved,
+      confirmedCents: verified.confirmedCents,
       items: done.map((a): DoneItem => ({
         id: a.id,
         title: snapshotTitle(a.decision.cardSnapshot),

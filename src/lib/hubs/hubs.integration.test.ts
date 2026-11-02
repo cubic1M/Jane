@@ -341,7 +341,7 @@ describe.runIf(url)("the hubs against a real database", () => {
     const jane = await loadJaneHub(emptyId, { client, now: NOW });
     expect(jane.decide).toEqual({ total: 0, totalSavingsCents: 0, items: [] });
     expect(jane.inProgress).toEqual({ total: 0, items: [] });
-    expect(jane.done).toEqual({ total: 0, savedToDateCents: 0, items: [] });
+    expect(jane.done).toEqual({ total: 0, savedToDateCents: 0, confirmedCents: 0, items: [] });
     expect(jane.alerts).toEqual({ unread: 0, items: [] });
 
     const money = await loadMoneyHub(emptyId, { client, now: NOW });
