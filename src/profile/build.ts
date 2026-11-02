@@ -57,6 +57,8 @@ export type ProfileTx = {
   description: string;
   pfc: string | null;
   accountId: string;
+  // The cleaned merchant name, where one was read; messages name a charge by it.
+  merchantName?: string | null;
 };
 export type ProfileAccount = {
   id: string;

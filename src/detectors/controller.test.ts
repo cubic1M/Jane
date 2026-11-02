@@ -68,7 +68,7 @@ describe("the monthly close (step 244)", () => {
   it("asks Sam to confirm WeWork and Adobe so September can close", () => {
     const s = run("month_close", inputFor("freelancer"));
     expect(s?.title).toBe("Confirm 2 charges so September 2026 can close");
-    expect(s?.short).toMatch(/^Wework \$285\.00, Adobe Creative Cloud \$59\.99/);
+    expect(s?.short).toMatch(/^WeWork \$285\.00, Adobe \$59\.99/);
     expect(s?.worthCents).toBe(34_499);
     // /monthly is hidden in the read-only beta (it would land on /ahead, which has no close):
     // the button opens September's transactions, where fixing a category closes the month.
@@ -77,6 +77,24 @@ describe("the monthly close (step 244)", () => {
     );
     // Night QA 10-30: "4 unsure charge in 3 months of data".
     expect(s?.confidence.reason).toMatch(/^2 unsure charges in /);
+  });
+
+  // Debugger 11-01: a Capital One 360 file's charges read "Debit Card Purchase - Bestbuy" and
+  // "Debit Card Purchase - Qxt": the bank's words for how it was paid, not who was paid.
+  it("names each charge by its merchant, not the bank's line", () => {
+    const data = inputFor("freelancer");
+    const transactions = data.transactions.map((t) =>
+      /WEWORK/i.test(t.description)
+        ? {
+            ...t,
+            description: "Debit Card Purchase - WEWORK 888-123-4567 NY",
+            merchantName: "WeWork",
+          }
+        : t,
+    );
+    const s = run("month_close", { ...data, transactions });
+    expect(s?.short).toMatch(/^WeWork \$285\.00, /);
+    expect(s?.why).not.toMatch(/Debit Card Purchase/);
   });
 
   it("is quiet once the month is closed, and for people with nothing unsure", () => {

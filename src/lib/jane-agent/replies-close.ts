@@ -3,7 +3,7 @@ import type { CloseView } from "@/lib/month-close";
 import { categoryWords } from "@/planning/month-close";
 
 import type { Reply } from "./replies";
-import { monthLabel } from "@/lib/day-label";
+import { dayLabel, monthLabel } from "@/lib/day-label";
 
 // The monthly close in the chat (spec step 244).
 
@@ -48,7 +48,7 @@ export function closedNote(view: CloseView): string {
 
 export function waitingBody(view: CloseView): string {
   const lines = view.uncertain.map(
-    (t) => `• ${t.description} on ${t.date}: ${formatCents(t.amountCents)}`,
+    (t) => `• ${t.name} on ${dayLabel(t.date)}: ${formatCents(t.amountCents)}`,
   );
   return [
     `Closing ${monthLabel(view.month, { long: true })}: I wasn't sure what ${view.uncertain.length === 1 ? "this charge was" : `these ${view.uncertain.length} charges were`}. Are they right as they are?`,

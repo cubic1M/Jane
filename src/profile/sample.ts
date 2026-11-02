@@ -175,6 +175,7 @@ export function inputFor(person: string, told: ProfileInput["told"] = {}): Profi
       description: t.name,
       pfc: t.personal_finance_category?.detailed ?? null,
       accountId: t.account_id,
+      merchantName: t.merchant_name ?? null,
     })),
     accounts: demoAccounts(demo).map((a) => ({
       id: a.account_id,

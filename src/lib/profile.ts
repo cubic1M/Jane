@@ -93,6 +93,7 @@ async function loadProfileInputFrom(
         date: true,
         amountCents: true,
         description: true,
+        merchantName: true,
         pfcDetailed: true,
         accountId: true,
       },
@@ -219,6 +220,7 @@ async function loadProfileInputFrom(
       description: t.description,
       pfc: t.pfcDetailed,
       accountId: t.accountId,
+      merchantName: t.merchantName,
     })),
     accounts: accounts.map((a) => ({
       id: a.id,
