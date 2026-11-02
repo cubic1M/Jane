@@ -13,6 +13,7 @@ import {
   EVENTS_REFRESH_MINUTES,
   EVENTS_VIEW_GDELT_TYPES,
   EVENT_TYPE_IDS,
+  EVENT_TYPES,
   eventTypesFor,
 } from "@/config/events";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -154,6 +155,23 @@ describe.runIf(url)("the shared events refresh", () => {
     expect(f.gdelt).toHaveLength(0);
     expect(await lastRefresh({ client })).toBeNull();
     expect((await run(NOW, f, { force: true })).ran).toBe(true);
+  });
+
+  // Debugger 11-02: GDELT answers in 10-13 s, so the cron's clock reaches only about half the types
+  // in a run. Asked in a fixed order, the same types were reached every day and the rest never:
+  // the cron asks the least recently asked first, so a couple of runs cover them all.
+  it("asks GDELT about the least recently asked types first on the cron too", async () => {
+    const first = fakeFetcher();
+    await run(NOW, first);
+    const asked = Object.keys((await lastRefresh({ client }))!.gdeltAt);
+    const cron = fakeFetcher();
+    await run(minutes(EVENTS_REFRESH_MINUTES + 1), cron, { force: true });
+    const typeOf = (query: string) =>
+      EVENT_TYPE_IDS.find((t) => query.includes(EVENT_TYPES[t].gdelt));
+    const order = cron.gdelt.slice(0, EVENT_TYPE_IDS.length).map((c) => typeOf(c.query));
+    const firstAsked = order.findIndex((t) => t !== undefined && asked.includes(t));
+    // Every type not asked yet comes before any type just asked.
+    expect(firstAsked).toBe(EVENT_TYPE_IDS.length - asked.length);
   });
 
   // Debugger 11-01: the daily job ran past Vercel's limit (a 504), so nothing it did was recorded.
