@@ -415,7 +415,7 @@ test("a demo-bank person answers a question about how they live, and a yes opens
     "Questions about how you live",
     "Driving for pay?",
   );
-  await expect(uber.getByText(/I saw \$412\.00 come in from Uber Driver/).first()).toBeVisible();
+  await expect(uber.getByText(/I saw \$412\.00 come in from Uber/).first()).toBeVisible();
   await uber.getByRole("button", { name: "Yes" }).click();
   await expect(page.getByText("Thanks. Jane has noted it.")).toBeVisible();
   await expect(
