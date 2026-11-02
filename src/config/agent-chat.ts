@@ -309,6 +309,10 @@ export const CHAT_UNCAPPED_SOURCES: readonly string[] = [
   // Spec step 208: a charge that may not be theirs shouldn't wait for a quiet day; the source
   // itself brings up at most UNUSUAL_CHAT_MAX at a time.
   "unusual",
+  // Stage 1: these wait on a tap, so they're their own cards, never a line in the morning agenda
+  // with no buttons. Few by nature: a nudge is days apart, an ask is once a cycle.
+  "follow_through",
+  "statement_ask",
 ];
 // Unusual-activity questions in the chat at one time.
 export const UNUSUAL_CHAT_MAX = 2;

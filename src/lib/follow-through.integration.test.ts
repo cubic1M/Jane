@@ -13,6 +13,8 @@ import { raiseAlerts } from "./alerts";
 import { runDigests } from "./digest/send";
 import { loadFollowUps, runFollowThrough as runIt, stillFollowingUp } from "./follow-through";
 import { declineFollowUp, markFollowUpDone } from "./follow-through-answers";
+import { takeChatAction } from "./jane-agent/actions";
+import { runJaneAgent } from "./jane-agent/run";
 import { closeAnsweredElsewhere } from "./jane-agent/settled";
 import { recordAnswer, savingsRecord, verifyOutcomes } from "./outcomes";
 import { answerSuggestion } from "./suggestions";
@@ -305,5 +307,111 @@ describe.runIf(url)("following through on a Yes", { timeout: 120_000 }, () => {
     await charge("2026-11-02", "GROCERY", 3_000);
     expect((await runFollowThrough(userId, { client, now: at("2026-11-12") })).asked).toBe(false);
     expect((await asks())[0].readAt).not.toBeNull();
+  });
+});
+
+// The dock: the card reaches the person when they open the chat, and its buttons work.
+describe.runIf(url)("a follow-up in the dock", { timeout: 120_000 }, () => {
+  let client: PrismaClient;
+  const created: string[] = [];
+  beforeAll(() => {
+    vi.stubEnv("AUTH_SECRET", "test-secret");
+    client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url! }) });
+  });
+  afterAll(async () => {
+    await client.user.deleteMany({ where: { id: { in: created } } });
+    await client.$disconnect();
+  });
+
+  async function nudged() {
+    const user = await client.user.create({
+      data: { email: `dock-${crypto.randomUUID()}@example.com`, timezone: "UTC" },
+    });
+    created.push(user.id);
+    const account = await client.account.create({
+      data: { userId: user.id, source: "csv", name: "Checking", type: "depository" },
+    });
+    await client.transaction.create({
+      data: {
+        userId: user.id,
+        accountId: account.id,
+        source: "csv",
+        date: at(addDays(ANSWERED, 8)),
+        description: "GROCERY",
+        amountCents: 3_000,
+      },
+    });
+    const key = "subscriptions:hulu";
+    await client.suggestion.create({
+      data: {
+        userId: user.id,
+        key,
+        capability: "subscriptions",
+        topic: "subscription_review",
+        title: "Cancel Hulu",
+        worthCents: 21_588,
+        worthKind: "saves",
+        confidencePercent: 90,
+        confidenceReason: "twelve charges",
+        urgency: "normal",
+        why: "You pay for it.",
+        actionLabel: "Show me how",
+        actionHref: "/spending",
+        watch: HULU,
+      },
+    });
+    await answerSuggestion(user.id, key, "yes", { client, now: at(ANSWERED) });
+    await runIt(user.id, { client, now: at(addDays(ANSWERED, NUDGE_AFTER_DAYS)), raise });
+    return { userId: user.id, key };
+  }
+  const card = (userId: string, key: string) =>
+    client.janeMessage.findFirstOrThrow({
+      where: { userId, dedupeKey: { contains: `followup:nudge:${key}:1` } },
+    });
+
+  it("posts when they open the chat, once, with its own buttons", async () => {
+    const { userId, key } = await nudged();
+    const now = at(addDays(ANSWERED, NUDGE_AFTER_DAYS));
+    await runJaneAgent(userId, { client, now, trigger: "open" });
+    const message = await card(userId, key);
+    expect(message.body).toContain('You said yes to "Cancel Hulu"');
+    // Its own card, not folded behind the morning's agenda with no buttons to tap.
+    expect(message.snoozedUntil).toBeNull();
+    expect(message.status).toBe("open");
+    expect((message.actions as { id: string }[]).map((a) => a.id)).toEqual([
+      "followup.done",
+      "snooze",
+      "followup.no",
+      "open",
+    ]);
+    await runJaneAgent(userId, { client, now, trigger: "open" });
+    expect(
+      await client.janeMessage.count({ where: { userId, dedupeKey: { contains: "followup:" } } }),
+    ).toBe(1);
+  });
+
+  it("I did it stops the nudges, and the card is answered", async () => {
+    const { userId, key } = await nudged();
+    const now = at(addDays(ANSWERED, NUDGE_AFTER_DAYS));
+    await runJaneAgent(userId, { client, now, trigger: "open" });
+    const message = await card(userId, key);
+    await takeChatAction(userId, message.id, "followup.done", { client, now });
+    expect((await card(userId, key)).status).toBe("answered");
+    const row = await client.suggestionOutcome.findFirstOrThrow({
+      where: { userId, suggestionKey: key },
+    });
+    expect(row.doneAt).toEqual(now);
+    expect((await runIt(userId, { client, now: at(addDays(ANSWERED, 40)), raise })).nudged).toBe(0);
+  });
+
+  it("Not for me is final", async () => {
+    const { userId, key } = await nudged();
+    const now = at(addDays(ANSWERED, NUDGE_AFTER_DAYS));
+    await runJaneAgent(userId, { client, now, trigger: "open" });
+    await takeChatAction(userId, (await card(userId, key)).id, "followup.no", { client, now });
+    expect(
+      await client.suggestionOutcome.findFirstOrThrow({ where: { userId, suggestionKey: key } }),
+    ).toMatchObject({ status: "declined", answer: "no" });
+    expect(await loadFollowUps(userId, { client, now: at(addDays(ANSWERED, 40)) })).toEqual([]);
   });
 });
