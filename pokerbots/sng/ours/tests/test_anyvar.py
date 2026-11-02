@@ -105,7 +105,7 @@ class TestIcmAnyDefaults(unittest.TestCase):
         self.assertEqual(IcmAny(icm_call=1).p["icm_call"], 1)            # explicit kwargs win
         t = IcmTag()
         self.assertEqual((t.p["hu_open_mult"], t.p["icm_call"], t.p["bet_discount"], t.p["behind_k"],
-                          t.p["push_steal"]), (0.6, 1, 0.5, 0.2, 0.5))
+                          t.p["push_steal"], t.p["resteal_rel"]), (0.6, 1, 0.5, 0.2, 0.5, 0.35))
 
 
 if __name__ == "__main__":

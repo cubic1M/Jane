@@ -4,6 +4,7 @@ from typing import Optional
 from dataclasses import dataclass
 from itertools import combinations
 from math import prod
+import bisect
 import math
 import random
 import json
@@ -412,7 +413,7 @@ def allin_call_need(my_total, my_committed, shover, totals, committed, pays):
     if win - lose <= 1e-12:
         return None
     return (fold - lose) / (win - lose)
-PARAMS = dict(open_mult=1.07, open_size=2.0, push_bb=9.0, push_mult=1.0, range_k=4.0, call_margin=0.06, threebet_eq=0.62, threebet_rel=2.6, risk=0.1, value_eq=0.62, cbet=0.55, bet_frac=0.65, bet_discount=0.5, steal_bonus=0.55, steal_max_behind=5, steal_sym=0.5, reshove_bb=24.0, read_alpha=0.5, base_pfr=0.12, raiser_discount=1.0, raise_eq=99.0, bluff_bonus=0.4, bluff_max_opp=2, pf_chart=0, pf_max_bb=15.0, pf_file='', cap_risk=0.0, cap_window=25, push_steal=0.5, behind_k=0.2, cbet_size=0.5, bluff_size=0.5, hu_risk=1.0, cap_fade=0, risk_payout=1, hu_open_mult=0.6, hu_range_k=2.0, sh_open_mult=0.0, sh_range_k=0.0, icm_call=1, icm_margin=0.02, pev=0, pev_bb=15.0, pev_margin=0.0, pev_loose=1.0, pev_risk=1.0, resteal=0, resteal_lo=10.0, resteal_hi=25.0, resteal_margin=0.0, resteal_cw=0.6, resteal_wake=0.3, resteal_risk=0.25, range_map=0.65, rk_floor=1.2, agg_alpha=0.0, base_agg=0.35, agg_raise=99.0, agg_seat=0.6, station_size=0.0, thin_value=0.0)
+PARAMS = dict(open_mult=1.07, open_size=2.0, push_bb=9.0, push_mult=1.0, range_k=4.0, call_margin=0.06, threebet_eq=0.62, threebet_rel=2.6, risk=0.1, value_eq=0.62, cbet=0.55, bet_frac=0.65, bet_discount=0.5, steal_bonus=0.55, steal_max_behind=5, steal_sym=0.5, reshove_bb=24.0, read_alpha=0.5, base_pfr=0.12, raiser_discount=1.0, raise_eq=99.0, bluff_bonus=0.4, bluff_max_opp=2, pf_chart=0, pf_max_bb=15.0, pf_file='', cap_risk=0.0, cap_window=25, steal_floor=0.0, resteal_rel=0.35, resteal_rel_bb=28.0, push_steal=0.5, behind_k=0.2, cbet_size=0.5, bluff_size=0.5, hu_risk=1.0, cap_fade=0, risk_payout=1, hu_open_mult=0.6, hu_range_k=2.0, sh_open_mult=0.0, sh_range_k=0.0, icm_call=1, icm_margin=0.02, pev=0, pev_bb=15.0, pev_margin=0.0, pev_loose=1.0, pev_risk=1.0, resteal=0, resteal_lo=10.0, resteal_hi=25.0, resteal_margin=0.0, resteal_cw=0.6, resteal_wake=0.3, resteal_risk=0.25, range_map=0.65, rk_floor=1.2, agg_alpha=0.0, base_agg=0.35, agg_raise=99.0, agg_seat=0.6, station_size=0.0, thin_value=0.0)
 def payout_risk_scale(payouts):
     pay = [float(x) for x in payouts]
     if len(pay) < 2:
@@ -424,6 +425,16 @@ def payout_risk_scale(payouts):
         return 1.0
     flat = 1.0 - max(rel) / tot
     return max(0.0, min(1.0, flat / 0.5))
+_PCT: dict = {}
+def hand_pct_table(spec, S):
+    if getattr(spec, 'hole_cards', 2) != 2 or getattr(spec, 'discards', ()):
+        return None
+    key = (tuple(spec.deck_ranks), getattr(spec, 'category_order', None), getattr(spec, 'ace_low_straight', None))
+    t = _PCT.get(key)
+    if t is None:
+        deck = spec.deck
+        t = _PCT[key] = sorted((S.equity(h, (), 1, spec) for h in combinations(deck, 2)))
+    return t
 class IcmTag:
     name = 'icm_tag'
     OVERRIDES: dict = {}
@@ -445,6 +456,12 @@ class IcmTag:
         if getattr(rules.spec, 'discards', ()):
             pass
             _hc_code(get_ctx(rules.spec))
+        self._pct = None
+        if self.p['resteal_rel'] > 0:
+            try:
+                self._pct = hand_pct_table(rules.spec, strength)
+            except Exception:
+                self._pct = None
         self.risk_scale = 1.0
         pays = getattr(rules, 'payouts', None)
         if self.p['risk_payout'] and pays:
@@ -679,6 +696,7 @@ class IcmTag:
                 sf *= 1.0 - p['steal_bonus'] * max(0.0, fr - 0.5) * 2
                 if p['steal_sym'] > 0 and fr < 0.5:
                     sf *= 1.0 + p['steal_sym'] * (1.0 - 2 * fr)
+                sf = max(sf, p['steal_floor'])
             bar *= sf
             eq = self._eq(obs, k + limpers)
             if not lg.can_raise and lg.can_call:
@@ -736,6 +754,14 @@ class IcmTag:
                 n_icm = self._icm_need(obs, r)
                 if n_icm is not None:
                     need = n_icm + p['icm_margin']
+        if self._pct is not None and lg.can_raise and (len(raises) == 1) and (not seats[raises[0][0]].all_in) and (eff_bb <= p['resteal_rel_bb']) and (not any((h[1] == 0 and h[2] == 'call' for h in obs.history if h[0] != obs.seat))):
+            r0 = raises[0][0]
+            o = (self.pre_raises[r0] + p['base_pfr'] * 8) / (self.dealt[r0] + 8)
+            o = min(0.7, max(0.04, o))
+            t = self._pct
+            top = 1.0 - bisect.bisect_left(t, self._eq(obs, 1)) / len(t)
+            if top <= max(0.03, p['resteal_rel'] * o):
+                return RaiseTo(lg.max_raise_to)
         if p['resteal'] and lg.can_raise and (len(raises) == 1) and (not seats[raises[0][0]].all_in) and (p['resteal_lo'] <= eff_bb <= p['resteal_hi']) and (not any((h[1] == 0 and h[2] == 'call' for h in obs.history if h[0] != obs.seat))):
             ev = self._resteal_ev(obs, raises[0][0], behind)
             if ev is not None and ev > p['resteal_margin']:

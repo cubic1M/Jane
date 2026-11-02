@@ -54,8 +54,9 @@ PARAMS = dict(
     cap_risk=0.0,        # near the hand cap: risk premium + cap_risk x (my stack / average - 1)
     cap_window=25,
     steal_floor=0.0,     # the steal factor never cuts the open / shove bar below this share (0 = no floor)
-    resteal_rel=0.0,     # > 0: facing a lone open at <= resteal_rel_bb, re-shove the top
-    resteal_rel_bb=28.0, #   resteal_rel x (opener's open rate) of hands (f3_exploiter's rule); 0 = off
+    resteal_rel=0.35,    # > 0: facing a lone open at <= resteal_rel_bb, re-shove the top
+    resteal_rel_bb=28.0, #   resteal_rel x (opener's open rate) of hands (f3_exploiter's rule); 0 = off.
+                         #   0.35 validated on fresh seeds (results/sng_restealrel_validate.md)
     push_steal=0.5,      # short-stack shoves use this share of the steal factor (fold read); 0 = off.
                          #   0.5 validated on fresh seeds (results/sng_pushsteal_validate.md)
     behind_k=0.2,        # facing a preflop raise: extra random hands per opponent still to act
