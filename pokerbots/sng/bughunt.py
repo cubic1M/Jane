@@ -93,10 +93,13 @@ def _round(args):
         if st.errors or st.illegal:
             fails.append(dict(kind="our_bot_error", seed=seed, variant=pick, bot=name, lineup=lineup,
                               errors=st.errors, illegal=st.illegal, first_error=(st.first_error or "")[-2000:]))
-        if st.times:
-            p99 = float(np.percentile(np.array(st.times) * 1000, 99))
-            if p99 > 0.5:
-                fails.append(dict(kind="slow", seed=seed, variant=pick, bot=name, p99_ms=round(p99, 3)))
+        if len(st.times) >= 100:            # p99 of a handful of decisions is just the max (jitter)
+            a = np.array(st.times) * 1000
+            p99 = float(np.percentile(a, 99))
+            over = int((a > 1.0).sum())
+            if p99 > 0.5 or over > max(1, len(a) // 200):
+                fails.append(dict(kind="slow", seed=seed, variant=pick, bot=name, p99_ms=round(p99, 3),
+                                  over_1ms=over, decisions=len(a)))
     return fails
 
 
