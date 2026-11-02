@@ -163,6 +163,10 @@ describe.runIf(url)("trying Jane with sample data", { timeout: 120_000 }, () => 
   });
 
   it("deletes trial people once their day is up, and never anyone else", async () => {
+    // Long before any other test file's trial people. These cleanups, and the retention run a day
+    // later, delete by age across the shared test database (debugger 11-02: the chat tests' people
+    // went mid-test, 7 failures that only showed in a full run).
+    const NOW = new Date("2020-01-15T15:00:00Z");
     const old = await start(new Date(NOW.getTime() - (TRIAL_HOURS + 1) * HOUR));
     const real = await client.user.create({
       data: {
@@ -180,7 +184,7 @@ describe.runIf(url)("trying Jane with sample data", { timeout: 120_000 }, () => 
 
     // Each new trial cleans up too.
     const late = await start(new Date(NOW.getTime() - (TRIAL_HOURS + 1) * HOUR));
-    const fresh = await start();
+    const fresh = await start(NOW);
     expect(await client.user.findUnique({ where: { id: late.userId } })).toBeNull();
     expect(await client.user.findUnique({ where: { id: fresh.userId } })).not.toBeNull();
     expect(await client.user.findUnique({ where: { id: real.id } })).not.toBeNull();
