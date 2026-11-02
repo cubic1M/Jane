@@ -171,7 +171,7 @@ export function healthScore(input: HealthInput): HealthScore | null {
         input.slips === 0
           ? `No late or overdraft fees in the last ${HEALTH_SLIP_DAYS} days.`
           : `${plural(input.slips, "late or overdraft fee")} in the last ${HEALTH_SLIP_DAYS} days.`,
-        "Each fee drops out after 90 days; Jane can schedule card payments before they're due.",
+        "Each fee drops out after 90 days.",
       ),
     );
   }

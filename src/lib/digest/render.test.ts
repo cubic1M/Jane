@@ -28,6 +28,26 @@ const payload = {
 };
 
 describe("renderDigest", () => {
+  // Debugger 11-02: "Still to look at: $35.00 a year" above a list with Netflix at $275.88 a year.
+  it("says why a listed subscription isn't in the total", () => {
+    const sub = {
+      title: "Review your Netflix subscription",
+      annualSavingsCents: 27_588,
+      confidence: "medium" as const,
+      onlyOnceApproved: true as const,
+    };
+    const said = "Subscriptions count toward the total once you decide to cancel them.";
+    const email = renderDigest({ ...payload, moneyFoundCents: 3_500, newFindings: [sub] }, LINKS);
+    expect(email.text).toContain("Still to look at: $35.00 a year");
+    expect(email.text).toContain(said);
+    expect(email.html).toContain(said);
+    expect(renderDigest({ ...payload, newFindings: [] }, LINKS).text).not.toContain(said);
+    // With nothing in the total, no total to explain.
+    expect(
+      renderDigest({ ...payload, moneyFoundCents: 0, newFindings: [sub] }, LINKS).text,
+    ).not.toContain(said);
+  });
+
   it("links the monthly close in every email, near the top", () => {
     const email = renderDigest(payload, LINKS);
     expect(email.text).toContain(`See your monthly close: ${LINKS.close}`);

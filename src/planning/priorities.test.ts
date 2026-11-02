@@ -17,6 +17,13 @@ const item = (over: Partial<PriorityItem>): PriorityItem => ({
 });
 
 describe("rankPriorities", () => {
+  // Debugger 11-02: "takes one tap" on a real account, where the person does it themselves.
+  it("doesn't promise that a quick one is done in a tap", () => {
+    const [only] = rankPriorities([item({ title: "Review Netflix", valueCents: 27_588 })], AS_OF);
+    expect(only.why).toContain("takes about a minute");
+    expect(only.why).not.toContain("tap");
+  });
+
   it("puts the most money per minute first, and says why", () => {
     const [first, second] = rankPriorities(
       [
@@ -34,7 +41,7 @@ describe("rankPriorities", () => {
     );
   });
 
-  it("says 'saves the most and takes one tap' when that's why", () => {
+  it("says 'saves the most and takes about a minute' when that's why", () => {
     const [first] = rankPriorities(
       [
         item({ title: "Cancel Hulu", valueCents: 21_588 }),
@@ -42,7 +49,9 @@ describe("rankPriorities", () => {
       ],
       AS_OF,
     );
-    expect(first.why).toBe("First because it saves the most ($215.88 a year) and takes one tap.");
+    expect(first.why).toBe(
+      "First because it saves the most ($215.88 a year) and takes about a minute.",
+    );
   });
 
   it("says a refund gets money back once, not a year", () => {
@@ -54,16 +63,16 @@ describe("rankPriorities", () => {
       AS_OF,
     );
     expect(ranked.find((r) => r.title === "Refund the double charge")!.why).toMatch(
-      /it gets \$64\.20 back and takes one tap\.$/,
+      /it gets \$64\.20 back and takes about a minute\.$/,
     );
     const [only] = rankPriorities(
       [item({ title: "Refund", valueCents: 6_420, once: true })],
       AS_OF,
     );
-    expect(only.why).toBe("First because it gets the most back ($64.20) and takes one tap.");
+    expect(only.why).toBe("First because it gets the most back ($64.20) and takes about a minute.");
   });
 
-  it("says 'it takes one tap' when the time is the only reason", () => {
+  it("says 'it takes about a minute' when the time is the only reason", () => {
     const ranked = rankPriorities(
       [
         item({ title: "Cancel Hulu", valueCents: 21_588 }),
@@ -72,7 +81,7 @@ describe("rankPriorities", () => {
       AS_OF,
     );
     expect(ranked.find((r) => r.title === "Check the Geico renewal")!.why).toBe(
-      "Because it takes one tap.",
+      "Because it takes about a minute.",
     );
   });
 

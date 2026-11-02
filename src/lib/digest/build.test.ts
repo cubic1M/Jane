@@ -315,3 +315,27 @@ describe("what changed", () => {
     });
   });
 });
+
+describe("a subscription in the week's findings", () => {
+  it("is marked as not in the total until the person says to cancel it", () => {
+    const made = new Date(NOW);
+    const digest = buildDigest(
+      input({
+        findings: [
+          {
+            type: "subscription_review",
+            title: "Review your Netflix subscription",
+            annualSavingsCents: 27_588,
+            createdAt: made,
+          },
+          { type: "bank_fees", title: "Fees", annualSavingsCents: 3_500, createdAt: made },
+        ],
+        lastSentAt: null,
+      }),
+    );
+    expect(digest?.newFindings.map((f) => [f.title, f.onlyOnceApproved ?? false])).toEqual([
+      ["Review your Netflix subscription", true],
+      ["Fees", false],
+    ]);
+  });
+});

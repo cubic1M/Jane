@@ -1,6 +1,6 @@
 import { DIGEST_BUDGET_NEAR_SHARE, DIGEST_MAX_CHANGES } from "@/config/digest";
 import type { CheckStatus } from "@/detection/checkup";
-import { REFUND_FINDING_TYPES } from "@/config/detection";
+import { COUNT_ONLY_WHEN_APPROVED, REFUND_FINDING_TYPES } from "@/config/detection";
 import type { ActionStatus, Confidence, FindingType } from "@/generated/prisma/client";
 
 // What goes in a week's digest, and whether to send one at all. Pure, so the skip rule
@@ -88,6 +88,8 @@ export type DigestPayload = {
     annualSavingsCents: number | null;
     confidence?: Confidence;
     once?: true;
+    // Listed at its yearly cost, but in the total only once the person says to cancel it.
+    onlyOnceApproved?: true;
   }[];
   // Older payloads have no confidence on alerts, and no changes or checkup.
   alerts: { title: string; percent?: number | null }[];
@@ -214,6 +216,9 @@ export function buildDigest(input: DigestInput): DigestPayload | null {
       annualSavingsCents,
       ...(confidence ? { confidence } : {}),
       ...(type && REFUND_FINDING_TYPES.includes(type) ? { once: true as const } : {}),
+      ...(type && COUNT_ONLY_WHEN_APPROVED.includes(type)
+        ? { onlyOnceApproved: true as const }
+        : {}),
     })),
     alerts: alerts.map(({ title, confidencePercent }) => ({
       title,

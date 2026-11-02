@@ -129,7 +129,7 @@ describe("priorities from the snapshot", () => {
     expect(reply.body.split("\n")).toEqual([
       "These 3 matter most right now.",
       "1. Use your FSA money. First because it's due in 2 days and takes about 5 minutes.",
-      "2. Cancel Hulu. Because it saves $215.88 a year and takes one tap.",
+      "2. Cancel Hulu. Because it saves $215.88 a year and takes about a minute.",
       "3. Cancel on Peacock's page. Because my work waits on it and takes about 5 minutes.",
     ]);
     expect(reply.actions.map((a) => ("href" in a ? a.href : ""))).toEqual([
