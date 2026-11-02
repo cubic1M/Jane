@@ -221,6 +221,15 @@ const RULES: readonly Rule[] = [
   { category: "INCOME_MILITARY", keywords: ["DFAS", "MIL PAY", "VA BENEFITS"], direction: "in" },
   { category: "INCOME_CHILD_SUPPORT", keywords: ["CHILD SUPPORT", "CHILD SUPP"], direction: "in" },
   { category: "INCOME_OTHER", keywords: ["SEVERANCE"], direction: "in" },
+  // Gig pay before payroll: it's often written "DIR DEP" too (detector sweep: Uber and DoorDash
+  // read as a salary, so uneven income never showed), while "UBER TECHNOLOGIES DIRECT DEP" is an
+  // employee's pay.
+  {
+    category: "INCOME_GIG_ECONOMY",
+    pattern:
+      /(?<![A-Z0-9])(?:UBER|LYFT|DOORDASH|GRUBHUB|INSTACART|SHIPT|POSTMATES)(?![A-Z0-9]).*(?<![A-Z0-9])(?:PAYOUT|PAYMNT|PAYMENT|EARNINGS|DASHER|DRIVER|SHOPPER|EDI)(?![A-Z0-9])/,
+    direction: "in",
+  },
   {
     category: "INCOME_SALARY",
     keywords: [
@@ -357,7 +366,19 @@ const RULES: readonly Rule[] = [
   },
   {
     category: "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT",
-    keywords: ["NAVIENT", "NELNET", "MOHELA", "SALLIE MAE", "AIDVANTAGE", "DEPT EDUCATION"],
+    keywords: [
+      "NAVIENT",
+      "NELNET",
+      "MOHELA",
+      "SALLIE MAE",
+      "AIDVANTAGE",
+      "DEPT EDUCATION",
+      "DEPT OF EDUCATION",
+      "FEDLOAN",
+      "EDFINANCIAL",
+      "STUDENT LOAN",
+      "STUDENT LN",
+    ],
     direction: "out",
   },
   {
@@ -690,12 +711,6 @@ const RULES: readonly Rule[] = [
   // (night QA 10-30: "UBER USA 6787 EDI PAYMNT" read as a taxi refund and "DOORDASH DASHER
   // PAYOUT" as a restaurant refund, so $10,600 of pay netted against spending, "Spent this
   // month $691" with $1,400 of rent, and taxes saw no income).
-  {
-    category: "INCOME_GIG_ECONOMY",
-    pattern:
-      /(?<![A-Z0-9])(?:UBER|LYFT|DOORDASH|GRUBHUB|INSTACART|SHIPT|POSTMATES)(?![A-Z0-9]).*(?<![A-Z0-9])(?:PAYOUT|PAYMNT|PAYMENT|EARNINGS|DASHER|DRIVER|SHOPPER|EDI|DIRECT DEP)(?![A-Z0-9])/,
-    direction: "in",
-  },
   { category: "INCOME_GIG_ECONOMY", keywords: ["AMAZON FLEX"], direction: "in" },
   // Food delivery before ride shares, so "UBER EATS" isn't a taxi.
   {
@@ -2101,6 +2116,24 @@ const RULES: readonly Rule[] = [
       "STUDENT LOAN DISB",
     ],
     direction: "in",
+  },
+  // Paying them back (detector sweep: no rule gave these, so a person repaying a payday lender
+  // every two weeks never read as having one).
+  {
+    category: "LOAN_PAYMENTS_CASH_ADVANCES",
+    keywords: [
+      "ADVANCE AMERICA",
+      "CHECK INTO CASH",
+      "ACE CASH EXPRESS",
+      "SPEEDY CASH",
+      "CHECKSMART",
+    ],
+    direction: "out",
+  },
+  {
+    category: "LOAN_PAYMENTS_EWA",
+    keywords: ["EARNIN", "BRIGIT", "MONEYLION INSTACASH", "DAVE INC"],
+    direction: "out",
   },
   // A payday loan or an app's cash advance landing in checking: borrowed money, never a refund
   // of spending (night QA 10-30: a server's "ADVANCE AMERICA LOAN", $400 in, uncategorized).

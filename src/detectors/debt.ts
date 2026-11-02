@@ -5,6 +5,7 @@ import { ADDON_RULES } from "@/config/car-loan";
 import { formatCents } from "@/lib/money";
 import type { Profile } from "@/profile/build";
 import { addonCandidates, refundFor } from "@/planning/car-loan";
+import { bnplProviderOf } from "@/insights/bnpl";
 import { type Detector, suggestionId } from "./contract";
 import {
   evidence,
@@ -40,9 +41,8 @@ const studentRepayment: Detector = {
   needs: ["monthly_income"],
   detect({ profile, data }) {
     const payments = tx(data, (t) => t.pfc === "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT");
-    if (payments.length < D.studentPaymentsMin || balanceOf(data.accounts, "student") <= 0) {
-      return null;
-    }
+    // The payments are enough: a statement shows them, and only a linked loan shows the balance.
+    if (payments.length < D.studentPaymentsMin) return null;
     const monthly = outCents(payments) / rateMonthsOf(profile);
     const idr = Math.round(income(profile) * D.studentIdrShare);
     const gap = Math.round(monthly - idr);
@@ -119,7 +119,11 @@ const carAddons: Detector = {
   covers: ["car_loan"],
   needs: [],
   detect({ profile, data }) {
-    if (balanceOf(data.accounts, "auto") <= 0) return null;
+    // A car loan: linked, or its payments on a statement.
+    const hasCarLoan =
+      balanceOf(data.accounts, "auto") > 0 ||
+      data.transactions.some((t) => t.pfc === "LOAN_PAYMENTS_CAR_PAYMENT");
+    if (!hasCarLoan) return null;
     const found = addonCandidates(
       data.transactions
         .filter((t) => t.amountCents >= D.addonMinCents)
@@ -369,7 +373,15 @@ const bnplPlans: Detector = {
   topic: "bnpl",
   needs: [],
   detect({ profile, data }) {
-    const payments = tx(data, (t) => t.pfc === "LOAN_PAYMENTS_BNPL" && t.amountCents > 0);
+    // By category, or by the company: the rules file Affirm and Klarna as a loan payment.
+    const payments = tx(
+      data,
+      (t) =>
+        t.amountCents > 0 &&
+        (t.pfc === "LOAN_PAYMENTS_BNPL" ||
+          bnplProviderOf({ description: t.description, merchantName: t.merchantName ?? null }) !==
+            null),
+    );
     if (payments.length < D.bnplPaymentsMin) return null;
     const total = outCents(payments);
     return {
