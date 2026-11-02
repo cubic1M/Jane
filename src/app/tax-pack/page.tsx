@@ -12,6 +12,7 @@ import { selectableYears, taxYearFrom, type PackGroup } from "@/planning/tax-pac
 import { QUARTER_LABELS, TAX_PACK_COPY as COPY } from "@/planning/tax-pack-copy";
 import { dayLabel } from "@/lib/day-label";
 import { EmptyState } from "@/components/empty-state";
+import { formPayer } from "@/planning/tax-documents";
 
 // The tax-time pack (spec step 72): organizing only, no tax advice and no Claude text.
 
@@ -160,7 +161,7 @@ async function TaxPackContent({
             {pack.forms.map((f) => (
               <li key={f.key} className="flex flex-wrap justify-between gap-x-3">
                 <span className="[overflow-wrap:anywhere]">
-                  {f.form} from {f.from}
+                  {f.form} from {formPayer(f.from)}
                 </span>
                 <span className="text-zinc-600 dark:text-zinc-400">
                   {f.received

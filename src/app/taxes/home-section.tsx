@@ -4,6 +4,7 @@ import { dayLabel } from "@/lib/day-label";
 import type { HomeTaxesView } from "@/lib/home-taxes";
 import { formatCents } from "@/lib/money";
 import { figuresOf, type Source } from "@/planning/home-taxes";
+import { formPayer } from "@/planning/tax-documents";
 
 // Homeowner taxes on /taxes (spec step 170): each figure with links to where it came from,
 // and the state and local tax cap applied.
@@ -28,7 +29,7 @@ function SourceLink({ s }: { s: Source }) {
     case "document":
       return (
         <Link href="/taxes?focus=records:forms" className={LINK}>
-          {s.form} from {s.from}
+          {s.form} from {formPayer(s.from)}
         </Link>
       );
     case "answer":

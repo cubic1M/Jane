@@ -208,13 +208,13 @@ describe("a collected form that doesn't match (spec step 166)", () => {
   it("uses it as it is, or puts asking the payer on the deadlines", async () => {
     expect(
       await documentAction(null, form({ year: "2026", key: "w2:acme", decision: "right" })),
-    ).toEqual({ ok: true, message: "Using your W-2 from ACME CORP PAYROLL as it is." });
+    ).toEqual({ ok: true, message: "Using your W-2 from ACME CORP as it is." });
     expect(decideDocument).toHaveBeenCalledWith("u1", 2026, "w2:acme", "right", { via: "page" });
     expect(
       await documentAction(null, form({ year: "2026", key: "w2:acme", decision: "ask" })),
     ).toEqual({
       ok: true,
-      message: "Asking ACME CORP PAYROLL for a corrected form is on your deadlines.",
+      message: "Asking ACME CORP for a corrected form is on your deadlines.",
     });
   });
 

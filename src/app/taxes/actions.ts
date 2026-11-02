@@ -13,6 +13,7 @@ import { TaxPlanError, addPlanMove, dismissPlanMove } from "@/lib/tax-plan";
 import { AuditRecordsError, remindRetention } from "@/lib/audit-records";
 import { GivingError, markReceipt, openDonorFund } from "@/lib/giving";
 import { WithholdingError, clearW4Change, keepRefund, recordW4Change } from "@/lib/tax-withholding";
+import { formPayer } from "@/planning/tax-documents";
 
 // /taxes (spec step 119): "I have it" on a tax form Jane expects, or "Not yet" to undo it.
 
@@ -30,7 +31,9 @@ export async function markForm(_previous: FormState, formData: FormData): Promis
     revalidatePath("/tax-pack");
     return {
       ok: true,
-      message: received ? `Ticked off: ${form.form} from ${form.from}.` : "OK, still waiting.",
+      message: received
+        ? `Ticked off: ${form.form} from ${formPayer(form.from)}.`
+        : "OK, still waiting.",
     };
   } catch (error) {
     if (error instanceof TaxOrganizerError) return { ok: false, message: error.message };
@@ -164,8 +167,8 @@ export async function documentAction(_previous: FormState, formData: FormData): 
       ok: true,
       message:
         decision === "right"
-          ? `Using your ${form.form} from ${form.from} as it is.`
-          : `Asking ${form.from} for a corrected form is on your deadlines.`,
+          ? `Using your ${form.form} from ${formPayer(form.from)} as it is.`
+          : `Asking ${formPayer(form.from)} for a corrected form is on your deadlines.`,
     };
   } catch (error) {
     if (error instanceof TaxDocumentError) return { ok: false, message: error.message };

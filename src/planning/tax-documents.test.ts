@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { expectedForms, type FormTransaction } from "./tax-documents";
+import { expectedForms, formPayer, type FormTransaction } from "./tax-documents";
 
 // Spec step 119: the tax forms to expect, from payers and lenders.
 
@@ -168,5 +168,40 @@ describe("a loan seen only in its payments", () => {
       loans: [{ name: "Home Loan", kind: "mortgage", ytdInterestPaidCents: 640_000 }],
     });
     expect(forms.map((f) => f.key)).toEqual(["mortgage:home-loan"]);
+  });
+});
+
+// Debugger 11-02: the tax pack, the page a person hands their preparer, said "1099-NEC or 1099-K
+// from Stripe Transfer" and "W-2 from Blue Bottle Coffee Payroll": the bank's word for how the
+// money came, not who sends the form. Pages show formPayer(from); `from` and the key stay as they
+// were, since documents, checks and "I have it" are matched by them.
+describe("who sends each form, as pages say it", () => {
+  it("is named without the bank's word for how the money came", () => {
+    expect(formPayer("Blue Bottle Coffee Payroll")).toBe("Blue Bottle Coffee");
+    expect(formPayer("Stripe Transfer")).toBe("Stripe");
+    expect(formPayer("Shopify Payouts")).toBe("Shopify");
+    expect(formPayer("ACME CORP DIRECT DEP")).toBe("ACME CORP");
+    // Debugger 11-02: a driver's 1099s, "Uber Technologies Payout" and "Lyft Inc Driver Pay".
+    expect(formPayer("Uber Technologies Payout")).toBe("Uber Technologies");
+    expect(formPayer("Lyft Inc Driver Pay")).toBe("Lyft Inc");
+    // A name that is only those words, or has them in the middle, stays as it is.
+    expect(formPayer("Payroll")).toBe("Payroll");
+    expect(formPayer("Transfer Wise Ltd")).toBe("Transfer Wise Ltd");
+  });
+
+  it("leaves the form's payer and key as they were", () => {
+    const [form] = expectedForms({
+      year: 2026,
+      transactions: [
+        tx({
+          pfcDetailed: "INCOME_CONTRACTOR",
+          merchantName: "Stripe Transfer",
+          amountCents: -500_000,
+        }),
+      ],
+      accounts: [],
+      loans: [],
+    });
+    expect([form.from, form.key]).toEqual(["Stripe Transfer", "nec:stripe-transfer"]);
   });
 });

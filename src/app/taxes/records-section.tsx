@@ -4,6 +4,7 @@ import { formatCents } from "@/lib/money";
 import type { Evidence } from "@/planning/audit-records";
 import { RecordsButton } from "./records-button";
 import { dayLabel } from "@/lib/day-label";
+import { formPayer } from "@/planning/tax-documents";
 
 // Audit-ready records on /taxes (spec step 171): every deduction and credit with its
 // sources, what's still needed, and how long to keep each year's records.
@@ -29,7 +30,7 @@ function EvidenceLine({ e }: { e: Evidence }) {
     case "form":
       return (
         <Link href="/taxes?focus=records:forms" className={LINK}>
-          {e.form} from {e.from}
+          {e.form} from {formPayer(e.from)}
         </Link>
       );
     case "loan":
