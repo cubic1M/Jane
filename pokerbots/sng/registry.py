@@ -53,6 +53,13 @@ def field_weights(name: str):
             FIELDS.update(getattr(m, "FIELDS", {}))
         except ImportError:
             pass
+    if name == "all3" and "all3" not in FIELDS and all(f in FIELDS for f in ("default", "field2", "field3")):
+        # the three independently written fields, each one third of the seats
+        mix = []
+        for f in ("default", "field2", "field3"):
+            tot = sum(w for _, w in FIELDS[f])
+            mix += [(n, w / tot) for n, w in FIELDS[f]]
+        FIELDS["all3"] = mix
     if name == "default" and "default" not in FIELDS:
         name = "basic"
     return FIELDS[name]
