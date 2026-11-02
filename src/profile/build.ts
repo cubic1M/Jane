@@ -10,6 +10,7 @@ import {
   CAR_WORDS,
   PENSION_PATTERN,
   PROFILE_MONTHS,
+  ONE_OFF_PAY,
   PAYROLL_SERVICES,
   SALARY_DEPOSITS_MIN,
   STARTING_MAX_INCOME_CENTS,
@@ -445,6 +446,18 @@ export function buildProfile(input: ProfileInput): Profile {
     (t) => t.pfc === "INCOME_RETIREMENT_PENSION" || PENSION_PATTERN.test(t.description),
   );
   const salary = income.filter((t) => t.pfc === "INCOME_SALARY");
+  // Whether a paycheck has stopped goes by where the data ends: an old statement isn't a lost job.
+  const dataEnds = txs.reduce((latest, t) => (t.date > latest ? t.date : latest), "");
+  const stillPaidSince = addDays(dataEnds || today, -EARNER_ACTIVE_DAYS);
+  const lastPaidOn = new Map<string, string>();
+  for (const t of salary) {
+    const name = employerName(t.description);
+    if ((lastPaidOn.get(name) ?? "") < t.date) lastPaidOn.set(name, t.date);
+  }
+  const stoppedPaying = new Set(
+    [...lastPaidOn].filter(([, last]) => last <= stillPaidSince).map(([name]) => name),
+  );
+  const paying = salary.filter((t) => !stoppedPaying.has(employerName(t.description)));
   const contractor = income.filter(
     (t) => t.pfc === "INCOME_CONTRACTOR" || t.pfc === "INCOME_GIG_ECONOMY",
   );
@@ -453,10 +466,12 @@ export function buildProfile(input: ProfileInput): Profile {
   );
   let pattern: "salary" | "uneven" | "business" | "pension" | "unknown" = "unknown";
   let patternMatches = 0;
-  if (pension.length > 0 && salary.length < SALARY_DEPOSITS_MIN) {
+  // Salaried while a job still pays; a new job counts its old one's paychecks as the same pattern.
+  const stillSalaried = paying.length > 0 && salary.length >= SALARY_DEPOSITS_MIN;
+  if (pension.length > 0 && !stillSalaried) {
     pattern = "pension";
     patternMatches = pension.length;
-  } else if (salary.length >= SALARY_DEPOSITS_MIN) {
+  } else if (stillSalaried) {
     pattern = "salary";
     patternMatches = salary.length;
   } else if (contractor.length >= UNEVEN_DEPOSITS_MIN) {
@@ -491,10 +506,23 @@ export function buildProfile(input: ProfileInput): Profile {
   if (earners > 0) set("earners", earners, "seen", "payroll names", salary.length);
   else unknown("earners");
 
-  const incomeTotal = income
-    .filter((t) => !(t.pfc === "INCOME_TAX_REFUND" || t.pfc === "INCOME_INTEREST_EARNED"))
+  const regularIncome = income.filter(
+    (t) =>
+      !(t.pfc === "INCOME_TAX_REFUND" || t.pfc === "INCOME_INTEREST_EARNED") &&
+      !ONE_OFF_PAY.test(t.description),
+  );
+  const incomeTotal = regularIncome.reduce((s, t) => s - t.amountCents, 0);
+  // Once a paycheck has stopped, a year's average says what used to come in (debugger 11-02: $5,818
+  // a month for someone on $1,950 of benefits). What's come in lately, as a month.
+  const lately = regularIncome
+    .filter((t) => t.date > stillPaidSince)
     .reduce((s, t) => s - t.amountCents, 0);
-  const monthlyIncome = months > 0 ? Math.round(incomeTotal / monthsForRate(txs, today)) : 0;
+  const monthlyIncome =
+    months === 0
+      ? 0
+      : stoppedPaying.size > 0
+        ? Math.round((lately * 30) / EARNER_ACTIVE_DAYS)
+        : Math.round(incomeTotal / monthsForRate(txs, today));
   if (income.length > 0) set("monthly_income", monthlyIncome, "seen", "deposits", income.length);
   else unknown("monthly_income");
 

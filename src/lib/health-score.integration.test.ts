@@ -111,6 +111,55 @@ describe.runIf(url)("money health score", { timeout: 120_000 }, () => {
     });
   });
 
+  // Debugger 11-02: someone laid off read "Money health: 100 of 100 (Strong)" and "About 40% of what
+  // comes in is left after spending": a $12,000 severance in the last three months.
+  it("doesn't count a severance as room each month", async () => {
+    const user = await client.user.create({
+      data: { email: `health-severance-${crypto.randomUUID()}@example.com` },
+    });
+    created.push(user.id);
+    const account = await client.account.create({
+      data: {
+        userId: user.id,
+        source: "csv",
+        name: "Checking",
+        type: "depository",
+        subtype: "checking",
+        currentBalanceCents: 300_000,
+      },
+    });
+    const row = (date: string, amountCents: number, description: string, detailed: string) => ({
+      userId: user.id,
+      accountId: account.id,
+      source: "csv" as const,
+      dedupeKey: `${date}-${description}`,
+      date: new Date(`${date}T00:00:00Z`),
+      amountCents,
+      description,
+      merchantName: description,
+      pfcPrimary: detailed.split("_").slice(0, -1).join("_") || detailed,
+      pfcDetailed: detailed,
+      categorySource: "rule" as const,
+    });
+    const months = ["2026-07", "2026-08", "2026-09"];
+    await client.transaction.createMany({
+      data: [
+        ...months.flatMap((m) => [
+          row(`${m}-05`, -180_000, "CA EDD UI", "INCOME_UNEMPLOYMENT"),
+          row(`${m}-07`, 340_000, "GREYSTAR RENT", "RENT_AND_UTILITIES_RENT"),
+        ]),
+        {
+          ...row("2026-08-28", -1_200_000, "ACME SEVERANCE", "INCOME_OTHER"),
+          pfcPrimary: "INCOME",
+        },
+      ],
+    });
+    const view = (await healthFor(user.id, { client, now: NOW }))!;
+    const room = view.parts.find((p) => p.part === "margin")!;
+    // More goes out than comes in, once the severance is left out.
+    expect(room.why).toMatch(/above what came in/);
+  });
+
   it("has nothing to score before accounts are linked", async () => {
     const user = await client.user.create({
       data: { email: `health-none-${crypto.randomUUID()}@example.com` },

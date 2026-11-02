@@ -1,3 +1,4 @@
+import { ONE_OFF_PAY } from "@/config/profile";
 import { HEALTH_MONTHS, HEALTH_SLIP_CATEGORIES, HEALTH_SLIP_DAYS } from "@/config/health-score";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { loadDetectionInput } from "@/detection/engine";
@@ -62,7 +63,10 @@ export async function healthInput(
   // Full months only: the ones before this one.
   const lastFull = addDays(`${monthOf(input.asOf)}-01`, -1);
   // Books QA: a typical month, with one-off costs (a flood's repairs) left out of spending.
-  const all = input.transactions.map((t) => ({ ...t, pending: false }));
+  // Severance too: it comes once (debugger 11-02: 100 of 100 for someone laid off).
+  const all = input.transactions
+    .filter((t) => !(t.amountCents < 0 && ONE_OFF_PAY.test(t.description)))
+    .map((t) => ({ ...t, pending: false }));
   const oneOffs = oneOffCharges(all, input.asOf);
   const firstDay = input.transactions.reduce<string | null>(
     (min, t) => (min === null || t.date < min ? t.date : min),
