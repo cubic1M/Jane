@@ -143,6 +143,14 @@ export const BANK_DOWNLOADS: readonly BankDownload[] = [
     ],
   },
   {
+    bank: "USAA",
+    steps: [
+      "Sign in at usaa.com and open the account.",
+      "Choose the export option above your transactions.",
+      "Pick CSV and the last 3 months, then export.",
+    ],
+  },
+  {
     bank: "Venmo",
     steps: [
       "On venmo.com, open Statements.",
@@ -171,7 +179,7 @@ export const BANK_DOWNLOADS: readonly BankDownload[] = [
 // layout's bank is named here (src/data-sources/csv/known-banks.test.ts; debugger 10-30: Navy
 // Federal was read but not listed).
 export const KNOWN_BANKS_LINE =
-  "Jane knows the CSV layouts of Chase, Bank of America, Wells Fargo, Capital One, Citi, American Express, Discover, Apple Card, U.S. Bank, Ally, Schwab and Navy Federal, and Venmo and PayPal statements. For any other CSV you pick which column is which.";
+  "Jane knows the CSV layouts of Chase, Bank of America, Wells Fargo, Capital One, Citi, American Express, Discover, Apple Card, U.S. Bank, Ally, Schwab, Navy Federal and USAA, and Venmo and PayPal statements. For any other CSV you pick which column is which.";
 
 // The report says the statements are old when their newest line is over this many days back
 // (debugger 10-30: January-April statements uploaded in October, with no word of it).
