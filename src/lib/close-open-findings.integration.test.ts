@@ -7,7 +7,8 @@ vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
 import { loadMonthClose } from "./close";
-import { recordShown } from "./outcomes";
+import { savingsLedger } from "./ledger";
+import { recordFindingDone, recordShown } from "./outcomes";
 
 // Debugger 11-02: a person with 4 findings waiting on /jane read "Found 0 · Open 0" and "Nothing
 // new this month" on their close: findings nobody had acted on never reached it. And a finding
@@ -156,6 +157,89 @@ describe.runIf(url)("a close and the findings waiting for an answer", { timeout:
       "Stop paying bank fees",
     ]);
     expect(close.open.reduce((sum, e) => sum + e.cents, 0)).toBe(25_700 + 27_588);
+  });
+
+  // Seen in the app: "Done, checking $216/yr" and "Stop paying bank and card fees, still to do
+  // $216/yr", the same fees, on /close and /saved. The person had said Done on the finding.
+  it("takes the suggestion off once they've said Done on a finding that's the same money", async () => {
+    const { userId, finding } = await person();
+    const done = await finding("bank_fees", "fees:checking", "approved", 21_600);
+    await finding("bank_fees", "fees:card", "new", 4_100);
+    const key = "cost:bank_fees";
+    const base = {
+      capability: "cost",
+      topic: "bank_fees",
+      title: "Stop paying bank fees",
+      worthKind: "saves" as const,
+      watch: { kind: "fee_stops" as const, pfcs: ["BANK_FEES_ATM_FEES"], monthlyCents: 2_142 },
+    };
+    await client.suggestion.create({
+      data: {
+        userId,
+        key,
+        ...base,
+        worthCents: 25_700,
+        confidencePercent: 79,
+        confidenceReason: "8 bank fees in 6 months of data",
+        urgency: "soon",
+        why: "x",
+        actionLabel: "See the fees",
+        actionHref: "/insights",
+      },
+    });
+    await recordShown(userId, [{ key, ...base, worthCents: 25_700, confidencePercent: 79 }], {
+      client,
+      now: NOW,
+    });
+    await recordFindingDone(userId, done.id, { client, now: NOW });
+
+    const ledger = await savingsLedger(userId, { client, now: NOW });
+    expect(ledger.entries.map((e) => e.title)).toEqual(["Finding fees:checking"]);
+    expect(ledger.estimatedCents).toBe(0);
+    // The fee finding nobody has answered is still theirs to decide.
+    const close = await loadMonthClose(userId, "2026-11", { client, now: NOW });
+    expect(close.open.map((e) => e.title).sort()).toEqual([
+      "Finding fees:card",
+      "Finding fees:checking",
+    ]);
+  });
+
+  it("keeps a suggestion for one company when they said Done on a finding of the same kind", async () => {
+    const { userId, finding } = await person();
+    const done = await finding("subscription_review", "merchant:netflix", "approved", 27_588);
+    const key = "subscriptions:subscription_review:hulu";
+    const base = {
+      capability: "subscriptions",
+      topic: "subscription_review",
+      title: "Cancel Hulu",
+      worthKind: "saves" as const,
+      watch: { kind: "charge_stops" as const, payees: [], monthlyCents: 1_799 },
+    };
+    await client.suggestion.create({
+      data: {
+        userId,
+        key,
+        ...base,
+        worthCents: 21_588,
+        confidencePercent: 80,
+        confidenceReason: "monthly",
+        urgency: "soon",
+        why: "x",
+        actionLabel: "Review",
+        actionHref: "/subscriptions",
+      },
+    });
+    await recordShown(userId, [{ key, ...base, worthCents: 21_588, confidencePercent: 80 }], {
+      client,
+      now: NOW,
+    });
+    await recordFindingDone(userId, done.id, { client, now: NOW });
+
+    const ledger = await savingsLedger(userId, { client, now: NOW });
+    expect(ledger.entries.map((e) => e.title).sort()).toEqual([
+      "Cancel Hulu",
+      "Finding merchant:netflix",
+    ]);
   });
 
   it("still lists the findings when the person said no to the suggestion", async () => {
