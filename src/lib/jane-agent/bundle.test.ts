@@ -53,5 +53,8 @@ describe("shortName", () => {
       "Demo Checking",
     );
     expect(shortName("Something rather long that has no pattern at all")).toMatch(/…$/);
+    // Debugger 11-02: titles told apart by price, and an insurer whose name says insurance.
+    expect(shortName("Your USAA insurance at $138.22 could cost less")).toBe("USAA");
+    expect(shortName("Your Next Insurance policy could cost less")).toBe("Next Insurance");
   });
 });
