@@ -65,6 +65,7 @@ export async function loadComingUp(
     deposits: expectedIncome(loaded, addDays(loaded.asOf, days)).map(
       ({ merchant, date, amountCents }) => ({ merchant, date, amountCents }),
     ),
-    deadlines,
+    // A rare bill is in the bills above: on Home's strip it's a bill, not a bill and a date as well.
+    deadlines: deadlines.filter((d) => d.kind !== "bill"),
   };
 }
