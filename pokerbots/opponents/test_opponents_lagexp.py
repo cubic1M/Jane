@@ -135,7 +135,12 @@ class TestHelpers(unittest.TestCase):
 
     def test_preflop_pct_orders_hands(self):
         spec = get_variant("a")
+        from unittest import mock
         from engine.cards import parse_cards
+        # the sample count normally scales with machine speed; pin it so a loaded machine
+        # cannot make the percentile noisy
+        mock.patch.object(C, "preflop_n", return_value=500).start()
+        self.addCleanup(mock.patch.stopall)
         self.assertGreater(C.preflop_pct(spec, parse_cards("AsAh")), 0.95)
         self.assertLess(C.preflop_pct(spec, parse_cards("7c2d")), 0.2)
 

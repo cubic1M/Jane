@@ -36,7 +36,8 @@ for t in sng.ours.tests.test_icm_tag.TestIcmTag.test_fast_including_first_decisi
          sng.ours.tests.test_anyvar.TestIcmAny.test_legal_and_fast_on_discard_variants \
          sng.field.tests.test_field.TestTiming \
          sng.field2.tests.test_field2.TestTables.test_timing_p99_under_0_4ms \
-         sng.field2.tests.test_field2.TestColdStart.test_no_lazy_build_inside_act; do
+         sng.field2.tests.test_field2.TestColdStart.test_no_lazy_build_inside_act \
+         sng.field3.tests.test_timing.TestTiming; do
   if python3 -m unittest "$t" > results/logs/test_timing.log 2>&1; then :; else
     echo "timing     FAIL  $t"; tail -3 results/logs/test_timing.log; fail=1; fi
 done

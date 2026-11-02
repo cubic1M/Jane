@@ -34,6 +34,8 @@ def load_chart(rules, file=None):
             d = json.loads(f.read_text()) if f not in _CACHE else _CACHE[f].raw
         except Exception:
             continue
+        if d.get("kind") == "best_response":       # pushfold_br_*: only by name (file=...)
+            continue
         if tuple(d.get("pay", ()))[:rules.num_players] == tuple(rules.payouts)[:rules.num_players]:
             name = f
             break

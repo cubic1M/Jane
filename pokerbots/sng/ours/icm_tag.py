@@ -67,6 +67,9 @@ class IcmTag:
         self.rng = random.Random(seed)
         self.S = strength
         strength.preload(rules.spec)          # never pay the table load inside a 1 ms decision
+        if getattr(rules.spec, "discards", ()):   # ... nor the discard policy's import / setup
+            from sng.ours import anyvar, features as F
+            anyvar._hc_code(F.get_ctx(rules.spec))
         self.chart = None
         if self.p["pf_chart"]:
             from sng.ours.pushfold_chart import load_chart
@@ -204,11 +207,20 @@ class IcmTag:
             bar = p["open_mult"] / (k + 1 + limpers)
             # steal wider vs blinds that fold
             if not limpers and len(behind) <= p["steal_max_behind"]:
-                fr = self._fold_rate(behind if len(behind) > 2 else [obs.sb_seat, obs.bb_seat])
+                blinds = [s for s in (obs.sb_seat, obs.bb_seat) if s != obs.seat]   # never my own read
+                fr = self._fold_rate(behind if len(behind) > 2 else blinds)
                 bar *= 1.0 - p["steal_bonus"] * max(0.0, fr - 0.5) * 2
                 if p["steal_sym"] > 0 and fr < 0.5:
                     bar *= 1.0 + p["steal_sym"] * (1.0 - 2 * fr)
             eq = self._eq(obs, k + limpers)
+            if not lg.can_raise and lg.can_call:
+                # no raise possible (my call is all-in, or everyone else is all-in, e.g. a
+                # blind short of chips): only call or fold is left, so decide by pot odds
+                call = lg.call_amount
+                need = call / (obs.pot + call) + p["call_margin"]
+                if call >= obs.my_stack or call > 0.4 * obs.my_stack:
+                    need += self._risk(obs)
+                return Call() if eq >= need else Fold()
             if eff_bb <= p["push_bb"]:
                 scale = 0.75 + 0.25 * eff_bb / p["push_bb"]       # shorter = wider
                 if eq >= p["push_mult"] * scale / (k + 1 + limpers) and lg.can_raise:

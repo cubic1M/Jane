@@ -11,6 +11,7 @@ import gc
 import random
 import tempfile
 import time
+import os
 import unittest
 from pathlib import Path
 
@@ -309,7 +310,8 @@ class TestChangedOrderBuild(unittest.TestCase, TableChecks):
     @classmethod
     def setUpClass(cls):
         cls.tmp = tempfile.TemporaryDirectory()
-        cls.meta = BT.build(FLUSH_OVER_FH, cls.tmp.name, budget_s=12, workers=2, verbose=False)
+        cls.meta = BT.build(FLUSH_OVER_FH, cls.tmp.name, budget_s=180, workers=2, verbose=False,
+                            max_deals=120_000)   # fixed sample size: the same table on a loaded machine
         S.use_table(FLUSH_OVER_FH, S.load_file(BT.table_path(FLUSH_OVER_FH, cls.tmp.name),
                                                FLUSH_OVER_FH))
 
@@ -326,7 +328,8 @@ class TestChangedOrderBuild(unittest.TestCase, TableChecks):
             self.assertIn(key, self.meta)
         self.assertEqual(self.meta["k_max"], 7)
         self.assertGreater(self.meta["deals"], 1000)
-        self.assertLess(self.meta["build_seconds"], 30)
+        if not os.environ.get("SNG_SKIP_TIMING"):
+            self.assertLess(self.meta["build_seconds"], 120)
         # a table for one card rule set is refused for another
         with self.assertRaises(ValueError):
             S.load_file(p, NLHE)

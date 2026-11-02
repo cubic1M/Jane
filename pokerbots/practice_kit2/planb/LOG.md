@@ -7,6 +7,10 @@
 | 23:56:54 | prompt 2 done: build_tables.py ran 120 s on 4 procs (583,850 deals x 8 rotated heroes, all hands draw with the bot's own policy); 1183 preflop keys, 609 postflop keys; AA best for every k; 0 non-monotone k pairs; AA vs 1 = 0.798, 72o vs 1 = 0.429, 32o = 0.385 (draw compresses equities vs plain hold'em's 0.85 / 0.35); tables spliced into planb_bot.py (prompt 5's draw policy + flush-draw key built here, see notes) |
 | 23:58:57 | prompt 3 done: full bot. 200 tables (seed 1): 337.3 pts/table, avg place 1.04, 196 wins, 0 errors, 10 timeouts / 50,915 decisions (jitter, incl. on_hand_end), slowest 2.35 ms; p99 (planb/p99.py, 50 tables) action 0.143 ms, draw 0.193 ms, on_hand_end 0.124 ms |
 | 23:59:49 | prompt 5 done (draw): choose_discard() enumerates {keep both, drop card A, drop card B}, scores (category, flush/straight-draw, high card if nothing, n discarded); error path stands pat; built into the tables in prompt 2; planb/test_planb.py 16 tests OK; 200 tables 0 errors (see prompt 3 row) |
+| 00:00:33 | prompt 4 debug mode done: `PLANB_DEBUG=1 python3 planb/debug_run.py --tables 100`: 24,984 decisions, 0 errors, 0 debug problems (pot rebuild, chip conservation, raise-by bounds); checks shown to fire on bad raises |
+| 00:19:24 | prompt 4 A/B round 1 (ab.py, 800 paired tables per side, seed 1, timeouts off, all RNGs seeded): OPEN_BAR 1.18 -1.99+-1.86 reject; **OPEN_BAR 0.97 +3.99+-1.52 KEEP**; PUSH_EFF_BB 12 -0.36+-1.17 reject; PUSH_EFF_BB 6 +2.18+-0.93 keep?; CALL_MARGIN 0.03 -1.72+-1.56 reject; 0.09 -0.83+-0.68 reject. (Took 18 min, not the ~10 I guessed) |
+| 00:26:59 | A/B round 2 on new base OPEN_BAR=0.97, fresh seed 2: PUSH_EFF_BB 6 +1.81+-0.92 (under 2 se: reject, one-at-a-time rule); DRAW_KICKER_MIN 10 -0.69+-1.59 reject. Final: only OPEN_BAR 1.07 -> 0.97 adopted |
+| 00:28:01 | prompt 4 verification done (final bot): check_bot OK; 16 unit tests OK; debug run 100 tables 26,895 decisions 0 errors 0 problems; run_local 200 tables: planb_bot 333.0 pts, place 1.08, 196/200 wins, 0 errors, 12 timeouts / 54,292 (0.022%), slowest 5.27 ms, init 5.0 ms; shover 151.5, tight 99.9, caller 32.2 (tight 30 timeouts / 99,931, same jitter). p99 action 0.178 / draw 0.239 / on_hand_end 0.153 ms |
 
 ## Files (all under planb/)
 
@@ -117,3 +121,10 @@ Prompt 4
 - Timeouts: about 0.02% of calls go over 1 ms (single spikes of 1.1-4 ms, mostly in `on_hand_end`
   and the JSON of the state). The sample bots show the same rate, so this is machine jitter.
   p99.9 is 0.29-0.33 ms.
+
+## A/B notes
+- Ceiling effect: against the kit samples the bot already wins 98% of tables (max 350), so
+  parameter gains are small and the sample field is a poor proxy for real opponents.
+- Round 1 tested every candidate against the same base. Because the prompt says "one change at a
+  time", PUSH_EFF_BB=6 was re-tested on top of the adopted OPEN_BAR on a fresh seed and failed the
+  2-se bar there (+1.81 +- 0.92).

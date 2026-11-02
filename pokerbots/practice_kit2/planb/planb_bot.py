@@ -17,7 +17,7 @@ CARD = {r + s: (v, s) for r, v in RANK_VALUE.items() for s in "CDHS"}
 PUSH_EFF_BB = 9            # push/fold depth preflop (no raise yet)
 PUSH_BASE = 0.75           # push if eq >= (PUSH_BASE + PUSH_SLOPE*eff/9)/(k+1)
 PUSH_SLOPE = 0.25
-OPEN_BAR = 1.07            # open if eq >= OPEN_BAR/(k+1) * steal factor
+OPEN_BAR = 0.97            # A/B: 1.07 -> 0.97 (+4.0 +- 1.5, 800 paired tables)
 STEAL_COEF = 0.55
 RAISER_KF = 4.0            # a raiser counts as this many random hands
 EXTRA_OPP_KF = 0.8         # + this per other opponent still in

@@ -149,6 +149,21 @@ class TestHand(unittest.TestCase):
         h.play(s, 4)
         self.assertEqual(h.stack, [1995, 1985, 2000 - 5 - 20 + (4 * 5 + 10 + 20), 1995])
 
+    def test_short_big_blind_still_must_be_called_in_full(self):
+        """A big blind all-in for less than the blind: the others still call the full big
+        blind and the minimum raise is to two big blinds (kit README §5, TDA); the excess
+        nobody matches comes back."""
+        deck = make_deck(["Ah Ad", "Kh Kd", "Qh Qd", "7h 8h"], "2s 5h 9c Jd 3c", R.spec)
+        h = Hand(R, [2000, 2000, 15, 2000], button=0, hand_number=0, deck=deck)   # BB = seat 2 (15 chips)
+        s = Script({3: [Call(), Check(), Check(), Check()], 0: [Fold()], 1: [Call(), Check(), Check(), Check()]})
+        h.play(s, 4)
+        lg3 = s.seen[0][2]
+        self.assertEqual((lg3.call_amount, lg3.min_raise_to), (20, 40))
+        self.assertEqual(s.seen[2][2].call_amount, 10)               # SB completes to 20
+        self.assertEqual(sum(h.stack), 6015)
+        # seat 0 (aces) folded; kings (seat 1) win the 15 x 3 main pot + the 5 x 2 side pot
+        self.assertEqual(h.stack[1], 2000 - 20 + 45 + 10)
+
     def test_allin_preflop_runs_out_board(self):
         deck = make_deck(["Ah Ad", "Kh Kd", "", "7c 2d"], "Ks 5h 9c Jd 3c", R.spec)
         h = Hand(R, [500, 800, 0, 2000], button=3, hand_number=0, deck=deck)

@@ -1,7 +1,8 @@
 """Multiway no-limit / pot-limit hand engine and the sit-and-go table loop.
 
 Betting rules (standard tournament rules; the official kit may differ on edge cases):
-  * blinds and antes are posted, partially if a stack is short (all-in);
+  * blinds and antes are posted, partially if a stack is short (all-in); a short big
+    blind still has to be called in full (the excess nobody matches comes back);
   * preflop the player after the big blind acts first; heads-up the button posts the
     small blind and acts first preflop, last after the flop;
   * minimum raise = the last full raise increment (at least the big blind); an
@@ -193,8 +194,12 @@ class Hand:
         self.history.append((self.bb_seat, 0, "post", self.bet[self.bb_seat]))
 
     # ---- betting round --------------------------------------------------------------
+    def _current_bet(self):
+        # preflop the big blind is the bet to call even if the blind was posted short (all-in)
+        return max(max(self.bet), self.bb) if self.street == 0 else max(self.bet)
+
     def _legal(self, j) -> Legal:
-        cur = max(self.bet)
+        cur = self._current_bet()
         to_call = cur - self.bet[j]
         call_amt = min(to_call, self.stack[j])
         others_can_act = any(self._live(k) for k in range(self.n) if k != j)
@@ -250,7 +255,7 @@ class Hand:
                 j = self._next(j, lambda k: need[k])
                 continue
             a = decide(j, self.observe(j, lg, players_left), lg)
-            cur = max(self.bet)
+            cur = self._current_bet()
             if a.kind == FOLD:
                 self.folded[j] = True
                 self.history.append((j, self.street, "fold", 0))

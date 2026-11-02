@@ -1,6 +1,7 @@
 """Decision time: every bot but the deliberately slow one has p99 < 0.5 ms; the slow
 one goes over 1 ms on a good share of decisions. Measured as CPU time of act() so a
 loaded machine does not make the test flaky (wall time is checked loosely)."""
+import os
 import unittest
 
 import numpy as np
@@ -23,6 +24,7 @@ def run(tables=3, rules=None):
     return recs
 
 
+@unittest.skipIf(os.environ.get("SNG_SKIP_TIMING"), "timing skipped")
 class TestTiming(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

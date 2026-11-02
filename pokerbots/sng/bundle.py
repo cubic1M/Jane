@@ -55,6 +55,10 @@ def Call():
 
 def RaiseTo(amount):
     return Action(RAISE, int(amount))
+
+
+def Discard(cards):
+    return Action(DISCARD, 0, tuple(int(c) for c in cards))
 '''
 
 LOADER = '''
