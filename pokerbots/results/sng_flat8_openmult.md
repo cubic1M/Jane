@@ -9,3 +9,7 @@ paired difference vs icm_tag (same tables):
   icm_tag:open_mult=1.18       -15.27 ± 11.27 *
 
 ## field=default payouts=flat8
+paired difference vs icm_tag (same tables):
+  icm_tag:open_mult=1.12       -9.65 ± 14.01
+  icm_tag:open_mult=1.18       +4.23 ± 13.35
+

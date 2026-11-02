@@ -317,3 +317,5 @@
 {"kind": "slow", "seed": 186309, "variant": "demo_nlhe_scaled", "bot": "icm_lite", "p99_ms": 3.149, "over_1ms": 2, "decisions": 124, "t": "2026-11-02 04:02:14"}
 {"kind": "slow", "seed": 186899, "variant": "n_plo4", "bot": "icm_tag", "p99_ms": 0.606, "over_1ms": 2, "decisions": 161, "t": "2026-11-02 04:03:12"}
 {"kind": "slow", "seed": 187029, "variant": "a_nlhe100", "bot": "icm_tag", "p99_ms": 0.78, "over_1ms": 0, "decisions": 125, "t": "2026-11-02 04:03:28"}
+{"kind": "slow", "seed": 188989, "variant": "b_nlhe200", "bot": "icm_tag", "p99_ms": 0.805, "over_1ms": 1, "decisions": 102, "t": "2026-11-02 04:06:38"}
+{"kind": "slow", "seed": 189331, "variant": "P:discard_to_board", "bot": "icm_tag", "p99_ms": 1.296, "over_1ms": 2, "decisions": 113, "t": "2026-11-02 04:07:13"}

@@ -62,4 +62,13 @@ def field_weights(name: str):
         FIELDS["all3"] = mix
     if name == "default" and "default" not in FIELDS:
         name = "basic"
+    if name.startswith("custom:"):
+        # custom:push=3,maniac=2,f2_shark=1  (bot=weight; a bare name has weight 1)
+        out = []
+        for part in name[7:].split(","):
+            bot, _, w = part.partition("=")
+            if bot not in BOTS:
+                raise KeyError(f"unknown bot {bot!r} in custom field")
+            out.append((bot, float(w or 1)))
+        return out
     return FIELDS[name]

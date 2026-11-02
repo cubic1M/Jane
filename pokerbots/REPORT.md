@@ -911,6 +911,9 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   - track opponents by stable id.
 
   Plan B has now worked on three unfamiliar interfaces: 15, 10 and 7 minutes.
+* **Tighter opens on the flat payout table rejected** (`results/sng_flat8_openmult.md`,
+  fresh seeds). `open_mult` 1.12 / 1.18 score −15 on field 3 (significant), −9 / −1 on
+  field 2 and −10 / +4 on default. The day-of tuner on the real payouts covers this.
 * **Bug hunter:** 188k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
