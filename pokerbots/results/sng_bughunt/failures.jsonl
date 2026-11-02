@@ -285,3 +285,4 @@
 {"kind": "slow", "seed": 131941, "variant": "j_3street", "bot": "icm_lite", "p99_ms": 4.094, "over_1ms": 3, "decisions": 183, "t": "2026-11-02 02:35:32"}
 {"kind": "slow", "seed": 132329, "variant": "demo_nlhe_scaled", "bot": "icm_any", "p99_ms": 3.062, "over_1ms": 2, "decisions": 126, "t": "2026-11-02 02:36:12"}
 {"kind": "slow", "seed": 133235, "variant": "P:five_draw", "bot": "icm_any", "p99_ms": 0.248, "over_1ms": 2, "decisions": 252, "t": "2026-11-02 02:37:47"}
+{"kind": "slow", "seed": 135328, "variant": "h_plo5", "bot": "icm_any", "p99_ms": 1.602, "over_1ms": 2, "decisions": 111, "t": "2026-11-02 02:41:17"}

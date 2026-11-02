@@ -60,6 +60,7 @@ def main(argv=None):
     ap.add_argument("--multi-se", type=float, default=2.0)
     ap.add_argument("--tag", default="")
     ap.add_argument("--preset", default=None)
+    ap.add_argument("--params", default=None, help="comma list: tune only these parameters")
     a = ap.parse_args(argv)
     import importlib
     # icm_any / icm_lite share icm_tag's parameters (they subclass it)
@@ -68,6 +69,9 @@ def main(argv=None):
     steps = dict(STEPS[family])
     for k in ("pf_chart", "pf_max_bb", "pf_file"):      # experiment switches, not tuned
         steps.pop(k, None)
+    if a.params:                                         # tune only these (fewer candidates per round)
+        keep = set(a.params.split(","))
+        steps = {k: v for k, v in steps.items() if k in keep}
     out_dir = ROOT / "results" / "sng_tune"
     out_dir.mkdir(parents=True, exist_ok=True)
     state_f = out_dir / f"{a.bot}{a.tag}.json"
