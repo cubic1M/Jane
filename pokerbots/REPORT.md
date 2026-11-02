@@ -1018,6 +1018,7 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   - **8-handed, 600 tables x 4 fields:** every cell within noise (hu_risk=0 mean +0.4, cap_fade=25 mean +0.3, none significant).
   - **Heads-up tables, 800 x 4 cells:** every cell within ±0.3 of zero. With exact-ICM all-in calls on, the premium hardly ever decides a heads-up hand (it only touches non-all-in calls over 40% of the stack).
   - **Verdict:** no measurable effect; defaults unchanged.
+* **C-bet and bluff sizes: half pot stays** (`results/sng_betsize_ab.md`, 500 paired tables x 4 fields). They were hard-coded at half pot; now `cbet_size` / `bluff_size`. A 0.75 c-bet loses −2.7 (all3/top3, significant) and −2.2 (field 3); a 0.33 c-bet loses −2.5 on field 2 (significant); bluff sizes 0.33 / 0.75 are within noise or slightly worse everywhere. Not added to the tuner's search space: two more candidates per tuning round for knobs that are flat or worse.
 * **Plan A under a file-size cap** (`sng/bundle_flat.py --compact`). Practice kit 3 capped submissions at 32 KB; our flat bundle had grown to 69 KB.
   - `--compact`: 1-space indents (checked to give the same AST), the strength table as one string (2 base-32 digits per value) and short local names. Arguments, globals, attributes and keyword names are kept.
   - Result: 69 → 51 KB, **the same decision on all 3,189 decisions** fed in lockstep on kit 2 (a test checks this).
