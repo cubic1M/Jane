@@ -56,6 +56,7 @@ export const SUGGESTION_TOPICS = [
   "pmi_removal",
   "life_checklist",
   "household_setup",
+  "pay_stopped",
   // The profile's life facts (src/profile/life-facts.ts) change what is suggested.
   "pet_insurance",
   "student_discounts",
