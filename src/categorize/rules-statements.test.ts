@@ -181,3 +181,64 @@ describe("a big deposit from a name that sounds like a shop", () => {
     ).toBe("TRAVEL_FLIGHTS");
   });
 });
+
+// Debugger 11-02: "CA EDD UI DIRECT DEP" hit the salary rule's DIRECT DEP first, so someone laid off
+// read "Your employer: CA EDD UI DIRECT DEP" and "How you're paid: salary, 92% sure", and nothing
+// noticed their pay had stopped.
+describe("unemployment benefits", () => {
+  it.each([
+    "CA EDD UI DIRECT DEP",
+    "EDD UI BENEFITS",
+    "NYS DOL UI DD",
+    "NYS DOL UI DIRECT DEP",
+    "DEPT OF LABOR UI BENEFIT",
+    "TX WORKFORCE COMM UI DIRECT DEP",
+    "UNEMPLOYMENT INS DIRECT DEPOSIT",
+    "STATE OF WA ESD UI PAYMENT",
+  ])("%s isn't a salary", (description) => {
+    expect(categorizeByRules({ description, amountCents: -45_000, hints: {} })?.detailed).toBe(
+      "INCOME_UNEMPLOYMENT",
+    );
+  });
+
+  it.each([
+    ["ACME LOGISTICS INC PAYROLL", "INCOME_SALARY"],
+    ["BRIGHTLINE UI DESIGN PAYROLL", "INCOME_SALARY"],
+    ["ACME DIRECT DEP", "INCOME_SALARY"],
+  ])("%s stays pay", (description, detailed) => {
+    expect(categorizeByRules({ description, amountCents: -260_000, hints: {} })?.detailed).toBe(
+      detailed,
+    );
+  });
+
+  it("is only money coming in", () => {
+    expect(
+      categorizeByRules({ description: "EDD UI OVERPAYMENT", amountCents: 45_000, hints: {} })
+        ?.detailed,
+    ).not.toBe("INCOME_UNEMPLOYMENT");
+  });
+});
+
+describe("other pay that says DIRECT DEP", () => {
+  it.each([
+    ["DFAS CLEVELAND MIL PAY DIRECT DEP", "INCOME_MILITARY"],
+    ["VA BENEFITS DIRECT DEP", "INCOME_MILITARY"],
+    ["CHILD SUPPORT DIRECT DEP", "INCOME_CHILD_SUPPORT"],
+  ])("%s isn't a salary", (description, detailed) => {
+    expect(categorizeByRules({ description, amountCents: -90_000, hints: {} })?.detailed).toBe(
+      detailed,
+    );
+  });
+});
+
+describe("severance", () => {
+  it("is income, and not a salary", () => {
+    expect(
+      categorizeByRules({
+        description: "ACME LOGISTICS INC SEVERANCE",
+        amountCents: -1_200_000,
+        hints: {},
+      })?.detailed,
+    ).toBe("INCOME_OTHER");
+  });
+});
