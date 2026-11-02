@@ -237,6 +237,32 @@ class TestIcmTag(unittest.TestCase):
                                      (1, 0, "fold", 0), (2, 0, "fold", 0)), stacks=(), deltas=(), board=()))
         self.assertGreater(b._fold_rate([1, 2]), base + 0.3)
 
+    def test_postflop_bet_frequency_read(self):
+        """bet_opp / bet_made count who bets when checked to (agg_alpha's read)."""
+        b = IcmTag()
+        b.new_table(SngRules(enforce_time=False), 0, 0)
+        pre = ((1, 0, "post", 10), (2, 0, "post", 20), (0, 0, "call", 20), (1, 0, "call", 20), (2, 0, "check", 0))
+        # flop: 1 checks, 2 bets, 0 folds, 1 calls; turn: everyone checks
+        flop = ((1, 1, "check", 0), (2, 1, "raise", 30), (0, 1, "fold", 0), (1, 1, "call", 30))
+        turn = ((1, 2, "check", 0), (2, 2, "check", 0))
+        b.end_hand(dict(history=pre + flop + turn, stacks=(), deltas=(), board=()))
+        self.assertEqual(b.bet_made[2], 1)
+        self.assertEqual(b.bet_opp[2], 2)          # flop bet + turn check
+        self.assertEqual(b.bet_opp[1], 2)          # flop check + turn check
+        self.assertEqual(b.bet_made[1], 0)
+        self.assertEqual((b.pf_faced[0], b.pf_fold[0]), (1, 1))
+
+    def test_read_switches_default_off_and_legal_when_on(self):
+        """rk_floor / agg_alpha / thin_value default to off; switched on, the bot stays legal."""
+        self.assertEqual((PARAMS["rk_floor"], PARAMS["agg_alpha"], PARAMS["thin_value"]), (1.2, 0.0, 0.0))
+        r = SngRules(enforce_time=False, max_hands=60)
+        lineup = lambda: [make("icm_tag")] + [make(x) for x in ("maniac", "station", "push", "nit", "lag", "random", "chen_tag")]
+        a = play_table(lineup(), r, seed=5)
+        on = [make("icm_tag:agg_alpha=1.0;thin_value=0.3;rk_floor=1.0")] + lineup()[1:]
+        c = play_table(on, r, seed=5)
+        self.assertEqual(c.stats[0].errors + c.stats[0].illegal, 0)
+        self.assertEqual(a.stats[0].errors + a.stats[0].illegal, 0)
+
 
 if __name__ == "__main__":
     unittest.main()
