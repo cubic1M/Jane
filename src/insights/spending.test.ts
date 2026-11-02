@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { breakdownRows } from "./breakdown";
 import {
   kindOf,
   linesFor,
@@ -383,5 +384,35 @@ describe("changes on the 1st", () => {
       ["Rent and utilities", 150_000, 0],
       ["Food and drink", 55_000, 9_000],
     ]);
+  });
+});
+
+// Debugger 11-02: October's spending was $1,273.79 after a $250 florist refund, but the categories
+// listed came to $1,523.79 and their shares to 119%: a category that netted below $0 counted in the
+// total and was left out of the list. The rows add up to the month, and the shares to 100%.
+describe("a month's breakdown with a refund", () => {
+  const insights = run([
+    t({ amountCents: 84_240, pfcPrimary: "TRAVEL" }),
+    t({ amountCents: 40_440, pfcPrimary: "FOOD_AND_DRINK" }),
+    t({ amountCents: -25_000, description: "FLORIST REFUND" }),
+    t({ amountCents: 18_420, date: "2026-09-18" }),
+  ]);
+  const month = "2026-10";
+  const rows = breakdownRows(insights.categoriesByMonth[month], insights.refundsByMonth[month]);
+
+  it("lists the refund after the categories, so the rows add up to the month", () => {
+    expect(rows.map((r) => [r.label, r.cents])).toEqual([
+      ["Travel", 84_240],
+      ["Food and drink", 40_440],
+      ["Shopping refunds", -25_000],
+    ]);
+    const total = insights.months.find((m) => m.month === month)!.spendingCents;
+    expect(rows.reduce((sum, r) => sum + r.cents, 0)).toBe(total);
+  });
+
+  it("gives each category its share of what was spent, adding up to 100%", () => {
+    const shares = rows.flatMap((r) => (r.share === undefined ? [] : [r.share]));
+    expect(shares.reduce((a, b) => a + b, 0)).toBeCloseTo(1, 10);
+    expect(rows.at(-1)!.share).toBeUndefined();
   });
 });

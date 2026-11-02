@@ -34,6 +34,9 @@ export type SpendingInsights = {
   months: MonthTotals[];
   // Spending by category in each month, largest first.
   categoriesByMonth: Record<string, CategoryTotal[]>;
+  // Categories whose refunds came to more than was bought that month (negative cents). They
+  // count in the month's spending, so the breakdown lists them too (debugger 11-02).
+  refundsByMonth: Record<string, CategoryTotal[]>;
   topMerchants: MerchantTotal[];
   // The newest month with spending compared with the one before, biggest changes first.
   changes: CategoryChange[];
@@ -120,6 +123,16 @@ export function spendingInsights(
     totals.get(month)!.spendingCents = Math.max(0, net);
   }
 
+  const refundsByMonth = Object.fromEntries(
+    months.map((m) => [
+      m,
+      [...byCategory.get(m)!]
+        .filter(([, cents]) => cents < 0)
+        .map(([category, cents]) => ({ category, cents }))
+        .sort((a, b) => a.cents - b.cents),
+    ]),
+  );
+
   const categoriesByMonth = Object.fromEntries(
     months.map((m) => [
       m,
@@ -156,6 +169,7 @@ export function spendingInsights(
   return {
     months: [...totals.values()],
     categoriesByMonth,
+    refundsByMonth,
     topMerchants: sortDesc([...merchants.values()].filter((m) => m.cents > 0)).slice(
       0,
       TOP_MERCHANTS,

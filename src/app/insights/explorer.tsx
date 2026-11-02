@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { breakdownRows } from "@/insights/breakdown";
 import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
 import type {
   CategoryChange,
@@ -305,6 +306,7 @@ function Rows({ rows, label }: { rows: Row[]; label: string }) {
 export function SpendingExplorer({
   months,
   categoriesByMonth,
+  refundsByMonth = {},
   initialMonth,
   changes,
   changeMonths,
@@ -314,6 +316,7 @@ export function SpendingExplorer({
 }: {
   months: MonthTotals[];
   categoriesByMonth: Record<string, CategoryTotal[]>;
+  refundsByMonth?: Record<string, CategoryTotal[]>;
   initialMonth: string;
   changes: CategoryChange[];
   // The two months the changes compare (on the 1st, last month and the one before).
@@ -343,8 +346,7 @@ export function SpendingExplorer({
   const first = months[0].month;
   const last = months.at(-1)!.month;
   const { before, after } = changeMonths ?? { before: "", after: "" };
-  const categories = categoriesByMonth[month] ?? [];
-  const monthTotal = months.find((m) => m.month === month)?.spendingCents ?? 0;
+  const categories = breakdownRows(categoriesByMonth[month], refundsByMonth[month]);
   const rangeTotal = months.reduce((s, m) => s + m.spendingCents, 0);
 
   return (
@@ -365,18 +367,22 @@ export function SpendingExplorer({
           <Rows
             key={month}
             label="Categories"
-            rows={categories.map((c) => ({
-              key: c.category,
-              label: c.category,
-              cents: c.cents,
-              share: monthTotal > 0 ? c.cents / monthTotal : undefined,
-              open: () => (
-                <Lines
-                  lines={forCategory(month, c.category)}
-                  href={categoryHref(c.category, month)}
-                />
-              ),
-            }))}
+            rows={categories.map((c) => {
+              // A refunds row opens its category's lines too.
+              const category = c.label.replace(/ refunds$/, "");
+              return {
+                key: c.label,
+                label: c.label,
+                cents: c.cents,
+                share: c.share,
+                open: () => (
+                  <Lines
+                    lines={forCategory(month, category)}
+                    href={categoryHref(category, month)}
+                  />
+                ),
+              };
+            })}
           />
         )}
       </section>
