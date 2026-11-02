@@ -1012,7 +1012,13 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   - **Fresh seeds, both at risk 0.5:** field 2 +1.3, field 3 −2.2, default +0.7, mirror **+5.1**, all3-top3 +0.9, hackathon-like +0.3.
   - **Confirmation** (800 tables): field 3 −0.9, all3-top3 −0.8, all3 +0.4.
   - **Verdict:** the pooled gain (+0.5) comes from the mirror field, i.e. from exploiting our own tight folding (`icm_tag` folds 93% to a lone open at 10–25bb). Against the independent fields it averages about 0. Off by default; a day-of tuner candidate if the real field folds a lot.
-* **Bug hunter:** 520k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
+* **Heads-up and hand-cap risk premium: not adopted** (`results/sng_caprisk_ab.md`, `results/sng_hurisk_ab.md`).
+  - **Why it looked like a leak:** about half the tables reach the 200-hand cap, mostly with 2 or 3 left. With 2 left, ICM is linear in chips, so a risk premium only costs chip EV; and at the cap the payout is the ICM of the stacks, so the "skill edge" part of the premium fades.
+  - **Switches** (off by default, tested): `hu_risk` scales the premium with 2 left; `cap_fade` = N scales it by min(1, hands left / N).
+  - **8-handed, 600 tables x 4 fields:** every cell within noise (hu_risk=0 mean +0.4, cap_fade=25 mean +0.3, none significant).
+  - **Heads-up tables, 800 x 4 cells:** every cell within ±0.3 of zero. With exact-ICM all-in calls on, the premium hardly ever decides a heads-up hand (it only touches non-all-in calls over 40% of the stack).
+  - **Verdict:** no measurable effect; defaults unchanged.
+* **Bug hunter:** 588k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
   - looser calls (a raiser = 3.2 hands, a 3% margin);
