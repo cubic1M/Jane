@@ -18,6 +18,9 @@ describe("categorizeByRules", () => {
     ["CAPITAL ONE AUTOPAY PYMT"],
     ["Withdrawal to Capital One card ending 1234"],
     ["BANK OF AMERICA CREDIT CARD Bill Payment"],
+    // Debugger 11-01: Insights counted "Barclaycard Us Payment" $1,200 as spending, beside the
+    // card's own purchases.
+    ["BARCLAYCARD US PAYMENT"],
   ])("calls %s a card payment", (description) => {
     expect(out(description)).toBe("LOAN_PAYMENTS_CREDIT_CARD_PAYMENT");
     expect(into(description)).toBe("LOAN_PAYMENTS_CREDIT_CARD_PAYMENT");

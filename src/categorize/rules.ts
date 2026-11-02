@@ -150,6 +150,9 @@ const RULES: readonly Rule[] = [
       "BK OF AMER VISA ONLINE PMT",
       "WF CREDIT CARD AUTO PAY",
       "SYNCHRONY BANK PAYMENT",
+      // Barclays' cards, from checking (debugger 11-01: counted as $1,200 of spending).
+      "BARCLAYCARD US PAYMENT",
+      "BARCLAYCARD PAYMENT",
     ],
   },
   // The card's own side, as the card companies write a payment received (CSV bench: Capital
