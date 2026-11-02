@@ -94,6 +94,7 @@ Fill in each line:
 | seats renumbered every hand (button = 0, close up after knockouts) | stable-identity ring keyed from my seat; remove `knocked_out_seats` |
 | submission rules ban exec / imports / size | `sng/bundle_flat.py`; check the rules before bundling |
 | a file passes the checker but crashes at load | run the kit's runner; no `__future__` annotations with dataclasses |
+| `pf_chart=1` in a flat bundle | the flat bundle leaves out the push/fold chart loader: keep `pf_chart=0` (the default) there |
 | amounts in big blinds, rounded (e.g. 0.5bb) | convert units; all-in = their max, rounded UP |
 | 3+ hole cards with a discard before the flop | key preflop on the 2 cards kept; preflop discard by table equity |
 | import whitelist, `open` banned, 32 KB cap | compact digit-string tables; no `hash()` seeds |
