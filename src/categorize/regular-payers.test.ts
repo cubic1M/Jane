@@ -44,8 +44,40 @@ describe("regular money in from one payer", () => {
     ["a card company", biweekly("American Express", 50_000)],
     ["money moved from a broker", biweekly("Fidelity Investments", 50_000)],
     ["a payment app", biweekly("Venmo", 50_000)],
+    // Debugger 11-02: "DEPOSIT FROM SANTANDER CHECKING" on a savings account, $3,000 of false pay.
+    ["an account of their own, by its kind", biweekly("Santander Checking", 50_000)],
   ])("isn't income: %s", (_, rows) => {
     expect(regularPayers(rows)).toEqual([]);
+  });
+
+  describe("when the same money left another of their accounts", () => {
+    const into = biweekly("Home Fund", 50_000).map((r) => ({ ...r, accountId: "savings" }));
+    const out = (accountId: string, cents = 50_000, days = 0) =>
+      into.map((r) => ({
+        accountId,
+        amountCents: cents,
+        date: new Date(Date.parse(`${r.date}T00:00:00Z`) + days * 86_400_000)
+          .toISOString()
+          .slice(0, 10),
+      }));
+
+    it("isn't income: it's their own money moving", () => {
+      expect(regularPayers(into, out("checking"))).toEqual([]);
+      expect(regularPayers(into, out("checking", 50_000, 2))).toEqual([]);
+    });
+
+    it("is still income when pay leaves the account it came into, whole", () => {
+      expect(regularPayers(into, out("savings"))).toHaveLength(8);
+    });
+
+    it("is still income when the amount or the days don't match", () => {
+      expect(regularPayers(into, out("checking", 49_999))).toHaveLength(8);
+      expect(regularPayers(into, out("checking", 50_000, 6))).toHaveLength(8);
+    });
+
+    it("is still income when only an odd one matches", () => {
+      expect(regularPayers(into, out("checking").slice(0, 1))).toHaveLength(8);
+    });
   });
 
   it("isn't income when the amounts are all over the place", () => {
