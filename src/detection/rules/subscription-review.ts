@@ -129,7 +129,7 @@ export const subscriptionReview: Rule = (input, streams) => {
   const accountName = new Map(input.accounts.map((a) => [a.id, a.name]));
   const titleOf = (stream: Stream) => {
     const base = `Review your ${stream.merchant} subscription`;
-    if ((named.get(stream.merchant) ?? 0) < 2) return base;
+    if ((named.get(stream.merchant) ?? 0) <= 1) return base;
     const samePrice = found.filter(
       (o) => o.merchant === stream.merchant && o.lastAmountCents === stream.lastAmountCents,
     );
