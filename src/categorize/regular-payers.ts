@@ -1,0 +1,96 @@
+import {
+  CARD_ISSUERS,
+  CASH_INCOME_MAX_AMOUNT_CV,
+  CASH_INCOME_MAX_GAP_CV,
+  CASH_INCOME_MAX_MEDIAN_GAP_DAYS,
+  CASH_INCOME_MIN_DEPOSITS,
+  CASH_INCOME_MIN_SPAN_DAYS,
+  REGULAR_PAYER_MIN_CENTS,
+  REGULAR_PAYER_NOT_INCOME,
+} from "@/config/detection";
+import { DAY_MS, isoDay } from "@/lib/dates";
+import type { ScopedDb } from "@/lib/db-scoped";
+
+// Pay with no pay word in the line (debugger 11-02): "NORTHWIND LABS" matched no rule, and Claude
+// is only asked what a typical purchase at a merchant is, so a person's pay wasn't income on any
+// page, and the forecast ran short. Money in from one payer, at a steady cadence and a similar
+// amount, is income. Stricter than cash deposits (./cash-income.ts), which need only one of the
+// two: a named payer could be many things. Banks, card companies, brokers and payment apps are
+// left out, since that money is likely the person's own. Rows the rules or the person placed stay.
+
+const INCOME = { pfcPrimary: "INCOME", pfcDetailed: "INCOME_OTHER" } as const;
+
+export type PayerRow = {
+  id: string;
+  date: string;
+  // Plaid's sign: money in is negative.
+  amountCents: number;
+  merchantName: string | null;
+};
+
+const median = (xs: number[]) => {
+  const s = [...xs].sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+};
+
+// How much the values vary, as a share of their average.
+const spread = (xs: number[]) => {
+  const mean = xs.reduce((s, x) => s + x, 0) / xs.length;
+  const variance = xs.reduce((s, x) => s + (x - mean) ** 2, 0) / xs.length;
+  return mean === 0 ? Infinity : Math.sqrt(variance) / mean;
+};
+
+const dayNumber = (day: string) => Date.parse(`${day}T00:00:00Z`) / DAY_MS;
+
+function isRegularPay(rows: readonly PayerRow[]): boolean {
+  if (rows.length < CASH_INCOME_MIN_DEPOSITS) return false;
+  const amounts = rows.map((r) => -r.amountCents);
+  if (median(amounts) < REGULAR_PAYER_MIN_CENTS) return false;
+  const days = [...new Set(rows.map((r) => dayNumber(r.date)))].sort((a, b) => a - b);
+  if (days.length < 2 || days.at(-1)! - days[0] < CASH_INCOME_MIN_SPAN_DAYS) return false;
+  const gaps = days.slice(1).map((d, i) => d - days[i]);
+  return (
+    median(gaps) <= CASH_INCOME_MAX_MEDIAN_GAP_DAYS &&
+    spread(gaps) <= CASH_INCOME_MAX_GAP_CV &&
+    spread(amounts) <= CASH_INCOME_MAX_AMOUNT_CV
+  );
+}
+
+const notIncome = (name: string) =>
+  REGULAR_PAYER_NOT_INCOME.test(name) || CARD_ISSUERS.some(([pattern]) => pattern.test(name));
+
+// The ids of the rows that are regular pay.
+export function regularPayers(rows: readonly PayerRow[]): string[] {
+  const byPayer = new Map<string, PayerRow[]>();
+  for (const row of rows) {
+    if (row.amountCents >= 0 || !row.merchantName || notIncome(row.merchantName)) continue;
+    const key = row.merchantName.toLowerCase();
+    byPayer.set(key, [...(byPayer.get(key) ?? []), row]);
+  }
+  return [...byPayer.values()]
+    .filter(isRegularPay)
+    .flat()
+    .map((r) => r.id);
+}
+
+// Runs with the cash deposits, after an import, a bank sync and each night, before detection.
+// Returns how many rows changed. Once income they stay: only unplaced rows and Claude's guesses
+// are looked at, and an income row is neither.
+export async function markRegularPayers(db: Pick<ScopedDb, "transactions">): Promise<number> {
+  const rows = await db.transactions.findMany({
+    where: {
+      pending: false,
+      amountCents: { lt: 0 },
+      OR: [{ pfcDetailed: null }, { categorySource: "llm", NOT: { pfcPrimary: "INCOME" } }],
+    },
+    select: { id: true, date: true, amountCents: true, merchantName: true },
+  });
+  const ids = regularPayers(rows.map((r) => ({ ...r, date: isoDay(r.date) })));
+  if (ids.length === 0) return 0;
+  const { count } = await db.transactions.updateMany({
+    where: { id: { in: ids } },
+    data: { ...INCOME, categorySource: "rule" },
+  });
+  return count;
+}

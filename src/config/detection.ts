@@ -1047,6 +1047,12 @@ export const CASH_INCOME_MAX_GAP_CV = 0.6;
 export const CASH_INCOME_MAX_AMOUNT_CV = 0.5;
 // A deposit more than this many times the usual one is a one-off (a car sold for cash): left out.
 export const CASH_INCOME_ONE_OFF_FACTOR = 3;
+// Regular money in from one payer, with no pay word in the line (src/categorize/regular-payers.ts).
+// Under this it's more likely a share of a bill than pay.
+export const REGULAR_PAYER_MIN_CENTS = 20_000;
+// Likely the person's own money moving: a bank, a broker or a payment app.
+export const REGULAR_PAYER_NOT_INCOME =
+  /\b(?:bank|savings|transfer|credit union|fcu|investments?|brokerage|schwab|fidelity|vanguard|robinhood|coinbase|venmo|paypal|zelle|cash ?app|apple cash)\b/i;
 
 export const RENT_TRANSFER_MIN_MONTHS = 2;
 export const RENT_TRANSFER_MIN_CENTS = 50_000;
