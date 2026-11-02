@@ -68,6 +68,7 @@ async function Insights() {
       <SpendingExplorer
         months={insights.months}
         categoriesByMonth={insights.categoriesByMonth}
+        refundsByMonth={insights.refundsByMonth}
         initialMonth={latest}
         changes={insights.changes}
         changeMonths={insights.changeMonths}
