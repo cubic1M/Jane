@@ -48,7 +48,12 @@ PARAMS = dict(
     pf_max_bb=15.0,      #    for first-in shoves and for calling a lone all-in
     pf_file="",          #    chart file cache/sng/pushfold_<pf_file>.json ("" = equilibrium for the payouts)
     cap_risk=0.0,        # near the hand cap: risk premium + cap_risk x (my stack / average - 1)
-    cap_window=25,       # ... in the last this many hands       # the raise rate at which a raiser counts as exactly range_k     # facing a raise with a 3-bet hand: shove (not 3-bet) at or below this stack    # lower the open bar by up to this much vs seats that fold to steals
+    cap_window=25,
+    rk_floor=1.2,        # facing a raise: the raiser counts as at least this many random hands
+    agg_alpha=0.0,       # postflop: discount a bet less from seats that bet often when checked to:
+                         #   discount -> discount + (1 - discount) x agg_alpha x excess aggression
+    base_agg=0.35,       # ... the bet-when-checked-to rate that counts as normal
+    thin_value=0.0,      # postflop: value bar - thin_value x (1 - 2 x opponents' fold-to-bet), vs stations       # ... in the last this many hands       # the raise rate at which a raiser counts as exactly range_k     # facing a raise with a 3-bet hand: shove (not 3-bet) at or below this stack    # lower the open bar by up to this much vs seats that fold to steals
 )
 
 
@@ -83,6 +88,8 @@ class IcmTag:
         self.pf_faced = [0] * rules.num_players        # postflop bets faced per seat
         self.pf_fold = [0] * rules.num_players         # ... and folded to
         self.pre_raises = [0] * rules.num_players      # hands with a voluntary preflop raise
+        self.bet_opp = [0] * rules.num_players         # postflop: checked to (could bet first)
+        self.bet_made = [0] * rules.num_players        # ... and bet
         self._hand = -1
 
     def end_hand(self, info):
@@ -99,8 +106,15 @@ class IcmTag:
             acts = [h for h in hist if h[1] == st]
             first = next((i for i, h in enumerate(acts) if h[2] == "raise"), None)
             if first is None:
+                for sv, _, kind, _ in acts:                   # everyone checked
+                    if kind == "check":
+                        self.bet_opp[sv] += 1
                 continue
+            for sv, _, kind, _ in acts[:first]:            # checked before the first bet
+                self.bet_opp[sv] += 1
             bettor = acts[first][0]
+            self.bet_opp[bettor] += 1
+            self.bet_made[bettor] += 1
             for sv, _, kind, _ in acts[first + 1:]:
                 if sv == bettor or kind == "raise":
                     break
@@ -239,7 +253,7 @@ class IcmTag:
         if p["read_alpha"] > 0:
             r = raises[-1][0]
             pfr = (self.pre_raises[r] + p["base_pfr"] * 8) / (self.dealt[r] + 8)   # shrink to the prior
-            rk = min(8.0, max(1.2, rk * (p["base_pfr"] / max(pfr, 0.01)) ** p["read_alpha"]))
+            rk = min(8.0, max(p["rk_floor"], rk * (p["base_pfr"] / max(pfr, 0.01)) ** p["read_alpha"]))
         kf = rk + max(0, others - 1) * 0.8
         eq = self._eq_k(obs, kf)
         call = lg.call_amount
@@ -272,7 +286,14 @@ class IcmTag:
         pot = obs.pot
         if facing:
             n_aggr = sum(1 for h in street_acts if h[2] == "raise") if obs.history else 1
-            eq_adj = eq * (p["bet_discount"] ** n_aggr)
+            disc = p["bet_discount"]
+            if p["agg_alpha"] > 0 and obs.history:
+                bettor = next((h[0] for h in reversed(street_acts) if h[2] == "raise"), None)
+                if bettor is not None:
+                    ag = (self.bet_made[bettor] + p["base_agg"] * 6) / (self.bet_opp[bettor] + 6)
+                    xs = max(0.0, min(1.0, (ag - p["base_agg"]) / (1.0 - p["base_agg"])))
+                    disc = disc + (1.0 - disc) * min(1.0, p["agg_alpha"] * xs)
+            eq_adj = eq * (disc ** n_aggr)
             call = lg.call_amount
             need = call / (pot + call) + p["call_margin"]
             if call >= obs.my_stack * 0.5:
@@ -284,7 +305,11 @@ class IcmTag:
                 return Call()
             return Fold()
         # not facing a bet
-        if eq >= p["value_eq"] and lg.can_raise:
+        vbar = p["value_eq"]
+        if p["thin_value"] > 0 and opp:
+            fr = (sum(self.pf_fold[s] for s in opp) + 1.0) / (sum(self.pf_faced[s] for s in opp) + 2.0)
+            vbar -= p["thin_value"] * max(0.0, 1.0 - 2 * fr)
+        if eq >= vbar and lg.can_raise:
             return RaiseTo(lg.clamp(p["bet_frac"] * pot))
         if (k == 1 and self.aggressor == obs.seat and lg.can_raise
                 and self.rng.random() < p["cbet"] and obs.street == 1):

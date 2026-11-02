@@ -914,6 +914,12 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
 * **Tighter opens on the flat payout table rejected** (`results/sng_flat8_openmult.md`,
   fresh seeds). `open_mult` 1.12 / 1.18 score −15 on field 3 (significant), −9 / −1 on
   field 2 and −10 / +4 on default. The day-of tuner on the real payouts covers this.
+* **Hackathon-like field** (`results/sng_hackfield.md`, fresh seeds, 400 paired tables per payout set):
+  - the field: many weak or broken bots (pushers, maniacs, calling stations, random, buggy, slow ones that time out), mixed with five decent ones;
+  - `icm_tag` beats `pushfold_icm`, `f2_shark` and `adaptive` significantly under all three payout sets;
+  - it does **not** beat `f3_exploiter`: −1.7 / −0.8 / −6.4, not significant, and the exploiter wins 26% of tables to our 10%.
+
+  The exploiter reads each seat's shove range, bet frequency and stations. Our reads are milder, so three switches (off by default) are being A/B tested: `rk_floor`, `agg_alpha`, `thin_value`.
 * **Bug hunter:** 188k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
