@@ -108,13 +108,16 @@ export function closeOf<E extends CloseEntry>(input: CloseInput<E>): MonthClose<
 
   // The chips: what's open (biggest first) and what went up, at most CLOSE_CHIPS_MAX.
   const candidates: (CloseChip & { cents: number })[] = [
-    ...open.map((e) => ({
-      label: OPEN_LABEL[e.state as keyof typeof OPEN_LABEL] ?? "Still to do",
-      figure: `${money(e.cents)}${e.yearly ? "/yr" : ""}`,
-      sure: e.confidencePercent !== null ? `${e.confidencePercent}%` : null,
-      href: "#open",
-      cents: e.cents,
-    })),
+    // A chip is a figure: nothing to show for one with no dollar estimate.
+    ...open
+      .filter((e) => e.cents > 0)
+      .map((e) => ({
+        label: OPEN_LABEL[e.state as keyof typeof OPEN_LABEL] ?? "Still to do",
+        figure: `${money(e.cents)}${e.yearly ? "/yr" : ""}`,
+        sure: e.confidencePercent !== null ? `${e.confidencePercent}%` : null,
+        href: "#open",
+        cents: e.cents,
+      })),
     ...changed.map((c) => ({
       label: CHANGE_LABEL[c.kind],
       figure:

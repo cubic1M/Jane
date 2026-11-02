@@ -1,3 +1,4 @@
+import { findingSure } from "@/app/report/state";
 import { CLOSE_CHANGE_DAYS } from "@/config/close";
 import { SUGGESTION_CONFIDENCE_FROM } from "@/config/priorities";
 import { loadDetectionInput } from "@/detection/engine";
@@ -6,16 +7,19 @@ import type { DetectionInput } from "@/detection/types";
 import type { Confidence, FindingType, PrismaClient } from "@/generated/prisma/client";
 import { detectChanges, type SureChange } from "@/insights/changes";
 import { loadCheckup } from "@/lib/checkup";
+import { DAY_MS, isoDay } from "@/lib/dates";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { withEvidence } from "@/lib/evidence/gate";
 import { evidenceRefs } from "@/lib/finding-accounts";
 import { savingsLedger, type LedgerEntry } from "@/lib/ledger";
-import { todayOf } from "@/lib/today";
+import { localDate, todayOf } from "@/lib/today";
 import { closeOf, type CloseChange, type MonthClose } from "@/planning/close";
+import { monthsCovered, statementsEnd } from "@/profile/build";
+import { REFUND_FINDING_TYPES } from "@/config/detection";
 
 // The monthly close for one person and month (src/planning/close.ts): the savings ledger, the
-// month's changes (src/insights/changes.ts, as the weekly email reads them), price rises and
+// findings waiting for an answer, the month's changes (src/insights/changes.ts, as the weekly email reads them), price rises and
 // trials that turned paid (the findings Jane made that month), and the checkup
 // (src/lib/checkup.ts) for a month with nothing wrong. Read-only; no Claude call.
 
@@ -87,7 +91,14 @@ export async function loadMonthClose(
   const today = await todayOf(userId, { client, now });
   const end = lastDay(month) < today ? lastDay(month) : today;
   const db = scopedFor(userId, client);
-  const [ledger, input, acks, found, open] = await Promise.all([
+  const { timezone } = await client.user.findUniqueOrThrow({
+    where: { id: userId },
+    select: { timezone: true },
+  });
+  // The person's day (debugger 11-02): a finding from a US evening is already tomorrow in UTC, so
+  // comparing UTC times with their "today" left it out. A day each side, then each by their day.
+  const dayOf = (at: Date) => localDate(at, timezone);
+  const [ledger, input, acks, found, open, waiting, sures, read] = await Promise.all([
     savingsLedger(userId, { client, now }),
     loadDetectionInput(userId, { client, now: new Date(`${end}T12:00:00Z`) }),
     db.changeAcks.findMany({ select: { key: true } }),
@@ -95,8 +106,8 @@ export async function loadMonthClose(
       where: {
         type: { in: Object.keys(FINDING_CHANGES) as FindingType[] },
         createdAt: {
-          gte: new Date(`${month}-01T00:00:00Z`),
-          lte: new Date(`${end}T23:59:59Z`),
+          gte: new Date(Date.parse(`${month}-01T00:00:00Z`) - DAY_MS),
+          lte: new Date(Date.parse(`${end}T23:59:59Z`) + DAY_MS),
         },
         status: { notIn: ["declined"] },
       },
@@ -115,16 +126,77 @@ export async function loadMonthClose(
       where: { status: { in: ["new", "shown"] } },
       select: { type: true },
     }),
+    // Waiting for an answer: found and open, though nobody has acted on them yet. A change has its
+    // own part of the close.
+    db.findings.findMany({
+      where: {
+        status: { in: ["new", "shown"] },
+        type: { notIn: Object.keys(FINDING_CHANGES) as FindingType[] },
+      },
+      select: {
+        id: true,
+        type: true,
+        title: true,
+        annualSavingsCents: true,
+        confidence: true,
+        createdAt: true,
+        evidence: true,
+      },
+    }),
+    db.suggestions.findMany({
+      select: { topic: true, confidencePercent: true, confidenceReason: true },
+      orderBy: { lastSeenAt: "desc" },
+    }),
+    db.transactions.aggregate({ _min: { date: true }, _max: { date: true } }),
   ]);
   const expected = new Set(acks.map((a) => a.key));
   // Only findings still standing on the person's data (the evidence gate): never a removed bank's.
-  const findings = await withEvidence(userId, found, (f) => evidenceRefs(f.evidence), { client });
+  const inClose = found.filter((f) => {
+    const day = dayOf(f.createdAt);
+    return day.slice(0, 7) === month && day <= end;
+  });
+  const findings = await withEvidence(userId, inClose, (f) => evidenceRefs(f.evidence), {
+    client,
+  });
+  const months =
+    read._min.date && read._max.date
+      ? monthsCovered(isoDay(read._min.date), statementsEnd(isoDay(read._max.date), isoDay(now)))
+      : 0;
+  const standing = await withEvidence(userId, waiting, (f) => evidenceRefs(f.evidence), { client });
+  const unanswered: LedgerEntry[] = standing.map((f) => ({
+    key: `finding:${f.id}`,
+    by: "you",
+    title: f.title,
+    state: "estimated",
+    // What it could save, not the bill: an insurance reshop has no figure until there are quotes.
+    cents: f.annualSavingsCents ?? 0,
+    yearly: !REFUND_FINDING_TYPES.includes(f.type),
+    confidencePercent: findingSure(
+      f,
+      sures,
+      months,
+      standing.filter((o) => o.type === f.type).length,
+    ).percent,
+    verifiedPercent: null,
+    rule: "An estimate until you act on it.",
+    proof: null,
+    lines: [],
+    heldProof: null,
+    heldLines: [],
+    lapsed: false,
+    checkWords: null,
+    foundOn: dayOf(f.createdAt),
+    actedOn: null,
+    verifiedOn: null,
+    heldOn: null,
+    href: `/report/${f.id}`,
+  }));
   const fromFindings: CloseChange[] = findings.map((f) => {
     const before = (f.evidence as { priorAverageCents?: unknown } | null)?.priorAverageCents;
     return {
       key: `finding:${f.id}`,
       kind: FINDING_CHANGES[f.type]!,
-      date: f.createdAt.toISOString().slice(0, 10),
+      date: dayOf(f.createdAt),
       title: f.title,
       amountCents: f.amountCents ?? 0,
       usualCents: typeof before === "number" ? before : null,
@@ -144,5 +216,11 @@ export async function loadMonthClose(
     open.map((f) => f.type),
     { client, now },
   );
-  return closeOf({ month, today, entries: ledger.entries, changes, checkup });
+  return closeOf({
+    month,
+    today,
+    entries: [...ledger.entries, ...unanswered],
+    changes,
+    checkup,
+  });
 }
