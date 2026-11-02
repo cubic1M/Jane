@@ -4,9 +4,18 @@ import { formatCents } from "@/lib/money";
 // what it comes to today only when something was due since (debugger 10-31: "$6,210.40 on Oct
 // 29, about $6,210.40 today" said one number twice).
 export function balanceLine(
-  f: { startOn: string; startCents: number; todayCents: number; days: { date: string }[] },
+  f: {
+    startOn: string;
+    startCents: number;
+    todayCents: number;
+    days: { date: string }[];
+    staleFrom?: string | null;
+  },
   dayLabel: (iso: string) => string,
 ): string {
+  if (f.staleFrom) {
+    return `${formatCents(f.startCents)} on ${dayLabel(f.staleFrom)}, your latest statement`;
+  }
   if (f.startOn === f.days[0]?.date) return `${formatCents(f.startCents)} today`;
   const on = `${formatCents(f.startCents)} on ${dayLabel(f.startOn)}`;
   return f.todayCents === f.startCents ? on : `${on}, about ${formatCents(f.todayCents)} today`;

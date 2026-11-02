@@ -37,3 +37,17 @@ describe("unevenPayLine", () => {
     expect(unevenPayLine(null)).toBeNull();
   });
 });
+
+// Debugger 11-02: "$5,105.18 today" from a statement that ended 66 days ago.
+describe("a balance too old to walk forward", () => {
+  it("says when it's from, not today", () => {
+    const f = {
+      startOn: "2026-11-02",
+      startCents: 510_518,
+      todayCents: 510_518,
+      days: [{ date: "2026-11-02" }],
+      staleFrom: "2026-08-28",
+    };
+    expect(balanceLine(f, (iso) => iso.slice(5))).toBe("$5,105.18 on 08-28, your latest statement");
+  });
+});

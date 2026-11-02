@@ -1,3 +1,4 @@
+import { staleBalanceFrom } from "@/detection/forecast";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { YEARLY_BILLS_GOAL_PATTERN } from "@/config/irregular";
 import { COMING_UP_DAYS, COMING_UP_LIMIT } from "@/config/home";
@@ -145,8 +146,13 @@ export async function homeSummary(
     // Findings the person hasn't seen yet; seeing the plan or a card marks them seen.
     newToDecide: open.filter((f) => f.status === "new").length,
     janeDid,
+    // Not from a balance too old to walk forward: "in checking now" would be months out of date.
     safeToSpend: input.accounts.some(
-      (a) => a.type === "depository" && a.subtype === "checking" && a.currentBalanceCents !== null,
+      (a) =>
+        a.type === "depository" &&
+        a.subtype === "checking" &&
+        a.currentBalanceCents !== null &&
+        !staleBalanceFrom(a, input.asOf),
     )
       ? safeToSpend(input, {
           budgetsLeftCents: (budget?.progress ?? []).reduce(
