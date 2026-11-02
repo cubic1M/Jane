@@ -395,6 +395,7 @@ model User {
   autopilotActs      AutopilotAct[]
   janeActs           JaneAct[]
   actMistakes        ActMistake[]
+  partnerLinks       PartnerLink[]
   collegePlans       CollegePlan[]
   hsaReceipts        HsaReceipt[]
   equityGrants       EquityGrant[]
@@ -3404,6 +3405,23 @@ model JaneAct {
 
   @@index([userId, createdAt])
   @@map("jane_acts")
+}
+
+// A partner's own id for something of the person's: a payer, a card to pay, a funding source
+// (src/lib/money-movement/queue.ts). Empty until a real partner is connected.
+model PartnerLink {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  partner   String
+  kind      String
+  ref       String
+  partnerId String   @map("partner_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, partner, kind, ref])
+  @@map("partner_links")
 }
 
 // Something Jane did that the person says was wrong (src/lib/act-mistakes.ts, docs/mistakes.md).

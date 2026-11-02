@@ -1,3 +1,5 @@
+import { DAY_MS } from "@/lib/dates";
+import { RETURN_WATCH_DAYS } from "@/config/money-rollout";
 import { formatCents } from "@/lib/money";
 import { throughPermission } from "@/lib/permission/check";
 import { TRANSFER_DELAY_DAYS } from "@/config/money-movement";
@@ -5,7 +7,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import type { Sector } from "@/config/autopilot-sectors";
 import { addDays } from "@/detection/units";
 import { track } from "@/lib/analytics";
-import { logAudit } from "@/lib/audit";
+import { logAudit, SYSTEM_ACTOR } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { bigMoveCheck } from "@/lib/money-for-two";
@@ -106,6 +108,7 @@ export async function scheduleTransfer(
           ? { kind: "yes" }
           : { kind: "standing", sector: transfer.sector as Sector, needs: "safe" },
       undo: { kind: "window", until: new Date(`${runOn}T00:00:00Z`), href: "/transfers" },
+      payment: { ownAccount: Boolean(transfer.toAccountId) },
     },
     { client, now },
     () =>
@@ -184,6 +187,31 @@ export async function cancelTransfer(
   await track(userId, "money_transfer_cancelled", {});
 }
 
+// A payment can come back after it went through. Only a real partner says so; marked, and audited.
+async function watchForReturns(
+  userId: string,
+  movement: MoneyMovementPartner,
+  { client, now }: { client: PrismaClient; now: Date },
+): Promise<void> {
+  if (!movement.reversed) return;
+  const db = scopedFor(userId, client);
+  const since = new Date(now.getTime() - RETURN_WATCH_DAYS * DAY_MS);
+  const done = await db.moneyTransfers.findMany({
+    where: { status: "completed", completedAt: { gte: since }, partner: movement.name },
+    select: { id: true, runOn: true, partnerRef: true },
+  });
+  for (const t of done) {
+    if (!(await movement.reversed({ runOn: today(t.runOn), partnerRef: t.partnerRef }))) continue;
+    await db.moneyTransfers.updateMany({ where: { id: t.id }, data: { status: "returned" } });
+    await logAudit(
+      SYSTEM_ACTOR,
+      "money_transfer_returned",
+      { type: "money_transfer", id: t.id },
+      { user_id: userId },
+    );
+  }
+}
+
 // Pending transfers whose day has come: through the partner, they've gone through. A goal
 // tracked by hand counts what went to it.
 export async function settleTransfers(
@@ -195,11 +223,31 @@ export async function settleTransfers(
   const db = scopedFor(userId, client);
   const pending = await db.moneyTransfers.findMany({
     where: { status: "pending", runOn: { lte: new Date(`${today(now)}T00:00:00Z`) } },
-    select: { id: true, runOn: true, goalId: true, amountCents: true },
+    select: {
+      id: true,
+      runOn: true,
+      goalId: true,
+      amountCents: true,
+      toName: true,
+      partnerRef: true,
+    },
   });
+  await watchForReturns(userId, movement, { client, now });
   let settled = 0;
   for (const t of pending) {
-    if (!(await movement.settled({ runOn: today(t.runOn) }, today(now)))) continue;
+    if (
+      !(await movement.settled(
+        {
+          runOn: today(t.runOn),
+          amountCents: t.amountCents,
+          toName: t.toName,
+          partnerRef: t.partnerRef,
+        },
+        today(now),
+      ))
+    ) {
+      continue;
+    }
     const { count } = await db.moneyTransfers.updateMany({
       where: { id: t.id, status: "pending" },
       data: { status: "completed", completedAt: now },

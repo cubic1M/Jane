@@ -1,5 +1,6 @@
 import { AGENT_FIRST_TYPES, agentRehearsal } from "@/config/agent-rollout";
 import { SECTOR_LABELS, type Sector } from "@/config/autopilot-sectors";
+import { PAYMENT_ROLLOUT, paymentRehearsal } from "@/config/money-rollout";
 import { specialistInfo, YES_CAP_CENTS, type SpecialistKey } from "@/config/specialists";
 import type { ActionType, DecisionSource, PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
@@ -44,6 +45,8 @@ export type ActRequest = {
   undo: Undo;
   // The agent's action this is part of, and what the rollout asks about it.
   agent?: { actionId: string; actionType: ActionType; source: DecisionSource };
+  // A payment, and what the rollout asks about it.
+  payment?: { ownAccount: boolean };
 };
 
 export type RefuseReason =
@@ -105,6 +108,15 @@ async function rolloutRefusal(
   return undo.kind === "held" && undo.until.getTime() <= now.getTime() ? null : "no_undo";
 }
 
+// How money movement starts (src/config/money-rollout.ts): bills first, then the person's own
+// accounts, a yes on every payment, and only then payments under a cap.
+function paymentRefusal(request: ActRequest): RefuseReason | null {
+  if (!request.payment) return null;
+  if (request.payment.ownAccount && !PAYMENT_ROLLOUT.ownAccounts) return "not_yet";
+  if (request.authority.kind === "standing" && !PAYMENT_ROLLOUT.underCap) return "level";
+  return null;
+}
+
 // The check alone: no side effects. throughPermission is the only way to act on it.
 export async function checkPermission(
   userId: string,
@@ -118,6 +130,10 @@ export async function checkPermission(
   }
   if (info.kind === "real" || agentRehearsal()) {
     const refusal = await rolloutRefusal(userId, request, { client, now });
+    if (refusal) return { ok: false, reason: refusal };
+  }
+  if (info.kind === "real" || paymentRehearsal()) {
+    const refusal = paymentRefusal(request);
     if (refusal) return { ok: false, reason: refusal };
   }
   const { authority, undo } = request;

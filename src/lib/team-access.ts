@@ -183,6 +183,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   standing_permission_revoked: own,
   jane_act_mistake_reported: own,
   jane_act_mistake_closed: automatic,
+  money_transfer_returned: automatic,
   money_transfer_scheduled: own,
   money_transfer_cancelled: own,
   what_if_adopted: own,
