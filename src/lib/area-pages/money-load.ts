@@ -1,7 +1,7 @@
 import { areaOfCapability } from "@/config/areas";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { FORECAST_DAYS, LOW_BALANCE_CUSHION_CENTS } from "@/config/detection";
-import { addDays, forecastAccounts, upcomingBills } from "@/detection/forecast";
+import { addDays, forecastAccounts, comingUpBills } from "@/detection/forecast";
 import { loadDetectionInput } from "@/detection/engine";
 import { recurringCharges } from "@/detection/subscriptions";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -174,7 +174,7 @@ export async function loadMoneyArea(
       lowCents: f.lowest.balanceCents,
       date: f.lowest.date,
     })),
-    bills: upcomingBills(input, FORECAST_DAYS).map((b) => ({
+    bills: comingUpBills(input, FORECAST_DAYS).map((b) => ({
       merchant: b.merchant,
       date: b.date,
       amountCents: b.amountCents,

@@ -7,6 +7,7 @@ import {
 import {
   balanceDay,
   expectedBetween,
+  irregularDue,
   scheduledTransfers,
   scheduledTransfersIn,
   upcomingBills,
@@ -80,6 +81,9 @@ export function safeToSpend(
     );
   const bills = [
     ...upcomingBills(input, FORECAST_DAYS),
+    // A bill that comes twice a year or less, due before payday: the whole of it, not this month's
+    // slice of the set-aside (debugger 11-02: $6,259 "safe" with $2,210.50 due the day before payday).
+    ...irregularDue(input, FORECAST_DAYS),
     ...scheduledTransfers(input, FORECAST_DAYS, PAYMENT_TRANSFERS).filter((t) => !toOwnChecking(t)),
   ]
     .sort((a, b) => a.date.localeCompare(b.date) || a.merchant.localeCompare(b.merchant))
@@ -94,6 +98,10 @@ export function safeToSpend(
         (payday === null || b.date < payday),
     );
   const billsCents = bills.reduce((sum, b) => sum + b.amountCents, 0);
+  const setAside = Math.max(
+    0,
+    setAsideCents - bills.reduce((sum, b) => sum + (b.setAsideCents ?? 0), 0),
+  );
   return {
     payday,
     balanceCents: balance,
@@ -101,7 +109,7 @@ export function safeToSpend(
     billsCents,
     budgetsLeftCents,
     goalsCents,
-    setAsideCents,
-    safeCents: balance - billsCents - budgetsLeftCents - goalsCents - setAsideCents,
+    setAsideCents: setAside,
+    safeCents: balance - billsCents - budgetsLeftCents - goalsCents - setAside,
   };
 }

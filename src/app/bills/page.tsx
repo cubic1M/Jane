@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { AppHeader, PageLoading } from "@/components/app-header";
 import { FORECAST_DAYS, LOW_BALANCE_CUSHION_CENTS } from "@/config/detection";
 import { loadDetectionInput } from "@/detection/engine";
-import { forecastAccounts, upcomingBills } from "@/detection/forecast";
+import { comingUpBills, forecastAccounts } from "@/detection/forecast";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { EmptyState } from "@/components/empty-state";
@@ -21,7 +21,7 @@ async function Bills() {
   const user = await requireUser();
   const input = await loadDetectionInput(user.id);
   if (input.accounts.length === 0) redirect("/connect");
-  const bills = upcomingBills(input, FORECAST_DAYS);
+  const bills = comingUpBills(input, FORECAST_DAYS);
   const forecasts = forecastAccounts(input, FORECAST_DAYS);
   const byDate = Map.groupBy(bills, (b) => b.date);
 

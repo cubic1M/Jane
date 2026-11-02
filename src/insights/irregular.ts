@@ -16,7 +16,7 @@ import {
   YEARLY_INTERVAL_DAYS,
 } from "@/config/irregular";
 import { normalizeMerchant } from "@/data-sources/merchant";
-import { expectedDates } from "@/detection/forecast";
+import { expectedDates } from "@/detection/expected-dates";
 import { byDate, merchantMatches } from "@/detection/helpers";
 import { buildStreams, merchantOf } from "@/detection/streams";
 import type { DetectionInput, DetectionTransaction } from "@/detection/types";

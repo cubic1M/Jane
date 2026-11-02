@@ -25,7 +25,7 @@ import {
 } from "@/config/detection";
 import type { Confidence } from "@/detectors/contract";
 import type { AlertCandidate } from "@/detection/alerts";
-import { expectedDates } from "@/detection/forecast";
+import { expectedDates } from "@/detection/expected-dates";
 import { byDate, inList, inLookback, isRenewable, merchantMatches } from "@/detection/helpers";
 import { merchantOf, yearlyPlanEvidence, type Stream } from "@/detection/streams";
 import {

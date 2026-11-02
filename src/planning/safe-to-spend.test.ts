@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { addDays } from "@/detection/units";
 import {
+  AS_OF,
   CARD,
   CHECKING,
   GEICO,
@@ -195,5 +197,46 @@ describe("safeToSpend", () => {
     expect(safe.balanceCents).toBe(150_000 - 9_800);
     const [checking] = forecastAccounts(d, 31);
     expect(safe.safeCents).toBe(checking.days.find((x) => x.date === "2026-10-31")!.balanceCents);
+  });
+});
+
+// Debugger 11-02: Home said $6,259 safe to spend, with a $2,210.50 property tax due the day before
+// payday. Only this month's $369 set-aside came off, so spending it left the person short.
+describe("a rare bill due before payday", () => {
+  const TAX = {
+    description: "MULTNOMAH COUNTY PROPERTY TAX",
+    merchantName: "Multnomah County Property Tax",
+    pfcPrimary: "GOVERNMENT_AND_NON_PROFIT",
+    pfcDetailed: "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
+    amountCents: 221_050,
+  };
+  // Pay every month on the 1st: AS_OF is the 15th, so payday is about 17 days off.
+  const taxIn = (days: number) => [
+    tx({ ...TAX, date: addDays(AS_OF, days - 365) }),
+    tx({ ...TAX, date: addDays(AS_OF, days - 182) }),
+  ];
+  const setAside = 36_900;
+  const args = { budgetsLeftCents: 0, goalsCents: 0, setAsideCents: setAside };
+
+  it("takes the whole bill off, and not its monthly slice as well", () => {
+    const result = safeToSpend(data([...pay, ...geico, ...netflix, ...taxIn(10)]), args);
+    expect(result.bills.map((b) => b.merchant)).toContain("Multnomah County Property Tax");
+    expect(result.billsCents).toBeGreaterThanOrEqual(221_050);
+    expect(result.setAsideCents).toBe(0);
+    expect(result.safeCents).toBe(result.balanceCents - result.billsCents);
+  });
+
+  it("keeps to the monthly slice when the bill isn't due before payday", () => {
+    const result = safeToSpend(data([...pay, ...geico, ...netflix, ...taxIn(60)]), args);
+    expect(result.bills.map((b) => b.merchant)).not.toContain("Multnomah County Property Tax");
+    expect(result.setAsideCents).toBe(setAside);
+  });
+
+  it("takes off only that bill's slice when other yearly bills share the set-aside", () => {
+    const result = safeToSpend(data([...pay, ...geico, ...netflix, ...taxIn(10)]), {
+      ...args,
+      setAsideCents: setAside + 10_000,
+    });
+    expect(result.setAsideCents).toBe(10_000);
   });
 });
