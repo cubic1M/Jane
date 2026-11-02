@@ -9,3 +9,7 @@ export const SIMULATED_NOTICE =
 
 // Orders smaller than this aren't placed: not worth a trade.
 export const MIN_ORDER_CENTS = 10_000;
+
+// Real orders. Turning this on is a code change, never an env var, and needs a registered adviser, a
+// brokerage contract and counsel. Stage 4 starts with recommendations, and has no real trading.
+export const REAL_TRADING = false;

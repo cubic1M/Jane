@@ -52,6 +52,7 @@ describe("the list of specialists", () => {
       MarketDataPartner: "market_data",
       // Not a connector: a referral's name and disclosure on a card.
       CardPartner: "credit_cards",
+      AdviserPartner: "brokerage",
     };
     const walk = (dir: string): string[] =>
       readdirSync(dir).flatMap((name) => {
