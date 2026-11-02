@@ -931,6 +931,12 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   **None helped:** the best were +1.0 ± 1.4 and +0.8 ± 1.3, the combination +0.3 ± 1.6.
   The bot's existing reads already capture this field, and the tie with `f3_exploiter`
   is noise. All switches stay off; they remain available to the day-of tuner.
+* **Risk premium vs payout shape** (`results/sng_winner_risk.md`, 400 paired tables).
+  The fixed ICM risk premium (`risk` 0.10) suits flat payouts but not winner-take-all.
+  `risk=0` scores +2.1 / +2.5 under winner payouts (not significant) and **−2.1 under
+  top-3 (significant)**. New switch `risk_payout=1` scales the premium by the payout
+  shape: 0 for winner-take-all, unchanged for top-3 or flatter. It is under fresh-seed
+  validation (`results/sng_risk_payout.md`).
 * **Bug hunter:** 188k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:

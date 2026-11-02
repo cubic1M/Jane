@@ -263,6 +263,21 @@ class TestIcmTag(unittest.TestCase):
         self.assertEqual(c.stats[0].errors + c.stats[0].illegal, 0)
         self.assertEqual(a.stats[0].errors + a.stats[0].illegal, 0)
 
+    def test_payout_risk_scale(self):
+        from sng.ours.icm_tag import payout_risk_scale
+        self.assertEqual(payout_risk_scale((100, 0, 0, 0, 0, 0, 0, 0)), 0.0)
+        self.assertEqual(payout_risk_scale((50, 30, 20, 0, 0, 0, 0, 0)), 1.0)
+        self.assertEqual(payout_risk_scale((350, 220, 150, 100, 75, 50, 35, 20)), 1.0)
+        self.assertAlmostEqual(payout_risk_scale((65, 35, 0, 0)), 0.7)
+        self.assertEqual(payout_risk_scale((12, 7, 4, 2, 0, 0, 0, -3)), 1.0)   # negative last place
+        self.assertEqual(payout_risk_scale((5,)), 1.0)
+        b = IcmTag(risk_payout=1)
+        b.new_table(SngRules(enforce_time=False, payouts=(100, 0, 0, 0, 0, 0, 0, 0)), 0, 0)
+        self.assertEqual(b.risk_scale, 0.0)
+        b = IcmTag()
+        b.new_table(SngRules(enforce_time=False, payouts=(100, 0, 0, 0, 0, 0, 0, 0)), 0, 0)
+        self.assertEqual(b.risk_scale, 1.0)                       # off by default
+
 
 if __name__ == "__main__":
     unittest.main()

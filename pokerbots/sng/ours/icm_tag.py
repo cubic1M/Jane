@@ -49,6 +49,8 @@ PARAMS = dict(
     pf_file="",          #    chart file cache/sng/pushfold_<pf_file>.json ("" = equilibrium for the payouts)
     cap_risk=0.0,        # near the hand cap: risk premium + cap_risk x (my stack / average - 1)
     cap_window=25,
+    risk_payout=0,       # 1: scale `risk` by the payout shape: x min(1, flatness / 0.5), where flatness =
+                         #   1 - (1st's share of the points); winner-take-all -> 0, top-3 50/30/20 -> 1
     rk_floor=1.2,        # facing a raise: the raiser counts as at least this many random hands
     agg_alpha=0.0,       # postflop: discount a bet less from seats that bet often when checked to:
                          #   discount -> discount + (1 - discount) x agg_alpha x excess aggression
@@ -59,6 +61,21 @@ PARAMS = dict(
     station_size=0.0,    # postflop value bet: bet_frac + station_size x (1 - 2 x opponents' fold-to-bet)
     thin_value=0.0,      # postflop: value bar - thin_value x (1 - 2 x opponents' fold-to-bet), vs stations       # ... in the last this many hands       # the raise rate at which a raiser counts as exactly range_k     # facing a raise with a 3-bet hand: shove (not 3-bet) at or below this stack    # lower the open bar by up to this much vs seats that fold to steals
 )
+
+
+def payout_risk_scale(payouts) -> float:
+    """1.0 for payouts at least as flat as top-3 50/30/20; down to 0 for winner-take-all
+    (chips are then worth their count, so no ICM premium on risking them)."""
+    pay = [float(x) for x in payouts]
+    if len(pay) < 2:
+        return 1.0
+    lo = min(pay)
+    rel = [x - lo for x in pay]
+    tot = sum(rel)
+    if tot <= 0:
+        return 1.0
+    flat = 1.0 - max(rel) / tot
+    return max(0.0, min(1.0, flat / 0.5))
 
 
 class IcmTag:
@@ -81,6 +98,7 @@ class IcmTag:
         if getattr(rules.spec, "discards", ()):   # ... nor the discard policy's import / setup
             from sng.ours import anyvar, features as F
             anyvar._hc_code(F.get_ctx(rules.spec))
+        self.risk_scale = payout_risk_scale(rules.payouts[:rules.num_players]) if self.p["risk_payout"] else 1.0
         self.chart = None
         if self.p["pf_chart"]:
             from sng.ours.pushfold_chart import load_chart
@@ -159,7 +177,7 @@ class IcmTag:
     def _risk(self, obs):
         # premium on putting the stack at risk: larger with fewer players left (bubble / pay jumps)
         left = obs.players_left
-        r = self.p["risk"] * (1.0 + (8 - left) * 0.15) if left > 1 else 0.0
+        r = self.p["risk"] * self.risk_scale * (1.0 + (8 - left) * 0.15) if left > 1 else 0.0
         hl = getattr(obs, "hands_left", None)
         if self.p["cap_risk"] and hl is not None and hl < self.p["cap_window"] and left > 1:
             live = [sv.stack + sv.committed for sv in obs.seats if sv.in_hand]

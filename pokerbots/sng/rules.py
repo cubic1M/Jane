@@ -33,6 +33,7 @@ PAYOUT_SETS = {
     "synthetic": SYNTHETIC_PAYOUTS,
     "top3": (50, 30, 20, 0, 0, 0, 0, 0),          # classic SNG
     "winner": (100, 0, 0, 0, 0, 0, 0, 0),
+    "top2": (65, 35, 0, 0, 0, 0, 0, 0),
     "linear": (7, 6, 5, 4, 3, 2, 1, 0),
     "flat8": (350, 220, 150, 100, 75, 50, 35, 20),   # every place paid (practice kit 2)
 }
