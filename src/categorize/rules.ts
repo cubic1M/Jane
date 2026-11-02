@@ -2240,6 +2240,8 @@ const RULES: readonly Rule[] = [
   { category: "TRANSFER_OUT_WITHDRAWAL", bankType: ["ATM"], direction: "out" },
 
   { category: "FOOD_AND_DRINK_GROCERIES", bankCategory: ["Groceries"], direction: "out" },
+  // USAA's own category for pay (debugger 11-02: its cleaned "Lockheed Martin" matched nothing).
+  { category: "INCOME_SALARY", bankCategory: ["Paycheck"], direction: "in" },
   { category: "TRANSPORTATION_GAS", bankCategory: ["Gas"], direction: "out" },
   // A card's own categories (Chase's), in either direction, so a return nets against its
   // purchase. Broad, so last: the keyword rules above are more specific.

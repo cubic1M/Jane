@@ -561,6 +561,36 @@ export const navyFederal: CsvFormat = {
   },
 };
 
+// USAA (an account's transactions → Export, CSV): "Date,Description,Original Description,
+// Category,Amount,Status", dates as 2026-10-30, money out negative. Description is USAA's cleaned
+// name ("Lockheed Martin"), Original Description the bank's line; Category is USAA's own
+// ("Paycheck"), read as the bank's category (debugger 11-02: through the column picker a
+// veteran's pay matched no rule and wasn't income). A pending row is left out until it posts.
+export const usaa: CsvFormat = {
+  id: "usaa",
+  bank: "USAA",
+  label: "USAA",
+  account: { name: "USAA checking", kind: "checking" },
+  requiredHeaders: ["date", "description", "original description", "category", "amount", "status"],
+  parseRow(get) {
+    if (/^pending$/i.test(get("status").trim())) {
+      return { ok: false, reason: "Still pending", silent: true };
+    }
+    const common = parseCommon(get("date"), get("amount"), get("description"), parseIsoDate);
+    if (!common.ok) return common;
+    return {
+      ok: true,
+      row: {
+        date: common.date,
+        // Plaid's sign: money out is positive.
+        amountCents: -common.cents || 0,
+        description: common.description,
+        hints: { bankCategory: optional(get("category")) },
+      },
+    };
+  },
+};
+
 // "- $25.00" or "+ $1,200.00" (Venmo) to cents, the sign kept.
 function spacedSignCents(text: string): number | null {
   return parseMoneyToCents(text.replace(/\s+/g, "").replace(/^\+/, ""));
@@ -709,6 +739,7 @@ export const CSV_FORMATS: readonly CsvFormat[] = [
   ally,
   schwabBank,
   navyFederal,
+  usaa,
   venmo,
   paypal,
 ];

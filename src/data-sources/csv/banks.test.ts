@@ -359,3 +359,30 @@ describe("PayPal", () => {
     ]);
   });
 });
+
+// Debugger 11-02: a veteran's USAA checking went through the column picker, which took USAA's
+// cleaned "Description" ("Lockheed Martin"), so $17,700 of pay matched no rule and wasn't
+// income. USAA's own "Category" ("Paycheck") says what it is.
+describe("USAA", () => {
+  const result = read("usaa-checking.csv");
+
+  it("is detected, reads money out as positive and leaves out pending rows", () => {
+    expect(result.format.id).toBe("usaa");
+    expect(amounts(result)).toEqual([
+      ["2026-10-30", -295_000],
+      ["2026-10-21", 8299],
+      ["2026-10-20", 6412],
+    ]);
+    expect(result.transactions.map((t) => t.description)).toEqual([
+      "Lockheed Martin",
+      "YouTube TV",
+      "Commissary",
+    ]);
+  });
+
+  it("counts a paycheck as pay, by USAA's own category", () => {
+    const pay = result.transactions[0];
+    expect(categorizeByRules(pay)?.detailed).toBe("INCOME_SALARY");
+    expect(categorizeByRules(result.transactions[2])?.detailed).toBe("FOOD_AND_DRINK_GROCERIES");
+  });
+});
