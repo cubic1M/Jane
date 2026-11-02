@@ -289,3 +289,10 @@
 {"kind": "slow", "seed": 139297, "variant": "P:omaha_discard2", "bot": "icm_lite", "p99_ms": 1.626, "over_1ms": 2, "decisions": 162, "t": "2026-11-02 02:47:41"}
 {"kind": "slow", "seed": 139793, "variant": "j_3street", "bot": "icm_tag", "p99_ms": 0.131, "over_1ms": 2, "decisions": 326, "t": "2026-11-02 02:48:28"}
 {"kind": "slow", "seed": 142003, "variant": "m_nlhe150", "bot": "icm_tag", "p99_ms": 1.211, "over_1ms": 2, "decisions": 146, "t": "2026-11-02 02:52:02"}
+{"kind": "slow", "seed": 146370, "variant": "d_omaha4x2", "bot": "icm_tag", "p99_ms": 0.781, "over_1ms": 1, "decisions": 100, "t": "2026-11-02 02:58:52"}
+{"kind": "slow", "seed": 151394, "variant": "d_omaha4x2", "bot": "icm_lite", "p99_ms": 0.795, "over_1ms": 1, "decisions": 117, "t": "2026-11-02 03:06:38"}
+{"kind": "slow", "seed": 151704, "variant": "h_plo5", "bot": "icm_lite", "p99_ms": 1.242, "over_1ms": 2, "decisions": 153, "t": "2026-11-02 03:07:07"}
+{"kind": "slow", "seed": 153058, "variant": "P:omaha_discard2", "bot": "icm_tag", "p99_ms": 0.866, "over_1ms": 2, "decisions": 196, "t": "2026-11-02 03:09:19"}
+{"kind": "slow", "seed": 153382, "variant": "l_nlhe50", "bot": "icm_any", "p99_ms": 0.089, "over_1ms": 2, "decisions": 211, "t": "2026-11-02 03:09:51"}
+{"kind": "slow", "seed": 155814, "variant": "j_3street", "bot": "icm_tag", "p99_ms": 0.569, "over_1ms": 1, "decisions": 144, "t": "2026-11-02 03:13:32"}
+{"kind": "slow", "seed": 156614, "variant": "f_nlhe20", "bot": "icm_lite", "p99_ms": 1.727, "over_1ms": 2, "decisions": 131, "t": "2026-11-02 03:14:58"}
