@@ -3,6 +3,7 @@ import type { DetectionInput } from "@/detection/types";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { dayLabel } from "@/lib/day-label";
+import { FINDING_OUTCOME_PREFIX } from "@/lib/outcomes";
 import { asWatch, outcomeYearly } from "@/planning/outcomes";
 import { HELD_RULE, verifyRule, type LedgerState } from "@/planning/ledger";
 import { verifiedSavings, type Estimate, type Receipt } from "@/lib/savings-proof";
@@ -178,10 +179,18 @@ export async function savingsLedger(userId: string, options: Options = {}): Prom
     });
   }
 
-  // Found and not acted on: still on offer.
+  // Found and not acted on: still on offer. Not a suggestion for a whole topic once they've said
+  // Done on a finding of that topic: it's the same money (debugger 11-02: fees "Done, checking
+  // $216/yr" and "Still to do $216/yr"). A suggestion for one company stays.
+  const doneTopics = new Set(
+    [...s.confirmed, ...s.expected, ...s.notSeen]
+      .filter((o) => o.key.startsWith(FINDING_OUTCOME_PREFIX))
+      .map((o) => o.topic),
+  );
   for (const o of shown) {
     const now = stillFound.get(o.suggestionKey);
     if (!now || now.worthCents <= 0) continue;
+    if (doneTopics.has(o.topic) && o.suggestionKey.endsWith(`:${o.topic}`)) continue;
     entries.push({
       key: o.suggestionKey,
       by: "you",
