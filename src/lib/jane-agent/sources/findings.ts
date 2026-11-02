@@ -23,7 +23,7 @@ const NAMES: readonly RegExp[] = [
   /^(.+?) went up from/,
   /^Charged twice\? .* at (.+)$/,
   /in fees on (.+?) in the last/,
-  /^Your (.+?) insurance could cost less$/,
+  /^Your (.+?) (?:insurance|policy)(?: at \S+)? could cost less$/,
 ];
 export function shortName(title: string): string {
   for (const pattern of NAMES) {
