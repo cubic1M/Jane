@@ -964,7 +964,7 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
     - respecting bets less costs −1.1 (significant).
 
     Heads-up postflop play is already at its optimum.
-* **Bug hunter:** 247k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
+* **Bug hunter:** 284k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
   - looser calls (a raiser = 3.2 hands, a 3% margin);
