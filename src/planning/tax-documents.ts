@@ -47,6 +47,11 @@ const slug = (text: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
 
+const LOAN_PAYMENT_FORMS: readonly ["mortgage" | "student", string][] = [
+  ["mortgage", "LOAN_PAYMENTS_MORTGAGE_PAYMENT"],
+  ["student", "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT"],
+];
+
 const PAYER_FORMS: readonly [IncomeKind, TaxFormKey][] = [
   ["w2", "w2"],
   ["self_employed", "nec"],
@@ -127,6 +132,24 @@ export function expectedForms(input: {
     if (loan.kind === "student" && cents >= STUDENT_INTEREST_THRESHOLD_CENTS) {
       forms.push(make("student", loan.name, cents));
     }
+  }
+  // A loan seen only in its payments (an uploaded file has no loan details; debugger 11-02:
+  // $1,720 a month to Mr. Cooper and no 1098): each lender paid in the year sends one, its
+  // interest unknown. A kind the bank already reports isn't expected twice.
+  const reported = new Set(input.loans.map((l) => l.kind));
+  for (const [kind, category] of LOAN_PAYMENT_FORMS) {
+    if (reported.has(kind)) continue;
+    const lenders = new Set(
+      input.transactions
+        .filter(
+          (t) =>
+            Number(t.date.slice(0, 4)) === input.year &&
+            t.amountCents > 0 &&
+            t.pfcDetailed === category,
+        )
+        .map(payer),
+    );
+    for (const lender of [...lenders].sort()) forms.push(make(kind, lender, null));
   }
   return forms;
 }

@@ -801,6 +801,9 @@ const RULES: readonly Rule[] = [
     keywords: ["UTILITIES", "UTILITY"],
     direction: "out",
   },
+  // A copay is a visit, not the plan's premium, even with the insurer's name on it (debugger
+  // 11-02: "KAISER PERMANENTE COPAY" was insurance, so the tax pack's medical left it out).
+  { category: "MEDICAL_PRIMARY_CARE", keywords: ["COPAY", "CO-PAY"], direction: "out" },
   {
     category: "GENERAL_SERVICES_INSURANCE",
     keywords: [
