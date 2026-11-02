@@ -111,8 +111,11 @@ const TEMPLATES: Record<FindingType, (input: ExplainInput) => Omit<ExplanationCo
   low_balance_risk: (input) => {
     const lowest = fact(input.facts, "lowestBalance");
     const around = fact(input.facts, "lowestAround");
+    const uneven = fact(input.facts, "unevenPayMonthly");
     return {
-      explanation: `Your upcoming bills could take your checking account down to about ${lowest ?? "a low balance"}${around ? ` around ${around}` : ""}, before more money comes in. Moving a due date or two could keep you clear of overdraft fees.`,
+      explanation: uneven
+        ? `Your upcoming bills could take your checking account down to about ${lowest ?? "a low balance"}${around ? ` around ${around}` : ""} if no pay comes in. That counts none of your pay, because it comes at uneven times; about ${uneven} a month has been coming in lately. Moving a due date or two could help if a payment runs late.`
+        : `Your upcoming bills could take your checking account down to about ${lowest ?? "a low balance"}${around ? ` around ${around}` : ""}, before more money comes in. Moving a due date or two could keep you clear of overdraft fees.`,
       giveUp: "Nothing, though a biller may need a few days to move a due date.",
       alternatives: [
         "Move money from savings before then",

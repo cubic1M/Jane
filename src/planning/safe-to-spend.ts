@@ -10,6 +10,7 @@ import {
   irregularDue,
   scheduledTransfers,
   scheduledTransfersIn,
+  unevenPay,
   upcomingBills,
   type Expected,
 } from "@/detection/forecast";
@@ -33,6 +34,8 @@ export type SafeToSpend = {
   goalsCents: number;
   setAsideCents: number;
   safeCents: number;
+  // About what comes in a month into checking with no payday to count it on; not in safeCents.
+  unevenPayMonthlyCents: number | null;
 };
 
 export function safeToSpend(
@@ -111,5 +114,7 @@ export function safeToSpend(
     goalsCents,
     setAsideCents: setAside,
     safeCents: balance - billsCents - budgetsLeftCents - goalsCents - setAside,
+    unevenPayMonthlyCents:
+      checking.reduce((sum, a) => sum + (unevenPay(input, a.id) ?? 0), 0) || null,
   };
 }

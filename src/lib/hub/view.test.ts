@@ -114,6 +114,18 @@ describe("the hero row", () => {
     expect(safe?.parts.some((p) => p.key === "safe")).toBe(false);
   });
 
+  it("says when a shortfall counts no pay, because the pay is uneven", () => {
+    const short = { ...hero().safe!, payday: null, safeCents: -5_000 };
+    const { safe } = heroView(hero({ safe: { ...short, unevenPayMonthlyCents: 297_500 } }));
+    expect(safe?.why.at(-1)).toEqual({
+      label: "Not counted: your pay comes at uneven times, about this a month",
+      sign: "",
+      cents: 297_500,
+    });
+    const plain = heroView(hero({ safe: short })).safe;
+    expect(plain?.why.at(-1)?.label).toBe("Short before payday");
+  });
+
   it("draws net worth from the months with balances, and its direction", () => {
     const { netWorth } = heroView(hero());
     expect(netWorth?.cents).toBe(4_820_000);
