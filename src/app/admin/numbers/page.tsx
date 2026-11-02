@@ -1,5 +1,6 @@
 import { FOUNDER_NUMBERS } from "@/config/founder-numbers";
 import { loadFounderNumbers } from "@/lib/founder-numbers";
+import { bankConnectionsLine, itemSlotUse } from "@/lib/plaid/item-slots";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
 import { change, LINES } from "./lines";
@@ -36,7 +37,7 @@ function Sparkline({ values }: { values: (number | null)[] }) {
 
 export default async function FounderNumbersPage() {
   const admin = await requireAdmin();
-  const numbers = await loadFounderNumbers();
+  const [numbers, connections] = await Promise.all([loadFounderNumbers(), itemSlotUse()]);
   const weekAgo = numbers.trend[0];
   const { trial, team, demoOnly } = numbers.excluded;
   const days = FOUNDER_NUMBERS.trendDays;
@@ -87,6 +88,10 @@ export default async function FounderNumbersPage() {
           </tbody>
         </table>
       </div>
+      <section data-bank-connections="" className="flex flex-col gap-1 text-sm">
+        <h2 className="text-xl font-semibold">Plaid</h2>
+        <p>{bankConnectionsLine(connections)}</p>
+      </section>
       <section data-excluded="" className="flex flex-col gap-1 text-sm">
         <h2 className="text-xl font-semibold">Left out</h2>
         <p>

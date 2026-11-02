@@ -290,6 +290,7 @@ model User {
   deadlines              Deadline[]
   sessions               Session[]
   plaidItems             PlaidItem[]
+  plaidItemClaims        PlaidItemClaim[]
   accounts               Account[]
   transactions           Transaction[]
   recurringStreams       RecurringStream[]
@@ -524,6 +525,30 @@ model PlaidItem {
 
   @@index([userId])
   @@map("plaid_items")
+}
+
+// How many Plaid Production Items were ever created (src/lib/plaid/item-slots.ts). Plaid's Trial
+// plan counts every access token for good, so this is never lowered by removing an Item or
+// deleting an account. One row, a number, no personal data.
+model PlaidItemCounter {
+  id   String @id
+  used Int    @default(0)
+
+  @@map("plaid_item_counter")
+}
+
+// Which of a person's allowed Production Items they have used. It outlives removing the Item, so
+// removing and linking again can't spend the shared slots, and goes when the account does. The
+// key is what stops two tabs taking the same one.
+model PlaidItemClaim {
+  userId    String   @map("user_id")
+  ordinal   Int
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, ordinal])
+  @@map("plaid_item_claims")
 }
 
 // Plaid webhooks already handled, by a hash of their body, so a delivery Plaid repeats is

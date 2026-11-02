@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { limitOrNull } from "@/lib/rate-limit";
 import { PlaidRequestError, plaidEnabled } from "@/lib/plaid/client";
+import { LinkingClosedError, linkClosedAnswer } from "@/lib/plaid/item-slots";
 import { ItemNotFoundError, createLinkToken } from "@/lib/plaid/link";
 import { getCurrentUser } from "@/lib/session";
 
@@ -26,6 +27,9 @@ export async function POST(request: Request) {
   try {
     return NextResponse.json({ linkToken: await createLinkToken(user.id, itemId) });
   } catch (error) {
+    if (error instanceof LinkingClosedError) {
+      return NextResponse.json(linkClosedAnswer(error.reason), { status: 409 });
+    }
     if (error instanceof ItemNotFoundError) {
       return NextResponse.json({ error: error.message }, { status: 404 });
     }

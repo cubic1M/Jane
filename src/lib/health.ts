@@ -4,6 +4,8 @@ import { logAudit } from "@/lib/audit";
 import type { Admin } from "@/lib/concierge";
 import { db as defaultClient } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
+import { plaidEnvironment } from "@/lib/plaid/client";
+import { bankConnectionsLine, itemSlotUse } from "@/lib/plaid/item-slots";
 import { rlsCoverage, rlsSwitchWorks } from "@/lib/rls-coverage";
 import { scrub } from "@/lib/scrub";
 
@@ -149,8 +151,44 @@ export async function reportRlsGaps({
   return true;
 }
 
-// Emails the team about each missed daily job, once per outage, and about a gap in row-level
-// security ("row-level security" in what it returns).
+const PLAID_SLOTS_NOTICE = "plaid:item-slots";
+
+// Emails the team once when Plaid's Trial plan is nearly used up (it never gives a slot back), and
+// again only after an upgrade took it back under the mark. True when it sent.
+export async function reportPlaidSlots({
+  client = defaultClient,
+  now = new Date(),
+  send = sendEmail,
+}: Options = {}): Promise<boolean> {
+  if (plaidEnvironment() !== "production") return false;
+  const use = await itemSlotUse({ client });
+  if (use.used < use.warnAt) {
+    await client.healthNotice.deleteMany({ where: { key: PLAID_SLOTS_NOTICE } });
+    return false;
+  }
+  const { count } = await client.healthNotice.createMany({
+    data: [{ key: PLAID_SLOTS_NOTICE, reportedAt: now }],
+    skipDuplicates: true,
+  });
+  if (count === 0) return false;
+  const line = bankConnectionsLine(use);
+  try {
+    const message = {
+      subject: `Plaid: ${line}`,
+      text: `${line}. Removing a bank doesn't give one back on Plaid's Trial plan, so the app offers statement upload once they're gone. To get more, upgrade the plan: docs/setup/plaid-trial.md. You'll get one email about this.`,
+      html: `<p>${line}.</p><p>Removing a bank doesn't give one back on Plaid's Trial plan, so the app offers statement upload once they're gone. To get more, upgrade the plan: <code>docs/setup/plaid-trial.md</code>.</p><p>You'll get one email about this.</p>`,
+    };
+    await Promise.all(teamEmails().map((address) => send({ ...message, to: address })));
+  } catch (error) {
+    await client.healthNotice.deleteMany({ where: { key: PLAID_SLOTS_NOTICE } });
+    console.error("Plaid connections email failed", { error: String(error) });
+    return false;
+  }
+  return true;
+}
+
+// Emails the team about each missed daily job, once per outage, about a gap in row-level security
+// ("row-level security" in what it returns) and about Plaid's Trial plan nearly used up.
 export async function reportMissedJobs({
   client = defaultClient,
   now = new Date(),
@@ -163,6 +201,12 @@ export async function reportMissedJobs({
   } catch (error) {
     // Never stops the job report.
     console.error("Row-level security check failed", { error: String(error) });
+  }
+  try {
+    if (await reportPlaidSlots({ client, now, send })) reported.push("plaid connections");
+  } catch (error) {
+    // Never stops the job report.
+    console.error("Plaid connections check failed", { error: String(error) });
   }
   for (const job of missed) {
     const key = `missed:${job.name}`;

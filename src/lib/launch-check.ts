@@ -45,7 +45,15 @@ function senderDomain(from: string | undefined): string | null {
   return address.split("@")[1]?.trim().toLowerCase() || null;
 }
 
-export function launchChecks(env: Env): Check[] {
+// A limit from the environment that the app will take: empty, or a whole number. The app's own
+// parser is src/config/plaid-items.ts; this file stays import-free.
+const isLimit = (v: string | undefined) => !isSet(v) || /^\d+$/.test(v!.trim());
+
+// Plaid's Trial plan never gives a Production Item back. Only a page with the database can say how
+// many are used (src/lib/plaid/item-slots.ts), so `npm run check:launch` checks the limits alone.
+export type BankConnections = { used: number; limit: number };
+
+export function launchChecks(env: Env, connections?: BankConnections): Check[] {
   const appUrl =
     env.APP_URL ??
     (env.VERCEL_PROJECT_PRODUCTION_URL
@@ -59,6 +67,7 @@ export function launchChecks(env: Env): Check[] {
     required,
     detail,
   });
+  const limitsOk = isLimit(env.PLAID_TRIAL_ITEM_LIMIT) && isLimit(env.PLAID_ITEMS_PER_PERSON);
 
   return [
     check(
@@ -107,6 +116,16 @@ export function launchChecks(env: Env): Check[] {
       "Plaid webhook",
       (appUrl ?? "").startsWith("https://"),
       "Plaid webhooks go to an https /api/plaid/webhook",
+    ),
+    check(
+      "Bank connections",
+      limitsOk && (!connections || connections.used < connections.limit),
+      !limitsOk
+        ? "PLAID_TRIAL_ITEM_LIMIT and PLAID_ITEMS_PER_PERSON must be whole numbers (the Trial plan's limits apply otherwise)"
+        : connections
+          ? `${connections.used} of ${connections.limit} bank connections used`
+          : "The count of bank connections used is on /admin/launch",
+      false,
     ),
     check(
       "Closed beta",

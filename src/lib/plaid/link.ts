@@ -6,7 +6,15 @@ import { logAudit } from "@/lib/audit";
 import { decrypt, encrypt } from "@/lib/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { plaid, plaidCall, plaidInvestmentsEnabled, webhookUrl } from "./client";
+import { PlaidRequestError, plaid, plaidCall, plaidInvestmentsEnabled, webhookUrl } from "./client";
+import { isDemoItemId } from "./demo";
+import {
+  type ItemSlot,
+  LinkingClosedError,
+  linkAvailability,
+  releaseItemSlot,
+  reserveItemSlot,
+} from "./item-slots";
 
 // Plaid Link from our side: a link token to open Link, and the exchange that turns
 // Link's public token into a stored item. The access token is encrypted before it is
@@ -31,6 +39,15 @@ export async function createLinkToken(
 ): Promise<string> {
   let accessToken: string | undefined;
   let chooseAccounts = false;
+  // A new Item needs a free slot. This is a guard: the count happens at the exchange, so a Link
+  // someone abandons costs nothing. Update mode keeps the same Item, so it never asks.
+  if (!itemId) {
+    const link = await linkAvailability(userId, { client });
+    if (!link.open) {
+      await track(userId, "link_refused", { reason: link.reason, at: "link_token" });
+      throw new LinkingClosedError(link.reason);
+    }
+  }
   if (itemId) {
     const item = await scopedFor(userId, client).plaidItems.findFirst({
       where: { id: itemId },
@@ -87,15 +104,46 @@ export async function markItemRepaired(
   await logAudit({ type: "user", id: userId }, "item_relinked", { type: "plaid_item", id: itemId });
 }
 
-// Saves a newly linked item and returns its id. The first sync is the caller's job.
+// Plaid answered no, so it made no access token. With no answer, or a failure of Plaid's own, it
+// may have, so the slot stays taken.
+const noTokenMade = (error: unknown) =>
+  error instanceof PlaidRequestError &&
+  error.status !== null &&
+  error.status >= 400 &&
+  error.status < 500;
+
+// Saves a newly linked item and returns its id. The first sync is the caller's job. Every
+// Production access token counts for good, so the slot is taken before asking Plaid for one.
 export async function exchangePublicToken(
   userId: string,
   publicToken: string,
   institutionName: string | null,
   { client = defaultClient, api = plaid() }: Options = {},
 ): Promise<string> {
-  const data = await plaidCall(api.itemPublicTokenExchange({ public_token: publicToken }));
-  const item = await scopedFor(userId, client).plaidItems.create({
+  let slot: ItemSlot | null;
+  try {
+    slot = await reserveItemSlot(userId, { client });
+  } catch (error) {
+    if (error instanceof LinkingClosedError) {
+      await track(userId, "link_refused", { reason: error.reason, at: "exchange" });
+    }
+    throw error;
+  }
+  const data = await plaidCall(api.itemPublicTokenExchange({ public_token: publicToken })).catch(
+    async (error) => {
+      if (slot && noTokenMade(error)) await releaseItemSlot(slot, { client });
+      throw error;
+    },
+  );
+  const db = scopedFor(userId, client);
+  // The same exchange again (a retry) gives the Item already saved, which has its slot.
+  const saved = await db.plaidItems.findFirst({
+    where: { plaidItemId: data.item_id },
+    select: { id: true },
+  });
+  if (slot && (saved || isDemoItemId(data.item_id))) await releaseItemSlot(slot, { client });
+  if (saved) return saved.id;
+  const item = await db.plaidItems.create({
     data: {
       userId,
       plaidItemId: data.item_id,

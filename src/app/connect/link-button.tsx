@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { LINKING_FULL_CODE, LINKING_FULL_WORDS, LINKING_UPLOAD_WORDS } from "@/config/plaid-items";
 import { sendEvent } from "@/lib/analytics-client";
 
 // Opens Plaid Link. With an itemId it opens update mode, so the person can sign in to
@@ -54,12 +56,21 @@ export function LinkButton({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The last slot went while the page was open: the page itself now offers uploading instead.
+  const [full, setFull] = useState(false);
+
+  function linkingFull() {
+    setFull(true);
+    setBusy(false);
+    router.refresh();
+  }
 
   async function open() {
     setBusy(true);
     setError(null);
     try {
       const token = await post("/api/plaid/link-token", itemId ? { itemId } : {});
+      if (token.body.code === LINKING_FULL_CODE) return linkingFull();
       if (!token.ok) throw new Error(token.body.error ?? "Couldn't start linking.");
       const Plaid = await loadPlaid();
       Plaid.create({
@@ -76,6 +87,7 @@ export function LinkButton({
             publicToken,
             institutionName: metadata.institution?.name ?? null,
           });
+          if (saved.body.code === LINKING_FULL_CODE) return linkingFull();
           if (!saved.ok) {
             setError(saved.body.error ?? "Linking didn't finish. Please try again.");
             setBusy(false);
@@ -93,6 +105,17 @@ export function LinkButton({
       setError(e instanceof Error ? e.message : "Couldn't start linking.");
       setBusy(false);
     }
+  }
+
+  if (full) {
+    return (
+      <p role="status" className="text-sm">
+        {LINKING_FULL_WORDS}{" "}
+        <Link href="/import" className="font-medium text-emerald-700 hover:underline">
+          {LINKING_UPLOAD_WORDS}
+        </Link>
+      </p>
+    );
   }
 
   return (

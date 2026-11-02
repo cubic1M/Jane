@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { failedSignInEmails } from "@/lib/auth-events";
 import { launchChecks, launchReady, signInEmailCheck } from "@/lib/launch-check";
+import { itemSlotUse } from "@/lib/plaid/item-slots";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
 import { LoadingBar } from "@/components/loading-bar";
@@ -8,8 +9,8 @@ import { LoadingBar } from "@/components/loading-bar";
 // The production switch checklist, run against this deployment's own environment.
 async function Launch() {
   const admin = await requireAdmin();
-  const failures = await failedSignInEmails();
-  const checks = [...launchChecks(process.env), signInEmailCheck(failures)];
+  const [failures, connections] = await Promise.all([failedSignInEmails(), itemSlotUse()]);
+  const checks = [...launchChecks(process.env, connections), signInEmailCheck(failures)];
   const ready = launchReady(checks);
   return (
     <>
