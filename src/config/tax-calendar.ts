@@ -13,8 +13,10 @@ export type CalendarKey =
   | "refund"
   | "quiet";
 
+// ask: Jane asks first; auto: Jane acts within the caps; self (where it differs): a real account
+// in the read-only beta, which gets no drafted return and no payment button (debugger 11-02).
 export const CALENDAR_ITEMS: Readonly<
-  Record<CalendarKey, { title: string; ask: string; auto: string }>
+  Record<CalendarKey, { title: string; ask: string; auto: string; self?: string }>
 > = {
   ip_pin: {
     title: "IRS Identity Protection PIN",
@@ -30,6 +32,7 @@ export const CALENDAR_ITEMS: Readonly<
     title: "Estimated tax payment",
     ask: "When a payment is coming due I ask you to pay it, with a button.",
     auto: "I pay each estimated payment a few days before it is due, if it is within your cap for taxes. Above the cap, you get a button.",
+    self: "When a payment is coming due I remind you of the amount and the date, with a link to IRS Direct Pay.",
   },
   withholding: {
     title: "Mid-year withholding check",
@@ -45,6 +48,7 @@ export const CALENDAR_ITEMS: Readonly<
     title: "Filing",
     ask: "When every form is in, I get your return ready for you to review and sign.",
     auto: "When every form is in, I get your return ready for you to review and sign. The signing and filing are always yours.",
+    self: "When every form is in, I tell you, and your tax-time pack is ready to hand to whoever does your return.",
   },
   refund: {
     title: "Your refund",

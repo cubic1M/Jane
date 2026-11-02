@@ -236,7 +236,12 @@ export async function loadTaxCalendar(
         if (ret?.submittedAt)
           return view("waiting", "Your return is filed; I'm watching for the IRS to accept it.");
         if (ret) return view("tap", "Your return is ready for you to review and sign.");
-        return view("waiting", "I get your return ready once every form is in.");
+        return view(
+          "waiting",
+          advice
+            ? "I get your return ready once every form is in."
+            : "Once every form is in, your tax-time pack is ready to hand to whoever does your return.",
+        );
       case "refund": {
         if (!ret?.submittedAt) return view("nothing", "Nothing to track until you file.");
         const refund =
