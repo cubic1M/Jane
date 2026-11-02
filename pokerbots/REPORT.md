@@ -959,6 +959,11 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   - In-sample: +1.8 / +2.1 on 3-handed tables (borderline among five candidates), nothing 4-handed.
   - Fresh seeds, 3-handed: −0.1 / +1.0 / +1.3 for the best candidate on default / field 2 / field 3.
   - Too small to matter on 8-player tables: off. Only heads-up needed its own ranges.
+  - Heads-up postflop and push settings (`results/sng_hu_post_ab.md`, 800 paired heads-up tables):
+    - c-bet, value bar, call margin, push depth and width, bluffing: all within ±0.4;
+    - respecting bets less costs −1.1 (significant).
+
+    Heads-up postflop play is already at its optimum.
 * **Bug hunter:** 247k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
