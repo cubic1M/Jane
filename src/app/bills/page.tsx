@@ -3,11 +3,11 @@ import { Suspense } from "react";
 import { AppHeader, PageLoading } from "@/components/app-header";
 import { FORECAST_DAYS, LOW_BALANCE_CUSHION_CENTS } from "@/config/detection";
 import { loadDetectionInput } from "@/detection/engine";
-import { comingUpBills, forecastAccounts } from "@/detection/forecast";
+import { comingUpBills, forecastAccounts, unevenPay } from "@/detection/forecast";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { EmptyState } from "@/components/empty-state";
-import { balanceLine } from "./balance-line";
+import { balanceLine, unevenPayLine } from "./balance-line";
 
 const dayLabel = (iso: string) =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
@@ -38,6 +38,7 @@ async function Bills() {
 
       {forecasts.map((f) => {
         const low = f.lowest.balanceCents < LOW_BALANCE_CUSHION_CENTS;
+        const uneven = low ? unevenPayLine(unevenPay(input, f.accountId)) : null;
         return (
           <section
             key={f.accountId}
@@ -54,6 +55,7 @@ async function Bills() {
                 ways to avoid it.
               </p>
             )}
+            {uneven && <p className="text-sm">{uneven}</p>}
           </section>
         );
       })}
