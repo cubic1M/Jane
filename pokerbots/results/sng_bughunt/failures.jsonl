@@ -306,3 +306,5 @@
 {"kind": "slow", "seed": 166482, "variant": "P:five_draw", "bot": "icm_any", "p99_ms": 0.657, "over_1ms": 1, "decisions": 135, "t": "2026-11-02 03:30:20"}
 {"kind": "slow", "seed": 169702, "variant": "b_nlhe200", "bot": "icm_tag", "p99_ms": 0.691, "over_1ms": 1, "decisions": 100, "t": "2026-11-02 03:35:34"}
 {"kind": "slow", "seed": 170652, "variant": "e_shortdeck", "bot": "icm_any", "p99_ms": 0.573, "over_1ms": 0, "decisions": 119, "t": "2026-11-02 03:37:06"}
+{"kind": "slow", "seed": 172950, "variant": "P:discard_to_board", "bot": "icm_any", "p99_ms": 0.517, "over_1ms": 1, "decisions": 360, "t": "2026-11-02 03:40:53"}
+{"kind": "slow", "seed": 176758, "variant": "P:rehearsal_sixplus", "bot": "icm_tag", "p99_ms": 1.558, "over_1ms": 2, "decisions": 130, "t": "2026-11-02 03:47:13"}
