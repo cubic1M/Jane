@@ -1032,6 +1032,7 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   - **Switch** `push_steal`: the shove bar is multiplied by 1 + push_steal x (steal factor − 1).
   - **Exploration** (500 tables x 6 cells): 0.5 → Plan B field +5.3*, all3/top3 +2.2*, field 3 +1.9, field 2 −0.9, hackathon-like +0.4, mirror +3.6* (mean +2.1); 1.0 loses on field 2 (−3.5*).
   - **Fresh seeds** (600 tables x 8 cells), 0.5: Plan B field **+5.6***, default +0.3, field 2 0.0, field 3 **+3.4***, all3/top3 −1.1, all3/winner −0.7, hackathon-like +1.0, mirror **+3.1***; mean +1.45, none losing significantly.
+  - **In the rehearsal kit** (same 300 tables vs 7 Plan B copies): our bundle **32.2 → 37.7** per table (Plan B itself 38.5).
   - **Adopted: `push_steal=0.5`** for `icm_tag`, and in the tuner's space. `icm_any` keeps 0 until checked on the discard presets.
 * **C-bet and bluff sizes: half pot stays** (`results/sng_betsize_ab.md`, 500 paired tables x 4 fields). They were hard-coded at half pot; now `cbet_size` / `bluff_size`. A 0.75 c-bet loses −2.7 (all3/top3, significant) and −2.2 (field 3); a 0.33 c-bet loses −2.5 on field 2 (significant); bluff sizes 0.33 / 0.75 are within noise or slightly worse everywhere. Not added to the tuner's search space: two more candidates per tuning round for knobs that are flat or worse.
 * **Plan A under a file-size cap** (`sng/bundle_flat.py --compact`). Practice kit 3 capped submissions at 32 KB; our flat bundle had grown to 69 KB.

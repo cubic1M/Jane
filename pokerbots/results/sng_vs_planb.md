@@ -10,3 +10,8 @@ Opponents (average points per seat):
   errors         : 0   timeouts: 0   (limit 50.0 ms)
   hand_over()    : errors 0   over limit 0
 Opponents (average points per seat):
+
+== after behind_k=0.2 + push_steal=0.5 (submission/bot.py rebuilt), same 300 tables seed 21
+  average points : 37.68   (max 100 per table)   [was 32.22; Plan B itself 38.49]
+  places         : 1st:35  2nd:40  3rd:37  4th:43  5th:35  6th:33  7th:33  8th:44
+  errors         : 0   timeouts: 0
