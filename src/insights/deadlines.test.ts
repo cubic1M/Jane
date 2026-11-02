@@ -8,6 +8,7 @@ import {
   TRIAL_LENGTH_DAYS,
 } from "@/config/deadlines";
 import { TRIAL_DEADLINE_MAX_PERCENT } from "@/config/detection";
+import { deadlineSays } from "@/config/evidence";
 import { AS_OF, CARD, input, plaidStream, tx } from "@/detection/__fixtures__/build";
 import { buildStreams } from "@/detection/streams";
 import type { DetectionInput } from "@/detection/types";
@@ -26,6 +27,8 @@ import {
   trialDeadlines,
   upcomingDeadlines,
   type Deadline,
+  rareBillDeadlines,
+  DEADLINE_KIND_LABELS,
 } from "./deadlines";
 
 const deadline = (overrides: Partial<Deadline> = {}): Deadline => ({
@@ -458,5 +461,64 @@ describe("renewal deadlines and taxes", () => {
         (d) => d.title,
       ),
     ).toEqual(["Adobe renews"]);
+  });
+});
+
+// Debugger 11-02: /deadlines said "Nothing due in the next 90 days" with a $2,210.50 property tax
+// 12 days off, which /budgets knew about.
+describe("a bill that comes twice a year", () => {
+  const TAX = {
+    description: "MULTNOMAH COUNTY PROPERTY TAX",
+    merchantName: "Multnomah County Property Tax",
+    pfcPrimary: "GOVERNMENT_AND_NON_PROFIT",
+    pfcDetailed: "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
+    amountCents: 221_050,
+  };
+  const taxes = (first: number, second: number) =>
+    input({
+      transactions: [
+        tx({ ...TAX, date: addDays(AS_OF, -first) }),
+        tx({ ...TAX, date: addDays(AS_OF, -second) }),
+      ],
+    });
+
+  it("is a bill due, on the date its charges point to, as an estimate", () => {
+    const [bill] = rareBillDeadlines(taxes(353, 170), []);
+    expect(bill).toMatchObject({
+      title: "Multnomah County Property Tax due",
+      kind: "bill",
+      source: "transactions",
+      amountCents: 221_050,
+      evidence: { kind: "pattern", times: 2 },
+    });
+    expect(bill.date > AS_OF).toBe(true);
+    expect(bill.detail).toMatch(/estimate/i);
+    expect(DEADLINE_KIND_LABELS.bill).toBe("Bill due");
+    expect(deadlineSays("bill", bill.evidence)).toBe("statement");
+  });
+
+  it("gets a reminder, since nothing else reminds about it", () => {
+    const [bill] = rareBillDeadlines(taxes(353, 170), []);
+    expect(deadlineAlerts([bill], bill.date)).toHaveLength(1);
+  });
+
+  it("has a key that holds across days, so it's reminded of once", () => {
+    const [bill] = rareBillDeadlines(taxes(353, 170), []);
+    expect(bill.key).toBe(`bill:merchant:multnomah county property tax:${bill.date}`);
+  });
+
+  it("isn't listed when it's past the horizon", () => {
+    expect(rareBillDeadlines(taxes(250, 60), [])).toEqual([]);
+  });
+
+  it("isn't listed twice beside a renewal of the same company", () => {
+    const data = taxes(353, 170);
+    const [bill] = rareBillDeadlines(data, []);
+    const renewal = deadline({
+      key: "renewal:merchant:multnomah county property tax:2026-11-01",
+      kind: "renewal",
+    });
+    expect(rareBillDeadlines(data, [renewal])).toEqual([]);
+    expect(bill).toBeDefined();
   });
 });

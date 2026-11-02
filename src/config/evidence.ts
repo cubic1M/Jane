@@ -45,6 +45,8 @@ export const DEADLINE_EVIDENCE: Readonly<
   // "Return by" needs the purchase.
   return: { statement: ["seen_charge"], question: [] },
   payment: { statement: ["reported", "entered"], question: [] },
+  // A rare bill's due date, from its past charges.
+  bill: { statement: ["pattern"], question: [] },
   fsa: { statement: ["entered"], question: [] },
   card_benefit: { statement: ["entered"], question: [] },
   warranty: { statement: ["entered"], question: [] },

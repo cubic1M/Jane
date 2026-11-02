@@ -36,6 +36,7 @@ import {
 } from "@/config/evidence";
 import type { DetectionInput, DetectionTransaction } from "@/detection/types";
 import { addDays, daysBetween, median } from "@/detection/units";
+import { irregularCosts } from "@/insights/irregular";
 import { debtSummary, type DebtAccount } from "@/insights/loans";
 import { formatCents } from "@/lib/money";
 import { dayLabel } from "@/lib/day-label";
@@ -56,7 +57,9 @@ export type DeadlineKind =
   | "warranty"
   | "other"
   // Spec step 243: an intro price ending, or a yearly plan renewing at its price.
-  | "price_rise";
+  | "price_rise"
+  // A bill that comes twice a year or less, its date estimated from its past charges.
+  | "bill";
 
 // Where a deadline came from.
 export type DeadlineOrigin = "transactions" | "loans" | "entered" | "documents" | "insurance";
@@ -97,6 +100,7 @@ export const DEADLINE_KIND_LABELS: Record<DeadlineKind, string> = {
   warranty: "Warranty",
   other: "Reminder",
   price_rise: "Price goes up",
+  bill: "Bill due",
 };
 
 const merchantName = (t: DetectionTransaction) =>
@@ -140,6 +144,35 @@ export function renewalDeadlines(input: DetectionInput, streams: Stream[]): Dead
           evidence: streamEvidence(s),
         })),
     );
+}
+
+// A bill that comes twice a year or less, like a property tax: too few charges for a renewal, and
+// known to the set-aside (./irregular.ts). Its date is an estimate, and the card says so. A company
+// already listed as renewing isn't listed again.
+export function rareBillDeadlines(
+  input: DetectionInput,
+  renewals: readonly Deadline[],
+): Deadline[] {
+  const until = addDays(input.asOf, DEADLINE_HORIZON_DAYS);
+  return irregularCosts(input)
+    .items.filter(
+      (i) =>
+        i.kind === "bill" &&
+        i.nextDate >= input.asOf &&
+        i.nextDate <= until &&
+        !renewals.some((r) => r.key.startsWith(`renewal:${i.key}:`)),
+    )
+    .map((i): Deadline => ({
+      key: `bill:${i.key}:${i.nextDate}`,
+      title: `${i.name} due`,
+      date: i.nextDate,
+      kind: "bill",
+      source: "transactions",
+      amountCents: i.nextAmountCents,
+      href: purchaseLink(i.name),
+      detail: `About ${formatCents(i.nextAmountCents)}. An estimate from what you paid before: check the bill for the exact date.`,
+      evidence: { kind: "pattern", times: PATTERN_MIN_TIMES },
+    }));
 }
 
 // A subscription-like merchant whose only charge so far is a tiny first one, like a $1

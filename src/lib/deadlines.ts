@@ -15,6 +15,7 @@ import {
   enteredDeadlines,
   fromDocumentDates,
   paymentDeadlines,
+  rareBillDeadlines,
   renewalDeadlines,
   returnDeadlines,
   trialDeadlines,
@@ -61,8 +62,10 @@ export const transactionDeadlinesFrom =
         .map((c) => c.merchantKey),
     };
     const streams = buildStreams(input);
+    const renewals = renewalDeadlines(input, streams);
     return [
-      ...renewalDeadlines(input, streams),
+      ...renewals,
+      ...rareBillDeadlines(input, renewals),
       ...trialDeadlines(input),
       ...returnDeadlines(input, streams),
       // Spec step 99.
