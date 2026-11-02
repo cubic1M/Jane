@@ -41,6 +41,8 @@ import { askCallBody, callResultBody } from "@/lib/jane-agent/insurance/done-by-
 import { coverBody, coverActions } from "@/lib/jane-agent/insurance/cover-words";
 import { conditionWords, limitWords } from "@/lib/insurance/card-cover";
 import { formatCents } from "@/lib/money";
+import { READ_ONLY_INSURANCE } from "@/config/read-only-beta";
+import { conciergeMode } from "@/lib/concierge-mode";
 import { requireUser } from "@/lib/session";
 import { todayOf } from "@/lib/today";
 import { autopilotOf } from "@/lib/autopilot";
@@ -200,6 +202,8 @@ async function InsuranceContent({
   };
   const now = new Date();
   const asOf = await todayOf(user.id, { now });
+  // Debugger 11-01: a real account read that Jane reshops, calls insurers and files claims.
+  const actsForYou = await conciergeMode(user.id);
   const [loaded, autopilot, insuranceArea] = await Promise.all([
     loadInsuranceArea(user.id, {
       now,
@@ -606,16 +610,20 @@ async function InsuranceContent({
               <Link href="/documents" className={LINK}>
                 policy documents
               </Link>{" "}
-              and adds each one once you confirm what Jane read. Unless you let Jane switch for you
-              in Settings, it never buys, changes or cancels insurance without your tap.
+              and adds each one once you confirm what Jane read.{" "}
+              {actsForYou
+                ? "Unless you let Jane switch for you in Settings, it never buys, changes or cancels insurance without your tap."
+                : READ_ONLY_INSURANCE.limit}
             </p>
             {/* Spec steps 108 and 141: what Jane does with insurance on its own. */}
-            <p>
-              On autopilot: {autopilotReply(autopilot, insuranceArea).body}{" "}
-              <Link href="/settings#sectors" className={LINK}>
-                Change it
-              </Link>
-            </p>
+            {actsForYou && (
+              <p>
+                On autopilot: {autopilotReply(autopilot, insuranceArea).body}{" "}
+                <Link href="/settings#sectors" className={LINK}>
+                  Change it
+                </Link>
+              </p>
+            )}
             {totalLine && <p>{totalLine}</p>}
           </div>
         </details>

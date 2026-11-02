@@ -1,6 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
 import { Client } from "pg";
 import { TERMS_VERSION } from "../src/config/legal";
+import {
+  READ_ONLY_INSURANCE,
+  READ_ONLY_INVESTMENTS,
+  READ_ONLY_TAX_CALENDAR,
+  READ_ONLY_TAXES,
+} from "../src/config/read-only-beta";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { waitForImport } from "./import-wait";
 
@@ -91,6 +97,33 @@ test("a new person starts with uploading, and lands on the report", async ({ pag
   await expect(page.locator("[data-more-months]")).toContainText("Upload 3 months");
   await page.getByText(/^Accounts we read/).click();
   await expect(page.getByText("Bank of America checking").first()).toBeVisible();
+});
+
+// Debugger 11-01: behind "What Jane does on its own", a real account read that Jane reshops,
+// files claims and starts its return.
+test("a real account's area pages say what the read-only beta does", async ({ page, baseURL }) => {
+  await signIn(page, baseURL);
+  await page.goto("/import");
+  await uploadFile(page, "bofa-checking.csv");
+  await page.getByRole("button", { name: "Import 4 transactions" }).click();
+  await expect(page.locator("[data-import-saved]")).toContainText("Saved 4 transactions");
+  await waitForImport(page);
+
+  for (const [path, title, says] of [
+    ["/taxes", READ_ONLY_TAXES.title, READ_ONLY_TAXES.lines[2]],
+    ["/insurance", READ_ONLY_INSURANCE.title, READ_ONLY_INSURANCE.limit],
+    ["/investments", READ_ONLY_INVESTMENTS.title, READ_ONLY_INVESTMENTS.lines[1]],
+  ]) {
+    await page.goto(path);
+    const main = page.getByRole("main");
+    await main.getByText(title, { exact: true }).first().click();
+    await expect(main.getByText(says)).toBeVisible();
+    await expect(main.getByText("What Jane does on its own")).toHaveCount(0);
+    await expect(main.getByRole("link", { name: /Change (your autopilot|it)/ })).toHaveCount(0);
+  }
+
+  await page.goto("/taxes/calendar");
+  await expect(page.getByText(READ_ONLY_TAX_CALENDAR)).toBeVisible();
 });
 
 test("a CSV in an unknown layout gets a column picker instead of failing", async ({

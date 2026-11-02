@@ -6,10 +6,12 @@ import { AppHeader, PageLoading } from "@/components/app-header";
 import { AreaPage } from "@/components/area-page/area-page";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { ViewTracker } from "@/components/view-tracker";
+import { READ_ONLY_TAXES } from "@/config/read-only-beta";
 import { TAX_TAG_ORDER, TAX_TAGS, TAX_YEAR, whatJaneDoes } from "@/config/tax";
 import { TAXES_ANCHORS, TOPICS, itemId } from "@/lib/area-pages/taxes";
 import { firstSentences } from "@/lib/area-pages/tree";
 import { formatCents } from "@/lib/money";
+import { conciergeMode } from "@/lib/concierge-mode";
 import { requireUser } from "@/lib/session";
 import { loadTaxesArea, type ProfileField } from "@/lib/area-pages/taxes-load";
 import { type TaxTagsView } from "@/lib/tax-organizer";
@@ -234,6 +236,9 @@ async function TaxesContent({
     newIncome,
     area,
   } = await loadTaxesArea(user.id, { now });
+  // Debugger 11-01: a real account read that Jane starts its return and acts within caps.
+  const actsForYou = await conciergeMode(user.id);
+  const doesTitle = actsForYou ? "What Jane does on its own" : READ_ONLY_TAXES.title;
 
   const details: Record<string, ReactNode> = {};
   const more: Record<string, ReactNode> = {};
@@ -342,21 +347,29 @@ async function TaxesContent({
       {/* Below the tree: nothing open by default (docs/design/area-pages.md). */}
       <div className="flex flex-col gap-2">
         <details className="border-t border-zinc-200 pt-2 dark:border-zinc-800">
-          <summary className={`cursor-pointer text-sm ${LINK}`}>What Jane does on its own</summary>
+          <summary className={`cursor-pointer text-sm ${LINK}`}>{doesTitle}</summary>
           <section aria-labelledby="by-itself" className="mt-2 flex flex-col gap-2 text-sm">
             <h2 id="by-itself" className="sr-only">
-              What Jane does on its own
+              {doesTitle}
             </h2>
             <ul className="flex list-disc flex-col gap-1 pl-5">
-              {whatJaneDoes(taxes.level).map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-              {/* Spec step 141: what the Taxes area may do by itself, as Settings has it. */}
-              <li>{byHerself(taxes)} Nothing is ever filed or signed without your tap.</li>
+              {actsForYou ? (
+                <>
+                  {whatJaneDoes(taxes.level).map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                  {/* Spec step 141: what the Taxes area may do by itself, as Settings has it. */}
+                  <li>{byHerself(taxes)} Nothing is ever filed or signed without your tap.</li>
+                </>
+              ) : (
+                READ_ONLY_TAXES.lines.map((line) => <li key={line}>{line}</li>)
+              )}
             </ul>
-            <Link href="/settings#sectors" className={LINK}>
-              Change your autopilot
-            </Link>
+            {actsForYou && (
+              <Link href="/settings#sectors" className={LINK}>
+                Change your autopilot
+              </Link>
+            )}
           </section>
         </details>
         {!savings.advice && (

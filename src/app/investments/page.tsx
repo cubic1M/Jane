@@ -33,6 +33,8 @@ import { practiceProfileOf } from "@/lib/practice/preferences";
 import { type HoldingView } from "@/insights/investments";
 import { formatCents } from "@/lib/money";
 import { scanOnOpenQuietly } from "@/lib/practice/scan";
+import { READ_ONLY_INVESTMENTS } from "@/config/read-only-beta";
+import { conciergeMode } from "@/lib/concierge-mode";
 import { requireUser } from "@/lib/session";
 import { loadInvestingLeak } from "@/lib/investments/leak";
 import { loadPanicSells } from "@/lib/investments/panic-sells";
@@ -239,6 +241,9 @@ async function InvestmentsContent({
     hasMonths,
     area,
   } = await loadInvestingArea(user.id);
+  // Debugger 11-01: a real account read that Jane says what it would change, and that trades wait.
+  const actsForYou = await conciergeMode(user.id);
+  const doesTitle = actsForYou ? "What Jane does on its own" : READ_ONLY_INVESTMENTS.title;
 
   const facts = ownedFacts(data.accounts);
   const leak = await loadInvestingLeak(user.id);
@@ -572,19 +577,21 @@ async function InvestmentsContent({
       {/* Below the tree: nothing open by default (docs/design/area-pages.md). */}
       <div className="flex flex-col gap-2">
         <details className="border-t border-zinc-200 pt-2 dark:border-zinc-800">
-          <summary className={`cursor-pointer text-sm ${LINK}`}>What Jane does on its own</summary>
+          <summary className={`cursor-pointer text-sm ${LINK}`}>{doesTitle}</summary>
           <section aria-labelledby="by-itself" className="mt-2 flex flex-col gap-2 text-sm">
             <h2 id="by-itself" className="sr-only">
-              What Jane does on its own
+              {doesTitle}
             </h2>
             <ul className="list-disc pl-5">
-              {byHerself.map((line) => (
+              {(actsForYou ? byHerself : READ_ONLY_INVESTMENTS.lines).map((line) => (
                 <li key={line}>{line}</li>
               ))}
             </ul>
-            <Link href="/settings#sectors" className={LINK}>
-              Change your autopilot
-            </Link>
+            {actsForYou && (
+              <Link href="/settings#sectors" className={LINK}>
+                Change your autopilot
+              </Link>
+            )}
           </section>
         </details>
       </div>

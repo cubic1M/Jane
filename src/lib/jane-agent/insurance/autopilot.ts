@@ -1,7 +1,9 @@
 import { AUTOPILOT_LEVELS } from "@/config/autopilot";
 import { INSURANCE_AUTOPILOT } from "@/config/insurance";
+import { READ_ONLY_INSURANCE } from "@/config/read-only-beta";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { autopilotOf } from "@/lib/autopilot";
+import { conciergeMode } from "@/lib/concierge-mode";
 import { autopilotFor, type SectorAutopilot } from "@/lib/sector-autopilot";
 import type { Reply } from "../replies";
 import { byHerself } from "../replies-autopilot";
@@ -36,6 +38,13 @@ export async function autopilotAnswer(
   userId: string,
   { client }: { client: PrismaClient },
 ): Promise<Reply> {
+  if (!(await conciergeMode(userId, { client }))) {
+    return {
+      body: READ_ONLY_INSURANCE.body,
+      actions: [{ id: "open", label: "See your insurance", kind: "link", href: "/insurance" }],
+      refs: {},
+    };
+  }
   const [level, insurance] = await Promise.all([
     autopilotOf(userId, { client }),
     autopilotFor(userId, "insurance", { client }),

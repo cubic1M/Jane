@@ -66,7 +66,7 @@ export const TOPICS: Record<"filing" | "topics", readonly Topic[]> = {
     {
       key: "file",
       label: "File your return",
-      what: "How to file, with everything Jane gathered for the year. Nothing is filed without your tap.",
+      what: "How to file, with everything Jane gathered for the year.",
       href: "/taxes/file",
       link: "File your taxes",
     },
@@ -108,7 +108,7 @@ export const TOPICS: Record<"filing" | "topics", readonly Topic[]> = {
     {
       key: "calendar",
       label: "Your tax calendar",
-      what: "What Jane does each month of the tax year, on its own within your caps or with your tap.",
+      what: "What is due each month of the tax year, and what to do about it.",
       href: "/taxes/calendar",
       link: "See my tax calendar",
     },

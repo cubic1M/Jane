@@ -11,6 +11,8 @@ import { EXPLAINERS, REVIEW_NOTE, explainer } from "@/config/learn";
 import { autopilotOf } from "@/lib/autopilot";
 import { autopilotFor } from "@/lib/sector-autopilot";
 import { loadInvestmentSnapshot } from "./snapshot";
+import { READ_ONLY_INVESTMENTS } from "@/config/read-only-beta";
+import { conciergeMode } from "@/lib/concierge-mode";
 import { investmentsByHerself, overviewReply } from "./replies";
 import { loadAccountPlan } from "@/lib/investments/accounts";
 import { loadReturns } from "@/lib/investments/returns";
@@ -658,10 +660,11 @@ export async function runInvestmentTool(
       });
     }
     case "investments_overview": {
-      const [snapshot, level, investing] = await Promise.all([
+      const [snapshot, level, investing, actsForYou] = await Promise.all([
         loadInvestmentSnapshot(userId, { client, now }),
         autopilotOf(userId, { client }),
         autopilotFor(userId, "investing", { client, now }),
+        conciergeMode(userId, { client }),
       ]);
       const note = overviewReply(snapshot);
       money(snapshot.totalCents);
@@ -674,7 +677,9 @@ export async function runInvestmentTool(
       return out({
         note: note.body,
         ordersReady: snapshot.advice ? (snapshot.rebalance?.orders.length ?? 0) : 0,
-        whatJaneDoesByHerself: investmentsByHerself(level, investing),
+        whatJaneDoesByHerself: actsForYou
+          ? investmentsByHerself(level, investing)
+          : READ_ONLY_INVESTMENTS.lines,
       });
     }
     case "investment_returns": {
