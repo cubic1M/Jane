@@ -117,6 +117,20 @@ async function claim(
     RETURNING id, kind, payload, attempts, max_attempts`;
 }
 
+const PERSON_GONE = "The person is gone";
+// Prisma's code for a foreign key failure.
+const FOREIGN_KEY_ERROR = "P2003";
+
+async function personGone(error: unknown, payload: JobPayload, client: PrismaClient) {
+  if ((error as { code?: unknown } | null)?.code !== FOREIGN_KEY_ERROR) return false;
+  if (!payload?.userId) return false;
+  const user = await client.user.findUnique({
+    where: { id: payload.userId },
+    select: { id: true },
+  });
+  return user === null;
+}
+
 async function execute(job: Claimed, client: PrismaClient, now: Date, handlers: Handlers) {
   const handler = handlers[job.kind as JobKind];
   try {
@@ -125,6 +139,15 @@ async function execute(job: Claimed, client: PrismaClient, now: Date, handlers: 
     await client.job.update({ where: { id: job.id }, data: { status: "done", lastError: null } });
     return "done" as const;
   } catch (error) {
+    // Their person was deleted with the job still queued (a trial person's day ending): it can
+    // never work, and retrying spends the cron's time (debugger 11-02).
+    if (await personGone(error, job.payload as JobPayload, client)) {
+      await client.job.update({
+        where: { id: job.id },
+        data: { status: "done", lastError: PERSON_GONE },
+      });
+      return "done" as const;
+    }
     const lastError = scrub(String(error)).slice(0, JOB_ERROR_LENGTH);
     const failed = job.attempts >= job.max_attempts;
     await client.job.update({
