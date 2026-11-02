@@ -166,7 +166,14 @@ describe.runIf(url)("the monthly money report", { timeout: 120_000 }, () => {
     const mine = send.mock.calls.filter(([e]) => e.to === email);
     expect(mine).toHaveLength(1);
     const [sent] = mine[0];
-    expect(sent.subject).toBe("Your money report for September 2026");
+    // The month close as one email: books, what changed, what's fixed, what's still open.
+    expect(sent.subject).toBe("Your September 2026 close");
+    expect(sent.text).toMatch(/^Books:\n- /m);
+    expect(sent.text).toMatch(/^What changed:\n- /m);
+    expect(sent.text).toMatch(/^What's fixed:\n- /m);
+    expect(sent.text).toMatch(/^What's still open:\n- /m);
+    expect(sent.text).toContain("/close/2026-09");
+    expect(sent.html).toContain("What&#39;s still open".replace("&#39;", "'"));
     expect(sent.text).toMatch(/^Earned: \$[\d,]+\.\d\d came in\. \S+\/insights$/m);
     // The one monthly email: the check-in's summary and spending are in it.
     expect(sent.text.split("\n")[2]).toMatch(/^In September you spent \$/);

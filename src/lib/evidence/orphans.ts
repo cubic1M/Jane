@@ -128,6 +128,19 @@ export async function removeOrphans(
   removed.cleared = await removeDemoLeftovers(userId, client);
   if (findingIds.length > 0) {
     removed.findings = (await db.findings.deleteMany({ where: { id: { in: findingIds } } })).count;
+    // A finding card's line on the record goes with its finding, and its follow-up alerts.
+    await db.suggestionOutcomes.deleteMany({
+      where: { suggestionKey: { in: findingIds.map((id) => `finding:${id}`) } },
+    });
+    await db.alerts.deleteMany({
+      where: {
+        type: "follow_up",
+        OR: findingIds.flatMap((id) => [
+          { key: { startsWith: `nudge:finding:${id}:` } },
+          { key: { startsWith: `failed:finding:${id}:` } },
+        ]),
+      },
+    });
   }
   if (outcomeIds.length > 0) {
     removed.outcomes = (
@@ -255,6 +268,8 @@ export async function forgetSince(
         db.refinanceChecks.deleteMany({ where: { createdAt: after } }),
         db.insuranceCheckups.deleteMany({ where: { createdAt: after } }),
         db.insuranceSavings.deleteMany({ where: { createdAt: after } }),
+        // What it did for them through stand-ins, all of it simulated on data that's gone.
+        db.janeActs.deleteMany({ where: { createdAt: after } }),
       ]
     : [];
   const counts = await Promise.all([

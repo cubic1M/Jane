@@ -1,3 +1,4 @@
+import { placeThrough } from "@/lib/brokerage/orders";
 import { randomUUID } from "node:crypto";
 import {
   DEFAULT_GAIN_RATE,
@@ -177,7 +178,12 @@ export async function makeSwaps(
     buyIn(s.a.accountId, s.a.buy, s.amountCents);
     buyIn(s.b.accountId, s.b.buy, s.amountCents);
   }
-  await partner.placeOrders(userId, { batchId, reason: "asset_location", orders }, { client, now });
+  await placeThrough(
+    partner,
+    userId,
+    { batchId, reason: "asset_location", orders },
+    { client, now },
+  );
   await logAudit(
     { type: "user", id: userId },
     "brokerage_orders_placed",

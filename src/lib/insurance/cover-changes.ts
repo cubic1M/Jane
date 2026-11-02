@@ -1,3 +1,4 @@
+import { throughPermission } from "@/lib/permission/check";
 import {
   CARRIER_CHANGES,
   COVER_CHANGES_DAILY_LIMIT,
@@ -236,10 +237,26 @@ export async function applyCoverEvent(
       // Without a partner Jane can't make it with the carrier: only the person can.
       if (!carrier && by === "autopilot") continue;
       if (carrier && policy) {
-        const endorsed = await carrier.endorse(
-          { carrier: policy.carrier, kind: policy.kind, premiumCents: policy.premiumCents },
-          { kind: change.change, detail: change.detail },
-          { now },
+        const endorsed = await throughPermission(
+          userId,
+          {
+            specialist: "insurance",
+            what: `Changed your ${policy.carrier} policy`,
+            sector: "insurance",
+            cents: 0,
+            authority:
+              by === "autopilot"
+                ? { kind: "standing", sector: "insurance", needs: "safe" }
+                : { kind: "yes" },
+            undo: { kind: "none", why: "Through a stand-in: nothing real to take back." },
+          },
+          { client, now },
+          () =>
+            carrier.endorse(
+              { carrier: policy.carrier, kind: policy.kind, premiumCents: policy.premiumCents },
+              { kind: change.change, detail: change.detail },
+              { now },
+            ),
         );
         update = {
           ...update,

@@ -1,3 +1,4 @@
+import { throughPermission } from "@/lib/permission/check";
 import { AGENT_CALL_TYPES } from "@/config/agent";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { sendStatusEmail } from "@/lib/action-emails";
@@ -133,7 +134,19 @@ export async function startCall(
     client,
   );
   // A real provider would be asked to call here; the simulated one answers through a job.
-  await enqueueJob("voice_simulated_result", { userId, actionId: action.id }, { client, now });
+  await throughPermission(
+    userId,
+    {
+      specialist: "phone_agent",
+      what: `Called ${company} about your bill`,
+      sector: "bills",
+      cents: 0,
+      authority: { kind: "yes", decisionId: action.decision.id },
+      undo: { kind: "none", why: "A simulated call: nothing real to take back." },
+    },
+    { client, now },
+    () => enqueueJob("voice_simulated_result", { userId, actionId: action.id }, { client, now }),
+  );
   await setStatus(
     userId,
     action,

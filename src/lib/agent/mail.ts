@@ -1,3 +1,4 @@
+import { requireGrant } from "@/lib/permission/gate";
 import { sendEmail } from "@/lib/email";
 import { isTrialUser } from "@/lib/trial-ids";
 
@@ -41,6 +42,8 @@ export function agentFromAddress(): string {
 export type OutgoingMail = { to: string; subject: string; text: string; replyTo: string };
 
 export async function sendAgentMail(mail: OutgoingMail): Promise<void> {
+  // Only through the permission check (src/lib/permission/check.ts).
+  requireGrant("email_agent");
   if (mailMode() !== "email") throw new Error("Agent email isn't set up");
   await sendEmail({
     to: mail.to,

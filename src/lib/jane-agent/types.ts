@@ -352,6 +352,9 @@ export const ACTION_IDS = [
   "suggestion.yes",
   "suggestion.no",
   "suggestion.why",
+  // Follow-through: on a Yes that hasn't been done, or a fix that didn't hold.
+  "followup.done",
+  "followup.no",
   // Spec step 243: a price rise the person called about.
   "price.called",
   // Spec step 242: money for two.
@@ -404,6 +407,10 @@ export type CardExtras = {
 };
 
 export type MessageRefs = {
+  // Follow-through (src/lib/follow-through.ts): the record's key, which round, and what for.
+  followUp?: string;
+  followUpRound?: number;
+  followUpKind?: "nudge" | "failed";
   findingId?: string;
   // Spec step 110: the extra a month the payoff plan's buttons start it with, in cents.
   debtPlanExtraCents?: number;

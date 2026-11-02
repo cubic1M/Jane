@@ -179,6 +179,10 @@ enum AlertType {
   estimated_tax
   // Spec step 208: a charge, bill or refund that doesn't look right ("this was me" / "not me").
   unusual_activity
+  // Follow-through (src/lib/follow-through.ts): a Yes with nothing done, or a fix that didn't show.
+  follow_up
+  // Upload-only people: a statement cycle ended, so a new statement should be ready.
+  statement_due
 
   @@map("alert_type")
 }
@@ -274,6 +278,8 @@ model User {
   // On bill calls, accept any lower price with no contract and no fee, even on a different
   // plan of the same service (spec step 62). Off: every offer comes to the person.
   acceptSimpleOffers         Boolean         @default(false) @map("accept_simple_offers")
+  // The stop-all switch: while set, nothing passes the permission check.
+  actsStoppedAt              DateTime?       @map("acts_stopped_at") @db.Timestamptz(3)
   // Jane's chat messages as notifications (spec step 85): { channel, kinds }. Missing values
   // use the defaults in src/config/chat-notify.ts.
   chatNotifyPrefs            Json            @default("{}") @map("chat_notify_prefs")
@@ -387,6 +393,7 @@ model User {
 
   autopilotSectors   AutopilotSector[]
   autopilotActs      AutopilotAct[]
+  janeActs           JaneAct[]
   collegePlans       CollegePlan[]
   hsaReceipts        HsaReceipt[]
   equityGrants       EquityGrant[]
@@ -3369,6 +3376,32 @@ model AutopilotSector {
 
 // Something a sector did by itself (spec step 141), and the money it moved or committed,
 // so the monthly caps hold. Written through src/lib/sector-autopilot.ts recordAct.
+// One record of what Jane did: every act that passed the permission check
+// (src/lib/permission/check.ts), through any specialist.
+model JaneAct {
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  specialist String
+  sector     String
+  what       String
+  why        String
+  cents      Int       @default(0)
+  // Through a stand-in: nothing real happened.
+  simulated  Boolean   @default(true)
+  // "yes" or "standing".
+  authority  String
+  undoUntil  DateTime? @map("undo_until") @db.Timestamptz(3)
+  undoHref   String?   @map("undo_href")
+  // "started", then "done" or "failed".
+  status     String    @default("started")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("jane_acts")
+}
+
 model AutopilotAct {
   id        String   @id @default(cuid())
   userId    String   @map("user_id")
@@ -4324,6 +4357,15 @@ model SuggestionOutcome {
   lapsedAt          DateTime? @map("lapsed_at") @db.Timestamptz(3)
   heldProof         String?   @map("held_proof")
   heldEvidenceTxIds String[]  @default([]) @map("held_evidence_tx_ids")
+  // Follow-through (src/planning/follow-through.ts): nudges after a Yes with nothing done, and a
+  // fix that failed (the day it did) coming back with its next step.
+  nudgeCount        Int       @default(0) @map("nudge_count")
+  lastNudgedAt      DateTime? @map("last_nudged_at") @db.Timestamptz(3)
+  failedAt          DateTime? @map("failed_at") @db.Timestamptz(3)
+  comebacks         Int       @default(0)
+  comebackAt        DateTime? @map("comeback_at") @db.Timestamptz(3)
+  // Status "no_longer_found": a Yes nothing can verify, settled when Jane stopped finding it.
+  settledAt         DateTime? @map("settled_at") @db.Timestamptz(3)
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

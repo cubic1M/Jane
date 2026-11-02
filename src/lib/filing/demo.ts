@@ -1,3 +1,4 @@
+import { gated } from "@/lib/permission/gate";
 import { DEMO_FILING_ACCEPT_HOURS } from "@/config/tax";
 import type { FilingPartner } from "./types";
 
@@ -5,24 +6,28 @@ import type { FilingPartner } from "./types";
 // Jane's own estimate as its preview, takes a signed submission, and reports it accepted a
 // day later. It files nothing anywhere; it's only offered on demo-bank data.
 
-export const demoFilingPartner: FilingPartner = {
-  name: "demo",
-  async createReturn(_pkg, preview) {
-    return { partnerReturnId: `demo-return-${crypto.randomUUID()}`, preview };
+export const demoFilingPartner: FilingPartner = gated(
+  "filing",
+  {
+    name: "demo",
+    async createReturn(_pkg, preview) {
+      return { partnerReturnId: `demo-return-${crypto.randomUUID()}`, preview };
+    },
+    async createAmendment({ taxYear, changes }) {
+      return {
+        partnerReturnId: `demo-amendment-${taxYear}-${crypto.randomUUID()}`,
+        refundCents: changes.reduce((s, c) => s + c.savesCents, 0),
+      };
+    },
+    async submitReturn(_id, signature) {
+      if (!signature.name.trim()) throw new Error("A return needs a signature.");
+      return { status: "submitted" };
+    },
+    async status(_id, submittedAt, now) {
+      return now.getTime() - submittedAt.getTime() >= DEMO_FILING_ACCEPT_HOURS * 3_600_000
+        ? "accepted"
+        : "submitted";
+    },
   },
-  async createAmendment({ taxYear, changes }) {
-    return {
-      partnerReturnId: `demo-amendment-${taxYear}-${crypto.randomUUID()}`,
-      refundCents: changes.reduce((s, c) => s + c.savesCents, 0),
-    };
-  },
-  async submitReturn(_id, signature) {
-    if (!signature.name.trim()) throw new Error("A return needs a signature.");
-    return { status: "submitted" };
-  },
-  async status(_id, submittedAt, now) {
-    return now.getTime() - submittedAt.getTime() >= DEMO_FILING_ACCEPT_HOURS * 3_600_000
-      ? "accepted"
-      : "submitted";
-  },
-};
+  ["submitReturn"],
+);

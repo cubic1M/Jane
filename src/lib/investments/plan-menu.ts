@@ -1,3 +1,4 @@
+import { throughPermission } from "@/lib/permission/check";
 import { DEMO_PLAN_NAME, MENU_MIN_SAVING_CENTS, MENU_SUBTYPES } from "@/config/plan-menu";
 import { FUND_FACTS, DEMO_EMPLOYER_PLAN_MENU } from "@/config/funds";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -221,7 +222,19 @@ export async function requestPlanChange(
   if (allocation.some((a) => !menu.has(a.ticker)))
     throw new PlanMenuError("A fund isn't on your plan's menu.");
   const partner = payrollPartner();
-  const { partnerRef } = await partner.requestAllocationChange(allocation);
+  const { partnerRef } = await throughPermission(
+    userId,
+    {
+      specialist: "payroll",
+      what: "Asked your plan to change how it's invested",
+      sector: "investing",
+      cents: 0,
+      authority: { kind: "yes" },
+      undo: { kind: "none", why: "A request your plan acts on; nothing moves here." },
+    },
+    { client, now },
+    () => partner.requestAllocationChange(allocation),
+  );
   const row = await scopedFor(userId, client).planChanges.create({
     data: { userId, menuId: view.menu.id, partner: partner.name, partnerRef, allocation },
     select: { id: true },

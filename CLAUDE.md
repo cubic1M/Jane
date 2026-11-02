@@ -52,6 +52,10 @@ investment advice in this MVP.
   replaces the strategy, trades
   simulated money only, runs in advice mode only, uses rules (no Claude call), and acts on an
   event only at a close after it became public (no lookahead; docs/backtests/events.md)
+- Nothing acts for a person without passing src/lib/permission/check.ts: every connector and the
+  email agent (specialists in src/config/specialists.ts; their acting methods are gated in
+  src/lib/permission/gate.ts). Real accounts stay read-only until a licensed partner, counsel and
+  the flags say otherwise
 - Write tests for every rule and every API route you add
 - Prefer small, readable modules over clever abstractions
 - When unsure about a Plaid field or category name, check the Plaid docs instead

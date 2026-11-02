@@ -1,3 +1,4 @@
+import { throughPermission } from "@/lib/permission/check";
 import { FILING_SEASON, TAX_TAG_ORDER } from "@/config/tax";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
@@ -229,7 +230,19 @@ export async function signReturn(
   const partner = await filingPartnerFor(userId, { client });
   if (!partner || partner.name !== row.partner)
     throw new FilingError("The filing partner isn't available.");
-  await partner.submitReturn(row.partnerReturnId, { name, signedAt: now });
+  await throughPermission(
+    userId,
+    {
+      specialist: "filing",
+      what: "Filed your tax return",
+      sector: "taxes",
+      cents: 0,
+      authority: { kind: "yes", because: "You signed it." },
+      undo: { kind: "none", why: "A simulated filing: nothing real to take back." },
+    },
+    { client, now },
+    () => partner.submitReturn(row.partnerReturnId, { name, signedAt: now }),
+  );
   await db.taxReturns.updateMany({
     where: { id: row.id, status: "ready_for_review" },
     data: { status: "submitted", signerName: name, signedAt: now, submittedAt: now },

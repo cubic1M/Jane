@@ -1,3 +1,4 @@
+import { placeThrough } from "@/lib/brokerage/orders";
 import { coreFundsFor } from "@/planning/values";
 import { loadPrefs } from "./values";
 import { randomUUID } from "node:crypto";
@@ -294,7 +295,8 @@ export async function doStage(
         profile.complete ? profile.riskLevel : 3,
         coreFundsFor(await loadPrefs(userId, { client })),
       );
-      await partner.placeOrders(
+      await placeThrough(
+        partner,
         userId,
         {
           batchId: randomUUID(),

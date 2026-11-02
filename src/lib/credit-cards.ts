@@ -1,3 +1,4 @@
+import { throughPermission } from "@/lib/permission/check";
 import { CARD_PARTNER, CARD_SPEND_DAYS, CARD_SPEND_MIN_DAYS } from "@/config/credit-cards";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { DebtBook } from "@/insights/debts";
@@ -224,11 +225,24 @@ export async function applyForCard(
     where: { id: userId },
     select: { name: true, email: true },
   });
-  const result = await found.partner.apply({
-    product,
-    creditBand,
-    applicant: { name: user?.name ?? "", email: user?.email ?? "" },
-  });
+  const result = await throughPermission(
+    userId,
+    {
+      specialist: "credit_cards",
+      what: `Applied for the ${product.name}`,
+      sector: "debt",
+      cents: 0,
+      authority: { kind: "yes" },
+      undo: { kind: "none", why: "A simulated application: nothing real to take back." },
+    },
+    { client, now },
+    () =>
+      found.partner.apply({
+        product,
+        creditBand,
+        applicant: { name: user?.name ?? "", email: user?.email ?? "" },
+      }),
+  );
   const row = await db.cardApplications.create({
     data: {
       userId,

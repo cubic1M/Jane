@@ -17,9 +17,11 @@ import type { CheckDay } from "./outcomes";
 // - Verified: a later statement, upload or bank sync shows it, with the lines that show it.
 // - Held: still true HELD_DAYS after it was verified.
 // - Not seen: the watch window passed with no saving, or it came back after it was verified.
+// - Settled: a Yes nothing can verify, and Jane no longer finds what it was about. Never "saved".
 // Pure.
 
-export type LedgerState = "estimated" | "said_yes" | "done" | "verified" | "held" | "not_seen";
+export type LedgerState =
+  "estimated" | "said_yes" | "done" | "verified" | "held" | "not_seen" | "settled";
 
 export const LEDGER_STATES: readonly LedgerState[] = [
   "held",
@@ -28,6 +30,7 @@ export const LEDGER_STATES: readonly LedgerState[] = [
   "said_yes",
   "estimated",
   "not_seen",
+  "settled",
 ];
 
 export const STATE_LABEL: Record<LedgerState, string> = {
@@ -37,6 +40,7 @@ export const STATE_LABEL: Record<LedgerState, string> = {
   verified: "Verified",
   held: "Held",
   not_seen: "Not seen",
+  settled: "No longer found",
 };
 
 // The headline counts these only.
@@ -62,6 +66,8 @@ export function ledgerStateOf(row: {
     case "not_seen":
     case "lapsed":
       return "not_seen";
+    case "no_longer_found":
+      return "settled";
     default:
       return null;
   }
@@ -99,6 +105,11 @@ export function notSeenRule(watch: Watch | null): string {
     : "";
 }
 
+// A Yes stays open until later data settles it: what settles this one, when no watch can (a watch
+// has its own rule, verifyRule).
+export const OPEN_WITHOUT_WATCH =
+  "Open until you mark it done, or Jane stops finding it in your data.";
+
 // The rules as a short list for the page's "How Jane verifies" note.
 export const LEDGER_RULES: readonly string[] = [
   "Saved counts Verified and Held only. Estimates are never added in.",
@@ -106,6 +117,7 @@ export const LEDGER_RULES: readonly string[] = [
   "A lower bill or a refund counts from the transaction that shows it.",
   HELD_RULE,
   "Where your transactions can't show a saving, it stays an estimate.",
+  "A Yes stays open until later data settles it. No newer statement means it waits, not that it failed.",
 ];
 
 // The words for a Done saving's check day, as of today: "we'll check on Nov 5"; once the day has

@@ -1,3 +1,4 @@
+import { throughPermission } from "@/lib/permission/check";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
@@ -83,7 +84,19 @@ export async function signAmendment(
   const partner = await filingPartnerFor(userId, { client });
   if (!partner || partner.name !== row.partner)
     throw new AmendmentError("The filing partner isn't available.");
-  await partner.submitReturn(row.partnerReturnId, { name, signedAt: now });
+  await throughPermission(
+    userId,
+    {
+      specialist: "filing",
+      what: "Filed your amended return",
+      sector: "taxes",
+      cents: 0,
+      authority: { kind: "yes", because: "You signed it." },
+      undo: { kind: "none", why: "A simulated filing: nothing real to take back." },
+    },
+    { client, now },
+    () => partner.submitReturn(row.partnerReturnId, { name, signedAt: now }),
+  );
   await db.taxAmendments.updateMany({
     where: { id: row.id, status: "ready_for_review" },
     data: { status: "submitted", signerName: name, signedAt: now, submittedAt: now },

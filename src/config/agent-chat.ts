@@ -48,6 +48,9 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   lean: 1,
   // Spec step 238.
   books: 1,
+  // Stage 1: one follow-up a day; a new statement once a cycle.
+  follow_through: 1,
+  statement_ask: 1,
   // Spec step 244.
   close: 1,
   // Spec step 255: the top few suggestions of the day (src/config/suggestions.ts).
@@ -191,6 +194,9 @@ export const MESSAGE_PRIORITY = {
   lean: 92,
   // Spec step 238: data that does not add up; a broken link is asked for at once.
   books: 90,
+  // After urgent news, ahead of what's only new: a Yes left hanging or a statement that's ready.
+  follow_through: 60,
+  statement_ask: 60,
   // Spec step 244: the month's close, after what needs the person today.
   close: 54,
   // Spec step 255: what Jane worked out for this person, just below a finding to decide.

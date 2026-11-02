@@ -20,6 +20,8 @@ export type CloseEntry = {
   actedOn: string | null;
   verifiedOn: string | null;
   heldOn: string | null;
+  // False for a done nothing can settle (no watch): done, not open.
+  open?: boolean;
 };
 
 export type CloseChangeKind = "price_rise" | "bill_jump" | "new_fee" | "trial_paid" | "renewal";
@@ -103,7 +105,10 @@ export function closeOf<E extends CloseEntry>(input: CloseInput<E>): MonthClose<
     .filter((c) => inMonth(c.date, month))
     .sort((a, b) => b.amountCents - a.amountCents || a.key.localeCompare(b.key));
   const open = entries
-    .filter((e) => e.state === "estimated" || e.state === "said_yes" || e.state === "done")
+    .filter(
+      (e) =>
+        e.state === "estimated" || e.state === "said_yes" || (e.state === "done" && e.open !== false),
+    )
     .sort(byCents);
 
   // The chips: what's open (biggest first) and what went up, at most CLOSE_CHIPS_MAX.

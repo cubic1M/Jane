@@ -1,3 +1,9 @@
+import {
+  checkPermission,
+  PermissionRefused,
+  throughPermission,
+  type ActRequest,
+} from "@/lib/permission/check";
 import { conciergeMode } from "@/lib/concierge-mode";
 import { isTrialUser } from "@/lib/trial-ids";
 import { randomBytes } from "node:crypto";
@@ -104,6 +110,7 @@ export async function loadAction(userId: string, actionId: string, client: Prism
       replyToken: true,
       decision: {
         select: {
+          id: true,
           choice: true,
           undoneAt: true,
           findingId: true,
@@ -296,15 +303,22 @@ async function send(
   userId: string,
   action: LoadedAction,
   mail: { to: string; subject: string; body: string },
-  { client, send: deliver }: { client: PrismaClient; send: typeof sendAgentMail },
+  { client, send: deliver, now }: { client: PrismaClient; send: typeof sendAgentMail; now?: Date },
 ) {
   const replyTo = replyAddress(action.replyToken ?? "");
-  if (mailMode(userId) === "email") {
-    await deliver({ to: mail.to, subject: mail.subject, text: mail.body, replyTo });
-  } else {
-    // The simulated company answers through the same path a real reply takes.
-    await enqueueJob("agent_simulated_reply", { userId, actionId: action.id }, { client });
-  }
+  await throughPermission(
+    userId,
+    agentRequest(action, `Emailed ${merchantOf(action)}: ${mail.subject}`),
+    { client, now: now ?? new Date() },
+    async () => {
+      if (mailMode(userId) === "email") {
+        await deliver({ to: mail.to, subject: mail.subject, text: mail.body, replyTo });
+      } else {
+        // The simulated company answers through the same path a real reply takes.
+        await enqueueJob("agent_simulated_reply", { userId, actionId: action.id }, { client });
+      }
+    },
+  );
   await record(
     userId,
     action.id,
@@ -325,6 +339,53 @@ async function send(
 
 export type StepResult = "sent" | "followed_up" | "handed_off" | "waiting" | "skipped";
 
+// What the agent asks the permission check before it contacts a company for this action: the
+// person's yes on it, which must still stand, or the standing rule that said yes for them.
+export function agentRequest(action: LoadedAction, what: string): ActRequest {
+  return {
+    specialist: "email_agent",
+    what,
+    sector: "bills",
+    cents: 0,
+    authority: {
+      kind: "yes",
+      decisionId: action.decision.id,
+      ...(action.decision.source === "rule" || action.decision.source === "auto"
+        ? { because: "A standing rule you set said yes to this." }
+        : {}),
+    },
+    // The hold on approvals made outside the app has passed by now (startAgent).
+    undo: { kind: "none", why: "The time to take it back has passed." },
+  };
+}
+
+// Stopped: the action waits, and the follow-up run tries again. Read-only: it goes to a person.
+async function refusedAgent(
+  userId: string,
+  action: LoadedAction,
+  options: Required<Pick<Options, "client" | "now" | "notify">>,
+): Promise<StepResult | null> {
+  const verdict = await checkPermission(
+    userId,
+    agentRequest(action, "Contact the company"),
+    options,
+  );
+  if (verdict.ok) return null;
+  if (verdict.reason === "stopped") {
+    await scopedFor(userId, options.client).actions.updateMany({
+      where: { id: action.id },
+      data: {
+        agentState: "waiting_reply",
+        agentNextAt: new Date(options.now.getTime() + DAY_MS),
+        status: "in_progress",
+      },
+    });
+    return "waiting";
+  }
+  await handOff(userId, action, new PermissionRefused(verdict.reason).message, options);
+  return "handed_off";
+}
+
 // One step: the first email, a follow-up when one is due, or a hand-off.
 export async function agentStep(
   userId: string,
@@ -339,6 +400,8 @@ export async function agentStep(
   const action = await loadAction(userId, actionId, client);
   if (!action || !canAgentWork(action)) return "skipped";
   const options = { client, now, notify };
+  const refused = await refusedAgent(userId, action, options);
+  if (refused) return refused;
 
   // A switch to an option the person picked (spec steps 76–77) replaces the usual request.
   if (switchOf(action.decision.options)) return startSwitch(userId, action, options);
@@ -446,7 +509,7 @@ export async function agentStep(
       );
       return "handed_off";
     }
-    await send(userId, action, { to, subject, body }, { client, send: deliver });
+    await send(userId, action, { to, subject, body }, { client, send: deliver, now });
     await setStatus(
       userId,
       action,
@@ -485,7 +548,7 @@ export async function agentStep(
       subject: first.subject.startsWith("Re: ") ? first.subject : `Re: ${first.subject}`,
       body: `Hello again,\n\nFollowing up on my message below. Could you let us know where this stands?\n\nThank you.\n${AGENT_SIGNATURE}\n\n${quoted}`,
     },
-    { client, send: deliver },
+    { client, send: deliver, now },
   );
   await scopedFor(userId, client).actions.updateMany({
     where: { id: action.id },
@@ -549,6 +612,10 @@ export async function handleReply(
   if (!canAgentWork(action) || action.agentState !== "waiting_reply") return "kept";
 
   const options = { client, now, notify };
+  // Kept for later when Jane can't act: the reply is on the timeline, and nothing goes back.
+  if ((await checkPermission(userId, agentRequest(action, "Reply"), options)).ok === false) {
+    return "kept";
+  }
   const merchant = merchantOf(action);
   switch (reading.outcome) {
     case "done":
@@ -662,6 +729,8 @@ export async function answerCompany(
   if (!action || !first || !canAgentWork(action) || action.status !== "waiting_on_user") {
     throw new AnswerError("Jane isn't waiting on an answer for this one.");
   }
+  const verdict = await checkPermission(userId, agentRequest(action, "Reply"), { client, now });
+  if (!verdict.ok) throw new AnswerError(new PermissionRefused(verdict.reason).message);
   await replyToCompany(userId, action, `From the account holder: ${text}`, {
     client,
     now,
@@ -685,7 +754,7 @@ async function replyToCompany(
       subject: first.subject.startsWith("Re: ") ? first.subject : `Re: ${first.subject}`,
       body: `Hello,\n\nThank you. ${answer}\n\nCould you go ahead with the request?\n\n${AGENT_SIGNATURE}`,
     },
-    { client, send: deliver },
+    { client, send: deliver, now },
   );
   await setStatus(
     userId,

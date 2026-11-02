@@ -1,3 +1,4 @@
+import { throughPermission } from "@/lib/permission/check";
 import { DEMO_TRANSFER_DAYS, LOAN_PAID_OFF_CENTS, type LoanProduct } from "@/config/debt";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
@@ -182,28 +183,42 @@ export async function submitApplication(
   const app = await mustBe(userId, id, "draft", client);
   const found = await lenderPartnerFor(userId, { client });
   if (!found) throw new LoanApplicationError("There's no lending partner for your accounts yet.");
-  const result = await found.partner.apply({
-    offer: {
-      id: app.offerId,
-      lender: app.lender,
-      product: app.product,
-      aprBps: app.aprBps,
-      rateType: app.rateType === "variable" ? "variable" : "fixed",
-      termMonths: app.termMonths,
-      feeCents: app.feeCents,
-      feeLabel: "",
-      sourceUrl: "",
-      demo: found.key === "demo",
+  const creditBand = await creditBandFor(userId, { client });
+  const result = await throughPermission(
+    userId,
+    {
+      specialist: "lenders",
+      what: `Applied for a loan with ${app.lender}`,
+      sector: "debt",
+      cents: 0,
+      authority: { kind: "yes" },
+      undo: { kind: "none", why: "A simulated application: nothing real to take back." },
     },
-    request: {
-      product: app.product,
-      amountCents: app.amountCents,
-      termMonths: app.termMonths,
-      creditBand: await creditBandFor(userId, { client }),
-      month: isoDay(now).slice(0, 7),
-    },
-    applicant: app.applicant,
-  });
+    { client, now },
+    () =>
+      found.partner.apply({
+        offer: {
+          id: app.offerId,
+          lender: app.lender,
+          product: app.product,
+          aprBps: app.aprBps,
+          rateType: app.rateType === "variable" ? "variable" : "fixed",
+          termMonths: app.termMonths,
+          feeCents: app.feeCents,
+          feeLabel: "",
+          sourceUrl: "",
+          demo: found.key === "demo",
+        },
+        request: {
+          product: app.product,
+          amountCents: app.amountCents,
+          termMonths: app.termMonths,
+          creditBand,
+          month: isoDay(now).slice(0, 7),
+        },
+        applicant: app.applicant,
+      }),
+  );
   const row = await scopedFor(userId, client).loanApplications.update({
     where: { id: app.id },
     data: {
@@ -239,7 +254,19 @@ export async function acceptLoan(
   const app = await mustBe(userId, id, "approved", client);
   const found = await lenderPartnerFor(userId, { client });
   if (!found) throw new LoanApplicationError("There's no lending partner for your accounts yet.");
-  await found.partner.accept(app.partnerApplicationId ?? "");
+  await throughPermission(
+    userId,
+    {
+      specialist: "lenders",
+      what: `Accepted a loan from ${app.lender}`,
+      sector: "debt",
+      cents: 0,
+      authority: { kind: "yes" },
+      undo: { kind: "none", why: "A simulated loan: nothing real to take back." },
+    },
+    { client, now },
+    () => found.partner.accept(app.partnerApplicationId ?? ""),
+  );
   const row = await scopedFor(userId, client).loanApplications.update({
     where: { id: app.id },
     data: { status: "accepted", acceptedAt: now },

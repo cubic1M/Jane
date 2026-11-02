@@ -1,3 +1,4 @@
+import { placeThrough } from "@/lib/brokerage/orders";
 import { randomUUID } from "node:crypto";
 import {
   HSA_FUND,
@@ -185,7 +186,8 @@ export async function investHsaCash(
     throw new HsaError("Your HSA cash is within its cushion: nothing to invest.");
   const partner = brokeragePartner();
   const batchId = randomUUID();
-  const [confirmation] = await partner.placeOrders(
+  const [confirmation] = await placeThrough(
+    partner,
     userId,
     {
       batchId,

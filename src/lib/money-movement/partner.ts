@@ -1,3 +1,4 @@
+import { gated } from "@/lib/permission/gate";
 import { randomUUID } from "node:crypto";
 import { REAL_MONEY_MOVEMENT, STAND_IN_PARTNER } from "@/config/money-movement";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -31,19 +32,23 @@ export interface MoneyMovementPartner {
 }
 
 // Records only. A transfer "goes through" on its day; nothing leaves the app.
-export const standInPartner: MoneyMovementPartner = {
-  name: STAND_IN_PARTNER,
-  simulated: true,
-  async schedule() {
-    return { partnerRef: `SIMXFER-${randomUUID().slice(0, 8).toUpperCase()}` };
+export const standInPartner: MoneyMovementPartner = gated(
+  "money_movement",
+  {
+    name: STAND_IN_PARTNER,
+    simulated: true,
+    async schedule() {
+      return { partnerRef: `SIMXFER-${randomUUID().slice(0, 8).toUpperCase()}` };
+    },
+    async cancel() {
+      return true;
+    },
+    async settled({ runOn }, today) {
+      return runOn <= today;
+    },
   },
-  async cancel() {
-    return true;
-  },
-  async settled({ runOn }, today) {
-    return runOn <= today;
-  },
-};
+  ["schedule"],
+);
 
 // The partner for this person: the stand-in when their data is only the demo bank; nobody
 // else until a real partner is connected.

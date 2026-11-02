@@ -10,6 +10,7 @@ import { appBase } from "@/lib/digest/links";
 import { unsubscribeToken } from "@/lib/digest/unsubscribe";
 import { localDate } from "@/lib/digest/week";
 import { sendEmail } from "@/lib/email";
+import { closeSubject, loadCloseEmail, type CloseEmail } from "@/lib/month-close-email";
 import { healthFor } from "@/lib/health-score";
 import { rankedFor } from "@/lib/jane-agent/priorities";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
@@ -201,18 +202,32 @@ const esc = (value: string) =>
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
 
+// The month's one email: the close first (books, what changed, what's fixed, what's still open),
+// then the month's numbers. Without a close (none could be made), only the numbers.
 export function renderMonthlyReportEmail(
   report: MonthlyReport,
   links: { base: string; unsubscribe: string },
+  close: CloseEmail | null = null,
 ) {
-  const subject = `Your money report for ${monthLabel(report.month, { long: true })}`;
+  const subject = close
+    ? closeSubject(close.month)
+    : `Your money report for ${monthLabel(report.month, { long: true })}`;
   const lines = reportLines(report);
   const receipts = report.receipts.map((r) => `${receiptWords(r)}. ${r.proof}`);
-  const page = `${links.base}/monthly?m=${report.month}`;
+  const page = close
+    ? `${links.base}/close/${close.month}`
+    : `${links.base}/monthly?m=${report.month}`;
   const text = [
     subject,
     "",
     ...(report.summary ? [report.summary, ""] : []),
+    ...(close?.reach ? [close.reach, ""] : []),
+    ...(close?.sections ?? []).flatMap((s) => [
+      `${s.heading}:`,
+      ...s.lines.map((l) => `- ${l}`),
+      "",
+    ]),
+    ...(close ? ["The month's numbers:"] : []),
     ...lines.map((l) => `${l.label}: ${l.text} ${links.base}${l.href}`),
     ...(receipts.length > 0 ? ["", "Receipts:", ...receipts.map((r) => `- ${r}`)] : []),
     "",
@@ -223,6 +238,14 @@ export function renderMonthlyReportEmail(
   const html = `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;color:#171717;line-height:1.5">
 <h1 style="font-size:22px">${esc(subject)}</h1>
 ${report.summary ? `<p>${esc(report.summary)}</p>` : ""}
+${close?.reach ? `<p>${esc(close.reach)}</p>` : ""}
+${(close?.sections ?? [])
+  .map(
+    (s) =>
+      `<h2 style="font-size:16px">${esc(s.heading)}</h2><ul>${s.lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>`,
+  )
+  .join("")}
+${close ? `<h2 style="font-size:16px">The month's numbers</h2>` : ""}
 <ul>${lines
     .map(
       (l) =>
@@ -294,12 +317,21 @@ export async function runMonthlyReports({
       }
       const token = unsubscribeToken(user.id);
       try {
+        // A problem with the close leaves it out, never the email.
+        const close = await loadCloseEmail(user.id, kept.month, { client, now }).catch((error) => {
+          console.error("Month close email failed", { userId: user.id, error: String(error) });
+          return null;
+        });
         await send({
           to: user.email,
-          ...renderMonthlyReportEmail(kept.report, {
-            base: appBase(),
-            unsubscribe: `${appBase()}/unsubscribe?token=${token}`,
-          }),
+          ...renderMonthlyReportEmail(
+            kept.report,
+            {
+              base: appBase(),
+              unsubscribe: `${appBase()}/unsubscribe?token=${token}`,
+            },
+            close,
+          ),
           headers: {
             "List-Unsubscribe": `<${appBase()}/api/unsubscribe?token=${token}>`,
             "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",

@@ -18,6 +18,10 @@ import { resultsByKind, type KindResult } from "@/lib/worked";
 import { openBooks, type BooksView } from "@/lib/books";
 import { loadClose, type CloseView } from "@/lib/month-close";
 import { offeredToday, type OfferedSuggestion } from "@/lib/suggestions";
+import { loadFollowUps, type FollowUp } from "@/lib/follow-through";
+import { loadFreshness } from "@/lib/freshness";
+import { isTrialUser } from "@/lib/trial-ids";
+import { statementAsk, type StatementAsk } from "@/planning/freshness";
 import { loadSteady, type SteadyView } from "@/lib/steady-pay";
 import { loadPriceRises } from "@/lib/price-rises";
 import type { PriceRise } from "@/planning/price-rises";
@@ -150,6 +154,9 @@ export type Snapshot = {
   close?: CloseView | null;
   // Spec step 255: the suggestions chosen for today. Optional, like changes.
   suggestions?: OfferedSuggestion[];
+  // Stage 1: a Yes left hanging, a fix that didn't hold, and a new statement ready.
+  followUps?: FollowUp[];
+  statementAsk?: StatementAsk | null;
   // Spec step 240: the steady paycheck from uneven income. Optional, like changes.
   steady?: SteadyView | null;
   // Spec step 243: prices about to go up. Optional, like changes.
@@ -243,6 +250,8 @@ const ALERTS_SAID_ELSEWHERE: readonly AlertType[] = [
   "duplicate_charge",
   // Spec step 208: unusual activity has its own message, with its two buttons.
   "unusual_activity",
+  // The ask has its own message, with where to upload.
+  "statement_due",
 ];
 
 async function thinking(
@@ -355,6 +364,8 @@ export async function loadSnapshot(
     whatIf,
     books,
     suggestions,
+    followUps,
+    statementAskNow,
     steady,
     question,
     priceRises,
@@ -378,6 +389,12 @@ export async function loadSnapshot(
     adoptedPlans(userId, { client }),
     openBooks(userId, { client }),
     offeredToday(userId, { client, now }),
+    light ? [] : loadFollowUps(userId, { client, now }),
+    light || isTrialUser(userId)
+      ? null
+      : loadFreshness(userId, { client, now, input }).then((f) =>
+          statementAsk(f, now.toISOString().slice(0, 10)),
+        ),
     light ? null : loadSteady(userId, { client, now, input }),
     nextQuestion(userId, { client, now }),
     light ? [] : loadPriceRises(userId, { client, now }),
@@ -462,6 +479,8 @@ export async function loadSnapshot(
     whatIf,
     books,
     suggestions,
+    followUps,
+    statementAsk: statementAskNow,
     steady,
     question,
     priceRises,

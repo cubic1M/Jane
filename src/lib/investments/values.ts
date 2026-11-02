@@ -1,3 +1,4 @@
+import { placeThrough } from "@/lib/brokerage/orders";
 import { randomUUID } from "node:crypto";
 import {
   VALUES_EXCLUSIONS,
@@ -140,7 +141,8 @@ export async function applyValues(
       amountCents: l.amountCents,
     })),
   );
-  await partner.placeOrders(
+  await placeThrough(
+    partner,
     userId,
     { batchId, reason: "values", orders: [...sells, ...buys] },
     { client, now },

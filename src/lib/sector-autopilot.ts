@@ -14,6 +14,7 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { actsStopped } from "@/lib/permission/stop";
 import { cachedCopy } from "@/lib/read-cache";
 
 // The person's step 57 level. Read here rather than through src/lib/autopilot.ts, which
@@ -117,7 +118,11 @@ export async function autopilotFor(
 
 export type MayAct =
   | { ok: true; setting: SectorAutopilot }
-  | { ok: false; reason: "level" | "action_cap" | "monthly_cap"; setting: SectorAutopilot };
+  | {
+      ok: false;
+      reason: "stopped" | "level" | "action_cap" | "monthly_cap";
+      setting: SectorAutopilot;
+    };
 
 // Whether a sector may do something by itself: its level allows what the action needs, and
 // the money it moves or commits fits both caps. Free actions (cents 0) need the level only.
@@ -128,6 +133,10 @@ export async function mayAct(
   options: Options = {},
 ): Promise<MayAct> {
   const setting = await autopilotFor(userId, sector, options);
+  // The stop-all switch (src/lib/permission/stop.ts) stops what runs by itself, without an error.
+  if (await actsStopped(userId, { client: options.client })) {
+    return { ok: false, reason: "stopped", setting };
+  }
   if (RANK[setting.level] < RANK[needs]) return { ok: false, reason: "level", setting };
   const amount = Math.max(0, Math.round(cents));
   if (amount > 0 && amount > setting.actionCapCents) {

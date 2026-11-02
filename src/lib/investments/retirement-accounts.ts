@@ -1,3 +1,5 @@
+import { throughPermission } from "@/lib/permission/check";
+import { placeThrough } from "@/lib/brokerage/orders";
 import { randomUUID } from "node:crypto";
 import { EMPLOYER_CONTRIBUTION } from "@/config/retirement";
 import {
@@ -164,11 +166,25 @@ export async function requestMatchRaise(
     throw new RetirementAccountsError("A change to your contribution is already requested.");
   const partner = payrollPartner();
   const effectiveOn = new Date(now.getTime() + 7 * 86_400_000).toISOString().slice(0, 10);
-  const { partnerRef } = await partner.requestContributionChange({
-    fromRate: view.match.employeeRate,
-    toRate: view.match.fullMatchRate,
-    effectiveOn,
-  });
+  const { match } = view;
+  const { partnerRef } = await throughPermission(
+    userId,
+    {
+      specialist: "payroll",
+      what: "Asked your employer to raise your retirement contribution",
+      sector: "investing",
+      cents: 0,
+      authority: { kind: "yes" },
+      undo: { kind: "none", why: "A request your employer acts on; nothing moves here." },
+    },
+    { client, now },
+    () =>
+      partner.requestContributionChange({
+        fromRate: match.employeeRate,
+        toRate: match.fullMatchRate,
+        effectiveOn,
+      }),
+  );
   const row = await scopedFor(userId, client).payrollChanges.create({
     data: {
       userId,
@@ -208,7 +224,8 @@ export async function contributeToIra(
     throw new RetirementAccountsError("That's more than you can put in an IRA this year.");
   const partner = brokeragePartner();
   const batchId = randomUUID();
-  await partner.placeOrders(
+  await placeThrough(
+    partner,
     userId,
     {
       batchId,

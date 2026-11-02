@@ -27,16 +27,16 @@ const hulu = ["2026-06-03", "2026-07-03", "2026-08-03"].map((d) =>
 );
 
 describe("Done to Verified needs a newer statement", () => {
-  it("waits while the statements stop before the due day, then says why it wasn't seen", () => {
+  it("waits while the statements stop before the due day, even past the window", () => {
     const about = { startedOn: START, expectedCents: 21_588 };
     const stale = { checking: "2026-08-20" };
     expect(
       verifyWatch(HULU, { ...about, asOf: "2026-09-20", coveredThrough: stale }, hulu),
     ).toEqual({ status: "waiting" });
-    const late = verifyWatch(HULU, { ...about, asOf: "2026-11-01", coveredThrough: stale }, hulu);
-    expect(late).toMatchObject({ status: "not_seen" });
-    if (late.status !== "not_seen") throw new Error();
-    expect(late.proof).toMatch(/^No statement after Sep 2, when the next charge was due/);
+    // A Yes stays open until later data settles it: no newer statement isn't a failed fix.
+    expect(
+      verifyWatch(HULU, { ...about, asOf: "2026-11-01", coveredThrough: stale }, hulu),
+    ).toEqual({ status: "waiting" });
   });
 
   it("verifies once a statement reaches past the due day and its grace", () => {
@@ -67,11 +67,8 @@ describe("Done to Verified needs a newer statement", () => {
     expect(verifyWatch(watch, { ...about, asOf: "2026-10-09", ...stale }, [before])).toEqual({
       status: "waiting",
     });
-    // Past the window with no statement for it: not seen, and it says why.
-    expect(verifyWatch(watch, { ...about, ...stale }, [before])).toMatchObject({
-      status: "not_seen",
-      proof: "No statement reaching Oct 9 to count the fees against.",
-    });
+    // Past the window with no statement for it: it waits for one.
+    expect(verifyWatch(watch, { ...about, ...stale }, [before])).toEqual({ status: "waiting" });
     expect(
       verifyWatch(watch, { ...about, coveredThrough: { checking: "2026-10-19" } }, [before]),
     ).toMatchObject({ status: "confirmed" });

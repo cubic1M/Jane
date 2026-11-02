@@ -174,6 +174,11 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   autopilot_set: own,
   autopilot_reverted: own,
   autopilot_sector_set: own,
+  // The permission check: what Jane did or was stopped from doing, and the person's own switch.
+  jane_act_allowed: automatic,
+  jane_act_refused: automatic,
+  jane_acts_stopped: own,
+  jane_acts_resumed: own,
   money_transfer_scheduled: own,
   money_transfer_cancelled: own,
   what_if_adopted: own,

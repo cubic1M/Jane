@@ -14,6 +14,7 @@ export const STATE_GLYPH: Record<LedgerState, string> = {
   said_yes: "◔",
   estimated: "○",
   not_seen: "×",
+  settled: "–",
 };
 
 const MUTED = "text-zinc-600 dark:text-zinc-400";
@@ -89,6 +90,8 @@ export function LedgerEntryRow({ entry: e, action }: { entry: Entry; action?: Re
             lines={e.heldLines}
             label={e.lapsed ? "The lines that show it came back" : "The lines that show it held"}
           />
+          {e.nextStep && <p data-ledger-next="">Next: {e.nextStep}</p>}
+          {e.settles && <p data-ledger-settles="">{e.settles}</p>}
           <p className={`text-xs ${MUTED}`}>
             {e.verifiedPercent !== null ? `${e.verifiedPercent}% sure it shows. ` : ""}
             {e.rule}

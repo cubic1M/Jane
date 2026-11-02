@@ -1,3 +1,5 @@
+import type { Authority } from "@/lib/permission/check";
+import { placeThrough } from "@/lib/brokerage/orders";
 import { createHash, randomUUID } from "node:crypto";
 import { AUTO_HARVEST_FROM } from "@/config/automatic-investing";
 import { CORE_FUNDS, FUND_FACTS, FUND_NAMES, type AssetClass } from "@/config/funds";
@@ -73,9 +75,10 @@ export const describeHarvest = (c: HarvestCandidate) =>
 export async function placeHarvest(
   userId: string,
   c: HarvestCandidate,
-  { client = defaultClient, now = new Date() }: Options = {},
+  { client = defaultClient, now = new Date(), authority }: Options & { authority?: Authority } = {},
 ) {
-  await brokeragePartner().placeOrders(
+  await placeThrough(
+    brokeragePartner(),
     userId,
     {
       batchId: randomUUID(),
@@ -98,5 +101,6 @@ export async function placeHarvest(
       ],
     },
     { client, now },
+    authority,
   );
 }
