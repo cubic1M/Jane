@@ -203,6 +203,24 @@ const RULES: readonly Rule[] = [
   },
 
   // Income
+  // Above the salary rule: these lines often say DIRECT DEP too, and first match wins (debugger
+  // 11-02: "CA EDD UI DIRECT DEP" made someone laid off read as salaried, working for the EDD).
+  {
+    category: "INCOME_UNEMPLOYMENT",
+    keywords: [
+      "UNEMPLOYMENT",
+      "EDD UI",
+      "UI BENEFITS",
+      "UI BENEFIT",
+      "DOL UI",
+      "WORKFORCE COMM UI",
+      "ESD UI",
+    ],
+    direction: "in",
+  },
+  { category: "INCOME_MILITARY", keywords: ["DFAS", "MIL PAY", "VA BENEFITS"], direction: "in" },
+  { category: "INCOME_CHILD_SUPPORT", keywords: ["CHILD SUPPORT", "CHILD SUPP"], direction: "in" },
+  { category: "INCOME_OTHER", keywords: ["SEVERANCE"], direction: "in" },
   {
     category: "INCOME_SALARY",
     keywords: [
@@ -273,13 +291,6 @@ const RULES: readonly Rule[] = [
     ],
     direction: "in",
   },
-  {
-    category: "INCOME_UNEMPLOYMENT",
-    keywords: ["UNEMPLOYMENT", "EDD UI", "UI BENEFITS"],
-    direction: "in",
-  },
-  { category: "INCOME_MILITARY", keywords: ["DFAS", "MIL PAY", "VA BENEFITS"], direction: "in" },
-  { category: "INCOME_CHILD_SUPPORT", keywords: ["CHILD SUPPORT", "CHILD SUPP"], direction: "in" },
   {
     category: "TRANSFER_IN_INVESTMENT_AND_RETIREMENT_FUNDS",
     keywords: ["COINBASE", "ROBINHOOD", "MONEYLINE"],
