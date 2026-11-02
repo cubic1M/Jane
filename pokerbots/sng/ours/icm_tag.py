@@ -51,7 +51,6 @@ PARAMS = dict(
     pf_file="",          #    chart file cache/sng/pushfold_<pf_file>.json ("" = equilibrium for the payouts)
     cap_risk=0.0,        # near the hand cap: risk premium + cap_risk x (my stack / average - 1)
     cap_window=25,
-    steal_rr=0.0,        # steal read: fold rate minus steal_rr x the seats' re-raise rate vs opens (0 = off)
     steal_floor=0.0,     # the steal factor never cuts the open / shove bar below this share (0 = no floor)
     push_steal=0.5,      # short-stack shoves use this share of the steal factor (fold read); 0 = off.
                          #   0.5 validated on fresh seeds (results/sng_pushsteal_validate.md)
@@ -151,7 +150,6 @@ class IcmTag:
             self.chart = load_chart(rules, self.p["pf_file"] or None)
         self.steal_seen = [0] * rules.num_players     # steal attempts faced in the blinds
         self.steal_fold = [0] * rules.num_players
-        self.steal_rr = [0] * rules.num_players          # re-raised a first open
         self.aggressor = None                          # seat of the last preflop raiser this hand
         self.dealt = [0] * rules.num_players           # hands seen per seat
         self.pf_faced = [0] * rules.num_players        # postflop bets faced per seat
@@ -202,16 +200,12 @@ class IcmTag:
                 self.steal_seen[s] += 1
                 if kind == "fold":
                     self.steal_fold[s] += 1
-                elif kind == "raise":
-                    self.steal_rr[s] += 1
+
 
     def _fold_rate(self, seats):
         num = sum(self.steal_fold[s] for s in seats) + 1.0
         den = sum(self.steal_seen[s] for s in seats) + 2.0
         return num / den
-
-    def _reraise_rate(self, seats):
-        return sum(self.steal_rr[s] for s in seats) / (sum(self.steal_seen[s] for s in seats) + 2.0)
 
     # ---- helpers ----------------------------------------------------------------------
     def _eq(self, obs, k):
@@ -406,10 +400,7 @@ class IcmTag:
             # steal wider vs blinds that fold
             if not limpers and len(behind) <= p["steal_max_behind"]:
                 blinds = [s for s in (obs.sb_seat, obs.bb_seat) if s != obs.seat]   # never my own read
-                who = behind if len(behind) > 2 else blinds
-                fr = self._fold_rate(who)
-                if p["steal_rr"] > 0:                       # seats that re-raise steals: steal less
-                    fr -= p["steal_rr"] * self._reraise_rate(who)
+                fr = self._fold_rate(behind if len(behind) > 2 else blinds)
                 sf *= 1.0 - p["steal_bonus"] * max(0.0, fr - 0.5) * 2
                 if p["steal_sym"] > 0 and fr < 0.5:
                     sf *= 1.0 + p["steal_sym"] * (1.0 - 2 * fr)

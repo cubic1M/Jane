@@ -66,6 +66,7 @@ Fill in each line:
 7. Minutes 25–160 (validated switches worth adding as tuner candidates on the day:
    `resteal=1;resteal_risk=0.5;pev=1;pev_risk=0.5` (it beats tight fields, +5 vs our own copies);
    `call_margin=0.09;range_k=3.2` if 1st takes most points;
+   `push_steal=0;steal_bonus=0.3` if the field re-steals (adaptive bots: +3.6 to +4.7 on field 4, −2.0 on all3);
    `behind_k=0` if the field is tight (+2.9 vs Plan B copies, +3.4 vs our copies, −2.9 on the default field)):
    - tune: `python3 -m sng.tune --preset <p> --field blend --rounds 3 --tables 500 --accept-se 2 --tag _day` (about 15–25 min per round);
    - validate: `results/sng_validate.sh "icm_tag:<tuned>" --preset <p>`;
