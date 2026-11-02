@@ -675,6 +675,14 @@ const RULES: readonly Rule[] = [
     keywords: ["ETSY PAYOUT", "ETSY DEPOSIT", "EBAY PAYOUT", "EBAY COMMERCE"],
     direction: "in",
   },
+  // With the company's own words between ("ETSY, INC. PAYOUT 8842"; debugger 11-02: $5,455 of a
+  // seller's income was a refund on shopping). A shopper's refund says neither word.
+  {
+    category: "INCOME_GIG_ECONOMY",
+    pattern:
+      /(?<![A-Z0-9])(?:ETSY|EBAY|POSHMARK|MERCARI|DEPOP)(?![A-Z0-9]).*(?<![A-Z0-9])(?:PAYOUT|DEPOSIT|EARNINGS)(?![A-Z0-9])/,
+    direction: "in",
+  },
   {
     category: "GENERAL_MERCHANDISE_ONLINE_MARKETPLACES",
     keywords: ["AMAZON", "AMZN", "EBAY", "ETSY"],
@@ -2241,6 +2249,13 @@ const RULES: readonly Rule[] = [
   { category: "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT", bankType: ["Payment"] },
   { category: "LOAN_PAYMENTS_OTHER_PAYMENT", bankType: ["LOAN_PMT"], direction: "out" },
   { category: "TRANSFER_OUT_WITHDRAWAL", bankType: ["ATM"], direction: "out" },
+  // A customer paying through PayPal: a sale, by the statement's own type (debugger 11-02). A
+  // friend's "General Payment" stays unread.
+  {
+    category: "INCOME_GIG_ECONOMY",
+    bankType: ["Express Checkout Payment", "Website Payment"],
+    direction: "in",
+  },
 
   { category: "FOOD_AND_DRINK_GROCERIES", bankCategory: ["Groceries"], direction: "out" },
   // USAA's own category for pay (debugger 11-02: its cleaned "Lockheed Martin" matched nothing).

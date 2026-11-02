@@ -62,6 +62,13 @@ describe("subscription_review", () => {
     ]);
   });
 
+  // Debugger 11-02: "Review your Etsy Plus Subscription subscription".
+  it("says subscription once when the name does", () => {
+    const etsy = { description: "ETSY PLUS SUBSCRIPTION", pfcPrimary: null, pfcDetailed: null };
+    const [finding] = run(input({ transactions: monthly(4, 1900, etsy) }));
+    expect(finding.title).toBe("Review your Etsy Plus subscription");
+  });
+
   // CSV bench, second tuning set: one plan with most of the charges doesn't hide the other.
   it("keeps both plans when one of them has most of the charges", () => {
     const google = { description: "GOOGLE *GOOGLE ONE", pfcPrimary: null, pfcDetailed: null };

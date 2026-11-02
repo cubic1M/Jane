@@ -7,6 +7,34 @@ const out = (description: string, hints = {}) =>
 const into = (description: string, hints = {}) =>
   categorizeByRules({ description, amountCents: -1000, hints })?.detailed ?? null;
 
+// Debugger 11-02: an Etsy seller's "ETSY, INC. PAYOUT" matched the shopping keyword ETSY, so $5,455
+// of income was a refund on shopping: income $0, spending too low, no 1099 expected. And sales in
+// a PayPal statement had no category, so they were ignored.
+describe("a seller's money", () => {
+  it.each([
+    ["ETSY, INC. PAYOUT 8842"],
+    ["ETSY INC DEPOSIT"],
+    ["EBAY COMMERCE INC PAYOUT"],
+    ["POSHMARK INC PAYOUT"],
+    ["MERCARI INC EARNINGS"],
+  ])("calls money in as %s pay for selling", (description) => {
+    expect(into(description)).toBe("INCOME_GIG_ECONOMY");
+  });
+
+  it("leaves a shopper's purchases and refunds as shopping", () => {
+    expect(out("ETSY.COM - CLAY SHOP")).toBe("GENERAL_MERCHANDISE_ONLINE_MARKETPLACES");
+    expect(into("ETSY.COM - CLAY SHOP")).toBe("GENERAL_MERCHANDISE_ONLINE_MARKETPLACES");
+    expect(out("ETSY PLUS SUBSCRIPTION")).toBe("GENERAL_MERCHANDISE_ONLINE_MARKETPLACES");
+  });
+
+  it("calls a customer's PayPal payment a sale, by its type, and only money in", () => {
+    const hints = { bankType: "Express Checkout Payment" };
+    expect(into("Jo Rivera", hints)).toBe("INCOME_GIG_ECONOMY");
+    expect(into("Kai Morgan", { bankType: "Website Payment" })).toBe("INCOME_GIG_ECONOMY");
+    expect(out("Some Shop", hints)).not.toBe("INCOME_GIG_ECONOMY");
+  });
+});
+
 describe("categorizeByRules", () => {
   // The wordings in the bank CSVs Jane reads (src/data-sources/csv/__fixtures__): a card payment
   // is never spending, from either side, and the card's interest line is interest.
