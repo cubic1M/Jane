@@ -199,3 +199,28 @@ describe("staleStatementsEnd", () => {
     expect(staleStatementsEnd(null, now)).toBeNull();
   });
 });
+
+// Debugger 11-02: Figma read "49% sure: 12 charges" beside Adobe's "95% sure: 12 charges".
+describe("how sure a subscription is when only its price says so", () => {
+  const charges = Array.from({ length: 12 }, (_, i) => ({ id: `c${i}`, date: "2026-01-01" }));
+  it("says why it's less sure", () => {
+    const sure = findingSure(
+      { type: "subscription_review", confidence: "low", evidence: { charges } },
+      [],
+      12,
+    );
+    expect(sure.percent).toBeLessThan(50);
+    expect(sure.reason).toBe(
+      "12 charges at one price in 12 months of data, and nothing else says it's a subscription",
+    );
+  });
+
+  it("leaves a known one as it was", () => {
+    const sure = findingSure(
+      { type: "subscription_review", confidence: "high", evidence: { charges } },
+      [],
+      12,
+    );
+    expect(sure.reason).toBe("12 charges in 12 months of data");
+  });
+});

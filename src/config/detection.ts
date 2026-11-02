@@ -224,6 +224,14 @@ export const SUBSCRIPTION_MERCHANTS: readonly string[] = [
   // Software sold by the month above FIXED_PRICE_SUBSCRIPTION_MAX_CENTS (CSV bench, second
   // tuning set: "AUTODESK INC" at $245).
   "autodesk",
+  // Work software (debugger 11-02: Figma read 49% sure beside Adobe's 95%, on the same 12 charges).
+  "canva",
+  "figma",
+  "github",
+  "grammarly",
+  "notion",
+  "slack",
+  "zoom",
 ];
 
 // A plan by its own words on the statement, whatever else the company sells: a membership at a
