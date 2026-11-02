@@ -200,6 +200,7 @@ export function prepareExplainInput(finding: ExplainableFinding): PreparedInput 
         lowestBalance: signedMoney(num(evidence.lowestCents)),
         lowestAround: text(evidence.lowestDate) && dayLabel(text(evidence.lowestDate)!),
         cushion: money(num(evidence.cushionCents)),
+        unevenPayMonthly: money(num(evidence.unevenPayMonthlyCents)),
       };
       sent = list(evidence.bills)
         .map(obj)

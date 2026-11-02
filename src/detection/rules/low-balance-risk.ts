@@ -4,25 +4,31 @@ import {
   LOW_BALANCE_HIGH_CONFIDENCE_BELOW_CENTS,
 } from "@/config/detection";
 import { formatCents } from "@/lib/money";
-import { forecastAccounts } from "../forecast";
+import { forecastAccounts, unevenPay } from "../forecast";
 import type { Rule } from "./rule";
 import { dayLabel } from "@/lib/day-label";
 
 // A checking account forecast to fall below the cushion in the next FORECAST_DAYS, from
 // its balance today, its recurring bills and its recurring income. No dollar estimate:
-// the help is timing (moving due dates), not a saving.
+// the help is timing (moving due dates), not a saving. With pay at uneven times there's no date to
+// forecast it on, so the finding says it counts none, and isn't sure.
 export const lowBalanceRisk: Rule = (input) =>
   forecastAccounts(input, FORECAST_DAYS)
     .filter((f) => f.lowest.balanceCents < LOW_BALANCE_CUSHION_CENTS)
-    .map((f) => ({
+    .map((f) => ({ f, uneven: unevenPay(input, f.accountId) }))
+    .map(({ f, uneven }) => ({
       type: "low_balance_risk",
       key: `account:${f.accountId}`,
-      title: `${f.accountName} could drop to ${formatCents(f.lowest.balanceCents)} around ${dayLabel(f.lowest.date)}`,
+      title: `${f.accountName} could drop to ${formatCents(f.lowest.balanceCents)} around ${dayLabel(f.lowest.date)}${uneven ? " if no pay comes in" : ""}`,
       annualSavingsCents: null,
       amountCents: f.lowest.balanceCents,
-      confidence:
-        f.lowest.balanceCents < LOW_BALANCE_HIGH_CONFIDENCE_BELOW_CENTS ? "high" : "medium",
+      confidence: uneven
+        ? "low"
+        : f.lowest.balanceCents < LOW_BALANCE_HIGH_CONFIDENCE_BELOW_CENTS
+          ? "high"
+          : "medium",
       evidence: {
+        ...(uneven ? { unevenPayMonthlyCents: uneven } : {}),
         accountId: f.accountId,
         accountName: f.accountName,
         balanceCents: f.todayCents,

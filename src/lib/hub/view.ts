@@ -37,6 +37,8 @@ export type SafeInput = {
   // The bills before payday, one by one (src/planning/safe-to-spend.ts); transfer marks a
   // regular move out that isn't a bill.
   bills?: { merchant: string; date: string; amountCents: number; transfer?: true }[];
+  // About what comes in a month with no payday to count it on (debugger 11-02).
+  unevenPayMonthlyCents?: number | null;
 };
 
 // "Bills", or "Bills and transfers" when a regular move out is among them.
@@ -348,6 +350,15 @@ function safeHero(safe: SafeInput): SafeHero {
       { label: "In checking now", sign: "", cents: safe.balanceCents },
       ...held.map((l) => ({ ...l, sign: "−" as const })),
       { label: short ? "Short before payday" : "Safe to spend", sign: "=", cents: safe.safeCents },
+      ...(safe.unevenPayMonthlyCents
+        ? [
+            {
+              label: "Not counted: your pay comes at uneven times, about this a month",
+              sign: "" as const,
+              cents: safe.unevenPayMonthlyCents,
+            },
+          ]
+        : []),
     ],
     steps: safeSteps(safe, short),
   };

@@ -3,15 +3,21 @@ import { BNPL_AMOUNT_TOLERANCE_CENTS, BNPL_PAY_IN_4_STEP_DAYS } from "@/config/d
 import { bnplPlans, bnplProviderOf } from "@/insights/bnpl";
 import {
   BALANCE_ROLL_MAX_DAYS,
+  FORECAST_DAYS,
   FORECAST_SUBTYPES,
   NOT_BILL_CATEGORIES,
   NOT_BILL_HABIT_FREQUENCIES,
   NOT_BILL_HABIT_PRIMARIES,
   OWN_ACCOUNT_TRANSFERS,
+  UNEVEN_PAY_LOOKBACK_DAYS,
+  UNEVEN_PAY_LOOKBACK_MONTHS,
+  UNEVEN_PAY_MIN_DEPOSITS,
+  UNEVEN_PAY_MIN_MONTHLY_CENTS,
+  UNEVEN_PAY_NOT_PAY,
 } from "@/config/detection";
 import { irregularCosts } from "@/insights/irregular";
 import { expectedDates } from "./expected-dates";
-import { expectedPaydays, isPaycheck } from "./paydays";
+import { expectedPaydays, isPaycheck, nextPayday } from "./paydays";
 import {
   buildStreams,
   detectRecurring,
@@ -96,6 +102,29 @@ export function incomeStreams(input: DetectionInput): Stream[] {
     .filter((t) => t.amountCents < 0 && t.pfcPrimary === "INCOME" && !covered.has(t.accountId))
     .map((t) => ({ ...t, amountCents: -t.amountCents }));
   return [...plaid, ...detectRecurring({ ...input, transactions: flipped })];
+}
+
+// About what comes in a month into this account, when it's pay with no schedule to forecast: a
+// freelancer's payouts have no next date, so the forecast counts none of them (debugger 11-02).
+// Null with a payday expected, or without enough pay. Interest and dividends aren't pay.
+export function unevenPay(input: DetectionInput, accountId: string): number | null {
+  if (nextPayday(input, FORECAST_DAYS)) return null;
+  const since = addDays(input.asOf, -UNEVEN_PAY_LOOKBACK_DAYS);
+  const pay = input.transactions.filter(
+    (t) =>
+      t.accountId === accountId &&
+      t.amountCents < 0 &&
+      t.pfcPrimary === "INCOME" &&
+      !UNEVEN_PAY_NOT_PAY.includes(t.pfcDetailed ?? "") &&
+      t.date > since &&
+      t.date <= input.asOf,
+  );
+  const monthly = Math.round(
+    pay.reduce((sum, t) => sum - t.amountCents, 0) / UNEVEN_PAY_LOOKBACK_MONTHS,
+  );
+  return pay.length >= UNEVEN_PAY_MIN_DEPOSITS && monthly >= UNEVEN_PAY_MIN_MONTHLY_CENTS
+    ? monthly
+    : null;
 }
 
 // Money expected in from today through `until`: paychecks on their pay schedules (spec

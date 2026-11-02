@@ -14,6 +14,68 @@ const withBalance = (cents: number) =>
     transactions: geico,
   });
 
+// Debugger 11-02: a freelancer with about $3,000 a month of payouts read "Short $1,991" and "could
+// drop to -$1,990.78, 75% sure": payouts of uneven size and timing aren't a schedule, so the forecast
+// counted no pay at all, and said nothing about it.
+const payouts = [
+  [2, 6, 184_500],
+  [2, 20, 92_000],
+  [1, 11, 240_000],
+  [1, 29, 61_500],
+  [0, 8, 315_000],
+] as const;
+const uneven = (cents: number, rows: readonly (readonly [number, number, number])[] = payouts) =>
+  input({
+    accounts: [{ ...CHECKING, currentBalanceCents: cents }],
+    transactions: [
+      ...geico,
+      ...rows.map(([months, day, amount]) =>
+        tx({
+          date: monthsAgo(months, day),
+          amountCents: -amount,
+          description: "STRIPE TRANSFER",
+          merchantName: "Stripe",
+          pfcPrimary: "INCOME",
+          pfcDetailed: "INCOME_OTHER",
+        }),
+      ),
+    ],
+  });
+
+describe("a low balance for someone paid at uneven times", () => {
+  it("says it counts no pay, what has been coming in, and isn't sure", () => {
+    const [finding] = run(uneven(5_000));
+    expect(finding.title).toBe(
+      "Everyday Checking could drop to -$48.00 around Nov 1 if no pay comes in",
+    );
+    expect(finding.confidence).toBe("low");
+    expect(finding.evidence.unevenPayMonthlyCents).toBe(Math.round(893_000 / 3));
+  });
+
+  it("stays as it was with no pay at all coming in", () => {
+    const [finding] = run(uneven(5_000, []));
+    expect(finding.title).toBe("Everyday Checking could drop to -$48.00 around Nov 1");
+    expect(finding.confidence).toBe("high");
+    expect(finding.evidence.unevenPayMonthlyCents).toBeUndefined();
+  });
+
+  it("doesn't count interest as pay", () => {
+    const interest = uneven(5_000, []);
+    interest.transactions.push(
+      ...[2, 1, 0].map((months) =>
+        tx({
+          date: monthsAgo(months, 28),
+          amountCents: -60_000,
+          description: "INTEREST PAID",
+          pfcPrimary: "INCOME",
+          pfcDetailed: "INCOME_INTEREST_EARNED",
+        }),
+      ),
+    );
+    expect(run(interest)[0].evidence.unevenPayMonthlyCents).toBeUndefined();
+  });
+});
+
 describe("low_balance_risk", () => {
   it("flags a checking account a bill takes below the cushion", () => {
     const [finding] = run(withBalance(15_000));
