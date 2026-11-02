@@ -133,3 +133,40 @@ describe("the 1099-DA", () => {
     expect(expectedForms({ year: 2026, transactions: [], accounts: [], loans: [] })).toEqual([]);
   });
 });
+
+// Debugger 11-02: a homeowner's uploaded checking showed $1,720 a month to Mr. Cooper and $312.44
+// to Nelnet, and the tax pack expected no 1098 or 1098-E ("No student loan or mortgage interest
+// reported"): only loans a bank reports were read. A lender paid in the year sends one too.
+describe("a loan seen only in its payments", () => {
+  const pay = (merchantName: string, pfcDetailed: string, date = "2026-03-02") =>
+    tx({ merchantName, pfcDetailed, date, amountCents: 172_000 });
+
+  it("expects the lender's 1098 or 1098-E, amount unknown", () => {
+    const forms = expectedForms({
+      year: 2026,
+      transactions: [
+        pay("Mr Cooper", "LOAN_PAYMENTS_MORTGAGE_PAYMENT"),
+        pay("Mr Cooper", "LOAN_PAYMENTS_MORTGAGE_PAYMENT", "2026-04-02"),
+        pay("Nelnet", "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT"),
+        // Paid last year only: nothing for this year.
+        pay("Old Servicer", "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT", "2025-12-12"),
+      ],
+      accounts: [],
+      loans: [],
+    });
+    expect(forms.map((f) => [f.key, f.form, f.from, f.amountCents])).toEqual([
+      ["mortgage:mr-cooper", "1098", "Mr Cooper", null],
+      ["student:nelnet", "1098-E", "Nelnet", null],
+    ]);
+  });
+
+  it("isn't expected twice when the bank reports that kind of loan", () => {
+    const forms = expectedForms({
+      year: 2026,
+      transactions: [pay("Mr Cooper", "LOAN_PAYMENTS_MORTGAGE_PAYMENT")],
+      accounts: [],
+      loans: [{ name: "Home Loan", kind: "mortgage", ytdInterestPaidCents: 640_000 }],
+    });
+    expect(forms.map((f) => f.key)).toEqual(["mortgage:home-loan"]);
+  });
+});

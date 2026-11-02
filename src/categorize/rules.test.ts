@@ -105,6 +105,8 @@ describe("categorizeByRules", () => {
     ["CHIPOTLE 2291", "FOOD_AND_DRINK_FAST_FOOD"],
     ["H-E-B #602", "FOOD_AND_DRINK_GROCERIES"],
     ["BEST BUY 00012345", "GENERAL_MERCHANDISE_ELECTRONICS"],
+    // Debugger 11-02: a Kaiser copay is a doctor's visit, not the insurance premium.
+    ["KAISER PERMANENTE COPAY PORTLAND OR", "MEDICAL_PRIMARY_CARE"],
     // Debugger 11-01: Best Buy's online orders read "BESTBUY.COM", one word, and got no category.
     ["Debit Card Purchase - BESTBUY.COM 888-237-8289 MN", "GENERAL_MERCHANDISE_ELECTRONICS"],
     ["HOME DEPOT #6612", "HOME_IMPROVEMENT_HARDWARE"],
