@@ -37,6 +37,14 @@ function hostOf(url: string | undefined): string | null {
   }
 }
 
+// Resend's shared test domain: mail from it only reaches the address that owns the Resend account.
+const RESEND_TEST_DOMAIN = "resend.dev";
+
+function senderDomain(from: string | undefined): string | null {
+  const address = (from ?? "").match(/<([^>]+)>/)?.[1] ?? from ?? "";
+  return address.split("@")[1]?.trim().toLowerCase() || null;
+}
+
 export function launchChecks(env: Env): Check[] {
   const appUrl =
     env.APP_URL ??
@@ -73,6 +81,11 @@ export function launchChecks(env: Env): Check[] {
       "Email",
       isSet(env.RESEND_API_KEY) && isSet(env.EMAIL_FROM),
       "RESEND_API_KEY and EMAIL_FROM are set",
+    ),
+    check(
+      "Email sender",
+      senderDomain(env.EMAIL_FROM) !== RESEND_TEST_DOMAIN,
+      "EMAIL_FROM isn't Resend's test address, which only reaches the Resend account's owner. Verify a domain at resend.com/domains and send from it",
     ),
     check(
       "App address",

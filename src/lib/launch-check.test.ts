@@ -37,6 +37,32 @@ describe("launchChecks", () => {
     expect(failing({ ...READY, BETA_INVITE_ONLY: "false" })).toEqual(["Closed beta"]);
   });
 
+  // Resend's test sender only reaches the address that owns the Resend account, so every other
+  // sign-in link is refused while the settings all look right (production logs, 11-02).
+  it("fails on Resend's test sender, however it is written", () => {
+    for (const from of [
+      "onboarding@resend.dev",
+      "Jane <onboarding@resend.dev>",
+      "Jane <ONBOARDING@RESEND.DEV>",
+    ]) {
+      expect(failing({ ...READY, EMAIL_FROM: from })).toEqual(["Email sender"]);
+    }
+    const sender = launchChecks({ ...READY, EMAIL_FROM: "onboarding@resend.dev" }).find(
+      (c) => c.name === "Email sender",
+    );
+    expect(sender?.detail).toMatch(/verify a domain/i);
+  });
+
+  it("doesn't mistake a real domain for the test sender", () => {
+    for (const from of ["Jane <hi@notresend.dev>", "resend.dev <hi@example.com>"]) {
+      expect(failing({ ...READY, EMAIL_FROM: from })).toEqual([]);
+    }
+  });
+
+  it("leaves a missing sender to the Email check", () => {
+    expect(failing({ ...READY, EMAIL_FROM: "" })).toEqual(["Email"]);
+  });
+
   it("checks the current key of a rotated keyring (docs/security/keys.md)", () => {
     const keys = `k2:${randomBytes(32).toString("base64")},k3:${randomBytes(32).toString("base64")}`;
     const rotated = { ...READY, TOKEN_ENCRYPTION_KEY: "", TOKEN_ENCRYPTION_KEYS: keys };
