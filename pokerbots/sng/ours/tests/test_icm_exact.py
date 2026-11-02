@@ -65,6 +65,26 @@ class TestIcmExact(unittest.TestCase):
 
 
 class TestIcmCallInBot(unittest.TestCase):
+    def test_on_by_default(self):
+        from sng.ours.icm_tag import PARAMS
+        self.assertEqual(PARAMS["icm_call"], 1)                     # validated on fresh seeds
+
+    def test_bubble_fold_that_pot_odds_would_call(self):
+        """4 left, 3 paid, medium stack facing a big stack's shove: pot odds say call with a
+        hand near 50%, ICM says fold."""
+        from sng.ours.icm_tag import IcmTag
+        from sng.rules import SngRules
+        from sng.table import SeatView
+        r = SngRules(enforce_time=False, num_players=4, payouts=(50, 30, 20, 0))
+        b = IcmTag()
+        b.new_table(r, 1, 0)
+        need = b._icm_need(type("O", (), dict(
+            seat=1, my_stack=2000, seats=(SeatView(0, 0, 4000, 4000, False, True, True),
+                                          SeatView(1, 2000, 0, 0, False, False, True),
+                                          SeatView(2, 1000, 0, 0, True, False, True),
+                                          SeatView(3, 1000, 0, 0, True, False, True))))(), 0)
+        self.assertGreater(need, 0.55)
+
     def test_bot_with_icm_call_is_legal_and_fast(self):
         from sng.registry import make
         from sng.rules import SngRules

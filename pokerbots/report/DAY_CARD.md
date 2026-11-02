@@ -119,6 +119,7 @@ loop (tune on the real rules, validate, resubmit) matters.
 ## Rules of thumb that held on every field we tested
 
 - **Call tight:** a raiser = 4 random hands; need pot odds + 6%; ICM premium on big calls.
+- **All-in calls use exact ICM** (break-even from the real stacks and point table, +2%): +0.3 to +2.2 per table.
 - **Open small (2bb) and fairly wide; steal more from seats that fold** (the bots that time out fold).
 - Push or fold at ≤ 9bb. Re-raise preflop only with AA.
 - **Heads-up, open and defend much wider** (open bar 0.6/2, a raiser = 2 random hands): +2 to +12 per heads-up table.

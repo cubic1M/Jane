@@ -56,7 +56,7 @@ PARAMS = dict(
     hu_range_k=2.0,      # heads-up tables: a raiser's range_k (before the read) becomes this (0 = off)
     sh_open_mult=0.0,    # 3-4 players dealt in: open_mult becomes this (0 = off)
     sh_range_k=0.0,      # 3-4 players dealt in: a raiser's range_k becomes this (0 = off)
-    icm_call=0,          # 1: all-in calls (one all-in opponent, no other caller) need the exact ICM
+    icm_call=1,          # 1: all-in calls (one all-in opponent, no other caller) need the exact ICM
                          #   break-even equity (sng/ours/icm_exact.py) + icm_margin, instead of
                          #   pot odds + call_margin + the risk premium
     icm_margin=0.02,

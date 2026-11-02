@@ -971,6 +971,12 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   - Hackathon-like field: −1.2 vs `f3_exploiter` (not significant). All3 under winner payouts: 0.0 vs `f3_exploiter`.
 
   The DAY_CARD shows both checks side by side.
+* **Exact ICM for all-in calls: adopted** (`icm_call=1`; `sng/ours/icm_exact.py`;
+  `results/sng_icm_call_*.md`).
+  - **The rule:** an all-in call with one all-in opponent and no other caller needs the exact Malmuth-Harville break-even equity (U(fold) − U(lose)) / (U(win) − U(lose)), from the real stacks after each outcome, plus 0.02. Before, it needed pot odds + 0.06 + the risk premium.
+  - **Speed:** 0.12 ms per decision at 8-handed (subset DP with prebuilt mask tables, imported at load). It matches brute-force Harville over all finishing orders (tested).
+  - **Exploration:** positive in 5 of 5 cells.
+  - **Fresh seeds 39000+, 600 paired tables:** default +1.6, field 2 +0.7, mirror +0.8, all3/top3 **+1.6**, hackathon-like **+2.2**, all3/winner +0.3. Positive everywhere, two cells significant.
 * **Bug hunter:** 284k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
