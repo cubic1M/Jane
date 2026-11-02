@@ -86,6 +86,19 @@ Fill in each line:
 | submission rules ban exec / imports / size | `sng/bundle_flat.py`; check the rules before bundling |
 | a file passes the checker but crashes at load | run the kit's runner; no `__future__` annotations with dataclasses |
 
+## Where we stand (current `icm_tag`, fresh seeds)
+
+It beats the best bot of every opponent field we built. These are average points per
+table over the strongest bot in each field:
+
+| field | margin |
+|---|---|
+| default | +23 |
+| strong | +27 |
+| two fields written independently of our bot | +7 to +10 |
+| our own copies (mirror) | +5 |
+| all three fields, top-3 payouts | +4.5 |
+
 ## Rules of thumb that held on every field we tested
 
 - **Call tight:** a raiser = 4 random hands; need pot odds + 6%; ICM premium on big calls.

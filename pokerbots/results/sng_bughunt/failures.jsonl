@@ -296,3 +296,13 @@
 {"kind": "slow", "seed": 153382, "variant": "l_nlhe50", "bot": "icm_any", "p99_ms": 0.089, "over_1ms": 2, "decisions": 211, "t": "2026-11-02 03:09:51"}
 {"kind": "slow", "seed": 155814, "variant": "j_3street", "bot": "icm_tag", "p99_ms": 0.569, "over_1ms": 1, "decisions": 144, "t": "2026-11-02 03:13:32"}
 {"kind": "slow", "seed": 156614, "variant": "f_nlhe20", "bot": "icm_lite", "p99_ms": 1.727, "over_1ms": 2, "decisions": 131, "t": "2026-11-02 03:14:58"}
+{"kind": "slow", "seed": 160750, "variant": "d_omaha4x2", "bot": "icm_lite", "p99_ms": 0.53, "over_1ms": 0, "decisions": 130, "t": "2026-11-02 03:21:29"}
+{"kind": "slow", "seed": 163021, "variant": "P:rehearsal_sixplus", "bot": "icm_any", "p99_ms": 1.419, "over_1ms": 2, "decisions": 137, "t": "2026-11-02 03:24:56"}
+{"kind": "slow", "seed": 163052, "variant": "P:five_draw", "bot": "icm_any", "p99_ms": 2.452, "over_1ms": 2, "decisions": 123, "t": "2026-11-02 03:24:59"}
+{"kind": "slow", "seed": 164534, "variant": "P:discard_to_board", "bot": "icm_lite", "p99_ms": 4.355, "over_1ms": 4, "decisions": 177, "t": "2026-11-02 03:27:06"}
+{"kind": "slow", "seed": 164549, "variant": "P:omaha_discard2", "bot": "icm_lite", "p99_ms": 0.571, "over_1ms": 2, "decisions": 164, "t": "2026-11-02 03:27:08"}
+{"kind": "slow", "seed": 165028, "variant": "l_nlhe50", "bot": "icm_any", "p99_ms": 0.451, "over_1ms": 2, "decisions": 166, "t": "2026-11-02 03:27:55"}
+{"kind": "slow", "seed": 165636, "variant": "P:draw_holdem", "bot": "icm_tag", "p99_ms": 0.089, "over_1ms": 2, "decisions": 259, "t": "2026-11-02 03:28:50"}
+{"kind": "slow", "seed": 166482, "variant": "P:five_draw", "bot": "icm_any", "p99_ms": 0.657, "over_1ms": 1, "decisions": 135, "t": "2026-11-02 03:30:20"}
+{"kind": "slow", "seed": 169702, "variant": "b_nlhe200", "bot": "icm_tag", "p99_ms": 0.691, "over_1ms": 1, "decisions": 100, "t": "2026-11-02 03:35:34"}
+{"kind": "slow", "seed": 170652, "variant": "e_shortdeck", "bot": "icm_any", "p99_ms": 0.573, "over_1ms": 0, "decisions": 119, "t": "2026-11-02 03:37:06"}

@@ -909,6 +909,21 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   On fresh seeds that was +0.3 ± 3.7 on five-card draw itself and −5.2 ± 4.6 on draw
   hold'em (significant), with −2.6 and −2.0 on the other two. This is the fourth tuning
   that did not survive fresh-seed validation; `icm_any` keeps `icm_tag`'s parameters.
+* **Final regression check of the current `icm_tag`** after all fixes and adopted tunings
+  (`results/sng_final_check.md`, fresh seeds 21000+, 300 paired tables). It beats each
+  field's best bots, all significantly, and by more than before:
+
+| field | margin over the field's best bot | earlier measurement |
+|---|---|---|
+| default | **+22.9** (pushfold_icm), +23.9 (adaptive) | +10.3 |
+| strong | **+26.9** (pushfold_icm), +34.2 (adaptive) | +15.7 |
+| mirror (incl. copies of itself) | +5.3 (pushfold_icm), +17.5 (adaptive) | n/a |
+| field 2 (independent) | **+7.4** (f2_shark), +8.4 (f2_nash) | +3.9 / +5.5 |
+| field 3 (independent) | **+9.6** (f3_exploiter), +17.0 (f3_quant_icm) | +8.6 / +17.6 |
+| all three fields, top-3 payouts | +4.5 (f3_exploiter), +10.4 (f2_shark) | n/a |
+
+  A combined tuning on all three fields found no further change worth 2 SE, the best
+  being +0.6 ± 1.7. So the defaults sit at a robust local optimum.
 * The tuner (`sng/tune.py`) is reusable on the day with the real rules as a preset
   (`--preset`), at 10–20 minutes per round. Robustness
   to other fields and point tables is next, since both are guesses until the day.
