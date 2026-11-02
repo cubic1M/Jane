@@ -397,6 +397,53 @@ class TestIcmTag(unittest.TestCase):
         self.assertAlmostEqual(got[0.8], 4.0 + 6 * 0.8, places=6)
         self.assertAlmostEqual(got[0.0], 4.0, places=6)
 
+    def test_push_steal_widens_short_shoves_against_folders(self):
+        """Button, 6bb, folded to me, both blinds fold 95%: a hand between the plain shove bar
+        and the steal-adjusted one folds with push_steal=0 and shoves with push_steal=0.5."""
+        from engine.cards import card_str, parse_card
+        from sng.table import Hand
+        from sng.tests.test_table import make_deck
+        r = SngRules(enforce_time=False)
+        b0 = IcmTag()
+        b0.new_table(r, 0, 1)
+        scale = 0.75 + 0.25 * 6 / b0.p["push_bb"]
+        plain = b0.p["push_mult"] * scale / 3                         # k = 2 behind (the blinds)
+        sf = 1 - b0.p["steal_bonus"] * (0.95 - 0.5) * 2
+        wide = plain * (1 + 0.5 * (sf - 1))
+        spec = r.spec
+        from sng.ours import strength as S
+        S.preload(spec)
+        hole = None
+        for a in "23456789TJQKA":
+            for c in "23456789TJQKA":
+                h = (parse_card(a + "s"), parse_card(c + "d"))
+                if a != c and wide + 0.01 < S.equity(h, (), 2, spec) < plain - 0.01:
+                    hole = " ".join(card_str(x) for x in h)
+                    break
+            if hole:
+                break
+        self.assertIsNotNone(hole)
+        acts = {}
+        for ps in (0.0, 0.5):
+            b = IcmTag(push_steal=ps)
+            b.new_table(r, 0, 1)
+            b._fold_rate = lambda seats: 0.95
+            seen = []
+
+            def decide(j, o, lg, b=b, seen=seen):
+                if j == 0 and o.street == 0 and not seen:
+                    a = b.act(o)
+                    seen.append(a.kind)
+                    return a
+                return lg.passive() if lg.can_check else Fold()
+            stacks = [120] + [2000] * 7
+            h = Hand(r, stacks, button=0, hand_number=0,
+                     deck=make_deck([hole, "2c 3d", "4c 5d", "6c 7d", "8c 9d", "Tc Jd", "2h 3h", "4h 5h"],
+                                    "Kd 9h 4s 3c 8h", spec))
+            h.play(decide, 8)
+            acts[ps] = seen[0]
+        self.assertEqual(acts, {0.0: "fold", 0.5: "raise"})
+
 
 if __name__ == "__main__":
     unittest.main()
