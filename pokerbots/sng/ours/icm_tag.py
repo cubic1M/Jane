@@ -14,6 +14,7 @@ All parameters live in PARAMS and can be overridden from the bot name.
 """
 from __future__ import annotations
 
+import math
 import random
 
 from engine.game import Call, Check, Fold, RaiseTo
@@ -60,6 +61,13 @@ PARAMS = dict(
                          #   break-even equity (sng/ours/icm_exact.py) + icm_margin, instead of
                          #   pot odds + call_margin + the risk premium
     icm_margin=0.02,
+    pev=0,               # 1: first-in shoves at <= pev_bb by an EV model with fold equity
+                         #   (calling widths per seat behind, equity vs each caller's range,
+                         #   ICM risk premium on the loss) instead of the fixed equity bar
+    pev_bb=15.0,
+    pev_margin=0.0,      # shove if the EV (in big blinds) exceeds this
+    pev_loose=1.0,       # scale every calling width (1 = approximate Nash widths)
+    pev_risk=1.0,        # scale the ICM risk premium charged on a called shove
     rk_floor=1.2,        # facing a raise: the raiser counts as at least this many random hands
     agg_alpha=0.0,       # postflop: discount a bet less from seats that bet often when checked to:
                          #   discount -> discount + (1 - discount) x agg_alpha x excess aggression
@@ -220,6 +228,50 @@ class IcmTag:
         except Exception:  # noqa: BLE001  never fail a decision over ICM
             return None
 
+    # approximate Nash calling widths vs a shove, by the caller's effective stack in big blinds
+    _CALL_W = ((3, 0.75), (5, 0.55), (8, 0.40), (10, 0.33), (12, 0.28), (15, 0.22), (20, 0.16), (30, 0.11))
+
+    @classmethod
+    def _call_width(cls, eff_bb):
+        w = cls._CALL_W
+        if eff_bb <= w[0][0]:
+            return w[0][1]
+        for (x0, y0), (x1, y1) in zip(w, w[1:]):
+            if eff_bb <= x1:
+                return y0 + (y1 - y0) * (eff_bb - x0) / (x1 - x0)
+        return w[-1][1]
+
+    def _push_ev(self, obs, behind):
+        """EV (big blinds) of shoving first-in vs folding: fold equity from each player
+        behind (calling width by their stack, scaled by their observed raise rate), equity vs
+        a caller's top-c range as vs k random hands with (1 - c)^k = 1/2, a loss charged the
+        ICM risk premium. Only the first caller is modelled."""
+        p = self.p
+        seats = obs.seats
+        bb = obs.big_blind
+        if not behind:
+            return None
+        mine = obs.my_stack + obs.my_bet
+        pot = obs.pot
+        risk_prem = self._risk(obs) * p["pev_risk"]
+        ev, p_reach = 0.0, 1.0
+        for j in behind:
+            sj = seats[j]
+            their = sj.stack + sj.bet
+            r_chips = min(mine, their)
+            pfr = (self.pre_raises[j] + p["base_pfr"] * 8) / (self.dealt[j] + 8)
+            loose = min(1.8, max(0.6, (pfr / p["base_pfr"]) ** 0.5))
+            c = min(0.95, max(0.02, self._call_width(r_chips / bb) * loose * p["pev_loose"]))
+            k = min(7.0, max(1.0, math.log(0.5) / math.log(1.0 - c)))
+            eq = self._eq_k(obs, k)
+            risk = r_chips - obs.my_bet                              # chips I add beyond my blind
+            win = pot + min(their, mine) - sj.bet                    # their call joins the pot
+            ev_call = eq * win - (1.0 - eq) * risk - risk_prem * (2 * risk + pot)
+            ev += p_reach * c * ev_call
+            p_reach *= 1.0 - c
+        ev += p_reach * pot
+        return ev / bb
+
     # ---- decision -----------------------------------------------------------------------
     def act(self, obs):
         lg = obs.legal
@@ -299,6 +351,13 @@ class IcmTag:
                 if call >= obs.my_stack or call > 0.4 * obs.my_stack:
                     need += self._risk(obs)
                 return Call() if eq >= need else Fold()
+            if p["pev"] and eff_bb <= p["pev_bb"] and lg.can_raise and not limpers:
+                ev = self._push_ev(obs, behind)
+                if ev is not None:
+                    if ev > p["pev_margin"]:
+                        return RaiseTo(lg.max_raise_to)
+                    if eff_bb <= p["push_bb"]:
+                        return lg.passive() if lg.can_check else Fold()
             if eff_bb <= p["push_bb"]:
                 scale = 0.75 + 0.25 * eff_bb / p["push_bb"]       # shorter = wider
                 if eq >= p["push_mult"] * scale / (k + 1 + limpers) and lg.can_raise:
