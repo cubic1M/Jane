@@ -122,7 +122,7 @@ def _icm_vec(stacks, pay):
     return out
 
 
-def solve(n, d, pay, ante=0.0, iters=300):
+def solve(n, d, pay, ante=0.0, iters=300, fixed_call=None):
     """Push/fold equilibrium for n players with equal stacks of d big blinds. Action order
     0..n-1: 0 = UTG ... n-2 = SB, n-1 = BB (heads-up: 0 = SB/button, 1 = BB).
     Returns (shove[p] -> 169 probs, call[(q, p)] -> 169 probs)."""
@@ -161,6 +161,8 @@ def solve(n, d, pay, ante=0.0, iters=300):
 
     shove = {p: np.full(169, 0.5) for p in range(n - 1)}
     call = {(q, p): np.full(169, 0.5) for p in range(n - 1) for q in range(p + 1, n)}
+    if fixed_call is not None:          # best response to fixed (e.g. measured) calling ranges
+        call = {qp: fixed_call[qp].astype(float) for qp in call}
 
     def probs():
         s = {p: float(w @ shove[p]) for p in shove}
@@ -222,8 +224,9 @@ def solve(n, d, pay, ante=0.0, iters=300):
                 new_call[(q, p)] = (ev_call > ev_fold_q).astype(float)
         for p in shove:
             shove[p] = (1 - a) * shove[p] + a * new_shove[p]
-        for qp in call:
-            call[qp] = (1 - a) * call[qp] + a * new_call[qp]
+        if fixed_call is None:
+            for qp in call:
+                call[qp] = (1 - a) * call[qp] + a * new_call[qp]
     return shove, call
 
 
@@ -251,8 +254,45 @@ def build_charts(pay, ante=0.0, iters=200, players=range(2, 9), depths=DEPTHS):
     return charts
 
 
+def best_response_charts(callfreq: dict, pay, iters=150, prior_n=10.0, players=range(2, 9), depths=DEPTHS):
+    """Shove charts that best-respond to MEASURED calling frequencies (sng/ours/measure_calls.py):
+    each caller calls with the top x% of classes (by equity vs a random hand), x = its smoothed
+    measured call rate in that (players, depth, caller, shover) cell."""
+    E = _E()
+    order = np.argsort(-(E @ WEIGHT))                     # strongest classes first
+    cum = np.cumsum(WEIGHT[order])
+    tot = sum(v[1] for v in callfreq.values())
+    base = sum(v[0] for v in callfreq.values()) / max(1, tot)
+    by_n = {}
+    for k, (c, m) in callfreq.items():
+        n = int(k.split(",")[0])
+        a = by_n.setdefault(n, [0, 0])
+        a[0] += c
+        a[1] += m
+
+    def top(x):
+        arr = np.zeros(169)
+        arr[order[cum <= max(x, 1e-9)]] = 1.0
+        return arr
+    charts = {"pay": list(pay), "ante": 0.0, "depths": list(depths), "shove": {}, "call": {},
+              "kind": "best_response", "base_call_rate": base}
+    for n in players:
+        pn = (by_n.get(n, [0, 0])[0] + base * prior_n) / (by_n.get(n, [0, 0])[1] + prior_n)
+        for d in depths:
+            fixed = {}
+            for p in range(n - 1):
+                for q in range(p + 1, n):
+                    c, m = callfreq.get(f"{n},{d},{q},{p}", (0, 0))
+                    fixed[(q, p)] = top((c + pn * prior_n) / (m + prior_n))
+            sh, _ = solve(n, d, pay[:n], 0.0, iters, fixed_call=fixed)
+            for p, v in sh.items():
+                charts["shove"][f"{n},{d},{p}"] = "".join("1" if x > 0.5 else "0" for x in v)
+    return charts
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
+    ap.add_argument("--best-response", default=None, help="callfreq field name: build best-response charts")
     ap.add_argument("--matrix-seconds", type=float, default=300)
     ap.add_argument("--iters", type=int, default=200)
     ap.add_argument("--payouts", default="synthetic")
@@ -260,6 +300,15 @@ def main(argv=None):
     a = ap.parse_args(argv)
     from sng.rules import PAYOUT_SETS
     CACHE.mkdir(parents=True, exist_ok=True)
+    if a.best_response:
+        t0 = time.time()
+        cf = json.loads((CACHE / f"callfreq_{a.best_response}.json").read_text())
+        ch = best_response_charts(cf, PAYOUT_SETS[a.payouts], iters=a.iters)
+        out = CACHE / f"pushfold_br_{a.best_response}_{a.payouts}.json"
+        out.write_text(json.dumps(ch))
+        print(f"best-response charts {out.name}: {len(ch['shove'])} shove, base call rate "
+              f"{ch['base_call_rate']:.3f}, {time.time() - t0:.0f}s", flush=True)
+        return
     if not a.skip_matrix or not (CACHE / "pushfold_equity.npy").exists():
         t0 = time.time()
         E, mn, deals = equity_matrix(a.matrix_seconds)

@@ -44,6 +44,7 @@ PARAMS = dict(
     bluff_max_opp=2,     # ... only with at most this many opponents in the hand
     pf_chart=0,          # 1: at <= pf_max_bb use the ICM push/fold equilibrium charts (sng/ours/pushfold.py)
     pf_max_bb=15.0,      #    for first-in shoves and for calling a lone all-in
+    pf_file="",          #    chart file cache/sng/pushfold_<pf_file>.json ("" = equilibrium for the payouts)
     cap_risk=0.0,        # near the hand cap: risk premium + cap_risk x (my stack / average - 1)
     cap_window=25,       # ... in the last this many hands       # the raise rate at which a raiser counts as exactly range_k     # facing a raise with a 3-bet hand: shove (not 3-bet) at or below this stack    # lower the open bar by up to this much vs seats that fold to steals
 )
@@ -69,7 +70,7 @@ class IcmTag:
         self.chart = None
         if self.p["pf_chart"]:
             from sng.ours.pushfold_chart import load_chart
-            self.chart = load_chart(rules)
+            self.chart = load_chart(rules, self.p["pf_file"] or None)
         self.steal_seen = [0] * rules.num_players     # steal attempts faced in the blinds
         self.steal_fold = [0] * rules.num_players
         self.aggressor = None                          # seat of the last preflop raiser this hand

@@ -1854,6 +1854,7 @@ _build_fallback()
 
 # ---------------------------------------------------------------- per table
 RNG = random.Random()
+SEED = None               # None: fresh entropy per table; A/B harness sets it
 S = {}
 
 
@@ -1870,7 +1871,11 @@ _reset()
 
 def init(config):
     _reset()
-    RNG.seed()
+    RNG.seed(SEED)
+    try:
+        TOTAL_CHIPS[0] = config["starting_stack"] * config["num_players"]
+    except Exception:
+        pass
 
 
 # ------------------------------------------------------------ hand reading
@@ -2217,11 +2222,67 @@ def _safe_default(state):
     return {"action": "fold"}
 
 
+# Debug mode: the bot cannot read environment variables (os is not an allowed
+# import), so planb/debug_run.py sets DEBUG = True on the loaded module (it
+# reads PLANB_DEBUG).  Problems are appended to DEBUG_LOG, never raised.
+DEBUG = False
+DEBUG_LOG = []
+TOTAL_CHIPS = [16000]
+
+
+def _debug_check(state, reply):
+    players = state["players"]
+    if state["type"] == "action":
+        put = {}
+        rb = {}
+        street = None
+        for h in state["history"]:
+            if h["street"] != street:
+                street, rb = h["street"], {}
+            s, a = h["seat"], h["action"]
+            if a == "ante":
+                put[s] = put.get(s, 0) + h["amount"]
+            elif a in ("small_blind", "big_blind", "call"):
+                put[s] = put.get(s, 0) + h["amount"]
+                rb[s] = rb.get(s, 0) + h["amount"]
+            elif a == "raise":
+                add = h["to"] - rb.get(s, 0)
+                put[s] = put.get(s, 0) + add
+                rb[s] = h["to"]
+        rebuilt = sum(put.values())
+        pot = state["pot"] + sum(p["chips_in_pot_this_round"] for p in players)
+        if rebuilt != pot:
+            DEBUG_LOG.append(f"hand {state['hand_number']} {state['street']}: "
+                             f"rebuilt pot {rebuilt} != {pot}")
+        total = sum(p["chips_total"] for p in players) + state["pot"]
+        if total != TOTAL_CHIPS[0]:
+            DEBUG_LOG.append(f"hand {state['hand_number']}: chips {total} != "
+                             f"{TOTAL_CHIPS[0]}")
+        if reply.get("action") == "raise":
+            me = players[state["my_seat"]]
+            by = reply.get("amount")
+            hi = me["chips_total"] - state["current_bet"]
+            if type(by) is not int or by <= 0 or by > hi or \
+                    (by < state["min_raise_by"] and by != hi):
+                DEBUG_LOG.append(f"hand {state['hand_number']}: raise-by {by!r}"
+                                 f" outside [{state['min_raise_by']}, {hi}]")
+    elif reply.get("discard") not in [None] + list(state["hole_cards"]):
+        DEBUG_LOG.append(f"hand {state['hand_number']}: bad discard {reply!r}")
+
+
 def get_action(state):
     try:
-        return _decide(state)
-    except Exception:
-        return _safe_default(state)
+        reply = _decide(state)
+    except Exception as e:
+        if DEBUG:
+            DEBUG_LOG.append(f"exception {type(e).__name__}: {e}")
+        reply = _safe_default(state)
+    if DEBUG:
+        try:
+            _debug_check(state, reply)
+        except Exception as e:
+            DEBUG_LOG.append(f"debug check failed {type(e).__name__}: {e}")
+    return reply
 
 
 def on_hand_end(summary):

@@ -17,10 +17,17 @@ from sng.ours.pushfold import CACHE, class_of
 _CACHE = {}
 
 
-def load_chart(rules):
+def load_chart(rules, file=None):
     sp = rules.spec
     if sp.hole_cards != 2 or len(sp.deck) != 52 or tuple(sp.category_order) != STANDARD_ORDER or sp.discards:
         return None
+    if file:
+        f = CACHE / f"pushfold_{file}.json"
+        if not f.exists():
+            return None
+        if f not in _CACHE:
+            _CACHE[f] = Chart(json.loads(f.read_text()))
+        return _CACHE[f]
     name = None
     for f in sorted(CACHE.glob("pushfold_*.json")):
         try:
