@@ -147,12 +147,28 @@ class IcmTag:
     # ---- decision -----------------------------------------------------------------------
     def act(self, obs):
         lg = obs.legal
+        if getattr(lg, "discard_count", 0):
+            return self._discard(obs)
         if obs.hand_number != self._hand:
             self._hand = obs.hand_number
             self.aggressor = None
         if obs.street == 0:
             return self._preflop(obs)
         return self._postflop(obs)
+
+    def _discard(self, obs):
+        """Discard/draw phases: the shared policy (sng/ours/anyvar.py); never illegal."""
+        from engine.game import Discard
+        from sng.ours import features as F
+        from sng.ours.anyvar import choose_discard
+        lg = obs.legal
+        rule = next(iter(self.spec.discards_on_street(obs.street)), None)
+        try:
+            out = choose_discard(F.get_ctx(self.spec), obs.hole, obs.board, lg.discard_min, lg.discard_count,
+                                 bool(rule and rule.draw), bool(rule and rule.to_board))
+        except Exception:  # noqa: BLE001
+            out = tuple(sorted(obs.hole, key=lambda c: c >> 2)[:lg.discard_min])
+        return Discard(out)
 
     def _preflop(self, obs):
         p, lg = self.p, obs.legal

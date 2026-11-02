@@ -36,6 +36,22 @@ class TestIcmTag(unittest.TestCase):
                 self.assertEqual((st.errors, st.illegal), (0, 0), f"{v} {betting}: {st.first_error}")
                 self.assertEqual(sum(res.final_stacks), 16000)
 
+    def test_never_illegal_on_discard_variants_or_omaha(self):
+        """Bug-hunter regressions: icm_tag answered discard requests illegally, icm_lite raised
+        on Omaha / discard games (every error is an auto-fold)."""
+        from sng.presets import PRESETS
+        cases = [SngRules(enforce_time=False, **PRESETS[p]) for p in ("discard_to_board", "omaha_discard2",
+                                                                       "draw_holdem", "five_draw")]
+        cases.append(rules_for("d_omaha4x2", enforce_time=False))
+        for r in cases:
+            for name in ("icm_tag", "icm_lite"):
+                for t in range(3):
+                    bots = [make(x) for x in FIELD]
+                    bots.insert(t, make(name))
+                    res = play_table(bots, r, seed=1300 + t)
+                    st = res.stats[t]
+                    self.assertEqual((st.errors, st.illegal), (0, 0), f"{name} {r.spec.name}: {st.first_error}")
+
     @unittest.skipIf(os.environ.get("SNG_SKIP_TIMING"), "timing skipped")
     def test_fast_including_first_decision(self):
         r = rules_for("a_nlhe100", enforce_time=False)

@@ -94,7 +94,9 @@ def _board_cat(cards):
 class LiteStrength:
     def __init__(self, spec, table):
         from engine.evaluator import get_evaluator
+        from sng.ours import features as F
         self.ev = get_evaluator(spec)
+        self.F, self.ctx = F, F.get_ctx(spec)
         self.pre = table["pre"]
         self.post = table["post"]
         self._cache = {}
@@ -106,8 +108,9 @@ class LiteStrength:
         key = (tuple(hole), tuple(board))
         cats = self._cache.get(key)
         if cats is None:
-            c = self.ev.category(self.ev.evaluate(list(hole), list(board)))
-            bc = self.ev.category(int(self.ev.eval_any(np.array([board]))[0])) if len(board) >= 5 else _board_cat(board)
+            # pure-Python scores (identical to the engine's, ~12 us instead of ~100 us of numpy)
+            c = self.ev.category(self.F.evaluate(self.ctx, hole, board)[0])
+            bc = self.ev.category(self.F.evaluate(self.ctx, (), board)[0]) if len(board) >= 5 else _board_cat(board)
             st = {3: 1, 4: 2, 5: 3}.get(len(board), 3)
             cats = self._cache[key] = (st, c, bc)
         st, c, bc = cats
@@ -123,12 +126,22 @@ class IcmLite(IcmTag):
 
     def new_table(self, rules, seat, seed=0):
         super().new_table(rules, seat, seed)
-        name = rules.spec.name if (ROOT / "cache" / "sng" / f"lite_{rules.spec.name}.json").exists() else "a_nlhe100"
+        from engine.spec import STANDARD_ORDER
+        sp = rules.spec
+        self.L = None
+        own = ROOT / "cache" / "sng" / f"lite_{sp.name}.json"
+        holdem = (sp.hole_cards == 2 and len(sp.deck) == 52 and tuple(sp.category_order) == STANDARD_ORDER
+                  and not sp.discards and tuple(sp.board_cards_per_street) == (0, 3, 1, 1))
+        name = sp.name if own.exists() else ("a_nlhe100" if holdem else None)
+        if name is None:
+            return                     # no lite table for these card rules: icm_tag's own strength
         if name not in _TABLES:
-            _TABLES[name] = LiteStrength(rules.spec, json.loads((ROOT / "cache" / "sng" / f"lite_{name}.json").read_text()))
+            _TABLES[name] = LiteStrength(sp, json.loads((ROOT / "cache" / "sng" / f"lite_{name}.json").read_text()))
         self.L = _TABLES[name]
 
     def _eq(self, obs, k):
+        if self.L is None:
+            return super()._eq(obs, k)
         return self.L.equity(obs.hole, obs.board, k)
 
 
