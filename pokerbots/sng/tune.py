@@ -62,8 +62,12 @@ def main(argv=None):
     ap.add_argument("--preset", default=None)
     a = ap.parse_args(argv)
     import importlib
-    base = dict(importlib.import_module(f"sng.ours.{a.bot}").PARAMS)
-    steps = STEPS[a.bot]
+    # icm_any / icm_lite share icm_tag's parameters (they subclass it)
+    family = "icm_tag" if a.bot in ("icm_tag", "icm_any", "icm_lite") else a.bot
+    base = dict(importlib.import_module(f"sng.ours.{family}").PARAMS)
+    steps = dict(STEPS[family])
+    for k in ("pf_chart", "pf_max_bb", "pf_file"):      # experiment switches, not tuned
+        steps.pop(k, None)
     out_dir = ROOT / "results" / "sng_tune"
     out_dir.mkdir(parents=True, exist_ok=True)
     state_f = out_dir / f"{a.bot}{a.tag}.json"
