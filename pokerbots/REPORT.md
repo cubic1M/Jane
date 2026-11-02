@@ -964,6 +964,13 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
     - respecting bets less costs −1.1 (significant).
 
     Heads-up postflop play is already at its optimum.
+* **Regression check 2** (`results/sng_final_check2.md`, fresh seeds 37000+, 400 paired tables
+  per cell, after `risk_payout` and the heads-up ranges).
+  - The pre-change bot vs the current one: +0.7 / +0.2 / −0.1 / −0.4 / +2.7 / +0.7 / −0.8 / −2.0, mean +0.1. Neutral 8-handed as expected: the changes act only on top-heavy payouts and heads-up endings, where they were validated separately.
+  - Margins over field bests: default +19, strong +32, mirror +7, field 3 +5.6, field 2 +0.9 (not significant; the old bot scores the same there, so this is seed noise around a modest edge), all3/top3 +2.3 (not significant).
+  - Hackathon-like field: −1.2 vs `f3_exploiter` (not significant). All3 under winner payouts: 0.0 vs `f3_exploiter`.
+
+  The DAY_CARD shows both checks side by side.
 * **Bug hunter:** 284k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:

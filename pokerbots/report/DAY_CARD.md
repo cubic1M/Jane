@@ -98,16 +98,23 @@ Fill in each line:
 
 ## Where we stand (current `icm_tag`, fresh seeds)
 
-It beats the best bot of every opponent field we built. These are average points per
-table over the strongest bot in each field:
+These are points per table over the strongest bot in each field, from two independent fresh-seed checks
+(`results/sng_final_check.md`, 300 tables; `results/sng_final_check2.md`, 400 tables, after the
+heads-up and payout changes):
 
-| field | margin |
+| field | margin, check 1 / check 2 |
 |---|---|
-| default | +23 |
-| strong | +27 |
-| two fields written independently of our bot | +7 to +10 |
-| our own copies (mirror) | +5 |
-| all three fields, top-3 payouts | +4.5 |
+| default | +23 / +19 |
+| strong | +27 / +32 |
+| our own copies (mirror) | +5 / +7 |
+| field 3 (written independently) | +10 / +6 |
+| field 2 (written independently) | +7 / +1 (not significant) |
+| all three fields, top-3 payouts | +4.5 / +2.3 (not significant) |
+| hackathon-like field, all three under winner payouts | tie with `f3_exploiter` (±1) |
+
+So we clearly beat our own fields, and beat or tie the best independently written bots. The edge
+over a strong independent bot is a few points per table, not a landslide. That is why the day-of
+loop (tune on the real rules, validate, resubmit) matters.
 
 ## Rules of thumb that held on every field we tested
 
