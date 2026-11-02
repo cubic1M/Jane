@@ -199,6 +199,7 @@ class TestSpots(unittest.TestCase):
         obs_free = spot(A, "Kc9d", "8h8d", "Qs7c2h", pre + [Check()])
         obs_raise = spot(A, "Kc9d", "8h8d", "Qs7c2h", pre + [RaiseTo(4), RaiseTo(16)])
         b = bot_for(A, 0)
+        b.ms_sample = 0.002          # pin the speed: under load the sample count (not the logic) drops
         e_free = b.strength(obs_free)
         e_raise = b.strength(obs_raise)
         for e in (e_free, e_raise):

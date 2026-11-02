@@ -48,7 +48,9 @@ Fill in each line:
    - Permissive kit: `python3 -m sng.bundle --adapter adapter.py --variant <table> --out submission/bot.py`.
    - **Restrictive kit** (like practice kit 2: no exec, whitelisted imports, 100 KB):
      `python3 -m sng.bundle_flat --adapter adapter.py --any-table <table.json> --out submission.py`
-     (no exec, allowed imports only, only reachable code, about 60 KB).
+     (no exec, allowed imports only, only reachable code, about 69 KB).
+   - **A file-size cap:** add `--compact` (same decisions, tested: about 51 KB with kit 2's adapter).
+     A lean adapter saves a few KB more. **Under about 45 KB, go to Plan B** (it fit kit 3's 32 KB).
    - Templates: `rehearsal_sng/adapter.py` (Agent class, raise-to) and
      `practice_kit2/adapter_kit2.py` (module functions, raise-by, seats renumbered every hand,
      handled with a stable-identity ring; draw protocol).

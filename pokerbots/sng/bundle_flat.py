@@ -22,6 +22,10 @@ globals vars setattr ...; at most 100,000 bytes) need this flat bundler instead:
 
     python3 -m sng.bundle_flat --adapter practice_kit2/adapter_kit2.py \\
         --any-table cache/sng/any_<sig>.json --out practice_kit2/submission_planA.py
+
+--compact (for a file-size cap): 1-space indents (checked to give the same AST), the table
+encoded as one string (2 base-32 digits per value) and local variables shortened. Same
+decisions as the full bundle (tested in lockstep on kit 2): about 26% smaller, 69 -> 51 KB.
 """
 from __future__ import annotations
 
@@ -55,6 +59,12 @@ class strength:
 
 LOADER = '''
 def _expand(g):
+    if isinstance(g, str):                       # compact: "key key ...|<2 base-32 digits per value>"
+        ks, vs = g.split("|")
+        ks = ks.split(" ")
+        n = len(vs) // (2 * len(ks))
+        g = {k: [None if vs[j:j + 2] == "zz" else int(vs[j:j + 2], 32) / 1000
+                 for j in range(2 * n * i, 2 * n * (i + 1), 2)] for i, k in enumerate(ks)}
     return {f"{k}|{i + 1}": v for k, vs in g.items() for i, v in enumerate(vs) if v is not None}
 
 
@@ -224,8 +234,9 @@ def _defs_refs(stmt):
     return defs, refs
 
 
-def _compact_any(path: Path) -> dict:
-    """{'pre': {'key|k': v}} -> {'pre': {'key': [v for k = 1..7]}} rounded to 3 decimals."""
+def _compact_any(path: Path, ints: bool = False) -> dict:
+    """{'pre': {'key|k': v}} -> {'pre': {'key': [v for k = 1..7]}} rounded to 3 decimals
+    (ints: each part encoded as one string by _encode, decoded by the loader's _expand)."""
     t = json.loads(path.read_text())
     out = {}
     for part in ("pre", "post"):
@@ -233,11 +244,132 @@ def _compact_any(path: Path) -> dict:
         for k, v in t[part].items():
             key, kk = k.rsplit("|", 1)
             g.setdefault(key, [None] * 7)[int(kk) - 1] = round(v, 3)
-        out[part] = g
+        out[part] = _encode(g) if ints else g
     return out
 
 
-def build(adapter: Path, out: Path, any_table: Path | None = None) -> Path:
+_B32 = "0123456789abcdefghijklmnopqrstuv"
+
+
+def _encode(g: dict) -> str:
+    """{key: [7 values in 0..1 or None]} -> "key key ...|vals", 2 base-32 digits per value
+    (thousandths, "zz" = None). Keys must not contain spaces or "|"."""
+    assert all(" " not in k and "|" not in k for k in g)
+    vals = []
+    for vs in g.values():
+        for v in vs:
+            if v is None:
+                vals.append("zz")
+            else:
+                x = round(v * 1000)
+                assert 0 <= x < 1024, v
+                vals.append(_B32[x // 32] + _B32[x % 32])
+    return " ".join(g) + "|" + "".join(vals)
+
+
+def _reindent(code: str) -> str:
+    """4-space indents -> 1 space (ast.unparse output, docstrings already stripped). Checked:
+    the result must parse to the same AST, else the code is returned unchanged."""
+    lines = []
+    for ln in code.split("\n"):
+        body = ln.lstrip(" ")
+        lead = len(ln) - len(body)
+        lines.append(" " * (lead // 4) + " " * (lead % 4) + body)
+    out = "\n".join(lines)
+    try:
+        if ast.dump(ast.parse(out)) == ast.dump(ast.parse(code)):
+            return out
+    except SyntaxError:
+        pass
+    return code
+
+
+_NO_RENAME_CALLS = {"locals", "vars", "eval", "exec", "globals", "dir"}
+
+
+def _short_names(taken: set):
+    import keyword
+    import itertools as it
+    letters = "abcdefghijklmnopqrstuvwxyz"
+    for n in it.count(1):
+        for t in it.product(letters, repeat=n):
+            c = "".join(t)
+            if c not in taken and not keyword.iskeyword(c):
+                yield c
+
+
+def _rename_locals(kept: list) -> None:
+    """Shorten local variable names inside each top-level function / method (in place).
+
+    Renamed: names bound (Store/Del) somewhere in the function. Never renamed: arguments
+    (keyword calls), names that are also module-level or builtin names (a comprehension or
+    nested-scope binding could shadow a global read elsewhere in the function), names under
+    global/nonlocal, and whole functions that define a class or call locals()/eval()/....
+    New names are drawn from identifiers that appear nowhere in the bundle."""
+    taken = set(dir(builtins))
+    for n in kept:
+        for x in ast.walk(n):
+            if isinstance(x, ast.Name):
+                taken.add(x.id)
+            elif isinstance(x, ast.arg):
+                taken.add(x.arg)
+            elif isinstance(x, ast.Attribute):
+                taken.add(x.attr)
+            elif isinstance(x, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                taken.add(x.name)
+            elif isinstance(x, (ast.Global, ast.Nonlocal)):
+                taken.update(x.names)
+            elif isinstance(x, ast.alias):
+                taken.add((x.asname or x.name).split(".")[0])
+            elif isinstance(x, ast.keyword) and x.arg:
+                taken.add(x.arg)
+    module_names = set(dir(builtins))
+    for n in kept:
+        if isinstance(n, (ast.FunctionDef, ast.ClassDef, ast.AsyncFunctionDef)):
+            module_names.add(n.name)
+        elif isinstance(n, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+            for t in (n.targets if isinstance(n, ast.Assign) else [n.target]):
+                module_names.update(y.id for y in ast.walk(t) if isinstance(y, ast.Name))
+        elif isinstance(n, (ast.Import, ast.ImportFrom)):
+            module_names.update((a.asname or a.name).split(".")[0] for a in n.names)
+        else:
+            module_names.update(y.id for y in ast.walk(n) if isinstance(y, ast.Name) and isinstance(y.ctx, ast.Store))
+    module_names.add("_ANY_TABLE")
+    gen = _short_names(taken)
+    funcs = []
+    for n in kept:
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            funcs.append(n)
+        elif isinstance(n, ast.ClassDef):
+            funcs += [m for m in n.body if isinstance(m, (ast.FunctionDef, ast.AsyncFunctionDef))]
+    for f in funcs:
+        nodes = list(ast.walk(f))
+        if any(isinstance(x, ast.ClassDef) for x in nodes) or any(
+                isinstance(x, ast.Call) and isinstance(x.func, ast.Name) and x.func.id in _NO_RENAME_CALLS
+                for x in nodes):
+            continue
+        args = {x.arg for x in nodes if isinstance(x, ast.arg)}
+        fixed = set()
+        for x in nodes:
+            if isinstance(x, (ast.Global, ast.Nonlocal)):
+                fixed.update(x.names)
+        local = {x.id for x in nodes if isinstance(x, ast.Name) and isinstance(x.ctx, (ast.Store, ast.Del))}
+        local |= {x.name for x in nodes if isinstance(x, ast.ExceptHandler) and x.name}
+        local -= args | fixed | module_names
+        mapping = {}
+        for name in sorted(local, key=lambda v: -sum(1 for x in nodes if isinstance(x, ast.Name) and x.id == v)):
+            new = next(gen)
+            if len(new) < len(name):
+                mapping[name] = new
+        for x in nodes:
+            if isinstance(x, ast.Name) and x.id in mapping:
+                x.id = mapping[x.id]
+            elif isinstance(x, ast.ExceptHandler) and x.name in mapping:
+                x.name = mapping[x.name]
+
+
+def build(adapter: Path, out: Path, any_table: Path | None = None, compact: bool = False) -> Path:
+    """compact: 1-space indents and an integer table (about 30% smaller, same behaviour)."""
     header, dropped, stmts = [], set(), []      # stmts: (origin, ast stmt, keep_always)
     sources = [(m, (ROOT / s).read_text() if s.endswith(".py") else s) for m, s in MODULES]
     sources.append(("_loader", LOADER))
@@ -247,7 +379,7 @@ def build(adapter: Path, out: Path, any_table: Path | None = None) -> Path:
         aliases = _module_aliases(tree, modname)
         tree = _Flatten(modname, aliases, header, dropped).visit(tree)
         _strip_docstrings(tree)
-        over = OVERRIDES.get(modname, {})
+        over = dict(OVERRIDES.get(modname, {}))      # a copy: build() may run twice in a process
         body = []
         for n in tree.body:
             if _is_main_guard(n) or (isinstance(n, ast.Expr) and isinstance(n.value, ast.Constant)):
@@ -297,11 +429,13 @@ def build(adapter: Path, out: Path, any_table: Path | None = None) -> Path:
     # string annotations (dataclasses reads sys.modules[cls.__module__].__dict__)
     future = []
     others = [h for h in dict.fromkeys(header) if not h.startswith("from __future__")]
-    table = _compact_any(any_table) if any_table else None
+    table = _compact_any(any_table, ints=compact) if any_table else None
+    if compact:
+        _rename_locals(kept)
     parts = ["# Generated by sng/bundle_flat.py: one flat file, no exec, kit-allowed imports only.",
              *future, *others,
              f"_ANY_TABLE = {json.dumps(table, separators=(',', ':')).replace('null', 'None')}",
-             *(ast.unparse(n) for n in kept)]
+             *((_reindent(ast.unparse(n)) if compact else ast.unparse(n)) for n in kept)]
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text("\n".join(parts) + "\n")
     if missing:
@@ -315,8 +449,9 @@ def main(argv=None):
     ap.add_argument("--adapter", required=True)
     ap.add_argument("--any-table", default=None, help="cache/sng/any_<sig>.json for icm_any")
     ap.add_argument("--out", required=True)
+    ap.add_argument("--compact", action="store_true", help="1-space indents + integer table (size caps)")
     a = ap.parse_args(argv)
-    p = build(Path(a.adapter), Path(a.out), Path(a.any_table) if a.any_table else None)
+    p = build(Path(a.adapter), Path(a.out), Path(a.any_table) if a.any_table else None, a.compact)
     print(f"wrote {p} ({p.stat().st_size:,} bytes)")
 
 

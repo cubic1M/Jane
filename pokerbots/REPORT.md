@@ -1018,6 +1018,12 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   - **8-handed, 600 tables x 4 fields:** every cell within noise (hu_risk=0 mean +0.4, cap_fade=25 mean +0.3, none significant).
   - **Heads-up tables, 800 x 4 cells:** every cell within ±0.3 of zero. With exact-ICM all-in calls on, the premium hardly ever decides a heads-up hand (it only touches non-all-in calls over 40% of the stack).
   - **Verdict:** no measurable effect; defaults unchanged.
+* **Plan A under a file-size cap** (`sng/bundle_flat.py --compact`). Practice kit 3 capped submissions at 32 KB; our flat bundle had grown to 69 KB.
+  - `--compact`: 1-space indents (checked to give the same AST), the strength table as one string (2 base-32 digits per value) and short local names. Arguments, globals, attributes and keyword names are kept.
+  - Result: 69 → 51 KB, **the same decision on all 3,189 decisions** fed in lockstep on kit 2 (a test checks this).
+  - Fixed on the way: `build()` popped the module-level `OVERRIDES`, so a second build in one process failed.
+  - Verdict: under a cap below about 45 KB, Plan B is the route (it produced a 32 KB bot in 7 minutes on kit 3).
+* **Decision-time tail is the OS, not our code.** The slowest 0.1% of decisions are spread over every code path, including a preflop fold that took 2.4 ms. `gc.freeze()` (already in the adapters) trims the tail: max 0.71 vs 1.37 ms over 7,772 decisions.
 * **Bug hunter:** 588k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:

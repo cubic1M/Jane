@@ -309,6 +309,52 @@ class FlatBundle(unittest.TestCase):
             self.assertEqual(agents[0].stats.init_failures, 0)
             self.assertGreater(agents[0].stats.decisions, 0)
 
+    def test_compact_bundle_decides_like_the_full_one(self):
+        """--compact (1-space indents, encoded table, short locals) passes the checker and makes
+        exactly the same decisions, fed the same states in lockstep."""
+        import copy
+        import json
+        from check_bot import check_file
+        from sng import bundle_flat
+        from sng.ours.anyvar import table_path
+        m = load_adapter()
+        with tempfile.TemporaryDirectory() as d:
+            full = bundle_flat.build(KIT / "adapter_kit2.py", Path(d) / "full.py", table_path(m._SPEC))
+            comp = bundle_flat.build(KIT / "adapter_kit2.py", Path(d) / "comp.py", table_path(m._SPEC),
+                                     compact=True)
+            self.assertEqual(check_file(comp), [])
+            self.assertLess(comp.stat().st_size, 0.8 * full.stat().st_size)
+            seen = dict(n=0, diff=0)
+
+            class Twin:
+                def __init__(self):
+                    self.a, self.b = load_module_from_path(full), load_module_from_path(comp)
+
+                def init(self, cfg):
+                    self.a.init(copy.deepcopy(cfg))
+                    self.b.init(copy.deepcopy(cfg))
+
+                def get_action(self, st):
+                    x, y = self.a.get_action(copy.deepcopy(st)), self.b.get_action(copy.deepcopy(st))
+                    seen["n"] += 1
+                    seen["diff"] += json.dumps(x, sort_keys=True, default=str) != json.dumps(
+                        y, sort_keys=True, default=str)
+                    return x
+
+                def on_hand_end(self, sm):
+                    self.a.on_hand_end(copy.deepcopy(sm))
+                    self.b.on_hand_end(copy.deepcopy(sm))
+
+            samples = sorted((KIT / "bots").glob("sample_*.py"))
+            for seed in range(3):
+                agents = [BotAgent("twin", Twin, enforce_time=False)] + [
+                    BotAgent.from_file(f"o{i}", samples[i % len(samples)], enforce_time=False) for i in range(7)]
+                Table(agents, seed=seed).play()
+                self.assertEqual(agents[0].stats.errors + agents[0].stats.init_failures, 0,
+                                 agents[0].stats.messages[:3])
+            self.assertGreater(seen["n"], 300)
+            self.assertEqual(seen["diff"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()
