@@ -200,11 +200,25 @@ export const STUDENT_PLANS: readonly {
   name: string;
   words: RegExp;
   yearlySavingCents: number;
+  // The student plan's monthly price: someone paying about this is already on it.
+  studentMonthlyCents: number;
 }[] = [
-  { name: "Spotify", words: /SPOTIFY/, yearlySavingCents: 7_200 },
-  { name: "Amazon Prime", words: /AMAZON PRIME|AMZN PRIME|PRIME VIDEO/, yearlySavingCents: 9_000 },
-  { name: "Apple Music", words: /APPLE MUSIC/, yearlySavingCents: 6_000 },
-  { name: "YouTube Premium", words: /YOUTUBE ?PREMIUM|GOOGLE \*YOUTUBE/, yearlySavingCents: 7_200 },
-  { name: "Adobe", words: /ADOBE/, yearlySavingCents: 24_000 },
+  { name: "Spotify", words: /SPOTIFY/, yearlySavingCents: 7_200, studentMonthlyCents: 599 },
+  {
+    name: "Amazon Prime",
+    words: /AMAZON PRIME|AMZN PRIME|PRIME VIDEO/,
+    yearlySavingCents: 9_000,
+    studentMonthlyCents: 749,
+  },
+  { name: "Apple Music", words: /APPLE MUSIC/, yearlySavingCents: 6_000, studentMonthlyCents: 599 },
+  {
+    name: "YouTube Premium",
+    words: /YOUTUBE ?PREMIUM|GOOGLE \*YOUTUBE/,
+    yearlySavingCents: 7_200,
+    studentMonthlyCents: 799,
+  },
+  { name: "Adobe", words: /ADOBE/, yearlySavingCents: 24_000, studentMonthlyCents: 1_999 },
 ];
 export const STUDENT_PLAN_MIN_MONTHS = 2;
+// Sales tax on a student price, so $6.47 for a $5.99 plan is still that plan.
+export const STUDENT_PLAN_PRICE_ROOM = 1.15;

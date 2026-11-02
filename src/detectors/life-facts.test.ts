@@ -117,6 +117,55 @@ describe("student plans", () => {
     expect(topicsFor(noPlans)).toEqual([]);
   });
 
+  // Debugger 11-02: a student paying $5.99 for Spotify was told "Switch to student plans, save $72 a
+  // year". A statement line rarely says "student", so it goes by the price.
+  describe("when they're already on the student price", () => {
+    const paying = (spotify: number, prime = 1499) => ({
+      ...student(),
+      transactions: [
+        ...monthly("STATE UNIV BOOKSTORE #2", null, 4, 3500),
+        ...monthly("STATE UNIVERSITY BURSAR PAYMENT", null, 2, 400000),
+        ...monthly("SPOTIFY USA", null, 5, spotify),
+        ...monthly("AMAZON PRIME*2K4AB7XY0", null, 5, prime),
+      ],
+    });
+
+    it("leaves that service out, and what it would save", () => {
+      const [s] = topicsFor(paying(599));
+      expect(s.why).toMatch(/Amazon Prime/);
+      expect(s.why).not.toMatch(/Spotify/);
+      expect(s.worthCents).toBe(9_000);
+    });
+
+    it("allows for sales tax on the student price", () => {
+      expect(topicsFor(paying(649))[0].why).not.toMatch(/Spotify/);
+    });
+
+    it("still suggests it at a price well above the student one", () => {
+      expect(topicsFor(paying(1199))[0].why).toMatch(/Spotify/);
+    });
+
+    it("isn't made when they're on the student price of everything", () => {
+      expect(topicsFor(paying(599, 749)).map((t) => t.topic)).not.toContain("student_discounts");
+    });
+
+    it("goes by what they pay now, not what they paid", () => {
+      const moved = {
+        ...student(),
+        transactions: [
+          ...monthly("STATE UNIV BOOKSTORE #2", null, 4, 3500),
+          ...monthly("STATE UNIVERSITY BURSAR PAYMENT", null, 2, 400000),
+          ...monthly("SPOTIFY USA", null, 5, 1199).map((t, i, all) =>
+            i === all.reduce((late, x, j) => (x.date > all[late].date ? j : late), 0)
+              ? { ...t, amountCents: 599 }
+              : t,
+          ),
+        ],
+      };
+      expect(topicsFor(moved).map((t) => t.topic)).not.toContain("student_discounts");
+    });
+  });
+
   it("a student they say they are is a student", () => {
     const told = {
       ...student(),

@@ -2,6 +2,7 @@ import {
   PET_COVER_WORDS,
   PET_SIGNAL,
   PET_VET_BILL_CENTS,
+  STUDENT_PLAN_PRICE_ROOM,
   STUDENT_PLANS,
   STUDENT_PLAN_MIN_MONTHS,
 } from "@/config/life-facts";
@@ -68,7 +69,12 @@ const studentPlans: Detector = {
         data,
         (t) => t.amountCents > 0 && plan.words.test(t.description.toUpperCase()),
       );
-      return new Set(charges.map((t) => t.date.slice(0, 7))).size >= STUDENT_PLAN_MIN_MONTHS;
+      if (new Set(charges.map((t) => t.date.slice(0, 7))).size < STUDENT_PLAN_MIN_MONTHS) {
+        return false;
+      }
+      // Already on the student plan, by what they pay now: a statement rarely says so.
+      const latest = charges.reduce((a, b) => (b.date > a.date ? b : a));
+      return latest.amountCents > plan.studentMonthlyCents * STUDENT_PLAN_PRICE_ROOM;
     });
     if (paying.length === 0) return null;
     const saves = paying.reduce((s, p) => s + p.yearlySavingCents, 0);
