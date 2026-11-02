@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { regularPayers, type PayerRow } from "./regular-payers";
+import { clientDeposits, regularPayers, type PayerRow } from "./regular-payers";
 
 // Debugger 11-02: "NORTHWIND LABS" with no pay word in the line stayed uncategorized, and Claude
 // is only asked what a typical purchase there is, so a person's pay wasn't income anywhere.
@@ -103,5 +103,106 @@ describe("regular money in from one payer", () => {
       { id: "x", date: "2026-07-01", amountCents: -90_000, merchantName: null },
     ];
     expect(regularPayers(rows).every((id) => id.startsWith("Northwind"))).toBe(true);
+  });
+});
+
+// Debugger 11-02: an agency paid by clients at no regular time had $20,650 of invoices with no
+// category, so none of it was income (#1216 stopped them being refunds, and they stopped there).
+describe("clients who pay at uneven times", () => {
+  const row = (name: string, date: string, cents: number, i = 0): PayerRow => ({
+    id: `${name}-${date}-${i}`,
+    date,
+    amountCents: -cents,
+    merchantName: name,
+  });
+  const clients = [
+    row("Bright Path Clinic", "2026-07-03", 610_000),
+    row("Bright Path Clinic", "2026-09-25", 740_000),
+    row("Halcyon Coffee", "2026-05-29", 420_000),
+    row("Halcyon Coffee", "2026-08-27", 295_000),
+  ];
+
+  it("are income, at any size or time", () => {
+    expect(clientDeposits(clients).sort()).toEqual(clients.map((c) => c.id).sort());
+  });
+
+  it("leave out a payer who only paid once", () => {
+    const once = row("Estate Of M Holloway", "2026-07-10", 8_500_000);
+    const oneTime = row("Sunrise Lawn Care", "2026-06-10", 90_000);
+    expect(clientDeposits([...clients, once, oneTime])).not.toContain(once.id);
+    expect(clientDeposits([...clients, once, oneTime])).not.toContain(oneTime.id);
+  });
+
+  it("leave out small deposits: a refund or a share of a bill", () => {
+    const small = [
+      row("Bright Path Clinic", "2026-05-03", 4_000),
+      row("Halcyon Coffee", "2026-06-03", 4_000),
+      row("Bright Path Clinic", "2026-07-03", 4_000),
+      row("Halcyon Coffee", "2026-08-03", 4_000),
+    ];
+    expect(clientDeposits(small)).toEqual([]);
+  });
+
+  it("need more than a couple of deposits: two from a relative isn't a business", () => {
+    expect(
+      clientDeposits([
+        row("Aunt Marie", "2026-06-03", 200_000),
+        row("Aunt Marie", "2026-09-03", 200_000),
+      ]),
+    ).toEqual([]);
+  });
+
+  it("need several months: a burst isn't a business", () => {
+    expect(
+      clientDeposits([
+        row("Bright Path Clinic", "2026-07-03", 610_000),
+        row("Bright Path Clinic", "2026-07-20", 610_000),
+        row("Halcyon Coffee", "2026-07-05", 420_000),
+        row("Halcyon Coffee", "2026-08-02", 420_000),
+      ]),
+    ).toEqual([]);
+  });
+
+  it.each([
+    "Fedloan Direct Loan Disbursement",
+    "Sofi Personal Loan",
+    "State Farm Claim Refund",
+    "IRS Treas Tax Ref",
+    "Chicago Title Escrow",
+    "Estate Of M Holloway",
+    "Ally Bank",
+    "Fidelity Investments",
+    "Venmo",
+    // Measured across 241 made-up people (debugger 11-02): a budgeting app's card payments, and
+    // near misses that only escaped for being split between people.
+    "Visa",
+    "Mastercard",
+    "Payment Received Thank You",
+    "Riley Roommate Rent",
+  ])("leave out %s", (name) => {
+    const rows = [
+      row(name, "2026-05-03", 300_000),
+      row(name, "2026-08-03", 300_000),
+      row("Bright Path Clinic", "2026-06-03", 300_000),
+      row("Bright Path Clinic", "2026-09-03", 300_000),
+    ];
+    expect(clientDeposits(rows)).toEqual([]);
+  });
+
+  it("count one steady client who pays a lot, across months", () => {
+    const rows = ["2026-05-03", "2026-06-20", "2026-08-03", "2026-09-29"].map((d) =>
+      row("Square Inc", d, 310_000),
+    );
+    expect(clientDeposits(rows)).toHaveLength(4);
+  });
+
+  it("leave out money that left another of their accounts", () => {
+    const rows = clients.map((c) => ({ ...c, accountId: "checking" }));
+    const out = rows.map((r) => ({
+      accountId: "savings",
+      date: r.date,
+      amountCents: -r.amountCents,
+    }));
+    expect(clientDeposits(rows, out)).toEqual([]);
   });
 });
