@@ -62,6 +62,11 @@ Fill in each line:
    - validate: `results/sng_validate.sh "icm_tag:<tuned>" --preset <p>`;
    - submit only a paired gain > 2 SE with no field losing.
 
+**Payout-shape profiles (validated on fresh seeds):**
+- the risk premium already scales with the point table (pass the real `Rules.payouts`);
+- if 1st takes (nearly) everything, also start from `icm_tag:call_margin=0.09;range_k=3.2`, worth +1.6 per table on winner payouts;
+- top-3 or flatter: the defaults.
+
 ## Plan B: from scratch (rehearsed 3 times: 15, 10, 7 minutes to a verified bot)
 
 - Paste the 4 prompts in `report/sng_codex_prompt.md` in order; check each "done when".
