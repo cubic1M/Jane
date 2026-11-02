@@ -110,6 +110,8 @@ function withoutCardCity(text: string): string {
   return text;
 }
 
+const TAX_PAYMENT_ENTRY = "USATAXPYMT";
+
 // Reference codes and long numbers ("2K4L91", "000123") rather than names like "7-Eleven"
 // or "76": three or more digits, or a mix with at least two digits in five characters or more.
 function isCode(word: string): boolean {
@@ -182,6 +184,10 @@ export function normalizeMerchant(description: string): Merchant | null {
     .replace(/[^A-Z0-9&' -]+/g, " ");
 
   let words = text.split(/\s+/).filter((word) => /[A-Z0-9]/.test(word) && !isCode(word));
+  // The IRS's ACH entry description ("IRS USATAXPYMT", USA tax payment) isn't the payee
+  // (debugger 11-01: "IRS Usataxpymt" in the tax pack). Saved keys moved in prisma/migrations/
+  // 20270420000000_merchant_irs_tax_payment: keep them in step.
+  if (words.length > 1) words = words.filter((word) => word !== TAX_PAYMENT_ENTRY);
   // A trailing state code is location, not merchant. City names stay: we can't tell
   // them apart from merchant words reliably.
   if (US_STATES.has(words[words.length - 1])) words.pop();
