@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => ({ db: {} }));
 
-import { validateMerchant, type MerchantInput } from "./merchants";
+import { cancelsFromOwnAccountOnly, validateMerchant, type MerchantInput } from "./merchants";
 
 const input = (overrides: Partial<MerchantInput> = {}): MerchantInput => ({
   name: "Streamflix",
@@ -112,5 +112,21 @@ describe("merchants table", () => {
     expect(model.replace(/^\s*(supportEmail|suggestedSupportEmail)\b.*$/gm, "")).not.toMatch(
       /\bUser\b|userId|email|account/i,
     );
+  });
+});
+
+describe("who only cancels from the person's own account", () => {
+  it("is a company with a cancel page and nobody to write to", () => {
+    const row = (cancelUrl: string | null, supportEmail: string | null) => ({
+      cancelUrl,
+      supportEmail,
+    });
+    expect(cancelsFromOwnAccountOnly(row("https://adobe.example/cancel", null))).toBe(true);
+    expect(cancelsFromOwnAccountOnly(row("https://x.example/cancel", "help@x.example"))).toBe(
+      false,
+    );
+    expect(cancelsFromOwnAccountOnly(row(null, "help@x.example"))).toBe(false);
+    expect(cancelsFromOwnAccountOnly(row(null, null))).toBe(false);
+    expect(cancelsFromOwnAccountOnly(null)).toBe(false);
   });
 });

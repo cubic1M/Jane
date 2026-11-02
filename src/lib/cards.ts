@@ -55,6 +55,20 @@ const list = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
 const num = (v: unknown): number | null => (typeof v === "number" ? v : null);
 const text = (v: unknown): string | null => (typeof v === "string" ? v : null);
 
+// A subscription at a company that only cancels from the person's own account: what the card says
+// instead of "We cancel", so a yes doesn't promise what the agent can't do (src/lib/agent/run.ts).
+export function ownAccountCancel(company: string): {
+  whatChanges: string;
+  yesLabel: string;
+  approvedWords: string;
+} {
+  return {
+    whatChanges: `${company} only cancels from your own account, so Jane gives you their cancel page, then watches for the next charge to confirm it stopped.`,
+    yesLabel: "Yes, help me cancel",
+    approvedWords: "Approved. Jane has your next step.",
+  };
+}
+
 function whatChanges(type: FindingType, evidence: Json): string {
   const merchant = text(evidence.merchant) ?? "the company";
   switch (type) {

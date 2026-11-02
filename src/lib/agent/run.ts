@@ -31,7 +31,7 @@ import { CARD_SELECT, buildCard, cardHash } from "@/lib/cards";
 import { DecisionError, recordDecision } from "@/lib/decisions";
 import { checkGuardrails } from "@/lib/guardrails";
 import { enqueueJob, runJob } from "@/lib/jobs";
-import { companyFacts } from "@/lib/merchants";
+import { cancelsFromOwnAccountOnly, companyFacts } from "@/lib/merchants";
 import { agentFromAddress, mailMode, replyAddress, sendAgentMail, tokenFromAddress } from "./mail";
 import { readReply, type ReplyReading } from "./read-reply";
 import { findSupportContact } from "./find-contact";
@@ -381,7 +381,7 @@ export async function agentStep(
   // link, and Jane confirms by watching for the next charge.
   if (action.type === "cancel_subscription" && action.agentMessages.length === 0) {
     const { merchant: row } = await companyFacts(action.company, { client });
-    if (row?.cancelUrl && !row.supportEmail) {
+    if (row?.cancelUrl && cancelsFromOwnAccountOnly(row)) {
       await setStatus(
         userId,
         action,

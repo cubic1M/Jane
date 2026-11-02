@@ -27,6 +27,7 @@ export function DecisionButtons({
   diy = false,
   switchTo,
   yesLabel = "Yes, do this for me",
+  approvedWords = "Approved. Jane is on it.",
   readOnly = false,
   showLabel = "Show me how",
 }: {
@@ -38,6 +39,7 @@ export function DecisionButtons({
   // The compared option picked to switch to, or "keep" (spec step 76).
   switchTo?: string;
   yesLabel?: string;
+  approvedWords?: string;
   // Read-only mode (a real account): nobody acts for them, so the yes is "Show me how", which
   // records it as theirs to do and opens the steps and drafts here.
   readOnly?: boolean;
@@ -206,7 +208,7 @@ export function DecisionButtons({
         <p role="status">
           {chosen === "yes" ? (
             <>
-              Approved. Jane is on it.{" "}
+              {approvedWords}{" "}
               {/* Your actions, or what Jane is doing while /actions is hidden
                   (src/config/hidden-pages.ts). */}
               <Link

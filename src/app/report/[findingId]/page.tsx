@@ -5,14 +5,20 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { AppHeader, PageLoading } from "@/components/app-header";
 import { ViewTracker } from "@/components/view-tracker";
-import { ACTION_FOR_FINDING, CARD_SELECT, buildCard, cardHash } from "@/lib/cards";
+import {
+  ACTION_FOR_FINDING,
+  CARD_SELECT,
+  buildCard,
+  cardHash,
+  ownAccountCancel,
+} from "@/lib/cards";
 import { partnerForUser } from "@/lib/referrals";
 import { scopedDb } from "@/lib/db-scoped";
 import { UNDO_WINDOW_SECONDS } from "@/lib/decisions";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { buildKit, hasKit, selfServe } from "@/lib/diy";
-import { companyFacts } from "@/lib/merchants";
+import { cancelsFromOwnAccountOnly, companyFacts } from "@/lib/merchants";
 import { comparisonFor } from "@/lib/compare";
 import { BestOption } from "./best-option";
 import { DecisionButtons } from "./decision-buttons";
@@ -48,8 +54,6 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
       });
   // Read-only mode (src/lib/concierge-mode.ts): for a real account the yes is "Show me how".
   const readOnly = !(await conciergeMode(user.id));
-  // What it shows: for a real account, what they'd do, never "We ...". The hash is the card's.
-  const shown = readOnly ? selfServe(card) : card;
   // A switch picked on a do-it-yourself answer: its sign-up link goes with the steps.
   const picked = (diyDecision?.options ?? null) as {
     switchName?: unknown;
@@ -70,6 +74,23 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
         })
       : null;
   const outcome = company?.outcome ?? null;
+  // A company that only cancels from the person's own account: said before the yes, and still
+  // after it, once the card no longer looks the company up for its kit.
+  const ownAccount =
+    !readOnly &&
+    finding.type === "subscription_review" &&
+    typeof merchantName === "string" &&
+    cancelsFromOwnAccountOnly(
+      company ? company.merchant : (await companyFacts(merchantName)).merchant,
+    )
+      ? ownAccountCancel(merchantName)
+      : null;
+  // What it shows: for a real account, what they'd do, never "We ...". The hash is the card's.
+  const shown = readOnly
+    ? selfServe(card)
+    : ownAccount
+      ? { ...card, whatChanges: ownAccount.whatChanges }
+      : card;
   // The person's own policy from this insurer, if they uploaded one (spec step 68). Shown
   // beside the card, not in it, so the card and its hash stay the same.
   const policy =
@@ -111,7 +132,8 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
         {comparison && (
           <BestOption
             comparison={comparison}
-            keepLabel={shown.whatChanges}
+            keepLabel={ownAccount ? `Cancel instead. ${ownAccount.whatChanges}` : shown.whatChanges}
+            approvedWords={ownAccount?.approvedWords}
             findingId={finding.id}
             cardHash={cardHash(card)}
             undoSeconds={UNDO_WINDOW_SECONDS}
@@ -204,6 +226,8 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
             undoSeconds={UNDO_WINDOW_SECONDS}
             diy={kit !== null}
             readOnly={readOnly}
+            yesLabel={ownAccount?.yesLabel}
+            approvedWords={ownAccount?.approvedWords}
           />
         ) : diyDecision && kit ? (
           <DiyKit

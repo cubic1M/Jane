@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { findingOfType, sampleFindings } from "./__fixtures__/findings";
-import { buildCard, cardHash, type CardFinding } from "./cards";
+import { buildCard, cardHash, ownAccountCancel, type CardFinding } from "./cards";
 
 const asStored = (type: Parameters<typeof findingOfType>[0]): CardFinding => {
   const f = findingOfType(type);
@@ -90,5 +90,19 @@ describe("cardHash", () => {
 
     expect(cardHash(buildCard(asStored("bank_fees")))).toBe(cardHash(card));
     expect(cardHash({ ...card, giveUp: `${card.giveUp}!` })).not.toBe(cardHash(card));
+  });
+});
+
+// Debugger 11-02: the card said "We cancel your Adobe subscription for you", and after the Yes
+// /jane said "Adobe only cancels from your own account". 14 of the 21 companies Jane knows do.
+describe("a company that only cancels from the person's own account", () => {
+  it("says what really happens on a yes", () => {
+    const words = ownAccountCancel("Adobe");
+    expect(words.whatChanges).toBe(
+      "Adobe only cancels from your own account, so Jane gives you their cancel page, then watches for the next charge to confirm it stopped.",
+    );
+    expect(words.whatChanges).not.toMatch(/We cancel/);
+    expect(words.yesLabel).toBe("Yes, help me cancel");
+    expect(words.approvedWords).not.toMatch(/on it/);
   });
 });
