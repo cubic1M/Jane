@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { AppHeader, PageLoading } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { loadTaxCalendar } from "@/lib/tax-calendar";
+import { calendarWords } from "@/planning/tax-calendar";
 import { loadTaxFound } from "@/lib/tax-scan";
 import { requireUser } from "@/lib/session";
 
@@ -90,7 +91,7 @@ async function Content() {
           {v.months.map((m) => (
             <li key={m.month} className="flex flex-col">
               <strong>{m.label}</strong>
-              <span>{m.items.map((i) => (v.acts ? i.auto : i.ask)).join(" ")}</span>
+              <span>{m.items.map((i) => calendarWords(i, v)).join(" ")}</span>
               {m.month !== v.month && of(m.month).length > 0 && (
                 <span className="text-zinc-600 dark:text-zinc-400">
                   For you:{" "}

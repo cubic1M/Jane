@@ -28,8 +28,19 @@ export const MONTH_NAMES = [
 export type CalendarPlan = {
   month: number;
   label: string;
-  items: { key: CalendarKey; title: string; ask: string; auto: string }[];
+  items: { key: CalendarKey; title: string; ask: string; auto: string; self?: string }[];
 };
+
+// What Jane does, in the words for this person: acting on its own, asking first, or (a real
+// account, not in advice mode) its own words where the others would promise a drafted return or
+// a payment button.
+export function calendarWords(
+  item: { ask: string; auto: string; self?: string },
+  { acts, advice }: { acts: boolean; advice: boolean },
+): string {
+  if (!advice && item.self) return item.self;
+  return acts ? item.auto : item.ask;
+}
 
 export function planFor(month: number): CalendarPlan {
   const keys = TAX_CALENDAR[month] ?? [];
