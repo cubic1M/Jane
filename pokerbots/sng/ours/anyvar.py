@@ -289,9 +289,10 @@ class IcmAny(IcmTag):
     # five-draw / draw hold'em / discard-to-board / Omaha discard-2 (two fresh-seed runs,
     # results/sng_anyvar_newdefaults*.md): off for icm_any; the day-of tuner can try them.
     # bet_discount stays 0.6 (icm_tag's 0.5 came from a hold'em re-tune not run on discard games)
+    # push_steal stays 0 until checked on the discard presets (results/sng_anyvar_pushsteal.md)
     # behind_k inherits icm_tag's 0.2: on the discard presets +1.2 / +4.3* / +0.3 / -0.9 (five-draw /
     # draw hold'em / discard-to-board / Omaha discard-2, results/sng_anyvar_behindk.md)
-    OVERRIDES = dict(hu_open_mult=0.0, hu_range_k=0.0, icm_call=0, bet_discount=0.6)
+    OVERRIDES = dict(hu_open_mult=0.0, hu_range_k=0.0, icm_call=0, bet_discount=0.6, push_steal=0.0)
 
     def new_table(self, rules, seat, seed=0):
         super().new_table(rules, seat, seed)

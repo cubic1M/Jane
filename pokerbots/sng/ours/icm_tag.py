@@ -51,7 +51,8 @@ PARAMS = dict(
     pf_file="",          #    chart file cache/sng/pushfold_<pf_file>.json ("" = equilibrium for the payouts)
     cap_risk=0.0,        # near the hand cap: risk premium + cap_risk x (my stack / average - 1)
     cap_window=25,
-    push_steal=0.0,      # short-stack shoves use this share of the steal factor (fold read); 0 = off
+    push_steal=0.5,      # short-stack shoves use this share of the steal factor (fold read); 0 = off.
+                         #   0.5 validated on fresh seeds (results/sng_pushsteal_validate.md)
     behind_k=0.2,        # facing a preflop raise: extra random hands per opponent still to act
                          #   (callers / re-raisers count 0.8 each); 0.8 = the old rule (everyone
                          #   alike). 0.2 validated on fresh seeds (results/sng_behindk_validate.md)

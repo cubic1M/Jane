@@ -134,6 +134,6 @@ loop (tune on the real rules, validate, resubmit) matters.
 - **Respect postflop bets:** our equity x 0.5 per bet or raise faced (was 0.6; +1.0 per table on fresh seeds).
 - **All-in calls use exact ICM** (break-even from the real stacks and point table, +2%): +0.3 to +2.2 per table.
 - **Open small (2bb) and fairly wide; steal more from seats that fold** (the bots that time out fold).
-- Push or fold at ≤ 9bb. Re-raise preflop only with AA.
+- Push or fold at ≤ 9bb, **wider against blinds that fold** (the steal read on shoves too: +1.45 per table, +5.6 vs the Plan B bot). Re-raise preflop only with AA.
 - **Heads-up, open and defend much wider** (open bar 0.6/2, a raiser = 2 random hands): +2 to +12 per heads-up table.
 - Surviving pays: even an always-fold bot scores mid-table. Busting early is the costly mistake.

@@ -101,10 +101,11 @@ class TestIcmAnyDefaults(unittest.TestCase):
         self.assertEqual(a.p["risk_payout"], 1)
         self.assertEqual(a.p["bet_discount"], 0.6)
         self.assertEqual(a.p["behind_k"], 0.2)                       # checked on the discard presets
+        self.assertEqual(a.p["push_steal"], 0.0)                     # until checked there
         self.assertEqual(IcmAny(icm_call=1).p["icm_call"], 1)            # explicit kwargs win
         t = IcmTag()
-        self.assertEqual((t.p["hu_open_mult"], t.p["icm_call"], t.p["bet_discount"], t.p["behind_k"]),
-                         (0.6, 1, 0.5, 0.2))
+        self.assertEqual((t.p["hu_open_mult"], t.p["icm_call"], t.p["bet_discount"], t.p["behind_k"],
+                          t.p["push_steal"]), (0.6, 1, 0.5, 0.2, 0.5))
 
 
 if __name__ == "__main__":
