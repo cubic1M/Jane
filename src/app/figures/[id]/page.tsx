@@ -6,6 +6,7 @@ import { FIGURE_IDS, FIGURE_LABELS, type FigureId } from "@/config/figures";
 import { explainFigure } from "@/lib/figures";
 import { incomeOverride, listPreferences } from "@/lib/jane-agent/preferences";
 import { categoryOptions } from "@/lib/categories";
+import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { CategoryForm } from "@/app/transactions/category-form";
@@ -29,7 +30,7 @@ async function Figure({ params }: { params: PageProps<"/figures/[id]">["params"]
         <p className={MUTED}>
           {FIGURE_LABELS[id as FigureId]}:{" "}
           {working ? <strong>{working.value}</strong> : "nothing to show yet"}
-          {working && <> as of {working.asOf}</>}.
+          {working && <> as of {dayLabel(working.asOf, { year: true })}</>}.
         </p>
       </div>
       {!working ? (
@@ -59,8 +60,8 @@ async function Figure({ params }: { params: PageProps<"/figures/[id]">["params"]
                   <li key={t.id}>
                     <details className="rounded-lg border border-zinc-200 px-3 py-2 dark:border-zinc-800">
                       <summary className="cursor-pointer">
-                        {t.date} · {t.description} · {formatCents(Math.abs(t.amountCents))} ·{" "}
-                        {t.category_label}
+                        {dayLabel(t.date)} · {t.description} ·{" "}
+                        {formatCents(Math.abs(t.amountCents))} · {t.category_label}
                       </summary>
                       {working.corrections.includes("category") && (
                         <CategoryForm transactionId={t.id} current={t.detailed} groups={groups} />
