@@ -56,5 +56,7 @@ describe("shortName", () => {
     // Debugger 11-02: titles told apart by price, and an insurer whose name says insurance.
     expect(shortName("Your USAA insurance at $138.22 could cost less")).toBe("USAA");
     expect(shortName("Your Next Insurance policy could cost less")).toBe("Next Insurance");
+    expect(shortName("Review your Spotify subscription at $16.99")).toBe("Spotify");
+    expect(shortName("Review your Netflix subscription on Chase Sapphire")).toBe("Netflix");
   });
 });
