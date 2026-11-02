@@ -7,6 +7,7 @@
     "build": "next build",
     "vercel-build": "if [ \"$VERCEL_ENV\" = production ]; then prisma migrate deploy && node scripts/rls-protect.mjs; fi && next build",
     "start": "next start",
+    "check:e2e-wording": "node scripts/check-e2e-wording.mjs",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "format": "prettier --write .",
