@@ -122,7 +122,11 @@ async function JaneContent() {
     <>
       <AppHeader user={user} />
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold tracking-tight">What Jane is doing for you</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">
+          {snapshot?.concierge === false
+            ? "What's on your list with Jane"
+            : "What Jane is doing for you"}
+        </h1>
         <p className={MUTED}>
           {snapshot?.concierge === false
             ? "What's waiting for your answer, what you're doing with Jane's steps, and what's done."
@@ -196,8 +200,9 @@ async function JaneContent() {
       >
         {timeline.length === 0 ? (
           <p className={MUTED}>
-            Nothing yet. Whatever Jane does on its own, or for you with a tap, is listed here with
-            why.
+            {snapshot?.concierge === false
+              ? "Nothing yet. What Jane finds and reads for you is listed here with why."
+              : "Nothing yet. Whatever Jane does on its own, or for you with a tap, is listed here with why."}
           </p>
         ) : (
           <ol aria-label="Activity" className="flex flex-col gap-2">

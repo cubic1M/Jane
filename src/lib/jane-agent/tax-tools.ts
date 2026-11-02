@@ -43,7 +43,9 @@ import { loadTaxFound } from "@/lib/tax-scan";
 import { MONTH_NAMES } from "@/planning/tax-calendar";
 import { loadRetirementTaxes } from "@/lib/retirement-taxes";
 import { listDraftReturns } from "@/lib/draft-return";
+import { READ_ONLY_TAXES } from "@/config/read-only-beta";
 import { DECISION_TOPICS } from "@/config/tax-decisions";
+import { conciergeMode } from "@/lib/concierge-mode";
 import { decideTax } from "@/lib/tax-decisions";
 import { loadTaxCalendar } from "@/lib/tax-calendar";
 import { loadIdentity } from "@/lib/tax-identity";
@@ -315,7 +317,9 @@ export async function runTaxTool(
           })),
         },
         complete: view.complete,
-        janeDoesByHerself: [...whatJaneDoes(taxes.level), byHerself(taxes)],
+        janeDoesByHerself: (await conciergeMode(userId, { client }))
+          ? [...whatJaneDoes(taxes.level), byHerself(taxes)]
+          : READ_ONLY_TAXES.lines,
       });
     }
     case "tax_tags": {

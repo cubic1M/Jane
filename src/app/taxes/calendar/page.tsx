@@ -3,6 +3,8 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader, PageLoading } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
+import { READ_ONLY_TAX_CALENDAR } from "@/config/read-only-beta";
+import { conciergeMode } from "@/lib/concierge-mode";
 import { loadTaxCalendar } from "@/lib/tax-calendar";
 import { calendarWords } from "@/planning/tax-calendar";
 import { loadTaxFound } from "@/lib/tax-scan";
@@ -24,7 +26,11 @@ const STATUS = {
 async function Content() {
   const user = await requireUser();
   await connection();
-  const [v, found] = await Promise.all([loadTaxCalendar(user.id), loadTaxFound(user.id)]);
+  const [v, found, actsForYou] = await Promise.all([
+    loadTaxCalendar(user.id),
+    loadTaxFound(user.id),
+    conciergeMode(user.id),
+  ]);
   const of = (month: number) => found.filter((f) => f.month === month);
   return (
     <>
@@ -35,9 +41,11 @@ async function Content() {
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Your tax calendar</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
-          {v.acts
-            ? "Jane runs the safe parts of your tax year itself and asks for a tap on anything that moves money above your cap for taxes. Signing and filing your return are always yours."
-            : "You asked Jane to ask first, so it tells you what is due each month and waits for your tap."}
+          {!actsForYou
+            ? READ_ONLY_TAX_CALENDAR
+            : v.acts
+              ? "Jane runs the safe parts of your tax year itself and asks for a tap on anything that moves money above your cap for taxes. Signing and filing your return are always yours."
+              : "You asked Jane to ask first, so it tells you what is due each month and waits for your tap."}
         </p>
       </div>
       <section aria-labelledby="now" className={CARD}>
