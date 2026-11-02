@@ -58,10 +58,10 @@ class TestKitBot(unittest.TestCase):
 
 
 class TestBehindK(unittest.TestCase):
-    def test_default_is_the_old_rule_and_switch_is_legal(self):
+    def test_validated_default_and_legal_settings(self):
         from sng.ours.icm_tag import PARAMS
-        self.assertEqual(PARAMS["behind_k"], 0.8)
-        for bk in (0.0, 0.4):
+        self.assertEqual(PARAMS["behind_k"], 0.2)                  # validated on fresh seeds
+        for bk in (0.0, 0.8):
             bots = [make(f"icm_tag:behind_k={bk}")] + [make(x) for x in ("lag", "maniac", "chen_tag", "push",
                                                                           "station", "nit", "f2_shark")]
             res = play_table(bots, SngRules(enforce_time=False, max_hands=120), seed=1)

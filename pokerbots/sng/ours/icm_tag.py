@@ -51,8 +51,9 @@ PARAMS = dict(
     pf_file="",          #    chart file cache/sng/pushfold_<pf_file>.json ("" = equilibrium for the payouts)
     cap_risk=0.0,        # near the hand cap: risk premium + cap_risk x (my stack / average - 1)
     cap_window=25,
-    behind_k=0.8,        # facing a preflop raise: extra random hands per opponent still to act
-                         #   (callers / re-raisers count 0.8 each); 0.8 = everyone counted alike
+    behind_k=0.2,        # facing a preflop raise: extra random hands per opponent still to act
+                         #   (callers / re-raisers count 0.8 each); 0.8 = the old rule (everyone
+                         #   alike). 0.2 validated on fresh seeds (results/sng_behindk_validate.md)
     cbet_size=0.5,       # flop continuation bet, x pot
     bluff_size=0.5,      # read-based bluff bet, x pot
     hu_risk=1.0,         # risk premium x this with 2 players left (heads-up ICM is linear in chips)
