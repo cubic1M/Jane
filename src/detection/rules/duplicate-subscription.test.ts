@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HULU, NETFLIX, SPOTIFY, input, monthly } from "../__fixtures__/build";
+import { CARD, HULU, NETFLIX, SPOTIFY, input, monthly } from "../__fixtures__/build";
 import { buildStreams } from "../streams";
 import type { DetectionInput } from "../types";
 import { duplicateSubscription } from "./duplicate-subscription";
@@ -21,6 +21,18 @@ describe("duplicate_subscription", () => {
       confidence: "medium",
     });
     expect((finding.evidence.services as unknown[]).length).toBe(2);
+  });
+
+  // Debugger 11-02: Netflix on two cards, Hulu and Disney+ read "You pay for 4 video streaming
+  // services": there were three services, one of them paid twice.
+  it("counts each service once and says which one is paid twice", () => {
+    const transactions = [
+      ...monthly(6, 1549, NETFLIX),
+      ...monthly(6, 1549, { ...NETFLIX, accountId: CARD.id }),
+      ...monthly(6, 1199, HULU),
+    ];
+    const [finding] = run(input({ transactions }));
+    expect(finding.title).toBe("You pay for 2 video streaming services, and for Netflix twice");
   });
 
   it("finds nothing when the services are in different groups", () => {

@@ -19,13 +19,17 @@ export const insuranceReshop: Rule = (input, streams) => {
   // renters policy both read "Your USAA insurance could cost less").
   const named = new Map<string, number>();
   for (const s of found) named.set(nameOf(s), (named.get(nameOf(s)) ?? 0) + 1);
+  // A company whose name already says insurance is "Your Next Insurance policy", not "Your Next
+  // Insurance insurance" (debugger 11-02).
+  const whatOf = (s: (typeof found)[number]) =>
+    /\binsurance$/i.test(nameOf(s)) ? `${nameOf(s)} policy` : `${nameOf(s)} insurance`;
   return found.map((stream) => ({
     type: "insurance_reshop",
     key: stream.key,
     title:
       (named.get(nameOf(stream)) ?? 0) > 1
-        ? `Your ${nameOf(stream)} insurance at ${formatCents(stream.lastAmountCents)} could cost less`
-        : `Your ${nameOf(stream)} insurance could cost less`,
+        ? `Your ${whatOf(stream)} at ${formatCents(stream.lastAmountCents)} could cost less`
+        : `Your ${whatOf(stream)} could cost less`,
     annualSavingsCents: null,
     amountCents: stream.annualCostCents ?? stream.lastAmountCents,
     confidence: stream.confidence,
