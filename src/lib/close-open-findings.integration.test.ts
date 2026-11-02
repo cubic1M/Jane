@@ -196,12 +196,11 @@ describe.runIf(url)("a close and the findings waiting for an answer", { timeout:
     const ledger = await savingsLedger(userId, { client, now: NOW });
     expect(ledger.entries.map((e) => e.title)).toEqual(["Finding fees:checking"]);
     expect(ledger.estimatedCents).toBe(0);
-    // The fee finding nobody has answered is still theirs to decide.
+    // The fee finding nobody has answered is still theirs to decide. The one they said Done on is
+    // what they did: nothing can settle it, so it isn't open (src/planning/close.ts).
     const close = await loadMonthClose(userId, "2026-11", { client, now: NOW });
-    expect(close.open.map((e) => e.title).sort()).toEqual([
-      "Finding fees:card",
-      "Finding fees:checking",
-    ]);
+    expect(close.open.map((e) => e.title)).toEqual(["Finding fees:card"]);
+    expect(close.did.map((e) => e.title)).toEqual(["Finding fees:checking"]);
   });
 
   it("keeps a suggestion for one company when they said Done on a finding of the same kind", async () => {
