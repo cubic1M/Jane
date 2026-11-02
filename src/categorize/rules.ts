@@ -488,6 +488,18 @@ const RULES: readonly Rule[] = [
       "VENMO",
       "CASH APP",
       "TRANSFER TO",
+      // Money sent to someone abroad, as Zelle to a person is (debugger 11-02: Jane wasn't sure what
+      // a nurse's monthly Remitly was).
+      "REMITLY",
+      "XOOM",
+      "WESTERN UNION",
+      "MONEYGRAM",
+      "WORLDREMIT",
+      "RIA FINANCIAL",
+      "RIA MONEY",
+      "SENDWAVE",
+      "TRANSFERWISE",
+      "WISE US",
       // Into the person's own health savings account (night QA 10-30: "HEALTHEQUITY DES:HSA
       // CONTRB" counted as $150 a month of spending).
       "HEALTHEQUITY",

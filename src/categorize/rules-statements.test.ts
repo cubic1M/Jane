@@ -117,3 +117,40 @@ describe("a card payment on a checking statement", () => {
     );
   });
 });
+
+// Debugger 11-02: money sent to family abroad matched no rule, so Jane said "I'm not sure what they
+// were" about it and listed it as a bill. It's money sent to someone, as Zelle to a person is.
+describe("money sent through a remittance service", () => {
+  it.each([
+    "REMITLY* REMITTANCE 888-736-4859 WA",
+    "XOOM A PAYPAL SERVICE 877-225-1456 CA",
+    "WESTERN UNION 800-325-6000 GA",
+    "WU DIGITAL WESTERN UNION",
+    "MONEYGRAM US 800-666-3947",
+    "WORLDREMIT LTD",
+    "RIA FINANCIAL SERVICES",
+    "SENDWAVE",
+    "TRANSFERWISE INC",
+    "WISE US INC",
+  ])("%s is a transfer out", (description) => {
+    expect(categorizeByRules({ description, amountCents: 40_000, hints: {} })?.detailed).toBe(
+      "TRANSFER_OUT_ACCOUNT_TRANSFER",
+    );
+  });
+
+  it.each(["WISE SONS DELICATESSEN", "OTHERWISE BOOKS", "RIA'S CAFE", "XOOMER HAIR SALON"])(
+    "%s isn't one",
+    (description) => {
+      expect(categorizeByRules({ description, amountCents: 4_000, hints: {} })?.detailed).not.toBe(
+        "TRANSFER_OUT_ACCOUNT_TRANSFER",
+      );
+    },
+  );
+
+  it("leaves money coming back from one alone", () => {
+    expect(
+      categorizeByRules({ description: "REMITLY REFUND", amountCents: -40_000, hints: {} })
+        ?.detailed,
+    ).not.toBe("TRANSFER_OUT_ACCOUNT_TRANSFER");
+  });
+});
