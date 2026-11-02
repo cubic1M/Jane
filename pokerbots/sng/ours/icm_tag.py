@@ -51,6 +51,7 @@ PARAMS = dict(
     pf_file="",          #    chart file cache/sng/pushfold_<pf_file>.json ("" = equilibrium for the payouts)
     cap_risk=0.0,        # near the hand cap: risk premium + cap_risk x (my stack / average - 1)
     cap_window=25,
+    push_steal=0.0,      # short-stack shoves use this share of the steal factor (fold read); 0 = off
     behind_k=0.2,        # facing a preflop raise: extra random hands per opponent still to act
                          #   (callers / re-raisers count 0.8 each); 0.8 = the old rule (everyone
                          #   alike). 0.2 validated on fresh seeds (results/sng_behindk_validate.md)
@@ -392,13 +393,15 @@ class IcmTag:
             if sh and p["sh_open_mult"] > 0:
                 om = p["sh_open_mult"]
             bar = om / (k + 1 + limpers)
+            sf = 1.0                                      # steal factor from the fold read
             # steal wider vs blinds that fold
             if not limpers and len(behind) <= p["steal_max_behind"]:
                 blinds = [s for s in (obs.sb_seat, obs.bb_seat) if s != obs.seat]   # never my own read
                 fr = self._fold_rate(behind if len(behind) > 2 else blinds)
-                bar *= 1.0 - p["steal_bonus"] * max(0.0, fr - 0.5) * 2
+                sf *= 1.0 - p["steal_bonus"] * max(0.0, fr - 0.5) * 2
                 if p["steal_sym"] > 0 and fr < 0.5:
-                    bar *= 1.0 + p["steal_sym"] * (1.0 - 2 * fr)
+                    sf *= 1.0 + p["steal_sym"] * (1.0 - 2 * fr)
+            bar *= sf
             eq = self._eq(obs, k + limpers)
             if not lg.can_raise and lg.can_call:
                 # no raise possible (my call is all-in, or everyone else is all-in, e.g. a
@@ -417,7 +420,10 @@ class IcmTag:
                         return lg.passive() if lg.can_check else Fold()
             if eff_bb <= p["push_bb"]:
                 scale = 0.75 + 0.25 * eff_bb / p["push_bb"]       # shorter = wider
-                if eq >= p["push_mult"] * scale / (k + 1 + limpers) and lg.can_raise:
+                pbar = p["push_mult"] * scale / (k + 1 + limpers)
+                if p["push_steal"] > 0:
+                    pbar *= 1.0 + p["push_steal"] * (sf - 1.0)   # 1: the open bar's steal factor
+                if eq >= pbar and lg.can_raise:
                     return RaiseTo(lg.max_raise_to)
                 return lg.passive() if lg.can_check else Fold()
             if eq >= bar and lg.can_raise:
