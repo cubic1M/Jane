@@ -81,7 +81,15 @@ class TestAllVariantsLegalAndFast(unittest.TestCase):
 
 class TestCommon(unittest.TestCase):
     def test_percentiles_ordered(self):
-        info = get_info(get_variant("a"))
+        # the preflop sample count follows a speed measurement taken at setup; on a loaded
+        # machine it drops to 150 and percentiles get noisy, so pin it (this is not a timing test)
+        from unittest import mock
+        from opponents._tg_common import SpecInfo, get_equity_model
+        spec = get_variant("a")
+        model = get_equity_model(spec)
+        with mock.patch.object(model, "ms_per_sample", return_value=0.006):
+            info = SpecInfo(spec)
+        self.assertEqual(info.n_pre, 1000)
         self.assertGreater(info.pct(parse_cards("AsAh")), 0.95)
         self.assertLess(info.pct(parse_cards("7c2d")), 0.12)
         self.assertGreater(info.pct(parse_cards("KsQs")), info.pct(parse_cards("Ks5d")))

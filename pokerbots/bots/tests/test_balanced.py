@@ -188,7 +188,8 @@ class TestSpots(unittest.TestCase):
         obs = spot(spec, "9c8c3d", "AsAh2c", "Kd7s4h", [Call(), Check()])
         self.assertEqual(obs.phase, "discard")
         b = bot_for(spec)
-        a = b.act(obs)
+        b.ms_sample = 0.002          # pin the speed measurement: a loaded machine would cut the
+        a = b.act(obs)               # Monte Carlo sample count (this is not a timing test)
         self.assertEqual(a.kind, DISCARD)
         self.assertEqual(a.cards, tuple(parse_cards("2c")))
 

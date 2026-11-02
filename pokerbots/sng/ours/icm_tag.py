@@ -51,8 +51,8 @@ PARAMS = dict(
     cap_window=25,
     risk_payout=1,       # 1: scale `risk` by the payout shape: x min(1, flatness / 0.5), where flatness =
                          #   1 - (1st's share of the points); winner-take-all -> 0, top-3 50/30/20 -> 1
-    hu_open_mult=0.0,    # heads-up hands (2 players dealt in): open_mult instead of this (0 = off)
-    hu_range_k=0.0,      # heads-up hands: a raiser's range_k (before the read) instead of this (0 = off)
+    hu_open_mult=0.6,    # heads-up tables (2 players dealt in): open_mult becomes this (0 = off)
+    hu_range_k=2.0,      # heads-up tables: a raiser's range_k (before the read) becomes this (0 = off)
     rk_floor=1.2,        # facing a raise: the raiser counts as at least this many random hands
     agg_alpha=0.0,       # postflop: discount a bet less from seats that bet often when checked to:
                          #   discount -> discount + (1 - discount) x agg_alpha x excess aggression

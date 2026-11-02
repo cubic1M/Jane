@@ -315,12 +315,13 @@ class TestIcmTag(unittest.TestCase):
                     return a
             res = play_table([Spy(b)] + others, rules, seed=seed)
             return log, res
-        base2, _ = opens("icm_tag", r2, 3)
-        wide2, res = opens("icm_tag:hu_open_mult=0.8;hu_range_k=2.0", r2, 3)
+        self.assertEqual((PARAMS["hu_open_mult"], PARAMS["hu_range_k"]), (0.6, 2.0))   # validated defaults
+        base2, _ = opens("icm_tag:hu_open_mult=0;hu_range_k=0", r2, 3)
+        wide2, res = opens("icm_tag", r2, 3)
         self.assertEqual(res.stats[0].errors + res.stats[0].illegal, 0)
         self.assertNotEqual(base2, wide2)
-        base8, _ = opens("icm_tag", r8, 3)
-        same8, _ = opens("icm_tag:hu_open_mult=0.8;hu_range_k=2.0", r8, 3)
+        base8, _ = opens("icm_tag:hu_open_mult=0;hu_range_k=0", r8, 3)
+        same8, _ = opens("icm_tag", r8, 3)
         self.assertEqual(base8[:150], same8[:150])            # no change until the table is heads-up
 
 
