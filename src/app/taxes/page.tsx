@@ -31,6 +31,7 @@ import { RecordsSection } from "./records-section";
 import { HomeSection } from "./home-section";
 import { type TaxDocumentsView } from "@/lib/tax-documents";
 import { COMPARED } from "@/planning/tax-document-check";
+import { formPayer } from "@/planning/tax-documents";
 
 // Taxes (spec steps 118–127): Jane keeps the person's taxes organised all year. The page is a
 // tree (docs/design/area-pages.md): what's due soon, ways to pay less, this year's numbers,
@@ -156,7 +157,7 @@ function FormsCard({ forms, year }: { forms: TaxDocumentsView; year: number }) {
           {forms.forms.map((f) => (
             <li key={f.key} className="flex flex-col gap-1">
               <span className="[overflow-wrap:anywhere]">
-                <strong>{f.form}</strong> from {f.from}, for {f.what}
+                <strong>{f.form}</strong> from {formPayer(f.from)}, for {f.what}
               </span>
               {f.document && f.check && (
                 <span className={f.usable ? "" : "font-semibold"}>
@@ -169,7 +170,11 @@ function FormsCard({ forms, year }: { forms: TaxDocumentsView; year: number }) {
                 </span>
               )}
               {f.document && !f.usable && f.document.decision === null && (
-                <DocumentButtons year={year} formKey={f.key} label={`${f.form} from ${f.from}`} />
+                <DocumentButtons
+                  year={year}
+                  formKey={f.key}
+                  label={`${f.form} from ${formPayer(f.from)}`}
+                />
               )}
               <span className="text-zinc-600 dark:text-zinc-400">
                 {f.received
@@ -182,7 +187,7 @@ function FormsCard({ forms, year }: { forms: TaxDocumentsView; year: number }) {
                 year={year}
                 formKey={f.key}
                 received={f.received}
-                label={`${f.form} from ${f.from}`}
+                label={`${f.form} from ${formPayer(f.from)}`}
               />
             </li>
           ))}
