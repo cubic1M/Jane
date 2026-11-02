@@ -37,7 +37,7 @@ async function Bills() {
       </div>
 
       {forecasts.map((f) => {
-        const low = f.lowest.balanceCents < LOW_BALANCE_CUSHION_CENTS;
+        const low = !f.staleFrom && f.lowest.balanceCents < LOW_BALANCE_CUSHION_CENTS;
         const uneven = low ? unevenPayLine(unevenPay(input, f.accountId)) : null;
         return (
           <section
@@ -45,10 +45,16 @@ async function Bills() {
             className={`flex flex-col gap-1 rounded-xl p-4 ${low ? "bg-amber-50 dark:bg-amber-950" : "border border-zinc-200 dark:border-zinc-800"}`}
           >
             <h2 className="font-semibold">{f.accountName}</h2>
-            <p className="text-sm">
-              {balanceLine(f, dayLabel)}. Lowest point about{" "}
-              <strong>{formatCents(f.lowest.balanceCents)}</strong> on {dayLabel(f.lowest.date)}.
-            </p>
+            {f.staleFrom ? (
+              <p className="text-sm">
+                {balanceLine(f, dayLabel)}. Add a newer statement to see what&apos;s ahead.
+              </p>
+            ) : (
+              <p className="text-sm">
+                {balanceLine(f, dayLabel)}. Lowest point about{" "}
+                <strong>{formatCents(f.lowest.balanceCents)}</strong> on {dayLabel(f.lowest.date)}.
+              </p>
+            )}
             {low && (
               <p className="text-sm">
                 That&apos;s below {formatCents(LOW_BALANCE_CUSHION_CENTS)}, so check your report for

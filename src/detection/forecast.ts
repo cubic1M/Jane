@@ -53,6 +53,8 @@ export type AccountForecast = {
   // The balance known, and its day: today's, or an uploaded statement's closing balance.
   startCents: number;
   startOn: string;
+  // The day of a balance too old to walk forward; null when it is today's or walked to today.
+  staleFrom: string | null;
   // The balance walked forward to today (what was due since startOn counted): what every page
   // calls today's balance (review 10-31: the chat and the area pages said the statement's).
   todayCents: number;
@@ -109,6 +111,9 @@ export function incomeStreams(input: DetectionInput): Stream[] {
 // Null with a payday expected, or without enough pay. Interest and dividends aren't pay.
 export function unevenPay(input: DetectionInput, accountId: string): number | null {
   if (nextPayday(input, FORECAST_DAYS)) return null;
+  // Data this old expects no payday because it's old, not because the pay is uneven.
+  const account = input.accounts.find((a) => a.id === accountId);
+  if (account && staleBalanceFrom(account, input.asOf)) return null;
   const since = addDays(input.asOf, -UNEVEN_PAY_LOOKBACK_DAYS);
   const pay = input.transactions.filter(
     (t) =>
@@ -297,6 +302,13 @@ export function balanceDay(account: DetectionAccount, asOf: string): string {
   return day && day < asOf && daysBetween(day, asOf) <= BALANCE_ROLL_MAX_DAYS ? day : asOf;
 }
 
+// The day of a balance too old to walk forward: it says what the account held then, not today
+// (debugger 11-02: "$5,105 today" from a statement that ended 66 days ago). Null otherwise.
+export function staleBalanceFrom(account: DetectionAccount, asOf: string): string | null {
+  const day = account.balanceAsOf;
+  return day && day < asOf && balanceDay(account, asOf) === asOf ? day : null;
+}
+
 // What came in and went out of one account after `from` and before `to`, as expected from the
 // person's history (paychecks, bills, regular moves), for a balance from an earlier day
 // (debugger 10-31: a statement ending Oct 28 left out the Oct 30 paycheck, so the forecast said
@@ -395,6 +407,7 @@ export function forecastAccounts(input: DetectionInput, days: number): AccountFo
         accountName: account.name,
         startCents: account.currentBalanceCents!,
         startOn,
+        staleFrom: staleBalanceFrom(account, input.asOf),
         todayCents,
         lowest,
         bills: accountBills,

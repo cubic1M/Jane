@@ -14,7 +14,8 @@ import { dayLabel } from "@/lib/day-label";
 // forecast it on, so the finding says it counts none, and isn't sure.
 export const lowBalanceRisk: Rule = (input) =>
   forecastAccounts(input, FORECAST_DAYS)
-    .filter((f) => f.lowest.balanceCents < LOW_BALANCE_CUSHION_CENTS)
+    // A balance from a statement too old to walk forward says nothing about the days ahead.
+    .filter((f) => !f.staleFrom && f.lowest.balanceCents < LOW_BALANCE_CUSHION_CENTS)
     .map((f) => ({ f, uneven: unevenPay(input, f.accountId) }))
     .map(({ f, uneven }) => ({
       type: "low_balance_risk",

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CHECKING, GEICO, input, monthsAgo, tx } from "../__fixtures__/build";
+import { unevenPay } from "../forecast";
 import { buildStreams } from "../streams";
 import type { DetectionInput } from "../types";
 import { lowBalanceRisk } from "./low-balance-risk";
@@ -41,6 +42,32 @@ const uneven = (cents: number, rows: readonly (readonly [number, number, number]
       ),
     ],
   });
+
+// Debugger 11-02: a statement from two months ago read "$5,105 today", "In checking now" and "your
+// pay comes at uneven times" for someone paid every two weeks: no payday expected from data that old
+// isn't uneven pay, and a balance that old isn't today's.
+describe("a balance from a statement too old to walk forward", () => {
+  const oldBalance = (cents: number) => ({
+    ...CHECKING,
+    currentBalanceCents: cents,
+    balanceAsOf: "2026-08-28",
+  });
+
+  it("raises no alarm from it", () => {
+    expect(run(input({ accounts: [oldBalance(5_000)], transactions: geico }))).toEqual([]);
+  });
+
+  it("isn't called uneven pay", () => {
+    const data = uneven(5_000);
+    const old = { ...data, accounts: [oldBalance(5_000)] };
+    expect(unevenPay(old, CHECKING.id)).toBeNull();
+  });
+
+  it("still raises one from a recent statement", () => {
+    const recent = { ...CHECKING, currentBalanceCents: 5_000, balanceAsOf: "2026-10-10" };
+    expect(run(input({ accounts: [recent], transactions: geico }))).toHaveLength(1);
+  });
+});
 
 describe("a low balance for someone paid at uneven times", () => {
   it("says it counts no pay, what has been coming in, and isn't sure", () => {
