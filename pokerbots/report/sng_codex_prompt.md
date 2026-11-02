@@ -25,6 +25,18 @@ It scored 79.5 points per table vs the kit's sample bots (our full bot: 78–85)
 | kit 1 | Agent class, raise-to | 15 min | 79.5 points per table |
 | kit 2 | module functions, raise-by, renumbered seats, a draw twist | **10 min** | 333 points per table vs the samples' 32–152; won 196/200 tables |
 
+**Third rehearsal (kit 3):** amounts in big blinds, integer card codes, named positions, three
+hole cards with a discard before the flop, a 32 KB file cap. **Verified bot in 7 minutes**, 10.3
+points per table out of a maximum 12, vs the samples' 0.04–4.5, with 0 errors. Its lessons:
+- **Amounts may be in big blinds, rounded** (for example to 0.5 bb):
+  - convert chips to the kit's unit;
+  - make all-in the kit's own maximum, rounded UP, or rounding can leave chips behind;
+  - check the kit's rounding (halves up vs to even).
+- **More than 2 hole cards with a discard before the flop:** key the preflop table on the two cards kept, and take preflop equity as the best over the possible discards. The kit's evaluator usually needs 5+ cards, so choose preflop discards by table equity.
+- **File-size caps:** store tables compactly (fixed-width digit strings or a few integers per entry), not as a dict of every class.
+- **Seeds:** never use `hash()` of a string (it changes per process). If the kit gives stable player ids, track opponents by id, not by position.
+- **Simulating the variant:** use a fixed simple discard rule for all players. The bot's own policy needs the table first.
+
 Kit-2 lessons, already folded into the prompts below:
 - **Interface.** It may be plain functions (`get_action(state)`), not a class.
 - **Raise size.** Convert our "raise-to" amounts:
