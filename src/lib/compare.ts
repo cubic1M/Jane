@@ -75,7 +75,12 @@ export async function ensureDemoOptions({
     data: DEMO_OPTIONS.map((o) => ({ ...o, demo: true, checkedAt })),
     skipDuplicates: true,
   });
-  await client.switchOption.updateMany({ where: { demo: true }, data: { checkedAt } });
+  // Only ever forward: these rows are shared, and one caller's older date would make every option
+  // read as stale for everyone else (debugger 11-02).
+  await client.switchOption.updateMany({
+    where: { demo: true, checkedAt: { lt: checkedAt } },
+    data: { checkedAt },
+  });
 }
 
 type FindingLike = { type: FindingType; evidence: unknown };
