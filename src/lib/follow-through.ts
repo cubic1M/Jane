@@ -16,6 +16,7 @@ import { DAY_MS } from "@/lib/dates";
 import { localDate } from "@/lib/digest/week";
 import { loadFreshness } from "@/lib/freshness";
 import { FINDING_OUTCOME_PREFIX } from "@/lib/outcomes";
+import { remindPrepared } from "@/lib/money-movement/prepared";
 import { isTrialUser } from "@/lib/trial-ids";
 import {
   comebackDue,
@@ -158,6 +159,7 @@ export async function runFollowThrough(
   }
   if (alerts.length > 0) await raise(userId, alerts, { client, now });
   await clearSettledAlerts(userId, { client, now });
+  await remindPrepared(userId, { client, now });
   return run;
 }
 

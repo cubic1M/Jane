@@ -190,6 +190,7 @@ export const LINEAGE: Readonly<Record<string, Lineage>> = {
   AutopilotAct: "record",
   JaneAct: "record",
   ActMistake: "record",
+  PartnerLink: "system",
   AutoInvestRun: "record",
   ControllerRun: "record",
   MoneyTransfer: "record",

@@ -17,6 +17,8 @@ export type AuditEvent =
   | "standing_permission_revoked"
   | "jane_act_mistake_reported"
   | "jane_act_mistake_closed"
+  // Stage 3: a payment that came back after it went through.
+  | "money_transfer_returned"
   // Loans (spec step 112): applying for credit and accepting a loan.
   | "loan_application_submitted"
   | "loan_accepted"
