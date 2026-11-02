@@ -34,6 +34,7 @@ done
 unset SNG_SKIP_TIMING FIELD_SKIP_TIMING
 TS=$(date +%s)
 for t in sng.ours.tests.test_icm_tag.TestIcmTag.test_fast_including_first_decision \
+         sng.ours.tests.test_strength.TestFallback.test_no_table_heuristic \
          sng.ours.tests.test_anyvar.TestIcmAny.test_legal_and_fast_on_discard_variants \
          sng.field.tests.test_field.TestTiming \
          sng.field2.tests.test_field2.TestTables.test_timing_p99_under_0_4ms \

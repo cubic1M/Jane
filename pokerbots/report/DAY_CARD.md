@@ -76,6 +76,7 @@ Fill in each line:
 | pot excludes the current street's bets; antes are dead money | invariant: pot = Σ chips in this hand |
 | `to_call` may exceed my stack | call amount = min(to_call, stack) |
 | point table listed 8th first | write payouts 1st-first |
+| adapter's `Rules` without the real point table | set `Rules.payouts` (1st-first): the risk premium scales with its shape (winner-take-all = none) |
 | hand ranking changed (e.g. flush > full house, trips > straight) | the strength table must be built with the same order |
 | busted players stay in the seat list | players left = count of non-busted |
 | heads-up: the button posts the small blind | use their sb/bb seats as given |

@@ -370,6 +370,8 @@ class TestFallback(unittest.TestCase):
                 self.assertTrue(0.0 <= e <= 1.0)
             for a, b in zip(es, es[1:]):
                 self.assertGreaterEqual(a + 1e-9, b)
+        if os.environ.get("SNG_SKIP_TIMING"):       # timed in run_tests.sh phase 2 (quiet machine)
+            return
         for nb in (0, 3, 5):
             p = p99_of_calls(S.equity, random_cases(spec, nb, 2000, seed=nb))
             self.assertLess(p, P99_LIMIT, f"fallback board {nb}: p99 {p * 1e6:.1f} us")

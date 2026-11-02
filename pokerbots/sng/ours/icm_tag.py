@@ -49,7 +49,7 @@ PARAMS = dict(
     pf_file="",          #    chart file cache/sng/pushfold_<pf_file>.json ("" = equilibrium for the payouts)
     cap_risk=0.0,        # near the hand cap: risk premium + cap_risk x (my stack / average - 1)
     cap_window=25,
-    risk_payout=0,       # 1: scale `risk` by the payout shape: x min(1, flatness / 0.5), where flatness =
+    risk_payout=1,       # 1: scale `risk` by the payout shape: x min(1, flatness / 0.5), where flatness =
                          #   1 - (1st's share of the points); winner-take-all -> 0, top-3 50/30/20 -> 1
     rk_floor=1.2,        # facing a raise: the raiser counts as at least this many random hands
     agg_alpha=0.0,       # postflop: discount a bet less from seats that bet often when checked to:
@@ -98,7 +98,13 @@ class IcmTag:
         if getattr(rules.spec, "discards", ()):   # ... nor the discard policy's import / setup
             from sng.ours import anyvar, features as F
             anyvar._hc_code(F.get_ctx(rules.spec))
-        self.risk_scale = payout_risk_scale(rules.payouts[:rules.num_players]) if self.p["risk_payout"] else 1.0
+        self.risk_scale = 1.0
+        pays = getattr(rules, "payouts", None)             # a kit's minimal Rules stand-in may lack it
+        if self.p["risk_payout"] and pays:
+            try:
+                self.risk_scale = payout_risk_scale(tuple(pays)[:getattr(rules, "num_players", len(pays))])
+            except Exception:  # noqa: BLE001  never fail setup over a payout shape
+                self.risk_scale = 1.0
         self.chart = None
         if self.p["pf_chart"]:
             from sng.ours.pushfold_chart import load_chart

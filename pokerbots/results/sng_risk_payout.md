@@ -32,3 +32,19 @@ paired difference vs icm_tag (same tables):
 
 ## payouts=top2 field=field2
 
+paired difference vs icm_tag (same tables):
+  icm_tag:risk_payout=1        -0.08 ± 0.78
+
+
+## payouts=top2 field=field3
+
+paired difference vs icm_tag (same tables):
+  icm_tag:risk_payout=1        -1.39 ± 2.10
+
+
+## payouts=top2 field=custom:push=2,ma
+
+paired difference vs icm_tag (same tables):
+  icm_tag:risk_payout=1        +0.17 ± 1.38
+
+done

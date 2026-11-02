@@ -935,8 +935,13 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   The fixed ICM risk premium (`risk` 0.10) suits flat payouts but not winner-take-all.
   `risk=0` scores +2.1 / +2.5 under winner payouts (not significant) and **−2.1 under
   top-3 (significant)**. New switch `risk_payout=1` scales the premium by the payout
-  shape: 0 for winner-take-all, unchanged for top-3 or flatter. It is under fresh-seed
-  validation (`results/sng_risk_payout.md`).
+  shape: 0 for winner-take-all, unchanged for top-3 or flatter.
+  - **Validated and adopted as the default** (`results/sng_risk_payout.md`, fresh seeds, 500 paired tables per cell).
+  - Winner-take-all: +1.6 / 0.0 / +0.5 / +3.0 on default / field 2 / field 3 / hackathon-like.
+  - 65/35: +0.6 / −0.1 / −1.4 / +0.2.
+  - No cell loses significantly; the mean is +0.5.
+  - Under top-3, flat8, linear and the synthetic payouts play is unchanged (scale exactly 1).
+  - The adapter must pass the real point table as `Rules.payouts`. Without it the scale is 1, and setup never fails (the full test run caught a minimal Rules stand-in without `payouts`; now tested).
 * **Bug hunter:** 188k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:

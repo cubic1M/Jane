@@ -274,9 +274,27 @@ class TestIcmTag(unittest.TestCase):
         b = IcmTag(risk_payout=1)
         b.new_table(SngRules(enforce_time=False, payouts=(100, 0, 0, 0, 0, 0, 0, 0)), 0, 0)
         self.assertEqual(b.risk_scale, 0.0)
-        b = IcmTag()
+        b = IcmTag()                                                # on by default
         b.new_table(SngRules(enforce_time=False, payouts=(100, 0, 0, 0, 0, 0, 0, 0)), 0, 0)
-        self.assertEqual(b.risk_scale, 1.0)                       # off by default
+        self.assertEqual(b.risk_scale, 0.0)
+        b = IcmTag(risk_payout=0)
+        b.new_table(SngRules(enforce_time=False, payouts=(100, 0, 0, 0, 0, 0, 0, 0)), 0, 0)
+        self.assertEqual(b.risk_scale, 1.0)
+        b = IcmTag()
+        b.new_table(SngRules(enforce_time=False), 0, 0)             # default payouts: unchanged
+        self.assertEqual(b.risk_scale, 1.0)
+
+    def test_minimal_rules_stand_in_without_payouts(self):
+        """A kit adapter's Rules stand-in may lack payouts: setup must not fail (scale 1)."""
+        class Rules:
+            spec = SngRules().spec
+            num_players = 8
+        b = IcmTag()
+        b.new_table(Rules, 0, 1)
+        self.assertEqual(b.risk_scale, 1.0)
+        Rules.payouts = ("x",)                                    # garbage: still no failure
+        b.new_table(Rules, 0, 1)
+        self.assertEqual(b.risk_scale, 1.0)
 
 
 if __name__ == "__main__":
