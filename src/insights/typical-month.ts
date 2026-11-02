@@ -3,6 +3,7 @@ import {
   ONE_OFF_NEVER_DETAILED,
   ONE_OFF_PRIMARIES,
   ONE_OFF_REPEAT_SHARE,
+  ONE_OFF_UNPLACED_MONTHS,
   ONE_OFF_SHARE,
 } from "@/config/detection";
 import { FULL_MONTH_START_SLACK_DAYS } from "@/config/budgets";
@@ -53,7 +54,11 @@ export function oneOffCharges(transactions: InsightTransaction[], asOf: string):
   if (months.length === 0) return [];
   const usual = median(months);
   const floor = Math.max(ONE_OFF_MIN_CENTS, Math.round(usual * ONE_OFF_SHARE));
-  const big = spending.filter((t) => t.amountCents >= floor && canBeOneOff(t));
+  const big = spending.filter(
+    (t) =>
+      (t.amountCents >= floor && canBeOneOff(t)) ||
+      (t.pfcPrimary === null && t.amountCents >= usual * ONE_OFF_UNPLACED_MONTHS),
+  );
   return big
     .filter((t) => {
       const merchant = merchantOf(t);

@@ -117,3 +117,45 @@ describe("the typical month", () => {
     expect(oneOffNote(oneOffCharges(all, ASOF), ["2026-08"])).toBeNull();
   });
 });
+
+// Debugger 11-02: a $62,000 wire to a title company had no category, so it couldn't be a one-off: it
+// went into the typical month, and someone with $42,333 in cash read "a cushion for you is $79,683".
+describe("a very large charge with no category", () => {
+  const wire = t({
+    date: "2026-08-18",
+    amountCents: 6_200_000,
+    description: "WIRE OUT CHICAGO TITLE ESCROW",
+    merchantName: "Wire Out Chicago Title Escrow",
+    pfcPrimary: null,
+    pfcDetailed: null,
+  });
+
+  it("is a one-off", () => {
+    const found = oneOffCharges([...everyday, wire], "2026-10-15");
+    expect(found.map((o) => o.amountCents)).toEqual([6_200_000]);
+  });
+
+  it("isn't one when it comes back", () => {
+    const again = { ...wire, date: "2026-09-18" };
+    expect(oneOffCharges([...everyday, wire, again], "2026-10-15")).toEqual([]);
+  });
+
+  it("leaves rent by check in the typical month, with a new name each time", () => {
+    const checks = MONTHS.map((m, i) =>
+      t({
+        date: `${m}-01`,
+        amountCents: 250_000,
+        description: `CHECK 104${i}`,
+        merchantName: `Check 104${i}`,
+        pfcPrimary: null,
+        pfcDetailed: null,
+      }),
+    );
+    expect(oneOffCharges([...everyday, ...checks], "2026-10-15")).toEqual([]);
+  });
+
+  it("isn't one at the size of an ordinary month", () => {
+    const small = { ...wire, amountCents: 800_000 };
+    expect(oneOffCharges([...everyday, small], "2026-10-15")).toEqual([]);
+  });
+});
