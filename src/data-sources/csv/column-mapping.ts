@@ -173,15 +173,22 @@ export function guessSign(rows: string[][], amount: number, description: number 
 const PREAMBLE_MIN_TABLE_WIDTH = 3;
 
 // Lines above the table (Barclays: the bank's name, the account number and the balance, then the
-// column names; debugger 11-01): at the top, narrower than most of the file's rows. The picker
-// and the read both start where the table does, so their column numbers agree.
+// column names; debugger 11-01): at the top, narrower than most of the file's rows. And the small
+// print after the rows (Fidelity's "The data and information in this spreadsheet…"; debugger
+// 11-02): a last run of lines under half as wide, so a short row in the middle is still reported.
+// The picker and the read both use the same rows, so their column numbers agree.
 export function withoutPreamble(records: CsvRecord[]): CsvRecord[] {
   const counts = new Map<number, number>();
   for (const r of records) counts.set(r.fields.length, (counts.get(r.fields.length) ?? 0) + 1);
   const width = [...counts.entries()].sort((a, b) => b[1] - a[1] || b[0] - a[0])[0]?.[0] ?? 0;
   if (width < PREAMBLE_MIN_TABLE_WIDTH) return records;
-  const start = records.slice(0, HEADER_SEARCH_ROWS).findIndex((r) => r.fields.length >= width);
-  return start > 0 ? records.slice(start) : records;
+  const start = Math.max(
+    0,
+    records.slice(0, HEADER_SEARCH_ROWS).findIndex((r) => r.fields.length >= width),
+  );
+  let end = records.length;
+  while (end > start + 1 && records[end - 1].fields.length * 2 < width) end -= 1;
+  return start > 0 || end < records.length ? records.slice(start, end) : records;
 }
 
 export function mappingChoices(all: CsvRecord[]): MappingChoices {
