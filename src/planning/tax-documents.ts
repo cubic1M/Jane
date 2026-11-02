@@ -22,6 +22,8 @@ export type FormTransaction = {
   description: string;
   merchantName: string | null;
   accountName: string;
+  // In a payment app's statement (PayPal, Venmo): the app sends any form, not the customer.
+  inPaymentApp?: boolean;
 };
 export type FormAccount = { name: string; type: string; subtype: string | null };
 export type FormLoan = { name: string; kind: string; ytdInterestPaidCents: number | null };
@@ -51,6 +53,8 @@ const LOAN_PAYMENT_FORMS: readonly ["mortgage" | "student", string][] = [
   ["mortgage", "LOAN_PAYMENTS_MORTGAGE_PAYMENT"],
   ["student", "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT"],
 ];
+// What the loader reads besides income, so a lender seen only in payments reaches this file.
+export const LOAN_PAYMENT_CATEGORIES: readonly string[] = LOAN_PAYMENT_FORMS.map(([, c]) => c);
 
 // Who sends the form, as a person reads it: without the bank's word for how the money came
 // (debugger 11-02: "1099-NEC or 1099-K from Stripe Transfer", "W-2 from Blue Bottle Coffee
@@ -106,7 +110,11 @@ export function expectedForms(input: {
   const payer = (t: FormTransaction) => (t.merchantName ?? t.description).trim();
 
   for (const [kind, formKey] of PAYER_FORMS) {
-    for (const [from, cents] of totals(INCOME_KINDS[kind].categories, payer)) {
+    // A seller's customers don't send 1099s; the payment app does (debugger 11-02: "1099 from Jo
+    // Rivera").
+    const payerOf = (t: FormTransaction) =>
+      formKey === "nec" && t.inPaymentApp ? t.accountName : payer(t);
+    for (const [from, cents] of totals(INCOME_KINDS[kind].categories, payerOf)) {
       const mayNotSend = formKey === "nec" && cents < necThreshold(input.year);
       forms.push(make(formKey, from, cents, mayNotSend));
     }
