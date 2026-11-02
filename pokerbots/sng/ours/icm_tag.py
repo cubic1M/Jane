@@ -14,6 +14,7 @@ All parameters live in PARAMS and can be overridden from the bot name.
 """
 from __future__ import annotations
 
+import bisect
 import math
 import random
 
@@ -52,6 +53,8 @@ PARAMS = dict(
     cap_risk=0.0,        # near the hand cap: risk premium + cap_risk x (my stack / average - 1)
     cap_window=25,
     steal_floor=0.0,     # the steal factor never cuts the open / shove bar below this share (0 = no floor)
+    resteal_rel=0.0,     # > 0: facing a lone open at <= resteal_rel_bb, re-shove the top
+    resteal_rel_bb=28.0, #   resteal_rel x (opener's open rate) of hands (f3_exploiter's rule); 0 = off
     push_steal=0.5,      # short-stack shoves use this share of the steal factor (fold read); 0 = off.
                          #   0.5 validated on fresh seeds (results/sng_pushsteal_validate.md)
     behind_k=0.2,        # facing a preflop raise: extra random hands per opponent still to act
@@ -115,6 +118,23 @@ def payout_risk_scale(payouts) -> float:
     return max(0.0, min(1.0, flat / 0.5))
 
 
+_PCT: dict = {}
+
+
+def hand_pct_table(spec, S):
+    """Sorted equities vs one random hand of every 2-card starting hand of this deck (cached per
+    card rules), so a hand's top-share percentile is one bisect. None for non-2-card games."""
+    if getattr(spec, "hole_cards", 2) != 2 or getattr(spec, "discards", ()):
+        return None
+    key = (tuple(spec.deck_ranks), getattr(spec, "category_order", None), getattr(spec, "ace_low_straight", None))
+    t = _PCT.get(key)
+    if t is None:
+        from itertools import combinations
+        deck = spec.deck                      # a property
+        t = _PCT[key] = sorted(S.equity(h, (), 1, spec) for h in combinations(deck, 2))
+    return t
+
+
 class IcmTag:
     name = "icm_tag"
     OVERRIDES: dict = {}          # per-subclass defaults on top of PARAMS (explicit kwargs still win)
@@ -137,6 +157,12 @@ class IcmTag:
         if getattr(rules.spec, "discards", ()):   # ... nor the discard policy's import / setup
             from sng.ours import anyvar, features as F
             anyvar._hc_code(F.get_ctx(rules.spec))
+        self._pct = None
+        if self.p["resteal_rel"] > 0:
+            try:
+                self._pct = hand_pct_table(rules.spec, strength)
+            except Exception:  # noqa: BLE001  the rule is simply off
+                self._pct = None
         self.risk_scale = 1.0
         pays = getattr(rules, "payouts", None)             # a kit's minimal Rules stand-in may lack it
         if self.p["risk_payout"] and pays:
@@ -466,6 +492,17 @@ class IcmTag:
                 n_icm = self._icm_need(obs, r)
                 if n_icm is not None:
                     need = n_icm + p["icm_margin"]
+        if (self._pct is not None and lg.can_raise and len(raises) == 1 and not seats[raises[0][0]].all_in
+                and eff_bb <= p["resteal_rel_bb"]
+                and not any(h[1] == 0 and h[2] == "call" for h in obs.history if h[0] != obs.seat)):
+            # re-shove a lone open with the top resteal_rel x (opener's open rate) of hands
+            r0 = raises[0][0]
+            o = (self.pre_raises[r0] + p["base_pfr"] * 8) / (self.dealt[r0] + 8)
+            o = min(0.7, max(0.04, o))
+            t = self._pct
+            top = 1.0 - bisect.bisect_left(t, self._eq(obs, 1)) / len(t)
+            if top <= max(0.03, p["resteal_rel"] * o):
+                return RaiseTo(lg.max_raise_to)
         if (p["resteal"] and lg.can_raise and len(raises) == 1 and not seats[raises[0][0]].all_in
                 and p["resteal_lo"] <= eff_bb <= p["resteal_hi"]
                 and not any(h[1] == 0 and h[2] == "call" for h in obs.history if h[0] != obs.seat)):
