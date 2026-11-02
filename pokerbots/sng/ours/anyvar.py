@@ -109,9 +109,56 @@ def _kept_value(ctx, kept, board, draw: bool, out=(), to_board=False):
     return (cat if cat > 0 else 0, drawish if cat == 0 else 0, top if cat == 0 else 0, -len(kept))
 
 
+def _draw_candidates(hole, board, n_min, n_max):
+    """A handful of sensible keeps for a draw (instead of every subset): stand pat, the
+    made rank groups, a four-flush, a four-straight, the top one or two cards; each padded
+    or trimmed to a legal discard count. Returns candidate discard tuples."""
+    rk = lambda c: c >> 2
+    cards = tuple(hole)
+    groups = {}
+    for c in cards:
+        groups.setdefault(rk(c), []).append(c)
+    made = [c for g in groups.values() if len(g) >= 2 for c in g]
+    by_suit = {}
+    for c in cards + tuple(board):
+        by_suit.setdefault(c & 3, []).append(c)
+    flush = max(by_suit.values(), key=len)
+    flush_keep = [c for c in cards if c in flush] if len(flush) >= 4 else []
+    rs = sorted({rk(c) for c in cards + tuple(board)})
+    straight_keep = []
+    for i in range(len(rs)):
+        win = [r for r in rs if rs[i] <= r < rs[i] + 5]
+        if len(win) >= 4:
+            straight_keep = [c for c in cards if rs[i] <= rk(c) < rs[i] + 5]
+            break
+    hi = sorted(cards, key=lambda c: -rk(c))
+    keeps = [list(cards), made, flush_keep, straight_keep, hi[:1], hi[:2], made + hi[:1]]
+    out, seen = [], set()
+    for keep in keeps:
+        keep = list(dict.fromkeys(keep))
+        disc = [c for c in sorted(cards, key=rk) if c not in keep]
+        while len(disc) > n_max:                 # discarding too many: keep the highest extras
+            disc.pop()
+        while len(disc) < n_min:                 # too few: also throw the lowest kept card
+            extra = [c for c in sorted(cards, key=rk) if c not in disc]
+            disc.append(extra[0])
+        t = tuple(disc)
+        if t not in seen:
+            seen.add(t)
+            out.append(t)
+    return out
+
+
 def choose_discard(ctx, hole, board, n_min, n_max, draw, to_board):
     best, best_v = None, None
     hole = tuple(hole)
+    if draw and len(hole) >= 4 and not to_board:
+        for out in _draw_candidates(hole, board, n_min, n_max):
+            kept = tuple(c for c in hole if c not in out)
+            v = _kept_value(ctx, kept, tuple(board), True, out, False)
+            if best_v is None or v > best_v:
+                best, best_v = out, v
+        return best if best is not None else ()
     for n in range(n_min, n_max + 1):
         for out in combinations(hole, n):
             kept = tuple(c for c in hole if c not in out)
