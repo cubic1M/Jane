@@ -338,6 +338,12 @@ function withMemo(payee: string, memo: string): string {
 
 // The rows read with the person's choices, in the same shape as a bank's layout. A string
 // when the dates can't be read without asking which comes first, the day or the month.
+// A column saying whether the payment went through (a Revolut file's State, a Wise file's Status).
+// What didn't was never money out, so it's left out, as the known formats leave it out.
+const STATUS_COLUMN = /^(?:(?:transaction|payment)\s+)?(?:state|status)$/i;
+const NOT_COMPLETED =
+  /\b(?:revert|reversed|declin|fail|cancel|reject|denied|void|returned|pending|waiting)/i;
+
 export function mappedLayout(all: CsvRecord[], mapping: ColumnMapping): Layout | string {
   const records = withoutPreamble(all);
   const rows = mapping.hasHeader ? records.slice(1) : records;
@@ -351,11 +357,16 @@ export function mappedLayout(all: CsvRecord[], mapping: ColumnMapping): Layout |
   const columns = Array.from({ length: width }, (_, i) => `c${i}`);
   const at = (get: (column: string) => string, i: number) => get(`c${i}`);
   const memo = mapping.hasHeader ? memoBeside(records[0]?.fields ?? [], mapping) : null;
+  const status = mapping.hasHeader
+    ? (records[0]?.fields ?? []).findIndex((name) => STATUS_COLUMN.test(name.trim()))
+    : -1;
   return {
     format: {
       ...CUSTOM_FORMAT,
       account: CUSTOM_ACCOUNT,
       parseRow(get) {
+        const state = status >= 0 ? at(get, status).trim() : "";
+        if (NOT_COMPLETED.test(state)) return { ok: false, reason: `Not completed (${state})` };
         const dateText = at(get, mapping.date);
         const date = parseDate(dateText, order);
         if (!date) {
