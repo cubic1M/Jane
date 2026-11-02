@@ -15,7 +15,9 @@ import { changeLine, scoreLine } from "@/lib/jane-agent/replies-health";
 import { formatCents } from "@/lib/money";
 import { loadFreshness } from "@/lib/freshness";
 import { actsStopped } from "@/lib/permission/stop";
-import { setStopAll } from "./actions";
+import { MISTAKE_NOTE_MAX } from "@/lib/act-mistakes";
+import { standingAreas } from "@/lib/standing-permission";
+import { reportAct, setAreaStanding, setStopAll } from "./actions";
 import { oldDataLine } from "@/planning/freshness";
 import { loadTimeline } from "@/lib/timeline";
 import { requireUser } from "@/lib/session";
@@ -110,7 +112,7 @@ async function JaneContent() {
   const user = await requireUser();
   await connection();
   const db = await scopedDb();
-  const [hub, accounts, lastRun, snapshot, timeline, timezone, freshness, stopped] =
+  const [hub, accounts, lastRun, snapshot, timeline, timezone, freshness, stopped, areas] =
     await Promise.all([
       loadJaneHub(user.id),
       db.accounts.count(),
@@ -120,6 +122,7 @@ async function JaneContent() {
       timezoneOf(user.id),
       loadFreshness(user.id),
       actsStopped(user.id),
+      standingAreas(user.id),
     ]);
   const oldData = oldDataLine(freshness);
   // Spec step 143: the one to three things that matter most, and why.
@@ -253,16 +256,90 @@ async function JaneContent() {
                   </span>
                 )}
                 <span className={`text-sm ${MUTED}`}>Why: {e.why}</span>
+                {e.steps.length > 0 && (
+                  <ul data-act-steps="" className={`flex flex-col gap-1 text-sm ${MUTED}`}>
+                    {e.steps.map((s, i) => (
+                      <li key={i}>
+                        <span className="font-medium">{s.label}:</span> {s.text}
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 {e.undoHref && (
                   <Link href={e.undoHref} className={`${LINK} text-sm`}>
                     Undo while it&apos;s pending
                   </Link>
                 )}
+                {e.actId &&
+                  (e.reported ? (
+                    <span data-act-reported="" className={`text-sm ${MUTED}`}>
+                      You told us this was wrong. Jane has stopped on it, and a person will look.
+                    </span>
+                  ) : (
+                    <details className="text-sm">
+                      <summary className="cursor-pointer font-medium">This was wrong</summary>
+                      <form action={reportAct} className="mt-2 flex flex-col items-start gap-2">
+                        <input type="hidden" name="actId" value={e.actId} />
+                        <textarea
+                          name="note"
+                          rows={2}
+                          maxLength={MISTAKE_NOTE_MAX}
+                          aria-label="What went wrong"
+                          placeholder="What went wrong?"
+                          className="w-full rounded-lg border border-zinc-300 p-2 dark:border-zinc-700"
+                        />
+                        <button
+                          type="submit"
+                          data-act-report=""
+                          className="rounded-lg border border-zinc-900 px-3 py-1 font-medium dark:border-zinc-100"
+                        >
+                          Report it and stop this
+                        </button>
+                      </form>
+                    </details>
+                  ))}
               </li>
             ))}
           </ol>
         )}
       </Section>
+
+      {/* Stage 2: one tap per area. Real accounts stay read-only: no buttons. */}
+      {snapshot?.concierge !== false && (
+        <Section
+          title="What Jane may do on its own"
+          links={[]}
+          id="standing"
+          summary={`${areas.filter((a) => a.on).length} of ${areas.length} areas`}
+        >
+          <p className={`text-sm ${MUTED}`}>
+            Anything it does on its own waits a day first, so you can take it back.
+          </p>
+          <ul className="flex flex-col gap-2">
+            {areas.map((a) => (
+              <li key={a.sector} data-area={a.sector} className={ROW}>
+                <span className="font-semibold">{a.label}</span>
+                <span className={`text-sm ${MUTED}`}>
+                  {a.covers}, up to {formatCents(a.actionCapCents)} each and{" "}
+                  {formatCents(a.monthlyCapCents)} a month
+                  {a.on ? `. ${formatCents(a.usedThisMonthCents)} used this month` : ""}.
+                </span>
+                <form action={setAreaStanding}>
+                  <input type="hidden" name="sector" value={a.sector} />
+                  <input type="hidden" name="on" value={a.on ? "" : "1"} />
+                  <button
+                    type="submit"
+                    data-area-toggle={a.on ? "on" : "off"}
+                    className="rounded-lg border border-zinc-900 px-3 py-1 text-sm font-medium dark:border-zinc-100"
+                  >
+                    {a.on ? "Ask me first again" : "Let Jane handle this"}
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
 
       <Section
         title="To decide"

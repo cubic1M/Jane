@@ -12,6 +12,11 @@ export type AuditEvent =
   | "jane_act_refused"
   | "jane_acts_stopped"
   | "jane_acts_resumed"
+  // Stage 2: a standing permission per area, and a mistake reported on an act.
+  | "standing_permission_granted"
+  | "standing_permission_revoked"
+  | "jane_act_mistake_reported"
+  | "jane_act_mistake_closed"
   // Loans (spec step 112): applying for credit and accepting a loan.
   | "loan_application_submitted"
   | "loan_accepted"

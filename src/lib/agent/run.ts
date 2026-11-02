@@ -4,6 +4,8 @@ import {
   throughPermission,
   type ActRequest,
 } from "@/lib/permission/check";
+import { agentRehearsal } from "@/config/agent-rollout";
+import { DIY_KITS } from "@/config/diy";
 import { conciergeMode } from "@/lib/concierge-mode";
 import { isTrialUser } from "@/lib/trial-ids";
 import { randomBytes } from "node:crypto";
@@ -111,6 +113,7 @@ export async function loadAction(userId: string, actionId: string, client: Prism
       decision: {
         select: {
           id: true,
+          createdAt: true,
           choice: true,
           undoneAt: true,
           findingId: true,
@@ -226,6 +229,31 @@ export async function handOff(
   reason: string,
   options: Required<Pick<Options, "client" | "now" | "notify">>,
 ) {
+  // Under the rollout there's no team to pass it to: it comes back to the person, with the steps
+  // (src/config/agent-rollout.ts). Stage 2 only; the demo keeps its queue until then.
+  if (agentRehearsal()) {
+    await setStatus(
+      userId,
+      action,
+      "waiting_on_user",
+      {
+        agentState: "handed_off",
+        handoffReason: reason,
+        agentNextAt: null,
+        userTodo: `${reason} ${(DIY_KITS[action.type]?.steps ?? []).join(" ")}`.trim(),
+      },
+      options,
+    );
+    await note(userId, action.id, `Back with you: ${reason}`, options.client);
+    await logAudit(
+      SYSTEM_ACTOR,
+      "agent_handed_off",
+      { type: "action", id: action.id },
+      { reason, user_id: userId, to: "person" },
+    );
+    await track(userId, "agent_handed_off", { action_type: action.type });
+    return;
+  }
   await scopedFor(userId, options.client).actions.updateMany({
     where: { id: action.id },
     data: { agentState: "handed_off", handoffReason: reason, agentNextAt: null, status: "queued" },
@@ -342,6 +370,7 @@ export type StepResult = "sent" | "followed_up" | "handed_off" | "waiting" | "sk
 // What the agent asks the permission check before it contacts a company for this action: the
 // person's yes on it, which must still stand, or the standing rule that said yes for them.
 export function agentRequest(action: LoadedAction, what: string): ActRequest {
+  const holdHours = AGENT_HOLD_HOURS[action.decision.source as keyof typeof AGENT_HOLD_HOURS] ?? 0;
   return {
     specialist: "email_agent",
     what,
@@ -354,8 +383,15 @@ export function agentRequest(action: LoadedAction, what: string): ActRequest {
         ? { because: "A standing rule you set said yes to this." }
         : {}),
     },
-    // The hold on approvals made outside the app has passed by now (startAgent).
-    undo: { kind: "none", why: "The time to take it back has passed." },
+    // Approvals made outside the app waited out their hold (startAgent); a yes in the app starts at
+    // once, and is the person's own.
+    undo: holdHours
+      ? {
+          kind: "held",
+          until: new Date(action.decision.createdAt.getTime() + holdHours * 60 * 60 * 1000),
+        }
+      : { kind: "none", why: "A yes in the app starts at once." },
+    agent: { actionId: action.id, actionType: action.type, source: action.decision.source },
   };
 }
 

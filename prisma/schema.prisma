@@ -394,6 +394,7 @@ model User {
   autopilotSectors   AutopilotSector[]
   autopilotActs      AutopilotAct[]
   janeActs           JaneAct[]
+  actMistakes        ActMistake[]
   collegePlans       CollegePlan[]
   hsaReceipts        HsaReceipt[]
   equityGrants       EquityGrant[]
@@ -3392,14 +3393,38 @@ model JaneAct {
   authority  String
   undoUntil  DateTime? @map("undo_until") @db.Timestamptz(3)
   undoHref   String?   @map("undo_href")
+  // The agent's action this was part of, when it was.
+  actionId   String?   @map("action_id")
   // "started", then "done" or "failed".
   status     String    @default("started")
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mistake  ActMistake?
 
   @@index([userId, createdAt])
   @@map("jane_acts")
+}
+
+// Something Jane did that the person says was wrong (src/lib/act-mistakes.ts, docs/mistakes.md).
+model ActMistake {
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  actId      String    @unique @map("act_id")
+  note       String    @default("")
+  // A rehearsal on sample data, kept out of the real rate.
+  simulated  Boolean   @default(true)
+  // "open", then "handled" with what was done.
+  status     String    @default("open")
+  resolution String?
+  handledAt  DateTime? @map("handled_at") @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  act  JaneAct @relation(fields: [actId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@map("act_mistakes")
 }
 
 model AutopilotAct {
