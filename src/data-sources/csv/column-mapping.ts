@@ -133,6 +133,14 @@ function descriptionColumn(headers: string[], rows: string[][], varies: (i: numb
 // An amount as banks outside the US write it too: "€12,50", "1.234,56", "12.50 USD".
 export function parseAmount(text: string): number | null {
   const plain = text.replace(/[€£¥]|\b(?:USD|EUR|GBP|CAD)\b/gi, "").trim();
+  // The sign after it: "1,250.00-", or a statement's "12.50 DR" and "12.50 CR" (debugger 11-02:
+  // those rows were skipped). DR is money out and CR money in, for a bank account and a card.
+  const after = /^(.*\d)\s*(-|\+|DR|CR)$/i.exec(plain);
+  if (after) {
+    const cents = parseAmount(after[1]);
+    if (cents === null) return null;
+    return /^(?:-|DR)$/i.test(after[2]) ? -Math.abs(cents) || 0 : Math.abs(cents);
+  }
   const us = parseMoneyToCents(plain);
   if (us !== null) return us;
   const comma = /^(-)?(\d{1,3}(?:\.\d{3})+|\d+),(\d{1,2})$/.exec(plain.replace(/\s/g, ""));

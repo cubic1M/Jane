@@ -675,3 +675,74 @@ describe("the first guess, on layouts from budgeting apps and credit unions", ()
     ).toBe(2);
   });
 });
+
+// Debugger 11-02: "1,250.00-" and "12.50 DR" weren't amounts, so 36 of 40 rows were skipped, and
+// a file with every row marked couldn't be imported at all.
+describe("an amount with its sign after it", () => {
+  it.each([
+    ["1,250.00-", -125_000],
+    ["29.99-", -2_999],
+    ["29.99 -", -2_999],
+    ["3,210.75+", 321_075],
+    ["12.50 DR", -1_250],
+    ["12.50DR", -1_250],
+    ["12.50 dr", -1_250],
+    ["3,210.75 CR", 321_075],
+    ["3,210.75cr", 321_075],
+    ["$12.50 DR", -1_250],
+    ["$12.50-", -1_250],
+    ["1.234,56-", -123_456],
+    ["12.50", 1_250],
+    ["-12.50", -1_250],
+  ])("reads %s", (text, cents) => {
+    expect(parseAmount(text)).toBe(cents);
+  });
+
+  it.each(["CR", "DR", "-", "+", "ABC-", "DRCR", "12.50 XX", "12-50", "4411-22"])(
+    "isn't an amount: %s",
+    (text) => {
+      expect(parseAmount(text)).toBeNull();
+    },
+  );
+
+  const file = (amounts: string[]) =>
+    readCsvFile({
+      name: "marked.csv",
+      text: [
+        "Date,Description,Amount",
+        `10/27/2026,DELTA AIR LINES,"${amounts[0]}"`,
+        `10/17/2026,LUMEN WORKS PAYROLL,"${amounts[1]}"`,
+        `10/14/2026,KROGER 0442,"${amounts[2]}"`,
+      ].join("\n"),
+      mapping: {
+        hasHeader: true,
+        date: 0,
+        description: 1,
+        amount: { kind: "signed", column: 2, moneyOut: "negative" },
+      },
+    });
+
+  it.each([
+    ["minus after", ["1,250.00-", "3,210.75", "84.25-"]],
+    ["DR and CR", ["1,250.00 DR", "3,210.75 CR", "84.25 DR"]],
+  ])("keeps every row with money the right way round: %s", (_, amounts) => {
+    const result = file(amounts);
+    if (!result.ok) throw new Error(result.error);
+    expect(result.skipped).toEqual([]);
+    expect(result.transactions.map((t) => t.amountCents)).toEqual([125_000, -321_075, 8_425]);
+  });
+
+  it("guesses the sign for a file written this way", () => {
+    const { signs } = mappingChoices(
+      parseCsv(
+        [
+          "Date,Description,Amount",
+          "10/27/2026,DELTA AIR LINES,1250.00 DR",
+          "10/17/2026,LUMEN WORKS PAYROLL,3210.75 CR",
+          "10/14/2026,KROGER 0442,84.25 DR",
+        ].join("\n"),
+      ),
+    );
+    expect(signs[2].moneyOut).toBe("negative");
+  });
+});
