@@ -155,6 +155,7 @@ def main(argv=None):
     ap.add_argument("--betting", default=None, choices=[None, "no_limit", "pot_limit"])
     ap.add_argument("--blinds", default="synthetic", choices=sorted(BLIND_SETS))
     ap.add_argument("--preset", default=None, help="full rule set from sng.presets (overrides the above)")
+    ap.add_argument("--players", type=int, default=None, help="players per table (default: the rules' 8)")
     a = ap.parse_args(argv)
     cands = a.candidates.split(",")
     rules_kw = dict(payouts=PAYOUT_SETS[a.payouts], enforce_time=not a.no_enforce, blinds=BLIND_SETS[a.blinds])
@@ -168,6 +169,9 @@ def main(argv=None):
     if a.preset:
         from sng.presets import PRESETS
         rules_kw.update(PRESETS[a.preset])
+    if a.players:
+        rules_kw["num_players"] = a.players
+        rules_kw["payouts"] = tuple(rules_kw.get("payouts", PAYOUT_SETS[a.payouts]))[:a.players]
     field = field_weights(a.field)
     t0 = time.time()
     out = run(cands, field, rules_kw, a.tables, a.seed0, a.workers)
