@@ -412,7 +412,7 @@ def allin_call_need(my_total, my_committed, shover, totals, committed, pays):
     if win - lose <= 1e-12:
         return None
     return (fold - lose) / (win - lose)
-PARAMS = dict(open_mult=1.07, open_size=2.0, push_bb=9.0, push_mult=1.0, range_k=4.0, call_margin=0.06, threebet_eq=0.62, threebet_rel=2.6, risk=0.1, value_eq=0.62, cbet=0.55, bet_frac=0.65, bet_discount=0.5, steal_bonus=0.55, steal_max_behind=5, steal_sym=0.5, reshove_bb=24.0, read_alpha=0.5, base_pfr=0.12, raiser_discount=1.0, raise_eq=99.0, bluff_bonus=0.4, bluff_max_opp=2, pf_chart=0, pf_max_bb=15.0, pf_file='', cap_risk=0.0, cap_window=25, hu_risk=1.0, cap_fade=0, risk_payout=1, hu_open_mult=0.6, hu_range_k=2.0, sh_open_mult=0.0, sh_range_k=0.0, icm_call=1, icm_margin=0.02, pev=0, pev_bb=15.0, pev_margin=0.0, pev_loose=1.0, pev_risk=1.0, resteal=0, resteal_lo=10.0, resteal_hi=25.0, resteal_margin=0.0, resteal_cw=0.6, resteal_wake=0.3, resteal_risk=0.25, range_map=0.65, rk_floor=1.2, agg_alpha=0.0, base_agg=0.35, agg_raise=99.0, agg_seat=0.6, station_size=0.0, thin_value=0.0)
+PARAMS = dict(open_mult=1.07, open_size=2.0, push_bb=9.0, push_mult=1.0, range_k=4.0, call_margin=0.06, threebet_eq=0.62, threebet_rel=2.6, risk=0.1, value_eq=0.62, cbet=0.55, bet_frac=0.65, bet_discount=0.5, steal_bonus=0.55, steal_max_behind=5, steal_sym=0.5, reshove_bb=24.0, read_alpha=0.5, base_pfr=0.12, raiser_discount=1.0, raise_eq=99.0, bluff_bonus=0.4, bluff_max_opp=2, pf_chart=0, pf_max_bb=15.0, pf_file='', cap_risk=0.0, cap_window=25, push_steal=0.5, behind_k=0.2, cbet_size=0.5, bluff_size=0.5, hu_risk=1.0, cap_fade=0, risk_payout=1, hu_open_mult=0.6, hu_range_k=2.0, sh_open_mult=0.0, sh_range_k=0.0, icm_call=1, icm_margin=0.02, pev=0, pev_bb=15.0, pev_margin=0.0, pev_loose=1.0, pev_risk=1.0, resteal=0, resteal_lo=10.0, resteal_hi=25.0, resteal_margin=0.0, resteal_cw=0.6, resteal_wake=0.3, resteal_risk=0.25, range_map=0.65, rk_floor=1.2, agg_alpha=0.0, base_agg=0.35, agg_raise=99.0, agg_seat=0.6, station_size=0.0, thin_value=0.0)
 def payout_risk_scale(payouts):
     pay = [float(x) for x in payouts]
     if len(pay) < 2:
@@ -672,12 +672,14 @@ class IcmTag:
             if sh and p['sh_open_mult'] > 0:
                 om = p['sh_open_mult']
             bar = om / (k + 1 + limpers)
+            sf = 1.0
             if not limpers and len(behind) <= p['steal_max_behind']:
                 blinds = [s for s in (obs.sb_seat, obs.bb_seat) if s != obs.seat]
                 fr = self._fold_rate(behind if len(behind) > 2 else blinds)
-                bar *= 1.0 - p['steal_bonus'] * max(0.0, fr - 0.5) * 2
+                sf *= 1.0 - p['steal_bonus'] * max(0.0, fr - 0.5) * 2
                 if p['steal_sym'] > 0 and fr < 0.5:
-                    bar *= 1.0 + p['steal_sym'] * (1.0 - 2 * fr)
+                    sf *= 1.0 + p['steal_sym'] * (1.0 - 2 * fr)
+            bar *= sf
             eq = self._eq(obs, k + limpers)
             if not lg.can_raise and lg.can_call:
                 call = lg.call_amount
@@ -694,7 +696,10 @@ class IcmTag:
                         return lg.passive() if lg.can_check else Fold()
             if eff_bb <= p['push_bb']:
                 scale = 0.75 + 0.25 * eff_bb / p['push_bb']
-                if eq >= p['push_mult'] * scale / (k + 1 + limpers) and lg.can_raise:
+                pbar = p['push_mult'] * scale / (k + 1 + limpers)
+                if p['push_steal'] > 0:
+                    pbar *= 1.0 + p['push_steal'] * (sf - 1.0)
+                if eq >= pbar and lg.can_raise:
                     return RaiseTo(lg.max_raise_to)
                 return lg.passive() if lg.can_check else Fold()
             if eq >= bar and lg.can_raise:
@@ -710,7 +715,12 @@ class IcmTag:
             r = raises[-1][0]
             pfr = (self.pre_raises[r] + p['base_pfr'] * 8) / (self.dealt[r] + 8)
             rk = min(8.0, max(p['rk_floor'], rk * (p['base_pfr'] / max(pfr, 0.01)) ** p['read_alpha']))
-        kf = rk + max(0, others - 1) * 0.8
+        if p['behind_k'] != 0.8:
+            r0 = raises[-1][0]
+            vol = {h[0] for h in obs.history if h[1] == 0 and h[2] in ('call', 'raise') and (h[0] not in (r0, obs.seat)) and (not seats[h[0]].folded)}
+            kf = rk + len(vol) * 0.8 + max(0, others - 1 - len(vol)) * p['behind_k']
+        else:
+            kf = rk + max(0, others - 1) * 0.8
         eq = self._eq_k(obs, kf)
         call = lg.call_amount
         pot = obs.pot
@@ -785,11 +795,11 @@ class IcmTag:
                 frac += p['station_size'] * max(0.0, 1.0 - 2 * fr)
             return RaiseTo(lg.clamp(frac * pot))
         if k == 1 and self.aggressor == obs.seat and lg.can_raise and (self.rng.random() < p['cbet']) and (obs.street == 1):
-            return RaiseTo(lg.clamp(0.5 * pot))
+            return RaiseTo(lg.clamp(p['cbet_size'] * pot))
         if p['bluff_bonus'] > 0 and lg.can_raise and (1 <= k <= p['bluff_max_opp']):
             fr = (sum((self.pf_fold[s] for s in opp)) + 1.0) / (sum((self.pf_faced[s] for s in opp)) + 2.0)
             if self.rng.random() < p['bluff_bonus'] * max(0.0, 2 * fr - 1):
-                return RaiseTo(lg.clamp(0.5 * pot))
+                return RaiseTo(lg.clamp(p['bluff_size'] * pot))
         return Check()
 class _NoFile:
 

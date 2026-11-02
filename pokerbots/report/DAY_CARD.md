@@ -38,7 +38,8 @@ Fill in each line:
    Four shapes are prebuilt: discard to the board, face-down discards, hold'em with a 0–1 draw, five-card draw.
    `icm_any` leaves the heads-up ranges and exact-ICM calls off: they helped hold'em, but not most
    discard presets. Add `hu_open_mult=0.6;hu_range_k=2.0` and `icm_call=1` as tuner candidates
-   (five-card draw liked the heads-up ranges).
+   (five-card draw liked the heads-up ranges). On an Omaha-like discard variant, try `push_steal=0` first
+   (−2.2 there, not significant; +2.7 on five-card draw).
 3. Adapter: copy `rehearsal_sng/adapter.py`, then map their Observation and Action.
 4. Bundle. **Read the submission rules first:**
    - banned builtins (`exec`, `compile`, `setattr`, `eval`, `open`)?
