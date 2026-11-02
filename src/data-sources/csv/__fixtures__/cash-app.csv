@@ -1,0 +1,7 @@
+Transaction ID,Date,Transaction Type,Currency,Amount,Fee,Net Amount,Asset Type,Asset Price,Asset Amount,Status,Notes,Name of sender/receiver,Account
+txa1,2026-10-20 13:22:10 EDT,Cash Out,USD,-$500.00,-$1.75,-$501.75,,,,COMPLETE,Instant deposit,,Visa Debit 1234
+txa2,2026-10-18 09:01:44 EDT,P2P,USD,-$60.00,$0.00,-$60.00,,,,FAILED,tickets,Lee Wong,Visa Debit 1234
+txa3,2026-10-16 08:00:02 EDT,Direct Deposit,USD,"$1,100.00",$0.00,"$1,100.00",,,,COMPLETE,,Doordash Inc,Visa Debit 1234
+txa4,2026-10-13 19:41:30 EDT,Cash Card,USD,-$14.20,$0.00,-$14.20,,,,COMPLETE,,Chipotle,Visa Debit 1234
+txa5,2026-10-04 12:10:00 EDT,P2P,USD,$40.00,$0.00,$40.00,,,,COMPLETE,utilities,Jo Park,Visa Debit 1234
+txa6,2026-10-02 21:15:09 EDT,P2P,USD,-$25.00,$0.00,-$25.00,,,,COMPLETE,pizza,Sam Rivera,Visa Debit 1234

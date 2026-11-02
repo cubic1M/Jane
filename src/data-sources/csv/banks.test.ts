@@ -329,6 +329,36 @@ describe("Venmo", () => {
   });
 });
 
+// Debugger 11-02: Cash App's dates carry a time and a zone, so a new person could never import.
+describe("Cash App", () => {
+  const result = read("cash-app.csv");
+
+  it("reads dates with a time and zone, signed $ amounts with the fee, and leaves out failed ones", () => {
+    expect(result.format.id).toBe("cash_app");
+    expect(result.account).toEqual({ name: "Cash App", kind: "payment_app" });
+    expect(result.skipped).toEqual([]);
+    expect(result.transactions.map((t) => [t.date, t.amountCents, t.description])).toEqual([
+      ["2026-10-20", 50175, "Transfer to bank: Instant deposit"],
+      ["2026-10-16", -110000, "Direct deposit from Doordash Inc"],
+      ["2026-10-13", 1420, "Chipotle"],
+      ["2026-10-04", -4000, "Jo Park: utilities"],
+      ["2026-10-02", 2500, "Sam Rivera: pizza"],
+    ]);
+  });
+
+  // Seen in the app: a driver's Doordash pay came in as a refund at a restaurant.
+  it("calls a direct deposit income, whoever sent it", () => {
+    const deposit = result.transactions[1];
+    expect(
+      categorizeByRules({
+        description: deposit.description,
+        amountCents: deposit.amountCents,
+        hints: deposit.hints,
+      })?.detailed,
+    ).toMatch(/^INCOME_/);
+  });
+});
+
 describe("PayPal", () => {
   const result = read("paypal.csv");
 

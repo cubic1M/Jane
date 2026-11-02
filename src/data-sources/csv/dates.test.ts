@@ -70,3 +70,37 @@ describe("looksLikeDate", () => {
     expect(looksLikeDate("Date")).toBe(false);
   });
 });
+
+// Debugger 11-02: Cash App writes "2026-10-20 13:22:10 EDT", and no row could be read.
+describe("a date with a time after it", () => {
+  it.each([
+    ["2026-10-20 13:22:10 EDT", "2026-10-20"],
+    ["2026-10-20 13:22:10", "2026-10-20"],
+    ["2026-10-20 13:22", "2026-10-20"],
+    ["2026-10-20T13:22:10Z", "2026-10-20"],
+    ["2026-10-20T13:22:10.123Z", "2026-10-20"],
+    ["2026-10-20T13:22:10-04:00", "2026-10-20"],
+    ["2026-10-20 13:22:10 +0000", "2026-10-20"],
+    ["2026-10-20 1:22 PM", "2026-10-20"],
+    ["10/20/2026 13:22:10", "2026-10-20"],
+    ["10/20/2026 1:22 PM", "2026-10-20"],
+    ["10/20/2026 1:22:10 pm PST", "2026-10-20"],
+  ])("reads %s as the day written", (value, day) => {
+    expect(parseDate(value, "mdy")).toBe(day);
+  });
+
+  it("keeps the order the column needs, and settles it with the time there", () => {
+    expect(parseDate("20/10/2026 13:22", "dmy")).toBe("2026-10-20");
+    expect(detectDateOrder(["20/10/2026 13:22", "21/10/2026 08:00"])).toBe("dmy");
+  });
+
+  it.each([
+    "2026-10-20 hello",
+    "2026-10-20 13",
+    "10/20/2026 paid",
+    "13:22:10 EDT",
+    "tx 2026-10-20",
+  ])("still isn't a date: %s", (value) => {
+    expect(looksLikeDate(value)).toBe(false);
+  });
+});

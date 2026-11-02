@@ -167,6 +167,14 @@ export const BANK_DOWNLOADS: readonly BankDownload[] = [
     ],
   },
   {
+    bank: "Cash App",
+    steps: [
+      "On cash.app, sign in and open Activity, then Statements.",
+      "Choose Export CSV. Cash App may email you the file.",
+      "Cash outs to your bank count as transfers, not spending.",
+    ],
+  },
+  {
     bank: "Any other bank",
     steps: [
       'Look for "Download", "Export" or "Quicken" next to your transactions.',
@@ -179,7 +187,7 @@ export const BANK_DOWNLOADS: readonly BankDownload[] = [
 // layout's bank is named here (src/data-sources/csv/known-banks.test.ts; debugger 10-30: Navy
 // Federal was read but not listed).
 export const KNOWN_BANKS_LINE =
-  "Jane knows the CSV layouts of Chase, Bank of America, Wells Fargo, Capital One, Citi, American Express, Discover, Apple Card, U.S. Bank, Ally, Schwab, Navy Federal and USAA, and Venmo and PayPal statements. For any other CSV you pick which column is which.";
+  "Jane knows the CSV layouts of Chase, Bank of America, Wells Fargo, Capital One, Citi, American Express, Discover, Apple Card, U.S. Bank, Ally, Schwab, Navy Federal and USAA, and Venmo, PayPal and Cash App statements. For any other CSV you pick which column is which.";
 
 // The report says the statements are old when their newest line is over this many days back
 // (debugger 10-30: January-April statements uploaded in October, with no word of it).
