@@ -122,6 +122,7 @@ heads-up and payout changes):
 | field 2 (written independently) | +7 / +1 / +0.8 (tie with `f2_shark`, 800 tables) |
 | all three fields, top-3 payouts | +4.5 / +2.3 (not significant) |
 | hackathon-like field, all three under winner payouts | tie with `f3_exploiter` (±1) |
+| **field 4** (six adaptive bots written blind, the hardest) | mid-pack: 33.5–36.5 per table (fair 34.75); `f3_exploiter` about +11 there |
 
 Tonight's seven changes, measured together on fresh seeds against the start-of-night bot: **+4.0 per table on
 average**, none negative: field 3 +7.4, winner payouts +8.4, the Plan B field +7.5, default +3.5
