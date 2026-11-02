@@ -177,6 +177,32 @@ describe("subscription_review", () => {
     expect(run(input({ transactions })).map((f) => f.key)).toEqual(["merchant:autodesk inc"]);
   });
 
+  // Debugger 11-02: "Review your DMV Registration Renewal subscription, $248": the word "renewal" made a
+  // car registration something to cancel.
+  it.each([
+    [
+      "DMV REGISTRATION RENEWAL CA",
+      "GOVERNMENT_AND_NON_PROFIT_GOVERNMENT_DEPARTMENTS_AND_AGENCIES",
+    ],
+    [
+      "PASSPORT RENEWAL US DEPT OF STATE",
+      "GOVERNMENT_AND_NON_PROFIT_GOVERNMENT_DEPARTMENTS_AND_AGENCIES",
+    ],
+    [
+      "COUNTY CLERK LICENSE ANNUAL RENEWAL",
+      "GOVERNMENT_AND_NON_PROFIT_GOVERNMENT_DEPARTMENTS_AND_AGENCIES",
+    ],
+  ])("doesn't call %s a subscription", (description, pfcDetailed) => {
+    const fee = tx({
+      description,
+      merchantName: description,
+      amountCents: 24_800,
+      pfcPrimary: "GOVERNMENT_AND_NON_PROFIT",
+      pfcDetailed,
+    });
+    expect(run(input({ transactions: [fee] }))).toEqual([]);
+  });
+
   it("finds a yearly renewal that says so, whoever the company", () => {
     const renewal = tx({
       description: "COSTCO *ANNUAL RENEWAL",
