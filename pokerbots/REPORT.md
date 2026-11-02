@@ -899,6 +899,16 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
 * **Plan B rehearsed on practice kit 2** (function interface, raise-by, renumbered seats,
   a draw twist): a verified bot in 10 minutes, 333 points per table vs the samples'
   32–152. Its 30 notes are folded into the prompts.
+* **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
+  accepted:
+  - looser calls (a raiser = 3.2 hands, a 3% margin);
+  - push/fold from 6bb;
+  - re-shove at 18bb or less;
+  - wider steals.
+
+  On fresh seeds that was +0.3 ± 3.7 on five-card draw itself and −5.2 ± 4.6 on draw
+  hold'em (significant), with −2.6 and −2.0 on the other two. This is the fourth tuning
+  that did not survive fresh-seed validation; `icm_any` keeps `icm_tag`'s parameters.
 * The tuner (`sng/tune.py`) is reusable on the day with the real rules as a preset
   (`--preset`), at 10–20 minutes per round. Robustness
   to other fields and point tables is next, since both are guesses until the day.
