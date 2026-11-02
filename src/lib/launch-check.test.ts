@@ -93,6 +93,27 @@ describe("launchChecks", () => {
     expect(launchReady(launchChecks({ ...READY, STRIPE_SECRET_KEY: "sk_test_1" }))).toBe(true);
   });
 
+  it("shows the bank connections used, and being full never blocks launch", () => {
+    const line = (env: Record<string, string>, used?: number) =>
+      launchChecks({ ...READY, ...env }, used === undefined ? undefined : { used, limit: 10 }).find(
+        (c) => c.name === "Bank connections",
+      );
+    expect(line({}, 3)).toMatchObject({
+      ok: true,
+      required: false,
+      detail: "3 of 10 bank connections used",
+    });
+    expect(line({}, 10)).toMatchObject({ ok: false, required: false });
+    expect(line({})).toMatchObject({ ok: true, detail: expect.stringContaining("/admin/launch") });
+    expect(line({ PLAID_TRIAL_ITEM_LIMIT: "lots" })).toMatchObject({
+      ok: false,
+      detail: expect.stringContaining("whole numbers"),
+    });
+    expect(line({ PLAID_ITEMS_PER_PERSON: "-1" })?.ok).toBe(false);
+    expect(line({ PLAID_TRIAL_ITEM_LIMIT: "200", PLAID_ITEMS_PER_PERSON: "3" })?.ok).toBe(true);
+    expect(failing({ ...READY, PLAID_TRIAL_ITEM_LIMIT: "lots" })).toEqual([]);
+  });
+
   it("never includes a value in its output", () => {
     const output = JSON.stringify(launchChecks(READY));
     const secrets = [

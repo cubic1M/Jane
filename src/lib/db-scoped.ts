@@ -152,6 +152,7 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
         .finally(() => forgetReads()),
     userId,
     plaidItems: scoped.plaidItem,
+    plaidItemClaims: scoped.plaidItemClaim,
     accounts: scoped.account,
     transactions: scoped.transaction,
     recurringStreams: scoped.recurringStream,

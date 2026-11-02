@@ -1,6 +1,7 @@
 import { NextResponse, after } from "next/server";
 import { limitOrNull } from "@/lib/rate-limit";
 import { PlaidRequestError, plaidEnabled } from "@/lib/plaid/client";
+import { LinkingClosedError, linkClosedAnswer } from "@/lib/plaid/item-slots";
 import { exchangePublicToken } from "@/lib/plaid/link";
 import { syncItem } from "@/lib/plaid/sync";
 import { getCurrentUser } from "@/lib/session";
@@ -34,6 +35,9 @@ export async function POST(request: Request) {
   try {
     itemId = await exchangePublicToken(user.id, publicToken, institutionName);
   } catch (error) {
+    if (error instanceof LinkingClosedError) {
+      return NextResponse.json(linkClosedAnswer(error.reason), { status: 409 });
+    }
     if (!(error instanceof PlaidRequestError)) throw error;
     console.error("Plaid token exchange failed", { code: error.code });
     return NextResponse.json(

@@ -27,6 +27,7 @@ vi.mock("@/lib/plaid/webhooks", () => ({
 }));
 
 import { PlaidRequestError } from "@/lib/plaid/client";
+import { LinkingClosedError } from "@/lib/plaid/item-slots";
 import {
   ItemNotFoundError,
   createLinkToken,
@@ -96,6 +97,25 @@ describe("POST /api/plaid/link-token", () => {
     expect((await post({ itemId: "item1" })).status).toBe(404);
   });
 
+  it("says plainly when linking is full, with what to do instead and no raw error", async () => {
+    for (const reason of ["full", "person"] as const) {
+      vi.mocked(createLinkToken).mockRejectedValueOnce(new LinkingClosedError(reason));
+      const response = await post();
+      expect(response.status).toBe(409);
+      expect(await response.json()).toEqual({
+        error: "Bank linking is full for now. Upload a statement instead.",
+        code: "linking_full",
+      });
+    }
+  });
+
+  it("tells a trial person there's no real bank here, not to upload", async () => {
+    vi.mocked(createLinkToken).mockRejectedValueOnce(new LinkingClosedError("trial"));
+    const response = await post();
+    expect(response.status).toBe(409);
+    expect((await response.json()).error).not.toMatch(/upload/i);
+  });
+
   it("hides Plaid's error behind a plain message", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     vi.mocked(createLinkToken).mockRejectedValue(new PlaidRequestError("INVALID_FIELD", 400));
@@ -125,6 +145,17 @@ describe("POST /api/plaid/exchange", () => {
     expect(syncItem).not.toHaveBeenCalled();
     for (const callback of afterCallbacks) await callback();
     expect(syncItem).toHaveBeenCalledWith("item_row_1", { progressive: true });
+  });
+
+  it("says plainly when the last slot went during Link, and doesn't sync", async () => {
+    vi.mocked(exchangePublicToken).mockRejectedValueOnce(new LinkingClosedError("full"));
+    const response = await post({ publicToken: "public-sandbox-1" });
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: "Bank linking is full for now. Upload a statement instead.",
+      code: "linking_full",
+    });
+    expect(afterCallbacks).toEqual([]);
   });
 
   it("rejects anything that isn't a public token", async () => {

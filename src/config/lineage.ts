@@ -35,6 +35,8 @@ export const LINEAGE: Readonly<Record<string, Lineage>> = {
   AuthAccount: "system",
   Session: "system",
   MfaBackupCode: "system",
+  // Outlives the bank it was for, on purpose: Plaid's Trial plan never gives the slot back.
+  PlaidItemClaim: "system",
   PushSubscription: "system",
   AnalyticsEvent: "system",
   ActivityEvent: "system",

@@ -68,13 +68,13 @@ the app code asks for Bob's, forgets the filter, or uses raw SQL.
 
 | Kind | Tables | `jane_rls` may |
 | --- | --- | --- |
-| Owned (has `user_id`) | 151 tables: `accounts`, `transactions`, `plaid_items`, `findings`, `decisions`, `actions`, `jane_messages`, every insurance, loan, tax, investing and paper-account table, `sessions`, `auth_accounts`, `mfa_backup_codes`, `household_members`... (the full list is `SELECT * FROM jane_rls_plan() WHERE kind = 'owner'`) | read and write the person's own rows |
+| Owned (has `user_id`) | 152 tables: `accounts`, `transactions`, `plaid_items`, `findings`, `decisions`, `actions`, `jane_messages`, every insurance, loan, tax, investing and paper-account table, `sessions`, `auth_accounts`, `mfa_backup_codes`, `household_members`... (the full list is `SELECT * FROM jane_rls_plan() WHERE kind = 'owner'`) | read and write the person's own rows |
 | Owned through a parent | `gifts` (through `gift_links`) | read and write rows whose parent is the person's |
 | The person | `users` | read their own row |
 | Shared by a household | `households` | read the one they belong to |
 | Reference data | `referral_partners` | read every row (no personal data) |
 | System records | `audit_log`, `analytics_events` | nothing |
-| Everything else | `jobs`, `verification_tokens` (magic links), `rate_limits`, `invite_codes`, `waitlist`, `error_events`, `merchants`, market data, `_prisma_migrations`... | nothing |
+| Everything else | `jobs`, `verification_tokens` (magic links), `rate_limits`, `plaid_item_counter`, `invite_codes`, `waitlist`, `error_events`, `merchants`, market data, `_prisma_migrations`... | nothing |
 
 Any table that has a `user_id` column is "owned" automatically. A table without one that points
 at an owned table through a single-column foreign key is "owned through a parent" automatically

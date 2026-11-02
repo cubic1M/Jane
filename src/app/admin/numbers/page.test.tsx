@@ -4,6 +4,11 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/session", () => ({ requireAdmin: vi.fn() }));
 vi.mock("@/lib/founder-numbers", () => ({ loadFounderNumbers: vi.fn() }));
+vi.mock("@/lib/plaid/item-count", () => ({
+  itemSlotUse: vi.fn(async () => ({ used: 3, limit: 10, warnAt: 8 })),
+  bankConnectionsLine: ({ used, limit }: { used: number; limit: number }) =>
+    `${used} of ${limit} bank connections used`,
+}));
 
 import type { FounderNumbers, Snapshot } from "@/lib/founder-numbers";
 import { loadFounderNumbers } from "@/lib/founder-numbers";
@@ -66,6 +71,8 @@ describe("/admin/numbers", () => {
     expect(page).toContain(
       "31 trial people (sample data), 2 team and founder accounts, 5 demo-bank-only accounts.",
     );
+    expect(html).toContain("data-bank-connections");
+    expect(page).toContain("3 of 10 bank connections used");
     // No loading state: the numbers are in the first response.
     expect(html).not.toMatch(/loading/i);
   });
