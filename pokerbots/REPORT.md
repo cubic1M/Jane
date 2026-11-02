@@ -996,6 +996,11 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   - Fresh seeds, 600 paired tables on field 2 / field 3 / all3-top3 / mirror / hackathon-like: `pev_risk=0` +0.9 / +0.7 / −0.6 / +0.4 / −0.5 (mean +0.2); `pev_risk=0.25` −0.6 / +0.5 / +0.1 / −1.0 / +1.1 (mean 0.0).
   - Same strength as the tuned fixed bar, so we keep the simpler rule; `pev` stays available to the day-of tuner.
   - So the field-2 tie with `f2_shark` does not come from short-stack shoving.
+* **Post-ICM re-tune on all3: `bet_discount` 0.6 → 0.5 adopted** (`results/sng_tune_post_icm.jsonl`, `results/sng_retune_validate.md`).
+  - In-sample: +3.6 ± 1.7; round 2 found nothing more.
+  - Fresh seeds 46000+, 600 paired tables: +1.5 / +0.5 / +2.4 / −0.4 / +1.4 / +0.9 on default / field 2 / field 3 / mirror / all3-top3 / hackathon-like. Mean +1.0, no cell losing significantly. The bot now respects opponents' postflop bets a little more.
+  - The runner-up `call_margin=0.09` was mixed (−1.4 on field 2), so not adopted.
+  - `icm_any` keeps 0.6: the re-tune did not cover discard games.
 * **Bug hunter:** 454k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:

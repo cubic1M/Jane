@@ -99,9 +99,10 @@ class TestIcmAnyDefaults(unittest.TestCase):
         a = IcmAny()
         self.assertEqual((a.p["hu_open_mult"], a.p["hu_range_k"], a.p["icm_call"]), (0.0, 0.0, 0))
         self.assertEqual(a.p["risk_payout"], 1)
+        self.assertEqual(a.p["bet_discount"], 0.6)
         self.assertEqual(IcmAny(icm_call=1).p["icm_call"], 1)            # explicit kwargs win
         t = IcmTag()
-        self.assertEqual((t.p["hu_open_mult"], t.p["icm_call"]), (0.6, 1))   # icm_tag unchanged
+        self.assertEqual((t.p["hu_open_mult"], t.p["icm_call"], t.p["bet_discount"]), (0.6, 1, 0.5))
 
 
 if __name__ == "__main__":
