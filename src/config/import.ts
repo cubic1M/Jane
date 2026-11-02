@@ -32,6 +32,8 @@ export const IMPORT_STARTED_EVENT = "jane:import-started";
 export const IMPORT_RUN_SHOWN_HOURS = 24;
 // How often the chip asks how an upload is getting on.
 export const IMPORT_POLL_MS = 1500;
+// How soon it asks again after an answer it couldn't get (refused or lost).
+export const IMPORT_RETRY_MS = 3000;
 
 // Monthly charges and bills need a few months to show a pattern.
 export const SUGGESTED_UPLOAD_MONTHS = 3;

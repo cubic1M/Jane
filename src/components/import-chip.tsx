@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { dismissImport } from "@/app/import/actions";
-import { IMPORT_POLL_MS, IMPORT_STARTED_EVENT } from "@/config/import";
+import { IMPORT_POLL_MS, IMPORT_RETRY_MS, IMPORT_STARTED_EVENT } from "@/config/import";
 import { DATA_CHANGED_EVENT } from "@/config/side-chat";
 import type { ImportRunView } from "@/lib/import/background";
 import { formatWholeDollars } from "@/lib/money";
@@ -14,23 +14,26 @@ import { panelShowsOn } from "@/lib/side-chat";
 // chip at the top, "Importing 172 transactions… 40%", then "Done: found $360/yr". It never
 // covers the page or stops a tap. It asks /api/import/status when a page first loads and
 // when /import says an upload was saved, then every IMPORT_POLL_MS until the upload is done;
-// then the page's numbers are loaded again, so they show the new rows.
+// then the page's numbers are loaded again, so they show the new rows. An answer it couldn't get
+// (a 429, the limits being per IP, or a lost connection) changes nothing: it asks again.
 
 const RUNNING = new Set(["queued", "matching", "balances", "looking", "refreshing"]);
 
-async function fetchRun(): Promise<ImportRunView | null> {
+// null is "nothing to show"; undefined is "no answer".
+async function fetchRun(): Promise<ImportRunView | null | undefined> {
   try {
     const response = await fetch("/api/import/status", { cache: "no-store" });
-    if (!response.ok) return null;
+    if (!response.ok) return undefined;
     return ((await response.json()) as { run: ImportRunView | null }).run;
   } catch {
-    return null;
+    return undefined;
   }
 }
 
 export function ImportChip() {
   const router = useRouter();
   const [run, setRun] = useState<ImportRunView | null>(null);
+  const [unanswered, setUnanswered] = useState(false);
   // The last answer, to tell when a running upload has just finished.
   const last = useRef<ImportRunView | null>(null);
 
@@ -41,6 +44,8 @@ export function ImportChip() {
     const ask = ++asked.current;
     const next = await fetchRun();
     if (ask !== asked.current) return;
+    setUnanswered(next === undefined);
+    if (next === undefined) return;
     const before = last.current;
     last.current = next;
     setRun(next);
@@ -78,10 +83,10 @@ export function ImportChip() {
 
   const running = run !== null && RUNNING.has(run.stage);
   useEffect(() => {
-    if (!running) return;
-    const timer = setInterval(check, IMPORT_POLL_MS);
+    if (!running && !unanswered) return;
+    const timer = setInterval(check, unanswered ? IMPORT_RETRY_MS : IMPORT_POLL_MS);
     return () => clearInterval(timer);
-  }, [running, check]);
+  }, [running, unanswered, check]);
 
   // On the findings it points to, a finished upload's chip has said its piece: it goes, so it
   // doesn't follow the person to every page after (demo-video list).
