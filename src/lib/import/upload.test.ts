@@ -36,7 +36,7 @@ function form(fields: Record<string, string | File[]>) {
 }
 
 const csv = (name: string, text = CHASE_CARD) => new File([text], name, { type: "text/csv" });
-const counts = { parsed: 1, inserted: 1, duplicates: 0, skipped: 0 };
+const counts = { parsed: 1, inserted: 1, duplicates: 0, skipped: 0, corrected: 0 };
 
 const accountsCreate = vi.fn();
 const accountsDelete = vi.fn();

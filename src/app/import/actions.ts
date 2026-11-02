@@ -79,6 +79,8 @@ export type StartResult =
       ok: true;
       runId: string;
       rows: number;
+      // Rows already here that this upload put right.
+      corrected: number;
       // The account's balance today, when the file didn't say (a card, Wells Fargo).
       askBalance: BalanceAsk | null;
     }
@@ -93,7 +95,13 @@ export async function startImport(formData: FormData): Promise<StartResult> {
   after(() => runJob(result.jobId).then(() => undefined));
   revalidatePath("/import");
   const ask = (await balancesToAsk(db)).find((a) => a.accountId === result.accountId) ?? null;
-  return { ok: true, runId: result.runId, rows: result.counts.inserted, askBalance: ask };
+  return {
+    ok: true,
+    runId: result.runId,
+    rows: result.counts.inserted,
+    corrected: result.counts.corrected,
+    askBalance: ask,
+  };
 }
 
 // An uploaded account's balance today, given after its upload; the numbers follow in the
