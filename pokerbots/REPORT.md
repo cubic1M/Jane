@@ -982,7 +982,11 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   - Per switch: the heads-up ranges help five-draw (−2.0 when off) but hurt Omaha discard-2 (+2.2 when off). Their equity bars were tuned on hold'em's equity spread, and Omaha equities run closer together. Exact-ICM calls lean negative there too (off: −0.9 / +0.2 / +0.5 / +2.0).
   - So `icm_any` now has its own defaults (`IcmAny.OVERRIDES`): heads-up ranges and `icm_call` off, `risk_payout` on. `icm_tag` keeps all of them.
   - On a discard/draw day, the tuner can try `hu_open_mult` / `hu_range_k` / `icm_call` as candidates.
-* **Bug hunter:** 318k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
+* **`icm_tag`'s defaults on other card rules hold** (`results/sng_variants_newdefaults.md`, fresh seeds 42000+, 600 paired tables).
+  - Heads-up ranges off: +0.3 / +0.5 / +0.3 on Omaha 4 / PLO5 / short deck (noise).
+  - `icm_call` off: +0.2 / −2.3 / −1.3 (exact ICM leans helpful).
+  - Nothing significant, so no gating needed. The discard presets were the exception, handled by `icm_any`'s own defaults.
+* **Bug hunter:** 349k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
   - looser calls (a raiser = 3.2 hands, a 3% margin);
