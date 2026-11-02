@@ -18,6 +18,8 @@ const OLD_KEYS: [string, string][] = [
   ["ACH CREDIT DUKE ENERGY CORP PAYROLL", "ach credit duke energy corp payroll"],
   ["ACH DEBIT", "ach debit"],
   ["ACME ACH DEBIT SERVICES", "acme ach debit services"],
+  // Saved by the IRS migration (20270420000000) as "ach debit irs": this one finishes it.
+  ["ACH DEBIT IRS USATAXPYMT", "ach debit irs"],
 ];
 
 const updates = readFileSync(MIGRATION, "utf8")
