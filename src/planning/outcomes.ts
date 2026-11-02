@@ -111,8 +111,7 @@ export function verifyWatch(
   const reachesWatchEnd = (payees: readonly { description: string }[]) =>
     payees.every(
       (p) =>
-        reach(from(p.description).at(-1)?.accountId) >=
-        addDays(startedOn, WATCH_DAYS[watch.kind]),
+        reach(from(p.description).at(-1)?.accountId) >= addDays(startedOn, WATCH_DAYS[watch.kind]),
     );
 
   if (watch.kind === "charge_stops") {

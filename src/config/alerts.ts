@@ -82,7 +82,8 @@ export const ALERT_LABELS: Record<AlertType, { label: string; description: strin
   },
   follow_up: {
     label: "Follow-ups on your yes",
-    description: "Something you said yes to isn't done yet, or a fix didn't show in your statements.",
+    description:
+      "Something you said yes to isn't done yet, or a fix didn't show in your statements.",
   },
   statement_due: {
     label: "New statement ready",

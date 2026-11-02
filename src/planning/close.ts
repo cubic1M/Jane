@@ -107,7 +107,9 @@ export function closeOf<E extends CloseEntry>(input: CloseInput<E>): MonthClose<
   const open = entries
     .filter(
       (e) =>
-        e.state === "estimated" || e.state === "said_yes" || (e.state === "done" && e.open !== false),
+        e.state === "estimated" ||
+        e.state === "said_yes" ||
+        (e.state === "done" && e.open !== false),
     )
     .sort(byCents);
 
