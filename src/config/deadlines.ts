@@ -28,6 +28,8 @@ export const RETURN_WINDOW_DAYS = 30;
 export const RETURN_WINDOW_OVERRIDES: readonly { merchant: string; days: number }[] = [
   { merchant: "apple", days: 14 },
   { merchant: "best buy", days: 15 },
+  // Its online orders ("BESTBUY.COM"), debugger 11-01.
+  { merchant: "bestbuy", days: 15 },
   { merchant: "target", days: 90 },
   { merchant: "walmart", days: 90 },
   { merchant: "home depot", days: 90 },
