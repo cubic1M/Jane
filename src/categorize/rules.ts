@@ -1,3 +1,4 @@
+import { NOT_A_REFUND_MIN_CENTS, NOT_A_REFUND_PRIMARIES } from "@/config/detection";
 import { categoryOf, type Category, type PfcDetailed } from "./taxonomy";
 import { normalizeDescription } from "@/data-sources/merchant";
 import type { NormalizedTransaction } from "@/data-sources/types";
@@ -2404,7 +2405,15 @@ export function categorizeByRules({ description, amountCents, hints }: RuleInput
       (rule.bankCategory &&
         hints.bankCategory &&
         bankCategoryMatches(rule.bankCategory, hints.bankCategory));
-    if (matched) return categoryOf(rule.category);
+    if (matched) {
+      const category = categoryOf(rule.category);
+      const client =
+        direction === "in" &&
+        category !== null &&
+        -amountCents >= NOT_A_REFUND_MIN_CENTS &&
+        NOT_A_REFUND_PRIMARIES.includes(category.primary);
+      return client ? null : category;
+    }
   }
   return null;
 }

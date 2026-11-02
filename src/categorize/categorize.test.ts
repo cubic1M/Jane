@@ -146,6 +146,56 @@ describe("categorizeTransactions", () => {
     ]);
   });
 
+  // Debugger 11-02: Claude says what a typical purchase at a merchant is, and that was put on money
+  // coming in too: a freelancer's $6,000 invoice from a clinic would be a medical refund, taken off
+  // their spending.
+  describe("Claude's answer, on money coming in", () => {
+    const answer = () =>
+      vi
+        .mocked(classifyMerchants)
+        .mockResolvedValue(new Map([["bright path clinic", "MEDICAL_PRIMARY_CARE"]]));
+
+    it("isn't put on a big deposit", async () => {
+      answer();
+      const [deposit] = await categorizeTransactions(
+        [txn("BRIGHT PATH CLINIC", { amountCents: -600_000 })],
+        db,
+      );
+      expect(deposit.category).toBeNull();
+      expect(deposit.categorySource).toBeNull();
+    });
+
+    it("is put on a small one: a refund", async () => {
+      answer();
+      const [refund] = await categorizeTransactions(
+        [txn("BRIGHT PATH CLINIC", { amountCents: -4_500 })],
+        db,
+      );
+      expect(refund.category?.detailed).toBe("MEDICAL_PRIMARY_CARE");
+      expect(refund.categorySource).toBe("llm");
+    });
+
+    it("is put on money going out", async () => {
+      answer();
+      const [paid] = await categorizeTransactions(
+        [txn("BRIGHT PATH CLINIC", { amountCents: 600_000 })],
+        db,
+      );
+      expect(paid.category?.detailed).toBe("MEDICAL_PRIMARY_CARE");
+    });
+
+    it("is what the cache holds too, not put on a big deposit", async () => {
+      cache = [
+        { merchantKey: "bright path clinic", pfcDetailed: "MEDICAL_PRIMARY_CARE", source: "llm" },
+      ];
+      const [deposit] = await categorizeTransactions(
+        [txn("BRIGHT PATH CLINIC", { amountCents: -600_000 })],
+        db,
+      );
+      expect(deposit.category).toBeNull();
+    });
+  });
+
   it("leaves a transaction uncategorized when nothing can place it", async () => {
     const [result] = await categorizeTransactions([txn("MYSTERY SHOP")], db);
 

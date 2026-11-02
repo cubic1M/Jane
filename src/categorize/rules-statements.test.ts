@@ -154,3 +154,30 @@ describe("money sent through a remittance service", () => {
     ).not.toBe("TRANSFER_OUT_ACCOUNT_TRANSFER");
   });
 });
+
+// Debugger 11-02: a design agency's $4,200 invoice paid by "Halcyon Coffee" was a coffee refund, so it
+// took $7,150 off their spending. Money in with no category isn't a refund (src/insights/spending.ts).
+describe("a big deposit from a name that sounds like a shop", () => {
+  it.each([
+    ["HALCYON COFFEE", -420_000],
+    ["JOES PIZZA ACH INVOICE", -250_000],
+    ["SUNRISE SALON", -60_000],
+  ])("%s isn't a refund", (description, amountCents) => {
+    expect(categorizeByRules({ description, amountCents, hints: {} })).toBeNull();
+  });
+
+  it.each([
+    ["HALCYON COFFEE", -650, "FOOD_AND_DRINK_COFFEE"],
+    ["HALCYON COFFEE", 650, "FOOD_AND_DRINK_COFFEE"],
+    ["JOES PIZZA", -3_200, "FOOD_AND_DRINK_RESTAURANT"],
+  ])("%s for %i is still what it was", (description, amountCents, detailed) => {
+    expect(categorizeByRules({ description, amountCents, hints: {} })?.detailed).toBe(detailed);
+  });
+
+  it("leaves a big refund for something that can cost that much", () => {
+    expect(
+      categorizeByRules({ description: "DELTA AIR LINES", amountCents: -60_000, hints: {} })
+        ?.detailed,
+    ).toBe("TRAVEL_FLIGHTS");
+  });
+});
