@@ -44,6 +44,7 @@ export function directoryMatch(
 }
 
 // Aliases and keys are stored the way normalizeMerchant would write them.
+// A plus sign is a word in a company's name ("Disney+" is "disney plus"), and cleaning would drop it.
 export function normalizeAlias(text: string): string | null {
-  return normalizeMerchant(text)?.key ?? null;
+  return normalizeMerchant(text.replace(/\+/g, " plus "))?.key ?? null;
 }
