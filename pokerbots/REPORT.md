@@ -954,6 +954,11 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   - New heads-up-only parameters: `hu_open_mult`, `hu_range_k`. Exploration on heads-up tables gave monotone gains, with a plateau at 0.6–0.7 / 2.0.
   - **Adopted: `hu_open_mult=0.6`, `hu_range_k=2.0`** (fresh seeds 33000+). Heads-up: **+1.5 / +11.6 / +1.8 / +4.5** on default / field 2 / field 3 / hackathon-like, all significant. 8-player tables: +1.0 / +2.1 / +2.3 on default / field 3 / all3 (they act only once a table is heads-up; none negative).
   - The switches key on 2 players dealt in, not on a pot folded to two (tested).
+* **3–4 handed: no leak** (`results/sng_shorthanded_*.md`).
+  - Switches `sh_open_mult` / `sh_range_k` act when 3–4 players are dealt in.
+  - In-sample: +1.8 / +2.1 on 3-handed tables (borderline among five candidates), nothing 4-handed.
+  - Fresh seeds, 3-handed: −0.1 / +1.0 / +1.3 for the best candidate on default / field 2 / field 3.
+  - Too small to matter on 8-player tables: off. Only heads-up needed its own ranges.
 * **Bug hunter:** 247k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
