@@ -29,7 +29,7 @@ export type TimelineEntry = {
   // Through a stand-in: nothing real happened, and the record says so.
   simulated: boolean;
   // The agent's work on it, oldest first: what was sent and what came back.
-  steps: { label: "Sent" | "Came back" | "Note"; text: string }[];
+  steps: { label: "Sent" | "Came back"; text: string }[];
   // The act a mistake can be reported on, or null.
   actId: string | null;
   // Reported as wrong already.
@@ -106,13 +106,17 @@ function stepsOf(
     body: string;
   }[],
 ): TimelineEntry["steps"] {
-  return [...messages].reverse().map((m) => ({
-    label: m.direction === "outbound" ? "Sent" : m.direction === "inbound" ? "Came back" : "Note",
-    text:
-      m.direction === "outbound"
-        ? (m.subject ?? m.body).slice(0, 200)
-        : (m.summary ?? m.body).slice(0, 200),
-  }));
+  // Jane's own notes are already the entry's why.
+  return [...messages]
+    .reverse()
+    .filter((m) => m.direction !== "note")
+    .map((m) => ({
+      label: m.direction === "outbound" ? "Sent" : "Came back",
+      text: (m.direction === "outbound" ? (m.subject ?? m.body) : (m.summary ?? m.body)).slice(
+        0,
+        200,
+      ),
+    }));
 }
 
 export async function loadTimeline(
