@@ -59,3 +59,5 @@ investment advice in this MVP.
 
 ## Commands
 - npm run dev / npm test / npm run test:e2e / npm run lint / npx prisma migrate dev
+- npm run check:e2e-wording before pushing a change to words on a page: lists wording removed
+  from src/ that an end-to-end spec still expects
