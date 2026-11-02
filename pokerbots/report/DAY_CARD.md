@@ -116,6 +116,9 @@ heads-up and payout changes):
 | all three fields, top-3 payouts | +4.5 / +2.3 (not significant) |
 | hackathon-like field, all three under winner payouts | tie with `f3_exploiter` (±1) |
 
+Tonight's five changes, measured together on fresh seeds: **+1.9 per table on average**, with +4.6 on field 3 and
++5.4 under winner payouts (`results/sng_tonight_total.md`).
+
 So we clearly beat our own fields, and beat or tie the best independently written bots. The edge
 over a strong independent bot is a few points per table, not a landslide. That is why the day-of
 loop (tune on the real rules, validate, resubmit) matters.

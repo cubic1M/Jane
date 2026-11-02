@@ -1001,6 +1001,10 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   - Fresh seeds 46000+, 600 paired tables: +1.5 / +0.5 / +2.4 / −0.4 / +1.4 / +0.9 on default / field 2 / field 3 / mirror / all3-top3 / hackathon-like. Mean +1.0, no cell losing significantly. The bot now respects opponents' postflop bets a little more.
   - The runner-up `call_margin=0.09` was mixed (−1.4 on field 2), so not adopted.
   - `icm_any` keeps 0.6: the re-tune did not cover discard games.
+* **Tonight's total, measured directly** (`results/sng_tonight_total.md`, fresh seeds 47000+, 600 paired tables).
+  - The comparison: the current `icm_tag` vs the start-of-night bot (`risk_payout`, heads-up ranges, `icm_call` off; `bet_discount` 0.6).
+  - Results: default +1.6, field 2 −1.3, field 3 **+4.6**, all3/top3 +1.4, all3/winner **+5.4**, hackathon-like −0.4. Mean +1.9 per table, two cells significant, none losing significantly.
+  - Where the gain comes from: heads-up endings and winner-heavy payouts, as each change predicted. In 8-handed play under flat payouts it is small, consistent with a bot already near a local optimum there.
 * **Bug hunter:** 454k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
