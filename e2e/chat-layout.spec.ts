@@ -74,7 +74,8 @@ test("the dock steps between suggestions from its header, details staying open",
   await showing.getByRole("button", { name: "More details" }).click();
   const first = (await headline.textContent()) ?? "";
   await dock.getByRole("button", { name: "Next suggestion" }).click();
-  await expect(header).toContainText(`2 of ${total} suggestions`);
+  // Not the first total: one more can arrive from the scan while the person steps (12, then 13).
+  await expect(header).toContainText(/2 of \d+ suggestions/);
   await expect(headline).not.toHaveText(first);
   await expect(dock).toBeVisible();
   await expect(showing.getByRole("button", { name: "More details" })).toHaveAttribute(
@@ -96,7 +97,7 @@ test("the dock steps between suggestions from its header, details staying open",
   await expect(headline).toHaveText(second);
   await header.focus();
   await page.keyboard.press("ArrowRight");
-  await expect(header).toContainText(`3 of ${total} suggestions`);
+  await expect(header).toContainText(/3 of \d+ suggestions/);
   await page.keyboard.press("ArrowLeft");
   await expect(headline).toHaveText(second);
 });
