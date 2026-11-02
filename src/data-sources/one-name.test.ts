@@ -10,8 +10,6 @@ import { describe, expect, it } from "vitest";
 //
 // The ones there already, each with why; move one to the shared cleaner and take it off.
 const ALLOWED: Readonly<Record<string, string>> = {
-  "src/planning/price-rises.ts":
-    "payeeOf: only when no merchant name is passed in (the suggestion detector's profile rows)",
   "src/planning/costly-borrowing.ts": "a lender's name from a loan deposit's words, not a merchant",
   "src/planning/money-for-two.ts": "a payer's name from a paycheck's words, not a merchant",
   "src/detectors/life.ts": "an employer's name from a paycheck's words, not a merchant",
