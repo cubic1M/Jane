@@ -133,7 +133,14 @@ export function findingSure(
   const span = `${months} month${months === 1 ? "" : "s"} of data`;
   return inBand({
     percent: confidenceOf("seen", { months, matches: charges || months }),
-    reason: charges > 0 ? `${counted(charges, "charges")} in ${span}` : span,
+    // Only its one price says it's a subscription: why it's rated lower than a known one on the
+    // same charges (debugger 11-02: Figma "49% sure: 12 charges" beside Adobe's 95%).
+    reason:
+      finding.type === "subscription_review" && finding.confidence === "low" && charges > 0
+        ? `${counted(charges, "charges")} at one price in ${span}, and nothing else says it's a subscription`
+        : charges > 0
+          ? `${counted(charges, "charges")} in ${span}`
+          : span,
   });
 }
 

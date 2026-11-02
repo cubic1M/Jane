@@ -399,8 +399,8 @@ describe("runDetection asking Claude about unclear merchants", () => {
     user: { updateMany, findUnique: async () => ({ timezone: null }) },
     merchant: { findMany: async () => [] },
   } as unknown as PrismaClient;
-  const CANVA = {
-    description: "CANVA* PRO MONTHLY",
+  const MYSTERY_DESIGN = {
+    description: "MYSTERY DESIGN* PRO MONTHLY",
     pfcPrimary: "GENERAL_SERVICES",
     pfcDetailed: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
   };
@@ -408,7 +408,10 @@ describe("runDetection asking Claude about unclear merchants", () => {
   beforeEach(() => {
     scoped.accounts.findMany.mockResolvedValue([{ ...CHECKING, currentBalanceCents: null }]);
     scoped.transactions.findMany.mockResolvedValue(
-      monthly(4, 1499, CANVA).map((t) => ({ ...t, date: new Date(`${t.date}T00:00:00Z`) })),
+      monthly(4, 1499, MYSTERY_DESIGN).map((t) => ({
+        ...t,
+        date: new Date(`${t.date}T00:00:00Z`),
+      })),
     );
     scoped.recurringStreams.findMany.mockResolvedValue([]);
     scoped.findings.findMany.mockReset().mockResolvedValue([]);
@@ -423,16 +426,16 @@ describe("runDetection asking Claude about unclear merchants", () => {
   });
 
   it("asks once, saves the answer and lets the rule use it", async () => {
-    const check = vi.fn().mockResolvedValue(new Map([["Canva", true]]));
+    const check = vi.fn().mockResolvedValue(new Map([["Mystery Design", true]]));
 
     const summary = await runDetection("user_1", { client, now, checkSubscriptions: check });
 
-    expect(check).toHaveBeenCalledWith(["Canva"]);
+    expect(check).toHaveBeenCalledWith(["Mystery Design"]);
     expect(scoped.subscriptionChecks.createMany).toHaveBeenCalledWith({
       data: [
         {
           userId: "user_1",
-          merchantKey: "canva",
+          merchantKey: "mystery design",
           isSubscription: true,
           model: "claude-test-model",
           promptVersion: "subscription-v1",
@@ -445,7 +448,7 @@ describe("runDetection asking Claude about unclear merchants", () => {
 
   it("never asks again about a merchant it has an answer for", async () => {
     scoped.subscriptionChecks.findMany.mockResolvedValue([
-      { merchantKey: "canva", isSubscription: false },
+      { merchantKey: "mystery design", isSubscription: false },
     ]);
     const check = vi.fn();
 

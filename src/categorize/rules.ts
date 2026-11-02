@@ -1735,6 +1735,7 @@ const RULES: readonly Rule[] = [
       "ZOOM.US",
       "ZOOM VIDEO",
       "CANVA",
+      "FIGMA",
       "GRAMMARLY",
       "1PASSWORD",
       "LASTPASS",

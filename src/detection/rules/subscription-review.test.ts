@@ -12,6 +12,8 @@ import {
   monthsAgo,
   tx,
 } from "../__fixtures__/build";
+import { SUBSCRIPTION_MERCHANTS } from "@/config/detection";
+import { merchantMatches } from "../helpers";
 import { buildStreams } from "../streams";
 import { addDays } from "../units";
 import type { DetectionInput } from "../types";
@@ -295,27 +297,29 @@ describe("subscription_review", () => {
   });
 
   describe("merchants Claude was asked about", () => {
-    const CANVA = {
-      description: "CANVA* PRO MONTHLY",
+    const MYSTERY_DESIGN = {
+      description: "MYSTERY DESIGN* PRO MONTHLY",
       pfcPrimary: "GENERAL_SERVICES",
       pfcDetailed: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
     };
 
     it("treats an ambiguous recurring charge as a subscription once Claude says yes", () => {
-      const transactions = monthly(6, 1499, CANVA);
+      const transactions = monthly(6, 1499, MYSTERY_DESIGN);
 
       // One price every month: a plan at low confidence before Claude is asked.
       expect(run(input({ transactions }))).toEqual([
-        expect.objectContaining({ key: "merchant:canva", confidence: "low" }),
+        expect.objectContaining({ key: "merchant:mystery design", confidence: "low" }),
       ]);
-      const [finding] = run(input({ transactions, subscriptionMerchantKeys: ["canva"] }));
+      const [finding] = run(input({ transactions, subscriptionMerchantKeys: ["mystery design"] }));
       expect(finding).toMatchObject({
-        key: "merchant:canva",
+        key: "merchant:mystery design",
         annualSavingsCents: 17988,
         confidence: "medium",
       });
       // Claude said no: one price doesn't make it one.
-      expect(run(input({ transactions, declinedSubscriptionMerchantKeys: ["canva"] }))).toEqual([]);
+      expect(
+        run(input({ transactions, declinedSubscriptionMerchantKeys: ["mystery design"] })),
+      ).toEqual([]);
     });
 
     // QA round 28: a fixed monthly amount isn't a plan when it pays a debt, insures, gives or eats.
@@ -390,9 +394,9 @@ describe("subscription_review", () => {
     });
 
     it("caps confidence when only Claude's answer makes it a subscription", () => {
-      const transactions = monthly(8, 1499, CANVA);
+      const transactions = monthly(8, 1499, MYSTERY_DESIGN);
 
-      const [finding] = run(input({ transactions, subscriptionMerchantKeys: ["canva"] }));
+      const [finding] = run(input({ transactions, subscriptionMerchantKeys: ["mystery design"] }));
 
       expect(finding.confidence).toBe("medium");
     });
@@ -407,7 +411,7 @@ describe("subscription_review", () => {
     it("asks only about recurring charges whose category doesn't settle it", () => {
       const data = input({
         transactions: [
-          ...monthly(4, 1499, CANVA),
+          ...monthly(4, 1499, MYSTERY_DESIGN),
           ...monthly(4, 1549, NETFLIX),
           ...monthly(4, 5000, GROCERIES),
           ...monthly(4, 2000, { description: "MYSTERY CLUB", pfcPrimary: null, pfcDetailed: null }),
@@ -418,7 +422,17 @@ describe("subscription_review", () => {
         buildStreams(data)
           .filter(isAmbiguousRecurring)
           .map((s) => s.merchantKey),
-      ).toEqual(["canva", "mystery club"]);
+      ).toEqual(["mystery club", "mystery design"]);
     });
   });
+});
+
+// Debugger 11-02: Figma and tools like it read as "only its price says so".
+describe("work software by name", () => {
+  it.each(["figma", "notion", "slack", "canva", "zoom", "github", "grammarly", "dropbox"])(
+    "%s is a known subscription",
+    (name) => {
+      expect(merchantMatches(name, SUBSCRIPTION_MERCHANTS)).toBe(true);
+    },
+  );
 });
