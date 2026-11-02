@@ -276,3 +276,19 @@ describe("months of data, for statements that stopped a while ago", () => {
     expect(monthsForRate(stale, "2026-10-26")).toBeLessThan(3.1);
   });
 });
+
+// Debugger 11-01: What Jane knows said "Your employer: Deposit from BLUE BOTTLE COFFEE": Capital
+// One 360 writes "Deposit from" before the payer, and Navy Federal "DEPOSIT - ".
+describe("the employer's name", () => {
+  it.each([
+    ["Deposit from BLUE BOTTLE COFFEE PAYROLL", "BLUE BOTTLE COFFEE"],
+    ["DEPOSIT - DFAS-CLEVELAND MIL PAY", "DFAS-CLEVELAND MIL PAY"],
+    ["GLOBEX LLC DES:PAYROLL ID:XXXXX9028 INDN:SAM CO ID:XXXXX PPD", "GLOBEX LLC"],
+  ])("reads %s as %s", (description, employer) => {
+    const data = inputFor("family");
+    const transactions = data.transactions.map((t) =>
+      t.pfc === "INCOME_SALARY" ? { ...t, description } : t,
+    );
+    expect(buildProfile({ ...data, transactions }).facts.employer.value).toBe(employer);
+  });
+});

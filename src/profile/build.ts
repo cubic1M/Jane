@@ -382,6 +382,15 @@ function babyReading(input: ProfileInput, txs: readonly ProfileTx[], today: stri
   };
 }
 
+// The payer on a paycheck line: no ACH details, no bank's "Deposit from" (Capital One 360) or
+// "DEPOSIT - " (Navy Federal) in front, and nothing from "PAYROLL" on (debugger 11-01).
+function employerName(description: string): string {
+  return withoutAchDetails(description)
+    .replace(/^(?:DEPOSIT FROM|DEPOSIT -)\s+/i, "")
+    .replace(/\s+PAYROLL.*$/i, "")
+    .trim();
+}
+
 export function buildProfile(input: ProfileInput): Profile {
   const { today, accounts, liabilities, told } = input;
   const txs = inYear(input.transactions, today);
@@ -458,15 +467,11 @@ export function buildProfile(input: ProfileInput): Profile {
   const activeSince = addDays(today, -EARNER_ACTIVE_DAYS);
   const lastPaid = new Map<string, string>();
   for (const t of salary) {
-    const name = withoutAchDetails(t.description)
-      .replace(/\s+PAYROLL.*$/i, "")
-      .trim();
+    const name = employerName(t.description);
     if (!lastPaid.has(name) || t.date > lastPaid.get(name)!) lastPaid.set(name, t.date);
   }
   for (const t of salary) {
-    const name = withoutAchDetails(t.description)
-      .replace(/\s+PAYROLL.*$/i, "")
-      .trim();
+    const name = employerName(t.description);
     if (lastPaid.get(name)! >= activeSince) employers.set(name, (employers.get(name) ?? 0) + 1);
   }
   const topEmployer = [...employers.entries()].sort((a, b) => b[1] - a[1])[0];
