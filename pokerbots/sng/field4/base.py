@@ -234,7 +234,7 @@ class Ctx:
 # ---- opponent tracker ------------------------------------------------------------------
 STAT_KEYS = ("hands", "vpip", "pfr", "open_opp", "open", "steal_opp", "steal_fold", "f3_opp", "f3_fold",
              "three_opp", "three", "cbet_opp", "cbet", "fcb_opp", "fcb_fold", "fb_opp", "fb_fold",
-             "agg", "pas", "push_opp", "push", "callai_opp", "callai", "sd", "sd_weak", "limp")
+             "agg", "pas", "fo_opp", "fo_fold", "push_opp", "push", "callai_opp", "callai", "sd", "sd_weak", "limp")
 
 
 class Tracker:
@@ -272,6 +272,10 @@ class Tracker:
 
     def fold_to_3bet(self, seat):
         return self.rate(seat, "f3_fold", "f3_opp", 0.55, 3)
+
+    def fold_to_open(self, seat):
+        st = self.s[seat]
+        return (st["fo_fold"] + 1.0) / (st["fo_opp"] + 2.0)
 
     def fold_to_cbet(self, seat):
         return self.rate(seat, "fcb_fold", "fcb_opp", 0.45, 4)
@@ -338,6 +342,9 @@ class Tracker:
                         st["push_opp"] += 1
                 if nr == 1 and s != opener:
                     st["three_opp"] += 1
+                    st["fo_opp"] += 1
+                    if kind == "fold":
+                        st["fo_fold"] += 1
                     if s in (self.sb_seat, self.bb_seat) and opener in late and limpers == 0:
                         st["steal_opp"] += 1
                         if kind == "fold":
@@ -437,6 +444,12 @@ class F4Bot:
     name = "f4"
     track = True
 
+    def __init__(self, **params):
+        for k, v in params.items():
+            if not hasattr(type(self), k):
+                raise AttributeError(f"{type(self).__name__} has no parameter {k!r}")
+            setattr(self, k, v)
+
     def new_table(self, rules, seat, seed):
         self.rules = rules
         self.seat = seat
@@ -491,7 +504,7 @@ class F4Bot:
 
     def street_eq(self, obs, c, k):
         """Bucket equity vs k random hands, cached per street."""
-        key = (obs.hand_number, obs.street)
+        key = (obs.hand_number, obs.street, obs.hole, obs.board)
         if self._cache_key != key:
             self._cache_key = key
             self._cache_val = post_features(obs.hole, obs.board)
@@ -499,7 +512,7 @@ class F4Bot:
         return post_eq(obs.street, m, d, t, k)
 
     def feats(self, obs):
-        key = (obs.hand_number, obs.street)
+        key = (obs.hand_number, obs.street, obs.hole, obs.board)
         if self._cache_key != key:
             self._cache_key = key
             self._cache_val = post_features(obs.hole, obs.board)
@@ -527,3 +540,29 @@ def fix(a, lg):
 __all__ = ["PRE_K", "PRE_K_L", "PF_MAT", "post_eq", "HU_ORDER", "HU_PCT", "HU_TOP", "MW_ORDER", "MW_PCT",
            "MW_TOP", "eq_vs_range", "multiway_eq", "Ctx", "Tracker", "F4Bot", "fix", "N_MADE", "N_DRAW",
            "N_TEX", "hand_class"]
+
+
+def _post_percentiles():
+    """POST_PCT[index][k]: percentile of a bucket's equity vs k random hands among all
+    random holdings on that street (bucket frequencies from the offline counts)."""
+    n = _DATA["post_n"].astype(float)              # [3, made, draw, tex]
+    out = np.zeros(_POST.shape)
+    for s in range(3):
+        cnt = n[s].reshape(-1)
+        tot = cnt.sum()
+        for k in range(1, 5):
+            eq = _POST[s, ..., k].reshape(-1)
+            order = np.argsort(eq, kind="stable")
+            cum = np.cumsum(cnt[order])
+            pct = np.empty_like(eq)
+            pct[order] = (cum - cnt[order] / 2) / tot
+            # equal equities share a percentile
+            out[s, ..., k] = pct.reshape(_POST.shape[1:4])
+    return [list(map(float, row)) for row in out.reshape(-1, 5)]
+
+
+POST_PCT = _post_percentiles()
+
+
+def post_pct(street: int, made: int, draw: int, tex: int, k: int) -> float:
+    return POST_PCT[post_index(street, made, draw, tex)][min(4, max(1, k))]

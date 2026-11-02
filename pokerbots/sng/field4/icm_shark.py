@@ -16,16 +16,18 @@ from engine.game import Call, Check, Fold
 from .base import F4Bot, HU_PCT, MW_PCT, eq_vs_range, multiway_eq
 from .icmfast import equity_fast
 
-PUSH_BB = 14.0
-RESHOVE_BB = 24.0
-PUSH_MARGIN = 0.02          # points: shove only if it beats folding by this much
-CALL_MARGIN = 0.05
-OPEN_PCT = {"EP": 0.09, "MP": 0.11, "HJ": 0.14, "CO": 0.20, "BTN": 0.30, "SB": 0.26, "BB": 0.0}
-OPEN_BB = 2.2
-MAX_CALLERS = 5
 
 
 class IcmShark(F4Bot):
+    PUSH_BB = 14.0
+    RESHOVE_BB = 24.0
+    PUSH_MARGIN = 0.02          # points: shove only if it beats folding by this much
+    CALL_MARGIN = 0.05
+    OPEN_PCT = {"EP": 0.09, "MP": 0.11, "HJ": 0.14, "CO": 0.20, "BTN": 0.30, "SB": 0.26, "BB": 0.0}
+    OPEN_BB = 2.2
+    MAX_CALLERS = 5
+    POST_PEN = 0.14           # postflop equity discount per bet faced
+    POST_MARGIN = 0.06
     name = "f4_icm"
 
     # ---- ranges -------------------------------------------------------------------------
@@ -70,8 +72,8 @@ class IcmShark(F4Bot):
         # everyone folds to my shove
         mes.append(obs.my_stack + P)
         oth.append([base[i] for i in ids])
-        if len(callers) > MAX_CALLERS:
-            callers = sorted(callers, key=lambda x: -x[1])[:MAX_CALLERS]
+        if len(callers) > self.MAX_CALLERS:
+            callers = sorted(callers, key=lambda x: -x[1])[:self.MAX_CALLERS]
             callers.sort(key=lambda x: c.order.index(x[0]) if x[0] in c.order else 0)
         p_none = 1.0
         for j, pc, eq in callers:
@@ -144,7 +146,7 @@ class IcmShark(F4Bot):
         bb = c.bb
         cls = c.cls
         if c.n_raises == 0:
-            if c.eff_bb <= PUSH_BB and lg.can_raise:
+            if c.eff_bb <= self.PUSH_BB and lg.can_raise:
                 callers = []
                 limp = {s for (s, k, a) in c.acts if k == "call"}
                 seq = c.behind + [j for j in c.order if j in limp and j in c.live_opps]
@@ -157,14 +159,14 @@ class IcmShark(F4Bot):
                 if HU_PCT[cls] > 0.75 and c.eff_bb > 6:
                     return self.passive(obs)
                 ev_s, ev_f = self.shove_vs_fold(obs, c, callers)
-                if ev_s > ev_f + PUSH_MARGIN:
+                if ev_s > ev_f + self.PUSH_MARGIN:
                     return self.allin(obs)
                 return self.passive(obs)
-            pct = OPEN_PCT.get(c.pos, 0.1)
+            pct = self.OPEN_PCT.get(c.pos, 0.1)
             if c.limpers:
                 pct = 0.08
             if MW_PCT[cls] <= pct and lg.can_raise:
-                return self.raise_to(obs, (OPEN_BB + c.limpers) * bb)
+                return self.raise_to(obs, (self.OPEN_BB + c.limpers) * bb)
             return self.passive(obs)
         # facing a raise
         raiser = c.last_raiser
@@ -183,10 +185,10 @@ class IcmShark(F4Bot):
                     eqs.append(eq_vs_range(cls, pct * 0.6))
             eq = multiway_eq(eqs)
             ev_c, ev_f = self.call_vs_fold(obs, c, eq)
-            if ev_c > ev_f + CALL_MARGIN:
-                return self.allin(obs) if lg.can_raise and not c.facing_allin and c.eff_bb <= RESHOVE_BB else Call()
+            if ev_c > ev_f + self.CALL_MARGIN:
+                return self.allin(obs) if lg.can_raise and not c.facing_allin and c.eff_bb <= self.RESHOVE_BB else Call()
             return self.passive(obs)
-        if c.n_raises == 1 and c.eff_bb <= RESHOVE_BB and lg.can_raise:
+        if c.n_raises == 1 and c.eff_bb <= self.RESHOVE_BB and lg.can_raise:
             open_pct = self.tracker.open_rate(raiser)
             open_pct = min(0.7, max(0.06, open_pct))
             callers = [(raiser, 0.45, eq_vs_range(cls, open_pct * 0.45))]
@@ -196,7 +198,7 @@ class IcmShark(F4Bot):
                 callers.append((j, pc, eq_vs_range(cls, pc)))
             if HU_PCT[cls] <= 0.30:
                 ev_s, ev_f = self.shove_vs_fold(obs, c, callers)
-                if ev_s > ev_f + PUSH_MARGIN:
+                if ev_s > ev_f + self.PUSH_MARGIN:
                     return self.allin(obs)
             if c.pos == "BB" and HU_PCT[cls] <= 0.25 and call_amt <= 1.5 * bb:
                 return Call()
@@ -229,7 +231,7 @@ class IcmShark(F4Bot):
                 return self.raise_to(obs, 0.45 * pot)
             return Check()
         call = c.to_call
-        adj = eq - 0.10 * c.bets_faced - (0.04 if c.pfr not in (-1, obs.seat) else 0.0)
+        adj = eq - self.POST_PEN * c.bets_faced - (0.04 if c.pfr not in (-1, obs.seat) else 0.0)
         if obs.street == 3:
             adj -= 0.03
         need = call / (pot + call)
@@ -237,8 +239,8 @@ class IcmShark(F4Bot):
             return self.raise_to(obs, c.last_raise_to * 3)
         if call >= 0.4 * obs.my_stack:
             ev_c, ev_f = self.call_vs_fold(obs, c, max(0.0, adj))
-            return Call() if ev_c > ev_f + CALL_MARGIN else Fold()
-        if adj >= need + 0.04:
+            return Call() if ev_c > ev_f + self.CALL_MARGIN else Fold()
+        if adj >= need + self.POST_MARGIN:
             return Call()
         if draw >= 2 and obs.street < 3 and call <= 0.12 * c.eff and eq >= need:
             return Call()

@@ -15,6 +15,7 @@ declare -A CMD=(
   [sng_ours]="python3 -m unittest discover -s sng/ours/tests -t ."
   [sng_field2]="python3 -m unittest discover -s sng/field2/tests -t ."
   [sng_field3]="python3 -m unittest discover -s sng/field3/tests -t ."
+  [sng_field4]="python3 -m unittest discover -s sng/field4/tests -t ."
   [kit2_adapter]="python3 -m unittest discover -s practice_kit2/tests_adapter"
 )
 # phase 1: everything in parallel with timing assertions off (parallel load makes them noisy)
@@ -25,7 +26,7 @@ for s in "${!CMD[@]}"; do
 done
 wait
 fail=0
-for s in engine bots opponents tournament server sng sng_field sng_field2 sng_field3 sng_ours kit2_adapter; do
+for s in engine bots opponents tournament server sng sng_field sng_field2 sng_field3 sng_field4 sng_ours kit2_adapter; do
   read rc name secs ran < results/logs/test_$s.rc
   if [ "$rc" = 0 ]; then st=OK; else st=FAIL; fail=1; fi
   printf "%-11s %-4s %6s  %s\n" "$name" "$st" "$secs" "$ran"
@@ -41,7 +42,8 @@ for t in sng.ours.tests.test_icm_tag.TestIcmTag.test_fast_including_first_decisi
          sng.field.tests.test_field.TestTiming \
          sng.field2.tests.test_field2.TestTables.test_timing_p99_under_0_4ms \
          sng.field2.tests.test_field2.TestColdStart.test_no_lazy_build_inside_act \
-         sng.field3.tests.test_timing.TestTiming; do
+         sng.field3.tests.test_timing.TestTiming \
+         sng.field4.tests.test_field4.TestTables.test_timing_p99; do
   if python3 -m unittest "$t" > results/logs/test_timing.log 2>&1; then :; else
     echo "timing     FAIL  $t"; tail -3 results/logs/test_timing.log; fail=1; fi
 done

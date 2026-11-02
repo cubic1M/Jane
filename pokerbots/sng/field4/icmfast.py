@@ -212,3 +212,14 @@ def _lnodes(n):
 def equity1(me, others, pay):
     """Single-scenario convenience wrapper."""
     return equity_fast([me], [list(others)], pay)[0]
+
+
+def _warm():
+    from sng.rules import SngRules
+    pay = SngRules().payouts
+    for m in range(1, len(pay)):
+        equity_fast([1000.0, 0.0], [[500.0] * m, [500.0] * m], pay[:m + 1])
+    _nodes(28)
+
+
+_warm()
