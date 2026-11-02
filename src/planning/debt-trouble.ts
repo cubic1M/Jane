@@ -1,6 +1,7 @@
 import {
   DMP_ASSUMED_APR_BPS,
   TROUBLE_CASH_MONTHS,
+  TROUBLE_MONEY_LEFT_CASH_MONTHS,
   TROUBLE_PAYMENT_SHARE,
 } from "@/config/debt-trouble";
 import { TROUBLE_DEBT_MONTHS, TROUBLE_PAYDAY_INCOME_SHARE } from "@/config/profile";
@@ -15,15 +16,35 @@ export function paymentShare(monthlyPaymentsCents: number, incomeCents: number |
   return incomeCents && incomeCents > 0 ? monthlyPaymentsCents / incomeCents : null;
 }
 
+// What came in less what went out of these accounts since a day (Plaid's sign: money in is
+// negative), or null with no rows. Whatever the rows are called: rent by Zelle counts, and a move
+// between two of these accounts comes to nothing.
+export function moneyLeftOver(
+  rows: readonly { accountId: string; date: string; amountCents: number }[],
+  accountIds: readonly string[],
+  since: string,
+): number | null {
+  const ids = new Set(accountIds);
+  const mine = rows.filter((r) => ids.has(r.accountId) && r.date > since);
+  return mine.length === 0 ? null : -mine.reduce((sum, r) => sum + r.amountCents, 0);
+}
+
 // Debt payments at TROUBLE_PAYMENT_SHARE of income or more, without the cash to carry them for
-// TROUBLE_CASH_MONTHS. Without the cash figure, the share alone.
+// TROUBLE_CASH_MONTHS, and without money left over and a month of them in cash. Without the cash
+// figure, the share alone.
 export const overTheLine = (
   share: number | null,
-  money?: { paymentsCents: number; cashCents: number },
+  money?: { paymentsCents: number; cashCents: number; moneyLeftCents?: number | null },
 ) =>
   share !== null &&
   share >= TROUBLE_PAYMENT_SHARE &&
-  (!money || money.cashCents < money.paymentsCents * TROUBLE_CASH_MONTHS);
+  (!money ||
+    (money.cashCents < money.paymentsCents * TROUBLE_CASH_MONTHS &&
+      !(
+        typeof money.moneyLeftCents === "number" &&
+        money.moneyLeftCents >= 0 &&
+        money.cashCents >= money.paymentsCents * TROUBLE_MONEY_LEFT_CASH_MONTHS
+      )));
 
 // Why debt is too much, or null: a payday-loan cycle (cash advances repaid at
 // TROUBLE_PAYDAY_INCOME_SHARE of a year's income or more), card balances worth
@@ -38,6 +59,7 @@ export function troubleReason(input: {
   paydayRepaidCents: number;
   debtPaymentsCents: number;
   cashCents: number;
+  moneyLeftCents?: number | null;
 }): TroubleReason | null {
   const income = input.monthlyIncomeCents;
   if (income <= 0) return null;
@@ -51,6 +73,7 @@ export function troubleReason(input: {
   return overTheLine(input.debtPaymentsCents / income, {
     paymentsCents: input.debtPaymentsCents,
     cashCents: input.cashCents,
+    moneyLeftCents: input.moneyLeftCents,
   })
     ? "payments"
     : null;

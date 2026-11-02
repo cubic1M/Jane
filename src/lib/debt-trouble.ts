@@ -1,4 +1,4 @@
-import { TROUBLE_INCOME_MONTHS } from "@/config/debt-trouble";
+import { TROUBLE_INCOME_MONTHS, TROUBLE_MONEY_LEFT_DAYS } from "@/config/debt-trouble";
 import { loadDetectionInput } from "@/detection/engine";
 import { scopedFor } from "@/lib/db-scoped";
 import type { DetectionInput } from "@/detection/types";
@@ -10,6 +10,7 @@ import { db as defaultClient } from "@/lib/db";
 import { debtsOr } from "@/lib/debts";
 import {
   dmpSketch,
+  moneyLeftOver,
   paymentShare,
   troubleReason,
   type DmpSketch,
@@ -96,6 +97,11 @@ export async function loadDebtTrouble(
     paydayRepaidCents: payday.reduce((s, t) => s + t.amountCents, 0),
     debtPaymentsCents: book.monthlyCents,
     cashCents,
+    moneyLeftCents: moneyLeftOver(
+      input.transactions,
+      input.accounts.filter((a) => a.type === "depository").map((a) => a.id),
+      addDays(isoDay(now), -TROUBLE_MONEY_LEFT_DAYS),
+    ),
   });
   return {
     available: true,

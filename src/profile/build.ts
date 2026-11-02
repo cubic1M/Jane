@@ -1,5 +1,6 @@
 import { FIT_CARD_PAYMENT_SHARE } from "@/config/fit";
-import { troubleReason } from "@/planning/debt-trouble";
+import { TROUBLE_MONEY_LEFT_DAYS } from "@/config/debt-trouble";
+import { moneyLeftOver, troubleReason } from "@/planning/debt-trouble";
 import {
   AGE_BAND_FROM,
   APPROACHING_ASSETS_CENTS,
@@ -653,6 +654,11 @@ export function buildProfile(input: ProfileInput): Profile {
     paydayRepaidCents: paydayRepaid,
     debtPaymentsCents: debtPayments,
     cashCents: liquid,
+    moneyLeftCents: moneyLeftOver(
+      txs,
+      accounts.filter((a) => a.type === "depository").map((a) => a.id),
+      addDays(today, -TROUBLE_MONEY_LEFT_DAYS),
+    ),
   });
   const troubleSignal =
     reason === "payday_cycle"
