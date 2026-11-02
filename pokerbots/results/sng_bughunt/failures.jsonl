@@ -4391,3 +4391,8 @@
 {"kind": "slow", "seed": 20641, "variant": "f_nlhe20", "bot": "icm_any", "p99_ms": 2.925, "t": "2026-11-02 00:30:49"}
 {"kind": "slow", "seed": 20644, "variant": "n_plo4", "bot": "icm_tag", "p99_ms": 0.752, "t": "2026-11-02 00:30:49"}
 {"kind": "slow", "seed": 20646, "variant": "P:discard_to_board", "bot": "icm_tag", "p99_ms": 3.747, "t": "2026-11-02 00:30:49"}
+{"kind": "slow", "seed": 20649, "variant": "h_plo5", "bot": "icm_tag", "p99_ms": 4.12, "t": "2026-11-02 00:30:50"}
+{"kind": "slow", "seed": 20685, "variant": "P:draw_holdem", "bot": "icm_tag", "p99_ms": 0.634, "t": "2026-11-02 00:30:52"}
+{"kind": "slow", "seed": 20873, "variant": "f_nlhe20", "bot": "icm_lite", "p99_ms": 2.128, "t": "2026-11-02 00:31:07"}
+{"kind": "slow", "seed": 20951, "variant": "b_nlhe200", "bot": "icm_lite", "p99_ms": 1.742, "t": "2026-11-02 00:31:12"}
+{"kind": "slow", "seed": 21057, "variant": "P:omaha_discard2", "bot": "icm_lite", "p99_ms": 1.162, "t": "2026-11-02 00:31:18"}

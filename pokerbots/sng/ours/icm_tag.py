@@ -40,6 +40,8 @@ PARAMS = dict(
     read_alpha=0.5,      # per-seat raise-rate read: raiser range_k x (base_pfr / their pfr)^alpha
     base_pfr=0.12,
     raiser_discount=1.0, # postflop: equity x this when an opponent still in raised preflop
+    raise_eq=99.0,       # postflop: raise a bet when RAW equity >= this (and adjusted equity beats the
+                         # price); the adjusted-equity bar below can never fire (equity x 0.6 <= 0.6 < 0.77)
     bluff_bonus=0.4,     # postflop: bet half pot with prob bluff_bonus x (2 x opponents' fold-to-bet - 1)
     bluff_max_opp=2,     # ... only with at most this many opponents in the hand
     pf_chart=0,          # 1: at <= pf_max_bb use the ICM push/fold equilibrium charts (sng/ours/pushfold.py)
@@ -275,7 +277,8 @@ class IcmTag:
             need = call / (pot + call) + p["call_margin"]
             if call >= obs.my_stack * 0.5:
                 need += self._risk(obs)
-            if eq_adj >= max(p["value_eq"] + 0.15, need + 0.25) and lg.can_raise:
+            if lg.can_raise and (eq_adj >= max(p["value_eq"] + 0.15, need + 0.25)
+                                 or (eq >= p["raise_eq"] and eq_adj >= need)):
                 return RaiseTo(lg.clamp(obs.my_bet + call + pot))
             if eq_adj >= need:
                 return Call()

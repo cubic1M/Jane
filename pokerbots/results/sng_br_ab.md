@@ -29,3 +29,10 @@ field archetypes (points/table):
 
 ## field=mirror
 
+paired difference vs icm_tag (same tables):
+  icm_tag:pf_chart=1;pf_file=br_blend_synthetic;pf_max_bb=10 -0.04 ± 2.86
+  icm_tag:pf_chart=1;pf_file=br_blend_synthetic;pf_max_bb=15 +1.09 ± 3.64
+
+field archetypes (points/table):
+  icm_tag                 40.63 ± 1.85  (n=1170)
+done
