@@ -1084,6 +1084,16 @@ export const REGULAR_PAYER_NOT_INCOME =
 // at least this share of the deposits.
 export const REGULAR_PAYER_OWN_MONEY_DAYS = 3;
 export const REGULAR_PAYER_OWN_MONEY_SHARE = 0.5;
+// Clients paying at uneven times (src/categorize/regular-payers.ts, clientDeposits). Big deposits with
+// no category from payers who come back: at least this much each, at least twice from a payer, and at
+// least this many in all across at least this many months, so a relative's two gifts aren't a business.
+export const CLIENT_DEPOSIT_MIN_CENTS = NOT_A_REFUND_MIN_CENTS;
+export const CLIENT_PAYER_MIN_DEPOSITS = 2;
+export const CLIENT_MIN_DEPOSITS = 4;
+export const CLIENT_MIN_MONTHS = 3;
+// Money in that comes back but isn't a client paying.
+export const CLIENT_NOT_INCOME =
+  /\b(?:loans?|disbursement|refund|reimburs\w*|claim|escrow|title|estate|irs|treas|tax|insurance|lending|mortgage|rebate|settlement|dividend|interest|visa|mastercard|payment|thank you|roommate|rent)\b/i;
 // The word in a line that says one person paid another, by name.
 export const REGULAR_PAYER_PERSON_WORD = "zelle";
 

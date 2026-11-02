@@ -151,6 +151,45 @@ describe.runIf(url)("regular pay with no pay word", { timeout: 30_000 }, () => {
     });
   });
 
+  it("makes income of clients who pay at uneven times, through the same pass", async () => {
+    const user = await client.user.create({
+      data: { email: `client-deposits-${crypto.randomUUID()}@example.com` },
+    });
+    created.push(user.id);
+    const account = await client.account.create({
+      data: { userId: user.id, source: "csv", name: "Business", type: "depository" },
+    });
+    const paid = [
+      ["BRIGHT PATH CLINIC", "2026-07-03", -610_000],
+      ["BRIGHT PATH CLINIC", "2026-09-25", -740_000],
+      ["HALCYON COFFEE", "2026-05-29", -420_000],
+      ["HALCYON COFFEE", "2026-08-27", -295_000],
+      ["ESTATE OF M HOLLOWAY", "2026-07-10", -8_500_000],
+    ] as const;
+    for (const [i, [name, day, cents]] of paid.entries()) {
+      await client.transaction.create({
+        data: {
+          userId: user.id,
+          accountId: account.id,
+          source: "csv",
+          dedupeKey: `c-${i}`,
+          date: new Date(`${day}T00:00:00Z`),
+          amountCents: cents,
+          description: name,
+          merchantName: name.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase()),
+        },
+      });
+    }
+    const db = scopedFor(user.id, client);
+    expect(await markCashIncome(db)).toBe(4);
+    const rows = await client.transaction.findMany({ where: { userId: user.id } });
+    expect(rows.filter((r) => r.pfcDetailed === "INCOME_OTHER")).toHaveLength(4);
+    expect(rows.find((r) => r.description.startsWith("ESTATE"))?.pfcDetailed).toBeNull();
+    // Nightly: nothing moves back and forth.
+    expect(await reapplyRules(user.id, { client })).toBe(0);
+    expect(await markCashIncome(db)).toBe(0);
+  });
+
   it("leaves money moved in from another of their accounts", async () => {
     const userId = await person({ name: "Home Fund", cents: -50_000 });
     const other = await client.account.create({

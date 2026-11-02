@@ -5,6 +5,11 @@ import {
   CASH_INCOME_MAX_MEDIAN_GAP_DAYS,
   CASH_INCOME_MIN_DEPOSITS,
   CASH_INCOME_MIN_SPAN_DAYS,
+  CLIENT_DEPOSIT_MIN_CENTS,
+  CLIENT_MIN_DEPOSITS,
+  CLIENT_MIN_MONTHS,
+  CLIENT_NOT_INCOME,
+  CLIENT_PAYER_MIN_DEPOSITS,
   REGULAR_PAYER_MIN_CENTS,
   REGULAR_PAYER_NOT_INCOME,
   REGULAR_PAYER_OWN_MONEY_DAYS,
@@ -99,6 +104,29 @@ export function regularPayers(
     .map((r) => r.id);
 }
 
+// The ids of the rows that are clients paying at uneven times (debugger 11-02: a freelancer's irregular
+// invoices weren't income anywhere). No schedule to go by, so it asks for more than one payer's word:
+// big deposits from payers who come back, several in all, across several months.
+export function clientDeposits(
+  rows: readonly PayerRow[],
+  moneyOut: readonly MoneyOutRow[] = [],
+): string[] {
+  const byPayer = new Map<string, PayerRow[]>();
+  for (const row of rows) {
+    if (-row.amountCents < CLIENT_DEPOSIT_MIN_CENTS || !row.merchantName) continue;
+    if (notIncome(row.merchantName) || CLIENT_NOT_INCOME.test(row.merchantName)) continue;
+    const key = row.merchantName.toLowerCase();
+    byPayer.set(key, [...(byPayer.get(key) ?? []), row]);
+  }
+  const clients = [...byPayer.values()]
+    .filter((payer) => payer.length >= CLIENT_PAYER_MIN_DEPOSITS && !isOwnMoney(payer, moneyOut))
+    .flat();
+  const months = new Set(clients.map((r) => r.date.slice(0, 7)));
+  return clients.length >= CLIENT_MIN_DEPOSITS && months.size >= CLIENT_MIN_MONTHS
+    ? clients.map((r) => r.id)
+    : [];
+}
+
 // Runs with the cash deposits, after an import, a bank sync and each night, before detection.
 // Returns how many rows changed. Once income they stay: only unplaced rows and Claude's guesses
 // are looked at, and an income row is neither.
@@ -119,17 +147,32 @@ export async function markRegularPayers(db: Pick<ScopedDb, "transactions">): Pro
         },
       ],
     },
-    select: { id: true, accountId: true, date: true, amountCents: true, merchantName: true },
+    select: {
+      id: true,
+      accountId: true,
+      date: true,
+      amountCents: true,
+      merchantName: true,
+      pfcDetailed: true,
+    },
   });
   if (rows.length === 0) return 0;
   const moneyOut = await db.transactions.findMany({
     where: { pending: false, amountCents: { in: [...new Set(rows.map((r) => -r.amountCents))] } },
     select: { accountId: true, date: true, amountCents: true },
   });
-  const ids = regularPayers(
-    rows.map((r) => ({ ...r, date: isoDay(r.date) })),
-    moneyOut.map((o) => ({ ...o, date: isoDay(o.date) })),
-  );
+  const out = moneyOut.map((o) => ({ ...o, date: isoDay(o.date) }));
+  const dated = rows.map((r) => ({ ...r, date: isoDay(r.date) }));
+  const ids = [
+    ...new Set([
+      ...regularPayers(dated, out),
+      // Not a Zelle line the rules called a transfer: it names a person, not a client.
+      ...clientDeposits(
+        dated.filter((r) => r.pfcDetailed !== "TRANSFER_IN_ACCOUNT_TRANSFER"),
+        out,
+      ),
+    ]),
+  ];
   if (ids.length === 0) return 0;
   const { count } = await db.transactions.updateMany({
     where: { id: { in: ids } },
