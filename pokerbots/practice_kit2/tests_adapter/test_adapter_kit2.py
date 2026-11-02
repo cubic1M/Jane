@@ -221,6 +221,7 @@ class StableIds(unittest.TestCase):
 
     def test_mapping_in_the_kit_engine(self):
         """Real kit tables with short stacks (many knockouts): each opponent keeps one id."""
+        seen_ko = [0]                    # across all six tables (we may bust first at any one table)
         for t in range(6):
             mods = []
 
@@ -233,7 +234,7 @@ class StableIds(unittest.TestCase):
                 agents.append(BotAgent.from_file(f"opp{i}", KIT / "bots" / ("sample_shover.py", "sample_caller.py")[i % 2],
                                                  enforce_time=False))
             random.Random(t).shuffle(agents)
-            ident, seen_ko = {}, [0]
+            ident = {}
 
             def observer(table):
                 bot = mods[-1]._BOT

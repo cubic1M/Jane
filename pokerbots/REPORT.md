@@ -1012,7 +1012,7 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   - **Fresh seeds, both at risk 0.5:** field 2 +1.3, field 3 −2.2, default +0.7, mirror **+5.1**, all3-top3 +0.9, hackathon-like +0.3.
   - **Confirmation** (800 tables): field 3 −0.9, all3-top3 −0.8, all3 +0.4.
   - **Verdict:** the pooled gain (+0.5) comes from the mirror field, i.e. from exploiting our own tight folding (`icm_tag` folds 93% to a lone open at 10–25bb). Against the independent fields it averages about 0. Off by default; a day-of tuner candidate if the real field folds a lot.
-* **Bug hunter:** 503k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
+* **Bug hunter:** 520k random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
   - looser calls (a raiser = 3.2 hands, a 3% margin);

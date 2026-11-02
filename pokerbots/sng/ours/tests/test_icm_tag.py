@@ -324,6 +324,30 @@ class TestIcmTag(unittest.TestCase):
         same8, _ = opens("icm_tag", r8, 3)
         self.assertEqual(base8[:150], same8[:150])            # no change until the table is heads-up
 
+    def test_top_range_mapping(self):
+        """Equity vs one top-c hand ~ vs k = 1 + 0.65 log2(0.5/c) random hands, clamped to 1..7."""
+        b = IcmTag()
+        self.assertAlmostEqual(b._k_for_top(0.5), 1.0)
+        self.assertAlmostEqual(b._k_for_top(0.1), 1 + 0.65 * 2.321928, places=4)
+        self.assertEqual(b._k_for_top(1.0), 1.0)
+        self.assertTrue(6.0 < b._k_for_top(1e-6) <= 7.0)               # c floored at 0.001
+        ks = [b._k_for_top(c) for c in (0.6, 0.4, 0.2, 0.1, 0.05)]
+        self.assertEqual(ks, sorted(ks))                           # tighter range = more hands
+
+    def test_shove_models_legal_and_fast_when_on(self):
+        """pev / resteal (off by default, day-of tuner candidates) stay legal and inside budget."""
+        self.assertEqual((PARAMS["pev"], PARAMS["resteal"]), (0, 0))
+        for seed in range(3):
+            r = SngRules(enforce_time=False, max_hands=150)
+            bots = [make("icm_tag:resteal=1;resteal_risk=0.5;pev=1;pev_risk=0.5")] + [
+                make(x) for x in ("lag", "maniac", "chen_tag", "push", "station", "nit", "f3_exploiter")]
+            res = play_table(bots, r, seed=seed)
+            st = res.stats[0]
+            self.assertEqual(st.errors + st.illegal, 0, st.first_error)
+            if not os.environ.get("SNG_SKIP_TIMING"):
+                ts = sorted(st.times)
+                self.assertLess(ts[len(ts) // 2], 0.2e-3)
+
 
 if __name__ == "__main__":
     unittest.main()
