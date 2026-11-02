@@ -1073,6 +1073,8 @@ export const REGULAR_PAYER_NOT_INCOME =
 // at least this share of the deposits.
 export const REGULAR_PAYER_OWN_MONEY_DAYS = 3;
 export const REGULAR_PAYER_OWN_MONEY_SHARE = 0.5;
+// The word in a line that says one person paid another, by name.
+export const REGULAR_PAYER_PERSON_WORD = "zelle";
 
 export const RENT_TRANSFER_MIN_MONTHS = 2;
 export const RENT_TRANSFER_MIN_CENTS = 50_000;
