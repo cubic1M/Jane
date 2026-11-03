@@ -64,6 +64,8 @@ PARAMS = dict(
                          #   count, never tighter than range_k); the exact-ICM call decides. 0 = off.
                          #   2 validated on fresh seeds (results/sng_rscall_validate_*.md: 11 cells, mean
                          #   +1.6, field 4 +2.2*, field 5 +4.7*, field 6 +5.1*); 3 = day-of choice vs light re-shovers
+    rs_me=0.0,           # > 0: rs_call uses the seat's re-raise rate vs MY opens, shrunk to its overall
+                         #   rate with this prior weight in hands (bots that re-raise wide openers target us)
     push_steal=0.5,      # short-stack shoves use this share of the steal factor (fold read); 0 = off.
                          #   0.5 validated on fresh seeds (results/sng_pushsteal_validate.md)
     behind_k=0.2,        # facing a preflop raise: extra random hands per opponent still to act
@@ -187,6 +189,8 @@ class IcmTag:
         self.steal_fold = [0] * rules.num_players
         self.t3_seen = [0] * rules.num_players           # faced exactly one open (first action)
         self.t3_made = [0] * rules.num_players           # ... and re-raised it
+        self.m3_seen = [0] * rules.num_players           # ... the same, when the open was mine
+        self.m3_made = [0] * rules.num_players
         self.o3_seen = [0] * rules.num_players           # opened, then faced a re-raise
         self.o3_fold = [0] * rules.num_players           # ... and folded
         self.aggressor = None                          # seat of the last preflop raiser this hand
@@ -247,6 +251,10 @@ class IcmTag:
                     self.t3_seen[h[0]] += 1
                     if h[2] == "raise":
                         self.t3_made[h[0]] += 1
+                    if op == self.seat:
+                        self.m3_seen[h[0]] += 1
+                        if h[2] == "raise":
+                            self.m3_made[h[0]] += 1
         # fold-to-steal: blinds facing a single late-position open and no other caller
         pre = [h for h in hist if h[1] == 0 and h[2] != "post"]
         raises = [h for h in pre if h[2] == "raise"]
@@ -510,6 +518,8 @@ class IcmTag:
                 and not any(h[1] == 0 and h[2] == "call" and h[0] != obs.seat for h in obs.history)):
             r3 = raises[1][0]
             rr = (self.t3_made[r3] + 0.07 * 10) / (self.t3_seen[r3] + 10)
+            if p["rs_me"] > 0:
+                rr = (self.m3_made[r3] + rr * p["rs_me"]) / (self.m3_seen[r3] + p["rs_me"])
             rk = min(rk, self._k_for_top(min(0.5, p["rs_call"] * rr)))
         if p["behind_k"] != 0.8:
             r0 = raises[-1][0]

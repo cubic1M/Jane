@@ -593,6 +593,11 @@ class TestIcmTag(unittest.TestCase):
         self.assertEqual((b.t3_seen[6], b.t3_seen[3]), (0, 0))   # after the re-raise / the opener
         self.assertEqual((b.t3_seen[1], b.t3_seen[2]), (1, 1))
         self.assertEqual(sum(b.t3_made), 1)
+        self.assertEqual(sum(b.m3_seen), 0)                       # none of those opens was mine (seat 0)
+        b.end_hand(dict(history=tuple(post + [(3, 0, "fold", 0), (0, 0, "raise", 40), (1, 0, "raise", 200),
+                                              (2, 0, "fold", 0), (0, 0, "fold", 0)]), stacks=(2000,) * 8))
+        self.assertEqual((b.m3_seen[1], b.m3_made[1], b.m3_seen[2], b.m3_made[2]), (1, 1, 0, 0))
+        self.assertEqual((b.t3_seen[1], b.t3_made[1]), (2, 1))
 
     def test_rs_call_calls_a_light_reshover(self):
         """13bb, I open first in and the small blind re-shoves: against a seat that re-raises opens
