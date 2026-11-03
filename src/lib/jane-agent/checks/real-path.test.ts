@@ -119,7 +119,7 @@ describe("the rounds where Claude doesn't answer at first", () => {
       return { reply: { body: texts.at(-1), actions: [], refs: {} }, source: "claude" };
     }) as never);
   };
-  const round = (name: "refused_first" | "blocked_first") =>
+  const round = (name: "refused_first" | "blocked_first" | "empty_first") =>
     runRealPath("u1", { client, now: new Date(), questions: [question()], rounds: [name] });
 
   it("fails what is left on screen", async () => {
@@ -136,6 +136,7 @@ describe("the rounds where Claude doesn't answer at first", () => {
   it("fails a chat that never asked again", async () => {
     speak("Your card has $42.00 on it.");
     expect((await round("refused_first")).results[0].failed).toContain("not_asked_again");
+    expect((await round("empty_first")).results[0].failed).toContain("not_asked_again");
   });
 
   it("names the round in the result", async () => {
