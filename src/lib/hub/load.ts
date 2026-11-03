@@ -6,6 +6,7 @@ import { spendingInsights } from "@/insights/spending";
 import { db as defaultClient } from "@/lib/db";
 import { loadDebts } from "@/lib/debts";
 import { scopedFor } from "@/lib/db-scoped";
+import { log } from "@/lib/log";
 import { todayOf } from "@/lib/today";
 import { listGoals } from "@/lib/goals";
 import { loadNetWorthHistory } from "@/lib/net-worth-history";
@@ -64,7 +65,7 @@ async function quietly<T>(what: string, load: () => Promise<T>): Promise<T | nul
   try {
     return await load();
   } catch (error) {
-    console.error(`Home hub: couldn't load ${what}`, { error });
+    log.error(`Home hub: couldn't load ${what}`, { error });
     return null;
   }
 }

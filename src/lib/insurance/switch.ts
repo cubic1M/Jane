@@ -9,6 +9,7 @@ import { SYSTEM_ACTOR, logAudit } from "@/lib/audit";
 import { encryptBytes } from "@/lib/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { log } from "@/lib/log";
 import { formatCents } from "@/lib/money";
 import { insuranceSwitchOf } from "./accept";
 import { kindWords } from "./gaps";
@@ -295,7 +296,7 @@ export async function confirmInsuranceSwitches({
       await track(userId, "insurance_switch_confirmed", { kind: fresh.kind });
       counts.switched += 1;
     } catch (error) {
-      console.error("Insurance switch check failed", { policyId: id, error: String(error) });
+      log.error("Insurance switch check failed", { policyId: id, error: String(error) });
     }
   }
   return counts;

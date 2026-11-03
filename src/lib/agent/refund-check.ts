@@ -7,6 +7,7 @@ import { track } from "@/lib/analytics";
 import { logAudit, SYSTEM_ACTOR } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { log } from "@/lib/log";
 import { formatCents } from "@/lib/money";
 import { note } from "./run";
 import { isoDay as dayOf } from "@/lib/dates";
@@ -154,7 +155,7 @@ export async function confirmRefunds(
       const email = statusEmail("done", title, null);
       if (email && action.user.email) {
         await notify(action.user.email, email).catch((error) =>
-          console.error("Refund email failed", { actionId: action.id, error: String(error) }),
+          log.error("Refund email failed", { actionId: action.id, error: String(error) }),
         );
       }
     }

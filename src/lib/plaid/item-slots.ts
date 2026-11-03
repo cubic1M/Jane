@@ -10,6 +10,7 @@ import {
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { log } from "@/lib/log";
 import { isTrialUser } from "@/lib/trial-ids";
 import { plaidEnvironment } from "./client";
 import { COUNTER_ID, itemSlotUse } from "./item-count";
@@ -96,7 +97,7 @@ export async function reserveItemSlot(
   }
   const { used } = won[0];
   if (used >= plaidItemWarnAt(limit)) {
-    console.warn("Plaid Production Items are nearly used", { used, limit });
+    log.warn("Plaid Production Items are nearly used", { used, limit });
   }
   return { userId, ordinal };
 }

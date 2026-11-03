@@ -5,6 +5,7 @@ import { db as defaultClient } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { appBase } from "@/lib/digest/links";
 import { removePlaidItem } from "./remove";
+import { log } from "@/lib/log";
 import { peopleIn, type OnlyPeople } from "@/lib/only-people";
 
 // Daily: people who haven't used the app for INACTIVE_ITEM_DAYS lose their Plaid
@@ -35,7 +36,7 @@ async function warn(email: string, removalDate: Date, send: typeof sendEmail) {
   const link = `${appBase()}/report`;
   const text = `You haven't used Jane in a while, so on ${date} we'll disconnect your linked banks. Nothing else changes, and you can link them again anytime.\n\nWant to keep them connected? Just open your report: ${link}`;
   if (!process.env.RESEND_API_KEY && process.env.NODE_ENV !== "production") {
-    console.info(`[dev] Email to ${email}: inactivity warning\n${text}`);
+    log.dev(`[dev] Email to ${email}: inactivity warning\n${text}`);
     return;
   }
   await send({
@@ -101,7 +102,7 @@ export async function runInactiveCleanup({
         run.removed += 1;
       }
     } catch (error) {
-      console.error("Inactive cleanup failed", { userId: person.id, error: String(error) });
+      log.error("Inactive cleanup failed", { userId: person.id, error: String(error) });
       run.failed += 1;
     }
   }

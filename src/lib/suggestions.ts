@@ -10,6 +10,7 @@ import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { log } from "@/lib/log";
 import { loadProfileInput } from "@/lib/profile";
 import { recordAnswer, recordOpened, recordShown } from "@/lib/outcomes";
 import { loadKindStats } from "@/lib/learning";
@@ -99,7 +100,7 @@ async function detectForWork(
   ]);
   const profile = buildProfile(input);
   const suggestions = runDetectors({ profile, data: input }, undefined, (d, error) =>
-    console.error("Detector failed", {
+    log.error("Detector failed", {
       userId,
       detector: `${d.capability}:${d.topic}`,
       error: scrub(String(error)),

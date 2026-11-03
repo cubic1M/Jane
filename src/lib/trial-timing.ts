@@ -1,3 +1,4 @@
+import { log } from "@/lib/log";
 // Where the time goes between "Try Jane" and a chat that takes a question (depth bar 4): one
 // log line per stage with the milliseconds of each phase, like chat_timing. Counts and
 // durations only, never anything about the person.
@@ -20,16 +21,15 @@ export function phaseTimer(kind: string): Phases {
       last = now;
     },
     log(at) {
-      console.info(
-        "trial_timing",
-        JSON.stringify({ kind: `${kind}_partial`, at, ...phases, totalMs: Date.now() - started }),
-      );
+      log.json("trial_timing", {
+        kind: `${kind}_partial`,
+        at,
+        ...phases,
+        totalMs: Date.now() - started,
+      });
     },
     done(extra = {}) {
-      console.info(
-        "trial_timing",
-        JSON.stringify({ kind, ...phases, ...extra, totalMs: Date.now() - started }),
-      );
+      log.json("trial_timing", { kind, ...phases, ...extra, totalMs: Date.now() - started });
     },
   };
 }

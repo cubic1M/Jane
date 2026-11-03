@@ -4,6 +4,7 @@ import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { addGoal } from "@/lib/goals";
+import { log } from "@/lib/log";
 import { mayAct, recordAct } from "@/lib/sector-autopilot";
 import { loadSelfEmployed } from "@/lib/self-employed";
 import { filingPartnerFor } from "@/lib/filing";
@@ -128,6 +129,6 @@ export async function runTaxAutopilotSafely(userId: string, options: Options = {
   try {
     await runTaxAutopilot(userId, options);
   } catch (error) {
-    console.error("Tax autopilot failed", { userId, error: String(error) });
+    log.error("Tax autopilot failed", { userId, error: String(error) });
   }
 }

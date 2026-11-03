@@ -16,6 +16,7 @@ import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { strategyBoard } from "@/lib/investments/strategy-board";
+import { log } from "@/lib/log";
 import { practiceProfileOf } from "@/lib/practice/preferences";
 import {
   fill,
@@ -370,7 +371,7 @@ export async function runPaperIfStale(userId: string, options: Options = {}) {
   try {
     await runPaperDay(userId, options);
   } catch (error) {
-    console.error("The paper account's run failed", { error: String(error) });
+    log.error("The paper account's run failed", { error: String(error) });
   }
 }
 
@@ -387,7 +388,7 @@ export async function runPaperDayForAll({
       if ((await runPaperDay(userId, { client, now })).ran) ran += 1;
     } catch (error) {
       failed += 1;
-      console.error("A paper account's run failed", { error: String(error) });
+      log.error("A paper account's run failed", { error: String(error) });
     }
   }
   return { accounts: accounts.length, ran, failed };

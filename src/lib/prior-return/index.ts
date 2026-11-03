@@ -6,6 +6,7 @@ import { anthropic, llmModel } from "@/lib/anthropic";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { log } from "@/lib/log";
 import { loadTaxProfile } from "@/lib/tax-profile";
 import {
   checkPriorReturn,
@@ -112,7 +113,7 @@ export async function readPriorReturn(
         { model: llmModel(), tax_return: true },
       );
     } else if (read.kind === "failed") {
-      console.warn("Reading a tax return failed", { reason: read.reason });
+      log.warn("Reading a tax return failed", { reason: read.reason });
     }
   }
   const profile = await loadTaxProfile(userId, { client, now });

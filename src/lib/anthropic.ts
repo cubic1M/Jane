@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { killed } from "@/config/kill-switches";
 
 // One shared client for the explanation and subscription calls. Everything that calls
 // Claude must work without a key too: callers check llmEnabled() and fall back.
@@ -10,7 +11,7 @@ const DEFAULT_CHAT_MODEL = "claude-sonnet-5-5";
 let client: Anthropic | undefined;
 
 export function llmEnabled(): boolean {
-  return Boolean(process.env.ANTHROPIC_API_KEY);
+  return Boolean(process.env.ANTHROPIC_API_KEY) && !killed("claude");
 }
 
 export function llmModel(): string {
@@ -23,6 +24,8 @@ export function chatModel(): string {
 }
 
 export function anthropic(): Anthropic {
+  // For a caller that didn't check llmEnabled() first: it fails rather than reaching Claude.
+  if (killed("claude")) throw new Error("Claude is paused (KILL_CLAUDE)");
   client ??= new Anthropic();
   return client;
 }

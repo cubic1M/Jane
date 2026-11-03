@@ -8,6 +8,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import type { PlannedMessage } from "@/lib/jane-agent/brain";
 import { postMessages } from "@/lib/jane-agent/messages";
 import { queueChatNotificationsSafely } from "@/lib/jane-agent/notify";
+import { log } from "@/lib/log";
 import { hasDemoBank } from "@/lib/plaid/demo";
 import { practiceCardDetails } from "@/lib/practice/ideas";
 import { isTrialUser } from "@/lib/trial-ids";
@@ -104,6 +105,6 @@ export async function postThemeAlertsSafely(userId: string, options: Options = {
   try {
     await postThemeAlerts(userId, options);
   } catch (error) {
-    console.error("Posting a news theme's alert failed", { error: String(error) });
+    log.error("Posting a news theme's alert failed", { error: String(error) });
   }
 }

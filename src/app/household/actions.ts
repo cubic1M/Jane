@@ -11,6 +11,7 @@ import {
   leaveHousehold,
   setAccountSharing,
 } from "@/lib/household";
+import { log } from "@/lib/log";
 import {
   MoneyForTwoError,
   approveBigMove,
@@ -47,7 +48,7 @@ export async function invite(
       subject: `${user.email} invited you to share a household on Jane`,
       text: `${user.email} invited you to see some of their accounts, and share some of yours if you like.\n\nJoin: ${link}\n\nThe link works for 7 days, only when you sign in with this email.`,
       html: `<p>${user.email} invited you to see some of their accounts, and share some of yours if you like.</p><p><a href="${link}">Join their household</a></p><p>The link works for 7 days, only when you sign in with this email.</p>`,
-    }).catch((error) => console.error("Household invite email failed", { error: String(error) }));
+    }).catch((error) => log.error("Household invite email failed", { error: String(error) }));
   }
   revalidatePath("/household");
   return { ok: true, message: "Invite created. Send your partner this link:", link };

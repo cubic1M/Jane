@@ -1,4 +1,5 @@
 import { NextResponse, after } from "next/server";
+import { log } from "@/lib/log";
 import { verifyPlaidWebhook } from "@/lib/plaid/webhook-verify";
 import { firstDelivery, planWebhook, syncFromWebhook } from "@/lib/plaid/webhooks";
 
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
         await syncFromWebhook(plan.itemId);
       } catch (error) {
         // A PlaidRequestError's message is its code and status only: never the request.
-        console.error("Plaid sync from webhook failed", {
+        log.error("Plaid sync from webhook failed", {
           itemId: plan.itemId,
           error: String(error),
         });

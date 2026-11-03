@@ -20,3 +20,10 @@ export const HEALTH_ERROR_HOURS = 24;
 // minutes, and the daily digest lists at most this many kinds.
 export const ERROR_ALERT_MINUTES = 60;
 export const ERROR_DIGEST_KINDS = 10;
+
+// How long a scheduled job waits on a heartbeat ping, or an error on its Sentry report, before
+// carrying on without it.
+export const HEARTBEAT_TIMEOUT_MS = 3_000;
+export const SENTRY_TIMEOUT_MS = 3_000;
+// How long the hourly probe waits for one page (src/lib/probe.ts).
+export const PROBE_TIMEOUT_MS = 15_000;

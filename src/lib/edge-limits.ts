@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { TRIAL_SESSION_PREFIX } from "@/config/trial";
 import { sessionTokenFrom } from "@/lib/admin-gate";
+import { log } from "@/lib/log";
 import {
   TOO_MANY_MESSAGE,
   clientIp,
@@ -90,7 +91,7 @@ export async function edgeLimit(
   try {
     result = await hit(checks);
   } catch (error) {
-    console.error("Edge rate limit unavailable", {
+    log.error("Edge rate limit unavailable", {
       error: error instanceof Error ? error.name : "unknown",
     });
     return null;

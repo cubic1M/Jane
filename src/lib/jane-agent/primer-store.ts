@@ -3,6 +3,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { sameData } from "@/lib/data-stamp";
 import { isoDay } from "@/lib/dates";
 import { staleAndRefreshSnapshot } from "./snapshot-store";
+import { log } from "@/lib/log";
 
 // The person's numbers for Claude, kept in the database (spec step 93, depth first): computing
 // them looks every sector up (20 seconds or more on a slow database), so it is done after each
@@ -66,7 +67,7 @@ export async function writeStoredPrimer(
       update: { value },
     });
   } catch (error) {
-    console.error("Saving the person's numbers for Claude failed", { error: String(error) });
+    log.error("Saving the person's numbers for Claude failed", { error: String(error) });
   }
 }
 

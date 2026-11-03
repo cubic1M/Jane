@@ -1,6 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { killed } from "@/config/kill-switches";
 import { ALL_DETAILED, type PfcDetailed } from "./taxonomy";
 import { UNTRUSTED_TEXT_RULE } from "@/lib/untrusted-text";
+import { log } from "@/lib/log";
 
 const DEFAULT_MODEL = "claude-opus-5-5";
 const BATCH_SIZE = 50;
@@ -77,7 +79,7 @@ export async function classifyMerchants(
   { claude }: { claude?: () => Anthropic } = {},
 ): Promise<Map<string, PfcDetailed>> {
   const results = new Map<string, PfcDetailed>();
-  if (!process.env.ANTHROPIC_API_KEY || merchants.length === 0) return results;
+  if (!process.env.ANTHROPIC_API_KEY || killed("claude") || merchants.length === 0) return results;
 
   // The batches at once rather than one after another: the same calls, less waiting.
   const batches = [];
@@ -90,9 +92,9 @@ export async function classifyMerchants(
         return await classifyBatch(batch, claude?.() ?? getClient());
       } catch (error) {
         if (error instanceof Anthropic.APIError) {
-          console.error("Merchant categorization failed", { status: error.status });
+          log.error("Merchant categorization failed", { status: error.status });
         } else if (error instanceof SyntaxError) {
-          console.error("Merchant categorization returned invalid JSON");
+          log.error("Merchant categorization returned invalid JSON");
         } else {
           throw error;
         }

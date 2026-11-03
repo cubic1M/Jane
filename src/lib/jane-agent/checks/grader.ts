@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { GRADER_MODEL } from "@/config/answer-checks";
 import { finishedText } from "@/lib/anthropic";
 import type { Facts } from "./facts";
+import { log } from "@/lib/log";
 import { formatCents } from "@/lib/money";
 
 // Claude's grade for one of Jane's answers (spec step 87), against a written rubric for what
@@ -103,7 +104,7 @@ export async function gradeWithClaude(
     });
   } catch (error) {
     if (!(error instanceof Anthropic.APIError)) throw error;
-    console.error("Answer check grading failed", { status: error.status });
+    log.error("Answer check grading failed", { status: error.status });
     return { grade: null, usage: null };
   }
   const usage: Usage = {

@@ -1,3 +1,4 @@
+import { UPLOADS_PAUSED_TEXT, killed } from "@/config/kill-switches";
 import {
   MAX_UPLOAD_BYTES,
   NEW_ACCOUNT_ID,
@@ -42,6 +43,7 @@ export type UploadFailure =
   | "bad_columns"
   | "account_not_found"
   | "already_imported"
+  | "paused"
   | "error";
 
 export const uploadFailed = (userId: string, reason: UploadFailure) =>
@@ -52,6 +54,7 @@ type ReadFailure = { error: string; reason: UploadFailure };
 // Reads uploads into memory, with the columns the person picked for any file in a layout we
 // don't know. The raw files are never written anywhere.
 export async function readUploadFiles(formData: FormData): Promise<CsvFile[] | ReadFailure> {
+  if (killed("uploads")) return { error: UPLOADS_PAUSED_TEXT, reason: "paused" };
   const chosen = formData.getAll("files").filter((f): f is File => f instanceof File && !!f.name);
   if (chosen.length === 0) {
     return { error: "Choose at least one statement file.", reason: "no_file" };

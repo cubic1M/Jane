@@ -18,6 +18,7 @@ import { appBase } from "@/lib/digest/links";
 import { unsubscribeToken } from "@/lib/digest/unsubscribe";
 import { sendEmail } from "@/lib/email";
 import { enqueueJob, runJob } from "@/lib/jobs";
+import { log } from "@/lib/log";
 import { pushEnabled, sendPush, type PushMessage } from "@/lib/push";
 import { renderChatEmail, type EmailMessage } from "./notify-email";
 import { alwaysSaid, sourceOf, type Attention } from "./attention";
@@ -137,7 +138,7 @@ function emailSender(send: Send | undefined): Send | null {
   if (send) return send;
   if (process.env.RESEND_API_KEY && process.env.EMAIL_FROM) return sendEmail;
   if (process.env.NODE_ENV === "development") {
-    return async (email) => console.info(`[dev] Jane's email:\n${email.subject}\n\n${email.text}`);
+    return async (email) => log.dev(`[dev] Jane's email:\n${email.subject}\n\n${email.text}`);
   }
   return null;
 }
@@ -397,6 +398,6 @@ export async function queueChatNotificationsSafely(
   try {
     await queueChatNotifications(userId, options);
   } catch (error) {
-    console.error("Queueing Jane's notifications failed", { userId, error: String(error) });
+    log.error("Queueing Jane's notifications failed", { userId, error: String(error) });
   }
 }

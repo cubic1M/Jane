@@ -125,7 +125,8 @@ describe("edgeLimit", () => {
   });
 });
 
-// The rule: every API route is limited, except cron routes, which check CRON_SECRET instead.
+// The rule: every API route is limited, except cron routes, which check CRON_SECRET instead (the
+// hourly probe has its own secret, so it stays off until a founder sets it).
 describe("every API route", () => {
   const apiDir = join(process.cwd(), "src/app/api");
   const routes: string[] = [];
@@ -141,7 +142,7 @@ describe("every API route", () => {
   it.each(routes.map((r) => [relative(apiDir, r)]))("%s is limited or guarded", (route) => {
     const pathname = `/api/${route.replace(/\/route\.ts$/, "").replace(/\[\.*([^\]]+)\]/g, "x")}`;
     if (pathname.startsWith("/api/cron/")) {
-      expect(readFileSync(join(apiDir, route), "utf8")).toContain("CRON_SECRET");
+      expect(readFileSync(join(apiDir, route), "utf8")).toMatch(/CRON_SECRET|PROBE_SECRET/);
     } else {
       expect(edgeChecks(request(pathname, { ip: IP })).length).toBeGreaterThan(0);
     }

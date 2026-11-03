@@ -1,3 +1,4 @@
+import { log } from "@/lib/log";
 import { coreFundsFor } from "@/planning/values";
 import { loadPrefs } from "./values";
 import { randomUUID } from "node:crypto";
@@ -334,7 +335,7 @@ export async function runAutoInvestForAll({
       if (run?.status === "paused") paused += 1;
     } catch (error) {
       failed += 1;
-      console.error("Automatic investing failed", { userId, error: String(error) });
+      log.error("Automatic investing failed", { userId, error: String(error) });
     }
   }
   return { invested, paused, failed };

@@ -38,6 +38,7 @@ import {
   setCovered,
   setShared,
 } from "@/lib/insurance/family";
+import { log } from "@/lib/log";
 import { requireUser } from "@/lib/session";
 
 // Insurance (spec step 102). A save goes back to /insurance with ?saved=, so the
@@ -89,7 +90,7 @@ export async function savePolicy(_previous: PolicyState, formData: FormData): Pr
   // at once, with its call, instead of after the night's run (gap audit: the "ask your insurer
   // for a better rate" suggestion led here to nothing for a found policy).
   await negotiationsDue(user.id).catch((error) =>
-    console.error("Renewal check after saving a policy failed", { error: String(error) }),
+    log.error("Renewal check after saving a policy failed", { error: String(error) }),
   );
   refreshOthers();
   redirect(`/insurance?saved=${policyId ? "updated" : "added"}`);

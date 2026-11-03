@@ -1,3 +1,4 @@
+import { log } from "@/lib/log";
 import { autopilotFor } from "@/lib/sector-autopilot";
 import { keepCovered } from "./review";
 import { CHECKUP_DAILY_LIMIT, CHECKUP_EVERY_DAYS } from "@/config/insurance";
@@ -168,7 +169,7 @@ export async function checkupAll({
     try {
       if (await checkupPerson(userId, { client, now })) checkups += 1;
     } catch (error) {
-      console.error("Insurance checkup failed", { userId, error: String(error) });
+      log.error("Insurance checkup failed", { userId, error: String(error) });
     }
   }
   return { people: people.length, checkups };

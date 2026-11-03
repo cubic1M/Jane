@@ -6,6 +6,7 @@ import { ChatActionError, takeChatAction } from "@/lib/jane-agent/actions";
 import { timezoneOf } from "@/lib/jane-agent/open";
 import { conciergeMode } from "@/lib/concierge-mode";
 import { toView, type MessageView } from "@/lib/jane-agent/view";
+import { log } from "@/lib/log";
 import { requireUser } from "@/lib/session";
 import { scopedFor } from "@/lib/db-scoped";
 import { recordOpened } from "@/lib/outcomes";
@@ -34,7 +35,7 @@ export async function tapButton(previous: MessageState, formData: FormData): Pro
           defer: (work) =>
             after(() =>
               work().catch((error) =>
-                console.error("After a chat tap failed", { error: String(error) }),
+                log.error("After a chat tap failed", { error: String(error) }),
               ),
             ),
         }),

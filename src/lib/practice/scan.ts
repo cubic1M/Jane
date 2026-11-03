@@ -16,6 +16,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { THEME_NEWS_SYMBOLS } from "@/config/themes";
 import { postThemeAlertsSafely } from "./theme-alerts";
+import { log } from "@/lib/log";
 import { marketData, type Bar, type Headline } from "@/lib/market";
 import { newsKey } from "@/lib/news/store";
 import { rulesSummary } from "@/lib/news/summarize";
@@ -93,7 +94,7 @@ async function paydayDayOf(userId: string, client: PrismaClient, now: Date) {
   try {
     return mainPaydayDay(paySchedules(await loadDetectionInput(userId, { client, now })));
   } catch (error) {
-    console.error("Practice scan: paydays unavailable", { error: String(error) });
+    log.error("Practice scan: paydays unavailable", { error: String(error) });
     return null;
   }
 }
@@ -332,7 +333,7 @@ export async function scanOnOpenQuietly(userId: string) {
   try {
     await scanOnOpen(userId);
   } catch (error) {
-    console.error("Practice scan on open failed", { error: String(error) });
+    log.error("Practice scan on open failed", { error: String(error) });
   }
   // A news theme's idea found today goes out as an alert (src/lib/practice/theme-alerts.ts).
   await postThemeAlertsSafely(userId);
@@ -374,7 +375,7 @@ export async function runPracticeDayForAll({
       if (day?.autopilot.ran) trades += day.autopilot.fills.length;
     } catch (error) {
       failed += 1;
-      console.error("Practice scan failed", { error: String(error) });
+      log.error("Practice scan failed", { error: String(error) });
     }
   }
   return { portfolios: rows.length, flags, trades, failed };

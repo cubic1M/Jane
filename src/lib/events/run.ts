@@ -20,6 +20,7 @@ import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { checkGuardrails } from "@/lib/guardrails";
+import { log } from "@/lib/log";
 import type { Bar } from "@/lib/market/types";
 import { strategyOf, takeSignal } from "@/lib/paper/account";
 import { daysBefore, paperPrices, type PaperPrices } from "@/lib/paper/prices";
@@ -435,7 +436,7 @@ export async function runEventsIfStale(userId: string, options: Options & { news
   try {
     await runEventOverlay(userId, options);
   } catch (error) {
-    console.error("The events overlay's run failed", { error: String(error) });
+    log.error("The events overlay's run failed", { error: String(error) });
   }
 }
 

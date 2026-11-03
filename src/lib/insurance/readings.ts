@@ -29,6 +29,7 @@ import {
   type Layer,
   type ReadingSource,
 } from "./reading-rules";
+import { log } from "@/lib/log";
 import { centsToInput } from "@/lib/money";
 
 // Policies read from documents (spec step 151). A declarations page or renewal notice
@@ -191,7 +192,7 @@ export async function readPolicyDocument(
         { model: llmModel(), cover_limits: true },
       );
     } else if (details.kind === "failed") {
-      console.warn("Reading a policy's cover limits failed", { reason: details.reason });
+      log.warn("Reading a policy's cover limits failed", { reason: details.reason });
     }
   }
   layers.push({ source: factsSource, fields: facts });

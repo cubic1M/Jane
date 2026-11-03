@@ -1,4 +1,5 @@
 import { conciergeMode, onSampleDataOnly } from "@/lib/concierge-mode";
+import { log } from "@/lib/log";
 import { isTrialUser } from "@/lib/trial-ids";
 import { randomBytes } from "node:crypto";
 import {
@@ -212,7 +213,7 @@ export async function setStatus(
     const email = statusEmail(status, titleOf(action), userTodo);
     if (email && action.user.email) {
       await notify(action.user.email, email).catch((error) =>
-        console.error("Agent status email failed", { actionId: action.id, error: String(error) }),
+        log.error("Agent status email failed", { actionId: action.id, error: String(error) }),
       );
     }
   }
@@ -777,7 +778,7 @@ export async function runAgentFollowUps({
     try {
       await agentStep(action.userId, action.id, { client, now });
     } catch (error) {
-      console.error("Agent follow-up failed", { actionId: action.id, error: String(error) });
+      log.error("Agent follow-up failed", { actionId: action.id, error: String(error) });
     }
   }
   const cancellations = await confirmCancellations({ client, now, userIds });

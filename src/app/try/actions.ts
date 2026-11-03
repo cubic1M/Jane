@@ -2,6 +2,7 @@
 
 import { cookies, headers } from "next/headers";
 import { after } from "next/server";
+import { log } from "@/lib/log";
 import { pickPerson } from "@/lib/people";
 import { hit, ipKey } from "@/lib/rate-limit";
 import { phaseTimer } from "@/lib/trial-timing";
@@ -78,7 +79,7 @@ export async function tryJane(_previous: TryState, formData: FormData): Promise<
       ready();
     },
   })
-    .catch((error) => console.error("Sample person's first sync failed", { error: String(error) }))
+    .catch((error) => log.error("Sample person's first sync failed", { error: String(error) }))
     .finally(ready);
   let waited: ReturnType<typeof setTimeout> | undefined;
   const opened = await Promise.race([
@@ -91,7 +92,7 @@ export async function tryJane(_previous: TryState, formData: FormData): Promise<
   after(async () => {
     await scan;
     await cleanUpTrials().catch((error) =>
-      console.error("Cleaning up trials failed", { error: String(error) }),
+      log.error("Cleaning up trials failed", { error: String(error) }),
     );
   });
   return { next: opened ? "/home" : "/scanning?then=home" };

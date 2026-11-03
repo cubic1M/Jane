@@ -1,4 +1,5 @@
 import { adviceMode } from "@/lib/advice-mode";
+import { log } from "@/lib/log";
 import { loadPractice } from "@/lib/practice/portfolio";
 import { PRACTICE_ONLY_NOTE } from "./investments/practice-copy";
 import { dollarFigures } from "@/lib/guardrails";
@@ -1616,7 +1617,7 @@ async function computePrimer(
 export async function refreshPrimer(userId: string, options: Options): Promise<void> {
   // And the snapshot the agenda and the tools read, saved the same way.
   await refreshSnapshot(userId, options).catch((error) =>
-    console.error("Saving the snapshot failed", { error: String(error) }),
+    log.error("Saving the snapshot failed", { error: String(error) }),
   );
   const stamp = await dataStamp(userId, options.client);
   const primer = await computePrimer(userId, options);
@@ -1644,7 +1645,7 @@ export async function chatPrimer(
     if (isStale(stored.at, now) && !refreshing.has(userId)) {
       refreshing.add(userId);
       void refreshPrimer(userId, { client, now })
-        .catch((error) => console.error("Refreshing the numbers failed", { error: String(error) }))
+        .catch((error) => log.error("Refreshing the numbers failed", { error: String(error) }))
         .finally(() => refreshing.delete(userId));
     }
     return stored.primer;

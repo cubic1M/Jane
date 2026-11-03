@@ -10,6 +10,7 @@ import { track } from "@/lib/analytics";
 import { SYSTEM_ACTOR, logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { log } from "@/lib/log";
 import { parseMoneyToCents } from "@/lib/money";
 import { mayAct, recordAct } from "@/lib/sector-autopilot";
 import { isQuotable, partnerFor, type InsurancePartner } from "./partner";
@@ -321,7 +322,7 @@ export async function negotiationsAll({
     try {
       found += (await negotiationsDue(userId, { client, now })).length;
     } catch (error) {
-      console.error("Renewal negotiation failed", { userId, error: String(error) });
+      log.error("Renewal negotiation failed", { userId, error: String(error) });
     }
   }
   return { people: people.length, found };

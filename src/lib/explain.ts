@@ -9,6 +9,7 @@ import {
 import { templateExplanation, type ExplanationContent } from "./explain-templates";
 import { checkGuardrails, type GuardrailIssue } from "./guardrails";
 import { UNTRUSTED_TEXT_RULE } from "@/lib/untrusted-text";
+import { log } from "@/lib/log";
 
 // Plain-language card text for a finding, written by Claude from the explain input only.
 // Anything that goes wrong (no key, a refusal, malformed JSON, a guardrail failure) falls
@@ -139,7 +140,7 @@ export async function explainFinding(
     text = await askClaude(input, claude);
   } catch (error) {
     if (!(error instanceof Anthropic.APIError)) throw error;
-    console.error("Explanation request failed", { status: error.status });
+    log.error("Explanation request failed", { status: error.status });
     return { kind: "unavailable", content: template, hash };
   }
   if (text === null) return { kind: "template", content: template, reason: "refused", hash };

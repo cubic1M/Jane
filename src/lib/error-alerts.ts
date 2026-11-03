@@ -2,7 +2,9 @@ import { ERROR_ALERT_MINUTES, ERROR_DIGEST_KINDS } from "@/config/health";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
+import { errorKind, safePath } from "@/lib/error-kind";
 import { teamEmails } from "@/lib/health";
+import { log } from "@/lib/log";
 import { hit } from "@/lib/rate-limit";
 
 // Knowing when Jane breaks before people tell us (founder, 2026-10-26): a server error emails the
@@ -17,25 +19,7 @@ type Options = { client?: PrismaClient; now?: Date; send?: typeof sendEmail };
 const MINUTE = 60 * 1000;
 const DAY = 24 * 60 * MINUTE;
 
-// The kind of error ("TypeError") from a stored message ("TypeError: ..."), nothing after it.
-export function errorKind(message: string): string {
-  const name = message.split(":")[0].trim();
-  return /^[A-Za-z][\w.]{0,60}$/.test(name) ? name : "Error";
-}
-
-// A path with nothing that could name someone: any part with a digit, or a long one (an id),
-// becomes ":id"; no query string.
-export function safePath(path: string | null | undefined): string {
-  if (!path) return "(no path)";
-  return (
-    path
-      .split("?")[0]
-      .split("/")
-      .map((part) => (/\d/.test(part) || part.length > 24 ? ":id" : part))
-      .join("/")
-      .slice(0, 120) || "/"
-  );
-}
+export { errorKind, safePath };
 
 const escape = (text: string) => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const adminLink = (path: string) => `${process.env.APP_URL ?? ""}${path}`;
@@ -89,7 +73,7 @@ export async function alertError(
     await Promise.all(to.map((address) => send({ ...message, to: address })));
     return true;
   } catch (failure) {
-    console.error("Error alert failed", { error: String(failure) });
+    log.error("Error alert failed", { error: String(failure) });
     return false;
   }
 }
@@ -159,7 +143,7 @@ export async function sendErrorDigest({
     await client.healthNotice.deleteMany({
       where: { key: `error-digest:${now.toISOString().slice(0, 10)}` },
     });
-    console.error("Error digest failed", { error: String(failure) });
+    log.error("Error digest failed", { error: String(failure) });
     return 0;
   }
   return events.length;

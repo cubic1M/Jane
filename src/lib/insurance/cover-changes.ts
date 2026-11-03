@@ -11,6 +11,7 @@ import { track } from "@/lib/analytics";
 import { SYSTEM_ACTOR, logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { log } from "@/lib/log";
 import { mayAct, recordAct } from "@/lib/sector-autopilot";
 import { changesFor } from "./cover-change-rules";
 import { sizeLife } from "./life";
@@ -342,7 +343,7 @@ export async function coverChangesAll({
     try {
       prepared += await prepareCoverChanges(userId, { client, now });
     } catch (error) {
-      console.error("Cover changes failed", { userId, error: String(error) });
+      log.error("Cover changes failed", { userId, error: String(error) });
     }
   }
   return { people: people.length, prepared };

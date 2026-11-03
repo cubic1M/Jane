@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { currentChatStart } from "@/lib/chat-start";
 import { ChatInputError, sendToJane } from "@/lib/jane-agent/typing";
+import { log } from "@/lib/log";
 import { requireUser } from "@/lib/session";
 
 // Typing to Jane in the chat (spec step 84). Stores what the person typed and Jane's answer
@@ -18,7 +19,7 @@ export async function sendMessage(previous: SendState, formData: FormData): Prom
     await sendToJane(user.id, text, { since: await currentChatStart() });
   } catch (error) {
     if (error instanceof ChatInputError) return { error: error.message, sentAt: previous.sentAt };
-    console.error("Typing to Jane failed", {
+    log.error("Typing to Jane failed", {
       error: error instanceof Error ? error.name : "unknown",
     });
     return { error: "Something went wrong. Try again.", sentAt: previous.sentAt };

@@ -2,6 +2,7 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { log } from "@/lib/log";
 import {
   forgetFactsFrom,
   preferenceRef,
@@ -108,7 +109,7 @@ export async function savePreference(
   });
   // What Jane knows takes it as the person's word.
   await recordFact(userId, factFromPreference(draft), { client }).catch((error) =>
-    console.error("Couldn't add a preference to what Jane knows", { error: String(error) }),
+    log.error("Couldn't add a preference to what Jane knows", { error: String(error) }),
   );
   await logAudit(
     { type: "user", id: userId },

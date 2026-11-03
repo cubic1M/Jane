@@ -7,6 +7,7 @@ import { evidenceRefs, type EvidenceRefs } from "@/lib/finding-accounts";
 import { CLEARED_WITHOUT_DATA, DEMO_SEEDED } from "@/config/lineage";
 import { PERSON_ASSETS } from "@/data-sources/demo/demo-people";
 import { merchantOf } from "@/detection/streams";
+import { log } from "@/lib/log";
 import { DEMO_ASSETS } from "@/lib/plaid/demo-assets";
 import { peopleIn, type OnlyPeople } from "@/lib/only-people";
 import { hasDemoBank } from "@/lib/plaid/demo";
@@ -144,7 +145,7 @@ export async function removeOrphans(
     removed.cleared = (removed.cleared ?? 0) + (await clearWithoutData(userId, client));
   }
   if (removed.findings + removed.outcomes + removed.alerts + (removed.cleared ?? 0) > 0) {
-    console.info("derived_removed", JSON.stringify({ userId, ...removed }));
+    log.json("derived_removed", { userId, ...removed });
     try {
       await logAudit(
         SYSTEM_ACTOR,
@@ -154,7 +155,7 @@ export async function removeOrphans(
       );
     } catch (error) {
       // The audit row is a record, never a reason to keep stale rows.
-      console.error("Auditing removed rows failed", { error: String(error) });
+      log.error("Auditing removed rows failed", { error: String(error) });
     }
   }
   return removed;
@@ -337,7 +338,7 @@ export async function removeAllOrphans({
       removed.alerts += r.alerts;
     } catch (error) {
       failed += 1;
-      console.error("Removing orphaned rows failed", { userId: user.id, error: String(error) });
+      log.error("Removing orphaned rows failed", { userId: user.id, error: String(error) });
     }
   }
   return { users: users.length, removed, failed };

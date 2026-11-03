@@ -1,5 +1,6 @@
 import { PostHog } from "posthog-node";
 import { db } from "@/lib/db";
+import { log } from "@/lib/log";
 import { isTrialUser } from "@/lib/trial-ids";
 
 export type EventProperties = Record<string, string | number | boolean | null>;
@@ -45,7 +46,7 @@ export async function track(
     });
   } catch (error) {
     // The database row is the source of truth; a PostHog outage must not fail the request.
-    console.error("PostHog capture failed", { event: name, error });
+    log.error("PostHog capture failed", { event: name, error });
   }
 }
 

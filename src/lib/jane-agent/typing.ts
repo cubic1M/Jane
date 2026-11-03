@@ -14,6 +14,7 @@ import { track } from "@/lib/analytics";
 import { llmEnabled } from "@/lib/anthropic";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { log } from "@/lib/log";
 import { hit } from "@/lib/rate-limit";
 import { claudeLimit, refundClaudeUse } from "./claude-limits";
 import { overDailyCap, recordLimitHit } from "./spend";
@@ -281,7 +282,7 @@ async function answer(
   // Today's allowance of written answers for this person is used up: say so, then what the data
   // gives, with its buttons. Before the no-Claude check, so the note is the same wherever it runs.
   if (await overDailyCap(userId, { client, now })) {
-    console.info("chat_timing", { outcome: "capped", reason: "daily_cap", costCents: 0 });
+    log.info("chat_timing", { outcome: "capped", reason: "daily_cap", costCents: 0 });
     await recordLimitHit(userId, { client, now }).catch(() => {});
     return { reply: await backup({ limited: true }), intent: intent.kind, source: "capped" };
   }
@@ -320,7 +321,7 @@ async function answer(
     memory: memoryForChat(await listFacts(userId, { client }).catch(() => [])),
     topic,
   }).catch((error): Awaited<ReturnType<typeof askClaudeInChat>> => {
-    console.error("Jane's chat failed unexpectedly", { error: String(error).slice(0, 300) });
+    log.error("Jane's chat failed unexpectedly", { error: String(error).slice(0, 300) });
     return { kind: "unavailable", reply: { body: CHAT_UNAVAILABLE_TEXT, actions: [], refs: {} } };
   });
   if (result.kind === "answer") {

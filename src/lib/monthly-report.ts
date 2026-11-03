@@ -13,6 +13,7 @@ import { sendEmail } from "@/lib/email";
 import { healthFor } from "@/lib/health-score";
 import { rankedFor } from "@/lib/jane-agent/priorities";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
+import { log } from "@/lib/log";
 import { verifiedSavings } from "@/lib/savings-proof";
 import {
   receiptWords,
@@ -313,7 +314,7 @@ export async function runMonthlyReports({
       await track(user.id, "monthly_report_emailed", { month: kept.month });
       run.sent += 1;
     } catch (error) {
-      console.error("Monthly report email failed", { userId: user.id, error: String(error) });
+      log.error("Monthly report email failed", { userId: user.id, error: String(error) });
       run.failed += 1;
     }
   }

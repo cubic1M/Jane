@@ -14,6 +14,7 @@ import { confirmInsuranceSwitches } from "@/lib/insurance/switch";
 import { closeSettled } from "@/lib/jane-agent/messages";
 import { keepFullSnapshot, runJaneAgentSafely } from "@/lib/jane-agent/run";
 import { enqueueJob, runJob } from "@/lib/jobs";
+import { log } from "@/lib/log";
 import { withReadCache } from "@/lib/read-cache";
 import { markScanDone } from "@/lib/scan";
 import { takeSnapshots } from "@/lib/snapshots";
@@ -68,11 +69,11 @@ export async function refreshAfterUpload(
   ]);
   for (const result of results) {
     if (result.status === "rejected") {
-      console.error("Refreshing a sector after an upload failed", { error: String(result.reason) });
+      log.error("Refreshing a sector after an upload failed", { error: String(result.reason) });
     }
   }
   await markScanDone(userId, { client, now }).catch((error) =>
-    console.error("Marking the scan done after an upload failed", { error: String(error) }),
+    log.error("Marking the scan done after an upload failed", { error: String(error) }),
   );
 }
 
@@ -100,12 +101,12 @@ async function refreshChatNumbers(
   { client = defaultClient, now = new Date() }: Options,
 ) {
   await keepFullSnapshot(userId, { client, now }).catch((error) =>
-    console.error("Keeping the snapshot after an upload failed", { error: String(error) }),
+    log.error("Keeping the snapshot after an upload failed", { error: String(error) }),
   );
   await import("@/lib/jane-agent/claude-tools")
     .then((m) => m.refreshPrimer(userId, { client, now }))
     .catch((error) =>
-      console.error("Saving the numbers for Claude after an upload failed", {
+      log.error("Saving the numbers for Claude after an upload failed", {
         error: String(error),
       }),
     );
@@ -166,7 +167,7 @@ async function finishImportWork(userId: string, runId: string, options: Options)
       await stage("done", await moneyFoundYearly(userId, options));
     }
   } catch (error) {
-    console.error("Sorting the rest of an upload failed", { error: String(error) });
+    log.error("Sorting the rest of an upload failed", { error: String(error) });
   }
   await refreshChatNumbers(userId, options);
   await runJob(await enqueueJob("explain_findings", { userId }, options), options);

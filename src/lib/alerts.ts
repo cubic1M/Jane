@@ -15,6 +15,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { appBase } from "@/lib/digest/links";
 import { unsubscribeToken } from "@/lib/digest/unsubscribe";
 import { sendEmail } from "@/lib/email";
+import { log } from "@/lib/log";
 import { pushEnabled, sendPush } from "@/lib/push";
 import { DAY_MS } from "@/lib/dates";
 
@@ -176,7 +177,7 @@ export async function emailUrgentAlerts(
     } catch (error) {
       // Unclaim it: it shows in the app, and the weekly email picks it up.
       await db.alerts.updateMany({ where: { id: alert.id }, data: { emailedAt: null } });
-      console.error("Alert email failed", { userId, alertId: alert.id, error: String(error) });
+      log.error("Alert email failed", { userId, alertId: alert.id, error: String(error) });
       continue;
     }
     await track(userId, "alert_emailed", { type: alert.type });

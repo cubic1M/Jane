@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { log } from "@/lib/log";
 import { limitOrNull } from "@/lib/rate-limit";
 import { track } from "@/lib/analytics";
 import { appBase } from "@/lib/digest/links";
@@ -29,7 +30,7 @@ export async function POST() {
     return NextResponse.json({ url });
   } catch (error) {
     if (!(error instanceof StripeError)) throw error;
-    console.error("Stripe checkout failed", { message: error.message });
+    log.error("Stripe checkout failed", { message: error.message });
     return NextResponse.json({ error: "Payment didn't start. Try again." }, { status: 502 });
   }
 }

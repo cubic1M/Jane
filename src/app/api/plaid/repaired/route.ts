@@ -1,4 +1,5 @@
 import { NextResponse, after } from "next/server";
+import { log } from "@/lib/log";
 import { limitOrNull } from "@/lib/rate-limit";
 import { ItemNotFoundError, markItemRepaired } from "@/lib/plaid/link";
 import { syncFromWebhook } from "@/lib/plaid/webhooks";
@@ -31,7 +32,7 @@ export async function POST(request: Request) {
     try {
       await syncFromWebhook(itemId);
     } catch (error) {
-      console.error("Plaid sync after update mode failed", { itemId, error: String(error) });
+      log.error("Plaid sync after update mode failed", { itemId, error: String(error) });
     }
   });
   return NextResponse.json({ ok: true });

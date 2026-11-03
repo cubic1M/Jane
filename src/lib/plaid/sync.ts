@@ -1,4 +1,5 @@
 import type { Holding, InvestmentTransaction, PlaidApi, TransactionStream } from "plaid";
+import { log } from "@/lib/log";
 import { scrub } from "@/lib/scrub";
 import { categorizeTransactions } from "@/categorize/categorize";
 import { normalizeLiabilities } from "@/data-sources/plaid/liabilities";
@@ -33,6 +34,7 @@ import { plaid, plaidCall, plaidErrorCode, plaidInvestmentsEnabled } from "./cli
 import { DEMO_OPTIONS } from "@/data-sources/demo/demo-options";
 import type { DemoSwitch } from "@/data-sources/demo/demo-bank";
 import type { DemoOrder } from "@/data-sources/demo/demo-holdings";
+import { killed } from "@/config/kill-switches";
 import { SIMULATED_PARTNER } from "@/config/brokerage";
 import { SIGN_IN_PLAID_CODES } from "@/config/plaid";
 import { confirmSwitches, switchOf } from "@/lib/agent/switch";
@@ -83,7 +85,7 @@ async function noteSyncFailure(db: ScopedDb, itemId: string, error: unknown, now
           : { lastErrorCode: code ?? "UNKNOWN", lastErrorAt: now },
     });
   } catch (saveError) {
-    console.error("Saving why a Plaid sync failed failed", { itemId, error: String(saveError) });
+    log.error("Saving why a Plaid sync failed failed", { itemId, error: String(saveError) });
   }
 }
 
@@ -272,7 +274,7 @@ async function saveRecurringStreams(
   } catch (error) {
     const code = plaidErrorCode(error);
     if (!code) throw error;
-    console.warn("Plaid recurring transactions unavailable; using our own detection", { code });
+    log.warn("Plaid recurring transactions unavailable; using our own detection", { code });
     return "unavailable";
   }
 
@@ -313,7 +315,7 @@ async function saveLiabilities(
   } catch (error) {
     const code = plaidErrorCode(error);
     if (!code) throw error;
-    console.warn("Plaid liabilities unavailable", { code });
+    log.warn("Plaid liabilities unavailable", { code });
     return "unavailable";
   }
   // Fresh balances, and the loan accounts themselves if the transactions sync had none.
@@ -410,7 +412,7 @@ async function saveInvestments(
   } catch (error) {
     const code = plaidErrorCode(error);
     if (!code) throw error;
-    console.warn("Plaid investments unavailable", { code });
+    log.warn("Plaid investments unavailable", { code });
     return "unavailable";
   }
   const accounts = holdings.accounts
@@ -527,7 +529,7 @@ async function saveInvestmentTransactions(
   } catch (error) {
     const code = plaidErrorCode(error);
     if (!code) throw error;
-    console.warn("Plaid investment transactions unavailable", { code });
+    log.warn("Plaid investment transactions unavailable", { code });
     return;
   }
   const data = rows.flatMap((row) => {
@@ -682,6 +684,8 @@ async function syncItemWork(
   // Books QA: a sample person's second bank login only brings its accounts and transactions;
   // the demo bank's own sync does everything else.
   const secondLogin = isSecondLoginToken(accessToken);
+  // The emergency stop (docs/incident.md): a real bank isn't read. The demo bank reaches no one.
+  if (killed("banks") && !isDemoToken(accessToken)) throw new Error("Bank syncing is paused");
   timing.mark("item");
   // The demo bank (spec step 75) answers in Plaid's place; everything after is the same.
   // Everything the demo bank needs before it can answer, together (each is a round trip):
@@ -747,14 +751,14 @@ async function syncItemWork(
   // accounts are in and before the detectors run. Never fails the sync.
   if (isDemoToken(accessToken) && !secondLogin && item.transactionsCursor === null) {
     await ensureDemoInvestingFacts(item.userId, item.id, { client, now }).catch((error) =>
-      console.error("Seeding the sample person's investing facts failed", {
+      log.error("Seeding the sample person's investing facts failed", {
         error: String(error),
       }),
     );
     // The home hub's net worth line: a year of month-end balances, worked back from today's
     // through their transactions (a real bank's history; real accounts build theirs daily).
     await ensureDemoBalanceHistory(item.userId, item.id, { client, now }).catch((error) =>
-      console.error("Seeding the sample person's balance history failed", {
+      log.error("Seeding the sample person's balance history failed", {
         error: String(error),
       }),
     );
@@ -763,7 +767,7 @@ async function syncItemWork(
     const second = await ensureDemoSecondLogin(item.userId, { client });
     if (second) {
       await syncItem(second, { client, now }).catch((error) =>
-        console.error("Syncing the sample person's second login failed", {
+        log.error("Syncing the sample person's second login failed", {
           error: String(error),
         }),
       );
@@ -816,7 +820,7 @@ async function syncItemWork(
             return plan ? { m, plan } : null;
           })
           .catch((error) => {
-            console.error("Starting the sample person's practice portfolio failed", {
+            log.error("Starting the sample person's practice portfolio failed", {
               error: String(error),
             });
             return null;
@@ -834,7 +838,7 @@ async function syncItemWork(
     // the old, generic brief for someone whose first scan is running. A problem here falls
     // back to the findings alone.
     await scanSuggestions(item.userId, { client, now }).catch((error) =>
-      console.error("The first scan's suggestions failed", { error: String(error) }),
+      log.error("The first scan's suggestions failed", { error: String(error) }),
     );
     timing.mark("suggestions");
     await runJaneAgentSafely(item.userId, { client, now, trigger: scanTrigger, early: true });
@@ -846,7 +850,7 @@ async function syncItemWork(
     // the scan was still working, and the end-to-end flows that wait for its findings failed.
     await keepFullSnapshot(item.userId, { client, now });
     await markScanDone(item.userId, { client, now }).catch((error) =>
-      console.error("Marking the scan done failed", { error: String(error) }),
+      log.error("Marking the scan done failed", { error: String(error) }),
     );
   }
   // After detection these don't depend on each other, so they run together; the sample
@@ -873,7 +877,7 @@ async function syncItemWork(
   ]);
   for (const result of sectors) {
     if (result.status === "rejected") {
-      console.error("A sector's work after the sync failed", {
+      log.error("A sector's work after the sync failed", {
         error: scrub(String(result.reason)),
       });
     }
@@ -888,9 +892,7 @@ async function syncItemWork(
   // reaches this one again through the jobs.
   await import("@/lib/jane-agent/claude-tools")
     .then((m) => m.refreshPrimer(item.userId, { client, now }))
-    .catch((error) =>
-      console.error("Saving the numbers for Claude failed", { error: String(error) }),
-    );
+    .catch((error) => log.error("Saving the numbers for Claude failed", { error: String(error) }));
   timing.mark("primer");
   // Only the first scan of a person is the one being timed.
   if (progressive && result.firstSync) {

@@ -14,6 +14,7 @@ import { refreshClaimStatuses } from "./claim-filing";
 import { refreshSavings } from "./savings";
 import { openDisputeCards } from "./health-year";
 import { refreshRisks } from "./risks";
+import { log } from "@/lib/log";
 
 // Insurance that runs itself (spec Phase X), at every autopilot level: reshops 45 days before
 // renewal and on a price rise (step 104), and the coverage checkup once a year and after a
@@ -48,7 +49,7 @@ export async function lifeAll({ client = defaultClient, now = new Date() }: Opti
     try {
       if ((await sizeLife(userId, { client, now })).kind === "sized") sized += 1;
     } catch (error) {
-      console.error("Life sizing failed", { userId, error: String(error) });
+      log.error("Life sizing failed", { userId, error: String(error) });
     }
   }
   return { people: people.length, sized };
@@ -71,7 +72,7 @@ export async function benefitsAll({ client = defaultClient, now = new Date() }: 
       found += await benefitsFromPayroll(userId, { client, now });
       if (await enrollmentReview(userId, { client, now })) reviews += 1;
     } catch (error) {
-      console.error("Benefits run failed", { userId, error: String(error) });
+      log.error("Benefits run failed", { userId, error: String(error) });
     }
   }
   return { people: people.length, found, reviews };
@@ -104,7 +105,7 @@ export async function insuranceAfterSync(
     // Spec step 200.
     await openDisputeCards(userId, { client, now });
   } catch (error) {
-    console.error("Insurance after sync failed", { userId, error: String(error) });
+    log.error("Insurance after sync failed", { userId, error: String(error) });
   }
 }
 
@@ -122,7 +123,7 @@ export async function claimStatusesAll({ client = defaultClient, now = new Date(
     try {
       moved += (await refreshClaimStatuses(userId, { client, now })).length;
     } catch (error) {
-      console.error("Claim status failed", { userId, error: String(error) });
+      log.error("Claim status failed", { userId, error: String(error) });
     }
   }
   return { people: people.length, moved };

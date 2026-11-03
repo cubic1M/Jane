@@ -41,6 +41,7 @@ export const ACCESS_MAP: Record<string, Access> = {
   "src/app/api/cron/paper-run/route.ts": "cron",
   "src/app/api/cron/plaid-sync/route.ts": "cron",
   "src/app/api/cron/practice-scan/route.ts": "cron",
+  "src/app/api/cron/probe/route.ts": "cron",
   "src/app/api/cron/strategy-eval/route.ts": "cron",
   "src/app/api/csp-report/route.ts": public_(
     "Browsers post policy violations here; it only stores a scrubbed report.",
