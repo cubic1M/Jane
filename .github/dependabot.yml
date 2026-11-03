@@ -6,6 +6,13 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    # A compromised release is usually found within days, so nothing that new is proposed.
+    cooldown:
+      default-days: 7
+    ignore:
+      # Types must match the Node version Jane runs on (.nvmrc), so this major moves with Node.
+      - dependency-name: "@types/node"
+        update-types: [version-update:semver-major]
     groups:
       minor-and-patch:
         update-types: [minor, patch]
@@ -13,3 +20,5 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7

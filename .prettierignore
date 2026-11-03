@@ -6,6 +6,7 @@ playwright-report
 test-results
 private
 docs
+.semgrep
 CLAUDE.md
 AGENTS.md
 package-lock.json

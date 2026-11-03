@@ -1,0 +1,85 @@
+# Security scanners (docs/security/scanners.md). CodeQL reads how data flows through the code;
+# Semgrep runs its free rules plus two of Jane's own, which no generic scanner can know: a query on a
+# user-owned table with no user in it, and a token or statement content going to the logs. On a pull
+# request Semgrep fails only on what that pull request adds; on main it reports everything to the
+# repository's Security tab, where each old finding is fixed or dismissed with its reason.
+name: Scanners
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+# Only the newest commit is worth scanning.
+concurrency:
+  group: scanners-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  codeql:
+    name: CodeQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
+        with:
+          languages: javascript-typescript
+          build-mode: none
+          config-file: .github/codeql/codeql-config.yml
+      - uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
+        with:
+          category: codeql
+
+  semgrep:
+    name: Semgrep
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    env:
+      SEMGREP: /tmp/semgrep/bin/semgrep
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # A pull request is compared with its base commit, so the base must be here.
+          fetch-depth: 0
+      # setuptools: this Semgrep still imports pkg_resources, which newer setuptools removed.
+      - name: Install Semgrep
+        run: |
+          python3 -m venv /tmp/semgrep
+          /tmp/semgrep/bin/pip install --quiet semgrep==1.136.0 "setuptools<81"
+      - name: Jane's own rules catch their test cases
+        run: $SEMGREP --metrics=off --test .semgrep/rules
+      - name: Scan
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          # A pull request fails on what it adds. Main only reports, so old findings being worked
+          # through don't turn its commits red.
+          mode=""
+          if [ -n "$BASE" ]; then mode="--error --baseline-commit $BASE"; fi
+          $SEMGREP scan --metrics=off $mode \
+            --config .semgrep/rules \
+            --config p/typescript --config p/nextjs --config p/react --config p/nodejs \
+            --config p/owasp-top-ten --config p/secrets \
+            --exclude src/generated --exclude docs --exclude .semgrep \
+            --exclude '*.test.ts' --exclude '*.test.tsx' \
+            --sarif --output semgrep.sarif
+      # Dependabot's token can't write to the Security tab.
+      - name: Report to the Security tab
+        if: always() && github.actor != 'dependabot[bot]' && hashFiles('semgrep.sarif') != ''
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep

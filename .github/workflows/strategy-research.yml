@@ -42,8 +42,8 @@ jobs:
     if: inputs.kind == 'daily'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -63,7 +63,7 @@ jobs:
             exit 1
           fi
           npx vitest run src/lib/investments/strategy-research.cli.test.ts --silent=false
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: bars
           path: research/bars.json
@@ -78,13 +78,13 @@ jobs:
       matrix:
         level: [1, 2, 3, 4, 5]
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: bars
           path: research
@@ -94,7 +94,7 @@ jobs:
           RESEARCH_LEVEL: ${{ matrix.level }}
           RESEARCH_DIR: research
         run: npx vitest run src/lib/investments/strategy-research.cli.test.ts --silent=false
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: level-${{ matrix.level }}
           path: research/level-${{ matrix.level }}.json
@@ -105,13 +105,13 @@ jobs:
     needs: level
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           pattern: level-*
           path: research
@@ -123,7 +123,7 @@ jobs:
         run: |
           npx vitest run src/lib/investments/strategy-research.cli.test.ts --silent=false
           cat research/summary.md >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: strategy-research
           path: |
@@ -136,8 +136,8 @@ jobs:
     if: inputs.kind == 'intraday'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -157,7 +157,7 @@ jobs:
           fi
           npx vitest run src/lib/investments/strategy-research.cli.test.ts --silent=false
           cat research/intraday-summary.md >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: intraday-research
           path: |
@@ -170,8 +170,8 @@ jobs:
     if: inputs.kind == 'catalog'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -191,7 +191,7 @@ jobs:
           fi
           npx vitest run src/lib/investments/strategy-research.cli.test.ts --silent=false
           cat research/strategy-results.md >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: catalog-research
           path: |
@@ -207,8 +207,8 @@ jobs:
     if: inputs.kind == 'crypto'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -227,7 +227,7 @@ jobs:
           fi
           npx vitest run src/lib/investments/strategy-research.cli.test.ts --silent=false
           cat research/crypto-summary.md >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: crypto-research
           path: |
@@ -240,8 +240,8 @@ jobs:
     if: inputs.kind == 'regimes'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -254,7 +254,7 @@ jobs:
         run: |
           npx vitest run src/lib/investments/strategy-research.cli.test.ts --silent=false
           cat research/regimes.md >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: regimes-research
           path: |
@@ -269,8 +269,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 300
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -291,7 +291,7 @@ jobs:
           fi
           npx vitest run src/lib/trading-agent/intraday-research.cli.test.ts --silent=false
           cat research/intraday.md >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: agent-research
           path: |
