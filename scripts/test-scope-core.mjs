@@ -53,9 +53,19 @@ const isDoc = (path) => path.endsWith(".md");
 
 // "docs" | "changed" | "full". Tests read many docs and compare them, so a doc a test names isn't
 // docs-only. An empty diff is "full": something odd is going on, and a skip would hide it.
-export function testScope({ changedPaths, event, onMain, labels = [], docsReadByTests = [] }) {
+export function testScope({
+  changedPaths,
+  event,
+  onMain,
+  labels = [],
+  docsReadByTests = [],
+  draft = false,
+}) {
   if (onMain || event !== "pull_request") return { mode: "full", why: "not a pull request" };
   const label = labels.find((l) => FULL_RUN_LABELS.includes(l));
+  // Nobody merges a draft, and most pushes to one aren't the last. Its heavy jobs wait until it's
+  // ready for review; the static checks, the gates and the secret scan still run. Labels still win.
+  if (draft && !label) return { mode: "docs", why: "a draft" };
   if (label) return { mode: "full", why: `label ${label}` };
   if (changedPaths.length === 0) return { mode: "full", why: "no changed files seen" };
   const trigger = changedPaths.find((path) => FULL_RUN_PATHS.some((p) => p.test(path)));

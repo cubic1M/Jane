@@ -12,6 +12,26 @@ import {
 const pr = (changedPaths: string[], over: Record<string, unknown> = {}) =>
   testScope({ changedPaths, event: "pull_request", onMain: false, ...over } as never).mode;
 
+describe("a draft", () => {
+  const scope = (over: Record<string, unknown>) =>
+    testScope({
+      changedPaths: ["src/lib/x.ts"],
+      event: "pull_request",
+      onMain: false,
+      ...over,
+    } as never);
+
+  it("skips the heavy jobs, until it's ready or labelled", () => {
+    expect(scope({ draft: true })).toMatchObject({ mode: "docs", why: "a draft" });
+    expect(scope({ draft: false }).mode).toBe("changed");
+    expect(scope({ draft: true, labels: ["full-tests"] }).mode).toBe("full");
+  });
+
+  it("main never counts as a draft", () => {
+    expect(scope({ draft: true, onMain: true }).mode).toBe("full");
+  });
+});
+
 describe("how much a run tests", () => {
   it("runs only what a PR's diff reaches", () => {
     expect(pr(["src/detection/rules/fees.ts", "src/detection/rules/fees.test.ts"])).toBe("changed");
