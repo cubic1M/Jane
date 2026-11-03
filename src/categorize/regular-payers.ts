@@ -29,7 +29,6 @@ import type { ScopedDb } from "@/lib/db-scoped";
 // their accounts, whatever it's called. Rows the rules or the person placed stay.
 
 const INCOME = { pfcPrimary: "INCOME", pfcDetailed: "INCOME_OTHER" } as const;
-const SALARY = { pfcPrimary: "INCOME", pfcDetailed: "INCOME_SALARY" } as const;
 const CLIENT_INCOME = { pfcPrimary: "INCOME", pfcDetailed: "INCOME_CONTRACTOR" } as const;
 
 export type PayerRow = {
@@ -139,6 +138,8 @@ const employerOf = (name: string) =>
     .toLowerCase();
 
 // Deposits that say they're a bonus or commission, from a name the person is already paid a salary by.
+// Income, but not salary: to everything that reads salary as paychecks, a bonus's own name would be a
+// second employer, and a big bonus should still be asked about as sudden money.
 export function employerExtras(
   rows: readonly { id: string; merchantName: string | null; description: string }[],
   salaried: readonly string[],
@@ -197,7 +198,7 @@ export async function markRegularPayers(db: Pick<ScopedDb, "transactions">): Pro
   if (extras.length > 0) {
     await db.transactions.updateMany({
       where: { id: { in: extras } },
-      data: { ...SALARY, categorySource: "rule" },
+      data: { ...INCOME, categorySource: "rule" },
     });
   }
   const moneyOut = await db.transactions.findMany({

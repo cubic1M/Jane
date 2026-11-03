@@ -4,6 +4,7 @@ import { PrismaClient } from "@/generated/prisma/client";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
+import { NOT_SUDDEN_DETAILED } from "@/config/sudden-money";
 import { scopedFor } from "@/lib/db-scoped";
 import { markCashIncome } from "./cash-income";
 import { reapplyRules } from "./reapply";
@@ -248,6 +249,39 @@ describe.runIf(url)("regular pay with no pay word", { timeout: 30_000 }, () => {
     await markCashIncome(scopedFor(userId, client));
     const moved = await client.transaction.findMany({ where: { userId, amountCents: -50_000 } });
     expect(new Set(moved.map((r) => r.pfcDetailed))).toEqual(new Set([null]));
+  });
+
+  // Debugger 11-03: marked as salary, the bonus's own name read as a second employer (married filing
+  // jointly, a couple), and it stopped being asked about as sudden money.
+  it("makes a bonus from the person's employer income, but not a paycheck", async () => {
+    const userId = await person({
+      name: "Northwind Payroll",
+      cents: -521_033,
+      primary: "INCOME",
+      detailed: "INCOME_SALARY",
+      source: "rule",
+    });
+    const account = await client.account.findFirstOrThrow({ where: { userId } });
+    const bonus = await client.transaction.create({
+      data: {
+        userId,
+        accountId: account.id,
+        source: "csv",
+        dedupeKey: "bonus",
+        date: new Date(Date.UTC(2026, 8, 30)),
+        amountCents: -1_200_000,
+        description: "NORTHWIND BONUS PPD ID: 9000123",
+        merchantName: "Northwind Bonus",
+      },
+    });
+    const read = () => client.transaction.findUniqueOrThrow({ where: { id: bonus.id } });
+
+    await markCashIncome(scopedFor(userId, client));
+    expect(await read()).toMatchObject({ pfcPrimary: "INCOME", pfcDetailed: "INCOME_OTHER" });
+    expect(NOT_SUDDEN_DETAILED).not.toContain((await read()).pfcDetailed);
+
+    expect(await reapplyRules(userId, { client })).toBe(0);
+    expect(await read()).toMatchObject({ pfcDetailed: "INCOME_OTHER" });
   });
 
   it("leaves money going out", async () => {

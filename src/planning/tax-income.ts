@@ -9,6 +9,7 @@ import {
 import type { PayStub } from "@/lib/payroll/types";
 import type { EstimateIncome } from "./tax-estimate";
 import { DAY_MS } from "@/lib/dates";
+import { ONE_OFF_PAY } from "@/config/profile";
 
 // The year's income for the tax estimate (spec step 120): so far, from the person's
 // transactions and pay stubs, and projected to the end of the year at the same pace. Pure;
@@ -264,6 +265,21 @@ export function otherIncomeSoFar(
     retirementCents: money(categories("retirement")),
     unemploymentCents: money(categories("unemployment")),
   };
+}
+
+// Take-home pay standing in for wages when there's no pay stub. Regular pay runs at its pace for the
+// year; pay that comes once (a bonus, severance) counts once (debugger 11-03: half a year's statements
+// with a $12,000 bonus read as $24,000 of it).
+export function takeHomePay(
+  paychecks: readonly { amountCents: number; description: string }[],
+  elapsed: number,
+): { soFarCents: number; projectedCents: number } {
+  const sum = (list: typeof paychecks) => list.reduce((s, t) => s - t.amountCents, 0);
+  const once = sum(paychecks.filter((t) => ONE_OFF_PAY.test(t.description)));
+  const soFarCents = sum(paychecks);
+  const projectedCents =
+    elapsed > 0 && elapsed < 1 ? Math.round((soFarCents - once) / elapsed) + once : soFarCents;
+  return { soFarCents, projectedCents };
 }
 
 // The rest of the year at the same pace. Gains aren't projected: they happen when you sell.
