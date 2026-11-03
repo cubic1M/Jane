@@ -65,6 +65,7 @@ PARAMS = dict(
                          #   (callers / re-raisers count 0.8 each); 0.8 = the old rule (everyone
                          #   alike). 0.2 validated on fresh seeds (results/sng_behindk_validate.md)
     cbet_size=0.5,       # flop continuation bet, x pot
+    cbet_read=0.0,       # > 0: c-bet frequency + cbet_read x (2 x opponent's fold-to-bet - 1), clamped 0..1
     bluff_size=0.5,      # read-based bluff bet, x pot
     hu_risk=1.0,         # risk premium x this with 2 players left (heads-up ICM is linear in chips)
     cap_fade=0,          # > 0: risk premium x min(1, hands_left / cap_fade) (the cap pays ICM of the stacks)
@@ -589,8 +590,12 @@ class IcmTag:
                 fr = (sum(self.pf_fold[s] for s in opp) + 1.0) / (sum(self.pf_faced[s] for s in opp) + 2.0)
                 frac += p["station_size"] * max(0.0, 1.0 - 2 * fr)
             return RaiseTo(lg.clamp(frac * pot))
+        cb = p["cbet"]
+        if p["cbet_read"] > 0 and k == 1:
+            fr = (self.pf_fold[opp[0]] + 1.0) / (self.pf_faced[opp[0]] + 2.0)
+            cb = min(1.0, max(0.0, cb + p["cbet_read"] * (2 * fr - 1)))
         if (k == 1 and self.aggressor == obs.seat and lg.can_raise
-                and self.rng.random() < p["cbet"] and obs.street == 1):
+                and self.rng.random() < cb and obs.street == 1):
             return RaiseTo(lg.clamp(p["cbet_size"] * pot))
         if p["bluff_bonus"] > 0 and lg.can_raise and 1 <= k <= p["bluff_max_opp"]:
             fr = (sum(self.pf_fold[s] for s in opp) + 1.0) / (sum(self.pf_faced[s] for s in opp) + 2.0)

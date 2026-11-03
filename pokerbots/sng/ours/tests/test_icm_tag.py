@@ -398,6 +398,32 @@ class TestIcmTag(unittest.TestCase):
         self.assertAlmostEqual(got[0.8], 4.0 + 6 * 0.8, places=6)
         self.assertAlmostEqual(got[0.0], 4.0, places=6)
 
+    def test_cbet_read_scales_cbet_frequency_with_fold_read(self):
+        """Heads-up flop as the aggressor with a weak hand: cbet_read=0 c-bets at `cbet`; with
+        cbet_read=1 it c-bets more against a seat that folds to bets and less against a caller."""
+        from types import SimpleNamespace as NS
+        from sng.table import Legal, SeatView
+        r = SngRules(enforce_time=False)
+        seats = tuple(SeatView(i, 1800, 0, 100, i not in (0, 3), False, True) for i in range(8))
+        lg = Legal(True, False, 0, True, 20, 1800)
+        obs = NS(seats=seats, seat=0, history=((0, 0, "raise", 40), (3, 0, "call", 40)),
+                 legal=lg, pot=200, street=1, my_bet=0, my_stack=1800)
+
+        def rate(cr, folds, faced):
+            b = IcmTag(cbet_read=cr, bluff_bonus=0.0)   # isolate the c-bet branch
+            b.new_table(r, 0, 7)
+            b._eq = lambda o, k: 0.2
+            n = 0
+            for _ in range(2000):
+                b.aggressor = 0
+                b.pf_fold[3], b.pf_faced[3] = folds, faced
+                n += b._postflop(obs).kind == "raise"
+            return n / 2000
+        base = PARAMS["cbet"]
+        self.assertAlmostEqual(rate(0.0, 9, 10), base, delta=0.04)
+        self.assertAlmostEqual(rate(1.0, 9, 10), min(1.0, base + (2 * 10 / 12 - 1)), delta=0.04)
+        self.assertAlmostEqual(rate(1.0, 1, 10), max(0.0, base + (2 * 2 / 12 - 1)), delta=0.04)
+
     def test_push_steal_widens_short_shoves_against_folders(self):
         """Button, 6bb, folded to me, both blinds fold 95%: a hand between the plain shove bar
         and the steal-adjusted one folds with push_steal=0 and shoves with push_steal=0.5."""
