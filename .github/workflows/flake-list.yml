@@ -1,0 +1,33 @@
+name: Flake list
+
+# After each CI run, adds what failed on its first try to the ci-flakes branch. Read it with
+# `npm run flakes`. Runs the default branch's script on a finished run's reports, read as data only.
+on:
+  workflow_run:
+    workflows: [CI, E2E on a phone]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: flake-list
+  cancel-in-progress: false
+
+jobs:
+  record:
+    name: Record first-try failures
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - run: node scripts/flake-list.mjs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

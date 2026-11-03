@@ -18,7 +18,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  reporter: "list",
+  // The JSON says which tests a retry saved: scripts/flake-list.mjs reads it.
+  reporter: process.env.CI ? [["list"], ["json", { outputFile: "ci-results/e2e.json" }]] : "list",
   // The dev server compiles each page on its first visit, which can take several seconds.
   expect: { timeout: 15_000 },
   use: {

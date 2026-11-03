@@ -1,0 +1,125 @@
+name: E2E on a phone
+
+# Every end-to-end test on the phone project, once a night, on main. CI's runs on main stay on the
+# computer project to save half their time. This is its own workflow because the deploy loop ships
+# main's newest green "CI" run, and a phone-only run mustn't count as one. A failure opens one issue
+# (or adds to the open one), and the first good night closes it.
+on:
+  schedule:
+    - cron: "23 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: e2e-mobile
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # The same switches as CI's build: the landing page decides what it shows when it's built.
+      - run: npm run build
+        env:
+          TRY_JANE: "1"
+          DEMO_BANK: "1"
+          DEMO_ADVICE: "1"
+          SIMULATED_AGENT: "1"
+      - run: tar --exclude=.next/cache -cf next-build.tar .next
+      - uses: actions/upload-artifact@v7
+        with:
+          name: e2e-build
+          path: next-build.tar
+          retention-days: 1
+
+  e2e:
+    name: Phone (${{ matrix.shard }}/3)
+    needs: [build]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: e2e
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --tmpfs /var/lib/postgresql/data
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      E2E_DATABASE_URL: postgresql://postgres@localhost:5432/e2e
+      E2E_PROD: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v8
+        with:
+          name: e2e-build
+      - run: tar -xf next-build.tar
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/fast-test-postgres.mjs "$E2E_DATABASE_URL"
+      - run: npx prisma migrate deploy
+        env:
+          DIRECT_URL: ${{ env.E2E_DATABASE_URL }}
+      - run: node scripts/rls-protect.mjs "$E2E_DATABASE_URL"
+      - run: npm run test:e2e -- --project=mobile --shard=${{ matrix.shard }}/3
+      - name: Keep the results for the flake list
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: results-e2e-${{ matrix.shard }}-attempt-${{ github.run_attempt }}
+          path: ci-results/
+          if-no-files-found: ignore
+          retention-days: 3
+      - name: Keep the failed tests' traces
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-results-${{ matrix.shard }}
+          path: test-results/
+          retention-days: 7
+
+  issue:
+    name: Open or close the issue
+    needs: [e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RESULT: ${{ needs.e2e.result }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh label create mobile-e2e --color 000000 2>/dev/null || true
+          open=$(gh issue list --label mobile-e2e --state open --json number --jq '.[0].number // empty')
+          if [ "$RESULT" = success ]; then
+            [ -z "$open" ] || gh issue close "$open" --comment "Passed on $(date -u +%F): $RUN"
+          elif [ -n "$open" ]; then
+            gh issue comment "$open" --body "Failed again on $(date -u +%F): $RUN"
+          else
+            gh issue create --label mobile-e2e --title "End-to-end tests failed on a phone" \
+              --body "The nightly phone run failed on $(date -u +%F): $RUN. CI on main doesn't run the phone project, so nothing else will catch this."
+          fi

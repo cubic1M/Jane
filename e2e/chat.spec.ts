@@ -19,7 +19,7 @@ test.afterEach(async () => {
   if (userId) await deleteUser(userId);
 });
 
-test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
+test("the demo bank lands in Jane's chat, and Yes answers a finding @critical", async ({
   context,
   page,
   baseURL,

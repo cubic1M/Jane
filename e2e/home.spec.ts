@@ -12,7 +12,7 @@ test.afterEach(async () => {
   if (userId) await deleteUser(userId);
 });
 
-test("new people land on Connect; once data is in, the hub matches the report", async ({
+test("new people land on Connect; once data is in, the hub matches the report @critical", async ({
   context,
   page,
   baseURL,

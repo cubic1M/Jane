@@ -51,13 +51,47 @@ jobs:
       # whose route types it reads).
       - run: npm run check:rules
 
+  # How much of the tests this run needs (docs/ci.md): the whole suite on main, what the diff reaches
+  # on most PRs. The jobs below read the answer.
+  scope:
+    name: Test scope
+    runs-on: ubuntu-latest
+    outputs:
+      mode: ${{ steps.scope.outputs.mode }}
+      shards: ${{ steps.scope.outputs.shards }}
+      total: ${{ steps.scope.outputs.total }}
+      args: ${{ steps.scope.outputs.args }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - uses: actions/cache@v6
+        id: modules
+        with:
+          path: node_modules
+          key: modules-${{ runner.os }}-${{ hashFiles('.nvmrc', 'package-lock.json') }}
+      - if: steps.modules.outputs.cache-hit != 'true'
+        run: npm ci
+      - if: steps.modules.outputs.cache-hit == 'true'
+        run: npx prisma generate
+      - id: scope
+        run: node scripts/test-scope.mjs
+        env:
+          PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+
   unit:
-    name: Unit tests (${{ matrix.shard }}/4)
+    name: Unit tests (${{ matrix.shard }}/${{ needs.scope.outputs.total }})
+    needs: [scope]
+    if: needs.scope.outputs.mode != 'docs'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: ${{ fromJSON(needs.scope.outputs.shards) }}
     services:
       postgres:
         image: postgres:16
@@ -76,7 +110,10 @@ jobs:
     env:
       TEST_DATABASE_URL: postgresql://postgres@localhost:5432/test
     steps:
+      # Two commits: the changed-tests run compares the test merge with its first parent.
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
@@ -108,8 +145,11 @@ jobs:
       # Trial and retention cleanup delete every expired sample person in the database, and the
       # learning loop rebuilds its stats from every person in it (which ranking reads), so they
       # run on their own after shard 1's tests, never alongside tests that make people.
+      # The JSON reports go to the flake list (scripts/flake-list.mjs).
       - run: >-
-          npx vitest run --shard=${{ matrix.shard }}/4
+          npx vitest run --shard=${{ matrix.shard }}/${{ needs.scope.outputs.total }}
+          ${{ needs.scope.outputs.args }}
+          --reporter=default --reporter=json --outputFile.json=ci-results/unit.json
           --exclude src/lib/trial.integration.test.ts
           --exclude src/lib/retention.integration.test.ts
           --exclude src/lib/learning.integration.test.ts
@@ -117,8 +157,18 @@ jobs:
         name: Trial, retention and learning-loop tests, alone
         run: >-
           npx vitest run --no-file-parallelism
+          ${{ needs.scope.outputs.args }}
+          --reporter=default --reporter=json --outputFile.json=ci-results/unit-alone.json
           src/lib/trial.integration.test.ts src/lib/retention.integration.test.ts
           src/lib/learning.integration.test.ts
+      - name: Keep the results for the flake list
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: results-unit-${{ matrix.shard }}-attempt-${{ github.run_attempt }}
+          path: ci-results/
+          if-no-files-found: ignore
+          retention-days: 3
 
   # Every route, action and page attacked as nobody and as someone else, on a database of its own
   # (docs/security/access-proof.md). Alone because it writes for every person and table it finds.
@@ -176,27 +226,48 @@ jobs:
   checks:
     name: Lint, typecheck and unit tests
     runs-on: ubuntu-latest
-    needs: [static, unit, access-proof]
+    needs: [scope, static, unit, access-proof]
     if: always()
     steps:
+      # Unit tests may skip only on a docs-only PR. Skipped for any other reason, this fails.
       - name: Fail if any part failed or was skipped
         run: |
-          echo "static: ${{ needs.static.result }}, unit: ${{ needs.unit.result }}, access proof: ${{ needs.access-proof.result }}"
-          test "${{ needs.static.result }}" = success && test "${{ needs.unit.result }}" = success && test "${{ needs.access-proof.result }}" = success
+          echo "scope: ${{ needs.scope.outputs.mode }}, static: ${{ needs.static.result }}, unit: ${{ needs.unit.result }}, access proof: ${{ needs.access-proof.result }}"
+          test "${{ needs.scope.result }}" = success
+          test "${{ needs.static.result }}" = success
+          test "${{ needs.access-proof.result }}" = success
+          test "${{ needs.unit.result }}" = success || { test "${{ needs.scope.outputs.mode }}" = docs && test "${{ needs.unit.result }}" = skipped; }
 
-  # The end-to-end tests run against a production build, made once here and handed to both
+  # The end-to-end tests run against a production build, made once here and handed to the
   # shards: `next start` serves every page at once, where `next dev` compiled each page on its
   # first visit, which made the shards slow and their timings flaky.
   e2e-build:
     name: End-to-end build
-    # Every run on main, whatever started it (the merge train starts main's runs with
-    # workflow_dispatch, not push, so "push" alone skipped them; 10-27 a dock change reached
-    # main untested), and PRs labelled "e2e".
-    if: >-
-      github.ref == 'refs/heads/main' || github.event_name == 'merge_group' ||
-      contains(github.event.pull_request.labels.*.name, 'e2e')
+    needs: [scope]
+    if: needs.scope.outputs.mode != 'docs'
     runs-on: ubuntu-latest
+    # How much to test (docs/ci.md). Every PR push: the tests tagged @critical, on a computer. Main,
+    # whatever started the run (the merge train starts main's runs with workflow_dispatch, so
+    # "push" alone skipped them; 10-27 a dock change reached main untested): every test on a
+    # computer, and the phone project runs nightly (e2e-mobile.yml). A PR labelled "e2e": every
+    # test on both.
+    outputs:
+      shards: ${{ steps.scope.outputs.shards }}
+      total: ${{ steps.scope.outputs.total }}
+      args: ${{ steps.scope.outputs.args }}
     steps:
+      - id: scope
+        env:
+          ON_MAIN: ${{ github.ref == 'refs/heads/main' }}
+          LABELLED: ${{ github.event_name == 'merge_group' || contains(github.event.pull_request.labels.*.name, 'e2e') }}
+        run: |
+          if [ "$ON_MAIN" = true ]; then
+            printf 'shards=[1,2,3]\ntotal=3\nargs=--project=chromium\n' >> "$GITHUB_OUTPUT"
+          elif [ "$LABELLED" = true ]; then
+            printf 'shards=[1,2,3]\ntotal=3\nargs=\n' >> "$GITHUB_OUTPUT"
+          else
+            printf 'shards=[1]\ntotal=1\nargs=--grep @critical --project=chromium\n' >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
@@ -237,16 +308,14 @@ jobs:
           retention-days: 1
 
   e2e:
-    name: End-to-end tests (${{ matrix.shard }}/3)
-    # Three shards, each serving the one build (about 8 minutes each; with no page to compile, a
-    # shard costs only its minute of setup). It runs on main after each merge and on PRs
-    # labelled "e2e", not on every PR push, so the other checks get runners sooner.
+    name: End-to-end tests (${{ matrix.shard }}/${{ needs.e2e-build.outputs.total }})
+    # Each shard serves the one build; with no page to compile, it costs only its minute of setup.
     needs: [e2e-build]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: ${{ fromJSON(needs.e2e-build.outputs.shards) }}
     services:
       postgres:
         image: postgres:16
@@ -295,7 +364,18 @@ jobs:
           DIRECT_URL: ${{ env.E2E_DATABASE_URL }}
       - name: Row-level security on every table, as each deploy does
         run: node scripts/rls-protect.mjs "$E2E_DATABASE_URL"
-      - run: npm run test:e2e -- --shard=${{ matrix.shard }}/3
+      - run: >-
+          npm run test:e2e --
+          ${{ needs.e2e-build.outputs.args }}
+          --shard=${{ matrix.shard }}/${{ needs.e2e-build.outputs.total }}
+      - name: Keep the results for the flake list
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: results-e2e-${{ matrix.shard }}-attempt-${{ github.run_attempt }}
+          path: ci-results/
+          if-no-files-found: ignore
+          retention-days: 3
       # A flaky failure can't be read from the log alone: keep its error context and the retry's
       # trace (npx playwright show-trace) for a week.
       - name: Keep the failed tests' traces
@@ -307,18 +387,18 @@ jobs:
           retention-days: 7
 
   # The one end-to-end result the branch ruleset requires: it passes when the build and every
-  # shard passed, or when the end-to-end tests didn't run (a PR without the "e2e" label), so
-  # auto-merge waits for the shards of a labelled PR by itself.
+  # shard passed, so auto-merge waits for the shards by itself.
   e2e-result:
     name: End-to-end tests
     runs-on: ubuntu-latest
-    needs: [e2e-build, e2e]
+    needs: [scope, e2e-build, e2e]
     if: always()
     steps:
-      - name: Fail if the build or any shard failed or was cancelled
+      # They may skip only on a docs-only PR. Skipped for any other reason, this fails.
+      - name: Fail if the build or any shard failed, was cancelled or skipped
         run: |
-          echo "build: ${{ needs.e2e-build.result }}, e2e: ${{ needs.e2e.result }}"
-          ok() { test "$1" = success || test "$1" = skipped; }
+          echo "scope: ${{ needs.scope.outputs.mode }}, build: ${{ needs.e2e-build.result }}, e2e: ${{ needs.e2e.result }}"
+          ok() { test "$1" = success || { test "${{ needs.scope.outputs.mode }}" = docs && test "$1" = skipped; }; }
           ok "${{ needs.e2e-build.result }}" && ok "${{ needs.e2e.result }}"
 
   dependency-audit:

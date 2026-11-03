@@ -14,7 +14,7 @@ test.afterEach(async () => {
   if (userId) await deleteUser(userId);
 });
 
-test("the report opens with three findings, the rest behind more", async ({
+test("the report opens with three findings, the rest behind more @critical", async ({
   context,
   page,
   baseURL,

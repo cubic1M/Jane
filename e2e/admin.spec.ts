@@ -32,7 +32,11 @@ test.describe("signed in", () => {
     if (userId) await deleteUser(userId);
   });
 
-  test("a non-admin gets a 404 on every /admin route", async ({ context, page, baseURL }) => {
+  test("a non-admin gets a 404 on every /admin route @critical", async ({
+    context,
+    page,
+    baseURL,
+  }) => {
     const user = await signedInUser("user");
     userId = user.userId;
     await context.addCookies([

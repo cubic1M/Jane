@@ -11,7 +11,7 @@ test.afterEach(async () => {
   if (userId) await deleteUser(userId);
 });
 
-test("a person fixes a category for a merchant", async ({ context, page, baseURL }) => {
+test("a person fixes a category for a merchant @critical", async ({ context, page, baseURL }) => {
   const user = await signedInUser("admin");
   userId = user.userId;
   await context.addCookies([

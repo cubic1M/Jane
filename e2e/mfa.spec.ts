@@ -31,7 +31,7 @@ test("an admin without a two-factor code is sent to set one up", async ({
   await expect(page.getByRole("alert").filter({ hasText: "didn't match" })).toBeVisible();
 });
 
-test("someone with two-factor on enters a code before anything opens", async ({
+test("someone with two-factor on enters a code before anything opens @critical", async ({
   context,
   page,
   baseURL,
@@ -51,7 +51,11 @@ test("someone with two-factor on enters a code before anything opens", async ({
   expect((await page.request.get("/api/export")).status()).toBe(401);
 });
 
-test("the session lookup never returns the session token", async ({ context, page, baseURL }) => {
+test("the session lookup never returns the session token @critical", async ({
+  context,
+  page,
+  baseURL,
+}) => {
   const user = await signedInUser("user");
   userId = user.userId;
   await context.addCookies([

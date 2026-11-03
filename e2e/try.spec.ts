@@ -5,7 +5,9 @@ import { CHAT } from "./chat-page";
 // Jane's chat as their own sample person. Needs the scratch database (see e2e/db.ts).
 test.skip(!process.env.E2E_DATABASE_URL, "needs E2E_DATABASE_URL");
 
-test("'Try it with sample data' opens Jane's chat with a sample person", async ({ page }) => {
+test("'Try it with sample data' opens Jane's chat with a sample person @critical", async ({
+  page,
+}) => {
   await page.goto("/");
   const button = page.getByRole("button", { name: "Try it with sample data" });
   await expect(button).toBeVisible();

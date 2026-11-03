@@ -18,6 +18,7 @@
     "test:e2e": "playwright test",
     "postinstall": "prisma generate",
     "check:launch": "node scripts/launch-check.ts",
+    "flakes": "git fetch -q origin ci-flakes && git show origin/ci-flakes:FLAKES.md",
     "check:perf-budget": "node scripts/check-perf-budget.ts",
     "check:rules": "depcruise src --output-type err && node scripts/check-ratchets.mjs",
     "mutation": "stryker run stryker.config.mjs",
