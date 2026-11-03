@@ -6,7 +6,9 @@ import {
   plaidItemLimit,
   plaidItemsPerPerson,
   plaidItemWarnAt,
+  plaidShareLinkItemLimit,
 } from "@/config/plaid-items";
+import { SHARE_INVITE_NOTE } from "@/config/share";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -46,6 +48,21 @@ export function linkClosedAnswer(reason: ClosedReason) {
     : { error: `${LINKING_FULL_WORDS} ${LINKING_UPLOAD_WORDS}`, code: LINKING_FULL_CODE };
 }
 
+// The most Items that may be in use for this person to take one. Lower for someone who came in by a
+// person's share link. The code's note outlasts its sharer, whose id goes when they delete their account.
+async function limitFor(userId: string, limit: number, client: PrismaClient): Promise<number> {
+  const me = await scopedFor(userId, client).me.findUnique({
+    where: { id: userId },
+    select: { email: true },
+  });
+  if (!me?.email) return limit;
+  const access = await systemDb(WHY, client).betaAccess.findUnique({
+    where: { email: me.email.toLowerCase() },
+    select: { inviteCode: { select: { note: true } } },
+  });
+  return access?.inviteCode?.note === SHARE_INVITE_NOTE ? plaidShareLinkItemLimit(limit) : limit;
+}
+
 // Whether a new bank could be linked right now. A guard before opening Link; only
 // reserveItemSlot decides. Trial people are sample data: a real Item for them would spend a slot
 // on someone deleted within a day, so in Production they keep to the demo bank.
@@ -62,7 +79,9 @@ export async function linkAvailability(
     itemSlotUse({ client }),
   ]);
   if (claims >= plaidItemsPerPerson()) return { open: false, reason: "person" };
-  if (use.used >= use.limit) return { open: false, reason: "full" };
+  if (use.used >= (await limitFor(userId, use.limit, client))) {
+    return { open: false, reason: "full" };
+  }
   return { open: true };
 }
 
@@ -96,7 +115,7 @@ export async function reserveItemSlot(
     skipDuplicates: true,
   });
   const won = await systemDb(WHY, client).plaidItemCounter.updateManyAndReturn({
-    where: { id: COUNTER_ID, used: { lt: limit } },
+    where: { id: COUNTER_ID, used: { lt: await limitFor(userId, limit, client) } },
     data: { used: { increment: 1 } },
     select: { used: true },
   });
@@ -109,6 +128,14 @@ export async function reserveItemSlot(
     log.warn("Plaid Production Items are nearly used", { used, limit });
   }
   return { userId, ordinal };
+}
+
+// The token was made, so Plaid's count stays, but the person never got a bank: they may try again.
+export async function releaseItemClaim(
+  { userId, ordinal }: ItemSlot,
+  { client = defaultClient }: Options = {},
+): Promise<void> {
+  await scopedFor(userId, client).plaidItemClaims.deleteMany({ where: { ordinal } });
 }
 
 // Gives a slot back only when no access token was made. Removing an Item or an account never

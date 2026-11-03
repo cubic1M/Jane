@@ -726,16 +726,23 @@ async function syncItemWork(
     throw error;
   }
   timing.mark("load");
-  const accountIds = await saveAccounts(db, item.id, sync);
-  timing.mark("save_accounts");
-  // The demo bank's home and car, once its loans are saved (spec step 67), while the
-  // transactions are saved: neither waits on the other.
-  const [counts] = await Promise.all([
-    saveTransactions(db, accountIds, sync),
-    isDemoToken(accessToken) && !secondLogin
-      ? ensureDemoAssets(item.userId, item.id, { client, now })
-      : null,
-  ]);
+  // A save that fails says why too: the cursor stays and tomorrow fails the same way, in silence.
+  const [accountIds, counts] = await (async () => {
+    const ids = await saveAccounts(db, item.id, sync);
+    timing.mark("save_accounts");
+    // The demo bank's home and car, once its loans are saved (spec step 67), while the
+    // transactions are saved: neither waits on the other.
+    const [saved] = await Promise.all([
+      saveTransactions(db, ids, sync),
+      isDemoToken(accessToken) && !secondLogin
+        ? ensureDemoAssets(item.userId, item.id, { client, now })
+        : null,
+    ]);
+    return [ids, saved] as const;
+  })().catch(async (error) => {
+    await noteSyncFailure(db, item.id, error, now);
+    throw error;
+  });
   // From here the chat can open (accounts and transactions are in).
   timing.mark("save_transactions");
   if (progressive && item.transactionsCursor === null) {

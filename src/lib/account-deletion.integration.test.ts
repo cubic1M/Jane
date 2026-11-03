@@ -470,6 +470,30 @@ describe.runIf(url)("deleting data against a real database", () => {
     await client.user.delete({ where: { id: userId } });
   });
 
+  it("deletes nothing if a bank was linked during the delete, so it isn't left running at Plaid", async () => {
+    const { userId } = await fullUser();
+    itemRemove.mockImplementationOnce(async () => {
+      await client.plaidItem.create({
+        data: {
+          userId,
+          plaidItemId: `late-${crypto.randomUUID()}`,
+          accessTokenEncrypted: encrypt("access-sandbox-late"),
+        },
+      });
+      return { data: {} };
+    });
+
+    await expect(deleteAllData(userId, { client, api })).rejects.toThrow();
+    expect((await rowsFor(userId)).users).toBe(1);
+    expect(await client.plaidItem.count({ where: { userId } })).toBeGreaterThan(0);
+
+    // Trying again removes it at Plaid, and the rest.
+    itemRemove.mockClear();
+    await deleteAllData(userId, { client, api });
+    expect(itemRemove).toHaveBeenCalled();
+    expect((await rowsFor(userId)).users).toBe(0);
+  });
+
   it("treats an item Plaid no longer knows as removed", async () => {
     const { userId, itemId } = await fullUser();
     itemRemove.mockRejectedValue(plaidApiError("ITEM_NOT_FOUND"));

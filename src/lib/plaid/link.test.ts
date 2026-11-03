@@ -18,7 +18,8 @@ import { ItemNotFoundError, createLinkToken, exchangePublicToken, markItemRepair
 
 const linkTokenCreate = vi.fn();
 const itemPublicTokenExchange = vi.fn();
-const api = { linkTokenCreate, itemPublicTokenExchange } as unknown as PlaidApi;
+const itemRemove = vi.fn();
+const api = { linkTokenCreate, itemPublicTokenExchange, itemRemove } as unknown as PlaidApi;
 
 describe("Plaid Link", () => {
   beforeEach(() => {
@@ -26,6 +27,7 @@ describe("Plaid Link", () => {
     vi.stubEnv("APP_URL", "https://app.example.com");
     linkTokenCreate.mockReset().mockResolvedValue({ data: { link_token: "link-sandbox-1" } });
     itemPublicTokenExchange.mockReset();
+    itemRemove.mockReset().mockResolvedValue({ data: {} });
     scoped.plaidItems.findFirst.mockReset();
     scoped.plaidItems.create.mockReset().mockResolvedValue({ id: "item_row_1" });
     scoped.plaidItems.updateMany.mockReset().mockResolvedValue({ count: 1 });
@@ -35,6 +37,50 @@ describe("Plaid Link", () => {
 
   afterEach(() => {
     vi.unstubAllEnvs();
+  });
+
+  describe("when saving a new bank fails", () => {
+    const madeUp = { access_token: "access-sandbox-only-copy", item_id: "plaid_item_9" };
+
+    beforeEach(() => {
+      itemPublicTokenExchange.mockResolvedValue({ data: madeUp });
+    });
+
+    it("ends the Item at Plaid, since nothing else could without the token", async () => {
+      const failure = new Error("the database went away");
+      scoped.plaidItems.create.mockRejectedValue(failure);
+      await expect(exchangePublicToken("user_1", "public-1", "Bank", { api })).rejects.toBe(
+        failure,
+      );
+      expect(itemRemove).toHaveBeenCalledWith({ access_token: madeUp.access_token });
+    });
+
+    it("ends it when the token can't be encrypted either", async () => {
+      vi.stubEnv("TOKEN_ENCRYPTION_KEY", "");
+      await expect(exchangePublicToken("user_1", "public-1", "Bank", { api })).rejects.toThrow();
+      expect(itemRemove).toHaveBeenCalledWith({ access_token: madeUp.access_token });
+    });
+
+    it("tells the person about the failure even if Plaid can't remove it, without the token", async () => {
+      const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+      const failure = new Error("the database went away");
+      scoped.plaidItems.create.mockRejectedValue(failure);
+      itemRemove.mockRejectedValue(new Error("no answer"));
+      await expect(exchangePublicToken("user_1", "public-1", "Bank", { api })).rejects.toBe(
+        failure,
+      );
+      expect(logged).toHaveBeenCalled();
+      expect(JSON.stringify(logged.mock.calls)).not.toContain(madeUp.access_token);
+      logged.mockRestore();
+    });
+
+    it("leaves an Item whose row already exists: it's in use", async () => {
+      scoped.plaidItems.create.mockRejectedValue(
+        Object.assign(new Error("unique"), { code: "P2002" }),
+      );
+      await expect(exchangePublicToken("user_1", "public-1", "Bank", { api })).rejects.toThrow();
+      expect(itemRemove).not.toHaveBeenCalled();
+    });
   });
 
   it("asks for Investments only once PLAID_INVESTMENTS is on", async () => {

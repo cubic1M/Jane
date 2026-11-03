@@ -10,6 +10,33 @@ function apiWith(transactionsSync: ReturnType<typeof vi.fn>) {
   return { transactionsSync } as unknown as PlaidApi;
 }
 
+describe("an amount too big for a cents column", () => {
+  it("counts a balance as not known, so saving it can't stop the bank syncing", () => {
+    const account = plaidAccount();
+    const balances = { ...account.balances, current: 21_474_836.48 };
+    expect(normalizeAccount({ ...account, balances })?.currentBalanceCents).toBeNull();
+    const fits = { ...account.balances, current: 21_474_836.47 };
+    expect(normalizeAccount({ ...account, balances: fits })?.currentBalanceCents).toBe(
+      2_147_483_647,
+    );
+  });
+
+  it("leaves the transaction out, whichever way it goes", async () => {
+    const sync = vi.fn().mockResolvedValue(
+      syncPage({
+        added: [
+          plaidTransaction({ transaction_id: "fits" }),
+          plaidTransaction({ transaction_id: "too_big", amount: 30_000_000 }),
+          plaidTransaction({ transaction_id: "too_small", amount: -30_000_000 }),
+        ],
+        next_cursor: "cursor-1",
+      }),
+    );
+    const batch = await new PlaidDataSource(apiWith(sync), "token", null).load();
+    expect(batch.transactions.map((t) => t.externalId)).toEqual(["fits"]);
+  });
+});
+
 describe("normalizeTransaction", () => {
   it("keeps Plaid's sign, converts dollars to cents and keeps the category", () => {
     expect(normalizeTransaction(plaidTransaction({ amount: -1200.1 }))).toEqual({

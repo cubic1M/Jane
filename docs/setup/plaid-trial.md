@@ -15,6 +15,11 @@ stops before Plaid does. Plaid's rules are at <https://plaid.com/docs/account/bi
 ## How Jane uses them
 
 - 10 in all, 1 per person, so the 10 can serve 10 people.
+- Someone who came in by a person's share link can only take one of the first 5
+  (`PLAID_ITEMS_KEPT_FROM_SHARE_LINKS`). The other 5 are for people the team invited, so one share
+  link and some email aliases can't spend them all.
+- If saving a new bank fails, Jane removes the Item at Plaid and the person can try again. It still
+  counts as one of the 10.
 - At either limit, `/connect` says "Bank linking is full for now. Upload a statement instead."
   People with a linked bank carry on as before.
 - A person's one is spent for good too: if they disconnect their bank, or it is removed after 60

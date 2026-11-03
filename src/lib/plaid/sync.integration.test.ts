@@ -283,6 +283,57 @@ describe.runIf(url)("syncItem against a real database", () => {
     });
   });
 
+  it("isn't stopped by a balance too big to keep", async () => {
+    const before = await client.plaidItem.findUniqueOrThrow({ where: { id: itemId } });
+    const account = plaidAccount({ account_id: `${suffix}-acc` });
+    transactionsSync.mockResolvedValueOnce(
+      syncPage({
+        accounts: [{ ...account, balances: { ...account.balances, current: 30_000_000 } }],
+        next_cursor: "cursor-huge",
+      }),
+    );
+    transactionsRecurringGet.mockResolvedValueOnce({
+      data: { outflow_streams: [], inflow_streams: [] },
+    });
+    await syncItem(itemId, { client, api, now: NOW });
+    expect(await client.plaidItem.findUniqueOrThrow({ where: { id: itemId } })).toMatchObject({
+      transactionsCursor: "cursor-huge",
+      lastErrorCode: null,
+    });
+    await client.plaidItem.update({
+      where: { id: itemId },
+      data: { transactionsCursor: before.transactionsCursor },
+    });
+  });
+
+  it("says why when saving what Plaid sent fails, and keeps its cursor", async () => {
+    const before = await client.plaidItem.findUniqueOrThrow({ where: { id: itemId } });
+    transactionsSync.mockResolvedValueOnce(
+      syncPage({
+        accounts: [plaidAccount({ account_id: `${suffix}-acc` })],
+        added: [
+          plaidTransaction({
+            transaction_id: `${suffix}-bad`,
+            account_id: `${suffix}-acc`,
+            date: "not a date",
+          }),
+        ],
+        next_cursor: "cursor-never",
+      }),
+    );
+    await expect(syncItem(itemId, { client, api, now: NOW })).rejects.toThrow();
+    const failed = await client.plaidItem.findUniqueOrThrow({ where: { id: itemId } });
+    expect(failed).toMatchObject({
+      transactionsCursor: before.transactionsCursor,
+      lastErrorCode: "UNKNOWN",
+    });
+    expect(failed.lastErrorAt).toEqual(NOW);
+    await client.plaidItem.update({
+      where: { id: itemId },
+      data: { lastErrorCode: null, lastErrorAt: null },
+    });
+  });
+
   it("marks the bank for signing in again when Plaid says so, and a good sync clears it", async () => {
     transactionsSync.mockRejectedValueOnce(plaidApiError("ITEM_LOGIN_REQUIRED", 400));
     await expect(syncItem(itemId, { client, api, now: NOW })).rejects.toMatchObject({
