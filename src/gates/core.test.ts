@@ -114,6 +114,10 @@ describe("protected files", () => {
     "scripts/migration-gate-core.mjs",
     "scripts/check-ratchets.mjs",
     "src/test-setup/no-anthropic.ts",
+    "src/lib/advice-mode.ts",
+    ".github/workflows/review.yml",
+    ".github/workflows/review-confirm.yml",
+    ".github/workflows/review-drill.yml",
   ])("%s needs a founder", (file) => {
     expect(isProtectedPath(file)).toBe(true);
   });
@@ -156,7 +160,6 @@ describe("protected files", () => {
     "src/lib/rls.ts",
     ".github/workflows/uptime.yml",
     ".github/dependabot.yml",
-    "src/lib/advice-mode.ts",
     "src/lib/guardrails.ts",
     "tsconfig.json",
     ".gitleaks.toml",

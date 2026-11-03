@@ -129,11 +129,20 @@ describe("the gates, on real commits", () => {
 
   it("flags a watched file without failing", () => {
     const base = git("rev-parse", "HEAD");
-    write("src/lib/advice-mode.ts", "export const on = true;\n");
+    write("src/lib/guardrails.ts", "export const on = true;\n");
     commit();
     const result = judge(base);
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("Sensitive files changed (a flag, not a block): 1");
+  });
+
+  it("fails a change to advice mode", () => {
+    const base = git("rev-parse", "HEAD");
+    write("src/lib/advice-mode.ts", "export const adviceMode = () => true;\n");
+    commit();
+    const result = judge(base);
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain("src/lib/advice-mode.ts");
   });
 
   it("fails a baseline score set to null", () => {
