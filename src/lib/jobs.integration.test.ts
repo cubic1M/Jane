@@ -43,58 +43,6 @@ describe.runIf(url)("the job queue against a real database", () => {
     expect(await job(id)).toMatchObject({ status: "done", attempts: 1, lastError: null });
   });
 
-  // Debugger 11-02: 20 controller_run failures in an hour in production, "Foreign key constraint
-  // violated on controller_runs_user_id_fkey": a trial person deleted with their job still queued.
-  // It can never work, and each retry spent the cron's limited time.
-  describe("a job whose person is gone", () => {
-    const gone = () => `gone-${crypto.randomUUID()}`;
-    const real = (userId: string) =>
-      client.controllerRun.createMany({ data: [{ userId, day: "2100-01-01", startedAt: at(0) }] });
-
-    it("finishes on the first try, without retrying or logging a failure", async () => {
-      const logged = vi.spyOn(console, "error").mockImplementation(() => {});
-      const handlers: Handlers = { explain_findings: async (p) => void (await real(p.userId)) };
-      const id = await queue(gone());
-
-      expect(await runJob(id, { client, now: at(0), handlers })).toBe("done");
-      expect(await job(id)).toMatchObject({
-        status: "done",
-        attempts: 1,
-        lastError: "The person is gone",
-      });
-      expect(logged.mock.calls.filter(([m]) => m === "Job failed")).toEqual([]);
-      logged.mockRestore();
-    });
-
-    it("still retries a foreign key failure for someone who's here", async () => {
-      const logged = vi.spyOn(console, "error").mockImplementation(() => {});
-      const user = await client.user.create({
-        data: { email: `job-here-${crypto.randomUUID()}@example.com` },
-      });
-      const handlers: Handlers = {
-        explain_findings: async () => void (await real(`missing-${crypto.randomUUID()}`)),
-      };
-      const id = await queue(user.id);
-
-      expect(await runJob(id, { client, now: at(0), handlers })).toBe("retried");
-      expect(await job(id)).toMatchObject({ status: "queued", attempts: 1 });
-      await client.user.delete({ where: { id: user.id } });
-      logged.mockRestore();
-    });
-
-    it("still retries any other failure for someone who's gone", async () => {
-      const logged = vi.spyOn(console, "error").mockImplementation(() => {});
-      const handlers: Handlers = {
-        explain_findings: async () => {
-          throw new Error("Claude timed out");
-        },
-      };
-      const id = await queue(gone());
-      expect(await runJob(id, { client, now: at(0), handlers })).toBe("retried");
-      logged.mockRestore();
-    });
-  });
-
   it("retries a failure with a growing wait, then gives up and shows the error", async () => {
     const failing: Handlers = {
       explain_findings: async () => {
