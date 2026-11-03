@@ -43,13 +43,13 @@ describe("secret leak check (source)", () => {
   it("finds the source files", () => {
     expect(ALL.length).toBeGreaterThan(100);
     expect(ALL.map((f) => f.path)).toContain(join("lib", "crypto.ts"));
-    const logCalls = ALL.flatMap(({ text }) => callsTo(text, /console\.(?:log|error)/));
+    const logCalls = ALL.flatMap(({ text }) => callsTo(text, /\blog\.(?:error|warn|info)/));
     expect(logCalls.length).toBeGreaterThan(10);
   });
 
   it("never logs a token, secret or key", () => {
     const leaks = ALL.flatMap(({ path, text }) =>
-      callsTo(text, /console\.(?:log|info|warn|error|debug|trace|dir)/)
+      callsTo(text, /\b(?:console|log)\.(?:log|info|warn|error|debug|trace|dir|json|dev)/)
         .filter((call) => SECRET_NAMES.test(call))
         .map((call) => `${path}: ${call.slice(0, 120)}`),
     );

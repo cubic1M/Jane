@@ -175,7 +175,7 @@ export async function withSystemRole<T>(
 
 async function reportSystemRoleOff(error: unknown) {
   const reason = messageOf(error).slice(0, 200);
-  console.error("The jane_system role is off: system queries run as the login role", { reason });
+  log.error("The jane_system role is off: system queries run as the login role", { reason });
   try {
     const [{ recordError }, { db }] = await Promise.all([
       import("@/lib/error-log"),
