@@ -32,6 +32,16 @@ export async function deleteAllData(
     if (user?.email) {
       await tx.betaAccess.deleteMany({ where: { email: user.email } });
       await tx.waitlistEntry.deleteMany({ where: { email: user.email } });
+      // Request counters keyed by the email or the id: "You can delete everything" (/privacy), so
+      // not a day later, when they'd expire (debugger 11-03).
+      await tx.rateLimit.deleteMany({
+        where: {
+          OR: [
+            { key: { endsWith: `:email:${user.email.toLowerCase()}` } },
+            { key: { endsWith: `:${userId}` } },
+          ],
+        },
+      });
     }
     // Their share link stops working and forgets the card it showed. The code stays, so
     // friends who already redeemed it keep their place.
