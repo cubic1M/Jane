@@ -316,6 +316,7 @@ describe("askClaudeInChat", () => {
       ...options,
       advice: true,
       onEvent: sent,
+      memory: "Retirement balance: $849,414.00.",
     });
     expect(result.kind).toBe("answer");
     expect(result.reply.body).toContain("$33,976.56");
@@ -1062,7 +1063,7 @@ describe("speed and failures", () => {
     const result = await askClaudeInChat(
       "u1",
       [],
-      "my cards owe $2,410.50, should i buy bitcoin",
+      "my cards owe $2,410.50 at 29%, should i buy bitcoin",
       options,
     );
     expect(result).toMatchObject({
@@ -1141,6 +1142,7 @@ describe("speed and failures", () => {
     const info = vi.spyOn(console, "info").mockImplementation(() => {});
     const result = await askClaudeInChat("u1", [], "how do i stop paying interest", {
       ...options,
+      memory: "Cards at 29%.",
       claude: cutOff,
       firstWordsMs: 30,
       deadlineMs: 60,

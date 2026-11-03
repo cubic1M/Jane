@@ -10,6 +10,7 @@ export const OPERATIONS = [
   "per_month",
   "difference",
   "sum",
+  "share",
   "payoff_months",
 ] as const;
 export type Operation = (typeof OPERATIONS)[number];
@@ -76,6 +77,22 @@ export function calculate(input: CalcInput): CalcResult {
         cents: { result: Math.abs(toCents(amount) - toCents(other)) },
         numbers: {},
         note: amount >= other ? "amount is the larger." : "other_amount is the larger.",
+      };
+    }
+    case "share": {
+      const other = num(input.other_amount);
+      if (amount === null || other === null || other === 0) {
+        return {
+          ok: false,
+          error:
+            "share needs amount and other_amount (dollars): amount as a percent of other_amount.",
+        };
+      }
+      return {
+        ok: true,
+        cents: {},
+        numbers: { percent: Math.round((amount / other) * 10_000) / 100 },
+        note: "The amount as a percent of the other amount.",
       };
     }
     case "sum": {

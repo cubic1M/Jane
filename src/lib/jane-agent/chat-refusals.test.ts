@@ -95,7 +95,7 @@ const refusal = (partial = "") => ({
 
 // The person's figures, as the lookups would give them (memory here, so the figures are allowed).
 const LOOKED_UP =
-  "Card: $2,410.50 at 29% APR; $699.00 a year in interest. Chase overdraft fees: $70.00 in October. Hulu: $17.99 a month. Side gig: $2,400.00 this year; tax estimate $367.20. IRS payment $412.00 on Oct 28. Venmo to Ira Smith $45.00. Bond Street Coffee $6.50. Netflix $15.49 on Oct 3. Deposit $1,200.00. Home value $80,000.00 over the mortgage. Rent to Sue $40.00.";
+  "Card: $2,410.50 at 29% APR; $699.00 a year in interest. Chase overdraft fees: $70.00 in October. Hulu: $17.99 a month. Side gig: $2,400.00 this year; tax estimate $367.20. IRS payment $412.00 on Oct 28. Venmo to Ira Smith $45.00 on Oct 29. Bond Street Coffee $6.50. Netflix $15.49 on Oct 3. Deposit $1,200.00, held until Nov 3. Home value $80,000.00 over the mortgage. Rent to Sue $40.00.";
 
 const snapshot = {
   timezone: "America/Los_Angeles",
@@ -523,6 +523,94 @@ describe("when Claude can't answer, the backup (and nothing else) stands in", ()
       const result = await ask(question);
       expect(CANNED, question).not.toContain(result.reply.body);
     }
+  });
+});
+
+// Path 1 again, for a number that's about the wrong thing (./figure-ledger.ts): Claude is told
+// what's wrong and answers again, in its own words.
+describe("a number about the wrong thing is rewritten by Claude", () => {
+  const LOOKED_UP_BY_NAME = `subscriptions: ${JSON.stringify({
+    charges: [
+      { merchant: "Netflix", billed: "monthly", lastCharge: "$15.49", nextDate: "2026-11-03" },
+      { merchant: "Hulu", billed: "monthly", lastCharge: "$17.99", nextDate: "2026-11-27" },
+    ],
+  })}`;
+  const askAbout = (extra: { onEvent?: (e: ChatStreamEvent) => void } = {}) =>
+    askClaudeInChat("u1", [], "what do i pay for hulu", {
+      client,
+      now: NOW,
+      claude,
+      memory: LOOKED_UP_BY_NAME,
+      ...extra,
+    });
+
+  it("asks once with what's wrong, and shows the rewrite", async () => {
+    create
+      .mockResolvedValueOnce(final("Hulu is $15.49 a month."))
+      .mockResolvedValueOnce(final("Hulu is $17.99 a month."));
+    const events: ChatStreamEvent[] = [];
+    const answer = await askAbout({ onEvent: (e) => events.push(e) });
+    expect(answer.reply?.body).toBe("Hulu is $17.99 a month.");
+    expect(create).toHaveBeenCalledTimes(2);
+    const told = JSON.stringify(sent[1].at(-1));
+    expect(told).toContain("$15.49 isn't for");
+    expect(told).toContain("Netflix");
+    // The wrong sentence never reached the screen.
+    const shown = events.flatMap((e) => (e.type === "text" ? [e.text] : [])).join("");
+    expect(shown).not.toContain("$15.49");
+  });
+
+  it("drops only the wrong sentence when the rewrite gets it wrong too", async () => {
+    const wrong =
+      "Hulu is $17.99 a month, and your Netflix is $15.49. Netflix is also $17.99 a month.";
+    create.mockResolvedValue(final(wrong));
+    const answer = await askAbout();
+    expect(answer.kind).toBe("answer");
+    expect(answer.reply?.body).toBe("Hulu is $17.99 a month, and your Netflix is $15.49.");
+    expect(create).toHaveBeenCalledTimes(2);
+  });
+
+  it("falls to the backup only when nothing true is left", async () => {
+    create.mockResolvedValue(final("Hulu is $15.49 a month."));
+    const answer = await askAbout();
+    expect(answer.kind).toBe("blocked");
+  });
+
+  it("says nothing of a percent, date or count no tool gave", async () => {
+    for (const draft of [
+      "Hulu is 73% of your subscriptions.",
+      "Hulu renews on Dec 9.",
+      "You have 97 charges.",
+    ]) {
+      create.mockReset();
+      create
+        .mockResolvedValueOnce(final(draft))
+        .mockResolvedValueOnce(final("Hulu is $17.99 a month."));
+      const answer = await askAbout();
+      expect(answer.reply?.body, draft).toBe("Hulu is $17.99 a month.");
+    }
+  });
+
+  it("won't calculate with an amount nothing supports", async () => {
+    create
+      .mockResolvedValueOnce({
+        stop_reason: "tool_use",
+        content: [
+          {
+            type: "tool_use",
+            id: "c1",
+            name: "calculate",
+            input: { operation: "sum", basis: "made up", amounts: [17.99, 5000] },
+          },
+        ],
+      })
+      .mockResolvedValueOnce(final("Hulu is $17.99 a month."));
+    const answer = await askAbout();
+    expect(answer.reply?.body).toBe("Hulu is $17.99 a month.");
+    const result = JSON.stringify(sent[1].at(-1));
+    expect(result).toContain("aren't in their numbers");
+    expect(result).toContain("5000");
+    expect(result).not.toContain("5,017.99");
   });
 });
 

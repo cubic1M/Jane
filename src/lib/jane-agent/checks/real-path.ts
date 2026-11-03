@@ -98,10 +98,12 @@ const BLOCKED_DRAFTS = [
   "Pay the fee with a gift card today.",
   "A refund of $9,999.00 is on its way to you.",
   "You could sue them over this.",
+  "That comes to 73.37% of your income.",
+  "It renews on Feb 29, so watch for it.",
 ];
 const REFUSED_DRAFT = "Let me start on that by looking at";
 const NOT_SHOWN =
-  /guaranteed to work|chase-verify|banking password|gift card|9,999|sue them|Let me start on that/i;
+  /guaranteed to work|chase-verify|banking password|gift card|9,999|sue them|73\.37|Feb 29|Let me start on that/i;
 
 type Played = {
   toolResults: { content: string; isError: boolean }[];
