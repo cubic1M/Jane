@@ -132,9 +132,11 @@ heads-up and payout changes):
 | hackathon-like field (`results/sng_standing4.md`) | first: 59.0 per table; `f3_exploiter` −1.2 (tie), everyone else −4 to −11 |
 | **field 6** (postflop specialists written blind; they re-raise wide openers light) | **last: 17.5 per table** (was 14.0 before `rs_call`), busts 92%; `f2_shark` 50.5, the others 30–38. Our known weak spot: if the real field re-raises our opens a lot, try `rs_call=3` and `pev=1` on the day-of tuner |
 
-Tonight's eight changes, measured together on fresh seeds against the start-of-night bot: **+5.7 per table on
-average** over 9 fields, eight significant, none negative: the Plan B field +14.5, our copies +9.2, field 3 +6.7,
-winner payouts +6.3, default +4.1, field 4 +3.3 (`results/sng_night_total3.md`).
+Tonight's changes (behind_k, push_steal, the re-shove with its read, exact-ICM calls, heads-up ranges, the payout-aware
+risk premium, bet discount 0.5 and `rs_call`), measured together on fresh seeds against the start-of-night bot
+(`results/sng_total4_*.md`, 600 paired tables x 11 fields): **+8.2 per table on average**, nine significant, none
+negative: the Plan B field +26.8, our copies +15.3, field 4 +10.2, winner payouts +9.6, field 6 +8.1, default +5.2,
+field 5 +5.0, hackathon-like +4.4, field 3 +2.9, field 2 +2.3, all3/top-3 +0.2.
 
 So we clearly beat our own fields, and beat or tie the best independently written bots. The edge
 over a strong independent bot is a few points per table, not a landslide. That is why the day-of
