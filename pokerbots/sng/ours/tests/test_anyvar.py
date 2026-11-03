@@ -120,13 +120,13 @@ class TestIcmAnyDefaults(unittest.TestCase):
         keys = ("icm_call", "rs_call", "bet_discount", "hu_open_mult", "hu_range_k")
         on, off = (1, 2.0, 0.5, 0.6, 2.0), (0, 0.0, 0.6, 0.0, 0.0)
         for r, want in ((nl, on), (six, on), (draw, off)):
-            a = IcmAny()
+            a = IcmAny(two_card=1)
             a.new_table(r, 0, 1)
             self.assertEqual(tuple(a.p[k] for k in keys), want)
         a = IcmAny(two_card=0)
         a.new_table(nl, 0, 1)
         self.assertEqual(tuple(a.p[k] for k in keys), off)
-        a = IcmAny(rs_call=0.0, icm_call=0)
+        a = IcmAny(two_card=1, rs_call=0.0, icm_call=0)
         a.new_table(nl, 0, 1)
         self.assertEqual((a.p["rs_call"], a.p["icm_call"], a.p["bet_discount"]), (0.0, 0, 0.5))
         a.new_table(draw, 0, 1)                  # the same bot moved to a draw game: back to icm_any's settings
