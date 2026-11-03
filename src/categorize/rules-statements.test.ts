@@ -388,3 +388,32 @@ describe("a student loan's money arriving", () => {
     ).not.toBe("LOAN_DISBURSEMENTS_STUDENT");
   });
 });
+
+// Debugger 11-03: a card's own line for the payment, with no category, read as uncategorized.
+describe("a card's payment, as it says so", () => {
+  it.each(["PAYMENT RECEIVED - THANK YOU", "PAYMENT RECEIVED THANK YOU", "PAYMENT RECEIVED"])(
+    "%s is a card payment",
+    (description) => {
+      expect(categorizeByRules({ description, amountCents: -132_340, hints: {} })?.detailed).toBe(
+        "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
+      );
+    },
+  );
+
+  it("doesn't take money out for one", () => {
+    expect(
+      categorizeByRules({ description: "PAYMENT RECEIVED", amountCents: 5_000, hints: {} })
+        ?.detailed,
+    ).not.toBe("LOAN_PAYMENTS_CREDIT_CARD_PAYMENT");
+  });
+
+  it.each([
+    "STRIPE PAYMENT RECEIVED",
+    "ZELLE PAYMENT RECEIVED FROM MOM",
+    "PAYMENT RECEIVED ACME CO",
+  ])("doesn't take %s for one: someone paid the person", (description) => {
+    expect(categorizeByRules({ description, amountCents: -50_000, hints: {} })?.detailed).not.toBe(
+      "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
+    );
+  });
+});

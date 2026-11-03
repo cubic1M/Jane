@@ -116,6 +116,13 @@ const RULES: readonly Rule[] = [
     ],
   },
 
+  // A card's own line for the payment (debugger 11-03). Only the whole line and only money in:
+  // "STRIPE PAYMENT RECEIVED" is someone paying the person.
+  {
+    category: "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
+    pattern: /^PAYMENT RECEIVED(?: -)?(?: THANK YOU)?$/,
+    direction: "in",
+  },
   // Paying a credit card, from either side. The checking side is written by the card company
   // ("CHASE CREDIT CRD AUTOPAY", "AMEX EPAYMENT"): never spending, since the purchases are
   // already counted on the card (messy-bank QA: $4,607 of card payments counted twice).
