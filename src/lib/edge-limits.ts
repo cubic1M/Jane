@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
+import { ACTION_BODY_MAX_BYTES, ACTION_UPLOAD_PAGES } from "@/config/rate-limits";
 import { TRIAL_SESSION_PREFIX } from "@/config/trial";
 import { sessionTokenFrom } from "@/lib/admin-gate";
 import { log } from "@/lib/log";
@@ -79,12 +80,29 @@ export function refusal(kind: EdgeKind, result: RateResult): NextResponse {
   return NextResponse.json({ error: TOO_MANY_MESSAGE }, { status: 429, headers });
 }
 
-// Null when the request may go on, else the 429 to send. A database hiccup lets the request
+const onUploadPage = (pathname: string) =>
+  ACTION_UPLOAD_PAGES.some((page) => pathname === page || pathname.startsWith(`${page}/`));
+
+// Going by what the request says of itself, and refused before anything reads it. One that doesn't
+// say goes on: browsers always do, and a wrong guess here would stop every form. The field checks
+// still stand.
+function actionTooBig(request: EdgeRequest): boolean {
+  if (edgeKind(request) !== "action" || onUploadPage(request.pathname)) return false;
+  return Number(request.headers.get("content-length")) > ACTION_BODY_MAX_BYTES;
+}
+
+// Null when the request may go on, else the 429 or 413 to send. A database hiccup lets the request
 // through: the routes' own limits and checks still stand, and Jane stays up.
 export async function edgeLimit(
   request: EdgeRequest,
   { hit = hitMany }: { hit?: typeof hitMany } = {},
 ): Promise<NextResponse | null> {
+  if (actionTooBig(request)) {
+    return new NextResponse("That's too much text to send.", {
+      status: 413,
+      headers: { "Content-Type": "text/plain" },
+    });
+  }
   const checks = edgeChecks(request);
   if (checks.length === 0) return null;
   let result: RateResult;

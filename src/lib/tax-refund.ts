@@ -196,6 +196,12 @@ export async function dismissRefund(
   transactionId: string,
   { client = defaultClient, via }: Options & { via: "chat" | "page" },
 ): Promise<void> {
+  // The id comes from the browser or the chat, and whatever is saved here stays in one row.
+  const real = await scopedFor(userId, client).transactions.findFirst({
+    where: { id: transactionId },
+    select: { id: true },
+  });
+  if (!real) throw new RefundError("That refund isn't there any more.");
   await markHandled(userId, transactionId, client);
   await track(userId, "tax_refund_plan_dismissed", { via });
 }

@@ -11,7 +11,7 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
-import { RefundError, applyRefundPlan, loadRefunds } from "@/lib/tax-refund";
+import { RefundError, applyRefundPlan, dismissRefund, loadRefunds } from "@/lib/tax-refund";
 import { takeChatAction } from "./actions";
 import { runChatTool } from "./claude-tools";
 import { loadSnapshot } from "./snapshot";
@@ -153,6 +153,47 @@ describe.runIf(url)("tax refunds against a real database", () => {
       taxYear: 2025,
       planSetUp: true,
     });
+  });
+
+  it("keeps a refund's dismissal only for a real transaction of theirs", async () => {
+    const handled = async () =>
+      (await client.taxProfile.findUnique({ where: { userId } }))?.refundsHandled ?? [];
+    const before = await handled();
+
+    // A person sent the same field megabytes long, again and again, and it all stayed in one row.
+    await expect(
+      dismissRefund(userId, "x".repeat(200_000), { client, via: "page" }),
+    ).rejects.toBeInstanceOf(RefundError);
+    expect(await handled()).toEqual(before);
+
+    const other = await client.user.create({
+      data: { email: `tax-refund-${crypto.randomUUID()}@example.com` },
+    });
+    created.push(other.id);
+    const account = await client.account.create({
+      data: { userId: other.id, source: "csv", name: "Theirs", type: "depository" },
+    });
+    const theirs = await client.transaction.create({
+      data: {
+        userId: other.id,
+        accountId: account.id,
+        source: "csv",
+        date: new Date("2026-10-08T00:00:00Z"),
+        amountCents: 100,
+        description: "THEIRS",
+      },
+    });
+    await expect(dismissRefund(userId, theirs.id, { client, via: "page" })).rejects.toBeInstanceOf(
+      RefundError,
+    );
+    expect(await handled()).toEqual(before);
+
+    const mine = await client.transaction.findFirstOrThrow({
+      where: { userId, id: { not: refundId } },
+      select: { id: true },
+    });
+    await dismissRefund(userId, mine.id, { client, via: "page" });
+    expect(await handled()).toContain(mine.id);
   });
 
   it("real accounts see the refund and the match, never a plan", async () => {
