@@ -418,18 +418,21 @@ export class FigureLedger {
     const known = this.mentioned.get(text);
     if (known) return known;
     const found: string[] = [];
+    // Whole words, looked up: a regular expression per merchant took most of a second to compile,
+    // holding up every other chat on the server.
+    const written = text.split(/[^\p{L}\p{N}&']+/u).filter(Boolean);
+    const words = new Set([...written, ...written.flatMap((w) => w.split("'"))]);
+    const lower = text.toLowerCase();
     for (const name of this.names) {
       const phrase = phraseOf(name);
       const hit =
-        significant(name).some((word) => {
-          const title = word[0] + word.slice(1).toLowerCase();
-          return [word, word.toUpperCase(), title].some((form) =>
-            new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(form)}(?![\\p{L}\\p{N}])`, "u").test(
-              text,
-            ),
-          );
-        }) ||
-        (phrase.includes(" ") && text.toLowerCase().includes(phrase));
+        significant(name).some(
+          (word) =>
+            words.has(word) ||
+            words.has(word.toUpperCase()) ||
+            words.has(word[0] + word.slice(1).toLowerCase()),
+        ) ||
+        (phrase.includes(" ") && lower.includes(phrase));
       if (hit) found.push(name);
     }
     this.mentioned.set(text, found);
@@ -637,8 +640,6 @@ export class FigureLedger {
 }
 
 const quoted = (names: readonly string[]) => names.map((n) => JSON.stringify(n)).join(" and ");
-
-const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const firstMention = (sentence: string, name: string) => {
   const at = significant(name)
