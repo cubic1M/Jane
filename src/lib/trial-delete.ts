@@ -166,6 +166,8 @@ export async function deleteExpiredTrials(
   const own = await system.user.findMany({
     where: { AND: [where, { id: { startsWith: STATEMENT_TRIAL_ID_PREFIX } }] },
     select: { id: true },
+    // If time runs out, whoever has waited longest has gone: they're the nearest the promised time.
+    orderBy: { createdAt: "asc" },
   });
   let deleted = 0;
   let failed = 0;

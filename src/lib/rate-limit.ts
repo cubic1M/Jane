@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { isIPv6 } from "node:net";
 import { NextResponse } from "next/server";
 import {
   KEEP_RATE_LIMIT_PREFIXES,
@@ -52,18 +53,19 @@ function sometimesCleanUp(client: PrismaClient, now: Date) {
     .catch(() => undefined);
 }
 
+// `by`: how much this use counts for, for a limit on an amount (rows) rather than on requests.
 export async function hit(
   name: LimitName,
   subject: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  { client = defaultClient, now = new Date(), by = 1 }: Options & { by?: number } = {},
 ): Promise<RateResult> {
   const { key, windowStart } = windowFor(name, subject, now);
   const [row] = await systemDb(WHY, client).$queryRaw<{ count: number }[]>`
-    INSERT INTO rate_limits (key, window_start, count) VALUES (${key}, ${windowStart}, 1)
-    ON CONFLICT (key, window_start) DO UPDATE SET count = rate_limits.count + 1
+    INSERT INTO rate_limits (key, window_start, count) VALUES (${key}, ${windowStart}, ${by})
+    ON CONFLICT (key, window_start) DO UPDATE SET count = rate_limits.count + ${by}
     RETURNING count`;
   const count = Number(row.count);
-  if (count === 1) sometimesCleanUp(client, now);
+  if (count === by) sometimesCleanUp(client, now);
   return resultFor(name, count, windowStart, now);
 }
 
@@ -128,11 +130,11 @@ export async function firstUseInWindow(
 export async function giveBack(
   name: LimitName,
   subject: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  { client = defaultClient, now = new Date(), by = 1 }: Options & { by?: number } = {},
 ): Promise<void> {
   const { key, windowStart } = windowFor(name, subject, now);
   await systemDb(WHY, client).$executeRaw`
-    UPDATE rate_limits SET count = GREATEST(count - 1, 0)
+    UPDATE rate_limits SET count = GREATEST(count - ${by}, 0)
     WHERE key = ${key} AND window_start = ${windowStart}`;
 }
 
@@ -142,9 +144,22 @@ export function clientIp(headers: Headers): string | null {
   return headers.get("x-forwarded-for")?.split(",")[0]?.trim() || headers.get("x-real-ip") || null;
 }
 
+// One IPv6 customer gets a whole /64, billions of addresses, so a limit per address would count each
+// of them apart: the limit is per network. An IPv4 address in IPv6 dress is the IPv4 address.
+function networkOf(ip: string): string {
+  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(ip);
+  if (mapped) return mapped[1];
+  if (!isIPv6(ip)) return ip;
+  const [before, after] = ip.split("::").map((part) => (part ? part.split(":") : []));
+  const missing = after ? 8 - before.length - after.length : 0;
+  const groups = [...before, ...Array<string>(missing).fill("0"), ...(after ?? [])];
+  const first = groups.slice(0, 4).map((g) => g.toLowerCase().replace(/^0+(?=.)/, ""));
+  return `${first.join(":")}::/64`;
+}
+
 // A stable, non-reversible id for the caller's IP, for counters.
 export function ipKey(headers: Headers): string {
-  const ip = clientIp(headers) ?? "unknown";
+  const ip = networkOf(clientIp(headers) ?? "unknown");
   return createHash("sha256").update(`ip:${ip}`).digest("hex").slice(0, 32);
 }
 

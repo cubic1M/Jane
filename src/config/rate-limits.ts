@@ -1,5 +1,9 @@
 import { RETENTION_PERIODS } from "./retention";
-import { STATEMENT_TRIAL_CHAT_ANSWERS } from "./statement-trial";
+import {
+  STATEMENT_TRIAL_CHAT_ANSWERS,
+  STATEMENT_TRIAL_MAX_PERSON_ROWS,
+  STATEMENT_TRIAL_ROWS_A_DAY,
+} from "./statement-trial";
 
 // Requests allowed per window, per user (signed in) or per IP (signed out). Generous for
 // people, tight enough to stop scripts. src/lib/rate-limit.ts enforces them.
@@ -84,6 +88,13 @@ export const RATE_LIMITS = {
   sampleProblemReports: { limit: 20, windowSeconds: 60 * 60 },
   // Household invites, per person: each emails an address they typed.
   householdInvites: { limit: 5, windowSeconds: 60 * 60 },
+  // Rows, not requests (hit's `by`): what one temporary person may hold, however many uploads run at
+  // once, and what all of them may add in a UTC day.
+  statementRows: {
+    limit: STATEMENT_TRIAL_MAX_PERSON_ROWS,
+    windowSeconds: 60 * 60 * 24 * 365 * 10,
+  },
+  statementRowsDay: { limit: STATEMENT_TRIAL_ROWS_A_DAY, windowSeconds: 60 * 60 * 24 },
   // Invite codes made by an admin, per admin.
   invites: { limit: 30, windowSeconds: 60 * 60 },
   // Server errors kept for /admin/errors, and alert emails to the team, across every request. Anyone
@@ -116,5 +127,6 @@ export const RATE_LIMIT_RETENTION_HOURS = RETENTION_PERIODS.rateLimits.days * 24
 export const KEEP_RATE_LIMIT_PREFIXES = [
   "claudeTrial:",
   "claudeStatementTrial:",
+  "statementRows:",
   "chatmonth:",
 ] as const;

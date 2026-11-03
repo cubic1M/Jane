@@ -1,3 +1,4 @@
+import type { PrismaClient } from "@/generated/prisma/client";
 import { UPLOADS_PAUSED_TEXT, killed } from "@/config/kill-switches";
 import {
   MAX_UPLOAD_BYTES,
@@ -104,6 +105,7 @@ export async function trialUploadRefusal(
   db: ScopedDb,
   formData: FormData,
   files: CsvFile[],
+  options: { client?: PrismaClient } = {},
 ): Promise<string | null> {
   if (!isStatementTrialUser(db.userId)) return null;
   // Before anything parses: the size limit is what keeps the parsing cheap.
@@ -117,6 +119,7 @@ export async function trialUploadRefusal(
   return statementUploadRefusal(
     db,
     previews.map((p) => ({ rows: p.ok ? p.rowCount : 0 })),
+    options,
   );
 }
 
@@ -208,7 +211,7 @@ async function accountHoldingRows(
 export async function saveUpload(
   db: ScopedDb,
   formData: FormData,
-  { onStage }: { onStage?: (stage: UploadStage) => void } = {},
+  { onStage, client }: { onStage?: (stage: UploadStage) => void; client?: PrismaClient } = {},
 ): Promise<UploadResult> {
   onStage?.({ stage: "reading" });
   let accountId = String(formData.get("accountId") ?? "");
@@ -217,7 +220,7 @@ export async function saveUpload(
     await uploadFailed(db.userId, files.reason);
     return { ok: false, error: files.error };
   }
-  const refused = await trialUploadRefusal(db, formData, files);
+  const refused = await trialUploadRefusal(db, formData, files, { client });
   if (refused) return { ok: false, error: refused };
 
   let created = false;

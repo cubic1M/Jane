@@ -21,8 +21,12 @@ import { CONCIERGE_ACTIONS } from "@/config/concierge";
 import { REAL_MONEY_MOVEMENT } from "@/config/money-movement";
 import { RATE_LIMITS } from "@/config/rate-limits";
 import {
+  STATEMENT_TRIAL_BUSY,
+  STATEMENT_TRIAL_MAX_ACCOUNTS,
+  STATEMENT_TRIAL_MAX_PERSON_ROWS,
   STATEMENT_TRIAL_MAX_ROWS,
   STATEMENT_TRIAL_MAX_UPLOADS,
+  STATEMENT_TRIAL_ROWS_A_DAY,
   STATEMENT_TRIAL_STUCK_MINUTES,
   STATEMENT_TRIAL_TURNED_OFF,
 } from "@/config/statement-trial";
@@ -42,8 +46,8 @@ import { scopedFor } from "@/lib/db-scoped";
 import { sendEmail } from "@/lib/email";
 import { HouseholdError, invitePartner } from "@/lib/household";
 import { finishImport } from "@/lib/import/background";
-import { saveUpload } from "@/lib/import/upload";
-import { hit } from "@/lib/rate-limit";
+import { createCsvAccountRow, saveUpload } from "@/lib/import/upload";
+import { giveBack, hit } from "@/lib/rate-limit";
 import { CHAT_PRIMER_TOOLS } from "@/config/agent-chat";
 import { chatPrimer, runChatTool } from "@/lib/jane-agent/claude-tools";
 import { sendToJane } from "@/lib/jane-agent/typing";
@@ -65,6 +69,7 @@ import {
 import {
   sessionOwner,
   startStatementPerson,
+  statementAccountRefusal,
   statementFilesRefusal,
   statementUploadRefusal,
 } from "./statement-trial";
@@ -208,7 +213,7 @@ describe.runIf(url)("trying Jane with your own statement", { timeout: 180_000 },
 
   // Uploads and runs what the job runs, all the way, as the visitor's upload does.
   const upload = async (userId: string, name: string, text: string, now = NOW) => {
-    const saved = await saveUpload(scopedFor(userId, client), form(name, text));
+    const saved = await saveUpload(scopedFor(userId, client), form(name, text), { client });
     if (!saved.ok) throw new Error(saved.error);
     await finishImport(userId, saved.runId, { client, now });
     return saved;
@@ -374,7 +379,7 @@ describe.runIf(url)("trying Jane with your own statement", { timeout: 180_000 },
 
     it("keeps to the limits on what one person may upload", async () => {
       const db = scopedFor(userId, client);
-      expect(await statementUploadRefusal(db, [{ rows: 10 }])).toBeNull();
+      expect(await statementUploadRefusal(db, [{ rows: 10 }], { client, now: NOW })).toBeNull();
       expect(statementFilesRefusal([1000])).toBeNull();
       expect(statementFilesRefusal([2 * 1024 * 1024])).toMatch(/up to 1 MB/);
       expect(await statementUploadRefusal(db, [{ rows: STATEMENT_TRIAL_MAX_ROWS + 1 }])).toMatch(
@@ -390,9 +395,64 @@ describe.runIf(url)("trying Jane with your own statement", { timeout: 180_000 },
       const refused = await saveUpload(
         scopedFor(fresh.userId, client),
         form("more.csv", madeUpChaseCsv("ZZMORE", NOW)),
+        { client },
       );
       expect(refused).toMatchObject({ ok: false });
       expect(await scopedFor(fresh.userId, client).transactions.count()).toBe(0);
+    });
+  });
+
+  describe("uploads at the same moment", () => {
+    // Each saw nothing held yet, so all got in: 30 uploads of 3,000 rows past a limit of 6,000.
+    it("hold to what one person may keep, however many run at once", async () => {
+      const racing = await start();
+      const db = scopedFor(racing.userId, client);
+      const answers = await Promise.all(
+        Array.from({ length: 30 }, () =>
+          statementUploadRefusal(db, [{ rows: STATEMENT_TRIAL_MAX_ROWS }], { client, now: NOW }),
+        ),
+      );
+      expect(answers.filter((answer) => answer === null)).toHaveLength(
+        Math.floor(STATEMENT_TRIAL_MAX_PERSON_ROWS / STATEMENT_TRIAL_MAX_ROWS),
+      );
+    });
+
+    it("leave room after a refused one", async () => {
+      const person = await start();
+      const db = scopedFor(person.userId, client);
+      const options = { client, now: NOW };
+      expect(await statementUploadRefusal(db, [{ rows: 3_000 }], options)).toBeNull();
+      expect(await statementUploadRefusal(db, [{ rows: 3_000 }], options)).toBeNull();
+      expect(await statementUploadRefusal(db, [{ rows: 1 }], options)).toMatch(/holds up to/);
+      const other = await start();
+      const otherDb = scopedFor(other.userId, client);
+      expect(await statementUploadRefusal(otherDb, [{ rows: 3_000 }], options)).toBeNull();
+    });
+
+    it("stop for everyone at the day's ceiling, and take nothing from the person", async () => {
+      const later = new Date(NOW.getTime() + 40 * 24 * HOUR);
+      const options = { client, now: later };
+      const filler = STATEMENT_TRIAL_ROWS_A_DAY - 5;
+      await hit("statementRowsDay", "all", { client, now: later, by: filler });
+      const person = await start();
+      const db = scopedFor(person.userId, client);
+      expect(await statementUploadRefusal(db, [{ rows: 6 }], options)).toBe(STATEMENT_TRIAL_BUSY);
+      expect(await statementUploadRefusal(db, [{ rows: 5 }], options)).toBeNull();
+      await giveBack("statementRowsDay", "all", {
+        client,
+        now: later,
+        by: STATEMENT_TRIAL_ROWS_A_DAY,
+      });
+    });
+
+    it("can't make accounts without end", async () => {
+      const person = await start();
+      const db = scopedFor(person.userId, client);
+      expect(await statementAccountRefusal(db)).toBeNull();
+      for (let i = 0; i < STATEMENT_TRIAL_MAX_ACCOUNTS; i += 1) {
+        await createCsvAccountRow(db, { name: `Account ${i}`, kind: "checking", balance: null });
+      }
+      expect(await statementAccountRefusal(db)).toMatch(/holds up to/);
     });
   });
 
@@ -811,6 +871,7 @@ describe.runIf(url)("trying Jane with your own statement", { timeout: 180_000 },
       const refused = await saveUpload(
         scopedFor(userId, client),
         form("late.csv", madeUpChaseCsv("ZZOFF", NOW)),
+        { client },
       );
       expect(refused).toEqual({ ok: false, error: STATEMENT_TRIAL_TURNED_OFF });
       vi.stubEnv("TRY_STATEMENT", "1");
