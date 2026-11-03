@@ -121,6 +121,12 @@ Short deck: AA ≈ 0.76. A draw variant: AA ≈ 0.80, weak hands 0.38–0.43.
 >     re-raised, (folds + 3.9) / (times + 6).
 >   - The raiser counts as kf = 4 random hands, + 0.8 for each opponent who already called
 >     or raised, + 0.2 for each opponent still to act (not 0.8: +0.7 per table).
+>   - **Re-shoved after my open** (+1.6 per table in all, +5 vs light re-raisers): if my open
+>     was re-raised ALL-IN by one player and nobody called, that player counts as
+>     min(4, k(c)) random hands instead of 4, where c = min(0.5, 2 × r), r = how often that
+>     seat re-raised when facing exactly one open, (re-raises + 0.7) / (times + 10), and
+>     k(c) = clamp(1 + 0.65·log2(0.5 / c), 1, 7). Track r per seat from each seat's first
+>     action after a lone open. Then the call rule below decides.
 >     Interpolate equity linearly between integer k.
 >   - Re-raise if equity × (kf + 1) ≥ RERAISE: all-in when eff ≤ 24 bb, else raise to
 >     3 × the last raise-to amount. RERAISE = 2.6 (roughly AA only).

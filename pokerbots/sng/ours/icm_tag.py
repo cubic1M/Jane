@@ -59,9 +59,11 @@ PARAMS = dict(
                          #   (prior weight in hands; 0 = off). 1.0 with the read validated on fresh
                          #   seeds (results/sng_restealread_validate.md); 0.35 without it before
     resteal_rel_bb=28.0, #   resteal_rel x (opener's open rate) of hands (f3_exploiter's rule); 0 = off.
-    rs_call=0.0,         # > 0: my open re-raised ALL-IN by one seat (no callers): that seat holds the top
+    rs_call=2.0,         # > 0: my open re-raised ALL-IN by one seat (no callers): that seat holds the top
                          #   rs_call x (its re-raise rate vs one open, prior 7%) of hands (as random-hand
-                         #   count, never tighter than range_k); the exact-ICM call decides. 0 = off
+                         #   count, never tighter than range_k); the exact-ICM call decides. 0 = off.
+                         #   2 validated on fresh seeds (results/sng_rscall_validate_*.md: 11 cells, mean
+                         #   +1.6, field 4 +2.2*, field 5 +4.7*, field 6 +5.1*); 3 = day-of choice vs light re-shovers
     push_steal=0.5,      # short-stack shoves use this share of the steal factor (fold read); 0 = off.
                          #   0.5 validated on fresh seeds (results/sng_pushsteal_validate.md)
     behind_k=0.2,        # facing a preflop raise: extra random hands per opponent still to act
