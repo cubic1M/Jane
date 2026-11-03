@@ -323,7 +323,7 @@ function planHero(input: HeroInput): PlanHero | null {
   return { count: plan.items, steps, goal: input.goal ?? null };
 }
 
-const TAX_HELD_LABEL = "Tax on your freelance income so far";
+const TAX_HELD_LABEL = "Tax on your self-employed income so far";
 
 function safeHero(safe: SafeInput): SafeHero {
   const short = safe.safeCents < 0;

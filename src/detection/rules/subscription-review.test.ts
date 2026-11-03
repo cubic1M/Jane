@@ -37,6 +37,15 @@ describe("subscription_review", () => {
     expect((finding.evidence.charges as unknown[]).length).toBe(4);
   });
 
+  // Debugger 11-03: "Review your Gusto Pay Payroll Fee subscription" to someone with a helper to pay.
+  it.each(["GUSTO PAY 88123 PAYROLL FEE", "PAYCHEX INC 4411", "ADP PAYROLL FEES"])(
+    "doesn't take %s for one",
+    (description) => {
+      const fee = { description, merchantName: null };
+      expect(run(input({ transactions: monthly(6, 9_500, fee) }))).toEqual([]);
+    },
+  );
+
   it("tells two plans of one merchant at two prices apart by their price", () => {
     const transactions = [...monthly(4, 1199, SPOTIFY), ...monthly(4, 1699, SPOTIFY)];
     const titles = run(input({ transactions })).map((f) => f.title);

@@ -87,6 +87,35 @@ describe("safeToSpend", () => {
       expect(held([client("2026-03-01", 1_000_000), irs("2026-06-15", 100_000)])).toBe(150_000);
     });
 
+    // Debugger 11-03: a shop owner with $89,000 of sales had nothing held back at all.
+    it("holds back the tax on a shop's sales, on the share of them assumed to be profit", () => {
+      const sales = Array.from({ length: 6 }, (_, i) =>
+        tx({
+          date: `2026-0${i + 1}-15`,
+          amountCents: -1_000_000,
+          description: "SQUARE INC DEPOSIT",
+          merchantName: "Square",
+          pfcPrimary: "INCOME",
+          pfcDetailed: "INCOME_OTHER",
+        }),
+      );
+      // $60,000 of sales, 15% of it profit, taxed at 25%.
+      expect(held(sales)).toBe(225_000);
+    });
+
+    it("doesn't take sales tax or property tax as tax paid on it", () => {
+      const paid = (description: string) =>
+        tx({
+          date: "2026-06-15",
+          amountCents: 100_000,
+          description,
+          pfcDetailed: "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
+        });
+      const earned = client("2026-03-01", 1_000_000);
+      expect(held([earned, paid("CA CDTFA SALES TAX EFT")])).toBe(250_000);
+      expect(held([earned, paid("SANTA CLARA COUNTY TAX COLLECTOR")])).toBe(250_000);
+    });
+
     it("holds back nothing once it's paid, or for last year's, or on a salary", () => {
       expect(held([client("2026-03-01", 1_000_000), irs("2026-06-15", 900_000)])).toBe(0);
       expect(held([client("2025-03-01", 1_000_000)])).toBe(0);

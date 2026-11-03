@@ -80,6 +80,8 @@ export const BUSINESS_SALES_CATEGORIES = [
   "TRANSFER_IN_DEPOSIT",
   "TRANSFER_IN_OTHER_TRANSFER_IN",
 ] as const;
+// Sales tax is the customers' money passing through, never income tax paid (debugger 11-03).
+export const SALES_TAX_PAYEE = /\b(?:SALES (?:AND USE )?TAX|CDTFA)\b/i;
 export const BUSINESS_SALES_PAYEE =
   /\b(?:SQUARE|SQ \*|SHOPIFY|TOAST|CLOVER|STRIPE|ETSY|AMAZON PAYMENTS|PAYPAL)\b[^]*\b(?:DEPOSIT|PAYOUT|TRANSFER|SETTLEMENT)\b/i;
 export const INCOME_KIND_ORDER = Object.keys(INCOME_KINDS) as IncomeKind[];
