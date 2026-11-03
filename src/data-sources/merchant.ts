@@ -45,6 +45,10 @@ const BOILERPLATE = [
   // (debugger 11-03). Saved keys moved in prisma/migrations/
   // 20270502000000_merchant_without_ach_withdrawal: keep them in step.
   /^(?:ACH (?:WITHDRAWAL|PAYMENT|PMT)|(?:ELECTRONIC|EXTERNAL|EFT) WITHDRAWAL|PREAUTHORIZED DEBIT|PRE-AUTH DEBIT)\s+(?=\S)/,
+  // "AUTOPAY TOYOTA FINANCIAL", and an ACH line's other words (debugger 11-03: the net worth note
+  // read "Autopay Toyota Financial"). Saved keys moved in prisma/migrations/
+  // 20270504000000_merchant_without_ach_autopay: keep them in step.
+  /^(?:ACH(?: TRANSACTION| TRANS)?|AUTO ?PAY)\s+(?!(?:DEBIT|CREDIT|WITHDRAWAL|PAYMENT|PMT|DEPOSIT)$)(?=\S)/,
 ];
 
 // A payment app in front of the person or company paid: "ZELLE TO OAK RIDGE APTS RENT" is Oak

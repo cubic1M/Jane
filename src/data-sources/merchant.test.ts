@@ -168,6 +168,16 @@ describe("a withdrawal's words in front", () => {
     expect(normalizeMerchant(description)?.name).toBe(name);
   });
 
+  // Debugger 11-03: "Autopay Toyota Financial" on Bills and in net worth's note.
+  it.each([
+    ["AUTOPAY TOYOTA FINANCIAL", "Toyota Financial"],
+    ["AUTO PAY STATE FARM", "State Farm"],
+    ["ACH RENT SKYLINE PROPERTY MGMT", "Rent Skyline Property Mgmt"],
+    ["ACH TRANSACTION GEICO", "Geico"],
+  ])("%s is %s", (description, name) => {
+    expect(normalizeMerchant(description)?.name).toBe(name);
+  });
+
   it("gives a name saved the old way the new key", () => {
     expect(normalizeMerchant("Ach Withdrawal Rocket Mortgage Payment")?.key).toBe(
       "rocket mortgage payment",
@@ -179,6 +189,8 @@ describe("a withdrawal's words in front", () => {
     expect(normalizeMerchant("ACME ACH WITHDRAWAL SERVICES")?.key).toBe(
       "acme ach withdrawal services",
     );
+    expect(normalizeMerchant("AUTOPAY")?.key).toBe("autopay");
+    expect(normalizeMerchant("CHASE AUTOPAY")?.key).toBe("chase autopay");
   });
 });
 
