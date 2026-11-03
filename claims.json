@@ -1,10 +1,5 @@
 [
  {
-  "task": "smoke-test",
-  "lane": "lane:general",
-  "expires": "2026-11-03T22:46:13.883Z"
- },
- {
   "task": "race-a",
   "lane": "lane:a",
   "expires": "2026-11-03T23:46:34.524Z"
