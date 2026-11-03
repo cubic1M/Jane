@@ -82,9 +82,15 @@ describe.runIf(url)("the merges, on the eight sample people", { timeout: 240_000
     );
     const sourceOf = (m: { id: string }) => (keys.get(m.id) ?? "").split(":")[0];
 
-    // Nothing said twice: the same opening line, or two messages about one finding.
+    // Nothing said twice: the same opening line, or two messages about one finding. An earlier
+    // morning's brief may open with the same words: a number that hasn't moved isn't a repeat.
     const lines = new Map<string, number>();
-    for (const m of shown) lines.set(firstLine(m.body), (lines.get(firstLine(m.body)) ?? 0) + 1);
+    const thisMorning = shown.filter(
+      (m) => sourceOf(m) !== "brief" || keys.get(m.id) === "brief:2026-11-02",
+    );
+    for (const m of thisMorning) {
+      lines.set(firstLine(m.body), (lines.get(firstLine(m.body)) ?? 0) + 1);
+    }
     for (const [line, n] of lines) if (n > 1) found.push(`said ${n} times: "${line}"`);
     const findings = new Map<string, number>();
     for (const m of shown) {
