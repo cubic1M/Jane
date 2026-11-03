@@ -111,7 +111,10 @@ export async function firstUseInWindow(
 ): Promise<boolean> {
   if (!(await hit(name, subject, { client, now })).ok) return false;
   const { key, windowStart, windowMs } = windowFor(name, subject, now);
-  const before = await client.rateLimit.findUnique({
+  const before = await systemDb(
+    "Rate-limit counters aren't one person's rows",
+    client,
+  ).rateLimit.findUnique({
     where: {
       key_windowStart: { key, windowStart: new Date(windowStart.getTime() - windowMs) },
     },

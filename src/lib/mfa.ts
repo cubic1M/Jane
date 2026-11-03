@@ -4,6 +4,7 @@ import { generateBackupCodes, hashBackupCode, looksLikeBackupCode } from "@/lib/
 import { decrypt, encrypt } from "@/lib/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { firstUseInWindow, hit } from "@/lib/rate-limit";
+import { systemDb } from "@/lib/system-db";
 import { generateSecret, otpauthUri, verifyTotp } from "@/lib/totp";
 
 // Two-factor sign-in with an authenticator app. Admins must have it before /admin opens;
@@ -129,7 +130,12 @@ export async function verifySessionCode(
     await client.user.update({ where: { id: userId }, data: { mfaEnabledAt: now } });
     // Whoever else is signed in is out: someone who got into the account is what two-factor is for,
     // and any session could have read the secret before this first code.
-    await client.session.deleteMany({ where: { userId, sessionToken: { not: sessionToken } } });
+    await systemDb(
+      "Starting two-factor signs out the person's other sessions",
+      client,
+    ).session.deleteMany({
+      where: { userId, sessionToken: { not: sessionToken } },
+    });
     await logAudit(actor, eventFor(user, "enrolled"), target);
     backupCodes = await replaceBackupCodes(userId, user, client);
   }
@@ -163,9 +169,15 @@ export async function turnOffTwoFactor(
       where: { id: userId },
       data: { mfaSecretEncrypted: null, mfaEnabledAt: null },
     }),
-    // A code for the old secret proves nothing about a new one, if two-factor comes back.
-    client.session.updateMany({ where: { userId }, data: { mfaVerifiedAt: null } }),
   ]);
+  // A code for the old secret proves nothing about a new one, if two-factor comes back.
+  await systemDb(
+    "Stopping two-factor un-verifies the person's sessions",
+    client,
+  ).session.updateMany({
+    where: { userId },
+    data: { mfaVerifiedAt: null },
+  });
   await logAudit(actorFor(userId, user), "mfa_disabled", { type: "user", id: userId });
   return "ok";
 }
