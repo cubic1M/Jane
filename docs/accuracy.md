@@ -46,6 +46,19 @@ Jane's accuracy test bench (founder, 2026-10-26). Until now every finding had be
 
   A change that makes a detector better passes; record the new baseline with it so the gain is kept.
 
+## Hand-labelled transactions
+
+The benches above are made-up people, so they can't say how Jane does on real statements. This is the real check: 1,500 to 2,500 of the founders' own transactions, labelled by both, scored per category so a drop in a rare category can't hide in an average. The rows never enter this public repo.
+
+- **Where it lives:** one folder outside the repo (`LABELS_DIR`). The commands refuse any folder inside a git repository. Once sealed, the file is AES-256-GCM encrypted under `LABELS_KEY`, a key of its own that isn't in any env file or Vercel setting.
+- **What it prints:** counts, category names and percentages. Never a date, an amount or a description.
+- **What it scores:** the keyword rules alone, as a new person's first upload sorts, with no Claude call. Rows the rules leave unsorted are counted as "Left for Claude".
+- **Truth:** rows both founders gave the same category. Disagreements and `UNSURE` are counted and not scored, and Cohen's kappa shows how far past chance the two agree.
+- **A drop:** `npm run labels:score` fails when any category's precision or recall falls 3 points or more below the scores last kept with `LABELS_KEEP_SCORES=1`, on the same number of rows. The kept scores (`scores.json`) hold no rows.
+- **Not in CI:** the file stays on the founders' laptops, so this is run by hand before and after a change to the rules.
+
+Exact steps: the "Founder only" list in the shared checklist.
+
 ## Scoreboard
 
 Before #766: the detectors as on main then (with #759's messy-bank fixes), on its 40 people.

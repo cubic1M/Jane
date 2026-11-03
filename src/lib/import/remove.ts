@@ -23,6 +23,8 @@ export type UploadView = {
   to: string | null;
   rows: number;
   at: Date;
+  // What didn't add up in its files (src/data-sources/csv/control-totals.ts).
+  warnings: string[];
 };
 
 // Rows uploaded before uploads were recorded, per account: removed with "Remove these".
@@ -51,6 +53,7 @@ export async function listUploads(
         toDate: true,
         rows: true,
         createdAt: true,
+        controlWarnings: true,
       },
     }),
     db.accounts.findMany({ where: { source: "csv" }, select: { id: true, name: true } }),
@@ -76,6 +79,7 @@ export async function listUploads(
               to: iso(r.toDate),
               rows: r.rows,
               at: r.createdAt,
+              warnings: r.controlWarnings,
             },
           ]
         : [],

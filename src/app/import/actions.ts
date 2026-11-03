@@ -81,6 +81,8 @@ export type StartResult =
       rows: number;
       // Rows already here that this upload put right.
       corrected: number;
+      // What didn't add up in the files.
+      warnings: string[];
       // The account's balance today, when the file didn't say (a card, Wells Fargo).
       askBalance: BalanceAsk | null;
     }
@@ -100,6 +102,7 @@ export async function startImport(formData: FormData): Promise<StartResult> {
     runId: result.runId,
     rows: result.counts.inserted,
     corrected: result.counts.corrected,
+    warnings: result.warnings,
     askBalance: ask,
   };
 }

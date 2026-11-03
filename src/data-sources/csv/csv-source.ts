@@ -6,12 +6,21 @@ import {
   type MappingChoices,
 } from "./column-mapping";
 import { PICK_COLUMNS } from "./messages";
-import { detectLayout, type CsvFormat, type ParsedRow } from "./formats";
+import {
+  closingBalances,
+  controlTotals,
+  statedTotals,
+  type ControlReport,
+  type DayBalance,
+} from "./control-totals";
+import { detectLayout, normalizeHeader, type CsvFormat, type ParsedRow } from "./formats";
 import { parseCsv } from "./parse-csv";
 import { looksLikeOfx, readOfx } from "@/data-sources/ofx/parse-ofx";
 import { dedupeKeys } from "@/data-sources/dedupe";
 import { normalizeMerchant } from "@/data-sources/merchant";
+import { isAccountKind } from "@/data-sources/types";
 import type {
+  AccountKind,
   DataSource,
   NormalizedAccount,
   NormalizedTransaction,
@@ -29,6 +38,9 @@ export type CsvFailure = "unknown_format" | "unreadable" | "not_csv";
 
 export const NO_TRANSACTIONS =
   "There are no transactions in it. Check the dates you picked when you downloaded it.";
+
+export const REVERSED_MAPPING =
+  "These amounts run against the file's own balance: money going out raises it, so spending would read as money coming in. Change which sign is spending.";
 
 export const NOT_A_STATEMENT =
   "This isn't a CSV statement. Download the CSV from your bank's website.";
@@ -66,6 +78,8 @@ export type CsvFileResult =
       // The account's balance at the end of each day, from a running-balance column (empty
       // when the layout has none). For net worth over time (src/lib/import/balances.ts).
       balances?: DayBalance[];
+      // Whether the file adds up (./control-totals.ts).
+      control: ControlReport;
     }
   | {
       ok: false;
@@ -76,7 +90,7 @@ export type CsvFileResult =
       choices?: MappingChoices;
     };
 
-export type DayBalance = { date: string; balanceCents: number };
+export { closingBalances, type DayBalance };
 
 // Words in a downloaded file's name that say nothing about the account.
 const FILE_NOISE =
@@ -99,30 +113,6 @@ export function accountNameFromFile(fileName: string): string {
   return name || "Uploaded account";
 }
 
-// Each day's closing balance from a running-balance column. A running balance is the balance
-// after its row, so the day's closing row is the one no other row of that day leads to: each
-// row's balance before it (its balance plus what went out) is another row's balance after, all
-// but the first's. That holds whatever order the rows of a day are listed in (import QA: a file
-// newest-first by day but oldest-first within one). When it can't single one out (two rows that
-// cancel out), the file's order decides: the first row seen when the file is newest first
-// (Chase), the last when it's oldest first (Bank of America).
-export function closingBalances(rows: readonly ParsedRow[]): DayBalance[] {
-  const withBalance = rows.filter((r) => r.balanceCents !== undefined);
-  if (withBalance.length === 0) return [];
-  const newestFirst = withBalance[0].date > withBalance[withBalance.length - 1].date;
-  const byDay = new Map<string, ParsedRow[]>();
-  for (const row of withBalance) byDay.set(row.date, [...(byDay.get(row.date) ?? []), row]);
-  return [...byDay]
-    .map(([date, day]) => {
-      // Money out is positive and lowered the balance: before = after + amount.
-      const before = new Set(day.map((r) => r.balanceCents! + r.amountCents));
-      const closing = day.filter((r) => !before.has(r.balanceCents!));
-      const row = closing.length === 1 ? closing[0] : newestFirst ? day[0] : day[day.length - 1];
-      return { date, balanceCents: row.balanceCents! };
-    })
-    .sort((a, b) => a.date.localeCompare(b.date));
-}
-
 export const OFX_FORMAT = { id: "ofx", label: "OFX or QFX statement" } as const;
 
 // An OFX file says what kind of account it's from: a card statement, or a bank account's type,
@@ -137,12 +127,25 @@ function ofxAccount(text: string): CsvFormat["account"] {
 }
 
 // An export's summary rows under (or over) the transactions: "Total", "Ending balance". Skipped
-// without a word (round 3: "2 rows will be skipped: Line 10: Unreadable date """).
-const SUMMARY_ROW =
-  /^(?:totals?|(?:beginning|ending|opening|closing|available|current|ledger) balance|summary)\b/i;
+// without a word (round 3: "2 rows will be skipped: Line 10: Unreadable date """). Their figures
+// are checked against the rows (./control-totals.ts).
+const SUMMARY_ROW = /^(?:(?:beginning|ending|opening|closing|available|current|ledger) balance)\b/i;
+const TOTAL_ROW =
+  /^(?:(?:totals?|summary)\s*:?\s*$|total (?:credits?|debits?|deposits?|withdrawals?|transactions|fees|interest|charges|payments|purchases)\b)/i;
+// A row starting "Total" or "Summary" with more after it is a shop when it has a date: in a layout
+// with the description first, "Total Wine" was dropped without a word (money rules, 11-03).
+const NAMED_LIKE_A_TOTAL = /^(?:totals?|summary)\b/i;
+const HAS_A_DAY = /^\s*(?:\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}|\d{4}-\d{1,2}-\d{1,2})\b/;
+
+function isSummaryRow(fields: readonly string[]): boolean {
+  const first = fields.find((value) => value.trim() !== "")?.trim() ?? "";
+  if (SUMMARY_ROW.test(first) || TOTAL_ROW.test(first)) return true;
+  return NAMED_LIKE_A_TOTAL.test(first) && !fields.some((value) => HAS_A_DAY.test(value));
+}
 
 // Reads one uploaded statement: a CSV export, or an OFX/QFX file (src/data-sources/ofx).
-export function readCsvFile(file: CsvFile): CsvFileResult {
+// `kind`: the account it's going into, once that's known.
+export function readCsvFile(file: CsvFile, kind?: AccountKind): CsvFileResult {
   if (looksLikeOfx(file.name, file.text)) {
     const result = readOfx(file);
     return result.ok
@@ -196,12 +199,25 @@ export function readCsvFile(file: CsvFile): CsvFileResult {
   const { format, columns, rows } = layout;
   const parsed: { line: number; row: ParsedRow }[] = [];
   const skipped: SkippedRow[] = [];
+  let leftOut = 0;
+  let repeatedHeaders = 0;
+  const headerText = columns.join("|");
   for (const record of rows) {
-    if (SUMMARY_ROW.test(record.fields.find((value) => value.trim() !== "")?.trim() ?? ""))
+    if (isSummaryRow(record.fields)) {
+      leftOut += 1;
       continue;
+    }
+    if (detected && record.fields.map(normalizeHeader).join("|") === headerText) {
+      repeatedHeaders += 1;
+      leftOut += 1;
+      continue;
+    }
     // Chase adds a trailing comma to some rows; extra empty fields are harmless.
     const extra = record.fields.slice(columns.length);
-    if (record.fields.length < columns.length && format.shortRows === "skip") continue;
+    if (record.fields.length < columns.length && format.shortRows === "skip") {
+      leftOut += 1;
+      continue;
+    }
     if (record.fields.length < columns.length || extra.some((value) => value.trim() !== "")) {
       skipped.push({
         file: file.name,
@@ -213,9 +229,11 @@ export function readCsvFile(file: CsvFile): CsvFileResult {
     const get = (name: string) => record.fields[columns.indexOf(name)] ?? "";
     const result = format.parseRow(get);
     if (result.ok) parsed.push({ line: record.line, row: result.row });
-    else if (!result.silent)
-      skipped.push({ file: file.name, line: record.line, reason: result.reason });
+    else if (result.silent) leftOut += 1;
+    else skipped.push({ file: file.name, line: record.line, reason: result.reason });
   }
+  const unread = skipped.length;
+  const everyRow = parsed.map((p) => p.row);
 
   // The format's last word on the rows as a whole (PayPal's card-paid pairs).
   if (format.finish) {
@@ -257,9 +275,42 @@ export function readCsvFile(file: CsvFile): CsvFileResult {
       choices: mappingChoices(records),
     };
   }
+  // A column the person mapped may be a card's or a bank's: until they say, its signs can't be
+  // called backwards. A known layout's account is its own.
+  const custom = format.id === CUSTOM_FORMAT.id;
+  const control = controlTotals({
+    rows: everyRow,
+    described: transactions,
+    stated: statedTotals(records),
+    counts: {
+      inFile: rows.length,
+      read: transactions.length,
+      skipped: skipped.length,
+      leftOut,
+    },
+    unread,
+    repeatedHeaders,
+    kind: kind ?? (custom ? null : format.account.kind),
+  });
+  // The columns the person picked run against the file's own balance: every figure would be
+  // backwards, and they can change it. A bank's own layout has nothing to pick, so that warns.
+  if (custom && kind && control.signsReversed) {
+    return {
+      ok: false,
+      file: file.name,
+      error: REVERSED_MAPPING,
+      reason: "unknown_format",
+      choices: mappingChoices(records),
+    };
+  }
+  const closing = closingBalances(
+    parsed.map((p) => p.row),
+    control.balanceWay ?? "down",
+  );
   return {
     ok: true,
     file: file.name,
+    control,
     format: { id: format.id, label: format.label, bank: format.bank },
     account:
       format.id === CUSTOM_FORMAT.id
@@ -267,7 +318,13 @@ export function readCsvFile(file: CsvFile): CsvFileResult {
         : format.account,
     transactions,
     skipped,
-    balances: closingBalances(parsed.map((p) => p.row)),
+    balances: !control.balancesTrusted
+      ? []
+      : // A card's balance is what's owed, as everywhere: a file that writes it negative, falling
+        // as money goes out, is turned round, or net worth would add the debt.
+        custom && kind === "credit_card" && control.balanceWay === "down"
+        ? closing.map((b) => ({ ...b, balanceCents: -b.balanceCents || 0 }))
+        : closing,
   };
 }
 
@@ -297,9 +354,14 @@ export class CsvDataSource implements DataSource {
   // `files`: each file's format and how many transactions it had, for analytics. `balances`:
   // each day's closing balance from the files' running-balance columns (a later file wins).
   async load(): Promise<
-    SourceBatch & { files: { format: string; rows: number }[]; balances: DayBalance[] }
+    SourceBatch & {
+      files: { format: string; rows: number }[];
+      balances: DayBalance[];
+      warnings: string[];
+    }
   > {
-    const results = this.files.map(readCsvFile);
+    const kind = isAccountKind(this.account.kind) ? this.account.kind : undefined;
+    const results = this.files.map((file) => readCsvFile(file, kind));
     const failures = results.flatMap((r) => (r.ok ? [] : [{ file: r.file, error: r.error }]));
     if (failures.length > 0) throw new CsvFormatError(failures);
 
@@ -309,11 +371,17 @@ export class CsvDataSource implements DataSource {
       skipped: [] as SourceBatch["skipped"],
       files: [] as { format: string; rows: number }[],
       balances: [] as DayBalance[],
+      warnings: [] as string[],
     };
     const byDay = new Map<string, number>();
     for (const result of results) {
       if (!result.ok) continue;
       batch.files.push({ format: result.format.id, rows: result.transactions.length });
+      for (const warning of result.control.warnings) {
+        batch.warnings.push(
+          this.files.length > 1 ? `${result.file}: ${warning.message}` : warning.message,
+        );
+      }
       for (const b of result.balances ?? []) byDay.set(b.date, b.balanceCents);
       batch.transactions.push(
         ...result.transactions.map((t) => ({ ...t, accountRef: this.account.ref })),

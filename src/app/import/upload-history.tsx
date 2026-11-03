@@ -147,6 +147,15 @@ export function UploadHistory({
               {u.accountName} · {range(u.from, u.to)} · {plural(u.rows, "transaction")} added{" "}
               {momentLabel(u.at, timezone, { year: true })}
             </p>
+            {u.warnings.map((warning) => (
+              <p
+                key={warning}
+                data-control-warning
+                className="text-sm text-neutral-800 dark:text-neutral-200"
+              >
+                {warning}
+              </p>
+            ))}
             <Confirm
               label="Remove this upload"
               what={u.fileNames.join(", ") || u.accountName}

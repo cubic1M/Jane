@@ -65,6 +65,7 @@ beforeEach(() => {
   importCsvFiles.mockReset().mockResolvedValue({
     ...counts,
     files: [{ format: "chase_credit_card", rows: 1 }],
+    warnings: [],
     balances: BALANCES,
     from: "2026-10-13",
     to: "2026-10-13",
@@ -91,6 +92,7 @@ describe("saveUpload", () => {
       counts,
       runId: "run_1",
       jobId: "job_1",
+      warnings: [],
     });
     expect(keepFileBalances).toHaveBeenCalledWith(db, "acct_1", BALANCES);
     // The upload's record, made first so each row it adds carries it, then filled in.
@@ -105,6 +107,7 @@ describe("saveUpload", () => {
         rows: 1,
         fromDate: new Date("2026-10-13T00:00:00Z"),
         toDate: new Date("2026-10-13T00:00:00Z"),
+        controlWarnings: [],
       },
     });
     expect(stages[0]).toEqual({ stage: "reading" });
@@ -118,9 +121,13 @@ describe("saveUpload", () => {
       { type: "user", id: "user_1" },
       "import_completed",
       { type: "account", id: "acct_1" },
-      { ...counts, files: 1 },
+      { ...counts, files: 1, controlWarnings: 0 },
     );
-    expect(track).toHaveBeenCalledWith("user_1", "import_completed", { ...counts, files: 1 });
+    expect(track).toHaveBeenCalledWith("user_1", "import_completed", {
+      ...counts,
+      files: 1,
+      controlWarnings: 0,
+    });
     // The format and row count only: nothing from the file itself.
     expect(track).toHaveBeenCalledWith("user_1", "upload_succeeded", {
       format: "chase_credit_card",
@@ -173,6 +180,31 @@ describe("saveUpload", () => {
         "These files add up to 5.0 MB. Upload at most 4 MB at a time: fewer files, or fewer months in each.",
     });
     expect(track).toHaveBeenCalledWith("user_1", "upload_failed", { reason: "too_big" });
+  });
+});
+
+describe("saveUpload, when the files don't add up", () => {
+  it("keeps what's wrong with the upload's record and says it to the person", async () => {
+    const warning = "The balance doesn't follow from the rows on 1 day.";
+    importCsvFiles.mockResolvedValueOnce({
+      ...counts,
+      files: [{ format: "chase_checking", rows: 1 }],
+      balances: BALANCES,
+      from: "2026-10-13",
+      to: "2026-10-13",
+      warnings: [warning],
+    });
+    const result = await saveUpload(db, form({ accountId: "acct_1", files: [csv("card.csv")] }));
+    expect(result).toMatchObject({ ok: true, warnings: [warning] });
+    expect(importRunsUpdate).toHaveBeenCalledWith({
+      where: { id: "run_1" },
+      data: expect.objectContaining({ controlWarnings: [warning] }),
+    });
+    expect(track).toHaveBeenCalledWith(
+      "user_1",
+      "import_completed",
+      expect.objectContaining({ controlWarnings: 1 }),
+    );
   });
 });
 

@@ -125,7 +125,14 @@ export async function createCsvAccountRow(db: ScopedDb, { name, kind, balance }:
 export type UploadStage = { stage: "reading" } | ImportStage;
 
 export type UploadResult =
-  | { ok: true; accountId: string; counts: ImportCounts; runId: string; jobId: string }
+  | {
+      ok: true;
+      accountId: string;
+      counts: ImportCounts;
+      runId: string;
+      jobId: string;
+      warnings: string[];
+    }
   | { ok: false; error: string };
 
 // Saves an upload from the /import form and queues the rest: reads the files, makes the account
@@ -184,7 +191,7 @@ export async function saveUpload(
   if (accountId === NEW_ACCOUNT_ID) {
     const fields = accountFields(formData, "new.");
     if (typeof fields === "string") return { ok: false, error: fields };
-    const failed = previewCsvFiles(files).find((p) => !p.ok);
+    const failed = previewCsvFiles(files, fields.kind).find((p) => !p.ok);
     if (failed && !failed.ok) {
       await uploadFailed(db.userId, failed.reason);
       return { ok: false, error: `${failed.file}: ${failed.error}` };
@@ -228,15 +235,21 @@ export async function saveUpload(
     throw error;
   }
 
-  const { files: imported, balances, from, to, ...counts } = result;
-  const metadata = { ...counts, files: files.length };
+  const { files: imported, balances, from, to, warnings, ...counts } = result;
+  const metadata = { ...counts, files: files.length, controlWarnings: warnings.length };
   const day = (iso: string | null) => (iso ? new Date(`${iso}T00:00:00Z`) : null);
   await Promise.all([
     // The statement's own closing balances, kept now: the files themselves are never stored.
     keepFileBalances(db, accountId, balances),
     db.importRuns.updateMany({
       where: { id: run.id },
-      data: { accountId, rows: counts.inserted, fromDate: day(from), toDate: day(to) },
+      data: {
+        accountId,
+        rows: counts.inserted,
+        fromDate: day(from),
+        toDate: day(to),
+        controlWarnings: warnings,
+      },
     }),
   ]);
   // Independent writes, so at once: each is a round trip to the database (and PostHog).
@@ -257,5 +270,5 @@ export async function saveUpload(
     // The rest runs in the background (src/lib/import/background.ts), retried if it fails.
     enqueueJob("import_finish", { userId: db.userId, importRunId: run.id }),
   ]);
-  return { ok: true, accountId, counts, runId: run.id, jobId };
+  return { ok: true, accountId, counts, runId: run.id, jobId, warnings };
 }

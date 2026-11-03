@@ -28,7 +28,10 @@
     "checks:eval": "CHAT_EVAL=1 vitest run src/lib/jane-agent/checks/eval.cli.test.ts --silent=false",
     "checks:nightly": "CHAT_NIGHTLY=1 vitest run src/lib/jane-agent/checks/nightly.cli.test.ts --silent=false",
     "checks:proof": "CHAT_PROOF=1 vitest run src/lib/jane-agent/checks/proof.cli.test.ts --silent=false",
-    "accuracy": "ACCURACY=1 vitest run src/accuracy/scoreboard.cli.test.ts src/accuracy/csv/scoreboard.cli.test.ts --silent=false"
+    "accuracy": "ACCURACY=1 vitest run src/accuracy/scoreboard.cli.test.ts src/accuracy/csv/scoreboard.cli.test.ts --silent=false",
+    "labels:prepare": "LABELS_STEP=prepare vitest run src/accuracy/labels/labels.cli.test.ts --silent=false",
+    "labels:seal": "LABELS_STEP=seal vitest run src/accuracy/labels/labels.cli.test.ts --silent=false",
+    "labels:score": "LABELS_STEP=score vitest run src/accuracy/labels/labels.cli.test.ts --silent=false"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",

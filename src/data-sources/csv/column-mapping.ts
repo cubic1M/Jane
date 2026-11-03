@@ -165,7 +165,7 @@ const SPENDING: readonly PfcPrimary[] = [
 
 // Whether the description says money in (pay, a deposit) or out (groceries, rent), by the
 // same rules that categorize transactions. Null when it says neither.
-function directionOf(description: string): "in" | "out" | null {
+export function directionOf(description: string): "in" | "out" | null {
   const asIn = categorizeByRules({ description, amountCents: -1, hints: {} });
   if (asIn?.primary === "INCOME") return "in";
   const asOut = categorizeByRules({ description, amountCents: 1, hints: {} });

@@ -15,6 +15,18 @@ export function uploadTooBig(bytes: number): string {
   return `These files add up to ${(bytes / 1024 / 1024).toFixed(1)} MB. Upload at most ${MAX_UPLOAD_BYTES / 1024 / 1024} MB at a time: fewer files, or fewer months in each.`;
 }
 
+// Control totals: whether a statement adds up (src/data-sources/csv/control-totals.ts). A cent
+// either way is rounding in the export, not a missing row.
+export const CONTROL_TOLERANCE_CENTS = 1;
+// More than this share of the days not following on: the column isn't a running balance at all,
+// so it isn't used as one. Fewer: the balance is the bank's, and some rows are missing.
+export const CONTROL_BALANCE_BROKEN_SHARE = 0.5;
+// How many days a file's balance has to run the wrong way before its signs are called backwards.
+export const CONTROL_MIN_STEPS = 3;
+// Without a balance, how many rows the rules recognize, and the share of them against their sign.
+export const CONTROL_MIN_SIGN_VOTES = 5;
+export const CONTROL_SIGN_REVERSED_SHARE = 0.8;
+
 // The account choice on /import for "a new account from these files".
 export const NEW_ACCOUNT_ID = "new";
 
