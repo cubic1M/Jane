@@ -2,6 +2,8 @@ import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 import prettier from "eslint-config-prettier/flat";
+import rawDbAllowlist from "./src/config/raw-db-allowlist.json" with { type: "json" };
+import janeRules from "./src/security/lint/no-raw-db.mjs";
 
 const eslintConfig = defineConfig([
   ...nextVitals,
@@ -22,6 +24,21 @@ const eslintConfig = defineConfig([
         },
       ],
     },
+  },
+  {
+    // New raw database client uses fail; what was there when the rule came in is listed, and the
+    // list only shrinks (docs/security/access-proof.md). Tests and the two files that build the
+    // client aren't app code reaching for it.
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: [
+      "**/*.test.{ts,tsx}",
+      "src/lib/db.ts",
+      "src/lib/rls-pg.ts",
+      "src/test-setup/**",
+      "src/security/access-proof/**",
+    ],
+    plugins: { jane: janeRules },
+    rules: { "jane/no-raw-db": ["error", { allowed: rawDbAllowlist }] },
   },
   globalIgnores([
     ".next/**",
