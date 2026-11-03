@@ -32,7 +32,11 @@ export async function tryJane(_previous: TryState, formData: FormData): Promise<
   }
   const timing = phaseTimer("try_click");
   const h = await headers();
-  if (!(await hit("trial", ipKey(h))).ok || !(await hit("trialEveryone", "all")).ok) {
+  if (
+    !(await hit("trial", ipKey(h))).ok ||
+    !(await hit("trialEveryone", "all")).ok ||
+    !(await hit("trialEveryoneDay", "all")).ok
+  ) {
     return { error: "Lots of people are trying Jane from here. Please try again in an hour." };
   }
   timing.mark("rate_limit");

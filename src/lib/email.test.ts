@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { sendMagicLink } from "./email";
+import { readFileSync } from "node:fs";
+import { SIGN_IN_LINK_HOURS, sendMagicLink } from "./email";
 
 const URL_WITH_QUERY = "https://app.test/api/auth/callback/resend?token=abc&email=a%40b.com";
 
@@ -121,6 +122,14 @@ describe("sendMagicLink", () => {
     expect(JSON.parse(fetchMock.mock.calls[0][1].body).text).toContain(
       "https://jane.vercel.example/api/auth/callback/resend?token=abc",
     );
+  });
+
+  it("says the link lasts an hour, which is what Auth.js is told", async () => {
+    await sendMagicLink({ to: "a@b.com", url: URL_WITH_QUERY });
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.text).toContain("expires in an hour");
+    expect(SIGN_IN_LINK_HOURS).toBe(1);
+    expect(readFileSync("src/auth.ts", "utf8")).toContain("maxAge: SIGN_IN_LINK_HOURS * 60 * 60");
   });
 
   it("throws when Resend rejects the email", async () => {

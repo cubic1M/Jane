@@ -7,6 +7,7 @@ import { allowSignIn } from "@/lib/auth-gate";
 import { logAuthError, recordSignIn } from "@/lib/auth-events";
 import { sessionPayload } from "@/lib/auth-session";
 import { db } from "@/lib/db";
+import { SIGN_IN_LINK_HOURS } from "@/lib/email";
 import { sendSignInEmail } from "@/lib/sign-in-email";
 
 // Google is optional until its OAuth client is set up (docs/setup/google-sign-in.md): without
@@ -21,6 +22,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Resend({
       apiKey: process.env.RESEND_API_KEY,
       from: process.env.EMAIL_FROM,
+      // A link in an inbox is a key: an hour, not Auth.js's day.
+      maxAge: SIGN_IN_LINK_HOURS * 60 * 60,
       sendVerificationRequest: ({ identifier, url }) => sendSignInEmail({ to: identifier, url }),
     }),
     // A Google sign-in may join an account first created with a magic link to the same address, when

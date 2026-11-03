@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { appBase } from "@/lib/digest/links";
-import { sendEmail } from "@/lib/email";
+import { escapeHtml, sendEmail } from "@/lib/email";
+import { hit } from "@/lib/rate-limit";
 import {
   HouseholdError,
   acceptInvite,
@@ -31,6 +32,9 @@ export async function invite(
   formData: FormData,
 ): Promise<HouseholdState> {
   const user = await requireUser();
+  if (!(await hit("householdInvites", user.id)).ok) {
+    return { ok: false, message: "That's a lot of invites. Try again in an hour." };
+  }
   const email = String(formData.get("email") ?? "");
   let token: string;
   try {
@@ -47,7 +51,7 @@ export async function invite(
       to: email.trim(),
       subject: `${user.email} invited you to share a household on Jane`,
       text: `${user.email} invited you to see some of their accounts, and share some of yours if you like.\n\nJoin: ${link}\n\nThe link works for 7 days, only when you sign in with this email.`,
-      html: `<p>${user.email} invited you to see some of their accounts, and share some of yours if you like.</p><p><a href="${link}">Join their household</a></p><p>The link works for 7 days, only when you sign in with this email.</p>`,
+      html: `<p>${escapeHtml(user.email ?? "")} invited you to see some of their accounts, and share some of yours if you like.</p><p><a href="${escapeHtml(link)}">Join their household</a></p><p>The link works for 7 days, only when you sign in with this email.</p>`,
     }).catch((error) => log.error("Household invite email failed", { error: String(error) }));
   }
   revalidatePath("/household");

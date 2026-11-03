@@ -1,9 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { buildCalendar, escapeText, foldLine } from "./ics";
 
+describe("escapeText on a statement's words", () => {
+  // A line of its own in the feed would be a new property, chosen by whoever wrote the text.
+  it("escapes a semicolon, and a lone carriage return can't start a line", () => {
+    expect(escapeText("a;b")).toBe("a\\;b");
+    expect(escapeText("x\rATTENDEE:evil")).toBe("x\\nATTENDEE:evil");
+    expect(escapeText("x\r\ny\nz")).toBe("x\\ny\\nz");
+  });
+});
+
 describe("iCalendar writing", () => {
   it("escapes text values", () => {
-    expect(escapeText("Rent; due, now\\later\nok")).toBe("Rent\; due\\, now\\\\later\\nok");
+    expect(escapeText("Rent; due, now\\later\nok")).toBe("Rent\\; due\\, now\\\\later\\nok");
   });
 
   it("folds lines over 75 octets, counting multi-byte characters", () => {

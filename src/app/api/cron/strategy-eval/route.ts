@@ -1,3 +1,4 @@
+import { cronAuthorized } from "@/lib/cron-auth";
 import { NextResponse } from "next/server";
 import { recordRun } from "@/lib/health";
 import { runStrategyEvaluation } from "@/lib/investments/strategy-eval";
@@ -9,8 +10,7 @@ import { runStrategyEvaluation } from "@/lib/investments/strategy-eval";
 export const maxDuration = 300;
 
 export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!cronAuthorized(request, process.env.CRON_SECRET)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   return NextResponse.json(await recordRun("strategy-eval", () => runStrategyEvaluation()));

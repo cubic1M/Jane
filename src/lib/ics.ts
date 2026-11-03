@@ -15,9 +15,9 @@ const MAX_LINE_OCTETS = 75;
 export function escapeText(value: string): string {
   return value
     .replaceAll("\\", "\\\\")
-    .replaceAll(";", "\;")
+    .replaceAll(";", "\\;")
     .replaceAll(",", "\\,")
-    .replace(/\r?\n/g, "\\n");
+    .replace(/\r\n?|\n/g, "\\n");
 }
 
 // Lines longer than 75 octets are folded with CRLF and a space.

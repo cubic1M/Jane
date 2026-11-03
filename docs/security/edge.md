@@ -103,8 +103,8 @@ Two layers:
 - **Sample people** are recognised by their session token's `trial_` prefix, so the proxy needs
   no database read to know. Anyone can make one, so nothing about one calls Claude except the
   answers they type (no scan, explanation, summary, strategist or upload read), and all of them
-  together stop at $1 a day and half the month's chat budget. New ones stop at 300 an hour across
-  every IP. `src/lib/trial-claude.integration.test.ts` holds this.
+  together stop at $1 a day and half the month's chat budget. New ones stop at 100 an hour and 300 a
+  day across every IP. `src/lib/trial-claude.integration.test.ts` holds this.
 - **If the database is unreachable**, the edge check lets the request through (fail open) and
   logs it. The feature limits and every other check still stand, and Jane stays up. Vercel's
   platform DDoS protection sits in front of all of this.

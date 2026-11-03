@@ -65,7 +65,8 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   return response;
 }
 
-// Not Next.js's own files or the files in public/ (anything with a dot, like sw.js or a font).
+// Not Next.js's own files or the files in public/, by name. "Anything with a dot" also let
+// /report/abc.x past the rate limits, the Content-Security-Policy and the admin log.
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|.*\\.[a-zA-Z0-9]+$).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon\\.ico$|sw\\.js$|landing/).*)"],
 };

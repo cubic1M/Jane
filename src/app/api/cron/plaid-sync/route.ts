@@ -1,3 +1,4 @@
+import { cronAuthorized } from "@/lib/cron-auth";
 import { NextResponse } from "next/server";
 import { CRON_SYNC_BUDGET_MS, CRON_SYNC_LIMIT, STALE_SYNC_HOURS } from "@/config/plaid";
 import { db } from "@/lib/db";
@@ -44,8 +45,7 @@ export const maxDuration = 300;
 
 export async function GET(request: Request) {
   const startedAt = Date.now();
-  const secret = process.env.CRON_SECRET;
-  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!cronAuthorized(request, process.env.CRON_SECRET)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   await deleteTemporaryTries();

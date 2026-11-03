@@ -8,6 +8,7 @@ describe("reportPath", () => {
     expect(reportPath("/transactions?q=planned+parenthood")).toBe("/transactions");
     expect(reportPath("/import#history")).toBe("/import");
     expect(reportPath("//evil.example/x")).toBe("/");
+    expect(reportPath("/\\evil.example/x")).toBe("/");
     expect(reportPath("https://evil.example")).toBe("/");
     expect(reportPath(undefined)).toBe("/");
   });

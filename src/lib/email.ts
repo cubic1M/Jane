@@ -5,6 +5,9 @@ import { isTrialEmail } from "@/lib/trial-ids";
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
+// How long a sign-in link works. The emails and /login/check-email say so in words.
+export const SIGN_IN_LINK_HOURS = 1;
+
 type Email = {
   to: string;
   subject: string;
@@ -75,7 +78,7 @@ export async function sendEmail({
   return { id: typeof body?.id === "string" ? body.id : null };
 }
 
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
   return value
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
@@ -104,10 +107,10 @@ export async function sendMagicLink({
     await sendEmail({
       to,
       subject: "Your sign-in link for Jane",
-      text: `Sign in to Jane:\n${url}\n\nThis link expires in 24 hours and works once. If you didn't ask for it, ignore this email.`,
+      text: `Sign in to Jane:\n${url}\n\nThis link expires in an hour and works once. If you didn't ask for it, ignore this email.`,
       html: `<p>Sign in to Jane:</p>
   <p><a href="${link}">Sign in</a></p>
-  <p>This link expires in 24 hours and works once. If you didn't ask for it, ignore this email.</p>`,
+  <p>This link expires in an hour and works once. If you didn't ask for it, ignore this email.</p>`,
     });
   } catch (error) {
     // Auth.js logs only "Error": why a sign-in email failed is said here, once, with no address or

@@ -64,8 +64,10 @@ export const RATE_LIMITS = {
   // 20, not 5: offices, schools and households share one IP, and people try several of the
   // eight sample lives (step 252).
   trial: { limit: 20, windowSeconds: 60 * 60 },
-  // The same, for everyone together: rotating IPs can't fill the database with sample people.
-  trialEveryone: { limit: 300, windowSeconds: 60 * 60 },
+  // The same, for everyone together: rotating IPs can't fill the database with sample people, who
+  // take about 600 KB each until they're deleted a day later.
+  trialEveryone: { limit: 100, windowSeconds: 60 * 60 },
+  trialEveryoneDay: { limit: 300, windowSeconds: 24 * 60 * 60 },
   // Questions Claude answers for one sample (Try Jane) person, in all: one very long window.
   claudeTrial: { limit: 25, windowSeconds: 60 * 60 * 24 * 365 * 10 },
   // Trying Jane with your own statement (src/config/statement-trial.ts): starts per IP, starts by
@@ -76,6 +78,8 @@ export const RATE_LIMITS = {
     limit: STATEMENT_TRIAL_CHAT_ANSWERS,
     windowSeconds: 60 * 60 * 24 * 365 * 10,
   },
+  // Household invites, per person: each emails an address they typed.
+  householdInvites: { limit: 5, windowSeconds: 60 * 60 },
   // Invite codes made by an admin, per admin.
   invites: { limit: 30, windowSeconds: 60 * 60 },
   // Server errors kept for /admin/errors, and alert emails to the team, across every request. Anyone

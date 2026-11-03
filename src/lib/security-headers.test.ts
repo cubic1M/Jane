@@ -116,6 +116,9 @@ describe("next.config.ts", () => {
   it("keeps Cache Components off, which the nonce needs", () => {
     // Prerendered shells carry build-time scripts without a nonce, which the policy blocks.
     expect(nextConfig.cacheComponents).toBe(false);
+    expect(nextConfig.poweredByHeader).toBe(false);
+    // /_next/image?url=/api/export reached the route: a 401 signed out, not a refusal.
+    expect(nextConfig.images?.localPatterns).toEqual([]);
   });
 
   it("puts the API policy on API routes, then the documents' own after it", async () => {
