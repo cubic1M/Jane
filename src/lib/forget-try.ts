@@ -10,10 +10,14 @@ export const TRY_SESSION_KEYS = [
   "jane.askedFromTree",
 ] as const;
 
-export function forgetThisTry(storage?: Pick<Storage, "removeItem">): void {
+// A key may end in the person's id (the dock's cards), so these are matched as far as the id.
+const kept = (key: string) => TRY_SESSION_KEYS.some((k) => key === k || key.startsWith(`${k}:`));
+
+export function forgetThisTry(storage?: Pick<Storage, "length" | "key" | "removeItem">): void {
   try {
     const target = storage ?? window.sessionStorage;
-    for (const key of TRY_SESSION_KEYS) target.removeItem(key);
+    const keys = Array.from({ length: target.length }, (_, i) => target.key(i));
+    for (const key of keys) if (key && kept(key)) target.removeItem(key);
   } catch {
     // Private window or storage blocked: nothing was kept.
   }
