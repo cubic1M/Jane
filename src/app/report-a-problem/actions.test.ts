@@ -11,7 +11,11 @@ vi.mock("@/lib/db-scoped", () => ({
 }));
 vi.mock("@/lib/audit", () => ({ logAudit }));
 vi.mock("@/lib/analytics", () => ({ track }));
+vi.mock("@/lib/rate-limit", () => ({
+  hit: vi.fn(async () => ({ ok: true, remaining: 1, retryAfterSeconds: 0 })),
+}));
 
+import { hit } from "@/lib/rate-limit";
 import { sendProblemReport } from "./actions";
 
 const form = (fields: Record<string, string>) => {
@@ -44,6 +48,15 @@ describe("sendProblemReport", () => {
       ok: false,
       error: "Say what went wrong, in a few words.",
     });
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  // /admin/reports shows the newest 200, and a sample person needs no account.
+  it("stops at a few reports an hour, so nobody can push real ones off the page", async () => {
+    vi.mocked(hit).mockResolvedValueOnce({ ok: false, remaining: 0, retryAfterSeconds: 60 });
+    const result = await sendProblemReport(form({ from: "/home", message: "It broke." }));
+    expect(result).toMatchObject({ ok: false });
+    expect(hit).toHaveBeenCalledWith("problemReports", "user_1");
     expect(create).not.toHaveBeenCalled();
   });
 });

@@ -6,15 +6,15 @@ import { appBase } from "@/lib/digest/links";
 import { membershipPriceCents, stripeEnabled } from "@/lib/membership/offer";
 import { StripeError, createCheckoutSession } from "@/lib/membership/stripe";
 import { getCurrentUser } from "@/lib/session";
-import { isStatementTrialUser } from "@/lib/trial-ids";
+import { isTrialUser } from "@/lib/trial-ids";
 
 // "Become a founding member": a one-time Stripe Checkout payment. Only offered once
 // Stripe keys are set; the payment itself is recorded by the Stripe webhook.
 export async function POST() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
-  // Nothing lasting to pay for: a temporary try is deleted within a couple of days.
-  if (isStatementTrialUser(user.id)) {
+  // Nothing lasting to pay for: a sample person or a temporary try is deleted within a couple of days.
+  if (isTrialUser(user.id)) {
     return NextResponse.json(
       { error: "Memberships aren't part of a temporary try." },
       { status: 403 },

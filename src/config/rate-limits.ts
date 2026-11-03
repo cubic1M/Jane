@@ -78,6 +78,9 @@ export const RATE_LIMITS = {
     limit: STATEMENT_TRIAL_CHAT_ANSWERS,
     windowSeconds: 60 * 60 * 24 * 365 * 10,
   },
+  // Problem reports, per person: a sample person needs no account, and /admin/reports shows the newest
+  // 200, so a flood would push real ones off the page.
+  problemReports: { limit: 5, windowSeconds: 60 * 60 },
   // Household invites, per person: each emails an address they typed.
   householdInvites: { limit: 5, windowSeconds: 60 * 60 },
   // Invite codes made by an admin, per admin.
