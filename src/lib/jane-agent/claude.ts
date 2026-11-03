@@ -15,7 +15,9 @@ import {
   CHAT_CLAUDE_REWRITES,
 } from "@/config/agent-chat";
 import { ASK_BLOCKED_REPLY } from "@/config/ask";
+import { FIGURE_NAMES_LIMIT } from "@/config/figure-ledger";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { scopedFor } from "@/lib/db-scoped";
 import { anthropic, chatModel } from "@/lib/anthropic";
 import { addSpend, costInHundredthsOfCents, overDailyCap } from "./spend";
 import type { Topic } from "./context";
@@ -34,6 +36,12 @@ import { DEBT_TOOL_STATUS } from "./debt-tools";
 import { parseDecision } from "./decision-intents";
 import { areaTools, chatTools, isArea, lookupsFor, sectorsFor } from "./tool-select";
 import { CHAT_TOOLS, chatPrimer, proposeAction, runChatTool, type Proposal } from "./claude-tools";
+import {
+  calculatorInputsNotOnFile,
+  FigureLedger,
+  typedAmountsCents,
+  type FigureProblem,
+} from "./figure-ledger";
 import { CHANGE_PRACTICE_TOOL, proposePracticeChange } from "./practice-tools";
 import { BLOCK_KINDS, buildBlock, type BlockKind } from "./block-data";
 import { blockCents, drawBlock, type AnswerBlock } from "./blocks";
@@ -65,7 +73,7 @@ import { oneLine, UNTRUSTED_TEXT_RULE } from "@/lib/untrusted-text";
 // the answer streamed as it's written (onEvent), a sentence at a time once each passes the
 // guardrails (./guarded-text), with what Jane is looking up in between.
 
-export const CHAT_PROMPT_VERSION = "chat-v33";
+export const CHAT_PROMPT_VERSION = "chat-v34";
 
 // The one rule that differs in demo advice mode (spec step 98).
 const NO_ADVICE = `- Never give investment, tax or legal advice: don't mention investments, and never tell them what to buy, sell, file, deduct, claim, write off or set aside, how to pay less tax, or how the tax rules or the law treat their money. Facts from their own accounts and your tools are not advice, so give them: what came in and went out (what a company paid them, what they paid it, the net), and a tax figure a tool gives, said as your estimate. For a tax question, give those facts first, then say in one sentence that you can't tell them what to file or deduct. Don't suggest financial products beyond Jane's pick from finding_details.`;
@@ -103,6 +111,7 @@ How to answer:
 - Their main numbers right now come after these instructions. Answer from them when you can; use the tools for anything else. Never guess. If neither has it, say so plainly.
 - When you want a number that no tool gives directly (a percent of a balance, a year of a monthly amount, the difference between two amounts, how long a payment takes to clear a balance), use the calculate tool with the amounts exactly as given: any sum, difference, total or percent, even of two amounts you can see. Never work out an amount yourself.
 - Use only dollar amounts that appear in those numbers or in tool results, written exactly as they appear there (with the cents). Don't add, subtract, round or estimate amounts yourself.
+- The same goes for percents, counts and dates: say them as a tool gives them, and never say one thing's figure about another, one month's about another or a month's as a year's. For one amount as a percent of another, use calculate's share.
 - Keep it short: 3 sentences, about 400 characters, and never more than 550. Say the answer first and stop when it is said. A list only when they ask for one or for bills and subscriptions. Plain words, no jargon, no headings. Don't write anything before a lookup; just look it up.
 - Answer the question that was asked. what_matters_most and the open findings are background, not an agenda: mention one only when it directly answers the question or is the one clear next step, never to change the subject ("my car broke down" is not a reason to bring up a subscription, "do I need Medigap" is not a reason to bring up a quote), and never open with "Tapping Yes".
 - When someone is going through something hard (a divorce, a death, a job loss, a car that broke down): open with one kind, plain sentence; then their two or three key facts (cash, the next thing due); then one concrete first step; then offer to go through more. No platitudes, no pitch for a product or a finding. After a death, don't explain the legal process (probate, wills, who inherits): say an estate attorney and the banks' bereavement teams handle that, and keep to what you can see in the numbers (which accounts are linked, what is due soon).
@@ -266,7 +275,9 @@ function rewriteRequest(
   issues: GuardrailIssue[],
   allowedCents: readonly number[],
   advice: boolean,
+  wrongFigures: readonly FigureProblem[] = [],
 ): string {
+  const figureReasons = wrongFigures.map((problem) => `${problem.why}.`);
   const reasons = issues.map((issue) => {
     switch (issue) {
       case "unsupported_dollar_figure":
@@ -295,7 +306,7 @@ function rewriteRequest(
         return "It's missing required wording.";
     }
   });
-  return `(From the app, not the person.) That answer can't be shown yet:\n- ${reasons.join("\n- ")}\nWrite the whole answer again for the person: fix only those parts and keep the rest, your suggestion and the other figures included. Don't mention this note.`;
+  return `(From the app, not the person.) That answer can't be shown yet:\n- ${[...reasons, ...figureReasons].join("\n- ")}\nWrite the whole answer again for the person: fix only those parts and keep the rest, your suggestion and the other figures included. Don't mention this note.`;
 }
 
 // What Jane says in place of the sentences a blocked answer loses.
@@ -315,18 +326,51 @@ export const REFUSAL_RETRY =
 export const EMPTY_RETRY =
   "(From the app, not the person.) Your last turn ended with no words, so the person saw nothing. Answer their message now, using what your lookups returned. Don't mention this note.";
 
+// The names the person's own money goes by, so "Hulu is $15.49" is seen as naming something even
+// when no tool has said Hulu yet.
+async function personalNames(userId: string, client: PrismaClient): Promise<string[]> {
+  try {
+    const db = scopedFor(userId, client);
+    const [merchants, accounts] = await Promise.all([
+      db.transactions.findMany({
+        where: { merchantName: { not: null } },
+        distinct: ["merchantName"],
+        select: { merchantName: true },
+        take: FIGURE_NAMES_LIMIT,
+      }),
+      db.accounts.findMany({ select: { name: true } }),
+    ]);
+    return [
+      ...merchants.flatMap((m) => (m.merchantName ? [m.merchantName] : [])),
+      ...accounts.map((a) => a.name),
+    ];
+  } catch {
+    // Only what the tools name, then: a figure can't be wrong about a name nobody knows.
+    return [];
+  }
+}
+
 // A blocked answer with only its sentences that pass, and one line saying what Jane can't advise
 // on: null when what's left isn't an answer (no figure, hardly a sentence) or still doesn't pass.
 export function factsOnly(
   text: string,
   allowedCents: readonly number[],
   profile: GuardrailProfile,
+  // A sentence with a number the figure ledger says is wrong goes too.
+  figuresPass: (sentence: string) => boolean = () => true,
 ): string | null {
-  const { kept, dropped } = splitByGuardrails(text, allowedCents, profile);
+  const split = splitByGuardrails(text, allowedCents, profile);
+  const { dropped } = split;
+  const kept = split.kept.filter(figuresPass);
+  const lostAFigure = kept.length < split.kept.length;
   const body = kept.join(" ");
   // Two whole sentences are an answer even without a figure ("Pay off the card first. It costs
   // more than it earns."); one short one isn't.
-  if (dropped.length === 0 || body.length < 40 || (!/\d/.test(body) && kept.length < 2)) {
+  if (
+    (dropped.length === 0 && !lostAFigure) ||
+    body.length < 40 ||
+    (!/\d/.test(body) && kept.length < 2)
+  ) {
     return null;
   }
   const lost = new Set(dropped.flatMap((d) => d.issues));
@@ -627,6 +671,14 @@ async function askClaude(
     dollarFigures(text).map((f) => f.cents),
   );
   allowedCents.push(...primer.cents);
+  // What each figure is about, where allowedCents only says it was given (./figure-ledger.ts).
+  const ledger = new FigureLedger();
+  ledger.addRulesOfThumb(advice ? SYSTEM_DEMO_ADVICE : SYSTEM);
+  ledger.addNames(await personalNames(userId, client));
+  ledger.addText(question);
+  ledger.addLines(memory ?? "");
+  ledger.addLines(primer.text);
+  const figuresPass = (text: string) => ledger.problems(text, now).length === 0;
   let prepared: Awaited<ReturnType<typeof quotesAnswer>> | null = null;
   if (shopFetch) {
     const reply = await Promise.race([
@@ -636,6 +688,7 @@ async function askClaude(
     if (reply?.actions.some((a) => a.kind !== "link")) {
       prepared = reply;
       allowedCents.push(...dollarFigures(reply.body).map((f) => f.cents));
+      ledger.addText(reply.body);
     }
   }
   let overviewBlock = "";
@@ -647,6 +700,7 @@ async function askClaude(
       const { name, out, ms } = result.value;
       lines.push(`${name}: ${out.content}`);
       allowedCents.push(...out.cents, ...dollarFigures(out.content).map((f) => f.cents));
+      ledger.addToolResult(out.content);
       timing.tools.push({ name: `${name} (up front)`, ms });
     });
     if (lines.length > 0) {
@@ -667,6 +721,7 @@ async function askClaude(
       );
       timing.tools.push({ name: "finding_details (up front)", ms: Date.now() - lookedUp });
       allowedCents.push(...detail.cents, ...dollarFigures(detail.content).map((f) => f.cents));
+      ledger.addToolResult(detail.content);
       findingBlock = `\n\nThe finding just discussed (finding_details, already looked up, id ${topic.findingId}):\n${detail.content}`;
     } catch {
       // Without it Claude can still look the finding up itself.
@@ -726,6 +781,7 @@ async function askClaude(
       if (!BUTTON_TALK.test(text)) onEvent({ type: "text", text: plainText(text) });
     },
     profile,
+    figuresPass,
   );
   const system: Anthropic.TextBlockParam[] = [
     // The tools and instructions are the same bytes for every question in each mode, so they're
@@ -974,6 +1030,7 @@ async function askClaude(
           if (result.ok) {
             proposal = { ok: true, actions: result.actions, refs: result.refs, line: result.line };
             allowedCents.push(...result.cents);
+            ledger.addText(result.line ?? "");
           }
           results.push({
             type: "tool_result",
@@ -1042,10 +1099,27 @@ async function askClaude(
           continue;
         }
         if (block.name === "decision") decisionUsed = true;
+        // A sum is only as good as what went in, or a made-up amount comes back as a supported one.
+        if (block.name === "calculate") {
+          const notOnFile = calculatorInputsNotOnFile(block.input, [
+            ...allowedCents,
+            ...typedAmountsCents(`${question} ${memory ?? ""}`),
+          ]);
+          if (notOnFile.length > 0) {
+            results.push({
+              type: "tool_result",
+              tool_use_id: block.id,
+              content: `These amounts aren't in their numbers or a tool's result: ${notOnFile.join(", ")}. Look them up first, and calculate with them as given.`,
+              is_error: true,
+            });
+            continue;
+          }
+        }
         const toolStarted = Date.now();
         const output = await runChatTool(userId, block.name, block.input, { client, now });
         timing.tools.push({ name: block.name, ms: Date.now() - toolStarted });
         allowedCents.push(...output.cents, ...dollarFigures(output.content).map((f) => f.cents));
+        ledger.addToolResult(output.content);
         if (output.options) offered = output.options;
         results.push({ type: "tool_result", tool_use_id: block.id, content: output.content });
       }
@@ -1117,13 +1191,22 @@ async function askClaude(
       timing.guardrails.push(...check.issues);
       timing.guardrailRules.push(...guardrailMatches(spoken, allowedCents, profile).slice(0, 6));
     }
-    if (!check.ok && rewrites < CHAT_CLAUDE_REWRITES) {
+    // One wrong number fails the answer, the same way a guardrail does. Codes only in the log.
+    const wrongFigures = ledger.problems(spoken, now);
+    const issues = check.ok ? [] : check.issues;
+    timing.guardrails.push(...wrongFigures.map((p) => `figure:${p.kind}`));
+    const passed = check.ok && wrongFigures.length === 0;
+    if (!passed && rewrites < CHAT_CLAUDE_REWRITES) {
       // The rewrite gets a turn of its own even when the lookups used them all.
       if (turn + 1 >= turnLimit) turnLimit += 1;
       // Once, Claude is told what can't be shown and answers again.
       rewrites += 1;
       timing.rewrites += 1;
-      timing.rewriteReasons.push(`guardrail:${check.issues.join("+")}`);
+      timing.rewriteReasons.push(
+        issues.length > 0
+          ? `guardrail:${issues.join("+")}`
+          : `figures:${[...new Set(wrongFigures.map((p) => p.kind))].join("+")}`,
+      );
       draft.reset();
       onEvent({ type: "reset" });
       onEvent({ type: "status", text: "Checking my answer…" });
@@ -1135,11 +1218,11 @@ async function askClaude(
       });
       messages.push({
         role: "user",
-        content: rewriteRequest(spoken, check.issues, allowedCents, advice),
+        content: rewriteRequest(spoken, issues, allowedCents, advice, wrongFigures),
       });
       continue;
     }
-    if (check.ok && !shapeRewritten && tooLong(spoken, question, Boolean(proposal?.line))) {
+    if (passed && !shapeRewritten && tooLong(spoken, question, Boolean(proposal?.line))) {
       // Once: shorter, and no list the person didn't ask for.
       shapeRewritten = true;
       timing.rewrites += 1;
@@ -1159,12 +1242,15 @@ async function askClaude(
       });
       continue;
     }
-    if (!check.ok) {
+    if (!passed) {
       // The issues only, never the text: it's about the person's money.
-      log.warn("Jane's chat answer was blocked by the guardrails", { issues: check.issues });
+      log.warn("Jane's chat answer was blocked by the guardrails", {
+        issues,
+        ...(wrongFigures.length > 0 ? { figures: wrongFigures.map((p) => p.kind) } : {}),
+      });
       // Still blocked after the rewrite: its facts, without the sentences that can't be shown,
       // rather than the rules answering something else (founder 10-30).
-      const facts = factsOnly(spoken, allowedCents, profile);
+      const facts = factsOnly(spoken, allowedCents, profile, figuresPass);
       if (facts) {
         timing.reason = "facts_only";
         return {
@@ -1176,7 +1262,7 @@ async function askClaude(
       return {
         kind: "blocked",
         reply: { body: ASK_BLOCKED_REPLY, actions: [], refs: {} },
-        issues: check.issues,
+        issues,
       };
     }
     const refs: Reply["refs"] = { ...(proposal?.refs ?? {}) };

@@ -22,6 +22,8 @@ export class GuardedText {
     private readonly show: (text: string) => void,
     // Demo advice mode (spec step 98) checks with the demo profile.
     private readonly profile: GuardrailProfile = "standard",
+    // Whatever else has to pass before text is shown (the figure ledger, ./figure-ledger.ts).
+    private readonly alsoPasses: (text: string) => boolean = () => true,
   ) {}
 
   push(delta: string): void {
@@ -53,7 +55,10 @@ export class GuardedText {
   private release(end: number): void {
     if (this.stopped || end === 0) return;
     const next = this.held.slice(0, end);
-    if (!checkGuardrails(this.shown + next, this.allowedCents(), undefined, this.profile).ok) {
+    if (
+      !checkGuardrails(this.shown + next, this.allowedCents(), undefined, this.profile).ok ||
+      !this.alsoPasses(this.shown + next)
+    ) {
       this.stopped = true;
       return;
     }

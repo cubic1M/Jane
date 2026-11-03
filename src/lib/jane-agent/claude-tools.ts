@@ -371,13 +371,21 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
   {
     name: "calculate",
     description:
-      'Arithmetic for a number you want that no tool gives directly: percent_of (percent of an amount, e.g. the 4% rule on a balance), per_year and per_month (a monthly amount over a year, a yearly amount over a month), difference (between two amounts), sum, and payoff_months (how long to pay off a balance at a monthly payment and an APR, with the interest it costs). Pass amounts in dollars exactly as they appear in the person\'s numbers or a tool result, and say in "basis" where they came from. The result is computed, so you may state it. Never use it with an amount you made up.',
+      'Arithmetic for a number you want that no tool gives directly: share (amount as a percent of other_amount), percent_of (percent of an amount, e.g. the 4% rule on a balance), per_year and per_month (a monthly amount over a year, a yearly amount over a month), difference (between two amounts), sum, and payoff_months (how long to pay off a balance at a monthly payment and an APR, with the interest it costs). Pass amounts in dollars exactly as they appear in the person\'s numbers or a tool result, and say in "basis" where they came from. The result is computed, so you may state it. Never use it with an amount you made up.',
     input_schema: {
       type: "object",
       properties: {
         operation: {
           type: "string",
-          enum: ["percent_of", "per_year", "per_month", "difference", "sum", "payoff_months"],
+          enum: [
+            "percent_of",
+            "per_year",
+            "per_month",
+            "difference",
+            "sum",
+            "share",
+            "payoff_months",
+          ],
         },
         basis: {
           type: "string",
@@ -385,7 +393,7 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
         },
         percent: { type: "number" },
         amount: { type: "number", description: "Dollars." },
-        other_amount: { type: "number", description: "Dollars (difference)." },
+        other_amount: { type: "number", description: "Dollars (difference, share)." },
         amounts: { type: "array", items: { type: "number" }, description: "Dollars (sum)." },
         balance: { type: "number", description: "Dollars (payoff_months)." },
         monthly_payment: { type: "number", description: "Dollars (payoff_months)." },
