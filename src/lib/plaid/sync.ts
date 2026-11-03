@@ -55,6 +55,7 @@ import { keepFullSnapshot, runJaneAgentSafely } from "@/lib/jane-agent/run";
 import { scanSuggestions } from "@/lib/suggestions";
 import { markScanDone } from "@/lib/scan";
 import { phaseTimer } from "@/lib/trial-timing";
+import { meteredClaude } from "@/lib/claude-budget";
 
 // Brings one Plaid item up to date: accounts, transactions since the saved cursor
 // (added, modified and removed), recurring streams, loans and card rates (Liabilities,
@@ -146,7 +147,9 @@ async function saveAccounts(db: ScopedDb, itemId: string, sync: { accounts: Norm
 }
 
 async function saveTransactions(db: ScopedDb, accountIds: Map<string, string>, sync: PlaidSync) {
-  const categorized = await categorizeTransactions(sync.transactions, db);
+  const categorized = await categorizeTransactions(sync.transactions, db, {
+    claude: meteredClaude(db.userId),
+  });
   const rows = categorized.flatMap((t) => {
     const accountId = accountIds.get(t.accountRef);
     if (!accountId) return [];

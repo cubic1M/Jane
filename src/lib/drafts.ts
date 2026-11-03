@@ -3,6 +3,7 @@ import type { ActionType, FindingType } from "@/generated/prisma/client";
 import { anthropic, finishedText, llmEnabled, llmModel } from "@/lib/anthropic";
 import { prepareExplainInput } from "./explain-input";
 import { checkGuardrails } from "./guardrails";
+import { UNTRUSTED_TEXT_RULE } from "@/lib/untrusted-text";
 
 export const PLACEHOLDERS = {
   name: "[account holder name]",
@@ -145,7 +146,9 @@ const SYSTEM = `You draft a short message that a concierge team sends to a compa
 - Use the placeholders exactly as written for the customer's name and email. Never invent names, account numbers or other details.
 - Use only dollar amounts that appear in the input, written exactly as they appear.
 - Don't threaten, don't mention lawyers, laws or regulators, and don't promise anything.
-- For a call, write it as what the caller says; leave subject empty.`;
+- For a call, write it as what the caller says; leave subject empty.
+
+${UNTRUSTED_TEXT_RULE}`;
 
 const SCHEMA = {
   type: "object",

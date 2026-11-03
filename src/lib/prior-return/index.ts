@@ -14,6 +14,7 @@ import {
   type Source,
 } from "@/planning/prior-return";
 import { readReturn } from "./read";
+import { meteredClaude } from "@/lib/claude-budget";
 
 // A prior-year return read from an uploaded document (spec step 172), for the person to
 // confirm. Like a policy read (step 151): Claude's reading, checked by rules, each field
@@ -79,7 +80,7 @@ export async function readPriorReturn(
     client = defaultClient,
     now = new Date(),
     file = null,
-    claude = anthropic,
+    claude = meteredClaude(userId),
   }: Options & {
     file?: { bytes: Uint8Array; contentType: DocumentContentType } | null;
     claude?: typeof anthropic;

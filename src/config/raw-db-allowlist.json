@@ -65,6 +65,7 @@
   "src/lib/check-in.ts": 6,
   "src/lib/checklist.ts": 7,
   "src/lib/checkup.ts": 3,
+  "src/lib/claude-budget.ts": 13,
   "src/lib/close.ts": 9,
   "src/lib/coming-up.ts": 3,
   "src/lib/compare.ts": 13,

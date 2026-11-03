@@ -127,7 +127,9 @@ describe("draftForAction", () => {
       draft: { channel: "email", subject: "s", body: "b" },
       byClaude: true,
     });
-    expect(draftMessage).toHaveBeenCalledWith("request_refund", finding);
+    expect(draftMessage).toHaveBeenCalledWith("request_refund", finding, {
+      client: expect.any(Function),
+    });
     expect(logAudit).toHaveBeenCalledWith(
       { type: "admin", id: "admin_1" },
       "admin_drafted_message",

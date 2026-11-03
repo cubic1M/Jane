@@ -29,6 +29,7 @@ import {
   simulatedCall,
   type CallResult,
 } from "./provider";
+import { meteredClaude } from "@/lib/claude-budget";
 
 // The agent's phone calls (spec step 54): bill negotiation. A call only ever happens with
 // the person's own yes on that bill. The script comes from the playbook and the draft; the
@@ -95,7 +96,10 @@ export async function startCall(
   }
 
   const finding = action.decision.finding;
-  const draft = await draftMessage(action.type, finding, { useClaude: !isTrialUser(userId) });
+  const draft = await draftMessage(action.type, finding, {
+    useClaude: !isTrialUser(userId),
+    client: meteredClaude(userId),
+  });
   const prepared = draftPayload(action.type, finding);
   if (!draft || !prepared) {
     await handOff(userId, action, "No call script for this request.", options);

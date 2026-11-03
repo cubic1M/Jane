@@ -18,6 +18,7 @@ import { withReadCache } from "@/lib/read-cache";
 import { markScanDone } from "@/lib/scan";
 import { takeSnapshots } from "@/lib/snapshots";
 import { scanSuggestions } from "@/lib/suggestions";
+import { meteredClaude } from "@/lib/claude-budget";
 
 // An upload finished in the background (founder: "the import must not hold the page"). The tap
 // saves the rows, sorted by the rules, and returns; this job does the rest while the person
@@ -156,7 +157,11 @@ async function finishImportWork(userId: string, runId: string, options: Options)
   // After "done": Claude for what the rules didn't know, Jane's saved numbers, then the card text
   // and the chat.
   try {
-    if ((await categorizeLeftovers(db)) > 0) {
+    if (
+      (await categorizeLeftovers(db, {
+        claude: meteredClaude(userId),
+      })) > 0
+    ) {
       await workOut(userId, options, async () => {});
       await stage("done", await moneyFoundYearly(userId, options));
     }

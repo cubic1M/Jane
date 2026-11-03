@@ -5,6 +5,10 @@ import { CHAT_ALL_TRIALS_DAILY_CAP_CENTS } from "@/config/agent-chat";
 import { TRIAL_ID_PREFIX } from "@/config/trial";
 import { PrismaClient } from "@/generated/prisma/client";
 
+// A real person's background calls are counted on the app's own client (src/lib/claude-budget.ts).
+vi.hoisted(() => {
+  process.env.DATABASE_URL = process.env.TEST_DATABASE_URL ?? "";
+});
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 

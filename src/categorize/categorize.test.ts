@@ -126,7 +126,7 @@ describe("categorizeTransactions", () => {
       db,
     );
 
-    expect(classifyMerchants).toHaveBeenCalledWith(["fancy studio"]);
+    expect(classifyMerchants).toHaveBeenCalledWith(["fancy studio"], { claude: undefined });
     expect(createMany).toHaveBeenCalledWith({
       data: [
         {
@@ -221,7 +221,7 @@ describe("an upload's categories, quickly", () => {
       db,
       { askClaude: false },
     );
-    expect(classifyMerchants).toHaveBeenCalledWith([]);
+    expect(classifyMerchants).toHaveBeenCalledWith([], { claude: undefined });
     expect(results.map((r) => r.category?.detailed ?? null)).toEqual([
       "FOOD_AND_DRINK_GROCERIES",
       null,

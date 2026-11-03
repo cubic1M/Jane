@@ -2,6 +2,7 @@ import type { DocumentContentType } from "@/config/documents";
 import type { PolicyKind } from "@/config/insurance";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
+import { meteredClaude } from "@/lib/claude-budget";
 import { anthropic, llmModel } from "@/lib/anthropic";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
@@ -123,7 +124,7 @@ export async function readPolicyDocument(
     client = defaultClient,
     now = new Date(),
     file = null,
-    claude = anthropic,
+    claude = meteredClaude(userId),
   }: Options & {
     file?: { bytes: Uint8Array; contentType: DocumentContentType } | null;
     claude?: typeof anthropic;

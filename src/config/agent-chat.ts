@@ -428,6 +428,13 @@ export const CHAT_TRIAL_DAILY_CAP_CENTS = 60;
 // budget for the people who signed up. CHAT_TRIAL_MONTH_SHARE keeps part of it out of their reach.
 export const CHAT_ALL_TRIALS_DAILY_CAP_CENTS = 100;
 export const CHAT_TRIAL_MONTH_SHARE = 0.5;
+
+// Claude outside the chat, per person (plan item 13, src/lib/claude-budget.ts): reading uploads,
+// card words, sorting merchants, drafts. A first scan is the biggest day; the month stays well
+// under CHAT_MONTHLY_CAP_CENTS_DEFAULT so one person can't use it up. A sample person has none:
+// their scan and uploads use templates and rules (src/lib/trial.ts).
+export const CLAUDE_BACKGROUND_DAILY_CAP_CENTS = 50;
+export const CLAUDE_BACKGROUND_MONTHLY_CAP_CENTS = 150;
 export const CHAT_TYPICAL_ANSWER_CENTS = 2;
 // /admin/chat looks back this many days for what Jane couldn't answer.
 export const CHAT_UNANSWERED_DAYS = 30;

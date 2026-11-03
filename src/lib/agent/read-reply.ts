@@ -1,5 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { anthropic, finishedText, llmEnabled, llmModel } from "@/lib/anthropic";
+import { withoutLinks } from "@/lib/guardrails";
+import { UNTRUSTED_TEXT_RULE } from "@/lib/untrusted-text";
 
 // Reads a company's reply to the agent into what happens next. Claude reads it when it's
 // available; otherwise (or if Claude's answer doesn't fit) a few plain word rules do, and
@@ -97,7 +99,7 @@ export function readReplyByRules(body: string): ReplyReading {
   // The sentence that says what happened, or the first that isn't a pleasantry.
   const point =
     (rule && all.find((sentence) => rule.patterns.some((p) => p.test(sentence)))) ?? all[0] ?? "";
-  const summary = point.slice(0, 240) || "The company replied.";
+  const summary = withoutLinks(point).slice(0, 240) || "The company replied.";
   return {
     outcome,
     summary,
@@ -116,7 +118,9 @@ outcome:
 - "unclear": anything else.
 
 summary: one plain sentence for the customer, no more than 30 words, no promises.
-question: for needs_info, what they asked for, in plain words; otherwise an empty string.`;
+question: for needs_info, what they asked for, in plain words; otherwise an empty string.
+
+${UNTRUSTED_TEXT_RULE}`;
 
 const SCHEMA = {
   type: "object",
@@ -164,8 +168,9 @@ export async function readReply(
       typeof parsed.question === "string" && parsed.question.trim() ? parsed.question.trim() : null;
     return {
       outcome: parsed.outcome as ReplyOutcome,
-      summary: parsed.summary.trim().slice(0, 300),
-      question: parsed.outcome === "needs_info" ? (question ?? parsed.summary.trim()) : null,
+      summary: withoutLinks(parsed.summary.trim()).slice(0, 300),
+      question:
+        parsed.outcome === "needs_info" ? withoutLinks(question ?? parsed.summary.trim()) : null,
       source: "llm",
     };
   } catch {

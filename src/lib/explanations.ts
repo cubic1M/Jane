@@ -6,6 +6,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { isTrialUser } from "@/lib/trial-ids";
 import { EXPLAIN_PROMPT_VERSION, explainFinding } from "./explain";
 import { currentHash } from "./card-text";
+import { meteredClaude } from "@/lib/claude-budget";
 
 // Explanations are cached on the finding with a hash of what Claude was sent. They are
 // regenerated only when that input changes, i.e. when the finding's evidence does.
@@ -53,7 +54,8 @@ export async function explainFindings(
   });
   const stale = findings.filter((f) => f.explanationHash !== currentHash(f));
 
-  const results = await inBatches(stale, CONCURRENCY, (f) => explain(f));
+  const claude = meteredClaude(userId);
+  const results = await inBatches(stale, CONCURRENCY, (f) => explain(f, { claude }));
   for (const [i, result] of results.entries()) {
     summary[result.kind] += 1;
     if (result.kind === "unavailable") continue;

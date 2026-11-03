@@ -11,6 +11,8 @@ import { formatCents } from "@/lib/money";
 import { loadNetWorthHistory } from "@/lib/net-worth-history";
 import { monthLabel } from "@/lib/day-label";
 import { isTrialUser } from "@/lib/trial-ids";
+import { UNTRUSTED_TEXT_RULE } from "@/lib/untrusted-text";
+import { meteredClaude } from "@/lib/claude-budget";
 
 // The monthly check-in: the month's numbers (spending, budgets, net worth, what Jane found
 // and what got done) and a short summary written by Claude from those numbers only. The
@@ -130,7 +132,9 @@ const SYSTEM = `You write a short, warm summary of someone's month for a persona
 
 - Two or three sentences. Plain words.
 - Use only the facts given, and dollar amounts exactly as written. Don't calculate anything.
-- Never give investment, tax or legal advice, recommend a product, or promise anything.`;
+- Never give investment, tax or legal advice, recommend a product, or promise anything.
+
+${UNTRUSTED_TEXT_RULE}`;
 
 const SCHEMA = {
   type: "object",
@@ -170,7 +174,7 @@ export async function writeSummary(
 export async function summaryFor(
   userId: string,
   c: CheckIn,
-  { client = defaultClient, claude = anthropic }: Options = {},
+  { client = defaultClient, claude = meteredClaude(userId) }: Options = {},
 ): Promise<string> {
   const db = scopedFor(userId, client);
   const existing = await db.checkIns.findFirst({

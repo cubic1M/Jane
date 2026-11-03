@@ -3,6 +3,7 @@ import { NEWS_MAX_OUTPUT_TOKENS, NEWS_SUMMARY_MAX_CHARS } from "@/config/news";
 import { anthropic, finishedText } from "@/lib/anthropic";
 import { checkGuardrails, dollarFigures, predictsAPrice } from "@/lib/guardrails";
 import type { Headline } from "@/lib/market";
+import { UNTRUSTED_TEXT_RULE } from "@/lib/untrusted-text";
 
 // One-sentence summaries of headlines (spec step 293). Claude writes them only when the news
 // model is set (newsLlmEnabled); otherwise, and whenever Claude's sentence fails the checks, the
@@ -53,7 +54,8 @@ Rules:
 - Never say whether to buy, sell or hold anything, and never give tax or legal advice.
 - Never add a number, an amount or a date that isn't in the headline. Never promise anything.
 - Start with the ticker (or "Markets" when there is none) and a colon.
-Return one summary per headline id.`;
+Return one summary per headline id.
+${UNTRUSTED_TEXT_RULE}`;
 
 export const NEWS_SCHEMA = {
   type: "object",

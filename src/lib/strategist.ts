@@ -13,12 +13,13 @@ import { anthropic, chatModel, llmEnabled } from "@/lib/anthropic";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { dollarFigures } from "@/lib/guardrails";
-import { addSpend, overDailyCap } from "@/lib/jane-agent/spend";
+import { addSpend, overChatLimits, overDailyCap } from "@/lib/jane-agent/spend";
 import { isTrialUser } from "@/lib/trial-ids";
 import { formatCents } from "@/lib/money";
 import { vetIdea } from "@/planning/strategist";
 import { detectFor } from "@/lib/suggestions";
 import { DAY_MS, isoDay as dayOf } from "@/lib/dates";
+import { UNTRUSTED_TEXT_RULE } from "@/lib/untrusted-text";
 
 // Claude as strategist (spec step 256). Once a week Claude reviews the person's whole profile
 // and every detector's result with the registry's read-only tools and proposes combinations no
@@ -53,7 +54,8 @@ Rules:
 - Use only dollar amounts that appear in tool results, written exactly as they appear there. Never add, subtract, round or estimate amounts yourself.
 - Never promise a result or a return. Say "could" and "about". No legal advice.
 - Keep each title under one line and each explanation to two or three plain sentences about this person's own numbers.
-- You can't do anything yourself. The person sees your idea with the buttons of the suggestions it rests on.`;
+- You can't do anything yourself. The person sees your idea with the buttons of the suggestions it rests on.
+- ${UNTRUSTED_TEXT_RULE}`;
 
 const SYSTEM_DEMO_ADVICE = `${SYSTEM}
 - This person is using the demo bank with sample data, so you may say what you'd do about investments, taxes, insurance and loans. The app labels it as demo advice.`;
@@ -144,7 +146,7 @@ export async function runStrategist(
       return { status: "not_due" };
     }
   }
-  if (await overDailyCap(userId, { client, now })) return { status: "capped" };
+  if (await overChatLimits(userId, { client, now })) return { status: "capped" };
   // Loaded here, not at the top: the chat tools reach this file again through the jobs.
   const { CHAT_TOOLS, runChatTool } = await import("@/lib/jane-agent/claude-tools");
   const { suggestions, advice } = await detectFor(userId, { client, now });

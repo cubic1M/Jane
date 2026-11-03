@@ -9,6 +9,7 @@ import {
 import { anthropic, finishedText, llmEnabled, llmModel } from "@/lib/anthropic";
 import { checkGuardrails } from "@/lib/guardrails";
 import { factsFromClaude, type DocumentFacts } from "./facts";
+import { UNTRUSTED_TEXT_RULE } from "@/lib/untrusted-text";
 
 // Claude reads the key facts off an uploaded document (spec step 68): who it's from, what
 // it covers, the price and the dates. The answer is held to a JSON schema, read leniently,
@@ -65,6 +66,7 @@ function prompt(kind: DocumentKind): string {
     "Write dates as YYYY-MM-DD and amounts in dollars as plain numbers like 1234.56.",
     "coverageSummary is one short, plain sentence of what the document says, with no dollar amounts and no advice.",
     "Leave any field you can't find, or that doesn't fit this document, as an empty string. Never guess.",
+    UNTRUSTED_TEXT_RULE,
   ].join("\n");
 }
 

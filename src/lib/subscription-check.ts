@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { anthropic, finishedText, llmEnabled, llmModel } from "@/lib/anthropic";
+import { UNTRUSTED_TEXT_RULE } from "@/lib/untrusted-text";
 
 // Answers one question for merchants whose category can't: is a recurring charge here a
 // subscription? Claude sees cleaned merchant names only: no amounts, dates, account
@@ -11,7 +12,8 @@ const BATCH_SIZE = 50;
 
 const SYSTEM = `You look at merchant names from recurring charges on US bank and credit card statements.
 For each name, say whether a charge that repeats at a regular interval there is most likely a subscription the person could cancel: a streaming or software plan, a membership, an app, a box or delivery plan.
-Say false for rent, utilities, phone and internet bills, loans, insurance, childcare, tuition, groceries, everyday shopping, payments to people, and anything you can't tell from the name.`;
+Say false for rent, utilities, phone and internet bills, loans, insurance, childcare, tuition, groceries, everyday shopping, payments to people, and anything you can't tell from the name.
+${UNTRUSTED_TEXT_RULE}`;
 
 const SCHEMA = {
   type: "object",
@@ -33,8 +35,11 @@ const SCHEMA = {
   additionalProperties: false,
 };
 
-async function checkBatch(merchants: string[]): Promise<Map<string, boolean>> {
-  const response = await anthropic().messages.create({
+async function checkBatch(
+  merchants: string[],
+  claude: typeof anthropic,
+): Promise<Map<string, boolean>> {
+  const response = await claude().messages.create({
     model: llmModel(),
     max_tokens: 16000,
     system: SYSTEM,
@@ -57,13 +62,19 @@ async function checkBatch(merchants: string[]): Promise<Map<string, boolean>> {
 
 // Maps each merchant name Claude answered for to its answer. Never throws for API or
 // parsing problems: unanswered merchants are simply asked again on the next scan.
-export async function checkSubscriptions(merchants: string[]): Promise<Map<string, boolean>> {
+export async function checkSubscriptions(
+  merchants: string[],
+  { claude = anthropic }: { claude?: typeof anthropic } = {},
+): Promise<Map<string, boolean>> {
   const answers = new Map<string, boolean>();
   if (!llmEnabled() || merchants.length === 0) return answers;
 
   for (let i = 0; i < merchants.length; i += BATCH_SIZE) {
     try {
-      for (const [merchant, answer] of await checkBatch(merchants.slice(i, i + BATCH_SIZE))) {
+      for (const [merchant, answer] of await checkBatch(
+        merchants.slice(i, i + BATCH_SIZE),
+        claude,
+      )) {
         answers.set(merchant, answer);
       }
     } catch (error) {
