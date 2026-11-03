@@ -36,6 +36,18 @@ describe("allowSignIn", () => {
     expect(await allowSignIn({ user: { email: null } })).toBe(false);
   });
 
+  // A local build sent an unknown address to /signup and a known one to "check your email", which
+  // told anyone who has an account.
+  it("answers an email-link request for an unknown address just as for a known one", async () => {
+    expect(
+      await allowSignIn({
+        user: { email: "new@example.com" },
+        email: { verificationRequest: true },
+      }),
+    ).toBe("/api/auth/verify-request?provider=resend&type=email");
+    expect(recordFailedSignIn).toHaveBeenCalledWith("no_invite");
+  });
+
   it("redeems the code a Google sign-up brought along", async () => {
     cookieGet.mockReturnValue({ value: "ABCD-EFGH-JKMN" });
     vi.mocked(redeemInvite).mockResolvedValue("ok");
