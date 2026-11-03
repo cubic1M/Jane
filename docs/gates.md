@@ -35,3 +35,4 @@ Agents build nearly all of Jane, and agents edit or game tests when tests stand 
 These are guardrails against a slip, not walls: a script can do anything they refuse. CI is the control.
 
 **Drop the Stop hook** if first-push CI failures haven't fallen after two weeks.
+demo: a plain change
