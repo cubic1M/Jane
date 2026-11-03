@@ -14,11 +14,12 @@ on:
   # pushes made with the workflow token start no workflows.
   workflow_dispatch:
 
-# A newer push to the same pull request cancels its older run. On main a started run finishes, but
-# GitHub keeps only the newest waiting one, so a busy main doesn't test every commit (44% of main's
-# commits from 10-24 to 11-02 had no finished run of their own).
+# A newer push to the same pull request cancels its older run. Main gets one group per commit, so
+# every commit gets its own verdict: with one group, GitHub kept only the newest waiting run, and
+# 44% of main's commits from 10-24 to 11-02 had no finished run. A broken merge now has a name, and
+# a red main can be bisected from the runs alone.
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:

@@ -149,4 +149,12 @@ describe("the end-to-end specs a PR runs beyond the critical ones", () => {
       changedSpecs(["e2e/hub.spec.ts", "e2e/waits.ts", "src/components/card.tsx", "docs/ci.md"]),
     ).toEqual(["e2e/hub.spec.ts"]);
   });
+
+  it("a legal page's change runs its spec, once", () => {
+    expect(changedSpecs(["src/app/privacy/page.tsx"])).toEqual(["e2e/legal.spec.ts"]);
+    expect(changedSpecs(["src/app/terms/page.tsx", "e2e/legal.spec.ts"])).toEqual([
+      "e2e/legal.spec.ts",
+    ]);
+    expect(changedSpecs(["src/app/home/page.tsx"])).toEqual([]);
+  });
 });

@@ -7,7 +7,7 @@
 | A PR labelled `full-tests` | The whole unit suite, whatever changed |
 | A PR labelled `e2e` | The whole unit suite, and every end-to-end test on a computer and a phone. Use it when a PR changes a page people see |
 | A PR changing only docs that no test reads | Skips the unit and end-to-end tests. Everything else still runs, and the required checks still report |
-| Main | Everything, with end-to-end tests on a computer. Production ships only from a green run here, so a miss on a PR turns main red and can't reach production, but a red main stops every deploy |
+| Main | Everything, with end-to-end tests on a computer, one run per commit so each gets its own verdict. Production ships only from a green run here, so a miss on a PR turns main red and can't reach production, but a red main stops every deploy |
 | Every night (`e2e-mobile.yml`) | Every end-to-end test on a phone. A failure opens one `mobile-e2e` issue and goes to the top of the flake list, and the debugger owns it. It doesn't stop a deploy, so a phone-only break can ship and be found up to a day later |
 
 A PR also leaves out the tests in `MAIN_ONLY_TESTS` (one file, 11% of the suite's time), unless it

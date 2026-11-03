@@ -91,7 +91,17 @@ export function vitestArgs(mode, { event, labels = [] }) {
   return args.join(" ");
 }
 
+// Pages whose spec isn't critical, but whose words have broken main from a PR that passed (#1241:
+// /privacy, then e2e/legal.spec.ts red on main).
+const SPECS_FOR_PATHS = [[/^src\/app\/(privacy|terms)\//, "e2e/legal.spec.ts"]];
+
 // A PR runs the end-to-end spec files it changes, on top of the critical tests: rewriting a spec
-// and first running it on main would turn main red.
-export const changedSpecs = (changedPaths) =>
-  changedPaths.filter((path) => /^e2e\/[\w./-]+\.spec\.ts$/.test(path));
+// and first running it on main would turn main red. It also runs the spec a changed page maps to.
+export const changedSpecs = (changedPaths) => [
+  ...new Set([
+    ...changedPaths.filter((path) => /^e2e\/[\w./-]+\.spec\.ts$/.test(path)),
+    ...SPECS_FOR_PATHS.filter(([rule]) => changedPaths.some((path) => rule.test(path))).map(
+      ([, spec]) => spec,
+    ),
+  ]),
+];
