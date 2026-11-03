@@ -322,6 +322,25 @@ export function ImportForm({
 
       {preview && !preview.ok && <Alert>{preview.error}</Alert>}
       {error && <Alert>{error}</Alert>}
+      {preview?.ok && preview.alreadyIn && account === NEW_ACCOUNT_ID && (
+        <div
+          data-upload-other-account=""
+          role="alert"
+          className="flex flex-col gap-2 rounded-lg bg-zinc-100 p-3 text-sm text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
+        >
+          <p>
+            {preview.alreadyIn.rows} of these {preview.alreadyIn.ofRows} rows are already in{" "}
+            {preview.alreadyIn.name}. A new account would count them twice.
+          </p>
+          <button
+            type="button"
+            onClick={() => setAccount(preview.alreadyIn!.accountId)}
+            className="self-start font-medium underline underline-offset-2 hover:no-underline"
+          >
+            Add them to {preview.alreadyIn.name}
+          </button>
+        </div>
+      )}
       {ready && oldNewest && (
         <p
           data-upload-old=""

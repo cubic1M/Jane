@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
+import { NEW_ACCOUNT_ID } from "@/config/import";
 import { track } from "@/lib/analytics";
 import { canImportCsv } from "@/lib/csv-access";
 import { scopedDb, type ScopedDb } from "@/lib/db-scoped";
@@ -17,6 +18,7 @@ import {
 } from "@/lib/import/remove";
 import { runJob } from "@/lib/jobs";
 import { previewCsvFiles, type FilePreview } from "@/lib/import/import-csv";
+import { alreadyInAnotherAccount, type AlreadyIn } from "@/lib/import/other-account";
 import {
   NOT_ALLOWED,
   accountFields,
@@ -52,7 +54,8 @@ export async function createCsvAccount(
   return { ok: true };
 }
 
-export type PreviewResult = { ok: true; files: FilePreview[] } | { ok: false; error: string };
+export type PreviewResult =
+  { ok: true; files: FilePreview[]; alreadyIn?: AlreadyIn | null } | { ok: false; error: string };
 
 export async function previewImport(formData: FormData): Promise<PreviewResult> {
   const db = await csvDb();
@@ -71,7 +74,12 @@ export async function previewImport(formData: FormData): Promise<PreviewResult> 
     await track(db.userId, "import_failed", { reason: "unknown_format", files: failed.length });
   }
   for (const preview of failed) await uploadFailed(db.userId, preview.reason);
-  return { ok: true, files: previews };
+  // Only ever a warning: a preview still works if this can't be worked out.
+  const alreadyIn =
+    formData.get("accountId") === NEW_ACCOUNT_ID
+      ? await alreadyInAnotherAccount(db, files).catch(() => null)
+      : null;
+  return { ok: true, files: previews, alreadyIn };
 }
 
 export type StartResult =

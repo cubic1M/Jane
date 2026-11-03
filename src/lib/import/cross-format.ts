@@ -23,7 +23,12 @@ function sameWords(a: string, b: string): boolean {
 
 // The incoming rows' indexes to drop. Rows go in date order, each taking the earliest unused twin
 // within a day either side: that pairs as many as can be, a whole file a day off included.
-export function crossFormatTwins(existing: readonly RowFacts[], incoming: readonly RowFacts[]) {
+// `anyFormat` pairs rows of the same format too (src/lib/import/other-account.ts).
+export function crossFormatTwins(
+  existing: readonly RowFacts[],
+  incoming: readonly RowFacts[],
+  { anyFormat = false }: { anyFormat?: boolean } = {},
+) {
   const pool = existing.map((row) => ({ row, used: false }));
   const drop = new Set<number>();
   const order = [...incoming.keys()].sort((a, b) =>
@@ -39,7 +44,7 @@ export function crossFormatTwins(existing: readonly RowFacts[], incoming: readon
           !p.used &&
           p.row.date >= from &&
           p.row.date <= to &&
-          isOfx(p.row.key) !== isOfx(row.key) &&
+          (anyFormat || isOfx(p.row.key) !== isOfx(row.key)) &&
           p.row.amountCents === row.amountCents &&
           sameWords(p.row.description, row.description),
       )
