@@ -681,3 +681,45 @@ describe("regional chains and short names", () => {
     );
   });
 });
+
+// Debugger 11-03: a driver on Chime. Uber's payouts netted against spending, and a cash advance's
+// repayment read "Review your Dave Inc Repayment subscription, could save $900 a year".
+describe("a gig driver's money", () => {
+  const rule = (description: string, amountCents: number) =>
+    categorizeByRules({ description, amountCents, hints: {} })?.detailed ?? null;
+
+  it.each([
+    "UBER TECHNOLOGIES INSTANT PAY",
+    "UBER TECHNOLOGIES",
+    "LYFT EXPRESS PAY",
+    "DOORDASH INSTANT PAY",
+  ])("%s coming in is pay", (description) => {
+    expect(rule(description, -35_000)).toBe("INCOME_GIG_ECONOMY");
+  });
+
+  it("a ride's refund on a card is still a ride", () => {
+    expect(rule("UBER *TRIP", -1_250)).toBe("TRANSPORTATION_TAXIS_AND_RIDE_SHARES");
+  });
+
+  it.each([
+    "EARNIN REPAYMENT",
+    "EARNIN",
+    "ACTIVEHOURS EARNIN",
+    "DAVE INC REPAYMENT",
+    "BRIGIT REPAYMENT",
+    "MONEYLION INSTACASH REPAYMENT",
+  ])("%s going out pays back a loan", (description) => {
+    expect(rule(description, 7_500)).toBe("LOAN_PAYMENTS_OTHER_PAYMENT");
+  });
+
+  it.each(["DAVE INC MEMBERSHIP", "BRIGIT MEMBERSHIP"])(
+    "%s is a membership, not a repayment",
+    (description) => {
+      expect(rule(description, 100)).not.toBe("LOAN_PAYMENTS_OTHER_PAYMENT");
+    },
+  );
+
+  it("the advance itself is still borrowed money", () => {
+    expect(rule("EARNIN CASH OUT", -10_000)).toBe("LOAN_DISBURSEMENTS_CASH_ADVANCES");
+  });
+});

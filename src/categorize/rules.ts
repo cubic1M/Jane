@@ -757,7 +757,7 @@ const RULES: readonly Rule[] = [
   {
     category: "INCOME_GIG_ECONOMY",
     pattern:
-      /(?<![A-Z0-9])(?:UBER|LYFT|DOORDASH|GRUBHUB|INSTACART|SHIPT|POSTMATES)(?![A-Z0-9]).*(?<![A-Z0-9])(?:PAYOUT|PAYMNT|PAYMENT|EARNINGS|DASHER|DRIVER|SHOPPER|EDI|DIRECT DEP)(?![A-Z0-9])/,
+      /(?<![A-Z0-9])(?:UBER|LYFT|DOORDASH|GRUBHUB|INSTACART|SHIPT|POSTMATES)(?![A-Z0-9]).*(?<![A-Z0-9])(?:PAYOUT|PAYMNT|PAYMENT|EARNINGS|DASHER|DRIVER|SHOPPER|EDI|DIRECT DEP|INSTANT PAY|EXPRESS PAY|TECHNOLOGI(?:ES)?)(?![A-Z0-9])/,
     direction: "in",
   },
   { category: "INCOME_GIG_ECONOMY", keywords: ["AMAZON FLEX"], direction: "in" },
@@ -2215,6 +2215,14 @@ const RULES: readonly Rule[] = [
   },
   // A payday loan or an app's cash advance landing in checking: borrowed money, never a refund
   // of spending (night QA 10-30: a server's "ADVANCE AMERICA LOAN", $400 in, uncategorized).
+  // Paying back a cash advance app: a debt, not a subscription (debugger 11-03: "Review your Dave Inc
+  // Repayment subscription, could save $900 a year"). Its own membership stays a membership.
+  {
+    category: "LOAN_PAYMENTS_OTHER_PAYMENT",
+    pattern:
+      /(?<![A-Z0-9])(?:(?:EARNIN|ACTIVEHOURS)(?!.*MEMBERSHIP)|(?:BRIGIT|MONEYLION(?: INSTACASH)?|DAVE INC)(?=.*(?:REPAY|PAYBACK|ADVANCE)))/,
+    direction: "out",
+  },
   {
     category: "LOAN_DISBURSEMENTS_CASH_ADVANCES",
     keywords: [

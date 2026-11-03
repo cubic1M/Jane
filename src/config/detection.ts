@@ -558,6 +558,9 @@ export const UNEVEN_PAY_LOOKBACK_MONTHS = 3;
 export const UNEVEN_PAY_NOT_PAY: readonly string[] = ["INCOME_INTEREST_EARNED", "INCOME_DIVIDENDS"];
 export const UNEVEN_PAY_MIN_DEPOSITS = 2;
 export const UNEVEN_PAY_MIN_MONTHLY_CENTS = 50_000;
+// Deposits this close together on average can be counted on to come again that soon, though not on
+// which day; further apart, the next one is too uncertain to count bills only up to it.
+export const UNEVEN_PAY_STEADY_GAP_DAYS = 14;
 // Below zero is high confidence; between zero and the cushion is medium.
 export const LOW_BALANCE_HIGH_CONFIDENCE_BELOW_CENTS = 0;
 // Plaid depository subtypes the forecast runs for.
