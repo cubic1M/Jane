@@ -2,7 +2,7 @@
   "tuning": {
     "subscriptions": {
       "precision": 1,
-      "recall": 1
+      "recall": 0.9
     },
     "price_rises": {
       "precision": 1,
