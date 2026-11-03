@@ -132,7 +132,8 @@ export type StatedTotals = {
 
 const STATED: [keyof StatedTotals, RegExp][] = [
   ["openingCents", /^(?:beginning|opening|starting|previous) balance\b/i],
-  ["closingCents", /^(?:ending|closing|new) balance\b/i],
+  // Not "new balance": that's a shoe shop on a statement as often as a total.
+  ["closingCents", /^(?:ending|closing) balance\b/i],
   ["creditsCents", /^total (?:credits?|deposits?(?: and (?:other )?(?:credits|additions))?)\b/i],
   ["debitsCents", /^total (?:debits?|withdrawals?(?: and (?:other )?debits)?)\b/i],
   ["totalCents", /^totals?\s*:?\s*$/i],

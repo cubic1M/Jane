@@ -21,7 +21,7 @@ export const CONTROL_TOLERANCE_CENTS = 1;
 // More than this share of the days not following on: the column isn't a running balance at all,
 // so it isn't used as one. Fewer: the balance is the bank's, and some rows are missing.
 export const CONTROL_BALANCE_BROKEN_SHARE = 0.5;
-// How many days a file's balance has to run the wrong way before its signs are called backwards.
+// How many day-to-day changes a balance has to run the wrong way before signs are called backwards.
 export const CONTROL_MIN_STEPS = 3;
 // Without a balance, how many rows the rules recognize, and the share of them against their sign.
 export const CONTROL_MIN_SIGN_VOTES = 5;

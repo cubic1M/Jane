@@ -338,6 +338,179 @@ describe("rows that look like totals", () => {
   });
 });
 
+describe("the walk, at its edges", () => {
+  it("takes a cent either way as rounding, and two as a real gap", () => {
+    const rows = (balance: string) =>
+      chase([
+        ["10/02/2026", "A", "-10.00", "990.00"],
+        ["10/03/2026", "B", "-20.00", "970.00"],
+        ["10/04/2026", "C", "-20.00", "950.00"],
+        ["10/05/2026", "D", "-20.00", balance],
+      ]);
+    expect(codes(read(rows("930.01")))).toEqual([]);
+    expect(codes(read(rows("930.02")))).toEqual(["balance_gap"]);
+  });
+
+  it("checks a statement of one day by whether its rows lead to one another", () => {
+    const day = (last: string) =>
+      chase([
+        ["10/02/2026", "A", "-10.00", "990.00"],
+        ["10/02/2026", "B", "-20.00", "970.00"],
+        ["10/02/2026", "C", "-5.00", last],
+      ]);
+    expect(codes(read(day("965.00")))).toEqual([]);
+    expect(codes(read(day("500.00")))).toEqual(["balance_gap"]);
+  });
+
+  it("doesn't call a first day broken when one of its rows has no balance", () => {
+    const r = read(
+      chase([
+        ["10/02/2026", "A", "-10.00", "990.00"],
+        ["10/02/2026", "HOLD", "-99.00", ""],
+        ["10/02/2026", "B", "-20.00", "970.00"],
+        ["10/03/2026", "C", "-5.00", "965.00"],
+      ]),
+    );
+    expect(codes(r)).toEqual([]);
+  });
+
+  it("wants three days' changes before calling signs backwards from a balance alone", () => {
+    const text = (rows: string[]) => ["When,What,Amount,Balance", ...rows].join("\n");
+    const mapping = {
+      hasHeader: true,
+      date: 0,
+      dateOrder: "mdy",
+      description: 1,
+      amount: { kind: "signed", column: 2, moneyOut: "negative" },
+      balance: 3,
+    } as const;
+    const twoChanges = [
+      "10/02/2026,A,-10.00,110.00",
+      "10/03/2026,B,-20.00,130.00",
+      "10/04/2026,C,-5.00,135.00",
+    ];
+    expect(codes(read(text(twoChanges), "x.csv", { mapping }))).toEqual([]);
+    const threeChanges = [...twoChanges, "10/05/2026,D,-1.00,136.00"];
+    expect(codes(read(text(threeChanges), "x.csv", { mapping }))).toEqual(["signs_reversed"]);
+  });
+
+  it("says the gap's dollars only when a day's money went missing", () => {
+    const [gap] = read(
+      chase([
+        ["10/02/2026", "A", "-10.00", "990.00"],
+        ["10/03/2026", "B", "-20.00", "970.00"],
+        ["10/04/2026", "C", "-20.00", "900.00"],
+        ["10/05/2026", "D", "-20.00", "880.00"],
+      ]),
+    ).control.warnings;
+    expect(gap?.message).toContain("1 day, first on Oct 4, 2026: $50.00 isn't explained");
+  });
+});
+
+describe("signs with no balance to check them by", () => {
+  const WELLS = (rows: [string, string][]) =>
+    rows.map(([what, amount], i) => `"10/0${i + 1}/2026","${amount}","*","","${what}"`).join("\n");
+  const SPENDING = ["NETFLIX.COM", "SPOTIFY", "TRADER JOE'S", "SHELL OIL", "HULU"];
+
+  it("warns when what the rules know runs against most rows' signs", () => {
+    const backwards = WELLS(SPENDING.map((name): [string, string] => [name, "12.00"]));
+    expect(codes(read(backwards))).toEqual(["signs_reversed"]);
+  });
+
+  it("says nothing when they run with most rows' signs", () => {
+    const right = WELLS(SPENDING.map((name): [string, string] => [name, "-12.00"]));
+    expect(codes(read(right))).toEqual([]);
+  });
+
+  it("says nothing on four rows, or when one in three runs against", () => {
+    const four = WELLS(SPENDING.slice(0, 4).map((name): [string, string] => [name, "12.00"]));
+    expect(codes(read(four))).toEqual([]);
+    const mixed = WELLS([
+      ...SPENDING.slice(0, 2).map((name): [string, string] => [name, "12.00"]),
+      ...SPENDING.slice(2).map((name): [string, string] => [name, "-12.00"]),
+    ]);
+    expect(codes(read(mixed))).toEqual([]);
+  });
+
+  it("says nothing of a bank account that's mostly money in, with no names it knows", () => {
+    const deposits = WELLS(
+      ["A", "B", "C", "D", "E", "F"].map((name): [string, string] => [`CLIENT ${name}`, "500.00"]),
+    );
+    expect(codes(read(deposits))).toEqual([]);
+  });
+
+  const AMEX = (amounts: string[]) =>
+    [
+      "Date,Description,Card Member,Account #,Amount",
+      ...amounts.map((a, i) => `10/0${i + 1}/2026,UNKNOWN PLACE ${i},SAM,-1000,${a}`),
+    ].join("\n");
+
+  it("on a card, wants most of five rows paid in, not rows at zero", () => {
+    expect(codes(read(AMEX(["-1.00", "-2.00", "-3.00", "-4.00"])))).toEqual([]);
+    expect(codes(read(AMEX(["-1.00", "-2.00", "-3.00", "-4.00", "-5.00"])))).toEqual([
+      "signs_reversed",
+    ]);
+    expect(codes(read(AMEX(["-1.00", "-2.00", "-3.00", "4.00", "5.00"])))).toEqual([]);
+    expect(codes(read(AMEX(["-1.00", "-2.00", "-3.00", "-4.00", "0.00", "0.00", "0.00"])))).toEqual(
+      [],
+    );
+  });
+});
+
+describe("statedTotals, row by row", () => {
+  it("takes the first opening balance said and the last closing one", () => {
+    const text = [
+      "Opening balance,,100.00",
+      "Closing balance,,120.00",
+      "Date,Description,Amount",
+      "Opening balance,,999.00",
+      "Closing balance,,130.00",
+    ].join("\n");
+    expect(statedTotals(parseCsv(text))).toMatchObject({
+      openingCents: 10000,
+      closingCents: 13000,
+    });
+  });
+
+  it("reads a row count as a count", () => {
+    expect(statedTotals(parseCsv("Total transactions,12"))).toEqual({ rowCount: 12 });
+    const text = `${chase(CHASE_NEWEST_FIRST)}\nTotal transactions,,,4,,,`;
+    expect(codes(read(text))).toEqual([]);
+  });
+
+  it("counts an unread row among those a stated count covers", () => {
+    const rows = [...CHASE_NEWEST_FIRST];
+    rows[3] = ["10/02/2026", "RENT", "lots", "980.00"];
+    const text = `${chase(rows)}\nTotal transactions,,,4,,,`;
+    expect(codes(read(text))).not.toContain("row_count");
+  });
+
+  it("ignores a label with no figure, and a figure with no label", () => {
+    expect(statedTotals(parseCsv("Ending balance,,n/a\nWhatever,,5.00"))).toEqual({});
+  });
+
+  it("reads a label in the second column, not one further along", () => {
+    expect(statedTotals(parseCsv("x,Ending balance,1.00"))).toEqual({ closingCents: 100 });
+    expect(statedTotals(parseCsv("x,y,Ending balance,1.00"))).toEqual({});
+  });
+
+  it("reads the figure after the label, never before it", () => {
+    expect(statedTotals(parseCsv("9.00,Ending balance,1.00"))).toEqual({ closingCents: 100 });
+    expect(statedTotals(parseCsv("9.00,Ending balance,x"))).toEqual({});
+  });
+
+  it("isn't fooled by a shoe shop or a row with a shop's name in it", () => {
+    const text = bofa({
+      rows: [
+        `10/02/2026,NEW BALANCE STORE,"-150.00","850.00"`,
+        `10/03/2026,TOTAL WINE,"-50.00","800.00"`,
+        `10/04/2026,PAY,"500.00","1,300.00"`,
+      ],
+    });
+    expect(read(text).control.warnings).toEqual([]);
+  });
+});
+
 describe("statedTotals", () => {
   it("reads a block above the header and a footer", () => {
     expect(statedTotals(parseCsv(bofa()))).toEqual({
