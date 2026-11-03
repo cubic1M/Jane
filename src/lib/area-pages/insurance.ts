@@ -206,13 +206,16 @@ export function insuranceTree(input: InsuranceTreeInput): AreaTree {
   // disability usually come with a job, out of pay before it reaches the bank; travel cover
   // often comes with a card; pet cover is the person's choice (overnight upload QA: a flyer had
   // an urgent "Travel cover: Missing"). Renters cover stays urgent: a lease often requires it.
+  // Cover seen in the person's payments, not yet confirmed: the gap stays until they do, but it
+  // isn't missing (debugger 11-03: "Urgent: Renters insurance, Missing" beside "Lemonade renters").
   const missing = input.gaps.map((g) => {
     const guessed = NOT_URGENT_GAPS.includes(g.key);
+    const seen = input.policies.find((p) => p.status === "found" && p.kind === g.key);
     return item("missing", g.key + (g.policyId ? `-${g.policyId}` : ""), {
       label: GAP_LABELS[g.key],
-      status: guessed ? "look" : "act",
-      figure: guessed ? "Not on file" : "Missing",
-      summary: g.why,
+      status: guessed || seen ? "look" : "act",
+      figure: seen ? "Confirm it" : guessed ? "Not on file" : "Missing",
+      summary: seen ? `${seen.carrier} is in your payments. Confirm it so it counts.` : g.why,
     });
   });
 

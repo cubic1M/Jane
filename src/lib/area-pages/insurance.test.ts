@@ -172,6 +172,32 @@ describe("the insurance tree", () => {
     expect(highSummaries[lower.id]).toBe("Your cash can carry $2k; yours is $5k.");
   });
 
+  // Debugger 11-03: a student paying Lemonade for renters cover read "Urgent: Renters insurance,
+  // Missing", beside "Lemonade renters: found from your payments". It's unconfirmed, so the gap
+  // stays, but it isn't missing and it isn't urgent.
+  it("asks to confirm cover it found in payments, not that it's missing", () => {
+    const gap = { key: "renters", why: "Your payments show rent.", policyId: null };
+    const found = {
+      ...input().policies[0],
+      id: "p9",
+      kind: "renters",
+      carrier: "Lemonade",
+      status: "found",
+    };
+    const { tree, summaries } = insuranceTree(
+      input({ gaps: [gap], policies: [found] } as Partial<InsuranceTreeInput>),
+    );
+    const item = tree.branches.find((b) => b.id === "missing")!.items[0];
+    expect(item).toMatchObject({ status: "look", figure: "Confirm it" });
+    expect(summaries[item.id]).toBe("Lemonade is in your payments. Confirm it so it counts.");
+
+    const none = insuranceTree(input({ gaps: [gap], policies: [] } as Partial<InsuranceTreeInput>));
+    expect(none.tree.branches.find((b) => b.id === "missing")!.items[0]).toMatchObject({
+      status: "act",
+      figure: "Missing",
+    });
+  });
+
   it("marks each item and its branch by how pressing it is", () => {
     const { tree } = insuranceTree(input());
     const branch = (id: string) => tree.branches.find((b) => b.id === id)!;

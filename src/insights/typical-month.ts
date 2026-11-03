@@ -5,6 +5,9 @@ import {
   ONE_OFF_REPEAT_SHARE,
   ONE_OFF_UNPLACED_MONTHS,
   ONE_OFF_SHARE,
+  RARE_BILL_DETAILED,
+  RARE_BILL_MAX_MONTH_SHARE,
+  RARE_BILL_MAX_MONTHS,
 } from "@/config/detection";
 import { FULL_MONTH_START_SLACK_DAYS } from "@/config/budgets";
 import { normalizeMerchant } from "@/data-sources/merchant";
@@ -38,22 +41,31 @@ const canBeOneOff = (t: InsightTransaction) =>
   ONE_OFF_PRIMARIES.includes(t.pfcPrimary) &&
   !(t.pfcDetailed !== null && ONE_OFF_NEVER_DETAILED.includes(t.pfcDetailed));
 
-// The one-off charges among `transactions` up to `asOf`, judged against the median of the full
-// months before it (the usual month). Pass as much history as there is: a merchant charged
-// again in it isn't a one-off.
-export function oneOffCharges(transactions: InsightTransaction[], asOf: string): OneOff[] {
+// Spending up to `asOf`, its full months before that month, and how big a charge has to be to stand
+// out: a quarter of the usual month (their median), at least ONE_OFF_MIN_CENTS.
+function spendingHistory(transactions: InsightTransaction[], asOf: string) {
   const spending = transactions.filter((t) => t.date <= asOf && kindOf(t) === "spending");
-  if (spending.length === 0) return [];
+  if (spending.length === 0) return null;
   const first = spending.reduce((m, t) => (t.date < m ? t.date : m), spending[0].date);
   const [fy, fm] = first.split("-").map(Number);
   const [ay, am] = asOf.split("-").map(Number);
   const span = (ay - fy) * 12 + (am - fm) + 1;
   const full = spendingInsights(transactions, { asOf, monthCount: span }).months.slice(0, -1);
   // Without a full month there's no usual month to judge by.
-  const months = full.map((m) => m.spendingCents).filter((c) => c > 0);
-  if (months.length === 0) return [];
-  const usual = median(months);
+  const counted = full.filter((m) => m.spendingCents > 0);
+  if (counted.length === 0) return null;
+  const usual = median(counted.map((m) => m.spendingCents));
   const floor = Math.max(ONE_OFF_MIN_CENTS, Math.round(usual * ONE_OFF_SHARE));
+  return { spending, months: counted.map((m) => m.month), usual, floor };
+}
+
+// The one-off charges among `transactions` up to `asOf`, judged against the median of the full
+// months before it (the usual month). Pass as much history as there is: a merchant charged
+// again in it isn't a one-off.
+export function oneOffCharges(transactions: InsightTransaction[], asOf: string): OneOff[] {
+  const history = spendingHistory(transactions, asOf);
+  if (!history) return [];
+  const { spending, usual, floor } = history;
   const big = spending.filter(
     (t) =>
       (t.amountCents >= floor && canBeOneOff(t)) ||
@@ -81,7 +93,7 @@ export function oneOffCharges(transactions: InsightTransaction[], asOf: string):
 // The transactions without their one-offs, for any monthly spending figure.
 export function withoutOneOffs<T extends InsightTransaction>(
   transactions: T[],
-  oneOffs: readonly OneOff[],
+  oneOffs: readonly Pick<OneOff, "date" | "merchant" | "amountCents">[],
 ): T[] {
   if (oneOffs.length === 0) return transactions;
   const left = [...oneOffs];
@@ -93,6 +105,72 @@ export function withoutOneOffs<T extends InsightTransaction>(
     left.splice(i, 1);
     return false;
   });
+}
+
+// A big bill that comes a few times a year, and how many months it counts across.
+export type RareBill = { date: string; merchant: string; amountCents: number; overMonths: number };
+
+export function rareBills(transactions: InsightTransaction[], asOf: string): RareBill[] {
+  const history = spendingHistory(transactions, asOf);
+  if (!history) return [];
+  const { spending, months, floor } = history;
+  const overMonths = Math.min(RARE_BILL_MAX_MONTHS, months.length);
+  const counted = new Set(months.slice(-overMonths));
+  return spending
+    .filter(
+      (t) =>
+        t.amountCents >= floor &&
+        t.pfcDetailed !== null &&
+        RARE_BILL_DETAILED.includes(t.pfcDetailed) &&
+        counted.has(t.date.slice(0, 7)),
+    )
+    .filter((t) => {
+      const merchant = merchantOf(t);
+      const charged = new Set(
+        spending
+          .filter(
+            (o) =>
+              merchantOf(o) === merchant && o.amountCents >= t.amountCents * ONE_OFF_REPEAT_SHARE,
+          )
+          .map((o) => o.date.slice(0, 7)),
+      );
+      return charged.size <= months.length * RARE_BILL_MAX_MONTH_SHARE;
+    })
+    .map((t) => ({
+      date: t.date,
+      merchant: merchantOf(t),
+      amountCents: t.amountCents,
+      overMonths,
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// For an average: each rare bill in equal parts across its months, the same total. Never for a list
+// of what was actually charged.
+export function spreadRareBills<T extends InsightTransaction>(
+  transactions: T[],
+  asOf: string,
+): T[] {
+  const bills = rareBills(transactions, asOf);
+  if (bills.length === 0) return transactions;
+  const history = spendingHistory(transactions, asOf)!;
+  const months = history.months.slice(-bills[0].overMonths);
+  const parts = bills.flatMap((bill) => {
+    const source = transactions.find(
+      (t) =>
+        t.date === bill.date &&
+        t.amountCents === bill.amountCents &&
+        merchantOf(t) === bill.merchant,
+    )!;
+    const share = Math.floor(bill.amountCents / months.length);
+    return months.map((m, i) => ({
+      ...source,
+      date: `${m}-15`,
+      // The last part takes what division leaves, so the total stays the bill's.
+      amountCents: i === months.length - 1 ? bill.amountCents - share * i : share,
+    }));
+  });
+  return [...withoutOneOffs(transactions, bills), ...parts];
 }
 
 // The transactions of a typical month: one-offs up to `asOf` left out.
@@ -126,7 +204,10 @@ export function typicalMonthlySpending(
   asOf: string,
   months: number,
 ): number {
-  const clean = withoutOneOffs(transactions, oneOffCharges(transactions, asOf));
+  const clean = spreadRareBills(
+    withoutOneOffs(transactions, oneOffCharges(transactions, asOf)),
+    asOf,
+  );
   const covered = new Set(fullMonths(monthsEnding(asOf, months + 1), transactions));
   const complete = spendingInsights(clean, { asOf, monthCount: months + 1 })
     .months.slice(0, -1)

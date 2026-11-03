@@ -91,6 +91,62 @@ describe.runIf(url)("every figure explained and correctable", { timeout: 120_000
   // Debugger 11-02: "How I got this" showed "categories: TRANSFER_OUT, TRANSFER_IN,
   // LOAN_DISBURSEMENTS", "in HOME_IMPROVEMENT, MEDICAL…", the spending rules on the income page, and
   // dates like "due before 2026-11-03". The words people read have no codes and no ISO dates.
+  // Debugger 11-03: a student's tuition read as $2,739 a month, on months of about $1,011.
+  it("says which big bill it counted across the months, and the figure reflects it", async () => {
+    const user = await client.user.create({
+      data: { email: `figures-tuition-${crypto.randomUUID()}@example.com` },
+    });
+    created.push(user.id);
+    const account = await client.account.create({
+      data: {
+        userId: user.id,
+        source: "csv",
+        name: "Checking",
+        type: "depository",
+        subtype: "checking",
+      },
+    });
+    const pay = (date: Date, cents: number, merchantName: string, pfc: [string, string]) =>
+      client.transaction.create({
+        data: {
+          userId: user.id,
+          accountId: account.id,
+          date,
+          amountCents: cents,
+          description: merchantName.toUpperCase(),
+          merchantName,
+          pfcPrimary: pfc[0],
+          pfcDetailed: pfc[1],
+          source: "csv",
+          dedupeKey: crypto.randomUUID(),
+        },
+      });
+    const monthStart = Date.UTC(NOW.getUTCFullYear(), NOW.getUTCMonth(), 1);
+    const monthsBack = (n: number, day: number) => {
+      const d = new Date(monthStart);
+      d.setUTCMonth(d.getUTCMonth() - n);
+      d.setUTCDate(day);
+      return d;
+    };
+    for (let n = 7; n >= 1; n--) {
+      await pay(monthsBack(n, 3), 100_000, "Campus Edge Apts", [
+        "RENT_AND_UTILITIES",
+        "RENT_AND_UTILITIES_RENT",
+      ]);
+    }
+    await pay(monthsBack(2, 24), 481_500, "University Bursar", [
+      "GENERAL_SERVICES",
+      "GENERAL_SERVICES_EDUCATION",
+    ]);
+
+    const working = (await explainFigure(user.id, "monthly_spending", { client, now: NOW }))!;
+    expect(working.rows.map((r) => r.label).join()).toContain("across 7 months: University Bursar");
+    // About $1,688: rent plus a seventh of the tuition, not the three-month $2,605.
+    const cents = Number(working.value.replace(/[$,.]/g, ""));
+    expect(cents).toBeGreaterThan(165_000);
+    expect(cents).toBeLessThan(172_000);
+  });
+
   it("explains each figure in words, with no category codes or ISO dates", async () => {
     const CODE = /\b[A-Z]{3,}_[A-Z_]+\b/;
     const ISO = /\b\d{4}-\d{2}-\d{2}\b/;

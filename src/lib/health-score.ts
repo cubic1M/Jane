@@ -5,7 +5,12 @@ import { loadDetectionInput } from "@/detection/engine";
 import type { DetectionInput } from "@/detection/types";
 import { addDays } from "@/detection/units";
 import { spendingInsights } from "@/insights/spending";
-import { oneOffCharges, withoutOneOffs } from "@/insights/typical-month";
+import {
+  oneOffCharges,
+  rareBills,
+  spreadRareBills,
+  withoutOneOffs,
+} from "@/insights/typical-month";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { listGoals } from "@/lib/goals";
@@ -68,12 +73,13 @@ export async function healthInput(
     .filter((t) => !(t.amountCents < 0 && ONE_OFF_PAY.test(t.description)))
     .map((t) => ({ ...t, pending: false }));
   const oneOffs = oneOffCharges(all, input.asOf);
+  const typical = withoutOneOffs(all, oneOffs);
   const firstDay = input.transactions.reduce<string | null>(
     (min, t) => (min === null || t.date < min ? t.date : min),
     null,
   );
   const months = fullMonthsOnly(
-    spendingInsights(withoutOneOffs(all, oneOffs), {
+    spendingInsights(spreadRareBills(typical, input.asOf), {
       asOf: lastFull,
       monthCount: HEALTH_MONTHS,
     }).months,
@@ -116,6 +122,7 @@ export async function healthInput(
       onTrack: goals.filter((g) => g.progress.status !== "date_passed").length,
     },
     oneOffs: oneOffs.filter((o) => counted.has(o.month)),
+    spreadBills: rareBills(typical, input.asOf),
   };
 }
 
