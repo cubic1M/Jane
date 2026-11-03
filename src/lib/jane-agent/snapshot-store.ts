@@ -4,6 +4,7 @@ import type { Snapshot } from "./snapshot";
 import { isoDay as day } from "@/lib/dates";
 import { dataStamp, sameData } from "@/lib/data-stamp";
 import { log } from "@/lib/log";
+import { scopedFor } from "@/lib/db-scoped";
 
 // Jane's snapshot of a person (everything the agenda, the whole-picture and priorities answers
 // and the chat's tools read), kept in the database (depth first): building it looks up every
@@ -30,7 +31,7 @@ async function read(
   client: PrismaClient,
 ): Promise<{ at: Date; snapshot: Snapshot | null; stamp: string | null } | null> {
   try {
-    const row = await client.janePreference.findUnique({
+    const row = await scopedFor(userId, client).janePreferences.findUnique({
       where: { userId_kind_key: { userId, kind: "system", key: KEY } },
       select: { value: true },
     });
@@ -57,7 +58,7 @@ async function write(
 ) {
   const value = JSON.parse(JSON.stringify({ at: now.toISOString(), snapshot, stamp })) as object;
   try {
-    await client.janePreference.upsert({
+    await scopedFor(userId, client).janePreferences.upsert({
       where: { userId_kind_key: { userId, kind: "system", key: KEY } },
       create: { userId, kind: "system", key: KEY, value, label: "Snapshot" },
       update: { value },
@@ -116,12 +117,12 @@ export async function markSnapshotStale(
   { client }: Pick<Options, "client">,
 ): Promise<void> {
   try {
-    const row = await client.janePreference.findUnique({
+    const row = await scopedFor(userId, client).janePreferences.findUnique({
       where: { userId_kind_key: { userId, kind: "system", key: KEY } },
       select: { value: true },
     });
     if (!row) return;
-    await client.janePreference.update({
+    await scopedFor(userId, client).janePreferences.update({
       where: { userId_kind_key: { userId, kind: "system", key: KEY } },
       data: { value: { ...(row.value as object), at: new Date(0).toISOString() } },
     });

@@ -4,6 +4,8 @@ import { DecisionError, undoPick } from "@/lib/decisions";
 import { rulesFor, saveRules } from "@/lib/standing-rules";
 import type { ChatMessage, ChosenRef, MessageAction, MessageRefs } from "../types";
 import { ChatActionError, type ActionHandler, type ActionOutcome } from "./handler";
+import { scopedFor } from "@/lib/db-scoped";
+import { systemDb } from "@/lib/system-db";
 
 // A pick-one choice stays on its message (founder, 2026-10-25: "It should also not just remove
 // the options, just grey them out, and there should be a revert button"): the autopilot level and
@@ -40,7 +42,7 @@ export async function autopilotBefore(
   client: PrismaClient,
 ): Promise<NonNullable<ChosenRef["autopilot"]>> {
   const [user, rules] = await Promise.all([
-    client.user.findUnique({
+    scopedFor(userId, client).me.findUnique({
       where: { id: userId },
       select: { autopilot: true, acceptSimpleOffers: true },
     }),
@@ -64,7 +66,7 @@ async function restoreAutopilot(
   client: PrismaClient,
 ) {
   await saveRules(userId, before.rules, { client });
-  await client.user.update({
+  await systemDb("A person's own row: jane_rls only reads users", client).user.update({
     where: { id: userId },
     data: {
       autopilot: before.level as AutopilotLevel | null,

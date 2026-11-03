@@ -104,7 +104,7 @@ async function lastRun(userId: string, client: PrismaClient): Promise<string | n
 }
 
 async function markRun(userId: string, client: PrismaClient, now: Date) {
-  await client.janePreference.upsert({
+  await scopedFor(userId, client).janePreferences.upsert({
     where: { userId_kind_key: { userId, kind: "system", key: RUN_KEY } },
     create: {
       userId,
@@ -243,7 +243,7 @@ export async function runStrategist(
       select: { status: true },
     });
     if (have?.status === "yes" || have?.status === "no") continue;
-    await client.suggestion.upsert({
+    await scopedFor(userId, client).suggestions.upsert({
       where: { userId_key: { userId, key: idea.id } },
       create: { userId, key: idea.id, ...data },
       update: { ...data, status: "waiting" },

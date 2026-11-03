@@ -1,16 +1,17 @@
 import { DEBT_FIRST_APR_BPS, DEBT_FIRST_MIN_CENTS } from "@/config/tax-decisions";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { scopedFor } from "@/lib/db-scoped";
 
 // Whether paying debt down comes before a new tax-favoured contribution: the person is
 // overdrawn or carries a card or loan at or above DEBT_FIRST_APR_BPS. Returns the reason in a
 // sentence, or null.
 export async function debtFirst(userId: string, client: PrismaClient): Promise<string | null> {
   const [cash, costly] = await Promise.all([
-    client.account.findMany({
+    scopedFor(userId, client).accounts.findMany({
       where: { userId, type: "depository" },
       select: { currentBalanceCents: true },
     }),
-    client.liability.findMany({
+    scopedFor(userId, client).liabilities.findMany({
       where: { userId, kind: { in: ["credit", "loan"] }, aprBps: { gte: DEBT_FIRST_APR_BPS } },
       select: { aprBps: true, account: { select: { currentBalanceCents: true } } },
     }),

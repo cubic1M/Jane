@@ -5,6 +5,7 @@ const { scoped } = vi.hoisted(() => ({
     userId: "user_1",
     accounts: { findMany: vi.fn() },
     transactions: { findMany: vi.fn(), aggregate: vi.fn(async () => ({ _min: { date: null } })) },
+    me: { findUnique: vi.fn(async () => ({ timezone: null })) },
     recurringStreams: { findMany: vi.fn() },
     balanceSnapshots: { groupBy: vi.fn(async () => []) },
     findings: { findMany: vi.fn(), createMany: vi.fn(), update: vi.fn(), deleteMany: vi.fn() },
@@ -470,9 +471,10 @@ describe("runDetection asking Claude about unclear merchants", () => {
 
 describe("isFirstDetectionComplete", () => {
   it("reads the user's first detection time", async () => {
-    const findUnique = vi.fn().mockResolvedValueOnce({ firstDetectionAt: new Date() });
+    const findUnique = vi.mocked(scoped.me.findUnique) as unknown as ReturnType<typeof vi.fn>;
+    findUnique.mockResolvedValueOnce({ firstDetectionAt: new Date() });
     findUnique.mockResolvedValueOnce({ firstDetectionAt: null });
-    const client = { user: { findUnique } } as unknown as PrismaClient;
+    const client = {} as unknown as PrismaClient;
 
     expect(await isFirstDetectionComplete("user_1", { client })).toBe(true);
     expect(await isFirstDetectionComplete("user_1", { client })).toBe(false);

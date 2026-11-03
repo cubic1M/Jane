@@ -5,11 +5,14 @@
 // file that uses it less must lower its number, so the list only shrinks. See
 // docs/security/access-proof.md.
 
-// A use is any reference to `db` from src/lib/db, or to a name it was given
-// (`client = defaultClient`, `const raw = db`): passing it on counts, since that is how it escapes.
+// A use is reading anything off `db` from src/lib/db, or off a name it was given (`client =
+// defaultClient`, `const raw = db`). Passing it on isn't one: by itself the login role can do nothing
+// with it, and the type checker follows it wherever it goes (raw-db-calls.test.ts).
 const DB_MODULE = /^(@\/lib\/db|(\.{1,2}\/)+(lib\/)?db)$/;
 // What only the two files that build the client should touch.
 const DRIVER_MODULE = /^(pg|@prisma\/adapter-pg)$/;
+
+const REASONED = new Set(["systemDb", "systemTransaction"]);
 
 const meta = {
   type: "problem",
@@ -28,6 +31,8 @@ const meta = {
       "This file now has {{used}} raw database client uses, {{allowed}} listed: lower its number in src/config/raw-db-allowlist.json so the list only shrinks.",
     driver:
       "Only src/lib/db.ts and src/lib/rls-pg.ts talk to the database driver: use scopedFor from src/lib/db-scoped.ts.",
+    reason:
+      "Say why this works across people, in words: a string here, or a const holding one, so a reviewer can read it.",
   },
 };
 
@@ -46,8 +51,8 @@ function create(context) {
     for (const reference of variable.references) {
       if (!reference.isRead()) continue;
       const node = reference.identifier;
-      uses.push(node);
       const parent = node.parent;
+      if (parent?.type === "MemberExpression" && parent.object === node) uses.push(node);
       if (parent?.type === "VariableDeclarator" && parent.init === node) {
         for (const alias of sourceCode.getDeclaredVariables(parent)) follow(alias);
       } else if (parent?.type === "AssignmentPattern" && parent.right === node) {
@@ -86,6 +91,24 @@ function create(context) {
       else if (DRIVER_MODULE.test(String(node.source.value))) {
         context.report({ node, messageId: "driver" });
       }
+    },
+    // systemDb("why") and systemTransaction("why", ...): the reason is words, right there.
+    CallExpression(node) {
+      if (node.callee.type !== "Identifier" || !REASONED.has(node.callee.name)) return;
+      const [why] = node.arguments;
+      const isWords = (n) =>
+        (n?.type === "Literal" && typeof n.value === "string" && n.value.trim() !== "") ||
+        (n?.type === "TemplateLiteral" && n.expressions.length === 0);
+      if (isWords(why)) return;
+      if (why?.type === "Identifier") {
+        let scope = sourceCode.getScope(node);
+        while (scope && !scope.set.has(why.name)) scope = scope.upper;
+        const definition = scope?.set.get(why.name)?.defs[0];
+        if (definition?.node.type === "VariableDeclarator" && definition.parent.kind === "const") {
+          if (isWords(definition.node.init)) return;
+        }
+      }
+      context.report({ node, messageId: "reason" });
     },
     NewExpression(node) {
       const callee = node.callee.type === "MemberExpression" ? node.callee.property : node.callee;

@@ -102,7 +102,7 @@ export async function savePreference(
     value: draft.value as Prisma.InputJsonObject,
     label: draft.label.slice(0, LABEL_MAX),
   };
-  await client.janePreference.upsert({
+  await scopedFor(userId, client).janePreferences.upsert({
     where: { userId_kind_key: { userId, kind: draft.kind, key: draft.key } },
     create: { userId, kind: draft.kind, key: draft.key, ...data },
     update: data,

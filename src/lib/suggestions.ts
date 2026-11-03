@@ -278,7 +278,7 @@ async function scanSuggestionsWork(
   // account is added, those rows go, answered or not (they would show as recommendations).
   const isAdviceRow = (topic: string) => (ADVICE_TOPICS as readonly string[]).includes(topic);
   if (!advice && stored.some((e) => isAdviceRow(e.topic))) {
-    await client.suggestion.deleteMany({
+    await scopedFor(userId, client).suggestions.deleteMany({
       where: { userId, topic: { in: [...ADVICE_TOPICS] } },
     });
   }
@@ -307,7 +307,7 @@ async function scanSuggestionsWork(
     // One that had gone (it stopped firing) and fires again comes back as waiting too (review
     // 10-31). Rows another scan created a moment ago are skipped, not an error: scans run from
     // uploads, syncs and the agent at once.
-    await client.suggestion.createMany({
+    await scopedFor(userId, client).suggestions.createMany({
       data: found
         .filter((s) => !byKey.has(s.id))
         .map((s) => ({
@@ -370,7 +370,7 @@ async function scanSuggestionsWork(
     const have = byKey.get(s.id);
     const answered = have?.status === "yes" || have?.status === "no";
     const selected = pickedIds.has(s.id);
-    await client.suggestion.upsert({
+    await scopedFor(userId, client).suggestions.upsert({
       where: { userId_key: { userId, key: s.id } },
       create: {
         userId,

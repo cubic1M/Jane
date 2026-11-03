@@ -60,7 +60,7 @@ export async function savePrefs(
     excludes: [...new Set(input.excludes)].filter(isExclusion),
     themes: [...new Set(input.themes)].filter(isTheme),
   };
-  await client.valuesPreference.upsert({
+  await scopedFor(userId, client).valuesPreferences.upsert({
     where: { userId },
     create: { userId, ...prefs },
     update: prefs,

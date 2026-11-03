@@ -301,7 +301,7 @@ export async function loadSnapshot(
   const db = scopedFor(userId, client);
   // The person's own timezone: users have their own helpers, so a direct read by id.
   const [user, plan, ruleApprovals, alerts, said, preferences, concierge] = await Promise.all([
-    client.user.findUnique({ where: { id: userId }, select: { timezone: true } }),
+    scopedFor(userId, client).me.findUnique({ where: { id: userId }, select: { timezone: true } }),
     planFor(userId, { client }),
     recentRuleApprovals(userId, { client, now }),
     newestUnreadAlerts(userId, { client, limit: ALERTS_LOOKED_AT }),

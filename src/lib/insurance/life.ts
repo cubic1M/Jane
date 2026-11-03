@@ -387,7 +387,10 @@ export async function buyLife(
   if (!binding) throw new LifeError("Buying isn't available right now.");
   const startDate = day(new Date(now.getTime() + DAY));
   const coverage = { deathBenefit: application.amountCents, termYears: application.termYears };
-  const user = await client.user.findUnique({ where: { id: userId }, select: { name: true } });
+  const user = await scopedFor(userId, client).me.findUnique({
+    where: { id: userId },
+    select: { name: true },
+  });
   const bound = await binding.bind(
     {
       partnerQuoteId: quote.partnerQuoteId,

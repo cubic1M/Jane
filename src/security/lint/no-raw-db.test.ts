@@ -28,24 +28,48 @@ describe("no-raw-db", () => {
   it("counts a use through a default parameter and through the name it is given", () => {
     const code = `import { db as defaultClient } from "@/lib/db";
       export function f({ client = defaultClient } = {}) { client.a.findMany(); return client.b.count(); }`;
-    expect(lint(code, { "src/lib/x.ts": 3 })).toEqual([]);
-    expect(lint(code, { "src/lib/x.ts": 2 })[0].message).toContain("3 here, 2 listed");
+    expect(lint(code, { "src/lib/x.ts": 2 })).toEqual([]);
+    expect(lint(code, { "src/lib/x.ts": 1 })[0].message).toContain("2 here, 1 listed");
   });
 
-  it("counts `const raw = db`, a plain default parameter, and passing it on", () => {
+  it("counts `const raw = db` and a plain default parameter", () => {
     const code = `import { db } from "@/lib/db";
       const raw = db;
       export const a = raw.user.count();
-      export function g(client = db) { return client.x.count(); }
-      export const h = helper(db);`;
-    expect(lint(code, { "src/lib/x.ts": 5 })).toEqual([]);
+      export function g(client = db) { return client.x.count(); }`;
+    expect(lint(code, { "src/lib/x.ts": 2 })).toEqual([]);
+  });
+
+  it("doesn't count passing it on, to a door or to a function that takes a client", () => {
+    const code = `import { db } from "@/lib/db";
+      import { scopedFor } from "@/lib/db-scoped";
+      export function f(id: string, client = db) { return [scopedFor(id, client), helper(client), helper(db)]; }`;
+    expect(lint(code)).toEqual([]);
   });
 
   it("asks for the number to come down when a file uses it less", () => {
-    const [problem] = lint(`import { db } from "@/lib/db"; export const a = db;`, {
+    const [problem] = lint(`import { db } from "@/lib/db"; export const a = db.user;`, {
       "src/lib/x.ts": 4,
     });
     expect(problem.message).toContain("lower its number");
+  });
+
+  it("wants systemDb's reason in words", () => {
+    const ok = [
+      `systemDb("Cron: finds who to run for");`,
+      `systemTransaction("Cron", run);`,
+      `const WHY = "Cron"; systemDb(WHY, client);`,
+    ];
+    for (const code of ok) expect(lint(code)).toEqual([]);
+    const notOk = [
+      `systemDb();`,
+      `systemDb("  ");`,
+      `systemDb(reason);`,
+      `systemDb(\`for \${who}\`);`,
+      `let why = "Cron"; systemDb(why);`,
+      `const WHY = other(); systemDb(WHY);`,
+    ];
+    for (const code of notOk) expect(lint(code)[0].message).toContain("Say why");
   });
 
   it("isn't fooled by a local name or a type", () => {
@@ -60,8 +84,10 @@ describe("no-raw-db", () => {
   it("catches the other ways to the client: re-exports, dynamic imports, relative paths", () => {
     expect(lint(`export { db } from "@/lib/db";`)[0].message).toContain("New raw");
     expect(lint(`export const m = import("@/lib/db");`)[0].message).toContain("New raw");
-    expect(lint(`import { db } from "./db"; export const a = db;`)[0].message).toContain("New raw");
-    expect(lint(`import { db } from "../lib/db"; export const a = db;`)[0].message).toContain(
+    expect(lint(`import { db } from "./db"; export const a = db.x;`)[0].message).toContain(
+      "New raw",
+    );
+    expect(lint(`import { db } from "../lib/db"; export const a = db.x;`)[0].message).toContain(
       "New raw",
     );
   });

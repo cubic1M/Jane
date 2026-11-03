@@ -40,6 +40,7 @@ import { cachedRead } from "@/lib/read-cache";
 import { FILE_SOURCE, GIVEN_SOURCE } from "@/lib/import/balances";
 import type { anthropic } from "@/lib/anthropic";
 import { meteredClaude } from "@/lib/claude-budget";
+import { systemDb } from "@/lib/system-db";
 
 // Findings the person can still act on, and the ones where they've said yes.
 const OPEN_STATUSES: FindingStatus[] = ["new", "shown", "approved", "in_progress"];
@@ -202,7 +203,7 @@ async function loadInput(
         orderBy: { completedAt: "asc" },
       }),
       // The merchant directory is shared, not user data, so it's read without scoping.
-      client.merchant.findMany({
+      systemDb("Merchants are shared reference data, no one's own", client).merchant.findMany({
         select: { key: true, name: true, aliases: true, category: true },
       }),
       // How far back the person's data goes, before the lookback window too.
@@ -290,7 +291,9 @@ export async function loadTransactionsBetween(
       select: TRANSACTION_SELECT,
       orderBy: [{ date: "desc" }, { id: "asc" }],
     }),
-    client.merchant.findMany({ select: { key: true, name: true, aliases: true, category: true } }),
+    systemDb("Merchants are shared reference data, no one's own", client).merchant.findMany({
+      select: { key: true, name: true, aliases: true, category: true },
+    }),
   ]);
   const copies = copiesToLeaveOut(accounts);
   return namedByDirectory(
@@ -478,7 +481,10 @@ export async function runDetection(
     });
   }
 
-  const firstRun = await client.user.updateMany({
+  const firstRun = await systemDb(
+    "A person's own row: jane_rls only reads users",
+    client,
+  ).user.updateMany({
     where: { id: userId, firstDetectionAt: null },
     data: { firstDetectionAt: now },
   });
@@ -638,7 +644,7 @@ export async function isFirstDetectionComplete(
   userId: string,
   { client = defaultClient }: Pick<Options, "client"> = {},
 ): Promise<boolean> {
-  const user = await client.user.findUnique({
+  const user = await scopedFor(userId, client).me.findUnique({
     where: { id: userId },
     select: { firstDetectionAt: true },
   });

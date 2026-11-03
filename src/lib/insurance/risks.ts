@@ -155,7 +155,7 @@ export async function gapQuotes(
   const quoting = partner === undefined ? await partnerFor(userId, { client }) : partner;
   if (!quoting) return [];
   const [user, household] = await Promise.all([
-    client.user.findUnique({ where: { id: userId }, select: { state: true } }),
+    scopedFor(userId, client).me.findUnique({ where: { id: userId }, select: { state: true } }),
     loadHousehold(userId, { client, now }),
   ]);
   const answers = await quoting.quote(

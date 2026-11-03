@@ -5,7 +5,7 @@ import pg from "pg";
 // marker, what it wrote to whose rows (triggers on every owned table, so nothing escapes), and any
 // attempt to leave the machine.
 
-const url = () => process.env.TEST_DATABASE_URL!;
+const url = () => (process.env.TEST_OWNER_DATABASE_URL ?? process.env.TEST_DATABASE_URL)!;
 
 type Sql = <T = Record<string, unknown>>(text: string, params?: unknown[]) => Promise<T[]>;
 

@@ -12,8 +12,9 @@ import { INVESTMENT_TOOL_STATUS, INVESTMENT_TOOLS, runInvestmentTool } from "./t
 // The chat's view of the 24-hour agent: what it runs and its latest trades with fees and reasons,
 // every replayed strategy's verdict, and nothing for a real account.
 
-const client = {
+const client: PrismaClient = {
   paperAccount: { findUnique: vi.fn(async () => ({ id: "p1" })) },
+  $extends: () => client,
 } as unknown as PrismaClient;
 const now = new Date("2026-10-26T12:00:00Z");
 

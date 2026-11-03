@@ -226,6 +226,7 @@ describe("askClaudeInChat", () => {
     };
     const withStored = {
       janePreference: { findUnique: vi.fn().mockResolvedValue({ value: stored }) },
+      $extends: () => withStored,
     } as unknown as PrismaClient;
     vi.mocked(loadSnapshot).mockClear();
     const started = Date.now();

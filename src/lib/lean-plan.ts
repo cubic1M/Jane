@@ -157,7 +157,7 @@ export async function loadLeanPlan(
   const [health, payoff, user] = await Promise.all([
     healthInput(userId, input, { client, now }),
     loadPayoff(userId, { client, now }),
-    client.user.findUnique({ where: { id: userId }, select: { state: true } }),
+    scopedFor(userId, client).me.findUnique({ where: { id: userId }, select: { state: true } }),
   ]);
   const forecastBills = upcomingBills(input, LEAN_BILL_DAYS).reduce(
     (sum, b) => sum + b.amountCents,

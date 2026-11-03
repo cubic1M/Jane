@@ -169,7 +169,7 @@ export async function loadCarLoan(
       select: { id: true, date: true, amountCents: true, description: true, merchantName: true },
       orderBy: { date: "desc" },
     }),
-    client.user.findUnique({ where: { id: userId }, select: { name: true } }),
+    scopedFor(userId, client).me.findUnique({ where: { id: userId }, select: { name: true } }),
     givenRefi ?? loadRefinance(userId, { client, now, book }),
     db.carLoanWatches.findFirst(),
     adviceMode(userId, { client }),

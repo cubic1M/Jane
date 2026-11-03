@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { asUserTransaction, RLS_ROLE } from "@/lib/rls";
+import { systemDb } from "@/lib/system-db";
 
 // Whether row-level security (docs/security/rls.md) is really on, read from the database's own
 // catalog: every user-owned table, with RLS on or off and its policies. /admin/health shows it and
@@ -30,7 +31,7 @@ const RECORDS = ["audit_log", "analytics_events"];
 type Row = { table: string; rls: boolean; policies: number; person_policy: boolean };
 
 export async function rlsCoverage({
-  client = defaultClient,
+  client = systemDb("Row-level security's own check: the catalog, and the rule's plan"),
 }: { client?: Pick<PrismaClient, "$queryRaw"> } = {}): Promise<RlsCoverage> {
   // One after another: this also runs inside a transaction (tests), which takes one at a time.
   const roles = await client.$queryRaw<{ n: number }[]>`

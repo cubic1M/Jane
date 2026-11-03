@@ -19,7 +19,10 @@ export async function timezoneOf(
   userId: string,
   { client = defaultClient }: { client?: PrismaClient } = {},
 ): Promise<string | null> {
-  const user = await client.user.findUnique({ where: { id: userId }, select: { timezone: true } });
+  const user = await scopedFor(userId, client).me.findUnique({
+    where: { id: userId },
+    select: { timezone: true },
+  });
   return user?.timezone ?? null;
 }
 

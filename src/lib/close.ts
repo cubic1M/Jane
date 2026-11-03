@@ -91,7 +91,7 @@ export async function loadMonthClose(
   const today = await todayOf(userId, { client, now });
   const end = lastDay(month) < today ? lastDay(month) : today;
   const db = scopedFor(userId, client);
-  const { timezone } = await client.user.findUniqueOrThrow({
+  const { timezone } = await scopedFor(userId, client).me.findUniqueOrThrow({
     where: { id: userId },
     select: { timezone: true },
   });

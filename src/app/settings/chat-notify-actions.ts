@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { chatNotifyPrefs } from "@/lib/jane-agent/notify-prefs";
 import { requireUser } from "@/lib/session";
 import type { SettingsState } from "./actions";
+import { systemDb } from "@/lib/system-db";
 
 // "Messages from Jane" in Settings (spec step 85): how Jane's messages reach the person
 // (push, email, both or off) and which kinds go out. Takes effect at once: every
@@ -24,7 +25,10 @@ export async function saveChatNotifyPreferences(
     channel,
     kinds: Object.fromEntries(CHAT_NOTIFY_KINDS.map((k) => [k, formData.get(k) === "on"])),
   });
-  await db.user.update({ where: { id: user.id }, data: { chatNotifyPrefs: prefs } });
+  await systemDb("A person's own row: jane_rls only reads users").user.update({
+    where: { id: user.id },
+    data: { chatNotifyPrefs: prefs },
+  });
   await track(user.id, "chat_notify_prefs_saved", {
     channel: prefs.channel,
     ...Object.fromEntries(CHAT_NOTIFY_KINDS.map((k) => [k, prefs.kinds[k]])),

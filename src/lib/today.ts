@@ -4,6 +4,7 @@ import { db as defaultClient } from "@/lib/db";
 import { validTimezone } from "@/lib/digest/week";
 import { localTime } from "@/lib/jane-agent/quiet-hours";
 import { cachedRead } from "@/lib/read-cache";
+import { scopedFor } from "@/lib/db-scoped";
 
 // The person's own "today" (founder, 2026-10-23): "due today", "as of" and the brief's and
 // agenda's dates are their day, in their timezone (users.timezone, US Pacific when unknown),
@@ -14,7 +15,12 @@ export const localDate = (now: Date, timezone: string | null | undefined): strin
   localTime(now, timezone).date;
 
 const timezoneFrom = async (userId: string, client: PrismaClient) =>
-  (await client.user.findUnique({ where: { id: userId }, select: { timezone: true } }))?.timezone;
+  (
+    await scopedFor(userId, client).me.findUnique({
+      where: { id: userId },
+      select: { timezone: true },
+    })
+  )?.timezone;
 // Read once per server render (React's cache): a page asks for the day many times over.
 const timezoneOnce = cache((userId: string) => timezoneFrom(userId, defaultClient));
 

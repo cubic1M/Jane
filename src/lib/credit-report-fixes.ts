@@ -88,7 +88,7 @@ export async function loadReportFixes(
   const [request, rows, user, first] = await Promise.all([
     requestFor(userId, client, now),
     db.creditDisputes.findMany({ orderBy: { sentAt: "desc" } }),
-    client.user.findUnique({ where: { id: userId }, select: { name: true } }),
+    scopedFor(userId, client).me.findUnique({ where: { id: userId }, select: { name: true } }),
     db.creditReports.findFirst({ orderBy: { pulledOn: "asc" }, select: { pulledOn: true } }),
   ]);
   const items = await found.partner.reportItems(request, first ? isoDay(first.pulledOn) : asOf);

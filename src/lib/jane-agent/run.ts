@@ -37,6 +37,7 @@ import { loadSnapshot } from "./snapshot";
 import { saveSnapshot } from "./snapshot-store";
 import type { Trigger } from "./sources";
 import { withReadCache } from "@/lib/read-cache";
+import { systemDb } from "@/lib/system-db";
 
 // Runs Jane's brain for one person (spec step 82): loads what it looks at with the
 // existing loaders, reads what Jane already said, asks the brain what to say and posts it.
@@ -64,7 +65,10 @@ async function runJaneAgentWork(
   { client = defaultClient, now = new Date(), trigger = "sync", early = false }: Options = {},
 ): Promise<{ posted: number }> {
   // The person's timezone, for quiet hours: users have their own helpers, so read by id.
-  const user = await client.user.findUnique({ where: { id: userId }, select: { timezone: true } });
+  const user = await scopedFor(userId, client).me.findUnique({
+    where: { id: userId },
+    select: { timezone: true },
+  });
   if (!user) return { posted: 0 };
   // Nothing to say in quiet hours, so nothing to load, unless the person is looking.
   if (trigger !== "open" && inQuietHours(now, user.timezone)) return { posted: 0 };
@@ -270,7 +274,7 @@ export async function runJaneAgentForAll({
 }> {
   // A system job across all users: it reads ids and when Jane last posted, nothing else;
   // runJaneAgent scopes everything after to the one person.
-  const users = await client.user.findMany({
+  const users = await systemDb("Cron: finds who to run for, across people", client).user.findMany({
     // Not trial people: sample data, gone within hours, never in the daily runs.
     where: {
       deletedAt: null,

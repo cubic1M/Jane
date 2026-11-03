@@ -4,7 +4,7 @@ import { evidenceRefs, onSharedAccountsOnly } from "@/lib/finding-accounts";
 import { inReadCache } from "@/lib/read-cache";
 import { forgetReads, memoKey, memoRead, READ_OPERATIONS } from "@/lib/read-memo";
 import { asUser, asUserTransaction, SCOPED_QUERY_TRANSACTION, withRls } from "@/lib/rls";
-import { requireUser } from "@/lib/session";
+import { systemDb } from "@/lib/system-db";
 
 // Every query on a user-owned table goes through here. scopeArgs ANDs the user's id onto
 // every filter, so a caller's own filter can only narrow it: asking for another user's
@@ -367,8 +367,26 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
 
 export type ScopedDb = ReturnType<typeof scopedFor>;
 
+// Several statements on one person's rows as one transaction, on tables the scoped transaction
+// above doesn't list. Statements aren't filtered here, so write their user id in: the database
+// checks it either way, as every statement runs as the person.
+export type PersonTx = Prisma.TransactionClient & { readonly __person: true };
+export function personTransaction<T>(
+  userId: string,
+  run: (tx: PersonTx) => Promise<T>,
+  client: PrismaClient = db,
+): Promise<T> {
+  if (!userId) throw new Error("personTransaction needs a user id");
+  return asUserTransaction(client as unknown as RawTransactions, userId, (tx) =>
+    run(tx as PersonTx),
+  ).finally(() => forgetReads());
+}
+type RawTransactions = Parameters<typeof asUserTransaction<Prisma.TransactionClient, never>>[0];
+
 // The usual entry point in pages, server actions and route handlers.
 export async function scopedDb(): Promise<ScopedDb> {
+  // Loaded here, not above: most code that scopes by id never needs a signed-in person, nor Auth.js.
+  const { requireUser } = await import("@/lib/session");
   const user = await requireUser();
   return scopedFor(user.id);
 }
@@ -379,12 +397,16 @@ export async function scopedDb(): Promise<ScopedDb> {
 // every time this is built, so leaving a household removes access at once. Decisions are
 // never exposed, and only undecided findings are, so a decision can't be read off a status.
 export async function sharedReadFor(viewerId: string, client: PrismaClient = db) {
-  const membership = await client.householdMember.findUnique({
+  const system = systemDb(
+    "Household sharing: what a partner shared, membership checked here",
+    client,
+  );
+  const membership = await system.householdMember.findUnique({
     where: { userId: viewerId },
     select: { householdId: true },
   });
   const partners = membership
-    ? await client.householdMember.findMany({
+    ? await system.householdMember.findMany({
         where: { householdId: membership.householdId, userId: { not: viewerId } },
         select: { userId: true, user: { select: { email: true, name: true } } },
       })
@@ -393,7 +415,7 @@ export async function sharedReadFor(viewerId: string, client: PrismaClient = db)
   const accounts =
     partnerIds.length === 0
       ? []
-      : await client.account.findMany({
+      : await system.account.findMany({
           where: { userId: { in: partnerIds }, sharedWithHousehold: true },
           select: {
             id: true,
@@ -412,7 +434,7 @@ export async function sharedReadFor(viewerId: string, client: PrismaClient = db)
     partners: partners.map((p) => ({ userId: p.userId, email: p.user.email, name: p.user.name })),
     accounts,
     transactions: (where: Prisma.TransactionWhereInput = {}) =>
-      client.transaction.findMany({
+      system.transaction.findMany({
         where: { AND: [where, { accountId: { in: accountIds } }] },
         select: {
           id: true,
@@ -427,7 +449,7 @@ export async function sharedReadFor(viewerId: string, client: PrismaClient = db)
       }),
     findings: async () => {
       if (partnerIds.length === 0 || accountIds.length === 0) return [];
-      const findings = await client.finding.findMany({
+      const findings = await system.finding.findMany({
         where: { userId: { in: partnerIds }, status: { in: ["new", "shown"] } },
         select: {
           id: true,
@@ -442,7 +464,7 @@ export async function sharedReadFor(viewerId: string, client: PrismaClient = db)
       const refs = findings.map((f) => evidenceRefs(f.evidence));
       const txIds = [...new Set(refs.flatMap((r) => r.transactionIds))];
       const placed = txIds.length
-        ? await client.transaction.findMany({
+        ? await system.transaction.findMany({
             where: { id: { in: txIds }, accountId: { in: accountIds } },
             select: { id: true, accountId: true },
           })
@@ -464,7 +486,7 @@ export async function sharedReadFor(viewerId: string, client: PrismaClient = db)
     policies: () =>
       partnerIds.length === 0
         ? Promise.resolve([])
-        : client.insurancePolicy.findMany({
+        : system.insurancePolicy.findMany({
             where: {
               userId: { in: partnerIds },
               sharedWithHousehold: true,

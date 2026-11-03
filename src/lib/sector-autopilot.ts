@@ -19,7 +19,10 @@ import { cachedCopy } from "@/lib/read-cache";
 // The person's step 57 level. Read here rather than through src/lib/autopilot.ts, which
 // applies the standing rules, which read this module.
 async function globalLevel(userId: string, client: PrismaClient): Promise<string | null> {
-  const user = await client.user.findUnique({ where: { id: userId }, select: { autopilot: true } });
+  const user = await scopedFor(userId, client).me.findUnique({
+    where: { id: userId },
+    select: { autopilot: true },
+  });
   return user?.autopilot ?? null;
 }
 

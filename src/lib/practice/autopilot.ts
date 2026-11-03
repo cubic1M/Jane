@@ -15,7 +15,7 @@ import { WASH_SALE_DAYS } from "@/config/tax-rates";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
-import { scopedFor } from "@/lib/db-scoped";
+import { scopedFor, personTransaction } from "@/lib/db-scoped";
 import { intradaySession, marketData } from "@/lib/market";
 import {
   monthlyDue,
@@ -65,7 +65,7 @@ export async function addMonthlyIfDue(
   const today = now.toISOString().slice(0, 10);
   const due = { ...portfolio, today, addedThisMonth: false };
   if (!monthlyDue(due)) return false;
-  const added = await client.practiceTrade.findFirst({
+  const added = await scopedFor(userId, client).practiceTrades.findFirst({
     where: {
       portfolioId: portfolio.id,
       side: "deposit",
@@ -110,7 +110,7 @@ export async function runAutopilot(
     if (bar) prices[ticker] = bar.closeCents;
   }
   const dayStart = new Date(`${asOf}T00:00:00Z`);
-  const tradesToday = await client.practiceTrade.count({
+  const tradesToday = await scopedFor(userId, client).practiceTrades.count({
     where: {
       portfolioId: portfolio.id,
       side: { in: ["buy", "sell"] },
@@ -119,7 +119,7 @@ export async function runAutopilot(
     },
   });
   // Funds sold at a loss lately aren't bought back (no wash sale).
-  const recent = await client.practiceTrade.findMany({
+  const recent = await scopedFor(userId, client).practiceTrades.findMany({
     where: {
       portfolioId: portfolio.id,
       side: "sell",
@@ -133,7 +133,7 @@ export async function runAutopilot(
   // The person's preferences: the mix, what is never bought, the cash kept and whether Jane acts.
   const profile = await practiceProfileOf(userId, { client, now });
   // A news theme's slice comes out after its month, or at its stop (src/planning/themes.ts).
-  const themeBuys = await client.practiceTrade.findMany({
+  const themeBuys = await scopedFor(userId, client).practiceTrades.findMany({
     where: {
       portfolioId: portfolio.id,
       side: "buy",
@@ -184,7 +184,7 @@ export async function runAutopilot(
     cashCents: state.cashCents - profile.cashBufferCents - reserve,
     traded:
       profile.crypto !== null &&
-      (await client.practiceTrade.count({
+      (await scopedFor(userId, client).practiceTrades.count({
         where: { portfolioId: portfolio.id, rule: "crypto_sleeve", undone: false },
       })) > 0,
   });
@@ -298,7 +298,7 @@ async function dayTrade(
 ): Promise<Fill[]> {
   const day = now.toISOString().slice(0, 10);
   const { portfolio, state } = await loadLedger(userId, client);
-  const done = await client.practiceTrade.count({
+  const done = await scopedFor(userId, client).practiceTrades.count({
     where: {
       portfolioId: portfolio.id,
       rule: "day_trade",
@@ -338,7 +338,7 @@ export async function setPaused(
   { client = defaultClient }: Options = {},
 ) {
   const { portfolio } = await loadLedger(userId, client);
-  await client.practicePortfolio.update({
+  await scopedFor(userId, client).practicePortfolios.update({
     where: { id: portfolio.id },
     data: which === "all" ? { paused } : { opportunitiesPaused: paused },
   });
@@ -393,12 +393,12 @@ export async function tradeLog(
 // every trade that stands. The starting money can't be undone.
 export async function undoLastTrade(userId: string, { client = defaultClient }: Options = {}) {
   const { portfolio } = await loadLedger(userId, client);
-  const last = await client.practiceTrade.findFirst({
+  const last = await scopedFor(userId, client).practiceTrades.findFirst({
     where: { portfolioId: portfolio.id, undone: false, rule: { not: "start" } },
     orderBy: [{ placedAt: "desc" }, { id: "desc" }],
   });
   if (!last) throw new PracticeError("There's nothing to undo.");
-  const standing = await client.practiceTrade.findMany({
+  const standing = await scopedFor(userId, client).practiceTrades.findMany({
     where: { portfolioId: portfolio.id, undone: false, id: { not: last.id } },
     orderBy: [{ placedAt: "asc" }, { id: "asc" }],
   });
@@ -413,23 +413,27 @@ export async function undoLastTrade(userId: string, { client = defaultClient }: 
         },
   );
   const rebuilt = replay(0, entries, LEDGER_UNIVERSE);
-  await client.$transaction([
-    client.practiceTrade.update({ where: { id: last.id }, data: { undone: true } }),
-    client.practicePortfolio.update({
-      where: { id: portfolio.id },
-      data: { cashCents: rebuilt.cashCents },
-    }),
-    client.practicePosition.deleteMany({ where: { portfolioId: portfolio.id } }),
-    client.practicePosition.createMany({
-      data: Object.entries(rebuilt.positions).map(([ticker, p]) => ({
-        portfolioId: portfolio.id,
-        userId,
-        ticker,
-        quantity: p.quantity,
-        costBasisCents: p.costBasisCents,
-      })),
-    }),
-  ]);
+  await personTransaction(
+    userId,
+    async (tx) => {
+      await tx.practiceTrade.update({ where: { id: last.id, userId }, data: { undone: true } });
+      await tx.practicePortfolio.update({
+        where: { id: portfolio.id, userId },
+        data: { cashCents: rebuilt.cashCents },
+      });
+      await tx.practicePosition.deleteMany({ where: { portfolioId: portfolio.id, userId } });
+      await tx.practicePosition.createMany({
+        data: Object.entries(rebuilt.positions).map(([ticker, p]) => ({
+          portfolioId: portfolio.id,
+          userId,
+          ticker,
+          quantity: p.quantity,
+          costBasisCents: p.costBasisCents,
+        })),
+      });
+    },
+    client,
+  );
   await logAudit(
     { type: "user", id: userId },
     "practice_trade",

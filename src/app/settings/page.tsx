@@ -11,7 +11,7 @@ import { AUTOPILOT_LEVELS } from "@/config/autopilot";
 import { AutopilotChooser } from "@/components/autopilot-chooser";
 import { CallOffersForm } from "./call-offers-form";
 import { db } from "@/lib/db";
-import { scopedDb } from "@/lib/db-scoped";
+import { scopedDb, scopedFor } from "@/lib/db-scoped";
 import { conciergeMode } from "@/lib/concierge-mode";
 import { requireUser } from "@/lib/session";
 import { isTrialUser } from "@/lib/trial-ids";
@@ -98,7 +98,7 @@ async function SettingsContent({
     sessions,
     actsForYou,
   ] = await Promise.all([
-    db.user.findUniqueOrThrow({
+    scopedFor(user.id).me.findUniqueOrThrow({
       where: { id: user.id },
       select: {
         digestEnabled: true,

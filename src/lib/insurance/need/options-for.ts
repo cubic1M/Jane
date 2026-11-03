@@ -5,6 +5,7 @@ import { loadHousehold } from "@/lib/insurance/household";
 import { yearlyPremium, type Policy } from "@/lib/insurance/policies";
 import { buildOptions, optionRequests, type OptionSet, type PricedRequest } from "./options";
 import type { Need, NeedPolicy } from "./types";
+import { scopedFor } from "@/lib/db-scoped";
 
 // Asks the quote stand-in to price the variants of a need (spec step 275) and builds the option
 // set. Only for people the stand-in answers for (the demo bank); a real account gets no options,
@@ -26,7 +27,7 @@ export async function optionsFor(
   const quoting = partner === undefined ? await partnerFor(userId, { client }) : partner;
   if (!quoting) return null;
   const [user, household] = await Promise.all([
-    client.user.findUnique({ where: { id: userId }, select: { state: true } }),
+    scopedFor(userId, client).me.findUnique({ where: { id: userId }, select: { state: true } }),
     loadHousehold(userId, { client, now }),
   ]);
   const start = new Date(now.getTime() + 86_400_000).toISOString().slice(0, 10);

@@ -62,7 +62,7 @@ export async function raiseAlerts(
   alerts: AlertCandidate[],
   { client = defaultClient, now = new Date(), send = sendEmail, push = sendPush }: Options = {},
 ): Promise<{ raised: number; emailed: number }> {
-  const user = await client.user.findUnique({
+  const user = await scopedFor(userId, client).me.findUnique({
     where: { id: userId },
     select: { alertPrefs: true, deletedAt: true },
   });
@@ -108,7 +108,7 @@ export async function emailUrgentAlerts(
   userId: string,
   { client = defaultClient, now = new Date(), send = sendEmail, push = sendPush }: Options = {},
 ): Promise<number> {
-  const user = await client.user.findUnique({
+  const user = await scopedFor(userId, client).me.findUnique({
     where: { id: userId },
     select: { email: true, alertPrefs: true, deletedAt: true },
   });
@@ -188,7 +188,7 @@ export async function emailUrgentAlerts(
 
 // The types the person still wants to see; alerts of a type they turned off are hidden.
 async function shownTypes(userId: string, client: PrismaClient): Promise<AlertType[]> {
-  const user = await client.user.findUnique({
+  const user = await scopedFor(userId, client).me.findUnique({
     where: { id: userId },
     select: { alertPrefs: true },
   });

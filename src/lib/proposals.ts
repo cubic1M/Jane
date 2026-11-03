@@ -15,6 +15,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { GoalError, addGoal } from "@/lib/goals";
 import { fundProfile } from "@/lib/emergency-fund";
 import { proposals, type Proposal } from "@/planning/proposals";
+import { systemDb } from "@/lib/system-db";
 
 // Set-up Jane proposes on the plan (spec step 55): budgets from the person's own averages,
 // an emergency fund from their own spending, categories for merchants that have none, and
@@ -40,7 +41,7 @@ export async function currentProposals(
       where: { pfcPrimary: null, amountCents: { gt: 0 } },
       select: { description: true, merchantName: true },
     }),
-    client.merchant.findMany(),
+    systemDb("Merchants are shared reference data, no one's own", client).merchant.findMany(),
     irregularCosts(userId, { client, now }),
   ]);
   const summary = budgetSummary(transactions, budgets, asOf);
@@ -96,7 +97,10 @@ export async function refreshProposals(
   // Categories from the merchant directory are filed on their own (spec step 63): they
   // change no money and can be undone on /transactions. Not for "Ask me first".
   const autopilot = (
-    await client.user.findUnique({ where: { id: userId }, select: { autopilot: true } })
+    await scopedFor(userId, client).me.findUnique({
+      where: { id: userId },
+      select: { autopilot: true },
+    })
   )?.autopilot;
   for (const proposal of fresh) {
     if (answered.has(proposal.key)) continue;

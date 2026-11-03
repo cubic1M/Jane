@@ -89,7 +89,7 @@ export async function loadHomeEquity(
   const db = scopedFor(userId, client);
   const [row, user] = await Promise.all([
     db.homeEquityFacts.findFirst(),
-    client.user.findUnique({ where: { id: userId }, select: { name: true } }),
+    scopedFor(userId, client).me.findUnique({ where: { id: userId }, select: { name: true } }),
   ]);
   const facts: HomeFacts = row
     ? {

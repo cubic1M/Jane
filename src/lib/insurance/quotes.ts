@@ -155,7 +155,7 @@ export async function requestQuotes(
 
   // Users have their own helpers, so a direct read of the state by id.
   const [user, household] = await Promise.all([
-    client.user.findUnique({ where: { id: userId }, select: { state: true } }),
+    scopedFor(userId, client).me.findUnique({ where: { id: userId }, select: { state: true } }),
     loadHousehold(userId, { client, now }),
   ]);
   const spend = expectedSpend(household);

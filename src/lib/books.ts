@@ -2,7 +2,7 @@ import { BOOKS_KIND_LABELS, BOOKS_LOOKBACK_DAYS, BOOKS_WORRYING_KINDS } from "@/
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
-import { scopedFor } from "@/lib/db-scoped";
+import { scopedFor, personTransaction } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
 import {
   duplicateAccounts,
@@ -113,17 +113,19 @@ export async function mergeDuplicate(
   const proof = provenSame(keepTx.map(asTx), dupTx.map(asTx));
   if (!proof.ok) return false;
   const moveIds = new Set(proof.extra.map((t) => t.id));
-  await client.$transaction([
-    ...(moveIds.size > 0
-      ? [
-          client.transaction.updateMany({
-            where: { id: { in: [...moveIds] }, userId },
-            data: { accountId: keepId },
-          }),
-        ]
-      : []),
-    client.account.deleteMany({ where: { id: duplicateId, userId } }),
-  ]);
+  await personTransaction(
+    userId,
+    async (tx) => {
+      if (moveIds.size > 0) {
+        await tx.transaction.updateMany({
+          where: { id: { in: [...moveIds] }, userId },
+          data: { accountId: keepId },
+        });
+      }
+      await tx.account.deleteMany({ where: { id: duplicateId, userId } });
+    },
+    client,
+  );
   await logAudit(
     { type: "user", id: userId },
     "books_merged",

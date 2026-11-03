@@ -18,6 +18,9 @@ import { syncItem } from "@/lib/plaid/sync";
 import { scopedFor } from "@/lib/db-scoped";
 import { hit } from "@/lib/rate-limit";
 import { requireUser } from "@/lib/session";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "A person's own row: jane_rls only reads users";
 
 export type SettingsState = { ok: boolean; message: string } | null;
 
@@ -31,7 +34,7 @@ export async function saveEmailPreferences(
   if (!TIMEZONES.some((t) => t.id === timezone)) {
     return { ok: false, message: "Pick a timezone from the list." };
   }
-  await db.user.update({
+  await systemDb(WHY).user.update({
     where: { id: user.id },
     data: { digestEnabled: formData.get("digest") === "on", timezone },
   });
@@ -47,7 +50,10 @@ export async function saveState(
   const user = await requireUser();
   const state = String(formData.get("state") ?? "");
   if (state && !isStateCode(state)) return { ok: false, message: "Pick a state from the list." };
-  await db.user.update({ where: { id: user.id }, data: { state: state || null } });
+  await systemDb(WHY).user.update({
+    where: { id: user.id },
+    data: { state: state || null },
+  });
   revalidatePath("/settings");
   return { ok: true, message: "Saved." };
 }
@@ -80,7 +86,10 @@ export async function saveAlertPreferences(
 ): Promise<SettingsState> {
   const user = await requireUser();
   const prefs = alertPrefs(Object.fromEntries(ALERT_TYPES.map((t) => [t, formData.get(t)])));
-  await db.user.update({ where: { id: user.id }, data: { alertPrefs: prefs } });
+  await systemDb(WHY).user.update({
+    where: { id: user.id },
+    data: { alertPrefs: prefs },
+  });
   revalidatePath("/settings");
   return { ok: true, message: "Saved." };
 }

@@ -2,6 +2,7 @@ import { markAlertRead } from "@/lib/alerts";
 import { markDeadlineDone } from "@/lib/deadlines";
 import { startOfTomorrow } from "../snooze";
 import { ChatActionError, answeredElsewhere, type ActionHandler } from "./handler";
+import { scopedFor } from "@/lib/db-scoped";
 
 // Buttons on Jane's heads-ups (spec step 83), through the pages' own code: "Mark done" on a
 // deadline the person typed in (markDeadlineDone, as on Deadlines), "Got it" on an urgent
@@ -43,7 +44,7 @@ export const snooze: ActionHandler = {
   on: "open",
   async run({ userId, action, client, now }) {
     // Users have their own helpers, so a read of this one column by id.
-    const user = await client.user.findUnique({
+    const user = await scopedFor(userId, client).me.findUnique({
       where: { id: userId },
       select: { timezone: true },
     });

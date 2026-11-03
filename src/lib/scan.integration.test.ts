@@ -21,16 +21,19 @@ vi.mock("@/lib/insurance/daily", async (importOriginal) => {
     ...original,
     insuranceAfterSync: vi.fn(
       async (userId: string, options: Parameters<typeof original.insuranceAfterSync>[1]) => {
+        // Through the door the real work uses: this client is the sync's read cache, as the person.
+        const { scopedFor } = await import("@/lib/db-scoped");
+        const asPerson = scopedFor(userId, options!.client!);
         savedBySlowWork.push(
-          await options!.client!.janePreference.count({
+          await asPerson.janePreferences.count({
             where: { userId, kind: "system", key: "snapshot" },
           }),
         );
         doneBySlowWork.push(
-          !!(await options!.client!.user.findUnique({ where: { id: userId } }))?.firstScanDoneAt,
+          !!(await asPerson.me.findUnique({ where: { id: userId } }))?.firstScanDoneAt,
         );
         seenBySlowWork.push(
-          await options!.client!.janeMessage.count({ where: { userId, kind: "decision" } }),
+          await asPerson.janeMessages.count({ where: { userId, kind: "decision" } }),
         );
         if (failSector.on) throw new Error("a sector failed");
         return original.insuranceAfterSync(userId, options);
@@ -52,10 +55,14 @@ vi.mock("@/lib/suggestions", async (importOriginal) => {
       async (userId: string, options: Parameters<typeof original.scanSuggestions>[1]) => {
         const read = async () =>
           (
-            await options!.client!.janeMessage.findMany({
-              where: { userId },
-              select: { body: true },
-            })
+            await (
+              await import("@/lib/db-scoped")
+            )
+              .scopedFor(userId, options!.client!)
+              .janeMessages.findMany({
+                where: { userId },
+                select: { body: true },
+              })
           ).map((m) => m.body);
         atScan.push({ bodies: await read(), at: "start" });
         await new Promise((resolve) => setTimeout(resolve, 300));

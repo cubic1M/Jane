@@ -4,6 +4,7 @@ import { sameData } from "@/lib/data-stamp";
 import { isoDay } from "@/lib/dates";
 import { staleAndRefreshSnapshot } from "./snapshot-store";
 import { log } from "@/lib/log";
+import { scopedFor } from "@/lib/db-scoped";
 
 // The person's numbers for Claude, kept in the database (spec step 93, depth first): computing
 // them looks every sector up (20 seconds or more on a slow database), so it is done after each
@@ -22,7 +23,7 @@ export async function readStoredPrimer(
   { client }: Pick<Options, "client">,
 ): Promise<{ primer: Primer; at: Date; builtAt: Date; stamp: string | null } | null> {
   try {
-    const row = await client.janePreference.findUnique({
+    const row = await scopedFor(userId, client).janePreferences.findUnique({
       where: { userId_kind_key: { userId, kind: "system", key: KEY } },
       select: { value: true },
     });
@@ -61,7 +62,7 @@ export async function writeStoredPrimer(
 ): Promise<void> {
   const value = { text: primer.text, cents: primer.cents, at: now.toISOString(), stamp };
   try {
-    await client.janePreference.upsert({
+    await scopedFor(userId, client).janePreferences.upsert({
       where: { userId_kind_key: { userId, kind: "system", key: KEY } },
       create: { userId, kind: "system", key: KEY, value, label: "Numbers for Claude" },
       update: { value },
@@ -96,13 +97,13 @@ export async function markPrimerStale(
   // rebuild on the real clock would settle what is due by then (a rollover) ahead of the caller.
   await staleAndRefreshSnapshot(userId, { client, now });
   try {
-    const row = await client.janePreference.findUnique({
+    const row = await scopedFor(userId, client).janePreferences.findUnique({
       where: { userId_kind_key: { userId, kind: "system", key: KEY } },
       select: { value: true },
     });
     if (!row) return;
     const value = row.value as { at?: string; builtAt?: string };
-    await client.janePreference.update({
+    await scopedFor(userId, client).janePreferences.update({
       where: { userId_kind_key: { userId, kind: "system", key: KEY } },
       data: {
         value: { ...value, at: new Date(0).toISOString(), builtAt: value.builtAt ?? value.at },
