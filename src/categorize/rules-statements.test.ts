@@ -260,3 +260,51 @@ describe("a name that starts like a utility's", () => {
     );
   });
 });
+// Debugger 11-02: of 55 ways banks write a move between a person's own accounts, 12 matched nothing.
+// Money out with no category counts as spending, so a $1,000 move to savings read as $1,000 spent.
+describe("a move between a person's own accounts", () => {
+  it.each([
+    "EXT TRNSFR TO ALLY BANK",
+    "ACH TRNSFR ALLY BANK SAVINGS",
+    "TRF TO 4471",
+    "CAPITAL ONE 360 XFER",
+    "PAYPAL INST XFER",
+    "APPLE CASH SENT MONEY",
+  ])("%s isn't spending", (description) => {
+    expect(categorizeByRules({ description, amountCents: 100_000, hints: {} })?.primary).toBe(
+      "TRANSFER_OUT",
+    );
+  });
+
+  it("paying an Apple Card through Goldman Sachs isn't spending", () => {
+    expect(
+      categorizeByRules({
+        description: "GOLDMAN SACHS BANK APPLE CARD",
+        amountCents: 100_000,
+        hints: {},
+      })?.detailed,
+    ).toBe("LOAN_PAYMENTS_CREDIT_CARD_PAYMENT");
+  });
+
+  it.each([
+    "EXT TRNSFR FROM ALLY BANK",
+    "ACH TRNSFR ALLY BANK CHECKING",
+    "SCHWAB BROKERAGE MONEYLINK",
+    "VANGUARD SELL INVESTMENT",
+    "WEALTHFRONT EDI PYMNTS",
+  ])("%s isn't income or a refund", (description) => {
+    expect(categorizeByRules({ description, amountCents: -100_000, hints: {} })?.primary).toBe(
+      "TRANSFER_IN",
+    );
+  });
+
+  it.each([
+    ["TRF TO 4471 WIDGETS LLC", "out"],
+    ["XFERMODE SOFTWARE", "out"],
+    ["WEALTHFRONT ADVISER FEE", "out"],
+  ])("doesn't catch a name like %s", (description) => {
+    expect(categorizeByRules({ description, amountCents: 4_000, hints: {} })?.primary).not.toBe(
+      "TRANSFER_IN",
+    );
+  });
+});
