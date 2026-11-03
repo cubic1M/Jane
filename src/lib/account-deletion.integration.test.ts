@@ -355,8 +355,9 @@ describe.runIf(url)("deleting data against a real database", () => {
     );
   });
 
-  // An independent read: leaving ended sharing, but a partner deleting their account didn't.
-  it("ends the remaining partner's sharing too", async () => {
+  // The one who stays isn't touched by someone else's deletion: their sharing ends when they next
+  // invite someone (src/lib/household.ts), so no partner's action writes to their rows.
+  it("leaves the remaining partner's rows alone", async () => {
     const stay = await client.user.create({
       data: { email: `stay-${crypto.randomUUID()}@example.com` },
     });
@@ -380,7 +381,7 @@ describe.runIf(url)("deleting data against a real database", () => {
     await deleteAllData(gone.id, { client, api: { itemRemove: vi.fn() } as never });
     expect(
       await client.account.count({ where: { userId: stay.id, sharedWithHousehold: true } }),
-    ).toBe(0);
+    ).toBe(1);
     await client.user.delete({ where: { id: stay.id } });
     await client.household.deleteMany({ where: { id: household.id } });
   });

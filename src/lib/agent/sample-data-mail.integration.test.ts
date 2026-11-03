@@ -69,7 +69,8 @@ describe.runIf(url)("the agent and sample data", { timeout: 120_000 }, () => {
       { client },
     );
     const send = vi.fn(async () => {});
-    expect(await agentStep(user.id, actionId!, { client, send })).toBe("sent");
+    const notify = vi.fn(async () => {});
+    expect(await agentStep(user.id, actionId!, { client, send, notify })).toBe("sent");
     expect(send).not.toHaveBeenCalled();
   });
 });

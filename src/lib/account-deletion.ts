@@ -4,7 +4,6 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { stopSharing } from "@/lib/household";
 import { plaid } from "@/lib/plaid/client";
 import { removePlaidItem } from "@/lib/plaid/remove";
 import { deleteTrialPerson } from "@/lib/trial-delete";
@@ -62,12 +61,6 @@ export async function deleteAllData(
       const where = { where: { householdId: membership.householdId } };
       await tx.sharedCharge.deleteMany(where);
       await tx.settlement.deleteMany(where);
-      // The partner's choice to share was about this person: left on, whoever they invite next sees it.
-      const members = await tx.householdMember.findMany({ ...where, select: { userId: true } });
-      await stopSharing(
-        tx,
-        members.map((m) => m.userId),
-      );
     }
     // /privacy says only a record that the deletion happened stays, in the security log. The rest of
     // the audit log holds things like a medical provider or a tax tag, and has no tie to the user

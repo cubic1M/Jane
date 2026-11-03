@@ -78,6 +78,9 @@ export async function invitePartner(
     if (members >= HOUSEHOLD_MAX_MEMBERS) {
       throw new HouseholdError("Your household is full.");
     }
+    // Whoever joins sees what's shared, so nothing from an earlier partner carries over: sharing with
+    // the new one is a new choice. (Nobody else is here: the household would be full.)
+    await stopSharing(tx, [user.id]);
     // A new invite replaces any earlier one that wasn't accepted.
     await tx.householdInvite.deleteMany({
       where: { householdId: membership.householdId, acceptedAt: null },
@@ -166,16 +169,10 @@ export async function leaveHousehold(
     // The shared balance ends with the pair; each person's own transactions stay.
     await tx.sharedCharge.deleteMany({ where: { householdId: left.householdId } });
     await tx.settlement.deleteMany({ where: { householdId: left.householdId } });
-    // Sharing was a choice about this person. Left on, it comes back for whoever joins either of them
-    // next, against "Nothing of yours is shared until you choose".
-    const members = await tx.householdMember.findMany({
-      where: { householdId: left.householdId },
-      select: { userId: true },
-    });
-    await stopSharing(
-      tx,
-      members.map((m) => m.userId),
-    );
+    // Sharing was a choice about the person they shared with. Left on, whoever joins next sees it,
+    // against "Nothing of yours is shared until you choose". Only their own: the one who stays ends
+    // theirs when they invite someone new.
+    await stopSharing(tx, [userId]);
     await tx.householdMember.delete({ where: { userId } });
     if ((await tx.householdMember.count({ where: { householdId: left.householdId } })) === 0) {
       await tx.household.delete({ where: { id: left.householdId } });
