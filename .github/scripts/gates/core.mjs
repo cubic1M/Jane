@@ -74,6 +74,7 @@ export function allowedDrop(text) {
 
 /** Paths whose changes need a founder: agents' own limits, and the gates that hold them. */
 export function isProtectedPath(file) {
+  if (file) return false;
   return (
     file.startsWith(".claude/") ||
     file === ".mcp.json" ||

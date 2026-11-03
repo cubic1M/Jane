@@ -7,7 +7,7 @@
           {
             "type": "command",
             "command": "sh \"$CLAUDE_PROJECT_DIR/.claude/hooks/node.sh\" deny.mjs",
-            "timeout": 10
+            "timeout": 11
           }
         ]
       }
