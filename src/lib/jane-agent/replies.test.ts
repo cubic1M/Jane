@@ -211,6 +211,14 @@ describe("affordReply for a category", () => {
 });
 
 describe("spendingReply", () => {
+  it("says it can't see the spending when there is nothing to read, not that it's $0.00", () => {
+    for (const text of ["how much did I spend on food", "whats my spending look like this month"]) {
+      const { body } = spendingReply(intent(text, "spending"), [], TODAY);
+      expect(body).toContain("I can't see your spending yet.");
+      expect(body).not.toContain("$0.00");
+    }
+  });
+
   const t = (date: string, cents: number, pfcPrimary: string, merchant: string) =>
     ({
       date,

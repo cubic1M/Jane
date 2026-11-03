@@ -40,6 +40,7 @@ const home = (over: Partial<HomeBuying> = {}): HomeBuying => {
     }),
     targetDate: "2028-10-18",
     savedCents: 1_000_000,
+    savedKnown: true,
     monthlySavingCents: 80_000,
     hasGoal: false,
     assumptions: [],
@@ -90,6 +91,12 @@ describe("can I afford a house", () => {
     expect(sentences(homeReply(behind, false).body)[2]).toMatch(
       /putting away \$1,234\.00 a month gets you there by /,
     );
+  });
+
+  it("says it can't see the savings when no balance is known, not that they're $0.00", () => {
+    const body = homeReply(home({ savedCents: 0, savedKnown: false }), false).body;
+    expect(body).toContain("I can't see what you have saved yet.");
+    expect(body).not.toContain("$0.00 saved");
   });
 
   it("needs income to see first", () => {

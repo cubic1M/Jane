@@ -467,6 +467,13 @@ export function spendingReply(
   budgets: readonly Budget[] | null = null,
 ): Reply {
   const open = [link("See insights", "/insights")];
+  // Nothing to read isn't nothing spent.
+  if (transactions.length === 0) {
+    return reply(
+      "I can't see your spending yet. Upload your bank statements or link a bank, and I'll show you where it goes.",
+      [link("Add your accounts", "/connect")],
+    );
+  }
   const months = monthsEnding(asOf, INSIGHT_MONTHS);
   if (!months.includes(intent.month)) {
     return reply(`I can only see the last ${INSIGHT_MONTHS} months of spending.`, open);

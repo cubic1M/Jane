@@ -75,7 +75,7 @@ const classify = (rest: string): DecisionItem =>
 const tidy = (rest: string) =>
   rest
     .replace(/[?.!]+$/, "")
-    .replace(/\b(?:for me|right now|these days|at the moment)\b/g, "")
+    .replace(/\b(?:for me|right now|these days|at the moment|rn|asap|lol|i guess|tbh|fr)\b/g, "")
     .replace(/^(?:some|any|a bit of|a little|more)\s+/, "")
     .replace(/\s+/g, " ")
     .trim();
@@ -116,7 +116,8 @@ export function parseDecision(raw: string): DecisionIntent | null {
     return {
       kind: "decision",
       item: /^invest(?:ing)? in/.test(buy[0]) && item === "other" ? "invest" : item,
-      label: rest,
+      // "Should I buy or lease": there's no thing named to say back.
+      label: /^or\b/.test(rest) ? null : rest,
     };
   }
   // "Is crypto a good idea for me?": no verb, but a subject we know.

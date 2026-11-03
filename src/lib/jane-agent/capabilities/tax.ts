@@ -36,7 +36,8 @@ export const taxDecide: NonNullable<Capability["decide"]> = async ({
   return {
     body: d.text,
     actions: [{ id: "open", label: "See the numbers", kind: "link", href: d.href }],
-    confidence: DECISION_CONFIDENCE,
+    // A "how sure" line only when something was weighed.
+    ...(d.nothingWeighed ? {} : { confidence: DECISION_CONFIDENCE }),
     refs: d.advice ? { advice: true } : undefined,
   };
 };

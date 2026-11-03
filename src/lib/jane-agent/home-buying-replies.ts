@@ -48,8 +48,9 @@ export function homeReply(
   // What you could borrow measures it another way: said in the same sentence, with why.
   const other = homeVsBorrowClause(homeMeasureOf(home), mortgageCents);
   const second = `That assumes ${Math.round(home.downShare * 100)}% down (${formatCents(c.downCents)}) on a 30-year loan at ${formatRate(home.aprBps ?? 0)}${home.rateIsOffer ? "" : ", a typical rate rather than an offer"}, so about ${formatCents(c.cashNeededCents)} up front with closing costs${other ? `; ${other}` : ""}.`;
-  const third =
-    s.stillNeededCents === 0
+  const third = !home.savedKnown
+    ? `I can't see what you have saved yet. From nothing, ${s.onTrack ? `keeping about ${formatCents(home.monthlySavingCents)} a month` : `putting away ${formatCents(s.monthlyNeededCents)} a month`} gets you there by ${by}.`
+    : s.stillNeededCents === 0
       ? "You have that saved already."
       : s.onTrack
         ? `You have ${formatCents(home.savedCents)} saved and keep about ${formatCents(home.monthlySavingCents)} a month, so you'd have it by ${by}.`

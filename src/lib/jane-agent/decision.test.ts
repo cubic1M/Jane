@@ -178,9 +178,45 @@ describe("the answer", () => {
 
   it("builds the cushion when the cards are clear but the cushion isn't", () => {
     const reply = ask("should i buy a house", true, facts({ cardDebtCents: 0 }));
-    expect(reply.body).toContain("You have no credit card debt.");
+    expect(reply.body).toContain("I don't see any credit card debt.");
     expect(reply.body).toContain("I'd build your cushion to $12,000.00 first");
     expect(reply.body).toContain("down payment");
+  });
+
+  it("says it can't see the cash when no balance is known, not that it's $0.00", () => {
+    for (const advice of [true, false]) {
+      const unknown = facts({
+        cardDebtCents: 0,
+        cashCents: null,
+        cushionMonths: null,
+        goalsBehind: [],
+      });
+      const reply = ask("should i buy a house", advice, unknown);
+      expect(reply.body).toContain("I can't see your cash balance yet.");
+      expect(reply.body).toContain("I don't see any credit card debt.");
+      expect(reply.body).not.toMatch(/\$0\.00|in cash|build your cushion/);
+    }
+  });
+
+  it("doesn't say how short a cushion is when no balance is known", () => {
+    const reply = decisionReply(
+      { kind: "decision", item: "cushion", label: null },
+      null,
+      facts({ cashCents: null, cushionMonths: null }),
+      false,
+    );
+    expect(reply.body).toContain("A cushion for you is $12,000.00");
+    expect(reply.body).toContain("I can't see your cash balance yet.");
+    expect(reply.body).not.toMatch(/short of it|That covers it|\$0\.00/);
+  });
+
+  it.each([
+    ["should i do roth or traditional", /before roth or traditional\./],
+    ["should i buy stocks rn", /before stocks\./],
+    ["should i buy a car lol", /before a car\./],
+    ["should i buy or lease", /before that\./],
+  ])("says back what %j named, not how it was typed", (text, said) => {
+    expect(ask(text, false).body).toMatch(said);
   });
 
   it("says the basics are covered when they are", () => {

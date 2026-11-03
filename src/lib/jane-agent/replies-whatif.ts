@@ -10,7 +10,7 @@ import type { Reply } from "./replies";
 export function whatIfReply(run: ScenarioRun | null): Reply {
   if (!run) {
     return {
-      body: "Once your accounts are linked, I can run what-ifs through your real numbers: losing a job, a raise, a baby, a move, a car or a home.",
+      body: "Once I can see your accounts and a balance, I can run what-ifs through your real numbers: losing a job, a raise, a baby, a move, a car or a home.",
       actions: [],
       refs: {},
     };

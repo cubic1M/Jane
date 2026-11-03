@@ -9,6 +9,7 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 
 import { QUESTIONS } from "./bank";
 import { createCheckPerson, deleteCheckPerson } from "./person";
+import { systemDb } from "@/lib/system-db";
 import { UNSAFE_TEXT } from "../backup";
 import { resetClaudeHealth } from "../claude";
 import { sendToJane } from "../typing";
@@ -80,6 +81,103 @@ describe.runIf(url)("the path people are really answered on", { timeout: 900_000
       expect(
         run.results.filter((r) => !r.ok).map((r) => `${r.id}: ${r.failed.join(", ")}`),
       ).toEqual([]);
+    });
+  });
+
+  // Nothing to read isn't nothing there: someone with no accounts, and someone whose upload has
+  // no balance, as most don't. Round of 11-03, the same scenario messages on those two people.
+  describe("when there's nothing to see and Claude can't answer", () => {
+    const say = async (text: string, person: string) => {
+      const question = {
+        id: text,
+        text,
+        needs: "claude",
+        expect: {},
+      } as (typeof QUESTIONS)[number];
+      resetClaudeHealth();
+      process.env.ANTHROPIC_API_KEY = "played-back";
+      process.env.CHAT_MONTHLY_CAP_CENTS = "1000000000";
+      await client.rateLimit.deleteMany({ where: { key: `chat:${person}` } });
+      const { reply } = await sendToJane(person, text, {
+        client,
+        now: NOW,
+        claude: playbackClaude(question, newPlayed(), "refused_always"),
+        primerMs: 60_000,
+      });
+      delete process.env.ANTHROPIC_API_KEY;
+      delete process.env.CHAT_MONTHLY_CAP_CENTS;
+      return reply.body;
+    };
+    let noAccounts = "";
+    let noBalance = "";
+    beforeAll(async () => {
+      const person = (name: string) =>
+        systemDb("A throwaway person with no bank", client).user.create({
+          data: { email: `real-path-${name}-${randomBytes(6).toString("hex")}@example.com` },
+        });
+      noAccounts = (await person("empty")).id;
+      noBalance = (await person("upload")).id;
+      const account = await client.account.create({
+        data: { userId: noBalance, source: "csv", name: "Own checking", type: "depository" },
+      });
+      await client.transaction.createMany({
+        data: [5, 35, 65].flatMap((days, i) => [
+          {
+            userId: noBalance,
+            accountId: account.id,
+            source: "csv" as const,
+            dedupeKey: `pay${i}`,
+            date: new Date(NOW.getTime() - (days + 1) * 86_400_000),
+            amountCents: -325_000,
+            description: "Zenith Payroll",
+            merchantName: "Zenith Payroll",
+            pfcPrimary: "INCOME",
+            pfcDetailed: "INCOME_SALARY",
+          },
+          {
+            userId: noBalance,
+            accountId: account.id,
+            source: "csv" as const,
+            dedupeKey: `rent${i}`,
+            date: new Date(NOW.getTime() - days * 86_400_000),
+            amountCents: 145_000,
+            description: "Riverside Apartments",
+            merchantName: "Riverside Apartments",
+            pfcPrimary: "RENT_AND_UTILITIES",
+          },
+        ]),
+      });
+    });
+    afterAll(async () => {
+      for (const id of [noAccounts, noBalance])
+        await deleteCheckPerson(id, { client }).catch(() => {});
+    });
+
+    it.each([
+      ["whats my spending look like this month", /\$0\.00/],
+      ["how much did i spend on groceries last month", /\$0\.00/],
+      ["do i owe taxes this year", /refund of|on course/],
+      ["do i need to pay estimated taxes", /withholding covers|refund of/],
+      ["how much should i set aside for taxes", /employer already/],
+      ["how do i lower my taxes in retirement", /\$0\.00/],
+      ["should i buy a car", /no credit card debt|\$0\.00/],
+      ["which card should i pay first", /Nice/],
+      ["should i max out my 401k", /from your pay stubs/],
+      ["should i raise my deductible", /typical discount/],
+    ])("no accounts: %s", async (text, wrong) => {
+      expect(await say(text, noAccounts)).not.toMatch(wrong);
+    });
+
+    it.each([
+      ["should i buy a car", /\$0\.00|in cash/],
+      ["how much should i have in an emergency fund", /\$0\.00|short of it/],
+      ["what happens if i get a raise", /\$0\.00|stays above zero/],
+      ["can i buy a house in 5 years", /\$0\.00 saved/],
+      // Tax already came out of take-home pay, by an amount Jane can't see.
+      ["do i owe taxes this year", /on course to owe|refund of/],
+      ["do i need to pay estimated taxes", /pay about/],
+    ])("an upload with no balance: %s", async (text, wrong) => {
+      expect(await say(text, noBalance)).not.toMatch(wrong);
     });
   });
 

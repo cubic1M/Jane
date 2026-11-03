@@ -912,6 +912,13 @@ export function decisionConfidence(
     case "what_cover":
       return { percent: 70, reason: "your cash and pay against a standard rule, not a quote" };
     case "deductible":
+      if (!car || car.deductibleCents === null) {
+        return { percent: 40, reason: "no deductible on file" };
+      }
+      return {
+        percent: 70,
+        reason: "your premium and the carrier's typical discount, not a quote",
+      };
     case "bundle":
       return {
         percent: 70,

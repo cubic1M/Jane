@@ -1,6 +1,6 @@
 import { DECISION_HIGH_RATE_BPS, DECISION_MIN_CUSHION_MONTHS } from "@/config/agent-chat";
 import type { PrismaClient } from "@/generated/prisma/client";
-import { cashLine, cushionSpendCents, liquidCents } from "@/detectors/helpers";
+import { cashKnown, cashLine, cushionSpendCents, liquidCents } from "@/detectors/helpers";
 import { adviceMode } from "@/lib/advice-mode";
 import { formatCents } from "@/lib/money";
 import { loadProfileInput } from "@/lib/profile";
@@ -22,7 +22,9 @@ export type DecisionFacts = {
   cardDebtCents: number;
   // The highest rate on a credit card or loan, in basis points a year, when known.
   topRateBps: number | null;
-  cashCents: number;
+  // Null when no checking or savings balance is known: an uploaded file often carries none, and
+  // that isn't an empty account.
+  cashCents: number | null;
   monthlySpendCents: number;
   cushionTargetCents: number | null;
   cushionMonths: number | null;
@@ -38,7 +40,7 @@ export async function loadDecisionFacts(
   const data = await loadProfileInput(userId, { client, now });
   const profile = buildProfile(data);
   const spend = cushionSpendCents(data, profile.months);
-  const cash = liquidCents(data);
+  const cash = cashKnown(data) ? liquidCents(data) : null;
   const income = profile.facts.monthly_income;
   const pattern = profile.facts.income_pattern;
   const target = emergencyTarget({
@@ -58,7 +60,7 @@ export async function loadDecisionFacts(
     cashCents: cash,
     monthlySpendCents: spend,
     cushionTargetCents: target?.targetCents ?? null,
-    cushionMonths: spend > 0 ? Math.round((cash / spend) * 10) / 10 : null,
+    cushionMonths: cash !== null && spend > 0 ? Math.round((cash / spend) * 10) / 10 : null,
     goalsBehind: goals
       .filter((g) => g.progress.status !== "reached" && g.targetCents > g.progress.savedCents)
       .map((g) => ({ name: g.name, leftCents: g.targetCents - g.progress.savedCents }))
@@ -85,6 +87,8 @@ const THING: Record<CoreSubject, string> = {
 
 const rate = (bps: number) => `${Math.round(bps / 10) / 10}%`;
 
+const NO_CASH_LINE = "I can't see your cash balance yet.";
+
 // Where they stand, in their figures, one sentence each.
 function standing(f: DecisionFacts): string[] {
   const lines: string[] = [];
@@ -93,9 +97,11 @@ function standing(f: DecisionFacts): string[] {
       `You owe ${formatCents(f.cardDebtCents)} on credit cards${f.topRateBps ? `, at up to ${rate(f.topRateBps)} a year` : ""}.`,
     );
   } else {
-    lines.push("You have no credit card debt.");
+    lines.push("I don't see any credit card debt.");
   }
-  if (f.cushionTargetCents !== null) {
+  if (f.cashCents === null) {
+    lines.push(NO_CASH_LINE);
+  } else if (f.cushionTargetCents !== null) {
     lines.push(
       `${cashLine(f.cashCents, "hold")}${f.cushionMonths !== null && f.cashCents >= 0 ? `, about ${f.cushionMonths} months of spending` : ""}; a cushion for you is ${formatCents(f.cushionTargetCents)}.`,
     );
@@ -112,8 +118,8 @@ function standing(f: DecisionFacts): string[] {
 function first(f: DecisionFacts): { say: string; link: MessageAction } | null {
   if (f.cardDebtCents > 0 && (f.topRateBps ?? 0) >= DECISION_HIGH_RATE_BPS) {
     // Cash that covers the cards and still leaves the cushion: clear them today.
-    const left = f.cashCents - f.cardDebtCents;
-    if (left >= (f.cushionTargetCents ?? 0)) {
+    const left = (f.cashCents ?? 0) - f.cardDebtCents;
+    if (f.cashCents !== null && left >= (f.cushionTargetCents ?? 0)) {
       return {
         say: `I'd clear the cards first: your cash covers the ${formatCents(f.cardDebtCents)} and still leaves ${formatCents(left)}, and they cost you up to ${rate(f.topRateBps as number)} a year, which no investment reliably beats.`,
         link: link("See my card payoff options", "/debt"),
@@ -126,6 +132,7 @@ function first(f: DecisionFacts): { say: string; link: MessageAction } | null {
   }
   if (
     f.cushionTargetCents !== null &&
+    f.cashCents !== null &&
     f.cashCents < f.cushionTargetCents &&
     (f.cushionMonths ?? 0) < DECISION_MIN_CUSHION_MONTHS + 6
   ) {
@@ -153,15 +160,20 @@ const CLOSING: Record<DecisionItem, string> = {
 
 // "How much should I have in an emergency fund?": what a cushion is for them, in their figures.
 function cushionReply(f: DecisionFacts, advice: boolean): Reply {
+  const cash = f.cashCents;
   const body =
     f.cushionTargetCents === null
       ? "I need to see a few months of your spending to size a cushion. Once your bank is linked, I'll tell you."
       : [
           `A cushion for you is ${formatCents(f.cushionTargetCents)}${f.monthlySpendCents > 0 ? `: you spend about ${formatCents(f.monthlySpendCents)} a month` : ""}.`,
-          `${cashLine(f.cashCents, "hold")}${f.cushionMonths !== null && f.cashCents >= 0 ? `, about ${f.cushionMonths} months of spending` : ""}.`,
-          f.cashCents >= f.cushionTargetCents
-            ? "That covers it."
-            : `You are ${formatCents(f.cushionTargetCents - f.cashCents)} short of it.`,
+          cash === null
+            ? NO_CASH_LINE
+            : `${cashLine(cash, "hold")}${f.cushionMonths !== null && cash >= 0 ? `, about ${f.cushionMonths} months of spending` : ""}.`,
+          cash === null
+            ? ""
+            : cash >= f.cushionTargetCents
+              ? "That covers it."
+              : `You are ${formatCents(f.cushionTargetCents - cash)} short of it.`,
           advice && f.cardDebtCents > 0
             ? "A card balance at a high rate usually comes first, then the rest of the cushion."
             : "",
@@ -196,20 +208,22 @@ export function decisionReply(
   }
   const label = intent.label ?? fromTopic?.target ?? THING[item as CoreSubject] ?? THING.other;
   if (item === "cushion") return cushionReply(facts, advice);
+  // What it's called in the answer ("should i do roth or traditional": "roth or traditional").
+  const said = label.replace(/^(?:do|buy|get)\s+/, "");
   const lines = standing(facts);
   const lead = first(facts);
   const body = advice
     ? intent.why && lead
-      ? `${lead.say} Ask me about ${label} again once that's done.`
+      ? `${lead.say} Ask me about ${said} again once that's done.`
       : [
-          `Before ${label}, here is where you stand.`,
+          `Before ${said}, here is where you stand.`,
           ...lines,
           lead
             ? `${lead.say} ${CLOSING[item as CoreSubject] ?? CLOSING.other}`
-            : `Your basics look covered, so putting some toward ${label} is reasonable. ${CLOSING[item as CoreSubject] ?? CLOSING.other}`,
+            : `Your basics look covered, so putting some toward ${said} is reasonable. ${CLOSING[item as CoreSubject] ?? CLOSING.other}`,
         ].join(" ")
     : [
-        `Here is where you stand on the things that matter before ${label}.`,
+        `Here is where you stand on the things that matter before ${said}.`,
         ...lines,
         "I can show you the facts, but I don't give advice on what to buy with your real accounts.",
       ].join(" ");

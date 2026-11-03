@@ -23,6 +23,14 @@ export function yearsMoveMessage(view: MultiYearView, move: Move): Message {
 }
 
 export function yearsReply(view: MultiYearView): Message {
+  // No tax in any year: there's no income to work it out from, not 35 years of no tax.
+  if (view.rows.every((r) => r.totalTaxCents === 0)) {
+    return {
+      body: "I can't see enough income yet to show your tax year by year. Upload your bank statements or link a bank, or add your income on the taxes page.",
+      refs: {},
+      actions: [{ id: "open", label: "See my taxes", kind: "link", href: "/taxes" }],
+    };
+  }
   const first = view.rows[0];
   const last = view.rows.find((r) => r.year === view.retireYear) ?? view.rows[view.rows.length - 1];
   const lines = [

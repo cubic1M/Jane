@@ -860,7 +860,7 @@ async function runChatToolWork(
         { months: typeof months === "number" ? months : undefined },
         { client, now },
       );
-      if (!run) return out({ run: null, why: "No accounts linked yet." });
+      if (!run) return out({ run: null, why: "No accounts or balance on file yet." });
       return out({
         scenario: run.label,
         lowestWith: money(run.after.lowestCents),
@@ -1366,7 +1366,7 @@ async function runChatToolWork(
         verdict,
         cardDebt: money(f.cardDebtCents),
         ...(f.topRateBps ? { highestRatePercent: f.topRateBps / 100 } : {}),
-        cash: money(f.cashCents),
+        cash: f.cashCents === null ? "not known: no balance on file" : money(f.cashCents),
         monthlySpending: money(f.monthlySpendCents),
         ...(f.cushionTargetCents !== null ? { cushionTarget: money(f.cushionTargetCents) } : {}),
         ...(f.cushionMonths !== null ? { monthsOfSpendingInCash: f.cushionMonths } : {}),
