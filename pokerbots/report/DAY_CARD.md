@@ -126,9 +126,11 @@ heads-up and payout changes):
 | field 2 (written independently) | +7 / +1 / +0.8 (tie with `f2_shark`, 800 tables) |
 | all three fields, top-3 payouts | +4.5 / +2.3 (not significant) |
 | hackathon-like field, all three under winner payouts | tie with `f3_exploiter` (±1) |
-| **field 4** (six adaptive bots written blind, the hardest) | mid-pack: 33.5–36.5 per table (fair 34.75); `f3_exploiter` about +11 there |
-| **field 5** (written blind after tonight's tuning: out of sample) | **first: 58.1 per table**; the next best (`f3_exploiter`) −15.2, field 5's own bots −24 to −25 |
-| **all three fields, after tonight** (`results/sng_standing3.md`) | **first: 61.0 per table**; `f3_exploiter` −7.2, field 4's best −12.8, `f2_shark` −19.9 (all significant) |
+| **field 4** (six adaptive bots written blind) | after `rs_call` (`results/sng_standing4.md`): **42.0 per table, top group**: `f3_exploiter` +2.5 and `f6_checkraiser` +1.1 (not significant), everyone else below (was mid-pack, 33.5–36.5) |
+| **field 5** (written blind after tonight's tuning: out of sample) | **first: 60.8 per table** (was 58.1); `f3_exploiter` −13.9, every other bot −18 to −27 (all significant) |
+| **all three fields** (`results/sng_standing4.md`) | **first: 61.5 per table**; `f3_exploiter` −7.9, field 6's check-raiser −13.8, field 4's best −18.4 (all significant) |
+| hackathon-like field (`results/sng_standing4.md`) | first: 59.0 per table; `f3_exploiter` −1.2 (tie), everyone else −4 to −11 |
+| **field 6** (postflop specialists written blind; they re-raise wide openers light) | **last: 17.5 per table** (was 14.0 before `rs_call`), busts 92%; `f2_shark` 50.5, the others 30–38. Our known weak spot: if the real field re-raises our opens a lot, try `rs_call=3` and `pev=1` on the day-of tuner |
 
 Tonight's eight changes, measured together on fresh seeds against the start-of-night bot: **+5.7 per table on
 average** over 9 fields, eight significant, none negative: the Plan B field +14.5, our copies +9.2, field 3 +6.7,
