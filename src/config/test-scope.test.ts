@@ -5,6 +5,7 @@ import {
   MAIN_ONLY_TESTS,
   shardsFor,
   testScope,
+  testsThatReadDocs,
   vitestArgs,
 } from "../../scripts/test-scope-core.mjs";
 
@@ -87,6 +88,16 @@ describe("what counts as docs only", () => {
 
   it("doesn't skip when code changes along with the doc", () => {
     expect(pr(["docs/architecture.md", "src/components/card.tsx"])).toBe("changed");
+  });
+
+  it("doesn't count this test's own examples as reading a doc", () => {
+    expect(
+      testsThatReadDocs([
+        "config/test-scope.test.ts",
+        "planning/event-evidence.test.ts",
+        "lib/home.tsx",
+      ]),
+    ).toEqual(["planning/event-evidence.test.ts"]);
   });
 
   it("finds the docs a test names", () => {

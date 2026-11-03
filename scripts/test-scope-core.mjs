@@ -76,6 +76,11 @@ export function shardsFor(mode, integrationFiles) {
 
 export const docsNamedIn = (text) => text.match(/\bdocs\/[\w./-]+\.md\b/g) ?? [];
 
+// The test files whose words count as reading a doc. Not this file's own test: it names docs as
+// examples, which made every one of them look read, so no PR was ever docs-only.
+export const testsThatReadDocs = (files) =>
+  files.filter((file) => /\.test\.tsx?$/.test(file) && !file.endsWith("config/test-scope.test.ts"));
+
 // What the unit jobs add to `vitest run`. Only a PR with no full-run label leaves anything out.
 export function vitestArgs(mode, { event, labels = [] }) {
   const args = mode === "changed" ? ["--changed=HEAD^1", "--passWithNoTests"] : [];
