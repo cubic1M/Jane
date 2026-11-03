@@ -72,6 +72,41 @@ describe.runIf(url)(
       expect(v.estimate.refundCents).toBeGreaterThan(0);
     });
 
+    // Debugger 11-03: "I see two employers' paychecks", for one person who changed jobs in the summer.
+    it("keeps someone who changed jobs single: one employer at a time isn't a couple", async () => {
+      const user = await client.user.create({
+        data: { email: `qa-job-change-${crypto.randomUUID()}@example.com` },
+      });
+      created.push(user.id);
+      const account = await client.account.create({
+        data: { userId: user.id, source: "csv", name: "Checking", type: "depository" },
+      });
+      const year = NOW.getUTCFullYear();
+      const paid = (employer: string, months: readonly number[]) =>
+        months.flatMap((month) =>
+          [1, 15].map((day) => ({
+            userId: user.id,
+            accountId: account.id,
+            source: "csv" as const,
+            dedupeKey: `${employer}-${month}-${day}`,
+            date: new Date(Date.UTC(year, month, day)),
+            amountCents: -310_000,
+            description: `${employer} PAYROLL`,
+            merchantName: employer,
+            pfcPrimary: "INCOME",
+            pfcDetailed: "INCOME_SALARY",
+          })),
+        );
+      await client.transaction.createMany({
+        data: [...paid("HARBOR LOGISTICS", [0, 1, 2]), ...paid("LUMEN BIOTECH", [3, 4, 5])],
+      });
+      const v = await loadTaxEstimate(user.id, { client, now: NOW });
+      expect(v.input.filingStatus).toBe("single");
+      expect(v.assumptions).toContain(
+        "You haven't told me how you file, so I've estimated as single.",
+      );
+    });
+
     it("keeps one person with one employer single", async () => {
       const userId = await person("renter");
       expect((await loadTaxEstimate(userId, { client, now: NOW })).input.filingStatus).toBe(

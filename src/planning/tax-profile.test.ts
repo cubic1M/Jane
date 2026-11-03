@@ -4,6 +4,7 @@ import {
   dependantsWords,
   findTaxFacts,
   guessFilingStatus,
+  payingTogether,
   incomeLine,
   listOf,
   taxProfileView,
@@ -218,6 +219,27 @@ describe("wording", () => {
 });
 
 describe("how a couple is estimated before they say how they file (taxes QA)", () => {
+  // Debugger 11-03: a job change read as a couple.
+  it("takes two employers as a couple only when they pay over the same time", () => {
+    const pay = (name: string, ...dates: string[]) =>
+      dates.map((date) => ({ description: `${name} PAYROLL`, date }));
+    const changed = [
+      ...pay("HARBOR", "2026-05-15", "2026-07-15"),
+      ...pay("LUMEN", "2026-09-15", "2026-10-30"),
+    ];
+    expect(guessFilingStatus({ jointAccounts: 0, payrollNames: payingTogether(changed) })).toBe(
+      null,
+    );
+    const together = [
+      ...pay("HARBOR", "2026-05-15", "2026-10-15"),
+      ...pay("LUMEN", "2026-06-15", "2026-10-30"),
+    ];
+    expect(
+      guessFilingStatus({ jointAccounts: 0, payrollNames: payingTogether(together) })?.status,
+    ).toBe("married_joint");
+    expect(payingTogether(pay("HARBOR", "2026-05-15", "2026-07-15"))).toHaveLength(2);
+  });
+
   it("guesses married filing jointly from a joint account or two employers, and says why", () => {
     expect(
       guessFilingStatus({
