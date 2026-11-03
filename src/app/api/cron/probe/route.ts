@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { cronAuthorized } from "@/lib/cron-auth";
 import { db } from "@/lib/db";
 import { alertError } from "@/lib/error-alerts";
 import { describeError, recordError } from "@/lib/error-log";
 import { recordRun } from "@/lib/health";
 import { ProbeFailed, runProbe } from "@/lib/probe";
+import { siteOrigin } from "@/lib/site-origin";
 
 export const maxDuration = 120;
 
@@ -11,11 +13,11 @@ export const maxDuration = 120;
 // .github/workflows/probe.yml with "Authorization: Bearer $PROBE_SECRET". Vercel Hobby can't run a
 // cron hourly. Without PROBE_SECRET it refuses everyone, so nothing runs until a founder sets it.
 export async function GET(request: Request) {
-  const secret = process.env.PROBE_SECRET;
-  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!cronAuthorized(request, process.env.PROBE_SECRET)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const base = new URL(request.url).origin;
+  // The probe sends its sample person's session here, so the site's own address where it's known.
+  const base = siteOrigin() ?? new URL(request.url).origin;
   try {
     const result = await recordRun("probe", async () => {
       const outcome = await runProbe(base);

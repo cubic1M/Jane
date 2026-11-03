@@ -34,6 +34,22 @@ describe("the browsers' push services", () => {
   });
 });
 
+describe("an address the two parsers read differently", () => {
+  it.each([
+    "https://evil.example%2Epush.apple.com/x",
+    "https://evil.example%2epush.services.mozilla.com/x",
+    "https://evil.example\\.push.apple.com/x",
+    "https://FCM.googleapis.com/fcm/send/abc",
+    " https://fcm.googleapis.com/fcm/send/abc",
+    "https://fcm.googleapis.com",
+    "https://user:pass@fcm.googleapis.com/x",
+    "https://fcm.googleapis.com:8443/x",
+    "http://fcm.googleapis.com/x",
+  ])("refuses %s", (endpoint) => {
+    expect(parseSubscription({ ...subscription, endpoint })).toBeNull();
+  });
+});
+
 describe("push setup", () => {
   afterEach(() => vi.unstubAllEnvs());
 
@@ -77,8 +93,8 @@ describe("sendPush", () => {
     for (const [k, v] of Object.entries(KEYS)) vi.stubEnv(k, v);
     send.mockReset();
     scoped.pushSubscriptions.findMany.mockReset().mockResolvedValue([
-      { id: "s1", endpoint: "https://push.example/1", p256dh: "p", auth: "a" },
-      { id: "s2", endpoint: "https://push.example/2", p256dh: "p", auth: "a" },
+      { id: "s1", endpoint: "https://fcm.googleapis.com/fcm/send/1", p256dh: "p", auth: "a" },
+      { id: "s2", endpoint: "https://fcm.googleapis.com/fcm/send/2", p256dh: "p", auth: "a" },
     ]);
     scoped.pushSubscriptions.deleteMany.mockReset();
   });
@@ -90,7 +106,7 @@ describe("sendPush", () => {
     send.mockResolvedValue({});
     expect(await sendPush("u1", message, { send })).toBe(2);
     expect(send).toHaveBeenCalledWith(
-      { endpoint: "https://push.example/1", keys: { p256dh: "p", auth: "a" } },
+      { endpoint: "https://fcm.googleapis.com/fcm/send/1", keys: { p256dh: "p", auth: "a" } },
       JSON.stringify(message),
       expect.objectContaining({
         vapidDetails: { subject: KEYS.VAPID_SUBJECT, publicKey: "pub", privateKey: "priv" },
@@ -102,6 +118,25 @@ describe("sendPush", () => {
     send.mockRejectedValueOnce({ statusCode: 410 }).mockResolvedValueOnce({});
     expect(await sendPush("u1", message, { send })).toBe(1);
     expect(scoped.pushSubscriptions.deleteMany).toHaveBeenCalledWith({ where: { id: "s1" } });
+  });
+
+  it("never posts to an address saved before the check, and forgets it", async () => {
+    scoped.pushSubscriptions.findMany.mockResolvedValue([
+      { id: "old1", endpoint: "https://evil.example/hook", p256dh: "p", auth: "a" },
+      { id: "old2", endpoint: "https://evil.example%2Epush.apple.com/x", p256dh: "p", auth: "a" },
+      { id: "s1", endpoint: "https://fcm.googleapis.com/fcm/send/1", p256dh: "p", auth: "a" },
+    ]);
+    send.mockResolvedValue({});
+    expect(await sendPush("u1", message, { send })).toBe(1);
+    expect(send).toHaveBeenCalledOnce();
+    expect(scoped.pushSubscriptions.deleteMany).toHaveBeenCalledWith({ where: { id: "old1" } });
+    expect(scoped.pushSubscriptions.deleteMany).toHaveBeenCalledWith({ where: { id: "old2" } });
+  });
+
+  it("gives up on a push service that never answers", async () => {
+    send.mockResolvedValue({});
+    await sendPush("u1", message, { send });
+    expect(send.mock.calls[0][2]).toEqual(expect.objectContaining({ timeout: expect.any(Number) }));
   });
 
   it("does nothing when push isn't set up", async () => {

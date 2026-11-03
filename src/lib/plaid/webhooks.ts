@@ -109,6 +109,8 @@ export async function planWebhook(
   return null;
 }
 
+const hashOf = (rawBody: string) => createHash("sha256").update(rawBody).digest("hex");
+
 // A webhook delivery, the first time it's seen: false when Plaid sent the same body in the last few
 // minutes (it retries), so it's acknowledged and nothing happens twice. The same body later is new
 // news. Old ones are forgotten.
@@ -117,7 +119,7 @@ export async function firstDelivery(
   body: Body,
   { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
 ): Promise<boolean> {
-  const bodyHash = createHash("sha256").update(rawBody).digest("hex");
+  const bodyHash = hashOf(rawBody);
   await systemDb(WHY, client).plaidWebhookEvent.deleteMany({
     where: {
       bodyHash,
@@ -140,6 +142,15 @@ export async function firstDelivery(
     where: { receivedAt: { lt: new Date(now.getTime() - WEBHOOK_EVENT_DAYS * 86_400_000) } },
   });
   return count === 1;
+}
+
+// Acting on a delivery failed: Plaid's retry must count as the first, or it's acknowledged and lost.
+export async function forgetDelivery(
+  rawBody: string,
+  { client = defaultClient }: { client?: PrismaClient } = {},
+): Promise<void> {
+  const bodyHash = hashOf(rawBody);
+  await systemDb(WHY, client).plaidWebhookEvent.deleteMany({ where: { bodyHash } });
 }
 
 // A sync from a webhook, unless one for the same bank is already running (a burst of

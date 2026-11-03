@@ -52,8 +52,17 @@ describe("GET /api/cron/probe", () => {
     expect(runProbe).not.toHaveBeenCalled();
   });
 
+  it("sends its session to the site's own address, whatever the request's host says", async () => {
+    vi.stubEnv("PROBE_SECRET", "right");
+    vi.stubEnv("APP_URL", "https://jane.example");
+    await call("Bearer right");
+    expect(runProbe).toHaveBeenCalledWith("https://jane.example");
+  });
+
   it("runs against its own address and reports a pass", async () => {
     vi.stubEnv("PROBE_SECRET", "right");
+    vi.stubEnv("APP_URL", "");
+    vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "");
     const response = await call("Bearer right");
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual(probe.result);

@@ -1,7 +1,7 @@
 import { NextResponse, after } from "next/server";
 import { log } from "@/lib/log";
 import { verifyPlaidWebhook } from "@/lib/plaid/webhook-verify";
-import { firstDelivery, planWebhook, syncFromWebhook } from "@/lib/plaid/webhooks";
+import { firstDelivery, forgetDelivery, planWebhook, syncFromWebhook } from "@/lib/plaid/webhooks";
 
 // Plaid's webhooks: what keeps each bank's data fresh (the daily job is only the backstop).
 // Nothing is read or changed until the signature checks out; a delivery Plaid repeats is
@@ -19,7 +19,14 @@ export async function POST(request: Request) {
   }
 
   if (!(await firstDelivery(rawBody, body))) return NextResponse.json({ received: true });
-  const plan = await planWebhook(body);
+  let plan: Awaited<ReturnType<typeof planWebhook>>;
+  try {
+    plan = await planWebhook(body);
+  } catch (error) {
+    // The 500 makes Plaid send it again, and that one must not look like a repeat.
+    await forgetDelivery(rawBody);
+    throw error;
+  }
   if (plan?.sync) {
     after(async () => {
       try {
