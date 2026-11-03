@@ -418,7 +418,7 @@ export function SideChat() {
         ) : (
           <>
             {/* Jane's cards, above the chat and never in it. */}
-            <CardDock />
+            <CardDock userId={userId} />
             <div className="flex h-14 shrink-0 items-center gap-2 border-b border-zinc-300 pl-3 dark:border-zinc-700">
               <JaneAvatar />
               <p className="flex-1 text-sm font-semibold">Jane</p>

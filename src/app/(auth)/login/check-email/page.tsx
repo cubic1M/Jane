@@ -6,7 +6,7 @@ export default function CheckEmailPage() {
       <h1 className="text-3xl font-semibold tracking-tight">Check your email</h1>
       <p className="text-zinc-600 dark:text-zinc-400">
         If this address has a Jane account or an invite, a sign-in link is on its way. It works once
-        and expires in 24 hours.
+        and expires in an hour.
       </p>
       <p className="text-zinc-600 dark:text-zinc-400">
         Nothing arrived? Check spam, or{" "}

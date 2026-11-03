@@ -3,7 +3,8 @@ import { logAudit, type AuditEvent } from "@/lib/audit";
 import { generateBackupCodes, hashBackupCode, looksLikeBackupCode } from "@/lib/backup-codes";
 import { decrypt, encrypt } from "@/lib/crypto";
 import { db as defaultClient } from "@/lib/db";
-import { hit } from "@/lib/rate-limit";
+import { firstUseInWindow, hit } from "@/lib/rate-limit";
+import { systemDb } from "@/lib/system-db";
 import { generateSecret, otpauthUri, verifyTotp } from "@/lib/totp";
 
 // Two-factor sign-in with an authenticator app. Admins must have it before /admin opens;
@@ -76,7 +77,9 @@ async function checkCode(
   now: Date,
 ): Promise<boolean> {
   if (!user.mfaSecretEncrypted) return false;
-  if (verifyTotp(decrypt(user.mfaSecretEncrypted), code, now)) return true;
+  if (verifyTotp(decrypt(user.mfaSecretEncrypted), code, now)) {
+    return firstUseInWindow("mfaCodeUsed", `${userId}:${code.replace(/\s/g, "")}`, { client, now });
+  }
   if (!user.mfaEnabledAt || !looksLikeBackupCode(code)) return false;
   const { count } = await client.mfaBackupCode.updateMany({
     where: { userId, codeHash: hashBackupCode(code), usedAt: null },
@@ -125,6 +128,14 @@ export async function verifySessionCode(
   let backupCodes: string[] | undefined;
   if (!user.mfaEnabledAt) {
     await client.user.update({ where: { id: userId }, data: { mfaEnabledAt: now } });
+    // Whoever else is signed in is out: someone who got into the account is what two-factor is for,
+    // and any session could have read the secret before this first code.
+    await systemDb(
+      "Starting two-factor signs out the person's other sessions",
+      client,
+    ).session.deleteMany({
+      where: { userId, sessionToken: { not: sessionToken } },
+    });
     await logAudit(actor, eventFor(user, "enrolled"), target);
     backupCodes = await replaceBackupCodes(userId, user, client);
   }
@@ -159,6 +170,14 @@ export async function turnOffTwoFactor(
       data: { mfaSecretEncrypted: null, mfaEnabledAt: null },
     }),
   ]);
+  // A code for the old secret proves nothing about a new one, if two-factor comes back.
+  await systemDb(
+    "Stopping two-factor un-verifies the person's sessions",
+    client,
+  ).session.updateMany({
+    where: { userId },
+    data: { mfaVerifiedAt: null },
+  });
   await logAudit(actorFor(userId, user), "mfa_disabled", { type: "user", id: userId });
   return "ok";
 }

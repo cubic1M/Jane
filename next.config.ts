@@ -18,6 +18,10 @@ const nextConfig: NextConfig = {
   // The dev-only "N" badge sits bottom-left, over the floating cards' buttons and inside the
   // side chat's frame; the error overlay still opens on an error.
   devIndicators: false,
+  // No need to say what the site runs on.
+  poweredByHeader: false,
+  // Nothing uses next/image, and the optimizer would fetch our own routes with the visitor's cookies.
+  images: { localPatterns: [] },
   // Load Plaid's SDK as a plain Node package; bundled, its HTTP client picks a
   // browser adapter and every request fails without a response.
   serverExternalPackages: ["plaid"],

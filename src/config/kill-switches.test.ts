@@ -157,7 +157,7 @@ describe("switches that already exist", () => {
     };
     for (const { path } of crons) {
       expect(readFileSync(`src/app${path}/route.ts`, "utf8"), path).toMatch(
-        /const secret = process\.env\.CRON_SECRET;\s+if \(!secret \|\|/,
+        /if \(!cronAuthorized\(request, process\.env\.CRON_SECRET\)\)/,
       );
     }
   });

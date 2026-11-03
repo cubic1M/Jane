@@ -30,7 +30,7 @@ describe.runIf(url)("shared bills against a real database", () => {
           sharedWithHousehold: shared,
         },
       });
-    const sharedAccount = await account(true);
+    const sharedAccount = await account(false);
     const privateAccount = await account(false);
     const charge = (accountId: string, amountCents: number) =>
       client.transaction.create({
@@ -47,6 +47,7 @@ describe.runIf(url)("shared bills against a real database", () => {
     return {
       id: user.id,
       email,
+      sharedAccountId: sharedAccount.id,
       onShared: await charge(sharedAccount.id, 10_000),
       onPrivate: await charge(privateAccount.id, 7_000),
     };
@@ -57,6 +58,11 @@ describe.runIf(url)("shared bills against a real database", () => {
     const ben = await person("ben");
     const { token } = await invitePartner(ana, ben.email, { client });
     await acceptInvite(ben, token, { client });
+    // Sharing is chosen once together: joining starts with nothing shared.
+    await client.account.updateMany({
+      where: { id: { in: [ana.sharedAccountId, ben.sharedAccountId] } },
+      data: { sharedWithHousehold: true },
+    });
     return { ana, ben };
   }
 

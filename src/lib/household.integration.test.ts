@@ -165,6 +165,30 @@ describe.runIf(url)("households against a real database", () => {
     expect(performance.now() - started).toBeLessThan(2000);
   });
 
+  // Sharing stayed on after leaving, so the next person to join saw it at once, though the join page
+  // says "Nothing of yours is shared until you choose". Each person's change is to their own rows: the
+  // access proof refuses a partner writing to the other's.
+  it("ends each person's choice to share at their own step, and never the other's", async () => {
+    const { a, b } = await household();
+    const shared = { sharedWithHousehold: true };
+    const stillShared = (userId: string) =>
+      client.account.count({ where: { userId, sharedWithHousehold: true } });
+    await client.account.updateMany({ where: { userId: { in: [a.id, b.id] } }, data: shared });
+
+    await leaveHousehold(b.id, { client });
+    expect(await stillShared(b.id)).toBe(0);
+    expect(await stillShared(a.id)).toBeGreaterThan(0);
+
+    // The one who stayed invites someone new: their old sharing ends before anyone can join.
+    await client.account.updateMany({ where: { userId: b.id }, data: shared });
+    const { token } = await invitePartner(a, b.email, { client, now: NOW });
+    expect(await stillShared(a.id)).toBe(0);
+
+    // And whoever joins starts with nothing shared.
+    await acceptInvite(b, token, { client, now: NOW });
+    expect(await stillShared(b.id)).toBe(0);
+  });
+
   it("keeps households to two people", async () => {
     const { a } = await household();
     await expect(invitePartner(a, "third@example.com", { client, now: NOW })).rejects.toThrow(

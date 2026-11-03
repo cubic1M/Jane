@@ -166,9 +166,19 @@ describe("tryJane", () => {
       .mockResolvedValueOnce({ ok: true, remaining: 4, retryAfterSeconds: 0 })
       .mockResolvedValueOnce({ ok: false, remaining: 0, retryAfterSeconds: 60 });
     expect(await tryJane(null, agreed())).toEqual({
-      error: "Lots of people are trying Jane from here. Please try again in an hour.",
+      error: "Lots of people are trying Jane right now. Please come back a little later.",
     });
     expect(hit).toHaveBeenCalledWith("trialEveryone", "all");
+    expect(startTrial).not.toHaveBeenCalled();
+  });
+
+  it("has a daily ceiling across every IP too", async () => {
+    vi.mocked(hit)
+      .mockResolvedValueOnce({ ok: true, remaining: 4, retryAfterSeconds: 0 })
+      .mockResolvedValueOnce({ ok: true, remaining: 4, retryAfterSeconds: 0 })
+      .mockResolvedValueOnce({ ok: false, remaining: 0, retryAfterSeconds: 60 });
+    await tryJane(null, agreed());
+    expect(hit).toHaveBeenCalledWith("trialEveryoneDay", "all");
     expect(startTrial).not.toHaveBeenCalled();
   });
 

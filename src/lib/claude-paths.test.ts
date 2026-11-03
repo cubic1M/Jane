@@ -196,7 +196,7 @@ describe("meteredClaude", () => {
   });
 
   it("an admin has no limit of their own, but the month's total stops everyone", async () => {
-    const { client } = fakeDb({ role: "admin" });
+    const { client } = fakeDb({ role: "admin", email: "founder@example.com" });
     await chargeBackground("u1", "claude-opus-5-5", FIFTY_CENTS as never, { client, now: NOW });
     expect(await backgroundCapHit("u1", { client, now: NOW })).toBe(false);
     vi.stubEnv("CHAT_MONTHLY_CAP_CENTS", "40");

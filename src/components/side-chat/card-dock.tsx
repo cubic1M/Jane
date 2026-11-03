@@ -23,24 +23,27 @@ import type { MessageView } from "@/lib/jane-agent/view";
 // The last cards are kept for the tab's session, so a reload paints them at once and the chat
 // under them never jumps down; the first time, the dock slides open instead (reviewer polish).
 
-const KEPT = "jane:dock-cards";
+// Per person: the tab may be the next person's by the time it's read, and a session can end without
+// anyone pressing Sign out.
+const keptKey = (userId: string) => `jane:dock-cards:${userId}`;
 
 // Never one the person has dealt with since (answered or followed: src/lib/dock-gone.ts).
 export function keptCards(
   storage: Pick<Storage, "getItem"> | undefined,
+  userId: string,
   gone: readonly string[] = [],
 ): MessageView[] {
   try {
-    const kept = JSON.parse(storage?.getItem(KEPT) ?? "[]");
+    const kept = JSON.parse(storage?.getItem(keptKey(userId)) ?? "[]");
     return Array.isArray(kept) ? withoutGone(kept, gone) : [];
   } catch {
     return [];
   }
 }
 
-function keepCards(cards: readonly MessageView[]) {
+function keepCards(cards: readonly MessageView[], userId: string) {
   try {
-    window.sessionStorage.setItem(KEPT, JSON.stringify(withoutGone(cards, goneIds())));
+    window.sessionStorage.setItem(keptKey(userId), JSON.stringify(withoutGone(cards, goneIds())));
   } catch {
     // Private window or storage blocked: the dock just loads them again.
   }
@@ -54,11 +57,11 @@ const sessionStore = () => {
   }
 };
 
-export function CardDock() {
+export function CardDock({ userId }: { userId: string }) {
   const pathname = usePathname();
   // The cards the tab last showed, at once, so nothing moves when they load. The docked panel
   // only renders in the browser (useWide is false on the server), so this never mismatches.
-  const [kept] = useState(() => keptCards(sessionStore(), goneIds()));
+  const [kept] = useState(() => keptCards(sessionStore(), userId, goneIds()));
   const [cards, setCards] = useState<MessageView[]>(kept);
   // Kept cards paint in place; a dock that appears later slides open.
   const [fromKept, setFromKept] = useState(kept.length > 0);
@@ -89,13 +92,13 @@ export function CardDock() {
         const next = first
           ? (body.cards ?? [])
           : keepShowing(now, body.cards ?? [], showing.current, goneIds());
-        keepCards(next);
+        keepCards(next, userId);
         return next;
       });
     } catch {
       // Offline for a moment: the cards stay as they were until the next load.
     }
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     let stopped = false;
@@ -119,8 +122,8 @@ export function CardDock() {
   const gone = useSyncExternalStore(subscribeGone, goneSnapshot, goneServerSnapshot);
   const shown = withoutGone(cards, gone.split(","));
   useEffect(() => {
-    if (gone) keepCards(cards);
-  }, [gone, cards]);
+    if (gone) keepCards(cards, userId);
+  }, [gone, cards, userId]);
 
   // The dock is the one scroller for a card and its details: the wheel, a trackpad or the keys
   // move it from anywhere over the card, and at its end the page and the chat behind stay put.

@@ -6,6 +6,7 @@ import {
 import type { PrismaClient } from "@/generated/prisma/client";
 import { anthropic } from "@/lib/anthropic";
 import { db as defaultClient } from "@/lib/db";
+import { stillAnAdmin } from "@/lib/admin-emails";
 import { isAdminEmail } from "@/lib/invites";
 import { log } from "@/lib/log";
 import {
@@ -75,7 +76,12 @@ export async function backgroundCapHit(
     where: { id: userId },
     select: { role: true, email: true },
   });
-  if (user?.role === "admin" || (user?.email && isAdminEmail(user.email))) return false;
+  // Someone taken off ADMIN_EMAILS keeps their role until they next sign in: not the allowance.
+  if (
+    (user?.role === "admin" && stillAnAdmin(user.email)) ||
+    (user?.email && isAdminEmail(user.email))
+  )
+    return false;
   return today >= CLAUDE_BACKGROUND_DAILY_CAP_CENTS || month >= CLAUDE_BACKGROUND_MONTHLY_CAP_CENTS;
 }
 

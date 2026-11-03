@@ -10,7 +10,8 @@ const PATH_MAX_CHARS = 200;
 // The page a report is about: its path only. A query is dropped (a search's words are the
 // person's), and anything that isn't one of our own pages is just "/".
 export function reportPath(from: unknown): string {
-  if (typeof from !== "string" || !from.startsWith("/") || from.startsWith("//")) return "/";
+  // Browsers read "/\\" as "//": both lead to another site.
+  if (typeof from !== "string" || !/^\/(?![/\\])/.test(from)) return "/";
   return from.split(/[?#]/)[0].slice(0, PATH_MAX_CHARS) || "/";
 }
 

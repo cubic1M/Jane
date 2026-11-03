@@ -31,19 +31,29 @@ describe("the dock reloading its cards", () => {
 
 describe("the cards kept for the tab", () => {
   const storage = (value: string | null) => ({ getItem: () => value });
+  const ME = "user_1";
 
   it("paints the last cards at once, so the chat under them doesn't jump", () => {
-    expect(keptCards(storage(JSON.stringify([m("a"), m("b")]))).map((c) => c.id)).toEqual([
+    expect(keptCards(storage(JSON.stringify([m("a"), m("b")])), ME).map((c) => c.id)).toEqual([
       "a",
       "b",
     ]);
   });
 
+  // Local build: 9 KB of decision cards were still in the tab after signing out, and the next person
+  // to sign in there would see them first.
+  it("never shows one person the cards kept for another", () => {
+    const kept = new Map([["jane:dock-cards:user_1", JSON.stringify([m("a")])]]);
+    const tab = { getItem: (key: string) => kept.get(key) ?? null };
+    expect(keptCards(tab, "user_1").map((c) => c.id)).toEqual(["a"]);
+    expect(keptCards(tab, "user_2")).toEqual([]);
+  });
+
   it("starts empty with nothing kept, something broken, or no storage", () => {
-    expect(keptCards(storage(null))).toEqual([]);
-    expect(keptCards(storage("{not json"))).toEqual([]);
-    expect(keptCards(storage('{"a":1}'))).toEqual([]);
-    expect(keptCards(undefined)).toEqual([]);
+    expect(keptCards(storage(null), ME)).toEqual([]);
+    expect(keptCards(storage("{not json"), ME)).toEqual([]);
+    expect(keptCards(storage('{"a":1}'), ME)).toEqual([]);
+    expect(keptCards(undefined, ME)).toEqual([]);
   });
 });
 
@@ -64,6 +74,6 @@ describe("the dock and the cards dealt with", () => {
 
   it("drops it from the copy kept for the tab", () => {
     const storage = { getItem: () => JSON.stringify([m("a"), m("b")]) };
-    expect(keptCards(storage, ["a"]).map((c) => c.id)).toEqual(["b"]);
+    expect(keptCards(storage, "user_1", ["a"]).map((c) => c.id)).toEqual(["b"]);
   });
 });

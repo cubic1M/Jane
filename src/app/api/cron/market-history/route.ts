@@ -1,3 +1,4 @@
+import { cronAuthorized } from "@/lib/cron-auth";
 import { NextResponse } from "next/server";
 import { log } from "@/lib/log";
 import { loadHistory, HistoryError } from "@/lib/market/history";
@@ -13,8 +14,7 @@ import { recordRun } from "@/lib/health";
 // the free plan serves it for bars older than 15 minutes, back to 2016, while the IEX feed's
 // daily bars start in mid-2020. Live prices keep ALPACA_DATA_FEED.
 export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!cronAuthorized(request, process.env.CRON_SECRET)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   try {

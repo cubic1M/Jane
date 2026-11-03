@@ -32,8 +32,11 @@ export async function tryJane(_previous: TryState, formData: FormData): Promise<
   }
   const timing = phaseTimer("try_click");
   const h = await headers();
-  if (!(await hit("trial", ipKey(h))).ok || !(await hit("trialEveryone", "all")).ok) {
+  if (!(await hit("trial", ipKey(h))).ok) {
     return { error: "Lots of people are trying Jane from here. Please try again in an hour." };
+  }
+  if (!(await hit("trialEveryone", "all")).ok || !(await hit("trialEveryoneDay", "all")).ok) {
+    return { error: "Lots of people are trying Jane right now. Please come back a little later." };
   }
   timing.mark("rate_limit");
   // Someone's own statement doesn't stay behind a sample person in the same browser.

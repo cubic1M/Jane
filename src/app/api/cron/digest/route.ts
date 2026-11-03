@@ -1,3 +1,4 @@
+import { cronAuthorized } from "@/lib/cron-auth";
 import { NextResponse } from "next/server";
 import { runDigests } from "@/lib/digest/send";
 import { sendErrorDigest } from "@/lib/error-alerts";
@@ -19,8 +20,7 @@ export const maxDuration = 300;
 // ?dry_run=1 it renders every digest and returns them without sending or storing.
 export async function GET(request: Request) {
   const startedAt = Date.now();
-  const secret = process.env.CRON_SECRET;
-  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!cronAuthorized(request, process.env.CRON_SECRET)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const dryRun = new URL(request.url).searchParams.get("dry_run") === "1";

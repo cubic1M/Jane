@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { HOUSEHOLD_INVITE_DAYS, HOUSEHOLD_MAX_MEMBERS } from "@/config/household";
-import type { PrismaClient } from "@/generated/prisma/client";
+import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
@@ -78,6 +78,9 @@ export async function invitePartner(
     if (members >= HOUSEHOLD_MAX_MEMBERS) {
       throw new HouseholdError("Your household is full.");
     }
+    // Whoever joins sees what's shared, so nothing from an earlier partner carries over: sharing with
+    // the new one is a new choice. (Nobody else is here: the household would be full.)
+    await stopSharing(tx, user.id);
     // A new invite replaces any earlier one that wasn't accepted.
     await tx.householdInvite.deleteMany({
       where: { householdId: membership.householdId, acceptedAt: null },
@@ -126,6 +129,8 @@ export async function acceptInvite(
       data: { acceptedAt: now },
     });
     if (count === 0) throw new HouseholdError("This invite link was already used.");
+    // Anything left switched on from before: joining shares nothing.
+    await stopSharing(tx, user.id);
     await tx.householdMember.create({ data: { householdId: invite.householdId, userId: user.id } });
     return invite.householdId;
   });
@@ -139,6 +144,14 @@ export async function acceptInvite(
     {},
   );
   await track(user.id, "household_joined", {});
+}
+
+// One person's own rows, never the other member's: leaving or inviting can't write to someone else.
+async function stopSharing(tx: Prisma.TransactionClient, userId: string): Promise<void> {
+  const data = { sharedWithHousehold: false };
+  await tx.account.updateMany({ where: { userId, sharedWithHousehold: true }, data });
+  await tx.savingsGoal.updateMany({ where: { userId, sharedWithHousehold: true }, data });
+  await tx.insurancePolicy.updateMany({ where: { userId, sharedWithHousehold: true }, data });
 }
 
 // Leaves the household. Access to the other person's shared accounts ends now, and theirs
@@ -156,6 +169,10 @@ export async function leaveHousehold(
     // The shared balance ends with the pair; each person's own transactions stay.
     await tx.sharedCharge.deleteMany({ where: { householdId: left.householdId } });
     await tx.settlement.deleteMany({ where: { householdId: left.householdId } });
+    // Sharing was a choice about the person they shared with. Left on, whoever joins next sees it,
+    // against "Nothing of yours is shared until you choose". Only their own: the one who stays ends
+    // theirs when they invite someone new.
+    await stopSharing(tx, userId);
     await tx.householdMember.delete({ where: { userId } });
     if ((await tx.householdMember.count({ where: { householdId: left.householdId } })) === 0) {
       await tx.household.delete({ where: { id: left.householdId } });

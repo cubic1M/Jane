@@ -9,7 +9,13 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/session", () => ({
   requireUser: vi.fn(async () => ({ id: "u1", email: "alex@example.com" })),
 }));
-vi.mock("@/lib/email", () => ({ sendEmail: vi.fn(async () => undefined) }));
+vi.mock("@/lib/email", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/email")>()),
+  sendEmail: vi.fn(async () => undefined),
+}));
+vi.mock("@/lib/rate-limit", () => ({
+  hit: vi.fn(async () => ({ ok: true, remaining: 1, retryAfterSeconds: 0 })),
+}));
 vi.mock("@/lib/shared-bills", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/shared-bills")>()),
   splitCharge: vi.fn(),
@@ -25,6 +31,8 @@ vi.mock("@/lib/household", async (importOriginal) => ({
 }));
 
 import { sendEmail } from "@/lib/email";
+import { hit } from "@/lib/rate-limit";
+import { requireUser } from "@/lib/session";
 import {
   HouseholdError,
   acceptInvite,
@@ -122,5 +130,22 @@ describe("household actions", () => {
     await expect(split(form({ transactionId: "t1" }))).resolves.toBeUndefined();
     vi.mocked(splitCharge).mockRejectedValueOnce(new Error("db down"));
     await expect(split(form({ transactionId: "t1" }))).rejects.toThrow("db down");
+  });
+
+  it("stops at a few invites an hour: each emails an address someone typed", async () => {
+    vi.mocked(sendEmail).mockClear();
+    vi.mocked(hit).mockResolvedValueOnce({ ok: false, remaining: 0, retryAfterSeconds: 60 });
+    const state = await invite(null, form({ email: "someone@example.com" }));
+    expect(state).toMatchObject({ ok: false });
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("escapes the inviter's address in the email's HTML", async () => {
+    vi.stubEnv("RESEND_API_KEY", "re_test");
+    vi.mocked(sendEmail).mockClear();
+    vi.mocked(requireUser).mockResolvedValueOnce({ id: "u1", email: "<b>x@example.com" } as never);
+    await invite(null, form({ email: "someone@example.com" }));
+    expect(vi.mocked(sendEmail).mock.calls[0][0].html).toContain("&lt;b&gt;x@example.com");
+    vi.unstubAllEnvs();
   });
 });

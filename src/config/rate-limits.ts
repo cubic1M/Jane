@@ -48,6 +48,9 @@ export const RATE_LIMITS = {
   push: { limit: 20, windowSeconds: 10 * 60 },
   // Calendar apps fetching the money calendar feed, per IP.
   calendar: { limit: 120, windowSeconds: 60 * 60 },
+  // One authenticator code, once: a code someone saw over a shoulder is still good for a minute or
+  // two otherwise.
+  mfaCodeUsed: { limit: 1, windowSeconds: 3 * 60 },
   // Two-factor codes (authenticator or backup), per user.
   mfa: { limit: 5, windowSeconds: 10 * 60 },
   // Uploading documents (each may be read by Claude), per user.
@@ -61,8 +64,10 @@ export const RATE_LIMITS = {
   // 20, not 5: offices, schools and households share one IP, and people try several of the
   // eight sample lives (step 252).
   trial: { limit: 20, windowSeconds: 60 * 60 },
-  // The same, for everyone together: rotating IPs can't fill the database with sample people.
-  trialEveryone: { limit: 300, windowSeconds: 60 * 60 },
+  // The same, for everyone together: rotating IPs can't fill the database with sample people, who
+  // take about 600 KB each until they're deleted a day later.
+  trialEveryone: { limit: 100, windowSeconds: 60 * 60 },
+  trialEveryoneDay: { limit: 300, windowSeconds: 24 * 60 * 60 },
   // Questions Claude answers for one sample (Try Jane) person, in all: one very long window.
   claudeTrial: { limit: 25, windowSeconds: 60 * 60 * 24 * 365 * 10 },
   // Trying Jane with your own statement (src/config/statement-trial.ts): starts per IP, starts by
@@ -73,6 +78,12 @@ export const RATE_LIMITS = {
     limit: STATEMENT_TRIAL_CHAT_ANSWERS,
     windowSeconds: 60 * 60 * 24 * 365 * 10,
   },
+  // Problem reports, per person: a sample person needs no account, and /admin/reports shows the newest
+  // 200, so a flood would push real ones off the page.
+  problemReports: { limit: 5, windowSeconds: 60 * 60 },
+  sampleProblemReports: { limit: 20, windowSeconds: 60 * 60 },
+  // Household invites, per person: each emails an address they typed.
+  householdInvites: { limit: 5, windowSeconds: 60 * 60 },
   // Invite codes made by an admin, per admin.
   invites: { limit: 30, windowSeconds: 60 * 60 },
   // Server errors kept for /admin/errors, and alert emails to the team, across every request. Anyone
