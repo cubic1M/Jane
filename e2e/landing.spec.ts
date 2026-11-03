@@ -31,7 +31,8 @@ test("landing page shows the promise and leads to sign-up @critical", async ({ p
 test("health check responds", async ({ request }) => {
   const response = await request.get("/api/health");
   expect(response.ok()).toBe(true);
-  expect(await response.json()).toEqual({ ok: true });
+  // It also says which commit it's built from (src/config/build-commit.ts).
+  expect(await response.json()).toMatchObject({ ok: true });
 });
 
 // The column (founder, 2026-10-25): the founder's weathered column in fine ASCII, fixed beside
