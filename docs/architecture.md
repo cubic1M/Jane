@@ -143,7 +143,7 @@ claimed with `FOR UPDATE SKIP LOCKED`, retried with a growing wait, and shown on
   what failed on its first try: read it with `npm run flakes` before bisecting a red run. Only the newest waiting run on main goes ahead, so not every commit
   gets a run of its own.
 - The merge train (`merge-train.yml`) lands an auto-merge PR that passed when GitHub's auto-merge
-  didn't fire.
+  didn't fire. It never brings a branch up to date.
 - `uptime.yml` checks the live site every 15 minutes and opens an "outage" issue when it fails.
   `chat-quality.yml` runs the free rules part of the question bank every night; its Claude part,
   and `chat-eval.yml`, run only when started by hand.
