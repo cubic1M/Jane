@@ -20,12 +20,19 @@ const subjectFor = (address: string) =>
     .digest("hex")
     .slice(0, 32);
 
+// Whether this address may get another link. Past the day's limit one still goes out an hour, never
+// none: anyone can ask for a link for anyone, so a hard stop would let them lock a person out, and a
+// link that went out in the last hour still works for the person it reached.
+async function mayEmail(subject: string): Promise<boolean> {
+  if (!(await hit("signInEmail", subject)).ok) return false;
+  if ((await hit("signInEmailDay", subject)).ok) return true;
+  return (await hit("signInEmailPastDay", subject)).ok;
+}
+
 export async function sendSignInEmail({ to, url }: { to: string; url: string }): Promise<void> {
-  const subject = subjectFor(to);
-  const [recent, today] = [await hit("signInEmail", subject), await hit("signInEmailDay", subject)];
   // Nothing goes out, and nothing says so: the person who asked sees the usual "check your email",
   // so this can't tell anyone whether the address has an account.
-  if (!recent.ok || !today.ok) return;
+  if (!(await mayEmail(subjectFor(to)))) return;
   await sendMagicLink({ to, url }).catch(() => {
     // Already logged, with the reason. Nothing of the failure goes further: it can name the
     // address.

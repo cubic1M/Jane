@@ -26,13 +26,31 @@ describe("sendSignInEmail", () => {
 
   // Auth.js's own route skipped the form's limit per address: only the per-IP limit stood between
   // a script on many IPs and someone's inbox.
-  it.each([
-    ["ten minutes", [over, ok]],
-    ["the day", [ok, over]],
-  ])("sends nothing and says nothing once the address is over its limit for %s", async (_, res) => {
-    vi.mocked(hit).mockResolvedValueOnce(res[0]).mockResolvedValueOnce(res[1]);
+  it("sends nothing and says nothing once the address is over its limit for ten minutes", async () => {
+    vi.mocked(hit).mockResolvedValueOnce(over);
     await expect(sendSignInEmail({ to: "a@b.com", url: URL })).resolves.toBeUndefined();
     expect(sendMagicLink).not.toHaveBeenCalled();
+  });
+
+  // A hard stop for the day would let anyone lock a person out with 20 requests, since anyone can ask
+  // for anyone's link. One an hour means there's always a working link in their inbox.
+  it("still sends one an hour past the day's limit, never none", async () => {
+    vi.mocked(hit).mockImplementation(async (name) => (name === "signInEmailDay" ? over : ok));
+    await sendSignInEmail({ to: "a@b.com", url: URL });
+    expect(sendMagicLink).toHaveBeenCalledOnce();
+
+    vi.mocked(sendMagicLink).mockClear();
+    vi.mocked(hit).mockImplementation(async (name) =>
+      name === "signInEmailDay" || name === "signInEmailPastDay" ? over : ok,
+    );
+    await sendSignInEmail({ to: "a@b.com", url: URL });
+    expect(sendMagicLink).not.toHaveBeenCalled();
+  });
+
+  it("doesn't count toward the day what the ten-minute limit already stopped", async () => {
+    vi.mocked(hit).mockResolvedValueOnce(over);
+    await sendSignInEmail({ to: "a@b.com", url: URL });
+    expect(vi.mocked(hit).mock.calls.map(([name]) => name)).toEqual(["signInEmail"]);
   });
 
   it("counts every spelling that reaches one inbox together, and never stores the address", async () => {
