@@ -1,0 +1,63 @@
+name: Review confirm
+run-name: confirm ${{ inputs.review_run }}
+
+# Runs the tests reviewers wrote, against the PR and against its base (docs/gates.md). review.yml starts
+# this on the PR's branch, so what runs here can reach no secret, no write token and only the branch's
+# own cache. The scripts come from the base commit.
+on:
+  workflow_dispatch:
+    inputs:
+      review_run:
+        description: The Review run whose findings to test
+        required: true
+      number:
+        description: The PR
+        required: true
+      sha:
+        description: The commit reviewed
+        required: true
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  confirm:
+    name: Run the findings' tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: The findings, and the PR as it would merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          REVIEW_RUN: ${{ inputs.review_run }}
+          NUMBER: ${{ inputs.number }}
+          SHA: ${{ inputs.sha }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/findings"
+          for name in review-claude review-second; do
+            gh run download "$REVIEW_RUN" -n "$name" -D "$RUNNER_TEMP/findings" || true
+          done
+          git fetch -q --no-tags --depth=2 origin "refs/pull/$NUMBER/merge"
+          [ "$(git rev-parse FETCH_HEAD^2)" = "$SHA" ] || { echo "::error::The PR moved on."; exit 1; }
+          git checkout -q -f FETCH_HEAD
+          mkdir -p "$RUNNER_TEMP/scripts"
+          git archive HEAD^1 .github/scripts | tar -x -C "$RUNNER_TEMP/scripts"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci --no-audit --no-fund
+      - run: npx prisma generate
+      - name: Run them
+        run: >-
+          mkdir -p "$RUNNER_TEMP/out" && node "$RUNNER_TEMP/scripts/.github/scripts/reviewer/confirm.mjs"
+          --findings "$RUNNER_TEMP/findings" --base HEAD^1 --head HEAD --out "$RUNNER_TEMP/out/results.json"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: confirm-results
+          path: ${{ runner.temp }}/out
+          retention-days: 7
