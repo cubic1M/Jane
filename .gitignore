@@ -50,3 +50,9 @@ next-env.d.ts
 # The weak-test finder's working files and reports
 .stryker-tmp/
 reports/mutation/
+
+# Hand-labelled transactions live outside this repo; these never come in by mistake
+*.sealed
+labels-a.csv
+labels-b.csv
+to-label.csv
