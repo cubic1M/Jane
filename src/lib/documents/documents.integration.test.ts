@@ -11,6 +11,9 @@ import { documentDates, policyForMerchant } from "./dates";
 import { addDocument, openDocument, removeDocument, saveDocumentFacts } from "./store";
 
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).
+import { MAX_DOCUMENT_TOTAL_BYTES } from "@/config/documents";
+import { SAMPLE_NO_DOCUMENTS } from "@/config/statement-trial";
+
 const url = process.env.TEST_DATABASE_URL;
 
 const PDF = Buffer.concat([Buffer.from("%PDF-1.7\nSECRET POLICY NUMBER 12345\n"), randomBytes(64)]);
@@ -48,9 +51,9 @@ describe.runIf(url)("documents against a real database (spec step 68)", () => {
   let client: PrismaClient;
   const ids: string[] = [];
 
-  async function person() {
+  async function person(id?: string) {
     const user = await client.user.create({
-      data: { email: `docs-${crypto.randomUUID()}@example.com` },
+      data: { id, email: `docs-${crypto.randomUUID()}@example.com` },
     });
     ids.push(user.id);
     return user.id;
@@ -125,6 +128,30 @@ describe.runIf(url)("documents against a real database (spec step 68)", () => {
       premiumCents: 9_550,
       extractionSource: "you",
     });
+  });
+
+  it("keeps nothing for a sample person: anyone can make one", async () => {
+    const userId = await person(`trial_${crypto.randomUUID().replaceAll("-", "")}`);
+    const result = await addDocument(userId, upload(), { client, claude: fakeClaude({}) });
+    expect(result).toEqual({ ok: false, error: SAMPLE_NO_DOCUMENTS });
+    expect(await client.document.count({ where: { userId } })).toBe(0);
+  });
+
+  it("stops at what a person may keep in all, whatever the number of files", async () => {
+    const userId = await person();
+    await client.document.create({
+      data: {
+        userId,
+        kind: "other",
+        fileName: "big.pdf",
+        contentType: "application/pdf",
+        sizeBytes: MAX_DOCUMENT_TOTAL_BYTES,
+        encryptedBytes: Buffer.from("x"),
+      },
+    });
+    const result = await addDocument(userId, upload(), { client, claude: fakeClaude({}) });
+    expect(result.ok).toBe(false);
+    expect(await client.document.count({ where: { userId } })).toBe(1);
   });
 
   it("refuses a file that isn't what it claims", async () => {

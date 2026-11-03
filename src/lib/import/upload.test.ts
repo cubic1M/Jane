@@ -80,6 +80,12 @@ beforeEach(() => {
 });
 
 describe("saveUpload", () => {
+  it("keeps a file's name only up to a real name's length", async () => {
+    await saveUpload(db, form({ accountId: "acct_1", files: [csv(`${"a".repeat(5_000)}.csv`)] }));
+    const { fileNames } = importRunsCreate.mock.calls[0][0].data;
+    expect(fileNames[0].length).toBeLessThanOrEqual(120);
+  });
+
   it("saves into the chosen account with the file's balances, records it and queues the rest", async () => {
     const stages: unknown[] = [];
     const result = await saveUpload(db, form({ accountId: "acct_1", files: [csv("card.csv")] }), {

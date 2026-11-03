@@ -14,6 +14,8 @@ export const INVITE_COOKIE = "fc_invite";
 // place with nothing sent, so the form can't be used to test who has an account.
 export const CHECK_EMAIL_PATH = "/api/auth/verify-request?provider=resend&type=email";
 
+const MAX_EMAIL_LENGTH = 254;
+
 // Why this Google sign-in can't go on, if it can't. src/auth.ts lets Google join an account with the
 // same address, so that address must be one Google has checked; and Auth.js adds a Google account to
 // whoever is signed in, so someone with a moment at a signed-in screen could add their own, which
@@ -41,6 +43,10 @@ export async function allowSignIn({
 }) {
   const email = user.email?.trim().toLowerCase();
   if (!email) return false;
+  // Auth.js's own route doesn't pass through the form's check, and this address gets saved.
+  if (email.length > MAX_EMAIL_LENGTH) {
+    return asked?.verificationRequest ? CHECK_EMAIL_PATH : false;
+  }
   if (account?.provider === "google") {
     const refusal = await googleRefusal(email, profile);
     if (refusal) {

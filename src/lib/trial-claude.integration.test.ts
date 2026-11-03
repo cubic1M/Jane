@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { CHAT_ALL_TRIALS_DAILY_CAP_CENTS } from "@/config/agent-chat";
+import { SAMPLE_NO_DOCUMENTS } from "@/config/statement-trial";
 import { TRIAL_ID_PREFIX } from "@/config/trial";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -99,7 +100,7 @@ describe.runIf(url)("what a sample person can spend on Claude", { timeout: 120_0
     expect(claudeCalls).toBe(0);
   });
 
-  it("keeps a sample person's upload without sending it to Claude", async () => {
+  it("keeps no upload from a sample person, and sends nothing to Claude", async () => {
     const id = `${TRIAL_ID_PREFIX}${randomBytes(8).toString("hex")}`;
     await client.user.create({ data: { id, email: `${id}@example.test` } });
     created.push(id);
@@ -112,7 +113,7 @@ describe.runIf(url)("what a sample person can spend on Claude", { timeout: 120_0
       },
       { client },
     );
-    expect(result).toMatchObject({ ok: true, read: "you" });
+    expect(result).toEqual({ ok: false, error: SAMPLE_NO_DOCUMENTS });
     expect(claudeCalls).toBe(0);
   });
 

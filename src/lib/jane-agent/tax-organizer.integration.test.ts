@@ -150,6 +150,9 @@ describe.runIf(url)("the tax organizer against a real database", () => {
       ["1098-E", "Demo Student Loan"],
     ]);
     const w2 = forms[0];
+    await expect(
+      markTaxForm(userId, 99_999, w2.key, true, { client, now: LINKED, via: "page" }),
+    ).rejects.toThrow();
     await markTaxForm(userId, 2026, w2.key, true, { client, now: LINKED, via: "page" });
     expect((await loadTaxForms(userId, 2026, { client, now: LINKED })).forms[0].received).toBe(
       true,

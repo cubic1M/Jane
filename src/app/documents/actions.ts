@@ -14,7 +14,7 @@ import { hit } from "@/lib/rate-limit";
 import { isTrialUser } from "@/lib/trial-ids";
 import { requireUser } from "@/lib/session";
 import { isStatementTrialUser } from "@/lib/trial-ids";
-import { STATEMENT_TRIAL_NO_DOCUMENTS } from "@/config/statement-trial";
+import { SAMPLE_NO_DOCUMENTS, STATEMENT_TRIAL_NO_DOCUMENTS } from "@/config/statement-trial";
 
 // Uploading, correcting and deleting documents on /documents (spec step 68). The upload
 // and facts forms keep their message on screen and refresh the list themselves, so these
@@ -26,6 +26,7 @@ export async function uploadDocument(_previous: FormState, formData: FormData): 
   const user = await requireUser();
   // Each document may go to Claude, and is stored: neither is for a temporary try.
   if (isStatementTrialUser(user.id)) return { ok: false, message: STATEMENT_TRIAL_NO_DOCUMENTS };
+  if (isTrialUser(user.id)) return { ok: false, message: SAMPLE_NO_DOCUMENTS };
   if (!(await hit("documents", user.id)).ok) {
     return { ok: false, message: "That's a lot of uploads at once. Try again in an hour." };
   }
@@ -49,10 +50,7 @@ export async function uploadDocument(_previous: FormState, formData: FormData): 
   });
   if (!result.ok) return { ok: false, message: result.error };
   await track(user.id, "document_uploaded", { kind, read: result.read });
-  // Without the file nothing goes to Claude: a sample person fills in what the document says.
-  const toRead = isTrialUser(user.id)
-    ? null
-    : { bytes, contentType: file.type as DocumentContentType };
+  const toRead = { bytes, contentType: file.type as DocumentContentType };
   // A policy is read into one for the person to confirm (spec step 151). The upload's
   // stated type matched its bytes, or it wasn't saved.
   if (kind === "tax_notice") {
