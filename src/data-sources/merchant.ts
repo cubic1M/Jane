@@ -155,10 +155,16 @@ export function normalizeDescription(description: string): string {
 
 export type Merchant = { name: string; key: string };
 
+// Far longer than any bank's line, and a limit on what the patterns below ever read.
+const MERCHANT_TEXT_MAX_CHARS = 300;
+
 // Citi pads the merchant to a column before the city and state ("SPOTIFY USA        SAN
 // FRANCISCO  CA"): the padding is where the merchant ends.
+// Long runs of spaces are cut first: this pattern is cubic on them, and a 2 KB file froze the server
+// for 14 seconds. A run of 8 means the same to it as a longer one.
 function beforePadding(description: string): string {
-  const match = /^(.*?\S)\s{3,}[A-Za-z .'-]+?\s+([A-Za-z]{2})\s*$/.exec(description);
+  const padded = description.replace(/\s{9,}/g, "        ");
+  const match = /^(.*?\S)\s{3,}[A-Za-z .'-]+?\s+([A-Za-z]{2})\s*$/.exec(padded);
   return match && US_STATES.has(match[2].toUpperCase()) ? match[1] : description;
 }
 
@@ -172,7 +178,7 @@ export function withoutAchDetails(description: string): string {
 }
 
 export function normalizeMerchant(description: string): Merchant | null {
-  let text = normalizeDescription(beforePadding(description));
+  let text = normalizeDescription(beforePadding(description.slice(0, MERCHANT_TEXT_MAX_CHARS)));
   for (const pattern of BOILERPLATE) text = text.replace(pattern, "");
   for (const pattern of PROCESSOR_PREFIXES) text = text.replace(pattern, "");
 

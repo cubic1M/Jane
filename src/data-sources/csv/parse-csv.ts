@@ -8,6 +8,12 @@ export type CsvRecord = { line: number; fields: string[] };
 const DELIMITERS = [",", ";", "\t"] as const;
 const SNIFF_LINES = 10;
 
+// Far past any bank's export. Without them one crafted upload kept the server busy for minutes: 4 MB
+// of nothing but columns took about 100 seconds to look at, and every pattern that reads a cell
+// reads all of it.
+export const MAX_COLUMNS = 200;
+export const MAX_CELL_CHARS = 1000;
+
 // The separator, from the first lines outside quotes: the one found the same number of times
 // on every line (a column boundary), else the one used most on most lines. Commas win a tie.
 export function detectDelimiter(text: string): string {
@@ -43,8 +49,14 @@ export function parseCsv(text: string, delimiter = detectDelimiter(text)): CsvRe
   let line = 1;
   let recordLine = 1;
 
+  const endField = () => {
+    if (fields.length >= MAX_COLUMNS) {
+      throw new Error("This file has too many columns to be a bank statement.");
+    }
+    fields.push(field.length > MAX_CELL_CHARS ? field.slice(0, MAX_CELL_CHARS) : field);
+  };
   const endRecord = () => {
-    fields.push(field);
+    endField();
     if (fields.length > 1 || fields[0].trim() !== "") {
       records.push({ line: recordLine, fields });
     }
@@ -69,7 +81,7 @@ export function parseCsv(text: string, delimiter = detectDelimiter(text)): CsvRe
     } else if (char === '"' && field === "") {
       inQuotes = true;
     } else if (char === delimiter) {
-      fields.push(field);
+      endField();
       field = "";
     } else if (char === "\n" || char === "\r") {
       if (char === "\r" && input[i + 1] === "\n") i++;

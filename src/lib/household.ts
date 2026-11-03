@@ -15,6 +15,7 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export class HouseholdError extends Error {}
 
+const MAX_EMAIL_CHARS = 254;
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
 export async function householdOf(userId: string, { client = defaultClient }: Options = {}) {
@@ -48,7 +49,10 @@ export async function invitePartner(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<{ token: string }> {
   const invited = normalizeEmail(email);
-  if (!/^\S+@\S+\.\S+$/.test(invited)) throw new HouseholdError("Enter your partner's email.");
+  // The length first: this pattern is cubic, and a form can post megabytes.
+  if (invited.length > MAX_EMAIL_CHARS || !/^\S+@\S+\.\S+$/.test(invited)) {
+    throw new HouseholdError("Enter your partner's email.");
+  }
   if (invited === normalizeEmail(user.email)) throw new HouseholdError("That's your own email.");
 
   const token = randomBytes(32).toString("base64url");

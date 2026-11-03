@@ -31,6 +31,8 @@ export function targetDateMix(text: string, today: string, risk: RiskLevel): Men
   return glideMix(Math.max(0, year - Number(today.slice(0, 4))), risk);
 }
 
+const MENU_LINE_MAX_CHARS = 300;
+
 // Lines like: KTSIX  Keystone Total US Stock Index Fund  0.03%  US stock
 export function parseDisclosure(
   text: string,
@@ -42,7 +44,11 @@ export function parseDisclosure(
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.trim();
     if (!line) continue;
-    const m = /^([A-Z]{3,6}X?)\s+(.+?)\s+(\d+(?:\.\d+)?)\s*%\s*(.*)$/.exec(line);
+    // A fund's line is short, and the pattern below slows down with the fourth power of the length.
+    const m =
+      line.length > MENU_LINE_MAX_CHARS
+        ? null
+        : /^([A-Z]{3,6}X?)\s+(.+?)\s+(\d+(?:\.\d+)?)\s*%\s*(.*)$/.exec(line);
     if (!m) {
       skipped.push(line.slice(0, 80));
       continue;

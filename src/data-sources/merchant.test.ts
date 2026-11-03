@@ -2,6 +2,22 @@ import { describe, expect, it } from "vitest";
 import { normalizeMerchant, withoutCity, withoutPaymentApp, withoutAchDetails } from "./merchant";
 
 describe("normalizeMerchant", () => {
+  // Local build: one 2 KB row froze the server for 14 seconds, and 4 KB took 87.
+  it("reads a line that is nearly all spaces without slowing down", () => {
+    const started = performance.now();
+    normalizeMerchant(`A${" ".repeat(50_000)}1`);
+    normalizeMerchant(`A${" ".repeat(250)}1`);
+    expect(performance.now() - started).toBeLessThan(2000);
+  });
+
+  it("still finds where Citi's padding ends, however wide it is", () => {
+    for (const padding of [3, 8, 40, 200]) {
+      expect(normalizeMerchant(`SPOTIFY USA${" ".repeat(padding)}SAN FRANCISCO  CA`)?.name).toBe(
+        normalizeMerchant("SPOTIFY USA   SAN FRANCISCO  CA")?.name,
+      );
+    }
+  });
+
   it.each([
     ["NETFLIX.COM NETFLIX.COM CA 10/03", "Netflix"],
     ["SQ *BLUE BOTTLE COFFEE #123 OAKLAND CA", "Blue Bottle Coffee"],

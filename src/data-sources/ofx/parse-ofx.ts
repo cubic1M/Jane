@@ -51,6 +51,28 @@ export type OfxResult =
     }
   | { ok: false; file: string; error: string };
 
+// Each <STMTTRN>…</STMTTRN> and the line it starts on, in one pass over the file. A lazy pattern looked
+// for a closing tag from every opening one: 200 KB of unclosed tags took 2 seconds, and 4 MB 400 times
+// that. With no closing tag left, there's nothing more to find.
+function* transactionBlocks(text: string): Generator<{ block: string; line: number }> {
+  const open = /<STMTTRN>/gi;
+  const close = /<\/STMTTRN>/gi;
+  let line = 1;
+  let counted = 0;
+  for (let start = open.exec(text); start; start = open.exec(text)) {
+    close.lastIndex = open.lastIndex;
+    const end = close.exec(text);
+    if (!end) return;
+    for (let at = text.indexOf("\n", counted); at !== -1 && at < start.index;) {
+      line += 1;
+      at = text.indexOf("\n", at + 1);
+    }
+    counted = start.index;
+    yield { block: text.slice(open.lastIndex, end.index), line };
+    open.lastIndex = close.lastIndex;
+  }
+}
+
 export function readOfx(file: { name: string; text: string }): OfxResult {
   if (!/<OFX>/i.test(file.text)) {
     return { ok: false, file: file.name, error: "This doesn't look like an OFX or QFX file." };
@@ -58,9 +80,7 @@ export function readOfx(file: { name: string; text: string }): OfxResult {
   const transactions: Omit<NormalizedTransaction, "accountRef">[] = [];
   const skipped: SkippedRow[] = [];
   const seen = new Set<string>();
-  for (const match of file.text.matchAll(/<STMTTRN>([\s\S]*?)<\/STMTTRN>/gi)) {
-    const block = match[1];
-    const line = file.text.slice(0, match.index).split("\n").length;
+  for (const { block, line } of transactionBlocks(file.text)) {
     const date = ofxDate(field(block, "DTPOSTED"));
     const amount = ofxAmount(field(block, "TRNAMT"));
     const fitid = field(block, "FITID");
@@ -105,9 +125,12 @@ export function readOfx(file: { name: string; text: string }): OfxResult {
 // <LEDGERBAL><BALAMT>…<DTASOF>…: the balance on that day. A card statement's is negative
 // for what's owed (OFX's sign), so it's turned round.
 function ledgerBalance(text: string): { date: string; balanceCents: number }[] {
-  const block = /<LEDGERBAL>([\s\S]*?)(?:<\/LEDGERBAL>|<AVAILBAL>|<\/STMTRS>|<\/CCSTMTRS>)/i.exec(
-    text,
-  )?.[1];
+  // Two steps, not a lazy pattern, for the same reason as transactionBlocks.
+  const open = /<LEDGERBAL>/i.exec(text);
+  if (!open) return [];
+  const rest = text.slice(open.index + open[0].length);
+  const end = rest.search(/<\/LEDGERBAL>|<AVAILBAL>|<\/STMTRS>|<\/CCSTMTRS>/i);
+  const block = end === -1 ? "" : rest.slice(0, end);
   if (!block) return [];
   const amount = ofxAmount(field(block, "BALAMT"));
   const date = ofxDate(field(block, "DTASOF"));

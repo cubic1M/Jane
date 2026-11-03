@@ -118,7 +118,17 @@ function signatureOf(fields: string[]): PositionsLayoutId | null {
 // Which positions layout a file is, from its header row near the top. Null for anything else
 // (a bank statement, an unknown broker).
 export function detectPositionsLayout(text: string): PositionsLayoutId | null {
-  return findHeader(parseCsv(text))?.layout ?? null;
+  const records = parsedOrNull(text);
+  return records && (findHeader(records)?.layout ?? null);
+}
+
+// A file the CSV reader refuses (an unclosed quote, far too many columns) is no positions file.
+function parsedOrNull(text: string): CsvRecord[] | null {
+  try {
+    return parseCsv(text);
+  } catch {
+    return null;
+  }
 }
 
 function findHeader(records: CsvRecord[]) {
@@ -593,9 +603,9 @@ export const NO_POSITIONS = "There are no holdings in it. Download it again from
 
 // A positions file read whole, or why it can't be.
 export function readPositionsFile(text: string): PositionsFile | { error: string } {
-  const records = parseCsv(text);
-  const found = findHeader(records);
-  if (!found) return { error: NOT_POSITIONS };
+  const records = parsedOrNull(text);
+  const found = records && findHeader(records);
+  if (!records || !found) return { error: NOT_POSITIONS };
   const read = READERS[found.layout](records, found.index);
   if (read.accounts.length === 0) return { error: NO_POSITIONS };
   return { layout: found.layout, ...read };
