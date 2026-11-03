@@ -53,11 +53,14 @@ investment advice in this MVP.
   simulated money only, runs in advice mode only, uses rules (no Claude call), and acts on an
   event only at a close after it became public (no lookahead; docs/backtests/events.md)
 - Write tests for every rule and every API route you add
+- To say something works, name the command that proves it and show its output
 - Prefer small, readable modules over clever abstractions
 - When unsure about a Plaid field or category name, check the Plaid docs instead
   of guessing
 
 ## Commands
 - npm run dev / npm test / npm run test:e2e / npm run lint / npx prisma migrate dev
+- Gates and hooks (accuracy baselines, proof of fix, protected files, what sessions may not run):
+  docs/gates.md. Only a founder applies the founder-approved label
 - npm run check:e2e-wording before pushing a change to words on a page: lists wording removed
   from src/ that an end-to-end spec still expects
