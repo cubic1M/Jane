@@ -89,8 +89,9 @@ const BEATS = [
 ];
 
 // "Try Jane" runs its first scan after the response (src/app/try/actions.ts); this is how
-// long that may take.
-export const maxDuration = 60;
+// long that may take (debugger 11-03: at 60 seconds, production cut it off after the first brief, so
+// the card explanations, Jane's last message and the numbers saved for the chat never came).
+export const maxDuration = 300;
 
 export default function Home() {
   // The column's drawing starts downloading with the page, not after the script that draws it.
