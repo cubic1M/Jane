@@ -3,7 +3,7 @@
 
 // Whether the suite runs on the login with no bypass when TEST_DATABASE_URL is set. TEST_NO_BYPASS
 // wins over this: "1" on, "0" off.
-export const SUITE_RUNS_WITHOUT_BYPASS = false;
+export const SUITE_RUNS_WITHOUT_BYPASS = true;
 
 // Who makes a test's own rows, and so goes through the database's owner, by the file calling.
 export const TEST_CODE = /\.test\.tsx?$|\/src\/test-setup\/|\/src\/security\/access-proof\//;

@@ -18,10 +18,10 @@ a declared list of who may reach what, then an attack on every entry. Three chec
 its own secret (`/s/[token]`) is public, and the reason says so.
 
 **"New raw database client use".** Query through `scopedFor` from `src/lib/db-scoped.ts`. If the code
-truly works across people (cron, admin, retention, sign-in), raise that file's number in
-`src/config/raw-db-allowlist.json` and say why in the pull request; a reviewer reads that line. The
-list is what was there when the rule came in, counted per file, so it only ever goes down: a file that
-uses the client less must lower its number. Don't turn the rule off in a file: a test fails on that.
+truly works across people (cron, admin, retention, sign-in), use `systemDb("why")` from
+`src/lib/system-db.ts`, with the reason in words; a reviewer reads it. Reading anything off the raw
+client is refused, so `src/config/raw-db-allowlist.json` names only the doors themselves. Don't turn
+the rule off in a file: a test fails on that.
 
 **"leak", "wrote to the victim's rows", "linked a row", "not refused" in the attack.** Believe it first.
 The failure names the call and what it saw; `test-results/access-proof.json` (a CI artifact on failure)

@@ -29,6 +29,10 @@ investment advice in this MVP.
 - All secrets come from env vars; keep .env.example up to date, never commit .env
 - Every user-owned table has user_id and is queried through a helper that
   scopes by the signed-in user
+- Deny by default: no raw database calls. One person's rows go through scopedFor or
+  personTransaction; code that truly works across people, or before there is a person, goes through
+  systemDb("why") or systemTransaction("why", ...). The login role can use no table by itself, so a
+  call through neither fails (docs/security/rls.md)
 - Every route, server action and page is declared in src/config/access-map.ts as public, signed-in,
   admin, cron or webhook; the access proof attacks each one as what it says it is, and new raw
   database client uses fail lint (docs/security/access-proof.md)

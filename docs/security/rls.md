@@ -11,8 +11,10 @@ the app code asks for Bob's, forgets the filter, or uses raw SQL.
   your folders. Now the room has a lock: when the clerk works for you, the door opens only to your
   folders, whatever the clerk asks for.
 - Nightly jobs, admin pages, data retention and Try Jane clean-up still need the whole room. They
-  use the app's own key, as before, and never the per-person door.
-- If the lock can't be installed on some database (it needs permission to create a database
+  use a second door, and each time they say why in words. They never use the per-person door.
+- The clerk's own key opens neither folders nor the room: only the two doors. A query that forgot
+  to choose one is refused, loudly.
+- If the locks can't be installed on some database (they need permission to create a database
   role), the app keeps working with the clerk's promise alone and logs that the lock is off.
   Setting `RLS_REQUIRED=1` turns that into a hard failure instead.
 
@@ -92,34 +94,21 @@ per-person role can neither read nor change them. `audit_log` has no `user_id` a
 the app's own role too (no `UPDATE`/`DELETE`, retention through a narrow function) is a separate
 later step, since retention deletes old rows today.
 
-## The bypass
-
-There is one, and it is a role, not a setting: **the app's own login role**, which is not
-`jane_rls`. It is what `db` from `src/lib/db.ts` uses directly, and it is what these use:
-
-- cron routes (`src/app/api/cron/*`, behind `CRON_SECRET`), which work across everyone
-- admin pages (`src/app/admin/*`, behind `ADMIN_EMAILS` and two-factor)
-- retention (`src/lib/retention.ts`) and Try Jane clean-up (`src/lib/trial.ts`)
-- sign-in (the Auth.js adapter), household sharing (`sharedReadFor`), metrics, the demo bank sync
-
-There is deliberately **no** `app.bypass_rls`-style switch for `jane_rls`: a query running as a
-person can't turn the policies off by setting something (a test proves it). Tables have RLS
-enabled but not forced, and every policy is either `TO jane_rls` or the explicit `jane_system`
-policy (`current_user <> 'jane_rls'`), which keeps every other role's access exactly as it was
-whether or not that role owns the tables.
-
 ## What this protects against, and what it doesn't
 
-It protects against the mistakes that cause most data leaks in apps like this: a query on the
-scoped client whose filter is wrong, a relation or `include` that reaches someone else's rows, a
-new helper that forgets the user id. Inside a person's transaction the database answers only
-with their rows.
+It protects against the mistakes that cause most data leaks in apps like this: a query whose filter
+is wrong, a relation or `include` that reaches someone else's rows, a new helper that forgets the
+user id, a call that forgets to choose a door. Inside a person's transaction the database answers
+only with their rows. There is deliberately no `app.bypass_rls`-style switch: a query running as a
+person can't turn the policies off by setting something (a test proves it). Tables have RLS enabled
+but not forced, and every policy is either `TO jane_rls` or the explicit `jane_system` policy
+(`current_user <> 'jane_rls'`).
 
-It does not, yet, protect:
+It does not protect:
 
-- **Code that skips `scopedFor` entirely** and uses `db` directly. About 230 such calls in 79
-  files today (household sharing, sign-in, metrics, the paper and practice autopilots, the demo
-  sync, cron work). They run as the app's own role, as before. See "Next step".
+- **Code that chooses the wrong door.** `systemDb` sees everyone. So each use gives its reason in
+  words, a lint rule refuses anything else, and `grep -rn "systemDb(\|systemTransaction(\|const WHY" src`
+  lists them for review.
 - **Arbitrary SQL from an attacker.** The role switch is a `SET ROLE`: code running inside the
   transaction could `RESET ROLE`. Our SQL is built by Prisma with parameters, never from user
   text, so this is a guard against our own mistakes, not a sandbox for hostile SQL.
@@ -140,14 +129,32 @@ at each deploy. The login role `jane_app` has no table of its own and may only s
 two, so a query through neither **fails** with `permission denied`, rather than seeing everyone. It
 is deliberately an error and not an empty answer: an empty answer looks like a person with no data.
 
-The code runs the same on either login. On the owner (today) the switch to `jane_system` is made
-too; it just isn't what stops anything, as the owner can use the tables itself. Switching logins is
-then a change of environment variable, with no code change.
+The code runs the same on either login. On the database's owner the switch to `jane_system` is
+made too; it just isn't what stops anything, as the owner can use the tables itself. Switching
+logins is a change of environment variable, with no code change. `/admin/health` says which it is.
 
-Running the tests this way: `TEST_NO_BYPASS=1` with `TEST_DATABASE_URL` pointing at the owner of a
-local database. `src/test-setup/no-bypass-global.ts` makes the `jane_app` login and points the tests
-at it; the tests' own rows still go through the owner (`src/test-setup/no-bypass-client.ts`).
-`NO_BYPASS_LOG=<file>` lists every raw call the app's code made.
+### Setting up the login
+
+Make it with SQL, not in Neon's console: a role made in the console joins `neon_superuser` and can
+use every table. `DIRECT_URL` stays the owner, for migrations and `scripts/rls-protect.mjs`.
+
+```sql
+CREATE ROLE jane_app WITH LOGIN NOINHERIT NOBYPASSRLS PASSWORD '...';
+GRANT jane_rls, jane_system TO jane_app;
+```
+
+Then point `DATABASE_URL` at it and set `RLS_REQUIRED=1`. With that set, a missing role makes queries
+fail rather than run filtered by the app alone, and the daily health check emails the team if this
+server ever logs in as something that can use tables by itself.
+
+Tests run this way, locally and in CI, with `TEST_DATABASE_URL` pointing at the owner of a local
+database: `src/test-setup/no-bypass-global.ts` makes the `jane_app` login and points the tests at it,
+and the tests' own rows still go through the owner (`src/test-setup/no-bypass-client.ts`).
+End-to-end runs log the server in the same way. `TEST_NO_BYPASS=0` turns it off for a run;
+`NO_BYPASS_LOG=<file>` lists every raw call the app's code made. `src/security/lint/raw-db-calls.test.ts`
+checks with the type checker that no code reads a table off a raw client, however it got there. A
+test that opens its own connection for something only the owner may do (a trigger, a setting) uses
+`TEST_OWNER_DATABASE_URL ?? TEST_DATABASE_URL`.
 
 ## Performance
 
@@ -185,9 +192,13 @@ where a plain query would just have queued.
   Bob's; no setting lifts the policies; with no id set nothing is visible; the app's role keeps
   full access; and a pooled connection carries nothing over after a scoped transaction,
   committed or rolled back.
-- `src/lib/rls.test.ts`: the fallback when the role is missing, and `RLS_REQUIRED=1`.
+- `src/lib/rls.test.ts`, `src/lib/system-db.test.ts`: the fallback when a role is missing, and
+  `RLS_REQUIRED=1`.
+- `src/lib/system-db.integration.test.ts`: on the `jane_app` login, a query through neither door is
+  refused (tables, raw SQL, the schema), `scopedFor` sees one person, `systemDb` sees everyone, and
+  nothing stays on a one-connection pool, through a plain connection and through the app's pool.
 - `src/lib/rls-pg.test.ts`: what the app's pool sends for each statement Prisma writes.
-- The rest of the suite (cron, trial clean-up, retention, admin, demo bank) runs with RLS on, in
+- The rest of the suite (cron, trial clean-up, retention, admin, demo bank) runs on `jane_app`, in
   CI and against a scratch database set up like Neon (a non-superuser owner with `BYPASSRLS`).
 - In production, without touching the database: **`/admin/health`** (admins only) has a
   "Row-level security" line, read live from the database's catalog
