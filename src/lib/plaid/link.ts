@@ -6,12 +6,14 @@ import { logAudit } from "@/lib/audit";
 import { decrypt, encrypt } from "@/lib/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { log } from "@/lib/log";
 import { PlaidRequestError, plaid, plaidCall, plaidInvestmentsEnabled, webhookUrl } from "./client";
 import { isDemoItemId } from "./demo";
 import {
   type ItemSlot,
   LinkingClosedError,
   linkAvailability,
+  releaseItemClaim,
   releaseItemSlot,
   reserveItemSlot,
 } from "./item-slots";
@@ -112,6 +114,24 @@ const noTokenMade = (error: unknown) =>
   error.status >= 400 &&
   error.status < 500;
 
+// The save failed, so this is the only copy of the token: with it gone, nothing could ever end the
+// Item at Plaid. The person can try again; Plaid's count stays, since the token was made. Not when
+// the row already exists, because then the Item is in use and removing it would cut that bank off.
+async function dropUnsavedItem(
+  { access_token, item_id }: { access_token: string; item_id: string },
+  slot: ItemSlot | null,
+  saveError: unknown,
+  { client, api }: Required<Options>,
+): Promise<void> {
+  if ((saveError as { code?: string }).code === "P2002") return;
+  if (!isDemoItemId(item_id)) {
+    await plaidCall(api.itemRemove({ access_token })).catch((error) =>
+      log.error("Couldn't remove a bank link that failed to save", { error }),
+    );
+  }
+  if (slot) await releaseItemClaim(slot, { client }).catch(() => undefined);
+}
+
 // Saves a newly linked item and returns its id. The first sync is the caller's job. Every
 // Production access token counts for good, so the slot is taken before asking Plaid for one.
 export async function exchangePublicToken(
@@ -143,17 +163,23 @@ export async function exchangePublicToken(
   });
   if (slot && (saved || isDemoItemId(data.item_id))) await releaseItemSlot(slot, { client });
   if (saved) return saved.id;
-  const item = await db.plaidItems.create({
-    data: {
-      userId,
-      plaidItemId: data.item_id,
-      accessTokenEncrypted: encrypt(data.access_token),
-      institutionName,
-      liabilities: true,
-      investments: plaidInvestmentsEnabled(),
-    },
-    select: { id: true },
-  });
+  let item: { id: string };
+  try {
+    item = await db.plaidItems.create({
+      data: {
+        userId,
+        plaidItemId: data.item_id,
+        accessTokenEncrypted: encrypt(data.access_token),
+        institutionName,
+        liabilities: true,
+        investments: plaidInvestmentsEnabled(),
+      },
+      select: { id: true },
+    });
+  } catch (error) {
+    await dropUnsavedItem(data, slot, error, { client, api });
+    throw error;
+  }
   await logAudit(
     { type: "user", id: userId },
     "item_linked",

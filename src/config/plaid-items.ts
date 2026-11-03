@@ -5,6 +5,9 @@
 export const PLAID_TRIAL_ITEM_LIMIT = 10;
 // One each, so the 10 can serve 10 people. A second bank falls back to uploading a statement.
 export const PLAID_ITEMS_PER_PERSON = 1;
+// Kept for people the team invited: someone who came in by a person's share link can't take these.
+// A share link has 10 uses, so one person with email aliases could otherwise spend every Item, for good.
+export const PLAID_ITEMS_KEPT_FROM_SHARE_LINKS = 5;
 // The team is emailed, and a line logged, from this share of the limit on: 8 of 10.
 export const PLAID_ITEM_WARN_SHARE = 0.8;
 
@@ -24,4 +27,6 @@ function limitFromEnv(name: string, fallback: number): number {
 export const plaidItemLimit = () => limitFromEnv("PLAID_TRIAL_ITEM_LIMIT", PLAID_TRIAL_ITEM_LIMIT);
 export const plaidItemsPerPerson = () =>
   limitFromEnv("PLAID_ITEMS_PER_PERSON", PLAID_ITEMS_PER_PERSON);
+export const plaidShareLinkItemLimit = (limit: number) =>
+  Math.max(limit - PLAID_ITEMS_KEPT_FROM_SHARE_LINKS, 0);
 export const plaidItemWarnAt = (limit: number) => Math.ceil(limit * PLAID_ITEM_WARN_SHARE);

@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { SHARE_INVITE_NOTE } from "@/config/share";
 import { PrismaClient } from "@/generated/prisma/client";
 
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
@@ -24,6 +25,7 @@ const url = process.env.TEST_DATABASE_URL;
 describe.runIf(url)("Plaid's Trial plan Items against a real database", () => {
   let client: PrismaClient;
   const made: string[] = [];
+  const invites: string[] = [];
   const linkTokenCreate = vi.fn();
   const itemPublicTokenExchange = vi.fn();
   const itemRemove = vi.fn();
@@ -58,6 +60,14 @@ describe.runIf(url)("Plaid's Trial plan Items against a real database", () => {
   });
 
   afterAll(async () => {
+    const people = await client.user.findMany({
+      where: { id: { in: made } },
+      select: { email: true },
+    });
+    await client.betaAccess.deleteMany({
+      where: { email: { in: people.flatMap((p) => p.email ?? []) } },
+    });
+    await client.inviteCode.deleteMany({ where: { id: { in: invites } } });
     await client.user.deleteMany({ where: { id: { in: made } } });
     await client.plaidItemCounter.deleteMany({});
     await client.$disconnect();
@@ -100,6 +110,73 @@ describe.runIf(url)("Plaid's Trial plan Items against a real database", () => {
     vi.stubEnv("PLAID_TRIAL_ITEM_LIMIT", "11");
     await expect(link(late)).resolves.toEqual(expect.any(String));
     expect(await used()).toBe(11);
+  });
+
+  describe("people who came in by a share link", () => {
+    async function joined(note: string | null) {
+      const userId = await person();
+      const me = await client.user.findUniqueOrThrow({ where: { id: userId } });
+      const invite = await client.inviteCode.create({
+        data: { code: `S${crypto.randomUUID()}`, maxUses: 10, note },
+      });
+      invites.push(invite.id);
+      await client.betaAccess.create({ data: { email: me.email!, inviteCodeId: invite.id } });
+      return userId;
+    }
+
+    it("can't take the Items kept for people the team invited", async () => {
+      await setUsed(4);
+      await link(await joined(SHARE_INVITE_NOTE));
+      expect(await used()).toBe(5);
+
+      const late = await joined(SHARE_INVITE_NOTE);
+      expect(await linkAvailability(late, { client })).toEqual({ open: false, reason: "full" });
+      itemPublicTokenExchange.mockClear();
+      await expect(link(late)).rejects.toMatchObject({ reason: "full" });
+      expect(itemPublicTokenExchange).not.toHaveBeenCalled();
+      expect(await used()).toBe(5);
+      expect(await client.plaidItemClaim.count({ where: { userId: late } })).toBe(0);
+    });
+
+    it("leaves those for people the team invited, up to the limit", async () => {
+      await setUsed(5);
+      const invited = await joined("For a friend of the founders");
+      expect(await linkAvailability(invited, { client })).toEqual({ open: true });
+      await link(invited);
+      expect(await used()).toBe(6);
+
+      await setUsed(9);
+      await link(await person());
+      expect(await used()).toBe(10);
+    });
+
+    it("can't get past it from two tabs at once", async () => {
+      await setUsed(4);
+      const results = await Promise.allSettled(
+        await Promise.all([joined(SHARE_INVITE_NOTE), joined(SHARE_INVITE_NOTE)]).then((people) =>
+          people.map((userId) => link(userId)),
+        ),
+      );
+      expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+      expect(await used()).toBe(5);
+    });
+  });
+
+  it("removes the Item when saving it fails, counts it, and lets the person try again", async () => {
+    const userId = await person();
+    // A made-up failure: the save itself, once.
+    const realEncrypt = process.env.TOKEN_ENCRYPTION_KEY;
+    vi.stubEnv("TOKEN_ENCRYPTION_KEY", "");
+    await expect(link(userId)).rejects.toThrow();
+    vi.stubEnv("TOKEN_ENCRYPTION_KEY", realEncrypt!);
+    expect(itemRemove).toHaveBeenCalledWith({ access_token: "access-production-made-up" });
+    expect(await used()).toBe(1);
+    expect(await client.plaidItemClaim.count({ where: { userId } })).toBe(0);
+    expect(await client.plaidItem.count({ where: { userId } })).toBe(0);
+
+    await link(userId);
+    expect(await used()).toBe(2);
+    expect(await client.plaidItem.count({ where: { userId } })).toBe(1);
   });
 
   it("lets one Item per person through, and a second falls back", async () => {

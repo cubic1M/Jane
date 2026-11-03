@@ -44,6 +44,11 @@ export async function deleteAllData(
   await systemTransaction(
     why,
     async (tx) => {
+      // A bank linked since the list above would go with the user row and never be ended at Plaid.
+      // Failing leaves everything in place, and trying again removes it.
+      if ((await tx.plaidItem.count({ where: { userId } })) > 0) {
+        throw new Error("A bank was linked while this account was being deleted");
+      }
       if (user?.email) {
         await tx.betaAccess.deleteMany({ where: { email: user.email } });
         await tx.waitlistEntry.deleteMany({ where: { email: user.email } });

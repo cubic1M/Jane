@@ -1,4 +1,5 @@
 import { killed } from "@/config/kill-switches";
+import { PLAID_TIMEOUT_MS } from "@/config/plaid";
 import { Configuration, PlaidApi, PlaidEnvironments } from "plaid";
 
 // The Plaid API client, configured from env. PLAID_ENV defaults to sandbox, so nothing
@@ -26,6 +27,7 @@ export function plaid(): PlaidApi {
     new Configuration({
       basePath: PlaidEnvironments[plaidEnvironment()],
       baseOptions: {
+        timeout: PLAID_TIMEOUT_MS,
         headers: {
           "PLAID-CLIENT-ID": process.env.PLAID_CLIENT_ID ?? "",
           "PLAID-SECRET": process.env.PLAID_SECRET ?? "",

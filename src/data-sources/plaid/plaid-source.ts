@@ -22,9 +22,16 @@ export type PlaidSync = SourceBatch & {
   nextCursor: string;
 };
 
-// Plaid amounts are dollars as floats; money in the app is integer cents.
-export const toCents = (dollars: number | null | undefined): number | null =>
-  dollars === null || dollars === undefined ? null : Math.round(dollars * 100);
+// The most a cents column holds (32 bits). Past it, saving throws and the bank stops syncing.
+const MAX_CENTS = 2_147_483_647;
+
+// Plaid amounts are dollars as floats; money in the app is integer cents. An amount too big to
+// keep counts as not known, like any other amount Plaid doesn't give.
+export const toCents = (dollars: number | null | undefined): number | null => {
+  if (dollars === null || dollars === undefined) return null;
+  const cents = Math.round(dollars * 100);
+  return Math.abs(cents) <= MAX_CENTS ? cents : null;
+};
 
 // Any account Plaid returns: /transactions/sync's, /liabilities/get's or
 // /investments/holdings/get's, which share these fields.
@@ -142,7 +149,7 @@ export class PlaidDataSource implements DataSource {
     return {
       accounts: kept,
       transactions: [...changed.values()]
-        .filter((t) => keptRefs.has(t.account_id) && inDollars(t))
+        .filter((t) => keptRefs.has(t.account_id) && inDollars(t) && toCents(t.amount) !== null)
         .map(normalizeTransaction),
       skipped: [],
       removedTransactionIds: [...removed],

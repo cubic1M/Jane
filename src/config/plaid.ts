@@ -22,6 +22,9 @@ export const STALE_SYNC_HOURS = 20;
 // that, and so on, with up to a quarter more at random so retries don't line up.
 export const SYNC_RETRY_ATTEMPTS = 3;
 export const SYNC_RETRY_BASE_MS = 500;
+// One Plaid call gets this long. Without it, an answer that never comes holds the daily job until
+// the function is killed, and what runs after the banks (clean-up, retention) never runs.
+export const PLAID_TIMEOUT_MS = 30_000;
 // Plaid's error codes that a later try can clear (plaid.com/docs/errors).
 export const RETRYABLE_PLAID_CODES: readonly string[] = [
   "RATE_LIMIT",
