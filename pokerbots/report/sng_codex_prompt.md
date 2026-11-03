@@ -25,6 +25,10 @@ It scored 79.5 points per table vs the kit's sample bots (our full bot: 78–85)
 | kit 1 | Agent class, raise-to | 15 min | 79.5 points per table |
 | kit 2 | module functions, raise-by, renumbered seats, a draw twist | **10 min** | 333 points per table vs the samples' 32–152; won 196/200 tables |
 
+**Fourth rehearsal (after tonight's rule updates, rehearsal kit, blind):** a verified bot in **9 minutes**,
+77.6 points per table vs the samples (0 errors, p99 0.10 ms); 20 ambiguities in `rehearsal_sng/planb2/LOG.md`,
+the percentile-table size fixed above.
+
 **Third rehearsal (kit 3):** amounts in big blinds, integer card codes, named positions, three
 hole cards with a discard before the flop, a 32 KB file cap. **Verified bot in 7 minutes**, 10.3
 points per table out of a maximum 12, vs the samples' 0.04–4.5, with 0 errors. Its lessons:
@@ -95,7 +99,8 @@ Short deck: AA ≈ 0.76. A draw variant: AA ≈ 0.80, weak hands 0.38–0.43.
 > Rules, with the parameters as named constants:
 > * Track per seat, this table only, its open rate = (hands it raised first in + 0.96) /
 >   (hands dealt + 8), clamped to 0.04..0.7.
-> * Percentile table (build once at setup): sort the 1326 two-card hands by equity(·, k=1);
+> * Percentile table (build once at setup): sort every two-card starting hand of the deck
+>   (1326 on 52 cards, 630 on 36) by equity(·, k=1);
 >   a hand's top share = the fraction of hands with higher equity.
 > * **Heads-up tables** (2 players dealt in): open bar 0.6/(k+1) instead of 1.07/(k+1), and
 >   a raiser counts as 2 random hands instead of 4.
