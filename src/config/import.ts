@@ -15,6 +15,11 @@ export function uploadTooBig(bytes: number): string {
   return `These files add up to ${(bytes / 1024 / 1024).toFixed(1)} MB. Upload at most ${MAX_UPLOAD_BYTES / 1024 / 1024} MB at a time: fewer files, or fewer months in each.`;
 }
 
+// A file going into a new account with this many rows already in another account, and this share of
+// its rows, is most likely that account again. Fewer can be a coincidence: the same $15 on one day.
+export const OTHER_ACCOUNT_MIN_ROWS = 5;
+export const OTHER_ACCOUNT_MIN_SHARE = 0.2;
+
 // Control totals: whether a statement adds up (src/data-sources/csv/control-totals.ts). A cent
 // either way is rounding in the export, not a missing row.
 export const CONTROL_TOLERANCE_CENTS = 1;
