@@ -95,8 +95,10 @@ describe("can I afford a house", () => {
 
   it("says it can't see the savings when no balance is known, not that they're $0.00", () => {
     const body = homeReply(home({ savedCents: 0, savedKnown: false }), false).body;
-    expect(body).toContain("I can't see what you have saved yet.");
+    expect(body).toContain("I don't see any savings yet, so from nothing,");
     expect(body).not.toContain("$0.00 saved");
+    // Answers stay at three sentences.
+    expect(sentences(body)).toHaveLength(3);
   });
 
   it("needs income to see first", () => {

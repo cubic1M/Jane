@@ -62,7 +62,7 @@ export type HomeBuying = {
   saving: SavingPlan | null;
   targetDate: string;
   savedCents: number;
-  // Whether a savings or checking balance is known: an upload often has none.
+  // Whether a savings account with a balance is known: an upload often has none.
   savedKnown: boolean;
   monthlySavingCents: number;
   hasGoal: boolean;

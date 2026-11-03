@@ -49,7 +49,7 @@ export function homeReply(
   const other = homeVsBorrowClause(homeMeasureOf(home), mortgageCents);
   const second = `That assumes ${Math.round(home.downShare * 100)}% down (${formatCents(c.downCents)}) on a 30-year loan at ${formatRate(home.aprBps ?? 0)}${home.rateIsOffer ? "" : ", a typical rate rather than an offer"}, so about ${formatCents(c.cashNeededCents)} up front with closing costs${other ? `; ${other}` : ""}.`;
   const third = !home.savedKnown
-    ? `I can't see what you have saved yet. From nothing, ${s.onTrack ? `keeping about ${formatCents(home.monthlySavingCents)} a month` : `putting away ${formatCents(s.monthlyNeededCents)} a month`} gets you there by ${by}.`
+    ? `I don't see any savings yet, so from nothing, ${s.onTrack ? `keeping about ${formatCents(home.monthlySavingCents)} a month` : `putting away ${formatCents(s.monthlyNeededCents)} a month`} gets you there by ${by}.`
     : s.stillNeededCents === 0
       ? "You have that saved already."
       : s.onTrack
