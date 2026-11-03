@@ -26,6 +26,24 @@ describe("net worth in the chat", () => {
     expect(reply.actions[0]).toMatchObject({ href: "/net-worth" });
   });
 
+  // Debugger 11-03: "you have $11,240.55 and owe $0.00", paying a car loan, with a card unknown.
+  it("doesn't say $0.00 owed when a card or a loan isn't known", () => {
+    const worth = {
+      assetsCents: 1_124_055,
+      debtsCents: 0,
+      netCents: 1_124_055,
+      cryptoCents: 0,
+      missing: ["Amex card"],
+      unbalanced: [{ name: "Amex card", card: true }],
+      known: true,
+    } as never;
+    const { body } = netWorthReply(worth, ["Toyota Financial"]);
+    expect(body).toContain("you have $11,240.55; I can't see everything you owe.");
+    expect(body).not.toContain("$0.00");
+    expect(body).toContain("Not counting your Amex card balance");
+    expect(body).toContain("Not counting what you owe on Toyota Financial");
+  });
+
   it("asks for an account when there's nothing to add up", () => {
     const reply = netWorthReply({
       assetsCents: 0,

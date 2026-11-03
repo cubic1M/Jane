@@ -12,6 +12,7 @@ import {
   netWorth,
   netWorthLine,
   notCounting,
+  owedIsKnown,
 } from "@/insights/net-worth";
 import { scopedDb } from "@/lib/db-scoped";
 import { loansSeenWithoutBalance } from "@/lib/net-worth-history";
@@ -127,7 +128,7 @@ async function NetWorthContent() {
             >
               <span className="text-sm text-zinc-600 dark:text-zinc-400">{label}</span>
               <span className="text-2xl font-semibold">
-                {label === "You owe" && Number(cents) === 0 && loansLeft
+                {label === "You owe" && !owedIsKnown(today, loansSeen)
                   ? "Not known"
                   : formatCents(Number(cents))}
               </span>

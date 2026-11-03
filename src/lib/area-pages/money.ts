@@ -1,6 +1,6 @@
 import type { TreeStatus } from "@/components/tree/interactive-tree";
 import { shortMoney } from "@/lib/hub/view";
-import { notCounting, type Unbalanced } from "@/insights/net-worth";
+import { notCounting, owedIsKnown, type Unbalanced } from "@/insights/net-worth";
 import { formatCents } from "@/lib/money";
 import { monthLabel } from "@/lib/day-label";
 import { CATEGORY_UP_MIN_CENTS, CATEGORY_UP_MIN_SHARE } from "@/config/insights";
@@ -140,6 +140,8 @@ export type MoneyTreeInput = {
     netKnown?: boolean;
     assetsCents: number;
     debtsCents: number;
+    // Loans the person's payments show, with no balance on file.
+    loansSeen?: string[];
     investmentsCents: number;
     ownedCents: number;
     owned: number;
@@ -391,7 +393,7 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
         summary:
           h.netKnown === false
             ? "Your files don't include a balance yet. Add one on the import page."
-            : `You have ${formatCents(h.assetsCents)} and owe ${formatCents(h.debtsCents)}.${left ? ` ${left.sentence}` : ""}`,
+            : `You have ${formatCents(h.assetsCents)}${owedIsKnown({ debtsCents: h.debtsCents, unbalanced: h.missing ?? [] }, h.loansSeen ?? []) ? ` and owe ${formatCents(h.debtsCents)}.` : "; Jane can't see everything you owe."}${left ? ` ${left.sentence}` : ""}`,
       }),
     );
   }
