@@ -23,8 +23,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       from: process.env.EMAIL_FROM,
       sendVerificationRequest: ({ identifier, url }) => sendSignInEmail({ to: identifier, url }),
     }),
-    // Google only hands out verified emails, so a Google sign-in may join an account
-    // first created with a magic link to the same address.
+    // A Google sign-in may join an account first created with a magic link to the same address, when
+    // Google says it checked that address (allowSignIn reads email_verified).
     ...(googleEnabled ? [Google({ allowDangerousEmailAccountLinking: true })] : []),
   ],
   pages: {

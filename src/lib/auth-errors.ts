@@ -5,6 +5,8 @@ const MESSAGES: Record<string, string> = {
   OAuthAccountNotLinked:
     "That email already has an account with a different sign-in method. Use the one you signed up with.",
   AccessDenied: "Sign-in was cancelled or not allowed.",
+  GoogleAccountRefused:
+    "That Google account can't sign in here: its address isn't verified, or it isn't the account you're signed in with. Sign out and use your sign-in link.",
   ConsentRequired: "Please agree to the Terms and Privacy Policy to sign up.",
   InviteRequired: "Jane is in private beta. Ask a founder for an invite, then enter its code.",
   InvalidInvite: "That invite code isn't valid. Check it and try again.",
