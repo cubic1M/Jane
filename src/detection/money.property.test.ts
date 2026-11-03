@@ -88,6 +88,31 @@ const fees = fc
       ),
   );
 
+// A card's annual fee beside other fees and refunds of them, which come back at any size.
+const annualFee = fc
+  .record({
+    annual: cents(1000, 69500),
+    others: fc.array(cents(100, 4000), { maxLength: 4 }),
+    back: fc.array(cents(100, 20000), { maxLength: 2 }),
+    days: cents(1, 80),
+  })
+  .map(({ annual, others, back, days }) => {
+    const on = (amount: number, description: string, i: number) =>
+      row(
+        "card",
+        addDays(AS_OF, -((days + i) % 85) - 1),
+        amount,
+        description,
+        "BANK_FEES",
+        "BANK_FEES_OTHER_BANK_FEES",
+      );
+    return [
+      on(annual, "ANNUAL MEMBERSHIP FEE", 0),
+      ...others.map((c, i) => on(c, "LATE FEE", i + 1)),
+      ...back.map((c, i) => on(-c, "FEE REFUND", i + 7)),
+    ];
+  });
+
 const interest = fc
   .array(fc.tuple(cents(100, 9000), cents(1, 300)), { minLength: 1, maxLength: 6 })
   .map((items) =>
@@ -142,6 +167,7 @@ const person: fc.Arbitrary<DetectionInput> = fc
   .record({
     subscriptions: fc.array(subscription, { maxLength: 4 }),
     fees: fc.option(fees, { nil: undefined }),
+    annualFee: fc.option(annualFee, { nil: undefined }),
     interest: fc.option(interest, { nil: undefined }),
     doubled: fc.array(doubled, { maxLength: 3 }),
     shopping,
@@ -159,6 +185,7 @@ const person: fc.Arbitrary<DetectionInput> = fc
     transactions: [
       ...p.subscriptions.flat(),
       ...(p.fees ?? []),
+      ...(p.annualFee ?? []),
       ...(p.interest ?? []),
       ...p.doubled.flat(),
       ...p.shopping,
@@ -262,6 +289,26 @@ describe("every finding, for anyone's rows", () => {
         "idle_cash",
       ]),
     );
+  });
+
+  it("never says a fee saves less than what was charged, on a short history with refunds", () => {
+    const seen = new Set<number>();
+    fc.assert(
+      fc.property(annualFee, (transactions) => {
+        const input: DetectionInput = {
+          asOf: AS_OF,
+          accounts: [{ ...CARD, currentBalanceCents: 0 }],
+          transactions,
+          recurringStreams: [],
+        };
+        for (const finding of detect(input).filter((c) => c.type === "bank_fees")) {
+          recompute(finding, input);
+          seen.add(Math.sign(finding.annualSavingsCents!));
+        }
+      }),
+      { numRuns: 300 },
+    );
+    expect([...seen]).toEqual([1]);
   });
 
   it("shows only transactions the person has, at their real date and amount", () => {

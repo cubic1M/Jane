@@ -1,0 +1,42 @@
+-- Read-only: how many old rows each money constraint would refuse. Each is added NOT VALID, so old
+-- rows aren't checked until a later migration VALIDATEs them, and that can only go in where this
+-- says 0. Counts only; it shows no row. A founder runs it in Neon's SQL editor on production.
+SELECT rule, old_rows FROM (
+SELECT 'ck_budgets_amount_positive' AS rule, count(*) AS old_rows FROM "budgets" WHERE NOT (amount_cents > 0)
+  UNION ALL SELECT 'ck_savings_goals_target_positive' AS rule, count(*) AS old_rows FROM "savings_goals" WHERE NOT (target_cents > 0)
+  UNION ALL SELECT 'ck_savings_goals_saved_not_negative' AS rule, count(*) AS old_rows FROM "savings_goals" WHERE NOT (manual_saved_cents >= 0)
+  UNION ALL SELECT 'ck_money_transfers_amount_positive' AS rule, count(*) AS old_rows FROM "money_transfers" WHERE NOT (amount_cents > 0)
+  UNION ALL SELECT 'ck_goal_transfers_amount_positive' AS rule, count(*) AS old_rows FROM "goal_transfers" WHERE NOT (amount_cents > 0)
+  UNION ALL SELECT 'ck_invite_codes_uses_in_range' AS rule, count(*) AS old_rows FROM "invite_codes" WHERE NOT (uses >= 0 AND max_uses >= 0 AND uses <= max_uses)
+  UNION ALL SELECT 'ck_alerts_confidence_percent' AS rule, count(*) AS old_rows FROM "alerts" WHERE NOT (confidence_percent BETWEEN 0 AND 100)
+  UNION ALL SELECT 'ck_suggestions_confidence_percent' AS rule, count(*) AS old_rows FROM "suggestions" WHERE NOT (confidence_percent BETWEEN 0 AND 100)
+  UNION ALL SELECT 'ck_suggestion_outcomes_confidence_percent' AS rule, count(*) AS old_rows FROM "suggestion_outcomes" WHERE NOT (confidence_percent BETWEEN 0 AND 100)
+  UNION ALL SELECT 'ck_shared_charges_amount_positive' AS rule, count(*) AS old_rows FROM "shared_charges" WHERE NOT (amount_cents > 0)
+  UNION ALL SELECT 'ck_shared_charges_share_in_range' AS rule, count(*) AS old_rows FROM "shared_charges" WHERE NOT (partner_share_bps BETWEEN 0 AND 10000)
+  UNION ALL SELECT 'ck_settlements_amount_positive' AS rule, count(*) AS old_rows FROM "settlements" WHERE NOT (amount_cents > 0)
+  UNION ALL SELECT 'ck_jobs_attempts_not_negative' AS rule, count(*) AS old_rows FROM "jobs" WHERE NOT (attempts >= 0)
+  UNION ALL SELECT 'ck_jobs_max_attempts_positive' AS rule, count(*) AS old_rows FROM "jobs" WHERE NOT (max_attempts > 0)
+  UNION ALL SELECT 'ck_rate_limits_count_not_negative' AS rule, count(*) AS old_rows FROM "rate_limits" WHERE NOT (count >= 0)
+  UNION ALL SELECT 'ck_import_runs_rows_not_negative' AS rule, count(*) AS old_rows FROM "import_runs" WHERE NOT (rows >= 0)
+  UNION ALL SELECT 'ck_import_runs_dates_in_order' AS rule, count(*) AS old_rows FROM "import_runs" WHERE NOT (from_date <= to_date)
+  UNION ALL SELECT 'ck_documents_size_not_negative' AS rule, count(*) AS old_rows FROM "documents" WHERE NOT (size_bytes >= 0)
+  UNION ALL SELECT 'ck_liabilities_apr_not_negative' AS rule, count(*) AS old_rows FROM "liabilities" WHERE NOT (apr_bps >= 0)
+  UNION ALL SELECT 'ck_debt_terms_apr_not_negative' AS rule, count(*) AS old_rows FROM "debt_terms" WHERE NOT (apr_bps >= 0)
+  UNION ALL SELECT 'ck_debt_terms_balance_not_negative' AS rule, count(*) AS old_rows FROM "debt_terms" WHERE NOT (balance_cents >= 0)
+  UNION ALL SELECT 'ck_debt_terms_minimum_not_negative' AS rule, count(*) AS old_rows FROM "debt_terms" WHERE NOT (minimum_payment_cents >= 0)
+  UNION ALL SELECT 'ck_security_deposits_amount_not_negative' AS rule, count(*) AS old_rows FROM "security_deposits" WHERE NOT (amount_cents >= 0)
+  UNION ALL SELECT 'ck_security_deposits_returned_not_negative' AS rule, count(*) AS old_rows FROM "security_deposits" WHERE NOT (returned_cents >= 0)
+  UNION ALL SELECT 'ck_health_scores_score_in_range' AS rule, count(*) AS old_rows FROM "health_scores" WHERE NOT (score BETWEEN 0 AND 100)
+  UNION ALL SELECT 'ck_merchant_outcomes_counts_in_order' AS rule, count(*) AS old_rows FROM "merchant_outcomes" WHERE NOT (cases >= 0 AND succeeded >= 0 AND succeeded <= cases)
+  UNION ALL SELECT 'ck_actions_refund_not_negative' AS rule, count(*) AS old_rows FROM "actions" WHERE NOT (refund_cents >= 0)
+  UNION ALL SELECT 'ck_actions_confirmed_not_negative' AS rule, count(*) AS old_rows FROM "actions" WHERE NOT (confirmed_annual_cents >= 0)
+  UNION ALL SELECT 'ck_crypto_holdings_quantity_not_negative' AS rule, count(*) AS old_rows FROM "crypto_holdings" WHERE NOT (quantity >= 0)
+  UNION ALL SELECT 'ck_auto_invest_plans_amount_positive' AS rule, count(*) AS old_rows FROM "auto_invest_plans" WHERE NOT (amount_cents > 0)
+  UNION ALL SELECT 'ck_auto_invest_runs_amount_not_negative' AS rule, count(*) AS old_rows FROM "auto_invest_runs" WHERE NOT (amount_cents >= 0)
+  UNION ALL SELECT 'ck_gifts_amount_positive' AS rule, count(*) AS old_rows FROM "gifts" WHERE NOT (amount_cents > 0)
+  UNION ALL SELECT 'ck_hsa_receipts_amount_positive' AS rule, count(*) AS old_rows FROM "hsa_receipts" WHERE NOT (amount_cents > 0)
+  UNION ALL SELECT 'ck_medical_bills_amount_not_negative' AS rule, count(*) AS old_rows FROM "medical_bills" WHERE NOT (amount_cents >= 0)
+  UNION ALL SELECT 'ck_tax_payments_cents_positive' AS rule, count(*) AS old_rows FROM "tax_payments" WHERE NOT (cents > 0)
+) AS counts
+WHERE old_rows > 0
+ORDER BY rule;
