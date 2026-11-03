@@ -40,7 +40,7 @@ async function personIn(page: Page): Promise<string | null> {
   return rows[0]?.user_id ?? null;
 }
 
-async function startWith(page: Page, marker: string) {
+async function startWith(page: Page, marker: string, { brokenBalance = false } = {}) {
   await page.goto("/?try=upload");
   const box = page.locator("#try-upload");
   // The link opens it directly.
@@ -48,7 +48,7 @@ async function startWith(page: Page, marker: string) {
   await box.locator('input[type="file"]').setInputFiles({
     name: `${marker}.csv`,
     mimeType: "text/csv",
-    buffer: Buffer.from(madeUpChaseCsv(marker)),
+    buffer: Buffer.from(madeUpChaseCsv(marker, new Date(), { brokenBalance })),
   });
   await box.getByRole("checkbox").check();
   await box.getByRole("button", { name: "Read my statement" }).click();
@@ -149,6 +149,29 @@ test("a visitor starts, sees their own numbers, gets the steps, and starts over"
   // Back doesn't bring anything back.
   await page.goBack();
   await expect(page.getByText("ZZFIRST", { exact: false })).toHaveCount(0);
+});
+
+test("a statement that doesn't add up says so where the numbers first show, and on Home", async ({
+  page,
+}) => {
+  await startWith(page, "ZZBROKEN", { brokenBalance: true });
+  const warnings = page.locator("[data-try-warnings]");
+  await expect(page).toHaveURL(/\/report/);
+  await expect(warnings).toBeVisible();
+  await expect(warnings).toContainText(/The balance doesn't follow from the rows/);
+  // On screen with the first figure, on a phone too: not somewhere to scroll to.
+  await expect(warnings).toBeInViewport();
+  await page.goto("/home");
+  await expect(warnings).toBeVisible();
+  await deleteUser((await personIn(page))!);
+});
+
+test("a statement that adds up shows no such warning", async ({ page }) => {
+  await startWith(page, "ZZSOUND");
+  await expect(page.locator("[data-try-warnings]")).toHaveCount(0);
+  await page.goto("/home");
+  await expect(page.locator("[data-try-warnings]")).toHaveCount(0);
+  await deleteUser((await personIn(page))!);
 });
 
 test("a second start in the same browser deletes the first and starts empty", async ({ page }) => {

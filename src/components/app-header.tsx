@@ -7,6 +7,7 @@ import { ProfileMenu } from "@/components/profile-menu";
 import { ScanBarGate } from "@/components/scan-bar-gate";
 import { ChatToggle } from "@/components/side-chat/chat-toggle";
 import { SideChatUser } from "@/components/side-chat/side-chat";
+import { TryWarnings } from "@/components/try-warnings";
 import { isStatementTrialUser } from "@/lib/trial-ids";
 
 // The top of every signed-in page (spec step 79; the home hub, docs/design/home-hub.md): Jane's
@@ -70,6 +71,7 @@ export function AppHeader({
       <Suspense>
         <DemoBanner userId={user.id} />
       </Suspense>
+      {isStatementTrialUser(user.id) && <TryWarnings userId={user.id} />}
       <Suspense>
         <BackToChat messageId={chatMessageId} />
       </Suspense>
