@@ -154,8 +154,10 @@ export const PRACTICE_FUND_FEE_BPS: Readonly<Record<string, number>> = {
 export const PRACTICE_FUND_FEE_SOURCE =
   "Fund pages: Vanguard VTI, VXUS, BND; iShares ITOT, IXUS, AGG; SPDR BIL (October 2026); FOR REVIEW";
 export const CHEAPER_FUND_MIN_BPS = 2;
-// A switch saving less than this a year isn't worth asking about (debugger 11-03: $0.01).
-export const CHEAPER_FUND_MIN_SAVED_CENTS = 100;
+// A switch saving less than this a year isn't worth asking about (debugger 11-03: $0.01 on $55).
+// Low on purpose: practice portfolios are small, and the replays' evidence (OPPORTUNITY_RULES_OFF)
+// runs through this scan.
+export const CHEAPER_FUND_MIN_SAVED_CENTS = 5;
 
 // Payday timing: the monthly practice money lands this many days after the person's main
 // payday, never later in the month than PAYDAY_ADD_MAX_DAY (so every month has the day), and

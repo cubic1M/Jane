@@ -266,9 +266,8 @@ describe("cash drag", () => {
 
 describe("a cheaper equivalent fund", () => {
   // International stocks held in IXUS (0.07% a year) after a swap; VXUS costs 0.05%.
-  // A portfolio big enough for the switch to save over CHEAPER_FUND_MIN_SAVED_CENTS.
   async function inIxus(costShare: number) {
-    const held = await boughtOn(3, "2026-08-03", 10_000_000);
+    const held = await boughtOn(3, "2026-08-03");
     const vxus = positionValue(held.state, await pricesOn("2026-08-03"), "VXUS");
     const swapped = await move(held, "2026-08-03", "VXUS", "IXUS", vxus - 100);
     const prices = await pricesOn("2026-10-08");
