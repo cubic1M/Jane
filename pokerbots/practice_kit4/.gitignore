@@ -1,0 +1,5 @@
+# organiser-only material never leaves the organiser's machine
+.organiser/
+__pycache__/
+*.pyc
+logs/
