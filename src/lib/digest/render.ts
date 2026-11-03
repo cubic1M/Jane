@@ -49,8 +49,9 @@ function stillToLook(p: DigestPayload): string | false {
   return `Still to look at: ${formatCents(year)} a year and ${formatCents(once)} to get back`;
 }
 
-// How sure, after each line: "(84% sure)". A finding stores a level, which is the band its
-// percentage fell in (SUGGESTION_CONFIDENCE_FROM), so it says that band.
+// How sure, after each line: "(84% sure)". A finding's is the report's own (findingSure); older
+// payloads have only its level, the band its percentage fell in (SUGGESTION_CONFIDENCE_FROM), so
+// they say that band.
 const sure = (percent: number | null | undefined) =>
   typeof percent === "number" ? ` (${percent}% sure)` : "";
 const levelSure = (level: Confidence | undefined) => {
@@ -167,7 +168,9 @@ function sections(p: DigestPayload, links: DigestLinks): Section[] {
   if (p.newFindings.length > 0) {
     out.push({
       heading: "New since last week",
-      items: p.newFindings.map((f) => `${f.title}${worth(f)}${levelSure(f.confidence)}`),
+      items: p.newFindings.map(
+        (f) => `${f.title}${worth(f)}${f.percent ? sure(f.percent) : levelSure(f.confidence)}`,
+      ),
       link: { label: "Open your report", url: links.report },
     });
   }

@@ -162,6 +162,22 @@ describe("renderDigest", () => {
     expect(text).toContain("- Maybe a trial (under 50% sure)");
   });
 
+  // Night QA 11-03: the email said "80%+ sure" of the Hulu card that /report and /close said was
+  // 75%, and of idle cash they said was 65%.
+  it("says a finding's own percent when it has one, as the report does", () => {
+    const { text } = renderDigest(
+      {
+        ...payload,
+        newFindings: [
+          { title: "Idle cash", annualSavingsCents: null, confidence: "high", percent: 65 },
+        ],
+      },
+      LINKS,
+    );
+    expect(text).toContain("- Idle cash (65% sure)");
+    expect(text).not.toContain("80%+");
+  });
+
   it("sums the checkup in one line, linked to the report", () => {
     const { text } = renderDigest(
       { ...payload, checkup: { checks: 12, found: 2, passed: 9, notEnoughData: 1 } },

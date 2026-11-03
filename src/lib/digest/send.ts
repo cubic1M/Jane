@@ -11,9 +11,12 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { loadChanges } from "@/lib/changes";
 import { loadCheckup } from "@/lib/checkup";
+import { isoDay } from "@/lib/dates";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { offerFor, savedToDate } from "@/lib/membership/service";
+import { findingSure } from "@/lib/report-state";
+import { monthsCovered, statementsEnd } from "@/profile/build";
 import { sendEmail } from "@/lib/email";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { budgetSummary } from "@/insights/budgets";
@@ -66,7 +69,7 @@ const titleOf = (snapshot: unknown) => {
 
 async function payloadFor(userId: string, now: Date, client: PrismaClient) {
   const db = scopedFor(userId, client);
-  const [actions, findings, found, saved, last, offer, user] = await Promise.all([
+  const [actions, openFindings, sures, read, found, saved, last, offer, user] = await Promise.all([
     db.actions.findMany({
       select: {
         status: true,
@@ -85,8 +88,15 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
         annualSavingsCents: true,
         createdAt: true,
         confidence: true,
+        evidence: true,
       },
     }),
+    // For each finding's "% sure", as /report and /close say it.
+    db.suggestions.findMany({
+      select: { topic: true, confidencePercent: true, confidenceReason: true },
+      orderBy: { lastSeenAt: "desc" },
+    }),
+    db.transactions.aggregate({ _min: { date: true }, _max: { date: true } }),
     moneyFoundParts(userId, { client }),
     savedToDate(userId, { client }),
     db.digests.findFirst({
@@ -97,6 +107,19 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
     offerFor(userId, { client, now }),
     client.user.findUnique({ where: { id: userId }, select: { alertPrefs: true } }),
   ]);
+  const months =
+    read._min.date && read._max.date
+      ? monthsCovered(isoDay(read._min.date), statementsEnd(isoDay(read._max.date), isoDay(now)))
+      : 0;
+  const findings = openFindings.map(({ evidence, ...f }) => ({
+    ...f,
+    percent: findingSure(
+      { type: f.type, confidence: f.confidence, evidence },
+      sures,
+      months,
+      openFindings.filter((o) => o.type === f.type).length,
+    ).percent,
+  }));
   const prefs = alertPrefs(user?.alertPrefs);
   // Alerts since the last digest that weren't already emailed, and still hold as the dock says
   // (src/lib/jane-agent/still-true.ts): a reminder for a bill due Nov 1 isn't news on Nov 2.

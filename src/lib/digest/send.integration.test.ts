@@ -95,6 +95,9 @@ describe.runIf(url)("runDigests against a real database", () => {
 
     const preview = run.previews.find((p) => p.userId === ids.news);
     expect(preview?.text).toContain("New since last week");
+    // Its own percent, as /report says it, not a band.
+    expect(preview?.text).toMatch(/\(\d+% sure\)/);
+    expect(preview?.text).not.toMatch(/\d%\+ sure/);
     expect(run.previews.some((p) => p.userId === ids.quiet)).toBe(false);
     expect(send).not.toHaveBeenCalled();
     expect(await digestsOf("news")).toEqual([]);
