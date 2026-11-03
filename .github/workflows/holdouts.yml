@@ -1,0 +1,75 @@
+# Runs the holdout scenarios against a production build of main, once a day. Agents can start this
+# but can't edit what it runs (holdout-seal.yml). No secrets but this workflow's own token, and only
+# counts are recorded, because the repository is public. A failure doesn't block anything yet:
+# Jane is baselining until 2026-12-01.
+name: Holdouts
+
+on:
+  schedule:
+    - cron: "30 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      record: ${{ steps.counts.outputs.record }}
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: holdouts
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgresql://postgres@localhost:5432/holdouts
+      DIRECT_URL: postgresql://postgres@localhost:5432/holdouts
+      AUTH_SECRET: holdouts-only-not-a-real-secret
+      AUTH_URL: http://localhost:3000
+      AUTH_TRUST_HOST: "true"
+      TOKEN_ENCRYPTION_KEY: BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=
+      ANTHROPIC_API_KEY: ""
+      RESEND_API_KEY: ""
+      DEMO_BANK: "1"
+      TRY_JANE: "1"
+      TRY_STATEMENT: "1"
+      HOLDOUT_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx prisma migrate deploy
+      - run: npx next build
+      - run: npx playwright install --with-deps chromium
+      - run: nohup npx next start -p 3000 > /dev/null 2>&1 &
+      - run: npx playwright test --config holdouts/playwright.config.ts --reporter=json > holdouts-results.json || true
+      - id: counts
+        run: echo "record=$(node scripts/ops/holdouts-record.mjs holdouts-results.json)" >> "$GITHUB_OUTPUT"
+
+  record:
+    needs: run
+    if: always() && needs.run.outputs.record != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          sparse-checkout: scripts/ops
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+      - run: node scripts/ops/record-result.mjs holdouts.jsonl
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RECORD: ${{ needs.run.outputs.record }}

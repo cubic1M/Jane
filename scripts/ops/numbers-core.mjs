@@ -334,7 +334,7 @@ export function renderPage(history, { holdouts = [], canaries = [], now }) {
     );
     for (const c of canaries.slice(-7)) {
       lines.push(
-        `| ${c.at.slice(0, 10)} | ${c.solved ? "yes" : "no"} | ${shown(c.turns)} | ${shown(c.minutes)} | ${c.model} / ${c.version} |`,
+        `| ${c.at.slice(0, 10)} | ${c.ran === false ? "didn't run" : c.solved ? "yes" : "no"} | ${shown(c.turns)} | ${shown(c.minutes)} | ${c.model} / ${c.version} |`,
       );
     }
   }

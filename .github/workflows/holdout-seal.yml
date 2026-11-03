@@ -1,0 +1,24 @@
+# Holdout scenarios can be run but not edited (holdouts/README.md): agents game judges they can touch.
+# This fails any pull request that changes holdouts/ or canary/. Agents hold the admin login today, so
+# it's only a real wall once a founder makes it a required check and the scenarios move to a private
+# repository.
+name: Holdout seal
+
+on:
+  pull_request:
+    paths:
+      - "holdouts/**"
+      - "canary/**"
+
+permissions:
+  contents: read
+
+jobs:
+  seal:
+    name: Holdouts are sealed
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - run: |
+          echo "::error::holdouts/ and canary/ can't be edited by a pull request. Fix the app, not the check."
+          exit 1
