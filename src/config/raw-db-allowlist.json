@@ -3,7 +3,6 @@
   "src/instrumentation.ts": 1,
   "src/lib/account-deletion.ts": 3,
   "src/lib/accountant.ts": 3,
-  "src/lib/admin-gate.ts": 1,
   "src/lib/auth-events.ts": 2,
   "src/lib/calendar.ts": 3,
   "src/lib/chat-start.ts": 1,

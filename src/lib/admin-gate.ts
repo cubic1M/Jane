@@ -1,11 +1,14 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { stillAnAdmin } from "@/lib/admin-emails";
 import { db as defaultClient } from "@/lib/db";
+import { systemDb } from "@/lib/system-db";
 
 // Auth.js's database-session cookie: the __Secure- name on HTTPS, the plain one locally.
 export const SESSION_COOKIES = ["__Secure-authjs.session-token", "authjs.session-token"];
 
 export type AdminSessionState = "verified" | "needs_mfa" | "none";
+
+const WHY = "The admin gate reads a session from its cookie, before it knows whose it is";
 
 export function sessionTokenFrom(cookies: { get(name: string): { value: string } | undefined }) {
   return SESSION_COOKIES.map((name) => cookies.get(name)?.value).find(Boolean);
@@ -19,7 +22,8 @@ export async function adminSession(
   { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
 ): Promise<{ state: AdminSessionState; userId: string | null }> {
   if (!token) return { state: "none", userId: null };
-  const session = await client.session.findUnique({
+  // nosemgrep: jane-user-table-query-without-scope -- finds the session from its token, before there's a person
+  const session = await systemDb(WHY, client).session.findUnique({
     where: { sessionToken: token },
     select: {
       expires: true,
