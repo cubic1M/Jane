@@ -60,20 +60,33 @@ function inputFor(tool: Anthropic.Tool | undefined): Record<string, unknown> {
 }
 
 // How the played-back model behaves when it writes (11-03): the chat has to give the person
-// Claude's own words whichever of these happens. "plain" just answers. The others refuse or write
-// something the guardrails block, once or every time, or switch models mid-answer as the server-side
-// fallback does.
+// Claude's own words whichever of these happens. "plain" just answers. The others refuse, write
+// something the guardrails block or end with no words at all, once or every time, or switch models
+// mid-answer as the server-side fallback does.
 export const ROUNDS = [
   "plain",
   "refused_first",
   "blocked_first",
+  "empty_first",
   "switched_model",
   "refused_always",
   "blocked_always",
+  "empty_always",
 ] as const;
 export type RealPathRound = (typeof ROUNDS)[number];
 // Claude never comes round in these, so the backup is right; anything else must end in Claude's words.
-const NEVER_COMES_ROUND: readonly RealPathRound[] = ["refused_always", "blocked_always"];
+const NEVER_COMES_ROUND: readonly RealPathRound[] = [
+  "refused_always",
+  "blocked_always",
+  "empty_always",
+];
+
+// One bad turn, then Claude answers: the chat has to have asked exactly once more.
+const ASKED_AGAIN_ROUND: readonly RealPathRound[] = [
+  "refused_first",
+  "blocked_first",
+  "empty_first",
+];
 
 // What must never be left in front of the person. Each trips one rule, on any account, so a rule
 // that stops working can't hide behind another; the bank's questions take turns with them. A refused
@@ -119,6 +132,9 @@ function writing(
   if ((round === "blocked_first" && write === 0) || round === "blocked_always") {
     const turn = [...questionId].reduce((sum, c) => sum + c.charCodeAt(0), 0);
     return wrote(BLOCKED_DRAFTS[turn % BLOCKED_DRAFTS.length]);
+  }
+  if ((round === "empty_first" && write === 0) || round === "empty_always") {
+    return { stop_reason: "end_turn", usage, content: [] };
   }
   if (round === "switched_model") {
     const cut = answer.indexOf(" ", 8);
@@ -276,7 +292,7 @@ export async function runRealPath(
           if (round === "switched_model" && source === "claude" && played.writes !== 1) {
             failed.push("asked_again");
           }
-          if ((round === "refused_first" || round === "blocked_first") && played.writes !== 2) {
+          if (ASKED_AGAIN_ROUND.includes(round) && played.writes !== 2) {
             failed.push(played.writes < 2 ? "not_asked_again" : "asked_too_often");
           }
         } catch {

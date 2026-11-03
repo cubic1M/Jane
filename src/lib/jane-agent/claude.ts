@@ -309,6 +309,12 @@ export const CANT_ADVISE_INVESTING = "I can't advise on investments here.";
 export const REFUSAL_RETRY =
   "(From the app, not the person.) Your last answer was stopped by a safety check before it finished, so the person saw nothing. Answer their message again, briefly and in your own words. If you can help within your rules, do: their numbers and tools are here. If you can't, say in one plain sentence what you can't help with and why, then what you can do for them with their money. Don't mention this note or the check.";
 
+// (From the app, not the person.) What Claude is told after a turn that ended with no words at all
+// (seen on production 11-03, after two lookups). The docs: sending it back unchanged gets nothing,
+// and a new message is the way on when the request's own shape isn't the cause.
+export const EMPTY_RETRY =
+  "(From the app, not the person.) Your last turn ended with no words, so the person saw nothing. Answer their message now, using what your lookups returned. Don't mention this note.";
+
 // A blocked answer with only its sentences that pass, and one line saying what Jane can't advise
 // on: null when what's left isn't an answer (no figure, hardly a sentence) or still doesn't pass.
 export function factsOnly(
@@ -671,6 +677,7 @@ async function askClaude(
   let retriesLeft = 1;
   let startRetries = 1;
   let refusalRetries = 1;
+  let emptyRetries = 1;
   // Whether this round asks for the refusal fallback, and whether it is the retry without it.
   let fallbackOn = false;
   let fallbackRetried = false;
@@ -1074,7 +1081,17 @@ async function askClaude(
     }
     draft.finish();
     const text = textOf(content);
-    if (!text) return fail("empty");
+    if (!text) {
+      if (emptyRetries === 0) return fail("empty");
+      emptyRetries -= 1;
+      timing.rewrites += 1;
+      timing.rewriteReasons.push("empty");
+      if (turn + 1 >= turnLimit) turnLimit += 1;
+      draft.reset();
+      onEvent({ type: "reset" });
+      messages.push({ role: "user", content: EMPTY_RETRY });
+      continue;
+    }
     // Sentences about a button or link "under this answer" are dropped; an answer that was
     // only that (no figure, hardly a sentence) isn't an answer, so the rules answer instead.
     const hasButtons = proposal?.actions.some((a) => a.kind !== "link") ?? false;

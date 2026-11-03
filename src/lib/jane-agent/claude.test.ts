@@ -1296,7 +1296,8 @@ describe("speed and failures", () => {
 
   it("says why Claude's answer wasn't used, as a code", async () => {
     const info = vi.spyOn(console, "info").mockImplementation(() => {});
-    create.mockResolvedValueOnce({ stop_reason: "end_turn", content: [] });
+    // Asked once more after the first (./chat-refusals.test.ts), so it takes two.
+    create.mockResolvedValue({ stop_reason: "end_turn", content: [] });
     const result = await askClaudeInChat("u1", [], "hm", options);
     expect(result.kind).toBe("unavailable");
     const logged = JSON.parse(String(info.mock.calls.find((c) => c[0] === "chat_timing")?.[1]));

@@ -17,6 +17,7 @@ import { checkGuardrails } from "@/lib/guardrails";
 import { UNSAFE_TEXT, unsafeRequest } from "./backup";
 import {
   CHAT_UNAVAILABLE_TEXT,
+  EMPTY_RETRY,
   askClaudeInChat,
   factsOnly,
   resetClaudeHealth,
@@ -36,6 +37,8 @@ import { overDailyCap } from "./spend";
 //  2. Claude refuses (stop_reason "refusal", a safety classifier): asked again once without the
 //     refused draft; only a second refusal is "unavailable" (the backup). Claude refusing in its
 //     own words (end_turn, "I can't help with that") is an answer and is shown as written.
+//     A turn that ends with no words (end_turn, empty; seen on production 11-03) is asked once
+//     more the same way; only a second empty one is "unavailable".
 //  3. A "security" filter on the person's message: there is none before Claude. The backup's
 //     unsafe-request check (backup.ts unsafeRequest) runs only when Claude couldn't answer, and
 //     now matches someone asking to do harm, not someone it was done to ("I got hacked").
@@ -346,6 +349,49 @@ describe("a refusal gets Claude's own words", () => {
     expect(retry).toMatch(/stopped by a safety check/);
     // The person's own question is still what's answered.
     expect(retry).toContain("someone hacked my bank account");
+  });
+
+  it("asks again once after a turn with no words, and shows that answer", async () => {
+    create
+      .mockResolvedValueOnce({ stop_reason: "end_turn", content: [] })
+      .mockResolvedValueOnce(final("Your card is $2,410.50 at 29% APR."));
+    const events: ChatStreamEvent[] = [];
+    const answer = await ask("what's my card balance", { onEvent: (e) => events.push(e) });
+    expect(answer.kind).toBe("answer");
+    expect(answer.reply?.body).toBe("Your card is $2,410.50 at 29% APR.");
+    expect(create).toHaveBeenCalledTimes(2);
+    // A new message, as the docs ask: the same request again would get nothing again.
+    expect(sent[1].at(-1)).toEqual({ role: "user", content: EMPTY_RETRY });
+    expect(JSON.stringify(sent[1].at(-1))).not.toMatch(/card balance/);
+    // Nothing empty goes back as Claude's turn: the API refuses that.
+    expect(sent[1].filter((m) => m.role === "assistant")).toEqual([]);
+  });
+
+  it("gets a turn of its own when the lookups used them all", async () => {
+    const looked = {
+      stop_reason: "tool_use",
+      content: [{ type: "tool_use", id: "t1", name: "open_area", input: { area: "debt" } }],
+    };
+    create
+      .mockResolvedValueOnce(looked)
+      .mockResolvedValueOnce({ stop_reason: "end_turn", content: [] })
+      .mockResolvedValueOnce(final("Your card is $2,410.50 at 29% APR."));
+    const answer = await askClaudeInChat("u1", [], "what's my card balance", {
+      client,
+      now: NOW,
+      claude,
+      memory: LOOKED_UP,
+      maxTurns: 1,
+    });
+    expect(answer.kind).toBe("answer");
+    expect(create).toHaveBeenCalledTimes(3);
+  });
+
+  it("is unavailable after a second turn with no words, and never asks a third time", async () => {
+    create.mockResolvedValue({ stop_reason: "end_turn", content: [] });
+    const answer = await ask("what's my card balance");
+    expect(answer.kind).toBe("unavailable");
+    expect(create).toHaveBeenCalledTimes(2);
   });
 
   it("is unavailable only after a second refusal", async () => {
