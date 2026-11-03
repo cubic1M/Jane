@@ -2,18 +2,12 @@
 
 import type { ReactNode } from "react";
 import { signOutToHome } from "@/lib/auth-actions";
-import { forgetThisTab, stopPushHere } from "@/lib/tab-memory";
+import { forgetOnThisBrowser } from "@/lib/tab-memory";
 
-// Every way to sign out from a page: what this browser kept for the person goes with the session.
+// Signing out from a server component's page. What this browser kept goes with the session.
 export function SignOutForm({ children }: { children: ReactNode }) {
   return (
-    <form
-      action={signOutToHome}
-      onSubmit={() => {
-        forgetThisTab();
-        void stopPushHere();
-      }}
-    >
+    <form action={signOutToHome} onSubmit={forgetOnThisBrowser}>
       {children}
     </form>
   );

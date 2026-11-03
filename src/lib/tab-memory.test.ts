@@ -1,14 +1,20 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { forgetThisTab, stopPushHere } from "./tab-memory";
+import { forgetOnThisBrowser } from "./tab-memory";
 
-describe("forgetThisTab", () => {
+const settle = () => new Promise((resolve) => setTimeout(resolve));
+
+describe("forgetOnThisBrowser", () => {
   afterEach(() => vi.unstubAllGlobals());
+
+  const browserWith = (getRegistration: () => Promise<unknown>) =>
+    vi.stubGlobal("navigator", { serviceWorker: { getRegistration } });
 
   // Local build: 9 KB of decision cards were still in the tab after signing out.
   it("clears what the tab kept", () => {
     const clear = vi.fn();
     vi.stubGlobal("window", { sessionStorage: { clear } });
-    forgetThisTab();
+    vi.stubGlobal("navigator", {});
+    forgetOnThisBrowser();
     expect(clear).toHaveBeenCalledOnce();
   });
 
@@ -18,35 +24,33 @@ describe("forgetThisTab", () => {
         throw new Error("blocked");
       },
     });
-    expect(() => forgetThisTab()).not.toThrow();
+    vi.stubGlobal("navigator", {});
+    expect(() => forgetOnThisBrowser()).not.toThrow();
   });
-});
-
-describe("stopPushHere", () => {
-  afterEach(() => vi.unstubAllGlobals());
-
-  const browserWith = (getRegistration: () => Promise<unknown>) =>
-    vi.stubGlobal("navigator", { serviceWorker: { getRegistration } });
 
   it("ends this browser's notifications", async () => {
+    vi.stubGlobal("window", { sessionStorage: { clear: vi.fn() } });
     const unsubscribe = vi.fn(async () => true);
     browserWith(async () => ({
       pushManager: { getSubscription: async () => ({ unsubscribe }) },
     }));
-    await stopPushHere();
+    forgetOnThisBrowser();
+    await settle();
     expect(unsubscribe).toHaveBeenCalledOnce();
   });
 
   it("doesn't mind no service worker, no subscription or a refusal", async () => {
-    vi.stubGlobal("navigator", {});
-    await expect(stopPushHere()).resolves.toBeUndefined();
-    browserWith(async () => undefined);
-    await expect(stopPushHere()).resolves.toBeUndefined();
-    browserWith(async () => ({ pushManager: { getSubscription: async () => null } }));
-    await expect(stopPushHere()).resolves.toBeUndefined();
-    browserWith(async () => {
-      throw new Error("blocked");
-    });
-    await expect(stopPushHere()).resolves.toBeUndefined();
+    vi.stubGlobal("window", { sessionStorage: { clear: vi.fn() } });
+    for (const getRegistration of [
+      async () => undefined,
+      async () => ({ pushManager: { getSubscription: async () => null } }),
+      async () => {
+        throw new Error("blocked");
+      },
+    ]) {
+      browserWith(getRegistration);
+      expect(() => forgetOnThisBrowser()).not.toThrow();
+      await settle();
+    }
   });
 });

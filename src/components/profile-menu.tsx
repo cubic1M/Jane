@@ -5,7 +5,8 @@ import { PixelIcon } from "@/components/pixel-icon";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { PROFILE_TABS, tabFor } from "@/config/navigation";
-import { SignOutForm } from "@/components/sign-out-form";
+import { signOutToHome } from "@/lib/auth-actions";
+import { forgetOnThisBrowser } from "@/lib/tab-memory";
 import { SubmitButton } from "@/components/submit-button";
 
 // The profile menu (spec step 79): who's signed in, What Jane did, Settings and Sign out. These
@@ -79,11 +80,11 @@ export function ProfileMenu({ email }: { email: string | null | undefined }) {
         >
           Report a problem
         </Link>
-        <SignOutForm>
+        <form action={signOutToHome} onSubmit={forgetOnThisBrowser}>
           <SubmitButton className="flex min-h-11 w-full items-center rounded-lg px-3 text-left font-medium text-emerald-700 hover:bg-zinc-100 dark:hover:bg-zinc-800">
             Sign out
           </SubmitButton>
-        </SignOutForm>
+        </form>
       </div>
     </div>
   );
