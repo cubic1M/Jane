@@ -10,6 +10,7 @@ import {
   CLIENT_MIN_MONTHS,
   CLIENT_NOT_INCOME,
   CLIENT_PAYER_MIN_DEPOSITS,
+  EMPLOYER_EXTRA_PAY,
   REGULAR_PAYER_MIN_CENTS,
   REGULAR_PAYER_NOT_INCOME,
   REGULAR_PAYER_OWN_MONEY_DAYS,
@@ -28,6 +29,7 @@ import type { ScopedDb } from "@/lib/db-scoped";
 // their accounts, whatever it's called. Rows the rules or the person placed stay.
 
 const INCOME = { pfcPrimary: "INCOME", pfcDetailed: "INCOME_OTHER" } as const;
+const SALARY = { pfcPrimary: "INCOME", pfcDetailed: "INCOME_SALARY" } as const;
 const CLIENT_INCOME = { pfcPrimary: "INCOME", pfcDetailed: "INCOME_CONTRACTOR" } as const;
 
 export type PayerRow = {
@@ -128,6 +130,30 @@ export function clientDeposits(
     : [];
 }
 
+// An employer's name without the words that say what the deposit is.
+const employerOf = (name: string) =>
+  name
+    .replace(/\b(?:PAYROLL|PAY|SALARY|DIRECT DEP(?:OSIT)?|BONUS|COMMISSION|INCENTIVE)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+
+// Deposits that say they're a bonus or commission, from a name the person is already paid a salary by.
+export function employerExtras(
+  rows: readonly { id: string; merchantName: string | null; description: string }[],
+  salaried: readonly string[],
+): string[] {
+  const employers = new Set(salaried.map(employerOf).filter(Boolean));
+  return rows
+    .filter(
+      (r) =>
+        r.merchantName !== null &&
+        EMPLOYER_EXTRA_PAY.test(r.description) &&
+        employers.has(employerOf(r.merchantName)),
+    )
+    .map((r) => r.id);
+}
+
 // Runs with the cash deposits, after an import, a bank sync and each night, before detection.
 // Returns how many rows changed. Once income they stay: only unplaced rows and Claude's guesses
 // are looked at, and an income row is neither.
@@ -154,16 +180,34 @@ export async function markRegularPayers(db: Pick<ScopedDb, "transactions">): Pro
       date: true,
       amountCents: true,
       merchantName: true,
+      description: true,
       pfcDetailed: true,
     },
   });
   if (rows.length === 0) return 0;
+  const salaried = await db.transactions.findMany({
+    where: { pfcDetailed: { in: ["INCOME_SALARY", "INCOME_WAGES"] }, amountCents: { lt: 0 } },
+    select: { merchantName: true },
+    distinct: ["merchantName"],
+  });
+  const extras = employerExtras(
+    rows.filter((r) => r.pfcDetailed === null),
+    salaried.flatMap((s) => (s.merchantName ? [s.merchantName] : [])),
+  );
+  if (extras.length > 0) {
+    await db.transactions.updateMany({
+      where: { id: { in: extras } },
+      data: { ...SALARY, categorySource: "rule" },
+    });
+  }
   const moneyOut = await db.transactions.findMany({
     where: { pending: false, amountCents: { in: [...new Set(rows.map((r) => -r.amountCents))] } },
     select: { accountId: true, date: true, amountCents: true },
   });
   const out = moneyOut.map((o) => ({ ...o, date: isoDay(o.date) }));
-  const dated = rows.map((r) => ({ ...r, date: isoDay(r.date) }));
+  const dated = rows
+    .filter((r) => !extras.includes(r.id))
+    .map((r) => ({ ...r, date: isoDay(r.date) }));
   const regular = regularPayers(dated, out);
   const paying = new Set(regular);
   // Not a Zelle line the rules called a transfer: it names a person, not a client.
@@ -171,7 +215,7 @@ export async function markRegularPayers(db: Pick<ScopedDb, "transactions">): Pro
     dated.filter((r) => r.pfcDetailed !== "TRANSFER_IN_ACCOUNT_TRANSFER"),
     out,
   ).filter((id) => !paying.has(id));
-  if (regular.length + clients.length === 0) return 0;
+  if (regular.length + clients.length === 0) return extras.length;
   const [other, contractor] = await Promise.all([
     db.transactions.updateMany({
       where: { id: { in: regular } },
@@ -183,5 +227,5 @@ export async function markRegularPayers(db: Pick<ScopedDb, "transactions">): Pro
       data: { ...CLIENT_INCOME, categorySource: "rule" },
     }),
   ]);
-  return other.count + contractor.count;
+  return extras.length + other.count + contractor.count;
 }

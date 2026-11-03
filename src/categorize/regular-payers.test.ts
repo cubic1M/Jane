@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { clientDeposits, regularPayers, type PayerRow } from "./regular-payers";
+import { ONE_OFF_PAY } from "@/config/profile";
+import { clientDeposits, employerExtras, regularPayers, type PayerRow } from "./regular-payers";
 
 // Debugger 11-02: "NORTHWIND LABS" with no pay word in the line stayed uncategorized, and Claude
 // is only asked what a typical purchase there is, so a person's pay wasn't income anywhere.
@@ -204,5 +205,54 @@ describe("clients who pay at uneven times", () => {
       amountCents: -r.amountCents,
     }));
     expect(clientDeposits(rows, out)).toEqual([]);
+  });
+});
+
+// Debugger 11-03: a $12,000 bonus from the person's own employer matched nothing, so the biggest
+// deposit of their year wasn't income on any page.
+describe("extra pay from the person's own employer", () => {
+  const row = (id: string, merchantName: string | null, description: string) => ({
+    id,
+    merchantName,
+    description,
+  });
+  const salaried = ["Northwind Robotics Payroll"];
+
+  it("is pay when the name matches and the line says what it is", () => {
+    expect(
+      employerExtras(
+        [
+          row("a", "Northwind Robotics Bonus", "NORTHWIND ROBOTICS BONUS PPD ID: 9000123"),
+          row("b", "Northwind Robotics Commission", "NORTHWIND ROBOTICS COMMISSION"),
+        ],
+        salaried,
+      ),
+    ).toEqual(["a", "b"]);
+  });
+
+  it("leaves a bank's bonus, another company's, and the employer's other deposits", () => {
+    expect(
+      employerExtras(
+        [
+          row("a", "Chase Checking Bonus", "CHASE CHECKING BONUS"),
+          row("b", "Acme Bonus", "ACME BONUS"),
+          row("c", "Northwind Robotics Refund", "NORTHWIND ROBOTICS REFUND"),
+          row("d", null, "BONUS"),
+        ],
+        salaried,
+      ),
+    ).toEqual([]);
+  });
+
+  it("finds nothing with no employer to match", () => {
+    expect(employerExtras([row("a", "Northwind Robotics Bonus", "X BONUS")], [])).toEqual([]);
+  });
+});
+
+describe("pay that comes once", () => {
+  it("includes a bonus, so one doesn't lift what comes in each month", () => {
+    expect(ONE_OFF_PAY.test("NORTHWIND ROBOTICS BONUS PPD ID: 9000123")).toBe(true);
+    expect(ONE_OFF_PAY.test("ACME CORP SEVERANCE")).toBe(true);
+    expect(ONE_OFF_PAY.test("NORTHWIND ROBOTICS PAYROLL")).toBe(false);
   });
 });

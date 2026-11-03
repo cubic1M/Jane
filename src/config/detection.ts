@@ -1087,6 +1087,11 @@ export const CASH_INCOME_MAX_AMOUNT_CV = 0.5;
 export const CASH_INCOME_ONE_OFF_FACTOR = 3;
 // Regular money in from one payer, with no pay word in the line (src/categorize/regular-payers.ts).
 // Under this it's more likely a share of a bill than pay.
+// What the person's own employer pays besides salary, said in the line (debugger 11-03: a $12,000
+// "NORTHWIND ROBOTICS BONUS" matched nothing). The employer's name has to match too: "CHECKING BONUS"
+// is a bank's offer.
+export const EMPLOYER_EXTRA_PAY = /\b(?:BONUS|COMMISSION|INCENTIVE)\b/i;
+
 export const REGULAR_PAYER_MIN_CENTS = 20_000;
 // Likely the person's own money moving: a bank, a broker or a payment app.
 export const REGULAR_PAYER_NOT_INCOME =
