@@ -25,3 +25,7 @@ Opponents (average points per seat):
   average points : 60.65   (max 100 per table)   [start of night 32.22; 37.68; 46.09; Plan B itself 38.49]
   places         : 1st:188  2nd:48  3rd:18  4th:14  5th:10  6th:6  7th:5  8th:11
   errors         : 0   timeouts: 0
+
+== after rs_call=2 (submission/bot.py rebuilt), same 300 tables seed 21
+  average points : 60.65   (identical to the previous build: against Plan B copies, which re-shove almost only AA, rs_call never fires; the Plan B field in the validation was -0.08 ± 0.32)
+  errors         : 0   timeouts: 0
