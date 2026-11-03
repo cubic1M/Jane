@@ -68,6 +68,14 @@ export const RATE_LIMITS = {
   invites: { limit: 30, windowSeconds: 60 * 60 },
   // Reports of something the Content-Security-Policy blocked, per IP (each is stored).
   cspReport: { limit: 20, windowSeconds: 10 * 60 },
+  // Reports of a page that broke in a browser, per IP (each is stored, and anyone can send one).
+  clientError: { limit: 20, windowSeconds: 10 * 60 },
+  // What anyone can make Jane store without an account, per IP on top of the limits above, and
+  // across every IP: a flood can't fill the database or bury real errors in /admin/errors.
+  anonymousActivity: { limit: 60, windowSeconds: 60 },
+  anonymousEvents: { limit: 60, windowSeconds: 60 },
+  anonymousEveryone: { limit: 5000, windowSeconds: 60 * 60 },
+  errorReportsEveryone: { limit: 300, windowSeconds: 60 * 60 },
 } satisfies Record<string, Limit>;
 
 export type LimitName = keyof typeof RATE_LIMITS;

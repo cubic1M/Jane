@@ -11,7 +11,9 @@ class CspViolation extends Error {
 // report becomes a scrubbed line in /admin/errors, so a rule that breaks a page shows up there
 // rather than only in someone's browser console. Limited per IP; nothing is sent back.
 export async function POST(request: Request) {
-  const limited = await limitOrNull("cspReport", ipKey(request.headers));
+  const limited =
+    (await limitOrNull("cspReport", ipKey(request.headers))) ??
+    (await limitOrNull("errorReportsEveryone", "csp"));
   if (limited) return limited;
   for (const violation of parseCspReports(await request.text())) {
     await recordError(

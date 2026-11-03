@@ -32,6 +32,12 @@ export async function POST(request: NextRequest) {
 
   // Signed-in pages (the report, cards) attribute their events to the user.
   const user = await getCurrentUser();
+  if (!user) {
+    const tooMany =
+      (await limitOrNull("anonymousEvents", ipKey(request.headers))) ??
+      (await limitOrNull("anonymousEveryone", "events"));
+    if (tooMany) return tooMany;
+  }
   await track(user?.id ?? null, name, {
     anonymous_id: anonymousId,
     ...(findingId ? { finding_id: findingId } : {}),

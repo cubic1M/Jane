@@ -1,3 +1,4 @@
+import { ACTIVITY } from "@/config/activity";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -47,7 +48,7 @@ export async function recordActivity(
     recording === "user"
       ? batch.events
       : recording === "anonymous"
-        ? anonymousOnly(batch.events)
+        ? anonymousOnly(batch.events).slice(0, ACTIVITY.maxAnonymousBatch)
         : [];
   if (rows.length > 0) {
     // Its own table, like analytics_events: written for the signed-in person only, read
