@@ -1,3 +1,4 @@
+import { isHiddenPage, shownHref } from "@/config/hidden-pages";
 import { formatCents } from "@/lib/money";
 import { monthLabel } from "@/lib/day-label";
 
@@ -60,14 +61,20 @@ export const receiptWords = (r: ReportReceipt) =>
 
 const signed = (cents: number) => `${cents >= 0 ? "up" : "down"} ${formatCents(Math.abs(cents))}`;
 
+// The whole report's page, or the month's close while that page is hidden.
+export const reportPage = (month: string) =>
+  isHiddenPage("/monthly") ? `/close/${month}` : `/monthly?m=${month}`;
+
 // One line per figure, each with the page it comes from.
 export function reportLines(report: MonthlyReport): ReportLine[] {
-  const page = `/monthly?m=${report.month}`;
   const lines: ReportLine[] = [];
   if (report.spent) {
     lines.push({
       label: "Spent",
-      text: `${formatCents(report.spent.cents)}, ${signed(report.spent.cents - report.spent.previousCents)} from the month before.`,
+      text:
+        report.spent.cents === report.spent.previousCents
+          ? `${formatCents(report.spent.cents)}, the same as the month before.`
+          : `${formatCents(report.spent.cents)}, ${signed(report.spent.cents - report.spent.previousCents)} from the month before.`,
       href: "/insights",
     });
   }
@@ -84,17 +91,18 @@ export function reportLines(report: MonthlyReport): ReportLine[] {
     {
       label: "Paid down",
       text: `${formatCents(report.paidDownCents)} toward cards and loans.`,
-      href: page,
-    },
-    {
-      label: "Moved",
-      text:
-        report.moved.count === 0
-          ? "No transfers went through."
-          : `${formatCents(report.moved.cents)} in ${report.moved.count} ${report.moved.count === 1 ? "transfer" : "transfers"} (sample transfers: no real money moves).`,
-      href: "/transfers",
+      href: "/loans",
     },
   );
+  // Only sample transfers exist, so a month without one has nothing to say: it isn't that the
+  // person moved no money.
+  if (report.moved.count > 0) {
+    lines.push({
+      label: "Moved",
+      text: `${formatCents(report.moved.cents)} in ${report.moved.count} ${report.moved.count === 1 ? "transfer" : "transfers"} (sample transfers: no real money moves).`,
+      href: "/transfers",
+    });
+  }
   if (report.budgets && report.budgets.kept + report.budgets.over.length > 0) {
     const { kept, over } = report.budgets;
     lines.push({
@@ -110,7 +118,10 @@ export function reportLines(report: MonthlyReport): ReportLine[] {
     const { startCents, endCents } = report.netWorth;
     lines.push({
       label: "Net worth",
-      text: `${formatCents(endCents)}, ${signed(endCents - startCents)} over the month.`,
+      text:
+        endCents === startCents
+          ? `${formatCents(endCents)}, no change over the month.`
+          : `${formatCents(endCents)}, ${signed(endCents - startCents)} over the month.`,
       href: "/net-worth",
     });
   }
@@ -164,7 +175,8 @@ export function reportLines(report: MonthlyReport): ReportLine[] {
     text: report.next ? `${report.next.title}.` : "Nothing waiting on you.",
     href: report.next?.href ?? "/jane",
   });
-  return lines;
+  // These go in an email and the chat: a hidden page's link lands on its area page.
+  return lines.map((l) => ({ ...l, href: shownHref(l.href) }));
 }
 
 export function reportBody(report: MonthlyReport, receiptLimit: number): string {

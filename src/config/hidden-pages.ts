@@ -78,7 +78,8 @@ export const HIDDEN_PAGES: readonly HiddenPage[] = [
   { path: "/what-if", to: "/ahead" },
   { path: "/long-view", to: "/ahead" },
   { path: "/year", to: "/ahead" },
-  { path: "/monthly", to: "/ahead" },
+  // /ahead has no report; the month's close is the page about that month (night QA 11-03).
+  { path: "/monthly", to: "/close" },
   { path: "/life-events", to: "/ahead" },
   { path: "/check-in", to: "/ahead" },
   // Elsewhere.

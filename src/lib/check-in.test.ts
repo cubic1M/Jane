@@ -19,6 +19,12 @@ const checkIn: CheckIn = {
 };
 
 describe("templateSummary", () => {
+  it("says a month that matched the one before as the same, not up nothing", () => {
+    expect(templateSummary({ ...checkIn, previousSpendingCents: 34_000 })).toContain(
+      "In September you spent $340.00, the same as the month before.",
+    );
+  });
+
   it("states the month plainly from the figures", () => {
     expect(templateSummary(checkIn)).toBe(
       "In September you spent $340.00, up $40.00 from the month before. You went over in Food and drink. Changes you finished save about $60.00 a year.",

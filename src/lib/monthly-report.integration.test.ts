@@ -22,6 +22,7 @@ import { loadNetWorthHistory } from "@/lib/net-worth-history";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { provenSavings } from "@/lib/savings-proof";
+import { isHiddenPage } from "@/config/hidden-pages";
 import { buildMonthlyReport, monthlyReportFor, runMonthlyReports } from "./monthly-report";
 import { yearInReview } from "./year";
 
@@ -173,7 +174,11 @@ describe.runIf(url)("the monthly money report", { timeout: 120_000 }, () => {
     expect(sent.text).toMatch(/^Spent: \$[\d,]+\.\d\d, (up|down) .+ \S+\/insights$/m);
     expect(sent.html).toContain("In September you spent");
     expect(sent.headers?.["List-Unsubscribe"]).toContain("/api/unsubscribe?token=");
-    expect(sent.text).toMatch(/^Moved: .+ \S+\/transfers$/m);
+    expect(sent.text).toMatch(/^Moved: .+ \S+\/money$/m);
+    // Every link in it opens a page the person can reach.
+    const paths = [...sent.text.matchAll(/https?:\/\/[^/\s]+(\/\S*)/g)].map((m) => m[1]);
+    expect(paths.length).toBeGreaterThan(5);
+    expect(paths.filter(isHiddenPage)).toEqual([]);
     await runMonthlyReports({ client, now: NOW, send, userIds: [userId] });
     expect(send.mock.calls.filter(([e]) => e.to === email)).toHaveLength(1);
   });

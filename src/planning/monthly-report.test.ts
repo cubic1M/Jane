@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { reportBody, reportLines, type MonthlyReport } from "./monthly-report";
+import { isHiddenPage } from "@/config/hidden-pages";
+import { reportBody, reportLines, reportPage, type MonthlyReport } from "./monthly-report";
 
 // Spec step 148, pure: the month's figures in Jane's words, each with the page it comes
 // from.
@@ -26,12 +27,12 @@ describe("reportLines", () => {
       {
         label: "Paid down",
         text: "$3,180.64 toward cards and loans.",
-        href: "/monthly?m=2026-09",
+        href: "/loans",
       },
       {
         label: "Moved",
         text: "$400.00 in 2 transfers (sample transfers: no real money moves).",
-        href: "/transfers",
+        href: "/money",
       },
       {
         label: "Money health",
@@ -54,10 +55,46 @@ describe("reportLines", () => {
       "$0.00 confirmed in all; nothing new confirmed this month.",
       "$7,900.00 came in.",
       "$3,180.64 toward cards and loans.",
-      "No transfers went through.",
       "60 out of 100 (Steady), 3 lower than last month.",
       "Nothing waiting on you.",
     ]);
+  });
+
+  // Night QA 11-03: these go in an email, and a hidden page only redirects to its area page.
+  it("links only to pages a person can open", () => {
+    const hrefs = reportLines({
+      ...report,
+      year: {
+        year: 2026,
+        spendingCents: 1,
+        incomeCents: 1,
+        found: 0,
+        foundAnnualCents: 0,
+        savedCents: 0,
+      },
+    }).map((l) => l.href);
+    expect(hrefs.filter(isHiddenPage)).toEqual([]);
+  });
+
+  it("says no change as no change, not up nothing", () => {
+    const lines = reportLines({
+      ...report,
+      spent: { cents: 50_000, previousCents: 50_000 },
+      netWorth: { startCents: 90_000, endCents: 90_000 },
+    });
+    expect(lines.find((l) => l.label === "Spent")?.text).toBe(
+      "$500.00, the same as the month before.",
+    );
+    expect(lines.find((l) => l.label === "Net worth")?.text).toBe(
+      "$900.00, no change over the month.",
+    );
+  });
+});
+
+describe("reportPage", () => {
+  it("is the month's close while the report's own page is hidden", () => {
+    expect(isHiddenPage(reportPage("2026-09"))).toBe(false);
+    expect(reportPage("2026-09")).toBe("/close/2026-09");
   });
 });
 
@@ -100,7 +137,7 @@ describe("the check-in's figures and the year, in the one report", () => {
     expect(reportLines(report).map((l) => l.label)).not.toContain("Spent");
   });
 
-  it("adds the year in December, linking to the printable year", () => {
+  it("adds the year in December, linking to where the hidden year page lands", () => {
     const december = reportLines({
       ...merged,
       month: "2026-12",
@@ -116,7 +153,7 @@ describe("the check-in's figures and the year, in the one report", () => {
     expect(december.find((l) => l.label === "Your 2026")).toEqual({
       label: "Your 2026",
       text: "You spent $30,000.00 and $90,000.00 came in. I found 7 ways to save ($1,200.00 a year), and changes you finished save about $450.00 a year.",
-      href: "/year?y=2026",
+      href: "/ahead",
     });
     // Just before "What's next".
     expect(december.at(-2)?.label).toBe("Your 2026");

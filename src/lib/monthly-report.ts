@@ -17,6 +17,7 @@ import { verifiedSavings } from "@/lib/savings-proof";
 import {
   receiptWords,
   reportLines,
+  reportPage,
   type MonthlyReport,
   type YearInReport,
 } from "@/planning/monthly-report";
@@ -208,7 +209,7 @@ export function renderMonthlyReportEmail(
   const subject = `Your money report for ${monthLabel(report.month, { long: true })}`;
   const lines = reportLines(report);
   const receipts = report.receipts.map((r) => `${receiptWords(r)}. ${r.proof}`);
-  const page = `${links.base}/monthly?m=${report.month}`;
+  const page = `${links.base}${reportPage(report.month)}`;
   const text = [
     subject,
     "",
@@ -216,7 +217,7 @@ export function renderMonthlyReportEmail(
     ...lines.map((l) => `${l.label}: ${l.text} ${links.base}${l.href}`),
     ...(receipts.length > 0 ? ["", "Receipts:", ...receipts.map((r) => `- ${r}`)] : []),
     "",
-    `See it all: ${page}`,
+    `See the month: ${page}`,
     "",
     `Unsubscribe: ${links.unsubscribe}`,
   ].join("\n");
@@ -230,7 +231,7 @@ ${report.summary ? `<p>${esc(report.summary)}</p>` : ""}
     )
     .join("")}</ul>
 ${receipts.length > 0 ? `<h2 style="font-size:16px">Receipts</h2><ul>${receipts.map((r) => `<li>${esc(r)}</li>`).join("")}</ul>` : ""}
-<p><a href="${esc(page)}" style="color:#171717">See it all</a></p>
+<p><a href="${esc(page)}" style="color:#171717">See the month</a></p>
 <p style="margin-top:32px;font-size:12px;color:#737373"><a href="${esc(links.unsubscribe)}" style="color:#737373">Unsubscribe</a></p>
 </div>`;
   return { subject, text, html };
