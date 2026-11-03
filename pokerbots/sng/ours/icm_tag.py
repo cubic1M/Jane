@@ -67,10 +67,11 @@ PARAMS = dict(
     fb_rel=0.0,          # > 0: my open re-raised (not all-in) by one seat, no callers, eff <= fb_bb: 4-bet
     fb_bb=40.0,          #   shove the top fb_rel x (that seat's re-raise rate vs one open, prior 7%) of hands
                          #   (fields 6 and 7 re-raise 30-50% of my opens and fold to 4-bets); 0 = off
-    img_k=0.0,           # > 0: when my first-in opens get re-raised more than img_base (opponents target
-    img_base=0.25,       #   wide openers), open tighter: open bar x (1 + img_k x (re-raised share - img_base)),
-    img_max=2.2,         #   capped at img_max; share shrunk to 0.17 over 12 opens. Shoves are not affected.
-                         #   (field 7 re-raises 39-49% of my opens: open_mult 1.4 / 1.8 / 2.4 = +10 / +18 / +19)
+    lock_mult=0.0,       # > 0: one-way "they attack my opens" lock: after lock_min first-in opens, if at least
+    lock_share=0.35,     #   lock_share of them were re-raised, the open bar is x lock_mult for the rest of the
+    lock_min=20,         #   table (never unlocks: these bots read our open rate). Shoves are not affected.
+                         #   (field 7 re-raises 39-49% of my opens, static fields 13-23%; open_mult 1.6 =
+                         #   field 7 +7.7*, field 6 +6.8*, but field 3 -11.5*, all3 -9.1*: results/sng_openmult_ab.md)
     two_card=1,          # icm_any only: on 2-card games without discards, use icm_tag's hold'em switches
                          #   (icm_call, rs_call, heads-up ranges, bet_discount 0.5; anyvar.TWO_CARD); 0 = off.
                          #   1 validated on fresh seeds: kit-4 six-plus +1.8, plain NLHE +1.7 (results/sng_twocard_validate_*.md)
@@ -197,7 +198,8 @@ class IcmTag:
         self.steal_fold = [0] * rules.num_players
         self.t3_seen = [0] * rules.num_players           # faced exactly one open (first action)
         self.t3_made = [0] * rules.num_players           # ... and re-raised it
-        self.my_opens = 0                                # my first-in raises (img_k)
+        self.locked = False                              # lock_mult engaged at this table
+        self.my_opens = 0                                # my first-in raises (lock_mult)
         self.my_opens_rr = 0                             # ... re-raised by someone
         self.o3_seen = [0] * rules.num_players           # opened, then faced a re-raise
         self.o3_fold = [0] * rules.num_players           # ... and folded
@@ -249,7 +251,7 @@ class IcmTag:
                 self.o3_seen[op] += 1
                 if nxt[2] == "fold":
                     self.o3_fold[op] += 1
-        if rz and pre3[rz[0]][0] == self.seat:            # my open: was it re-raised? (img_k)
+        if rz and pre3[rz[0]][0] == self.seat:            # my open: was it re-raised? (lock_mult)
             self.my_opens += 1
             if len(rz) >= 2:
                 self.my_opens_rr += 1
@@ -507,9 +509,12 @@ class IcmTag:
                 if eq >= pbar and lg.can_raise:
                     return RaiseTo(lg.max_raise_to)
                 return lg.passive() if lg.can_check else Fold()
-            if p["img_k"] > 0:
-                img = (self.my_opens_rr + 0.17 * 12) / (self.my_opens + 12)
-                bar *= min(p["img_max"], 1.0 + p["img_k"] * max(0.0, img - p["img_base"]))
+            if p["lock_mult"] > 0:
+                if not self.locked and self.my_opens >= p["lock_min"] and \
+                        self.my_opens_rr >= p["lock_share"] * self.my_opens:
+                    self.locked = True
+                if self.locked:
+                    bar *= p["lock_mult"]
             if eq >= bar and lg.can_raise:
                 to = (p["open_size"] + limpers) * bb
                 self.aggressor = obs.seat
