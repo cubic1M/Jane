@@ -1,7 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
-import { asUserTransaction, RLS_ROLE } from "@/lib/rls";
-import { systemDb } from "@/lib/system-db";
+import { asUserTransaction, RLS_ROLE, SYSTEM_ROLE } from "@/lib/rls";
+import { systemDb, systemTransaction } from "@/lib/system-db";
 
 // Whether row-level security (docs/security/rls.md) is really on, read from the database's own
 // catalog: every user-owned table, with RLS on or off and its policies. /admin/health shows it and
@@ -85,4 +85,42 @@ export async function rlsSwitchWorks(
     (tx) => tx.$queryRaw<{ role: string }[]>`SELECT current_user AS role`,
   );
   return who?.role === RLS_ROLE;
+}
+
+// And the system's door, the same way.
+export async function systemSwitchWorks({
+  client = defaultClient,
+}: { client?: PrismaClient } = {}): Promise<boolean> {
+  const [who] = await systemTransaction(
+    "Row-level security's own check: does the switch work",
+    (tx) => tx.$queryRaw<{ role: string }[]>`SELECT current_user AS role`,
+    client,
+  );
+  return who?.role === SYSTEM_ROLE;
+}
+
+export type LoginCheck = {
+  login: string;
+  // The login can't use a table without going through a door: it isn't a superuser, can't bypass
+  // row-level security, and has no privileges on the tables of its own.
+  denied: boolean;
+};
+
+// What this server logged in as, asked of the database, without switching. On Neon a role made in
+// the console, not with SQL, inherits every table's privileges, and this notices (`users` stands
+// for them all; jane_rls_protect_all() takes back any table the login holds directly).
+export async function loginCheck({
+  client = defaultClient,
+}: { client?: PrismaClient } = {}): Promise<LoginCheck> {
+  const [row] = await client.$queryRaw<
+    { login: string; rolsuper: boolean; rolbypassrls: boolean; reads: boolean; writes: boolean }[]
+  >`
+    SELECT current_user AS login, r.rolsuper, r.rolbypassrls,
+      has_table_privilege(current_user, 'public.users', 'SELECT') AS reads,
+      has_table_privilege(current_user, 'public.users', 'UPDATE') AS writes
+    FROM pg_roles r WHERE r.rolname = current_user`;
+  return {
+    login: row.login,
+    denied: !row.rolsuper && !row.rolbypassrls && !row.reads && !row.writes,
+  };
 }

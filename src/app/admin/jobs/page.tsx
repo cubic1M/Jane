@@ -5,6 +5,9 @@ import { AdminNav } from "../admin-nav";
 import { retry } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Admin page: works across people, behind ADMIN_EMAILS and two-factor";
 
 const SHOWN = 50;
 const when = (date: Date) => date.toISOString().slice(0, 16).replace("T", " ");
@@ -12,14 +15,17 @@ const when = (date: Date) => date.toISOString().slice(0, 16).replace("T", " ");
 async function Jobs() {
   const admin = await requireAdmin();
   const [counts, failed, waiting] = await Promise.all([
-    db.job.groupBy({ by: ["status"], _count: { _all: true } }),
-    db.job.findMany({
+    systemDb(WHY).job.groupBy({
+      by: ["status"],
+      _count: { _all: true },
+    }),
+    systemDb(WHY).job.findMany({
       where: { status: "failed" },
       orderBy: { updatedAt: "desc" },
       take: SHOWN,
       select: { id: true, kind: true, attempts: true, lastError: true, updatedAt: true },
     }),
-    db.job.findMany({
+    systemDb(WHY).job.findMany({
       where: { status: { in: ["queued", "running"] }, attempts: { gt: 0 } },
       orderBy: { runAt: "asc" },
       take: SHOWN,

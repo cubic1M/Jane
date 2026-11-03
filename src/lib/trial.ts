@@ -13,6 +13,9 @@ import { syncItem } from "@/lib/plaid/sync";
 import { peopleIn, type OnlyPeople } from "@/lib/only-people";
 import { acceptTerms } from "@/lib/terms";
 import { phaseTimer } from "@/lib/trial-timing";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Trial people: made before there is a session, and removed in bulk";
 
 // Try Jane without signing up (spec step 138): a temporary sample person with the demo
 // bank and demo advice (src/lib/advice-mode.ts), signed in with a session that ends after
@@ -42,7 +45,7 @@ export async function cleanUpTrials({
   now = new Date(),
   userIds,
 }: Options & OnlyPeople = {}): Promise<number> {
-  const { count } = await client.user.deleteMany({
+  const { count } = await systemDb(WHY, client).user.deleteMany({
     where: {
       id: { startsWith: TRIAL_ID_PREFIX },
       createdAt: { lt: new Date(now.getTime() - TRIAL_HOURS * HOUR_MS) },
@@ -77,7 +80,7 @@ export async function startTrial({
   timing.mark("clean_up");
   const id = `${TRIAL_ID_PREFIX}${randomBytes(12).toString("hex")}`;
   // Users have their own helpers; a trial person is made here and nowhere else.
-  await client.user.create({
+  await systemDb(WHY, client).user.create({
     data: {
       id,
       email: `${id}@${TRIAL_EMAIL_DOMAIN}`,
@@ -94,7 +97,7 @@ export async function startTrial({
     // The visitor ticked "I agree" to try it (src/app/try/actions.ts), as at sign-up.
     acceptTerms(id, { client, now, via: "trial" }),
     linkDemoBank(id, { client, now, person }),
-    client.session.create({
+    systemDb(WHY, client).session.create({
       data: { sessionToken, userId: id, expires, userAgent: userAgent?.slice(0, 200) ?? null },
     }),
   ]);

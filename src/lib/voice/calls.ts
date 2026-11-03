@@ -31,6 +31,7 @@ import {
   type CallResult,
 } from "./provider";
 import { meteredClaude } from "@/lib/claude-budget";
+import { systemDb } from "@/lib/system-db";
 
 // The agent's phone calls (spec step 54): bill negotiation. A call only ever happens with
 // the person's own yes on that bill. The script comes from the playbook and the draft; the
@@ -170,7 +171,10 @@ export async function handleCallResult(
 ): Promise<"acted" | "kept" | "unknown"> {
   if (!CALL_OUTCOMES.includes(result.outcome)) return "unknown";
   // A system lookup by the token; everything after it is scoped to that person.
-  const found = await client.action.findUnique({
+  const found = await systemDb(
+    "The agent's cron and reply links: finds actions across people, nobody is signed in",
+    client,
+  ).action.findUnique({
     where: { replyToken: token },
     select: { id: true, userId: true },
   });

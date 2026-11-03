@@ -17,6 +17,9 @@ import { deliverChatNotifications } from "@/lib/jane-agent/notify";
 import { scrub } from "@/lib/scrub";
 import { retryControllerStep, runController } from "@/lib/controller";
 import type { OnlyPeople } from "@/lib/only-people";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "The job queue works across people";
 
 // A small job queue in Postgres for slow work that can fail and be retried. A job is
 // claimed with FOR UPDATE SKIP LOCKED, so two runners never take the same one; a failure
@@ -86,7 +89,7 @@ export async function enqueueJob(
   // runAt: not before this (e.g. after the time a person has to take something back).
   { client = defaultClient, now = new Date(), runAt = now }: Options & { runAt?: Date } = {},
 ): Promise<string> {
-  const job = await client.job.create({
+  const job = await systemDb(WHY, client).job.create({
     data: { kind, payload, runAt, maxAttempts: JOB_MAX_ATTEMPTS },
     select: { id: true },
   });
@@ -103,7 +106,7 @@ async function claim(
 ) {
   const stuckBefore = new Date(now.getTime() - JOB_STUCK_MINUTES * MINUTE);
   const people = userIds ? [...userIds] : null;
-  return client.$queryRaw<Claimed[]>`
+  return systemDb(WHY, client).$queryRaw<Claimed[]>`
     UPDATE jobs SET status = 'running', attempts = attempts + 1, updated_at = ${now}
     WHERE id IN (
       SELECT id FROM jobs
@@ -125,7 +128,7 @@ const FOREIGN_KEY_ERROR = "P2003";
 async function personGone(error: unknown, payload: JobPayload, client: PrismaClient) {
   if ((error as { code?: unknown } | null)?.code !== FOREIGN_KEY_ERROR) return false;
   if (!payload?.userId) return false;
-  const user = await client.user.findUnique({
+  const user = await systemDb(WHY, client).user.findUnique({
     where: { id: payload.userId },
     select: { id: true },
   });
@@ -137,13 +140,16 @@ async function execute(job: Claimed, client: PrismaClient, now: Date, handlers: 
   try {
     if (!handler) throw new Error(`Unknown job kind: ${job.kind}`);
     await handler(job.payload as JobPayload);
-    await client.job.update({ where: { id: job.id }, data: { status: "done", lastError: null } });
+    await systemDb(WHY, client).job.update({
+      where: { id: job.id },
+      data: { status: "done", lastError: null },
+    });
     return "done" as const;
   } catch (error) {
     // Their person was deleted with the job still queued (a trial person's day ending): it can
     // never work, and retrying spends the cron's time (debugger 11-02).
     if (await personGone(error, job.payload as JobPayload, client)) {
-      await client.job.update({
+      await systemDb(WHY, client).job.update({
         where: { id: job.id },
         data: { status: "done", lastError: PERSON_GONE },
       });
@@ -151,7 +157,7 @@ async function execute(job: Claimed, client: PrismaClient, now: Date, handlers: 
     }
     const lastError = scrub(String(error)).slice(0, JOB_ERROR_LENGTH);
     const failed = job.attempts >= job.max_attempts;
-    await client.job.update({
+    await systemDb(WHY, client).job.update({
       where: { id: job.id },
       data: failed
         ? { status: "failed", lastError }
@@ -189,7 +195,7 @@ export async function runDueJobs({
   const claimed = await claim(client, now, JOB_BATCH, undefined, userIds);
   for (const [i, job] of claimed.entries()) {
     if (budgetMs !== undefined && clock() - started >= budgetMs) {
-      await client.job.updateMany({
+      await systemDb(WHY, client).job.updateMany({
         where: { id: { in: claimed.slice(i).map((j) => j.id) }, status: "running" },
         data: { status: "queued", attempts: { decrement: 1 } },
       });
@@ -215,7 +221,7 @@ export async function retryJob(
   id: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ) {
-  const { count } = await client.job.updateMany({
+  const { count } = await systemDb(WHY, client).job.updateMany({
     where: { id, status: "failed" },
     data: { status: "queued", attempts: 0, runAt: now },
   });

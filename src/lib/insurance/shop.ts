@@ -22,6 +22,7 @@ import { POLICY_SELECT, nextRenewal, toPolicy, yearlyPremium, type Policy } from
 import { requestQuotes, type StoredQuote } from "./quotes";
 import { isoDay as day } from "@/lib/dates";
 import { log } from "@/lib/log";
+import { systemDb } from "@/lib/system-db";
 
 // Shopped for you (spec step 104). Jane reshops each policy on its own, at every autopilot
 // level: RESHOP_DAYS_BEFORE_RENEWAL days before it renews, and whenever its price goes up
@@ -311,11 +312,14 @@ export async function reshopAll({
   now = new Date(),
 }: Pick<Options, "client" | "now"> = {}): Promise<{ people: number; shops: number }> {
   // A system job across users: ids only; everything after is scoped to the person.
-  await client.insuranceShop.updateMany({
+  await systemDb("Cron: finds who to run for, across people", client).insuranceShop.updateMany({
     where: { status: "open", expiresAt: { lte: now } },
     data: { status: "expired" },
   });
-  const people = await client.insurancePolicy.findMany({
+  const people = await systemDb(
+    "Cron: finds who to run for, across people",
+    client,
+  ).insurancePolicy.findMany({
     where: { status: "active" },
     select: { userId: true },
     distinct: ["userId"],

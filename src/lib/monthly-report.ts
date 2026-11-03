@@ -27,6 +27,7 @@ import { yearInReview } from "./year";
 import { loadYearPlan } from "./year-plan";
 import { resultsByKind } from "./worked";
 import { monthLabel } from "@/lib/day-label";
+import { systemDb } from "@/lib/system-db";
 
 // The monthly money report (spec step 148): in the first days of a month, what the month
 // just ended came to (saved, earned, paid down, moved), the health score's change, what's
@@ -164,7 +165,10 @@ export async function monthlyReportFor(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<StoredReport | null> {
-  const user = await client.user.findUnique({ where: { id: userId }, select: { timezone: true } });
+  const user = await scopedFor(userId, client).me.findUnique({
+    where: { id: userId },
+    select: { timezone: true },
+  });
   const today = localDate(now, user?.timezone);
   if (Number(today.slice(8, 10)) > MONTHLY_REPORT_DAYS) return null;
   const month = previousMonth(today);
@@ -260,7 +264,7 @@ export async function runMonthlyReports({
   const startedAt = Date.now();
   // Never a sample person (spec step 138): no email, so no report to build either (debugger
   // 11-01: every Try Jane person got one built on the 1st, and the cron ran out of time).
-  const users = await client.user.findMany({
+  const users = await systemDb("Cron: finds who to run for, across people", client).user.findMany({
     where: {
       digestEnabled: true,
       deletedAt: null,

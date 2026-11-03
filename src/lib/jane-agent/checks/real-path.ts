@@ -7,6 +7,7 @@ import { resetClaudeHealth } from "../claude";
 import { sectorOf } from "../tool-select";
 import { sendToJane, type AnswerSource } from "../typing";
 import { QUESTIONS, type CheckQuestion } from "./bank";
+import { systemDb } from "@/lib/system-db";
 
 // Plan item 13: the free nightly check of the way people are really answered. Claude answers all
 // typed text, so the rules-only score says little about what they read: its 100 comes from the
@@ -242,7 +243,7 @@ export async function runRealPath(
     for (const round of rounds) {
       for (const question of questions) {
         resetClaudeHealth();
-        await client.rateLimit.deleteMany({
+        await systemDb("Rate limits are the system's own counters", client).rateLimit.deleteMany({
           where: { key: { in: [`chat:${userId}`, `ask:${userId}`, `chatspend:${userId}`] } },
         });
         const played = newPlayed();

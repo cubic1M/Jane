@@ -3,6 +3,7 @@ import type { ActorType } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { currentRequestDetails, detailsFrom } from "@/lib/request-details";
 import { scrubSecrets } from "@/lib/scrub";
+import { systemDb } from "@/lib/system-db";
 
 // Every sensitive event goes through logAudit. Add new events here so the log stays
 // queryable by a known set of names.
@@ -339,7 +340,9 @@ export async function logAudit(
         ...(headers ? detailsFrom(headers) : await currentRequestDetails()),
       }
     : {};
-  await db.auditLog.create({
+  await systemDb(
+    "The audit log is the system's own record: jane_rls can't touch it",
+  ).auditLog.create({
     data: {
       actorType: actor.type,
       actorId: actor.id,

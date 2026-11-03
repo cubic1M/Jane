@@ -7,6 +7,9 @@ import { DAY_MS } from "@/lib/dates";
 import { isDemoItemId } from "@/lib/plaid/demo";
 import { groupVisits, type Visit } from "./describe";
 import { computeFunnel, furthestStep, type FunnelStep } from "./funnel";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Admin page: works across people, behind ADMIN_EMAILS and two-factor";
 
 // The founder view of the beta's activity log (/admin/activity): who used Jane and when, the
 // funnel from sign-up to acting on a card, and one person's visits. Every view is in the audit
@@ -23,18 +26,18 @@ export type BetaUser = { id: string; email: string; createdAt: Date };
 async function betaUsers(
   client: PrismaClient,
 ): Promise<{ users: BetaUser[]; linked: Set<string> }> {
-  const users = await client.user.findMany({
+  const users = await systemDb(WHY, client).user.findMany({
     where: { role: "user", NOT: { id: { startsWith: TRIAL_ID_PREFIX } } },
     select: { id: true, email: true, createdAt: true },
     orderBy: { createdAt: "desc" },
   });
   const ids = users.map((u) => u.id);
   const [items, csv] = await Promise.all([
-    client.plaidItem.findMany({
+    systemDb(WHY, client).plaidItem.findMany({
       where: { userId: { in: ids } },
       select: { userId: true, plaidItemId: true },
     }),
-    client.account.findMany({
+    systemDb(WHY, client).account.findMany({
       where: { userId: { in: ids }, source: "csv" },
       select: { userId: true },
       distinct: ["userId"],
@@ -68,28 +71,28 @@ export async function loadActivityOverview(
   const { users, linked } = await betaUsers(client);
   const ids = users.map((u) => u.id);
   const [stats, findings, cardOpens, decisions, landingViews] = await Promise.all([
-    client.$queryRaw<
+    systemDb(WHY, client).$queryRaw<
       { user_id: string; last_seen: Date; visits: bigint; events: bigint; last_view: Date | null }[]
     >`
       SELECT user_id, max(created_at) AS last_seen, count(DISTINCT visit_id) AS visits,
              count(*) AS events, max(created_at) FILTER (WHERE kind = 'page_view') AS last_view
       FROM activity_events WHERE user_id = ANY(${ids}) GROUP BY user_id`,
-    client.finding.groupBy({
+    systemDb(WHY, client).finding.groupBy({
       by: ["userId"],
       where: { userId: { in: ids } },
       _min: { createdAt: true },
     }),
-    client.analyticsEvent.findMany({
+    systemDb(WHY, client).analyticsEvent.findMany({
       where: { userId: { in: ids }, name: "card_opened" },
       select: { userId: true },
       distinct: ["userId"],
     }),
-    client.decision.findMany({
+    systemDb(WHY, client).decision.findMany({
       where: { userId: { in: ids } },
       select: { userId: true },
       distinct: ["userId"],
     }),
-    client.activityEvent.count({
+    systemDb(WHY, client).activityEvent.count({
       where: {
         userId: null,
         kind: "page_view",
@@ -136,7 +139,7 @@ export async function loadActivityTimeline(
   userId: string,
   { client = defaultClient }: Options = {},
 ): Promise<ActivityTimeline | null> {
-  const person = await client.user.findUnique({
+  const person = await systemDb(WHY, client).user.findUnique({
     where: { id: userId },
     select: { id: true, email: true, createdAt: true, timezone: true, role: true },
   });
@@ -150,7 +153,7 @@ export async function loadActivityTimeline(
     },
   );
   const [activity, funnel] = await Promise.all([
-    client.activityEvent.findMany({
+    systemDb(WHY, client).activityEvent.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
       take: TIMELINE_LIMIT,
@@ -164,7 +167,7 @@ export async function loadActivityTimeline(
         data: true,
       },
     }),
-    client.analyticsEvent.findMany({
+    systemDb(WHY, client).analyticsEvent.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
       take: TIMELINE_LIMIT,

@@ -28,6 +28,9 @@ import {
   type Summarizer,
 } from "./summarize";
 import { DAY_MS, isoDay as day } from "@/lib/dates";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Market data is shared, no one's own";
 
 // The news job (spec step 293): once a day it reads the watchlist's headlines and filings from
 // the market data, summarises the headlines it hasn't stored yet (Claude in a few batched calls
@@ -76,11 +79,13 @@ export function worstCaseHundredths(model: string, headlines: number): number {
 
 export async function newsSpend({ client = defaultClient, now = new Date() }: Options = {}) {
   const [month, today] = await Promise.all([
-    client.newsSummaryCall.aggregate({
+    systemDb(WHY, client).newsSummaryCall.aggregate({
       where: { calledAt: { gte: monthStart(now) } },
       _sum: { costHundredths: true },
     }),
-    client.newsSummaryCall.count({ where: { calledAt: { gte: dayStart(now) } } }),
+    systemDb(WHY, client).newsSummaryCall.count({
+      where: { calledAt: { gte: dayStart(now) } },
+    }),
   ]);
   return { monthHundredths: month._sum.costHundredths ?? 0, callsToday: today };
 }
@@ -144,7 +149,7 @@ export async function runNews(options: Options = {}): Promise<NewsRun> {
   // Filings are facts with a link: stored as they are.
   let filingsStored = 0;
   for (const f of filings) {
-    const created = await client.marketNews.createMany({
+    const created = await systemDb(WHY, client).marketNews.createMany({
       data: [
         {
           key: newsKey(market.name, "filing", f),
@@ -167,7 +172,7 @@ export async function runNews(options: Options = {}): Promise<NewsRun> {
   const keyed = headlines.map((h) => ({ h, key: newsKey(market.name, "headline", h) }));
   const known = new Set(
     (
-      await client.marketNews.findMany({
+      await systemDb(WHY, client).marketNews.findMany({
         where: { key: { in: keyed.map((k) => k.key) } },
         select: { key: true },
       })
@@ -198,7 +203,7 @@ export async function runNews(options: Options = {}): Promise<NewsRun> {
     for (const [j, { h, key }] of batch.entries()) {
       const claude = fromClaude?.[j];
       const ok = claude != null && summaryOk(claude, h);
-      const created = await client.marketNews.createMany({
+      const created = await systemDb(WHY, client).marketNews.createMany({
         data: [
           {
             key,
@@ -243,7 +248,7 @@ async function summariseWithClaude(
     return null;
   }
   const model = newsModel(env)!;
-  const call = await client.newsSummaryCall.create({
+  const call = await systemDb(WHY, client).newsSummaryCall.create({
     data: {
       calledAt: now,
       model,
@@ -254,7 +259,7 @@ async function summariseWithClaude(
   run.calls += 1;
   try {
     const result = await summarizer(batch, model);
-    await client.newsSummaryCall.update({
+    await systemDb(WHY, client).newsSummaryCall.update({
       where: { id: call.id },
       data: {
         ok: true,

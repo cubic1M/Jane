@@ -11,6 +11,9 @@ import { TRIAL_ID_PREFIX } from "@/config/trial";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { DAY_MS as DAY } from "@/lib/dates";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Retention deletes old rows across people";
 
 // The daily cleanup, and the privacy policy's retention section, both from the periods
 // in src/config/retention.ts.
@@ -24,31 +27,41 @@ export async function runRetention({
     new Date(now.getTime() - RETENTION_PERIODS[kind].days * DAY);
   const [analytics, activity, errors, jobs, runs, limits, sessions, links, access] =
     await Promise.all([
-      client.analyticsEvent.deleteMany({ where: { createdAt: { lt: before("analyticsEvents") } } }),
-      client.activityEvent.deleteMany({ where: { createdAt: { lt: before("activityEvents") } } }),
-      client.errorEvent.deleteMany({ where: { createdAt: { lt: before("errorEvents") } } }),
-      client.job.deleteMany({
+      systemDb(WHY, client).analyticsEvent.deleteMany({
+        where: { createdAt: { lt: before("analyticsEvents") } },
+      }),
+      systemDb(WHY, client).activityEvent.deleteMany({
+        where: { createdAt: { lt: before("activityEvents") } },
+      }),
+      systemDb(WHY, client).errorEvent.deleteMany({
+        where: { createdAt: { lt: before("errorEvents") } },
+      }),
+      systemDb(WHY, client).job.deleteMany({
         where: { status: { in: ["done", "failed"] }, updatedAt: { lt: before("finishedJobs") } },
       }),
-      client.cronRun.deleteMany({ where: { startedAt: { lt: before("cronRuns") } } }),
-      client.rateLimit.deleteMany({
+      systemDb(WHY, client).cronRun.deleteMany({
+        where: { startedAt: { lt: before("cronRuns") } },
+      }),
+      systemDb(WHY, client).rateLimit.deleteMany({
         where: {
           windowStart: { lt: before("rateLimits") },
           NOT: KEEP_RATE_LIMIT_PREFIXES.map((prefix) => ({ key: { startsWith: prefix } })),
         },
       }),
-      client.session.deleteMany({ where: { expires: { lt: before("expiredSessions") } } }),
-      client.verificationToken.deleteMany({
+      systemDb(WHY, client).session.deleteMany({
+        where: { expires: { lt: before("expiredSessions") } },
+      }),
+      systemDb(WHY, client).verificationToken.deleteMany({
         where: { expires: { lt: before("expiredSessions") } },
       }),
       // Only the access log's entries: the rest of the audit log (consents, decisions) stays.
-      client.auditLog.deleteMany({
+      systemDb(WHY, client).auditLog.deleteMany({
         where: { event: { in: [...ACCESS_EVENTS] }, createdAt: { lt: before("accessLog") } },
       }),
     ]);
   // What deleting an account leaves out of the audit log now, for people deleted before it did. The
   // table has no tie to users, so nothing else ever removes these.
-  const orphans = await client.$executeRaw`
+  const orphans = await systemDb("Retention deletes old rows across people", client).$executeRaw`
     DELETE FROM audit_log a
     WHERE a.event <> ALL(${[...ACCESS_EVENTS]}::text[])
       AND (
@@ -62,7 +75,7 @@ export async function runRetention({
   // Spec step 138: everything a trial person owns goes with them (it all cascades). After
   // the rest, not alongside: the cascade deletes sessions too, and the two deletes at once
   // can deadlock.
-  const trials = await client.user.deleteMany({
+  const trials = await systemDb(WHY, client).user.deleteMany({
     where: { id: { startsWith: TRIAL_ID_PREFIX }, createdAt: { lt: before("trialPeople") } },
   });
   return {

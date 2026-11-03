@@ -13,6 +13,9 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { collectEvents, runEventOverlay, type CollectReport, type Options } from "./run";
 import { log } from "@/lib/log";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Market data is shared, no one's own";
 
 // Reading the events sources, shared by every caller (founder, 2026-10-26: fresher, never empty).
 // The daily cron reads every source; opening the investments page reads them too when the last
@@ -44,7 +47,9 @@ type RefreshOptions = Options & { force?: boolean };
 export async function lastRefresh({
   client = defaultClient,
 }: { client?: PrismaClient } = {}): Promise<RefreshReport | null> {
-  const row = await client.refreshLock.findUnique({ where: { key: KEY } });
+  const row = await systemDb(WHY, client).refreshLock.findUnique({
+    where: { key: KEY },
+  });
   const report = (row?.report ?? {}) as Partial<RefreshReport>;
   return row?.lastRunAt && report.checkedAt ? (report as RefreshReport) : null;
 }
@@ -63,18 +68,18 @@ export async function refreshEvents(options: RefreshOptions = {}): Promise<Refre
   const client = options.client ?? defaultClient;
   const now = options.now ?? new Date();
   const force = options.force === true;
-  await client.$executeRaw`
+  await systemDb(WHY, client).$executeRaw`
     INSERT INTO refresh_locks (key, report) VALUES (${KEY}, '{}'::jsonb) ON CONFLICT (key) DO NOTHING`;
   const freshSince = new Date(now.getTime() - EVENTS_REFRESH_MINUTES * 60_000);
   const lockUntil = new Date(now.getTime() + EVENTS_LOCK_SECONDS * 1000);
   // The claim: one atomic update, so of two at once only one gets the row.
-  const claimed = await client.$executeRaw`
+  const claimed = await systemDb(WHY, client).$executeRaw`
     UPDATE refresh_locks SET locked_until = ${lockUntil}
     WHERE key = ${KEY}
       AND (locked_until IS NULL OR locked_until < ${now})
       AND (${force} OR last_run_at IS NULL OR last_run_at < ${freshSince})`;
   if (claimed === 0) {
-    const row = await client.refreshLock.findUnique({ where: { key: KEY } });
+    const row = await systemDb(WHY, client).refreshLock.findUnique({ where: { key: KEY } });
     return {
       ran: false,
       why: row?.lockedUntil && row.lockedUntil >= now ? "locked" : "fresh",
@@ -112,7 +117,7 @@ export async function refreshEvents(options: RefreshOptions = {}): Promise<Refre
       found: collected?.found ?? 0,
       stored: collected?.stored ?? 0,
     };
-    await client.refreshLock.update({
+    await systemDb(WHY, client).refreshLock.update({
       where: { key: KEY },
       data: {
         lockedUntil: null,
@@ -164,7 +169,10 @@ export async function runEventsForAll({
     return null;
   });
   // Every paper account but those switched off (on by default).
-  const overlays = await client.paperAccount.findMany({
+  const overlays = await systemDb(
+    "Cron: finds who to run for, across people",
+    client,
+  ).paperAccount.findMany({
     where: { NOT: { eventOverlay: { is: { on: false } } } },
     select: { userId: true },
   });

@@ -10,6 +10,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { coverageCheckup, type Recommendation } from "./checkup";
 import { loadHousehold } from "./household";
 import { listPolicies } from "./policies";
+import { systemDb } from "@/lib/system-db";
 
 // Running the coverage checkup (spec step 106): on its own once a year and after a life
 // event (spec step 100), or when the person asks. Only in demo advice mode (spec step 98):
@@ -157,7 +158,10 @@ export async function checkupAll({
   now = new Date(),
 }: Options = {}): Promise<{ people: number; checkups: number }> {
   // A system job across users: ids only; everything after is scoped to the person.
-  const people = await client.insurancePolicy.findMany({
+  const people = await systemDb(
+    "Cron: finds who to run for, across people",
+    client,
+  ).insurancePolicy.findMany({
     where: { status: "active" },
     select: { userId: true },
     distinct: ["userId"],

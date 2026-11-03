@@ -6,6 +6,9 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { encryptBytes } from "@/lib/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "The hourly probe makes and removes its own sample people";
 
 // The hourly check that signing in works and one person can't see another (docs/incident.md). It
 // makes two sample people with a marker in their rows, then calls the running site as them over
@@ -41,7 +44,7 @@ async function plantPerson(client: PrismaClient, now: Date): Promise<Person> {
   const id = `${PROBE_ID_PREFIX}${randomBytes(12).toString("hex")}`;
   const marker = `probemarker${randomBytes(12).toString("hex")}`;
   const sessionToken = `${TRIAL_SESSION_PREFIX}${randomBytes(32).toString("hex")}`;
-  await client.user.create({
+  await systemDb(WHY, client).user.create({
     data: {
       id,
       email: `${id}@${TRIAL_EMAIL_DOMAIN}`,
@@ -51,7 +54,7 @@ async function plantPerson(client: PrismaClient, now: Date): Promise<Person> {
       createdAt: now,
     },
   });
-  await client.session.create({
+  await scopedFor(id, client).sessions.create({
     data: { sessionToken, userId: id, expires: new Date(now.getTime() + 60 * 60 * 1000) },
   });
   const db = scopedFor(id, client);
@@ -80,7 +83,7 @@ async function plantPerson(client: PrismaClient, now: Date): Promise<Person> {
 }
 
 export async function removeProbePeople(client: PrismaClient = defaultClient): Promise<number> {
-  const { count } = await client.user.deleteMany({
+  const { count } = await systemDb(WHY, client).user.deleteMany({
     where: { id: { startsWith: PROBE_ID_PREFIX } },
   });
   return count;

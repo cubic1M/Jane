@@ -4,6 +4,9 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { ITEM_STATUS, syncItem } from "./sync";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Plaid's webhook: nobody is signed in, the item is found by Plaid's id";
 
 // What to do with a verified Plaid webhook (plaid.com/docs/api/items/#webhooks and the
 // Transactions webhooks). Webhooks are what keep a bank fresh: SYNC_UPDATES_AVAILABLE starts a
@@ -45,7 +48,7 @@ export async function planWebhook(
 ): Promise<WebhookPlan> {
   if (typeof body.item_id !== "string") return null;
   // Finds the item's owner; every write after this is scoped to them.
-  const item = await client.plaidItem.findUnique({
+  const item = await systemDb(WHY, client).plaidItem.findUnique({
     where: { plaidItemId: body.item_id },
     select: { id: true, userId: true },
   });
@@ -109,7 +112,7 @@ export async function firstDelivery(
   { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
 ): Promise<boolean> {
   const bodyHash = createHash("sha256").update(rawBody).digest("hex");
-  const { count } = await client.plaidWebhookEvent.createMany({
+  const { count } = await systemDb(WHY, client).plaidWebhookEvent.createMany({
     data: [
       {
         bodyHash,
@@ -120,7 +123,7 @@ export async function firstDelivery(
     ],
     skipDuplicates: true,
   });
-  await client.plaidWebhookEvent.deleteMany({
+  await systemDb(WHY, client).plaidWebhookEvent.deleteMany({
     where: { receivedAt: { lt: new Date(now.getTime() - WEBHOOK_EVENT_DAYS * 86_400_000) } },
   });
   return count === 1;
@@ -138,7 +141,7 @@ export async function syncFromWebhook(
   }: { client?: PrismaClient; now?: Date; sync?: (itemId: string) => Promise<unknown> } = {},
 ): Promise<boolean> {
   const stale = new Date(now.getTime() - SYNC_LOCK_MINUTES * 60_000);
-  const { count } = await client.plaidItem.updateMany({
+  const { count } = await systemDb(WHY, client).plaidItem.updateMany({
     where: { id: itemId, OR: [{ syncingSince: null }, { syncingSince: { lt: stale } }] },
     data: { syncingSince: now },
   });
@@ -146,7 +149,10 @@ export async function syncFromWebhook(
   try {
     await sync(itemId);
   } finally {
-    await client.plaidItem.updateMany({ where: { id: itemId }, data: { syncingSince: null } });
+    await systemDb(WHY, client).plaidItem.updateMany({
+      where: { id: itemId },
+      data: { syncingSince: null },
+    });
   }
   return true;
 }

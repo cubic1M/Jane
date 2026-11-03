@@ -4,6 +4,9 @@ import { db as defaultClient } from "@/lib/db";
 import type { AgentBar } from "@/planning/trading-agent/types";
 import { fetchAgentBars, sourceFor } from "./bars";
 import { sampleAgentBars } from "./sample-bars";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Market data is shared, no one's own";
 
 // Where the live agent's bars come from (src/lib/trading-agent/agent.ts), cached in market_bars so
 // a catch-up asks the source only for the part of the range it hasn't kept (a rerun is free). Real
@@ -37,7 +40,7 @@ export function liveFeed(
     async bars(ticker, from, to, interval) {
       const source = sourceFor(ticker, env);
       const where = { source, ticker, interval };
-      const kept = await client.marketBarRange.findUnique({
+      const kept = await systemDb(WHY, client).marketBarRange.findUnique({
         where: { source_ticker_interval: where },
       });
       const ranges: [string, string][] = [];
@@ -52,7 +55,7 @@ export function liveFeed(
         const last = got.at(-1)?.t;
         if (last && (!newest || last > newest)) newest = last;
         if (got.length > 0)
-          await client.marketBar.createMany({
+          await systemDb(WHY, client).marketBar.createMany({
             data: got.map((x) => ({
               ...where,
               t: new Date(x.t),
@@ -70,13 +73,13 @@ export function liveFeed(
         // Kept only to the newest bar received: a bar the source publishes a moment late is asked
         // for again next time.
         const toAt = new Date(newest ?? from);
-        await client.marketBarRange.upsert({
+        await systemDb(WHY, client).marketBarRange.upsert({
           where: { source_ticker_interval: where },
           create: { ...where, fromAt, toAt },
           update: { fromAt, toAt },
         });
       }
-      const rows = await client.marketBar.findMany({
+      const rows = await systemDb(WHY, client).marketBar.findMany({
         where: { ...where, t: { gte: new Date(from), lte: new Date(to) } },
         orderBy: { t: "asc" },
         select: { t: true, o: true, h: true, l: true, c: true, v: true },

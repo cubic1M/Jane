@@ -77,6 +77,12 @@ export function launchChecks(env: Env, connections?: BankConnections): Check[] {
     ),
     check("Database for migrations", isSet(env.DIRECT_URL), "DIRECT_URL is set"),
     check(
+      "Deny by default",
+      env.RLS_REQUIRED === "1",
+      "RLS_REQUIRED=1, with DATABASE_URL logging in as jane_app (docs/security/rls.md)",
+      false,
+    ),
+    check(
       "Auth secret",
       (env.AUTH_SECRET ?? "").length >= 32,
       "AUTH_SECRET is at least 32 characters",

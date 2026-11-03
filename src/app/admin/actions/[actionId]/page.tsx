@@ -18,6 +18,7 @@ import { savingsPhrase } from "@/lib/savings-text";
 import { describePlanOptions } from "@/lib/plan-options";
 import { AgentTimeline } from "@/components/agent-timeline";
 import { LoadingBar } from "@/components/loading-bar";
+import { systemDb } from "@/lib/system-db";
 
 async function ActionDetail({
   params,
@@ -36,7 +37,9 @@ async function ActionDetail({
   const playbook = PLAYBOOKS[action.type];
   const [team, replies] = await Promise.all([
     teamMembers(),
-    db.savedReply.findMany({
+    systemDb(
+      "Admin page: works across people, behind ADMIN_EMAILS and two-factor",
+    ).savedReply.findMany({
       select: { id: true, title: true, body: true },
       orderBy: { title: "asc" },
     }),
@@ -44,7 +47,9 @@ async function ActionDetail({
   // Older cards were saved before partners had their own field.
   const partnerKey = (card as Partial<DecisionCard>).referralPartner?.key ?? null;
   const partner = partnerKey
-    ? await db.referralPartner.findUnique({
+    ? await systemDb(
+        "Admin page: works across people, behind ADMIN_EMAILS and two-factor",
+      ).referralPartner.findUnique({
         where: { key: partnerKey },
         select: { name: true, referralUrl: true, active: true, revenuePerConversionCents: true },
       })

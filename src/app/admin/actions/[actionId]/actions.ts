@@ -8,6 +8,9 @@ import { db } from "@/lib/db";
 import { draftMessage, type Draft } from "@/lib/drafts";
 import { requireAdmin } from "@/lib/session";
 import { meteredClaude } from "@/lib/claude-budget";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Admin page: works across people, behind ADMIN_EMAILS and two-factor";
 
 export type FormState = { ok: boolean; message: string } | null;
 
@@ -55,7 +58,7 @@ export async function draftForAction(
   formData: FormData,
 ): Promise<DraftState> {
   const admin = await requireAdmin();
-  const action = await db.action.findUnique({
+  const action = await systemDb(WHY).action.findUnique({
     where: { id: String(formData.get("actionId") ?? "") },
     select: {
       id: true,
@@ -88,7 +91,7 @@ export async function recordConversion(
   formData: FormData,
 ): Promise<ConversionState> {
   const admin = await requireAdmin();
-  const action = await db.action.findUnique({
+  const action = await systemDb(WHY).action.findUnique({
     where: { id: String(formData.get("actionId") ?? "") },
     select: { id: true, userId: true, decision: { select: { cardSnapshot: true } } },
   });
@@ -97,13 +100,16 @@ export async function recordConversion(
   if (!action || typeof key !== "string") {
     return { ok: false, message: "This action didn't use a referral partner." };
   }
-  const partner = await db.referralPartner.findUnique({ where: { key }, select: { id: true } });
+  const partner = await systemDb(WHY).referralPartner.findUnique({
+    where: { key },
+    select: { id: true },
+  });
   if (!partner) return { ok: false, message: "That partner no longer exists." };
   const dollars = Number(String(formData.get("amount") ?? "").replace(/[$,]/g, ""));
   if (!Number.isFinite(dollars) || dollars <= 0) {
     return { ok: false, message: "Enter the amount the partner paid, like 40." };
   }
-  const conversion = await db.referralConversion.create({
+  const conversion = await systemDb(WHY).referralConversion.create({
     data: {
       partnerId: partner.id,
       userId: action.userId,

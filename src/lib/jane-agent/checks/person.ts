@@ -8,6 +8,8 @@ import { runAutopilot } from "@/lib/practice/autopilot";
 import { startPractice } from "@/lib/practice/portfolio";
 import { runPracticeDay } from "@/lib/practice/scan";
 import { DAY_MS } from "@/lib/dates";
+import { scopedFor } from "@/lib/db-scoped";
+import { systemDb } from "@/lib/system-db";
 
 // The person Jane's answer checks talk to (spec step 87): a new account with the demo bank
 // linked and synced, so every run asks over the same kind of data. Never a real person;
@@ -33,7 +35,10 @@ export async function createCheckPerson({
   // One of the sample lives (src/config/people.ts); the original demo bank without it.
   person?: PersonId;
 }): Promise<string> {
-  const user = await client.user.create({
+  const user = await systemDb(
+    "Answer checks make and remove their own throwaway person",
+    client,
+  ).user.create({
     data: { email: `answer-checks-${crypto.randomUUID()}@example.com` },
   });
   const { itemId } = await linkDemoBank(user.id, { client, now, person });
@@ -47,7 +52,10 @@ export async function createCheckPerson({
   // Spec step 297: on the demo bank, a practice portfolio at that profile's level (Medium) with
   // weeks of trades to talk about. The first sync starts it by itself for a demo person (Phase
   // AW, src/lib/practice/demo-start.ts); this only fills in if that didn't. Practice money only.
-  if (!person && !(await client.practicePortfolio.findFirst({ where: { userId: user.id } })))
+  if (
+    !person &&
+    !(await scopedFor(user.id, client).practicePortfolios.findFirst({ where: { userId: user.id } }))
+  )
     await seedPractice(user.id, client, now);
   return user.id;
 }
@@ -62,5 +70,8 @@ async function seedPractice(userId: string, client: PrismaClient, now: Date) {
 }
 
 export async function deleteCheckPerson(userId: string, { client }: { client: PrismaClient }) {
-  await client.user.deleteMany({ where: { id: userId, email: { startsWith: "answer-checks-" } } });
+  await systemDb(
+    "Answer checks make and remove their own throwaway person",
+    client,
+  ).user.deleteMany({ where: { id: userId, email: { startsWith: "answer-checks-" } } });
 }

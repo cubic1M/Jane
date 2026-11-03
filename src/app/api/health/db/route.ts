@@ -1,6 +1,6 @@
 import { connection } from "next/server";
-import { db } from "@/lib/db";
 import { log } from "@/lib/log";
+import { systemDb } from "@/lib/system-db";
 
 // The uptime check's database probe (.github/workflows/uptime.yml): whether the database answers
 // a trivial query within a few seconds. It says ok or not, nothing more: no error text, no
@@ -13,7 +13,8 @@ export async function GET() {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     await Promise.race([
-      db.$queryRaw`SELECT 1`,
+      // Through the door the app's other queries use, so it fails if they would.
+      systemDb("Health probe: SELECT 1 touches no one's data").$queryRaw`SELECT 1`,
       new Promise((_, reject) => {
         timer = setTimeout(() => reject(new Error("timeout")), TIMEOUT_MS);
       }),

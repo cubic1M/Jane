@@ -11,6 +11,7 @@ import { db as defaultClient } from "@/lib/db";
 import { CHAT_TOOLS } from "@/lib/jane-agent/claude-tools";
 import { worthOnce } from "@/planning/suggestion-rank";
 import { type Answered, bandsOf, offDetectors } from "@/planning/calibration";
+import { systemDb } from "@/lib/system-db";
 
 // The reach scoreboard (spec step 258): which capabilities fired for whom, the dollars shown,
 // the yes rate, the wrong suggestions and the capabilities that never reach anyone. The eight
@@ -69,7 +70,7 @@ export async function reachReport({ client = defaultClient }: { client?: PrismaC
       reached.set(s.capability, [...new Set([...(reached.get(s.capability) ?? []), r.person.id])]);
   }
 
-  const rows = await client.suggestion.findMany({
+  const rows = await systemDb("Founder metrics count across people", client).suggestion.findMany({
     where: { selectedOn: { not: null } },
     select: {
       userId: true,

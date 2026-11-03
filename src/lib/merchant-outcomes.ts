@@ -6,6 +6,9 @@ import {
 } from "@/data-sources/merchant-directory";
 import type { ActionType, PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
+import { systemDb, systemTransaction } from "@/lib/system-db";
+
+const WHY = "Merchant outcomes are counted across people";
 
 // How actions at each merchant tend to go: finished cases, how many succeeded, and the
 // median minutes the team spent. Aggregated by the daily job from finished actions into
@@ -81,7 +84,7 @@ export async function refreshMerchantOutcomes({
   client = defaultClient,
 }: { client?: PrismaClient } = {}): Promise<{ merchants: number }> {
   const [finished, directory] = await Promise.all([
-    client.action.findMany({
+    systemDb(WHY, client).action.findMany({
       where: { status: { in: ["done", "failed"] }, type: { in: [...OUTCOME_ACTION_TYPES] } },
       select: {
         type: true,
@@ -90,7 +93,9 @@ export async function refreshMerchantOutcomes({
         decision: { select: { finding: { select: { evidence: true } } } },
       },
     }),
-    client.merchant.findMany({ select: { key: true, name: true, aliases: true, category: true } }),
+    systemDb(WHY, client).merchant.findMany({
+      select: { key: true, name: true, aliases: true, category: true },
+    }),
   ]);
   const outcomes = computeOutcomes(
     finished.map((a) => {
@@ -104,10 +109,14 @@ export async function refreshMerchantOutcomes({
     }),
     directory,
   );
-  await client.$transaction([
-    client.merchantOutcome.deleteMany({}),
-    client.merchantOutcome.createMany({ data: outcomes }),
-  ]);
+  await systemTransaction(
+    "Merchant outcomes are counted across people",
+    async (tx) => {
+      await tx.merchantOutcome.deleteMany({});
+      await tx.merchantOutcome.createMany({ data: outcomes });
+    },
+    client,
+  );
   return { merchants: new Set(outcomes.map((o) => o.merchantKey)).size };
 }
 
@@ -119,7 +128,7 @@ export async function outcomeAt(
   actionType: ActionType,
   { client = defaultClient }: { client?: PrismaClient } = {},
 ): Promise<Outcome | null> {
-  const row = await client.merchantOutcome.findUnique({
+  const row = await systemDb(WHY, client).merchantOutcome.findUnique({
     where: { merchantKey_actionType: { merchantKey, actionType } },
     select: {
       merchantKey: true,

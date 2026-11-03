@@ -13,6 +13,7 @@ import { formatCents } from "@/lib/money";
 import { handOff, loadAction, merchantOf, note, setStatus, type LoadedAction } from "./run";
 import { isoDay } from "@/lib/dates";
 import { ownedBy, type OnlyPeople } from "@/lib/only-people";
+import { systemDb } from "@/lib/system-db";
 
 // Switching to the option the person picked (spec steps 76–77). Jane never signs anyone
 // up or moves money: the person signs up with the link, and Jane watches the account to
@@ -195,7 +196,10 @@ export async function confirmSwitches({
 }> {
   // A system job across users (or one, after their sync): ids only, and everything after
   // is scoped to the person.
-  const due = await client.action.findMany({
+  const due = await systemDb(
+    "The agent's cron and reply links: finds actions across people, nobody is signed in",
+    client,
+  ).action.findMany({
     where: {
       agentState: "switching",
       status: { in: ["in_progress", "waiting_on_user"] },

@@ -13,6 +13,9 @@ import { isOverdue } from "@/lib/business-days";
 import { db as defaultClient } from "@/lib/db";
 import { log } from "@/lib/log";
 import { offerFor } from "@/lib/membership/service";
+import { systemDb, systemTransaction } from "@/lib/system-db";
+
+const WHY = "Concierge: the team's queue works across people";
 
 // The team's side of actions. Admin pages work across users, so these use the raw
 // client; every caller must have passed requireAdmin() first, and every read of user
@@ -94,7 +97,7 @@ export async function changeActionStatus(
   change: StatusChange,
   { client = defaultClient, now = new Date(), notify = sendStatusEmail }: Options = {},
 ): Promise<void> {
-  const action = await client.action.findUnique({
+  const action = await systemDb(WHY, client).action.findUnique({
     where: { id: actionId },
     select: {
       id: true,
@@ -113,25 +116,30 @@ export async function changeActionStatus(
 
   const moved = change.status !== action.status;
   const closing = CLOSED.includes(change.status);
-  await client.$transaction([
-    client.action.update({
-      where: { id: action.id },
-      data: {
-        status: change.status,
-        assignee: change.assignee,
-        notes: change.notes,
-        userTodo: change.status === "waiting_on_user" ? change.userTodo : null,
-        failureReason: change.status === "failed" ? change.failureReason : null,
-        minutesSpent: closing ? change.minutesSpent : null,
-        startedAt: action.startedAt ?? (change.status !== "queued" ? now : null),
-        completedAt: closing ? now : null,
-      },
-    }),
-    client.finding.updateMany({
-      where: { id: action.decision.findingId, userId: action.userId },
-      data: { status: FINDING_STATUS[change.status] },
-    }),
-  ]);
+  const why = "Concierge: the team's queue works across people";
+  await systemTransaction(
+    why,
+    async (tx) => {
+      await tx.action.update({
+        where: { id: action.id },
+        data: {
+          status: change.status,
+          assignee: change.assignee,
+          notes: change.notes,
+          userTodo: change.status === "waiting_on_user" ? change.userTodo : null,
+          failureReason: change.status === "failed" ? change.failureReason : null,
+          minutesSpent: closing ? change.minutesSpent : null,
+          startedAt: action.startedAt ?? (change.status !== "queued" ? now : null),
+          completedAt: closing ? now : null,
+        },
+      });
+      await tx.finding.updateMany({
+        where: { id: action.decision.findingId, userId: action.userId },
+        data: { status: FINDING_STATUS[change.status] },
+      });
+    },
+    client,
+  );
 
   await logAudit(
     { type: "admin", id: admin.id },
@@ -186,7 +194,7 @@ export type QueueFilter = {
 
 // The team's members: the admins, by email. Only they can be assigned actions.
 export async function teamMembers({ client = defaultClient }: Pick<Options, "client"> = {}) {
-  const admins = await client.user.findMany({
+  const admins = await systemDb("Concierge: finds the team's admins", client).user.findMany({
     where: { role: "admin", deletedAt: null },
     select: { email: true },
     orderBy: { email: "asc" },
@@ -200,7 +208,7 @@ export async function loadWorkload({
   client = defaultClient,
   now = new Date(),
 }: Pick<Options, "client" | "now"> = {}): Promise<WorkloadRow[]> {
-  const open = await client.action.findMany({
+  const open = await systemDb(WHY, client).action.findMany({
     where: {
       userId: NOT_TRIAL,
       status: { in: [...OPEN_ACTION_STATUSES] },
@@ -239,7 +247,7 @@ export async function listQueue(
   filter: QueueFilter,
   { client = defaultClient }: Pick<Options, "client"> = {},
 ) {
-  const actions = await client.action.findMany({
+  const actions = await systemDb(WHY, client).action.findMany({
     where: {
       userId: NOT_TRIAL,
       ...(filter.type ? { type: filter.type } : {}),
@@ -282,7 +290,7 @@ async function adminIdsByEmail(
 ): Promise<Map<string, string>> {
   const wanted = emails.filter((e): e is string => !!e && e !== "unassigned");
   if (wanted.length === 0) return new Map();
-  const admins = await client.user.findMany({
+  const admins = await systemDb("Concierge: finds the team's admins", client).user.findMany({
     where: { role: "admin", email: { in: wanted } },
     select: { id: true, email: true },
   });
@@ -333,7 +341,7 @@ export async function getActionForAdmin(
   actionId: string,
   { client = defaultClient }: Pick<Options, "client"> = {},
 ) {
-  const action = await client.action.findUnique({
+  const action = await systemDb(WHY, client).action.findUnique({
     where: { id: actionId },
     include: {
       user: { select: { email: true } },

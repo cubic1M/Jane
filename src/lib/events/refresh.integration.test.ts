@@ -209,7 +209,7 @@ describe.runIf(url)("the shared events refresh", () => {
   });
 
   it("never fails the page: an error comes back as nothing", async () => {
-    const broken = { ...client, $executeRaw: () => Promise.reject(new Error("down")) };
+    const broken = { $executeRaw: () => Promise.reject(new Error("down")) };
     expect(
       await refreshEventsIfStale({ client: broken as unknown as PrismaClient, now: NOW }),
     ).toBeNull();

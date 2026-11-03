@@ -9,9 +9,14 @@ import { heartbeat } from "@/lib/heartbeat";
 import { log } from "@/lib/log";
 import { plaidEnvironment } from "@/lib/plaid/client";
 import { bankConnectionsLine, itemSlotUse } from "@/lib/plaid/item-count";
-import { rlsCoverage, rlsSwitchWorks } from "@/lib/rls-coverage";
+import { loginCheck, rlsCoverage, rlsSwitchWorks, systemSwitchWorks } from "@/lib/rls-coverage";
 import { scrub } from "@/lib/scrub";
 import { reportToSentry } from "@/lib/sentry";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Health checks read across people and write the system's own tables";
+
+const WHY_COVERAGE = "Row-level security's own check: the catalog, and the rule's plan";
 
 // Knowing when something quietly stops: every scheduled run is recorded, /admin/health
 // shows the latest of each, and a daily job that hasn't succeeded in JOB_STALE_HOURS is
@@ -34,14 +39,14 @@ export async function recordRun<T>(
     now = () => new Date(),
   }: { client?: PrismaClient; now?: () => Date } = {},
 ): Promise<T> {
-  const started = await client.cronRun.create({
+  const started = await systemDb(WHY, client).cronRun.create({
     data: { name, startedAt: now() },
     select: { id: true },
   });
   await heartbeat(name, "start");
   try {
     const result = await run();
-    await client.cronRun.update({
+    await systemDb(WHY, client).cronRun.update({
       where: { id: started.id },
       data: {
         finishedAt: now(),
@@ -50,11 +55,11 @@ export async function recordRun<T>(
       },
     });
     // The job is back: a later outage gets its own email.
-    await client.healthNotice.deleteMany({ where: { key: `missed:${name}` } });
+    await systemDb(WHY, client).healthNotice.deleteMany({ where: { key: `missed:${name}` } });
     await heartbeat(name, "success");
     return result;
   } catch (error) {
-    await client.cronRun.update({
+    await systemDb(WHY, client).cronRun.update({
       where: { id: started.id },
       data: { finishedAt: now(), ok: false, error: scrub(String(error)).slice(0, ERROR_LENGTH) },
     });
@@ -80,17 +85,17 @@ export async function jobHealth({
   return Promise.all(
     DAILY_JOBS.map(async (name) => {
       const [last, lastSuccess, first] = await Promise.all([
-        client.cronRun.findFirst({
+        systemDb(WHY, client).cronRun.findFirst({
           where: { name },
           orderBy: { startedAt: "desc" },
           select: { startedAt: true, ok: true },
         }),
-        client.cronRun.findFirst({
+        systemDb(WHY, client).cronRun.findFirst({
           where: { name, ok: true },
           orderBy: { finishedAt: "desc" },
           select: { finishedAt: true },
         }),
-        client.cronRun.findFirst({
+        systemDb(WHY, client).cronRun.findFirst({
           where: { name },
           orderBy: { startedAt: "asc" },
           select: { startedAt: true },
@@ -128,21 +133,26 @@ export async function reportRlsGaps({
   now = new Date(),
   send = sendEmail,
 }: Options = {}): Promise<boolean> {
-  const coverage = await rlsCoverage({ client });
-  if (coverage.ok) {
-    await client.healthNotice.deleteMany({ where: { key: RLS_NOTICE } });
+  const coverage = await rlsCoverage({ client: systemDb(WHY_COVERAGE, client) });
+  // Once the deny-by-default login is meant to be in use (RLS_REQUIRED=1), going back is a gap too.
+  const login = process.env.RLS_REQUIRED === "1" ? await loginCheck({ client }) : null;
+  const loginGap = login !== null && !login.denied;
+  if (coverage.ok && !loginGap) {
+    await systemDb(WHY, client).healthNotice.deleteMany({ where: { key: RLS_NOTICE } });
     return false;
   }
-  const { count } = await client.healthNotice.createMany({
+  const { count } = await systemDb(WHY, client).healthNotice.createMany({
     data: [{ key: RLS_NOTICE, reportedAt: now }],
     skipDuplicates: true,
   });
   if (count === 0) return false;
-  const what = !coverage.role
-    ? "the database has no jane_rls role"
-    : coverage.tables.length === 0
-      ? "no user-owned tables were found"
-      : `${coverage.missing.length} of ${coverage.tables.length} user-owned tables aren't covered: ${coverage.missing.slice(0, 20).join(", ")}${coverage.missing.length > 20 ? ", ..." : ""}`;
+  const what = coverage.ok
+    ? `this server logs in as ${login?.login}, which can use tables by itself`
+    : !coverage.role
+      ? "the database has no jane_rls role"
+      : coverage.tables.length === 0
+        ? "no user-owned tables were found"
+        : `${coverage.missing.length} of ${coverage.tables.length} user-owned tables aren't covered: ${coverage.missing.slice(0, 20).join(", ")}${coverage.missing.length > 20 ? ", ..." : ""}`;
   const to = teamEmails();
   try {
     const message = {
@@ -152,7 +162,7 @@ export async function reportRlsGaps({
     };
     await Promise.all(to.map((address) => send({ ...message, to: address })));
   } catch (error) {
-    await client.healthNotice.deleteMany({ where: { key: RLS_NOTICE } });
+    await systemDb(WHY, client).healthNotice.deleteMany({ where: { key: RLS_NOTICE } });
     log.error("Row-level security email failed", { error: String(error) });
     return false;
   }
@@ -171,10 +181,10 @@ export async function reportPlaidSlots({
   if (plaidEnvironment() !== "production") return false;
   const use = await itemSlotUse({ client });
   if (use.used < use.warnAt) {
-    await client.healthNotice.deleteMany({ where: { key: PLAID_SLOTS_NOTICE } });
+    await systemDb(WHY, client).healthNotice.deleteMany({ where: { key: PLAID_SLOTS_NOTICE } });
     return false;
   }
-  const { count } = await client.healthNotice.createMany({
+  const { count } = await systemDb(WHY, client).healthNotice.createMany({
     data: [{ key: PLAID_SLOTS_NOTICE, reportedAt: now }],
     skipDuplicates: true,
   });
@@ -188,7 +198,7 @@ export async function reportPlaidSlots({
     };
     await Promise.all(teamEmails().map((address) => send({ ...message, to: address })));
   } catch (error) {
-    await client.healthNotice.deleteMany({ where: { key: PLAID_SLOTS_NOTICE } });
+    await systemDb(WHY, client).healthNotice.deleteMany({ where: { key: PLAID_SLOTS_NOTICE } });
     log.error("Plaid connections email failed", { error: String(error) });
     return false;
   }
@@ -219,7 +229,7 @@ export async function reportMissedJobs({
   for (const job of missed) {
     const key = `missed:${job.name}`;
     // Claims the report, so two jobs checking at once send one email.
-    const { count } = await client.healthNotice.createMany({
+    const { count } = await systemDb(WHY, client).healthNotice.createMany({
       data: [{ key, reportedAt: now }],
       skipDuplicates: true,
     });
@@ -237,7 +247,7 @@ export async function reportMissedJobs({
         await Promise.all(to.map((address) => send({ ...message, to: address })));
       } catch (error) {
         // Unclaim, so the next check tries again.
-        await client.healthNotice.deleteMany({ where: { key } });
+        await systemDb(WHY, client).healthNotice.deleteMany({ where: { key } });
         log.error("Health email failed", { job: job.name, error: String(error) });
         continue;
       }
@@ -253,19 +263,22 @@ export async function healthReport(
   { client = defaultClient, now = new Date() }: Options = {},
 ) {
   const since = new Date(now.getTime() - HEALTH_ERROR_HOURS * HOUR);
-  const [jobs, items, lastSync, jobCounts, errors, coverage, switchWorks] = await Promise.all([
-    jobHealth({ client, now }),
-    client.plaidItem.groupBy({ by: ["status"], _count: { _all: true } }),
-    client.plaidItem.findFirst({
-      where: { lastSyncedAt: { not: null } },
-      orderBy: { lastSyncedAt: "desc" },
-      select: { lastSyncedAt: true },
-    }),
-    client.job.groupBy({ by: ["status"], _count: { _all: true } }),
-    client.errorEvent.count({ where: { createdAt: { gte: since } } }),
-    rlsCoverage({ client }),
-    rlsSwitchWorks(admin.id, { client }).catch(() => false),
-  ]);
+  const [jobs, items, lastSync, jobCounts, errors, coverage, switchWorks, systemSwitch, login] =
+    await Promise.all([
+      jobHealth({ client, now }),
+      systemDb(WHY, client).plaidItem.groupBy({ by: ["status"], _count: { _all: true } }),
+      systemDb(WHY, client).plaidItem.findFirst({
+        where: { lastSyncedAt: { not: null } },
+        orderBy: { lastSyncedAt: "desc" },
+        select: { lastSyncedAt: true },
+      }),
+      systemDb(WHY, client).job.groupBy({ by: ["status"], _count: { _all: true } }),
+      systemDb(WHY, client).errorEvent.count({ where: { createdAt: { gte: since } } }),
+      rlsCoverage({ client: systemDb(WHY_COVERAGE, client) }),
+      rlsSwitchWorks(admin.id, { client }).catch(() => false),
+      systemSwitchWorks({ client }).catch(() => false),
+      loginCheck({ client }),
+    ]);
   await logAudit({ type: "admin", id: admin.id }, "admin_viewed_health", null, {});
   return {
     jobs,
@@ -275,6 +288,6 @@ export async function healthReport(
     },
     backgroundJobs: Object.fromEntries(jobCounts.map((j) => [j.status, j._count._all])),
     errorsLastDay: errors,
-    rls: { ...coverage, switchWorks },
+    rls: { ...coverage, switchWorks, systemSwitch, login },
   };
 }

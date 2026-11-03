@@ -38,6 +38,9 @@ import { mixWeights, type PaperOrder } from "@/planning/paper";
 import { feedEvents, headlineEvents } from "./feeds";
 import { fetchCoverage, fetchIntraday, type Fetcher } from "./gdelt";
 import { toEvent } from "./rows";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Market data is shared, no one's own";
 
 // The events overlay, live (founder, 2026-10-26). Once a day after the close (Vercel Cron), the
 // events job reads GDELT's coverage, the Fed's, BLS's and EIA's feeds, the stored headlines and
@@ -121,7 +124,7 @@ export async function collectEvents({
   const feeds = await feedEvents({ fetcher });
   failed.push(...feeds.failed);
 
-  const headlines = await client.marketNews.findMany({
+  const headlines = await systemDb(WHY, client).marketNews.findMany({
     where: { kind: "headline", date: { gte: dateOf(fresh) } },
     select: { date: true, title: true, url: true },
   });
@@ -145,14 +148,14 @@ export async function collectEvents({
     (e) => e.date >= kept30 && e.knownAt <= now.toISOString(),
   );
   const stored = (
-    await client.marketEvent.findMany({
+    await systemDb(WHY, client).marketEvent.findMany({
       where: { date: { gte: dateOf(daysBefore(today, EVENT_STORE_DAYS + 30)) } },
     })
   ).map(toEvent);
   const storedKeys = new Set(stored.map((e) => e.key));
   const kept = withCoolOff([...stored, ...found]).filter((e) => !storedKeys.has(e.key));
   if (kept.length > 0)
-    await client.marketEvent.createMany({
+    await systemDb(WHY, client).marketEvent.createMany({
       data: kept.map((e) => ({
         key: e.key,
         type: e.type,
@@ -254,7 +257,7 @@ export async function runEventOverlay(
   // The paper account's own strategies hold stock funds: its overlay reads the stock-fund events
   // (crypto events go to the 24-hour agent on crypto, ./agent-source.ts).
   const events = (
-    await client.marketEvent.findMany({
+    await systemDb(WHY, client).marketEvent.findMany({
       where: {
         knownAt: { lte: now },
         date: { gte: dateOf(daysBefore(dayOf(overlay.switchedAt), EVENT_FRESH_DAYS)) },

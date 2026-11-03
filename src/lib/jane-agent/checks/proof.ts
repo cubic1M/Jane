@@ -13,6 +13,8 @@ import { runJaneAgent } from "../run";
 import { MORE_ROWS } from "./bank-more";
 import { syncItem } from "@/lib/plaid/sync";
 import { startTrial } from "@/lib/trial";
+import { scopedFor } from "@/lib/db-scoped";
+import { systemDb } from "@/lib/system-db";
 
 // Proof on every person (spec step 266): each sample person walked through what Jane brings
 // them and through the chat, as a person would meet it. Their demo bank is linked and
@@ -158,7 +160,7 @@ export async function proveOn(
     // The suggestions lead on the floating cards (the one place they show, #544), and the first
     // chat says once that they're there.
     const cards = (
-      await client.janeMessage.findMany({
+      await scopedFor(userId, client).janeMessages.findMany({
         where: { userId, status: "open", refs: { path: ["suggestion"], string_contains: ":" } },
         select: { body: true },
       })
@@ -199,7 +201,10 @@ export async function proveOn(
       problems,
     };
   } finally {
-    await client.user.deleteMany({ where: { id: userId } });
+    await systemDb(
+      "Answer checks make and remove their own throwaway person",
+      client,
+    ).user.deleteMany({ where: { id: userId } });
   }
 }
 

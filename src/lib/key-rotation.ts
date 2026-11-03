@@ -3,6 +3,9 @@ import { logAudit, type AuditActor } from "@/lib/audit";
 import { BYTES_HEADER_LENGTH, keyIdOf, keyIdOfBytes, rotate, rotateBytes } from "@/lib/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { currentKey, keyring } from "@/lib/keyring";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Key rotation re-encrypts everyone's secrets";
 
 // Key rotation (docs/security/keys.md): moves every encrypted value to the current key, and
 // counts values per key so an old key is retired only once nothing uses it.
@@ -50,7 +53,7 @@ const STORES: Store[] = [
   {
     name: "Bank connections",
     async scan(client, after, take, userIds) {
-      const rows = await client.plaidItem.findMany({
+      const rows = await systemDb(WHY, client).plaidItem.findMany({
         where: { ...afterId(after), ...(userIds && { userId: { in: userIds } }) },
         orderBy: { id: "asc" },
         take,
@@ -59,13 +62,13 @@ const STORES: Store[] = [
       return rows.map((r) => ({ id: r.id, keyId: labelOf(() => keyIdOf(r.accessTokenEncrypted)) }));
     },
     async rotateOne(client, id) {
-      const row = await client.plaidItem.findUnique({
+      const row = await systemDb(WHY, client).plaidItem.findUnique({
         where: { id },
         select: { accessTokenEncrypted: true },
       });
       const next = row && rotate(row.accessTokenEncrypted);
       if (!row || !next) return false;
-      const { count } = await client.plaidItem.updateMany({
+      const { count } = await systemDb(WHY, client).plaidItem.updateMany({
         where: { id, accessTokenEncrypted: row.accessTokenEncrypted },
         data: { accessTokenEncrypted: next },
       });
@@ -75,7 +78,7 @@ const STORES: Store[] = [
   {
     name: "Two-factor secrets",
     async scan(client, after, take, userIds) {
-      const rows = await client.user.findMany({
+      const rows = await systemDb(WHY, client).user.findMany({
         where: {
           id: { ...(after && { gt: after }), ...(userIds && { in: userIds }) },
           mfaSecretEncrypted: { not: null },
@@ -90,13 +93,13 @@ const STORES: Store[] = [
       }));
     },
     async rotateOne(client, id) {
-      const row = await client.user.findUnique({
+      const row = await systemDb(WHY, client).user.findUnique({
         where: { id },
         select: { mfaSecretEncrypted: true },
       });
       const next = row?.mfaSecretEncrypted ? rotate(row.mfaSecretEncrypted) : null;
       if (!row?.mfaSecretEncrypted || !next) return false;
-      const { count } = await client.user.updateMany({
+      const { count } = await systemDb(WHY, client).user.updateMany({
         where: { id, mfaSecretEncrypted: row.mfaSecretEncrypted },
         data: { mfaSecretEncrypted: next },
       });
@@ -107,7 +110,7 @@ const STORES: Store[] = [
     name: "Uploaded files",
     // Only each file's first bytes are read to find its key; files can be megabytes.
     async scan(client, after, take, userIds) {
-      const rows = await client.$queryRaw<{ id: string; head: Uint8Array }[]>`
+      const rows = await systemDb(WHY, client).$queryRaw<{ id: string; head: Uint8Array }[]>`
         SELECT id, substring(encrypted_bytes from 1 for ${BYTES_HEADER_LENGTH}) AS head
         FROM documents
         WHERE ${after ? Prisma.sql`id > ${after}` : Prisma.sql`TRUE`}
@@ -117,13 +120,13 @@ const STORES: Store[] = [
       return rows.map((r) => ({ id: r.id, keyId: labelOf(() => keyIdOfBytes(r.head)) }));
     },
     async rotateOne(client, id) {
-      const row = await client.document.findUnique({
+      const row = await systemDb(WHY, client).document.findUnique({
         where: { id },
         select: { encryptedBytes: true },
       });
       const next = row && rotateBytes(row.encryptedBytes);
       if (!row || !next) return false;
-      const { count } = await client.document.updateMany({
+      const { count } = await systemDb(WHY, client).document.updateMany({
         where: { id, encryptedBytes: { equals: row.encryptedBytes } },
         data: { encryptedBytes: next },
       });

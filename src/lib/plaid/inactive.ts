@@ -7,6 +7,9 @@ import { appBase } from "@/lib/digest/links";
 import { removePlaidItem } from "./remove";
 import { log } from "@/lib/log";
 import { peopleIn, type OnlyPeople } from "@/lib/only-people";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Cron: finds inactive people across everyone";
 
 // Daily: people who haven't used the app for INACTIVE_ITEM_DAYS lose their Plaid
 // connections, with an email REMOVAL_WARNING_DAYS before. Using the app at any point
@@ -60,7 +63,7 @@ export async function runInactiveCleanup({
   remove?: typeof removePlaidItem;
 } & OnlyPeople = {}): Promise<InactiveRun> {
   // A system job across users: reads who has linked banks and when they were last active.
-  const people = await client.user.findMany({
+  const people = await systemDb(WHY, client).user.findMany({
     where: { plaidItems: { some: {} }, ...peopleIn(userIds) },
     select: {
       id: true,
@@ -70,7 +73,7 @@ export async function runInactiveCleanup({
       plaidItems: { select: { id: true } },
     },
   });
-  const last = await client.analyticsEvent.groupBy({
+  const last = await systemDb(WHY, client).analyticsEvent.groupBy({
     by: ["userId"],
     where: { userId: { in: people.map((p) => p.id) }, name: { in: [...ACTIVITY_EVENTS] } },
     _max: { createdAt: true },
@@ -89,13 +92,16 @@ export async function runInactiveCleanup({
     try {
       if (step === "warn") {
         await warn(person.email, new Date(now.getTime() + REMOVAL_WARNING_DAYS * DAY_MS), send);
-        await client.user.update({ where: { id: person.id }, data: { plaidRemovalWarnedAt: now } });
+        await systemDb(WHY, client).user.update({
+          where: { id: person.id },
+          data: { plaidRemovalWarnedAt: now },
+        });
         run.warned += 1;
       } else if (step === "remove") {
         for (const item of person.plaidItems) {
           await remove(person.id, item.id, "inactive", { client, actor: SYSTEM_ACTOR });
         }
-        await client.user.update({
+        await systemDb(WHY, client).user.update({
           where: { id: person.id },
           data: { plaidRemovalWarnedAt: null },
         });

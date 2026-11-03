@@ -18,6 +18,7 @@ describe("takeSnapshots", () => {
       )
       .mockResolvedValueOnce({});
     const client = {
+      $extends: () => client,
       account: {
         findMany: vi.fn(async () =>
           ["a", "b", "c"].map((id) => ({ id, userId: "u", currentBalanceCents: 100 })),
@@ -35,6 +36,7 @@ describe("takeSnapshots", () => {
 
   it("still fails on other errors", async () => {
     const client = {
+      $extends: () => client,
       account: { findMany: vi.fn(async () => [{ id: "a", userId: "u", currentBalanceCents: 1 }]) },
       balanceSnapshot: { upsert: vi.fn().mockRejectedValue(new Error("database down")) },
     } as unknown as PrismaClient;

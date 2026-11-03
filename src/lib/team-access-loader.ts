@@ -3,6 +3,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { SHOWN_EVENTS, teamAccessEntries, type TeamAccessEntry } from "@/lib/team-access";
+import { systemDb } from "@/lib/system-db";
 
 // Who saw my data (spec step 74): when the concierge team or Jane's agent viewed or acted
 // on the person's data, from the audit log. audit_log isn't a user-owned table, so the
@@ -34,7 +35,10 @@ export async function teamAccessFor(
       decision: { select: { cardSnapshot: true, finding: { select: { evidence: true } } } },
     },
   });
-  const rows = await client.auditLog.findMany({
+  const rows = await systemDb(
+    "The audit log is the system's own record: jane_rls can't touch it",
+    client,
+  ).auditLog.findMany({
     where: {
       event: { in: SHOWN_EVENTS },
       actorType: { in: ["admin", "system"] },

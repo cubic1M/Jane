@@ -26,6 +26,7 @@ import { checkGuardrails } from "@/lib/guardrails";
 import { confidenceFor, type ClosedSlice, type EventSlice } from "@/planning/event-overlay";
 import { lastRefresh } from "./refresh";
 import { formatPercentTenths } from "@/lib/percent";
+import { systemDb } from "@/lib/system-db";
 
 // The Events box on the investments page (founder, 2026-10-26): what's happening now, what the
 // overlay would do or did, how sure it is, its track record, and its switch. From what is stored:
@@ -103,7 +104,7 @@ export async function loadEventsView(
     }),
     db.paperEventOverlays.findFirst({}),
     db.paperEventLogs.findMany({ orderBy: { at: "desc" }, take: 12 }),
-    client.marketEvent.findMany({
+    systemDb("Market data is shared, no one's own", client).marketEvent.findMany({
       where: {
         knownAt: { lte: now },
         date: { gte: new Date(now.getTime() - EVENT_STORE_DAYS * DAY_MS) },

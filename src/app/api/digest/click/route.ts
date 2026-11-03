@@ -3,6 +3,7 @@ import { track } from "@/lib/analytics";
 import { db } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { landingPath } from "@/lib/digest/links";
+import { systemDb } from "@/lib/system-db";
 
 const ID_PATTERN = /^[a-z0-9]{1,40}$/i;
 
@@ -16,7 +17,9 @@ export async function GET(request: Request) {
 
   if (ID_PATTERN.test(digestId)) {
     // Finds the digest's owner; the update below is scoped to them.
-    const digest = await db.digest.findUnique({
+    const digest = await systemDb(
+      "An emailed link: the digest's id is the key, nobody is signed in",
+    ).digest.findUnique({
       where: { id: digestId },
       select: { id: true, userId: true },
     });

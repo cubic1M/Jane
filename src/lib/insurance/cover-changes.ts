@@ -18,6 +18,7 @@ import { sizeLife } from "./life";
 import { partnerFor, type InsurancePartner } from "./partner";
 import { listPolicies, type Policy } from "./policies";
 import { DAY_MS as DAY } from "@/lib/dates";
+import { systemDb } from "@/lib/system-db";
 
 // Cover changes with life events (spec step 154). When the person buys a car, moves, has a
 // baby, marries or starts a new job (from step 100's life events, their accounts, or what
@@ -332,7 +333,10 @@ export async function coverChangesAll({
   now = new Date(),
 }: Options = {}): Promise<{ people: number; prepared: number }> {
   // A system job across users: ids only; everything after is scoped to the person.
-  const people = await client.insurancePolicy.findMany({
+  const people = await systemDb(
+    "Cron: finds who to run for, across people",
+    client,
+  ).insurancePolicy.findMany({
     where: { status: "active" },
     select: { userId: true },
     distinct: ["userId"],

@@ -5,6 +5,7 @@ import { logAudit, SYSTEM_ACTOR } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { UNTRUSTED_TEXT_RULE } from "@/lib/untrusted-text";
 import { log } from "@/lib/log";
+import { systemDb } from "@/lib/system-db";
 
 // Finding a company's support email (spec step 64). When the merchant directory has none,
 // Claude searches the company's own website (web search limited to its domain), and an
@@ -62,7 +63,10 @@ export async function findSupportContact(
   { client = defaultClient, claude = anthropic, now = new Date() }: Options = {},
 ): Promise<string | null> {
   if (!llmEnabled()) return null;
-  const merchant = await client.merchant.findUnique({ where: { id: merchantId } });
+  const merchant = await systemDb(
+    "Merchants are shared reference data, no one's own",
+    client,
+  ).merchant.findUnique({ where: { id: merchantId } });
   if (!merchant || merchant.supportEmail || merchant.suggestedSupportEmail) return null;
   const domain = companyDomain([merchant.supportUrl, merchant.cancelUrl]);
   // Without the company's own domain there's nothing to check an address against.
@@ -113,7 +117,7 @@ export async function findSupportContact(
   const candidate = { email: found.email.trim().toLowerCase(), sourceUrl: found.sourceUrl.trim() };
   if (!acceptable(candidate, domain)) return null;
 
-  await client.merchant.update({
+  await systemDb("Merchants are shared reference data, no one's own", client).merchant.update({
     where: { id: merchant.id },
     data: {
       suggestedSupportEmail: candidate.email,

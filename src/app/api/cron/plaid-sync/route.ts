@@ -27,6 +27,7 @@ import { runAutomaticInvestingForAll } from "@/lib/investments/automatic";
 import { forgetRemovedDemoBanks } from "@/lib/evidence/backfill";
 import { removeAllOrphans } from "@/lib/evidence/orphans";
 import { refreshAfterRemoval } from "@/lib/import/background";
+import { systemDb } from "@/lib/system-db";
 
 // Vercel Cron, daily: syncs linked items that haven't synced in STALE_SYNC_HOURS, in case
 // a webhook was missed, then removes items of people inactive for INACTIVE_ITEM_DAYS
@@ -123,7 +124,7 @@ async function dailyWork(startedAt: number) {
 
   const cutoff = new Date(Date.now() - STALE_SYNC_HOURS * 60 * 60 * 1000);
   // A system job across all users: it reads item ids only, and syncItem scopes each one.
-  const items = await db.plaidItem.findMany({
+  const items = await systemDb("Cron: finds every bank connection due a sync").plaidItem.findMany({
     where: {
       status: ITEM_STATUS.active,
       OR: [{ lastSyncedAt: null }, { lastSyncedAt: { lt: cutoff } }],

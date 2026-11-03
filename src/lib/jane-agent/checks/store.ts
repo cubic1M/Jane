@@ -1,12 +1,13 @@
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import type { CheckRun, QuestionResult } from "./run";
+import { systemDb } from "@/lib/system-db";
 
 // Saving Jane's answer-check runs (spec step 87) and comparing one with the last: the
 // score, each question's grade, how quickly Jane starts answering and how many answers the
 // guardrails blocked.
 
 export async function saveRun(run: CheckRun, { client }: { client: PrismaClient }) {
-  return client.answerCheckRun.create({
+  return systemDb("Answer check runs are the system's own record", client).answerCheckRun.create({
     data: {
       mode: run.mode,
       promptVersion: run.promptVersion,
@@ -28,7 +29,10 @@ export async function previousRun(
   mode: CheckRun["mode"],
   before: Date,
 ): Promise<CheckRun | null> {
-  const row = await client.answerCheckRun.findFirst({
+  const row = await systemDb(
+    "Answer check runs are the system's own record",
+    client,
+  ).answerCheckRun.findFirst({
     where: { mode, createdAt: { lt: before } },
     orderBy: { createdAt: "desc" },
     select: { results: true },

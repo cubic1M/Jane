@@ -5,6 +5,9 @@ import { MAX_TEAM_TEXT } from "@/config/concierge";
 import { logAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/session";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Admin page: works across people, behind ADMIN_EMAILS and two-factor";
 
 export type ReplyState = { ok: boolean; message: string } | null;
 
@@ -22,8 +25,12 @@ export async function saveReply(_previous: ReplyState, formData: FormData): Prom
   }
   const id = String(formData.get("id") ?? "");
   const saved = id
-    ? await db.savedReply.update({ where: { id }, data: { title, body }, select: { id: true } })
-    : await db.savedReply.create({ data: { title, body }, select: { id: true } });
+    ? await systemDb(WHY).savedReply.update({
+        where: { id },
+        data: { title, body },
+        select: { id: true },
+      })
+    : await systemDb(WHY).savedReply.create({ data: { title, body }, select: { id: true } });
   await logAudit(
     { type: "admin", id: admin.id },
     "saved_reply_saved",
@@ -40,7 +47,7 @@ export async function saveReply(_previous: ReplyState, formData: FormData): Prom
 export async function deleteReply(formData: FormData): Promise<void> {
   const admin = await requireAdmin();
   const id = String(formData.get("id") ?? "");
-  const { count } = await db.savedReply.deleteMany({ where: { id } });
+  const { count } = await systemDb(WHY).savedReply.deleteMany({ where: { id } });
   if (count > 0) {
     await logAudit(
       { type: "admin", id: admin.id },

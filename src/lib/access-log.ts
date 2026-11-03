@@ -8,6 +8,9 @@ import {
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { describeDevice } from "@/lib/devices";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "The audit log is the system's own record: jane_rls can't touch it";
 
 // Reading the access log (src/config/access-log.ts): a person's own recent activity for
 // /security, and the team's filtered view at /admin/access-log.
@@ -39,7 +42,7 @@ export async function recentActivity(
   userId: string,
   { client = defaultClient }: Options = {},
 ): Promise<Activity[]> {
-  const rows = await client.auditLog.findMany({
+  const rows = await systemDb(WHY, client).auditLog.findMany({
     where: {
       actorId: userId,
       actorType: { in: ["user", "admin"] },
@@ -119,7 +122,7 @@ export async function searchAccessLog(
 ): Promise<{ entries: AccessEntry[]; more: boolean }> {
   let actorId = filters.actor;
   if (actorId?.includes("@")) {
-    const user = await client.user.findUnique({
+    const user = await systemDb(WHY, client).user.findUnique({
       where: { email: actorId.toLowerCase() },
       select: { id: true },
     });
@@ -142,7 +145,7 @@ export async function searchAccessLog(
       ...(filters.outcome ? [{ metadata: { path: ["outcome"], equals: filters.outcome } }] : []),
     ],
   };
-  const rows = await client.auditLog.findMany({
+  const rows = await systemDb(WHY, client).auditLog.findMany({
     where,
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     skip: (filters.page - 1) * ACCESS_LOG_PAGE_SIZE,

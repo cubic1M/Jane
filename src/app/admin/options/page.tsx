@@ -9,6 +9,7 @@ import { markChecked, removeOption } from "./actions";
 import { OptionForm } from "./option-form";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { systemDb } from "@/lib/system-db";
 
 const KIND_LABEL: Record<string, string> = {
   plan: "Plans from other providers",
@@ -22,7 +23,9 @@ async function Options() {
   const now = new Date();
   const today = now.toISOString().slice(0, 10);
   const staleBefore = new Date(now.getTime() - OPTION_STALE_DAYS * 86_400_000);
-  const options = await db.switchOption.findMany({
+  const options = await systemDb(
+    "Admin page: works across people, behind ADMIN_EMAILS and two-factor",
+  ).switchOption.findMany({
     orderBy: [{ kind: "asc" }, { category: "asc" }, { name: "asc" }],
   });
   const needsWork = options.filter(

@@ -9,6 +9,7 @@ vi.unmock("@/generated/prisma/client");
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import { scopedFor } from "./db-scoped";
+import { loginCheck, systemSwitchWorks } from "./rls-coverage";
 import { rlsPool } from "./rls-pg";
 import { systemDb, systemTransaction } from "./system-db";
 
@@ -174,6 +175,14 @@ describe.runIf(ownerUrl).each([
       await after();
       await systemTransaction("test: pool", (tx) => tx.budget.count(), app);
       await after();
+    });
+  });
+
+  describe("what /admin/health reads", () => {
+    it("tells this login from the owner, and the switch works", async () => {
+      expect(await loginCheck({ client: app })).toEqual({ login: "jane_app", denied: true });
+      expect((await loginCheck({ client: owner })).denied).toBe(false);
+      expect(await systemSwitchWorks({ client: app })).toBe(true);
     });
   });
 

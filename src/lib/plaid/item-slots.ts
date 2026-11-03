@@ -14,6 +14,9 @@ import { log } from "@/lib/log";
 import { isTrialUser } from "@/lib/trial-ids";
 import { plaidEnvironment } from "./client";
 import { COUNTER_ID, itemSlotUse } from "./item-count";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "The bank-link counter is the system's own";
 
 // Plaid's Trial plan allows a fixed number of Production Items, ever (docs/setup/plaid-trial.md).
 // A lasting counter says how many are used, since plaid_items rows go when a bank is removed, and
@@ -85,8 +88,11 @@ export async function reserveItemSlot(
   if (count === 0) throw new LinkingClosedError("person");
 
   const limit = plaidItemLimit();
-  await client.plaidItemCounter.createMany({ data: [{ id: COUNTER_ID }], skipDuplicates: true });
-  const won = await client.plaidItemCounter.updateManyAndReturn({
+  await systemDb(WHY, client).plaidItemCounter.createMany({
+    data: [{ id: COUNTER_ID }],
+    skipDuplicates: true,
+  });
+  const won = await systemDb(WHY, client).plaidItemCounter.updateManyAndReturn({
     where: { id: COUNTER_ID, used: { lt: limit } },
     data: { used: { increment: 1 } },
     select: { used: true },
@@ -108,7 +114,7 @@ export async function releaseItemSlot(
   { userId, ordinal }: ItemSlot,
   { client = defaultClient }: Options = {},
 ): Promise<void> {
-  await client.plaidItemCounter.updateMany({
+  await systemDb(WHY, client).plaidItemCounter.updateMany({
     where: { id: COUNTER_ID, used: { gt: 0 } },
     data: { used: { decrement: 1 } },
   });

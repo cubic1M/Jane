@@ -1,6 +1,7 @@
 import { CHAT_UNANSWERED_DAYS } from "@/config/agent-chat";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
+import { systemDb } from "@/lib/system-db";
 
 // Spec step 93: what Jane couldn't answer, by kind, for the team (/admin/chat). From the
 // chat_message_sent events (src/lib/jane-agent/typing.ts), which hold the kind of question
@@ -53,7 +54,10 @@ export async function loadUnanswered({
   client = defaultClient,
   now = new Date(),
 }: { client?: PrismaClient; now?: Date } = {}): Promise<Unanswered> {
-  const events = await client.analyticsEvent.findMany({
+  const events = await systemDb(
+    "Analytics are the system's own record: jane_rls can't touch them",
+    client,
+  ).analyticsEvent.findMany({
     where: {
       name: "chat_message_sent",
       createdAt: { gte: new Date(now.getTime() - CHAT_UNANSWERED_DAYS * 24 * 60 * 60 * 1000) },
