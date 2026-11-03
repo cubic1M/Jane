@@ -47,7 +47,12 @@ import {
 } from "@/planning/tax-income";
 import { defaultTaxYear } from "@/planning/tax-pack";
 import { dayLabel } from "@/lib/day-label";
-import { guessFilingStatus, stateName, type ProfileField } from "@/planning/tax-profile";
+import {
+  guessFilingStatus,
+  payingTogether,
+  stateName,
+  type ProfileField,
+} from "@/planning/tax-profile";
 import { DAY_MS, isoDay as iso } from "@/lib/dates";
 
 // The tax estimate (spec step 120), loaded from the person's own accounts, pay stubs and
@@ -403,7 +408,7 @@ async function loadTaxEstimateFrom(
     ? null
     : guessFilingStatus({
         jointAccounts,
-        payrollNames: paychecks.map((t) => t.description),
+        payrollNames: payingTogether(paychecks),
       });
   const filingStatus: FilingStatus = profile.filingStatus ?? guessed?.status ?? "single";
   if (!profile.filingStatus) {

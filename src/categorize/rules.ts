@@ -486,6 +486,21 @@ const RULES: readonly Rule[] = [
     direction: "out",
   },
 
+  // A flat's deposit and the moving truck come once (debugger 11-03: a $2,100 deposit counted as rent,
+  // so a typical month carried it at full weight).
+  {
+    category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+    keywords: [
+      "SECURITY DEPOSIT",
+      "APTS DEPOSIT",
+      "APARTMENTS DEPOSIT",
+      "RENT DEPOSIT",
+      "UHAUL",
+      "U-HAUL",
+      "PENSKE TRUCK",
+    ],
+    direction: "out",
+  },
   // Rent, even when it goes by Zelle or Venmo (overnight upload QA: "ZELLE TO OAK RIDGE APTS
   // RENT" was a transfer, so a student's biggest bill was missing from spending and bills).
   // Renting a car or clothes is not rent, so those go first.
