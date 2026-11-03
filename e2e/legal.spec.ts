@@ -60,7 +60,12 @@ test("the Privacy Policy says what is shared, kept, deleted, and which cookies",
     "Contact",
   ])
     await expect(main.getByRole("heading", { name: heading, exact: true })).toBeVisible();
-  await expect(main.getByText(/never stored as a file/)).toBeVisible();
+  await expect(
+    main.getByText(/Each file is read once, in memory, and never stored as a file/),
+  ).toBeVisible();
+  await expect(
+    main.getByText(/The file is read once, in memory, and never stored as a file/),
+  ).toBeVisible();
   await expect(main.getByText(/encrypted \(AES-256-GCM\) and never shown or logged/)).toBeVisible();
   await expect(
     main.getByText(/It never receives your password, your bank sign-in or your Plaid connection/),
