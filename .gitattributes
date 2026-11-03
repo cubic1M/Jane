@@ -1,0 +1,2 @@
+# git archive fills in the commit, so a build from it knows what it is (green-deploy.sh).
+src/config/build-commit.ts export-subst

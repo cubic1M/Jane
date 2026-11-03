@@ -63,7 +63,9 @@ export const ACCESS_MAP: Record<string, Access> = {
   "src/app/api/health/db/route.ts": public_(
     "The uptime check for the database: up or not, nothing else.",
   ),
-  "src/app/api/health/route.ts": public_("The uptime check: up or not, nothing else."),
+  "src/app/api/health/route.ts": public_(
+    "The uptime check: up or not, and which commit of this public repo is live.",
+  ),
   "src/app/api/import/status/route.ts": public_(
     "On every page, signed out too: {run: null} without a session, a person's own run with one.",
   ),
