@@ -300,7 +300,11 @@ export function ImportForm({
               transactions. Jane finishes the rest in the background"). */}
           <p className="font-medium">{savedLine(saved)}</p>
           {saved.warnings.map((warning) => (
-            <p key={warning} data-control-warning className="text-neutral-800 dark:text-neutral-200">
+            <p
+              key={warning}
+              data-control-warning
+              className="text-neutral-800 dark:text-neutral-200"
+            >
               {warning}
             </p>
           ))}

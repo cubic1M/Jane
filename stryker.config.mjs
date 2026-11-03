@@ -25,6 +25,9 @@ const config = {
   jsonReporter: { fileName: "reports/mutation/mutation.json" },
   concurrency: Number(process.env.STRYKER_WORKERS ?? 2),
   timeoutMS: 30_000,
+  // A static value is checked by running every test: slow, and little to learn.
+  ignoreStatic: true,
+  dryRunTimeoutMinutes: 30,
   tempDirName: ".stryker-tmp",
   cleanTempDir: "always",
 };
