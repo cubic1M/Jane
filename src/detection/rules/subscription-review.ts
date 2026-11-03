@@ -82,6 +82,14 @@ export function isSubscription(stream: Stream): boolean {
   return isSubscriptionUnless(new Set())(stream);
 }
 
+// Only its one price says so, and nobody has said yes: a question, with no dollars on it. On a
+// third of the bench's statements this was a coin toss (docs/accuracy.md, third held-out set: 42
+// real plans and 32 that weren't, an insurer, a church and a doughnut shop, $16,560 a year of them),
+// and words can't settle it, since the next insurer's line won't say "insurance". Named and
+// categorized ones had no false alarm in 385.
+export const isOnlyAGuess = (stream: Stream, confirmed: ReadonlySet<string>): boolean =>
+  !isKnownSubscription(stream) && !confirmed.has(stream.merchantKey);
+
 // The same, leaving out the merchants Claude said aren't subscriptions.
 export const isSubscriptionUnless =
   (declined: ReadonlySet<string>) =>
@@ -94,6 +102,8 @@ function isKnownSubscription(stream: Stream): boolean {
     !inList(stream.pfcPrimary, NOT_SUBSCRIPTION_PRIMARIES) &&
     (stream.namedPlan === true ||
       inList(stream.pfcDetailed, SUBSCRIPTION_CATEGORIES) ||
+      // Any of its charges: one plan under two spellings can have a plain category on the other.
+      stream.charges.some((c) => inList(c.pfcDetailed, SUBSCRIPTION_CATEGORIES)) ||
       merchantMatches(stream.merchantKey, SUBSCRIPTION_MERCHANTS) ||
       merchantMatches(stream.merchantKey, BILLING_PLATFORM_MERCHANTS) ||
       isSubscriptionBox(stream) ||
@@ -112,7 +122,8 @@ export function isAmbiguousRecurring(stream: Stream): boolean {
 }
 
 // Savings are the full annual cost: what the person keeps if they cancel. The money-found
-// total only counts it once they say yes (COUNT_ONLY_WHEN_APPROVED).
+// total only counts it once they say yes (COUNT_ONLY_WHEN_APPROVED). A guess has no savings until
+// then: the charge is real and its cost is on the card, but it may be nothing they could cancel.
 export const subscriptionReview: Rule = (input, streams) => {
   const confirmed = new Set(input.subscriptionMerchantKeys ?? []);
   const declined = new Set(input.declinedSubscriptionMerchantKeys ?? []);
@@ -139,19 +150,25 @@ export const subscriptionReview: Rule = (input, streams) => {
       ? `${base} on ${card}`
       : `${base} at ${formatCents(stream.lastAmountCents)}`;
   };
-  return found.map((stream) => ({
-    type: "subscription_review",
-    key: stream.key,
-    title: titleOf(stream),
-    annualSavingsCents: stream.annualCostCents,
-    amountCents: stream.annualCostCents,
-    // Known by name or category: its own confidence. Claude said yes: up to medium. Only its
-    // one price says so: low.
-    confidence: isKnownSubscription(stream)
-      ? stream.confidence
-      : confirmed.has(stream.merchantKey)
-        ? lowest(stream.confidence, LLM_SUBSCRIPTION_MAX_CONFIDENCE)
-        : lowest(stream.confidence, FIXED_PRICE_SUBSCRIPTION_MAX_CONFIDENCE),
-    evidence: streamEvidence(stream),
-  }));
+  return found.map((stream) => {
+    const guess = isOnlyAGuess(stream, confirmed);
+    return {
+      type: "subscription_review",
+      key: stream.key,
+      title: guess ? `Is ${stream.merchant} a subscription to cancel?` : titleOf(stream),
+      annualSavingsCents: guess ? null : stream.annualCostCents,
+      amountCents: stream.annualCostCents,
+      // Known by name or category: its own confidence. Claude or the person said yes: up to
+      // medium. Only its one price says so: low.
+      confidence: isKnownSubscription(stream)
+        ? stream.confidence
+        : confirmed.has(stream.merchantKey)
+          ? lowest(stream.confidence, LLM_SUBSCRIPTION_MAX_CONFIDENCE)
+          : lowest(stream.confidence, FIXED_PRICE_SUBSCRIPTION_MAX_CONFIDENCE),
+      evidence: {
+        ...streamEvidence(stream),
+        ...(guess ? { onlyItsPrice: true, merchantKey: stream.merchantKey } : {}),
+      },
+    };
+  });
 };

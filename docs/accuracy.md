@@ -97,7 +97,7 @@ Calibration, tuning set:
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 43 | 56% | 100% |
+| 50–59% | 48 | 57% | 100% |
 | 60–69% | 18 | 65% | 100% |
 | 70–79% | 7 | 74% | 100% |
 | 80–89% | 31 | 86% | 100% |
@@ -122,7 +122,7 @@ Calibration, held-out set:
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 26 | 56% | 100% |
+| 50–59% | 30 | 55% | 100% |
 | 60–69% | 31 | 65% | 100% |
 | 70–79% | 11 | 74% | 100% |
 | 80–89% | 18 | 85% | 100% |
@@ -147,7 +147,7 @@ Calibration, second held-out set:
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 29 | 57% | 100% |
+| 50–59% | 31 | 57% | 100% |
 | 60–69% | 18 | 64% | 100% |
 | 70–79% | 8 | 75% | 100% |
 | 80–89% | 19 | 86% | 100% |
@@ -165,14 +165,14 @@ Third held-out set (40 people, 9384 transactions):
 | card_interest | 100.0% | 100.0% | 0.0% | 5 | 0 | 0 |
 | bills | 99.6% | 99.6% | 2.5% | 273 | 1 | 1 |
 | income | 100.0% | 100.0% | 0.0% | 680 | 0 | 0 |
-| transfers | 100.0% | 99.7% | 0.0% | 768 | 0 | 2 |
+| transfers | 100.0% | 99.9% | 0.0% | 769 | 0 | 1 |
 
 Calibration, third held-out set:
 
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 39 | 55% | 100% |
+| 50–59% | 41 | 55% | 100% |
 | 60–69% | 16 | 66% | 100% |
 | 70–79% | 8 | 73% | 100% |
 | 80–89% | 12 | 85% | 100% |
@@ -344,7 +344,8 @@ Tuning set (20 people, 147 files, 5513 transactions):
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
 | Category right (rules only) | 99.8% (11 left for Claude) |
 | False "Charged twice?" | 0 (0 people) |
-| Findings, $/yr | Jane $28,429, truth $28,429; error on the ones found 0.0% |
+| Findings, $/yr | Jane $28,299, truth $28,429; error on the ones found 0.5% |
+| Asked "a subscription to cancel?", no dollars on it | 0 are, $0; 0 aren't, $0 |
 | Monthly spending, error | 0.0% |
 | Monthly income, error | 0.0% |
 | Net worth today right | 7 of 20 people (off by $53,201 in all) |
@@ -372,10 +373,10 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 15 | 59% | 100% |
-| 60–69% | 32 | 64% | 100% |
-| 70–79% | 5 | 76% | 100% |
-| 80–89% | 2 | 83% | 100% |
+| 50–59% | 6 | 59% | 100% |
+| 60–69% | 31 | 63% | 100% |
+| 70–79% | 9 | 73% | 100% |
+| 80–89% | 8 | 82% | 100% |
 | 90–100% | 0 | – | – |
 
 Second tuning set (20 people, 137 files, 5926 transactions):
@@ -386,7 +387,8 @@ Second tuning set (20 people, 137 files, 5926 transactions):
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
 | Category right (rules only) | 98.7% (78 left for Claude) |
 | False "Charged twice?" | 14 (14 people) |
-| Findings, $/yr | Jane $96,224, truth $94,265; error on the ones found 0.1% |
+| Findings, $/yr | Jane $90,029, truth $94,265; error on the ones found 0.4% |
+| Asked "a subscription to cancel?", no dollars on it | 18 are, $4,454; 2 aren't, $1,536 |
 | Monthly spending, error | 0.3% |
 | Monthly income, error | 0.0% |
 | Net worth today right | 9 of 20 people (off by $135,996 in all) |
@@ -414,10 +416,10 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 20 | 59% | 80% |
-| 60–69% | 43 | 64% | 88% |
-| 70–79% | 7 | 74% | 71% |
-| 80–89% | 4 | 83% | 100% |
+| 50–59% | 4 | 59% | 0% |
+| 60–69% | 47 | 63% | 89% |
+| 70–79% | 12 | 73% | 83% |
+| 80–89% | 11 | 83% | 100% |
 | 90–100% | 0 | – | – |
 
 Held-out set (20 people, 114 files, 5484 transactions):
@@ -426,10 +428,11 @@ Held-out set (20 people, 114 files, 5484 transactions):
 | --- | ---: |
 | Files read | 114 of 114 (111 exactly) |
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
-| Category right (rules only) | 94.3% (256 left for Claude) |
-| False "Charged twice?" | 3 (3 people) |
-| Findings, $/yr | Jane $27,502, truth $28,454; error on the ones found 0.0% |
-| Monthly spending, error | 0.1% |
+| Category right (rules only) | 95.6% (188 left for Claude) |
+| False "Charged twice?" | 1 (1 people) |
+| Findings, $/yr | Jane $22,093, truth $28,454; error on the ones found 0.7% |
+| Asked "a subscription to cancel?", no dollars on it | 34 are, $4,977; 0 aren't, $0 |
+| Monthly spending, error | 0.0% |
 | Monthly income, error | 0.0% |
 | Net worth today right | 11 of 20 people (off by $24,004 in all) |
 | Balances typed at /import: net worth right | 20 of 20 people (idle cash right for 20) |
@@ -445,9 +448,9 @@ Held-out set (20 people, 114 files, 5484 transactions):
 | trial_conversion | 100.0% | 100.0% | 5 | 0 | 0 |
 | bank_fees | 100.0% | 100.0% | 19 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 8 | 0 | 0 |
-| duplicate_charge | 78.6% | 100.0% | 11 | 3 | 0 |
+| duplicate_charge | 91.7% | 100.0% | 11 | 1 | 0 |
 | idle_cash | 100.0% | 100.0% | 8 | 0 | 0 |
-| bills coming up (31 days) | 99.5% | 100.0% | 216 | 1 | 0 |
+| bills coming up (31 days) | 99.1% | 100.0% | 216 | 2 | 0 |
 
 Missed subscriptions Claude would be asked about on a live upload: 0 of 9.
 
@@ -456,10 +459,10 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 18 | 58% | 89% |
-| 60–69% | 35 | 64% | 100% |
-| 70–79% | 6 | 76% | 100% |
-| 80–89% | 5 | 83% | 100% |
+| 50–59% | 5 | 59% | 100% |
+| 60–69% | 33 | 64% | 100% |
+| 70–79% | 9 | 74% | 100% |
+| 80–89% | 15 | 83% | 100% |
 | 90–100% | 0 | – | – |
 
 Second held-out set (20 people, 138 files, 5532 transactions):
@@ -468,10 +471,11 @@ Second held-out set (20 people, 138 files, 5532 transactions):
 | --- | ---: |
 | Files read | 138 of 138 (136 exactly) |
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
-| Category right (rules only) | 91.6% (393 left for Claude) |
-| False "Charged twice?" | 2 (2 people) |
-| Findings, $/yr | Jane $28,268, truth $28,124; error on the ones found 0.0% |
-| Monthly spending, error | 0.1% |
+| Category right (rules only) | 91.6% (392 left for Claude) |
+| False "Charged twice?" | 0 (0 people) |
+| Findings, $/yr | Jane $21,125, truth $28,124; error on the ones found 0.8% |
+| Asked "a subscription to cancel?", no dollars on it | 27 are, $6,718; 0 aren't, $0 |
+| Monthly spending, error | 0.0% |
 | Monthly income, error | 0.0% |
 | Net worth today right | 10 of 20 people (off by $59,230 in all) |
 | Balances typed at /import: net worth right | 20 of 20 people (idle cash right for 20) |
@@ -487,7 +491,7 @@ Second held-out set (20 people, 138 files, 5532 transactions):
 | trial_conversion | 100.0% | 80.0% | 4 | 0 | 1 |
 | bank_fees | 100.0% | 100.0% | 25 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 8 | 0 | 0 |
-| duplicate_charge | 84.6% | 100.0% | 11 | 2 | 0 |
+| duplicate_charge | 100.0% | 100.0% | 11 | 0 | 0 |
 | idle_cash | 100.0% | 87.5% | 7 | 0 | 1 |
 | bills coming up (31 days) | 99.5% | 100.0% | 221 | 1 | 0 |
 
@@ -498,10 +502,10 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 19 | 59% | 100% |
-| 60–69% | 38 | 64% | 95% |
-| 70–79% | 6 | 76% | 100% |
-| 80–89% | 2 | 83% | 100% |
+| 50–59% | 4 | 59% | 100% |
+| 60–69% | 40 | 63% | 100% |
+| 70–79% | 9 | 73% | 100% |
+| 80–89% | 10 | 82% | 100% |
 | 90–100% | 0 | – | – |
 
 Third held-out set (20 people, 148 files, 5695 transactions):
@@ -510,10 +514,11 @@ Third held-out set (20 people, 148 files, 5695 transactions):
 | --- | ---: |
 | Files read | 148 of 148 (143 exactly) |
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
-| Category right (rules only) | 79.8% (1102 left for Claude) |
-| False "Charged twice?" | 4 (4 people) |
-| Findings, $/yr | Jane $49,748, truth $33,026; error on the ones found 0.0% |
-| Monthly spending, error | 0.1% |
+| Category right (rules only) | 83.9% (883 left for Claude) |
+| False "Charged twice?" | 3 (3 people) |
+| Findings, $/yr | Jane $20,178, truth $33,026; error on the ones found 0.3% |
+| Asked "a subscription to cancel?", no dollars on it | 42 are, $12,845; 32 aren't, $16,560 |
+| Monthly spending, error | 0.0% |
 | Monthly income, error | 0.0% |
 | Net worth today right | 7 of 20 people (off by $41,990 in all) |
 | Balances typed at /import: net worth right | 20 of 20 people (idle cash right for 19) |
@@ -529,7 +534,7 @@ Third held-out set (20 people, 148 files, 5695 transactions):
 | trial_conversion | 100.0% | 100.0% | 5 | 0 | 0 |
 | bank_fees | 100.0% | 100.0% | 23 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 8 | 0 | 0 |
-| duplicate_charge | 73.3% | 100.0% | 11 | 4 | 0 |
+| duplicate_charge | 78.6% | 100.0% | 11 | 3 | 0 |
 | idle_cash | 85.7% | 100.0% | 6 | 1 | 0 |
 | bills coming up (31 days) | 100.0% | 100.0% | 221 | 0 | 0 |
 
@@ -540,12 +545,68 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 22 | 58% | 86% |
-| 60–69% | 36 | 64% | 97% |
-| 70–79% | 4 | 76% | 100% |
-| 80–89% | 6 | 83% | 100% |
+| 50–59% | 7 | 59% | 57% |
+| 60–69% | 37 | 63% | 100% |
+| 70–79% | 11 | 74% | 100% |
+| 80–89% | 11 | 84% | 100% |
 | 90–100% | 0 | – | – |
 <!-- csv-scoreboard:end -->
+
+### Why the third held-out set's findings ran 50% high (2026-11-03)
+
+Findings summed to $49,748 a year against a truth of $33,026 ($49,652 on main today, as later rounds moved a few). The whole excess was false alarms, $16,722, and nearly all of it ($16,560, 32 cards) came from one rule: a charge at one price every month, whose name and category can't say what it is, was called a subscription with its full cost as the saving. Named and categorized subscriptions had no false alarm in 385 across all five sets. That rule alone was close to a coin toss on the third set: 42 real plans ($12,845), 32 not (an insurer as "AMICA AUTO PREMIUM", a church, a doughnut shop, a tavern).
+
+Adding those words to `FIXED_PRICE_SUBSCRIPTION_NOT_WORDS` would have raised the score and fixed nothing: an earlier round added "INSURANCE", "CHURCH" and "BAKERY" after the same mistake, and this set was spelled without them. One price every month can't tell a plan from a premium. So it's now a question: "Is Amica Auto Premium a subscription to cancel?", with its cost on the card, no saving, and listed with the bills. A yes (the person's, or Claude's on a live upload) makes it a subscription that counts.
+
+What that does and doesn't change, on the third set, rules only:
+
+| | Before | After |
+| --- | ---: | ---: |
+| Dollars on findings | $49,652 | $20,178 |
+| Truth | $33,026 | $33,026 |
+| Dollars on false alarms | $16,722 | $93 |
+| True plans with no dollars until answered | 0 | 42, $12,845 |
+| subscription_review precision | 76.5% | 76.5% |
+
+- **Precision hasn't moved, and shouldn't be read as fixed.** A question that's wrong is still counted as a false alarm: 32 people's worth of charges are still raised. It says less, not less often.
+- **What Jane says now understates**: $20,178 against $33,026, until the questions are answered. That's the direction to be wrong in.
+- **What a person actually read before** was less than the bench's total: "We found $X" never counted a subscription before a yes, nor a low-confidence finding. The false dollars were on each card, in what the card was ranked by, and in the subscription totals.
+- **On a live upload Claude answers these first**, and how often it's right isn't measured: no paid run was made. The table is the case where Claude is off, out of budget, or a sample person.
+- **This set isn't held out any more**, for this rule or for what the same round changed: I read its false alarms to find this. Category right rose from 79.8% to 83.9% on it because refunds now take their charge's category; that's rows that were left uncategorized on a bench whose rows I've now seen, not a measure of real statements. For planning, real rules-only categorization is still assumed to be no better than about 80%, until the founders' labels exist. Fresh sets belong in the sealed repo (`ready-for-connectors.md`, "Founder only"), reported once.
+
+The score's truth is unchanged: no fixture's rows or truth were edited. The sample bench's checked-in fixtures changed only in merchant keys its generator takes from `normalizeMerchant` ("t-mobile auto pay" is "t-mobile"). Two figures in the baselines were already worse on main than the file said, since #1065 changed a one-off fee's pace without recording it (`dollarError` on every set, `bills.precision` on the first held-out set), so they stay as they were and only the improvements are recorded.
+
+### An outside bench (2026-11-03)
+
+Every bench above was written by the same hands as the rules. [DoDataThings' US bank transaction categories v2](https://huggingface.co/datasets/DoDataThings/us-bank-transaction-categories-v2) wasn't: 68,000 made-up lines, 4,000 for each of 17 categories, in eight bank formats, from a generator that's open source. Its dataset card says MIT, in its metadata and its own section, and says it's synthetic, so it holds no real person's data. That's the author's own statement; there's no separate licence file. Its rows aren't in this repo (`src/accuracy/outside/outside.cli.test.ts` reads a downloaded copy, at commit `3e8d052c`), and the scorer prints scores and no rows, so that nobody tunes the rules on it.
+
+**First score, rules only, the rules as of this PR: 56.8% right, 35.6% left for Claude, 7.7% wrong.** That's once; it won't be reported as a fresh score again.
+
+| Category | Rows | Right | Left for Claude | Wrong |
+| --- | ---: | ---: | ---: | ---: |
+| Education | 4000 | 35.0% | 56.6% | 8.3% |
+| Entertainment | 4000 | 31.4% | 61.0% | 7.7% |
+| Fees | 4000 | 58.1% | 34.6% | 7.2% |
+| Groceries | 4000 | 62.0% | 32.0% | 5.9% |
+| Healthcare | 4000 | 54.9% | 36.5% | 8.6% |
+| Income | 4000 | 50.7% | 29.7% | 19.6% |
+| Insurance | 4000 | 65.3% | 33.7% | 1.0% |
+| Mortgage | 4000 | 62.5% | 36.0% | 1.4% |
+| Personal Care | 4000 | 61.3% | 34.4% | 4.4% |
+| Rent | 4000 | 90.3% | 9.7% | 0.0% |
+| Restaurants | 4000 | 60.2% | 35.9% | 4.0% |
+| Shopping | 4000 | 70.7% | 22.6% | 6.8% |
+| Subscription | 4000 | 38.0% | 44.6% | 17.4% |
+| Transfer | 4000 | 47.0% | 39.0% | 14.0% |
+| Transportation | 4000 | 58.2% | 23.3% | 18.5% |
+| Travel | 4000 | 43.2% | 51.9% | 4.9% |
+| Utilities | 4000 | 76.1% | 23.2% | 0.8% |
+
+How to read it:
+
+- **It's lower than any of Jane's own sets, and that's the point of it.** The third held-out set's first score was 79.6%. A planning figure of "no better than about 80% on real statements" looks generous for rows nobody on this team wrote: on these the rules placed 64% and got 88% of those right.
+- **It isn't a real-world figure.** The classes are equal, where a real statement is mostly a few of them. Its labels are its generator's. Mapping its 17 names to Plaid's is mine and can be wrong, so only the primary is compared, and "Subscription" counts as either kind a plan is filed under. Its lines carry no amount, so rules that weigh one see a nominal $50, and the merchant directory, which runs later, isn't counted.
+- **What's left for Claude isn't wrong.** On a live upload Claude answers those. That isn't measured here; no paid run was made.
 
 ### CSV bench, round by round
 

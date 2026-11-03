@@ -108,8 +108,16 @@ export type Upload = {
 
 const clean = (s: string) => normalizeDescription(s);
 
-export async function runUpload(person: CsvPerson): Promise<Upload> {
-  const files = renderPerson(person);
+// `render` gives the same statements as other files, and `bankCategories: false` reads them as if
+// no bank had a category column (src/accuracy/metamorphic).
+export async function runUpload(
+  person: CsvPerson,
+  {
+    render = renderPerson,
+    bankCategories = true,
+  }: { render?: (person: CsvPerson) => BenchFile[]; bankCategories?: boolean } = {},
+): Promise<Upload> {
+  const files = render(person);
   const failedFiles: string[] = [];
   const rows: Row[] = [];
   // The truth row each description, date and amount on an account is.
@@ -152,7 +160,11 @@ export async function runUpload(person: CsvPerson): Promise<Upload> {
       return true;
     });
     const categorized = await categorizeTransactions(
-      unique.map((t) => ({ ...t, accountRef: account.id })),
+      unique.map((t) => ({
+        ...t,
+        accountRef: account.id,
+        hints: bankCategories ? t.hints : { ...t.hints, bankCategory: undefined },
+      })),
       emptyDb,
       { askClaude: false },
     );
@@ -373,6 +385,8 @@ export const recall = (t: Tally) => ratio(t.tp, t.tp + t.fn);
 
 export type Mistake = { person: string; what: string; kind: string; detail: string };
 
+export type AskedTally = { right: number; rightCents: number; wrong: number; wrongCents: number };
+
 export type PersonScore = {
   person: string;
   files: number;
@@ -392,6 +406,8 @@ export type PersonScore = {
   // Claude is asked about these (the bench runs without it).
   subscriptionsForClaude: number;
   dollars: { truth: number; jane: number; absError: number };
+  // Charges asked about with no dollars on them, since only their one price says subscription.
+  asked: AskedTally;
   falseDoubleCharges: number;
   spending: { truth: number; absError: number };
   income: { truth: number; absError: number };
@@ -473,6 +489,7 @@ export async function scorePerson(person: CsvPerson): Promise<PersonScore> {
     FINDING_TYPES.map((t) => [t, { tp: 0, fp: 0, fn: 0 }]),
   ) as Record<TrueFinding["type"], Tally>;
   const dollars = { truth: 0, jane: 0, absError: 0 };
+  const asked: AskedTally = { right: 0, rightCents: 0, wrong: 0, wrongCents: 0 };
   const truthOf = (type: TrueFinding["type"]) =>
     person.truth.findings.filter((f) => f.type === type);
   const neutral = person.truth.neutral.flat();
@@ -495,11 +512,20 @@ export async function scorePerson(person: CsvPerson): Promise<PersonScore> {
       if (!hit && type === "subscription_review" && ids.some((id) => neutral.includes(id)))
         continue;
     }
+    const question = (f.evidence as { onlyItsPrice?: unknown }).onlyItsPrice === true;
+    if (question && hit) {
+      asked.right += 1;
+      asked.rightCents += f.amountCents ?? 0;
+    } else if (question) {
+      asked.wrong += 1;
+      asked.wrongCents += f.amountCents ?? 0;
+    }
     if (hit && !claimed.has(hit)) {
       claimed.add(hit);
       tallies[type].tp += 1;
+      // The truth counts in full whether or not Jane put dollars on it.
+      if (hit.annualCents !== null) dollars.truth += hit.annualCents;
       if (hit.annualCents !== null && f.annualSavingsCents !== null) {
-        dollars.truth += hit.annualCents;
         dollars.jane += f.annualSavingsCents;
         dollars.absError += Math.abs(f.annualSavingsCents - hit.annualCents);
         if (
@@ -644,6 +670,7 @@ export async function scorePerson(person: CsvPerson): Promise<PersonScore> {
     bills,
     subscriptionsForClaude,
     dollars,
+    asked,
     falseDoubleCharges: tallies.duplicate_charge.fp,
     spending,
     income,
@@ -672,6 +699,7 @@ export type CsvScoreboard = {
   bills: Tally;
   subscriptionsForClaude: number;
   dollars: { truth: number; jane: number; absError: number };
+  asked: AskedTally;
   falseDoubleCharges: { count: number; people: number };
   spendingError: number;
   incomeError: number;
@@ -730,6 +758,12 @@ export function summarize(scores: readonly PersonScore[]): CsvScoreboard {
       truth: sum((s) => s.dollars.truth),
       jane: sum((s) => s.dollars.jane),
       absError: sum((s) => s.dollars.absError),
+    },
+    asked: {
+      right: sum((s) => s.asked.right),
+      rightCents: sum((s) => s.asked.rightCents),
+      wrong: sum((s) => s.asked.wrong),
+      wrongCents: sum((s) => s.asked.wrongCents),
     },
     falseDoubleCharges: {
       count: sum((s) => s.falseDoubleCharges),

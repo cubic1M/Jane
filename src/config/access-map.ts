@@ -37,6 +37,7 @@ export const ACCESS_MAP: Record<string, Access> = {
   ),
   "src/app/api/cron/digest/route.ts": "cron",
   "src/app/api/cron/events/route.ts": "cron",
+  "src/app/api/cron/invariants/route.ts": "cron",
   "src/app/api/cron/market-history/route.ts": "cron",
   "src/app/api/cron/paper-run/route.ts": "cron",
   "src/app/api/cron/plaid-sync/route.ts": "cron",

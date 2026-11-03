@@ -205,6 +205,65 @@ describe("categorizeTransactions", () => {
   });
 });
 
+// The metamorphic suite: the same statement gave different totals by which bank's columns it came in.
+describe("a refund of a charge in the same batch", () => {
+  const FURNITURE = { categoryDetailed: "HOME_IMPROVEMENT_FURNITURE" };
+  const refund = (extra: Partial<NormalizedTransaction> = {}) =>
+    txn("ZORBLAX GOODS", { amountCents: -4321, date: "2026-10-05", externalId: "back", ...extra });
+  const categorize = async (rows: NormalizedTransaction[]) => {
+    cache = [];
+    vi.mocked(classifyMerchants).mockResolvedValue(new Map());
+    return categorizeTransactions(rows, db, { askClaude: false });
+  };
+
+  it("gives a refund its charge's category, so that it nets against it", async () => {
+    const [, back] = await categorize([
+      txn("ZORBLAX GOODS", { amountCents: 4321, ...FURNITURE }),
+      refund(),
+    ]);
+    expect(back?.category?.detailed).toBe("HOME_IMPROVEMENT_FURNITURE");
+    expect(back?.categorySource).toBe("rule");
+  });
+
+  it("nets a refund even when neither side has a category", async () => {
+    const [charge, back] = await categorize([
+      txn("ZORBLAX GOODS", { amountCents: 4321 }),
+      refund(),
+    ]);
+    expect(charge?.category).toBeNull();
+    expect(back?.category?.primary).toBe("GENERAL_MERCHANDISE");
+  });
+
+  it("doesn't read a refund under Capital One's Payment/Credit as paying the card", async () => {
+    const hints = { bankCategory: "Payment/Credit" };
+    const [, back, paid] = await categorize([
+      txn("ZORBLAX GOODS", { amountCents: 4321, ...FURNITURE }),
+      refund({ hints }),
+      txn("CAPITAL ONE MOBILE PYMT", { amountCents: -50_000, hints, externalId: "paid" }),
+    ]);
+    expect(back?.category?.detailed).toBe("HOME_IMPROVEMENT_FURNITURE");
+    expect(paid?.category?.detailed).toBe("LOAN_PAYMENTS_CREDIT_CARD_PAYMENT");
+  });
+
+  it("leaves money in that can't be a refund of what was bought there", async () => {
+    const charge = txn("ZORBLAX GOODS", { amountCents: 4321, ...FURNITURE });
+    // More than was ever charged, before any charge, and too big to be a refund at all.
+    const [, more] = await categorize([charge, refund({ amountCents: -4322 })]);
+    expect(more?.category).toBeNull();
+    const [, early] = await categorize([charge, refund({ date: "2026-09-01" })]);
+    expect(early?.category).toBeNull();
+    const big = txn("ZORBLAX GOODS", { amountCents: 60_000, ...FURNITURE });
+    const [, pay] = await categorize([big, refund({ amountCents: -50_000 })]);
+    expect(pay?.category).toBeNull();
+    // Money out that isn't buying anything isn't refunded by money in at that name.
+    const [, loan] = await categorize([
+      txn("ZORBLAX GOODS", { amountCents: 4321, categoryDetailed: "LOAN_PAYMENTS_OTHER_PAYMENT" }),
+      refund(),
+    ]);
+    expect(loan?.category).toBeNull();
+  });
+});
+
 describe("an upload's categories, quickly", () => {
   beforeEach(() => {
     cache = [];

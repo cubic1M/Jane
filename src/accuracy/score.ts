@@ -135,7 +135,8 @@ export function predict(h: History): { predicted: Predicted; findings: Candidate
     findings,
     predicted: {
       subscriptions: recurringCharges(input)
-        .filter((c) => c.subscription)
+        // Found either way; a question is still a charge it raised (precision counts it too).
+        .filter((c) => c.subscription || c.maybeSubscription)
         .map((c) => c.merchantKey),
       price_rises: keysOf(findings, "price_increase", "merchant:").map(merchantIn),
       fees: keysOf(findings, "bank_fees", "account:"),

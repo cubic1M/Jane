@@ -6,13 +6,14 @@ import type {
   Prisma,
   PrismaClient,
 } from "@/generated/prisma/client";
+import { LLM_SUBSCRIPTION_MAX_CONFIDENCE } from "@/config/detection";
 import { PICK_UNDO_HOURS } from "@/config/rules";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { ACTION_FOR_FINDING, CARD_SELECT, buildCard, cardHash } from "@/lib/cards";
 import { comparisonFor } from "@/lib/compare";
 import { db as defaultClient } from "@/lib/db";
-import { scopedFor } from "@/lib/db-scoped";
+import { scopedFor, type ScopedDb } from "@/lib/db-scoped";
 import { recordFindingDone } from "@/lib/outcomes";
 import { isAgentAction, startAgent } from "@/lib/agent/run";
 import { conciergeMode } from "@/lib/concierge-mode";
@@ -36,6 +37,9 @@ const STATUS_FOR: Record<DecisionChoice, FindingStatus> = {
 export const UNDO_WINDOW_SECONDS = 10;
 // Extra time the server allows, for a slow network.
 const UNDO_GRACE_SECONDS = 5;
+
+// Where a subscription check came from when it's the person's own answer, not a model's.
+const PERSON_ANSWERED = "person";
 
 // Findings the person hasn't answered yet.
 const DECIDABLE: FindingStatus[] = ["new", "shown"];
@@ -111,6 +115,38 @@ async function switchChoice(
       ? { switchFromMonthlyCents: current.monthlyCents }
       : { switchAmountCents: current.amountCents, switchFromRateBps: current.currentRateBps }),
   };
+}
+
+// "Is it a subscription to cancel?" answered yes: now it is one, so its cost counts as a saving and
+// the next scan treats it as one the person confirmed, as if Claude had (src/detection/engine.ts).
+// A no says nothing about what it is: it may be a plan they're keeping.
+async function keepAnswerAboutThePrice(
+  db: Pick<ScopedDb, "userId" | "subscriptionChecks" | "findings">,
+  finding: { id: string; type: FindingType; evidence: unknown },
+  choice: DecisionChoice,
+) {
+  if (finding.type !== "subscription_review" || choice === "no") return;
+  const evidence = finding.evidence as {
+    onlyItsPrice?: unknown;
+    merchantKey?: unknown;
+    annualCostCents?: unknown;
+  } | null;
+  if (evidence?.onlyItsPrice !== true || typeof evidence.merchantKey !== "string") return;
+  const answer = { isSubscription: true, model: PERSON_ANSWERED, promptVersion: PERSON_ANSWERED };
+  await db.subscriptionChecks.upsert({
+    where: { userId_merchantKey: { userId: db.userId, merchantKey: evidence.merchantKey } },
+    create: { userId: db.userId, merchantKey: evidence.merchantKey, ...answer },
+    update: answer,
+  });
+  if (typeof evidence.annualCostCents === "number") {
+    await db.findings.updateMany({
+      where: { id: finding.id },
+      data: {
+        annualSavingsCents: evidence.annualCostCents,
+        confidence: LLM_SUBSCRIPTION_MAX_CONFIDENCE,
+      },
+    });
+  }
 }
 
 export async function recordDecision(
@@ -195,6 +231,7 @@ export async function recordDecision(
     };
   });
 
+  await keepAnswerAboutThePrice(db, finding, choice);
   await logAudit(
     { type: "user", id: userId },
     "decision_made",

@@ -11,6 +11,8 @@ export const DAILY_JOBS: readonly string[] = [
   "practice-scan",
   // The events overlay's daily job (src/lib/events/run.ts).
   "events",
+  // What must hold on live data, in counts only (src/lib/invariants/nightly.ts).
+  "invariants",
 ];
 // A daily job counts as missed once its last good run is this old (a day plus slack for
 // Vercel's scheduling).

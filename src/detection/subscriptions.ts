@@ -1,7 +1,11 @@
 import { NEXT_CHARGE_WINDOW_DAYS, OWN_ACCOUNT_TRANSFERS, type Frequency } from "@/config/detection";
 import { paidCardOnFile } from "@/categorize/card-payments";
 import { billName, expectedDates, isBillStream } from "./forecast";
-import { isAmbiguousRecurring, isSubscriptionUnless } from "./rules/subscription-review";
+import {
+  isAmbiguousRecurring,
+  isOnlyAGuess,
+  isSubscriptionUnless,
+} from "./rules/subscription-review";
 import { buildStreams, type Stream } from "./streams";
 import type { DetectionInput } from "./types";
 import { addDays } from "./units";
@@ -23,8 +27,11 @@ export type RecurringCharge = {
   lastDate: string | null;
   nextDate: string | null;
   annualCostCents: number;
-  // A subscription by category or merchant, or one Claude confirmed.
+  // A subscription by category or merchant, or one Claude or the person confirmed.
   subscription: boolean;
+  // Only its one price says it might be one: asked about on its card, and listed with the bills
+  // (src/detection/rules/subscription-review.ts).
+  maybeSubscription: boolean;
 };
 
 export function recurringCharges(input: DetectionInput): RecurringCharge[] {
@@ -38,20 +45,25 @@ export function recurringCharges(input: DetectionInput): RecurringCharge[] {
       // where it's bought (night QA 10-30: "Other regular bills $52,534.88 a year" counted a
       // $1,640/mo Chase card payment beside the NYT and Audible charged to that card).
       .filter((s) => !paysCardOnFile(s, cardsWithCharges(input)))
-      .map((s) => ({
-        key: s.key,
-        merchantKey: s.merchantKey,
-        merchant: billName(s, input.accounts),
-        frequency: s.frequency as Frequency,
-        lastAmountCents: s.lastAmountCents,
-        lastDate: s.lastDate,
-        nextDate:
-          expectedDates(s, input.asOf, addDays(input.asOf, NEXT_CHARGE_WINDOW_DAYS))[0] ?? null,
-        annualCostCents: s.annualCostCents as number,
-        subscription:
+      .map((s) => {
+        const subscription =
           isSubscriptionUnless(declined)(s) ||
-          (isAmbiguousRecurring(s) && confirmed.has(s.merchantKey)),
-      }))
+          (isAmbiguousRecurring(s) && confirmed.has(s.merchantKey));
+        const guess = subscription && isOnlyAGuess(s, confirmed);
+        return {
+          key: s.key,
+          merchantKey: s.merchantKey,
+          merchant: billName(s, input.accounts),
+          frequency: s.frequency as Frequency,
+          lastAmountCents: s.lastAmountCents,
+          lastDate: s.lastDate,
+          nextDate:
+            expectedDates(s, input.asOf, addDays(input.asOf, NEXT_CHARGE_WINDOW_DAYS))[0] ?? null,
+          annualCostCents: s.annualCostCents as number,
+          subscription: subscription && !guess,
+          maybeSubscription: guess,
+        };
+      })
       .sort((a, b) => b.annualCostCents - a.annualCostCents || a.merchant.localeCompare(b.merchant))
   );
 }

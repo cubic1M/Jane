@@ -15,6 +15,7 @@ function groupOf(stream: Stream): Group | undefined {
   return SERVICE_GROUPS.find(
     (group) =>
       inList(stream.pfcDetailed, group.categories) ||
+      stream.charges.some((c) => inList(c.pfcDetailed, group.categories)) ||
       merchantMatches(stream.merchantKey, group.merchants),
   );
 }
