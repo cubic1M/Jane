@@ -1,4 +1,4 @@
-import { conciergeMode } from "@/lib/concierge-mode";
+import { conciergeMode, onSampleDataOnly } from "@/lib/concierge-mode";
 import { isTrialUser } from "@/lib/trial-ids";
 import { randomBytes } from "node:crypto";
 import {
@@ -169,13 +169,18 @@ const titleOf = (action: LoadedAction) => {
 
 // Where to write: the directory's support email (added by the team, never guessed), or a
 // simulated company in development.
+// Sample data never reaches a real company: the simulated one answers, as for a trial person.
+async function mailModeFor(userId: string, client: PrismaClient) {
+  return (await onSampleDataOnly(userId, { client })) ? ("simulated" as const) : mailMode(userId);
+}
+
 async function recipientFor(
   userId: string,
   action: LoadedAction,
   client: PrismaClient,
 ): Promise<string | null> {
   if (!action.company) return null;
-  if (mailMode(userId) === "simulated") return simulatedAddress(action.company);
+  if ((await mailModeFor(userId, client)) === "simulated") return simulatedAddress(action.company);
   const { merchant: row } = await companyFacts(action.company, { client });
   return row?.supportEmail ?? null;
 }
@@ -300,7 +305,7 @@ async function send(
   { client, send: deliver }: { client: PrismaClient; send: typeof sendAgentMail },
 ) {
   const replyTo = replyAddress(action.replyToken ?? "");
-  if (mailMode(userId) === "email") {
+  if ((await mailModeFor(userId, client)) === "email") {
     await deliver({ to: mail.to, subject: mail.subject, text: mail.body, replyTo });
   } else {
     // The simulated company answers through the same path a real reply takes.
@@ -353,7 +358,7 @@ export async function agentStep(
     if (action.agentMessages.length > 0) return "waiting";
     return (await startCall(userId, action, options)) === "called" ? "sent" : "handed_off";
   }
-  if (mailMode(userId) === "off") {
+  if ((await mailModeFor(userId, client)) === "off") {
     await handOff(userId, action, "Email for the agent isn't set up yet.", options);
     return "handed_off";
   }

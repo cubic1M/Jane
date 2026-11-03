@@ -8,7 +8,10 @@ vi.mock("@/lib/db-scoped", () => ({
   scopedDb: vi.fn(async () => ({ actions: { findMany: vi.fn(async () => [{ id: "a1" }]) } })),
 }));
 vi.mock("@/lib/agent/run", () => ({ runQueuedFor: vi.fn() }));
-vi.mock("@/lib/concierge-mode", () => ({ conciergeMode: vi.fn(async () => true) }));
+vi.mock("@/lib/concierge-mode", () => ({
+  conciergeMode: vi.fn(async () => true),
+  onSampleDataOnly: vi.fn(async () => false),
+}));
 vi.mock("@/lib/autopilot", () => {
   class AutopilotError extends Error {}
   return { AutopilotError, setAutopilot: vi.fn(async () => 3), setAcceptSimpleOffers: vi.fn() };

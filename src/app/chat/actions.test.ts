@@ -11,7 +11,10 @@ vi.mock("@/lib/session", () => ({
 }));
 vi.mock("@/lib/agent/run", () => ({ runAgentNow: vi.fn(), runQueuedFor: vi.fn() }));
 vi.mock("@/lib/jane-agent/open", () => ({ timezoneOf: vi.fn(async () => "America/New_York") }));
-vi.mock("@/lib/concierge-mode", () => ({ conciergeMode: vi.fn(async () => true) }));
+vi.mock("@/lib/concierge-mode", () => ({
+  conciergeMode: vi.fn(async () => true),
+  onSampleDataOnly: vi.fn(async () => false),
+}));
 vi.mock("@/lib/jane-agent/actions", async () => {
   const { ChatActionError } = await import("@/lib/jane-agent/actions/handler");
   return { ChatActionError, takeChatAction: vi.fn() };

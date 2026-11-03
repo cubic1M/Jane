@@ -11,7 +11,10 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 vi.mock("@/lib/jobs", () => ({ enqueueJob: vi.fn(async () => "job") }));
 // Read-only mode leaves real accounts alone; these people's yeses make actions, as the demo
 // bank's do (CONCIERGE_ACTIONS.demo).
-vi.mock("@/lib/concierge-mode", () => ({ conciergeMode: vi.fn(async () => true) }));
+vi.mock("@/lib/concierge-mode", () => ({
+  conciergeMode: vi.fn(async () => true),
+  onSampleDataOnly: vi.fn(async () => false),
+}));
 
 import { runDetection } from "@/detection/engine";
 import { CARD_SELECT, buildCard, cardHash } from "@/lib/cards";
