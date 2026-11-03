@@ -69,7 +69,8 @@ export function oneOffCharges(transactions: InsightTransaction[], asOf: string):
   const big = spending.filter(
     (t) =>
       (t.amountCents >= floor && canBeOneOff(t)) ||
-      (t.pfcPrimary === null && t.amountCents >= usual * ONE_OFF_UNPLACED_MONTHS),
+      ((t.pfcPrimary === null || t.pfcPrimary === "LOAN_PAYMENTS") &&
+        t.amountCents >= usual * ONE_OFF_UNPLACED_MONTHS),
   );
   return big
     .filter((t) => {
