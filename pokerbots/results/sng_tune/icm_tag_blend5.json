@@ -1,0 +1,109 @@
+{
+ "params": {
+  "open_mult": 1.07,
+  "open_size": 2.0,
+  "push_bb": 9.0,
+  "push_mult": 1.0,
+  "range_k": 4.0,
+  "call_margin": 0.06,
+  "threebet_eq": 0.62,
+  "threebet_rel": 2.6,
+  "risk": 0.1,
+  "value_eq": 0.62,
+  "cbet": 0.55,
+  "bet_frac": 0.65,
+  "bet_discount": 0.5,
+  "steal_bonus": 0.55,
+  "steal_max_behind": 5,
+  "steal_sym": 0.5,
+  "reshove_bb": 24.0,
+  "read_alpha": 0.5,
+  "base_pfr": 0.12,
+  "raiser_discount": 1.0,
+  "raise_eq": 99.0,
+  "bluff_bonus": 0.4,
+  "bluff_max_opp": 2,
+  "pf_chart": 0,
+  "pf_max_bb": 15.0,
+  "pf_file": "",
+  "cap_risk": 0.0,
+  "cap_window": 25,
+  "steal_floor": 0.0,
+  "resteal_rel": 1.0,
+  "resteal_read": 6.0,
+  "resteal_rel_bb": 28.0,
+  "push_steal": 0.5,
+  "behind_k": 0.2,
+  "cbet_size": 0.5,
+  "bluff_size": 0.5,
+  "hu_risk": 1.0,
+  "cap_fade": 0,
+  "risk_payout": 1,
+  "hu_open_mult": 0.6,
+  "hu_range_k": 2.0,
+  "sh_open_mult": 0.0,
+  "sh_range_k": 0.0,
+  "icm_call": 1,
+  "icm_margin": 0.02,
+  "pev": 0,
+  "pev_bb": 15.0,
+  "pev_margin": 0.0,
+  "pev_loose": 1.0,
+  "pev_risk": 1.0,
+  "resteal": 0,
+  "resteal_lo": 10.0,
+  "resteal_hi": 25.0,
+  "resteal_margin": 0.0,
+  "resteal_cw": 0.6,
+  "resteal_wake": 0.3,
+  "resteal_risk": 0.25,
+  "range_map": 0.65,
+  "rk_floor": 1.2,
+  "agg_alpha": 0.0,
+  "base_agg": 0.35,
+  "agg_raise": 99.0,
+  "agg_seat": 0.6,
+  "station_size": 0.0,
+  "thin_value": 0.0
+ },
+ "history": [
+  {
+   "round": 0,
+   "incumbent": "icm_tag",
+   "incumbent_points": 51.67486167772046,
+   "best": "icm_tag:steal_bonus=0.4",
+   "gain": 0.3797830829951306,
+   "se": 1.936739303554901,
+   "accepted": false,
+   "top5": [
+    [
+     "icm_tag:steal_bonus=0.4",
+     0.38,
+     1.94
+    ],
+    [
+     "icm_tag:call_margin=0.03",
+     0.07,
+     1.71
+    ],
+    [
+     "icm_tag:resteal_rel=0.85",
+     -0.03,
+     1.32
+    ],
+    [
+     "icm_tag:call_margin=0.09",
+     -0.07,
+     1.72
+    ],
+    [
+     "icm_tag:bet_discount=0.4",
+     -0.2,
+     1.57
+    ]
+   ],
+   "seconds": 1590
+  }
+ ],
+ "round": 1
+}
