@@ -69,7 +69,7 @@ Fill in each line:
    `push_steal=0;steal_bonus=0.3` if the field re-steals (adaptive bots: +3.6 to +4.7 on field 4, −2.0 on all3);
    `resteal_rel=1.4;resteal_rel_bb=35` if the field is tight (+7 vs Plan B copies and our copies, −0.3 elsewhere);
    `behind_k=0` if the field is tight (+2.9 vs Plan B copies, +3.4 vs our copies, −2.9 on the default field);
-   `rs_call=3` if the field re-shoves light (hold'em `icm_tag` only; off on `icm_any`) (+7.2 field 6, +3.6 mirror on fresh seeds, −1.1 field 3; mean +2.0 vs +1.6 for the default 2)):
+   `rs_call=3` if the field re-shoves light (hold'em `icm_tag` only; off on `icm_any`) (+7.2 field 6, +3.6 mirror on fresh seeds, −1.1 field 3; head-to-head vs 2 on fresh seeds: field 6 +2.8*, mean over 11 fields +0.03, so only when the field re-shoves light)):
    - tune: `python3 -m sng.tune --preset <p> --field blend --rounds 3 --tables 500 --accept-se 2 --tag _day` (about 15–25 min per round);
    - validate: `results/sng_validate.sh "icm_tag:<tuned>" --preset <p>`;
    - submit only a paired gain > 2 SE with no field losing.
