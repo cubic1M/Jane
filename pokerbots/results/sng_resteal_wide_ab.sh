@@ -1,6 +1,6 @@
 #!/bin/bash
 # Exploration: wider re-shove ranges and depth limits after adopting resteal_rel=1.0 + read.
-# Seeds 84000+, 400 paired tables.
+# Seeds 86000+, 400 paired tables.
 cd "$(dirname "$0")/.."
 OUT=results/sng_resteal_wide_ab.md
 H="custom:push=2,maniac=2,station=2,random=1,f3_buggy=1,f3_shover=1,mc_slow=1,nit=1,lag=1,chen_tag=1,f2_shark=1,f3_exploiter=1,pushfold_icm=1"
