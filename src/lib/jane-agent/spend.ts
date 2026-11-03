@@ -107,6 +107,13 @@ export async function overDailyCap(userId: string, options: Options = {}): Promi
   return cap !== null && (await spentTodayCents(userId, options)) >= cap;
 }
 
+// The person's day and the month's total, for what runs without them waiting (the strategist).
+export async function overChatLimits(userId: string, options: Options = {}): Promise<boolean> {
+  return (
+    (await overDailyCap(userId, options)) || (await monthlySpentCents(options)) >= monthlyCapCents()
+  );
+}
+
 // A message that met the person's daily limit, for the founder's count on /admin/chat. Sample
 // people are sample data, never counted.
 export async function recordLimitHit(

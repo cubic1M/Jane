@@ -12,7 +12,9 @@ export type GuardrailIssue =
   | "tax_or_legal_advice"
   | "unsupported_dollar_figure"
   | "guaranteed_outcome"
-  | "missing_required_wording";
+  | "missing_required_wording"
+  | "untrusted_link"
+  | "credential_request";
 
 export type GuardrailResult = { ok: true } | { ok: false; issues: GuardrailIssue[] };
 
@@ -47,8 +49,13 @@ const INVESTMENT = [
   /\bannuit(y|ies)\b/i,
   // What to buy, sell or hold, and how investments did (spec step 66: balances only).
   // A bank "holding the funds" from a deposit is a hold, not a holding.
-  /\b(buy|buying|sell|selling|dump|trim)\b[^.!?]{0,40}\b(positions?|holdings?|funds?|shares?|stocks?|assets?)\b/i,
-  /\b(hold|holding)\b[^.!?]{0,40}\b(positions?|holdings?|shares?|stocks?)\b/i,
+  /\b(buy|buying|sell|selling|dump|trim)\b(?:[^.!?]|\.\d){0,40}\b(positions?|holdings?|funds?|shares?|stocks?|assets?)\b/i,
+  /\b(hold|holding)\b(?:[^.!?]|\.\d){0,40}\b(positions?|holdings?|shares?|stocks?)\b/i,
+  // A bare ticker (11-03): "Buy NVDA", "$NVDA", "put it into TSLA". Written in capitals, so "buy a TV"
+  // and the things in capitals people do buy aren't one.
+  /\b(?:[Bb]uy|[Ss]ell|[Ss]hort|[Dd]ump)(?:ing)?\s+(?:some |more |a lot of )?(?!(?:TVs?|PCs?|CDs?|USB|AAA|IKEA|GPS|HD|DVDs?|EVs?|SUVs?)\b)[A-Z]{2,5}\b/,
+  /\b(?:[Pp]ut|[Mm]ove)\b(?:[^.!?]|\.\d){0,40}\binto (?!(?:CDs?|HYSA|FDIC)\b)[A-Z]{2,5}\b/,
+  /\$[A-Z]{1,5}\b/,
   /\brebalanc/i,
   // "Your budget allocation" is a budget.
   /\b(?:asset|portfolio|investment|fund) allocation\b/i,
@@ -310,6 +317,47 @@ export function unsupportedFigures(text: string, allowedCents: readonly number[]
 // outcomes and legal advice stay blocked. Text it passes carries DEMO_ADVICE_LABEL.
 export type GuardrailProfile = "standard" | "demo_advice";
 
+// A web link in Claude's words. Statements, emails and documents are written by other people
+// (src/lib/untrusted-text.ts), and Jane's own pages go through buttons, so a link is passed on only
+// to a government site or the free credit report site. A bare "AMZN.COM/BILL" or "WWW.COSTCO.COM" is
+// how a statement names a merchant, so it isn't one.
+const LINK = /\bhttps?:\/\/[^\s)>\]"']+|\bwww\.[^\s/)>\]"']+\/[^\s)>\]"']*/gi;
+const TRUSTED_HOST = /(?:^|\.)(?:[a-z0-9-]+\.gov|annualcreditreport\.com)$/i;
+
+const hostOf = (link: string) =>
+  link
+    .replace(/^https?:\/\//i, "")
+    .split(/[/?#]/)[0]
+    .split("@")
+    .at(-1)!
+    .split(":")[0]
+    .replace(/\.+$/, "");
+
+export const linksElsewhere = (text: string): string[] =>
+  (text.match(LINK) ?? []).filter((link) => !TRUSTED_HOST.test(hostOf(link)));
+
+// For text shown as written by someone else (a company's reply): the words stay, the link doesn't.
+export const withoutLinks = (text: string): string =>
+  text.replace(LINK, (link) => (TRUSTED_HOST.test(hostOf(link)) ? link : "[link removed]"));
+
+// Telling the person to hand over what no company should ask for, or to pay in gift cards. "Never
+// share your password" is the opposite, so a sentence that says not to doesn't count.
+const CREDENTIAL_ASK =
+  /\b(?:enter|give|send|share|provide|confirm|verify|type|tell|reply with|text|email|read out)\b(?:[^.!?\n]|\.\d){0,60}\b(?:passwords?|passcodes?|social security|ssn|one[- ]time (?:codes?|passwords?)|verification codes?|security codes?|cvv|cvc|pin|full (?:card|account) numbers?|seed phrases?|recovery phrases?)\b/i;
+const GIFT_CARD_PAYMENT =
+  /\b(?:buy|pay|paying|send|purchase)\b(?:[^.!?\n]|\.\d){0,40}\bgift cards?\b/i;
+const SAYS_NOT_TO =
+  /\b(?:never|don'?t|do not|not|won'?t|shouldn'?t|nobody|no one|can'?t|cannot)\b/i;
+
+export const asksForCredentials = (text: string): boolean =>
+  text
+    .split(/(?<=[.!?])\s+|\n+/)
+    .some(
+      (sentence) =>
+        !SAYS_NOT_TO.test(sentence) &&
+        (CREDENTIAL_ASK.test(sentence) || GIFT_CARD_PAYMENT.test(sentence)),
+    );
+
 type Scan = { issues: GuardrailIssue[]; matched: string[] };
 
 function scan(
@@ -349,6 +397,14 @@ function scan(
   if (promised.length > 0) {
     issues.push("guaranteed_outcome");
     matched.push(...promised.map((p) => `guarantee:${p.source.slice(0, 60)}`));
+  }
+  if (linksElsewhere(original).length > 0) {
+    issues.push("untrusted_link");
+    matched.push("link");
+  }
+  if (asksForCredentials(original)) {
+    issues.push("credential_request");
+    matched.push("credentials");
   }
   return { issues, matched };
 }

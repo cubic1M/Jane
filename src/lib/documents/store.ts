@@ -9,6 +9,7 @@ import { isTrialUser } from "@/lib/trial-ids";
 import { readDocumentFacts } from "./extract";
 import { factsFromForm, type RawFacts } from "./facts";
 import { checkUpload, type UploadFile } from "./validate";
+import { meteredClaude } from "@/lib/claude-budget";
 
 // Keeping, reading back and deleting the person's documents (spec step 68). Files are
 // encrypted before they reach the database and are only decrypted for their owner. Never
@@ -44,7 +45,7 @@ export type UploadResult =
 export async function addDocument(
   userId: string,
   upload: { file: UploadFile; bytes: Uint8Array; kind: DocumentKind },
-  { client = defaultClient, claude = anthropic }: Options = {},
+  { client = defaultClient, claude = meteredClaude(userId) }: Options = {},
 ): Promise<UploadResult> {
   const db = scopedFor(userId, client);
   const check = checkUpload(upload.file, upload.bytes, await db.documents.count());

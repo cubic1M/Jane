@@ -1,12 +1,12 @@
 name: Chat quality
 
-# Spec step 195: Jane's question bank, run every night. The rules part always runs; the Claude
-# part runs only when started by hand (the founder's budget, see the env below), on a rotating
-# share of the bank and within a small spending cap
-# (src/lib/jane-agent/checks/nightly.cli.test.ts). The scores go
+# Spec step 195: Jane's question bank, run every night. Free every night: the bank through the real
+# chat with the model played back (src/lib/jane-agent/checks/real-path.ts, the path people are
+# answered on), and the rules part, which only covers the backup. The paid Claude part runs only
+# when started by hand (the founder's budget, see the env below), on a rotating share of the bank
+# and within a small spending cap (src/lib/jane-agent/checks/nightly.cli.test.ts). The scores go
 # into docs/chat-quality.md and docs/chat-quality-history.json through a pull request, and an
-# issue opens when a score falls. The key is used only here, never on pull_request runs: the
-# rules part runs on every pull request in CI's own tests (RULES_SCORE_FLOOR).
+# issue opens when a score falls. The key is used only here, never on pull_request runs.
 
 on:
   schedule:
@@ -26,7 +26,7 @@ jobs:
   nightly:
     name: Run the question bank
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 75
     services:
       postgres:
         image: postgres:16
@@ -63,7 +63,7 @@ jobs:
           if [ -n "$ANTHROPIC_API_KEY" ]; then
             echo "Claude part: runs on a rotating share of the bank." >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "Claude part: skipped. Scheduled runs are rules only, by the founder's budget; start this workflow by hand to include Claude." >> "$GITHUB_STEP_SUMMARY"
+            echo "Claude part: skipped. Scheduled runs use no Claude, by the founder's budget: the real path (model played back) and the rules backup ran. Start this workflow by hand to include Claude." >> "$GITHUB_STEP_SUMMARY"
           fi
       - run: npm run checks:nightly
       - name: Open an issue when a score fell

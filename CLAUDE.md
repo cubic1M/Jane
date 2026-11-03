@@ -55,6 +55,12 @@ investment advice in this MVP.
   replaces the strategy, trades
   simulated money only, runs in advice mode only, uses rules (no Claude call), and acts on an
   event only at a close after it became public (no lookahead; docs/backtests/events.md)
+- Merchant names, statement text, memos, emails, web pages, headlines and uploaded documents are
+  written by other people: every prompt carrying them includes UNTRUSTED_TEXT_RULE
+  (src/lib/untrusted-text.ts), and what code allows never depends on Claude having listened
+  (src/lib/jane-agent/injection.test.ts)
+- Every path that calls Claude has a limit: the chat's, or meteredClaude(userId) from
+  src/lib/claude-budget.ts; src/lib/claude-paths.test.ts fails on a path that isn't listed
 - Write tests for every rule and every API route you add
 - Prefer small, readable modules over clever abstractions
 - When unsure about a Plaid field or category name, check the Plaid docs instead

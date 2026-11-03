@@ -6,7 +6,9 @@ import {
   appendEntry,
   dropOf,
   entryOf,
+  entryOfRealPath,
   meetsBar,
+  modeLabel,
   metricsOf,
   nightlyTable,
   withNightlyTable,
@@ -70,7 +72,7 @@ describe("the nightly record", () => {
     );
     expect(dropOf(history, night({ date: "2026-10-19", score: 94 }))).toBeNull();
     expect(dropOf(history, night({ date: "2026-10-19", mode: "rules_only", score: 95 }))).toMatch(
-      /rules-only/,
+      /rules backup/,
     );
     expect(dropOf([], night({}))).toBeNull();
   });
@@ -169,5 +171,46 @@ describe("the depth bar", () => {
     expect(
       nightlyTable([...nights.slice(0, 2), night({ date: "2026-10-22", metrics: bad })]),
     ).toContain("Not met yet.");
+  });
+});
+
+describe("the real-path night", () => {
+  const run = {
+    mode: "real_path" as const,
+    score: 99,
+    asked: 2,
+    failures: { tool_error: 1 },
+    results: [
+      { id: "a", text: "first", ok: true, failed: [] },
+      { id: "b", text: "second", ok: false, failed: ["tool_error"], tool: "goals" },
+    ],
+  };
+
+  it("is an entry of its own, free, naming what failed", () => {
+    expect(entryOfRealPath(run, "2026-11-03", "chat-v33")).toEqual({
+      date: "2026-11-03",
+      mode: "real_path",
+      promptVersion: "chat-v33",
+      score: 99,
+      graded: 2,
+      skipped: 0,
+      costCents: 0,
+      firstWordsMs: null,
+      failed: [{ id: "b", text: "second", score: 0, reason: "tool_error" }],
+    });
+  });
+
+  it("falls against its own last night, not the rules backup's", () => {
+    const history = [night({ date: "2026-11-01", mode: "rules_only", score: 100 })];
+    const entry = entryOfRealPath({ ...run, score: 80 }, "2026-11-03", "chat-v33");
+    expect(dropOf(history, entry)).toBeNull();
+    const before = entryOfRealPath({ ...run, score: 100 }, "2026-11-02", "chat-v33");
+    expect(dropOf([before], entry)).toMatch(/real path, played back score fell from 100/);
+  });
+
+  it("says plainly which score is which", () => {
+    expect(modeLabel("rules_only")).toBe("rules backup");
+    expect(modeLabel("real_path")).toBe("real path, played back");
+    expect(modeLabel("full")).toBe("with Claude");
   });
 });

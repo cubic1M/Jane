@@ -430,7 +430,7 @@ describe("runDetection asking Claude about unclear merchants", () => {
 
     const summary = await runDetection("user_1", { client, now, checkSubscriptions: check });
 
-    expect(check).toHaveBeenCalledWith(["Mystery Design"]);
+    expect(check).toHaveBeenCalledWith(["Mystery Design"], { claude: expect.any(Function) });
     expect(scoped.subscriptionChecks.createMany).toHaveBeenCalledWith({
       data: [
         {

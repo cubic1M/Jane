@@ -8,6 +8,7 @@ import {
 } from "./explain-input";
 import { templateExplanation, type ExplanationContent } from "./explain-templates";
 import { checkGuardrails, type GuardrailIssue } from "./guardrails";
+import { UNTRUSTED_TEXT_RULE } from "@/lib/untrusted-text";
 
 // Plain-language card text for a finding, written by Claude from the explain input only.
 // Anything that goes wrong (no key, a refusal, malformed JSON, a guardrail failure) falls
@@ -33,7 +34,9 @@ Rules:
 - Use only dollar amounts that appear in the input, written exactly as they appear there. Don't calculate new amounts.
 - Savings are estimates: say "could save" or "about". Never promise or guarantee a result.
 - When a bill is above what is typical, say it is above "the typical price" (use those exact words), never that it is too high or overcharged.
-- Never mention investing, stocks, funds, bonds, crypto, retirement accounts, taxes, or legal matters. A savings account is the only place to suggest for extra cash.`;
+- Never mention investing, stocks, funds, bonds, crypto, retirement accounts, taxes, or legal matters. A savings account is the only place to suggest for extra cash.
+
+${UNTRUSTED_TEXT_RULE}`;
 
 const SCHEMA = {
   type: "object",
@@ -111,8 +114,8 @@ export function contentText(content: ExplanationContent): string {
   return [content.title, content.explanation, content.giveUp, ...content.alternatives].join("\n");
 }
 
-async function askClaude(input: ExplainInput): Promise<string | null> {
-  const response = await anthropic().messages.create({
+async function askClaude(input: ExplainInput, claude: typeof anthropic): Promise<string | null> {
+  const response = await claude().messages.create({
     model: llmModel(),
     max_tokens: 16000,
     system: SYSTEM,
@@ -122,7 +125,10 @@ async function askClaude(input: ExplainInput): Promise<string | null> {
   return finishedText(response);
 }
 
-export async function explainFinding(finding: FindingToExplain): Promise<ExplanationResult> {
+export async function explainFinding(
+  finding: FindingToExplain,
+  { claude = anthropic }: { claude?: typeof anthropic } = {},
+): Promise<ExplanationResult> {
   const { input, allowedCents } = prepareExplainInput(finding);
   const hash = inputHash(input, EXPLAIN_PROMPT_VERSION);
   const template = templateExplanation(finding.title, input);
@@ -130,7 +136,7 @@ export async function explainFinding(finding: FindingToExplain): Promise<Explana
 
   let text: string | null;
   try {
-    text = await askClaude(input);
+    text = await askClaude(input, claude);
   } catch (error) {
     if (!(error instanceof Anthropic.APIError)) throw error;
     console.error("Explanation request failed", { status: error.status });

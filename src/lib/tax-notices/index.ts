@@ -27,6 +27,7 @@ import {
   type Source,
 } from "@/planning/tax-notice";
 import { readNotice } from "./read";
+import { meteredClaude } from "@/lib/claude-budget";
 
 // A letter from the IRS or the state (spec step 217): read from an uploaded copy for the
 // person to confirm; then a deadline, a check against what Jane knows, and a drafted
@@ -106,7 +107,7 @@ export async function readTaxNotice(
     client = defaultClient,
     now = new Date(),
     file = null,
-    claude = anthropic,
+    claude = meteredClaude(userId),
   }: Options & {
     file?: { bytes: Uint8Array; contentType: DocumentContentType } | null;
     claude?: typeof anthropic;

@@ -43,6 +43,7 @@ import { confirmInsuranceSwitches, startInsuranceSwitch } from "@/lib/insurance/
 import { isCallAction, startCall } from "@/lib/voice/calls";
 import { DAY_MS, isoDay } from "@/lib/dates";
 import { ownedBy, type OnlyPeople } from "@/lib/only-people";
+import { meteredClaude } from "@/lib/claude-budget";
 
 // The action agent (spec step 51). An approved action of a type in AGENT_ACTION_TYPES is
 // worked by the agent instead of the team: it emails the company from Jane's address,
@@ -432,6 +433,7 @@ export async function agentStep(
     const draft = await draftMessage(action.type, finding, {
       request,
       useClaude: !isTrialUser(userId),
+      client: meteredClaude(userId),
     });
     const prepared = draftPayload(action.type, finding, { request });
     if (!draft || !prepared || draft.draft.channel !== "email") {
@@ -529,7 +531,10 @@ export async function handleReply(
   // A sample person's simulated company is read by the rules: it can't cost anything.
   const reading = isTrialUser(userId)
     ? readReplyByRules(mail.body.slice(0, AGENT_MAX_BODY))
-    : await read({ subject: mail.subject, body: mail.body.slice(0, AGENT_MAX_BODY) });
+    : await read(
+        { subject: mail.subject, body: mail.body.slice(0, AGENT_MAX_BODY) },
+        { client: meteredClaude(userId) },
+      );
   await record(
     userId,
     action.id,
@@ -569,7 +574,8 @@ export async function handleReply(
       break;
     case "needs_info": {
       const question = reading.question ?? reading.summary;
-      const asked = whatIsAsked(question);
+      // The email itself too: its text can steer how Claude words the question.
+      const asked = whatIsAsked(`${question}\n${mail.body.slice(0, AGENT_MAX_BODY)}`);
       if (asked.kind === "never") {
         // Jane never gives these out; a request for them by email is unusual.
         await setStatus(
@@ -1026,7 +1032,9 @@ export async function lookUpSupportFor(
   const action = await loadAction(userId, actionId, client);
   if (!action?.company) return;
   const { merchant: row } = await companyFacts(action.company, { client });
-  if (row && !isTrialUser(userId)) await findSupportContact(row.id, { client });
+  if (row && !isTrialUser(userId)) {
+    await findSupportContact(row.id, { client, claude: meteredClaude(userId) });
+  }
 }
 
 // Once the team adds or confirms a merchant's support email, the agent picks up the

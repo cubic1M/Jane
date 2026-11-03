@@ -79,7 +79,7 @@ describe("explainFindings", () => {
     const summary = await explainFindings("user_1", { explain });
 
     expect(explain).toHaveBeenCalledTimes(1);
-    expect(explain).toHaveBeenCalledWith(stale);
+    expect(explain).toHaveBeenCalledWith(stale, { claude: expect.any(Function) });
     expect(scoped.findings.update).toHaveBeenCalledWith({
       where: { id: "finding_price_increase" },
       data: {

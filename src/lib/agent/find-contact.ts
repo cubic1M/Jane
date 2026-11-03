@@ -3,6 +3,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { anthropic, llmEnabled, llmModel } from "@/lib/anthropic";
 import { logAudit, SYSTEM_ACTOR } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
+import { UNTRUSTED_TEXT_RULE } from "@/lib/untrusted-text";
 
 // Finding a company's support email (spec step 64). When the merchant directory has none,
 // Claude searches the company's own website (web search limited to its domain), and an
@@ -69,7 +70,7 @@ export async function findSupportContact(
   const messages: Anthropic.MessageParam[] = [
     {
       role: "user",
-      content: `Find the customer support email address for ${merchant.name} (${domain}), as published on its own website. Give the address and the https page where it appears. If the site publishes no support email, answer with empty strings.`,
+      content: `Find the customer support email address for ${merchant.name} (${domain}), as published on its own website. Give the address and the https page where it appears. If the site publishes no support email, answer with empty strings.\n${UNTRUSTED_TEXT_RULE}`,
     },
   ];
   let response: Anthropic.Message | null = null;

@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { ALL_DETAILED, type PfcDetailed } from "./taxonomy";
+import { UNTRUSTED_TEXT_RULE } from "@/lib/untrusted-text";
 
 const DEFAULT_MODEL = "claude-opus-5-5";
 const BATCH_SIZE = 50;
@@ -7,7 +8,8 @@ const UNKNOWN = "UNKNOWN";
 
 const SYSTEM = `You classify merchants from US bank and credit card statements into Plaid's personal finance categories.
 For each merchant name, pick the single detailed category that best describes what a typical purchase there is.
-Use ${UNKNOWN} when the name is too vague to tell, looks like a person's name, or could be several unrelated things.`;
+Use ${UNKNOWN} when the name is too vague to tell, looks like a person's name, or could be several unrelated things.
+${UNTRUSTED_TEXT_RULE}`;
 
 const SCHEMA = {
   type: "object",
@@ -40,8 +42,11 @@ export function resetLlmClientForTests(): void {
   client = undefined;
 }
 
-async function classifyBatch(merchants: string[]): Promise<Map<string, PfcDetailed>> {
-  const response = await getClient().messages.create({
+async function classifyBatch(
+  merchants: string[],
+  claude: { messages: Pick<Anthropic["messages"], "create"> },
+): Promise<Map<string, PfcDetailed>> {
+  const response = await claude.messages.create({
     model: process.env.ANTHROPIC_MODEL || DEFAULT_MODEL,
     max_tokens: 16000,
     system: SYSTEM,
@@ -67,7 +72,10 @@ async function classifyBatch(merchants: string[]): Promise<Map<string, PfcDetail
 
 // Returns a category for each merchant the model could place. Never throws for API or
 // parsing problems: unplaced merchants just stay uncategorized and are retried next import.
-export async function classifyMerchants(merchants: string[]): Promise<Map<string, PfcDetailed>> {
+export async function classifyMerchants(
+  merchants: string[],
+  { claude }: { claude?: () => Anthropic } = {},
+): Promise<Map<string, PfcDetailed>> {
   const results = new Map<string, PfcDetailed>();
   if (!process.env.ANTHROPIC_API_KEY || merchants.length === 0) return results;
 
@@ -79,7 +87,7 @@ export async function classifyMerchants(merchants: string[]): Promise<Map<string
   const answers = await Promise.all(
     batches.map(async (batch) => {
       try {
-        return await classifyBatch(batch);
+        return await classifyBatch(batch, claude?.() ?? getClient());
       } catch (error) {
         if (error instanceof Anthropic.APIError) {
           console.error("Merchant categorization failed", { status: error.status });

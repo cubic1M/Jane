@@ -1,3 +1,4 @@
+import type { RealPathRun } from "./real-path";
 import type { CheckRun } from "./run";
 import { formatCents } from "@/lib/money";
 
@@ -65,7 +66,7 @@ export const meetsBar = (m: Metrics | undefined): boolean =>
 
 export type NightEntry = {
   date: string;
-  mode: CheckRun["mode"];
+  mode: CheckRun["mode"] | RealPathRun["mode"];
   promptVersion: string;
   score: number | null;
   graded: number;
@@ -102,6 +103,32 @@ export function entryOf(run: CheckRun, date: string): NightEntry {
   };
 }
 
+// The night's run through the real chat with the model played back (./real-path.ts): the only
+// free score that covers what people are really answered with.
+export function entryOfRealPath(run: RealPathRun, date: string, promptVersion: string): NightEntry {
+  return {
+    date,
+    mode: run.mode,
+    promptVersion,
+    score: run.score,
+    graded: run.asked,
+    skipped: 0,
+    costCents: 0,
+    firstWordsMs: null,
+    failed: run.results
+      .filter((r) => !r.ok)
+      .slice(0, 30)
+      .map((r) => ({ id: r.id, text: r.text, score: 0, reason: r.failed.join(", ") })),
+  };
+}
+
+export const modeLabel = (mode: NightEntry["mode"]) =>
+  mode === "full"
+    ? "with Claude"
+    : mode === "real_path"
+      ? "real path, played back"
+      : "rules backup";
+
 export function appendEntry(history: readonly NightEntry[], entry: NightEntry): NightEntry[] {
   return [...history.filter((h) => !(h.date === entry.date && h.mode === entry.mode)), entry]
     .sort((a, b) => a.date.localeCompare(b.date) || a.mode.localeCompare(b.mode))
@@ -113,7 +140,7 @@ export function dropOf(history: readonly NightEntry[], entry: NightEntry): strin
   const before = [...history].filter((h) => h.mode === entry.mode && h.date < entry.date).at(-1);
   if (!before || before.score === null || entry.score === null) return null;
   if (before.score - entry.score <= DROP_THRESHOLD) return null;
-  return `The ${entry.mode === "full" ? "graded (with Claude)" : "rules-only"} score fell from ${before.score} (${before.date}) to ${entry.score} (${entry.date}).`;
+  return `The ${modeLabel(entry.mode)} score fell from ${before.score} (${before.date}) to ${entry.score} (${entry.date}).`;
 }
 
 export const START = "<!-- nightly:start -->";
@@ -138,7 +165,7 @@ export function nightlyTable(history: readonly NightEntry[]): string {
     "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :-: |",
     ...rows.map(
       (r) =>
-        `| ${r.date} | ${r.mode === "full" ? "with Claude" : "rules only"} | ${pct(r.metrics?.understoodPct)} | ${pct(r.metrics?.figuresPct)} | ${pct(r.metrics?.followUpsPct)} | ${secs(r.metrics?.firstWordsMs ?? r.firstWordsMs)} | ${secs(r.metrics?.fullAnswerMs)} | ${r.score ?? "–"} | ${r.graded} | ${r.failed.length} | ${formatCents(r.costCents)} | ${meetsBar(r.metrics) ? "yes" : "no"} |`,
+        `| ${r.date} | ${modeLabel(r.mode)} | ${pct(r.metrics?.understoodPct)} | ${pct(r.metrics?.figuresPct)} | ${pct(r.metrics?.followUpsPct)} | ${secs(r.metrics?.firstWordsMs ?? r.firstWordsMs)} | ${secs(r.metrics?.fullAnswerMs)} | ${r.score ?? "–"} | ${r.graded} | ${r.failed.length} | ${formatCents(r.costCents)} | ${meetsBar(r.metrics) ? "yes" : "no"} |`,
     ),
   ].join("\n");
 }

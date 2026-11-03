@@ -65,6 +65,8 @@ function given(
   return [];
 }
 
+const MONTH = new Date(Date.UTC(NOW.getUTCFullYear(), NOW.getUTCMonth(), 1));
+
 describe.runIf(url)("Claude as strategist", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const made: string[] = [];
@@ -78,6 +80,8 @@ describe.runIf(url)("Claude as strategist", { timeout: 120_000 }, () => {
   beforeAll(() => {
     vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
     vi.stubEnv("ANTHROPIC_API_KEY", "");
+    // The month's total across every test on this database isn't what's tested here.
+    vi.stubEnv("CHAT_MONTHLY_CAP_CENTS", "1000000000");
     vi.stubEnv("PLAID_CLIENT_ID", "");
     vi.stubEnv("PLAID_SECRET", "");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
@@ -247,5 +251,20 @@ describe.runIf(url)("Claude as strategist", { timeout: 120_000 }, () => {
     expect(await runStrategist(userId, { client, now: later, claude: script.claude })).toEqual({
       status: "capped",
     });
+  });
+
+  it("stops at the month's total for all of Claude, whoever the person is", async () => {
+    const userId = await person("debt");
+    vi.stubEnv("CHAT_MONTHLY_CAP_CENTS", "1");
+    await client.rateLimit.upsert({
+      where: { key_windowStart: { key: "chatmonth:total", windowStart: MONTH } },
+      update: { count: { increment: 100 } },
+      create: { key: "chatmonth:total", windowStart: MONTH, count: 100 },
+    });
+    const script = fake([() => null]);
+    expect(await runStrategist(userId, { client, now: NOW, claude: script.claude })).toEqual({
+      status: "capped",
+    });
+    vi.stubEnv("CHAT_MONTHLY_CAP_CENTS", "1000000000");
   });
 });

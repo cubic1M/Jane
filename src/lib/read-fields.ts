@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { DocumentContentType } from "@/config/documents";
 import { anthropic, finishedText, llmEnabled, llmModel } from "@/lib/anthropic";
+import { UNTRUSTED_TEXT_RULE } from "@/lib/untrusted-text";
 
 // Claude reads named fields off an uploaded PDF or photo (a tax return, a tax notice, a
 // policy's declarations page). The answer is held to a JSON schema of string fields, and each
@@ -36,7 +37,12 @@ export async function readFields<K extends string>(
     const response = await claude().messages.create({
       model: llmModel(),
       max_tokens: maxTokens,
-      messages: [{ role: "user", content: [block, { type: "text", text: prompt }] }],
+      messages: [
+        {
+          role: "user",
+          content: [block, { type: "text", text: `${prompt}\n${UNTRUSTED_TEXT_RULE}` }],
+        },
+      ],
       output_config: { effort: "low", format: { type: "json_schema", schema } },
     });
     text = finishedText(response);

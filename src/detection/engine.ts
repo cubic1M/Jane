@@ -37,6 +37,8 @@ import { isoDate, monthsBefore } from "./units";
 import { copiesToLeaveOut } from "@/planning/books";
 import { cachedRead } from "@/lib/read-cache";
 import { FILE_SOURCE, GIVEN_SOURCE } from "@/lib/import/balances";
+import type { anthropic } from "@/lib/anthropic";
+import { meteredClaude } from "@/lib/claude-budget";
 
 // Findings the person can still act on, and the ones where they've said yes.
 const OPEN_STATUSES: FindingStatus[] = ["new", "shown", "approved", "in_progress"];
@@ -346,7 +348,7 @@ const NO_FINDINGS: Record<FindingType, number> = {
 type Options = {
   client?: PrismaClient;
   now?: Date;
-  checkSubscriptions?: (merchants: string[]) => Promise<Map<string, boolean>>;
+  checkSubscriptions?: typeof checkSubscriptions;
   raiseAlerts?: typeof raiseAlerts;
   applyStandingRules?: typeof applyStandingRules;
   confirmRefunds?: typeof confirmRefunds;
@@ -359,7 +361,8 @@ type Options = {
 async function subscriptionMerchantKeys(
   db: ScopedDb,
   input: DetectionInput,
-  check: (merchants: string[]) => Promise<Map<string, boolean>>,
+  check: typeof checkSubscriptions,
+  claude: typeof anthropic,
 ): Promise<{ yes: string[]; no: string[] }> {
   const stored = await db.subscriptionChecks.findMany({
     select: { merchantKey: true, isSubscription: true },
@@ -372,7 +375,7 @@ async function subscriptionMerchantKeys(
   }
   // A sample person's scan never asks Claude: anyone can make one (src/lib/trial.ts).
   if (keyByName.size > 0 && !isTrialUser(db.userId)) {
-    const answers = await check([...keyByName.keys()].sort());
+    const answers = await check([...keyByName.keys()].sort(), { claude });
     const rows = [...answers].flatMap(([name, isSubscription]) => {
       const merchantKey = keyByName.get(name);
       return merchantKey ? [{ merchantKey, isSubscription }] : [];
@@ -417,7 +420,7 @@ export async function runDetection(
   // goes, decisions and actions included, so nothing says it again (src/lib/evidence/orphans.ts).
   await removeOrphans(userId, { client });
   const input = await loadInput(db, await todayOf(userId, { client, now }), client);
-  const answers = await subscriptionMerchantKeys(db, input, check);
+  const answers = await subscriptionMerchantKeys(db, input, check, meteredClaude(db.userId));
   input.subscriptionMerchantKeys = answers.yes;
   input.declinedSubscriptionMerchantKeys = answers.no;
   const candidates = detect(input);

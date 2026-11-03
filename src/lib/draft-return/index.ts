@@ -23,6 +23,7 @@ import {
 } from "@/planning/draft-return";
 import { readDraft } from "./read";
 import { isoDay as iso } from "@/lib/dates";
+import { meteredClaude } from "@/lib/claude-budget";
 
 // The return, checked before you file (spec step 272). A draft (a PDF from tax software or an
 // accountant) uploaded to Documents as "Draft tax return" is read (by Claude with a key; for
@@ -150,7 +151,7 @@ export async function readDraftReturn(
     client = defaultClient,
     now = new Date(),
     file = null,
-    claude = anthropic,
+    claude = meteredClaude(userId),
   }: Options & {
     file?: { bytes: Uint8Array; contentType: DocumentContentType } | null;
     claude?: typeof anthropic;

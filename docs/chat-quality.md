@@ -23,6 +23,17 @@ the chat is measured against the numbers here. Scores are only meant to go up.
 | `npm run checks:baseline` | How many first questions the rules alone understand (an answer of their own, not the generic fallback), by sector and page. Takes about two minutes. | A scratch database in `TEST_DATABASE_URL`; no key |
 | `npm run checks:answers` | Asks the bank as the person would and grades each answer: fixed checks (the answer first, the right figures, tone, guardrails, length), then Claude against a rubric. | The same; the Claude part also needs `ANTHROPIC_API_KEY` |
 
+Claude answers all typed text, so a score from the rules part says little about what people read:
+it covers the backup, which they see only when Claude can't answer. `real_path` is the free nightly
+score that covers the real path: every question goes through the real chat (primer, tool routing,
+tools, guardrails, streaming) with only the model played back
+(`src/lib/jane-agent/checks/real-path.ts`). It shows whether the path works, not whether an answer
+is good: that takes the paid part. A slice runs on every pull request.
+
+Recorded answers are graded by code first and for free: `src/lib/jane-agent/checks/regrade.ts` runs
+the guardrails and graders over the 124 real answers of the 10-21 run on every pull request, and the
+guardrails are scored both ways in `src/lib/guardrails.scored.test.ts`.
+
 Without a key the Claude questions are skipped and the run says so. Time to first words is
 recorded for every answered question.
 

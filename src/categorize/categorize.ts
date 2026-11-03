@@ -1,3 +1,4 @@
+import type Anthropic from "@anthropic-ai/sdk";
 import { NOT_A_REFUND_MIN_CENTS } from "@/config/detection";
 import { classifyMerchants } from "./llm";
 import { categorizeByRules, payoutByRules } from "./rules";
@@ -24,7 +25,7 @@ type Db = Pick<ScopedDb, "userId" | "merchantCategories">;
 export async function categorizeTransactions<T extends NormalizedTransaction>(
   transactions: T[],
   db: Db,
-  { askClaude = true }: { askClaude?: boolean } = {},
+  { askClaude = true, claude }: { askClaude?: boolean; claude?: () => Anthropic } = {},
 ): Promise<Categorized<T>[]> {
   const merchantKeyOf = (t: T) => normalizeMerchant(t.description)?.key ?? null;
   const keys = [...new Set(transactions.map(merchantKeyOf).filter((k) => k !== null))];
@@ -71,7 +72,7 @@ export async function categorizeTransactions<T extends NormalizedTransaction>(
 
   const toAsk =
     askClaude && !isTrialUser(db.userId) ? [...unplaced].filter((key) => !known.has(key)) : [];
-  const answers = await classifyMerchants(toAsk);
+  const answers = await classifyMerchants(toAsk, { claude });
   if (answers.size > 0) {
     const rows = [...answers].flatMap(([merchantKey, detailed]) => {
       const category = categoryOf(detailed);
@@ -105,6 +106,7 @@ export async function categorizeTransactions<T extends NormalizedTransaction>(
 // first, so a merchant is asked about once), and stored. Returns how many rows changed.
 export async function categorizeLeftovers(
   db: Pick<ScopedDb, "userId" | "merchantCategories" | "transactions">,
+  { claude }: { claude?: () => Anthropic } = {},
 ): Promise<number> {
   const rows = await db.transactions.findMany({
     where: { pfcDetailed: null, categorySource: null },
@@ -125,6 +127,7 @@ export async function categorizeLeftovers(
       hints: {},
     })),
     db,
+    { claude },
   );
   // One update per category, not per row.
   const byCategory = new Map<string, { category: Category; ids: string[] }>();

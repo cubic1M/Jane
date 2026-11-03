@@ -7,6 +7,7 @@ import { ACTION_STATUSES, ConciergeError, changeActionStatus, teamMembers } from
 import { db } from "@/lib/db";
 import { draftMessage, type Draft } from "@/lib/drafts";
 import { requireAdmin } from "@/lib/session";
+import { meteredClaude } from "@/lib/claude-budget";
 
 export type FormState = { ok: boolean; message: string } | null;
 
@@ -65,7 +66,9 @@ export async function draftForAction(
   });
   if (!action) return { ok: false, message: "That action doesn't exist." };
 
-  const result = await draftMessage(action.type, action.decision.finding);
+  const result = await draftMessage(action.type, action.decision.finding, {
+    client: meteredClaude(action.userId),
+  });
   if (!result)
     return { ok: false, message: "There's no message to draft for this kind of action." };
   await logAudit(

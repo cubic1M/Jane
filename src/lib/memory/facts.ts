@@ -19,6 +19,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import type { Told } from "@/profile/build";
 import { FACT_KEYS, type FactKey, factSpec } from "@/profile/facts";
+import { oneLine } from "@/lib/untrusted-text";
 import { isSensitiveFact } from "./sensitive";
 
 // What Jane knows about the person (user_facts), refined by every interaction: uploads and the
@@ -314,7 +315,9 @@ export function memoryForChat(facts: readonly KnownFact[]): string {
   if (usable.length === 0) return "";
   return [
     "What you know about the person from earlier (their answers, the chat and their data; use it where it helps, never quote an old conversation, and if they say something has changed, go with what they say now):",
-    ...usable.map((f) => `- ${f.label} (${SOURCE_WORDS[f.source]}; ${f.confidence}% sure)`),
+    ...usable.map(
+      (f) => `- ${oneLine(f.label)} (${SOURCE_WORDS[f.source]}; ${f.confidence}% sure)`,
+    ),
   ].join("\n");
 }
 
