@@ -26,3 +26,11 @@ fast-check holds these for any made-up rows, in the ordinary test run:
 - `src/lib/import/double-import.integration.test.ts`: a second upload adds nothing, two overlapping files equal one whole file, and real repeats within a file stay.
 - `src/data-sources/csv/control-totals.property.test.ts`: a statement that adds up says nothing in either order, taking out any row warns, and every row is accounted for.
 - `src/lib/money.property.test.ts`: amounts read back as written.
+
+## Constraints in the database
+
+`prisma/migrations/*_money_check_constraints` adds 36 CHECK constraints, for example: a budget, a goal and a transfer are above zero, a percent is 0 to 100, an invite's uses stay within its limit, and an uploaded row has its dedupe key.
+
+- **Chosen by reading the writers.** Each predicate comes from what the code can write, never from production's data. Left out because a writer can break them: `holdings.quantity` (Plaid and CSV report short positions), `findings.amount_cents` (a low-balance forecast is negative), `credit_reports.score` and `brokerage_orders.amount_cents`.
+- **`NOT VALID`.** Each applies to every new or changed row at once and scans nothing, so the migration is safe on any existing rows. A later migration can `VALIDATE` them only where `scripts/sql/money-constraints-old-rows.sql` counts 0 in production, which a founder runs.
+- **Tested both ways.** `src/lib/money-constraints.integration.test.ts` shows each rule accepting a good value and refusing a bad one by name, and fails if a `ck_` constraint has no case.

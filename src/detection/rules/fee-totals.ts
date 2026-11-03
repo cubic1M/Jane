@@ -61,7 +61,12 @@ export function totalsByAccount(
     const { short, months } = paceMonths(historyDays(input));
     // A card's annual fee comes once a year: it counts once, never scaled up with the rest
     // (night QA 10-30: a $95 annual fee in 3 months of statements counted as $380 a year).
-    const yearly = sumCents(charges.filter((c) => ANNUAL_FEE_WORDS.test(c.description)));
+    // Never more than the total: refunds beyond the other fees left that negative, and a year's
+    // pace of it a negative saving (money rules, 11-03; src/planning/bank-fees.ts does the same).
+    const yearly = Math.min(
+      total,
+      sumCents(charges.filter((c) => ANNUAL_FEE_WORDS.test(c.description))),
+    );
     const paced =
       charges.filter((c) => c.amountCents > 0 && !ANNUAL_FEE_WORDS.test(c.description)).length >=
       minChargesForPace;
