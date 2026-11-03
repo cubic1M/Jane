@@ -209,3 +209,6 @@ export const KNOWN_BANKS_LINE =
 // The report says the statements are old when their newest line is over this many days back
 // (debugger 10-30: January-April statements uploaded in October, with no word of it).
 export const STALE_UPLOAD_DAYS = 45;
+
+// How far back to look for payments to cards with no statement on file.
+export const UNSEEN_CARD_MONTHS = 3;

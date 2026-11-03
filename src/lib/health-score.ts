@@ -1,3 +1,4 @@
+import { paymentsToUnseenCards } from "@/categorize/card-payments";
 import { ONE_OFF_PAY } from "@/config/profile";
 import { HEALTH_MONTHS, HEALTH_SLIP_CATEGORIES, HEALTH_SLIP_DAYS } from "@/config/health-score";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
@@ -94,6 +95,12 @@ export async function healthInput(
     months.length === 0 || !spends
       ? null
       : Math.round(months.reduce((s, m) => s + cents(m), 0) / months.length);
+  const toUnseenCards = new Map<string, number>();
+  for (const t of paymentsToUnseenCards(input.transactions, input.accounts)) {
+    const month = monthOf(t.date);
+    toUnseenCards.set(month, (toUnseenCards.get(month) ?? 0) + t.amountCents);
+  }
+  const unseenCardPaymentsCents = average((m) => toUnseenCards.get(m.month) ?? 0) ?? 0;
   const since = addDays(input.asOf, -HEALTH_SLIP_DAYS);
   const [goals, prefs] = await Promise.all([
     listGoals(userId, { client, now }),
@@ -103,7 +110,8 @@ export async function healthInput(
   const incomeSaid = incomeOverride(prefs);
   return {
     cashCents: cash.length === 0 ? null : cash.reduce((s, a) => s + a.currentBalanceCents!, 0),
-    monthlySpendingCents: average((m) => m.spendingCents),
+    monthlySpendingCents: average((m) => m.spendingCents + (toUnseenCards.get(m.month) ?? 0)),
+    unseenCardPaymentsCents,
     monthlyIncomeCents: incomeSaid ?? average((m) => m.incomeCents),
     slips:
       input.transactions.length === 0

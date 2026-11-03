@@ -793,3 +793,28 @@ describe("money into one's own HSA", () => {
     },
   );
 });
+
+// Debugger 11-03: someone in debt trouble. "Review your City Light And Power subscription", and a
+// payday lender's repayment with no category.
+describe("a small utility, a payday lender", () => {
+  const rule = (description: string) =>
+    categorizeByRules({ description, amountCents: 9_200, hints: {} })?.detailed ?? null;
+
+  it.each([
+    "CITY LIGHT AND POWER",
+    "SEATTLE CITY LIGHT",
+    "ORLANDO POWER & LIGHT",
+    "AUSTIN LIGHT & POWER",
+  ])("%s is electricity", (description) => {
+    expect(rule(description)).toBe("RENT_AND_UTILITIES_GAS_AND_ELECTRICITY");
+  });
+
+  it.each([
+    "ADVANCE AMERICA REPAYMENT",
+    "CHECK INTO CASH PMT",
+    "ACE CASH EXPRESS",
+    "SPEEDY CASH 4411",
+  ])("%s going out pays back a loan", (description) => {
+    expect(rule(description)).toBe("LOAN_PAYMENTS_OTHER_PAYMENT");
+  });
+});

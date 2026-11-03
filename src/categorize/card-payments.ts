@@ -83,6 +83,35 @@ export function cardPaymentOutflows(
     .map(({ outflow }) => outflow.id);
 }
 
+// Card payments out of a bank account that no card on file shows arriving: what they paid for is
+// spending Jane can't see, so they're the only sign of it (debugger 11-03: a checking statement alone,
+// and monthly spending too low by every card payment).
+export function paymentsToUnseenCards<R extends PairableRow & { description?: string }>(
+  rows: readonly R[],
+  accounts: readonly { id: string; type: string; name: string }[],
+): R[] {
+  const type = new Map(accounts.map((a) => [a.id, a.type]));
+  // Money arriving on a card, whatever it's labelled: an Apple Card's own side reads as a transfer.
+  const arrived = rows.filter((r) => type.get(r.accountId) === "credit" && r.amountCents < 0);
+  const used = new Set<string>();
+  return rows.filter((r) => {
+    if (type.get(r.accountId) !== "depository" || r.amountCents <= 0) return false;
+    if (r.pfcDetailed !== CARD_PAYMENT) return false;
+    const match = arrived.find(
+      (a) =>
+        !used.has(a.id) &&
+        a.amountCents === -r.amountCents &&
+        days(a.date, r.date) <= CARD_PAYMENT_MATCH_DAYS,
+    );
+    if (match) {
+      used.add(match.id);
+      return false;
+    }
+    // Named for a card on file: its statement may just not reach this far back.
+    return paidCardOnFile(r.description ?? "", accounts) === null;
+  });
+}
+
 // A card payment out of a bank account, named from its words when its card's side isn't known:
 // the card of the company the payment names, else "Chase card payment", else the plain name (a
 // lone card isn't assumed: the payment may be to one Jane hasn't seen).

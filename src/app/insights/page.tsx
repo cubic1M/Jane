@@ -12,7 +12,9 @@ import { spendingInsights, spendingLines } from "@/insights/spending";
 import { accountLabels } from "@/lib/account-labels";
 import { scopedDb } from "@/lib/db-scoped";
 import { requireUser } from "@/lib/session";
+import { formatCents } from "@/lib/money";
 import { todayOf } from "@/lib/today";
+import { unseenCardPaymentsMonthly } from "@/lib/unseen-cards";
 import { CashIncomeNote } from "./cash-income";
 import { SpendingExplorer } from "./explorer";
 
@@ -24,6 +26,7 @@ async function Insights() {
   if (transactions.length === 0) redirect("/home");
 
   const insights = spendingInsights(transactions, { asOf, monthCount: INSIGHT_MONTHS });
+  const toUnseenCards = await unseenCardPaymentsMonthly(db, asOf);
   const [budgets, accounts, cash] = await Promise.all([
     db.budgets.findMany({ select: { category: true, amountCents: true } }),
     db.accounts.findMany({ select: { id: true, name: true, mask: true, createdAt: true } }),
@@ -63,6 +66,15 @@ async function Insights() {
         </p>
       </div>
 
+      {toUnseenCards !== null && (
+        <p className="rounded-lg bg-zinc-100 p-3 text-sm text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">
+          Not counting about {formatCents(toUnseenCards)} a month paid to cards with no statement
+          here.{" "}
+          <Link href="/import" className="font-medium underline">
+            Upload those statements
+          </Link>
+        </p>
+      )}
       {budget && <BudgetList progress={budget.progress} daysLeft={budget.daysLeft} />}
 
       <SpendingExplorer
