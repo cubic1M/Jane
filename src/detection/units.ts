@@ -28,7 +28,7 @@ export function monthsBefore(date: string, months: number): string {
 export function median(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  return sorted.length % 2 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
 }
 
 export function average(values: number[]): number {
@@ -55,7 +55,7 @@ export function nextOccurrence(date: string, frequency: string, anchorDay?: numb
   const step = STEP[frequency];
   if (!step) throw new Error(`Unknown frequency ${frequency}`);
   if ("days" in step) return addDays(date, step.days);
-  const [year, month, day] = date.split("-").map(Number);
+  const [year, month, day] = date.split("-").map(Number) as [number, number, number];
   const target = new Date(Date.UTC(year, month - 1 + step.months, 1));
   const lastDay = new Date(
     Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0),

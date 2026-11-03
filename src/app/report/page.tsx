@@ -29,7 +29,7 @@ import {
   reportState,
   shortUploadDays,
   staleStatementsEnd,
-} from "./state";
+} from "@/lib/report-state";
 import { isoDay } from "@/lib/dates";
 import { dayLabel } from "@/lib/day-label";
 import { monthsCovered, statementsEnd } from "@/profile/build";
@@ -107,7 +107,7 @@ async function ReportContent() {
           findings.map((f) => f.type),
         )
       : [];
-  // The time-sensitive first, then what each is likely to be worth (src/app/report/state.ts).
+  // The time-sensitive first, then what each is likely to be worth (src/lib/report-state.ts).
   const ordered = reportOrder(findings);
   // The shareable result card (src/lib/share-card.ts); sample data never shares.
   const card = isTrialUser(user.id)

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "src/proxy.ts",
+    "src/instrumentation.ts",
+    "scripts/*.{ts,mjs}",
+    "prisma.config.ts",
+    "e2e/**/*.ts",
+    "stryker.config.mjs",
+    "vitest.stryker.config.mts"
+  ],
+  "project": ["src/**/*.{ts,tsx}", "scripts/*.{ts,mjs}"],
+  "ignore": ["src/generated/**", "src/accuracy/__fixtures__/**"],
+  "ignoreDependencies": [
+    "@prisma/client",
+    "tailwindcss",
+    "@auth/core",
+    "@stryker-mutator/core",
+    "@stryker-mutator/vitest-runner"
+  ]
+}

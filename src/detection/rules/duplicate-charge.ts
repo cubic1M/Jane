@@ -69,7 +69,7 @@ export function duplicatePairs(input: DetectionInput): DuplicatePair[] {
     if (twinCharges(charges)) continue;
     const sameDay = (date: string) => charges.filter((c) => c.date === date).length;
     for (let i = 1; i < charges.length; i += 1) {
-      const [first, second] = [charges[i - 1], charges[i]];
+      const [first, second] = [charges[i - 1]!, charges[i]!];
       // Three or more on one day: a group's seats.
       if (sameDay(first.date) >= DUPLICATE_CHARGE_GROUP_MIN) continue;
       if (sameDay(second.date) >= DUPLICATE_CHARGE_GROUP_MIN) continue;

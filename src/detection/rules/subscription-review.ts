@@ -50,7 +50,7 @@ function onePriceOrOneStep(amounts: readonly number[]): boolean {
   ) {
     return true;
   }
-  const [first, last] = [amounts[0], amounts[amounts.length - 1]];
+  const [first, last] = [amounts[0]!, amounts[amounts.length - 1]!];
   return changes === 1 && last > first && last <= first * (1 + FIXED_PRICE_SUBSCRIPTION_MAX_STEP);
 }
 

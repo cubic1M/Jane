@@ -101,7 +101,7 @@ export function isSubscriptionBox(stream: Stream): boolean {
 
 // Every four weeks to the day, not monthly: FOUR_WEEKLY_*.
 function fourWeekly(run: DetectionTransaction[], frequency: Frequency | null): boolean {
-  const gaps = run.slice(1).map((c, i) => daysBetween(run[i].date, c.date));
+  const gaps = run.slice(1).map((c, i) => daysBetween(run[i]!.date, c.date));
   return (
     frequency === "MONTHLY" &&
     gaps.length >= FOUR_WEEKLY_MIN_GAPS &&
@@ -204,7 +204,7 @@ const isVariable = (charges: DetectionTransaction[]) =>
 
 // Where two charges a month apart can only be a bill or a subscription.
 function shortRunAllowed(charges: DetectionTransaction[]): boolean {
-  const key = merchantOf(charges[charges.length - 1])?.key ?? "";
+  const key = merchantOf(charges[charges.length - 1]!)?.key ?? "";
   return (
     inList(mostCommon(charges.map((c) => c.pfcDetailed)), SHORT_RUN_CATEGORIES) ||
     merchantMatches(key, SUBSCRIPTION_MERCHANTS) ||
@@ -225,7 +225,7 @@ function detectRun(charges: DetectionTransaction[], asOf: string): Stream | null
   const allowed = shortRunAllowed(charges);
   if (core.length < SHORT_RUN_MIN_CHARGES) return null;
 
-  const gaps = core.slice(1).map((c, i) => daysBetween(core[i].date, c.date));
+  const gaps = core.slice(1).map((c, i) => daysBetween(core[i]!.date, c.date));
   const frequency = frequencyOf(gaps);
   const range = frequency && FALLBACK_INTERVAL_DAYS[frequency];
   if (!frequency || !range) return null;
@@ -240,7 +240,7 @@ function detectRun(charges: DetectionTransaction[], asOf: string): Stream | null
 
   const run = [...core];
   for (const charge of charges) {
-    const last = run[run.length - 1];
+    const last = run[run.length - 1]!;
     if (charge.date <= last.date) continue;
     const gap = daysBetween(last.date, charge.date);
     // A new price, but not a year's worth of the old one: that's the plan switched to yearly.
@@ -260,7 +260,7 @@ function detectRun(charges: DetectionTransaction[], asOf: string): Stream | null
   // the new one, and the charges at the old price, at the same gap, are the run's oldest (CSV
   // bench: Disney+ $13.99, $13.99, $15.99, $15.99, $15.99 was no price increase).
   for (const charge of [...charges].reverse()) {
-    const first = run[0];
+    const first = run[0]!;
     if (charge.date >= first.date) continue;
     const gap = daysBetween(charge.date, first.date);
     const firstOldPrice = run[0] === core[0];
@@ -284,12 +284,12 @@ function detectRun(charges: DetectionTransaction[], asOf: string): Stream | null
       .slice(core.length)
       .every(
         (c) =>
-          c.amountCents > core[0].amountCents &&
-          c.amountCents <= core[0].amountCents * (1 + FIXED_PRICE_SUBSCRIPTION_MAX_STEP),
+          c.amountCents > core[0]!.amountCents &&
+          c.amountCents <= core[0]!.amountCents * (1 + FIXED_PRICE_SUBSCRIPTION_MAX_STEP),
       );
   if (short && !allowed && !rose) return null;
 
-  const last = run[run.length - 1];
+  const last = run[run.length - 1]!;
   const merchant = merchantOf(last);
   if (!merchant) return null;
   const usualGap = median(gaps);
@@ -340,7 +340,7 @@ function planAfterStar(description: string): boolean {
   const star = description.indexOf("*");
   if (star < 0) return false;
   const words = wordsOf(description.slice(star + 1));
-  while (words.length > 1 && words[words.length - 1].length === 1) words.pop();
+  while (words.length > 1 && words[words.length - 1]!.length === 1) words.pop();
   return words.length > 0 && isPlanName(words.join(" "));
 }
 
@@ -354,7 +354,7 @@ function switchedToYearly(main: Stream, charges: DetectionTransaction[]): Stream
   const ended = main.lastDate;
   const after = charges.filter((c) => c.date > ended);
   if (after.length !== 1) return null;
-  const [plan] = after;
+  const plan = after[0]!;
   const months = plan.amountCents / main.lastAmountCents;
   const merchant = merchantOf(plan);
   if (!merchant || months < YEARLY_SWITCH_MIN_MONTHS || months > YEARLY_SWITCH_MAX_MONTHS) {
@@ -387,9 +387,10 @@ function yearlyPlan(charges: DetectionTransaction[]): Stream | null {
   const plans = charges.filter(
     (c) => c.amountCents >= YEARLY_PLAN_MIN_CENTS && c.amountCents <= YEARLY_PLAN_MAX_CENTS,
   );
-  const merchant = plans.length === 1 ? merchantOf(plans[0]) : null;
-  if (!merchant || !isYearlyPlanCharge(plans[0])) return null;
-  return yearlyStream(plans[0], merchant);
+  const [plan] = plans;
+  const merchant = plans.length === 1 && plan ? merchantOf(plan) : null;
+  if (!plan || !merchant || !isYearlyPlanCharge(plan)) return null;
+  return yearlyStream(plan, merchant);
 }
 
 function yearlyStream(
@@ -479,7 +480,7 @@ export function saysPlan(description: string): boolean {
 }
 
 function detectRuns(charges: DetectionTransaction[], asOf: string): Stream[] {
-  const key = merchantOf(charges[charges.length - 1])?.key ?? "";
+  const key = merchantOf(charges[charges.length - 1]!)?.key ?? "";
   if (merchantMatches(key, BILLING_PLATFORM_MERCHANTS)) return runsByPrice(charges, asOf);
   // A membership at a company that sells something else ("UBER *ONE MEMBERSHIP" among the rides):
   // its charges are a run of their own (CSV bench, second tuning set). Not when the rest are
@@ -623,7 +624,7 @@ function uploadedThrough(input: DetectionInput): Map<string, string> {
 // nothing, its Hulu, Peacock and gym all "stopped" since their Oct charges weren't in it).
 function stillActiveInFile(s: Stream, through: string | undefined): Stream {
   if (s.active || !through || s.lastDate === null) return s;
-  const gaps = s.charges.slice(1).map((c, i) => daysBetween(s.charges[i].date, c.date));
+  const gaps = s.charges.slice(1).map((c, i) => daysBetween(s.charges[i]!.date, c.date));
   if (gaps.length === 0) return s;
   return {
     ...s,

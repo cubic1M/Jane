@@ -24,7 +24,7 @@ function groupOf(stream: Stream): Group | undefined {
 function titleOf(services: readonly Stream[], label: string): string {
   const streams = new Map<string, Stream[]>();
   for (const s of services) streams.set(s.merchantKey, [...(streams.get(s.merchantKey) ?? []), s]);
-  const twice = [...streams.values()].filter((s) => s.length > 1).map((s) => s[0].merchant);
+  const twice = [...streams.values()].filter((s) => s.length > 1).map((s) => s[0]!.merchant);
   const paid = twice.length > 0 ? `, and for ${twice.join(" and ")} twice` : "";
   return `You pay for ${streams.size} ${label} services${paid}`;
 }
