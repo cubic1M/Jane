@@ -15,7 +15,9 @@ import {
   recordOf,
   renderFlakes,
   timingsFrom,
+  withSecondPass,
 } from "./flake-list-core.mjs";
+import { issueBody, quarantineList } from "./quarantine-core.mjs";
 
 const REPO = process.env.GITHUB_REPOSITORY ?? "cubic1M/Jane";
 const BRANCH = "ci-flakes";
@@ -61,12 +63,20 @@ function reportsOf(runId, attempt, onMainNow) {
     if (!artifact.name.startsWith("results-") || !artifact.name.endsWith(suffix)) continue;
     const out = mkdtempSync(join(tmpdir(), "report-"));
     run("gh", ["run", "download", String(runId), "-R", REPO, "-n", artifact.name, "-D", out]);
-    for (const file of readdirSync(out)) {
-      if (!file.endsWith(".json")) continue;
+    const read = (file) => {
       const report = JSON.parse(readFileSync(join(out, file), "utf8"));
-      reports.push(report.testResults ? fromVitest(report) : fromPlaywright(report));
       // A whole run of main says how long each file takes: PRs run only part, on a test merge.
       if (report.testResults && onMainNow) Object.assign(timings, timingsFrom(report));
+      return report.testResults ? fromVitest(report) : fromPlaywright(report);
+    };
+    const files = readdirSync(out).filter((file) => file.endsWith(".json"));
+    for (const file of files) {
+      if (file === "e2e-again.json") continue;
+      reports.push(
+        file === "e2e.json" && files.includes("e2e-again.json")
+          ? withSecondPass(read(file), read("e2e-again.json"))
+          : read(file),
+      );
     }
   }
   return reports;
@@ -137,8 +147,32 @@ if (process.env.GITHUB_STEP_SUMMARY && existsSync(process.env.GITHUB_STEP_SUMMAR
   );
 }
 
+// The quarantine, by the fixed rule. Each newly quarantined test gets one issue.
+let quarantine = [];
+try {
+  quarantine = JSON.parse(readFileSync(join(dir, "QUARANTINE.json"), "utf8"));
+} catch {
+  console.log("No quarantine list yet.");
+}
+const nextQuarantine = quarantineList(kept, quarantine, now);
+for (const entry of nextQuarantine) {
+  if (quarantine.some((held) => held.id === entry.id)) continue;
+  run("gh", [
+    "issue",
+    "create",
+    "-R",
+    REPO,
+    "--label",
+    "quarantined",
+    "--title",
+    `Quarantined: ${entry.id}`.slice(0, 200),
+    "--body",
+    issueBody(entry),
+  ]);
+}
+writeFileSync(join(dir, "QUARANTINE.json"), `${JSON.stringify(nextQuarantine, null, 1)}\n`);
 // One commit, replaced each time: the data needs no history, and the secret scan reads it all.
-git("add", "records.jsonl", "FLAKES.md", "timings.json");
+git("add", "records.jsonl", "FLAKES.md", "timings.json", "QUARANTINE.json");
 git(
   "-c",
   "user.name=github-actions[bot]",

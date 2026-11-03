@@ -8,6 +8,7 @@ import {
   recordOf,
   renderFlakes,
   timingsFrom,
+  withSecondPass,
 } from "../../scripts/flake-list-core.mjs";
 
 const NOW = "2026-11-03T12:00:00Z";
@@ -121,6 +122,16 @@ describe("reading Vitest's report", () => {
     });
     expect(ran).toBe(2);
     expect(tests.map((t) => t.id)).toEqual(["src/lib/a.test.ts › a breaks", "src/lib/b.test.ts"]);
+  });
+});
+
+describe("the second pass inside a job", () => {
+  it("a test that came good there counts as hidden, and one that didn't stays red", () => {
+    const first = { ran: 5, tests: [red("a"), red("b"), flaky("c")] };
+    const again = { ran: 2, tests: [red("b")] };
+    const { tests, ran } = withSecondPass(first, again);
+    expect(ran).toBe(5);
+    expect(tests.map((t: { last: string }) => t.last)).toEqual(["passed", "failed", "passed"]);
   });
 });
 

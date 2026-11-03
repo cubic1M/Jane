@@ -1,6 +1,6 @@
 // Run by CI's "Test scope" job: decides how much of the suite this run needs, for the jobs after it.
 import { execFileSync } from "node:child_process";
-import { appendFileSync, readdirSync, readFileSync } from "node:fs";
+import { appendFileSync, existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   changedSpecs,
@@ -10,6 +10,7 @@ import {
   testsThatReadDocs,
   vitestArgs,
 } from "./test-scope-core.mjs";
+import { grepInvert } from "./quarantine-core.mjs";
 
 const git = (...args) => execFileSync("git", args, { encoding: "utf8" }).trim();
 const event = process.env.GITHUB_EVENT_NAME ?? "";
@@ -49,6 +50,10 @@ function integrationFilesReached() {
 }
 
 const reached = mode === "changed" ? integrationFilesReached() : null;
+const dataFile = (name) => join(process.env.RUNNER_TEMP ?? "", name);
+const quarantined = existsSync(dataFile("QUARANTINE.json"))
+  ? JSON.parse(readFileSync(dataFile("QUARANTINE.json"), "utf8"))
+  : [];
 const shards = shardsFor(mode, reached ?? 0);
 const lines = {
   mode,
@@ -57,6 +62,7 @@ const lines = {
   total: String(shards),
   args: vitestArgs(mode, { event, labels }),
   specs: changedSpecs(changedPaths).join(" "),
+  quarantine: grepInvert(quarantined, changedPaths),
 };
 const out = Object.entries(lines)
   .map(([key, value]) => `${key}=${value}\n`)

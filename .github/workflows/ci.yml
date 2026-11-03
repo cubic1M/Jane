@@ -65,6 +65,7 @@ jobs:
       total: ${{ steps.scope.outputs.total }}
       args: ${{ steps.scope.outputs.args }}
       specs: ${{ steps.scope.outputs.specs }}
+      quarantine: ${{ steps.scope.outputs.quarantine }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -82,6 +83,13 @@ jobs:
         run: npm ci
       - if: steps.modules.outputs.cache-hit == 'true'
         run: npx prisma generate
+      # The list the flake list keeps, read as data. Missing, nothing is quarantined.
+      - name: Read the quarantine list and timings
+        run: |
+          git fetch -q --depth=1 origin ci-flakes || exit 0
+          for file in QUARANTINE.json timings.json; do
+            git show "FETCH_HEAD:$file" > "$RUNNER_TEMP/$file" 2>/dev/null || rm -f "$RUNNER_TEMP/$file"
+          done
       - id: scope
         run: node scripts/test-scope.mjs
         env:
@@ -475,10 +483,29 @@ jobs:
           DIRECT_URL: ${{ env.E2E_DATABASE_URL }}
       - name: Row-level security on every table, as each deploy does
         run: node scripts/rls-protect.mjs "$E2E_DATABASE_URL"
-      - run: >-
-          npm run test:e2e --
-          ${{ needs.e2e-build.outputs.args }}
-          --shard=${{ matrix.shard }}/${{ needs.e2e-build.outputs.total }}
+      # Quarantined tests (docs/ci.md) run in the step after this and don't block. What fails every
+      # Playwright retry gets one more pass here, on this commit, before the job says red, so a merge
+      # queue wouldn't throw a PR out over a flake that rerun-flaky.yml would have saved later.
+      - name: End-to-end tests
+        env:
+          ARGS: ${{ needs.e2e-build.outputs.args }}
+          SHARD: ${{ matrix.shard }}/${{ needs.e2e-build.outputs.total }}
+          QUARANTINE: ${{ needs.scope.outputs.quarantine }}
+        run: |
+          set -- $ARGS --shard="$SHARD"
+          npm run test:e2e -- "$@" ${QUARANTINE:+--grep-invert "$QUARANTINE"} && exit 0
+          echo "::warning::Failed every retry: one more pass, on this commit"
+          # No shard here: the list of what failed is this shard's already.
+          # shellcheck disable=SC2086
+          E2E_RESULTS_FILE=ci-results/e2e-again.json npm run test:e2e -- $ARGS --last-failed
+      - name: Quarantined tests, which report and don't block
+        if: always() && needs.scope.outputs.quarantine != ''
+        continue-on-error: true
+        env:
+          QUARANTINE: ${{ needs.scope.outputs.quarantine }}
+          E2E_RESULTS_FILE: ci-results/e2e-quarantined.json
+          SHARD: ${{ matrix.shard }}/${{ needs.e2e-build.outputs.total }}
+        run: npm run test:e2e -- --project=chromium --shard="$SHARD" --grep "$QUARANTINE"
       # A PR on the critical tests also runs the spec files it changes. A full run has them already.
       - if: contains(needs.e2e-build.outputs.args, '@critical') && needs.scope.outputs.specs != ''
         run: npm run test:e2e -- --project=chromium ${{ needs.scope.outputs.specs }}

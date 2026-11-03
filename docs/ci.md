@@ -45,6 +45,12 @@ key on `ci-flakes` would red every PR.
 `ci-finished.yml` labels PRs by lane, decides who to wake when one goes red, conflicts or goes quiet, and
 publishes deploy lag, red main minutes and silent tasks. See [the loop](agent-loop.md).
 
+## Quarantine
+
+A plain rule decides, in `scripts/quarantine-core.mjs`, and no session can add to it by hand. An end-to-end test stops blocking when it flaked on 3 different main commits, has been around for 7 days, and isn't `@critical`, about access, guardrails, money rules or legal pages. It keeps running in a step of its own, reports to the flake list, gets one `quarantined` issue, and blocks again after 14 days. At most 10 at a time. On a PR that changes its spec file it runs as normal and blocks.
+
+Inside a job, what fails every Playwright retry gets one more pass on the same commit before the job goes red.
+
 ## Writing an end-to-end test
 
 No fixed sleeps: ESLint refuses `waitForTimeout`. `e2e/waits.ts` has what to use.

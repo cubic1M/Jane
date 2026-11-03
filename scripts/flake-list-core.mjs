@@ -76,6 +76,18 @@ export function timingsFrom(report) {
   return timings;
 }
 
+// A run's second in-job pass at what failed (e2e-again.json): a test that failed every try in the
+// first report and isn't failing in this one came good, so a retry hid it.
+export function withSecondPass(first, again) {
+  const stillFailing = new Set(again.tests.filter((t) => t.last === "failed").map((t) => t.id));
+  return {
+    ran: first.ran,
+    tests: first.tests.map((t) =>
+      t.last === "failed" && !stillFailing.has(t.id) ? { ...t, last: "passed" } : t,
+    ),
+  };
+}
+
 export function recordOf(run, reports) {
   const tests = reports.flatMap((r) => r.tests);
   return {
