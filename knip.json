@@ -10,11 +10,16 @@
     "vitest.stryker.config.mts"
   ],
   "project": ["src/**/*.{ts,tsx}", "scripts/*.{ts,mjs}"],
-  "ignore": ["src/generated/**", "src/accuracy/__fixtures__/**"],
+  "ignore": [
+    "src/generated/**",
+    "src/accuracy/__fixtures__/**",
+    "src/security/access-proof/fixtures/**"
+  ],
   "ignoreDependencies": [
     "@prisma/client",
     "tailwindcss",
     "@auth/core",
+    "@typescript-eslint/parser",
     "@stryker-mutator/core",
     "@stryker-mutator/vitest-runner"
   ]
