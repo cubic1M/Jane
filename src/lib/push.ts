@@ -42,6 +42,11 @@ const BASE64URL = /^[A-Za-z0-9_-]+={0,2}$/;
 const MAX_KEY = 200;
 const MAX_ENDPOINT = 1000;
 
+// The browsers' own push services (Chrome, Edge's, Firefox, Safari). The server posts to whatever
+// address a subscription names, so any other address would let a person make Jane call it.
+const PUSH_HOST =
+  /^(?:fcm\.googleapis\.com|[a-z0-9-]+\.notify\.windows\.com|(?:[a-z0-9-]+\.)*push\.services\.mozilla\.com|(?:[a-z0-9-]+\.)*push\.apple\.com)$/;
+
 // The subscription a browser hands over, checked before it's stored.
 export function parseSubscription(value: unknown): BrowserSubscription | null {
   const v = value as { endpoint?: unknown; keys?: { p256dh?: unknown; auth?: unknown } } | null;
@@ -55,6 +60,9 @@ export function parseSubscription(value: unknown): BrowserSubscription | null {
   }
   if (
     url.protocol !== "https:" ||
+    url.username !== "" ||
+    url.port !== "" ||
+    !PUSH_HOST.test(url.hostname) ||
     endpoint.length > MAX_ENDPOINT ||
     typeof p256dh !== "string" ||
     typeof auth !== "string" ||

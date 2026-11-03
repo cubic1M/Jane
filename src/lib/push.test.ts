@@ -23,6 +23,17 @@ const subscription = {
   },
 };
 
+describe("the browsers' push services", () => {
+  it.each([
+    "https://fcm.googleapis.com/fcm/send/abc",
+    "https://wns2-par02p.notify.windows.com/w/?token=abc",
+    "https://updates.push.services.mozilla.com/wpush/v2/abc",
+    "https://web.push.apple.com/abc",
+  ])("accepts %s", (endpoint) => {
+    expect(parseSubscription({ ...subscription, endpoint })?.endpoint).toBe(endpoint);
+  });
+});
+
 describe("push setup", () => {
   afterEach(() => vi.unstubAllEnvs());
 
@@ -46,6 +57,13 @@ describe("parseSubscription", () => {
     [null],
     [{ ...subscription, endpoint: "http://insecure.example/push" }],
     [{ ...subscription, endpoint: "not a url" }],
+    // Any address but a browser's push service would make Jane post to it.
+    [{ ...subscription, endpoint: "https://evil.example/push" }],
+    [{ ...subscription, endpoint: "https://10.0.0.1/push" }],
+    [{ ...subscription, endpoint: "https://fcm.googleapis.com.evil.example/push" }],
+    [{ ...subscription, endpoint: "https://fcm.googleapis.com@evil.example/push" }],
+    [{ ...subscription, endpoint: "https://x@fcm.googleapis.com/push" }],
+    [{ ...subscription, endpoint: "https://fcm.googleapis.com:8443/push" }],
     [{ ...subscription, keys: { p256dh: "has spaces!", auth: "x" } }],
     [{ endpoint: subscription.endpoint }],
   ])("rejects %j", (value) => {
