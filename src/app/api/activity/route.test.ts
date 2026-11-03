@@ -33,6 +33,18 @@ describe("POST /api/activity", () => {
       .mockResolvedValue({ ok: true, recording: "anonymous", stored: 0 });
   });
 
+  it("counts someone not signed in against a tighter limit, a signed-in person not", async () => {
+    vi.mocked(limitOrNull).mockImplementation(async (name) =>
+      name === "anonymousActivity" ? (NextResponse.json({}, { status: 429 }) as never) : null,
+    );
+    expect((await post(BATCH)).status).toBe(429);
+    expect(recordActivity).not.toHaveBeenCalled();
+
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: "user_1", role: "user" } as never);
+    vi.mocked(recordActivity).mockResolvedValue({ ok: true, recording: "user", stored: 1 });
+    expect((await post(BATCH)).status).toBe(200);
+  });
+
   it("records a signed-in person's batch and tells the browser to keep going", async () => {
     vi.mocked(getCurrentUser).mockResolvedValue({ id: "user_1", role: "user" } as never);
     vi.mocked(recordActivity).mockResolvedValue({ ok: true, recording: "user", stored: 1 });

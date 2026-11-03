@@ -21,6 +21,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
   const user = await getCurrentUser();
+  if (!user) {
+    const tooMany =
+      (await limitOrNull("anonymousActivity", ipKey(request.headers))) ??
+      (await limitOrNull("anonymousEveryone", "activity"));
+    if (tooMany) return tooMany;
+  }
   const result = await recordActivity(user ? { id: user.id, role: user.role } : null, body);
   if (!result.ok) return NextResponse.json({ error: "Invalid batch" }, { status: 400 });
   return NextResponse.json({ recording: result.recording === "user" });

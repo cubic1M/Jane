@@ -66,8 +66,22 @@ export const RATE_LIMITS = {
   claudeTrial: { limit: 25, windowSeconds: 60 * 60 * 24 * 365 * 10 },
   // Invite codes made by an admin, per admin.
   invites: { limit: 30, windowSeconds: 60 * 60 },
+  // Server errors kept for /admin/errors, and alert emails to the team, across every request. Anyone
+  // can cause a server error (a server action posted from another site is one), and a new path means
+  // a new alert: a flood can't fill the database or use up the email quota sign-in links need.
+  serverErrorsKept: { limit: 300, windowSeconds: 60 * 60 },
+  refusedActionsKept: { limit: 20, windowSeconds: 60 * 60 },
+  errorAlertEmails: { limit: 10, windowSeconds: 60 * 60 },
   // Reports of something the Content-Security-Policy blocked, per IP (each is stored).
   cspReport: { limit: 20, windowSeconds: 10 * 60 },
+  // Reports of a page that broke in a browser, per IP (each is stored, and anyone can send one).
+  clientError: { limit: 20, windowSeconds: 10 * 60 },
+  // What anyone can make Jane store without an account, per IP on top of the limits above, and
+  // across every IP: a flood can't fill the database or bury real errors in /admin/errors.
+  anonymousActivity: { limit: 60, windowSeconds: 60 },
+  anonymousEvents: { limit: 60, windowSeconds: 60 },
+  anonymousEveryone: { limit: 5000, windowSeconds: 60 * 60 },
+  errorReportsEveryone: { limit: 300, windowSeconds: 60 * 60 },
 } satisfies Record<string, Limit>;
 
 export type LimitName = keyof typeof RATE_LIMITS;
