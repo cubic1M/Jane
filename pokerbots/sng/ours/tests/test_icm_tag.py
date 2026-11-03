@@ -574,6 +574,68 @@ class TestIcmTag(unittest.TestCase):
         self.assertEqual((b.o3_seen[3], b.o3_fold[3]), (2, 1))
         self.assertEqual(sum(b.o3_seen), 2)
 
+    def test_reraise_rate_counters(self):
+        """end_hand counts each seat's first action after a lone open (t3_seen) and re-raises (t3_made);
+        actions after the re-raise do not count."""
+        b = IcmTag()
+        b.new_table(SngRules(enforce_time=False), 0, 1)
+        post = [(1, 0, "post", 10), (2, 0, "post", 20)]
+        h1 = post + [(3, 0, "raise", 40), (4, 0, "fold", 0), (5, 0, "raise", 120), (6, 0, "fold", 0),
+                     (3, 0, "fold", 0)]
+        h2 = post + [(3, 0, "raise", 40), (4, 0, "call", 40), (5, 0, "fold", 0), (1, 0, "fold", 0),
+                     (2, 0, "check", 0)]
+        h3 = post + [(4, 0, "fold", 0), (5, 0, "call", 20), (1, 0, "call", 10), (2, 0, "check", 0)]
+        for hist in (h1, h2, h3):
+            b.end_hand(dict(history=tuple(hist), stacks=(2000,) * 8))
+        self.assertEqual(b.t3_seen[4], 2)
+        self.assertEqual(b.t3_seen[5], 2)
+        self.assertEqual(b.t3_made[5], 1)
+        self.assertEqual((b.t3_seen[6], b.t3_seen[3]), (0, 0))   # after the re-raise / the opener
+        self.assertEqual((b.t3_seen[1], b.t3_seen[2]), (1, 1))
+        self.assertEqual(sum(b.t3_made), 1)
+
+    def test_rs_call_calls_a_light_reshover(self):
+        """13bb, I open first in and the small blind re-shoves: against a seat that re-raises opens
+        half the time, rs_call=4 calls a hand that rs_call=0 (a raiser = range_k random hands) folds."""
+        from engine.cards import card_str, parse_card
+        from sng.table import Hand
+        from sng.tests.test_table import make_deck
+        r = SngRules(enforce_time=False)
+        spec = r.spec
+
+        def play(hole, rc):
+            b = IcmTag(rs_call=rc)
+            b.new_table(r, 3, 1)
+            b.t3_seen[1], b.t3_made[1] = 60, 30
+            kinds = []
+
+            def decide(j, o, lg):
+                if j == 3:
+                    a = b.act(o)
+                    kinds.append(a.kind)
+                    return a
+                if j == 1 and lg.call_amount > 0 and lg.can_raise:
+                    return RaiseTo(lg.max_raise_to)
+                return lg.passive() if lg.can_check else Fold()
+            stacks = [2000, 260, 2000, 260, 2000, 2000, 2000, 2000]
+            others = ["2c 3d", "4c 5d", "6c 7d", None, "8c 9d", "Tc Jd", "2h 3h", "4h 5h"]
+            cards = [hole if x is None else x for x in others]
+            h = Hand(r, stacks, button=0, hand_number=0, deck=make_deck(cards, "Kd 9h 4s 3c 8h", spec))
+            h.play(decide, 8)
+            return tuple(kinds)
+        found = None
+        for a in "AKQJT98765":
+            for c in "AKQJT98765432":
+                if a == c:
+                    continue
+                hole = card_str(parse_card(a + "s")) + " " + card_str(parse_card(c + "c"))
+                if play(hole, 0.0) == ("raise", "fold") and play(hole, 4.0) == ("raise", "call"):
+                    found = hole
+                    break
+            if found:
+                break
+        self.assertIsNotNone(found, "no hand opens, folds to the shove at rs_call=0 and calls at 4")
+
 
 if __name__ == "__main__":
     unittest.main()

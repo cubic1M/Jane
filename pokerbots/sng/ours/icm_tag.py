@@ -59,6 +59,9 @@ PARAMS = dict(
                          #   (prior weight in hands; 0 = off). 1.0 with the read validated on fresh
                          #   seeds (results/sng_restealread_validate.md); 0.35 without it before
     resteal_rel_bb=28.0, #   resteal_rel x (opener's open rate) of hands (f3_exploiter's rule); 0 = off.
+    rs_call=0.0,         # > 0: my open re-raised ALL-IN by one seat (no callers): that seat holds the top
+                         #   rs_call x (its re-raise rate vs one open, prior 7%) of hands (as random-hand
+                         #   count, never tighter than range_k); the exact-ICM call decides. 0 = off
     push_steal=0.5,      # short-stack shoves use this share of the steal factor (fold read); 0 = off.
                          #   0.5 validated on fresh seeds (results/sng_pushsteal_validate.md)
     behind_k=0.2,        # facing a preflop raise: extra random hands per opponent still to act
@@ -180,6 +183,8 @@ class IcmTag:
             self.chart = load_chart(rules, self.p["pf_file"] or None)
         self.steal_seen = [0] * rules.num_players     # steal attempts faced in the blinds
         self.steal_fold = [0] * rules.num_players
+        self.t3_seen = [0] * rules.num_players           # faced exactly one open (first action)
+        self.t3_made = [0] * rules.num_players           # ... and re-raised it
         self.o3_seen = [0] * rules.num_players           # opened, then faced a re-raise
         self.o3_fold = [0] * rules.num_players           # ... and folded
         self.aggressor = None                          # seat of the last preflop raiser this hand
@@ -230,6 +235,16 @@ class IcmTag:
                 self.o3_seen[op] += 1
                 if nxt[2] == "fold":
                     self.o3_fold[op] += 1
+        # re-raise rate vs one open (rs_call): each seat's first action after a lone open
+        if rz:
+            op, end = pre3[rz[0]][0], (rz[1] if len(rz) >= 2 else len(pre3) - 1)
+            done = {op}
+            for h in pre3[rz[0] + 1:end + 1]:
+                if h[0] not in done:
+                    done.add(h[0])
+                    self.t3_seen[h[0]] += 1
+                    if h[2] == "raise":
+                        self.t3_made[h[0]] += 1
         # fold-to-steal: blinds facing a single late-position open and no other caller
         pre = [h for h in hist if h[1] == 0 and h[2] != "post"]
         raises = [h for h in pre if h[2] == "raise"]
@@ -488,6 +503,12 @@ class IcmTag:
             r = raises[-1][0]
             pfr = (self.pre_raises[r] + p["base_pfr"] * 8) / (self.dealt[r] + 8)   # shrink to the prior
             rk = min(8.0, max(p["rk_floor"], rk * (p["base_pfr"] / max(pfr, 0.01)) ** p["read_alpha"]))
+        if (p["rs_call"] > 0 and len(raises) == 2 and raises[0][0] == obs.seat
+                and raises[1][0] != obs.seat and seats[raises[1][0]].all_in
+                and not any(h[1] == 0 and h[2] == "call" and h[0] != obs.seat for h in obs.history)):
+            r3 = raises[1][0]
+            rr = (self.t3_made[r3] + 0.07 * 10) / (self.t3_seen[r3] + 10)
+            rk = min(rk, self._k_for_top(min(0.5, p["rs_call"] * rr)))
         if p["behind_k"] != 0.8:
             r0 = raises[-1][0]
             vol = {h[0] for h in obs.history if h[1] == 0 and h[2] in ("call", "raise")
