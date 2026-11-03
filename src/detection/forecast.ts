@@ -419,7 +419,14 @@ export function forecastAccounts(input: DetectionInput, days: number): AccountFo
         for (const r of accountTransfers) if (r.date === date) balance -= r.amountCents;
         series.push({ date, balanceCents: balance });
       }
-      const lowest = series.reduce((low, day) => (day.balanceCents < low.balanceCents ? day : low));
+      // Past the next likely deposit, when pay comes often at no set day, the series has bills and
+      // none of that pay, so its low point says nothing (debugger 11-03: "could drop to -$1,302.94"
+      // for a driver paid each week).
+      const by = nextUnevenPayBy(input, [account.id]);
+      const reliable = series.filter((day) => !by || day.date < by);
+      const lowest = (reliable.length > 0 ? reliable : series).reduce((low, day) =>
+        day.balanceCents < low.balanceCents ? day : low,
+      );
       return {
         accountId: account.id,
         accountName: account.name,
