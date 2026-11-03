@@ -50,7 +50,7 @@ import { INVESTMENT_TOOL_STATUS } from "./investments/tools";
 import type { Reply } from "./replies";
 import { OPTION_ACTIONS } from "./actions/options";
 import type { OfferedOptions } from "@/lib/option-card";
-import { UNTRUSTED_TEXT_RULE } from "@/lib/untrusted-text";
+import { oneLine, UNTRUSTED_TEXT_RULE } from "@/lib/untrusted-text";
 
 // Free questions in Jane's chat, with an Anthropic key (spec step 84): Claude, the
 // person's recent typed messages and Jane's answers to them, and read-only tools over their
@@ -470,7 +470,7 @@ type ChatTiming = {
 
 // What the last answer was about, in words for Claude (spec step 193).
 export function topicLine(topic: Topic): string {
-  const what = [topic.target, topic.category, topic.month].filter(Boolean).join(", ");
+  const what = oneLine([topic.target, topic.category, topic.month].filter(Boolean).join(", "));
   return `Your last answer was about ${what || topic.kind}${topic.verb ? ` (they were asking to ${topic.verb} it)` : ""}. If their message points back ("it", "that one", "the other one", "why", "tell me more", "ok and?", "what do you mean"), it is about that or what you just said; if it is a new question, ignore this.`;
 }
 
