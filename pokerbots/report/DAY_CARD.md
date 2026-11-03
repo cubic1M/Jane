@@ -50,9 +50,15 @@ Fill in each line:
    - **Restrictive kit** (like practice kit 2: no exec, whitelisted imports, 100 KB):
      `python3 -m sng.bundle_flat --adapter adapter.py --any-table <table.json> --out submission.py`
      (no exec, allowed imports only, only reachable code, about 69 KB).
+   - **The kit's import whitelist:** pass it with `--allow "math,random,..."` (the default is practice
+     kit 2's list, which allows `time`; kit 4 banned `time`, `os`, `sys`).
+   - **No any-variant table yet for the variant's cards?** `python3 -m sng.ours.anyvar --spec
+     adapter.py-module:_SPEC --seconds 120` builds `cache/sng/any_<sig>.json` in 2 minutes (kit 4: six-plus).
    - **A file-size cap:** add `--compact` (same decisions, tested: about 51 KB with kit 2's adapter).
      A lean adapter saves a few KB more. **Under about 45 KB, go to Plan B** (it fit kit 3's 32 KB).
-   - Templates: `rehearsal_sng/adapter.py` (Agent class, raise-to) and
+   - Templates: `practice_kit4/adapter_kit4.py` (module `play(view, memory)`, reply = chips to ADD,
+     fixed seats 1-8, log string, `last_hand` on the next decision; rehearsal 5: accepted in 4.5 min),
+     `rehearsal_sng/adapter.py` (Agent class, raise-to) and
      `practice_kit2/adapter_kit2.py` (module functions, raise-by, seats renumbered every hand,
      handled with a stable-identity ring; draw protocol).
    - **Always run the kit's local runner, not only its checker.** A file can pass the checker and
