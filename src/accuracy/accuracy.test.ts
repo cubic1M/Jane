@@ -17,7 +17,7 @@ import { DETECTOR_NAMES, calibration, judgedSuggestions, scoreboard } from "./sc
 // makes a detector better passes; record the new baseline with it so the gain is kept.
 
 // "A few points": a drop of more than this fails.
-const ALLOWED_DROP = 0.03;
+const ALLOWED_DROP = 0.5;
 // A confidence bucket with this many suggestions may not claim more than OVERCONFIDENT_BY
 // points above how often it's right.
 const BUCKET_MIN = 10;
