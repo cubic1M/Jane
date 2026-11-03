@@ -308,3 +308,27 @@ describe("a move between a person's own accounts", () => {
     );
   });
 });
+
+// Debugger 11-02: of 47 ways banks write pay and benefits, these matched nothing or the wrong thing.
+// Someone living on SSI or VA benefits read as having no income at all.
+describe("pay and benefits, as banks write them", () => {
+  it.each([
+    ["SSI TREAS 310", "INCOME_RETIREMENT_PENSION"],
+    ["VA TREAS 310 VETERANS", "INCOME_MILITARY"],
+    ["NY STATE TEACHERS RET", "INCOME_RETIREMENT_PENSION"],
+    ["ACME CORP PAYRLL", "INCOME_SALARY"],
+    ["ACME CORP PR PAYMENT", "INCOME_SALARY"],
+    ["LYFT DIRECT DEP", "INCOME_GIG_ECONOMY"],
+    ["UBER DIRECT DEP", "INCOME_GIG_ECONOMY"],
+  ])("%s is %s", (description, detailed) => {
+    expect(categorizeByRules({ description, amountCents: -120_000, hints: {} })?.detailed).toBe(
+      detailed,
+    );
+  });
+
+  it("doesn't take a purchase for pay", () => {
+    expect(
+      categorizeByRules({ description: "LYFT RIDE", amountCents: 2_400, hints: {} })?.primary,
+    ).not.toBe("INCOME");
+  });
+});
