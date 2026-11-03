@@ -176,6 +176,14 @@ export function fromFirstKnown<T extends { netCents: number | null }>(months: T[
   return first === -1 ? [] : months.slice(first);
 }
 
+// The loans a statement shows the payments of but never the balance of (debugger 11-03: a landlord
+// paying two mortgages read "You owe $0.00"). Said beside the figure, as a left-out balance is.
+export function loansNotCounted(names: readonly string[]): string | null {
+  if (names.length === 0) return null;
+  const which = names.length <= 2 ? names.join(" and ") : `${names.length} loans`;
+  return `Not counting what you owe on ${which}: Jane sees the payments, not the balance.`;
+}
+
 // What a net worth leaves out for want of a balance (an uploaded card or bank file without one,
 // src/lib/import/account-balance.ts), said beside the figure, never left out silently (CSV
 // bench: card debt missing from most upload-only people's net worth). Null when it's complete.

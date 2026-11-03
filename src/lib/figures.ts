@@ -26,7 +26,8 @@ import { categoryLabel } from "@/insights/labels";
 import { categoryOf } from "@/categorize/taxonomy";
 import { detailedLabel } from "@/lib/categories";
 import { dayLabel } from "@/lib/day-label";
-import { netWorth, notCounting } from "@/insights/net-worth";
+import { loansNotCounted, netWorth, notCounting } from "@/insights/net-worth";
+import { loansSeenWithoutBalance } from "@/lib/net-worth-history";
 import { oneOffNote } from "@/insights/typical-month";
 import { kindOf } from "@/insights/spending";
 import { db as defaultClient } from "@/lib/db";
@@ -258,6 +259,7 @@ export async function explainFigure(
       summary: [
         "What your accounts hold and what you own, at the values you gave, less what you owe on cards and loans.",
         notCounting(worth.unbalanced)?.sentence,
+        loansNotCounted(await loansSeenWithoutBalance(userId, { client, now })),
       ]
         .filter(Boolean)
         .join(" "),

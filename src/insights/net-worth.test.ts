@@ -5,6 +5,7 @@ import {
   netWorth,
   netWorthLine,
   netWorthOn,
+  loansNotCounted,
   notCounting,
 } from "./net-worth";
 
@@ -232,5 +233,25 @@ describe("fromFirstKnown", () => {
 
   it("lists nothing when no month has a figure", () => {
     expect(fromFirstKnown([{ month: "2026-01", netCents: null }])).toEqual([]);
+  });
+});
+
+// Debugger 11-03: a landlord paying two mortgages read "You owe $0.00": a statement shows the
+// payments, never the balance. It says so, as it does for a balance a file left out.
+describe("loans seen in payments, with no balance", () => {
+  it("names them", () => {
+    expect(loansNotCounted(["Rocket Mortgage Payment"])).toBe(
+      "Not counting what you owe on Rocket Mortgage Payment: Jane sees the payments, not the balance.",
+    );
+    expect(loansNotCounted(["Rocket Mortgage Payment", "Toyota Motor Cr"])).toBe(
+      "Not counting what you owe on Rocket Mortgage Payment and Toyota Motor Cr: Jane sees the payments, not the balance.",
+    );
+  });
+
+  it("counts them past two, and says nothing with none", () => {
+    expect(loansNotCounted(["A", "B", "C"])).toBe(
+      "Not counting what you owe on 3 loans: Jane sees the payments, not the balance.",
+    );
+    expect(loansNotCounted([])).toBeNull();
   });
 });
