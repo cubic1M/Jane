@@ -95,12 +95,7 @@ const stateOf = (a: Loaded): LedgerState => ({
 });
 
 // Writes a state's positions over the account's (in a transaction).
-async function savePositions(
-  tx: PersonTx,
-  userId: string,
-  accountId: string,
-  state: LedgerState,
-) {
+async function savePositions(tx: PersonTx, userId: string, accountId: string, state: LedgerState) {
   await tx.paperPosition.deleteMany({ where: { accountId, userId } });
   const rows = Object.entries(state.positions).filter(([, p]) => p.quantity > 1e-9);
   if (rows.length > 0)
