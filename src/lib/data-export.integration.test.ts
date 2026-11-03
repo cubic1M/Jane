@@ -372,6 +372,24 @@ describe.runIf(url)("data export against a real database", () => {
     expect(household?.household.settlements).toMatchObject([{ amountCents: 2_500 }]);
   });
 
+  // The file says everything. About 65 tables weren't in it, such as medical bills.
+  it("holds the tables nobody wrote out by hand, without any column that works as a key", async () => {
+    const me = await person("rest");
+    await client.accountantLink.create({
+      data: {
+        userId: me.userId,
+        tokenHash: `hash-${crypto.randomUUID()}`,
+        label: "A made-up accountant",
+        expiresAt: new Date("2031-01-01T00:00:00Z"),
+      },
+    });
+    const data = await exportUserData(me.userId, { client });
+    const links = data.everythingElse.accountantLinks as Record<string, unknown>[];
+    expect(links[0].label).toBe("A made-up accountant");
+    expect(Object.keys(links[0])).not.toContain("tokenHash");
+    expect(Object.keys(links[0])).not.toContain("userId");
+  });
+
   it("never includes secrets or the team's private notes", async () => {
     const me = await person("secret");
 
