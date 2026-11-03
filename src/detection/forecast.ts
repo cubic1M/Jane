@@ -14,6 +14,7 @@ import {
   UNEVEN_PAY_MIN_DEPOSITS,
   UNEVEN_PAY_MIN_MONTHLY_CENTS,
   UNEVEN_PAY_NOT_PAY,
+  UNEVEN_PAY_STEADY_GAP_DAYS,
 } from "@/config/detection";
 import { irregularCosts } from "@/insights/irregular";
 import { expectedDates } from "./expected-dates";
@@ -109,13 +110,9 @@ export function incomeStreams(input: DetectionInput): Stream[] {
 // About what comes in a month into this account, when it's pay with no schedule to forecast: a
 // freelancer's payouts have no next date, so the forecast counts none of them (debugger 11-02).
 // Null with a payday expected, or without enough pay. Interest and dividends aren't pay.
-export function unevenPay(input: DetectionInput, accountId: string): number | null {
-  if (nextPayday(input, FORECAST_DAYS)) return null;
-  // Data this old expects no payday because it's old, not because the pay is uneven.
-  const account = input.accounts.find((a) => a.id === accountId);
-  if (account && staleBalanceFrom(account, input.asOf)) return null;
+function unevenDeposits(input: DetectionInput, accountId: string) {
   const since = addDays(input.asOf, -UNEVEN_PAY_LOOKBACK_DAYS);
-  const pay = input.transactions.filter(
+  return input.transactions.filter(
     (t) =>
       t.accountId === accountId &&
       t.amountCents < 0 &&
@@ -124,12 +121,33 @@ export function unevenPay(input: DetectionInput, accountId: string): number | nu
       t.date > since &&
       t.date <= input.asOf,
   );
+}
+
+export function unevenPay(input: DetectionInput, accountId: string): number | null {
+  if (nextPayday(input, FORECAST_DAYS)) return null;
+  // Data this old expects no payday because it's old, not because the pay is uneven.
+  const account = input.accounts.find((a) => a.id === accountId);
+  if (account && staleBalanceFrom(account, input.asOf)) return null;
+  const pay = unevenDeposits(input, accountId);
   const monthly = Math.round(
     pay.reduce((sum, t) => sum - t.amountCents, 0) / UNEVEN_PAY_LOOKBACK_MONTHS,
   );
   return pay.length >= UNEVEN_PAY_MIN_DEPOSITS && monthly >= UNEVEN_PAY_MIN_MONTHLY_CENTS
     ? monthly
     : null;
+}
+
+// The day by when uneven pay into these accounts is likely to have come again, when it comes often
+// enough to count on (a gig driver's payouts); null otherwise, or when a payday is on the calendar.
+export function nextUnevenPayBy(
+  input: DetectionInput,
+  accountIds: readonly string[],
+): string | null {
+  if (nextPayday(input, FORECAST_DAYS)) return null;
+  if (!accountIds.some((id) => unevenPay(input, id) !== null)) return null;
+  const days = new Set(accountIds.flatMap((id) => unevenDeposits(input, id).map((t) => t.date)));
+  const gap = Math.ceil(UNEVEN_PAY_LOOKBACK_DAYS / days.size);
+  return gap <= UNEVEN_PAY_STEADY_GAP_DAYS ? addDays(input.asOf, gap) : null;
 }
 
 // Money expected in from today through `until`: paychecks on their pay schedules (spec

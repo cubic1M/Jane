@@ -8,6 +8,7 @@ import {
   balanceDay,
   expectedBetween,
   irregularDue,
+  nextUnevenPayBy,
   scheduledTransfers,
   scheduledTransfersIn,
   unevenPay,
@@ -97,6 +98,9 @@ export function safeToSpend(
 
   // The next paycheck (spec step 182): payroll deposits only, never interest or a refund.
   const payday = nextPayday(input, FORECAST_DAYS)?.date ?? null;
+  // Without one, pay that comes every week or two is still likely before a month's bills are due
+  // (debugger 11-03: "Short $1,303" for a driver DoorDash pays each week).
+  const until = payday ?? nextUnevenPayBy(input, [...checkingIds]);
 
   // Bills and regular moves out that may be payments to others (Zelle, Venmo, "transfer to")
   // from checking up to the day before payday (or across the window without one), as the
@@ -130,7 +134,7 @@ export function safeToSpend(
         // today is still to come out (phone walk: an evening in the US is the next day in UTC,
         // and tomorrow's card payment dropped out, raising safe to spend by $1,640).
         b.date >= input.asOf &&
-        (payday === null || b.date < payday),
+        (until === null || b.date < until),
     );
   const billsCents = bills.reduce((sum, b) => sum + b.amountCents, 0);
   const setAside = Math.max(

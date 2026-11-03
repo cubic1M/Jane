@@ -127,6 +127,47 @@ describe("safeToSpend", () => {
     });
   });
 
+  // Debugger 11-03: paid every week by DoorDash, at no set day, and "Short $1,303": a month of bills
+  // against none of the money due in that month.
+  describe("pay that comes often, at no set day", () => {
+    const rent = [3, 2, 1].map((m) =>
+      tx({
+        date: monthsAgo(m, 28),
+        amountCents: 95_000,
+        description: "GREYSTONE APTS RENT",
+        merchantName: "Greystone Apts",
+        pfcPrimary: "RENT_AND_UTILITIES",
+        pfcDetailed: "RENT_AND_UTILITIES_RENT",
+      }),
+    );
+    const payouts = (every: number) =>
+      Array.from({ length: Math.floor(85 / every) }, (_, i) =>
+        tx({
+          date: addDays(AS_OF, -(i * every + 2)),
+          amountCents: -60_000,
+          description: "DOORDASH INC PAYOUT",
+          merchantName: "Doordash",
+          pfcPrimary: "INCOME",
+          pfcDetailed: "INCOME_GIG_ECONOMY",
+        }),
+      );
+    const withPay = (rows: DetectionInput["transactions"]) =>
+      safeToSpend(input({ accounts: [CHECKING], transactions: [...rent, ...rows] }), {
+        budgetsLeftCents: 0,
+        goalsCents: 0,
+      });
+
+    it("counts bills only until the next deposit is likely", () => {
+      const safe = withPay(payouts(7));
+      expect(safe.payday).toBe(null);
+      expect(safe.bills.map((b) => b.merchant)).not.toContain("Greystone Apts");
+    });
+
+    it("counts a month of bills when deposits are too far apart to rely on", () => {
+      expect(withPay(payouts(30)).bills.map((b) => b.merchant)).toContain("Greystone Apts");
+    });
+  });
+
   it("reconciles with the bills forecast", () => {
     const d = data();
     const safe = safeToSpend(d, { budgetsLeftCents: 0, goalsCents: 0 });

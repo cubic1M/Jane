@@ -219,8 +219,9 @@ async function ReportContent() {
                 ? foundLine(
                     transactions,
                     findings.map((f) => f.type),
+                    findings.length,
                   )
-                : foundLine(transactions, [])}
+                : foundLine(transactions, [], findings.length)}
             </p>
           </div>
           {uploadDays !== null && <MoreMonths days={uploadDays} />}

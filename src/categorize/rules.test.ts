@@ -635,3 +635,91 @@ describe("prop trading firms", () => {
     ).toBeNull();
   });
 });
+
+// Debugger 11-03: run through the rules, 203 common merchants missed on these, and a car rental read
+// as the person's rent.
+describe("regional chains and short names", () => {
+  it.each([
+    ["ENTERPRISE RENT", "TRAVEL_RENTAL_CARS"],
+    ["ALAMO RENT 4412", "TRAVEL_RENTAL_CARS"],
+    ["SHAWS 2471", "FOOD_AND_DRINK_GROCERIES"],
+    ["SMITHS FOOD #4221", "FOOD_AND_DRINK_GROCERIES"],
+    ["TOM THUMB #2611", "FOOD_AND_DRINK_GROCERIES"],
+    ["BI-LO 221", "FOOD_AND_DRINK_GROCERIES"],
+    ["FOOD CITY 311", "FOOD_AND_DRINK_GROCERIES"],
+    ["PCC COMMUNITY MARKETS", "FOOD_AND_DRINK_GROCERIES"],
+    ["CASEYS GEN STORE", "TRANSPORTATION_GAS"],
+    ["MAVERIK 311", "TRANSPORTATION_GAS"],
+    ["LOVES #0411 OUTSIDE", "TRANSPORTATION_GAS"],
+    ["PILOT 00331", "TRANSPORTATION_GAS"],
+    ["SINCLAIR 2211", "TRANSPORTATION_GAS"],
+    ["MARATHON PETRO1", "TRANSPORTATION_GAS"],
+    ["BUC-EE'S #22", "TRANSPORTATION_GAS"],
+    ["CONED", "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY"],
+    ["SDGE", "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY"],
+    ["WENDYS 2211", "FOOD_AND_DRINK_FAST_FOOD"],
+    ["WM SUPERCENTER", "GENERAL_MERCHANDISE_SUPERSTORES"],
+    ["GAP 4411", "GENERAL_MERCHANDISE_CLOTHING_AND_ACCESSORIES"],
+    ["ZOCDOC", "MEDICAL_PRIMARY_CARE"],
+    ["TELADOC HEALTH", "MEDICAL_PRIMARY_CARE"],
+    ["GOODRX", "MEDICAL_PHARMACIES_AND_SUPPLEMENTS"],
+    ["VSP VISION", "MEDICAL_EYE_CARE"],
+    ["UNITEDHEALTHCARE", "GENERAL_SERVICES_INSURANCE"],
+  ])("%s is %s", (description, detailed) => {
+    expect(categorizeByRules({ description, amountCents: 2_500, hints: {} })?.detailed).toBe(
+      detailed,
+    );
+  });
+
+  it.each([
+    ["THE GAP BETWEEN", null],
+    ["PILOT PEN STORE", null],
+    ["LOVES FURNITURE", null],
+  ])("doesn't take %s for one", (description) => {
+    expect(categorizeByRules({ description, amountCents: 2_500, hints: {} })?.primary).not.toBe(
+      "TRANSPORTATION",
+    );
+  });
+});
+
+// Debugger 11-03: a driver on Chime. Uber's payouts netted against spending, and a cash advance's
+// repayment read "Review your Dave Inc Repayment subscription, could save $900 a year".
+describe("a gig driver's money", () => {
+  const rule = (description: string, amountCents: number) =>
+    categorizeByRules({ description, amountCents, hints: {} })?.detailed ?? null;
+
+  it.each([
+    "UBER TECHNOLOGIES INSTANT PAY",
+    "UBER TECHNOLOGIES",
+    "LYFT EXPRESS PAY",
+    "DOORDASH INSTANT PAY",
+  ])("%s coming in is pay", (description) => {
+    expect(rule(description, -35_000)).toBe("INCOME_GIG_ECONOMY");
+  });
+
+  it("a ride's refund on a card is still a ride", () => {
+    expect(rule("UBER *TRIP", -1_250)).toBe("TRANSPORTATION_TAXIS_AND_RIDE_SHARES");
+  });
+
+  it.each([
+    "EARNIN REPAYMENT",
+    "EARNIN",
+    "ACTIVEHOURS EARNIN",
+    "DAVE INC REPAYMENT",
+    "BRIGIT REPAYMENT",
+    "MONEYLION INSTACASH REPAYMENT",
+  ])("%s going out pays back a loan", (description) => {
+    expect(rule(description, 7_500)).toBe("LOAN_PAYMENTS_OTHER_PAYMENT");
+  });
+
+  it.each(["DAVE INC MEMBERSHIP", "BRIGIT MEMBERSHIP"])(
+    "%s is a membership, not a repayment",
+    (description) => {
+      expect(rule(description, 100)).not.toBe("LOAN_PAYMENTS_OTHER_PAYMENT");
+    },
+  );
+
+  it("the advance itself is still borrowed money", () => {
+    expect(rule("EARNIN CASH OUT", -10_000)).toBe("LOAN_DISBURSEMENTS_CASH_ADVANCES");
+  });
+});
