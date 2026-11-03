@@ -1,4 +1,5 @@
 import {
+  DUPLICATE_CHARGE_WINDOW_DAYS,
   ACTIVE_WITHIN_INTERVALS,
   BILLING_PLATFORM_MERCHANTS,
   CHARGES_PER_YEAR,
@@ -181,6 +182,23 @@ function frequencyOf(gaps: number[]): Frequency | null {
   return null;
 }
 
+// One charge of a double charge, for judging the rhythm: the same amount again within a day says
+// nothing about how often it comes (debugger 11-02: one double charge took Netflix off /subscriptions,
+// while Jane was saying "Charged twice?"). The duplicate-charge finding still sees both.
+function withoutDoubleCharges(charges: DetectionTransaction[]): DetectionTransaction[] {
+  // By account: the same price on two cards is two plans.
+  const last = new Map<string, DetectionTransaction>();
+  return charges.filter((c) => {
+    const before = last.get(c.accountId);
+    last.set(c.accountId, c);
+    return !(
+      before &&
+      before.amountCents === c.amountCents &&
+      daysBetween(before.date, c.date) <= DUPLICATE_CHARGE_WINDOW_DAYS
+    );
+  });
+}
+
 function withinTolerance(amount: number, reference: number): boolean {
   return Math.abs(amount - reference) <= reference * FALLBACK_AMOUNT_TOLERANCE;
 }
@@ -220,7 +238,9 @@ function detectRun(charges: DetectionTransaction[], asOf: string): Stream | null
   // A usage bill or a card payment: every charge counts, whatever its amount, and the regular
   // gap is what makes it a bill.
   const variable = isVariable(charges);
-  const core = variable ? charges : charges.filter((c) => withinTolerance(c.amountCents, typical));
+  const core = withoutDoubleCharges(
+    variable ? charges : charges.filter((c) => withinTolerance(c.amountCents, typical)),
+  );
   const short = core.length < FALLBACK_MIN_CHARGES;
   const allowed = shortRunAllowed(charges);
   if (core.length < SHORT_RUN_MIN_CHARGES) return null;

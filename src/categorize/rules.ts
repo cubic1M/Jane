@@ -915,7 +915,15 @@ const RULES: readonly Rule[] = [
   },
   {
     category: "PERSONAL_CARE_GYMS_AND_FITNESS_CENTERS",
-    keywords: ["PLANET FITNESS", "EQUINOX", "ORANGETHEORY", "24 HOUR FITNESS", "PELOTON"],
+    // "PLANET FIT CLUB FEES": how Planet Fitness writes itself on a card (debugger 11-02).
+    keywords: [
+      "PLANET FITNESS",
+      "PLANET FIT",
+      "EQUINOX",
+      "ORANGETHEORY",
+      "24 HOUR FITNESS",
+      "PELOTON",
+    ],
   },
   { category: "TRAVEL_LODGING", keywords: ["AIRBNB", "MARRIOTT", "HILTON", "HYATT"] },
   // Ticket sellers: a seat each, so two at one price aren't a double charge (accuracy bench).
