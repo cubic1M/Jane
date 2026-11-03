@@ -1,11 +1,29 @@
+import { execFileSync } from "node:child_process";
 import { defineConfig, devices } from "@playwright/test";
 import { E2E_AUTH_SECRET } from "./e2e/db";
+import { SUITE_RUNS_WITHOUT_BYPASS } from "./src/config/deny-by-default";
 
 // E2E_PORT lets several checkouts run the end-to-end tests at once.
 const PORT = Number(process.env.E2E_PORT ?? 3000);
 
 // Signed-in tests need a scratch database (see e2e/db.ts); the dev server gets it too.
 const scratchDatabase = process.env.E2E_DATABASE_URL;
+
+// The server logs in as production's login does, with no table of its own (docs/security/rls.md).
+// The tests' own rows go through the owner (e2e/db.ts). This file loads again in every worker.
+function appLogin(ownerUrl: string): string {
+  const on = process.env.TEST_NO_BYPASS
+    ? process.env.TEST_NO_BYPASS === "1"
+    : SUITE_RUNS_WITHOUT_BYPASS;
+  if (!on) return ownerUrl;
+  if (process.env.TEST_WORKER_INDEX === undefined) {
+    execFileSync("node", ["scripts/ensure-app-login.mjs", ownerUrl], { stdio: "inherit" });
+  }
+  const url = new URL(ownerUrl);
+  url.username = "jane_app";
+  url.password = "jane_app_local_only";
+  return url.toString();
+}
 
 // E2E_PROD=1 (CI) tests a production build with `next start` instead of `next dev`: no page
 // waits on its first compile, so the run is shorter and the timings are what people get. The
@@ -47,7 +65,7 @@ export default defineConfig({
     timeout: 120_000,
     env: scratchDatabase
       ? {
-          DATABASE_URL: scratchDatabase,
+          DATABASE_URL: appLogin(scratchDatabase),
           DIRECT_URL: scratchDatabase,
           AUTH_SECRET: E2E_AUTH_SECRET,
           // A fixed test-only key for encrypting secrets (admin two-factor, Plaid tokens).
