@@ -62,6 +62,7 @@ investment advice in this MVP.
 - Every path that calls Claude has a limit: the chat's, or meteredClaude(userId) from
   src/lib/claude-budget.ts; src/lib/claude-paths.test.ts fails on a path that isn't listed
 - Write tests for every rule and every API route you add
+- To say something works, name the command that proves it and show its output
 - Prefer small, readable modules over clever abstractions
 - When unsure about a Plaid field or category name, check the Plaid docs instead
   of guessing
@@ -72,5 +73,7 @@ investment advice in this MVP.
 - npm run flakes before bisecting a red run: what failed on its first try lately (docs/ci.md)
 - npm run check:migrations before pushing a new migration: it must sort last and be safe for the
   running code (docs/migrations.md)
+- Gates and hooks (accuracy baselines, proof of fix, protected files, what sessions may not run):
+  docs/gates.md. Only a founder approves a PR past a gate
 - npm run check:e2e-wording before pushing a change to words on a page: lists wording removed
   from src/ that an end-to-end spec still expects
