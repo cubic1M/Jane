@@ -3,6 +3,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { teamEmails } from "@/lib/health";
+import { hit } from "@/lib/rate-limit";
 
 // Knowing when Jane breaks before people tell us (founder, 2026-10-26): a server error emails the
 // team (ADMIN_EMAILS, through Resend) at most once per kind of error per ERROR_ALERT_MINUTES,
@@ -44,7 +45,12 @@ const adminLink = (path: string) => `${process.env.APP_URL ?? ""}${path}`;
 // another error.
 export async function alertError(
   error: { message: string; path?: string | null },
-  { client = defaultClient, now = new Date(), send = sendEmail }: Options = {},
+  {
+    client = defaultClient,
+    now = new Date(),
+    send = sendEmail,
+    pastCeiling = false,
+  }: Options & { pastCeiling?: boolean } = {},
 ): Promise<boolean> {
   try {
     const to = teamEmails();
@@ -67,6 +73,9 @@ export async function alertError(
       claimed = count === 1;
     }
     if (!claimed) return false;
+    // Each new path is a new alert: past this, the daily digest still counts what was kept. Word that
+    // errors are going unrecorded goes out regardless.
+    if (!pastCeiling && !(await hit("errorAlertEmails", "team", { client, now })).ok) return false;
     const at = `${now.toISOString().slice(0, 16).replace("T", " ")} UTC`;
     const message = {
       subject: `Jane error: ${kind} on ${where}`,
