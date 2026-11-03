@@ -45,8 +45,12 @@ for t in sng.ours.tests.test_icm_tag.TestIcmTag.test_fast_including_first_decisi
          sng.field3.tests.test_timing.TestTiming \
          sng.field4.tests.test_field4.TestTables.test_timing_p99; do
   if python3 -m unittest "$t" > results/logs/test_timing.log 2>&1; then :; else
-    echo "timing     FAIL  $t"; tail -3 results/logs/test_timing.log; fail=1; fi
+    echo "timing     FAIL  $t"; tail -3 results/logs/test_timing.log; fail=1; tfail=1; fi
 done
 echo "timing     done   $(( $(date +%s) - TS ))s (serial)"
+if [ -n "$tfail" ]; then
+  echo "  hint: on a slower host, compare the unchanged code's timing first; if it is uniformly slower,"
+  echo "        rerun with SNG_TIME_SCALE=<that ratio> (sng/timescale.py). Never use it to hide a regression."
+fi
 echo "all suites: $(( $(date +%s) - T0 ))s wall"
 exit $fail

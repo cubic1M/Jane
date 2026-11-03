@@ -20,6 +20,7 @@ from sng.field.common import (NOTHING, STRONG, TOP_PAIR, WEAK_PAIR, chen, draw_s
 from sng.field.pushfold import push_range
 from sng.rules import NLHE, SngRules
 from sng.table import play_table
+from sng.timescale import factor as _ts  # noqa: E402  (SNG_TIME_SCALE on slower hosts)
 
 
 def cards(s):
@@ -218,7 +219,7 @@ class TestTiming(unittest.TestCase):
             for name, p in p99.items():
                 if name == "mc_equity":
                     continue
-                self.assertLess(p, 0.0005, f"{key} {name} p99 {p * 1e3:.3f} ms")
+                self.assertLess(p, 0.0005 * _ts(), f"{key} {name} p99 {p * 1e3:.3f} ms")
                 self.assertLess(over[name][0], 0.01 * over[name][1] + 1, f"{key} {name} over limit")
 
     def test_mc_equity_is_often_too_slow(self):

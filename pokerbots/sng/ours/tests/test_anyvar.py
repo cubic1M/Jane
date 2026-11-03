@@ -18,6 +18,7 @@ from sng.registry import make
 from sng.rules import SngRules
 from sng.table import play_table
 from sng.tests.test_discards import DEAD_DOWN, DRAW_HOLDEM, FIVE_DRAW, TO_BOARD
+from sng.timescale import factor as _ts  # noqa: E402  (SNG_TIME_SCALE on slower hosts)
 
 ROOT = Path(__file__).resolve().parents[3]
 FIELD = ["chen_tag", "pushfold_icm", "lag", "station", "nit", "adaptive", "random"]
@@ -37,7 +38,7 @@ class TestIcmAny(unittest.TestCase):
                 ts += st.times
             if not os.environ.get("SNG_SKIP_TIMING"):
                 p99 = float(np.percentile(np.array(ts) * 1000, 99))
-                self.assertLess(p99, 0.5, f"{spec.name}: p99 {p99:.3f} ms")
+                self.assertLess(p99, 0.5 * _ts(), f"{spec.name}: p99 {p99:.3f} ms")
 
     def _ctx(self, spec):
         return F.get_ctx(spec)

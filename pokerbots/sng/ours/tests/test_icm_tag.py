@@ -13,6 +13,7 @@ from sng.ours.icm_tag import PARAMS, IcmTag
 from sng.registry import make
 from sng.rules import SngRules
 from sng.table import play_table
+from sng.timescale import factor as _ts  # noqa: E402  (SNG_TIME_SCALE on slower hosts)
 
 FIELD = ["chen_tag", "lag", "station", "maniac", "pushfold_icm", "nit", "adaptive"]
 
@@ -66,8 +67,8 @@ class TestIcmTag(unittest.TestCase):
             times += st.times
             firsts.append(st.times[0])
         p99 = np.percentile(np.array(times) * 1000, 99)
-        self.assertLess(p99, 0.2, f"p99 {p99:.3f} ms")
-        self.assertLess(max(firsts) * 1000, 0.5, f"first decisions {[round(x * 1000, 3) for x in firsts]} ms")
+        self.assertLess(p99, 0.2 * _ts(), f"p99 {p99:.3f} ms")
+        self.assertLess(max(firsts) * 1000, 0.5 * _ts(), f"first decisions {[round(x * 1000, 3) for x in firsts]} ms")
 
     def test_params_override_and_reject_unknown(self):
         b = IcmTag(range_k=5.0)
@@ -346,7 +347,7 @@ class TestIcmTag(unittest.TestCase):
             self.assertEqual(st.errors + st.illegal, 0, st.first_error)
             if not os.environ.get("SNG_SKIP_TIMING"):
                 ts = sorted(st.times)
-                self.assertLess(ts[len(ts) // 2], 0.2e-3)
+                self.assertLess(ts[len(ts) // 2], 0.2e-3 * _ts())
 
     def test_heads_up_and_cap_risk_scaling(self):
         """hu_risk scales the premium with 2 players left; cap_fade shrinks it as the cap nears."""

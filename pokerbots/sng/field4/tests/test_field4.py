@@ -17,6 +17,7 @@ from sng.field4 import registry
 from sng.field4.base import HU_PCT, MW_PCT, PRE_K
 from sng.field4.features import MADE_NAMES, class_from_name, post_features
 from sng.field4.icmfast import equity_fast
+from sng.timescale import factor as _ts  # noqa: E402  (SNG_TIME_SCALE on slower hosts)
 
 RULES = SngRules()
 FAST = SngRules(enforce_time=False)
@@ -127,7 +128,7 @@ class TestTables(unittest.TestCase):
         for n, ts in times.items():
             self.assertGreater(len(ts), 200)
             p99 = float(np.percentile(ts, 99))
-            self.assertLess(p99, 0.0005, f"{n} p99 {p99 * 1e6:.0f} us")
+            self.assertLess(p99, 0.0005 * _ts(), f"{n} p99 {p99 * 1e6:.0f} us")
 
     def test_determinism(self):
         for name in NAMES:

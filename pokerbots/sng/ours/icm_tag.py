@@ -55,6 +55,8 @@ PARAMS = dict(
     cap_window=25,
     steal_floor=0.0,     # the steal factor never cuts the open / shove bar below this share (0 = no floor)
     resteal_rel=0.35,    # > 0: facing a lone open at <= resteal_rel_bb, re-shove the top
+    resteal_read=0.0,    # > 0: scale the re-shove range by the opener's fold-to-re-raise rate / 0.65
+                         #   (prior weight in hands; 0 = off)
     resteal_rel_bb=28.0, #   resteal_rel x (opener's open rate) of hands (f3_exploiter's rule); 0 = off.
                          #   0.35 validated on fresh seeds (results/sng_restealrel_validate.md)
     push_steal=0.5,      # short-stack shoves use this share of the steal factor (fold read); 0 = off.
@@ -177,6 +179,8 @@ class IcmTag:
             self.chart = load_chart(rules, self.p["pf_file"] or None)
         self.steal_seen = [0] * rules.num_players     # steal attempts faced in the blinds
         self.steal_fold = [0] * rules.num_players
+        self.o3_seen = [0] * rules.num_players           # opened, then faced a re-raise
+        self.o3_fold = [0] * rules.num_players           # ... and folded
         self.aggressor = None                          # seat of the last preflop raiser this hand
         self.dealt = [0] * rules.num_players           # hands seen per seat
         self.pf_faced = [0] * rules.num_players        # postflop bets faced per seat
@@ -215,6 +219,16 @@ class IcmTag:
                 self.pf_faced[sv] += 1
                 if kind == "fold":
                     self.pf_fold[sv] += 1
+        # opener vs a re-raise (resteal_read): the opener's next action after the first re-raise
+        pre3 = [h for h in hist if h[1] == 0 and h[2] != "post"]
+        rz = [i for i, h in enumerate(pre3) if h[2] == "raise"]
+        if len(rz) >= 2 and pre3[rz[1]][0] != pre3[rz[0]][0]:
+            op = pre3[rz[0]][0]
+            nxt = next((h for h in pre3[rz[1] + 1:] if h[0] == op), None)
+            if nxt is not None:
+                self.o3_seen[op] += 1
+                if nxt[2] == "fold":
+                    self.o3_fold[op] += 1
         # fold-to-steal: blinds facing a single late-position open and no other caller
         pre = [h for h in hist if h[1] == 0 and h[2] != "post"]
         raises = [h for h in pre if h[2] == "raise"]
@@ -503,7 +517,11 @@ class IcmTag:
             o = min(0.7, max(0.04, o))
             t = self._pct
             top = 1.0 - bisect.bisect_left(t, self._eq(obs, 1)) / len(t)
-            if top <= max(0.03, p["resteal_rel"] * o):
+            m = 1.0
+            if p["resteal_read"] > 0:                  # openers who fold to re-raises: wider
+                f3 = (self.o3_fold[r0] + 0.65 * p["resteal_read"]) / (self.o3_seen[r0] + p["resteal_read"])
+                m = min(1.6, max(0.4, f3 / 0.65))
+            if top <= max(0.03, p["resteal_rel"] * o * m):
                 return RaiseTo(lg.max_raise_to)
         if (p["resteal"] and lg.can_raise and len(raises) == 1 and not seats[raises[0][0]].all_in
                 and p["resteal_lo"] <= eff_bb <= p["resteal_hi"]

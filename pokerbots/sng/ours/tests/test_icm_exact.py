@@ -5,6 +5,7 @@ import time
 import unittest
 
 from sng.ours.icm_exact import allin_call_need, value
+from sng.timescale import factor as _ts  # noqa: E402  (SNG_TIME_SCALE on slower hosts)
 
 
 def harville_brute(stacks, pays):
@@ -66,8 +67,8 @@ class TestIcmExact(unittest.TestCase):
         finally:
             gc.enable()
         ts.sort()
-        self.assertLess(ts[len(ts) // 2], 0.2e-3)                   # typical 8-handed decision
-        self.assertLess(ts[int(0.95 * len(ts))], 0.5e-3)            # a scheduler tick may hit p99
+        self.assertLess(ts[len(ts) // 2], 0.2e-3 * _ts())                   # typical 8-handed decision
+        self.assertLess(ts[int(0.95 * len(ts))], 0.5e-3 * _ts())            # a scheduler tick may hit p99
 
 
 class TestIcmCallInBot(unittest.TestCase):
@@ -104,7 +105,7 @@ class TestIcmCallInBot(unittest.TestCase):
             self.assertEqual(st.errors + st.illegal, 0, st.first_error)
             if not os.environ.get("SNG_SKIP_TIMING"):
                 ts = sorted(st.times)
-                self.assertLess(ts[int(0.99 * len(ts))], 0.5e-3)
+                self.assertLess(ts[int(0.99 * len(ts))], 0.5e-3 * _ts())
 
 
 if __name__ == "__main__":

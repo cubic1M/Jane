@@ -10,6 +10,7 @@ from sng.field3.registry import BOTS
 from sng.field3.tests.helpers import Timed, all_bots
 from sng.rules import SngRules
 from sng.table import play_table
+from sng.timescale import factor as _ts  # noqa: E402  (SNG_TIME_SCALE on slower hosts)
 
 
 def run(tables=3, rules=None):
@@ -37,7 +38,7 @@ class TestTiming(unittest.TestCase):
             cpu = np.concatenate([t.cpu for t in tbs])
             self.assertGreater(len(cpu), 100, n)
             p99 = np.percentile(cpu, 99) * 1e3
-            self.assertLess(p99, 0.5, f"{n} p99 cpu {p99:.3f} ms")
+            self.assertLess(p99, 0.5 * _ts(), f"{n} p99 cpu {p99:.3f} ms")
 
     def test_slow_bot_is_slow_multiway(self):
         tbs = self.recs["f3_mc_slow"]

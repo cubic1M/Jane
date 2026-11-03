@@ -19,6 +19,7 @@ from sng.table import Hand, play_table
 from sng.field2 import common
 from sng.field2.common import (OppStats, Scorer, bubble_factors, get_preflop, icm_one, push_pct, read_postflop)
 from sng.field2.registry import BOTS, FIELDS
+from sng.timescale import factor as _ts  # noqa: E402  (SNG_TIME_SCALE on slower hosts)
 
 NAMES = list(BOTS)
 LINEUP = NAMES + NAMES[:2]                     # all six plus two copies
@@ -270,7 +271,7 @@ class TestTables(unittest.TestCase):
                     times[lineup[i]] += st.times
             for n, ts in times.items():
                 p99 = float(np.percentile(ts, 99)) * 1000
-                self.assertLess(p99, 0.4, f"{n} {name} p99 {p99:.3f} ms")
+                self.assertLess(p99, 0.4 * _ts(), f"{n} {name} p99 {p99:.3f} ms")
 
 
 class TestColdStart(unittest.TestCase):

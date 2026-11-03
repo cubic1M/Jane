@@ -24,6 +24,7 @@ from engine.variants import get_variant
 from sng.ours import build_tables as BT
 from sng.ours import features as F
 from sng.ours import strength as S
+from sng.timescale import factor as _ts  # noqa: E402  (SNG_TIME_SCALE on slower hosts)
 
 NLHE = get_variant("a_nlhe100")
 SHORT = get_variant("e_shortdeck")
@@ -32,7 +33,7 @@ _o = list(STANDARD_ORDER)
 _i, _j = _o.index("flush"), _o.index("full_house")
 _o[_i], _o[_j] = _o[_j], _o[_i]
 FLUSH_OVER_FH = NLHE.with_(name="t_flush_over_fh", category_order=tuple(_o))
-P99_LIMIT = 50e-6
+P99_LIMIT = 50e-6 * _ts()
 
 
 def c(s):
