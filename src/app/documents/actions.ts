@@ -2,7 +2,7 @@
 
 import { readDraftReturn } from "@/lib/draft-return";
 import { revalidatePath } from "next/cache";
-import { MAX_DOCUMENT_BYTES, type DocumentContentType } from "@/config/documents";
+import { documentTooBig, MAX_DOCUMENT_BYTES, type DocumentContentType } from "@/config/documents";
 import { track } from "@/lib/analytics";
 import { isDocumentKind, type RawFacts } from "@/lib/documents/facts";
 import { addDocument, removeDocument, saveDocumentFacts } from "@/lib/documents/store";
@@ -33,7 +33,7 @@ export async function uploadDocument(_previous: FormState, formData: FormData): 
   if (file.size > MAX_DOCUMENT_BYTES) {
     return {
       ok: false,
-      message: `That file is larger than ${MAX_DOCUMENT_BYTES / 1024 / 1024} MB. Try a smaller scan or a photo.`,
+      message: documentTooBig(),
     };
   }
 

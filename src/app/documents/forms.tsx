@@ -5,6 +5,8 @@ import { useActionState, useEffect, useState } from "react";
 import {
   DOCUMENT_KINDS,
   DOCUMENT_TYPES,
+  documentTooBig,
+  MAX_DOCUMENT_BYTES,
   MAX_FACT_LENGTH,
   POLICY_TYPES,
   PREMIUM_FREQUENCIES,
@@ -46,8 +48,17 @@ function useRefreshOnSave(state: FormState) {
 export function UploadForm() {
   const [state, action, pending] = useActionState<FormState, FormData>(uploadDocument, null);
   useRefreshOnSave(state);
+  // A file past what one request takes never reaches the server's own check: the page would crash
+  // to "Something went wrong" (debugger 11-03: a 5 MB scan, an ordinary phone photo). Said here.
+  const [tooBig, setTooBig] = useState(false);
+  function checkSize(event: React.FormEvent<HTMLFormElement>) {
+    const file = new FormData(event.currentTarget).get("file");
+    const over = file instanceof File && file.size > MAX_DOCUMENT_BYTES;
+    setTooBig(over);
+    if (over) event.preventDefault();
+  }
   return (
-    <form action={action} className="flex flex-col gap-3">
+    <form action={action} onSubmit={checkSize} className="flex flex-col gap-3">
       <label htmlFor="upload-kind" className="flex flex-col gap-1 text-sm font-medium">
         What is it?
         <select id="upload-kind" name="kind" defaultValue="insurance_policy" className={INPUT}>
@@ -72,7 +83,7 @@ export function UploadForm() {
       <button type="submit" disabled={pending} className={BUTTON}>
         {pending ? "Reading it…" : "Upload"}
       </button>
-      <Message state={state} />
+      <Message state={tooBig ? { ok: false, message: documentTooBig() } : state} />
     </form>
   );
 }
