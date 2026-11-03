@@ -355,14 +355,20 @@ class Hand:
             if not elig:            # everyone at this level folded: goes to the best remaining contender
                 elig = cont
             if len(elig) == 1:
-                winners = elig
-            else:
+                parts = [(1.0, elig)]
+            elif getattr(self.spec, "showdown", "high") == "high":
                 best = max(scores[j] for j in elig)
-                winners = [j for j in elig if scores[j] == best]
-            share, odd = divmod(pot, len(winners))
-            order = sorted(winners, key=lambda j: (j - self.button - 1) % self.n)
-            for i, j in enumerate(order):
-                win[j] += share + (1 if i < odd else 0)
+                parts = [(1.0, [j for j in elig if scores[j] == best])]
+            else:                                # engine/showdown.py: hi-lo, double board, ...
+                from engine.showdown import split as _split
+                parts = _split(self.spec, self.ev, self.hole, self.board, elig)
+            amounts = [int(pot * frac) for frac, _ in parts]
+            amounts[0] += pot - sum(amounts)                   # an odd chip goes to the high half
+            for (frac, winners), chips in zip(parts, amounts):
+                share, odd = divmod(chips, len(winners))
+                order = sorted(winners, key=lambda j: (j - self.button - 1) % self.n)
+                for i, j in enumerate(order):
+                    win[j] += share + (1 if i < odd else 0)
             prev = lv
         for j in range(self.n):
             self.stack[j] += win[j]

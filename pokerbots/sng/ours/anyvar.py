@@ -170,6 +170,9 @@ def choose_discard(ctx, hole, board, n_min, n_max, draw, to_board):
 
 
 # ---- simulation build ----------------------------------------------------------------------
+from engine.showdown import part_keys as _sd_keys, share_keys as _sd_share_keys  # noqa: E402
+
+
 def build(spec, seconds=120.0, seed=0, players=8):
     ctx = F.get_ctx(spec)
     rng = random.Random(seed)
@@ -218,13 +221,20 @@ def build(spec, seconds=120.0, seed=0, players=8):
             if st > 0 and not any(r.after_betting for r in spec.discards_on_street(st)):
                 for i in range(players):
                     keys[i].append(post_key(ctx, holes[i], board, st))
-        scores = [int(ev.evaluate(list(holes[i]), list(board))) for i in range(players)]
+        high = getattr(spec, "showdown", "high") == "high"
+        if high:
+            scores = [int(ev.evaluate(list(holes[i]), list(board))) for i in range(players)]
+        else:
+            fracs, pk = _sd_keys(spec, ev, holes, board, range(players))
         for i in range(players):
             for k in range(1, players):
-                opp = [scores[(i + j) % players] for j in range(1, k + 1)]
-                top = max(opp)
-                me = scores[i]
-                share = 1.0 if me > top else (1.0 / (1 + opp.count(me)) if me == top else 0.0)
+                if high:
+                    opp = [scores[(i + j) % players] for j in range(1, k + 1)]
+                    top = max(opp)
+                    me = scores[i]
+                    share = 1.0 if me > top else (1.0 / (1 + opp.count(me)) if me == top else 0.0)
+                else:                    # engine/showdown.py rule (hi-lo, double board, ...)
+                    share = _sd_share_keys(fracs, pk, i, [i] + [(i + j) % players for j in range(1, k + 1)])
                 for si, key in enumerate(keys[i]):
                     d = pre if si == 0 else post
                     acc = d.setdefault(f"{key}|{k}", [0.0, 0])

@@ -66,6 +66,9 @@ class GameSpec:
     players_per_hand: int = 2
     hands_per_match: int = 1000
     betting: str = "no_limit"  # or "pot_limit"
+    # pot-splitting rule (engine/showdown.py): "high", "hilo8" (half to the best 8-or-better low),
+    # "double_board" (two boards dealt together, half the pot each)
+    showdown: str = "high"
     # time limits (seconds); None = unlimited. Timeout = fold.
     time_per_decision: Optional[float] = None
     time_per_match: Optional[float] = None
@@ -116,6 +119,11 @@ class GameSpec:
             raise ValueError("hole_usage must be 'any' or 'exactly'")
         if self.betting not in ("no_limit", "pot_limit"):
             raise ValueError("betting must be 'no_limit' or 'pot_limit'")
+        from engine.showdown import VALID as _SHOWDOWNS
+        if self.showdown not in _SHOWDOWNS:
+            raise ValueError(f"showdown must be one of {_SHOWDOWNS}")
+        if self.showdown == "double_board" and any(k % 2 for k in self.board_cards_per_street[1:]):
+            raise ValueError("double_board: every street deals an even number of cards (half per board)")
         if set(self.category_order) != CATEGORY_NAMES or len(self.category_order) != 9:
             raise ValueError("category_order must be a permutation of the 9 categories")
         if not (0 < self.small_blind <= self.big_blind):

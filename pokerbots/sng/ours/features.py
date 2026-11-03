@@ -63,7 +63,8 @@ def card_signature(spec) -> tuple:
     return (tuple(sorted(spec.deck_ranks)), int(spec.hole_cards), spec.hole_usage,
             int(spec.hole_exact) if spec.hole_usage == "exactly" else -1,
             tuple(spec.board_cards_per_street), tuple(spec.discards),
-            tuple(spec.category_order), bool(spec.ace_low_straight))
+            tuple(spec.category_order), bool(spec.ace_low_straight)) + (
+        () if getattr(spec, "showdown", "high") == "high" else (spec.showdown,))
 
 
 class Ctx:

@@ -20,6 +20,14 @@ PRESETS = {
         blinds=((10, 20), (20, 40), (30, 60), (50, 100), (75, 150), (100, 200), (150, 300), (200, 400)),
         antes=(0,) * 8,
         payouts=(100, 65, 45, 30, 20, 10, 5, 0)),
+    # pot-splitting variants (engine/showdown.py)
+    "holdem_hilo8": dict(spec=GameSpec(name="holdem_hilo8", showdown="hilo8", starting_stack=2000, small_blind=10,
+                                       big_blind=20, stack_reset_per_hand=False)),
+    "omaha_hilo8": dict(spec=GameSpec(name="omaha_hilo8", showdown="hilo8", hole_cards=4, hole_usage="exactly",
+                                      hole_exact=2, betting="pot_limit", starting_stack=2000, small_blind=10,
+                                      big_blind=20, stack_reset_per_hand=False)),
+    "double_board": dict(spec=GameSpec(name="double_board", showdown="double_board", board_cards_per_street=(0, 6, 2, 2),
+                                       starting_stack=2000, small_blind=10, big_blind=20, stack_reset_per_hand=False)),
     # discard / draw variants (sng/tests/test_discards.py shapes)
     "discard_to_board": dict(spec=GameSpec(name="t_to_board", hole_cards=3, starting_stack=2000, small_blind=10,
                                            big_blind=20, stack_reset_per_hand=False,
