@@ -1,0 +1,80 @@
+# Every hour: can someone sign in, and can one person see another? (src/lib/probe.ts,
+# docs/incident.md) Two sample people on the live site, no real data. Off until a founder sets the
+# PROBE_SECRET repository secret. The repository is public, so this prints a status code and
+# nothing else, and its issue doesn't say which check failed: that's on /admin/errors.
+name: Hourly probe
+
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SITE: https://jane-dusky.vercel.app
+      PROBE_SECRET: ${{ secrets.PROBE_SECRET }}
+    steps:
+      - name: Run the probe
+        id: probe
+        run: |
+          if [ -z "$PROBE_SECRET" ]; then
+            echo "Off: no PROBE_SECRET secret."
+            echo "state=off" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 150 \
+            -H "Authorization: Bearer $PROBE_SECRET" "$SITE/api/cron/probe" || echo 000)
+          echo "HTTP $code"
+          if [ "$code" = "200" ]; then
+            echo "state=ok" >> "$GITHUB_OUTPUT"
+          else
+            echo "state=failed" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open or close the issue
+        if: steps.probe.outputs.state != 'off'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        env:
+          STATE: ${{ steps.probe.outputs.state }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const label = "probe";
+            try {
+              await github.rest.issues.createLabel({ owner, repo, name: label, color: "000000" });
+            } catch (error) {
+              if (error.status !== 422) throw error; // 422: it exists already.
+            }
+            const { data: open } = await github.rest.issues.listForRepo({
+              owner, repo, labels: label, state: "open", per_page: 1,
+            });
+            const issue = open[0];
+            const run = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            if (process.env.STATE === "failed") {
+              if (!issue) {
+                await github.rest.issues.create({
+                  owner, repo, labels: [label],
+                  title: "The hourly probe is failing",
+                  body: `See /admin/errors for details, then docs/incident.md.\n\nFirst failed: ${run}`,
+                });
+              }
+              core.setFailed("The hourly probe failed");
+            } else if (issue) {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: issue.number, body: `Passing again. ${run}`,
+              });
+              await github.rest.issues.update({
+                owner, repo, issue_number: issue.number, state: "closed",
+              });
+            }

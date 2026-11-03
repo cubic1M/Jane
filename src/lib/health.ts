@@ -4,11 +4,14 @@ import { logAudit } from "@/lib/audit";
 import type { Admin } from "@/lib/concierge";
 import { db as defaultClient } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
+import { describeError } from "@/lib/error-log";
+import { heartbeat } from "@/lib/heartbeat";
 import { log } from "@/lib/log";
 import { plaidEnvironment } from "@/lib/plaid/client";
 import { bankConnectionsLine, itemSlotUse } from "@/lib/plaid/item-count";
 import { rlsCoverage, rlsSwitchWorks } from "@/lib/rls-coverage";
 import { scrub } from "@/lib/scrub";
+import { reportToSentry } from "@/lib/sentry";
 
 // Knowing when something quietly stops: every scheduled run is recorded, /admin/health
 // shows the latest of each, and a daily job that hasn't succeeded in JOB_STALE_HOURS is
@@ -35,6 +38,7 @@ export async function recordRun<T>(
     data: { name, startedAt: now() },
     select: { id: true },
   });
+  await heartbeat(name, "start");
   try {
     const result = await run();
     await client.cronRun.update({
@@ -47,12 +51,15 @@ export async function recordRun<T>(
     });
     // The job is back: a later outage gets its own email.
     await client.healthNotice.deleteMany({ where: { key: `missed:${name}` } });
+    await heartbeat(name, "success");
     return result;
   } catch (error) {
     await client.cronRun.update({
       where: { id: started.id },
       data: { finishedAt: now(), ok: false, error: scrub(String(error)).slice(0, ERROR_LENGTH) },
     });
+    await heartbeat(name, "fail");
+    await reportToSentry({ ...describeError(error), path: `/cron/${name}`, routeType: "cron" });
     throw error;
   }
 }

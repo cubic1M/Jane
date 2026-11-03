@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { log } from "@/lib/log";
 import { scrub, scrubPath } from "@/lib/scrub";
+import { reportToSentry } from "@/lib/sentry";
 
 // Error monitoring without a third-party service: server errors are scrubbed and stored
 // in error_events (viewable at /admin/errors), and a scrubbed line goes to the logs.
@@ -49,4 +50,5 @@ export async function recordError(
   } catch {
     // Never let error logging cause another error.
   }
+  await reportToSentry({ ...described, path, routeType: context.routeType });
 }
