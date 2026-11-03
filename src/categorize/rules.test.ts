@@ -723,3 +723,29 @@ describe("a gig driver's money", () => {
     expect(rule("EARNIN CASH OUT", -10_000)).toBe("LOAN_DISBURSEMENTS_CASH_ADVANCES");
   });
 });
+
+// Debugger 11-03: someone who moved. The new flat's $2,100 deposit counted as rent, so a typical month
+// carried it at full weight ($700 too high) and the moving truck had no category.
+describe("moving house", () => {
+  const rule = (description: string, amountCents: number) =>
+    categorizeByRules({ description, amountCents, hints: {} })?.detailed ?? null;
+
+  it.each(["VISTA RIDGE APTS DEPOSIT", "SECURITY DEPOSIT OAK HOLLOW", "RENT DEPOSIT 4412"])(
+    "%s paid isn't rent",
+    (description) => {
+      expect(rule(description, 210_000)).toBe("GENERAL_SERVICES_OTHER_GENERAL_SERVICES");
+    },
+  );
+
+  it("the rent itself is still rent", () => {
+    expect(rule("VISTA RIDGE APTS RENT", 210_000)).toBe("RENT_AND_UTILITIES_RENT");
+  });
+
+  it("the deposit coming back isn't income", () => {
+    expect(rule("OAK HOLLOW APTS DEPOSIT REFUND", -170_000) ?? "").not.toMatch(/^INCOME/);
+  });
+
+  it.each(["UHAUL MOVING 7711", "U-HAUL OF BURBANK", "PENSKE TRUCK RENTAL"])("%s has one", (d) => {
+    expect(rule(d, 18_945)).toBe("GENERAL_SERVICES_OTHER_GENERAL_SERVICES");
+  });
+});

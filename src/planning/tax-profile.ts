@@ -291,6 +291,40 @@ export function listOf(items: string[]): string {
   return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 }
 
+const employerOfPayroll = (name: string) =>
+  name
+    .replace(/\s+PAYROLL.*$/i, "")
+    .trim()
+    .toUpperCase();
+
+// The paychecks that could be a couple's: from employers paying over the same time. One employer
+// after another is one person changing jobs, so only the latest counts (debugger 11-03: "I see two
+// employers' paychecks", and $4,097 of tax on $70,000).
+export function payingTogether(
+  paychecks: readonly { description: string; date: string }[],
+): string[] {
+  const spans = new Map<string, { first: string; last: string }>();
+  for (const { description, date } of paychecks) {
+    const key = employerOfPayroll(description);
+    const span = spans.get(key);
+    spans.set(key, {
+      first: span && span.first < date ? span.first : date,
+      last: span && span.last > date ? span.last : date,
+    });
+  }
+  const overlaps = (key: string) => {
+    const a = spans.get(key)!;
+    return [...spans].some(([other, b]) => other !== key && a.first <= b.last && b.first <= a.last);
+  };
+  const latest = [...spans].sort(([, a], [, b]) => b.last.localeCompare(a.last))[0]?.[0];
+  return paychecks
+    .filter(({ description }) => {
+      const key = employerOfPayroll(description);
+      return overlaps(key) || key === latest;
+    })
+    .map((t) => t.description);
+}
+
 // Taxes QA (2026-10-22): before the person says how they file, a couple's taxes were estimated
 // as single, which overstated them and drove a W-4 change to withhold more. A joint account or
 // two employers' paychecks (the same signal the profile uses for a couple, step 253) mean they
@@ -299,14 +333,7 @@ export function guessFilingStatus(input: {
   jointAccounts: number;
   payrollNames: readonly string[];
 }): { status: "married_joint"; why: string } | null {
-  const employers = new Set(
-    input.payrollNames.map((n) =>
-      n
-        .replace(/\s+PAYROLL.*$/i, "")
-        .trim()
-        .toUpperCase(),
-    ),
-  );
+  const employers = new Set(input.payrollNames.map(employerOfPayroll));
   const signs = [
     input.jointAccounts > 0 ? "a joint account" : null,
     employers.size >= 2 ? "two employers' paychecks" : null,
