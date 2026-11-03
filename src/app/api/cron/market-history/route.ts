@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { log } from "@/lib/log";
 import { loadHistory, HistoryError } from "@/lib/market/history";
 import { marketData } from "@/lib/market";
 import { recordRun } from "@/lib/health";
@@ -33,7 +34,7 @@ export async function GET(request: Request) {
     if ("skipped" in run) return NextResponse.json({ error: run.skipped }, { status: 409 });
     return NextResponse.json(run);
   } catch (error) {
-    console.error("Market history load failed", { error: String(error) });
+    log.error("Market history load failed", { error: String(error) });
     return NextResponse.json({ error: "The load failed; see the logs." }, { status: 500 });
   }
 }

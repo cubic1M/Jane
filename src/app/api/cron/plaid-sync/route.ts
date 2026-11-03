@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { CRON_SYNC_BUDGET_MS, CRON_SYNC_LIMIT, STALE_SYNC_HOURS } from "@/config/plaid";
 import { db } from "@/lib/db";
+import { log } from "@/lib/log";
 import { plaidEnabled } from "@/lib/plaid/client";
 import { runInactiveCleanup } from "@/lib/plaid/inactive";
 import { ITEM_STATUS, syncItem } from "@/lib/plaid/sync";
@@ -53,7 +54,7 @@ async function checkHealth() {
   try {
     await reportMissedJobs();
   } catch (error) {
-    console.error("Health check failed", { error: String(error) });
+    log.error("Health check failed", { error: String(error) });
   }
 }
 
@@ -145,7 +146,7 @@ async function dailyWork(startedAt: number) {
       synced += 1;
     } catch (error) {
       failed += 1;
-      console.error("Scheduled Plaid sync failed", { itemId: item.id, error: String(error) });
+      log.error("Scheduled Plaid sync failed", { itemId: item.id, error: String(error) });
     }
   }
   const inactive = await runInactiveCleanup();

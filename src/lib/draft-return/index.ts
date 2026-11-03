@@ -9,6 +9,7 @@ import { logAudit } from "@/lib/audit";
 import { encryptBytes } from "@/lib/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { log } from "@/lib/log";
 import { loadTaxDocuments } from "@/lib/tax-documents";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
 import { loadTaxTags } from "@/lib/tax-organizer";
@@ -184,7 +185,7 @@ export async function readDraftReturn(
     fields = demoDraft(await knownFor(userId, year, { client, now })).fields;
     for (const k of Object.keys(fields)) sources[k as DraftFieldKey] = "demo";
   } else if (read.kind === "failed") {
-    console.warn("Reading a draft return failed", { reason: read.reason });
+    log.warn("Reading a draft return failed", { reason: read.reason });
   }
   const checked = checkDraft(fields, sources, { today: iso(now) });
   try {

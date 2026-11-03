@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
+import { log } from "@/lib/log";
 import { syncDemoInvestments } from "@/lib/plaid/sync";
 
 // The nightly price refresh (spec step 156): every demo bank's holdings revalued at the
@@ -22,7 +23,7 @@ export async function refreshDemoPrices({
       refreshed += 1;
     } catch (error) {
       failed += 1;
-      console.error("Demo price refresh failed", { itemId: id, error: String(error) });
+      log.error("Demo price refresh failed", { itemId: id, error: String(error) });
     }
   }
   return { refreshed, failed };

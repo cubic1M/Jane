@@ -7,6 +7,7 @@ import { isTrialUser } from "@/lib/trial-ids";
 import { EXPLAIN_PROMPT_VERSION, explainFinding } from "./explain";
 import { currentHash } from "./card-text";
 import { meteredClaude } from "@/lib/claude-budget";
+import { log } from "@/lib/log";
 
 // Explanations are cached on the finding with a hash of what Claude was sent. They are
 // regenerated only when that input changes, i.e. when the finding's evidence does.
@@ -61,7 +62,7 @@ export async function explainFindings(
     if (result.kind === "unavailable") continue;
     if (result.kind === "template") {
       // Logs why, never the text: it may describe the person's spending.
-      console.warn("Explanation fell back to template", {
+      log.warn("Explanation fell back to template", {
         findingId: stale[i].id,
         reason: result.reason,
         issues: result.issues ?? [],

@@ -21,6 +21,7 @@ import { pickQuote } from "./pick";
 import { POLICY_SELECT, nextRenewal, toPolicy, yearlyPremium, type Policy } from "./policies";
 import { requestQuotes, type StoredQuote } from "./quotes";
 import { isoDay as day } from "@/lib/dates";
+import { log } from "@/lib/log";
 
 // Shopped for you (spec step 104). Jane reshops each policy on its own, at every autopilot
 // level: RESHOP_DAYS_BEFORE_RENEWAL days before it renews, and whenever its price goes up
@@ -326,7 +327,7 @@ export async function reshopAll({
     try {
       shops += (await reshopPerson(userId, { client, now })).length;
     } catch (error) {
-      console.error("Insurance reshop failed", { userId, error: String(error) });
+      log.error("Insurance reshop failed", { userId, error: String(error) });
     }
   }
   return { people: people.length, shops };

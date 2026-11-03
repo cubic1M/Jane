@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { log } from "@/lib/log";
 import { scrub } from "@/lib/scrub";
 import type { Profile, ProfileInput } from "@/profile/build";
 import { recordFacts, type RecordOutcome } from "./facts";
@@ -21,7 +22,7 @@ async function safely(
   try {
     return await work();
   } catch (error) {
-    console.error("Couldn't update what Jane knows", {
+    log.error("Couldn't update what Jane knows", {
       what,
       userId,
       error: scrub(String(error)).slice(0, 300),

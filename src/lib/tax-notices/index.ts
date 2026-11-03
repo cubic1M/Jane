@@ -14,6 +14,7 @@ import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { addDeadline } from "@/lib/deadlines";
+import { log } from "@/lib/log";
 import { loadTaxDocuments } from "@/lib/tax-documents";
 import {
   centsOf,
@@ -137,7 +138,7 @@ export async function readTaxNotice(
         { model: llmModel(), tax_notice: true },
       );
     } else if (read.kind === "failed") {
-      console.warn("Reading a tax notice failed", { reason: read.reason });
+      log.warn("Reading a tax notice failed", { reason: read.reason });
     }
   }
   const checked = checkNotice(fields, sources, { today: now.toISOString().slice(0, 10) });

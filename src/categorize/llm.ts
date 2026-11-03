@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { ALL_DETAILED, type PfcDetailed } from "./taxonomy";
 import { UNTRUSTED_TEXT_RULE } from "@/lib/untrusted-text";
+import { log } from "@/lib/log";
 
 const DEFAULT_MODEL = "claude-opus-5-5";
 const BATCH_SIZE = 50;
@@ -90,9 +91,9 @@ export async function classifyMerchants(
         return await classifyBatch(batch, claude?.() ?? getClient());
       } catch (error) {
         if (error instanceof Anthropic.APIError) {
-          console.error("Merchant categorization failed", { status: error.status });
+          log.error("Merchant categorization failed", { status: error.status });
         } else if (error instanceof SyntaxError) {
-          console.error("Merchant categorization returned invalid JSON");
+          log.error("Merchant categorization returned invalid JSON");
         } else {
           throw error;
         }

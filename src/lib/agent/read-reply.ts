@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { anthropic, finishedText, llmEnabled, llmModel } from "@/lib/anthropic";
 import { withoutLinks } from "@/lib/guardrails";
 import { UNTRUSTED_TEXT_RULE } from "@/lib/untrusted-text";
+import { log } from "@/lib/log";
 
 // Reads a company's reply to the agent into what happens next. Claude reads it when it's
 // available; otherwise (or if Claude's answer doesn't fit) a few plain word rules do, and
@@ -151,7 +152,7 @@ export async function readReply(
     text = finishedText(response);
   } catch (error) {
     if (!(error instanceof Anthropic.APIError)) throw error;
-    console.error("Reading a reply failed", { status: error.status });
+    log.error("Reading a reply failed", { status: error.status });
     return fallback;
   }
   if (text === null) return fallback;

@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { after } from "next/server";
+import { log } from "@/lib/log";
 import { DemoBankError, linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { hit } from "@/lib/rate-limit";
@@ -25,7 +26,7 @@ export async function linkDemo(): Promise<void> {
       try {
         await syncItem(itemId, { progressive: true });
       } catch (error) {
-        console.error("First demo bank sync failed", { itemId, error: String(error) });
+        log.error("First demo bank sync failed", { itemId, error: String(error) });
       }
     });
   }

@@ -1,5 +1,6 @@
 import type { ActionStatus } from "@/generated/prisma/client";
 import { sendEmail } from "@/lib/email";
+import { log } from "@/lib/log";
 
 // Emails the person gets when the team moves one of their actions. Failure reasons stay
 // internal; the person gets a plain note and can reply.
@@ -60,7 +61,7 @@ export async function sendStatusEmail(to: string, email: StatusEmail): Promise<v
   const text = [...email.lines, "", `See all your actions: ${link}`].join("\n");
   // Local dev without Resend: print instead of sending.
   if (!process.env.RESEND_API_KEY && process.env.NODE_ENV !== "production") {
-    console.info(`[dev] Email to ${to}: ${email.subject}\n${text}`);
+    log.dev(`[dev] Email to ${to}: ${email.subject}\n${text}`);
     return;
   }
   await sendEmail({

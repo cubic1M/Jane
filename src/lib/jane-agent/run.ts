@@ -12,6 +12,7 @@ import { refreshDebts } from "@/lib/debt-refresh";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadDetectionInput } from "@/detection/engine";
 import { policiesFromPayments } from "@/lib/found-policies";
+import { log } from "@/lib/log";
 import { runPaycheckPlan } from "@/lib/money-movement/paycheck";
 import { settleTransfers } from "@/lib/money-movement/transfers";
 import { runBillPay } from "@/lib/money-movement/bill-pay";
@@ -78,7 +79,7 @@ async function runJaneAgentWork(
   // Spec step 101: what autopilot keeps up to date by itself, before Jane looks.
   if (!early) {
     await runPlanUpkeep(userId, { client, now }).catch((error) =>
-      console.error("Plan upkeep failed", { userId, error: String(error) }),
+      log.error("Plan upkeep failed", { userId, error: String(error) }),
     );
     // Loans and debt (spec Phase Y): what Jane keeps current on its own, before it looks.
     await refreshDebts(userId, { client, now });
@@ -90,7 +91,7 @@ async function runJaneAgentWork(
   // (except money moving, which runs in order), so they run together: a new person's first
   // run waits on all of it.
   const safely = (what: string, run: () => Promise<unknown>) =>
-    run().catch((error) => console.error(`${what} failed`, { userId, error: String(error) }));
+    run().catch((error) => log.error(`${what} failed`, { userId, error: String(error) }));
   // The first brief's safe to spend caps goals at what the year plan has room for
   // (src/lib/home.ts), as the hub does a moment later. Someone who starts with goals (a sample
   // person) gets the plan kept first, or the brief said "short by $920.96" while the hub said
@@ -240,7 +241,7 @@ export async function runJaneAgentSafely(userId: string, options: Options = {}):
   try {
     await runJaneAgent(userId, options);
   } catch (error) {
-    console.error("Jane's chat run failed", { userId, error: String(error) });
+    log.error("Jane's chat run failed", { userId, error: String(error) });
   }
 }
 
@@ -294,7 +295,7 @@ export async function runJaneAgentForAll({
       run.posted += (await runOne(user.id, { client, now, trigger: "cron" })).posted;
     } catch (error) {
       run.failed += 1;
-      console.error("Jane's daily chat run failed", { userId: user.id, error: String(error) });
+      log.error("Jane's daily chat run failed", { userId: user.id, error: String(error) });
     }
   }
   return run;
@@ -314,6 +315,6 @@ export async function keepFullSnapshot(
       now,
     });
   } catch (error) {
-    console.error("Saving the snapshot failed", { userId, error: String(error) });
+    log.error("Saving the snapshot failed", { userId, error: String(error) });
   }
 }

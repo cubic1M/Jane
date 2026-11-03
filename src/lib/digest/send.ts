@@ -1,3 +1,4 @@
+import { log } from "@/lib/log";
 import { actionWorthCents } from "@/lib/saved-amount";
 import { conciergeMode } from "@/lib/concierge-mode";
 import { isHiddenPage } from "@/config/hidden-pages";
@@ -209,7 +210,7 @@ async function changesAndCheckup(
     const checkup = await loadCheckup(userId, open, { client, now, input });
     return { changes, checkup: checkup.map((c) => ({ status: c.status })) };
   } catch (error) {
-    console.error("Digest changes failed", { userId, error: String(error) });
+    log.error("Digest changes failed", { userId, error: String(error) });
     return { changes: [], checkup: [] };
   }
 }
@@ -408,7 +409,7 @@ export async function runDigests({
       } catch (error) {
         // Remove the row so tomorrow's run tries again.
         await db.digests.deleteMany({ where: { id: digest.id } });
-        console.error("Digest email failed", { userId: user.id, error: String(error) });
+        log.error("Digest email failed", { userId: user.id, error: String(error) });
         run.failed += 1;
         continue;
       }
@@ -430,7 +431,7 @@ export async function runDigests({
           },
           { client },
         ).catch((error) =>
-          console.error("Plan push failed", { userId: user.id, error: String(error) }),
+          log.error("Plan push failed", { userId: user.id, error: String(error) }),
         );
       }
       const counts = {
@@ -449,7 +450,7 @@ export async function runDigests({
       await track(user.id, "digest_sent", { digest_id: digest.id, ...counts });
       run.sent += 1;
     } catch (error) {
-      console.error("Digest failed", { userId: user.id, error: String(error) });
+      log.error("Digest failed", { userId: user.id, error: String(error) });
       run.failed += 1;
     }
   }

@@ -11,6 +11,7 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { isOverdue } from "@/lib/business-days";
 import { db as defaultClient } from "@/lib/db";
+import { log } from "@/lib/log";
 import { offerFor } from "@/lib/membership/service";
 
 // The team's side of actions. Admin pages work across users, so these use the raw
@@ -171,7 +172,7 @@ export async function changeActionStatus(
       await notify(action.user.email, email);
     } catch (error) {
       // The status change stands; the person still sees it on /actions.
-      console.error("Status email failed", { actionId: action.id, error: String(error) });
+      log.error("Status email failed", { actionId: action.id, error: String(error) });
     }
   }
 }

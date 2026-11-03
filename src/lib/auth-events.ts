@@ -7,6 +7,7 @@ import { SYSTEM_ACTOR, logAudit } from "@/lib/audit";
 import { DAY_MS } from "@/lib/dates";
 import { db } from "@/lib/db";
 import { isAdminEmail } from "@/lib/invites";
+import { log } from "@/lib/log";
 import { recordInviteJoined } from "@/lib/share-invites";
 import { TERMS_COOKIE, acceptTerms } from "@/lib/terms";
 import { TERMS_VERSION } from "@/config/legal";
@@ -92,11 +93,11 @@ export async function failedSignInEmails({
 // hold the address tried), and a failed sign-in on the access log, after the response.
 export function logAuthError(error: Error): void {
   const type = (error as { type?: string }).type ?? error.name;
-  console.error("[auth][error]", type);
+  log.error("[auth][error]", type);
   if (!FAILED_SIGN_IN_TYPES.has(type)) return;
   const write = () =>
     recordFailedSignIn(type).catch((e) =>
-      console.error("Couldn't log a failed sign-in", {
+      log.error("Couldn't log a failed sign-in", {
         error: e instanceof Error ? e.name : "unknown",
       }),
     );

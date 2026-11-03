@@ -1,5 +1,6 @@
 import { connection } from "next/server";
 import { db } from "@/lib/db";
+import { log } from "@/lib/log";
 
 // The uptime check's database probe (.github/workflows/uptime.yml): whether the database answers
 // a trivial query within a few seconds. It says ok or not, nothing more: no error text, no
@@ -19,7 +20,7 @@ export async function GET() {
     ]);
     return Response.json({ ok: true }, { headers });
   } catch (error) {
-    console.error("Database health check failed", { error: String(error).slice(0, 200) });
+    log.error("Database health check failed", { error: String(error).slice(0, 200) });
     return Response.json({ ok: false }, { status: 503, headers });
   } finally {
     clearTimeout(timer);

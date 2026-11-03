@@ -13,6 +13,7 @@ import {
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { costInHundredthsOfCents } from "@/lib/jane-agent/spend";
+import { log } from "@/lib/log";
 import { WATCH_CIKS, marketData, MarketDataNotConfigured } from "@/lib/market";
 import type { Filing, Headline, MarketData } from "@/lib/market";
 import { PRACTICE_TICKERS } from "@/lib/market/sample";
@@ -265,7 +266,7 @@ async function summariseWithClaude(
     return batchIds(batch).map((id) => result.summaries.get(id));
   } catch (error) {
     if (!isApiError(error)) throw error;
-    console.error("News summaries failed", { status: (error as { status?: number }).status });
+    log.error("News summaries failed", { status: (error as { status?: number }).status });
     return null;
   }
 }

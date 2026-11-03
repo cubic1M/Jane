@@ -1,4 +1,5 @@
 import type { Prisma } from "@/generated/prisma/client";
+import { log } from "@/lib/log";
 
 // Row-level security, the database's own check under scopedFor (docs/security/rls.md). A scoped
 // query runs in a transaction that first switches to the jane_rls role with the person's id in
@@ -112,7 +113,7 @@ export async function withRls<T>(
 // Once per process, in the logs and on /admin/errors.
 async function reportOff(error: unknown) {
   const reason = messageOf(error).slice(0, 200);
-  console.error("Row-level security is off: scoped queries are filtered by the app only", {
+  log.error("Row-level security is off: scoped queries are filtered by the app only", {
     reason,
   });
   try {

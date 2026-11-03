@@ -4,6 +4,7 @@ import { anthropic, llmEnabled, llmModel } from "@/lib/anthropic";
 import { logAudit, SYSTEM_ACTOR } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { UNTRUSTED_TEXT_RULE } from "@/lib/untrusted-text";
+import { log } from "@/lib/log";
 
 // Finding a company's support email (spec step 64). When the merchant directory has none,
 // Claude searches the company's own website (web search limited to its domain), and an
@@ -96,7 +97,7 @@ export async function findSupportContact(
     }
   } catch (error) {
     if (!(error instanceof Anthropic.APIError)) throw error;
-    console.error("Support contact lookup failed", { status: error.status });
+    log.error("Support contact lookup failed", { status: error.status });
     return null;
   }
   if (!response || response.stop_reason !== "end_turn") return null;

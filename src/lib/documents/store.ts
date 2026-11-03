@@ -10,6 +10,7 @@ import { readDocumentFacts } from "./extract";
 import { factsFromForm, type RawFacts } from "./facts";
 import { checkUpload, type UploadFile } from "./validate";
 import { meteredClaude } from "@/lib/claude-budget";
+import { log } from "@/lib/log";
 
 // Keeping, reading back and deleting the person's documents (spec step 68). Files are
 // encrypted before they reach the database and are only decrypted for their owner. Never
@@ -79,7 +80,7 @@ export async function addDocument(
         { claude },
       );
   if (read.kind !== "claude") {
-    if (read.kind === "failed") console.warn("Reading a document failed", { reason: read.reason });
+    if (read.kind === "failed") log.warn("Reading a document failed", { reason: read.reason });
     return { ok: true, id: document.id, read: "you", summaryRejected: false };
   }
   await db.documents.update({

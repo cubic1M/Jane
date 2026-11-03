@@ -6,6 +6,7 @@ import { after, connection } from "next/server";
 import { auth } from "@/auth";
 import { TERMS_VERSION } from "@/config/legal";
 import { adminSessionState, sessionTokenFrom } from "@/lib/admin-gate";
+import { log } from "@/lib/log";
 import { noteSessionSeen } from "@/lib/user-sessions";
 
 export type SessionUser = Session["user"];
@@ -39,7 +40,7 @@ const noteDevice = cache(async (): Promise<void> => {
   const userAgent = (await headers()).get("user-agent");
   after(() =>
     noteSessionSeen(token, userAgent).catch((error) =>
-      console.error("Couldn't note the session's device", { error }),
+      log.error("Couldn't note the session's device", { error }),
     ),
   );
 });

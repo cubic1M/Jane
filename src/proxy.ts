@@ -2,6 +2,7 @@ import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server
 import { logAdminAccess } from "@/lib/admin-access";
 import { adminSession, sessionTokenFrom } from "@/lib/admin-gate";
 import { edgeLimit } from "@/lib/edge-limits";
+import { log } from "@/lib/log";
 import { newNonce, pageCsp } from "@/lib/security-headers";
 
 // Runs before every page, API route and server action. Three jobs:
@@ -37,7 +38,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
       const access = { method: request.method, pathname, headers: request.headers };
       event.waitUntil(
         logAdminAccess(userId, access).catch((error) =>
-          console.error("Couldn't log an admin view", {
+          log.error("Couldn't log an admin view", {
             error: error instanceof Error ? error.name : "unknown",
           }),
         ),

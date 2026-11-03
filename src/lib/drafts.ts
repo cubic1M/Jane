@@ -4,6 +4,7 @@ import { anthropic, finishedText, llmEnabled, llmModel } from "@/lib/anthropic";
 import { prepareExplainInput } from "./explain-input";
 import { checkGuardrails } from "./guardrails";
 import { UNTRUSTED_TEXT_RULE } from "@/lib/untrusted-text";
+import { log } from "@/lib/log";
 
 export const PLACEHOLDERS = {
   name: "[account holder name]",
@@ -188,7 +189,7 @@ export async function draftMessage(
     text = finishedText(response);
   } catch (error) {
     if (!(error instanceof Anthropic.APIError)) throw error;
-    console.error("Draft request failed", { status: error.status });
+    log.error("Draft request failed", { status: error.status });
     text = null;
   }
   if (text === null) return { kind: "template", draft: template, reason: "refused" };

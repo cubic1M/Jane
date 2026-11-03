@@ -32,6 +32,7 @@ import { openEnrollmentDates } from "@/lib/insurance/health";
 import { listBenefits, openEnrollmentAtWork } from "@/lib/insurance/benefits";
 import { listPolicies, nextRenewal } from "@/lib/insurance/policies";
 import { loadInsurance } from "@/lib/insurance/profile";
+import { log } from "@/lib/log";
 import { priceRiseDeadlines } from "@/lib/price-rises";
 import { peopleIn, type OnlyPeople } from "@/lib/only-people";
 import { DEBT_ACCOUNT_SELECT } from "@/insights/loans";
@@ -232,7 +233,7 @@ export async function listDeadlines(
   );
   const deadlines = results.flatMap((result, index) => {
     if (result.status === "fulfilled") return result.value;
-    console.error("Deadline source failed", { userId, index, error: String(result.reason) });
+    log.error("Deadline source failed", { userId, index, error: String(result.reason) });
     return [];
   });
   return upcomingDeadlines(deadlines, isoDate(now));
@@ -288,7 +289,7 @@ export async function remindAllDeadlines({
       raised += await remind(user.id, { client, now });
     } catch (error) {
       failed += 1;
-      console.error("Deadline reminders failed", { userId: user.id, error: String(error) });
+      log.error("Deadline reminders failed", { userId: user.id, error: String(error) });
     }
   }
   return { users: users.length, raised, failed };

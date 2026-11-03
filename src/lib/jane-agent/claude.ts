@@ -1,3 +1,4 @@
+import { log } from "@/lib/log";
 import { formatCents } from "@/lib/money";
 import Anthropic from "@anthropic-ai/sdk";
 import {
@@ -510,24 +511,21 @@ export async function askClaudeInChat(
     return answer;
   } finally {
     const { startedAt, ...rest } = timing;
-    console.info(
-      "chat_timing",
-      JSON.stringify({
-        ...rest,
-        outcome,
-        totalMs: Date.now() - startedAt,
-        // Time in none of the above: guardrail checks, the spend record, waiting between steps.
-        costCents: Math.round(timing.costHundredths) / 100,
-        otherMs:
-          Date.now() -
-          startedAt -
-          (timing.primerMs ?? 0) -
-          timing.rounds.reduce((n, r) => n + r.ms, 0) -
-          timing.tools.reduce((n, t) => n + t.ms, 0),
-        model: chatModel(),
-        toolsSent: timing.toolsSent,
-      }),
-    );
+    log.json("chat_timing", {
+      ...rest,
+      outcome,
+      totalMs: Date.now() - startedAt,
+      // Time in none of the above: guardrail checks, the spend record, waiting between steps.
+      costCents: Math.round(timing.costHundredths) / 100,
+      otherMs:
+        Date.now() -
+        startedAt -
+        (timing.primerMs ?? 0) -
+        timing.rounds.reduce((n, r) => n + r.ms, 0) -
+        timing.tools.reduce((n, t) => n + t.ms, 0),
+      model: chatModel(),
+      toolsSent: timing.toolsSent,
+    });
   }
 }
 
@@ -837,7 +835,7 @@ async function askClaude(
       // works, the fallback was the cause and stays off on this server; if not, it wasn't.
       if (!stopped && fallbackOn && error instanceof Anthropic.APIError && error.status === 400) {
         if (draft.shownText().trim() === "") {
-          console.error("chat_refusal_fallback_rejected", {
+          log.error("chat_refusal_fallback_rejected", {
             reason: String(error.message).slice(0, 300),
           });
           setRefusalFallbackRejected(true);
@@ -861,11 +859,11 @@ async function askClaude(
       if (stopped) {
         timing.stopped = true;
         // Our own deadline: this answer comes from the rules, but Claude isn't marked down.
-        console.warn("Jane's chat answer from Claude was too slow");
+        log.warn("Jane's chat answer from Claude was too slow");
       } else {
         // The API's own reason (a type and a sentence about the request, never the person's
         // words), so a 400 can be read from the logs instead of guessed.
-        console.error("Jane's chat request to Claude failed", {
+        log.error("Jane's chat request to Claude failed", {
           status: error instanceof Anthropic.APIError ? error.status : undefined,
           reason: String((error as Error).message).slice(0, 300),
         });
@@ -1146,7 +1144,7 @@ async function askClaude(
     }
     if (!check.ok) {
       // The issues only, never the text: it's about the person's money.
-      console.warn("Jane's chat answer was blocked by the guardrails", { issues: check.issues });
+      log.warn("Jane's chat answer was blocked by the guardrails", { issues: check.issues });
       // Still blocked after the rewrite: its facts, without the sentences that can't be shown,
       // rather than the rules answering something else (founder 10-30).
       const facts = factsOnly(spoken, allowedCents, profile);

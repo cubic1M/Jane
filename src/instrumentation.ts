@@ -2,6 +2,13 @@ import type { Instrumentation } from "next";
 
 const REFUSED_ACTION = "Invalid Server Actions request";
 
+// Whatever a library or Next.js itself prints is cleaned like Jane's own lines (src/lib/log.ts).
+export async function register() {
+  if (process.env.NEXT_RUNTIME !== "nodejs" || process.env.NODE_ENV !== "production") return;
+  const { scrubConsole } = await import("@/lib/log");
+  scrubConsole();
+}
+
 // Records every server error, scrubbed, for /admin/errors (see src/lib/error-log.ts), and emails
 // the team about it, throttled (src/lib/error-alerts.ts).
 export const onRequestError: Instrumentation.onRequestError = async (error, request, context) => {

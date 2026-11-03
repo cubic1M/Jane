@@ -12,6 +12,7 @@ import {
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { collectEvents, runEventOverlay, type CollectReport, type Options } from "./run";
+import { log } from "@/lib/log";
 
 // Reading the events sources, shared by every caller (founder, 2026-10-26: fresher, never empty).
 // The daily cron reads every source; opening the investments page reads them too when the last
@@ -133,7 +134,7 @@ export async function refreshEventsIfStale(
   try {
     return await refreshEvents(options);
   } catch (error) {
-    console.error("Refreshing events failed", { error: String(error) });
+    log.error("Refreshing events failed", { error: String(error) });
     return null;
   }
 }
@@ -159,7 +160,7 @@ export async function runEventsForAll({
     force: true,
     deadline: gdeltStopAt,
   }).catch((error) => {
-    console.error("Collecting events failed", { error: String(error) });
+    log.error("Collecting events failed", { error: String(error) });
     return null;
   });
   // Every paper account but those switched off (on by default).
@@ -179,7 +180,7 @@ export async function runEventsForAll({
       if ((await runEventOverlay(userId, { client, now, ...rest })).ran) ran += 1;
     } catch (error) {
       failed += 1;
-      console.error("An events overlay run failed", { error: String(error) });
+      log.error("An events overlay run failed", { error: String(error) });
     }
   }
   return { collected, overlays: overlays.length, ran, failed, deferred };

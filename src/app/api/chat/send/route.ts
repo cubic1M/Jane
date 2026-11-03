@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { TERMS_VERSION } from "@/config/legal";
 import { currentChatStart } from "@/lib/chat-start";
 import { ChatInputError, sendToJane } from "@/lib/jane-agent/typing";
+import { log } from "@/lib/log";
 import { getCurrentUser } from "@/lib/session";
 
 // Typing to Jane with the answer shown as it's written: the chat's message box posts here
@@ -49,7 +50,7 @@ export async function POST(request: Request) {
         if (error instanceof ChatInputError) {
           send({ type: "error", text: error.message });
         } else {
-          console.error("Typing to Jane failed", {
+          log.error("Typing to Jane failed", {
             error: error instanceof Error ? error.name : "unknown",
           });
           send({ type: "error", text: "Something went wrong. Try again." });

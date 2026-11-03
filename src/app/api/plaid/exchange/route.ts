@@ -1,4 +1,5 @@
 import { NextResponse, after } from "next/server";
+import { log } from "@/lib/log";
 import { limitOrNull } from "@/lib/rate-limit";
 import { PlaidRequestError, plaidEnabled } from "@/lib/plaid/client";
 import { LinkingClosedError, linkClosedAnswer } from "@/lib/plaid/item-slots";
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
       return NextResponse.json(linkClosedAnswer(error.reason), { status: 409 });
     }
     if (!(error instanceof PlaidRequestError)) throw error;
-    console.error("Plaid token exchange failed", { code: error.code });
+    log.error("Plaid token exchange failed", { code: error.code });
     return NextResponse.json(
       { error: "Linking didn't finish. Please try again." },
       { status: 502 },
@@ -49,7 +50,7 @@ export async function POST(request: Request) {
     try {
       await syncItem(itemId, { progressive: true });
     } catch (error) {
-      console.error("First Plaid sync failed", { itemId, error: String(error) });
+      log.error("First Plaid sync failed", { itemId, error: String(error) });
     }
   });
   return NextResponse.json({ itemId }, { status: 201 });

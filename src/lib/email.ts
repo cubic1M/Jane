@@ -1,4 +1,5 @@
 import { linkOnSite } from "@/lib/site-origin";
+import { log } from "@/lib/log";
 import { isTrialEmail } from "@/lib/trial-ids";
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
@@ -91,7 +92,7 @@ export async function sendMagicLink({
   // Local dev without Resend: print the link instead. Never in production, where the
   // link is a credential and must only go to the user's inbox.
   if (!process.env.RESEND_API_KEY && process.env.NODE_ENV !== "production") {
-    console.info(`[dev] Magic link for ${to}: ${url}`);
+    log.dev(`[dev] Magic link for ${to}: ${url}`);
     return;
   }
 
@@ -109,7 +110,7 @@ export async function sendMagicLink({
     // Auth.js logs only "Error": why a sign-in email failed is said here, once, with no address or
     // link in it. The address can be in a failure from anywhere, so it's scrubbed again.
     const words = error instanceof Error ? error.message : "unknown";
-    console.error("[magic-link] send failed:", safeDetail(words));
+    log.error("[magic-link] send failed:", safeDetail(words));
     throw error;
   }
 }

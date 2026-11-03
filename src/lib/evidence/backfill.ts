@@ -2,6 +2,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { DEMO_INSTITUTION } from "@/data-sources/demo/demo-bank";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { log } from "@/lib/log";
 import type { OnlyPeople } from "@/lib/only-people";
 import { forgetSince, removeOrphans } from "./orphans";
 
@@ -56,7 +57,7 @@ export async function forgetRemovedDemoBanks({
         await removeOrphans(userId, { client });
         const count = await forgetSince(db, linked.createdAt, "bank", { demo: true });
         if (refresh) await refresh(userId);
-        console.info("demo_forgotten", JSON.stringify({ userId, rows: count }));
+        log.json("demo_forgotten", { userId, rows: count });
         forgotten += 1;
       }
       await db.janePreferences.create({
@@ -70,7 +71,7 @@ export async function forgetRemovedDemoBanks({
       });
     } catch (error) {
       failed += 1;
-      console.error("Forgetting a removed demo bank failed", { userId, error: String(error) });
+      log.error("Forgetting a removed demo bank failed", { userId, error: String(error) });
     }
   }
   return { forgotten, failed };

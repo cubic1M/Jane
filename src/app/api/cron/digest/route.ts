@@ -4,6 +4,7 @@ import { sendErrorDigest } from "@/lib/error-alerts";
 import { recordRun, reportMissedJobs } from "@/lib/health";
 import { runDueJobs } from "@/lib/jobs";
 import { runJaneAgentForAll } from "@/lib/jane-agent/run";
+import { log } from "@/lib/log";
 import { runMonthlyReports } from "@/lib/monthly-report";
 import { MONTHLY_REPORTS_CRON_BUDGET_MS } from "@/config/monthly-report";
 import { runNews } from "@/lib/news/store";
@@ -27,13 +28,13 @@ export async function GET(request: Request) {
   try {
     await reportMissedJobs();
   } catch (error) {
-    console.error("Health check failed", { error: String(error) });
+    log.error("Health check failed", { error: String(error) });
   }
   // Once a day: the last day's server errors, counted by kind (src/lib/error-alerts.ts).
   try {
     await sendErrorDigest();
   } catch (error) {
-    console.error("Error digest failed", { error: String(error) });
+    log.error("Error digest failed", { error: String(error) });
   }
   return NextResponse.json(
     await recordRun("digest", async () => {
@@ -52,7 +53,7 @@ export async function GET(request: Request) {
             ),
           ),
         }).catch((error) => {
-          console.error("Monthly reports failed", { error: String(error) });
+          log.error("Monthly reports failed", { error: String(error) });
           return null;
         }),
         // Jane's daily look at everyone's money, in the chat (spec step 82). A problem
@@ -67,12 +68,12 @@ export async function GET(request: Request) {
             ),
           ),
         }).catch((error) => {
-          console.error("Jane's daily chat run failed", { error: String(error) });
+          log.error("Jane's daily chat run failed", { error: String(error) });
           return null;
         }),
         // Spec step 293: the watchlist's news, summarised in a few batched calls at most.
         news: await runNews().catch((error) => {
-          console.error("News summaries failed", { error: String(error) });
+          log.error("News summaries failed", { error: String(error) });
           return null;
         }),
         // A second daily chance for jobs waiting to be retried.

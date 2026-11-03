@@ -15,6 +15,7 @@ import { ACTION_FOR_FINDING, CARD_SELECT, buildCard, cardHash } from "@/lib/card
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { DecisionError, recordDecision } from "@/lib/decisions";
+import { log } from "@/lib/log";
 import { sendPush } from "@/lib/push";
 import { partnerForUser } from "@/lib/referrals";
 import { autopilotFor, recordAct } from "@/lib/sector-autopilot";
@@ -194,7 +195,7 @@ export async function applyStandingRules(
         url: "/plan",
       },
       { client },
-    ).catch((error) => console.error("Rule push failed", { userId, error: String(error) }));
+    ).catch((error) => log.error("Rule push failed", { userId, error: String(error) }));
   }
   return approvals;
 }

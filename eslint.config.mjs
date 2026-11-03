@@ -53,6 +53,12 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  {
+    // Logs leave the app as they are, so app code writes through src/lib/log.ts, which cleans them.
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/**/*.test.{ts,tsx}", "src/test-setup/**", "src/lib/log.ts"],
+    rules: { "no-console": "error" },
+  },
   globalIgnores([
     ".next/**",
     "out/**",

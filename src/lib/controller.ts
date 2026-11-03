@@ -15,6 +15,7 @@ import { insuranceAutopilot } from "@/lib/insurance/autopilot";
 import { reshopPerson } from "@/lib/insurance/shop";
 import { loadRebalance } from "@/lib/investments/rebalance";
 import { enqueueJob, runDueJobs } from "@/lib/jobs";
+import { log } from "@/lib/log";
 import { runPaycheckPlan } from "@/lib/money-movement/paycheck";
 import { settleTransfers } from "@/lib/money-movement/transfers";
 import { runBillPay } from "@/lib/money-movement/bill-pay";
@@ -170,7 +171,7 @@ const STEPS: Record<
     // Spec step 256: once a week Claude looks for combinations; its ideas join tonight's
     // ranking. It's optional (no key, past the cost cap, any failure) and never stops the scan.
     await runStrategist(userId, { client, now }).catch((error) =>
-      console.error("Strategist failed", { userId, error: scrub(String(error)) }),
+      log.error("Strategist failed", { userId, error: scrub(String(error)) }),
     );
     const { fired, selected } = await scanSuggestions(userId, { client, now });
     // Spec step 257: which question to ask next, kept for the chat to read.
@@ -180,7 +181,7 @@ const STEPS: Record<
     await import("@/lib/jane-agent/claude-tools")
       .then((m) => m.refreshPrimer(userId, { client, now }))
       .catch((error) =>
-        console.error("Saving the numbers for Claude failed", {
+        log.error("Saving the numbers for Claude failed", {
           userId,
           error: scrub(String(error)),
         }),
@@ -206,7 +207,7 @@ async function runStep(
     const result = await run(userId, options);
     return { step, status: "ok", ...result, ms: Date.now() - started };
   } catch (error) {
-    console.error("Controller step failed", { userId, step, error: scrub(String(error)) });
+    log.error("Controller step failed", { userId, step, error: scrub(String(error)) });
     return {
       step,
       status: "failed",

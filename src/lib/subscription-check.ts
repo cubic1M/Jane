@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { anthropic, finishedText, llmEnabled, llmModel } from "@/lib/anthropic";
 import { UNTRUSTED_TEXT_RULE } from "@/lib/untrusted-text";
+import { log } from "@/lib/log";
 
 // Answers one question for merchants whose category can't: is a recurring charge here a
 // subscription? Claude sees cleaned merchant names only: no amounts, dates, account
@@ -79,9 +80,9 @@ export async function checkSubscriptions(
       }
     } catch (error) {
       if (error instanceof Anthropic.APIError) {
-        console.error("Subscription check failed", { status: error.status });
+        log.error("Subscription check failed", { status: error.status });
       } else if (error instanceof SyntaxError) {
-        console.error("Subscription check returned invalid JSON");
+        log.error("Subscription check returned invalid JSON");
       } else {
         throw error;
       }

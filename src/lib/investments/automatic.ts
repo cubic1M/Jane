@@ -1,3 +1,4 @@
+import { log } from "@/lib/log";
 import { coreFundsFor } from "@/planning/values";
 import { loadPrefs } from "./values";
 import { randomUUID } from "node:crypto";
@@ -98,7 +99,7 @@ export async function runAutomaticInvesting(
       );
     }
   } catch (error) {
-    console.error("Automatic rebalance failed", { error: String(error) });
+    log.error("Automatic rebalance failed", { error: String(error) });
   }
 
   // 2. Harvest losses (step 124), only without a wash-sale risk, into a similar fund.
@@ -107,7 +108,7 @@ export async function runAutomaticInvesting(
       await act(c.valueCents, describeHarvest(c), () => placeHarvest(userId, c, { client, now }));
     }
   } catch (error) {
-    console.error("Automatic harvest failed", { error: String(error) });
+    log.error("Automatic harvest failed", { error: String(error) });
   }
 
   // 3. Invest new cash sitting in a brokerage account, above a cushion.
@@ -143,7 +144,7 @@ export async function runAutomaticInvesting(
       );
     }
   } catch (error) {
-    console.error("Automatic cash investing failed", { error: String(error) });
+    log.error("Automatic cash investing failed", { error: String(error) });
   }
 
   if (result.did.length > 0) {
@@ -171,7 +172,7 @@ export async function runAutomaticInvestingForAll({
       const r = await runAutomaticInvesting(userId, { client, now });
       acted += r?.did.length ?? 0;
     } catch (error) {
-      console.error("Automatic investing failed", { error: String(error) });
+      log.error("Automatic investing failed", { error: String(error) });
     }
   }
   return { people: sectors.length, acted };

@@ -2,6 +2,7 @@ import webpush from "web-push";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { log } from "@/lib/log";
 
 // Web Push for urgent alerts and, from spec step 85, Jane's chat messages. Off unless
 // VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT are set; then a person's subscribed
@@ -137,7 +138,7 @@ export async function sendPush(
       if (status === 404 || status === 410) {
         await db.pushSubscriptions.deleteMany({ where: { id: device.id } });
       } else {
-        console.error("Push failed", { userId, status });
+        log.error("Push failed", { userId, status });
       }
     }
   }

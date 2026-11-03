@@ -3,6 +3,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import type { Snapshot } from "./snapshot";
 import { isoDay as day } from "@/lib/dates";
 import { dataStamp, sameData } from "@/lib/data-stamp";
+import { log } from "@/lib/log";
 
 // Jane's snapshot of a person (everything the agenda, the whole-picture and priorities answers
 // and the chat's tools read), kept in the database (depth first): building it looks up every
@@ -62,7 +63,7 @@ async function write(
       update: { value },
     });
   } catch (error) {
-    console.error("Saving the person's snapshot failed", { error: String(error) });
+    log.error("Saving the person's snapshot failed", { error: String(error) });
   }
 }
 
@@ -100,7 +101,7 @@ export async function loadSnapshotFast(userId: string, options: Options): Promis
     if ((old || now.getTime() < stored.at.getTime()) && !refreshing.has(userId)) {
       refreshing.add(userId);
       void refreshSnapshot(userId, options)
-        .catch((error) => console.error("Refreshing the snapshot failed", { error: String(error) }))
+        .catch((error) => log.error("Refreshing the snapshot failed", { error: String(error) }))
         .finally(() => refreshing.delete(userId));
     }
     return stored.snapshot;
@@ -135,6 +136,6 @@ export async function staleAndRefreshSnapshot(userId: string, options: Options):
   await markSnapshotStale(userId, options);
   // Always a new build, even if one is running: that one began before this change.
   void refreshSnapshot(userId, options).catch((error) =>
-    console.error("Refreshing the snapshot failed", { error: String(error) }),
+    log.error("Refreshing the snapshot failed", { error: String(error) }),
   );
 }

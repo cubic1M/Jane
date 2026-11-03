@@ -2,6 +2,7 @@ import { isPersonId } from "@/config/people";
 import type { CheckRun } from "./run";
 import type { CheckQuestion, Expect } from "./bank";
 import { FAIL_BELOW } from "./history";
+import { log } from "@/lib/log";
 import { formatCents } from "@/lib/money";
 
 // A big file of realistic chat scenarios (written by QA, run overnight: `npm run checks:eval`,
@@ -95,7 +96,7 @@ export function parseScenarioFiles(texts: readonly string[]): {
         scenarios.push(scenario);
       } catch (error) {
         const reason = (error as Error).message;
-        console.warn(`Skipping scenario ${id}: ${reason}`);
+        log.warn(`Skipping scenario ${id}: ${reason}`);
         skipped.push({ id, reason });
       }
     });

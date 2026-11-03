@@ -3,6 +3,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { teamEmails } from "@/lib/health";
+import { log } from "@/lib/log";
 import { hit } from "@/lib/rate-limit";
 
 // Knowing when Jane breaks before people tell us (founder, 2026-10-26): a server error emails the
@@ -89,7 +90,7 @@ export async function alertError(
     await Promise.all(to.map((address) => send({ ...message, to: address })));
     return true;
   } catch (failure) {
-    console.error("Error alert failed", { error: String(failure) });
+    log.error("Error alert failed", { error: String(failure) });
     return false;
   }
 }
@@ -159,7 +160,7 @@ export async function sendErrorDigest({
     await client.healthNotice.deleteMany({
       where: { key: `error-digest:${now.toISOString().slice(0, 10)}` },
     });
-    console.error("Error digest failed", { error: String(failure) });
+    log.error("Error digest failed", { error: String(failure) });
     return 0;
   }
   return events.length;

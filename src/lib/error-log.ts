@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma/client";
+import { log } from "@/lib/log";
 import { scrub, scrubPath } from "@/lib/scrub";
 
 // Error monitoring without a third-party service: server errors are scrubbed and stored
@@ -31,7 +32,7 @@ export async function recordError(
 ): Promise<void> {
   const described = describeError(error);
   const path = scrubPath(context.path);
-  console.error("Request error", {
+  log.error("Request error", {
     message: described.message,
     path,
     routeType: context.routeType,

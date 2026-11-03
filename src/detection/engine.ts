@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { log } from "@/lib/log";
 import { expectedFor, loadTaught, missingRefundAlerts } from "@/lib/unusual";
 import {
   COUNT_ONLY_WHEN_APPROVED,
@@ -522,7 +523,7 @@ export async function runDetection(
     const refunds = await missingRefundAlerts(userId, { client, now });
     await raise(userId, [...alerts, ...overBudget, ...refunds], { client, now });
   } catch (error) {
-    console.error("Alerts failed", { userId, error: String(error) });
+    log.error("Alerts failed", { userId, error: String(error) });
   }
 
   // The person's standing rules approve matching findings. Like alerts, a failure here
@@ -530,28 +531,28 @@ export async function runDetection(
   try {
     await applyRules(userId, { client, now });
   } catch (error) {
-    console.error("Standing rules failed", { userId, error: String(error) });
+    log.error("Standing rules failed", { userId, error: String(error) });
   }
 
   // A charge after a cancellation Jane did gets its refund asked for (spec step 53).
   try {
     await refundAfterCancel(userId, { client });
   } catch (error) {
-    console.error("Refund after cancel failed", { userId, error: String(error) });
+    log.error("Refund after cancel failed", { userId, error: String(error) });
   }
 
   // Set-up proposals follow the person's numbers (spec step 55).
   try {
     await refreshProposals(userId, { client, now });
   } catch (error) {
-    console.error("Proposals failed", { userId, error: String(error) });
+    log.error("Proposals failed", { userId, error: String(error) });
   }
 
   // Refunds coming back in the transactions close their actions (spec step 52).
   try {
     await confirm(userId, { client, now });
   } catch (error) {
-    console.error("Refund check failed", { userId, error: String(error) });
+    log.error("Refund check failed", { userId, error: String(error) });
   }
 
   const counts = { ...NO_FINDINGS };

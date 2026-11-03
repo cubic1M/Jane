@@ -4,6 +4,7 @@ import { runCreditMonthly } from "@/lib/credit-monthly";
 import { refreshCredit } from "@/lib/credit";
 import { runDebtAutopilot } from "@/lib/debt-autopilot";
 import { runCreditBuilding } from "@/lib/credit-building";
+import { log } from "@/lib/log";
 import { refreshTightMoney } from "@/lib/tight-money";
 import { refreshMedicalBills } from "@/lib/medical-bills";
 import { refreshReportFixes } from "@/lib/credit-report-fixes";
@@ -59,7 +60,7 @@ export async function refreshDebts(
   ];
   for (const [what, run] of steps) {
     await run().catch((error) =>
-      console.error(`Debt refresh failed: ${what}`, { userId, error: String(error) }),
+      log.error(`Debt refresh failed: ${what}`, { userId, error: String(error) }),
     );
   }
 }

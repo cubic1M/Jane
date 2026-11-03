@@ -6,6 +6,7 @@ import { MAX_DOCUMENT_BYTES, type DocumentContentType } from "@/config/documents
 import { track } from "@/lib/analytics";
 import { isDocumentKind, type RawFacts } from "@/lib/documents/facts";
 import { addDocument, removeDocument, saveDocumentFacts } from "@/lib/documents/store";
+import { log } from "@/lib/log";
 import { readTaxNotice } from "@/lib/tax-notices";
 import { readPriorReturn } from "@/lib/prior-return";
 import { readPolicyDocument } from "@/lib/insurance/readings";
@@ -54,7 +55,7 @@ export async function uploadDocument(_previous: FormState, formData: FormData): 
     const reading = await readTaxNotice(user.id, result.id, {
       file: toRead,
     }).catch((error) => {
-      console.error("Reading a tax notice failed", { error: String(error) });
+      log.error("Reading a tax notice failed", { error: String(error) });
       return null;
     });
     if (reading) {
@@ -70,7 +71,7 @@ export async function uploadDocument(_previous: FormState, formData: FormData): 
     const reading = await readDraftReturn(user.id, result.id, {
       file: toRead,
     }).catch((error) => {
-      console.error("Reading a draft return failed", { error: String(error) });
+      log.error("Reading a draft return failed", { error: String(error) });
       return null;
     });
     if (reading) {
@@ -85,7 +86,7 @@ export async function uploadDocument(_previous: FormState, formData: FormData): 
     const reading = await readPriorReturn(user.id, result.id, {
       file: toRead,
     }).catch((error) => {
-      console.error("Reading a tax return failed", { error: String(error) });
+      log.error("Reading a tax return failed", { error: String(error) });
       return null;
     });
     if (reading) {
@@ -100,7 +101,7 @@ export async function uploadDocument(_previous: FormState, formData: FormData): 
     const reading = await readPolicyDocument(user.id, result.id, {
       file: toRead,
     }).catch((error) => {
-      console.error("Reading a policy failed", { error: String(error) });
+      log.error("Reading a policy failed", { error: String(error) });
       return null;
     });
     if (reading) {

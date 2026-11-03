@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { log } from "@/lib/log";
 import { limitOrNull } from "@/lib/rate-limit";
 import { PlaidRequestError, plaidEnabled } from "@/lib/plaid/client";
 import { LinkingClosedError, linkClosedAnswer } from "@/lib/plaid/item-slots";
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 404 });
     }
     if (error instanceof PlaidRequestError) {
-      console.error("Plaid link token failed", { code: error.code });
+      log.error("Plaid link token failed", { code: error.code });
       return NextResponse.json({ error: "Couldn't start linking. Try again." }, { status: 502 });
     }
     throw error;

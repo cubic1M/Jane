@@ -10,6 +10,7 @@ import { finishImport } from "@/lib/import/background";
 import { db as defaultClient } from "@/lib/db";
 import { agentStep, handleReply, lookUpSupportFor } from "@/lib/agent/run";
 import { simulatedReply } from "@/lib/agent/simulated-company";
+import { log } from "@/lib/log";
 import { simulatedCallResult } from "@/lib/voice/calls";
 import { explainFindings } from "@/lib/explanations";
 import { deliverChatNotifications } from "@/lib/jane-agent/notify";
@@ -156,7 +157,7 @@ async function execute(job: Claimed, client: PrismaClient, now: Date, handlers: 
         ? { status: "failed", lastError }
         : { status: "queued", lastError, runAt: new Date(now.getTime() + backoffMs(job.attempts)) },
     });
-    console.error("Job failed", {
+    log.error("Job failed", {
       id: job.id,
       kind: job.kind,
       attempts: job.attempts,
