@@ -219,13 +219,26 @@ const RULES: readonly Rule[] = [
     ],
     direction: "in",
   },
-  { category: "INCOME_MILITARY", keywords: ["DFAS", "MIL PAY", "VA BENEFITS"], direction: "in" },
+  {
+    category: "INCOME_MILITARY",
+    keywords: ["DFAS", "MIL PAY", "VA BENEFITS", "VA TREAS"],
+    direction: "in",
+  },
+  {
+    category: "INCOME_RETIREMENT_PENSION",
+    keywords: ["SSI TREAS", "TEACHERS RET"],
+    direction: "in",
+  },
+  // Above the salary rule's DIRECT DEP: a driver's pay isn't a salary.
+  { category: "INCOME_GIG_ECONOMY", keywords: ["LYFT DIRECT", "UBER DIRECT"], direction: "in" },
   { category: "INCOME_CHILD_SUPPORT", keywords: ["CHILD SUPPORT", "CHILD SUPP"], direction: "in" },
   { category: "INCOME_OTHER", keywords: ["SEVERANCE"], direction: "in" },
   {
     category: "INCOME_SALARY",
     keywords: [
       "PAYROLL",
+      "PAYRLL",
+      "PR PAYMENT",
       "DIRECT DEP",
       "DIR DEP",
       "SALARY",
