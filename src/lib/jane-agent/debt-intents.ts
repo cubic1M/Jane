@@ -419,7 +419,7 @@ function goalFrom(text: string, asOf: string) {
   } else if (/\bnext year\b/.test(text)) months = 12;
   else {
     const m = MONTH_NAMES.findIndex((name) =>
-      new RegExp(`\b(?:by|in|before) ${name}\b`).test(text),
+      new RegExp(`\\b(?:by|in|before) ${name}\\b`).test(text),
     );
     if (m >= 0) {
       const now = Number(asOf.slice(5, 7)) - 1;

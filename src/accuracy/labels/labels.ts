@@ -68,7 +68,9 @@ export function unseal(sealed: string, base64Key: string): LabelledRow[] {
   const [version, iv, tag, body] = sealed.trim().split(".");
   if (version !== VERSION || !iv || !tag || !body)
     throw new Error("This isn't a sealed label file.");
-  const decipher = createDecipheriv("aes-256-gcm", keyOf(base64Key), Buffer.from(iv, "base64url"));
+  const decipher = createDecipheriv("aes-256-gcm", keyOf(base64Key), Buffer.from(iv, "base64url"), {
+    authTagLength: 16,
+  });
   decipher.setAuthTag(Buffer.from(tag, "base64url"));
   const text = Buffer.concat([decipher.update(Buffer.from(body, "base64url")), decipher.final()]);
   return JSON.parse(text.toString("utf8")) as LabelledRow[];
