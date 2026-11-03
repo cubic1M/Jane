@@ -33,10 +33,16 @@ function rows(marker: string, now: Date): Row[] {
 
 const money = (cents: number) => (cents / 100).toFixed(2);
 
-export function madeUpChaseCsv(marker: string, now = new Date()): string {
+// `brokenBalance`: part way down, the balance column jumps by $500 with nothing behind it.
+export function madeUpChaseCsv(
+  marker: string,
+  now = new Date(),
+  { brokenBalance = false } = {},
+): string {
   const header = "Details,Posting Date,Description,Amount,Type,Balance,Check or Slip #";
   let balance = 845_000;
-  const lines = rows(marker, now).map((row) => {
+  const lines = rows(marker, now).map((row, i) => {
+    if (brokenBalance && i === 10) balance += 50_000;
     const [y, m, d] = row.date.split("-");
     const line = [
       row.cents < 0 ? "DEBIT" : "CREDIT",
