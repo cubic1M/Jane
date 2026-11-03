@@ -293,7 +293,9 @@ class IcmAny(IcmTag):
     # Omaha discard-2 (results/sng_anyvar_pushsteal.md); on an Omaha-like discard variant try 0 first
     # behind_k inherits icm_tag's 0.2: on the discard presets +1.2 / +4.3* / +0.3 / -0.9 (five-draw /
     # draw hold'em / discard-to-board / Omaha discard-2, results/sng_anyvar_behindk.md)
-    OVERRIDES = dict(hu_open_mult=0.0, hu_range_k=0.0, icm_call=0, bet_discount=0.6)
+    # rs_call off: on the discard presets rs_call=2 scored -1.2 / -2.2 / -0.4 / -0.9 (none significant,
+    # results/sng_anyvar_rscall_1.md); it was validated together with the exact-ICM call, which is off here
+    OVERRIDES = dict(hu_open_mult=0.0, hu_range_k=0.0, icm_call=0, bet_discount=0.6, rs_call=0.0)
 
     def new_table(self, rules, seat, seed=0):
         super().new_table(rules, seat, seed)

@@ -69,7 +69,7 @@ Fill in each line:
    `push_steal=0;steal_bonus=0.3` if the field re-steals (adaptive bots: +3.6 to +4.7 on field 4, −2.0 on all3);
    `resteal_rel=1.4;resteal_rel_bb=35` if the field is tight (+7 vs Plan B copies and our copies, −0.3 elsewhere);
    `behind_k=0` if the field is tight (+2.9 vs Plan B copies, +3.4 vs our copies, −2.9 on the default field);
-   `rs_call=3` if the field re-shoves light (+7.2 field 6, +3.6 mirror on fresh seeds, −1.1 field 3; mean +2.0 vs +1.6 for the default 2)):
+   `rs_call=3` if the field re-shoves light (hold'em `icm_tag` only; off on `icm_any`) (+7.2 field 6, +3.6 mirror on fresh seeds, −1.1 field 3; mean +2.0 vs +1.6 for the default 2)):
    - tune: `python3 -m sng.tune --preset <p> --field blend --rounds 3 --tables 500 --accept-se 2 --tag _day` (about 15–25 min per round);
    - validate: `results/sng_validate.sh "icm_tag:<tuned>" --preset <p>`;
    - submit only a paired gain > 2 SE with no field losing.
@@ -148,5 +148,5 @@ loop (tune on the real rules, validate, resubmit) matters.
 - Push or fold at ≤ 9bb, **wider against blinds that fold** (the steal read on shoves too: +1.45 per table, +5.6 vs the Plan B bot). Re-raise preflop only with AA.
 - **Heads-up, open and defend much wider** (open bar 0.6/2, a raiser = 2 random hands): +2 to +12 per heads-up table.
 - Surviving pays: even an always-fold bot scores mid-table. Busting early is the costly mistake.
-- **Call a re-shove of your open from a light re-raiser:** if my open is re-raised all-in, the shover holds the top 2 × (their re-raise rate vs one open) of hands, and the exact-ICM call decides (+1.6 per table over 11 fields, +2.2 field 4, +4.7 field 5, +5.1 field 6; we used to fold 99% of those at ≤ 15 bb).
+- **Call a re-shove of your open from a light re-raiser:** if my open is re-raised all-in, the shover holds the top 2 × (their re-raise rate vs one open) of hands, and the exact-ICM call decides (+1.6 per table over 11 fields, +2.2 field 4, +4.7 field 5, +5.1 field 6; we used to fold 99% of those at ≤ 15 bb). Hold'em bot only: on the discard presets it was −1.2, so `icm_any` keeps it off.
 - **These hold on other card rules too** (Omaha 4, PLO5, short deck, pineapple, 3-street, NLHE20): switching any of them off never won significantly; the short-shove read and the re-shove help most (−1.1 / −1.2 per table off). No variant needs its own setting for them. On slow variants, paired tables differ by ~±1 per table from timing alone: trust a day-of A/B there only beyond ~2.
