@@ -20,7 +20,7 @@ import {
   type NightEntry,
 } from "./history";
 import { createCheckPerson, deleteCheckPerson } from "./person";
-import { runRealPath } from "./real-path";
+import { combinedRuns, ROUNDS, runRealPath } from "./real-path";
 import { runAnswerChecks } from "./run";
 
 // `npm run checks:nightly` (spec step 195), run by .github/workflows/chat-quality.yml: one
@@ -38,6 +38,8 @@ const DAY_MS = 86_400_000;
 // Conversations of Claude questions asked a night, and the most a night may spend, in cents.
 const PER_NIGHT = Number(process.env.CHAT_NIGHTLY_COUNT ?? 20);
 const CAP_CENTS = Number(process.env.CHAT_NIGHTLY_CAP_CENTS ?? 15);
+// One first question in this many also goes through the rounds where Claude refuses or is blocked.
+const REFUSAL_ROUNDS_EVERY = 10;
 
 it.runIf(process.env.CHAT_NIGHTLY === "1" && url)(
   "runs the bank for the night",
@@ -56,9 +58,18 @@ it.runIf(process.env.CHAT_NIGHTLY === "1" && url)(
         rotate: { day: Math.floor(now.getTime() / DAY_MS), count: PER_NIGHT },
       });
       const date = now.toISOString().slice(0, 10);
+      const firsts = QUESTIONS.filter((q) => !q.after);
       const entry: NightEntry = entryOf(run, date);
       const realPath = entryOfRealPath(
-        await runRealPath(userId, { client, now, questions: QUESTIONS.filter((q) => !q.after) }),
+        combinedRuns(
+          await runRealPath(userId, { client, now, questions: firsts }),
+          await runRealPath(userId, {
+            client,
+            now,
+            questions: firsts.filter((_, i) => i % REFUSAL_ROUNDS_EVERY === 0),
+            rounds: ROUNDS.filter((round) => round !== "plain"),
+          }),
+        ),
         date,
         CHAT_PROMPT_VERSION,
       );

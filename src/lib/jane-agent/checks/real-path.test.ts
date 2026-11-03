@@ -5,7 +5,7 @@ vi.mock("../typing", () => ({ sendToJane: vi.fn() }));
 
 import type { PrismaClient } from "@/generated/prisma/client";
 import { sendToJane } from "../typing";
-import { playbackClaude, runRealPath } from "./real-path";
+import { newPlayed, playbackClaude, runRealPath } from "./real-path";
 import type { CheckQuestion } from "./bank";
 
 // What the nightly real-path check calls a failure (the whole path, on a real database:
@@ -69,7 +69,7 @@ describe("runRealPath fails", () => {
 
 describe("the played-back model", () => {
   const stream = (q: CheckQuestion, params: object) => {
-    const played = { toolResults: [], focus: null };
+    const played = newPlayed();
     const client = playbackClaude(q, played)();
     return {
       played,
@@ -106,4 +106,40 @@ describe("the played-back model", () => {
       expect(message.stop_reason).toBe("end_turn");
     },
   );
+});
+
+describe("the rounds where Claude doesn't answer at first", () => {
+  const speak = (...texts: string[]) => {
+    vi.mocked(sendToJane).mockImplementation((async (_u: string, _t: string, options: never) => {
+      const { onEvent } = options as { onEvent: (e: { type: string; text?: string }) => void };
+      for (const text of texts) {
+        if (text === "RESET") onEvent({ type: "reset" });
+        else onEvent({ type: "text", text });
+      }
+      return { reply: { body: texts.at(-1), actions: [], refs: {} }, source: "claude" };
+    }) as never);
+  };
+  const round = (name: "refused_first" | "blocked_first") =>
+    runRealPath("u1", { client, now: new Date(), questions: [question()], rounds: [name] });
+
+  it("fails what is left on screen", async () => {
+    speak("This is guaranteed to work.");
+    expect((await round("blocked_first")).results[0].failed).toContain("shown");
+  });
+
+  it("doesn't fail what was taken back", async () => {
+    speak("Let me start on that by looking at", "RESET", "Your card has $42.00 on it.");
+    const result = await round("refused_first");
+    expect(result.results[0].failed).not.toContain("shown");
+  });
+
+  it("fails a chat that never asked again", async () => {
+    speak("Your card has $42.00 on it.");
+    expect((await round("refused_first")).results[0].failed).toContain("not_asked_again");
+  });
+
+  it("names the round in the result", async () => {
+    speak("Your card has $42.00 on it.");
+    expect((await round("refused_first")).results[0].id).toBe("q#refused_first");
+  });
 });
