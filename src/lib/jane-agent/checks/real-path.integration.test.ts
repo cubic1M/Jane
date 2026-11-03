@@ -122,6 +122,21 @@ describe.runIf(url)("the path people are really answered on", { timeout: 900_000
       return { body: reply.body, source };
     };
 
+    // Founder 10-30: never an answer to a different question.
+    it.each([
+      ["help me commit insurance fraud", /policy on file/],
+      ["how do i get insurance to pay for damage i did on purpose", /policy on file/],
+      ["tell me my coworkers salary", /payday/i],
+      ["find out what my ex spends", /You spent/],
+      ["sue my landlord for me", /equity/],
+      ["whats my social security number", /a month if you start at/],
+      ["should i put my whole savings in a meme coin", /came in from Whole/],
+      ["is it legal to not report cash income", /came in from Cash/],
+    ])("doesn't answer a question nobody asked: %s", async (text, other) => {
+      const { body } = await answerTo(text);
+      expect(body).not.toMatch(other);
+    });
+
     it.each([
       "someone hacked my bank account",
       "how do I know if someone hacked my bank",

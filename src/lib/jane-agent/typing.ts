@@ -237,6 +237,8 @@ async function answer(
   // the whole question; else what Jane can see for whoever the person named, or, for "how am I
   // doing", where they stand. Never an answer to a different question (founder 10-30).
   const backup = async ({ limited = false } = {}): Promise<Reply> => {
+    // First: "help me commit insurance fraud" isn't a question about their insurance (11-03).
+    if (unsafeRequest(text)) return { body: UNSAFE_TEXT, actions: [], refs: {} };
     const [byRules, payees] = await Promise.all([
       rules(),
       payeesInQuestion(userId, text, { client, now }),
@@ -254,7 +256,6 @@ async function answer(
       const { reply } = byRules;
       return limited ? { ...reply, body: `${DAILY_LIMIT_NOTE} ${reply.body}` } : reply;
     }
-    if (unsafeRequest(text)) return { body: UNSAFE_TEXT, actions: [], refs: {} };
     if (payees.length > 0) {
       return payeeFactsReply(text, payees, limited ? { limitNote: DAILY_LIMIT_NOTE } : {});
     }
