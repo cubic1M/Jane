@@ -181,7 +181,6 @@ class IcmTag:
             self.chart = load_chart(rules, self.p["pf_file"] or None)
         self.steal_seen = [0] * rules.num_players     # steal attempts faced in the blinds
         self.steal_fold = [0] * rules.num_players
-        self.rr_made = [0] * rules.num_players           # re-raised a first open (fourbet_rel)
         self.o3_seen = [0] * rules.num_players           # opened, then faced a re-raise
         self.o3_fold = [0] * rules.num_players           # ... and folded
         self.aggressor = None                          # seat of the last preflop raiser this hand
@@ -244,8 +243,7 @@ class IcmTag:
                 self.steal_seen[s] += 1
                 if kind == "fold":
                     self.steal_fold[s] += 1
-                elif kind == "raise":
-                    self.rr_made[s] += 1
+
 
 
 
@@ -513,16 +511,6 @@ class IcmTag:
                 n_icm = self._icm_need(obs, r)
                 if n_icm is not None:
                     need = n_icm + p["icm_margin"]
-        if (p["fourbet_rel"] > 0 and self._pct is not None and lg.can_raise and len(raises) == 2
-                and raises[0][0] == obs.seat and raises[1][0] != obs.seat and not seats[raises[1][0]].all_in
-                and eff_bb <= p["fourbet_bb"]):
-            # my open was re-raised: 4-bet shove the top fourbet_rel x (their re-raise rate vs opens)
-            r3 = raises[1][0]
-            rr = (self.rr_made[r3] + 0.05 * 8) / (self.steal_seen[r3] + 8)
-            t = self._pct
-            top = 1.0 - bisect.bisect_left(t, self._eq(obs, 1)) / len(t)
-            if top <= max(0.02, p["fourbet_rel"] * rr):
-                return RaiseTo(lg.max_raise_to)
         if (self._pct is not None and lg.can_raise and len(raises) == 1 and not seats[raises[0][0]].all_in
                 and eff_bb <= p["resteal_rel_bb"]
                 and not any(h[1] == 0 and h[2] == "call" for h in obs.history if h[0] != obs.seat)):
