@@ -18,7 +18,7 @@ import { SPENDING_NOT_FOUND, type Reply } from "./replies";
 // "is this charge fraud?", "my ex forged my signature") is asking for help, not refused (11-01):
 // the words that both sides use count only after an ask to do it ("how do I", "help me").
 const ALWAYS_UNSAFE =
-  /\b(?:hide (?:money|income|assets|cash)|launder\w*|evad(?:e|ing) (?:tax|taxes|the irs)|tax evasion|commit(?:ting)? fraud|fake (?:a |an |my )?(?:id|document|signature|receipt|paystub|pay stub))\b/i;
+  /\b(?:hide (?:money|income|assets|cash)|launder\w*|evad(?:e|ing) (?:tax|taxes|the irs)|tax evasion|dodg(?:e|ing) (?:my |the |paying )*(?:tax|taxes|child support|irs)|never paying taxes|commit(?:ting)? (?:\w+ )?fraud|structur\w* (?:my |the )?deposits|fake (?:a |an |my )(?:id|document|signature|receipt|paystub|pay stub)|^(?:write|make|create) (?:me )?(?:a |an )?fake\b|(?:damage|fire|crash|accident)\b[^.?!]{0,30}\bon purpose|i paid when i didn'?t|use my \w+'?s social security|admin password|api key|dump the database|(?:everyone|another user|other users)'?s? data|access (?:someone|somebody) else'?s?)\b/i;
 // The harm as the thing the person wants to do: the verb with what it's done to ("hack into",
 // "steal my brother's card", "scam people"), never what was done to them ("hacked", "scammed",
 // "scammers", "a scam call": night debugger 11-01).
@@ -33,15 +33,23 @@ const HARM_VERB = [
   `defraud ${OBJECT}`,
   "scam (?:people|someone|somebody|them|him|her|customers|my|his|her|their|the|\\w+'s)",
   "bypass (?:the |a |my |their |his |her |\\w+'s )?(?:bank's )?(?:two[- ]factor|2fa|security|verification|id check|identity check|login|password|fraud (?:checks?|alerts?)|kyc)",
-  "lie to",
+  "lie (?:to|on|about)",
   "break into",
+  // Writing it up, or spying on someone they know (11-03, from the unsafe scenarios).
+  "a fake (?:id|document|signature|receipt|paystub|pay stub|invoice|name)",
+  "fake (?:a |an |my )?(?:id|document|signature|receipt|paystub|pay stub|invoice)",
+  "(?:a |an )?ponzi",
+  "cash (?:a |an |this |the )?stolen",
+  "read (?:my )?(?:partner|wife|husband|spouse|girlfriend|boyfriend|ex)'?s",
 ].join("|");
 const ASK_TO = new RegExp(
-  `\\b(?:how (?:do|can|could|would|should|might) (?:i|we|you)|help me|can you|could you|will you|teach me|show me|i (?:want|need|plan|'m going|am going) to|is there a way to|way to|best way to|make me)\\b[^.?!]{0,40}?\\b(?:${HARM_VERB})\\b`,
+  `\\b(?:how (?:do|can|could|would|should|might) (?:i|we|you)|help me|tell me how to|can you|could you|will you|teach me|show me|i (?:want|need|plan|'m going|am going) to|is there a way to|way to|best way to|make me)\\b[^.?!]{0,40}?\\b(?:${HARM_VERB})\\b`,
   "i",
 );
+// Someone reporting or checking one of these is on the right side of it.
+const REPORTING = /\b(?:report|spot|dispute|recogni[sz]e|tell if|know if)\b/i;
 export function unsafeRequest(text: string): boolean {
-  return ALWAYS_UNSAFE.test(text) || ASK_TO.test(text);
+  return ALWAYS_UNSAFE.test(text) || (ASK_TO.test(text) && !REPORTING.test(text));
 }
 export const UNSAFE_TEXT =
   "I can't help with that. I'm glad to help with your spending, bills, savings or taxes the honest way.";
@@ -82,6 +90,12 @@ const COMMON = new Set(
   ).split(" "),
 );
 
+// On their own these are everyday words that are also part of a merchant's name: "my whole savings"
+// isn't Whole Foods, though "whole foods" is, and "cash" isn't Cash App.
+const NOT_A_NAME_ALONE = new Set(
+  "whole cash loan loans check checks insurance report stolen legal free government".split(" "),
+);
+
 type Row = { date: string; amountCents: number; description: string; merchantName: string | null };
 export type PayeeTotals = {
   name: string;
@@ -114,7 +128,7 @@ export function namedPayees(text: string, rows: readonly Row[]): PayeeTotals[] {
     for (let i = 0; i + size <= words.length; i += 1) {
       const gram = words.slice(i, i + size);
       if (COMMON.has(gram[0]) || gram.slice(1).some((w) => FUNCTION.has(w))) continue;
-      if (size === 1 && gram[0].length < 4) continue;
+      if (size === 1 && (gram[0].length < 4 || NOT_A_NAME_ALONE.has(gram[0]))) continue;
       grams.push(gram.join(" "));
     }
   }
@@ -164,11 +178,20 @@ export function rulesCoverQuestion({
   const parts = questionParts(text).length;
   if (partsAnswered > 0 ? partsAnswered < parts : parts > 1) return false;
   if (intent.kind === "unknown") return false;
+  if (SOMEONE_ELSES.test(text) || NOT_A_LOOKUP.test(text)) return false;
   // "Spend for that earning" isn't a category, and saying so answers nothing.
   if (reply.body.includes(SPENDING_NOT_FOUND)) return false;
   const body = reply.body.toLowerCase();
   return payees.every((p) => body.includes(p.name.toLowerCase()));
 }
+
+// What the rules read as a lookup of the person's own numbers but isn't one: someone else's money
+// ("tell me my coworkers salary" got their own payday), and what to do rather than what they have
+// ("sue my landlord for me" got their home equity). Claude can answer these; the rules can't (11-03).
+const SOMEONE_ELSES =
+  /\b(?:coworkers?|co-workers?|boss|neighbou?rs?|friends?|ex)(?:'?s)?\b[^.?!]{0,30}\b(?:salary|makes?|earns?|income|spends?|address|broke|account|transactions?|data)\b|\b(?:wife|husband|partner|spouse|girlfriend|boyfriend|mom|mother|dad|father|kid|son|daughter)'?s?\b[^.?!]{0,30}\b(?:transactions?|texts?|bank|login|password|social security)\b/i;
+const NOT_A_LOOKUP =
+  /\b(?:sue|lawsuit|lawyer|write my will|guarantee(?:d)? (?:me|way)|promise|social security number|as a dependent)\b/i;
 
 // Taxes, deductions, filing: the part Jane can't advise on for a real account.
 const TAX_QUESTION = /\b(?:tax\w*|deduct\w*|write[- ]?off|irs|1099|w-?2|file|filing)\b/i;
