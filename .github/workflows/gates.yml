@@ -1,0 +1,50 @@
+name: Gates
+
+# The static gates (baselines, protected files, weakened tests) from main's own copy of this file
+# and its scripts, so a pull request can't change or remove them: GitHub runs pull_request_target
+# from the default branch, whatever the PR changes. It reads the PR's files as text and never runs
+# them, so a PR from a fork can't reach the token. It blocks once "Protected files and baselines"
+# is added to main's ruleset; the same gates also run in ci.yml's required check, which a PR could
+# edit, but only by changing a protected file.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: read
+
+jobs:
+  gates:
+    name: Protected files and baselines
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      # Main's copy only. Never the PR's code in this workflow.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          sparse-checkout: .github/scripts/gates
+          persist-credentials: false
+      - name: Fetch the PR's files, as they would merge
+        id: pr
+        env:
+          NUMBER: ${{ github.event.pull_request.number }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        # GitHub builds the merge ref a moment after a push.
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            git fetch -q --no-tags --depth=2 origin "refs/pull/$NUMBER/merge" &&
+              [ "$(git rev-parse FETCH_HEAD^2)" = "$HEAD" ] && break
+            [ "$attempt" = 6 ] && { echo "::error::No merge commit for $HEAD: does the PR have conflicts?"; exit 1; }
+            sleep 10
+          done
+          echo "merge=$(git rev-parse FETCH_HEAD)" >> "$GITHUB_OUTPUT"
+      - run: >-
+          node .github/scripts/gates/cli.mjs --pr "$NUMBER" --comment
+          --base "$MERGE^1" --head "$MERGE"
+        env:
+          NUMBER: ${{ github.event.pull_request.number }}
+          MERGE: ${{ steps.pr.outputs.merge }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FOUNDER_LOGINS: ${{ vars.FOUNDER_LOGINS }}
