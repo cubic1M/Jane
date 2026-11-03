@@ -6,6 +6,7 @@
 # testing
 /coverage
 /test-results/
+/ci-results/
 /playwright-report/
 /blob-report/
 /playwright/.cache/

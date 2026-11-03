@@ -19,7 +19,7 @@ test.afterEach(async () => {
   if (userId && (await userExists(userId))) await deleteUser(userId);
 });
 
-test("delete all my data needs DELETE typed, then removes the account", async ({
+test("delete all my data needs DELETE typed, then removes the account @critical", async ({
   context,
   page,
   baseURL,

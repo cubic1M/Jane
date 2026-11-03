@@ -54,7 +54,9 @@ test.describe("a real account", () => {
     ]);
   });
 
-  test("Show me how gives the steps and drafts, and nothing is queued", async ({ page }) => {
+  test("Show me how gives the steps and drafts, and nothing is queued @critical", async ({
+    page,
+  }) => {
     await importSampleCard(page);
     await expect(page.getByRole("heading", { level: 1 })).toContainText("We found");
     await expectNoSidewaysScroll(page);

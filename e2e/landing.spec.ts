@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("landing page shows the promise and leads to sign-up", async ({ page }) => {
+test("landing page shows the promise and leads to sign-up @critical", async ({ page }) => {
   const landingViewed = page.waitForResponse(
     (res) =>
       res.url().endsWith("/api/events") &&

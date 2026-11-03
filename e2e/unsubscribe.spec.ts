@@ -15,7 +15,7 @@ test.afterEach(async () => {
   if (userId) await deleteUser(userId);
 });
 
-test("unsubscribe works without signing in", async ({ page }) => {
+test("unsubscribe works without signing in @critical", async ({ page }) => {
   userId = (await signedInUser("user")).userId;
 
   // No session cookie: this browser isn't signed in.

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { isHiddenPage } from "../src/config/hidden-pages";
 
-test("sign-up page offers a magic link and links to sign in", async ({ page }) => {
+test("sign-up page offers a magic link and links to sign in @critical", async ({ page }) => {
   await page.goto("/signup");
 
   await expect(page.getByRole("heading", { level: 1, name: "Create your account" })).toBeVisible();
@@ -46,7 +46,7 @@ test("the check-your-email page has one main landmark", async ({ page }) => {
 for (const path of ["/home", "/connect", "/import", "/scanning", "/report", "/actions"].filter(
   (p) => !isHiddenPage(p),
 )) {
-  test(`signed-out visitors are sent from ${path} to /login`, async ({ page }) => {
+  test(`signed-out visitors are sent from ${path} to /login @critical`, async ({ page }) => {
     await page.goto(path);
 
     await expect(page).toHaveURL("/login");

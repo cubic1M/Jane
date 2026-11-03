@@ -13,7 +13,7 @@ test.afterEach(async () => {
   if (userId) await deleteUser(userId);
 });
 
-test("a demo bank fills the report with fake data, labelled as fake, and can be removed", async ({
+test("a demo bank fills the report with fake data, labelled as fake, and can be removed @critical", async ({
   context,
   page,
   baseURL,

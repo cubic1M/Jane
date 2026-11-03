@@ -43,7 +43,7 @@ test("admin page views land on the access log, which the team can filter", async
   await expect(page.getByText("No entries match.")).toBeVisible();
 });
 
-test("/security shows a signed-in person their recent activity, and nothing to others", async ({
+test("/security shows a signed-in person their recent activity, and nothing to others @critical", async ({
   context,
   page,
   baseURL,

@@ -37,7 +37,7 @@ async function scriptsCarryTheNonce(page: Page, csp: string) {
   expect(parserInserted.filter((s) => s.nonce !== nonce)).toEqual([]);
 }
 
-test("every page has the security headers, a fresh nonce, and nothing blocked", async ({
+test("every page has the security headers, a fresh nonce, and nothing blocked @critical", async ({
   page,
   request,
 }) => {

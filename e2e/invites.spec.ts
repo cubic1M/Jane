@@ -3,7 +3,7 @@ import { E2E_DATABASE_URL } from "./db";
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 
-test("sign-up needs a valid invite code", async ({ page }) => {
+test("sign-up needs a valid invite code @critical", async ({ page }) => {
   await page.goto("/signup");
   await expect(page.getByText("private beta")).toBeVisible();
 

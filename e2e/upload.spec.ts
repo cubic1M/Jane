@@ -42,7 +42,10 @@ async function uploadFile(page: Page, file: string) {
   await page.getByRole("button", { name: "Preview" }).click();
 }
 
-test("a new person starts with uploading, and lands on the report", async ({ page, baseURL }) => {
+test("a new person starts with uploading, and lands on the report @critical", async ({
+  page,
+  baseURL,
+}) => {
   await signIn(page, baseURL);
 
   // Onboarding: with nothing added yet, Home sends them to /connect, which leads with upload.
@@ -341,7 +344,7 @@ test('the same file again says nothing was new, not "Saved 0 transactions"', asy
   );
 });
 
-test("empty, header-only, Latin-1 and too-big uploads say what's wrong, and never crash the page", async ({
+test("empty, header-only, Latin-1 and too-big uploads say what's wrong, and never crash the page @critical", async ({
   page,
   baseURL,
 }) => {
