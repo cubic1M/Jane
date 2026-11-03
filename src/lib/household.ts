@@ -80,7 +80,7 @@ export async function invitePartner(
     }
     // Whoever joins sees what's shared, so nothing from an earlier partner carries over: sharing with
     // the new one is a new choice. (Nobody else is here: the household would be full.)
-    await stopSharing(tx, [user.id]);
+    await stopSharing(tx, user.id);
     // A new invite replaces any earlier one that wasn't accepted.
     await tx.householdInvite.deleteMany({
       where: { householdId: membership.householdId, acceptedAt: null },
@@ -130,7 +130,7 @@ export async function acceptInvite(
     });
     if (count === 0) throw new HouseholdError("This invite link was already used.");
     // Anything left switched on from before: joining shares nothing.
-    await stopSharing(tx, [user.id]);
+    await stopSharing(tx, user.id);
     await tx.householdMember.create({ data: { householdId: invite.householdId, userId: user.id } });
     return invite.householdId;
   });
@@ -146,12 +146,12 @@ export async function acceptInvite(
   await track(user.id, "household_joined", {});
 }
 
-export async function stopSharing(tx: Prisma.TransactionClient, userIds: string[]): Promise<void> {
-  const where = { userId: { in: userIds }, sharedWithHousehold: true };
+// One person's own rows, never the other member's: leaving or inviting can't write to someone else.
+async function stopSharing(tx: Prisma.TransactionClient, userId: string): Promise<void> {
   const data = { sharedWithHousehold: false };
-  await tx.account.updateMany({ where, data });
-  await tx.savingsGoal.updateMany({ where, data });
-  await tx.insurancePolicy.updateMany({ where, data });
+  await tx.account.updateMany({ where: { userId, sharedWithHousehold: true }, data });
+  await tx.savingsGoal.updateMany({ where: { userId, sharedWithHousehold: true }, data });
+  await tx.insurancePolicy.updateMany({ where: { userId, sharedWithHousehold: true }, data });
 }
 
 // Leaves the household. Access to the other person's shared accounts ends now, and theirs
@@ -172,7 +172,7 @@ export async function leaveHousehold(
     // Sharing was a choice about the person they shared with. Left on, whoever joins next sees it,
     // against "Nothing of yours is shared until you choose". Only their own: the one who stays ends
     // theirs when they invite someone new.
-    await stopSharing(tx, [userId]);
+    await stopSharing(tx, userId);
     await tx.householdMember.delete({ where: { userId } });
     if ((await tx.householdMember.count({ where: { householdId: left.householdId } })) === 0) {
       await tx.household.delete({ where: { id: left.householdId } });
