@@ -93,26 +93,35 @@ Short deck: AA ≈ 0.76. A draw variant: AA ≈ 0.80, weak hands 0.38–0.43.
 >   street (the blinds count until they act).
 >
 > Rules, with the parameters as named constants:
+> * Track per seat, this table only, its open rate = (hands it raised first in + 0.96) /
+>   (hands dealt + 8), clamped to 0.04..0.7.
+> * Percentile table (build once at setup): sort the 1326 two-card hands by equity(·, k=1);
+>   a hand's top share = the fraction of hands with higher equity.
+> * **Heads-up tables** (2 players dealt in): open bar 0.6/(k+1) instead of 1.07/(k+1), and
+>   a raiser counts as 2 random hands instead of 4.
 > * **Preflop, no raise yet.**
 >   - k = players still to act + limpers.
 >   - Track per seat, this table only, how often it folds when facing an open raise:
 >     rate = (folds + 1) / (opens faced + 2).
 >   - If 1 to 5 players are behind and there are no limpers, let f = the average rate of
 >     the players behind, and steal factor = 1 − 0.55·max(0, 2f − 1).
->   - If eff ≤ 9 bb: all-in if equity(k) ≥ (0.75 + 0.25·eff/9) / (k+1); else check or
->     fold. (The steal factor does not apply here.)
+>   - If eff ≤ 9 bb: all-in if equity(k) ≥ (0.75 + 0.25·eff/9) / (k+1) × (1 + 0.5·(steal
+>     factor − 1)); else check or fold. (Half the steal factor: +1.45 per table.)
 >   - Else: open-raise to (2 + limpers) bb if equity(k) ≥ 1.07/(k+1) × steal factor;
 >     else check or fold.
 > * **Facing a raise.**
->   - The raiser counts as kf = 4 random hands, + 0.8 for each other opponent still in
->     the hand (not folded) beyond one. Interpolate equity linearly between integer k.
+>   - **Re-shove over wide openers** (+2.25 per table): one open, no callers, opener not
+>     all-in, eff ≤ 28 bb: all-in if my top share ≤ max(0.03, 0.35 × the opener's open rate).
+>   - The raiser counts as kf = 4 random hands, + 0.8 for each opponent who already called
+>     or raised, + 0.2 for each opponent still to act (not 0.8: +0.7 per table).
+>     Interpolate equity linearly between integer k.
 >   - Re-raise if equity × (kf + 1) ≥ RERAISE: all-in when eff ≤ 24 bb, else raise to
 >     3 × the last raise-to amount. RERAISE = 2.6 (roughly AA only).
 >   - Else call if equity ≥ call/(pot + call) + 0.06, plus 0.10·(1 + 0.15·(8 − players
 >     left at the table)) when the call puts me all-in or is over 40% of my stack.
 >   - Else fold.
 > * **Postflop,** k = opponents not folded.
->   - Facing a bet: adjusted equity = equity × 0.6 per bet or raise this street (the
+>   - Facing a bet: adjusted equity = equity × 0.5 per bet or raise this street (the
 >     first bet counts). **Never raise a postflop bet**: every raise rule we tried lost on
 >     all three fields (−1 to −7 points per table). Call if adjusted ≥ need, where need = call/(pot+call) + 0.06, plus the ICM premium above
 >     when the call is ≥ 50% of my stack. Else fold.
