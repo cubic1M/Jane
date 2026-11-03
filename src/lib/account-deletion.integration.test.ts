@@ -431,8 +431,8 @@ describe.runIf(url)("deleting data against a real database", () => {
 
   // Debugger 11-03: a walk found the email surviving deletion in rate_limits ("auth:email:..."), though
   // /privacy says "You can delete everything". This reads every text column of every table, so a new
-  // table that keeps an email is caught too. Ids stay in the access log and jobs, on purpose: an id on
-  // its own says nothing about the person once their row is gone.
+  // table that keeps an email is caught too. Ids stay in the access log and a job still running, on purpose: an
+  // id on its own says nothing about the person once their row is gone.
   it("leaves the person's email nowhere in the database", async () => {
     const email = `gone-${crypto.randomUUID()}@example.com`;
     const user = await client.user.create({ data: { email } });
@@ -492,6 +492,27 @@ describe.runIf(url)("deleting data against a real database", () => {
     await deleteAllData(userId, { client, api });
     expect(itemRemove).toHaveBeenCalled();
     expect((await rowsFor(userId)).users).toBe(0);
+  });
+
+  it("takes their finished and waiting jobs, whose rows hold their id and any error text", async () => {
+    const { userId } = await fullUser();
+    const payload = { userId };
+    const finished = await client.job.create({
+      data: {
+        kind: "explain_findings",
+        payload,
+        status: "failed",
+        lastError: "something of theirs",
+      },
+    });
+    const running = await client.job.create({
+      data: { kind: "explain_findings", payload, status: "running" },
+    });
+    await deleteAllData(userId, { client, api });
+    expect(await client.job.count({ where: { id: finished.id } })).toBe(0);
+    // A runner has it: it ends as "person gone" (src/lib/jobs.ts).
+    expect(await client.job.count({ where: { id: running.id } })).toBe(1);
+    await client.job.delete({ where: { id: running.id } });
   });
 
   it("treats an item Plaid no longer knows as removed", async () => {

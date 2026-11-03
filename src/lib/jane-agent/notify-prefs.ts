@@ -40,8 +40,9 @@ export function notifiesKind(prefs: ChatNotifyPrefs, kind: string): boolean {
   );
 }
 
-// "Stop these emails" from an email: email off, phone notifications kept. With "push",
-// emails only came because no device had notifications on, so it's off altogether.
-export function withoutChatEmails(prefs: ChatNotifyPrefs): ChatNotifyPrefs {
-  return { ...prefs, channel: prefs.channel === "both" ? "push" : "off" };
+// "Stop these emails" from an email: email off, phone notifications kept. With "push" and no
+// device that takes it, messages go by email instead, so only someone with a device keeps "push":
+// for anyone else, stop must mean stop.
+export function withoutChatEmails(prefs: ChatNotifyPrefs, pushWorks: boolean): ChatNotifyPrefs {
+  return { ...prefs, channel: prefs.channel === "both" && pushWorks ? "push" : "off" };
 }

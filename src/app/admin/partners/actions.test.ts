@@ -58,7 +58,12 @@ describe("partner actions", () => {
       data: expect.objectContaining({ key: "example-bank", allowedStates: ["CA"], active: true }),
       select: { id: true },
     });
-    expect(logAudit).toHaveBeenCalled();
+    expect(logAudit).toHaveBeenCalledWith(
+      expect.anything(),
+      "referral_partner_saved",
+      expect.anything(),
+      expect.objectContaining({ referralUrl: "https://example.com/r" }),
+    );
   });
 
   it("refuses a partner with no disclosure", async () => {

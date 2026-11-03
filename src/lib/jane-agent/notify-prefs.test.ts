@@ -44,11 +44,16 @@ describe("notifiesKind", () => {
 
 describe("withoutChatEmails", () => {
   it("stops emails and keeps phone notifications", () => {
-    const of = (channel: string) => withoutChatEmails(chatNotifyPrefs({ channel })).channel;
+    const of = (channel: string) => withoutChatEmails(chatNotifyPrefs({ channel }), true).channel;
     expect(of("both")).toBe("push");
     expect(of("email")).toBe("off");
     // With push, emails only came because no device had notifications on.
     expect(of("push")).toBe("off");
     expect(of("off")).toBe("off");
+  });
+
+  it("stops emails for good when no device takes notifications, since push falls back to email", () => {
+    const prefs = chatNotifyPrefs({ channel: "both" });
+    expect(withoutChatEmails(prefs, false).channel).toBe("off");
   });
 });

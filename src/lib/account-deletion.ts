@@ -49,6 +49,9 @@ export async function deleteAllData(
       if ((await tx.plaidItem.count({ where: { userId } })) > 0) {
         throw new Error("A bank was linked while this account was being deleted");
       }
+      // Their ids and any error text. One still running keeps its row, and ends as "person gone".
+      await tx.$executeRaw`DELETE FROM jobs
+        WHERE status <> 'running' AND payload->>'userId' = ${userId}`;
       if (user?.email) {
         await tx.betaAccess.deleteMany({ where: { email: user.email } });
         await tx.waitlistEntry.deleteMany({ where: { email: user.email } });

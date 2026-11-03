@@ -14,3 +14,7 @@ export const JOB_BATCH = 20;
 export const CRON_JOBS_BUDGET_MS = 60_000;
 // Longest error message kept.
 export const JOB_ERROR_LENGTH = 500;
+
+// How long past the runner's budget a job it started may take. Under the daily job's reserve for
+// finishing a run (CONTROLLER_RUN_RESERVE_MS), so a job started late still gets to finish.
+export const JOB_GRACE_MS = 50_000;
