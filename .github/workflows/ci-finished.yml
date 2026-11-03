@@ -1,0 +1,48 @@
+name: Loop
+
+# Who needs waking, with no LLM and no session running (docs/agent-loop.md). Runs when CI finishes
+# and every 15 minutes, because GitHub sends nothing when main moves a PR into a conflict. It runs
+# main's copy of the script under workflow_run and schedule, and never a PR's code. What it sends
+# carries ids and addresses only, never a PR's text or a log.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: read
+
+concurrency:
+  group: ci-loop
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    name: Reconcile
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          sparse-checkout: scripts
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+      - run: node scripts/loop.mjs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Wakes stay dry until a founder sets both (docs/agent-loop.md). LOOP_PAUSED=1 pauses them.
+          LANE_WAKE_URL: ${{ vars.LANE_WAKE_URL }}
+          LANE_WAKE_TOKEN: ${{ secrets.LANE_WAKE_TOKEN }}
+          LOOP_PAUSED: ${{ vars.LOOP_PAUSED }}
+          SWEEP_PING_URL: ${{ secrets.SWEEP_PING_URL }}
+          EVENT_SHA: ${{ github.event.workflow_run.head_sha }}
+          EVENT_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          EVENT_CONCLUSION: ${{ github.event.workflow_run.conclusion }}

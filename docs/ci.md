@@ -40,6 +40,11 @@ run. A test high on the list needs a fix, or `test.fixme` with a reason if it ca
 list keeps only test names, never error text, because the secret scan reads every branch and one fake
 key on `ci-flakes` would red every PR.
 
+## Who gets woken
+
+`ci-finished.yml` labels PRs by lane, decides who to wake when one goes red, conflicts or goes quiet, and
+publishes deploy lag, red main minutes and silent tasks. See [the loop](agent-loop.md).
+
 ## Writing an end-to-end test
 
 No fixed sleeps: ESLint refuses `waitForTimeout`. `e2e/waits.ts` has what to use.
