@@ -152,6 +152,36 @@ describe("an ACH line's direction in front", () => {
   });
 });
 
+// Debugger 11-03: a credit union's "ACH WITHDRAWAL ROCKET MORTGAGE PAYMENT" read that way on Bills.
+// The migration 20270502000000_merchant_without_ach_withdrawal moves saved keys and names.
+describe("a withdrawal's words in front", () => {
+  it.each([
+    ["ACH WITHDRAWAL ROCKET MORTGAGE PAYMENT", "Rocket Mortgage Payment"],
+    ["ACH PAYMENT STATE FARM INS", "State Farm Ins"],
+    ["ACH PMT COMCAST", "Comcast"],
+    ["ELECTRONIC WITHDRAWAL PUGET SOUND ENERGY", "Puget Sound Energy"],
+    ["EXTERNAL WITHDRAWAL NETFLIX", "Netflix"],
+    ["EFT WITHDRAWAL T-MOBILE", "T-Mobile"],
+    ["PREAUTHORIZED DEBIT GEICO", "Geico"],
+    ["PRE-AUTH DEBIT GEICO", "Geico"],
+  ])("%s is %s", (description, name) => {
+    expect(normalizeMerchant(description)?.name).toBe(name);
+  });
+
+  it("gives a name saved the old way the new key", () => {
+    expect(normalizeMerchant("Ach Withdrawal Rocket Mortgage Payment")?.key).toBe(
+      "rocket mortgage payment",
+    );
+  });
+
+  it("keeps the words when they are all there is, or not in front", () => {
+    expect(normalizeMerchant("ACH WITHDRAWAL")?.key).toBe("ach withdrawal");
+    expect(normalizeMerchant("ACME ACH WITHDRAWAL SERVICES")?.key).toBe(
+      "acme ach withdrawal services",
+    );
+  });
+});
+
 // Debugger 10-31: Capital One 360 writes "Withdrawal to ROCKET MORTGAGE PMT" and "Deposit from
 // STARK INDUSTRIES PAYROLL" (the CSV bench has the same): /subscriptions listed "Withdrawal To
 // Rocket Mortgage Pmt $2,280.00 monthly".

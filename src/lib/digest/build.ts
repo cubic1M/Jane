@@ -39,6 +39,8 @@ export type DigestInput = {
     annualSavingsCents: number | null;
     createdAt: Date;
     confidence?: Confidence;
+    // How sure Jane is, as /report and /close say it (findingSure).
+    percent?: number;
   }[];
   // Alerts the person gets (not turned off). Ones already emailed aren't repeated. Their
   // confidence is null on alerts from before it was stored.
@@ -87,6 +89,7 @@ export type DigestPayload = {
     title: string;
     annualSavingsCents: number | null;
     confidence?: Confidence;
+    percent?: number;
     once?: true;
     // Listed at its yearly cost, but in the total only once the person says to cancel it.
     onlyOnceApproved?: true;
@@ -211,10 +214,11 @@ export function buildDigest(input: DigestInput): DigestPayload | null {
       .sort(
         (a, b) => Number(b.status === "waiting_on_user") - Number(a.status === "waiting_on_user"),
       ),
-    newFindings: newFindings.map(({ type, title, annualSavingsCents, confidence }) => ({
+    newFindings: newFindings.map(({ type, title, annualSavingsCents, confidence, percent }) => ({
       title,
       annualSavingsCents,
       ...(confidence ? { confidence } : {}),
+      ...(percent !== undefined ? { percent } : {}),
       ...(type && REFUND_FINDING_TYPES.includes(type) ? { once: true as const } : {}),
       ...(type && COUNT_ONLY_WHEN_APPROVED.includes(type)
         ? { onlyOnceApproved: true as const }
