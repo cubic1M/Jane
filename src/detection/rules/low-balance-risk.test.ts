@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { CHECKING, GEICO, input, monthsAgo, tx } from "../__fixtures__/build";
+import { addDays } from "../units";
+import { AS_OF, CHECKING, GEICO, input, monthsAgo, tx } from "../__fixtures__/build";
 import { unevenPay } from "../forecast";
 import { buildStreams } from "../streams";
 import type { DetectionInput } from "../types";
@@ -140,5 +141,56 @@ describe("low_balance_risk", () => {
     expect(
       run(input({ accounts: [{ ...wallet, currentBalanceCents: 1_500 }], transactions: geico })),
     ).toEqual([]);
+  });
+});
+
+// Debugger 11-03: Safe to spend stopped saying "Short $1,303" to a driver DoorDash pays each week, but
+// the checkup and /bills still said the account "could drop to -$1,302.94", on a month of bills and
+// none of the pay.
+describe("pay that comes often, at no set day", () => {
+  const rent = [3, 2, 1].map((m) =>
+    tx({
+      date: monthsAgo(m, 28),
+      amountCents: 95_000,
+      description: "GREYSTONE APTS RENT",
+      merchantName: "Greystone Apts",
+      pfcPrimary: "RENT_AND_UTILITIES",
+      pfcDetailed: "RENT_AND_UTILITIES_RENT",
+    }),
+  );
+  const weekly = Array.from({ length: 12 }, (_, i) =>
+    tx({
+      date: addDays(AS_OF, -(i * 7 + 2)),
+      // Never the same twice, so no regular deposit to forecast: the driver's own payouts.
+      amountCents: -(38_000 + ((i * 7_919) % 26_000)),
+      description: "DOORDASH INC PAYOUT",
+      merchantName: "Doordash",
+      pfcPrimary: "INCOME",
+      pfcDetailed: "INCOME_GIG_ECONOMY",
+    }),
+  );
+  const withPay = (cents: number, soon: DetectionInput["transactions"] = []) =>
+    input({
+      accounts: [{ ...CHECKING, currentBalanceCents: cents }],
+      transactions: [...rent, ...weekly, ...soon],
+    });
+
+  it("doesn't warn of a low point past the next likely deposit", () => {
+    expect(run(withPay(30_000))).toEqual([]);
+  });
+
+  it("still warns when it runs out before then", () => {
+    const due = [3, 2, 1].map((m) =>
+      tx({
+        date: addDays(monthsAgo(m, 15), 2),
+        amountCents: 60_000,
+        description: "PROGRESSIVE INS PREM",
+        merchantName: "Progressive",
+        pfcPrimary: "GENERAL_SERVICES",
+        pfcDetailed: "GENERAL_SERVICES_INSURANCE",
+      }),
+    );
+    const [finding] = run(withPay(30_000, due));
+    expect(finding?.amountCents).toBe(-30_000);
   });
 });
