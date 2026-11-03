@@ -92,7 +92,8 @@ function figures(c: CheckIn) {
     month: monthLabel(c.month, { long: true, year: false }),
     spent: formatCents(c.spendingCents),
     spentMonthBefore: formatCents(c.previousSpendingCents),
-    spendingChange: `${diff >= 0 ? "up" : "down"} ${formatCents(Math.abs(diff))}`,
+    spendingChange:
+      diff === 0 ? "no change" : `${diff >= 0 ? "up" : "down"} ${formatCents(Math.abs(diff))}`,
     cameIn: formatCents(c.incomeCents),
     budgetsKept: c.budgets.filter((b) => b.kept).length,
     budgetsOver: c.budgets.filter((b) => !b.kept).map((b) => b.category),
@@ -108,7 +109,9 @@ function figures(c: CheckIn) {
 export function templateSummary(c: CheckIn): string {
   const { facts } = figures(c);
   const parts = [
-    `In ${facts.month} you spent ${facts.spent}, ${facts.spendingChange} from the month before.`,
+    c.spendingCents === c.previousSpendingCents
+      ? `In ${facts.month} you spent ${facts.spent}, the same as the month before.`
+      : `In ${facts.month} you spent ${facts.spent}, ${facts.spendingChange} from the month before.`,
   ];
   if (c.budgets.length > 0) {
     parts.push(
