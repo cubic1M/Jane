@@ -64,6 +64,9 @@ PARAMS = dict(
                          #   count, never tighter than range_k); the exact-ICM call decides. 0 = off.
                          #   2 validated on fresh seeds (results/sng_rscall_validate_*.md: 11 cells, mean
                          #   +1.6, field 4 +2.2*, field 5 +4.7*, field 6 +5.1*); 3 = day-of choice vs light re-shovers
+    img_k=0.0,           # > 0: my first-in opens get re-raised more than img_base (my opens are targeted):
+    img_base=0.22,       #   open bar x (1 + img_k x (re-raised share - img_base)); share shrunk to 0.17
+                         #   over 12 opens. Short-stack shoves are not affected. 0 = off
     push_steal=0.5,      # short-stack shoves use this share of the steal factor (fold read); 0 = off.
                          #   0.5 validated on fresh seeds (results/sng_pushsteal_validate.md)
     behind_k=0.2,        # facing a preflop raise: extra random hands per opponent still to act
@@ -187,6 +190,8 @@ class IcmTag:
         self.steal_fold = [0] * rules.num_players
         self.t3_seen = [0] * rules.num_players           # faced exactly one open (first action)
         self.t3_made = [0] * rules.num_players           # ... and re-raised it
+        self.my_opens = 0                                # my first-in raises (img_k)
+        self.my_opens_rr = 0                             # ... re-raised by someone
         self.o3_seen = [0] * rules.num_players           # opened, then faced a re-raise
         self.o3_fold = [0] * rules.num_players           # ... and folded
         self.aggressor = None                          # seat of the last preflop raiser this hand
@@ -237,6 +242,10 @@ class IcmTag:
                 self.o3_seen[op] += 1
                 if nxt[2] == "fold":
                     self.o3_fold[op] += 1
+        if rz and pre3[rz[0]][0] == self.seat:            # my open: was it re-raised? (img_k)
+            self.my_opens += 1
+            if len(rz) >= 2:
+                self.my_opens_rr += 1
         # re-raise rate vs one open (rs_call): each seat's first action after a lone open
         if rz:
             op, end = pre3[rz[0]][0], (rz[1] if len(rz) >= 2 else len(pre3) - 1)
@@ -491,6 +500,9 @@ class IcmTag:
                 if eq >= pbar and lg.can_raise:
                     return RaiseTo(lg.max_raise_to)
                 return lg.passive() if lg.can_check else Fold()
+            if p["img_k"] > 0:
+                img = (self.my_opens_rr + 0.17 * 12) / (self.my_opens + 12)
+                bar *= 1.0 + p["img_k"] * max(0.0, img - p["img_base"])
             if eq >= bar and lg.can_raise:
                 to = (p["open_size"] + limpers) * bb
                 self.aggressor = obs.seat
