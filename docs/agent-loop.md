@@ -12,7 +12,7 @@ Also at <https://github.com/cubic1M/Jane/blob/ci-loop/LOOP.md>.
 
 | It sees | It does |
 | --- | --- |
-| A PR with no `lane:*` label | Adds one by branch: `nd/` and `fix/` go to `lane:debugger`, `fix/sec` to `lane:security`, `dependabot/` to `lane:deps`, the rest to `lane:general`. A lane can change its own PR's label, and the script leaves it |
+| A ready PR with no `lane:*` label | Adds one by branch: `nd/` and `fix/` go to `lane:debugger`, `fix/sec` to `lane:security`, `dependabot/` to `lane:deps`, the rest to `lane:general`. A lane can change its own PR's label, and the script leaves it |
 | A required check failed on a PR's head commit | Wakes the lane, once `rerun-flaky.yml` has had its try |
 | A PR in conflict | Wakes the lane. GitHub has no event for this, which is why the sweep exists |
 | A PR with no commit or check for 2 hours | Counts it as silent (number 8) and wakes the lane again |

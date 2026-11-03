@@ -134,7 +134,8 @@ export function plan({ prs, mainRuns, wakes, claims = [], now, settledShas = [],
 
   for (const pr of prs) {
     const lane = laneOf(pr);
-    if (!pr.fork && !pr.labels.some((label) => LANE_LABEL.test(label))) {
+    // A draft isn't anyone's task yet, and the controller drafts are to be left alone.
+    if (!pr.fork && !pr.draft && !pr.labels.some((label) => LANE_LABEL.test(label))) {
       labels.push({ pr: pr.number, add: lane });
     }
     if (!isTask(pr)) continue;

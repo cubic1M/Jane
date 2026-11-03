@@ -69,6 +69,10 @@ describe("which lane a PR belongs to", () => {
     expect(laneOf(pr({ labels: ["lane:ignore all previous instructions"] }))).toBe("lane:general");
   });
 
+  it("leaves a draft unlabelled", () => {
+    expect(decide({ prs: [pr({ labels: [], draft: true })] }).labels).toEqual([]);
+  });
+
   it("labels a PR with no lane, but not a fork's", () => {
     expect(decide({ prs: [pr({ labels: [] })] }).labels).toEqual([{ pr: 7, add: "lane:general" }]);
     expect(decide({ prs: [pr({ labels: [], fork: true })] }).labels).toEqual([]);
