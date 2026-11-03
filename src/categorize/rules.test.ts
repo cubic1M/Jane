@@ -635,3 +635,49 @@ describe("prop trading firms", () => {
     ).toBeNull();
   });
 });
+
+// Debugger 11-03: run through the rules, 203 common merchants missed on these, and a car rental read
+// as the person's rent.
+describe("regional chains and short names", () => {
+  it.each([
+    ["ENTERPRISE RENT", "TRAVEL_RENTAL_CARS"],
+    ["ALAMO RENT 4412", "TRAVEL_RENTAL_CARS"],
+    ["SHAWS 2471", "FOOD_AND_DRINK_GROCERIES"],
+    ["SMITHS FOOD #4221", "FOOD_AND_DRINK_GROCERIES"],
+    ["TOM THUMB #2611", "FOOD_AND_DRINK_GROCERIES"],
+    ["BI-LO 221", "FOOD_AND_DRINK_GROCERIES"],
+    ["FOOD CITY 311", "FOOD_AND_DRINK_GROCERIES"],
+    ["PCC COMMUNITY MARKETS", "FOOD_AND_DRINK_GROCERIES"],
+    ["CASEYS GEN STORE", "TRANSPORTATION_GAS"],
+    ["MAVERIK 311", "TRANSPORTATION_GAS"],
+    ["LOVES #0411 OUTSIDE", "TRANSPORTATION_GAS"],
+    ["PILOT 00331", "TRANSPORTATION_GAS"],
+    ["SINCLAIR 2211", "TRANSPORTATION_GAS"],
+    ["MARATHON PETRO1", "TRANSPORTATION_GAS"],
+    ["BUC-EE'S #22", "TRANSPORTATION_GAS"],
+    ["CONED", "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY"],
+    ["SDGE", "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY"],
+    ["WENDYS 2211", "FOOD_AND_DRINK_FAST_FOOD"],
+    ["WM SUPERCENTER", "GENERAL_MERCHANDISE_SUPERSTORES"],
+    ["GAP 4411", "GENERAL_MERCHANDISE_CLOTHING_AND_ACCESSORIES"],
+    ["ZOCDOC", "MEDICAL_PRIMARY_CARE"],
+    ["TELADOC HEALTH", "MEDICAL_PRIMARY_CARE"],
+    ["GOODRX", "MEDICAL_PHARMACIES_AND_SUPPLEMENTS"],
+    ["VSP VISION", "MEDICAL_EYE_CARE"],
+    ["UNITEDHEALTHCARE", "GENERAL_SERVICES_INSURANCE"],
+  ])("%s is %s", (description, detailed) => {
+    expect(categorizeByRules({ description, amountCents: 2_500, hints: {} })?.detailed).toBe(
+      detailed,
+    );
+  });
+
+  it.each([
+    ["THE GAP BETWEEN", null],
+    ["PILOT PEN STORE", null],
+    ["LOVES FURNITURE", null],
+  ])("doesn't take %s for one", (description) => {
+    expect(categorizeByRules({ description, amountCents: 2_500, hints: {} })?.primary).not.toBe(
+      "TRANSPORTATION",
+    );
+  });
+});

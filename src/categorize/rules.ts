@@ -491,7 +491,18 @@ const RULES: readonly Rule[] = [
   // Renting a car or clothes is not rent, so those go first.
   {
     category: "TRAVEL_RENTAL_CARS",
-    keywords: ["RENT-A-CAR", "RENT A CAR", "CAR RENTAL", "HERTZ", "AVIS", "BUDGET RENT"],
+    keywords: [
+      "RENT-A-CAR",
+      "RENT A CAR",
+      "CAR RENTAL",
+      "HERTZ",
+      "AVIS",
+      "BUDGET RENT",
+      "ENTERPRISE RENT",
+      "ALAMO RENT",
+      "DOLLAR RENT",
+      "FOX RENT",
+    ],
     direction: "out",
   },
   {
@@ -661,6 +672,7 @@ const RULES: readonly Rule[] = [
       "BURGER KING",
       "TACO BELL",
       "WENDY'S",
+      "WENDYS",
       "CHICK-FIL-A",
       "CHIPOTLE",
       "SUBWAY",
@@ -706,6 +718,15 @@ const RULES: readonly Rule[] = [
       "WHOLEFDS",
       "TRADER JOE",
       "SAFEWAY",
+      // Debugger 11-03: regional chains left uncategorized.
+      "SHAWS",
+      "SHAW'S",
+      "SMITHS FOOD",
+      "SMITH'S FOOD",
+      "TOM THUMB",
+      "BI-LO",
+      "FOOD CITY",
+      "PCC COMMUNITY",
       // Night QA 10-30: "RALEYS #322" was uncategorized.
       "RALEYS",
       "RALEY'S",
@@ -756,6 +777,14 @@ const RULES: readonly Rule[] = [
       "MOBIL",
       "ARCO",
       "SUNOCO",
+      // Debugger 11-03: chains left uncategorized. "LOVES" and "PILOT" alone name other things.
+      "CASEYS",
+      "CASEY'S",
+      "MAVERIK",
+      "LOVES TRAVEL",
+      "SINCLAIR",
+      "BUC-EE",
+      "BUCEES",
       // Night QA 10-30: a Midwest chain left uncategorized ("HOLIDAY STATIONSTORES 0412").
       "STATIONSTORES",
       "HOLIDAY STATION",
@@ -781,9 +810,18 @@ const RULES: readonly Rule[] = [
   },
   {
     category: "GENERAL_MERCHANDISE_SUPERSTORES",
-    keywords: ["TARGET", "WALMART", "WAL-MART", "COSTCO"],
+    keywords: ["TARGET", "WALMART", "WAL-MART", "WM SUPERCENTER", "COSTCO"],
   },
-  { category: "MEDICAL_PHARMACIES_AND_SUPPLEMENTS", keywords: ["CVS", "WALGREENS", "RITE AID"] },
+  {
+    category: "MEDICAL_PHARMACIES_AND_SUPPLEMENTS",
+    keywords: ["CVS", "WALGREENS", "RITE AID", "GOODRX"],
+  },
+  // Short names that are ordinary words alone, so a number has to follow (debugger 11-03).
+  {
+    category: "TRANSPORTATION_GAS",
+    pattern: /^(?:PILOT(?: TRAVEL)?|LOVE'?S)\s+#?\d|^MARATHON PETRO/,
+  },
+  { category: "GENERAL_MERCHANDISE_CLOTHING_AND_ACCESSORIES", pattern: /^GAP\s+#?\d/ },
   { category: "GENERAL_MERCHANDISE_CONVENIENCE_STORES", keywords: ["7-ELEVEN", "7 ELEVEN"] },
   {
     category: "GENERAL_MERCHANDISE_ELECTRONICS",
@@ -875,6 +913,8 @@ const RULES: readonly Rule[] = [
       "SMUD",
       "LADWP",
       "CON ED",
+      "CONED",
+      "SDGE",
       "CONEDISON",
       "DUKE ENERGY",
       "SCE",
@@ -1755,6 +1795,7 @@ const RULES: readonly Rule[] = [
       "BLUE CROSS",
       "BCBS",
       "AETNA",
+      "UNITEDHEALTHCARE",
       "CIGNA",
       "HUMANA",
       "KAISER",
@@ -2035,7 +2076,7 @@ const RULES: readonly Rule[] = [
   },
   { category: "FOOD_AND_DRINK_BEER_WINE_AND_LIQUOR", keywords: ["LIQUOR", "WINE SHOP", "BREWERY"] },
   { category: "MEDICAL_DENTAL_CARE", keywords: ["DENTAL", "DENTIST", "ORTHODONTICS"] },
-  { category: "MEDICAL_EYE_CARE", keywords: ["OPTOMETRY", "EYECARE", "OPTICAL"] },
+  { category: "MEDICAL_EYE_CARE", keywords: ["OPTOMETRY", "EYECARE", "OPTICAL", "VSP VISION"] },
   {
     category: "MEDICAL_VETERINARY_SERVICES",
     keywords: [
@@ -2319,6 +2360,8 @@ const RULES: readonly Rule[] = [
       "PHYSICAL THERAPY",
       "COUNSELING",
       "LABCORP",
+      "ZOCDOC",
+      "TELADOC",
       "QUEST DIAGNOSTICS",
     ],
     direction: "out",

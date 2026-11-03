@@ -59,14 +59,23 @@ describe("foundHeadline", () => {
 });
 
 describe("foundLine", () => {
+  // Debugger 11-03: "The three that matter most are first" above one card.
+  it("speaks of three only when there are more", () => {
+    expect(foundLine(162, [], 1)).toBe("Estimates from 162 transactions. Open it to decide.");
+    expect(foundLine(162, [], 3)).toBe("Estimates from 162 transactions. Open one to decide.");
+    expect(foundLine(162, [], 4)).toBe(
+      "Estimates from 162 transactions. The three that matter most are first; open one to decide.",
+    );
+  });
+
   it("says subscriptions count once you decide, when one is listed", () => {
-    expect(foundLine(162, ["subscription_review", "card_interest"])).toBe(
+    expect(foundLine(162, ["subscription_review", "card_interest"], 4)).toBe(
       "Estimates from 162 transactions. The three that matter most are first; open one to decide. Subscriptions count toward the total once you decide to cancel them.",
     );
   });
 
   it("says nothing of subscriptions without one", () => {
-    expect(foundLine(162, ["card_interest"])).toBe(
+    expect(foundLine(162, ["card_interest"], 4)).toBe(
       "Estimates from 162 transactions. The three that matter most are first; open one to decide.",
     );
   });

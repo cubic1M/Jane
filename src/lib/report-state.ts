@@ -69,8 +69,18 @@ export function foundHeadline({ cents, onceCents }: { cents: number; onceCents: 
 // The line under "We found $X a year". Subscriptions count toward the total only once the
 // person says to cancel them (COUNT_ONLY_WHEN_APPROVED), so when one is listed the line says
 // so (overnight upload QA: "We found $289 a year" sat above three subscriptions worth $700).
-export function foundLine(transactions: number, types: readonly FindingType[]): string {
-  const base = `Estimates from ${transactions} transactions. The three that matter most are first; open one to decide.`;
+export function foundLine(
+  transactions: number,
+  types: readonly FindingType[],
+  count: number,
+): string {
+  const next =
+    count > 3
+      ? "The three that matter most are first; open one to decide."
+      : count > 1
+        ? "Open one to decide."
+        : "Open it to decide.";
+  const base = `Estimates from ${transactions} transactions. ${next}`;
   return types.some((t) => COUNT_ONLY_WHEN_APPROVED.includes(t))
     ? `${base} Subscriptions count toward the total once you decide to cancel them.`
     : base;
