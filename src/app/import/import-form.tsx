@@ -59,6 +59,7 @@ export function ImportForm({
     read: number;
     corrected: number;
     runId: string;
+    warnings: string[];
     askBalance: BalanceAsk | null;
   } | null>(null);
   // A first upload makes its account from the file: its name and type come from the preview
@@ -144,6 +145,7 @@ export function ImportForm({
         read: total,
         corrected: result.corrected,
         runId: result.runId,
+        warnings: result.warnings,
         askBalance: result.askBalance,
       });
       if (account === NEW_ACCOUNT_ID) setUploadedNew(true);
@@ -297,6 +299,11 @@ export function ImportForm({
           {/* Says when rows were already here (round 3: the same file again said "Saved 0
               transactions. Jane finishes the rest in the background"). */}
           <p className="font-medium">{savedLine(saved)}</p>
+          {saved.warnings.map((warning) => (
+            <p key={warning} data-control-warning className="text-neutral-800 dark:text-neutral-200">
+              {warning}
+            </p>
+          ))}
           {saved.askBalance && <BalanceAskForm ask={saved.askBalance} />}
           <p className="flex flex-wrap gap-4">
             <Link href="/report" className="font-medium underline">
@@ -416,6 +423,19 @@ export function ImportForm({
                 <p className="text-xs text-zinc-500">
                   Showing {file.sample.length} of {file.rowCount} rows.
                 </p>
+              )}
+              {file.warnings.length > 0 && (
+                <div
+                  data-control-warning
+                  className="rounded-lg bg-neutral-100 p-3 text-sm text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100"
+                >
+                  <p className="font-medium">This file doesn&apos;t fully add up:</p>
+                  <ul className="mt-1 list-disc pl-5">
+                    {file.warnings.map((warning) => (
+                      <li key={warning}>{warning}</li>
+                    ))}
+                  </ul>
+                </div>
               )}
               {file.skipped.length > 0 && (
                 <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
