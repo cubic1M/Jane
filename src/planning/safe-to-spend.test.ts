@@ -12,7 +12,7 @@ import {
 } from "@/detection/__fixtures__/build";
 import { forecastAccounts, upcomingBills } from "@/detection/forecast";
 import type { DetectionInput } from "@/detection/types";
-import { safeToSpend } from "./safe-to-spend";
+import { freelanceTaxHeldCents, safeToSpend } from "./safe-to-spend";
 
 // AS_OF is Oct 15. Pay on the 1st; Geico from checking on the 20th; Netflix on the card.
 const pay = [3, 2, 1, 0].map((m) =>
@@ -56,6 +56,74 @@ describe("safeToSpend", () => {
     expect(safe).toMatchObject({
       setAsideCents: 2_800,
       safeCents: 150_000 - 9_800 - 20_000 - 10_000 - 2_800,
+    });
+  });
+
+  // Debugger 11-03: a freelancer with $8,915 of tax to pay read "Safe to spend $24,254".
+  describe("tax on freelance income", () => {
+    const client = (date: string, cents: number) =>
+      tx({
+        date,
+        amountCents: -cents,
+        description: "ACH CREDIT BRIGHTLEAF MEDIA",
+        merchantName: "Brightleaf Media",
+        pfcPrimary: "INCOME",
+        pfcDetailed: "INCOME_CONTRACTOR",
+      });
+    const irs = (date: string, cents: number) =>
+      tx({
+        date,
+        amountCents: cents,
+        description: "IRS DES:USATAXPYMT",
+        merchantName: "IRS",
+        pfcPrimary: "GOVERNMENT_AND_NON_PROFIT",
+        pfcDetailed: "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
+      });
+    const held = (rows: DetectionInput["transactions"]) =>
+      freelanceTaxHeldCents({ asOf: AS_OF, transactions: rows });
+
+    it("holds back the tax on this year's clients, less what's been paid", () => {
+      expect(held([client("2026-03-01", 1_000_000)])).toBe(250_000);
+      expect(held([client("2026-03-01", 1_000_000), irs("2026-06-15", 100_000)])).toBe(150_000);
+    });
+
+    it("holds back nothing once it's paid, or for last year's, or on a salary", () => {
+      expect(held([client("2026-03-01", 1_000_000), irs("2026-06-15", 900_000)])).toBe(0);
+      expect(held([client("2025-03-01", 1_000_000)])).toBe(0);
+      expect(held(pay)).toBe(0);
+    });
+
+    it("takes it off the number as its own line", () => {
+      const before = safeToSpend(data(), { budgetsLeftCents: 0, goalsCents: 0 });
+      const base = data();
+      const after = safeToSpend(
+        { ...base, transactions: [...base.transactions, client("2026-03-01", 100_000)] },
+        { budgetsLeftCents: 0, goalsCents: 0 },
+      );
+      expect(after.taxHeldCents).toBe(25_000);
+      expect(after.safeCents).toBe(after.balanceCents - after.billsCents - 25_000);
+      expect(before.taxHeldCents).toBe(0);
+    });
+
+    it("takes the number to zero at most: tax that isn't due yet doesn't make it short", () => {
+      const base = data();
+      const safe = safeToSpend(
+        { ...base, transactions: [...base.transactions, client("2026-03-01", 100_000_000)] },
+        { budgetsLeftCents: 0, goalsCents: 0 },
+      );
+      expect(safe.taxSoFarCents).toBe(25_000_000);
+      expect(safe.taxHeldCents).toBe(safe.balanceCents - safe.billsCents);
+      expect(safe.safeCents).toBe(0);
+    });
+
+    it("leaves a real shortfall as it is", () => {
+      const base = data();
+      const safe = safeToSpend(
+        { ...base, transactions: [...base.transactions, client("2026-03-01", 1_000_000)] },
+        { budgetsLeftCents: 900_000, goalsCents: 0 },
+      );
+      expect(safe.taxHeldCents).toBe(0);
+      expect(safe.safeCents).toBeLessThan(0);
     });
   });
 

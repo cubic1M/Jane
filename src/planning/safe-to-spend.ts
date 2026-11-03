@@ -15,6 +15,8 @@ import {
   type Expected,
 } from "@/detection/forecast";
 import { daysBetween } from "@/detection/units";
+import { DETECTOR_RATES } from "@/config/detectors";
+import { INCOME_KINDS } from "@/config/tax";
 import { nextPayday } from "@/detection/paydays";
 import type { DetectionInput } from "@/detection/types";
 
@@ -23,6 +25,32 @@ import type { DetectionInput } from "@/detection/types";
 // minus this month's amounts toward goals, minus this month's set-aside for yearly bills
 // (spec step 70). Each part comes from the page that shows it (bills forecast, budgets,
 // goals), so the number reconciles with them. Math only.
+
+// Tax on this year's freelance income, less the tax paid this year. Nobody withholds it, so without
+// this it reads as money to spend (debugger 11-03: "Safe to spend $24,254" with $8,915 of tax to pay).
+export function freelanceTaxHeldCents({
+  asOf,
+  transactions,
+}: Pick<DetectionInput, "asOf" | "transactions">): number {
+  const thisYear = transactions.filter((t) => t.date.slice(0, 4) === asOf.slice(0, 4));
+  const earned = thisYear
+    .filter(
+      (t) =>
+        t.amountCents < 0 &&
+        (INCOME_KINDS.self_employed.categories as readonly (string | null)[]).includes(
+          t.pfcDetailed,
+        ),
+    )
+    .reduce((sum, t) => sum - t.amountCents, 0);
+  const paid = thisYear
+    .filter(
+      (t) =>
+        t.pfcDetailed === "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT" &&
+        !/SALES TAX/i.test(t.description),
+    )
+    .reduce((sum, t) => sum + t.amountCents, 0);
+  return Math.max(0, Math.round(earned * DETECTOR_RATES.selfEmployedTaxRate) - paid);
+}
 
 export type SafeToSpend = {
   // The next expected paycheck, or null when none is expected in the forecast window.
@@ -33,6 +61,10 @@ export type SafeToSpend = {
   budgetsLeftCents: number;
   goalsCents: number;
   setAsideCents: number;
+  // Tax on freelance income so far, not paid yet: all of it, and as much as the money left can hold.
+  // It isn't due before payday, so it takes the number to zero but never makes it "short".
+  taxSoFarCents: number;
+  taxHeldCents: number;
   safeCents: number;
   // About what comes in a month into checking with no payday to count it on; not in safeCents.
   unevenPayMonthlyCents: number | null;
@@ -105,6 +137,9 @@ export function safeToSpend(
     0,
     setAsideCents - bills.reduce((sum, b) => sum + (b.setAsideCents ?? 0), 0),
   );
+  const beforeTax = balance - billsCents - budgetsLeftCents - goalsCents - setAside;
+  const taxSoFarCents = freelanceTaxHeldCents(input);
+  const taxHeldCents = Math.min(taxSoFarCents, Math.max(0, beforeTax));
   return {
     payday,
     balanceCents: balance,
@@ -113,7 +148,9 @@ export function safeToSpend(
     budgetsLeftCents,
     goalsCents,
     setAsideCents: setAside,
-    safeCents: balance - billsCents - budgetsLeftCents - goalsCents - setAside,
+    taxSoFarCents,
+    taxHeldCents,
+    safeCents: beforeTax - taxHeldCents,
     unevenPayMonthlyCents:
       checking.reduce((sum, a) => sum + (unevenPay(input, a.id) ?? 0), 0) || null,
   };

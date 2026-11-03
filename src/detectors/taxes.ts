@@ -100,6 +100,22 @@ export function daysToEstimatedDate(today: string): number {
   return Math.round((Date.parse(next) - Date.parse(today)) / 86_400_000);
 }
 
+// How many estimated-payment dates fall from one day to another, both included.
+export function estimatedDatesBetween(from: string, to: string): number {
+  const years = Array.from(
+    { length: Number(to.slice(0, 4)) - Number(from.slice(0, 4)) + 2 },
+    (_, i) => Number(from.slice(0, 4)) - 1 + i,
+  );
+  return years
+    .flatMap((y) =>
+      ESTIMATED_TAX_DATES.map(
+        (d) =>
+          `${y + (d.nextYear ? 1 : 0)}-${String(d.month).padStart(2, "0")}-${String(d.day).padStart(2, "0")}`,
+      ),
+    )
+    .filter((d) => d >= from && d <= to).length;
+}
+
 export function urgencyForEstimated(today: string): Urgency {
   const days = daysToEstimatedDate(today);
   return days <= T.estimatedNowDays ? "now" : days <= T.estimatedSoonDays ? "soon" : "later";
