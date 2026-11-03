@@ -13,6 +13,13 @@ PRESETS = {
         blinds=((10, 20), (15, 30), (25, 50), (40, 80), (50, 100), (75, 150), (100, 200), (150, 300)),
         antes=(0, 0, 5, 10, 10, 15, 25, 25),
         payouts=(100, 70, 50, 35, 25, 15, 5, 0)),
+    # practice kit 4 (practice_kit4/README.md): six-plus hold'em, no antes, 25 hands per level
+    "kit4_sixplus": dict(
+        spec=GameSpec(name="kit4_sixplus", deck_ranks=tuple(range(4, 13)), category_order=SHORT_DECK_ORDER,
+                      starting_stack=2000, small_blind=10, big_blind=20, stack_reset_per_hand=False),
+        blinds=((10, 20), (20, 40), (30, 60), (50, 100), (75, 150), (100, 200), (150, 300), (200, 400)),
+        antes=(0,) * 8,
+        payouts=(100, 65, 45, 30, 20, 10, 5, 0)),
     # discard / draw variants (sng/tests/test_discards.py shapes)
     "discard_to_board": dict(spec=GameSpec(name="t_to_board", hole_cards=3, starting_stack=2000, small_blind=10,
                                            big_blind=20, stack_reset_per_hand=False,

@@ -450,7 +450,12 @@ def main(argv=None):
     ap.add_argument("--any-table", default=None, help="cache/sng/any_<sig>.json for icm_any")
     ap.add_argument("--out", required=True)
     ap.add_argument("--compact", action="store_true", help="1-space indents + integer table (size caps)")
+    ap.add_argument("--allow", default=None,
+                    help="comma list of the kit's allowed top-level imports (default: practice kit 2's list)")
     a = ap.parse_args(argv)
+    if a.allow:
+        global ALLOWED
+        ALLOWED = frozenset(x.strip() for x in a.allow.split(",") if x.strip()) | {"__future__"}
     p = build(Path(a.adapter), Path(a.out), Path(a.any_table) if a.any_table else None, a.compact)
     print(f"wrote {p} ({p.stat().st_size:,} bytes)")
 

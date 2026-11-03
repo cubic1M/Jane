@@ -19,6 +19,7 @@ declare -A CMD=(
   [sng_field5]="python3 -m unittest discover -s sng/field5/tests -t ."
   [sng_field6]="python3 -m unittest discover -s sng/field6/tests -t ."
   [kit2_adapter]="python3 -m unittest discover -s practice_kit2/tests_adapter"
+  [kit4_adapter]="python3 -m unittest discover -s practice_kit4/tests_adapter"
 )
 # phase 1: everything in parallel with timing assertions off (parallel load makes them noisy)
 export SNG_SKIP_TIMING=1 FIELD_SKIP_TIMING=1
@@ -28,7 +29,7 @@ for s in "${!CMD[@]}"; do
 done
 wait
 fail=0
-for s in engine bots opponents tournament server sng sng_field sng_field2 sng_field3 sng_field4 sng_field5 sng_field6 sng_ours kit2_adapter; do
+for s in engine bots opponents tournament server sng sng_field sng_field2 sng_field3 sng_field4 sng_field5 sng_field6 sng_ours kit2_adapter kit4_adapter; do
   read rc name secs ran < results/logs/test_$s.rc
   if [ "$rc" = 0 ]; then st=OK; else st=FAIL; fail=1; fi
   printf "%-11s %-4s %6s  %s\n" "$name" "$st" "$secs" "$ran"
