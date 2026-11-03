@@ -122,7 +122,7 @@ export const OPEN_AREA_TOOL: Anthropic.Tool = {
 export const areaTools = (all: readonly Anthropic.Tool[], area: SectorName) =>
   all.filter((tool) => sectorOf(tool.name) === area);
 
-function sectorOf(name: string): SectorName | null {
+export function sectorOf(name: string): SectorName | null {
   for (const [sector, def] of Object.entries(SECTORS) as [
     SectorName,
     (typeof SECTORS)[SectorName],

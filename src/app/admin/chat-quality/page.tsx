@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import history from "../../../../docs/chat-quality-history.json";
-import type { NightEntry } from "@/lib/jane-agent/checks/history";
+import { modeLabel, type NightEntry } from "@/lib/jane-agent/checks/history";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
 import { AdminTable } from "../admin-table";
@@ -58,7 +58,7 @@ async function ChatQuality() {
                 key: `${r.date}${r.mode}`,
                 cells: [
                   r.date,
-                  r.mode === "full" ? "With Claude" : "Rules only",
+                  modeLabel(r.mode),
                   r.score ?? "–",
                   r.graded,
                   r.failed.length,
