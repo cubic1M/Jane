@@ -760,3 +760,36 @@ describe("a shop's sales tax", () => {
     },
   );
 });
+
+// Debugger 11-03: a car bought outright by wire read as a car loan's payment, so a typical month was
+// $10,214 and Jane spoke of "what you owe on Outgoing Wire Carmax Auto Purchase".
+describe("a car bought, a car financed", () => {
+  const rule = (description: string) =>
+    categorizeByRules({ description, amountCents: 1_850_000, hints: {} })?.detailed ?? null;
+
+  it.each(["OUTGOING WIRE CARMAX AUTO PURCHASE", "CARMAX AUTO SUPERSTORES 7112"])(
+    "%s isn't a loan payment",
+    (description) => {
+      expect(rule(description) ?? "").not.toMatch(/^LOAN_PAYMENTS/);
+    },
+  );
+
+  it.each(["CARMAX AUTO FINANCE", "CARMAX AUTO PMT", "CARMAX AUTO LOAN"])(
+    "%s is one",
+    (description) => {
+      expect(rule(description)).toBe("LOAN_PAYMENTS_CAR_PAYMENT");
+    },
+  );
+});
+
+// Debugger 11-03: money into one's own HSA stayed in spending, and on Bills as a bill.
+describe("money into one's own HSA", () => {
+  it.each(["HSA BANK CONTRIBUTION", "HEALTHEQUITY HSA CONTRIB", "HSA CONTRIBUTION 2026"])(
+    "%s is a move",
+    (description) => {
+      expect(categorizeByRules({ description, amountCents: 15_000, hints: {} })?.detailed).toBe(
+        "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS",
+      );
+    },
+  );
+});

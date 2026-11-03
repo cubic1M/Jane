@@ -79,6 +79,32 @@ describe("oneOffCharges", () => {
     expect(oneOffCharges([...everyday, ...bills], ASOF)).toEqual([]);
   });
 
+  // Debugger 11-03: a loan paid off in one go read as a typical month's spending.
+  describe("a loan's payments", () => {
+    const loan = (date: string, cents: number) =>
+      t({
+        date,
+        amountCents: cents,
+        description: "TOYOTA FINANCIAL PAYMENT",
+        merchantName: "Toyota Financial",
+        pfcPrimary: "LOAN_PAYMENTS",
+        pfcDetailed: "LOAN_PAYMENTS_CAR_PAYMENT",
+      });
+
+    it("takes a payoff many times the usual month as a one-off", () => {
+      const rows = [
+        ...everyday,
+        ...MONTHS.map((m) => loan(`${m}-05`, 41_850)),
+        loan("2026-09-20", 2_400_000),
+      ];
+      expect(oneOffCharges(rows, ASOF).map((o) => o.amountCents)).toEqual([2_400_000]);
+    });
+
+    it("keeps a new loan's first payment, about a usual bill", () => {
+      expect(oneOffCharges([...everyday, loan("2026-09-05", 600_000)], ASOF)).toEqual([]);
+    });
+  });
+
   it("keeps a merchant charged that much again, and small charges", () => {
     const twice = [
       repair("2026-05-02", "Lawn Pros", 300_000),

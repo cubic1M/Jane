@@ -1038,6 +1038,8 @@ export const ONE_OFF_NEVER_DETAILED: readonly string[] = [
 export const ONE_OFF_REPEAT_SHARE = 0.5;
 // A charge with no category can be a one-off only at this many usual months of spending: rent by check
 // has no category and a new name each month ("CHECK 1042"), so the usual floor would take it out.
+// A loan's payment likewise (debugger 11-03): a payoff in one go is a one-off, a new loan's first
+// payment isn't.
 export const ONE_OFF_UNPLACED_MONTHS = 2;
 // A bill of that size that comes a few times a year (tuition, property tax, a yearly premium) is a
 // real cost, not a one-off, but it isn't that much every month (debugger 11-03: a student's $4,815

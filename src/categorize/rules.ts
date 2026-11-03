@@ -395,7 +395,10 @@ const RULES: readonly Rule[] = [
       "TOYOTA FINANCIAL",
       "HONDA FINANCIAL",
       "ALLY AUTO",
-      "CARMAX AUTO",
+      // Not "CARMAX AUTO" alone: that's also the dealership (debugger 11-03: a car bought by wire).
+      "CARMAX AUTO PMT",
+      "CARMAX AUTO PAY",
+      "CARMAX AUTO LOAN",
       // A car lender by its own words (CSV bench, second tuning set: "LAKESHORE AUTO FIN").
       "AUTO FIN",
       "AUTO FINANCE",
@@ -437,6 +440,9 @@ const RULES: readonly Rule[] = [
   {
     category: "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS",
     keywords: [
+      "HSA BANK",
+      "HSA CONTRIB",
+      "HSA CONTRIBUTION",
       "ACORNS INVEST",
       "ACORNS*INVEST",
       "FID BKG SVC",
