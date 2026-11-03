@@ -1,4 +1,4 @@
-import { expect, type Frame, type Locator, type Page } from "@playwright/test";
+import { expect, type Frame, type Locator, type Page, type Route } from "@playwright/test";
 
 // What to use instead of a fixed sleep (eslint refuses page.waitForTimeout in e2e/). A sleep passes
 // on a fast runner and fails on a slow one, and it checks nothing while it waits.
@@ -49,6 +49,26 @@ export async function framesDrawn(target: Page | Frame) {
         requestAnimationFrame(() => requestAnimationFrame(() => resolve(0))),
       ),
   );
+}
+
+// Holds the page's saves until the returned function is called. Something that shows while the
+// server can't answer doesn't wait for the server, on any machine. A timeout of 100 ms would only
+// measure how busy the runner was. Page-activity beacons pass.
+export async function holdSaves(page: Page) {
+  let open = () => {};
+  const gate = new Promise<void>((resolve) => {
+    open = resolve;
+  });
+  const handler = async (route: Route) => {
+    const request = route.request();
+    if (request.method() === "POST" && !request.url().includes("/api/activity")) await gate;
+    await route.fallback();
+  };
+  await page.route("**/*", handler);
+  return async () => {
+    open();
+    await page.unroute("**/*", handler);
+  };
 }
 
 // The server has answered what the page saves next (a server action or a chat route). Call this

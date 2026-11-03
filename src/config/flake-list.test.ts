@@ -7,6 +7,7 @@ import {
   parseRecords,
   recordOf,
   renderFlakes,
+  timingsFrom,
 } from "../../scripts/flake-list-core.mjs";
 
 const NOW = "2026-11-03T12:00:00Z";
@@ -215,6 +216,47 @@ describe("adding up the runs", () => {
       NOW,
     );
     expect(list.flaky.map((r: { id: string }) => r.id)).toEqual(["twice", "once"]);
+  });
+});
+
+describe("how long each file takes", () => {
+  it("reads each file's time from Vitest's report, under its path in the repo", () => {
+    const report = {
+      testResults: [
+        { name: "/home/runner/work/Jane/Jane/src/a.test.ts", startTime: 100, endTime: 350.4 },
+        { name: "/home/runner/work/Jane/Jane/src/b.test.ts", startTime: 0 },
+      ],
+    };
+    expect(timingsFrom(report)).toEqual({ "src/a.test.ts": 250 });
+  });
+});
+
+describe("what's failing now", () => {
+  const at = (days: number) => new Date(Date.parse(NOW) - days * 86400000).toISOString();
+
+  it("puts a test that failed lately above one with more old failures", () => {
+    const records = [
+      run({ run: 1, at: at(9), tests: [flaky("old")] }),
+      run({ run: 2, at: at(8), tests: [flaky("old")] }),
+      run({ run: 3, at: at(7), tests: [flaky("old")] }),
+      run({ run: 4, at: at(1), tests: [flaky("new")] }),
+    ];
+    const { flaky: rows } = flakeList(records as never, NOW);
+    expect(rows.map((row: { id: string }) => row.id)).toEqual(["new", "old"]);
+    expect(rows[0].recent).toBe(1);
+    expect(rows[1].recent).toBe(0);
+  });
+
+  it("counts main's clean runs for the last three days apart", () => {
+    const records = [
+      run({ run: 1, at: at(9), tests: [flaky("old")] }),
+      run({ run: 2, at: at(1) }),
+      run({ run: 3, at: at(2), tests: [flaky("new")] }),
+    ];
+    const list = flakeList(records as never, NOW);
+    expect(list.main).toEqual({ runs: 3, cleanFirstTry: 1 });
+    expect(list.mainRecent).toEqual({ runs: 2, cleanFirstTry: 1 });
+    expect(renderFlakes(list, "o/r", NOW)).toContain("Main, last 3 days: 1 of 2 (50%)");
   });
 });
 

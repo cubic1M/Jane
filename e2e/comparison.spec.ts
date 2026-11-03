@@ -2,6 +2,7 @@ import { expect, test, type Locator } from "@playwright/test";
 import { pickItem } from "./area-tree";
 import { E2E_DATABASE_URL, deleteUser, signedInUser, waitForFullScan } from "./db";
 import { landInChat } from "./chat-page";
+import { holdSaves } from "./waits";
 
 // Comparison cards (founder, 2026-10-24): where Jane recommends insurance or a loan, the options
 // side by side on a wide screen, each with its tags and rows; "Sort by" re-ranks them on the
@@ -84,10 +85,10 @@ test("insurance options side by side, re-ranked by preference, chosen in one tap
 
   // One tap: the card turns inverted at once, then the team has it.
   const name = ((await pick.getByRole("heading", { level: 4 }).textContent()) ?? "").trim();
-  const started = Date.now();
+  const release = await holdSaves(page);
   await pick.getByRole("button", { name: `Choose ${name}` }).click();
-  await expect(pick).toHaveAttribute("data-chosen", "", { timeout: 100 });
-  expect(Date.now() - started).toBeLessThan(1_000);
+  await expect(pick).toHaveAttribute("data-chosen", "");
+  await release();
   await expect(pick.getByRole("button", { name: `Chosen: ${name}` })).toBeVisible();
   await expect(compared.getByRole("status")).toContainText("My team will", { timeout: 30_000 });
   // The others can't be chosen as well.

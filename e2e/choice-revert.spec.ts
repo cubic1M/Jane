@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { walkToCard } from "./card-walk";
 import { E2E_DATABASE_URL, addJaneMessage, autopilotLevel, deleteUser } from "./db";
 import { demoPerson } from "./demo-person";
+import { holdSaves } from "./waits";
 
 // A choice is instant and stays (founder, 2026-10-25: "when you click on it, the button is not
 // instant, it should be instant. It should also not just remove the options, just grey them out,
@@ -49,12 +50,12 @@ test("a choice shows at once, greys the others, and Revert puts the previous lev
   };
   const card = await walkToCard(page, openHome, HEADLINE, { docked });
 
-  // Chosen: marked within 150 ms, the others still there, greyed and off, and Revert.
-  const started = Date.now();
+  // Chosen: marked before the server answers, the others still there, greyed and off, and Revert.
+  let release = await holdSaves(page);
   await card.getByRole("button", { name: LABELS[1] }).click();
   const chosen = card.locator("[data-card-chosen]");
-  await expect(chosen).toBeVisible({ timeout: 150 });
-  expect(Date.now() - started).toBeLessThan(1_000);
+  await expect(chosen).toBeVisible();
+  await release();
   await expect(chosen.getByRole("button", { name: /Handle everything allowed/ })).toHaveAttribute(
     "aria-pressed",
     "true",
@@ -69,12 +70,10 @@ test("a choice shows at once, greys the others, and Revert puts the previous lev
   await expect.poll(() => autopilotLevel(userId!), { timeout: 30_000 }).toBe("all");
 
   // Revert: the choices open again at once, and the previous level is back.
-  const reverting = Date.now();
+  release = await holdSaves(page);
   await chosen.getByRole("button", { name: /Revert/ }).click();
-  await expect(card.getByRole("button", { name: LABELS[1], exact: true })).toBeEnabled({
-    timeout: 150,
-  });
-  expect(Date.now() - reverting).toBeLessThan(1_000);
+  await expect(card.getByRole("button", { name: LABELS[1], exact: true })).toBeEnabled();
+  await release();
   await expect(card.locator("[data-card-chosen]")).toHaveCount(0);
   await expect.poll(() => autopilotLevel(userId!), { timeout: 30_000 }).toBe(before);
 
@@ -82,7 +81,9 @@ test("a choice shows at once, greys the others, and Revert puts the previous lev
   const again = await walkToCard(page, async (n) => (n ? openHome() : scope), HEADLINE, {
     docked,
   });
+  release = await holdSaves(page);
   await again.getByRole("button", { name: LABELS[2], exact: true }).click();
-  await expect(again.locator("[data-card-chosen]")).toBeVisible({ timeout: 150 });
+  await expect(again.locator("[data-card-chosen]")).toBeVisible();
+  await release();
   await expect.poll(() => autopilotLevel(userId!), { timeout: 30_000 }).toBe("ask");
 });

@@ -90,7 +90,8 @@ test("safe to spend says why it's that number, and hands what to spend to the ch
     steps.length,
   );
   expect(money(steps.at(-1)!)).toBe(total);
-  await clearOf(page, popup, tile);
+  // The page can still be settling just after it opens: it must end up clear.
+  await expect(() => clearOf(page, popup, tile)).toPass();
   await expect(popup.getByRole("link", { name: /The full working/ })).toHaveAttribute(
     "href",
     "/figures/safe_to_spend",
@@ -196,7 +197,8 @@ test("saved so far opens on where the savings came from", async ({
   await expect(popup.locator("[data-plan-goal]")).toBeVisible();
   await expect(page.locator("[data-popup-line] path")).toHaveAttribute("d", /^M/);
   await expectMarchingLine(page.locator("[data-popup-line]"));
-  await clearOf(page, popup, tile);
+  // The page can still be settling just after it opens: it must end up clear.
+  await expect(() => clearOf(page, popup, tile)).toPass();
   await expect(popup.getByRole("link", { name: /See the whole plan/ })).toHaveAttribute(
     "href",
     "/plan",

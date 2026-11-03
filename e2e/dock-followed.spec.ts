@@ -66,9 +66,12 @@ test("a card followed to its page, or answered, doesn't come back", async ({
   const linked = await stepTo(page, (card) => card.locator("a[href^='/']"));
   const followed = await headlineOf(linked);
   const href = (await linked.locator("a[href^='/']").first().getAttribute("href"))!;
-  await linked.locator("a[href^='/']").first().click();
   const path = new URL(href, "http://x").pathname;
-  await expect(page).toHaveURL((url) => url.pathname === path);
+  // The dock can step between cards as the tap lands, so try again until the page opens.
+  await expect(async () => {
+    await linked.locator("a[href^='/']").first().click({ timeout: 2_000 });
+    await expect(page).toHaveURL((url) => url.pathname === path, { timeout: 5_000 });
+  }).toPass({ timeout: 30_000 });
   await expect(cardNamed(page, followed)).toHaveCount(0);
   await staysGone(page, followed);
   await page.goto("/money");

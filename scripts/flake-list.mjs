@@ -14,6 +14,7 @@ import {
   parseRecords,
   recordOf,
   renderFlakes,
+  timingsFrom,
 } from "./flake-list-core.mjs";
 
 const REPO = process.env.GITHUB_REPOSITORY ?? "cubic1M/Jane";
@@ -45,7 +46,14 @@ try {
 }
 const seen = new Set(records.map((r) => `${r.run}/${r.attempt}`));
 
-function reportsOf(runId, attempt) {
+let timings = {};
+try {
+  timings = JSON.parse(readFileSync(join(dir, "timings.json"), "utf8"));
+} catch {
+  console.log("No timings yet.");
+}
+
+function reportsOf(runId, attempt, onMainNow) {
   const { artifacts } = api(`actions/runs/${runId}/artifacts?per_page=100`);
   const suffix = `-attempt-${attempt}`;
   const reports = [];
@@ -57,6 +65,8 @@ function reportsOf(runId, attempt) {
       if (!file.endsWith(".json")) continue;
       const report = JSON.parse(readFileSync(join(out, file), "utf8"));
       reports.push(report.testResults ? fromVitest(report) : fromPlaywright(report));
+      // A whole run of main says how long each file takes: PRs run only part, on a test merge.
+      if (report.testResults && onMainNow) Object.assign(timings, timingsFrom(report));
     }
   }
   return reports;
@@ -102,7 +112,9 @@ for (const { r, attempt } of fresh.slice(0, MOST_RUNS_AT_A_TIME)) {
         conclusion: details.conclusion,
         jobsFailed: cancelled ? [] : jobsFailed,
       },
-      cancelled ? [] : reportsOf(r.id, attempt),
+      cancelled
+        ? []
+        : reportsOf(r.id, attempt, r.head_branch === "main" && r.event !== "pull_request"),
     ),
   );
   added += 1;
@@ -117,6 +129,7 @@ const list = flakeList(countable, now);
 const kept = keepRecent(records, now);
 writeFileSync(join(dir, "records.jsonl"), kept.map((r) => JSON.stringify(r)).join("\n") + "\n");
 writeFileSync(join(dir, "FLAKES.md"), renderFlakes(list, REPO, now));
+writeFileSync(join(dir, "timings.json"), `${JSON.stringify(timings, null, 0)}\n`);
 if (process.env.GITHUB_STEP_SUMMARY && existsSync(process.env.GITHUB_STEP_SUMMARY)) {
   writeFileSync(
     process.env.GITHUB_STEP_SUMMARY,
@@ -125,7 +138,7 @@ if (process.env.GITHUB_STEP_SUMMARY && existsSync(process.env.GITHUB_STEP_SUMMAR
 }
 
 // One commit, replaced each time: the data needs no history, and the secret scan reads it all.
-git("add", "records.jsonl", "FLAKES.md");
+git("add", "records.jsonl", "FLAKES.md", "timings.json");
 git(
   "-c",
   "user.name=github-actions[bot]",
