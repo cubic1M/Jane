@@ -44,6 +44,7 @@ describe.runIf(url)("a person's daily allowance of written answers", () => {
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });
   afterAll(async () => {
+    await client.rateLimit.deleteMany({ where: { key: "trialspend:all" } });
     vi.unstubAllEnvs();
     // The months of their own these tests spent in.
     await client.rateLimit.deleteMany({
@@ -89,14 +90,15 @@ describe.runIf(url)("a person's daily allowance of written answers", () => {
 
   it("never stops an admin, by role or by ADMIN_EMAILS", async () => {
     const byRole = await person({ role: "admin" });
+    expect(await dailyCapCents(byRole, { client })).toBeNull();
     const email = `founder-${crypto.randomUUID()}@example.com`;
     vi.stubEnv("ADMIN_EMAILS", `someone@example.com, ${email.toUpperCase()}`);
     const byEmail = await person({ email });
-    for (const id of [byRole, byEmail]) {
-      expect(await dailyCapCents(id, { client })).toBeNull();
-      await spend(id, CHAT_PERSON_DAILY_CAP_CENTS * 3, at("14:00:00"));
-      expect(await overDailyCap(id, { client, now: at("14:00:01") })).toBe(false);
-    }
+    expect(await dailyCapCents(byEmail, { client })).toBeNull();
+    await spend(byEmail, CHAT_PERSON_DAILY_CAP_CENTS * 3, at("14:00:00"));
+    expect(await overDailyCap(byEmail, { client, now: at("14:00:01") })).toBe(false);
+    // Taken off the list, their role alone doesn't keep the allowance.
+    expect(await dailyCapCents(byRole, { client })).toBe(CHAT_PERSON_DAILY_CAP_CENTS);
     vi.unstubAllEnvs();
     // Off the list and not an admin: the limit again.
     expect(await overDailyCap(byEmail, { client, now: at("14:00:01") })).toBe(true);

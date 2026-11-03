@@ -143,7 +143,7 @@ export async function acceptInvite(
   await track(user.id, "household_joined", {});
 }
 
-async function stopSharing(tx: Prisma.TransactionClient, userIds: string[]): Promise<void> {
+export async function stopSharing(tx: Prisma.TransactionClient, userIds: string[]): Promise<void> {
   const where = { userId: { in: userIds }, sharedWithHousehold: true };
   const data = { sharedWithHousehold: false };
   await tx.account.updateMany({ where, data });

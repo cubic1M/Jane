@@ -3,7 +3,7 @@ import { logAudit, type AuditEvent } from "@/lib/audit";
 import { generateBackupCodes, hashBackupCode, looksLikeBackupCode } from "@/lib/backup-codes";
 import { decrypt, encrypt } from "@/lib/crypto";
 import { db as defaultClient } from "@/lib/db";
-import { hit } from "@/lib/rate-limit";
+import { firstUseInWindow, hit } from "@/lib/rate-limit";
 import { generateSecret, otpauthUri, verifyTotp } from "@/lib/totp";
 
 // Two-factor sign-in with an authenticator app. Admins must have it before /admin opens;
@@ -77,7 +77,7 @@ async function checkCode(
 ): Promise<boolean> {
   if (!user.mfaSecretEncrypted) return false;
   if (verifyTotp(decrypt(user.mfaSecretEncrypted), code, now)) {
-    return (await hit("mfaCodeUsed", `${userId}:${code.replace(/\s/g, "")}`, { client, now })).ok;
+    return firstUseInWindow("mfaCodeUsed", `${userId}:${code.replace(/\s/g, "")}`, { client, now });
   }
   if (!user.mfaEnabledAt || !looksLikeBackupCode(code)) return false;
   const { count } = await client.mfaBackupCode.updateMany({

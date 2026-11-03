@@ -13,6 +13,7 @@ import { STATEMENT_TRIAL_PERSON_CAP_CENTS } from "@/config/statement-trial";
 import { MODEL_PRICES_CENTS } from "@/config/answer-checks";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
+import { stillAnAdmin } from "@/lib/admin-emails";
 import { isAdminEmail } from "@/lib/invites";
 import { isStatementTrialUser, isTrialUser } from "@/lib/trial-ids";
 import { DAY_MS } from "@/lib/dates";
@@ -105,7 +106,12 @@ export async function dailyCapCents(
     where: { id: userId },
     select: { role: true, email: true },
   });
-  if (user?.role === "admin" || (user?.email && isAdminEmail(user.email))) return null;
+  // Someone taken off ADMIN_EMAILS keeps their role until they next sign in: not the allowance.
+  if (
+    (user?.role === "admin" && stillAnAdmin(user.email)) ||
+    (user?.email && isAdminEmail(user.email))
+  )
+    return null;
   return CHAT_PERSON_DAILY_CAP_CENTS;
 }
 

@@ -102,6 +102,24 @@ export async function hitMany(
   };
 }
 
+// True the first time, and false again for a whole window after, wherever that falls: windows are
+// fixed, so one used at the end of a window would otherwise be new at the start of the next.
+export async function firstUseInWindow(
+  name: LimitName,
+  subject: string,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<boolean> {
+  if (!(await hit(name, subject, { client, now })).ok) return false;
+  const { key, windowStart, windowMs } = windowFor(name, subject, now);
+  const before = await client.rateLimit.findUnique({
+    where: {
+      key_windowStart: { key, windowStart: new Date(windowStart.getTime() - windowMs) },
+    },
+    select: { count: true },
+  });
+  return !before;
+}
+
 // Gives back one use in the current window, for a request that didn't cost what the limit
 // protects (Claude failed or was too slow, so the rules answered): it shouldn't count.
 export async function giveBack(

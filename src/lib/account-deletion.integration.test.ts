@@ -355,6 +355,36 @@ describe.runIf(url)("deleting data against a real database", () => {
     );
   });
 
+  // An independent read: leaving ended sharing, but a partner deleting their account didn't.
+  it("ends the remaining partner's sharing too", async () => {
+    const stay = await client.user.create({
+      data: { email: `stay-${crypto.randomUUID()}@example.com` },
+    });
+    const gone = await client.user.create({
+      data: { email: `gone-${crypto.randomUUID()}@example.com` },
+    });
+    const household = await client.household.create({ select: { id: true } });
+    await client.householdMember.createMany({
+      data: [stay, gone].map((u) => ({ householdId: household.id, userId: u.id })),
+    });
+    await client.account.create({
+      data: {
+        userId: stay.id,
+        source: "csv",
+        name: "Joint",
+        type: "depository",
+        currentBalanceCents: 100,
+        sharedWithHousehold: true,
+      },
+    });
+    await deleteAllData(gone.id, { client, api: { itemRemove: vi.fn() } as never });
+    expect(
+      await client.account.count({ where: { userId: stay.id, sharedWithHousehold: true } }),
+    ).toBe(0);
+    await client.user.delete({ where: { id: stay.id } });
+    await client.household.deleteMany({ where: { id: household.id } });
+  });
+
   // /privacy: only a record that the deletion happened stays. Details like a medical provider did too.
   it("takes the person's audit history, leaving the security log", async () => {
     const userId = (
