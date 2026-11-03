@@ -41,6 +41,10 @@ const BOILERPLATE = [
   // PAYROLL" (debugger 11-02: pay read "Ach Credit Duke Energy Corp Payroll"). Saved keys moved in
   // prisma/migrations/20270421000000_merchant_without_ach_prefix: keep them in step.
   /^ACH (?:DEBIT|CREDIT)\s+(?=\S)/,
+  // A credit union's "ACH WITHDRAWAL ROCKET MORTGAGE PAYMENT" and others' words for the same thing
+  // (debugger 11-03). Saved keys moved in prisma/migrations/
+  // 20270502000000_merchant_without_ach_withdrawal: keep them in step.
+  /^(?:ACH (?:WITHDRAWAL|PAYMENT|PMT)|(?:ELECTRONIC|EXTERNAL|EFT) WITHDRAWAL|PREAUTHORIZED DEBIT|PRE-AUTH DEBIT)\s+(?=\S)/,
 ];
 
 // A payment app in front of the person or company paid: "ZELLE TO OAK RIDGE APTS RENT" is Oak
