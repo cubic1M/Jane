@@ -17,7 +17,7 @@ BOTS = {
 
 def _register_optional():
     for mod in ("sng.field.registry", "sng.field2.registry", "sng.field3.registry", "sng.field4.registry",
-                "sng.ours.registry"):
+                "sng.field5.registry", "sng.ours.registry"):
         try:
             m = importlib.import_module(mod)
         except ImportError:
@@ -50,7 +50,8 @@ def make(name: str):
 
 
 def field_weights(name: str):
-    for mod in ("sng.field.registry", "sng.field2.registry", "sng.field3.registry", "sng.field4.registry"):
+    for mod in ("sng.field.registry", "sng.field2.registry", "sng.field3.registry", "sng.field4.registry",
+                "sng.field5.registry"):
         try:
             m = importlib.import_module(mod)
             FIELDS.update(getattr(m, "FIELDS", {}))
