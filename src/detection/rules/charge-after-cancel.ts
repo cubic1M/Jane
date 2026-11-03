@@ -24,7 +24,8 @@ export const chargeAfterCancel: Rule = (input) =>
     if (charges.length === 0) return [];
 
     const total = sumCents(charges);
-    const merchant = charges[0].merchantName ?? merchantOf(charges[0])?.name ?? merchantKey;
+    const first = charges[0]!;
+    const merchant = first.merchantName ?? merchantOf(first)?.name ?? merchantKey;
     return [
       {
         type: "charge_after_cancel",

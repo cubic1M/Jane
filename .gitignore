@@ -46,3 +46,7 @@ next-env.d.ts
 
 # demo video output (scripts/demo-video)
 /scripts/demo-video/out/
+
+# The weak-test finder's working files and reports
+.stryker-tmp/
+reports/mutation/

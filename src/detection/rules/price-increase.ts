@@ -25,9 +25,9 @@ const near = (cents: number, to: number) =>
 function priceStep(stream: Stream): { priorAverageCents: number; priorCount: number } | null {
   const charges = stream.charges.map((c) => c.amountCents);
   if (charges.length === 0) return null;
-  const latest = charges[charges.length - 1];
+  const latest = charges[charges.length - 1]!;
   let since = 1;
-  while (since < charges.length && near(charges[charges.length - 1 - since], latest)) since += 1;
+  while (since < charges.length && near(charges[charges.length - 1 - since]!, latest)) since += 1;
   if (since > PRICE_INCREASE_MAX_CHARGES_SINCE) return null;
   const prior = charges.slice(0, charges.length - since);
   if (prior.length === 0) return null;

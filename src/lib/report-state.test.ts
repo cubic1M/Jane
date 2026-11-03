@@ -9,7 +9,7 @@ import {
   reportState,
   shortUploadDays,
   staleStatementsEnd,
-} from "./state";
+} from "./report-state";
 
 const base = { transactions: 240, findings: 0, firstDetectionDone: true, scanRunning: false };
 

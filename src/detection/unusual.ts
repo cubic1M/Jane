@@ -167,10 +167,10 @@ export function unusualAlerts(
       (a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id),
     );
     if (sorted.length < UNUSUAL_DOUBLE_MIN_CHARGES) continue;
-    const a = sorted[sorted.length - 1 - 1];
-    const b = sorted[sorted.length - 1];
+    const a = sorted[sorted.length - 1 - 1]!;
+    const b = sorted[sorted.length - 1]!;
     const before = sorted.slice(0, -1);
-    const gaps = before.slice(1).map((c, i) => daysBetween(before[i].date, c.date));
+    const gaps = before.slice(1).map((c, i) => daysBetween(before[i]!.date, c.date));
     const monthly =
       median(gaps) >= UNUSUAL_MONTHLY_GAP_DAYS.min && median(gaps) <= UNUSUAL_MONTHLY_GAP_DAYS.max;
     if (

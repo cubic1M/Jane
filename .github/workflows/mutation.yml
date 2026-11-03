@@ -1,0 +1,39 @@
+name: Weak-test finder
+
+# Stryker on the money folders, once a week: a report to read, not a gate (stryker.config.mjs).
+on:
+  schedule:
+    - cron: "17 6 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mutation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # Kept between weeks, so only mutants in code or tests that changed run again.
+      - uses: actions/cache@v6
+        with:
+          path: reports/mutation/incremental.json
+          key: mutation-${{ github.run_id }}
+          restore-keys: mutation-
+      - run: npm run mutation
+        env:
+          STRYKER_WORKERS: "4"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: mutation-report
+          path: |
+            reports/mutation/index.html
+            reports/mutation/mutation.json
+          retention-days: 30

@@ -47,6 +47,9 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       - run: npm run typecheck
+      # The layers that matter, dead code and strict indexing in the money folders (after typecheck,
+      # whose route types it reads).
+      - run: npm run check:rules
 
   unit:
     name: Unit tests (${{ matrix.shard }}/4)

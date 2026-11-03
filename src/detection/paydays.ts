@@ -201,7 +201,7 @@ function paydayDates(rule: Rule, from: string, until: string): string[] {
 function score(rule: Rule, deposits: number[], allowed: number) {
   const expected = paydayDays(
     rule,
-    deposits[0] - PAYDAY_POSTING_DAYS,
+    deposits[0]! - PAYDAY_POSTING_DAYS,
     deposits.at(-1)! + PAYDAY_POSTING_DAYS,
   );
   const open = new Set(expected);

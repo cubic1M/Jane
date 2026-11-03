@@ -1,4 +1,4 @@
-import { findingSure } from "@/app/report/state";
+import { findingSure } from "@/lib/report-state";
 import { CLOSE_CHANGE_DAYS } from "@/config/close";
 import { SUGGESTION_CONFIDENCE_FROM } from "@/config/priorities";
 import { loadDetectionInput } from "@/detection/engine";

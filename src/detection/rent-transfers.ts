@@ -62,7 +62,7 @@ function steadyMonthly(
     const months = new Set(steady.map((r) => rentMonth(r.date)));
     // One payment a month: two in a month is something else (splitting bills, paying back).
     if (months.size < RENT_TRANSFER_MIN_MONTHS || months.size !== steady.length) continue;
-    const name = normalizeMerchant(rows[0].description)?.name ?? merchantKey;
+    const name = normalizeMerchant(rows[0]!.description)?.name ?? merchantKey;
     found.push({
       merchantKey,
       // Money in is keyed "from <payer>" (withoutPaymentApp): the question names the person.
