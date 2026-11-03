@@ -64,5 +64,7 @@ investment advice in this MVP.
 - npm run dev / npm test / npm run test:e2e / npm run lint / npx prisma migrate dev
 - npm run test:access: the access proof (TEST_DATABASE_URL on a throwaway local database)
 - npm run flakes before bisecting a red run: what failed on its first try lately (docs/ci.md)
+- npm run check:migrations before pushing a new migration: it must sort last and be safe for the
+  running code (docs/migrations.md)
 - npm run check:e2e-wording before pushing a change to words on a page: lists wording removed
   from src/ that an end-to-end spec still expects

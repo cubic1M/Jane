@@ -14,7 +14,9 @@ on:
   # pushes made with the workflow token start no workflows.
   workflow_dispatch:
 
-# A newer push to the same pull request cancels its older run; main keeps every run.
+# A newer push to the same pull request cancels its older run. On main a started run finishes, but
+# GitHub keeps only the newest waiting one, so a busy main doesn't test every commit (44% of main's
+# commits from 10-24 to 11-02 had no finished run of their own).
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -82,6 +84,21 @@ jobs:
         run: node scripts/test-scope.mjs
         env:
           PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+
+  # New migrations against docs/migrations.md. Only needs to run git and Squawk, so it reads the
+  # history's trees and not its files.
+  migrations:
+    name: Migration safety
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          filter: blob:none
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - run: npm run check:migrations
 
   unit:
     name: Unit tests (${{ matrix.shard }}/${{ needs.scope.outputs.total }})
@@ -226,15 +243,16 @@ jobs:
   checks:
     name: Lint, typecheck and unit tests
     runs-on: ubuntu-latest
-    needs: [scope, static, unit, access-proof]
+    needs: [scope, static, unit, access-proof, migrations]
     if: always()
     steps:
       # Unit tests may skip only on a docs-only PR. Skipped for any other reason, this fails.
       - name: Fail if any part failed or was skipped
         run: |
-          echo "scope: ${{ needs.scope.outputs.mode }}, static: ${{ needs.static.result }}, unit: ${{ needs.unit.result }}, access proof: ${{ needs.access-proof.result }}"
+          echo "scope: ${{ needs.scope.outputs.mode }}, static: ${{ needs.static.result }}, unit: ${{ needs.unit.result }}, access proof: ${{ needs.access-proof.result }}, migrations: ${{ needs.migrations.result }}"
           test "${{ needs.scope.result }}" = success
           test "${{ needs.static.result }}" = success
+          test "${{ needs.migrations.result }}" = success
           test "${{ needs.access-proof.result }}" = success
           test "${{ needs.unit.result }}" = success || { test "${{ needs.scope.outputs.mode }}" = docs && test "${{ needs.unit.result }}" = skipped; }
 
