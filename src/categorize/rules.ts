@@ -911,6 +911,13 @@ const RULES: readonly Rule[] = [
       "MEDICARE SUPP",
       "MEDICARE SUPPLEMENT",
       "MEDIGAP",
+      // Part B's premium paid directly, and the AARP plan as UnitedHealthcare bills it (debugger
+      // 11-03: $387 a month uncategorized for a retiree).
+      "MEDICARE PREMIUM",
+      "CMS MEDICARE",
+      "CMS MED INS",
+      "AARP UHC",
+      "UHC SUPPLEMENT",
     ],
   },
   {
@@ -2143,6 +2150,18 @@ const RULES: readonly Rule[] = [
       "SCHOLARSHIP",
       "DIRECT LOAN DISB",
       "STUDENT LOAN DISB",
+      // Servicers' own words (debugger 11-03).
+      "FEDLOAN DISB",
+      "FEDLOAN DISBURSEMENT",
+      "SALLIE MAE DISB",
+      "SALLIE MAE DISBURSEMENT",
+      "NELNET LOAN DISB",
+      "NELNET DISB",
+      "NELNET DISBURSEMENT",
+      "MOHELA DISB",
+      "MOHELA DISBURSEMENT",
+      "AIDVANTAGE DISB",
+      "AIDVANTAGE DISBURSEMENT",
     ],
     direction: "in",
   },

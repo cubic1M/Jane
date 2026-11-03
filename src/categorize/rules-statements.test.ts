@@ -345,3 +345,46 @@ describe("a gym, as a card statement writes it", () => {
     expect(result?.detailed).toBe("PERSONAL_CARE_GYMS_AND_FITNESS_CENTERS");
   });
 });
+
+// Debugger 11-03: a retiree's two health premiums, $387 a month, sat uncategorized.
+describe("a retiree's health premiums, as banks write them", () => {
+  it.each([
+    "MEDICARE PREMIUM CMS MED INS",
+    "CMS MEDICARE PREM",
+    "AARP UHC SUPPLEMENT INS PREM",
+    "UHC MEDICARE SUPPLEMENT",
+  ])("%s is insurance", (description) => {
+    expect(categorizeByRules({ description, amountCents: 17_470, hints: {} })?.detailed).toBe(
+      "GENERAL_SERVICES_INSURANCE",
+    );
+  });
+
+  it("doesn't take a membership for insurance", () => {
+    expect(
+      categorizeByRules({ description: "AARP MEMBERSHIP", amountCents: 1_600, hints: {} })
+        ?.detailed,
+    ).not.toBe("GENERAL_SERVICES_INSURANCE");
+  });
+});
+
+// Debugger 11-03: a student's loan money, as servicers write it, matched nothing: never income, but
+// a question Jane shouldn't need to ask.
+describe("a student loan's money arriving", () => {
+  it.each([
+    "FEDLOAN DISBURSEMENT TO STUDENT",
+    "SALLIE MAE DISBURSEMENT REFUND",
+    "NELNET LOAN DISB",
+    "MOHELA DISBURSEMENT",
+  ])("%s is a student loan disbursement", (description) => {
+    expect(categorizeByRules({ description, amountCents: -275_000, hints: {} })?.detailed).toBe(
+      "LOAN_DISBURSEMENTS_STUDENT",
+    );
+  });
+
+  it("doesn't take a payment to the servicer for money arriving", () => {
+    expect(
+      categorizeByRules({ description: "SALLIE MAE PAYMENT", amountCents: 18_000, hints: {} })
+        ?.detailed,
+    ).not.toBe("LOAN_DISBURSEMENTS_STUDENT");
+  });
+});
