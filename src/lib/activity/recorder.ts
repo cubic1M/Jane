@@ -109,6 +109,12 @@ function visitId(): string {
   }
 }
 
+// Three clicks on plain text is how people select it, and it can be anything they typed or read: its
+// words are kept only for something meant to be clicked.
+export function rageClickFields(clickable: Element | null, target: Element) {
+  return { role: roleOf(clickable ?? target), label: clickable ? labelOf(clickable) : undefined };
+}
+
 export function startRecorder(): { page(pathname: string): void; stop(): void } {
   const visit = visitId();
   const queue: Recorded[] = [];
@@ -185,10 +191,8 @@ export function startRecorder(): { page(pathname: string): void; stop(): void } 
     );
     clicks.push({ x: e.clientX, y: e.clientY, at: now });
     if (clicks.length === ACTIVITY.rageClicks) {
-      const what = el ?? target;
       push("rage_click", {
-        role: roleOf(what),
-        label: labelOf(what),
+        ...rageClickFields(el, target),
         data: { count: clicks.length },
       });
     }

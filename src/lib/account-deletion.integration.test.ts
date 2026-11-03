@@ -355,6 +355,35 @@ describe.runIf(url)("deleting data against a real database", () => {
     );
   });
 
+  // /privacy: only a record that the deletion happened stays. Details like a medical provider did too.
+  it("takes the person's audit history, leaving the security log", async () => {
+    const userId = (
+      await client.user.create({ data: { email: `audit-${crypto.randomUUID()}@example.com` } })
+    ).id;
+    const entry = (event: string) => ({
+      actorId: userId,
+      actorType: "user" as const,
+      event,
+      targetType: "user",
+      targetId: userId,
+      metadata: {},
+    });
+    await client.auditLog.create({
+      data: { ...entry("medical_request_sent"), metadata: { provider: "A Made Up Clinic" } },
+    });
+    await client.auditLog.create({ data: entry("tax_tag_changed") });
+    await client.auditLog.create({ data: entry("user_signed_in") });
+
+    await deleteAllData(userId, { client, api: { itemRemove: vi.fn() } as never });
+
+    const left = await client.auditLog.findMany({
+      where: { actorId: userId },
+      select: { event: true },
+    });
+    expect(left.map((r) => r.event)).toEqual(["user_signed_in"]);
+    await client.auditLog.deleteMany({ where: { actorId: userId } });
+  });
+
   // Debugger 11-03: a walk found the email surviving deletion in rate_limits ("auth:email:..."), though
   // /privacy says "You can delete everything". This reads every text column of every table, so a new
   // table that keeps an email is caught too. Ids stay in the access log and jobs, on purpose: an id on

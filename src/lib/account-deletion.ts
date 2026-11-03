@@ -1,3 +1,4 @@
+import { ACCESS_EVENTS } from "@/config/access-log";
 import type { PlaidApi } from "plaid";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { logAudit } from "@/lib/audit";
@@ -54,6 +55,15 @@ export async function deleteAllData(
       await tx.sharedCharge.deleteMany(where);
       await tx.settlement.deleteMany(where);
     }
+    // /privacy says only a record that the deletion happened stays, in the security log. The rest of
+    // the audit log holds things like a medical provider or a tax tag, and has no tie to the user
+    // row to go with it.
+    await tx.auditLog.deleteMany({
+      where: {
+        OR: [{ actorId: userId }, { targetId: userId }],
+        event: { notIn: [...ACCESS_EVENTS] },
+      },
+    });
     await tx.user.delete({ where: { id: userId } });
   });
   await logAudit(

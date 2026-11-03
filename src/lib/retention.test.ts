@@ -29,7 +29,10 @@ describe("the privacy policy and the retention config", () => {
 
   it("has a cleanup for every kind of record in the config", async () => {
     const deleteMany = vi.fn(async () => ({ count: 0 }));
-    const client = new Proxy({}, { get: () => ({ deleteMany }) }) as never;
+    const client = new Proxy(
+      {},
+      { get: (_, key) => (key === "$executeRaw" ? async () => 0 : { deleteMany }) },
+    ) as never;
     const removed = await runRetention({ client });
     expect(Object.keys(removed).sort()).toEqual(Object.keys(RETENTION_PERIODS).sort());
   });
@@ -40,15 +43,18 @@ describe("the privacy policy and the retention config", () => {
     const client = new Proxy(
       {},
       {
-        get: (_, table: string) => ({
-          deleteMany: async () => {
-            if (table === "user" && pending.size > 0) overlapped = true;
-            pending.add(table);
-            await new Promise((resolve) => setTimeout(resolve, 5));
-            pending.delete(table);
-            return { count: 0 };
-          },
-        }),
+        get: (_, table: string) =>
+          table === "$executeRaw"
+            ? async () => 0
+            : {
+                deleteMany: async () => {
+                  if (table === "user" && pending.size > 0) overlapped = true;
+                  pending.add(table);
+                  await new Promise((resolve) => setTimeout(resolve, 5));
+                  pending.delete(table);
+                  return { count: 0 };
+                },
+              },
       },
     ) as never;
     await runRetention({ client });

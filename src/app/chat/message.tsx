@@ -106,7 +106,10 @@ export function ChatMessageItem({ initial }: { initial: MessageView }) {
           <span className="sr-only">You, </span>
           {message.time}
         </span>
-        <p className="bg-emerald-700 px-3 py-2 whitespace-pre-line text-white [overflow-wrap:anywhere]">
+        <p
+          data-private
+          className="bg-emerald-700 px-3 py-2 whitespace-pre-line text-white [overflow-wrap:anywhere]"
+        >
           {message.body}
         </p>
       </li>
@@ -146,7 +149,9 @@ export function ChatMessageItem({ initial }: { initial: MessageView }) {
           </p>
         </details>
       ) : (
-        <p className="whitespace-pre-line [overflow-wrap:anywhere]">{message.body}</p>
+        <p data-private className="whitespace-pre-line [overflow-wrap:anywhere]">
+          {message.body}
+        </p>
       )}
       {/* Spec step 94: a chart, table, timeline or progress bars, drawn in monospace text
           that fits a phone; screen readers get the text alternative instead. */}

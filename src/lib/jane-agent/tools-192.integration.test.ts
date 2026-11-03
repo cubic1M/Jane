@@ -1,3 +1,4 @@
+import { invitePartner, leaveHousehold } from "@/lib/household";
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
@@ -61,5 +62,16 @@ describe.runIf(url)("a tool for everything, against a real database", () => {
     expect(Array.isArray(unread)).toBe(true);
     expect(unread.length).toBeGreaterThan(0);
     expect(await run("household")).toEqual({ note: "They aren't sharing with a partner." });
+  });
+
+  // Someone who hasn't joined anything: their address has no reason to reach Claude.
+  it("counts who is invited to the household, without their address", async () => {
+    await invitePartner({ id: userId, email: "person@example.com" }, "invited@example.com", {
+      client,
+    });
+    const answer = await run("household");
+    expect(answer).toMatchObject({ members: 1, waitingToJoin: 1 });
+    expect(JSON.stringify(answer)).not.toContain("invited@example.com");
+    await leaveHousehold(userId, { client });
   });
 });
