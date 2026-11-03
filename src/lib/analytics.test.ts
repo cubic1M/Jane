@@ -44,6 +44,30 @@ describe("track", () => {
     expect(captureImmediate).not.toHaveBeenCalled();
   });
 
+  it("keeps what an event's name would reveal out of PostHog, but stores it", async () => {
+    vi.stubEnv("POSTHOG_KEY", "phc_test");
+    resetAnalyticsForTests();
+    for (const name of ["medical_request_sent", "tax_identity_case_opened", "tight_request_sent"]) {
+      await track("user_1", name, {});
+      expect(create).toHaveBeenLastCalledWith({ data: { userId: "user_1", name, properties: {} } });
+    }
+    expect(captureImmediate).not.toHaveBeenCalled();
+  });
+
+  it("keeps a bank's name out of PostHog, and in our own table", async () => {
+    vi.stubEnv("POSTHOG_KEY", "phc_test");
+    resetAnalyticsForTests();
+    await track("user_1", "link_succeeded", { institution: "A Bank", demo: true });
+    expect(create).toHaveBeenLastCalledWith({
+      data: {
+        userId: "user_1",
+        name: "link_succeeded",
+        properties: { institution: "A Bank", demo: true },
+      },
+    });
+    expect(captureImmediate.mock.calls[0][0].properties).toEqual({ demo: true });
+  });
+
   it("skips PostHog when no key is configured", async () => {
     vi.stubEnv("POSTHOG_KEY", "");
 

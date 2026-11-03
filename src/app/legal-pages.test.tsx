@@ -104,8 +104,10 @@ describe("the legal pages", () => {
     const privacy = text(PrivacyPage);
     expect(privacy).toMatch(/Anthropic makes Claude/);
     expect(privacy).toMatch(
-      /never receives your password, your bank sign-in, your Plaid connection, your account numbers or your raw bank descriptions/,
+      /never receives your password, your bank sign-in or your Plaid connection/,
     );
+    // True of the chat: its tools read a transaction's bank description.
+    expect(privacy).toMatch(/it can receive the description your bank wrote on a transaction/);
   });
 
   it("give the support address, else a founder's, else a clear placeholder", () => {

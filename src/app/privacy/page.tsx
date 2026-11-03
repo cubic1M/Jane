@@ -148,8 +148,9 @@ export default function PrivacyPage() {
               To tell whether a charge is a subscription: the merchant&apos;s cleaned-up name only.
             </li>
           </ul>
-          It never receives your password, your bank sign-in, your Plaid connection, your account
-          numbers or your raw bank descriptions.
+          It never receives your password, your bank sign-in or your Plaid connection. When you
+          chat, it can receive the description your bank wrote on a transaction, which can include
+          the name of a person or company, or part of a reference number.
         </li>
         <li>
           <strong>Resend</strong> delivers our emails, so it receives your email address and each

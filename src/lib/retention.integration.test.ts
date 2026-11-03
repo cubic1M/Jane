@@ -133,4 +133,30 @@ describe.runIf(url)("data retention against a real database", () => {
         .sort(),
     ).toEqual([`kept-${tag}`, `young-${tag}`]);
   });
+
+  it("clears what earlier deletions left in the audit log, and only that", async () => {
+    const entry = (actorId: string, event: string) => ({
+      actorId,
+      actorType: "user" as const,
+      event,
+      targetType: "user",
+      targetId: `audit-${tag}`,
+      metadata: {},
+    });
+    await client.auditLog.createMany({
+      data: [
+        entry(`gone-${tag}`, "medical_request_sent"),
+        entry(`gone-${tag}`, "user_data_deleted"),
+        entry(userId, "medical_request_sent"),
+      ],
+    });
+    await runRetention({ client });
+    const left = await client.auditLog.findMany({
+      where: { targetId: `audit-${tag}` },
+      select: { actorId: true, event: true },
+    });
+    expect(left).toHaveLength(2);
+    expect(left).toContainEqual({ actorId: `gone-${tag}`, event: "user_data_deleted" });
+    expect(left).toContainEqual({ actorId: userId, event: "medical_request_sent" });
+  });
 });

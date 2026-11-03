@@ -46,6 +46,13 @@ export async function runRetention({
         where: { event: { in: [...ACCESS_EVENTS] }, createdAt: { lt: before("accessLog") } },
       }),
     ]);
+  // What deleting an account leaves out of the audit log now, for people deleted before it did. The
+  // table has no tie to users, so nothing else ever removes these.
+  const orphans = await client.$executeRaw`
+    DELETE FROM audit_log a
+    WHERE a.actor_type = 'user'
+      AND a.event <> ALL(${[...ACCESS_EVENTS]}::text[])
+      AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id = a.actor_id)`;
   // Spec step 138: everything a trial person owns goes with them (it all cascades). After
   // the rest, not alongside: the cascade deletes sessions too, and the two deletes at once
   // can deadlock.
@@ -60,7 +67,7 @@ export async function runRetention({
     cronRuns: runs.count,
     rateLimits: limits.count,
     expiredSessions: sessions.count + links.count,
-    accessLog: access.count,
+    accessLog: access.count + orphans,
     trialPeople: trials.count,
   };
 }

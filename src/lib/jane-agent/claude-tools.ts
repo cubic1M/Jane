@@ -1221,7 +1221,7 @@ async function runChatToolWork(
       if (!household) return out({ note: "They aren't sharing with a partner." });
       return out({
         members: household.members.length,
-        waitingToJoin: household.invites.map((i) => ({ email: i.email })),
+        waitingToJoin: household.invites.length,
       });
     }
     case "whole_picture": {

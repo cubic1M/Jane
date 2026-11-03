@@ -63,7 +63,7 @@ test("the Privacy Policy says what is shared, kept, deleted, and which cookies",
   await expect(main.getByText(/never stored as a file/)).toBeVisible();
   await expect(main.getByText(/encrypted \(AES-256-GCM\) and never shown or logged/)).toBeVisible();
   await expect(
-    main.getByText(/It never receives your password, your bank sign-in, your Plaid connection/),
+    main.getByText(/It never receives your password, your bank sign-in or your Plaid connection/),
   ).toBeVisible();
   await expect(main.getByText(/A random id cookie \(kept for a year\)/)).toBeVisible();
   await expect(main.getByText(/deleted after \d+ hours/)).toBeVisible();
