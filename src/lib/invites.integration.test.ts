@@ -103,6 +103,28 @@ describe.runIf(url)("invite codes against a real database", () => {
     expect(await mayCreateAccount(friend, { client })).toBe(true);
   });
 
+  // A made-up code answered "ok" for anyone on the beta list and "invalid" for everyone else, so the
+  // sign-up form could test who was on it.
+  it("answers a made-up code the same for someone on the list and someone not", async () => {
+    const invite = await createInviteCode({ maxUses: 2, note: null, expiresAt: null }, { client });
+    codes.push(invite.code);
+    const onList = email("listed");
+    expect(await redeemInvite(invite.code, onList, { client })).toBe("ok");
+    const madeUp = "ABCD-EFGH-JKMN";
+    expect(await redeemInvite(madeUp, onList, { client })).toBe("invalid");
+    expect(await redeemInvite(madeUp, email("stranger"), { client })).toBe("invalid");
+  });
+
+  it("lets someone on the list use their own code again, and takes no second use", async () => {
+    const invite = await createInviteCode({ maxUses: 1, note: null, expiresAt: null }, { client });
+    codes.push(invite.code);
+    const address = email("again");
+    expect(await redeemInvite(invite.code, address, { client })).toBe("ok");
+    expect(await redeemInvite(invite.code, address, { client })).toBe("ok");
+    const row = await client.inviteCode.findUniqueOrThrow({ where: { code: invite.code } });
+    expect(row.uses).toBe(1);
+  });
+
   it("stops working once revoked, and the people already in stay in", async () => {
     const c = await code(5);
     const before = email("before");
