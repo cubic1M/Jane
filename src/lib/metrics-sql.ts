@@ -7,6 +7,7 @@ import {
   type FindingType,
   type PrismaClient,
 } from "@/generated/prisma/client";
+import { notBetaPeople } from "./beta-metrics";
 import { median, referralRevenue, type AutomateRow, type Metrics, type Window } from "./metrics";
 
 // The same metrics as computeMetrics (src/lib/metrics.ts), worked out by Postgres so the
@@ -32,17 +33,38 @@ const rate = (part: number, whole: number) => (whole === 0 ? null : part / whole
 
 // Spec step 138: people trying Jane with sample data are never counted.
 const TRIAL = `${TRIAL_ID_PREFIX.replace("_", "\\_")}%`;
-const real = (column: string) => Prisma.sql`${Prisma.raw(column)} NOT LIKE ${TRIAL}`;
+// leftOut: the team and demo-bank-only people, who aren't counted either (notBetaPeople).
+const counted = (leftOut: string[]) => (column: string) =>
+  Prisma.sql`${Prisma.raw(column)} NOT LIKE ${TRIAL} AND ${Prisma.raw(column)} <> ALL(${leftOut}::text[])`;
 
-// Each person's first linked or imported account.
-const FIRST_LINK = Prisma.sql`
+// The whole table on /admin/metrics, for each window of days up to now.
+export async function metricsSql(
+  client: PrismaClient,
+  days: number[],
+  now: Date,
+): Promise<{ windows: { days: number; metrics: Metrics }[]; automateNext: AutomateRow[] }> {
+  const leftOut = await notBetaPeople({ client });
+  const windows = [];
+  for (const d of days) {
+    const w = { start: new Date(now.getTime() - d * DAY_SECONDS * 1000), end: now };
+    windows.push({ days: d, metrics: await computeMetricsSql(client, w, leftOut) });
+  }
+  return { windows, automateNext: await automateNextSql(client, leftOut) };
+}
+
+export async function computeMetricsSql(
+  client: Client,
+  w: Window,
+  leftOut: string[] = [],
+): Promise<Metrics> {
+  const { start, end } = w;
+  const real = counted(leftOut);
+  // Each person's first linked or imported account.
+  const FIRST_LINK = Prisma.sql`
   first_link AS (
     SELECT user_id, MIN(created_at) AS linked_at FROM accounts
     WHERE ${real("user_id")} GROUP BY user_id
   )`;
-
-export async function computeMetricsSql(client: Client, w: Window): Promise<Metrics> {
-  const { start, end } = w;
   const inWindow = (column: Prisma.Sql) => Prisma.sql`${column} >= ${start} AND ${column} < ${end}`;
 
   const [linkRate] = await client.$queryRaw<{ signed_up: bigint; linked: bigint }[]>`
@@ -72,6 +94,7 @@ export async function computeMetricsSql(client: Client, w: Window): Promise<Metr
       SELECT f.type::text AS type
       FROM analytics_events e JOIN findings f ON f.id = e.properties->>'finding_id'
       WHERE e.name = 'card_opened' AND ${inWindow(Prisma.sql`e.created_at`)}
+        AND ${real("f.user_id")}
       UNION ALL
       SELECT f.type::text AS type
       FROM jane_messages m JOIN findings f ON f.id = m.refs->>'findingId'
@@ -183,7 +206,11 @@ export async function computeMetricsSql(client: Client, w: Window): Promise<Metr
 }
 
 // "Automate next" (automateNext in metrics.ts), all time.
-export async function automateNextSql(client: Client): Promise<AutomateRow[]> {
+export async function automateNextSql(
+  client: Client,
+  leftOut: string[] = [],
+): Promise<AutomateRow[]> {
+  const real = counted(leftOut);
   const rows = await client.$queryRaw<
     { type: ActionType; approvals: bigint; logged: bigint; total: bigint | null }[]
   >`

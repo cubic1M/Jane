@@ -238,6 +238,14 @@ export async function loadBetaRows({
   };
 }
 
+// Who betaPeople doesn't count, by id, so the windowed table on /admin/metrics leaves out the
+// same people. Trial people aren't listed: they can be many, and that table skips them by id.
+export async function notBetaPeople(options: { client?: PrismaClient } = {}): Promise<string[]> {
+  const rows = await loadBetaRows(options);
+  const { real } = betaPeople(rows);
+  return rows.users.filter((u) => !real.has(u.id)).map((u) => u.id);
+}
+
 export async function loadBetaMetrics(options: { client?: PrismaClient } = {}) {
   return computeBetaMetrics(await loadBetaRows(options));
 }
