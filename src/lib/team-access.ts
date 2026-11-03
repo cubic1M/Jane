@@ -49,6 +49,9 @@ const STATUS_WORDS: Record<string, string> = {
 // to src/lib/audit.ts without deciding here whether people see it.
 export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   user_signed_up: own,
+  // A temporary try starting and being deleted: the person's own.
+  statement_trial_started: own,
+  statement_trial_deleted: own,
   // The weekly email: Jane's automatic send, and the person's own unsubscribe.
   digest_sent: automatic,
   digest_unsubscribed: own,

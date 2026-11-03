@@ -7,7 +7,7 @@ import { membershipPriceCents, stripeEnabled } from "@/lib/membership/offer";
 import { markOfferShown, offerFor, savedToDate } from "@/lib/membership/service";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
-import { isTrialUser } from "@/lib/trial-ids";
+import { isSampleTrialUser, isStatementTrialUser } from "@/lib/trial-ids";
 import { MembershipOffer } from "./membership-offer";
 import { AnswerForm } from "./answer-form";
 import { SelfCancel } from "./self-cancel";
@@ -103,7 +103,7 @@ async function ActionsContent({
           Thank you for becoming a founding member. We&apos;ll be in touch soon.
         </p>
       )}
-      {offer.show && (
+      {offer.show && !isStatementTrialUser(user.id) && (
         <MembershipOffer
           savedLabel={saved > 0 ? formatCents(saved) : null}
           priceLabel={stripeEnabled() ? formatCents(membershipPriceCents()) : null}
@@ -198,7 +198,7 @@ async function ActionsContent({
                         ? `You cancelled on ${action.cancelledOn.toISOString().slice(0, 10)}. Jane is watching for the next charge to make sure${action.confirmAfter ? ` (around ${action.confirmAfter.toISOString().slice(0, 10)})` : ""}.`
                         : action.status === "queued" &&
                             action.agentState === "handed_off" &&
-                            isTrialUser(user.id)
+                            isSampleTrialUser(user.id)
                           ? "With sample data this stops here: our team doesn't take on requests from people trying Jane. With your own account, they would pick it up within one business day."
                           : status.detail}
                   </p>

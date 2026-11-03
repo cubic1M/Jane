@@ -4,12 +4,12 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { isDemoItemId } from "@/lib/plaid/demo";
-import { isTrialUser } from "@/lib/trial-ids";
+import { isStatementTrialUser, isTrialUser } from "@/lib/trial-ids";
 import { cachedRead } from "@/lib/read-cache";
 
 // Read-only mode: whether Jane (its agent, and the queue behind it) acts for this person, or
 // shows them how to do it themselves. Like demo advice (src/lib/advice-mode.ts), the demo
-// side is only a person whose every account comes from the demo bank, or a trial person: a
+// side is only a person whose every account comes from the demo bank, or a sample trial person: a
 // real bank or a CSV import next to the demo bank makes them a real account.
 
 export async function conciergeMode(
@@ -36,6 +36,8 @@ export async function onSampleDataOnly(
   userId: string,
   { client = defaultClient }: { client?: PrismaClient } = {},
 ): Promise<boolean> {
+  // Someone's own statement is real data, even in a temporary person.
+  if (isStatementTrialUser(userId)) return false;
   if (isTrialUser(userId)) return true;
   const db = scopedFor(userId, client);
   const [items, csvAccounts] = await Promise.all([

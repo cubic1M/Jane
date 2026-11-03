@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ACTIVITY_DISCLOSURE } from "@/config/activity";
 import { REAL_ACCOUNT_ADVICE } from "@/config/advice";
 import { CONCIERGE_ACTIONS } from "@/config/concierge";
+import { STATEMENT_TRIAL_CHAT_ANSWERS, TRIAL_DELETED_WITHIN_HOURS } from "@/config/statement-trial";
 import { TRIAL_HOURS } from "@/config/trial";
 import { retentionPolicy } from "@/lib/retention";
 import PrivacyPage from "./privacy/page";
@@ -64,6 +65,36 @@ describe("the legal pages", () => {
     for (const line of retentionPolicy()) expect(privacy).toContain(line.replace(/\s+/g, " "));
     expect(privacy).toContain(`deleted after ${TRIAL_HOURS} hours`);
     expect(text(TermsPage)).toContain(`${TRIAL_HOURS} hours`);
+  });
+
+  it("say what happens to a statement tried without an account, from the code", () => {
+    const privacy = text(PrivacyPage);
+    const terms = text(TermsPage);
+    expect(TRIAL_DELETED_WITHIN_HOURS).toBe(72);
+    expect(TRIAL_DELETED_WITHIN_HOURS).toBe(TRIAL_HOURS + 48);
+    for (const page of [privacy, terms]) {
+      expect(page).toMatch(/Trying Jane with your own statement/);
+      expect(page).toContain(`within ${TRIAL_DELETED_WITHIN_HOURS} hours`);
+    }
+    // What's kept, for how long, and that it's temporary.
+    expect(privacy).toMatch(/read once, in memory, and never stored as a file/);
+    expect(privacy).toMatch(/a temporary person made for this try/);
+    expect(privacy).toMatch(/Nothing is reused: each start makes a new one/);
+    expect(privacy).toMatch(/a record that a try started and was deleted/);
+    expect(privacy).toMatch(/nothing from your statement/);
+    expect(privacy).toContain(
+      `sign-in cookie for that person, which works for ${TRIAL_HOURS} hours`,
+    );
+    expect(privacy).toMatch(/goes at the next daily clean-up/);
+    // src/lib/edge-limits.ts counts a hash of the IP and of the session token.
+    expect(privacy).toMatch(/scrambled form of your IP address and of your sign-in cookie/);
+    expect(privacy).toMatch(/Reading your statement doesn't use Anthropic/);
+    expect(privacy).toContain(`up to ${STATEMENT_TRIAL_CHAT_ANSWERS} written answers`);
+    expect(privacy).toMatch(/Starting over can't call back what was already sent/);
+    expect(privacy).toMatch(/never email you, never contact any company for you/);
+    expect(privacy).toMatch(/can't link a bank/);
+    expect(terms).toMatch(/It counts as a real account: no financial advice/);
+    expect(terms).toMatch(/Only upload a statement that's yours to share/);
   });
 
   it("say what Jane remembers, what it never keeps, and where to see and delete it", () => {

@@ -5,7 +5,9 @@ import { log } from "@/lib/log";
 import { plaidEnabled } from "@/lib/plaid/client";
 import { runInactiveCleanup } from "@/lib/plaid/inactive";
 import { ITEM_STATUS, syncItem } from "@/lib/plaid/sync";
+import { alertError } from "@/lib/error-alerts";
 import { recordRun, reportMissedJobs } from "@/lib/health";
+import { deleteTrialsPastTheirTime } from "@/lib/trial-delete";
 import { runAgentFollowUps } from "@/lib/agent/run";
 import { runDueJobs } from "@/lib/jobs";
 import { queueNightlyRuns } from "@/lib/controller";
@@ -46,8 +48,21 @@ export async function GET(request: Request) {
   if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  await deleteTemporaryTries();
   await checkHealth();
   return NextResponse.json(await recordRun("plaid-sync", () => dailyWork(startedAt)));
+}
+
+// First, on its own: the legal pages promise this, so nothing else tonight may stop it, by throwing
+// or by using up the time. If it fails, the team hears now, and the rest of the night still runs.
+async function deleteTemporaryTries() {
+  try {
+    await recordRun("trial-cleanup", () => deleteTrialsPastTheirTime());
+  } catch (error) {
+    const kind = error instanceof Error ? error.name : "Error";
+    log.error("Deleting temporary tries failed", { error: kind });
+    await alertError({ message: `${kind}: trial clean-up failed`, path: "/api/cron/plaid-sync" });
+  }
 }
 
 // Tells the team if another daily job has stopped. Never stops this one.
@@ -93,7 +108,7 @@ async function dailyWork(startedAt: number) {
       jobs: await runDueJobs({ budgetMs: jobsBudget(startedAt) }),
       agent: await runAgentFollowUps(),
       outcomes: await refreshMerchantOutcomes(),
-      retention: await runRetention(),
+      retention: await runRetention({ skipTrials: true }),
       // Derived rows whose evidence is gone (card-chat mismatch): also the one-off cleanup.
       orphans: await removeAllOrphans(),
       // Demo banks removed before their derived rows went with them: once each.
@@ -137,8 +152,10 @@ async function dailyWork(startedAt: number) {
   let synced = 0;
   let failed = 0;
   let deferred = 0;
+  // Its own clock: deleting temporary tries comes first, and isn't the banks' time to lose.
+  const syncStarted = Date.now();
   for (const item of items) {
-    if (Date.now() - startedAt >= CRON_SYNC_BUDGET_MS) {
+    if (Date.now() - syncStarted >= CRON_SYNC_BUDGET_MS) {
       deferred += 1;
       continue;
     }
@@ -160,7 +177,7 @@ async function dailyWork(startedAt: number) {
     jobs: await runDueJobs({ budgetMs: jobsBudget(startedAt) }),
     agent: await runAgentFollowUps(),
     outcomes: await refreshMerchantOutcomes(),
-    retention: await runRetention(),
+    retention: await runRetention({ skipTrials: true }),
     // Derived rows whose evidence is gone (card-chat mismatch): also the one-off cleanup.
     orphans: await removeAllOrphans(),
     // Demo banks removed before their derived rows went with them: once each.

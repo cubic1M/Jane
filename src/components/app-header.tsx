@@ -7,6 +7,7 @@ import { ProfileMenu } from "@/components/profile-menu";
 import { ScanBarGate } from "@/components/scan-bar-gate";
 import { ChatToggle } from "@/components/side-chat/chat-toggle";
 import { SideChatUser } from "@/components/side-chat/side-chat";
+import { isStatementTrialUser } from "@/lib/trial-ids";
 
 // The top of every signed-in page (spec step 79; the home hub, docs/design/home-hub.md): Jane's
 // name, the area tabs, the Chat button (computer) and the profile menu with What Jane did,
@@ -55,7 +56,8 @@ export function AppHeader({
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-1">
           <ChatToggle />
-          <ProfileMenu email={user.email} />
+          {/* A temporary try's address is an internal, made-up one. */}
+          <ProfileMenu email={isStatementTrialUser(user.id) ? "a temporary try" : user.email} />
         </div>
       </div>
       <SideChatUser userId={user.id} />

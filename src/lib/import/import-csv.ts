@@ -6,6 +6,7 @@ import {
   readCsvFile,
   type CsvFailure,
   type CsvFile,
+  type RowLimit,
   type DayBalance,
 } from "@/data-sources/csv/csv-source";
 import { accountKindOf, type AccountKind, type SkippedRow } from "@/data-sources/types";
@@ -51,9 +52,13 @@ export type FilePreview =
 
 // Parses in memory only; nothing is stored until the person confirms. `kind`: the account's, when
 // the person has said.
-export function previewCsvFiles(files: CsvFile[], kind?: AccountKind): FilePreview[] {
+export function previewCsvFiles(
+  files: CsvFile[],
+  kind?: AccountKind,
+  limit?: RowLimit,
+): FilePreview[] {
   return files.map((file) => {
-    const result = readCsvFile(file, kind);
+    const result = readCsvFile(file, kind, limit);
     if (!result.ok) {
       const { file, error, reason, choices } = result;
       return { file, ok: false, error, reason, ...(choices ? { choices } : {}) };

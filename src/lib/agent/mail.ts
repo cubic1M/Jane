@@ -1,5 +1,5 @@
 import { sendEmail } from "@/lib/email";
-import { isTrialUser } from "@/lib/trial-ids";
+import { isSampleTrialUser, isStatementTrialUser } from "@/lib/trial-ids";
 
 // How the action agent's email leaves. With email set up (RESEND_API_KEY, EMAIL_FROM and
 // AGENT_INBOUND_DOMAIN), real email goes out from Jane's address with a reply-to address
@@ -10,9 +10,11 @@ import { isTrialUser } from "@/lib/trial-ids";
 
 export type MailMode = "email" | "simulated" | "off";
 
-// Spec step 138: a trial person's requests always go to the simulated company.
+// Spec step 138: a sample person's requests always go to the simulated company. Someone trying
+// Jane with their own statement never writes to any company, real or simulated.
 export function mailMode(userId?: string): MailMode {
-  if (isTrialUser(userId)) return "simulated";
+  if (isStatementTrialUser(userId)) return "off";
+  if (isSampleTrialUser(userId)) return "simulated";
   if (process.env.RESEND_API_KEY && process.env.EMAIL_FROM && process.env.AGENT_INBOUND_DOMAIN) {
     return "email";
   }

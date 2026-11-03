@@ -217,6 +217,9 @@ export const ACCESS_MAP: Record<string, Access> = {
   "src/app/try/actions.ts": public_(
     "Try Jane makes a new sample person: before there is a session.",
   ),
+  "src/app/try/statement-actions.ts": public_(
+    "Trying Jane with your own statement makes a new empty person before there is a session; Start over deletes only the person behind this browser's own session cookie.",
+  ),
   "src/lib/auth-actions.ts": public_("Signing in and signing up: before there is a session."),
   "src/lib/compare-actions.ts": "signed-in",
   // Pages

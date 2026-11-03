@@ -19,6 +19,8 @@ vi.mock("@/lib/merchant-outcomes", () => ({
   refreshMerchantOutcomes: vi.fn(async () => ({ merchants: 2 })),
 }));
 vi.mock("@/lib/retention", () => ({ runRetention: vi.fn(async () => ({ rateLimits: 4 })) }));
+vi.mock("@/lib/trial-delete", () => ({ deleteTrialsPastTheirTime: vi.fn(async () => 0) }));
+vi.mock("@/lib/error-alerts", () => ({ alertError: vi.fn(async () => true) }));
 vi.mock("@/lib/learning", () => ({ refreshKindStats: vi.fn(async () => 3) }));
 vi.mock("@/lib/evidence/backfill", () => ({
   forgetRemovedDemoBanks: vi.fn(async () => ({ forgotten: 0, failed: 0 })),
@@ -74,6 +76,12 @@ import { syncItem } from "@/lib/plaid/sync";
 import { runDueJobs } from "@/lib/jobs";
 import { CRON_SYNC_BUDGET_MS } from "@/config/plaid";
 import { CONTROLLER_CRON_BUDGET_MS, CONTROLLER_RUN_RESERVE_MS } from "@/config/controller";
+import { DAILY_JOBS } from "@/config/health";
+import { alertError } from "@/lib/error-alerts";
+import { recordRun } from "@/lib/health";
+import { runRetention } from "@/lib/retention";
+import { takeSnapshots } from "@/lib/snapshots";
+import { deleteTrialsPastTheirTime } from "@/lib/trial-delete";
 import { GET, maxDuration } from "./route";
 
 const call = (authorization?: string) =>
@@ -171,6 +179,54 @@ describe("GET /api/cron/plaid-sync", () => {
       ladders: { people: 1, rolled: 2 },
     });
     expect(syncItem).not.toHaveBeenCalled();
+  });
+
+  it("deletes temporary tries first, whatever goes wrong with the rest of the night", async () => {
+    vi.mocked(deleteTrialsPastTheirTime).mockClear();
+    vi.mocked(takeSnapshots).mockRejectedValueOnce(new Error("snapshots broke"));
+    await call("Bearer cron-secret").catch(() => undefined);
+    expect(deleteTrialsPastTheirTime).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(deleteTrialsPastTheirTime).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(takeSnapshots).mock.invocationCallOrder.at(-1)!,
+    );
+    // Under its own name, so a run that doesn't happen is reported like any other daily job.
+    expect(recordRun).toHaveBeenCalledWith("trial-cleanup", expect.any(Function));
+    expect(DAILY_JOBS).toContain("trial-cleanup");
+  });
+
+  it("alerts the team when that fails, and the rest of the night still runs", async () => {
+    vi.mocked(alertError).mockClear();
+    vi.mocked(takeSnapshots).mockClear();
+    vi.mocked(deleteTrialsPastTheirTime).mockRejectedValueOnce(new TypeError("a person's data"));
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const response = await call("Bearer cron-secret");
+    expect(response.status).toBe(200);
+    expect(takeSnapshots).toHaveBeenCalled();
+    expect(alertError).toHaveBeenCalledWith({
+      message: "TypeError: trial clean-up failed",
+      path: "/api/cron/plaid-sync",
+    });
+    expect(JSON.stringify(error.mock.calls)).not.toContain("a person's data");
+  });
+
+  it("doesn't let a slow clean-up cost anyone their bank sync, or retention a second try", async () => {
+    let clock = 1_000_000;
+    const now = vi.spyOn(Date, "now").mockImplementation(() => clock);
+    vi.mocked(deleteTrialsPastTheirTime).mockImplementationOnce(async () => {
+      clock += CRON_SYNC_BUDGET_MS * 2;
+      return 0;
+    });
+    findMany.mockResolvedValue([{ id: "a" }]);
+    vi.mocked(syncItem).mockClear();
+    vi.mocked(runRetention).mockClear();
+    try {
+      const body = await (await call("Bearer cron-secret")).json();
+      expect(body.deferred).toBe(0);
+      expect(syncItem).toHaveBeenCalledWith("a");
+      expect(runRetention).toHaveBeenCalledWith({ skipTrials: true });
+    } finally {
+      now.mockRestore();
+    }
   });
 
   it("records the run, and checks the other daily jobs first", async () => {

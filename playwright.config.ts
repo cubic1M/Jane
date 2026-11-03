@@ -61,13 +61,14 @@ export default defineConfig({
           // The events box reads seeded events; a page view never asks GDELT or the feeds.
           EVENTS_REFRESH: "off",
           RESEND_API_KEY: "",
-          // What a production build turns off unless asked: the demo bank, Try Jane, demo advice
-          // and the simulated calls and company mail the tests drive; and the site's own
-          // address here is plain HTTP, so cookies keep their plain names.
+          // What a production build turns off unless asked: the demo bank, the ways of trying
+          // Jane, demo advice and the simulated calls and company mail the tests drive; and the
+          // site's own address here is plain HTTP, so cookies keep their plain names.
           ...(prod
             ? {
                 DEMO_BANK: "1",
                 TRY_JANE: "1",
+                TRY_STATEMENT: "1",
                 DEMO_ADVICE: "1",
                 SIMULATED_AGENT: "1",
                 AUTH_URL: `http://localhost:${PORT}`,

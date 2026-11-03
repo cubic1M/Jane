@@ -1,6 +1,6 @@
 import { conciergeMode, onSampleDataOnly } from "@/lib/concierge-mode";
 import { log } from "@/lib/log";
-import { isTrialUser } from "@/lib/trial-ids";
+import { isSampleTrialUser, isTrialUser } from "@/lib/trial-ids";
 import { randomBytes } from "node:crypto";
 import {
   AGENT_ACTION_TYPES,
@@ -237,7 +237,7 @@ export async function handOff(
   await note(
     userId,
     action.id,
-    isTrialUser(userId)
+    isSampleTrialUser(userId)
       ? `This is as far as Jane goes with sample data: ${reason} With your own account, our team would take it from here.`
       : `Passed to our team: ${reason}`,
     options.client,

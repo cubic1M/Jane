@@ -115,6 +115,7 @@ describe.runIf(url)("health checks against a real database", () => {
     // Every daily job the founder named (2026-10-26).
     expect(report.jobs.map((j) => j.name)).toEqual([
       "plaid-sync",
+      "trial-cleanup",
       "digest",
       "market-history",
       "paper-run",

@@ -182,6 +182,8 @@ export type ImportRunView = {
   stage: ImportStage;
   percent: number;
   foundCents: number | null;
+  // Someone trying Jane with their own statement (src/app/api/import/status/route.ts).
+  temporary?: boolean;
 };
 
 // The upload the chip shows: the latest in the last IMPORT_RUN_SHOWN_HOURS, unless the person

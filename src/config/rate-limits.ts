@@ -1,4 +1,5 @@
 import { RETENTION_PERIODS } from "./retention";
+import { STATEMENT_TRIAL_CHAT_ANSWERS } from "./statement-trial";
 
 // Requests allowed per window, per user (signed in) or per IP (signed out). Generous for
 // people, tight enough to stop scripts. src/lib/rate-limit.ts enforces them.
@@ -64,6 +65,14 @@ export const RATE_LIMITS = {
   trialEveryone: { limit: 300, windowSeconds: 60 * 60 },
   // Questions Claude answers for one sample (Try Jane) person, in all: one very long window.
   claudeTrial: { limit: 25, windowSeconds: 60 * 60 * 24 * 365 * 10 },
+  // Trying Jane with your own statement (src/config/statement-trial.ts): starts per IP, starts by
+  // everyone in a UTC day, and answers Claude writes for one temporary person, in all.
+  trialStatement: { limit: 10, windowSeconds: 60 * 60 },
+  trialStatementDay: { limit: 200, windowSeconds: 60 * 60 * 24 },
+  claudeStatementTrial: {
+    limit: STATEMENT_TRIAL_CHAT_ANSWERS,
+    windowSeconds: 60 * 60 * 24 * 365 * 10,
+  },
   // Invite codes made by an admin, per admin.
   invites: { limit: 30, windowSeconds: 60 * 60 },
   // Server errors kept for /admin/errors, and alert emails to the team, across every request. Anyone
@@ -91,5 +100,10 @@ export type LimitName = keyof typeof RATE_LIMITS;
 export const RATE_LIMIT_RETENTION_HOURS = RETENTION_PERIODS.rateLimits.days * 24;
 
 // Counters that outlive the day the cleanup keeps ("claudeTrial:" is a sample person's whole
-// allowance, "chatmonth:" is the month's Claude spend): never deleted as old windows.
-export const KEEP_RATE_LIMIT_PREFIXES = ["claudeTrial:", "chatmonth:"] as const;
+// allowance, "chatmonth:" is the month's Claude spend): never deleted as old windows. A temporary
+// person's own goes with them (src/lib/trial-delete.ts).
+export const KEEP_RATE_LIMIT_PREFIXES = [
+  "claudeTrial:",
+  "claudeStatementTrial:",
+  "chatmonth:",
+] as const;

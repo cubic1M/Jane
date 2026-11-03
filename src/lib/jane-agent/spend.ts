@@ -1,14 +1,20 @@
-import { addMonthlySpend, monthlyCapCents, monthlySpentCents } from "./claude-limits";
+import {
+  addMonthlySpend,
+  addStatementTrialSpend,
+  monthlyCapCents,
+  monthlySpentCents,
+} from "./claude-limits";
 import {
   CHAT_ALL_TRIALS_DAILY_CAP_CENTS,
   CHAT_PERSON_DAILY_CAP_CENTS,
   CHAT_TRIAL_DAILY_CAP_CENTS,
 } from "@/config/agent-chat";
+import { STATEMENT_TRIAL_PERSON_CAP_CENTS } from "@/config/statement-trial";
 import { MODEL_PRICES_CENTS } from "@/config/answer-checks";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { isAdminEmail } from "@/lib/invites";
-import { isTrialUser } from "@/lib/trial-ids";
+import { isStatementTrialUser, isTrialUser } from "@/lib/trial-ids";
 import { DAY_MS } from "@/lib/dates";
 import { scopedFor } from "@/lib/db-scoped";
 import { systemDb } from "@/lib/system-db";
@@ -71,6 +77,8 @@ export async function addSpend(
   if (isTrialUser(userId)) await addToToday(ALL_TRIALS_KEY, amount, client, now);
   // And the month's total, which guards all of Claude's chat spend together.
   await addMonthlySpend(amount, { client, now });
+  // And the day's total for everyone trying Jane with their own statement.
+  if (isStatementTrialUser(userId)) await addStatementTrialSpend(amount, { client, now });
 }
 
 async function centsToday(key: string, { client = defaultClient, now = new Date() }: Options) {
@@ -91,6 +99,7 @@ export async function dailyCapCents(
   userId: string,
   { client = defaultClient }: Options = {},
 ): Promise<number | null> {
+  if (isStatementTrialUser(userId)) return STATEMENT_TRIAL_PERSON_CAP_CENTS;
   if (isTrialUser(userId)) return CHAT_TRIAL_DAILY_CAP_CENTS;
   const user = await scopedFor(userId, client).me.findUnique({
     where: { id: userId },

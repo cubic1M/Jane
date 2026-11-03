@@ -121,6 +121,7 @@ export function UploadHistory({
   totals,
   asks = [],
   timezone,
+  canStartOver = true,
 }: {
   uploads: UploadView[];
   // The person's timezone: an upload's day is theirs, not UTC's.
@@ -130,6 +131,7 @@ export function UploadHistory({
   totals: { accounts: number; rows: number };
   // Uploaded accounts still without a balance: asked for here too.
   asks?: BalanceAsk[];
+  canStartOver?: boolean;
 }) {
   if (accounts.length === 0) return null;
   return (
@@ -231,17 +233,19 @@ export function UploadHistory({
         ))}
       </ul>
 
-      <div
-        data-start-over=""
-        className="flex flex-col gap-2 border-t border-zinc-200 pt-4 dark:border-zinc-800"
-      >
-        <Confirm
-          label="Start over"
-          question={`This deletes your ${plural(totals.accounts, "uploaded account")} and ${totals.accounts === 1 ? "its" : "their"} ${plural(totals.rows, "transaction")}. Linked banks and your settings stay. Then you can upload again from scratch.`}
-          yes="Yes, delete my uploads"
-          run={() => startOverAction()}
-        />
-      </div>
+      {canStartOver && (
+        <div
+          data-start-over=""
+          className="flex flex-col gap-2 border-t border-zinc-200 pt-4 dark:border-zinc-800"
+        >
+          <Confirm
+            label="Start over"
+            question={`This deletes your ${plural(totals.accounts, "uploaded account")} and ${totals.accounts === 1 ? "its" : "their"} ${plural(totals.rows, "transaction")}. Linked banks and your settings stay. Then you can upload again from scratch.`}
+            yes="Yes, delete my uploads"
+            run={() => startOverAction()}
+          />
+        </div>
+      )}
     </section>
   );
 }

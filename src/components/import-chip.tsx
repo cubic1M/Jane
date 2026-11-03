@@ -157,7 +157,11 @@ export function ImportChip() {
           )}
         </>
       ) : (
-        <span>The import hit a problem. Jane will try again shortly.</span>
+        <span>
+          {run.temporary
+            ? "The import hit a problem. Upload the file again, or start over."
+            : "The import hit a problem. Jane will try again shortly."}
+        </span>
       )}
       {!running && (
         <button

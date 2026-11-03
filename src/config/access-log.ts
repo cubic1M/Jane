@@ -28,6 +28,10 @@ export const ACCESS_EVENTS = [
   "item_removed",
   "data_exported",
   "user_data_deleted",
+  // A temporary try starting and being deleted (src/lib/trial-delete.ts): what the privacy page says
+  // stays. Written there with a random id and no IP address or browser.
+  "statement_trial_started",
+  "statement_trial_deleted",
   // The team: every admin page viewed and every admin action, plus the named ones.
   "admin_page_viewed",
   "admin_action",

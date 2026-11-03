@@ -7,10 +7,11 @@ import {
   type RetainedKind,
 } from "@/config/retention";
 import { SNAPSHOT_RETENTION_DAYS } from "@/config/net-worth";
-import { TRIAL_ID_PREFIX } from "@/config/trial";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { log } from "@/lib/log";
 import { db as defaultClient } from "@/lib/db";
 import { DAY_MS as DAY } from "@/lib/dates";
+import { deleteExpiredTrials } from "@/lib/trial-delete";
 import { systemDb } from "@/lib/system-db";
 
 const WHY = "Retention deletes old rows across people";
@@ -22,7 +23,10 @@ const WHY = "Retention deletes old rows across people";
 export async function runRetention({
   client = defaultClient,
   now = new Date(),
-}: { client?: PrismaClient; now?: Date } = {}): Promise<Record<RetainedKind, number>> {
+  skipTrials = false,
+}: { client?: PrismaClient; now?: Date; skipTrials?: boolean } = {}): Promise<
+  Record<RetainedKind, number>
+> {
   const before = (kind: RetainedKind) =>
     new Date(now.getTime() - RETENTION_PERIODS[kind].days * DAY);
   const [analytics, activity, errors, jobs, runs, limits, sessions, links, access] =
@@ -75,9 +79,21 @@ export async function runRetention({
   // Spec step 138: everything a trial person owns goes with them (it all cascades). After
   // the rest, not alongside: the cascade deletes sessions too, and the two deletes at once
   // can deadlock.
-  const trials = await systemDb(WHY, client).user.deleteMany({
-    where: { id: { startsWith: TRIAL_ID_PREFIX }, createdAt: { lt: before("trialPeople") } },
-  });
+  // The nightly cron has already tried, first and on its own, and reported any failure
+  // (skipTrials). Here too it's never a reason to stop: a person who won't delete must not cost
+  // everyone else what runs after retention.
+  let trials = 0;
+  if (!skipTrials) {
+    try {
+      const { deleted, failed } = await deleteExpiredTrials(before("trialPeople"), { client, now });
+      trials = deleted;
+      if (failed > 0) log.error("Some trial people couldn't be deleted", { failed });
+    } catch (error) {
+      log.error("Deleting trial people failed", {
+        error: error instanceof Error ? error.name : "unknown",
+      });
+    }
+  }
   return {
     analyticsEvents: analytics.count,
     activityEvents: activity.count,
@@ -87,7 +103,7 @@ export async function runRetention({
     rateLimits: limits.count,
     expiredSessions: sessions.count + links.count,
     accessLog: access.count + orphans,
-    trialPeople: trials.count,
+    trialPeople: trials,
   };
 }
 

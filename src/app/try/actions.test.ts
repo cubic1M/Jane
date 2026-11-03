@@ -5,7 +5,7 @@ const { set, headerValues } = vi.hoisted(() => ({
   headerValues: new Map<string, string>(),
 }));
 vi.mock("next/headers", () => ({
-  cookies: async () => ({ set }),
+  cookies: async () => ({ set, get: () => undefined, delete: vi.fn() }),
   headers: async () => new Headers([...headerValues]),
 }));
 vi.mock("next/navigation", () => ({
@@ -14,6 +14,8 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 vi.mock("@/lib/rate-limit", () => ({ hit: vi.fn(), ipKey: vi.fn(() => "iphash") }));
+vi.mock("@/lib/statement-trial", () => ({ sessionOwner: vi.fn(async () => null) }));
+vi.mock("@/lib/trial-delete", () => ({ deleteTrialPerson: vi.fn(async () => true) }));
 vi.mock("@/lib/trial", () => ({
   startTrial: vi.fn(),
   cleanUpTrials: vi.fn(async () => 0),
@@ -32,7 +34,9 @@ vi.mock("@/lib/plaid/sync", () => ({
 import { redirect } from "next/navigation";
 import { hit } from "@/lib/rate-limit";
 import { syncItem } from "@/lib/plaid/sync";
+import { sessionOwner } from "@/lib/statement-trial";
 import { TrialError, cleanUpTrials, startTrial } from "@/lib/trial";
+import { deleteTrialPerson } from "@/lib/trial-delete";
 import { tryJane } from "./actions";
 
 // Spec step 138: "Try it with sample data" signs the visitor in as their own sample person
@@ -57,6 +61,18 @@ describe("tryJane", () => {
       sessionToken: "tok",
       expires: EXPIRES,
     });
+  });
+
+  it("deletes someone's own statement in this browser, and never a sample person or a real one", async () => {
+    vi.mocked(sessionOwner).mockResolvedValueOnce("trial_own_abc");
+    await tryJane(null, agreed());
+    expect(deleteTrialPerson).toHaveBeenCalledWith("trial_own_abc", "started_again");
+    vi.mocked(deleteTrialPerson).mockClear();
+    for (const other of ["trial_abc", "cm1real", null]) {
+      vi.mocked(sessionOwner).mockResolvedValueOnce(other);
+      await tryJane(null, agreed());
+    }
+    expect(deleteTrialPerson).not.toHaveBeenCalled();
   });
 
   it("sets the session cookie for a day and opens the chat", async () => {

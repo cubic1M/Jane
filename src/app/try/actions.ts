@@ -2,12 +2,17 @@
 
 import { cookies, headers } from "next/headers";
 import { after } from "next/server";
+import { sessionTokenFrom } from "@/lib/admin-gate";
 import { log } from "@/lib/log";
 import { pickPerson } from "@/lib/people";
 import { hit, ipKey } from "@/lib/rate-limit";
 import { phaseTimer } from "@/lib/trial-timing";
 import { syncItem } from "@/lib/plaid/sync";
+import { sessionOwner } from "@/lib/statement-trial";
 import { TrialError, cleanUpTrials, startTrial } from "@/lib/trial";
+import { setTrialSession } from "@/lib/trial-cookie";
+import { deleteTrialPerson } from "@/lib/trial-delete";
+import { isStatementTrialUser } from "@/lib/trial-ids";
 
 // "Try it with sample data" (spec step 138): a sample person with the demo bank, signed in
 // for a day with an ordinary Auth.js database session, then on to Jane's chat. Limited per
@@ -20,18 +25,6 @@ const TRY_READY_WAIT_MS = 8000;
 // a redirect from an action that waited for the scan left some browsers on the landing page.
 export type TryState = { error: string } | { next: string } | null;
 
-// Auth.js's session cookie: the __Secure- name on HTTPS, the plain one locally.
-const cookieName = (secure: boolean) =>
-  secure ? "__Secure-authjs.session-token" : "authjs.session-token";
-
-// The same rule as Auth.js, which reads the cookie back: secure when the site's own address
-// (AUTH_URL) is HTTPS, or, without one, when the request came over HTTPS. A production build
-// served over plain HTTP (the end-to-end tests) then uses the plain name both ways.
-function secureCookies(forwardedProto: string | null, authUrl = process.env.AUTH_URL) {
-  if (authUrl) return authUrl.startsWith("https:");
-  return forwardedProto === "https";
-}
-
 export async function tryJane(_previous: TryState, formData: FormData): Promise<TryState> {
   // As at sign-up: the Terms are agreed to before anything is made.
   if (formData.get("consent") !== "on") {
@@ -43,6 +36,14 @@ export async function tryJane(_previous: TryState, formData: FormData): Promise<
     return { error: "Lots of people are trying Jane from here. Please try again in an hour." };
   }
   timing.mark("rate_limit");
+  // Someone's own statement doesn't stay behind a sample person in the same browser.
+  const previous = await sessionOwner(sessionTokenFrom(await cookies()));
+  if (isStatementTrialUser(previous)) {
+    // If this fails the clean-up deletes them on time; the sample try still starts.
+    await deleteTrialPerson(previous!, "started_again").catch(() =>
+      log.error("Deleting a temporary try failed"),
+    );
+  }
   let session: { itemId: string; sessionToken: string; expires: Date };
   try {
     // Only the minimum before the redirect; the scan runs after the response.
@@ -56,14 +57,7 @@ export async function tryJane(_previous: TryState, formData: FormData): Promise<
     throw error;
   }
   timing.mark("start_trial");
-  const secure = secureCookies(h.get("x-forwarded-proto"));
-  (await cookies()).set(cookieName(secure), session.sessionToken, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure,
-    path: "/",
-    expires: session.expires,
-  });
+  await setTrialSession(session.sessionToken, session.expires);
   timing.done();
   // The scan starts now, and the click waits for the chat to be able to open (accounts and
   // transactions saved, about two seconds), then goes straight to the chat: no /scanning page,

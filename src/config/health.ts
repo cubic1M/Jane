@@ -3,6 +3,8 @@
 // The daily jobs, by the name they record runs under.
 export const DAILY_JOBS: readonly string[] = [
   "plaid-sync",
+  // Deleting temporary tries, by itself at the start of plaid-sync's run (src/lib/trial-delete.ts).
+  "trial-cleanup",
   "digest",
   "market-history",
   "paper-run",

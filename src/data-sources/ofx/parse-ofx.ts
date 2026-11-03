@@ -78,7 +78,10 @@ function* transactionBlocks(text: string): Generator<{ block: string; line: numb
   }
 }
 
-export function readOfx(file: { name: string; text: string }): OfxResult {
+export function readOfx(
+  file: { name: string; text: string },
+  limit: { rows: number; words: string } = { rows: Infinity, words: "" },
+): OfxResult {
   if (!/<OFX>/i.test(file.text)) {
     return { ok: false, file: file.name, error: "This doesn't look like an OFX or QFX file." };
   }
@@ -90,7 +93,10 @@ export function readOfx(file: { name: string; text: string }): OfxResult {
   let againstType = 0;
   let typed = 0;
   let blocks = 0;
+  let read = 0;
   for (const { block, line } of transactionBlocks(file.text)) {
+    read += 1;
+    if (read > limit.rows) return { ok: false, file: file.name, error: limit.words };
     blocks += 1;
     const date = ofxDate(field(block, "DTPOSTED"));
     const amount = ofxAmount(field(block, "TRNAMT"));

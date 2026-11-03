@@ -39,7 +39,7 @@ import { requireUser } from "@/lib/session";
 import { loadInvestingLeak } from "@/lib/investments/leak";
 import { loadPanicSells } from "@/lib/investments/panic-sells";
 import { panicSummary } from "@/planning/panic-sells";
-import { canImportCsv } from "@/lib/csv-access";
+import { canImportHoldings } from "@/lib/csv-access";
 import { scopedDb } from "@/lib/db-scoped";
 import { EMBEDDED_PAGES } from "@/config/embedded-pages";
 import { LazyPage } from "./lazy-page";
@@ -162,8 +162,8 @@ async function RuleReplays({ userId }: { userId: string }) {
 
 // "What's in your Robinhood account today?" (read-only beta): money sent to an investing app is
 // moved, not spent, so Jane says how much went in and asks what is in each one.
-async function BrokerageAsks({ user }: { user: Parameters<typeof canImportCsv>[0] }) {
-  if (!canImportCsv(user)) return null;
+async function BrokerageAsks({ user }: { user: Parameters<typeof canImportHoldings>[0] }) {
+  if (!canImportHoldings(user)) return null;
   const { asks, inLast3MonthsCents } = await brokerageAsks(await scopedDb());
   if (inLast3MonthsCents === 0) return null;
   return (
@@ -546,7 +546,7 @@ async function InvestmentsContent({
         <p data-investments-empty="" className="text-zinc-600 dark:text-zinc-400">
           {/* The closed beta adds accounts by upload (QA round 32: "When you link one"). */}
           No investment or retirement accounts yet.{" "}
-          {canImportCsv(user) ? (
+          {canImportHoldings(user) ? (
             <>
               <Link href="/import/investments" className={LINK}>
                 Upload a positions download

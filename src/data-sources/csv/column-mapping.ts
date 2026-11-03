@@ -80,7 +80,8 @@ const markOf = (value: string) => value.trim().toLowerCase();
 // or "Indicator" (the person then picks which is money out).
 export function markerColumns(headers: string[], rows: string[][]): MappingChoices["markers"] {
   const markers: MappingChoices["markers"] = {};
-  const width = Math.max(headers.length, ...rows.map((r) => r.length));
+  // Not Math.max(...rows): a file of 149,000 tiny rows is too many arguments (a RangeError).
+  const width = rows.reduce((most, r) => Math.max(most, r.length), headers.length);
   for (let i = 0; i < width; i++) {
     const values = [...new Set(rows.map((r) => (r[i] ?? "").trim()).filter(Boolean))];
     if (values.length < 2 || values.length > MARKER_MAX_VALUES) continue;
@@ -353,7 +354,7 @@ export function mappedLayout(all: CsvRecord[], mapping: ColumnMapping): Layout |
     const example = rows.map((r) => r.fields[mapping.date]).find((v) => v && /\d/.test(v));
     return `Jane can't tell from this file whether ${example ?? "a date like 05/09/2026"} is month first or day first. Say how the dates are written.`;
   }
-  const width = Math.max(0, ...records.map((r) => r.fields.length));
+  const width = records.reduce((most, r) => Math.max(most, r.fields.length), 0);
   const columns = Array.from({ length: width }, (_, i) => `c${i}`);
   const at = (get: (column: string) => string, i: number) => get(`c${i}`);
   const memo = mapping.hasHeader ? memoBeside(records[0]?.fields ?? [], mapping) : null;

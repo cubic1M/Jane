@@ -42,6 +42,15 @@ export const NO_TRANSACTIONS =
 export const REVERSED_MAPPING =
   "These amounts run against the file's own balance: money going out raises it, so spending would read as money coming in. Change which sign is spending.";
 
+// The most rows a file is read for, and what to say past it. Everyone has this one: at the 4 MB an
+// upload may be, far past years of statements. Someone with no account has a smaller one.
+export type RowLimit = { rows: number; words: string };
+export const NO_FILE_IS_THIS_LONG: RowLimit = {
+  rows: 50_000,
+  words: "This file has too many rows to read. Download fewer months from your bank.",
+};
+const RECORDS_NOT_ROWS = 20;
+
 export const NOT_A_STATEMENT =
   "This isn't a CSV statement. Download the CSV from your bank's website.";
 
@@ -145,9 +154,13 @@ function isSummaryRow(fields: readonly string[]): boolean {
 
 // Reads one uploaded statement: a CSV export, or an OFX/QFX file (src/data-sources/ofx).
 // `kind`: the account it's going into, once that's known.
-export function readCsvFile(file: CsvFile, kind?: AccountKind): CsvFileResult {
+export function readCsvFile(
+  file: CsvFile,
+  kind?: AccountKind,
+  limit: RowLimit = NO_FILE_IS_THIS_LONG,
+): CsvFileResult {
   if (looksLikeOfx(file.name, file.text)) {
-    const result = readOfx(file);
+    const result = readOfx(file, limit);
     return result.ok
       ? { ...result, format: OFX_FORMAT, account: ofxAccount(file.text) }
       : { ...result, reason: "unreadable" };
@@ -164,7 +177,11 @@ export function readCsvFile(file: CsvFile, kind?: AccountKind): CsvFileResult {
   if (records.length === 0) {
     return { ok: false, file: file.name, error: "The file is empty.", reason: "unreadable" };
   }
-
+  // Stops here, before any row is read: the rest of the work grows with the rows. A few over, for
+  // the header and a statement's summary lines; the caller counts the transactions themselves.
+  if (records.length > limit.rows + RECORDS_NOT_ROWS) {
+    return { ok: false, file: file.name, error: limit.words, reason: "unreadable" };
+  }
   const detected = detectLayout(records);
   const mapped = !detected && file.mapping ? mappedLayout(records, file.mapping) : null;
   if (typeof mapped === "string") {
@@ -383,10 +400,11 @@ export class CsvDataSource implements DataSource {
         );
       }
       for (const b of result.balances ?? []) byDay.set(b.date, b.balanceCents);
-      batch.transactions.push(
-        ...result.transactions.map((t) => ({ ...t, accountRef: this.account.ref })),
-      );
-      batch.skipped.push(...result.skipped);
+      // One by one: a very long file is too many arguments for a spread (a RangeError).
+      for (const t of result.transactions) {
+        batch.transactions.push({ ...t, accountRef: this.account.ref });
+      }
+      for (const skipped of result.skipped) batch.skipped.push(skipped);
     }
     batch.balances = [...byDay]
       .map(([date, balanceCents]) => ({ date, balanceCents }))

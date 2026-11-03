@@ -31,7 +31,8 @@ type Options = { client?: PrismaClient; explain?: typeof explainFinding };
 export type ExplainSummary = { llm: number; template: number; unavailable: number };
 
 // Writes explanations for the user's findings that don't have an up-to-date one. Without
-// an API key it writes nothing: pages show template text by themselves.
+// an API key, or for a temporary try (no Claude for its upload), it writes nothing: pages show
+// template text by themselves.
 export async function explainFindings(
   userId: string,
   { client = defaultClient, explain = explainFinding }: Options = {},

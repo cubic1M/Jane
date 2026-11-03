@@ -8,11 +8,12 @@ import { UploadHistory } from "./upload-history";
 import { AppHeader, PageLoading } from "@/components/app-header";
 import { AccountList } from "@/components/account-list";
 import { listAccountSummaries } from "@/lib/accounts";
-import { canImportCsv } from "@/lib/csv-access";
+import { canImportCsv, canImportHoldings } from "@/lib/csv-access";
 import { scopedDb } from "@/lib/db-scoped";
 import { balancesToAsk } from "@/lib/import/account-balance";
 import { listUploads, uploadedTotals } from "@/lib/import/remove";
 import { requireUser } from "@/lib/session";
+import { isStatementTrialUser } from "@/lib/trial-ids";
 import { timezoneOf } from "@/lib/today";
 import {
   BANK_DOWNLOADS,
@@ -21,8 +22,13 @@ import {
   UPLOAD_REASSURANCE,
 } from "@/config/import";
 
-async function ImportContent() {
+async function ImportContent({
+  searchParams,
+}: {
+  searchParams: PageProps<"/import">["searchParams"];
+}) {
   const user = await requireUser();
+  const { columns } = await searchParams;
   if (!canImportCsv(user)) redirect("/connect");
   const db = await scopedDb();
   const [accounts, history, totals, uploaded, asks, linkedRows, timezone] = await Promise.all([
@@ -63,6 +69,13 @@ async function ImportContent() {
           Download the last {SUGGESTED_UPLOAD_MONTHS} months of transactions from your bank&apos;s
           website as CSV, OFX or QFX, and upload them here. {UPLOAD_REASSURANCE}
         </p>
+        {/* From the landing page, with a file in a layout Jane doesn't know yet. */}
+        {columns === "1" && (
+          <p role="status" data-pick-columns="" className="font-medium">
+            Jane doesn&apos;t know this bank&apos;s layout yet. Choose the file again here, then
+            pick which column is which.
+          </p>
+        )}
         <p data-reupload-safe="" className="text-zinc-600 dark:text-zinc-400">
           Uploading the same file again, or one that overlaps, is safe: Jane skips the rows it
           already has.
@@ -103,13 +116,15 @@ async function ImportContent() {
       </section>
 
       {/* Holdings files have their own page: one upload form per page (src/app/import/investments). */}
-      <p data-positions-link="" className="text-sm text-zinc-600 dark:text-zinc-400">
-        Have a brokerage or retirement account?{" "}
-        <Link href="/import/investments" className="font-semibold underline">
-          Upload your investments
-        </Link>{" "}
-        from Fidelity, Schwab, Vanguard or Robinhood.
-      </p>
+      {canImportHoldings(user) && (
+        <p data-positions-link="" className="text-sm text-zinc-600 dark:text-zinc-400">
+          Have a brokerage or retirement account?{" "}
+          <Link href="/import/investments" className="font-semibold underline">
+            Upload your investments
+          </Link>{" "}
+          from Fidelity, Schwab, Vanguard or Robinhood.
+        </p>
+      )}
 
       <UploadHistory
         uploads={history.uploads}
@@ -129,6 +144,8 @@ async function ImportContent() {
           }))}
         totals={totals}
         asks={asks}
+        // A temporary try has its own Start over on the banner, which deletes everything.
+        canStartOver={!isStatementTrialUser(user.id)}
       />
 
       <section className="flex flex-col gap-4">
@@ -150,11 +167,11 @@ async function ImportContent() {
   );
 }
 
-export default function ImportPage() {
+export default function ImportPage({ searchParams }: PageProps<"/import">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-10 px-6 py-12">
       <Suspense fallback={<PageLoading />}>
-        <ImportContent />
+        <ImportContent searchParams={searchParams} />
       </Suspense>
     </main>
   );
