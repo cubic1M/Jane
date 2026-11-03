@@ -140,7 +140,7 @@ claimed with `FOR UPDATE SKIP LOCKED`, retried with a growing wait, and shown on
   typecheck and unit tests", "Secret scan" and "End-to-end tests", and doesn't require a branch to
   be up to date, so two green PRs can land together untested as a pair.
 - A failed CI run has its failed jobs re-run once (`rerun-flaky.yml`), and `flake-list.yml` records
-  what failed on its first try. Only the newest waiting run on main goes ahead, so not every commit
+  what failed on its first try: read it with `npm run flakes` before bisecting a red run. Only the newest waiting run on main goes ahead, so not every commit
   gets a run of its own.
 - The merge train (`merge-train.yml`) lands an auto-merge PR that passed when GitHub's auto-merge
   didn't fire.
