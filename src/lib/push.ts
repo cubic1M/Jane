@@ -48,22 +48,33 @@ const MAX_ENDPOINT = 1000;
 const PUSH_HOST =
   /^(?:fcm\.googleapis\.com|[a-z0-9-]+\.notify\.windows\.com|(?:[a-z0-9-]+\.)*push\.services\.mozilla\.com|(?:[a-z0-9-]+\.)*push\.apple\.com)$/;
 
+// Long enough for a push service, and a server that never answers can't hold up a digest's loop.
+const SEND_TIMEOUT_MS = 10_000;
+
+// web-push reads the address again with Node's older parser, which stops a host at "%": the host
+// must be spelled exactly as checked, or evil.example%2Epush.apple.com passes here and goes there.
+function pushAddressAllowed(endpoint: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(endpoint);
+  } catch {
+    return false;
+  }
+  return (
+    url.protocol === "https:" &&
+    url.port === "" &&
+    PUSH_HOST.test(url.hostname) &&
+    endpoint.startsWith(`${url.origin}/`)
+  );
+}
+
 // The subscription a browser hands over, checked before it's stored.
 export function parseSubscription(value: unknown): BrowserSubscription | null {
   const v = value as { endpoint?: unknown; keys?: { p256dh?: unknown; auth?: unknown } } | null;
   const endpoint = typeof v?.endpoint === "string" ? v.endpoint : "";
   const { p256dh, auth } = v?.keys ?? {};
-  let url: URL;
-  try {
-    url = new URL(endpoint);
-  } catch {
-    return null;
-  }
   if (
-    url.protocol !== "https:" ||
-    url.username !== "" ||
-    url.port !== "" ||
-    !PUSH_HOST.test(url.hostname) ||
+    !pushAddressAllowed(endpoint) ||
     endpoint.length > MAX_ENDPOINT ||
     typeof p256dh !== "string" ||
     typeof auth !== "string" ||
@@ -138,11 +149,16 @@ export async function sendPush(
   };
   let delivered = 0;
   for (const device of devices) {
+    // Saved before the check above existed, or through a hole in it: never posted to, and forgotten.
+    if (!pushAddressAllowed(device.endpoint)) {
+      await db.pushSubscriptions.deleteMany({ where: { id: device.id } });
+      continue;
+    }
     try {
       await send(
         { endpoint: device.endpoint, keys: { p256dh: device.p256dh, auth: device.auth } },
         JSON.stringify(message),
-        { vapidDetails, TTL: 60 * 60 },
+        { vapidDetails, TTL: 60 * 60, timeout: SEND_TIMEOUT_MS },
       );
       delivered += 1;
     } catch (error) {

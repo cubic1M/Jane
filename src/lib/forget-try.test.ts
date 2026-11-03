@@ -11,10 +11,24 @@ const SOURCES: Record<(typeof TRY_SESSION_KEYS)[number], string> = {
 };
 
 describe("forgetThisTry", () => {
-  it("clears every key the tab keeps about a person", () => {
+  const holding = (keys: string[]) => {
     const removeItem = vi.fn();
-    forgetThisTry({ removeItem });
-    expect(removeItem.mock.calls.map(([key]) => key).sort()).toEqual([...TRY_SESSION_KEYS].sort());
+    const storage = { length: keys.length, key: (i: number) => keys[i] ?? null, removeItem };
+    forgetThisTry(storage);
+    return removeItem.mock.calls.map(([key]) => key).sort();
+  };
+
+  it("clears every key the tab keeps about a person", () => {
+    expect(holding([...TRY_SESSION_KEYS])).toEqual([...TRY_SESSION_KEYS].sort());
+  });
+
+  // The dock's cards are kept under the person's id: an exact match left the money in the tab.
+  it("clears a key that ends in the person's id", () => {
+    expect(holding(["jane:dock-cards:trial_abc"])).toEqual(["jane:dock-cards:trial_abc"]);
+  });
+
+  it("leaves anything else", () => {
+    expect(holding(["jane:dock-cardsish", "jane.visit"])).toEqual([]);
   });
 
   it("stays in step with the code that writes them", () => {
@@ -35,6 +49,8 @@ describe("forgetThisTry", () => {
 
   it("doesn't mind storage being blocked", () => {
     const throwing = {
+      length: 1,
+      key: () => "jane:dock-gone",
       removeItem: () => {
         throw new Error("blocked");
       },

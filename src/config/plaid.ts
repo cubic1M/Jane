@@ -49,8 +49,12 @@ export const SIGN_IN_PLAID_CODES: readonly string[] = [
 ];
 // A webhook sync that started longer ago than this is taken to have died, and another may run.
 export const SYNC_LOCK_MINUTES = 10;
-// Handled webhooks are remembered this long (Plaid retries a delivery for about a day).
+// Handled webhooks are kept this long, for looking back.
 export const WEBHOOK_EVENT_DAYS = 7;
+// How long an identical body counts as Plaid repeating itself. Bodies have no id of their own: every
+// SYNC_UPDATES_AVAILABLE for a bank reads the same, so a longer memory ignores real news. A little
+// over WEBHOOK_MAX_AGE_SECONDS, past which a signed delivery is refused anyway.
+export const WEBHOOK_REPEAT_MINUTES = 10;
 
 // Items synced per daily job run, so one run stays well inside the function time limit.
 export const CRON_SYNC_LIMIT = 25;

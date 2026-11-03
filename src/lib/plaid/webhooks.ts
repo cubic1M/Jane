@@ -1,5 +1,10 @@
 import { createHash } from "node:crypto";
-import { SIGN_IN_PLAID_CODES, SYNC_LOCK_MINUTES, WEBHOOK_EVENT_DAYS } from "@/config/plaid";
+import {
+  SIGN_IN_PLAID_CODES,
+  SYNC_LOCK_MINUTES,
+  WEBHOOK_EVENT_DAYS,
+  WEBHOOK_REPEAT_MINUTES,
+} from "@/config/plaid";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -104,14 +109,23 @@ export async function planWebhook(
   return null;
 }
 
-// A webhook delivery, the first time it's seen: false when Plaid sent the same body before
-// (it retries), so it's acknowledged and nothing happens twice. Old ones are forgotten.
+const hashOf = (rawBody: string) => createHash("sha256").update(rawBody).digest("hex");
+
+// A webhook delivery, the first time it's seen: false when Plaid sent the same body in the last few
+// minutes (it retries), so it's acknowledged and nothing happens twice. The same body later is new
+// news. Old ones are forgotten.
 export async function firstDelivery(
   rawBody: string,
   body: Body,
   { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
 ): Promise<boolean> {
-  const bodyHash = createHash("sha256").update(rawBody).digest("hex");
+  const bodyHash = hashOf(rawBody);
+  await systemDb(WHY, client).plaidWebhookEvent.deleteMany({
+    where: {
+      bodyHash,
+      receivedAt: { lt: new Date(now.getTime() - WEBHOOK_REPEAT_MINUTES * 60_000) },
+    },
+  });
   const { count } = await systemDb(WHY, client).plaidWebhookEvent.createMany({
     data: [
       {
@@ -119,6 +133,7 @@ export async function firstDelivery(
         plaidItemId: typeof body.item_id === "string" ? body.item_id : null,
         webhookType: String(body.webhook_type ?? ""),
         webhookCode: String(body.webhook_code ?? ""),
+        receivedAt: now,
       },
     ],
     skipDuplicates: true,
@@ -127,6 +142,15 @@ export async function firstDelivery(
     where: { receivedAt: { lt: new Date(now.getTime() - WEBHOOK_EVENT_DAYS * 86_400_000) } },
   });
   return count === 1;
+}
+
+// Acting on a delivery failed: Plaid's retry must count as the first, or it's acknowledged and lost.
+export async function forgetDelivery(
+  rawBody: string,
+  { client = defaultClient }: { client?: PrismaClient } = {},
+): Promise<void> {
+  const bodyHash = hashOf(rawBody);
+  await systemDb(WHY, client).plaidWebhookEvent.deleteMany({ where: { bodyHash } });
 }
 
 // A sync from a webhook, unless one for the same bank is already running (a burst of

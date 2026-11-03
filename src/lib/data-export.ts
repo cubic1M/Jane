@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
+import { restOfTheirData } from "@/lib/data-export-rest";
 import { scopedFor } from "@/lib/db-scoped";
 import { investmentsExport } from "@/lib/investments/holdings";
 import { teamAccessFor } from "@/lib/team-access-loader";
@@ -697,6 +698,7 @@ export async function exportUserData(
   const investments = await investmentsExport(userId, client);
   // Insurance (spec Phase X): every policy on the profile and the household facts.
   const insurance = await insuranceExport(userId, { client });
+  const everythingElse = await restOfTheirData(db);
 
   return {
     exportedAt: now.toISOString(),
@@ -778,5 +780,6 @@ export async function exportUserData(
     taxForms,
     taxReturns,
     taxDocuments,
+    everythingElse,
   };
 }

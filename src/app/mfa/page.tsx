@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
-import { signOutToHome } from "@/lib/auth-actions";
+import { SignOutForm } from "@/components/sign-out-form";
 import { enrollment } from "@/lib/mfa";
 import { getSessionState } from "@/lib/session";
 import { CodeForm } from "./code-form";
@@ -44,11 +44,11 @@ async function Content({ searchParams }: { searchParams: PageProps<"/mfa">["sear
         </div>
       )}
       <CodeForm next={next} allowBackup={setup.enrolled} />
-      <form action={signOutToHome}>
+      <SignOutForm>
         <SubmitButton className="text-sm text-zinc-600 hover:underline dark:text-zinc-400">
           Sign out instead
         </SubmitButton>
-      </form>
+      </SignOutForm>
     </>
   );
 }
