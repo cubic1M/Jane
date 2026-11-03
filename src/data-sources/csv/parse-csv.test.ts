@@ -68,4 +68,10 @@ describe("detectDelimiter", () => {
     const [record] = parseCsv(`a,${"x".repeat(MAX_CELL_CHARS * 2)}\n`);
     expect(record.fields[1]).toHaveLength(MAX_CELL_CHARS);
   });
+
+  it("shortens long runs of spaces in a cell, and leaves a bank's padding as padding", () => {
+    const [record] = parseCsv(`a,X${" ".repeat(900)}Y\n`);
+    expect(record.fields[1]).toBe(`X${" ".repeat(8)}Y`);
+    expect(parseCsv(`a,X${" ".repeat(8)}Y\n`)[0].fields[1]).toBe(`X${" ".repeat(8)}Y`);
+  });
 });

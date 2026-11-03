@@ -14,6 +14,13 @@ const SNIFF_LINES = 10;
 export const MAX_COLUMNS = 200;
 export const MAX_CELL_CHARS = 1000;
 
+// Text from a statement, kept to what the patterns that read it can afford: cut to length, and long
+// runs of spaces shortened (a run of 8 means the same to them, and Citi's padding is still padding).
+export function boundedText(text: string): string {
+  const short = text.length > MAX_CELL_CHARS ? text.slice(0, MAX_CELL_CHARS) : text;
+  return short.replace(/\s{9,}/g, "        ");
+}
+
 // The separator, from the first lines outside quotes: the one found the same number of times
 // on every line (a column boundary), else the one used most on most lines. Commas win a tie.
 export function detectDelimiter(text: string): string {
@@ -53,7 +60,7 @@ export function parseCsv(text: string, delimiter = detectDelimiter(text)): CsvRe
     if (fields.length >= MAX_COLUMNS) {
       throw new Error("This file has too many columns to be a bank statement.");
     }
-    fields.push(field.length > MAX_CELL_CHARS ? field.slice(0, MAX_CELL_CHARS) : field);
+    fields.push(boundedText(field));
   };
   const endRecord = () => {
     endField();

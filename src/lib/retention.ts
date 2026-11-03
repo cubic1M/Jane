@@ -50,9 +50,15 @@ export async function runRetention({
   // table has no tie to users, so nothing else ever removes these.
   const orphans = await client.$executeRaw`
     DELETE FROM audit_log a
-    WHERE a.actor_type = 'user'
-      AND a.event <> ALL(${[...ACCESS_EVENTS]}::text[])
-      AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id = a.actor_id)`;
+    WHERE a.event <> ALL(${[...ACCESS_EVENTS]}::text[])
+      AND (
+        (a.actor_type = 'user' AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id = a.actor_id))
+        OR (
+          a.actor_type = 'system'
+          AND a.metadata ->> 'user_id' IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id = a.metadata ->> 'user_id')
+        )
+      )`;
   // Spec step 138: everything a trial person owns goes with them (it all cascades). After
   // the rest, not alongside: the cascade deletes sessions too, and the two deletes at once
   // can deadlock.

@@ -101,6 +101,16 @@ export function launchChecks(env: Env, connections?: BankConnections): Check[] {
       (appUrl ?? "").startsWith("https://"),
       "APP_URL (or the Vercel production domain) is https",
     ),
+    // Sign-in links go out on this address (src/lib/site-origin.ts), so a wrong one breaks sign-in:
+    // not required, since a custom domain differs from Vercel's on purpose.
+    check(
+      "Sign-in links' address",
+      !env.APP_URL ||
+        !env.VERCEL_PROJECT_PRODUCTION_URL ||
+        hostOf(env.APP_URL) === env.VERCEL_PROJECT_PRODUCTION_URL,
+      "APP_URL is Vercel's production domain. Different is fine for a custom domain: request a sign-in link and check the address in the email",
+      false,
+    ),
     check(
       "Cron secret",
       (env.CRON_SECRET ?? "").length >= 32,
