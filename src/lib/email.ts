@@ -1,3 +1,4 @@
+import { linkOnSite } from "@/lib/site-origin";
 import { isTrialEmail } from "@/lib/trial-ids";
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
@@ -78,7 +79,15 @@ function escapeHtml(value: string): string {
     .replaceAll('"', "&quot;");
 }
 
-export async function sendMagicLink({ to, url }: { to: string; url: string }): Promise<void> {
+export async function sendMagicLink({
+  to,
+  url: asked,
+}: {
+  to: string;
+  url: string;
+}): Promise<void> {
+  // Auth.js builds the link from the request's headers: it goes out on the site's own address.
+  const url = linkOnSite(asked);
   // Local dev without Resend: print the link instead. Never in production, where the
   // link is a credential and must only go to the user's inbox.
   if (!process.env.RESEND_API_KEY && process.env.NODE_ENV !== "production") {

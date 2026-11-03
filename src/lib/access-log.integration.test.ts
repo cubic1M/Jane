@@ -119,7 +119,7 @@ describe.runIf(url)("the access log against a real database", () => {
 
   it("records a sign-out with whose session it was", async () => {
     currentSession.value = { user: { id: userId } };
-    await signOutToHome();
+    await expect(signOutToHome()).rejects.toThrow("NEXT_REDIRECT");
     const [entry] = await rows({ event: "user_signed_out", actorId: userId });
     expect(entry.metadata).toMatchObject({ outcome: "success", ip });
   });

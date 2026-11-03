@@ -135,5 +135,7 @@ export async function signOutToHome(): Promise<void> {
   if (userId && !isTrialUser(userId)) {
     await logAudit({ type: "user", id: userId }, "user_signed_out", { type: "user", id: userId });
   }
-  await signOut({ redirectTo: "/" });
+  // Then back here by path: Auth.js's own redirect takes its address from the request's headers.
+  await signOut({ redirect: false });
+  redirect("/");
 }
