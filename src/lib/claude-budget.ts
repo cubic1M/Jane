@@ -7,6 +7,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { anthropic } from "@/lib/anthropic";
 import { db as defaultClient } from "@/lib/db";
 import { isAdminEmail } from "@/lib/invites";
+import { log } from "@/lib/log";
 import {
   addMonthlySpend,
   monthlyCapCents,
@@ -116,8 +117,7 @@ export function meteredClaude(
         if (blocked) throw capped();
         const response = (await claude().messages.create(...args)) as Anthropic.Message;
         await chargeBackground(userId, args[0].model, response.usage, { client, now: at }).catch(
-          (error: unknown) =>
-            console.error("Claude budget: charge failed", { error: String(error) }),
+          (error: unknown) => log.error("Claude budget: charge failed", { error: String(error) }),
         );
         return response;
       },

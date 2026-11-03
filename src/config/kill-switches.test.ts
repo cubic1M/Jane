@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { KILL_SWITCH_VARS, killed } from "@/config/kill-switches";
 
@@ -71,6 +71,30 @@ describe("KILL_CLAUDE", () => {
     expect(llmEnabled()).toBe(false);
     expect(() => anthropic()).toThrow("paused");
     resetAnthropicForTests();
+  });
+});
+
+describe("KILL_CLAUDE, every door", () => {
+  it("stops categorizing merchants, which has its own client", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "a-test-value");
+    vi.stubEnv("KILL_CLAUDE", "1");
+    const { classifyMerchants } = await import("@/categorize/llm");
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const create = vi.fn(async () => ({ stop_reason: "refusal", content: [] }));
+    const claude = () => ({ messages: { create } }) as never;
+    expect(await classifyMerchants(["netflix"], { claude })).toEqual(new Map());
+    expect(create).not.toHaveBeenCalled();
+    vi.stubEnv("KILL_CLAUDE", "");
+    await classifyMerchants(["netflix"], { claude });
+    expect(create).toHaveBeenCalledOnce();
+  });
+
+  it("has no other way to build a Claude client", () => {
+    const builders = readdirSync("src", { recursive: true, encoding: "utf8" })
+      .filter((file) => /\.tsx?$/.test(file) && !/\.test\.tsx?$/.test(file))
+      .filter((file) => !file.startsWith("generated/") && !file.startsWith("test-setup/"))
+      .filter((file) => readFileSync(`src/${file}`, "utf8").includes("new Anthropic("));
+    expect(builders.sort()).toEqual(["categorize/llm.ts", "lib/anthropic.ts"]);
   });
 });
 

@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { killed } from "@/config/kill-switches";
 import { ALL_DETAILED, type PfcDetailed } from "./taxonomy";
 import { UNTRUSTED_TEXT_RULE } from "@/lib/untrusted-text";
 import { log } from "@/lib/log";
@@ -78,7 +79,7 @@ export async function classifyMerchants(
   { claude }: { claude?: () => Anthropic } = {},
 ): Promise<Map<string, PfcDetailed>> {
   const results = new Map<string, PfcDetailed>();
-  if (!process.env.ANTHROPIC_API_KEY || merchants.length === 0) return results;
+  if (!process.env.ANTHROPIC_API_KEY || killed("claude") || merchants.length === 0) return results;
 
   // The batches at once rather than one after another: the same calls, less waiting.
   const batches = [];
