@@ -60,8 +60,14 @@ export async function deleteAllData(
     // row to go with it.
     await tx.auditLog.deleteMany({
       where: {
-        OR: [{ actorId: userId }, { targetId: userId }],
+        OR: [
+          { actorId: userId },
+          { targetId: userId },
+          { metadata: { path: ["user_id"], equals: userId } },
+        ],
         event: { notIn: [...ACCESS_EVENTS] },
+        // What someone did as the team isn't theirs to erase by deleting their account.
+        actorType: { not: "admin" },
       },
     });
     await tx.user.delete({ where: { id: userId } });

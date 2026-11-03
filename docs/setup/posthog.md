@@ -1,8 +1,9 @@
 # Turn on PostHog analytics
 
 Jane already saves every funnel event (signing up, linking a bank, opening a card and so on) in
-its own database, the `analytics_events` table. With PostHog set up, each event also goes to
-PostHog, so you get funnels and charts without writing SQL. People trying Jane with sample data
+its own database, the `analytics_events` table. With PostHog set up, the product funnel's events
+also go to PostHog (`POSTHOG_EVENTS` in `src/lib/analytics-events.ts`), so you get funnels and charts
+without writing SQL. Events whose name would say something private stay in our own table. People trying Jane with sample data
 are never counted, in either place. Nothing breaks while it isn't set up. PostHog's free plan
 covers 1 million events a month, far more than the beta needs. About 5 minutes.
 

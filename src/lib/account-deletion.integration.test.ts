@@ -373,6 +373,19 @@ describe.runIf(url)("deleting data against a real database", () => {
     });
     await client.auditLog.create({ data: entry("tax_tag_changed") });
     await client.auditLog.create({ data: entry("user_signed_in") });
+    // Written by the system about them: the id is in the details.
+    await client.auditLog.create({
+      data: {
+        actorType: "system",
+        event: "agent_message_sent",
+        targetType: "action",
+        targetId: `action-${userId}`,
+        metadata: { user_id: userId },
+      },
+    });
+    // What they did as the team stays: deleting an account can't erase an admin's trail.
+    const asTeam = { ...entry("admin_viewed_keys"), actorType: "admin" as const };
+    await client.auditLog.create({ data: asTeam });
 
     await deleteAllData(userId, { client, api: { itemRemove: vi.fn() } as never });
 
@@ -380,7 +393,8 @@ describe.runIf(url)("deleting data against a real database", () => {
       where: { actorId: userId },
       select: { event: true },
     });
-    expect(left.map((r) => r.event)).toEqual(["user_signed_in"]);
+    expect(left.map((r) => r.event).sort()).toEqual(["admin_viewed_keys", "user_signed_in"]);
+    expect(await client.auditLog.count({ where: { targetId: `action-${userId}` } })).toBe(0);
     await client.auditLog.deleteMany({ where: { actorId: userId } });
   });
 

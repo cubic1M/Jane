@@ -143,4 +143,21 @@ describe("sign-in emails that failed", () => {
     expect(signInEmailCheck(1).detail).toMatch(/^1 sign-in email failed/);
     expect(launchReady([signInEmailCheck(1)])).toBe(false);
   });
+
+  // Sign-in links go out on APP_URL: wrong, they lead somewhere else.
+  it("flags an APP_URL that isn't Vercel's production domain, without requiring it", () => {
+    const addressCheck = (env: Record<string, string>) =>
+      launchChecks({ ...env } as never).find((c) => c.name === "Sign-in links' address");
+    expect(
+      addressCheck({ APP_URL: "https://a.example", VERCEL_PROJECT_PRODUCTION_URL: "a.example" })
+        ?.ok,
+    ).toBe(true);
+    const wrong = addressCheck({
+      APP_URL: "https://old.example",
+      VERCEL_PROJECT_PRODUCTION_URL: "a.example",
+    });
+    expect(wrong?.ok).toBe(false);
+    expect(wrong?.required).toBe(false);
+    expect(addressCheck({ VERCEL_PROJECT_PRODUCTION_URL: "a.example" })?.ok).toBe(true);
+  });
 });

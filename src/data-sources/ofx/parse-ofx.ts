@@ -1,3 +1,4 @@
+import { boundedText } from "@/data-sources/csv/parse-csv";
 import { CONTROL_MIN_SIGN_VOTES, CONTROL_SIGN_REVERSED_SHARE } from "@/config/import";
 import { controlTotals, type ControlReport } from "@/data-sources/csv/control-totals";
 import { normalizeMerchant } from "@/data-sources/merchant";
@@ -21,7 +22,7 @@ const decode = (value: string) =>
 // A single value inside one aggregate: up to the next tag or line end, closed or not.
 function field(block: string, tag: string): string | null {
   const match = new RegExp(`<${tag}>([^<\\r\\n]*)`, "i").exec(block);
-  return match ? decode(match[1]) : null;
+  return match ? decode(boundedText(match[1])) : null;
 }
 
 // "20261001120000[-5:EST]" or "20261002000000.000" -> "2026-10-01". The bank's local

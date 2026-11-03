@@ -87,4 +87,14 @@ describe("readOfx", () => {
     const result = readOfx({ name: "x.ofx", text });
     expect(result.ok && result.skipped.map((s) => s.line)).toEqual([3, 6]);
   });
+
+  // An independent read: <MEMO> had no limit, and a quadratic pattern reads the description later
+  // (80 KB of spaces took 2.3 seconds in withoutAchDetails).
+  it("bounds what it reads from a field, so later patterns can't be made slow", () => {
+    const row = (memo: string) =>
+      `<STMTTRN><DTPOSTED>20260101<TRNAMT>-1.00<FITID>a<NAME>Shop<MEMO>${memo}\n</STMTTRN>`;
+    const result = readOfx({ name: "x.ofx", text: `<OFX>${row(`A${" ".repeat(80_000)}1`)}` });
+    if (!result.ok) throw new Error(result.error);
+    expect(result.transactions[0].description.length).toBeLessThan(50);
+  });
 });
