@@ -5,6 +5,7 @@ import { after } from "next/server";
 import { NEW_ACCOUNT_ID } from "@/config/import";
 import { track } from "@/lib/analytics";
 import { canImportCsv } from "@/lib/csv-access";
+import { statementAccountRefusal } from "@/lib/statement-trial";
 import { scopedDb, type ScopedDb } from "@/lib/db-scoped";
 import { balancesToAsk, setUploadedBalance, type BalanceAsk } from "@/lib/import/account-balance";
 import { dismissImportRun } from "@/lib/import/background";
@@ -50,6 +51,8 @@ export async function createCsvAccount(
   if (!db) return { ok: false, error: NOT_ALLOWED };
   const fields = accountFields(formData);
   if (typeof fields === "string") return { ok: false, error: fields };
+  const refused = await statementAccountRefusal(db);
+  if (refused) return { ok: false, error: refused };
   await createCsvAccountRow(db, fields);
   revalidatePath("/import");
   return { ok: true };

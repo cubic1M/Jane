@@ -282,7 +282,7 @@ describe.runIf(url)("a temporary person's Claude budget", { timeout: 180_000 }, 
       form.append("files", new File([madeUpChaseCsv(name, NOW)], "s.csv", { type: "text/csv" }));
       return form;
     };
-    await saveUpload(scopedFor(statement, client), data("ZZGATE"));
+    await saveUpload(scopedFor(statement, client), data("ZZGATE"), { client });
     await saveUpload(scopedFor(real.id, client), data("ZZGATE"));
 
     // Whether a charge is a subscription: asked for the real account, never here.
@@ -332,7 +332,7 @@ describe.runIf(url)("a temporary person's Claude budget", { timeout: 180_000 }, 
       "files",
       new File([madeUpChaseCsv("ZZNOCLAUDE", NOW)], "s.csv", { type: "text/csv" }),
     );
-    const saved = await saveUpload(scopedFor(userId, client), data);
+    const saved = await saveUpload(scopedFor(userId, client), data, { client });
     if (!saved.ok) throw new Error(saved.error);
     await finishImport(userId, saved.runId, { client, now: NOW });
     const anthropicCalls = fetch.mock.calls.filter(([target]) =>

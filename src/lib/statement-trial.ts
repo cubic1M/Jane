@@ -8,6 +8,8 @@ import {
   TRIAL_SESSION_PREFIX,
 } from "@/config/trial";
 import {
+  STATEMENT_TRIAL_BUSY,
+  STATEMENT_TRIAL_MAX_ACCOUNTS,
   STATEMENT_TRIAL_MAX_FILE_BYTES,
   STATEMENT_TRIAL_MAX_PERSON_ROWS,
   STATEMENT_TRIAL_MAX_ROWS,
@@ -18,7 +20,9 @@ import {
 } from "@/config/statement-trial";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
+import { giveBack, hit } from "@/lib/rate-limit";
 import { systemDb } from "@/lib/system-db";
+import { isStatementTrialUser } from "@/lib/trial-ids";
 import type { ScopedDb } from "@/lib/db-scoped";
 import { STATEMENT_TRIAL_STARTED, deleteTrialPerson } from "@/lib/trial-delete";
 
@@ -121,8 +125,9 @@ export function statementFilesRefusal(bytes: number[]): string | null {
 
 // What's wrong with one more upload for a temporary person, or null. Rows, as the file was read.
 export async function statementUploadRefusal(
-  db: Pick<ScopedDb, "transactions" | "importRuns">,
+  db: Pick<ScopedDb, "userId" | "transactions" | "importRuns">,
   files: { rows: number }[],
+  { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<string | null> {
   const rows = files.reduce((sum, f) => sum + f.rows, 0);
   if (rows > STATEMENT_TRIAL_MAX_ROWS) return statementTooManyRows();
@@ -133,8 +138,30 @@ export async function statementUploadRefusal(
   if (uploads >= STATEMENT_TRIAL_MAX_UPLOADS) {
     return `A temporary try holds up to ${STATEMENT_TRIAL_MAX_UPLOADS} uploads. Start over to try different statements.`;
   }
-  if (held + rows > STATEMENT_TRIAL_MAX_PERSON_ROWS) {
-    return `A temporary try holds up to ${STATEMENT_TRIAL_MAX_PERSON_ROWS.toLocaleString("en-US")} transactions. Start over to try different statements.`;
+  const tooManyHeld = `A temporary try holds up to ${STATEMENT_TRIAL_MAX_PERSON_ROWS.toLocaleString("en-US")} transactions. Start over to try different statements.`;
+  if (held + rows > STATEMENT_TRIAL_MAX_PERSON_ROWS) return tooManyHeld;
+  if (rows === 0) return null;
+  // The count above can't see uploads still running, so these are taken before any row is written:
+  // 30 uploads at once all saw nothing held, and all got in.
+  const options = { client, now, by: rows };
+  if (!(await hit("statementRows", db.userId, options)).ok) {
+    await giveBack("statementRows", db.userId, options);
+    return tooManyHeld;
+  }
+  if (!(await hit("statementRowsDay", "all", options)).ok) {
+    await giveBack("statementRowsDay", "all", options);
+    await giveBack("statementRows", db.userId, options);
+    return STATEMENT_TRIAL_BUSY;
   }
   return null;
+}
+
+// What's wrong with one more account for a temporary person, or null.
+export async function statementAccountRefusal(
+  db: Pick<ScopedDb, "userId" | "accounts">,
+): Promise<string | null> {
+  if (!isStatementTrialUser(db.userId)) return null;
+  return (await db.accounts.count()) >= STATEMENT_TRIAL_MAX_ACCOUNTS
+    ? `A temporary try holds up to ${STATEMENT_TRIAL_MAX_ACCOUNTS} accounts. Start over to try different statements.`
+    : null;
 }

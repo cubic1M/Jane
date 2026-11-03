@@ -52,18 +52,19 @@ function sometimesCleanUp(client: PrismaClient, now: Date) {
     .catch(() => undefined);
 }
 
+// `by`: how much this use counts for, for a limit on an amount (rows) rather than on requests.
 export async function hit(
   name: LimitName,
   subject: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  { client = defaultClient, now = new Date(), by = 1 }: Options & { by?: number } = {},
 ): Promise<RateResult> {
   const { key, windowStart } = windowFor(name, subject, now);
   const [row] = await systemDb(WHY, client).$queryRaw<{ count: number }[]>`
-    INSERT INTO rate_limits (key, window_start, count) VALUES (${key}, ${windowStart}, 1)
-    ON CONFLICT (key, window_start) DO UPDATE SET count = rate_limits.count + 1
+    INSERT INTO rate_limits (key, window_start, count) VALUES (${key}, ${windowStart}, ${by})
+    ON CONFLICT (key, window_start) DO UPDATE SET count = rate_limits.count + ${by}
     RETURNING count`;
   const count = Number(row.count);
-  if (count === 1) sometimesCleanUp(client, now);
+  if (count === by) sometimesCleanUp(client, now);
   return resultFor(name, count, windowStart, now);
 }
 
@@ -128,11 +129,11 @@ export async function firstUseInWindow(
 export async function giveBack(
   name: LimitName,
   subject: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  { client = defaultClient, now = new Date(), by = 1 }: Options & { by?: number } = {},
 ): Promise<void> {
   const { key, windowStart } = windowFor(name, subject, now);
   await systemDb(WHY, client).$executeRaw`
-    UPDATE rate_limits SET count = GREATEST(count - 1, 0)
+    UPDATE rate_limits SET count = GREATEST(count - ${by}, 0)
     WHERE key = ${key} AND window_start = ${windowStart}`;
 }
 
