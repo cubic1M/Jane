@@ -235,6 +235,23 @@ describe("a month's amount called a year's", () => {
   );
 });
 
+describe("how often, from the key a figure sits under", () => {
+  it.each([
+    ["monthlyPayment", "$100.00 a year"],
+    ["paidMonthly", "$100.00 a year"],
+    ["costAMonth", "$100.00 a year"],
+    ["savesAYear", "$100.00 a month"],
+  ])("%s: fails %j", (key, said) => {
+    const ledger = ledgerOf(JSON.stringify({ name: "Hulu", [key]: "$100.00" }));
+    expect(kinds(ledger, `Hulu is ${said}.`)).toEqual(["wrong_cadence"]);
+  });
+
+  it("says nothing of how often from a word like monthsLeft", () => {
+    const ledger = ledgerOf(JSON.stringify({ name: "Hulu", monthsLeftAmount: "$100.00" }));
+    expect(kinds(ledger, "Hulu is $100.00 a year.")).toEqual([]);
+  });
+});
+
 describe("percents", () => {
   const ledger = ledgerOf(DEBTS, JSON.stringify({ kinds: [{ yearlyRatePercent: 391 }] }));
 

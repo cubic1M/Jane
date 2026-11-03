@@ -71,7 +71,7 @@ const PERIOD_KEYS = ["month", "date", "on", "chargedOn", "billedOn"];
 const RECURRING_KEYS = ["billed", "nextDate", "paymentEvery"];
 
 const YEARLY_KEY = /^(?:aYear|perYear|yearly|annual|annually)$|(?:AYear|PerYear|Yearly|Annual)$/;
-const MONTHLY_KEY = /^(?:aMonth|perMonth|monthly)|(?:AMonth|PerMonth|Monthly)/;
+const MONTHLY_KEY = /^(?:aMonth|perMonth|monthly|.*(?:AMonth|PerMonth|Monthly))/;
 const PERCENT_KEY = /percent|share|bracket/i;
 // Numbers that are never a count of anything said in an answer.
 const NOT_A_COUNT = /year|percent|score|cents|age|minutes|points|rate|confidence/i;
