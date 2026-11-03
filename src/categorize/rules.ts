@@ -148,6 +148,7 @@ const RULES: readonly Rule[] = [
       "CITI AUTOPAY",
       "CITI CARD ONLINE PAYMENT",
       "APPLECARD GSBANK PAYMENT",
+      "GOLDMAN SACHS BANK APPLE CARD",
       "BK OF AMER VISA ONLINE PMT",
       "WF CREDIT CARD AUTO PAY",
       "SYNCHRONY BANK PAYMENT",
@@ -293,7 +294,14 @@ const RULES: readonly Rule[] = [
   },
   {
     category: "TRANSFER_IN_INVESTMENT_AND_RETIREMENT_FUNDS",
-    keywords: ["COINBASE", "ROBINHOOD", "MONEYLINE"],
+    keywords: [
+      "COINBASE",
+      "ROBINHOOD",
+      "MONEYLINE",
+      "MONEYLINK",
+      "VANGUARD SELL",
+      "WEALTHFRONT EDI",
+    ],
     direction: "in",
   },
   {
@@ -500,6 +508,12 @@ const RULES: readonly Rule[] = [
       "VENMO",
       "CASH APP",
       "TRANSFER TO",
+      // As banks shorten it (debugger 11-02: 12 of 55 wordings matched nothing, so a move to savings
+      // counted as spending).
+      "TRNSFR",
+      "XFER",
+      "TRF TO",
+      "APPLE CASH SENT",
       // Money sent to someone abroad, as Zelle to a person is (debugger 11-02: Jane wasn't sure what
       // a nurse's monthly Remitly was).
       "REMITLY",
@@ -524,7 +538,16 @@ const RULES: readonly Rule[] = [
   },
   {
     category: "TRANSFER_IN_ACCOUNT_TRANSFER",
-    keywords: ["ZELLE", "VENMO", "CASH APP", "TRANSFER FROM", "360 CHECKING"],
+    keywords: [
+      "ZELLE",
+      "VENMO",
+      "CASH APP",
+      "TRANSFER FROM",
+      "360 CHECKING",
+      "TRNSFR",
+      "XFER",
+      "TRF FROM",
+    ],
     direction: "in",
   },
   {
