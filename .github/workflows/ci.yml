@@ -31,12 +31,12 @@ jobs:
     name: Lint, format and typecheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version-file: .nvmrc
           cache: npm
-      - uses: actions/cache@v6
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         id: modules
         with:
           path: node_modules
@@ -65,14 +65,14 @@ jobs:
       args: ${{ steps.scope.outputs.args }}
       specs: ${{ steps.scope.outputs.specs }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 2
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version-file: .nvmrc
           cache: npm
-      - uses: actions/cache@v6
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         id: modules
         with:
           path: node_modules
@@ -92,11 +92,11 @@ jobs:
     name: Migration safety
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
           filter: blob:none
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version-file: .nvmrc
       - run: npm run check:migrations
@@ -129,14 +129,14 @@ jobs:
       TEST_DATABASE_URL: postgresql://postgres@localhost:5432/test
     steps:
       # Two commits: the changed-tests run compares the test merge with its first parent.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 2
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version-file: .nvmrc
           cache: npm
-      - uses: actions/cache@v6
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         id: modules
         with:
           path: node_modules
@@ -147,7 +147,7 @@ jobs:
         run: npx prisma generate
       # Vitest starts the files that took longest last time first, from its results file, so a
       # shard doesn't end on one slow file running alone. Kept between runs, per shard.
-      - uses: actions/cache@v6
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: node_modules/.vite/vitest
           key: vitest-results-${{ matrix.shard }}-${{ github.run_id }}
@@ -181,7 +181,7 @@ jobs:
           src/lib/learning.integration.test.ts
       - name: Keep the results for the flake list
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: results-unit-${{ matrix.shard }}-attempt-${{ github.run_attempt }}
           path: ci-results/
@@ -210,12 +210,12 @@ jobs:
     env:
       TEST_DATABASE_URL: postgresql://postgres@localhost:5432/test
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version-file: .nvmrc
           cache: npm
-      - uses: actions/cache@v6
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         id: modules
         with:
           path: node_modules
@@ -235,7 +235,7 @@ jobs:
       - run: npm run test:access
       - name: Keep what each attack found
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: access-proof
           path: test-results/access-proof.json
@@ -287,12 +287,12 @@ jobs:
           else
             printf 'shards=[1]\ntotal=1\nargs=--grep @critical --project=chromium\n' >> "$GITHUB_OUTPUT"
           fi
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version-file: .nvmrc
           cache: npm
-      - uses: actions/cache@v6
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         id: modules
         with:
           path: node_modules
@@ -302,7 +302,7 @@ jobs:
       - name: Generate the Prisma client
         run: npx prisma generate
       # The build's own cache: an unchanged page isn't built again.
-      - uses: actions/cache@v6
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: .next/cache
           key: next-build-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**', 'next.config.ts', 'prisma/schema.prisma') }}
@@ -320,7 +320,7 @@ jobs:
         run: npm run check:perf-budget
       - name: Pack the build (without its cache)
         run: tar --exclude=.next/cache -cf next-build.tar .next
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: e2e-build
           path: next-build.tar
@@ -355,12 +355,12 @@ jobs:
       # playwright.config.ts: `next start` on the build, with what the tests need turned on.
       E2E_PROD: "1"
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version-file: .nvmrc
           cache: npm
-      - uses: actions/cache@v6
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         id: modules
         with:
           path: node_modules
@@ -369,7 +369,7 @@ jobs:
         run: npm ci
       - name: Generate the Prisma client
         run: npx prisma generate
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: e2e-build
       - name: Unpack the build
@@ -394,7 +394,7 @@ jobs:
           E2E_RESULTS_FILE: ci-results/e2e-changed.json
       - name: Keep the results for the flake list
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: results-e2e-${{ matrix.shard }}-attempt-${{ github.run_attempt }}
           path: ci-results/
@@ -404,7 +404,7 @@ jobs:
       # trace (npx playwright show-trace) for a week.
       - name: Keep the failed tests' traces
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: e2e-results-${{ matrix.shard }}
           path: test-results/
@@ -429,8 +429,8 @@ jobs:
     name: Dependency audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -441,7 +441,7 @@ jobs:
     name: Secret scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
       - name: Run gitleaks

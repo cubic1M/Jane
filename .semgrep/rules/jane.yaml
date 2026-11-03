@@ -1,0 +1,49 @@
+# What generic scanners can't know about Jane (docs/security/scanners.md). Each rule has its cases
+# in jane.ts beside this file: `semgrep --test .semgrep/rules` runs them, in CI too.
+rules:
+  - id: jane-user-table-query-without-scope
+    message: >-
+      This query on a user-owned table has no user in its filter, so it can read or change another
+      person's rows. Use scopedFor(userId) from src/lib/db-scoped.ts, or put userId in the where. If
+      it truly works across people, say so: `// nosemgrep: jane-user-table-query-without-scope --
+      <who runs it and why>`.
+    languages: [typescript]
+    severity: ERROR
+    paths:
+      include: [/src/]
+      exclude: ["*.test.ts", "*.test.tsx", /src/test-setup/, /src/generated/, /src/accuracy/]
+    patterns:
+      - pattern: $CLIENT.$MODEL.$OP(...)
+      # A scoped client adds the user itself, whatever it's called here.
+      - pattern-not-inside: |
+          const $CLIENT = scopedFor(...);
+          ...
+      - pattern-not: scopedFor(...).$MODEL.$OP(...)
+      - metavariable-regex:
+          metavariable: $OP
+          regex: ^(findMany|findFirst|findFirstOrThrow|findUnique|findUniqueOrThrow|count|aggregate|groupBy|update|updateMany|updateManyAndReturn|delete|deleteMany|upsert)$
+      # Every model with a userId field; src/security/semgrep-rules.test.ts keeps this list current.
+      - metavariable-regex:
+          metavariable: $MODEL
+          regex: ^(account|accountBeneficiary|accountantLink|accountantNote|action|activityEvent|agentMessage|alert|analyticsEvent|askConversation|askMessage|authAccount|autoInvestPlan|autoInvestRun|autopilotAct|autopilotSector|balanceSnapshot|balanceTransfer|billLadder|booksIssue|borrowingCheck|brokerageOrder|budget|budgetTuneUp|carAddon|carLoanWatch|cardApplication|cardPromo|cardRateRequest|changeAck|chatReplyLink|checkIn|collegePlan|controllerRun|costlyProduct|coverChange|creditDispute|creditGoal|creditReport|cryptoConnection|cryptoHolding|deadline|debtPlan|debtTerms|debtWatch|decision|digest|disasterLoss|document|draftReturn|employerBenefit|equityEvent|equityGrant|familyChild|familyCreditHelp|familyFile|finding|giftLink|goalTransfer|healthScore|holding|homeEquityFacts|householdInvite|householdMember|hsaReceipt|importRun|insuranceCheckup|insuranceClaim|insurancePolicy|insuranceProfile|insuranceQuote|insuranceRisk|insuranceSaving|insuranceShop|investmentTransaction|investorProfile|janeMessage|janePreference|leanPlan|liability|lifeApplication|lifeEvent|lifeEventAnswer|loanApplication|medicalBill|medicalRequest|membershipIntent|merchantCategory|mfaBackupCode|moneyTransfer|monthClose|monthlyReport|oldPlan|ownedAsset|paperAccount|paperEventLog|paperEventOverlay|paperPosition|paperSignal|paperTrade|paperValue|paycheckPlan|payrollChange|personalLoan|plaidItem|plaidItemClaim|planChange|planLink|planMenu|planProposal|policyReading|practiceOpportunity|practicePortfolio|practicePosition|practicePreferences|practiceTrade|priorReturn|problemReport|propertyAppeal|pushSubscription|recurringStream|referralConversion|refinanceCheck|renewalNegotiation|rentReporting|rentalProperty|retirementIncome|savedShare|savingsGoal|security|securityDeposit|session|settlement|sharedCharge|standingRule|studentLoanProfile|subscriptionCheck|suddenMoney|suggestion|suggestionOutcome|taxAmendment|taxDocument|taxForm|taxIdentityCase|taxNotice|taxPayment|taxPlanEvent|taxProfile|taxReturn|taxTag|tightRequest|transaction|unusualAnswer|userFact|valuesPreference|whatIfPlan|yearPlan)$
+      # The where holds a userId at any depth (closed sibling objects before it are skipped), so
+      # `select: { userId: true }` after the where doesn't count.
+      - pattern-not-regex: where:\s*\{(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*?(?:\{(?:[^{}]|\{[^{}]*\})*?)*\buserId\b
+  - id: jane-log-sensitive-value
+    message: >-
+      This writes a token, an email or statement content to the logs, which leave the app. Log an id,
+      a count or a reason instead (docs/security/logging.md).
+    languages: [typescript]
+    severity: ERROR
+    paths:
+      exclude: ["*.test.ts", "*.test.tsx", /src/test-setup/]
+    pattern-either:
+      - patterns:
+          - pattern-either:
+              - pattern: console.$LEVEL(..., <... $VALUE ...>, ...)
+              - pattern: log.$LEVEL(..., <... $VALUE ...>, ...)
+          # log.dev prints on a laptop only and says nothing in production.
+          - pattern-not: log.dev(...)
+          - metavariable-regex:
+              metavariable: $VALUE
+              regex: (?i)^([\w.?!\[\]]*\.)?(access_?token|public_?token|session_?token|refresh_?token|token|secret|password|api_?key|authorization|cookie|email|raw_?description|description|statement\w*|csv\w*|file_?text|prompt|transcript|question|memo|merchant_?name)$

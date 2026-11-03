@@ -1,0 +1,12 @@
+# What CodeQL reads (docs/security/scanners.md): the code that runs, with the wider security set.
+name: Jane
+queries:
+  - uses: security-extended
+paths-ignore:
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - e2e
+  - docs
+  - src/generated
+  - src/test-setup
+  - .semgrep
