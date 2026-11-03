@@ -20,3 +20,8 @@ Opponents (average points per seat):
   average points : 46.09   (max 100 per table)   [start of night 32.22; after behind_k + push_steal 37.68; Plan B itself 38.49]
   places         : 1st:77  2nd:65  3rd:31  4th:25  5th:27  6th:22  7th:24  8th:29
   errors         : 0   timeouts: 0
+
+== after resteal_rel=1.0 + resteal_read=6 (submission/bot.py rebuilt), same 300 tables seed 21
+  average points : 60.65   (max 100 per table)   [start of night 32.22; 37.68; 46.09; Plan B itself 38.49]
+  places         : 1st:188  2nd:48  3rd:18  4th:14  5th:10  6th:6  7th:5  8th:11
+  errors         : 0   timeouts: 0

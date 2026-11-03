@@ -67,7 +67,6 @@ Fill in each line:
    `resteal=1;resteal_risk=0.5;pev=1;pev_risk=0.5` (it beats tight fields, +5 vs our own copies);
    `call_margin=0.09;range_k=3.2` if 1st takes most points;
    `push_steal=0;steal_bonus=0.3` if the field re-steals (adaptive bots: +3.6 to +4.7 on field 4, −2.0 on all3);
-   `resteal_rel=0.5` if the field is tight (+10.7 vs Plan B copies, −1.6 on the hackathon-like field);
    `behind_k=0` if the field is tight (+2.9 vs Plan B copies, +3.4 vs our copies, −2.9 on the default field)):
    - tune: `python3 -m sng.tune --preset <p> --field blend --rounds 3 --tables 500 --accept-se 2 --tag _day` (about 15–25 min per round);
    - validate: `results/sng_validate.sh "icm_tag:<tuned>" --preset <p>`;
@@ -142,7 +141,7 @@ loop (tune on the real rules, validate, resubmit) matters.
 - **Respect postflop bets:** our equity x 0.5 per bet or raise faced (was 0.6; +1.0 per table on fresh seeds).
 - **All-in calls use exact ICM** (break-even from the real stacks and point table, +2%): +0.3 to +2.2 per table.
 - **Open small (2bb) and fairly wide; steal more from seats that fold** (the bots that time out fold).
-- **Re-shove over wide openers:** facing a lone open at ≤ 28bb, shove the top 35% of the opener's opening range (+2.25 per table; +7 to +8 vs tight fields).
+- **Re-shove over wide openers:** facing a lone open at ≤ 28bb, shove the top 100% × (the opener's open rate) of hands, scaled by how often that opener folds to re-raises (+2.25, then +4.5 more per table; +14 vs tight fields).
 - Push or fold at ≤ 9bb, **wider against blinds that fold** (the steal read on shoves too: +1.45 per table, +5.6 vs the Plan B bot). Re-raise preflop only with AA.
 - **Heads-up, open and defend much wider** (open bar 0.6/2, a raiser = 2 random hands): +2 to +12 per heads-up table.
 - Surviving pays: even an always-fold bot scores mid-table. Busting early is the costly mistake.

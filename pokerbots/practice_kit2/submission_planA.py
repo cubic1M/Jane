@@ -413,7 +413,7 @@ def allin_call_need(my_total, my_committed, shover, totals, committed, pays):
     if win - lose <= 1e-12:
         return None
     return (fold - lose) / (win - lose)
-PARAMS = dict(open_mult=1.07, open_size=2.0, push_bb=9.0, push_mult=1.0, range_k=4.0, call_margin=0.06, threebet_eq=0.62, threebet_rel=2.6, risk=0.1, value_eq=0.62, cbet=0.55, bet_frac=0.65, bet_discount=0.5, steal_bonus=0.55, steal_max_behind=5, steal_sym=0.5, reshove_bb=24.0, read_alpha=0.5, base_pfr=0.12, raiser_discount=1.0, raise_eq=99.0, bluff_bonus=0.4, bluff_max_opp=2, pf_chart=0, pf_max_bb=15.0, pf_file='', cap_risk=0.0, cap_window=25, steal_floor=0.0, resteal_rel=0.35, resteal_rel_bb=28.0, push_steal=0.5, behind_k=0.2, cbet_size=0.5, bluff_size=0.5, hu_risk=1.0, cap_fade=0, risk_payout=1, hu_open_mult=0.6, hu_range_k=2.0, sh_open_mult=0.0, sh_range_k=0.0, icm_call=1, icm_margin=0.02, pev=0, pev_bb=15.0, pev_margin=0.0, pev_loose=1.0, pev_risk=1.0, resteal=0, resteal_lo=10.0, resteal_hi=25.0, resteal_margin=0.0, resteal_cw=0.6, resteal_wake=0.3, resteal_risk=0.25, range_map=0.65, rk_floor=1.2, agg_alpha=0.0, base_agg=0.35, agg_raise=99.0, agg_seat=0.6, station_size=0.0, thin_value=0.0)
+PARAMS = dict(open_mult=1.07, open_size=2.0, push_bb=9.0, push_mult=1.0, range_k=4.0, call_margin=0.06, threebet_eq=0.62, threebet_rel=2.6, risk=0.1, value_eq=0.62, cbet=0.55, bet_frac=0.65, bet_discount=0.5, steal_bonus=0.55, steal_max_behind=5, steal_sym=0.5, reshove_bb=24.0, read_alpha=0.5, base_pfr=0.12, raiser_discount=1.0, raise_eq=99.0, bluff_bonus=0.4, bluff_max_opp=2, pf_chart=0, pf_max_bb=15.0, pf_file='', cap_risk=0.0, cap_window=25, steal_floor=0.0, resteal_rel=1.0, resteal_read=6.0, resteal_rel_bb=28.0, push_steal=0.5, behind_k=0.2, cbet_size=0.5, bluff_size=0.5, hu_risk=1.0, cap_fade=0, risk_payout=1, hu_open_mult=0.6, hu_range_k=2.0, sh_open_mult=0.0, sh_range_k=0.0, icm_call=1, icm_margin=0.02, pev=0, pev_bb=15.0, pev_margin=0.0, pev_loose=1.0, pev_risk=1.0, resteal=0, resteal_lo=10.0, resteal_hi=25.0, resteal_margin=0.0, resteal_cw=0.6, resteal_wake=0.3, resteal_risk=0.25, range_map=0.65, rk_floor=1.2, agg_alpha=0.0, base_agg=0.35, agg_raise=99.0, agg_seat=0.6, station_size=0.0, thin_value=0.0)
 def payout_risk_scale(payouts):
     pay = [float(x) for x in payouts]
     if len(pay) < 2:
@@ -475,6 +475,8 @@ class IcmTag:
             self.chart = load_chart(rules, self.p['pf_file'] or None)
         self.steal_seen = [0] * rules.num_players
         self.steal_fold = [0] * rules.num_players
+        self.o3_seen = [0] * rules.num_players
+        self.o3_fold = [0] * rules.num_players
         self.aggressor = None
         self.dealt = [0] * rules.num_players
         self.pf_faced = [0] * rules.num_players
@@ -511,6 +513,15 @@ class IcmTag:
                 self.pf_faced[sv] += 1
                 if kind == 'fold':
                     self.pf_fold[sv] += 1
+        pre3 = [h for h in hist if h[1] == 0 and h[2] != 'post']
+        rz = [i for i, h in enumerate(pre3) if h[2] == 'raise']
+        if len(rz) >= 2 and pre3[rz[1]][0] != pre3[rz[0]][0]:
+            op = pre3[rz[0]][0]
+            nxt = next((h for h in pre3[rz[1] + 1:] if h[0] == op), None)
+            if nxt is not None:
+                self.o3_seen[op] += 1
+                if nxt[2] == 'fold':
+                    self.o3_fold[op] += 1
         pre = [h for h in hist if h[1] == 0 and h[2] != 'post']
         raises = [h for h in pre if h[2] == 'raise']
         if len(raises) >= 1:
@@ -760,7 +771,11 @@ class IcmTag:
             o = min(0.7, max(0.04, o))
             t = self._pct
             top = 1.0 - bisect.bisect_left(t, self._eq(obs, 1)) / len(t)
-            if top <= max(0.03, p['resteal_rel'] * o):
+            m = 1.0
+            if p['resteal_read'] > 0:
+                f3 = (self.o3_fold[r0] + 0.65 * p['resteal_read']) / (self.o3_seen[r0] + p['resteal_read'])
+                m = min(1.6, max(0.4, f3 / 0.65))
+            if top <= max(0.03, p['resteal_rel'] * o * m):
                 return RaiseTo(lg.max_raise_to)
         if p['resteal'] and lg.can_raise and (len(raises) == 1) and (not seats[raises[0][0]].all_in) and (p['resteal_lo'] <= eff_bb <= p['resteal_hi']) and (not any((h[1] == 0 and h[2] == 'call' for h in obs.history if h[0] != obs.seat))):
             ev = self._resteal_ev(obs, raises[0][0], behind)

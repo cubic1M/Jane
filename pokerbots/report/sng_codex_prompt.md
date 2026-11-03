@@ -115,8 +115,10 @@ Short deck: AA ≈ 0.76. A draw variant: AA ≈ 0.80, weak hands 0.38–0.43.
 >   - Else: open-raise to (2 + limpers) bb if equity(k) ≥ 1.07/(k+1) × steal factor;
 >     else check or fold.
 > * **Facing a raise.**
->   - **Re-shove over wide openers** (+2.25 per table): one open, no callers, opener not
->     all-in, eff ≤ 28 bb: all-in if my top share ≤ max(0.03, 0.35 × the opener's open rate).
+>   - **Re-shove over wide openers** (+6.7 per table in all): one open, no callers, opener
+>     not all-in, eff ≤ 28 bb: all-in if my top share ≤ max(0.03, the opener's open rate × m),
+>     m = clamp(f / 0.65, 0.4, 1.6), f = how often that seat folded when its open was
+>     re-raised, (folds + 3.9) / (times + 6).
 >   - The raiser counts as kf = 4 random hands, + 0.8 for each opponent who already called
 >     or raised, + 0.2 for each opponent still to act (not 0.8: +0.7 per table).
 >     Interpolate equity linearly between integer k.
