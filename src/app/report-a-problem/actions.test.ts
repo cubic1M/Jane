@@ -16,6 +16,7 @@ vi.mock("@/lib/rate-limit", () => ({
 }));
 
 import { hit } from "@/lib/rate-limit";
+import { requireUser } from "@/lib/session";
 import { sendProblemReport } from "./actions";
 
 const form = (fields: Record<string, string>) => {
@@ -57,6 +58,18 @@ describe("sendProblemReport", () => {
     const result = await sendProblemReport(form({ from: "/home", message: "It broke." }));
     expect(result).toMatchObject({ ok: false });
     expect(hit).toHaveBeenCalledWith("problemReports", "user_1");
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  // Anyone can make 40 sample people, at 5 reports each.
+  it("has a ceiling for all sample people together", async () => {
+    vi.mocked(requireUser).mockResolvedValueOnce({ id: "trial_1" } as never);
+    vi.mocked(hit)
+      .mockResolvedValueOnce({ ok: true, remaining: 1, retryAfterSeconds: 0 })
+      .mockResolvedValueOnce({ ok: false, remaining: 0, retryAfterSeconds: 60 });
+    const result = await sendProblemReport(form({ from: "/home", message: "It broke." }));
+    expect(result).toMatchObject({ ok: false });
+    expect(hit).toHaveBeenCalledWith("sampleProblemReports", "all");
     expect(create).not.toHaveBeenCalled();
   });
 });

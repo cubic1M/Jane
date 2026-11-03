@@ -81,6 +81,7 @@ export const RATE_LIMITS = {
   // Problem reports, per person: a sample person needs no account, and /admin/reports shows the newest
   // 200, so a flood would push real ones off the page.
   problemReports: { limit: 5, windowSeconds: 60 * 60 },
+  sampleProblemReports: { limit: 20, windowSeconds: 60 * 60 },
   // Household invites, per person: each emails an address they typed.
   householdInvites: { limit: 5, windowSeconds: 60 * 60 },
   // Invite codes made by an admin, per admin.

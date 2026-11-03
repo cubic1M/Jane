@@ -5,6 +5,7 @@ import { scopedDb } from "@/lib/db-scoped";
 import { cleanReport, saveProblemReport } from "@/lib/problem-reports";
 import { hit } from "@/lib/rate-limit";
 import { requireUser } from "@/lib/session";
+import { isTrialUser } from "@/lib/trial-ids";
 
 export type ReportResult = { ok: true } | { ok: false; error: string };
 
@@ -12,7 +13,11 @@ export type ReportResult = { ok: true } | { ok: false; error: string };
 // its words; analytics hears nothing.
 export async function sendProblemReport(formData: FormData): Promise<ReportResult> {
   const user = await requireUser();
-  if (!(await hit("problemReports", user.id)).ok) {
+  const sample = isTrialUser(user.id);
+  if (
+    !(await hit("problemReports", user.id)).ok ||
+    (sample && !(await hit("sampleProblemReports", "all")).ok)
+  ) {
     return { ok: false, error: "That's a lot of reports. Try again in an hour." };
   }
   const report = cleanReport(formData.get("from"), formData.get("message"));
