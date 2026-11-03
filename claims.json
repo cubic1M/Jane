@@ -1,10 +1,5 @@
 [
  {
-  "task": "race-a",
-  "lane": "lane:a",
-  "expires": "2026-11-03T23:46:34.524Z"
- },
- {
   "task": "race-b",
   "lane": "lane:b",
   "expires": "2026-11-03T23:46:49.067Z"
