@@ -33,6 +33,7 @@ export type SafeInput = {
   budgetsLeftCents: number;
   goalsCents: number;
   setAsideCents: number;
+  taxHeldCents?: number;
   safeCents: number;
   // The bills before payday, one by one (src/planning/safe-to-spend.ts); transfer marks a
   // regular move out that isn't a bill.
@@ -322,6 +323,8 @@ function planHero(input: HeroInput): PlanHero | null {
   return { count: plan.items, steps, goal: input.goal ?? null };
 }
 
+const TAX_HELD_LABEL = "Tax on your freelance income so far";
+
 function safeHero(safe: SafeInput): SafeHero {
   const short = safe.safeCents < 0;
   const raw = [
@@ -329,6 +332,7 @@ function safeHero(safe: SafeInput): SafeHero {
     { key: "budgets", label: "Left in budgets", cents: safe.budgetsLeftCents },
     { key: "goals", label: "Goals", cents: safe.goalsCents },
     { key: "setAside", label: "Yearly bills", cents: safe.setAsideCents },
+    { key: "tax", label: "Tax", cents: safe.taxHeldCents ?? 0 },
     { key: "safe", label: "Safe to spend", cents: Math.max(0, safe.safeCents) },
   ].filter((p) => p.cents > 0);
   const total = raw.reduce((sum, p) => sum + p.cents, 0);
@@ -340,6 +344,7 @@ function safeHero(safe: SafeInput): SafeHero {
     { label: "Left in your budgets", cents: safe.budgetsLeftCents },
     { label: "Goals this month", cents: safe.goalsCents },
     { label: "Set aside for yearly bills", cents: safe.setAsideCents },
+    { label: TAX_HELD_LABEL, cents: safe.taxHeldCents ?? 0 },
   ].filter((l) => l.cents > 0);
   return {
     label: safe.payday ? `Safe to spend until ${dayLabel(safe.payday)}` : "Safe to spend",
@@ -388,6 +393,7 @@ function safeSteps(safe: SafeInput, short: boolean): CalcLine[] {
     { label: "Left in your budgets", sign: "−" as const, cents: safe.budgetsLeftCents },
     { label: "Planned savings: goals this month", sign: "−" as const, cents: safe.goalsCents },
     { label: "Set aside for yearly bills", sign: "−" as const, cents: safe.setAsideCents },
+    { label: TAX_HELD_LABEL, sign: "−" as const, cents: safe.taxHeldCents ?? 0 },
   ].filter((l) => l.cents > 0);
   return [
     { label: "In checking today", sign: "", cents: safe.balanceCents },

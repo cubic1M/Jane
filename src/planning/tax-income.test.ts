@@ -9,6 +9,7 @@ import {
   payFromYtd,
   paychecksLeft,
   projectOther,
+  takeHomePay,
   taxPaymentsFor,
   propertyTaxFor,
   yearCovered,
@@ -273,6 +274,32 @@ describe("a shop's card sales (taxes QA)", () => {
         2026,
       ),
     ).toBe(0);
+  });
+});
+
+// Debugger 11-03: half a year's statements with a $12,000 bonus read as $24,000 of it.
+describe("takeHomePay", () => {
+  const pay = { amountCents: -500_000, description: "NORTHWIND PAYROLL" };
+
+  it("counts regular pay at its pace", () => {
+    expect(takeHomePay([pay, pay], 0.5)).toEqual({
+      soFarCents: 1_000_000,
+      projectedCents: 2_000_000,
+    });
+  });
+
+  it("counts a bonus or severance once", () => {
+    for (const description of ["NORTHWIND BONUS", "NORTHWIND SEVERANCE PAY"]) {
+      expect(takeHomePay([pay, pay, { amountCents: -1_200_000, description }], 0.5)).toEqual({
+        soFarCents: 2_200_000,
+        projectedCents: 3_200_000,
+      });
+    }
+  });
+
+  it("doesn't pace a year that's over or hasn't begun", () => {
+    expect(takeHomePay([pay], 1).projectedCents).toBe(500_000);
+    expect(takeHomePay([pay], 0).projectedCents).toBe(500_000);
   });
 });
 

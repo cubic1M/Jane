@@ -1,5 +1,6 @@
 import { dependantsWords } from "@/planning/tax-profile";
 import { DETECTOR_RATES } from "@/config/detectors";
+import { ONE_OFF_PAY } from "@/config/profile";
 import {
   IRA_DISTRIBUTION,
   RETIREMENT_DEPOSIT_WORDS,
@@ -38,6 +39,7 @@ import {
   payFromStubs,
   payFromYtd,
   projectOther,
+  takeHomePay,
   taxPaymentsFor,
   propertyTaxFor,
   yearCovered,
@@ -253,7 +255,14 @@ async function loadTaxEstimateFrom(
   const elapsed = yearCovered(year, today, firstSeen);
   // With paychecks but no pay stub: take-home pay stands in for wages, and withholding is
   // unknown.
-  const takeHome = paychecks.reduce((s, t) => s - t.amountCents, 0);
+  // A bonus marked as other income (src/categorize/regular-payers.ts) is still wages.
+  const bonuses = rows.filter(
+    (t) => t.amountCents < 0 && t.pfcDetailed === "INCOME_OTHER" && ONE_OFF_PAY.test(t.description),
+  );
+  const { soFarCents: takeHome, projectedCents: takeHomeProjected } = takeHomePay(
+    [...paychecks, ...bonuses],
+    elapsed,
+  );
   const withholdingKnown = pay.source !== "none" || takeHome === 0;
   if (!withholdingKnown) {
     assumptions.push(
@@ -261,12 +270,7 @@ async function loadTaxEstimateFrom(
     );
   }
   const wagesSoFar = pay.source === "none" ? takeHome : pay.soFar.wagesCents;
-  const wagesProjected =
-    pay.source === "none"
-      ? elapsed > 0 && elapsed < 1
-        ? Math.round(takeHome / elapsed)
-        : takeHome
-      : pay.projected.wagesCents;
+  const wagesProjected = pay.source === "none" ? takeHomeProjected : pay.projected.wagesCents;
 
   // Spec step 123: freelance income less business expenses (tagged, and miles driven), and
   // the home office for the year; estimated payments made from accounts Jane can't see.

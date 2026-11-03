@@ -6,8 +6,8 @@ import { BUSINESS_SALES_DEPOSIT } from "@/config/insurance";
 import { computeNeeds, needInputFromProfile } from "@/lib/insurance/need";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
-import { evidence, factEvidence, tx, weakest, headlineOf } from "./helpers";
-import { daysToEstimatedDate, urgencyForEstimated } from "./taxes";
+import { evidence, factEvidence, outCents, tx, weakest, headlineOf } from "./helpers";
+import { daysToEstimatedDate, estimatedDatesBetween, urgencyForEstimated } from "./taxes";
 
 // Detectors for how a person earns (spec step 254): taxes with no employer, saving for
 // retirement alone, uneven pay, a business mixed with home, company stock. Pure; see
@@ -29,7 +29,6 @@ const estimatedTaxes: Detector = {
       data,
       (t) => t.pfc === "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT" && !/SALES TAX/i.test(t.description),
     );
-    if (paid.length > 0) return null;
     // A shop's deposits are sales, not profit: tax is owed on what's left after costs, which
     // Jane can't see, so it assumes a share and says so.
     const business = pattern.value === "business";
@@ -37,18 +36,29 @@ const estimatedTaxes: Detector = {
       annualIncome(income.value) * (business ? R.tax.businessProfitShare : 1),
     );
     const owed = Math.round(taxable * R.selfEmployedTaxRate);
+    // What was due on the dates the statements reach, a quarter of the year's tax each (debugger
+    // 11-03: one payment of any size used to silence this). The payment dates before them can't be seen.
+    const paidCents = outCents(paid);
+    const firstSeen = data.transactions.reduce(
+      (first, t) => (t.date < first ? t.date : first),
+      profile.today,
+    );
+    const dueCents = Math.round((owed / 4) * estimatedDatesBetween(firstSeen, profile.today));
+    if (paid.length > 0 && paidCents >= dueCents * R.tax.estimatedPaidEnoughShare) return null;
+    const risk = Math.round(
+      (paid.length > 0 ? dueCents - paidCents : owed) * R.underpaymentPenaltyRate,
+    );
     return {
       id: suggestionId("taxes", "estimated_taxes"),
       capability: "taxes",
       topic: "estimated_taxes",
       title: "Pay estimated taxes each quarter",
-      headline: headlineOf(
-        "Pay estimated taxes each quarter",
-        Math.round(owed * R.underpaymentPenaltyRate),
-        "risk",
-      ),
-      short: `Nobody withholds tax from your pay; about ${formatCents(owed)} a year is due.`,
-      worthCents: Math.round(owed * R.underpaymentPenaltyRate),
+      headline: headlineOf("Pay estimated taxes each quarter", risk, "risk"),
+      short:
+        paid.length > 0
+          ? `You've paid ${formatCents(paidCents)} in tax; about ${formatCents(dueCents)} was due by now.`
+          : `Nobody withholds tax from your pay; about ${formatCents(owed)} a year is due.`,
+      worthCents: risk,
       worthKind: "risk",
       // The tax is owed whatever it does; planning for it avoids the penalty and the surprise,
       // so it counts for a share of the bill in ranking.
@@ -56,7 +66,7 @@ const estimatedTaxes: Detector = {
       confidence: weakest([
         factEvidence(pattern),
         factEvidence(income),
-        evidence("seen", profile.months, 0, "income-tax payments"),
+        evidence("seen", profile.months, paid.length, "income-tax payments"),
         ...(business
           ? [
               {
@@ -68,7 +78,11 @@ const estimatedTaxes: Detector = {
       ]),
       // The next quarterly date drives it: now within two weeks, soon within six.
       urgency: urgencyForEstimated(profile.today),
-      why: `Nobody withholds tax from your pay and I see no tax payments in ${profile.months} months. On about ${formatCents(owed)} of tax a year, late payment penalties could reach ${formatCents(Math.round(owed * R.underpaymentPenaltyRate))}. The next payment is due in ${daysToEstimatedDate(profile.today)} days.`,
+      why: `${
+        paid.length > 0
+          ? `Nobody withholds tax from your pay. I see ${formatCents(paidCents)} of tax payments, and about ${formatCents(dueCents)} was due by now on about ${formatCents(owed)} of tax a year. Late payment penalties could reach ${formatCents(risk)}.`
+          : `Nobody withholds tax from your pay and I see no tax payments in ${profile.months} months. On about ${formatCents(owed)} of tax a year, late payment penalties could reach ${formatCents(risk)}.`
+      } The next payment is due in ${daysToEstimatedDate(profile.today)} days.`,
       action: { label: "Set aside tax", href: "/taxes" },
     };
   },

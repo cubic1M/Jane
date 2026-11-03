@@ -35,7 +35,7 @@ export const PENSION_PATTERN =
 // An employer that has paid in this many days is still an earner in the household.
 export const EARNER_ACTIVE_DAYS = 45;
 // Paid once and not coming back: not part of what comes in each month.
-export const ONE_OFF_PAY = /\bSEVERANCE\b/i;
+export const ONE_OFF_PAY = /\b(?:SEVERANCE|BONUS)\b/i;
 
 // Debt trouble (loans QA: it rests on the debts, not on fees): card debt of this many months of
 // income, debt payments at step 229's share of income (src/config/debt-trouble.ts), or payday

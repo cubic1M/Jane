@@ -600,6 +600,7 @@ async function runChatToolWork(
         leftInBudgets: money(safe.budgetsLeftCents),
         forGoals: money(safe.goalsCents),
         setAsideForYearlyBills: money(safe.setAsideCents),
+        heldForTaxOnFreelanceIncome: money(safe.taxHeldCents),
       });
     }
     case "coming_up": {

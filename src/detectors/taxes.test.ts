@@ -5,7 +5,12 @@ import { PEOPLE, PERSON_IDS, type PersonId } from "@/config/people";
 import { buildProfile, type ProfileInput } from "@/profile/build";
 import { inputFor } from "@/profile/sample";
 import { runDetectors } from "./index";
-import { TAX_DETECTORS, daysToEstimatedDate, urgencyForEstimated } from "./taxes";
+import {
+  TAX_DETECTORS,
+  daysToEstimatedDate,
+  estimatedDatesBetween,
+  urgencyForEstimated,
+} from "./taxes";
 
 // Spec step 261: the tax detectors on the eight sample people, their deadlines, and the
 // percentages worked out from evidence.
@@ -96,6 +101,51 @@ describe("who the tax detectors reach", () => {
       "identity_ip_pin",
     );
     expect(topics("renter", (d) => ({ ...d, today: "2027-04-15" }))).toContain("identity_ip_pin");
+  });
+});
+
+// Debugger 11-03: one IRS payment of any size silenced this, for a freelancer who had paid $4,200 of
+// the $8,000 or so due by then.
+describe("estimated payments that fall short", () => {
+  const today = "2026-10-15";
+  const withPayments = (dates: readonly string[], cents: number) => {
+    const d = { ...inputFor("freelancer"), today };
+    const data = {
+      ...d,
+      transactions: [
+        ...d.transactions.filter((t) => t.pfc !== "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT"),
+        ...dates.map((date) => ({
+          ...d.transactions[0],
+          date,
+          amountCents: cents,
+          description: "IRS DES:USATAXPYMT",
+          pfc: "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
+        })),
+      ],
+    };
+    return runDetectors({ profile: buildProfile(data), data }, undefined).find(
+      (s) => s.topic === "estimated_taxes",
+    );
+  };
+
+  it("counts the payment dates the statements reach", () => {
+    expect(estimatedDatesBetween("2026-05-01", "2026-11-03")).toBe(2);
+    expect(estimatedDatesBetween("2026-06-16", "2026-09-14")).toBe(0);
+    expect(estimatedDatesBetween("2026-01-01", "2026-12-31")).toBe(4);
+    expect(estimatedDatesBetween("2025-12-01", "2026-01-15")).toBe(1);
+  });
+
+  it("speaks up when one small payment is all it sees", () => {
+    const s = withPayments(["2026-06-15"], 10_000);
+    expect(s?.short).toContain("You've paid $100.00");
+    expect(s?.why).toContain("I see $100.00 of tax payments");
+    expect(s?.why).not.toContain("no tax payments");
+  });
+
+  it("stays quiet when the payments keep up", () => {
+    expect(withPayments(["2026-01-15", "2026-04-15", "2026-06-15", "2026-09-15"], 2_000_000)).toBe(
+      undefined,
+    );
   });
 });
 

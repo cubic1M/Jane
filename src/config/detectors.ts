@@ -211,6 +211,9 @@ export const DETECTOR_RATES = {
     // A bill the person must pay anyway (tax on stock that vests) can't be saved, only planned
     // for and the penalty avoided: it counts for this share of its size in ranking.
     rankShareOfBill: 0.3,
+    // Estimated payments keep up at this share of what was due by now (IRS Form 1040-ES: 90% of the
+    // year's tax avoids the penalty).
+    estimatedPaidEnoughShare: 0.9,
     // Year-end 401(k) top-ups: never suggest more than this share of gross income.
     yearEndMaxIncomeShare: 0.1,
     // A shop's deposits are sales, not profit: assume this share is what's taxed

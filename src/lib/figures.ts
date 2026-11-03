@@ -130,6 +130,15 @@ export async function explainFigure(
         ...(safe.setAsideCents > 0
           ? [{ label: "Set aside for yearly bills", value: `−${formatCents(safe.setAsideCents)}` }]
           : []),
+        ...(safe.taxHeldCents > 0
+          ? [
+              {
+                label: "Tax on your freelance income so far",
+                value: `−${formatCents(safe.taxHeldCents)}`,
+                note: `${formatCents(safe.taxSoFarCents)} in all: what you've earned from clients this year, at a typical rate, less tax paid`,
+              },
+            ]
+          : []),
         { label: "Safe to spend", value: formatCents(safe.safeCents) },
       ],
       rules: [
