@@ -1,0 +1,151 @@
+name: Deploy
+
+# Ships the newest main commit whose CI finished green, with the laptop off (docs/deploy.md). It
+# stays a dry run, sending nothing to Vercel, until a founder sets DEPLOY_MODE to live.
+#
+# Vercel builds it, as it does from the laptop: `vercel deploy --prod` uploads the files. So the
+# database and other production secrets stay on Vercel and never reach this runner, and no code from
+# the commit runs here beside the token. The public logs get no build output.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  # A green commit held by the 15-minute gap still ships when no later run comes along.
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Decide
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      action: ${{ steps.plan.outputs.action }}
+      sha: ${{ steps.plan.outputs.sha }}
+      mode: ${{ steps.plan.outputs.mode }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          sparse-checkout: scripts
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+      - id: plan
+        run: node scripts/deploy-plan.mjs plan
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEPLOY_MODE: ${{ vars.DEPLOY_MODE }}
+
+  # Dry and live both read the live site, so the check itself is proven before any cutover.
+  live-check:
+    name: Live check (read only)
+    needs: plan
+    if: needs.plan.outputs.mode == 'dry' && needs.plan.outputs.action == 'deploy'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          sparse-checkout: scripts
+          persist-credentials: false
+      - run: sh scripts/deploy-live-check.sh
+
+  ship:
+    name: Ship to production
+    needs: plan
+    if: needs.plan.outputs.mode == 'live' && needs.plan.outputs.action == 'deploy'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Holds the Vercel token. A founder limits this environment to main.
+    environment: production
+    env:
+      SHA: ${{ needs.plan.outputs.sha }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      DEPLOY_MODE: live
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          sparse-checkout: scripts
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          path: commit
+          persist-credentials: false
+      - name: Export the commit's files, and add the licensed font
+        env:
+          FONT: ${{ secrets.LICENSED_FONT_JULIETTE_B64 }}
+        run: |
+          [ -n "$FONT" ] || { echo "::error::No licensed font in the environment"; exit 1; }
+          mkdir release
+          git -C commit archive HEAD | tar -x -C release
+          grep -q "$SHA" release/src/config/build-commit.ts || { echo "::error::The build won't know its commit"; exit 1; }
+          mkdir -p release/public/fonts
+          printf '%s' "$FONT" | base64 -d > release/public/fonts/juliette.ttf
+      - name: Upload to Vercel
+        id: upload
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        working-directory: release
+        run: |
+          # Build output can quote anything, and this repository's logs are public.
+          status=0
+          npx --yes vercel@62.2.0 deploy --prod --yes > ../build.log 2>&1 || status=$?
+          url=$(grep -Eo 'https://jane-[a-z0-9]+-jane-42be\.vercel\.app' ../build.log | head -1 || true)
+          [ -n "$url" ] && echo "::add-mask::$url"
+          if [ "$status" != 0 ] || [ -z "$url" ] || ! grep -q Aliased ../build.log; then
+            echo "::error::The upload failed (exit $status). The log stays private: read it on Vercel."
+            echo "uploaded=no" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          id=$(npx --yes vercel@62.2.0 inspect "$url" 2>&1 | grep -Eo 'dpl_[A-Za-z0-9]+' | head -1 || true)
+          echo "uploaded=yes" >> "$GITHUB_OUTPUT"
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+      - name: Check the live site
+        id: check
+        if: steps.upload.outputs.uploaded == 'yes'
+        run: |
+          sleep 45
+          if EXPECT_COMMIT="$SHA" sh scripts/deploy-live-check.sh; then
+            echo "healthy=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "healthy=no" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Write it down, and go back on a bad result
+        if: always() && steps.upload.outcome != 'skipped'
+        env:
+          UPLOADED: ${{ steps.upload.outputs.uploaded }}
+          HEALTHY: ${{ steps.check.outputs.healthy }}
+          ID: ${{ steps.upload.outputs.id }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          if [ "$UPLOADED" = yes ] && [ "$HEALTHY" = yes ]; then
+            node scripts/deploy-plan.mjs record ok "$SHA" "$ID"
+            echo "Shipped $SHA"
+            exit 0
+          fi
+          good=$(node scripts/deploy-plan.mjs last-good)
+          node scripts/deploy-plan.mjs record bad "$SHA"
+          if [ "$UPLOADED" = yes ] && [ -n "$good" ]; then
+            npx --yes vercel@62.2.0 promote "$good" --yes > /dev/null 2>&1 \
+              && echo "Went back to $good" || echo "::error::Couldn't go back to $good"
+          fi
+          exit 1
