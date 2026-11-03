@@ -2,15 +2,17 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   BASELINE_FILES,
-  FOUNDER_LABEL,
-  allowedDrop,
   baselineDrops,
   fixMarking,
   founderApproval,
   isProtectedPath,
+  isWatchedPath,
   metricDirection,
+  parseNameStatus,
   proofPlan,
   readVitestReport,
+  scriptsChanged,
+  testFilesGone,
   weakenedTests,
 } from "../../.github/scripts/gates/core.mjs";
 
@@ -58,6 +60,13 @@ describe("accuracy baselines only rise", () => {
     expect(baselineDrops({ a: { recall: 1 } }, null)).toHaveLength(1);
   });
 
+  it("fails a score that stopped being a number", () => {
+    expect(baselineDrops({ t: { recall: 1 } }, { t: { recall: null } })).toEqual([
+      { path: "t / recall", was: 1, now: null },
+    ]);
+    expect(baselineDrops({ t: { recall: 1 } }, { t: { recall: "1" } })).toHaveLength(1);
+  });
+
   it("doesn't call float noise a drop", () => {
     expect(
       baselineDrops({ t: { categoryRight: 0.9980047161255214 } }, { t: { categoryRight: 0.998 } }),
@@ -79,13 +88,6 @@ describe("accuracy baselines only rise", () => {
       for (const name of names) expect(metricDirection(name), name).not.toBe("unknown");
     }
   });
-
-  it("reads how far the tests let a score slip", () => {
-    expect(allowedDrop("const ALLOWED_DROP = 0.03;\n")).toBe(0.03);
-    expect(allowedDrop("no such thing")).toBeNull();
-    expect(allowedDrop(readFileSync("src/accuracy/accuracy.test.ts", "utf8"))).toBe(0.03);
-    expect(allowedDrop(readFileSync("src/accuracy/csv/csv-accuracy.test.ts", "utf8"))).toBe(0.03);
-  });
 });
 
 describe("protected files", () => {
@@ -94,68 +96,176 @@ describe("protected files", () => {
     ".claude/hooks/deny.mjs",
     ".mcp.json",
     ".github/workflows/ci.yml",
+    ".github/workflows/gates.yml",
+    ".github/workflows/merge-train.yml",
+    ".github/workflows/rerun-flaky.yml",
     ".github/scripts/gates/core.mjs",
     ".github/scripts/merge_train.py",
     "src/config/advice.ts",
+    "src/accuracy/accuracy.test.ts",
+    "src/accuracy/csv/csv-accuracy.test.ts",
+    "vitest.config.mts",
+    "vitest.workspace.ts",
+    "src/test-setup/no-anthropic.ts",
   ])("%s needs a founder", (file) => {
     expect(isProtectedPath(file)).toBe(true);
   });
 
-  it.each(["src/config/detection.ts", "docs/gates.md", ".claude", "src/.claude/x"])(
+  it.each([
+    // A Mac's disk finds these at the real paths.
+    ".CLAUDE/settings.local.json",
+    ".Claude/hooks/deny.mjs",
+    ".MCP.json",
+    "SRC/config/ADVICE.ts",
+    // Nested, and a symlink standing in for the whole folder.
+    "src/.claude/settings.json",
+    "packages/app/.mcp.json",
+    ".claude",
+    ".github/workflows",
+  ])("%s needs one too", (file) => {
+    expect(isProtectedPath(file)).toBe(true);
+  });
+
+  it.each(["src/config/detection.ts", "docs/gates.md", "src/claude/x.ts", ".claudefile"])(
     "%s doesn't",
     (file) => {
       expect(isProtectedPath(file)).toBe(false);
     },
   );
+
+  it.each([
+    ".github/workflows/scanners.yml",
+    ".github/workflows/uptime.yml",
+    ".github/dependabot.yml",
+    "src/lib/advice-mode.ts",
+    "src/lib/guardrails.ts",
+    "tsconfig.json",
+    ".gitleaks.toml",
+    "CLAUDE.md",
+    "AGENTS.md",
+  ])("%s is flagged, not blocked", (file) => {
+    expect(isWatchedPath(file)).toBe(true);
+    expect(isProtectedPath(file)).toBe(false);
+  });
+
+  it("doesn't flag everyday files, or call a protected file only watched", () => {
+    expect(isWatchedPath("src/lib/x.ts")).toBe(false);
+    expect(isWatchedPath(".github/workflows/ci.yml")).toBe(false);
+  });
 });
 
-describe("the founder's label", () => {
+describe("reading git's list of changed files", () => {
+  it("keeps names git would otherwise quote", () => {
+    const output = ["M", ".github/workflows/é.yml", "A", "src/a\tb\n.ts", ""].join("\0");
+    expect(parseNameStatus(output)).toEqual([
+      { status: "M", file: ".github/workflows/é.yml" },
+      { status: "A", file: "src/a\tb\n.ts" },
+    ]);
+  });
+
+  it("reads a rename's two names", () => {
+    expect(parseNameStatus(["R097", "a.test.ts", "b.ts", "D", "c.ts", ""].join("\0"))).toEqual([
+      { status: "R", from: "a.test.ts", file: "b.ts" },
+      { status: "D", file: "c.ts" },
+    ]);
+  });
+
+  it("is empty for no changes", () => {
+    expect(parseNameStatus("")).toEqual([]);
+  });
+});
+
+describe("package.json's scripts", () => {
+  const pkg = (scripts: object, version = "1") => JSON.stringify({ version, scripts });
+
+  it("may stay as they are while the rest changes", () => {
+    expect(scriptsChanged(pkg({ test: "vitest run" }), pkg({ test: "vitest run" }, "2"))).toBe(
+      false,
+    );
+  });
+
+  it("count as protected when they change", () => {
+    expect(scriptsChanged(pkg({ test: "vitest run" }), pkg({ test: "true" }))).toBe(true);
+    expect(scriptsChanged(pkg({ test: "vitest run" }), "not json")).toBe(true);
+    expect(scriptsChanged(pkg({ test: "vitest run" }), null)).toBe(true);
+  });
+
+  it("don't matter with no package.json to begin with", () => {
+    expect(scriptsChanged(null, pkg({ test: "x" }))).toBe(false);
+  });
+});
+
+describe("a founder's approval", () => {
+  const head = "a".repeat(40);
   const good = {
-    labels: [FOUNDER_LABEL],
-    labelEvents: [{ label: FOUNDER_LABEL, actor: "founder", at: "2026-11-03T10:00:00Z" }],
+    reviews: [{ login: "founder", state: "APPROVED", commit: head }],
     founders: ["founder"],
     author: "cubic1M",
-    headCommitDate: "2026-11-03T09:00:00Z",
+    headSha: head,
   };
 
-  it("counts when a founder other than the PR's author put it on after the last commit", () => {
-    expect(founderApproval(good)).toEqual({ ok: true, why: "approved by founder" });
+  it("counts on this exact commit, from a founder who didn't open the PR", () => {
+    expect(founderApproval(good).ok).toBe(true);
+  });
+
+  it("doesn't carry over to a newer commit, whatever date that commit claims", () => {
+    const result = founderApproval({ ...good, headSha: "b".repeat(40) });
+    expect(result.ok).toBe(false);
+    expect(result.why).toContain("older commit");
   });
 
   it("is required", () => {
-    expect(founderApproval({ ...good, labels: [] }).ok).toBe(false);
+    expect(founderApproval({ ...good, reviews: [] }).ok).toBe(false);
   });
 
-  it("doesn't count while FOUNDER_LOGINS is empty", () => {
+  it("can't be given while FOUNDER_LOGINS is empty", () => {
     const result = founderApproval({ ...good, founders: [] });
     expect(result.ok).toBe(false);
     expect(result.why).toContain("FOUNDER_LOGINS");
   });
 
   it("doesn't count from a login that isn't a founder's", () => {
-    const labelEvents = [{ label: FOUNDER_LABEL, actor: "agent", at: "2026-11-03T10:00:00Z" }];
-    expect(founderApproval({ ...good, labelEvents }).ok).toBe(false);
+    const reviews = [{ login: "someone", state: "APPROVED", commit: head }];
+    expect(founderApproval({ ...good, reviews }).ok).toBe(false);
   });
 
-  it("doesn't count from the shared login that opened the PR, even if listed as a founder", () => {
-    const labelEvents = [{ label: FOUNDER_LABEL, actor: "cubic1M", at: "2026-11-03T10:00:00Z" }];
-    const result = founderApproval({ ...good, labelEvents, founders: ["cubic1M"] });
-    expect(result.ok).toBe(false);
-    expect(result.why).toContain("also opened the PR");
+  it("doesn't count from the shared login that opened the PR, however it's spelled", () => {
+    const reviews = [{ login: "cubic1M", state: "APPROVED", commit: head }];
+    expect(founderApproval({ ...good, reviews, founders: ["cubic1M"] }).ok).toBe(false);
+    expect(founderApproval({ ...good, reviews, founders: ["CUBIC1m"] }).ok).toBe(false);
   });
 
-  it("goes by who put it on most recently", () => {
-    const labelEvents = [
-      { label: FOUNDER_LABEL, actor: "founder", at: "2026-11-03T09:30:00Z" },
-      { label: FOUNDER_LABEL, actor: "agent", at: "2026-11-03T10:00:00Z" },
+  it("matches a founder's login whatever its case", () => {
+    expect(founderApproval({ ...good, founders: ["FOUNDER"] }).ok).toBe(true);
+  });
+
+  it("goes by the founder's latest word", () => {
+    const later = [
+      { login: "founder", state: "APPROVED", commit: head },
+      { login: "founder", state: "CHANGES_REQUESTED", commit: head },
     ];
-    expect(founderApproval({ ...good, labelEvents }).ok).toBe(false);
+    expect(founderApproval({ ...good, reviews: later }).ok).toBe(false);
+    const dismissed = [
+      { login: "founder", state: "APPROVED", commit: head },
+      { login: "founder", state: "DISMISSED", commit: head },
+    ];
+    expect(founderApproval({ ...good, reviews: dismissed }).ok).toBe(false);
   });
 
-  it("goes stale when a commit lands after it", () => {
-    const result = founderApproval({ ...good, headCommitDate: "2026-11-03T11:00:00Z" });
-    expect(result.ok).toBe(false);
-    expect(result.why).toContain("older than");
+  it("isn't changed by a comment", () => {
+    const reviews = [
+      { login: "founder", state: "APPROVED", commit: head },
+      { login: "founder", state: "COMMENTED", commit: head },
+    ];
+    expect(founderApproval({ ...good, reviews }).ok).toBe(true);
+  });
+
+  it("is held up by either founder asking for changes", () => {
+    const reviews = [
+      { login: "one", state: "APPROVED", commit: head },
+      { login: "two", state: "CHANGES_REQUESTED", commit: head },
+    ];
+    expect(founderApproval({ ...good, reviews, founders: ["one", "two"] }).ok).toBe(false);
   });
 });
 
@@ -253,8 +363,9 @@ describe("reading Vitest's report", () => {
   });
 });
 
-const diffOf = (file: string, lines: string[]) =>
-  [`--- a/${file}`, `+++ b/${file}`, "@@ -1 +1 @@", ...lines].join("\n");
+const diffOf = (file: string, lines: string[]) => [
+  { file, diff: [`--- a/${file}`, `+++ b/${file}`, "@@ -1 +1 @@", ...lines].join("\n") },
+];
 
 describe("weakened tests", () => {
   const file = "src/lib/x.test.ts";
@@ -285,12 +396,6 @@ describe("weakened tests", () => {
     ]);
   });
 
-  it("flags a test file deleted, not any other file", () => {
-    expect(weakenedTests("", ["src/lib/gone.test.ts", "src/lib/gone.ts"])).toEqual([
-      { file: "src/lib/gone.test.ts", kind: "file deleted", was: "", now: "" },
-    ]);
-  });
-
   it("doesn't flag a line moved, or rewritten as strictly", () => {
     const moved = ["-  expect(total).toBe(3);", "+    expect(total).toBe(3);"];
     expect(weakenedTests(diffOf(file, moved))).toEqual([]);
@@ -300,9 +405,21 @@ describe("weakened tests", () => {
     expect(weakenedTests(diffOf(file, stricter))).toEqual([]);
   });
 
-  it("doesn't flag new expect lines, or lines in a file that isn't a test", () => {
+  it("doesn't flag new expect lines", () => {
     expect(weakenedTests(diffOf(file, ["+  expect(total).toBe(3);"]))).toEqual([]);
-    expect(weakenedTests(diffOf("src/lib/x.ts", ["-  expect(total).toBe(3);"]))).toEqual([]);
+  });
+
+  it("reads an added line that starts like a file header as what it is", () => {
+    const lines = ["+++ expect(total).toBe(3);", "-  expect(total).toBe(3);"];
+    const flags = weakenedTests(diffOf(file, lines));
+    // Two plusses and the line: an added line, so the deleted one was only moved.
+    expect(flags).toEqual([]);
+  });
+
+  it("reads a removed line that starts like a file header as what it is", () => {
+    const flags = weakenedTests(diffOf(file, ["--- expect(total).toBe(3);"]));
+    expect(flags).toHaveLength(1);
+    expect(flags[0].kind).toBe("expect deleted");
   });
 
   it("reads an end-to-end spec too", () => {
@@ -310,5 +427,37 @@ describe("weakened tests", () => {
     const flags = weakenedTests(diffOf(spec, ['-  await expect(page).toHaveTitle("Jane");']));
     expect(flags).toHaveLength(1);
     expect(flags[0].file).toBe(spec);
+  });
+
+  it("passes on the test files that went away", () => {
+    const gone = [{ file: "src/a.test.ts", kind: "file deleted" }];
+    expect(weakenedTests([], gone)).toEqual([
+      { file: "src/a.test.ts", kind: "file deleted", was: "", now: "" },
+    ]);
+  });
+});
+
+describe("test files gone from the run", () => {
+  it("finds one deleted, not any other file", () => {
+    expect(
+      testFilesGone([
+        { status: "D", file: "src/lib/gone.test.ts" },
+        { status: "D", file: "src/lib/gone.ts" },
+      ]),
+    ).toEqual([{ file: "src/lib/gone.test.ts", kind: "file deleted" }]);
+  });
+
+  it("finds one renamed so it no longer runs", () => {
+    const [gone] = testFilesGone([
+      { status: "R", from: "src/a.test.ts", file: "src/a.test.ts.off" },
+    ]);
+    expect(gone.file).toBe("src/a.test.ts.off");
+    expect(gone.kind).toContain("no longer runs");
+  });
+
+  it("leaves one renamed to another test file", () => {
+    expect(testFilesGone([{ status: "R", from: "src/a.test.ts", file: "src/b.test.ts" }])).toEqual(
+      [],
+    );
   });
 });

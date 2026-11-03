@@ -11,7 +11,7 @@ import { appendFileSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
-import { proofPlan, readVitestReport } from "./core.mjs";
+import { parseNameStatus, proofPlan, readVitestReport } from "./core.mjs";
 
 const { values: args } = parseArgs({
   options: { base: { type: "string" }, head: { type: "string" } },
@@ -20,10 +20,12 @@ const { values: args } = parseArgs({
 // How many test files one PR's proof runs: the first that proves the fix ends it, so this only
 // bounds a PR whose tests all pass on the old code.
 const MAX_TEST_FILES = 6;
-const LOCAL_DB = /^postgres(ql)?:\/\/[^/]*@?(localhost|127\.0\.0\.1)(:\d+)?\//;
+const LOCAL_DB = /^postgres(ql)?:\/\/([^/@]*@)?(localhost|127\.0\.0\.1)(:\d+)?\//;
 const CI_DB = "postgresql://postgres@localhost:5432/test";
 
-const git = (...a) => execFileSync("git", a, { encoding: "utf8", stdio: "pipe" });
+// A file name is the PR's to choose, so never let git read one as a pattern.
+const git = (...a) =>
+  execFileSync("git", ["--literal-pathspecs", ...a], { encoding: "utf8", stdio: "pipe" });
 const run = (cmd, ...a) => execFileSync(cmd, a, { stdio: "inherit" });
 
 function say(lines) {
@@ -41,6 +43,8 @@ function fail(lines) {
 
 function startDatabase() {
   if (process.env.GITHUB_ACTIONS) {
+    // One run can judge two PRs, each with its own proof.
+    spawnSync("docker", ["rm", "-f", "proof-db"]);
     run(
       "docker",
       ...["run", "-d", "--name", "proof-db", "-p", "5432:5432"],
@@ -116,13 +120,7 @@ const firstLine = (text) => text.split("\n").find((l) => l.trim()) ?? "";
 
 function main() {
   const { base, head } = args;
-  const changes = git("diff", "--name-status", "--no-renames", base, head)
-    .split("\n")
-    .filter(Boolean)
-    .map((line) => {
-      const [status, file] = line.split("\t");
-      return { status: status[0], file };
-    });
+  const changes = parseNameStatus(git("diff", "-z", "--name-status", "--no-renames", base, head));
   const { tests, source } = proofPlan(changes);
   if (source.length === 0) {
     say(["## Proof of fix: nothing to prove", "The PR changes no source, only tests or docs."]);

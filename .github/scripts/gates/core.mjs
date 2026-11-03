@@ -1,17 +1,8 @@
 // The rules behind the pull request gates, as pure functions (src/gates/core.test.ts). CI runs
 // them from the base branch's copy, so a pull request can't change the rules it is judged by.
 
-/** The label a founder puts on a PR that may break a gate. Agents never apply it. */
-export const FOUNDER_LABEL = "founder-approved";
-
 /** The accuracy baselines, which may only get better. */
 export const BASELINE_FILES = ["src/accuracy/baseline.json", "src/accuracy/csv/baseline.json"];
-
-/** The tests that hold code to those baselines; how far a score may slip may not grow. */
-export const BASELINE_TESTS = [
-  "src/accuracy/accuracy.test.ts",
-  "src/accuracy/csv/csv-accuracy.test.ts",
-];
 
 // In these a smaller number is better. Every other metric in the baselines is a share to raise;
 // src/gates/core.test.ts fails on a metric in the real files that this can't place.
@@ -57,7 +48,11 @@ export function baselineDrops(before, after) {
       drops.push({ path, was: old, now: null });
       continue;
     }
-    if (typeof old !== "number" || typeof now[path] !== "number") continue;
+    if (typeof old !== "number") continue;
+    if (typeof now[path] !== "number") {
+      drops.push({ path, was: old, now: now[path] });
+      continue;
+    }
     const name = path.split(" / ").pop();
     const change = now[path] - old;
     const worse = metricDirection(name) === "down" ? change > FLOAT_NOISE : change < -FLOAT_NOISE;
@@ -66,53 +61,102 @@ export function baselineDrops(before, after) {
   return drops;
 }
 
-/** The value of `const ALLOWED_DROP = x` in a test file, or null when it has none. */
-export function allowedDrop(text) {
-  const found = /const\s+ALLOWED_DROP\s*=\s*([0-9.]+)/.exec(text ?? "");
-  return found ? Number(found[1]) : null;
+/** `git diff -z --name-status`: NUL-separated, so no file name comes back quoted or escaped. */
+export function parseNameStatus(output) {
+  const parts = output.split("\0").filter((p) => p !== "");
+  const changes = [];
+  for (let i = 0; i < parts.length;) {
+    const status = parts[i][0];
+    if (status === "R" || status === "C") {
+      changes.push({ status, from: parts[i + 1], file: parts[i + 2] });
+      i += 3;
+    } else {
+      changes.push({ status, file: parts[i + 1] });
+      i += 2;
+    }
+  }
+  return changes;
 }
 
-/** Paths whose changes need a founder: agents' own limits, and the gates that hold them. */
+// Matched in lower case: a Mac's disk finds .CLAUDE/settings.json at .claude/settings.json. A file
+// named just `.claude` counts too, since a symlink there would replace the whole folder.
+const PROTECTED_PATHS = [
+  /(^|\/)\.claude(\/|$)/,
+  /(^|\/)\.mcp\.json$/,
+  /^\.github\/workflows$/,
+  /^\.github\/workflows\/(ci|gates|merge-train|rerun-flaky)\.ya?ml$/,
+  /^\.github\/scripts(\/|$)/,
+  /^src\/config\/advice\.ts$/,
+  /^src\/accuracy\/accuracy\.test\.ts$/,
+  /^src\/accuracy\/csv\/csv-accuracy\.test\.ts$/,
+  /^vitest\.(config|workspace)\./,
+  /^src\/test-setup(\/|$)/,
+];
+
+// These change often enough, or matter little enough on their own, that blocking would hold up other
+// work while no founder can approve. A change to one is flagged instead.
+const WATCHED_PATHS = [
+  /^\.github(\/|$)/,
+  /^src\/lib\/advice-mode\.ts$/,
+  /^src\/lib\/guardrails\.ts$/,
+  /(^|\/)tsconfig[^/]*\.json$/,
+  /^\.gitleaks\.toml$/,
+  /(^|\/)(claude|agents)\.md$/,
+];
+
+/** Paths whose changes need a founder: agents' own limits, and the tests and gates that hold them. */
 export function isProtectedPath(file) {
-  return (
-    file.startsWith(".claude/") ||
-    file === ".mcp.json" ||
-    file.startsWith(".github/workflows/") ||
-    file.startsWith(".github/scripts/") ||
-    file === "src/config/advice.ts"
-  );
+  const path = file.toLowerCase();
+  return PROTECTED_PATHS.some((rule) => rule.test(path));
+}
+
+/** Paths whose changes are worth a founder's look, without blocking the merge. */
+export function isWatchedPath(file) {
+  const path = file.toLowerCase();
+  return !isProtectedPath(file) && WATCHED_PATHS.some((rule) => rule.test(path));
+}
+
+/** Whether package.json's scripts differ: `npm test` could be made to run nothing. */
+export function scriptsChanged(before, after) {
+  const scripts = (text) => {
+    try {
+      return JSON.stringify(JSON.parse(text).scripts ?? {});
+    } catch {
+      return null;
+    }
+  };
+  return before !== null && scripts(before) !== scripts(after ?? "");
 }
 
 /**
- * Whether a founder's label counts. It must be on the PR, the latest time it went on must be by a
- * login in FOUNDER_LOGINS that isn't the PR's author (every session opens PRs under the one shared
- * login, so a label from that login could be an agent's), and no commit may be newer than it.
+ * Whether a founder has approved this exact commit: their latest review is an approval of `headSha`,
+ * and none of them has asked for changes. GitHub records which commit a review was of, and a push
+ * doesn't carry it over, unlike a label, or a date a commit can claim for itself. A login in
+ * FOUNDER_LOGINS that also opened the PR doesn't count: every session opens PRs under one shared login.
  */
-export function founderApproval({ labels, labelEvents, founders, author, headCommitDate }) {
-  if (!labels.includes(FOUNDER_LABEL)) {
-    return { ok: false, why: `no "${FOUNDER_LABEL}" label` };
+export function founderApproval({ reviews, founders, author, headSha }) {
+  const logins = new Set(founders.map((f) => f.toLowerCase()));
+  if (logins.size === 0) {
+    return { ok: false, why: "no founder can approve yet: the FOUNDER_LOGINS variable is empty" };
   }
-  if (founders.length === 0) {
-    return {
-      ok: false,
-      why: `"${FOUNDER_LABEL}" isn't honoured yet: the FOUNDER_LOGINS repository variable is empty`,
-    };
+  const opener = (author ?? "").toLowerCase();
+  const latest = new Map();
+  for (const review of reviews) {
+    const login = (review.login ?? "").toLowerCase();
+    if (!logins.has(login) || login === opener) continue;
+    if (["APPROVED", "CHANGES_REQUESTED", "DISMISSED"].includes(review.state)) {
+      latest.set(login, review);
+    }
   }
-  const event = labelEvents.filter((e) => e.label === FOUNDER_LABEL).at(-1);
-  if (!event) return { ok: false, why: `can't find who applied "${FOUNDER_LABEL}"` };
-  if (!founders.includes(event.actor)) {
-    return { ok: false, why: `"${FOUNDER_LABEL}" was applied by ${event.actor}, not a founder` };
+  const decided = [...latest.values()];
+  const against = decided.find((r) => r.state === "CHANGES_REQUESTED");
+  if (against) return { ok: false, why: `${against.login} asked for changes` };
+  const approved = decided.find((r) => r.state === "APPROVED" && r.commit === headSha);
+  if (approved) return { ok: true, why: `approved by ${approved.login} at ${headSha.slice(0, 8)}` };
+  if (decided.some((r) => r.state === "APPROVED")) {
+    return { ok: false, why: "a founder approved an older commit, not the PR's newest" };
   }
-  if (event.actor === author) {
-    return {
-      ok: false,
-      why: `"${FOUNDER_LABEL}" was applied by ${event.actor}, who also opened the PR`,
-    };
-  }
-  if (Date.parse(event.at) < Date.parse(headCommitDate)) {
-    return { ok: false, why: `"${FOUNDER_LABEL}" is older than the PR's newest commit` };
-  }
-  return { ok: true, why: `approved by ${event.actor}` };
+  return { ok: false, why: "no founder has approved this commit" };
 }
 
 /**
@@ -267,36 +311,28 @@ const SKIPPED_TEST =
 export const isTestPath = (file) => isTestFile(file) || /^e2e\/.*\.spec\.tsx?$/.test(file);
 
 /**
- * From a unified diff of test files (and each file's status): an `expect` line deleted with nothing
- * in its place, one replaced by a weaker check, or a test newly skipped. A line moved or rewritten
- * as just as strict a check isn't flagged, since that's most test edits (15 of the last 120 merges
- * touched an `expect` line this way).
+ * From each test file's own diff, and the test files that went away: an `expect` line deleted with
+ * nothing in its place, one replaced by a weaker check, or a test newly skipped. A line moved or
+ * rewritten as just as strict a check isn't flagged, since that's most test edits (15 of the last
+ * 120 merges touched an `expect` line this way).
  */
-export function weakenedTests(diff, deletedFiles = []) {
-  const flags = deletedFiles
-    .filter(isTestPath)
-    .map((file) => ({ file, kind: "file deleted", was: "", now: "" }));
-  const byFile = new Map();
-  let file = null;
-  for (const line of diff.split("\n")) {
-    if (line.startsWith("+++ ")) {
-      file = line.slice(4).replace(/^b\//, "");
-      if (file === "/dev/null") file = null;
-      else if (!byFile.has(file)) byFile.set(file, { removed: [], added: [], skipped: [] });
-      continue;
+export function weakenedTests(fileDiffs, gone = []) {
+  const flags = gone.map(({ file, kind }) => ({ file, kind, was: "", now: "" }));
+  for (const { file, diff } of fileDiffs) {
+    const removed = [];
+    const added = [];
+    // The header ends at the first hunk. After that a line starting "+++" is added text.
+    const lines = diff.split("\n");
+    for (const line of lines.slice(lines.findIndex((l) => l.startsWith("@@")) + 1)) {
+      const sign = line[0];
+      if (sign !== "+" && sign !== "-") continue;
+      const body = line.slice(1);
+      if (sign === "+" && SKIPPED_TEST.test(body)) {
+        flags.push({ file, kind: "test skipped", was: "", now: body.trim() });
+      }
+      const parsed = parseExpect(body);
+      if (parsed) (sign === "-" ? removed : added).push(parsed);
     }
-    if (line.startsWith("--- ") || !file) continue;
-    const entry = byFile.get(file);
-    const sign = line[0];
-    if (sign !== "+" && sign !== "-") continue;
-    const body = line.slice(1);
-    if (sign === "+" && SKIPPED_TEST.test(body)) entry.skipped.push(body.trim());
-    const parsed = parseExpect(body);
-    if (parsed) (sign === "-" ? entry.removed : entry.added).push(parsed);
-  }
-  for (const [name, { removed, added, skipped }] of byFile) {
-    if (!isTestPath(name)) continue;
-    for (const now of skipped) flags.push({ file: name, kind: "test skipped", was: "", now });
     const unmatched = [...added];
     const take = (test) => {
       const at = unmatched.findIndex(test);
@@ -307,14 +343,26 @@ export function weakenedTests(diff, deletedFiles = []) {
     for (const was of rest) {
       const now = take((n) => n.subject === was.subject);
       if (!now) {
-        flags.push({ file: name, kind: "expect deleted", was: was.text, now: "" });
+        flags.push({ file, kind: "expect deleted", was: was.text, now: "" });
       } else if (
         matcherStrength(now.matcher) < matcherStrength(was.matcher) ||
         (LOOSE_ARGUMENT.test(now.text) && !LOOSE_ARGUMENT.test(was.text))
       ) {
-        flags.push({ file: name, kind: "expect loosened", was: was.text, now: now.text });
+        flags.push({ file, kind: "expect loosened", was: was.text, now: now.text });
       }
     }
   }
   return flags;
+}
+
+/** Test files gone from the run: deleted, or renamed to something that no longer runs. */
+export function testFilesGone(changes) {
+  const gone = [];
+  for (const c of changes) {
+    if (c.status === "D" && isTestPath(c.file)) gone.push({ file: c.file, kind: "file deleted" });
+    if (c.status === "R" && isTestPath(c.from) && !isTestPath(c.file)) {
+      gone.push({ file: c.file, kind: `renamed from ${c.from}, so it no longer runs` });
+    }
+  }
+  return gone;
 }

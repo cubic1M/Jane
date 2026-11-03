@@ -7,7 +7,6 @@ import { basename, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const MAIN = new Set(["main", "master", "refs/heads/main", "refs/heads/master"]);
-const FOUNDER_LABEL = "founder-approved";
 
 // Text of a heredoc is data unless a shell reads it, and never one of these commands' arguments.
 function stripHeredocs(command) {
@@ -26,10 +25,28 @@ function stripHeredocs(command) {
   return kept.join("\n");
 }
 
+// Where the substitution starting at `from` ends: its closing backtick or matching parenthesis.
+function substitutionEnd(command, from) {
+  if (command[from] === "`") {
+    const close = command.indexOf("`", from + 1);
+    return close < 0 ? command.length - 1 : close;
+  }
+  let depth = 0;
+  for (let i = from + 1; i < command.length; i += 1) {
+    if (command[i] === "(") depth += 1;
+    if (command[i] === ")") {
+      depth -= 1;
+      if (depth === 0) return i;
+    }
+  }
+  return command.length - 1;
+}
+
 /** Words of a shell command, split at ; && || | & and newlines, with quoted text kept whole. */
 export function parseCommands(input) {
   const command = stripHeredocs(input);
   const commands = [];
+  const inQuotes = [];
   let words = [];
   let word = "";
   let started = false;
@@ -54,6 +71,15 @@ export function parseCommands(input) {
       started = true;
       for (i += 1; i < command.length && command[i] !== '"'; i += 1) {
         if (command[i] === "\\" && i + 1 < command.length) i += 1;
+        else if (command[i] === "`" || (command[i] === "$" && command[i + 1] === "(")) {
+          // A substitution inside double quotes runs too.
+          const end = substitutionEnd(command, i);
+          const start = i + (command[i] === "`" ? 1 : 2);
+          inQuotes.push(...parseCommands(command.slice(start, end)));
+          word += command.slice(i, end + 1);
+          i = end;
+          continue;
+        }
         word += command[i];
       }
     } else if (c === "\\" && i + 1 < command.length) {
@@ -83,11 +109,12 @@ export function parseCommands(input) {
     }
   }
   endCommand();
-  return commands;
+  return [...commands, ...inQuotes];
 }
 
 const ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/;
 const WRAPPERS = new Set(["command", "exec", "nohup", "time", "sudo", "env", "nice", "builtin"]);
+const DURATION_WRAPPERS = new Set(["timeout", "gtimeout"]);
 const SHELLS = new Set(["sh", "bash", "zsh", "dash"]);
 
 function realWords(words) {
@@ -95,7 +122,14 @@ function realWords(words) {
   for (;;) {
     while (rest.length && ASSIGNMENT.test(rest[0])) rest = rest.slice(1);
     if (rest.length && WRAPPERS.has(basename(rest[0]))) rest = rest.slice(1);
-    else if (rest.length && rest[0].startsWith("-") && rest !== words) rest = rest.slice(1);
+    else if (rest.length && DURATION_WRAPPERS.has(basename(rest[0]))) {
+      // `timeout 5 git push`: its flags, then how long, then the command.
+      rest = rest.slice(1);
+      while (rest.length && rest[0].startsWith("-")) {
+        rest = rest.slice(/^-[ks]$|^--(kill-after|signal)$/.test(rest[0]) ? 2 : 1);
+      }
+      rest = rest.slice(1);
+    } else if (rest.length && rest[0].startsWith("-") && rest !== words) rest = rest.slice(1);
     else return rest;
   }
 }
@@ -179,18 +213,19 @@ function checkGh(args) {
   if (one === "api" && words.some((w) => /\/update-branch\b/.test(w))) {
     return "the update-branch API makes an unattributed commit that blocks merging.";
   }
-  if (words.includes(FOUNDER_LABEL)) {
-    const reads =
-      (one === "pr" && (two === "list" || two === "view")) ||
-      (one === "search" && two === "prs") ||
-      (one === "label" && two === "list");
-    if (!reads) return `only a founder applies "${FOUNDER_LABEL}". Tell a founder what needs it.`;
+  if (one === "pr" && two === "review" && words.some((w) => /^(--approve|-a)$/.test(w))) {
+    return "only a founder approves a PR. Leave it open and tell a founder what needs it.";
   }
-  if (one === "api" && words.some((w) => /\/labels\b/.test(w))) {
-    const body = words.join(" ");
-    if (body.includes(FOUNDER_LABEL)) {
-      return `only a founder applies "${FOUNDER_LABEL}". Tell a founder what needs it.`;
+  if (one === "api" && words.some((w) => /\/pulls\/[^/]+\/reviews\b/.test(w))) {
+    if (words.some((w) => /APPROVE/.test(w))) {
+      return "only a founder approves a PR. Leave it open and tell a founder what needs it.";
     }
+  }
+  if (one === "pr" && two === "checkout") {
+    return (
+      "a PR's checkout brings its hooks and test config into this session, which then runs them. " +
+      "Read it with gh pr diff, or open it in a session of its own."
+    );
   }
   if (
     one === "variable" &&
@@ -240,9 +275,10 @@ function checkVercel(args) {
   return "no hand deploys: the deploy loop ships main's head (and rolls back). A founder can run this in their own terminal.";
 }
 
+// A name with a space in it is words, not one of these files ("config/.env handling").
 const isEnvFile = (path) => {
   const name = basename(path);
-  return /^\.env/.test(name) && name !== ".env.example";
+  return /^\.env/.test(name) && name !== ".env.example" && !/\s/.test(name);
 };
 
 const ENV_ADVICE =
@@ -254,11 +290,17 @@ const ENV_IN_CODE = /['"`]([^'"`]*\/)?\.env(?:\.(?!example\b)[\w.]+)?['"`]/;
 
 // Looking at whether the file is there, without reading it.
 const ENV_STAT = new Set(["ls", "stat", "test", "["]);
+const TEXT_COMMANDS = new Set(["echo", "printf", "gh"]);
 
 function checkEnvWords(name, args) {
   if (ENV_STAT.has(name)) return null;
   if (name === "git" && args.includes("check-ignore")) return null;
-  for (const arg of args) {
+  // These print or send words, not files: only where their output goes can be one.
+  const onlyRedirects = TEXT_COMMANDS.has(name) || (name === "git" && args[0] === "commit");
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    const redirected = args[i - 1] === ">" || args[i - 1] === "<";
+    if (onlyRedirects && !redirected) continue;
     if (isEnvFile(arg) || /^\.env\*/.test(basename(arg))) return `${arg}: ${ENV_ADVICE}`;
     const inline = ENV_IN_CODE.exec(arg);
     if (inline && (SHELLS.has(name) || INTERPRETERS.test(name))) {

@@ -61,6 +61,6 @@ investment advice in this MVP.
 ## Commands
 - npm run dev / npm test / npm run test:e2e / npm run lint / npx prisma migrate dev
 - Gates and hooks (accuracy baselines, proof of fix, protected files, what sessions may not run):
-  docs/gates.md. Only a founder applies the founder-approved label
+  docs/gates.md. Only a founder approves a PR past a gate
 - npm run check:e2e-wording before pushing a change to words on a page: lists wording removed
   from src/ that an end-to-end spec still expects

@@ -133,53 +133,72 @@ jobs:
       issues: read
     steps:
       - uses: actions/checkout@v7
-      - name: Go to the PR as it would merge, with the base commit's gates
-        id: pr
+        with:
+          persist-credentials: false
+      - name: Baselines, protected files, weakened tests
+        id: static
         env:
           EVENT_NUMBER: ${{ github.event.pull_request.number }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # A run started by hand on a branch is judged like the branch's PR.
-          NUMBER="${EVENT_NUMBER:-$(gh pr list --head "$GITHUB_REF_NAME" --json number --jq '.[0].number // empty')}"
-          if [ -z "$NUMBER" ]; then echo "No open PR for this branch."; exit 0; fi
-          git fetch -q --no-tags --depth=2 origin "refs/pull/$NUMBER/merge"
-          git checkout -q FETCH_HEAD
-          mkdir -p "$RUNNER_TEMP/gates"
-          if git cat-file -e HEAD^1:.github/scripts/gates/cli.mjs 2>/dev/null; then
-            git archive HEAD^1 .github/scripts/gates | tar -x -C "$RUNNER_TEMP/gates"
-            echo "scripts=$RUNNER_TEMP/gates/.github/scripts/gates" >> "$GITHUB_OUTPUT"
-          else
-            echo "The base commit has no gates yet: this PR brings them, so they don't judge it."
-          fi
-          echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
-      - name: Baselines, protected files, weakened tests
-        id: static
-        if: steps.pr.outputs.scripts
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FOUNDER_LOGINS: ${{ vars.FOUNDER_LOGINS }}
-        run: >-
-          node "${{ steps.pr.outputs.scripts }}/cli.mjs" --pr "${{ steps.pr.outputs.number }}"
-          --base HEAD^1 --head HEAD
+        run: |
+          # A run started by hand reports on this commit, so it judges every open PR with this
+          # commit from this repo, whatever branch it was started on.
+          numbers="$EVENT_NUMBER"
+          if [ -z "$numbers" ]; then
+            numbers=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" --jq \
+              '[.[] | select(.state == "open" and .head.repo.full_name == env.GITHUB_REPOSITORY) | .number] | join(" ")')
+          fi
+          [ -n "$numbers" ] || echo "No open PR has this commit."
+          failed=0
+          proofs=""
+          for number in $numbers; do
+            git fetch -q --no-tags --depth=2 origin "refs/pull/$number/merge"
+            git checkout -q -f FETCH_HEAD
+            if ! git cat-file -e HEAD^1:.github/scripts/gates/cli.mjs 2>/dev/null; then
+              echo "#$number: the base commit has no gates yet, so they don't judge the PR that brings them."
+              continue
+            fi
+            # The rules come from the base commit, so a PR can't rewrite them.
+            scripts="$RUNNER_TEMP/gates-$number"
+            mkdir -p "$scripts"
+            git archive HEAD^1 .github/scripts/gates | tar -x -C "$scripts"
+            out="$RUNNER_TEMP/out-$number"
+            GITHUB_OUTPUT="$out" node "$scripts/.github/scripts/gates/cli.mjs" --pr "$number" \
+              --base HEAD^1 --head HEAD || failed=1
+            if grep -q '^proof=true$' "$out"; then proofs="$proofs $number"; fi
+          done
+          echo "proofs=$proofs" >> "$GITHUB_OUTPUT"
+          exit "$failed"
       # A fix's proof needs what the tests need. Everything else stops here.
-      - if: steps.static.outputs.proof == 'true'
+      - if: steps.static.outputs.proofs != ''
         uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
-      - if: steps.static.outputs.proof == 'true'
+      - if: steps.static.outputs.proofs != ''
         uses: actions/cache@v6
         id: modules
         with:
           path: node_modules
           key: modules-${{ runner.os }}-${{ hashFiles('.nvmrc', 'package-lock.json') }}
-      - if: steps.static.outputs.proof == 'true' && steps.modules.outputs.cache-hit != 'true'
+      - if: steps.static.outputs.proofs != '' && steps.modules.outputs.cache-hit != 'true'
         run: npm ci
-      - if: steps.static.outputs.proof == 'true' && steps.modules.outputs.cache-hit == 'true'
+      - if: steps.static.outputs.proofs != '' && steps.modules.outputs.cache-hit == 'true'
         run: npx prisma generate
       - name: Proof of fix (fails on the base commit's source, passes on the PR's)
-        if: steps.static.outputs.proof == 'true'
-        run: node "${{ steps.pr.outputs.scripts }}/proof.mjs" --base HEAD^1 --head HEAD
+        if: steps.static.outputs.proofs != ''
+        env:
+          PROOFS: ${{ steps.static.outputs.proofs }}
+        run: |
+          failed=0
+          for number in $PROOFS; do
+            git fetch -q --no-tags --depth=2 origin "refs/pull/$number/merge"
+            git checkout -q -f FETCH_HEAD
+            node "$RUNNER_TEMP/gates-$number/.github/scripts/gates/proof.mjs" \
+              --base HEAD^1 --head HEAD || failed=1
+          done
+          exit "$failed"
 
   checks:
     name: Lint, typecheck and unit tests

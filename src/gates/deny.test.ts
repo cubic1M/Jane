@@ -89,6 +89,30 @@ describe("pushes", () => {
   });
 });
 
+describe("commands inside other commands", () => {
+  it.each([
+    "timeout 5 git push origin main",
+    "timeout -k 2 5 git push origin main",
+    "gtimeout 60 vercel deploy",
+    'echo "$(git push origin main)"',
+    'echo "done: $(git push origin main 2>&1 | tail -1)"',
+    'echo "`git push origin main`"',
+    "echo $(git push origin main)",
+  ])("refuses %s", (command) => {
+    expect(check(command)).not.toBeNull();
+  });
+
+  it.each([
+    "timeout 5 git status",
+    'echo "branch: $(git branch --show-current)"',
+    "echo 'git push origin main'",
+    "echo '$(git push origin main)'",
+    'echo "\\$(git push origin main)"',
+  ])("allows %s", (command) => {
+    expect(check(command)).toBeNull();
+  });
+});
+
 describe("hand deploys", () => {
   it.each([
     "vercel deploy --prod --yes",
@@ -142,12 +166,15 @@ describe("gh", () => {
   });
 
   it.each([
-    "gh pr edit 12 --add-label founder-approved",
-    "gh pr create --label founder-approved",
-    "gh label create founder-approved",
-    "gh api repos/a/b/issues/12/labels -f labels[]=founder-approved",
-  ])("refuses an agent applying the founder's label: %s", (command) => {
-    expect(check(command)).toContain("only a founder");
+    "gh pr review 12 --approve",
+    "gh pr review 12 -a",
+    "gh api -X POST repos/a/b/pulls/12/reviews -f event=APPROVE",
+  ])("refuses an agent approving a PR: %s", (command) => {
+    expect(check(command)).toContain("only a founder approves");
+  });
+
+  it("refuses checking out a PR, which would run its hooks and test config here", () => {
+    expect(check("gh pr checkout 12")).toContain("gh pr diff");
   });
 
   it("refuses changing who counts as a founder, or main's ruleset", () => {
@@ -158,7 +185,9 @@ describe("gh", () => {
   it.each([
     "gh pr merge 12 --auto --squash",
     "gh pr edit 12 --add-label e2e",
-    "gh pr list --label founder-approved",
+    "gh pr review 12 --comment --body looks-fine",
+    "gh pr diff 12",
+    "gh api repos/a/b/pulls/12/reviews",
     "gh api repos/a/b/rulesets/1",
     "gh variable list",
   ])("allows %s", (command) => {
@@ -177,6 +206,8 @@ describe(".env files", () => {
     "printf 'A=1' >> .env.local",
     "cat > .env.local <<EOF\nA=1\nEOF",
     "git add .env.local",
+    "echo A=1 > .env.local",
+    "git commit -m x > .env",
     "cat .env*",
     `python3 -c "print(open('.env').read())"`,
     `python3 - <<'EOF'\nprint(open(".env.local").read())\nEOF`,
@@ -193,6 +224,10 @@ describe(".env files", () => {
     "grep -rn process.env src",
     `python3 -c "print(open('.env.example').read())"`,
     "cat > notes.md <<'EOF'\nsee .env.local\nEOF",
+    'git commit -m "fix: see config/.env handling"',
+    'git commit -m "see config/.env"',
+    'gh pr create --title x --body "see config/.env"',
+    "echo .env",
   ])("allows %s", (command) => {
     expect(check(command)).toBeNull();
   });

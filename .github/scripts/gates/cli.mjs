@@ -12,18 +12,20 @@ import { appendFileSync, readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import {
   BASELINE_FILES,
-  BASELINE_TESTS,
-  FOUNDER_LABEL,
-  allowedDrop,
   baselineDrops,
   founderApproval,
   fixMarking,
   isProtectedPath,
   isTestPath,
+  isWatchedPath,
+  parseNameStatus,
+  scriptsChanged,
+  testFilesGone,
   weakenedTests,
 } from "./core.mjs";
 
 const COMMENT_MARK = "<!-- gates:weakened-tests -->";
+const BOT = "github-actions[bot]";
 
 const { values: args } = parseArgs({
   options: {
@@ -35,8 +37,13 @@ const { values: args } = parseArgs({
   },
 });
 
+// A file name is the PR's to choose, so never let git read one as a pattern.
 const git = (...a) =>
-  execFileSync("git", a, { encoding: "utf8", maxBuffer: 256 * 1024 * 1024, stdio: "pipe" });
+  execFileSync("git", ["--literal-pathspecs", ...a], {
+    encoding: "utf8",
+    maxBuffer: 256 * 1024 * 1024,
+    stdio: "pipe",
+  });
 const gh = (...a) => execFileSync("gh", a, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
 const blob = (rev, file) => {
   try {
@@ -52,40 +59,35 @@ function loadPr() {
   const pr = JSON.parse(
     gh("pr", "view", args.pr, "--repo", repo, "--json", "title,body,headRefName,labels,author"),
   );
-  // Every page's labelled events, oldest first: who put each label on, and when.
-  const pages = gh("api", "--paginate", "--slurp", `repos/${repo}/issues/${args.pr}/timeline`);
-  const labelEvents = JSON.parse(pages)
+  const pages = gh("api", "--paginate", "--slurp", `repos/${repo}/pulls/${args.pr}/reviews`);
+  const reviews = JSON.parse(pages)
     .flat()
-    .filter((e) => e.event === "labeled")
-    .map((e) => ({ label: e.label?.name, actor: e.actor?.login, at: e.created_at }));
+    .map((r) => ({ login: r.user?.login, state: r.state, commit: r.commit_id }));
   return {
     title: pr.title,
     body: pr.body,
     branch: pr.headRefName,
     labels: pr.labels.map((l) => l.name),
     author: pr.author?.login,
-    labelEvents,
+    reviews,
   };
 }
 
-function changedFiles(base, head) {
-  return git("diff", "--name-status", "-M", base, head)
-    .split("\n")
-    .filter(Boolean)
-    .map((line) => {
-      const parts = line.split("\t");
-      return { status: parts[0][0], file: parts[parts.length - 1], from: parts[1] };
-    });
-}
+const changedFiles = (base, head) =>
+  parseNameStatus(git("diff", "-z", "--name-status", "-M", base, head));
 
 // The PR's own newest commit: the merge's second parent on GitHub, the commit itself in a local run.
-function newestCommitDate(head) {
+function prHeadSha(head) {
   try {
-    return git("show", "-s", "--format=%cI", `${head}^2`).trim();
+    return git("rev-parse", "--verify", "-q", `${head}^2`).trim();
   } catch {
-    return git("show", "-s", "--format=%cI", head).trim();
+    return git("rev-parse", head).trim();
   }
 }
+
+// File names and test lines are the PR's words. One with a line break in it could start a workflow
+// command of its own in the log.
+const oneLine = (text) => String(text).replace(/[\u0000-\u001f\u007f\u2028\u2029]/g, " ");
 
 function summary(lines) {
   console.log(lines.join("\n"));
@@ -96,8 +98,9 @@ function summary(lines) {
 
 function annotate(level, message, file) {
   if (!process.env.GITHUB_ACTIONS) return;
-  const where = file ? ` file=${file}` : "";
-  console.log(`::${level}${where}::${message.replace(/\n/g, "%0A")}`);
+  const escaped = (text) => text.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
+  const where = file ? ` file=${escaped(file).replace(/:/g, "%3A").replace(/,/g, "%2C")}` : "";
+  console.log(`::${level}${where}::${escaped(message)}`);
 }
 
 function output(name, value) {
@@ -110,46 +113,62 @@ function baselineProblems(base, head) {
     const before = blob(base, file);
     if (before === null) continue;
     const after = blob(head, file);
-    const drops = baselineDrops(JSON.parse(before), after === null ? null : JSON.parse(after));
-    for (const d of drops) {
-      const now = d.now === null ? "removed" : d.now;
-      problems.push(`${file}: ${d.path} went from ${d.was} to ${now}`);
-    }
-  }
-  for (const file of BASELINE_TESTS) {
-    const was = allowedDrop(blob(base, file));
-    const now = allowedDrop(blob(head, file));
-    if (was !== null && now !== was && (now === null || now > was)) {
-      problems.push(`${file}: ALLOWED_DROP went from ${was} to ${now ?? "removed"}`);
+    try {
+      const drops = baselineDrops(JSON.parse(before), after === null ? null : JSON.parse(after));
+      for (const d of drops) {
+        const now = d.now === undefined ? "removed" : d.now;
+        problems.push(`${file}: ${d.path} went from ${d.was} to ${now}`);
+      }
+    } catch (e) {
+      problems.push(`${file}: can't be read as JSON (${e.message})`);
     }
   }
   return problems;
 }
 
+function protectedProblems(base, head, changes) {
+  const problems = changes
+    .filter((c) => isProtectedPath(c.file) || (c.from && isProtectedPath(c.from)))
+    .map((c) => c.file);
+  if (scriptsChanged(blob(base, "package.json"), blob(head, "package.json"))) {
+    problems.push("package.json: its scripts changed");
+  }
+  return problems;
+}
+
 function weakened(base, head, changes) {
-  const paths = changes.filter((c) => isTestPath(c.file) && c.status !== "D").map((c) => c.file);
-  const deleted = changes.filter((c) => c.status === "D").map((c) => c.file);
-  const diff = paths.length ? git("diff", "-M", "-U0", base, head, "--", ...paths) : "";
-  return weakenedTests(diff, deleted);
+  const fileDiffs = changes
+    .filter((c) => isTestPath(c.file) && c.status !== "D" && c.status !== "A")
+    .map((c) => ({
+      file: c.file,
+      // Both names, or git can't see a rename and reads the file as all new.
+      diff: git("diff", "-M", "-U0", base, head, "--", ...(c.from ? [c.from] : []), c.file),
+    }));
+  return weakenedTests(fileDiffs, testFilesGone(changes));
 }
 
 // One comment per PR, kept up to date, so a founder can find these PRs by searching for its words.
-function postComment(flags) {
+function postComment(flags, watched) {
   const repo = process.env.GITHUB_REPOSITORY;
   const existing = JSON.parse(
     gh("api", "--paginate", "--slurp", `repos/${repo}/issues/${args.pr}/comments`),
   )
     .flat()
-    .find((c) => (c.body ?? "").startsWith(COMMENT_MARK));
-  if (!flags.length && !existing) return;
+    // Only the bot's own: anyone can post a comment that starts with the mark.
+    .find((c) => c.user?.login === BOT && (c.body ?? "").startsWith(COMMENT_MARK));
+  if (!flags.length && !watched.length && !existing) return;
+  const fenced = (lines) => `\`\`\`\n${lines.join("\n").replace(/```/g, "'''")}\n\`\`\``;
   const lines = flags.map((f) => {
     const change = f.now && f.was ? `${f.was}\n  now: ${f.now}` : f.was || f.now;
     return `${f.kind}: ${f.file}${change ? `\n  ${change}` : ""}`;
   });
-  const fence = lines.join("\n").replace(/```/g, "'''");
-  const body = flags.length
-    ? `${COMMENT_MARK}\n**Test lines weakened.** Worth a look; this doesn't block the merge.\n\n\`\`\`\n${fence}\n\`\`\``
-    : `${COMMENT_MARK}\nNo test lines weakened any more.`;
+  const sections = [
+    flags.length ? `**Test lines weakened.**\n\n${fenced(lines)}` : "",
+    watched.length ? `**Sensitive files changed.**\n\n${fenced(watched)}` : "",
+  ].filter(Boolean);
+  const body = sections.length
+    ? `${COMMENT_MARK}\nWorth a look; this doesn't block the merge.\n\n${sections.join("\n\n")}`
+    : `${COMMENT_MARK}\nNothing to look at any more.`;
   if (existing) {
     gh("api", "-X", "PATCH", `repos/${repo}/issues/comments/${existing.id}`, "-f", `body=${body}`);
   } else {
@@ -166,18 +185,21 @@ function main() {
     .map((s) => s.trim())
     .filter(Boolean);
   const approval = founderApproval({
-    labels: pr.labels,
-    labelEvents: pr.labelEvents ?? [],
+    reviews: pr.reviews ?? [],
     founders,
     author: pr.author,
-    headCommitDate: newestCommitDate(head),
+    headSha: prHeadSha(head),
   });
 
   const drops = baselineProblems(base, head);
-  const protectedFiles = changes.filter(
-    (c) => isProtectedPath(c.file) || (c.from && isProtectedPath(c.from)),
-  );
-  const flags = weakened(base, head, changes);
+  const protectedFiles = protectedProblems(base, head, changes);
+  const watched = changes.filter((c) => isWatchedPath(c.file)).map((c) => oneLine(c.file));
+  const flags = weakened(base, head, changes).map((f) => ({
+    file: oneLine(f.file),
+    kind: oneLine(f.kind),
+    was: oneLine(f.was),
+    now: oneLine(f.now),
+  }));
   const fix = fixMarking(pr);
 
   const failures = [];
@@ -192,15 +214,11 @@ function main() {
     if (!ok) failures.push(title);
   };
   judged("Accuracy baselines only rise", drops, approval.ok);
-  judged(
-    "Protected files changed",
-    protectedFiles.map((c) => c.file),
-    approval.ok,
-  );
+  judged("Protected files changed", protectedFiles.map(oneLine), approval.ok);
   if ((drops.length || protectedFiles.length) && !approval.ok) {
     lines.push(
-      `  - This needs a founder to put the "${FOUNDER_LABEL}" label on the PR: ${approval.why}.`,
-      "  - Agents never apply this label. Leave the PR open and tell a founder.",
+      `  - This needs a founder to approve this commit on GitHub: ${approval.why}.`,
+      "  - Leave the PR open and tell a founder. Then re-run this check; a new push needs a new approval.",
     );
   }
   lines.push(`- Fix PR: ${fix.isFix ? "yes" : "no"} (${fix.why})`);
@@ -210,12 +228,17 @@ function main() {
     lines.push(`  - ${f.kind}, ${f.file}${f.was || f.now ? `: ${change}` : ""}`);
     annotate("warning", `${f.kind}: ${f.was || f.now || f.file}`, f.file);
   }
+  lines.push(`- Sensitive files changed (a flag, not a block): ${watched.length}`);
+  for (const file of watched) {
+    lines.push(`  - ${file}`);
+    annotate("warning", "A sensitive file changed: worth a founder's look", file);
+  }
   summary(lines);
 
   if (args.comment) {
     // A comment that can't be posted (a fork's read-only token) never decides the gate.
     try {
-      postComment(flags);
+      postComment(flags, watched);
     } catch (e) {
       console.log(`couldn't update the comment: ${e.message}`);
     }

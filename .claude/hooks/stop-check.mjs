@@ -1,7 +1,8 @@
 // Stop hook: before a session ends its turn, lint the code it changed, run the tests that import
 // that code, and typecheck if that's fast. Exit 2 hands the failures back to the session, once
 // (stop_hook_active stops a loop). Nothing changed since the last clean check costs a git status.
-// It holds no real database: DATABASE_URL is dropped, and TEST_DATABASE_URL kept only for localhost.
+// The checks run the repo's own lint config, test config and tests, so they run only on a branch of
+// this repo, with a short list of environment variables: no tokens, and no real database.
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
@@ -22,7 +23,19 @@ const WARMING_FOR_MS = 5 * 60 * 1000;
 const MAX_FAILURE_LINES = 40;
 
 const CODE = /\.(ts|tsx|mts|mjs|js|jsx)$/;
-const LOCAL_DB = /^postgres(ql)?:\/\/[^/]*@?(localhost|127\.0\.0\.1)(:\d+)?\//;
+const LOCAL_DB = /^postgres(ql)?:\/\/([^/@]*@)?(localhost|127\.0\.0\.1)(:\d+)?\//;
+const PASSED_ON = [
+  "PATH",
+  "HOME",
+  "USER",
+  "LOGNAME",
+  "SHELL",
+  "TMPDIR",
+  "TZ",
+  "LANG",
+  "LC_ALL",
+  "TERM",
+];
 
 function git(root, ...args) {
   const r = spawnSync("git", ["-C", root, ...args], { encoding: "utf8" });
@@ -56,33 +69,78 @@ export function fingerprint(root, files) {
   return hash.digest("hex");
 }
 
-/** The environment the checks run in: no way to reach a real database. */
+/** The environment the checks run in: no tokens, and no way to reach a real database. */
 export function safeEnv(env) {
-  const out = { ...env };
-  delete out.DATABASE_URL;
-  delete out.DIRECT_URL;
-  if (!LOCAL_DB.test(out.TEST_DATABASE_URL ?? "")) delete out.TEST_DATABASE_URL;
+  const out = {};
+  for (const name of PASSED_ON) if (env[name] !== undefined) out[name] = env[name];
+  if (LOCAL_DB.test(env.TEST_DATABASE_URL ?? "")) out.TEST_DATABASE_URL = env.TEST_DATABASE_URL;
   return out;
 }
 
-function runCheck(root, args, seconds, env) {
+/**
+ * Whether the checkout is this repo's own work, and so safe to run. `gh pr checkout` of someone
+ * else's PR leaves a branch that follows their fork or refs/pull/*, and a detached HEAD could be
+ * anything. A new branch that follows nothing yet is a session's own.
+ */
+export function isOwnBranch(root) {
+  const branch = git(root, "symbolic-ref", "-q", "--short", "HEAD").trim();
+  if (!branch) return false;
+  const remote = git(root, "config", `branch.${branch}.remote`).trim();
+  const merge = git(root, "config", `branch.${branch}.merge`).trim();
+  return (remote === "" || remote === "origin") && !merge.startsWith("refs/pull/");
+}
+
+const running = new Set();
+
+function killGroup(child) {
+  try {
+    // Negative: its whole process group. npx leaves the real work to a child of its own.
+    process.kill(-child.pid, "SIGKILL");
+  } catch {
+    // It has already gone.
+  }
+}
+
+// If the session stops this hook, what it started goes too.
+for (const signal of ["SIGTERM", "SIGINT", "SIGHUP"]) {
+  process.on(signal, () => {
+    for (const child of running) killGroup(child);
+    process.exit(0);
+  });
+}
+
+/** Runs one check for at most `seconds`, whatever its children do with the output pipes. */
+export function runCheck(root, args, seconds, env, command = "npx") {
   return new Promise((done) => {
-    const child = spawn("npx", args, { cwd: root, env, stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(command, args, {
+      cwd: root,
+      env,
+      detached: true,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    running.add(child);
     let output = "";
-    let timedOut = false;
+    let finished = false;
+    const finish = (code, timedOut) => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      running.delete(child);
+      done({ code, output, timedOut });
+    };
     const collect = (d) => {
       output += d;
     };
     child.stdout.on("data", collect);
     child.stderr.on("data", collect);
     const timer = setTimeout(() => {
-      timedOut = true;
-      child.kill("SIGKILL");
+      killGroup(child);
+      child.stdout.destroy();
+      child.stderr.destroy();
+      finish(null, true);
     }, seconds * 1000);
-    child.on("close", (code) => {
-      clearTimeout(timer);
-      done({ code, output, timedOut });
-    });
+    child.on("error", () => finish(1, false));
+    child.on("close", (code) => finish(code, false));
   });
 }
 
@@ -125,17 +183,20 @@ export async function runChecks(root, files, { env = safeEnv(process.env), log =
   const failures = [];
   const notChecked = [];
 
+  const within = (seconds) => Math.max(Math.min(seconds, left()), 1);
+
   const lintable = files.filter((f) => !f.startsWith(".claude/") || f.endsWith(".mjs"));
   if (lintable.length) {
-    const lint = await runCheck(root, ["eslint", "--quiet", ...lintable], LINT_BUDGET, env);
+    const lint = await runCheck(root, ["eslint", "--quiet", ...lintable], within(LINT_BUDGET), env);
     log(`eslint ${Math.round((Date.now() - started) / 1000)}s`);
     if (lint.timedOut) notChecked.push("lint ran out of time");
     else if (lint.code !== 0)
       failures.push(`npx eslint ${lintable.join(" ")}\n${tail(lint.output)}`);
   }
 
-  const format = await runCheck(root, ["prettier", "--check", ...files], LINT_BUDGET, env);
-  if (format.code !== 0 && !format.timedOut) {
+  const format = await runCheck(root, ["prettier", "--check", ...files], within(LINT_BUDGET), env);
+  if (format.timedOut) notChecked.push("formatting ran out of time");
+  else if (format.code !== 0) {
     failures.push(`npx prettier --write ${files.join(" ")}\n${tail(format.output)}`);
   }
 
@@ -145,7 +206,7 @@ export async function runChecks(root, files, { env = safeEnv(process.env), log =
     const tests = await runCheck(
       root,
       ["vitest", "run", "--passWithNoTests", "--reporter=dot", ...testFiles],
-      Math.min(TEST_BUDGET, Math.max(left() - WARM_TYPECHECK_NEEDS, 10)),
+      within(Math.min(TEST_BUDGET, Math.max(left() - WARM_TYPECHECK_NEEDS, 10))),
       env,
     );
     log(`${testFiles.length} test files ${Math.round((Date.now() - testsStarted) / 1000)}s`);
@@ -174,8 +235,8 @@ export async function runChecks(root, files, { env = safeEnv(process.env), log =
     notChecked.push("typecheck skipped: no time left");
   } else {
     const typesStarted = Date.now();
-    await runCheck(root, ["next", "typegen"], 20, env);
-    const types = await runCheck(root, tsc, left(), env);
+    await runCheck(root, ["next", "typegen"], within(20), env);
+    const types = await runCheck(root, tsc, within(left()), env);
     log(`typecheck ${Math.round((Date.now() - typesStarted) / 1000)}s`);
     if (types.timedOut) notChecked.push("typecheck ran out of time");
     else if (types.code !== 0) failures.push(`npx tsc --noEmit\n${tail(types.output)}`);
@@ -188,6 +249,10 @@ async function main() {
   if (input.stop_hook_active) return;
   const root = git(input.cwd ?? process.cwd(), "rev-parse", "--show-toplevel").trim();
   if (!root || !existsSync(join(root, "node_modules"))) return;
+  if (!isOwnBranch(root)) {
+    process.stdout.write("Stop check skipped: this checkout isn't a branch of this repo.\n");
+    return;
+  }
   const files = codeFiles(changedFiles(root)).filter((f) => existsSync(join(root, f)));
   if (!files.length) return;
 
@@ -206,6 +271,8 @@ async function main() {
   mkdirSync(dirname(stamp), { recursive: true });
   if (!notChecked.length) writeFileSync(stamp, print);
   else process.stdout.write(`Stop check (${seconds}s): ${notChecked.join("; ")}.\n`);
+  // Anything a check left holding a pipe must not keep the hook open.
+  process.exit(0);
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {

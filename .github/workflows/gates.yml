@@ -8,7 +8,7 @@ name: Gates
 # edit, but only by changing a protected file.
 on:
   pull_request_target:
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
@@ -22,9 +22,10 @@ jobs:
     timeout-minutes: 3
     steps:
       # Main's copy only. Never the PR's code in this workflow.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           sparse-checkout: .github/scripts/gates
+          persist-credentials: false
       - name: Fetch the PR's files, as they would merge
         id: pr
         env:
