@@ -426,3 +426,35 @@ describe("buildStreams", () => {
     );
   });
 });
+
+// Debugger 11-02: one double charge took Netflix off /subscriptions and /bills altogether: the day
+// between the two broke the monthly gap, while Jane was saying "Charged twice? $17.99 at Netflix".
+describe("a subscription with one double charge in it", () => {
+  const withDouble = () => {
+    const charges = monthly(6, 1799, NETFLIX);
+    const last = charges[charges.length - 3];
+    const next = new Date(Date.parse(`${last.date}T00:00:00Z`) + 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+    return [...charges, { ...last, id: "double", date: next }];
+  };
+
+  it("is still a monthly subscription, at its usual cost", () => {
+    const [stream] = detectRecurring(input({ transactions: withDouble() }));
+    expect(stream?.frequency).toBe("MONTHLY");
+    expect(stream?.lastAmountCents).toBe(1799);
+    expect(stream?.charges).toHaveLength(6);
+  });
+
+  it("doesn't take the same price on two cards for a double charge", () => {
+    const one = monthly(6, 1799, NETFLIX);
+    const two = one.map((c, i) => ({ ...c, id: `other-${i}`, accountId: "acct_other" }));
+    const streams = detectRecurring(input({ transactions: [...one, ...two] }));
+    expect(streams.flatMap((s) => s.charges)).toHaveLength(12);
+  });
+
+  it("isn't a stream when the second charge is a different amount a day later", () => {
+    const charges = withDouble().map((c) => (c.id === "double" ? { ...c, amountCents: 1000 } : c));
+    expect(detectRecurring(input({ transactions: charges }))[0]?.charges).toHaveLength(6);
+  });
+});

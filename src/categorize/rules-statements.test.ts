@@ -332,3 +332,16 @@ describe("pay and benefits, as banks write them", () => {
     ).not.toBe("INCOME");
   });
 });
+
+// Debugger 11-02: how Planet Fitness writes itself on a card; Chase calls it Health & Wellness, so it
+// was medical care, and no subscription to review.
+describe("a gym, as a card statement writes it", () => {
+  it.each(["PLANET FIT CLUB FEES", "PLANET FIT BLACK CARD"])("%s isn't medical", (description) => {
+    const result = categorizeByRules({
+      description,
+      amountCents: 2_499,
+      hints: { bankCategory: "Health & Wellness" },
+    });
+    expect(result?.detailed).toBe("PERSONAL_CARE_GYMS_AND_FITNESS_CENTERS");
+  });
+});
