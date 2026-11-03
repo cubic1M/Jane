@@ -15,6 +15,7 @@ import {
 } from "@/lib/agent/run";
 import { track } from "@/lib/analytics";
 import { logAudit, SYSTEM_ACTOR } from "@/lib/audit";
+import { onSampleDataOnly } from "@/lib/concierge-mode";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { PLACEHOLDERS, draftMessage, draftPayload } from "@/lib/drafts";
@@ -73,13 +74,15 @@ export async function startCall(
     );
     return "handed_off";
   }
-  if (callMode(userId) === "off") {
+  // Sample data never reaches a real company: the simulated number answers, as for a trial person.
+  const mode = (await onSampleDataOnly(userId, { client })) ? "simulated" : callMode(userId);
+  if (mode === "off") {
     await handOff(userId, action, "Calls aren't set up yet: the team calls instead.", options);
     return "handed_off";
   }
   const company = merchantOf(action);
   const { merchant: row } = await companyFacts(company, { client });
-  const phone = callMode(userId) === "simulated" ? SIMULATED_NUMBER : row?.supportPhone;
+  const phone = mode === "simulated" ? SIMULATED_NUMBER : row?.supportPhone;
   const target = targetCents(action);
   const { monthlyCents } = billFacts(action);
   if (!phone || target === null || monthlyCents === null) {

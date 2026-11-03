@@ -7,7 +7,10 @@ vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 // The concierge flow is what's tested here (the demo bank and trial people get it); read-only
 // mode for real accounts is in src/lib/decisions.integration.test.ts.
-vi.mock("@/lib/concierge-mode", () => ({ conciergeMode: vi.fn(async () => true) }));
+vi.mock("@/lib/concierge-mode", () => ({
+  conciergeMode: vi.fn(async () => true),
+  onSampleDataOnly: vi.fn(async () => false),
+}));
 
 import { findingOfType } from "@/lib/__fixtures__/findings";
 import { agentStep } from "@/lib/agent/run";

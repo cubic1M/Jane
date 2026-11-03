@@ -25,13 +25,22 @@ export async function conciergeMode(
 const conciergeOnce = cache((userId: string) => conciergeFrom(userId, defaultClient));
 
 async function conciergeFrom(userId: string, client: PrismaClient): Promise<boolean> {
-  if (isTrialUser(userId)) return CONCIERGE_ACTIONS.demo;
+  return (await onSampleDataOnly(userId, { client }))
+    ? CONCIERGE_ACTIONS.demo
+    : CONCIERGE_ACTIONS.realAccounts;
+}
+
+// A trial person, or someone whose every account comes from the demo bank: what's on their cards is
+// made up, so nothing about it may reach a real company or the team's queue.
+export async function onSampleDataOnly(
+  userId: string,
+  { client = defaultClient }: { client?: PrismaClient } = {},
+): Promise<boolean> {
+  if (isTrialUser(userId)) return true;
   const db = scopedFor(userId, client);
   const [items, csvAccounts] = await Promise.all([
     db.plaidItems.findMany({ select: { plaidItemId: true } }),
     db.accounts.count({ where: { source: "csv" } }),
   ]);
-  const demoOnly =
-    items.length > 0 && csvAccounts === 0 && items.every((i) => isDemoItemId(i.plaidItemId));
-  return demoOnly ? CONCIERGE_ACTIONS.demo : CONCIERGE_ACTIONS.realAccounts;
+  return items.length > 0 && csvAccounts === 0 && items.every((i) => isDemoItemId(i.plaidItemId));
 }
