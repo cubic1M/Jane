@@ -44,6 +44,25 @@ describe.runIf(url)("Plaid webhooks against a real database", () => {
     vi.unstubAllEnvs();
   });
 
+  // Plaid's docs: every SYNC_UPDATES_AVAILABLE for a bank has the same body, with no id of its own. A
+  // week's memory of the body dropped all but the first, and an error after a repair was lost too.
+  it("takes the same body later on as new news, and only a quick repeat as a repeat", async () => {
+    const body = {
+      webhook_type: "TRANSACTIONS",
+      webhook_code: "SYNC_UPDATES_AVAILABLE",
+      item_id: `repeat-${crypto.randomUUID()}`,
+      initial_update_complete: true,
+      historical_update_complete: true,
+      environment: "production",
+    };
+    const raw = JSON.stringify(body);
+    const at = (minutes: number) => new Date(Date.UTC(2031, 0, 1, 12, minutes));
+    expect(await firstDelivery(raw, body, { client, now: at(0) })).toBe(true);
+    expect(await firstDelivery(raw, body, { client, now: at(4) })).toBe(false);
+    expect(await firstDelivery(raw, body, { client, now: at(45) })).toBe(true);
+    await client.plaidWebhookEvent.deleteMany({ where: { plaidItemId: body.item_id } });
+  });
+
   it("acts on a delivery once, however often Plaid sends it", async () => {
     const body = {
       webhook_type: "TRANSACTIONS",
