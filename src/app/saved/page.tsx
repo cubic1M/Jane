@@ -12,9 +12,9 @@ import { markDone } from "./actions";
 import { ShareForm } from "./share-form";
 
 // What Jane saved you: the savings ledger (src/lib/ledger.ts). The headline counts only what the
-// person's own transactions show (Verified and Held), each with its lines; estimates (found, or
-// done and not shown yet) sit apart and are called estimates. Few words: three chips on top,
-// every entry's proof behind a click, the rules in one closed note.
+// person's own transactions show (Verified and Held), each with its lines; a Yes or a done stays
+// open apart until later data settles it, and what's only found sits apart as an estimate. Few
+// words: three chips on top, every entry's proof behind a click, the rules in one closed note.
 
 const MUTED = "text-zinc-600 dark:text-zinc-400";
 
@@ -25,6 +25,16 @@ const CHIP: Record<LedgerState, (n: number) => string> = {
   said_yes: (n) => `${n} you said yes`,
   estimated: (n) => `${n} to do`,
   not_seen: (n) => `${n} not seen`,
+  settled: (n) => `${n} no longer found`,
+};
+
+// Where each chip jumps to.
+const SECTION_OF: Partial<Record<LedgerState, string>> = {
+  held: "saved",
+  verified: "saved",
+  done: "open",
+  said_yes: "open",
+  estimated: "estimates",
 };
 
 function Section({
@@ -51,7 +61,7 @@ function Section({
             key={e.key}
             entry={e}
             action={
-              doneButton && (e.state === "estimated" || e.state === "said_yes") ? (
+              doneButton && e.by === "you" && e.state !== "done" ? (
                 <form action={markDone}>
                   <input type="hidden" name="key" value={e.key} />
                   <button
@@ -99,7 +109,7 @@ async function SavedContent() {
             {chips.map((s) => (
               <a
                 key={s}
-                href={`#${s === "held" || s === "verified" ? "saved" : "estimates"}`}
+                href={`#${SECTION_OF[s]}`}
                 className="rounded-full border border-zinc-300 px-3 py-1 font-mono text-xs uppercase dark:border-zinc-700"
               >
                 {STATE_GLYPH[s]} {CHIP[s](ledger.counts[s])}
@@ -123,18 +133,41 @@ async function SavedContent() {
       )}
 
       <Section
+        id="open"
+        title="Still open"
+        note="You said yes or did it. Each stays open until later data settles it, and none of it counts yet."
+        entries={of("done", "said_yes").filter((e) => e.open)}
+        doneButton
+      />
+
+      <Section
         id="estimates"
         title="Estimates"
-        note={`About ${formatCents(ledger.doneCents + ledger.saidYesCents + ledger.estimatedCents)} more. Not counted until your transactions show it.`}
-        entries={of("done", "said_yes", "estimated")}
+        note={`About ${formatCents(ledger.estimatedCents)} more. Not counted until your transactions show it.`}
+        entries={of("estimated")}
         doneButton
       />
 
       <Section
         id="not-seen"
         title="Not seen"
-        note="The time passed and no saving showed up, so these don't count."
+        note="The time passed and no saving showed up, so these don't count. Each says what to try next."
         entries={of("not_seen")}
+        doneButton
+      />
+
+      <Section
+        id="done-unseen"
+        title="Done, can't be shown"
+        note="You did these, and your transactions can't show them, so they don't count."
+        entries={of("done").filter((e) => !e.open)}
+      />
+
+      <Section
+        id="settled"
+        title="No longer found"
+        note="You said yes, and Jane no longer finds these in your data. They aren't counted as saved."
+        entries={of("settled")}
       />
 
       <details className="text-sm">

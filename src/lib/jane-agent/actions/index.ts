@@ -49,6 +49,7 @@ import {
   benefitsLifeNone,
   benefitsUnsure,
 } from "./insurance";
+import { PermissionRefused } from "@/lib/permission/check";
 import { ChatActionError, linksOf, type ActionHandler } from "./handler";
 import { markPrimerStale } from "../primer-store";
 import { forgetPrimer } from "../primer-cache";
@@ -171,6 +172,7 @@ import { whatIfAdopt } from "./whatif";
 import { leanNotNow, leanStart } from "./lean";
 import { askAnswer } from "./ask";
 import { rentAnswer, rentInAnswer } from "./rent";
+import { followUpDone, followUpNo } from "./follow-up";
 import { suggestionNo, suggestionWhy, suggestionYes } from "./suggestion";
 import { steadyOn, steadyPay, steadySkip } from "./steady";
 import { priceCalled } from "./price-rises";
@@ -455,6 +457,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "rent.no": rentAnswer(false),
   "rent_in.yes": rentInAnswer(true),
   "rent_in.no": rentInAnswer(false),
+  "followup.done": followUpDone,
+  "followup.no": followUpNo,
   "suggestion.yes": suggestionYes,
   "suggestion.no": suggestionNo,
   "suggestion.why": suggestionWhy,
@@ -536,7 +540,13 @@ async function takeChatActionWork(
     throw new ChatActionError("expired", "It's too late to undo this one.");
   }
 
-  const outcome = await handler.run({ userId, message, action, client, now, choice });
+  // A connector the permission check refused says why, in place of the button's own error.
+  const outcome = await handler
+    .run({ userId, message, action, client, now, choice })
+    .catch((error: unknown) => {
+      if (error instanceof PermissionRefused) throw new ChatActionError("failed", error.message);
+      throw error;
+    });
   // Spec step 93: a tap can change what's open, so Claude's copy of the numbers goes.
   forgetPrimer(userId);
   await markPrimerStale(userId, { client, now });

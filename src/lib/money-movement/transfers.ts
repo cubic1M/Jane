@@ -1,3 +1,5 @@
+import { formatCents } from "@/lib/money";
+import { throughPermission } from "@/lib/permission/check";
 import { TRANSFER_DELAY_DAYS } from "@/config/money-movement";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { Sector } from "@/config/autopilot-sectors";
@@ -92,14 +94,30 @@ export async function scheduleTransfer(
     await track(userId, "money_transfer_awaiting_partner", { by, purpose: transfer.purpose });
     return { id: row.id, runOn, awaitingPartner: true };
   }
-  const { partnerRef } = await movement.schedule({
-    fromAccountId: transfer.fromAccountId,
-    toAccountId: transfer.toAccountId,
-    toName: transfer.toName,
-    amountCents: transfer.amountCents,
-    runOn,
-    memo: transfer.planKey ?? transfer.purpose,
-  });
+  const { partnerRef } = await throughPermission(
+    userId,
+    {
+      specialist: "money_movement",
+      what: `Scheduled ${formatCents(transfer.amountCents)} to ${transfer.toName}`,
+      sector: transfer.sector,
+      cents: transfer.amountCents,
+      authority:
+        by === "person"
+          ? { kind: "yes" }
+          : { kind: "standing", sector: transfer.sector as Sector, needs: "safe" },
+      undo: { kind: "window", until: new Date(`${runOn}T00:00:00Z`), href: "/transfers" },
+    },
+    { client, now },
+    () =>
+      movement.schedule({
+        fromAccountId: transfer.fromAccountId,
+        toAccountId: transfer.toAccountId,
+        toName: transfer.toName,
+        amountCents: transfer.amountCents,
+        runOn,
+        memo: transfer.planKey ?? transfer.purpose,
+      }),
+  );
   const row = await db.moneyTransfers.create({
     data: {
       userId,

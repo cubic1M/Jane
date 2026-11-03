@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { ACTION_IDS } from "@/lib/jane-agent/types";
+import { withGrant } from "@/lib/permission/gate";
 import { NoCryptoOrders, refuseCrypto, simulatedBrokerage } from "./partner";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
@@ -10,34 +11,39 @@ vi.mock("@/lib/market-data/partner", () => ({
 
 // Spec step 161: there is no order path for crypto, whichever partner is in use.
 
+const permitted = <T>(act: () => Promise<T>) =>
+  withGrant({ specialist: "brokerage", userId: "u" }, act);
+
 describe("the brokerage and crypto", () => {
   it("refuses a whole batch with any crypto in it, before anything is recorded", async () => {
     const create = vi.fn();
     const client = { brokerageOrder: { create } } as never;
     await expect(
-      simulatedBrokerage.placeOrders(
-        "u",
-        {
-          batchId: "b",
-          reason: "rebalance",
-          orders: [
-            {
-              accountId: "a",
-              ticker: "KTSIX",
-              securityName: "Fund",
-              side: "buy",
-              amountCents: 100,
-            },
-            {
-              accountId: "a",
-              ticker: "btc",
-              securityName: "Bitcoin",
-              side: "buy",
-              amountCents: 100,
-            },
-          ],
-        },
-        { client, now: new Date() },
+      permitted(() =>
+        simulatedBrokerage.placeOrders(
+          "u",
+          {
+            batchId: "b",
+            reason: "rebalance",
+            orders: [
+              {
+                accountId: "a",
+                ticker: "KTSIX",
+                securityName: "Fund",
+                side: "buy",
+                amountCents: 100,
+              },
+              {
+                accountId: "a",
+                ticker: "btc",
+                securityName: "Bitcoin",
+                side: "buy",
+                amountCents: 100,
+              },
+            ],
+          },
+          { client, now: new Date() },
+        ),
       ),
     ).rejects.toBeInstanceOf(NoCryptoOrders);
     expect(create).not.toHaveBeenCalled();

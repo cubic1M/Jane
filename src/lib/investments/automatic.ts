@@ -1,3 +1,4 @@
+import { placeThrough } from "@/lib/brokerage/orders";
 import { coreFundsFor } from "@/planning/values";
 import { loadPrefs } from "./values";
 import { randomUUID } from "node:crypto";
@@ -37,6 +38,9 @@ type Options = { client?: PrismaClient; now?: Date };
 const money = formatCents;
 
 export type AutomaticResult = { did: string[]; asked: string[] };
+
+// What the permission check asks about: the same level these ask mayAct for.
+const STANDING = { kind: "standing", sector: AUTO_SECTOR, needs: "all" } as const;
 
 export async function runAutomaticInvesting(
   userId: string,
@@ -93,7 +97,7 @@ export async function runAutomaticInvesting(
         buys,
         `Rebalanced ${money(buys)} to your target mix (it had drifted off target)`,
         async () => {
-          await placeRebalance(userId, plan.key, { client, now });
+          await placeRebalance(userId, plan.key, { client, now, authority: STANDING });
         },
       );
     }
@@ -104,7 +108,9 @@ export async function runAutomaticInvesting(
   // 2. Harvest losses (step 124), only without a wash-sale risk, into a similar fund.
   try {
     for (const c of await harvestCandidates(userId, { client, now })) {
-      await act(c.valueCents, describeHarvest(c), () => placeHarvest(userId, c, { client, now }));
+      await act(c.valueCents, describeHarvest(c), () =>
+        placeHarvest(userId, c, { client, now, authority: STANDING }),
+      );
     }
   } catch (error) {
     console.error("Automatic harvest failed", { error: String(error) });
@@ -124,7 +130,8 @@ export async function runAutomaticInvesting(
         amount,
         `Invested ${money(amount)} of new cash in ${a.name} in your target mix`,
         async () => {
-          await brokeragePartner().placeOrders(
+          await placeThrough(
+            brokeragePartner(),
             userId,
             {
               batchId: randomUUID(),
@@ -138,6 +145,7 @@ export async function runAutomaticInvesting(
               })),
             },
             { client, now },
+            STANDING,
           );
         },
       );

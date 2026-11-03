@@ -1,3 +1,4 @@
+import { throughPermission } from "@/lib/permission/check";
 import { conciergeMode } from "@/lib/concierge-mode";
 import { PREMIUM_FREQUENCIES, type PremiumFrequency } from "@/config/documents";
 import {
@@ -239,15 +240,28 @@ export async function callCarrier(
   );
   const calling = partner === undefined ? await partnerFor(userId, { client }) : partner;
   if (!policy || !calling) throw new NegotiationError("Calling isn't available right now.");
-  const result = await calling.negotiateRenewal(
+  const result = await throughPermission(
+    userId,
     {
-      carrier: policy.carrier,
-      kind: policy.kind,
-      currentAnnualCents: negotiation.currentAnnualCents,
-      renewalAnnualCents: negotiation.renewalAnnualCents,
-      competingAnnualCents: negotiation.competingAnnualCents,
+      specialist: "insurance",
+      what: `Called ${policy.carrier} about your renewal`,
+      sector: "insurance",
+      cents: 0,
+      authority: { kind: "yes" },
+      undo: { kind: "none", why: "Through a stand-in: nothing real to take back." },
     },
-    { now },
+    { client, now },
+    () =>
+      calling.negotiateRenewal(
+        {
+          carrier: policy.carrier,
+          kind: policy.kind,
+          currentAnnualCents: negotiation.currentAnnualCents,
+          renewalAnnualCents: negotiation.renewalAnnualCents,
+          competingAnnualCents: negotiation.competingAnnualCents,
+        },
+        { now },
+      ),
   );
   const { count } = await db.renewalNegotiations.updateMany({
     where: { id: negotiationId, status: "asked" },

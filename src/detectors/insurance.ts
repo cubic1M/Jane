@@ -1,3 +1,4 @@
+import { normalizeMerchant } from "@/data-sources/merchant";
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { RISK_ANNUAL_PROBABILITY as CHANCE } from "@/config/suggestions";
 import { formatCents } from "@/lib/money";
@@ -356,9 +357,11 @@ const insuranceNegotiation: Detector = {
   detect({ profile, data }) {
     const byName = new Map<string, { date: string; cents: number }[]>();
     for (const t of premiums(data, AUTO_HOME)) {
-      const list = byName.get(t.description) ?? [];
+      // By company: an ACH line's ID or date changes every time.
+      const name = normalizeMerchant(t.description)?.key ?? t.description;
+      const list = byName.get(name) ?? [];
       list.push({ date: t.date, cents: t.amountCents });
-      byName.set(t.description, list);
+      byName.set(name, list);
     }
     for (const [name, list] of byName) {
       if (list.length < R.negotiationMinCharges) continue;
@@ -474,7 +477,7 @@ const coverChange: Detector = {
 // A protection plan paid for, and a premium card that likely already gives it.
 const PROTECTION =
   /ASURION|SQUARETRADE|APPLECARE|PROTECTION PLAN|DEVICE PROTECTION|RENTAL CAR INS/i;
-const PREMIUM_CARD = /SAPPHIRE|PLATINUM|RESERVE|VENTURE X|ANNUAL FEE/i;
+const PREMIUM_CARD = /SAPPHIRE|PLATINUM|RESERVE|VENTURE X|ANNUAL (?:MEMBERSHIP )?FEE/i;
 const cardCover: Detector = {
   capability: "insurance",
   covers: ["insurance_card_cover"],

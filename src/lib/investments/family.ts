@@ -1,3 +1,4 @@
+import { placeThrough } from "@/lib/brokerage/orders";
 import { randomBytes, randomUUID } from "node:crypto";
 import {
   CUSTODIAL_FUND,
@@ -205,7 +206,8 @@ export async function contributeForChild(
     );
   const partner = brokeragePartner();
   const batchId = randomUUID();
-  await partner.placeOrders(
+  await placeThrough(
+    partner,
     userId,
     {
       batchId,

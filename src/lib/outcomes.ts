@@ -6,7 +6,14 @@ import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { logAudit, SYSTEM_ACTOR, type AuditActor } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { checkWords, ledgerStateOf, verifyRule, type LedgerState } from "@/planning/ledger";
+import { FAILED_STATUSES, nextStepOf } from "@/planning/follow-through";
+import {
+  checkWords,
+  ledgerStateOf,
+  OPEN_WITHOUT_WATCH,
+  verifyRule,
+  type LedgerState,
+} from "@/planning/ledger";
 import {
   asWatch,
   checkHeld,
@@ -41,7 +48,32 @@ const CHECKED = ["open", "partial", "not_seen"];
 // Verified: checked each night until Held, or until it came back (lapsed).
 const VERIFIED = ["confirmed", "partial"];
 // Statuses after a yes or a done.
-const ACTED = ["open", "partial", "not_seen", "confirmed", "unverifiable", "lapsed"];
+const ACTED = [
+  "open",
+  "partial",
+  "not_seen",
+  "confirmed",
+  "unverifiable",
+  "lapsed",
+  "no_longer_found",
+];
+
+// A fresh try after a fix that failed (a Yes, or "I did it", on the card that brought it back):
+// watched from now, with what the failure showed cleared.
+const freshTry = {
+  confirmedCents: null,
+  verifiedPercent: null,
+  verifiedAt: null,
+  evidenceTxIds: [],
+  proof: null,
+  heldAt: null,
+  lapsedAt: null,
+  heldProof: null,
+  heldEvidenceTxIds: [],
+  failedAt: null,
+  nudgeCount: 0,
+  lastNudgedAt: null,
+};
 
 // Every move between the ledger's states goes to the audit log (src/planning/ledger.ts).
 async function auditState(
@@ -209,9 +241,10 @@ export async function recordAnswer(
   const outcome = await ensureOutcome(userId, key, client, now);
   if (!outcome || outcome.status === "confirmed") return;
   const status = answer === "no" ? "declined" : asWatch(outcome.watch) ? "open" : "unverifiable";
+  const again = answer === "yes" && FAILED_STATUSES.includes(outcome.status);
   await scopedFor(userId, client).suggestionOutcomes.updateMany({
     where: { id: outcome.id },
-    data: { answer, answeredAt: now, status },
+    data: { answer, answeredAt: now, status, ...(again ? { ...freshTry, doneAt: null } : {}) },
   });
   await auditState({ type: "user", id: userId }, outcome, { status }, outcome.expectedCents);
 }
@@ -232,18 +265,22 @@ export async function markSuggestionDone(
       : asWatch(outcome.watch)
         ? "open"
         : "unverifiable";
+  // Done again after a fix that failed: watched from today, not from the first try.
+  const again = FAILED_STATUSES.includes(outcome.status);
+  const doneAt = again ? now : (outcome.doneAt ?? now);
   await scopedFor(userId, client).suggestionOutcomes.updateMany({
     where: { id: outcome.id },
     data: {
-      doneAt: outcome.doneAt ?? now,
+      doneAt,
       ...(outcome.answer ? {} : { answer: "yes", answeredAt: now }),
       status,
+      ...(again ? freshTry : {}),
     },
   });
   await auditState(
     { type: "user", id: userId },
     outcome,
-    { status, doneAt: outcome.doneAt ?? now },
+    { status, doneAt },
     outcome.expectedCents,
   );
   // The suggestion is answered for good: it isn't offered again.
@@ -257,12 +294,13 @@ export async function markSuggestionDone(
 // The record's key for a finding card done by the person themselves.
 export const FINDING_OUTCOME_PREFIX = "finding:";
 
-// "Mark done" on a do-it-yourself finding card: on the record from today, watched from the
-// finding's evidence. Once.
-export async function recordFindingDone(
+// A finding card's row on the record: a Yes (done null) or a Mark done. Watched from the finding's
+// evidence.
+async function recordFinding(
   userId: string,
   findingId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  doneAt: Date | null,
+  { client, now }: { client: PrismaClient; now: Date },
 ): Promise<void> {
   const db = scopedFor(userId, client);
   const finding = await db.findings.findFirst({
@@ -271,7 +309,6 @@ export async function recordFindingDone(
   });
   if (!finding) return;
   const key = `${FINDING_OUTCOME_PREFIX}${findingId}`;
-  if ((await db.suggestionOutcomes.count({ where: { suggestionKey: key } })) > 0) return;
   const watch = watchOfFinding(finding.type, finding.evidence);
   const row = await db.suggestionOutcomes.create({
     data: {
@@ -284,7 +321,7 @@ export async function recordFindingDone(
       lastShownAt: now,
       answer: "yes",
       answeredAt: now,
-      doneAt: now,
+      doneAt,
       expectedCents: finding.annualSavingsCents ?? 0,
       worthKind: "saves",
       confidencePercent: 0,
@@ -298,6 +335,37 @@ export async function recordFindingDone(
     row,
     row.expectedCents,
   );
+}
+
+// A Yes on a do-it-yourself finding card (a real account's "Show me how"): on the record from
+// today, so it stays open and gets followed up. Once.
+export async function recordFindingYes(
+  userId: string,
+  findingId: string,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<void> {
+  const key = `${FINDING_OUTCOME_PREFIX}${findingId}`;
+  const db = scopedFor(userId, client);
+  if ((await db.suggestionOutcomes.count({ where: { suggestionKey: key } })) > 0) return;
+  await recordFinding(userId, findingId, null, { client, now });
+}
+
+// "Mark done" on a do-it-yourself finding card: on the record from today, watched from the
+// finding's evidence. Once, unless the first try failed.
+export async function recordFindingDone(
+  userId: string,
+  findingId: string,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<void> {
+  const key = `${FINDING_OUTCOME_PREFIX}${findingId}`;
+  const row = await scopedFor(userId, client).suggestionOutcomes.findFirst({
+    where: { suggestionKey: key },
+    select: { doneAt: true, status: true },
+  });
+  if (!row) return recordFinding(userId, findingId, now, { client, now });
+  if (!row.doneAt || FAILED_STATUSES.includes(row.status)) {
+    await markSuggestionDone(userId, key, { client, now });
+  }
 }
 
 // What a person holds now, for the investing savings (src/planning/outcomes-holdings.ts).
@@ -433,6 +501,7 @@ export async function verifyOutcomes(
           {
             status: "lapsed",
             lapsedAt: now,
+            failedAt: now,
             heldProof: held.proof,
             heldEvidenceTxIds: held.evidence,
             checkedAt: now,
@@ -448,22 +517,42 @@ export async function verifyOutcomes(
       }
     }
 
-    // Long past its window (twice over): it stays as it is.
-    if (now.getTime() - started.getTime() > 2 * WATCH_DAYS[watch.kind] * DAY_MS) continue;
+    // Long past its window (twice over): it stays as it is, unless it's still open (a Yes stays
+    // open until later data settles it: an upload-only person can come back months later).
+    if (
+      o.status !== "open" &&
+      now.getTime() - started.getTime() > 2 * WATCH_DAYS[watch.kind] * DAY_MS
+    ) {
+      continue;
+    }
     const about = { startedOn, asOf, expectedCents: o.expectedCents };
     // Investing savings show in what they hold now, not in their transactions.
     const check: Check = isHoldingsWatch(watch)
       ? verifyHoldingsWatch(watch, about, await holdings())
       : verifyWatch(watch, { ...about, coveredThrough }, txs);
     if (check.status === "waiting") {
-      await db.suggestionOutcomes.updateMany({ where: { id: o.id }, data: { checkedAt: now } });
+      // Marked not seen under the old rule for want of a newer statement: open again.
+      await db.suggestionOutcomes.updateMany({
+        where: { id: o.id },
+        data: {
+          checkedAt: now,
+          ...(o.status === "not_seen" ? { status: "open", failedAt: null, proof: null } : {}),
+        },
+      });
       continue;
     }
     if (check.status === "not_seen") {
       if (o.status !== "not_seen") counts.notSeen += 1;
       await update(
         o,
-        { status: "not_seen", evidenceTxIds: check.evidence, proof: check.proof, checkedAt: now },
+        {
+          status: "not_seen",
+          evidenceTxIds: check.evidence,
+          proof: check.proof,
+          checkedAt: now,
+          // The day it failed; once, however many nights it's checked again.
+          failedAt: o.failedAt ?? now,
+        },
         o.expectedCents,
       );
       continue;
@@ -517,6 +606,12 @@ export type OutcomeView = {
   // Done and waiting: the day it will be checked, and the words for it ("we'll check on Nov 5").
   checksOn: string | null;
   checkWords: string | null;
+  // A Yes or a done later data can still settle (a Yes stays open until it does).
+  open: boolean;
+  // What settles it, when no watch can.
+  settles: string | null;
+  // A fix that failed: what to try next.
+  nextStep: string | null;
 };
 
 // Why an expected saving isn't counted yet, in the person's words: "You said yes" until they mark
@@ -534,6 +629,8 @@ export type SavingsRecord = {
   // Said yes or done; not shown in the transactions yet (or nothing to watch).
   expected: OutcomeView[];
   notSeen: OutcomeView[];
+  // A Yes nothing can verify, and Jane no longer finds what it was about.
+  settled: OutcomeView[];
   confirmedCents: number;
   expectedCents: number;
 };
@@ -627,16 +724,21 @@ export async function savingsRecord(
     heldEvidence: lines(r.heldEvidenceTxIds),
     checksOn: checkOf(r)?.on ?? null,
     checkWords: checkWords(checkOf(r), today),
+    open: r.status === "open" || (r.status === "unverifiable" && r.doneAt === null),
+    settles: r.status === "unverifiable" && r.doneAt === null ? OPEN_WITHOUT_WATCH : null,
+    nextStep: FAILED_STATUSES.includes(r.status) ? nextStepOf(asWatch(r.watch)) : null,
   });
   const confirmed = rows
     .filter((r) => r.status === "confirmed" || r.status === "partial")
     .map(view);
   const expected = rows.filter((r) => r.status === "open" || r.status === "unverifiable").map(view);
   const notSeen = rows.filter((r) => r.status === "not_seen" || r.status === "lapsed").map(view);
+  const settled = rows.filter((r) => r.status === "no_longer_found").map(view);
   return {
     confirmed,
     expected,
     notSeen,
+    settled,
     confirmedCents: confirmed.reduce((s, r) => s + (r.confirmedCents ?? 0), 0),
     expectedCents: expected.reduce((s, r) => s + r.expectedCents, 0),
   };

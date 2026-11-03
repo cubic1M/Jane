@@ -1,3 +1,4 @@
+import { throughPermission } from "@/lib/permission/check";
 import { MAX_DOCUMENTS, POLICY_TYPES } from "@/config/documents";
 import { SWITCH_PAYMENT_DAYS } from "@/config/insurance";
 import { normalizeMerchant } from "@/data-sources/merchant";
@@ -127,7 +128,19 @@ export async function startInsuranceSwitch(
   }
   const { pick } = shop;
   const startDate = startDateFor(old, now);
-  const bound = await binding.bind(pick, { startDate, holderName: action.user.name, now });
+  const bound = await throughPermission(
+    userId,
+    {
+      specialist: "insurance",
+      what: `Started a new ${pick.carrier.name} policy`,
+      sector: "insurance",
+      cents: 0,
+      authority: { kind: "yes", decisionId: action.decision.id },
+      undo: { kind: "none", why: "Through a stand-in: nothing real to take back." },
+    },
+    { client, now },
+    () => binding.bind(pick, { startDate, holderName: action.user.name, now }),
+  );
   const renewalDate = addMonths(startDate, pick.termMonths);
   const fresh = {
     kind: pick.kind,
@@ -252,9 +265,22 @@ export async function confirmInsuranceSwitches({
         : null;
       let cancelled = "";
       if (old && binding) {
-        const done = await binding.cancel(
-          { carrier: old.carrier, policyNumber: null },
-          { effectiveDate: startDate, now },
+        const done = await throughPermission(
+          userId,
+          {
+            specialist: "insurance",
+            what: `Cancelled your old ${old.carrier} policy`,
+            sector: "insurance",
+            cents: 0,
+            authority: { kind: "yes", because: "The switch you said yes to." },
+            undo: { kind: "none", why: "Through a stand-in: nothing real to take back." },
+          },
+          { client, now },
+          () =>
+            binding.cancel(
+              { carrier: old.carrier, policyNumber: null },
+              { effectiveDate: startDate, now },
+            ),
         );
         await db.insurancePolicies.updateMany({
           where: { id: old.id, status: "active" },

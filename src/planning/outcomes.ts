@@ -23,7 +23,8 @@ import { dayLabel } from "@/lib/day-label";
 //
 // A charge that "stopped" or fees that "stopped" are an absence, so they count only up to the
 // day the person's statements reach (coveredThrough, per account: the newest transaction, upload
-// or bank sync). Without a newer statement, nothing is verified.
+// or bank sync). Without a newer statement, nothing is verified, and nothing failed either: it
+// stays open, so an upload-only person's fix isn't "not seen" for want of a new file.
 
 export type OutcomeTx = {
   id: string;
@@ -106,6 +107,12 @@ export function verifyWatch(
   const charges = transactions.filter((t) => t.amountCents > 0);
   const from = chargesFrom(transactions);
   const reach = reachOf(coveredThrough, asOf, startedOn);
+  // The statements reach the end of the watch window on the account each payee was charged to.
+  const reachesWatchEnd = (payees: readonly { description: string }[]) =>
+    payees.every(
+      (p) =>
+        reach(from(p.description).at(-1)?.accountId) >= addDays(startedOn, WATCH_DAYS[watch.kind]),
+    );
 
   if (watch.kind === "charge_stops") {
     let cents = 0;
@@ -114,8 +121,6 @@ export function verifyWatch(
     const proofs: string[] = [];
     const still: OutcomeTx[] = [];
     let pending = false;
-    // Due and gone, but no statement after it yet.
-    const unread: string[] = [];
     for (const p of watch.payees) {
       const history = from(p.description);
       const last = history.filter((t) => t.date <= startedOn).at(-1);
@@ -132,7 +137,6 @@ export function verifyWatch(
       const seenTo = reach(last.accountId);
       if (seenTo <= addDays(due, STOP_GRACE_DAYS)) {
         pending = true;
-        if (asOf > addDays(due, STOP_GRACE_DAYS)) unread.push(due);
         continue;
       }
       if (seenTo <= addDays(due, interval + STOP_GRACE_DAYS)) twice = false;
@@ -152,7 +156,9 @@ export function verifyWatch(
         proof: `${proofs.join("; ")}.`.replace(/^./, (c) => c.toUpperCase()),
       };
     }
-    if (pending && !over) return { status: "waiting" };
+    // Some payee's next charge isn't on a statement yet: it waits, unless another's is still
+    // charged and the time is up.
+    if (pending && (still.length === 0 || !over)) return { status: "waiting" };
     if (still.length > 0 || over) {
       return {
         status: "not_seen",
@@ -160,9 +166,7 @@ export function verifyWatch(
         proof:
           still.length > 0
             ? `Still charged: ${still.map((t) => `${formatCents(t.amountCents)} on ${dayLabel(t.date)}`).join(", ")}.`
-            : unread.length > 0
-              ? `No statement after ${dayLabel(unread[0])}, when the next charge was due, to check it against.`
-              : "No charge to compare with.",
+            : "No charge to compare with.",
       };
     }
     return { status: "waiting" };
@@ -194,8 +198,9 @@ export function verifyWatch(
         proof: `${proofs.join("; ")}.`.replace(/^./, (c) => c.toUpperCase()),
       };
     }
-    // Two bills at the full price since, or the time is up: it didn't come down.
-    if (full.length >= 2 || over) {
+    // Two bills at the full price since, or the time is up on statements that reach that far: it
+    // didn't come down.
+    if (full.length >= 2 || (over && reachesWatchEnd(watch.payees))) {
       return {
         status: "not_seen",
         evidence: full.map((t) => t.id),
@@ -237,7 +242,7 @@ export function verifyWatch(
         proof: `${proofs.join("; ")}.`.replace(/^./, (c) => c.toUpperCase()),
       };
     }
-    return over
+    return over && reachesWatchEnd(watch.payees)
       ? { status: "not_seen", evidence: [], proof: "No refund came back." }
       : { status: "waiting" };
   }
@@ -246,15 +251,7 @@ export function verifyWatch(
   // statements reach the end of them.
   const end = addDays(startedOn, FEE_COMPARE_DAYS);
   if (asOf < end) return { status: "waiting" };
-  if (feeReach(watch, transactions, reach, asOf) < end) {
-    return over
-      ? {
-          status: "not_seen",
-          evidence: [],
-          proof: `No statement reaching ${dayLabel(end)} to count the fees against.`,
-        }
-      : { status: "waiting" };
-  }
+  if (feeReach(watch, transactions, reach, asOf) < end) return { status: "waiting" };
   const fees = charges.filter(
     (t) => watch.pfcs.includes(t.pfc ?? "") && t.date > startedOn && t.date <= end,
   );

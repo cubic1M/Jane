@@ -1,3 +1,5 @@
+import { formatCents } from "@/lib/money";
+import { throughPermission } from "@/lib/permission/check";
 import {
   BIG_MOVE_MAX_CENTS,
   BIG_MOVE_MIN_CENTS,
@@ -200,14 +202,27 @@ export async function approveBigMove(
   const movement = await moneyPartnerFor(pair.partnerId, { client });
   if (!movement) throw new MoneyForTwoError("No money-movement partner is connected.");
   const runOn = today(move.runOn) < today(now) ? today(now) : today(move.runOn);
-  const { partnerRef } = await movement.schedule({
-    fromAccountId: move.fromAccountId,
-    toAccountId: move.toAccountId,
-    toName: move.toName,
-    amountCents: move.amountCents,
-    runOn,
-    memo: move.planKey ?? move.purpose,
-  });
+  const { partnerRef } = await throughPermission(
+    pair.partnerId,
+    {
+      specialist: "money_movement",
+      what: `Scheduled ${formatCents(move.amountCents)} to ${move.toName}`,
+      sector: "goals",
+      cents: move.amountCents,
+      authority: { kind: "yes", because: "You both said yes." },
+      undo: { kind: "window", until: new Date(`${runOn}T00:00:00Z`), href: "/transfers" },
+    },
+    { client, now },
+    () =>
+      movement.schedule({
+        fromAccountId: move.fromAccountId,
+        toAccountId: move.toAccountId,
+        toName: move.toName,
+        amountCents: move.amountCents,
+        runOn,
+        memo: move.planKey ?? move.purpose,
+      }),
+  );
   const { count } = await client.moneyTransfer.updateMany({
     where: { id: move.id, status: "awaiting_partner" },
     data: {

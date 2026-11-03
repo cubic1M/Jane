@@ -61,6 +61,7 @@ describe("savedReply", () => {
         confirmed: [],
         expected: [],
         notSeen: [],
+        settled: [],
         confirmedCents: 0,
         expectedCents: 3_000,
       },
@@ -100,6 +101,9 @@ describe("savedReply", () => {
       heldEvidence: [],
       checksOn: null,
       checkWords: null,
+      open: true,
+      settles: null,
+      nextStep: null,
     };
     const reply = savedReply({
       actions: { confirmed: [], confirmedCents: 0, estimated: [], estimatedCents: 0, notShown: [] },
@@ -107,6 +111,7 @@ describe("savedReply", () => {
         confirmed: [outcome],
         expected: [],
         notSeen: [],
+        settled: [],
         confirmedCents: 14_388,
         expectedCents: 0,
       },

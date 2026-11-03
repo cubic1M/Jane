@@ -1,3 +1,4 @@
+import { placeThrough } from "@/lib/brokerage/orders";
 import { createHash, randomUUID } from "node:crypto";
 import {
   DEFAULT_LONG_TERM_RATE,
@@ -240,7 +241,8 @@ export async function sellPart(
   }));
   const partner = brokeragePartner();
   const batchId = randomUUID();
-  const confirmations = await partner.placeOrders(
+  const confirmations = await placeThrough(
+    partner,
     userId,
     {
       batchId,

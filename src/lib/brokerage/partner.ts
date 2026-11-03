@@ -1,3 +1,4 @@
+import { gated } from "@/lib/permission/gate";
 import { randomUUID } from "node:crypto";
 import { SIMULATED_PARTNER } from "@/config/brokerage";
 import { isCryptoTicker } from "@/config/crypto";
@@ -46,62 +47,66 @@ export interface BrokeragePartner {
 
 // Fills every order at the demo price, by dollar amount, and records it. Nothing leaves
 // the app.
-export const simulatedBrokerage: BrokeragePartner = {
-  name: SIMULATED_PARTNER,
-  simulated: true,
-  // The last close from the market-data partner (spec step 156); cash is always a dollar.
-  async priceOf(ticker, { userId, client, now }) {
-    if (isCryptoTicker(ticker)) return null;
-    if (ticker.toUpperCase() === "CASH") return 100;
-    const market = await marketDataFor(userId, client);
-    return market?.priceCents(ticker, lastClose(now)) ?? null;
-  },
-  async placeOrders(userId, { batchId, reason, orders }, { client, now }) {
-    refuseCrypto(orders);
-    const db = scopedFor(userId, client);
-    const out: Confirmation[] = [];
-    for (const order of orders) {
-      // A deposit (or a rollover in) is cash: a dollar a dollar, whatever it's labelled.
-      const priceCents =
-        order.side === "deposit" && !isCryptoTicker(order.ticker)
-          ? 100
-          : await this.priceOf(order.ticker, { userId, client, now });
-      const filled = priceCents !== null && order.amountCents > 0;
-      const quantity = filled ? Number((order.amountCents / priceCents).toFixed(6)) : 0;
-      const confirmation = filled ? `SIM-${randomUUID().slice(0, 8).toUpperCase()}` : null;
-      const row = await db.brokerageOrders.create({
-        data: {
-          userId,
-          accountId: order.accountId,
-          batchId,
-          reason,
-          partner: SIMULATED_PARTNER,
-          ticker: order.ticker,
-          securityName: order.securityName,
-          side: order.side,
-          amountCents: order.amountCents,
+export const simulatedBrokerage: BrokeragePartner = gated(
+  "brokerage",
+  {
+    name: SIMULATED_PARTNER,
+    simulated: true,
+    // The last close from the market-data partner (spec step 156); cash is always a dollar.
+    async priceOf(ticker, { userId, client, now }) {
+      if (isCryptoTicker(ticker)) return null;
+      if (ticker.toUpperCase() === "CASH") return 100;
+      const market = await marketDataFor(userId, client);
+      return market?.priceCents(ticker, lastClose(now)) ?? null;
+    },
+    async placeOrders(userId, { batchId, reason, orders }, { client, now }) {
+      refuseCrypto(orders);
+      const db = scopedFor(userId, client);
+      const out: Confirmation[] = [];
+      for (const order of orders) {
+        // A deposit (or a rollover in) is cash: a dollar a dollar, whatever it's labelled.
+        const priceCents =
+          order.side === "deposit" && !isCryptoTicker(order.ticker)
+            ? 100
+            : await this.priceOf(order.ticker, { userId, client, now });
+        const filled = priceCents !== null && order.amountCents > 0;
+        const quantity = filled ? Number((order.amountCents / priceCents).toFixed(6)) : 0;
+        const confirmation = filled ? `SIM-${randomUUID().slice(0, 8).toUpperCase()}` : null;
+        const row = await db.brokerageOrders.create({
+          data: {
+            userId,
+            accountId: order.accountId,
+            batchId,
+            reason,
+            partner: SIMULATED_PARTNER,
+            ticker: order.ticker,
+            securityName: order.securityName,
+            side: order.side,
+            amountCents: order.amountCents,
+            quantity,
+            priceCents: priceCents ?? 0,
+            status: filled ? "filled" : "rejected",
+            confirmation,
+            placedAt: now,
+            filledAt: filled ? now : null,
+          },
+          select: { id: true },
+        });
+        out.push({
+          ...order,
+          orderId: row.id,
+          status: filled ? "filled" : "rejected",
           quantity,
           priceCents: priceCents ?? 0,
-          status: filled ? "filled" : "rejected",
           confirmation,
-          placedAt: now,
           filledAt: filled ? now : null,
-        },
-        select: { id: true },
-      });
-      out.push({
-        ...order,
-        orderId: row.id,
-        status: filled ? "filled" : "rejected",
-        quantity,
-        priceCents: priceCents ?? 0,
-        confirmation,
-        filledAt: filled ? now : null,
-      });
-    }
-    return out;
+        });
+      }
+      return out;
+    },
   },
-};
+  ["placeOrders"],
+);
 
 export class NoCryptoOrders extends Error {
   constructor() {

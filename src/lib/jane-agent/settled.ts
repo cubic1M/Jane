@@ -3,6 +3,7 @@ import { autopilotOf } from "@/lib/autopilot";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { openProposals } from "@/lib/proposals";
+import { FAILED_STATUSES, OPEN_STATUSES } from "@/planning/follow-through";
 import { stepOf } from "./agent-steps";
 import { parseActions, parseRefs, type MessageAction, type MessageRefs } from "./types";
 
@@ -47,6 +48,7 @@ export async function closeAnsweredElsewhere(
   const anySaving = open.some((m) => m.refs.savingGroup || m.refs.savingId);
   const riskIds = ids((m) => m.refs.riskId);
   const suggestionKeys = ids((m) => m.refs.suggestion);
+  const followUpKeys = ids((m) => m.refs.followUp);
   const anyAutopilot = open.some(asksAutopilot);
   const anyProposal = open.some((m) => m.refs.proposalKey);
   if (
@@ -60,7 +62,8 @@ export async function closeAnsweredElsewhere(
     !negotiationIds.length &&
     !anySaving &&
     !riskIds.length &&
-    !suggestionKeys.length
+    !suggestionKeys.length &&
+    !followUpKeys.length
   )
     return 0;
 
@@ -122,6 +125,8 @@ export async function closeAnsweredElsewhere(
   // A suggestion that has settled (gone, yes, no); one with no row (a news theme's alert,
   // posted straight from the scan) doesn't settle its message this way.
   const settledSuggestions = await settledSuggestionKeys(db, suggestionKeys);
+  // A follow-up the person answered somewhere else, that the data settled, or a later round.
+  const followingUp = await followUpRows(db, followUpKeys);
   const offeredIds = new Set(offers.map((o) => o.id));
   const sameOffered = offers.some((o) => o.kind !== "higher_deductible");
   const openProposalKeys = new Set(proposals.map((p) => p.key));
@@ -146,6 +151,7 @@ export async function closeAnsweredElsewhere(
       savingId,
       riskId,
       suggestion,
+      followUp,
     } = m.refs;
     return (
       (asksAutopilot(m) && autopilot !== null) ||
@@ -159,7 +165,8 @@ export async function closeAnsweredElsewhere(
       (savingId !== undefined && !offeredIds.has(savingId)) ||
       (savingGroup !== undefined && !sameOffered) ||
       (riskId !== undefined && !stillAskedRisks.has(riskId)) ||
-      (suggestion !== undefined && settledSuggestions.has(suggestion))
+      (suggestion !== undefined && settledSuggestions.has(suggestion)) ||
+      (followUp !== undefined && !followUpStands(m.refs, followingUp.get(followUp)))
     );
   };
 
@@ -193,3 +200,28 @@ export async function settledSuggestionKeys(
 }
 
 const LIVE_SUGGESTION_STATUSES = ["waiting", "selected"] as const;
+
+type FollowUpRow = { status: string; doneAt: Date | null; nudgeCount: number; comebacks: number };
+
+async function followUpRows(db: ReturnType<typeof scopedFor>, keys: readonly string[]) {
+  if (keys.length === 0) return new Map<string, FollowUpRow>();
+  const rows = await db.suggestionOutcomes.findMany({
+    where: { suggestionKey: { in: [...keys] }, answer: "yes" },
+    select: { suggestionKey: true, status: true, doneAt: true, nudgeCount: true, comebacks: true },
+  });
+  return new Map(rows.map((r) => [r.suggestionKey, r]));
+}
+
+// Whether a follow-up card still stands: a nudge while the Yes is open and nothing's done, a
+// failure while the data still says so; in either case the latest round only.
+function followUpStands(refs: MessageRefs, row: FollowUpRow | undefined): boolean {
+  if (!row) return false;
+  if (refs.followUpKind === "failed") {
+    return FAILED_STATUSES.includes(row.status) && (refs.followUpRound ?? 0) >= row.comebacks;
+  }
+  return (
+    OPEN_STATUSES.includes(row.status) &&
+    row.doneAt === null &&
+    (refs.followUpRound ?? 0) >= row.nudgeCount
+  );
+}

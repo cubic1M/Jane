@@ -14,6 +14,11 @@ import {
 // The ledger's four states (and Not seen), and the rules shown beside them.
 
 describe("the ledger's states", () => {
+  it("a Yes nothing can verify, no longer found, is settled and never counted", () => {
+    expect(ledgerStateOf({ status: "no_longer_found" })).toBe("settled");
+    expect(COUNTED).not.toContain("settled");
+  });
+
   it("walks Estimated, Done, Verified, Held; Not seen when it never showed or came back", () => {
     const marked = new Date("2026-10-30T12:00:00Z");
     expect(ledgerStateOf({ status: "shown" })).toBe("estimated");
@@ -40,7 +45,7 @@ describe("the ledger's states", () => {
 
   it("counts Verified and Held only", () => {
     expect([...COUNTED].sort()).toEqual(["held", "verified"]);
-    expect(LEDGER_STATES).toHaveLength(6);
+    expect(LEDGER_STATES).toHaveLength(7);
   });
 });
 

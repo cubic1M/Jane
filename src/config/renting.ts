@@ -2,10 +2,11 @@
 // is usual, and a security deposit followed to the day it is due back. The stand-ins and the
 // state rules live here with where they come from.
 
-// The rent payments in the bank data: a rent category and a landlord-looking name, the same
-// rule the profile uses to decide someone rents (src/profile/build.ts).
+// The rent payments in the bank data: the rent category, the same rule the profile uses to decide
+// someone rents (src/profile/build.ts). The category is enough: the rules file "CEDAR RIDGE APTS",
+// "GREYSTAR" and a Zelle the person said was rent there, and a second test on the name dropped them
+// (detector sweep: 19 of 38 people with rent lines had none that passed).
 export const RENT_CATEGORY = "RENT_AND_UTILITIES_RENT";
-export const RENT_NAME = /RENT|APARTMENTS|PROPERT/i;
 export const RENT_NAME_NOT = /HOME RENT/i;
 
 // How far back rent is read, and how many payments make a pattern.

@@ -11,6 +11,7 @@ const entry = (over: Partial<TimelineEntry>): TimelineEntry => ({
   sector: "bills",
   sectorLabel: "Subscriptions and bills",
   by: "jane",
+  simulated: true,
   what: "Asked Netflix for your old price",
   why: "Subscriptions and bills is on your autopilot, and this was within the limits you set.",
   cents: 3_000,

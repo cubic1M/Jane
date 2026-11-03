@@ -262,6 +262,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     // One autopilot, every sector (spec step 141).
     autopilotSectors: scoped.autopilotSector,
     autopilotActs: scoped.autopilotAct,
+    // One record of what Jane did (src/lib/permission/check.ts).
+    janeActs: scoped.janeAct,
     // The nightly controller run's log (spec step 142).
     controllerRuns: scoped.controllerRun,
     // Money that moves itself (spec steps 144–145).

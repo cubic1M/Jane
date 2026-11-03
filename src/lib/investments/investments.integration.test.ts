@@ -94,6 +94,7 @@ import {
   RetirementAccountsError,
 } from "./retirement-accounts";
 import { setSectorAutopilot } from "@/lib/sector-autopilot";
+import { placeThrough } from "@/lib/brokerage/orders";
 import { brokeragePartner, NoCryptoOrders } from "@/lib/brokerage/partner";
 import { loadMoneyHub } from "@/lib/hubs/money";
 import { setAutopilot } from "@/lib/autopilot";
@@ -829,7 +830,8 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
 
       // No order path: the brokerage refuses crypto, and records nothing.
       await expect(
-        brokeragePartner().placeOrders(
+        placeThrough(
+          brokeragePartner(),
           userId,
           {
             batchId: crypto.randomUUID(),

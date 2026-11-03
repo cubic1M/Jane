@@ -24,7 +24,9 @@ export const ADDON_RULES: Readonly<
 > = {
   gap: {
     label: "GAP cover",
-    match: /\bgap\b|guaranteed asset protection/i,
+    // Never a bare "GAP": that's also the clothes shop (detector sweep: "GAP #1234" read as a
+    // dealer add-on with a refund).
+    match: /\bgap (?:ins|cover|waiver|plan|policy|contract)|guaranteed asset protection/i,
     defaultTermMonths: 72,
     feeCents: 5_000,
     feeShare: 0,

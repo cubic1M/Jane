@@ -1,3 +1,4 @@
+import { gated } from "@/lib/permission/gate";
 import { DEMO_LOAN_FUNDING_DAYS } from "@/config/debt";
 import {
   DEMO_LENDERS,
@@ -83,32 +84,36 @@ export function demoTransfers(request: TransferRequest): TransferOffer[] {
   });
 }
 
-export const demoLender: LenderPartner = {
-  name: "Demo lender catalog (sample offers)",
-  async prequalify(request) {
-    return DEMO_LENDERS.flatMap((l) => demoQuote(l, request) ?? []);
+export const demoLender: LenderPartner = gated(
+  "lenders",
+  {
+    name: "Demo lender catalog (sample offers)",
+    async prequalify(request) {
+      return DEMO_LENDERS.flatMap((l) => demoQuote(l, request) ?? []);
+    },
+    async balanceTransfers(request) {
+      return demoTransfers(request);
+    },
+    async offer(id, request) {
+      return (await this.prequalify(request)).find((o) => o.id === id) ?? null;
+    },
+    // The soft check stand-in: approves an offer that's still in the catalog this month, at
+    // its terms, and declines one that isn't.
+    async apply({ offer, request }) {
+      const still = await this.offer(offer.id, request);
+      return {
+        applicationId: `demo-app-${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`,
+        status: still ? "approved" : "declined",
+      };
+    },
+    async accept() {},
+    // Funded DEMO_LOAN_FUNDING_DAYS after the person accepted.
+    async status(_applicationId, { now, acceptedAt }) {
+      if (!acceptedAt) return "approved";
+      return now.getTime() - acceptedAt.getTime() >= DEMO_LOAN_FUNDING_DAYS * DAY_MS
+        ? "funded"
+        : "accepted";
+    },
   },
-  async balanceTransfers(request) {
-    return demoTransfers(request);
-  },
-  async offer(id, request) {
-    return (await this.prequalify(request)).find((o) => o.id === id) ?? null;
-  },
-  // The soft check stand-in: approves an offer that's still in the catalog this month, at
-  // its terms, and declines one that isn't.
-  async apply({ offer, request }) {
-    const still = await this.offer(offer.id, request);
-    return {
-      applicationId: `demo-app-${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`,
-      status: still ? "approved" : "declined",
-    };
-  },
-  async accept() {},
-  // Funded DEMO_LOAN_FUNDING_DAYS after the person accepted.
-  async status(_applicationId, { now, acceptedAt }) {
-    if (!acceptedAt) return "approved";
-    return now.getTime() - acceptedAt.getTime() >= DEMO_LOAN_FUNDING_DAYS * DAY_MS
-      ? "funded"
-      : "accepted";
-  },
-};
+  ["apply", "accept"],
+);

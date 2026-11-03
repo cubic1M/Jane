@@ -1,3 +1,4 @@
+import { throughPermission } from "@/lib/permission/check";
 import { TAX_PLAN } from "@/config/tax-plan";
 import { CALENDAR_ITEMS, YEAR_END_FROM_DAY, type CalendarKey } from "@/config/tax-calendar";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -160,7 +161,8 @@ export async function loadTaxCalendar(
     if (!partner) needsTap = "no_partner";
     else {
       const may = await mayAct(userId, "taxes", { needs: "safe", cents: p.cents }, { client, now });
-      if (!may.ok) needsTap = may.reason;
+      // Stopped: they can still pay it themselves with a tap, once they turn Jane back on.
+      if (!may.ok) needsTap = may.reason === "stopped" ? "level" : may.reason;
     }
     due.push({ dueOn: p.date, cents: p.cents, needsTap, paid: false });
   }
@@ -332,7 +334,22 @@ export async function payEstimate(
     );
     if (!may.ok) throw new TaxCalendarError("That's over what I pay by myself.");
   }
-  const { confirmation } = await partner.pay({ userId, dueOn, cents: planned.cents });
+  const { confirmation } = await throughPermission(
+    userId,
+    {
+      specialist: "tax_payments",
+      what: `Paid ${formatCents(planned.cents)} in estimated tax due ${dueOn}`,
+      sector: "taxes",
+      cents: planned.cents,
+      authority:
+        via === "autopilot"
+          ? { kind: "standing", sector: "taxes", needs: "safe" }
+          : { kind: "yes" },
+      undo: { kind: "none", why: "A simulated payment: nothing real to take back." },
+    },
+    { client, now },
+    () => partner.pay({ userId, dueOn, cents: planned.cents }),
+  );
   await db.taxPayments.create({
     data: {
       userId,

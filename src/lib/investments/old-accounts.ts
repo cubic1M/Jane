@@ -1,3 +1,4 @@
+import { placeThrough } from "@/lib/brokerage/orders";
 import { coreFundsFor } from "@/planning/values";
 import { loadPrefs } from "./values";
 import { randomUUID } from "node:crypto";
@@ -270,7 +271,8 @@ export async function settleRollovers(
       coreFundsFor(await loadPrefs(userId, { client })),
     );
     const batchId = randomUUID();
-    await brokeragePartner().placeOrders(
+    await placeThrough(
+      brokeragePartner(),
       userId,
       {
         batchId,
@@ -293,6 +295,7 @@ export async function settleRollovers(
         ],
       },
       { client, now },
+      { kind: "yes", because: "The rollover you asked for." },
     );
     const account = await db.accounts.findFirst({
       where: { id: row.destinationId },

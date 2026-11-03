@@ -2,7 +2,6 @@ import {
   LOCAL_RENT,
   RENT_CATEGORY,
   RENT_MIN_PAYMENTS,
-  RENT_NAME,
   RENT_NAME_NOT,
   depositRule,
 } from "@/config/renting";
@@ -14,8 +13,7 @@ import { DAY_MS, addDays } from "@/lib/dates";
 export type RentTx = { date: string; amountCents: number; description: string; pfc: string | null };
 export type RentPayment = { date: string; cents: number };
 
-export const isRent = (t: RentTx) =>
-  t.pfc === RENT_CATEGORY && RENT_NAME.test(t.description) && !RENT_NAME_NOT.test(t.description);
+export const isRent = (t: RentTx) => t.pfc === RENT_CATEGORY && !RENT_NAME_NOT.test(t.description);
 
 // Rent payments, oldest first (bank amounts are positive for money out).
 export function rentPayments(txs: readonly RentTx[]): RentPayment[] {

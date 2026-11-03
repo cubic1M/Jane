@@ -1,3 +1,4 @@
+import { placeThrough } from "@/lib/brokerage/orders";
 import { createHash, randomUUID } from "node:crypto";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import {
@@ -173,7 +174,8 @@ export async function moveCash(
   // Brokerage cash into the money market fund, through the brokerage partner.
   const partner = brokeragePartner();
   const batchId = randomUUID();
-  const confirmations = await partner.placeOrders(
+  const confirmations = await placeThrough(
+    partner,
     userId,
     {
       batchId,

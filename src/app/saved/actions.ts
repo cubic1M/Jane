@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { markSuggestionDone, OutcomeError } from "@/lib/outcomes";
+import { markFollowUpDone, OutcomeError } from "@/lib/follow-through-answers";
 import { revokeSavedShares, shareSavedTotal } from "@/lib/savings-proof";
 import { requireUser } from "@/lib/session";
 
@@ -38,7 +38,7 @@ export async function markDone(formData: FormData): Promise<void> {
   const key = String(formData.get("key") ?? "").slice(0, 200);
   if (!key) return;
   try {
-    await markSuggestionDone(user.id, key);
+    await markFollowUpDone(user.id, key);
   } catch (error) {
     if (!(error instanceof OutcomeError)) throw error;
   }

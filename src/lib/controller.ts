@@ -8,6 +8,8 @@ import {
 } from "@/config/controller";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { loadChanges } from "@/lib/changes";
+import { loadFreshness } from "@/lib/freshness";
+import { oldDataLine, reachWords } from "@/planning/freshness";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { refreshDebts } from "@/lib/debt-refresh";
@@ -37,7 +39,11 @@ import { plural } from "@/lib/plural";
 // failing step is logged and retried on its own through the jobs table; it never stops the
 // others. Each run is kept as a log: what ran, what it did, what changed.
 
-type Options = { client?: PrismaClient; now?: Date; api?: PlaidApi };
+type Options = { client?: PrismaClient; now?: Date; api?: PlaidApi; old?: OldData };
+
+// What a night's checks can say about how far the data reaches: it never sounds complete when it
+// only had old statements (Stage 1, duty 3: "for upload-only people the run re-checks old data").
+type OldData = { line: string | null; reach: string | null; uploadOnly: boolean };
 
 export type { LastRun, StepLog, StepResult } from "./controller-log";
 import type { StepLog, StepResult } from "./controller-log";
@@ -52,7 +58,7 @@ const STEPS: Record<
   ControllerStep,
   (userId: string, o: Required<Pick<Options, "client" | "now">> & Options) => Promise<StepResult>
 > = {
-  async sync(userId, { client, now, api }) {
+  async sync(userId, { client, now, api, old }) {
     const items = await scopedFor(userId, client).plaidItems.findMany({
       where: {
         status: ITEM_STATUS.active,
@@ -77,18 +83,25 @@ const STEPS: Record<
       recategorized > 0
         ? ` Re-sorted ${plural(recategorized, "transaction")} by updated rules.`
         : "";
-    if (items.length === 0) return { did: `Already up to date.${fixed}`, changed: recategorized };
+    if (items.length === 0) {
+      const did = old?.uploadOnly
+        ? (old.line ?? `No bank linked: I read your statements, ${old.reach ?? "as uploaded"}.`)
+        : (old?.line ?? "Already up to date.");
+      return { did: `${did}${fixed}`, changed: recategorized };
+    }
     return {
       did: `Synced ${plural(items.length, "bank")}: ${plural(added, "new transaction")}.${fixed}`,
       changed: added + recategorized,
     };
   },
-  async changes(userId, { client, now }) {
+  async changes(userId, { client, now, old }) {
     const changes = await loadChanges(userId, { client, now });
     return {
       did:
         changes.length === 0
-          ? "Nothing new to flag."
+          ? old?.reach
+            ? `Nothing new to flag, ${old.reach}.`
+            : "Nothing new to flag."
           : `${plural(changes.length, "change")} to look at.`,
       changed: changes.length,
     };
@@ -166,7 +179,7 @@ const STEPS: Record<
       changed: settled + auto + asked + bills,
     };
   },
-  async suggestions(userId, { client, now }) {
+  async suggestions(userId, { client, now, old }) {
     // Spec step 256: once a week Claude looks for combinations; its ideas join tonight's
     // ranking. It's optional (no key, past the cost cap, any failure) and never stops the scan.
     await runStrategist(userId, { client, now }).catch((error) =>
@@ -187,7 +200,7 @@ const STEPS: Record<
       );
     if (fired === 0) return { did: "Nothing new to suggest.", changed: 0 };
     return {
-      did: `Checked everything for you: ${plural(fired, "idea")} fit, ${selected.length} worth your attention today.`,
+      did: `Checked everything for you${old?.reach ? `, ${old.reach}` : ""}: ${plural(fired, "idea")} fit, ${selected.length} worth your attention today.`,
       changed: selected.length,
     };
   },
@@ -215,6 +228,18 @@ async function runStep(
       ms: Date.now() - started,
     };
   }
+}
+
+async function oldData(
+  userId: string,
+  { client, now }: { client: PrismaClient; now: Date },
+): Promise<OldData> {
+  const freshness = await loadFreshness(userId, { client, now });
+  return {
+    line: oldDataLine(freshness),
+    reach: reachWords(freshness),
+    uploadOnly: freshness.uploadOnly,
+  };
 }
 
 // One person's run for tonight, every step in order within the time budget. Runs once a
@@ -245,6 +270,7 @@ export async function runController(
   }
   const started = Date.now();
   const logs: StepLog[] = [];
+  const old = await oldData(userId, { client, now });
   for (const step of CONTROLLER_STEPS) {
     if (Date.now() - started > budgetMs) {
       logs.push({
@@ -256,7 +282,7 @@ export async function runController(
       });
       continue;
     }
-    const log = await runStep(userId, step, { client, now, api }, overrides[step]);
+    const log = await runStep(userId, step, { client, now, api, old }, overrides[step]);
     logs.push(log);
     // A failed step is retried on its own, with the jobs table's waits.
     if (log.status === "failed") {
@@ -283,7 +309,8 @@ export async function retryControllerStep(
   if (!(CONTROLLER_STEPS as readonly string[]).includes(step)) throw new Error("Unknown step");
   const name = step as ControllerStep;
   const started = Date.now();
-  const result = await STEPS[name](userId, { client, now, api });
+  const old = await oldData(userId, { client, now });
+  const result = await STEPS[name](userId, { client, now, api, old });
   const db = scopedFor(userId, client);
   const run = await db.controllerRuns.findFirst({
     where: { day: { lte: day(now) } },

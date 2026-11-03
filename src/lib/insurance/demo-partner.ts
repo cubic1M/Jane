@@ -1,3 +1,4 @@
+import { gated } from "@/lib/permission/gate";
 import { createHash } from "node:crypto";
 import { PREMIUM_FREQUENCIES } from "@/config/documents";
 import {
@@ -241,166 +242,170 @@ function healthQuotes(request: QuoteRequest, perYear: number, expiresAt: string)
 const hashOf = (...parts: unknown[]) =>
   createHash("sha256").update(JSON.stringify(parts)).digest("hex").slice(0, 12);
 
-export const demoPartner: InsurancePartner = {
-  name: "demo",
-  demo: true,
+export const demoPartner: InsurancePartner = gated(
+  "insurance",
+  {
+    name: "demo",
+    demo: true,
 
-  async quote(request, { now }) {
-    const perYear = PREMIUM_FREQUENCIES[request.premiumFrequency].perYear;
-    const expiresAt = new Date(now.getTime() + QUOTE_VALID_DAYS * DAY_MS).toISOString();
-    if (request.kind === "health") return healthQuotes(request, perYear, expiresAt);
-    const quotes: PartnerQuote[] = [];
-    for (const carrier of DEMO_CARRIERS) {
-      const factor = carrier.kinds[request.kind];
-      if (factor === undefined) continue;
-      const coverage = quotedCoverage(request.kind, request.coverage, carrier);
-      const deductibleCents = NO_DEDUCTIBLE.includes(request.kind)
-        ? null
-        : nearestDeductible(request.deductibleCents, carrier.deductibles);
-      const base = basePremium(request.kind, coverage, deductibleCents ?? 0, request);
-      if (base === null) continue;
-      // Rounded to whole dollars a payment, as carriers bill.
-      const premiumCents = Math.round((base * factor) / perYear / 100) * 100;
-      quotes.push({
-        partnerQuoteId: `demo-q-${carrier.id}-${hashOf(request, carrier.id)}`,
-        carrier: carrierOf(carrier),
-        kind: request.kind,
-        annualPremiumCents: premiumCents * perYear,
-        premiumCents,
-        premiumFrequency: request.premiumFrequency,
-        termMonths: request.kind === "life" ? 12 : DEFAULT_TERM_MONTHS,
-        deductibleCents,
-        coverage,
-        expiresAt,
-        demo: true,
-      });
-    }
-    return quotes.sort((a, b) => a.annualPremiumCents - b.annualPremiumCents);
-  },
-
-  async bind(quote, { startDate, holderName }) {
-    const policyNumber = `DEMO-${quote.carrier.id.replace(/^demo-/, "").toUpperCase()}-${hashOf(quote.partnerQuoteId, startDate).slice(0, 8).toUpperCase()}`;
-    return {
-      policyNumber,
-      carrier: quote.carrier,
-      startDate,
-      firstPaymentCents: quote.premiumCents,
-      documents: [
-        {
-          title: `${quote.carrier.name} declarations page`,
-          text: [
-            "DEMO POLICY: sample data from Jane's stand-in carrier catalog. Not real insurance.",
-            `Carrier: ${quote.carrier.name}`,
-            `Policy number: ${policyNumber}`,
-            `Named insured: ${holderName ?? "Policyholder"}`,
-            `Starts: ${startDate}`,
-            `Premium: $${(quote.premiumCents / 100).toFixed(2)} per payment`,
-            `Deductible: ${quote.deductibleCents === null ? "none" : `$${(quote.deductibleCents / 100).toFixed(2)}`}`,
-            `Claims: ${quote.carrier.claimsPhone}`,
-          ].join("\n"),
-        },
-      ],
-    };
-  },
-
-  // The first payment is taken on the start day.
-  async paymentStatus(_policyNumber, { startDate, now }) {
-    return now.toISOString().slice(0, 10) >= startDate ? "paid" : "pending";
-  },
-
-  // Spec step 153: the stand-in decides at once from the answers (life-underwriting.ts).
-  async applyLife({ quote, answers }, { now }) {
-    const decision = standInDecision(
-      { ...quote, perYear: PREMIUM_FREQUENCIES[quote.premiumFrequency].perYear },
-      answers,
-    );
-    return {
-      ...decision,
-      offerExpiresAt:
-        decision.outcome === "offered"
-          ? new Date(now.getTime() + LIFE_OFFER_DAYS * DAY_MS).toISOString()
-          : null,
-    };
-  },
-
-  // Spec step 154: the stand-in prices a change from DEMO_ENDORSEMENT_FACTORS, from tomorrow.
-  async endorse(policy, change, { now }) {
-    const factor = DEMO_ENDORSEMENT_FACTORS[change.kind] ?? 1;
-    const effectiveDate = new Date(now.getTime() + DAY_MS).toISOString().slice(0, 10);
-    return {
-      premiumCents:
-        policy.premiumCents === null
+    async quote(request, { now }) {
+      const perYear = PREMIUM_FREQUENCIES[request.premiumFrequency].perYear;
+      const expiresAt = new Date(now.getTime() + QUOTE_VALID_DAYS * DAY_MS).toISOString();
+      if (request.kind === "health") return healthQuotes(request, perYear, expiresAt);
+      const quotes: PartnerQuote[] = [];
+      for (const carrier of DEMO_CARRIERS) {
+        const factor = carrier.kinds[request.kind];
+        if (factor === undefined) continue;
+        const coverage = quotedCoverage(request.kind, request.coverage, carrier);
+        const deductibleCents = NO_DEDUCTIBLE.includes(request.kind)
           ? null
-          : Math.round((policy.premiumCents * factor) / 100) * 100,
-      effectiveDate,
-      confirmation: `DEMO-END-${hashOf(policy, change, effectiveDate).slice(0, 8).toUpperCase()}`,
-    };
-  },
+          : nearestDeductible(request.deductibleCents, carrier.deductibles);
+        const base = basePremium(request.kind, coverage, deductibleCents ?? 0, request);
+        if (base === null) continue;
+        // Rounded to whole dollars a payment, as carriers bill.
+        const premiumCents = Math.round((base * factor) / perYear / 100) * 100;
+        quotes.push({
+          partnerQuoteId: `demo-q-${carrier.id}-${hashOf(request, carrier.id)}`,
+          carrier: carrierOf(carrier),
+          kind: request.kind,
+          annualPremiumCents: premiumCents * perYear,
+          premiumCents,
+          premiumFrequency: request.premiumFrequency,
+          termMonths: request.kind === "life" ? 12 : DEFAULT_TERM_MONTHS,
+          deductibleCents,
+          coverage,
+          expiresAt,
+          demo: true,
+        });
+      }
+      return quotes.sort((a, b) => a.annualPremiumCents - b.annualPremiumCents);
+    },
 
-  // Spec step 155: the stand-in carrier's answer to "can you do better on my renewal?". It
-  // meets a cheaper like-for-like quote closely, or else takes off part of the rise for a
-  // loyal customer; never below today's price. A higher deductible is offered, never taken.
-  async negotiateRenewal(request) {
-    const { currentAnnualCents: now_, renewalAnnualCents: renewal } = request;
-    const competing = request.competingAnnualCents;
-    const target =
-      competing !== null && competing < renewal
-        ? Math.round(competing * (1 + DEMO_NEGOTIATE.matchMargin))
-        : Math.round(renewal - (renewal - now_) * DEMO_NEGOTIATE.loyaltyShareOfRise);
-    const lowered = Math.max(now_, Math.min(renewal, Math.round(target / 100) * 100));
-    const dollars = (c: number) => `$${(c / 100).toFixed(2)}`;
-    const transcript = [
-      `Jane: Hi, I'm calling for your customer about their ${request.kind} policy. It renews at ${dollars(renewal)} a year, up from ${dollars(now_)}.${competing !== null && competing < renewal ? ` They have a quote for the same cover at ${dollars(competing)}.` : ""} Can you do better?`,
-      lowered < renewal
-        ? `${request.carrier}: We can renew it at ${dollars(lowered)} a year with the same cover.`
-        : `${request.carrier}: I'm sorry, ${dollars(renewal)} is the best we can do on that cover.`,
-    ];
-    const offer = ["auto", "home", "renters"].includes(request.kind)
-      ? "a higher deductible for a lower price"
-      : null;
-    if (offer) {
-      transcript.push(
-        `${request.carrier}: We could also take more off with ${offer}.`,
-        "Jane: Thanks, I'll pass that on; I can't change the cover on this call.",
+    async bind(quote, { startDate, holderName }) {
+      const policyNumber = `DEMO-${quote.carrier.id.replace(/^demo-/, "").toUpperCase()}-${hashOf(quote.partnerQuoteId, startDate).slice(0, 8).toUpperCase()}`;
+      return {
+        policyNumber,
+        carrier: quote.carrier,
+        startDate,
+        firstPaymentCents: quote.premiumCents,
+        documents: [
+          {
+            title: `${quote.carrier.name} declarations page`,
+            text: [
+              "DEMO POLICY: sample data from Jane's stand-in carrier catalog. Not real insurance.",
+              `Carrier: ${quote.carrier.name}`,
+              `Policy number: ${policyNumber}`,
+              `Named insured: ${holderName ?? "Policyholder"}`,
+              `Starts: ${startDate}`,
+              `Premium: $${(quote.premiumCents / 100).toFixed(2)} per payment`,
+              `Deductible: ${quote.deductibleCents === null ? "none" : `$${(quote.deductibleCents / 100).toFixed(2)}`}`,
+              `Claims: ${quote.carrier.claimsPhone}`,
+            ].join("\n"),
+          },
+        ],
+      };
+    },
+
+    // The first payment is taken on the start day.
+    async paymentStatus(_policyNumber, { startDate, now }) {
+      return now.toISOString().slice(0, 10) >= startDate ? "paid" : "pending";
+    },
+
+    // Spec step 153: the stand-in decides at once from the answers (life-underwriting.ts).
+    async applyLife({ quote, answers }, { now }) {
+      const decision = standInDecision(
+        { ...quote, perYear: PREMIUM_FREQUENCIES[quote.premiumFrequency].perYear },
+        answers,
       );
-    }
-    return {
-      outcome: lowered < renewal ? "lowered" : "kept",
-      annualPremiumCents: lowered,
-      transcript,
-      offer,
-    };
-  },
+      return {
+        ...decision,
+        offerExpiresAt:
+          decision.outcome === "offered"
+            ? new Date(now.getTime() + LIFE_OFFER_DAYS * DAY_MS).toISOString()
+            : null,
+      };
+    },
 
-  // Spec step 196: the stand-in takes the figure asked for and confirms it.
-  async applySaving(policy, saving, { now }) {
-    return {
-      premiumCents: saving.newPremiumCents,
-      confirmation: `DEMO-SAV-${hashOf(policy, saving, now.toISOString().slice(0, 10)).slice(0, 8).toUpperCase()}`,
-    };
-  },
+    // Spec step 154: the stand-in prices a change from DEMO_ENDORSEMENT_FACTORS, from tomorrow.
+    async endorse(policy, change, { now }) {
+      const factor = DEMO_ENDORSEMENT_FACTORS[change.kind] ?? 1;
+      const effectiveDate = new Date(now.getTime() + DAY_MS).toISOString().slice(0, 10);
+      return {
+        premiumCents:
+          policy.premiumCents === null
+            ? null
+            : Math.round((policy.premiumCents * factor) / 100) * 100,
+        effectiveDate,
+        confirmation: `DEMO-END-${hashOf(policy, change, effectiveDate).slice(0, 8).toUpperCase()}`,
+      };
+    },
 
-  async fileClaim(claim, { now }) {
-    return {
-      claimNumber: `DEMO-CLM-${hashOf(claim, now.toISOString().slice(0, 10)).slice(0, 8).toUpperCase()}`,
-    };
-  },
+    // Spec step 155: the stand-in carrier's answer to "can you do better on my renewal?". It
+    // meets a cheaper like-for-like quote closely, or else takes off part of the rise for a
+    // loyal customer; never below today's price. A higher deductible is offered, never taken.
+    async negotiateRenewal(request) {
+      const { currentAnnualCents: now_, renewalAnnualCents: renewal } = request;
+      const competing = request.competingAnnualCents;
+      const target =
+        competing !== null && competing < renewal
+          ? Math.round(competing * (1 + DEMO_NEGOTIATE.matchMargin))
+          : Math.round(renewal - (renewal - now_) * DEMO_NEGOTIATE.loyaltyShareOfRise);
+      const lowered = Math.max(now_, Math.min(renewal, Math.round(target / 100) * 100));
+      const dollars = (c: number) => `$${(c / 100).toFixed(2)}`;
+      const transcript = [
+        `Jane: Hi, I'm calling for your customer about their ${request.kind} policy. It renews at ${dollars(renewal)} a year, up from ${dollars(now_)}.${competing !== null && competing < renewal ? ` They have a quote for the same cover at ${dollars(competing)}.` : ""} Can you do better?`,
+        lowered < renewal
+          ? `${request.carrier}: We can renew it at ${dollars(lowered)} a year with the same cover.`
+          : `${request.carrier}: I'm sorry, ${dollars(renewal)} is the best we can do on that cover.`,
+      ];
+      const offer = ["auto", "home", "renters"].includes(request.kind)
+        ? "a higher deductible for a lower price"
+        : null;
+      if (offer) {
+        transcript.push(
+          `${request.carrier}: We could also take more off with ${offer}.`,
+          "Jane: Thanks, I'll pass that on; I can't change the cover on this call.",
+        );
+      }
+      return {
+        outcome: lowered < renewal ? "lowered" : "kept",
+        annualPremiumCents: lowered,
+        transcript,
+        offer,
+      };
+    },
 
-  // Day by day after filing: received, reviewing, approved (less the deductible), paid.
-  async claimStatus(claim, { now }) {
-    const days = (now.getTime() - claim.filedAt.getTime()) / DAY_MS;
-    const payout = Math.max(0, claim.amountCents - (claim.deductibleCents ?? 0));
-    if (days >= DEMO_CLAIM_DAYS.paid) return { status: "paid", payoutCents: payout };
-    if (days >= DEMO_CLAIM_DAYS.approved) return { status: "approved", payoutCents: payout };
-    if (days >= DEMO_CLAIM_DAYS.reviewing) return { status: "reviewing", payoutCents: null };
-    return { status: "received", payoutCents: null };
-  },
+    // Spec step 196: the stand-in takes the figure asked for and confirms it.
+    async applySaving(policy, saving, { now }) {
+      return {
+        premiumCents: saving.newPremiumCents,
+        confirmation: `DEMO-SAV-${hashOf(policy, saving, now.toISOString().slice(0, 10)).slice(0, 8).toUpperCase()}`,
+      };
+    },
 
-  async cancel(policy, { effectiveDate }) {
-    return {
-      status: "cancelled",
-      effectiveDate,
-      confirmation: `DEMO-CXL-${hashOf(policy, effectiveDate).slice(0, 8).toUpperCase()}`,
-    };
+    async fileClaim(claim, { now }) {
+      return {
+        claimNumber: `DEMO-CLM-${hashOf(claim, now.toISOString().slice(0, 10)).slice(0, 8).toUpperCase()}`,
+      };
+    },
+
+    // Day by day after filing: received, reviewing, approved (less the deductible), paid.
+    async claimStatus(claim, { now }) {
+      const days = (now.getTime() - claim.filedAt.getTime()) / DAY_MS;
+      const payout = Math.max(0, claim.amountCents - (claim.deductibleCents ?? 0));
+      if (days >= DEMO_CLAIM_DAYS.paid) return { status: "paid", payoutCents: payout };
+      if (days >= DEMO_CLAIM_DAYS.approved) return { status: "approved", payoutCents: payout };
+      if (days >= DEMO_CLAIM_DAYS.reviewing) return { status: "reviewing", payoutCents: null };
+      return { status: "received", payoutCents: null };
+    },
+
+    async cancel(policy, { effectiveDate }) {
+      return {
+        status: "cancelled",
+        effectiveDate,
+        confirmation: `DEMO-CXL-${hashOf(policy, effectiveDate).slice(0, 8).toUpperCase()}`,
+      };
+    },
   },
-};
+  ["bind", "cancel", "applyLife", "endorse", "negotiateRenewal", "fileClaim", "applySaving"],
+);

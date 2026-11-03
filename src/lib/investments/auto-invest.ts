@@ -1,3 +1,4 @@
+import { placeThrough } from "@/lib/brokerage/orders";
 import { coreFundsFor } from "@/planning/values";
 import { loadPrefs } from "./values";
 import { randomUUID } from "node:crypto";
@@ -237,7 +238,8 @@ export async function runAutoInvest(
       : [];
   if (decision.status === "invested") {
     batchId = randomUUID();
-    const confirmations = await brokeragePartner().placeOrders(
+    const confirmations = await placeThrough(
+      brokeragePartner(),
       userId,
       {
         batchId,
@@ -260,6 +262,7 @@ export async function runAutoInvest(
         ],
       },
       { client, now },
+      { kind: "yes", because: "The investing plan you set up." },
     );
     await logAudit(
       { type: "user", id: userId },

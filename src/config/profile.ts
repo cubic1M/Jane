@@ -25,6 +25,10 @@ export const PAYROLL_SERVICES =
   /\b(?:GUSTO|ADP|PAYCHEX|TRINET|RIPPLING|JUSTWORKS|PAYCOM|PAYLOCITY|PAYCOR|ONPAY)\b/i;
 export const UNEVEN_DEPOSITS_MIN = 3;
 export const BUSINESS_DEPOSITS_MIN = 24;
+// Deposits with no pay word read as pay rather than a business's sales when this share of them
+// come from one payer, each within this share of the usual amount.
+export const STEADY_PAYER_SHARE = 0.9;
+export const STEADY_PAY_RANGE = 0.2;
 // A payment that says it's for a car ("GEICO *AUTO", "AUTOZONE", "AUTO LOAN"), not one that
 // only says how it's paid: "CHASE CREDIT CRD AUTOPAY" or "T-MOBILE AUTO PAY" (messy-bank QA:
 // three card payments made someone with no car "probably drive").

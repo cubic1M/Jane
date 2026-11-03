@@ -36,6 +36,7 @@ import { tradeoffsSource } from "./tradeoffs";
 import { unusualSource } from "./unusual";
 import { reportSource } from "./report";
 import { investmentsSource } from "./investments";
+import { followThroughSource, statementAskSource } from "./follow-through";
 
 // Every message source Jane's brain gathers from (spec step 82). A new kind of message is a
 // new module here, registered in this one list; its daily limit is in
@@ -50,6 +51,9 @@ export const MESSAGE_SOURCES: readonly MessageSource[] = [
   planSource,
   didSource,
   headsUpsSource,
+  // Stage 1: nothing Jane raises gets dropped, and nothing goes stale without Jane saying so.
+  followThroughSource,
+  statementAskSource,
   // Spec step 83.
   autopilotSource,
   setupSource,

@@ -12,6 +12,9 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadProfileInput } from "@/lib/profile";
 import { recordAnswer, recordOpened, recordShown } from "@/lib/outcomes";
+import { loadFreshness } from "@/lib/freshness";
+import { failedWords, personTimezone } from "@/lib/follow-through";
+import { comesBack, FAILED_STATUSES } from "@/planning/follow-through";
 import { loadKindStats } from "@/lib/learning";
 import type { CardExtras } from "@/lib/jane-agent/types";
 import { scrub } from "@/lib/scrub";
@@ -188,20 +191,21 @@ export function stillChosen<T extends { key: string }>(
 // Today's picks that still fire take the new figures, and so does the chat message each was
 // offered in (overnight upload QA: idle cash said "$548/yr" from the checking file alone and
 // kept saying it after the card's spending made it $473). Their place and status don't change.
-// A suggestion's stored fields, as tonight's scan found it.
-function suggestionData(s: Suggestion, score: number, now: Date) {
+// A suggestion's stored fields, as tonight's scan found it. One back after a fix that failed says
+// why it's back and what to try next.
+function suggestionData(s: Suggestion, score: number, now: Date, back?: string) {
   return {
     capability: s.capability,
     topic: s.topic,
     title: s.title,
     headline: s.headline,
-    short: s.short,
+    short: back ? `${back} ${s.short}` : s.short,
     worthCents: s.worthCents,
     worthKind: s.worthKind,
     confidencePercent: s.confidence.percent,
     confidenceReason: s.confidence.reason,
     urgency: s.urgency,
-    why: s.why,
+    why: back ? `${back} ${s.why}` : s.why,
     actionLabel: s.action.label,
     // A bare area link opens the suggestion's own node on that area's tree.
     actionHref: landing(s.action.href, { key: s.id, topic: s.topic }),
@@ -212,10 +216,74 @@ function suggestionData(s: Suggestion, score: number, now: Date) {
   };
 }
 
+// What the record says about each Yes the scan has to know of: fixes that failed and are told to
+// the person (they may come back, with these words), those later data verified after all, and a
+// Yes nothing can verify, which settles once Jane stops finding it.
+async function followThroughFor(
+  userId: string,
+  found: readonly Suggestion[],
+  input: ProfileInput,
+  { client, now }: { client: PrismaClient; now: Date },
+) {
+  const db = scopedFor(userId, client);
+  const rows = await db.suggestionOutcomes.findMany({
+    where: {
+      answer: "yes",
+      status: { in: [...FAILED_STATUSES, "confirmed", "partial", "unverifiable"] },
+    },
+    select: {
+      id: true,
+      suggestionKey: true,
+      answer: true,
+      status: true,
+      answeredAt: true,
+      doneAt: true,
+      nudgeCount: true,
+      lastNudgedAt: true,
+      failedAt: true,
+      comebacks: true,
+      comebackAt: true,
+      proof: true,
+      heldProof: true,
+      watch: true,
+    },
+  });
+  const firing = new Set(found.map((s) => s.id));
+  // A detector only stops firing because the fix worked if the data is current: old statements
+  // age out of what it looks at, which says nothing about the fix.
+  const unsettled = rows.filter(
+    (r) =>
+      r.status === "unverifiable" &&
+      r.doneAt === null &&
+      !r.suggestionKey.startsWith("finding:") &&
+      !firing.has(r.suggestionKey),
+  );
+  if (unsettled.length > 0 && input.transactions.length > 0) {
+    const { due } = await loadFreshness(userId, { client, now });
+    if (due.length === 0) {
+      await db.suggestionOutcomes.updateMany({
+        where: { id: { in: unsettled.map((r) => r.id) } },
+        data: { status: "no_longer_found", settledAt: now },
+      });
+    }
+  }
+  const coming = rows.filter(comesBack);
+  const timezone = coming.length > 0 ? await personTimezone(userId, client) : null;
+  return {
+    back: new Map(coming.map((r) => [r.suggestionKey, failedWords(r, timezone)])),
+    verified: new Set(
+      rows
+        .filter((r) => r.status === "confirmed" || r.status === "partial")
+        .map((r) => r.suggestionKey),
+    ),
+  };
+}
+
 async function refreshFigures(
   userId: string,
   keep: readonly { id: string; key: string }[],
   found: readonly Suggestion[],
+  back: ReadonlyMap<string, string>,
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<void> {
   const db = scopedFor(userId, client);
@@ -228,19 +296,19 @@ async function refreshFigures(
       data: {
         title: s.title,
         headline: s.headline,
-        short: s.short,
+        short: suggestionData(s, 0, now, back.get(pick.key)).short,
         worthCents: s.worthCents,
         worthKind: s.worthKind,
         confidencePercent: s.confidence.percent,
         confidenceReason: s.confidence.reason,
         urgency: s.urgency,
-        why: s.why,
+        why: suggestionData(s, 0, now, back.get(pick.key)).why,
         lastSeenAt: now,
       },
     });
     const body = suggestionCard({
       headline: s.headline,
-      short: s.short,
+      short: suggestionData(s, 0, now, back.get(pick.key)).short,
       confidencePercent: s.confidence.percent,
       confidenceReason: s.confidence.reason,
     } as OfferedSuggestion).join("\n");
@@ -254,7 +322,10 @@ async function refreshFigures(
         where: { id: m.id, status: "open" },
         data: {
           body,
-          refs: { ...(m.refs as Prisma.JsonObject), suggestionWhy: s.why },
+          refs: {
+            ...(m.refs as Prisma.JsonObject),
+            suggestionWhy: suggestionData(s, 0, now, back.get(pick.key)).why,
+          },
         },
       });
     }
@@ -283,6 +354,7 @@ async function scanSuggestionsWork(
   }
   const existing = advice ? stored : stored.filter((e) => !isAdviceRow(e.topic));
   const byKey = new Map(existing.map((e) => [e.key, e]));
+  const { back, verified } = await followThroughFor(userId, found, input, { client, now });
 
   // Already chosen for today: the scan is safe to run twice. But a pick that no longer fires
   // goes, even the same day: a second upload can show the car is insured after all (import QA:
@@ -298,7 +370,7 @@ async function scanSuggestionsWork(
         data: { status: "gone" },
       });
     }
-    await refreshFigures(userId, keep, found, { client, now });
+    await refreshFigures(userId, keep, found, back, { client, now });
     // What fires for the first time today (a second file, or a scan that ran mid-import) is
     // stored as waiting, so the area pages and the report's tree have it today, not tomorrow
     // (debugger 10-31: a card's interest was the report's top card while Loans said "All
@@ -340,10 +412,17 @@ async function scanSuggestionsWork(
     loadKindStats({ client }),
   ]);
 
-  // Never again after an answer; not again for a while after it was offered and left alone.
+  // Never again after an answer, except a Yes whose fix failed: a clean no is final, and a fix the
+  // data verified after all stays settled. Not again for a while after it was offered and left
+  // alone.
   const blocked = new Set<string>();
+  // Yes'd and failed: it comes back now, first among today's picks.
+  const backNow = new Set(
+    existing.filter((e) => e.status === "yes" && back.has(e.key)).map((e) => e.key),
+  );
   for (const e of existing) {
-    if (e.status === "yes" || e.status === "no") blocked.add(e.key);
+    if (backNow.has(e.key)) continue;
+    if (e.status === "yes" || e.status === "no" || verified.has(e.key)) blocked.add(e.key);
     else if (
       e.selectedOn &&
       now.getTime() - e.selectedOn.getTime() < RESELECT_AFTER_DAYS * DAY_MS
@@ -360,14 +439,20 @@ async function scanSuggestionsWork(
       kinds,
     }),
   );
-  const picked = pickForToday(ranked);
+  const picked = pickForToday([
+    ...ranked.filter((r) => backNow.has(r.suggestion.id)),
+    ...ranked.filter((r) => !backNow.has(r.suggestion.id)),
+  ]);
   const pickedIds = new Set(picked.map((r) => r.suggestion.id));
   const scores = new Map(ranked.map((r) => [r.suggestion.id, r.score]));
 
   for (const s of found) {
-    const data = suggestionData(s, scores.get(s.id) ?? 0, now);
+    const data = suggestionData(s, scores.get(s.id) ?? 0, now, back.get(s.id));
     const have = byKey.get(s.id);
-    const answered = have?.status === "yes" || have?.status === "no";
+    // A fix verified after it came back is settled again: a Yes.
+    const settledYes = verified.has(s.id) && have !== undefined && have.status !== "no";
+    const answered =
+      settledYes || have?.status === "no" || (have?.status === "yes" && !backNow.has(s.id));
     const selected = pickedIds.has(s.id);
     await client.suggestion.upsert({
       where: { userId_key: { userId, key: s.id } },
@@ -381,7 +466,7 @@ async function scanSuggestionsWork(
       update: {
         ...data,
         ...(answered
-          ? { status: have!.status }
+          ? { status: settledYes ? "yes" : have!.status }
           : selected
             ? { status: "selected", selectedOn: new Date(today) }
             : { status: "waiting" }),

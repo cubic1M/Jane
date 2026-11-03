@@ -1,3 +1,4 @@
+import { gated } from "@/lib/permission/gate";
 import { randomUUID } from "node:crypto";
 
 // The payroll partner (spec step 210): where Jane sends a change to a person's retirement
@@ -22,15 +23,19 @@ export interface PayrollPartner {
 
 export type AllocationChange = { ticker: string; share: number }[];
 
-export const standInPayroll: PayrollPartner = {
-  name: PAYROLL_STAND_IN,
-  simulated: true,
-  async requestContributionChange() {
-    return { partnerRef: `SIMPAY-${randomUUID().slice(0, 8).toUpperCase()}` };
+export const standInPayroll: PayrollPartner = gated(
+  "payroll",
+  {
+    name: PAYROLL_STAND_IN,
+    simulated: true,
+    async requestContributionChange() {
+      return { partnerRef: `SIMPAY-${randomUUID().slice(0, 8).toUpperCase()}` };
+    },
+    async requestAllocationChange() {
+      return { partnerRef: `SIMFUND-${randomUUID().slice(0, 8).toUpperCase()}` };
+    },
   },
-  async requestAllocationChange() {
-    return { partnerRef: `SIMFUND-${randomUUID().slice(0, 8).toUpperCase()}` };
-  },
-};
+  ["requestContributionChange", "requestAllocationChange"],
+);
 
 export const payrollPartner = (): PayrollPartner => standInPayroll;

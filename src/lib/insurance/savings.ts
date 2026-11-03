@@ -1,3 +1,4 @@
+import { throughPermission } from "@/lib/permission/check";
 import { PREMIUM_FREQUENCIES, type PremiumFrequency } from "@/config/documents";
 import { SAVING_RATES, type SavingKind } from "@/config/insurance";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
@@ -157,16 +158,29 @@ export async function applySaving(
     kind === "bundle"
       ? Math.round(fresh.currentYearlyCents * (1 - SAVING_RATES.bundle.discountShare))
       : fresh.newYearlyCents;
-  const confirmed = await applying.applySaving(
-    { carrier: policy.carrier, kind: policy.kind, premiumCents: policy.premiumCents },
+  const confirmed = await throughPermission(
+    userId,
     {
-      kind,
-      newPremiumCents: Math.round(carYearly / perYear),
-      newFrequency: frequency,
-      newDeductibleCents: fresh.detail.toDeductibleCents ?? null,
-      withCarrier: fresh.detail.withCarrier ?? null,
+      specialist: "insurance",
+      what: `Applied a saving to your ${policy.carrier} policy`,
+      sector: "insurance",
+      cents: 0,
+      authority: { kind: "yes" },
+      undo: { kind: "none", why: "Through a stand-in: nothing real to take back." },
     },
-    { now },
+    { client, now },
+    () =>
+      applying.applySaving(
+        { carrier: policy.carrier, kind: policy.kind, premiumCents: policy.premiumCents },
+        {
+          kind,
+          newPremiumCents: Math.round(carYearly / perYear),
+          newFrequency: frequency,
+          newDeductibleCents: fresh.detail.toDeductibleCents ?? null,
+          withCarrier: fresh.detail.withCarrier ?? null,
+        },
+        { now },
+      ),
   );
   await db.insurancePolicies.updateMany({
     where: { id: policy.id },

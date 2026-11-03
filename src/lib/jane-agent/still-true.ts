@@ -6,7 +6,10 @@ import type { Deadline } from "@/insights/deadlines";
 import type { BudgetProposal, GoalProposal } from "@/planning/proposals";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { stillFollowingUp } from "@/lib/follow-through";
+import { loadFreshness } from "@/lib/freshness";
 import { todayOf } from "@/lib/today";
+import { askDay } from "@/planning/freshness";
 import { deadlineHeadsUp } from "./sources/heads-ups";
 import { setupBody } from "./sources/setup";
 import { suggestionCard } from "./sources/suggestions";
@@ -76,6 +79,15 @@ async function holding(
     const parsed = a.type === "unusual_activity" ? parseKey(a.key) : null;
     return parsed ? [parsed.transactionId] : [];
   });
+  // A follow-up holds while it needs the person; a statement ask until a newer statement came.
+  const following = await stillFollowingUp(
+    userId,
+    alerts.filter((a) => a.type === "follow_up").map((a) => a.key),
+    { client },
+  );
+  const dueDay = alerts.some((a) => a.type === "statement_due")
+    ? ((await loadFreshness(userId, { client, now })).due.at(-1)?.coveredThrough ?? null)
+    : null;
   const present = new Set(
     charged.length
       ? (
@@ -89,6 +101,8 @@ async function holding(
   return new Map(
     alerts.map((a) => {
       if (a.type === "deadline_soon") return [a.id, deadlines.has(a.key)];
+      if (a.type === "follow_up") return [a.id, following.has(a.key)];
+      if (a.type === "statement_due") return [a.id, askDay(a.key) === dueDay];
       const day = alertDayOf(a);
       if (day !== null) return [a.id, day >= today];
       const parsed = a.type === "unusual_activity" ? parseKey(a.key) : null;

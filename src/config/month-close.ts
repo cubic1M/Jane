@@ -14,3 +14,6 @@ export const UNCERTAIN_MIN_CENTS = 2_000;
 export const UNCERTAIN_MAX = 5;
 // Categories shown in a closed month's figures.
 export const CLOSE_TOP_CATEGORIES = 5;
+
+// How many lines each part of the month close's email lists before "And 3 more".
+export const MONTH_CLOSE_EMAIL_LINES = 5;

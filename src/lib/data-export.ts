@@ -55,6 +55,7 @@ export async function exportUserData(
     savedShares,
     autopilotSectors,
     autopilotActs,
+    janeActs,
     controllerRuns,
     moneyTransfers,
     paycheckPlans,
@@ -416,6 +417,21 @@ export async function exportUserData(
     db.autopilotActs.findMany({
       select: { sector: true, cents: true, what: true, createdAt: true },
     }),
+    // One record of what Jane did (src/lib/permission/check.ts).
+    db.janeActs.findMany({
+      select: {
+        specialist: true,
+        sector: true,
+        what: true,
+        why: true,
+        cents: true,
+        simulated: true,
+        authority: true,
+        undoUntil: true,
+        status: true,
+        createdAt: true,
+      },
+    }),
     // The nightly controller run's log (spec step 142).
     db.controllerRuns.findMany({
       select: { day: true, startedAt: true, finishedAt: true, steps: true },
@@ -741,6 +757,7 @@ export async function exportUserData(
     savedShares,
     autopilotSectors,
     autopilotActs,
+    janeActs,
     controllerRuns,
     moneyTransfers,
     paycheckPlans,

@@ -1,3 +1,4 @@
+import { withoutAchDetails } from "@/data-sources/merchant";
 import {
   ANNUAL_CONFIDENCE_CAP,
   ANNUAL_MIN_AGE_DAYS,
@@ -63,7 +64,7 @@ const plusDays = (date: string, n: number) =>
 
 // "AT&T FIBER 5521" as "At&t Fiber": the payee without its reference numbers.
 export const payeeOf = (description: string) =>
-  description
+  withoutAchDetails(description)
     .replace(/[#*].*$/, "")
     .replace(/\b\d{3,}\b/g, "")
     .replace(/\s+/g, " ")

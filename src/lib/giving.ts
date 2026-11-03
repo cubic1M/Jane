@@ -1,3 +1,4 @@
+import { throughPermission } from "@/lib/permission/check";
 import { GIVING } from "@/config/giving";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
@@ -207,7 +208,19 @@ export async function openDonorFund(
   if (view.fund) throw new GivingError(`You already have ${view.fund.name}.`);
   const fundOption = view.options.find((o) => o.key === "fund");
   if (!fundOption) throw new GivingError("A donor-advised fund wouldn't save you tax this year.");
-  const { fundName } = await partner.openFund({ holder: userId });
+  const { fundName } = await throughPermission(
+    userId,
+    {
+      specialist: "donor_fund",
+      what: "Opened a donor-advised fund",
+      sector: "taxes",
+      cents: 0,
+      authority: { kind: "yes" },
+      undo: { kind: "none", why: "A simulated fund: nothing real to take back." },
+    },
+    { client, now },
+    () => partner.openFund({ holder: userId }),
+  );
   const db = scopedFor(userId, client);
   await db.taxProfiles.upsert({
     where: { userId },

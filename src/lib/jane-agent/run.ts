@@ -19,6 +19,7 @@ import { healthFor } from "@/lib/health-score";
 import { monthlyReportFor } from "@/lib/monthly-report";
 import { runLeanCheck } from "@/lib/lean-plan";
 import { checkResults } from "@/lib/worked";
+import { runFollowThrough } from "@/lib/follow-through";
 import { verifyOutcomes } from "@/lib/outcomes";
 import { runBooksCheck } from "@/lib/books";
 import { runMonthClose } from "@/lib/month-close";
@@ -137,6 +138,8 @@ async function runJaneAgentWork(
     ]);
   // Spec step 244: last month closed once the books are checked and its report is made.
   if (!early) await safely("Monthly close", () => runMonthClose(userId, { client, now }));
+  // After the outcomes are checked: a Yes left hanging, a fix that failed, a statement that's ready.
+  if (!early) await safely("Follow-through", () => runFollowThrough(userId, { client, now }));
   // Spec step 265: a first chat leads with suggestions, so a person Jane has said nothing to
   // yet is scanned now rather than at tonight's run.
   if ((await scopedFor(userId, client).janeMessages.count()) === 0) {

@@ -77,7 +77,7 @@ export const HSA_EXCESS_EXCISE = 0.06;
 // The age from which the HSA limit has a catch-up (Publication 969).
 export const HSA_CATCH_UP_AGE = 55;
 // Deposits into an HSA from outside it (payroll or a transfer).
-export const HSA_DEPOSIT = /HSA|HEALTH SAVINGS/i;
+export const HSA_DEPOSIT = /\bHSA\b|HEALTH SAVINGS/i;
 
 // A medical deduction worth raising: what itemizing with it saves.
 export const MEDICAL_MIN_SAVING_CENTS = $(100);

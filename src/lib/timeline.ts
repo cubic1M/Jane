@@ -7,12 +7,13 @@ import { scopedFor } from "@/lib/db-scoped";
 import { doneSaving, snapshotTitle } from "@/lib/hubs/jane";
 import { formatCents } from "@/lib/money";
 
-// Everything Jane did (spec step 187): one honest record across sectors. Every action
-// Jane takes on its own is written to autopilot_acts (recordAct, src/lib/sector-autopilot.ts)
-// when it takes it, so each appears here with its reason; what the person tapped through
-// the money-movement partner and yes-answers from standing rules are added, and what followed a
-// person's yes on a card (debugger 11-02: "nothing yet" right after a Yes, with money saved).
-// Transfers still pending can be undone from /transfers.
+// Everything Jane did (spec step 187): one honest record across sectors. Every act through a
+// specialist passes the permission check (src/lib/permission/check.ts), which writes it to
+// jane_acts, so each appears here with its reason and says when nothing real happened. Older acts
+// and what isn't through a specialist come from autopilot_acts (recordAct,
+// src/lib/sector-autopilot.ts), transfers the person tapped, standing rules' yeses and what followed
+// a person's yes on a card (debugger 11-02: "nothing yet" right after a Yes, with money saved), each
+// listed once. Transfers still pending can be undone from /transfers.
 
 export type TimelineEntry = {
   id: string;
@@ -25,7 +26,31 @@ export type TimelineEntry = {
   cents: number | null;
   // Where to undo it while it still can be, or null.
   undoHref: string | null;
+  // Through a stand-in: nothing real happened, and the record says so.
+  simulated: boolean;
 };
+
+// An act and its older row (a recordAct, or a transfer) are one thing when they match this closely.
+const SAME_ACT_MS = 5 * 60 * 1000;
+
+// The older rows left once each is matched, one to one, against an act that already says it.
+export function notYetListed<T extends { sector: string; cents: number | null; at: Date }>(
+  rows: readonly T[],
+  acts: readonly { sector: string; cents: number; at: Date }[],
+): T[] {
+  const left = [...acts];
+  return rows.filter((row) => {
+    const i = left.findIndex(
+      (a) =>
+        a.sector === row.sector &&
+        a.cents === (row.cents ?? 0) &&
+        Math.abs(a.at.getTime() - row.at.getTime()) <= SAME_ACT_MS,
+    );
+    if (i === -1) return true;
+    left.splice(i, 1);
+    return false;
+  });
+}
 
 const labelOf = (sector: string) => SECTOR_LABELS[sector as Sector] ?? "Other";
 
@@ -61,10 +86,19 @@ function actionWhy(action: {
 
 export async function loadTimeline(
   userId: string,
-  { client = defaultClient, limit = 50 }: { client?: PrismaClient; limit?: number } = {},
+  {
+    client = defaultClient,
+    limit = 50,
+    now = new Date(),
+  }: { client?: PrismaClient; limit?: number; now?: Date } = {},
 ): Promise<TimelineEntry[]> {
   const db = scopedFor(userId, client);
-  const [acts, transfers, rules, actions] = await Promise.all([
+  const [janeActs, acts, transfers, rules, actions] = await Promise.all([
+    db.janeActs.findMany({
+      where: { status: "done" },
+      orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+      take: limit,
+    }),
     db.autopilotActs.findMany({
       // A rule's yes is listed once, as the rule's decision below (gap audit: it showed twice).
       where: { NOT: { what: { startsWith: RULE_ACT_PREFIX } } },
@@ -112,7 +146,20 @@ export async function loadTimeline(
       },
     }),
   ]);
-  const entries: TimelineEntry[] = [
+  const recorded: TimelineEntry[] = janeActs.map((a) => ({
+    id: `jane:${a.id}`,
+    at: a.createdAt,
+    sector: a.sector,
+    sectorLabel: labelOf(a.sector),
+    by: a.authority === "yes" ? "you" : "jane",
+    what: a.what,
+    why: a.why,
+    cents: a.cents > 0 ? a.cents : null,
+    undoHref: a.undoHref && a.undoUntil && a.undoUntil > now ? a.undoHref : null,
+    simulated: a.simulated,
+  }));
+  const said = janeActs.map((a) => ({ sector: a.sector, cents: a.cents, at: a.createdAt }));
+  const older: TimelineEntry[] = [
     ...acts.map((a): TimelineEntry => ({
       id: `act:${a.id}`,
       at: a.createdAt,
@@ -123,6 +170,8 @@ export async function loadTimeline(
       why: `${labelOf(a.sector)} is on your autopilot, and this was within the limits you set.`,
       cents: a.cents > 0 ? a.cents : null,
       undoHref: null,
+      // No real partner has ever been connected: every older act was a stand-in's.
+      simulated: true,
     })),
     ...transfers.map((t): TimelineEntry => ({
       id: `transfer:${t.id}`,
@@ -136,7 +185,10 @@ export async function loadTimeline(
       why: "You said yes in the chat.",
       cents: t.amountCents,
       undoHref: t.status === "pending" ? "/transfers" : null,
+      simulated: true,
     })),
+  ];
+  const ruleYeses: TimelineEntry[] = [
     ...rules.map((d): TimelineEntry => {
       const title = (d.cardSnapshot as { title?: unknown } | null)?.title;
       return {
@@ -149,6 +201,7 @@ export async function loadTimeline(
         why: "A standing rule you set said yes to this.",
         cents: null,
         undoHref: null,
+        simulated: false,
       };
     }),
     ...actions.map((a): TimelineEntry => ({
@@ -161,9 +214,11 @@ export async function loadTimeline(
       why: actionWhy(a),
       cents: a.refundCents ?? a.confirmedAnnualCents,
       undoHref: null,
+      // Actions only run for the demo bank and sample people (src/config/concierge.ts).
+      simulated: true,
     })),
   ];
-  return entries
+  return [...recorded, ...notYetListed(older, said), ...ruleYeses]
     .sort((a, b) => b.at.getTime() - a.at.getTime() || a.id.localeCompare(b.id))
     .slice(0, limit);
 }

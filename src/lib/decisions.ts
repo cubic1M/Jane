@@ -13,7 +13,7 @@ import { ACTION_FOR_FINDING, CARD_SELECT, buildCard, cardHash } from "@/lib/card
 import { comparisonFor } from "@/lib/compare";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { recordFindingDone } from "@/lib/outcomes";
+import { recordFindingDone, recordFindingYes } from "@/lib/outcomes";
 import { isAgentAction, startAgent } from "@/lib/agent/run";
 import { conciergeMode } from "@/lib/concierge-mode";
 import { hasKit } from "@/lib/diy";
@@ -221,6 +221,8 @@ export async function recordDecision(
   if (result.actionId && (isAgentAction(card.actionType) || options?.switchTo)) {
     result.agentJobId = await startAgent(userId, result.actionId, { client, source });
   }
+  // Theirs to do: on the record from now, so it stays open and gets followed up.
+  if (choice === "diy") await recordFindingYes(userId, finding.id, { client, now });
   const EVENT = { yes: "decision_yes", no: "decision_no", diy: "diy_started" } as const;
   await track(userId, EVENT[choice], {
     finding_type: card.findingType,

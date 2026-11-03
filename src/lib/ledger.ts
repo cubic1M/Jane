@@ -48,6 +48,11 @@ export type LedgerEntry = {
   // yes or found (manager decision 10-30: the "here's where to do it" link was only in a chat
   // message suggestions never show in).
   href: string | null;
+  // A Yes or a done later data can still settle; what settles it, when no watch can.
+  open: boolean;
+  settles: string | null;
+  // A fix that failed: what to try next.
+  nextStep: string | null;
 };
 
 export type Ledger = {
@@ -76,6 +81,7 @@ const orderOf: Record<LedgerState, number> = {
   said_yes: 3,
   estimated: 4,
   not_seen: 5,
+  settled: 6,
 };
 
 export async function savingsLedger(userId: string, options: Options = {}): Promise<Ledger> {
@@ -94,8 +100,13 @@ export async function savingsLedger(userId: string, options: Options = {}): Prom
     db.suggestions.findMany({ select: { key: true, actionHref: true } }),
   ]);
   const pageOf = new Map(pages.map((p) => [p.key, p.actionHref]));
-  const hrefOf = (key: string, state: LedgerState) =>
-    state === "said_yes" || state === "estimated" ? (pageOf.get(key) ?? null) : null;
+  // A finding card has no suggestion: its own page has the steps and drafts.
+  const pageFor = (key: string) =>
+    key.startsWith(FINDING_OUTCOME_PREFIX)
+      ? `/report/${key.slice(FINDING_OUTCOME_PREFIX.length)}#diy`
+      : (pageOf.get(key) ?? null);
+  const hrefOf = (key: string, state: LedgerState, failed = false) =>
+    state === "said_yes" || state === "estimated" || failed ? pageFor(key) : null;
   // What each suggestion says now: a later scan moves its figure without showing it again
   // (debugger 10-30: fees "about $56/yr" here, from before the card's annual fee came in, while
   // the dock said $381).
@@ -125,6 +136,9 @@ export async function savingsLedger(userId: string, options: Options = {}): Prom
       verifiedOn: r.verifiedOn,
       heldOn: r.heldOn,
       href: null,
+      open: false,
+      settles: null,
+      nextStep: null,
     });
   }
   const plain = (e: Estimate) => ({
@@ -147,13 +161,19 @@ export async function savingsLedger(userId: string, options: Options = {}): Prom
     verifiedOn: null,
     heldOn: null,
     href: null,
+    settles: null,
+    nextStep: null,
   });
-  for (const e of all.actions.estimated) entries.push({ ...plain(e), state: "done" });
-  for (const e of all.actions.notShown) entries.push({ ...plain(e), state: "not_seen" });
+  for (const e of all.actions.estimated) {
+    entries.push({ ...plain(e), state: "done", open: true });
+  }
+  for (const e of all.actions.notShown) {
+    entries.push({ ...plain(e), state: "not_seen", open: false });
+  }
 
   // The person's own fixes, as the record keeps them.
   const s = all.suggestions;
-  for (const o of [...s.confirmed, ...s.expected, ...s.notSeen]) {
+  for (const o of [...s.confirmed, ...s.expected, ...s.notSeen, ...s.settled]) {
     const counted = o.state === "verified" || o.state === "held";
     entries.push({
       key: o.key,
@@ -175,7 +195,10 @@ export async function savingsLedger(userId: string, options: Options = {}): Prom
       actedOn: o.actedOn,
       verifiedOn: o.verifiedOn,
       heldOn: o.heldOn,
-      href: hrefOf(o.key, o.state),
+      href: hrefOf(o.key, o.state, o.nextStep !== null),
+      open: o.open,
+      settles: o.settles,
+      nextStep: o.nextStep,
     });
   }
 
@@ -212,13 +235,24 @@ export async function savingsLedger(userId: string, options: Options = {}): Prom
       verifiedOn: null,
       heldOn: null,
       href: pageOf.get(o.suggestionKey) ?? null,
+      open: false,
+      settles: null,
+      nextStep: null,
     });
   }
 
   entries.sort((a, b) => orderOf[a.state] - orderOf[b.state] || b.cents - a.cents);
   const sum = (states: LedgerState[]) =>
     entries.filter((e) => states.includes(e.state)).reduce((t, e) => t + e.cents, 0);
-  const counts = { estimated: 0, said_yes: 0, done: 0, verified: 0, held: 0, not_seen: 0 };
+  const counts = {
+    estimated: 0,
+    said_yes: 0,
+    done: 0,
+    verified: 0,
+    held: 0,
+    not_seen: 0,
+    settled: 0,
+  };
   for (const e of entries) counts[e.state] += 1;
   return {
     entries,

@@ -1,3 +1,4 @@
+import { throughPermission } from "@/lib/permission/check";
 import { PREMIUM_FREQUENCIES, type PremiumFrequency } from "@/config/documents";
 import { LIFE_PAY_LOOKBACK_DAYS, type LifeQuestionKey } from "@/config/insurance";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
@@ -345,7 +346,19 @@ export async function submitLifeApplication(
   const quote = quoteOf(application);
   const applying = partner === undefined ? await partnerFor(userId, { client }) : partner;
   if (!quote || !applying) throw new LifeError("Applying isn't available right now.");
-  const decision = await applying.applyLife({ quote, answers: application.answers }, { now });
+  const decision = await throughPermission(
+    userId,
+    {
+      specialist: "insurance",
+      what: "Applied for life insurance",
+      sector: "insurance",
+      cents: 0,
+      authority: { kind: "yes" },
+      undo: { kind: "none", why: "Through a stand-in: nothing real to take back." },
+    },
+    { client, now },
+    () => applying.applyLife({ quote, answers: application.answers }, { now }),
+  );
   const sent = await save(
     userId,
     id,
@@ -388,17 +401,30 @@ export async function buyLife(
   const startDate = day(new Date(now.getTime() + DAY));
   const coverage = { deathBenefit: application.amountCents, termYears: application.termYears };
   const user = await client.user.findUnique({ where: { id: userId }, select: { name: true } });
-  const bound = await binding.bind(
+  const bound = await throughPermission(
+    userId,
     {
-      partnerQuoteId: quote.partnerQuoteId,
-      carrier: quote.carrier,
-      kind: "life",
-      premiumCents: decision.premiumCents,
-      deductibleCents: null,
-      coverage,
-      termMonths: 12,
+      specialist: "insurance",
+      what: "Started your life insurance",
+      sector: "insurance",
+      cents: 0,
+      authority: { kind: "yes" },
+      undo: { kind: "none", why: "Through a stand-in: nothing real to take back." },
     },
-    { startDate, holderName: user?.name ?? null, now },
+    { client, now },
+    () =>
+      binding.bind(
+        {
+          partnerQuoteId: quote.partnerQuoteId,
+          carrier: quote.carrier,
+          kind: "life",
+          premiumCents: decision.premiumCents,
+          deductibleCents: null,
+          coverage,
+          termMonths: 12,
+        },
+        { startDate, holderName: user?.name ?? null, now },
+      ),
   );
   const db = scopedFor(userId, client);
   const policy = await db.insurancePolicies.create({

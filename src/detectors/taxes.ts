@@ -897,8 +897,8 @@ const hsaOverLimit: Detector = {
   needs: ["has_hsa", "household", "age"],
   detect({ profile, data }) {
     const fact = profile.facts.has_hsa;
-    if (fact.value !== true) return null;
     const h = readHealthTaxes(profile, data).hsa;
+    // A statement shows deposits into an HSA with no HSA account linked (detector sweep).
     if (h.deposits === 0 || h.projectedExcessCents <= 0) return null;
     const over = h.excessCents > 0;
     const cover = h.family ? "family" : "self-only";
@@ -918,7 +918,7 @@ const hsaOverLimit: Detector = {
       worthCents: h.exciseCents,
       worthKind: "risk",
       confidence: weakest([
-        factEvidence(fact),
+        ...(fact.value === true ? [factEvidence(fact)] : []),
         evidence("seen", profile.months, h.deposits, "HSA deposits"),
         {
           percent: 70,

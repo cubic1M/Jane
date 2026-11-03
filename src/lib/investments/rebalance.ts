@@ -1,3 +1,5 @@
+import type { Authority } from "@/lib/permission/check";
+import { placeThrough } from "@/lib/brokerage/orders";
 import { randomUUID } from "node:crypto";
 import { mixOfTicker } from "@/config/funds";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -53,7 +55,7 @@ export class RebalanceError extends Error {}
 export async function placeRebalance(
   userId: string,
   key: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  { client = defaultClient, now = new Date(), authority }: Options & { authority?: Authority } = {},
 ): Promise<{ confirmations: Confirmation[]; plan: RebalancePlan }> {
   const { advice, plan } = await loadRebalance(userId, { client, now });
   if (!advice) throw new RebalanceError("Trading is only in demo advice mode for now.");
@@ -64,7 +66,8 @@ export async function placeRebalance(
   }
   const partner = brokeragePartner();
   const batchId = randomUUID();
-  const confirmations = await partner.placeOrders(
+  const confirmations = await placeThrough(
+    partner,
     userId,
     {
       batchId,
@@ -81,6 +84,7 @@ export async function placeRebalance(
         })),
     },
     { client, now },
+    authority,
   );
   await logAudit(
     { type: "user", id: userId },

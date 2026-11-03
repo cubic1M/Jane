@@ -13,6 +13,10 @@ import { TOP_THINGS } from "@/config/priorities";
 import { checkedLine } from "@/lib/jane-agent/replies-checked";
 import { changeLine, scoreLine } from "@/lib/jane-agent/replies-health";
 import { formatCents } from "@/lib/money";
+import { loadFreshness } from "@/lib/freshness";
+import { actsStopped } from "@/lib/permission/stop";
+import { setStopAll } from "./actions";
+import { oldDataLine } from "@/planning/freshness";
 import { loadTimeline } from "@/lib/timeline";
 import { requireUser } from "@/lib/session";
 import { timezoneOf } from "@/lib/today";
@@ -106,14 +110,18 @@ async function JaneContent() {
   const user = await requireUser();
   await connection();
   const db = await scopedDb();
-  const [hub, accounts, lastRun, snapshot, timeline, timezone] = await Promise.all([
-    loadJaneHub(user.id),
-    db.accounts.count(),
-    lastControllerRun(user.id),
-    loadSnapshot(user.id),
-    loadTimeline(user.id, { limit: 20 }),
-    timezoneOf(user.id),
-  ]);
+  const [hub, accounts, lastRun, snapshot, timeline, timezone, freshness, stopped] =
+    await Promise.all([
+      loadJaneHub(user.id),
+      db.accounts.count(),
+      lastControllerRun(user.id),
+      loadSnapshot(user.id),
+      loadTimeline(user.id, { limit: 20 }),
+      timezoneOf(user.id),
+      loadFreshness(user.id),
+      actsStopped(user.id),
+    ]);
+  const oldData = oldDataLine(freshness);
   // Spec step 143: the one to three things that matter most, and why.
   const top = snapshot ? rankedFor(snapshot).slice(0, TOP_THINGS) : [];
   const { decide, inProgress, done, alerts } = hub;
@@ -199,10 +207,28 @@ async function JaneContent() {
         id="activity"
         summary={timeline.length === 0 ? "nothing yet" : `the last ${timeline.length}`}
       >
+        {/* The stop-all switch, where Jane can act at all (src/lib/permission/stop.ts). */}
+        {snapshot?.concierge !== false && (
+          <form action={setStopAll} className="flex flex-wrap items-center gap-3">
+            <input type="hidden" name="stop" value={stopped ? "" : "1"} />
+            <button
+              type="submit"
+              data-stop-all={stopped ? "on" : "off"}
+              className="rounded-lg border border-zinc-900 px-3 py-1 text-sm font-medium dark:border-zinc-100"
+            >
+              {stopped ? "Let Jane act again" : "Stop everything Jane does"}
+            </button>
+            {stopped && (
+              <span className={`text-sm ${MUTED}`}>
+                Jane won&apos;t do anything until you turn this back on.
+              </span>
+            )}
+          </form>
+        )}
         {timeline.length === 0 ? (
           <p className={MUTED}>
             {snapshot?.concierge === false
-              ? "Nothing yet. What Jane finds and reads for you is listed here with why."
+              ? "Nothing. In this beta Jane only reads your accounts, so anything it does for you starts with you."
               : "Nothing yet. Whatever Jane does on its own, or for you with a tap, is listed here with why."}
           </p>
         ) : (
@@ -218,6 +244,14 @@ async function JaneContent() {
                   {e.by === "jane" ? "Jane, on its own" : "At your tap"}
                   {e.cents ? ` · ${formatCents(e.cents)}` : ""}
                 </span>
+                {e.simulated && (
+                  <span
+                    data-act-simulated=""
+                    className="self-start rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                  >
+                    Simulated: nothing real happened
+                  </span>
+                )}
                 <span className={`text-sm ${MUTED}`}>Why: {e.why}</span>
                 {e.undoHref && (
                   <Link href={e.undoHref} className={`${LINK} text-sm`}>
@@ -368,8 +402,26 @@ async function JaneContent() {
       <Section
         title="What I checked last night"
         links={[]}
-        summary={lastRun ? `${lastRun.steps.length} checks` : "the first run is tonight"}
+        summary={
+          oldData
+            ? "old data only"
+            : lastRun
+              ? `${lastRun.steps.length} checks`
+              : "the first run is tonight"
+        }
+        open={oldData !== null}
       >
+        {oldData && (
+          <p
+            data-old-data=""
+            className="rounded-lg border border-zinc-300 p-3 text-sm dark:border-zinc-700"
+          >
+            {oldData}{" "}
+            <Link href="/import" className={LINK}>
+              Upload a statement
+            </Link>
+          </p>
+        )}
         {lastRun ? (
           <ul className="flex flex-col gap-1 text-sm">
             {lastRun.steps.map((s) => (

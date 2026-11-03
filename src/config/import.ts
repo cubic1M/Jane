@@ -32,6 +32,8 @@ export const IMPORT_STARTED_EVENT = "jane:import-started";
 export const IMPORT_RUN_SHOWN_HOURS = 24;
 // How often the chip asks how an upload is getting on.
 export const IMPORT_POLL_MS = 1500;
+// How soon it asks again after an answer it couldn't get (refused or lost).
+export const IMPORT_RETRY_MS = 3000;
 
 // Monthly charges and bills need a few months to show a pattern.
 export const SUGGESTED_UPLOAD_MONTHS = 3;
@@ -192,3 +194,14 @@ export const KNOWN_BANKS_LINE =
 // The report says the statements are old when their newest line is over this many days back
 // (debugger 10-30: January-April statements uploaded in October, with no word of it).
 export const STALE_UPLOAD_DAYS = 45;
+
+// Statement cycles (src/planning/freshness.ts): an uploaded account's next statement is ready about
+// this many days after its newest line, plus a few days for the bank to post it. Jane asks for it
+// then, once a cycle, at most this many cycles in a row; the nightly run keeps saying the data is
+// old for as long as it is.
+export const STATEMENT_CYCLE_DAYS = 30;
+export const STATEMENT_ASK_GRACE_DAYS = 3;
+export const STATEMENT_ASK_MAX_CYCLES = 3;
+// Not this soon after an upload: they just gave what they had, even if it was an old file (the
+// nightly run still says the data is old).
+export const STATEMENT_ASK_AFTER_UPLOAD_DAYS = 7;

@@ -125,8 +125,13 @@ describe("a student loan", () => {
   it("is not raised for Maya, whose $160 payment is already under the estimate", () => {
     expect(topics("renter")).not.toContain("student_repayment");
   });
-  it("is not raised without a student loan", () => {
-    expect(topics("retiree", withStudent(60_000, 452_000))).not.toContain("student_repayment");
+  // A statement shows the payments; only a linked loan shows the balance (detector sweep).
+  it("is raised from the payments alone, with no loan account", () => {
+    const noLoan = (d: ProfileInput) => ({
+      ...withStudent(60_000, 328_000)(d),
+      accounts: d.accounts.filter((a) => a.subtype !== "student"),
+    });
+    expect(topics("renter", noLoan)).toContain("student_repayment");
   });
 });
 
@@ -162,6 +167,34 @@ describe("dealer add-ons and cash advances", () => {
         ],
       })),
     ).not.toContain("car_addons");
+  });
+  it("fire from a car payment on a statement, with no loan account (detector sweep)", () => {
+    const withPayment = (description: string, cents: number) => (d: ProfileInput) => ({
+      ...d,
+      accounts: d.accounts.filter((a) => a.subtype !== "auto"),
+      transactions: [
+        ...d.transactions,
+        tx("2025-12-18", cents, description, "X", "x"),
+        tx("2026-09-01", 45_000, "ALLY AUTO PMT", "LOAN_PAYMENTS_CAR_PAYMENT", "x"),
+      ],
+    });
+    expect(topics("renter", withPayment("DEALER GAP INSURANCE", 69_500))).toContain("car_addons");
+    // The clothes shop is not GAP cover.
+    expect(topics("renter", withPayment("GAP #1234 SAN FRANCISCO CA", 24_000))).not.toContain(
+      "car_addons",
+    );
+  });
+  it("find pay-later plans by the company, as the rules file them (detector sweep)", () => {
+    const lines = (d: ProfileInput) => ({
+      ...d,
+      transactions: [
+        ...d.transactions.filter((t) => t.pfc !== "LOAN_PAYMENTS_BNPL"),
+        ...Array.from({ length: 6 }, (_, i) =>
+          tx(`2026-0${i + 3}-05`, 4_500, "AFFIRM *PAY 3K9L2", "LOAN_PAYMENTS_OTHER_PAYMENT", "x"),
+        ),
+      ],
+    });
+    expect(topics("renter", lines)).toContain("bnpl");
   });
   it("find a cash advance on a card, with the fee and interest from day one", () => {
     const card = inputFor("renter").accounts.find((a) => a.subtype === "credit card")!.id;

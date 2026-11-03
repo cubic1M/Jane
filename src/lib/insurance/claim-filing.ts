@@ -1,3 +1,4 @@
+import { throughPermission } from "@/lib/permission/check";
 import { SMALL_CLAIM_MAX_CENTS, isPolicyKind } from "@/config/insurance";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
@@ -76,16 +77,30 @@ export async function fileClaim(
   if (!filing || !claim.carrier || !isPolicyKind(claim.kind)) {
     throw new ClaimError("Filing isn't available right now.");
   }
-  const { claimNumber } = await filing.fileClaim(
+  const { carrier, kind } = claim;
+  const { claimNumber } = await throughPermission(
+    userId,
     {
-      carrier: claim.carrier,
-      kind: claim.kind,
-      event: claim.event,
-      happenedOn: claim.happenedOn,
-      amountCents: claim.amountCents!,
-      description: claim.description!,
+      specialist: "insurance",
+      what: `Filed a claim with ${claim.carrier}`,
+      sector: "insurance",
+      cents: 0,
+      authority: { kind: "yes" },
+      undo: { kind: "none", why: "Through a stand-in: nothing real to take back." },
     },
-    { now },
+    { client, now },
+    () =>
+      filing.fileClaim(
+        {
+          carrier,
+          kind,
+          event: claim.event,
+          happenedOn: claim.happenedOn,
+          amountCents: claim.amountCents!,
+          description: claim.description!,
+        },
+        { now },
+      ),
   );
   const steps = claim.steps.map((s) =>
     s.key === "file" && !s.doneAt ? { ...s, doneAt: now.toISOString() } : s,

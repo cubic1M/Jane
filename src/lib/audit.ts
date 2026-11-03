@@ -7,6 +7,11 @@ import { scrubSecrets } from "@/lib/scrub";
 // Every sensitive event goes through logAudit. Add new events here so the log stays
 // queryable by a known set of names.
 export type AuditEvent =
+  // The permission check every connector and the email agent must pass (src/lib/permission/).
+  | "jane_act_allowed"
+  | "jane_act_refused"
+  | "jane_acts_stopped"
+  | "jane_acts_resumed"
   // Loans (spec step 112): applying for credit and accepting a loan.
   | "loan_application_submitted"
   | "loan_accepted"

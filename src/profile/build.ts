@@ -6,6 +6,8 @@ import {
   APPROACHING_ASSETS_CENTS,
   APPROACHING_PAYOFF_YEARS,
   BUSINESS_DEPOSITS_MIN,
+  STEADY_PAYER_SHARE,
+  STEADY_PAY_RANGE,
   EARNER_ACTIVE_DAYS,
   CAR_WORDS,
   PENSION_PATTERN,
@@ -385,6 +387,19 @@ function babyReading(input: ProfileInput, txs: readonly ProfileTx[], today: stri
   };
 }
 
+// One payer, about the same each time.
+function steadySinglePayer(deposits: readonly { description: string; amountCents: number }[]) {
+  const byPayer = new Map<string, number[]>();
+  for (const d of deposits) {
+    const name = employerName(d.description);
+    byPayer.set(name, [...(byPayer.get(name) ?? []), Math.abs(d.amountCents)]);
+  }
+  const top = [...byPayer.values()].sort((a, b) => b.length - a.length)[0] ?? [];
+  if (top.length < deposits.length * STEADY_PAYER_SHARE) return false;
+  const usual = [...top].sort((a, b) => a - b)[Math.floor(top.length / 2)];
+  return top.every((cents) => Math.abs(cents - usual) <= usual * STEADY_PAY_RANGE);
+}
+
 // The payer on a paycheck line: no ACH details, no bank's "Deposit from" (Capital One 360),
 // "DEPOSIT - " (Navy Federal) or "ACH CREDIT" (Truist) in front, and nothing from "PAYROLL" on
 // (debugger 11-01, 11-02).
@@ -478,7 +493,9 @@ export function buildProfile(input: ProfileInput): Profile {
     pattern = "uneven";
     patternMatches = contractor.length;
   } else if (otherIncome.length >= BUSINESS_DEPOSITS_MIN) {
-    pattern = "business";
+    // One payer, about the same each time, is pay with no pay word in the line, not a shop's sales
+    // (detector sweep: "NORTHWIND LABS" every two weeks read as a business, at 95% sure).
+    pattern = steadySinglePayer(otherIncome) ? "salary" : "business";
     patternMatches = otherIncome.length;
   }
   if (pattern === "unknown") unknown("income_pattern");
@@ -542,10 +559,7 @@ export function buildProfile(input: ProfileInput): Profile {
   const mortgageAccounts = accounts.filter((a) => a.subtype === "mortgage");
   const mortgageLiab = liabilities.find((l) => l.kind === "mortgage");
   const rent = count(
-    (t) =>
-      t.pfc === "RENT_AND_UTILITIES_RENT" &&
-      /RENT|APARTMENTS|PROPERT/i.test(t.description) &&
-      !/HOME RENT/i.test(t.description),
+    (t) => t.pfc === "RENT_AND_UTILITIES_RENT" && !/HOME RENT/i.test(t.description),
   );
   const mortgagePayments = count((t) => t.pfc === "LOAN_PAYMENTS_MORTGAGE_PAYMENT");
   const homeRent = count((t) => /HOME RENT/i.test(t.description));
