@@ -131,6 +131,63 @@ describe("derivedBalances", () => {
     ]);
   });
 
+  it("works forward from the last balance the file gave, on a card too", () => {
+    const rows = [{ date: "2026-09-20", amountCents: 3000 }];
+    const marks = [{ date: "2026-09-10", balanceCents: 100000 }];
+    const day = (type: string) =>
+      derivedBalances(type, 5000, rows, "2026-10-05", marks).find((b) => b.date === "2026-09-30");
+    expect(day("depository")?.balanceCents).toBe(100000 - 3000);
+    expect(day("credit")?.balanceCents).toBe(100000 + 3000);
+  });
+
+  it("takes rows and marks in any order", () => {
+    const rows = [
+      { date: "2026-09-20", amountCents: 100 },
+      { date: "2026-09-05", amountCents: 200 },
+      { date: "2026-09-12", amountCents: 400 },
+    ];
+    const marks = [
+      { date: "2026-09-25", balanceCents: 5000 },
+      { date: "2026-09-10", balanceCents: 5500 },
+    ];
+    expect(
+      derivedBalances("depository", 1, [...rows].reverse(), "2026-10-05", [...marks].reverse()),
+    ).toEqual(derivedBalances("depository", 1, rows, "2026-10-05", marks));
+    const bySept15 = derivedBalances("depository", 1, rows, "2026-10-05", marks);
+    expect(bySept15.find((b) => b.date === "2026-09-12")?.balanceCents).toBe(5100);
+  });
+
+  it("makes no day for a row dated today or later, and lands today on today's balance", () => {
+    const days = derivedBalances(
+      "depository",
+      777,
+      [
+        { date: "2026-10-01", amountCents: 10 },
+        { date: "2026-10-05", amountCents: 20 },
+        { date: "2026-10-09", amountCents: 30 },
+      ],
+      "2026-10-05",
+    );
+    expect(days.map((d) => d.date)).toEqual(["2026-09-30", "2026-10-01", "2026-10-05"]);
+    expect(days.at(-1)?.balanceCents).toBe(777);
+  });
+
+  it("counts a month end that falls before this month, and not this month's", () => {
+    const days = derivedBalances(
+      "depository",
+      0,
+      [{ date: "2026-08-15", amountCents: 1 }],
+      "2026-10-31",
+    );
+    expect(days.map((d) => d.date)).toEqual([
+      "2026-08-14",
+      "2026-08-15",
+      "2026-08-31",
+      "2026-09-30",
+      "2026-10-31",
+    ]);
+  });
+
   it("is just today's balance with no transactions", () => {
     expect(derivedBalances("depository", 5000, [], "2026-10-27")).toEqual([
       { date: "2026-10-27", balanceCents: 5000 },

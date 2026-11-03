@@ -61,3 +61,49 @@ describe("crossFormatTwins", () => {
     expect([...crossFormatTwins([], incoming)]).toEqual([1]);
   });
 });
+
+describe("what counts as the same words", () => {
+  const twins = (a: string, b: string) =>
+    crossFormatTwins([csv("2026-10-01", 100, a)], [ofx("2026-10-01", 100, b)]).size === 1;
+
+  it("takes a cut name whichever side is cut", () => {
+    expect(twins("NETFLIX.COM RECURRING", "NETFLIX.COM")).toBe(true);
+    expect(twins("NETFLIX.COM", "NETFLIX.COM RECURRING")).toBe(true);
+    expect(twins("SAME", "SAME")).toBe(true);
+  });
+
+  it("takes a name inside the other only at six letters or more", () => {
+    expect(twins("POS NETFLIX.COM", "NETFLI")).toBe(true);
+    expect(twins("POS NETFLIX.COM", "NETFL")).toBe(false);
+  });
+
+  it("takes a short name at the start, but not one at the end", () => {
+    expect(twins("SHELL OIL", "SHE")).toBe(true);
+    expect(twins("SHELL OIL", "OIL")).toBe(false);
+  });
+
+  it("never pairs a name with nothing to read", () => {
+    expect(twins("###", "NETFLIX")).toBe(false);
+    expect(twins("NETFLIX", "---")).toBe(false);
+    expect(twins("###", "---")).toBe(false);
+  });
+});
+
+describe("which rows pair", () => {
+  it("pairs two days apart with neither, and a day either side with both", () => {
+    const at = (date: string) =>
+      crossFormatTwins([csv("2026-10-03", 100, "SHOP")], [ofx(date, 100, "SHOP")]).size;
+    expect(at("2026-10-01")).toBe(0);
+    expect(at("2026-10-02")).toBe(1);
+    expect(at("2026-10-04")).toBe(1);
+    expect(at("2026-10-05")).toBe(0);
+  });
+
+  it("works through rows in date order, each taking the earliest twin", () => {
+    // Given newest first, the later row would otherwise take the earlier one's twin and leave the
+    // earlier with nothing.
+    const existing = [csv("2026-10-01", 100, "SHOP", 1), csv("2026-10-02", 100, "SHOP", 2)];
+    const incoming = [ofx("2026-10-02", 100, "SHOP", "b"), ofx("2026-10-01", 100, "SHOP", "a")];
+    expect([...crossFormatTwins(existing, incoming)].sort()).toEqual([0, 1]);
+  });
+});

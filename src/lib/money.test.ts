@@ -70,3 +70,18 @@ describe("formatWholeDollars", () => {
     expect(formatWholeDollars(0)).toBe("$0");
   });
 });
+
+describe("parseMoneyToCents, at its edges", () => {
+  it("reads a parenthesis only when the whole amount is inside it", () => {
+    expect(parseMoneyToCents("(12.34")).toBeNull();
+    expect(parseMoneyToCents("12.34)")).toBeNull();
+    expect(parseMoneyToCents("x(12.34)")).toBeNull();
+    expect(parseMoneyToCents("(12.34)x")).toBeNull();
+  });
+
+  it("refuses an amount too big to be exact, rather than rounding it", () => {
+    expect(parseMoneyToCents("90071992547409.91")).toBe(9007199254740991);
+    expect(parseMoneyToCents("90071992547409.92")).toBeNull();
+    expect(parseMoneyToCents("99999999999999999999")).toBeNull();
+  });
+});
