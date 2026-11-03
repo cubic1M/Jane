@@ -1081,7 +1081,7 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   - Verdict: under a cap below about 45 KB, Plan B is the route (it produced a 32 KB bot in 7 minutes on kit 3).
 * **Faster arena on field 2** (for the day-of tune/validate loop). Profiling showed field 2's ICM (a memoised recursion, 0.25 ms per call at 8 players) was the largest cost in a table. It is now an iterative subset DP (0.05 ms), equal to the old one within 3e-14 (tested on 400 random cases with zero stacks and short point tables). The arena's points are **byte-identical** on 40 paired tables before and after. Speed: field 2 tables 0.51 → 0.21 s (2.5x), all3 0.44 → 0.32 s (−28%).
 * **Decision-time tail is the OS, not our code.** The slowest 0.1% of decisions are spread over every code path, including a preflop fold that took 2.4 ms. `gc.freeze()` (already in the adapters) trims the tail: max 0.71 vs 1.37 ms over 7,772 decisions.
-* **Bug hunter:** 1.32M random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
+* **Bug hunter:** 1.36M random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
   - looser calls (a raiser = 3.2 hands, a 3% margin);
