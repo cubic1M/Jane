@@ -29,6 +29,11 @@ jobs:
       - run: npm run mutation
         env:
           STRYKER_WORKERS: "4"
+      # The relations on every person of the bench, not the quarter a push runs.
+      - run: npx vitest run src/accuracy/metamorphic
+        if: always()
+        env:
+          METAMORPHIC_ALL: "1"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
         with:

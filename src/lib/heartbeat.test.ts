@@ -114,7 +114,7 @@ describe("every scheduled job", () => {
     const { crons } = JSON.parse(readFileSync("vercel.json", "utf8")) as {
       crons: { path: string }[];
     };
-    expect(crons).toHaveLength(7);
+    expect(crons).toHaveLength(8);
     for (const { path } of crons) {
       expect(readFileSync(`src/app${path}/route.ts`, "utf8"), path).toContain("recordRun(");
     }

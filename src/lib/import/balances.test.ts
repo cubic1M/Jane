@@ -194,3 +194,51 @@ describe("derivedBalances", () => {
     ]);
   });
 });
+
+// From the triage of what Stryker's changes got past: which of the statement's balances a day is
+// worked from, and on which side of it. A wrong one draws the net worth line wrong by a whole gap.
+describe("the day a statement gave a balance for", () => {
+  const out = (date: string, amountCents: number) => ({ date, amountCents });
+  const on = (rows: { date: string; balanceCents: number }[], date: string) =>
+    rows.find((b) => b.date === date)?.balanceCents;
+  const anchors = [
+    { date: "2026-08-31", balanceCents: 100_000 },
+    { date: "2026-09-30", balanceCents: 70_000 },
+  ];
+  const rows = [out("2026-08-15", 5_000), out("2026-09-10", 30_000), out("2026-10-05", 2_000)];
+
+  it("is that balance, not one worked back from the next", () => {
+    const line = derivedBalances("depository", 1, rows, "2026-10-20", anchors);
+    expect(on(line, "2026-08-31")).toBe(100_000);
+    expect(on(line, "2026-09-30")).toBe(70_000);
+  });
+
+  it("works a day between two back from the later", () => {
+    const line = derivedBalances("depository", 1, rows, "2026-10-20", anchors);
+    expect(on(line, "2026-09-10")).toBe(70_000);
+  });
+
+  it("works a day after the last forward from it, and a card's the other way", () => {
+    const bank = derivedBalances("depository", 1, rows, "2026-10-20", anchors);
+    expect(on(bank, "2026-10-05")).toBe(68_000);
+    const card = derivedBalances("credit", 1, rows, "2026-10-20", anchors);
+    expect(on(card, "2026-10-05")).toBe(72_000);
+  });
+
+  it("keeps today's own balance, and only one row for today", () => {
+    const today = "2026-10-05";
+    const line = derivedBalances("depository", 123, rows, today, anchors);
+    expect(line.filter((b) => b.date === today)).toEqual([{ date: today, balanceCents: 123 }]);
+  });
+
+  it("draws a month's end up to last month's, not this month's first", () => {
+    const line = derivedBalances("depository", 1, [out("2026-08-15", 5_000)], "2026-10-01");
+    expect(line.map((b) => b.date)).toEqual([
+      "2026-08-14",
+      "2026-08-15",
+      "2026-08-31",
+      "2026-09-30",
+      "2026-10-01",
+    ]);
+  });
+});

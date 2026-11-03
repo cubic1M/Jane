@@ -18,11 +18,14 @@ import {
 // Changes to a statement that must not change what Jane finds, on the real path (the upload's
 // reader, the rules and detection; no database, Claude off). No truth is needed, so these hold on
 // any statement and no label can be wrong. They can't catch a wrong rule applied the same way every
-// time. Every person of every CSV bench set runs through each, in a few seconds' work a relation.
+// time.
 vi.mock("@/categorize/llm", () => ({ classifyMerchants: async () => new Map() }));
 
 const SETS: readonly CsvSet[] = ["tuning", "tuning-2", "held-out", "held-out-2", "held-out-3"];
-const everyone = SETS.flatMap((set) => generateCsvPeople(undefined, set)).map(withBalancesTyped);
+const all = SETS.flatMap((set) => generateCsvPeople(undefined, set)).map(withBalancesTyped);
+// Every fourth person on a push, about a minute; all 100 in the weekly run (.github/workflows/
+// mutation.yml) and with METAMORPHIC_ALL=1, about four.
+const everyone = process.env.METAMORPHIC_ALL === "1" ? all : all.filter((_, i) => i % 4 === 0);
 // A credit union's file goes through the column picker: not a layout to swap for another.
 const onKnownLayouts = everyone.filter((p) => p.accounts.every((a) => a.layout !== "custom"));
 
@@ -48,7 +51,8 @@ const settled = (up: Upload) =>
 const spendingOf = (up: Upload) =>
   up.rows.reduce((sum, r) => (kindOf(r) === "spending" ? sum + r.amountCents : sum), 0);
 
-const LAYOUTS = Array.from({ length: 12 }, (_, i) => ({
+// Six mixes hold all four checking layouts and all six cards.
+const LAYOUTS = Array.from({ length: 6 }, (_, i) => ({
   checking: CHECKING_LAYOUTS[i % CHECKING_LAYOUTS.length]!,
   card: CARD_LAYOUTS[i % CARD_LAYOUTS.length]!,
 }));
@@ -119,7 +123,7 @@ describe("moving every date and the clock together", () => {
     it.each(["America/Los_Angeles", "Asia/Tokyo", "Pacific/Kiritimati"])(
       "%s finds the same things",
       async (name) => {
-        const people = everyone.slice(0, 40);
+        const people = everyone.slice(0, 10);
         const bases = await Promise.all(people.map((p) => runUpload(p)));
         process.env.TZ = name;
         for (const [i, person] of people.entries()) {

@@ -29,9 +29,9 @@ fast-check holds these for any made-up rows, in the ordinary test run:
 
 ## Relations
 
-Changes to a statement that must not change what Jane finds, with no truth needed, so no label can be wrong (`src/accuracy/metamorphic/metamorphic.test.ts`, on all 100 people of the five CSV bench sets, through the real reader, rules and detection, Claude off):
+Changes to a statement that must not change what Jane finds, with no truth needed, so no label can be wrong (`src/accuracy/metamorphic/metamorphic.test.ts`, on a quarter of the five CSV bench sets on each push and all 100 people weekly, through the real reader, rules and detection, Claude off):
 
-- **Layout:** the same statement through 12 mixes of the four checking and six card layouts, or as an OFX download either way a bank fills NAME: exactly the same findings and dollars. With each bank's own category column read, a guess it settles and a double charge at a place it calls a restaurant may move; nothing else, and spending stays the same to the cent.
+- **Layout:** the same statement through six mixes of the four checking and six card layouts, or as an OFX download either way a bank fills NAME: exactly the same findings and dollars. With each bank's own category column read, a guess it settles and a double charge at a place it calls a restaurant may move; nothing else, and spending stays the same to the cent.
 - **Dates:** every date and the clock moved together by 7, 28, 70, 364, 371, -7 or 700 days, across month ends, a year's end and a leap day; and three time zones.
 - **Names:** one merchant renamed to a word no list has heard of keeps its recurrence: the same charges, at the same pace.
 - **Refunds:** a charge and its full refund net out of spending on every bank's card, and change nothing Jane finds. The figure in an idle cash finding can move by about a dollar: its months of spending count what was bought and not what came back, and the bench's truth is worked out by the same function.

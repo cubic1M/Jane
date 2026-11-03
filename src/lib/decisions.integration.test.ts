@@ -97,11 +97,11 @@ describe.runIf(url)("decisions against a real database", () => {
 
     it("counts its cost as a saving on a yes, and keeps the answer for the next scan", async () => {
       const f = await ask("amica yes");
-      await recordDecision(userId, {
-        findingId: f.id,
-        choice: "yes",
-        cardHash: cardHash(buildCard(f)),
-      });
+      await recordDecision(
+        userId,
+        { findingId: f.id, choice: "yes", cardHash: cardHash(buildCard(f)) },
+        { client },
+      );
       expect(await client.finding.findUnique({ where: { id: f.id } })).toMatchObject({
         status: "approved",
         annualSavingsCents: 110_400,
@@ -116,11 +116,11 @@ describe.runIf(url)("decisions against a real database", () => {
 
     it("says nothing about what it is on a no: it may be a plan they're keeping", async () => {
       const f = await ask("amica no");
-      await recordDecision(userId, {
-        findingId: f.id,
-        choice: "no",
-        cardHash: cardHash(buildCard(f)),
-      });
+      await recordDecision(
+        userId,
+        { findingId: f.id, choice: "no", cardHash: cardHash(buildCard(f)) },
+        { client },
+      );
       expect(await client.finding.findUnique({ where: { id: f.id } })).toMatchObject({
         status: "declined",
         annualSavingsCents: null,
