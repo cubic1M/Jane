@@ -74,6 +74,7 @@ jobs:
             --config p/typescript --config p/nextjs --config p/react --config p/nodejs \
             --config p/owasp-top-ten --config p/secrets \
             --exclude src/generated --exclude docs --exclude .semgrep \
+            --exclude src/security/access-proof/fixtures \
             --exclude '*.test.ts' --exclude '*.test.tsx' \
             --sarif --output semgrep.sarif
       # Dependabot's token can't write to the Security tab.

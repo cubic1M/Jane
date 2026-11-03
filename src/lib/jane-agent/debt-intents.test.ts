@@ -294,6 +294,14 @@ describe("debt questions", () => {
     expect(intent("how much do I owe")).toEqual({ kind: "debts" });
   });
 
+  it("reads a goal's month by name", () => {
+    expect(intent("I need a 740 credit score by March")).toMatchObject({
+      kind: "credit_goal",
+      targetScore: 740,
+      months: 5,
+    });
+  });
+
   it("reads a credit score needed by a date", () => {
     expect(intent("I need a 740 credit score for a mortgage in 6 months")).toEqual({
       kind: "credit_goal",

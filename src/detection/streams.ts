@@ -491,7 +491,7 @@ function runsByPrice(charges: DetectionTransaction[], asOf: string): Stream[] {
 }
 
 const PLAN_WORDS = new RegExp(
-  `(?<![A-Z0-9])(?:${PLAN_DESCRIPTION_WORDS.map((w) => w.replace(/[*+]/g, "\\$&")).join("|")})(?![A-Z0-9])`,
+  `(?<![A-Z0-9])(?:${PLAN_DESCRIPTION_WORDS.map((w) => w.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&")).join("|")})(?![A-Z0-9])`,
 );
 // A charge that says it's a plan: a membership word, or a name ending in "+" (PLAN_DESCRIPTION_*).
 export function saysPlan(description: string): boolean {
