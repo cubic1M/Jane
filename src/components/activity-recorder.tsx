@@ -11,7 +11,7 @@ export function ActivityRecorder() {
   const recorder = useRef<ReturnType<typeof startRecorder> | null>(null);
 
   useEffect(() => {
-    recorder.current = startRecorder();
+    recorder.current = startRecorder({ framed: window.self !== window.top });
     return () => recorder.current?.stop();
   }, []);
 

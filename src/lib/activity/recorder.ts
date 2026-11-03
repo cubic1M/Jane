@@ -115,8 +115,14 @@ export function rageClickFields(clickable: Element | null, target: Element) {
   return { role: roleOf(clickable ?? target), label: clickable ? labelOf(clickable) : undefined };
 }
 
-export function startRecorder(): { page(pathname: string): void; stop(): void } {
+// framed: the chat panel's frame, which loads on every page before anyone opens it. It isn't a
+// page view, and has no time on page, until the person does something in it.
+export function startRecorder({ framed = false }: { framed?: boolean } = {}): {
+  page(pathname: string): void;
+  stop(): void;
+} {
   const visit = visitId();
+  let untouched = framed;
   const queue: Recorded[] = [];
   let mode: "unknown" | "full" | "views" = "unknown";
   let asking = false;
@@ -167,7 +173,7 @@ export function startRecorder(): { page(pathname: string): void; stop(): void } 
       return;
     }
     // Not known yet: one request at a time, and only one that can read the answer.
-    if (mode === "unknown" && (asking || leaving)) return;
+    if (mode === "unknown" && (asking || leaving || untouched)) return;
     const views = queue.filter((e) => e.kind === "page_view");
     if (mode === "views" && views.length === 0) return;
     queue.splice(0, queue.length, ...queue.filter((e) => e.kind !== "page_view"));
@@ -175,12 +181,20 @@ export function startRecorder(): { page(pathname: string): void; stop(): void } 
   };
 
   const endStretch = () => {
-    if (path) push("page_time", { data: { ms: Date.now() - pageStart } });
+    if (path && !untouched) push("page_time", { data: { ms: Date.now() - pageStart } });
+  };
+
+  const touched = () => {
+    if (!untouched) return;
+    untouched = false;
+    pageStart = Date.now();
+    push("page_view");
   };
 
   const onClick = (e: MouseEvent) => {
     const target = e.target instanceof Element ? e.target : null;
     if (!target) return;
+    touched();
     const el = target.closest(CLICKABLE);
     if (el) push("click", { role: roleOf(el), label: labelOf(el) });
     const now = Date.now();
@@ -201,6 +215,7 @@ export function startRecorder(): { page(pathname: string): void; stop(): void } 
   const onFocus = (e: FocusEvent) => {
     const el = e.target instanceof Element ? e.target.closest(FIELD) : null;
     if (!el) return;
+    touched();
     typed.set(el, false);
     const form = el.closest("form");
     if (form && !formStart.has(form)) formStart.set(form, Date.now());
@@ -289,6 +304,7 @@ export function startRecorder(): { page(pathname: string): void; stop(): void } 
       path = next;
       pageStart = Date.now();
       errors = 0;
+      if (untouched) return;
       push("page_view");
       if (mode !== "full") flush();
     },
