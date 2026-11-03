@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { decide, probeCounts, secretFor } from "../../scripts/ops/watch-core.mjs";
+import { decide, pageWords, probeCounts, secretFor } from "../../scripts/ops/watch-core.mjs";
 import { deployState } from "../../scripts/ops/vercel.mjs";
 import { journeys } from "../../scripts/ops/journeys.mjs";
 
@@ -9,6 +9,7 @@ const well = { app: true, db: true };
 const deploy = {
   createdAt: "2026-11-03T11:30:00.000Z",
   ageMinutes: 30,
+  currentUrl: "https://current.vercel.app",
   previousUrl: "https://last-good.vercel.app",
 };
 const quiet = { health: well, probe: { leaks: 0, others: 0 }, jobs: [], deploy, log: [], now };
@@ -32,9 +33,15 @@ describe("the fixed triggers", () => {
     );
   });
 
-  it("stops the site only when a leak survives a rollback", () => {
-    const log = [{ kind: "rollback", at: "2026-11-03T11:50:00.000Z" }];
-    const actions = decide({ ...quiet, log, probe: { leaks: 1, others: 0 } });
+  const leakRollback = {
+    kind: "rollback",
+    leak: true,
+    to: deploy.currentUrl,
+    at: "2026-11-03T11:50:00.000Z",
+  };
+
+  it("stops the site only when the code it went back to for a leak still leaks", () => {
+    const actions = decide({ ...quiet, log: [leakRollback], probe: { leaks: 1, others: 0 } });
     expect(did(actions)).toEqual([
       "switch:banks",
       "switch:uploads",
@@ -44,18 +51,44 @@ describe("the fixed triggers", () => {
     ]);
   });
 
+  it("doesn't stop the site after a rollback that wasn't for a leak", () => {
+    const log = [{ ...leakRollback, leak: undefined }];
+    const actions = did(decide({ ...quiet, log, probe: { leaks: 1, others: 0 } }));
+    expect(actions).not.toContain("switch:site");
+    expect(actions).toContain("rollback");
+  });
+
+  it("doesn't stop the site if a newer deploy has since gone live", () => {
+    const log = [{ ...leakRollback, to: "https://older.vercel.app" }];
+    const actions = did(decide({ ...quiet, log, probe: { leaks: 1, others: 0 } }));
+    expect(actions).not.toContain("switch:site");
+    expect(actions).not.toContain("rollback");
+    expect(actions).toContain("page");
+  });
+
   it("never sets KILL_SITE for anything but a leak, and KILL_EMAIL for nothing", () => {
-    const log = [{ kind: "rollback", at: "2026-11-03T11:50:00.000Z" }];
     for (const seen of [
       { health: { app: false, db: true } },
       { probe: { leaks: 0, others: 3 } },
-      { health: { app: false, db: false }, log },
-      { probe: { leaks: 0, others: 3 }, log },
+      { health: { app: false, db: false }, log: [leakRollback] },
+      { probe: { leaks: 0, others: 3 }, log: [leakRollback] },
     ]) {
       expect(did(decide({ ...quiet, ...seen }))).not.toContain("switch:site");
     }
-    const source = readFileSync("scripts/ops/watch-core.mjs", "utf8");
-    expect(source).not.toMatch(/name: "email"/);
+    expect(readFileSync("scripts/ops/watch-core.mjs", "utf8")).not.toMatch(/stop\("email"\)/);
+  });
+
+  it("doesn't ask for a switch that's already on, so a leak doesn't fire every ten minutes", () => {
+    const seen = {
+      ...quiet,
+      log: [
+        { ...leakRollback, to: "https://older.vercel.app" },
+        { kind: "page", trigger: "probe", at: "2026-11-03T11:55:00.000Z" },
+      ],
+      switches: ["banks", "uploads"],
+      probe: { leaks: 1, others: 0 },
+    };
+    expect(decide(seen)).toEqual([]);
   });
 
   it("when the site is down: rolls back a recent deploy", () => {
@@ -84,7 +117,7 @@ describe("the fixed triggers", () => {
     expect(decide({ ...quiet, deploy: old, log, health: { app: false, db: true } })).toEqual([]);
   });
 
-  describe("a failed scheduled job", () => {
+  describe("failed scheduled jobs", () => {
     const job = (over = {}) => ({
       name: "digest",
       lastOk: false,
@@ -92,14 +125,21 @@ describe("the fixed triggers", () => {
       lastFinishedAt: "2026-11-03T11:45:00.000Z",
       ...over,
     });
-    it("rolls back if it broke after this deploy", () => {
-      expect(did(decide({ ...quiet, jobs: [job()] }))).toEqual(["rollback", "freeze", "page"]);
+    it("one is probably its vendor: pages, and rolls nothing back", () => {
+      expect(did(decide({ ...quiet, jobs: [job()] }))).toEqual(["page"]);
+    });
+    it("two since this deploy roll back", () => {
+      const jobs = [job(), job({ name: "sync" })];
+      expect(did(decide({ ...quiet, jobs }))).toEqual(["rollback", "freeze", "page"]);
     });
     it("leaves it if it was already failing, or failed before this deploy", () => {
       expect(decide({ ...quiet, jobs: [job({ previousOk: false })] })).toEqual([]);
       expect(decide({ ...quiet, jobs: [job({ previousOk: null })] })).toEqual([]);
       const before = job({ lastFinishedAt: "2026-11-03T11:00:00.000Z" });
       expect(decide({ ...quiet, jobs: [before] })).toEqual([]);
+    });
+    it("leaves the probe's own record to the probe's confirmed trigger", () => {
+      expect(decide({ ...quiet, jobs: [job({ name: "probe" })] })).toEqual([]);
     });
   });
 
@@ -110,6 +150,11 @@ describe("the fixed triggers", () => {
   it("tries again after a rollback that failed", () => {
     const log = [{ kind: "rollback", ok: false, at: "2026-11-03T11:50:00.000Z" }];
     expect(did(decide({ ...quiet, log, health: { app: false, db: true } }))).toContain("rollback");
+  });
+
+  it("with no readable log, rolls nothing back and stops no site, but still stops new data and pages", () => {
+    const actions = did(decide({ ...quiet, log: null, probe: { leaks: 1, others: 0 } }));
+    expect(actions).toEqual(["switch:banks", "switch:uploads", "page"]);
   });
 
   it("can't roll back with nowhere to go, and says so by paging", () => {
@@ -129,15 +174,30 @@ describe("the fixed triggers", () => {
     }
   });
 
-  it("reads a probe by its flags, and an answer it can't read as a failure", () => {
+  it("reads a probe by its flags, and an unreadable answer as a failed check", () => {
     const checks = [
       { name: "a", ok: false, leak: true },
       { name: "b", ok: false },
-      { name: "c", ok: true, leak: true },
+      { name: "c", ok: true },
     ];
     expect(probeCounts({ checks })).toEqual({ leaks: 1, others: 1 });
     expect(probeCounts(null)).toEqual({ leaks: 0, others: 1 });
-    expect(probeCounts({ error: "Unauthorized" })).toEqual({ leaks: 0, others: 1 });
+  });
+
+  it("a probe refused for its secret says nothing about the site", () => {
+    expect(probeCounts({ error: "Unauthorized" }, 401)).toBeNull();
+    expect(probeCounts(null, 403)).toBeNull();
+    expect(decide({ ...quiet, probe: probeCounts(null, 401) })).toEqual([]);
+  });
+
+  it("tells the phone what really happened", () => {
+    const words = pageWords("a check failed", [
+      { do: "switch", name: "banks", ok: true },
+      { do: "rollback", ok: false },
+    ]);
+    expect(words).toContain("Did: KILL_BANKS.");
+    expect(words).toContain("FAILED: rollback. Do these by hand.");
+    expect(pageWords("a check failed", [])).toContain("Did nothing by itself.");
   });
 });
 
@@ -165,27 +225,34 @@ describe("what the scripts can reach", () => {
     expect(code).toContain('"rollback"');
     expect(code).not.toMatch(/"(deploy|promote|rm|remove|env|alias)"/);
     expect(code.match(/fetch\(/g)).toHaveLength(1);
+    expect(code).not.toMatch(/method:/);
   });
 });
 
 describe("which deployment to go back to", () => {
-  it("is the one before the current, by time", () => {
-    const state = deployState(
-      [
-        { url: "new.vercel.app", created: Date.parse("2026-11-03T11:30:00.000Z") },
-        { url: "old.vercel.app", created: Date.parse("2026-11-03T10:00:00.000Z") },
-      ],
-      now,
-    );
-    expect(state).toEqual({
+  const at = (time: string) => Date.parse(time);
+  const live = { url: "live.vercel.app", created: at("2026-11-03T10:00:00.000Z") };
+  const older = { url: "older.vercel.app", created: at("2026-11-03T09:00:00.000Z") };
+  const unpromoted = { url: "newer.vercel.app", created: at("2026-11-03T11:30:00.000Z") };
+
+  it("is the one before what's really live, not before the newest made", () => {
+    const state = deployState([unpromoted, live, older], live, now);
+    expect(state?.currentUrl).toBe("https://live.vercel.app");
+    expect(state?.previousUrl).toBe("https://older.vercel.app");
+  });
+  it("after a rollback, never goes forward to the bad one", () => {
+    expect(deployState([unpromoted, live], live, now)?.previousUrl).toBeNull();
+  });
+  it("counts age from going live when Vercel says, for a candidate promoted later", () => {
+    const promoted = { ...live, aliasAssigned: at("2026-11-03T11:30:00.000Z") };
+    expect(deployState([live, older], promoted, now)).toMatchObject({
       createdAt: "2026-11-03T11:30:00.000Z",
       ageMinutes: 30,
-      previousUrl: "https://old.vercel.app",
     });
   });
-  it("is unknown without a token or a list", () => {
-    expect(deployState(null, now)).toBeNull();
-    expect(deployState([], now)).toBeNull();
+  it("is unknown without either answer, so nothing rolls back", () => {
+    expect(deployState(null, live, now)).toBeNull();
+    expect(deployState([older], null, now)).toBeNull();
   });
 });
 

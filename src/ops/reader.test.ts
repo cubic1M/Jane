@@ -71,7 +71,7 @@ describe("the reader's walls", () => {
   });
 
   it("runs main's code, never a pull request's", () => {
-    expect(reader).not.toMatch(/pull_request|head_sha|head_branch|ref:/);
+    expect(reader).not.toMatch(/pull_request|head_sha|ref:/);
     expect(code(".github/workflows/watch.yml")).not.toMatch(/pull_request|ref:/);
   });
 

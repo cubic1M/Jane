@@ -1,5 +1,9 @@
 import { type SwitchTier, type KillSwitch, rememberStoredSwitches } from "@/config/kill-switches";
-import { OPS_SWITCH_CACHE_MS, OPS_SWITCH_READ_TIMEOUT_MS } from "@/config/health";
+import {
+  OPS_SWITCH_CACHE_MS,
+  OPS_SWITCH_FIRST_READ_TIMEOUT_MS,
+  OPS_SWITCH_READ_TIMEOUT_MS,
+} from "@/config/health";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { log } from "@/lib/log";
 
@@ -10,6 +14,7 @@ import { log } from "@/lib/log";
 const WHY = "The emergency switches apply to everyone, so they belong to no one person";
 
 let readAt = 0;
+let everRead = false;
 let reading: Promise<void> | null = null;
 
 async function systemClient(client?: PrismaClient) {
@@ -22,6 +27,7 @@ async function read(client?: PrismaClient): Promise<void> {
     const rows = await (await systemClient(client)).opsSwitch.findMany({ where: { on: true } });
     rememberStoredSwitches(rows.map((row) => row.name));
     readAt = Date.now();
+    everRead = true;
   } catch (error) {
     // Keep what it last knew: a database that's down isn't a reason to lift a stop. Try again soon.
     readAt = Date.now() - OPS_SWITCH_CACHE_MS + 1000;
@@ -41,7 +47,10 @@ export async function freshSwitches({ client }: { client?: PrismaClient } = {}):
   await Promise.race([
     reading,
     new Promise((resolve) => {
-      timer = setTimeout(resolve, OPS_SWITCH_READ_TIMEOUT_MS);
+      timer = setTimeout(
+        resolve,
+        everRead ? OPS_SWITCH_READ_TIMEOUT_MS : OPS_SWITCH_FIRST_READ_TIMEOUT_MS,
+      );
     }),
   ]);
   clearTimeout(timer);
@@ -49,6 +58,7 @@ export async function freshSwitches({ client }: { client?: PrismaClient } = {}):
 
 export function forgetSwitchesForTests(): void {
   readAt = 0;
+  everRead = false;
   reading = null;
   rememberStoredSwitches([]);
 }

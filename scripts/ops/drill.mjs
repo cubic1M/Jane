@@ -140,8 +140,16 @@ createServer(async (req, res) => {
 // Vercel's list of production deployments.
 const NOW = Date.now();
 let deployments = [];
+// Step 5: the door serves a leak while Vercel says last-good is live, which is what a last-good
+// that leaks too looks like.
+let pretendLive = null;
 createServer((req, res) => {
   res.writeHead(200, { "content-type": "application/json" });
+  if (req.url.startsWith("/v13/deployments/")) {
+    const live = pretendLive ?? target;
+    res.end(JSON.stringify(deployments.find((d) => d.url === `localhost:${live}`) ?? {}));
+    return;
+  }
   res.end(JSON.stringify({ deployments }));
 }).listen(VERCEL);
 
@@ -341,6 +349,7 @@ try {
 
   // 5. Last-good leaks too: rolling back again can't help, so the higher bar is met.
   await fetch(`${CONTROL}/${LEAKY}`);
+  pretendLive = GOOD;
   const leak2 = await runWatch(log2);
   note("Leak survives the rollback", 0, leak2.stdout.trim().replace(/\n/g, "; "));
   const stopped = await waitFor(

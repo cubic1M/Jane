@@ -48,6 +48,7 @@ export function isFrozen() {
 export function freeze(trigger) {
   if (isFrozen()) return;
   if (!local()) {
+    gh("label", "create", FREEZE_LABEL, "-R", REPO, "--force", "--color", "B60205");
     gh(
       "issue",
       "create",

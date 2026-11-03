@@ -51,6 +51,15 @@ describe("which site the probe calls", () => {
     expect(runProbe).toHaveBeenCalledWith("https://jane-abc.vercel.app", { bypass: "bypass" });
   });
 
+  it("a candidate's failure stays out of production's records", async () => {
+    vi.stubEnv("VERCEL_URL", "jane-abc.vercel.app");
+    probe.result = { ok: false, checks: [{ name: "a", ok: false }] };
+    expect((await at("jane-abc.vercel.app")).status).toBe(503);
+    expect(recordRun).not.toHaveBeenCalled();
+    expect(recordError).not.toHaveBeenCalled();
+    expect(alertError).not.toHaveBeenCalled();
+  });
+
   it("the live domain tests the live domain, and sends no bypass", async () => {
     vi.stubEnv("VERCEL_URL", "jane-abc.vercel.app");
     vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "jane.test");

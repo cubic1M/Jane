@@ -21,8 +21,8 @@ const WHY = "The hourly probe makes and removes its own sample people";
 
 export const PROBE_ID_PREFIX = `${TRIAL_ID_PREFIX}probe_`;
 
-// leak: failing means someone could read what isn't theirs, which is what the watch rolls back for
-// at once (scripts/ops/watch-core.mjs).
+// leak: this failure shows someone got what isn't theirs, which the watch rolls back for at once
+// (scripts/ops/watch-core.mjs). A non-answer isn't that: a slow site proves nothing either way.
 export type ProbeCheck = { name: string; ok: boolean; detail?: string; leak?: boolean };
 export type ProbeResult = { ok: boolean; checks: ProbeCheck[] };
 
@@ -33,6 +33,11 @@ export class ProbeFailed extends Error {
     this.name = "ProbeFailed";
   }
 }
+
+// An error page, a redirect or no answer at all, where a refusal was wanted. A 2xx is a real answer.
+const NOT_AN_ANSWER = /^(HTTP [345]\d\d|no answer)$/;
+// A run this old has died: anything younger may be another run still going.
+const STALE_MS = 10 * 60 * 1000;
 
 type Person = {
   id: string;
@@ -45,10 +50,11 @@ type Person = {
 
 type Options = { client?: PrismaClient; fetcher?: typeof fetch; now?: Date; bypass?: string };
 
-async function plantPerson(client: PrismaClient, now: Date): Promise<Person> {
+async function plantPerson(client: PrismaClient, now: Date, planted: string[]): Promise<Person> {
   const id = `${PROBE_ID_PREFIX}${randomBytes(12).toString("hex")}`;
   const marker = `probemarker${randomBytes(12).toString("hex")}`;
   const sessionToken = `${TRIAL_SESSION_PREFIX}${randomBytes(32).toString("hex")}`;
+  planted.push(id);
   await systemDb(WHY, client).user.create({
     data: {
       id,
@@ -92,14 +98,24 @@ async function plantPerson(client: PrismaClient, now: Date): Promise<Person> {
       plaidItemId: id,
       accessTokenEncrypted: encrypt(`${DEMO_TOKEN_PREFIX}${tokenMarker}`),
       institutionName: "Sample bank",
+      // Not due a sync: it isn't a real link, and it's gone in seconds.
+      lastSyncedAt: now,
     },
   });
   return { id, sessionToken, marker, tokenMarker, findingId: finding.id, documentId: document.id };
 }
 
-export async function removeProbePeople(client: PrismaClient = defaultClient): Promise<number> {
+// By default every sample person. The watch, the hourly probe and a candidate can all run at once on
+// one database, so a run removes only its own people and those left by a run that died.
+export async function removeProbePeople(
+  client: PrismaClient = defaultClient,
+  { only, olderThan }: { only?: string[]; olderThan?: Date } = {},
+): Promise<number> {
   const { count } = await systemDb(WHY, client).user.deleteMany({
-    where: { id: { startsWith: PROBE_ID_PREFIX } },
+    where: {
+      ...(only ? { id: { in: only } } : { id: { startsWith: PROBE_ID_PREFIX } }),
+      ...(olderThan ? { createdAt: { lt: olderThan } } : {}),
+    },
   });
   return count;
 }
@@ -127,31 +143,35 @@ export async function runProbe(
     return { status: response.status, headers: response.headers, body: await response.text() };
   };
   // Says what went wrong in a status code or an error's class, never a response's words.
-  const check = async (name: string, run: () => Promise<true | string>, flag = {}) => {
+  const check = async (
+    name: string,
+    run: () => Promise<true | string>,
+    { guardsAgainstLeak = false } = {},
+  ) => {
     try {
       const outcome = await run();
-      checks.push(
-        outcome === true
-          ? { name, ok: true, ...flag }
-          : { name, ok: false, detail: outcome, ...flag },
-      );
+      if (outcome === true) checks.push({ name, ok: true });
+      else {
+        const leak = guardsAgainstLeak && !NOT_AN_ANSWER.test(outcome);
+        checks.push({ name, ok: false, detail: outcome, ...(leak ? { leak } : {}) });
+      }
     } catch (error) {
       checks.push({
         name,
         ok: false,
         detail: error instanceof Error ? error.name : "unknown error",
-        ...flag,
       });
     }
   };
 
   const leakCheck = (name: string, run: () => Promise<true | string>) =>
-    check(name, run, { leak: true });
+    check(name, run, { guardsAgainstLeak: true });
 
-  await removeProbePeople(client);
+  await removeProbePeople(client, { olderThan: new Date(now.getTime() - STALE_MS) });
+  const planted: string[] = [];
   try {
-    const alice = await plantPerson(client, now);
-    const bob = await plantPerson(client, now);
+    const alice = await plantPerson(client, now, planted);
+    const bob = await plantPerson(client, now, planted);
 
     await check("sign-in page loads", async () => {
       const { status } = await call("/login");
@@ -237,7 +257,7 @@ export async function runProbe(
       detail: error instanceof Error ? error.name : "unknown error",
     });
   } finally {
-    await removeProbePeople(client).catch(() => 0);
+    await removeProbePeople(client, { only: planted }).catch(() => 0);
   }
   return { ok: checks.every((item) => item.ok), checks };
 }

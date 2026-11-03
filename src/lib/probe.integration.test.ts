@@ -106,6 +106,31 @@ describe.skipIf(!url)("the hourly probe", () => {
     expect(failed(result)).toContain(name);
   });
 
+  it("flags a real leak, and not a site that couldn't answer", async () => {
+    const leaked = await run("document");
+    expect(leaked.checks.filter((check) => check.leak).map((check) => check.name)).toEqual([
+      "someone else's document is refused",
+    ]);
+    const broken = (async () => new Response("down", { status: 503 })) as typeof fetch;
+    const down = await runProbe("http://site.test", { client, fetcher: broken });
+    expect(down.ok).toBe(false);
+    expect(down.checks.filter((check) => check.leak)).toEqual([]);
+    const timedOut = (async () => {
+      throw new DOMException("slow", "TimeoutError");
+    }) as typeof fetch;
+    const slow = await runProbe("http://site.test", { client, fetcher: timedOut });
+    expect(slow.checks.filter((check) => check.leak)).toEqual([]);
+  });
+
+  it("leaves another run's sample people alone", async () => {
+    const other = `${PROBE_ID_PREFIX}other${Date.now()}`;
+    await client.user.create({ data: { id: other, email: `${other}@try.jane.invalid` } });
+    await run();
+    expect(await client.user.count({ where: { id: other } })).toBe(1);
+    await removeProbePeople(client, { only: [other] });
+    expect(await client.user.count({ where: { id: other } })).toBe(0);
+  });
+
   it("fails when signed-out people get data and sessions stop working", async () => {
     const result = await run("open");
     expect(failed(result)).toEqual(
@@ -138,7 +163,11 @@ describe.skipIf(!url)("the hourly probe", () => {
 
   it("removes what an earlier run left behind", async () => {
     await client.user.create({
-      data: { id: `${PROBE_ID_PREFIX}left`, email: `${PROBE_ID_PREFIX}left@try.jane.invalid` },
+      data: {
+        id: `${PROBE_ID_PREFIX}left`,
+        email: `${PROBE_ID_PREFIX}left@try.jane.invalid`,
+        createdAt: new Date(Date.now() - 60 * 60 * 1000),
+      },
     });
     await run();
     expect(await client.user.count({ where: { id: `${PROBE_ID_PREFIX}left` } })).toBe(0);

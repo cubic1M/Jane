@@ -27,27 +27,37 @@ Each trigger is confirmed first: the health check three times, a minute apart, a
 
 | It sees | It does |
 | --- | --- |
-| A cross-user check failed | `KILL_BANKS` and `KILL_UPLOADS`, roll back however old the deploy is, freeze, page |
-| The same again within 6 hours of a rollback | The last good code leaks too: `KILL_SITE`, freeze, page |
+| A cross-user check shows someone got what isn't theirs | `KILL_BANKS` and `KILL_UPLOADS`, roll back however old the deploy is, freeze, page |
+| The same again, on the code it went back to for a leak | Code can't fix this: `KILL_SITE`, freeze, page |
 | Health check down, deploy under 2 hours old | Roll back, freeze, page |
 | A sign-in or page check failed, deploy under 2 hours old | Roll back, freeze, page |
-| A job that worked before failed since this deploy, under 26 hours old | Roll back, freeze, page |
-| Any of those down or failed with an older deploy | Page only: code didn't do it |
+| Two or more jobs that worked before failed since this deploy, under 26 hours old | Roll back, freeze, page |
+| One such job | Page only: it's usually that job's vendor |
+| Down or failed with an older deploy | Page only: code didn't do it |
 | The site was stopped on purpose | Nothing |
+| The probe refused for its secret | Nothing: that says nothing about the site |
 
+- **A slow or failing site isn't a leak.** A cross-user check counts as a leak only if it got data, or a
+  2xx where a refusal was wanted. An error page or a timeout is an ordinary failed check.
 - **Rollbacks:** at most one successful one in 6 hours, code only. A migration stays in place
   (`docs/migrations.md`), so migrations must stay additive.
-- **Pages:** at most one an hour for the same thing, unless the watch also did something.
-- **`KILL_SITE`** needs a leak that survived a rollback, because it also stops webhooks. **`KILL_EMAIL`**
-  has no trigger at all, because it stops sign-in links. Only a person sets it.
+- **It goes back from what's really live,** asked of Vercel by the production address. If Vercel doesn't
+  answer, or the ops log can't be read, it rolls nothing back and pages you. It prints "Can roll back:
+  yes" or "no" on every run.
+- **Pages:** at most one an hour for the same thing, unless the watch also did something. A page says what
+  really happened, including what failed.
+- **`KILL_SITE`** needs a leak on code it already went back to for a leak, because it also stops webhooks.
+  **`KILL_EMAIL`** has no trigger at all, because it stops sign-in links. Only a person sets it.
 - **Everything goes on the record:** each action on the `ops-numbers` branch (`actions.jsonl`, short
   codes only because the repo is public), and each switch change in `audit_log`.
 
 ## Switches in seconds
 
 With `OPS_SWITCHES=1`, each switch in `docs/incident.md` can also be set from a store, with no deploy.
-A request reads it at most every 5 seconds, and waits at most 800ms. A failed read keeps what it last
-knew. A store switch also survives a rollback, which an environment variable can't be relied on to do.
+A request reads it at most every 5 seconds, and waits at most 800ms, or 3 seconds on a new instance that
+knows nothing yet. A failed read keeps what it last knew. Past that wait a new instance serves on, so a
+database that's down can let one through. `KILL_SITE=1` in Vercel doesn't have that gap. Setting a
+switch answers 409 until `OPS_SWITCHES=1` is on, rather than pretending. A store switch also survives a rollback, which an environment variable can't be relied on to do.
 
 ```bash
 curl -X POST "$SITE/api/ops/switches" -H "authorization: Bearer $OPS_FOUNDER_SECRET" -H 'content-type: application/json' -d '{"switch":"banks","on":false,"trigger":"founder"}'
@@ -66,8 +76,10 @@ store's switches.
 ## Before a deploy takes traffic
 
 `node scripts/ops/journeys.mjs <url> [commit]` checks the app, the commit, the database, that the
-landing page's scripts can run, and the probe. The probe runs on the candidate's code: sign-in, the
-dashboard, one person not reading another, tokens, and the guardrail. Then, in a browser:
+landing page's scripts can run, and the probe. The probe runs on the candidate's own code, at its own
+address: sign-in, the dashboard, one person not reading another, tokens, and the guardrail. It shares
+production's database, so its sample people are real rows for a moment, and its failure stays out of
+production's job records and alerts. Then, in a browser:
 
 ```bash
 CANDIDATE_URL=<url> npx playwright test --config playwright.candidate.config.ts

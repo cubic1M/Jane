@@ -45,6 +45,10 @@ export async function POST(request: Request) {
   if (!mayChange(tier, name, on)) {
     return NextResponse.json({ error: "Not with this secret" }, { status: 403 });
   }
+  // Saying yes here while nothing reads the store would be the worst answer of all.
+  if (process.env.OPS_SWITCHES !== "1") {
+    return NextResponse.json({ error: "OPS_SWITCHES isn't on" }, { status: 409 });
+  }
   const changed = await setSwitch(name, on, { tier, trigger });
   if (changed) {
     await logAudit(

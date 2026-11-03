@@ -22,6 +22,7 @@ const set = (name: string, on = true) => ({ switch: name, on, trigger: "probe" }
 
 describe("/api/ops/switches", () => {
   beforeEach(() => {
+    vi.stubEnv("OPS_SWITCHES", "1");
     vi.stubEnv("OPS_REDUCE_SECRET", "reduce");
     vi.stubEnv("OPS_HIGH_BAR_SECRET", "high");
     vi.stubEnv("OPS_FOUNDER_SECRET", "founder");
@@ -72,6 +73,13 @@ describe("/api/ops/switches", () => {
       expect((await call("founder", body)).status).toBe(400);
     }
     expect(setSwitch).not.toHaveBeenCalled();
+  });
+
+  it("says so when nothing reads the store, rather than pretending it worked", async () => {
+    vi.stubEnv("OPS_SWITCHES", "");
+    expect((await call("founder", set("banks"))).status).toBe(409);
+    expect(setSwitch).not.toHaveBeenCalled();
+    expect(logAudit).not.toHaveBeenCalled();
   });
 
   it("writes every change to the audit log, and not a repeat", async () => {

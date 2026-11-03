@@ -23,18 +23,22 @@ export async function GET(request: Request) {
   const candidate = Boolean(own) && new URL(request.url).host === own;
   const base = candidate ? `https://${own}` : (siteOrigin() ?? new URL(request.url).origin);
   const bypass = candidate ? process.env.VERCEL_AUTOMATION_BYPASS_SECRET : undefined;
+  const probe = async () => {
+    const outcome = await runProbe(base, { bypass });
+    if (!outcome.ok) throw new ProbeFailed(outcome);
+    return outcome;
+  };
   try {
-    const result = await recordRun("probe", async () => {
-      const outcome = await runProbe(base, { bypass });
-      if (!outcome.ok) throw new ProbeFailed(outcome);
-      return outcome;
-    });
-    return NextResponse.json(result);
+    // A candidate shares production's database, and its failure isn't production's: the deploy
+    // stops on this answer, and neither the job record nor an alert hears of it.
+    return NextResponse.json(candidate ? await probe() : await recordRun("probe", probe));
   } catch (error) {
     if (!(error instanceof ProbeFailed)) throw error;
-    const path = "/api/cron/probe";
-    await recordError(error, { path, method: "GET", routeType: "route" }, db);
-    await alertError({ message: describeError(error).message, path }, { client: db });
+    if (!candidate) {
+      const path = "/api/cron/probe";
+      await recordError(error, { path, method: "GET", routeType: "route" }, db);
+      await alertError({ message: describeError(error).message, path }, { client: db });
+    }
     return NextResponse.json(error.result, { status: 503 });
   }
 }
