@@ -1,6 +1,7 @@
 import {
   DOCUMENT_TYPES,
   MAX_DOCUMENTS,
+  documentTooBig,
   MAX_DOCUMENT_BYTES,
   MAX_FILE_NAME_LENGTH,
   type DocumentContentType,
@@ -59,7 +60,7 @@ export function checkUpload(file: UploadFile, bytes: Uint8Array, kept: number): 
   if (file.size > MAX_DOCUMENT_BYTES || bytes.length > MAX_DOCUMENT_BYTES) {
     return {
       ok: false,
-      error: `That file is larger than ${MAX_DOCUMENT_BYTES / 1024 / 1024} MB. Try a smaller scan or a photo.`,
+      error: documentTooBig(),
     };
   }
   const stated = statedType(file.type);

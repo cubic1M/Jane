@@ -47,6 +47,8 @@ export type DocumentContentType = keyof typeof DOCUMENT_TYPES;
 // Per file. Vercel refuses request bodies over 4.5 MB, so a larger limit here would only
 // fail later with a worse message. Server actions allow 5 MB (next.config.ts).
 export const MAX_DOCUMENT_BYTES = 4 * 1024 * 1024;
+export const documentTooBig = () =>
+  `That file is larger than ${MAX_DOCUMENT_BYTES / 1024 / 1024} MB. Try a smaller scan or a photo.`;
 
 // Files kept per person.
 export const MAX_DOCUMENTS = 50;
