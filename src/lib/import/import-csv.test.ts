@@ -79,6 +79,7 @@ describe("importCsvFiles", () => {
       inserted: 9,
       duplicates: 0,
       corrected: 0,
+      warnings: ["1 of 10 rows couldn't be read, so totals from this file are short by it."],
       skipped: 1,
       // For upload_succeeded: each file's format and transaction count.
       files: [{ format: "chase_checking", rows: 9 }],
@@ -134,6 +135,7 @@ describe("importCsvFiles", () => {
       inserted: 0,
       duplicates: 9,
       corrected: 0,
+      warnings: ["1 of 10 rows couldn't be read, so totals from this file are short by it."],
       skipped: 1,
       files: [{ format: "chase_checking", rows: 9 }],
       balances: expect.any(Array),

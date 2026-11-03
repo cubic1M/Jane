@@ -50,6 +50,7 @@ describe.runIf(url)("importing OFX and QFX against a real database", () => {
       duplicates: 0,
       skipped: 1,
       corrected: 0,
+      warnings: ["1 of 4 rows couldn't be read, so totals from this file are short by it."],
       files: [{ format: "ofx", rows: 3 }],
       // The statement's <LEDGERBAL>, kept for net worth over time.
       balances: [{ date: "2026-10-15", balanceCents: 123456 }],

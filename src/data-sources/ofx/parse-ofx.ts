@@ -1,3 +1,5 @@
+import { CONTROL_MIN_SIGN_VOTES, CONTROL_SIGN_REVERSED_SHARE } from "@/config/import";
+import { controlTotals, type ControlReport } from "@/data-sources/csv/control-totals";
 import { normalizeMerchant } from "@/data-sources/merchant";
 import type { NormalizedTransaction, SkippedRow } from "@/data-sources/types";
 import { parseMoneyToCents } from "@/lib/money";
@@ -48,6 +50,8 @@ export type OfxResult =
       // The statement's closing balance (<LEDGERBAL>), as Jane keeps balances: what a card
       // owes is positive. Empty when the file has none.
       balances: { date: string; balanceCents: number }[];
+      // Whether the file adds up (src/data-sources/csv/control-totals.ts).
+      control: ControlReport;
     }
   | { ok: false; file: string; error: string };
 
@@ -79,8 +83,14 @@ export function readOfx(file: { name: string; text: string }): OfxResult {
   }
   const transactions: Omit<NormalizedTransaction, "accountRef">[] = [];
   const skipped: SkippedRow[] = [];
-  const seen = new Set<string>();
+  const seen = new Map<string, number>();
+  let sameId = 0;
+  let doubled = 0;
+  let againstType = 0;
+  let typed = 0;
+  let blocks = 0;
   for (const { block, line } of transactionBlocks(file.text)) {
+    blocks += 1;
     const date = ofxDate(field(block, "DTPOSTED"));
     const amount = ofxAmount(field(block, "TRNAMT"));
     const fitid = field(block, "FITID");
@@ -99,10 +109,20 @@ export function readOfx(file: { name: string; text: string }): OfxResult {
       skipped.push({ file: file.name, line, reason: reason ?? "Unreadable transaction" });
       continue;
     }
-    if (seen.has(fitid)) continue;
-    seen.add(fitid);
+    if (seen.has(fitid)) {
+      // The bank's own id twice: the same row again, unless the amount differs.
+      doubled += 1;
+      if (seen.get(fitid) !== amount) sameId += 1;
+      continue;
+    }
+    seen.set(fitid, amount);
     const name = field(block, "NAME") ?? description;
     const type = field(block, "TRNTYPE");
+    // OFX signs money out as negative, and a DEBIT or CREDIT says the same thing in words.
+    if (amount !== 0 && /^(?:DEBIT|CREDIT)$/i.test(type ?? "")) {
+      typed += 1;
+      if (/^DEBIT$/i.test(type ?? "") !== amount < 0) againstType += 1;
+    }
     transactions.push({
       date,
       // OFX signs money out as negative; we follow Plaid, where money out is positive.
@@ -119,7 +139,53 @@ export function readOfx(file: { name: string; text: string }): OfxResult {
   if (transactions.length === 0 && skipped.length === 0) {
     return { ok: false, file: file.name, error: "The file has no transactions." };
   }
-  return { ok: true, file: file.name, transactions, skipped, balances: ledgerBalance(file.text) };
+  const control = controlTotals({
+    rows: [],
+    described: transactions,
+    stated: {},
+    counts: {
+      inFile: blocks,
+      read: transactions.length,
+      skipped: skipped.length,
+      leftOut: doubled,
+    },
+    unread: skipped.length,
+    repeatedHeaders: 0,
+    kind: /<CCSTMTRS>/i.test(file.text) ? "credit_card" : null,
+  });
+  const opened = (file.text.match(/<STMTTRN>/gi) ?? []).length;
+  if (opened > blocks || !/<\/OFX>/i.test(file.text)) {
+    control.warnings.push({
+      code: "cut_off",
+      message:
+        "This file stops before its end, as if the download was cut off, so some rows may be missing.",
+    });
+  }
+  if (sameId > 0) {
+    control.warnings.push({
+      code: "same_id",
+      message: `${sameId === 1 ? "A row has" : `${sameId} rows have`} the bank's id of another row with a different amount, so only the first was kept. Totals from this file can be off.`,
+    });
+  }
+  if (
+    typed >= CONTROL_MIN_SIGN_VOTES &&
+    againstType / typed >= CONTROL_SIGN_REVERSED_SHARE &&
+    !control.warnings.some((w) => w.code === "signs_reversed")
+  ) {
+    control.warnings.push({
+      code: "signs_reversed",
+      message:
+        "The amounts run against the file's own debit and credit labels. Check them before relying on totals from this file.",
+    });
+  }
+  return {
+    ok: true,
+    file: file.name,
+    transactions,
+    skipped,
+    balances: ledgerBalance(file.text),
+    control,
+  };
 }
 
 // <LEDGERBAL><BALAMT>…<DTASOF>…: the balance on that day. A card statement's is negative

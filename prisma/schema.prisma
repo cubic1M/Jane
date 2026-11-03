@@ -1855,23 +1855,26 @@ model BalanceSnapshot {
 // as a job. The progress chip on every page reads it. stage: queued, matching, balances,
 // looking, refreshing, done or failed.
 model ImportRun {
-  id         String    @id @default(cuid())
-  userId     String    @map("user_id")
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id")
   // "upload", or "removal" for the refresh after an upload, an account or everything is
   // removed (src/lib/import/remove.ts).
-  kind       String    @default("upload")
+  kind            String    @default("upload")
   // An upload's account, file names and the days its rows cover, for the upload history.
-  accountId  String?   @map("account_id")
-  fileNames  String[]  @default([]) @map("file_names")
-  fromDate   DateTime? @map("from_date") @db.Date
-  toDate     DateTime? @map("to_date") @db.Date
-  rows       Int
-  stage      String    @default("queued")
-  foundCents Int?      @map("found_cents")
+  accountId       String?   @map("account_id")
+  fileNames       String[]  @default([]) @map("file_names")
+  fromDate        DateTime? @map("from_date") @db.Date
+  toDate          DateTime? @map("to_date") @db.Date
+  rows            Int
+  stage           String    @default("queued")
+  foundCents      Int?      @map("found_cents")
+  // What didn't add up in the upload's files, in words: figures and dates, nothing from a row's
+  // description (src/data-sources/csv/control-totals.ts).
+  controlWarnings String[]  @default([]) @map("control_warnings")
   // When the person closed the chip saying it's done.
-  seenAt     DateTime? @map("seen_at") @db.Timestamptz(3)
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  seenAt          DateTime? @map("seen_at") @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   account      Account?      @relation(fields: [accountId], references: [id], onDelete: Cascade)

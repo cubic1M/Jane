@@ -36,6 +36,8 @@ export type FilePreview =
       from: string;
       to: string;
       skipped: SkippedRow[];
+      // What doesn't add up in the file (src/data-sources/csv/control-totals.ts).
+      warnings: string[];
       sample: { date: string; description: string; amountCents: number }[];
     }
   | {
@@ -47,10 +49,11 @@ export type FilePreview =
       choices?: MappingChoices;
     };
 
-// Parses in memory only; nothing is stored until the person confirms.
-export function previewCsvFiles(files: CsvFile[]): FilePreview[] {
+// Parses in memory only; nothing is stored until the person confirms. `kind`: the account's, when
+// the person has said.
+export function previewCsvFiles(files: CsvFile[], kind?: AccountKind): FilePreview[] {
   return files.map((file) => {
-    const result = readCsvFile(file);
+    const result = readCsvFile(file, kind);
     if (!result.ok) {
       const { file, error, reason, choices } = result;
       return { file, ok: false, error, reason, ...(choices ? { choices } : {}) };
@@ -68,6 +71,7 @@ export function previewCsvFiles(files: CsvFile[]): FilePreview[] {
       from: dates[0] ?? "",
       to: dates[dates.length - 1] ?? "",
       skipped: result.skipped,
+      warnings: result.control.warnings.map((w) => w.message),
       sample: result.transactions.slice(0, SAMPLE_ROWS).map((t) => ({
         date: t.date,
         description: t.description,
@@ -117,6 +121,8 @@ export async function importCsvFiles(
   ImportCounts & {
     files: ImportedFile[];
     balances: DayBalance[];
+    // What doesn't add up in the files, in words.
+    warnings: string[];
     // The first and last day the upload's rows cover (YYYY-MM-DD), or null with no rows.
     from: string | null;
     to: string | null;
@@ -180,6 +186,7 @@ export async function importCsvFiles(
     corrected: corrections,
     files: batch.files,
     balances: batch.balances,
+    warnings: batch.warnings,
     // What the files cover, twins or not.
     from: unique.reduce<string | null>((a, t) => (a === null || t.date < a ? t.date : a), null),
     to: unique.reduce<string | null>((a, t) => (a === null || t.date > a ? t.date : a), null),

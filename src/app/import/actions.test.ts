@@ -270,12 +270,14 @@ describe("startImport", () => {
       counts: { parsed: 172, inserted: 172, duplicates: 0, skipped: 0, corrected: 0 },
       runId: "run_1",
       jobId: "job_1",
+      warnings: [],
     });
     expect(await startImport(form({ accountId: "acct_1", files: [csv("card.csv")] }))).toEqual({
       ok: true,
       runId: "run_1",
       rows: 172,
       corrected: 0,
+      warnings: [],
       askBalance: null,
     });
     // Nothing ran yet: the job starts once the response is sent.
@@ -291,6 +293,7 @@ describe("startImport", () => {
       counts: { parsed: 2, inserted: 2, duplicates: 0, skipped: 0, corrected: 0 },
       runId: "run_1",
       jobId: "job_1",
+      warnings: [],
     });
     const ask = { accountId: "acct_card", name: "Chase card", kind: "credit_card" } as const;
     vi.mocked(balancesToAsk).mockResolvedValue([
