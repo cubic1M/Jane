@@ -12,7 +12,7 @@ import type { ToolOutput } from "@/lib/ask/tools";
 import { scopedFor } from "@/lib/db-scoped";
 import { twoFactorStatus } from "@/lib/mfa";
 import { isDemoItemId } from "@/lib/plaid/demo";
-import { isTrialUser } from "@/lib/trial-ids";
+import { isSampleTrialUser, isStatementTrialUser } from "@/lib/trial-ids";
 import { chatNotifyPrefs } from "./notify-prefs";
 
 // Claude's tools for the person's own setup (gap audit: settings, connected banks,
@@ -125,7 +125,8 @@ export async function runSettingsTool(
     const chat = chatNotifyPrefs(user.chatNotifyPrefs);
     const alerts = alertPrefs(user.alertPrefs);
     return out({
-      tryingJaneWithSampleData: isTrialUser(userId),
+      tryingJaneWithSampleData: isSampleTrialUser(userId),
+      temporaryTryWithTheirOwnStatement: isStatementTrialUser(userId),
       janesMessages: {
         sentBy: chat.channel,
         kinds: CHAT_NOTIFY_KINDS.filter((k) => chat.kinds[k]).map(

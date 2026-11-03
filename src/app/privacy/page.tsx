@@ -2,6 +2,7 @@ import Link from "next/link";
 import { LegalPage } from "@/components/legal-page";
 import { ACTIVITY_DISCLOSURE } from "@/config/activity";
 import { COMPANY_NAME, contactEmail } from "@/config/legal";
+import { STATEMENT_TRIAL_CHAT_ANSWERS, TRIAL_DELETED_WITHIN_HOURS } from "@/config/statement-trial";
 import { TRIAL_HOURS } from "@/config/trial";
 import { retentionPolicy } from "@/lib/retention";
 
@@ -214,6 +215,49 @@ export default function PrivacyPage() {
           Trying Jane with sample data makes a made-up person, deleted after {TRIAL_HOURS} hours
           with everything done with them. Trials are never emailed and never counted in our
           analytics.
+        </li>
+        <li>
+          Trying Jane with your own statement makes a temporary person for you. Everything read from
+          your statement and everything done with it is deleted when you press Start over, sign out,
+          or start again in the same browser, and otherwise within {TRIAL_DELETED_WITHIN_HOURS}{" "}
+          hours.
+        </li>
+      </ul>
+
+      <h2>Trying Jane with your own statement</h2>
+      <p>
+        When it&apos;s offered, you can upload a bank statement from the home page, with no email
+        and no account. This is your real data, so here is what happens to it.
+      </p>
+      <ul>
+        <li>
+          The file is read once, in memory, and never stored as a file. We keep what&apos;s read
+          from it, such as transactions, balances and the file&apos;s name, and what you do with it,
+          such as your answers and chat messages, in a temporary person made for this try. Nothing
+          is reused: each start makes a new one.
+        </li>
+        <li>
+          Your browser holds a sign-in cookie for that person for {TRIAL_HOURS} hours. Anyone using
+          this browser in that time can see what you uploaded, so press Start over when you&apos;re
+          done, especially on a shared computer.
+        </li>
+        <li>
+          The deletion in &quot;How long we keep it&quot; removes all of it. What stays is a record
+          in our security log that a try started and was deleted, with a random id, the times and
+          the version of the Terms you agreed to, and nothing from your statement. Request counters
+          that stop abuse keep only a scrambled form of your IP address, for about a day.
+        </li>
+        <li>
+          Reading your statement doesn&apos;t use Anthropic. If you type to Jane in the chat, what
+          &quot;In the chat&quot; lists above goes to Anthropic, for up to{" "}
+          {STATEMENT_TRIAL_CHAT_ANSWERS} written answers. When those run out, or when many people
+          are trying Jane on one day, Jane answers from your data without it. Starting over
+          can&apos;t call back what was already sent for an answer; Anthropic&apos;s own terms cover
+          what it keeps.
+        </li>
+        <li>
+          We never email you, never contact any company for you, and don&apos;t count this try in
+          our analytics or activity records. You can&apos;t link a bank in a temporary try.
         </li>
       </ul>
 

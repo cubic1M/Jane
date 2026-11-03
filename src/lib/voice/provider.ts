@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { isTrialUser } from "@/lib/trial-ids";
+import { isSampleTrialUser, isStatementTrialUser } from "@/lib/trial-ids";
 
 // Phone calls for the action agent (spec step 54). No calling service is connected yet:
 // outside production a simulated call stands in, so the whole loop runs and is tested; in
@@ -9,9 +9,11 @@ import { isTrialUser } from "@/lib/trial-ids";
 
 export type CallMode = "simulated" | "off";
 
-// Spec step 138: a trial person's calls always go to the simulated number.
+// Spec step 138: a sample person's calls always go to the simulated number. Someone trying Jane
+// with their own statement never calls anyone, real or simulated.
 export function callMode(userId?: string): CallMode {
-  if (isTrialUser(userId)) return "simulated";
+  if (isStatementTrialUser(userId)) return "off";
+  if (isSampleTrialUser(userId)) return "simulated";
   // SIMULATED_AGENT=1: a production build that must still simulate (the end-to-end tests).
   return process.env.NODE_ENV === "production" && process.env.SIMULATED_AGENT !== "1"
     ? "off"

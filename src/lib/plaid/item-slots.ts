@@ -11,7 +11,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { log } from "@/lib/log";
-import { isTrialUser } from "@/lib/trial-ids";
+import { isStatementTrialUser, isTrialUser } from "@/lib/trial-ids";
 import { plaidEnvironment } from "./client";
 import { COUNTER_ID, itemSlotUse } from "./item-count";
 import { systemDb } from "@/lib/system-db";
@@ -53,6 +53,8 @@ export async function linkAvailability(
   userId: string,
   { client = defaultClient }: Options = {},
 ): Promise<LinkAvailability> {
+  // Someone trying Jane with their own statement never links a bank, in any Plaid environment.
+  if (isStatementTrialUser(userId)) return { open: false, reason: "trial" };
   if (plaidEnvironment() !== "production") return { open: true };
   if (isTrialUser(userId)) return { open: false, reason: "trial" };
   const [claims, use] = await Promise.all([
@@ -71,6 +73,7 @@ export async function reserveItemSlot(
   userId: string,
   { client = defaultClient }: Options = {},
 ): Promise<ItemSlot | null> {
+  if (isStatementTrialUser(userId)) throw new LinkingClosedError("trial");
   if (plaidEnvironment() !== "production") return null;
   if (isTrialUser(userId)) throw new LinkingClosedError("trial");
 

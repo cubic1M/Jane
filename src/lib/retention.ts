@@ -7,10 +7,10 @@ import {
   type RetainedKind,
 } from "@/config/retention";
 import { SNAPSHOT_RETENTION_DAYS } from "@/config/net-worth";
-import { TRIAL_ID_PREFIX } from "@/config/trial";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { DAY_MS as DAY } from "@/lib/dates";
+import { deleteExpiredTrials } from "@/lib/trial-delete";
 import { systemDb } from "@/lib/system-db";
 
 const WHY = "Retention deletes old rows across people";
@@ -75,9 +75,7 @@ export async function runRetention({
   // Spec step 138: everything a trial person owns goes with them (it all cascades). After
   // the rest, not alongside: the cascade deletes sessions too, and the two deletes at once
   // can deadlock.
-  const trials = await systemDb(WHY, client).user.deleteMany({
-    where: { id: { startsWith: TRIAL_ID_PREFIX }, createdAt: { lt: before("trialPeople") } },
-  });
+  const trials = await deleteExpiredTrials(before("trialPeople"), { client, now });
   return {
     analyticsEvents: analytics.count,
     activityEvents: activity.count,
@@ -87,7 +85,7 @@ export async function runRetention({
     rateLimits: limits.count,
     expiredSessions: sessions.count + links.count,
     accessLog: access.count + orphans,
-    trialPeople: trials.count,
+    trialPeople: trials,
   };
 }
 

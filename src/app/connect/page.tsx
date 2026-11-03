@@ -8,6 +8,7 @@ import { demoBankEnabled } from "@/lib/plaid/demo";
 import { bankNotices, updatedAgo } from "@/lib/plaid/bank-status";
 import { linkAvailability } from "@/lib/plaid/item-slots";
 import { requireUser } from "@/lib/session";
+import { isStatementTrialUser } from "@/lib/trial-ids";
 import { linkDemo } from "./demo-actions";
 import { LinkButton } from "./link-button";
 import { LinkChoice, Promises, SECONDARY_BUTTON } from "./link-choice";
@@ -41,6 +42,8 @@ async function ConnectContent() {
     linkAvailability(user.id),
   ]);
   const now = new Date();
+  // Someone's own statement in a temporary try: no bank links and no demo bank beside it.
+  const uploadOnly = isStatementTrialUser(user.id);
   const notices = bankNotices(
     items.map((i) => ({ ...i, name: i.institutionName })),
     now,
@@ -137,14 +140,14 @@ async function ConnectContent() {
 
       <section className="flex flex-col gap-3">
         <LinkChoice
-          plaidOn={plaidEnabled()}
+          plaidOn={plaidEnabled() && !uploadOnly}
           uploadFirst={uploadFirst}
           linkOpen={link.open}
           hasBanks={items.length > 0}
-          demoOn={demoBankEnabled()}
+          demoOn={demoBankEnabled() && !uploadOnly}
           primaryClassName={PRIMARY_BUTTON}
         />
-        {demoBankEnabled() && (
+        {demoBankEnabled() && !uploadOnly && (
           <form
             action={linkDemo}
             className="flex flex-col gap-2 rounded-xl border border-dashed border-zinc-300 p-4 dark:border-zinc-700"

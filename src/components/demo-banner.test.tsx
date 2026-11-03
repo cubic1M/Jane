@@ -13,11 +13,13 @@ vi.mock("@/lib/session", () => {
 vi.mock("@/lib/plaid/demo", () => ({ hasDemoBank: vi.fn(async () => false) }));
 // The profile menu's sign-out action loads Auth.js, which needs a Next.js server.
 vi.mock("@/lib/auth-actions", () => ({ signOutToHome: vi.fn() }));
+vi.mock("@/app/try/statement-actions", () => ({ startOverTry: vi.fn() }));
 
 import { getCurrentUser, getSessionState, requireUser } from "@/lib/session";
 import { hasDemoBank } from "@/lib/plaid/demo";
 import { AppHeader } from "./app-header";
 import { DemoBanner } from "./demo-banner";
+import { StartOverButton } from "./start-over-button";
 
 function findElement(node: ReactNode, type: unknown): ReactElement | null {
   if (Array.isArray(node)) {
@@ -53,6 +55,21 @@ describe("DemoBanner", () => {
     const banner = await DemoBanner({ userId: "trial_abc" });
     const text = (banner as ReactElement<{ children: ReactNode[] }>).props.children;
     expect(String(text[0])).toMatch(/deleted after a day\.$/);
+    expect(hasDemoBank).not.toHaveBeenCalled();
+  });
+
+  it("tells someone with their own statement it's temporary, and never says sample", async () => {
+    const banner = await DemoBanner({ userId: "trial_own_abc" });
+    const props = (banner as ReactElement<{ children: ReactNode[] }>).props as {
+      children: ReactNode[];
+      "data-temporary-try": string;
+    };
+    const words = props.children.filter((c) => typeof c !== "object").join("");
+    expect(words).toMatch(/temporary/);
+    expect(words).toMatch(/your own statement/);
+    expect(words).toMatch(/deleted when you start over, or within 48/);
+    expect(words).not.toMatch(/sample|fake|sign up/i);
+    expect(findElement(props.children, StartOverButton)).not.toBeNull();
     expect(hasDemoBank).not.toHaveBeenCalled();
   });
 

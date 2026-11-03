@@ -3,6 +3,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { loadInsightTransactions } from "@/insights/load";
 import { checkInData, type CheckInData } from "@/insights/check-in";
 import { anthropic, finishedText, llmEnabled, llmModel } from "@/lib/anthropic";
+import { isStatementTrialUser } from "@/lib/trial-ids";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { checkGuardrails } from "@/lib/guardrails";

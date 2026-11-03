@@ -1,5 +1,6 @@
 import { LegalPage } from "@/components/legal-page";
 import { COMPANY_NAME, contactEmail } from "@/config/legal";
+import { TRIAL_DELETED_WITHIN_HOURS } from "@/config/statement-trial";
 import { TRIAL_HOURS } from "@/config/trial";
 
 export const metadata = { title: `Terms of Service | ${COMPANY_NAME}` };
@@ -108,6 +109,17 @@ export default function TermsPage() {
         {TRIAL_HOURS} hours, without an account. It never uses real accounts, never emails you,
         never contacts a real company (any company it writes to is simulated), and is deleted
         afterwards with everything done in it.
+      </p>
+
+      <h2>Trying Jane with your own statement</h2>
+      <p>
+        When it&apos;s offered, you can upload a bank statement from the home page without an
+        account. Only upload a statement that&apos;s yours to share. Jane reads it into a temporary
+        person made for this try, and it&apos;s deleted when you press Start over, or within{" "}
+        {TRIAL_DELETED_WITHIN_HOURS} hours. There&apos;s no way to get it back after that. It counts
+        as a real account: no financial advice, you make any changes yourself, and neither Jane nor
+        our team contacts a company for you. Written answers in the chat are limited, and this path
+        may be unavailable when many people are using it. The Privacy Policy says what&apos;s kept.
       </p>
 
       <h2>Partners and payments</h2>

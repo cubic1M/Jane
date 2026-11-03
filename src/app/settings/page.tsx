@@ -14,7 +14,7 @@ import { db } from "@/lib/db";
 import { scopedDb, scopedFor } from "@/lib/db-scoped";
 import { conciergeMode } from "@/lib/concierge-mode";
 import { requireUser } from "@/lib/session";
-import { isTrialUser } from "@/lib/trial-ids";
+import { isStatementTrialUser, isTrialUser } from "@/lib/trial-ids";
 import { formatCents } from "@/lib/money";
 import { vapidPublicKey } from "@/lib/push";
 import { US_STATES } from "@/config/referrals";
@@ -306,7 +306,11 @@ async function SettingsContent({
   );
 
   // Spec step 138: a trial person is never emailed or notified, whatever is set here.
-  const trialNote = isTrialUser(user.id) ? (
+  const trialNote = isStatementTrialUser(user.id) ? (
+    <p role="note" className={MUTED}>
+      This is a temporary try, so nothing here is emailed or sent to a phone, whatever is set here.
+    </p>
+  ) : isTrialUser(user.id) ? (
     <p role="note" className={MUTED}>
       You&apos;re trying Jane with a sample person, so nothing here is emailed or sent to a phone.
       These settings show how it works;{" "}

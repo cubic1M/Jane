@@ -25,6 +25,7 @@ import {
   createCsvAccountRow,
   readUploadFiles,
   saveUpload,
+  trialUploadRefusal,
   uploadFailed,
 } from "@/lib/import/upload";
 import { requireUser } from "@/lib/session";
@@ -66,6 +67,8 @@ export async function previewImport(formData: FormData): Promise<PreviewResult> 
     await uploadFailed(db.userId, files.reason);
     return { ok: false, error: files.error };
   }
+  const refused = await trialUploadRefusal(db, formData, files);
+  if (refused) return { ok: false, error: refused };
 
   const previews = previewCsvFiles(files);
   await track(db.userId, "import_started", { files: files.length });

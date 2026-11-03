@@ -16,7 +16,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { log } from "@/lib/log";
 import { hit } from "@/lib/rate-limit";
-import { claudeLimit, refundClaudeUse } from "./claude-limits";
+import { claudeFinished, claudeLimit, refundClaudeUse } from "./claude-limits";
 import { overDailyCap, recordLimitHit } from "./spend";
 import { answerByRules } from "./answer";
 import {
@@ -324,6 +324,7 @@ async function answer(
     log.error("Jane's chat failed unexpectedly", { error: String(error).slice(0, 300) });
     return { kind: "unavailable", reply: { body: CHAT_UNAVAILABLE_TEXT, actions: [], refs: {} } };
   });
+  await claudeFinished(userId, { client, now });
   if (result.kind === "answer") {
     return { reply: result.reply, intent: intent.kind, source: "claude" };
   }

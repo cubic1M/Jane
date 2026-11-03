@@ -15,6 +15,8 @@ vi.mock("@/lib/documents/store", () => ({
 
 import { revalidatePath } from "next/cache";
 import { MAX_DOCUMENT_BYTES } from "@/config/documents";
+import { STATEMENT_TRIAL_NO_DOCUMENTS } from "@/config/statement-trial";
+import { requireUser } from "@/lib/session";
 import { track } from "@/lib/analytics";
 import { addDocument, removeDocument, saveDocumentFacts } from "@/lib/documents/store";
 import { readPolicyDocument } from "@/lib/insurance/readings";
@@ -40,6 +42,16 @@ describe("document actions (spec step 68)", () => {
     vi.mocked(addDocument).mockReset();
     vi.mocked(track).mockReset();
     vi.mocked(revalidatePath).mockReset();
+  });
+
+  it("takes no document from a temporary try: each may go to Claude, and is stored", async () => {
+    vi.mocked(requireUser).mockResolvedValueOnce({ id: "trial_own_abc" } as never);
+    expect(await uploadDocument(null, uploadForm())).toEqual({
+      ok: false,
+      message: STATEMENT_TRIAL_NO_DOCUMENTS,
+    });
+    expect(addDocument).not.toHaveBeenCalled();
+    expect(hit).not.toHaveBeenCalled();
   });
 
   it("uploads the file for the signed-in person and says Jane read it", async () => {

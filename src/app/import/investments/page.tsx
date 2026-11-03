@@ -5,7 +5,7 @@ import { PositionsForm } from "./positions-form";
 import { AppHeader, PageLoading } from "@/components/app-header";
 import { UPLOAD_REASSURANCE } from "@/config/import";
 import { BROKER_DOWNLOADS } from "@/config/positions-import";
-import { canImportCsv } from "@/lib/csv-access";
+import { canImportHoldings } from "@/lib/csv-access";
 import { requireUser } from "@/lib/session";
 
 // Uploading a brokerage's positions download: what each investment account holds, for the
@@ -13,7 +13,7 @@ import { requireUser } from "@/lib/session";
 
 async function InvestmentsUploadContent() {
   const user = await requireUser();
-  if (!canImportCsv(user)) redirect("/connect");
+  if (!canImportHoldings(user)) redirect("/connect");
   return (
     <>
       <AppHeader user={user} />

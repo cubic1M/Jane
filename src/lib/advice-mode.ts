@@ -4,7 +4,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { isDemoOnly } from "@/lib/digest/recipients";
-import { isTrialUser } from "@/lib/trial-ids";
+import { isSampleTrialUser, isStatementTrialUser } from "@/lib/trial-ids";
 import { cachedRead } from "@/lib/read-cache";
 
 // Demo advice mode (spec step 98): whether Jane may give this person recommendations on
@@ -32,6 +32,8 @@ export async function adviceMode(
 const adviceModeOnce = cache((userId: string) => adviceModeFrom(userId, defaultClient));
 
 async function adviceModeFrom(userId: string, client: PrismaClient): Promise<boolean> {
+  // Someone's own statement (src/lib/statement-trial.ts) is real data, whatever else is there.
+  if (isStatementTrialUser(userId)) return REAL_ACCOUNT_ADVICE;
   const db = scopedFor(userId, client);
   const [items, csvAccounts] = await Promise.all([
     db.plaidItems.findMany({ select: { plaidItemId: true } }),
@@ -44,5 +46,5 @@ async function adviceModeFrom(userId: string, client: PrismaClient): Promise<boo
   // Real data: off until REAL_ACCOUNT_ADVICE says otherwise (it doesn't).
   if (!demoOnly) return REAL_ACCOUNT_ADVICE;
   // Spec step 138: a trial person is sample data by construction, so always.
-  return isTrialUser(userId) || demoAdviceAllowed();
+  return isSampleTrialUser(userId) || demoAdviceAllowed();
 }

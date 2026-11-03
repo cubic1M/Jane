@@ -7,6 +7,8 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { DAY_MS } from "@/lib/dates";
 import { sha256Hex } from "@/lib/hash";
+import { isStatementTrialUser } from "@/lib/trial-ids";
+import { STATEMENT_TRIAL_NO_HOUSEHOLD } from "@/config/statement-trial";
 
 // Inviting a partner, joining, leaving, and choosing which accounts to share. What a
 // partner can then read is in sharedReadFor (src/lib/db-scoped.ts).
@@ -48,6 +50,8 @@ export async function invitePartner(
   email: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<{ token: string }> {
+  // A household's shared charges don't go when one person does, and a temporary person goes.
+  if (isStatementTrialUser(user.id)) throw new HouseholdError(STATEMENT_TRIAL_NO_HOUSEHOLD);
   const invited = normalizeEmail(email);
   // The length first: this pattern is cubic, and a form can post megabytes.
   if (invited.length > MAX_EMAIL_CHARS || !/^\S+@\S+\.\S+$/.test(invited)) {

@@ -37,6 +37,7 @@ vi.mock("@/auth", () => ({
   },
 }));
 vi.mock("@/lib/session", () => ({ HOME_PATH: "/import" }));
+vi.mock("@/lib/trial-delete", () => ({ deleteTrialPerson: vi.fn(async () => true) }));
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((path: string) => {
     throw new Error(`redirect:${path}`);
@@ -50,6 +51,7 @@ import { recordFailedSignIn } from "@/lib/auth-events";
 import { checkCode, joinWaitlist, redeemInvite } from "@/lib/invites";
 import { hit } from "@/lib/rate-limit";
 import { TERMS_VERSION } from "@/config/legal";
+import { deleteTrialPerson } from "@/lib/trial-delete";
 import { joinTheWaitlist, signInWithEmail, signInWithGoogle, signOutToHome } from "./auth-actions";
 
 function emailForm(email: string) {
@@ -128,6 +130,26 @@ describe("auth actions", () => {
     expect(vi.mocked(logAudit).mock.invocationCallOrder[0]).toBeLessThan(
       vi.mocked(signOut).mock.invocationCallOrder.at(-1)!,
     );
+  });
+
+  it("deletes someone's own statement when they sign out or sign in, and no one else", async () => {
+    vi.mocked(deleteTrialPerson).mockClear();
+    vi.mocked(auth).mockResolvedValueOnce({ user: { id: "trial_own_abc" } } as never);
+    await signOutToHome();
+    expect(deleteTrialPerson).toHaveBeenCalledWith("trial_own_abc", "signed_out");
+    expect(signOut).toHaveBeenCalledWith({ redirectTo: "/" });
+
+    vi.mocked(deleteTrialPerson).mockClear();
+    vi.mocked(auth).mockResolvedValueOnce({ user: { id: "trial_own_abc" } } as never);
+    await signInWithGoogle();
+    expect(deleteTrialPerson).toHaveBeenCalledWith("trial_own_abc", "signed_out");
+
+    vi.mocked(deleteTrialPerson).mockClear();
+    for (const id of ["user_1", "trial_sample"]) {
+      vi.mocked(auth).mockResolvedValueOnce({ user: { id } } as never);
+      await signOutToHome();
+    }
+    expect(deleteTrialPerson).not.toHaveBeenCalled();
   });
 
   it("stops sign-in emails past the limit, per IP and per address", async () => {

@@ -12,6 +12,7 @@ import { demoBankEnabled, linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { peopleIn, type OnlyPeople } from "@/lib/only-people";
 import { acceptTerms } from "@/lib/terms";
+import { deleteExpiredTrials } from "@/lib/trial-delete";
 import { phaseTimer } from "@/lib/trial-timing";
 import { systemDb } from "@/lib/system-db";
 
@@ -45,16 +46,13 @@ export async function cleanUpTrials({
   now = new Date(),
   userIds,
 }: Options & OnlyPeople = {}): Promise<number> {
-  const { count } = await systemDb(WHY, client).user.deleteMany({
-    where: {
-      id: { startsWith: TRIAL_ID_PREFIX },
-      createdAt: { lt: new Date(now.getTime() - TRIAL_HOURS * HOUR_MS) },
-      // A test's own trials: in the shared test database, a cleanup for everyone deleted the
-      // trials other test files were using mid-test (one-source, from the memory test).
-      ...(userIds ? { AND: [peopleIn(userIds)] } : {}),
-    },
+  return deleteExpiredTrials(new Date(now.getTime() - TRIAL_HOURS * HOUR_MS), {
+    client,
+    now,
+    // A test's own trials: in the shared test database, a cleanup for everyone deleted the
+    // trials other test files were using mid-test (one-source, from the memory test).
+    ...(userIds ? { only: peopleIn(userIds) } : {}),
   });
-  return count;
 }
 
 // A new trial person with the demo bank linked and a session for them. With `defer` only

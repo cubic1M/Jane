@@ -31,7 +31,10 @@ describe("the privacy policy and the retention config", () => {
     const deleteMany = vi.fn(async () => ({ count: 0 }));
     const client = new Proxy(
       {},
-      { get: (_, key) => (key === "$executeRaw" ? async () => 0 : { deleteMany }) },
+      {
+        get: (_, key: string) =>
+          key === "$executeRaw" ? async () => 0 : { deleteMany, findMany: async () => [] },
+      },
     ) as never;
     const removed = await runRetention({ client });
     expect(Object.keys(removed).sort()).toEqual(Object.keys(RETENTION_PERIODS).sort());
@@ -47,6 +50,7 @@ describe("the privacy policy and the retention config", () => {
           table === "$executeRaw"
             ? async () => 0
             : {
+                findMany: async () => [],
                 deleteMany: async () => {
                   if (table === "user" && pending.size > 0) overlapped = true;
                   pending.add(table);

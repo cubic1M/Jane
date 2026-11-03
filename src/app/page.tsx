@@ -3,8 +3,10 @@ import { preload } from "react-dom";
 import { GetStartedButton } from "@/components/get-started-button";
 import { ColumnArt } from "@/components/column-art";
 import { COLUMN_IMAGE } from "@/lib/column-art";
+import { StatementTry } from "@/components/statement-try";
 import { TryButton } from "@/components/try-button";
 import { ViewTracker } from "@/components/view-tracker";
+import { statementTrialEnabled } from "@/lib/statement-trial";
 import { trialEnabled } from "@/lib/trial";
 import { displayFont } from "./fonts";
 import "./landing.css";
@@ -131,6 +133,7 @@ export default function Home() {
               <div className="flex flex-wrap items-center gap-6">
                 <GetStartedButton tone="landing" />
                 {trialEnabled() && <TryButton />}
+                {statementTrialEnabled() && <StatementTry />}
                 <Link
                   href="/login"
                   className="font-medium text-[var(--landing-hi)] underline underline-offset-2 hover:no-underline"

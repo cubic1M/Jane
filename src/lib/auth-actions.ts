@@ -20,14 +20,18 @@ import { hit, ipKey } from "@/lib/rate-limit";
 import { TERMS_COOKIE } from "@/lib/terms";
 import { HOME_PATH } from "@/lib/session";
 import { addressKey } from "@/lib/sign-in-email";
-import { isTrialUser } from "@/lib/trial-ids";
+import { deleteTrialPerson } from "@/lib/trial-delete";
+import { isStatementTrialUser, isTrialUser } from "@/lib/trial-ids";
 
 // Signing up or in from a Try Jane session (spec step 138) starts the person's own account.
 // The sample person's session ends first: with it still there, Auth.js would link a Google
 // sign-in to the sample person, who is deleted after TRIAL_HOURS.
 async function leaveTrial(): Promise<void> {
   const session = await auth();
-  if (isTrialUser(session?.user?.id)) await signOut({ redirect: false });
+  const userId = session?.user?.id;
+  // Someone's own statement doesn't wait for the clean-up once they've left.
+  if (userId && isStatementTrialUser(userId)) await deleteTrialPerson(userId, "signed_out");
+  if (isTrialUser(userId)) await signOut({ redirect: false });
 }
 
 // signIn() finishes by throwing a redirect, so only Auth.js errors are caught here.
@@ -138,6 +142,8 @@ export async function signOutToHome(): Promise<void> {
   if (userId && !isTrialUser(userId)) {
     await logAudit({ type: "user", id: userId }, "user_signed_out", { type: "user", id: userId });
   }
+  // Someone's own statement doesn't wait for the clean-up once they've left.
+  if (userId && isStatementTrialUser(userId)) await deleteTrialPerson(userId, "signed_out");
   // Then back here by path: Auth.js's own redirect takes its address from the request's headers.
   await signOut({ redirect: false });
   redirect("/");

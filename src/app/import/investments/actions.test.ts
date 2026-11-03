@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
-  canImportCsv,
+  canImportHoldings,
   importPositionsFiles,
   previewPositionsFiles,
   refreshAfterUpload,
   afterCallbacks,
 } = vi.hoisted(() => ({
-  canImportCsv: vi.fn(),
+  canImportHoldings: vi.fn(),
   importPositionsFiles: vi.fn(),
   previewPositionsFiles: vi.fn(),
   refreshAfterUpload: vi.fn(),
@@ -21,7 +21,7 @@ vi.mock("next/server", () => ({
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn(async () => ({ id: "user_1" })) }));
-vi.mock("@/lib/csv-access", () => ({ canImportCsv }));
+vi.mock("@/lib/csv-access", () => ({ canImportHoldings }));
 vi.mock("@/lib/db-scoped", () => ({ scopedDb: vi.fn(async () => ({ userId: "user_1" })) }));
 vi.mock("@/lib/import/background", () => ({ refreshAfterUpload }));
 vi.mock("@/lib/import/positions", () => ({ importPositionsFiles, previewPositionsFiles }));
@@ -40,12 +40,12 @@ function form(fields: Record<string, string> = {}, text = "Account Number,Invest
 beforeEach(() => {
   vi.clearAllMocks();
   afterCallbacks.length = 0;
-  canImportCsv.mockReturnValue(true);
+  canImportHoldings.mockReturnValue(true);
 });
 
 describe("previewPositions", () => {
   it("is only for people who may upload (not sample data)", async () => {
-    canImportCsv.mockReturnValue(false);
+    canImportHoldings.mockReturnValue(false);
     expect(await previewPositions(form())).toEqual({ ok: false, error: NOT_ALLOWED });
     expect(previewPositionsFiles).not.toHaveBeenCalled();
   });
@@ -85,7 +85,7 @@ describe("importPositions", () => {
   });
 
   it("is only for people who may upload", async () => {
-    canImportCsv.mockReturnValue(false);
+    canImportHoldings.mockReturnValue(false);
     expect(await importPositions(form())).toEqual({ ok: false, error: NOT_ALLOWED });
     expect(importPositionsFiles).not.toHaveBeenCalled();
   });

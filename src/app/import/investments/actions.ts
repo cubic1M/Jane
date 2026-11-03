@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { track } from "@/lib/analytics";
-import { canImportCsv } from "@/lib/csv-access";
+import { canImportHoldings } from "@/lib/csv-access";
 import { scopedDb } from "@/lib/db-scoped";
 import { refreshAfterUpload } from "@/lib/import/background";
 import {
@@ -20,7 +20,7 @@ import { requireUser } from "@/lib/session";
 
 async function positionsDb() {
   const user = await requireUser();
-  return canImportCsv(user) ? scopedDb() : null;
+  return canImportHoldings(user) ? scopedDb() : null;
 }
 
 export type PositionsPreviewResult =

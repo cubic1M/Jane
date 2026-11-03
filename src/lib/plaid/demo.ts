@@ -19,6 +19,7 @@ import {
   type DemoSwitch,
 } from "@/data-sources/demo/demo-bank";
 import { isPersonId, personById, type PersonId } from "@/config/people";
+import { isStatementTrialUser } from "@/lib/trial-ids";
 import { demoGoalsFor } from "@/data-sources/demo/demo-goals";
 import {
   DEMO_SECOND_LOGINS,
@@ -273,6 +274,10 @@ export async function linkDemoBank(
   }: { client?: PrismaClient; now?: Date; person?: PersonId } = {},
 ): Promise<{ itemId: string; created: boolean }> {
   if (!demoBankEnabled()) throw new DemoBankError("The demo bank isn't available here.");
+  // Fake data must never sit beside someone's own statement in a temporary try.
+  if (isStatementTrialUser(userId)) {
+    throw new DemoBankError("The demo bank isn't part of trying Jane with your own statement.");
+  }
   const db = scopedFor(userId, client);
   const existing = await db.plaidItems.findFirst({
     where: MAIN_DEMO_ITEM,

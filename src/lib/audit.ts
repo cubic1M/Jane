@@ -36,6 +36,10 @@ export type AuditEvent =
   | "family_credit_changed"
   | "home_request_sent"
   | "user_signed_up"
+  // Someone trying Jane with their own statement (src/lib/trial-delete.ts): started and deleted,
+  // with a random id and nothing from the statement. Written there, on the client it's given.
+  | "statement_trial_started"
+  | "statement_trial_deleted"
   // The weekly "what changed" email (src/lib/digest/send.ts): sent, as counts only, and turned
   // off from its one-click link.
   | "digest_sent"
