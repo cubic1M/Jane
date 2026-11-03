@@ -1,4 +1,5 @@
 import { linkOnSite } from "@/lib/site-origin";
+import { killed } from "@/config/kill-switches";
 import { log } from "@/lib/log";
 import { isTrialEmail } from "@/lib/trial-ids";
 
@@ -46,6 +47,8 @@ export async function sendEmail({
 }: Email): Promise<SentEmail | void> {
   // Spec step 138: a trial person's address can never receive mail; nothing is sent.
   if (isTrialEmail(to)) return;
+  // The emergency stop (docs/incident.md): it fails, so whatever was sending knows it didn't go.
+  if (killed("email")) throw new Error("Email is paused (KILL_EMAIL)");
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
   if (!apiKey || !from) throw new Error("RESEND_API_KEY and EMAIL_FROM must be set");

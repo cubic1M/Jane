@@ -34,6 +34,7 @@ import { plaid, plaidCall, plaidErrorCode, plaidInvestmentsEnabled } from "./cli
 import { DEMO_OPTIONS } from "@/data-sources/demo/demo-options";
 import type { DemoSwitch } from "@/data-sources/demo/demo-bank";
 import type { DemoOrder } from "@/data-sources/demo/demo-holdings";
+import { killed } from "@/config/kill-switches";
 import { SIMULATED_PARTNER } from "@/config/brokerage";
 import { SIGN_IN_PLAID_CODES } from "@/config/plaid";
 import { confirmSwitches, switchOf } from "@/lib/agent/switch";
@@ -683,6 +684,8 @@ async function syncItemWork(
   // Books QA: a sample person's second bank login only brings its accounts and transactions;
   // the demo bank's own sync does everything else.
   const secondLogin = isSecondLoginToken(accessToken);
+  // The emergency stop (docs/incident.md): a real bank isn't read. The demo bank reaches no one.
+  if (killed("banks") && !isDemoToken(accessToken)) throw new Error("Bank syncing is paused");
   timing.mark("item");
   // The demo bank (spec step 75) answers in Plaid's place; everything after is the same.
   // Everything the demo bank needs before it can answer, together (each is a round trip):

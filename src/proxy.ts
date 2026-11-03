@@ -1,11 +1,12 @@
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 import { logAdminAccess } from "@/lib/admin-access";
+import { SITE_PAUSED_TEXT, killed } from "@/config/kill-switches";
 import { adminSession, sessionTokenFrom } from "@/lib/admin-gate";
 import { edgeLimit } from "@/lib/edge-limits";
 import { log } from "@/lib/log";
 import { newNonce, pageCsp } from "@/lib/security-headers";
 
-// Runs before every page, API route and server action. Three jobs:
+// Runs before every page, API route and server action. Three jobs, after the emergency stop:
 // - Rate limits for every API route and server action, per IP and per session
 //   (src/lib/edge-limits.ts): over the limit, a calm 429 and nothing else runs.
 // - /admin answers everyone but admins with a 404, so its existence isn't revealed, and
@@ -15,6 +16,13 @@ import { newNonce, pageCsp } from "@/lib/security-headers";
 // - Every page gets a Content-Security-Policy with a fresh nonce. Next.js reads it from the
 //   request and puts the nonce on its own scripts; nothing else runs (docs/security/edge.md).
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
+  // The emergency stop (docs/incident.md), ahead of everything including the database.
+  if (killed("site")) {
+    return new NextResponse(SITE_PAUSED_TEXT, {
+      status: 503,
+      headers: { "content-type": "text/plain; charset=utf-8", "retry-after": "600" },
+    });
+  }
   const { pathname } = request.nextUrl;
   const limited = await edgeLimit({
     method: request.method,

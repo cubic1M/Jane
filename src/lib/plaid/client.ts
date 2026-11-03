@@ -1,3 +1,4 @@
+import { killed } from "@/config/kill-switches";
 import { Configuration, PlaidApi, PlaidEnvironments } from "plaid";
 
 // The Plaid API client, configured from env. PLAID_ENV defaults to sandbox, so nothing
@@ -6,7 +7,7 @@ import { Configuration, PlaidApi, PlaidEnvironments } from "plaid";
 let client: PlaidApi | undefined;
 
 export function plaidEnabled(): boolean {
-  return Boolean(process.env.PLAID_CLIENT_ID && process.env.PLAID_SECRET);
+  return Boolean(process.env.PLAID_CLIENT_ID && process.env.PLAID_SECRET) && !killed("banks");
 }
 
 // Plaid Investments (holdings and investment transactions, read-only) is billed per item and

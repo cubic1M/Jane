@@ -1,3 +1,4 @@
+import { UPLOADS_PAUSED_TEXT, killed } from "@/config/kill-switches";
 import {
   DOCUMENT_TYPES,
   MAX_DOCUMENTS,
@@ -49,6 +50,7 @@ export type UploadCheck =
 const TYPES_TEXT = "a PDF, JPEG, PNG or WebP file";
 
 export function checkUpload(file: UploadFile, bytes: Uint8Array, kept: number): UploadCheck {
+  if (killed("uploads")) return { ok: false, error: UPLOADS_PAUSED_TEXT };
   if (kept >= MAX_DOCUMENTS) {
     return {
       ok: false,
