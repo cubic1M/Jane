@@ -115,7 +115,8 @@ class TestFullTables(unittest.TestCase):
             self.assertLess(p99, 0.0005 * factor(), f"{n} p99 {p99 * 1e3:.3f} ms")
 
     def test_deterministic(self):
-        rules = SngRules()
+        # time limit off: under load a decision over 1 ms becomes an auto-fold and changes the table
+        rules = SngRules(enforce_time=False)
         lineup = NAMES + NAMES[:3]
         a = play_table([make(n) for n in lineup], rules, seed=42)
         b = play_table([make(n) for n in lineup], rules, seed=42)
