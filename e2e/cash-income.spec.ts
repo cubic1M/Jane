@@ -26,6 +26,9 @@ function statement(): string {
       `CREDIT,${day(back)},"ATM CASH DEPOSIT 1234 MAIN ST",${tips[i % tips.length].toFixed(2)},ATM,,,`,
     );
   }
+  // One today, so the month the page opens on always has tips: on the 3rd of a month the last
+  // tip above fell in the month before and the last groceries in this one, with no "In" to read.
+  rows.push(`CREDIT,${day(0)},"ATM CASH DEPOSIT 1234 MAIN ST",174.50,ATM,,,`);
   rows.push(`CREDIT,${day(33)},"BRANCH DEPOSIT",6500.00,DEPOSIT,,,`);
   for (const back of [65, 35, 5])
     rows.push(`DEBIT,${day(back)},"ZELLE TO OAK RIDGE APTS RENT",-1200.00,QUICKPAY_DEBIT,,,`);
