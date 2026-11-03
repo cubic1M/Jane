@@ -26,6 +26,14 @@ Page 2 of 3
 const OPTS = { today: "2026-10-19", risk: 3 as const };
 
 describe("parseDisclosure", () => {
+  // Anyone with a session can paste here, and a sample person needs no account.
+  it("skips a line far too long to be a fund, without slowing down", () => {
+    const line = `ABC${" ".repeat(20_000)}1`;
+    const started = performance.now();
+    expect(parseDisclosure(line, OPTS).funds).toEqual([]);
+    expect(performance.now() - started).toBeLessThan(2000);
+  });
+
   it("reads each fund's ticker, cost and kind, and says what it skipped", () => {
     const { funds, skipped } = parseDisclosure(DISCLOSURE, OPTS);
     expect(funds.map((f) => [f.ticker, f.expenseBps, f.kind])).toEqual([

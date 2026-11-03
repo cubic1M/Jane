@@ -72,4 +72,19 @@ describe("readOfx", () => {
     expect(looksLikeOfx("download", '<?xml version="1.0"?>\n<?OFX OFXHEADER="200"?>')).toBe(true);
     expect(looksLikeOfx("export.csv", "Date,Amount")).toBe(false);
   });
+
+  // Local build: 200 KB of unclosed tags took 2 seconds, and it grows with the square of the size.
+  it("reads 4 MB of unclosed tags without slowing down", () => {
+    const started = performance.now();
+    for (const tag of ["<STMTTRN>", "<LEDGERBAL>"]) {
+      readOfx({ name: "x.ofx", text: `<OFX>${tag.repeat(450_000)}` });
+    }
+    expect(performance.now() - started).toBeLessThan(5000);
+  });
+
+  it("keeps the line a skipped transaction started on", () => {
+    const text = "<OFX>\n\n<STMTTRN>\n<NAME>A\n</STMTTRN>\n<STMTTRN>\n<NAME>B\n</STMTTRN>\n";
+    const result = readOfx({ name: "x.ofx", text });
+    expect(result.ok && result.skipped.map((s) => s.line)).toEqual([3, 6]);
+  });
 });

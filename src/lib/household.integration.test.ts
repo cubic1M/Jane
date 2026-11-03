@@ -156,6 +156,15 @@ describe.runIf(url)("households against a real database", () => {
     await expect(acceptInvite(b, token, { client, now: NOW })).rejects.toThrow(/expired|used/);
   });
 
+  it("refuses an address too long to be one before any pattern reads it", async () => {
+    const { a } = await household();
+    const started = performance.now();
+    await expect(invitePartner(a, `${"a@".repeat(50_000)}.`, { client, now: NOW })).rejects.toThrow(
+      /partner's email/,
+    );
+    expect(performance.now() - started).toBeLessThan(2000);
+  });
+
   it("keeps households to two people", async () => {
     const { a } = await household();
     await expect(invitePartner(a, "third@example.com", { client, now: NOW })).rejects.toThrow(

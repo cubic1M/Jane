@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectDelimiter, parseCsv } from "./parse-csv";
+import { MAX_CELL_CHARS, MAX_COLUMNS, detectDelimiter, parseCsv } from "./parse-csv";
 
 describe("parseCsv", () => {
   it("splits simple rows and keeps line numbers", () => {
@@ -54,5 +54,18 @@ describe("detectDelimiter", () => {
       { line: 1, fields: ["Datum", "Betrag"] },
       { line: 2, fields: ["Sep 5, 2026", "-23,40"] },
     ]);
+  });
+
+  // Local build: 4 MB of nothing but columns took about 100 seconds to look at.
+  it("refuses a file with more columns than any statement has", () => {
+    const row = Array.from({ length: MAX_COLUMNS + 1 }, () => "a").join(",");
+    expect(() => parseCsv(`${row}\n`)).toThrow("too many columns");
+    const fits = Array.from({ length: MAX_COLUMNS }, () => "a").join(",");
+    expect(parseCsv(`${fits}\n`)[0].fields).toHaveLength(MAX_COLUMNS);
+  });
+
+  it("cuts a cell at a length no pattern downstream has to fear", () => {
+    const [record] = parseCsv(`a,${"x".repeat(MAX_CELL_CHARS * 2)}\n`);
+    expect(record.fields[1]).toHaveLength(MAX_CELL_CHARS);
   });
 });

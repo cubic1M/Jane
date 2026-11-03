@@ -287,4 +287,11 @@ describe("fund names", () => {
     expect(schwab.accounts[1].positions[0].name).toBe("Schwab US Broad Market ETF");
     expect(schwab.accounts[0].positions[0].name).toBe("Schwab S&P 500 Index");
   });
+
+  it("calls a file the CSV reader refuses not a positions file, instead of failing", () => {
+    for (const text of ['Symbol,Name\n"unclosed', `${"a,".repeat(5000)}\n`]) {
+      expect(detectPositionsLayout(text)).toBeNull();
+      expect(readPositionsFile(text)).toEqual({ error: NOT_POSITIONS });
+    }
+  });
 });
