@@ -68,6 +68,7 @@ describe("runJaneAgentSafely", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const client = {
       user: { findUnique: vi.fn().mockRejectedValue(new Error("database down")) },
+      $extends: () => client,
     } as unknown as PrismaClient;
     await expect(runJaneAgentSafely("u1", { client })).resolves.toBeUndefined();
     expect(console.error).toHaveBeenCalledWith("Jane's chat run failed", {

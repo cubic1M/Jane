@@ -2,7 +2,7 @@ import { LEDGER_UNIVERSE } from "@/config/portfolios";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
-import { scopedFor } from "@/lib/db-scoped";
+import { scopedFor, personTransaction } from "@/lib/db-scoped";
 import { marketData } from "@/lib/market";
 import { apply, LedgerError, type LedgerState } from "@/planning/practice-ledger";
 import { cachedCopy } from "@/lib/read-cache";
@@ -92,38 +92,42 @@ export class PaperBroker implements Broker {
       LEDGER_UNIVERSE,
     );
     const position = applied.state.positions[ticker];
-    const trade = await client.$transaction(async (tx) => {
-      const t = await tx.practiceTrade.create({
-        data: {
-          portfolioId: portfolio.id,
-          userId,
-          placedAt: now,
-          side: order.side,
-          ticker,
-          quantity: applied.quantity,
-          priceCents: bar.closeCents,
-          amountCents: order.amountCents,
-          gainCents: applied.gainCents,
-          reason: order.reason,
-          rule: order.rule,
-        },
-        select: { id: true },
-      });
-      await tx.practicePortfolio.update({
-        where: { id: portfolio.id },
-        data: { cashCents: applied.state.cashCents },
-      });
-      if (position) {
-        await tx.practicePosition.upsert({
-          where: { portfolioId_ticker: { portfolioId: portfolio.id, ticker } },
-          create: { portfolioId: portfolio.id, userId, ticker, ...position },
-          update: position,
+    const trade = await personTransaction(
+      userId,
+      async (tx) => {
+        const t = await tx.practiceTrade.create({
+          data: {
+            portfolioId: portfolio.id,
+            userId,
+            placedAt: now,
+            side: order.side,
+            ticker,
+            quantity: applied.quantity,
+            priceCents: bar.closeCents,
+            amountCents: order.amountCents,
+            gainCents: applied.gainCents,
+            reason: order.reason,
+            rule: order.rule,
+          },
+          select: { id: true },
         });
-      } else {
-        await tx.practicePosition.deleteMany({ where: { portfolioId: portfolio.id, ticker } });
-      }
-      return t;
-    });
+        await tx.practicePortfolio.update({
+          where: { id: portfolio.id },
+          data: { cashCents: applied.state.cashCents },
+        });
+        if (position) {
+          await tx.practicePosition.upsert({
+            where: { portfolioId_ticker: { portfolioId: portfolio.id, ticker } },
+            create: { portfolioId: portfolio.id, userId, ticker, ...position },
+            update: position,
+          });
+        } else {
+          await tx.practicePosition.deleteMany({ where: { portfolioId: portfolio.id, ticker } });
+        }
+        return t;
+      },
+      client,
+    );
     await logAudit(
       { type: "user", id: userId },
       "practice_trade",

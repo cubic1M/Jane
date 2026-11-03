@@ -15,7 +15,10 @@ import { cachedCopy, cachedRead, inReadCache, withReadCache } from "./read-cache
 // by any route (a model call, the user-scoped helper, an interactive transaction or a raw
 // query), so it can never hand back something stale.
 
-const url = process.env.TEST_DATABASE_URL;
+// On the owner, with the real client: this is about what the cache sees, not who may ask, and its
+// client hands out extended clients the no-bypass harness can't follow (src/test-setup/no-bypass.ts).
+vi.unmock("@/generated/prisma/client");
+const url = process.env.TEST_OWNER_DATABASE_URL ?? process.env.TEST_DATABASE_URL;
 
 describe.runIf(url)("the read cache", () => {
   let client: PrismaClient;

@@ -77,7 +77,7 @@ export async function loadGiving(
       },
     }),
     advice ? loadInvestmentTaxes(userId, year, { client, now }) : null,
-    client.user.findUnique({ where: { id: userId }, select: { timezone: true } }),
+    scopedFor(userId, client).me.findUnique({ where: { id: userId }, select: { timezone: true } }),
   ]);
   const receipts = new Set(profile?.givingReceipts ?? []);
   const gifts: Gift[] = tags.tagged

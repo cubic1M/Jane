@@ -56,7 +56,7 @@ export async function planQuestion(
   ]);
   const best = bestQuestion(buildProfile(data), data, asked);
   const value = best ? { fact: best.spec.fact, unlockCents: best.unlockCents } : {};
-  await client.janePreference.upsert({
+  await scopedFor(userId, client).janePreferences.upsert({
     where: { userId_kind_key: { userId, kind: "system", key: NEXT } },
     create: { userId, kind: "system", key: NEXT, value, label: "Next question" },
     update: { value },
@@ -92,7 +92,7 @@ export async function nextQuestion(
 export class QuestionError extends Error {}
 
 async function markAsked(userId: string, fact: string, client: PrismaClient, now: Date) {
-  await client.janePreference.upsert({
+  await scopedFor(userId, client).janePreferences.upsert({
     where: { userId_kind_key: { userId, kind: "system", key: `${ASKED}${fact}` } },
     create: {
       userId,

@@ -85,6 +85,7 @@ import { loadPractice } from "@/lib/practice/portfolio";
 import { practiceIdeasFor } from "./practice-ideas";
 import { PRACTICE_ONLY_NOTE, RULE_LABELS } from "./practice-copy";
 import { formatRate } from "@/lib/percent";
+import { scopedFor } from "@/lib/db-scoped";
 
 // Claude's tools for investment questions in Jane's chat (spec step 128 on): read-only,
 // scoped to the person, and every dollar figure recorded for the guardrails. Each later
@@ -1444,7 +1445,10 @@ export async function runInvestmentTool(
       if (!(await adviceMode(userId, { client }))) return out({ note: PRACTICE_ONLY_NOTE });
       const [agent, paper] = await Promise.all([
         loadAgentView(userId, { client }),
-        client.paperAccount.findUnique({ where: { userId }, select: { id: true } }),
+        scopedFor(userId, client).paperAccounts.findUnique({
+          where: { userId },
+          select: { id: true },
+        }),
       ]);
       const pct = (n: number) => `${Math.round(n * 1000) / 10}%`;
       const row = (r: EvidenceRow) => ({

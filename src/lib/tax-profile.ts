@@ -74,7 +74,7 @@ async function loadTaxFactsFrom(
     }),
     db.accounts.findMany({ select: { name: true, type: true, subtype: true } }),
     // The person's own settings: users have their own helpers, so a direct read by id.
-    client.user.findUnique({ where: { id: userId }, select: { state: true } }),
+    scopedFor(userId, client).me.findUnique({ where: { id: userId }, select: { state: true } }),
     db.lifeEvents.count({ where: { kind: "new_baby" } }),
     db.taxProfiles.findFirst({ select: PROFILE_SELECT }),
     // The household listed for insurance: the children in it are the dependants Jane offers.

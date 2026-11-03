@@ -122,13 +122,13 @@ export async function setRentReporting(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<void> {
   if (on) {
-    await client.rentReporting.upsert({
+    await scopedFor(userId, client).rentReporting.upsert({
       where: { userId },
       create: { userId, partner: RENT_REPORTING.partner, optedInAt: now },
       update: {},
     });
   } else {
-    await client.rentReporting.deleteMany({ where: { userId } });
+    await scopedFor(userId, client).rentReporting.deleteMany({ where: { userId } });
   }
   await logAudit({ type: "user", id: userId }, "rent_reporting_changed", null, { on });
 }
@@ -146,7 +146,7 @@ export async function saveDeposit(
   if (input.movedOutOn !== null && !/^\d{4}-\d{2}-\d{2}$/.test(input.movedOutOn)) {
     throw new RentingError("Give the day you moved out as a date.");
   }
-  const row = await client.securityDeposit.create({
+  const row = await scopedFor(userId, client).securityDeposits.create({
     data: {
       userId,
       amountCents: input.amountCents,
@@ -177,7 +177,7 @@ export async function markDepositReturned(
   if (!Number.isInteger(returnedCents) || returnedCents < 0) {
     throw new RentingError("The amount returned should be a dollar amount.");
   }
-  const done = await client.securityDeposit.updateMany({
+  const done = await scopedFor(userId, client).securityDeposits.updateMany({
     where: { id, userId },
     data: { returnedOn: new Date(isoDay(now)), returnedCents },
   });

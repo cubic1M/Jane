@@ -132,7 +132,10 @@ export async function runMonthClose(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<"closed" | "waiting" | "none"> {
-  const user = await client.user.findUnique({ where: { id: userId }, select: { timezone: true } });
+  const user = await scopedFor(userId, client).me.findUnique({
+    where: { id: userId },
+    select: { timezone: true },
+  });
   const today = localDate(now, user?.timezone);
   if (Number(today.slice(8, 10)) < MONTH_CLOSE_DAY) return "none";
   const month = previousMonth(today);

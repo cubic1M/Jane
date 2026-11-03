@@ -4,7 +4,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit, SYSTEM_ACTOR } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
-import { scopedFor } from "@/lib/db-scoped";
+import { scopedFor, personTransaction } from "@/lib/db-scoped";
 import { marketData } from "@/lib/market";
 import { value, type LedgerState } from "@/planning/practice-ledger";
 import { loadLedger, NoPracticePortfolio } from "./broker";
@@ -38,7 +38,7 @@ export async function startPractice(
     throw new PracticeError("Pick a starting amount.");
   // The monthly practice money and its day are the person's (their preferences).
   const prefs = await loadPreferences(userId, { client });
-  const row = await client.practicePortfolio.create({
+  const row = await scopedFor(userId, client).practicePortfolios.create({
     data: {
       userId,
       level,
@@ -133,23 +133,27 @@ export async function addPracticeMoney(
   if (!Number.isInteger(amountCents) || amountCents <= 0)
     throw new PracticeError("Pick an amount.");
   const { portfolio } = await loadLedger(userId, client);
-  await client.$transaction([
-    client.practiceTrade.create({
-      data: {
-        portfolioId: portfolio.id,
-        userId,
-        placedAt: now,
-        side: "deposit",
-        amountCents,
-        reason,
-        rule,
-      },
-    }),
-    client.practicePortfolio.update({
-      where: { id: portfolio.id },
-      data: { cashCents: { increment: amountCents } },
-    }),
-  ]);
+  await personTransaction(
+    userId,
+    async (tx) => {
+      await tx.practiceTrade.create({
+        data: {
+          portfolioId: portfolio.id,
+          userId,
+          placedAt: now,
+          side: "deposit",
+          amountCents,
+          reason,
+          rule,
+        },
+      });
+      await tx.practicePortfolio.update({
+        where: { id: portfolio.id, userId },
+        data: { cashCents: { increment: amountCents } },
+      });
+    },
+    client,
+  );
   await logAudit(
     { type: "user", id: userId },
     "practice_trade",

@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { validTimezone } from "@/lib/digest/week";
 import { requireUser } from "@/lib/session";
 import { teamAccessFor } from "@/lib/team-access-loader";
+import { scopedFor } from "@/lib/db-scoped";
 
 // Who saw my data (spec step 74): every time our concierge team or Jane's agent viewed or
 // acted on the person's data, newest first, by role only.
@@ -18,7 +19,7 @@ async function TeamAccessContent() {
   await connection();
   const [entries, prefs] = await Promise.all([
     teamAccessFor(user.id),
-    db.user.findUniqueOrThrow({ where: { id: user.id }, select: { timezone: true } }),
+    scopedFor(user.id).me.findUniqueOrThrow({ where: { id: user.id }, select: { timezone: true } }),
   ]);
   const when = new Intl.DateTimeFormat("en-US", {
     month: "short",

@@ -14,7 +14,7 @@ import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
-import { scopedFor } from "@/lib/db-scoped";
+import { scopedFor, personTransaction, type PersonTx } from "@/lib/db-scoped";
 import { strategyBoard } from "@/lib/investments/strategy-board";
 import { log } from "@/lib/log";
 import { practiceProfileOf } from "@/lib/practice/preferences";
@@ -36,6 +36,7 @@ import { latestCloses, paperPrices, type PaperPrices } from "./prices";
 import { strategyTargets } from "./targets";
 import { isoDay as dayOf } from "@/lib/dates";
 import { formatPercent as pct } from "@/lib/percent";
+import { systemDb } from "@/lib/system-db";
 
 // The paper account (2026-10-26): simulated money the person starts from the investments page,
 // run by the strategy they picked ("Use this strategy") on real daily closes. Each day after the
@@ -95,7 +96,7 @@ const stateOf = (a: Loaded): LedgerState => ({
 
 // Writes a state's positions over the account's (in a transaction).
 async function savePositions(
-  tx: Pick<PrismaClient, "paperPosition">,
+  tx: Pick<PersonTx, "paperPosition">,
   userId: string,
   accountId: string,
   state: LedgerState,
@@ -155,50 +156,54 @@ export async function startPaperAccount(
     fills.push({ ...o, priceCents: latest.prices[o.ticker], quantity: done.quantity ?? 0 });
   }
   const hold = holdUnits(level, startingCents, latest.prices);
-  const account = await client.$transaction(async (tx) => {
-    const a = await tx.paperAccount.create({
-      data: {
-        userId,
-        startingCents,
-        cashCents: state.cashCents,
-        level,
-        strategy: key,
-        priceSource: source.name,
-        hold,
-        prices: latest.prices,
-        pricesDate: new Date(`${latest.date}T00:00:00Z`),
-        startedAt: now,
-        lastRunAt: now,
-      },
-      select: { id: true },
-    });
-    await savePositions(tx, userId, a.id, state);
-    if (fills.length > 0)
-      await tx.paperTrade.createMany({
-        data: fills.map((f) => ({
+  const account = await personTransaction(
+    userId,
+    async (tx) => {
+      const a = await tx.paperAccount.create({
+        data: {
+          userId,
+          startingCents,
+          cashCents: state.cashCents,
+          level,
+          strategy: key,
+          priceSource: source.name,
+          hold,
+          prices: latest.prices,
+          pricesDate: new Date(`${latest.date}T00:00:00Z`),
+          startedAt: now,
+          lastRunAt: now,
+        },
+        select: { id: true },
+      });
+      await savePositions(tx, userId, a.id, state);
+      if (fills.length > 0)
+        await tx.paperTrade.createMany({
+          data: fills.map((f) => ({
+            accountId: a.id,
+            userId,
+            placedAt: now,
+            ticker: f.ticker,
+            side: f.side,
+            quantity: f.quantity,
+            priceCents: f.priceCents,
+            amountCents: f.amountCents,
+            reason: `Started: ${label} holds ${pct(t.targets[f.ticker] ?? 0)} in ${f.ticker}.`,
+            source: "start",
+          })),
+        });
+      await tx.paperValue.create({
+        data: {
           accountId: a.id,
           userId,
-          placedAt: now,
-          ticker: f.ticker,
-          side: f.side,
-          quantity: f.quantity,
-          priceCents: f.priceCents,
-          amountCents: f.amountCents,
-          reason: `Started: ${label} holds ${pct(t.targets[f.ticker] ?? 0)} in ${f.ticker}.`,
-          source: "start",
-        })),
+          date: new Date(`${latest.date}T00:00:00Z`),
+          valueCents: value(state, latest.prices),
+          holdCents: holdValue(hold, latest.prices),
+        },
       });
-    await tx.paperValue.create({
-      data: {
-        accountId: a.id,
-        userId,
-        date: new Date(`${latest.date}T00:00:00Z`),
-        valueCents: value(state, latest.prices),
-        holdCents: holdValue(hold, latest.prices),
-      },
-    });
-    return a;
-  });
+      return a;
+    },
+    client,
+  );
   await logAudit(
     { type: "user", id: userId },
     "paper_account_started",
@@ -380,7 +385,10 @@ export async function runPaperDayForAll({
   client = defaultClient,
   now = new Date(),
 }: Options = {}) {
-  const accounts = await client.paperAccount.findMany({ select: { userId: true } });
+  const accounts = await systemDb(
+    "Cron: finds who to run for, across people",
+    client,
+  ).paperAccount.findMany({ select: { userId: true } });
   let ran = 0;
   let failed = 0;
   for (const { userId } of accounts) {
@@ -432,34 +440,38 @@ export async function takeSignal(
     { ticker: signal.ticker, side: signal.side as "buy" | "sell", amountCents: amount },
     signal.priceCents,
   );
-  const trade = await client.$transaction(async (tx) => {
-    await tx.paperAccount.update({
-      where: { id: account.id, userId },
-      data: { cashCents: done.state.cashCents },
-    });
-    await savePositions(tx, userId, account.id, done.state);
-    const tr = await tx.paperTrade.create({
-      data: {
-        accountId: account.id,
-        userId,
-        placedAt: now,
-        ticker: signal.ticker,
-        side: signal.side,
-        quantity: done.quantity ?? 0,
-        priceCents: signal.priceCents,
-        amountCents: amount,
-        reason: signal.reason,
-        source: signal.source,
-        signalId: signal.id,
-      },
-      select: { id: true },
-    });
-    await tx.paperSignal.update({
-      where: { id: signal.id, userId },
-      data: { status: "taken", decidedAt: now },
-    });
-    return tr;
-  });
+  const trade = await personTransaction(
+    userId,
+    async (tx) => {
+      await tx.paperAccount.update({
+        where: { id: account.id, userId },
+        data: { cashCents: done.state.cashCents },
+      });
+      await savePositions(tx, userId, account.id, done.state);
+      const tr = await tx.paperTrade.create({
+        data: {
+          accountId: account.id,
+          userId,
+          placedAt: now,
+          ticker: signal.ticker,
+          side: signal.side,
+          quantity: done.quantity ?? 0,
+          priceCents: signal.priceCents,
+          amountCents: amount,
+          reason: signal.reason,
+          source: signal.source,
+          signalId: signal.id,
+        },
+        select: { id: true },
+      });
+      await tx.paperSignal.update({
+        where: { id: signal.id, userId },
+        data: { status: "taken", decidedAt: now },
+      });
+      return tr;
+    },
+    client,
+  );
   await logAudit(
     { type: "user", id: userId },
     "paper_trade_taken",
@@ -527,19 +539,23 @@ export async function revertTrade(
   } catch {
     return { ok: false, error: "Later trades changed it, so it can't be taken back." };
   }
-  await client.$transaction(async (tx) => {
-    await tx.paperAccount.update({
-      where: { id: account.id, userId },
-      data: { cashCents: done.state.cashCents },
-    });
-    await savePositions(tx, userId, account.id, done.state);
-    await tx.paperTrade.update({ where: { id: trade.id, userId }, data: { revertedAt: now } });
-    if (trade.signalId)
-      await tx.paperSignal.update({
-        where: { id: trade.signalId, userId },
-        data: { status: "open", decidedAt: null },
+  await personTransaction(
+    userId,
+    async (tx) => {
+      await tx.paperAccount.update({
+        where: { id: account.id, userId },
+        data: { cashCents: done.state.cashCents },
       });
-  });
+      await savePositions(tx, userId, account.id, done.state);
+      await tx.paperTrade.update({ where: { id: trade.id, userId }, data: { revertedAt: now } });
+      if (trade.signalId)
+        await tx.paperSignal.update({
+          where: { id: trade.signalId, userId },
+          data: { status: "open", decidedAt: null },
+        });
+    },
+    client,
+  );
   await logAudit(
     { type: "user", id: userId },
     "paper_trade_reverted",

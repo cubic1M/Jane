@@ -28,6 +28,7 @@ import { loadLedger, NoPracticePortfolio, practiceBroker } from "./broker";
 import { scanPreferences } from "./opportunity-prefs";
 import { practiceProfileOf } from "./preferences";
 import { DAY_MS } from "@/lib/dates";
+import { systemDb } from "@/lib/system-db";
 
 // The daily scan of each practice portfolio (spec step 292, Phase AW, Stage A), run by Vercel
 // Cron (/api/cron/practice-scan). For each portfolio that isn't paused: the monthly practice
@@ -75,7 +76,7 @@ async function withSummaries(
   const keyed = headlines.map((h) => ({ h, key: newsKey(feed, "headline", h) }));
   const rows =
     keyed.length > 0
-      ? await client.marketNews.findMany({
+      ? await systemDb("Market data is shared, no one's own", client).marketNews.findMany({
           where: { key: { in: keyed.map((k) => k.key) } },
           select: { key: true, summary: true, summaryBy: true },
         })
@@ -316,7 +317,7 @@ export async function scanOnOpen(
   });
   if (!portfolio || portfolio.paused) return null;
   const since = new Date(now.getTime() - ON_OPEN_SCAN_MINUTES * 60_000);
-  const { count } = await client.practicePortfolio.updateMany({
+  const { count } = await scopedFor(userId, client).practicePortfolios.updateMany({
     where: {
       id: portfolio.id,
       userId,
@@ -359,7 +360,10 @@ export async function runPracticeDayForAll({
   now = new Date(),
   userIds,
 }: Options & { userIds?: readonly string[] } = {}) {
-  const rows = await client.practicePortfolio.findMany({
+  const rows = await systemDb(
+    "Cron: finds who to run for, across people",
+    client,
+  ).practicePortfolio.findMany({
     where: { paused: false, ...(userIds ? { userId: { in: [...userIds] } } : {}) },
     select: { userId: true },
   });

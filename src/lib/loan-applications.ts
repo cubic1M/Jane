@@ -125,7 +125,7 @@ export async function prepareApplication(
     throw new LoanApplicationError(`You're already applying with ${under.lender} for this one.`);
   }
   // Users have their own helpers, so a read of these columns by id.
-  const user = await client.user.findUnique({
+  const user = await scopedFor(userId, client).me.findUnique({
     where: { id: userId },
     select: { name: true, email: true },
   });

@@ -22,10 +22,14 @@ export type SystemDb = Omit<PrismaClient, TransactionOnly> & { readonly __system
 export type SystemTx = Prisma.TransactionClient & { readonly __system: true };
 
 function extended(client: PrismaClient): SystemDb {
+  // Something that can't be extended, a transaction already switched or a unit test's stand-in, is
+  // used as it is. A real client always can be.
+  if (typeof client.$extends !== "function") return client as unknown as SystemDb;
   return client.$extends({
     query: {
       async $allOperations({ operation, args, query }) {
-        const reads = READ_OPERATIONS.has(operation);
+        // One flight, its own implicit transaction: a read, or one raw statement of any kind.
+        const reads = READ_OPERATIONS.has(operation) || operation.startsWith("$");
         const send = () =>
           withSystemRole((switched) =>
             switched
@@ -40,7 +44,7 @@ function extended(client: PrismaClient): SystemDb {
                   .then(([, result]) => result)
               : (query(args) as Promise<unknown>),
           );
-        if (reads) return send();
+        if (READ_OPERATIONS.has(operation)) return send();
         // A write changes what the page's scoped reads would see (src/lib/read-memo.ts).
         forgetReads();
         try {

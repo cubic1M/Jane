@@ -179,7 +179,7 @@ export async function deliverChatNotifications(
   // Spec step 138: a trial person is sample data, never emailed or pushed, whatever sends it.
   if (isTrialUser(userId)) return none;
   // Users have their own helpers, so a read of these columns by id.
-  const user = await client.user.findUnique({
+  const user = await scopedFor(userId, client).me.findUnique({
     where: { id: userId },
     select: { email: true, timezone: true, deletedAt: true, chatNotifyPrefs: true },
   });
@@ -362,7 +362,7 @@ export async function queueChatNotifications(
   }: Options & { trigger?: Trigger; deliver?: typeof deliverChatNotifications } = {},
 ): Promise<string | null> {
   if (trigger === "open") return null;
-  const user = await client.user.findUnique({
+  const user = await scopedFor(userId, client).me.findUnique({
     where: { id: userId },
     select: { chatNotifyPrefs: true },
   });

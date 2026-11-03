@@ -47,7 +47,10 @@ export async function loadAttention(
       select: { key: true, createdAt: true },
     }),
     timezone === undefined
-      ? client.user.findUnique({ where: { id: userId }, select: { timezone: true } })
+      ? scopedFor(userId, client).me.findUnique({
+          where: { id: userId },
+          select: { timezone: true },
+        })
       : null,
   ]);
   const resumed = Object.fromEntries(resumes.map((r) => [r.key.slice(RESUME.length), r.createdAt]));
@@ -72,7 +75,7 @@ export async function resumeKind(
   const label = labelOf(source);
   const key = `${RESUME}${source}`;
   const data = { value: {}, label: `Bring back ${label}`, createdAt: now };
-  await client.janePreference.upsert({
+  await scopedFor(userId, client).janePreferences.upsert({
     where: { userId_kind_key: { userId, kind: "attention", key } },
     create: { userId, kind: "attention", key, ...data },
     update: data,

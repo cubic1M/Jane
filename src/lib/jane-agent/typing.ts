@@ -100,7 +100,7 @@ export async function lastTopic(
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       select: { refs: true, createdAt: true },
     }),
-    client.user.findUnique({ where: { id: userId }, select: { timezone: true } }),
+    scopedFor(userId, client).me.findUnique({ where: { id: userId }, select: { timezone: true } }),
   ]);
   if (!last) return null;
   if (
@@ -134,7 +134,7 @@ export async function lastCardTopic(
       take: CARD_TOPIC_LOOKBACK,
       select: { refs: true, createdAt: true },
     }),
-    client.user.findUnique({ where: { id: userId }, select: { timezone: true } }),
+    scopedFor(userId, client).me.findUnique({ where: { id: userId }, select: { timezone: true } }),
   ]);
   const today = localTime(now, user?.timezone ?? null).date;
   for (const row of rows) {

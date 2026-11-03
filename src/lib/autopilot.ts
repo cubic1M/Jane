@@ -5,6 +5,10 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { applyStandingRules, saveRules } from "@/lib/standing-rules";
+import { scopedFor } from "@/lib/db-scoped";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "A person's own row: jane_rls only reads users";
 
 // Autopilot (spec step 57): the person's one choice of how much Jane does on its own. It
 // sets every standing rule, then applies them straight away.
@@ -38,7 +42,7 @@ export async function setAutopilot(
   );
   // "Everything allowed" also accepts no-strings call offers; "Ask me first" never does;
   // "safe" leaves the person's own choice alone.
-  await client.user.update({
+  await systemDb(WHY, client).user.update({
     where: { id: userId },
     data: {
       autopilot: level,
@@ -61,11 +65,17 @@ export async function setAutopilot(
 
 // Fine-tuning rules by hand moves the person to "custom".
 export async function markCustom(userId: string, { client = defaultClient }: Options = {}) {
-  await client.user.update({ where: { id: userId }, data: { autopilot: "custom" } });
+  await systemDb(WHY, client).user.update({
+    where: { id: userId },
+    data: { autopilot: "custom" },
+  });
 }
 
 export async function autopilotOf(userId: string, { client = defaultClient }: Options = {}) {
-  const user = await client.user.findUnique({ where: { id: userId }, select: { autopilot: true } });
+  const user = await scopedFor(userId, client).me.findUnique({
+    where: { id: userId },
+    select: { autopilot: true },
+  });
   return user?.autopilot ?? null;
 }
 
@@ -74,6 +84,9 @@ export async function setAcceptSimpleOffers(
   accept: boolean,
   { client = defaultClient }: Options = {},
 ) {
-  await client.user.update({ where: { id: userId }, data: { acceptSimpleOffers: accept } });
+  await systemDb(WHY, client).user.update({
+    where: { id: userId },
+    data: { acceptSimpleOffers: accept },
+  });
   await track(userId, "call_offer_limit_set", { accept });
 }

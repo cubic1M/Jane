@@ -14,7 +14,7 @@ import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
-import { scopedFor } from "@/lib/db-scoped";
+import { scopedFor, personTransaction } from "@/lib/db-scoped";
 import { runAgent, startState } from "@/planning/trading-agent/engine";
 import { marketOfPolicy, policyByKey } from "@/planning/trading-agent/policies";
 import type { EvidenceRow } from "@/planning/trading-agent/report";
@@ -124,27 +124,31 @@ export async function startTradingAgent(
     lastBarN: 0,
   };
   const stored: Stored = { state, hold: null };
-  await client.$transaction(async (tx) => {
-    await tx.paperPosition.deleteMany({ where: { accountId: account.id, userId } });
-    if (trades.length > 0) await tx.paperTrade.createMany({ data: trades });
-    await tx.paperSignal.updateMany({
-      where: { accountId: account.id, userId, status: "open" },
-      data: { status: "expired", decidedAt: now },
-    });
-    await tx.paperAccount.update({
-      where: { id: account.id, userId },
-      data: {
-        cashCents: cash,
-        agentPolicy: policy.key,
-        agentParam: param,
-        agentInterval: choice.interval,
-        agentMarket: market,
-        agentState: stored as never,
-        agentStartedAt: now,
-        agentLastBarAt: null,
-      },
-    });
-  });
+  await personTransaction(
+    userId,
+    async (tx) => {
+      await tx.paperPosition.deleteMany({ where: { accountId: account.id, userId } });
+      if (trades.length > 0) await tx.paperTrade.createMany({ data: trades });
+      await tx.paperSignal.updateMany({
+        where: { accountId: account.id, userId, status: "open" },
+        data: { status: "expired", decidedAt: now },
+      });
+      await tx.paperAccount.update({
+        where: { id: account.id, userId },
+        data: {
+          cashCents: cash,
+          agentPolicy: policy.key,
+          agentParam: param,
+          agentInterval: choice.interval,
+          agentMarket: market,
+          agentState: stored as never,
+          agentStartedAt: now,
+          agentLastBarAt: null,
+        },
+      });
+    },
+    client,
+  );
   await logAudit(
     { type: "user", id: userId },
     "paper_agent_started",
@@ -307,53 +311,57 @@ export async function tickTradingAgent(
     run.trades,
     run.state.units,
   );
-  const saved = await client.$transaction(async (tx) => {
-    // Only if no other tick moved it on meanwhile.
-    const claimed = await tx.paperAccount.updateMany({
-      where: { id: account.id, userId, agentLastBarAt: account.agentLastBarAt },
-      data: {
-        agentLastBarAt: new Date(run.state.lastBarAt!),
-        agentState: { state: run.state, hold } as never,
-        cashCents: Math.max(0, Math.floor(run.state.cash)),
-        prices: { ...(account.prices as Record<string, number>), ...lastPrices },
-        pricesDate: new Date(`${run.state.lastBarAt!.slice(0, 10)}T00:00:00Z`),
-        priceSource: source.real ? "live" : "sample",
-        lastRunAt: now,
-      },
-    });
-    if (claimed.count === 0) return false;
-    await tx.paperPosition.deleteMany({ where: { accountId: account.id, userId } });
-    if (positions.length > 0)
-      await tx.paperPosition.createMany({
-        data: positions.map((p) => ({ ...p, accountId: account.id, userId })),
+  const saved = await personTransaction(
+    userId,
+    async (tx) => {
+      // Only if no other tick moved it on meanwhile.
+      const claimed = await tx.paperAccount.updateMany({
+        where: { id: account.id, userId, agentLastBarAt: account.agentLastBarAt },
+        data: {
+          agentLastBarAt: new Date(run.state.lastBarAt!),
+          agentState: { state: run.state, hold } as never,
+          cashCents: Math.max(0, Math.floor(run.state.cash)),
+          prices: { ...(account.prices as Record<string, number>), ...lastPrices },
+          pricesDate: new Date(`${run.state.lastBarAt!.slice(0, 10)}T00:00:00Z`),
+          priceSource: source.real ? "live" : "sample",
+          lastRunAt: now,
+        },
       });
-    if (run.trades.length > 0)
-      await tx.paperTrade.createMany({
-        data: run.trades.map((t) => ({
-          accountId: account.id,
-          userId,
-          placedAt: new Date(t.at),
-          ticker: t.ticker,
-          side: t.side,
-          quantity: t.quantity,
-          priceCents: Math.round(t.priceCents),
-          amountCents: Math.round(t.amountCents),
-          feeCents: Math.round(t.feeCents),
-          spreadCents: Math.round(t.spreadCents),
-          reason: t.reason,
-          source: t.source === "rule" ? "agent" : t.source,
-        })),
-      });
-    for (const [day, v] of byDay) {
-      const date = new Date(`${day}T00:00:00Z`);
-      await tx.paperValue.upsert({
-        where: { accountId_date: { accountId: account.id, date } },
-        create: { accountId: account.id, userId, date, ...v },
-        update: v,
-      });
-    }
-    return true;
-  });
+      if (claimed.count === 0) return false;
+      await tx.paperPosition.deleteMany({ where: { accountId: account.id, userId } });
+      if (positions.length > 0)
+        await tx.paperPosition.createMany({
+          data: positions.map((p) => ({ ...p, accountId: account.id, userId })),
+        });
+      if (run.trades.length > 0)
+        await tx.paperTrade.createMany({
+          data: run.trades.map((t) => ({
+            accountId: account.id,
+            userId,
+            placedAt: new Date(t.at),
+            ticker: t.ticker,
+            side: t.side,
+            quantity: t.quantity,
+            priceCents: Math.round(t.priceCents),
+            amountCents: Math.round(t.amountCents),
+            feeCents: Math.round(t.feeCents),
+            spreadCents: Math.round(t.spreadCents),
+            reason: t.reason,
+            source: t.source === "rule" ? "agent" : t.source,
+          })),
+        });
+      for (const [day, v] of byDay) {
+        const date = new Date(`${day}T00:00:00Z`);
+        await tx.paperValue.upsert({
+          where: { accountId_date: { accountId: account.id, date } },
+          create: { accountId: account.id, userId, date, ...v },
+          update: v,
+        });
+      }
+      return true;
+    },
+    client,
+  );
   if (!saved) return none;
   return { ran: true, bars: run.values.length, trades: run.trades.length };
 }

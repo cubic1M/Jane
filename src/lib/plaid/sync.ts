@@ -58,6 +58,7 @@ import { scanSuggestions } from "@/lib/suggestions";
 import { markScanDone } from "@/lib/scan";
 import { phaseTimer } from "@/lib/trial-timing";
 import { meteredClaude } from "@/lib/claude-budget";
+import { systemDb } from "@/lib/system-db";
 
 // Brings one Plaid item up to date: accounts, transactions since the saved cursor
 // (added, modified and removed), recurring streams, loans and card rates (Liabilities,
@@ -625,7 +626,10 @@ export async function syncDemoInvestments(
   itemId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<void> {
-  const item = await client.plaidItem.findUnique({
+  const item = await systemDb(
+    "A sync job starts from the item's id, before it knows whose",
+    client,
+  ).plaidItem.findUnique({
     where: { id: itemId },
     select: { id: true, userId: true, accessTokenEncrypted: true, demoExtras: true },
   });
@@ -666,7 +670,10 @@ async function syncItemWork(
   // The first scan's phases, logged once as trial_timing (where the first minute goes).
   const timing = phaseTimer("first_sync");
   // The one unscoped read: finds the item's owner so everything after is scoped to them.
-  const item = await client.plaidItem.findUnique({
+  const item = await systemDb(
+    "A sync job starts from the item's id, before it knows whose",
+    client,
+  ).plaidItem.findUnique({
     where: { id: itemId },
     select: {
       id: true,

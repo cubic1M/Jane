@@ -159,7 +159,7 @@ export async function addFamilyCredit(
   if (input.kind === "cosigned" && balanceCents === null && monthlyPaymentCents === null) {
     throw new FamilyCreditError("Give what's owed or the monthly payment, so I can count it.");
   }
-  const row = await client.familyCreditHelp.create({
+  const row = await scopedFor(userId, client).familyCredit.create({
     data: {
       userId,
       kind: input.kind,
@@ -188,7 +188,7 @@ export async function setMissed(
   missed: boolean,
   { client = defaultClient }: Options = {},
 ): Promise<void> {
-  const done = await client.familyCreditHelp.updateMany({
+  const done = await scopedFor(userId, client).familyCredit.updateMany({
     where: { id, userId, kind: "cosigned" },
     data: { missed },
   });
@@ -208,7 +208,7 @@ export async function removeFamilyCredit(
   id: string,
   { client = defaultClient }: Options = {},
 ): Promise<void> {
-  const done = await client.familyCreditHelp.deleteMany({ where: { id, userId } });
+  const done = await scopedFor(userId, client).familyCredit.deleteMany({ where: { id, userId } });
   if (done.count === 0) throw new FamilyCreditError("I can't find that one.");
   await logAudit(
     { type: "user", id: userId },

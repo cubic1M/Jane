@@ -29,7 +29,7 @@ export async function ensureDemoInvestingFacts(
   const excludes = DEMO_VALUES_EXCLUDES[person];
   if (excludes && excludes.length > 0) {
     // One row a person: what they've already set stays.
-    await client.valuesPreference.upsert({
+    await scopedFor(userId, client).valuesPreferences.upsert({
       where: { userId },
       create: { userId, excludes: [...excludes] },
       update: {},
@@ -44,7 +44,7 @@ export async function ensureDemoInvestingFacts(
   });
   if (accounts.length === 0) return;
   const confirmedOn = new Date(`${now.toISOString().slice(0, 10)}T00:00:00Z`);
-  await client.accountBeneficiary.createMany({
+  await db.accountBeneficiaries.createMany({
     data: accounts.map((a) => ({
       userId,
       accountId: a.id,
@@ -68,7 +68,7 @@ async function ensureDemoTold(
   for (const [key, value] of Object.entries(told)) {
     const spec = factSpec(key);
     if (!spec) continue;
-    await client.janePreference.upsert({
+    await scopedFor(userId, client).janePreferences.upsert({
       where: { userId_kind_key: { userId, kind: "fact", key: `${PROFILE_FACT_PREFIX}${key}` } },
       create: {
         userId,
@@ -82,7 +82,7 @@ async function ensureDemoTold(
   }
   const credit = DEMO_FAMILY_CREDIT[person] ?? [];
   if (credit.length > 0 && (await scopedFor(userId, client).familyCredit.count()) === 0) {
-    await client.familyCreditHelp.createMany({
+    await scopedFor(userId, client).familyCredit.createMany({
       data: credit.map((c) => ({
         userId,
         kind: c.kind,

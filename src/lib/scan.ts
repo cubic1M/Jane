@@ -2,6 +2,7 @@ import { SCAN_MAX_MINUTES } from "@/config/scan";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { systemDb } from "@/lib/system-db";
 
 // The first scan after a bank is linked: still going until detection, the sectors' work and
 // Jane's first run have finished (first_scan_done_at), for at most SCAN_MAX_MINUTES from
@@ -13,7 +14,7 @@ export async function scanInProgress(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<boolean> {
-  const user = await client.user.findUnique({
+  const user = await scopedFor(userId, client).me.findUnique({
     where: { id: userId },
     select: { firstScanDoneAt: true },
   });
@@ -28,7 +29,7 @@ export async function markScanDone(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<void> {
-  await client.user.updateMany({
+  await systemDb("A person's own row: jane_rls only reads users", client).user.updateMany({
     where: { id: userId, firstScanDoneAt: null },
     data: { firstScanDoneAt: now },
   });
@@ -66,7 +67,7 @@ export async function scanProgress(
 ): Promise<ScanProgress> {
   const db = scopedFor(userId, client);
   const [user, accounts, span, suggestions] = await Promise.all([
-    client.user.findUnique({
+    scopedFor(userId, client).me.findUnique({
       where: { id: userId },
       select: { firstDetectionAt: true, firstScanDoneAt: true },
     }),

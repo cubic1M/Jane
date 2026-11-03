@@ -4,6 +4,7 @@ import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { DAY_MS } from "@/lib/dates";
+import { systemDb, systemTransaction } from "@/lib/system-db";
 
 // The checklist on Home for someone's first weeks. Each item ticks itself from what the
 // person has actually done (never from clicks on the checklist), and each fires a funnel
@@ -40,7 +41,7 @@ export async function firstWeekChecklist(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<Checklist | null> {
-  const user = await client.user.findUnique({
+  const user = await scopedFor(userId, client).me.findUnique({
     where: { id: userId },
     select: {
       createdAt: true,
@@ -120,17 +121,22 @@ export async function recordChecklistProgress(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<void> {
   if (checklist.newlyDone.length === 0) return;
-  const fresh = await client.$transaction(async (tx) => {
-    const [row] = await tx.$queryRaw<{ checklist_progress: unknown }[]>`
+  const why = "A person's own row, locked: jane_rls only reads users";
+  const fresh = await systemTransaction(
+    why,
+    async (tx) => {
+      const [row] = await tx.$queryRaw<{ checklist_progress: unknown }[]>`
       SELECT checklist_progress FROM users WHERE id = ${userId} FOR UPDATE`;
-    if (!row) return [];
-    const progress = progressOf(row.checklist_progress);
-    const added = checklist.newlyDone.filter((key) => !(key in progress));
-    if (added.length === 0) return [];
-    for (const key of added) progress[key] = now.toISOString();
-    await tx.user.update({ where: { id: userId }, data: { checklistProgress: progress } });
-    return added;
-  });
+      if (!row) return [];
+      const progress = progressOf(row.checklist_progress);
+      const added = checklist.newlyDone.filter((key) => !(key in progress));
+      if (added.length === 0) return [];
+      for (const key of added) progress[key] = now.toISOString();
+      await tx.user.update({ where: { id: userId }, data: { checklistProgress: progress } });
+      return added;
+    },
+    client,
+  );
   for (const item of fresh) await track(userId, "checklist_item_done", { item });
   if (fresh.length > 0 && checklist.complete) await track(userId, "checklist_completed");
 }
@@ -140,7 +146,10 @@ export async function dismissChecklist(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<void> {
-  const { count } = await client.user.updateMany({
+  const { count } = await systemDb(
+    "A person's own row: jane_rls only reads users",
+    client,
+  ).user.updateMany({
     where: { id: userId, checklistDismissedAt: null },
     data: { checklistDismissedAt: now },
   });

@@ -5,6 +5,7 @@ import { PrismaClient } from "@/generated/prisma/client";
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import { rlsCoverage, rlsSwitchWorks } from "./rls-coverage";
+import { systemDb } from "./system-db";
 
 // What /admin/health and the daily check read about row-level security, against a real, migrated
 // and protected Postgres (CI runs scripts/rls-protect.mjs after migrating).
@@ -21,7 +22,7 @@ describe.runIf(url)("row-level security coverage", () => {
   afterAll(() => client.$disconnect());
 
   it("covers every user-owned table, the ones owned through a parent too", async () => {
-    const coverage = await rlsCoverage({ client });
+    const coverage = await rlsCoverage({ client: systemDb("test: the coverage check", client) });
 
     expect(coverage.role).toBe(true);
     expect(coverage.missing).toEqual([]);

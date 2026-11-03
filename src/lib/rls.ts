@@ -133,7 +133,7 @@ export const rlsStatus = () => state.status;
 // One interactive transaction as `userId`: every statement in `run`, raw SQL included, sees
 // only that person's rows. `client` may be extended (the scoped client's own transactions).
 export function asUserTransaction<Tx extends RawClient, T>(
-  client: { $transaction<R>(fn: (tx: Tx) => Promise<R>): Promise<R> },
+  client: { $transaction<R>(fn: (tx: Tx) => Promise<R>, options?: object): Promise<R> },
   userId: string,
   run: (tx: Tx) => Promise<T>,
 ): Promise<T> {
@@ -147,7 +147,7 @@ export function asUserTransaction<Tx extends RawClient, T>(
             throw error;
           });
         return run(tx);
-      }),
+      }, SCOPED_QUERY_TRANSACTION),
     () => setupFailed,
   );
 }

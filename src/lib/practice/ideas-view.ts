@@ -87,7 +87,7 @@ export async function answerIdeaHere(
   });
   const s = idea && practiceSuggestion(idea);
   if (!s) return null;
-  await client.suggestion.upsert({
+  await scopedFor(userId, client).suggestions.upsert({
     where: { userId_key: { userId, key: s.id } },
     update: {},
     create: {

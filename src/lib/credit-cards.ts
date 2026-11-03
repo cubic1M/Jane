@@ -220,7 +220,7 @@ export async function applyForCard(
     select: { id: true },
   });
   if (already) throw new CreditCardError(`You've already applied for the ${product.name}.`);
-  const user = await client.user.findUnique({
+  const user = await scopedFor(userId, client).me.findUnique({
     where: { id: userId },
     select: { name: true, email: true },
   });

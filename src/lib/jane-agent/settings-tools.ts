@@ -109,7 +109,7 @@ export async function runSettingsTool(
 
   if (name === "notification_settings") {
     const [user, twoFactor, devices] = await Promise.all([
-      client.user.findUniqueOrThrow({
+      scopedFor(userId, client).me.findUniqueOrThrow({
         where: { id: userId },
         select: {
           digestEnabled: true,
