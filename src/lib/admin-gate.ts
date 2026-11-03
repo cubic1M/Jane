@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma/client";
+import { stillAnAdmin } from "@/lib/admin-emails";
 import { db as defaultClient } from "@/lib/db";
 
 // Auth.js's database-session cookie: the __Secure- name on HTTPS, the plain one locally.
@@ -20,10 +21,20 @@ export async function adminSession(
   if (!token) return { state: "none", userId: null };
   const session = await client.session.findUnique({
     where: { sessionToken: token },
-    select: { expires: true, mfaVerifiedAt: true, userId: true, user: { select: { role: true } } },
+    select: {
+      expires: true,
+      mfaVerifiedAt: true,
+      userId: true,
+      user: { select: { role: true, email: true } },
+    },
   });
   // user can come back empty when the account is deleted between Prisma's two reads.
-  if (!session || session.expires <= now || session.user?.role !== "admin") {
+  if (
+    !session ||
+    session.expires <= now ||
+    session.user?.role !== "admin" ||
+    !stillAnAdmin(session.user.email)
+  ) {
     return { state: "none", userId: null };
   }
   return { state: session.mfaVerifiedAt ? "verified" : "needs_mfa", userId: session.userId };

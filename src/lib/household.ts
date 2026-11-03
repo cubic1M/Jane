@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { HOUSEHOLD_INVITE_DAYS, HOUSEHOLD_MAX_MEMBERS } from "@/config/household";
-import type { PrismaClient } from "@/generated/prisma/client";
+import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
@@ -126,6 +126,8 @@ export async function acceptInvite(
       data: { acceptedAt: now },
     });
     if (count === 0) throw new HouseholdError("This invite link was already used.");
+    // Anything left switched on from before: joining shares nothing.
+    await stopSharing(tx, [user.id]);
     await tx.householdMember.create({ data: { householdId: invite.householdId, userId: user.id } });
     return invite.householdId;
   });
@@ -139,6 +141,14 @@ export async function acceptInvite(
     {},
   );
   await track(user.id, "household_joined", {});
+}
+
+async function stopSharing(tx: Prisma.TransactionClient, userIds: string[]): Promise<void> {
+  const where = { userId: { in: userIds }, sharedWithHousehold: true };
+  const data = { sharedWithHousehold: false };
+  await tx.account.updateMany({ where, data });
+  await tx.savingsGoal.updateMany({ where, data });
+  await tx.insurancePolicy.updateMany({ where, data });
 }
 
 // Leaves the household. Access to the other person's shared accounts ends now, and theirs
@@ -156,6 +166,16 @@ export async function leaveHousehold(
     // The shared balance ends with the pair; each person's own transactions stay.
     await tx.sharedCharge.deleteMany({ where: { householdId: left.householdId } });
     await tx.settlement.deleteMany({ where: { householdId: left.householdId } });
+    // Sharing was a choice about this person. Left on, it comes back for whoever joins either of them
+    // next, against "Nothing of yours is shared until you choose".
+    const members = await tx.householdMember.findMany({
+      where: { householdId: left.householdId },
+      select: { userId: true },
+    });
+    await stopSharing(
+      tx,
+      members.map((m) => m.userId),
+    );
     await tx.householdMember.delete({ where: { userId } });
     if ((await tx.householdMember.count({ where: { householdId: left.householdId } })) === 0) {
       await tx.household.delete({ where: { id: left.householdId } });

@@ -1,5 +1,6 @@
 import { randomInt } from "node:crypto";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { isAdminEmail } from "@/lib/admin-emails";
 import { track } from "@/lib/analytics";
 import { logAudit, SYSTEM_ACTOR } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
@@ -19,6 +20,8 @@ export function invitesRequired(): boolean {
   return flag !== "false" && flag !== "0";
 }
 
+export { isAdminEmail };
+
 export function generateCode(): string {
   const chars = Array.from({ length: 12 }, () => ALPHABET[randomInt(ALPHABET.length)]);
   return [0, 4, 8].map((i) => chars.slice(i, i + 4).join("")).join("-");
@@ -29,14 +32,6 @@ export function normalizeCode(input: string): string | null {
   const chars = input.toUpperCase().replace(/[\s-]/g, "");
   if (chars.length !== 12 || [...chars].some((c) => !ALPHABET.includes(c))) return null;
   return `${chars.slice(0, 4)}-${chars.slice(4, 8)}-${chars.slice(8)}`;
-}
-
-export function isAdminEmail(email: string): boolean {
-  return (process.env.ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean)
-    .includes(email.toLowerCase());
 }
 
 export type CodeCheck = "ok" | "invalid" | "used_up" | "expired" | "revoked" | "wrong_email";

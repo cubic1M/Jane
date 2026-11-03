@@ -48,6 +48,9 @@ export const RATE_LIMITS = {
   push: { limit: 20, windowSeconds: 10 * 60 },
   // Calendar apps fetching the money calendar feed, per IP.
   calendar: { limit: 120, windowSeconds: 60 * 60 },
+  // One authenticator code, once: a code someone saw over a shoulder is still good for a minute or
+  // two otherwise.
+  mfaCodeUsed: { limit: 1, windowSeconds: 3 * 60 },
   // Two-factor codes (authenticator or backup), per user.
   mfa: { limit: 5, windowSeconds: 10 * 60 },
   // Uploading documents (each may be read by Claude), per user.

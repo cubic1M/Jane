@@ -136,7 +136,7 @@ describe.runIf(url)("two-factor against a real database", () => {
   it("makes new backup codes only with a current code, and the old ones stop working", async () => {
     const { userId, secret, backupCodes } = await enabled("user");
     expect((await newBackupCodes(userId, "000000", { client })).result).toBe("wrong_code");
-    const fresh = await newBackupCodes(userId, totp(secret, new Date()), { client });
+    const fresh = await newBackupCodes(userId, totp(secret, new Date(), 1), { client });
     expect(fresh.codes).toHaveLength(10);
     expect(await client.mfaBackupCode.count({ where: { userId, usedAt: null } })).toBe(10);
     expect(
@@ -155,8 +155,41 @@ describe.runIf(url)("two-factor against a real database", () => {
     expect(await client.mfaBackupCode.count({ where: { userId: person.userId } })).toBe(0);
 
     const team = await enabled("admin");
-    expect(await turnOffTwoFactor(team.userId, totp(team.secret, new Date()), { client })).toBe(
+    expect(await turnOffTwoFactor(team.userId, totp(team.secret, new Date(), 1), { client })).toBe(
       "admin",
     );
+  });
+
+  // Any session could read the secret before the first code, and a session verified under an old
+  // secret stayed verified under a new one.
+  it("signs out everyone else when two-factor starts, and un-verifies sessions when it stops", async () => {
+    const { userId, token } = await admin("user");
+    const other = `mfa-session-${crypto.randomUUID()}`;
+    await client.session.create({
+      data: { userId, sessionToken: other, expires: new Date(Date.now() + 86_400_000) },
+    });
+    const setup = await enrollment(userId, "team@example.com", { client });
+    if (setup.enrolled) throw new Error("expected a new enrolment");
+    const now = new Date();
+    await verifySessionCode(userId, token, totp(setup.secret, now), { client, now });
+    expect(await client.session.count({ where: { sessionToken: other } })).toBe(0);
+    const session = () => client.session.findUniqueOrThrow({ where: { sessionToken: token } });
+    expect((await session()).mfaVerifiedAt).not.toBeNull();
+
+    expect(await turnOffTwoFactor(userId, totp(setup.secret, now, 1), { client, now })).toBe("ok");
+    expect((await session()).mfaVerifiedAt).toBeNull();
+  });
+
+  it("takes an authenticator code once", async () => {
+    const { userId, token } = await admin("user");
+    const setup = await enrollment(userId, "team@example.com", { client });
+    if (setup.enrolled) throw new Error("expected a new enrolment");
+    const now = new Date();
+    const code = totp(setup.secret, now);
+    const first = await verifySessionCode(userId, token, code, { client, now });
+    expect(first.result).toBe("ok");
+    const again = await verifySessionCode(userId, token, code, { client, now });
+    expect(again.result).toBe("wrong_code");
+    await client.rateLimit.deleteMany({ where: { key: `mfaCodeUsed:${userId}:${code}` } });
   });
 });

@@ -165,6 +165,27 @@ describe.runIf(url)("households against a real database", () => {
     expect(performance.now() - started).toBeLessThan(2000);
   });
 
+  // Sharing stayed on after leaving, so the next person to join saw it at once, though the join page
+  // says "Nothing of yours is shared until you choose".
+  it("ends every choice to share when someone leaves, and for anyone joining", async () => {
+    const { a, b } = await household();
+    const shared = { sharedWithHousehold: true };
+    await client.account.updateMany({ where: { userId: { in: [a.id, b.id] } }, data: shared });
+    await leaveHousehold(b.id, { client });
+    expect(
+      await client.account.count({
+        where: { userId: { in: [a.id, b.id] }, sharedWithHousehold: true },
+      }),
+    ).toBe(0);
+
+    await client.account.updateMany({ where: { userId: b.id }, data: shared });
+    const { token } = await invitePartner(a, b.email, { client, now: NOW });
+    await acceptInvite(b, token, { client, now: NOW });
+    expect(await client.account.count({ where: { userId: b.id, sharedWithHousehold: true } })).toBe(
+      0,
+    );
+  });
+
   it("keeps households to two people", async () => {
     const { a } = await household();
     await expect(invitePartner(a, "third@example.com", { client, now: NOW })).rejects.toThrow(

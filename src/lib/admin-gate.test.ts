@@ -45,4 +45,15 @@ describe("sessionTokenFrom", () => {
     expect(sessionTokenFrom(jar("authjs.session-token"))).toBe("tok");
     expect(sessionTokenFrom(jar("other"))).toBeUndefined();
   });
+
+  // Nothing ever lowers a role, so someone taken off ADMIN_EMAILS kept /admin.
+  it("ends access for an admin taken off ADMIN_EMAILS", async () => {
+    vi.stubEnv("ADMIN_EMAILS", "kept@team.test");
+    const user = (email: string) => ({ role: "admin", email });
+    const session = (email: string) => ({ expires: LIVE, mfaVerifiedAt: NOW, user: user(email) });
+    expect(await state(session("Kept@team.test"))).toBe("verified");
+    expect(await state(session("gone@team.test"))).toBe("none");
+    vi.unstubAllEnvs();
+    expect(await state(session("gone@team.test"))).toBe("verified");
+  });
 });
