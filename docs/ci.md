@@ -2,7 +2,7 @@
 
 | When | What runs |
 | --- | --- |
-| Every PR push | Lint, format, typecheck, the migration gate, the access proof, dependency audit, secret scan, the e2e build (with the bundle-size check), the end-to-end tests tagged `@critical` on a computer, and the unit tests the diff reaches |
+| Every PR push | Lint, format, typecheck, the migration gate, the access proof, dependency audit, secret scan, the e2e build (with the bundle-size check), the end-to-end tests tagged `@critical` and the spec files it changes, on a computer, and the unit tests the diff reaches |
 | A PR touching something the diff's imports can't show, or too costly to miss | The whole unit suite. `scripts/test-scope-core.mjs` lists these: dependencies, the database schema, config files, `src/config`, env handling, auth, database access, row-level security, `src/security`, guardrails, advice mode, import, workflows and scripts |
 | A PR labelled `full-tests` | The whole unit suite, whatever changed |
 | A PR labelled `e2e` | The whole unit suite, and every end-to-end test on a computer and a phone. Use it when a PR changes a page people see |

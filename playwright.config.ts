@@ -19,12 +19,20 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   // The JSON says which tests a retry saved: scripts/flake-list.mjs reads it.
-  reporter: process.env.CI ? [["list"], ["json", { outputFile: "ci-results/e2e.json" }]] : "list",
+  reporter: process.env.CI
+    ? [["list"], ["json", { outputFile: process.env.E2E_RESULTS_FILE ?? "ci-results/e2e.json" }]]
+    : "list",
   // The dev server compiles each page on its first visit, which can take several seconds.
   expect: { timeout: 15_000 },
   use: {
     baseURL: `http://localhost:${PORT}`,
     trace: "on-first-retry",
+    // Each worker looks like its own visitor. Sharing one IP, a run's workers reach the per-IP limits
+    // (src/config/rate-limits.ts), and a 429 can look like any test's failure. Tests of those limits
+    // set their own.
+    extraHTTPHeaders: {
+      "x-forwarded-for": `10.77.0.${Number(process.env.TEST_WORKER_INDEX ?? 0) % 250}`,
+    },
   },
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, addJaneMessage, deleteUser } from "./db";
 import { demoPerson } from "./demo-person";
+import { holds, nextSave, settled } from "./waits";
 
 // Founder's Home fixes (2026-10-25): an opened card in the dock stays put through a reload and
 // while stepping; "Hide this for good" is instant; an area's tree starts at its branches; and
@@ -41,7 +42,7 @@ test("an opened card stays put through a reload and while stepping", async ({
   const was = (await headline.textContent()) ?? "";
   // Opened, it stays short (QA round 12): its buttons in view inside the dock, and the chat
   // under it keeps its room.
-  await page.waitForTimeout(500);
+  await settled(dock);
   const dockBox = (await dock.boundingBox())!;
   const buttons = showing.locator("[data-card-actions] button");
   expect(await buttons.count()).toBeGreaterThan(0);
@@ -65,8 +66,7 @@ test("an opened card stays put through a reload and while stepping", async ({
   const reloaded = page.waitForResponse((r) => r.url().includes("/api/chat/cards"));
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await reloaded;
-  await page.waitForTimeout(1_000);
-  await expect(headline).toHaveText(was);
+  await holds(async () => expect(await headline.textContent()).toBe(was), 1_000);
   await expect(more).toHaveAttribute("aria-expanded", "true");
   await expect(showing.locator('[id^="details-"]')).toBeVisible();
 
@@ -137,6 +137,7 @@ test("Home: hide the checklist at once, trees start at their branches, no greeti
   if ((await checklist.count()) > 0) {
     // Gone in the same frame as the tap (QA round 12: it took about half a second).
     await expect(checklist.getByRole("button", { name: "Hide this for good" })).toBeEnabled();
+    const saved = nextSave(page);
     const goneAtOnce = await page.evaluate(() => {
       const button = [...document.querySelectorAll("button")].find(
         (b) => b.textContent?.trim() === "Hide this for good",
@@ -146,7 +147,7 @@ test("Home: hide the checklist at once, trees start at their branches, no greeti
     });
     expect(goneAtOnce).toBe(true);
     await expect(checklist).toHaveCount(0);
-    await page.waitForTimeout(1_500);
+    await saved;
     await page.reload();
     await expect(page.locator("[data-giant-tree]")).toBeVisible({ timeout: 60_000 });
     await expect(checklist).toHaveCount(0);

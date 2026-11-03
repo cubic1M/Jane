@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser } from "./db";
 import { demoPerson } from "./demo-person";
+import { holds } from "./waits";
 
 // The chat never scrolls the page (founder: "when you scroll to the bottom and have no more
 // place to scroll, you shouldn't cause the whole screen to scroll down. Never let the chat
@@ -50,8 +51,7 @@ test("scrolling the chat past its ends never scrolls the page", async ({
         gestureSourceType: "touch",
         speed: 3000,
       });
-      await page.waitForTimeout(500);
-      expect(await pageY()).toBe(before);
+      await holds(async () => expect(await pageY()).toBe(before), 500);
     }
   } else {
     // The wheel (a trackpad sends the same events) down past the end, then up past the top.
@@ -59,8 +59,7 @@ test("scrolling the chat past its ends never scrolls the page", async ({
     for (const step of [400, -400]) {
       const before = await pageY();
       for (let i = 0; i < 12; i += 1) await page.mouse.wheel(0, step);
-      await page.waitForTimeout(500);
-      expect(await pageY()).toBe(before);
+      await holds(async () => expect(await pageY()).toBe(before), 500);
     }
     // The page itself still scrolls with the wheel over it.
     await page.mouse.move(200, 600);

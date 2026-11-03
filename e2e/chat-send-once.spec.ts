@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { landInChat } from "./chat-page";
+import { holds } from "./waits";
 
 // Founder bug: "every time I type a question, it duplicates, then disappears." From the
 // moment a typed question shows, it is on the page exactly once until the answer is in, and
@@ -47,24 +48,29 @@ test("a typed question shows once and stays", async ({ context, page, baseURL })
 
   // A slow answer: the question is already stored while the reply is still being written,
   // and a refresh of the page (the scan's, a tap's) lands in that gap.
+  let stored: () => void;
+  const questionStored = new Promise<void>((resolve) => (stored = resolve));
   await page.route("**/api/chat/send", async (route) => {
     const response = await route.fetch();
+    stored();
     await new Promise((r) => setTimeout(r, 3000));
     await route.fulfill({ response });
   });
   const ask = page.getByRole("textbox", { name: "Message Jane" });
   await ask.fill(question);
   await ask.press("Enter");
-  await page.waitForTimeout(800);
+  await questionStored;
   await page.evaluate(() =>
     (window as unknown as { next: { router: { refresh: () => void } } }).next.router.refresh(),
   );
   await expect(page.getByRole("button", { name: "Send", exact: true })).toBeVisible({
     timeout: 60_000,
   });
-  await page.waitForTimeout(1500);
+  const readCounts = () =>
+    page.evaluate(() => (window as unknown as { __counts: number[] }).__counts);
+  await holds(async () => expect(Math.max(...(await readCounts()))).toBeLessThanOrEqual(1), 1_500);
 
-  const counts = await page.evaluate(() => (window as unknown as { __counts: number[] }).__counts);
+  const counts = await readCounts();
   // Never twice, and never gone once it showed; it ends as one.
   expect(Math.max(...counts), JSON.stringify(counts)).toBe(1);
   const firstShown = counts.indexOf(1);

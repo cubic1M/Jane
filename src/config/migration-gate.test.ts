@@ -61,10 +61,8 @@ describe("what the migration gate lets through", () => {
   it("fails what Squawk misses: deletes, and drops inside a block", () => {
     expect(unsafeWords('TRUNCATE "t";')).toEqual(["truncate"]);
     expect(unsafeWords('DELETE FROM "t";')).toEqual(["delete-rows"]);
-    expect(unsafeWords('DO $$ BEGIN DROP TABLE "y"; END $$;')).toEqual(["drop-in-block"]);
-    expect(unsafeWords('DO $$ BEGIN ALTER TABLE "y" RENAME TO "z"; END $$;')).toEqual([
-      "rename-in-block",
-    ]);
+    expect(unsafeWords('DO $$ BEGIN DROP TABLE "y"; END $$;')).toEqual(["drop"]);
+    expect(unsafeWords('DO $$ BEGIN ALTER TABLE "y" RENAME TO "z"; END $$;')).toEqual(["rename"]);
     expect(problems({ sqlOf: () => 'DELETE FROM "merchants";' })[0]).toContain("delete-rows");
   });
 
@@ -123,6 +121,12 @@ describe("the order of migrations", () => {
     const [problem] = problems({ headFile: `${OLD}\n` });
     expect(problem).toContain("prisma/migrations-head.txt");
     expect(problem).toContain(NEW);
+  });
+
+  it("doesn't fail a PR with no migration over a head file that's already stale", () => {
+    expect(
+      problems({ added: [], headNames: [OLD, NEW], baseNames: [OLD, NEW], headFile: OLD }),
+    ).toEqual([]);
   });
 
   it("fails a badly formed name", () => {

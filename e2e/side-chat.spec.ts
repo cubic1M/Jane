@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, addJaneMessage, deleteUser } from "./db";
 import { demoPerson } from "./demo-person";
+import { settled } from "./waits";
 
 // The side chat (docs/design/home-hub.md). On a computer the chat is docked beside every page,
 // folds to a rail with an unread dot, opens over the whole window and is remembered; changing
@@ -88,6 +89,8 @@ test("on a computer the chat docks beside the page, folds, expands and stays put
   // Open, then over the whole window, then docked again (Escape works too).
   await page.getByRole("button", { name: /^Chat( \d+ new)?$/ }).click();
   await expect(panel.getByRole("button", { name: "Expand chat" })).toBeVisible();
+  // Still sliding open, the button can move out from under the tap.
+  await settled(panel);
   await panel.getByRole("button", { name: "Expand chat" }).click();
   await expect.poll(async () => Math.round((await panel.boundingBox())!.width)).toBe(1440);
   await panel.getByRole("button", { name: "Dock chat" }).click();

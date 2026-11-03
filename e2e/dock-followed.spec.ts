@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser } from "./db";
 import { demoPerson } from "./demo-person";
+import { holds } from "./waits";
 
 // Founder: "Whenever I switch to a page based on the suggestion card's suggestion, the
 // suggestion just reappears." A card followed to its page, or answered, leaves the dock and
@@ -28,6 +29,11 @@ async function dockReady(page: Page) {
     await page.reload();
     await expect(showingIn(page)).toBeVisible({ timeout: 5_000 });
   }).toPass({ timeout: 90_000 });
+}
+
+// The dock loads its cards after the page does, so the card must stay away through that.
+async function staysGone(page: Page, headline: string) {
+  await holds(async () => expect(await cardNamed(page, headline).count()).toBe(0), 2_000);
 }
 
 // Steps through the dock until `has` is on the showing card.
@@ -64,14 +70,11 @@ test("a card followed to its page, or answered, doesn't come back", async ({
   const path = new URL(href, "http://x").pathname;
   await expect(page).toHaveURL((url) => url.pathname === path);
   await expect(cardNamed(page, followed)).toHaveCount(0);
-  await page.waitForTimeout(2_000);
-  await expect(cardNamed(page, followed)).toHaveCount(0);
+  await staysGone(page, followed);
   await page.goto("/money");
-  await page.waitForTimeout(2_000);
-  await expect(cardNamed(page, followed)).toHaveCount(0);
+  await staysGone(page, followed);
   await page.reload();
-  await page.waitForTimeout(2_000);
-  await expect(cardNamed(page, followed)).toHaveCount(0);
+  await staysGone(page, followed);
 
   // Answered Yes, then off to another page: gone, and still gone after a reload.
   const yes = await stepTo(page, (card) => card.getByRole("button", { name: "Yes", exact: true }));
@@ -81,11 +84,9 @@ test("a card followed to its page, or answered, doesn't come back", async ({
   // The next card is on screen at once.
   await expect(showingIn(page)).toBeVisible();
   await page.goto("/taxes");
-  await page.waitForTimeout(2_000);
-  await expect(cardNamed(page, answered)).toHaveCount(0);
+  await staysGone(page, answered);
   await page.reload();
-  await page.waitForTimeout(2_000);
-  await expect(cardNamed(page, answered)).toHaveCount(0);
+  await staysGone(page, answered);
 
   // On the ledger a Yes is "You said yes", never Done, with the page where it's done (manager
   // decision 10-30, honest labels).
@@ -103,6 +104,5 @@ test("a card followed to its page, or answered, doesn't come back", async ({
   await fresh.setViewportSize({ width: 1280, height: 800 });
   await fresh.goto("/report");
   await expect(showingIn(fresh)).toBeVisible({ timeout: 30_000 });
-  await fresh.waitForTimeout(2_000);
-  await expect(cardNamed(fresh, answered)).toHaveCount(0);
+  await staysGone(fresh, answered);
 });

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { waitForImport } from "./import-wait";
+import { hydrated } from "./waits";
 
 // Reviewer polish: nothing jumps in the first minutes. A page that's loading already has the top
 // bar (so it doesn't draw full width and then shift under it and beside the docked chat), a tap
@@ -55,7 +56,12 @@ test("the top bar holds still while pages load", async ({ context, page, baseURL
   // before that follows the plain link, a full load (still a working tab, just not the test).
   await tab.waitForLoadState("load");
   await expect(tab.locator("[data-giant-tree]")).toBeVisible();
-  await tab.waitForTimeout(1_000);
+  await hydrated(
+    tab.getByRole("navigation", { name: "Main" }).getByRole("link", {
+      name: "Spending & bills",
+      exact: true,
+    }),
+  );
   await tab.evaluate(() => {
     const w = window as unknown as { barGone: boolean };
     w.barGone = false;
