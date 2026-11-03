@@ -244,7 +244,7 @@
   "src/lib/memory/learn.ts": 4,
   "src/lib/merchant-outcomes.ts": 8,
   "src/lib/merchants.ts": 5,
-  "src/lib/metrics.ts": 15,
+  "src/lib/metrics.ts": 14,
   "src/lib/mfa.ts": 25,
   "src/lib/money-for-two.ts": 29,
   "src/lib/money-movement/bill-pay.ts": 14,

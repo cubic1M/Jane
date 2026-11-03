@@ -344,16 +344,6 @@ export async function loadMetrics(
     windows: days.join(","),
   });
   // Imported here because metrics-sql.ts imports this file.
-  const { automateNextSql, computeMetricsSql } = await import("./metrics-sql");
-  const windows = [];
-  for (const d of days) {
-    windows.push({
-      days: d,
-      metrics: await computeMetricsSql(client, {
-        start: new Date(now.getTime() - d * DAY_MS),
-        end: now,
-      }),
-    });
-  }
-  return { windows, automateNext: await automateNextSql(client) };
+  const { metricsSql } = await import("./metrics-sql");
+  return metricsSql(client, days, now);
 }

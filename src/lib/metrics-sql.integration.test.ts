@@ -3,7 +3,8 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
-import { automateNext, computeMetrics, loadMetricRows } from "./metrics";
+vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
+import { automateNext, computeMetrics, loadMetricRows, loadMetrics } from "./metrics";
 import { automateNextSql, computeMetricsSql } from "./metrics-sql";
 
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).
@@ -222,5 +223,73 @@ describe.runIf(url)("metrics in SQL against a real database", () => {
     ]);
     // Ana's 30th day after linking (10 days ago) fell in the window, and she came back on day 25.
     expect(m.retention).toEqual({ cohort: 1, retained: 1, rate: 1 });
+  });
+
+  // The table on /admin/metrics sits under "real people only": the founders' own accounts and
+  // people looking around the demo bank must not move the numbers that say whether this works.
+  it("leaves out the team and demo-bank-only people, as the beta table does", async () => {
+    const at = new Date("2002-03-10T12:00:00Z");
+    const signUp = async (name: string, role: "user" | "admin" = "user") => {
+      const user = await client.user.create({
+        data: { email: `metrics-${name}-${suffix}@example.com`, role, createdAt: at },
+      });
+      users.push(user.id);
+      return user.id;
+    };
+    const fees = (userId: string, annualSavingsCents: number) =>
+      client.finding.create({
+        data: {
+          userId,
+          type: "bank_fees",
+          status: "new",
+          confidence: "high",
+          key: `metrics-${userId}`,
+          title: "Fees",
+          explanation: "Fees",
+          annualSavingsCents,
+          createdAt: at,
+        },
+      });
+
+    const realPerson = await signUp("dee");
+    await client.account.create({
+      data: { userId: realPerson, source: "csv", name: "Card", type: "credit", createdAt: at },
+    });
+    await fees(realPerson, 5_000);
+
+    const founder = await signUp("founder", "admin");
+    await client.account.create({
+      data: { userId: founder, source: "csv", name: "Card", type: "credit", createdAt: at },
+    });
+    await fees(founder, 100_000);
+
+    const lookingAround = await signUp("demo");
+    const item = await client.plaidItem.create({
+      data: {
+        userId: lookingAround,
+        plaidItemId: `demo-metrics-${suffix}`,
+        accessTokenEncrypted: "x",
+        createdAt: at,
+      },
+    });
+    await client.account.create({
+      data: {
+        userId: lookingAround,
+        itemId: item.id,
+        source: "plaid",
+        name: "Checking",
+        type: "depository",
+        createdAt: at,
+      },
+    });
+    await fees(lookingAround, 100_000);
+
+    const { windows } = await loadMetrics({ id: founder, email: "x@example.com" }, [7], {
+      client,
+      now: new Date("2002-03-12T12:00:00Z"),
+    });
+    const m = windows[0].metrics;
+    expect(m.linkRate).toEqual({ signedUp: 1, linked: 1, rate: 1 });
+    expect(m.moneyFound).toEqual({ users: 1, medianCents: 5_000 });
   });
 });

@@ -136,6 +136,9 @@ async function MetricsContent() {
           </table>
         </div>
       </section>
+      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        The same real people, by when it happened.
+      </p>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
