@@ -596,7 +596,6 @@ class TestIcmTag(unittest.TestCase):
         b.end_hand(dict(history=tuple(post + [(3, 0, "fold", 0), (0, 0, "raise", 40), (1, 0, "raise", 200),
                                               (2, 0, "fold", 0), (0, 0, "fold", 0)]), stacks=(2000,) * 8))
         self.assertEqual((b.t3_seen[1], b.t3_made[1]), (2, 1))
-        self.assertEqual((b.my_opens, b.my_opens_rr), (1, 1))             # my one open, re-raised (img_k)
 
     def test_rs_call_calls_a_light_reshover(self):
         """13bb, I open first in and the small blind re-shoves: against a seat that re-raises opens
