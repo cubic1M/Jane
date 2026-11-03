@@ -39,6 +39,19 @@ function whereUser(where: unknown, userId: string): Args {
   return scoped;
 }
 
+// The person's own row (`me` below), read only: jane_rls may read users, not write them.
+function ownRowArgs(operation: string, args: Args | undefined, userId: string): Args {
+  if (!READ_OPERATIONS.has(operation)) {
+    throw new Error(`"${operation}" is not supported on a person's own row`);
+  }
+  const scoped: Args = { ...args };
+  const where = { ...(scoped.where as Args | undefined) };
+  const and = where.AND === undefined ? [] : Array.isArray(where.AND) ? where.AND : [where.AND];
+  where.AND = [...and, { id: userId }];
+  scoped.where = where;
+  return scoped;
+}
+
 export function scopeArgs(operation: string, args: Args | undefined, userId: string): Args {
   const scoped: Args = { ...args };
 
@@ -76,7 +89,11 @@ function scopedQueries(
     query: {
       $allModels: {
         async $allOperations({ model, operation, args, query }) {
-          const scopedArgs = scopeArgs(operation, args as Args, userId) as typeof args;
+          const scopedArgs = (
+            model === "User"
+              ? ownRowArgs(operation, args as Args, userId)
+              : scopeArgs(operation, args as Args, userId)
+          ) as typeof args;
           const send = () =>
             run(() => query(scopedArgs) as Prisma.PrismaPromise<unknown>, operation);
           // A write changes what the page's reads would see: forget the render's shared answers
@@ -151,6 +168,15 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
         // Reads made inside it may have seen rows that were rolled back.
         .finally(() => forgetReads()),
     userId,
+    // The person's own row, read only. A write goes through systemDb, with a reason.
+    me: {
+      findUnique: scoped.user.findUnique,
+      findUniqueOrThrow: scoped.user.findUniqueOrThrow,
+      findFirst: scoped.user.findFirst,
+    },
+    // Their own sign-ins and their own household membership (a partner's row isn't visible here).
+    sessions: scoped.session,
+    householdMembers: scoped.householdMember,
     plaidItems: scoped.plaidItem,
     plaidItemClaims: scoped.plaidItemClaim,
     accounts: scoped.account,

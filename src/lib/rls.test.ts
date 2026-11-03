@@ -8,7 +8,7 @@ import {
   AS_USER_READ_SQL,
   AS_USER_SQL,
   asUser,
-  isAsUser,
+  isRoleSwitch,
   resetRlsForTests,
   rlsStatus,
   withRls,
@@ -73,9 +73,9 @@ describe("asUser", () => {
     expect($executeRawUnsafe).toHaveBeenCalledWith(AS_USER_SQL, "user_1");
     expect(AS_USER_SQL).toContain("set_config('role', 'jane_rls', true)");
     expect(AS_USER_SQL).toContain("set_config('app.user_id', $1, true)");
-    expect(isAsUser("$executeRawUnsafe", [AS_USER_SQL, "user_1"])).toBe(true);
-    expect(isAsUser("$executeRawUnsafe", [AS_USER_READ_SQL, "user_1"])).toBe(true);
-    expect(isAsUser("$executeRawUnsafe", ["DELETE FROM findings"])).toBe(false);
+    expect(isRoleSwitch("$executeRawUnsafe", [AS_USER_SQL, "user_1"])).toBe(true);
+    expect(isRoleSwitch("$executeRawUnsafe", [AS_USER_READ_SQL, "user_1"])).toBe(true);
+    expect(isRoleSwitch("$executeRawUnsafe", ["DELETE FROM findings"])).toBe(false);
   });
 
   it("refuses an empty user id", () => {

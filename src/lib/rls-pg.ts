@@ -1,5 +1,12 @@
 import pg from "pg";
-import { AS_USER_READ_SQL, AS_USER_SQL, AS_USER_WRITE_SQL } from "@/lib/rls";
+import {
+  AS_SYSTEM_READ_SQL,
+  AS_SYSTEM_SQL,
+  AS_SYSTEM_WRITE_SQL,
+  AS_USER_READ_SQL,
+  AS_USER_SQL,
+  AS_USER_WRITE_SQL,
+} from "@/lib/rls";
 
 // The fast path for a scoped read (src/lib/rls.ts, docs/security/rls.md). Prisma runs it as
 // four statements, each a network round trip to the database: BEGIN, the switch to the person,
@@ -29,12 +36,15 @@ const BaseQuery = pg.Query as unknown as new (config: object) => {
   handleCommandComplete(msg: unknown, connection: Connection): void;
 };
 
-class AsUserQuery extends BaseQuery {
+// Who a transaction runs as: a person, or the system (src/lib/system-db.ts).
+type Switch = { sql: string; values: unknown[] };
+
+class SwitchedQuery extends BaseQuery {
   // Statements before the query whose answers are skipped.
   private before: number;
 
   constructor(
-    private readonly userId: string,
+    private readonly to: Switch,
     private readonly begin: boolean,
     config: object,
   ) {
@@ -52,8 +62,8 @@ class AsUserQuery extends BaseQuery {
       connection.bind({ portal: "", statement: "", values: [] });
       connection.execute({ portal: "" });
     }
-    connection.parse({ text: AS_USER_SQL, name: "", types: [] });
-    connection.bind({ portal: "", statement: "", values: [this.userId] });
+    connection.parse({ text: this.to.sql, name: "", types: [] });
+    connection.bind({ portal: "", statement: "", values: this.to.values });
     connection.execute({ portal: "" });
     super.prepare(connection);
   }
@@ -75,8 +85,20 @@ const done = (command: string, rowCount: number | null = null): Promise<Result> 
 type State =
   | { step: "idle" }
   | { step: "begun" } // BEGIN held back until we know what follows
-  | { step: "reading"; userId: string } // a scoped read: each statement goes switched
-  | { step: "writing"; userId: string }; // a scoped write: BEGIN and the switch go with the next
+  | { step: "reading"; to: Switch } // a switched read: each statement goes switched
+  | { step: "writing"; to: Switch }; // a switched write: BEGIN and the switch go with the next
+
+// What the marked statements mean: reading or writing, and who as.
+function switchOf(config: Config): { step: "reading" | "writing"; to: Switch } | null {
+  const text = config.text.trim();
+  const asUser = (): Switch => ({ sql: AS_USER_SQL, values: [String(config.values?.[0] ?? "")] });
+  const asSystem = (): Switch => ({ sql: AS_SYSTEM_SQL, values: [] });
+  if (text === AS_USER_READ_SQL) return { step: "reading", to: asUser() };
+  if (text === AS_USER_WRITE_SQL) return { step: "writing", to: asUser() };
+  if (text === AS_SYSTEM_READ_SQL) return { step: "reading", to: asSystem() };
+  if (text === AS_SYSTEM_WRITE_SQL) return { step: "writing", to: asSystem() };
+  return null;
+}
 
 export class RlsClient extends pg.Client {
   private state: State = { step: "idle" };
@@ -99,9 +121,9 @@ export class RlsClient extends pg.Client {
     return (super.query as (c: Config | string) => Promise<Result>)(config);
   }
 
-  private sendAsUser(userId: string, begin: boolean, config: Config): Promise<Result> {
+  private sendSwitched(to: Switch, begin: boolean, config: Config): Promise<Result> {
     return new Promise((resolve, reject) => {
-      const query = new AsUserQuery(userId, begin, {
+      const query = new SwitchedQuery(to, begin, {
         ...config,
         callback: (error: Error | null, result: Result) =>
           error ? reject(error) : resolve(result),
@@ -121,13 +143,10 @@ export class RlsClient extends pg.Client {
           return done("BEGIN");
         }
         return this.send(config);
-      case "begun":
-        if (text === AS_USER_READ_SQL) {
-          this.state = { step: "reading", userId: String(config.values?.[0] ?? "") };
-          return done("SELECT", 1);
-        }
-        if (text === AS_USER_WRITE_SQL) {
-          this.state = { step: "writing", userId: String(config.values?.[0] ?? "") };
+      case "begun": {
+        const switched = switchOf(config);
+        if (switched) {
+          this.state = switched;
           return done("SELECT", 1);
         }
         if (ends) {
@@ -137,6 +156,7 @@ export class RlsClient extends pg.Client {
         // Any other transaction: BEGIN goes first, as Prisma wrote it.
         this.state = { step: "idle" };
         return this.send("BEGIN").then(() => this.send(config));
+      }
       case "reading":
         if (ends) {
           this.state = { step: "idle" };
@@ -144,12 +164,12 @@ export class RlsClient extends pg.Client {
         }
         // A read may take more than one statement (a relation loaded on its own): each is
         // switched to the person in its own round trip, as reads were never one transaction.
-        return this.sendAsUser(state.userId, false, config);
+        return this.sendSwitched(state.to, false, config);
       case "writing":
         this.state = { step: "idle" };
         if (ends) return done(text);
         // Then the transaction is open, switched, and the rest goes as written.
-        return this.sendAsUser(state.userId, true, config);
+        return this.sendSwitched(state.to, true, config);
     }
   }
 }
