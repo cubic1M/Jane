@@ -258,8 +258,6 @@ export const BILLING_PLATFORM_MERCHANTS: readonly string[] = ["apple", "itunes",
 // Money paid on a debt or moved between accounts is never a subscription, even under a
 // subscription merchant's name ("APPLE CARD PAYMENT").
 export const NOT_SUBSCRIPTION_PRIMARIES: readonly PfcPrimary[] = [
-  // Nobody cancels a car registration (debugger 11-02: "renewal" in the line made it a subscription).
-  "GOVERNMENT_AND_NON_PROFIT",
   "LOAN_PAYMENTS",
   "TRANSFER_OUT",
   "TRANSFER_IN",
