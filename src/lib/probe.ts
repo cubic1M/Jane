@@ -3,9 +3,11 @@ import { TERMS_VERSION } from "@/config/legal";
 import { PROBE_TIMEOUT_MS } from "@/config/health";
 import { TRIAL_EMAIL_DOMAIN, TRIAL_ID_PREFIX, TRIAL_SESSION_PREFIX } from "@/config/trial";
 import type { PrismaClient } from "@/generated/prisma/client";
-import { encryptBytes } from "@/lib/crypto";
+import { encrypt, encryptBytes } from "@/lib/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { checkGuardrails } from "@/lib/guardrails";
+import { DEMO_TOKEN_PREFIX } from "@/lib/plaid/demo";
 import { systemDb } from "@/lib/system-db";
 
 const WHY = "The hourly probe makes and removes its own sample people";
@@ -19,7 +21,9 @@ const WHY = "The hourly probe makes and removes its own sample people";
 
 export const PROBE_ID_PREFIX = `${TRIAL_ID_PREFIX}probe_`;
 
-export type ProbeCheck = { name: string; ok: boolean; detail?: string };
+// leak: failing means someone could read what isn't theirs, which is what the watch rolls back for
+// at once (scripts/ops/watch-core.mjs).
+export type ProbeCheck = { name: string; ok: boolean; detail?: string; leak?: boolean };
 export type ProbeResult = { ok: boolean; checks: ProbeCheck[] };
 
 export class ProbeFailed extends Error {
@@ -34,11 +38,12 @@ type Person = {
   id: string;
   sessionToken: string;
   marker: string;
+  tokenMarker: string;
   findingId: string;
   documentId: string;
 };
 
-type Options = { client?: PrismaClient; fetcher?: typeof fetch; now?: Date };
+type Options = { client?: PrismaClient; fetcher?: typeof fetch; now?: Date; bypass?: string };
 
 async function plantPerson(client: PrismaClient, now: Date): Promise<Person> {
   const id = `${PROBE_ID_PREFIX}${randomBytes(12).toString("hex")}`;
@@ -79,7 +84,17 @@ async function plantPerson(client: PrismaClient, now: Date): Promise<Person> {
     },
     select: { id: true },
   });
-  return { id, sessionToken, marker, findingId: finding.id, documentId: document.id };
+  // A bank link, so the export has a token it could give away.
+  const tokenMarker = `probetoken${randomBytes(12).toString("hex")}`;
+  await db.plaidItems.create({
+    data: {
+      userId: id,
+      plaidItemId: id,
+      accessTokenEncrypted: encrypt(`${DEMO_TOKEN_PREFIX}${tokenMarker}`),
+      institutionName: "Sample bank",
+    },
+  });
+  return { id, sessionToken, marker, tokenMarker, findingId: finding.id, documentId: document.id };
 }
 
 export async function removeProbePeople(client: PrismaClient = defaultClient): Promise<number> {
@@ -91,7 +106,7 @@ export async function removeProbePeople(client: PrismaClient = defaultClient): P
 
 export async function runProbe(
   base: string,
-  { client = defaultClient, fetcher = fetch, now = new Date() }: Options = {},
+  { client = defaultClient, fetcher = fetch, now = new Date(), bypass }: Options = {},
 ): Promise<ProbeResult> {
   const checks: ProbeCheck[] = [];
   const call = async (path: string, person?: Person, init: RequestInit = {}) => {
@@ -101,6 +116,7 @@ export async function runProbe(
       signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
       headers: {
         ...init.headers,
+        ...(bypass ? { "x-vercel-protection-bypass": bypass } : {}),
         ...(person
           ? {
               cookie: `__Secure-authjs.session-token=${person.sessionToken}; authjs.session-token=${person.sessionToken}`,
@@ -108,21 +124,29 @@ export async function runProbe(
           : {}),
       },
     });
-    return { status: response.status, body: await response.text() };
+    return { status: response.status, headers: response.headers, body: await response.text() };
   };
   // Says what went wrong in a status code or an error's class, never a response's words.
-  const check = async (name: string, run: () => Promise<true | string>) => {
+  const check = async (name: string, run: () => Promise<true | string>, flag = {}) => {
     try {
       const outcome = await run();
-      checks.push(outcome === true ? { name, ok: true } : { name, ok: false, detail: outcome });
+      checks.push(
+        outcome === true
+          ? { name, ok: true, ...flag }
+          : { name, ok: false, detail: outcome, ...flag },
+      );
     } catch (error) {
       checks.push({
         name,
         ok: false,
         detail: error instanceof Error ? error.name : "unknown error",
+        ...flag,
       });
     }
   };
+
+  const leakCheck = (name: string, run: () => Promise<true | string>) =>
+    check(name, run, { leak: true });
 
   await removeProbePeople(client);
   try {
@@ -142,7 +166,7 @@ export async function runProbe(
       if (!providers.body.includes('"resend"')) return "no email sign-in";
       return csrf.body.includes("csrfToken") || "no csrf token";
     });
-    await check("signed out gets nothing", async () => {
+    await leakCheck("signed out gets nothing", async () => {
       const { status, body } = await call("/api/export");
       if (body.includes(alice.marker) || body.includes(bob.marker)) return "marker in the answer";
       return status === 401 || `HTTP ${status}`;
@@ -154,25 +178,39 @@ export async function runProbe(
       if (own.status !== 200) return `HTTP ${own.status}`;
       return own.body.includes(alice.marker) || "own marker missing";
     });
-    await check("the export holds nobody else's data", async () => {
+    await leakCheck("the export holds nobody else's data", async () => {
       if (!own) return "no answer";
       return !own.body.includes(bob.marker) || "marker in the answer";
+    });
+    await leakCheck("the export holds no bank token", async () => {
+      if (!own) return "no answer";
+      return !own.body.includes(alice.tokenMarker) || "a token in the answer";
+    });
+    await check("the dashboard opens", async () => {
+      const { status, headers } = await call("/home", alice);
+      if (headers.get("location")?.includes("/login")) return "sent to sign in";
+      return status < 400 || `HTTP ${status}`;
+    });
+    await check("the guardrail refuses advice and passes a plain sentence", async () => {
+      const advice = checkGuardrails("You should buy Tesla stock now.", []);
+      const plain = checkGuardrails("This charge repeats every month.", []);
+      return (!advice.ok && plain.ok) || "the guardrail answered wrongly";
     });
     await check("a person's own document opens", async () => {
       const { status, body } = await call(`/api/documents/${alice.documentId}`, alice);
       if (status !== 200) return `HTTP ${status}`;
       return body.includes(alice.marker) || "own marker missing";
     });
-    await check("someone else's document is refused", async () => {
+    await leakCheck("someone else's document is refused", async () => {
       const { status, body } = await call(`/api/documents/${bob.documentId}`, alice);
       if (body.includes(bob.marker)) return "marker in the answer";
       return status === 404 || `HTTP ${status}`;
     });
-    await check("someone else's finding page shows nothing", async () => {
+    await leakCheck("someone else's finding page shows nothing", async () => {
       const { body } = await call(`/report/${bob.findingId}`, alice);
       return !body.includes(bob.marker) || "marker in the answer";
     });
-    await check("someone else's finding can't be decided", async () => {
+    await leakCheck("someone else's finding can't be decided", async () => {
       const { status } = await call("/api/decisions", alice, {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -186,7 +224,7 @@ export async function runProbe(
       if (written > 0) return "a decision was written";
       return (status >= 400 && status < 500) || `HTTP ${status}`;
     });
-    await check("the database's scope holds", async () => {
+    await leakCheck("the database's scope holds", async () => {
       const row = await scopedFor(alice.id, client).findings.findFirst({
         where: { id: bob.findingId },
       });

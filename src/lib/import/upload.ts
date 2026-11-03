@@ -30,6 +30,7 @@ import {
   statementFilesRefusal,
   statementUploadRefusal,
 } from "@/lib/statement-trial";
+import { freshSwitches } from "@/lib/ops-switches";
 import { isStatementTrialUser } from "@/lib/trial-ids";
 
 // Uploading statements on /import: reading the files from the form, the account a first
@@ -61,6 +62,7 @@ type ReadFailure = { error: string; reason: UploadFailure };
 // Reads uploads into memory, with the columns the person picked for any file in a layout we
 // don't know. The raw files are never written anywhere.
 export async function readUploadFiles(formData: FormData): Promise<CsvFile[] | ReadFailure> {
+  await freshSwitches();
   if (killed("uploads")) return { error: UPLOADS_PAUSED_TEXT, reason: "paused" };
   const chosen = formData.getAll("files").filter((f): f is File => f instanceof File && !!f.name);
   if (chosen.length === 0) {

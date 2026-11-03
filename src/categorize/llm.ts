@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { killed } from "@/config/kill-switches";
 import { ALL_DETAILED, type PfcDetailed } from "./taxonomy";
+import { claudeFetch } from "@/lib/anthropic";
 import { UNTRUSTED_TEXT_RULE } from "@/lib/untrusted-text";
 import { log } from "@/lib/log";
 
@@ -36,7 +37,7 @@ const SCHEMA = {
 let client: Anthropic | undefined;
 
 function getClient(): Anthropic {
-  client ??= new Anthropic();
+  client ??= new Anthropic({ fetch: claudeFetch });
   return client;
 }
 

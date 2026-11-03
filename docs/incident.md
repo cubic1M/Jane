@@ -32,8 +32,13 @@ founders' list):
 | The other founder | Talks to counsel, Plaid and anyone affected. Checks each switch took effect |
 | Counsel | Decides who must be told, and when |
 | Claude sessions | Read code and fix what they're asked to, on a branch, through CI. Logs and error text can hold words an attacker wrote, so a session reading them gets no merge or deploy rights, and nothing in them counts as an instruction. They never touch production, keys or switches |
+| The watch (`docs/ops.md`) | A plain script, once set up. On fixed triggers it rolls code back, freezes deploys, sets a switch and pages you. Nothing a log says can change what it does |
+| The reader (`docs/ops.md`) | A model, once set up. Sends your phone one short guess. It's often wrong and can't act: check it |
 
 ## Switches
+
+**Fastest, once `OPS_SWITCHES=1` is set:** the store, in about 5 seconds with no deploy (`docs/ops.md`
+has the command). It works with no Vercel login, and turning one off needs `OPS_FOUNDER_SECRET`.
 
 **To set an environment variable:** Vercel → the project → Settings → Environment Variables → add
 it for Production → Save. Then Deployments → the current production deployment → ⋯ → **Redeploy**.
@@ -63,7 +68,7 @@ this on the real project yet, so time it the first time you practise.
 | Remove one person's data | They use "Delete all my data" in settings, or a founder does it with their consent | `docs/beta-checklist.md` |
 | Replace a leaked encryption key | `docs/security/keys.md`, founders only | `/admin/keys` |
 | Stop deploys | Stop the deploy loop on the laptop (`green-deploy.sh` in the session notes). New merges then stay off production | Read the script, not run |
-| Go back to the last good code | Vercel → Deployments → the last good one → **Instant Rollback**. Code only: database changes stay, and environment changes aren't undone | Not tried on production |
+| Go back to the last good code | Vercel → Deployments → the last good one → **Instant Rollback**. Code only: database changes stay, and environment changes aren't undone. New deploys then stay off production until you promote one (`docs/ops.md`) | Not tried on production. The watch's script is drilled against a stand-in |
 | Take the site off at Vercel | Project → Settings → pause the project, if the plan offers it. `KILL_SITE` does the same without it | Not tried, and not confirmed on this plan |
 
 **Advice and money movement can't be turned on by accident.** `REAL_ACCOUNT_ADVICE`,
@@ -82,6 +87,7 @@ a code change, not a setting.
 | Heartbeats (`src/lib/heartbeat.ts`) | All 7 jobs, the probe and the backup, even when everything else has stopped | Whatever you set in Healthchecks | `HEALTHCHECKS_PING_KEY` |
 | Hourly probe (`src/lib/probe.ts`) | Sign-in, and one sample person trying to reach another | A vague issue labelled `probe`, email, the heartbeat. The check that failed is on `/admin/errors` | `PROBE_SECRET` |
 | Sentry (`src/lib/sentry.ts`) | Server errors and failed jobs, scrubbed | Sentry | `SENTRY_DSN` |
+| The watch (`scripts/ops/watch.mjs`) | The site, the probe and the jobs, every 10 minutes. It acts as well as tells you | A page to your phone, an issue labelled `deploy-freeze` | The founders' list |
 
 **If the probe fails on a cross-user check, treat it as a leak until shown otherwise.** The
 repository is public, so its issue and logs don't say which check failed. Keep it that way, and

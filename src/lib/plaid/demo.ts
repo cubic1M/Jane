@@ -49,7 +49,7 @@ const MAIN_DEMO_ITEM = {
     plaidItemId: { endsWith: `-${l!.login}` },
   })),
 };
-const DEMO_TOKEN_PREFIX = "demo:";
+export const DEMO_TOKEN_PREFIX = "demo:";
 
 export const isDemoItemId = (plaidItemId: string) => plaidItemId.startsWith(DEMO_ITEM_PREFIX);
 export const isDemoToken = (accessToken: string) => accessToken.startsWith(DEMO_TOKEN_PREFIX);

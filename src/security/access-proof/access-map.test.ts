@@ -50,11 +50,14 @@ describe("the route inventory", () => {
   });
 
   // The hourly probe has its own secret, so it stays off until a founder sets it.
-  it("a cron route reads CRON_SECRET or PROBE_SECRET and a webhook checks a signature, in its own file", () => {
+  it("a cron route reads a secret of its own (cron, probe or ops) and a webhook checks a signature, in its own file", () => {
     const missing = Object.entries(ACCESS_MAP).flatMap(([file, access]) => {
       const kind = accessKind(access);
       const source = kind === "cron" || kind === "webhook" ? readFileSync(file, "utf8") : "";
-      if (kind === "cron" && !/CRON_SECRET|PROBE_SECRET|authorizeCron|isCron/.test(source))
+      if (
+        kind === "cron" &&
+        !/CRON_SECRET|PROBE_SECRET|OPS_\w+_SECRET|authorizeCron|isCron/.test(source)
+      )
         return [file];
       if (kind === "webhook" && !/verif|signature|secret/i.test(source)) return [file];
       return [];

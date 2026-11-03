@@ -36,6 +36,37 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllEnvs());
 
+describe("which site the probe calls", () => {
+  beforeEach(() => vi.stubEnv("PROBE_SECRET", "right"));
+  const at = (host: string) =>
+    GET(
+      new Request(`https://${host}/api/cron/probe`, { headers: { authorization: "Bearer right" } }),
+    );
+
+  it("a candidate tests its own code, at its own deployment address", async () => {
+    vi.stubEnv("VERCEL_URL", "jane-abc.vercel.app");
+    vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "jane.test");
+    vi.stubEnv("VERCEL_AUTOMATION_BYPASS_SECRET", "bypass");
+    await at("jane-abc.vercel.app");
+    expect(runProbe).toHaveBeenCalledWith("https://jane-abc.vercel.app", { bypass: "bypass" });
+  });
+
+  it("the live domain tests the live domain, and sends no bypass", async () => {
+    vi.stubEnv("VERCEL_URL", "jane-abc.vercel.app");
+    vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "jane.test");
+    vi.stubEnv("VERCEL_AUTOMATION_BYPASS_SECRET", "bypass");
+    await at("jane.test");
+    expect(runProbe).toHaveBeenCalledWith("https://jane.test", { bypass: undefined });
+  });
+
+  it("a forged host goes to the site's own address, never to that host", async () => {
+    vi.stubEnv("VERCEL_URL", "jane-abc.vercel.app");
+    vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "jane.test");
+    await at("evil.example");
+    expect(runProbe).toHaveBeenCalledWith("https://jane.test", { bypass: undefined });
+  });
+});
+
 describe("GET /api/cron/probe", () => {
   it("refuses everyone until PROBE_SECRET is set, and runs nothing", async () => {
     vi.stubEnv("PROBE_SECRET", "");
@@ -56,7 +87,7 @@ describe("GET /api/cron/probe", () => {
     vi.stubEnv("PROBE_SECRET", "right");
     vi.stubEnv("APP_URL", "https://jane.example");
     await call("Bearer right");
-    expect(runProbe).toHaveBeenCalledWith("https://jane.example");
+    expect(runProbe).toHaveBeenCalledWith("https://jane.example", { bypass: undefined });
   });
 
   it("runs against its own address and reports a pass", async () => {
@@ -66,7 +97,7 @@ describe("GET /api/cron/probe", () => {
     const response = await call("Bearer right");
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual(probe.result);
-    expect(runProbe).toHaveBeenCalledWith("https://jane.test");
+    expect(runProbe).toHaveBeenCalledWith("https://jane.test", { bypass: undefined });
     expect(recordRun).toHaveBeenCalledWith("probe", expect.any(Function));
     expect(alertError).not.toHaveBeenCalled();
   });

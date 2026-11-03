@@ -1,9 +1,10 @@
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 import { logAdminAccess } from "@/lib/admin-access";
-import { SITE_PAUSED_TEXT, killed } from "@/config/kill-switches";
+import { SITE_PAUSED_TEXT, siteStoppedFor } from "@/config/kill-switches";
 import { adminSession, sessionTokenFrom } from "@/lib/admin-gate";
 import { edgeLimit } from "@/lib/edge-limits";
 import { log } from "@/lib/log";
+import { freshSwitches } from "@/lib/ops-switches";
 import { newNonce, pageCsp } from "@/lib/security-headers";
 
 // Runs before every page, API route and server action. Three jobs, after the emergency stop:
@@ -16,8 +17,10 @@ import { newNonce, pageCsp } from "@/lib/security-headers";
 // - Every page gets a Content-Security-Policy with a fresh nonce. Next.js reads it from the
 //   request and puts the nonce on its own scripts; nothing else runs (docs/security/edge.md).
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
-  // The emergency stop (docs/incident.md), ahead of everything including the database.
-  if (killed("site")) {
+  // The emergency stop (docs/incident.md), ahead of everything. The database is read only with
+  // OPS_SWITCHES=1, and a slow or failed read carries on with what it last knew.
+  await freshSwitches();
+  if (siteStoppedFor(request.nextUrl.pathname)) {
     return new NextResponse(SITE_PAUSED_TEXT, {
       status: 503,
       headers: { "content-type": "text/plain; charset=utf-8", "retry-after": "600" },

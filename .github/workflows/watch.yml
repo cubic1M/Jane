@@ -1,0 +1,50 @@
+# The watch: on a timer, a plain script looks at the live site and acts only on the fixed triggers
+# in scripts/ops/watch-core.mjs. No model and no log text reach it. It may roll code back, freeze
+# deploys, set a switch that reduces exposure, and page a phone (docs/ops.md).
+# Off until a founder sets the repository variable OPS_WATCH to 1 and fills the ops-actor
+# environment. The repository is public, so it prints short codes only. It holds the only Vercel
+# token, so no pull request's code runs here: schedule and manual runs use main's copy.
+name: Watch
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    if: vars.OPS_WATCH == '1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    environment: ops-actor
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          sparse-checkout: |
+            scripts/ops
+            .github/scripts/gates
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+      - run: node scripts/ops/watch.mjs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PROBE_SECRET: ${{ secrets.PROBE_SECRET }}
+          OPS_READ_SECRET: ${{ secrets.OPS_READ_SECRET }}
+          OPS_REDUCE_SECRET: ${{ secrets.OPS_REDUCE_SECRET }}
+          OPS_HIGH_BAR_SECRET: ${{ secrets.OPS_HIGH_BAR_SECRET }}
+          OPS_PAGE_URL: ${{ secrets.OPS_PAGE_URL }}
+          HEALTHCHECKS_PING_KEY: ${{ secrets.HEALTHCHECKS_PING_KEY }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_ROLLBACK_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          VERCEL_TEAM_ID: ${{ vars.VERCEL_TEAM_ID }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_TEAM_ID }}
+          VERCEL_SCOPE: ${{ vars.VERCEL_SCOPE }}

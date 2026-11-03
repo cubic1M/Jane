@@ -1933,6 +1933,18 @@ model SavedReply {
 }
 
 // Each run of a scheduled job, for /admin/health. No user data.
+// Emergency switches that apply in seconds, with no deploy (src/lib/ops-switches.ts). A row is one
+// switch; set_by is which secret's tier set it, and trigger which fixed rule or person.
+model OpsSwitch {
+  name    String   @id
+  on      Boolean
+  setBy   String   @map("set_by")
+  trigger String
+  setAt   DateTime @map("set_at") @db.Timestamptz(3)
+
+  @@map("ops_switches")
+}
+
 model CronRun {
   id         String    @id @default(cuid())
   name       String
