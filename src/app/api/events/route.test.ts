@@ -10,6 +10,7 @@ vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/session", () => ({ getCurrentUser: vi.fn() }));
 
 import { track } from "@/lib/analytics";
+import { limitOrNull } from "@/lib/rate-limit";
 import { getCurrentUser } from "@/lib/session";
 import { POST } from "./route";
 
@@ -32,6 +33,17 @@ describe("POST /api/events", () => {
   beforeEach(() => {
     vi.mocked(track).mockReset().mockResolvedValue(undefined);
     vi.mocked(getCurrentUser).mockReset().mockResolvedValue(null);
+  });
+
+  it("counts someone not signed in against a tighter limit", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValueOnce(null);
+    vi.mocked(limitOrNull).mockImplementation(async (name) =>
+      name === "anonymousEvents" ? (Response.json({}, { status: 429 }) as never) : null,
+    );
+    const response = await postEvent({ name: "landing_viewed" });
+    expect(response.status).toBe(429);
+    expect(track).not.toHaveBeenCalled();
+    vi.mocked(limitOrNull).mockResolvedValue(null);
   });
 
   it("attributes a signed-in user's event, with the finding it was about", async () => {

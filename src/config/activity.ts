@@ -20,6 +20,8 @@ export const ACTIVITY = {
   flushEveryMs: 5_000,
   // At most this many events in one request (the browser sends the rest next time).
   maxBatch: 50,
+  // Rows one request may store for someone not signed in: they only ever view the landing page.
+  maxAnonymousBatch: 2,
   // Biggest request body the route reads.
   maxBodyBytes: 64 * 1024,
   // Rage click: this many clicks on about the same spot within this long.

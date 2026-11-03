@@ -2,7 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { create } = vi.hoisted(() => ({ create: vi.fn(async () => ({})) }));
 vi.mock("@/lib/db", () => ({ db: { errorEvent: { create } } }));
+vi.mock("@/lib/rate-limit", () => ({
+  limitOrNull: vi.fn(async () => null),
+  ipKey: vi.fn(() => "ip"),
+}));
 
+import { limitOrNull } from "@/lib/rate-limit";
 import { POST } from "./route";
 
 const post = (body: string) =>
@@ -30,6 +35,21 @@ describe("POST /api/client-error", () => {
         routeType: "client",
       },
     });
+  });
+
+  // A local build stored 200 made-up reports of 2.4 KB from one IP in seconds: about 1 GB a day
+  // from one IP at the backstop's 300 a minute, and real errors buried on /admin/errors.
+  it.each([
+    ["clientError", "ip"],
+    ["errorReportsEveryone", "client"],
+  ])("stores nothing past the %s limit", async (name, subject) => {
+    vi.mocked(limitOrNull).mockImplementation(async (asked, who) =>
+      asked === name && who === subject ? (Response.json({}, { status: 429 }) as never) : null,
+    );
+    const response = await post(JSON.stringify({ message: "boom" }));
+    expect(response.status).toBe(429);
+    expect(create).not.toHaveBeenCalled();
+    vi.mocked(limitOrNull).mockResolvedValue(null);
   });
 
   it("refuses what isn't an error, and anything too big", async () => {

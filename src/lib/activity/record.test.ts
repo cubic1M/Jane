@@ -1,3 +1,4 @@
+import { ACTIVITY } from "@/config/activity";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => ({ db: {} }));
@@ -73,6 +74,21 @@ describe("recordActivity", () => {
       ["user_1", "page_view"],
       ["user_1", "click"],
     ]);
+  });
+
+  // A local build stored 50 rows a request: 6,000 a minute from one IP, without an account.
+  it("stores at most a few rows from one anonymous request", async () => {
+    const events = Array.from({ length: 50 }, () => ({
+      kind: "page_view",
+      path: "/",
+      at: Date.now(),
+    }));
+    const result = await recordActivity(null, { visitId: "visit12345", events }, { client });
+    expect(result).toEqual({
+      ok: true,
+      recording: "anonymous",
+      stored: ACTIVITY.maxAnonymousBatch,
+    });
   });
 
   it("stores only an anonymous view of the landing page before sign-in", async () => {
