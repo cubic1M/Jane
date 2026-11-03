@@ -355,6 +355,36 @@ describe.runIf(url)("deleting data against a real database", () => {
     );
   });
 
+  // Debugger 11-03: a walk found the email surviving deletion in rate_limits ("auth:email:..."), though
+  // /privacy says "You can delete everything". This reads every text column of every table, so a new
+  // table that keeps an email is caught too. Ids stay in the access log and jobs, on purpose: an id on
+  // its own says nothing about the person once their row is gone.
+  it("leaves the person's email nowhere in the database", async () => {
+    const email = `gone-${crypto.randomUUID()}@example.com`;
+    const user = await client.user.create({ data: { email } });
+    await client.rateLimit.create({
+      data: { key: `auth:email:${email}`, windowStart: new Date(), count: 1 },
+    });
+    await client.rateLimit.create({
+      data: { key: `plaid:${user.id}`, windowStart: new Date(), count: 1 },
+    });
+    await deleteAllData(user.id, { client, api });
+
+    const columns = await client.$queryRaw<{ table_name: string; column_name: string }[]>`
+      SELECT table_name, column_name FROM information_schema.columns
+      WHERE table_schema = 'public' AND data_type IN ('text', 'character varying', 'jsonb', 'json')`;
+    const left: string[] = [];
+    for (const { table_name, column_name } of columns) {
+      const rows = await client.$queryRawUnsafe<{ n: number }[]>(
+        `SELECT count(*)::int AS n FROM "${table_name}" WHERE "${column_name}"::text LIKE $1`,
+        `%${email}%`,
+      );
+      if (rows[0].n > 0) left.push(`${table_name}.${column_name}`);
+    }
+    expect(left).toEqual([]);
+    expect(await client.rateLimit.count({ where: { key: `plaid:${user.id}` } })).toBe(0);
+  });
+
   it("deletes nothing if Plaid can't remove an item, so the person can retry", async () => {
     const { userId } = await fullUser();
     itemRemove.mockRejectedValue(plaidApiError("INTERNAL_SERVER_ERROR", 500));
