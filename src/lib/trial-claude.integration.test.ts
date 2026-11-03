@@ -13,6 +13,7 @@ import { categorizeTransactions } from "@/categorize/categorize";
 import { resetAnthropicForTests } from "@/lib/anthropic";
 import { loadCheckIn, summaryFor } from "@/lib/check-in";
 import { scopedFor } from "@/lib/db-scoped";
+import { syncItem } from "@/lib/plaid/sync";
 import { addDocument } from "@/lib/documents/store";
 import { draftMessage } from "@/lib/drafts";
 import { explainFindings } from "@/lib/explanations";
@@ -79,8 +80,12 @@ describe.runIf(url)("what a sample person can spend on Claude", { timeout: 120_0
   });
 
   it("makes no call for a sample person's first scan, explanations, summary or strategist", async () => {
-    const trial = await startTrial({ client, now: new Date("2031-05-01T12:00:00Z") });
+    // defer, then the sync: without it startTrial clears finished trials for everyone, and at this
+    // date that's the trials other test files are using in the shared database.
+    const started = new Date("2031-05-01T12:00:00Z");
+    const trial = await startTrial({ client, now: started, defer: true });
     created.push(trial.userId);
+    await syncItem(trial.itemId, { client, now: started });
     await explainFindings(trial.userId, { client });
     const now = new Date("2031-05-02T12:00:00Z");
     await summaryFor(trial.userId, await loadCheckIn(trial.userId, "2031-04", { client, now }), {
