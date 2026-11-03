@@ -424,6 +424,10 @@ export const CHAT_PRIMER_BUDGET_MS = 1_500;
 // limit; the monthly cap applies to everyone on top.
 export const CHAT_PERSON_DAILY_CAP_CENTS = 20;
 export const CHAT_TRIAL_DAILY_CAP_CENTS = 60;
+// All sample people together, a day: anyone can make one, so many of them can't spend the month's
+// budget for the people who signed up. CHAT_TRIAL_MONTH_SHARE keeps part of it out of their reach.
+export const CHAT_ALL_TRIALS_DAILY_CAP_CENTS = 100;
+export const CHAT_TRIAL_MONTH_SHARE = 0.5;
 export const CHAT_TYPICAL_ANSWER_CENTS = 2;
 // /admin/chat looks back this many days for what Jane couldn't answer.
 export const CHAT_UNANSWERED_DAYS = 30;

@@ -159,13 +159,19 @@ const MAX_BODY = 2000;
 export async function draftMessage(
   actionType: ActionType,
   finding: FindingForDraft,
-  { client = anthropic, request }: { client?: typeof anthropic; request?: string } = {},
+  {
+    client = anthropic,
+    request,
+    useClaude = true,
+  }: { client?: typeof anthropic; request?: string; useClaude?: boolean } = {},
 ): Promise<DraftResult | null> {
   const prepared = draftPayload(actionType, finding, { request });
   if (!prepared) return null;
   const { payload, allowedCents } = prepared;
   const template = templateDraft(payload);
-  if (!llmEnabled()) return { kind: "template", draft: template, reason: "no_api_key" };
+  if (!llmEnabled() || !useClaude) {
+    return { kind: "template", draft: template, reason: "no_api_key" };
+  }
 
   let text: string | null;
   try {

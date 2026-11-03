@@ -19,6 +19,7 @@ import { track } from "@/lib/analytics";
 import { addDocument, removeDocument, saveDocumentFacts } from "@/lib/documents/store";
 import { readPolicyDocument } from "@/lib/insurance/readings";
 import { hit } from "@/lib/rate-limit";
+import { requireUser } from "@/lib/session";
 import { deleteDocument, saveFacts, uploadDocument } from "./actions";
 
 const PDF = "%PDF-1.7\n";
@@ -87,6 +88,21 @@ describe("document actions (spec step 68)", () => {
     expect([userId, documentId]).toEqual(["u1", "d1"]);
     expect(options?.file?.contentType).toBe("application/pdf");
     expect(Buffer.from(options!.file!.bytes).toString()).toBe(PDF);
+  });
+
+  it("never hands a sample person's file to a reader, which would send it to Claude", async () => {
+    vi.mocked(requireUser).mockResolvedValueOnce({ id: "trial_1", email: null } as never);
+    vi.mocked(addDocument).mockResolvedValue({
+      ok: true,
+      id: "d1",
+      read: "you",
+      summaryRejected: false,
+    });
+    vi.mocked(readPolicyDocument).mockClear();
+    await uploadDocument(null, uploadForm());
+    const [userId, , options] = vi.mocked(readPolicyDocument).mock.calls[0];
+    expect(userId).toBe("trial_1");
+    expect(options?.file).toBeNull();
   });
 
   it("doesn't read a warranty as a policy", async () => {

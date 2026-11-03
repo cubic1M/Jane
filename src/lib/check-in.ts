@@ -10,6 +10,7 @@ import { savedToDate } from "@/lib/membership/service";
 import { formatCents } from "@/lib/money";
 import { loadNetWorthHistory } from "@/lib/net-worth-history";
 import { monthLabel } from "@/lib/day-label";
+import { isTrialUser } from "@/lib/trial-ids";
 
 // The monthly check-in: the month's numbers (spending, budgets, net worth, what Jane found
 // and what got done) and a short summary written by Claude from those numbers only. The
@@ -138,10 +139,10 @@ const MAX_SUMMARY = 600;
 
 export async function writeSummary(
   c: CheckIn,
-  { claude = anthropic }: Pick<Options, "claude"> = {},
+  { claude = anthropic, useClaude = true }: Pick<Options, "claude"> & { useClaude?: boolean } = {},
 ): Promise<{ text: string; source: "llm" | "template" }> {
   const template = { text: templateSummary(c), source: "template" as const };
-  if (!llmEnabled()) return template;
+  if (!llmEnabled() || !useClaude) return template;
   const { cents, facts } = figures(c);
   try {
     const response = await claude().messages.create({
@@ -174,7 +175,7 @@ export async function summaryFor(
     select: { summary: true },
   });
   if (existing) return existing.summary;
-  const { text, source } = await writeSummary(c, { claude });
+  const { text, source } = await writeSummary(c, { claude, useClaude: !isTrialUser(userId) });
   await db.checkIns.createMany({
     data: [{ userId, month: c.month, summary: text, source }],
     skipDuplicates: true,

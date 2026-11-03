@@ -31,6 +31,7 @@ import { atLeast } from "./helpers";
 import { isAmbiguousRecurring } from "./rules/subscription-review";
 import { buildStreams } from "./streams";
 import { SUBSCRIPTION_PROMPT_VERSION, checkSubscriptions } from "@/lib/subscription-check";
+import { isTrialUser } from "@/lib/trial-ids";
 import type { Candidate, DetectionInput, DetectionTransaction } from "./types";
 import { isoDate, monthsBefore } from "./units";
 import { copiesToLeaveOut } from "@/planning/books";
@@ -369,7 +370,8 @@ async function subscriptionMerchantKeys(
   for (const stream of buildStreams(input).filter(isAmbiguousRecurring)) {
     if (!known.has(stream.merchantKey)) keyByName.set(stream.merchant, stream.merchantKey);
   }
-  if (keyByName.size > 0) {
+  // A sample person's scan never asks Claude: anyone can make one (src/lib/trial.ts).
+  if (keyByName.size > 0 && !isTrialUser(db.userId)) {
     const answers = await check([...keyByName.keys()].sort());
     const rows = [...answers].flatMap(([name, isSubscription]) => {
       const merchantKey = keyByName.get(name);

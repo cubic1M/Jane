@@ -1,5 +1,9 @@
 import { addMonthlySpend, monthlyCapCents, monthlySpentCents } from "./claude-limits";
-import { CHAT_PERSON_DAILY_CAP_CENTS, CHAT_TRIAL_DAILY_CAP_CENTS } from "@/config/agent-chat";
+import {
+  CHAT_ALL_TRIALS_DAILY_CAP_CENTS,
+  CHAT_PERSON_DAILY_CAP_CENTS,
+  CHAT_TRIAL_DAILY_CAP_CENTS,
+} from "@/config/agent-chat";
 import { MODEL_PRICES_CENTS } from "@/config/answer-checks";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
@@ -22,6 +26,7 @@ export type Usage = {
 
 const SPEND_PREFIX = "chatspend:";
 const HIT_PREFIX = "chatcaphit:";
+const ALL_TRIALS_KEY = "trialspend:all";
 const keyOf = (userId: string) => `${SPEND_PREFIX}${userId}`;
 const dayStart = (now: Date) => new Date(Math.floor(now.getTime() / DAY_MS) * DAY_MS);
 
@@ -44,6 +49,13 @@ export function costInHundredthsOfCents(usage: Usage): number {
   );
 }
 
+// Adds to one of today's counters, in hundredths of a cent.
+async function addToToday(key: string, amount: number, client: PrismaClient, now: Date) {
+  await client.$executeRaw`
+    INSERT INTO rate_limits (key, window_start, count) VALUES (${key}, ${dayStart(now)}, ${amount})
+    ON CONFLICT (key, window_start) DO UPDATE SET count = rate_limits.count + ${amount}`;
+}
+
 export async function addSpend(
   userId: string,
   usage: Usage,
@@ -51,22 +63,22 @@ export async function addSpend(
 ): Promise<void> {
   const amount = costInHundredthsOfCents(usage);
   if (amount <= 0) return;
-  await client.$executeRaw`
-    INSERT INTO rate_limits (key, window_start, count) VALUES (${keyOf(userId)}, ${dayStart(now)}, ${amount})
-    ON CONFLICT (key, window_start) DO UPDATE SET count = rate_limits.count + ${amount}`;
+  await addToToday(keyOf(userId), amount, client, now);
+  if (isTrialUser(userId)) await addToToday(ALL_TRIALS_KEY, amount, client, now);
   // And the month's total, which guards all of Claude's chat spend together.
   await addMonthlySpend(amount, { client, now });
 }
 
-export async function spentTodayCents(
-  userId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
-): Promise<number> {
+async function centsToday(key: string, { client = defaultClient, now = new Date() }: Options) {
   const row = await client.rateLimit.findUnique({
-    where: { key_windowStart: { key: keyOf(userId), windowStart: dayStart(now) } },
+    where: { key_windowStart: { key, windowStart: dayStart(now) } },
     select: { count: true },
   });
   return (row?.count ?? 0) / 100;
+}
+
+export async function spentTodayCents(userId: string, options: Options = {}): Promise<number> {
+  return centsToday(keyOf(userId), options);
 }
 
 // This person's allowance a day, in cents (founder, 2026-10-26: one person can't use up the
@@ -85,6 +97,12 @@ export async function dailyCapCents(
 }
 
 export async function overDailyCap(userId: string, options: Options = {}): Promise<boolean> {
+  if (
+    isTrialUser(userId) &&
+    (await centsToday(ALL_TRIALS_KEY, options)) >= CHAT_ALL_TRIALS_DAILY_CAP_CENTS
+  ) {
+    return true;
+  }
   const cap = await dailyCapCents(userId, options);
   return cap !== null && (await spentTodayCents(userId, options)) >= cap;
 }

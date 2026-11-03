@@ -14,6 +14,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { dollarFigures } from "@/lib/guardrails";
 import { addSpend, overDailyCap } from "@/lib/jane-agent/spend";
+import { isTrialUser } from "@/lib/trial-ids";
 import { formatCents } from "@/lib/money";
 import { vetIdea } from "@/planning/strategist";
 import { detectFor } from "@/lib/suggestions";
@@ -135,7 +136,8 @@ export async function runStrategist(
   userId: string,
   { client = defaultClient, now = new Date(), claude = anthropic, force = false }: Options = {},
 ): Promise<StrategistResult> {
-  if (claude === anthropic && !llmEnabled()) return { status: "no_key" };
+  // Anyone can make a sample person, so nothing but their own typed answers may cost anything.
+  if (claude === anthropic && (!llmEnabled() || isTrialUser(userId))) return { status: "no_key" };
   if (!force) {
     const last = await lastRun(userId, client);
     if (last && now.getTime() - Date.parse(last) < STRATEGIST_EVERY_DAYS * DAY_MS) {

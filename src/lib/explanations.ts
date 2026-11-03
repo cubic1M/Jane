@@ -3,6 +3,7 @@ import { llmEnabled, llmModel } from "@/lib/anthropic";
 import { SYSTEM_ACTOR, logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { isTrialUser } from "@/lib/trial-ids";
 import { EXPLAIN_PROMPT_VERSION, explainFinding } from "./explain";
 import { currentHash } from "./card-text";
 
@@ -34,7 +35,8 @@ export async function explainFindings(
   { client = defaultClient, explain = explainFinding }: Options = {},
 ): Promise<ExplainSummary> {
   const summary: ExplainSummary = { llm: 0, template: 0, unavailable: 0 };
-  if (!llmEnabled()) return summary;
+  // A sample person keeps the template text: anyone can make one, so it can't cost anything.
+  if (!llmEnabled() || isTrialUser(userId)) return summary;
 
   const db = scopedFor(userId, client);
   const findings = await db.findings.findMany({

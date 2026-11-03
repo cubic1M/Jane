@@ -1,4 +1,4 @@
-import { CHAT_MONTHLY_CAP_CENTS_DEFAULT } from "@/config/agent-chat";
+import { CHAT_MONTHLY_CAP_CENTS_DEFAULT, CHAT_TRIAL_MONTH_SHARE } from "@/config/agent-chat";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { giveBack, hit } from "@/lib/rate-limit";
@@ -48,7 +48,10 @@ export async function monthlySpentCents({
 export type ClaudeLimit = { text: string } | "budget" | null;
 
 export async function claudeLimit(userId: string, options: Options = {}): Promise<ClaudeLimit> {
-  if ((await monthlySpentCents(options)) >= monthlyCapCents()) return "budget";
+  const spent = await monthlySpentCents(options);
+  if (spent >= monthlyCapCents()) return "budget";
+  // Sample people stop early, so the rest of the month's budget is there for real people.
+  if (isTrialUser(userId) && spent >= monthlyCapCents() * CHAT_TRIAL_MONTH_SHARE) return "budget";
   if (isTrialUser(userId) && !(await hit("claudeTrial", userId, options)).ok) {
     return { text: TRIAL_CAP_TEXT };
   }

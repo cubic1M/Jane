@@ -33,7 +33,7 @@ import { checkGuardrails } from "@/lib/guardrails";
 import { enqueueJob, runJob } from "@/lib/jobs";
 import { cancelsFromOwnAccountOnly, companyFacts } from "@/lib/merchants";
 import { agentFromAddress, mailMode, replyAddress, sendAgentMail, tokenFromAddress } from "./mail";
-import { readReply, type ReplyReading } from "./read-reply";
+import { readReply, readReplyByRules, type ReplyReading } from "./read-reply";
 import { findSupportContact } from "./find-contact";
 import { composeAnswer, whatIsAsked, type KnownFacts } from "./auto-answer";
 import { simulatedAddress } from "./simulated-company";
@@ -429,7 +429,10 @@ export async function agentStep(
           : undefined;
     const request =
       (typeof choice === "string" ? AGENT_REQUESTS[action.type]?.[choice] : null) ?? undefined;
-    const draft = await draftMessage(action.type, finding, { request });
+    const draft = await draftMessage(action.type, finding, {
+      request,
+      useClaude: !isTrialUser(userId),
+    });
     const prepared = draftPayload(action.type, finding, { request });
     if (!draft || !prepared || draft.draft.channel !== "email") {
       await handOff(userId, action, "This kind of request needs a call, not an email.", options);
@@ -523,7 +526,10 @@ export async function handleReply(
   const action = await loadAction(userId, found.id, client);
   if (!action) return "unknown";
 
-  const reading = await read({ subject: mail.subject, body: mail.body.slice(0, AGENT_MAX_BODY) });
+  // A sample person's simulated company is read by the rules: it can't cost anything.
+  const reading = isTrialUser(userId)
+    ? readReplyByRules(mail.body.slice(0, AGENT_MAX_BODY))
+    : await read({ subject: mail.subject, body: mail.body.slice(0, AGENT_MAX_BODY) });
   await record(
     userId,
     action.id,
@@ -1020,7 +1026,7 @@ export async function lookUpSupportFor(
   const action = await loadAction(userId, actionId, client);
   if (!action?.company) return;
   const { merchant: row } = await companyFacts(action.company, { client });
-  if (row) await findSupportContact(row.id, { client });
+  if (row && !isTrialUser(userId)) await findSupportContact(row.id, { client });
 }
 
 // Once the team adds or confirms a merchant's support email, the agent picks up the

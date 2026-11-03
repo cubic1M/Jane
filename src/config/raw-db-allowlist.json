@@ -223,7 +223,7 @@
   "src/lib/jane-agent/search.ts": 2,
   "src/lib/jane-agent/settled.ts": 4,
   "src/lib/jane-agent/snapshot.ts": 33,
-  "src/lib/jane-agent/spend.ts": 12,
+  "src/lib/jane-agent/spend.ts": 13,
   "src/lib/jane-agent/still-true.ts": 10,
   "src/lib/jane-agent/typing.ts": 16,
   "src/lib/jane-agent/unanswered.ts": 2,

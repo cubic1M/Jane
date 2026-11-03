@@ -55,6 +55,8 @@ export const RATE_LIMITS = {
   // 20, not 5: offices, schools and households share one IP, and people try several of the
   // eight sample lives (step 252).
   trial: { limit: 20, windowSeconds: 60 * 60 },
+  // The same, for everyone together: rotating IPs can't fill the database with sample people.
+  trialEveryone: { limit: 300, windowSeconds: 60 * 60 },
   // Questions Claude answers for one sample (Try Jane) person, in all: one very long window.
   claudeTrial: { limit: 25, windowSeconds: 60 * 60 * 24 * 365 * 10 },
   // Invite codes made by an admin, per admin.
