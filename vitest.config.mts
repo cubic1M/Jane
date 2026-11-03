@@ -1,4 +1,4 @@
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig({
@@ -7,6 +7,12 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.{ts,tsx}"],
+    // The access proof writes for everyone in the database it is given, so it runs alone, by
+    // npm run test:access and a CI job of its own (docs/security/access-proof.md).
+    exclude: [
+      ...configDefaults.exclude,
+      ...(process.env.ACCESS_PROOF === "1" ? [] : ["**/*.proof.test.ts"]),
+    ],
     restoreMocks: true,
     // Spec step 293: no test calls Anthropic; a request to its API fails the test.
     setupFiles: ["src/test-setup/no-anthropic.ts", "src/test-setup/sync-snapshots.ts"],

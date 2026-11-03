@@ -29,6 +29,9 @@ investment advice in this MVP.
 - All secrets come from env vars; keep .env.example up to date, never commit .env
 - Every user-owned table has user_id and is queried through a helper that
   scopes by the signed-in user
+- Every route, server action and page is declared in src/config/access-map.ts as public, signed-in,
+  admin, cron or webhook; the access proof attacks each one as what it says it is, and new raw
+  database client uses fail lint (docs/security/access-proof.md)
 - Every sensitive event writes to audit_log; every funnel event to analytics_events
 - Detection thresholds and rates live in src/config/detection.ts, never inline
 - LLM output never gives investment, tax or legal advice; run it through the
@@ -59,5 +62,6 @@ investment advice in this MVP.
 
 ## Commands
 - npm run dev / npm test / npm run test:e2e / npm run lint / npx prisma migrate dev
+- npm run test:access: the access proof (TEST_DATABASE_URL on a throwaway local database)
 - npm run check:e2e-wording before pushing a change to words on a page: lists wording removed
   from src/ that an end-to-end spec still expects

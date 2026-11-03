@@ -117,16 +117,69 @@ jobs:
           src/lib/trial.integration.test.ts src/lib/retention.integration.test.ts
           src/lib/learning.integration.test.ts
 
+  # Every route, action and page attacked as nobody and as someone else, on a database of its own
+  # (docs/security/access-proof.md). Alone because it writes for every person and table it finds.
+  access-proof:
+    name: Access proof
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --tmpfs /var/lib/postgresql/data
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://postgres@localhost:5432/test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - uses: actions/cache@v6
+        id: modules
+        with:
+          path: node_modules
+          key: modules-${{ runner.os }}-${{ hashFiles('.nvmrc', 'package-lock.json') }}
+      - if: steps.modules.outputs.cache-hit != 'true'
+        run: npm ci
+      - if: steps.modules.outputs.cache-hit == 'true'
+        run: npx prisma generate
+      - name: No waiting on commits (a throwaway database)
+        run: node scripts/fast-test-postgres.mjs "$TEST_DATABASE_URL"
+      - name: Apply migrations to an empty database
+        run: npx prisma migrate deploy
+        env:
+          DIRECT_URL: ${{ env.TEST_DATABASE_URL }}
+      - name: Row-level security on every table, as each deploy does
+        run: node scripts/rls-protect.mjs "$TEST_DATABASE_URL"
+      - run: npm run test:access
+      - name: Keep what each attack found
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: access-proof
+          path: test-results/access-proof.json
+          retention-days: 7
+
   checks:
     name: Lint, typecheck and unit tests
     runs-on: ubuntu-latest
-    needs: [static, unit]
+    needs: [static, unit, access-proof]
     if: always()
     steps:
       - name: Fail if any part failed or was skipped
         run: |
-          echo "static: ${{ needs.static.result }}, unit: ${{ needs.unit.result }}"
-          test "${{ needs.static.result }}" = success && test "${{ needs.unit.result }}" = success
+          echo "static: ${{ needs.static.result }}, unit: ${{ needs.unit.result }}, access proof: ${{ needs.access-proof.result }}"
+          test "${{ needs.static.result }}" = success && test "${{ needs.unit.result }}" = success && test "${{ needs.access-proof.result }}" = success
 
   # The end-to-end tests run against a production build, made once here and handed to both
   # shards: `next start` serves every page at once, where `next dev` compiled each page on its

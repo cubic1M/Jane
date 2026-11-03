@@ -163,6 +163,8 @@ where a plain query would just have queued.
 
 ## Checking it
 
+- `docs/security/access-proof.md`: every route, action and page attacked as the wrong person, whether
+  it uses `scopedFor` or not, and a lint rule that fails new uses of the raw client.
 - `src/lib/rls.integration.test.ts`: every user-owned table is protected; Alice, with her id set,
   sees none of anyone else's rows in any of them through raw SQL, and can't update, delete,
   insert for or take over Bob's; every scoped helper returns, updates and deletes nothing of
