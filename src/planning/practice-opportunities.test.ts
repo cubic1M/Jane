@@ -19,6 +19,7 @@ import {
   type ScanPreferences,
 } from "./practice-opportunities";
 import { OPPORTUNITY_KINDS, SAFETY_KINDS } from "@/config/practice-opportunities";
+import { AUTOPILOT_LIMITS } from "@/config/portfolios";
 import { LEVEL_WORST_DROP_PERCENT } from "@/config/practice-preferences";
 import { SCAN_CAPS, SCAN_KINDS, type ScanKind } from "@/config/practice-scan";
 import type { Suggestion } from "@/detectors/contract";
@@ -287,6 +288,42 @@ describe("a cheaper equivalent fund", () => {
     expect(flag.trades[0].amountCents).toBe(flag.trades[1].amountCents);
     expect(flag.figures.find((f) => f.label === "Saved a year")).toBeDefined();
     expectShortForms(flag);
+  });
+
+  // Debugger 11-03: "Switch IXUS to VXUS", on $55 of practice money, to save $0.01 a year.
+  it("doesn't ask about a switch that saves next to nothing", async () => {
+    const held = await inIxus(1.02);
+    const prices = await pricesOn("2026-10-08");
+    const value = positionValue(held.state, prices, "IXUS");
+    // Small, but still big enough to trade.
+    const share = (AUTOPILOT_LIMITS.minTradeCents * 2) / value;
+    const ixus = held.state.positions.IXUS;
+    const small = {
+      ...held,
+      state: {
+        ...held.state,
+        positions: {
+          ...held.state.positions,
+          IXUS: {
+            ...ixus,
+            quantity: ixus.quantity * share,
+            costBasisCents: Math.round(ixus.costBasisCents * share),
+          },
+        },
+      },
+    };
+    expect(kinds(await scanOn(3, "2026-10-08", small))).not.toContain("cheaper_fund");
+  });
+
+  it("says fund costs to the hundredth, where the difference is", async () => {
+    const [flag] = one(await scanOn(3, "2026-10-08", await inIxus(1.02)), "cheaper_fund");
+    expect(flag.figures).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: "IXUS a year", value: "0.07%" }),
+        expect.objectContaining({ label: "VXUS a year", value: "0.05%" }),
+      ]),
+    );
+    expect(flag.ask.short).toContain("0.07%");
   });
 
   it("never sells at a gain when taxes matter, unless the person said they don't", async () => {

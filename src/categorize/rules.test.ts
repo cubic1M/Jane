@@ -188,6 +188,20 @@ describe("categorizeByRules", () => {
   it("falls back to the bank's own labels", () => {
     expect(out("SOMETHING", { bankType: "FEE_TRANSACTION" })).toBe("BANK_FEES_OTHER_BANK_FEES");
     expect(out("CORNER MARKET", { bankCategory: "Groceries" })).toBe("FOOD_AND_DRINK_GROCERIES");
+    // USAA's plain names (night QA 11-03: $1,450 of rent and $710 of childcare sat uncategorized,
+    // on a statement that said what they were).
+    expect(out("LEJEUNE RENTALS", { bankCategory: "Rent" })).toBe("RENT_AND_UTILITIES_RENT");
+    expect(out("SUNRISE LEARNING", { bankCategory: "Childcare" })).toBe(
+      "GENERAL_SERVICES_CHILDCARE",
+    );
+    expect(out("USAA AUTO INS", { bankCategory: "Insurance" })).toBe("GENERAL_SERVICES_INSURANCE");
+    expect(out("ONSLOW WATER", { bankCategory: "Utilities" })).toBe(
+      "RENT_AND_UTILITIES_OTHER_UTILITIES",
+    );
+    expect(into("DLA PAYMENT", { bankCategory: "Income" })).toBe("INCOME_OTHER");
+    // A refund from the landlord isn't rent paid, and money out isn't income.
+    expect(into("LEJEUNE RENTALS", { bankCategory: "Rent" })).toBeNull();
+    expect(out("CORNER SHOP", { bankCategory: "Income" })).toBeNull();
     expect(into("CORNER MARKET", { bankCategory: "Groceries" })).toBeNull();
   });
 

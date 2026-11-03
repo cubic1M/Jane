@@ -18,6 +18,7 @@ import {
   CASH_DRAG_RATE,
   CASH_DRAG_RATE_SOURCE,
   CHEAPER_FUND_MIN_BPS,
+  CHEAPER_FUND_MIN_SAVED_CENTS,
   LEVEL_WORST_DROP_SOURCE,
   DEFAULT_CASH_BUFFER_CENTS,
   DRIFT_WARNING_SHARE,
@@ -134,6 +135,8 @@ const LABEL: Record<PracticeClass, string> = {
 };
 const cap = (s: string) => `${s[0].toUpperCase()}${s.slice(1)}`;
 const pct = (n: number) => `${(Math.round(n * 1000) / 10).toString()}%`;
+// A fund's yearly cost, in basis points, to the hundredth: 0.07% and 0.05% both round to 0.1%.
+const feePct = (bps: number) => `${(bps / 100).toFixed(2)}%`;
 const points = (n: number) => (Math.round(n * 1000) / 10).toString();
 const SUFFIX: Readonly<Record<number, string>> = { 1: "st", 2: "nd", 3: "rd" };
 const ordinal = (n: number) =>
@@ -434,7 +437,8 @@ function cheaperFundFlags(
     if (amount < AUTOPILOT_LIMITS.minTradeCents) continue;
     const savedBps = fee - PRACTICE_FUND_FEE_BPS[twin];
     const yearly = Math.round((amount * savedBps) / 10_000);
-    const reason = `${ticker} costs ${pct(fee / 10_000)} a year and ${twin}, a fund of the same kind, ${pct(PRACTICE_FUND_FEE_BPS[twin] / 10_000)}, so ${formatCents(amount)} moves across: the mix stays the same and the yearly cost falls by about ${formatCents(yearly)}.`;
+    if (yearly < CHEAPER_FUND_MIN_SAVED_CENTS) continue;
+    const reason = `${ticker} costs ${feePct(fee)} a year and ${twin}, a fund of the same kind, ${feePct(PRACTICE_FUND_FEE_BPS[twin])}, so ${formatCents(amount)} moves across: the mix stays the same and the yearly cost falls by about ${formatCents(yearly)}.`;
     flags.push({
       kind: "cheaper_fund",
       ticker,
@@ -447,14 +451,14 @@ function cheaperFundFlags(
         { ticker: twin, side: "buy", amountCents: amount, rule: "cheaper_fund", reason },
       ],
       figures: [
-        { label: `${ticker} a year`, value: pct(fee / 10_000) },
-        { label: `${twin} a year`, value: pct(PRACTICE_FUND_FEE_BPS[twin] / 10_000) },
+        { label: `${ticker} a year`, value: feePct(fee) },
+        { label: `${twin} a year`, value: feePct(PRACTICE_FUND_FEE_BPS[twin]) },
         { label: "Saved a year", value: formatCents(yearly) },
         { label: "Gain or loss on the sale", value: formatCents(gain) },
         { label: "Costs from", value: PRACTICE_FUND_FEE_SOURCE },
       ],
       caps: [
-        `Only a fund of the same kind at least ${pct(CHEAPER_FUND_MIN_BPS / 10_000)} a year cheaper`,
+        `Only a fund of the same kind at least ${feePct(CHEAPER_FUND_MIN_BPS)} a year cheaper`,
         input.prefs.taxSensitive
           ? "Never a sale at a gain (taxes matter to you)"
           : "A sale at a gain is allowed (you said taxes don't matter here)",
@@ -467,7 +471,7 @@ function cheaperFundFlags(
           yearly >= 50
             ? `Switch ${ticker} to ${twin}, save ${wholeDollars(yearly)} a year`
             : `Switch ${ticker} to ${twin}, a cheaper twin fund`,
-        short: `${ticker} costs ${pct(fee / 10_000)} a year and ${twin} ${pct(PRACTICE_FUND_FEE_BPS[twin] / 10_000)}, on ${formatCents(amount)} of practice money.`,
+        short: `${ticker} costs ${feePct(fee)} a year and ${twin} ${feePct(PRACTICE_FUND_FEE_BPS[twin])}, on ${formatCents(amount)} of practice money.`,
         worthCents: yearly,
         worthKind: "saves",
       },

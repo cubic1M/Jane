@@ -45,7 +45,8 @@ export function PracticeIdeasSection({ view }: { view: PracticeIdeasView }) {
               <p className="font-medium">{idea.headline}</p>
               <p className="text-zinc-600 dark:text-zinc-400">{idea.short}</p>
               <p className="text-xs text-zinc-500">
-                {idea.label}. {idea.confidence.percent}% sure: {idea.confidence.reason}.
+                {idea.label}. {idea.confidence.percent}% sure:{" "}
+                {idea.confidence.reason.replace(/\.$/, "")}.
               </p>
               {idea.figures.length > 0 && (
                 <p className="text-xs text-zinc-500">
