@@ -117,16 +117,82 @@ jobs:
           src/lib/trial.integration.test.ts src/lib/retention.integration.test.ts
           src/lib/learning.integration.test.ts
 
+  # A PR can't lower an accuracy baseline, change the protected files or call something a fix
+  # without proof, unless a founder says so. The rules are read from the base commit, so a PR
+  # can't rewrite them. Under a minute on most PRs; a fix adds its proof (see docs/gates.md).
+  gates:
+    name: Gates
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+    steps:
+      - uses: actions/checkout@v7
+      - name: Go to the PR as it would merge, with the base commit's gates
+        id: pr
+        env:
+          EVENT_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # A run started by hand on a branch is judged like the branch's PR.
+          NUMBER="${EVENT_NUMBER:-$(gh pr list --head "$GITHUB_REF_NAME" --json number --jq '.[0].number // empty')}"
+          if [ -z "$NUMBER" ]; then echo "No open PR for this branch."; exit 0; fi
+          git fetch -q --no-tags --depth=2 origin "refs/pull/$NUMBER/merge"
+          git checkout -q FETCH_HEAD
+          mkdir -p "$RUNNER_TEMP/gates"
+          if git cat-file -e HEAD^1:.github/scripts/gates/cli.mjs 2>/dev/null; then
+            git archive HEAD^1 .github/scripts/gates | tar -x -C "$RUNNER_TEMP/gates"
+            echo "scripts=$RUNNER_TEMP/gates/.github/scripts/gates" >> "$GITHUB_OUTPUT"
+          else
+            echo "The base commit has no gates yet: this PR brings them, so they don't judge it."
+          fi
+          echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
+      - name: Baselines, protected files, weakened tests
+        id: static
+        if: steps.pr.outputs.scripts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FOUNDER_LOGINS: ${{ vars.FOUNDER_LOGINS }}
+        run: >-
+          node "${{ steps.pr.outputs.scripts }}/cli.mjs" --pr "${{ steps.pr.outputs.number }}"
+          --base HEAD^1 --head HEAD
+      # A fix's proof needs what the tests need. Everything else stops here.
+      - if: steps.static.outputs.proof == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - if: steps.static.outputs.proof == 'true'
+        uses: actions/cache@v6
+        id: modules
+        with:
+          path: node_modules
+          key: modules-${{ runner.os }}-${{ hashFiles('.nvmrc', 'package-lock.json') }}
+      - if: steps.static.outputs.proof == 'true' && steps.modules.outputs.cache-hit != 'true'
+        run: npm ci
+      - if: steps.static.outputs.proof == 'true' && steps.modules.outputs.cache-hit == 'true'
+        run: npx prisma generate
+      - name: Proof of fix (fails on the base commit's source, passes on the PR's)
+        if: steps.static.outputs.proof == 'true'
+        run: node "${{ steps.pr.outputs.scripts }}/proof.mjs" --base HEAD^1 --head HEAD
+
   checks:
     name: Lint, typecheck and unit tests
     runs-on: ubuntu-latest
-    needs: [static, unit]
+    needs: [static, unit, gates]
     if: always()
     steps:
       - name: Fail if any part failed or was skipped
         run: |
-          echo "static: ${{ needs.static.result }}, unit: ${{ needs.unit.result }}"
+          echo "static: ${{ needs.static.result }}, unit: ${{ needs.unit.result }}, gates: ${{ needs.gates.result }}"
           test "${{ needs.static.result }}" = success && test "${{ needs.unit.result }}" = success
+          # The gates skip only where there is no PR (main and the merge group).
+          test "${{ needs.gates.result }}" = success || test "${{ needs.gates.result }}" = skipped
 
   # The end-to-end tests run against a production build, made once here and handed to both
   # shards: `next start` serves every page at once, where `next dev` compiled each page on its

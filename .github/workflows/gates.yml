@@ -1,0 +1,48 @@
+name: Gates
+
+# The static gates (baselines, protected files, weakened tests) from the base branch's own copy
+# of this file and its scripts, so a pull request can't change or remove them: pull_request_target
+# runs what is on the base branch. It reads the PR's files as text and never runs them, so a PR
+# from a fork can't reach the token. Only the "Protected files and baselines" check needs adding
+# to main's ruleset; the same gates also run in ci.yml's required check, which a PR could edit.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: read
+
+jobs:
+  gates:
+    name: Protected files and baselines
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      # The base branch only. Never the PR's code in this workflow.
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts/gates
+      - name: Fetch the PR's files, as they would merge
+        id: pr
+        env:
+          NUMBER: ${{ github.event.pull_request.number }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        # GitHub builds the merge ref a moment after a push.
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            git fetch -q --no-tags --depth=2 origin "refs/pull/$NUMBER/merge" &&
+              [ "$(git rev-parse FETCH_HEAD^2)" = "$HEAD" ] && break
+            [ "$attempt" = 6 ] && { echo "::error::No merge commit for $HEAD: does the PR have conflicts?"; exit 1; }
+            sleep 10
+          done
+          echo "merge=$(git rev-parse FETCH_HEAD)" >> "$GITHUB_OUTPUT"
+      - run: >-
+          node .github/scripts/gates/cli.mjs --pr "$NUMBER" --comment
+          --base "$MERGE^1" --head "$MERGE"
+        env:
+          NUMBER: ${{ github.event.pull_request.number }}
+          MERGE: ${{ steps.pr.outputs.merge }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FOUNDER_LOGINS: ${{ vars.FOUNDER_LOGINS }}

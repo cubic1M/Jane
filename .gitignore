@@ -33,6 +33,8 @@ private/
 
 # local preview config (machine-specific paths)
 /.claude/launch.json
+/.claude/settings.local.json
+/.claude/worktrees/
 
 # typescript
 *.tsbuildinfo
