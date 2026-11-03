@@ -10,6 +10,12 @@ import {
 
 export type Limit = { limit: number; windowSeconds: number };
 
+// The most a server action's request may hold, except on the pages that upload files. An action can
+// take up to 5 MB (next.config.ts, for statements and documents), so without this a few requests
+// could keep gigabytes through any field that's saved without a length check.
+export const ACTION_BODY_MAX_BYTES = 100_000;
+export const ACTION_UPLOAD_PAGES: readonly string[] = ["/", "/import", "/documents"];
+
 export const RATE_LIMITS = {
   // Backstops in the proxy (src/lib/edge-limits.ts), before any API route or server action
   // runs, on top of the per-feature limits below. Per IP, and per signed-in session.

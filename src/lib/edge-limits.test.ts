@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => ({ db: {} }));
 
-import { RATE_LIMITS } from "@/config/rate-limits";
+import { ACTION_BODY_MAX_BYTES, RATE_LIMITS } from "@/config/rate-limits";
 import { edgeChecks, edgeKind, edgeLimit, refusal } from "./edge-limits";
 import { TOO_MANY_MESSAGE, ipKey } from "./rate-limit";
 
@@ -146,5 +146,46 @@ describe("every API route", () => {
     } else {
       expect(edgeChecks(request(pathname, { ip: IP })).length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("how much a server action may send", () => {
+  const big = String(ACTION_BODY_MAX_BYTES + 1);
+  const hit = vi.fn(async () => ({ ok: true, remaining: 1, retryAfterSeconds: 0 }));
+  const posted = (pathname: string, length: string | null) => {
+    const req = request(pathname, { method: "POST", ip: "1.2.3.4", action: true });
+    if (length !== null) req.headers.set("content-length", length);
+    return req;
+  };
+
+  it("refuses a request too big to be a form, on a page that takes no files", async () => {
+    const answer = await edgeLimit(posted("/taxes", big), { hit });
+    expect(answer?.status).toBe(413);
+  });
+
+  it("lets a form's size through", async () => {
+    const fits = String(ACTION_BODY_MAX_BYTES);
+    expect(await edgeLimit(posted("/taxes", fits), { hit })).toBeNull();
+  });
+
+  it.each(["/", "/import", "/import/investments", "/documents"])(
+    "leaves %s, which uploads files, to its own limits",
+    async (page) => {
+      expect(await edgeLimit(posted(page, big), { hit })).toBeNull();
+    },
+  );
+
+  it("doesn't take a page that only starts the same for an upload page", async () => {
+    expect((await edgeLimit(posted("/imports", big), { hit }))?.status).toBe(413);
+  });
+
+  it("only looks at server actions", async () => {
+    const api = request("/api/chat/send", { method: "POST", ip: "1.2.3.4" });
+    api.headers.set("content-length", big);
+    expect(await edgeLimit(api, { hit })).toBeNull();
+  });
+
+  it("lets through a request that doesn't say how big it is", async () => {
+    expect(await edgeLimit(posted("/taxes", null), { hit })).toBeNull();
   });
 });
