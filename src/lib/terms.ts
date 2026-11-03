@@ -2,6 +2,7 @@ import { TERMS_VERSION } from "@/config/legal";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
+import { systemDb } from "@/lib/system-db";
 
 // Records that a person accepted the current Terms and Privacy Policy.
 
@@ -17,7 +18,7 @@ export async function acceptTerms(
     via,
   }: { client?: PrismaClient; now?: Date; via: "signup" | "prompt" | "trial" },
 ): Promise<void> {
-  await client.user.update({
+  await systemDb("A person's own row: jane_rls only reads users", client).user.update({
     where: { id: userId },
     data: { termsVersion: TERMS_VERSION, termsAcceptedAt: now },
   });

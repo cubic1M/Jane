@@ -3,6 +3,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { log } from "@/lib/log";
+import { systemDb } from "@/lib/system-db";
 
 // Web Push for urgent alerts and, from spec step 85, Jane's chat messages. Off unless
 // VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT are set; then a person's subscribed
@@ -83,7 +84,10 @@ export async function saveSubscription(
 ): Promise<void> {
   const db = scopedFor(userId, client);
   // An endpoint belongs to one device; if it was saved for someone else, it isn't theirs now.
-  await client.pushSubscription.deleteMany({
+  await systemDb(
+    "A push endpoint moved to this person: removes it from whoever had it",
+    client,
+  ).pushSubscription.deleteMany({
     where: { endpoint: subscription.endpoint, userId: { not: userId } },
   });
   await db.pushSubscriptions.upsert({

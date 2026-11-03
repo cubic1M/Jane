@@ -10,6 +10,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
 import { buildCalendar, type CalendarEvent } from "./ics";
 import { sha256Hex } from "@/lib/hash";
+import { systemDb } from "@/lib/system-db";
 
 // The private money calendar: expected bills, deposits, deadlines and goal dates as an
 // iCalendar feed the person subscribes to in their own calendar app. The link's secret is
@@ -33,7 +34,7 @@ export async function createCalendarToken(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<string> {
   const token = randomBytes(32).toString("base64url");
-  await client.user.update({
+  await systemDb("A person's own row: jane_rls only reads users", client).user.update({
     where: { id: userId },
     data: { calendarTokenHash: sha256Hex(token), calendarCreatedAt: now },
   });
@@ -41,7 +42,7 @@ export async function createCalendarToken(
 }
 
 export async function turnOffCalendar(userId: string, { client = defaultClient }: Options = {}) {
-  await client.user.update({
+  await systemDb("A person's own row: jane_rls only reads users", client).user.update({
     where: { id: userId },
     data: { calendarTokenHash: null, calendarCreatedAt: null },
   });
@@ -53,7 +54,10 @@ export async function userForCalendarToken(
   { client = defaultClient }: Options = {},
 ): Promise<string | null> {
   if (!token) return null;
-  const user = await client.user.findUnique({
+  const user = await systemDb(
+    "A link's token is the key: nobody is signed in",
+    client,
+  ).user.findUnique({
     where: { calendarTokenHash: sha256Hex(token) },
     select: { id: true, deletedAt: true },
   });

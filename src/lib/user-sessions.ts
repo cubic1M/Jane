@@ -4,6 +4,8 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { describeDevice, lastActiveLabel } from "@/lib/devices";
+import { scopedFor } from "@/lib/db-scoped";
+import { systemDb } from "@/lib/system-db";
 
 // Devices and sessions (spec step 73): where someone is signed in, and signing out
 // elsewhere. Sessions are named by their row id; the session token works as a password,
@@ -17,7 +19,10 @@ export async function emailOfSession(
   { client = defaultClient }: { client?: PrismaClient } = {},
 ): Promise<string | null> {
   if (!sessionToken) return null;
-  const session = await client.session.findUnique({
+  const session = await systemDb(
+    "Looks up a session by its token, to learn who is asking",
+    client,
+  ).session.findUnique({
     where: { sessionToken },
     select: { user: { select: { email: true } } },
   });
@@ -42,7 +47,10 @@ export async function noteSessionSeen(
 ): Promise<void> {
   const cutoff = new Date(now.getTime() - SESSION_SEEN_EVERY_MINUTES * 60_000);
   const trimmed = userAgent?.trim().slice(0, USER_AGENT_MAX_LENGTH) || null;
-  await client.session.updateMany({
+  await systemDb(
+    "Looks up a session by its token, to learn who is asking",
+    client,
+  ).session.updateMany({
     where: { sessionToken: token, OR: [{ lastSeenAt: null }, { lastSeenAt: { lt: cutoff } }] },
     data: { lastSeenAt: now, ...(trimmed ? { userAgent: trimmed } : {}) },
   });
@@ -55,7 +63,7 @@ async function currentSessionId(
   token: string | undefined,
 ): Promise<string | null> {
   if (!token) return null;
-  const row = await client.session.findFirst({
+  const row = await scopedFor(userId, client).sessions.findFirst({
     where: { sessionToken: token, userId },
     select: { id: true },
   });
@@ -70,7 +78,7 @@ export async function listSessions(
 ): Promise<DeviceSession[]> {
   const [currentId, rows] = await Promise.all([
     currentSessionId(client, userId, token),
-    client.session.findMany({
+    scopedFor(userId, client).sessions.findMany({
       where: { userId, expires: { gt: now } },
       // Never the session token.
       select: { id: true, userAgent: true, createdAt: true, lastSeenAt: true },
@@ -101,7 +109,7 @@ export async function signOutSession(
   { client = defaultClient }: Options = {},
 ): Promise<SignOutResult> {
   if (!token || !sessionId) return "not_found";
-  const { count } = await client.session.deleteMany({
+  const { count } = await scopedFor(userId, client).sessions.deleteMany({
     where: { id: sessionId, userId, sessionToken: { not: token } },
   });
   if (count === 0) return "not_found";
@@ -123,7 +131,7 @@ export async function signOutOtherSessions(
 ): Promise<number> {
   // Without this session's token we can't tell which one to keep, so do nothing.
   if (!token) return 0;
-  const { count } = await client.session.deleteMany({
+  const { count } = await scopedFor(userId, client).sessions.deleteMany({
     where: { userId, sessionToken: { not: token }, expires: { gt: now } },
   });
   await logAudit(

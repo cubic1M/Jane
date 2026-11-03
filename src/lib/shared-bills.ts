@@ -3,6 +3,9 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor, sharedReadFor } from "@/lib/db-scoped";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Household: spans both partners' rows, after checking the pair";
 
 // Shared bills between the two people in a household: a charge on a shared account can
 // be split, a running balance says who owes whom (the same from either side), and
@@ -17,12 +20,12 @@ export const HALF_BPS = 5_000;
 export class SharedBillError extends Error {}
 
 async function pair(userId: string, client: PrismaClient) {
-  const membership = await client.householdMember.findUnique({
+  const membership = await systemDb(WHY, client).householdMember.findUnique({
     where: { userId },
     select: { householdId: true },
   });
   if (!membership) return null;
-  const partner = await client.householdMember.findFirst({
+  const partner = await systemDb(WHY, client).householdMember.findFirst({
     where: { householdId: membership.householdId, userId: { not: userId } },
     select: { userId: true, user: { select: { email: true } } },
   });
@@ -48,7 +51,7 @@ export async function splitCharge(
   if (!Number.isInteger(partnerShareBps) || partnerShareBps < 1 || partnerShareBps > FULL_BPS) {
     throw new SharedBillError("The split must be between 1% and 100%.");
   }
-  const charge = await client.transaction.findUnique({
+  const charge = await systemDb(WHY, client).transaction.findUnique({
     where: { id: transactionId },
     select: {
       id: true,
@@ -62,7 +65,7 @@ export async function splitCharge(
     throw new SharedBillError("Only charges on shared accounts can be split.");
   }
   if (charge.amountCents <= 0) throw new SharedBillError("Only money going out can be split.");
-  await client.sharedCharge.upsert({
+  await systemDb(WHY, client).sharedCharge.upsert({
     where: { transactionId: charge.id },
     create: {
       householdId: household.householdId,
@@ -91,7 +94,7 @@ export async function unsplitCharge(
 ): Promise<void> {
   const household = await pair(userId, client);
   if (!household) return;
-  await client.sharedCharge.deleteMany({
+  await systemDb(WHY, client).sharedCharge.deleteMany({
     where: { id: sharedChargeId, householdId: household.householdId },
   });
 }
@@ -121,7 +124,7 @@ export async function sharedBills(userId: string, { client = defaultClient }: Op
   const household = await pair(userId, client);
   if (!household) return null;
   const [charges, settlements] = await Promise.all([
-    client.sharedCharge.findMany({
+    systemDb(WHY, client).sharedCharge.findMany({
       where: { householdId: household.householdId },
       select: {
         id: true,
@@ -133,7 +136,7 @@ export async function sharedBills(userId: string, { client = defaultClient }: Op
       },
       orderBy: { createdAt: "desc" },
     }),
-    client.settlement.findMany({
+    systemDb(WHY, client).settlement.findMany({
       where: { householdId: household.householdId },
       select: { fromUserId: true, toUserId: true, amountCents: true, createdAt: true },
       orderBy: { createdAt: "desc" },
@@ -155,7 +158,7 @@ export async function settleUp(userId: string, { client = defaultClient }: Optio
   const household = await pair(userId, client);
   if (!household) return;
   const partnerPaid = bills.owedToMeCents > 0;
-  await client.settlement.create({
+  await systemDb(WHY, client).settlement.create({
     data: {
       householdId: household.householdId,
       fromUserId: partnerPaid ? household.partnerId : userId,

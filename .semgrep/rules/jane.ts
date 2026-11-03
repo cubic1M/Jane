@@ -1,5 +1,6 @@
 // Cases for jane.yaml. Not app code: nothing imports it.
 declare const db: any, client: any, tx: any, log: any, scoped: any, scopedFor: any;
+declare const systemDb: any, systemTransaction: any, personTransaction: any;
 declare const id: string, userId: string, item: any, user: any, row: any;
 
 export async function queries() {
@@ -36,6 +37,24 @@ export async function queries() {
   await db2.homeEquityFacts.findFirst();
   // ok: jane-user-table-query-without-scope
   await scopedFor(userId).homeEquityFacts.findFirst();
+  // The other doors, with their reason in words.
+  // ok: jane-user-table-query-without-scope
+  await systemDb("Cron: finds who to run for").finding.findMany({ where: { id } });
+  const system = systemDb("Cron: finds who to run for", client);
+  // ok: jane-user-table-query-without-scope
+  await system.transaction.findMany({ where: { id } });
+  await systemTransaction(
+    "Household: spans both partners' rows",
+    async (tx2: any) => {
+      // ok: jane-user-table-query-without-scope
+      await tx2.householdInvite.deleteMany({ where: { id } });
+    },
+    client,
+  );
+  await personTransaction(userId, async (tx3: any) => {
+    // ok: jane-user-table-query-without-scope
+    await tx3.account.deleteMany({ where: { id } });
+  });
   // A table no one owns.
   // ok: jane-user-table-query-without-scope
   await client.merchantDirectory.findMany();

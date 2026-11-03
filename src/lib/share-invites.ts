@@ -7,6 +7,9 @@ import { generateCode, inviteStatus, normalizeCode } from "@/lib/invites";
 import { cardFromRow, cardValue, type ShareCard } from "@/lib/share-card";
 import { isTrialUser } from "@/lib/trial-ids";
 import { TRIAL_ID_PREFIX } from "@/config/trial";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Invite codes are checked before sign-up, and aren't anyone's own";
 
 // A beta user's share link (the result card, src/lib/share-card.ts): their own invite code, so
 // a friend can join the closed beta, and the funnel it feeds in analytics_events: invite_sent,
@@ -29,16 +32,16 @@ export async function shareLinkFor(
 ): Promise<ShareLink | null> {
   if (isTrialUser(userId)) return null;
   const data = { cardKind: card.kind, cardValue: cardValue(card) };
-  const existing = await client.inviteCode.findUnique({
+  const existing = await systemDb(WHY, client).inviteCode.findUnique({
     where: { sharedById: userId },
     select: { id: true, code: true, revokedAt: true },
   });
   if (existing?.revokedAt) return null;
   if (existing) {
-    await client.inviteCode.update({ where: { id: existing.id }, data });
+    await systemDb(WHY, client).inviteCode.update({ where: { id: existing.id }, data });
     return { code: existing.code, path: joinPath(existing.code), card };
   }
-  const created = await client.inviteCode.upsert({
+  const created = await systemDb(WHY, client).inviteCode.upsert({
     where: { sharedById: userId },
     create: {
       code: generateCode(),
@@ -67,7 +70,7 @@ export async function recordInviteSent(
   { client = defaultClient }: Options = {},
 ): Promise<boolean> {
   if (isTrialUser(userId)) return false;
-  const invite = await client.inviteCode.findUnique({
+  const invite = await systemDb(WHY, client).inviteCode.findUnique({
     where: { sharedById: userId },
     select: { id: true, cardKind: true },
   });
@@ -97,7 +100,7 @@ export async function inviteLanding(
 ): Promise<InviteLanding | null> {
   const code = normalizeCode(input);
   if (!code) return null;
-  const invite = await client.inviteCode.findUnique({
+  const invite = await systemDb(WHY, client).inviteCode.findUnique({
     where: { code },
     select: {
       id: true,
@@ -140,7 +143,7 @@ export async function recordInviteJoined(
   { client = defaultClient }: Options = {},
 ): Promise<boolean> {
   if (isTrialUser(userId)) return false;
-  const access = await client.betaAccess.findUnique({
+  const access = await systemDb(WHY, client).betaAccess.findUnique({
     where: { email: email.trim().toLowerCase() },
     select: { inviteCode: { select: { id: true, sharedById: true } } },
   });
@@ -157,7 +160,7 @@ export type InviteFunnel = { sent: number; opened: number; joined: number };
 export async function inviteFunnel({
   client = defaultClient,
 }: Options = {}): Promise<InviteFunnel> {
-  const rows = await client.analyticsEvent.groupBy({
+  const rows = await systemDb(WHY, client).analyticsEvent.groupBy({
     by: ["name"],
     where: {
       name: { in: ["invite_sent", "invite_opened", "invite_joined"] },

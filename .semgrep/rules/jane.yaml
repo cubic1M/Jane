@@ -5,8 +5,7 @@ rules:
     message: >-
       This query on a user-owned table has no user in its filter, so it can read or change another
       person's rows. Use scopedFor(userId) from src/lib/db-scoped.ts, or put userId in the where. If
-      it truly works across people, say so: `// nosemgrep: jane-user-table-query-without-scope --
-      <who runs it and why>`.
+      it truly works across people, use systemDb("why") from src/lib/system-db.ts, which says so.
     languages: [typescript]
     severity: ERROR
     paths:
@@ -19,6 +18,13 @@ rules:
           const $CLIENT = scopedFor(...);
           ...
       - pattern-not: scopedFor(...).$MODEL.$OP(...)
+      # The other doors: one runs as the person, and systemDb's own reason is the "say so".
+      - pattern-not: systemDb(...).$MODEL.$OP(...)
+      - pattern-not-inside: |
+          const $CLIENT = systemDb(...);
+          ...
+      - pattern-not-inside: systemTransaction(...)
+      - pattern-not-inside: personTransaction(...)
       - metavariable-regex:
           metavariable: $OP
           regex: ^(findMany|findFirst|findFirstOrThrow|findUnique|findUniqueOrThrow|count|aggregate|groupBy|update|updateMany|updateManyAndReturn|delete|deleteMany|upsert)$

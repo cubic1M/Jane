@@ -4,7 +4,10 @@ import { generateBackupCodes, hashBackupCode, looksLikeBackupCode } from "@/lib/
 import { decrypt, encrypt } from "@/lib/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { firstUseInWindow, hit } from "@/lib/rate-limit";
-import { systemDb } from "@/lib/system-db";
+import { personTransaction, scopedFor } from "@/lib/db-scoped";
+import { systemDb, systemTransaction } from "@/lib/system-db";
+
+const WHY = "A person's own row: jane_rls only reads users";
 import { generateSecret, otpauthUri, verifyTotp } from "@/lib/totp";
 
 // Two-factor sign-in with an authenticator app. Admins must have it before /admin opens;
@@ -21,7 +24,7 @@ export async function enrollment(
   email: string,
   { client = defaultClient }: Options = {},
 ): Promise<Enrollment> {
-  const user = await client.user.findUniqueOrThrow({
+  const user = await scopedFor(userId, client).me.findUniqueOrThrow({
     where: { id: userId },
     select: { mfaSecretEncrypted: true, mfaEnabledAt: true },
   });
@@ -29,7 +32,7 @@ export async function enrollment(
   let secret = user.mfaSecretEncrypted ? decrypt(user.mfaSecretEncrypted) : null;
   if (!secret) {
     secret = generateSecret();
-    await client.user.update({
+    await systemDb(WHY, client).user.update({
       where: { id: userId },
       data: { mfaSecretEncrypted: encrypt(secret) },
     });
@@ -62,7 +65,7 @@ const eventFor = (user: Pick<MfaUser, "role">, step: "enrolled" | "verified" | "
       : `mfa_${step}`) as AuditEvent;
 
 async function loadUser(userId: string, client: PrismaClient): Promise<MfaUser> {
-  return client.user.findUniqueOrThrow({
+  return scopedFor(userId, client).me.findUniqueOrThrow({
     where: { id: userId },
     select: { role: true, mfaSecretEncrypted: true, mfaEnabledAt: true },
   });
@@ -81,7 +84,7 @@ async function checkCode(
     return firstUseInWindow("mfaCodeUsed", `${userId}:${code.replace(/\s/g, "")}`, { client, now });
   }
   if (!user.mfaEnabledAt || !looksLikeBackupCode(code)) return false;
-  const { count } = await client.mfaBackupCode.updateMany({
+  const { count } = await scopedFor(userId, client).mfaBackupCodes.updateMany({
     where: { userId, codeHash: hashBackupCode(code), usedAt: null },
     data: { usedAt: now },
   });
@@ -97,12 +100,16 @@ async function replaceBackupCodes(
   client: PrismaClient,
 ): Promise<string[]> {
   const codes = generateBackupCodes();
-  await client.$transaction([
-    client.mfaBackupCode.deleteMany({ where: { userId } }),
-    client.mfaBackupCode.createMany({
-      data: codes.map((code) => ({ userId, codeHash: hashBackupCode(code) })),
-    }),
-  ]);
+  await personTransaction(
+    userId,
+    async (tx) => {
+      await tx.mfaBackupCode.deleteMany({ where: { userId } });
+      await tx.mfaBackupCode.createMany({
+        data: codes.map((code) => ({ userId, codeHash: hashBackupCode(code) })),
+      });
+    },
+    client,
+  );
   await logAudit(actorFor(userId, user), "mfa_backup_codes_created", { type: "user", id: userId });
   return codes;
 }
@@ -127,7 +134,7 @@ export async function verifySessionCode(
   }
   let backupCodes: string[] | undefined;
   if (!user.mfaEnabledAt) {
-    await client.user.update({ where: { id: userId }, data: { mfaEnabledAt: now } });
+    await systemDb(WHY, client).user.update({ where: { id: userId }, data: { mfaEnabledAt: now } });
     // Whoever else is signed in is out: someone who got into the account is what two-factor is for,
     // and any session could have read the secret before this first code.
     await systemDb(
@@ -139,7 +146,7 @@ export async function verifySessionCode(
     await logAudit(actor, eventFor(user, "enrolled"), target);
     backupCodes = await replaceBackupCodes(userId, user, client);
   }
-  await client.session.updateMany({
+  await scopedFor(userId, client).sessions.updateMany({
     where: { sessionToken, userId },
     data: { mfaVerifiedAt: now },
   });
@@ -163,13 +170,17 @@ export async function turnOffTwoFactor(
     await logAudit(actorFor(userId, user), "mfa_failed", { type: "user", id: userId });
     return "wrong_code";
   }
-  await client.$transaction([
-    client.mfaBackupCode.deleteMany({ where: { userId } }),
-    client.user.update({
-      where: { id: userId },
-      data: { mfaSecretEncrypted: null, mfaEnabledAt: null },
-    }),
-  ]);
+  await systemTransaction(
+    WHY,
+    async (tx) => {
+      await tx.mfaBackupCode.deleteMany({ where: { userId } });
+      await tx.user.update({
+        where: { id: userId },
+        data: { mfaSecretEncrypted: null, mfaEnabledAt: null },
+      });
+    },
+    client,
+  );
   // A code for the old secret proves nothing about a new one, if two-factor comes back.
   await systemDb(
     "Stopping two-factor un-verifies the person's sessions",
@@ -208,8 +219,11 @@ export async function twoFactorStatus(
   { client = defaultClient }: Options = {},
 ): Promise<TwoFactorStatus> {
   const [user, backupCodesLeft] = await Promise.all([
-    client.user.findUniqueOrThrow({ where: { id: userId }, select: { mfaEnabledAt: true } }),
-    client.mfaBackupCode.count({ where: { userId, usedAt: null } }),
+    scopedFor(userId, client).me.findUniqueOrThrow({
+      where: { id: userId },
+      select: { mfaEnabledAt: true },
+    }),
+    scopedFor(userId, client).mfaBackupCodes.count({ where: { userId, usedAt: null } }),
   ]);
   return { enabledAt: user.mfaEnabledAt, backupCodesLeft };
 }
