@@ -576,7 +576,12 @@ export const usaa: CsvFormat = {
     if (/^pending$/i.test(get("status").trim())) {
       return { ok: false, reason: "Still pending", silent: true };
     }
-    const common = parseCommon(get("date"), get("amount"), get("description"), parseIsoDate);
+    const common = parseCommon(
+      get("date"),
+      get("amount"),
+      get("description"),
+      (value) => parseIsoDate(value) ?? parseUsDate(value),
+    );
     if (!common.ok) return common;
     return {
       ok: true,
@@ -746,7 +751,7 @@ export const cashApp: CsvFormat = {
     if (CASH_APP_NOT_DONE.test(status)) {
       return { ok: false, reason: `Not completed (${status})`, silent: true };
     }
-    const date = parseIsoDate(when.slice(0, 10));
+    const date = parseIsoDate(when.slice(0, 10)) ?? parseUsDate(when.split(/\s+/)[0]);
     if (!date) return { ok: false, reason: `Unreadable date "${when}"` };
     const cents = parseMoneyToCents(get("net amount"));
     if (cents === null) return { ok: false, reason: `Unreadable amount "${get("net amount")}"` };
