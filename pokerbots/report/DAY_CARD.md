@@ -147,3 +147,4 @@ loop (tune on the real rules, validate, resubmit) matters.
 - Push or fold at ≤ 9bb, **wider against blinds that fold** (the steal read on shoves too: +1.45 per table, +5.6 vs the Plan B bot). Re-raise preflop only with AA.
 - **Heads-up, open and defend much wider** (open bar 0.6/2, a raiser = 2 random hands): +2 to +12 per heads-up table.
 - Surviving pays: even an always-fold bot scores mid-table. Busting early is the costly mistake.
+- **These hold on other card rules too** (Omaha 4, PLO5, short deck, pineapple, 3-street, NLHE20): switching any of them off never won significantly; the short-shove read and the re-shove help most (−1.1 / −1.2 per table off). No variant needs its own setting for them. On slow variants, paired tables differ by ~±1 per table from timing alone: trust a day-of A/B there only beyond ~2.
