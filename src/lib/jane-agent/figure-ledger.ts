@@ -135,6 +135,7 @@ const COUNT = new RegExp(
 );
 
 const WHOLE_DOLLARS_CHECKED_FROM_CENTS = 10_000;
+const RATE_WORDS = /\b(?:rate|apr|interest)\b/i;
 
 const TOTAL_CLAIM =
   /\b(?:you|they) (?:have|hold|pay for|are paying for) (?:\w+ )?\S+(?: \w+)? \w+$/i;
@@ -579,6 +580,10 @@ export class FigureLedger {
           });
           continue;
         }
+        // A round percent is often a general one ("investing has returned 4% to 8%", "about 60
+        // percent of pay"), near someone's rate by chance, unless it's said to be a rate.
+        const sayingARate = RATE_WORDS.test(clauseAt(sentence, m.index ?? 0));
+        if (decimals === 0 && !sayingARate) continue;
         const problem = check(matches, said, m.index ?? 0, null, "percent");
         if (problem) problems.push(problem);
       }

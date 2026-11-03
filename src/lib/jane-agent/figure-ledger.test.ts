@@ -93,6 +93,7 @@ describe("a figure said about the wrong thing", () => {
     "Your car loan is at 22.99%.",
     "Your Demo Car Loan is at 22.99%.",
     "Your credit card has $18,020.00 left.",
+    "Your car loan's rate is 23%.",
   ])("fails %j", (text) => {
     expect(kinds(ledger, text)).toContain("wrong_name");
   });
@@ -107,6 +108,7 @@ describe("a figure said about the wrong thing", () => {
     "$15.49 goes to Netflix each month.",
     "Your Demo Credit Card ····0003 is at 22.99%.",
     "Your credit card is at 22.99%.",
+    "Your Demo Car Loan is big, and investing has returned about 7% a year.",
     "Your Demo Credit Card has $2,410.50 left, due Nov 26.",
     "You spent $1,349.00 at Apple.",
     "You spent $1,349.00 on Shopping.",
