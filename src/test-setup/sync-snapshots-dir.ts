@@ -1,13 +1,18 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 // The folder the run's test files share demo-sync snapshots in (src/test-setup/sync-snapshots.ts):
 // made fresh for each run, so code changed since the last run is never served an old sync, and
-// removed at the end.
+// removed at the end. CI hands every unit shard one folder, made by this same run's "Sample people"
+// job, so each shard doesn't build the same people again; that folder is left alone.
 let dir: string | null = null;
 
 export function setup() {
+  if (process.env.SYNC_SNAPSHOT_DIR) {
+    mkdirSync(process.env.SYNC_SNAPSHOT_DIR, { recursive: true });
+    return;
+  }
   dir = mkdtempSync(join(tmpdir(), "jane-sync-snapshots-"));
   process.env.SYNC_SNAPSHOT_DIR = dir;
 }

@@ -101,10 +101,74 @@ jobs:
           node-version-file: .nvmrc
       - run: npm run check:migrations
 
+  # Most integration files build the same few sample people, about 13 seconds each, and each shard
+  # used to build its own (156 real syncs in a full run). This makes them once and hands them to
+  # every shard (src/test-setup/sync-snapshots.ts). If it fails, the shards just build their own,
+  # so its failure stops nothing.
+  sample-people:
+    name: Sample people
+    needs: [scope]
+    if: needs.scope.outputs.mode != 'docs' && needs.scope.outputs.total != '1'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --tmpfs /var/lib/postgresql/data
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://postgres@localhost:5432/test
+      SYNC_SNAPSHOT_DIR: ${{ github.workspace }}/.sync-snapshots
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - uses: actions/cache@v6
+        id: modules
+        with:
+          path: node_modules
+          key: modules-${{ runner.os }}-${{ hashFiles('.nvmrc', 'package-lock.json') }}
+      - if: steps.modules.outputs.cache-hit != 'true'
+        run: npm ci
+      - if: steps.modules.outputs.cache-hit == 'true'
+        run: npx prisma generate
+      - name: No waiting on commits (a throwaway database)
+        run: node scripts/fast-test-postgres.mjs "$TEST_DATABASE_URL"
+      - name: Apply migrations to an empty database
+        run: npx prisma migrate deploy
+        env:
+          DIRECT_URL: ${{ env.TEST_DATABASE_URL }}
+      - name: Row-level security on every table, as each deploy does
+        run: node scripts/rls-protect.mjs "$TEST_DATABASE_URL"
+      # Between them, these build the 8 sample people and the demo person on the days most files use,
+      # both ways test files make them: through startTrial, and with linkDemoBank on a plain person.
+      - name: Build them, by running tests that do
+        continue-on-error: true
+        run: >-
+          npx vitest run src/lib/one-source.integration.test.ts
+          src/lib/loan-payment.integration.test.ts src/lib/unusual.integration.test.ts
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sync-snapshots-attempt-${{ github.run_attempt }}
+          path: .sync-snapshots/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 1
+
   unit:
     name: Unit tests (${{ matrix.shard }}/${{ needs.scope.outputs.total }})
-    needs: [scope]
-    if: needs.scope.outputs.mode != 'docs'
+    needs: [scope, sample-people]
+    if: ${{ !cancelled() && needs.scope.result == 'success' && needs.scope.outputs.mode != 'docs' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -127,6 +191,7 @@ jobs:
           --health-retries 10
     env:
       TEST_DATABASE_URL: postgresql://postgres@localhost:5432/test
+      SYNC_SNAPSHOT_DIR: ${{ github.workspace }}/.sync-snapshots
     steps:
       # Two commits: the changed-tests run compares the test merge with its first parent.
       - uses: actions/checkout@v7
@@ -152,6 +217,13 @@ jobs:
           path: node_modules/.vite/vitest
           key: vitest-results-${{ matrix.shard }}-${{ github.run_id }}
           restore-keys: vitest-results-${{ matrix.shard }}-
+      # Missing or stale, it's only slower: anything not found here is built for real.
+      - uses: actions/download-artifact@v8
+        if: needs.sample-people.result == 'success'
+        continue-on-error: true
+        with:
+          name: sync-snapshots-attempt-1
+          path: .sync-snapshots/
       - name: No waiting on commits (a throwaway database)
         run: node scripts/fast-test-postgres.mjs "$TEST_DATABASE_URL"
       - name: Apply migrations to an empty database
