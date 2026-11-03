@@ -1,8 +1,14 @@
-import { DEBT_ACCOUNT_TYPES, NET_WORTH_MONTHS } from "@/config/net-worth";
+import {
+  DEBT_ACCOUNT_TYPES,
+  LOAN_SEEN_CATEGORIES,
+  LOAN_SEEN_DAYS,
+  NET_WORTH_MONTHS,
+} from "@/config/net-worth";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { netWorth, netWorthLine, type Unbalanced } from "@/insights/net-worth";
 import { monthsEnding } from "@/insights/spending";
 import { cryptoTotal } from "@/lib/crypto/crypto";
+import { DAY_MS } from "@/lib/dates";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { todayOf } from "@/lib/today";
@@ -77,4 +83,25 @@ export async function accountsWithoutBalance(
     orderBy: { name: "asc" },
   });
   return rows.map((r) => ({ name: r.name, card: DEBT_ACCOUNT_TYPES.includes(r.type) }));
+}
+
+// The loans the person's recent payments show, when no loan account says what's owed on them.
+export async function loansSeenWithoutBalance(
+  userId: string,
+  { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
+): Promise<string[]> {
+  const db = scopedFor(userId, client);
+  const known = await db.accounts.count({
+    where: { type: "loan", NOT: { currentBalanceCents: null } },
+  });
+  if (known > 0) return [];
+  const rows = await db.transactions.findMany({
+    where: {
+      pfcDetailed: { in: [...LOAN_SEEN_CATEGORIES] },
+      amountCents: { gt: 0 },
+      date: { gte: new Date(now.getTime() - LOAN_SEEN_DAYS * DAY_MS) },
+    },
+    select: { merchantName: true, description: true },
+  });
+  return [...new Set(rows.map((r) => r.merchantName ?? r.description))].sort();
 }

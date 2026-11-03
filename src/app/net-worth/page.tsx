@@ -6,8 +6,15 @@ import { AppHeader, PageLoading } from "@/components/app-header";
 import { AssetPrompts } from "@/components/asset-prompts";
 import { NET_WORTH_MONTHS } from "@/config/net-worth";
 import { monthsEnding } from "@/insights/spending";
-import { fromFirstKnown, netWorth, netWorthLine, notCounting } from "@/insights/net-worth";
+import {
+  fromFirstKnown,
+  loansNotCounted,
+  netWorth,
+  netWorthLine,
+  notCounting,
+} from "@/insights/net-worth";
 import { scopedDb } from "@/lib/db-scoped";
+import { loansSeenWithoutBalance } from "@/lib/net-worth-history";
 import { formatCents } from "@/lib/money";
 import { assetPrompts } from "@/lib/owned-assets";
 import { cryptoTotal } from "@/lib/crypto/crypto";
@@ -56,6 +63,8 @@ async function NetWorthContent() {
   );
   const listed = fromFirstKnown(months);
   const left = notCounting(today.unbalanced);
+  const loansSeen = await loansSeenWithoutBalance(user.id);
+  const loansLeft = loansNotCounted(loansSeen);
   const prompts = assetPrompts(
     accounts,
     ownedRows.map((o) => o.loanAccountId),
@@ -117,7 +126,11 @@ async function NetWorthContent() {
               className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
             >
               <span className="text-sm text-zinc-600 dark:text-zinc-400">{label}</span>
-              <span className="text-2xl font-semibold">{formatCents(Number(cents))}</span>
+              <span className="text-2xl font-semibold">
+                {label === "You owe" && Number(cents) === 0 && loansLeft
+                  ? "Not known"
+                  : formatCents(Number(cents))}
+              </span>
             </div>
           ))}
         </section>
@@ -130,6 +143,12 @@ async function NetWorthContent() {
           <Link href="/import" className="underline">
             Add a balance
           </Link>
+        </p>
+      )}
+
+      {loansLeft && today.known && (
+        <p data-net-worth-loans="" className="text-sm font-medium">
+          {loansLeft}
         </p>
       )}
 

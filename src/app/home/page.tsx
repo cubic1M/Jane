@@ -35,8 +35,8 @@ import { loadBankNotices, updatedAgo } from "@/lib/plaid/bank-status";
 import { SuggestionCards } from "../chat/suggestion-cards";
 import { FirstWeekChecklist } from "./checklist";
 import { LoadingBar } from "@/components/loading-bar";
-import { notCounting } from "@/insights/net-worth";
-import { accountsWithoutBalance } from "@/lib/net-worth-history";
+import { loansNotCounted, notCounting } from "@/insights/net-worth";
+import { accountsWithoutBalance, loansSeenWithoutBalance } from "@/lib/net-worth-history";
 
 // Home, the hub (docs/design/home-hub.md; it was Today, spec step 79): graphs first, few
 // words. The hero row (safe to spend, net worth, saved), the next 30 days of bills and
@@ -122,14 +122,20 @@ async function AreasTree({
 // The net worth chart: every day since the first day with Jane, ending at the hub's own figure,
 // and what moved it, from its first day.
 async function NetWorthHero({ userId, todayCents }: { userId: string; todayCents: number }) {
-  const [line, missing] = await Promise.all([
+  const [line, missing, loans] = await Promise.all([
     netWorthHistory(userId, todayCents),
     accountsWithoutBalance(userId),
+    loansSeenWithoutBalance(userId),
   ]);
   const events = line[0] ? await netWorthEvents(userId, line[0].date, todayCents) : [];
   // Never a number that silently leaves a debt out (an uploaded card with no balance yet).
   return (
-    <NetWorthChart points={line} events={events} notCounting={notCounting(missing)?.sentence} />
+    <NetWorthChart
+      points={line}
+      events={events}
+      notCounting={notCounting(missing)?.sentence}
+      loansLeft={loansNotCounted(loans)}
+    />
   );
 }
 

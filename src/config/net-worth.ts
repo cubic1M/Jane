@@ -53,3 +53,12 @@ export const NET_WORTH_PERCENT_MIN_START_CENTS = 100_000;
 // balance worked back from a statement): a doubling over a few months reads as a mistake. The
 // dollars still show.
 export const NET_WORTH_PERCENT_MAX_SHARE = 1;
+
+// A loan payment this recent means the loan is still there. What's owed on it never is in a statement.
+export const LOAN_SEEN_DAYS = 62;
+export const LOAN_SEEN_CATEGORIES: readonly string[] = [
+  "LOAN_PAYMENTS_MORTGAGE_PAYMENT",
+  "LOAN_PAYMENTS_CAR_PAYMENT",
+  "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT",
+  "LOAN_PAYMENTS_PERSONAL_LOAN_PAYMENT",
+];
