@@ -125,15 +125,29 @@ It does not, yet, protect:
   text, so this is a guard against our own mistakes, not a sandbox for hostile SQL.
 - **The database's owner role itself** (migrations, Neon's console), by design.
 
-## Next step: deny by default
+## Deny by default
 
-1. Move each direct `db` call on a user-owned table to `scopedFor`, or, where it truly works
-   across people (cron, admin, retention, trial clean-up, metrics, sign-in), to a named
-   `systemDb` helper that records why.
-2. Give the app a login role of its own in Neon (`jane_app`, `NOBYPASSRLS`, not the owner), with
-   the same rule: no rows unless `app.user_id` is set or it is a `systemDb` transaction.
-3. Point `DATABASE_URL` at it and set `RLS_REQUIRED=1`. Then forgetting to scope returns
-   nothing, everywhere.
+There are two doors, and the login role itself can open a table with neither:
+
+| Door | Role | Who uses it |
+| --- | --- | --- |
+| `scopedFor(userId)` (`src/lib/db-scoped.ts`) | `jane_rls` | Anything on one person's data |
+| `systemDb("why")`, `systemTransaction("why", ...)` (`src/lib/system-db.ts`) | `jane_system` | Code that truly works across people, or before there is a person, and says why |
+
+`jane_system` is a role nobody logs in as, like `jane_rls`, made by
+`prisma/migrations/20270430000000_deny_by_default`. `jane_rls_protect_all()` gives it every table
+at each deploy. The login role `jane_app` has no table of its own and may only switch to one of the
+two, so a query through neither **fails** with `permission denied`, rather than seeing everyone. It
+is deliberately an error and not an empty answer: an empty answer looks like a person with no data.
+
+The code runs the same on either login. On the owner (today) the switch to `jane_system` is made
+too; it just isn't what stops anything, as the owner can use the tables itself. Switching logins is
+then a change of environment variable, with no code change.
+
+Running the tests this way: `TEST_NO_BYPASS=1` with `TEST_DATABASE_URL` pointing at the owner of a
+local database. `src/test-setup/no-bypass-global.ts` makes the `jane_app` login and points the tests
+at it; the tests' own rows still go through the owner (`src/test-setup/no-bypass-client.ts`).
+`NO_BYPASS_LOG=<file>` lists every raw call the app's code made.
 
 ## Performance
 
