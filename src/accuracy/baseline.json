@@ -26,7 +26,7 @@
     },
     "bills": {
       "precision": 1,
-      "recall": 0.9975
+      "recall": 0.999
     },
     "income": {
       "precision": 1,
