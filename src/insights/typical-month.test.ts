@@ -4,6 +4,7 @@ import {
   oneOffCharges,
   oneOffNote,
   typicalMonthlySpending,
+  rareBills,
   typicalOf,
   withoutOneOffs,
 } from "./typical-month";
@@ -157,5 +158,76 @@ describe("a very large charge with no category", () => {
   it("isn't one at the size of an ordinary month", () => {
     const small = { ...wire, amountCents: 800_000 };
     expect(oneOffCharges([...everyday, small], "2026-10-15")).toEqual([]);
+  });
+});
+
+// Debugger 11-03: a student's $4,815 of tuition in August read as $2,739 of monthly spending, on
+// months of about $1,011. A bill isn't a one-off, it's a real cost, but one that comes twice a year
+// doesn't cost that much every month: it counts across the months, not in the one it landed in.
+describe("a big bill that comes a few times a year", () => {
+  const MONTHS_7 = ["2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10"];
+  const month = MONTHS_7.map((m) =>
+    t({ date: `${m}-03`, amountCents: 100_000, merchantName: "Campus Edge Apts" }),
+  );
+  const tuition = t({
+    date: "2026-08-24",
+    amountCents: 481_500,
+    merchantName: "University Bursar",
+    pfcPrimary: "GENERAL_SERVICES",
+    pfcDetailed: "GENERAL_SERVICES_EDUCATION",
+  });
+  const asOf = "2026-11-03";
+
+  it("counts across the months in history, not the three it's averaged over", () => {
+    const spent = typicalMonthlySpending([...month, tuition], asOf, 3);
+    // Within the few cents that dividing it into equal parts leaves.
+    expect(Math.abs(spent - (100_000 + 481_500 / 7))).toBeLessThan(5);
+  });
+
+  it("lands the same on every window, so a month's average doesn't jump when it arrives", () => {
+    const before = typicalMonthlySpending([...month, tuition], "2026-11-03", 3);
+    const later = typicalMonthlySpending([...month, tuition], "2026-11-03", 6);
+    expect(Math.abs(before - later)).toBeLessThanOrEqual(1);
+  });
+
+  it("names what it spread, with what it cost and over how many months", () => {
+    expect(rareBills([...month, tuition], asOf)).toEqual([
+      { date: "2026-08-24", merchant: "University Bursar", amountCents: 481_500, overMonths: 7 },
+    ]);
+  });
+
+  it("leaves a bill that comes most months, and a small one", () => {
+    const small = t({
+      date: "2026-08-24",
+      amountCents: 40_000,
+      merchantName: "Geico",
+      pfcPrimary: "GENERAL_SERVICES",
+      pfcDetailed: "GENERAL_SERVICES_INSURANCE",
+    });
+    const monthlyCare = MONTHS_7.map((m) =>
+      t({
+        date: `${m}-11`,
+        amountCents: 150_000,
+        merchantName: "Sunrise Learning",
+        pfcPrimary: "GENERAL_SERVICES",
+        pfcDetailed: "GENERAL_SERVICES_CHILDCARE",
+      }),
+    );
+    expect(rareBills([...month, small, ...monthlyCare], asOf)).toEqual([]);
+  });
+
+  it("spreads over a year at most, and property tax counts too", () => {
+    const years = Array.from({ length: 24 }, (_, i) => {
+      const d = new Date(Date.UTC(2024, 10 + i, 3)).toISOString().slice(0, 10);
+      return t({ date: d, amountCents: 100_000, merchantName: "Rent" });
+    });
+    const tax = t({
+      date: "2026-10-28",
+      amountCents: 412_287,
+      merchantName: "King County Treasury",
+      pfcPrimary: "GOVERNMENT_AND_NON_PROFIT",
+      pfcDetailed: "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
+    });
+    expect(rareBills([...years, tax], asOf)[0].overMonths).toBe(12);
   });
 });

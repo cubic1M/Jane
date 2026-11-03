@@ -189,6 +189,12 @@ export async function explainFigure(
               value: formatCents(o.amountCents),
             }))
           : []),
+        ...(id === "monthly_spending"
+          ? (health.spreadBills ?? []).map((b) => ({
+              label: `Counted across ${b.overMonths} months: ${b.merchant}, ${dayLabel(b.date)}`,
+              value: formatCents(b.amountCents),
+            }))
+          : []),
         {
           label: `${monthLabel(month, { long: true })}'s ${id === "monthly_spending" ? "spending" : "income"}, in the items below and the rest`,
           value: formatCents(Math.abs(wanted.reduce((s, t) => s + t.amountCents, 0))),
@@ -207,6 +213,11 @@ export async function explainFigure(
                   ...NON_SPENDING_PRIMARIES.map((p) => categoryLabel(p).toLowerCase()),
                   ...NON_SPENDING_CATEGORIES.map((d) => detailedWords(d)),
                 ].join(", "),
+              },
+              {
+                label: "Big bills that come a few times a year",
+                value:
+                  "tuition, property tax and yearly premiums count across the months, not all in the one they landed in",
               },
               {
                 label: "One-off costs left out",

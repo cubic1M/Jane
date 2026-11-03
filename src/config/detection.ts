@@ -1033,6 +1033,16 @@ export const ONE_OFF_REPEAT_SHARE = 0.5;
 // A charge with no category can be a one-off only at this many usual months of spending: rent by check
 // has no category and a new name each month ("CHECK 1042"), so the usual floor would take it out.
 export const ONE_OFF_UNPLACED_MONTHS = 2;
+// A bill of that size that comes a few times a year (tuition, property tax, a yearly premium) is a
+// real cost, not a one-off, but it isn't that much every month (debugger 11-03: a student's $4,815
+// of tuition read as $2,739 a month on months of $1,011). In the averages it counts across the
+// months: at most RARE_BILL_MAX_MONTHS of them, for a merchant charged in at most this share.
+export const RARE_BILL_MAX_MONTH_SHARE = 1 / 3;
+export const RARE_BILL_MAX_MONTHS = 12;
+export const RARE_BILL_DETAILED: readonly string[] = [
+  ...ONE_OFF_NEVER_DETAILED,
+  "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
+];
 
 // --- Thin data -----------------------------------------------------------------------
 

@@ -11,7 +11,7 @@ import {
   HEALTH_WEIGHTS,
   type HealthPart,
 } from "@/config/health-score";
-import type { OneOff } from "@/insights/typical-month";
+import type { OneOff, RareBill } from "@/insights/typical-month";
 import { formatCents } from "@/lib/money";
 import { plural } from "@/lib/plural";
 
@@ -35,6 +35,8 @@ export type HealthInput = {
   goals: { onTrack: number; total: number };
   // One-off costs left out of the spending average (books QA), to say so.
   oneOffs?: OneOff[];
+  // Big bills that come a few times a year, counted across the months.
+  spreadBills?: RareBill[];
 };
 
 // What the person's cards carry: null with no cards, or when a card's balance isn't known (an
