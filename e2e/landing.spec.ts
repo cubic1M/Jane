@@ -53,10 +53,14 @@ test("the column pans from capital to base as the page scrolls", async ({ page }
   );
   // At the bottom of the page the base is in view: the drawing has slid up by its extra height.
   await expect.poll(async () => (await art.boundingBox())!.y).toBeLessThan(top - 100);
-  const box = (await art.boundingBox())!;
-  expect(box.y + box.height).toBeLessThanOrEqual(860 + 2);
+  await expect
+    .poll(async () => {
+      const box = (await art.boundingBox())!;
+      return box.y + box.height;
+    })
+    .toBeLessThanOrEqual(860 + 2);
   // The panel itself stays put on screen.
-  expect(Math.abs((await column.boundingBox())!.y)).toBeLessThan(2);
+  await expect.poll(async () => Math.abs((await column.boundingBox())!.y)).toBeLessThan(2);
   // The headline face, and the white page.
   const heading = page.getByRole("heading", { level: 1, name: "See how much money you're losing" });
   expect(await heading.evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(

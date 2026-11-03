@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { E2E_DATABASE_URL, addPaperSignal, deleteUser, signedInUser, treatAsDemoBank } from "./db";
+import { holds } from "./waits";
 
 // The paper account (founder: "start a paper trading account that users can now run … and jane
 // should be recommending trades when opportunities arise … a separate pop up"): started from the
@@ -124,7 +125,10 @@ test("Revert takes a paper trade back, and Skip puts a trade away for good", asy
   await expect(async () => {
     await page.reload();
     await expect(page.locator("#paper")).toBeVisible();
-    await page.waitForTimeout(1_000);
-    await expect(page.getByRole("complementary", { name: "Trade alert" })).toHaveCount(0);
+    await holds(
+      async () =>
+        expect(await page.getByRole("complementary", { name: "Trade alert" }).count()).toBe(0),
+      1_000,
+    );
   }).toPass({ timeout: 30_000 });
 });

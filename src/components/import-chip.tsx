@@ -7,6 +7,7 @@ import { dismissImport } from "@/app/import/actions";
 import { IMPORT_POLL_MS, IMPORT_STARTED_EVENT } from "@/config/import";
 import { DATA_CHANGED_EVENT } from "@/config/side-chat";
 import type { ImportRunView } from "@/lib/import/background";
+import { askImportStatus } from "@/lib/import/chip-status";
 import { formatWholeDollars } from "@/lib/money";
 import { panelShowsOn } from "@/lib/side-chat";
 
@@ -18,16 +19,6 @@ import { panelShowsOn } from "@/lib/side-chat";
 
 const RUNNING = new Set(["queued", "matching", "balances", "looking", "refreshing"]);
 
-async function fetchRun(): Promise<ImportRunView | null> {
-  try {
-    const response = await fetch("/api/import/status", { cache: "no-store" });
-    if (!response.ok) return null;
-    return ((await response.json()) as { run: ImportRunView | null }).run;
-  } catch {
-    return null;
-  }
-}
-
 export function ImportChip() {
   const router = useRouter();
   const [run, setRun] = useState<ImportRunView | null>(null);
@@ -37,10 +28,16 @@ export function ImportChip() {
   // Only the newest answer counts: under load the page's first "nothing running" could land after
   // the upload's own check and blank the chip, which then never asked again (demo-polish e2e).
   const asked = useRef(0);
+  const [unheard, setUnheard] = useState(0);
   const check = useCallback(async () => {
     const ask = ++asked.current;
-    const next = await fetchRun();
+    const next = await askImportStatus();
     if (ask !== asked.current) return;
+    // Didn't hear: what's on screen stands, and it asks again.
+    if (next === "unknown") {
+      setUnheard((n) => n + 1);
+      return;
+    }
     const before = last.current;
     last.current = next;
     setRun(next);
@@ -75,6 +72,12 @@ export function ImportChip() {
     const again = setTimeout(check, 0);
     return () => clearTimeout(again);
   }, [pathname, check]);
+
+  useEffect(() => {
+    if (unheard === 0) return;
+    const again = setTimeout(check, IMPORT_POLL_MS);
+    return () => clearTimeout(again);
+  }, [unheard, check]);
 
   const running = run !== null && RUNNING.has(run.stage);
   useEffect(() => {

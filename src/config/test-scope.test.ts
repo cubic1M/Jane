@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  changedSpecs,
   docsNamedIn,
   MAIN_ONLY_TESTS,
   shardsFor,
@@ -128,5 +129,13 @@ describe("what the unit jobs are told to run", () => {
     expect(vitestArgs("full", { event: "push" })).toBe("");
     expect(vitestArgs("full", { event: "workflow_dispatch" })).toBe("");
     expect(vitestArgs("full", { event: "pull_request", labels: ["full-tests"] } as never)).toBe("");
+  });
+});
+
+describe("the end-to-end specs a PR runs beyond the critical ones", () => {
+  it("are the spec files it changes, and not their helpers", () => {
+    expect(
+      changedSpecs(["e2e/hub.spec.ts", "e2e/waits.ts", "src/components/card.tsx", "docs/ci.md"]),
+    ).toEqual(["e2e/hub.spec.ts"]);
   });
 });

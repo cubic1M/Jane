@@ -2,7 +2,7 @@
 import { execFileSync } from "node:child_process";
 import { appendFileSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { docsNamedIn, shardsFor, testScope, vitestArgs } from "./test-scope-core.mjs";
+import { changedSpecs, docsNamedIn, shardsFor, testScope, vitestArgs } from "./test-scope-core.mjs";
 
 const git = (...args) => execFileSync("git", args, { encoding: "utf8" }).trim();
 const event = process.env.GITHUB_EVENT_NAME ?? "";
@@ -50,6 +50,7 @@ const lines = {
   shards: JSON.stringify(Array.from({ length: shards }, (_, i) => i + 1)),
   total: String(shards),
   args: vitestArgs(mode, { event, labels }),
+  specs: changedSpecs(changedPaths).join(" "),
 };
 const out = Object.entries(lines)
   .map(([key, value]) => `${key}=${value}\n`)

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser } from "./db";
 import { demoPerson } from "./demo-person";
+import { holds } from "./waits";
 
 // Jane's logos are only logos (founder: "you should not be able to click the top right Jane logo
 // and it does anything. It should just be the logo, and no interaction"): the ">Jane" in the top
@@ -27,7 +28,8 @@ test("Jane's logos are plain marks: no link, no button, a click does nothing", a
   if (isMobile) await page.getByRole("button", { name: /^Chat with Jane/ }).click();
   const logos = page.locator("[data-jane-logo]");
   await expect(logos.first()).toBeVisible({ timeout: 60_000 });
-  expect(await logos.count()).toBeGreaterThanOrEqual(2);
+  // The chat's logo comes with its frame, a moment after the top bar's.
+  await expect.poll(() => logos.count()).toBeGreaterThanOrEqual(2);
   for (const logo of await logos.all()) {
     expect(
       await logo.evaluate((el) => ({
@@ -39,8 +41,7 @@ test("Jane's logos are plain marks: no link, no button, a click does nothing", a
   }
   // Clicking the top bar's ">Jane" stays on this page.
   await page.locator("#app-top-bar [data-jane-logo]").click({ force: true });
-  await page.waitForTimeout(500);
-  await expect(page).toHaveURL("/insurance");
+  await holds(() => expect(new URL(page.url()).pathname).toBe("/insurance"), 500);
   // Home is a tab.
   await expect(
     page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: /Home/ }),

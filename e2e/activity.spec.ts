@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { Client } from "pg";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { holds } from "./waits";
 
 // The beta's activity log (src/lib/activity/): typing in a field records that something was
 // typed and how long it is, never the words, in what the browser sends or what we store. An
@@ -84,9 +85,8 @@ for (const role of ["user", "admin"] as const) {
       expect(JSON.stringify(rows)).not.toContain("secret");
       expect(JSON.stringify(rows)).not.toContain("4111");
     } else {
-      // Give the browser time to send whatever it would.
-      await page.waitForTimeout(7_000);
-      expect(await activityOf(user.userId)).toEqual([]);
+      // Nothing to wait for: it must stay empty for as long as the browser might send something.
+      await holds(async () => expect(await activityOf(user.userId)).toEqual([]), 7_000);
     }
     expect(sent.join("\n")).not.toContain("secret");
     expect(sent.join("\n")).not.toContain("4111");

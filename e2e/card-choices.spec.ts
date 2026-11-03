@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { walkToCard } from "./card-walk";
 import { E2E_DATABASE_URL, addJaneMessage, deleteUser } from "./db";
 import { demoPerson } from "./demo-person";
+import { settled } from "./waits";
 
 // Every choice on a card is always shown (founder: "the suggestion cards have an issue where not
 // all the choices are shown"): a decision with several long choices, in the dock above the chat
@@ -103,7 +104,7 @@ test("every choice on a card is in view and clickable, shut and opened", async (
     await test.step(`${size.width}px, shut`, () => everyChoiceShown(page, card));
     await card.getByRole("button", { name: "More details" }).click();
     await expect(card.locator('[id^="details-"]')).toBeVisible();
-    await page.waitForTimeout(400);
+    await settled(card.locator('[id^="details-"]'));
     await test.step(`${size.width}px, opened`, () => everyChoiceShown(page, card));
   }
 });

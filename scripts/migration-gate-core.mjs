@@ -31,12 +31,12 @@ export const UNSAFE_SQUAWK_RULES = new Set([
   "syntax-error",
 ]);
 
-// Squawk doesn't flag these: plain deletes, or anything inside a DO block's body.
+// Squawk doesn't flag plain deletes, or anything inside a DO block's body.
 const UNSAFE_WORDS = [
   { rule: "truncate", pattern: /\bTRUNCATE\b/i },
   { rule: "delete-rows", pattern: /\bDELETE\s+FROM\b/i },
-  { rule: "drop-in-block", pattern: /\bDROP\s+(?:TABLE|COLUMN|TYPE|SCHEMA)\b/i },
-  { rule: "rename-in-block", pattern: /\bRENAME\s+(?:TO|COLUMN|VALUE)\b/i },
+  { rule: "drop", pattern: /\bDROP\s+(?:TABLE|COLUMN|TYPE|SCHEMA)\b/i },
+  { rule: "rename", pattern: /\bRENAME\s+(?:TO|COLUMN|VALUE)\b/i },
 ];
 
 const withoutComments = (sql) => sql.replace(/--.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
@@ -95,8 +95,9 @@ export function migrationProblems({
     }
   }
 
+  // Only for a change that adds a migration: if a stale file reached main, it mustn't fail every PR.
   const last = headNames.reduce((a, b) => (a > b ? a : b), "");
-  if ((headFile ?? "").trim() !== last) {
+  if (added.length > 0 && (headFile ?? "").trim() !== last) {
     problems.push(
       `${HEAD_FILE} must hold the newest migration's name, ${last}. Two PRs adding migrations ` +
         `then conflict on that line, so the second rebases and is checked against the first.`,

@@ -40,6 +40,19 @@ const eslintConfig = defineConfig([
     plugins: { jane: janeRules },
     rules: { "jane/no-raw-db": ["error", { allowed: rawDbAllowlist }] },
   },
+  {
+    // A sleep passes on a fast runner and fails on a slow one: e2e/waits.ts has what to use.
+    files: ["e2e/**"],
+    rules: {
+      "no-restricted-properties": [
+        "error",
+        {
+          property: "waitForTimeout",
+          message: "Wait for something real: see e2e/waits.ts.",
+        },
+      ],
+    },
+  },
   globalIgnores([
     ".next/**",
     "out/**",

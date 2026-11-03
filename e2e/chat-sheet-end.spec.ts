@@ -1,6 +1,7 @@
 import { expect, test, type FrameLocator } from "@playwright/test";
 import { E2E_DATABASE_URL, addJaneMessage, deleteUser } from "./db";
 import { demoPerson } from "./demo-person";
+import { framesDrawn, holds } from "./waits";
 
 // Night debugger: on a phone, with the chat sheet open, Jane's card covered the newest answer.
 // The chat went to its end once, before the sheet had opened and the card come in over it. It
@@ -63,17 +64,18 @@ test("on a phone, the chat sheet opens at its newest answer, clear of Jane's car
   };
   await expect.poll(clear, { timeout: 15_000 }).toBe(true);
   expect((await ends(chat)).card).toBe(true);
-  await page.waitForTimeout(1_500);
-  expect(await clear()).toBe(true);
+  await holds(async () => expect(await clear()).toBe(true), 1_500);
 
   // Grown to the whole screen: still at the end.
   await page.getByRole("button", { name: "Expand chat" }).click();
   await expect.poll(clear, { timeout: 10_000 }).toBe(true);
 
   // Scrolled up to read, it stays there when the sheet shrinks.
+  const scrollTop = () => chat.locator("html").evaluate(() => document.scrollingElement!.scrollTop);
   await chat.locator("html").evaluate(() => window.scrollTo(0, 0));
-  await page.waitForTimeout(300);
+  await expect.poll(scrollTop).toBe(0);
+  const frame = page.frames().find((f) => f.url().includes("/chat"))!;
+  await framesDrawn(frame);
   await page.getByRole("button", { name: "Shrink chat" }).click();
-  await page.waitForTimeout(1_000);
-  expect(await chat.locator("html").evaluate(() => document.scrollingElement!.scrollTop)).toBe(0);
+  await holds(async () => expect(await scrollTop()).toBe(0), 1_000);
 });

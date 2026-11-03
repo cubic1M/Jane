@@ -85,3 +85,8 @@ export function vitestArgs(mode, { event, labels = [] }) {
   }
   return args.join(" ");
 }
+
+// A PR runs the end-to-end spec files it changes, on top of the critical tests: rewriting a spec
+// and first running it on main would turn main red.
+export const changedSpecs = (changedPaths) =>
+  changedPaths.filter((path) => /^e2e\/[\w./-]+\.spec\.ts$/.test(path));

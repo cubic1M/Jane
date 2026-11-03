@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, addJaneMessage, deleteUser, signedInUser } from "./db";
 import { uploadSampleCard } from "./demo-upload";
+import { holds } from "./waits";
 
 // Founder: "for the suggestion cards, you can't scroll down with mouse wheel, make that a
 // feature." The dock above the chat is one scroller for a card and its details: the wheel moves
@@ -76,9 +77,10 @@ test("the wheel scrolls a long card in the dock to its end, and nothing behind i
 
   // Past its end: the page and the chat behind don't move.
   await page.mouse.wheel(0, 800);
-  await page.waitForTimeout(300);
-  expect(await page.evaluate(() => window.scrollY)).toBe(before.page);
-  expect(await chatTop()).toBe(before.chat);
+  await holds(async () => {
+    expect(await page.evaluate(() => window.scrollY)).toBe(before.page);
+    expect(await chatTop()).toBe(before.chat);
+  }, 500);
 
   // The keys: back to the top with Home, down again with Page Down.
   await scroller.focus();

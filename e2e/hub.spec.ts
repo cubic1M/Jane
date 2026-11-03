@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser } from "./db";
 import { demoPerson } from "./demo-person";
+import { holds } from "./waits";
 
 // The home hub (docs/design/home-hub.md): graphs first and few words. Three numbers up top,
 // the next 30 days on a line you can step along, and a tile per area with its health, one
@@ -185,6 +186,5 @@ test("the areas are fixed tiles that each open into their tree, and a feature's 
   // On a phone the sheet is over the page: close it to reach the box again.
   if (isMobile) await page.getByRole("button", { name: "Close chat" }).click();
   await ask.click();
-  await page.waitForTimeout(1000);
-  expect(await messages.count()).toBe(count);
+  await holds(async () => expect(await messages.count()).toBe(count), 1_000);
 });

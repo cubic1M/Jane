@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser, waitForFullScan } from "./db";
 import { landInChat } from "./chat-page";
+import { nextSave } from "./waits";
 
 // The day's suggestions as floating cards over the chat (founder request): one at a time, a
 // card above the page and not in it, a short card with Yes and Not now, More details already
@@ -95,9 +96,10 @@ test("suggestions float over the chat one at a time, and every tap answers at on
   // waiting or answered (founder: "Don't let the suggestion cards repeat in the chat again").
   const second = (await headline.textContent()) ?? "";
   await expect(inList(second)).toHaveCount(0);
+  const saved = nextSave(page);
   await showing.getByRole("button", { name: "Yes", exact: true }).click();
   await expect(counter).toHaveText(`${total - 2} left`, { timeout: 100 });
-  await page.waitForTimeout(3_000);
+  await saved;
   await page.reload();
   await expect(page.getByRole("textbox", { name: "Message Jane" })).toBeVisible();
   await expect(inList(second)).toHaveCount(0);
