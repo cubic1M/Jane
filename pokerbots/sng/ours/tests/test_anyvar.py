@@ -120,7 +120,7 @@ class TestIcmAnyDefaults(unittest.TestCase):
         keys = ("icm_call", "rs_call", "bet_discount", "hu_open_mult", "hu_range_k")
         on, off = (1, 2.0, 0.5, 0.6, 2.0), (0, 0.0, 0.6, 0.0, 0.0)
         for r, want in ((nl, on), (six, on), (draw, off)):
-            a = IcmAny(two_card=1)
+            a = IcmAny()                         # two_card=1 is the default
             a.new_table(r, 0, 1)
             self.assertEqual(tuple(a.p[k] for k in keys), want)
         a = IcmAny(two_card=0)

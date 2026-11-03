@@ -52,6 +52,7 @@ Fill in each line:
      (no exec, allowed imports only, only reachable code, about 69 KB).
    - **The kit's import whitelist:** pass it with `--allow "math,random,..."` (the default is practice
      kit 2's list, which allows `time`; kit 4 banned `time`, `os`, `sys`).
+   - **2-card games in a restrictive kit:** the flat bundle's `icm_any` now switches on `icm_tag`'s hold'em rules by itself (`two_card=1`, +1.7 to +1.8 per table on fresh seeds), so Plan A loses little to `icm_tag` there.
    - **Never skip the any-variant table** (without it `icm_any` plays every hand as equal: PLO4 50.9 -> 59.5 per table with it).
    - **No any-variant table yet for the variant's cards?** `python3 -m sng.ours.anyvar --spec
      adapter.py-module:_SPEC --seconds 120` builds `cache/sng/any_<sig>.json` in 2 minutes (kit 4: six-plus).
