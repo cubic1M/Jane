@@ -52,6 +52,7 @@ Fill in each line:
      (no exec, allowed imports only, only reachable code, about 69 KB).
    - **The kit's import whitelist:** pass it with `--allow "math,random,..."` (the default is practice
      kit 2's list, which allows `time`; kit 4 banned `time`, `os`, `sys`).
+   - **Never skip the any-variant table** (without it `icm_any` plays every hand as equal: PLO4 50.9 -> 59.5 per table with it).
    - **No any-variant table yet for the variant's cards?** `python3 -m sng.ours.anyvar --spec
      adapter.py-module:_SPEC --seconds 120` builds `cache/sng/any_<sig>.json` in 2 minutes (kit 4: six-plus).
    - **A file-size cap:** add `--compact` (same decisions, tested: about 51 KB with kit 2's adapter).
