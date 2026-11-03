@@ -19,6 +19,7 @@ import {
 import { hit, ipKey } from "@/lib/rate-limit";
 import { TERMS_COOKIE } from "@/lib/terms";
 import { HOME_PATH } from "@/lib/session";
+import { addressKey } from "@/lib/sign-in-email";
 import { isTrialUser } from "@/lib/trial-ids";
 
 // Signing up or in from a Try Jane session (spec step 138) starts the person's own account.
@@ -42,7 +43,7 @@ async function signInOrShowError(provider: string, options: Record<string, strin
 
 // Per IP and, for email links, per address too, so no one can flood an inbox.
 async function limitSignIn(email?: string): Promise<void> {
-  const subjects = [ipKey(await headers()), ...(email ? [`email:${email.toLowerCase()}`] : [])];
+  const subjects = [ipKey(await headers()), ...(email ? [`email:${addressKey(email)}`] : [])];
   for (const subject of subjects) {
     if (!(await hit("auth", subject)).ok) {
       await recordFailedSignIn("rate_limited");
@@ -82,7 +83,9 @@ const inviteFrom = (formData: FormData) => {
 
 export async function signInWithEmail(formData: FormData): Promise<void> {
   const email = formData.get("email");
-  if (typeof email !== "string" || !email.includes("@")) redirect("/login?error=InvalidEmail");
+  if (typeof email !== "string" || !email.includes("@") || email.length > 254) {
+    redirect("/login?error=InvalidEmail");
+  }
   await limitSignIn(email.trim());
   await requireConsent(formData);
   // From /signup: redeem the invite for this email before sending the link.
@@ -135,5 +138,7 @@ export async function signOutToHome(): Promise<void> {
   if (userId && !isTrialUser(userId)) {
     await logAudit({ type: "user", id: userId }, "user_signed_out", { type: "user", id: userId });
   }
-  await signOut({ redirectTo: "/" });
+  // Then back here by path: Auth.js's own redirect takes its address from the request's headers.
+  await signOut({ redirect: false });
+  redirect("/");
 }

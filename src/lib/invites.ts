@@ -72,15 +72,22 @@ export async function redeemInvite(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<CodeCheck> {
   const address = lower(email);
-  if (await client.betaAccess.findUnique({ where: { email: address }, select: { id: true } })) {
-    return "ok";
-  }
+  const access = await client.betaAccess.findUnique({
+    where: { email: address },
+    select: { inviteCode: { select: { code: true } } },
+  });
+  const code = normalizeCode(input);
+  // Already on the list: their own code still works, even used up.
+  if (access && code && access.inviteCode?.code === code) return "ok";
+  // Any other code is checked as for anyone, so a made-up one can't test who is on the list.
   const check = await checkCode(input, { client, now, email: address });
-  if (check !== "ok") return check;
-  const code = normalizeCode(input) as string;
+  if (check !== "ok" || access) return check;
   let inviteId: string | undefined;
   const result = await client.$transaction(async (tx) => {
-    const invite = await tx.inviteCode.findUniqueOrThrow({ where: { code }, select: { id: true } });
+    const invite = await tx.inviteCode.findUniqueOrThrow({
+      where: { code: code as string },
+      select: { id: true },
+    });
     inviteId = invite.id;
     // Only takes a use if one is left, even with two people redeeming at once.
     const taken = await tx.$executeRaw`

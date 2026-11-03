@@ -99,6 +99,30 @@ describe("sendMagicLink", () => {
     expect(body.html).toContain(URL_WITH_QUERY.replaceAll("&", "&amp;"));
   });
 
+  // A forged X-Forwarded-Host reached Auth.js's link on a local production build: the email went to
+  // the right person with a working token, on the attacker's site.
+  it("mails the link on the site's own address, whatever the request said", async () => {
+    vi.stubEnv("APP_URL", "https://jane.example/");
+    await sendMagicLink({
+      to: "a@b.com",
+      url: "https://evil.example/api/auth/callback/resend?callbackUrl=https%3A%2F%2Fevil.example%2Fhome&token=abc&email=a%40b.com",
+    });
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(`${body.text} ${body.html}`).not.toContain("evil.example");
+    expect(body.text).toContain(
+      "https://jane.example/api/auth/callback/resend?callbackUrl=https%3A%2F%2Fjane.example%2Fhome&token=abc&email=a%40b.com",
+    );
+  });
+
+  it("uses Vercel's production domain when APP_URL isn't set", async () => {
+    vi.stubEnv("APP_URL", "");
+    vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "jane.vercel.example");
+    await sendMagicLink({ to: "a@b.com", url: URL_WITH_QUERY });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).text).toContain(
+      "https://jane.vercel.example/api/auth/callback/resend?token=abc",
+    );
+  });
+
   it("throws when Resend rejects the email", async () => {
     fetchMock.mockResolvedValue(new Response("invalid from", { status: 422 }));
 

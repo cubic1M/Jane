@@ -110,16 +110,17 @@ describe("auth actions", () => {
     await expect(signInWithEmail(emailForm("ada@example.com"))).rejects.toThrow("NEXT_REDIRECT");
   });
 
-  it("signs out to the landing page", async () => {
-    await signOutToHome();
+  // By path: Auth.js's own redirect takes the address from the request's headers.
+  it("signs out to the landing page by path, not an address from the request", async () => {
+    await expect(signOutToHome()).rejects.toThrow("redirect:/");
 
-    expect(signOut).toHaveBeenCalledWith({ redirectTo: "/" });
+    expect(signOut).toHaveBeenCalledWith({ redirect: false });
   });
 
   it("puts a sign-out on the access log first, while it knows whose session it was", async () => {
     vi.mocked(auth).mockResolvedValueOnce({ user: { id: "user_1" } } as never);
     vi.mocked(logAudit).mockClear();
-    await signOutToHome();
+    await expect(signOutToHome()).rejects.toThrow("redirect:/");
     expect(logAudit).toHaveBeenCalledWith({ type: "user", id: "user_1" }, "user_signed_out", {
       type: "user",
       id: "user_1",

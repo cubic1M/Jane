@@ -354,7 +354,7 @@
   "src/lib/trading-agent/bar-store.ts": 7,
   "src/lib/trial.ts": 9,
   "src/lib/unusual.ts": 8,
-  "src/lib/user-sessions.ts": 9,
+  "src/lib/user-sessions.ts": 11,
   "src/lib/voice/calls.ts": 20,
   "src/lib/what-if.ts": 14,
   "src/lib/what-jane-did.ts": 2,

@@ -11,6 +11,19 @@ import { describeDevice, lastActiveLabel } from "@/lib/devices";
 
 type Options = { client?: PrismaClient; now?: Date };
 
+// The address of whoever this session belongs to, or null.
+export async function emailOfSession(
+  sessionToken: string | undefined,
+  { client = defaultClient }: { client?: PrismaClient } = {},
+): Promise<string | null> {
+  if (!sessionToken) return null;
+  const session = await client.session.findUnique({
+    where: { sessionToken },
+    select: { user: { select: { email: true } } },
+  });
+  return session?.user?.email ?? null;
+}
+
 export type DeviceSession = {
   id: string;
   device: string;

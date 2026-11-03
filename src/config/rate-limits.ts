@@ -22,6 +22,11 @@ export const RATE_LIMITS = {
   authCallback: { limit: 30, windowSeconds: 10 * 60 },
   // Sign-in and sign-up emails, per IP and per address.
   auth: { limit: 10, windowSeconds: 10 * 60 },
+  // Sign-in links actually sent to one address, however they were asked for and from however many
+  // IPs. Past these nothing more goes out.
+  signInEmail: { limit: 5, windowSeconds: 10 * 60 },
+  signInEmailDay: { limit: 20, windowSeconds: 24 * 60 * 60 },
+  signInEmailPastDay: { limit: 1, windowSeconds: 60 * 60 },
   // Plaid link tokens and token exchanges, per user.
   plaid: { limit: 20, windowSeconds: 10 * 60 },
   // Gifts through a share link (spec step 213), per IP.
