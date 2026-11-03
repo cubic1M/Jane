@@ -296,8 +296,21 @@ class IcmAny(IcmTag):
     # rs_call off: on the discard presets rs_call=2 scored -1.2 / -2.2 / -0.4 / -0.9 (none significant,
     # results/sng_anyvar_rscall_1.md); it was validated together with the exact-ICM call, which is off here
     OVERRIDES = dict(hu_open_mult=0.0, hu_range_k=0.0, icm_call=0, bet_discount=0.6, rs_call=0.0)
+    # 2-card games without discards (what a restrictive kit's flat bundle plays with icm_any instead of
+    # icm_tag): icm_tag's hold'em switches. Under kit-4 rules they recovered icm_tag's whole edge over
+    # icm_any (+3.1 per table on 4 fields, results/sng_planA_gap.md). Explicit kwargs still win.
+    TWO_CARD = dict(hu_open_mult=0.6, hu_range_k=2.0, icm_call=1, bet_discount=0.5, rs_call=2.0)
+
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        self._explicit = set(kw)
 
     def new_table(self, rules, seat, seed=0):
+        sp = rules.spec
+        two = bool(self.p["two_card"]) and getattr(sp, "hole_cards", 2) == 2 and not getattr(sp, "discards", ())
+        for k, v in self.TWO_CARD.items():
+            if k not in self._explicit:
+                self.p[k] = v if two else self.OVERRIDES[k]
         super().new_table(rules, seat, seed)
         sig = F.card_signature(rules.spec)
         if sig not in _STRENGTH:

@@ -109,6 +109,29 @@ class TestIcmAnyDefaults(unittest.TestCase):
         self.assertEqual((t.p["hu_open_mult"], t.p["icm_call"], t.p["bet_discount"], t.p["behind_k"],
                           t.p["push_steal"], t.p["resteal_rel"], t.p["rs_call"]), (0.6, 1, 0.5, 0.2, 0.5, 1.0, 2.0))
 
+    def test_two_card_mode(self):
+        """2-card games without discards get icm_tag's hold'em switches; discard/draw games keep the
+        validated icm_any settings; two_card=0 and explicit kwargs win."""
+        from sng.ours.anyvar import IcmAny
+        from sng.presets import PRESETS
+        nl = SngRules(enforce_time=False)
+        six = SngRules(enforce_time=False, spec=PRESETS["kit4_sixplus"]["spec"])
+        draw = SngRules(enforce_time=False, spec=PRESETS["draw_holdem"]["spec"])
+        keys = ("icm_call", "rs_call", "bet_discount", "hu_open_mult", "hu_range_k")
+        on, off = (1, 2.0, 0.5, 0.6, 2.0), (0, 0.0, 0.6, 0.0, 0.0)
+        for r, want in ((nl, on), (six, on), (draw, off)):
+            a = IcmAny()
+            a.new_table(r, 0, 1)
+            self.assertEqual(tuple(a.p[k] for k in keys), want)
+        a = IcmAny(two_card=0)
+        a.new_table(nl, 0, 1)
+        self.assertEqual(tuple(a.p[k] for k in keys), off)
+        a = IcmAny(rs_call=0.0, icm_call=0)
+        a.new_table(nl, 0, 1)
+        self.assertEqual((a.p["rs_call"], a.p["icm_call"], a.p["bet_discount"]), (0.0, 0, 0.5))
+        a.new_table(draw, 0, 1)                  # the same bot moved to a draw game: back to icm_any's settings
+        self.assertEqual(a.p["bet_discount"], 0.6)
+
 
 if __name__ == "__main__":
     unittest.main()
