@@ -277,6 +277,31 @@ describe("a shop's card sales (taxes QA)", () => {
   });
 });
 
+// Debugger 11-03: a shop's sales tax is its customers' money, and counted as state income tax paid.
+describe("tax paid", () => {
+  const taxPaid = (description: string) =>
+    tx({
+      date: "2026-06-20",
+      description,
+      amountCents: 45_000,
+      pfcDetailed: "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
+    });
+
+  it.each(["CA CDTFA SALES TAX EFT", "STATE DEPT OF REVENUE SALES TAX", "CDTFA EPMT 8812"])(
+    "%s isn't income tax",
+    (description) => {
+      expect(taxPaymentsFor([taxPaid(description)], 2026)).toEqual({
+        federalCents: 0,
+        stateCents: 0,
+      });
+    },
+  );
+
+  it("a state's income tax still is", () => {
+    expect(taxPaymentsFor([taxPaid("FRANCHISE TAX BOARD")], 2026).stateCents).toBe(45_000);
+  });
+});
+
 // Debugger 11-03: half a year's statements with a $12,000 bonus read as $24,000 of it.
 describe("takeHomePay", () => {
   const pay = { amountCents: -500_000, description: "NORTHWIND PAYROLL" };

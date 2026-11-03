@@ -127,12 +127,12 @@ function readClaims() {
   return out ? JSON.parse(out) : [];
 }
 
-// The live site says which commit it is built from (public/commit.txt, filled by git archive).
+// The live site says which commit it's built from (src/config/build-commit.ts).
 async function liveCommit() {
   try {
-    const response = await fetch(`${SITE}/commit.txt`, { signal: AbortSignal.timeout(20000) });
-    const text = (await response.text()).trim();
-    return response.ok && /^[0-9a-f]{40}$/.test(text) ? text : null;
+    const response = await fetch(`${SITE}/api/health`, { signal: AbortSignal.timeout(20000) });
+    const { commit } = await response.json();
+    return response.ok && /^[0-9a-f]{40}$/.test(commit ?? "") ? commit : null;
   } catch {
     return null;
   }

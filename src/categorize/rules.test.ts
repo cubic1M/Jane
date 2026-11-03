@@ -749,3 +749,14 @@ describe("moving house", () => {
     expect(rule(d, 18_945)).toBe("GENERAL_SERVICES_OTHER_GENERAL_SERVICES");
   });
 });
+
+describe("a shop's sales tax", () => {
+  it.each(["CA CDTFA SALES TAX EFT", "STATE DEPT OF REVENUE SALES TAX", "CDTFA EPMT 8812"])(
+    "%s is a tax payment",
+    (description) => {
+      expect(categorizeByRules({ description, amountCents: 45_000, hints: {} })?.detailed).toBe(
+        "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
+      );
+    },
+  );
+});

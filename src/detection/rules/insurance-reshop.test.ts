@@ -58,6 +58,24 @@ describe("insurance_reshop", () => {
 
   // Debugger 11-01: a soldier's USAA car and renters policies, both "USAA Insurance" on the
   // statement, made two cards both titled "Your USAA insurance could cost less".
+  // Debugger 11-03: "Your The Hartford Business Ins insurance could cost less".
+  it.each([
+    ["THE HARTFORD BUSINESS INS", "Your Hartford Business insurance could cost less"],
+    ["ACME MUTUAL INSURANCE", "Your Acme Mutual Insurance policy could cost less"],
+  ])("reads %s plainly", (description, title) => {
+    const [finding] = run(
+      input({
+        transactions: monthly(4, 14_500, {
+          description,
+          merchantName: null,
+          pfcPrimary: "GENERAL_SERVICES",
+          pfcDetailed: "GENERAL_SERVICES_INSURANCE",
+        }),
+      }),
+    );
+    expect(finding?.title).toBe(title);
+  });
+
   it("tells two policies from one insurer apart by their price", () => {
     const usaa = {
       description: "USAA Insurance",

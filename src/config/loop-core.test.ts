@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   LIMITS,
@@ -334,13 +333,6 @@ describe("firing a scheduled task", () => {
     ]) {
       expect(() => fireRequest(bad, "t", "x")).toThrow();
     }
-  });
-});
-
-describe("the live commit file", () => {
-  it("is filled in by git archive, which is how both deploys take their files", () => {
-    expect(readFileSync("public/commit.txt", "utf8").trim()).toBe("$Format:%H$");
-    expect(readFileSync(".gitattributes", "utf8")).toMatch(/^public\/commit\.txt export-subst$/m);
   });
 });
 

@@ -2,6 +2,7 @@ import { DETECTOR_RATES as R } from "@/config/detectors";
 import { rateMonthsOf } from "@/profile/build";
 import { RISK_ANNUAL_PROBABILITY as CHANCE } from "@/config/suggestions";
 import { BUSINESS_LUMPS } from "@/config/detectors";
+import { SALES_TAX_PAYEE } from "@/config/tax";
 import { BUSINESS_SALES_DEPOSIT } from "@/config/insurance";
 import { computeNeeds, needInputFromProfile } from "@/lib/insurance/need";
 import { formatCents } from "@/lib/money";
@@ -27,7 +28,8 @@ const estimatedTaxes: Detector = {
     if (!selfPaid(pattern.value)) return null;
     const paid = tx(
       data,
-      (t) => t.pfc === "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT" && !/SALES TAX/i.test(t.description),
+      (t) =>
+        t.pfc === "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT" && !SALES_TAX_PAYEE.test(t.description),
     );
     // A shop's deposits are sales, not profit: tax is owed on what's left after costs, which
     // Jane can't see, so it assumes a share and says so.

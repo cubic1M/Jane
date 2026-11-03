@@ -133,9 +133,9 @@ export async function explainFigure(
         ...(safe.taxHeldCents > 0
           ? [
               {
-                label: "Tax on your freelance income so far",
+                label: "Tax on your self-employed income so far",
                 value: `−${formatCents(safe.taxHeldCents)}`,
-                note: `${formatCents(safe.taxSoFarCents)} in all: what you've earned from clients this year, at a typical rate, less tax paid`,
+                note: `${formatCents(safe.taxSoFarCents)} in all: what you've earned on your own this year, at a typical rate, less income tax paid`,
               },
             ]
           : []),

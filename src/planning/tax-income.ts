@@ -5,6 +5,7 @@ import {
   BUSINESS_SALES_PAYEE,
   INCOME_KINDS,
   PAY_FREQUENCIES,
+  SALES_TAX_PAYEE,
 } from "@/config/tax";
 import type { PayStub } from "@/lib/payroll/types";
 import type { EstimateIncome } from "./tax-estimate";
@@ -336,6 +337,7 @@ export function taxPaymentsFor(
     if (t.date < from || t.date > to) continue;
     // Spec step 170: property tax goes to the county, not toward the year's income tax.
     if (PROPERTY_TAX_PAYEE.test(`${t.description} ${t.merchantName ?? ""}`)) continue;
+    if (SALES_TAX_PAYEE.test(t.description)) continue;
     if (FEDERAL_PAYEE.test(`${t.description} ${t.merchantName ?? ""}`))
       federalCents += t.amountCents;
     else stateCents += t.amountCents;

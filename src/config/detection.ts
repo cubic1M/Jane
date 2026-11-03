@@ -313,6 +313,9 @@ export const FIXED_PRICE_SUBSCRIPTION_EXCLUDED_CATEGORIES: readonly PfcDetailed[
 ];
 // Matched as whole words of the description, upper case.
 export const FIXED_PRICE_SUBSCRIPTION_NOT_WORDS: readonly string[] = [
+  "PAYROLL",
+  "GUSTO",
+  "PAYCHEX",
   "PMT",
   "PYMT",
   "PAYMENT",
