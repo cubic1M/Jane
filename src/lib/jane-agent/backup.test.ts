@@ -61,6 +61,66 @@ describe("namedPayees", () => {
   });
 });
 
+describe("everyday words aren't payees", () => {
+  const rows = [
+    row("THANK YOU PAYMENT", -85_000),
+    row("TRANSFER FROM CHECKING", -25_000),
+    row("OVERDRAFT FEE", 3_400),
+    row("WHOLE FOODS MARKET", 6_000, "Whole Foods Market"),
+    row("TARGET STORE 1234", 4_000, "Target"),
+    row("HULU", 1_199, "Hulu"),
+  ];
+  // 11-03: "thank you!" got "$8,500.00 came in from Thank".
+  it.each([
+    "thank you!",
+    "how much is in my checking",
+    "am i going to overdraft",
+    "get me a discount at the store",
+    "what about the market",
+  ])("%s names no one", (text) => {
+    expect(namedPayees(text, rows)).toEqual([]);
+  });
+  it.each([
+    ["no hulu", "Hulu"],
+    ["what did i spend at target", "Target"],
+    ["whole foods this year", "Whole Foods"],
+  ])("%s names who it says", (text, name) => {
+    expect(namedPayees(text, rows)[0]?.name).toBe(name);
+  });
+});
+
+describe("what the person named has to be in the answer", () => {
+  const covered = (text: string, body: string) =>
+    rulesCoverQuestion({
+      text,
+      intent: { kind: "payday" },
+      reply: reply(body),
+      partsAnswered: 0,
+      payees: [],
+    });
+  it.each([
+    ["should i get a roth ira", "In your taxable accounts there's $3.00 of gains."],
+    ["is my annuity worth it", "advisory fees: $124.80 in the last 12 months."],
+    ["should i pay my card or put money in my 401k", "Paying bills needs a partner."],
+    ["call my landlord for me", "Demo home is worth $380,000.00."],
+    ["should i pay extra on my mortgage or invest", "Demo Credit Card costs 22.99% a year."],
+    ["should we save for college", "You owe $5.00."],
+    ["get me a mortgage today", "Your Demo Home Loan: $312,400.00."],
+    ["sell all my stocks", "You have 9 holdings."],
+  ])("%s isn't answered by that", (text, body) => {
+    expect(covered(text, body)).toBe(false);
+  });
+  it.each([
+    ["should i max my hsa", "I don't see an HSA yet."],
+    ["whats my rmd", "Required minimum distributions start at 75."],
+    ["how much is in my 401k", "Your Demo 401(k) has $84,250.40."],
+    ["whats my mortgage rate", "Your Demo Home Loan: 3.99%."],
+    ["whats a 529", "College savings plans are only in demo advice mode."],
+  ])("%s is answered by that", (text, body) => {
+    expect(covered(text, body)).toBe(true);
+  });
+});
+
 describe("rulesCoverQuestion", () => {
   const payees = namedPayees(FOUNDER, ROWS);
   const spending = { kind: "spending", category: "earning", month: "2026-10" } as const;

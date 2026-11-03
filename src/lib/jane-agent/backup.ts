@@ -93,7 +93,9 @@ const COMMON = new Set(
 // On their own these are everyday words that are also part of a merchant's name: "my whole savings"
 // isn't Whole Foods, though "whole foods" is, and "cash" isn't Cash App.
 const NOT_A_NAME_ALONE = new Set(
-  "whole cash loan loans check checks insurance report stolen legal free government".split(" "),
+  "whole cash loan loans check checks insurance report stolen legal free government checking overdraft charge charges store market monthly thank thanks protection student".split(
+    " ",
+  ),
 );
 
 type Row = { date: string; amountCents: number; description: string; merchantName: string | null };
@@ -113,6 +115,7 @@ function namesOf(row: Row): string {
     .replace(/[^a-z0-9&' |]+/g, " ");
 }
 
+const size = (gram: string) => gram.split(" ").length;
 const titleCase = (s: string) => s.replace(/\b[a-z]/g, (c) => c.toUpperCase());
 
 // The payees the person named in their question that their own transactions have, with what came
@@ -139,9 +142,14 @@ export function namedPayees(text: string, rows: readonly Row[]): PayeeTotals[] {
     if (found.some((f) => f.name.toLowerCase().includes(gram))) continue;
     // "lucid trading" is also "LUCIDTRADING.COM".
     const joined = ` ${gram.replaceAll(" ", "")}`;
+    // One word has to start the name: "market" isn't Whole Foods Market (11-03).
+    const startsName = (names: string) =>
+      names.startsWith(` ${gram} `) || names.includes(`| ${gram} `);
     const matching = named
-      .filter(
-        (n) => n.names.includes(` ${gram} `) || (gram.includes(" ") && n.names.includes(joined)),
+      .filter((n) =>
+        size(gram) === 1
+          ? startsName(n.names)
+          : n.names.includes(` ${gram} `) || n.names.includes(joined),
       )
       .map((n) => n.row);
     if (matching.length === 0) continue;
@@ -179,6 +187,9 @@ export function rulesCoverQuestion({
   if (partsAnswered > 0 ? partsAnswered < parts : parts > 1) return false;
   if (intent.kind === "unknown") return false;
   if (SOMEONE_ELSES.test(text) || NOT_A_LOOKUP.test(text)) return false;
+  if (NAMED_THINGS.some(([asked, answered]) => asked.test(text) && !answered.test(reply.body))) {
+    return false;
+  }
   // "Spend for that earning" isn't a category, and saying so answers nothing.
   if (reply.body.includes(SPENDING_NOT_FOUND)) return false;
   const body = reply.body.toLowerCase();
@@ -191,7 +202,22 @@ export function rulesCoverQuestion({
 const SOMEONE_ELSES =
   /\b(?:coworkers?|co-workers?|boss|neighbou?rs?|friends?|ex)(?:'?s)?\b[^.?!]{0,30}\b(?:salary|makes?|earns?|income|spends?|address|broke|account|transactions?|data)\b|\b(?:wife|husband|partner|spouse|girlfriend|boyfriend|mom|mother|dad|father|kid|son|daughter)'?s?\b[^.?!]{0,30}\b(?:transactions?|texts?|bank|login|password|social security)\b/i;
 const NOT_A_LOOKUP =
-  /\b(?:sue|lawsuit|lawyer|write my will|guarantee(?:d)? (?:me|way)|promise|social security number|as a dependent)\b/i;
+  /\b(?:sue|lawsuit|lawyer|write my will|guarantee(?:d)? (?:me|way)|promise|social security number|as a dependent|sell (?:all )?my (?:stocks|investments|funds|portfolio)|how long will my money last)\b|^(?:get me a|book a)\b/i;
+// Something the person named has to be in the answer, like a payee: "should i get a roth ira" got
+// their untaxed gains, "is my annuity worth it" their advisory fees, "should i pay my card or put
+// money in my 401k" that Jane can't pay bills, "call my landlord" their home equity (11-03).
+const NAMED_THINGS: readonly (readonly [RegExp, RegExp])[] = [
+  [/\broth\b/i, /\broth\b/i],
+  [/\bannuit/i, /\bannuit/i],
+  [/\bwhole life\b/i, /\bwhole life\b/i],
+  [/\bhsa\b/i, /\bhsa\b/i],
+  [/\b529\b/, /\b529\b|college/i],
+  [/\brmd\b/i, /\brmd\b|required minimum/i],
+  [/\b401\(?k\)?/i, /\b401\(k\)/i],
+  [/\blandlord\b/i, /\blandlord\b/i],
+  [/\bmortgage\b/i, /\bmortgage\b|\bhome loan\b|refinanc/i],
+  [/\bcollege\b/i, /\bcollege\b|\b529\b/i],
+];
 
 // Taxes, deductions, filing: the part Jane can't advise on for a real account.
 const TAX_QUESTION = /\b(?:tax\w*|deduct\w*|write[- ]?off|irs|1099|w-?2|file|filing)\b/i;

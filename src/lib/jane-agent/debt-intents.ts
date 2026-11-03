@@ -303,6 +303,8 @@ const REPORT_FIX =
   /\b(?:collections?|collection agency|debt collector|collector)\b|\b(?:error|errors|mistake|mistakes|wrong|incorrect|inaccurate)\b.*\b(?:credit report|credit file)\b|\bcredit report\b.*\b(?:error|errors|mistake|mistakes|wrong|incorrect|inaccurate|dispute)\b|\bdispute\b.*\b(?:credit|bureau|bureaus|equifax|experian|transunion)\b|\bdebt validation\b|\bvalidat\w+ (?:the |a |this )?debt\b|\bfix my credit report\b/;
 
 // Spec step 224: card interest, 0% promotions and asking for a lower card rate.
+// "What's the interest rate on my card" is the card's rate, not how to cut it (11-03).
+const RATE_LOOKUP = /\bwhat(?:'s| is|s)? (?:the |my )?(?:interest rate|apr|rate)\b/;
 const CARD_INTEREST =
   /\b(?:how much )?interest\b.*\b(?:cards?|credit cards?)\b|\b(?:cards?|credit cards?)\b.*\binterest\b|\b(?:pay|paying) less interest\b|\b(?:cut|reduce|lower|lowering) (?:my )?(?:card |credit card )?(?:interest|apr)\b|\bdeferred interest\b|\b0 ?% (?:promo|promotion|offer|intro)\b|\bpromo(?:tional)? (?:balance|rate|period|ends)\b/;
 
@@ -470,7 +472,10 @@ export function parseDebtIntent(
   if (/\b(?:tax|taxes|irs|tax refund)\b/.test(text)) return null;
   // "Lower the rate on my card" is a request, not a question (./intents.ts act).
   if (/^(?:lower|reduce|cut|negotiate|bring down|shrink|cancel|refund)\b/.test(text)) return null;
-  if (LOAN_FIT.test(text) && !/\b(?:student)\b/.test(text)) {
+  if (
+    LOAN_FIT.test(text) &&
+    !/\b(?:student)\b|\bwhich loan (?:has|is|costs?|charges?)\b/.test(text)
+  ) {
     return { kind: "loan_fit", need: fitNeedOf(text), amountCents };
   }
   for (const [which, pattern] of DECISION_PATTERNS) {
@@ -483,7 +488,8 @@ export function parseDebtIntent(
   if (TIGHT.test(text)) return { kind: "tight_money" };
   if (
     CARD_INTEREST.test(text) &&
-    !/\b(?:mortgage|student|car loan|auto|home|transfer|balance transfer)\b/.test(text)
+    !/\b(?:mortgage|student|car loan|auto|home|transfer|balance transfer)\b/.test(text) &&
+    !RATE_LOOKUP.test(text)
   ) {
     return { kind: "card_interest" };
   }

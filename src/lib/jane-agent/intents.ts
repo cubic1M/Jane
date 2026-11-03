@@ -199,8 +199,14 @@ export function parseMonth(
 const DATE_WORDS =
   /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.? \d{1,2}(?:st|nd|rd|th)?\b|\b\d{1,2}(?:st|nd|rd|th)\b|\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b|\b(?:in|by|until|before|after|of|for) (?:19|20)\d{2}\b/gi;
 
+// Numbers that aren't money (11-03: "can i buy a house in 5 years" checked a $5.00 purchase, "put
+// money in a 401k" a $401,000.00 one, "should i put 10% in" a $10.00 one).
+const NOT_MONEY =
+  /(?<![$\d,.])(?:(?:401|403|457)\s?\(?[kb]\)?|(?:529|1099)\b(?! dollars)|\d+(?:\.\d+)?\s?(?:%|percent\b)|\d+[- ](?:y(?:ea|ae)rs?|months?|mnths?|weeks?|days?|yrs?)\b)/gi;
+
 // "$900", "900", "$1,200.50", "1.2k", "2 grand", "900 dollars". The first amount wins.
-export function parseAmount(text: string): number | null {
+export function parseAmount(typed: string): number | null {
+  const text = typed.replace(NOT_MONEY, " ");
   const scaled = /(?:^|[^\w.,])\$?\s?(\d+(?:\.\d+)?)\s?(k|grand|thousand)\b/.exec(text);
   if (scaled) return Math.round(Number(scaled[1]) * 100_000);
   const money = /\$\s?((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?)/.exec(text);
@@ -443,6 +449,10 @@ const COMING_UP =
   /\bwhat'?s (?:due|coming(?: up)?|next)\b|\bcoming up\b|\bupcoming\b|\bbills? (?:are |is )?(?:due|coming)\b|\bwhen (?:are|is) (?:my )?(?:bills?|payments?) due\b|\bwhat do i (?:owe|have to pay)\b|\bdue (?:this|next) week\b/;
 // Spec step 88.
 const PAYDAY = /\b(?:pay ?days?|pay ?checks?|get(?:ting)? paid|salary|wages|next pay)\b/;
+// Payday as a deadline ("what bills are due before payday") or their own pay as an owner: not
+// when the next paycheck comes (11-03).
+const NOT_WHEN_PAID =
+  /\b(?:before|until|till|til|by|after|b4) (?:my |the |next )*pay ?(?:day|check)\b|\bpay(?:ing)? myself\b/;
 const SUBSCRIPTIONS =
   /\bsubscriptions\b|\bsubscription list\b|\bwhat (?:am i|do i) pay(?:ing)? for\b|\b(?:recurring|regular|monthly) (?:charges|payments|bills)\b|\bwhat (?:charges|bills) me\b/;
 const ALL_RECURRING =
@@ -704,7 +714,7 @@ export function parseIntent(
   if (investments) return investments;
   // Spec step 88: paydays, subscriptions and what one thing costs.
   const acting = REFUND.test(text) || CANCEL.test(text) || LOWER.test(text);
-  if (!acting && PAYDAY.test(text)) return { kind: "payday" };
+  if (!acting && PAYDAY.test(text) && !NOT_WHEN_PAID.test(text)) return { kind: "payday" };
   if (!acting && GOALS.test(text)) return { kind: "goals" };
   if (!acting && SUBSCRIPTIONS.test(text)) {
     return {
