@@ -5,6 +5,7 @@ import { categoryOf, type Category } from "./taxonomy";
 import { normalizeMerchant } from "@/data-sources/merchant";
 import type { NormalizedTransaction } from "@/data-sources/types";
 import type { ScopedDb } from "@/lib/db-scoped";
+import { isTrialUser } from "@/lib/trial-ids";
 
 export type CategorySource = "rule" | "llm" | "plaid" | "user";
 
@@ -19,6 +20,7 @@ type Db = Pick<ScopedDb, "userId" | "merchantCategories">;
 // the LLM for whatever is left, cached per merchant so each merchant is only ever sent
 // once per user. `askClaude: false` stops at the cache: an upload is answered at once and
 // categorizeLeftovers asks about the rest after the response (founder: imports were slow).
+// A sample person never asks: anyone can make one, so their scan can't cost anything.
 export async function categorizeTransactions<T extends NormalizedTransaction>(
   transactions: T[],
   db: Db,
@@ -67,7 +69,8 @@ export async function categorizeTransactions<T extends NormalizedTransaction>(
     if (category) known.set(row.merchantKey, category);
   }
 
-  const toAsk = askClaude ? [...unplaced].filter((key) => !known.has(key)) : [];
+  const toAsk =
+    askClaude && !isTrialUser(db.userId) ? [...unplaced].filter((key) => !known.has(key)) : [];
   const answers = await classifyMerchants(toAsk);
   if (answers.size > 0) {
     const rows = [...answers].flatMap(([merchantKey, detailed]) => {

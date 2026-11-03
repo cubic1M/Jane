@@ -5,6 +5,7 @@ import { logAudit } from "@/lib/audit";
 import { decryptBytes, encryptBytes } from "@/lib/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { isTrialUser } from "@/lib/trial-ids";
 import { readDocumentFacts } from "./extract";
 import { factsFromForm, type RawFacts } from "./facts";
 import { checkUpload, type UploadFile } from "./validate";
@@ -68,10 +69,14 @@ export async function addDocument(
     size_bytes: upload.bytes.length,
   });
 
-  const read = await readDocumentFacts(
-    { bytes: upload.bytes, contentType: check.contentType, kind: upload.kind },
-    { claude },
-  );
+  // A sample person's upload is kept but never read: anyone can make one, and each read sends the
+  // whole file to Claude.
+  const read = isTrialUser(userId)
+    ? ({ kind: "unavailable" } as const)
+    : await readDocumentFacts(
+        { bytes: upload.bytes, contentType: check.contentType, kind: upload.kind },
+        { claude },
+      );
   if (read.kind !== "claude") {
     if (read.kind === "failed") console.warn("Reading a document failed", { reason: read.reason });
     return { ok: true, id: document.id, read: "you", summaryRejected: false };

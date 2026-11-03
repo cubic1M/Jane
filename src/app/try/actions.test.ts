@@ -145,6 +145,17 @@ describe("tryJane", () => {
     expect(startTrial).not.toHaveBeenCalled();
   });
 
+  it("stops at the ceiling across every IP, so rotating addresses can't fill the database", async () => {
+    vi.mocked(hit)
+      .mockResolvedValueOnce({ ok: true, remaining: 4, retryAfterSeconds: 0 })
+      .mockResolvedValueOnce({ ok: false, remaining: 0, retryAfterSeconds: 60 });
+    expect(await tryJane(null, agreed())).toEqual({
+      error: "Lots of people are trying Jane from here. Please try again in an hour.",
+    });
+    expect(hit).toHaveBeenCalledWith("trialEveryone", "all");
+    expect(startTrial).not.toHaveBeenCalled();
+  });
+
   it("is rate-limited, and says so when trying isn't available", async () => {
     vi.mocked(hit).mockResolvedValueOnce({ ok: false, remaining: 0, retryAfterSeconds: 60 });
     expect(await tryJane(null, agreed())).toEqual({

@@ -10,6 +10,7 @@ import { readTaxNotice } from "@/lib/tax-notices";
 import { readPriorReturn } from "@/lib/prior-return";
 import { readPolicyDocument } from "@/lib/insurance/readings";
 import { hit } from "@/lib/rate-limit";
+import { isTrialUser } from "@/lib/trial-ids";
 import { requireUser } from "@/lib/session";
 
 // Uploading, correcting and deleting documents on /documents (spec step 68). The upload
@@ -43,11 +44,15 @@ export async function uploadDocument(_previous: FormState, formData: FormData): 
   });
   if (!result.ok) return { ok: false, message: result.error };
   await track(user.id, "document_uploaded", { kind, read: result.read });
+  // Without the file nothing goes to Claude: a sample person fills in what the document says.
+  const toRead = isTrialUser(user.id)
+    ? null
+    : { bytes, contentType: file.type as DocumentContentType };
   // A policy is read into one for the person to confirm (spec step 151). The upload's
   // stated type matched its bytes, or it wasn't saved.
   if (kind === "tax_notice") {
     const reading = await readTaxNotice(user.id, result.id, {
-      file: { bytes, contentType: file.type as DocumentContentType },
+      file: toRead,
     }).catch((error) => {
       console.error("Reading a tax notice failed", { error: String(error) });
       return null;
@@ -63,7 +68,7 @@ export async function uploadDocument(_previous: FormState, formData: FormData): 
   // Spec step 272: a draft return, read for the person to confirm, then checked before filing.
   if (kind === "draft_return") {
     const reading = await readDraftReturn(user.id, result.id, {
-      file: { bytes, contentType: file.type as DocumentContentType },
+      file: toRead,
     }).catch((error) => {
       console.error("Reading a draft return failed", { error: String(error) });
       return null;
@@ -78,7 +83,7 @@ export async function uploadDocument(_previous: FormState, formData: FormData): 
   }
   if (kind === "tax_return") {
     const reading = await readPriorReturn(user.id, result.id, {
-      file: { bytes, contentType: file.type as DocumentContentType },
+      file: toRead,
     }).catch((error) => {
       console.error("Reading a tax return failed", { error: String(error) });
       return null;
@@ -93,7 +98,7 @@ export async function uploadDocument(_previous: FormState, formData: FormData): 
   }
   if (kind === "insurance_policy") {
     const reading = await readPolicyDocument(user.id, result.id, {
-      file: { bytes, contentType: file.type as DocumentContentType },
+      file: toRead,
     }).catch((error) => {
       console.error("Reading a policy failed", { error: String(error) });
       return null;

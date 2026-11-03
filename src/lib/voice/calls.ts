@@ -1,4 +1,5 @@
 import { AGENT_CALL_TYPES } from "@/config/agent";
+import { isTrialUser } from "@/lib/trial-ids";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { sendStatusEmail } from "@/lib/action-emails";
 import {
@@ -94,7 +95,7 @@ export async function startCall(
   }
 
   const finding = action.decision.finding;
-  const draft = await draftMessage(action.type, finding);
+  const draft = await draftMessage(action.type, finding, { useClaude: !isTrialUser(userId) });
   const prepared = draftPayload(action.type, finding);
   if (!draft || !prepared) {
     await handOff(userId, action, "No call script for this request.", options);
