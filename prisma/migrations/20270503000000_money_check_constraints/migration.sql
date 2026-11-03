@@ -40,4 +40,3 @@ ALTER TABLE "gifts" ADD CONSTRAINT "ck_gifts_amount_positive" CHECK (amount_cent
 ALTER TABLE "hsa_receipts" ADD CONSTRAINT "ck_hsa_receipts_amount_positive" CHECK (amount_cents > 0) NOT VALID;
 ALTER TABLE "medical_bills" ADD CONSTRAINT "ck_medical_bills_amount_not_negative" CHECK (amount_cents >= 0) NOT VALID;
 ALTER TABLE "tax_payments" ADD CONSTRAINT "ck_tax_payments_cents_positive" CHECK (cents > 0) NOT VALID;
-ALTER TABLE "transactions" ADD CONSTRAINT "ck_transactions_csv_has_dedupe_key" CHECK (source <> 'csv' OR dedupe_key IS NOT NULL) NOT VALID;

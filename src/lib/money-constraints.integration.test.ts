@@ -72,18 +72,6 @@ const CASES: Case[] = [
   not("hsa_receipts", "ck_hsa_receipts_amount_positive", "amount_cents", 1, 0),
   not("medical_bills", "ck_medical_bills_amount_not_negative", "amount_cents", 0, -1),
   not("tax_payments", "ck_tax_payments_cents_positive", "cents", 1, 0),
-  {
-    table: "transactions",
-    constraint: "ck_transactions_csv_has_dedupe_key",
-    good: { source: "csv", dedupe_key: "key" },
-    bad: { source: "csv", dedupe_key: null },
-  },
-  {
-    table: "transactions",
-    constraint: "ck_transactions_csv_has_dedupe_key",
-    good: { source: "plaid", dedupe_key: null },
-    bad: { source: "csv", dedupe_key: null },
-  },
 ];
 
 type Column = { name: string; type: string; udt: string; enumLabel: string | null };

@@ -37,7 +37,6 @@ SELECT 'ck_budgets_amount_positive' AS rule, count(*) AS old_rows FROM "budgets"
   UNION ALL SELECT 'ck_hsa_receipts_amount_positive' AS rule, count(*) AS old_rows FROM "hsa_receipts" WHERE NOT (amount_cents > 0)
   UNION ALL SELECT 'ck_medical_bills_amount_not_negative' AS rule, count(*) AS old_rows FROM "medical_bills" WHERE NOT (amount_cents >= 0)
   UNION ALL SELECT 'ck_tax_payments_cents_positive' AS rule, count(*) AS old_rows FROM "tax_payments" WHERE NOT (cents > 0)
-  UNION ALL SELECT 'ck_transactions_csv_has_dedupe_key' AS rule, count(*) AS old_rows FROM "transactions" WHERE NOT (source <> 'csv' OR dedupe_key IS NOT NULL)
 ) AS counts
 WHERE old_rows > 0
 ORDER BY rule;
