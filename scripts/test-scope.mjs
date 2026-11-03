@@ -2,7 +2,14 @@
 import { execFileSync } from "node:child_process";
 import { appendFileSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { changedSpecs, docsNamedIn, shardsFor, testScope, vitestArgs } from "./test-scope-core.mjs";
+import {
+  changedSpecs,
+  docsNamedIn,
+  shardsFor,
+  testScope,
+  testsThatReadDocs,
+  vitestArgs,
+} from "./test-scope-core.mjs";
 
 const git = (...args) => execFileSync("git", args, { encoding: "utf8" }).trim();
 const event = process.env.GITHUB_EVENT_NAME ?? "";
@@ -17,9 +24,8 @@ const changedPaths =
 
 function docsReadByTests() {
   const docs = new Set();
-  for (const file of readdirSync("src", { recursive: true })) {
-    if (!/\.test\.tsx?$/.test(String(file))) continue;
-    for (const doc of docsNamedIn(readFileSync(join("src", String(file)), "utf8"))) docs.add(doc);
+  for (const file of testsThatReadDocs(readdirSync("src", { recursive: true }).map(String))) {
+    for (const doc of docsNamedIn(readFileSync(join("src", file), "utf8"))) docs.add(doc);
   }
   return [...docs];
 }
