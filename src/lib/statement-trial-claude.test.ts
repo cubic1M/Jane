@@ -24,6 +24,8 @@ const GATED = {
 // Reached only through the agent, the team, or a cron with no person in it. A temporary person's
 // Yes never starts the agent (conciergeMode, tested in statement-trial.integration.test.ts).
 const NOT_REACHED = new Set([
+  // What Claude paths are handed in place of the client: the gates above come before it.
+  "src/lib/claude-budget.ts",
   "src/lib/drafts.ts",
   "src/lib/agent/read-reply.ts",
   "src/lib/agent/find-contact.ts",
@@ -57,7 +59,8 @@ describe("what a temporary person can spend", () => {
 
   it("every gate is still there", () => {
     for (const gate of new Set(Object.values(GATED))) {
-      expect(readFileSync(gate, "utf8"), gate).toMatch(/isStatementTrialUser/);
+      // isTrialUser (#1254) stops sample people and these alike; the id starts the same way.
+      expect(readFileSync(gate, "utf8"), gate).toMatch(/isStatementTrialUser|isTrialUser/);
     }
   });
 

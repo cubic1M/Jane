@@ -12,13 +12,19 @@ import {
   statementTooManyRows,
 } from "@/config/statement-trial";
 import { decodeStatement } from "@/data-sources/csv/decode";
+import { log } from "@/lib/log";
 import { sessionTokenFrom } from "@/lib/admin-gate";
 import { scopedFor } from "@/lib/db-scoped";
 import { previewCsvFiles } from "@/lib/import/import-csv";
 import { saveUpload } from "@/lib/import/upload";
 import { runJob } from "@/lib/jobs";
-import { giveBack, hit, ipKey } from "@/lib/rate-limit";
-import { sessionOwner, startStatementPerson, statementTrialEnabled } from "@/lib/statement-trial";
+import { hit, ipKey } from "@/lib/rate-limit";
+import {
+  STATEMENT_ROW_LIMIT,
+  sessionOwner,
+  startStatementPerson,
+  statementTrialEnabled,
+} from "@/lib/statement-trial";
 import { cleanUpTrials } from "@/lib/trial";
 import { clearTrialSession, setTrialSession } from "@/lib/trial-cookie";
 import { deleteTrialPerson } from "@/lib/trial-delete";
@@ -29,6 +35,7 @@ import type { TryState } from "./actions";
 // for each start, and the file read in memory and never stored. A file Jane can't read at all
 // changes nothing: no person is made, and any earlier try stays until a start that works.
 
+const UNREADABLE = "Jane couldn't read this file just now. Try again, or try another file.";
 const IP_LIMIT = "trialStatement";
 const DAY_LIMIT = "trialStatementDay";
 // An error's kind only: its message could quote a row of someone's statement.
@@ -57,32 +64,28 @@ export async function tryWithStatement(_previous: TryState, formData: FormData):
   const ip = ipKey(h);
   if (!(await hit(IP_LIMIT, ip)).ok) return { error: STATEMENT_TRIAL_TOO_MANY };
 
-  // Read here, in memory, before anyone is made.
+  // Read here, in memory, before anyone is made. A start that gets this far has been counted,
+  // whatever the file turns out to be: a refund would make reading files free to repeat.
   const text = decodeStatement(await file.arrayBuffer());
-  const [read] = previewCsvFiles([{ name: file.name, text }]);
-  // A layout Jane doesn't know goes on, to the column picker on /import; anything else unreadable
-  // stops here and isn't counted against the visitor's starts.
-  const pickColumns = !read.ok && read.choices !== undefined;
-  if (!read.ok && !pickColumns) {
-    await giveBack(IP_LIMIT, ip);
-    return { error: read.error };
+  let read;
+  try {
+    [read] = previewCsvFiles([{ name: file.name, text }], undefined, STATEMENT_ROW_LIMIT);
+  } catch (error) {
+    log.error("Reading a temporary try's statement failed", { error: errorName(error) });
+    return { error: UNREADABLE };
   }
+  // A layout Jane doesn't know goes on, to the column picker on /import.
+  const pickColumns = !read.ok && read.choices !== undefined;
+  if (!read.ok && !pickColumns) return { error: read.error };
   if (read.ok && read.rowCount === 0) {
-    await giveBack(IP_LIMIT, ip);
     return { error: "This file has no transactions in it. Download it again from your bank." };
   }
-  if (read.ok && read.rowCount > STATEMENT_TRIAL_MAX_ROWS) {
-    await giveBack(IP_LIMIT, ip);
-    return { error: statementTooManyRows() };
-  }
-  if (!(await hit(DAY_LIMIT, "all")).ok) {
-    await giveBack(IP_LIMIT, ip);
-    return { error: STATEMENT_TRIAL_BUSY };
-  }
+  if (read.ok && read.rowCount > STATEMENT_TRIAL_MAX_ROWS) return { error: statementTooManyRows() };
+  if (!(await hit(DAY_LIMIT, "all")).ok) return { error: STATEMENT_TRIAL_BUSY };
 
   const person = await startStatementPerson({ userAgent: h.get("user-agent"), previous }).catch(
     (error) => {
-      console.error("Starting a temporary try failed", { error: errorName(error) });
+      log.error("Starting a temporary try failed", { error: errorName(error) });
       return null;
     },
   );
@@ -91,7 +94,7 @@ export async function tryWithStatement(_previous: TryState, formData: FormData):
   // Other people's finished tries aren't this visitor's wait.
   after(() =>
     cleanUpTrials().catch((error) =>
-      console.error("Cleaning up trials failed", { error: errorName(error) }),
+      log.error("Cleaning up trials failed", { error: errorName(error) }),
     ),
   );
   if (pickColumns) return { next: "/import?columns=1" };
@@ -107,16 +110,13 @@ export async function tryWithStatement(_previous: TryState, formData: FormData):
   if (!saved?.ok) {
     await deleteTrialPerson(person.userId, "failed_start");
     await clearTrialSession();
-    return {
-      error:
-        saved?.error ?? "Jane couldn't read this file just now. Try again, or try another file.",
-    };
+    return { error: saved?.error ?? UNREADABLE };
   }
   // Saved; the rest runs after the response, its progress on the scanning screen and on a chip.
   after(() =>
     runJob(saved.jobId).then(
       () => undefined,
-      (error) => console.error("A temporary try's upload failed", { error: errorName(error) }),
+      (error) => log.error("A temporary try's upload failed", { error: errorName(error) }),
     ),
   );
   return { next: "/scanning" };
@@ -130,7 +130,7 @@ export async function startOverTry(): Promise<{ next: string } | { error: string
   try {
     await deleteTrialPerson(person!, "start_over");
   } catch (error) {
-    console.error("Deleting a temporary try failed", { error: errorName(error) });
+    log.error("Deleting a temporary try failed", { error: errorName(error) });
     return { error: "That didn't go through. Please try again." };
   }
   await clearTrialSession();

@@ -135,9 +135,9 @@ describe("auth actions", () => {
   it("deletes someone's own statement when they sign out or sign in, and no one else", async () => {
     vi.mocked(deleteTrialPerson).mockClear();
     vi.mocked(auth).mockResolvedValueOnce({ user: { id: "trial_own_abc" } } as never);
-    await signOutToHome();
+    await expect(signOutToHome()).rejects.toThrow("redirect:/");
     expect(deleteTrialPerson).toHaveBeenCalledWith("trial_own_abc", "signed_out");
-    expect(signOut).toHaveBeenCalledWith({ redirectTo: "/" });
+    expect(signOut).toHaveBeenCalledWith({ redirect: false });
 
     vi.mocked(deleteTrialPerson).mockClear();
     vi.mocked(auth).mockResolvedValueOnce({ user: { id: "trial_own_abc" } } as never);
@@ -147,7 +147,7 @@ describe("auth actions", () => {
     vi.mocked(deleteTrialPerson).mockClear();
     for (const id of ["user_1", "trial_sample"]) {
       vi.mocked(auth).mockResolvedValueOnce({ user: { id } } as never);
-      await signOutToHome();
+      await expect(signOutToHome()).rejects.toThrow("redirect:/");
     }
     expect(deleteTrialPerson).not.toHaveBeenCalled();
   });

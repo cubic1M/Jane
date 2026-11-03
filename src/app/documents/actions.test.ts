@@ -21,7 +21,6 @@ import { track } from "@/lib/analytics";
 import { addDocument, removeDocument, saveDocumentFacts } from "@/lib/documents/store";
 import { readPolicyDocument } from "@/lib/insurance/readings";
 import { hit } from "@/lib/rate-limit";
-import { requireUser } from "@/lib/session";
 import { deleteDocument, saveFacts, uploadDocument } from "./actions";
 
 const PDF = "%PDF-1.7\n";

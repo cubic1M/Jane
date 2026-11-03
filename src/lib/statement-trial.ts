@@ -12,11 +12,13 @@ import {
   STATEMENT_TRIAL_MAX_PERSON_ROWS,
   STATEMENT_TRIAL_MAX_ROWS,
   STATEMENT_TRIAL_MAX_UPLOADS,
+  STATEMENT_TRIAL_TURNED_OFF,
   statementTooBig,
   statementTooManyRows,
 } from "@/config/statement-trial";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
+import { systemDb } from "@/lib/system-db";
 import type { ScopedDb } from "@/lib/db-scoped";
 import { STATEMENT_TRIAL_STARTED, deleteTrialPerson } from "@/lib/trial-delete";
 
@@ -44,7 +46,11 @@ export async function sessionOwner(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<string | null> {
   if (!sessionToken) return null;
-  const session = await client.session.findUnique({
+  // nosemgrep: jane-user-table-query-without-scope -- finds who a browser is from its own cookie, before there is a user to scope by: the unguessable session token is the only filter
+  const session = await systemDb(
+    "Whose session this browser holds, before anyone is signed in",
+    client,
+  ).session.findUnique({
     where: { sessionToken },
     select: { userId: true, expires: true },
   });
@@ -69,7 +75,8 @@ export async function startStatementPerson({
   const id = `${STATEMENT_TRIAL_ID_PREFIX}${randomBytes(12).toString("hex")}`;
   const expires = new Date(now.getTime() + TRIAL_HOURS * HOUR_MS);
   const sessionToken = `${TRIAL_SESSION_PREFIX}${randomBytes(32).toString("hex")}`;
-  await client.user.create({
+  const system = systemDb("Making a temporary person: nobody is signed in yet", client);
+  await system.user.create({
     data: {
       id,
       email: `${id}@${TRIAL_EMAIL_DOMAIN}`,
@@ -81,11 +88,11 @@ export async function startStatementPerson({
     },
   });
   await Promise.all([
-    client.session.create({
+    system.session.create({
       data: { sessionToken, userId: id, expires, userAgent: userAgent?.slice(0, 200) ?? null },
     }),
     // The sensitive-event record: a random id and the Terms' version, nothing from the statement.
-    client.auditLog.create({
+    system.auditLog.create({
       data: {
         actorType: "user",
         actorId: id,
@@ -100,12 +107,23 @@ export async function startStatementPerson({
   return { userId: id, sessionToken, expires };
 }
 
+// A temporary try's reader stops here, before it reads a row.
+export const STATEMENT_ROW_LIMIT = {
+  rows: STATEMENT_TRIAL_MAX_ROWS,
+  words: statementTooManyRows(),
+};
+
+// What's wrong with these files before anything reads them, or null.
+export function statementFilesRefusal(bytes: number[]): string | null {
+  if (!statementTrialEnabled()) return STATEMENT_TRIAL_TURNED_OFF;
+  return bytes.some((b) => b > STATEMENT_TRIAL_MAX_FILE_BYTES) ? statementTooBig() : null;
+}
+
 // What's wrong with one more upload for a temporary person, or null. Rows, as the file was read.
 export async function statementUploadRefusal(
   db: Pick<ScopedDb, "transactions" | "importRuns">,
-  files: { bytes: number; rows: number }[],
+  files: { rows: number }[],
 ): Promise<string | null> {
-  if (files.some((f) => f.bytes > STATEMENT_TRIAL_MAX_FILE_BYTES)) return statementTooBig();
   const rows = files.reduce((sum, f) => sum + f.rows, 0);
   if (rows > STATEMENT_TRIAL_MAX_ROWS) return statementTooManyRows();
   const [held, uploads] = await Promise.all([

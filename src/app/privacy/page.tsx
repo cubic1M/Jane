@@ -237,15 +237,18 @@ export default function PrivacyPage() {
           is reused: each start makes a new one.
         </li>
         <li>
-          Your browser holds a sign-in cookie for that person for {TRIAL_HOURS} hours. Anyone using
-          this browser in that time can see what you uploaded, so press Start over when you&apos;re
-          done, especially on a shared computer.
+          Your browser holds a sign-in cookie for that person, which works for {TRIAL_HOURS} hours.
+          Anyone using this browser in that time can see what you uploaded, so press Start over when
+          you&apos;re done, especially on a shared computer.
         </li>
         <li>
-          The deletion in &quot;How long we keep it&quot; removes all of it. What stays is a record
-          in our security log that a try started and was deleted, with a random id, the times and
-          the version of the Terms you agreed to, and nothing from your statement. Request counters
-          that stop abuse keep only a scrambled form of your IP address, for about a day.
+          The deletion in &quot;How long we keep it&quot; removes all of it. What stays, for the
+          security log&apos;s period listed above, is a record that a try started and was deleted,
+          with a random id, the times and the version of the Terms you agreed to, and nothing from
+          your statement. Request counters that stop abuse keep only a scrambled form of your IP
+          address and of your sign-in cookie, for about a day. Anything a background step is writing
+          at the moment you delete goes at the next daily clean-up, and holds only the random id and
+          counts.
         </li>
         <li>
           Reading your statement doesn&apos;t use Anthropic. If you type to Jane in the chat, what

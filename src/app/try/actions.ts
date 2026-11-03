@@ -38,7 +38,12 @@ export async function tryJane(_previous: TryState, formData: FormData): Promise<
   timing.mark("rate_limit");
   // Someone's own statement doesn't stay behind a sample person in the same browser.
   const previous = await sessionOwner(sessionTokenFrom(await cookies()));
-  if (isStatementTrialUser(previous)) await deleteTrialPerson(previous!, "started_again");
+  if (isStatementTrialUser(previous)) {
+    // If this fails the clean-up deletes them on time; the sample try still starts.
+    await deleteTrialPerson(previous!, "started_again").catch(() =>
+      log.error("Deleting a temporary try failed"),
+    );
+  }
   let session: { itemId: string; sessionToken: string; expires: Date };
   try {
     // Only the minimum before the redirect; the scan runs after the response.

@@ -5,6 +5,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth, googleEnabled, signIn, signOut } from "@/auth";
 import { TERMS_VERSION } from "@/config/legal";
+import { log } from "@/lib/log";
 import { recordFailedSignIn } from "@/lib/auth-events";
 import { INVITE_COOKIE } from "@/lib/auth-gate";
 import { logAudit } from "@/lib/audit";
@@ -23,14 +24,24 @@ import { addressKey } from "@/lib/sign-in-email";
 import { deleteTrialPerson } from "@/lib/trial-delete";
 import { isStatementTrialUser, isTrialUser } from "@/lib/trial-ids";
 
+// Someone's own statement doesn't wait for the clean-up once they've left. If this delete fails,
+// leaving still works: the clean-up deletes them on time.
+async function endTemporaryTry(userId: string): Promise<void> {
+  if (!isStatementTrialUser(userId)) return;
+  await deleteTrialPerson(userId, "signed_out").catch((error) =>
+    log.error("Deleting a temporary try failed", {
+      error: error instanceof Error ? error.name : "unknown",
+    }),
+  );
+}
+
 // Signing up or in from a Try Jane session (spec step 138) starts the person's own account.
 // The sample person's session ends first: with it still there, Auth.js would link a Google
 // sign-in to the sample person, who is deleted after TRIAL_HOURS.
 async function leaveTrial(): Promise<void> {
   const session = await auth();
   const userId = session?.user?.id;
-  // Someone's own statement doesn't wait for the clean-up once they've left.
-  if (userId && isStatementTrialUser(userId)) await deleteTrialPerson(userId, "signed_out");
+  if (userId) await endTemporaryTry(userId);
   if (isTrialUser(userId)) await signOut({ redirect: false });
 }
 
@@ -142,8 +153,7 @@ export async function signOutToHome(): Promise<void> {
   if (userId && !isTrialUser(userId)) {
     await logAudit({ type: "user", id: userId }, "user_signed_out", { type: "user", id: userId });
   }
-  // Someone's own statement doesn't wait for the clean-up once they've left.
-  if (userId && isStatementTrialUser(userId)) await deleteTrialPerson(userId, "signed_out");
+  if (userId) await endTemporaryTry(userId);
   // Then back here by path: Auth.js's own redirect takes its address from the request's headers.
   await signOut({ redirect: false });
   redirect("/");

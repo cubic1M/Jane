@@ -16,10 +16,13 @@ vi.mock("next/headers", () => ({
 vi.mock("next/server", () => ({ after: (job: () => Promise<unknown>) => afterJobs.push(job) }));
 vi.mock("@/lib/rate-limit", () => ({
   hit: vi.fn(),
-  giveBack: vi.fn(),
   ipKey: vi.fn(() => "iphash"),
 }));
 vi.mock("@/lib/statement-trial", () => ({
+  STATEMENT_ROW_LIMIT: {
+    rows: 3_000,
+    words: "A temporary try reads up to 3,000 transactions at a time.",
+  },
   sessionOwner: vi.fn(),
   startStatementPerson: vi.fn(),
   statementTrialEnabled: vi.fn(() => true),
@@ -33,7 +36,7 @@ vi.mock("@/lib/db-scoped", () => ({ scopedFor: vi.fn((id: string) => ({ userId: 
 import { STATEMENT_TRIAL_BUSY, STATEMENT_TRIAL_MAX_FILE_BYTES } from "@/config/statement-trial";
 import { saveUpload } from "@/lib/import/upload";
 import { runJob } from "@/lib/jobs";
-import { giveBack, hit } from "@/lib/rate-limit";
+import { hit } from "@/lib/rate-limit";
 import { sessionOwner, startStatementPerson, statementTrialEnabled } from "@/lib/statement-trial";
 import { deleteTrialPerson } from "@/lib/trial-delete";
 import { madeUpChaseCsv } from "@/lib/__fixtures__/made-up-statement";
@@ -74,6 +77,7 @@ describe("tryWithStatement", () => {
       counts: {} as never,
       runId: "r1",
       jobId: "j1",
+      warnings: [],
     });
   });
 
@@ -150,7 +154,7 @@ describe("tryWithStatement", () => {
     expect(startStatementPerson).not.toHaveBeenCalled();
   });
 
-  it("refuses too many rows, and gives the start back", async () => {
+  it("refuses too many rows, and the start stays counted", async () => {
     const lines = ["Details,Posting Date,Description,Amount,Type,Balance,Check or Slip #"];
     for (let i = 0; i < 3_001; i += 1) {
       lines.push(`DEBIT,10/14/2026,"SHOP ${i}",-1.00,DEBIT_CARD,100.00,,`);
@@ -159,7 +163,15 @@ describe("tryWithStatement", () => {
     expect(await tryWithStatement(null, submitted(many))).toEqual({
       error: expect.stringMatching(/transactions at a time/),
     });
-    expect(giveBack).toHaveBeenCalledWith("trialStatement", "iphash");
+    expect(hit).toHaveBeenCalledTimes(1);
+    expect(startStatementPerson).not.toHaveBeenCalled();
+  });
+
+  it("refuses 149,000 tiny rows with plain words, however they're laid out", async () => {
+    const tiny = new File(["a,b\n".repeat(149_000)], "tiny.csv");
+    expect(await tryWithStatement(null, submitted(tiny))).toEqual({
+      error: expect.stringMatching(/transactions at a time/),
+    });
     expect(startStatementPerson).not.toHaveBeenCalled();
   });
 
@@ -183,14 +195,16 @@ describe("tryWithStatement", () => {
     expect(jar.has(COOKIE)).toBe(false);
   });
 
-  it("makes no one for a file it can't read, leaves an earlier try alone, and gives the start back", async () => {
+  it("makes no one for a file it can't read, leaves an earlier try alone, and counts the start", async () => {
     vi.mocked(sessionOwner).mockResolvedValue("trial_own_old");
     const notCsv = new File(["%PDF-1.7 not a statement"], "statement.pdf");
     const result = await tryWithStatement(null, submitted(notCsv));
     expect(result).toEqual({ error: expect.any(String) });
     expect(startStatementPerson).not.toHaveBeenCalled();
     expect(deleteTrialPerson).not.toHaveBeenCalled();
-    expect(giveBack).toHaveBeenCalledWith("trialStatement", "iphash");
+    // Reading files must not be free to repeat.
+    expect(hit).toHaveBeenCalledTimes(1);
+    expect(hit).toHaveBeenCalledWith("trialStatement", "iphash");
   });
 
   it("sends a layout it doesn't know to the column picker", async () => {

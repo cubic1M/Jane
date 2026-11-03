@@ -1,4 +1,5 @@
 import type { Adapter, AdapterSession, AdapterUser } from "next-auth/adapters";
+import { TRIAL_SESSION_PREFIX } from "@/config/trial";
 import type { PrismaClient, Session, User } from "@/generated/prisma/client";
 
 // A small Auth.js adapter over our own tables. We don't use @auth/prisma-adapter because
@@ -104,6 +105,9 @@ export function createAuthAdapter(client: PrismaClient): Adapter {
     },
 
     async updateSession({ sessionToken, expires }) {
+      // Auth.js moves a session's end out by 30 days on its first read. Someone trying Jane has a
+      // session that ends when the trial says (TRIAL_HOURS), and the legal pages say so.
+      if (sessionToken.startsWith(TRIAL_SESSION_PREFIX)) return null;
       try {
         return toAdapterSession(
           await client.session.update({ where: { sessionToken }, data: { expires } }),

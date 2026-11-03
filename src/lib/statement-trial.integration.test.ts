@@ -20,10 +20,17 @@ import { REAL_ACCOUNT_ADVICE } from "@/config/advice";
 import { CONCIERGE_ACTIONS } from "@/config/concierge";
 import { REAL_MONEY_MOVEMENT } from "@/config/money-movement";
 import { RATE_LIMITS } from "@/config/rate-limits";
-import { STATEMENT_TRIAL_MAX_ROWS, STATEMENT_TRIAL_MAX_UPLOADS } from "@/config/statement-trial";
+import {
+  STATEMENT_TRIAL_MAX_ROWS,
+  STATEMENT_TRIAL_MAX_UPLOADS,
+  STATEMENT_TRIAL_STUCK_MINUTES,
+  STATEMENT_TRIAL_TURNED_OFF,
+} from "@/config/statement-trial";
 import { TRIAL_HOURS } from "@/config/trial";
 import { deleteAllData } from "@/lib/account-deletion";
 import { adviceMode } from "@/lib/advice-mode";
+import { logAudit } from "@/lib/audit";
+import { verifyOutcomes } from "@/lib/outcomes";
 import { mailMode } from "@/lib/agent/mail";
 import { recordFact } from "@/lib/memory/facts";
 import { canImportCsv, canImportHoldings } from "@/lib/csv-access";
@@ -51,9 +58,17 @@ import { madeUpChaseCsv, madeUpOfx } from "@/lib/__fixtures__/made-up-statement"
 import {
   STATEMENT_TRIAL_DELETED,
   STATEMENT_TRIAL_STARTED,
+  deleteExpiredTrials,
   deleteTrialPerson,
+  sweepLateWrites,
 } from "./trial-delete";
-import { sessionOwner, startStatementPerson, statementUploadRefusal } from "./statement-trial";
+import {
+  sessionOwner,
+  startStatementPerson,
+  statementFilesRefusal,
+  statementUploadRefusal,
+} from "./statement-trial";
+import { rescueStuckTry } from "./statement-trial-rescue";
 
 // Trying Jane with your own statement against a real, migrated Postgres: each start is a new
 // empty person; two people at once never see each other's rows, through a page's loaders, the
@@ -116,10 +131,32 @@ async function allTables(client: PrismaClient): Promise<string[]> {
   return rows.map((r) => r.table_name);
 }
 
-// Rows in every table that mention this text anywhere, by table.
-async function mentions(client: PrismaClient, text: string): Promise<Record<string, number>> {
+// The tables a person's rows are most likely in, and those deleting has to clear by hand. Most tests
+// look only here: a scan of every table is kept to the two that promise it, since this file shares
+// CI's database and its time with everything else.
+const LIKELY = [
+  "users",
+  "sessions",
+  "accounts",
+  "transactions",
+  "findings",
+  "decisions",
+  "jane_messages",
+  "import_runs",
+  "user_facts",
+  "audit_log",
+  "rate_limits",
+  "jobs",
+];
+
+// Rows in these tables (every table, by default) that mention this text anywhere, by table.
+async function mentions(
+  client: PrismaClient,
+  text: string,
+  tables?: readonly string[],
+): Promise<Record<string, number>> {
   const found: Record<string, number> = {};
-  for (const table of await allTables(client)) {
+  for (const table of tables ?? (await allTables(client))) {
     if (table === "_prisma_migrations") continue;
     const [row] = await client.$queryRawUnsafe<{ count: bigint }[]>(
       `SELECT count(*) AS count FROM "${table}" t WHERE t::text ILIKE $1`,
@@ -129,6 +166,11 @@ async function mentions(client: PrismaClient, text: string): Promise<Record<stri
   }
   return found;
 }
+
+// Letters only, and new each run: a run cut short leaves its people behind in a scratch database,
+// and their rows aren't what these tests are looking for.
+const uniqueMark = (name: string) =>
+  name + [...randomBytes(6)].map((b) => String.fromCharCode(65 + (b % 26))).join("");
 
 describe.runIf(url)("trying Jane with your own statement", { timeout: 180_000 }, () => {
   let client: PrismaClient;
@@ -202,7 +244,7 @@ describe.runIf(url)("trying Jane with your own statement", { timeout: 180_000 },
       const second = await start(NOW, first.userId);
       expect(await client.user.count({ where: { id: first.userId } })).toBe(0);
       expect(await sessionOwner(first.sessionToken, { client, now: NOW })).toBeNull();
-      expect(await mentions(client, "ZZFIRSTSTART")).toEqual({});
+      expect(await mentions(client, "ZZFIRSTSTART", LIKELY)).toEqual({});
       expect(await scopedFor(second.userId, client).transactions.count()).toBe(0);
     });
 
@@ -332,14 +374,12 @@ describe.runIf(url)("trying Jane with your own statement", { timeout: 180_000 },
 
     it("keeps to the limits on what one person may upload", async () => {
       const db = scopedFor(userId, client);
-      const one = [{ bytes: 1000, rows: 10 }];
-      expect(await statementUploadRefusal(db, one)).toBeNull();
-      expect(await statementUploadRefusal(db, [{ bytes: 2 * 1024 * 1024, rows: 10 }])).toMatch(
-        /up to 1 MB/,
+      expect(await statementUploadRefusal(db, [{ rows: 10 }])).toBeNull();
+      expect(statementFilesRefusal([1000])).toBeNull();
+      expect(statementFilesRefusal([2 * 1024 * 1024])).toMatch(/up to 1 MB/);
+      expect(await statementUploadRefusal(db, [{ rows: STATEMENT_TRIAL_MAX_ROWS + 1 }])).toMatch(
+        /transactions at a time/,
       );
-      expect(
-        await statementUploadRefusal(db, [{ bytes: 1, rows: STATEMENT_TRIAL_MAX_ROWS + 1 }]),
-      ).toMatch(/transactions at a time/);
       // And saveUpload holds to them, for any upload on /import too.
       const fresh = await start();
       for (let i = 0; i < STATEMENT_TRIAL_MAX_UPLOADS; i += 1) {
@@ -452,7 +492,7 @@ describe.runIf(url)("trying Jane with your own statement", { timeout: 180_000 },
       const before = await scopedFor(b, client).transactions.count();
       await deleteTrialPerson(a, "start_over", { client, now: NOW });
       expect(await scopedFor(b, client).transactions.count()).toBe(before);
-      expect(await mentions(client, A_MARK)).toEqual({});
+      expect(await mentions(client, A_MARK, LIKELY)).toEqual({});
     });
   });
 
@@ -515,7 +555,7 @@ describe.runIf(url)("trying Jane with your own statement", { timeout: 180_000 },
     });
 
     it("leaves nothing of them in any table when they start over", async () => {
-      const mark = "ZZDELETEME";
+      const mark = uniqueMark("ZZDELETEME");
       const { userId } = await fullPerson(mark);
       const db = scopedFor(userId, client);
       // The test is only as good as what was there.
@@ -525,8 +565,8 @@ describe.runIf(url)("trying Jane with your own statement", { timeout: 180_000 },
       expect(await db.importRuns.count()).toBeGreaterThan(0);
       expect(await client.session.count({ where: { userId } })).toBe(1);
       // The file itself is in no table: its header row and its raw lines aren't kept.
-      expect(await mentions(client, "Check or Slip")).toEqual({});
-      const before = await mentions(client, mark);
+      expect(await mentions(client, "Check or Slip", LIKELY)).toEqual({});
+      const before = await mentions(client, mark, LIKELY);
       for (const table of ["transactions", "findings", "jane_messages", "import_runs"]) {
         expect(before[table], table).toBeGreaterThan(0);
       }
@@ -558,7 +598,7 @@ describe.runIf(url)("trying Jane with your own statement", { timeout: 180_000 },
 
     it("goes the same way on the clean-up, once their time is up, and no sooner", async () => {
       const old = new Date(NOW.getTime() - (TRIAL_HOURS + 1) * HOUR);
-      const mark = "ZZEXPIRED";
+      const mark = uniqueMark("ZZEXPIRED");
       const expired = await fullPerson(mark, old);
       const fresh = await start(NOW);
       expect(
@@ -589,18 +629,140 @@ describe.runIf(url)("trying Jane with your own statement", { timeout: 180_000 },
       });
       await runRetention({ client, now });
       expect(await client.user.count({ where: { id: userId } })).toBe(0);
-      expect(await mentions(client, "ZZRETAINED")).toEqual({});
+      expect(await mentions(client, "ZZRETAINED", LIKELY)).toEqual({});
+      // The next night's sweep of a gone person's audit rows leaves the two the privacy page keeps.
+      await runRetention({ client, now });
+      expect(await mentions(client, userId, LIKELY)).toEqual({ audit_log: 2 });
     });
 
     it("goes the same way from Settings' Delete all my data", async () => {
-      const mark = "ZZSETTINGS";
+      const mark = uniqueMark("ZZSETTINGS");
       const { userId } = await fullPerson(mark);
       await deleteAllData(userId, { client, api: {} as never });
-      expect(await mentions(client, mark)).toEqual({});
-      expect(await mentions(client, userId)).toEqual({ audit_log: 2 });
+      expect(await mentions(client, mark, LIKELY)).toEqual({});
+      expect(await mentions(client, userId, LIKELY)).toEqual({ audit_log: 2 });
     });
 
-    it("clears the row of a job still running when they went, at the next clean-up", async () => {
+    it("leaves everything to be deleted again when a delete fails part way", async () => {
+      const mark = uniqueMark("ZZHALFWAY");
+      const { userId } = await fullPerson(mark);
+      const before = await scopedFor(userId, client).transactions.count();
+      // The last step fails, after the user row and the traces have gone in the transaction.
+      const failing = new Proxy(client, {
+        get(target, key) {
+          if (key !== "$transaction") return Reflect.get(target, key);
+          return (run: (tx: PrismaClient) => Promise<unknown>, options: object) =>
+            target.$transaction(
+              (tx) =>
+                run(
+                  new Proxy(tx as PrismaClient, {
+                    get: (inner, name) =>
+                      name === "auditLog"
+                        ? {
+                            create: () => {
+                              throw new Error("The database went away");
+                            },
+                          }
+                        : Reflect.get(inner, name),
+                  }),
+                ),
+              options,
+            );
+        },
+      });
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      await expect(deleteTrialPerson(userId, "start_over", { client: failing })).rejects.toThrow();
+      warn.mockRestore();
+      // Nothing half done: the person, their rows and their counters are all still there.
+      expect(await client.user.count({ where: { id: userId } })).toBe(1);
+      expect(await scopedFor(userId, client).transactions.count()).toBe(before);
+      expect(
+        await client.rateLimit.count({ where: { key: { contains: userId } } }),
+      ).toBeGreaterThan(0);
+      expect(
+        await client.auditLog.count({
+          where: { targetId: userId, event: STATEMENT_TRIAL_DELETED },
+        }),
+      ).toBe(0);
+      // The next try finishes the job.
+      expect(await deleteTrialPerson(userId, "start_over", { client, now: NOW })).toBe(true);
+      expect(await mentions(client, userId, LIKELY)).toEqual({ audit_log: 2 });
+    });
+
+    it("keeps going past one person it can't delete, and gets them next time", async () => {
+      const old = new Date(NOW.getTime() - (TRIAL_HOURS + 1) * HOUR);
+      const stuck = await start(old);
+      const fine = await start(old);
+      const failing = new Proxy(client, {
+        get(target, key) {
+          if (key !== "$transaction") return Reflect.get(target, key);
+          return (run: (tx: PrismaClient) => Promise<unknown>, options: object) =>
+            // The system door's one-flight queries are an array: only the delete's own is wrapped.
+            typeof run !== "function"
+              ? target.$transaction(run, options)
+              : target.$transaction(async (tx) => {
+                  const inner = new Proxy(tx as PrismaClient, {
+                    get: (t, name) =>
+                      name === "user"
+                        ? {
+                            deleteMany: (args: { where: { id: string } }) => {
+                              if (args.where.id === stuck.userId) throw new Error("Locked");
+                              return t.user.deleteMany(args);
+                            },
+                          }
+                        : Reflect.get(t, name),
+                  });
+                  return run(inner);
+                }, options);
+        },
+      });
+      const people = { id: { in: [stuck.userId, fine.userId] } };
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      expect(await deleteExpiredTrials(NOW, { client: failing, now: NOW, only: people })).toEqual({
+        deleted: 1,
+        failed: 1,
+      });
+      warn.mockRestore();
+      expect(await client.user.count({ where: { id: fine.userId } })).toBe(0);
+      expect(await client.user.count({ where: { id: stuck.userId } })).toBe(1);
+      expect(await cleanUpTrials({ client, now: NOW, userIds: [stuck.userId] })).toBe(1);
+      expect(await client.user.count({ where: { id: stuck.userId } })).toBe(0);
+    });
+
+    it("clears what a step still running writes after they've gone, in the daily sweep", async () => {
+      const { userId } = await start();
+      const live = await start();
+      await deleteTrialPerson(userId, "start_over", { client, now: NOW });
+      // A chat or an upload finishing a moment later.
+      const late = (id: string) => [
+        client.rateLimit.create({
+          data: { key: `chatspend:${id}`, windowStart: NOW, count: 5 },
+        }),
+        client.auditLog.create({
+          data: { actorType: "user", actorId: id, event: "import_completed", metadata: {} },
+        }),
+        client.auditLog.create({
+          data: { actorType: "system", event: "agent_handed_off", metadata: { user_id: id } },
+        }),
+      ];
+      await Promise.all([...late(userId), ...late(live.userId)]);
+      expect(await sweepLateWrites({ client, now: NOW })).toBe(true);
+      expect(await mentions(client, userId, LIKELY)).toEqual({ audit_log: 2 });
+      // Someone still here keeps theirs.
+      expect(await client.rateLimit.count({ where: { key: `chatspend:${live.userId}` } })).toBe(1);
+      expect(
+        await client.auditLog.count({
+          where: { actorId: live.userId, event: "import_completed" },
+        }),
+      ).toBe(1);
+    });
+
+    it("skips the sweep's scans when nobody has been deleted lately", async () => {
+      // Long before every delete in this database, so there's nothing recent to look for.
+      expect(await sweepLateWrites({ client, now: new Date("2040-01-01T00:00:00Z") })).toBe(false);
+    });
+
+    it("clears a job still running when they went, in the daily sweep", async () => {
       const { userId } = await start();
       const job = await client.job.create({
         data: { kind: "import_finish", payload: { userId }, status: "running" },
@@ -609,9 +771,53 @@ describe.runIf(url)("trying Jane with your own statement", { timeout: 180_000 },
       // Still running: it ends by itself as "person gone" (src/lib/jobs.ts).
       expect(await client.job.count({ where: { id: job.id } })).toBe(1);
       await client.job.update({ where: { id: job.id }, data: { status: "done" } });
-      await cleanUpTrials({ client, now: NOW, userIds: [] });
+      await sweepLateWrites({ client, now: NOW });
       expect(await client.job.count({ where: { id: job.id } })).toBe(0);
-      expect(await mentions(client, userId)).toEqual({ audit_log: 2 });
+      expect(await mentions(client, userId, LIKELY)).toEqual({ audit_log: 2 });
+    });
+
+    it("can be found and deleted when the nightly outcome check writes about them", async () => {
+      const { userId } = await start();
+      const outcome = await scopedFor(userId, client).suggestionOutcomes.create({
+        data: {
+          userId,
+          suggestionKey: "cost:made_up_merchant",
+          capability: "subscriptions",
+          topic: "subscription_review",
+          title: "A made-up merchant",
+          firstShownAt: NOW,
+          lastShownAt: NOW,
+          answeredAt: NOW,
+          expectedCents: 1000,
+          worthKind: "yearly",
+          confidencePercent: 80,
+          status: "not_seen",
+        },
+      });
+      vi.mocked(logAudit).mockClear();
+      await verifyOutcomes(userId, { client, now: NOW });
+      expect(logAudit).toHaveBeenCalledWith(
+        { type: "system", id: null },
+        "saving_state_changed",
+        { type: "suggestion_outcome", id: outcome.id },
+        expect.objectContaining({ key: "cost:made_up_merchant", user_id: userId }),
+      );
+    });
+
+    it("stops taking uploads when it's turned off, for those already here too", async () => {
+      const { userId } = await start();
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("TRY_STATEMENT", "");
+      const refused = await saveUpload(
+        scopedFor(userId, client),
+        form("late.csv", madeUpChaseCsv("ZZOFF", NOW)),
+      );
+      expect(refused).toEqual({ ok: false, error: STATEMENT_TRIAL_TURNED_OFF });
+      vi.stubEnv("TRY_STATEMENT", "1");
+      expect(statementFilesRefusal([1000])).toBeNull();
+      vi.stubEnv("NODE_ENV", "test");
+      vi.stubEnv("TRY_STATEMENT", "");
+      expect(await scopedFor(userId, client).transactions.count()).toBe(0);
     });
 
     it("gives the chat counter that would outlive them no way to", async () => {
@@ -620,6 +826,75 @@ describe.runIf(url)("trying Jane with your own statement", { timeout: 180_000 },
       await hit("claudeStatementTrial", userId, { client, now: NOW });
       await deleteTrialPerson(userId, "start_over", { client, now: NOW });
       expect(await client.rateLimit.count({ where: { key: { contains: userId } } })).toBe(0);
+    });
+  });
+
+  describe("an upload whose server was cut off", () => {
+    const MINUTE = 60_000;
+    async function stuckRun(attempts: number, at: Date) {
+      const { userId } = await start();
+      const run = await client.importRun.create({
+        data: { userId, rows: 10, kind: "upload", stage: "looking" },
+      });
+      const job = await client.job.create({
+        data: {
+          kind: "import_finish",
+          payload: { userId, importRunId: run.id },
+          status: "running",
+          attempts,
+        },
+      });
+      await client.$executeRaw`UPDATE jobs SET updated_at = ${at} WHERE id = ${job.id}`;
+      return { userId, run, job };
+    }
+    const at = (minutes: number) => new Date(NOW.getTime() - minutes * MINUTE);
+
+    it("leaves a job alone while its server may still be working on it", async () => {
+      const { userId, job } = await stuckRun(1, at(STATEMENT_TRIAL_STUCK_MINUTES - 1));
+      expect(await rescueStuckTry(userId, { client, now: NOW })).toBe("none");
+      expect(await client.job.findUnique({ where: { id: job.id } })).toMatchObject({
+        status: "running",
+      });
+    });
+
+    it("runs it again once it must be lost", async () => {
+      const { userId, job } = await stuckRun(1, at(STATEMENT_TRIAL_STUCK_MINUTES + 1));
+      const finished = vi.fn(async () => undefined);
+      expect(
+        await rescueStuckTry(userId, { client, now: NOW, handlers: { import_finish: finished } }),
+      ).toBe("retried");
+      expect(finished).toHaveBeenCalledTimes(1);
+      expect(await client.job.findUnique({ where: { id: job.id } })).toMatchObject({
+        status: "done",
+      });
+    });
+
+    it("runs a job nobody started, and leaves other people's alone", async () => {
+      const other = await stuckRun(1, at(STATEMENT_TRIAL_STUCK_MINUTES + 1));
+      const { userId } = await start();
+      const queued = await client.job.create({
+        data: { kind: "import_finish", payload: { userId }, status: "queued", runAt: at(1) },
+      });
+      const finished = vi.fn(async () => undefined);
+      await rescueStuckTry(userId, { client, now: NOW, handlers: { import_finish: finished } });
+      expect(finished).toHaveBeenCalledTimes(1);
+      expect((await client.job.findUniqueOrThrow({ where: { id: queued.id } })).status).toBe(
+        "done",
+      );
+      expect((await client.job.findUniqueOrThrow({ where: { id: other.job.id } })).status).toBe(
+        "running",
+      );
+    });
+
+    it("calls it failed the second time, rather than 'importing' for hours", async () => {
+      const { userId, run, job } = await stuckRun(2, at(STATEMENT_TRIAL_STUCK_MINUTES + 1));
+      expect(await rescueStuckTry(userId, { client, now: NOW })).toBe("failed");
+      expect(await client.job.findUnique({ where: { id: job.id } })).toMatchObject({
+        status: "failed",
+      });
+      expect((await client.importRun.findUniqueOrThrow({ where: { id: run.id } })).stage).toBe(
+        "failed",
+      );
     });
   });
 });

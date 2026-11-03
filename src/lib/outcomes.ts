@@ -55,6 +55,7 @@ async function auditState(
   },
   next: { status: string; heldAt?: Date | null; doneAt?: Date | null },
   cents: number,
+  userId?: string,
 ): Promise<void> {
   const from = ledgerStateOf(row);
   const to = ledgerStateOf({ heldAt: row.heldAt, doneAt: row.doneAt, ...next });
@@ -63,7 +64,8 @@ async function auditState(
     actor,
     "saving_state_changed",
     { type: "suggestion_outcome", id: row.id },
-    { key: row.suggestionKey, from, to, cents },
+    // With no person as the actor, the row needs saying whose it is, or deleting them can't find it.
+    { key: row.suggestionKey, from, to, cents, ...(userId ? { user_id: userId } : {}) },
   );
 }
 
@@ -373,6 +375,7 @@ export async function verifyOutcomes(
       o,
       { status: data.status ?? o.status, heldAt: (data.heldAt as Date | undefined) ?? o.heldAt },
       cents,
+      userId,
     );
   };
   for (const o of open) {

@@ -8,8 +8,9 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { DAY_MS } from "@/lib/dates";
 import { db as defaultClient } from "@/lib/db";
 import { giveBack, hit } from "@/lib/rate-limit";
-import { isStatementTrialUser, isTrialUser } from "@/lib/trial-ids";
 import { systemDb } from "@/lib/system-db";
+import { statementTrialEnabled } from "@/lib/statement-trial";
+import { isStatementTrialUser, isTrialUser } from "@/lib/trial-ids";
 
 // What Claude answering every typed message may cost (docs/spec.md, "Chat architecture"): a
 // sample person's allowance of answers, and a monthly guard on all of Claude's chat spend.
@@ -63,6 +64,8 @@ export async function claudeLimit(userId: string, options: Options = {}): Promis
   // Sample people stop early, so the rest of the month's budget is there for real people.
   if (isTrialUser(userId) && spent >= monthlyCapCents() * CHAT_TRIAL_MONTH_SHARE) return "budget";
   if (isStatementTrialUser(userId)) {
+    // Turned off (TRY_STATEMENT): those still here get answers from their data, no Claude.
+    if (!statementTrialEnabled()) return "budget";
     // The day's allowance for everyone first: an answer it refuses isn't counted against them.
     if (!(await reserveStatementTrialAnswer(options))) return "budget";
     if (!(await hit("claudeStatementTrial", userId, options)).ok) {
@@ -95,6 +98,7 @@ export async function claudeFinished(userId: string, options: Options = {}): Pro
 // All temporary people's Claude spend today, in the same hundredths of a cent as the month's, with
 // the holds of answers being written. One counter, so two answers at once see each other.
 const STATEMENT_DAY_KEY = "statementtrial:claude";
+const STATEMENT_DAY_WHY = "One counter for everyone trying Jane with their own statement";
 const dayStart = (now: Date) => new Date(Math.floor(now.getTime() / DAY_MS) * DAY_MS);
 const RESERVE = STATEMENT_TRIAL_RESERVE_CENTS * 100;
 
@@ -108,7 +112,7 @@ async function addToDay(
   amount: number,
   { client = defaultClient, now = new Date() }: Options,
 ): Promise<number> {
-  const [row] = await client.$queryRaw<{ count: number }[]>`
+  const [row] = await systemDb(STATEMENT_DAY_WHY, client).$queryRaw<{ count: number }[]>`
     INSERT INTO rate_limits (key, window_start, count)
     VALUES (${STATEMENT_DAY_KEY}, ${dayStart(now)}, GREATEST(${amount}, 0))
     ON CONFLICT (key, window_start) DO UPDATE SET count = GREATEST(rate_limits.count + ${amount}, 0)
@@ -133,7 +137,7 @@ export async function statementTrialSpentCents({
   client = defaultClient,
   now = new Date(),
 }: Options = {}): Promise<number> {
-  const row = await client.rateLimit.findUnique({
+  const row = await systemDb(STATEMENT_DAY_WHY, client).rateLimit.findUnique({
     where: { key_windowStart: { key: STATEMENT_DAY_KEY, windowStart: dayStart(now) } },
     select: { count: true },
   });

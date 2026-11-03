@@ -52,7 +52,8 @@ const url = process.env.TEST_DATABASE_URL;
 // Past every other test file's clock: making a sample person clears trial people by age across
 // the shared test database, and must not clear these mid-test (debugger 11-02).
 const NOW = new Date("2031-03-11T15:00:00Z");
-const DAY_KEY = "statementtrial:claude";
+// This path's day, and all trial people's (src/lib/jane-agent/spend.ts): this file's clock is its own.
+const DAY_KEYS = ["statementtrial:claude", "trialspend:all"];
 
 describe.runIf(url)("a temporary person's Claude budget", { timeout: 180_000 }, () => {
   let client: PrismaClient;
@@ -81,10 +82,10 @@ describe.runIf(url)("a temporary person's Claude budget", { timeout: 180_000 }, 
       content: [{ type: "text", text: "You spend about that each month." }],
       usage: { input_tokens: 1000, output_tokens: 100 },
     });
-    await client.rateLimit.deleteMany({ where: { key: DAY_KEY } });
+    await client.rateLimit.deleteMany({ where: { key: { in: DAY_KEYS } } });
   });
   afterAll(async () => {
-    await client.rateLimit.deleteMany({ where: { key: DAY_KEY } });
+    await client.rateLimit.deleteMany({ where: { key: { in: DAY_KEYS } } });
     await client.user.deleteMany({ where: { id: { in: created } } });
     await client.$disconnect();
     vi.unstubAllEnvs();
@@ -159,6 +160,16 @@ describe.runIf(url)("a temporary person's Claude budget", { timeout: 180_000 }, 
     expect(source).toBe("claude_unavailable");
     expect(create).not.toHaveBeenCalled();
     vi.stubEnv("STATEMENT_TRIAL_DAILY_CENTS", "");
+  });
+
+  it("stops asking Claude for those already here when the path is turned off", async () => {
+    const userId = await person();
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("TRY_STATEMENT", "");
+    const { source } = await sendToJane(userId, "tell me a joke", { client, now: NOW, claude });
+    vi.stubEnv("NODE_ENV", "test");
+    expect(source).toBe("claude_unavailable");
+    expect(create).not.toHaveBeenCalled();
   });
 
   it("counts what an answer cost against the day, and gives back what it held", async () => {
@@ -292,14 +303,11 @@ describe.runIf(url)("a temporary person's Claude budget", { timeout: 180_000 }, 
     await explainFindings(statement, { client, explain });
     expect(explain).not.toHaveBeenCalled();
 
-    // The weekly ideas.
+    // The weekly ideas: stopped before it gets as far as Claude.
+    expect(await runStrategist(statement, { client, now: NOW })).toEqual({ status: "no_key" });
     const never = vi.fn(() => {
       throw new Error("asked Claude");
     }) as never;
-    expect(await runStrategist(statement, { client, now: NOW, claude: never })).toEqual({
-      status: "capped",
-    });
-    expect(never).not.toHaveBeenCalled();
 
     // The monthly summary: the written one, from the same figures.
     const checkIn = await loadCheckIn(statement, "2031-02", { client, now: NOW });

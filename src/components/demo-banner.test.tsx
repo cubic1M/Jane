@@ -67,7 +67,7 @@ describe("DemoBanner", () => {
     const words = props.children.filter((c) => typeof c !== "object").join("");
     expect(words).toMatch(/temporary/);
     expect(words).toMatch(/your own statement/);
-    expect(words).toMatch(/deleted when you start over, or within 48/);
+    expect(words).toMatch(/deleted when you start over, or within 72/);
     expect(words).not.toMatch(/sample|fake|sign up/i);
     expect(findElement(props.children, StartOverButton)).not.toBeNull();
     expect(hasDemoBank).not.toHaveBeenCalled();

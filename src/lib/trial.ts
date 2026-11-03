@@ -7,6 +7,7 @@ import {
   TRIAL_SESSION_PREFIX,
 } from "@/config/trial";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { log } from "@/lib/log";
 import { db as defaultClient } from "@/lib/db";
 import { demoBankEnabled, linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
@@ -46,13 +47,19 @@ export async function cleanUpTrials({
   now = new Date(),
   userIds,
 }: Options & OnlyPeople = {}): Promise<number> {
-  return deleteExpiredTrials(new Date(now.getTime() - TRIAL_HOURS * HOUR_MS), {
-    client,
-    now,
-    // A test's own trials: in the shared test database, a cleanup for everyone deleted the
-    // trials other test files were using mid-test (one-source, from the memory test).
-    ...(userIds ? { only: peopleIn(userIds) } : {}),
-  });
+  const { deleted, failed } = await deleteExpiredTrials(
+    new Date(now.getTime() - TRIAL_HOURS * HOUR_MS),
+    {
+      client,
+      now,
+      // A test's own trials: in the shared test database, a cleanup for everyone deleted the
+      // trials other test files were using mid-test (one-source, from the memory test).
+      ...(userIds ? { only: peopleIn(userIds) } : {}),
+    },
+  );
+  // Tried again next time, and the daily cron reports it: a visitor's start shouldn't.
+  if (failed > 0) log.error("Some trial people couldn't be deleted", { failed });
+  return deleted;
 }
 
 // A new trial person with the demo bank linked and a session for them. With `defer` only

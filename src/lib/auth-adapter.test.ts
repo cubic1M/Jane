@@ -164,6 +164,21 @@ describe("createAuthAdapter", () => {
     expect(await adapter.updateSession({ sessionToken: "gone", expires: EXPIRES })).toBeNull();
   });
 
+  // Auth.js moves a session's end out by 30 days on its first read. A try's ends when it says.
+  it("never extends the session of someone trying Jane, and still extends anyone else's", async () => {
+    client.session.update.mockReset();
+    expect(await adapter.updateSession({ sessionToken: "trial_abc", expires: EXPIRES })).toBeNull();
+    expect(client.session.update).not.toHaveBeenCalled();
+    client.session.update.mockResolvedValue({
+      sessionToken: "cm1real",
+      userId: "user_1",
+      expires: EXPIRES,
+      mfaVerifiedAt: null,
+    });
+    await adapter.updateSession({ sessionToken: "cm1real", expires: EXPIRES });
+    expect(client.session.update).toHaveBeenCalledTimes(1);
+  });
+
   it("uses a magic-link token once", async () => {
     const token = { identifier: "ada@example.com", token: "hashed", expires: EXPIRES };
     client.verificationToken.delete.mockResolvedValueOnce(token).mockRejectedValueOnce(notFound());

@@ -24,7 +24,11 @@ import {
 } from "@/lib/import/import-csv";
 import { enqueueJob } from "@/lib/jobs";
 import { parseMoneyToCents } from "@/lib/money";
-import { statementUploadRefusal } from "@/lib/statement-trial";
+import {
+  STATEMENT_ROW_LIMIT,
+  statementFilesRefusal,
+  statementUploadRefusal,
+} from "@/lib/statement-trial";
 import { isStatementTrialUser } from "@/lib/trial-ids";
 
 // Uploading statements on /import: reading the files from the form, the account a first
@@ -102,11 +106,17 @@ export async function trialUploadRefusal(
   files: CsvFile[],
 ): Promise<string | null> {
   if (!isStatementTrialUser(db.userId)) return null;
+  // Before anything parses: the size limit is what keeps the parsing cheap.
   const chosen = formData.getAll("files").filter((f): f is File => f instanceof File);
-  const previews = previewCsvFiles(files);
+  const refused = statementFilesRefusal(chosen.map((f) => f.size));
+  if (refused) return refused;
+  const previews = previewCsvFiles(files, undefined, STATEMENT_ROW_LIMIT);
+  if (previews.some((p) => !p.ok && p.error === STATEMENT_ROW_LIMIT.words)) {
+    return STATEMENT_ROW_LIMIT.words;
+  }
   return statementUploadRefusal(
     db,
-    previews.map((p, i) => ({ bytes: chosen[i]?.size ?? 0, rows: p.ok ? p.rowCount : 0 })),
+    previews.map((p) => ({ rows: p.ok ? p.rowCount : 0 })),
   );
 }
 

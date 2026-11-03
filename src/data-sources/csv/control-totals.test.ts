@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readCsvFile, type CsvFile } from "./csv-source";
 import { CSV_SETS, readFixtures } from "@/accuracy/csv/report";
-import { closingBalances, statedTotals } from "./control-totals";
+import { closingBalances, controlTotals, statedTotals } from "./control-totals";
 import { parseCsv } from "./parse-csv";
 
 function read(
@@ -566,5 +566,51 @@ describe("OFX", () => {
   it("warns when amounts run against the debit and credit labels", () => {
     const blocks = ["1", "2", "3", "4", "5"].map((id) => block(id, "DEBIT", "5.00"));
     expect(codes(read(ofx(blocks), "a.qfx"))).toEqual(["signs_reversed"]);
+  });
+});
+
+// A walk over the days has to add up the same rows the old search of them did, in any order.
+describe("the balance walk's one pass", () => {
+  const row = (date: string, amountCents: number, balanceCents?: number) => ({
+    date,
+    amountCents,
+    ...(balanceCents === undefined ? {} : { balanceCents }),
+  });
+  const report = (rows: ReturnType<typeof row>[]) =>
+    controlTotals({
+      rows,
+      described: [],
+      stated: {},
+      counts: { read: rows.length, kept: rows.length, leftOut: 0 } as never,
+      unread: 0,
+      repeatedHeaders: 0,
+      kind: "checking",
+    });
+
+  it("counts each day's rows against that day's step, listed newest first", () => {
+    expect(
+      report([
+        row("2026-10-03", 300, 400),
+        row("2026-10-02", 200, 700),
+        row("2026-10-01", 100, 900),
+      ]).warnings,
+    ).toEqual([]);
+  });
+
+  it("still finds a break between two days", () => {
+    expect(
+      report([
+        row("2026-10-01", 100, 900),
+        row("2026-10-02", 200, 650),
+        row("2026-10-03", 300, 350),
+      ]).warnings.length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("counts a row with no balance of its own, on a day that has a close", () => {
+    expect(
+      report([row("2026-10-01", 100, 900), row("2026-10-02", 50), row("2026-10-02", 150, 700)])
+        .warnings,
+    ).toEqual([]);
   });
 });

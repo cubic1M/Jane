@@ -68,7 +68,7 @@ test("a visitor starts, sees their own numbers, gets the steps, and starts over"
   const banner = page.locator(BANNER);
   await expect(banner).toContainText("temporary");
   await expect(banner).toContainText("your own statement");
-  await expect(banner).toContainText("within 48 hours");
+  await expect(banner).toContainText("within 72 hours");
   await expect(page.locator("body")).not.toContainText("fake data");
   await expect(page.locator("body")).not.toContainText("sample person");
   await expect(page.locator("body")).not.toContainText("Demo advice");
@@ -76,6 +76,13 @@ test("a visitor starts, sees their own numbers, gets the steps, and starts over"
   // Their own rows.
   await page.goto("/transactions");
   await expect(page.getByText("ZZFIRST", { exact: false }).first()).toBeVisible();
+
+  // Looking around doesn't move the session's end: it stays a day, as the banner's clock says.
+  const [{ hours }] = await query<{ hours: string }>(
+    "SELECT extract(epoch FROM expires - now()) / 3600 AS hours FROM sessions WHERE user_id = $1",
+    [person],
+  );
+  expect(Number(hours)).toBeLessThanOrEqual(24);
 
   // Reloading changes nothing: same person, same rows.
   await page.reload();

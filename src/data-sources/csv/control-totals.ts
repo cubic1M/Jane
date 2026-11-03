@@ -71,7 +71,12 @@ export function closingBalances(rows: readonly Row[], way: BalanceWay = "down"):
   if (!first || !last) return [];
   const newestFirst = first.date > last.date;
   const byDay = new Map<string, Row[]>();
-  for (const row of withBalance) byDay.set(row.date, [...(byDay.get(row.date) ?? []), row]);
+  // Pushed, not copied: a file with every row on one day took half a minute.
+  for (const row of withBalance) {
+    const day = byDay.get(row.date);
+    if (day) day.push(row);
+    else byDay.set(row.date, [row]);
+  }
   return [...byDay]
     .map(([date, day]) => {
       const closing = closingRows(day, way);
@@ -105,13 +110,24 @@ function walkBalances(rows: readonly Row[], way: BalanceWay): Walk {
     const loose = closingRows(opening, way).length - 1;
     for (let i = 0; i < loose; i += 1) walk.breaks.push({ date: firstDay!, gapCents: 0 });
   }
+  // One pass over the rows in date order, not a search of them for every day.
+  const byDate = [...rows].sort((a, b) => a.date.localeCompare(b.date));
+  let next = 0;
   closes.forEach((close, i) => {
+    let sumAll = 0;
+    let sumBooked = 0;
+    for (; next < byDate.length && byDate[next]!.date <= close.date; next += 1) {
+      const row = byDate[next]!;
+      // The first day's rows lead up to its close, not to a step from a day before.
+      if (i === 0) continue;
+      sumAll += row.amountCents;
+      if (row.balanceCents !== undefined) sumBooked += row.amountCents;
+    }
     const prior = closes[i - 1];
     if (!prior) return;
-    const since = rows.filter((r) => r.date > prior.date && r.date <= close.date);
     const change = close.balanceCents - prior.balanceCents;
-    const all = moved(sumOf(since), way);
-    const booked = moved(sumOf(since.filter((r) => r.balanceCents !== undefined)), way);
+    const all = moved(sumAll, way);
+    const booked = moved(sumBooked, way);
     walk.steps += 1;
     if (!near(change, all) && !near(change, booked)) {
       walk.breaks.push({ date: close.date, gapCents: change - all });

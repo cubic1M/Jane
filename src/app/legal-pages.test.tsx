@@ -70,7 +70,8 @@ describe("the legal pages", () => {
   it("say what happens to a statement tried without an account, from the code", () => {
     const privacy = text(PrivacyPage);
     const terms = text(TermsPage);
-    expect(TRIAL_DELETED_WITHIN_HOURS).toBe(TRIAL_HOURS + 24);
+    expect(TRIAL_DELETED_WITHIN_HOURS).toBe(72);
+    expect(TRIAL_DELETED_WITHIN_HOURS).toBe(TRIAL_HOURS + 48);
     for (const page of [privacy, terms]) {
       expect(page).toMatch(/Trying Jane with your own statement/);
       expect(page).toContain(`within ${TRIAL_DELETED_WITHIN_HOURS} hours`);
@@ -79,8 +80,14 @@ describe("the legal pages", () => {
     expect(privacy).toMatch(/read once, in memory, and never stored as a file/);
     expect(privacy).toMatch(/a temporary person made for this try/);
     expect(privacy).toMatch(/Nothing is reused: each start makes a new one/);
-    expect(privacy).toMatch(/a record in our security log that a try started and was deleted/);
+    expect(privacy).toMatch(/a record that a try started and was deleted/);
     expect(privacy).toMatch(/nothing from your statement/);
+    expect(privacy).toContain(
+      `sign-in cookie for that person, which works for ${TRIAL_HOURS} hours`,
+    );
+    expect(privacy).toMatch(/goes at the next daily clean-up/);
+    // src/lib/edge-limits.ts counts a hash of the IP and of the session token.
+    expect(privacy).toMatch(/scrambled form of your IP address and of your sign-in cookie/);
     expect(privacy).toMatch(/Reading your statement doesn't use Anthropic/);
     expect(privacy).toContain(`up to ${STATEMENT_TRIAL_CHAT_ANSWERS} written answers`);
     expect(privacy).toMatch(/Starting over can't call back what was already sent/);
