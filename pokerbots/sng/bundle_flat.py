@@ -92,6 +92,7 @@ OVERRIDES = {
 # (module name, source file or stub text)
 MODULES = [
     ("engine.cards", "engine/cards.py"),
+    ("engine.showdown", "engine/showdown.py"),
     ("engine.spec", "engine/spec.py"),
     ("engine.game", GAME_STUB),
     ("sng.ours.features", "sng/ours/features.py"),

@@ -10,6 +10,7 @@ from dataclasses import dataclass, field, replace
 from typing import Optional
 
 from .cards import full_deck
+from engine.showdown import VALID as _SHOWDOWNS
 
 STANDARD_ORDER = ("high_card", "pair", "two_pair", "trips", "straight", "flush",
                   "full_house", "quads", "straight_flush")
@@ -119,7 +120,6 @@ class GameSpec:
             raise ValueError("hole_usage must be 'any' or 'exactly'")
         if self.betting not in ("no_limit", "pot_limit"):
             raise ValueError("betting must be 'no_limit' or 'pot_limit'")
-        from engine.showdown import VALID as _SHOWDOWNS
         if self.showdown not in _SHOWDOWNS:
             raise ValueError(f"showdown must be one of {_SHOWDOWNS}")
         if self.showdown == "double_board" and any(k % 2 for k in self.board_cards_per_street[1:]):

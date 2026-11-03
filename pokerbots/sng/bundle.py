@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 MODULES = [  # (module name, source file, is_package)
     ("engine", None, True),
     ("engine.cards", "engine/cards.py", False),
+    ("engine.showdown", "engine/showdown.py", False),
     ("engine.spec", "engine/spec.py", False),
     ("sng", None, True),
     ("sng.ours", None, True),
