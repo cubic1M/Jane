@@ -1,0 +1,185 @@
+name: Review
+
+# Reviews a PR once its CI is green, by what it touches (docs/gates.md). GitHub runs this from main's
+# copy, so a PR can't change it. No job here runs the PR's code, and the jobs that talk to a model
+# hold no GitHub rights: a reviewer returns data, and a plain script posts the verdict. Off until a
+# founder sets the REVIEWER_ON variable.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  # A draft's CI has already run by the time it's marked ready.
+  pull_request_target:
+    types: [ready_for_review]
+
+permissions: {}
+
+concurrency:
+  group: review-${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: What to review
+    if: >-
+      vars.REVIEWER_ON == '1' && (
+        github.event_name == 'pull_request_target' ||
+        (github.event.workflow_run.conclusion == 'success' &&
+         contains(fromJSON('["pull_request", "workflow_dispatch"]'), github.event.workflow_run.event) &&
+         github.event.workflow_run.head_branch != 'main'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+      checks: read
+    outputs:
+      post: ${{ steps.prepare.outputs.post }}
+      run: ${{ steps.prepare.outputs.run }}
+      tier: ${{ steps.prepare.outputs.tier }}
+      number: ${{ steps.prepare.outputs.number }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - id: prepare
+        run: node .github/scripts/reviewer/prepare.mjs --out "$RUNNER_TEMP/input"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          SHA: ${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha }}
+          HEAD_REPO: ${{ github.event.workflow_run.head_repository.full_name || github.event.pull_request.head.repo.full_name }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch || github.event.pull_request.head.ref }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: steps.prepare.outputs.post == 'true'
+        with:
+          name: review-input
+          path: ${{ runner.temp }}/input
+          retention-days: 7
+
+  claude:
+    name: Claude's review
+    needs: prepare
+    if: needs.prepare.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: reviewers
+    permissions: {}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: review-input
+          path: ${{ runner.temp }}/input
+      - run: npm install -g --no-audit --no-fund "@anthropic-ai/claude-code@$VERSION"
+        env:
+          VERSION: ${{ vars.REVIEWER_CLAUDE_CODE_VERSION }}
+      - run: >-
+          mkdir -p "$RUNNER_TEMP/out" && node .github/scripts/reviewer/review.mjs --family claude
+          --diff "$RUNNER_TEMP/input/diff.txt" --out "$RUNNER_TEMP/out/claude.json"
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.REVIEWER_CLAUDE_TOKEN }}
+          REVIEWER_CLAUDE_MODEL: ${{ vars.REVIEWER_CLAUDE_MODEL }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: review-claude
+          path: ${{ runner.temp }}/out
+          retention-days: 7
+
+  second:
+    name: The other family's review
+    needs: prepare
+    if: needs.prepare.outputs.run == 'true' && needs.prepare.outputs.tier == 'B'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: reviewers
+    permissions: {}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: review-input
+          path: ${{ runner.temp }}/input
+      - run: >-
+          mkdir -p "$RUNNER_TEMP/out" && node .github/scripts/reviewer/review.mjs --family second
+          --diff "$RUNNER_TEMP/input/diff.txt" --out "$RUNNER_TEMP/out/second.json"
+        env:
+          REVIEWER_SECOND_KEY: ${{ secrets.REVIEWER_SECOND_KEY }}
+          REVIEWER_SECOND_MODEL: ${{ vars.REVIEWER_SECOND_MODEL }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: review-second
+          path: ${{ runner.temp }}/out
+          retention-days: 7
+
+  # A test a model wrote runs only in review-confirm.yml, on the PR's branch, never in this workflow:
+  # code running here could write to main's cache. A PR whose branch predates that file gets notes.
+  confirm:
+    name: Run the findings' tests
+    needs: [prepare, claude, second]
+    if: always() && needs.prepare.outputs.run == 'true' && needs.prepare.outputs.tier != 'C'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      actions: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          path: ${{ runner.temp }}/in
+      - run: bash .github/scripts/reviewer/dispatch-confirm.sh "$RUNNER_TEMP/in" "$RUNNER_TEMP/confirm"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          REVIEW_RUN: ${{ github.run_id }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: review-confirm
+          path: ${{ runner.temp }}/confirm
+          if-no-files-found: ignore
+          retention-days: 7
+
+  verdict:
+    name: Post the verdict
+    needs: [prepare, claude, second, confirm]
+    if: always() && needs.prepare.outputs.post == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: reviewer-verdict
+    permissions:
+      contents: read
+      pull-requests: read
+      checks: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          path: ${{ runner.temp }}/in
+      # A review that didn't run left no artifact, and the verdict counts that as not done.
+      - run: |
+          mkdir -p "$RUNNER_TEMP/reviews"
+          for family in claude second; do
+            cp "$RUNNER_TEMP/in/review-$family/"*.json "$RUNNER_TEMP/reviews/" 2>/dev/null || true
+          done
+          node .github/scripts/reviewer/verdict.mjs --input "$RUNNER_TEMP/in/review-input" \
+            --reviews "$RUNNER_TEMP/reviews" --confirm "$RUNNER_TEMP/in/review-confirm"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          FOUNDER_LOGINS: ${{ vars.FOUNDER_LOGINS }}
+          DETAILS_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          APP_ID: ${{ vars.REVIEWER_APP_ID }}
+          APP_PRIVATE_KEY: ${{ secrets.REVIEWER_APP_KEY }}
