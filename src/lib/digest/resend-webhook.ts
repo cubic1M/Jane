@@ -4,6 +4,7 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { systemDb } from "@/lib/system-db";
 
 // Resend's webhook, for the weekly email (src/lib/digest/send.ts). Resend signs every delivery
 // the way Svix does: an HMAC-SHA256 of "<svix-id>.<svix-timestamp>.<body>", keyed by the
@@ -47,7 +48,10 @@ export async function recordEmailEvent(
   const emailId = event.data?.email_id;
   if (typeof emailId !== "string" || emailId.length === 0) return "ignored";
   // Finds the digest's owner; the writes below are scoped to them.
-  const digest = await client.digest.findUnique({
+  const digest = await systemDb(
+    "Email provider's webhook: nobody is signed in",
+    client,
+  ).digest.findUnique({
     where: { resendId: emailId },
     select: { id: true, userId: true },
   });
@@ -62,7 +66,10 @@ export async function recordEmailEvent(
     return "opened";
   }
   if (event.type === "email.complained") {
-    const { count } = await client.user.updateMany({
+    const { count } = await systemDb(
+      "Email provider's webhook: nobody is signed in",
+      client,
+    ).user.updateMany({
       where: { id: digest.userId, digestEnabled: true },
       data: { digestEnabled: false },
     });

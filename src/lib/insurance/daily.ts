@@ -15,6 +15,9 @@ import { refreshSavings } from "./savings";
 import { openDisputeCards } from "./health-year";
 import { refreshRisks } from "./risks";
 import { log } from "@/lib/log";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Cron: finds who to run for, across people";
 
 // Insurance that runs itself (spec Phase X), at every autopilot level: reshops 45 days before
 // renewal and on a price rise (step 104), and the coverage checkup once a year and after a
@@ -38,7 +41,7 @@ export async function insuranceDaily({ client = defaultClient, now = new Date() 
 // (sizeLife checks). Quotes are only asked for again when they expire or the numbers move.
 export async function lifeAll({ client = defaultClient, now = new Date() }: Options = {}) {
   // A system job across users: ids only; everything after is scoped to the person.
-  const people = await client.insurancePolicy.findMany({
+  const people = await systemDb(WHY, client).insurancePolicy.findMany({
     where: { status: "active" },
     select: { userId: true },
     distinct: ["userId"],
@@ -59,7 +62,7 @@ export async function lifeAll({ client = defaultClient, now = new Date() }: Opti
 // before the employer's open enrollment, for everyone with a policy on file.
 export async function benefitsAll({ client = defaultClient, now = new Date() }: Options = {}) {
   // A system job across users: ids only; everything after is scoped to the person.
-  const people = await client.insurancePolicy.findMany({
+  const people = await systemDb(WHY, client).insurancePolicy.findMany({
     where: { status: "active" },
     select: { userId: true },
     distinct: ["userId"],
@@ -112,7 +115,7 @@ export async function insuranceAfterSync(
 // Spec step 155: the carrier's status on every claim Jane filed.
 export async function claimStatusesAll({ client = defaultClient, now = new Date() }: Options = {}) {
   // A system job across users: ids only; everything after is scoped to the person.
-  const people = await client.insuranceClaim.findMany({
+  const people = await systemDb(WHY, client).insuranceClaim.findMany({
     where: { filing: "filed", status: "open" },
     select: { userId: true },
     distinct: ["userId"],

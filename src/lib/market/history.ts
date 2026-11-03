@@ -3,6 +3,9 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import type { Bar, MarketData } from "./types";
 import { isoDay as day } from "@/lib/dates";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Market data is shared, no one's own";
 
 // The one-time history load (spec step 289, Phase AW): daily closes for every practice ticker
 // pulled from the market data and stored with their source and date range, so backtests run on
@@ -55,7 +58,7 @@ export async function loadHistory(
   const to = day(new Date(now.getTime() - 86_400_000));
   const report: LoadReport = [];
   for (const ticker of tickers) {
-    const done = await client.marketHistoryLoad.findUnique({
+    const done = await systemDb(WHY, client).marketHistoryLoad.findUnique({
       where: { ticker_source: { ticker, source: feed.name } },
     });
     const ranges: [string, string][] = [];
@@ -68,7 +71,7 @@ export async function loadHistory(
     for (const [a, b] of ranges) {
       const bars: Bar[] = await feed.prices(ticker, a, b);
       if (bars.length === 0) continue;
-      const result = await client.marketPrice.createMany({
+      const result = await systemDb(WHY, client).marketPrice.createMany({
         data: bars.map((x) => ({
           ticker,
           date: dateOf(x.date),
@@ -79,14 +82,14 @@ export async function loadHistory(
       });
       added += result.count;
     }
-    const range = await client.marketPrice.aggregate({
+    const range = await systemDb(WHY, client).marketPrice.aggregate({
       where: { ticker, source: feed.name },
       _min: { date: true },
       _max: { date: true },
       _count: true,
     });
     if (range._min.date && range._max.date) {
-      await client.marketHistoryLoad.upsert({
+      await systemDb(WHY, client).marketHistoryLoad.upsert({
         where: { ticker_source: { ticker, source: feed.name } },
         create: {
           ticker,
@@ -132,7 +135,7 @@ export async function storedHistory(
   const bars: Record<string, Bar[]> = {};
   let source = "";
   for (const ticker of tickers) {
-    const rows = await client.marketPrice.findMany({
+    const rows = await systemDb(WHY, client).marketPrice.findMany({
       where: { ticker, date: { gte: dateOf(from), lte: dateOf(to) } },
       orderBy: { date: "asc" },
       select: { date: true, closeCents: true, source: true },

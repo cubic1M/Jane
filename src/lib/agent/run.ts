@@ -45,6 +45,9 @@ import { isCallAction, startCall } from "@/lib/voice/calls";
 import { DAY_MS, isoDay } from "@/lib/dates";
 import { ownedBy, type OnlyPeople } from "@/lib/only-people";
 import { meteredClaude } from "@/lib/claude-budget";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "The agent's cron and reply links: finds actions across people, nobody is signed in";
 
 // The action agent (spec step 51). An approved action of a type in AGENT_ACTION_TYPES is
 // worked by the agent instead of the team: it emails the company from Jane's address,
@@ -524,7 +527,7 @@ export async function handleReply(
   const token = tokenFromAddress(toAddress);
   // A system lookup by the reply token; everything after it is scoped to that person.
   const found = token
-    ? await client.action.findUnique({
+    ? await systemDb(WHY, client).action.findUnique({
         where: { replyToken: token },
         select: { id: true, userId: true },
       })
@@ -764,7 +767,7 @@ export async function runAgentFollowUps({
   handedOff: number;
 }> {
   // A system job across users: ids only, and agentStep scopes each one.
-  const due = await client.action.findMany({
+  const due = await systemDb(WHY, client).action.findMany({
     where: {
       agentState: "waiting_reply",
       status: "in_progress",
@@ -802,7 +805,10 @@ export async function runAgentNow(
 ): Promise<void> {
   const ids = jobIds.filter((id): id is string => Boolean(id));
   if (ids.length === 0) return;
-  const jobs = await client.job.findMany({ where: { id: { in: ids } }, select: { payload: true } });
+  const jobs = await systemDb("The job queue works across people", client).job.findMany({
+    where: { id: { in: ids } },
+    select: { payload: true },
+  });
   for (const id of ids) await runJob(id, { client });
   await runQueuedFor(
     jobs.map((j) => (j.payload as { actionId?: string }).actionId).filter(Boolean) as string[],
@@ -816,7 +822,7 @@ export async function runQueuedFor(
   { client = defaultClient }: Pick<Options, "client"> = {},
 ): Promise<void> {
   for (const actionId of new Set(actionIds)) {
-    const queued = await client.job.findMany({
+    const queued = await systemDb("The job queue works across people", client).job.findMany({
       where: {
         status: "queued",
         kind: { in: ["agent_step", "agent_simulated_reply", "voice_simulated_result"] },
@@ -898,7 +904,7 @@ export async function confirmCancellations({
   userIds,
 }: Options & OnlyPeople = {}): Promise<{ confirmed: number; charged: number; reminded: number }> {
   // A system job across users: ids only, and everything after is scoped to the person.
-  const due = await client.action.findMany({
+  const due = await systemDb(WHY, client).action.findMany({
     where: {
       type: "cancel_subscription",
       agentState: "confirming",
@@ -1050,7 +1056,7 @@ export async function resumeForMerchant(
   { client = defaultClient, now = new Date() }: Pick<Options, "client" | "now"> = {},
 ): Promise<number> {
   // A system lookup across people: ids only; each is then scoped.
-  const waiting = await client.action.findMany({
+  const waiting = await systemDb(WHY, client).action.findMany({
     where: {
       agentState: "handed_off",
       status: "queued",

@@ -3,11 +3,14 @@ import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
 import { LoadingBar } from "@/components/loading-bar";
+import { systemDb } from "@/lib/system-db";
 
 // What beta testers reported (src/app/report-a-problem): their words, the page and when, newest first.
 async function Reports() {
   const admin = await requireAdmin();
-  const reports = await db.problemReport.findMany({
+  const reports = await systemDb(
+    "Admin page: works across people, behind ADMIN_EMAILS and two-factor",
+  ).problemReport.findMany({
     orderBy: { createdAt: "desc" },
     take: 200,
     select: {

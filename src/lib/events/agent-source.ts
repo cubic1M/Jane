@@ -7,6 +7,7 @@ import { registerAgentSignals, type AgentSignalSource } from "@/lib/trading-agen
 import { eventAgentSignals } from "@/planning/event-agent-signals";
 import type { ClosedSlice } from "@/planning/event-overlay";
 import { toEvent } from "./rows";
+import { systemDb } from "@/lib/system-db";
 
 // The events overlay as a signal source for the 24-hour trading agent (src/lib/trading-agent/
 // agent.ts): for a paper account the agent runs, with the overlay on (the default), the overlay's
@@ -35,7 +36,7 @@ export const eventsAgentSource: AgentSignalSource = async (
     Date.parse(from) - (EVENT_HOLD_DAYS * 7 * DAY_MS) / 5 - 7 * DAY_MS,
     (overlay?.switchedAt.getTime() ?? Date.parse(from)) - EVENT_FRESH_DAYS * DAY_MS,
   );
-  const rows = await client.marketEvent.findMany({
+  const rows = await systemDb("Market data is shared, no one's own", client).marketEvent.findMany({
     where: { knownAt: { lte: new Date(to), gte: new Date(earliest) } },
     orderBy: { knownAt: "asc" },
   });

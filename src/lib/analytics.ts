@@ -3,6 +3,7 @@ import { POSTHOG_EVENTS, forPostHog } from "@/lib/analytics-events";
 import { db } from "@/lib/db";
 import { log } from "@/lib/log";
 import { isTrialUser } from "@/lib/trial-ids";
+import { systemDb } from "@/lib/system-db";
 
 export type EventProperties = Record<string, string | number | boolean | null>;
 
@@ -23,7 +24,9 @@ export async function track(
 ): Promise<void> {
   // Spec step 138: people trying Jane with sample data are never counted.
   if (isTrialUser(userId)) return;
-  await db.analyticsEvent.create({ data: { userId, name, properties } });
+  await systemDb(
+    "Analytics are the system's own record: jane_rls can't touch them",
+  ).analyticsEvent.create({ data: { userId, name, properties } });
 
   const client = getPostHog();
   if (!client || !POSTHOG_EVENTS.has(name)) return;

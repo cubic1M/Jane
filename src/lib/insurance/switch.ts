@@ -20,6 +20,7 @@ import { startDateFor } from "./quotes";
 import { shopById } from "./shop";
 import { isoDay as day, addMonths } from "@/lib/dates";
 import { ownedBy, type OnlyPeople } from "@/lib/only-people";
+import { systemDb } from "@/lib/system-db";
 
 // One-tap switch (spec step 105), on step 77's machinery: after the person's Yes (spec step
 // 104), Jane's agent does the rest by itself.
@@ -197,7 +198,10 @@ export async function confirmInsuranceSwitches({
   handedOff: number;
 }> {
   // A system job across users: ids only; everything after is scoped to the person.
-  const pending = await client.insurancePolicy.findMany({
+  const pending = await systemDb(
+    "Cron: finds who to run for, across people",
+    client,
+  ).insurancePolicy.findMany({
     where: { status: "pending", source: "switch", ...(only ? { userId: only } : ownedBy(userIds)) },
     select: { id: true, userId: true, actionId: true },
     take: 200,

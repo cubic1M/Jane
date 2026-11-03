@@ -29,6 +29,7 @@ import { loadGoalBuckets } from "./goal-buckets";
 import { profileOf } from "./profile";
 import { DAY_MS, isoDay as iso } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
+import { systemDb } from "@/lib/system-db";
 
 // Automatic investing (spec step 134). Set up once with a tap (an amount every payday, or
 // the rest after bills and goals); after that Jane runs it on its own on each new paycheck,
@@ -321,7 +322,10 @@ export async function runAutoInvestForAll({
   now = new Date(),
 }: Options = {}) {
   // A system job across all users: it reads owners only; each run is scoped to its person.
-  const plans = await client.autoInvestPlan.findMany({
+  const plans = await systemDb(
+    "Cron: finds who to run for, across people",
+    client,
+  ).autoInvestPlan.findMany({
     where: { status: "active", user: { deletedAt: null } },
     select: { userId: true },
   });

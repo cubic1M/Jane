@@ -8,6 +8,9 @@ import { TRIAL_ID_PREFIX } from "@/config/trial";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { kindFactor, type KindStat, type KindStats } from "@/planning/suggestion-rank";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Learning stats are counted across people";
 
 // The learning loop: per kind of suggestion, how often people act on it when it's shown and how
 // often what they acted on then showed up in their transactions (the verified savings record).
@@ -27,7 +30,7 @@ const PAID_OFF = ["confirmed", "partial"];
 // was done, so it would read as always acted on: it isn't counted.
 export async function refreshKindStats({ client = defaultClient }: Options = {}): Promise<number> {
   // A system job across everyone, counts only.
-  const rows = await client.suggestionOutcome.groupBy({
+  const rows = await systemDb(WHY, client).suggestionOutcome.groupBy({
     by: ["topic", "status"],
     where: {
       userId: { not: { startsWith: TRIAL_ID_PREFIX } },
@@ -67,19 +70,21 @@ export async function refreshKindStats({ client = defaultClient }: Options = {})
       paidOff: k.paidOff,
       confirmedCents: k.confirmedCents,
     };
-    await client.suggestionKindStat.upsert({
+    await systemDb(WHY, client).suggestionKindStat.upsert({
       where: { topic: k.topic },
       create: { topic: k.topic, ...data },
       update: data,
     });
   }
-  await client.suggestionKindStat.deleteMany({ where: { topic: { notIn: [...byTopic.keys()] } } });
+  await systemDb(WHY, client).suggestionKindStat.deleteMany({
+    where: { topic: { notIn: [...byTopic.keys()] } },
+  });
   return byTopic.size;
 }
 
 // For ranking and the cards: every kind's counts, in one query.
 export async function loadKindStats({ client = defaultClient }: Options = {}): Promise<KindStats> {
-  const rows = await client.suggestionKindStat.findMany();
+  const rows = await systemDb(WHY, client).suggestionKindStat.findMany();
   return new Map(rows.map((r) => [r.topic, r]));
 }
 
@@ -104,7 +109,7 @@ export async function kindReport({ client = defaultClient }: Options = {}): Prom
   rows: KindReportRow[];
   updatedAt: Date | null;
 }> {
-  const rows = await client.suggestionKindStat.findMany({
+  const rows = await systemDb(WHY, client).suggestionKindStat.findMany({
     orderBy: [{ shown: "desc" }, { topic: "asc" }],
   });
   const stats: KindStats = new Map(rows.map((r) => [r.topic, r]));

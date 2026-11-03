@@ -10,6 +10,10 @@ import { db as defaultClient } from "@/lib/db";
 import { isAdminEmail } from "@/lib/invites";
 import { isTrialUser } from "@/lib/trial-ids";
 import { DAY_MS } from "@/lib/dates";
+import { scopedFor } from "@/lib/db-scoped";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Rate limits are the system's own counters";
 
 // What Claude has cost for one person today (spec step 191): a daily cap, kept in the
 // rate_limits table (one counter per person per UTC day, in hundredths of a cent), so it holds
@@ -51,7 +55,7 @@ export function costInHundredthsOfCents(usage: Usage): number {
 
 // Adds to one of today's counters, in hundredths of a cent.
 async function addToToday(key: string, amount: number, client: PrismaClient, now: Date) {
-  await client.$executeRaw`
+  await systemDb(WHY, client).$executeRaw`
     INSERT INTO rate_limits (key, window_start, count) VALUES (${key}, ${dayStart(now)}, ${amount})
     ON CONFLICT (key, window_start) DO UPDATE SET count = rate_limits.count + ${amount}`;
 }
@@ -70,7 +74,7 @@ export async function addSpend(
 }
 
 async function centsToday(key: string, { client = defaultClient, now = new Date() }: Options) {
-  const row = await client.rateLimit.findUnique({
+  const row = await systemDb(WHY, client).rateLimit.findUnique({
     where: { key_windowStart: { key, windowStart: dayStart(now) } },
     select: { count: true },
   });
@@ -88,7 +92,7 @@ export async function dailyCapCents(
   { client = defaultClient }: Options = {},
 ): Promise<number | null> {
   if (isTrialUser(userId)) return CHAT_TRIAL_DAILY_CAP_CENTS;
-  const user = await client.user.findUnique({
+  const user = await scopedFor(userId, client).me.findUnique({
     where: { id: userId },
     select: { role: true, email: true },
   });
@@ -121,7 +125,7 @@ export async function recordLimitHit(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<void> {
   if (isTrialUser(userId)) return;
-  await client.$executeRaw`
+  await systemDb(WHY, client).$executeRaw`
     INSERT INTO rate_limits (key, window_start, count) VALUES (${HIT_PREFIX + userId}, ${dayStart(now)}, 1)
     ON CONFLICT (key, window_start) DO UPDATE SET count = rate_limits.count + 1`;
 }
@@ -146,7 +150,7 @@ export async function spendToday({
   now = new Date(),
 }: Options = {}): Promise<SpendToday> {
   const [rows, monthSpentCents] = await Promise.all([
-    client.rateLimit.findMany({
+    systemDb(WHY, client).rateLimit.findMany({
       where: {
         windowStart: dayStart(now),
         OR: [{ key: { startsWith: SPEND_PREFIX } }, { key: { startsWith: HIT_PREFIX } }],

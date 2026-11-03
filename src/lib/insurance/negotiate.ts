@@ -18,6 +18,7 @@ import { listPolicies, yearlyPremium, type Policy } from "./policies";
 import { quotesFor } from "./quotes";
 import { listReadings } from "./readings";
 import { higherCharge, policyCharges, shopPolicy } from "./shop";
+import { systemDb } from "@/lib/system-db";
 
 // Renewal negotiation (spec step 155). Before a renewal with a price rise (a renewal notice
 // Jane read, or a higher charge from the insurer), Jane asks the carrier for a better rate
@@ -311,7 +312,10 @@ export async function negotiationsAll({
   now = new Date(),
 }: Options = {}): Promise<{ people: number; found: number }> {
   // A system job across users: ids only; everything after is scoped to the person.
-  const people = await client.insurancePolicy.findMany({
+  const people = await systemDb(
+    "Cron: finds who to run for, across people",
+    client,
+  ).insurancePolicy.findMany({
     where: { status: "active" },
     select: { userId: true },
     distinct: ["userId"],

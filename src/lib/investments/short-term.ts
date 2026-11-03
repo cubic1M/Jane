@@ -25,6 +25,7 @@ import {
 } from "@/planning/short-term";
 import { loadCash } from "./cash";
 import { isoDay as iso } from "@/lib/dates";
+import { systemDb } from "@/lib/system-db";
 
 // Short-term money, placed safely (spec step 234, demo advice), for its page, Jane's answers
 // and its buttons. Money needed within three years is compared after tax in the person's own
@@ -274,7 +275,10 @@ export async function settleLadders(
 }
 
 export async function settleAllLadders({ client = defaultClient, now = new Date() }: Options = {}) {
-  const people = await client.billLadder.findMany({
+  const people = await systemDb(
+    "Cron: finds who to run for, across people",
+    client,
+  ).billLadder.findMany({
     where: { status: "active" },
     select: { userId: true },
     distinct: ["userId"],

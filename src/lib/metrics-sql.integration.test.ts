@@ -6,6 +6,7 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
 import { automateNext, computeMetrics, loadMetricRows, loadMetrics } from "./metrics";
 import { automateNextSql, computeMetricsSql } from "./metrics-sql";
+import { systemDb } from "./system-db";
 
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).
 // Seeds a small history in 2001 (so other tests' rows don't fall in these windows), then
@@ -201,16 +202,23 @@ describe.runIf(url)("metrics in SQL against a real database", () => {
         const rows = await loadMetricRows({ client: db });
         for (const days of [7, 30, 365]) {
           const w = { start: ago(days), end: NOW };
-          expect(await computeMetricsSql(db, w), `${days} days`).toEqual(computeMetrics(rows, w));
+          expect(await computeMetricsSql(systemDb("test: metrics", db), w), `${days} days`).toEqual(
+            computeMetrics(rows, w),
+          );
         }
-        expect(await automateNextSql(db)).toEqual(automateNext(rows.actions));
+        expect(await automateNextSql(systemDb("test: metrics", db))).toEqual(
+          automateNext(rows.actions),
+        );
       },
       { isolationLevel: "RepeatableRead", timeout: 60_000 },
     );
   });
 
   it("finds what the seeded history should give", async () => {
-    const m = await computeMetricsSql(client, { start: ago(30), end: NOW });
+    const m = await computeMetricsSql(systemDb("test: metrics", client), {
+      start: ago(30),
+      end: NOW,
+    });
     // The trial person isn't in it.
     expect(m.linkRate).toEqual({ signedUp: 2, linked: 1, rate: 0.5 });
     expect(m.completion).toEqual({ closed: 2, done: 1, rate: 0.5 });

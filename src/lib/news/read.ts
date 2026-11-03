@@ -11,6 +11,7 @@ import { WATCH_CIKS, marketData, type MarketData } from "@/lib/market";
 import { NEWS_WATCHLIST, newsKey } from "./store";
 import { rulesSummary } from "./summarize";
 import { DAY_MS, isoDay as day } from "@/lib/dates";
+import { systemDb } from "@/lib/system-db";
 
 // What the chat and pages show of the news (spec step 293): the stored summaries and filings
 // for the market data in use, newest first. Nothing here calls Claude or a live feed. On the
@@ -51,7 +52,7 @@ export async function loadNews({
   market = marketData(),
 }: Options = {}): Promise<NewsView> {
   const tickers = new Set(NEWS_WATCHLIST);
-  const rows = await client.marketNews.findMany({
+  const rows = await systemDb("Market data is shared, no one's own", client).marketNews.findMany({
     where: {
       feed: market.name,
       OR: [

@@ -21,6 +21,7 @@ import { hsaPlan, type HsaPlan } from "@/planning/hsa";
 import { loadInvestments } from "./holdings";
 import { profileOf } from "./profile";
 import { DAY_MS, isoDay as iso } from "@/lib/dates";
+import { systemDb } from "@/lib/system-db";
 
 // The HSA as an investment (spec step 159), for its page, Jane's answers, its buttons and
 // the nightly run. Advice (what to invest) in demo advice mode only; the receipts vault is
@@ -68,7 +69,10 @@ export async function collectAllReceipts({
   now = new Date(),
 }: Options = {}) {
   // A system job: owners of medical charges in the last year, each collected scoped.
-  const owners = await client.transaction.findMany({
+  const owners = await systemDb(
+    "Cron: finds who to run for, across people",
+    client,
+  ).transaction.findMany({
     where: {
       pfcPrimary: HSA_RECEIPT_PRIMARY,
       hsaReceipt: { is: null },

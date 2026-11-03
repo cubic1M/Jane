@@ -12,6 +12,9 @@ import { isAdminEmail } from "@/lib/invites";
 import { median } from "@/lib/metrics";
 import { isDemoItemId } from "@/lib/plaid/demo";
 import { isTrialEmail, isTrialUser } from "@/lib/trial-ids";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Founder metrics count across people";
 
 // The closed beta's traction numbers, all time, on /admin/metrics: real people only. Never
 // counted: trial people (spec step 138), the team (admin role, ADMIN_EMAILS or FOUNDER_EMAILS),
@@ -174,12 +177,14 @@ export async function loadBetaRows({
   client = defaultClient,
 }: { client?: PrismaClient } = {}): Promise<DatedBetaRows> {
   const [users, invited, accounts, findings, decisions, outcomes] = await Promise.all([
-    client.user.findMany({
+    systemDb(WHY, client).user.findMany({
       where: { id: REAL },
       select: { id: true, email: true, role: true, createdAt: true },
     }),
-    client.betaAccess.findMany({ select: { email: true } }),
-    client.account.findMany({
+    systemDb(WHY, client).betaAccess.findMany({
+      select: { email: true },
+    }),
+    systemDb(WHY, client).account.findMany({
       where: { userId: REAL },
       select: {
         userId: true,
@@ -188,7 +193,7 @@ export async function loadBetaRows({
         item: { select: { plaidItemId: true } },
       },
     }),
-    client.finding.findMany({
+    systemDb(WHY, client).finding.findMany({
       where: { userId: REAL },
       select: {
         id: true,
@@ -201,11 +206,11 @@ export async function loadBetaRows({
         updatedAt: true,
       },
     }),
-    client.decision.findMany({
+    systemDb(WHY, client).decision.findMany({
       where: { userId: REAL },
       select: { userId: true, choice: true, undoneAt: true, createdAt: true },
     }),
-    client.suggestionOutcome.findMany({
+    systemDb(WHY, client).suggestionOutcome.findMany({
       where: { userId: REAL },
       select: {
         userId: true,

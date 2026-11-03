@@ -99,7 +99,8 @@ describe("every path that calls Claude has a limit", () => {
 const NOW = new Date("2026-11-03T12:00:00Z");
 function fakeDb({ role = "user", email = "person@example.com" } = {}) {
   const rows = new Map<string, number>();
-  const client = {
+  const client: Record<string, unknown> = {
+    $extends: () => client,
     rateLimit: {
       findUnique: async ({
         where,

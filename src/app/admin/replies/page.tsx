@@ -6,10 +6,13 @@ import { deleteReply } from "./actions";
 import { ReplyForm } from "./reply-form";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { systemDb } from "@/lib/system-db";
 
 async function Replies() {
   const admin = await requireAdmin();
-  const replies = await db.savedReply.findMany({ orderBy: { title: "asc" } });
+  const replies = await systemDb(
+    "Admin page: works across people, behind ADMIN_EMAILS and two-factor",
+  ).savedReply.findMany({ orderBy: { title: "asc" } });
   return (
     <>
       <AdminNav email={admin.email} />

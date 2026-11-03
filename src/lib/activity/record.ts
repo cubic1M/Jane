@@ -5,6 +5,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { isDemoItemId } from "@/lib/plaid/demo";
 import { isTrialUser } from "@/lib/trial-ids";
 import { anonymousOnly, sanitizeBatch, type ActivityRow } from "./sanitize";
+import { systemDb } from "@/lib/system-db";
 
 // Who the beta's activity log records: real signed-in beta users. Never a trial person
 // (sample data), an admin, or someone whose only bank is the demo bank; before sign-in, only
@@ -53,7 +54,10 @@ export async function recordActivity(
   if (rows.length > 0) {
     // Its own table, like analytics_events: written for the signed-in person only, read
     // across people only by the admin pages.
-    await client.activityEvent.createMany({
+    await systemDb(
+      "The activity log is written for whoever acted, rows for several people at once",
+      client,
+    ).activityEvent.createMany({
       data: rows.map((r) => ({
         ...r,
         userId: recording === "user" ? person!.id : null,

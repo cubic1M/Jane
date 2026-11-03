@@ -8,6 +8,9 @@ import { CopyButton } from "./copy-button";
 import { InviteForm } from "./invite-form";
 import { LoadingBar } from "@/components/loading-bar";
 import { isoDay as day } from "@/lib/dates";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Admin page: works across people, behind ADMIN_EMAILS and two-factor";
 
 const STATUS: Record<InviteStatus, string> = {
   active: "Active",
@@ -20,7 +23,7 @@ async function Invites() {
   const admin = await requireAdmin();
   // Codes aren't user data, so listing them isn't audit-logged; creating and revoking are.
   const [codes, waitlist] = await Promise.all([
-    db.inviteCode.findMany({
+    systemDb(WHY).inviteCode.findMany({
       select: {
         code: true,
         maxUses: true,
@@ -36,13 +39,13 @@ async function Invites() {
       orderBy: { createdAt: "desc" },
       take: 200,
     }),
-    db.waitlistEntry.findMany({
+    systemDb(WHY).waitlistEntry.findMany({
       select: { email: true, createdAt: true },
       orderBy: { createdAt: "desc" },
       take: 500,
     }),
   ]);
-  const makers = await db.user.findMany({
+  const makers = await systemDb(WHY).user.findMany({
     where: {
       id: { in: [...new Set(codes.flatMap((c) => (c.createdById ? [c.createdById] : [])))] },
     },

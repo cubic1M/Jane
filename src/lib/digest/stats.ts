@@ -1,6 +1,7 @@
 import { TRIAL_ID_PREFIX } from "@/config/trial";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
+import { systemDb } from "@/lib/system-db";
 
 // The weekly email's numbers, for the founders' numbers page: how many were sent since a date,
 // to how many people, how many were opened (Resend's open, when tracking is on) and how many
@@ -15,7 +16,7 @@ export async function digestNumbers({
   client?: PrismaClient;
   since: Date;
 }): Promise<DigestNumbers> {
-  const rows = await client.digest.findMany({
+  const rows = await systemDb("Founder metrics count across people", client).digest.findMany({
     where: { sentAt: { gte: since }, NOT: { userId: { startsWith: TRIAL_ID_PREFIX } } },
     select: { userId: true, emailOpenedAt: true, openedAt: true },
   });

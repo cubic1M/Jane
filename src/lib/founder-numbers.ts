@@ -13,6 +13,7 @@ import { db as defaultClient } from "@/lib/db";
 import { median } from "@/lib/metrics";
 import { formatWholeDollars } from "@/lib/money";
 import { FINDING_OUTCOME_PREFIX } from "@/lib/outcomes";
+import { systemDb } from "@/lib/system-db";
 
 // The founders' beta numbers on /admin/numbers, the ones they quote in applications. The same
 // real people as /admin/metrics' closed beta block (src/lib/beta-metrics.ts): no trial people,
@@ -162,13 +163,17 @@ export async function loadFounderRows({
   const [rows, activity, trialPeople] = await Promise.all([
     loadBetaRows({ client }),
     // The activity log has a row per click, so it's read once per person per hour.
-    client.$queryRaw<{ user_id: string; at: Date }[]>`
+    systemDb("Founder metrics count across people", client).$queryRaw<
+      { user_id: string; at: Date }[]
+    >`
       SELECT DISTINCT user_id, date_trunc('hour', created_at) AS at
       FROM activity_events
       WHERE user_id IS NOT NULL
         AND NOT starts_with(user_id, ${TRIAL_ID_PREFIX})
         AND created_at >= ${since}`,
-    client.user.count({ where: { id: { startsWith: TRIAL_ID_PREFIX } } }),
+    systemDb("Founder metrics count across people", client).user.count({
+      where: { id: { startsWith: TRIAL_ID_PREFIX } },
+    }),
   ]);
   return {
     ...rows,

@@ -8,6 +8,9 @@ import {
 } from "@/config/rate-limits";
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Rate limits are the system's own counters";
 
 // Fixed-window rate limiting in Postgres, so it holds across serverless instances
 // without another service. One atomic upsert per request.
@@ -39,8 +42,8 @@ function resultFor(name: LimitName, count: number, windowStart: Date, now: Date)
 function sometimesCleanUp(client: PrismaClient, now: Date) {
   if (Math.random() >= 0.01) return;
   const cutoff = new Date(now.getTime() - RATE_LIMIT_RETENTION_HOURS * 60 * 60 * 1000);
-  void client.rateLimit
-    .deleteMany({
+  void systemDb(WHY, client)
+    .rateLimit.deleteMany({
       where: {
         windowStart: { lt: cutoff },
         NOT: KEEP_RATE_LIMIT_PREFIXES.map((prefix) => ({ key: { startsWith: prefix } })),
@@ -55,7 +58,7 @@ export async function hit(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<RateResult> {
   const { key, windowStart } = windowFor(name, subject, now);
-  const [row] = await client.$queryRaw<{ count: number }[]>`
+  const [row] = await systemDb(WHY, client).$queryRaw<{ count: number }[]>`
     INSERT INTO rate_limits (key, window_start, count) VALUES (${key}, ${windowStart}, 1)
     ON CONFLICT (key, window_start) DO UPDATE SET count = rate_limits.count + 1
     RETURNING count`;
@@ -82,7 +85,7 @@ export async function hitMany(
   const values = Prisma.join(
     [...windows.values()].map((w) => Prisma.sql`(${w.key}, ${w.windowStart}, 1)`),
   );
-  const rows = await client.$queryRaw<{ key: string; count: number }[]>`
+  const rows = await systemDb(WHY, client).$queryRaw<{ key: string; count: number }[]>`
     INSERT INTO rate_limits (key, window_start, count) VALUES ${values}
     ON CONFLICT (key, window_start) DO UPDATE SET count = rate_limits.count + 1
     RETURNING key, count`;
@@ -107,7 +110,7 @@ export async function giveBack(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<void> {
   const { key, windowStart } = windowFor(name, subject, now);
-  await client.$executeRaw`
+  await systemDb(WHY, client).$executeRaw`
     UPDATE rate_limits SET count = GREATEST(count - 1, 0)
     WHERE key = ${key} AND window_start = ${windowStart}`;
 }

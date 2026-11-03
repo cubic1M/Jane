@@ -3,6 +3,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { giveBack, hit } from "@/lib/rate-limit";
 import { isTrialUser } from "@/lib/trial-ids";
+import { systemDb } from "@/lib/system-db";
 
 // What Claude answering every typed message may cost (docs/spec.md, "Chat architecture"): a
 // sample person's allowance of answers, and a monthly guard on all of Claude's chat spend.
@@ -26,7 +27,7 @@ export async function addMonthlySpend(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<void> {
   if (hundredthsOfCents <= 0) return;
-  await client.$executeRaw`
+  await systemDb("Rate limits are the system's own counters", client).$executeRaw`
     INSERT INTO rate_limits (key, window_start, count) VALUES (${MONTH_KEY}, ${monthStart(now)}, ${hundredthsOfCents})
     ON CONFLICT (key, window_start) DO UPDATE SET count = rate_limits.count + ${hundredthsOfCents}`;
 }
@@ -35,7 +36,10 @@ export async function monthlySpentCents({
   client = defaultClient,
   now = new Date(),
 }: Options = {}): Promise<number> {
-  const row = await client.rateLimit.findUnique({
+  const row = await systemDb(
+    "Rate limits are the system's own counters",
+    client,
+  ).rateLimit.findUnique({
     where: { key_windowStart: { key: MONTH_KEY, windowStart: monthStart(now) } },
     select: { count: true },
   });

@@ -7,6 +7,9 @@ import { db } from "@/lib/db";
 import { validateMerchant } from "@/lib/merchants";
 import { requireAdmin } from "@/lib/session";
 import { resumeForMerchant } from "@/lib/agent/run";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Admin page: works across people, behind ADMIN_EMAILS and two-factor";
 
 export type MerchantState = { ok: boolean; message: string } | null;
 
@@ -39,8 +42,8 @@ export async function saveMerchant(
   };
   try {
     const saved = id
-      ? await db.merchant.update({ where: { id }, data, select: { id: true } })
-      : await db.merchant.create({ data, select: { id: true } });
+      ? await systemDb(WHY).merchant.update({ where: { id }, data, select: { id: true } })
+      : await systemDb(WHY).merchant.create({ data, select: { id: true } });
     await logAudit(
       { type: "admin", id: admin.id },
       "merchant_saved",
@@ -70,9 +73,9 @@ export async function confirmSuggestion(formData: FormData): Promise<void> {
   const admin = await requireAdmin();
   const id = field(formData, "id");
   const accept = formData.get("accept") === "yes";
-  const merchant = await db.merchant.findUnique({ where: { id } });
+  const merchant = await systemDb(WHY).merchant.findUnique({ where: { id } });
   if (!merchant?.suggestedSupportEmail) return;
-  await db.merchant.update({
+  await systemDb(WHY).merchant.update({
     where: { id },
     data: {
       ...(accept ? { supportEmail: merchant.suggestedSupportEmail } : {}),

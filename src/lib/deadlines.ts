@@ -36,6 +36,7 @@ import { log } from "@/lib/log";
 import { priceRiseDeadlines } from "@/lib/price-rises";
 import { peopleIn, type OnlyPeople } from "@/lib/only-people";
 import { DEBT_ACCOUNT_SELECT } from "@/insights/loans";
+import { systemDb } from "@/lib/system-db";
 
 // Deadlines (spec step 71): loads each source's data, keeps the deadlines the person types
 // in, and raises the deadline_soon reminders (src/insights/deadlines.ts decides which).
@@ -273,7 +274,7 @@ export async function remindAllDeadlines({
   failed: number;
 }> {
   // A system job across all users: it reads ids only, and remindDeadlines scopes each one.
-  const users = await client.user.findMany({
+  const users = await systemDb("Cron: finds who to run for, across people", client).user.findMany({
     where: {
       deletedAt: null,
       OR: [{ accounts: { some: {} } }, { deadlines: { some: { doneAt: null } } }],

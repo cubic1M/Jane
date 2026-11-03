@@ -6,6 +6,9 @@ import { logAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { validatePartner } from "@/lib/referrals";
 import { requireAdmin } from "@/lib/session";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Admin page: works across people, behind ADMIN_EMAILS and two-factor";
 
 export type PartnerState = { ok: boolean; message: string } | null;
 
@@ -30,8 +33,12 @@ export async function savePartner(
   const id = field(formData, "id");
   try {
     const saved = id
-      ? await db.referralPartner.update({ where: { id }, data: checked.data, select: { id: true } })
-      : await db.referralPartner.create({ data: checked.data, select: { id: true } });
+      ? await systemDb(WHY).referralPartner.update({
+          where: { id },
+          data: checked.data,
+          select: { id: true },
+        })
+      : await systemDb(WHY).referralPartner.create({ data: checked.data, select: { id: true } });
     await logAudit(
       { type: "admin", id: admin.id },
       "referral_partner_saved",
@@ -53,7 +60,10 @@ export async function savePartner(
 export async function turnOffPartner(formData: FormData): Promise<void> {
   const admin = await requireAdmin();
   const id = field(formData, "id");
-  const { count } = await db.referralPartner.updateMany({ where: { id }, data: { active: false } });
+  const { count } = await systemDb(WHY).referralPartner.updateMany({
+    where: { id },
+    data: { active: false },
+  });
   if (count > 0) {
     await logAudit(
       { type: "admin", id: admin.id },

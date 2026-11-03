@@ -13,6 +13,7 @@ import { QUESTIONS, type CheckQuestion } from "./bank";
 import { loadFacts, type Facts } from "./facts";
 import { fixedChecks, fixedScore, reasonOf, type Check } from "./grade";
 import { GRADER_VERSION, gradeWithClaude, type ClaudeGrade, type Usage } from "./grader";
+import { systemDb } from "@/lib/system-db";
 
 // Runs Jane's answer checks (spec step 87) for one demo-bank person: asks each question in
 // the chat as the person would (follow-ups right after their first question, each
@@ -202,7 +203,7 @@ async function runChecks(
     const facts = who.facts;
     const db = scopedFor(who.userId, client);
     await db.janeMessages.deleteMany({ where: { kind: { in: ["user", "reply"] } } });
-    await client.rateLimit.deleteMany({
+    await systemDb("Rate limits are the system's own counters", client).rateLimit.deleteMany({
       where: {
         key: { in: [`chat:${who.userId}`, `ask:${who.userId}`, `chatspend:${who.userId}`] },
       },

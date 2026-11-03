@@ -3,6 +3,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { replyAddress } from "./mail";
 import { rollOf } from "@/lib/hash";
+import { systemDb } from "@/lib/system-db";
 
 // A stand-in for a company's support inbox, used when real agent email isn't set up and
 // never in production (src/lib/agent/mail.ts). It answers like a support team would, so
@@ -100,7 +101,10 @@ export async function simulatedReply(
     (action.decision.finding.evidence as { merchant?: unknown } | null)?.merchant ?? "The company",
   );
   const kind = simulatedKind(action.id, action.agentMessages.length);
-  const replyTo = await client.action.findUnique({
+  const replyTo = await systemDb(
+    "The simulated company replies by action id, as a real company's email would",
+    client,
+  ).action.findUnique({
     where: { id: action.id },
     select: { replyToken: true },
   });

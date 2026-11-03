@@ -12,6 +12,7 @@ import { DEMO_ASSETS } from "@/lib/plaid/demo-assets";
 import { peopleIn, type OnlyPeople } from "@/lib/only-people";
 import { hasDemoBank } from "@/lib/plaid/demo";
 import { SAMPLE_WIN_KEY } from "@/lib/sample-wins";
+import { systemDb } from "@/lib/system-db";
 
 // Derived data never outlives its evidence (card-chat mismatch; design in the shared notes,
 // card-chat-mismatch.md). A finding, the decision and actions taken on it, a savings-ledger line
@@ -312,7 +313,7 @@ export async function removeAllOrphans({
   userIds,
 }: Options & OnlyPeople = {}): Promise<{ users: number; removed: Removed; failed: number }> {
   // A system job across all users: it reads ids only, and removeOrphans scopes each one.
-  const users = await client.user.findMany({
+  const users = await systemDb("Cron: finds who to run for, across people", client).user.findMany({
     where: {
       OR: [
         { findings: { some: {} } },

@@ -26,6 +26,7 @@ import {
 } from "@/planning/rollover";
 import { profileOf } from "./profile";
 import { isoDay as iso } from "@/lib/dates";
+import { systemDb } from "@/lib/system-db";
 
 // Old accounts brought home (spec step 211), for its page, Jane's questions and its
 // buttons. Past employers come from payroll history and the person's own answers (a
@@ -314,7 +315,10 @@ export async function settleAllRollovers({
   client = defaultClient,
   now = new Date(),
 }: Options = {}) {
-  const people = await client.oldPlan.findMany({
+  const people = await systemDb(
+    "Cron: finds who to run for, across people",
+    client,
+  ).oldPlan.findMany({
     where: { status: "rolling" },
     select: { userId: true },
     distinct: ["userId"],

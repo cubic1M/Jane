@@ -2,6 +2,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { log } from "@/lib/log";
 import { syncDemoInvestments } from "@/lib/plaid/sync";
+import { systemDb } from "@/lib/system-db";
 
 // The nightly price refresh (spec step 156): every demo bank's holdings revalued at the
 // stand-in feed's latest prices. Real banks' prices come with their own sync.
@@ -11,7 +12,10 @@ export async function refreshDemoPrices({
   now = new Date(),
 }: { client?: PrismaClient; now?: Date } = {}) {
   // A system job across all users: it reads item ids only; each refresh is scoped.
-  const items = await client.plaidItem.findMany({
+  const items = await systemDb(
+    "Cron: refreshes prices across demo people",
+    client,
+  ).plaidItem.findMany({
     where: { plaidItemId: { startsWith: "demo-" }, investments: true, user: { deletedAt: null } },
     select: { id: true },
   });

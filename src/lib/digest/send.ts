@@ -34,6 +34,9 @@ import { whyNoDigest, type NoDigestReason } from "./recipients";
 import { unsubscribeToken } from "./unsubscribe";
 import { weekStart } from "./week";
 import { peopleIn, type OnlyPeople } from "@/lib/only-people";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Cron: the digest goes out across people";
 
 // Runs daily (Vercel Cron). Each person gets one digest per week, on the first run that
 // falls on their Monday or later, so everyone gets it on Monday in their own timezone. It's the
@@ -106,7 +109,10 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
       select: { sentAt: true },
     }),
     offerFor(userId, { client, now }),
-    client.user.findUnique({ where: { id: userId }, select: { alertPrefs: true } }),
+    systemDb(WHY, client).user.findUnique({
+      where: { id: userId },
+      select: { alertPrefs: true },
+    }),
   ]);
   const months =
     read._min.date && read._max.date
@@ -306,7 +312,7 @@ export async function runDigests({
 }: Options & OnlyPeople = {}): Promise<DigestRun> {
   // Active people: digest on, not deleted, at least one account, never a trial person. Then
   // whyNoDigest leaves out anyone whose only bank is the demo bank.
-  const candidates = await client.user.findMany({
+  const candidates = await systemDb(WHY, client).user.findMany({
     where: {
       digestEnabled: true,
       deletedAt: null,
@@ -326,7 +332,7 @@ export async function runDigests({
     },
     orderBy: { id: "asc" },
   });
-  const csvAccounts = await client.account.groupBy({
+  const csvAccounts = await systemDb(WHY, client).account.groupBy({
     by: ["userId"],
     where: { source: "csv", userId: { in: candidates.map((c) => c.id) } },
     _count: { _all: true },

@@ -26,6 +26,7 @@ import { loadInvestments } from "./holdings";
 import { profileOf } from "./profile";
 import { loadRebalance, placeRebalance } from "./rebalance";
 import { isoDay as iso } from "@/lib/dates";
+import { systemDb } from "@/lib/system-db";
 
 // Fully automatic investing (spec step 164), run nightly. Within the person's caps at the
 // investing sector's "Everything allowed", Jane rebalances, invests new cash and harvests
@@ -161,7 +162,10 @@ export async function runAutomaticInvestingForAll({
   client = defaultClient,
   now = new Date(),
 }: Options = {}) {
-  const sectors = await client.autopilotSector.findMany({
+  const sectors = await systemDb(
+    "Cron: finds who to run for, across people",
+    client,
+  ).autopilotSector.findMany({
     where: { sector: AUTO_SECTOR, level: "all", user: { deletedAt: null } },
     select: { userId: true },
     take: 500,

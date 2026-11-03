@@ -5,6 +5,9 @@ import { logAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/session";
 import { validateOption, type OptionInput } from "@/lib/switch-options";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Admin page: works across people, behind ADMIN_EMAILS and two-factor";
 
 export type OptionState = { ok: boolean; message: string } | null;
 
@@ -40,7 +43,10 @@ export async function saveOption(_previous: OptionState, formData: FormData): Pr
     today(),
   );
   if (!checked.ok) return checked;
-  const saved = await db.switchOption.create({ data: checked.data, select: { id: true } });
+  const saved = await systemDb(WHY).switchOption.create({
+    data: checked.data,
+    select: { id: true },
+  });
   await logAudit(
     { type: "admin", id: admin.id },
     "switch_option_saved",
@@ -55,7 +61,7 @@ export async function saveOption(_previous: OptionState, formData: FormData): Pr
 export async function markChecked(formData: FormData): Promise<void> {
   const admin = await requireAdmin();
   const id = String(formData.get("id") ?? "");
-  const { count } = await db.switchOption.updateMany({
+  const { count } = await systemDb(WHY).switchOption.updateMany({
     where: { id, demo: false },
     data: { checkedAt: new Date(`${today()}T00:00:00Z`), reviewedAt: new Date() },
   });
@@ -72,7 +78,7 @@ export async function markChecked(formData: FormData): Promise<void> {
 export async function removeOption(formData: FormData): Promise<void> {
   const admin = await requireAdmin();
   const id = String(formData.get("id") ?? "");
-  const { count } = await db.switchOption.deleteMany({ where: { id, demo: false } });
+  const { count } = await systemDb(WHY).switchOption.deleteMany({ where: { id, demo: false } });
   if (count === 0) return;
   await logAudit(
     { type: "admin", id: admin.id },

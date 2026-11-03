@@ -7,6 +7,7 @@ import {
   type FindingType,
   type PrismaClient,
 } from "@/generated/prisma/client";
+import { type SystemDb, systemDb } from "@/lib/system-db";
 import { notBetaPeople } from "./beta-metrics";
 import { median, referralRevenue, type AutomateRow, type Metrics, type Window } from "./metrics";
 
@@ -14,7 +15,7 @@ import { median, referralRevenue, type AutomateRow, type Metrics, type Window } 
 // team's page doesn't load every row as people join. computeMetrics stays the readable
 // definition; metrics-sql.integration.test.ts checks the two agree on the same data.
 
-type Client = Pick<PrismaClient, "$queryRaw">;
+type Client = Pick<SystemDb, "$queryRaw" | "__system">;
 
 const DAY_SECONDS = 24 * 60 * 60;
 // 30-day retention: did a linked user come back in days 23 to 30 after linking?
@@ -39,11 +40,12 @@ const counted = (leftOut: string[]) => (column: string) =>
 
 // The whole table on /admin/metrics, for each window of days up to now.
 export async function metricsSql(
-  client: PrismaClient,
+  rawClient: PrismaClient,
   days: number[],
   now: Date,
 ): Promise<{ windows: { days: number; metrics: Metrics }[]; automateNext: AutomateRow[] }> {
-  const leftOut = await notBetaPeople({ client });
+  const leftOut = await notBetaPeople({ client: rawClient });
+  const client = systemDb("Founder metrics count across people", rawClient);
   const windows = [];
   for (const d of days) {
     const w = { start: new Date(now.getTime() - d * DAY_SECONDS * 1000), end: now };

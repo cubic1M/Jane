@@ -13,6 +13,9 @@ import type { Admin } from "@/lib/concierge";
 import { db as defaultClient } from "@/lib/db";
 import { TRIAL_ID_PREFIX } from "@/config/trial";
 import { DAY_MS } from "@/lib/dates";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Founder metrics count across people";
 
 // The spec's success metrics, for /admin/metrics. computeMetrics is pure (rows in,
 // numbers out) so each definition is tested; loadMetrics reads the rows.
@@ -241,9 +244,16 @@ export async function loadMetricRows({
     digests,
     conversions,
   ] = await Promise.all([
-    client.user.findMany({ where: { id: REAL }, select: { id: true, createdAt: true } }),
-    client.account.groupBy({ by: ["userId"], where: { userId: REAL }, _min: { createdAt: true } }),
-    client.finding.findMany({
+    systemDb(WHY, client).user.findMany({
+      where: { id: REAL },
+      select: { id: true, createdAt: true },
+    }),
+    systemDb(WHY, client).account.groupBy({
+      by: ["userId"],
+      where: { userId: REAL },
+      _min: { createdAt: true },
+    }),
+    systemDb(WHY, client).finding.findMany({
       where: { userId: REAL },
       select: {
         id: true,
@@ -254,20 +264,20 @@ export async function loadMetricRows({
         annualSavingsCents: true,
       },
     }),
-    client.analyticsEvent.findMany({
+    systemDb(WHY, client).analyticsEvent.findMany({
       where: { name: "card_opened" },
       select: { properties: true, createdAt: true },
     }),
     // A finding Jane posted in the chat counts as shown, like a card opened on its page.
-    client.janeMessage.findMany({
+    systemDb(WHY, client).janeMessage.findMany({
       where: { userId: REAL },
       select: { refs: true, createdAt: true },
     }),
-    client.decision.findMany({
+    systemDb(WHY, client).decision.findMany({
       where: { undoneAt: null, userId: REAL },
       select: { choice: true, createdAt: true, finding: { select: { type: true } } },
     }),
-    client.action.findMany({
+    systemDb(WHY, client).action.findMany({
       where: { userId: REAL },
       select: {
         userId: true,
@@ -278,19 +288,19 @@ export async function loadMetricRows({
         minutesSpent: true,
       },
     }),
-    client.membershipIntent.findMany({
+    systemDb(WHY, client).membershipIntent.findMany({
       where: { userId: REAL },
       select: { userId: true, createdAt: true },
     }),
-    client.analyticsEvent.findMany({
+    systemDb(WHY, client).analyticsEvent.findMany({
       where: { userId: { not: null } },
       select: { userId: true, createdAt: true },
     }),
-    client.digest.findMany({
+    systemDb(WHY, client).digest.findMany({
       where: { openedAt: { not: null }, userId: REAL },
       select: { userId: true, openedAt: true },
     }),
-    client.referralConversion.findMany({
+    systemDb(WHY, client).referralConversion.findMany({
       select: { amountCents: true, createdAt: true, partner: { select: { name: true } } },
     }),
   ]);

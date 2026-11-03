@@ -16,6 +16,9 @@ import {
   type Current,
 } from "@/planning/compare";
 import { DAY_MS } from "@/lib/dates";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Provider options are shared reference data, no one's own";
 
 // Loads the options Jane may compare and works out the comparison for a finding (spec
 // step 76). Only options the team reviewed are compared; the demo examples only for people
@@ -33,7 +36,7 @@ export async function usableOptions({
   now = new Date(),
   includeDemo = false,
 }: Options & { includeDemo?: boolean } = {}): Promise<CompareOption[]> {
-  const rows = await client.switchOption.findMany({
+  const rows = await systemDb(WHY, client).switchOption.findMany({
     where: {
       checkedAt: { gte: new Date(now.getTime() - OPTION_STALE_DAYS * DAY_MS) },
       OR: [
@@ -71,13 +74,13 @@ export async function ensureDemoOptions({
 }: Options = {}) {
   if (!demoOptionsAllowed()) return;
   const checkedAt = new Date(`${now.toISOString().slice(0, 10)}T00:00:00Z`);
-  await client.switchOption.createMany({
+  await systemDb(WHY, client).switchOption.createMany({
     data: DEMO_OPTIONS.map((o) => ({ ...o, demo: true, checkedAt })),
     skipDuplicates: true,
   });
   // Only ever forward: these rows are shared, and one caller's older date would make every option
   // read as stale for everyone else (debugger 11-02).
-  await client.switchOption.updateMany({
+  await systemDb(WHY, client).switchOption.updateMany({
     where: { demo: true, checkedAt: { lt: checkedAt } },
     data: { checkedAt },
   });
@@ -127,7 +130,10 @@ export async function comparisonFor(
   finding: FindingLike,
   { userId, client = defaultClient, now = new Date() }: CompareFor,
 ): Promise<Comparison | null> {
-  const directory = await client.merchant.findMany({
+  const directory = await systemDb(
+    "Merchants are shared reference data, no one's own",
+    client,
+  ).merchant.findMany({
     select: { key: true, name: true, aliases: true, category: true },
   });
   const current = currentFor(finding, directory);
@@ -143,7 +149,10 @@ export async function comparisonsFor(
   { userId, client = defaultClient, now = new Date() }: CompareFor,
 ): Promise<(Comparison | null)[]> {
   if (findings.length === 0) return [];
-  const directory = await client.merchant.findMany({
+  const directory = await systemDb(
+    "Merchants are shared reference data, no one's own",
+    client,
+  ).merchant.findMany({
     select: { key: true, name: true, aliases: true, category: true },
   });
   const currents = findings.map((f) => currentFor(f, directory));

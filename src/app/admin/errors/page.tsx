@@ -3,11 +3,14 @@ import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
 import { LoadingBar } from "@/components/loading-bar";
+import { systemDb } from "@/lib/system-db";
 
 // Recent server errors, already scrubbed of personal data (src/lib/error-log.ts).
 async function Errors() {
   const admin = await requireAdmin();
-  const errors = await db.errorEvent.findMany({ orderBy: { createdAt: "desc" }, take: 100 });
+  const errors = await systemDb(
+    "Admin page: works across people, behind ADMIN_EMAILS and two-factor",
+  ).errorEvent.findMany({ orderBy: { createdAt: "desc" }, take: 100 });
   return (
     <>
       <AdminNav email={admin.email} />

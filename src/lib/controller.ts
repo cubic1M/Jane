@@ -45,6 +45,9 @@ import type { StepLog, StepResult } from "./controller-log";
 import { logsOf } from "./controller-log";
 import { isoDay as day } from "@/lib/dates";
 import { ownedBy, type OnlyPeople } from "@/lib/only-people";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Cron: finds who to run for, across people";
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -316,13 +319,16 @@ export async function queueNightlyRuns({
   const today = day(now);
   // A system job across people: ids only. Each run is scoped to its person.
   const [people, ran, waiting] = await Promise.all([
-    client.account.findMany({
+    systemDb(WHY, client).account.findMany({
       where: ownedBy(userIds),
       distinct: ["userId"],
       select: { userId: true },
     }),
-    client.controllerRun.findMany({ where: { day: today }, select: { userId: true } }),
-    client.job.findMany({
+    systemDb(WHY, client).controllerRun.findMany({
+      where: { day: today },
+      select: { userId: true },
+    }),
+    systemDb(WHY, client).job.findMany({
       where: { kind: "controller_run", status: { in: ["queued", "running"] } },
       select: { payload: true },
     }),

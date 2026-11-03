@@ -96,7 +96,7 @@ const stateOf = (a: Loaded): LedgerState => ({
 
 // Writes a state's positions over the account's (in a transaction).
 async function savePositions(
-  tx: Pick<PersonTx, "paperPosition">,
+  tx: PersonTx,
   userId: string,
   accountId: string,
   state: LedgerState,

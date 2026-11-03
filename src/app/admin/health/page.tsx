@@ -65,6 +65,15 @@ async function Health() {
           {" · "}
           {report.rls.switchWorks ? "this server switches to it" : "this server can't switch to it"}
         </p>
+        <p className="text-sm" data-testid="deny-by-default">
+          {report.rls.login.denied
+            ? `Deny by default: on. This server logs in as ${report.rls.login.login}, which can use no table by itself`
+            : `Deny by default: off. This server logs in as ${report.rls.login.login}, which can use every table by itself`}
+          {" · "}
+          {report.rls.systemSwitch
+            ? "system queries switch to jane_system"
+            : "system queries can't switch to jane_system"}
+        </p>
         <details className="rounded-xl border border-zinc-200 text-sm dark:border-zinc-800">
           <summary className="cursor-pointer px-4 py-3 font-medium">Every table</summary>
           <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">

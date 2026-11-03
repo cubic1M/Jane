@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { describeClientError } from "@/lib/client-errors";
 import { ipKey, limitOrNull } from "@/lib/rate-limit";
+import { systemDb } from "@/lib/system-db";
 
 // A page that broke in the browser (src/app/error.tsx) tells /admin/errors: scrubbed of anything
 // typed (src/lib/client-errors.ts). Server errors are logged where they happen (instrumentation),
@@ -25,7 +26,9 @@ export async function POST(request: Request) {
   const error = describeClientError(parsed);
   if (!error) return NextResponse.json({ ok: false }, { status: 400 });
   try {
-    await db.errorEvent.create({ data: { ...error, method: null, routeType: "client" } });
+    await systemDb("The error log is the system's own record").errorEvent.create({
+      data: { ...error, method: null, routeType: "client" },
+    });
   } catch {
     // Never let error logging cause another error.
   }

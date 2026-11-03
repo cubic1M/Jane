@@ -6,6 +6,9 @@ import { errorKind, safePath } from "@/lib/error-kind";
 import { teamEmails } from "@/lib/health";
 import { log } from "@/lib/log";
 import { hit } from "@/lib/rate-limit";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "The error log and its alerts are the system's own records";
 
 // Knowing when Jane breaks before people tell us (founder, 2026-10-26): a server error emails the
 // team (ADMIN_EMAILS, through Resend) at most once per kind of error per ERROR_ALERT_MINUTES,
@@ -44,13 +47,13 @@ export async function alertError(
     const key = `error:${kind}:${where}`;
     // Claims the alert: a new kind, or one last emailed long enough ago. Two errors at once
     // send one email.
-    const created = await client.healthNotice.createMany({
+    const created = await systemDb(WHY, client).healthNotice.createMany({
       data: [{ key, reportedAt: now }],
       skipDuplicates: true,
     });
     let claimed = created.count === 1;
     if (!claimed) {
-      const { count } = await client.healthNotice.updateMany({
+      const { count } = await systemDb(WHY, client).healthNotice.updateMany({
         where: { key, reportedAt: { lt: new Date(now.getTime() - ERROR_ALERT_MINUTES * MINUTE) } },
         data: { reportedAt: now },
       });
@@ -105,14 +108,14 @@ export async function sendErrorDigest({
 }: Options = {}): Promise<number> {
   const to = teamEmails();
   if (to.length === 0) return 0;
-  const events = await client.errorEvent.findMany({
+  const events = await systemDb(WHY, client).errorEvent.findMany({
     where: { createdAt: { gte: new Date(now.getTime() - DAY), lt: now } },
     select: { message: true, path: true },
     take: 10_000,
   });
   if (events.length === 0) return 0;
   // Once per day, even if the job runs twice.
-  const { count } = await client.healthNotice.createMany({
+  const { count } = await systemDb(WHY, client).healthNotice.createMany({
     data: [{ key: `error-digest:${now.toISOString().slice(0, 10)}`, reportedAt: now }],
     skipDuplicates: true,
   });
@@ -140,7 +143,7 @@ export async function sendErrorDigest({
     await Promise.all(to.map((address) => send({ ...message, to: address })));
   } catch (failure) {
     // Unclaim, so the next run tries again.
-    await client.healthNotice.deleteMany({
+    await systemDb(WHY, client).healthNotice.deleteMany({
       where: { key: `error-digest:${now.toISOString().slice(0, 10)}` },
     });
     log.error("Error digest failed", { error: String(failure) });

@@ -4,6 +4,7 @@ import type { ActionType, Merchant, PrismaClient } from "@/generated/prisma/clie
 import { db as defaultClient } from "@/lib/db";
 import { outcomeAt, type Outcome } from "@/lib/merchant-outcomes";
 import { parseMoneyToCents } from "@/lib/money";
+import { systemDb } from "@/lib/system-db";
 
 // The merchant directory (shared knowledge about companies, never about people): reading
 // it for the app, and checking what the team types at /admin/merchants.
@@ -123,7 +124,9 @@ export function validateMerchant(
 }
 
 export async function listMerchants({ client = defaultClient }: { client?: PrismaClient } = {}) {
-  return client.merchant.findMany({ orderBy: { name: "asc" } });
+  return systemDb("Merchants are shared reference data, no one's own", client).merchant.findMany({
+    orderBy: { name: "asc" },
+  });
 }
 
 export type CompanyFacts = { merchant: Merchant | null; outcome: Outcome | null };
@@ -147,7 +150,10 @@ export async function companyFacts(
 ): Promise<CompanyFacts> {
   const key = name ? normalizeAlias(name) : null;
   if (!key) return { merchant: null, outcome: null };
-  const rows = await client.merchant.findMany();
+  const rows = await systemDb(
+    "Merchants are shared reference data, no one's own",
+    client,
+  ).merchant.findMany();
   const match = findInDirectory(key, rows);
   const merchant = match ? (rows.find((r) => r.key === match.key) ?? null) : null;
   // A company the directory doesn't know counts its cases under its normalized name.

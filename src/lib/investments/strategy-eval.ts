@@ -9,6 +9,7 @@ import { alignUniverse, type Metrics } from "@/planning/strategies/engine";
 import { selectForLevel, type LevelSelection } from "@/planning/strategies/select";
 import type { Params } from "@/planning/strategies/types";
 import { isoDay as day } from "@/lib/dates";
+import { systemDb } from "@/lib/system-db";
 
 // The daily strategy evaluation (Phase AW, Stage A), run by Vercel Cron after the 09:00 history load
 // (/api/cron/strategy-eval): every strategy in the library replayed for every level over the
@@ -86,7 +87,10 @@ export async function runStrategyEvaluation({
   }));
   const from = out.data.dates[0];
   const to = out.data.dates[out.data.dates.length - 1];
-  const row = await client.strategyEvaluation.create({
+  const row = await systemDb(
+    "Strategy evaluations are system-wide, no one's own",
+    client,
+  ).strategyEvaluation.create({
     data: {
       ranAt: now,
       source: stored.source,
@@ -112,7 +116,10 @@ export type LatestStrategies = {
 export async function latestStrategies({
   client = defaultClient,
 }: Pick<Options, "client"> = {}): Promise<LatestStrategies | null> {
-  const row = await client.strategyEvaluation.findFirst({
+  const row = await systemDb(
+    "Strategy evaluations are system-wide, no one's own",
+    client,
+  ).strategyEvaluation.findFirst({
     orderBy: { ranAt: "desc" },
     select: { ranAt: true, source: true, fromDate: true, toDate: true, chosen: true },
   });

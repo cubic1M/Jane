@@ -5,6 +5,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { log } from "@/lib/log";
 import type { OnlyPeople } from "@/lib/only-people";
 import { forgetSince, removeOrphans } from "./orphans";
+import { systemDb } from "@/lib/system-db";
 
 // The one-off cleanup for demo banks disconnected before forgetSince existed (card-chat
 // mismatch): the founder's account kept the demo bank's Comcast, Verizon and Planet Fitness
@@ -29,7 +30,10 @@ export async function forgetRemovedDemoBanks({
   failed: number;
 }> {
   // A system job: the audit log isn't anyone's table; each person's rows are scoped below.
-  const removed = await client.auditLog.findMany({
+  const removed = await systemDb(
+    "One-off backfill across people, from the audit log",
+    client,
+  ).auditLog.findMany({
     where: {
       event: "item_removed",
       targetType: "plaid_item",
@@ -43,11 +47,20 @@ export async function forgetRemovedDemoBanks({
     const userId = (r.metadata as { user_id?: unknown }).user_id;
     if (!r.targetId || typeof userId !== "string") continue;
     if (userIds && !userIds.includes(userId)) continue;
-    if (!(await client.user.findFirst({ where: { id: userId }, select: { id: true } }))) continue;
+    if (
+      !(await scopedFor(userId, client).me.findFirst({
+        where: { id: userId },
+        select: { id: true },
+      }))
+    )
+      continue;
     const db = scopedFor(userId, client);
     const key = `${DONE}${r.targetId}`;
     if (await db.janePreferences.findFirst({ where: { kind: "system", key } })) continue;
-    const linked = await client.auditLog.findFirst({
+    const linked = await systemDb(
+      "One-off backfill across people, from the audit log",
+      client,
+    ).auditLog.findFirst({
       where: { event: "item_linked", targetType: "plaid_item", targetId: r.targetId },
       orderBy: { createdAt: "asc" },
       select: { createdAt: true },

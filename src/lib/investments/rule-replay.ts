@@ -42,6 +42,7 @@ import {
   type RuleEffect,
   type Strategy,
 } from "@/planning/rule-replay";
+import { systemDb } from "@/lib/system-db";
 
 // "Did the extra rules help?" (the rule replay) for the backtest view and Jane's backtest tool:
 // for each level, the autopilot with its opportunity rules against plain rebalancing and buy and
@@ -253,7 +254,7 @@ async function replayHistory(to: string, client: PrismaClient): Promise<History>
       const more = await storedHistory([t], HISTORY_START, to, { client });
       if (more) bars[t] = more.bars[t];
     }
-    const rows = await client.marketNews.findMany({
+    const rows = await systemDb("Market data is shared, no one's own", client).marketNews.findMany({
       where: {
         feed: stored.source,
         kind: "headline",

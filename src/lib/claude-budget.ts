@@ -16,6 +16,8 @@ import {
 import { costInHundredthsOfCents } from "@/lib/jane-agent/spend";
 import { isTrialUser } from "@/lib/trial-ids";
 import { DAY_MS } from "@/lib/dates";
+import { systemDb } from "@/lib/system-db";
+import { scopedFor } from "@/lib/db-scoped";
 
 // What Claude may cost for one person outside the chat (plan item 13): reading an upload, writing
 // a card's words, sorting merchants, drafting a message. Uploads and statements are what a person
@@ -38,7 +40,10 @@ const dayStart = (now: Date) => new Date(Math.floor(now.getTime() / DAY_MS) * DA
 const monthStart = (now: Date) => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 
 async function counted(client: PrismaClient, key: string, windowStart: Date): Promise<number> {
-  const row = await client.rateLimit.findUnique({
+  const row = await systemDb(
+    "Rate limits are the system's own counters",
+    client,
+  ).rateLimit.findUnique({
     where: { key_windowStart: { key, windowStart } },
     select: { count: true },
   });
@@ -66,7 +71,7 @@ export async function backgroundCapHit(
   const { today, month } = await backgroundSpentCents(userId, { client, now });
   // Whatever a caller forgot: a sample person's background work never reaches Claude (src/lib/trial.ts).
   if (isTrialUser(userId)) return true;
-  const user = await client.user.findUnique({
+  const user = await scopedFor(userId, client).me.findUnique({
     where: { id: userId },
     select: { role: true, email: true },
   });
@@ -94,7 +99,7 @@ export async function chargeBackground(
     [dayKey(userId), dayStart(now)],
     [monthKey(userId), monthStart(now)],
   ] as const) {
-    await client.$executeRaw`
+    await systemDb("Rate limits are the system's own counters", client).$executeRaw`
       INSERT INTO rate_limits (key, window_start, count) VALUES (${key}, ${windowStart}, ${amount})
       ON CONFLICT (key, window_start) DO UPDATE SET count = rate_limits.count + ${amount}`;
   }

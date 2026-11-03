@@ -23,6 +23,14 @@ const failing = (env: Record<string, string | undefined>) =>
     .map((c) => c.name);
 
 describe("launchChecks", () => {
+  it("asks for deny by default without holding up a launch", () => {
+    const check = launchChecks(READY).find((c) => c.name === "Deny by default");
+    expect(check).toMatchObject({ ok: false, required: false });
+    expect(
+      launchChecks({ ...READY, RLS_REQUIRED: "1" }).find((c) => c.name === "Deny by default")?.ok,
+    ).toBe(true);
+  });
+
   it("passes a complete production setup", () => {
     expect(failing(READY)).toEqual([]);
     expect(launchReady(launchChecks(READY))).toBe(true);

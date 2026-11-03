@@ -8,6 +8,7 @@ import { turnOffPartner } from "./actions";
 import { PartnerForm, type PartnerFormValues } from "./partner-form";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { systemDb } from "@/lib/system-db";
 
 const ACTION_TYPES = [
   "move_idle_cash",
@@ -35,7 +36,9 @@ const EMPTY: PartnerFormValues = {
 
 async function Partners() {
   const admin = await requireAdmin();
-  const partners = await db.referralPartner.findMany({
+  const partners = await systemDb(
+    "Admin page: works across people, behind ADMIN_EMAILS and two-factor",
+  ).referralPartner.findMany({
     orderBy: { key: "asc" },
     include: { conversions: { select: { amountCents: true } } },
   });
