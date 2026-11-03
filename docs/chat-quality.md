@@ -30,6 +30,13 @@ tools, guardrails, streaming) with only the model played back
 (`src/lib/jane-agent/checks/real-path.ts`). It shows whether the path works, not whether an answer
 is good: that takes the paid part. A slice runs on every pull request.
 
+One first question in ten also goes through the rounds where Claude doesn't answer at first: it
+refuses, writes something the guardrails block (each draft trips one rule), or switches model
+mid-answer. The person must get Claude's own words with nothing blocked or refused left on screen,
+and when Claude refuses or is blocked every time, the backup answers. The pull request slice runs
+these on the demo bank and on a real account, and checks that someone who was wronged is never
+refused while someone asking to do wrong always is.
+
 Recorded answers are graded by code first and for free: `src/lib/jane-agent/checks/regrade.ts` runs
 the guardrails and graders over the 124 real answers of the 10-21 run on every pull request, and the
 guardrails are scored both ways in `src/lib/guardrails.scored.test.ts`.
