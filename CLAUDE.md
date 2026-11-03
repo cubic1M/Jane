@@ -68,6 +68,9 @@ investment advice in this MVP.
 - Write tests for every rule and every API route you add
 - To say something works, name the command that proves it and show its output
 - Prefer small, readable modules over clever abstractions
+- End each PR body with the line `node scripts/ops/attribution.mjs` prints (lane, model, Claude Code
+  version, tokens): the numbers page reads it, because a product change looks like your own bug from
+  inside
 - When unsure about a Plaid field or category name, check the Plaid docs instead
   of guessing
 
