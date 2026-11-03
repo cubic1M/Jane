@@ -58,9 +58,7 @@ PARAMS = dict(
     resteal_read=6.0,    # > 0: scale the re-shove range by the opener's fold-to-re-raise rate / 0.65
                          #   (prior weight in hands; 0 = off). 1.0 with the read validated on fresh
                          #   seeds (results/sng_restealread_validate.md); 0.35 without it before
-    resteal_rel_bb=28.0,
-    fourbet_rel=0.0,     # > 0: my open re-raised (not all-in), eff <= fourbet_bb: 4-bet shove the top
-    fourbet_bb=40.0,     #   fourbet_rel x (the re-raiser's re-raise rate vs opens, prior 5%); 0 = off #   resteal_rel x (opener's open rate) of hands (f3_exploiter's rule); 0 = off.
+    resteal_rel_bb=28.0, #   resteal_rel x (opener's open rate) of hands (f3_exploiter's rule); 0 = off.
     push_steal=0.5,      # short-stack shoves use this share of the steal factor (fold read); 0 = off.
                          #   0.5 validated on fresh seeds (results/sng_pushsteal_validate.md)
     behind_k=0.2,        # facing a preflop raise: extra random hands per opponent still to act
