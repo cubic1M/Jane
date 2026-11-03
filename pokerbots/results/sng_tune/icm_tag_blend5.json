@@ -103,7 +103,44 @@
     ]
    ],
    "seconds": 1590
+  },
+  {
+   "round": 1,
+   "incumbent": "icm_tag",
+   "incumbent_points": 48.94239847682716,
+   "best": "icm_tag:open_mult=0.9727",
+   "gain": 3.3199410495179764,
+   "se": 1.9043621500468852,
+   "accepted": false,
+   "top5": [
+    [
+     "icm_tag:open_mult=0.9727",
+     3.32,
+     1.9
+    ],
+    [
+     "icm_tag:range_k=3.2",
+     2.9,
+     1.77
+    ],
+    [
+     "icm_tag:resteal_rel=1.15",
+     2.33,
+     1.17
+    ],
+    [
+     "icm_tag:bet_discount=0.6",
+     2.14,
+     1.69
+    ],
+    [
+     "icm_tag:cbet=0.75",
+     1.94,
+     1.52
+    ]
+   ],
+   "seconds": 1678
   }
  ],
- "round": 1
+ "round": 2
 }
