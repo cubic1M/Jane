@@ -491,6 +491,63 @@ class TestIcmTag(unittest.TestCase):
         self.assertEqual(acts[0.35][1], acts[0.35][2])                 # all-in
         self.assertNotEqual(acts[0.0][:2], acts[0.35][:2])
 
+    def test_resteal_read_narrows_against_openers_who_call_reraises(self):
+        """resteal_read: the same wide opener; a top-8..15% hand re-shoves when the opener's
+        response to re-raises is unknown, but not when it called all 20 re-raises it faced."""
+        import bisect as _b
+        from itertools import combinations as _c
+        from engine.cards import card_str
+        from sng.ours.icm_tag import hand_pct_table
+        from sng.table import Hand
+        from sng.tests.test_table import make_deck
+        r = SngRules(enforce_time=False)
+        from sng.ours import strength as S
+        S.preload(r.spec)
+        t = hand_pct_table(r.spec, S)
+        hole = None
+        for h in _c(r.spec.deck, 2):
+            top = 1.0 - _b.bisect_left(t, S.equity(h, (), 1, r.spec)) / len(t)
+            if 0.09 < top < 0.14 and (h[0] >> 2) != (h[1] >> 2):
+                hole = " ".join(card_str(x) for x in h)
+                break
+        self.assertIsNotNone(hole)
+        acts = {}
+        for name, seen in (("unknown", 0), ("caller", 20)):
+            b = IcmTag(resteal_rel=0.35, resteal_read=6)
+            b.new_table(r, 7, 1)
+            b.pre_raises[3], b.dealt[3] = 50, 100
+            b.o3_seen[3], b.o3_fold[3] = seen, 0
+            got = []
+
+            def decide(j, o, lg, b=b, got=got):
+                if j == 3 and o.street == 0 and not any(h[2] == "raise" for h in o.history):
+                    return RaiseTo(50)
+                if j == 7 and o.street == 0 and not got:
+                    a = b.act(o)
+                    got.append((a.kind, a.amount == lg.max_raise_to))
+                    return a
+                return lg.passive() if lg.can_check else Fold()
+            h = Hand(r, [2000] * 7 + [400], button=0, hand_number=0,
+                     deck=make_deck(["2c 3d", "4c 5d", "6c 7d", "8c 9d", "2h 3h", "4h 5h", "6h 7h", hole],
+                                    "Kd 9h 4s 3c 8h", r.spec))
+            h.play(decide, 8)
+            acts[name] = got[0]
+        self.assertEqual(acts["unknown"], ("raise", True))
+        self.assertNotEqual(acts["caller"], ("raise", True))
+
+    def test_opener_vs_reraise_counters(self):
+        """end_hand counts the opener's answer to the first re-raise (o3_seen / o3_fold)."""
+        b = IcmTag()
+        b.new_table(SngRules(enforce_time=False), 0, 1)
+        post = [(1, 0, "post", 10), (2, 0, "post", 20)]
+        fold_hist = post + [(3, 0, "raise", 50), (4, 0, "raise", 150), (5, 0, "fold", 0), (3, 0, "fold", 0)]
+        call_hist = post + [(3, 0, "raise", 50), (6, 0, "raise", 150), (3, 0, "call", 100)]
+        none_hist = post + [(3, 0, "raise", 50), (4, 0, "call", 50)]
+        for hist in (fold_hist, call_hist, none_hist):
+            b.end_hand(dict(history=tuple(hist), stacks=(2000,) * 8))
+        self.assertEqual((b.o3_seen[3], b.o3_fold[3]), (2, 1))
+        self.assertEqual(sum(b.o3_seen), 2)
+
 
 if __name__ == "__main__":
     unittest.main()
