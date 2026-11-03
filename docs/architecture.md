@@ -117,6 +117,7 @@ $CRON_SECRET`:
 | `/api/cron/strategy-eval` | 09:30 daily | Replays every strategy over the stored closes and saves each level's choice. |
 | `/api/cron/practice-scan` | 21:30 daily | Scans every practice portfolio and runs its autopilot, in the practice ledger only. |
 | `/api/cron/paper-run` | 22:00 daily | Values every paper account at the day's closes and leaves its trades in the trade pop-up. |
+| `/api/cron/events` | 22:30 daily | Refreshes the events the paper account's overlay reads. |
 
 Slow work that can fail goes through the jobs queue (`src/lib/jobs.ts`, the `jobs` table):
 claimed with `FOR UPDATE SKIP LOCKED`, retried with a growing wait, and shown on
@@ -128,23 +129,38 @@ claimed with `FOR UPDATE SKIP LOCKED`, retried with a growing wait, and shown on
   `*.integration.test.ts` run against a real, migrated Postgres when `TEST_DATABASE_URL` is
   set (CI always sets it).
 - `npm run test:e2e` runs Playwright. Signed-in tests need `E2E_DATABASE_URL` pointing at a
-  scratch database; CI runs them on a production build, in three shards, on a 375px phone
-  and a desktop.
+  scratch database; CI runs them on a production build, on a computer, and every night on a
+  phone (Pixel 7).
 - No test calls Claude for real: the chat runs without a key (rules answers) or with a fake
   client.
-- `.github/workflows/ci.yml` runs lint, format, typecheck, the unit shards, the e2e build and
-  shards, a dependency audit and a secret scan on every push and PR. The merge train
-  (`merge-train.yml`) lands an auto-merge PR once it has passed and is up to date.
+- `.github/workflows/ci.yml` runs on every PR push and on main: lint, format, typecheck, the
+  migration gate ([docs/migrations.md](migrations.md)), the access proof, unit tests, end-to-end
+  tests, a dependency audit and a secret scan. A PR runs fewer unit and end-to-end tests than main:
+  [docs/ci.md](ci.md) says which, and how to read the flake list. Main's ruleset requires "Lint,
+  typecheck and unit tests", "Secret scan" and "End-to-end tests", and doesn't require a branch to
+  be up to date, so two green PRs can land together untested as a pair.
+- A failed CI run has its failed jobs re-run once (`rerun-flaky.yml`), and `flake-list.yml` records
+  what failed on its first try. Only the newest waiting run on main goes ahead, so not every commit
+  gets a run of its own.
+- The merge train (`merge-train.yml`) lands an auto-merge PR that passed when GitHub's auto-merge
+  didn't fire.
+- `uptime.yml` checks the live site every 15 minutes and opens an "outage" issue when it fails.
+  `chat-quality.yml` runs the free rules part of the question bank every night; its Claude part,
+  and `chat-eval.yml`, run only when started by hand.
 
 ## Deploys
 
 - Production is on Vercel. Git deploys are off (`"git": { "deploymentEnabled": false }` in
   `vercel.json`): nothing deploys just because a commit landed.
-- Main is deployed by a deploy loop the team runs, which ships the newest commit on `main`
-  that passed CI (unit and e2e), within a daily cap. A manual `vercel deploy --prod` is for
-  emergencies only.
+- A loop on a team laptop ships the newest commit on `main` whose CI run finished green (unit
+  and e2e), at most once per 15 minutes and 80 times a day, so production runs about 20-30 minutes
+  behind main. After each deploy it checks the live site and, on a bad result, promotes the last
+  good deploy and won't ship that commit again. Nothing ships if the laptop is off. Never deploy
+  by hand.
 - The `vercel-build` script applies pending migrations (`prisma migrate deploy`, using
   `DIRECT_URL`) before production builds only, so a preview never changes the database. Then
-  `scripts/rls-protect.mjs` gives any new user-owned table its row-level security policy.
+  `scripts/rls-protect.mjs` gives any new user-owned table its row-level security policy. A
+  migration therefore lands before the new code does, and stays if the build fails or the deploy
+  rolls back: see [docs/migrations.md](migrations.md).
 - Before inviting outside users, run `npm run check:launch` (or open `/admin/launch`) to see
   which production switches are on: see [docs/beta-checklist.md](beta-checklist.md).
