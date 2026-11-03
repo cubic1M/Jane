@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { isIPv6 } from "node:net";
 import { NextResponse } from "next/server";
 import {
   KEEP_RATE_LIMIT_PREFIXES,
@@ -143,9 +144,22 @@ export function clientIp(headers: Headers): string | null {
   return headers.get("x-forwarded-for")?.split(",")[0]?.trim() || headers.get("x-real-ip") || null;
 }
 
+// One IPv6 customer gets a whole /64, billions of addresses, so a limit per address would count each
+// of them apart: the limit is per network. An IPv4 address in IPv6 dress is the IPv4 address.
+function networkOf(ip: string): string {
+  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(ip);
+  if (mapped) return mapped[1];
+  if (!isIPv6(ip)) return ip;
+  const [before, after] = ip.split("::").map((part) => (part ? part.split(":") : []));
+  const missing = after ? 8 - before.length - after.length : 0;
+  const groups = [...before, ...Array<string>(missing).fill("0"), ...(after ?? [])];
+  const first = groups.slice(0, 4).map((g) => g.toLowerCase().replace(/^0+(?=.)/, ""));
+  return `${first.join(":")}::/64`;
+}
+
 // A stable, non-reversible id for the caller's IP, for counters.
 export function ipKey(headers: Headers): string {
-  const ip = clientIp(headers) ?? "unknown";
+  const ip = networkOf(clientIp(headers) ?? "unknown");
   return createHash("sha256").update(`ip:${ip}`).digest("hex").slice(0, 32);
 }
 
