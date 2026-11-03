@@ -207,6 +207,12 @@ describe("debt questions", () => {
       priceCents: null,
     });
     expect(intent("what are closing costs")).toEqual({ kind: "home_afford", priceCents: null });
+    // What's put down isn't what the home costs.
+    expect(intent("can i afford a $60,000 down payment")).toEqual({
+      kind: "home_afford",
+      priceCents: null,
+    });
+    expect(intent("should i refinance now or wait")).toEqual({ kind: "refinance", target: null });
     expect(intent("when does my home insurance renew")).not.toMatchObject({ kind: "home_afford" });
     expect(intent("when will my mortgage be paid off")).toMatchObject({ kind: "debt_detail" });
     expect(intent("can I afford $900 for a home repair")).not.toMatchObject({

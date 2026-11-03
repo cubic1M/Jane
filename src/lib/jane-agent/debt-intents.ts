@@ -520,7 +520,9 @@ export function parseDebtIntent(
     ) &&
     !HOME_NOT.test(text)
   ) {
-    return { kind: "home_afford", priceCents: amountCents };
+    // "$60,000 down payment": what's put down, not what the home costs.
+    const notThePrice = /\b(?:down payment|closing costs?)\b/.test(text);
+    return { kind: "home_afford", priceCents: notThePrice ? null : amountCents };
   }
   if (CAR_DEALER.test(text) && (CAR_WORD.test(text) || PERCENT.test(text))) {
     const apr = PERCENT.exec(text);
@@ -569,7 +571,7 @@ export function parseDebtIntent(
       kind: "refinance",
       target:
         target &&
-        !/^(?:it|them|everything|all|anything|my debts?|debts?|loans|offers?|options?|rates?)$/.test(
+        !/^(?:it|them|everything|all|anything|my debts?|debts?|loans|offers?|options?|rates?|now|today|now or wait|or wait)$/.test(
           target,
         )
           ? target

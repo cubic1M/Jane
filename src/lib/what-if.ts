@@ -48,8 +48,10 @@ export async function loadBaseline(
       .then((t) => t.estimate.marginalRate)
       .catch(() => null),
   ]);
+  // An uploaded file often has no balance, and "the lowest it gets is $0.00" would be made up.
+  if (health.cashCents === null) return null;
   return {
-    cashCents: health.cashCents ?? 0,
+    cashCents: health.cashCents,
     monthlyIncomeCents: health.monthlyIncomeCents ?? 0,
     monthlySpendingCents: health.monthlySpendingCents ?? 0,
     marginalRate: tax,

@@ -62,6 +62,8 @@ export type HomeBuying = {
   saving: SavingPlan | null;
   targetDate: string;
   savedCents: number;
+  // Whether a savings account with a balance is known: an upload often has none.
+  savedKnown: boolean;
   monthlySavingCents: number;
   hasGoal: boolean;
   assumptions: string[];
@@ -80,6 +82,7 @@ const none = (targetDate: string, downShare: number): HomeBuying => ({
   saving: null,
   targetDate,
   savedCents: 0,
+  savedKnown: false,
   monthlySavingCents: 0,
   hasGoal: false,
   assumptions: [],
@@ -131,9 +134,9 @@ export async function loadHomeBuying(
         (d.kind === "mortgage" ? 0 : 1),
     0,
   );
-  const savedCents = input.accounts
-    .filter((a) => a.type === "depository" && a.subtype === "savings")
-    .reduce((s, a) => s + (a.currentBalanceCents ?? 0), 0);
+  const savers = input.accounts.filter((a) => a.type === "depository" && a.subtype === "savings");
+  const savedKnown = savers.some((a) => a.currentBalanceCents !== null);
+  const savedCents = savers.reduce((s, a) => s + (a.currentBalanceCents ?? 0), 0);
 
   // The rate: the cheapest mortgage offer for a reference loan.
   const offersFor = async (loanCents: number) =>
@@ -183,6 +186,7 @@ export async function loadHomeBuying(
     saving,
     targetDate,
     savedCents,
+    savedKnown,
     monthlySavingCents,
     hasGoal: goals.length > 0,
     assumptions: [

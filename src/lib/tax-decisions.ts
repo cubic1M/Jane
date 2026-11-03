@@ -1,5 +1,7 @@
 import {
   ADVICE_DECISIONS,
+  NEEDS_INCOME,
+  NEEDS_WITHHOLDING,
   SAVING_DECISIONS,
   type DecisionTopic,
   ROTH_UNTIL_RATE,
@@ -44,6 +46,8 @@ export type Decision = {
   advice: boolean;
   // Where the numbers are, for a button.
   href: string;
+  // No income seen or told, so there's nothing for a "how sure" line to rest on.
+  nothingWeighed: boolean;
   // The figures in the answer, in cents, so a test (or Claude) can check them.
   figures: number[];
 };
@@ -65,6 +69,7 @@ export async function decideTax(
     advice: advice && ADVICE_DECISIONS.includes(topic),
     href: to,
     figures,
+    nothingWeighed: e.totalIncomeCents === 0,
   });
   // A real account gets the fact and no recommendation (src/config/advice.ts).
   const noAdvice = (fact: string, figures: number[] = [], to = href) =>
@@ -82,6 +87,23 @@ export async function decideTax(
         [],
         "/debt",
       );
+  }
+
+  // No income seen or told: "a refund of $0" would be an answer about nothing.
+  if (e.totalIncomeCents === 0 && NEEDS_INCOME.includes(topic)) {
+    return made(
+      "I can't see any income yet, so I can't work out your tax. Upload your bank statements or link a bank, or add your income on the taxes page.",
+    );
+  }
+  // Take-home pay with no pay stub: tax has already come out of it, by an amount Jane can't see.
+  // "Pay about $3,572 by Jan 15" would be wrong for most of the people reading it.
+  if (!est.withholdingKnown && NEEDS_WITHHOLDING.includes(topic)) {
+    return {
+      ...made(
+        "I can see your paychecks but not what's withheld from them, so I can't say whether you'll owe or get a refund. Add the figures from your latest pay stub and I'll check.",
+      ),
+      nothingWeighed: true,
+    };
   }
 
   switch (topic) {

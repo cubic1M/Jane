@@ -134,6 +134,6 @@ describe.runIf(url)("what if", { timeout: 120_000 }, () => {
     });
     created.push(empty.id);
     expect(await whatIf(empty.id, "raise", {}, { client, now: NOW })).toBeNull();
-    expect(whatIfReply(null).body).toMatch(/^Once your accounts are linked/);
+    expect(whatIfReply(null).body).toMatch(/^Once I can see your accounts/);
   });
 });

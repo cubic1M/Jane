@@ -188,7 +188,7 @@ export function payoffReply(payoff: Payoff, asOf: string): Reply {
       body:
         summary.leftOut.length > 0
           ? `I can't plan yet: ${summary.leftOut.map((l) => `${l.name} (${LEFT_OUT_WHY[l.reason]})`).join(", ")}.`
-          : "You don't have any debts to pay off. Nice.",
+          : "I don't see any debts to pay off.",
       actions: [SEE_DEBTS],
       refs: {},
     };

@@ -43,6 +43,29 @@ export const ADVICE_DECISIONS: readonly DecisionTopic[] = [
   "home_office",
 ];
 
+// Topics whose answer is a figure or a yes or no worked out from the person's income.
+export const NEEDS_INCOME: readonly DecisionTopic[] = [
+  "estimated",
+  "owe",
+  "refund",
+  "refund_why",
+  "effective_rate",
+  "paid",
+  "setaside",
+  "est_due",
+  "must_file",
+];
+
+// Topics whose answer depends on what has already been withheld from the person's pay.
+export const NEEDS_WITHHOLDING: readonly DecisionTopic[] = [
+  "estimated",
+  "owe",
+  "refund",
+  "refund_why",
+  "paid",
+  "est_due",
+];
+
 // A traditional IRA or 401(k) tends to win at or above this top rate (the deduction is worth
 // more than the tax-free growth later); a Roth tends to win at or below the lower one.
 export const TRADITIONAL_FROM_RATE = 0.24;
