@@ -144,6 +144,34 @@ describe("the insurance tree", () => {
     ]);
   });
 
+  // Debugger 11-03: "Urgent: Deductible, $1k short", for a deductible the person's cash could
+  // safely raise, to pay less. It isn't short of anything.
+  it("says a deductible could change, not that it's short, and a saving is never urgent", () => {
+    const deductible = (direction: "raise" | "lower") => ({
+      kind: "deductible",
+      unit: "total",
+      needCents: 200_000,
+      haveCents: direction === "raise" ? 100_000 : 500_000,
+      gapCents: direction === "raise" ? 100_000 : 300_000,
+      direction,
+      policyId: "p",
+      opened: true,
+    });
+    const { tree, summaries } = insuranceTree(
+      input({ needs: [deductible("raise")] as InsuranceTreeInput["needs"] }),
+    );
+    const raise = tree.branches.find((b) => b.id === "needs")!.items[0];
+    expect(raise).toMatchObject({ label: "Deductible", status: "look", figure: "Could be $2k" });
+    expect(summaries[raise.id]).toBe("Your cash can carry $2k; yours is $1k.");
+
+    const { tree: high, summaries: highSummaries } = insuranceTree(
+      input({ needs: [deductible("lower")] as InsuranceTreeInput["needs"] }),
+    );
+    const lower = high.branches.find((b) => b.id === "needs")!.items[0];
+    expect(lower).toMatchObject({ status: "act", figure: "Could be $2k" });
+    expect(highSummaries[lower.id]).toBe("Your cash can carry $2k; yours is $5k.");
+  });
+
   it("marks each item and its branch by how pressing it is", () => {
     const { tree } = insuranceTree(input());
     const branch = (id: string) => tree.branches.find((b) => b.id === id)!;

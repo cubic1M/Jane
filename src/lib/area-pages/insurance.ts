@@ -153,15 +153,30 @@ export function insuranceTree(input: InsuranceTreeInput): AreaTree {
 
   const needs = input.needs.map((n) => {
     const short = n.direction ? n.direction !== "ok" : n.gapCents > 0;
-    const status: TreeStatus = !short ? "good" : n.opened ? "act" : "look";
+    // Raising a deductible the person's cash can carry is a saving, never urgent.
+    const status: TreeStatus = !short
+      ? "good"
+      : n.opened && n.direction !== "raise"
+        ? "act"
+        : "look";
     const money = (c: number) => (n.unit === "per_month" ? `${shortMoney(c)}/mo` : shortMoney(c));
+    // A deductible isn't short of anything: it could be higher or lower.
+    const deductible = n.kind === "deductible";
     return item("needs", `${n.kind}${n.policyId ? `-${n.policyId}` : ""}`, {
       label: NEED_LABELS[n.kind] ?? n.kind,
       status,
-      figure: !short ? "Covered" : n.gapCents > 0 ? `${money(n.gapCents)} short` : "Check",
+      figure: !short
+        ? "Covered"
+        : deductible
+          ? `Could be ${money(n.needCents)}`
+          : n.gapCents > 0
+            ? `${money(n.gapCents)} short`
+            : "Check",
       cents: n.gapCents,
       // The working (n.summary and its lines) is behind "More".
-      summary: `You need ${money(n.needCents)}; you have ${money(n.haveCents)}.`,
+      summary: deductible
+        ? `Your cash can carry ${money(n.needCents)}; yours is ${money(n.haveCents)}.`
+        : `You need ${money(n.needCents)}; you have ${money(n.haveCents)}.`,
     });
   });
 
