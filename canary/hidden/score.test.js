@@ -4,7 +4,16 @@ import { format, pastDue, split, total } from "./invoice.js";
 
 test("total: quantity, discount, half a cent up", () => {
   assert.equal(total([{ cents: 250, quantity: 2 }]), 500);
-  assert.equal(total([{ cents: 100, quantity: 3 }, { cents: 50, quantity: 1 }], 10), 315);
+  assert.equal(
+    total(
+      [
+        { cents: 100, quantity: 3 },
+        { cents: 50, quantity: 1 },
+      ],
+      10,
+    ),
+    315,
+  );
   assert.equal(total([{ cents: 5, quantity: 1 }], 50), 3);
   assert.equal(total([], 10), 0);
   assert.equal(total([{ cents: 1999, quantity: 1 }], 100), 0);

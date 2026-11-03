@@ -103,6 +103,15 @@ issue labelled `deploy-freeze`. A person checks production, then:
 `scripts/ops/numbers.mjs` writes [the page](https://github.com/cubic1M/Jane/blob/ops-numbers/numbers.md)
 daily from GitHub and git. There are no thresholds until the four-week baseline ends on 2026-12-01.
 
+## Holdouts and the canary
+
+`holdouts/` is behaviour checks an agent wrote without reading the code they check, run daily against a
+production build of `main` (`holdouts.yml`). A failure means the app is wrong: fix the app, never the
+folder. Nothing blocks on them until the baseline ends. `canary/` is one fixed coding task a day
+(`canary.yml`), scored by tests the agent never sees, so a change in the model or Claude Code shows up as
+a change in solved, turns or minutes. `holdout-seal.yml` fails a PR that edits either. They're readable
+in this public repo, and an admin login can still change them, until the founders' steps are done.
+
 ## Drills
 
 `scripts/ops/drill.mjs` times all of this on a local production build with stand-ins for Vercel and a

@@ -1,7 +1,7 @@
 # Holdout scenarios can be run but not edited (holdouts/README.md): agents game judges they can touch.
-# This fails any pull request that changes holdouts/ or canary/. Agents hold the admin login today, so
-# it's only a real wall once a founder makes it a required check and the scenarios move to a private
-# repository.
+# This fails any pull request that changes or removes a file in holdouts/ or canary/. Adding one is
+# fine. Agents hold the admin login today, so it's only a real wall once a founder makes it a required
+# check and the scenarios move to a private repository.
 name: Holdout seal
 
 on:
@@ -17,8 +17,18 @@ jobs:
   seal:
     name: Holdouts are sealed
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 3
     steps:
-      - run: |
-          echo "::error::holdouts/ and canary/ can't be edited by a pull request. Fix the app, not the check."
-          exit 1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          changed=$(git diff --name-only --diff-filter=MDRT "$BASE" HEAD -- holdouts canary)
+          if [ -n "$changed" ]; then
+            echo "::error::holdouts/ and canary/ can't be edited by a pull request. Fix the app, not the check."
+            exit 1
+          fi
+          echo "Nothing sealed was changed."

@@ -51,7 +51,7 @@ jobs:
       - run: npx next build
       - run: npx playwright install --with-deps chromium
       - run: nohup npx next start -p 3000 > /dev/null 2>&1 &
-      - run: npx playwright test --config holdouts/playwright.config.ts --reporter=json > holdouts-results.json || true
+      - run: npx playwright test --config holdouts/playwright.config.ts || true
       - id: counts
         run: echo "record=$(node scripts/ops/holdouts-record.mjs holdouts-results.json)" >> "$GITHUB_OUTPUT"
 

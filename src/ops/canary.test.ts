@@ -122,3 +122,17 @@ export const pastDue = (due, today) => Date.parse(due) < Date.parse(today);
     expect(agentJob).not.toMatch(/write|GH_TOKEN|GITHUB_TOKEN/);
   });
 });
+
+describe("the seal on the holdouts", () => {
+  const flow = readFileSync(".github/workflows/holdout-seal.yml", "utf8");
+  it("covers both folders, and fails on a changed or removed file only", () => {
+    expect(flow).toContain('"holdouts/**"');
+    expect(flow).toContain('"canary/**"');
+    expect(flow).toContain("--diff-filter=MDRT");
+    expect(flow).toContain("-- holdouts canary");
+  });
+  it("runs no pull request's script: only what's written in this file", () => {
+    expect(flow).not.toMatch(/\bnode\b|\bnpm\b|\.sh\b/);
+    expect(flow).toContain("persist-credentials: false");
+  });
+});
