@@ -4,6 +4,7 @@ vi.mock("@/lib/db", () => ({ db: {} }));
 vi.mock("@/lib/email", () => ({ sendEmail: vi.fn() }));
 
 import { ERROR_ALERT_MINUTES, ERROR_DIGEST_KINDS } from "@/config/health";
+import { RATE_LIMITS } from "@/config/rate-limits";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { alertError, digestLines, errorKind, safePath, sendErrorDigest } from "./error-alerts";
 
@@ -16,7 +17,11 @@ const MINUTE = 60_000;
 // The two tables the alerts use, in memory.
 function fakeClient(events: { message: string; path: string | null; createdAt: Date }[] = []) {
   const notices = new Map<string, Date>();
+  let counted = 0;
   const client = {
+    // The counter rate limits use (src/lib/rate-limit.ts).
+    $queryRaw: async () => [{ count: ++counted }],
+    rateLimit: { deleteMany: async () => ({ count: 0 }) },
     healthNotice: {
       createMany: async ({ data }: { data: { key: string; reportedAt: Date }[] }) => {
         let count = 0;
@@ -109,6 +114,24 @@ describe("error alert emails", () => {
     expect(await alertError(error, { client, now: later(ERROR_ALERT_MINUTES + 1), send })).toBe(
       true,
     );
+  });
+
+  // A local build: a server action posted with another site's Origin is a server error, on any path
+  // anyone cares to make up, and each new path emailed the team. At 120 a minute that uses up the
+  // email quota that sign-in links need.
+  it("stops at a ceiling however many new places fail", async () => {
+    const client = fakeClient();
+    for (let i = 0; i < 25; i++) {
+      await alertError(
+        { message: "Error: nope", path: `/join/${"abcdefghijklmnopqrstuvwxy"[i]}` },
+        {
+          client,
+          now: NOW,
+          send,
+        },
+      );
+    }
+    expect(send).toHaveBeenCalledTimes(RATE_LIMITS.errorAlertEmails.limit * 2);
   });
 
   it("sends nothing without ADMIN_EMAILS, and never throws when sending fails", async () => {

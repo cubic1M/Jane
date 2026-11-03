@@ -4,11 +4,16 @@ import type { Instrumentation } from "next";
 // the team about it, throttled (src/lib/error-alerts.ts).
 export const onRequestError: Instrumentation.onRequestError = async (error, request, context) => {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
-  const [{ describeError, recordError }, { alertError }, { db }] = await Promise.all([
+  const [{ describeError, recordError }, { alertError }, { db }, { hit }] = await Promise.all([
     import("@/lib/error-log"),
     import("@/lib/error-alerts"),
     import("@/lib/db"),
+    import("@/lib/rate-limit"),
   ]);
+  // Anyone can cause a server error, so only so many are kept an hour. If the count itself fails,
+  // the error is still kept.
+  const kept = await hit("serverErrorsKept", "all", { client: db }).catch(() => ({ ok: true }));
+  if (!kept.ok) return;
   await recordError(
     error,
     { path: request.path, method: request.method, routeType: context.routeType },

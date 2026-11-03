@@ -3,6 +3,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { teamEmails } from "@/lib/health";
+import { hit } from "@/lib/rate-limit";
 
 // Knowing when Jane breaks before people tell us (founder, 2026-10-26): a server error emails the
 // team (ADMIN_EMAILS, through Resend) at most once per kind of error per ERROR_ALERT_MINUTES,
@@ -67,6 +68,9 @@ export async function alertError(
       claimed = count === 1;
     }
     if (!claimed) return false;
+    // Each new path is a new alert, and anyone can post to made-up paths: past this, the daily
+    // digest still counts them.
+    if (!(await hit("errorAlertEmails", "team", { client, now })).ok) return false;
     const at = `${now.toISOString().slice(0, 16).replace("T", " ")} UTC`;
     const message = {
       subject: `Jane error: ${kind} on ${where}`,

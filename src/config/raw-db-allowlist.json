@@ -100,7 +100,7 @@
   "src/lib/emergency-fund.ts": 2,
   "src/lib/equity-income.ts": 3,
   "src/lib/equity-tax.ts": 14,
-  "src/lib/error-alerts.ts": 7,
+  "src/lib/error-alerts.ts": 8,
   "src/lib/events/refresh.ts": 7,
   "src/lib/events/run.ts": 14,
   "src/lib/events/updates.ts": 8,
