@@ -19,6 +19,7 @@ import { daysBetween } from "@/detection/units";
 import { DETECTOR_RATES } from "@/config/detectors";
 import { INCOME_KINDS } from "@/config/tax";
 import { nextPayday } from "@/detection/paydays";
+import { businessSalesSoFar, taxPaymentsFor } from "./tax-income";
 import type { DetectionInput } from "@/detection/types";
 
 // "Safe to spend until payday": checking balance today, minus regular bills and regular moves
@@ -27,14 +28,16 @@ import type { DetectionInput } from "@/detection/types";
 // (spec step 70). Each part comes from the page that shows it (bills forecast, budgets,
 // goals), so the number reconciles with them. Math only.
 
-// Tax on this year's freelance income, less the tax paid this year. Nobody withholds it, so without
+// Tax on this year's income from working for oneself, less the income tax paid this year: a
+// freelancer's clients, and the share of a shop's sales taken as profit. Nobody withholds it, so without
 // this it reads as money to spend (debugger 11-03: "Safe to spend $24,254" with $8,915 of tax to pay).
 export function freelanceTaxHeldCents({
   asOf,
   transactions,
 }: Pick<DetectionInput, "asOf" | "transactions">): number {
+  const year = Number(asOf.slice(0, 4));
   const thisYear = transactions.filter((t) => t.date.slice(0, 4) === asOf.slice(0, 4));
-  const earned = thisYear
+  const clients = thisYear
     .filter(
       (t) =>
         t.amountCents < 0 &&
@@ -43,14 +46,12 @@ export function freelanceTaxHeldCents({
         ),
     )
     .reduce((sum, t) => sum - t.amountCents, 0);
-  const paid = thisYear
-    .filter(
-      (t) =>
-        t.pfcDetailed === "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT" &&
-        !/SALES TAX/i.test(t.description),
-    )
-    .reduce((sum, t) => sum + t.amountCents, 0);
-  return Math.max(0, Math.round(earned * DETECTOR_RATES.selfEmployedTaxRate) - paid);
+  const profit = businessSalesSoFar(thisYear, year) * DETECTOR_RATES.tax.businessProfitShare;
+  const { federalCents, stateCents } = taxPaymentsFor(thisYear, year);
+  return Math.max(
+    0,
+    Math.round((clients + profit) * DETECTOR_RATES.selfEmployedTaxRate) - federalCents - stateCents,
+  );
 }
 
 export type SafeToSpend = {
@@ -62,7 +63,7 @@ export type SafeToSpend = {
   budgetsLeftCents: number;
   goalsCents: number;
   setAsideCents: number;
-  // Tax on freelance income so far, not paid yet: all of it, and as much as the money left can hold.
+  // Tax on income from working for oneself so far, not paid yet: all of it, and as much as the money left can hold.
   // It isn't due before payday, so it takes the number to zero but never makes it "short".
   taxSoFarCents: number;
   taxHeldCents: number;

@@ -14,7 +14,10 @@ export const insuranceReshop: Rule = (input, streams) => {
     (s) =>
       s.active && inList(s.pfcDetailed, INSURANCE_CATEGORIES) && !coveringCard(s, input, streams),
   );
-  const nameOf = (s: (typeof found)[number]) => insurerName(s.merchantKey) ?? s.merchant;
+  const nameOf = (s: (typeof found)[number]) =>
+    insurerName(s.merchantKey) ??
+    // "The Hartford Business Ins" reads "Your Hartford Business insurance" (debugger 11-03).
+    s.merchant.replace(/^The\s+/i, "").replace(/\s+Ins$/i, "");
   // Two policies from one insurer are told apart by their price (debugger 11-01: a car and a
   // renters policy both read "Your USAA insurance could cost less").
   const named = new Map<string, number>();

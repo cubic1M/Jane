@@ -361,7 +361,7 @@ const RULES: readonly Rule[] = [
   },
   {
     category: "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
-    keywords: ["IRS USATAXPYMT", "FRANCHISE TAX"],
+    keywords: ["IRS USATAXPYMT", "FRANCHISE TAX", "SALES TAX", "CDTFA"],
     direction: "out",
   },
 
