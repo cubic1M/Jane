@@ -183,12 +183,11 @@ describe.runIf(ownerUrl).each([
       const me = await scoped.me.findUniqueOrThrow({ where: { id: alice }, select: { id: true } });
       expect(me.id).toBe(alice);
       expect(await scoped.me.findUnique({ where: { id: bob } })).toBeNull();
-      await expect(
-        (scoped.me as unknown as { update(a: object): Promise<unknown> }).update({
-          where: { id: alice },
-          data: { name: "x" },
-        }),
-      ).rejects.toThrow("not supported");
+      expect(Object.keys(scoped.me).sort()).toEqual([
+        "findFirst",
+        "findUnique",
+        "findUniqueOrThrow",
+      ]);
     });
   });
 

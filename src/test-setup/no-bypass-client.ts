@@ -1,5 +1,6 @@
 import { appendFileSync } from "node:fs";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { DOORS, TEST_CODE } from "@/config/deny-by-default";
 import type { PrismaClient } from "@/generated/prisma/client";
 
 // The tests' database client when the suite runs on a login role with no bypass
@@ -8,10 +9,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 // to the database's owner, as a person with the console would, and the app's code stays on the
 // no-bypass login, where a call that went through neither scopedFor nor systemDb fails.
 
-const TEST_CODE = /\.test\.tsx?$|\/src\/test-setup\/|\/src\/security\/access-proof\//;
 const SKIP = /node_modules|no-bypass-client|^node:|generated\/prisma/;
-// The doors themselves: what they send is the switch, then the query.
-const DOORS = /\/src\/lib\/(db-scoped|system-db|rls|rls-coverage|read-cache)\.ts/;
 
 // The file of the nearest frame that isn't Prisma or this one.
 function callerFile(): string {

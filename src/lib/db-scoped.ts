@@ -169,10 +169,9 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
         .finally(() => forgetReads()),
     userId,
     // The person's own row, read only. A write goes through systemDb, with a reason.
-    me: {
-      findUnique: scoped.user.findUnique,
-      findUniqueOrThrow: scoped.user.findUniqueOrThrow,
-      findFirst: scoped.user.findFirst,
+    get me() {
+      const { findUnique, findUniqueOrThrow, findFirst } = scoped.user;
+      return { findUnique, findUniqueOrThrow, findFirst };
     },
     // Their own sign-ins and their own household membership (a partner's row isn't visible here).
     sessions: scoped.session,

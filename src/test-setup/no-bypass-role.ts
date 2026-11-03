@@ -11,6 +11,12 @@ export async function ensureAppLogin(ownerUrl: string): Promise<string> {
   const client = new pg.Client({ connectionString: ownerUrl });
   await client.connect();
   try {
+    const { rows: doors } = await client.query(
+      "SELECT 1 FROM pg_roles WHERE rolname = 'jane_system'",
+    );
+    if (doors.length === 0) {
+      throw new Error(`No jane_system role: run prisma migrate deploy on ${url.pathname.slice(1)}`);
+    }
     const { rows } = await client.query("SELECT 1 FROM pg_roles WHERE rolname = 'jane_app'");
     if (rows.length === 0) {
       await client
