@@ -6,6 +6,7 @@ import {
   netWorthLine,
   netWorthOn,
   loansNotCounted,
+  owedIsKnown,
   notCounting,
 } from "./net-worth";
 
@@ -253,5 +254,26 @@ describe("loans seen in payments, with no balance", () => {
       "Not counting what you owe on 3 loans: Jane sees the payments, not the balance.",
     );
     expect(loansNotCounted([])).toBeNull();
+  });
+});
+
+// Debugger 11-03: "you have $11,240.55 and owe $0.00" in the chat, for someone paying a car loan,
+// with a card whose balance no file said. "$0.00" is a claim; not knowing isn't zero.
+describe("whether what's owed is known", () => {
+  const worth = (debtsCents: number, unbalanced: { name: string; card: boolean }[] = []) => ({
+    debtsCents,
+    unbalanced,
+  });
+
+  it("is, with no sign of any debt, or a debt figure to give", () => {
+    expect(owedIsKnown(worth(0), [])).toBe(true);
+    expect(owedIsKnown(worth(250_000), [])).toBe(true);
+    // A bank account's missing balance says nothing about debts.
+    expect(owedIsKnown(worth(0, [{ name: "Checking", card: false }]), [])).toBe(true);
+  });
+
+  it("isn't, when a card has no balance or payments show a loan", () => {
+    expect(owedIsKnown(worth(0, [{ name: "Amex card", card: true }]), [])).toBe(false);
+    expect(owedIsKnown(worth(0), ["Toyota Financial"])).toBe(false);
   });
 });

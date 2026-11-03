@@ -21,6 +21,7 @@ import { frequencyWords } from "@/lib/explain-input";
 import { listGoals } from "@/lib/goals";
 import { listTransfers } from "@/lib/money-movement/transfers";
 import { assetPrompts, promptHref } from "@/lib/owned-assets";
+import { loansSeenWithoutBalance } from "@/lib/net-worth-history";
 import type { MoneyTreeInput } from "./money";
 
 // What the Spending & bills tree reads (docs/design/area-pages.md), from the same code as each
@@ -222,6 +223,7 @@ export async function loadMoneyArea(
       netKnown: worth.known,
       assetsCents: worth.assetsCents,
       debtsCents: worth.debtsCents,
+      loansSeen: await loansSeenWithoutBalance(userId, { client, now }),
       investmentsCents: worth.investmentsCents,
       ownedCents: worth.ownedCents,
       owned: owned.length,

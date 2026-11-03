@@ -6,6 +6,7 @@ import { forecastReply } from "../replies-forecast";
 import { saveMoreReply } from "../replies-savemore";
 import { netWorth } from "@/insights/net-worth";
 import { cryptoTotal } from "@/lib/crypto/crypto";
+import { loansSeenWithoutBalance } from "@/lib/net-worth-history";
 import { netWorthReply } from "../replies-networth";
 import { storedReport } from "@/lib/monthly-report-store";
 import { reportReply } from "../replies-report";
@@ -197,6 +198,7 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
           owned.map((o) => ({ ...o, valuedOn: o.valuedOn.toISOString().slice(0, 10) })),
           crypto,
         ),
+        await loansSeenWithoutBalance(userId, { client }),
       );
     }
     case "save_more":

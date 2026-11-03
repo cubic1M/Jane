@@ -1,9 +1,12 @@
 import { formatCents } from "@/lib/money";
-import { notCounting, type netWorth } from "@/insights/net-worth";
+import { loansNotCounted, notCounting, owedIsKnown, type netWorth } from "@/insights/net-worth";
 import type { Reply } from "./replies";
 
 // "What's my net worth?": what they own less what they owe, as the net worth page says it.
-export function netWorthReply(worth: ReturnType<typeof netWorth>): Reply {
+export function netWorthReply(
+  worth: ReturnType<typeof netWorth>,
+  loansSeen: readonly string[] = [],
+): Reply {
   const link = {
     id: "open" as const,
     label: "See net worth",
@@ -30,9 +33,13 @@ export function netWorthReply(worth: ReturnType<typeof netWorth>): Reply {
     worth.cryptoCents > 0
       ? ` That includes ${formatCents(worth.cryptoCents)} of crypto I only read.`
       : "";
-  const missing = left ? ` ${left.sentence}` : "";
+  const loans = loansNotCounted(loansSeen);
+  const missing = `${left ? ` ${left.sentence}` : ""}${loans ? ` ${loans}` : ""}`;
+  const owed = owedIsKnown(worth, loansSeen)
+    ? ` and owe ${formatCents(worth.debtsCents)}.`
+    : "; I can't see everything you owe.";
   return {
-    body: `Your net worth is ${formatCents(worth.netCents)}: you have ${formatCents(worth.assetsCents)} and owe ${formatCents(worth.debtsCents)}.${crypto}${missing}`,
+    body: `Your net worth is ${formatCents(worth.netCents)}: you have ${formatCents(worth.assetsCents)}${owed}${crypto}${missing}`,
     actions: [link],
     refs: {},
   };

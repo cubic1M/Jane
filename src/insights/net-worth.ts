@@ -184,6 +184,16 @@ export function loansNotCounted(names: readonly string[]): string | null {
   return `Not counting what you owe on ${which}: Jane sees the payments, not the balance.`;
 }
 
+// Whether "you owe $X" is a true sentence: not $0.00 when a card has no balance on file, or payments
+// show a loan (debugger 11-03: "you have $11,240.55 and owe $0.00", paying a car loan). Not knowing
+// isn't zero. A debt figure there is still said, with what it leaves out said beside it.
+export function owedIsKnown(
+  worth: { debtsCents: number; unbalanced: readonly Unbalanced[] },
+  loansSeen: readonly string[],
+): boolean {
+  return worth.debtsCents > 0 || (loansSeen.length === 0 && !worth.unbalanced.some((u) => u.card));
+}
+
 // What a net worth leaves out for want of a balance (an uploaded card or bank file without one,
 // src/lib/import/account-balance.ts), said beside the figure, never left out silently (CSV
 // bench: card debt missing from most upload-only people's net worth). Null when it's complete.

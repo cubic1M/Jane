@@ -17,7 +17,8 @@ import { LIFE_EVENTS } from "@/config/life-events";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { budgetSummary } from "@/insights/budgets";
 import { loadInsightTransactions } from "@/insights/load";
-import { netWorth, notCounting } from "@/insights/net-worth";
+import { loansNotCounted, netWorth, notCounting, owedIsKnown } from "@/insights/net-worth";
+import { loansSeenWithoutBalance } from "@/lib/net-worth-history";
 import { ASK_TOOLS, runAskTool, type ToolOutput } from "@/lib/ask/tools";
 import { CARD_SELECT, buildCard } from "@/lib/cards";
 import { conciergeMode } from "@/lib/concierge-mode";
@@ -1385,15 +1386,18 @@ async function runChatToolWork(
         owned.map((o) => ({ ...o, valuedOn: o.valuedOn.toISOString().slice(0, 10) })),
         crypto,
       );
+      const loansSeen = await loansSeenWithoutBalance(userId, { client, now });
       return out({
         has: money(worth.assetsCents),
-        owes: money(worth.debtsCents),
+        // Null when what's owed can't be seen: never a $0 for Claude to repeat.
+        owes: owedIsKnown(worth, loansSeen) ? money(worth.debtsCents) : null,
         // Not known when no balance is: never a $0 for Claude to repeat.
         netWorth: worth.known ? money(worth.netCents) : null,
         ...(worth.cryptoCents > 0 ? { ofWhichCryptoReadOnly: money(worth.cryptoCents) } : {}),
         accountsWithoutABalance: worth.missing.length,
         // Say this beside the figure: what it leaves out, by name.
         notCounting: notCounting(worth.unbalanced)?.sentence ?? null,
+        loansNotCounted: loansNotCounted(loansSeen),
       });
     }
     case "backtest_by_level": {
