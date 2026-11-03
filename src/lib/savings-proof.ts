@@ -22,6 +22,7 @@ import { validTimezone } from "@/lib/digest/week";
 import { withEvidence } from "@/lib/evidence/gate";
 import { evidenceRefs } from "@/lib/finding-accounts";
 import { sha256Hex } from "@/lib/hash";
+import { systemDb } from "@/lib/system-db";
 
 // What Jane saved you (spec step 139). Only what the person's own transactions show counts
 // as confirmed, each with its receipt: a refund that came back, a lower bill that arrived,
@@ -358,7 +359,10 @@ export async function sharedTotal(
   { client = defaultClient }: Options = {},
 ): Promise<{ totalCents: number; createdAt: Date; timezone: string } | null> {
   if (!/^[A-Za-z0-9_-]{16,64}$/.test(token)) return null;
-  const share = await client.savedShare.findUnique({
+  const share = await systemDb(
+    "A link's token is the key: nobody is signed in",
+    client,
+  ).savedShare.findUnique({
     where: { tokenHash: sha256Hex(token) },
     select: {
       totalCents: true,

@@ -13,6 +13,9 @@ import { undoApproval } from "@/lib/standing-rules";
 import { DAY_MS } from "@/lib/dates";
 import { sha256Hex } from "@/lib/hash";
 import { localDate } from "@/lib/today";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "A link's token is the key: nobody is signed in";
 
 // One-tap approval links (spec step 60) for the weekly email and notifications. A link
 // opens a small page with one button, so email scanners that open links can't approve
@@ -71,7 +74,9 @@ export type LinkView =
 // A system lookup by the token's hash: the token is the credential.
 async function findLink(token: string, client: PrismaClient) {
   if (!/^[A-Za-z0-9_-]{40,60}$/.test(token)) return null;
-  return client.planLink.findUnique({ where: { tokenHash: sha256Hex(token) } });
+  return systemDb(WHY, client).planLink.findUnique({
+    where: { tokenHash: sha256Hex(token) },
+  });
 }
 
 export async function viewPlanLink(
@@ -83,10 +88,13 @@ export async function viewPlanLink(
   if (link.usedAt) {
     // Still on: approved by the link and not taken back since.
     const [approved, owner] = await Promise.all([
-      client.decision.count({
+      scopedFor(link.userId, client).decisions.count({
         where: { id: { in: link.decisionIds }, userId: link.userId, undoneAt: null },
       }),
-      client.user.findUnique({ where: { id: link.userId }, select: { timezone: true } }),
+      scopedFor(link.userId, client).me.findUnique({
+        where: { id: link.userId },
+        select: { timezone: true },
+      }),
     ]);
     return {
       state: "used",
@@ -158,7 +166,7 @@ export async function redeemLink(
   const link = await findLink(token, client);
   if (!link || link.expiresAt <= now) throw new LinkError("This link has expired.");
   // Claim it first, so two taps can't both use it.
-  const claimed = await client.planLink.updateMany({
+  const claimed = await systemDb(WHY, client).planLink.updateMany({
     where: { id: link.id, usedAt: null },
     data: { usedAt: now },
   });
@@ -170,7 +178,10 @@ export async function redeemLink(
     "link",
     { client },
   );
-  await client.planLink.update({ where: { id: link.id }, data: { decisionIds } });
+  await systemDb(WHY, client).planLink.update({
+    where: { id: link.id },
+    data: { decisionIds },
+  });
   await logAudit(
     { type: "user", id: link.userId },
     "plan_link_used",

@@ -16,6 +16,9 @@ import { scopedFor } from "@/lib/db-scoped";
 import { addDemoExtra } from "@/lib/plaid/demo";
 import { syncDemoInvestments } from "@/lib/plaid/sync";
 import { childRothRoom, giftOk, percentFunded } from "@/planning/family";
+import { systemDb, systemTransaction } from "@/lib/system-db";
+
+const WHY = "A link's token is the key: nobody is signed in";
 
 // Investing for the family (spec step 213, demo advice), for its page, Jane's answers and
 // its buttons: a custodial account for a child, a Roth IRA for a child with earned income,
@@ -308,11 +311,13 @@ export async function giftPage(
   { client = defaultClient }: Options = {},
 ): Promise<PublicGift | null> {
   if (!/^[A-Za-z0-9_-]{16,64}$/.test(token)) return null;
-  const link = await client.giftLink.findUnique({ where: { token } });
+  const link = await systemDb(WHY, client).giftLink.findUnique({ where: { token } });
   if (!link || link.revokedAt) return null;
-  const plan = await client.collegePlan.findUnique({ where: { id: link.collegePlanId } });
+  const plan = await systemDb(WHY, client).collegePlan.findUnique({
+    where: { id: link.collegePlanId },
+  });
   const goal = plan?.goalId
-    ? await client.savingsGoal.findUnique({ where: { id: plan.goalId } })
+    ? await systemDb(WHY, client).savingsGoal.findUnique({ where: { id: plan.goalId } })
     : null;
   if (!plan || !goal) return null;
   return {
@@ -337,22 +342,28 @@ export async function giveGift(
     throw new FamilyError(
       `A gift can be $5 up to $${GIFT_ANNUAL_EXCLUSION_CENTS / 100} (the most you can give in a year without a gift tax return).`,
     );
-  const link = await client.giftLink.findUniqueOrThrow({
+  const link = await systemDb(WHY, client).giftLink.findUniqueOrThrow({
     where: { token },
     include: { _count: { select: { gifts: true } } },
   });
   if (link._count.gifts >= GIFT_MAX_PER_LINK)
     throw new FamilyError("This link has taken all the gifts it can.");
-  const plan = await client.collegePlan.findUniqueOrThrow({ where: { id: link.collegePlanId } });
-  await client.$transaction([
-    client.gift.create({
-      data: { giftLinkId: link.id, giverName: giver, amountCents: input.amountCents },
-    }),
-    client.savingsGoal.update({
-      where: { id: plan.goalId! },
-      data: { manualSavedCents: { increment: input.amountCents } },
-    }),
-  ]);
+  const plan = await systemDb(WHY, client).collegePlan.findUniqueOrThrow({
+    where: { id: link.collegePlanId },
+  });
+  await systemTransaction(
+    "A link's token is the key: nobody is signed in",
+    async (tx) => {
+      await tx.gift.create({
+        data: { giftLinkId: link.id, giverName: giver, amountCents: input.amountCents },
+      });
+      await tx.savingsGoal.update({
+        where: { id: plan.goalId! },
+        data: { manualSavedCents: { increment: input.amountCents } },
+      });
+    },
+    client,
+  );
   await logAudit(
     { type: "system", id: null },
     "gift_received",

@@ -13,6 +13,7 @@ import { FACT_KEYS, type FactKey, factSpec, factWords } from "@/profile/facts";
 import { isoDay as dayOf } from "@/lib/dates";
 import { cachedCopy } from "@/lib/read-cache";
 import { formatWholeDollars as dollars } from "@/lib/money";
+import { systemDb } from "@/lib/system-db";
 
 // The picture of you (spec step 253), loaded for one person: what the bank shows, what they
 // told Jane here and what they answered elsewhere (their tax, insurance and investor
@@ -153,7 +154,10 @@ async function loadProfileInputFrom(
     }),
     db.valuesPreferences.findFirst({ select: { excludes: true } }),
     db.accountBeneficiaries.findMany({ select: { accountId: true } }),
-    client.householdMember.findUnique({ where: { userId }, select: { householdId: true } }),
+    scopedFor(userId, client).householdMembers.findUnique({
+      where: { userId },
+      select: { householdId: true },
+    }),
     db.insurancePolicies.findFirst({
       where: { kind: "health", status: "active", deductibleCents: { not: null } },
       select: { carrier: true, deductibleCents: true, coverage: true },
@@ -171,7 +175,10 @@ async function loadProfileInputFrom(
   const transactions = allTransactions.filter((t) => !copies.has(t.accountId));
   // Other people in their household in Jane (spec step 264), not counting them.
   const householdMembers = membership
-    ? await client.householdMember.count({
+    ? await systemDb(
+        "Household: counts the other members, whose rows jane_rls can't see",
+        client,
+      ).householdMember.count({
         where: { householdId: membership.householdId, userId: { not: userId } },
       })
     : 0;
@@ -317,7 +324,7 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     // Spec step 238: what the daily books check left open.
     import("@/lib/books").then((m) => m.openBooks(userId, { client })),
     // Spec step 242: whether the household chose how bills split.
-    client.householdMember.findUnique({
+    scopedFor(userId, client).householdMembers.findUnique({
       where: { userId },
       select: { household: { select: { splitSetAt: true } } },
     }),
@@ -468,27 +475,27 @@ export async function correctFact(
   );
   await markPrimerStale(userId, { client });
   if (key === "housing" && (value === "own" || value === "rent")) {
-    await client.insuranceProfile.upsert({
+    await scopedFor(userId, client).insuranceProfiles.upsert({
       where: { userId },
       create: { userId, housing: value },
       update: { housing: value },
     });
   }
   if (key === "age" && typeof value === "number") {
-    await client.investorProfile.upsert({
+    await scopedFor(userId, client).investorProfiles.upsert({
       where: { userId },
       create: { userId, age: value, ageOn: now },
       update: { age: value, ageOn: now },
     });
   }
   if (key === "has_children" && typeof value === "boolean") {
-    const existing = await client.taxProfile.findUnique({
+    const existing = await scopedFor(userId, client).taxProfiles.findUnique({
       where: { userId },
       select: { childrenUnder17: true, answered: true },
     });
     const answered = [...new Set([...(existing?.answered ?? []), "dependants"])];
     const children = value ? Math.max(existing?.childrenUnder17 ?? 0, 1) : 0;
-    await client.taxProfile.upsert({
+    await scopedFor(userId, client).taxProfiles.upsert({
       where: { userId },
       create: { userId, childrenUnder17: children, answered },
       update: { childrenUnder17: children, answered },

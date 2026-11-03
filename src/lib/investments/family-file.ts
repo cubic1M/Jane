@@ -171,7 +171,7 @@ async function upsertFile(
   data: { events?: object; picks?: string[]; contacts?: object; documents?: string },
   client: PrismaClient,
 ) {
-  await client.familyFile.upsert({
+  await scopedFor(userId, client).familyFiles.upsert({
     where: { userId },
     create: { userId, ...data },
     update: data,

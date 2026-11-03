@@ -31,6 +31,7 @@ import { complexity, linkState, type LinkState, type Question } from "@/planning
 import type { TaxPack } from "@/planning/tax-pack";
 import { DAY_MS, isoDay as iso } from "@/lib/dates";
 import { sha256Hex } from "@/lib/hash";
+import { systemDb } from "@/lib/system-db";
 
 // Working with an accountant (spec step 222): a read-only link with the tax pack, the
 // documents Jane collected, the questions it has and a place to answer them; the answers
@@ -177,7 +178,7 @@ export async function loadAccountantPage(
     db.accountantNotes.findMany({ orderBy: [{ createdAt: "desc" }, { id: "asc" }] }),
     loadComplexity(userId, { client, now, loaded: loaded && { ...loaded, estimate } }),
     withQuestions ? loadQuestions(userId, estimate.year, { client, now }) : Promise.resolve([]),
-    client.user.findUnique({ where: { id: userId }, select: { timezone: true } }),
+    scopedFor(userId, client).me.findUnique({ where: { id: userId }, select: { timezone: true } }),
   ]);
   const dayOf = (at: Date) => localDate(at, user?.timezone);
   const views = links.map((l) => ({
@@ -273,7 +274,10 @@ const TOKEN = /^[A-Za-z0-9_-]{40,60}$/;
 
 async function findLink(token: string, client: PrismaClient, now: Date) {
   if (!TOKEN.test(token)) return null;
-  const link = await client.accountantLink.findUnique({ where: { tokenHash: sha256Hex(token) } });
+  const link = await systemDb(
+    "A link's token is the key: nobody is signed in",
+    client,
+  ).accountantLink.findUnique({ where: { tokenHash: sha256Hex(token) } });
   if (!link || linkState(link, now) !== "active") return null;
   return link;
 }
@@ -310,7 +314,10 @@ export async function viewByToken(
   const userId = link.userId;
   // A note's day is the client's own, as on their accountant page (not UTC's): only the day
   // reaches the accountant, not the timezone.
-  const owner = await client.user.findUnique({ where: { id: userId }, select: { timezone: true } });
+  const owner = await scopedFor(userId, client).me.findUnique({
+    where: { id: userId },
+    select: { timezone: true },
+  });
   const noteDay = (at: Date) => localDate(at, owner?.timezone);
   const estimate = await loadTaxEstimate(userId, { client, now });
   const year = estimate.year;
@@ -325,7 +332,7 @@ export async function viewByToken(
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     }),
   ]);
-  await client.accountantLink.update({
+  await systemDb("A link's token is the key: nobody is signed in", client).accountantLink.update({
     where: { id: link.id },
     data: { viewCount: { increment: 1 }, lastViewedAt: now },
   });

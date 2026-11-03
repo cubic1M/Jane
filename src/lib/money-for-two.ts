@@ -16,6 +16,9 @@ import { moneyPartnerFor } from "@/lib/money-movement/partner";
 import { sharedBills } from "@/lib/shared-bills";
 import { partnerShareBps } from "@/planning/money-for-two";
 import { DAY_MS, isoDay as today } from "@/lib/dates";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "Household: spans both partners' rows, after checking the pair";
 
 // Money for two (spec step 242): a couple in a household (step 25) runs money together and
 // still keeps their own. Shared bills split evenly or by income as they choose; goals can be
@@ -29,7 +32,7 @@ type Options = { client?: PrismaClient; now?: Date };
 export class MoneyForTwoError extends Error {}
 
 async function couple(userId: string, client: PrismaClient) {
-  const membership = await client.householdMember.findUnique({
+  const membership = await systemDb(WHY, client).householdMember.findUnique({
     where: { userId },
     select: {
       household: {
@@ -64,7 +67,7 @@ async function couple(userId: string, client: PrismaClient) {
 // What someone was paid by employers lately: only ever summed, to work out the shares.
 async function recentPay(userId: string, client: PrismaClient, now: Date): Promise<number> {
   const since = new Date(now.getTime() - SPLIT_INCOME_DAYS * DAY_MS);
-  const sum = await client.transaction.aggregate({
+  const sum = await scopedFor(userId, client).transactions.aggregate({
     where: {
       userId,
       date: { gte: since, lte: now },
@@ -101,7 +104,7 @@ export async function setSplitRule(
   }
   const pair = await couple(userId, client);
   if (!pair) throw new MoneyForTwoError("Splitting bills needs a partner in your household.");
-  await client.household.update({
+  await systemDb(WHY, client).household.update({
     where: { id: pair.householdId },
     data: { splitRule: rule, splitSetAt: now },
   });
@@ -125,7 +128,10 @@ export async function setBigMoveLimit(
   }
   const pair = await couple(userId, client);
   if (!pair) throw new MoneyForTwoError("This needs a partner in your household.");
-  await client.household.update({ where: { id: pair.householdId }, data: { bigMoveCents: cents } });
+  await systemDb(WHY, client).household.update({
+    where: { id: pair.householdId },
+    data: { bigMoveCents: cents },
+  });
   await logAudit(
     { type: "user", id: userId },
     "household_big_move_set",
@@ -183,7 +189,7 @@ export async function approveBigMove(
 ): Promise<{ amountCents: number; runOn: string }> {
   const pair = await couple(userId, client);
   if (!pair) throw new MoneyForTwoError("Only your household partner's moves wait for you.");
-  const move = await client.moneyTransfer.findFirst({
+  const move = await systemDb(WHY, client).moneyTransfer.findFirst({
     where: { id: transferId, userId: pair.partnerId, status: "awaiting_partner" },
     select: {
       id: true,
@@ -208,7 +214,7 @@ export async function approveBigMove(
     runOn,
     memo: move.planKey ?? move.purpose,
   });
-  const { count } = await client.moneyTransfer.updateMany({
+  const { count } = await systemDb(WHY, client).moneyTransfer.updateMany({
     where: { id: move.id, status: "awaiting_partner" },
     data: {
       status: "pending",
@@ -235,7 +241,7 @@ export async function declineBigMove(
 ): Promise<void> {
   const pair = await couple(userId, client);
   if (!pair) throw new MoneyForTwoError("Only your household partner's moves wait for you.");
-  const { count } = await client.moneyTransfer.updateMany({
+  const { count } = await systemDb(WHY, client).moneyTransfer.updateMany({
     where: { id: transferId, userId: pair.partnerId, status: "awaiting_partner" },
     data: { status: "cancelled", cancelledAt: now },
   });
@@ -302,7 +308,7 @@ export async function loadMoneyForTwo(
     recentPay(pair.partnerId, client, now),
     sharedBills(userId, { client }),
     // Joint goals only: a goal neither shared stays with its owner.
-    client.savingsGoal.findMany({
+    systemDb(WHY, client).savingsGoal.findMany({
       where: { userId: { in: ids }, sharedWithHousehold: true },
       select: {
         id: true,
@@ -315,13 +321,13 @@ export async function loadMoneyForTwo(
       },
       orderBy: [{ targetDate: "asc" }, { id: "asc" }],
     }),
-    client.moneyTransfer.findMany({
+    systemDb(WHY, client).moneyTransfer.findMany({
       where: { userId: { in: ids }, status: "awaiting_partner" },
       select: { id: true, userId: true, amountCents: true, toName: true, runOn: true },
       orderBy: { createdAt: "asc" },
     }),
     // Spent together this month: money out of the accounts either of them shared.
-    client.transaction.aggregate({
+    systemDb(WHY, client).transaction.aggregate({
       where: {
         userId: { in: ids },
         account: { sharedWithHousehold: true },
@@ -335,7 +341,7 @@ export async function loadMoneyForTwo(
   const goalAccounts = goals.flatMap((g) => (g.accountId ? [g.accountId] : []));
   const balances = new Map(
     (goalAccounts.length
-      ? await client.account.findMany({
+      ? await systemDb(WHY, client).account.findMany({
           where: { id: { in: goalAccounts }, userId: { in: ids } },
           select: { id: true, currentBalanceCents: true },
         })

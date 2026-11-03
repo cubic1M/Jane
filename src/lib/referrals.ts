@@ -1,6 +1,8 @@
 import { COUNSEL_INSURANCE_REFERRALS, isStateCode } from "@/config/referrals";
 import type { ActionType, PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
+import { scopedFor } from "@/lib/db-scoped";
+import { systemDb } from "@/lib/system-db";
 
 // Which referral partner, if any, a card uses for a person, and checking what the team
 // enters at /admin/partners.
@@ -33,7 +35,10 @@ export async function partnerFor(
   { client = defaultClient }: Options = {},
 ): Promise<CardPartner | null> {
   if (!state || !partnerAllowed(actionType)) return null;
-  return client.referralPartner.findFirst({
+  return systemDb(
+    "Referral partners are shared reference data, no one's own",
+    client,
+  ).referralPartner.findFirst({
     where: { actionType, active: true, allowedStates: { has: state } },
     orderBy: { key: "asc" },
     select: { key: true, name: true, disclosure: true },
@@ -45,7 +50,10 @@ export async function partnerForUser(
   actionType: ActionType,
   { client = defaultClient }: Options = {},
 ): Promise<CardPartner | null> {
-  const user = await client.user.findUnique({ where: { id: userId }, select: { state: true } });
+  const user = await scopedFor(userId, client).me.findUnique({
+    where: { id: userId },
+    select: { state: true },
+  });
   return partnerFor(actionType, user?.state ?? null, { client });
 }
 

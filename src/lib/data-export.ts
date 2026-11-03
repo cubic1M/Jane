@@ -4,6 +4,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { investmentsExport } from "@/lib/investments/holdings";
 import { teamAccessFor } from "@/lib/team-access-loader";
 import { insuranceExport } from "@/lib/insurance/export";
+import { systemDb } from "@/lib/system-db";
 
 // "Download my data": everything the app holds about one person, as JSON. Never another
 // person's rows, never secrets (Plaid access tokens and sync cursors, the two-factor
@@ -78,7 +79,7 @@ export async function exportUserData(
     taxReturns,
     taxDocuments,
   ] = await Promise.all([
-    client.user.findUniqueOrThrow({
+    scopedFor(userId, client).me.findUniqueOrThrow({
       where: { id: userId },
       select: {
         id: true,
@@ -243,7 +244,11 @@ export async function exportUserData(
     }),
     // Their own membership, the invites they sent and their side of shared bills; never the
     // partner's data.
-    client.householdMember.findUnique({
+    // Through the system's door: a shared bill's row belongs to whichever partner made it.
+    systemDb(
+      "A person's own export: household rows either partner may have written",
+      client,
+    ).householdMember.findUnique({
       where: { userId },
       select: {
         joinedAt: true,
@@ -329,7 +334,10 @@ export async function exportUserData(
       orderBy: [{ date: "asc" }, { accountId: "asc" }],
     }),
     db.checkIns.findMany({ select: { month: true, summary: true, emailedAt: true } }),
-    client.analyticsEvent.findMany({
+    systemDb(
+      "A person's own export: jane_rls can't read analytics",
+      client,
+    ).analyticsEvent.findMany({
       where: { userId },
       select: { name: true, createdAt: true },
       orderBy: { createdAt: "asc" },

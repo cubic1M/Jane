@@ -11,6 +11,7 @@ import { log } from "@/lib/log";
 import { recordInviteJoined } from "@/lib/share-invites";
 import { TERMS_COOKIE, acceptTerms } from "@/lib/terms";
 import { TERMS_VERSION } from "@/config/legal";
+import { systemDb } from "@/lib/system-db";
 
 type SignInEvent = {
   user: { id?: string | null; email?: string | null };
@@ -45,7 +46,7 @@ export async function recordSignIn({ user, account, isNewUser }: SignInEvent): P
   await logAudit(actor, "user_signed_in", target, { method });
   // ADMIN_EMAILS makes the founders admins without editing the database by hand.
   if (user.email && isAdminEmail(user.email)) {
-    const { count } = await db.user.updateMany({
+    const { count } = await systemDb("Sign-in: there is no signed-in person yet").user.updateMany({
       where: { id: user.id, role: "user" },
       data: { role: "admin" },
     });
@@ -80,7 +81,10 @@ export async function failedSignInEmails({
   client = db,
   now = new Date(),
 }: { client?: PrismaClient; now?: Date } = {}): Promise<number> {
-  return client.auditLog.count({
+  return systemDb(
+    "The audit log is the system's own record: jane_rls can't touch it",
+    client,
+  ).auditLog.count({
     where: {
       event: "sign_in_failed",
       metadata: { path: ["reason"], equals: "EmailSignInError" },

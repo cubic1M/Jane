@@ -5,6 +5,7 @@ import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { membershipOffer, type Offer } from "./offer";
+import { systemDb } from "@/lib/system-db";
 
 // Reads and records the membership offer for one person.
 
@@ -18,7 +19,7 @@ export async function offerFor(
   const [finished, intents, user] = await Promise.all([
     db.actions.count({ where: { status: "done" } }),
     db.membershipIntents.findMany({ select: { kind: true } }),
-    client.user.findUniqueOrThrow({
+    scopedFor(userId, client).me.findUniqueOrThrow({
       where: { id: userId },
       select: { membershipOfferShownAt: true, membershipOfferDismissedAt: true },
     }),
@@ -42,7 +43,10 @@ export async function markOfferShown(
   { client = defaultClient, now = new Date() }: Options = {},
 ) {
   if (!offer.show || !offer.countAsShown) return;
-  await client.user.update({ where: { id: userId }, data: { membershipOfferShownAt: now } });
+  await systemDb("A person's own row: jane_rls only reads users", client).user.update({
+    where: { id: userId },
+    data: { membershipOfferShownAt: now },
+  });
   await track(userId, "membership_offer_shown", { saved_to_date_cents: savedToDateCents });
 }
 
@@ -50,7 +54,10 @@ export async function dismissOffer(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ) {
-  await client.user.update({ where: { id: userId }, data: { membershipOfferDismissedAt: now } });
+  await systemDb("A person's own row: jane_rls only reads users", client).user.update({
+    where: { id: userId },
+    data: { membershipOfferDismissedAt: now },
+  });
 }
 
 export async function reserveMembership(userId: string, { client = defaultClient }: Options = {}) {
@@ -66,7 +73,7 @@ export async function recordPaidMembership(
   session: { id: string; userId: string; amountCents: number | null },
   { client = defaultClient }: Options = {},
 ): Promise<boolean> {
-  const user = await client.user.findUnique({
+  const user = await scopedFor(session.userId, client).me.findUnique({
     where: { id: session.userId },
     select: { id: true },
   });

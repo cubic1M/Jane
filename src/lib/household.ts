@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { HOUSEHOLD_INVITE_DAYS, HOUSEHOLD_MAX_MEMBERS } from "@/config/household";
-import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
@@ -9,6 +9,9 @@ import { DAY_MS } from "@/lib/dates";
 import { sha256Hex } from "@/lib/hash";
 import { isStatementTrialUser } from "@/lib/trial-ids";
 import { STATEMENT_TRIAL_NO_HOUSEHOLD } from "@/config/statement-trial";
+import { systemDb, systemTransaction, type SystemTx } from "@/lib/system-db";
+
+const WHY = "Household: spans both partners' rows, after checking the pair";
 
 // Inviting a partner, joining, leaving, and choosing which accounts to share. What a
 // partner can then read is in sharedReadFor (src/lib/db-scoped.ts).
@@ -21,7 +24,7 @@ const MAX_EMAIL_CHARS = 254;
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
 export async function householdOf(userId: string, { client = defaultClient }: Options = {}) {
-  const membership = await client.householdMember.findUnique({
+  const membership = await systemDb(WHY, client).householdMember.findUnique({
     where: { userId },
     select: {
       household: {
@@ -60,41 +63,45 @@ export async function invitePartner(
   if (invited === normalizeEmail(user.email)) throw new HouseholdError("That's your own email.");
 
   const token = randomBytes(32).toString("base64url");
-  await client.$transaction(async (tx) => {
-    let membership = await tx.householdMember.findUnique({
-      where: { userId: user.id },
-      select: { householdId: true },
-    });
-    if (!membership) {
-      const household = await tx.household.create({ select: { id: true } });
-      membership = await tx.householdMember.create({
-        data: { householdId: household.id, userId: user.id },
+  await systemTransaction(
+    WHY,
+    async (tx) => {
+      let membership = await tx.householdMember.findUnique({
+        where: { userId: user.id },
         select: { householdId: true },
       });
-    }
-    const members = await tx.householdMember.count({
-      where: { householdId: membership.householdId },
-    });
-    if (members >= HOUSEHOLD_MAX_MEMBERS) {
-      throw new HouseholdError("Your household is full.");
-    }
-    // Whoever joins sees what's shared, so nothing from an earlier partner carries over: sharing with
-    // the new one is a new choice. (Nobody else is here: the household would be full.)
-    await stopSharing(tx, user.id);
-    // A new invite replaces any earlier one that wasn't accepted.
-    await tx.householdInvite.deleteMany({
-      where: { householdId: membership.householdId, acceptedAt: null },
-    });
-    await tx.householdInvite.create({
-      data: {
-        householdId: membership.householdId,
-        userId: user.id,
-        email: invited,
-        tokenHash: sha256Hex(token),
-        expiresAt: new Date(now.getTime() + HOUSEHOLD_INVITE_DAYS * DAY_MS),
-      },
-    });
-  });
+      if (!membership) {
+        const household = await tx.household.create({ select: { id: true } });
+        membership = await tx.householdMember.create({
+          data: { householdId: household.id, userId: user.id },
+          select: { householdId: true },
+        });
+      }
+      const members = await tx.householdMember.count({
+        where: { householdId: membership.householdId },
+      });
+      if (members >= HOUSEHOLD_MAX_MEMBERS) {
+        throw new HouseholdError("Your household is full.");
+      }
+      // Whoever joins sees what's shared, so nothing from an earlier partner carries over: sharing with
+      // the new one is a new choice. (Nobody else is here: the household would be full.)
+      await stopSharing(tx, user.id);
+      // A new invite replaces any earlier one that wasn't accepted.
+      await tx.householdInvite.deleteMany({
+        where: { householdId: membership.householdId, acceptedAt: null },
+      });
+      await tx.householdInvite.create({
+        data: {
+          householdId: membership.householdId,
+          userId: user.id,
+          email: invited,
+          tokenHash: sha256Hex(token),
+          expiresAt: new Date(now.getTime() + HOUSEHOLD_INVITE_DAYS * DAY_MS),
+        },
+      });
+    },
+    client,
+  );
   await logAudit({ type: "user", id: user.id }, "household_invite_sent", null, {});
   await track(user.id, "household_invite_sent", {});
   return { token };
@@ -107,33 +114,41 @@ export async function acceptInvite(
   token: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<void> {
-  const householdId = await client.$transaction(async (tx) => {
-    const invite = await tx.householdInvite.findUnique({
-      where: { tokenHash: sha256Hex(token) },
-      select: { id: true, householdId: true, email: true, expiresAt: true, acceptedAt: true },
-    });
-    if (!invite || invite.acceptedAt || invite.expiresAt <= now) {
-      throw new HouseholdError("This invite link has expired or was already used.");
-    }
-    if (invite.email !== normalizeEmail(user.email)) {
-      throw new HouseholdError(`This invite is for ${invite.email}. Sign in with that email.`);
-    }
-    if (await tx.householdMember.findUnique({ where: { userId: user.id } })) {
-      throw new HouseholdError("You're already in a household. Leave it first.");
-    }
-    const members = await tx.householdMember.count({ where: { householdId: invite.householdId } });
-    if (members >= HOUSEHOLD_MAX_MEMBERS) throw new HouseholdError("That household is full.");
-    // Claims the invite, so it works once.
-    const { count } = await tx.householdInvite.updateMany({
-      where: { id: invite.id, acceptedAt: null },
-      data: { acceptedAt: now },
-    });
-    if (count === 0) throw new HouseholdError("This invite link was already used.");
-    // Anything left switched on from before: joining shares nothing.
-    await stopSharing(tx, user.id);
-    await tx.householdMember.create({ data: { householdId: invite.householdId, userId: user.id } });
-    return invite.householdId;
-  });
+  const householdId = await systemTransaction(
+    WHY,
+    async (tx) => {
+      const invite = await tx.householdInvite.findUnique({
+        where: { tokenHash: sha256Hex(token) },
+        select: { id: true, householdId: true, email: true, expiresAt: true, acceptedAt: true },
+      });
+      if (!invite || invite.acceptedAt || invite.expiresAt <= now) {
+        throw new HouseholdError("This invite link has expired or was already used.");
+      }
+      if (invite.email !== normalizeEmail(user.email)) {
+        throw new HouseholdError(`This invite is for ${invite.email}. Sign in with that email.`);
+      }
+      if (await tx.householdMember.findUnique({ where: { userId: user.id } })) {
+        throw new HouseholdError("You're already in a household. Leave it first.");
+      }
+      const members = await tx.householdMember.count({
+        where: { householdId: invite.householdId },
+      });
+      if (members >= HOUSEHOLD_MAX_MEMBERS) throw new HouseholdError("That household is full.");
+      // Claims the invite, so it works once.
+      const { count } = await tx.householdInvite.updateMany({
+        where: { id: invite.id, acceptedAt: null },
+        data: { acceptedAt: now },
+      });
+      if (count === 0) throw new HouseholdError("This invite link was already used.");
+      // Anything left switched on from before: joining shares nothing.
+      await stopSharing(tx, user.id);
+      await tx.householdMember.create({
+        data: { householdId: invite.householdId, userId: user.id },
+      });
+      return invite.householdId;
+    },
+    client,
+  );
   await logAudit(
     { type: "user", id: user.id },
     "household_joined",
@@ -147,7 +162,7 @@ export async function acceptInvite(
 }
 
 // One person's own rows, never the other member's: leaving or inviting can't write to someone else.
-async function stopSharing(tx: Prisma.TransactionClient, userId: string): Promise<void> {
+async function stopSharing(tx: SystemTx, userId: string): Promise<void> {
   const data = { sharedWithHousehold: false };
   await tx.account.updateMany({ where: { userId, sharedWithHousehold: true }, data });
   await tx.savingsGoal.updateMany({ where: { userId, sharedWithHousehold: true }, data });
@@ -160,28 +175,32 @@ export async function leaveHousehold(
   userId: string,
   { client = defaultClient }: Options = {},
 ): Promise<void> {
-  const left = await client.householdMember.findUnique({
+  const left = await scopedFor(userId, client).householdMembers.findUnique({
     where: { userId },
     select: { householdId: true },
   });
   if (!left) return;
-  await client.$transaction(async (tx) => {
-    // The shared balance ends with the pair; each person's own transactions stay.
-    await tx.sharedCharge.deleteMany({ where: { householdId: left.householdId } });
-    await tx.settlement.deleteMany({ where: { householdId: left.householdId } });
-    // Sharing was a choice about the person they shared with. Left on, whoever joins next sees it,
-    // against "Nothing of yours is shared until you choose". Only their own: the one who stays ends
-    // theirs when they invite someone new.
-    await stopSharing(tx, userId);
-    await tx.householdMember.delete({ where: { userId } });
-    if ((await tx.householdMember.count({ where: { householdId: left.householdId } })) === 0) {
-      await tx.household.delete({ where: { id: left.householdId } });
-    } else {
-      await tx.householdInvite.deleteMany({
-        where: { householdId: left.householdId, acceptedAt: null },
-      });
-    }
-  });
+  await systemTransaction(
+    WHY,
+    async (tx) => {
+      // The shared balance ends with the pair; each person's own transactions stay.
+      await tx.sharedCharge.deleteMany({ where: { householdId: left.householdId } });
+      await tx.settlement.deleteMany({ where: { householdId: left.householdId } });
+      // Sharing was a choice about the person they shared with. Left on, whoever joins next sees it,
+      // against "Nothing of yours is shared until you choose". Only their own: the one who stays ends
+      // theirs when they invite someone new.
+      await stopSharing(tx, userId);
+      await tx.householdMember.delete({ where: { userId } });
+      if ((await tx.householdMember.count({ where: { householdId: left.householdId } })) === 0) {
+        await tx.household.delete({ where: { id: left.householdId } });
+      } else {
+        await tx.householdInvite.deleteMany({
+          where: { householdId: left.householdId, acceptedAt: null },
+        });
+      }
+    },
+    client,
+  );
   await logAudit(
     { type: "user", id: userId },
     "household_left",

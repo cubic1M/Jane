@@ -6,6 +6,9 @@ import { db } from "@/lib/db";
 import { userFromUnsubscribeToken } from "@/lib/digest/unsubscribe";
 import { chatNotifyPrefs, withoutChatEmails } from "@/lib/jane-agent/notify-prefs";
 import { ipKey, limitOrNull } from "@/lib/rate-limit";
+import { systemDb } from "@/lib/system-db";
+
+const WHY = "An emailed link: a signed token, nobody signed in, on a person's own row";
 
 // Turns the weekly digest off without signing in, or with what=alerts, stops alert emails
 // (alerts still show in the app), or with what=chat, stops Jane's emails of chat messages
@@ -22,28 +25,31 @@ export async function POST(request: Request) {
 
   if (what === "chat") {
     // Jane's emails of chat messages (spec step 85): email off, phone notifications kept.
-    const user = await db.user.findUnique({
+    const user = await systemDb(WHY).user.findUnique({
       where: { id: userId },
       select: { chatNotifyPrefs: true },
     });
     if (user) {
-      await db.user.update({
+      await systemDb(WHY).user.update({
         where: { id: userId },
         data: { chatNotifyPrefs: withoutChatEmails(chatNotifyPrefs(user.chatNotifyPrefs)) },
       });
       await track(userId, "chat_emails_unsubscribed", {});
     }
   } else if (what === "alerts") {
-    const user = await db.user.findUnique({ where: { id: userId }, select: { alertPrefs: true } });
+    const user = await systemDb(WHY).user.findUnique({
+      where: { id: userId },
+      select: { alertPrefs: true },
+    });
     if (user) {
-      await db.user.update({
+      await systemDb(WHY).user.update({
         where: { id: userId },
         data: { alertPrefs: withoutAlertEmails(alertPrefs(user.alertPrefs)) },
       });
       await track(userId, "alert_emails_unsubscribed", {});
     }
   } else {
-    const { count } = await db.user.updateMany({
+    const { count } = await systemDb(WHY).user.updateMany({
       where: { id: userId },
       data: { digestEnabled: false },
     });

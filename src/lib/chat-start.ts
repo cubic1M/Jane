@@ -4,6 +4,7 @@ import { CHAT_SIGN_IN_GRACE_SECONDS } from "@/config/agent-chat";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { sessionTokenFrom } from "@/lib/admin-gate";
 import { db as defaultClient } from "@/lib/db";
+import { systemDb } from "@/lib/system-db";
 
 // Each sign-in starts the chat fresh (founder, 2026-10-29): the chat shows, and Claude's answers
 // look back over, only what came after this sign-in. Older conversations stay in the database and
@@ -21,7 +22,10 @@ export async function sessionStartedAt(
   { client = defaultClient }: { client?: PrismaClient } = {},
 ): Promise<Date | null> {
   if (!token) return null;
-  const session = await client.session.findUnique({
+  const session = await systemDb(
+    "Looks up a session by its token, to learn who is asking",
+    client,
+  ).session.findUnique({
     where: { sessionToken: token },
     select: { createdAt: true },
   });

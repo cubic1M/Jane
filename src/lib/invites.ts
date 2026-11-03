@@ -4,6 +4,9 @@ import { isAdminEmail } from "@/lib/admin-emails";
 import { track } from "@/lib/analytics";
 import { logAudit, SYSTEM_ACTOR } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
+import { systemDb, systemTransaction } from "@/lib/system-db";
+
+const WHY = "Invite codes are checked before sign-up, and aren't anyone's own";
 
 // Invite codes keep the beta closed. Redeeming a code with an email puts that email on the
 // beta list; Auth.js's signIn callback (src/lib/auth-gate.ts) only lets listed emails,
@@ -48,7 +51,7 @@ export async function checkCode(
 ): Promise<CodeCheck> {
   const code = normalizeCode(input);
   const invite = code
-    ? await client.inviteCode.findUnique({
+    ? await systemDb(WHY, client).inviteCode.findUnique({
         where: { code },
         select: { maxUses: true, uses: true, expiresAt: true, revokedAt: true, email: true },
       })
@@ -67,7 +70,7 @@ export async function redeemInvite(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<CodeCheck> {
   const address = lower(email);
-  const access = await client.betaAccess.findUnique({
+  const access = await systemDb(WHY, client).betaAccess.findUnique({
     where: { email: address },
     select: { inviteCode: { select: { code: true } } },
   });
@@ -78,19 +81,24 @@ export async function redeemInvite(
   const check = await checkCode(input, { client, now, email: address });
   if (check !== "ok" || access) return check;
   let inviteId: string | undefined;
-  const result = await client.$transaction(async (tx) => {
-    const invite = await tx.inviteCode.findUniqueOrThrow({
-      where: { code: code as string },
-      select: { id: true },
-    });
-    inviteId = invite.id;
-    // Only takes a use if one is left, even with two people redeeming at once.
-    const taken = await tx.$executeRaw`
+  const why = "Invite codes are checked before sign-up, and aren't anyone's own";
+  const result = await systemTransaction(
+    why,
+    async (tx) => {
+      const invite = await tx.inviteCode.findUniqueOrThrow({
+        where: { code: code as string },
+        select: { id: true },
+      });
+      inviteId = invite.id;
+      // Only takes a use if one is left, even with two people redeeming at once.
+      const taken = await tx.$executeRaw`
       UPDATE invite_codes SET uses = uses + 1 WHERE id = ${invite.id} AND uses < max_uses`;
-    if (taken === 0) return "used_up" as const;
-    await tx.betaAccess.create({ data: { email: address, inviteCodeId: invite.id } });
-    return "ok" as const;
-  });
+      if (taken === 0) return "used_up" as const;
+      await tx.betaAccess.create({ data: { email: address, inviteCodeId: invite.id } });
+      return "ok" as const;
+    },
+    client,
+  );
   if (result === "ok") {
     // No account yet, so no user id: the code's id, never the email.
     await logAudit(SYSTEM_ACTOR, "invite_redeemed", { type: "invite_code", id: inviteId! });
@@ -104,8 +112,11 @@ export async function mayCreateAccount(email: string, { client = defaultClient }
   if (!invitesRequired() || isAdminEmail(email)) return true;
   const address = lower(email);
   const [user, access] = await Promise.all([
-    client.user.findUnique({ where: { email: address }, select: { id: true } }),
-    client.betaAccess.findUnique({ where: { email: address }, select: { id: true } }),
+    systemDb(WHY, client).user.findUnique({ where: { email: address }, select: { id: true } }),
+    systemDb(WHY, client).betaAccess.findUnique({
+      where: { email: address },
+      select: { id: true },
+    }),
   ]);
   return Boolean(user || access);
 }
@@ -126,7 +137,7 @@ export async function createInviteCode(
   },
   { client = defaultClient }: Options = {},
 ) {
-  return client.inviteCode.create({
+  return systemDb(WHY, client).inviteCode.create({
     data: {
       code: generateCode(),
       maxUses,
@@ -145,12 +156,15 @@ export async function revokeInviteCode(
   code: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<{ id: string } | null> {
-  const invite = await client.inviteCode.findUnique({
+  const invite = await systemDb(WHY, client).inviteCode.findUnique({
     where: { code },
     select: { id: true, revokedAt: true },
   });
   if (!invite || invite.revokedAt) return null;
-  await client.inviteCode.update({ where: { id: invite.id }, data: { revokedAt: now } });
+  await systemDb(WHY, client).inviteCode.update({
+    where: { id: invite.id },
+    data: { revokedAt: now },
+  });
   return { id: invite.id };
 }
 
@@ -160,12 +174,12 @@ export async function joinWaitlist(
   { client = defaultClient }: Options = {},
 ): Promise<boolean> {
   const address = lower(email);
-  const before = await client.waitlistEntry.findUnique({
+  const before = await systemDb(WHY, client).waitlistEntry.findUnique({
     where: { email: address },
     select: { id: true },
   });
   if (before) return false;
-  await client.waitlistEntry.upsert({
+  await systemDb(WHY, client).waitlistEntry.upsert({
     where: { email: address },
     create: { email: address },
     update: {},

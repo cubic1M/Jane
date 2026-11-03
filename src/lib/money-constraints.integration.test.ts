@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 // The database refuses money that can't be (prisma/migrations/*_money_check_constraints). Each rule
 // is shown both ways on a row that's otherwise fine: the good value goes in, the bad one is refused
 // by name. A constraint added without a case here fails the last test.
-const url = process.env.TEST_DATABASE_URL;
+const url = process.env.TEST_OWNER_DATABASE_URL ?? process.env.TEST_DATABASE_URL;
 
 type Case = {
   table: string;
