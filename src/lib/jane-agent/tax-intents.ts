@@ -219,7 +219,7 @@ const GIVING_ASK =
 const FAMILY_ASK =
   /\b(?:jointly or separately|separately or jointly|joint or separate|separate or joint)\b|\bhead of household or single\b|\bsingle or head of household\b|\bchild tax credit\b|\bdependent care (?:fsa|credit|account)\b|\bfsa or (?:the )?(?:care |childcare )?credit\b|\bamerican opportunity\b|\blifetime learning\b|\b(?:aotc|llc credit)\b|\beducation credits?\b|\b529 (?:tax|deduction|break|benefits?)\b|\bfamily tax(?:es)?\b|\btax(?:es)? (?:for|with) (?:my |our )?(?:kids|children|family)\b/;
 const HOME_ASK =
-  /\bmortgage interest\b|\bproperty tax(?:es)?\b|\bsalt (?:cap|deduction)\b|\bstate and local tax (?:cap|deduction)\b|\b(?:sold|selling|sell) (?:my |our )?(?:house|home)\b|\bhome sale\b|\bcapital gains? on (?:my |our |the )?(?:house|home)\b|\bmortgage points\b|\bhome(?:owner)? tax(?:es)?\b|\btax(?:es)? on (?:my |our )?(?:house|home)\b/;
+  /\bmortgage interest\b|\bproperty tax(?:es)?\b|\bsalt (?:cap|deduction)\b|\bstate and local tax (?:cap|deduction)\b|\b(?:sold|selling) (?:my |our )?(?:house|home)\b|\bsell (?:my |our )?(?:house|home)\b.*\b(?:tax\w*|owe)\b|\b(?:if|when) (?:i|we) sell (?:my |our )?(?:house|home)\b|\bhome sale\b|\bcapital gains? on (?:my |our |the )?(?:house|home)\b|\bmortgage points\b|\bhome(?:owner)? tax(?:es)?\b|\btax(?:es)? on (?:my |our )?(?:house|home)\b/;
 const RECORDS_ASK =
   /\baudit pack\b|\baudit(?:-| )ready\b|\b(?:tax )?records? (?:for|if|in) (?:an )?audit\b|\bhow long (?:should|do) (?:i|we) (?:keep|hold on to)\b.*\b(?:tax|records?|receipts?|papers)\b|\bwhat if (?:i|the irs) (?:get|gets|am|audits?)\b.*\baudit|\bam i ready for an audit\b|\b(?:get|got|am|being) audited\b|\bkeep (?:my )?(?:tax )?(?:records|receipts|papers)\b/;
 const LAST_RETURN =

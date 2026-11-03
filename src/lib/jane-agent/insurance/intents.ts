@@ -227,6 +227,8 @@ const NEED =
 // Spec step 155: Jane filing a claim, or asking the insurer for a better renewal rate.
 const FILE_FOR_ME =
   /\b(?:can|could|will|would) you (?:please )?(?:file|submit|send in)\b|\b(?:you|jane) (?:file|submit)\b.{0,20}\bclaims?\b|\bfile (?:it|the claim|my claim) with (?:my|the) (?:insurer|insurance(?: company)?)\b/;
+// "Can I negotiate my card rate" isn't about a policy (11-03).
+const NOT_A_POLICY = /\b(?:card|apr|loan|mortgage|rent|salary|raise|bill)\b/;
 const RENEWAL_CALL =
   /\b(?:negotiate|haggle|bargain)\b|\b(?:call|ring|phone|ask) (?:my |the )?(?:insurer|insurance(?: company)?|carrier)\b.{0,40}\b(?:better|lower|cheaper|rate|price|renewal)\b|\bbetter (?:renewal )?rate\b.{0,30}\brenew/;
 
@@ -268,7 +270,7 @@ export function parseInsurance(text: string): InsuranceIntent | null {
   }
   if (HEALTH_YEAR.test(text)) return { kind: "insurance", ask: "health_year", policyKind: null };
   if (FILE_FOR_ME.test(text)) return { kind: "insurance", ask: "file_claim", policyKind: null };
-  if (RENEWAL_CALL.test(text)) {
+  if (RENEWAL_CALL.test(text) && !NOT_A_POLICY.test(text)) {
     return { kind: "insurance", ask: "renewal_call", policyKind: kindIn(text) };
   }
   // Something happened: the claims helper, whatever words were used.

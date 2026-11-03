@@ -39,6 +39,28 @@ describe("parseAmount", () => {
     expect(parseAmount(text)).toBeNull();
   });
 
+  // 11-03, Claude refusing every time: a $5.00 house, a $401,000.00 retirement account.
+  it.each([
+    "can i buy a house in 5 years",
+    "can i buy a house in 5 yaers",
+    "should i put money in a 401k",
+    "should i put money in my 401(k)",
+    "should i put money in a 529",
+    "should i put 10% in",
+    "can i spend 20 percent on rent",
+    "should i wait 6 months",
+  ])("reads no amount from a number that isn't money: %s", (text) => {
+    expect(parseAmount(text)).toBeNull();
+  });
+
+  it("still reads an amount beside one of those, or the same number as money", () => {
+    expect(parseAmount("can i put $500 in my 401k")).toBe(50_000);
+    expect(parseAmount("can i spend 10% or $20")).toBe(2_000);
+    expect(parseAmount("can i afford $529")).toBe(52_900);
+    expect(parseAmount("can i afford 5k in 2 years")).toBe(500_000);
+    expect(parseAmount("can i afford 401 dollars")).toBe(40_100);
+  });
+
   it("still reads an amount beside a date", () => {
     expect(parseAmount("can i afford 900 on nov 1")).toBe(90_000);
     expect(parseAmount("can i afford $1,150 on the 1st")).toBe(115_000);
@@ -280,5 +302,51 @@ describe("matchCategory", () => {
     expect(matchCategory("target", labels)).toBeNull();
     expect(matchCategory("", labels)).toBeNull();
     expect(matchCategory("an", labels)).toBeNull();
+  });
+});
+
+// 11-03, Claude refusing every time: each got an answer about something else.
+describe("not read as a question it only sounds like", () => {
+  const kindOf = (text: string) => parseIntent(text, "2026-11-03").kind;
+  it.each([
+    "what bills are due before payday",
+    "wat bills r due b4 payday",
+    "should i pay myself a salary",
+  ])("isn't when the next paycheck comes: %s", (text) => {
+    expect(kindOf(text)).not.toBe("payday");
+  });
+  it.each(["when is payday", "how much is my paycheck", "what's my salary"])(
+    "still is: %s",
+    (text) => {
+      expect(kindOf(text)).toBe("payday");
+    },
+  );
+  it("a card's rate is the card, not how to cut it or an insurance renewal", () => {
+    expect(kindOf("whats the interest rate on my card")).toBe("debt_detail");
+    expect(kindOf("how do i lower my card interest")).toBe("card_interest");
+    expect(parseIntent("can i negotiate my card rate", "2026-11-03")).not.toMatchObject({
+      kind: "insurance",
+    });
+    expect(parseIntent("call my insurer to negotiate", "2026-11-03")).toMatchObject({
+      kind: "insurance",
+      ask: "renewal_call",
+    });
+  });
+  it("which loan costs most isn't which loan to take", () => {
+    expect(kindOf("which loan has the highest rate")).not.toBe("loan_fit");
+    expect(kindOf("which loan should i get")).toBe("loan_fit");
+  });
+  it("a landlord isn't an investment property unless they mean being one", () => {
+    expect(parseIntent("call my landlord for me", "2026-11-03")).not.toMatchObject({
+      topic: "property",
+    });
+    expect(parseIntent("should i become a landlord", "2026-11-03")).toMatchObject({
+      topic: "property",
+    });
+  });
+  it("selling a home is about tax only when it says so", () => {
+    expect(parseIntent("sell my house", "2026-11-03")).not.toMatchObject({ ask: "home" });
+    expect(parseIntent("if i sell my house", "2026-11-03")).toMatchObject({ ask: "home" });
+    expect(parseIntent("i sold my house", "2026-11-03")).toMatchObject({ ask: "home" });
   });
 });

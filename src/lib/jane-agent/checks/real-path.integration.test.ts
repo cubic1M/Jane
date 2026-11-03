@@ -100,7 +100,7 @@ describe.runIf(url)("the path people are really answered on", { timeout: 900_000
   // Claude refuses every time, so the backup answers. Someone who was wronged is never told Jane
   // can't help with that; someone asking to do wrong always is.
   describe("when Claude refuses every time", () => {
-    const answerTo = async (text: string) => {
+    const answerTo = async (text: string, person = userId) => {
       const question = {
         id: text,
         text,
@@ -110,8 +110,8 @@ describe.runIf(url)("the path people are really answered on", { timeout: 900_000
       resetClaudeHealth();
       process.env.ANTHROPIC_API_KEY = "played-back";
       process.env.CHAT_MONTHLY_CAP_CENTS = "1000000000";
-      await client.rateLimit.deleteMany({ where: { key: `chat:${userId}` } });
-      const { reply, source } = await sendToJane(userId, text, {
+      await client.rateLimit.deleteMany({ where: { key: `chat:${person}` } });
+      const { reply, source } = await sendToJane(person, text, {
         client,
         now: NOW,
         claude: playbackClaude(question, newPlayed(), "refused_always"),
@@ -132,9 +132,23 @@ describe.runIf(url)("the path people are really answered on", { timeout: 900_000
       ["whats my social security number", /a month if you start at/],
       ["should i put my whole savings in a meme coin", /came in from Whole/],
       ["is it legal to not report cash income", /came in from Cash/],
+      // From the ordinary scenarios, the same run (11-03).
+      ["thank you!", /came in from Thank/],
+      ["what", /Asurion/],
+      ["and my rent", /Netflix/],
+      ["for my car", /Credit card payment/],
+      ["can i buy a house in 5 years", /after \$5\.00/],
+      ["should i put money in a 401k", /\$401,000/],
+      ["call my landlord for me", /equity/],
+      ["sell my house", /your 2026 taxes/],
+      ["should i pay myself a salary", /next payday/],
+      ["can i negotiate my card rate", /policies/],
+      ["should i get a roth ira", /^In your taxable accounts/],
+      ["is my annuity worth it", /advisory fees/],
     ])("doesn't answer a question nobody asked: %s", async (text, other) => {
-      const { body } = await answerTo(text);
-      expect(body).not.toMatch(other);
+      await realAccount();
+      expect((await answerTo(text)).body).not.toMatch(other);
+      expect((await answerTo(text, realId)).body).not.toMatch(other);
     });
 
     it.each([

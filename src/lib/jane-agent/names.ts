@@ -33,17 +33,34 @@ export function wordsOf(target: string): string[] {
     .filter((w) => w.length >= 2);
 }
 
+// A word of the name, its start, or for a long word anywhere in a run-together name ("fitness" in
+// PLANETFITNESS). Never inside another word (11-03: "my car" found the credit card payment).
+const inName = (word: string, text: string) =>
+  word.length >= 6
+    ? text.includes(word)
+    : text
+        .split(/[^a-z0-9+&'-]+/)
+        .some((t) => t === word || (word.length >= 4 && t.startsWith(word)));
+
 export function wordMatches(word: string, haystack: string): boolean {
   const text = haystack.toLowerCase();
-  if (text.includes(word)) return true;
+  if (inName(word, text)) return true;
   if (SYNONYMS[word]?.some((s) => text.includes(s))) return true;
+  // A slip only in a longer word: "rent" is one letter from the "went" of "Netflix went up" (11-03).
   return (
-    word.length >= 4 && text.split(/[^a-z0-9+&'-]+/).some((t) => t.length >= 4 && oneSlip(word, t))
+    word.length >= 5 && text.split(/[^a-z0-9+&'-]+/).some((t) => t.length >= 4 && oneSlip(word, t))
   );
 }
+
+// A question word names nothing: "what" isn't the finding whose title says "covers what Asurion does".
+const NAMES_NOTHING = new Set("what who why how when where which".split(" "));
 
 // Every word matches.
 export const nameMatches = (target: string, haystack: string) => {
   const words = wordsOf(target);
-  return words.length > 0 && words.every((w) => wordMatches(w, haystack));
+  return (
+    words.length > 0 &&
+    !words.some((w) => NAMES_NOTHING.has(w)) &&
+    words.every((w) => wordMatches(w, haystack))
+  );
 };
