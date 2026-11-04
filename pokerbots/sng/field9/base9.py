@@ -189,7 +189,7 @@ class Base:
         self.stats = Stats(self.n, self.T.PCT if self.T else None)
         self.stacks = [rules.starting_stack] * self.n
         self.hand_no = 0
-        self.icm = pair_icm(self.stacks, self.pays[:self.n])
+        self.icm = pair_icm(self.stacks, self.pays[:self.n], self.seat)
         self.setup()
 
     def setup(self):
@@ -213,7 +213,7 @@ class Base:
             if stacks is not None and len(stacks) == self.n:
                 self.stacks = list(stacks)
                 left = sum(1 for s in stacks if s > 0)
-                self.icm = pair_icm(self.stacks, self.pays[:left])
+                self.icm = pair_icm(self.stacks, self.pays[:left], self.seat)
             self.hand_no = hn + 1
             self.after_hand(info)
         except Exception:  # noqa: BLE001

@@ -71,7 +71,9 @@ def icm_batch(stacks, pays):
 
 
 class PairIcm:
-    def __init__(self, stacks, pays):
+    def __init__(self, stacks, pays, me=None):
+        # me = a seat: only the all-ins involving that seat (2(L-1) rows instead of L(L-1)); every
+        # value the bots read (base, win/lose[me][j], bf(me, j), bf(j, me)) is the same, ~4x faster
         self.n = len(stacks)
         alive = [i for i, s in enumerate(stacks) if s > 0]
         self.alive = alive
@@ -89,7 +91,7 @@ class PairIcm:
         pairs = []
         for a in range(L):
             for b in range(L):
-                if a == b:
+                if a == b or (me is not None and me not in (alive[a], alive[b])):
                     continue
                 eff = min(st[a], st[b])
                 r = list(st)
@@ -116,11 +118,11 @@ class PairIcm:
         return max(0.8, min(3.0, down / up))
 
 
-def pair_icm(stacks, pays) -> PairIcm:
-    key = (tuple(stacks), tuple(pays))
+def pair_icm(stacks, pays, me=None) -> PairIcm:
+    key = (tuple(stacks), tuple(pays), me)
     p = _CACHE.get(key)
     if p is None:
         if len(_CACHE) > 64:
             _CACHE.clear()
-        p = _CACHE[key] = PairIcm(list(stacks), tuple(pays))
+        p = _CACHE[key] = PairIcm(list(stacks), tuple(pays), me)
     return p
