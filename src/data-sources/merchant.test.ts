@@ -337,3 +337,14 @@ describe("a multi-currency account's wrapping", () => {
     expect(normalizeMerchant(description)?.name).toBe(name);
   });
 });
+
+// Debugger 11-04: "W-2 from Acme Logistics Inc Ach Credit".
+describe("how a deposit came, after the payer", () => {
+  it.each([
+    ["ACME LOGISTICS INC ACH CREDIT", "Acme Logistics Inc"],
+    ["ACME LOGISTICS INC ACH DEPOSIT", "Acme Logistics Inc"],
+    ["ACH CREDIT", "Ach Credit"],
+  ])("%s is %s", (description, name) => {
+    expect(normalizeMerchant(description)?.name).toBe(name);
+  });
+});

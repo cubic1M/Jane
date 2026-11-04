@@ -23,6 +23,8 @@ const BOILERPLATE = [
   /^(?:RECEIVED MONEY FROM|SENT MONEY TO)\s+/,
   /\s+WITH REFERENCE\b.*$/,
   /^CARD TRANSACTION OF [\d.,]+ [A-Z]{3} ISSUED BY\s+/,
+  // How a deposit came, after the payer (debugger 11-04: "W-2 from Acme Logistics Inc Ach Credit").
+  /(?<=\S)\s+ACH (?:CREDIT|DEPOSIT)$/,
   // A brokerage cash account's "DIRECT DEBIT ALTA APARTMENTS RENT (Cash)" (debugger 11-04).
   /\s*\(CASH\)\s*$/,
   /^DIRECT DEBIT\s+/,

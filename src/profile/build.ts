@@ -395,6 +395,7 @@ function employerName(description: string): string {
       "",
     )
     .replace(/\s+PAYROLL.*$/i, "")
+    .replace(/\s+ACH (?:CREDIT|DEPOSIT)$/i, "")
     .replace(/\s+(?:PPD|WEB|CCD)\s+ID:\s*\d+\s*$/i, "")
     .trim();
 }

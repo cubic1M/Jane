@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { ONE_OFF_PAY } from "@/config/profile";
-import { clientDeposits, employerExtras, regularPayers, type PayerRow } from "./regular-payers";
+import {
+  clientDeposits,
+  employerExtras,
+  paycheckPayers,
+  regularPayers,
+  type PayerRow,
+} from "./regular-payers";
 
 // Debugger 11-02: "NORTHWIND LABS" with no pay word in the line stayed uncategorized, and Claude
 // is only asked what a typical purchase there is, so a person's pay wasn't income anywhere.
@@ -109,6 +115,79 @@ describe("regular money in from one payer", () => {
 
 // Debugger 11-02: an agency paid by clients at no regular time had $20,650 of invoices with no
 // category, so none of it was income (#1216 stopped them being refunds, and they stopped there).
+// Debugger 11-04: a salaried person whose bank writes "ACME LOGISTICS INC ACH CREDIT" read as other
+// income: no employer, no W-2, tax on $0. Worse, with one severance payment among them, the rows read
+// as a client's, and a laid-off W-2 worker as self-employed with $14,371 of tax.
+describe("a paycheck's schedule", () => {
+  const twiceMonthly = (name: string, cents: number, months = 4): PayerRow[] =>
+    Array.from({ length: months }, (_, m) =>
+      [15, 28].map((day) => ({
+        id: `${name}-${m}-${day}`,
+        date: `2026-${String(5 + m).padStart(2, "0")}-${day}`,
+        amountCents: -cents,
+        merchantName: name,
+      })),
+    ).flat();
+
+  it("reads the same pay every two weeks or twice a month as paychecks", () => {
+    const every2 = biweekly("ACME LOGISTICS INC", 240_000);
+    expect(paycheckPayers(every2).paychecks).toEqual(every2.map((r) => r.id));
+    const twice = twiceMonthly("NORTHWIND LABS", 312_000);
+    expect(paycheckPayers(twice).paychecks).toEqual(twice.map((r) => r.id));
+  });
+
+  it("counts pay that varies with overtime", () => {
+    const rows = biweekly("ACME LOGISTICS INC", 240_000).map((r, i) => ({
+      ...r,
+      amountCents: r.amountCents - (i % 3) * 20_000,
+    }));
+    expect(paycheckPayers(rows).paychecks).toHaveLength(rows.length);
+  });
+
+  it("sets a one-off from the same payer apart", () => {
+    const pay = twiceMonthly("ACME LOGISTICS", 312_000);
+    const severance: PayerRow = {
+      id: "severance",
+      date: "2026-09-05",
+      amountCents: -1_240_000,
+      merchantName: "ACME LOGISTICS",
+    };
+    const { paychecks, extras } = paycheckPayers([...pay, severance]);
+    expect(paychecks).toEqual(pay.map((r) => r.id));
+    expect(extras).toEqual(["severance"]);
+  });
+
+  it("leaves monthly money alone: rent, a pension or family could be that", () => {
+    const monthly: PayerRow[] = ["05", "06", "07", "08", "09", "10"].map((m) => ({
+      id: m,
+      date: `2026-${m}-01`,
+      amountCents: -180_000,
+      merchantName: "MAPLE HOLDINGS",
+    }));
+    expect(paycheckPayers(monthly).paychecks).toEqual([]);
+  });
+
+  it("needs enough of them, a steady amount, and someone else's money", () => {
+    expect(paycheckPayers(biweekly("ACME", 240_000, 5)).paychecks).toEqual([]);
+    const wild = biweekly("ACME", 240_000).map((r, i) => ({
+      ...r,
+      amountCents: r.amountCents * (1 + i),
+    }));
+    expect(paycheckPayers(wild).paychecks).toEqual([]);
+    expect(paycheckPayers(biweekly("SCHWAB BROKERAGE", 240_000)).paychecks).toEqual([]);
+    const small = biweekly("ACME", 4_000);
+    expect(paycheckPayers(small).paychecks).toEqual([]);
+    const moved = biweekly("ACME", 240_000);
+    const out = moved.map((r) => ({ accountId: "other", date: r.date, amountCents: 240_000 }));
+    expect(
+      paycheckPayers(
+        moved.map((r) => ({ ...r, accountId: "mine" })),
+        out,
+      ).paychecks,
+    ).toEqual([]);
+  });
+});
+
 describe("clients who pay at uneven times", () => {
   const row = (name: string, date: string, cents: number, i = 0): PayerRow => ({
     id: `${name}-${date}-${i}`,

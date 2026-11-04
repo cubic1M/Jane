@@ -568,3 +568,30 @@ describe("military pay", () => {
     expect(f.monthly_income.value).toBeGreaterThan(5_680_00);
   });
 });
+
+// Debugger 11-04: "Your employer: ACME LOGISTICS INC ACH CREDIT".
+describe("the employer's name", () => {
+  it("leaves out how the deposit came", () => {
+    const data = inputFor("renter");
+    const account = data.accounts[0].id;
+    const { facts } = buildProfile({
+      ...data,
+      transactions: [
+        "2026-08-14",
+        "2026-08-28",
+        "2026-09-11",
+        "2026-09-25",
+        "2026-10-09",
+        "2026-10-16",
+      ].map((date, i) => ({
+        id: `p${i}`,
+        date,
+        amountCents: -312_000,
+        description: "ACME LOGISTICS INC ACH CREDIT",
+        pfc: "INCOME_SALARY",
+        accountId: account,
+      })),
+    });
+    expect(facts.employer.value).toBe("ACME LOGISTICS INC");
+  });
+});

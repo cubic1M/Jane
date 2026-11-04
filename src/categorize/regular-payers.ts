@@ -11,6 +11,12 @@ import {
   CLIENT_NOT_INCOME,
   CLIENT_PAYER_MIN_DEPOSITS,
   EMPLOYER_EXTRA_PAY,
+  PAYCHECK_AMOUNT_ROOM,
+  PAYCHECK_MAX_GAP_CV,
+  PAYCHECK_MAX_GAP_DAYS,
+  PAYCHECK_MIN_DEPOSITS,
+  PAYCHECK_MIN_GAP_DAYS,
+  PAYCHECK_MIN_STEADY_SHARE,
   REGULAR_PAYER_MIN_CENTS,
   REGULAR_PAYER_NOT_INCOME,
   REGULAR_PAYER_OWN_MONEY_DAYS,
@@ -29,6 +35,7 @@ import type { ScopedDb } from "@/lib/db-scoped";
 // their accounts, whatever it's called. Rows the rules or the person placed stay.
 
 const INCOME = { pfcPrimary: "INCOME", pfcDetailed: "INCOME_OTHER" } as const;
+const SALARY = { pfcPrimary: "INCOME", pfcDetailed: "INCOME_SALARY" } as const;
 const CLIENT_INCOME = { pfcPrimary: "INCOME", pfcDetailed: "INCOME_CONTRACTOR" } as const;
 
 export type PayerRow = {
@@ -104,6 +111,41 @@ export function regularPayers(
     .filter((payer) => isRegularPay(payer) && !isOwnMoney(payer, moneyOut))
     .flat()
     .map((r) => r.id);
+}
+
+// A paycheck's schedule with no pay word in the line (debugger 11-04: "ACME LOGISTICS INC ACH CREDIT"
+// had no employer, no W-2 and tax on $0). Weekly, every two weeks or twice a month, a steady amount,
+// enough of them: monthly money stays other income, since rent, a pension or family could be that.
+// One-offs from the same payer (severance, a bonus) are income, but not paychecks.
+export function paycheckPayers(
+  rows: readonly PayerRow[],
+  moneyOut: readonly MoneyOutRow[] = [],
+): { paychecks: string[]; extras: string[] } {
+  const byPayer = new Map<string, PayerRow[]>();
+  for (const row of rows) {
+    if (row.amountCents >= 0 || !row.merchantName || notIncome(row.merchantName)) continue;
+    const key = row.merchantName.toLowerCase();
+    byPayer.set(key, [...(byPayer.get(key) ?? []), row]);
+  }
+  const paychecks: string[] = [];
+  const extras: string[] = [];
+  for (const payer of byPayer.values()) {
+    const usual = median(payer.map((r) => -r.amountCents));
+    if (usual < REGULAR_PAYER_MIN_CENTS) continue;
+    const steady = payer.filter(
+      (r) => Math.abs(-r.amountCents - usual) / usual <= PAYCHECK_AMOUNT_ROOM,
+    );
+    if (steady.length < PAYCHECK_MIN_DEPOSITS) continue;
+    if (steady.length < payer.length * PAYCHECK_MIN_STEADY_SHARE) continue;
+    const days = [...new Set(steady.map((r) => dayNumber(r.date)))].sort((a, b) => a - b);
+    const gaps = days.slice(1).map((d, i) => d - days[i]);
+    const gap = median(gaps);
+    if (gap < PAYCHECK_MIN_GAP_DAYS || gap > PAYCHECK_MAX_GAP_DAYS) continue;
+    if (spread(gaps) > PAYCHECK_MAX_GAP_CV || isOwnMoney(steady, moneyOut)) continue;
+    paychecks.push(...steady.map((r) => r.id));
+    extras.push(...payer.filter((r) => !steady.includes(r)).map((r) => r.id));
+  }
+  return { paychecks, extras };
 }
 
 // The ids of the rows that are clients paying at uneven times (debugger 11-02: a freelancer's irregular
@@ -206,18 +248,29 @@ export async function markRegularPayers(db: Pick<ScopedDb, "transactions">): Pro
     select: { accountId: true, date: true, amountCents: true },
   });
   const out = moneyOut.map((o) => ({ ...o, date: isoDay(o.date) }));
-  const dated = rows
+  const allDated = rows
     .filter((r) => !extras.includes(r.id))
     .map((r) => ({ ...r, date: isoDay(r.date) }));
-  const regular = regularPayers(dated, out);
+  // Not a Zelle line the rules called a transfer: it names a person, not an employer.
+  const pay = paycheckPayers(
+    allDated.filter((r) => r.pfcDetailed !== "TRANSFER_IN_ACCOUNT_TRANSFER"),
+    out,
+  );
+  const placed = new Set([...pay.paychecks, ...pay.extras]);
+  const dated = allDated.filter((r) => !placed.has(r.id));
+  const regular = [...regularPayers(dated, out), ...pay.extras];
   const paying = new Set(regular);
   // Not a Zelle line the rules called a transfer: it names a person, not a client.
   const clients = clientDeposits(
     dated.filter((r) => r.pfcDetailed !== "TRANSFER_IN_ACCOUNT_TRANSFER"),
     out,
   ).filter((id) => !paying.has(id));
-  if (regular.length + clients.length === 0) return extras.length;
-  const [other, contractor] = await Promise.all([
+  if (pay.paychecks.length + regular.length + clients.length === 0) return extras.length;
+  const [salary, other, contractor] = await Promise.all([
+    db.transactions.updateMany({
+      where: { id: { in: pay.paychecks } },
+      data: { ...SALARY, categorySource: "rule" },
+    }),
     db.transactions.updateMany({
       where: { id: { in: regular } },
       data: { ...INCOME, categorySource: "rule" },
@@ -228,5 +281,5 @@ export async function markRegularPayers(db: Pick<ScopedDb, "transactions">): Pro
       data: { ...CLIENT_INCOME, categorySource: "rule" },
     }),
   ]);
-  return extras.length + other.count + contractor.count;
+  return extras.length + salary.count + other.count + contractor.count;
 }

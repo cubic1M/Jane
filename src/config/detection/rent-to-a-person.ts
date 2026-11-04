@@ -32,6 +32,15 @@ export const CASH_INCOME_ONE_OFF_FACTOR = 3;
 export const EMPLOYER_EXTRA_PAY = /\b(?:BONUS|COMMISSION|INCENTIVE)\b/i;
 
 export const REGULAR_PAYER_MIN_CENTS = 20_000;
+// A paycheck's schedule with no pay word in the line (src/categorize/regular-payers.ts): weekly to
+// twice a month, each deposit within this share of the usual one, enough of them, and most of what
+// the payer sends.
+export const PAYCHECK_MIN_DEPOSITS = 6;
+export const PAYCHECK_MIN_GAP_DAYS = 6;
+export const PAYCHECK_MAX_GAP_DAYS = 17;
+export const PAYCHECK_MAX_GAP_CV = 0.35;
+export const PAYCHECK_AMOUNT_ROOM = 0.25;
+export const PAYCHECK_MIN_STEADY_SHARE = 0.75;
 // Likely the person's own money moving: a bank, a broker or a payment app.
 export const REGULAR_PAYER_NOT_INCOME =
   /\b(?:bank|savings|checking|transfer|credit union|fcu|investments?|brokerage|schwab|fidelity|vanguard|robinhood|coinbase|venmo|paypal|zelle|cash ?app|apple cash)\b/i;
