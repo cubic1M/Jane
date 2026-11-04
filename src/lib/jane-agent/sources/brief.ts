@@ -1,3 +1,4 @@
+import { personIsThere } from "../quiet-hours";
 import { BRIEF_BILL_DAYS, BRIEF_FROM_HOUR, MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { formatCents } from "@/lib/money";
 import { dateAndDays, inDays, things, type MessageSource } from "./source";
@@ -36,7 +37,7 @@ export const billsDueSoon = (snapshot: Snapshot) =>
 export const briefSource: MessageSource = {
   key: "brief",
   gather(snapshot, { now, local, trigger }) {
-    if (local.hour < BRIEF_FROM_HOUR && trigger !== "open") return [];
+    if (local.hour < BRIEF_FROM_HOUR && !personIsThere(trigger)) return [];
     const lines = [greeting(local.hour)];
     const safe = safeLine(snapshot, local.date);
     if (safe) lines.push(safe);

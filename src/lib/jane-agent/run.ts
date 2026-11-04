@@ -31,7 +31,7 @@ import { runTaxAutopilotSafely } from "@/lib/tax-autopilot";
 import { gather, plan, type BrainSettings } from "./brain";
 import { BUNDLED_UNTIL, closeSettled, postMessages } from "./messages";
 import { queueChatNotificationsSafely } from "./notify";
-import { inQuietHours } from "./quiet-hours";
+import { inQuietHours, personIsThere } from "./quiet-hours";
 import { listPreferences, postingOf } from "./preferences";
 import { scanSuggestions } from "@/lib/suggestions";
 import { loadSnapshot } from "./snapshot";
@@ -72,7 +72,7 @@ async function runJaneAgentWork(
   });
   if (!user) return { posted: 0 };
   // Nothing to say in quiet hours, so nothing to load, unless the person is looking.
-  if (trigger !== "open" && inQuietHours(now, user.timezone)) return { posted: 0 };
+  if (!personIsThere(trigger) && inQuietHours(now, user.timezone)) return { posted: 0 };
   // Spec step 92: never interrupt. While they're chatting, Jane's own messages wait.
   if (await chatting(userId, { client, now })) return { posted: 0 };
   // A run takes a while (the upkeep below, the bank data): what they typed meanwhile counts too.

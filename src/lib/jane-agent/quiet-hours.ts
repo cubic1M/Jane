@@ -1,5 +1,6 @@
 import { QUIET_END_HOUR, QUIET_START_HOUR } from "@/config/agent-chat";
 import { validTimezone } from "@/lib/digest/week";
+import type { Trigger } from "./sources/source";
 
 // The person's own clock (spec step 82): today's date and the hour in their timezone
 // (users.timezone, US Pacific when unset), and whether it's quiet hours there.
@@ -27,6 +28,10 @@ export function localTime(now: Date, timezone: string | null | undefined): Local
 
 // Quiet from QUIET_START_HOUR (9pm) until QUIET_END_HOUR (8am) local time. A window that
 // doesn't cross midnight works too.
+// Someone who opened the chat or just uploaded a file is there to read what Jane says, whatever
+// the hour. No email goes out in quiet hours either way (./notify.ts).
+export const personIsThere = (trigger: Trigger) => trigger === "open" || trigger === "import";
+
 export function inQuietHours(
   now: Date,
   timezone: string | null | undefined,

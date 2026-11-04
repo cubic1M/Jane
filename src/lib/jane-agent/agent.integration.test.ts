@@ -304,6 +304,17 @@ describe.runIf(url)("Jane's chat against a real database", () => {
       expect(chat?.messages[0].body).toMatch(/needs your yes:/);
     });
 
+    // Someone uploading at 9pm on a phone has no side chat loading to post for them: Home had no
+    // cards until they opened the chat, though a first bank link already got past quiet hours.
+    it("posts after an upload in quiet hours, since the person is there", async () => {
+      const userId = await withFindings(["bank_fees"]);
+      // 3am in Los Angeles.
+      const night = new Date("2026-10-18T10:00:00Z");
+      const { posted } = await runJaneAgent(userId, { client, now: night, trigger: "import" });
+      expect(posted).toBeGreaterThan(0);
+      expect((await messagesOf(userId)).length).toBeGreaterThan(0);
+    });
+
     it("refuses a Yes once the finding changed since the message", async () => {
       const userId = await withFindings(["bank_fees"]);
       await runJaneAgent(userId, { client, trigger: "open" });
