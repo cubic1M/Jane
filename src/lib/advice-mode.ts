@@ -31,20 +31,24 @@ export async function adviceMode(
 // 2026-10-24: /home asked 81 times).
 const adviceModeOnce = cache((userId: string) => adviceModeFrom(userId, defaultClient));
 
-async function adviceModeFrom(userId: string, client: PrismaClient): Promise<boolean> {
-  // Someone's own statement (src/lib/statement-trial.ts) is real data, whatever else is there.
-  if (isStatementTrialUser(userId)) return REAL_ACCOUNT_ADVICE;
+// Every account this person has comes from the demo bank, so all they see is sample data.
+export async function onlyDemoBank(userId: string, client: PrismaClient): Promise<boolean> {
   const db = scopedFor(userId, client);
   const [items, csvAccounts] = await Promise.all([
     db.plaidItems.findMany({ select: { plaidItemId: true } }),
     db.accounts.count({ where: { source: "csv" } }),
   ]);
-  const demoOnly = isDemoOnly(
+  return isDemoOnly(
     items.map((i) => i.plaidItemId),
     csvAccounts,
   );
+}
+
+async function adviceModeFrom(userId: string, client: PrismaClient): Promise<boolean> {
+  // Someone's own statement (src/lib/statement-trial.ts) is real data, whatever else is there.
+  if (isStatementTrialUser(userId)) return REAL_ACCOUNT_ADVICE;
   // Real data: off until REAL_ACCOUNT_ADVICE says otherwise (it doesn't).
-  if (!demoOnly) return REAL_ACCOUNT_ADVICE;
+  if (!(await onlyDemoBank(userId, client))) return REAL_ACCOUNT_ADVICE;
   // Spec step 138: a trial person is sample data by construction, so always.
   return isSampleTrialUser(userId) || demoAdviceAllowed();
 }

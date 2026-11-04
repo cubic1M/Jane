@@ -161,8 +161,22 @@ describe.runIf(url)("the monthly money report", { timeout: 120_000 }, () => {
     expect(tool).toMatchObject({ month: "2026-09", moved: { transfers: 1, sampleOnly: true } });
   });
 
+  it("never emails sample figures to someone whose only bank is the demo bank", async () => {
+    const send = vi.fn<(e: Email) => Promise<void>>(async () => {});
+    const run = await runMonthlyReports({ client, now: NOW, send, userIds: [userId] });
+    expect(send).not.toHaveBeenCalled();
+    expect(run).toMatchObject({ sent: 0, skipped: 1, failed: 0 });
+    // It's kept for the page and the chat, and not marked as sent.
+    const kept = await client.monthlyReport.findFirstOrThrow({ where: { userId } });
+    expect(kept.emailedAt).toBeNull();
+  });
+
   it("emails it once, with a link for every figure", async () => {
     const send = vi.fn<(e: Email) => Promise<void>>(async () => {});
+    // A statement of their own next to the demo bank: real data, so it's emailed.
+    const own = await client.account.create({
+      data: { userId, source: "csv", name: "Own card", type: "credit" },
+    });
     await runMonthlyReports({ client, now: NOW, send, userIds: [userId] });
     const mine = send.mock.calls.filter(([e]) => e.to === email);
     expect(mine).toHaveLength(1);
@@ -181,6 +195,7 @@ describe.runIf(url)("the monthly money report", { timeout: 120_000 }, () => {
     expect(paths.filter(isHiddenPage)).toEqual([]);
     await runMonthlyReports({ client, now: NOW, send, userIds: [userId] });
     expect(send.mock.calls.filter(([e]) => e.to === email)).toHaveLength(1);
+    await client.account.delete({ where: { id: own.id } });
   });
 
   it("carries the year in review in December's report, as on /year", async () => {
