@@ -1,10 +1,1 @@
-[
- {
-  "on": 1335,
-  "lane": "lane:general",
-  "task": "claude/smoke-wait",
-  "when": "green",
-  "since": "2026-11-04T02:34:02.500Z",
-  "expires": "2026-11-04T03:34:02.500Z"
- }
-]
+[]
