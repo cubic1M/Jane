@@ -39,7 +39,7 @@ export const RATE_LIMITS = {
   trialRemovals: { limit: 10, windowSeconds: 60 * 60 },
   // Coming back from a sign-in link or from Google, per IP.
   authCallback: { limit: 30, windowSeconds: 10 * 60 },
-  // Sign-in and sign-up emails, per IP and per address.
+  // Sign-in and sign-up forms, per IP.
   auth: { limit: 10, windowSeconds: 10 * 60 },
   // Sign-in links actually sent to one address, however they were asked for and from however many
   // IPs. Past these nothing more goes out.
