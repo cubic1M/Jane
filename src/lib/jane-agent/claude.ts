@@ -12,6 +12,7 @@ import {
   CHAT_PRIMER_BUDGET_MS,
   CHAT_CLAUDE_EFFORT,
   CHAT_CLAUDE_MAX_TURNS,
+  CHAT_TOOLS_FROM_MESSAGES,
   CHAT_CLAUDE_REWRITES,
 } from "@/config/agent-chat";
 import { ASK_BLOCKED_REPLY } from "@/config/ask";
@@ -34,7 +35,7 @@ import type { PolicyKind } from "@/config/insurance";
 import { quotesAnswer } from "./insurance/quotes";
 import { DEBT_TOOL_STATUS } from "./debt-tools";
 import { parseDecision } from "./decision-intents";
-import { areaTools, chatTools, isArea, lookupsFor, sectorsFor } from "./tool-select";
+import { areaTools, chatTools, isArea, lookupsFor, sectorsFor, toolsFor } from "./tool-select";
 import { CHAT_TOOLS, chatPrimer, proposeAction, runChatTool, type Proposal } from "./claude-tools";
 import {
   calculatorInputsNotOnFile,
@@ -770,16 +771,20 @@ async function askClaude(
   // (./tool-select.ts). What this question is about goes after the cached instructions: its areas,
   // and whether it may get a button.
   const actionRequest = ACTION_REQUEST.test(question);
-  const tools = chatTools(CHAT_TOOLS);
+  const previousAsked = history
+    .filter((m) => m.role === "user")
+    .slice(-CHAT_TOOLS_FROM_MESSAGES)
+    .map((m) => m.content)
+    .join(" ");
+  // The general tools and the sectors this question is about, not all 172: writing those to the
+  // cache was two thirds of a cold message's cost, and sparse use means mostly cold messages
+  // (11-04, production logs). A sector it missed is one open_area away. CHAT_ALL_TOOLS turns it off.
+  let tools =
+    process.env.CHAT_ALL_TOOLS === "1"
+      ? chatTools(CHAT_TOOLS)
+      : toolsFor(CHAT_TOOLS, question, previousAsked, topic, today);
   timing.toolsSent = tools.length;
-  const areas = [
-    ...sectorsFor(
-      question,
-      [...history].reverse().find((m) => m.role === "user")?.content ?? null,
-      topic,
-      today,
-    ),
-  ];
+  const areas = [...sectorsFor(question, previousAsked, topic, today)];
   // A question that only asks for information is told to answer in words (a button it offers
   // anyway keeps only its links, below); one whose card is prepared already has its button.
   const buttons = actionRequest && !prepared;
@@ -1094,6 +1099,10 @@ async function askClaude(
           const listed = isArea(area) && !timing.areasOpened.includes(area);
           if (listed) {
             timing.areasOpened.push(area);
+            // Its tools from the next step on, if the question's words didn't already bring them.
+            const sent = new Set(tools.map((t) => t.name));
+            tools = [...tools, ...areaTools(CHAT_TOOLS, area).filter((t) => !sent.has(t.name))];
+            timing.toolsSent = tools.length;
             if (!areaOpened) {
               areaOpened = true;
               turnLimit += 1;
