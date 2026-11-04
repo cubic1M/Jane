@@ -12,6 +12,7 @@ import {
   CHAT_PRIMER_BUDGET_MS,
   CHAT_CLAUDE_EFFORT,
   CHAT_CLAUDE_MAX_TURNS,
+  CHAT_TOOLS_FROM_MESSAGES,
   CHAT_CLAUDE_REWRITES,
 } from "@/config/agent-chat";
 import { ASK_BLOCKED_REPLY } from "@/config/ask";
@@ -770,7 +771,11 @@ async function askClaude(
   // (./tool-select.ts). What this question is about goes after the cached instructions: its areas,
   // and whether it may get a button.
   const actionRequest = ACTION_REQUEST.test(question);
-  const previousAsked = [...history].reverse().find((m) => m.role === "user")?.content ?? null;
+  const previousAsked = history
+    .filter((m) => m.role === "user")
+    .slice(-CHAT_TOOLS_FROM_MESSAGES)
+    .map((m) => m.content)
+    .join(" ");
   // The general tools and the sectors this question is about, not all 172: writing those to the
   // cache was two thirds of a cold message's cost, and sparse use means mostly cold messages
   // (11-04, production logs). A sector it missed is one open_area away. CHAT_ALL_TOOLS turns it off.

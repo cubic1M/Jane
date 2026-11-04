@@ -336,6 +336,9 @@ export const CHAT_CLAUDE_EFFORT = "low";
 // When an answer fails the guardrails, Claude is told why and may answer again this many
 // times before the person gets the safe fallback (ASK_BLOCKED_REPLY).
 export const CHAT_CLAUDE_REWRITES = 1;
+// How many of the person's earlier messages decide which sectors' tools a request carries. "How
+// much do i owe", "which one first", "why": one message back would lose the debts by the "why".
+export const CHAT_TOOLS_FROM_MESSAGES = 3;
 // Looked up before Claude is asked, and sent with the question.
 export const CHAT_PRIMER_TOOLS = [
   "safe_to_spend",

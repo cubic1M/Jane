@@ -732,6 +732,29 @@ describe("which tools a request carries", () => {
     expect(sentTools(0)).not.toContain("insurance_quotes");
   });
 
+  it("keeps a thread's sector through a follow-up that names none", async () => {
+    create.mockResolvedValue(final("Fine."));
+    const thread: ChatTurn[] = [
+      { role: "user", content: "how much do i owe" },
+      { role: "assistant", content: "A bit." },
+      { role: "user", content: "which one first" },
+      { role: "assistant", content: "The card." },
+    ];
+    await askClaudeInChat("u1", thread, "why", { client, now: NOW, claude, memory: LOOKED_UP });
+    expect(sentTools(0)).toContain("payoff_plan");
+    expect(JSON.stringify(create.mock.calls[0][0])).toContain("these areas: debt");
+  });
+
+  it("lets go of it once the thread has moved on", async () => {
+    create.mockResolvedValue(final("Fine."));
+    const thread: ChatTurn[] = ["how much do i owe", "hi", "thanks", "ok"].flatMap((content) => [
+      { role: "user" as const, content },
+      { role: "assistant" as const, content: "Sure." },
+    ]);
+    await askClaudeInChat("u1", thread, "why", { client, now: NOW, claude, memory: LOOKED_UP });
+    expect(sentTools(0)).not.toContain("payoff_plan");
+  });
+
   it("carries a sector open_area asked for from the next step on", async () => {
     create
       .mockResolvedValueOnce(toolUse("open_area", { area: "tax" }))
