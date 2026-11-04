@@ -751,7 +751,7 @@ export async function runInvestmentTool(
           account: l.label,
           limit: money(l.limitCents),
           catchUp: money(l.catchUpCents),
-          putIn: money(l.usedCents),
+          putIn: l.usedCents === 0 ? "none seen yet" : money(l.usedCents),
           roomLeft: money(l.roomCents),
         })),
         advice: !v.advice

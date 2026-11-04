@@ -174,9 +174,13 @@ const significant = (name: string) =>
 // A `what` or `name` can be a whole sentence ("Go through your subscriptions and cancel..."), a
 // code ("GENERAL_MERCHANDISE") or a kind ("autopay"): those say what to do or what sort of thing
 // it is, not what a figure is about.
+// A bank's wording for a payment, not whose it is: "Card Payment Thank You" is also the Chase card's.
+const BANK_WORDING = /\bthank you\b|^(?:(?:online|mobile|internet|autopay|card)\s+)*payment\b/i;
+
 const isAName = (text: string) =>
   text.length <= 40 &&
   wordsOf(text).length <= 5 &&
+  !BANK_WORDING.test(text) &&
   !/[.!?:]$|_/.test(text.trim()) &&
   /^[\p{Lu}\p{N}]/u.test(text.trim());
 

@@ -436,4 +436,24 @@ describe("the calculator's inputs", () => {
       ),
     ).toEqual([]);
   });
+
+  it("doesn't take a bank's payment wording for whose a figure is", () => {
+    const ledger = new FigureLedger();
+    ledger.addNames(["Chase Sapphire", "Card Payment Thank You"]);
+    ledger.addToolResult(
+      JSON.stringify({
+        transactions: [
+          { merchant: "Card Payment Thank You", amount: "$420.00", date: "2026-10-12" },
+          { merchant: "Hulu", amount: "$17.99", date: "2026-10-27" },
+        ],
+      }),
+    );
+    expect(ledger.problems("Your Chase Sapphire payment of $420.00 went through.", NOW)).toEqual(
+      [],
+    );
+    // What a real name holds still counts.
+    expect(ledger.problems("Chase Sapphire was $17.99.", NOW).map((p) => p.kind)).toEqual([
+      "wrong_name",
+    ]);
+  });
 });
