@@ -234,6 +234,7 @@ export const TAX_FORMS = {
   int: { form: "1099-INT", what: "interest", by: "01-31" },
   brokerage: { form: "consolidated 1099 (DIV and B)", what: "dividends and sales", by: "02-15" },
   r: { form: "1099-R", what: "pension or retirement payouts", by: "01-31" },
+  ssa: { form: "SSA-1099", what: "Social Security benefits", by: "01-31" },
   g: { form: "1099-G", what: "unemployment benefits", by: "01-31" },
   mortgage: { form: "1098", what: "mortgage interest", by: "01-31" },
   student: { form: "1098-E", what: "student loan interest", by: "01-31" },

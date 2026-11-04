@@ -226,6 +226,46 @@ describe("a brokerage seen only in money coming from it", () => {
   });
 });
 
+// Debugger 11-04: "1099-R from Ssa Treas Xxsoc Sec" and "1099-R from Ssi Treas Xxsupp Sec". Social
+// Security sends an SSA-1099, and SSI isn't taxed and sends nothing (its category keeps it out).
+describe("Social Security", () => {
+  it("sends an SSA-1099, once, under its own name", () => {
+    const pay = (date: string) =>
+      tx({
+        date,
+        description: "SSA TREAS 310 XXSOC SEC",
+        merchantName: "Ssa Treas Xxsoc Sec",
+        pfcDetailed: "INCOME_RETIREMENT_PENSION",
+        amountCents: -112_400,
+      });
+    const forms = expectedForms({
+      year: 2026,
+      transactions: [pay("2026-09-03"), pay("2026-10-03")],
+      accounts: [],
+      loans: [],
+    });
+    expect(forms.map((f) => [f.form, f.from, f.amountCents])).toEqual([
+      ["SSA-1099", "Social Security", 224_800],
+    ]);
+  });
+
+  it("leaves a real pension's 1099-R alone", () => {
+    const forms = expectedForms({
+      year: 2026,
+      transactions: [
+        tx({
+          description: "STATE TEACHERS RET SYS",
+          merchantName: "State Teachers Ret Sys",
+          pfcDetailed: "INCOME_RETIREMENT_PENSION",
+        }),
+      ],
+      accounts: [],
+      loans: [],
+    });
+    expect(forms.map((f) => f.form)).toEqual(["1099-R"]);
+  });
+});
+
 describe("who sends each form, as pages say it", () => {
   it("is named without the bank's word for how the money came", () => {
     expect(formPayer("Blue Bottle Coffee Payroll")).toBe("Blue Bottle Coffee");

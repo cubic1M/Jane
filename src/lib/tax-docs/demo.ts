@@ -1,3 +1,4 @@
+import { SOCIAL_SECURITY_PAYEE } from "@/config/retirement-taxes";
 import { DEMO_PAY_STUB, INCOME_KINDS } from "@/config/tax";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadEquityIncome } from "@/lib/equity-income";
@@ -98,6 +99,12 @@ export const demoDocumentPartner: TaxDocumentPartner = {
             return { compensation: paid(INCOME_KINDS.self_employed.categories, payer)(form) };
           case "r":
             return { gross: paid(INCOME_KINDS.retirement.categories, payer)(form) };
+          case "ssa":
+            return {
+              benefits: paid(INCOME_KINDS.retirement.categories, (t) =>
+                SOCIAL_SECURITY_PAYEE.test(t.description) ? "Social Security" : "",
+              )(form),
+            };
           case "g":
             return { amount: paid(INCOME_KINDS.unemployment.categories, payer)(form) };
           case "int":

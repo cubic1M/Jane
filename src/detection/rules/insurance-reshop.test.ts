@@ -32,18 +32,21 @@ describe("insurance_reshop", () => {
   });
 
   // Debugger 11-04: "Your SGLI insurance could cost less", of a program nobody can shop around.
-  it.each(["SGLI PREMIUM", "VGLI PREMIUM", "TRICARE PRIME", "FEGLI PREMIUM"])(
-    "leaves out %s: it's a government program, not a market",
-    (description) => {
-      const plan = {
-        description,
-        merchantName: null,
-        pfcPrimary: "GENERAL_SERVICES",
-        pfcDetailed: "GENERAL_SERVICES_INSURANCE",
-      };
-      expect(run(input({ transactions: monthly(4, 2_900, plan) }))).toEqual([]);
-    },
-  );
+  it.each([
+    "SGLI PREMIUM",
+    "VGLI PREMIUM",
+    "TRICARE PRIME",
+    "FEGLI PREMIUM",
+    "MEDICARE PREMIUM CMS",
+  ])("leaves out %s: it's a government program, not a market", (description) => {
+    const plan = {
+      description,
+      merchantName: null,
+      pfcPrimary: "GENERAL_SERVICES",
+      pfcDetailed: "GENERAL_SERVICES_INSURANCE",
+    };
+    expect(run(input({ transactions: monthly(4, 2_900, plan) }))).toEqual([]);
+  });
 
   it("names a known insurer, not the bank's line for it", () => {
     const stateFarm = {
