@@ -33,7 +33,7 @@ export function draftReadingMessage(d: DraftReturnView): Message {
 
 export function draftFindingMessage(d: DraftReturnView, f: DraftFinding): Message {
   return {
-    body: `${f.title} (${f.line}): ${amount(f)}. ${f.why} Fix it in your software, or send it to whoever prepares your return, before you file. I don't file it.`,
+    body: `${f.title} (${f.line}): ${amount(f)}. ${f.why} Your software, or whoever prepares your return, is where it changes. I don't file it.`,
     refs: { draftReturn: d.id, taxYear: d.year ?? undefined },
     actions: [
       { id: "open", label: "See every line", kind: "link", href: DRAFT_HREF },

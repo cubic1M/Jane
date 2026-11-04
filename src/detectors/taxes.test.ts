@@ -610,8 +610,8 @@ describe("a draft return checked before filing (step 272)", () => {
       ]),
     ).find((x) => x.topic === "draft_return_check")!;
     expect(s).toMatchObject({ urgency: "now", worthKind: "risk", worthCents: 116_737 });
-    expect(s.title).toBe("Fix 2 things in your 2026 draft return before you file");
-    expect(s.headline).toBe("Fix your draft return, avoid up to $1,167");
+    expect(s.title).toBe("2 lines in your 2026 draft return don't match your records");
+    expect(s.headline).toBe("Check your draft return, avoid up to $1,167");
     expect(s.why).toContain("I don't file it.");
     const saves = run("freelancer", withDraft([finding("estimatedPaid", "saves", 200_000)])).find(
       (x) => x.topic === "draft_return_check",

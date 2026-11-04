@@ -798,8 +798,8 @@ const inheritedIra: Detector = {
         id: suggestionId("taxes", "inherited_ira"),
         capability: "taxes",
         topic: "inherited_ira",
-        title: "Take the rest of your inherited IRA out by December 31",
-        headline: headlineOf("Empty your inherited IRA this year", penalty, "risk"),
+        title: "Your inherited IRA has to be empty by December 31",
+        headline: headlineOf("Check your inherited IRA deadline", penalty, "risk"),
         short: `Your inherited IRA holds ${formatCents(balance)}; what's left after ${emptyBy} costs 25%.`,
         worthCents: penalty,
         worthKind: "risk",
@@ -925,10 +925,10 @@ const hsaOverLimit: Detector = {
       capability: "taxes",
       topic: "hsa_over_limit",
       title: over
-        ? "Stop your HSA deposits and take the extra out before you file"
-        : "Lower your HSA deposits so they stay under the limit",
+        ? "Your HSA deposits are over this year's limit"
+        : "Your HSA deposits are on pace to pass this year's limit",
       headline: headlineOf(
-        over ? "Stop your HSA deposits" : "Lower your HSA deposits",
+        over ? "Check your HSA deposits" : "Check your HSA pace",
         h.exciseCents,
         "risk",
       ),
@@ -944,7 +944,7 @@ const hsaOverLimit: Detector = {
         },
       ]),
       urgency: over ? "now" : "soon",
-      why: `You've put ${formatCents(h.contributedCents)} into your HSA this year, and at this pace about ${formatCents(h.projectedCents)} by December, against a ${formatCents(h.limitCents)} limit for ${cover} cover. ${over ? `${formatCents(h.excessCents)} is over already.` : `That would be ${formatCents(h.projectedExcessCents)} over.`} Money over the limit isn't deductible and costs a 6% penalty (about ${formatCents(h.exciseCents)}) every year it stays in. Taking it out, with what it earned, before you file avoids the penalty; your HSA provider has a form for it.`,
+      why: `You've put ${formatCents(h.contributedCents)} into your HSA this year, and at this pace about ${formatCents(h.projectedCents)} by December, against a ${formatCents(h.limitCents)} limit for ${cover} cover. ${over ? `${formatCents(h.excessCents)} is over already.` : `That would be ${formatCents(h.projectedExcessCents)} over.`} Money over the limit isn't deductible and costs a 6% penalty (about ${formatCents(h.exciseCents)}) every year it stays in. Money returned with what it earned before the return is filed has no penalty; your HSA provider has a form for it.`,
       action: { label: "See the numbers", href: "/taxes/health" },
     };
   },
@@ -964,7 +964,7 @@ const medicalDeductionDetector: Detector = {
       id: suggestionId("taxes", "medical_deduction"),
       capability: "taxes",
       topic: "medical_deduction",
-      title: "Keep your medical receipts: this year they're worth itemizing",
+      title: "Keep your medical receipts: this year's may count on your return",
       headline: headlineOf("Keep your medical receipts", h.savesCents, "saves", true),
       short: `You paid ${formatCents(h.spentCents)} for care this year; ${formatCents(h.floorCents)} is the 7.5% floor.`,
       worthCents: h.savesCents,
@@ -979,7 +979,7 @@ const medicalDeductionDetector: Detector = {
         },
       ]),
       urgency: month(profile.today) >= 11 ? "soon" : "later",
-      why: `You've paid ${formatCents(h.spentCents)} for care and health premiums this year. Only what's over 7.5% of your income (about ${formatCents(h.floorCents)}) counts, which is ${formatCents(h.deductibleCents)}; with your property tax and gifts that's more than your ${formatCents(h.standardCents)} standard deduction, so itemizing would save about ${formatCents(h.savesCents)}. Keep the bills and receipts, and ask whoever does your return to itemize.`,
+      why: `You've paid ${formatCents(h.spentCents)} for care and health premiums this year. Only what's over 7.5% of your income (about ${formatCents(h.floorCents)}) counts, which is ${formatCents(h.deductibleCents)}; with your property tax and gifts that's more than your ${formatCents(h.standardCents)} standard deduction. Keep the bills and receipts for whoever does your return.`,
       action: { label: "See the numbers", href: "/taxes/health" },
     };
   },
@@ -1163,8 +1163,8 @@ const draftReturnCheck: Detector = {
       id: suggestionId("taxes", "draft_return_check"),
       capability: "taxes",
       topic: "draft_return_check",
-      title: `Fix ${d.findings.length === 1 ? "one thing" : `${d.findings.length} things`} in your ${d.year} draft return before you file`,
-      headline: headlineOf("Fix your draft return", total, owes ? "risk" : "saves", true),
+      title: `${d.findings.length === 1 ? "One line" : `${d.findings.length} lines`} in your ${d.year} draft return ${d.findings.length === 1 ? "doesn't" : "don't"} match your records`,
+      headline: headlineOf("Check your draft return", total, owes ? "risk" : "saves", true),
       short: `${top.title}, on ${top.line}: ${formatCents(top.dollarsCents)}.`,
       worthCents: total,
       worthKind: owes ? "risk" : "saves",
@@ -1179,9 +1179,7 @@ const draftReturnCheck: Detector = {
           (f) =>
             `${f.title} (${f.line}): about ${formatCents(f.dollarsCents)} ${f.effect === "saves" ? "back" : "more tax"}.`,
         )
-        .join(
-          " ",
-        )} Fix them in your software or with your preparer before you file; I don't file it.`,
+        .join(" ")} Your software or preparer is where it changes; I don't file it.`,
       action: { label: "See every line", href: "/taxes/draft" },
     };
   },

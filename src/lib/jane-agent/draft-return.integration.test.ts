@@ -175,7 +175,7 @@ describe.runIf(url)("a draft return checked before filing", { timeout: 120_000 }
       (x) => x.topic === "draft_return_check",
     )!;
     expect(s).toMatchObject({ urgency: "now", worthKind: "risk" });
-    expect(s.title).toBe("Fix 3 things in your 2026 draft return before you file");
+    expect(s.title).toBe("3 lines in your 2026 draft return don't match your records");
   });
 
   it("makes a sample draft for sample data, once while it waits, and none for a real account", async () => {

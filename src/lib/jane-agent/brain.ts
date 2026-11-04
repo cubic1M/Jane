@@ -7,6 +7,7 @@ import {
   QUIET_START_HOUR,
 } from "@/config/agent-chat";
 import { inQuietHours, localTime } from "./quiet-hours";
+import { tellsThemToAct } from "@/lib/real-account-text";
 import type { Snapshot } from "./snapshot";
 import { MESSAGE_SOURCES, type MessageSource, type Trigger } from "./sources";
 import { agendaOf, outsideAgenda } from "./agenda";
@@ -33,6 +34,9 @@ export type BrainSettings = {
   // Spec step 184: the day as one agenda message (./agenda.ts) plus whatever is urgent.
   // Jane's runner turns it on; off, each thing is its own message within the limits.
   agenda?: boolean;
+  // A real account: nothing hand-written that tells them what to do with their money gets
+  // through, whichever source wrote it (src/lib/real-account-text.ts).
+  realAccount?: boolean;
 };
 
 // What Jane already said: the recent messages (to count today's) and which of today's
@@ -66,6 +70,7 @@ export function gather(snapshot: Snapshot, now: Date, settings: BrainSettings): 
   return (settings.sources ?? MESSAGE_SOURCES).flatMap((source) =>
     source
       .gather(snapshot, context)
+      .filter((c) => !settings.realAccount || !tellsThemToAct(c.body))
       .map((c) => ({ ...c, source: source.key, dedupeKey: `${source.key}:${c.dedupeKey}` })),
   );
 }
