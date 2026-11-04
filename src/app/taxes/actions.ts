@@ -89,9 +89,9 @@ export async function savingAction(_previous: FormState, formData: FormData): Pr
   const intent = String(formData.get("intent") ?? "");
   const year = Number(formData.get("year"));
   const key = String(formData.get("key") ?? "");
-  const { savings } = await loadTaxSavings(user.id);
+  const { savings, year: openYear } = await loadTaxSavings(user.id);
   const saving = savings.find((s) => s.key === key);
-  if (!saving || !Number.isInteger(year))
+  if (!saving || year !== openYear)
     return { ok: false, message: "That suggestion isn't open anymore." };
   try {
     if (intent === "no") {

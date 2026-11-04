@@ -316,6 +316,8 @@ async function loadTaxFormsFrom(
   return { year, forms: forms.map((f) => ({ ...f, received: got.has(f.key) })) };
 }
 
+const FORM_YEARS_ANY_WAY = 10;
+
 // "I have it" (or not any more) on a form Jane expects.
 export async function markTaxForm(
   userId: string,
@@ -331,6 +333,10 @@ export async function markTaxForm(
     via: "chat" | "page" | "autopilot";
   },
 ): Promise<ExpectedForm> {
+  // The year comes from the browser, and each new one is a new row.
+  if (Math.abs(year - now.getUTCFullYear()) > FORM_YEARS_ANY_WAY) {
+    throw new TaxOrganizerError("That form isn't on your list anymore.");
+  }
   const { forms } = await loadTaxForms(userId, year, { client, now });
   const form = forms.find((f) => f.key === key);
   if (!form) throw new TaxOrganizerError("That form isn't on your list anymore.");

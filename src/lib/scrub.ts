@@ -37,7 +37,9 @@ export function scrub(text: string): string {
 }
 
 // A request path without its query string, which can hold tokens or emails.
+const MAX_PATH = 300;
+
 export function scrubPath(path: string | null | undefined): string | null {
   if (!path) return null;
-  return scrub(path.split("?")[0]);
+  return scrub(path.split("?")[0].slice(0, MAX_PATH));
 }

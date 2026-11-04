@@ -18,7 +18,7 @@ vi.mock("@/lib/invites", () => ({
 import { recordFailedSignIn } from "@/lib/auth-events";
 import { mayCreateAccount, redeemInvite } from "@/lib/invites";
 import { emailOfSession } from "@/lib/user-sessions";
-import { allowSignIn } from "./auth-gate";
+import { CHECK_EMAIL_PATH, allowSignIn } from "./auth-gate";
 
 describe("allowSignIn", () => {
   beforeEach(() => {
@@ -32,6 +32,18 @@ describe("allowSignIn", () => {
     vi.mocked(mayCreateAccount).mockResolvedValue(true);
     expect(await allowSignIn({ user: { email: "Sam@Example.com" } })).toBe(true);
     expect(mayCreateAccount).toHaveBeenCalledWith("sam@example.com");
+  });
+
+  it("saves nothing for an address too long to be one, from Auth.js's own route too", async () => {
+    vi.mocked(mayCreateAccount).mockResolvedValue(true);
+    cookieGet.mockReturnValue({ value: "ABCD-EFGH-JKMN" });
+    const email = `${"a".repeat(250)}@example.com`;
+    expect(await allowSignIn({ user: { email }, email: { verificationRequest: true } })).toBe(
+      CHECK_EMAIL_PATH,
+    );
+    expect(await allowSignIn({ user: { email } })).toBe(false);
+    expect(redeemInvite).not.toHaveBeenCalled();
+    expect(mayCreateAccount).not.toHaveBeenCalled();
   });
 
   it("sends everyone else to sign up with a code", async () => {

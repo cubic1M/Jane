@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma/client";
+import { MAX_FILE_NAME_LENGTH } from "@/config/documents";
 import { UPLOADS_PAUSED_TEXT, killed } from "@/config/kill-switches";
 import {
   MAX_UPLOAD_BYTES,
@@ -249,7 +250,11 @@ export async function saveUpload(
   // The upload's record first, so each row it adds carries it (the upload history on /import).
   // Its account is set once the import has checked it's the person's own.
   const run = await db.importRuns.create({
-    data: { userId: db.userId, rows: 0, fileNames: files.map((f) => f.name) },
+    data: {
+      userId: db.userId,
+      rows: 0,
+      fileNames: files.map((f) => f.name.slice(0, MAX_FILE_NAME_LENGTH)),
+    },
     select: { id: true },
   });
   let result;

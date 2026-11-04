@@ -52,6 +52,8 @@ export const documentTooBig = () =>
 
 // Files kept per person.
 export const MAX_DOCUMENTS = 50;
+// And bytes per person: they all sit in the database, which is small.
+export const MAX_DOCUMENT_TOTAL_BYTES = 50 * 1024 * 1024;
 
 // Longest file name and fact text we keep, in characters.
 export const MAX_FILE_NAME_LENGTH = 120;

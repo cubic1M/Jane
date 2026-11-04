@@ -179,6 +179,12 @@ describe("savingAction (spec step 122)", () => {
       await savingAction(null, form({ intent: "no", key: "retirement", year: "2026" })),
     ).toMatchObject({ ok: true });
     expect(dismissSaving).toHaveBeenCalledWith("u1", 2026, "retirement", { via: "page" });
+    vi.mocked(dismissSaving).mockClear();
+    // Each year it's sent would be kept, so only the one on offer counts.
+    expect(
+      await savingAction(null, form({ intent: "no", key: "retirement", year: "1234567" })),
+    ).toMatchObject({ ok: false });
+    expect(dismissSaving).not.toHaveBeenCalled();
     expect(await savingAction(null, form({ intent: "no", key: "ira", year: "2026" }))).toEqual({
       ok: false,
       message: "That suggestion isn't open anymore.",

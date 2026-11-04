@@ -14,6 +14,7 @@ import { DAY_MS } from "@/lib/dates";
 type Options = { client?: PrismaClient; now?: Date };
 
 const RESUME = "resume:";
+const MAX_RESUMES = 100;
 
 export async function loadAttention(
   userId: string,
@@ -69,9 +70,14 @@ export async function resumeKind(
   source: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<string> {
-  if (!/^[a-z_]+$/.test(source) || alwaysSaid(source)) {
+  // What the browser sends. Each new value is a new row, so both its length and their number stop.
+  if (!/^[a-z_]{1,60}$/.test(source) || alwaysSaid(source)) {
     throw new AttentionError("That kind of message was never stopped.");
   }
+  const kept = await scopedFor(userId, client).janePreferences.count({
+    where: { kind: "attention", key: { startsWith: RESUME } },
+  });
+  if (kept >= MAX_RESUMES) throw new AttentionError("That kind of message was never stopped.");
   const label = labelOf(source);
   const key = `${RESUME}${source}`;
   const data = { value: {}, label: `Bring back ${label}`, createdAt: now };

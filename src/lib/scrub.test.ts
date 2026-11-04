@@ -25,6 +25,10 @@ describe("scrub", () => {
 });
 
 describe("scrubPath", () => {
+  it("cuts a path no real page has, which anyone can send to the error log", () => {
+    expect(scrubPath(`/${"a".repeat(20_000)}`)!.length).toBeLessThanOrEqual(300);
+  });
+
   it("drops the query string", () => {
     expect(scrubPath("/unsubscribe?token=abc.def")).toBe("/unsubscribe");
     expect(scrubPath(undefined)).toBeNull();

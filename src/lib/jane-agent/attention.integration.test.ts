@@ -128,6 +128,29 @@ describe.runIf(url)("asking less, against a real database", { timeout: 120_000 }
     await expect(resumeKind(userId, "heads_ups", { client, now: NOW })).rejects.toThrow();
   });
 
+  it("saves no bring-back that's too long, and stops making new rows", async () => {
+    const someone = await client.user.create({
+      data: { email: `attention-${crypto.randomUUID()}@example.com` },
+    });
+    const rows = () =>
+      client.janePreference.count({ where: { userId: someone.id, kind: "attention" } });
+    await expect(resumeKind(someone.id, "a".repeat(5_000), { client, now: NOW })).rejects.toThrow();
+    expect(await rows()).toBe(0);
+
+    await client.janePreference.createMany({
+      data: Array.from({ length: 100 }, (_, i) => ({
+        userId: someone.id,
+        kind: "attention",
+        key: `resume:kind_${"abcdefghij"[i % 10]}${"abcdefghij"[Math.floor(i / 10)]}`,
+        value: {},
+        label: "Bring back",
+      })),
+    });
+    await expect(resumeKind(someone.id, "one_more", { client, now: NOW })).rejects.toThrow();
+    expect(await rows()).toBe(100);
+    await client.user.delete({ where: { id: someone.id } });
+  });
+
   it("pushes several things that aren't urgent as one, and urgent ones on their own", async () => {
     const userId = await person("attention-bundle");
     await device(userId);

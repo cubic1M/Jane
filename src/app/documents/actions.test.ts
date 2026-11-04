@@ -15,7 +15,7 @@ vi.mock("@/lib/documents/store", () => ({
 
 import { revalidatePath } from "next/cache";
 import { MAX_DOCUMENT_BYTES } from "@/config/documents";
-import { STATEMENT_TRIAL_NO_DOCUMENTS } from "@/config/statement-trial";
+import { SAMPLE_NO_DOCUMENTS, STATEMENT_TRIAL_NO_DOCUMENTS } from "@/config/statement-trial";
 import { requireUser } from "@/lib/session";
 import { track } from "@/lib/analytics";
 import { addDocument, removeDocument, saveDocumentFacts } from "@/lib/documents/store";
@@ -101,19 +101,16 @@ describe("document actions (spec step 68)", () => {
     expect(Buffer.from(options!.file!.bytes).toString()).toBe(PDF);
   });
 
-  it("never hands a sample person's file to a reader, which would send it to Claude", async () => {
+  it("takes no file from a sample person: anyone can make one, and the bytes stay in the database", async () => {
     vi.mocked(requireUser).mockResolvedValueOnce({ id: "trial_1", email: null } as never);
-    vi.mocked(addDocument).mockResolvedValue({
-      ok: true,
-      id: "d1",
-      read: "you",
-      summaryRejected: false,
-    });
+    vi.mocked(addDocument).mockClear();
     vi.mocked(readPolicyDocument).mockClear();
-    await uploadDocument(null, uploadForm());
-    const [userId, , options] = vi.mocked(readPolicyDocument).mock.calls[0];
-    expect(userId).toBe("trial_1");
-    expect(options?.file).toBeNull();
+    expect(await uploadDocument(null, uploadForm())).toEqual({
+      ok: false,
+      message: SAMPLE_NO_DOCUMENTS,
+    });
+    expect(addDocument).not.toHaveBeenCalled();
+    expect(readPolicyDocument).not.toHaveBeenCalled();
   });
 
   it("doesn't read a warranty as a policy", async () => {

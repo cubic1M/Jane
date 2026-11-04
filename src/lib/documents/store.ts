@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@/generated/prisma/client";
-import type { DocumentKind } from "@/config/documents";
+import { MAX_DOCUMENT_TOTAL_BYTES, type DocumentKind } from "@/config/documents";
+import { SAMPLE_NO_DOCUMENTS } from "@/config/statement-trial";
 import { anthropic, llmModel } from "@/lib/anthropic";
 import { logAudit } from "@/lib/audit";
 import { decryptBytes, encryptBytes } from "@/lib/crypto";
@@ -49,10 +50,19 @@ export async function addDocument(
   upload: { file: UploadFile; bytes: Uint8Array; kind: DocumentKind },
   { client = defaultClient, claude = meteredClaude(userId) }: Options = {},
 ): Promise<UploadResult> {
+  // Anyone can make a sample person, and every byte stays in the database until they go.
+  if (isTrialUser(userId)) return { ok: false, error: SAMPLE_NO_DOCUMENTS };
   const db = scopedFor(userId, client);
   await freshSwitches();
   const check = checkUpload(upload.file, upload.bytes, await db.documents.count());
   if (!check.ok) return check;
+  const { _sum: kept } = await db.documents.aggregate({ _sum: { sizeBytes: true } });
+  if ((kept.sizeBytes ?? 0) + upload.bytes.length > MAX_DOCUMENT_TOTAL_BYTES) {
+    return {
+      ok: false,
+      error: "You're keeping as many files as Jane has room for. Delete one to add another.",
+    };
+  }
 
   const document = await db.documents.create({
     data: {
@@ -73,14 +83,10 @@ export async function addDocument(
     size_bytes: upload.bytes.length,
   });
 
-  // A sample person's upload is kept but never read: anyone can make one, and each read sends the
-  // whole file to Claude.
-  const read = isTrialUser(userId)
-    ? ({ kind: "unavailable" } as const)
-    : await readDocumentFacts(
-        { bytes: upload.bytes, contentType: check.contentType, kind: upload.kind },
-        { claude },
-      );
+  const read = await readDocumentFacts(
+    { bytes: upload.bytes, contentType: check.contentType, kind: upload.kind },
+    { claude },
+  );
   if (read.kind !== "claude") {
     if (read.kind === "failed") log.warn("Reading a document failed", { reason: read.reason });
     return { ok: true, id: document.id, read: "you", summaryRejected: false };
