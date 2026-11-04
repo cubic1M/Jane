@@ -35,6 +35,35 @@ describe("a seller's money", () => {
   });
 });
 
+describe("a bank's own category names", () => {
+  // Apple's "Airlines" left a $1,320.40 flight on TAP uncategorized (debugger 11-04).
+  it.each([
+    ["Airlines", "TRAVEL_FLIGHTS"],
+    ["Hotels", "TRAVEL_LODGING"],
+    ["Lodging", "TRAVEL_LODGING"],
+    ["Car Rental", "TRAVEL_RENTAL_CARS"],
+    ["Medical", "MEDICAL_OTHER_MEDICAL"],
+    ["Transportation", "TRANSPORTATION_OTHER_TRANSPORTATION"],
+    ["Alcohol", "FOOD_AND_DRINK_BEER_WINE_AND_LIQUOR"],
+    ["Internet", "RENT_AND_UTILITIES_INTERNET_AND_CABLE"],
+    ["Warehouse Clubs", "GENERAL_MERCHANDISE_SUPERSTORES"],
+    ["Home Improvement", "HOME_IMPROVEMENT_OTHER_HOME_IMPROVEMENT"],
+    ["Government Services", "GOVERNMENT_AND_NON_PROFIT_GOVERNMENT_DEPARTMENTS_AND_AGENCIES"],
+  ])("reads %s as %s", (bankCategory, category) => {
+    expect(out("ZZQ UNKNOWN SHOP", { bankCategory })).toBe(category);
+  });
+
+  it("leaves names that say nothing uncategorized", () => {
+    for (const bankCategory of ["Other", "Credit", "Debit", "Installment"]) {
+      expect(out("ZZQ UNKNOWN SHOP", { bankCategory })).toBeNull();
+    }
+  });
+
+  it("still goes by the merchant first", () => {
+    expect(out("DELTA AIR LINES", { bankCategory: "Shopping" })).toBe("TRAVEL_FLIGHTS");
+  });
+});
+
 describe("categorizeByRules", () => {
   // The wordings in the bank CSVs Jane reads (src/data-sources/csv/__fixtures__): a card payment
   // is never spending, from either side, and the card's interest line is interest.
