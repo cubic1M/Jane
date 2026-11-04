@@ -64,14 +64,6 @@ PARAMS = dict(
                          #   count, never tighter than range_k); the exact-ICM call decides. 0 = off.
                          #   2 validated on fresh seeds (results/sng_rscall_validate_*.md: 11 cells, mean
                          #   +1.6, field 4 +2.2*, field 5 +4.7*, field 6 +5.1*); 3 = day-of choice vs light re-shovers
-    fb_rel=0.0,          # > 0: my open re-raised (not all-in) by one seat, no callers, eff <= fb_bb: 4-bet
-    fb_bb=40.0,          #   shove the top fb_rel x (that seat's re-raise rate vs one open, prior 7%) of hands
-                         #   (fields 6 and 7 re-raise 30-50% of my opens and fold to 4-bets); 0 = off
-    lock_mult=0.0,       # > 0: one-way "they attack my opens" lock: after lock_min first-in opens, if at least
-    lock_share=0.35,     #   lock_share of them were re-raised, the open bar is x lock_mult for the rest of the
-    lock_min=20,         #   table (never unlocks: these bots read our open rate). Shoves are not affected.
-                         #   (field 7 re-raises 39-49% of my opens, static fields 13-23%; open_mult 1.6 =
-                         #   field 7 +7.7*, field 6 +6.8*, but field 3 -11.5*, all3 -9.1*: results/sng_openmult_ab.md)
     two_card=1,          # icm_any only: on 2-card games without discards, use icm_tag's hold'em switches
                          #   (icm_call, rs_call, heads-up ranges, bet_discount 0.5; anyvar.TWO_CARD); 0 = off.
                          #   1 validated on fresh seeds: kit-4 six-plus +1.8, plain NLHE +1.7 (results/sng_twocard_validate_*.md)
@@ -198,9 +190,6 @@ class IcmTag:
         self.steal_fold = [0] * rules.num_players
         self.t3_seen = [0] * rules.num_players           # faced exactly one open (first action)
         self.t3_made = [0] * rules.num_players           # ... and re-raised it
-        self.locked = False                              # lock_mult engaged at this table
-        self.my_opens = 0                                # my first-in raises (lock_mult)
-        self.my_opens_rr = 0                             # ... re-raised by someone
         self.o3_seen = [0] * rules.num_players           # opened, then faced a re-raise
         self.o3_fold = [0] * rules.num_players           # ... and folded
         self.aggressor = None                          # seat of the last preflop raiser this hand
@@ -251,10 +240,6 @@ class IcmTag:
                 self.o3_seen[op] += 1
                 if nxt[2] == "fold":
                     self.o3_fold[op] += 1
-        if rz and pre3[rz[0]][0] == self.seat:            # my open: was it re-raised? (lock_mult)
-            self.my_opens += 1
-            if len(rz) >= 2:
-                self.my_opens_rr += 1
         # re-raise rate vs one open (rs_call): each seat's first action after a lone open
         if rz:
             op, end = pre3[rz[0]][0], (rz[1] if len(rz) >= 2 else len(pre3) - 1)
@@ -509,12 +494,6 @@ class IcmTag:
                 if eq >= pbar and lg.can_raise:
                     return RaiseTo(lg.max_raise_to)
                 return lg.passive() if lg.can_check else Fold()
-            if p["lock_mult"] > 0:
-                if not self.locked and self.my_opens >= p["lock_min"] and \
-                        self.my_opens_rr >= p["lock_share"] * self.my_opens:
-                    self.locked = True
-                if self.locked:
-                    bar *= p["lock_mult"]
             if eq >= bar and lg.can_raise:
                 to = (p["open_size"] + limpers) * bb
                 self.aggressor = obs.seat
@@ -557,15 +536,6 @@ class IcmTag:
                 n_icm = self._icm_need(obs, r)
                 if n_icm is not None:
                     need = n_icm + p["icm_margin"]
-        if (p["fb_rel"] > 0 and self._pct is not None and lg.can_raise and len(raises) == 2
-                and raises[0][0] == obs.seat and raises[1][0] != obs.seat and not seats[raises[1][0]].all_in
-                and eff_bb <= p["fb_bb"]
-                and not any(h[1] == 0 and h[2] == "call" and h[0] != obs.seat for h in obs.history)):
-            r3 = raises[1][0]
-            rr = (self.t3_made[r3] + 0.07 * 10) / (self.t3_seen[r3] + 10)
-            top = 1.0 - bisect.bisect_left(self._pct, self._eq(obs, 1)) / len(self._pct)
-            if top <= max(0.02, p["fb_rel"] * rr):
-                return RaiseTo(lg.max_raise_to)
         if (self._pct is not None and lg.can_raise and len(raises) == 1 and not seats[raises[0][0]].all_in
                 and eff_bb <= p["resteal_rel_bb"]
                 and not any(h[1] == 0 and h[2] == "call" for h in obs.history if h[0] != obs.seat)):

@@ -596,7 +596,6 @@ class TestIcmTag(unittest.TestCase):
         b.end_hand(dict(history=tuple(post + [(3, 0, "fold", 0), (0, 0, "raise", 40), (1, 0, "raise", 200),
                                               (2, 0, "fold", 0), (0, 0, "fold", 0)]), stacks=(2000,) * 8))
         self.assertEqual((b.t3_seen[1], b.t3_made[1]), (2, 1))
-        self.assertEqual((b.my_opens, b.my_opens_rr), (1, 1))             # my one open, re-raised (lock_mult)
 
     def test_rs_call_calls_a_light_reshover(self):
         """13bb, I open first in and the small blind re-shoves: against a seat that re-raises opens
@@ -639,30 +638,6 @@ class TestIcmTag(unittest.TestCase):
             if found:
                 break
         self.assertIsNotNone(found, "no hand opens, folds to the shove at rs_call=0 and calls at 4")
-
-    def test_lock_mult_engages_once_and_stays(self):
-        """lock_mult: after lock_min of my opens with >= lock_share re-raised, the lock engages for the
-        rest of the table (never unlocks); below the share, or before lock_min opens, it does not."""
-        r = SngRules(enforce_time=False)
-        post = [(1, 0, "post", 10), (2, 0, "post", 20)]
-        rr = tuple(post + [(0, 0, "raise", 40), (3, 0, "raise", 120), (0, 0, "fold", 0)])
-        ok = tuple(post + [(0, 0, "raise", 40), (3, 0, "fold", 0), (1, 0, "fold", 0), (2, 0, "fold", 0)])
-        b = IcmTag(lock_mult=1.8, lock_share=0.3, lock_min=10)
-        b.new_table(r, 0, 1)
-        for h in [rr] * 3 + [ok] * 6:                       # 9 opens: below lock_min
-            b.end_hand(dict(history=h, stacks=(2000,) * 8))
-        self.assertEqual((b.my_opens, b.my_opens_rr), (9, 3))
-        self.assertFalse(b.locked)
-        b.end_hand(dict(history=ok, stacks=(2000,) * 8))     # 10 opens, 3 re-raised = 30%
-        self.assertTrue(b.my_opens >= 10 and b.my_opens_rr >= 0.3 * b.my_opens)
-        # the lock is checked at the next first-in decision; emulate it through the same rule
-        b.locked = b.locked or (b.my_opens >= b.p["lock_min"] and b.my_opens_rr >= b.p["lock_share"] * b.my_opens)
-        self.assertTrue(b.locked)
-        for _ in range(30):                                  # many un-raised opens later: still locked
-            b.end_hand(dict(history=ok, stacks=(2000,) * 8))
-        self.assertTrue(b.locked)
-        b.new_table(r, 0, 2)                                 # a new table starts unlocked
-        self.assertFalse(b.locked)
 
 
 if __name__ == "__main__":
