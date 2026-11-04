@@ -478,6 +478,17 @@ export function spendingReply(
   if (!months.includes(intent.month)) {
     return reply(`I can only see the last ${INSIGHT_MONTHS} months of spending.`, open);
   }
+  // A month before the first transaction isn't a month of $0.00.
+  const firstMonth = transactions.reduce(
+    (first, t) => (t.date.slice(0, 7) < first ? t.date.slice(0, 7) : first),
+    transactions[0].date.slice(0, 7),
+  );
+  if (intent.month < firstMonth) {
+    return reply(
+      `I can't see ${monthLabel(intent.month)}: what I have starts in ${monthLabel(firstMonth)}.`,
+      open,
+    );
+  }
   const current = intent.month === monthOf(asOf);
   const when = `in ${monthLabel(intent.month)}${current ? " so far" : ""}`;
   const insights = spendingInsights(transactions, { asOf, monthCount: INSIGHT_MONTHS });

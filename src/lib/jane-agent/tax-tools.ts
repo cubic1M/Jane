@@ -278,6 +278,12 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
 
 export const isTaxTool = (name: string) => TAX_TOOLS.some((t) => t.name === name);
 
+const noIncomeSeen = (year: number) => ({
+  year,
+  incomeSeen: false,
+  note: `No income is on file for ${year}, so there's no estimate. Don't say they owe nothing or nothing is due: say you can't tell yet, and what would let you (a statement from that year, or their income).`,
+});
+
 export async function runTaxTool(
   userId: string,
   name: string,
@@ -358,6 +364,8 @@ export async function runTaxTool(
     case "tax_estimate": {
       const view = await loadTaxEstimate(userId, { client, now });
       const e = view.estimate;
+      // No income on file for the year isn't no tax: there's nothing to estimate from.
+      if (e.totalIncomeCents === 0) return out(noIncomeSeen(view.year));
       return out({
         year: view.year,
         isAnEstimate: true,
@@ -1043,6 +1051,7 @@ export async function runTaxTool(
     }
     case "tax_years": {
       const v = await loadMultiYear(userId, { client, now });
+      if (v.rows.every((r) => r.incomeCents === 0)) return out(noIncomeSeen(v.year));
       return out({
         startYear: v.year,
         retireYear: v.retireYear,
