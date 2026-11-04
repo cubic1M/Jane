@@ -105,6 +105,10 @@ Fill in each line:
    `behind_k=0` if the field is tight (+2.9 vs Plan B copies, +3.4 vs our copies, −2.9 on the default field);
    `rs_call=3` if the field re-shoves light (hold'em `icm_tag` only; off on `icm_any`) (+7.2 field 6, +3.6 mirror on fresh seeds, −1.1 field 3; head-to-head vs 2 on fresh seeds: field 6 +2.8*, mean over 11 fields +0.03, so only when the field re-shoves light)):
    - tune: `python3 -m sng.tune --preset <p> --field blend --rounds 3 --tables 500 --accept-se 2 --tag _day` (about 15–25 min per round);
+     measured 2026-11-04 on kit-4 six-plus rules: one round over every parameter at 300 tables = **21 min wall on 3 workers**
+     (59 CPU-min). For a ~20-minute window run **one round with a narrowed `--params` list** (the switches above), or
+     fewer tables; three rounds at 500 tables do not fit between rounds. Its pick that day (`steal_max_behind=3`,
+     +6.7 ± 2.4 on the tuning seeds) is under fresh-seed check (`results/sng_kit4tune_validate.sh`);
    - validate: `results/sng_validate.sh "icm_tag:<tuned>" --preset <p>`;
    - submit only a paired gain > 2 SE with no field losing.
 
