@@ -29,6 +29,14 @@ export const RATE_LIMITS = {
   // can make one without an account.
   trialApi: { limit: 180, windowSeconds: 60 },
   trialActions: { limit: 30, windowSeconds: 60 },
+  // Pages render per request, with hundreds of queries, and a sample session is free to make. Per
+  // session, and per IP so that made-up cookies can't each make a new counter without limit.
+  trialPages: { limit: 120, windowSeconds: 60 },
+  trialPagesIp: { limit: 300, windowSeconds: 60 },
+  // Reworking everything Jane found, which one click on a temporary person's data can cause.
+  trialRescans: { limit: 10, windowSeconds: 60 * 60 },
+  // Apart, so that saving categories can't stop someone taking their own data back.
+  trialRemovals: { limit: 10, windowSeconds: 60 * 60 },
   // Coming back from a sign-in link or from Google, per IP.
   authCallback: { limit: 30, windowSeconds: 10 * 60 },
   // Sign-in and sign-up emails, per IP and per address.

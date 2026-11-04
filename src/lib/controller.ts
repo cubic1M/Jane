@@ -45,6 +45,7 @@ import type { StepLog, StepResult } from "./controller-log";
 import { logsOf } from "./controller-log";
 import { isoDay as day } from "@/lib/dates";
 import { ownedBy, type OnlyPeople } from "@/lib/only-people";
+import { isTrialUser } from "@/lib/trial-ids";
 import { systemDb } from "@/lib/system-db";
 
 const WHY = "Cron: finds who to run for, across people";
@@ -337,7 +338,8 @@ export async function queueNightlyRuns({
     ...ran.map((r) => r.userId),
     ...waiting.map((j) => (j.payload as { userId?: string } | null)?.userId ?? ""),
   ]);
-  const due = people.map((p) => p.userId).filter((id) => !skip.has(id));
+  // People trying Jane are gone within days, and anyone can make one: never ahead of real people.
+  const due = people.map((p) => p.userId).filter((id) => !skip.has(id) && !isTrialUser(id));
   for (const userId of due) await enqueueJob("controller_run", { userId }, { client, now });
   let done = 0;
   const started = Date.now();

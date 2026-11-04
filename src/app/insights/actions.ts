@@ -1,5 +1,6 @@
 "use server";
 
+import { mayRescan } from "@/lib/trial-rescans";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { countCashIncome, declineCashIncome } from "@/categorize/cash-income";
@@ -13,7 +14,7 @@ async function decide(change: typeof declineCashIncome) {
   const user = await requireUser();
   await change(scopedFor(user.id));
   // Income feeds the forecast and the findings; refresh them after responding.
-  after(() => runDetection(user.id));
+  if (await mayRescan(user.id)) after(() => runDetection(user.id));
   revalidatePath("/insights");
   revalidatePath("/home");
   revalidatePath("/transactions");

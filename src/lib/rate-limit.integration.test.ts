@@ -122,6 +122,28 @@ describe.runIf(url)("rate limiting against a real database", () => {
     expect(await hitMany([], { client, now })).toMatchObject({ ok: true });
   });
 
+  it("makes no new counter for a made-up cookie once its address is refused", async () => {
+    const now = new Date("2031-06-01T12:00:30Z");
+    const ip = `flood-${crypto.randomUUID()}`;
+    const session = (i: number) => `made-up-${ip}-${i}`;
+    const limit = RATE_LIMITS.actions.limit;
+    for (let i = 0; i < limit + 5; i += 1) {
+      const answer = await hitMany(
+        [
+          { name: "actions", subject: ip },
+          { name: "actionsSession", subject: session(i) },
+        ],
+        { client, now },
+      );
+      expect(answer.ok).toBe(i < limit);
+    }
+    const kept = await client.rateLimit.count({
+      where: { key: { contains: `made-up-${ip}` } },
+    });
+    expect(kept).toBe(limit);
+    await client.rateLimit.deleteMany({ where: { key: { contains: ip } } });
+  });
+
   it("hashes IPs instead of storing them", () => {
     const key = ipKey(new Headers({ "x-forwarded-for": "203.0.113.7, 10.0.0.1" }));
     expect(key).toMatch(/^[0-9a-f]{32}$/);

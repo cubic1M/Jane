@@ -1,4 +1,9 @@
-import { CHAT_MONTHLY_CAP_CENTS_DEFAULT, CHAT_TRIAL_MONTH_SHARE } from "@/config/agent-chat";
+import {
+  CHAT_ALL_TRIALS_DAILY_CAP_CENTS,
+  CHAT_MONTHLY_CAP_CENTS_DEFAULT,
+  CHAT_TRIAL_MONTH_SHARE,
+  CHAT_TRIAL_RESERVE_CENTS,
+} from "@/config/agent-chat";
 import {
   STATEMENT_TRIAL_CAP_TEXT,
   STATEMENT_TRIAL_DAILY_CENTS_DEFAULT,
@@ -74,8 +79,12 @@ export async function claudeLimit(userId: string, options: Options = {}): Promis
     }
     return null;
   }
-  if (isTrialUser(userId) && !(await hit("claudeTrial", userId, options)).ok) {
-    return { text: TRIAL_CAP_TEXT };
+  if (isTrialUser(userId)) {
+    if (!(await reserveSampleAnswer(options))) return "budget";
+    if (!(await hit("claudeTrial", userId, options)).ok) {
+      await releaseSampleAnswer(options);
+      return { text: TRIAL_CAP_TEXT };
+    }
   }
   return null;
 }
@@ -90,9 +99,10 @@ export async function refundClaudeUse(userId: string, options: Options = {}): Pr
 }
 
 // Claude has finished (or failed) for this message: what it cost is on the day's total by now
-// (addSpend), so the amount held back for it goes back. Only a temporary try holds any.
+// (addSpend), so the amount held back for it goes back. Only people trying Jane hold any.
 export async function claudeFinished(userId: string, options: Options = {}): Promise<void> {
   if (isStatementTrialUser(userId)) await releaseStatementTrialAnswer(options).catch(() => {});
+  else if (isTrialUser(userId)) await releaseSampleAnswer(options).catch(() => {});
 }
 
 // All temporary people's Claude spend today, in the same hundredths of a cent as the month's, with
@@ -111,13 +121,29 @@ export const statementTrialDailyCents = () => {
 async function addToDay(
   amount: number,
   { client = defaultClient, now = new Date() }: Options,
+  key = STATEMENT_DAY_KEY,
 ): Promise<number> {
   const [row] = await systemDb(STATEMENT_DAY_WHY, client).$queryRaw<{ count: number }[]>`
     INSERT INTO rate_limits (key, window_start, count)
-    VALUES (${STATEMENT_DAY_KEY}, ${dayStart(now)}, GREATEST(${amount}, 0))
+    VALUES (${key}, ${dayStart(now)}, GREATEST(${amount}, 0))
     ON CONFLICT (key, window_start) DO UPDATE SET count = GREATEST(rate_limits.count + ${amount}, 0)
     RETURNING count`;
   return Number(row.count);
+}
+
+// All sample people's spend today, which addSpend adds to. The same hold as just below.
+export const ALL_TRIALS_KEY = "trialspend:all";
+const SAMPLE_RESERVE = CHAT_TRIAL_RESERVE_CENTS * 100;
+
+async function reserveSampleAnswer(options: Options): Promise<boolean> {
+  const held = await addToDay(SAMPLE_RESERVE, options, ALL_TRIALS_KEY);
+  if (held <= CHAT_ALL_TRIALS_DAILY_CAP_CENTS * 100) return true;
+  await releaseSampleAnswer(options);
+  return false;
+}
+
+async function releaseSampleAnswer(options: Options): Promise<void> {
+  await addToDay(-SAMPLE_RESERVE, options, ALL_TRIALS_KEY);
 }
 
 export const addStatementTrialSpend = (hundredths: number, options: Options = {}) =>

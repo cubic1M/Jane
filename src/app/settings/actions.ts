@@ -1,5 +1,6 @@
 "use server";
 
+import { mayRescan } from "@/lib/trial-rescans";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { redirect } from "next/navigation";
@@ -111,7 +112,7 @@ export async function disconnectBank(
   }
   // Everything is worked out again after the response, so Disconnect answers at once: findings,
   // proposals, suggestions and the chat's numbers, as after an upload is removed.
-  after(() => refreshAfterRemoval(user.id));
+  if (await mayRescan(user.id, "trialRemovals")) after(() => refreshAfterRemoval(user.id));
   revalidatePath("/settings");
   return { ok: true, message: "Disconnected. We've removed that bank's data." };
 }

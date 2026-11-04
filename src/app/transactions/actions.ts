@@ -1,5 +1,6 @@
 "use server";
 
+import { mayRescan } from "@/lib/trial-rescans";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { runDetection } from "@/detection/engine";
@@ -27,7 +28,7 @@ export async function saveCategory(
     throw error;
   }
   // Findings depend on categories (subscriptions, fees); refresh them after responding.
-  after(() => runDetection(user.id));
+  if (await mayRescan(user.id)) after(() => runDetection(user.id));
   revalidatePath("/transactions");
   revalidatePath("/insights");
   // Spec step 239: the working of a figure that used this category.

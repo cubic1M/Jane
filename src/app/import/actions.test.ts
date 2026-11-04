@@ -34,6 +34,10 @@ vi.mock("@/lib/db-scoped", () => ({
   })),
 }));
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn(async () => ({ id: "user_1" })) }));
+vi.mock("@/lib/rate-limit", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/rate-limit")>()),
+  hit: vi.fn(async () => ({ ok: true, remaining: 1, retryAfterSeconds: 0 })),
+}));
 vi.mock("@/lib/csv-access", () => ({ canImportCsv: vi.fn() }));
 vi.mock("@/detection/engine", () => ({ runDetection }));
 vi.mock("@/lib/jobs", () => ({ enqueueJob, runJob }));
@@ -61,6 +65,8 @@ vi.mock("@/lib/import/import-csv", async (importOriginal) => ({
   importCsvFiles,
 }));
 
+import { scopedDb } from "@/lib/db-scoped";
+import { hit } from "@/lib/rate-limit";
 import {
   createCsvAccount,
   dismissImport,
@@ -370,6 +376,34 @@ describe("taking uploads back", () => {
     vi.mocked(canImportCsv).mockReturnValue(false);
     expect(await act()).toEqual({ ok: false, error: expect.stringContaining("Sign up") });
     expect(fn).not.toHaveBeenCalled();
+  });
+});
+
+describe("reworking everything for someone trying Jane", () => {
+  const trying = "trial_own_abc";
+
+  it("stops a click from redoing it past the limit, and each one leaves the numbers alone", async () => {
+    vi.mocked(scopedDb).mockResolvedValueOnce({ userId: trying } as never);
+    vi.mocked(hit).mockResolvedValueOnce({ ok: false, remaining: 0, retryAfterSeconds: 60 });
+    vi.mocked(setUploadedBalance).mockClear();
+    const answer = await setBalanceAction("acct_card", "10");
+    expect(answer.ok).toBe(false);
+    expect(hit).toHaveBeenCalledWith("trialRescans", trying);
+    expect(setUploadedBalance).not.toHaveBeenCalled();
+  });
+
+  it("can't go round it by starting over, and removals have a count of their own", async () => {
+    vi.mocked(scopedDb).mockResolvedValueOnce({ userId: trying } as never);
+    vi.mocked(hit).mockResolvedValueOnce({ ok: false, remaining: 0, retryAfterSeconds: 60 });
+    expect((await startOverAction()).ok).toBe(false);
+    expect(hit).toHaveBeenLastCalledWith("trialRemovals", trying);
+  });
+
+  it("counts nothing for a real person", async () => {
+    vi.mocked(hit).mockClear();
+    vi.mocked(setUploadedBalance).mockResolvedValue({ jobId: "job_b" });
+    expect(await setBalanceAction("acct_card", "10")).toEqual({ ok: true });
+    expect(hit).not.toHaveBeenCalled();
   });
 });
 
