@@ -255,10 +255,14 @@ function recompute(c: Candidate, input: DetectionInput): void {
       );
       expect(e.excessCents, label).toBe(e.totalBalanceCents! - e.cushionCents! - e.setAsideCents!);
       expect(c.amountCents, label).toBe(e.excessCents);
+      // While a card charges interest it promises nothing: the cash is there, the earnings aren't.
       expect(c.annualSavingsCents, label).toBe(
-        Math.round(
-          (e.excessCents! * (REFERENCE_HIGH_YIELD_RATE_BPS - ASSUMED_CURRENT_RATE_BPS)) / 10_000,
-        ),
+        (c.evidence as { cardInterest?: boolean }).cardInterest
+          ? null
+          : Math.round(
+              (e.excessCents! * (REFERENCE_HIGH_YIELD_RATE_BPS - ASSUMED_CURRENT_RATE_BPS)) /
+                10_000,
+            ),
       );
       return;
     }

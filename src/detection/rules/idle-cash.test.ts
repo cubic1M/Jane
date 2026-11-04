@@ -4,7 +4,16 @@ import {
   IDLE_CASH_MONTHS_OF_SPENDING,
   REFERENCE_HIGH_YIELD_RATE_BPS,
 } from "@/config/detection";
-import { CARD, CHECKING, GROCERIES, SAVINGS, input, monthly, tx } from "../__fixtures__/build";
+import {
+  CARD,
+  CHECKING,
+  GROCERIES,
+  SAVINGS,
+  input,
+  monthly,
+  tx,
+  monthsAgo,
+} from "../__fixtures__/build";
 import { BASIS_POINTS } from "../units";
 import { idleCash } from "./idle-cash";
 
@@ -28,6 +37,22 @@ describe("idle_cash", () => {
         (excessCents * (REFERENCE_HIGH_YIELD_RATE_BPS - ASSUMED_CURRENT_RATE_BPS)) / BASIS_POINTS,
       ),
     );
+  });
+
+  // Debugger 11-04: "could earn $196", counted in "We found", to someone paying 28% on $7,600.
+  it("promises nothing while a card charges interest, but still says the cash is there", () => {
+    const interest = tx({
+      accountId: CARD.id,
+      date: monthsAgo(0, 5),
+      amountCents: 17_093,
+      description: "INTEREST CHARGED TO STANDARD PURCH",
+      pfcPrimary: "BANK_FEES",
+      pfcDetailed: "BANK_FEES_INTEREST_CHARGE",
+    });
+    const [finding] = idleCash(input({ transactions: [...spending, interest] }), []);
+    expect(finding.annualSavingsCents).toBeNull();
+    expect(finding.title).toContain("while a card charges interest");
+    expect(finding.evidence).toMatchObject({ cardInterest: true });
   });
 
   it("leaves transfers and card payments out of spending", () => {

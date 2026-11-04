@@ -42,3 +42,8 @@ export const NON_SPENDING_CATEGORIES: readonly PfcDetailed[] = [
   // Card purchases are already counted on the card itself.
   "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
 ];
+
+// Cash isn't idle while a card charges interest (debugger 11-04: "could earn $196" to someone paying 28%
+// on $7,600): this much interest in this many days says one does.
+export const IDLE_CASH_CARD_INTEREST_DAYS = 62;
+export const IDLE_CASH_CARD_INTEREST_MIN_CENTS = 500;
