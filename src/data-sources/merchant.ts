@@ -18,6 +18,9 @@ const PROCESSOR_PREFIXES = [
 
 // Bank boilerplate around the merchant.
 const BOILERPLATE = [
+  // A brokerage cash account's "DIRECT DEBIT ALTA APARTMENTS RENT (Cash)" (debugger 11-04).
+  /\s*\(CASH\)\s*$/,
+  /^DIRECT DEBIT\s+/,
   // A statement's words in front, before the patterns below: TD's "DEBIT CARD PURCHASE, AUT 100526
   // VISA DDA PUR ..." and "ELECTRONIC PMT-WEB, ...", PNC's "ACH WEB", Fifth Third's "WEB PAYMENT",
   // and "DIRECT DEPOSIT FROM" (debugger 11-02: "Review your Purchase Aut Netflix subscription").

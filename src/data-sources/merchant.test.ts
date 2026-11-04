@@ -313,3 +313,14 @@ describe("an ACH line's words after the company", () => {
     expect(normalizeMerchant("STUDIO 54 NIGHTCLUB")?.key).toBe("studio 54 nightclub");
   });
 });
+
+// Debugger 11-04: a Fidelity cash account's names read "Direct Debit Alta Apartments Rent Cash".
+describe("a brokerage cash account's wrapping", () => {
+  it.each([
+    ["DIRECT DEBIT ALTA APARTMENTS RENT (Cash)", "Alta Apartments Rent"],
+    ["DEBIT CARD PURCHASE HARRIS TEETER #0312 (Cash)", "Harris Teeter"],
+    ["DIRECT DEPOSIT WAKE COUNTY SCHOOLS PAYROLL (Cash)", "Wake County Schools Payroll"],
+  ])("%s is %s", (description, name) => {
+    expect(normalizeMerchant(description)?.name).toBe(name);
+  });
+});
