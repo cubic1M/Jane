@@ -45,7 +45,9 @@ export function EstimateSection({ view }: { view: TaxEstimateView }) {
           Estimate
         </span>
       </div>
-      <p className="text-lg">{federalLine(e, view.withholdingKnown)}</p>
+      <p className="text-lg">
+        {federalLine(e, view.withholdingKnown, view.input.federalEstimatedPaidCents)}
+      </p>
       {state && <p className="text-lg">{state}</p>}
       <details className="text-sm">
         <summary className="cursor-pointer font-medium underline underline-offset-2">

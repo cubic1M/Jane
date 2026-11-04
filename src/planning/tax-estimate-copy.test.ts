@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { taxPaidText } from "./tax-estimate-copy";
+import type { TaxEstimate } from "./tax-estimate";
+import { federalLine, taxPaidText } from "./tax-estimate-copy";
 
 // Night QA 10-30: "Your employer has withheld about $0 … At this pace it will be about $9,500
 // by the end" for a person whose $9,500 was an estimated payment and whose withholding Jane
@@ -32,5 +33,22 @@ describe("taxPaidText", () => {
       "Your employer has withheld about $18,000 of federal tax from your pay so far this year, about $22,000 by the end at this pace. That's against $24,000 of tax.",
     );
     expect(figures).toContain(2_200_000);
+  });
+});
+
+// Debugger 11-04: someone who'd paid the IRS $36,000 in estimated tax read only "I need your pay
+// stub figures": what Jane can see wasn't said.
+describe("the federal line when what was withheld isn't known", () => {
+  const estimate = { totalTaxCents: 3_049_837, year: 2026, refundCents: 0 } as TaxEstimate;
+
+  it("says what estimated payments it can see", () => {
+    expect(federalLine(estimate, false, 3_600_000)).toBe(
+      "Federal: about $30,498 of tax for 2026. You've paid $36,000 in estimated tax this year. I need your pay stub figures to say whether that's a refund or a bill.",
+    );
+  });
+
+  it("says nothing of them when there are none, or when the full picture is known", () => {
+    expect(federalLine(estimate, false, 0)).not.toContain("estimated tax");
+    expect(federalLine(estimate, true, 3_600_000)).not.toContain("estimated tax");
   });
 });

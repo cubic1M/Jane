@@ -16,9 +16,18 @@ export function balancePhrase(refundCents: number): string {
   return refundCents > 0 ? `a refund of about ${amount}` : `about ${amount} to pay`;
 }
 
-export function federalLine(estimate: TaxEstimate, withholdingKnown: boolean): string {
+export function federalLine(
+  estimate: TaxEstimate,
+  withholdingKnown: boolean,
+  estimatedPaidCents = 0,
+): string {
   if (!withholdingKnown) {
-    return `Federal: about ${roundDollars(estimate.totalTaxCents)} of tax for ${estimate.year}. I need your pay stub figures to say whether that's a refund or a bill.`;
+    // What was withheld can't be seen; estimated payments from the person's accounts can.
+    const seen =
+      estimatedPaidCents > 0
+        ? ` You've paid ${roundDollars(estimatedPaidCents)} in estimated tax this year.`
+        : "";
+    return `Federal: about ${roundDollars(estimate.totalTaxCents)} of tax for ${estimate.year}.${seen} I need your pay stub figures to say whether that's a refund or a bill.`;
   }
   return `Federal: ${balancePhrase(estimate.refundCents)}.`;
 }
