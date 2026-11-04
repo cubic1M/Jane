@@ -33,6 +33,14 @@ export const toCents = (dollars: number | null | undefined): number | null => {
   return Math.abs(cents) <= MAX_CENTS ? cents : null;
 };
 
+// Money in the app is US dollars. A transaction or balance in another currency (an account held
+// abroad, or a crypto wallet's unofficial code) can't be added to dollars, so it's left out rather
+// than counted as if it were dollars (messy-bank QA: EUR 35.00 read as $35.00). A card's
+// foreign purchases are already converted by the card company and come in USD.
+export const inDollars = (
+  t: Pick<Transaction, "iso_currency_code" | "unofficial_currency_code">,
+) => (t.iso_currency_code ? t.iso_currency_code === "USD" : !t.unofficial_currency_code);
+
 // Any account Plaid returns: /transactions/sync's, /liabilities/get's or
 // /investments/holdings/get's, which share these fields.
 type PlaidAccount = Pick<
@@ -48,7 +56,7 @@ export function normalizeAccount(account: PlaidAccount): NormalizedAccount | nul
     name: account.official_name ?? account.name,
     kind,
     mask: account.mask ?? null,
-    currentBalanceCents: toCents(account.balances.current),
+    currentBalanceCents: inDollars(account.balances) ? toCents(account.balances.current) : null,
     ...(kind === "retirement" || kind === "investment_account"
       ? { plaidSubtype: account.subtype?.toLowerCase() ?? null }
       : {}),
@@ -70,14 +78,6 @@ export function normalizeTransaction(t: Transaction): NormalizedTransaction {
     hints: {},
   };
 }
-
-// Money in the app is US dollars. A transaction in another currency (an account held abroad,
-// or a crypto wallet's unofficial code) can't be added to dollars, so it's left out rather
-// than counted as if it were dollars (messy-bank QA: EUR 35.00 read as $35.00). A card's
-// foreign purchases are already converted by the card company and come in USD.
-export const inDollars = (
-  t: Pick<Transaction, "iso_currency_code" | "unofficial_currency_code">,
-) => (t.iso_currency_code ? t.iso_currency_code === "USD" : !t.unofficial_currency_code);
 
 export class PlaidDataSource implements DataSource {
   readonly kind = "plaid" as const;

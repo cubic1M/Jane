@@ -5,6 +5,7 @@ import { categorizeTransactions } from "@/categorize/categorize";
 import { normalizeLiabilities } from "@/data-sources/plaid/liabilities";
 import {
   PlaidDataSource,
+  inDollars,
   normalizeAccount,
   toCents,
   type PlaidSync,
@@ -324,12 +325,16 @@ async function saveLiabilities(
   const accountIds = await saveAccounts(db, itemId, {
     accounts: data.accounts.map(normalizeAccount).filter((a): a is NormalizedAccount => a !== null),
   });
+  // A card or loan's figures have no currency of their own: they're in its account's.
+  const inDollarAccounts = new Set(
+    data.accounts.filter((a) => inDollars(a.balances)).map((a) => a.account_id),
+  );
   const kept: string[] = [];
   await Promise.all(
     [...new Map(normalizeLiabilities(data.liabilities).map((l) => [l.accountRef, l])).values()].map(
       async (l) => {
         const accountId = accountIds.get(l.accountRef);
-        if (!accountId) return;
+        if (!accountId || !inDollarAccounts.has(l.accountRef)) return;
         const row = {
           kind: l.kind,
           aprBps: l.aprBps,
