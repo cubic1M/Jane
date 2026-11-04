@@ -83,9 +83,10 @@ export const RATE_LIMITS = {
   // eight sample lives (step 252).
   trial: { limit: 20, windowSeconds: 60 * 60 },
   // The same, for everyone together: rotating IPs can't fill the database with sample people, who
-  // take about 600 KB each until they're deleted a day later.
-  trialEveryone: { limit: 100, windowSeconds: 60 * 60 },
-  trialEveryoneDay: { limit: 300, windowSeconds: 24 * 60 * 60 },
+  // take about 850 KB each with their indexes until they're deleted a day later. Set together with
+  // STATEMENT_TRIAL_ROWS_A_DAY: src/config/anonymous-storage.test.ts adds them up.
+  trialEveryone: { limit: 50, windowSeconds: 60 * 60 },
+  trialEveryoneDay: { limit: 150, windowSeconds: 24 * 60 * 60 },
   // Questions Claude answers for one sample (Try Jane) person, in all: one very long window.
   claudeTrial: { limit: 25, windowSeconds: 60 * 60 * 24 * 365 * 10 },
   // Trying Jane with your own statement (src/config/statement-trial.ts): starts per IP, starts by

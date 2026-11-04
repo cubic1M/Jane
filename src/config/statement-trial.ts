@@ -14,7 +14,7 @@ export const STATEMENT_TRIAL_MAX_UPLOADS = 10;
 export const STATEMENT_TRIAL_MAX_ACCOUNTS = 10;
 // All temporary people together in a UTC day. 200 starts of a few hundred rows fit; without this,
 // the day's starts at the most each may hold is 1.2 million rows from one address.
-export const STATEMENT_TRIAL_ROWS_A_DAY = 100_000;
+export const STATEMENT_TRIAL_ROWS_A_DAY = 50_000;
 
 // Answers Claude writes for one temporary person, in all (rate limit "claudeStatementTrial"), and
 // what they may cost that person in a day. Typing past the count gets STATEMENT_TRIAL_CAP_TEXT.
