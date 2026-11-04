@@ -51,5 +51,28 @@ class TestSwitch(unittest.TestCase):
         self.assertEqual(res.stats[0].errors + res.stats[0].illegal, 0)
         self.assertEqual(sum(res.final_stacks), 16000)
 
+    def test_icm_slice_converges_to_the_full_refresh(self):
+        """f7 with icm_slice=1 refreshes one opponent per hand; after (opponents) hands its bubble
+        factors equal the full computation, and the shadow computes none before the hand-over."""
+        from sng.field7.bots import Balanced
+        r = SngRules(enforce_time=False)
+        st = (900, 3500, 1200, 2600, 700, 4100, 1500, 1500)
+        full, sl = Balanced(), Balanced()
+        full.new_table(r, 0, 1)
+        sl.new_table(r, 0, 1)
+        sl.icm_slice = 1
+        full.stacks = list(st)
+        full._update_icm()
+        sl.stacks = list(st)
+        for k in range(7):
+            sl._update_icm()
+            done = sum(abs(a - b) < 1e-12 for a, b in zip(sl.bf[1:], full.bf[1:]))
+            self.assertGreaterEqual(done, k + 1)
+        self.assertEqual([round(x, 12) for x in sl.bf], [round(x, 12) for x in full.bf])
+        sw = make("icm_switch:icm_slice=1")
+        sw.new_table(r, 0, 1)
+        self.assertTrue(sw.b.shadow_only)
+        self.assertEqual(sw.b.icm_slice, 1)
+
 if __name__ == "__main__":
     unittest.main()

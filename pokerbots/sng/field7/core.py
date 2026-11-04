@@ -850,6 +850,7 @@ class Base:
         self.bf = [1.0] * self.n
         self.bfo = [1.0] * self.n
         self._icm_key = None
+        self._icm_pending = None
         self.setup()
 
     def setup(self):
@@ -875,12 +876,45 @@ class Base:
             if DEBUG:
                 raise
 
+    def _update_icm_slice(self, alive, mi, pays):
+        """icm_slice opponents per call (rotating); the rest keep their last values. When every
+        opponent has been refreshed since the stacks moved, the key is stored as in the full path."""
+        st, me, n = self.stacks, self.seat, len(self.stacks)
+        vals = [float(st[j]) for j in alive]
+        bf = list(self.bf) if len(self.bf) == n else [1.0] * n
+        bfo = list(self.bfo) if len(self.bfo) == n else [1.0] * n
+        for j in range(n):
+            if st[j] <= 0:
+                bf[j] = bfo[j] = 1.0
+        others = [i for i in range(len(alive)) if i != mi]
+        pending = getattr(self, "_icm_pending", None)
+        if not pending or any(i >= len(alive) for i in pending) or getattr(self, "_icm_alive", None) != tuple(alive):
+            pending = list(others)
+            self._icm_alive = tuple(alive)
+        for i in pending[:self.icm_slice]:
+            j = alive[i]
+            a, b = bubble_factors(vals, mi, i, pays, self.need_bfo)
+            bf[j] = a
+            bfo[j] = b if self.need_bfo else 1.0 + 0.8 * (a - 1.0)
+        pending = pending[self.icm_slice:]
+        self._icm_pending = pending
+        if not pending:
+            self._icm_key = (tuple(alive), list(st))
+        self.bf, self.bfo = bf, bfo
+
     def after_hand(self, info):
         """Per-hand learning hook for subclasses."""
 
     need_bfo = False
 
+    shadow_only = False      # icm_switch's shadow (not yet in charge): stats only, no ICM
+    icm_slice = 0            # > 0: refresh at most this many opponents' bubble factors per hand, rotating
+                             #   (bounds end_hand time where it counts inside a decision); 0 = all
+    _icm_rot = 0
+
     def _update_icm(self):
+        if self.shadow_only:
+            return
         st = self.stacks
         me = self.seat
         n = len(st)
@@ -896,6 +930,10 @@ class Base:
             return
         # skip the work while nothing much changed since the last computation
         key = self._icm_key
+        if self.icm_slice > 0 and not (key is not None and key[0] == tuple(alive) and
+                                       all(abs(st[j] - key[1][j]) <= 0.06 * key[1][j] for j in alive)):
+            self._update_icm_slice(alive, mi=alive.index(me), pays=pays)
+            return
         if key is not None and key[0] == tuple(alive):
             old = key[1]
             if all(abs(st[j] - old[j]) <= 0.06 * old[j] for j in alive):

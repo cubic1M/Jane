@@ -26,15 +26,16 @@ def _strong_bot(name):
 class IcmSwitch:
     name = "icm_switch"
 
-    def __init__(self, switch_min=20, switch_share=0.0, b="f7", any_deck=0, **kw):
+    def __init__(self, switch_min=20, switch_share=0.0, b="f7", any_deck=0, icm_slice=0, **kw):
         # switch_share > 0: hand over only after switch_min first-in opens with >= switch_share of them
         # re-raised (stricter than the opening-range lock, which fires on noise at static fields); 0 = with the lock
         self.switch_min, self.switch_share = int(switch_min), float(switch_share)
         self.any_deck = bool(any_deck)        # 1: the share rule also fires on short decks / top-heavy payouts
         self.a = IcmTag(**kw)
         self.b = _strong_bot(str(b))
-        if hasattr(self.b, "refresh_icm"):
-            self.b.shadow_only = True        # field-9 bots: opponent stats only until they take over (no ICM)
+        self.b.shadow_only = True            # opponent stats only until it takes over (no ICM in end_hand)
+        if hasattr(self.b, "icm_slice"):
+            self.b.icm_slice = int(icm_slice)    # f7 after the hand-over: <= icm_slice bubble factors per hand
         self.switched = False
         self.switch_hand = None
 
@@ -43,8 +44,7 @@ class IcmSwitch:
         self.b.new_table(rules, seat, seed + 1)
         self.switched = False
         self.switch_hand = None
-        if hasattr(self.b, "refresh_icm"):
-            self.b.shadow_only = True
+        self.b.shadow_only = True
 
     def act(self, obs):
         return (self.b if self.switched else self.a).act(obs)
@@ -64,9 +64,12 @@ class IcmSwitch:
         if not self.switched and fire:
             self.switched = True
             self.switch_hand = info.get("hand_number")
-            if hasattr(self.b, "refresh_icm"):
-                self.b.shadow_only = False
-                try:
-                    self.b.refresh_icm()
-                except Exception:  # noqa: BLE001
-                    pass
+            self.b.shadow_only = False
+            try:
+                if hasattr(self.b, "refresh_icm"):
+                    self.b.refresh_icm()          # field 9
+                else:
+                    self.b._icm_key = None        # field 7: recompute now
+                    self.b._update_icm()
+            except Exception:  # noqa: BLE001
+                pass
