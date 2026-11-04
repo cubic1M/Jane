@@ -75,12 +75,13 @@ export async function loadInsuranceArea(
   ];
   const payingTwice = cards.duplicates.filter((d) => d.status === "new" || d.status === "shown");
 
-  const banks = await scopedFor(userId).accounts.count({ where: { type: "depository" } });
+  const accounts = await scopedFor(userId).accounts.findMany({ select: { type: true } });
 
   // The tree: the same records, a few words and a figure each.
   const area = insuranceTree({
     asOf,
-    noBankSeen: banks === 0,
+    // Only with something on file: with no accounts at all, what they told Jane stands.
+    noBankSeen: accounts.length > 0 && !accounts.some((a) => a.type === "depository"),
     needs: coverage.needs.map((n) => ({ ...n, opened: coverage.opened.has(needKey(n)) })),
     policies: policies.map((p) => ({
       id: p.id,
