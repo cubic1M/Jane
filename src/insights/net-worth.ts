@@ -154,10 +154,20 @@ export function netWorthLine(
     return ends.map((month, i) => ({ month, netCents: i === ends.length - 1 ? todayCents : null }));
   const start = `${ends[0]}-01`;
   const kept = new Set(snapshots.map((s) => s.accountId));
+  // Before an account's first balance it counts at that balance, as the chart does: adding a
+  // savings file isn't a gain (debugger 11-04). Only back to the first balance of any account, so
+  // months before anything was known stay empty.
+  const inOrder = [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
+  const firstOf = new Map<string, Snapshot>();
+  for (const s of inOrder) if (!firstOf.has(s.accountId)) firstOf.set(s.accountId, s);
+  const carried = [...firstOf.values()]
+    .filter((s) => s.date > inOrder[0].date)
+    .map((s) => ({ ...s, date: inOrder[0].date }));
   const months = monthlyNetWorth(
     accounts,
     [
       ...snapshots,
+      ...carried,
       ...accounts
         .filter((a) => !kept.has(a.id) && a.currentBalanceCents !== null)
         .map((a) => ({ accountId: a.id, date: start, balanceCents: a.currentBalanceCents! })),

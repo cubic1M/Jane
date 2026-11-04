@@ -218,6 +218,29 @@ describe("notCounting", () => {
     expect(worth.unbalanced).toEqual([{ name: "Chase card", card: true }]);
     expect(worth.missing).toEqual(["Chase card"]);
   });
+
+  // Debugger 11-04: checking from May 1 and savings from May 15. The month list said April was
+  // $4,120 where Home's chart said $7,320, and the monthly report would call the savings a gain.
+  it("counts an account at its first balance before that day, as the chart does", () => {
+    const accounts = [
+      { id: "chk", type: "depository", currentBalanceCents: 500_000 },
+      { id: "sav", type: "depository", currentBalanceCents: 340_000 },
+    ];
+    const snapshots = [
+      { accountId: "chk", date: "2026-04-30", balanceCents: 412_000 },
+      { accountId: "chk", date: "2026-05-31", balanceCents: 500_000 },
+      { accountId: "sav", date: "2026-05-14", balanceCents: 320_000 },
+      { accountId: "sav", date: "2026-05-31", balanceCents: 340_000 },
+    ];
+    const line = netWorthLine(accounts, snapshots, [], "2026-06-15", 4, 840_000);
+    expect(line).toEqual([
+      // Before anything was known it stays unknown: three months of statements, three rows.
+      { month: "2026-03", netCents: null },
+      { month: "2026-04", netCents: 732_000 },
+      { month: "2026-05", netCents: 840_000 },
+      { month: "2026-06", netCents: 840_000 },
+    ]);
+  });
 });
 
 describe("fromFirstKnown", () => {
