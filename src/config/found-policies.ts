@@ -15,7 +15,7 @@ export const INSURANCE_CATEGORIES: readonly string[] = ["GENERAL_SERVICES_INSURA
 // payments is named for the insurer, not the statement's "GEICO AUTO PAYMENT").
 // Government programs, not a market: there's nowhere to shop them (debugger 11-04: "Your SGLI
 // insurance could cost less").
-export const GOVERNMENT_COVER = /\b(?:sgli|vgli|fegli|tricare)\b/i;
+export const GOVERNMENT_COVER = /\b(?:sgli|vgli|fegli|tricare|medicare premium|cms medicare)\b/i;
 
 export const INSURER_NAMES: Readonly<Record<string, string>> = {
   sgli: "SGLI",

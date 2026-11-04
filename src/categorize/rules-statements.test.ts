@@ -313,7 +313,7 @@ describe("a move between a person's own accounts", () => {
 // Someone living on SSI or VA benefits read as having no income at all.
 describe("pay and benefits, as banks write them", () => {
   it.each([
-    ["SSI TREAS 310", "INCOME_RETIREMENT_PENSION"],
+    ["SSI TREAS 310", "INCOME_LONG_TERM_DISABILITY"],
     ["VA TREAS 310 VETERANS", "INCOME_LONG_TERM_DISABILITY"],
     ["NY STATE TEACHERS RET", "INCOME_RETIREMENT_PENSION"],
     ["ACME CORP PAYRLL", "INCOME_SALARY"],

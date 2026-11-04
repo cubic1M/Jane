@@ -791,6 +791,38 @@ describe("COBRA", () => {
   });
 });
 
+// Debugger 11-04: someone on benefits. SSI counted toward taxed income, shopping at Goodwill read as
+// $236 of deductible gifts, and the report asked to cancel their ABLE savings.
+describe("what someone on benefits has", () => {
+  const detailed = (description: string, amountCents: number) =>
+    categorizeByRules({ description, amountCents, hints: {} })?.detailed;
+
+  it("reads SSI apart from Social Security", () => {
+    expect(detailed("SSI TREAS 310 XXSUPP SEC", -18_300)).toBe("INCOME_LONG_TERM_DISABILITY");
+    expect(detailed("SSA TREAS 310 XXSOC SEC", -112_400)).toBe("INCOME_RETIREMENT_PENSION");
+  });
+
+  it.each(["GOODWILL #331", "GOODWILL INDUSTRIES 4412", "SALVATION ARMY THRIFT STORE"])(
+    "%s is shopping, not a gift",
+    (description) => {
+      expect(detailed(description, 2_400)).not.toBe("GOVERNMENT_AND_NON_PROFIT_DONATIONS");
+      expect(detailed(description, 2_400)).toMatch(/^GENERAL_MERCHANDISE/);
+    },
+  );
+
+  it("still reads a gift as a gift", () => {
+    expect(detailed("GOODWILL DONATION ONLINE", 5_000)).toBe("GOVERNMENT_AND_NON_PROFIT_DONATIONS");
+    expect(detailed("SALVATION ARMY", 5_000)).toBe("GOVERNMENT_AND_NON_PROFIT_DONATIONS");
+  });
+
+  it.each(["ABLE ACCOUNT CONTRIBUTION", "ABLENOW DEPOSIT", "STABLE ACCOUNT"])(
+    "%s is savings",
+    (description) => {
+      expect(detailed(description, 1_500)).toBe("TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS");
+    },
+  );
+});
+
 describe("taxonomy", () => {
   it("names every detailed category after its primary", () => {
     for (const detailed of ALL_DETAILED) {

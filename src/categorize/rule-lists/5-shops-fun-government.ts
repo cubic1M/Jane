@@ -260,6 +260,19 @@ export const SHOPS_FUN_GOVERNMENT: readonly Rule[] = [
     direction: "out",
   },
   { category: "GENERAL_SERVICES_EDUCATION", keywords: ["KUMON"], direction: "out" },
+  // A thrift shop's till, not a gift (debugger 11-04: $236 at Goodwill read as deductible giving).
+  {
+    category: "GENERAL_MERCHANDISE_DISCOUNT_STORES",
+    pattern:
+      /(?<![A-Z0-9])(?:GOODWILL (?:#|\d|INDUSTRIES)(?!.*DONAT)|SALVATION ARMY (?:THRIFT|STORE|#|\d))/,
+    direction: "out",
+  },
+  // Saving, in an account for someone with a disability (debugger 11-04: "a subscription to cancel?").
+  {
+    category: "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS",
+    keywords: ["ABLE ACCOUNT", "ABLENOW", "STABLE ACCOUNT"],
+    direction: "out",
+  },
   // What a service member pays (debugger 11-04: 70% of a month uncategorized).
   { category: "FOOD_AND_DRINK_GROCERIES", keywords: ["COMMISSARY"], direction: "out" },
   {

@@ -36,6 +36,7 @@ export const DOCUMENT_BOXES: Readonly<Record<TaxFormKey, Readonly<Record<string,
     washDisallowed: "1099-B, wash sale loss disallowed",
   },
   r: { gross: "Box 1, gross payout", taxable: "Box 2a, taxable", federalWithheld: "Box 4" },
+  ssa: { benefits: "Box 5, net benefits", federalWithheld: "Box 6, federal tax withheld" },
   g: { amount: "Box 1, unemployment", federalWithheld: "Box 4, federal tax withheld" },
   mortgage: { interest: "Box 1, mortgage interest", points: "Box 6, points" },
   student: { interest: "Box 1, student loan interest" },
@@ -49,6 +50,7 @@ export const COMPARED: Readonly<Record<TaxFormKey, string>> = {
   int: "interest",
   brokerage: "dividends",
   r: "payouts after tax",
+  ssa: "benefits after tax",
   g: "payments after tax",
   mortgage: "mortgage interest",
   student: "student loan interest",
@@ -75,6 +77,8 @@ export function formAmount(formKey: TaxFormKey, boxes: DocumentBoxes): number {
       return box(boxes, "interest");
     case "brokerage":
       return box(boxes, "dividends");
+    case "ssa":
+      return box(boxes, "benefits") - box(boxes, "federalWithheld");
     case "r":
       return box(boxes, "gross") - box(boxes, "federalWithheld");
     case "g":

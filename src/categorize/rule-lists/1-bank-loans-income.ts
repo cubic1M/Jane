@@ -251,11 +251,11 @@ export const BANK_LOANS_INCOME: readonly Rule[] = [
     ],
     direction: "in",
   },
-  // VA disability isn't pay: it isn't wages on a W-2 and generally isn't taxed (debugger 11-04: it
-  // read as a second employer, so tax was guessed as married filing jointly).
+  // VA disability and SSI aren't pay or a pension: no W-2 or 1099-R, and generally not taxed (debugger
+  // 11-04: VA read as a second employer, so tax was guessed as married filing jointly).
   {
     category: "INCOME_LONG_TERM_DISABILITY",
-    keywords: ["VA BENEFITS", "VA BENEF", "VA TREAS"],
+    keywords: ["VA BENEFITS", "VA BENEF", "VA TREAS", "SSI TREAS"],
     direction: "in",
   },
   {
@@ -266,7 +266,7 @@ export const BANK_LOANS_INCOME: readonly Rule[] = [
   { category: "INCOME_RETIREMENT_PENSION", keywords: ["TSP WITHDRAWAL"], direction: "in" },
   {
     category: "INCOME_RETIREMENT_PENSION",
-    keywords: ["SSI TREAS", "TEACHERS RET"],
+    keywords: ["TEACHERS RET"],
     direction: "in",
   },
   // Above the salary rule's DIRECT DEP: a driver's pay isn't a salary.
