@@ -15,7 +15,7 @@ import { log } from "@/lib/log";
 import { mayAct, recordAct } from "@/lib/sector-autopilot";
 import { changesFor } from "./cover-change-rules";
 import { sizeLife } from "./life";
-import { partnerFor, type InsurancePartner } from "./partner";
+import { actingPartnerFor, type InsurancePartner } from "./partner";
 import { listPolicies, type Policy } from "./policies";
 import { DAY_MS as DAY } from "@/lib/dates";
 import { systemDb } from "@/lib/system-db";
@@ -222,7 +222,7 @@ export async function applyCoverEvent(
     (c) => c.event === event && c.eventKey === eventKey && (!only || only.includes(c.change)),
   );
   if (prepared.length === 0) return [];
-  const carrier = partner === undefined ? await partnerFor(userId, { client }) : partner;
+  const carrier = partner === undefined ? await actingPartnerFor(userId, { client }) : partner;
   const policies = new Map<string, Policy>(
     (await listPolicies(userId, { client })).map((p) => [p.id, p]),
   );
