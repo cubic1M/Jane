@@ -76,7 +76,7 @@ def _table_job(args):
                 p99_ms=float(np.percentile(times, 99) * 1000), max_ms=float(times.max() * 1000),
                 over=st.over_limit, decisions=st.decisions, errors=st.errors, illegal=st.illegal,
                 first_error=st.first_error, lineup=lineup,
-                field_points={x: res.points[i] for i, x in enumerate(lineup) if i != my_seat})
+                field_points=[(x, res.points[i]) for i, x in enumerate(lineup) if i != my_seat])
 
 
 def run(candidates, field, rules_kw, tables=200, seed0=1, workers=4, log=print):
@@ -136,7 +136,8 @@ def field_table(out):
     """Average points of each field archetype across all tables (who is strong)."""
     acc = {}
     for r in out:
-        for x, p in r["field_points"].items():
+        fp = r["field_points"]
+        for x, p in (fp.items() if isinstance(fp, dict) else fp):      # every seat (a name can repeat)
             acc.setdefault(x, []).append(p)
     rows = sorted(((x, *ci95(v), len(v)) for x, v in acc.items()), key=lambda r: -r[1])
     return "\n".join(f"  {x:22s} {m:6.2f} ± {h:.2f}  (n={n})" for x, m, h, n in rows)

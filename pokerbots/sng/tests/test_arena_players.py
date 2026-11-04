@@ -35,5 +35,13 @@ class TestArenaPlayers(unittest.TestCase):
         line = next(l for l in arena.summarize(out, ["a"]).splitlines() if l.startswith("| a "))
         self.assertEqual(line.split("|")[4].strip(), "50%")      # chip rank 1 and place 2
 
+    def test_field_table_counts_every_seat(self):
+        """An archetype in several seats of one table counts once per seat."""
+        out = [dict(field_points=[("a", 10.0), ("a", 30.0), ("b", 5.0)]),
+               dict(field_points={"a": 20.0})]                         # old-style raw records still read
+        txt = arena.field_table(out)
+        self.assertIn("(n=3)", txt.splitlines()[0])                    # a: 10, 30, 20
+        self.assertIn("20.00", txt.splitlines()[0])
+
 if __name__ == "__main__":
     unittest.main()

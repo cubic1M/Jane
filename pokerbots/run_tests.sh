@@ -21,6 +21,7 @@ declare -A CMD=(
   [sng_field7]="python3 -m unittest discover -s sng/field7/tests -t ."
   [sng_field8]="python3 -m unittest discover -s sng/field8/tests -t ."
   [sng_field9]="python3 -m unittest discover -s sng/field9/tests -t ."
+  [sng_field10]="python3 -m unittest discover -s sng/field10/tests -t ."
   [kit2_adapter]="python3 -m unittest discover -s practice_kit2/tests_adapter"
   [kit4_adapter]="python3 -m unittest discover -s practice_kit4/tests_adapter"
 )
@@ -32,7 +33,7 @@ for s in "${!CMD[@]}"; do
 done
 wait
 fail=0
-for s in engine bots opponents tournament server sng sng_field sng_field2 sng_field3 sng_field4 sng_field5 sng_field6 sng_field7 sng_field8 sng_field9 sng_ours kit2_adapter kit4_adapter; do
+for s in engine bots opponents tournament server sng sng_field sng_field2 sng_field3 sng_field4 sng_field5 sng_field6 sng_field7 sng_field8 sng_field9 sng_field10 sng_ours kit2_adapter kit4_adapter; do
   read rc name secs ran < results/logs/test_$s.rc
   if [ "$rc" = 0 ]; then st=OK; else st=FAIL; fail=1; fi
   printf "%-11s %-4s %6s  %s\n" "$name" "$st" "$secs" "$ran"
@@ -54,8 +55,13 @@ for t in sng.ours.tests.test_icm_tag.TestIcmTag.test_fast_including_first_decisi
          sng.field6.tests.test_field6.TestTables.test_timing_p99 \
          sng.field7.tests.test_field7.TestTables.test_timing_p99 \
          sng.field8.tests.test_field8.TestTables.test_timing_p99 \
-         sng.field9.tests.test_field9.TestTables.test_timing_p99; do
-  if python3 -m unittest "$t" > results/logs/test_timing.log 2>&1; then :; else
+         sng.field9.tests.test_field9.TestTables.test_timing_p99 \
+         sng.field10.tests.test_field10.TestTables.test_timing_p99; do
+  # one retry: a timing test right after the parallel suites (or beside a long job) can catch a load
+  # spike; a real slowdown fails both attempts. The retry is reported, never silent.
+  if python3 -m unittest "$t" > results/logs/test_timing.log 2>&1; then :;
+  elif python3 -m unittest "$t" > results/logs/test_timing.log 2>&1; then echo "timing     RETRY-OK  $t";
+  else
     echo "timing     FAIL  $t"; tail -3 results/logs/test_timing.log; fail=1; tfail=1; fi
 done
 echo "timing     done   $(( $(date +%s) - TS ))s (serial)"
