@@ -1,4 +1,5 @@
 import { TRIAL_ID_PREFIX } from "@/config/trial";
+import { adviceMode } from "@/lib/advice-mode";
 import {
   CHAT_CRON_LIMIT,
   CHAT_HISTORY_HOURS,
@@ -163,7 +164,11 @@ async function runJaneAgentWork(
   // Spec step 184: the day as one agenda message, plus whatever is urgent, unless the person
   // wants things as they come.
   const posting = postingOf(await listPreferences(userId, { client }));
-  const settings: BrainSettings = { trigger, agenda: posting === "daily" };
+  const settings: BrainSettings = {
+    trigger,
+    agenda: posting === "daily",
+    realAccount: !(await adviceMode(userId, { client })),
+  };
   const db = scopedFor(userId, client);
   const keys = gather(snapshot, now, settings).map((c) => c.dedupeKey);
   // Spec step 273: what each monthly-limited source posted since the first of this month.

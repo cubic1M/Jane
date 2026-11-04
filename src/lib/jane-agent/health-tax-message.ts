@@ -55,7 +55,7 @@ export function medicalMessage(v: HealthTaxView): Message | null {
   const m = v.medical;
   if (m.savesCents < MEDICAL_MIN_SAVING_CENTS) return null;
   return {
-    body: `You've paid ${formatCents(m.spentCents)} for care and health premiums this year. Medical costs count only over 7.5% of your income (about ${formatCents(m.floorCents)}), which leaves ${formatCents(m.deductibleCents)}; with your other deductions that's more than your ${formatCents(m.standardCents)} standard deduction, so itemizing saves about ${formatCents(m.savesCents)}. Keep the bills and receipts for whoever does your return.`,
+    body: `You've paid ${formatCents(m.spentCents)} for care and health premiums this year. Medical costs count only over 7.5% of your income (about ${formatCents(m.floorCents)}), which leaves ${formatCents(m.deductibleCents)}; with your other deductions that's more than your ${formatCents(m.standardCents)} standard deduction. Keep the bills and receipts for whoever does your return.`,
     refs: { taxYear: v.year },
     actions: [see],
   };

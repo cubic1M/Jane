@@ -23,7 +23,7 @@ export function rentalSetupMessage(view: SideIncomeView): Message | null {
   const r = view.rental;
   if (!r || r.rentCents <= 0 || r.priceCents) return null;
   return {
-    body: `You've had ${formatCents(r.rentCents)} of rent in ${view.year}. The building can be written off over 27.5 years (depreciation), which lowers the tax on it. Tell me the price you paid and when it was ready to rent, and tag what you spend on it as rental expenses.`,
+    body: `You've had ${formatCents(r.rentCents)} of rent in ${view.year}. Rental buildings are depreciated over 27.5 years on a return. Tell me the price you paid and when it was ready to rent, and tag what you spend on it as rental expenses.`,
     refs: { taxYear: view.year },
     actions: [{ id: "open", label: "Add my rental", kind: "link", href: SIDE_FORM_HREF }],
   };

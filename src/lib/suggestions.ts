@@ -2,6 +2,7 @@ import { landing } from "@/lib/area-pages/landing";
 import { STRATEGIST_CAPABILITY, STRATEGIST_IDEA_DAYS, STRATEGIST_TOPIC } from "@/config/strategist";
 import { promisesHiddenPage } from "@/config/hidden-pages";
 import { ADVICE_TOPICS, RESELECT_AFTER_DAYS, rankValue } from "@/config/suggestions";
+import { tellsThemToAct } from "@/lib/real-account-text";
 import { runDetectors } from "@/detectors";
 import type { Suggestion } from "@/detectors/contract";
 import { ideaShortForms } from "@/detectors/helpers";
@@ -107,8 +108,19 @@ async function detectForWork(
       detector: `${d.capability}:${d.topic}`,
       error: scrub(String(error)),
     }),
-  ).filter((s) => advice || !(ADVICE_TOPICS as readonly string[]).includes(s.topic));
+  ).filter((s) => advice || forRealAccount(s));
   return { suggestions: forTheBeta(suggestions), advice, today: input.today, profile, input };
+}
+
+// What a real account may see: no advice topic, and no card telling them what to do with their
+// money, whichever topic its author filed it under (src/lib/real-account-text.ts).
+export function forRealAccount(
+  s: Pick<Suggestion, "topic" | "title" | "headline" | "short" | "why">,
+): boolean {
+  return (
+    !(ADVICE_TOPICS as readonly string[]).includes(s.topic) &&
+    ![s.title, s.headline, s.short, s.why].some(tellsThemToAct)
+  );
 }
 
 // What the closed beta may show: none whose button promises a task on a page it hides

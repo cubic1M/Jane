@@ -173,6 +173,10 @@ export const ADVICE_TOPICS: readonly SuggestionTopic[] = [
   "s_corp_election",
   "home_office_deduction",
   "social_security_tax",
+  // Audit 11-04: telling someone what to keep their income under, or what to set aside from sales
+  // for tax, is a tax move too (medicare and estimated_taxes already were).
+  "irmaa_watch",
+  "cash_flow",
   // Loans QA (2026-10-23): these price a loan from the stand-in lender catalog, which only
   // demo-bank people have; a real account has no lending partner, so no loan pick either.
   "consolidation",
