@@ -190,6 +190,7 @@ class Base:
         self.stacks = [rules.starting_stack] * self.n
         self.hand_no = 0
         self.icm = pair_icm(self.stacks, self.pays[:self.n], self.seat)
+        self._icm_key = None
         self.setup()
 
     def setup(self):
@@ -296,8 +297,17 @@ class Base:
         return self.raise_to(c, cur + frac * (c.pot + c.to_call))
 
     # ---- ICM helpers -------------------------------------------------------------------
-    def refresh_icm(self):
+    icm_cache = 0.0     # > 0 (icm_switch): recompute only when the alive set changes or a stack moves > icm_cache
+
+    def refresh_icm(self, force=False):
         left = sum(1 for s in self.stacks if s > 0)
+        if self.icm_cache > 0 and not force:
+            key = getattr(self, "_icm_key", None)
+            alive = tuple(j for j, s in enumerate(self.stacks) if s > 0)
+            if key is not None and key[0] == alive and all(
+                    abs(self.stacks[j] - key[1][j]) <= self.icm_cache * key[1][j] for j in alive):
+                return
+            self._icm_key = (alive, list(self.stacks))
         self.icm = pair_icm(self.stacks, self.pays[:left], self.seat)
 
     def bf_me(self, j) -> float:

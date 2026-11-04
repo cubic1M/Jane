@@ -29,7 +29,7 @@ class IcmSwitch:
     name = "icm_switch"
 
     def __init__(self, switch_min=20, switch_share=0.0, b="f7", any_deck=0, icm_slice=0, sd_share=0.3,
-                 sd_b="f9_meta", **kw):
+                 sd_b="f9_meta", f9_cache=0.0, **kw):
         # sd_share > 0: on a six-plus deck (where the lock is off) hand over to sd_b once >= sd_share of
         # >= switch_min first-in opens were re-raised (fresh seeds, 10 short-deck cells: +2.7, no significant
         # loss; results/sng_sdswitch_validate.md); 0 = never on short decks
@@ -49,6 +49,8 @@ class IcmSwitch:
         for bb in (self.b_main, self.b_sd):
             if bb is not None:
                 self._setup_strong(bb, icm_slice)
+                if hasattr(bb, "icm_cache"):
+                    bb.icm_cache = float(f9_cache)   # field 9: skip the ICM while stacks move < f9_cache
         self.switched = False
         self.switch_hand = None
         self.short = False
@@ -107,7 +109,7 @@ class IcmSwitch:
             self.b.shadow_only = False
             try:
                 if hasattr(self.b, "refresh_icm"):
-                    self.b.refresh_icm()          # field 9
+                    self.b.refresh_icm(force=True)  # field 9
                 else:
                     self.b._icm_key = None        # field 7: recompute now
                     self.b._update_icm()
