@@ -1,3 +1,4 @@
+import { TRIAL_ID_PREFIX } from "@/config/trial";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { OUTCOME_MIN_CASES } from "@/config/merchant-outcomes";
@@ -58,6 +59,27 @@ describe.runIf(url)("merchant outcomes against a real database", () => {
       });
     }
   }
+
+  it("counts nothing done by a sample person: anyone can make one, and real people read this", async () => {
+    const real = userId;
+    userId = (
+      await client.user.create({
+        data: {
+          id: `${TRIAL_ID_PREFIX}${crypto.randomUUID().replaceAll("-", "")}`,
+          email: `sample-${crypto.randomUUID()}@example.test`,
+        },
+      })
+    ).id;
+    const sample = userId;
+    await finished(OUTCOME_MIN_CASES + 2, false);
+    await refreshMerchantOutcomes({ client });
+    expect(
+      (await companyFacts(merchant, { client, actionType: "cancel_subscription" })).outcome,
+    ).toBeNull();
+    await client.user.delete({ where: { id: sample } });
+    userId = real;
+    await client.merchantOutcome.deleteMany({});
+  });
 
   it("shows nothing below the minimum number of cases, then the aggregate", async () => {
     await finished(OUTCOME_MIN_CASES - 1, true);

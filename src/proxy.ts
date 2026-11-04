@@ -6,6 +6,7 @@ import { edgeLimit } from "@/lib/edge-limits";
 import { log } from "@/lib/log";
 import { freshSwitches } from "@/lib/ops-switches";
 import { newNonce, pageCsp } from "@/lib/security-headers";
+import { linkNeedsConfirming } from "@/lib/sign-in-link";
 
 // Runs before every page, API route and server action. Three jobs, after the emergency stop:
 // - Rate limits for every API route and server action, per IP and per session
@@ -34,6 +35,13 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     cookies: request.cookies,
   });
   if (limited) return limited;
+  const unconfirmed = linkNeedsConfirming({
+    pathname,
+    search: request.nextUrl.search,
+    searchParams: request.nextUrl.searchParams,
+    cookies: request.cookies,
+  });
+  if (unconfirmed) return NextResponse.redirect(new URL(unconfirmed, request.url));
   // API routes set their own headers (next.config.ts).
   if (pathname.startsWith("/api/")) return NextResponse.next();
 

@@ -33,6 +33,7 @@ const OUTSIDE = [
   "/",
   "/login",
   "/login/check-email",
+  "/login/continue",
   "/signup",
   "/privacy",
   "/terms",
