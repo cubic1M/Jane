@@ -35,6 +35,10 @@ export async function todayOf(
   return localDate(now, timezone);
 }
 
+// For the chat, which keeps going when this read fails: US Pacific's day, as for an unknown zone.
+export const chatToday = (userId: string, options: { client: PrismaClient; now: Date }) =>
+  todayOf(userId, options).catch(() => localDate(options.now, null));
+
 // The person's timezone for labelling moments (momentLabel in src/lib/day-label.ts): theirs, or
 // US Pacific when unknown or not a real zone.
 export async function timezoneOf(userId: string): Promise<string> {

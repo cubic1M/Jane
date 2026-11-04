@@ -13,6 +13,7 @@ import { formatCents } from "@/lib/money";
 import { optionLabel, type Comparison } from "@/planning/compare";
 import type { AnswerBlock } from "./blocks";
 import { monthLabel } from "@/lib/day-label";
+import { chatToday } from "@/lib/today";
 
 // Spec step 94: blocks from the same numbers as the pages (Insights, Today, Goals and a
 // finding's options), so their figures match. Builders are pure; buildBlock loads.
@@ -106,7 +107,7 @@ export async function buildBlock(
     findingId,
   }: { client: PrismaClient; now: Date; month?: string; findingId?: string },
 ): Promise<AnswerBlock | null> {
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await chatToday(userId, { client, now });
   const db = () => scopedFor(userId, client);
   switch (kind) {
     case "spending_by_category":

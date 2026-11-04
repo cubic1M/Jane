@@ -95,6 +95,7 @@ import { goalBuckets } from "@/planning/goal-buckets";
 import { comparePlans } from "@/planning/college";
 import { hsaPlan } from "@/planning/hsa";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { limitsLine } from "./retirement-accounts-copy";
 
 // Spec step 128: what the person owns, in Jane's chat.
 
@@ -2083,6 +2084,15 @@ describe("retirement accounts questions, by rules", () => {
 });
 
 describe("retirementAccountsReply and the retirement messages", () => {
+  it("says nothing was seen, not $0.00 put in", () => {
+    const body = limitsLine({
+      ...RA_VIEW,
+      limits: [{ ...RA_VIEW.limits[0], usedCents: 0, roomCents: RA_VIEW.limits[0].limitCents }],
+    });
+    expect(body).toContain("the limit is $24,500.00, with nothing put in that I can see");
+    expect(body).not.toContain("$0.00");
+  });
+
   it("gives the limits, the missed match in dollars, Roth by bracket and a tap for each", () => {
     const reply = retirementAccountsReply(RA_VIEW);
     expect(reply.body).toMatch(

@@ -60,12 +60,13 @@ import type { Reply } from "./replies";
 import { OPTION_ACTIONS } from "./actions/options";
 import type { OfferedOptions } from "@/lib/option-card";
 import { oneLine, UNTRUSTED_TEXT_RULE } from "@/lib/untrusted-text";
+import { chatToday } from "@/lib/today";
 
 // Free questions in Jane's chat, with an Anthropic key (spec step 84): Claude, the
 // person's recent typed messages and Jane's answers to them, and read-only tools over their
 // own data, like Ask (src/lib/ask/answer.ts). Claude's text is only shown once it passes the
 // guardrails, which allow only dollar figures from a tool, the numbers sent with it or the
-// question (never an earlier answer or card). Claude can offer one button from the action registry (propose_action), never
+// person's messages (never an earlier answer or card). Claude can offer one button from the action registry (propose_action), never
 // press it: the person taps.
 //
 // Quick by design: a faster model than the rest of the app (chatModel), little thinking,
@@ -515,6 +516,8 @@ type ChatTiming = {
   guardrailRules: string[];
   // Why each rewrite happened: "guardrail", "shape" or "button_only".
   rewriteReasons: string[];
+  // What the figure ledger had when it last checked an answer (counts only).
+  figures?: { facts: number; names: number; said: number };
   // The model that answered after a safety classifier declined (./refusal-fallback.ts).
   fallbackModel?: string;
 };
@@ -614,6 +617,9 @@ async function askClaude(
   // The person's main numbers, for at most primerMs: a slow lookup finishes in the
   // background (and is kept for the next question) while Claude starts without it.
   const primerStarted = Date.now();
+  const today = await chatToday(userId, { client, now });
+  // "This month" in an answer is their month, however late it is in UTC.
+  const onToday = new Date(`${today}T12:00:00Z`);
   // A sector question's lookups (the specific one it needs, or the sector's overview) start now,
   // together with the numbers, and are sent up front.
   const lookupNames = lookupsFor(
@@ -622,7 +628,7 @@ async function askClaude(
       question,
       [...history].reverse().find((m) => m.role === "user")?.content ?? null,
       topic,
-      now.toISOString().slice(0, 10),
+      today,
     ),
   );
   const lookupsFetch =
@@ -664,10 +670,12 @@ async function askClaude(
   const started = Date.now();
   // Figures the answer may use: any in the numbers sent up front or a tool's result (a
   // finding's title has some too: "Charged twice? $64.20 at Target"), what the person told Jane
-  // (memory) and their own question. Never Jane's earlier answers or cards: what Jane said isn't
-  // evidence (card-chat mismatch: a stale card's $1,349 was repeated, then kept passing because
-  // the chat had said it).
-  const allowedCents = [question, primer.text, memory ?? ""].flatMap((text) =>
+  // (memory) and their own messages, this one and the earlier ones Claude is sent. Never Jane's
+  // earlier answers or cards: what Jane said isn't evidence (card-chat mismatch: a stale card's
+  // $1,349 was repeated, then kept passing because the chat had said it).
+  const recent = history.slice(-CHAT_CLAUDE_HISTORY);
+  const theirWords = [question, ...recent.flatMap((t) => (t.role === "user" ? [t.content] : []))];
+  const allowedCents = [...theirWords, primer.text, memory ?? ""].flatMap((text) =>
     dollarFigures(text).map((f) => f.cents),
   );
   allowedCents.push(...primer.cents);
@@ -675,10 +683,10 @@ async function askClaude(
   const ledger = new FigureLedger();
   ledger.addRulesOfThumb(advice ? SYSTEM_DEMO_ADVICE : SYSTEM);
   ledger.addNames(await personalNames(userId, client));
-  ledger.addText(question);
+  theirWords.forEach((text) => ledger.addText(text));
   ledger.addLines(memory ?? "");
   ledger.addLines(primer.text);
-  const figuresPass = (text: string) => ledger.problems(text, now).length === 0;
+  const figuresPass = (text: string) => ledger.problems(text, onToday).length === 0;
   let prepared: Awaited<ReturnType<typeof quotesAnswer>> | null = null;
   if (shopFetch) {
     const reply = await Promise.race([
@@ -750,7 +758,7 @@ async function askClaude(
   };
   // Only the last few turns: a long thread slows every follow-up. The topic of the last
   // answer is in the numbers sent with the question, so a short follow-up keeps its context.
-  const messages = conversation(history.slice(-CHAT_CLAUDE_HISTORY), question);
+  const messages = conversation(recent, question);
   // Every tool, in one fixed order, so the start of the request is cached whatever the question
   // (./tool-select.ts). What this question is about goes after the cached instructions: its areas,
   // and whether it may get a button.
@@ -762,7 +770,7 @@ async function askClaude(
       question,
       [...history].reverse().find((m) => m.role === "user")?.content ?? null,
       topic,
-      now.toISOString().slice(0, 10),
+      today,
     ),
   ];
   // A question that only asks for information is told to answer in words (a button it offers
@@ -795,7 +803,7 @@ async function askClaude(
     // Everything below changes with the person and the question, after the cached part.
     {
       type: "text",
-      text: `The person's numbers right now (today is ${now.toISOString().slice(0, 10)}):\n${primer.text || "None available."}${figuresLine(primer.cents)}${topic ? `\n\n${topicLine(topic)}` : ""}${focusLine}${findingBlock}${overviewBlock}${prepared ? `\n\nA card for this request is already prepared and will appear under your answer (never repeat its figures):\n${prepared.body}\nWrite one or two sentences saying what you found; do not call propose_action.` : ""}${style ? `\n\n${style}` : ""}${memory ? `\n\n${memory}` : ""}`,
+      text: `The person's numbers right now (today is ${today}):\n${primer.text || "None available."}${figuresLine(primer.cents)}${topic ? `\n\n${topicLine(topic)}` : ""}${focusLine}${findingBlock}${overviewBlock}${prepared ? `\n\nA card for this request is already prepared and will appear under your answer (never repeat its figures):\n${prepared.body}\nWrite one or two sentences saying what you found; do not call propose_action.` : ""}${style ? `\n\n${style}` : ""}${memory ? `\n\n${memory}` : ""}`,
     },
   ];
 
@@ -1103,7 +1111,7 @@ async function askClaude(
         if (block.name === "calculate") {
           const notOnFile = calculatorInputsNotOnFile(block.input, [
             ...allowedCents,
-            ...typedAmountsCents(`${question} ${memory ?? ""}`),
+            ...typedAmountsCents(`${theirWords.join(" ")} ${memory ?? ""}`),
           ]);
           if (notOnFile.length > 0) {
             results.push({
@@ -1192,7 +1200,8 @@ async function askClaude(
       timing.guardrailRules.push(...guardrailMatches(spoken, allowedCents, profile).slice(0, 6));
     }
     // One wrong number fails the answer, the same way a guardrail does. Codes only in the log.
-    const wrongFigures = ledger.problems(spoken, now);
+    const wrongFigures = ledger.problems(spoken, onToday);
+    timing.figures = ledger.counts(spoken);
     const issues = check.ok ? [] : check.issues;
     timing.guardrails.push(...wrongFigures.map((p) => `figure:${p.kind}`));
     const passed = check.ok && wrongFigures.length === 0;

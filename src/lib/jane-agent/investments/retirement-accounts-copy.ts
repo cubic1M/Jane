@@ -24,9 +24,11 @@ export const raMatchLine = (v: View) =>
 
 export const limitsLine = (v: View) =>
   v.limits
-    .map(
-      (l) =>
-        `${l.label}: ${formatCents(l.usedCents)} of ${formatCents(l.limitCents)} (${formatCents(l.roomCents)} left)`,
+    .map((l) =>
+      // Nothing seen isn't nothing put in: their pay stubs may just not be linked.
+      l.usedCents === 0
+        ? `${l.label}: the limit is ${formatCents(l.limitCents)}, with nothing put in that I can see`
+        : `${l.label}: ${formatCents(l.usedCents)} of ${formatCents(l.limitCents)} (${formatCents(l.roomCents)} left)`,
     )
     .join("; ");
 
