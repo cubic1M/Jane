@@ -86,6 +86,7 @@ import { practiceIdeasFor } from "./practice-ideas";
 import { PRACTICE_ONLY_NOTE, RULE_LABELS } from "./practice-copy";
 import { formatRate } from "@/lib/percent";
 import { scopedFor } from "@/lib/db-scoped";
+import { chatToday } from "@/lib/today";
 
 // Claude's tools for investment questions in Jane's chat (spec step 128 on): read-only,
 // scoped to the person, and every dollar figure recorded for the guardrails. Each later
@@ -422,7 +423,7 @@ export async function runInvestmentTool(
     case "investor_profile": {
       const summary = profileSummary(
         await profileOf(userId, { client }),
-        now.toISOString().slice(0, 10),
+        await chatToday(userId, { client, now }),
       );
       if (!summary.complete) {
         return out({
@@ -917,7 +918,10 @@ export async function runInvestmentTool(
     case "yearly_review": {
       const snapshot = await loadInvestmentSnapshot(userId, { client, now });
       if (!snapshot.advice) return out({ advice: "only in demo advice mode" });
-      const review = reviewFor(snapshot, now.getUTCFullYear());
+      const review = reviewFor(
+        snapshot,
+        Number((await chatToday(userId, { client, now })).slice(0, 4)),
+      );
       return out({
         reason: review.input.reason,
         items: review.items.map((i) => ({ item: i.key, status: i.status, line: i.line })),

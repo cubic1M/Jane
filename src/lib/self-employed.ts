@@ -28,6 +28,7 @@ import { estimateTaxes } from "@/planning/tax-estimate";
 import { estimatedTaxDates } from "@/planning/tax-pack";
 import { payeeOf } from "@/planning/tax-tags";
 import { isoDay as iso } from "@/lib/dates";
+import { chatToday } from "@/lib/today";
 
 // Freelancers' taxes (spec step 123), from the same estimate as /taxes: business expenses
 // (tagged), the home office and mileage helpers, what to set aside from each payment and the
@@ -74,7 +75,7 @@ export async function loadSelfEmployed(
     ? [loaded.estimate, loaded.advice]
     : await Promise.all([loadTaxEstimate(userId, { client, now }), adviceMode(userId, { client })]);
   const year = estimate.year;
-  const today = iso(now);
+  const today = await chatToday(userId, { client, now });
   const db = scopedFor(userId, client);
   const [freelance, profile, business] = await Promise.all([
     db.transactions.findMany({

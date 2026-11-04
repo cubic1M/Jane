@@ -1,12 +1,12 @@
 import { randomBytes } from "node:crypto";
 import { cardHeadline } from "@/detectors/contract";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { promisesHiddenPage } from "@/config/hidden-pages";
 import { PEOPLE } from "@/config/people";
 import { runDetectors } from "@/detectors";
 import { buildProfile } from "@/profile/build";
-import { ADVICE_TOPICS, SUGGESTIONS_PER_DAY } from "@/config/suggestions";
+import { ADVICE_TOPICS, RESELECT_AFTER_DAYS, SUGGESTIONS_PER_DAY } from "@/config/suggestions";
 import { PrismaClient } from "@/generated/prisma/client";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
@@ -246,5 +246,57 @@ describe.runIf(url)("the nightly scan of suggestions", { timeout: 120_000 }, () 
     }
     // The sample people do have some for it to catch.
     expect(caught).toBeGreaterThan(0);
+  });
+
+  describe("what the chat offers after the day they were chosen", () => {
+    const HOUR = 3_600_000;
+    let userId: string;
+    const offeredAt = async (at: Date) =>
+      (await offeredToday(userId, { client, now: at })).map((s) => s.key);
+
+    beforeEach(async () => {
+      const trial = await startTrial({ client, now: NOW, defer: true, person: PEOPLE[0].id });
+      await syncItem(trial.itemId, { client, now: NOW });
+      await scanSuggestions(trial.userId, { client, now: NOW });
+      userId = trial.userId;
+    });
+    afterEach(async () => {
+      await client.user.deleteMany({ where: { id: userId } });
+    });
+
+    it("keeps the last scan's picks once the UTC day turns over", async () => {
+      const chosen = await offeredAt(NOW);
+      expect(chosen.length).toBeGreaterThan(0);
+      expect(await offeredAt(new Date(NOW.getTime() + 20 * HOUR))).toEqual(chosen);
+    });
+
+    it("doesn't bring old picks back once a new scan has chosen", async () => {
+      const first = await offeredAt(NOW);
+      const next = new Date(NOW.getTime() + 24 * HOUR);
+      await scanSuggestions(userId, { client, now: next });
+      const second = await offeredAt(next);
+      expect(second.some((key) => first.includes(key))).toBe(false);
+      // Answering today's doesn't uncover yesterday's.
+      await client.suggestion.updateMany({
+        where: { userId, key: { in: second } },
+        data: { status: "no" },
+      });
+      expect(await offeredAt(next)).toEqual([]);
+    });
+
+    it("doesn't post the same card again the next day", async () => {
+      const dedupe = async (at: Date) =>
+        suggestionsSource
+          .gather((await loadSnapshot(userId, { client, now: at }))!, {} as never)
+          .map((c) => c.dedupeKey);
+      const chosen = await dedupe(NOW);
+      expect(chosen.length).toBeGreaterThan(0);
+      expect(await dedupe(new Date(NOW.getTime() + 20 * HOUR))).toEqual(chosen);
+    });
+
+    it("lets them go when they could be chosen again", async () => {
+      const later = new Date(NOW.getTime() + RESELECT_AFTER_DAYS * 24 * HOUR);
+      expect(await offeredAt(later)).toEqual([]);
+    });
   });
 });

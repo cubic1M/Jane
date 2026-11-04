@@ -2,6 +2,7 @@ import { normalizeMerchant } from "@/data-sources/merchant";
 import { loadTransactionsBetween } from "@/detection/engine";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { formatCents } from "@/lib/money";
+import { chatToday } from "@/lib/today";
 import type { Intent } from "./intents";
 import { SPENDING_NOT_FOUND, type Reply } from "./replies";
 
@@ -259,7 +260,7 @@ export async function payeesInQuestion(
   text: string,
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<PayeeTotals[]> {
-  const to = now.toISOString().slice(0, 10);
+  const to = await chatToday(userId, { client, now });
   const rows = await loadTransactionsBetween(userId, {
     client,
     from: `${to.slice(0, 4)}-01-01`,

@@ -36,6 +36,7 @@ import { compareHomeProject, loadHomeEquity } from "@/lib/home-equity";
 import { pullCredit } from "@/lib/credit";
 import { listApplications } from "@/lib/loan-applications";
 import { checkRates, loadRefinance } from "@/lib/refinance";
+import { chatToday } from "@/lib/today";
 import type { DebtIntent } from "./debt-intents";
 import { debtDetailReply, debtReply, payoffReply } from "./debt-replies";
 import { loanStatusReply, refinanceReply, transferReply } from "./refinance-replies";
@@ -83,7 +84,7 @@ export async function answerDebt(
     case "payoff_plan":
       return payoffReply(
         await loadPayoff(userId, { client, now, extraCents: intent.extraCents ?? undefined }),
-        now.toISOString().slice(0, 10),
+        await chatToday(userId, { client, now }),
       );
     case "refinance": {
       let refi = await loadRefinance(userId, { client, now });
@@ -112,7 +113,7 @@ export async function answerDebt(
       const goals = await loadCreditGoals(userId, { client, now });
       // A target and a time: preview the plan, ready to start on a tap.
       if (intent.targetScore !== null && intent.months !== null) {
-        const asOf = now.toISOString().slice(0, 10);
+        const asOf = await chatToday(userId, { client, now });
         const d = new Date(now.getTime());
         d.setUTCMonth(d.getUTCMonth() + intent.months);
         try {

@@ -57,6 +57,7 @@ import { PAUSE as PRACTICE_PAUSE_LINK, PRACTICE_ONLY_NOTE } from "../investments
 import { adviceMode } from "@/lib/advice-mode";
 import { RA_LINK } from "../investments/retirement-accounts-copy";
 import { loadSteadyHand } from "@/lib/investments/steady-hand";
+import { chatToday } from "@/lib/today";
 import { pauseNote } from "../investments/steady-copy";
 import { CASH_LINK } from "../investments/cash-copy";
 import { mixLine, SIMULATED_WORDS } from "../investments/rebalance-copy";
@@ -93,7 +94,7 @@ function answer(position: number): ActionHandler {
           actions: ask.actions,
         };
       }
-      const summary = profileSummary(answers, now.toISOString().slice(0, 10));
+      const summary = profileSummary(answers, await chatToday(userId, { client, now }));
       const { investQuestion: _, investAgain: __, ...refs } = message.refs;
       return {
         answeredWith: action.label,

@@ -25,6 +25,7 @@ import { loadReview } from "@/lib/insurance/review";
 import type { ReviewInput } from "@/lib/insurance/review-rules";
 import { loadHealthYear, type HealthYear } from "@/lib/insurance/health-year";
 import { SWITCH_NEWS_DAYS, SWITCH_PAYMENT_DAYS } from "@/config/insurance";
+import { chatToday } from "@/lib/today";
 
 // What Jane's brain knows about the person's insurance (spec Phase X), from the same loader
 // as /insurance.
@@ -84,7 +85,7 @@ export async function loadInsuranceSnapshot(
   userId: string,
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<InsuranceSnapshot> {
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await chatToday(userId, { client, now });
   const [
     { policies, gaps, household, advice, readings },
     partner,

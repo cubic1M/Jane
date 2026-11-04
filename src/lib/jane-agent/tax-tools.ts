@@ -56,6 +56,7 @@ import { loadHomeTaxes } from "@/lib/home-taxes";
 import { figuresOf, type Source } from "@/planning/home-taxes";
 import { sourceText } from "./home-taxes-message";
 import { COMPARED } from "@/planning/tax-document-check";
+import { chatToday } from "@/lib/today";
 
 // Claude's tax tools in Jane's chat (spec steps 118–127): read-only, over the person's own
 // data, through the same loaders as /taxes. Every dollar figure is recorded for the
@@ -284,7 +285,7 @@ export async function runTaxTool(
   { client, now }: Options,
 ): Promise<ToolOutput> {
   const args = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
-  const year = defaultTaxYear(now.toISOString().slice(0, 10));
+  const year = defaultTaxYear(await chatToday(userId, { client, now }));
   const cents: number[] = [];
   const money = (value: number) => {
     cents.push(Math.abs(value));
@@ -512,7 +513,7 @@ export async function runTaxTool(
       });
     }
     case "tax_return": {
-      const today = now.toISOString().slice(0, 10);
+      const today = await chatToday(userId, { client, now });
       const fy = filingYear(today);
       const [partner, ret] = await Promise.all([
         filingPartnerFor(userId, { client }),
@@ -534,7 +535,7 @@ export async function runTaxTool(
       });
     }
     case "tax_investments": {
-      const year = defaultTaxYear(now.toISOString().slice(0, 10));
+      const year = defaultTaxYear(await chatToday(userId, { client, now }));
       const [view, advice] = await Promise.all([
         loadInvestmentTaxes(userId, year, { client, now }),
         adviceMode(userId, { client }),

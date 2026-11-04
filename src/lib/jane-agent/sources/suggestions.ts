@@ -45,7 +45,8 @@ export const suggestionsSource: MessageSource = {
           href: m.href,
         })),
       ],
-      dedupeKey: `${s.key}:${snapshot.asOf}`,
+      // The day it was chosen, not today: an unanswered pick stays offered, and isn't posted twice.
+      dedupeKey: `${s.key}:${s.chosenOn}`,
       priority: MESSAGE_PRIORITY.suggestions,
     }));
   },
