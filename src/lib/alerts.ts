@@ -11,6 +11,7 @@ import type { AlertType, PrismaClient } from "@/generated/prisma/client";
 import { renderAlertEmail } from "@/lib/alert-email";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
+import { onlyDemoBank } from "@/lib/advice-mode";
 import { scopedFor } from "@/lib/db-scoped";
 import { appBase } from "@/lib/digest/links";
 import { unsubscribeToken } from "@/lib/digest/unsubscribe";
@@ -113,6 +114,8 @@ export async function emailUrgentAlerts(
     select: { email: true, alertPrefs: true, deletedAt: true },
   });
   if (!user || user.deletedAt) return 0;
+  // Sample data never goes to a real address as if it were theirs: the alert stays in the app.
+  if (await onlyDemoBank(userId, client)) return 0;
   const prefs = alertPrefs(user.alertPrefs);
   const emailTypes = ALERT_TYPES.filter((t) => prefs[t] === "email");
   if (emailTypes.length === 0) return 0;

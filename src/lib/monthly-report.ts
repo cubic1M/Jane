@@ -2,6 +2,7 @@ import { MONTHLY_REPORT_DAYS } from "@/config/monthly-report";
 import { TRIAL_ID_PREFIX } from "@/config/trial";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { previousMonth } from "@/insights/check-in";
+import { onlyDemoBank } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { loadCheckIn, summaryFor } from "@/lib/check-in";
 import { db as defaultClient } from "@/lib/db";
@@ -285,7 +286,9 @@ export async function runMonthlyReports({
     try {
       const kept = await monthlyReportFor(user.id, { client, now });
       const db = scopedFor(user.id, client);
-      if (!kept) {
+      // Sample data never goes to a real address as if it were theirs (as with the weekly email,
+      // src/lib/digest/recipients.ts); the report stays on the page and in the chat.
+      if (!kept || (await onlyDemoBank(user.id, client))) {
         run.skipped += 1;
         continue;
       }

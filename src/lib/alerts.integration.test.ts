@@ -125,6 +125,24 @@ describe.runIf(url)("raiseAlerts against a real database", () => {
     expect((await alertsOf(user.id))[0].emailedAt).toEqual(NOW);
   });
 
+  it("never emails sample figures to someone whose only bank is the demo bank", async () => {
+    const user = await person();
+    await client.plaidItem.create({
+      data: {
+        userId: user.id,
+        plaidItemId: `demo-${crypto.randomUUID()}`,
+        accessTokenEncrypted: "x",
+      },
+    });
+
+    expect(await raiseAlerts(user.id, [alert()], { client, now: NOW, send })).toEqual({
+      raised: 1,
+      emailed: 0,
+    });
+    expect(send).not.toHaveBeenCalled();
+    expect((await alertsOf(user.id))[0].emailedAt).toBeNull();
+  });
+
   it("emails a bill reminder only when it's urgent", async () => {
     const user = await person();
     await raiseAlerts(
