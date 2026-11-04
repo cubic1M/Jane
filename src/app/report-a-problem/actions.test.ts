@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { create, logAudit, track } = vi.hoisted(() => ({
+const { create, logAudit, track, saveTryFeedback } = vi.hoisted(() => ({
+  saveTryFeedback: vi.fn(),
   create: vi.fn(async () => ({ id: "rep_1" })),
   logAudit: vi.fn(),
   track: vi.fn(),
@@ -10,6 +11,7 @@ vi.mock("@/lib/db-scoped", () => ({
   scopedDb: vi.fn(async () => ({ userId: "user_1", problemReports: { create } })),
 }));
 vi.mock("@/lib/audit", () => ({ logAudit }));
+vi.mock("@/lib/try-feedback", () => ({ saveTryFeedback }));
 vi.mock("@/lib/analytics", () => ({ track }));
 vi.mock("@/lib/rate-limit", () => ({
   hit: vi.fn(async () => ({ ok: true, remaining: 1, retryAfterSeconds: 0 })),
@@ -59,6 +61,21 @@ describe("sendProblemReport", () => {
     expect(result).toMatchObject({ ok: false });
     expect(hit).toHaveBeenCalledWith("problemReports", "user_1");
     expect(create).not.toHaveBeenCalled();
+  });
+
+  // A try is deleted, and a report saved with its person would go too.
+  it("keeps a trial person's report apart from them, with nothing to link it back", async () => {
+    vi.mocked(requireUser).mockResolvedValueOnce({ id: "trial_1" } as never);
+    create.mockClear();
+    logAudit.mockClear();
+    const result = await sendProblemReport(form({ from: "/home", message: "It broke." }));
+    expect(result).toEqual({ ok: true });
+    expect(saveTryFeedback).toHaveBeenCalledWith("trial_1", {
+      path: "/home",
+      message: "It broke.",
+    });
+    expect(create).not.toHaveBeenCalled();
+    expect(logAudit).not.toHaveBeenCalled();
   });
 
   // Anyone can make 40 sample people, at 5 reports each.

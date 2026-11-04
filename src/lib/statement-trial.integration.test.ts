@@ -102,6 +102,9 @@ const NOT_A_PERSONS = new Set([
   "saved_replies",
   "merchant_outcomes",
   "cron_runs",
+  // Tied to no one on purpose (src/lib/try-stats.ts, src/lib/try-feedback.ts): they outlive a try.
+  "try_stats",
+  "try_feedback",
   "health_notices",
   "merchants",
   "switch_options",

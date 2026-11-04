@@ -267,7 +267,14 @@ export default function PrivacyPage() {
         </li>
         <li>
           We never email you, never contact any company for you, and don&apos;t count this try in
-          our analytics or activity records. You can&apos;t link a bank in a temporary try.
+          our analytics or activity records. We do keep daily totals of how tries went, such as how
+          many started, finished or failed. Those are counts only, with no id and nothing from your
+          statement, and they stay. You can&apos;t link a bank in a temporary try.
+        </li>
+        <li>
+          If you tell us what Jane got wrong or report a problem during a try, we keep your words
+          and the page, with no link to you, and they stay after your try is deleted. So leave out
+          names and account numbers; we remove what looks like an email address or a long number.
         </li>
       </ul>
 

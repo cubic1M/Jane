@@ -100,6 +100,9 @@ export const RATE_LIMITS = {
   // 200, so a flood would push real ones off the page.
   problemReports: { limit: 5, windowSeconds: 60 * 60 },
   sampleProblemReports: { limit: 20, windowSeconds: 60 * 60 },
+  // "What did Jane get wrong?" during a try: per person, and everyone together in a day.
+  tryFeedback: { limit: 5, windowSeconds: 60 * 60 },
+  tryFeedbackDay: { limit: 200, windowSeconds: 24 * 60 * 60 },
   // Household invites, per person: each emails an address they typed.
   householdInvites: { limit: 5, windowSeconds: 60 * 60 },
   // Rows, not requests (hit's `by`): what one temporary person may hold, however many uploads run at

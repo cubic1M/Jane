@@ -50,7 +50,9 @@ investment advice in this MVP.
   false until a licensed partner is connected and counsel signs off
 - Trial people (step 138, ids starting "trial_", src/lib/trial.ts) are sample data:
   never emailed, never contact a company (the agent uses the simulated company and
-  number), never in analytics or metrics, and deleted after TRIAL_HOURS
+  number), never in analytics or metrics, and deleted after TRIAL_HOURS. Founder's exception
+  (11-04): daily totals in try_stats (src/lib/try-stats.ts) and feedback in try_feedback
+  (src/lib/try-feedback.ts), which carry no id and aren't tied to a person
 - The paper account (src/lib/paper/) is simulated money only: no real order, broker or account,
   ever. Its prices are real and free (Alpaca, else Yahoo); advice mode only for now. Its trade
   alerts live in their own pop-up (src/components/trade-popup.tsx), never in the suggestion dock

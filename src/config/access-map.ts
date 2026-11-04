@@ -190,6 +190,7 @@ export const ACCESS_MAP: Record<string, Access> = {
   ),
   "src/app/profile/actions.ts": "signed-in",
   "src/app/report-a-problem/actions.ts": "signed-in",
+  "src/app/try/feedback-actions.ts": "signed-in",
   "src/app/report/share-actions.ts": "signed-in",
   "src/app/saved/actions.ts": "signed-in",
   "src/app/settings/actions.ts": "signed-in",

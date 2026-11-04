@@ -81,6 +81,11 @@ export const RETENTION_PERIODS = {
     policy:
       "Security records of sign-ins, sign-outs, two-factor and bank-link changes, data downloads, account deletions and team access, with the time, IP address and browser",
   },
+  // What people tell us during a try (src/lib/try-feedback.ts): tied to no one.
+  tryFeedback: {
+    days: 395,
+    policy: "What you tell us during a try, with no link to you",
+  },
   // Spec step 138.
   trialPeople: {
     days: 1,
