@@ -12,7 +12,7 @@ import { daysBetween, monthsBefore } from "@/detection/units";
 import { idleCashOf, payingCardInterest } from "@/planning/idle-cash";
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { emergencyTarget } from "@/planning/emergency-fund";
-import { summarize } from "@/planning/costly-borrowing";
+import { summarize, TITLE_LOAN_NAMES } from "@/planning/costly-borrowing";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
 import {
@@ -383,23 +383,33 @@ const highCostLoans: Detector = {
     const count = kinds.reduce((s, k) => s + k.count, 0);
     if (count === 0 || cost <= 0) return null;
     const payday = kinds.some((k) => k.kind === "payday");
-    const what = payday ? "payday loans" : "pay advances";
+    const titleLoan = data.transactions.some(
+      (t) => t.amountCents > 0 && TITLE_LOAN_NAMES.test(t.description),
+    );
+    const what = titleLoan ? "costly loans" : payday ? "payday loans" : "pay advances";
+    const loan = titleLoan ? "title loan" : "payday loan";
     return {
       id: suggestionId("debt", "high_cost_loans"),
       capability: "debt",
       topic: "high_cost_loans",
       title: payday
-        ? "Replace the payday loan with something cheaper"
+        ? `Replace the ${loan} with something cheaper`
         : "Replace the pay advance app with something cheaper",
       headline: headlineOf(
-        payday ? "Replace your payday loan" : "Replace your pay advances",
+        payday ? `Replace your ${loan}` : "Replace your pay advances",
         cost,
         "saves",
       ),
       short: `Your ${what} cost about ${formatCents(cost)} in fees in ${profile.months} months.`,
       worthCents: cost,
       worthKind: "saves",
-      confidence: evidence("seen", profile.months, count, what),
+      // A title loan's count is its payments: "7 costly loans" was one loan and one payday loan.
+      confidence: evidence(
+        "seen",
+        profile.months,
+        count,
+        titleLoan ? "costly loan payments" : what,
+      ),
       urgency: "now",
       why: `Your ${what} cost about ${formatCents(cost)} in fees in ${profile.months} months${costly.cycle ? ", taken again and again" : ""}. A credit union small loan or a pay advance from work costs far less.`,
       action: { label: "See cheaper options", href: "/loans/costly" },

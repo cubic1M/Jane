@@ -624,6 +624,29 @@ describe("money that only moved", () => {
   });
 });
 
+// Debugger 11-04: a warehouse worker's $210 a month to TitleMax read as "other", so it wasn't
+// among their debts or left-out balances, and child support they paid had no category.
+describe("what a tight month holds", () => {
+  const detailed = (description: string, amountCents: number) =>
+    categorizeByRules({ description, amountCents, hints: {} })?.detailed;
+
+  it.each([
+    "TITLEMAX OF NC TITLE LOAN PAYMENT",
+    "TITLEBUCKS 2214",
+    "LOANMAX PMT",
+    "AUTO TITLE LOAN",
+  ])("%s is a loan being paid", (description) => {
+    expect(detailed(description, 21_000)).toBe("LOAN_PAYMENTS_PERSONAL_LOAN_PAYMENT");
+  });
+
+  it("reads child support by which way it went", () => {
+    expect(detailed("NC CHILD SUPPORT CENTRALIZED COLLECT", 18_000)).toBe(
+      "GOVERNMENT_AND_NON_PROFIT_GOVERNMENT_DEPARTMENTS_AND_AGENCIES",
+    );
+    expect(detailed("NC CHILD SUPPORT CENTRALIZED COLLECT", -18_000)).toBe("INCOME_CHILD_SUPPORT");
+  });
+});
+
 describe("taxonomy", () => {
   it("names every detailed category after its primary", () => {
     for (const detailed of ALL_DETAILED) {

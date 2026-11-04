@@ -112,7 +112,7 @@ describe.runIf(url)(
       expect(reply.body).toMatch(
         /^Costly short-term borrowing cost you \$[\d,.]+ over the last year, across 4 kinds\./,
       );
-      expect(reply.body).toContain("Payday loans: 2 times, $30.00 in fees");
+      expect(reply.body).toContain("Payday and title loans: 2 times, $30.00 in fees");
       expect(reply.body).toContain("Cheaper ways out:");
       expect(reply.body).toContain("Credit union payday alternative loan (PAL)");
       expect(parseRefs(reply.refs).advice).toBe(true);

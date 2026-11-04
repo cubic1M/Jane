@@ -260,6 +260,7 @@ const PAID_LOAN_WORDS: Record<PaidLoan["kind"], string> = {
   student: "student loan",
   auto: "car loan",
   mortgage: "mortgage",
+  loan: "loan",
 };
 
 // A lender's name that already says what the loan is, the banks' short forms too ("Student Ln
@@ -268,6 +269,7 @@ const SAYS_KIND: Record<PaidLoan["kind"], RegExp> = {
   student: /\bstudent\b/i,
   auto: /\b(?:auto|car) (?:loan|ln)\b/i,
   mortgage: /\b(?:mortgage|mtg)\b/i,
+  loan: /\b(?:loan|ln)\b/i,
 };
 
 // A loan seen only in payments from checking (./paid-loans.ts): its payment and next date from

@@ -244,6 +244,12 @@ export const BANK_LOANS_INCOME: readonly Rule[] = [
   // Above the salary rule's DIRECT DEP: a driver's pay isn't a salary.
   { category: "INCOME_GIG_ECONOMY", keywords: ["LYFT DIRECT", "UBER DIRECT"], direction: "in" },
   { category: "INCOME_CHILD_SUPPORT", keywords: ["CHILD SUPPORT", "CHILD SUPP"], direction: "in" },
+  // Paid, it goes through the state's collection office (debugger 11-04: left uncategorized).
+  {
+    category: "GOVERNMENT_AND_NON_PROFIT_GOVERNMENT_DEPARTMENTS_AND_AGENCIES",
+    keywords: ["CHILD SUPPORT", "CHILD SUPP"],
+    direction: "out",
+  },
   { category: "INCOME_OTHER", keywords: ["SEVERANCE"], direction: "in" },
   {
     category: "INCOME_SALARY",
@@ -419,6 +425,13 @@ export const BANK_LOANS_INCOME: readonly Rule[] = [
       "WESTLAKE FINANCIAL",
       "EXETER FINANCE",
     ],
+    direction: "out",
+  },
+  // A title loan: a debt with a balance, not "other" (debugger 11-04: $210 a month to TitleMax was
+  // missing from the person's debts and from what net worth leaves out).
+  {
+    category: "LOAN_PAYMENTS_PERSONAL_LOAN_PAYMENT",
+    pattern: /(?<![A-Z0-9])(?:TITLEMAX|TITLEBUCKS|LOANMAX|TITLE ?LOAN)(?![A-Z0-9])/,
     direction: "out",
   },
   // Buy now, pay later: each instalment pays off a purchase, whatever shop follows the name
