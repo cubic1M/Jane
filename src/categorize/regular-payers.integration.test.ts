@@ -67,7 +67,8 @@ describe.runIf(url)("regular pay with no pay word", { timeout: 30_000 }, () => {
     const id = await person({ name: "Northwind Labs", cents: -261_025 });
     const db = scopedFor(id, client);
     expect(await markCashIncome(db)).toBe(6);
-    expect(await details(id)).toEqual(["INCOME_OTHER"]);
+    // Every two weeks: a paycheck's schedule, so a salary.
+    expect(await details(id)).toEqual(["INCOME_SALARY"]);
     expect(await markCashIncome(db)).toBe(0);
   });
 
@@ -80,7 +81,7 @@ describe.runIf(url)("regular pay with no pay word", { timeout: 30_000 }, () => {
       source: "llm",
     });
     await markCashIncome(scopedFor(id, client));
-    expect(await details(id)).toEqual(["INCOME_OTHER"]);
+    expect(await details(id)).toEqual(["INCOME_SALARY"]);
   });
 
   it("leaves a person's own category, and a refund the rules placed", async () => {
@@ -152,7 +153,7 @@ describe.runIf(url)("regular pay with no pay word", { timeout: 30_000 }, () => {
     });
   });
 
-  it("keeps a payer with a steady schedule as other income beside the clients", async () => {
+  it("keeps a payer with a paycheck's schedule as a salary beside the clients", async () => {
     const id = await person({ name: "Northwind Labs", cents: -261_025 });
     const account = await client.account.findFirstOrThrow({ where: { userId: id } });
     const irregular = [
@@ -179,7 +180,7 @@ describe.runIf(url)("regular pay with no pay word", { timeout: 30_000 }, () => {
     const rows = await client.transaction.findMany({ where: { userId: id } });
     expect(
       rows.filter((r) => r.merchantName === "Northwind Labs").map((r) => r.pfcDetailed),
-    ).toEqual(Array(6).fill("INCOME_OTHER"));
+    ).toEqual(Array(6).fill("INCOME_SALARY"));
     expect(rows.filter((r) => r.pfcDetailed === "INCOME_CONTRACTOR")).toHaveLength(4);
   });
 
