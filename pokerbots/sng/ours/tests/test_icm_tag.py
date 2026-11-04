@@ -679,6 +679,33 @@ class TestIcmTag(unittest.TestCase):
         self.assertEqual(first_action(0, mid, 1), "raise")
         self.assertEqual(first_action(3, aces, 1), "raise")
 
+    def test_rfi_lock_engages_once_after_attacked_opens(self):
+        """rfi_lock: after rfi_lock_min of my first-in opens with >= rfi_lock re-raised, the position
+        ranges switch on for the rest of the table (never off); not on a short deck; a new table resets."""
+        from sng.presets import PRESETS
+        post = [(1, 0, "post", 10), (2, 0, "post", 20)]
+        rr = tuple(post + [(0, 0, "raise", 40), (3, 0, "raise", 120), (0, 0, "fold", 0)])
+        ok = tuple(post + [(0, 0, "raise", 40), (3, 0, "fold", 0), (1, 0, "fold", 0), (2, 0, "fold", 0)])
+        r = SngRules(enforce_time=False)
+        b = IcmTag(rfi_lock=0.3, rfi_lock_min=10)
+        b.new_table(r, 0, 1)
+        for h in [rr] * 3 + [ok] * 6:                          # 9 opens: below the minimum
+            b.end_hand(dict(history=h, stacks=(2000,) * 8))
+        self.assertFalse(b.rfi_on)
+        b.end_hand(dict(history=ok, stacks=(2000,) * 8))        # 10 opens, 30% re-raised
+        self.assertTrue(b.rfi_on)
+        for _ in range(30):
+            b.end_hand(dict(history=ok, stacks=(2000,) * 8))
+        self.assertTrue(b.rfi_on)                               # one-way
+        b.new_table(r, 0, 2)
+        self.assertFalse(b.rfi_on)
+        six = SngRules(enforce_time=False, spec=PRESETS["kit4_sixplus"]["spec"])
+        c = IcmTag(rfi_lock=0.3, rfi_lock_min=10)
+        c.new_table(six, 0, 1)
+        for h in [rr] * 10:
+            c.end_hand(dict(history=h, stacks=(2000,) * 8))
+        self.assertFalse(c.rfi_on)                              # short deck: never
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -64,6 +64,8 @@ PARAMS = dict(
                          #   count, never tighter than range_k); the exact-ICM call decides. 0 = off.
                          #   2 validated on fresh seeds (results/sng_rscall_validate_*.md: 11 cells, mean
                          #   +1.6, field 4 +2.2*, field 5 +4.7*, field 6 +5.1*); 3 = day-of choice vs light re-shovers
+    rfi_lock=0.0,        # > 0: switch to rfi_mode=2 ranges for the rest of the table once >= rfi_lock of my first
+    rfi_lock_min=20,     #   rfi_lock_min opens were re-raised (fields 6/7: 29-49%, static fields 13-23%)
     rfi_mode=0,          # 1 (or 2: only on a full 52-card deck with not-top-heavy payouts): first-in opens
                          #   (above push_bb, 3+ players dealt in) by position: open if the hand
     rfi_scale=1.0,       #   is in the top rfi_scale x RFI[k] / steal factor of hands (k = players behind + limpers),
@@ -199,7 +201,9 @@ class IcmTag:
                 flat = payout_risk_scale(tuple(pays)[:getattr(rules, "num_players", len(pays))])
             except Exception:  # noqa: BLE001
                 flat = 1.0
-        self.rfi_on = bool(rm == 1 or (rm == 2 and len(getattr(self.spec, "deck_ranks", ())) == 13 and flat >= 0.5))
+        self.rfi_ok2 = len(getattr(self.spec, "deck_ranks", ())) == 13 and flat >= 0.5
+        self.rfi_on = bool(rm == 1 or (rm == 2 and self.rfi_ok2))
+        self.my_opens = self.my_opens_rr = 0                # rfi_lock: my first-in opens, and how many got re-raised
         self.chart = None
         if self.p["pf_chart"]:
             from sng.ours.pushfold_chart import load_chart
@@ -258,6 +262,13 @@ class IcmTag:
                 self.o3_seen[op] += 1
                 if nxt[2] == "fold":
                     self.o3_fold[op] += 1
+        if rz and pre3[rz[0]][0] == self.seat:
+            self.my_opens += 1
+            if len(rz) >= 2:
+                self.my_opens_rr += 1
+            if (self.p["rfi_lock"] > 0 and not self.rfi_on and self.rfi_ok2 and self.my_opens >= self.p["rfi_lock_min"]
+                    and self.my_opens_rr >= self.p["rfi_lock"] * self.my_opens):
+                self.rfi_on = True                          # one-way: these bots read our open rate
         # re-raise rate vs one open (rs_call): each seat's first action after a lone open
         if rz:
             op, end = pre3[rz[0]][0], (rz[1] if len(rz) >= 2 else len(pre3) - 1)
