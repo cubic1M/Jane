@@ -26,11 +26,12 @@ export default function SecurityPage() {
         </li>
         <li>
           <strong>Team access.</strong> Our team pages require an admin role and a second sign-in
-          factor, and every team page view and action is written to an audit log.
+          factor, and every team page view and action is written to an audit log. Direct database
+          access for maintenance isn&apos;t logged by the app.
         </li>
         <li>
           <strong>Abuse protection.</strong> Every sign-in, bank link, chat message and other action
-          is rate limited, and the beta is invite-only.
+          is rate limited, and signing up is invite-only. Anyone can try Jane without an account.
         </li>
         <li>
           <strong>Your control.</strong> Disconnect a bank or delete everything in Settings at any

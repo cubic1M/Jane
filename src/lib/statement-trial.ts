@@ -47,7 +47,11 @@ export type StatementPerson = { userId: string; sessionToken: string; expires: D
 // Whose session this browser holds, if it's still good.
 export async function sessionOwner(
   sessionToken: string | undefined,
-  { client = defaultClient, now = new Date() }: Options = {},
+  {
+    client = defaultClient,
+    now = new Date(),
+    evenExpired = false,
+  }: Options & { evenExpired?: boolean } = {},
 ): Promise<string | null> {
   if (!sessionToken) return null;
   // nosemgrep: jane-user-table-query-without-scope -- finds who a browser is from its own cookie, before there is a user to scope by: the unguessable session token is the only filter
@@ -58,7 +62,7 @@ export async function sessionOwner(
     where: { sessionToken },
     select: { userId: true, expires: true },
   });
-  return session && session.expires > now ? session.userId : null;
+  return session && (evenExpired || session.expires > now) ? session.userId : null;
 }
 
 // A new, empty temporary person, with the Terms they ticked. A trial person this browser already

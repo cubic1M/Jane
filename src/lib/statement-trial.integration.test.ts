@@ -269,6 +269,10 @@ describe.runIf(url)("trying Jane with your own statement", { timeout: 180_000 },
       const { sessionToken, expires } = await start();
       const later = new Date(expires.getTime() + 1);
       expect(await sessionOwner(sessionToken, { client, now: later })).toBeNull();
+      // Start over on a tab left open past the end still finds whom to delete.
+      expect(
+        await sessionOwner(sessionToken, { client, now: later, evenExpired: true }),
+      ).not.toBeNull();
       expect(await sessionOwner(undefined, { client })).toBeNull();
     });
   });

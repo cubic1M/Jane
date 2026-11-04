@@ -26,7 +26,10 @@ export default function PrivacyPage() {
         <li>Jane reads your banks, read-only. It can never move money.</li>
         <li>We don&apos;t sell your data, and we don&apos;t use it for advertising.</li>
         <li>For your real accounts, Jane doesn&apos;t give financial advice.</li>
-        <li>You can delete everything, in one step, at any time.</li>
+        <li>
+          You can delete everything, in one step, at any time. Our database provider&apos;s restore
+          history can hold deleted data for up to a day after that.
+        </li>
       </ul>
 
       <h2>What we collect</h2>
@@ -191,12 +194,13 @@ export default function PrivacyPage() {
         <li>Documents you upload are encrypted (AES-256-GCM), and only you can open them.</li>
         <li>Each person&apos;s data is only ever read for that person.</li>
         <li>
-          Team access needs a second sign-in factor, and every team view of your data is logged.
-          Signed in, you can see each one under{" "}
+          Team access needs a second sign-in factor, and team pages that show your data are logged.
+          Signed in, you can see those views under{" "}
           <Link href="/settings/team-access" className="underline">
             Who saw my data
           </Link>
-          .
+          . A problem report you send is read by the team and isn&apos;t listed there, and direct
+          database access for maintenance isn&apos;t logged by the app.
         </li>
         <li>Error logs have email addresses, card and account numbers, and tokens removed.</li>
       </ul>
@@ -243,12 +247,14 @@ export default function PrivacyPage() {
           you&apos;re done, especially on a shared computer.
         </li>
         <li>
-          The deletion in &quot;How long we keep it&quot; removes all of it. What stays, for the
-          security log&apos;s period listed above, is a record that a try started and was deleted,
-          with a random id, the times and the version of the Terms you agreed to, and nothing from
-          your statement. Request counters that stop abuse keep only a scrambled form of your IP
-          address and of your sign-in cookie, for about a day. Anything a background step is writing
-          at the moment you delete goes at the next daily clean-up, and holds only the random id and
+          No team page shows your statement or your chat. The deletion in &quot;How long we keep
+          it&quot; removes all of it from the live database. Our database provider&apos;s restore
+          history can hold deleted data for up to a day after that. What stays, for the security
+          log&apos;s period listed above, is a record that a try started and was deleted, with a
+          random id, the times and the version of the Terms you agreed to, and nothing from your
+          statement. Request counters that stop abuse keep only a scrambled form of your IP address
+          and of your sign-in cookie, for about a day. Anything a background step is writing at the
+          moment you delete goes at the next daily clean-up, and holds only the random id and
           counts.
         </li>
         <li>
