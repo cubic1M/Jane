@@ -416,6 +416,10 @@ describe("categorizeByRules", () => {
     // Night QA 10-30: a retiree's college savings and Medicare supplement.
     ["SCHOLARSHARE 529 CONTRIB", "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS"],
     ["MY529 CONTRIBUTION", "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS"],
+    // A teacher's "529 COLLEGE PLAN CONTRIB" read as $150 a month spent on education.
+    ["529 COLLEGE PLAN CONTRIB", "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS"],
+    ["NY 529 DIRECT PLAN", "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS"],
+    ["COLLEGE 529 SAVINGS AUTO", "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS"],
     ["BLUE SHIELD MEDICARE SUPP", "GENERAL_SERVICES_INSURANCE"],
   ])("reads %s as %s", (description, category) => {
     expect(out(description)).toBe(category);

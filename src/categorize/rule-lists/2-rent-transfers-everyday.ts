@@ -36,6 +36,10 @@ export const RENT_TRANSFERS_EVERYDAY: readonly Rule[] = [
       // read as a subscription to cancel, "could save $1,200 a year").
       "529 CONTRIB",
       "529 PLAN",
+      "529 COLLEGE",
+      "529 DIRECT",
+      "529 SAVINGS",
+      "COLLEGE 529",
       "SCHOLARSHARE",
       "MY529",
       "COLLEGE SAVINGS PLAN",
