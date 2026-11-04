@@ -74,5 +74,23 @@ class TestSwitch(unittest.TestCase):
         self.assertTrue(sw.b.shadow_only)
         self.assertEqual(sw.b.icm_slice, 1)
 
+    def test_batched_bubble_factors_equal_the_reference(self):
+        """f7's batched ICM (icm_fast, on in icm_switch) gives the same bubble factors as the pure-Python path."""
+        import random
+        from sng.field7.core import bubble_factors, bubble_factors_all
+        rng = random.Random(3)
+        for _ in range(60):
+            k = rng.randint(3, 8)
+            vals = [float(rng.randint(100, 6000)) for _ in range(k)]
+            pays = (100, 65, 45, 30, 20, 10, 5, 0)[:k]
+            mi = rng.randrange(k)
+            opps = [i for i in range(k) if i != mi]
+            got = bubble_factors_all(vals, mi, opps, pays, True)
+            for i in opps:
+                ref = bubble_factors(vals, mi, i, pays, True)
+                self.assertAlmostEqual(got[i][0], ref[0], places=9)
+                self.assertAlmostEqual(got[i][1], ref[1], places=9)
+        self.assertTrue(make("icm_switch").b.icm_fast)
+
 if __name__ == "__main__":
     unittest.main()

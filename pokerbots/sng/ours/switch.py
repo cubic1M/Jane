@@ -34,6 +34,8 @@ class IcmSwitch:
         self.a = IcmTag(**kw)
         self.b = _strong_bot(str(b))
         self.b.shadow_only = True            # opponent stats only until it takes over (no ICM in end_hand)
+        if hasattr(self.b, "icm_fast"):
+            self.b.icm_fast = True               # f7: batched ICM (same values, ~3x faster)
         if hasattr(self.b, "icm_slice"):
             self.b.icm_slice = int(icm_slice)    # f7 after the hand-over: <= icm_slice bubble factors per hand
         self.switched = False

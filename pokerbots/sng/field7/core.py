@@ -456,6 +456,81 @@ def icm_one(stacks, me: int, pays) -> float:
     return res
 
 
+_PLAN_F: dict = {}
+
+
+def _plan_fast(n):
+    """Per level L of the Harville recursion over 'already placed' subsets: (bits [n, m_L],
+    M [m_L, n] = seat j still unplaced, T [m_L * n, m_L+1] = subset + j -> next-level index)."""
+    pl = _PLAN_F.get(n)
+    if pl is None:
+        levels = [[m for m in range(1 << n) if bin(m).count("1") == L] for L in range(n + 1)]
+        pos = [{m: i for i, m in enumerate(lv)} for lv in levels]
+        pl = []
+        for L in range(n):
+            lv = levels[L]
+            bits = np.array([[(m >> j) & 1 for m in lv] for j in range(n)], np.float64)
+            M = np.zeros((len(lv), n))
+            T = np.zeros((len(lv) * n, len(levels[L + 1])))
+            for i, m in enumerate(lv):
+                for j in range(n):
+                    if not m >> j & 1:
+                        M[i, j] = 1.0
+                        T[i * n + j, pos[L + 1][m | (1 << j)]] = 1.0
+            pl.append((bits, M, T))
+        _PLAN_F[n] = pl
+    return pl
+
+
+def icm_rows(rows, pays):
+    """Malmuth-Harville expected points for every row of stacks at once ([C, n] -> [C, n]); a zero
+    stack has busted and takes the lowest place (the survivors share the places above it)."""
+    st = np.asarray(rows, dtype=np.float64)
+    C, n = st.shape
+    pay = [float(p) for p in pays[:n]] + [0.0] * max(0, n - len(pays))
+    ev = np.zeros((C, n))
+    for c in range(C):
+        z = st[c] <= 0
+        k = int((~z).sum())
+        if k < n:
+            ev[c, z] = sum(pay[k:n]) / (n - k)
+    last = max((i for i, p in enumerate(pay) if p > 0), default=-1)
+    total = st.sum(axis=1, keepdims=True)
+    P = np.ones((C, 1))
+    for L, (bits, M, T) in enumerate(_plan_fast(n)):
+        if L > last:
+            break
+        rem = total - st @ bits
+        q = np.where(rem > 0.5, P / np.where(rem > 0.5, rem, 1.0), 0.0)
+        contrib = q[:, :, None] * M[None, :, :] * st[:, None, :]
+        if pay[L]:
+            ev += pay[L] * contrib.sum(axis=1)
+        P = contrib.reshape(C, -1) @ T
+    return ev
+
+
+def bubble_factors_all(vals, mi, opps, pays, both):
+    """bubble_factors(vals, mi, i, pays, both) for every i in opps, from one batched ICM."""
+    rows = [list(vals)]
+    for i in opps:
+        x = min(vals[mi], vals[i])
+        w = list(vals)
+        w[mi] += x
+        w[i] -= x
+        lo = list(vals)
+        lo[mi] -= x
+        lo[i] += x
+        rows += [w, lo]
+    ev = icm_rows(rows, pays)
+    out = {}
+    for t, i in enumerate(opps):
+        w, lo = 1 + 2 * t, 2 + 2 * t
+        bfa = _ratio(ev[0, mi] - ev[lo, mi], ev[w, mi] - ev[0, mi])
+        bfb = _ratio(ev[0, i] - ev[w, i], ev[lo, i] - ev[0, i]) if both else 1.0
+        out[i] = (bfa, bfb)
+    return out
+
+
 def _icm_after(st, idx, pays, bust):
     """ICM of index idx after the seat at index `bust` (if any) lost all its chips."""
     if bust is None:
@@ -908,6 +983,7 @@ class Base:
     need_bfo = False
 
     shadow_only = False      # icm_switch's shadow (not yet in charge): stats only, no ICM
+    icm_fast = False         # True: all bubble factors from one batched numpy ICM (same values, faster)
     icm_slice = 0            # > 0: refresh at most this many opponents' bubble factors per hand, rotating
                              #   (bounds end_hand time where it counts inside a decision); 0 = all
     _icm_rot = 0
@@ -946,7 +1022,11 @@ class Base:
         deep = min(vals) >= 0.12 * tot and k >= 6 and min(vals) >= 30 * bb
         bf = [1.0] * n
         bfo = [1.0] * n
-        if deep:
+        if self.icm_fast and not deep:
+            res = bubble_factors_all(vals, mi, [i for i in range(k) if i != mi], pays, self.need_bfo)
+            for i, (a, b) in res.items():
+                bf[alive[i]], bfo[alive[i]] = a, b
+        elif deep:
             # everyone deep: one representative opponent (the median stack)
             oth = sorted(range(k), key=lambda i: vals[i])
             oth = [i for i in oth if i != mi]
