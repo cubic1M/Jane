@@ -27,7 +27,7 @@ describe("withRls", () => {
   it("runs with row-level security when the database has it", async () => {
     const attempt = vi.fn(async (rls: boolean) => rls);
 
-    expect(await withRls(attempt)).toBe(true);
+    expect(await withRls(attempt, () => true)).toBe(true);
     expect(rlsStatus()).toBe("on");
   });
 
@@ -38,8 +38,8 @@ describe("withRls", () => {
       return "ok";
     });
 
-    expect(await withRls(attempt)).toBe("ok");
-    expect(await withRls(attempt)).toBe("ok");
+    expect(await withRls(attempt, () => true)).toBe("ok");
+    expect(await withRls(attempt, () => true)).toBe("ok");
     expect(attempt.mock.calls.map(([rls]) => rls)).toEqual([true, false, false]);
     expect(rlsStatus()).toBe("off");
     expect(console.error).toHaveBeenCalledTimes(1);
@@ -50,13 +50,23 @@ describe("withRls", () => {
   it("fails closed with RLS_REQUIRED=1", async () => {
     vi.stubEnv("RLS_REQUIRED", "1");
 
-    await expect(withRls(async () => Promise.reject(missingRole))).rejects.toBe(missingRole);
+    await expect(
+      withRls(
+        async () => Promise.reject(missingRole),
+        () => true,
+      ),
+    ).rejects.toBe(missingRole);
     expect(rlsStatus()).toBe("unknown");
   });
 
   it("never retries other errors, or a role error from the work rather than the switch", async () => {
     const other = new Error("permission denied for table audit_log");
-    await expect(withRls(async () => Promise.reject(other))).rejects.toBe(other);
+    await expect(
+      withRls(
+        async () => Promise.reject(other),
+        () => true,
+      ),
+    ).rejects.toBe(other);
 
     const attempt = vi.fn(async () => Promise.reject(missingRole));
     await expect(withRls(attempt, () => false)).rejects.toBe(missingRole);

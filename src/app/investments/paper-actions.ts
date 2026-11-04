@@ -1,5 +1,6 @@
 "use server";
 
+import { isId } from "@/lib/action-args";
 import { revalidatePath } from "next/cache";
 import {
   PaperError,
@@ -30,6 +31,7 @@ export async function startPaperAction(dollars: string): Promise<StartResult> {
 }
 
 export async function paperTakeAction(signalId: string): Promise<TakeResult> {
+  if (!isId(signalId)) return { ok: false, error: "That idea isn't there." };
   const user = await requireUser();
   const result = await takeSignal(user.id, signalId);
   if (result.ok) revalidatePath("/investments");
@@ -37,6 +39,7 @@ export async function paperTakeAction(signalId: string): Promise<TakeResult> {
 }
 
 export async function paperSkipAction(signalId: string): Promise<{ ok: boolean }> {
+  if (!isId(signalId)) return { ok: false };
   const user = await requireUser();
   return skipSignal(user.id, signalId);
 }
@@ -44,6 +47,7 @@ export async function paperSkipAction(signalId: string): Promise<{ ok: boolean }
 export async function paperRevertAction(
   tradeId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!isId(tradeId)) return { ok: false, error: "That trade isn't there." };
   const user = await requireUser();
   const result = await revertTrade(user.id, tradeId);
   if (result.ok) revalidatePath("/investments");

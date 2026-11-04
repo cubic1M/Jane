@@ -1,5 +1,6 @@
 "use server";
 
+import { isId } from "@/lib/action-args";
 import { after } from "next/server";
 import { runAgentNow, runQueuedFor } from "@/lib/agent/run";
 import { ChatActionError, takeChatAction } from "@/lib/jane-agent/actions";
@@ -60,6 +61,7 @@ export async function tapButton(previous: MessageState, formData: FormData): Pro
 // More details opened on a suggestion card: kept on the verified savings record (it was looked
 // at). The message must be the person's own; anything else is ignored.
 export async function noteDetailsOpened(messageId: string): Promise<void> {
+  if (!isId(messageId)) return;
   const user = await requireUser();
   const message = await scopedFor(user.id).janeMessages.findFirst({
     where: { id: messageId },

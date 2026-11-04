@@ -88,11 +88,25 @@ const SYSTEM_ROLE_ERROR = new RegExp(`role "${SYSTEM_ROLE}"`);
 
 const messageOf = (error: unknown) => String((error as { message?: unknown })?.message ?? error);
 
+// Whether switching role fails by itself, asked only once an error has named the role. An error's
+// words can't decide this: a query's own error can repeat what a person sent ("Unknown argument
+// `role "jane_rls"`"), and that turned row-level security off for the whole process.
+export const rlsSwitchFails = (switching: Promise<unknown>) =>
+  switching.then(
+    () => false,
+    (error: unknown) => ROLE_ERROR.test(messageOf(error)),
+  );
+export const systemSwitchFails = (switching: Promise<unknown>) =>
+  switching.then(
+    () => false,
+    (error: unknown) => SYSTEM_ROLE_ERROR.test(messageOf(error)),
+  );
+
 // Runs `attempt` with row-level security on, or off when the database can't do it. Falls back
 // only when switching role failed (`atSetup`), so the work itself never runs twice.
 export async function withRls<T>(
   attempt: (rls: boolean) => Promise<T>,
-  atSetup: () => boolean = () => true,
+  atSetup: () => boolean | Promise<boolean>,
 ): Promise<T> {
   if (state.status === "off") return attempt(false);
   try {
@@ -100,7 +114,7 @@ export async function withRls<T>(
     state.status = "on";
     return result;
   } catch (error) {
-    const missingRole = atSetup() && ROLE_ERROR.test(messageOf(error));
+    const missingRole = ROLE_ERROR.test(messageOf(error)) && (await atSetup());
     if (!missingRole || process.env.RLS_REQUIRED === "1") throw error;
     // Queries already under way when it was found out each land here: report it once.
     // (rlsStatus(), not state.status: another query may have changed it while this one ran.)
@@ -157,7 +171,7 @@ export function asUserTransaction<Tx extends RawClient, T>(
 // it fails, having no privileges of its own. With RLS_REQUIRED=1 it fails on any login.
 export async function withSystemRole<T>(
   attempt: (switched: boolean) => Promise<T>,
-  atSetup: () => boolean = () => true,
+  atSetup: () => boolean | Promise<boolean>,
 ): Promise<T> {
   if (state.system === "off") return attempt(false);
   try {
@@ -165,7 +179,7 @@ export async function withSystemRole<T>(
     state.system = "on";
     return result;
   } catch (error) {
-    const missingRole = atSetup() && SYSTEM_ROLE_ERROR.test(messageOf(error));
+    const missingRole = SYSTEM_ROLE_ERROR.test(messageOf(error)) && (await atSetup());
     if (!missingRole || process.env.RLS_REQUIRED === "1") throw error;
     if (systemRoleStatus() !== "off") void reportSystemRoleOff(error);
     state.system = "off";

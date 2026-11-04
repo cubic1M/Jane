@@ -3,7 +3,13 @@ import { db } from "@/lib/db";
 import { evidenceRefs, onSharedAccountsOnly } from "@/lib/finding-accounts";
 import { inReadCache } from "@/lib/read-cache";
 import { forgetReads, memoKey, memoRead, READ_OPERATIONS } from "@/lib/read-memo";
-import { asUser, asUserTransaction, SCOPED_QUERY_TRANSACTION, withRls } from "@/lib/rls";
+import {
+  asUser,
+  asUserTransaction,
+  rlsSwitchFails,
+  SCOPED_QUERY_TRANSACTION,
+  withRls,
+} from "@/lib/rls";
 import { systemDb } from "@/lib/system-db";
 
 // Every query on a user-owned table goes through here. scopeArgs ANDs the user's id onto
@@ -121,19 +127,19 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
   // Every query is also its own short transaction as the user, so the database's row-level
   // security (src/lib/rls.ts) checks it too: a query that scopeArgs somehow let through still
   // can't see or change another person's rows.
+  // One flight: the switch to this person, then whatever goes with it.
+  const asUserFlight = <T extends Prisma.PrismaPromise<unknown>[]>(statements: [...T]) =>
+    client.$transaction(statements, SCOPED_QUERY_TRANSACTION);
   const scoped = scopedQueries(client, userId, (query, operation) =>
-    withRls((rls) =>
-      rls
-        ? client
-            .$transaction(
-              [
-                asUser(client, userId, READ_OPERATIONS.has(operation) ? "reads" : "writes"),
-                query(),
-              ],
-              SCOPED_QUERY_TRANSACTION,
-            )
-            .then(([, result]) => result)
-        : query(),
+    withRls(
+      (rls) =>
+        rls
+          ? asUserFlight([
+              asUser(client, userId, READ_OPERATIONS.has(operation) ? "reads" : "writes"),
+              query(),
+            ]).then(([, result]) => result)
+          : query(),
+      () => rlsSwitchFails(asUserFlight([asUser(client, userId, "reads")])),
     ),
   );
   // Inside an interactive transaction the transaction itself is switched to the user once.

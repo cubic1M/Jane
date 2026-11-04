@@ -1,7 +1,13 @@
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { forgetReads, READ_OPERATIONS } from "@/lib/read-memo";
-import { asSystem, asSystemTransaction, SCOPED_QUERY_TRANSACTION, withSystemRole } from "@/lib/rls";
+import {
+  asSystem,
+  asSystemTransaction,
+  SCOPED_QUERY_TRANSACTION,
+  systemSwitchFails,
+  withSystemRole,
+} from "@/lib/rls";
 
 // The door to the whole room (docs/security/rls.md). A person's data goes through scopedFor; only
 // code that truly works across people, or before there is a person, comes here: cron, webhooks,
@@ -31,18 +37,23 @@ function extended(client: PrismaClient): SystemDb {
         // One flight, its own implicit transaction: a read, or one raw statement of any kind.
         const reads = READ_OPERATIONS.has(operation) || operation.startsWith("$");
         const send = () =>
-          withSystemRole((switched) =>
-            switched
-              ? client
-                  .$transaction(
-                    [
-                      asSystem(client, reads ? "reads" : "writes"),
-                      query(args) as unknown as Prisma.PrismaPromise<unknown>,
-                    ],
-                    SCOPED_QUERY_TRANSACTION,
-                  )
-                  .then(([, result]) => result)
-              : (query(args) as Promise<unknown>),
+          withSystemRole(
+            (switched) =>
+              switched
+                ? client
+                    .$transaction(
+                      [
+                        asSystem(client, reads ? "reads" : "writes"),
+                        query(args) as unknown as Prisma.PrismaPromise<unknown>,
+                      ],
+                      SCOPED_QUERY_TRANSACTION,
+                    )
+                    .then(([, result]) => result)
+                : (query(args) as Promise<unknown>),
+            () =>
+              systemSwitchFails(
+                client.$transaction([asSystem(client, "reads")], SCOPED_QUERY_TRANSACTION),
+              ),
           );
         if (READ_OPERATIONS.has(operation)) return send();
         // A write changes what the page's scoped reads would see (src/lib/read-memo.ts).
