@@ -20,7 +20,6 @@ import {
 import { hit, ipKey } from "@/lib/rate-limit";
 import { TERMS_COOKIE } from "@/lib/terms";
 import { HOME_PATH } from "@/lib/session";
-import { addressKey } from "@/lib/sign-in-email";
 import { deleteTrialPerson } from "@/lib/trial-delete";
 import { isStatementTrialUser, isTrialUser } from "@/lib/trial-ids";
 
@@ -56,14 +55,13 @@ async function signInOrShowError(provider: string, options: Record<string, strin
   }
 }
 
-// Per IP and, for email links, per address too, so no one can flood an inbox.
-async function limitSignIn(email?: string): Promise<void> {
-  const subjects = [ipKey(await headers()), ...(email ? [`email:${addressKey(email)}`] : [])];
-  for (const subject of subjects) {
-    if (!(await hit("auth", subject)).ok) {
-      await recordFailedSignIn("rate_limited");
-      redirect("/login?error=TooManyRequests");
-    }
+// Per IP. Never per address: anyone can ask for anyone's link, so that counter let a stranger keep
+// a person off their own sign-in form. sendSignInEmail (src/lib/sign-in-email.ts) is what keeps an
+// inbox from being flooded, and it never stops the form.
+async function limitSignIn(): Promise<void> {
+  if (!(await hit("auth", ipKey(await headers()))).ok) {
+    await recordFailedSignIn("rate_limited");
+    redirect("/login?error=TooManyRequests");
   }
 }
 
@@ -101,7 +99,7 @@ export async function signInWithEmail(formData: FormData): Promise<void> {
   if (typeof email !== "string" || !email.includes("@") || email.length > 254) {
     redirect("/login?error=InvalidEmail");
   }
-  await limitSignIn(email.trim());
+  await limitSignIn();
   await requireConsent(formData);
   // From /signup: redeem the invite for this email before sending the link.
   const invite = inviteFrom(formData);

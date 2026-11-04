@@ -6,6 +6,7 @@ const { updateMany, deleteAccounts } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/db", () => ({ db: {} }));
+vi.mock("@/lib/evidence/orphans", () => ({ forgetSince: vi.fn(), removeOrphans: vi.fn() }));
 vi.mock("@/lib/db-scoped", () => ({
   scopedFor: vi.fn(() => ({
     plaidItems: { updateMany },
@@ -27,7 +28,7 @@ describe("planWebhook", () => {
   beforeEach(() => {
     findUnique.mockReset().mockResolvedValue({ id: "item_1", userId: "user_1" });
     updateMany.mockReset();
-    deleteAccounts.mockReset();
+    deleteAccounts.mockReset().mockResolvedValue({ count: 1 });
   });
 
   it.each(["SYNC_UPDATES_AVAILABLE", "RECURRING_TRANSACTIONS_UPDATE", "DEFAULT_UPDATE"])(
