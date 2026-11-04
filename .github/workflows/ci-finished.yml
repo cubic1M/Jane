@@ -8,6 +8,11 @@ on:
   workflow_run:
     workflows: [CI]
     types: [completed]
+  # A merge wakes whoever's waiting on it at once, not when main's CI finishes. pull_request_target
+  # runs main's copy of this file and script, and nothing here runs or reads a PR's code. Only a
+  # real merge gets through, which strangers can't do.
+  pull_request_target:
+    types: [closed]
   schedule:
     - cron: "*/15 * * * *"
   workflow_dispatch:
@@ -25,6 +30,7 @@ concurrency:
 jobs:
   reconcile:
     name: Reconcile
+    if: github.event_name != 'pull_request_target' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

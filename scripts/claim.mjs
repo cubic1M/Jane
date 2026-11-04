@@ -1,6 +1,8 @@
 // Task claims that expire (docs/agent-loop.md), kept as one file on the claude/task-claims branch.
 //   node scripts/claim.mjs take pr-123 lane:chat [hours]
 //   node scripts/claim.mjs release pr-123
+//   node scripts/claim.mjs wait 123 lane:chat <task or branch> [merged|green] [hours]
+//   node scripts/claim.mjs unwait 123 <task or branch>
 //   node scripts/claim.mjs list
 // A plain push is the lock: if someone else got in first, the push is refused, and this reads again.
 import { execFileSync } from "node:child_process";
@@ -8,6 +10,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { activeClaims, releaseClaim, takeClaim } from "./loop-core.mjs";
+import { dropWait, takeWait } from "./loop-waits-core.mjs";
 
 const BRANCH = "claude/task-claims";
 const TRIES = 5;
@@ -31,9 +34,21 @@ function read() {
   }
 }
 
-function write(claims, message) {
+function readWaits() {
+  try {
+    return JSON.parse(readFileSync(join(dir, "waits.json"), "utf8"));
+  } catch {
+    return [];
+  }
+}
+
+function write(claims, message, waits = null) {
   writeFileSync(file, `${JSON.stringify(claims, null, 1)}\n`);
   git("add", "claims.json");
+  if (waits) {
+    writeFileSync(join(dir, "waits.json"), `${JSON.stringify(waits, null, 1)}\n`);
+    git("add", "waits.json");
+  }
   git(
     "-c",
     "user.name=github-actions[bot]",
@@ -53,16 +68,44 @@ function main() {
     for (const claim of activeClaims(read(), new Date().toISOString())) {
       console.log(`${claim.task} ${claim.lane} until ${claim.expires}`);
     }
+    for (const wait of activeClaims(readWaits(), new Date().toISOString())) {
+      console.log(`waiting: ${wait.lane} for ${wait.task} on #${wait.on} ${wait.when}`);
+    }
     return 0;
   }
-  if (!task || (command !== "take" && command !== "release")) {
-    console.error("Use: claim.mjs take <task> <lane:name> [hours] | release <task> | list");
+  if (!task || !["take", "release", "wait", "unwait"].includes(command)) {
+    console.error(
+      "Use: claim.mjs take <task> <lane:name> [hours] | release <task> | wait <pr> <lane:name> <task or branch> [merged|green] [hours] | unwait <pr> <task or branch> | list",
+    );
     return 2;
   }
   for (let attempt = 1; attempt <= TRIES; attempt += 1) {
     const now = new Date().toISOString();
     const claims = read();
     try {
+      if (command === "wait") {
+        const [, on, waitLane, target, when, waitHours] = process.argv.slice(2);
+        const waits = takeWait(readWaits(), {
+          on: Number(on),
+          lane: waitLane,
+          task: target,
+          when,
+          hours: waitHours ? Number(waitHours) : undefined,
+          now,
+        });
+        write(claims, `${waitLane} waits on #${on}`, waits);
+        console.log(`${waitLane} will be woken about #${on}.`);
+        return 0;
+      }
+      if (command === "unwait") {
+        write(
+          claims,
+          `No longer waiting on #${task}`,
+          dropWait(readWaits(), { on: Number(task), task: lane, now }),
+        );
+        console.log(`No longer waiting on #${task}.`);
+        return 0;
+      }
       if (command === "release") {
         write(releaseClaim(claims, task, now), `Release ${task}`);
         console.log(`Released ${task}.`);
