@@ -147,7 +147,10 @@ describe.runIf(url)("the hubs against a real database", () => {
     ]);
     expect(after.done.savedToDateCents).toBe(await savedToDate(userId, { client }));
     expect(after.done.savedToDateCents).toBe(6_420);
-    expect(after.alerts).toEqual({ unread: 0, items: [] });
+    // Read: no longer new, and still there for the link in an alert email.
+    expect(after.alerts.unread).toBe(0);
+    expect(after.alerts.items.length).toBe(Math.min(3, unread));
+    expect(after.alerts.items.every((a) => !a.isNew)).toBe(true);
 
     // Only this person's: the other demo user's hub is unchanged.
     const other = await loadJaneHub(otherId, { client, now: NOW });

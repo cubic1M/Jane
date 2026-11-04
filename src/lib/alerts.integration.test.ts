@@ -1,13 +1,19 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { ALERT_EMAILS_PER_DAY } from "@/config/alerts";
+import { ALERT_EMAILS_PER_DAY, ALERTS_RECENT_DAYS } from "@/config/alerts";
 import type { AlertCandidate } from "@/detection/alerts";
 import { PrismaClient } from "@/generated/prisma/client";
 
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
-import { newestUnreadAlerts, raiseAlerts } from "./alerts";
+import {
+  markAlertsRead,
+  newestUnreadAlerts,
+  raiseAlerts,
+  recentAlerts,
+  unreadAlertCount,
+} from "./alerts";
 
 // Runs against a real, migrated Postgres (see engine.integration.test.ts).
 const url = process.env.TEST_DATABASE_URL;
@@ -123,6 +129,7 @@ describe.runIf(url)("raiseAlerts against a real database", () => {
       }),
     );
     expect((await alertsOf(user.id))[0].emailedAt).toEqual(NOW);
+    expect(send.mock.calls[0][0].text).toMatch(/See your alerts: \S+\/jane#alerts$/m);
   });
 
   it("never emails sample figures to someone whose only bank is the demo bank", async () => {
@@ -141,6 +148,25 @@ describe.runIf(url)("raiseAlerts against a real database", () => {
     });
     expect(send).not.toHaveBeenCalled();
     expect((await alertsOf(user.id))[0].emailedAt).toBeNull();
+  });
+
+  it("marks only what was seen as read, and keeps it listed for a while", async () => {
+    const user = await person();
+    const raised = ["a", "b", "c", "d"].map((key) => alert({ type: "fee_charged", key }));
+    await raiseAlerts(user.id, raised, { client, now: NOW, send });
+    const rows = await alertsOf(user.id);
+
+    await markAlertsRead(user.id, { client, now: NOW, ids: rows.slice(0, 3).map((r) => r.id) });
+    expect(await unreadAlertCount(user.id, { client })).toBe(1);
+
+    const listed = await recentAlerts(user.id, { client, now: NOW, limit: 4 });
+    expect(listed).toHaveLength(4);
+    // The one still new comes first.
+    expect(listed[0].id).toBe(rows[3].id);
+
+    const later = new Date(NOW.getTime() + (ALERTS_RECENT_DAYS + 1) * 86_400_000);
+    const old = await recentAlerts(user.id, { client, now: later, limit: 4 });
+    expect(old.map((a) => a.id)).toEqual([rows[3].id]);
   });
 
   it("emails a bill reminder only when it's urgent", async () => {
