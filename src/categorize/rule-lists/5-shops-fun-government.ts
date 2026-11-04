@@ -77,6 +77,10 @@ export const SHOPS_FUN_GOVERNMENT: readonly Rule[] = [
       // Debugger 11-04: a policy that says so only by its name.
       "PEMCO",
       "UMBRELLA POLICY",
+      "COBRA ADMIN",
+      "COBRA PREMIUM",
+      "COBRA PAYMENT",
+      "COBRA PMT",
       "DELTA DENTAL",
       "AETNA",
       "UNITEDHEALTHCARE",

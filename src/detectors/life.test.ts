@@ -4,6 +4,7 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import { buildProfile } from "@/profile/build";
 import { inputFor } from "@/profile/sample";
+import { runDetectors } from "./index";
 import { LIFE_DETECTORS } from "./life";
 
 // Spec step 264: life events and households.
@@ -115,6 +116,33 @@ describe("pay that has stopped", () => {
     pfc: "FOOD_AND_DRINK_GROCERIES",
     description: "SAFEWAY",
   }));
+
+  // Debugger 11-04: weeks after a paycheck stopped, "about $16,745 is more than you need".
+  it("holds back telling them they have cash they don't need", () => {
+    const sample = inputFor("renter");
+    const account = sample.accounts.find((a) => a.type === "depository")!;
+    const rich = (rows: Parameters<typeof made>[0]) => {
+      const data = {
+        ...sample,
+        today: TODAY,
+        accounts: [{ ...account, balanceCents: 5_000_000, subtype: "checking" }],
+        transactions: rows.map((r, i) => ({
+          id: `t${i}`,
+          date: r.date,
+          amountCents: r.cents,
+          description: r.description,
+          pfc: r.pfc,
+          accountId: account.id,
+        })),
+      };
+      return runDetectors({ profile: buildProfile(data), data }).map((d) => d.topic);
+    };
+    const stopped = rich([...pay("2026-02-06", "2026-08-07"), ...benefits, ...spending]);
+    expect(stopped).toContain("pay_stopped");
+    expect(stopped).not.toContain("idle_cash");
+    // Still paid: the same cash is worth bringing up.
+    expect(rich([...pay("2026-02-06", "2026-10-30"), ...spending])).toContain("idle_cash");
+  });
 
   it("says so, with the day and what's coming in now", () => {
     const s = made([...pay("2026-02-06", "2026-08-07"), ...benefits, ...spending])!;

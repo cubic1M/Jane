@@ -773,6 +773,24 @@ describe("what a service member pays", () => {
   });
 });
 
+// Debugger 11-04: $684 a month to keep health cover after a job ended read as "I'm not sure what it
+// was". A golf shop by the same name isn't insurance.
+describe("COBRA", () => {
+  const detailed = (description: string) =>
+    categorizeByRules({ description, amountCents: 68_400, hints: {} })?.detailed;
+
+  it.each(["COBRA ADMIN SVCS", "COBRA PREMIUM", "COBRA PAYMENT", "WAGEWORKS COBRA PMT"])(
+    "%s is insurance",
+    (description) => {
+      expect(detailed(description)).toBe("GENERAL_SERVICES_INSURANCE");
+    },
+  );
+
+  it("leaves other things with the word alone", () => {
+    expect(detailed("COBRA GOLF SHOP") ?? "").not.toBe("GENERAL_SERVICES_INSURANCE");
+  });
+});
+
 describe("taxonomy", () => {
   it("names every detailed category after its primary", () => {
     for (const detailed of ALL_DETAILED) {

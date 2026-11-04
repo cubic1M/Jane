@@ -27,6 +27,7 @@ import {
   weakest,
   headlineOf,
 } from "./helpers";
+import { stoppedEmployer } from "./life";
 
 // Detectors for everyday money (spec step 254): subscriptions, fees, card interest, idle
 // cash, the emergency fund and debt in trouble. Pure; see ./contract.ts.
@@ -278,6 +279,8 @@ const idleCash: Detector = {
     if (!idle) return null;
     // Not while a card charges far more than a savings rate pays (debugger 11-04).
     if (payingCardInterest({ asOf: data.today, transactions: data.transactions })) return null;
+    // Nor is any of it "more than you need" just after a paycheck stopped (debugger 11-04).
+    if (stoppedEmployer(data)) return null;
     return {
       id: suggestionId("investing", "idle_cash"),
       capability: "investing",

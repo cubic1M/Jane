@@ -769,7 +769,7 @@ export function buildProfile(input: ProfileInput): Profile {
     ["insurance_life", /\b(?:LIFE|TERM)\b/i, ["life"], "life-cover charges"],
     [
       "insurance_health",
-      /\b(?:HEALTHCARE|MARKETPLACE|BLUE CROSS|AETNA)\b/i,
+      /\b(?:HEALTHCARE|MARKETPLACE|BLUE CROSS|AETNA|COBRA)\b/i,
       ["health"],
       "health-cover charges",
     ],
