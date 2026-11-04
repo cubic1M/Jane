@@ -42,6 +42,7 @@ describe("netWorth", () => {
       missing: ["Old Card"],
       unbalanced: [{ name: "Old Card", card: true }],
       known: true,
+      onlyDebts: false,
     });
   });
 
@@ -240,6 +241,25 @@ describe("notCounting", () => {
       { month: "2026-05", netCents: 840_000 },
       { month: "2026-06", netCents: 840_000 },
     ]);
+  });
+});
+
+// Debugger 11-04: someone who uploaded only a card read "You have $0.00" and a net worth of -$4,469,
+// paying that card $2,900 a month from an account Jane has never seen.
+describe("only debts on file", () => {
+  const card = { id: "c", name: "Card", type: "credit", balanceCents: 446_909 };
+  const bank = { id: "b", name: "Checking", type: "depository", balanceCents: 100 };
+  const car = { id: "o", valueCents: 900_000, valuedOn: "2026-10-01", loanAccountId: null };
+
+  it("is said when nothing but a card or loan is there", () => {
+    expect(netWorth([card]).onlyDebts).toBe(true);
+  });
+
+  it("isn't when anything else is, or nothing at all", () => {
+    expect(netWorth([card, bank]).onlyDebts).toBe(false);
+    expect(netWorth([card], [car]).onlyDebts).toBe(false);
+    expect(netWorth([card], [], 5_000).onlyDebts).toBe(false);
+    expect(netWorth([]).onlyDebts).toBe(false);
   });
 });
 

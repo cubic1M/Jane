@@ -85,6 +85,28 @@ export async function accountsWithoutBalance(
   return rows.map((r) => ({ name: r.name, card: DEBT_ACCOUNT_TYPES.includes(r.type) }));
 }
 
+// Nothing but cards and loans on file (src/insights/net-worth.ts NO_BANK_SEEN).
+export async function onlyDebtsSeen(
+  userId: string,
+  { client = defaultClient }: { client?: PrismaClient } = {},
+): Promise<boolean> {
+  const db = scopedFor(userId, client);
+  const [accounts, owned, crypto] = await Promise.all([
+    db.accounts.findMany({
+      select: { id: true, name: true, type: true, currentBalanceCents: true },
+    }),
+    db.ownedAssets.findMany({
+      select: { id: true, valueCents: true, valuedOn: true, loanAccountId: true },
+    }),
+    cryptoTotal(userId, { client }),
+  ]);
+  return netWorth(
+    accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })),
+    owned.map((o) => ({ ...o, valuedOn: o.valuedOn.toISOString().slice(0, 10) })),
+    crypto,
+  ).onlyDebts;
+}
+
 // The loans the person's recent payments show, when no loan account says what's owed on them.
 export async function loansSeenWithoutBalance(
   userId: string,
