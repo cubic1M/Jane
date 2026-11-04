@@ -181,6 +181,27 @@ describe("dealer add-ons and cash advances", () => {
 });
 
 // Spec step 260, the rest of the debt tools.
+describe("a medical bill's saving", () => {
+  // Hana's $4,200 orthodontist, paid once, read "Ask for help with medical bills, save $840 a year".
+  it("is a share of the bills paid, once, not a yearly figure", () => {
+    const s = fire("retiree").find((x) => x.topic === "medical_bills")!;
+    expect(s.headline).toMatch(/^Ask for help with medical bills, save \$[\d,]+$/);
+    expect(s.why).toMatch(/nonprofit hospitals/);
+  });
+
+  it("doesn't talk about hospitals for a dentist's bill", () => {
+    const dentist = (d: ProfileInput): ProfileInput => ({
+      ...d,
+      transactions: d.transactions
+        .filter((t) => !(t.pfc ?? "").startsWith("MEDICAL_"))
+        .concat(tx("2026-07-22", 420_000, "DR PATEL ORTHODONTICS", "MEDICAL_DENTAL_CARE", "x")),
+    });
+    const s = fire("retiree", dentist).find((x) => x.topic === "medical_bills")!;
+    expect(s.why).toMatch(/^You paid \$4,200\.00 for medical care/);
+    expect(s.why).not.toMatch(/hospital/);
+  });
+});
+
 describe("card use, pay-later plans, medical bills, collections, forgiveness and money lent", () => {
   it("works out the pay-down that brings Chris's cards under 30% of their limits", () => {
     const s = fire("debt").find((x) => x.topic === "credit_building")!;

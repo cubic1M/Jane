@@ -417,13 +417,15 @@ const medicalBills: Detector = {
         "Ask for help with medical bills",
         Math.round(total * D.medicalAskShare),
         "saves",
+        // A share of these bills, not something that comes back each year.
+        true,
       ),
       short: `You paid ${formatCents(total)} for medical care in ${profile.months} months.`,
       worthCents: Math.round(total * D.medicalAskShare),
       worthKind: "saves",
       confidence: evidence("seen", profile.months, care.length, "medical bills"),
       urgency: "soon",
-      why: `You paid ${formatCents(total)} for medical care in ${profile.months} months. Bills often have errors, and nonprofit hospitals must offer financial assistance; people who ask usually get about ${Math.round(D.medicalAskShare * 100)}% off.`,
+      why: `You paid ${formatCents(total)} for medical care in ${profile.months} months. Bills often have errors${care.some((t) => t.pfc !== "MEDICAL_DENTAL_CARE") ? ", and nonprofit hospitals must offer financial assistance" : ""}; people who ask usually get about ${Math.round(D.medicalAskShare * 100)}% off.`,
       action: { label: "Check your medical bills", href: "/loans/medical" },
     };
   },
