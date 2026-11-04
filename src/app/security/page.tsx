@@ -14,7 +14,8 @@ export default function SecurityPage() {
       <ul>
         <li>
           <strong>Read-only bank access.</strong> We connect through Plaid with the Transactions
-          product only. We can see transactions and balances; we can&apos;t move money.
+          product, and Liabilities for loan and card details where your bank offers it. We can see
+          transactions, balances and those details; we can&apos;t move money.
         </li>
         <li>
           <strong>Encryption.</strong> Bank connection tokens are encrypted with AES-256-GCM, the

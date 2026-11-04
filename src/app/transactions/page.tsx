@@ -167,7 +167,9 @@ async function Transactions({
                 <details>
                   <summary className="flex cursor-pointer flex-wrap justify-between gap-2">
                     <span className="flex flex-col">
-                      <span className="font-medium">{merchant}</span>
+                      <span data-private className="font-medium">
+                        {merchant}
+                      </span>
                       <span className="text-xs text-zinc-500">
                         <time dateTime={isoDay(t.date)}>{dayLabel(t.date, { year: true })}</time> ·{" "}
                         {category}
