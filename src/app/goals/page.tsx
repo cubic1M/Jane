@@ -75,7 +75,9 @@ async function Goals() {
               <p className="text-xs text-zinc-500">
                 {g.accountName
                   ? `${GOALS_COPY.linkedNote} (${g.accountName})`
-                  : GOALS_COPY.manualNote}
+                  : g.accountGone
+                    ? GOALS_COPY.accountGoneNote
+                    : GOALS_COPY.manualNote}
               </p>
               <details>
                 <summary className="cursor-pointer text-sm text-emerald-700">Edit</summary>

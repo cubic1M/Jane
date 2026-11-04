@@ -58,6 +58,17 @@ describe.runIf(url)("savings goals against a real database", () => {
     });
   });
 
+  // Removing the account a goal followed left "$0.00 of $8,000.00. Progress is the amount you
+  // entered", though the person never entered one.
+  it("says so when the account a goal followed is gone", async () => {
+    const me = await person();
+    await addGoal(me.id, form({ accountId: me.savings.id }), { client });
+    expect((await listGoals(me.id, { client, now: NOW }))[0]).toMatchObject({ accountGone: false });
+    await client.account.delete({ where: { id: me.savings.id } });
+    const [goal] = await listGoals(me.id, { client, now: NOW });
+    expect(goal).toMatchObject({ accountGone: true, accountName: null });
+  });
+
   it("tracks by hand, and updates and deletes only the person's own goals", async () => {
     const me = await person();
     const other = await person();
