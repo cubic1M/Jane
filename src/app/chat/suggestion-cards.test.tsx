@@ -80,8 +80,8 @@ describe("a practice idea's card (Phase AW)", () => {
     expect(card.details.notes).toEqual([
       "Cap: At most 70% of the portfolio",
       "Cap: At most 2 swaps a month",
-      "Demo advice: sample data, not financial advice",
     ]);
+    expect(card.badge).toBe("Demo advice: sample data, not financial advice");
     expect(card.details.confidence).toEqual({ percent: 75, reason: "The loss is there today" });
     expect(card.details.whatYesDoes).toMatch(
       /^Do it in practice\. Places it in your practice portfolio/,
@@ -103,8 +103,8 @@ describe("the card", () => {
     expect(card.details).toMatchObject({
       why: "You pay $17.99 a month.",
       confidence: { percent: 85, reason: "12 months of charges" },
-      notes: ["Demo advice: sample data, not financial advice"],
     });
+    expect(card.badge).toBe("Demo advice: sample data, not financial advice");
     expect(card.details.whatYesDoes).toMatch(/^Cancel it\. Nothing is bought or moved/);
     // Yes answers in place; Open is what goes to the page (manager decision 10-30).
     expect(card.details.whatYesDoes).toMatch(

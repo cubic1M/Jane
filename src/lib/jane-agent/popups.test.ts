@@ -206,3 +206,62 @@ describe("a card whose only button is its snooze", () => {
     });
   });
 });
+
+describe("a card whose only button is a plain Not now", () => {
+  const body = "Costly short-term borrowing cost you $140.00 over the last year.";
+  const snooze = { id: "snooze" as const, label: "Not now", kind: "secondary" as const };
+
+  it("leads with its page, and Not now puts it off, so never the same button twice", () => {
+    const card = popupCard(
+      message({
+        kind: "heads_up",
+        body,
+        buttons: [snooze],
+        links: [{ label: "Your costly borrowing", href: "/loans/costly" }],
+      }),
+    );
+    expect(card).toMatchObject({
+      yesLabel: "Your costly borrowing",
+      yesHref: "/loans/costly",
+      notNowLabel: "Not now",
+      notNowAction: "snooze",
+    });
+  });
+
+  it("says Got it when there's no page to go to", () => {
+    const card = popupCard(message({ kind: "heads_up", body, buttons: [snooze], links: [] }));
+    expect(card).toMatchObject({ yesLabel: "Got it", yesAction: "snooze", notNowLabel: "Not now" });
+    expect(card.yesHref).toBeUndefined();
+  });
+
+  it("keeps a button of its own first when it has one", () => {
+    const card = popupCard(
+      message({
+        buttons: [{ id: "finding.yes", label: "Confirm", kind: "primary" }, snooze],
+        links: [{ label: "See it", href: "/insurance" }],
+      }),
+    );
+    expect(card).toMatchObject({ yesLabel: "Confirm", yesAction: "finding.yes" });
+    expect(card.yesHref).toBeUndefined();
+  });
+});
+
+describe("advice on a card's face", () => {
+  it("carries the label there, not behind More details", () => {
+    const card = popupCard(
+      message({
+        advice: true,
+        buttons: [{ id: "finding.yes", label: "Confirm", kind: "primary" }],
+      }),
+    );
+    expect(card.badge).toBe("Demo advice: sample data, not financial advice");
+    expect(card.details.notes).toBeUndefined();
+  });
+
+  it("has no label on anything else", () => {
+    const card = popupCard(
+      message({ buttons: [{ id: "finding.yes", label: "Confirm", kind: "primary" }] }),
+    );
+    expect(card.badge).toBeUndefined();
+  });
+});

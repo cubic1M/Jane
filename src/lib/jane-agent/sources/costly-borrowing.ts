@@ -18,10 +18,12 @@ export const costlyBorrowingSource: MessageSource = {
     const d = snapshot.costlyBorrowing;
     if (!d?.any) return [];
     const top = d.kinds[0];
+    // An overdraft's yearly rate rests on an assumed overdraft: fine beside its basis in the chat's
+    // answer, but alone on a card it only read as "about 17743% a year".
     return [
       {
         kind: "heads_up",
-        body: `Costly short-term borrowing cost you ${formatCents(d.totalYearlyCents)} over the last year, most of it from ${COSTLY_LABELS[top.kind].toLowerCase()}${top.aprBps !== null ? ` (about ${Math.round(top.aprBps / 100)}% a year)` : ""}. There are cheaper ways out, like a credit union payday alternative loan, and a way to stop the cycle. Ask me "how much has costly borrowing cost me?" for the details.`,
+        body: `Costly short-term borrowing cost you ${formatCents(d.totalYearlyCents)} over the last year, most of it from ${COSTLY_LABELS[top.kind].toLowerCase()}${top.aprBps !== null && top.kind !== "overdraft" ? ` (about ${Math.round(top.aprBps / 100)}% a year)` : ""}. There are cheaper ways out, like a credit union payday alternative loan, and a way to stop the cycle. Ask me "how much has costly borrowing cost me?" for the details.`,
         refs: {},
         actions: [COSTLY_PAGE, snoozeButton()],
         dedupeKey: `costly:${quarter(context.local.date)}`,

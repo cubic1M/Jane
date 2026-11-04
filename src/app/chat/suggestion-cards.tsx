@@ -14,6 +14,7 @@ import {
   subscribeGone,
   withoutGone,
 } from "@/lib/dock-gone";
+import { DEMO_ADVICE_LABEL } from "@/config/advice";
 import { noteDetailsOpened, tapButton } from "./actions";
 
 // Jane's pop-ups over the chat or the page (src/lib/jane-agent/popups.ts): the day's suggestions,
@@ -57,11 +58,11 @@ export function cardOf(message: MessageView): FloatingCardData {
     // The learning loop: what other people did with this kind of suggestion.
     ...(message.cardPeople ? [message.cardPeople] : []),
     ...(extra?.caps ?? []).map((c) => `Cap: ${c}`),
-    ...(message.advice ? ["Demo advice: sample data, not financial advice"] : []),
   ];
   return {
     id: message.id,
     headline: parts.headline,
+    ...(message.advice ? { badge: DEMO_ADVICE_LABEL } : {}),
     details: {
       // The whole reason, so the headline's figure is explained; the short line otherwise.
       why: message.cardWhy ?? parts.why ?? undefined,
@@ -162,14 +163,9 @@ export function SuggestionCards({
           const actionId = message ? followAction(message) : null;
           if (!message || !actionId) return here;
           // Behind the navigation: the next page's dock already leaves it out.
-          const data = new FormData();
-          data.set("messageId", id);
-          data.set("actionId", actionId);
-          const sent = (sending.current.get(id) ?? Promise.resolve())
+          void queue(message, actionId)
             .catch(() => undefined)
-            .then(() => tapButton({ message, error: null }, data));
-          sending.current.set(id, sent);
-          void sent.catch(() => undefined).then(() => onAnswered?.());
+            .then(() => onAnswered?.());
           return here;
         }}
         onAnswer={(id, how, choice) => {
@@ -189,19 +185,7 @@ export function SuggestionCards({
           if (!actionId) return;
           // The server work follows the screen: the card is already gone (or, for a choice,
           // already marked).
-          const data = new FormData();
-          data.set("messageId", id);
-          data.set("actionId", actionId);
-          // In order behind the card's last tap (a choice right after a Revert).
-          const sent = (sending.current.get(id) ?? Promise.resolve())
-            .catch(() => undefined)
-            .then(() => tapButton({ message, error: null }, data));
-          sending.current.set(id, sent);
-          startTransition(async () => {
-            await sent;
-            router.refresh();
-            onAnswered?.();
-          });
+          send(id, actionId);
         }}
         onRevert={(id) => send(id, REVERT_ACTION)}
         onSettle={(id) => {
@@ -214,17 +198,23 @@ export function SuggestionCards({
     </>
   );
 
-  // Revert or Done on a chosen card: after the card's last tap has reached the server.
+  // In order behind the card's last tap (a choice right after a Revert).
+  function queue(message: MessageView, actionId: string) {
+    const data = new FormData();
+    data.set("messageId", message.id);
+    data.set("actionId", actionId);
+    const sent = (sending.current.get(message.id) ?? Promise.resolve())
+      .catch(() => undefined)
+      .then(() => tapButton({ message, error: null }, data));
+    sending.current.set(message.id, sent);
+    return sent;
+  }
+
+  // An answer, or Revert or Done on a chosen card: then the page and the dock catch up.
   function send(id: string, actionId: string) {
     const message = messages.find((m) => m.id === id);
     if (!message) return;
-    const data = new FormData();
-    data.set("messageId", id);
-    data.set("actionId", actionId);
-    const sent = (sending.current.get(id) ?? Promise.resolve())
-      .catch(() => undefined)
-      .then(() => tapButton({ message, error: null }, data));
-    sending.current.set(id, sent);
+    const sent = queue(message, actionId);
     startTransition(async () => {
       await sent;
       router.refresh();

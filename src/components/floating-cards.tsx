@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import {
+  type MouseEvent,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { PixelIcon } from "@/components/pixel-icon";
 import {
   answer,
@@ -268,14 +275,28 @@ export function FloatingCards({
 
   // Followed to a page: off the stack like an answer; the caller says what it means.
   function follow(card: FloatingCardData, href: string): boolean {
+    depart(card, [card], "yes");
+    return onFollow?.(card.id, href) ?? false;
+  }
+
+  // The set first, so the next card is on screen in the same frame; then the caller's work.
+  function depart(card: FloatingCardData, going: FloatingCardData[], way: "yes" | "no") {
     setHeld(null);
-    setLeaving((now) =>
-      now.some((n) => n.id === card.id) ? now : [...now, { ...card, way: "yes" }],
-    );
+    setLeaving((now) => [
+      ...now,
+      ...going.filter((d) => !now.some((n) => n.id === d.id)).map((d) => ({ ...d, way })),
+    ]);
     setState((s) => answer(cards, s, mode, card.id));
     setSlide(null);
-    window.setTimeout(() => setLeaving((now) => now.filter((n) => n.id !== card.id)), LEAVE_MS);
-    return onFollow?.(card.id, href) ?? false;
+    window.setTimeout(
+      () => setLeaving((now) => now.filter((n) => !going.some((d) => d.id === n.id))),
+      LEAVE_MS,
+    );
+  }
+
+  function onLink(event: MouseEvent, card: FloatingCardData, href: string) {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey) return;
+    if (follow(card, href)) event.preventDefault();
   }
 
   function respond(card: FloatingCardData, how: CardAnswer, choice?: string) {
@@ -289,21 +310,8 @@ export function FloatingCards({
       onAnswer(card.id, how, choice);
       return;
     }
-    setHeld(null);
-    // The set first, so the next card is on screen in the same frame; then the caller's work.
-    const departing = mode === "pick" ? left : [card];
-    const way: "yes" | "no" = how === "yes" ? "yes" : "no";
-    setLeaving((now) => [
-      ...now,
-      ...departing.filter((d) => !now.some((n) => n.id === d.id)).map((d) => ({ ...d, way })),
-    ]);
-    setState((s) => answer(cards, s, mode, card.id));
-    setSlide(null);
+    depart(card, mode === "pick" ? left : [card], how === "yes" ? "yes" : "no");
     onAnswer(card.id, how, choice);
-    window.setTimeout(
-      () => setLeaving((now) => now.filter((n) => !departing.some((d) => d.id === n.id))),
-      LEAVE_MS,
-    );
   }
 
   const showingId = current?.id ?? null;
@@ -565,11 +573,7 @@ export function FloatingCards({
                   <a
                     key={link.href + link.label}
                     href={link.href}
-                    onClick={(event) => {
-                      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey)
-                        return;
-                      if (follow(current, link.href)) event.preventDefault();
-                    }}
+                    onClick={(event) => onLink(event, current, link.href)}
                     className="inline-flex min-h-11 items-center text-sm font-medium text-emerald-700 hover:underline"
                   >
                     {link.label} ›
@@ -627,13 +631,23 @@ export function FloatingCards({
                 />
               ) : (
                 <div data-card-actions="" className="flex min-w-0 flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => respond(current, "yes")}
-                    className={`${PRIMARY} ${COMPACT}`}
-                  >
-                    {current.yesLabel}
-                  </button>
+                  {current.yesHref ? (
+                    <a
+                      href={current.yesHref}
+                      onClick={(event) => onLink(event, current, current.yesHref!)}
+                      className={`${PRIMARY} ${COMPACT}`}
+                    >
+                      {current.yesLabel}
+                    </a>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => respond(current, "yes")}
+                      className={`${PRIMARY} ${COMPACT}`}
+                    >
+                      {current.yesLabel}
+                    </button>
+                  )}
                   {current.choices?.map((c) => (
                     <button
                       key={c.id}
