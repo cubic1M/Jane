@@ -29,3 +29,20 @@ describe("cleanReport", () => {
     );
   });
 });
+
+describe("the page a report goes back to", () => {
+  it.each([
+    "/\t/evil.example",
+    "/\n/evil.example",
+    "/\r\n/evil.example",
+    "/\\evil.example",
+    "//evil.example",
+    "/a\\b",
+  ])("is this site's home for %j, which a browser would read as another site", (from) => {
+    expect(reportPath(from)).toBe("/");
+  });
+
+  it("keeps an ordinary page", () => {
+    expect(reportPath("/report/abc.x?q=1")).toBe("/report/abc.x");
+  });
+});

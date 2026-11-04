@@ -1,3 +1,4 @@
+import { TRIAL_ID_PREFIX } from "@/config/trial";
 import { OUTCOME_ACTION_TYPES, OUTCOME_MIN_CASES } from "@/config/merchant-outcomes";
 import {
   findInDirectory,
@@ -85,7 +86,12 @@ export async function refreshMerchantOutcomes({
 }: { client?: PrismaClient } = {}): Promise<{ merchants: number }> {
   const [finished, directory] = await Promise.all([
     systemDb(WHY, client).action.findMany({
-      where: { status: { in: ["done", "failed"] }, type: { in: [...OUTCOME_ACTION_TYPES] } },
+      where: {
+        status: { in: ["done", "failed"] },
+        // "N of M worked" is shown to real people, and anyone can make a sample person.
+        userId: { not: { startsWith: TRIAL_ID_PREFIX } },
+        type: { in: [...OUTCOME_ACTION_TYPES] },
+      },
       select: {
         type: true,
         status: true,
