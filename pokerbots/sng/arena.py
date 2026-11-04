@@ -72,6 +72,7 @@ def _table_job(args):
     times = np.array(st.times) if st.times else np.zeros(1)
     return dict(t=t, cand=cand, points=res.points[my_seat], place=res.places[my_seat],
                 survived=res.bust_hand[my_seat] is None, hands=res.hands,
+                chip_rank=1 + sum(x > res.final_stacks[my_seat] for x in res.final_stacks),
                 p99_ms=float(np.percentile(times, 99) * 1000), max_ms=float(times.max() * 1000),
                 over=st.over_limit, decisions=st.decisions, errors=st.errors, illegal=st.illegal,
                 first_error=st.first_error, lineup=lineup,
@@ -108,7 +109,8 @@ def summarize(out, candidates, baseline=None):
         rs = by[c]
         m, h = ci95([r["points"] for r in rs])
         first = np.mean([r["place"] == 1 for r in rs])
-        top3 = np.mean([(r["place"] is not None and r["place"] <= 3) or r["survived"] for r in rs])
+        # survivors at the hand cap (place None) count as top 3 only when at most 2 stacks are bigger
+        top3 = np.mean([r["place"] <= 3 if r["place"] is not None else r.get("chip_rank", 1) <= 3 for r in rs])
         busts = np.mean([not r["survived"] for r in rs])
         lines.append(f"| {c} | {m:.2f} ± {h:.2f} | {first:.0%} | {top3:.0%} | {busts:.0%} | "
                      f"{np.percentile([r['p99_ms'] for r in rs], 50):.3f} | {max(r['max_ms'] for r in rs):.2f} | "

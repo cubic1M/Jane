@@ -23,5 +23,17 @@ class TestArenaPlayers(unittest.TestCase):
         self.assertIn("8 tables", out)       # 2 candidates x 4 tables
 
 
+    def test_top3_counts_cap_survivors_by_chip_rank(self):
+        """P(top 3): a survivor at the hand cap counts only if at most 2 stacks are bigger."""
+        def rec(place, survived, chip_rank):
+            return dict(t=len(out_), cand="a", points=10.0, first_error=None, place=place, survived=survived, chip_rank=chip_rank,
+                        p99_ms=0.1, max_ms=0.1, over=0, errors=0, illegal=0)
+        out_ = []
+        for args in ((None, True, 1), (None, True, 5), (2, False, 4), (6, False, 8)):
+            out_.append(rec(*args))
+        out = out_
+        line = next(l for l in arena.summarize(out, ["a"]).splitlines() if l.startswith("| a "))
+        self.assertEqual(line.split("|")[4].strip(), "50%")      # chip rank 1 and place 2
+
 if __name__ == "__main__":
     unittest.main()
