@@ -29,6 +29,9 @@ const PROP_FIRMS = [
 export const BANK_LOANS_INCOME: readonly Rule[] = [
   // First: "LUCID TRADING RESET FEE" is the firm's fee, never a bank fee.
   { category: "INCOME_CONTRACTOR", keywords: PROP_FIRMS, direction: "in" },
+  // A payment PayPal charged a fee on: goods or services sold (src/data-sources/csv/formats.ts). The
+  // name is only the buyer's, so nothing else says it's income (debugger 11-04).
+  { category: "INCOME_CONTRACTOR", bankCategory: ["PayPal sale"], direction: "in" },
   { category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES", keywords: PROP_FIRMS, direction: "out" },
   // Bank fees and interest
   { category: "BANK_FEES_OVERDRAFT_FEES", keywords: ["OVERDRAFT", "OD FEE"] },

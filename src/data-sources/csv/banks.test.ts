@@ -379,6 +379,45 @@ describe("PayPal", () => {
     expect(result.balances).toContainEqual({ date: "2026-09-28", balanceCents: 0 });
   });
 
+  const HEADER = '"Date","Time","TimeZone","Name","Type","Status","Currency","Gross","Fee","Net"';
+  const line = (name: string, type: string, gross: string, fee = "0.00") =>
+    `"09/15/2026","10:00:00","PDT","${name}","${type}","Completed","USD","${gross}","${fee}","${(Number(gross) + Number(fee)).toFixed(2)}"`;
+  const file = (...rows: string[]) => {
+    const read = readCsvFile({ name: "paypal.csv", text: [HEADER, ...rows].join("\n") + "\n" });
+    if (!read.ok) throw new Error(read.error);
+    return read;
+  };
+
+  // Debugger 11-04: the bank's line says only "PAYPAL INST XFER", a transfer, so a purchase paid from
+  // the bank counted nowhere. PayPal is the one statement that says what was bought.
+  it("keeps a purchase paid from the bank, which only PayPal can name", () => {
+    const kept = file(
+      line("Michaels Stores", "PreApproved Payment Bill User Payment", "-22.47"),
+      line("", "Bank Deposit to PP Account", "22.47"),
+    );
+    expect(kept.skipped).toEqual([]);
+    expect(kept.transactions.map((t) => [t.amountCents, t.description])).toEqual([
+      [2247, "Michaels Stores"],
+      [-2247, "Transfer from bank"],
+    ]);
+  });
+
+  // Only goods and services carry a fee; friends and family don't.
+  it("reads a payment PayPal charged a fee on as a sale", () => {
+    const [sale, friend] = file(
+      line("Priya Raman", "Express Checkout Payment", "78.35", "-3.22"),
+      line("Jamie Rivera", "General Payment", "25.00"),
+    ).transactions;
+    expect(sale.amountCents).toBe(-7513);
+    expect(categorizeByRules(sale)?.detailed).toBe("INCOME_CONTRACTOR");
+    expect(categorizeByRules(friend)?.detailed ?? "").not.toMatch(/^INCOME/);
+  });
+
+  it("doesn't read a refund it charged a fee on as a sale", () => {
+    const [refund] = file(line("Priya Raman", "Payment Refund", "25.00", "-1.00")).transactions;
+    expect(categorizeByRules(refund)?.detailed ?? "").not.toMatch(/^INCOME/);
+  });
+
   it("keeps a bank deposit into PayPal that paid for nothing that day", () => {
     const topUp = readCsvFile({
       name: "paypal-topup.csv",

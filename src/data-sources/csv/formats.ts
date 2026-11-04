@@ -656,6 +656,7 @@ export const venmo: CsvFormat = {
 // PayPal (Activity → Download, CSV): "Date","Time","TimeZone","Name","Type","Status","Currency",
 // "Gross","Fee","Net",…. Net is what moved the PayPal balance; money out is negative. Only
 // completed US-dollar rows count.
+const PAYPAL_SALE = "PayPal sale";
 export const paypal: CsvFormat = {
   id: "paypal",
   bank: "PayPal",
@@ -699,18 +700,25 @@ export const paypal: CsvFormat = {
         date: common.date,
         amountCents: -common.cents || 0,
         description: common.description,
-        hints: { bankType: optional(type) },
+        hints: {
+          bankType: optional(type),
+          // Only goods and services carry a fee, so a fee on money in says it's a sale.
+          ...(Number(get("fee")) < 0 && common.cents > 0 && !/refund/i.test(type)
+            ? { bankCategory: PAYPAL_SALE }
+            : {}),
+        },
         ...balanceOf(get("balance")),
       },
     };
   },
-  // A purchase paid by card or bank comes as two rows: the card's deposit into PayPal and the
-  // payment, same day, same amount. The card or bank statement already has that charge, so
-  // both are left out; a payment from the PayPal balance stays.
+  // A purchase paid by card comes as two rows: the card's deposit into PayPal and the payment, same
+  // day, same amount. The card's statement already has that charge, so both are left out. Paid from
+  // the bank they stay: the bank's line is only a transfer to PayPal, so this is the one row that
+  // says what was bought (debugger 11-04). A payment from the PayPal balance stays too.
   finish(rows) {
     const reasons: (string | null)[] = rows.map(() => null);
     const deposit = (row: ParsedRow) =>
-      /deposit/i.test(row.hints.bankType ?? "") && row.amountCents < 0;
+      /card.*deposit/i.test(row.hints.bankType ?? "") && row.amountCents < 0;
     rows.forEach((row, i) => {
       if (!deposit(row)) return;
       const paid = rows.findIndex(
