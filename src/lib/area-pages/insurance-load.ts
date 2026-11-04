@@ -1,4 +1,5 @@
 import { nextRenewal, yearlyPremium } from "@/lib/insurance/policies";
+import { scopedFor } from "@/lib/db-scoped";
 import { loadInsurance } from "@/lib/insurance/profile";
 import { listReadings } from "@/lib/insurance/readings";
 import { listCoverChanges } from "@/lib/insurance/cover-changes";
@@ -74,9 +75,12 @@ export async function loadInsuranceArea(
   ];
   const payingTwice = cards.duplicates.filter((d) => d.status === "new" || d.status === "shown");
 
+  const banks = await scopedFor(userId).accounts.count({ where: { type: "depository" } });
+
   // The tree: the same records, a few words and a figure each.
   const area = insuranceTree({
     asOf,
+    noBankSeen: banks === 0,
     needs: coverage.needs.map((n) => ({ ...n, opened: coverage.opened.has(needKey(n)) })),
     policies: policies.map((p) => ({
       id: p.id,
