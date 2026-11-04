@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { PlanHero, SafeHero, SavedHero } from "@/lib/hub/view";
 import type { SavedKind } from "@/lib/membership/service";
 import { formatWholeDollars } from "@/lib/money";
+import { Blinded, ShowValue } from "./blinded";
 import { CalcLines, CalcPopup } from "./calc-popup";
 import { Meter, StackBar } from "./charts";
 import { MarchingPath } from "@/components/marching-path";
@@ -22,6 +23,7 @@ const TOGGLE = "flex w-full min-w-0 flex-col items-start gap-2 text-left";
 const LABEL =
   "text-sm font-medium text-zinc-600 group-hover:text-zinc-950 dark:text-zinc-400 dark:group-hover:text-zinc-50";
 const LINK = "self-start text-sm font-medium underline-offset-2 hover:underline";
+const NUMBER_ROW = "flex flex-wrap items-center gap-x-3";
 
 // Whole dollars, rounded (it said $376/yr where the import chip said $377/yr for $376.80).
 const dollars = formatWholeDollars;
@@ -54,6 +56,19 @@ function Opens({ id, open, children }: { id: string; open: boolean; children: Re
 
 export function SafeTile({ safe }: { safe: SafeHero }) {
   const [open, setOpen] = useState(false);
+  const [shown, setShown] = useState(false);
+  // Asking why this number is asking to see it.
+  const toggleOpen = () => {
+    if (!open) setShown(true);
+    setOpen(!open);
+  };
+  const toggleShown = () => {
+    if (shown) {
+      setOpen(false);
+      setShowHow(false);
+    }
+    setShown(!shown);
+  };
   const aim = useRef<HTMLButtonElement>(null);
   const [line, setLine] = useState<{
     from: { x: number; y: number };
@@ -104,16 +119,30 @@ export function SafeTile({ safe }: { safe: SafeHero }) {
         type="button"
         aria-expanded={open}
         aria-controls="safe-why"
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggleOpen}
         className={TOGGLE}
       >
         <span className={LABEL}>{safe.label}</span>
+      </button>
+      <div className={NUMBER_ROW}>
         <span
           data-hub-number="safe"
           className={`block text-2xl font-semibold tracking-tight tabular-nums ${safe.short ? "font-bold" : ""}`}
         >
-          {safe.short ? `Short ${dollars(safe.cents)}` : dollars(safe.cents)}
+          {/* Being short still says so while the amount is hidden. */}
+          {safe.short && "Short "}
+          {shown ? dollars(safe.cents) : <Blinded />}
         </span>
+        <ShowValue shown={shown} what={safe.label.toLowerCase()} onToggle={toggleShown} />
+      </div>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls="safe-why"
+        aria-label={open ? "Close why this number" : "Why this number"}
+        onClick={toggleOpen}
+        className={TOGGLE}
+      >
         <span className="block w-full">
           <StackBar
             parts={safe.parts}
@@ -202,6 +231,7 @@ export function SavedTile({
   wide?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [shown, setShown] = useState(false);
   const tile = useRef<HTMLDivElement>(null);
   const planButton = useRef<HTMLButtonElement>(null);
   const [showPlan, setShowPlan] = useState(false);
@@ -211,51 +241,87 @@ export function SavedTile({
   const number =
     words !== null ? (
       words
+    ) : !shown ? (
+      <Blinded />
     ) : (
       <>
         {dollars(saved.cents)}
         {saved.perYear && <span className="text-base font-normal text-zinc-500">/yr</span>}
       </>
     );
+  // Words aren't a figure: nothing to hide.
+  const showValue = words === null && (
+    <ShowValue
+      shown={shown}
+      what={saved.label.toLowerCase()}
+      onToggle={() => {
+        if (shown) {
+          setOpen(false);
+          setShowPlan(false);
+        }
+        setShown(!shown);
+      }}
+    />
+  );
+  // Asking where it came from is asking to see it.
+  const toggleOpen = () => {
+    if (!open) setShown(true);
+    setOpen(!open);
+  };
   return (
     <div ref={tile} data-hub-tile="saved" className={wide ? `${CARD} sm:col-span-2` : CARD}>
       {savedSoFar ? (
-        <button
-          type="button"
-          aria-expanded={open}
-          aria-controls="saved-where"
-          onClick={() => setOpen((o) => !o)}
-          className={TOGGLE}
-        >
-          <span className={LABEL}>{saved.label}</span>
-          <span
-            data-hub-number="saved"
-            className="block text-2xl font-semibold tracking-tight tabular-nums"
+        <>
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls="saved-where"
+            onClick={toggleOpen}
+            className={TOGGLE}
           >
-            {number}
-          </span>
-          {/* Confirmed money only (the verified savings record); what's expected is apart. */}
-          <span data-hub-confirmed="" className="text-xs text-zinc-500">
-            Confirmed in your transactions
-          </span>
-          {saved.expectedCents > 0 && (
+            <span className={LABEL}>{saved.label}</span>
+          </button>
+          <div className={NUMBER_ROW}>
             <span
-              data-hub-expected=""
-              className="text-xs font-medium text-zinc-700 dark:text-zinc-300"
+              data-hub-number="saved"
+              className="block text-2xl font-semibold tracking-tight tabular-nums"
             >
-              Expected, not confirmed yet: {dollars(saved.expectedCents)}/yr
+              {number}
             </span>
-          )}
-          <span className="block w-full">
-            <Meter
-              share={saved.share}
-              label={`${Math.round(saved.share * 100)}% of what Jane found`}
-            />
-          </span>
-          <span className="text-xs font-semibold tracking-wider">
-            {open ? "[LESS]" : "[WHERE IT CAME FROM]"}
-          </span>
-        </button>
+            {showValue}
+          </div>
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls="saved-where"
+            aria-label={open ? "Close where it came from" : "Where it came from"}
+            onClick={toggleOpen}
+            className={TOGGLE}
+          >
+            {/* Confirmed money only (the verified savings record); what's expected is apart. */}
+            <span data-hub-confirmed="" className="text-xs text-zinc-500">
+              Confirmed in your transactions
+            </span>
+            {saved.expectedCents > 0 && (
+              <span
+                data-hub-expected=""
+                className="text-xs font-medium text-zinc-700 dark:text-zinc-300"
+              >
+                Expected, not confirmed yet:{" "}
+                {shown ? `${dollars(saved.expectedCents)}/yr` : <Blinded />}
+              </span>
+            )}
+            <span className="block w-full">
+              <Meter
+                share={saved.share}
+                label={`${Math.round(saved.share * 100)}% of what Jane found`}
+              />
+            </span>
+            <span className="text-xs font-semibold tracking-wider">
+              {open ? "[LESS]" : "[WHERE IT CAME FROM]"}
+            </span>
+          </button>
+        </>
       ) : (
         <>
           {/* Nothing saved yet: what Jane found is the report's total, one tap away. */}
@@ -266,9 +332,15 @@ export function SavedTile({
           >
             {saved.label}
           </Link>
-          <p data-hub-number="saved" className="text-2xl font-semibold tracking-tight tabular-nums">
-            {number}
-          </p>
+          <div className={NUMBER_ROW}>
+            <p
+              data-hub-number="saved"
+              className="text-2xl font-semibold tracking-tight tabular-nums"
+            >
+              {number}
+            </p>
+            {showValue}
+          </div>
         </>
       )}
       {savedSoFar && (
@@ -301,7 +373,11 @@ export function SavedTile({
           aria-controls="saved-plan"
           aria-haspopup="dialog"
           data-saved-plan=""
-          onClick={() => setShowPlan((o) => !o)}
+          onClick={() => {
+            // The plan's lines are figures: asking for them is asking to see them.
+            if (!showPlan) setShown(true);
+            setShowPlan(!showPlan);
+          }}
           className="relative z-10 self-start text-left text-sm font-medium underline-offset-2 hover:underline"
         >
           {/* The plan's items, as the chat says them ("Your plan for this week is ready: 12

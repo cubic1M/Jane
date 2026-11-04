@@ -30,6 +30,7 @@ import {
   type ViewWindow,
 } from "@/insights/net-worth-movements";
 import { formatWholeDollars } from "@/lib/money";
+import { Blinded, ShowValue } from "./blinded";
 import { MarchingPath } from "@/components/marching-path";
 import { dayLabel } from "@/lib/day-label";
 
@@ -161,6 +162,9 @@ export function NetWorthChart({
   notCounting?: string;
   loansLeft?: string | null;
 }) {
+  // Hidden until asked: the figure, and what would give it away (the scale, the dollars moved, the
+  // figure on a day). The line's shape and the percent stay: they don't say how much.
+  const [figureShown, setFigureShown] = useState(false);
   const [range, setRange] = useState<RangeKey>("ALL");
   // Zoomed by hand (the wheel, a pinch, the brush): the days in view; null follows the range.
   const [view, setView] = useState<ViewWindow | null>(null);
@@ -461,12 +465,19 @@ export function NetWorthChart({
           </button>
         )}
       </div>
-      <p
-        data-hub-number="net-worth"
-        className="text-5xl font-semibold tracking-tight tabular-nums sm:text-6xl"
-      >
-        {dollars(point.cents)}
-      </p>
+      <div className="flex flex-wrap items-center gap-x-3">
+        <p
+          data-hub-number="net-worth"
+          className="text-5xl font-semibold tracking-tight tabular-nums sm:text-6xl"
+        >
+          {figureShown ? dollars(point.cents) : <Blinded />}
+        </p>
+        <ShowValue
+          shown={figureShown}
+          what="net worth"
+          onToggle={() => setFigureShown((s) => !s)}
+        />
+      </div>
       {notCounting && (
         <p data-net-worth-not-counting="" className="text-sm text-zinc-600 dark:text-zinc-400">
           {notCounting}{" "}
@@ -488,8 +499,14 @@ export function NetWorthChart({
         <p data-net-worth-change="" className="text-sm tabular-nums">
           <span className="font-semibold">
             <span aria-hidden="true">{arrow(move.cents)} </span>
-            {signed(move.cents)}
-            {move.share !== null && ` (${percent(move.share)})`}
+            {figureShown ? (
+              <>
+                {signed(move.cents)}
+                {move.share !== null && ` (${percent(move.share)})`}
+              </>
+            ) : (
+              move.share !== null && percent(move.share)
+            )}
           </span>{" "}
           <span className="text-zinc-600 dark:text-zinc-400">
             {scrub === null ? windowWords : dayLabel(point.date, { year: true })}
@@ -510,7 +527,7 @@ export function NetWorthChart({
               aria-valuemin={0}
               aria-valuemax={shown.length - 1}
               aria-valuenow={at}
-              aria-valuetext={`${at === shown.length - 1 ? "Today" : dayLabel(point.date, { year: true })}: ${dollars(point.cents)}`}
+              aria-valuetext={`${at === shown.length - 1 ? "Today" : dayLabel(point.date, { year: true })}: ${figureShown ? dollars(point.cents) : "hidden"}`}
               className={`nw-box relative -mx-1 cursor-crosshair outline-offset-4 select-none ${expanded ? "touch-none" : "touch-pan-y"}`}
               style={{ height: H }}
               onPointerDown={(e) => {
@@ -670,6 +687,7 @@ export function NetWorthChart({
                 start={shown[0].cents}
                 y={y}
                 zero={lo < 0 && hi > 0 ? y(0) : null}
+                amounts={figureShown}
               />
             </div>
             {expanded && movesState !== "idle" && (
@@ -729,7 +747,7 @@ export function NetWorthChart({
                   <DaySummary
                     ref={summaryBox}
                     group={open.group}
-                    worth={worthOn(open.group)}
+                    worth={figureShown ? worthOn(open.group) : undefined}
                     title={open.title}
                     at={place.summary}
                     details={details}
@@ -1076,7 +1094,10 @@ function Scale({
   start,
   y,
   zero,
+  amounts,
 }: {
+  // Off while the figure is hidden: the highest and lowest would give it away.
+  amounts: boolean;
   width: number;
   high: number;
   low: number;
@@ -1099,19 +1120,21 @@ function Scale({
           </span>
         </>
       )}
-      <span
-        data-net-worth-scale="high"
-        className={label}
-        style={{ top: Math.max(0, y(high) - 12), left: 2 }}
-      >
-        {dollars(high)}
-      </span>
-      {low !== high && (
+      {amounts && (
+        <span
+          data-net-worth-scale="high"
+          className={label}
+          style={{ top: Math.max(0, y(high) - 12), left: 2 }}
+        >
+          {dollars(high)}
+        </span>
+      )}
+      {amounts && low !== high && (
         <span data-net-worth-scale="low" className={label} style={{ top: y(low) + 2, left: 2 }}>
           {dollars(low)}
         </span>
       )}
-      {start !== high && start !== low && width > 0 && (
+      {amounts && start !== high && start !== low && width > 0 && (
         <span
           data-net-worth-scale="start"
           className={label}

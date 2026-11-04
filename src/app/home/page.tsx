@@ -24,7 +24,7 @@ import { firstWeekChecklist, recordChecklistProgress } from "@/lib/checklist";
 import type { HomeSummary } from "@/lib/home";
 import { loadHubAreas, loadHubTop } from "@/lib/hub/load";
 import { netWorthEvents } from "@/lib/hub/net-worth-events";
-import { formatWholeDollars } from "@/lib/money";
+import { Blinded } from "@/components/hub/blinded";
 import { netWorthHistory } from "@/lib/hub/net-worth-history";
 import { NetWorthChart } from "@/components/hub/net-worth-chart";
 import { cashFlowView, heroView, tilesView } from "@/lib/hub/view";
@@ -160,8 +160,8 @@ function NetWorthUnknown() {
   );
 }
 
-// While the line loads: today's figure (already known) at the chart's size, so nothing moves.
-function NetWorthLoading({ todayCents }: { todayCents: number }) {
+// While the line loads: the hidden figure at the chart's size, so nothing moves.
+function NetWorthLoading() {
   return (
     <section
       aria-label="Net worth"
@@ -170,7 +170,7 @@ function NetWorthLoading({ todayCents }: { todayCents: number }) {
     >
       <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Net worth</p>
       <p className="text-5xl font-semibold tracking-tight tabular-nums sm:text-6xl">
-        {formatWholeDollars(todayCents)}
+        <Blinded />
       </p>
       <p className="text-sm text-zinc-600 dark:text-zinc-400">Drawing your line…</p>
       <div aria-hidden="true" className="h-[190px] sm:h-[260px]" />
@@ -222,7 +222,7 @@ async function HubContent() {
           ) : (
             // Its own boundary: the history and what moved it are read after the top row's net
             // worth, so the rest of the hub paints without waiting for them (speed pass).
-            <Suspense fallback={<NetWorthLoading todayCents={todayCents} />}>
+            <Suspense fallback={<NetWorthLoading />}>
               <NetWorthHero userId={user.id} todayCents={todayCents} />
             </Suspense>
           )

@@ -63,6 +63,7 @@ test("a card-only net worth stays below zero on the chart, and says so", async (
 
   await page.goto("/home");
   const chart = page.locator("[data-net-worth-chart]");
+  await chart.locator("[data-show-value]").click();
   await expect(chart.locator('[data-hub-number="net-worth"]')).toHaveText("-$900");
   await expect(chart.locator("[data-net-worth-plot]")).toHaveAttribute(
     "aria-valuetext",
@@ -94,6 +95,7 @@ test("a net worth that crosses zero draws $0 between its low and high", async ({
 
   await page.goto("/home");
   const chart = page.locator("[data-net-worth-chart]");
+  await chart.locator("[data-show-value]").click();
   await expect(chart.locator('[data-hub-number="net-worth"]')).toHaveText("$1,500");
   await expect(chart.locator("[data-net-worth-zero]")).toHaveCount(1);
   await expect(chart.locator('[data-net-worth-scale="zero"]')).toHaveText("$0");
