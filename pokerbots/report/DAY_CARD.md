@@ -103,12 +103,15 @@ Fill in each line:
    `push_steal=0;steal_bonus=0.3` if the field re-steals (adaptive bots: +3.6 to +4.7 on field 4, −2.0 on all3);
    `resteal_rel=1.4;resteal_rel_bb=35` if the field is tight (+7 vs Plan B copies and our copies, −0.3 elsewhere);
    `behind_k=0` if the field is tight (+2.9 vs Plan B copies, +3.4 vs our copies, −2.9 on the default field);
+   `steal_max_behind=3` if the table is strong and re-raises our opens (fresh seeds: kit-4 six-plus +2.9 to +6.0 on all 6 fields,
+   champions +4.4* NLHE / +5.4* kit 4 / +5.1* rehearsal six-plus, mirror +8.7*; but NLHE field 5 −6.3* and the Plan B
+   short-deck field −9.0*: never against tight, steal-folding fields);
    `rs_call=3` if the field re-shoves light (hold'em `icm_tag` only; off on `icm_any`) (+7.2 field 6, +3.6 mirror on fresh seeds, −1.1 field 3; head-to-head vs 2 on fresh seeds: field 6 +2.8*, mean over 11 fields +0.03, so only when the field re-shoves light)):
    - tune: `python3 -m sng.tune --preset <p> --field blend --rounds 3 --tables 500 --accept-se 2 --tag _day` (about 15–25 min per round);
      measured 2026-11-04 on kit-4 six-plus rules: one round over every parameter at 300 tables = **21 min wall on 3 workers**
      (59 CPU-min). For a ~20-minute window run **one round with a narrowed `--params` list** (the switches above), or
      fewer tables; three rounds at 500 tables do not fit between rounds. Its pick that day (`steal_max_behind=3`,
-     +6.7 ± 2.4 on the tuning seeds) is under fresh-seed check (`results/sng_kit4tune_validate.sh`);
+     +6.7 ± 2.4 on the tuning seeds) held on fresh kit-4 seeds but not on NLHE field 5 / the Plan B field: a between-rounds option (above), not a default;
    - validate: `results/sng_validate.sh "icm_tag:<tuned>" --preset <p>`;
    - submit only a paired gain > 2 SE with no field losing.
 
