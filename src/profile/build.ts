@@ -754,13 +754,9 @@ export function buildProfile(input: ProfileInput): Profile {
       return pattern.test(t.description) || (insurer !== null && kinds.includes(insurer));
     });
   for (const [key, pattern, kinds, what] of [
-    // Whole words, and "AUTOPAY" isn't car cover (debugger 11-01: a life premium's "AUTOPAY").
-    [
-      "insurance_auto",
-      /\b(?:AUTO(?![ -]?PAY)|GEICO|PROGRESSIVE)\b/i,
-      ["auto"],
-      "car-cover charges",
-    ],
+    // Whole words, and "AUTOPAY" isn't car cover (debugger 11-01: a life premium's "AUTOPAY"). An
+    // insurer counts by what its line says it is: "GEICO RENTERS" isn't (debugger 11-04).
+    ["insurance_auto", /\bAUTO(?![ -]?PAY)\b/i, ["auto"], "car-cover charges"],
     [
       "insurance_home",
       /\b(?:HOME|HOMEOWNERS|RENTERS)\b/i,

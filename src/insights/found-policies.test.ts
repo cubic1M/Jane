@@ -110,6 +110,32 @@ describe("policiesFromStreams", () => {
     ]);
   });
 
+  // A student's "GEICO RENTERS" read as "I found your car insurance", beside "No renters insurance
+  // on file". What the statement says it's for beats what the insurer mostly sells.
+  it.each([
+    ["geico renters", "renters"],
+    ["state farm home", "home"],
+    ["allstate homeowners", "home"],
+    ["progressive condo", "home"],
+    ["usaa life", "life"],
+    ["nationwide pet", "pet"],
+    ["aetna dental", "other"],
+    ["lemonade auto", "auto"],
+    ["lemonade car", "auto"],
+    // No word for it: what the insurer mostly sells.
+    ["geico", "auto"],
+    ["geico autopay", "auto"],
+    ["lemonade", "renters"],
+    ["kaiser permanente dues", "health"],
+  ])("reads %s as %s", (key, kind) => {
+    expect(insurerKind(key)).toBe(kind);
+  });
+
+  it("isn't taken in by those words without an insurer", () => {
+    expect(insurerKind("home depot")).toBeNull();
+    expect(insurerKind("whole life grocery")).toBeNull();
+  });
+
   it("knows an insurer by name when the category is missing, but not a bank", () => {
     const lemonade = {
       description: "LEMONADE INC",

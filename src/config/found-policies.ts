@@ -75,6 +75,17 @@ export const INSURER_KINDS: readonly { words: readonly string[]; kind: PolicyKin
   { words: ["delta dental"], kind: "other" },
 ];
 
+// What the statement says the cover is, which beats what the insurer mostly sells: "GEICO RENTERS"
+// isn't car cover (debugger 11-04). Only read for a known insurer: "Home Depot" is a shop.
+export const COVER_WORDS: readonly { words: readonly string[]; kind: PolicyKind }[] = [
+  { words: ["renters", "renter"], kind: "renters" },
+  { words: ["home", "homeowners", "condo"], kind: "home" },
+  { words: ["life"], kind: "life" },
+  { words: ["pet"], kind: "pet" },
+  { words: ["dental", "vision"], kind: "other" },
+  { words: ["auto", "car"], kind: "auto" },
+];
+
 // A stream's frequency as a premium frequency. Others (weekly, every two weeks) aren't
 // premiums.
 export const PREMIUM_FREQUENCY_OF: Readonly<Record<string, PremiumFrequency>> = {

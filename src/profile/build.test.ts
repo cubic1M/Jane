@@ -70,6 +70,11 @@ describe("the picture of you", () => {
         ],
       }).facts;
     expect(facts("STATE FARM RO 27 SFPP").insurance_auto).toMatchObject({ value: true });
+    expect(facts("GEICO").insurance_auto).toMatchObject({ value: true });
+    expect(facts("PROGRESSIVE INS PAYMENT").insurance_auto).toMatchObject({ value: true });
+    // A student's renters policy isn't car cover, whoever sells it (debugger 11-04).
+    expect(facts("GEICO RENTERS").insurance_auto).toMatchObject({ value: false });
+    expect(facts("GEICO RENTERS").insurance_home).toMatchObject({ value: true });
     expect(facts("ALLSTATE INS CO PAYMENT").insurance_auto).toMatchObject({ value: true });
     expect(facts("LEMONADE INC").insurance_home).toMatchObject({ value: true });
     expect(facts("ACME MUTUAL PREMIUM").insurance_auto).toMatchObject({ value: false });
