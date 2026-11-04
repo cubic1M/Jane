@@ -52,7 +52,7 @@ class TestBundleSwitch(unittest.TestCase):
         ad = Path(tmp) / "adapter.py"
         ad.write_text(ADAPTER)
         out = build(ad, None, Path(tmp) / "bot.py", with_switch=True)
-        self.assertLess(out.stat().st_size, 3_000_000)
+        self.assertLess(out.stat().st_size, 7_000_000)
         env = dict(os.environ, PYTHONPATH="")
         r = subprocess.run([sys.executable, "-c", f"REPO = {str(ROOT)!r}\n" + DRIVER], cwd=tmp, env=env,
                            capture_output=True, text=True, timeout=600)

@@ -175,7 +175,7 @@ SWITCH_MODULES = [
     ("sng.ours.switch", "sng/ours/switch.py", False),
 ]
 _F9_EMBED = "_EMBED: dict = {}"
-F9_DECKS = ("six",)       # icm_switch hands short-deck tables to f9_meta: only its six-plus tables (1.4 MB)
+F9_DECKS = ("six", "std")  # icm_switch hands strong tables to f9_meta: its six-plus (1.4 MB) and 52-card (2.6 MB) tables
 _PF7_LOAD = 'np.load(os.path.join(os.path.dirname(__file__), "data", "pf7.npz"))'
 
 

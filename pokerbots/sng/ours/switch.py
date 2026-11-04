@@ -1,6 +1,6 @@
 """icm_switch: icm_tag until the table attacks our opens, then a stronger "strong-table" bot
-(52-card hold'em: f7_balanced when icm_tag's lock fires; six-plus deck: f9_meta once >= 30% of 20+ opens
-were re-raised).
+(52-card hold'em: f9_meta when icm_tag's lock fires (b="f7": f7_balanced, the first version); six-plus deck:
+f9_meta once >= 30% of 20+ opens were re-raised).
 
 icm_tag beats weak and static fields by a lot (it exploits folders and stations) but finishes last
 at tables of strong bots that re-raise wide openers (fields 6 / 7, the champions table), where
@@ -48,7 +48,7 @@ def _full_rules(rules):
 class IcmSwitch:
     name = "icm_switch"
 
-    def __init__(self, switch_min=20, switch_share=0.0, b="f7", any_deck=0, icm_slice=0, sd_share=0.3,
+    def __init__(self, switch_min=20, switch_share=0.0, b="f9_meta", any_deck=0, icm_slice=0, sd_share=0.3,
                  sd_b="f9_meta", f9_cache=0.0, **kw):
         # sd_share > 0: on a six-plus deck (where the lock is off) hand over to sd_b once >= sd_share of
         # >= switch_min first-in opens were re-raised (fresh seeds, 10 short-deck cells: +2.7, no significant

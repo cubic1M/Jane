@@ -69,7 +69,7 @@ class TestSwitch(unittest.TestCase):
             done = sum(abs(a - b) < 1e-12 for a, b in zip(sl.bf[1:], full.bf[1:]))
             self.assertGreaterEqual(done, k + 1)
         self.assertEqual([round(x, 12) for x in sl.bf], [round(x, 12) for x in full.bf])
-        sw = make("icm_switch:icm_slice=1")
+        sw = make("icm_switch:b=f7;icm_slice=1")
         sw.new_table(r, 0, 1)
         self.assertTrue(sw.b.shadow_only)
         self.assertEqual(sw.b.icm_slice, 1)
@@ -90,7 +90,7 @@ class TestSwitch(unittest.TestCase):
                 ref = bubble_factors(vals, mi, i, pays, True)
                 self.assertAlmostEqual(got[i][0], ref[0], places=9)
                 self.assertAlmostEqual(got[i][1], ref[1], places=9)
-        self.assertTrue(make("icm_switch").b.icm_fast)
+        self.assertTrue(make("icm_switch:b=f7").b.icm_fast)
 
     def test_never_hands_over_outside_holdem(self):
         """Omaha / split-pot / discard / fixed-limit games keep icm_tag even when the lock fires."""
@@ -121,9 +121,11 @@ class TestSwitch(unittest.TestCase):
         b.end_hand(dict(history=post, stacks=(2000,) * 8, hand_number=41, deltas=[0] * 8))
         self.assertTrue(b.switched)
         self.assertFalse(b.b.shadow_only)
-        b.new_table(SngRules(enforce_time=False), 0, 2)       # a 52-card table: f7 and the lock
+        b.new_table(SngRules(enforce_time=False), 0, 2)       # a 52-card table: f9_meta (main target) and the lock
         self.assertFalse(b.short)
-        self.assertIsInstance(b.b, Balanced)
+        self.assertIsInstance(b.b, Meta)
+        self.assertIsNot(b.b, b.b_sd)
+        self.assertIsInstance(make("icm_switch:b=f7").b, Balanced)
         self.assertFalse(b.switched)
         off = make("icm_switch:sd_share=0")
         off.new_table(six, 0, 1)
