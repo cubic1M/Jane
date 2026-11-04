@@ -292,14 +292,22 @@ async function scanSuggestionsWork(
     (e) => e.selectedOn && dayOf(e.selectedOn) === today && e.status === "selected",
   );
   if (chosen.length > 0) {
-    const { keep, outdated } = stillChosen(chosen, new Set(found.map((f) => f.id)));
-    if (outdated.length > 0) {
+    const firing = new Set(found.map((f) => f.id));
+    const { keep, outdated } = stillChosen(chosen, firing);
+    // What's waiting shows on the area pages today too, so it's kept just as current (debugger
+    // 11-04: "$4,019 a month" from the first file, all day, beside "$4,788" from the second).
+    const waiting = stillChosen(
+      existing.filter((e) => e.status === "waiting"),
+      firing,
+    );
+    const stale = [...outdated, ...waiting.outdated];
+    if (stale.length > 0) {
       await db.suggestions.updateMany({
-        where: { id: { in: outdated.map((e) => e.id) } },
+        where: { id: { in: stale.map((e) => e.id) } },
         data: { status: "gone" },
       });
     }
-    await refreshFigures(userId, keep, found, { client, now });
+    await refreshFigures(userId, [...keep, ...waiting.keep], found, { client, now });
     // What fires for the first time today (a second file, or a scan that ran mid-import) is
     // stored as waiting, so the area pages and the report's tree have it today, not tomorrow
     // (debugger 10-31: a card's interest was the report's top card while Loans said "All
