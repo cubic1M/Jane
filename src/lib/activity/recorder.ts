@@ -41,8 +41,11 @@ function roleOf(el: Element): string {
   return TAG_ROLES[el.tagName] ?? "element";
 }
 
+// A row with an amount on it is the person's own data (a payee, a clinic), not a button's words.
+const AN_AMOUNT = /[$€£¥]\s?\d/;
+
 // A click's label: the data-track name, else the visible text (redacted), never inside a
-// data-private element.
+// data-private element or from a row with an amount on it.
 function labelOf(el: Element): string {
   const tracked = el.closest("[data-track]")?.getAttribute("data-track");
   if (tracked) return cleanName(tracked);
@@ -54,7 +57,7 @@ function labelOf(el: Element): string {
     visibleText(el) ||
     el.getAttribute("title") ||
     "";
-  return redactText(text);
+  return AN_AMOUNT.test(text) ? "private" : redactText(text);
 }
 
 // The element's text without any data-private part inside it (an account name in a button).

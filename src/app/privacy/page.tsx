@@ -52,11 +52,12 @@ export default function PrivacyPage() {
         </li>
         <li>
           How you use Jane: which pages and suggestions you open, your yes or no answers, and your
-          settings. {ACTIVITY_DISCLOSURE} That means the pages you open, the buttons you press,
-          which form fields you fill in and how long you stay, kept in our own database. For what
-          you type we keep only that you typed and how many characters, never the words or numbers
-          themselves (your chat messages and card answers are kept as above). Admins, sample-data
-          trials and the demo bank are never recorded.
+          settings. {ACTIVITY_DISCLOSURE} That means the pages you open, the buttons you press (with
+          their words, numbers and email addresses taken out, so a button can name a company), which
+          form fields you fill in and how long you stay, kept in our own database. For what you type
+          we keep only that you typed and how many characters, never the words or numbers themselves
+          (your chat messages and card answers are kept as above). Admins, sample-data trials and
+          the demo bank are never recorded.
         </li>
         <li>
           During the closed beta: the invite code you signed up with. If you join the waitlist, your
@@ -151,6 +152,10 @@ export default function PrivacyPage() {
             <li>
               To tell whether a charge is a subscription: the merchant&apos;s cleaned-up name only.
             </li>
+            <li>
+              To put a category on a transaction your bank or file didn&apos;t label: its
+              description.
+            </li>
           </ul>
           It never receives your password, your bank sign-in or your Plaid connection. When you
           chat, it can receive the description your bank wrote on a transaction, which can include
@@ -195,12 +200,9 @@ export default function PrivacyPage() {
         <li>Each person&apos;s data is only ever read for that person.</li>
         <li>
           Team access needs a second sign-in factor, and team pages that show your data are logged.
-          Signed in, you can see those views under{" "}
-          <Link href="/settings/team-access" className="underline">
-            Who saw my data
-          </Link>
-          . A problem report you send is read by the team and isn&apos;t listed there, and direct
-          database access for maintenance isn&apos;t logged by the app.
+          The copy of your data you can download in Settings lists those views. A problem report you
+          send is read by the team and isn&apos;t listed there, and direct database access for
+          maintenance isn&apos;t logged by the app.
         </li>
         <li>Error logs have email addresses, card and account numbers, and tokens removed.</li>
       </ul>
@@ -286,7 +288,10 @@ export default function PrivacyPage() {
         can&apos;t be reached, nothing is deleted and you can try again. Afterwards you see a page
         confirming your data is deleted. A record that the deletion happened, with ids, the time and
         the IP address and browser it came from, stays in our security log for the period listed
-        above. You can download a copy of your data in Settings first.
+        above, along with the record of which banks you linked. Companies that work for us (listed
+        above) keep what they already received for their own retention periods, and PostHog&apos;s
+        product analytics stay under your id, with no name or email, after your account is gone. You
+        can download a copy of your data in Settings first.
       </p>
 
       <h2>Cookies and your browser</h2>

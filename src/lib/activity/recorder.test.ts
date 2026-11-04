@@ -100,3 +100,19 @@ describe("startRecorder in the chat panel's frame", () => {
     expect(sent().map((e) => e.kind)).toEqual(["page_view"]);
   });
 });
+
+// /transactions rows are clickable, and a payee's name is the person's own data: it went on the
+// activity log for 180 days, readable on the admin page.
+describe("a click on a row with an amount", () => {
+  beforeEach(() => vi.stubGlobal("HTMLInputElement", class {}));
+
+  it("keeps none of its words", () => {
+    const row = element("SUMMARY", "Hope Street Clinic Oct 3 · Medical $120.00");
+    expect(rageClickFields(row, row).label).toBe("private");
+  });
+
+  it("still names a button with a number that isn't money", () => {
+    const button = element("BUTTON", "Upload 2 statements");
+    expect(rageClickFields(button, button).label).toBe("Upload # statements");
+  });
+});
