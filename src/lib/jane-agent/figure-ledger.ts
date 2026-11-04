@@ -469,6 +469,13 @@ export class FigureLedger {
   }
 
   // The first thing wrong with an answer's numbers, for each number that's wrong.
+  // How much it had to go on and how much the answer said, for the log: never the words or figures.
+  // An empty ledger on a real answer means the check passed for want of anything to check.
+  counts(answer: string): { facts: number; names: number; said: number } {
+    const said = [...answer.matchAll(MONEY)].length + [...answer.matchAll(PERCENT)].length;
+    return { facts: this.facts.length, names: this.names.size, said };
+  }
+
   problems(answer: string, now: Date): FigureProblem[] {
     const problems: FigureProblem[] = [];
     const moneySaid = [...answer.matchAll(MONEY)].map((m) => centsOf(m[1]));

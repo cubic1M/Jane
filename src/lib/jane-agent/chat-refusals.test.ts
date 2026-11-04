@@ -22,6 +22,7 @@ import {
   factsOnly,
   resetClaudeHealth,
   type ChatStreamEvent,
+  type ChatTurn,
 } from "./claude";
 import { fakeChatClaude } from "./fake-chat-claude";
 import { forgetPrimer } from "./primer-cache";
@@ -611,6 +612,83 @@ describe("a number about the wrong thing is rewritten by Claude", () => {
     expect(result).toContain("aren't in their numbers");
     expect(result).toContain("5000");
     expect(result).not.toContain("5,017.99");
+  });
+});
+
+describe("a number across turns", () => {
+  const after = (history: ChatTurn[], question: string) =>
+    askClaudeInChat("u1", history, question, { client, now: NOW, claude });
+
+  it.each([
+    ["a dollar amount", "my rent is $2,100", "Your rent of $2,100 is what to weigh first."],
+    ["a percent", "my raise was 7.3%", "A 7.3% raise is what to weigh first."],
+    ["a date", "my lease ends on Mar 31", "Your lease ending on Mar 31 is what to weigh first."],
+    ["a count", "i have 3 cards", "You have 3 cards to weigh first."],
+  ])("%s the person gave earlier is theirs to hear back", async (_what, said, answer) => {
+    create.mockResolvedValue(final(answer));
+    const history: ChatTurn[] = [
+      { role: "user", content: said },
+      { role: "assistant", content: "Got it." },
+    ];
+    const reply = await after(history, "so what should i do first");
+    expect(reply.reply?.body).toBe(answer);
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
+  it("calculates with an amount the person gave earlier", async () => {
+    create
+      .mockResolvedValueOnce({
+        stop_reason: "tool_use",
+        content: [
+          {
+            type: "tool_use",
+            id: "c1",
+            name: "calculate",
+            input: { operation: "sum", basis: "their rent and car", amounts: [2100, 350] },
+          },
+        ],
+      })
+      .mockResolvedValueOnce(final("Together that's $2,450.00."));
+    const history: ChatTurn[] = [
+      { role: "user", content: "my rent is $2,100" },
+      { role: "assistant", content: "Got it." },
+    ];
+    const reply = await after(history, "and my car is $350, what's that together");
+    expect(reply.reply?.body).toBe("Together that's $2,450.00.");
+    expect(JSON.stringify(sent[1].at(-1))).not.toContain("aren't in their numbers");
+  });
+
+  it("logs what the check had to go on as counts, never the figures", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    create.mockResolvedValue(final("Your rent of $2,100 is 7.3% of it."));
+    await after(
+      [
+        { role: "user", content: "my rent is $2,100 and that's 7.3%" },
+        { role: "assistant", content: "Got it." },
+      ],
+      "so what should i do first",
+    );
+    const line = String(info.mock.calls.find((c) => c[0] === "chat_timing")?.[1]);
+    expect(JSON.parse(line).figures).toEqual({ facts: expect.any(Number), names: 0, said: 2 });
+    expect(JSON.parse(line).figures.facts).toBeGreaterThan(1);
+    expect(line).not.toContain("2,100");
+  });
+
+  it.each([
+    ["a dollar amount", "Your rent is $2,100.", "Your rent of $2,100 is what to weigh first."],
+    ["a percent", "Your raise was 7.3%.", "A 7.3% raise is what to weigh first."],
+    ["a date", "Your lease ends on Mar 31.", "Your lease ending on Mar 31 is what to weigh first."],
+  ])("%s only Jane said earlier isn't evidence", async (_what, said, answer) => {
+    create
+      .mockResolvedValueOnce(final(answer))
+      .mockResolvedValueOnce(final("Let me look that up first."));
+    const history: ChatTurn[] = [
+      { role: "user", content: "what about my lease" },
+      { role: "assistant", content: said },
+    ];
+    const reply = await after(history, "so what should i do first");
+    expect(reply.reply?.body).toBe("Let me look that up first.");
+    expect(create).toHaveBeenCalledTimes(2);
   });
 });
 
