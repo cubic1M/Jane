@@ -7,6 +7,7 @@ import {
   INSURER_KINDS,
   INSURER_NAMES,
   PREMIUM_FREQUENCY_OF,
+  COVER_WORDS,
 } from "@/config/found-policies";
 import type { PremiumFrequency } from "@/config/documents";
 import type { PolicyKind } from "@/config/insurance";
@@ -36,7 +37,9 @@ export type FoundPolicy = {
 };
 
 export function insurerKind(merchantKey: string): PolicyKind | null {
-  return INSURER_KINDS.find((i) => merchantMatches(merchantKey, i.words))?.kind ?? null;
+  const insurer = INSURER_KINDS.find((i) => merchantMatches(merchantKey, i.words));
+  if (!insurer) return null;
+  return COVER_WORDS.find((c) => merchantMatches(merchantKey, c.words))?.kind ?? insurer.kind;
 }
 
 // A known insurer's own name ("GEICO", "State Farm"), not the statement's words around it
