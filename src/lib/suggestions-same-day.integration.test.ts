@@ -103,4 +103,29 @@ describe.runIf(url)("a second scan on the same day", () => {
     });
     expect(back?.status).toBe("waiting");
   });
+
+  // Debugger 11-04: a nurse's checking and savings came first, then a card. All day "Put the cash
+  // you don't need to work" said $4,019 a month, beside "Build a cushion" at $4,788 and a report
+  // whose checkup passed idle cash: only the day's picks were kept up to date.
+  it("keeps what's waiting current: new figures, and gone once it stops firing", async () => {
+    const stored = () =>
+      client.suggestion.findUniqueOrThrow({
+        where: { userId_key: { userId, key: "debt:card_interest" } },
+        select: { status: true, worthCents: true },
+      });
+    const before = await stored();
+    expect(before.status).toBe("waiting");
+
+    await row("2026-10-28", 90_000, "INTEREST CHARGED ON PURCHASES", "BANK_FEES_INTEREST_CHARGE");
+    await scanSuggestions(userId, { client, now: LATER });
+    const after = await stored();
+    expect(after.status).toBe("waiting");
+    expect(after.worthCents).toBeGreaterThan(before.worthCents);
+
+    await client.transaction.deleteMany({
+      where: { userId, description: "INTEREST CHARGED ON PURCHASES" },
+    });
+    await scanSuggestions(userId, { client, now: LATER });
+    expect((await stored()).status).toBe("gone");
+  });
 });
