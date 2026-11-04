@@ -585,6 +585,45 @@ describe("categorizeByRules", () => {
   });
 });
 
+// Debugger 11-04: a teacher's Fidelity cash account. The money market sweeps read as $1,350 a month
+// of income, and a Venmo cash-out as a second employer, so tax was estimated as married.
+describe("money that only moved", () => {
+  const detailed = (description: string, amountCents: number) =>
+    categorizeByRules({ description, amountCents, hints: {} })?.detailed;
+
+  it.each([
+    ["REDEMPTION FROM CORE ACCOUNT FIDELITY GOVERNMENT CASH RESERVES (SPAXX) (Cash)", -135_000],
+    ["YOU SOLD FIDELITY GOVERNMENT MONEY MARKET (SPRXX) (Cash)", -50_000],
+    ["SWEEP FROM VANGUARD FEDERAL MONEY MARKET", -50_000],
+    ["MONEY MARKET SWEEP WITHDRAWAL", -50_000],
+    ["TRANSFERRED FROM VS X12-345678-1 (Cash)", -100_000],
+    ["DIRECT DEPOSIT VENMO CASHOUT (Cash)", -60_000],
+    ["DIRECT DEP PAYPAL TRANSFER", -60_000],
+    ["DIRECT DEPOSIT CASH APP CASHOUT", -60_000],
+    ["DIRECT DEPOSIT FIDELITY INVESTMENTS (Cash)", -100_000],
+  ])("%s came in, and isn't income", (description, cents) => {
+    expect(detailed(description, cents)).toBe("TRANSFER_IN_ACCOUNT_TRANSFER");
+  });
+
+  it.each([
+    ["Sweep to VMFXX settlement fund", 50_000],
+    ["BANK SWEEP DEPOSIT", 50_000],
+    ["TRANSFERRED TO VS X12-345678-1 (Cash)", 100_000],
+  ])("%s went out, and isn't spending", (description, cents) => {
+    expect(detailed(description, cents)).toBe("TRANSFER_OUT_ACCOUNT_TRANSFER");
+  });
+
+  it("leaves a dividend, real pay and a chimney sweep alone", () => {
+    expect(detailed("DIVIDEND RECEIVED FIDELITY GOVERNMENT CASH RESERVES (SPAXX)", -120)).toBe(
+      "INCOME_DIVIDENDS",
+    );
+    expect(detailed("DIRECT DEPOSIT WAKE COUNTY SCHOOLS PAYROLL (Cash)", -348_022)).toBe(
+      "INCOME_SALARY",
+    );
+    expect(detailed("CHIMNEY SWEEP OF RALEIGH", 18_000) ?? "").not.toMatch(/^TRANSFER/);
+  });
+});
+
 describe("taxonomy", () => {
   it("names every detailed category after its primary", () => {
     for (const detailed of ALL_DETAILED) {

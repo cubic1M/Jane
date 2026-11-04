@@ -193,6 +193,28 @@ export const BANK_LOANS_INCOME: readonly Rule[] = [
     direction: "in",
   },
 
+  // Money that only moved, in words the income rules would take: a brokerage's cash going to and
+  // from its money market fund, and a deposit from the person's own app or brokerage (debugger
+  // 11-04: a teacher's Fidelity sweeps read as $1,350 a month of income, and a Venmo cash-out as a
+  // second employer, so tax was estimated as married). A chimney sweep stays a chimney sweep.
+  {
+    category: "TRANSFER_IN_ACCOUNT_TRANSFER",
+    pattern:
+      /REDEMPTION FROM CORE|YOU SOLD .*(?:MONEY MARKET|CASH RESERVES)|(?:BANK|CASH|MONEY MARKET|SETTLEMENT) SWEEP|\bSWEEP (?:FROM|TO)\b|\bTRANSFERRED FROM\b/,
+    direction: "in",
+  },
+  {
+    category: "TRANSFER_OUT_ACCOUNT_TRANSFER",
+    pattern: /(?:BANK|CASH|MONEY MARKET|SETTLEMENT) SWEEP|\bSWEEP (?:FROM|TO)\b|\bTRANSFERRED TO\b/,
+    direction: "out",
+  },
+  {
+    category: "TRANSFER_IN_ACCOUNT_TRANSFER",
+    pattern:
+      /\bDIR(?:ECT)? DEP\w*\s+(?:VENMO|PAYPAL|CASH APP|SQUARE INC|ZELLE|FIDELITY|SCHWAB|VANGUARD|ROBINHOOD|COINBASE|BETTERMENT|WEALTHFRONT)\b/,
+    direction: "in",
+  },
+
   // Income
   // Above the salary rule: these lines often say DIRECT DEP too, and first match wins (debugger
   // 11-02: "CA EDD UI DIRECT DEP" made someone laid off read as salaried, working for the EDD).
