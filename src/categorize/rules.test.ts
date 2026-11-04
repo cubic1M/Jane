@@ -624,6 +624,52 @@ describe("money that only moved", () => {
   });
 });
 
+// Debugger 11-04: a warehouse worker's $210 a month to TitleMax read as "other", so it wasn't
+// among their debts or left-out balances, and child support they paid had no category.
+describe("what a tight month holds", () => {
+  const detailed = (description: string, amountCents: number) =>
+    categorizeByRules({ description, amountCents, hints: {} })?.detailed;
+
+  it.each([
+    "TITLEMAX OF NC TITLE LOAN PAYMENT",
+    "TITLEBUCKS 2214",
+    "LOANMAX PMT",
+    "AUTO TITLE LOAN",
+  ])("%s is a loan being paid", (description) => {
+    expect(detailed(description, 21_000)).toBe("LOAN_PAYMENTS_PERSONAL_LOAN_PAYMENT");
+  });
+
+  it("reads child support by which way it went", () => {
+    expect(detailed("NC CHILD SUPPORT CENTRALIZED COLLECT", 18_000)).toBe(
+      "GOVERNMENT_AND_NON_PROFIT_GOVERNMENT_DEPARTMENTS_AND_AGENCIES",
+    );
+    expect(detailed("NC CHILD SUPPORT CENTRALIZED COLLECT", -18_000)).toBe("INCOME_CHILD_SUPPORT");
+  });
+});
+
+// Debugger 11-04: a $300 cash advance on a card, under the bank's "Fees & Adjustments", read as a
+// fee: "$422.96 in fees" (true: $122.96), and "We found $750.92 a year".
+describe("a card's cash advance", () => {
+  const read = (description: string, amountCents: number, bankCategory?: string) =>
+    categorizeByRules({ description, amountCents, hints: { bankCategory } })?.detailed;
+
+  it.each(["CASH ADVANCE ATM 4471", "CASH ADV BANK OF AMERICA", "CASH ADVANCE"])(
+    "%s is cash taken, not a fee",
+    (description) => {
+      expect(read(description, 30_000, "Fees & Adjustments")).toBe("TRANSFER_OUT_WITHDRAWAL");
+    },
+  );
+
+  it("keeps its fee and interest as what they are", () => {
+    expect(read("CASH ADVANCE FEE", 1_500, "Fees & Adjustments")).toBe("BANK_FEES_CASH_ADVANCE");
+    expect(read("CASH ADVANCE INTEREST", 1_500)).toBe("BANK_FEES_CASH_ADVANCE");
+  });
+
+  it("leaves an app's advance to the app rules", () => {
+    expect(read("EARNIN CASH ADVANCE", -10_000)).toBe("LOAN_DISBURSEMENTS_CASH_ADVANCES");
+  });
+});
+
 describe("taxonomy", () => {
   it("names every detailed category after its primary", () => {
     for (const detailed of ALL_DETAILED) {

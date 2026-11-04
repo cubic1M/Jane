@@ -15,6 +15,8 @@ export type Tx = {
   card: boolean;
 };
 
+// Title lenders are told apart only in words: they cost like a payday loan rolled over.
+export const TITLE_LOAN_NAMES = /titlemax|titlebucks|loanmax|title ?loan/i;
 const PAYDAY_NAMES =
   /payday|advance america|check into cash|check ?n ?go|speedy cash|ace cash|cash store|lendnation|moneytree|cashnet|net ?credit|loan by phone|rapid cash/i;
 const PAY_APP_NAMES =
@@ -27,7 +29,13 @@ export function kindOf(t: Tx): CostlyKind | null {
   if (d === "BANK_FEES_CASH_ADVANCE" || (t.card && /cash (?:adv|advance)/i.test(t.description))) {
     return "cash_advance";
   }
-  if (d.endsWith("_CASH_ADVANCES") || PAYDAY_NAMES.test(t.description)) return "payday";
+  if (
+    d.endsWith("_CASH_ADVANCES") ||
+    PAYDAY_NAMES.test(t.description) ||
+    TITLE_LOAN_NAMES.test(t.description)
+  ) {
+    return "payday";
+  }
   return null;
 }
 

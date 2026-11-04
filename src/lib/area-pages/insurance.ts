@@ -101,6 +101,8 @@ const perYear = (cents: number) => `${shortMoney(cents)}/yr`;
 
 export type InsuranceTreeInput = {
   asOf: string;
+  // No bank account on file: premiums are mostly paid from one, so no charge says nothing.
+  noBankSeen?: boolean;
   needs: {
     kind: string;
     policyId: string | null;
@@ -210,7 +212,7 @@ export function insuranceTree(input: InsuranceTreeInput): AreaTree {
   // Cover seen in the person's payments, not yet confirmed: the gap stays until they do, but it
   // isn't missing (debugger 11-03: "Urgent: Renters insurance, Missing" beside "Lemonade renters").
   const missing = input.gaps.map((g) => {
-    const guessed = NOT_URGENT_GAPS.includes(g.key);
+    const guessed = NOT_URGENT_GAPS.includes(g.key) || input.noBankSeen === true;
     const seen = input.policies.find((p) => p.status === "found" && p.kind === g.key);
     return item("missing", g.key + (g.policyId ? `-${g.policyId}` : ""), {
       label: GAP_LABELS[g.key],

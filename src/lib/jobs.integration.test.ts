@@ -275,4 +275,21 @@ describe.runIf(url)("the job queue against a real database", () => {
     });
     expect(order).toEqual(["u-jobs-waiting", "u-jobs-killed-first"]);
   });
+
+  it("keeps nothing an error quotes from someone's statement", async () => {
+    const id = await queue("u-jobs-quoted");
+    await runDueJobs({
+      client,
+      now: at(0),
+      handlers: {
+        explain_findings: async () => {
+          throw new Error('Bad value "ZELLE TO MORGAN REYES" for description');
+        },
+      },
+      userIds: ["u-jobs-quoted"],
+    });
+    const { lastError } = await job(id);
+    expect(lastError).toContain("Bad value");
+    expect(lastError).not.toContain("MORGAN");
+  });
 });

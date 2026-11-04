@@ -14,7 +14,7 @@ import { addDays, isoDate } from "@/detection/units";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { categoryLabel } from "@/insights/labels";
 import { monthsEnding, spendingInsights } from "@/insights/spending";
-import { oneOffCharges } from "@/insights/typical-month";
+import { oneOffCharges, typicalMonthlySpending } from "@/insights/typical-month";
 import { ACTION_STATUS_LABELS } from "@/lib/action-status";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -237,30 +237,32 @@ export async function runAskTool(
           .map((o) => ({ what: o.merchant, date: o.date, amount: money(o.amountCents) }));
       const leftOutIn = (month: string) =>
         oneOffs.filter((o) => o.month === month).reduce((sum, o) => sum + o.amountCents, 0);
+      // Months before the first transaction aren't months of $0: nothing was seen then.
+      const historyStarts = dated.reduce<string | null>(
+        (first, t) => (first === null || t.date < first ? t.date : first),
+        null,
+      );
+      const seen = (month: string) => historyStarts !== null && month >= historyStarts.slice(0, 7);
       if (name === "monthly_totals") {
-        const full = insights.months.slice(0, -1);
+        const typical = typicalMonthlySpending(dated, today, INSIGHT_MONTHS);
         return out({
-          months: insights.months.map((m) => ({
-            month: m.month,
-            spending: money(m.spendingCents),
-            income: money(m.incomeCents),
-            ...(leftOutIn(m.month) > 0
-              ? {
-                  unusual: true,
-                  oneOffs: oneOffsIn(m.month),
-                  withoutOneOffs: money(m.spendingCents - leftOutIn(m.month)),
-                }
-              : {}),
-          })),
-          typicalMonthSpending:
-            full.length === 0
-              ? null
-              : money(
-                  Math.round(
-                    full.reduce((sum, m) => sum + m.spendingCents - leftOutIn(m.month), 0) /
-                      full.length,
-                  ),
-                ),
+          historyStarts,
+          months: insights.months
+            .filter((m) => seen(m.month))
+            .map((m) => ({
+              month: m.month,
+              spending: money(m.spendingCents),
+              income: money(m.incomeCents),
+              ...(leftOutIn(m.month) > 0
+                ? {
+                    unusual: true,
+                    oneOffs: oneOffsIn(m.month),
+                    withoutOneOffs: money(m.spendingCents - leftOutIn(m.month)),
+                  }
+                : {}),
+            })),
+          // Full months only, none before the history starts: 2 months on file aren't 12 thin ones.
+          typicalMonthSpending: typical > 0 ? money(typical) : null,
           note:
             oneOffs.length > 0
               ? "Months marked unusual had one-off costs; a typical month leaves them out. Say so when quoting an average."
@@ -271,6 +273,14 @@ export async function runAskTool(
       const totals = insights.months.find((m) => m.month === month);
       if (!totals)
         return out({ month, note: `Only the last ${INSIGHT_MONTHS} months are available.` });
+      if (!seen(month)) {
+        return out({
+          month,
+          note: historyStarts
+            ? `Nothing was seen for that month, so its spending isn't known: their transactions start ${historyStarts}. It isn't $0.`
+            : "No transactions are on file, so spending isn't known. It isn't $0.",
+        });
+      }
       return out({
         month,
         spending: money(totals.spendingCents),

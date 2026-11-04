@@ -771,7 +771,10 @@ export function buildProfile(input: ProfileInput): Profile {
     ["insurance_medigap", /\b(?:MEDIGAP|SUPPLEMENT|MEDICARE)\b/i, [], "Medicare cover charges"],
   ] as const) {
     const n = cover(pattern, kinds);
-    set(key, n > 0, "seen", what, n);
+    // Premiums are mostly paid from a bank account: with none on file, no charge means nothing yet
+    // (debugger 11-04: a card's only file read "Urgent: check your car is insured").
+    if (n === 0 && !input.accounts.some((a) => a.type === "depository")) unknown(key);
+    else set(key, n > 0, "seen", what, n);
   }
 
   // --- Told: age and risk -----------------------------------------------------------

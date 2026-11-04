@@ -43,6 +43,7 @@ import { listBenefits, openEnrollmentAtWork, yearlyCost } from "@/lib/insurance/
 import { autopilotAnswer } from "./autopilot";
 import { eventLabel, listClaims } from "@/lib/insurance/claims";
 import { formatCents } from "@/lib/money";
+import { chatToday } from "@/lib/today";
 import { loadInsuranceSnapshot } from "./snapshot";
 
 // Claude's tools for insurance questions in Jane's chat (spec Phase X): read-only, over
@@ -346,7 +347,7 @@ export async function runInsuranceTool(
       client,
       now,
     });
-    const answer = decide(kind, snapshot, now.toISOString().slice(0, 10));
+    const answer = decide(kind, snapshot, await chatToday(userId, { client, now }));
     for (const m of answer.body.matchAll(/\$([\d,]+(?:\.\d\d)?)/g)) {
       cents.push(Math.round(Number(m[1].replace(/,/g, "")) * 100));
     }

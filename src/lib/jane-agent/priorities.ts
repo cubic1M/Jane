@@ -133,6 +133,11 @@ export function priorityItems(snapshot: Snapshot): PriorityItem[] {
 
 const sentence = (text: string) => (/[.!?]$/.test(text.trim()) ? text.trim() : `${text.trim()}.`);
 
+function onlyCard(snapshot: Snapshot, topic: string): string | null {
+  const cards = snapshot.findings.filter((f) => f.type === topic);
+  return cards.length === 1 ? `/report/${cards[0].findingId}` : null;
+}
+
 // The scan's suggestions as the head of the ranked list, in its order.
 function suggestionItems(snapshot: Snapshot): Ranked[] {
   return (snapshot.suggestions ?? []).map((s) => ({
@@ -149,7 +154,8 @@ function suggestionItems(snapshot: Snapshot): Ranked[] {
           ? "medium"
           : "low",
     sure: { percent: s.confidencePercent, reason: s.confidenceReason },
-    href: s.actionHref,
+    // With one card on its topic, the line opens that card.
+    href: onlyCard(snapshot, s.topic) ?? s.actionHref,
     ref: s.key,
     score: 0,
     urgencyScore: 0,
@@ -165,10 +171,15 @@ export const listWhy = (r: Ranked) =>
 
 export function rankedFor(snapshot: Snapshot): Ranked[] {
   const scan = suggestionItems(snapshot);
-  // A finding a suggestion already opens isn't listed twice.
+  // A finding a suggestion already opens isn't listed twice, nor one a suggestion on its topic
+  // speaks for (debugger 11-04: the same bank fees twice in /jane's top three).
   const opened = new Set(scan.map((s) => s.href).filter((href) => href.startsWith("/report/")));
+  const topics = new Set((snapshot.suggestions ?? []).map((s) => s.topic));
+  const spoken = new Set(
+    snapshot.findings.filter((f) => topics.has(f.type)).map((f) => `finding:${f.findingId}`),
+  );
   const rest = rankPriorities(
-    priorityItems(snapshot).filter((item) => !opened.has(item.href)),
+    priorityItems(snapshot).filter((item) => !opened.has(item.href) && !spoken.has(item.key)),
     snapshot.asOf,
   );
   if (scan.length > 0 && rest.length > 0) {

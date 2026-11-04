@@ -357,7 +357,7 @@ export function savingsReply(view: TaxSavingsView): Reply {
 }
 
 // Spec step 123: freelancers' questions.
-export function selfEmployedReply(intent: TaxIntent, view: SelfEmployedView, now: Date): Reply {
+export function selfEmployedReply(intent: TaxIntent, view: SelfEmployedView, today: string): Reply {
   const page = link("Freelance taxes", "/taxes/self-employed");
   if (intent.ask === "miles") {
     if (intent.miles !== null && intent.miles > 0) {
@@ -411,7 +411,6 @@ export function selfEmployedReply(intent: TaxIntent, view: SelfEmployedView, now
       refs: { advice: true },
     };
   }
-  const today = now.toISOString().slice(0, 10);
   const next = view.federal.payments.find((p) => p.date >= today);
   if (!next) {
     return {

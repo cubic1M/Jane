@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { sizeLife } from "@/lib/insurance/life";
+import { chatToday } from "@/lib/today";
 import type { Reply } from "../replies";
 import {
   DEPENDANTS_QUESTION,
@@ -19,7 +20,7 @@ export async function lifeAnswer(
   userId: string,
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<Reply> {
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await chatToday(userId, { client, now });
   const sized = await sizeLife(userId, { client, now, asked: true });
   switch (sized.kind) {
     case "no_advice":

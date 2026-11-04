@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { dayLabel } from "@/lib/day-label";
-import { viewByToken, type AccountantView } from "@/lib/accountant";
+import { accountantSummaryRows, viewByToken, type AccountantView } from "@/lib/accountant";
 import { formatCents } from "@/lib/money";
 import { AnswerForm } from "./answer-form";
 import { LoadingBar } from "@/components/loading-bar";
@@ -21,6 +21,7 @@ const GROUP_LABELS: Record<string, string> = {
   medical: "Medical",
   childcare: "Child and dependent care",
   education: "Education",
+  work: "Work expenses",
   business: "Business expenses",
   rental: "Rental expenses",
 };
@@ -78,22 +79,19 @@ async function Shared({ params }: { params: Promise<{ token: string }> }) {
           The federal estimate
         </h2>
         <dl className="grid grid-cols-1 gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
-          {(
-            [
-              ["Total income", s.totalIncomeCents],
-              ["Adjusted gross income", s.agiCents],
-              ["Taxable income", s.taxableCents],
-              ["Tax", s.totalTaxCents],
-              ["Already paid", s.paidCents],
-              [s.refundCents >= 0 ? "Refund" : "Owed", Math.abs(s.refundCents)],
-            ] as const
-          ).map(([label, cents]) => (
+          {accountantSummaryRows(s).map(([label, cents]) => (
             <div key={label} className="flex justify-between gap-2">
               <dt className="text-zinc-600">{label}</dt>
               <dd className="whitespace-nowrap">{formatCents(cents)}</dd>
             </div>
           ))}
         </dl>
+        {!s.withholdingKnown && (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Jane sees take-home pay, used here as wages, and not what was withheld, so this
+            doesn&apos;t say whether it&apos;s a refund or a bill.
+          </p>
+        )}
       </section>
       <section aria-labelledby="pack" className={CARD}>
         <h2 id="pack" className="text-xl font-semibold">
@@ -109,7 +107,9 @@ async function Shared({ params }: { params: Promise<{ token: string }> }) {
             <Rows rows={group.rows} />
           </div>
         ))}
-        <h3 className="font-semibold">Income: {formatCents(v.pack.income.totalCents)}</h3>
+        <h3 className="font-semibold">
+          Income from contracting or gig work: {formatCents(v.pack.income.totalCents)}
+        </h3>
         <Rows rows={v.pack.income.rows} />
         {v.pack.rental && (
           <p className="text-sm">

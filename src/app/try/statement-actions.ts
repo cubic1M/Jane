@@ -125,7 +125,8 @@ export async function tryWithStatement(_previous: TryState, formData: FormData):
 // "Start over" on the banner: deletes the person this browser holds, now. It takes no id: only
 // the session says who, and only someone trying Jane with their own statement can go this way.
 export async function startOverTry(): Promise<{ next: string } | { error: string }> {
-  const person = await sessionOwner(sessionTokenFrom(await cookies()));
+  // A tab left open past the session's end: it still says this deletes, so it does.
+  const person = await sessionOwner(sessionTokenFrom(await cookies()), { evenExpired: true });
   if (!isStatementTrialUser(person)) return { next: "/" };
   try {
     await deleteTrialPerson(person!, "start_over");

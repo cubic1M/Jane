@@ -30,6 +30,20 @@ describe("paidLoans", () => {
     ]);
   });
 
+  // Debugger 11-04: $210 a month to a title lender, and "No loans or cards linked" on Home.
+  it("finds a personal or title loan too", () => {
+    const pay = (date: string) => ({
+      date,
+      amountCents: 21_000,
+      description: "TITLEMAX OF NC TITLE LOAN PAYMENT",
+      merchantName: null,
+      pfcDetailed: "LOAN_PAYMENTS_PERSONAL_LOAN_PAYMENT",
+    });
+    expect(paidLoans([pay("2026-09-10"), pay("2026-10-10")], "2026-10-20")).toEqual([
+      expect.objectContaining({ kind: "loan", paymentCents: 21_000, nextDate: "2026-11-10" }),
+    ]);
+  });
+
   it("needs two payments, the last one recent", () => {
     expect(paidLoans(NELNET.slice(-1), AS_OF)).toEqual([]);
     expect(paidLoans(NELNET.slice(0, 2), "2027-01-30")).toEqual([]);

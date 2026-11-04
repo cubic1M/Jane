@@ -208,6 +208,25 @@ export async function loadAccountantPage(
 }
 
 // A new link. The token is returned once, in the URL; only its hash is stored.
+// The estimate's lines. Paid and owed only when what was withheld is known: with take-home pay
+// alone "Already paid $0.00, Owed $1,108.68" would be made up (debugger 11-04).
+export function accountantSummaryRows(
+  s: AccountantView["summary"],
+): readonly (readonly [string, number])[] {
+  return [
+    ["Total income", s.totalIncomeCents],
+    ["Adjusted gross income", s.agiCents],
+    ["Taxable income", s.taxableCents],
+    ["Tax", s.totalTaxCents],
+    ...(s.withholdingKnown
+      ? ([
+          ["Already paid", s.paidCents],
+          [s.refundCents >= 0 ? "Refund" : "Owed", Math.abs(s.refundCents)],
+        ] as const)
+      : []),
+  ];
+}
+
 export async function createAccountantLink(
   userId: string,
   input: { label: string; days: number },
@@ -296,6 +315,8 @@ export type AccountantView = {
     totalTaxCents: number;
     paidCents: number;
     refundCents: number;
+    // False when Jane sees take-home pay and not what was withheld.
+    withholdingKnown: boolean;
   };
   pack: Pick<TaxPack, "charity" | "preparer" | "income" | "forms" | "states" | "rental">;
   collected: { form: string; from: string; boxes: Record<string, number>; matches: string }[];
@@ -358,6 +379,7 @@ export async function viewByToken(
         totalTaxCents: e.totalTaxCents,
         paidCents: e.paidCents,
         refundCents: e.refundCents,
+        withholdingKnown: estimate.withholdingKnown,
       },
       pack: {
         charity: pack.charity,

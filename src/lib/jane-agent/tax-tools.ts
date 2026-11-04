@@ -56,6 +56,7 @@ import { loadHomeTaxes } from "@/lib/home-taxes";
 import { figuresOf, type Source } from "@/planning/home-taxes";
 import { sourceText } from "./home-taxes-message";
 import { COMPARED } from "@/planning/tax-document-check";
+import { chatToday } from "@/lib/today";
 
 // Claude's tax tools in Jane's chat (spec steps 118–127): read-only, over the person's own
 // data, through the same loaders as /taxes. Every dollar figure is recorded for the
@@ -277,6 +278,12 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
 
 export const isTaxTool = (name: string) => TAX_TOOLS.some((t) => t.name === name);
 
+const noIncomeSeen = (year: number) => ({
+  year,
+  incomeSeen: false,
+  note: `No income is on file for ${year}, so there's no estimate. Don't say they owe nothing or nothing is due: say you can't tell yet, and what would let you (a statement from that year, or their income).`,
+});
+
 export async function runTaxTool(
   userId: string,
   name: string,
@@ -284,7 +291,7 @@ export async function runTaxTool(
   { client, now }: Options,
 ): Promise<ToolOutput> {
   const args = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
-  const year = defaultTaxYear(now.toISOString().slice(0, 10));
+  const year = defaultTaxYear(await chatToday(userId, { client, now }));
   const cents: number[] = [];
   const money = (value: number) => {
     cents.push(Math.abs(value));
@@ -357,6 +364,8 @@ export async function runTaxTool(
     case "tax_estimate": {
       const view = await loadTaxEstimate(userId, { client, now });
       const e = view.estimate;
+      // No income on file for the year isn't no tax: there's nothing to estimate from.
+      if (e.totalIncomeCents === 0) return out(noIncomeSeen(view.year));
       return out({
         year: view.year,
         isAnEstimate: true,
@@ -512,7 +521,7 @@ export async function runTaxTool(
       });
     }
     case "tax_return": {
-      const today = now.toISOString().slice(0, 10);
+      const today = await chatToday(userId, { client, now });
       const fy = filingYear(today);
       const [partner, ret] = await Promise.all([
         filingPartnerFor(userId, { client }),
@@ -534,7 +543,7 @@ export async function runTaxTool(
       });
     }
     case "tax_investments": {
-      const year = defaultTaxYear(now.toISOString().slice(0, 10));
+      const year = defaultTaxYear(await chatToday(userId, { client, now }));
       const [view, advice] = await Promise.all([
         loadInvestmentTaxes(userId, year, { client, now }),
         adviceMode(userId, { client }),
@@ -1042,6 +1051,7 @@ export async function runTaxTool(
     }
     case "tax_years": {
       const v = await loadMultiYear(userId, { client, now });
+      if (v.rows.every((r) => r.incomeCents === 0)) return out(noIncomeSeen(v.year));
       return out({
         startYear: v.year,
         retireYear: v.retireYear,

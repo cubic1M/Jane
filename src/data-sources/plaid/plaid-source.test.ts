@@ -63,6 +63,35 @@ describe("normalizeTransaction", () => {
 });
 
 describe("normalizeAccount", () => {
+  // Plaid: each code is "always null" if the other is set; the docs don't rule out both null.
+  const balanceIn = (iso: string | null, unofficial: string | null) =>
+    normalizeAccount(
+      plaidAccount({
+        balances: {
+          current: 500,
+          available: 500,
+          limit: null,
+          iso_currency_code: iso,
+          unofficial_currency_code: unofficial,
+        },
+      }),
+    );
+
+  it("doesn't read a balance in another currency as dollars", () => {
+    for (const account of [
+      balanceIn("EUR", null),
+      balanceIn("CAD", null),
+      balanceIn(null, "BTC"),
+    ]) {
+      expect(account).toMatchObject({ kind: "checking", currentBalanceCents: null });
+    }
+  });
+
+  it("keeps a balance in dollars, or with no currency given, as transactions do", () => {
+    expect(balanceIn("USD", null)?.currentBalanceCents).toBe(50000);
+    expect(balanceIn(null, null)?.currentBalanceCents).toBe(50000);
+  });
+
   it("maps checking, savings and credit cards", () => {
     expect(normalizeAccount(plaidAccount())).toMatchObject({ kind: "checking", mask: "0000" });
     expect(

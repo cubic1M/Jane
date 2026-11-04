@@ -42,3 +42,15 @@ describe("recordError", () => {
     expect(describeError("plain string").message).toBe("Error: plain string");
   });
 });
+
+describe("what an error may keep", () => {
+  it("drops what it quotes and keeps only code locations from the stack, as the logs do", () => {
+    const error = new Error('Invalid value for description: "ZELLE TO MORGAN REYES" given');
+    error.stack = `Error: Invalid value for description: "ZELLE TO MORGAN REYES" given\n    at save (/app/src/lib/x.ts:1:2)`;
+    const { message, stack } = describeError(error);
+    expect(message).not.toContain("MORGAN");
+    expect(message).toContain("Invalid value");
+    expect(stack).not.toContain("MORGAN");
+    expect(stack).toContain("save");
+  });
+});

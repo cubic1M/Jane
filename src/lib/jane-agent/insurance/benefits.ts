@@ -5,6 +5,7 @@ import { openEnrollmentDates } from "@/lib/insurance/health";
 import type { Reply } from "../replies";
 import { BENEFITS_LINK, benefitLine } from "./benefit-words";
 import { dayLabel } from "@/lib/day-label";
+import { chatToday } from "@/lib/today";
 
 // "What benefits do I get through work?" (spec step 150): the benefits on file, the
 // employer's open enrollment, and Jane's recommendation when it's ready (demo advice).
@@ -20,7 +21,7 @@ export async function benefitsAnswer(
   ]);
   const confirmed = benefits.filter((b) => b.status === "confirmed");
   const found = benefits.filter((b) => b.status === "found");
-  const marketplace = openEnrollmentDates(now.toISOString().slice(0, 10)).at(-1)!;
+  const marketplace = openEnrollmentDates(await chatToday(userId, { client, now })).at(-1)!;
   const lines: string[] = [];
   if (confirmed.length === 0 && found.length === 0) {
     lines.push(

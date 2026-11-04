@@ -62,6 +62,7 @@ import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
 import { loadWorkingProfile } from "@/lib/tax-profile";
 import { defaultTaxYear } from "@/planning/tax-pack";
 import { merchantKeyOf, payeeOf } from "@/planning/tax-tags";
+import { chatToday } from "@/lib/today";
 import type { Reply } from "./replies";
 import type { TaxIntent } from "./tax-intents";
 import {
@@ -128,7 +129,7 @@ export async function answerTaxIntent(
   options: Options,
 ): Promise<Reply> {
   const { client, now } = options;
-  const year = defaultTaxYear(now.toISOString().slice(0, 10));
+  const year = defaultTaxYear(await chatToday(userId, { client, now }));
   switch (intent.ask) {
     case "decide": {
       const d = await decideTax(userId, intent.topic, { client, now });
@@ -227,7 +228,10 @@ export async function answerTaxIntent(
     case "giving":
       return givingReply(await loadGiving(userId, { client, now }));
     case "plan":
-      return planReply(await loadTaxPlan(userId, { client, now }), now.toISOString().slice(0, 10));
+      return planReply(
+        await loadTaxPlan(userId, { client, now }),
+        await chatToday(userId, { client, now }),
+      );
     case "states":
       return statesReply(await loadTaxEstimate(userId, { client, now }));
     case "tags":
@@ -278,7 +282,7 @@ export async function answerTaxIntent(
       return refundReply(refunds.refunds, estimate);
     }
     case "file": {
-      const today = now.toISOString().slice(0, 10);
+      const today = await chatToday(userId, { client, now });
       const fy = filingYear(today);
       const [partner, ret, profile] = await Promise.all([
         filingPartnerFor(userId, { client }),
@@ -297,6 +301,10 @@ export async function answerTaxIntent(
     case "set_aside":
     case "home_office":
     case "miles":
-      return selfEmployedReply(intent, await loadSelfEmployed(userId, { client, now }), now);
+      return selfEmployedReply(
+        intent,
+        await loadSelfEmployed(userId, { client, now }),
+        await chatToday(userId, { client, now }),
+      );
   }
 }

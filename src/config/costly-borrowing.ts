@@ -5,7 +5,7 @@
 export type CostlyKind = "payday" | "cash_advance" | "overdraft" | "pay_app";
 
 export const COSTLY_LABELS: Readonly<Record<CostlyKind, string>> = {
-  payday: "Payday loans",
+  payday: "Payday and title loans",
   cash_advance: "Card cash advances",
   overdraft: "Overdraft fees",
   pay_app: "Pay advance apps",

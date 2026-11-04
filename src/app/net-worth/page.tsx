@@ -12,6 +12,7 @@ import {
   netWorth,
   netWorthLine,
   notCounting,
+  NO_BANK_SEEN,
   owedIsKnown,
 } from "@/insights/net-worth";
 import { scopedDb } from "@/lib/db-scoped";
@@ -128,7 +129,8 @@ async function NetWorthContent() {
             >
               <span className="text-sm text-zinc-600 dark:text-zinc-400">{label}</span>
               <span className="text-2xl font-semibold">
-                {label === "You owe" && !owedIsKnown(today, loansSeen)
+                {(label === "You owe" && !owedIsKnown(today, loansSeen)) ||
+                (label === "You have" && today.onlyDebts)
                   ? "Not known"
                   : formatCents(Number(cents))}
               </span>
@@ -143,6 +145,15 @@ async function NetWorthContent() {
           {left.sentence}{" "}
           <Link href="/import" className="underline">
             Add a balance
+          </Link>
+        </p>
+      )}
+
+      {today.onlyDebts && (
+        <p data-net-worth-no-bank="" className="text-sm font-medium">
+          {NO_BANK_SEEN}{" "}
+          <Link href="/import" className="underline">
+            Add it
           </Link>
         </p>
       )}

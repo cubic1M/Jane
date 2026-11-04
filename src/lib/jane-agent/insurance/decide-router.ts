@@ -1,6 +1,7 @@
 import type { Decider } from "../decision";
 import type { MessageAction } from "../types";
 import { withNeeds } from "@/lib/insurance/need/load";
+import { chatToday } from "@/lib/today";
 import { decide, decisionConfidence, decisionKindOf } from "./decisions";
 import { loadInsuranceSnapshot } from "./snapshot";
 
@@ -33,7 +34,7 @@ export const insuranceDecider: Required<Pick<Decider, "decides" | "decide">> = {
       await loadInsuranceSnapshot(userId, { client, now }),
       { client, now },
     );
-    const reply = decide(kind, insurance, now.toISOString().slice(0, 10));
+    const reply = decide(kind, insurance, await chatToday(userId, { client, now }));
     const seen = new Set<string>();
     const actions = linkOnly(reply.actions).filter((a) => {
       const key = `${a.label}|${"href" in a ? a.href : ""}`;
