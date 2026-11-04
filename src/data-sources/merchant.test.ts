@@ -324,3 +324,16 @@ describe("a brokerage cash account's wrapping", () => {
     expect(normalizeMerchant(description)?.name).toBe(name);
   });
 });
+
+// Debugger 11-04: "Received Money From Acme Studios Llc With Reference Inv 7" was a new name every
+// month, so a client paying monthly was never seen as regular.
+describe("a multi-currency account's wrapping", () => {
+  it.each([
+    ["Received money from ACME STUDIOS LLC with reference INV-7", "Acme Studios Llc"],
+    ["Received money from ACME STUDIOS LLC", "Acme Studios Llc"],
+    ["Sent money to MARIA LOPEZ", "Maria Lopez"],
+    ["Card transaction of 15.99 USD issued by NETFLIX.COM", "Netflix"],
+  ])("%s is %s", (description, name) => {
+    expect(normalizeMerchant(description)?.name).toBe(name);
+  });
+});

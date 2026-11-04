@@ -18,6 +18,11 @@ const PROCESSOR_PREFIXES = [
 
 // Bank boilerplate around the merchant.
 const BOILERPLATE = [
+  // A multi-currency account's sentences (debugger 11-04: "Received Money From Acme Studios Llc
+  // With Reference Inv 7", a new name every month).
+  /^(?:RECEIVED MONEY FROM|SENT MONEY TO)\s+/,
+  /\s+WITH REFERENCE\b.*$/,
+  /^CARD TRANSACTION OF [\d.,]+ [A-Z]{3} ISSUED BY\s+/,
   // A brokerage cash account's "DIRECT DEBIT ALTA APARTMENTS RENT (Cash)" (debugger 11-04).
   /\s*\(CASH\)\s*$/,
   /^DIRECT DEBIT\s+/,
