@@ -48,6 +48,8 @@ import { withReadCache } from "@/lib/read-cache";
 import { listFacts, memoryForChat } from "@/lib/memory/facts";
 import { learnFromChat } from "@/lib/memory/learn";
 import { chatToday } from "@/lib/today";
+import { DATA_ENDED_LINE, dataEndedOn } from "@/lib/data-ended";
+import { dayLabel } from "@/lib/day-label";
 
 // Typing to Jane (spec step 84). What the person types is stored as a "user" message and
 // Jane's answer as a "reply", right after it. Rules answer first (./intents, ./answer);
@@ -241,6 +243,13 @@ async function answer(
   // The backup for when Claude can't answer (./backup.ts): the rules' answer only when it answers
   // the whole question; else what Jane can see for whoever the person named, or, for "how am I
   // doing", where they stand. Never an answer to a different question (founder 10-30).
+  // Someone who uploaded a statement and came back: said ahead of what the rules read off it.
+  const dated = async (reply: Reply): Promise<Reply> => {
+    const ended = await dataEndedOn(userId, { client, today: asOf }).catch(() => null);
+    return ended && !reply.body.startsWith("I can't see ")
+      ? { ...reply, body: `${DATA_ENDED_LINE(dayLabel(ended))} ${reply.body}` }
+      : reply;
+  };
   const backup = async ({ note = null as string | null } = {}): Promise<Reply> => {
     // First: "help me commit insurance fraud" isn't a question about their insurance (11-03).
     if (unsafeRequest(text)) return { body: UNSAFE_TEXT, actions: [], refs: {} };
@@ -258,7 +267,7 @@ async function answer(
         payees,
       })
     ) {
-      const { reply } = byRules;
+      const reply = await dated(byRules.reply);
       return note ? { ...reply, body: `${note} ${reply.body}` } : reply;
     }
     if (payees.length > 0) {
@@ -269,11 +278,12 @@ async function answer(
     if (!STATUS_QUESTION.test(text) || questionParts(text).length > 1) {
       return { body: note ?? UNFINISHED_TEXT, actions: [], refs: {} };
     }
-    const picture = await answerByRules(
+    const found = await answerByRules(
       userId,
       { kind: "whole_picture", focus: "now" },
       { client, now, topic: null },
     );
+    const picture = found && (await dated(found));
     if (!picture) return note ? { body: note, actions: [], refs: {} } : unknownReply(text, asOf);
     return {
       ...picture,

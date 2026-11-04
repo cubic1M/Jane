@@ -92,7 +92,7 @@ describe.runIf(url)("a person with only a card statement", { timeout: 180_000 },
   });
 
   it("doesn't say they're OK when it can't see their cash", async () => {
-    expect(await ask("am i ok")).toMatch(/^I can't say yet: I can't see your cash\./);
+    expect(await ask("am i ok")).toMatch(/^I can't say yet: I can't see your cash right now\./);
     expect((await tool("whole_picture")).verdict).toBe("watch");
   });
 

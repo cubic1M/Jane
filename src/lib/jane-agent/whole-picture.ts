@@ -90,7 +90,7 @@ export function wholePicture(snapshot: Snapshot, ranked: Ranked[], focus: Focus)
     // No checking balance seen: nothing overdue is all that's known, not that they're OK.
     verdict = "watch";
     headline =
-      "I can't say yet: I can't see your cash. Nothing I can see is overdue or urgent. Add a checking statement or balance and I'll tell you.";
+      "I can't say yet: I can't see your cash right now. Nothing I can see is overdue or urgent. Add a recent checking statement or balance and I'll tell you.";
   } else {
     verdict = "ok";
     headline = `Yes, you're OK: ${money}, and nothing is overdue.`;

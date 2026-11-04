@@ -21,6 +21,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
 import type { OfferedOptions } from "@/lib/option-card";
 import { savingsPhrase } from "@/lib/savings-text";
+import { endedOn } from "@/lib/data-ended";
 
 // The tools Claude can use to answer questions about the person's money. Every tool reads
 // through scopedFor(userId), so it can only ever see the signed-in person's rows, and none
@@ -243,11 +244,21 @@ export async function runAskTool(
         null,
       );
       const incomeSeen = insights.months.some((m) => m.incomeCents > 0);
-      const seen = (month: string) => historyStarts !== null && month >= historyStarts.slice(0, 7);
+      // Nor are months after the file ends: someone who uploaded and came back.
+      const historyEnds = dated.reduce<string | null>(
+        (last, t) => (last === null || t.date > last ? t.date : last),
+        null,
+      );
+      const ended = endedOn(historyEnds, today);
+      const seen = (month: string) =>
+        historyStarts !== null &&
+        month >= historyStarts.slice(0, 7) &&
+        (ended === null || month <= ended.slice(0, 7));
       if (name === "monthly_totals") {
         const typical = typicalMonthlySpending(dated, today, INSIGHT_MONTHS);
         return out({
           historyStarts,
+          ...(ended ? { historyEnds: ended } : {}),
           months: insights.months
             .filter((m) => seen(m.month))
             .map((m) => ({
@@ -278,9 +289,11 @@ export async function runAskTool(
       if (!seen(month)) {
         return out({
           month,
-          note: historyStarts
-            ? `Nothing was seen for that month, so its spending isn't known: their transactions start ${historyStarts}. It isn't $0.`
-            : "No transactions are on file, so spending isn't known. It isn't $0.",
+          note: !historyStarts
+            ? "No transactions are on file, so spending isn't known. It isn't $0."
+            : ended && month > ended.slice(0, 7)
+              ? `Nothing was seen for that month, so its spending isn't known: their transactions end ${ended}. It isn't $0.`
+              : `Nothing was seen for that month, so its spending isn't known: their transactions start ${historyStarts}. It isn't $0.`,
         });
       }
       return out({

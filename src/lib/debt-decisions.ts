@@ -179,7 +179,12 @@ export async function loadDecisionInput(
     forecast:
       bnplData.checkingCents === null && checking === null
         ? null
-        : { firstNegative: label(firstNegative), lowest: label(lowest), savingsCents },
+        : {
+            firstNegative: label(firstNegative),
+            lowest: label(lowest),
+            savingsCents,
+            staleFrom: checking?.staleFrom ? dayLabel(checking.staleFrom) : null,
+          },
     bnpl: {
       plans: bnplData.plans.length,
       monthlyCents: bnplData.plans.reduce(

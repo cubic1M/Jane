@@ -15,7 +15,16 @@ export function forecastReply(forecasts: AccountForecast[]): Reply {
     kind: "link" as const,
     href: "/bills",
   };
-  const worst = [...forecasts].sort((a, b) => a.lowest.balanceCents - b.lowest.balanceCents)[0];
+  // A balance too old to walk forward says nothing about where the account is heading.
+  const current = forecasts.filter((f) => !f.staleFrom);
+  if (current.length === 0 && forecasts[0]) {
+    return {
+      body: `I can't forecast your balance: what I have for ${forecasts[0].accountName} ends on ${dayLabel(forecasts[0].staleFrom!)}. Add a newer statement and I'll show where it's heading.`,
+      actions: [{ id: "open", label: "Add a statement", kind: "link", href: "/import" }],
+      refs: {},
+    };
+  }
+  const worst = [...current].sort((a, b) => a.lowest.balanceCents - b.lowest.balanceCents)[0];
   if (!worst) {
     return {
       body: "I can't forecast your balance yet: add your checking account and I'll show where it's heading.",

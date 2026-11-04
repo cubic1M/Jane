@@ -600,7 +600,9 @@ async function runChatToolWork(
     }
     case "safe_to_spend": {
       const safe = (await homeSummary(userId, { client, now }))?.safeToSpend;
-      if (!safe) return out({ note: "No checking account is linked, so there's no number." });
+      if (!safe) {
+        return out({ note: "No current checking balance is on file, so there's no number." });
+      }
       return out({
         safeToSpend: money(safe.safeCents),
         until: safe.payday,
@@ -1138,6 +1140,11 @@ async function runChatToolWork(
       const forecasts = forecastAccounts(input, FORECAST_DAYS);
       if (forecasts.length === 0) {
         return out({ note: "No checking account is linked, so there's no forecast." });
+      }
+      if (forecasts.every((f) => f.staleFrom)) {
+        return out({
+          note: `Their latest checking balance is from ${forecasts[0].staleFrom}, too old to forecast from. Say so; don't say whether it will go negative.`,
+        });
       }
       return out({
         accounts: forecasts.map((f) => ({

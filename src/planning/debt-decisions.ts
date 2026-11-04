@@ -59,6 +59,8 @@ export type DecisionInput = {
   // cash in savings that could cover a dip.
   forecast?: {
     firstNegative: { date: string; balanceCents: number } | null;
+    // The day of a checking balance too old to forecast from.
+    staleFrom?: string | null;
     lowest: { date: string; balanceCents: number } | null;
     savingsCents: number;
   } | null;
@@ -447,6 +449,16 @@ export function studentEarly(i: DecisionInput): Decision {
 // "Will I overdraft this month?" From the day-by-day checking forecast.
 export function overdraft(i: DecisionInput): Decision {
   const f = i.forecast;
+  if (f?.staleFrom) {
+    return {
+      id: "overdraft",
+      sentences: [
+        `I can't say: what I have for your checking ends on ${f.staleFrom}, so I can't see its balance now. Add a newer statement and I'll check.`,
+      ],
+      href: "/loans/tight",
+      advice: false,
+    };
+  }
   if (!f?.lowest) {
     return {
       id: "overdraft",

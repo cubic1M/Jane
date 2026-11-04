@@ -47,6 +47,7 @@ import type { PreferenceDraft } from "./preferences";
 import type { MessageAction, MessageRefs } from "./types";
 import { shiftMonth } from "@/lib/dates";
 import { dayLabel } from "@/lib/day-label";
+import { endedOn } from "@/lib/data-ended";
 
 // Jane's answers to what the person typed (spec step 84), from the same loaders as the
 // pages. Pure: each takes the numbers and returns fixed wording in Jane's voice, with the
@@ -486,6 +487,17 @@ export function spendingReply(
   if (intent.month < firstMonth) {
     return reply(
       `I can't see ${monthLabel(intent.month)}: what I have starts in ${monthLabel(firstMonth)}.`,
+      open,
+    );
+  }
+  // Nor is one after it ends: someone who uploaded a statement and came back.
+  const ended = endedOn(
+    transactions.reduce((last, t) => (t.date > last ? t.date : last), transactions[0].date),
+    asOf,
+  );
+  if (ended && intent.month > ended.slice(0, 7)) {
+    return reply(
+      `I can't see ${monthLabel(intent.month)}: what I have ends on ${dayLabel(ended)}.`,
       open,
     );
   }
