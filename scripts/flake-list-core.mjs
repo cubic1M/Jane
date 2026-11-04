@@ -65,6 +65,17 @@ export function fromVitest(report) {
   return { ran, tests };
 }
 
+// How long each test file took, for sharding by time. Newest report wins, and files that have gone
+// drop out with the runs they were in.
+export function timingsFrom(report) {
+  const timings = {};
+  for (const file of report.testResults ?? []) {
+    const path = String(file.name).replace(/^.*?(?=\bsrc\/)/, "");
+    if (file.startTime && file.endTime) timings[path] = Math.round(file.endTime - file.startTime);
+  }
+  return timings;
+}
+
 export function recordOf(run, reports) {
   const tests = reports.flatMap((r) => r.tests);
   return {
@@ -104,8 +115,14 @@ function runsOf(records) {
   });
 }
 
+const RECENT_DAYS = 3;
+
 export function flakeList(records, now, days = WINDOW_DAYS) {
-  const since = new Date(now).getTime() - days * 24 * 60 * 60 * 1000;
+  const dayMs = 24 * 60 * 60 * 1000;
+  const since = new Date(now).getTime() - days * dayMs;
+  // A fixed test stays near the top for two weeks, so the list also says what's failing now.
+  const recentSince = new Date(now).getTime() - RECENT_DAYS * dayMs;
+  const isRecent = (run) => new Date(run.first.at).getTime() >= recentSince;
   const runs = runsOf(records).filter((r) => new Date(r.first.at).getTime() >= since);
   const clean = (r) => r.first.tests.length === 0 && (r.first.jobsFailed ?? []).length === 0;
   const totals = (list) => {
@@ -123,9 +140,11 @@ export function flakeList(records, now, days = WINDOW_DAYS) {
         hidden: 0,
         stayedRed: 0,
         onMain: 0,
+        recent: 0,
         lastAt: "",
         lastRun: run.first.run,
       };
+      if (isRecent(run)) row.recent += 1;
       if (test.last === "passed") row.hidden += 1;
       else row.stayedRed += 1;
       if (onMain(run.first)) row.onMain += 1;
@@ -137,7 +156,9 @@ export function flakeList(records, now, days = WINDOW_DAYS) {
     }
   }
   const byCount = (a, b) =>
-    b.hidden + b.onMain - (a.hidden + a.onMain) || b.lastAt.localeCompare(a.lastAt);
+    b.recent - a.recent ||
+    b.hidden + b.onMain - (a.hidden + a.onMain) ||
+    b.lastAt.localeCompare(a.lastAt);
   const all = [...rows.values()];
   // A test that failed every try on a PR's run is usually that PR's own doing.
   const flaky = all.filter((row) => row.hidden > 0 || row.onMain > 0).sort(byCount);
@@ -161,6 +182,7 @@ export function flakeList(records, now, days = WINDOW_DAYS) {
     since: new Date(since).toISOString().slice(0, 10),
     lastPhone,
     main: totals(runs.filter((r) => onMain(r.first) && !isPhoneRun(r.first))),
+    mainRecent: totals(runs.filter((r) => onMain(r.first) && !isPhoneRun(r.first) && isRecent(r))),
     pr: totals(runs.filter((r) => !onMain(r.first))),
     phone: totals(runs.filter((r) => isPhoneRun(r.first))),
     hiddenFailures: all.reduce((sum, row) => sum + row.hidden, 0),
@@ -193,6 +215,7 @@ export function renderFlakes(list, repo, now) {
       "A first-try failure is one a Playwright retry or a job re-run may have hidden.",
     "",
     `- Main runs clean on the first try: ${percent(list.main)}`,
+    `- Main, last ${RECENT_DAYS} days: ${percent(list.mainRecent)}`,
     `- PR runs clean on the first try: ${percent(list.pr)}`,
     `- Nightly phone runs clean on the first try: ${percent(list.phone)}`,
     `- First-try failures a retry or re-run hid: ${list.hiddenFailures}`,
@@ -203,11 +226,11 @@ export function renderFlakes(list, repo, now) {
   if (list.flaky.length === 0) lines.push("None.", "");
   else {
     lines.push(
-      "| Test | Passed later | Failed every try | On main | Last |",
-      "| --- | --- | --- | --- | --- |",
+      `| Test | Last ${RECENT_DAYS} days | Passed later | Failed every try | On main | Last |`,
+      "| --- | --- | --- | --- | --- | --- |",
       ...list.flaky.map(
         (row) =>
-          `| ${cell(row.id)} | ${row.hidden} | ${row.stayedRed} | ${row.onMain} | ${runLink(row)} |`,
+          `| ${cell(row.id)} | ${row.recent} | ${row.hidden} | ${row.stayedRed} | ${row.onMain} | ${runLink(row)} |`,
       ),
       "",
     );

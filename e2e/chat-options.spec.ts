@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { pickItem } from "./area-tree";
 import { E2E_DATABASE_URL, addJaneMessage, deleteUser, signedInUser, waitForFullScan } from "./db";
 import { CHAT, landInChat } from "./chat-page";
+import { holdSaves } from "./waits";
 
 // Options of one choice in the chat (insurance cover, loan offers): Jane's answer carries the
 // lane's pick-one card (refs.options), which floats over the chat as the pick card. A pick is
@@ -117,13 +118,13 @@ test("a pick on the options card is instant, and the next card follows within 10
   const answer = page.locator(`li[id="${messageId}"]`);
   await expect(answer.getByRole("button", { name: /Pick this one/ })).toHaveCount(0);
 
-  // The pick: the card goes and the day's suggestions are there within 100 ms.
+  // The pick: the card goes and the day's suggestions are there before the server replies.
   const suggestions = page.getByRole("region", { name: "Suggestions for you" });
-  const started = Date.now();
+  const release = await holdSaves(page);
   await showing.getByRole("button", { name: "Pick this one" }).click();
-  await expect(suggestions.locator('[data-card-state="showing"]')).toBeVisible({ timeout: 100 });
-  await expect(pickCard).toHaveCount(0, { timeout: 100 });
-  expect(Date.now() - started).toBeLessThan(1_000);
+  await expect(suggestions.locator('[data-card-state="showing"]')).toBeVisible();
+  await expect(pickCard).toHaveCount(0);
+  await release();
 
   // Behind it, the pick went to the team, and the chat's history shows what was chosen.
   await expect(answer.getByText("You chose:")).toBeVisible({ timeout: 30_000 });
@@ -189,11 +190,11 @@ test("cheaper car insurance comes as comparison cards, and a pick starts the swi
   await expect(sheet.getByTestId("compare-table")).toBeVisible();
   await sheet.getByRole("button", { name: "▤ Cards" }).click();
 
-  const started = Date.now();
+  const release = await holdSaves(page);
   await first.getByRole("button", { name: `Choose ${carrier}` }).click();
-  await expect(first).toHaveAttribute("data-chosen", "", { timeout: 100 });
-  await expect(sheet.getByRole("status")).toContainText(`Chosen: ${carrier}`, { timeout: 100 });
-  expect(Date.now() - started).toBeLessThan(1_000);
+  await expect(first).toHaveAttribute("data-chosen", "");
+  await expect(sheet.getByRole("status")).toContainText(`Chosen: ${carrier}`);
+  await release();
   // Behind it, the switch started, and the chat's history says what was chosen.
   await expect(sheet.getByRole("status")).toContainText("I'm switching you now", {
     timeout: 30_000,

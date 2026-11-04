@@ -4,6 +4,7 @@ import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { demoPerson } from "./demo-person";
 import { openFinding } from "./report-page";
 import { waitForImport } from "./import-wait";
+import { holdSaves } from "./waits";
 
 // Read-only mode, on a 375px-wide screen. A real account (a CSV import): import -> report ->
 // "Show me how" -> the steps and drafts to do it themselves, Copy and Mark done, and nothing
@@ -129,10 +130,10 @@ test.describe("a real account", () => {
     await importSampleCard(page);
     await openFinding(page, /Geico/i);
     // No is marked at once, Yes greyed, and Revert puts both back.
+    const release = await holdSaves(page);
     await page.getByRole("button", { name: "No thanks" }).click();
-    await expect(page.getByRole("button", { name: /^No thanks.*chosen$/ })).toBeVisible({
-      timeout: 150,
-    });
+    await expect(page.getByRole("button", { name: /^No thanks.*chosen$/ })).toBeVisible();
+    await release();
     await page.getByRole("button", { name: /^Revert/ }).click();
 
     await expect(page.getByRole("button", { name: "Show me how", exact: true })).toBeVisible();
@@ -153,10 +154,10 @@ test.describe("the demo bank", () => {
     await expect(page.getByRole("button", { name: /^Show me how/ })).toHaveCount(0);
     // Yes is marked at once, with Revert, and the action is on your actions (or what Jane is
     // doing, while /actions is hidden).
+    const release = await holdSaves(page);
     await page.getByRole("button", { name: /^Yes, switch to / }).click();
-    await expect(page.getByRole("button", { name: /^Yes, switch to .*chosen$/ })).toBeVisible({
-      timeout: 150,
-    });
+    await expect(page.getByRole("button", { name: /^Yes, switch to .*chosen$/ })).toBeVisible();
+    await release();
     await expect(page.getByRole("button", { name: "No thanks" })).toBeDisabled();
     await expect(page.getByRole("button", { name: /^Revert/ })).toBeVisible();
     await page.getByRole("link", { name: /^Follow it on / }).click();

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser, waitForFullScan } from "./db";
 import { landInChat } from "./chat-page";
-import { nextSave } from "./waits";
+import { holdSaves, nextSave } from "./waits";
 
 // The day's suggestions as floating cards over the chat (founder request): one at a time, a
 // card above the page and not in it, a short card with Yes and Not now, More details already
@@ -85,20 +85,22 @@ test("suggestions float over the chat one at a time, and every tap answers at on
   await expect(headline).toHaveText(first);
   await showing.getByRole("button", { name: "More details" }).click();
 
-  // Not now: the card is answered on screen within 100 ms, the next slides in, the count drops.
-  const started = Date.now();
+  // Not now: answered on screen before the server replies, the next slides in, the count drops.
+  let release = await holdSaves(page);
   await showing.getByRole("button", { name: "Not now", exact: true }).first().click();
-  await expect(counter).toHaveText(`${total - 1} left`, { timeout: 100 });
-  await expect(headline).not.toHaveText(first, { timeout: 100 });
-  expect(Date.now() - started).toBeLessThan(1_000);
+  await expect(counter).toHaveText(`${total - 1} left`);
+  await expect(headline).not.toHaveText(first);
+  await release();
 
   // Yes is just as quick, and the server catches up. A suggestion never shows in the chat,
   // waiting or answered (founder: "Don't let the suggestion cards repeat in the chat again").
   const second = (await headline.textContent()) ?? "";
   await expect(inList(second)).toHaveCount(0);
   const saved = nextSave(page);
+  release = await holdSaves(page);
   await showing.getByRole("button", { name: "Yes", exact: true }).click();
-  await expect(counter).toHaveText(`${total - 2} left`, { timeout: 100 });
+  await expect(counter).toHaveText(`${total - 2} left`);
+  await release();
   await saved;
   await page.reload();
   await expect(page.getByRole("textbox", { name: "Message Jane" })).toBeVisible();

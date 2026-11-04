@@ -56,6 +56,10 @@ test("the column pans from capital to base as the page scrolls", async ({ page }
   await expect.poll(async () => (await art.boundingBox())!.y).toBeLessThan(top - 100);
   await expect
     .poll(async () => {
+      // The page can grow after the first scroll, which leaves it short of the bottom.
+      await page.evaluate(() =>
+        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" }),
+      );
       const box = (await art.boundingBox())!;
       return box.y + box.height;
     })

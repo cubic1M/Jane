@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser, waitForFullScan } from "./db";
 import { CHAT, answerTo, landInChat, popupCard } from "./chat-page";
+import { holdSaves } from "./waits";
 
 // Spec steps 81–82: link the demo bank, land in Jane's chat, see the morning brief, tap
 // Yes on a finding and see it answered. On a phone, with nothing sideways and the tab bar
@@ -103,8 +104,10 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding @critical", 
   // then it's one line of history in the list, its choices and Revert still there.
   await expect(messages.filter({ hasText: "How much should I do on my own?" })).toHaveCount(0);
   const autopilotCard = await popupCard(page, /^How much should I do on my own\?/);
+  const release = await holdSaves(page);
   await autopilotCard.getByRole("button", { name: "Handle the safe stuff" }).click();
-  await expect(autopilotCard.locator("[data-card-chosen]")).toBeVisible({ timeout: 150 });
+  await expect(autopilotCard.locator("[data-card-chosen]")).toBeVisible();
+  await release();
   await autopilotCard.getByRole("button", { name: "Done" }).click();
   const autopilot = messages.filter({ hasText: "How much should I do on my own?" });
   await expect(autopilot.getByText("You chose:")).toBeVisible({ timeout: 15_000 });

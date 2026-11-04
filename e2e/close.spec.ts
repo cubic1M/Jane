@@ -35,7 +35,8 @@ test("a sample person's monthly close, from Home", async ({ page }) => {
   if ((await item.count()) > 0) {
     await expect(item.locator("summary")).toContainText(/\d+% sure/);
     await item.locator("summary").click();
-    await expect(item).toContainText(/Verified when|Stays an estimate/);
+    // Which rule depends on which item comes first (src/planning/ledger.ts, src/lib/close.ts).
+    await expect(item).toContainText(/Verified when|Stays an estimate|An estimate until/);
   }
 
   // Back through the months until one has a verified win, with its lines behind a click.

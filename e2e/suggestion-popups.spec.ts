@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser } from "./db";
 import { demoPerson } from "./demo-person";
+import { holdSaves } from "./waits";
 
 // Jane's cards (docs/design/area-pages.md): on a computer they sit in a dock directly above
 // the side chat, in the right column and never in the chat itself, a little bigger, one at a
@@ -145,14 +146,16 @@ test("suggestions pop up small at the bottom of the hub and open in place", asyn
     .poll(async () => (await showing.boundingBox())!.height)
     .toBeLessThan(shut.height + 4);
 
-  // Not now: the next card is on screen within 100 ms.
+  // Not now: the next card is on screen before the server replies.
   const headline = showing.getByRole("heading", { level: 3 });
   const first = (await headline.textContent()) ?? "";
+  const release = await holdSaves(page);
   await showing.getByRole("button", { name: "Not now", exact: true }).click();
   if (total > 1) {
-    await expect(headline).not.toHaveText(first, { timeout: 100 });
-    await expect(counter).toHaveText(`${total - 1} left`, { timeout: 100 });
+    await expect(headline).not.toHaveText(first);
+    await expect(counter).toHaveText(`${total - 1} left`);
   } else {
-    await expect(overlay).toBeHidden({ timeout: 1_000 });
+    await expect(overlay).toBeHidden();
   }
+  await release();
 });

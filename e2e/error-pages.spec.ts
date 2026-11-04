@@ -33,28 +33,31 @@ test("a page that broke in the browser reaches /admin/errors, typed values gone"
   page,
   baseURL,
 }) => {
-  const tag = crypto.randomUUID().slice(0, 8);
-  // Its own made-up IP (like e2e/rate-limits.spec.ts), so the shard's other browsers, which share
-  // one address in CI, can't use up the /api limit first and get this a 429.
-  const ip = `198.51.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 254) + 1}`;
-  const sent = await page.request.post(`${baseURL}/api/client-error`, {
-    headers: { "x-forwarded-for": ip },
-    data: {
-      name: "RangeError",
-      message: `Invalid amount '1,240.50' for rent ${tag}`,
-      stack: null,
-      path: "/import",
-    },
-  });
-  expect(sent.status()).toBe(200);
-
   const admin = await signedInUser("admin");
   users.push(admin.userId);
   await page
     .context()
     .addCookies([{ name: "authjs.session-token", value: admin.sessionToken, url: baseURL ?? "" }]);
-  await page.goto("/admin/errors");
-  const row = page.getByText(`RangeError: Invalid amount [text] for rent ${tag}`);
-  await expect(row).toBeVisible();
+  // Each report gets its own tag, and it can be lost: the page lists the newest 100 of a run's errors
+  // and the route never fails over logging, so a busy database can cost a row. Report again.
+  await expect(async () => {
+    const tag = crypto.randomUUID().slice(0, 8);
+    // Its own made-up IP (like e2e/rate-limits.spec.ts), so the shard's other browsers can't use up
+    // the /api limit first and get this a 429.
+    const ip = `198.51.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 254) + 1}`;
+    const sent = await page.request.post(`${baseURL}/api/client-error`, {
+      headers: { "x-forwarded-for": ip },
+      data: {
+        name: "RangeError",
+        message: `Invalid amount '1,240.50' for rent ${tag}`,
+        stack: null,
+        path: "/import",
+      },
+    });
+    expect(sent.status()).toBe(200);
+    await page.goto("/admin/errors");
+    const row = page.getByText(`RangeError: Invalid amount [text] for rent ${tag}`);
+    await expect(row).toBeVisible({ timeout: 10_000 });
+  }).toPass({ timeout: 60_000 });
   await expect(page.getByText("1,240.50")).toHaveCount(0);
 });

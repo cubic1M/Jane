@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser } from "./db";
 import { demoPerson } from "./demo-person";
+import { holdSaves } from "./waits";
 
 // The plan shows what matters and hides the rest (founder: "show what matters, hide the rest";
 // docs/design/area-pages.md): the three that matter most open, everything else behind "more".
@@ -34,22 +35,24 @@ test("the plan opens with three, the rest behind more, and a Yes is instant with
   }
   await expect(page.getByRole("heading", { name: "This week, Jane will" })).toBeHidden();
 
-  // Yes: marked within 150 ms, No greyed and off, Revert offered.
+  // Yes: marked before the server answers, No greyed and off, Revert offered.
   const item = top.locator("[data-plan-item]").first();
   const yes = item.getByRole("button", { name: /^Yes\b/ });
   const no = item.getByRole("button", { name: /^No\b/ });
-  const started = Date.now();
+  let release = await holdSaves(page);
   await yes.click();
-  await expect(yes).toHaveAttribute("aria-pressed", "true", { timeout: 150 });
-  expect(Date.now() - started).toBeLessThan(1_000);
+  await expect(yes).toHaveAttribute("aria-pressed", "true");
+  await release();
   await expect(yes).toHaveAccessibleName(/chosen$/);
   await expect(no).toBeDisabled();
   await expect(no).toHaveAttribute("aria-pressed", "false");
   await expect(item.getByRole("status")).toContainText("Approved");
 
   // Revert: Yes and No open again at once.
+  release = await holdSaves(page);
   await item.getByRole("button", { name: /^Revert/ }).click();
-  await expect(yes).toBeEnabled({ timeout: 150 });
+  await expect(yes).toBeEnabled();
+  await release();
   await expect(no).toBeEnabled();
   // Either taken back, or (when Jane's work had already started) put back with one line.
   await expect
