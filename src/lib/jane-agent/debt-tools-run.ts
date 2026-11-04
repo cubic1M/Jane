@@ -6,7 +6,7 @@ import { loadPayoff } from "@/lib/debt-plan";
 import { loadTransfers } from "@/lib/balance-transfers";
 import { loadStudentLoans } from "@/lib/student-loans";
 import { loadMortgage } from "@/lib/mortgage";
-import { loadCredit } from "@/lib/credit";
+import { loadCredit, refreshCredit } from "@/lib/credit";
 import { loadDebtAutopilot } from "@/lib/debt-autopilot";
 import { loadCreditCards } from "@/lib/credit-cards";
 import { loadCreditBuilding } from "@/lib/credit-building";
@@ -39,7 +39,9 @@ import { loadDebtTrouble } from "@/lib/debt-trouble";
 import { PROJECT_YEARS_DEFAULT } from "@/config/home-equity";
 import { compareHomeProject, loadHomeEquity } from "@/lib/home-equity";
 import { listApplications } from "@/lib/loan-applications";
-import { loadRefinance } from "@/lib/refinance";
+import { ensureChecked, loadRefinance } from "@/lib/refinance";
+import { log } from "@/lib/log";
+import { scrub } from "@/lib/scrub";
 import { chatToday } from "@/lib/today";
 import {
   DEBT_TOOLS,
@@ -78,10 +80,42 @@ import {
   loanFitToolOutput,
 } from "./debt-tools";
 
-// Runs Claude's debt tools (./debt-tools.ts) for one person: read-only, scoped to them,
-// every dollar figure recorded for the guardrails, like ./claude-tools.ts runChatTool.
+// Runs Claude's debt tools (./debt-tools.ts) for one person: read-only but for a first check (see
+// checkFirst), scoped to them, every dollar figure recorded for the guardrails, like
+// ./claude-tools.ts runChatTool.
 
 export const isDebtTool = (name: string) => DEBT_TOOLS.some((t) => t.name === name);
+
+// Tools that read a check Jane normally has by the end of the first scan. Asked before that, it
+// checks now, as the rules' answers do: otherwise Claude hears "Not checked yet" and no offers
+// while the backup would have found them. A real account has no partner, and nothing is asked.
+const READ_RATES = new Set([
+  "refinance_offers",
+  "balance_transfers",
+  "car_loan",
+  "mortgage",
+  "borrowing_power",
+  "home_purchase",
+]);
+const READ_CREDIT = new Set([
+  "balance_transfers",
+  "credit_score",
+  "credit_building",
+  "credit_goals",
+  "credit_cards",
+]);
+
+async function checkFirst(
+  userId: string,
+  name: string,
+  options: { client: PrismaClient; now: Date },
+): Promise<void> {
+  // A check that can't run leaves the tool saying what it knows.
+  const failed = (error: unknown) =>
+    log.warn("A first check for a chat tool failed", { name, error: scrub(String(error)) });
+  if (READ_RATES.has(name)) await ensureChecked(userId, options).catch(failed);
+  if (READ_CREDIT.has(name)) await refreshCredit(userId, options).catch(failed);
+}
 
 export async function runDebtTool(
   userId: string,
@@ -89,6 +123,7 @@ export async function runDebtTool(
   input: unknown,
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<ToolOutput> {
+  await checkFirst(userId, name, { client, now });
   const cents: number[] = [];
   const money = (value: number) => {
     cents.push(Math.abs(value));
