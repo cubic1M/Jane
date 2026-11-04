@@ -6,7 +6,7 @@ import {
   QUIET_END_HOUR,
   QUIET_START_HOUR,
 } from "@/config/agent-chat";
-import { inQuietHours, localTime } from "./quiet-hours";
+import { inQuietHours, localTime, personIsThere } from "./quiet-hours";
 import { tellsThemToAct } from "@/lib/real-account-text";
 import type { Snapshot } from "./snapshot";
 import { MESSAGE_SOURCES, type MessageSource, type Trigger } from "./sources";
@@ -89,7 +89,7 @@ export function plan(
 ): PlannedMessage[] {
   const timezone = snapshot.timezone;
   const quiet = settings.quietHours ?? { start: QUIET_START_HOUR, end: QUIET_END_HOUR };
-  if (settings.trigger !== "open" && inQuietHours(now, timezone, quiet)) return [];
+  if (!personIsThere(settings.trigger) && inQuietHours(now, timezone, quiet)) return [];
 
   const today = localTime(now, timezone).date;
   const postedToday = history.recent.filter(
