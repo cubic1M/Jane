@@ -6,7 +6,7 @@ import {
 } from "@/config/hubs";
 import type { ActionStatus, PrismaClient } from "@/generated/prisma/client";
 import { ACTION_STATUS_LABELS } from "@/lib/action-status";
-import { newestUnreadAlerts, unreadAlertCount } from "@/lib/alerts";
+import { recentAlerts, unreadAlertCount } from "@/lib/alerts";
 import { comparisonsFor } from "@/lib/compare";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -116,7 +116,7 @@ export async function loadJaneHub(
       take: HUB_DONE_LIMIT,
     }),
     savedToDate(userId, { client }),
-    newestUnreadAlerts(userId, { client, limit: HUB_ALERTS_LIMIT }),
+    recentAlerts(userId, { client, now, limit: HUB_ALERTS_LIMIT }),
     unreadAlertCount(userId, { client }),
     // What the person's transactions confirm, as Home's Saved tile says it.
     verifiedSavings(userId, { client, now }),
@@ -173,6 +173,7 @@ export async function loadJaneHub(
         id: a.id,
         title: a.title,
         body: a.body,
+        isNew: a.readAt === null,
         // Alerts from before confidence was kept have none, and show none.
         confidence:
           a.confidencePercent === null

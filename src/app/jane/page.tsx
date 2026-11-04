@@ -1,10 +1,11 @@
 import { doneSummary, savedSoFarLine } from "@/lib/saved-amount";
 import { isHiddenPage } from "@/config/hidden-pages";
 import Link from "next/link";
-import { connection } from "next/server";
+import { after, connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
 import { AppHeader, PageLoading } from "@/components/app-header";
 import { scopedDb } from "@/lib/db-scoped";
+import { markAlertsRead } from "@/lib/alerts";
 import { lastControllerRun } from "@/lib/controller-log";
 import { loadJaneHub } from "@/lib/hubs/jane";
 import { rankedFor } from "@/lib/jane-agent/priorities";
@@ -117,6 +118,9 @@ async function JaneContent() {
   // Spec step 143: the one to three things that matter most, and why.
   const top = snapshot ? rankedFor(snapshot).slice(0, TOP_THINGS) : [];
   const { decide, inProgress, done, alerts } = hub;
+  // Read once shown, after the page is sent, so this visit still says they're new.
+  const shownNew = alerts.items.filter((a) => a.isNew).map((a) => a.id);
+  if (shownNew.length > 0) after(() => markAlertsRead(user.id, { ids: shownNew }));
   const savedLine = savedSoFarLine(done.savedToDateCents, done.confirmedCents);
 
   return (
@@ -396,9 +400,11 @@ async function JaneContent() {
           <p className={MUTED}>No new alerts. Jane tells you here when something needs a look.</p>
         ) : (
           <>
-            <p className={MUTED}>
-              {alerts.unread} new {alerts.unread === 1 ? "alert" : "alerts"}.
-            </p>
+            {alerts.unread > 0 && (
+              <p className={MUTED}>
+                {alerts.unread} new {alerts.unread === 1 ? "alert" : "alerts"}.
+              </p>
+            )}
             <ul className="flex flex-col gap-3">
               {alerts.items.map((a) => (
                 <li key={a.id} className={`${ROW} [overflow-wrap:anywhere]`}>

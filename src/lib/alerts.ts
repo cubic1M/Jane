@@ -2,6 +2,7 @@ import {
   ALERT_EMAILS_PER_DAY,
   ALERT_LABELS,
   ALERT_TYPES,
+  ALERTS_RECENT_DAYS,
   DEFAULT_ALERT_DELIVERY,
   URGENT_ALERT_TYPES,
   type AlertDelivery,
@@ -141,7 +142,7 @@ export async function emailUrgentAlerts(
 
   const query = new URLSearchParams({ token: unsubscribeToken(userId), what: "alerts" });
   const links = {
-    alerts: `${appBase()}/alerts`,
+    alerts: `${appBase()}/jane#alerts`,
     settings: `${appBase()}/settings#alerts`,
     unsubscribe: `${appBase()}/unsubscribe?${query}`,
   };
@@ -199,8 +200,7 @@ async function shownTypes(userId: string, client: PrismaClient): Promise<AlertTy
   return ALERT_TYPES.filter((t) => prefs[t] !== "off");
 }
 
-// The newest unread alerts, for the Jane hub (spec step 80). Showing them there doesn't
-// mark them read; opening /alerts does.
+// The newest unread alerts, for what Jane brings up in the chat and the brief.
 export async function newestUnreadAlerts(
   userId: string,
   { client = defaultClient, limit }: Pick<Options, "client"> & { limit: number },
@@ -217,6 +217,37 @@ export async function newestUnreadAlerts(
       body: true,
       urgent: true,
       createdAt: true,
+      confidencePercent: true,
+      confidenceReason: true,
+    },
+  });
+}
+
+// The Jane hub's list (spec step 80): new ones first, then what's recent, so the link in an alert
+// email still finds it after the person has looked at the page.
+export async function recentAlerts(
+  userId: string,
+  {
+    client = defaultClient,
+    now = new Date(),
+    limit,
+  }: Pick<Options, "client" | "now"> & { limit: number },
+) {
+  return scopedFor(userId, client).alerts.findMany({
+    where: {
+      type: { in: await shownTypes(userId, client) },
+      OR: [
+        { readAt: null },
+        { createdAt: { gt: new Date(now.getTime() - ALERTS_RECENT_DAYS * DAY_MS) } },
+      ],
+    },
+    orderBy: [{ readAt: { sort: "asc", nulls: "first" } }, { createdAt: "desc" }, { id: "asc" }],
+    take: limit,
+    select: {
+      id: true,
+      title: true,
+      body: true,
+      readAt: true,
       confidencePercent: true,
       confidenceReason: true,
     },
@@ -246,13 +277,19 @@ export async function markAlertRead(
   return count > 0;
 }
 
-// Once the person has seen /alerts, everything there is read (and won't be emailed late).
+// What the person has seen is read (and won't be emailed late). With `ids`, only those: the hub
+// shows a few at a time, and the rest are still new (debugger 11-04: nothing called this once
+// /alerts went, so "4 new alerts" never cleared on Home).
 export async function markAlertsRead(
   userId: string,
-  { client = defaultClient, now = new Date() }: Pick<Options, "client" | "now"> = {},
+  {
+    client = defaultClient,
+    now = new Date(),
+    ids,
+  }: Pick<Options, "client" | "now"> & { ids?: readonly string[] } = {},
 ): Promise<void> {
   await scopedFor(userId, client).alerts.updateMany({
-    where: { readAt: null },
+    where: { readAt: null, ...(ids ? { id: { in: [...ids] } } : {}) },
     data: { readAt: now },
   });
 }

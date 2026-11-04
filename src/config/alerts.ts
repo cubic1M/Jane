@@ -107,5 +107,8 @@ export const DEFAULT_ALERT_DELIVERY: Record<AlertType, AlertDelivery> = {
 // weekly email.
 export const ALERT_EMAILS_PER_DAY = 3;
 
-// How many alerts /alerts shows.
+// How many alerts the weekly email looks at.
 export const ALERTS_PAGE_LIMIT = 50;
+
+// How long a read alert stays in the Jane hub's list.
+export const ALERTS_RECENT_DAYS = 30;
