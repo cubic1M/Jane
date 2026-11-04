@@ -8,6 +8,8 @@ import { systemDb } from "@/lib/system-db";
 // Every sensitive event goes through logAudit. Add new events here so the log stays
 // queryable by a known set of names.
 export type AuditEvent =
+  // An emergency switch set or cleared through /api/ops/switches.
+  | "ops_switch_set"
   // Loans (spec step 112): applying for credit and accepting a loan.
   | "loan_application_submitted"
   | "loan_accepted"

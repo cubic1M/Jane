@@ -58,14 +58,16 @@ export function rolledBack({ merged, actions, from, to }) {
   const reverts = merged.filter(
     (pr) => within(pr.mergedAt, from, to) && /^revert\b/i.test(pr.title),
   );
-  const rollbacks = actions.filter((a) => a.kind === "rollback" && within(a.at, from, to));
+  const rollbacks = actions.filter(
+    (a) => a.kind === "rollback" && a.ok !== false && within(a.at, from, to),
+  );
   return reverts.length + rollbacks.length;
 }
 
 // 4. Minutes from the bad deploy going live to last-good back, per rollback. Null with none.
 export function recoveryMinutes({ actions, from, to }) {
   const times = actions
-    .filter((a) => a.kind === "rollback" && within(a.at, from, to) && a.badSince)
+    .filter((a) => a.kind === "rollback" && a.ok !== false && within(a.at, from, to) && a.badSince)
     .map((a) => minutesBetween(a.badSince, a.at));
   return times.length ? Math.max(...times) : null;
 }
@@ -332,7 +334,7 @@ export function renderPage(history, { holdouts = [], canaries = [], now }) {
     );
     for (const c of canaries.slice(-7)) {
       lines.push(
-        `| ${c.at.slice(0, 10)} | ${c.solved ? "yes" : "no"} | ${shown(c.turns)} | ${shown(c.minutes)} | ${c.model} / ${c.version} |`,
+        `| ${c.at.slice(0, 10)} | ${c.ran === false ? "didn't run" : c.solved ? "yes" : "no"} | ${shown(c.turns)} | ${shown(c.minutes)} | ${c.model} / ${c.version} |`,
       );
     }
   }

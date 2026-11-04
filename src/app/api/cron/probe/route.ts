@@ -17,19 +17,28 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   // The probe sends its sample person's session here, so the site's own address where it's known.
-  const base = siteOrigin() ?? new URL(request.url).origin;
+  // A candidate with no traffic yet (docs/ops.md) is reached at its own deployment address, and must
+  // test its own code rather than production's. That address comes from Vercel, never the request.
+  const own = process.env.VERCEL_URL;
+  const candidate = Boolean(own) && new URL(request.url).host === own;
+  const base = candidate ? `https://${own}` : (siteOrigin() ?? new URL(request.url).origin);
+  const bypass = candidate ? process.env.VERCEL_AUTOMATION_BYPASS_SECRET : undefined;
+  const probe = async () => {
+    const outcome = await runProbe(base, { bypass });
+    if (!outcome.ok) throw new ProbeFailed(outcome);
+    return outcome;
+  };
   try {
-    const result = await recordRun("probe", async () => {
-      const outcome = await runProbe(base);
-      if (!outcome.ok) throw new ProbeFailed(outcome);
-      return outcome;
-    });
-    return NextResponse.json(result);
+    // A candidate shares production's database, and its failure isn't production's: the deploy
+    // stops on this answer, and neither the job record nor an alert hears of it.
+    return NextResponse.json(candidate ? await probe() : await recordRun("probe", probe));
   } catch (error) {
     if (!(error instanceof ProbeFailed)) throw error;
-    const path = "/api/cron/probe";
-    await recordError(error, { path, method: "GET", routeType: "route" }, db);
-    await alertError({ message: describeError(error).message, path }, { client: db });
+    if (!candidate) {
+      const path = "/api/cron/probe";
+      await recordError(error, { path, method: "GET", routeType: "route" }, db);
+      await alertError({ message: describeError(error).message, path }, { client: db });
+    }
     return NextResponse.json(error.result, { status: 503 });
   }
 }

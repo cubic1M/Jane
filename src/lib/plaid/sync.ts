@@ -58,6 +58,7 @@ import { scanSuggestions } from "@/lib/suggestions";
 import { markScanDone } from "@/lib/scan";
 import { phaseTimer } from "@/lib/trial-timing";
 import { meteredClaude } from "@/lib/claude-budget";
+import { freshSwitches } from "@/lib/ops-switches";
 import { systemDb } from "@/lib/system-db";
 
 // Brings one Plaid item up to date: accounts, transactions since the saved cursor
@@ -692,6 +693,7 @@ async function syncItemWork(
   // the demo bank's own sync does everything else.
   const secondLogin = isSecondLoginToken(accessToken);
   // The emergency stop (docs/incident.md): a real bank isn't read. The demo bank reaches no one.
+  await freshSwitches();
   if (killed("banks") && !isDemoToken(accessToken)) throw new Error("Bank syncing is paused");
   timing.mark("item");
   // The demo bank (spec step 75) answers in Plaid's place; everything after is the same.

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { CRON_SYNC_BUDGET_MS, CRON_SYNC_LIMIT, STALE_SYNC_HOURS } from "@/config/plaid";
 import { db } from "@/lib/db";
 import { log } from "@/lib/log";
+import { freshSwitches } from "@/lib/ops-switches";
 import { plaidEnabled } from "@/lib/plaid/client";
 import { runInactiveCleanup } from "@/lib/plaid/inactive";
 import { ITEM_STATUS, syncItem } from "@/lib/plaid/sync";
@@ -98,6 +99,7 @@ const controller = (startedAt: number) =>
   });
 
 async function dailyWork(startedAt: number) {
+  await freshSwitches();
   if (!plaidEnabled()) {
     return {
       synced: 0,

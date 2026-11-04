@@ -283,6 +283,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   paper_signal_skipped: own,
   paper_agent_started: own,
   paper_agent_stopped: own,
+  ops_switch_set: { shown: false, because: "not_one_person" },
   paper_events_switched: own,
 };
 

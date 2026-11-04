@@ -11,6 +11,7 @@ import { factsFromForm, type RawFacts } from "./facts";
 import { checkUpload, type UploadFile } from "./validate";
 import { meteredClaude } from "@/lib/claude-budget";
 import { log } from "@/lib/log";
+import { freshSwitches } from "@/lib/ops-switches";
 
 // Keeping, reading back and deleting the person's documents (spec step 68). Files are
 // encrypted before they reach the database and are only decrypted for their owner. Never
@@ -49,6 +50,7 @@ export async function addDocument(
   { client = defaultClient, claude = meteredClaude(userId) }: Options = {},
 ): Promise<UploadResult> {
   const db = scopedFor(userId, client);
+  await freshSwitches();
   const check = checkUpload(upload.file, upload.bytes, await db.documents.count());
   if (!check.ok) return check;
 

@@ -218,10 +218,10 @@ describe("every link Jane gives lands on something", () => {
 
   it("every page link in the code", () => {
     // Not links: the question bank names the page a question is about, the menu lists path
-    // prefixes, the proxy has its own matcher syntax, and the edge rate limits compare path
-    // prefixes ("/api/cron/").
+    // prefixes, the proxy has its own matcher syntax, and the edge rate limits and the emergency
+    // stop compare path prefixes ("/api/cron/", "/api/ops/").
     const NOT_LINKS =
-      /^(lib\/jane-agent\/checks\/|config\/navigation\.ts$|proxy\.ts$|lib\/edge-limits\.ts$)/;
+      /^(lib\/jane-agent\/checks\/|config\/navigation\.ts$|proxy\.ts$|lib\/edge-limits\.ts$|config\/kill-switches\.ts$)/;
     const bad: string[] = [];
     let seen = 0;
     const LITERAL = /["'`](\/[a-z][a-z0-9-]*(?:\/[^"'`\s<>)]*)?(?:[?#][^"'`\s<>)]*)?)["'`]/g;

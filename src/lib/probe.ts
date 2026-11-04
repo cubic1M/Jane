@@ -3,9 +3,11 @@ import { TERMS_VERSION } from "@/config/legal";
 import { PROBE_TIMEOUT_MS } from "@/config/health";
 import { TRIAL_EMAIL_DOMAIN, TRIAL_ID_PREFIX, TRIAL_SESSION_PREFIX } from "@/config/trial";
 import type { PrismaClient } from "@/generated/prisma/client";
-import { encryptBytes } from "@/lib/crypto";
+import { encrypt, encryptBytes } from "@/lib/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { checkGuardrails } from "@/lib/guardrails";
+import { DEMO_TOKEN_PREFIX } from "@/lib/plaid/demo";
 import { systemDb } from "@/lib/system-db";
 
 const WHY = "The hourly probe makes and removes its own sample people";
@@ -19,7 +21,9 @@ const WHY = "The hourly probe makes and removes its own sample people";
 
 export const PROBE_ID_PREFIX = `${TRIAL_ID_PREFIX}probe_`;
 
-export type ProbeCheck = { name: string; ok: boolean; detail?: string };
+// leak: this failure shows someone got what isn't theirs, which the watch rolls back for at once
+// (scripts/ops/watch-core.mjs). A non-answer isn't that: a slow site proves nothing either way.
+export type ProbeCheck = { name: string; ok: boolean; detail?: string; leak?: boolean };
 export type ProbeResult = { ok: boolean; checks: ProbeCheck[] };
 
 export class ProbeFailed extends Error {
@@ -30,20 +34,27 @@ export class ProbeFailed extends Error {
   }
 }
 
+// An error page, a redirect or no answer at all, where a refusal was wanted. A 2xx is a real answer.
+const NOT_AN_ANSWER = /^(HTTP [345]\d\d|no answer)$/;
+// A run this old has died: anything younger may be another run still going.
+const STALE_MS = 10 * 60 * 1000;
+
 type Person = {
   id: string;
   sessionToken: string;
   marker: string;
+  tokenMarker: string;
   findingId: string;
   documentId: string;
 };
 
-type Options = { client?: PrismaClient; fetcher?: typeof fetch; now?: Date };
+type Options = { client?: PrismaClient; fetcher?: typeof fetch; now?: Date; bypass?: string };
 
-async function plantPerson(client: PrismaClient, now: Date): Promise<Person> {
+async function plantPerson(client: PrismaClient, now: Date, planted: string[]): Promise<Person> {
   const id = `${PROBE_ID_PREFIX}${randomBytes(12).toString("hex")}`;
   const marker = `probemarker${randomBytes(12).toString("hex")}`;
   const sessionToken = `${TRIAL_SESSION_PREFIX}${randomBytes(32).toString("hex")}`;
+  planted.push(id);
   await systemDb(WHY, client).user.create({
     data: {
       id,
@@ -79,19 +90,39 @@ async function plantPerson(client: PrismaClient, now: Date): Promise<Person> {
     },
     select: { id: true },
   });
-  return { id, sessionToken, marker, findingId: finding.id, documentId: document.id };
+  // A bank link, so the export has a token it could give away.
+  const tokenMarker = `probetoken${randomBytes(12).toString("hex")}`;
+  await db.plaidItems.create({
+    data: {
+      userId: id,
+      plaidItemId: id,
+      accessTokenEncrypted: encrypt(`${DEMO_TOKEN_PREFIX}${tokenMarker}`),
+      institutionName: "Sample bank",
+      // Not due a sync: it isn't a real link, and it's gone in seconds.
+      lastSyncedAt: now,
+    },
+  });
+  return { id, sessionToken, marker, tokenMarker, findingId: finding.id, documentId: document.id };
 }
 
-export async function removeProbePeople(client: PrismaClient = defaultClient): Promise<number> {
+// By default every sample person. The watch, the hourly probe and a candidate can all run at once on
+// one database, so a run removes only its own people and those left by a run that died.
+export async function removeProbePeople(
+  client: PrismaClient = defaultClient,
+  { only, olderThan }: { only?: string[]; olderThan?: Date } = {},
+): Promise<number> {
   const { count } = await systemDb(WHY, client).user.deleteMany({
-    where: { id: { startsWith: PROBE_ID_PREFIX } },
+    where: {
+      ...(only ? { id: { in: only } } : { id: { startsWith: PROBE_ID_PREFIX } }),
+      ...(olderThan ? { createdAt: { lt: olderThan } } : {}),
+    },
   });
   return count;
 }
 
 export async function runProbe(
   base: string,
-  { client = defaultClient, fetcher = fetch, now = new Date() }: Options = {},
+  { client = defaultClient, fetcher = fetch, now = new Date(), bypass }: Options = {},
 ): Promise<ProbeResult> {
   const checks: ProbeCheck[] = [];
   const call = async (path: string, person?: Person, init: RequestInit = {}) => {
@@ -101,6 +132,7 @@ export async function runProbe(
       signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
       headers: {
         ...init.headers,
+        ...(bypass ? { "x-vercel-protection-bypass": bypass } : {}),
         ...(person
           ? {
               cookie: `__Secure-authjs.session-token=${person.sessionToken}; authjs.session-token=${person.sessionToken}`,
@@ -108,13 +140,21 @@ export async function runProbe(
           : {}),
       },
     });
-    return { status: response.status, body: await response.text() };
+    return { status: response.status, headers: response.headers, body: await response.text() };
   };
   // Says what went wrong in a status code or an error's class, never a response's words.
-  const check = async (name: string, run: () => Promise<true | string>) => {
+  const check = async (
+    name: string,
+    run: () => Promise<true | string>,
+    { guardsAgainstLeak = false } = {},
+  ) => {
     try {
       const outcome = await run();
-      checks.push(outcome === true ? { name, ok: true } : { name, ok: false, detail: outcome });
+      if (outcome === true) checks.push({ name, ok: true });
+      else {
+        const leak = guardsAgainstLeak && !NOT_AN_ANSWER.test(outcome);
+        checks.push({ name, ok: false, detail: outcome, ...(leak ? { leak } : {}) });
+      }
     } catch (error) {
       checks.push({
         name,
@@ -124,10 +164,14 @@ export async function runProbe(
     }
   };
 
-  await removeProbePeople(client);
+  const leakCheck = (name: string, run: () => Promise<true | string>) =>
+    check(name, run, { guardsAgainstLeak: true });
+
+  await removeProbePeople(client, { olderThan: new Date(now.getTime() - STALE_MS) });
+  const planted: string[] = [];
   try {
-    const alice = await plantPerson(client, now);
-    const bob = await plantPerson(client, now);
+    const alice = await plantPerson(client, now, planted);
+    const bob = await plantPerson(client, now, planted);
 
     await check("sign-in page loads", async () => {
       const { status } = await call("/login");
@@ -142,7 +186,7 @@ export async function runProbe(
       if (!providers.body.includes('"resend"')) return "no email sign-in";
       return csrf.body.includes("csrfToken") || "no csrf token";
     });
-    await check("signed out gets nothing", async () => {
+    await leakCheck("signed out gets nothing", async () => {
       const { status, body } = await call("/api/export");
       if (body.includes(alice.marker) || body.includes(bob.marker)) return "marker in the answer";
       return status === 401 || `HTTP ${status}`;
@@ -154,25 +198,39 @@ export async function runProbe(
       if (own.status !== 200) return `HTTP ${own.status}`;
       return own.body.includes(alice.marker) || "own marker missing";
     });
-    await check("the export holds nobody else's data", async () => {
+    await leakCheck("the export holds nobody else's data", async () => {
       if (!own) return "no answer";
       return !own.body.includes(bob.marker) || "marker in the answer";
+    });
+    await leakCheck("the export holds no bank token", async () => {
+      if (!own) return "no answer";
+      return !own.body.includes(alice.tokenMarker) || "a token in the answer";
+    });
+    await check("the dashboard opens", async () => {
+      const { status, headers } = await call("/home", alice);
+      if (headers.get("location")?.includes("/login")) return "sent to sign in";
+      return status < 400 || `HTTP ${status}`;
+    });
+    await check("the guardrail refuses advice and passes a plain sentence", async () => {
+      const advice = checkGuardrails("You should buy Tesla stock now.", []);
+      const plain = checkGuardrails("This charge repeats every month.", []);
+      return (!advice.ok && plain.ok) || "the guardrail answered wrongly";
     });
     await check("a person's own document opens", async () => {
       const { status, body } = await call(`/api/documents/${alice.documentId}`, alice);
       if (status !== 200) return `HTTP ${status}`;
       return body.includes(alice.marker) || "own marker missing";
     });
-    await check("someone else's document is refused", async () => {
+    await leakCheck("someone else's document is refused", async () => {
       const { status, body } = await call(`/api/documents/${bob.documentId}`, alice);
       if (body.includes(bob.marker)) return "marker in the answer";
       return status === 404 || `HTTP ${status}`;
     });
-    await check("someone else's finding page shows nothing", async () => {
+    await leakCheck("someone else's finding page shows nothing", async () => {
       const { body } = await call(`/report/${bob.findingId}`, alice);
       return !body.includes(bob.marker) || "marker in the answer";
     });
-    await check("someone else's finding can't be decided", async () => {
+    await leakCheck("someone else's finding can't be decided", async () => {
       const { status } = await call("/api/decisions", alice, {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -186,7 +244,7 @@ export async function runProbe(
       if (written > 0) return "a decision was written";
       return (status >= 400 && status < 500) || `HTTP ${status}`;
     });
-    await check("the database's scope holds", async () => {
+    await leakCheck("the database's scope holds", async () => {
       const row = await scopedFor(alice.id, client).findings.findFirst({
         where: { id: bob.findingId },
       });
@@ -199,7 +257,7 @@ export async function runProbe(
       detail: error instanceof Error ? error.name : "unknown error",
     });
   } finally {
-    await removeProbePeople(client).catch(() => 0);
+    await removeProbePeople(client, { only: planted }).catch(() => 0);
   }
   return { ok: checks.every((item) => item.ok), checks };
 }

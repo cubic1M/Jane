@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
-import { decryptBytes } from "@/lib/crypto";
+import { decrypt, decryptBytes } from "@/lib/crypto";
 import { PROBE_ID_PREFIX, removeProbePeople, runProbe } from "@/lib/probe";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
@@ -12,7 +12,7 @@ const url = process.env.TEST_DATABASE_URL;
 // test makes it leak. The real site answering these is shown in docs/incident.md's run.
 function fakeSite(
   client: PrismaClient,
-  leak?: "export" | "document" | "report" | "decide" | "open",
+  leak?: "export" | "document" | "report" | "decide" | "open" | "token",
 ) {
   return (async (input: URL | RequestInfo, init?: RequestInit) => {
     const url = new URL(String(input));
@@ -29,6 +29,11 @@ function fakeSite(
     const marker = async (userId: string) =>
       (await client.finding.findFirstOrThrow({ where: { userId } })).title;
     if (url.pathname === "/login") return new Response("sign in");
+    if (url.pathname === "/home") {
+      return me
+        ? new Response("home")
+        : new Response("", { status: 307, headers: { location: "/login" } });
+    }
     if (url.pathname === "/api/auth/providers") return new Response('{"resend":{"id":"resend"}}');
     if (url.pathname === "/api/auth/csrf") return new Response('{"csrfToken":"x"}');
     if (url.pathname === "/api/export") {
@@ -36,7 +41,9 @@ function fakeSite(
       if (!me) return new Response("no", { status: 401 });
       if (leak === "open") return new Response("no", { status: 401 });
       const extra = leak === "export" ? await marker(others[0].id) : "";
-      return new Response(`${await marker(me)} ${extra}`);
+      const item = await client.plaidItem.findFirst({ where: { userId: me } });
+      const token = leak === "token" && item ? decrypt(item.accessTokenEncrypted) : "";
+      return new Response(`${await marker(me)} ${extra} ${token}`);
     }
     if (url.pathname.startsWith("/api/documents/")) {
       const id = url.pathname.split("/").pop();
@@ -89,6 +96,7 @@ describe.skipIf(!url)("the hourly probe", () => {
 
   it.each([
     ["export", "the export holds nobody else's data"],
+    ["token", "the export holds no bank token"],
     ["document", "someone else's document is refused"],
     ["report", "someone else's finding page shows nothing"],
     ["decide", "someone else's finding can't be decided"],
@@ -96,6 +104,31 @@ describe.skipIf(!url)("the hourly probe", () => {
     const result = await run(leak);
     expect(result.ok).toBe(false);
     expect(failed(result)).toContain(name);
+  });
+
+  it("flags a real leak, and not a site that couldn't answer", async () => {
+    const leaked = await run("document");
+    expect(leaked.checks.filter((check) => check.leak).map((check) => check.name)).toEqual([
+      "someone else's document is refused",
+    ]);
+    const broken = (async () => new Response("down", { status: 503 })) as typeof fetch;
+    const down = await runProbe("http://site.test", { client, fetcher: broken });
+    expect(down.ok).toBe(false);
+    expect(down.checks.filter((check) => check.leak)).toEqual([]);
+    const timedOut = (async () => {
+      throw new DOMException("slow", "TimeoutError");
+    }) as typeof fetch;
+    const slow = await runProbe("http://site.test", { client, fetcher: timedOut });
+    expect(slow.checks.filter((check) => check.leak)).toEqual([]);
+  });
+
+  it("leaves another run's sample people alone", async () => {
+    const other = `${PROBE_ID_PREFIX}other${Date.now()}`;
+    await client.user.create({ data: { id: other, email: `${other}@try.jane.invalid` } });
+    await run();
+    expect(await client.user.count({ where: { id: other } })).toBe(1);
+    await removeProbePeople(client, { only: [other] });
+    expect(await client.user.count({ where: { id: other } })).toBe(0);
   });
 
   it("fails when signed-out people get data and sessions stop working", async () => {
@@ -130,7 +163,11 @@ describe.skipIf(!url)("the hourly probe", () => {
 
   it("removes what an earlier run left behind", async () => {
     await client.user.create({
-      data: { id: `${PROBE_ID_PREFIX}left`, email: `${PROBE_ID_PREFIX}left@try.jane.invalid` },
+      data: {
+        id: `${PROBE_ID_PREFIX}left`,
+        email: `${PROBE_ID_PREFIX}left@try.jane.invalid`,
+        createdAt: new Date(Date.now() - 60 * 60 * 1000),
+      },
     });
     await run();
     expect(await client.user.count({ where: { id: `${PROBE_ID_PREFIX}left` } })).toBe(0);

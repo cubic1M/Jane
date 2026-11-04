@@ -1,6 +1,7 @@
 import { NextResponse, after } from "next/server";
 import { log } from "@/lib/log";
 import { limitOrNull } from "@/lib/rate-limit";
+import { freshSwitches } from "@/lib/ops-switches";
 import { PlaidRequestError, plaidEnabled } from "@/lib/plaid/client";
 import { LinkingClosedError, linkClosedAnswer } from "@/lib/plaid/item-slots";
 import { exchangePublicToken } from "@/lib/plaid/link";
@@ -16,6 +17,7 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   const limited = await limitOrNull("plaid", user.id);
   if (limited) return limited;
+  await freshSwitches();
   if (!plaidEnabled()) {
     return NextResponse.json({ error: "Bank linking isn't set up yet." }, { status: 503 });
   }

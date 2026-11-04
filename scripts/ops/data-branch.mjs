@@ -28,8 +28,10 @@ function checkout() {
   try {
     git("fetch", "-q", "origin", DATA_BRANCH);
     git("reset", "-q", "--hard", "FETCH_HEAD");
-  } catch {
-    // No branch yet: the first writer starts it.
+  } catch (error) {
+    // No branch yet: the first writer starts it. Anything else isn't an empty log, and pretending
+    // it was would lift the watch's limits on rollbacks and pages.
+    if (!/couldn't find remote ref/i.test(String(error?.stderr ?? error))) throw error;
   }
   return { dir, git };
 }

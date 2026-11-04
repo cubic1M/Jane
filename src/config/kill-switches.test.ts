@@ -1,6 +1,13 @@
 import { readFileSync, readdirSync } from "node:fs";
+import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { KILL_SWITCH_VARS, killed } from "@/config/kill-switches";
+import {
+  KILL_SWITCH_VARS,
+  isKillSwitch,
+  killed,
+  mayChange,
+  rememberStoredSwitches,
+} from "@/config/kill-switches";
 
 // The doors these switches close. The chat, sign-in and scheduled jobs each have their own tests;
 // these prove each switch reaches the one place everything goes through.
@@ -9,6 +16,7 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn(), getCurrentUser: vi.fn() 
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
+  rememberStoredSwitches([]);
 });
 beforeEach(() => {
   for (const name of KILL_SWITCH_VARS) vi.stubEnv(name, "");
@@ -160,5 +168,74 @@ describe("switches that already exist", () => {
         /if \(!cronAuthorized\(request, process\.env\.CRON_SECRET\)\)/,
       );
     }
+  });
+});
+
+// Instant switches (src/lib/ops-switches.ts): the same doors, closed from the store with no deploy.
+describe("a switch from the store", () => {
+  it("closes Claude at the request itself, whichever path made it", async () => {
+    const { claudeFetch } = await import("@/lib/anthropic");
+    const fetcher = vi.fn(async () => new Response("{}"));
+    vi.stubGlobal("fetch", fetcher);
+    await claudeFetch("https://api.anthropic.com/v1/messages");
+    expect(fetcher).toHaveBeenCalledOnce();
+    rememberStoredSwitches(["claude"]);
+    await expect(claudeFetch("https://api.anthropic.com/v1/messages")).rejects.toThrow("paused");
+    expect(fetcher).toHaveBeenCalledOnce();
+  });
+
+  it("closes banks, uploads, documents and email", async () => {
+    const { plaidEnabled } = await import("@/lib/plaid/client");
+    const { readUploadFiles } = await import("@/lib/import/upload");
+    const { checkUpload } = await import("@/lib/documents/validate");
+    const { sendEmail } = await import("@/lib/email");
+    vi.stubEnv("PLAID_CLIENT_ID", "x");
+    vi.stubEnv("PLAID_SECRET", "x");
+    rememberStoredSwitches(["banks", "uploads", "email"]);
+    expect(plaidEnabled()).toBe(false);
+    expect(await readUploadFiles(new FormData())).toMatchObject({ reason: "paused" });
+    const file = { name: "a.pdf", type: "application/pdf", size: 1 };
+    expect(checkUpload(file, new Uint8Array(1), 0).ok).toBe(false);
+    await expect(
+      sendEmail({ to: "a@example.com", subject: "s", text: "t", html: "<p>t</p>" }),
+    ).rejects.toThrow("paused");
+  });
+
+  it("stops the site from the proxy, and spares only the ops routes", async () => {
+    const { proxy } = await import("@/proxy");
+    rememberStoredSwitches(["site"]);
+    const at = (path: string) => proxy(new NextRequest(`http://x${path}`), {} as never);
+    expect((await at("/home")).status).toBe(503);
+    expect((await at("/api/export")).status).toBe(503);
+    expect((await at("/api/ops/switches")).status).not.toBe(503);
+  });
+
+  it("does nothing the environment doesn't say, once the store is empty", () => {
+    rememberStoredSwitches(["banks"]);
+    expect(killed("banks")).toBe(true);
+    rememberStoredSwitches([]);
+    expect(killed("banks")).toBe(false);
+  });
+});
+
+describe("who may change a switch", () => {
+  it("lets a reducing secret only turn on what reduces exposure", () => {
+    expect(mayChange("reduce", "banks", true)).toBe(true);
+    expect(mayChange("reduce", "uploads", true)).toBe(true);
+    expect(mayChange("reduce", "claude", true)).toBe(true);
+    expect(mayChange("reduce", "site", true)).toBe(false);
+    expect(mayChange("reduce", "email", true)).toBe(false);
+    expect(mayChange("reduce", "banks", false)).toBe(false);
+  });
+  it("keeps site and email for the higher bar, and turning off for a founder", () => {
+    expect(mayChange("high_bar", "site", true)).toBe(true);
+    expect(mayChange("high_bar", "email", true)).toBe(true);
+    expect(mayChange("high_bar", "site", false)).toBe(false);
+    expect(mayChange("founder", "site", false)).toBe(true);
+  });
+  it("knows its own switches and nothing inherited", () => {
+    expect(isKillSwitch("banks")).toBe(true);
+    expect(isKillSwitch("constructor")).toBe(false);
+    expect(isKillSwitch(1)).toBe(false);
   });
 });

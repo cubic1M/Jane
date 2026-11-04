@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { killed } from "@/config/kill-switches";
+import { freshSwitches } from "@/lib/ops-switches";
 
 // One shared client for the explanation and subscription calls. Everything that calls
 // Claude must work without a key too: callers check llmEnabled() and fall back.
@@ -23,10 +24,17 @@ export function chatModel(): string {
   return process.env.ANTHROPIC_CHAT_MODEL || DEFAULT_CHAT_MODEL;
 }
 
+// Every request to Claude's last step, so the store's switch holds whichever path made it.
+export const claudeFetch: typeof fetch = async (input, init) => {
+  await freshSwitches();
+  if (killed("claude")) throw new Error("Claude is paused (KILL_CLAUDE)");
+  return fetch(input, init);
+};
+
 export function anthropic(): Anthropic {
   // For a caller that didn't check llmEnabled() first: it fails rather than reaching Claude.
   if (killed("claude")) throw new Error("Claude is paused (KILL_CLAUDE)");
-  client ??= new Anthropic();
+  client ??= new Anthropic({ fetch: claudeFetch });
   return client;
 }
 

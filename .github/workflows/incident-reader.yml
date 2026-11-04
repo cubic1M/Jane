@@ -1,0 +1,45 @@
+# The reader agent: when the watch fires, a model reads the evidence and sends a person one short
+# guess. It advises and can't act. This job has no write token and none of the watch's secrets, and
+# nothing reads its answer (docs/ops.md). Off until a founder sets OPS_READER to 1 and the ops-reader
+# environment. workflow_run runs main's copy of this file, never a pull request's.
+name: Incident reader
+
+on:
+  workflow_run:
+    workflows: [Watch]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  read:
+    # By its path and main's own run: a pull request from a fork can name its workflow Watch too.
+    if: >-
+      vars.OPS_READER == '1' && (github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.path == '.github/workflows/watch.yml' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      github.event.workflow_run.head_branch == 'main'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: ops-reader
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/ops
+            .github/scripts/gates
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+      - name: Install the model's client only
+        run: npm install --no-save --no-package-lock --ignore-scripts @anthropic-ai/sdk@0.135.0
+      - run: node scripts/ops/reader.mjs
+        env:
+          OPS_READ_SECRET: ${{ secrets.OPS_READ_SECRET }}
+          READER_ANTHROPIC_KEY: ${{ secrets.READER_ANTHROPIC_KEY }}
+          OPS_PAGE_URL: ${{ secrets.OPS_PAGE_URL }}
+          ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL }}
