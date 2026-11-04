@@ -724,6 +724,23 @@ describe("what a household pays", () => {
   });
 });
 
+// Debugger 11-04: a Wise file. A conversion read as $12,000 of spending on one side and income on
+// the other.
+describe("a multi-currency account's words", () => {
+  const detailed = (description: string, amountCents: number) =>
+    categorizeByRules({ description, amountCents, hints: {} })?.detailed;
+
+  it("reads a conversion as money that only moved", () => {
+    const words = "Converted 3,000.00 USD to 2,760.00 EUR";
+    expect(detailed(words, 300_000)).toBe("TRANSFER_OUT_ACCOUNT_TRANSFER");
+    expect(detailed(words, -276_000)).toBe("TRANSFER_IN_ACCOUNT_TRANSFER");
+  });
+
+  it("reads its fee as a fee", () => {
+    expect(detailed("Wise fee for transfer", 430)).toBe("BANK_FEES_OTHER_BANK_FEES");
+  });
+});
+
 describe("taxonomy", () => {
   it("names every detailed category after its primary", () => {
     for (const detailed of ALL_DETAILED) {

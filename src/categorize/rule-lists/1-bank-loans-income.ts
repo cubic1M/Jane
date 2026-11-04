@@ -200,6 +200,19 @@ export const BANK_LOANS_INCOME: readonly Rule[] = [
     direction: "in",
   },
 
+  // A multi-currency account (debugger 11-04: a Wise file's conversions read as $12,000 of
+  // spending, and its fee, with "TRANSFER" in it, as a transfer).
+  { category: "BANK_FEES_OTHER_BANK_FEES", pattern: /^WISE FEE\b/, direction: "out" },
+  {
+    category: "TRANSFER_OUT_ACCOUNT_TRANSFER",
+    pattern: /^CONVERTED [\d.,]+ [A-Z]{3} TO /,
+    direction: "out",
+  },
+  {
+    category: "TRANSFER_IN_ACCOUNT_TRANSFER",
+    pattern: /^CONVERTED [\d.,]+ [A-Z]{3} TO /,
+    direction: "in",
+  },
   // Money that only moved, in words the income rules would take: a brokerage's cash going to and
   // from its money market fund, and a deposit from the person's own app or brokerage (debugger
   // 11-04: a teacher's Fidelity sweeps read as $1,350 a month of income, and a Venmo cash-out as a

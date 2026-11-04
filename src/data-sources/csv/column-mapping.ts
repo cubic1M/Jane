@@ -342,6 +342,9 @@ function withMemo(payee: string, memo: string): string {
 // A column saying whether the payment went through (a Revolut file's State, a Wise file's Status).
 // What didn't was never money out, so it's left out, as the known formats leave it out.
 const STATUS_COLUMN = /^(?:(?:transaction|payment)\s+)?(?:state|status)$/i;
+// Money in the app is US dollars: a row in another currency is left out rather than counted as if
+// it were dollars (debugger 11-04: a Wise file's euros), as PayPal's format and Plaid's rows do.
+const CURRENCY_COLUMN = /^(?:currency|curr|ccy|currency code)$/i;
 const NOT_COMPLETED =
   /\b(?:revert|reversed|declin|fail|cancel|reject|denied|void|returned|pending|waiting)/i;
 
@@ -361,6 +364,9 @@ export function mappedLayout(all: CsvRecord[], mapping: ColumnMapping): Layout |
   const status = mapping.hasHeader
     ? (records[0]?.fields ?? []).findIndex((name) => STATUS_COLUMN.test(name.trim()))
     : -1;
+  const currency = mapping.hasHeader
+    ? (records[0]?.fields ?? []).findIndex((name) => CURRENCY_COLUMN.test(name.trim()))
+    : -1;
   return {
     format: {
       ...CUSTOM_FORMAT,
@@ -368,6 +374,8 @@ export function mappedLayout(all: CsvRecord[], mapping: ColumnMapping): Layout |
       parseRow(get) {
         const state = status >= 0 ? at(get, status).trim() : "";
         if (NOT_COMPLETED.test(state)) return { ok: false, reason: `Not completed (${state})` };
+        const code = currency >= 0 ? at(get, currency).trim().toUpperCase() : "";
+        if (code && code !== "USD") return { ok: false, reason: `In ${code}, not US dollars` };
         const dateText = at(get, mapping.date);
         const date = parseDate(dateText, order);
         if (!date) {

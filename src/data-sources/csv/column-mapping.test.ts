@@ -815,3 +815,39 @@ describe("a file with a column saying whether the payment went through", () => {
     expect(result.transactions).toHaveLength(2);
   });
 });
+
+// Debugger 11-04: a Wise file mixing dollars and euros read every euro as a dollar. Money in the
+// app is US dollars (src/data-sources/plaid/plaid-source.ts inDollars; PayPal's format says the
+// same), so a row in another currency is left out and says why.
+describe("a currency column beside the amount", () => {
+  const text = [
+    "Date,Amount,Currency,Description",
+    "10/20/2026,-250.00,USD,Sent money to MARIA LOPEZ",
+    "10/15/2026,-1400.00,EUR,Sent money to VERMIETUNG SCHMIDT GMBH",
+    "10/14/2026,-12.50,gbp,Card transaction of 12.50 GBP issued by BOOTS",
+    "10/01/2026,6400.00,usd,Received money from ACME STUDIOS LLC",
+    "09/30/2026,5.00,,Interest",
+  ].join("\n");
+  const mapping: ColumnMapping = {
+    hasHeader: true,
+    date: 0,
+    description: 3,
+    amount: { kind: "signed", column: 1, moneyOut: "negative" },
+  };
+  const result = readCsvFile({ name: "wise.csv", text, mapping });
+
+  it("keeps the dollars, and a row that doesn't say", () => {
+    expect(rows(result)).toEqual([
+      ["2026-10-20", 25_000],
+      ["2026-10-01", -640_000],
+      ["2026-09-30", -500],
+    ]);
+  });
+
+  it("says why it left the others out", () => {
+    expect(result.ok && result.skipped.map((s) => s.reason)).toEqual([
+      "In EUR, not US dollars",
+      "In GBP, not US dollars",
+    ]);
+  });
+});
