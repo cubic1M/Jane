@@ -56,6 +56,14 @@ const INVESTMENT = [
   /\b(?:[Bb]uy|[Ss]ell|[Ss]hort|[Dd]ump)(?:ing)?\s+(?:some |more |a lot of )?(?!(?:TVs?|PCs?|CDs?|USB|AAA|IKEA|GPS|HD|DVDs?|EVs?|SUVs?)\b)[A-Z]{2,5}\b/,
   /\b(?:[Pp]ut|[Mm]ove)\b(?:[^.!?]|\.\d){0,40}\binto (?!(?:CDs?|HYSA|FDIC)\b)[A-Z]{2,5}\b/,
   /\$[A-Z]{1,5}\b/,
+  // A company by name and nothing after it (11-04): "You should buy Tesla now". "Buy Costco gas"
+  // has a thing after the name, and it's the thing being bought.
+  /\b(?:[Bb]uy|[Ss]ell|[Ss]hort)(?:ing)?\s+(?:some |more )?[A-Z][a-z]+\b(?=\s*(?:now|today|this week|before\b|[.!?,]|$))/,
+  // A bare ticker after "in" (11-04): "Put the extra in VOO". A bank's or a card's own letters,
+  // or more words after the letters ("in PNC savings"), aren't one.
+  /\b(?:[Pp]ut|[Mm]ove)\b(?:[^.!?]|\.\d){0,40}\bin (?!(?:CDs?|HYSA|FDIC|USAA|PNC|ACH|APY|APR|TD|BMO|HSBC|SoFi)\b)[A-Z]{2,5}\b(?=\s*(?:now|today|[.!?,]|$))/,
+  // Filling an HSA, FSA or 529 as the move (11-04). Naming one, or what's in it, stays a fact.
+  /(?:^|[.!?:;]\s+|\byou should\s+|\bi(?:'|’)?d\s+)(?:max(?:ing)? out|maximi[sz]e|contribut\w+ (?:more )?to|fund)\b[^.!?]{0,30}\b(?:hsa|fsa|529)\b/i,
   /\brebalanc/i,
   // "Your budget allocation" is a budget.
   /\b(?:asset|portfolio|investment|fund) allocation\b/i,
@@ -144,6 +152,8 @@ function taxDirectives(text: string): boolean {
 // or the word "legal" on its own ("legal deductions", "the legal side"), is the opposite of
 // advice, so it is not here (spec step 93 narrowed this too: a food court is a place to eat).
 const LEGAL = [
+  // A tenant holding back rent is a legal move with an eviction on the other side of it.
+  /\b(?:withhold|stop paying|don(?:'|’)t pay)\b[^.!?]{0,20}\brent\b/i,
   // The verb, never Sue the person ("You sent $40.00 to Sue for rent").
   /\bsue (?:them|him|her|you|it|the|a|an|for|over)\b/,
   /\b(?:you|we|they) (?:could|can|should|might|may|could also|can also) sue\b|\bsu(?:ed|ing)\b/i,
@@ -197,7 +207,9 @@ const REFERRAL = [
 const HANDLERS = [
   /\b(?:estate (?:attorney|lawyer)|probate (?:attorney|lawyer)|attorney|lawyer|bereavement team|estate team|executor)s?\b[^.!?]{0,60}\b(?:handles?|can help|can walk you|will walk you|knows how|is the right|are the right|can explain)\b/i,
 ];
-const ADVICE_OF_ITS_OWN = /\b(?:you should|you need to|you must|file for|sue)\b/i;
+// "I can't file this for you, but deduct the home office" refuses one thing and advises another.
+const ADVICE_OF_ITS_OWN =
+  /\b(?:you should|you need to|you must|file for|sue)\b|\bbut\s+(?:you (?:can|could|may)\s+)?(?:just\s+)?(?:deduct|claim|write off|itemi[sz]e|file|report|amend|hide)\b/i;
 // Jane saying it can't advise on investments ("I can't advise on investments here.") is the
 // opposite of investment advice, in the standard profile too (11-01: the rewrite it was asked
 // for was blocked again, so a real account got a canned line). Only a sentence that is nothing
