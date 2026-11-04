@@ -639,6 +639,46 @@ class TestIcmTag(unittest.TestCase):
                 break
         self.assertIsNotNone(found, "no hand opens, folds to the shove at rs_call=0 and calls at 4")
 
+    def test_rfi_mode_opens_by_position(self):
+        """rfi_mode: a hand around the 25th percentile is folded under the gun (7 behind, RFI 11%) but
+        opened on the button (2 behind, RFI 33%); AA opens from anywhere."""
+        from engine.cards import card_str
+        from sng.table import Hand
+        from sng.tests.test_table import make_deck
+        r = SngRules(enforce_time=False)
+        spec = r.spec
+        from itertools import combinations
+        from sng.ours import strength as S
+        S.preload(spec)
+        cands = sorted(combinations(spec.deck, 2), key=lambda h: -S.equity(h, (), 1, spec))
+        mid = cands[int(0.20 * len(cands))]               # top ~20%: < 33% (button), > 11% (UTG)
+        aces = next(h for h in cands if (h[0] >> 2) == 12 and (h[1] >> 2) == 12)
+
+        def first_action(seat_me, hole, rfi):
+            b = IcmTag(rfi_mode=rfi, steal_bonus=0.0, steal_sym=0.0)
+            b.new_table(r, seat_me, 1)
+            got = []
+
+            def decide(j, o, lg):
+                if j == seat_me and not got:
+                    a = b.act(o)
+                    got.append(a.kind)
+                    return a
+                return lg.passive() if lg.can_check else Fold()
+            holes = ["2c 3d", "4c 5d", "6c 7d", "8c 9d", "Tc Jd", "2h 3h", "4h 5h", "6h 7h"]
+            holes[seat_me] = " ".join(card_str(c) for c in hole)
+            for k, x in enumerate(holes):
+                if k != seat_me and set(x.split()) & set(holes[seat_me].split()):
+                    holes[k] = "Ts 9s" if "Ts" not in holes[seat_me] else "8s 7s"
+            h = Hand(r, [2000] * 8, button=0, hand_number=0,
+                     deck=make_deck(holes, "Kd 9h 4s 3c 8h" if "Kd" not in holes[seat_me] else "Qd 9h 4s 3c 8h", spec))
+            h.play(decide, 8)
+            return got[0]
+        # button=0, sb=1, bb=2: seat 3 is under the gun (7 players behind incl. blinds... 6 + bb), seat 0 the button
+        self.assertEqual(first_action(3, mid, 1), "fold")
+        self.assertEqual(first_action(0, mid, 1), "raise")
+        self.assertEqual(first_action(3, aces, 1), "raise")
+
 
 if __name__ == "__main__":
     unittest.main()
