@@ -707,5 +707,30 @@ class TestIcmTag(unittest.TestCase):
         self.assertFalse(c.rfi_on)                              # short deck: never
 
 
+    def test_smb_rr_narrows_steals_while_opens_get_reraised(self):
+        """smb_rr: steal widening limited to smb_alt players behind while >= smb_rr of my (>= rfi_lock_min)
+        opens got re-raised; live (drops back when the share falls); works on a short deck; off by default."""
+        from sng.presets import PRESETS
+        post = [(1, 0, "post", 10), (2, 0, "post", 20)]
+        rr = tuple(post + [(0, 0, "raise", 40), (3, 0, "raise", 120), (0, 0, "fold", 0)])
+        ok = tuple(post + [(0, 0, "raise", 40), (3, 0, "fold", 0), (1, 0, "fold", 0), (2, 0, "fold", 0)])
+        six = SngRules(enforce_time=False, spec=PRESETS["kit4_sixplus"]["spec"])
+        b = IcmTag(smb_rr=0.3, smb_alt=3, rfi_lock_min=10, steal_max_behind=5)
+        b.new_table(six, 0, 1)
+        for h in [rr] * 3 + [ok] * 6:
+            b.end_hand(dict(history=h, stacks=(2000,) * 8))
+        self.assertEqual(b._steal_max_behind(), 5)             # 9 opens: below the minimum
+        b.end_hand(dict(history=ok, stacks=(2000,) * 8))
+        self.assertEqual(b._steal_max_behind(), 3)             # 10 opens, 30% re-raised
+        b.end_hand(dict(history=ok, stacks=(2000,) * 8))
+        self.assertEqual(b._steal_max_behind(), 5)             # 3/11 < 30%: back
+        b.new_table(six, 0, 2)
+        self.assertEqual(b._steal_max_behind(), 5)
+        d = IcmTag()
+        d.new_table(six, 0, 1)
+        for h in [rr] * 20:
+            d.end_hand(dict(history=h, stacks=(2000,) * 8))
+        self.assertEqual(d._steal_max_behind(), d.p["steal_max_behind"])   # off by default
+
 if __name__ == "__main__":
     unittest.main()

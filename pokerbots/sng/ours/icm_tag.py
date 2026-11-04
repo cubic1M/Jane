@@ -68,6 +68,10 @@ PARAMS = dict(
     rfi_lock_min=20,     #   rfi_lock_min opens were re-raised (fields 6/7: 29-49%, static fields 13-23%).
                          #   0.3 (with rfi_scale 1.3) validated on fresh seeds: 13 cells, mean +0.9, field 6 +4.2*,
                          #   field 7 +3.7*, mirror +2.0*, worst field 3 -2.0 (n.s.): results/sng_rfilock_validate_*.md
+    smb_rr=0.0,          # > 0: once rfi_lock_min of my first-in opens were played and >= smb_rr of them got
+                         #   re-raised, widen steals only with <= smb_alt players behind (any deck; live, not
+                         #   one-way). Fixed steal_max_behind=3: champions +4.4..+5.4*, NLHE field 5 -6.3*.
+    smb_alt=3,
     rfi_mode=0,          # 1 (or 2: only on a full 52-card deck with not-top-heavy payouts): first-in opens
                          #   (above push_bb, 3+ players dealt in) by position: open if the hand
     rfi_scale=1.3,       #   is in the top rfi_scale x RFI[k] / steal factor of hands (k = players behind + limpers),
@@ -224,6 +228,13 @@ class IcmTag:
         self.bet_opp = [0] * rules.num_players         # postflop: checked to (could bet first)
         self.bet_made = [0] * rules.num_players        # ... and bet
         self._hand = -1
+
+    def _steal_max_behind(self):
+        """Most players behind for widening steals: smb_alt while my opens get re-raised >= smb_rr."""
+        p = self.p
+        if p["smb_rr"] > 0 and self.my_opens >= p["rfi_lock_min"] and self.my_opens_rr >= p["smb_rr"] * self.my_opens:
+            return p["smb_alt"]
+        return p["steal_max_behind"]
 
     def end_hand(self, info):
         hist = info["history"]
@@ -493,7 +504,7 @@ class IcmTag:
             bar = om / (k + 1 + limpers)
             sf = 1.0                                      # steal factor from the fold read
             # steal wider vs blinds that fold
-            if not limpers and len(behind) <= p["steal_max_behind"]:
+            if not limpers and len(behind) <= self._steal_max_behind():
                 blinds = [s for s in (obs.sb_seat, obs.bb_seat) if s != obs.seat]   # never my own read
                 fr = self._fold_rate(behind if len(behind) > 2 else blinds)
                 sf *= 1.0 - p["steal_bonus"] * max(0.0, fr - 0.5) * 2
