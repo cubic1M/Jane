@@ -2,6 +2,7 @@ import {
   JOB_BACKOFF_MINUTES,
   JOB_BATCH,
   JOB_ERROR_LENGTH,
+  JOB_GRACE_MS,
   JOB_MAX_ATTEMPTS,
   JOB_STUCK_MINUTES,
 } from "@/config/jobs";
@@ -69,6 +70,7 @@ export const HANDLERS: Required<Handlers> = {
 type Options = { client?: PrismaClient; now?: Date; handlers?: Handlers };
 
 type Claimed = {
+  was_stuck: boolean;
   id: string;
   kind: string;
   payload: unknown;
@@ -106,19 +108,40 @@ async function claim(
 ) {
   const stuckBefore = new Date(now.getTime() - JOB_STUCK_MINUTES * MINUTE);
   const people = userIds ? [...userIds] : null;
-  return systemDb(WHY, client).$queryRaw<Claimed[]>`
-    UPDATE jobs SET status = 'running', attempts = attempts + 1, updated_at = ${now}
-    WHERE id IN (
-      SELECT id FROM jobs
+  // A job that was killed never reaches its catch, so its attempts are counted here: without this
+  // it runs forever, and each run takes the runner down with it. It then shows on /admin/jobs.
+  await systemDb(WHY, client).$executeRaw`
+    UPDATE jobs SET status = 'failed', last_error = ${OUT_OF_ATTEMPTS}, updated_at = ${now}
+    WHERE status = 'running' AND updated_at < ${stuckBefore} AND attempts >= max_attempts`;
+  const claimed = await systemDb(WHY, client).$queryRaw<Claimed[]>`
+    WITH picked AS (
+      SELECT id, status = 'running' AS was_stuck FROM jobs
       WHERE ((status = 'queued' AND run_at <= ${now})
              OR (status = 'running' AND updated_at < ${stuckBefore}))
         AND (${id ?? null}::text IS NULL OR id = ${id ?? null})
         AND (${people}::text[] IS NULL OR payload->>'userId' = ANY(${people}::text[]))
-      ORDER BY run_at, id
+      ORDER BY (status = 'running'), run_at, id
       LIMIT ${limit}
       FOR UPDATE SKIP LOCKED
     )
-    RETURNING id, kind, payload, attempts, max_attempts`;
+    UPDATE jobs SET status = 'running', attempts = attempts + 1, updated_at = ${now}
+    FROM picked WHERE jobs.id = picked.id
+    RETURNING jobs.id, kind, payload, attempts, max_attempts, picked.was_stuck`;
+  // A job that took its last runner down goes behind the work that's waiting. RETURNING has no order.
+  return claimed.sort((a, b) => Number(a.was_stuck) - Number(b.was_stuck));
+}
+
+const OUT_OF_ATTEMPTS = "It was stopped each time before it could finish";
+const OUT_OF_TIME = "It ran out of the runner's time";
+
+// The runner's clock is otherwise only read between jobs, so one long job would take everything
+// after it (clean-up, retention) down with it. The job isn't stopped, only no longer waited for.
+function withinTime(work: Promise<unknown>, ms: number): Promise<unknown> {
+  let timer: ReturnType<typeof setTimeout>;
+  const out = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(OUT_OF_TIME)), Math.max(ms, 0));
+  });
+  return Promise.race([work, out]).finally(() => clearTimeout(timer));
 }
 
 const PERSON_GONE = "The person is gone";
@@ -135,11 +158,18 @@ async function personGone(error: unknown, payload: JobPayload, client: PrismaCli
   return user === null;
 }
 
-async function execute(job: Claimed, client: PrismaClient, now: Date, handlers: Handlers) {
+async function execute(
+  job: Claimed,
+  client: PrismaClient,
+  now: Date,
+  handlers: Handlers,
+  timeLeftMs?: number,
+) {
   const handler = handlers[job.kind as JobKind];
   try {
     if (!handler) throw new Error(`Unknown job kind: ${job.kind}`);
-    await handler(job.payload as JobPayload);
+    const work = handler(job.payload as JobPayload);
+    await (timeLeftMs === undefined ? work : withinTime(work, timeLeftMs));
     await systemDb(WHY, client).job.update({
       where: { id: job.id },
       data: { status: "done", lastError: null },
@@ -157,11 +187,17 @@ async function execute(job: Claimed, client: PrismaClient, now: Date, handlers: 
     }
     const lastError = scrub(String(error)).slice(0, JOB_ERROR_LENGTH);
     const failed = job.attempts >= job.max_attempts;
+    // A job out of time may still be running: it isn't stopped, only no longer waited for. Not again
+    // until the function it's in has certainly ended, or two copies could run at once.
+    const wait =
+      error instanceof Error && error.message === OUT_OF_TIME
+        ? (timeLeftMs ?? 0) + Math.max(backoffMs(job.attempts), JOB_STUCK_MINUTES * MINUTE)
+        : backoffMs(job.attempts);
     await systemDb(WHY, client).job.update({
       where: { id: job.id },
       data: failed
         ? { status: "failed", lastError }
-        : { status: "queued", lastError, runAt: new Date(now.getTime() + backoffMs(job.attempts)) },
+        : { status: "queued", lastError, runAt: new Date(now.getTime() + wait) },
     });
     log.error("Job failed", {
       id: job.id,
@@ -185,7 +221,9 @@ export async function runDueJobs({
   userIds,
   budgetMs,
   clock = Date.now,
-}: Options & OnlyPeople & { budgetMs?: number; clock?: () => number } = {}): Promise<{
+  graceMs = JOB_GRACE_MS,
+}: Options &
+  OnlyPeople & { budgetMs?: number; clock?: () => number; graceMs?: number } = {}): Promise<{
   done: number;
   retried: number;
   failed: number;
@@ -201,7 +239,8 @@ export async function runDueJobs({
       });
       break;
     }
-    counts[await execute(job, client, now, handlers)] += 1;
+    const left = budgetMs === undefined ? undefined : budgetMs - (clock() - started) + graceMs;
+    counts[await execute(job, client, now, handlers, left)] += 1;
   }
   return counts;
 }

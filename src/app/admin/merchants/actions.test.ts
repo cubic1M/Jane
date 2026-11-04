@@ -53,7 +53,20 @@ describe("saveMerchant", () => {
       { type: "admin", id: "admin_1" },
       "merchant_saved",
       { type: "merchant", id: "m1" },
-      { key: "streamflix" },
+      expect.objectContaining({ key: "streamflix" }),
+    );
+  });
+
+  it("records the links it set, so a changed one can be seen and undone", async () => {
+    await saveMerchant(
+      null,
+      form({ name: "Streamflix", cancelUrl: "https://streamflix.example/cancel" }),
+    );
+    expect(logAudit).toHaveBeenLastCalledWith(
+      expect.anything(),
+      "merchant_saved",
+      expect.anything(),
+      expect.objectContaining({ cancelUrl: "https://streamflix.example/cancel" }),
     );
   });
 

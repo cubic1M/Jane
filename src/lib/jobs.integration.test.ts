@@ -215,4 +215,64 @@ describe.runIf(url)("the job queue against a real database", () => {
       attempts: 0,
     });
   });
+
+  it("stops waiting for a job at the end of the runner's time, and retries it later", async () => {
+    const stuck = await queue("u-jobs-hang");
+    const counts = await runDueJobs({
+      client,
+      now: at(0),
+      handlers: { explain_findings: () => new Promise(() => undefined) },
+      userIds: ["u-jobs-hang"],
+      budgetMs: 50,
+      graceMs: 0,
+    });
+    expect(counts.retried).toBe(1);
+    const after = await job(stuck);
+    expect(after).toMatchObject({ status: "queued", attempts: 1 });
+    expect(after.lastError).toContain("time");
+    // It may still be running, so it waits for the function it's in to have ended.
+    expect(after.runAt.getTime()).toBeGreaterThanOrEqual(at(JOB_STUCK_MINUTES).getTime());
+  }, 5_000);
+
+  it("gives up on a job killed every time, rather than running it for ever", async () => {
+    const killed = await queue("u-jobs-killed");
+    await client.job.update({
+      where: { id: killed },
+      data: { status: "running", attempts: 5, maxAttempts: 5, updatedAt: at(0) },
+    });
+    const handler = vi.fn(async () => undefined);
+    await runDueJobs({
+      client,
+      now: at(60),
+      handlers: { explain_findings: handler },
+      userIds: ["u-jobs-killed"],
+    });
+    expect(handler).not.toHaveBeenCalled();
+    expect(await job(killed)).toMatchObject({ status: "failed" });
+    expect((await job(killed)).lastError).toBeTruthy();
+    expect(await retryJob(killed, { client, now: at(61) })).toBe(true);
+  });
+
+  it("runs work that's waiting before a job that was killed", async () => {
+    const killed = await queue("u-jobs-killed-first");
+    const waiting = await queue("u-jobs-waiting");
+    await client.job.update({
+      where: { id: killed },
+      data: { status: "running", attempts: 1, runAt: at(-10), updatedAt: at(0) },
+    });
+    // Written last, so the database hands it back last unless something puts them in order.
+    await client.job.update({ where: { id: waiting }, data: { runAt: at(0) } });
+    const order: unknown[] = [];
+    await runDueJobs({
+      client,
+      now: at(60),
+      handlers: {
+        explain_findings: async (payload) => {
+          order.push((payload as { userId: string }).userId);
+        },
+      },
+      userIds: ["u-jobs-killed-first", "u-jobs-waiting"],
+    });
+    expect(order).toEqual(["u-jobs-waiting", "u-jobs-killed-first"]);
+  });
 });

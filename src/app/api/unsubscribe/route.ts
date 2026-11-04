@@ -5,6 +5,7 @@ import { logAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { userFromUnsubscribeToken } from "@/lib/digest/unsubscribe";
 import { chatNotifyPrefs, withoutChatEmails } from "@/lib/jane-agent/notify-prefs";
+import { pushEnabled } from "@/lib/push";
 import { ipKey, limitOrNull } from "@/lib/rate-limit";
 import { systemDb } from "@/lib/system-db";
 
@@ -30,9 +31,14 @@ export async function POST(request: Request) {
       select: { chatNotifyPrefs: true },
     });
     if (user) {
+      const devices = pushEnabled()
+        ? await systemDb(WHY).pushSubscription.count({ where: { userId } })
+        : 0;
       await systemDb(WHY).user.update({
         where: { id: userId },
-        data: { chatNotifyPrefs: withoutChatEmails(chatNotifyPrefs(user.chatNotifyPrefs)) },
+        data: {
+          chatNotifyPrefs: withoutChatEmails(chatNotifyPrefs(user.chatNotifyPrefs), devices > 0),
+        },
       });
       await track(userId, "chat_emails_unsubscribed", {});
     }

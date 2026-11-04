@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { userFindUnique, userUpdate, userUpdateMany } = vi.hoisted(() => ({
+const { pushCount, userFindUnique, userUpdate, userUpdateMany } = vi.hoisted(() => ({
+  pushCount: vi.fn(),
   userFindUnique: vi.fn(),
   userUpdate: vi.fn(),
   userUpdateMany: vi.fn(),
@@ -11,7 +12,10 @@ vi.mock("@/lib/rate-limit", () => ({
   ipKey: vi.fn(() => "ip"),
 }));
 vi.mock("@/lib/db", () => ({
-  db: { user: { findUnique: userFindUnique, update: userUpdate, updateMany: userUpdateMany } },
+  db: {
+    user: { findUnique: userFindUnique, update: userUpdate, updateMany: userUpdateMany },
+    pushSubscription: { count: pushCount },
+  },
 }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
@@ -29,11 +33,21 @@ const post = (query: string) =>
 describe("POST /api/unsubscribe?what=chat", () => {
   beforeEach(() => {
     vi.stubEnv("AUTH_SECRET", "test-secret");
+    vi.stubEnv("VAPID_SUBJECT", "mailto:team@example.com");
+    vi.stubEnv("VAPID_PUBLIC_KEY", "made-up-public");
+    vi.stubEnv("VAPID_PRIVATE_KEY", "made-up-private");
+    pushCount.mockReset().mockResolvedValue(1);
     userFindUnique.mockReset().mockResolvedValue({
       chatNotifyPrefs: { channel: "both", kinds: { brief: true } },
     });
     userUpdate.mockReset();
     userUpdateMany.mockReset();
+  });
+
+  it("stops them for good when no device takes notifications", async () => {
+    pushCount.mockResolvedValue(0);
+    await post(`token=${unsubscribeToken("u1")}&what=chat&from=page`);
+    expect(userUpdate.mock.calls[0][0].data.chatNotifyPrefs.channel).toBe("off");
   });
 
   it("stops Jane's emails and keeps phone notifications and the weekly email", async () => {

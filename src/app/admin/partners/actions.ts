@@ -43,7 +43,12 @@ export async function savePartner(
       { type: "admin", id: admin.id },
       "referral_partner_saved",
       { type: "referral_partner", id: saved.id },
-      { key: checked.data.key, active: checked.data.active },
+      // Where people will be sent: without it a changed link can't be seen or undone.
+      {
+        key: checked.data.key,
+        active: checked.data.active,
+        referralUrl: checked.data.referralUrl,
+      },
     );
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {

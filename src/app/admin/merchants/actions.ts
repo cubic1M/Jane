@@ -51,7 +51,14 @@ export async function saveMerchant(
         type: "merchant",
         id: saved.id,
       },
-      { key: data.key },
+      // What people will be sent to: without it a changed link can't be seen or undone.
+      {
+        key: data.key,
+        cancelUrl: data.cancelUrl,
+        supportUrl: data.supportUrl,
+        supportEmail: data.supportEmail,
+        supportPhone: data.supportPhone,
+      },
     );
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
