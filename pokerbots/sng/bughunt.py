@@ -84,7 +84,9 @@ def _round(args):
     total = rules.starting_stack * rules.num_players
     if sum(res.final_stacks) != total:
         fails.append(dict(kind="chips", seed=seed, variant=pick, lineup=lineup))
-    if abs(sum(res.points) - sum(rules.payouts[:rules.num_players])) > 1e-6:
+    knockouts = sum(b is not None for b in res.bust_hand)
+    expect = sum(rules.payouts[:rules.num_players]) + getattr(rules, "bounty", 0.0) * knockouts
+    if abs(sum(res.points) - expect) > 1e-6:
         fails.append(dict(kind="points", seed=seed, variant=pick, lineup=lineup, got=sum(res.points)))
     for i, name in enumerate(lineup):
         if name not in OURS:
