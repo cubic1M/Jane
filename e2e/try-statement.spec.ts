@@ -287,3 +287,23 @@ test("a file Jane can't read makes no one, and the box and a file are asked for"
   await expect(box.getByRole("alert")).toBeVisible();
   expect(await personIn(page)).toBeNull();
 });
+
+test("the two ways to try Jane line up, words in the middle and on one line", async ({ page }) => {
+  await page.goto("/");
+  const sample = page.getByRole("button", { name: "Try it with sample data" });
+  const own = page.locator("#try-upload summary");
+  const [a, b] = await Promise.all([sample.boundingBox(), own.boundingBox()]);
+  expect(b?.x).toBe(a?.x);
+  expect(b?.width).toBe(a?.width);
+  expect(b?.height).toBe(a?.height);
+  // The words sit in the middle of the box and don't wrap, on a phone too.
+  const words = await own.evaluate((el) => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const r = range.getBoundingClientRect();
+    const box = el.getBoundingClientRect();
+    return { left: r.left - box.left, right: box.right - r.right, height: r.height };
+  });
+  expect(Math.abs(words.left - words.right)).toBeLessThan(2);
+  expect(words.height).toBeLessThan(32);
+});
