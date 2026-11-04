@@ -2,7 +2,7 @@ import { CHECK_LOOKBACK_DAYS, HELD_DAYS, WATCH_DAYS } from "@/config/outcomes";
 import { loadDetectionInput } from "@/detection/engine";
 import type { DetectionInput } from "@/detection/types";
 import type { Watch } from "@/detectors/contract";
-import { Prisma, type PrismaClient } from "@/generated/prisma/client";
+import { Prisma, type FindingStatus, type PrismaClient } from "@/generated/prisma/client";
 import { logAudit, SYSTEM_ACTOR, type AuditActor } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -254,6 +254,29 @@ export async function markSuggestionDone(
     data: { status: "yes", answeredAt: now },
   });
   return { status };
+}
+
+// A finding's card and the scan's suggestion on the same topic are one thing to the person, so
+// once every card on a topic is answered it isn't suggested; a new card brings it back (debugger
+// 11-04: "Stop paying overdraft and bank fees" led /jane after the fee card was marked done).
+const STILL_OPEN: readonly FindingStatus[] = ["new", "shown", "failed"];
+
+export async function answeredTopics(userId: string, client: PrismaClient): Promise<Set<string>> {
+  const cards = await scopedFor(userId, client).findings.findMany({
+    select: { type: true, status: true },
+  });
+  const open = new Set(cards.filter((c) => STILL_OPEN.includes(c.status)).map((c) => c.type));
+  return new Set(cards.map((c) => c.type).filter((type) => !open.has(type)));
+}
+
+// Right after an answer, so the pages don't repeat it until the next scan.
+export async function retireAnsweredTopics(userId: string, client: PrismaClient): Promise<void> {
+  const topics = await answeredTopics(userId, client);
+  if (topics.size === 0) return;
+  await scopedFor(userId, client).suggestions.updateMany({
+    where: { topic: { in: [...topics] }, status: { in: ["waiting", "selected"] } },
+    data: { status: "gone" },
+  });
 }
 
 // The record's key for a finding card done by the person themselves.

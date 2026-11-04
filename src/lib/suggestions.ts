@@ -12,7 +12,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { log } from "@/lib/log";
 import { loadProfileInput } from "@/lib/profile";
-import { recordAnswer, recordOpened, recordShown } from "@/lib/outcomes";
+import { answeredTopics, recordAnswer, recordOpened, recordShown } from "@/lib/outcomes";
 import { loadKindStats } from "@/lib/learning";
 import type { CardExtras } from "@/lib/jane-agent/types";
 import { scrub } from "@/lib/scrub";
@@ -268,10 +268,12 @@ async function scanSuggestionsWork(
 ): Promise<ScanResult> {
   const db = scopedFor(userId, client);
   const today = dayOf(now);
-  const [{ suggestions: found, advice, profile, input }, stored] = await Promise.all([
+  const [{ suggestions: detected, advice, profile, input }, stored, answered] = await Promise.all([
     detectFor(userId, { client, now }),
     db.suggestions.findMany(),
+    answeredTopics(userId, client),
   ]);
+  const found = detected.filter((s) => !answered.has(s.topic));
   // What the scan saw is evidence for what Jane knows about the person (src/lib/memory/).
   await learnFromData(userId, profile, input, { client, now });
   // Advice offered while the person was in demo advice mode must not outlive it: once a real
