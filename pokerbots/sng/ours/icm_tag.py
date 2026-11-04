@@ -64,7 +64,8 @@ PARAMS = dict(
                          #   count, never tighter than range_k); the exact-ICM call decides. 0 = off.
                          #   2 validated on fresh seeds (results/sng_rscall_validate_*.md: 11 cells, mean
                          #   +1.6, field 4 +2.2*, field 5 +4.7*, field 6 +5.1*); 3 = day-of choice vs light re-shovers
-    rfi_mode=0,          # 1: first-in opens (above push_bb, 3+ players dealt in) by position: open if the hand
+    rfi_mode=0,          # 1 (or 2: only on a full 52-card deck with not-top-heavy payouts): first-in opens
+                         #   (above push_bb, 3+ players dealt in) by position: open if the hand
     rfi_scale=1.0,       #   is in the top rfi_scale x RFI[k] / steal factor of hands (k = players behind + limpers),
                          #   instead of equity >= open_mult / (k + 1), which opens ~34% from EVERY position
                          #   (f2_shark-style ranges: 40% with 1 behind ... 11% with 7 behind). 2-card games only.
@@ -189,6 +190,16 @@ class IcmTag:
                 self.risk_scale = payout_risk_scale(tuple(pays)[:getattr(rules, "num_players", len(pays))])
             except Exception:  # noqa: BLE001  never fail setup over a payout shape
                 self.risk_scale = 1.0
+        # rfi_mode 1: position-based opens on any 2-card game; 2: only on a full 52-card deck with payouts
+        # at least half as flat as top-3 (short deck -11*, winner-take-all -5*: results/sng_rfi_validate_*.md)
+        rm = self.p["rfi_mode"]
+        flat = 1.0
+        if pays:
+            try:
+                flat = payout_risk_scale(tuple(pays)[:getattr(rules, "num_players", len(pays))])
+            except Exception:  # noqa: BLE001
+                flat = 1.0
+        self.rfi_on = bool(rm == 1 or (rm == 2 and len(getattr(self.spec, "deck_ranks", ())) == 13 and flat >= 0.5))
         self.chart = None
         if self.p["pf_chart"]:
             from sng.ours.pushfold_chart import load_chart
@@ -501,7 +512,7 @@ class IcmTag:
                 if eq >= pbar and lg.can_raise:
                     return RaiseTo(lg.max_raise_to)
                 return lg.passive() if lg.can_check else Fold()
-            if p["rfi_mode"] and self._pct is not None and not hu and lg.can_raise:
+            if self.rfi_on and self._pct is not None and not hu and lg.can_raise:
                 top = 1.0 - bisect.bisect_left(self._pct, self._eq(obs, 1)) / len(self._pct)
                 ok = top <= min(0.95, _RFI[min(max(k + limpers, 1), 7)] * p["rfi_scale"] / max(sf, 0.05))
             else:
