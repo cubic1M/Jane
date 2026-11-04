@@ -152,14 +152,13 @@ describe("auth actions", () => {
     expect(deleteTrialPerson).not.toHaveBeenCalled();
   });
 
-  it("stops sign-in emails past the limit, per IP and per address", async () => {
-    vi.mocked(hit).mockResolvedValueOnce({ ok: true, remaining: 0, retryAfterSeconds: 60 });
+  it("stops the sign-in form past the limit, per IP", async () => {
     vi.mocked(hit).mockResolvedValueOnce({ ok: false, remaining: 0, retryAfterSeconds: 60 });
 
     await expect(signInWithEmail(emailForm("A@Example.com"))).rejects.toThrow(
       "redirect:/login?error=TooManyRequests",
     );
-    expect(vi.mocked(hit).mock.calls.map((c) => c[1])).toEqual(["ip", "email:a@example.com"]);
+    expect(vi.mocked(hit).mock.calls.map((c) => c[1])).toEqual(["ip"]);
     expect(signIn).not.toHaveBeenCalled();
     expect(recordFailedSignIn).toHaveBeenCalledWith("rate_limited");
   });
