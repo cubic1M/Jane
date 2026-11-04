@@ -9,7 +9,7 @@ import { bankFeesYear } from "@/planning/bank-fees";
 import { LOOKBACK_MONTHS } from "@/config/detection";
 import { paceMonths } from "@/detection/rules/fee-totals";
 import { daysBetween, monthsBefore } from "@/detection/units";
-import { idleCashOf } from "@/planning/idle-cash";
+import { idleCashOf, payingCardInterest } from "@/planning/idle-cash";
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { emergencyTarget } from "@/planning/emergency-fund";
 import { summarize } from "@/planning/costly-borrowing";
@@ -276,6 +276,8 @@ const idleCash: Detector = {
       transactions: data.transactions,
     });
     if (!idle) return null;
+    // Not while a card charges far more than a savings rate pays (debugger 11-04).
+    if (payingCardInterest({ asOf: data.today, transactions: data.transactions })) return null;
     return {
       id: suggestionId("investing", "idle_cash"),
       capability: "investing",

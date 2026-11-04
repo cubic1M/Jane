@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cashCushionOf, type IdleTx } from "./idle-cash";
+import { cashCushionOf, payingCardInterest, type IdleTx } from "./idle-cash";
 
 const AS_OF = "2026-10-26";
 const CHECKING = { id: "chk", type: "depository", subtype: "checking", balanceCents: 1_586_000 };
@@ -199,5 +199,24 @@ describe("held back, after review", () => {
       transactions: [...usual(), fee("2025-11-20", "card-a"), fee("2025-12-05", "card-b")],
     })!;
     expect(c.setAsideCents).toBe(19_000);
+  });
+});
+
+// Debugger 11-04: a card has charged interest lately.
+describe("payingCardInterest", () => {
+  const interest = (date: string, amountCents: number): IdleTx => ({
+    date,
+    amountCents,
+    accountId: "card",
+    pfc: "BANK_FEES_INTEREST_CHARGE",
+    description: "INTEREST CHARGED TO STANDARD PURCH",
+  });
+  const paying = (rows: IdleTx[]) => payingCardInterest({ asOf: AS_OF, transactions: rows });
+
+  it("says yes to interest lately, no once it has stopped, and no to a stray few cents", () => {
+    expect(paying([interest("2026-10-05", 17_093)])).toBe(true);
+    expect(paying([interest("2026-07-30", 17_093)])).toBe(false);
+    expect(paying([interest("2026-10-05", 37)])).toBe(false);
+    expect(paying(usual())).toBe(false);
   });
 });

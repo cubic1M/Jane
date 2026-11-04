@@ -6,7 +6,7 @@ import {
   REFERENCE_HIGH_YIELD_RATE_BPS,
   type ConfidenceLevel,
 } from "@/config/detection";
-import { idleCashOf } from "@/planning/idle-cash";
+import { idleCashOf, payingCardInterest } from "@/planning/idle-cash";
 import { formatCents } from "@/lib/money";
 import { inLookback } from "../helpers";
 import type { DetectionInput } from "../types";
@@ -22,7 +22,7 @@ function confidenceFor(historyMonths: number): ConfidenceLevel {
 // Savings are the excess times the gap between a reference high-yield rate and what we
 // assume it earns now. Balances on CSV accounts are typed in by hand.
 export const idleCash: Rule = (input) => {
-  const idle = idleCashOf({
+  const facts = {
     asOf: input.asOf,
     accounts: input.accounts.map((a) => ({
       id: a.id,
@@ -37,15 +37,19 @@ export const idleCash: Rule = (input) => {
       pfc: t.pfcDetailed,
       description: t.description,
     })),
-  });
+  };
+  const idle = idleCashOf(facts);
   if (!idle) return [];
+  // The cash is still there, but a savings rate isn't what it could earn while a card charges far
+  // more (debugger 11-04: "could earn $196" counted in "We found", to someone paying 28% on $7,600).
+  const paying = payingCardInterest(facts);
   const names = new Map(input.accounts.map((a) => [a.id, a]));
   return [
     {
       type: "idle_cash",
       key: "depository",
-      title: `${formatCents(idle.excessCents)} more cash than ${IDLE_CASH_MONTHS_OF_SPENDING} months of spending`,
-      annualSavingsCents: idle.earnsCents,
+      title: `${formatCents(idle.excessCents)} more cash than ${IDLE_CASH_MONTHS_OF_SPENDING} months of spending${paying ? ", while a card charges interest" : ""}`,
+      annualSavingsCents: paying ? null : idle.earnsCents,
       amountCents: idle.excessCents,
       confidence: confidenceFor(idle.shortestHistoryMonths),
       evidence: {
@@ -61,6 +65,7 @@ export const idleCash: Rule = (input) => {
         // this is the extra cash (review 10-30).
         setAsideCents: idle.setAsideCents,
         excessCents: idle.excessCents,
+        ...(paying ? { cardInterest: true } : {}),
         referenceRateBps: REFERENCE_HIGH_YIELD_RATE_BPS,
         assumedCurrentRateBps: ASSUMED_CURRENT_RATE_BPS,
       },

@@ -1,5 +1,8 @@
 import {
   ASSUMED_CURRENT_RATE_BPS,
+  CARD_INTEREST_CATEGORIES,
+  IDLE_CASH_CARD_INTEREST_DAYS,
+  IDLE_CASH_CARD_INTEREST_MIN_CENTS,
   IDLE_CASH_MIN_EXCESS_CENTS,
   LOOKBACK_MONTHS,
   IDLE_CASH_MONTHS_OF_SPENDING,
@@ -128,6 +131,24 @@ export function cashCushionOf(input: IdleInput): Omit<IdleCash, "earnsCents"> | 
     excessCents: balanceCents - cushionCents - setAsideCents,
     shortestHistoryMonths: shortest,
   };
+}
+
+// A card has charged interest lately: the extra cash has a better use than a savings rate.
+export function payingCardInterest({
+  asOf,
+  transactions,
+}: Pick<IdleInput, "asOf" | "transactions">): boolean {
+  const since = addDays(asOf, -IDLE_CASH_CARD_INTEREST_DAYS);
+  const interest = transactions
+    .filter(
+      (t) =>
+        t.date > since &&
+        t.date <= asOf &&
+        t.pfc !== null &&
+        (CARD_INTEREST_CATEGORIES as readonly string[]).includes(t.pfc),
+    )
+    .reduce((sum, t) => sum + t.amountCents, 0);
+  return interest >= IDLE_CASH_CARD_INTEREST_MIN_CENTS;
 }
 
 export function idleCashOf(input: IdleInput): IdleCash | null {
