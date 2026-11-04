@@ -64,6 +64,10 @@ PARAMS = dict(
                          #   count, never tighter than range_k); the exact-ICM call decides. 0 = off.
                          #   2 validated on fresh seeds (results/sng_rscall_validate_*.md: 11 cells, mean
                          #   +1.6, field 4 +2.2*, field 5 +4.7*, field 6 +5.1*); 3 = day-of choice vs light re-shovers
+    rfi_mode=0,          # 1: first-in opens (above push_bb, 3+ players dealt in) by position: open if the hand
+    rfi_scale=1.0,       #   is in the top rfi_scale x RFI[k] / steal factor of hands (k = players behind + limpers),
+                         #   instead of equity >= open_mult / (k + 1), which opens ~34% from EVERY position
+                         #   (f2_shark-style ranges: 40% with 1 behind ... 11% with 7 behind). 2-card games only.
     two_card=1,          # icm_any only: on 2-card games without discards, use icm_tag's hold'em switches
                          #   (icm_call, rs_call, heads-up ranges, bet_discount 0.5; anyvar.TWO_CARD); 0 = off.
                          #   1 validated on fresh seeds: kit-4 six-plus +1.8, plain NLHE +1.7 (results/sng_twocard_validate_*.md)
@@ -132,6 +136,9 @@ def payout_risk_scale(payouts) -> float:
 
 
 _PCT: dict = {}
+
+
+_RFI = {1: 0.40, 2: 0.33, 3: 0.23, 4: 0.17, 5: 0.14, 6: 0.12, 7: 0.11}   # rfi_mode: open share by players behind
 
 
 def hand_pct_table(spec, S):
@@ -494,7 +501,12 @@ class IcmTag:
                 if eq >= pbar and lg.can_raise:
                     return RaiseTo(lg.max_raise_to)
                 return lg.passive() if lg.can_check else Fold()
-            if eq >= bar and lg.can_raise:
+            if p["rfi_mode"] and self._pct is not None and not hu and lg.can_raise:
+                top = 1.0 - bisect.bisect_left(self._pct, self._eq(obs, 1)) / len(self._pct)
+                ok = top <= min(0.95, _RFI[min(max(k + limpers, 1), 7)] * p["rfi_scale"] / max(sf, 0.05))
+            else:
+                ok = eq >= bar
+            if ok and lg.can_raise:
                 to = (p["open_size"] + limpers) * bb
                 self.aggressor = obs.seat
                 return RaiseTo(lg.clamp(to))
