@@ -102,7 +102,7 @@ export const MERCHANT_SEED: readonly MerchantSeed[] = [
   {
     key: "apple",
     name: "Apple",
-    aliases: ["apple com bill", "itunes", "itunes com"],
+    aliases: ["apple com bill", "apple tv", "itunes", "itunes com"],
     category: null,
     cancelUrl: "https://apps.apple.com/account/subscriptions",
     supportUrl: "https://support.apple.com",
@@ -182,7 +182,7 @@ export const MERCHANT_SEED: readonly MerchantSeed[] = [
   {
     key: "duolingo",
     name: "Duolingo",
-    aliases: ["duolingo inc"],
+    aliases: ["duolingo inc", "duolingo plus"],
     category: null,
     cancelUrl: null,
     supportUrl: "https://support.duolingo.com",

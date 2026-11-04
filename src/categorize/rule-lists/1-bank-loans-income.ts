@@ -134,6 +134,7 @@ export const BANK_LOANS_INCOME: readonly Rule[] = [
       // Capital One's checking paying a Bank of America card (CSV bench, second tuning set).
       "BANK OF AMERICA ONLINE PMT",
       "DISCOVER E-PAYMENT",
+      "DISCOVER DIRECTPAY",
       "CITI AUTOPAY",
       "CITI CARD ONLINE PAYMENT",
       "APPLECARD GSBANK PAYMENT",

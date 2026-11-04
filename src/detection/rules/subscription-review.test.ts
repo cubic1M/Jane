@@ -90,7 +90,7 @@ describe("subscription_review", () => {
       pfcDetailed: "GENERAL_SERVICES_AUTOMOTIVE",
     };
     const [plan] = run(input({ transactions: monthly(4, 3999, wash) }));
-    expect(plan).toMatchObject({ annualSavingsCents: 3999 * 12, confidence: "low" });
+    expect(plan).toMatchObject({ amountCents: 3999 * 12, confidence: "low" });
     const visits = [1200, 1800, 900, 2400].flatMap((cents, i) =>
       monthly(1, cents, { ...wash, description: "JIFFY LUBE" }).map((t) => ({
         ...t,
@@ -98,6 +98,65 @@ describe("subscription_review", () => {
       })),
     );
     expect(run(input({ transactions: visits }))).toEqual([]);
+  });
+
+  // Third held-out CSV set: of 74 charges raised on their one price alone, 32 weren't plans (an
+  // insurer, a church, a doughnut shop), which put $16,560 a year on the cards. No saving is
+  // claimed until someone says it's a subscription.
+  describe("a charge only its one price says is a subscription", () => {
+    const guess = { description: "AMICA AUTO PREMIUM", pfcPrimary: null, pfcDetailed: null };
+
+    it("is asked about, with its cost on it and no saving", () => {
+      const [card] = run(input({ transactions: monthly(4, 9200, guess) }));
+      expect(card).toMatchObject({
+        title: "Is Amica Auto Premium a subscription to cancel?",
+        annualSavingsCents: null,
+        amountCents: 9200 * 12,
+        confidence: "low",
+        evidence: { onlyItsPrice: true, merchantKey: "amica auto premium" },
+      });
+    });
+
+    it("counts once Claude or the person has said yes, and is gone once Claude says no", () => {
+      const rows = monthly(4, 9200, guess);
+      const [yes] = run(
+        input({ transactions: rows, subscriptionMerchantKeys: ["amica auto premium"] }),
+      );
+      expect(yes).toMatchObject({
+        title: "Review your Amica Auto Premium subscription",
+        annualSavingsCents: 9200 * 12,
+        confidence: "medium",
+      });
+      expect(yes?.evidence).not.toHaveProperty("onlyItsPrice");
+      expect(
+        run(
+          input({ transactions: rows, declinedSubscriptionMerchantKeys: ["amica auto premium"] }),
+        ),
+      ).toEqual([]);
+    });
+
+    it("is never what a name or category says outright", () => {
+      const netflix = {
+        description: "NETFLIX.COM",
+        pfcPrimary: "ENTERTAINMENT",
+        pfcDetailed: "ENTERTAINMENT_TV_AND_MOVIES",
+      };
+      const [card] = run(input({ transactions: monthly(4, 1549, netflix) }));
+      expect(card).toMatchObject({ annualSavingsCents: 1549 * 12 });
+      expect(card?.evidence).not.toHaveProperty("onlyItsPrice");
+    });
+
+    it("isn't one when any of its charges has a subscription's category", () => {
+      const sling = { pfcPrimary: "ENTERTAINMENT", description: "SLING TV" };
+      const rows = [
+        ...monthly(2, 4000, { ...sling, pfcDetailed: "ENTERTAINMENT_TV_AND_MOVIES" }),
+        ...monthly(2, 4000, { ...sling, pfcDetailed: "ENTERTAINMENT_OTHER_ENTERTAINMENT" }).map(
+          (t, i) => ({ ...t, id: `plain${i}`, date: monthsAgo(i + 3) }),
+        ),
+      ];
+      const [card] = run(input({ transactions: rows }));
+      expect(card?.annualSavingsCents).toBe(4000 * 12);
+    });
   });
 
   // CSV bench, second tuning set: one plan with most of the charges doesn't hide the other.

@@ -69,6 +69,68 @@ describe.runIf(url)("decisions against a real database", () => {
     });
   }
 
+  // A charge only its one price says is a subscription has no saving on it until someone says so.
+  describe("a card that asks whether it's a subscription", () => {
+    const ask = async (merchantKey: string) => {
+      const f = await finding();
+      return client.finding.update({
+        where: { id: f.id },
+        data: {
+          type: "subscription_review",
+          title: "Is Amica Auto Premium a subscription to cancel?",
+          annualSavingsCents: null,
+          amountCents: 110_400,
+          confidence: "low",
+          evidence: {
+            merchant: "Amica Auto Premium",
+            onlyItsPrice: true,
+            merchantKey,
+            annualCostCents: 110_400,
+            frequency: "MONTHLY",
+            lastAmountCents: 9200,
+            charges: [],
+          },
+        },
+        select: { ...CARD_SELECT, status: true },
+      });
+    };
+
+    it("counts its cost as a saving on a yes, and keeps the answer for the next scan", async () => {
+      const f = await ask("amica yes");
+      await recordDecision(
+        userId,
+        { findingId: f.id, choice: "yes", cardHash: cardHash(buildCard(f)) },
+        { client },
+      );
+      expect(await client.finding.findUnique({ where: { id: f.id } })).toMatchObject({
+        status: "approved",
+        annualSavingsCents: 110_400,
+        confidence: "medium",
+      });
+      expect(
+        await client.subscriptionCheck.findFirst({
+          where: { userId, merchantKey: "amica yes" },
+        }),
+      ).toMatchObject({ isSubscription: true, model: "person" });
+    });
+
+    it("says nothing about what it is on a no: it may be a plan they're keeping", async () => {
+      const f = await ask("amica no");
+      await recordDecision(
+        userId,
+        { findingId: f.id, choice: "no", cardHash: cardHash(buildCard(f)) },
+        { client },
+      );
+      expect(await client.finding.findUnique({ where: { id: f.id } })).toMatchObject({
+        status: "declined",
+        annualSavingsCents: null,
+      });
+      expect(
+        await client.subscriptionCheck.findFirst({ where: { userId, merchantKey: "amica no" } }),
+      ).toBeNull();
+    });
+  });
+
   it("a yes approves the finding, queues an action and keeps the exact card shown", async () => {
     const f = await finding();
     const card = buildCard(f);

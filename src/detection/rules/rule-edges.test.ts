@@ -221,18 +221,23 @@ describe("recurring charges, as listed for a person", () => {
     };
     const rows = monthly(6, 2500, fixedPrice);
     const [guessed] = recurringCharges(input({ transactions: rows }));
-    expect(guessed?.subscription).toBe(true);
+    // Listed with the bills and asked about on its card: no total counts it as a subscription yet.
+    expect(guessed).toMatchObject({ subscription: false, maybeSubscription: true });
     const [declined] = recurringCharges(
       input({ transactions: rows, declinedSubscriptionMerchantKeys: [guessed!.merchantKey] }),
     );
-    expect(declined?.subscription).toBe(false);
+    expect(declined).toMatchObject({ subscription: false, maybeSubscription: false });
+    const [confirmed] = recurringCharges(
+      input({ transactions: rows, subscriptionMerchantKeys: [guessed!.merchantKey] }),
+    );
+    expect(confirmed).toMatchObject({ subscription: true, maybeSubscription: false });
     const [known] = recurringCharges(
       input({
         transactions: monthly(4, 1549, NETFLIX),
         declinedSubscriptionMerchantKeys: ["netflix"],
       }),
     );
-    expect(known?.subscription).toBe(true);
+    expect(known).toMatchObject({ subscription: true, maybeSubscription: false });
   });
 
   it("has a yearly cost of a year's charges", () => {

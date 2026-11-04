@@ -2,6 +2,13 @@ import { describe, expect, it } from "vitest";
 import { savingsLine, savingsPhrase } from "./savings-text";
 
 describe("savings text", () => {
+  it("says what a charge costs when only its one price says it's a subscription", () => {
+    expect(
+      savingsLine("subscription_review", null, { onlyItsPrice: true, annualCostCents: 110_400 }),
+    ).toBe("Costs about $1,104.00 a year. Not counted as a saving");
+    expect(savingsLine("subscription_review", null, {})).toBe("No dollar estimate for this one");
+  });
+
   it("reads yearly savings as a year and refunds as money back", () => {
     expect(savingsLine("bank_fees", 4_900)).toBe("Could save about $49.00 a year");
     expect(savingsLine("duplicate_charge", 4_999)).toBe("Could get back about $49.99");

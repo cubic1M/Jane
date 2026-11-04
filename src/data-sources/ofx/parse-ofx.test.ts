@@ -97,4 +97,35 @@ describe("readOfx", () => {
     if (!result.ok) throw new Error(result.error);
     expect(result.transactions[0].description.length).toBeLessThan(50);
   });
+
+  // The metamorphic suite: a bank that cuts NAME at 32 and puts the whole line in MEMO read as a
+  // merchant cut mid-word, and the line said twice.
+  it("reads the line from MEMO when NAME is its start", () => {
+    const block = (name: string, memo: string) => `<OFX><STMTRS><STMTTRN>
+<TRNTYPE>DEBIT
+<DTPOSTED>20261001120000
+<TRNAMT>-9.50
+<FITID>1
+<NAME>${name}
+<MEMO>${memo}
+</STMTTRN></STMTRS></OFX>`;
+    const read = (name: string, memo: string) => {
+      const result = readOfx({ name: "a.ofx", text: block(name, memo) });
+      return result.ok ? result.transactions[0] : null;
+    };
+    expect(
+      read(
+        "PURCHASE AUTHORIZED ON 09/30 SUN",
+        "PURCHASE AUTHORIZED ON 09/30 SUNRISE DONUT AUSTIN TX",
+      ),
+    ).toMatchObject({
+      description: "PURCHASE AUTHORIZED ON 09/30 SUNRISE DONUT AUSTIN TX",
+      merchantName: "Sunrise Donut",
+    });
+    // A MEMO that's something else stays beside the merchant's NAME.
+    expect(read("SUNRISE DONUT", "CARD 1234")).toMatchObject({
+      description: "SUNRISE DONUT CARD 1234",
+      merchantName: "Sunrise Donut",
+    });
+  });
 });

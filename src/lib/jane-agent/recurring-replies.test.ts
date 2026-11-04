@@ -18,6 +18,7 @@ const charge = (over: Partial<Charge>): Charge => ({
   nextDate: "2026-11-14",
   annualCostCents: 21_588,
   subscription: true,
+  maybeSubscription: false,
   openFindingId: null,
   ...over,
 });

@@ -101,10 +101,11 @@ export function readOfx(
     const date = ofxDate(field(block, "DTPOSTED"));
     const amount = ofxAmount(field(block, "TRNAMT"));
     const fitid = field(block, "FITID");
-    const description = [field(block, "NAME"), field(block, "MEMO")]
-      .filter((v): v is string => Boolean(v))
-      .join(" ")
-      .trim();
+    // Banks cut NAME at the format's 32 characters and put the whole line in MEMO, so a MEMO that
+    // starts with NAME is the line itself: "SUNRISE DO" isn't the merchant, nor the line twice.
+    const [named, memo] = [field(block, "NAME"), field(block, "MEMO")];
+    const whole = named && memo?.startsWith(named) ? memo : null;
+    const description = (whole ?? [named, memo].filter(Boolean).join(" ")).trim();
     const reason = !date
       ? "Missing or unreadable date (DTPOSTED)"
       : amount === null
@@ -123,7 +124,7 @@ export function readOfx(
       continue;
     }
     seen.set(fitid, amount);
-    const name = field(block, "NAME") ?? description;
+    const name = whole ?? named ?? description;
     const type = field(block, "TRNTYPE");
     // OFX signs money out as negative, and a DEBIT or CREDIT says the same thing in words.
     if (amount !== 0 && /^(?:DEBIT|CREDIT)$/i.test(type ?? "")) {

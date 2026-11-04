@@ -20,8 +20,19 @@ const fromBalance = (evidence: unknown) =>
   (evidence as { interestFrom?: unknown }).interestFrom === "balance";
 
 // The line under a finding's title; `evidence` is the finding's, where the page has it.
+// A charge raised only because of its one price: what it costs, which is all Jane knows.
+function onlyItsPriceCost(type: FindingType, evidence: unknown): number | null {
+  if (type !== "subscription_review" || !evidence || typeof evidence !== "object") return null;
+  const e = evidence as { onlyItsPrice?: unknown; annualCostCents?: unknown };
+  return e.onlyItsPrice === true && typeof e.annualCostCents === "number"
+    ? e.annualCostCents
+    : null;
+}
+
 export function savingsLine(type: FindingType, cents: number | null, evidence?: unknown): string {
   if (cents === null) {
+    const cost = onlyItsPriceCost(type, evidence);
+    if (cost !== null) return `Costs about ${formatCents(cost)} a year. Not counted as a saving`;
     return type === "insurance_reshop"
       ? // Read-only beta: the person gets the quotes (debugger 10-30), so not "we find".
         "Savings depend on what other insurers quote"

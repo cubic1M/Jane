@@ -185,6 +185,16 @@ export function withoutAchDetails(description: string): string {
   return des > 0 ? description.slice(0, des).trim() : description;
 }
 
+// What's left of an ACH line after the company (src/accuracy/metamorphic: the same statement through
+// every bank's layout). Chase's "ORIG CO NAME:USAA P&C ORIG ID:… IND NAME:RAJ
+// MEHTA" and Wells Fargo's "USAA P&C AUTOPAY 260908 12345678 MEHTA RAJ" put the account holder's
+// name in the merchant's. Saved keys moved in prisma/migrations/20270505000000_merchant_without_ach_
+// details: keep them in step.
+const ACH_DETAILS = /\s(?:ORIG ID:.*|\d{6}\s+\d{6,}(?:\s.*)?)$/;
+// The entry's word for what it is, after the company: "STATE FARM INSURANCE BILL PAY". Not "CHASE
+// AUTOPAY", Chase's own line for paying its card: "Chase" alone would be the bank.
+const ACH_ENTRY = /(?<!^CHASE)\s+(?:BILL ?PAY|AUTO ?PAY|(?:WEB|ONLINE|MOBILE) PMT)$/;
+
 export function normalizeMerchant(description: string): Merchant | null {
   let text = normalizeDescription(beforePadding(description.slice(0, MERCHANT_TEXT_MAX_CHARS)));
   for (const pattern of BOILERPLATE) text = text.replace(pattern, "");
@@ -194,6 +204,7 @@ export function normalizeMerchant(description: string): Merchant | null {
   // company comes before DES:; the rest is the entry's description and ids.
   const des = text.indexOf(" DES:");
   if (des > 0) text = text.slice(0, des);
+  text = text.replace(ACH_DETAILS, "");
 
   // "AMZN MKTP US*2K4L91" -> "AMZN MKTP US": the part after * is an order or store code.
   const star = text.indexOf("*");
@@ -221,7 +232,7 @@ export function normalizeMerchant(description: string): Merchant | null {
   if (Number.isInteger(half) && words.slice(0, half).join(" ") === words.slice(half).join(" ")) {
     words = words.slice(0, half);
   }
-  text = withoutCardCity(withoutPaymentApp(words.join(" ")));
+  text = withoutCardCity(withoutPaymentApp(words.join(" "))).replace(ACH_ENTRY, "");
 
   if (!text) return null;
   return { name: titleCase(text), key: text.toLowerCase() };

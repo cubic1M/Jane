@@ -82,6 +82,7 @@ export function table(set: CsvSet, b: CsvScoreboard): string {
     `| Category right (rules only) | ${pct(b.category.right / b.category.of)} (${b.category.uncategorized} left for Claude) |`,
     `| False "Charged twice?" | ${b.falseDoubleCharges.count} (${b.falseDoubleCharges.people} people) |`,
     `| Findings, $/yr | Jane ${dollars(b.dollars.jane)}, truth ${dollars(b.dollars.truth)}; error on the ones found ${pct(b.dollars.truth ? b.dollars.absError / b.dollars.truth : 0)} |`,
+    `| Asked "a subscription to cancel?", no dollars on it | ${b.asked.right} are, ${dollars(b.asked.rightCents)}; ${b.asked.wrong} aren't, ${dollars(b.asked.wrongCents)} |`,
     `| Monthly spending, error | ${pct(b.spendingError)} |`,
     `| Monthly income, error | ${pct(b.incomeError)} |`,
     `| Net worth today right | ${b.netWorth.right} of ${b.people} people (off by ${dollars(b.netWorth.absError)} in all) |`,

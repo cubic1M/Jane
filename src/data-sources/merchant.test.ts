@@ -212,7 +212,7 @@ describe("Capital One 360's prefixes", () => {
 // the key is unchanged.
 describe("acronyms in names", () => {
   it("keeps well-known acronyms and AT&T in capitals", () => {
-    expect(normalizeMerchant("USAA P&C INS AUTOPAY")?.name).toBe("USAA P&C Ins Autopay");
+    expect(normalizeMerchant("USAA P&C INS AUTOPAY")?.name).toBe("USAA P&C Ins");
     expect(normalizeMerchant("NFCU AUTO LOAN PMT")?.name).toBe("NFCU Auto Loan Pmt");
     expect(normalizeMerchant("CVS/PHARMACY #4321")?.name).toBe("CVS Pharmacy");
     // Debugger 11-02: "Review your Aaa Roadside Plus subscription".
@@ -226,7 +226,7 @@ describe("acronyms in names", () => {
       name: "ATT",
       key: "att",
     });
-    expect(normalizeMerchant("USAA P&C INS AUTOPAY")?.key).toBe("usaa p&c ins autopay");
+    expect(normalizeMerchant("USAA P&C INS AUTOPAY")?.key).toBe("usaa p&c ins");
   });
 
   it("leaves ordinary words as they were", () => {
@@ -284,5 +284,32 @@ describe("a city at the end", () => {
     expect(normalizeMerchant("UNIVERSITY OF CHICAGO")?.name).toBe("University Of Chicago");
     expect(normalizeMerchant("CITY OF SAN JOSE")?.name).toBe("City Of San Jose");
     expect(normalizeMerchant("ZELLE FROM CHICAGO")?.key).toBe("from chicago");
+  });
+});
+
+// The metamorphic suite (src/accuracy/metamorphic): the same payment through each bank's layout read
+// as a different merchant, and two of them had the account holder's name in it.
+describe("an ACH line's words after the company", () => {
+  it.each([
+    [
+      "ORIG CO NAME:USAA P&C ORIG ID:1234567890 DESC DATE:260908 CO ENTRY DESCR:AUTOPAY SEC:PPD TRACE#:021000020000001 EED:260908 IND ID:12345678 IND NAME:RAJ MEHTA",
+      "usaa p&c",
+    ],
+    ["USAA P&C AUTOPAY 260908 12345678 MEHTA RAJ", "usaa p&c"],
+    ["USAA P&C DES:AUTOPAY ID:XXXXX12345 INDN:MEHTA, RAJ CO ID:XXXXX12345 PPD", "usaa p&c"],
+    ["Withdrawal to USAA P&C AUTOPAY", "usaa p&c"],
+    ["USAA P&C AUTOPAY PPD ID: 1234567890", "usaa p&c"],
+    ["STATE FARM INSURANCE BILL PAY", "state farm insurance"],
+    ["ROOT INSURANCE WEB PMT 260908 87654321 PARK OWEN", "root insurance"],
+    ["TRAVELERS INS ONLINE PMT", "travelers ins"],
+  ])("%s is %s", (line, key) => {
+    expect(normalizeMerchant(line)?.key).toBe(key);
+  });
+
+  it("keeps a line that's only those words, Chase's own, and a number that's part of a name", () => {
+    expect(normalizeMerchant("BILL PAY")?.key).toBe("bill pay");
+    expect(normalizeMerchant("CHASE AUTOPAY")?.key).toBe("chase autopay");
+    expect(normalizeMerchant("AT&T BILL PAYMENT")?.key).toBe("at&t bill payment");
+    expect(normalizeMerchant("STUDIO 54 NIGHTCLUB")?.key).toBe("studio 54 nightclub");
   });
 });

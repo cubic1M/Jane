@@ -10,6 +10,10 @@ import { isTrialUser } from "@/lib/trial-ids";
 
 export type CategorySource = "rule" | "llm" | "plaid" | "user";
 
+// Money out that isn't buying something, so money in at the same name isn't a refund of it.
+const NOT_PURCHASES: readonly string[] = ["LOAN_PAYMENTS", "TRANSFER_OUT", "TRANSFER_IN", "INCOME"];
+const REFUND_CATCH_ALL = categoryOf("GENERAL_MERCHANDISE_OTHER_GENERAL_MERCHANDISE");
+
 export type Categorized<T> = T & {
   category: Category | null;
   categorySource: CategorySource | null;
@@ -40,7 +44,7 @@ export async function categorizeTransactions<T extends NormalizedTransaction>(
     }
   }
 
-  const results: Categorized<T>[] = transactions.map((transaction) => {
+  const firstPass: Categorized<T>[] = transactions.map((transaction) => {
     const key = merchantKeyOf(transaction);
     const fromUser = key ? userRules.get(key) : undefined;
     if (fromUser) return { ...transaction, category: fromUser, categorySource: "user" };
@@ -55,6 +59,8 @@ export async function categorizeTransactions<T extends NormalizedTransaction>(
     if (fromRules) return { ...transaction, category: fromRules, categorySource: "rule" };
     return { ...transaction, category: null, categorySource: null };
   });
+
+  const results = withRefundsOfCharges(firstPass, merchantKeyOf);
 
   const unplaced = new Set(
     results.flatMap((r) => (r.category ? [] : [merchantKeyOf(r)])).filter((k) => k !== null),
@@ -100,6 +106,44 @@ export async function categorizeTransactions<T extends NormalizedTransaction>(
     const category = key ? known.get(key) : undefined;
     return category ? { ...result, category, categorySource: "llm" } : result;
   });
+}
+
+// Money in at a merchant, no bigger than a charge there, is a refund of it, in that charge's most
+// common category (else the catch-all, so that it nets), unless it's too big to be one
+// (NOT_A_REFUND_MIN_CENTS). The same statement must give the same totals however a bank words its
+// columns (src/accuracy/metamorphic): a refund under Capital One's "Payment/Credit" read as paying
+// the card, and a refund with no category counted nowhere, so its charge stayed in spending.
+function withRefundsOfCharges<T extends NormalizedTransaction>(
+  results: Categorized<T>[],
+  keyOf: (t: T) => string | null,
+): Categorized<T>[] {
+  const charges = new Map<string, Categorized<T>[]>();
+  for (const r of results) {
+    const key = keyOf(r);
+    if (!key || r.amountCents <= 0 || NOT_PURCHASES.includes(r.category?.primary ?? "")) continue;
+    charges.set(key, [...(charges.get(key) ?? []), r]);
+  }
+  return results.map((r) => {
+    const rows = charges.get(keyOf(r) ?? "");
+    const unplaced = !r.category || r.category.detailed === "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT";
+    if (!rows || r.amountCents >= 0 || !unplaced || r.categorySource === "user") return r;
+    if (r.categorySource === "plaid" || r.amountCents <= -NOT_A_REFUND_MIN_CENTS) return r;
+    if (!rows.some((c) => c.date <= r.date && c.amountCents >= -r.amountCents)) return r;
+    return { ...r, category: mostCommonCategory(rows) ?? REFUND_CATCH_ALL, categorySource: "rule" };
+  });
+}
+
+function mostCommonCategory(rows: readonly { category: Category | null }[]): Category | null {
+  const counts = new Map<string, { category: Category; n: number }>();
+  for (const { category } of rows) {
+    if (!category) continue;
+    const entry = counts.get(category.detailed) ?? { category, n: 0 };
+    counts.set(category.detailed, { ...entry, n: entry.n + 1 });
+  }
+  const [top] = [...counts.values()].sort(
+    (a, b) => b.n - a.n || a.category.detailed.localeCompare(b.category.detailed),
+  );
+  return top?.category ?? null;
 }
 
 // After an upload: the person's transactions no rule placed, sorted by Claude (the cache
