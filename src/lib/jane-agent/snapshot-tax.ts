@@ -49,6 +49,7 @@ import { loadTaxProfile } from "@/lib/tax-profile";
 import type { ExpectedForm } from "@/planning/tax-documents";
 import type { TaxProfileView } from "@/planning/tax-profile";
 import type { TagCheck } from "@/planning/tax-tags";
+import { chatToday } from "@/lib/today";
 
 // What Jane's brain looks at for taxes (spec steps 118–127), loaded with the same code as
 // /taxes. Optional on the snapshot, so a test's snapshot can leave it out.
@@ -137,8 +138,8 @@ export async function loadTaxSnapshot(
   userId: string,
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<TaxSnapshot> {
-  const today = now.toISOString().slice(0, 10);
-  const year = now.getUTCFullYear();
+  const today = await chatToday(userId, { client, now });
+  const year = Number(today.slice(0, 4));
   const last = previousMonth(today);
   const askForms = today.slice(5) >= TAX_FORMS_ASK_FROM && today.slice(5) <= TAX_FORMS_ASK_UNTIL;
   const [profile, tags, lastMonthTags, forms, estimate, advice] = await Promise.all([

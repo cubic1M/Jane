@@ -31,6 +31,7 @@ import {
   sayPreference,
   type PreferencePatch,
 } from "@/planning/practice-preferences";
+import { chatToday } from "@/lib/today";
 import type { MessageAction, MessageRefs } from "./types";
 
 // The practice portfolio's settings in Jane's chat (Phase AW, Stage A). practice_settings reads
@@ -188,7 +189,7 @@ export async function proposePracticeChange(
   if (!(await adviceMode(userId, { client }))) return { ok: false, error: PRACTICE_NOT_IN_ADVICE };
   const patch = await patchFromInput(userId, input, { client, now });
   const before = await loadPreferences(userId, { client });
-  const result = applyPatch(before, patch, now.toISOString().slice(0, 10));
+  const result = applyPatch(before, patch, await chatToday(userId, { client, now }));
   if (!result.ok) return { ok: false, error: Object.values(result.errors).join(" ") };
   if (result.changed.length === 0) {
     return { ok: false, error: "Those settings are already set that way; nothing to change." };

@@ -1,6 +1,7 @@
 import { adviceMode } from "@/lib/advice-mode";
 import { SelfEmployedError, recordTaxPayment, saveMiles } from "@/lib/self-employed";
 import { formatCents } from "@/lib/money";
+import { chatToday } from "@/lib/today";
 import { ChatActionError, type ActionHandler } from "./handler";
 
 // Freelancers from the chat (spec step 123): "I've paid it" counts an estimated payment in
@@ -20,7 +21,7 @@ export const taxQuarterPaid: ActionHandler = {
     }
     const q = message.refs.taxQuarter;
     if (!q) throw new ChatActionError("failed", "Something went wrong. Open Taxes instead.");
-    const date = now.toISOString().slice(0, 10);
+    const date = await chatToday(userId, { client, now });
     await recordTaxPayment(
       userId,
       { date, cents: q.cents, to: "federal" },

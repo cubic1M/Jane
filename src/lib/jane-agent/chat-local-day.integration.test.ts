@@ -82,4 +82,44 @@ describe.skipIf(!url)("the chat's day is the person's", { timeout: 120_000 }, ()
     const out = JSON.parse((await runChatTool(id, "budgets", {}, { client, now: NOW })).content);
     expect(out.month).toBe("2026-10");
   });
+
+  it("counts the afford answer's days from today too", async () => {
+    // 7pm on Sep 15 in Los Angeles.
+    const now = new Date("2026-09-16T02:00:00Z");
+    const person = await createCheckPerson({ client, now, person: "preretire" });
+    try {
+      const text = "can i afford a $1500 laptop";
+      const q = { ...QUESTIONS[0], id: text, text, tool: undefined, needs: "claude", expect: {} };
+      const { reply } = await sendToJane(person, text, {
+        client,
+        now,
+        claude: playbackClaude(q as (typeof QUESTIONS)[number], newPlayed(), "refused_always"),
+        primerMs: 60_000,
+      });
+      const said = reply.body.match(/\bSep (\d+) \(in (\d+) days\)/);
+      expect(said, reply.body).not.toBeNull();
+      expect(Number(said![2])).toBe(Number(said![1]) - 15);
+    } finally {
+      await deleteCheckPerson(person, { client }).catch(() => {});
+    }
+  });
+
+  it("a payment due today, late in the day, is still the next one", async () => {
+    // 6pm on Sep 15 in Los Angeles is Sep 16 in UTC. It isn't gone until January yet.
+    const now = new Date("2026-09-16T01:00:00Z");
+    const freelancer = await createCheckPerson({ client, now, person: "freelancer" });
+    try {
+      const text = "when is my next quarterly tax payment";
+      const q = { ...QUESTIONS[0], id: text, text, tool: undefined, needs: "claude", expect: {} };
+      const { reply } = await sendToJane(freelancer, text, {
+        client,
+        now,
+        claude: playbackClaude(q as (typeof QUESTIONS)[number], newPlayed(), "refused_always"),
+        primerMs: 60_000,
+      });
+      expect(reply.body).toContain("Sep 15");
+    } finally {
+      await deleteCheckPerson(freelancer, { client }).catch(() => {});
+    }
+  });
 });

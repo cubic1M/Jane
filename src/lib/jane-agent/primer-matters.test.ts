@@ -60,6 +60,7 @@ describe("what matters most, for the primer", () => {
           {
             id: "x",
             key: "cost:bank_fees",
+            chosenOn: "2026-10-18",
             topic: "bank_fees",
             title: "Stop paying overdraft and bank fees",
             headline: "Stop paying overdraft and bank fees, save $105 a year",

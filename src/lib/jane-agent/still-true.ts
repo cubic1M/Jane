@@ -6,7 +6,7 @@ import type { Deadline } from "@/insights/deadlines";
 import type { BudgetProposal, GoalProposal } from "@/planning/proposals";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { todayOf } from "@/lib/today";
+import { chatToday, todayOf } from "@/lib/today";
 import { deadlineHeadsUp } from "./sources/heads-ups";
 import { setupBody } from "./sources/setup";
 import { suggestionCard } from "./sources/suggestions";
@@ -164,7 +164,7 @@ async function factsFor(
   ]);
   const deadlines = new Map((coming?.deadlines ?? []).map((d) => [d.key, d]));
   return {
-    asOf: coming?.asOf ?? now.toISOString().slice(0, 10),
+    asOf: coming?.asOf ?? (await chatToday(userId, { client, now })),
     deadlines,
     alerts: await holding(userId, alerts, deadlines, client, now),
     changes: changes && new Map(changes.map((c) => [c.key, c.title])),

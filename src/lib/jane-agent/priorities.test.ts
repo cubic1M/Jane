@@ -170,6 +170,7 @@ describe("the one ranked list", () => {
   const suggestion = {
     id: "s1",
     key: "idle_cash",
+    chosenOn: "2026-10-18",
     topic: "cash",
     title: "Move idle cash to higher interest",
     headline: "Move idle cash to higher interest, earn $360 a year",

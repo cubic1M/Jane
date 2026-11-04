@@ -41,6 +41,8 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export type OfferedSuggestion = {
   id: string;
+  // The day the scan chose it (YYYY-MM-DD, UTC).
+  chosenOn: string;
   key: string;
   topic: string;
   title: string;
@@ -445,15 +447,25 @@ async function scanSuggestionsWork(
   return { fired: found.length, selected: [...pickedIds] };
 }
 
-// The ones chosen for today and not answered, for the chat to offer.
+// The last scan's picks and not answered, for the chat to offer. Not today's in UTC: the nightly
+// scan runs at 10:00 UTC and only for linked banks, so "today's" was nothing from 5pm in Los
+// Angeles until then, and for good after an upload. They last until they could be chosen again.
 export async function offeredToday(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<OfferedSuggestion[]> {
+  const db = scopedFor(userId, client);
+  const latest = await db.suggestions.findFirst({
+    where: { selectedOn: { gt: new Date(now.getTime() - RESELECT_AFTER_DAYS * DAY_MS) } },
+    orderBy: { selectedOn: "desc" },
+    select: { selectedOn: true },
+  });
   const rows = (
-    await scopedFor(userId, client).suggestions.findMany({
-      where: { status: "selected", selectedOn: new Date(dayOf(now)) },
-    })
+    latest?.selectedOn
+      ? await db.suggestions.findMany({
+          where: { status: "selected", selectedOn: latest.selectedOn },
+        })
+      : []
   ).sort((a, b) => byRank({ ...a, id: a.key }, { ...b, id: b.key }));
   // An idea's buttons are those of the suggestions it combines.
   const partKeys = rows.filter((r) => isIdea(r.key)).flatMap((r) => partsOfIdea(r.key));
@@ -481,6 +493,7 @@ export async function offeredToday(
     return {
       id: r.id,
       key: r.key,
+      chosenOn: dayOf(r.selectedOn ?? now),
       topic: r.topic,
       title: r.title,
       headline: r.headline || r.title,

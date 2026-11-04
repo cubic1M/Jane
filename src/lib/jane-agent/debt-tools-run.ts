@@ -40,6 +40,7 @@ import { PROJECT_YEARS_DEFAULT } from "@/config/home-equity";
 import { compareHomeProject, loadHomeEquity } from "@/lib/home-equity";
 import { listApplications } from "@/lib/loan-applications";
 import { loadRefinance } from "@/lib/refinance";
+import { chatToday } from "@/lib/today";
 import {
   DEBT_TOOLS,
   debtsToolOutput,
@@ -293,7 +294,7 @@ export async function runDebtTool(
       return out(refinanceToolOutput(await loadRefinance(userId, { client, now }), money));
     case "payoff_plan": {
       const payoff = await loadPayoff(userId, { client, now, extraCents: extraFromInput(input) });
-      return out(payoffToolOutput(payoff, now.toISOString().slice(0, 10), money));
+      return out(payoffToolOutput(payoff, await chatToday(userId, { client, now }), money));
     }
     default:
       return { content: JSON.stringify({ error: `There's no tool called ${name}.` }), cents: [] };

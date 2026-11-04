@@ -207,6 +207,7 @@ describe("the agenda leads with the scan's suggestions (step 265)", () => {
   const suggestion = {
     id: "s1",
     key: "idle_cash:savings",
+    chosenOn: "2026-10-18",
     topic: "idle_cash",
     title: "Move $9,000 of idle cash to a savings account that pays 4%",
     headline: "Move idle cash to higher interest, earn $360 a year",

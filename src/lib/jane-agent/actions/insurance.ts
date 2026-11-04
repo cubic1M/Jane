@@ -52,6 +52,7 @@ import { appliedNote, sameCover } from "../insurance/saving-words";
 import { RiskError, answerRisk, gapQuotes } from "@/lib/insurance/risks";
 import { gapQuotesLines, riskAnswerNote } from "../insurance/risk-words";
 import { RISK_GAP_KINDS } from "@/lib/insurance/risks";
+import { chatToday } from "@/lib/today";
 import { parseActions } from "../types";
 import {
   askingStep,
@@ -383,7 +384,7 @@ const dependants = (id: ActionHandler["id"], n: number): ActionHandler => ({
     await saveDependants(userId, n, { client });
     const sized = await sizeLife(userId, { client, now });
     if (sized.kind === "sized") {
-      const asOf = now.toISOString().slice(0, 10);
+      const asOf = await chatToday(userId, { client, now });
       return {
         status: "open",
         answeredWith: null,

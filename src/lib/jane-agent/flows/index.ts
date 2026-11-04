@@ -19,6 +19,7 @@ import { shortName } from "../sources/findings";
 import type { ChatMessage, MessageAction, MessageRefs } from "../types";
 import type { FlowContext, FlowDef, FlowId } from "./engine";
 import { shiftMonth } from "@/lib/dates";
+import { chatToday } from "@/lib/today";
 
 // The guided flows (spec step 95). Each asks a few questions, then ends in the feature's own
 // code: Budgets' setBudget, Goals' addGoal, and a finding's own Yes (a switch to the option
@@ -34,7 +35,7 @@ const budget: FlowDef<BudgetData> = {
   id: "budget",
   title: "Setting up a budget",
   async load({ userId, client, now }) {
-    const asOf = now.toISOString().slice(0, 10);
+    const asOf = await chatToday(userId, { client, now });
     const db = scopedFor(userId, client);
     const [transactions, budgets] = await Promise.all([
       loadInsightTransactions(db, asOf, INSIGHT_MONTHS),
@@ -128,7 +129,10 @@ const goal: FlowDef<null> = {
     },
   ],
   async finish(answers, _, { userId, client, now }) {
-    const month = shiftMonth(now.toISOString().slice(0, 7), Number(answers.months));
+    const month = shiftMonth(
+      (await chatToday(userId, { client, now })).slice(0, 7),
+      Number(answers.months),
+    );
     const name = answers.name.charAt(0).toUpperCase() + answers.name.slice(1);
     const cents = Number(answers.amount);
     await addGoal(

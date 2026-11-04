@@ -43,6 +43,7 @@ import { practiceProfileOf } from "@/lib/practice/preferences";
 import { PRACTICE_LOG_DAYS } from "@/config/practice-cards";
 import { setPaused, tradeLog } from "@/lib/practice/autopilot";
 import { loadPractice } from "@/lib/practice/portfolio";
+import { chatToday } from "@/lib/today";
 import {
   backtestReply,
   levelStrategyReply,
@@ -92,7 +93,7 @@ export async function answerInvestments(
   intent: InvestmentIntent,
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<Reply> {
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await chatToday(userId, { client, now });
   switch (intent.topic) {
     // Spec step 297: the practice portfolio (practice money only, demo advice).
     case "practice_log": {
@@ -189,7 +190,7 @@ export async function answerInvestments(
       return costlyReply(await loadCostlyProducts(userId, { client, now }));
     case "yearly_review": {
       const snapshot = await loadInvestmentSnapshot(userId, { client, now });
-      return yearlyReviewReply(snapshot, now.getUTCFullYear());
+      return yearlyReviewReply(snapshot, Number(asOf.slice(0, 4)));
     }
     case "location":
       return locationReply(await loadLocation(userId, { client, now }));
