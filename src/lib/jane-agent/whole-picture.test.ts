@@ -108,6 +108,15 @@ describe("the whole-picture answer", () => {
     expect(reply.actions.at(-1)).toMatchObject({ kind: "link", href: "/home" });
   });
 
+  it("doesn't say they're OK with nothing safe to spend", () => {
+    const zero = snapshot({ safeToSpend: { safeCents: 0, payday: null } });
+    expect(answer(zero).body.split("\n")[0]).toBe(
+      "Not quite: nothing is safe to spend this month, after your bills.",
+    );
+    expect(answer(zero).body).not.toContain("you're OK");
+    expect(wholePicture(zero, [], "now").verdict).toBe("watch");
+  });
+
   it("says when money is short or something is urgent, before anything else", () => {
     expect(
       answer(snapshot({ safeToSpend: { safeCents: -5_000, payday: "2026-11-01" } })).body,

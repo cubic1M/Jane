@@ -74,6 +74,10 @@ export function wholePicture(snapshot: Snapshot, ranked: Ranked[], focus: Focus)
   if (safe && safe.safeCents < 0) {
     verdict = "act";
     headline = `Not quite: you're short by ${formatCents(-safe.safeCents)}${until}, after your bills.`;
+  } else if (safe && safe.safeCents === 0 && urgent.length === 0) {
+    // "Yes, you're OK: you have $0.00 safe to spend" isn't a yes.
+    verdict = "watch";
+    headline = `Not quite: nothing is safe to spend${until}, after your bills.`;
   } else if (urgent.length > 0) {
     verdict = "act";
     const alert = urgent[0].replace(/[.!?]+$/, "");
