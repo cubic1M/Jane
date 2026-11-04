@@ -1,13 +1,5 @@
 [
  {
-  "on": 1277,
-  "lane": "lane:proof",
-  "task": "claude/proof-closed",
-  "when": "merged",
-  "since": "2026-11-04T02:56:27.693Z",
-  "expires": "2026-11-07T02:56:27.693Z"
- },
- {
   "on": 1337,
   "lane": "lane:proof",
   "task": "claude/proof-green",
