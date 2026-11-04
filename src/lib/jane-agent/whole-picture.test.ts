@@ -108,6 +108,15 @@ describe("the whole-picture answer", () => {
     expect(reply.actions.at(-1)).toMatchObject({ kind: "link", href: "/home" });
   });
 
+  // Debugger 11-04: a freelancer with money in the bank, $0 once tax was held back, was told it was
+  // "after your bills".
+  it("says when tax is what took it to nothing", () => {
+    const zero = snapshot({ safeToSpend: { safeCents: 0, payday: null, taxHeldCents: 47_267 } });
+    expect(answer(zero).body.split("\n")[0]).toBe(
+      "Not quite: nothing is safe to spend this month, after your bills and $472.67 set aside for tax.",
+    );
+  });
+
   it("doesn't say they're OK with nothing safe to spend", () => {
     const zero = snapshot({ safeToSpend: { safeCents: 0, payday: null } });
     expect(answer(zero).body.split("\n")[0]).toBe(

@@ -22,7 +22,9 @@ export function safeLine(snapshot: Snapshot, date: string): string | null {
   const until = safe.payday ? ` until payday, ${dateAndDays(safe.payday, date)}` : " this month";
   return safe.safeCents < 0
     ? `You're short by ${formatCents(-safe.safeCents)}${until}, after your bills.`
-    : `You have ${formatCents(safe.safeCents)} safe to spend${until}.`;
+    : `You have ${formatCents(safe.safeCents)} safe to spend${until}${
+        safe.taxHeldCents ? `, after setting aside ${formatCents(safe.taxHeldCents)} for tax` : ""
+      }.`;
 }
 
 // Bills due in the next BRIEF_BILL_DAYS days.
