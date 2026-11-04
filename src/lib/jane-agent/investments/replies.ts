@@ -327,7 +327,7 @@ export function retirementReply(
   }
   if (!advice) {
     return {
-      body: `You have ${formatCents(data.balanceCents)} in ${data.accounts.join(" and ")}. My retirement planner is only in demo advice mode for now.`,
+      body: `You have ${formatCents(data.balanceCents)} in ${data.accounts.join(" and ")}. I don't give retirement recommendations on real accounts yet.`,
       actions: [SEE],
       refs: {},
     };
@@ -612,7 +612,7 @@ export function goalBucketsReply(data: {
   };
   if (!data.advice) {
     return {
-      body: "Investing by goal is only in demo advice mode for now.",
+      body: "I don't give recommendations on investing by goal on real accounts yet.",
       actions: [SEE],
       refs: {},
     };
@@ -653,7 +653,7 @@ export function collegeReply(
   };
   if (!advice) {
     return {
-      body: "College savings plans are only in demo advice mode for now.",
+      body: "I don't give recommendations on college savings on real accounts yet.",
       actions: [link],
       refs: {},
     };

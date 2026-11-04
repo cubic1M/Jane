@@ -186,6 +186,9 @@ const STATUS_QUESTION =
 // The person's daily allowance of written answers is used up (founder, 2026-10-26): short and
 // honest, then whatever the data answers for free.
 export const DAILY_LIMIT_NOTE = "I've hit today's limit for written answers, back tomorrow.";
+// The budget for written answers is used up, for the month or for everyone's day. "Please ask
+// again" wouldn't help, and when it comes back depends on which.
+export const BUDGET_LIMIT_NOTE = "I've hit my limit for written answers for now.";
 
 export type AnswerSource =
   "rules" | "claude" | "claude_blocked" | "claude_unavailable" | "fallback" | "capped";
@@ -238,7 +241,7 @@ async function answer(
   // The backup for when Claude can't answer (./backup.ts): the rules' answer only when it answers
   // the whole question; else what Jane can see for whoever the person named, or, for "how am I
   // doing", where they stand. Never an answer to a different question (founder 10-30).
-  const backup = async ({ limited = false } = {}): Promise<Reply> => {
+  const backup = async ({ note = null as string | null } = {}): Promise<Reply> => {
     // First: "help me commit insurance fraud" isn't a question about their insurance (11-03).
     if (unsafeRequest(text)) return { body: UNSAFE_TEXT, actions: [], refs: {} };
     const [byRules, payees] = await Promise.all([
@@ -256,27 +259,26 @@ async function answer(
       })
     ) {
       const { reply } = byRules;
-      return limited ? { ...reply, body: `${DAILY_LIMIT_NOTE} ${reply.body}` } : reply;
+      return note ? { ...reply, body: `${note} ${reply.body}` } : reply;
     }
     if (payees.length > 0) {
-      return payeeFactsReply(text, payees, limited ? { limitNote: DAILY_LIMIT_NOTE } : {});
+      return payeeFactsReply(text, payees, note ? { limitNote: note } : {});
     }
     // Where the person stands answers "how am I doing / what should I do"; for a specific
     // question it would be an unrelated status, so say plainly that it wasn't finished.
     if (!STATUS_QUESTION.test(text) || questionParts(text).length > 1) {
-      return { body: limited ? DAILY_LIMIT_NOTE : UNFINISHED_TEXT, actions: [], refs: {} };
+      return { body: note ?? UNFINISHED_TEXT, actions: [], refs: {} };
     }
     const picture = await answerByRules(
       userId,
       { kind: "whole_picture", focus: "now" },
       { client, now, topic: null },
     );
-    if (!picture)
-      return limited ? { body: DAILY_LIMIT_NOTE, actions: [], refs: {} } : unknownReply(text, asOf);
+    if (!picture) return note ? { body: note, actions: [], refs: {} } : unknownReply(text, asOf);
     return {
       ...picture,
-      body: limited
-        ? `${DAILY_LIMIT_NOTE} Here is where you stand. ${picture.body}`
+      body: note
+        ? `${note} Here is where you stand. ${picture.body}`
         : `I couldn't write a full answer to that just now, so here is where you stand. ${picture.body}`,
     };
   };
@@ -285,7 +287,11 @@ async function answer(
   if (await overDailyCap(userId, { client, now })) {
     log.info("chat_timing", { outcome: "capped", reason: "daily_cap", costCents: 0 });
     await recordLimitHit(userId, { client, now }).catch(() => {});
-    return { reply: await backup({ limited: true }), intent: intent.kind, source: "capped" };
+    return {
+      reply: await backup({ note: DAILY_LIMIT_NOTE }),
+      intent: intent.kind,
+      source: "capped",
+    };
   }
   // The end-to-end tests' scripted Claude, for their scripted messages only (./fake-chat-claude.ts).
   const scripted = claude ? null : fakeChatClaude(text);
@@ -299,7 +305,11 @@ async function answer(
   // Jane's tools and numbers. A button, a card or a rules answer never stands in for it.
   const limit = await claudeLimit(userId, { client, now });
   if (limit === "budget") {
-    return { reply: await backup(), intent: intent.kind, source: "claude_unavailable" };
+    return {
+      reply: await backup({ note: BUDGET_LIMIT_NOTE }),
+      intent: intent.kind,
+      source: "claude_unavailable",
+    };
   }
   if (limit) {
     return {
