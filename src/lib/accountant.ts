@@ -223,7 +223,9 @@ export function accountantSummaryRows(
           ["Already paid", s.paidCents],
           [s.refundCents >= 0 ? "Refund" : "Owed", Math.abs(s.refundCents)],
         ] as const)
-      : []),
+      : s.estimatedPaidCents > 0
+        ? ([["Estimated payments seen", s.estimatedPaidCents]] as const)
+        : []),
   ];
 }
 
@@ -317,6 +319,8 @@ export type AccountantView = {
     refundCents: number;
     // False when Jane sees take-home pay and not what was withheld.
     withholdingKnown: boolean;
+    // Estimated payments seen in the accounts, known either way.
+    estimatedPaidCents: number;
   };
   pack: Pick<TaxPack, "charity" | "preparer" | "income" | "forms" | "states" | "rental">;
   collected: { form: string; from: string; boxes: Record<string, number>; matches: string }[];
@@ -380,6 +384,7 @@ export async function viewByToken(
         paidCents: e.paidCents,
         refundCents: e.refundCents,
         withholdingKnown: estimate.withholdingKnown,
+        estimatedPaidCents: estimate.input.federalEstimatedPaidCents,
       },
       pack: {
         charity: pack.charity,
