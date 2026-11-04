@@ -230,6 +230,22 @@ describe("the insurance tree", () => {
 
   // Overnight upload QA: every salaried person's tree led with "Health cover: Missing" and
   // "Disability cover: Missing", both urgent, though a job usually covers both out of pay.
+  // Debugger 11-04: someone who uploaded only a card read "Urgent: Renters insurance, Missing".
+  // With no bank account on file, Jane can't know: every gap is worth a look, none is missing.
+  it("calls nothing missing with no bank account on file", () => {
+    const { tree } = insuranceTree(
+      input({
+        noBankSeen: true,
+        gaps: [{ key: "renters", why: "You rent.", policyId: null }],
+        policies: [],
+      } as Partial<InsuranceTreeInput>),
+    );
+    expect(tree.branches.find((b) => b.id === "missing")!.items[0]).toMatchObject({
+      status: "look",
+      figure: "Not on file",
+    });
+  });
+
   it("says cover a job usually gives is not on file, worth a look", () => {
     const { tree } = insuranceTree(
       input({

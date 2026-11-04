@@ -467,3 +467,53 @@ describe("income after a paycheck stops", () => {
     expect(withBonus).toBe(steady);
   });
 });
+
+// Debugger 11-04: someone who uploaded only a card read Insurance "Urgent: check your car is
+// insured". Premiums are mostly paid from a bank account Jane hadn't seen, so no charge means
+// nothing yet.
+describe("insurance charges with no bank account on file", () => {
+  const onlyCards = (data: ReturnType<typeof inputFor>) => ({
+    ...data,
+    accounts: data.accounts.filter((a) => a.type === "credit"),
+  });
+  const person = PEOPLE.find((p) => inputFor(p.id).accounts.some((a) => a.type === "credit"))!;
+
+  it("doesn't read as having no cover", () => {
+    const data = inputFor(person.id);
+    const none = {
+      ...onlyCards(data),
+      transactions: data.transactions.filter((t) => t.pfc !== "GENERAL_SERVICES_INSURANCE"),
+    };
+    const { facts } = buildProfile(none);
+    expect(facts.insurance_auto.value).toBeNull();
+    expect(facts.insurance_home.value).toBeNull();
+    expect(facts.insurance_life.value).toBeNull();
+    expect(facts.insurance_health.value).toBeNull();
+  });
+
+  it("still counts a charge it can see", () => {
+    const data = onlyCards(inputFor(person.id));
+    const { facts } = buildProfile({
+      ...data,
+      transactions: [
+        ...data.transactions,
+        {
+          ...data.transactions[0],
+          description: "GEICO AUTO INSURANCE",
+          amountCents: 14_200,
+          pfc: "GENERAL_SERVICES_INSURANCE",
+        },
+      ],
+    });
+    expect(facts.insurance_auto.value).toBe(true);
+  });
+
+  it("reads as none once a bank account is there", () => {
+    const data = inputFor(person.id);
+    const { facts } = buildProfile({
+      ...data,
+      transactions: data.transactions.filter((t) => t.pfc !== "GENERAL_SERVICES_INSURANCE"),
+    });
+    expect(facts.insurance_auto.value).toBe(false);
+  });
+});
