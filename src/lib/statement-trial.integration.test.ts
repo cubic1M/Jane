@@ -111,6 +111,7 @@ const NOT_A_PERSONS = new Set([
   "plaid_webhook_events",
   "plaid_item_counter",
   "referral_partners",
+  "ops_switches",
   // Market data, and the beta's sign-up lists, by email or code: a temporary person has neither.
   "market_prices",
   "market_history_loads",

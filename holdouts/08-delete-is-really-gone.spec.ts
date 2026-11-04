@@ -76,7 +76,7 @@ test.describe("Deleting everything", () => {
     await confirm.fill("delete it");
     await page.getByRole("button", { name: /delete all my data/i }).click();
     await settled(page);
-    expect(await exportText(context)).toMatch(/NETFLIX\.COM/);
+    expect(await exportText(context)).toContain("NETFLIX.COM");
 
     // The real thing, and the page the privacy policy promises afterwards.
     await openDeleteForm(page);

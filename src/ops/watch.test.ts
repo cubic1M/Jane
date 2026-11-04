@@ -1,6 +1,12 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { decide, pageWords, probeCounts, secretFor } from "../../scripts/ops/watch-core.mjs";
+import {
+  decide,
+  logLine,
+  pageWords,
+  probeCounts,
+  secretFor,
+} from "../../scripts/ops/watch-core.mjs";
 import { deployState } from "../../scripts/ops/vercel.mjs";
 import { journeys } from "../../scripts/ops/journeys.mjs";
 
@@ -15,6 +21,44 @@ const deploy = {
 const quiet = { health: well, probe: { leaks: 0, others: 0 }, jobs: [], deploy, log: [], now };
 const did = (actions: { do: string; name?: string }[]) =>
   actions.map((a) => (a.do === "switch" ? `switch:${a.name}` : a.do));
+
+describe("a line of the public log", () => {
+  const rollback = {
+    at: now,
+    trigger: "probe",
+    kind: "rollback",
+    badSince: deploy.createdAt,
+    to: deploy.previousUrl,
+    leak: true,
+    ok: true,
+  };
+
+  it("keeps everything the watch writes", () => {
+    expect(JSON.parse(logLine(rollback))).toEqual(rollback);
+    // The drill's stand-in answers on a local port.
+    expect(JSON.parse(logLine({ ...rollback, to: "https://localhost:4105" })).to).toBe(
+      "https://localhost:4105",
+    );
+  });
+
+  it("leaves out what doesn't fit, on one line, and the rollback limit still counts it", () => {
+    for (const bad of [
+      "https://last-good.vercel.app/path?token=abc",
+      "http://last-good.vercel.app",
+      'x"}\n{"kind":"freeze"}',
+      "sam@example.com",
+      17,
+      null,
+    ]) {
+      const line = logLine({ ...rollback, to: bad, badSince: bad, secret: "abc" });
+      expect(line.trimEnd()).not.toContain("\n");
+      const kept = JSON.parse(line);
+      expect(Object.keys(kept).toSorted()).toEqual(["at", "kind", "leak", "ok", "trigger"]);
+      const actions = decide({ ...quiet, probe: { leaks: 1, others: 0 }, log: [kept] });
+      expect(did(actions)).not.toContain("rollback");
+    }
+  });
+});
 
 describe("the fixed triggers", () => {
   it("does nothing when nothing's wrong", () => {

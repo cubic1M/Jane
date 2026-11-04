@@ -4,6 +4,7 @@ import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { readData, writeData } from "./data-branch.mjs";
 import { parseJsonl } from "./numbers-core.mjs";
+import { logLine } from "./watch-core.mjs";
 
 const FILE = "actions.jsonl";
 const local = () => process.env.OPS_LOG_FILE;
@@ -17,7 +18,7 @@ export function readLog() {
 }
 
 export function logAction(entry) {
-  const line = `${JSON.stringify(entry)}\n`;
+  const line = logLine(entry);
   const file = local();
   if (file) appendFileSync(file, line);
   else writeData(`Ops: ${entry.kind}`, (read) => ({ [FILE]: read(FILE) + line }));

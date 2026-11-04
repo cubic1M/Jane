@@ -99,6 +99,25 @@ export function decide({ health, probe, jobs, deploy, log, switches = [], now })
   return actions;
 }
 
+// One line of the public log. A deployment's address and time come from Vercel's answer, so each
+// field must have its shape, and anything else stays out. A bad field goes, not the line: the
+// rollback limit still has to count it.
+const WORD = /^[a-z]{1,20}$/;
+const TIME = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?Z$/;
+const ADDRESS = /^https:\/\/[a-z0-9.-]{1,253}(:\d{1,5})?$/i;
+const LOG_TEXT = { at: TIME, kind: WORD, trigger: WORD, name: WORD, badSince: TIME, to: ADDRESS };
+
+export function logLine(entry) {
+  const kept = {};
+  for (const [field, shape] of Object.entries(LOG_TEXT)) {
+    if (typeof entry[field] === "string" && shape.test(entry[field])) kept[field] = entry[field];
+  }
+  for (const field of ["leak", "ok"]) {
+    if (typeof entry[field] === "boolean") kept[field] = entry[field];
+  }
+  return `${JSON.stringify(kept)}\n`;
+}
+
 // The words for a phone, from what really happened, not what was meant to.
 export function pageWords(why, outcomes) {
   const say = (o) => (o.do === "switch" ? `KILL_${o.name.toUpperCase()}` : o.do);
