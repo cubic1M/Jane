@@ -42,7 +42,7 @@ import {
   statementTrialSpentCents,
 } from "./claude-limits";
 import { addSpend, dailyCapCents, spentTodayCents } from "./spend";
-import { sendToJane } from "./typing";
+import { BUDGET_LIMIT_NOTE, sendToJane } from "./typing";
 
 // What a temporary person's chat may cost, with a fake Claude: no call leaves this machine. Each
 // answer counts against their own allowance and everyone's for the day; past either, Jane answers
@@ -143,7 +143,8 @@ describe.runIf(url)("a temporary person's Claude budget", { timeout: 180_000 }, 
     });
     expect(create).not.toHaveBeenCalled();
     expect(source).toBe("claude_unavailable");
-    expect(reply.body.length).toBeGreaterThan(30);
+    // "Please ask again" wouldn't help: the note says why, and when the data answers, that follows.
+    expect(reply.body).toBe(BUDGET_LIMIT_NOTE);
     // Not counted against the person: the next day they can ask.
     await sendToJane(userId, "tell me another", {
       client,
