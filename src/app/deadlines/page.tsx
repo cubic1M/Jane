@@ -19,7 +19,15 @@ import { dayLabel } from "@/lib/day-label";
 
 const LINK = "font-medium text-emerald-700 hover:underline";
 
-function Row({ deadline, today }: { deadline: Deadline; today: string }) {
+function Row({
+  deadline,
+  today,
+  year = false,
+}: {
+  deadline: Deadline;
+  today: string;
+  year?: boolean;
+}) {
   return (
     <li className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 [overflow-wrap:anywhere] dark:border-zinc-800">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -30,7 +38,7 @@ function Row({ deadline, today }: { deadline: Deadline; today: string }) {
           <span className="font-semibold">{deadline.title}</span>
         </div>
         <span className="text-sm">
-          <span className="font-medium">{dayLabel(deadline.date)}</span>
+          <span className="font-medium">{dayLabel(deadline.date, { year })}</span>
           <span className="text-zinc-500"> · {dueIn(deadline.date, today)}</span>
         </span>
       </div>
@@ -81,7 +89,11 @@ async function DeadlinesContent() {
   await connection();
   const now = new Date();
   const today = isoDate(now);
-  const groups = groupDeadlines(await listDeadlines(user.id, { now }), today);
+  const [coming, furtherOut] = await Promise.all([
+    listDeadlines(user.id, { now }),
+    listDeadlines(user.id, { now, furtherOut: true }),
+  ]);
+  const groups = groupDeadlines(coming, today);
 
   return (
     <>
@@ -115,6 +127,17 @@ async function DeadlinesContent() {
             </ul>
           </section>
         ))
+      )}
+
+      {furtherOut.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-xl font-semibold">Dates you added further out</h2>
+          <ul className="flex flex-col gap-3">
+            {furtherOut.map((d) => (
+              <Row key={d.key} deadline={d} today={today} year />
+            ))}
+          </ul>
+        </section>
       )}
 
       <section className="flex flex-col gap-3">

@@ -86,6 +86,27 @@ describe.runIf(url)("deadlines against a real database", () => {
     expect((await rowsOf(me)).map((r) => r.kind).sort()).toEqual(["card_benefit", "other"]);
   });
 
+  // "Warranty ends" next August said "Added. Jane will remind you a few days before", and then was
+  // nowhere on the page to see, change or delete until 90 days before it.
+  it("keeps a date the person added further out where they can find it", async () => {
+    const me = await person();
+    await addDeadline(me, form({ title: "Warranty ends", dueOn: "2027-08-01", kind: "warranty" }), {
+      client,
+      now: NOW,
+    });
+    await addDeadline(me, form({ title: "Soon", dueOn: "2026-10-20" }), { client, now: NOW });
+    const later = await listDeadlines(me, { client, now: NOW, furtherOut: true });
+    expect(later.map((d) => d.title)).toEqual(["Warranty ends"]);
+    expect(later[0].entryId).toEqual(expect.any(String));
+    expect((await listDeadlines(me, { client, now: NOW })).map((d) => d.title)).toContain("Soon");
+    expect((await listDeadlines(me, { client, now: NOW })).map((d) => d.title)).not.toContain(
+      "Warranty ends",
+    );
+
+    await markDeadlineDone(me, later[0].entryId!, { client, now: NOW });
+    expect(await listDeadlines(me, { client, now: NOW, furtherOut: true })).toEqual([]);
+  });
+
   it("keeps each person's deadlines to themselves", async () => {
     const me = await person();
     const other = await person();

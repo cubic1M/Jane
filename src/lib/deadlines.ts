@@ -227,8 +227,16 @@ export async function listDeadlines(
     client = defaultClient,
     now = new Date(),
     sources = DEADLINE_SOURCES,
-  }: Options & { sources?: readonly DeadlineSource[] } = {},
+    furtherOut = false,
+  }: Options & { sources?: readonly DeadlineSource[]; furtherOut?: boolean } = {},
 ): Promise<Deadline[]> {
+  // Dates the person added beyond the list's horizon, soonest first: a warranty can be years out,
+  // and what they just added has to be somewhere they can see, finish or delete it.
+  if (furtherOut) {
+    const until = addDays(isoDate(now), DEADLINE_HORIZON_DAYS);
+    const entered = await handEnteredDeadlines(userId, { client, now });
+    return entered.filter((d) => d.date > until).sort((a, b) => a.date.localeCompare(b.date));
+  }
   const results = await Promise.allSettled(
     sources.map((source) => source(userId, { client, now })),
   );
