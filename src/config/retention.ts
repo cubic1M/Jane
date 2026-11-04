@@ -11,6 +11,7 @@ export const REMOVAL_WARNING_DAYS = 7;
 // Things only a person does; system work like syncs doesn't count as activity.
 export const ACTIVITY_EVENTS: readonly string[] = [
   "signed_in",
+  "chat_message_sent",
   "report_viewed",
   "insights_viewed",
   "alerts_viewed",

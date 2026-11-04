@@ -159,7 +159,8 @@ export async function emailUrgentAlerts(
       const label = ALERT_LABELS[alert.type].label;
       const pushed = await push(
         userId,
-        { title: `${label}: ${alert.title}`, body: alert.body, url: "/jane#alerts" },
+        // Shows on a lock screen: an amount and a clinic's name stay inside the app.
+        { title: `Jane: ${label}`, body: "Open Jane to see it.", url: "/jane#alerts" },
         { client },
       );
       if (pushed > 0) {

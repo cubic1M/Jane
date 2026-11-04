@@ -43,12 +43,13 @@ describe("renderAlertEmail", () => {
     unsubscribe: "https://app.example/unsubscribe?token=t&what=alerts",
   };
 
-  it("puts the alert in the subject and both bodies, with a way to stop", () => {
+  it("puts the alert in both bodies and not the subject, with a way to stop", () => {
     const email = renderAlertEmail(
       { type: "large_charge", title: "$1,200.00 at <Best> Electronics", body: "On your card." },
       links,
     );
-    expect(email.subject).toBe("Unusually large charge: $1,200.00 at <Best> Electronics");
+    // A subject shows on a lock screen: the amount and the name stay inside.
+    expect(email.subject).toBe("Jane: Unusually large charge");
     expect(email.text).toContain("On your card.");
     expect(email.text).toContain(links.unsubscribe);
     expect(email.html).toContain("&lt;Best&gt;");

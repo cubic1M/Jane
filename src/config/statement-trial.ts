@@ -65,6 +65,8 @@ export const statementTooManyRows = () =>
   `A temporary try reads up to ${STATEMENT_TRIAL_MAX_ROWS.toLocaleString("en-US")} transactions at a time. Download fewer months from your bank.`;
 
 // Words for what this path doesn't do.
+export const DEMO_NO_DOCUMENTS =
+  "This account only has the demo bank's sample data, so it can't read your own documents. Link your bank or upload a statement first.";
 export const SAMPLE_NO_DOCUMENTS = "A sample account can't keep files. Sign up to keep yours.";
 export const STATEMENT_TRIAL_NO_DOCUMENTS =
   "A temporary try reads bank statements only, so documents aren't kept here.";

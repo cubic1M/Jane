@@ -73,4 +73,47 @@ describe.runIf(url)("the agent and sample data", { timeout: 120_000 }, () => {
     expect(await agentStep(user.id, actionId!, { client, send, notify })).toBe("sent");
     expect(send).not.toHaveBeenCalled();
   });
+
+  it("doesn't carry on with a demo action once the person has real data: it goes to a person", async () => {
+    const name = `Realco${Array.from({ length: 10 }, () => "abcdefghij"[Math.floor(Math.random() * 10)]).join("")}`;
+    const merchant = await client.merchant.create({
+      data: { key: name.toLowerCase(), name, supportEmail: "support@realco.example" },
+    });
+    merchants.push(merchant.id);
+    const user = await client.user.create({
+      data: { email: `sample-mail-${crypto.randomUUID()}@example.com` },
+    });
+    created.push(user.id);
+    await linkDemoBank(user.id, { client });
+    const finding = await client.finding.create({
+      data: {
+        userId: user.id,
+        type: "duplicate_charge",
+        key: crypto.randomUUID(),
+        title: `Charged twice at ${name}`,
+        annualSavingsCents: 2_000,
+        amountCents: 2_000,
+        confidence: "medium",
+        evidence: { merchant: name, charges: [] } as Prisma.InputJsonObject,
+      },
+      select: CARD_SELECT,
+    });
+    const { actionId } = await recordDecision(
+      user.id,
+      { findingId: finding.id, choice: "yes", cardHash: cardHash(buildCard(finding)) },
+      { client },
+    );
+    // Then a real bank, with the demo action still open.
+    await client.plaidItem.create({
+      data: {
+        userId: user.id,
+        plaidItemId: `real-${crypto.randomUUID()}`,
+        accessTokenEncrypted: "made-up",
+      },
+    });
+    const send = vi.fn(async () => {});
+    const notify = vi.fn(async () => {});
+    expect(await agentStep(user.id, actionId!, { client, send, notify })).toBe("handed_off");
+    expect(send).not.toHaveBeenCalled();
+  });
 });

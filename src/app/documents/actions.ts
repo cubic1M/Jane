@@ -1,5 +1,6 @@
 "use server";
 
+import { adviceMode } from "@/lib/advice-mode";
 import { readDraftReturn } from "@/lib/draft-return";
 import { revalidatePath } from "next/cache";
 import { documentTooBig, MAX_DOCUMENT_BYTES, type DocumentContentType } from "@/config/documents";
@@ -14,7 +15,11 @@ import { hit } from "@/lib/rate-limit";
 import { isTrialUser } from "@/lib/trial-ids";
 import { requireUser } from "@/lib/session";
 import { isStatementTrialUser } from "@/lib/trial-ids";
-import { SAMPLE_NO_DOCUMENTS, STATEMENT_TRIAL_NO_DOCUMENTS } from "@/config/statement-trial";
+import {
+  DEMO_NO_DOCUMENTS,
+  SAMPLE_NO_DOCUMENTS,
+  STATEMENT_TRIAL_NO_DOCUMENTS,
+} from "@/config/statement-trial";
 
 // Uploading, correcting and deleting documents on /documents (spec step 68). The upload
 // and facts forms keep their message on screen and refresh the list themselves, so these
@@ -27,6 +32,8 @@ export async function uploadDocument(_previous: FormState, formData: FormData): 
   // Each document may go to Claude, and is stored: neither is for a temporary try.
   if (isStatementTrialUser(user.id)) return { ok: false, message: STATEMENT_TRIAL_NO_DOCUMENTS };
   if (isTrialUser(user.id)) return { ok: false, message: SAMPLE_NO_DOCUMENTS };
+  // Only the demo bank here, so Jane gives sample advice, and a real return or policy would get it.
+  if (await adviceMode(user.id)) return { ok: false, message: DEMO_NO_DOCUMENTS };
   if (!(await hit("documents", user.id)).ok) {
     return { ok: false, message: "That's a lot of uploads at once. Try again in an hour." };
   }

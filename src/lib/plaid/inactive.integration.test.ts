@@ -49,6 +49,34 @@ describe.runIf(url)("inactive cleanup against a real database", () => {
     await client.$disconnect();
   });
 
+  it("leaves alone someone who only chats, or only opens pages", async () => {
+    vi.spyOn(console, "info").mockImplementation(() => {});
+    const chats = await person("chats", 55);
+    await client.analyticsEvent.create({
+      data: { userId: chats, name: "chat_message_sent", createdAt: new Date(NOW.getTime() - DAY) },
+    });
+    const reads = await person("reads", 55);
+    await client.session.create({
+      data: {
+        sessionToken: `inactive-${crypto.randomUUID()}`,
+        userId: reads,
+        expires: new Date(NOW.getTime() + DAY),
+        lastSeenAt: new Date(NOW.getTime() - DAY),
+      },
+    });
+    const send = vi.fn();
+    const remove = vi.fn();
+    const run = await runInactiveCleanup({
+      client,
+      now: NOW,
+      send,
+      remove,
+      userIds: [chats, reads],
+    });
+    expect(run).toMatchObject({ warned: 0, removed: 0 });
+    expect(send).not.toHaveBeenCalled();
+  });
+
   it("warns, then removes a week later, leaving active people alone", async () => {
     vi.spyOn(console, "info").mockImplementation(() => {});
     const active = await person("active", 3);

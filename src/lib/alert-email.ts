@@ -18,7 +18,8 @@ export function renderAlertEmail(
   links: AlertEmailLinks,
 ) {
   const label = ALERT_LABELS[alert.type].label;
-  const subject = `${label}: ${alert.title}`;
+  // A subject shows on a lock screen: an amount and a clinic's name stay inside.
+  const subject = `Jane: ${label}`;
   const text = [
     alert.title,
     "",
