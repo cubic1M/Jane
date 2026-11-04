@@ -25,6 +25,12 @@ It scored 79.5 points per table vs the kit's sample bots (our full bot: 78–85)
 | kit 1 | Agent class, raise-to | 15 min | 79.5 points per table |
 | kit 2 | module functions, raise-by, renumbered seats, a draw twist | **10 min** | 333 points per table vs the samples' 32–152; won 196/200 tables |
 
+**Fifth rehearsal (practice kit 4, blind: a new interface, `play(view, memory)` returning chips to ADD,
+fixed seats 1-8, a log string, no engine import, `time` banned; Six-Plus):** a verified bot in **5 minutes**,
+70.7 points per table vs the samples' 10-44 (0 errors, 0 timeouts, max 0.21 ms); our full Plan A bundle
+scored 70.3 on the same kit. Its 27 ambiguities are in `practice_kit4/planb5/LOG.md`; the interface and
+reply wording above now covers the third reply convention (chips to add) and a non-importable engine.
+
 **Fourth rehearsal (after tonight's rule updates, rehearsal kit, blind):** a verified bot in **9 minutes**,
 77.6 points per table vs the samples (0 errors, p99 0.10 ms); 20 ambiguities in `rehearsal_sng/planb2/LOG.md`,
 the percentile-table size fixed above.
@@ -52,14 +58,22 @@ Kit-2 lessons, already folded into the prompts below:
 - **Timing.** A/B runs of 800 tables per side take minutes each: use every core and budget for it.
 
 ## Prompt 1 (minutes 0–5): safe bot
-> Write the kit's submission file (the file name and the class name the README asks
-> for) implementing its Agent interface. Every decision must never raise and must return
-> within 0.3 ms: wrap everything in try/except returning check if checking is legal, else
-> fold. Strategy for now: check when free; fold to any bet. When my stack plus my chips
-> already in front is at most 10 big blinds and nobody has raised (limps are not raises),
-> go all-in (the kit's maximum raise-to value) with pocket pairs 77+, AK, AQ, AJs;
-> otherwise fold. Single self-contained file: standard library, numpy and the kit
-> modules only. Seed any random generator per table.
+> Write the kit's submission file exactly as the README asks (a class, or module-level
+> functions such as `play(view, memory)`: use its names). Every decision must never raise
+> and must return within 0.3 ms: wrap everything in try/except returning check if checking
+> is legal, else fold. Strategy for now: check when free; fold to any bet. When my stack
+> plus my chips in front (my bet on THIS street) is at most 10 big blinds and nobody has
+> raised (limps are not raises), go all-in with pocket pairs 77+, AK, AQ, AJs; otherwise
+> fold. **Read the reply convention first** and write one helper that turns "raise to X /
+> call / check / fold / all-in" into the kit's reply: raise-TO (a total), raise-BY (over the
+> current bet), or chips-to-ADD now (X − my bet this street); all-in = the kit's own maximum.
+> Note which replies the kit treats as a fold (e.g. anything below the call amount, or 0
+> facing a bet) and which are invalid (floats, strings). Single self-contained file: only
+> the imports the README allows (often no `time`, `os`, `sys`; the kit's engine may not be
+> importable: then write your own hand evaluator in the build script and check it against
+> the kit's on random hands). Seed any random generator per table; keep per-table state
+> where the kit says (an object per table, or the `memory` dict it passes: module globals
+> may be shared by several seats).
 
 Done when: the kit's local runner shows 0 errors on 50 tables. Rare timeouts (under 0.1%
 of decisions) can be machine jitter: even the kit's own bots get them. **Submit.**
@@ -87,14 +101,16 @@ Short deck: AA ≈ 0.76. A draw variant: AA ≈ 0.80, weak hands 0.38–0.43.
 ## Prompt 3 (minutes 10–25): decision rules
 > In the bot, embed the tables as dicts and implement `equity(hole, board, k)`. Preflop,
 > use the class table. Postflop, use (street, my category, board category, k); the
-> category comes from the kit's evaluator, computed once per street and cached.
+> category comes from the kit's evaluator, or your own if the bot cannot import it (the same
+> numbering as in the build script), computed once per street and cached.
 > Definitions:
 > * pot = all chips in the middle including the current street's bets and antes;
 > * "my stack" = chips behind;
 > * effective stack (bb) = min(my stack + my chips in front, the largest stack + chips in
 >   front among opponents not folded) / big blind;
 > * "players still to act" = opponents not folded who have not acted voluntarily this
->   street (the blinds count until they act).
+>   street (the blinds count until they act); all-in opponents are not "to act";
+> * "chips in front" = my bet on this street (not the hand total).
 >
 > Rules, with the parameters as named constants:
 > * Track per seat, this table only, its open rate = (hands it raised first in + 0.96) /
@@ -116,7 +132,7 @@ Short deck: AA ≈ 0.76. A draw variant: AA ≈ 0.80, weak hands 0.38–0.43.
 >     else check or fold.
 >   - **Attacked-opens lock** (+4 per table vs fields that re-raise wide openers): count my
 >     first-in opens and how many got re-raised. Once I have 20+ opens and ≥ 30% were re-raised
->     (and the deck has all 52 cards and 1st does not take most of the points), for the rest of
+>     (and the deck has all 52 cards and 1st place's share of the points above last place is at most 75%), for the rest of
 >     the table open instead only if my hand is in the top 1.3 × P(k+limpers) / steal factor of
 >     hands (the percentile table), P = 40, 33, 23, 17, 14, 12, 11% for 1..7 players behind.
 >     Never switch back.

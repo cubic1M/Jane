@@ -107,7 +107,7 @@ Fill in each line:
 - if 1st takes (nearly) everything, also start from `icm_tag:call_margin=0.09;range_k=3.2`, worth +1.6 per table on winner payouts;
 - top-3 or flatter: the defaults.
 
-## Plan B: from scratch (rehearsed 4 times: 15, 10, 7, 9 minutes to a verified bot)
+## Plan B: from scratch (rehearsed 5 times: 15, 10, 7, 9, 5 minutes to a verified bot)
 
 - The prompts carry tonight's rules: the rebuilt bot scores 39.7 vs the old Plan B's 34.2 in mixed tables (Plan A 41.4).
 
