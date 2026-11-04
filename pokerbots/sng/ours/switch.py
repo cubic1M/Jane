@@ -42,6 +42,9 @@ class IcmSwitch:
         self.switch_hand = None
 
     def new_table(self, rules, seat, seed=0):
+        sp = rules.spec
+        # the strong-table bots are hold'em bots: hand over only in 2-card high games without discards
+        self.holdem = (sp.hole_cards == 2 and not sp.discards and getattr(sp, "showdown", "high") == "high")
         self.a.new_table(rules, seat, seed)
         self.b.new_table(rules, seat, seed + 1)
         self.switched = False
@@ -63,7 +66,7 @@ class IcmSwitch:
                     and a.my_opens_rr >= self.switch_share * a.my_opens)
         else:
             fire = a.rfi_on
-        if not self.switched and fire:
+        if not self.switched and fire and self.holdem:
             self.switched = True
             self.switch_hand = info.get("hand_number")
             self.b.shadow_only = False

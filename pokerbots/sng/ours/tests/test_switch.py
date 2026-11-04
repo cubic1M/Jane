@@ -92,5 +92,16 @@ class TestSwitch(unittest.TestCase):
                 self.assertAlmostEqual(got[i][1], ref[1], places=9)
         self.assertTrue(make("icm_switch").b.icm_fast)
 
+    def test_never_hands_over_outside_holdem(self):
+        """Omaha / split-pot / discard games keep icm_tag even when the lock fires."""
+        from sng.presets import PRESETS
+        post = ((1, 0, "post", 10), (2, 0, "post", 20), (3, 0, "fold", 0))
+        for preset in ("omaha_hilo8", "holdem_hilo8", "draw_holdem"):
+            b = make("icm_switch")
+            b.new_table(SngRules(enforce_time=False, spec=PRESETS[preset]["spec"]), 0, 1)
+            b.a.rfi_on = True
+            b.end_hand(dict(history=post, stacks=(2000,) * 8, hand_number=5, deltas=[0] * 8))
+            self.assertFalse(b.switched, preset)
+
 if __name__ == "__main__":
     unittest.main()
