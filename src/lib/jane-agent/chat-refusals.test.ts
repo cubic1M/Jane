@@ -635,6 +635,14 @@ describe("a number across turns", () => {
     expect(create).toHaveBeenCalledTimes(1);
   });
 
+  it("tells Claude the person's day, not UTC's", async () => {
+    create.mockResolvedValue(final("Fine."));
+    // 7pm on Oct 31 in Los Angeles; this person's timezone can't be read here, so US Pacific.
+    const now = new Date("2026-11-01T02:00:00Z");
+    await askClaudeInChat("u1", [], "how am i doing", { client, now, claude });
+    expect(JSON.stringify(create.mock.calls[0][0])).toContain("today is 2026-10-31");
+  });
+
   it("calculates with an amount the person gave earlier", async () => {
     create
       .mockResolvedValueOnce({

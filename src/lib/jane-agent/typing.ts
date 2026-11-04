@@ -47,6 +47,7 @@ import { MESSAGE_SELECT, parseRefs, toChatMessage, type ChatMessage } from "./ty
 import { withReadCache } from "@/lib/read-cache";
 import { listFacts, memoryForChat } from "@/lib/memory/facts";
 import { learnFromChat } from "@/lib/memory/learn";
+import { chatToday } from "@/lib/today";
 
 // Typing to Jane (spec step 84). What the person types is stored as a "user" message and
 // Jane's answer as a "reply", right after it. Rules answer first (./intents, ./answer);
@@ -203,7 +204,7 @@ async function answer(
     since,
   }: Required<Pick<Options, "client" | "now">> & Options,
 ): Promise<{ reply: Reply; intent: string; source: Source; issues?: string[] }> {
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await chatToday(userId, { client, now });
   let intent = parseIntent(text, asOf);
   // Spec step 95: an answer typed to a guided flow's question.
   const toFlow = await typedFlowReply(text, { userId, client, now });

@@ -119,6 +119,7 @@ import { backtestsFor, longDate } from "@/lib/investments/backtest";
 import { loadRuleReplays } from "@/lib/investments/rule-replay";
 import { RISK_LEVELS, type RiskLevel } from "@/config/investing";
 import { formatReturn } from "@/insights/returns";
+import { chatToday } from "@/lib/today";
 
 // The tools Claude gets in Jane's chat (spec step 84). Read-only tools over the person's
 // own data, wrapping the same loaders as the pages (and Ask's own tools, src/lib/ask), each
@@ -586,7 +587,7 @@ async function runChatToolWork(
     return value < 0 ? `-${formatCents(-value)}` : formatCents(value);
   };
   const out = (value: unknown): ToolOutput => ({ content: JSON.stringify(value), cents });
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await chatToday(userId, { client, now });
 
   switch (name) {
     case "calculate": {
@@ -1782,7 +1783,7 @@ export async function proposeAction(
   const amount = typeof args.goal_amount === "number" ? args.goal_amount : NaN;
   const targetCents = Math.round(amount * 100);
   const month = str(args.goal_month);
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await chatToday(userId, { client, now });
   if (!name) return refuse("The goal needs a name.");
   if (!Number.isFinite(amount) || targetCents <= 0 || targetCents > MAX_AFFORD_CENTS) {
     return refuse("The goal needs an amount in dollars.");

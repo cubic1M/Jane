@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { loadSnapshotFast } from "./snapshot-store";
 import { db as defaultClient } from "@/lib/db";
+import { chatToday } from "@/lib/today";
 import { capabilityFor } from "./capabilities";
 import { topicOf, withTopic, type Topic } from "./context";
 import type { Intent } from "./intents";
@@ -25,7 +26,7 @@ export async function answerByRules(
   typed: Intent,
   { client = defaultClient, now = new Date(), topic = null, cardTopic = null }: Options = {},
 ): Promise<Reply | null> {
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await chatToday(userId, { client, now });
   let resolved = withTopic(typed, topic, asOf);
   // "Why?" or "tell me more" that the last answer can't place: the card Jane put up earlier in
   // the conversation, rather than "Which one do you mean?" or "Why what?".
@@ -77,7 +78,7 @@ async function byIntent(
     intent,
     client,
     now,
-    asOf: now.toISOString().slice(0, 10),
+    asOf: await chatToday(userId, { client, now }),
     ask: (part) => byIntent(userId, part, { client, now }),
   });
 }
