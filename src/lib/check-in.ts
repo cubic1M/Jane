@@ -170,7 +170,10 @@ export async function writeSummary(
   }
 }
 
-// The stored summary for this person and month, writing it the first time.
+// The stored summary for this person and month, writing it the first time. A later statement can
+// change the month, so a summary whose figures no longer hold is written again (debugger 11-04: "you
+// spent $2,504.99" beside $3,220.34 once the card's statement came). In the fixed wording: figures
+// can move for days as statements arrive, and that shouldn't spend on Claude each time.
 export async function summaryFor(
   userId: string,
   c: CheckIn,
@@ -181,7 +184,15 @@ export async function summaryFor(
     where: { month: c.month },
     select: { summary: true },
   });
-  if (existing) return existing.summary;
+  if (existing) {
+    if (checkGuardrails(existing.summary, figures(c).cents).ok) return existing.summary;
+    const text = templateSummary(c);
+    await db.checkIns.updateMany({
+      where: { month: c.month },
+      data: { summary: text, source: "template" },
+    });
+    return text;
+  }
   const { text, source } = await writeSummary(c, { claude, useClaude: !isTrialUser(userId) });
   await db.checkIns.createMany({
     data: [{ userId, month: c.month, summary: text, source }],
