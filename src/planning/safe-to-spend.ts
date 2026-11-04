@@ -70,6 +70,8 @@ export type SafeToSpend = {
   safeCents: number;
   // About what comes in a month into checking with no payday to count it on; not in safeCents.
   unevenPayMonthlyCents: number | null;
+  // Checking accounts with no balance on file: neither their money nor their bills are counted.
+  leftOut: string[];
 };
 
 export function safeToSpend(
@@ -158,5 +160,13 @@ export function safeToSpend(
     safeCents: beforeTax - taxHeldCents,
     unevenPayMonthlyCents:
       checking.reduce((sum, a) => sum + (unevenPay(input, a.id) ?? 0), 0) || null,
+    leftOut: input.accounts
+      .filter(
+        (a) =>
+          a.type === "depository" &&
+          FORECAST_SUBTYPES.includes(a.subtype ?? "") &&
+          a.currentBalanceCents === null,
+      )
+      .map((a) => a.name),
   };
 }

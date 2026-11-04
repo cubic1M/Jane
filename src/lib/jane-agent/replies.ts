@@ -618,15 +618,23 @@ export function greetingReply(
 }
 
 export function safeReply(
-  safe: { safeCents: number; payday: string | null; taxHeldCents?: number } | null,
+  safe: {
+    safeCents: number;
+    payday: string | null;
+    taxHeldCents?: number;
+    leftOut?: string[];
+  } | null,
   asOf: string | null = null,
 ): Reply {
   if (!safe) {
     return reply(AFFORD_COPY.noChecking, [link("Add your accounts", "/connect")]);
   }
   const payday = safe.payday && (asOf ? dateAndDays(safe.payday, asOf) : dayLabel(safe.payday));
+  const leftOut = safe.leftOut?.length
+    ? ` That leaves out ${safe.leftOut.join(" and ")}: I don't have a balance for it, so its money and bills aren't counted.`
+    : "";
   return reply(
-    `You have ${fmt(safe.safeCents)} safe to spend${payday ? ` until your next payday, ${payday}` : ""}. That's after upcoming bills, what's left in your budgets and what goes to your goals${safe.taxHeldCents ? `, with ${fmt(safe.taxHeldCents)} set aside for tax on what you've earned on your own` : ""}.`,
+    `You have ${fmt(safe.safeCents)} safe to spend${payday ? ` until your next payday, ${payday}` : ""}. That's after upcoming bills, what's left in your budgets and what goes to your goals${safe.taxHeldCents ? `, with ${fmt(safe.taxHeldCents)} set aside for tax on what you've earned on your own` : ""}.${leftOut}`,
     [link("See today", "/home")],
   );
 }

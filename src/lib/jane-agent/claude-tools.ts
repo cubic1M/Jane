@@ -612,6 +612,8 @@ async function runChatToolWork(
         forGoals: money(safe.goalsCents),
         setAsideForYearlyBills: money(safe.setAsideCents),
         heldForTaxOnFreelanceIncome: money(safe.taxHeldCents),
+        // Say this beside the figure: no balance on file, so their bills aren't counted either.
+        ...(safe.leftOut?.length ? { leavesOut: safe.leftOut } : {}),
       });
     }
     case "coming_up": {
