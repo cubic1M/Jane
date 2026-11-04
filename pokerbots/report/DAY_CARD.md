@@ -95,6 +95,17 @@ Fill in each line:
 - **Submit after prompt 1 (safe bot), again after prompt 3.**
 - Between rounds: paired A/B (seeded, time limit raised, ≥ 800 tables, > 2 SE).
 
+## Between rounds (T1 -> T6): read the field, then maybe resubmit
+
+If the organisers release hand histories or results between rounds, measure **how often our first-in
+opens got re-raised** (opens re-raised / opens):
+- **≤ 25%** (every static field we built: 13-23%): keep the defaults.
+- **≥ 35%** (fields 6 and 7: 29-49%; there we finish last at 18-20 per table) **and the re-raisers are
+  competent** (they are not maniacs who also shove junk): resubmit with `open_mult=1.6` (field 7 +7.7*,
+  field 6 +6.8*, mirror +10.4*; but field 3 −11.5*, all3 −9.1*, field 5 −7.3*: only when the read is clear).
+  A one-way in-table lock (`lock_mult`) could not tell strong attackers from maniacs (default field −5.1*).
+- Also check our bust hands: if most are short-stack shoves that got called, the field calls wide: `rs_call=3`.
+
 ## Gotchas that cost points (from 3 rehearsals)
 
 | gotcha | check |
