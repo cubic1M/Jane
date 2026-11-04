@@ -1,5 +1,6 @@
 import sys, time
 sys.path.insert(0, sys.argv[1])
+PRESET = sys.argv[3] if len(sys.argv) > 3 else None
 import bot
 from sng.registry import make
 from sng.rules import SngRules
@@ -21,7 +22,12 @@ sw = 0
 for t in range(int(sys.argv[2])):
     b = bot.BOT()
     field = ("f7_profiler", "f7_balanced", "f6_raiser", "f9_threebet", "f7_bully", "f9_meta", "f8_ensemble") if t % 2 == 0 else ("f2_shark", "station", "nit", "f5_reg", "chen_tag", "lag", "f3_exploiter")
-    play_table([Conv(b)] + [make(n) for n in field], SngRules(enforce_time=False), seed=900 + t)
+    if PRESET:
+        from sng.presets import PRESETS
+        rules = SngRules(enforce_time=False, **{k: v for k, v in PRESETS[PRESET].items()})
+    else:
+        rules = SngRules(enforce_time=False)
+    play_table([Conv(b)] + [make(n) for n in field], rules, seed=900 + t)
     sw += b.switched
 q = lambda x, p: sorted(x)[min(len(x) - 1, int(len(x) * p))] if x else float("nan")
 for name, x in (("before hand-over", ts_pre), ("after hand-over", ts_post)):

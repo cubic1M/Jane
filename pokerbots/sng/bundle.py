@@ -165,8 +165,17 @@ SWITCH_MODULES = [
     ("sng.field7", None, True),
     ("sng.field7.core", "sng/field7/core.py", False),
     ("sng.field7.bots", "sng/field7/bots.py", False),
+    ("sng.field9", None, True),
+    ("sng.field9.cards9", "sng/field9/cards9.py", False),
+    ("sng.field9.icm9", "sng/field9/icm9.py", False),
+    ("sng.field9.model9", "sng/field9/model9.py", False),
+    ("sng.field9.tables9", "sng/field9/tables9.py", False),
+    ("sng.field9.base9", "sng/field9/base9.py", False),
+    ("sng.field9.bots", "sng/field9/bots.py", False),
     ("sng.ours.switch", "sng/ours/switch.py", False),
 ]
+_F9_EMBED = "_EMBED: dict = {}"
+F9_DECKS = ("six",)       # icm_switch hands short-deck tables to f9_meta: only its six-plus tables (1.4 MB)
 _PF7_LOAD = 'np.load(os.path.join(os.path.dirname(__file__), "data", "pf7.npz"))'
 
 
@@ -178,6 +187,15 @@ def _embed_pf7(src: str) -> str:
     return src.replace(_PF7_LOAD, f'np.load(__import__("io").BytesIO(__import__("base64").b64decode({b64!r})))')
 
 
+def _embed_f9(src: str) -> str:
+    """field 9's tables: embed the short-deck ones (base64 .npz) into tables9._EMBED."""
+    if _F9_EMBED not in src:
+        raise SystemExit("sng/field9/tables9.py no longer has the _EMBED hook the bundler expects")
+    data = {f"{k}9_{d}.npz": base64.b64encode((ROOT / "sng" / "field9" / "data" / f"{k}9_{d}.npz").read_bytes()).decode()
+            for d in F9_DECKS for k in ("eq", "pf", "post")}
+    return src.replace(_F9_EMBED, f"_EMBED: dict = {data!r}", 1)
+
+
 def build(adapter: Path, table: Path | None, out: Path, any_table: Path | None = None,
           with_switch: bool = False) -> Path:
     mods = [(PREFIX, "", True)]
@@ -185,6 +203,8 @@ def build(adapter: Path, table: Path | None, out: Path, any_table: Path | None =
         src = (ROOT / rel).read_text() if rel else ""
         if name == "sng.field7.core":
             src = _embed_pf7(src)
+        if name == "sng.field9.tables9":
+            src = _embed_f9(src)
         src = namespaced(src) if rel else ""
         mods.append((f"{PREFIX}.{name}", src, pkg))
     mods.insert(4, (f"{PREFIX}.engine.game", GAME_STUB, False))

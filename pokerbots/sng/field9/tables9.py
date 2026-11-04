@@ -13,6 +13,15 @@ import numpy as np
 
 _DIR = os.path.join(os.path.dirname(__file__), "data")
 _CACHE: dict = {}
+_EMBED: dict = {}        # file name -> base64 .npz (filled in by sng/bundle.py --with-switch); else read from _DIR
+
+
+def _load(name):
+    if name in _EMBED:
+        import base64
+        import io
+        return np.load(io.BytesIO(base64.b64decode(_EMBED[name])))
+    return np.load(os.path.join(_DIR, name))
 
 THR = [round(0.20 + 0.01 * i, 2) for i in range(61)]      # call_width thresholds 0.20 .. 0.80
 
@@ -40,7 +49,7 @@ def _near(grid, x):
 class Tables:
     def __init__(self, deck="std"):
         self.deck = deck
-        e = np.load(os.path.join(_DIR, f"eq9_{deck}.npz"))
+        e = _load(f"eq9_{deck}.npz")
         self.EQ = e["eq"].astype(np.float64)
         nc = e["ncomb"].astype(np.float64)
         self.W = nc / nc.sum()
@@ -49,7 +58,7 @@ class Tables:
         self.EQT = eqt.tolist()
         self.EQ_RAND = [float(x) for x in e["eq_rand"]]
         self.CALLW = [[float(((eqt[k] >= t) * self.W).sum()) for t in THR] for k in range(100)]
-        p = np.load(os.path.join(_DIR, f"pf9_{deck}.npz"))
+        p = _load(f"pf9_{deck}.npz")
         self.PF_PUSH = p["push"].astype(np.float32) / 255.0       # [nb-1, S, BFp, BFc, 169]
         self.PF_EQ = p["eqpush"].astype(np.float32) / 255.0
         self.PF_CF = p["callfrac"].astype(np.float32)              # [nb-1, S, BFp, BFc, 3]
@@ -57,7 +66,7 @@ class Tables:
         self.PF_S = [float(x) for x in p["s_grid"]]
         self.PF_BF = [float(x) for x in p["bf_grid"]]
         self.PF_SMAX = self.PF_S[-1]
-        q = np.load(os.path.join(_DIR, f"post9_{deck}.npz"))
+        q = _load(f"post9_{deck}.npz")
         self.POST = [tuple(float(x) for x in row) for row in q["eq"]]
         self.POST_N = [int(x) for x in q["n"]]
 
@@ -122,7 +131,8 @@ def get(deck="std") -> Tables:
 
 
 def available(deck) -> bool:
-    return all(os.path.exists(os.path.join(_DIR, f"{k}9_{deck}.npz")) for k in ("eq", "pf", "post"))
+    return all(f"{k}9_{deck}.npz" in _EMBED or os.path.exists(os.path.join(_DIR, f"{k}9_{deck}.npz"))
+               for k in ("eq", "pf", "post"))
 
 
 # postflop columns

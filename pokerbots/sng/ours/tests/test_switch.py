@@ -34,7 +34,7 @@ class TestSwitch(unittest.TestCase):
         six = SngRules(enforce_time=False, spec=PRESETS["kit4_sixplus"]["spec"])
         post = ((1, 0, "post", 10), (2, 0, "post", 20), (3, 0, "fold", 0))
         for any_deck, want in ((0, False), (1, True)):
-            b = make(f"icm_switch:b=f9_meta;switch_share=0.25;switch_min=10;any_deck={any_deck}")
+            b = make(f"icm_switch:b=f9_meta;switch_share=0.25;switch_min=10;any_deck={any_deck};sd_share=0")
             self.assertIsInstance(b.b, Meta)
             b.new_table(six, 0, 1)
             b.a.my_opens, b.a.my_opens_rr = 12, 4          # 33% of 12 opens re-raised
@@ -102,6 +102,42 @@ class TestSwitch(unittest.TestCase):
             b.a.rfi_on = True
             b.end_hand(dict(history=post, stacks=(2000,) * 8, hand_number=5, deltas=[0] * 8))
             self.assertFalse(b.switched, preset)
+
+    def test_short_deck_hands_over_to_f9_meta(self):
+        """Six-plus deck: f9_meta takes over once >= 30% of 20+ opens were re-raised; 52-card: f7 (the lock)."""
+        from sng.field7.bots import Balanced
+        from sng.field9.bots import Meta
+        from sng.presets import PRESETS
+        six = SngRules(enforce_time=False, spec=PRESETS["kit4_sixplus"]["spec"])
+        post = ((1, 0, "post", 10), (2, 0, "post", 20), (3, 0, "fold", 0))
+        b = make("icm_switch")
+        b.new_table(six, 0, 1)
+        self.assertTrue(b.short)
+        self.assertIsInstance(b.b, Meta)
+        b.a.my_opens, b.a.my_opens_rr = 20, 5                 # 25%: not yet
+        b.end_hand(dict(history=post, stacks=(2000,) * 8, hand_number=40, deltas=[0] * 8))
+        self.assertFalse(b.switched)
+        b.a.my_opens, b.a.my_opens_rr = 20, 6                 # 30%
+        b.end_hand(dict(history=post, stacks=(2000,) * 8, hand_number=41, deltas=[0] * 8))
+        self.assertTrue(b.switched)
+        self.assertFalse(b.b.shadow_only)
+        b.new_table(SngRules(enforce_time=False), 0, 2)       # a 52-card table: f7 and the lock
+        self.assertFalse(b.short)
+        self.assertIsInstance(b.b, Balanced)
+        self.assertFalse(b.switched)
+        off = make("icm_switch:sd_share=0")
+        off.new_table(six, 0, 1)
+        self.assertFalse(off.short)
+
+    def test_legal_on_short_deck_after_hand_over(self):
+        from sng.presets import PRESETS
+        six = SngRules(enforce_time=False, spec=PRESETS["kit4_sixplus"]["spec"])
+        line = ["icm_switch:sd_share=0.01;switch_min=3", "f9_threebet", "f9_bubble", "f9_meta",
+                "f7_balanced", "f8_ensemble", "f9_float", "f9_limptrap"]
+        sw = make(line[0])
+        res = play_table([sw] + [make(n) for n in line[1:]], six, seed=6)
+        self.assertTrue(sw.switched)
+        self.assertEqual(res.stats[0].errors + res.stats[0].illegal, 0)
 
 if __name__ == "__main__":
     unittest.main()

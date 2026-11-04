@@ -1,4 +1,6 @@
-"""icm_switch: icm_tag until the table attacks our opens, then a stronger "strong-table" bot.
+"""icm_switch: icm_tag until the table attacks our opens, then a stronger "strong-table" bot
+(52-card hold'em: f7_balanced when icm_tag's lock fires; six-plus deck: f9_meta once >= 30% of 20+ opens
+were re-raised).
 
 icm_tag beats weak and static fields by a lot (it exploits folders and stations) but finishes last
 at tables of strong bots that re-raise wide openers (fields 6 / 7, the champions table), where
@@ -26,30 +28,59 @@ def _strong_bot(name):
 class IcmSwitch:
     name = "icm_switch"
 
-    def __init__(self, switch_min=20, switch_share=0.0, b="f7", any_deck=0, icm_slice=0, **kw):
+    def __init__(self, switch_min=20, switch_share=0.0, b="f7", any_deck=0, icm_slice=0, sd_share=0.3,
+                 sd_b="f9_meta", **kw):
+        # sd_share > 0: on a six-plus deck (where the lock is off) hand over to sd_b once >= sd_share of
+        # >= switch_min first-in opens were re-raised (fresh seeds, 10 short-deck cells: +2.7, no significant
+        # loss; results/sng_sdswitch_validate.md); 0 = never on short decks
         # switch_share > 0: hand over only after switch_min first-in opens with >= switch_share of them
         # re-raised (stricter than the opening-range lock, which fires on noise at static fields); 0 = with the lock
         self.switch_min, self.switch_share = int(switch_min), float(switch_share)
         self.any_deck = bool(any_deck)        # 1: the share rule also fires on short decks / top-heavy payouts
+        self.sd_share, self.sd_name = float(sd_share), str(sd_b)
         self.a = IcmTag(**kw)
-        self.b = _strong_bot(str(b))
-        self.b.shadow_only = True            # opponent stats only until it takes over (no ICM in end_hand)
-        if hasattr(self.b, "icm_fast"):
-            self.b.icm_fast = True               # f7: batched ICM (same values, ~3x faster)
-        if hasattr(self.b, "icm_slice"):
-            self.b.icm_slice = int(icm_slice)    # f7 after the hand-over: <= icm_slice bubble factors per hand
+        self.b = self.b_main = _strong_bot(str(b))
+        self.b_sd = None
+        if self.sd_share > 0:
+            try:
+                self.b_sd = _strong_bot(self.sd_name)
+            except Exception:  # noqa: BLE001  (e.g. a bundle without field 9): short decks stay icm_tag
+                self.b_sd = None
+        for bb in (self.b_main, self.b_sd):
+            if bb is not None:
+                self._setup_strong(bb, icm_slice)
         self.switched = False
         self.switch_hand = None
+        self.short = False
+
+    @staticmethod
+    def _setup_strong(bb, icm_slice):
+        bb.shadow_only = True                # opponent stats only until it takes over (no ICM in end_hand)
+        if hasattr(bb, "icm_fast"):
+            bb.icm_fast = True                   # f7: batched ICM (same values, ~3x faster)
+        if hasattr(bb, "icm_slice"):
+            bb.icm_slice = int(icm_slice)        # f7 after the hand-over: <= icm_slice bubble factors per hand
 
     def new_table(self, rules, seat, seed=0):
         sp = rules.spec
         # the strong-table bots are hold'em bots: hand over only in 2-card high games without discards
         self.holdem = (sp.hole_cards == 2 and not sp.discards and getattr(sp, "showdown", "high") == "high")
+        # six-plus deck (field 9 has tables for it): the short-deck target and rule
+        self.short = (self.b_sd is not None and tuple(sorted(sp.deck_ranks)) == tuple(range(4, 13))
+                      and self._sd_tables())
+        self.b = self.b_sd if self.short else self.b_main
         self.a.new_table(rules, seat, seed)
         self.b.new_table(rules, seat, seed + 1)
         self.switched = False
         self.switch_hand = None
         self.b.shadow_only = True
+
+    def _sd_tables(self):
+        try:
+            from sng.field9 import tables9
+            return tables9.available("six")
+        except Exception:  # noqa: BLE001
+            return False
 
     def act(self, obs):
         return (self.b if self.switched else self.a).act(obs)
@@ -61,7 +92,9 @@ class IcmSwitch:
         except Exception:  # noqa: BLE001  the shadow bot must never cost a decision
             pass
         a = self.a
-        if self.switch_share > 0:
+        if self.short:
+            fire = a.my_opens >= self.switch_min and a.my_opens_rr >= self.sd_share * a.my_opens
+        elif self.switch_share > 0:
             fire = ((a.rfi_ok2 or self.any_deck) and a.my_opens >= self.switch_min
                     and a.my_opens_rr >= self.switch_share * a.my_opens)
         else:
