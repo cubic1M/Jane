@@ -144,6 +144,7 @@ class Hand:
         self.ev = evaluator or get_evaluator(self.spec)
         h = self.spec.hole_cards
         self.hole = [tuple(deck[i * h:(i + 1) * h]) if self.in_hand[i] else () for i in range(self.n)]
+        self.n_bets = 0
         self.board_deck = list(deck[self.n * h:])   # board cards and draw replacements, in order
         self.board = []
         self.discards = [[] for _ in range(self.n)]
@@ -210,8 +211,12 @@ class Hand:
             if self.spec.betting == "pot_limit":
                 pot = sum(self.committed) + call_amt
                 hi = min(hi, cur + pot)
+            if self.spec.betting == "fixed_limit":
+                if self.n_bets >= 4:                     # capped: bet + 3 raises
+                    can_raise = False
+                hi = min(hi, cur + self.last_raise)      # exactly one bet unit (all-in for less allowed)
             lo = min(cur + self.last_raise, hi)
-            if hi <= cur:
+            if hi <= cur or not can_raise:
                 can_raise, lo, hi = False, 0, 0
         return Legal(can_check=to_call == 0, can_call=to_call > 0, call_amount=call_amt,
                      can_raise=can_raise, min_raise_to=lo, max_raise_to=hi)
@@ -237,6 +242,9 @@ class Hand:
         self.can_reraise = [True] * n
         need = [self._live(j) for j in range(n)]
         self.last_raise = self.bb
+        self.n_bets = 1 if self.street == 0 else 0      # fixed limit: the big blind is the first bet
+        if self.spec.betting == "fixed_limit" and self.street >= 2:
+            self.last_raise = 2 * self.bb                # the big bet on the turn and river
         if self.street == 0:
             first = self._next(self.bb_seat, self._live) if any(need) else None
         else:
@@ -269,8 +277,10 @@ class Hand:
                 inc = to - cur
                 self._put(j, to - self.bet[j])
                 self.history.append((j, self.street, "raise", self.bet[j]))
+                self.n_bets += 1
                 if inc >= self.last_raise:          # full raise: reopens the betting
-                    self.last_raise = inc
+                    if self.spec.betting != "fixed_limit":
+                        self.last_raise = inc
                     for k in range(n):
                         if k != j and self._live(k):
                             need[k] = True

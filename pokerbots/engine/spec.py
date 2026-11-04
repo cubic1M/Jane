@@ -66,7 +66,8 @@ class GameSpec:
     stack_reset_per_hand: bool = True
     players_per_hand: int = 2
     hands_per_match: int = 1000
-    betting: str = "no_limit"  # or "pot_limit"
+    betting: str = "no_limit"  # or "pot_limit"; "fixed_limit" (SNG table only: 1 bb bets preflop and
+    #                            on the flop, 2 bb on later streets, at most 4 bets per street)
     # pot-splitting rule (engine/showdown.py): "high", "hilo8" (half to the best 8-or-better low),
     # "double_board" (two boards dealt together, half the pot each)
     showdown: str = "high"
@@ -118,8 +119,8 @@ class GameSpec:
             raise ValueError("this engine supports heads-up only (players_per_hand=2)")
         if self.hole_usage not in ("any", "exactly"):
             raise ValueError("hole_usage must be 'any' or 'exactly'")
-        if self.betting not in ("no_limit", "pot_limit"):
-            raise ValueError("betting must be 'no_limit' or 'pot_limit'")
+        if self.betting not in ("no_limit", "pot_limit", "fixed_limit"):
+            raise ValueError("betting must be 'no_limit', 'pot_limit' or 'fixed_limit' (fixed: SNG table only)")
         if self.showdown not in _SHOWDOWNS:
             raise ValueError(f"showdown must be one of {_SHOWDOWNS}")
         if self.showdown == "double_board" and any(k % 2 for k in self.board_cards_per_street[1:]):

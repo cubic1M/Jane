@@ -28,6 +28,8 @@ PRESETS = {
                                       big_blind=20, stack_reset_per_hand=False)),
     "double_board": dict(spec=GameSpec(name="double_board", showdown="double_board", board_cards_per_street=(0, 6, 2, 2),
                                        starting_stack=2000, small_blind=10, big_blind=20, stack_reset_per_hand=False)),
+    "fixed_limit": dict(spec=GameSpec(name="fixed_limit", betting="fixed_limit", starting_stack=2000, small_blind=10,
+                                      big_blind=20, stack_reset_per_hand=False)),
     # discard / draw variants (sng/tests/test_discards.py shapes)
     "discard_to_board": dict(spec=GameSpec(name="t_to_board", hole_cards=3, starting_stack=2000, small_blind=10,
                                            big_blind=20, stack_reset_per_hand=False,
