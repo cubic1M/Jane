@@ -42,6 +42,26 @@ describe("templateExplanation", () => {
     expect(words({ cardInterest: true })).toMatch(/while a card charges you interest/);
     expect(words({ cardInterest: true })).not.toMatch(/high-yield savings account paying/);
     expect(words({})).toMatch(/high-yield savings account paying/);
+
+  // "above the typical price of $50.00 to $120.00 for a internet and TV bill".
+  it("says an internet bill, not a internet bill", () => {
+    const bill = (billKind: string) =>
+      templateExplanation(
+        "Your bill is above the typical price",
+        prepareExplainInput({
+          type: "bill_negotiation",
+          annualSavingsCents: 54_000,
+          evidence: {
+            merchant: "Comcast",
+            billKind,
+            monthlyCents: 16_500,
+            typicalLowCents: 5_000,
+            typicalHighCents: 12_000,
+          },
+        }).input,
+      ).explanation;
+    expect(bill("internet and TV")).toMatch(/for an internet and TV bill\./);
+    expect(bill("phone")).toMatch(/for a phone bill\./);
   });
 
   // Night QA 10-30: "down to about $680.15 around 2026-11-09" for a forecast of -$680.15.

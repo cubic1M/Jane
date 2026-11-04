@@ -72,7 +72,11 @@ function percent(bps: number | null): string | null {
   return bps === null ? null : `${bps / 100}%`;
 }
 
-export function prepareExplainInput(finding: ExplainableFinding): PreparedInput {
+export function prepareExplainInput(
+  finding: ExplainableFinding,
+  // A refund email asks for every charge the page counts, not the latest few.
+  { allCharges = false }: { allCharges?: boolean } = {},
+): PreparedInput {
   const allowedCents: number[] = [];
   const money = (cents: number | null): string | null => {
     if (cents === null) return null;
@@ -88,7 +92,7 @@ export function prepareExplainInput(finding: ExplainableFinding): PreparedInput 
   const charges = (rows: unknown, kinds = false) =>
     list(rows)
       .map(obj)
-      .slice(-MAX_CHARGES)
+      .slice(allCharges ? 0 : -MAX_CHARGES)
       .map((c) => ({
         date: text(c.date) ?? "",
         amount: money(num(c.amountCents) ?? 0) ?? "",

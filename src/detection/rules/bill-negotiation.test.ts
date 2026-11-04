@@ -55,6 +55,18 @@ describe("bill_negotiation", () => {
     expect(run(data)).toHaveLength(1);
   });
 
+  // "Your Comcast Xfinity Internet internet and TV bill".
+  it("doesn't say what the bill is twice when the company's name already does", () => {
+    const named = (description: string, merchantName: string) =>
+      run(input({ transactions: monthly(6, 20_000, { description, merchantName }) }))[0]?.title;
+    expect(named("COMCAST XFINITY INTERNET", "Comcast Xfinity Internet")).toBe(
+      "Your Comcast Xfinity Internet bill is above the typical price",
+    );
+    expect(named("COMCAST CABLE", "Comcast")).toBe(
+      "Your Comcast internet and TV bill is above the typical price",
+    );
+  });
+
   it("ignores other recurring bills, however expensive", () => {
     expect(run(bill("RENT_AND_UTILITIES_GAS_AND_ELECTRICITY", 50_000))).toEqual([]);
   });

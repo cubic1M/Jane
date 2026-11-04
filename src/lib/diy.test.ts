@@ -166,6 +166,29 @@ describe("a card's annual fee", () => {
     },
   };
 
+  // Eight fees came to $154.00 on the page, and the email asked for the latest six, $115.50.
+  it("asks for every fee the page counts, not just the latest", () => {
+    const months = ["04", "05", "06", "07", "08", "09", "10", "11"];
+    const many = {
+      ...findingOfType("bank_fees"),
+      evidence: {
+        accountId: "a1",
+        accountName: "Checking",
+        totalCents: 8 * 3_500,
+        months: 8,
+        transactions: months.map((m, i) => ({
+          id: `t${i}`,
+          date: `2026-${m}-20`,
+          amountCents: 3_500,
+          description: "OVERDRAFT FEE",
+          category: "BANK_FEES_OVERDRAFT_FEES",
+        })),
+      },
+    };
+    const body = buildKit("recover_bank_fees", many, null)?.email?.body ?? "";
+    for (const m of months) expect(body).toContain(`2026-${m}-20: $35.00`);
+  });
+
   it("gets steps to waive it or downgrade, and a call script, not a refund email", () => {
     const kit = buildKit("recover_bank_fees", annualFee, null);
     expect(kit?.steps.join(" ")).toMatch(/waive/i);
