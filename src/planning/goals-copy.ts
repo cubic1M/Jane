@@ -10,6 +10,8 @@ export const GOALS_COPY = {
   datePassed: "The date has passed. Change the date to see a new monthly amount.",
   linkedNote: "Progress is the balance of the linked account.",
   manualNote: "Progress is the amount you entered.",
+  accountGoneNote:
+    "The account this goal followed was removed. Edit it to pick another or enter an amount.",
 } as const;
 
 // "$750.00 a month for 6 months would get there."

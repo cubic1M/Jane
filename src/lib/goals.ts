@@ -100,6 +100,8 @@ export type GoalView = {
   accountId: string | null;
   // The linked account's name, or null when tracked by hand (or the account is gone).
   accountName: string | null;
+  // It followed an account that has since been removed, so nothing is tracking it.
+  accountGone: boolean;
   manualSavedCents: number | null;
   progress: GoalProgress;
 };
@@ -148,6 +150,7 @@ async function listGoalsFrom(
       targetDate,
       accountId: g.accountId,
       accountName: account?.name ?? null,
+      accountGone: g.accountId !== null && !account,
       manualSavedCents: g.manualSavedCents,
       progress: goalProgress({ targetCents: g.targetCents, savedCents: saved, targetDate }, asOf),
     };
