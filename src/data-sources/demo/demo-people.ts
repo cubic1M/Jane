@@ -1197,7 +1197,8 @@ const DEFS: Record<PersonId, Def> = {
       },
     ],
     monthly: [
-      R("sales", "checking", "SQUARE DEPOSIT", "INCOME_OTHER", [-9800, -6200], [2, 9, 16, 23, 30]),
+      // Clear of the S corp line whatever the seed, so a try of this person always raises it.
+      R("sales", "checking", "SQUARE DEPOSIT", "INCOME_OTHER", [-10200, -6600], [2, 9, 16, 23, 30]),
       R(
         "rent",
         "checking",
