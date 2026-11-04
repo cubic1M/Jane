@@ -2089,7 +2089,7 @@ describe("retirementAccountsReply and the retirement messages", () => {
       ...RA_VIEW,
       limits: [{ ...RA_VIEW.limits[0], usedCents: 0, roomCents: RA_VIEW.limits[0].limitCents }],
     });
-    expect(body).toContain("I don't see anything put in yet, and the limit is $24,500.00");
+    expect(body).toContain("the limit is $24,500.00, with nothing put in that I can see");
     expect(body).not.toContain("$0.00");
   });
 
