@@ -3,7 +3,8 @@ import { formatCents } from "@/lib/money";
 import { DETECTOR_RATES } from "@/config/detectors";
 import { PEOPLE, PERSON_IDS, type PersonId } from "@/config/people";
 import { buildProfile, type ProfileInput } from "@/profile/build";
-import { inputFor } from "@/profile/sample";
+import { demoTransactions } from "@/data-sources/demo/demo-bank";
+import { SAMPLE_ANCHOR, SAMPLE_TODAY, inputFor } from "@/profile/sample";
 import { runDetectors } from "./index";
 import {
   TAX_DETECTORS,
@@ -146,6 +147,43 @@ describe("estimated payments that fall short", () => {
     expect(withPayments(["2026-01-15", "2026-04-15", "2026-06-15", "2026-09-15"], 2_000_000)).toBe(
       undefined,
     );
+  });
+});
+
+// Main failed on and off (taxes-qa-real, 11-03): the demo bank's amounts follow a random seed, and the
+// sample shop's sales sat on the S corp line, so about 1 seed in 100 lost the suggestion: each try of
+// the same sample person could differ. These seeds fell below it.
+describe("the sample shop owner, whatever the seed", () => {
+  const raisedOn = [
+    "36fbeee700000023",
+    "de8258ae00000270",
+    "a5718ece00000302",
+    "8fa57ce200000386",
+    "a6badd5700000391",
+    "d4e59e4100000401",
+    "0a4a744800000712",
+    "69fe1f9e00000766",
+  ];
+
+  it.each(raisedOn)("is raised the S corp question on seed %s", (seed) => {
+    const base = inputFor("owner");
+    const transactions = demoTransactions(
+      { seed, anchor: SAMPLE_ANCHOR, person: "owner" },
+      null,
+      SAMPLE_TODAY,
+    ).map((t) => ({
+      date: t.date,
+      amountCents: Math.round(t.amount * 100),
+      description: t.name,
+      pfc: t.personal_finance_category?.detailed ?? null,
+      accountId: t.account_id,
+      merchantName: t.merchant_name ?? null,
+    }));
+    const data = { ...base, transactions };
+    const topics = runDetectors({ profile: buildProfile(data), data }, undefined).map(
+      (s) => s.topic,
+    );
+    expect(topics).toContain("s_corp_election");
   });
 });
 
