@@ -25,6 +25,26 @@ def _strong_bot(name):
     return {"f9_meta": f9.Meta, "f9_threebet": f9.ThreeBet, "f9_bubble": f9.Bubble}[name]()
 
 
+def _full_rules(rules):
+    """The strong-table bots read the whole SngRules (starting_stack, blinds_for, ...); kit adapters
+    often pass a small stand-in (spec, num_players, payouts): fill the rest with the format's defaults."""
+    if hasattr(rules, "blinds_for") and hasattr(rules, "starting_stack"):
+        return rules
+    from sng.rules import SngRules
+    kw = {}
+    for k in ("spec", "num_players", "payouts", "max_hands", "blinds", "antes", "hands_per_level", "bounty"):
+        v = getattr(rules, k, None)
+        if v is not None:
+            kw[k] = tuple(v) if k in ("payouts", "blinds", "antes") else v
+    sp = kw.get("spec")
+    if sp is not None:
+        kw["starting_stack"] = getattr(rules, "starting_stack", getattr(sp, "starting_stack", 2000))
+    n = kw.get("num_players", 8)
+    if "payouts" in kw and len(kw["payouts"]) < n:
+        kw["payouts"] = kw["payouts"] + (0,) * (n - len(kw["payouts"]))
+    return SngRules(enforce_time=False, **kw)
+
+
 class IcmSwitch:
     name = "icm_switch"
 
@@ -54,6 +74,7 @@ class IcmSwitch:
         self.switched = False
         self.switch_hand = None
         self.short = False
+        self.b_ok = False
 
     @staticmethod
     def _setup_strong(bb, icm_slice):
@@ -74,10 +95,14 @@ class IcmSwitch:
                       and self._sd_tables())
         self.b = self.b_sd if self.short else self.b_main
         self.a.new_table(rules, seat, seed)
-        self.b.new_table(rules, seat, seed + 1)
         self.switched = False
         self.switch_hand = None
-        self.b.shadow_only = True
+        try:
+            self.b.new_table(_full_rules(rules), seat, seed + 1)
+            self.b.shadow_only = True
+            self.b_ok = True
+        except Exception:  # noqa: BLE001  a strong bot that cannot start: this table stays icm_tag
+            self.b_ok = False
 
     def _sd_tables(self):
         try:
@@ -91,6 +116,8 @@ class IcmSwitch:
 
     def end_hand(self, info):
         self.a.end_hand(info)
+        if not self.b_ok:
+            return
         try:
             self.b.end_hand(info)
         except Exception:  # noqa: BLE001  the shadow bot must never cost a decision

@@ -139,5 +139,25 @@ class TestSwitch(unittest.TestCase):
         self.assertTrue(sw.switched)
         self.assertEqual(res.stats[0].errors + res.stats[0].illegal, 0)
 
+    def test_minimal_kit_rules_and_end_hand_without_hand_number(self):
+        """Kit adapters pass a small rules stand-in and end_hand dicts without hand_number / deltas:
+        both strong bots must start and shadow, and the hand-over must still work."""
+        from sng.presets import PRESETS
+
+        class KitRules:
+            def __init__(self, spec):
+                self.spec, self.num_players, self.payouts, self.max_hands = spec, 8, (100, 65, 45, 30, 20, 10, 5), 200
+
+        post = ((1, 0, "post", 10), (2, 0, "post", 20), (3, 0, "fold", 0))
+        for spec, attr in ((PRESETS["kit4_sixplus"]["spec"], "b_sd"), (SngRules().spec, "b_main")):
+            b = make("icm_switch")
+            b.new_table(KitRules(spec), 0, 1)
+            self.assertTrue(b.b_ok)
+            self.assertIs(b.b, getattr(b, attr))
+            b.a.rfi_on = True
+            b.a.my_opens, b.a.my_opens_rr = 20, 8
+            b.end_hand(dict(history=post, stacks=(2000,) * 8))
+            self.assertTrue(b.switched)
+
 if __name__ == "__main__":
     unittest.main()
