@@ -153,6 +153,29 @@ describe.runIf(url)("devices and sessions against a real database", () => {
     expect(vi.mocked(track)).toHaveBeenCalledWith(me, "session_signed_out", { count: 1 });
   });
 
+  it("stops notifications to a device that's signed out from here", async () => {
+    const me = await person();
+    const here = await session(me);
+    const phone = await session(me);
+    const device = () =>
+      client.pushSubscription.create({
+        data: {
+          userId: me,
+          endpoint: `https://fcm.googleapis.com/fcm/send/${crypto.randomUUID()}`,
+          p256dh: "made-up",
+          auth: "made-up",
+        },
+      });
+    await device();
+    await signOutSession(me, phone.id, here.token, { client });
+    expect(await client.pushSubscription.count({ where: { userId: me } })).toBe(0);
+
+    await device();
+    await session(me);
+    await signOutOtherSessions(me, here.token, { client, now });
+    expect(await client.pushSubscription.count({ where: { userId: me } })).toBe(0);
+  });
+
   it("never signs out the current session by id", async () => {
     const me = await person();
     const here = await session(me);

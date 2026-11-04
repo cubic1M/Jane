@@ -237,7 +237,8 @@ export default function PrivacyPage() {
           is reused: each start makes a new one.
         </li>
         <li>
-          Your browser holds a sign-in cookie for that person, which works for {TRIAL_HOURS} hours.
+          Your browser holds a sign-in cookie for that person until the browser closes, and for{" "}
+          {TRIAL_HOURS} hours at most. Some browsers keep it when they reopen where you left off.
           Anyone using this browser in that time can see what you uploaded, so press Start over when
           you&apos;re done, especially on a shared computer.
         </li>

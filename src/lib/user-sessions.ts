@@ -102,6 +102,12 @@ export type SignOutResult = "ok" | "not_found";
 
 // Signs one of the person's other sessions out. Another person's session, an unknown id
 // or the current session (that's the ordinary "Sign out") change nothing.
+// A device signed out from here would keep showing the person's messages, and which device holds
+// which notifications isn't kept. So all go, and this browser's come back when Settings opens.
+async function forgetDevices(userId: string, client: PrismaClient) {
+  await scopedFor(userId, client).pushSubscriptions.deleteMany({ where: { userId } });
+}
+
 export async function signOutSession(
   userId: string,
   sessionId: string,
@@ -113,6 +119,7 @@ export async function signOutSession(
     where: { id: sessionId, userId, sessionToken: { not: token } },
   });
   if (count === 0) return "not_found";
+  await forgetDevices(userId, client);
   await logAudit({ type: "user", id: userId }, "session_signed_out", {
     type: "session",
     id: sessionId,
@@ -134,6 +141,7 @@ export async function signOutOtherSessions(
   const { count } = await scopedFor(userId, client).sessions.deleteMany({
     where: { userId, sessionToken: { not: token }, expires: { gt: now } },
   });
+  if (count > 0) await forgetDevices(userId, client);
   await logAudit(
     { type: "user", id: userId },
     "other_sessions_signed_out",

@@ -90,7 +90,7 @@ export async function tryWithStatement(_previous: TryState, formData: FormData):
     },
   );
   if (!person) return { error: "That didn't go through. Please try again." };
-  await setTrialSession(person.sessionToken, person.expires);
+  await setTrialSession(person.sessionToken);
   // Other people's finished tries aren't this visitor's wait.
   after(() =>
     cleanUpTrials().catch((error) =>

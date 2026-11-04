@@ -33,7 +33,16 @@ export function NotificationsToggle({ publicKey }: { publicKey: string }) {
       if (!("serviceWorker" in navigator) || !("PushManager" in window)) return "unsupported";
       if (Notification.permission === "denied") return "blocked";
       try {
-        return (await (await registration()).pushManager.getSubscription()) ? "on" : "off";
+        const subscription = await (await registration()).pushManager.getSubscription();
+        // Saved again: signing out another device forgets every device, this one too.
+        if (subscription) {
+          await fetch("/api/push", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(subscription.toJSON()),
+          }).catch(() => undefined);
+        }
+        return subscription ? "on" : "off";
       } catch {
         return "unsupported";
       }
