@@ -137,9 +137,11 @@ export function popupCard(m: MessageView): PopupCard {
   const live = m.chosen ? m.chosen.choices : m.buttons.filter((b) => !b.id.startsWith("undo."));
   const snooze = live.find((b) => b.id === "snooze") ?? null;
   const rest = live.filter((b) => b !== snooze);
-  const main = rest.find((b) => b.kind === "primary") ?? rest[0] ?? snooze!;
-  // Nothing to tap but its snooze: the page it points at comes first, and the snooze is Not now.
-  const link = main === snooze ? m.links[0] : undefined;
+  const primary = rest.find((b) => b.kind === "primary");
+  // No main button: the page it points at comes first, and the snooze is Not now. A secondary answer
+  // ("I don't need it", for good) stays a choice, and a swipe right only puts the card off.
+  const link = snooze && !primary && !live.some((b) => isChoice(b.id)) ? m.links[0] : undefined;
+  const main = link ? snooze! : (primary ?? rest[0] ?? snooze!);
   const snoozes = snooze && (snooze !== main || link);
   // Its first sentence in full, never cut short (founder: "slightly bigger so that the info
   // isn't all gone"); the rest of the message behind More details.

@@ -6,6 +6,7 @@ import type { Deadline } from "@/insights/deadlines";
 import type { BudgetProposal, GoalProposal } from "@/planning/proposals";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { openGaps } from "@/lib/insurance/gaps";
 import { chatToday, todayOf } from "@/lib/today";
 import { deadlineHeadsUp } from "./sources/heads-ups";
 import { setupBody } from "./sources/setup";
@@ -20,6 +21,7 @@ import { MESSAGE_SELECT, toChatMessage, type ChatMessage } from "./types";
 //   was refunded) or has passed is put away; one that still holds is said as of today;
 // - an alert about a charge that's no longer in the accounts is put away, and so is a deadline
 //   reminder whose deadline is gone;
+// - a coverage gap that has closed (the policy was added, or found in the payments) is put away;
 // - a change Jane noticed ("By now you'd usually have spent about $37.08") is said as Jane
 //   sees it today, and put away once it no longer shows (src/lib/changes.ts).
 // The deadlines come from loadComingUp, the one loader Today, Ahead, the snapshot behind the
@@ -47,6 +49,8 @@ type Facts = {
   suggestions: Map<string, SuggestionRow>;
   // The open budget and goal proposals behind set-up cards, by key, as the last refresh left them.
   proposals: Map<string, BudgetProposal | GoalProposal> | null;
+  // The coverage gaps still open, by key; null when no card here is about one.
+  gaps: Set<string> | null;
 };
 
 type AlertRow = { id: string; type: string; key: string };
@@ -128,16 +132,18 @@ async function factsFor(
   const withChanges = messages.some((m) => m.refs.change !== undefined);
   const suggestionKeys = messages.flatMap((m) => (m.refs.suggestion ? [m.refs.suggestion] : []));
   const proposalKeys = messages.flatMap((m) => (m.refs.proposalKey ? [m.refs.proposalKey] : []));
+  const withGaps = messages.some((m) => m.refs.insuranceGap !== undefined);
   if (
     !withDeadlines &&
     !withChanges &&
+    !withGaps &&
     alerts.length === 0 &&
     suggestionKeys.length === 0 &&
     proposalKeys.length === 0
   ) {
     return null;
   }
-  const [coming, changes, suggestions, proposals] = await Promise.all([
+  const [coming, changes, suggestions, proposals, insurance] = await Promise.all([
     withDeadlines ? comingUp(userId, client, now) : null,
     withChanges
       ? import("@/lib/changes").then((m) => m.loadChanges(userId, { client, now }))
@@ -161,6 +167,9 @@ async function factsFor(
           select: { key: true, payload: true },
         })
       : null,
+    withGaps
+      ? import("@/lib/insurance/profile").then((m) => m.loadInsurance(userId, { client, now }))
+      : null,
   ]);
   const deadlines = new Map((coming?.deadlines ?? []).map((d) => [d.key, d]));
   return {
@@ -177,12 +186,15 @@ async function factsFor(
           return payload.kind === "budget" || payload.kind === "goal" ? [[p.key, payload]] : [];
         }),
       ),
+    gaps: insurance && new Set(openGaps(insurance.gaps, insurance.policies).map((g) => g.key)),
   };
 }
 
 // The card as it should show now, or null when it no longer holds.
 function asNow(m: ChatMessage, facts: Facts): ChatMessage | null {
-  const { deadlineKey, deadlineEntryId, alertId, change, suggestion, proposalKey } = m.refs;
+  const { deadlineKey, deadlineEntryId, alertId, change, suggestion, proposalKey, insuranceGap } =
+    m.refs;
+  if (insuranceGap && facts.gaps && !facts.gaps.has(insuranceGap)) return null;
   // A set-up card is said from its proposal as it is now (night debugger, 10-30: after a second
   // file the dock kept the first file's "$1,180 budget for Food and drink"); one no longer open
   // goes.

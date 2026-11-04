@@ -283,6 +283,25 @@ describe("coverage gaps as heads-ups", () => {
   });
 });
 
+describe("a gap for cover seen in the payments", () => {
+  const found = policy({
+    kind: "renters",
+    carrier: "Lemonade",
+    status: "found",
+    source: "payments",
+  });
+  const of = (s: Snapshot, source: string) =>
+    gather(s, MORNING, SYNC).filter((m) => m.source === source);
+
+  it("asks to confirm the policy, and doesn't also say there is none", () => {
+    const s = snapshot({ insurance: insurance([found], household({ housing: "rent" })) });
+    expect(of(s, "found").map((m) => m.body)).toEqual([
+      expect.stringMatching(/^I found your renters insurance from your payments: Lemonade/),
+    ]);
+    expect(of(s, "insurance").filter((m) => m.refs.insuranceGap === "renters")).toEqual([]);
+  });
+});
+
 describe("Jane's own reshops in the chat (spec step 104)", () => {
   const messages = (s: Snapshot) =>
     gather(s, MORNING, SYNC).filter((m) => m.source === "insurance");

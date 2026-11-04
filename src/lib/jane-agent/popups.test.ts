@@ -265,3 +265,43 @@ describe("advice on a card's face", () => {
     expect(card.badge).toBeUndefined();
   });
 });
+
+describe("a card with no main button of its own", () => {
+  const gap = (over: Partial<MessageView> = {}) =>
+    message({
+      kind: "heads_up",
+      body: "No renters insurance on file. Your payments show rent.",
+      buttons: [
+        { id: "insurance.gap_no", label: "I don't need it", kind: "secondary" },
+        { id: "snooze", label: "Not now", kind: "secondary" },
+      ],
+      links: [{ label: "I have renters insurance", href: "/insurance?add=renters#add" }],
+      ...over,
+    });
+
+  it("leads with its page, never with a secondary answer that can't be taken back", () => {
+    expect(popupCard(gap())).toMatchObject({
+      yesLabel: "I have renters insurance",
+      yesHref: "/insurance?add=renters#add",
+      // A swipe right only puts it off.
+      yesAction: "snooze",
+      notNowLabel: "Not now",
+      notNowAction: "snooze",
+      choices: [{ id: "insurance.gap_no", label: "I don't need it" }],
+    });
+  });
+
+  it("keeps a primary button first when it has one", () => {
+    const card = popupCard(
+      gap({
+        buttons: [
+          { id: "insurance.gap_quotes", label: "Get quotes", kind: "primary" },
+          { id: "insurance.gap_no", label: "I don't need it", kind: "secondary" },
+          { id: "snooze", label: "Not now", kind: "secondary" },
+        ],
+      }),
+    );
+    expect(card).toMatchObject({ yesLabel: "Get quotes", yesAction: "insurance.gap_quotes" });
+    expect(card.yesHref).toBeUndefined();
+  });
+});
