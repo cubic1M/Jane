@@ -50,3 +50,10 @@ PRESETS = {
                                          discards=(DiscardRule(street=1, count=2, to_board=False, face_up=False,
                                                                order="ip_first"),))),
 }
+
+
+# module-level names for `python3 -m sng.ours.anyvar --spec sng.presets:<NAME>` (any-variant tables)
+HOLDEM_HILO8 = PRESETS["holdem_hilo8"]["spec"]
+OMAHA_HILO8 = PRESETS["omaha_hilo8"]["spec"]
+DOUBLE_BOARD = PRESETS["double_board"]["spec"]
+KIT4_SIXPLUS = PRESETS["kit4_sixplus"]["spec"]
