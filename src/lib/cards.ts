@@ -24,6 +24,8 @@ export type DecisionCard = {
   // The referral partner this action uses, if any, and its disclosure word for word.
   referralPartner: { key: string; name: string } | null;
   referralDisclosure: string | null;
+  // Idle cash while a card charges interest: paying the card comes before a savings account.
+  cardFirst?: boolean;
 };
 
 export type CardFinding = Parameters<typeof explanationFor>[0] & { id: string };
@@ -231,6 +233,7 @@ export function buildCard(finding: CardFinding, partner: CardPartner | null = nu
     explanation: text.explanation,
     whatChanges: whatChanges(finding.type, evidence),
     annualSavingsCents: finding.annualSavingsCents,
+    ...(finding.type === "idle_cash" && evidence.cardInterest === true ? { cardFirst: true } : {}),
     giveUp: text.giveUp,
     alternatives: text.alternatives,
     evidence: evidenceRows(finding.type, evidence),

@@ -94,6 +94,17 @@ const TEMPLATES: Record<FindingType, (input: ExplainInput) => Omit<ExplanationCo
     const extra = fact(input.facts, "extraCash");
     const rate = fact(input.facts, "highYieldSavingsRate");
     const held = fact(input.facts, "heldBack");
+    if (fact(input.facts, "cardChargesInterest")) {
+      return {
+        explanation: `You keep${extra ? ` ${extra}` : " more"} beyond a few months of spending${held ? ` and ${held} for payments due` : ""}, while a card charges you interest. Card interest usually costs far more than savings earn, so paying the card down is worth looking at first.`,
+        giveUp: "Less cash on hand, though your usual cushion stays.",
+        alternatives: [
+          "Pay the card down with part of it",
+          "Ask your bank for a better savings rate",
+          "Leave it where it is",
+        ],
+      };
+    }
     return {
       explanation: `You keep${extra ? ` ${extra}` : " more"} beyond a few months of spending${held ? ` and ${held} for payments due` : ""} in accounts that likely pay little interest. A high-yield savings account${rate ? ` paying around ${rate}` : ""} could earn ${yearly(input, "more each year")}.`,
       giveUp: "Moving money between banks can take a few days.",

@@ -219,6 +219,7 @@ export function prepareExplainInput(finding: ExplainableFinding): PreparedInput 
         cushion: money(num(evidence.cushionCents)),
         ...(num(evidence.setAsideCents) ? { heldBack: money(num(evidence.setAsideCents)) } : {}),
         extraCash: money(num(evidence.excessCents)),
+        ...(evidence.cardInterest === true ? { cardChargesInterest: "yes" } : {}),
         highYieldSavingsRate: percent(num(evidence.referenceRateBps)),
         assumedCurrentRate: percent(num(evidence.assumedCurrentRateBps)),
       };
