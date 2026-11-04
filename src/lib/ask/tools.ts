@@ -242,6 +242,7 @@ export async function runAskTool(
         (first, t) => (first === null || t.date < first ? t.date : first),
         null,
       );
+      const incomeSeen = insights.months.some((m) => m.incomeCents > 0);
       const seen = (month: string) => historyStarts !== null && month >= historyStarts.slice(0, 7);
       if (name === "monthly_totals") {
         const typical = typicalMonthlySpending(dated, today, INSIGHT_MONTHS);
@@ -252,7 +253,8 @@ export async function runAskTool(
             .map((m) => ({
               month: m.month,
               spending: money(m.spendingCents),
-              income: money(m.incomeCents),
+              // Null when none has been seen at all: a card statement shows spending only.
+              income: incomeSeen ? money(m.incomeCents) : null,
               ...(leftOutIn(m.month) > 0
                 ? {
                     unusual: true,
@@ -284,7 +286,7 @@ export async function runAskTool(
       return out({
         month,
         spending: money(totals.spendingCents),
-        income: money(totals.incomeCents),
+        income: incomeSeen ? money(totals.incomeCents) : null,
         categories: (insights.categoriesByMonth[month] ?? []).map((c) => ({
           category: c.category,
           amount: money(c.cents),

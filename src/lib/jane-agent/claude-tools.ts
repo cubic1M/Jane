@@ -1373,7 +1373,10 @@ async function runChatToolWork(
       cents.push(...dollarFigures(verdict).map((x) => x.cents));
       return out({
         verdict,
-        cardDebt: money(f.cardDebtCents),
+        cardDebt:
+          f.cardDebtCents === 0 && f.cardBalanceUnknown
+            ? "not known: no balance on file"
+            : money(f.cardDebtCents),
         ...(f.topRateBps ? { highestRatePercent: f.topRateBps / 100 } : {}),
         cash: f.cashCents === null ? "not known: no balance on file" : money(f.cashCents),
         monthlySpending: money(f.monthlySpendCents),

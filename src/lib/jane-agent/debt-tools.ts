@@ -376,6 +376,14 @@ export function extraFromInput(input: unknown): number | undefined {
 
 export function payoffToolOutput(payoff: Payoff, asOf: string, money: (cents: number) => string) {
   const { summary, stored } = payoff;
+  // Nothing to plan with: no months, no interest and no "debt-free next month".
+  if (summary.cards.length === 0) {
+    return {
+      debts: [],
+      leftOut: summary.leftOut,
+      note: "No debt with a balance is known, so there's no plan to work out.",
+    };
+  }
   const outcome = (plan: PayoffPlan) =>
     plan.ok
       ? {
@@ -431,12 +439,16 @@ export function payoffToolOutput(payoff: Payoff, asOf: string, money: (cents: nu
 }
 
 export function debtsToolOutput(book: DebtBook, money: (cents: number) => string) {
+  const unread = book.debts.filter((d) => d.balanceCents === null).map((d) => d.name);
+  // Nothing added up because no balance is known isn't $0 owed: never one for Claude to repeat.
+  const totalOf = (cents: number) => (cents === 0 && unread.length > 0 ? null : money(cents));
   return {
-    loansAndCardsOwed: money(book.accountsOwedCents),
+    loansAndCardsOwed: totalOf(book.accountsOwedCents),
     buyNowPayLaterOwed: money(book.bnplOwedCents),
     buyNowPayLaterWithoutABalance: book.bnplUnknown,
-    totalOwed: money(book.totalOwedCents),
-    monthlyPayments: money(book.monthlyCents),
+    totalOwed: totalOf(book.totalOwedCents),
+    monthlyPayments: totalOf(book.monthlyCents),
+    ...(unread.length > 0 ? { balancesNotKnown: unread } : {}),
     debts: book.debts.map((d) => ({
       name: d.name,
       kind: d.kindLabel,
