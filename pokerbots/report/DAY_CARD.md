@@ -33,13 +33,14 @@ Fill in each line:
 | discards / draws (any timing, to board or muck, fixed or variable count) | `discards=(DiscardRule(...),)` | `icm_any` + table |
 | **split pots: hi-lo 8-or-better** | `showdown="hilo8"` (presets `holdem_hilo8`, `omaha_hilo8`) | `icm_any` + table |
 | **double board** | `showdown="double_board"`, `board_cards_per_street=(0, 6, 2, 2)` (preset `double_board`) | `icm_any` + table |
+| **deuces wild** | `showdown="wild2"` (preset `holdem_wild2`; another wild rank: `wild_high(..., wild_rank=r)` in `engine/showdown.py`) | `icm_any` + table |
 | a new pot-splitting rule (lowball, ...) | one function in `engine/showdown.py` + its name in `VALID` | `icm_any` + table |
 | **fixed-limit betting** | `betting="fixed_limit"` (preset `fixed_limit`; SNG table only) | any (bots clamp to the one legal size) |
 | pot-limit | `betting="pot_limit"` | any |
 | blinds, antes, stacks, hand cap, players (2-8), points | `SngRules(blinds=, antes=, payouts=, max_hands=, num_players=)` or a preset | any |
 | interface (names, units, seats, history format) | adapter from a template (`practice_kit4/adapter_kit4.py`, kit 2, rehearsal) | - |
 | **knockout bounties** | `SngRules(bounty=<points>)` (preset `bounty10`); in a bundle set `bounty` on the adapter's `_Rules` (exact-ICM calls then add the bounty when we cover the shover) | `icm_tag` / `icm_any` (`icm_call=1`) |
-| not modelled yet: wild cards, stud (no board), exposed hole cards | play legally via the adapter; strength model approximate | `icm_any` |
+| not modelled yet: stud (no board), exposed hole cards, jokers / five of a kind | play legally via the adapter; strength model approximate | `icm_any` |
 
 ## Plan A: our code allowed (rehearsed: 8 minutes from kit to verified submission)
 
