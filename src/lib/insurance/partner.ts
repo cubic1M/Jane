@@ -1,3 +1,4 @@
+import { onlyDemoBank } from "@/lib/advice-mode";
 import {
   INSURANCE_PARTNER_ENV,
   QUOTABLE_KINDS,
@@ -218,4 +219,15 @@ export async function partnerFor(
   }
   if (!demoOptionsAllowed()) return null;
   return (await hasDemoBank(userId, { client })) ? demoPartner : null;
+}
+
+// The partner that may change a policy or file a claim. Sample quotes beside a real account are
+// labelled and change nothing, but the stand-in would rewrite a real policy's premium and say a
+// claim was filed with a real insurer: only for the demo bank alone.
+export async function actingPartnerFor(
+  userId: string,
+  { client = defaultClient }: { client?: PrismaClient } = {},
+): Promise<InsurancePartner | null> {
+  const partner = await partnerFor(userId, { client });
+  return partner && (await onlyDemoBank(userId, client)) ? partner : null;
 }

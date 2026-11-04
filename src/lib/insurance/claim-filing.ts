@@ -7,7 +7,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { formatCents, parseMoneyToCents } from "@/lib/money";
 import type { Claim } from "./claim-rules";
 import { ClaimError, claimById, listClaims } from "./claims";
-import { partnerFor, type InsurancePartner } from "./partner";
+import { actingPartnerFor, type InsurancePartner } from "./partner";
 
 // Claims filed by Jane (spec step 155). A small claim on a policy the insurance partner
 // covers can be filed through it, from the claims helper's tracker (step 107): the person
@@ -25,7 +25,7 @@ export async function canFile(
   { client = defaultClient, partner }: Options = {},
 ): Promise<boolean> {
   if (claim.status !== "open" || !claim.policyId || claim.filing === "filed") return false;
-  const filing = partner === undefined ? await partnerFor(userId, { client }) : partner;
+  const filing = partner === undefined ? await actingPartnerFor(userId, { client }) : partner;
   return filing !== null;
 }
 
@@ -72,7 +72,7 @@ export async function fileClaim(
   if (!claim || claim.status !== "open" || claim.filing !== "draft") {
     throw new ClaimError("There's no claim waiting for you to file.");
   }
-  const filing = partner === undefined ? await partnerFor(userId, { client }) : partner;
+  const filing = partner === undefined ? await actingPartnerFor(userId, { client }) : partner;
   if (!filing || !claim.carrier || !isPolicyKind(claim.kind)) {
     throw new ClaimError("Filing isn't available right now.");
   }
@@ -121,7 +121,7 @@ export async function refreshClaimStatuses(
     (c) => c.filing === "filed" && c.status === "open" && c.claimNumber && c.filedAt,
   );
   if (filed.length === 0) return [];
-  const checking = partner === undefined ? await partnerFor(userId, { client }) : partner;
+  const checking = partner === undefined ? await actingPartnerFor(userId, { client }) : partner;
   if (!checking) return [];
   const db = scopedFor(userId, client);
   const moved: Claim[] = [];
