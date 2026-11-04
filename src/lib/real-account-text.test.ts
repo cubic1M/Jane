@@ -22,6 +22,8 @@ describe("hand-written text for a real account", () => {
     "You should sell the fund and buy bonds.",
     "Put the extra in your Roth.",
     "Add a $1,000,000 umbrella policy.",
+    "Add term life insurance worth about 10 times your yearly pay.",
+    "Open a donor-advised fund",
     "Move card debt into one loan",
     "With the bonus, itemizing saves about $400.",
   ])("catches what tells them to act: %s", (text) => {
@@ -41,6 +43,15 @@ describe("hand-written text for a real account", () => {
     "I can see what's in your investment accounts now: 3 holdings worth $9,000.00.",
     "Your Netflix price went up: cancel it, or take it to the cheaper plan.",
     "Put $200.00 toward the Con Ed bill.",
+    "Something went wrong. Open Taxes instead.",
+    "Open the tax-time pack",
+    "Start with: Car Loan ····7005 payment.",
+    "Good morning! You have $719.04 safe to spend. Start with: Student Loan ····1004 payment.",
+    "I can't move money in your bank yet, but it takes a minute: move $50.00 to your emergency fund.",
+    "Add RSUs vested, ESPP shares sold or ISOs exercised and I'll work out the tax.",
+    "No checkup yet. Add a policy, or check now.",
+    "I don't have your deductible yet. Add it from your policy and I'll look.",
+    "Add your plan on your insurance page and I'll track the year.",
   ])("leaves a fact or an everyday task alone: %s", (text) => {
     expect(tellsThemToAct(text)).toBe(false);
   });

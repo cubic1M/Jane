@@ -5,14 +5,15 @@
 // person what to do with their money? What it catches is left out for them, whoever wrote it.
 
 const MONEY_TOPIC =
-  /\b(?:tax(?:es|ed|able)?|deductions?|itemi[sz]\w*|write[- ]?offs?|w-4|401\(?k\)?|403\(?b\)?|roth|hsa|fsa|529|stocks?|shares?|bonds?|funds?|etfs?|t-bills?|treasur(?:y|ies)|annuit(?:y|ies)|brokerage|invest\w*|crypto|portfolio|retirement|conversions?|withdrawals?|umbrella|insurance|cover(?:age)?|polic(?:y|ies)|premiums?|refinanc\w*|consolidat\w*|loans?|mortgage)\b|\bIRAs?\b/i;
+  /\b(?:tax(?:es|ed|able)?|deductions?|itemi[sz]\w*|write[- ]?offs?|w-4|401\(?k\)?|403\(?b\)?|roth|hsa|fsa|529|stocks?|shares?|bonds?|(?<!emergency )funds?|etfs?|t-bills?|treasur(?:y|ies)|annuit(?:y|ies)|brokerage|invest\w*|crypto|portfolio|retirement|conversions?|withdrawals?|umbrella|insurance|cover(?:age)?|polic(?:y|ies)|premiums?|refinanc\w*|consolidat\w*|loans?|mortgage)\b|\bIRAs?\b/i;
 
 const MOVES =
-  "take|put|set aside|stop|start|move|sell|buy|convert|contribute|max|switch|swap|roll|rebalance|invest|claim|deduct|write off|itemi[sz]e|amend|withdraw|empty|spread|add|raise|lower|increase|reduce|cut|open|consolidate|refinance|shop|withhold";
+  "take|put|set aside|stop|start(?!\\s+with\\b)|move|sell|buy|convert|contribute|max|switch|swap|roll|rebalance|invest|claim|deduct|write off|itemi[sz]e|amend|withdraw|empty|spread|add(?!\\s+(?:your|it|them|that|another|someone|rsus|the (?:people|deductible)|a policy|a card|a loan|a co-signed)\\b)|raise|lower|increase|reduce|cut|open an?|consolidate|refinance|shop|withhold";
 
 // The move as a command: at the start of a sentence, or of a clause after ":", ";" or "then".
-// "Move my tax deadlines" is the person's own button, deadlines "move to May" is news, and moving
-// a bill's due date moves no money.
+// "Move my tax deadlines" is the person's own button, deadlines "move to May" is news, moving a
+// bill's due date moves no money, "Open Taxes" is a page, and "Add your policy" or "Add it on your
+// insurance page" asks for what's on file.
 const COMMAND = new RegExp(
   `(?:^|[:;]\\s+|\\bthen\\s+)(?:${MOVES})\\b(?!\\s+(?:my|to)\\b)(?![^.!?]*\\bdue date\\b)`,
   "i",
