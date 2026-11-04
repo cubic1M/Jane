@@ -302,7 +302,13 @@ const trialConversion: Detector = {
   needs: [],
   detect({ profile, data }) {
     const by = new Map<string, ProfileTx[]>();
-    for (const t of tx(data, (x) => x.amountCents > 0)) {
+    // Only what could be cancelled: a first small move to savings, rent or a tax payment isn't a trial
+    // (debugger 11-04: "Online Transfer To Savings now costs you $23,258.40 a year").
+    const canBeATrial = (pfc: string | null) => {
+      const primary = pfc ? categoryOf(pfc)?.primary : null;
+      return !primary || !S.trialNeverPrimaries.includes(primary);
+    };
+    for (const t of tx(data, (x) => x.amountCents > 0 && canBeATrial(x.pfc))) {
       by.set(t.description, [...(by.get(t.description) ?? []), t]);
     }
     const converted = [...by.entries()].flatMap(([description, list]) => {
