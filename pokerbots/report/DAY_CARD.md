@@ -123,7 +123,7 @@ opens got re-raised** (opens re-raised / opens):
 - **≥ 35%** (fields 6 and 7: 29-49%; there we finish last at 18-20 per table) **and the re-raisers are
   competent** (they are not maniacs who also shove junk): resubmit with `open_mult=1.6` (field 7 +7.7*,
   field 6 +6.8*, mirror +10.4*; but field 3 −11.5*, all3 −9.1*, field 5 −7.3*: only when the read is clear).
-  (The default now does this by itself after 20 attacked opens: `rfi_lock=0.3`.) Or submit **`icm_switch`** (`icm_tag` until attacked, then `f7_balanced`: field 6 +6.0*, field 7 +4.6*, champions +5.5*, but field 5 −1.7*; bundling needs `sng.field7`).
+  (The default now does this by itself after 20 attacked opens: `rfi_lock=0.3`.) Or submit **`icm_switch`** (`icm_tag` until attacked, then `f7_balanced`: field 6 +6.0*, field 7 +4.6*, champions +5.5*, but field 5 −1.7*): in the adapter import `from sng.ours.switch import IcmSwitch` instead of `IcmTag`, and bundle with `python3 -m sng.bundle ... --with-switch` (packs `sng.field7` with its tables embedded; tested: `sng/tests/test_bundle_switch.py`; permissive kits only).
    **Stronger, from hand 1: `rfi_mode=2;rfi_scale=1.3`** (position-based opening ranges, on only for a 52-card deck and
   not-top-heavy payouts): field 6 +10.5*, field 7 +10.2*, mirror +13.4*, field 4 +5.6*, but field 5 −9.6*
   (tight static fields that fold to steals): same condition, a clear "our opens get attacked" read.
