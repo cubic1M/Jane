@@ -19,6 +19,10 @@ export const GOVERNMENT_COVER = /\b(?:sgli|vgli|fegli|tricare)\b/i;
 
 export const INSURER_NAMES: Readonly<Record<string, string>> = {
   sgli: "SGLI",
+  "cobra admin": "COBRA",
+  "cobra premium": "COBRA",
+  "cobra payment": "COBRA",
+  "cobra pmt": "COBRA",
   geico: "GEICO",
   usaa: "USAA",
   metlife: "MetLife",
@@ -52,7 +56,19 @@ export const INSURER_KINDS: readonly { words: readonly string[]; kind: PolicyKin
     kind: "pet",
   },
   {
-    words: ["tricare", "blue cross", "aetna", "cigna", "kaiser", "united healthcare", "oscar"],
+    words: [
+      "tricare",
+      "cobra admin",
+      "cobra premium",
+      "cobra payment",
+      "cobra pmt",
+      "blue cross",
+      "aetna",
+      "cigna",
+      "kaiser",
+      "united healthcare",
+      "oscar",
+    ],
     kind: "health",
   },
   // A dental plan isn't the health cover a gap asks for, so it stays "other" (debugger 11-04).

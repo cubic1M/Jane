@@ -37,6 +37,18 @@ describe("military cover", () => {
   });
 });
 
+// Debugger 11-04: $684 a month to keep health cover after a job ended read as a policy of no kind,
+// beside "Health cover: Not on file".
+describe("COBRA", () => {
+  it.each(["cobra admin svcs", "cobra premium", "wageworks cobra pmt"])(
+    "%s is health cover",
+    (key) => {
+      expect(insurerKind(key)).toBe("health");
+      expect(insurerName(key)).toBe("COBRA");
+    },
+  );
+});
+
 describe("policiesFromStreams", () => {
   it("finds car insurance paid every month, renewing a year from the first payment", () => {
     // Six payments, the first on May 15, in statements that start in January.

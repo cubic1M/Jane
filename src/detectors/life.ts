@@ -1,6 +1,7 @@
-import { DETECTOR_RATES as R } from "@/config/detectors";
 import { EARNER_ACTIVE_DAYS, SALARY_DEPOSITS_MIN } from "@/config/profile";
+import { DETECTOR_RATES as R } from "@/config/detectors";
 import { dayLabel } from "@/lib/day-label";
+import type { ProfileInput } from "@/profile/build";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
 import { evidence, factEvidence, headlineOf, tx, weakest } from "./helpers";
@@ -129,25 +130,41 @@ const householdSetup: Detector = {
 // A paycheck that stopped, with no new one. The late-paycheck change only looks at the last few days,
 // so someone uploading months later heard nothing (debugger 11-02). It says what it can see and not
 // why: they may have left, retired or moved their pay to another bank.
+// The employer whose paychecks stopped, going by where the data ends: an old statement isn't a lost
+// job. Null with pay still coming, or too few paychecks to call it a job.
+export function stoppedEmployer(data: Pick<ProfileInput, "transactions">): {
+  name: string;
+  lastDay: string;
+  paychecks: number;
+} | null {
+  const last = new Map<string, string>();
+  const paid = new Map<string, number>();
+  for (const t of data.transactions) {
+    if (t.amountCents >= 0 || t.pfc !== "INCOME_SALARY") continue;
+    const name = t.description.replace(/\s+PAYROLL.*$/i, "").trim();
+    if ((last.get(name) ?? "") < t.date) last.set(name, t.date);
+    paid.set(name, (paid.get(name) ?? 0) + 1);
+  }
+  if (last.size === 0) return null;
+  const dataEnds = data.transactions.reduce((m, t) => (t.date > m ? t.date : m), "");
+  const stillPaidSince = addDays(dataEnds, -EARNER_ACTIVE_DAYS);
+  const [name, lastDay] = [...last].sort((a, b) => b[1].localeCompare(a[1]))[0];
+  const paychecks = paid.get(name) ?? 0;
+  return lastDay > stillPaidSince || paychecks < SALARY_DEPOSITS_MIN
+    ? null
+    : { name, lastDay, paychecks };
+}
+
 const payStopped: Detector = {
   covers: [],
   capability: "life_event",
   topic: "pay_stopped",
   needs: [],
   detect({ profile, data }) {
-    const last = new Map<string, string>();
-    const paid = new Map<string, number>();
+    const stopped = stoppedEmployer(data);
+    if (!stopped) return null;
+    const { name, lastDay, paychecks: count } = stopped;
     const pay = tx(data, (x) => x.amountCents < 0 && x.pfc === "INCOME_SALARY");
-    for (const t of pay) {
-      const name = t.description.replace(/\s+PAYROLL.*$/i, "").trim();
-      if ((last.get(name) ?? "") < t.date) last.set(name, t.date);
-      paid.set(name, (paid.get(name) ?? 0) + 1);
-    }
-    if (last.size === 0) return null;
-    const dataEnds = data.transactions.reduce((m, t) => (t.date > m ? t.date : m), "");
-    const stillPaidSince = addDays(dataEnds, -EARNER_ACTIVE_DAYS);
-    const [name, lastDay] = [...last].sort((a, b) => b[1].localeCompare(a[1]))[0];
-    if (lastDay > stillPaidSince || (paid.get(name) ?? 0) < SALARY_DEPOSITS_MIN) return null;
     const now =
       typeof profile.facts.monthly_income.value === "number"
         ? profile.facts.monthly_income.value
@@ -168,7 +185,7 @@ const payStopped: Detector = {
       short: `About ${formatCents(now)} a month is coming in now, about ${formatCents(less)} less.`,
       worthCents: less,
       worthKind: "risk",
-      confidence: evidence("seen", profile.months, paid.get(name) ?? 0, "paychecks"),
+      confidence: evidence("seen", profile.months, count, "paychecks"),
       urgency: "now",
       // A month's shortfall against a year's savings tip: as a year, so it comes first.
       rankCents: less * 12,
