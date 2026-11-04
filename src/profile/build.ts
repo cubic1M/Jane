@@ -445,7 +445,12 @@ export function buildProfile(input: ProfileInput): Profile {
   const pension = income.filter(
     (t) => t.pfc === "INCOME_RETIREMENT_PENSION" || PENSION_PATTERN.test(t.description),
   );
-  const salary = income.filter((t) => t.pfc === "INCOME_SALARY");
+  // Military pay is a salary from one employer; retired pay isn't (PENSION_PATTERN reads that).
+  const salary = income.filter(
+    (t) =>
+      t.pfc === "INCOME_SALARY" ||
+      (t.pfc === "INCOME_MILITARY" && !PENSION_PATTERN.test(t.description)),
+  );
   // Whether a paycheck has stopped goes by where the data ends: an old statement isn't a lost job.
   const dataEnds = txs.reduce((latest, t) => (t.date > latest ? t.date : latest), "");
   const stillPaidSince = addDays(dataEnds || today, -EARNER_ACTIVE_DAYS);

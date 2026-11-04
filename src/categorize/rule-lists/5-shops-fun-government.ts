@@ -256,6 +256,35 @@ export const SHOPS_FUN_GOVERNMENT: readonly Rule[] = [
     direction: "out",
   },
   { category: "GENERAL_SERVICES_EDUCATION", keywords: ["KUMON"], direction: "out" },
+  // What a service member pays (debugger 11-04: 70% of a month uncategorized).
+  { category: "FOOD_AND_DRINK_GROCERIES", keywords: ["COMMISSARY"], direction: "out" },
+  {
+    category: "GENERAL_MERCHANDISE_DEPARTMENT_STORES",
+    keywords: ["AAFES", "NAVY EXCHANGE", "MARINE CORPS EXCHANGE"],
+    direction: "out",
+  },
+  { category: "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT", keywords: ["MILITARY STAR"], direction: "out" },
+  {
+    category: "RENT_AND_UTILITIES_RENT",
+    keywords: ["MILITARY HOUSING", "BASE HOUSING"],
+    direction: "out",
+  },
+  {
+    category: "GENERAL_SERVICES_INSURANCE",
+    keywords: ["SGLI", "VGLI", "FEGLI", "TRICARE"],
+    direction: "out",
+  },
+  {
+    category: "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS",
+    keywords: ["TSP CONTRIBUTION", "THRIFT SAVINGS"],
+    direction: "out",
+  },
+  {
+    category: "LOAN_PAYMENTS_PERSONAL_LOAN_PAYMENT",
+    keywords: ["PIONEER SERVICES"],
+    direction: "out",
+  },
+  { category: "LOAN_PAYMENTS_MORTGAGE_PAYMENT", keywords: ["VETERANS UNITED"], direction: "out" },
   // A home equity line: a debt with a balance (debugger 11-04: uncategorized, and missing from what
   // net worth leaves out).
   {

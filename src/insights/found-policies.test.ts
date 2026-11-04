@@ -27,6 +27,16 @@ const found = (transactions: DetectionTransaction[]) => {
   return policiesFromStreams(data, buildStreams(data));
 };
 
+// Debugger 11-04: "Is Sgli Premium a subscription to cancel?"
+describe("military cover", () => {
+  it("knows SGLI as life cover and Tricare as health cover", () => {
+    expect(insurerKind("sgli premium")).toBe("life");
+    expect(insurerName("sgli premium")).toBe("SGLI");
+    expect(insurerKind("tricare prime")).toBe("health");
+    expect(insurerName("tricare prime")).toBe("Tricare");
+  });
+});
+
 describe("policiesFromStreams", () => {
   it("finds car insurance paid every month, renewing a year from the first payment", () => {
     // Six payments, the first on May 15, in statements that start in January.

@@ -31,6 +31,20 @@ describe("insurance_reshop", () => {
     expect(run(input({ recurringStreams })).map((f) => f.key)).toEqual(["merchant:example mutual"]);
   });
 
+  // Debugger 11-04: "Your SGLI insurance could cost less", of a program nobody can shop around.
+  it.each(["SGLI PREMIUM", "VGLI PREMIUM", "TRICARE PRIME", "FEGLI PREMIUM"])(
+    "leaves out %s: it's a government program, not a market",
+    (description) => {
+      const plan = {
+        description,
+        merchantName: null,
+        pfcPrimary: "GENERAL_SERVICES",
+        pfcDetailed: "GENERAL_SERVICES_INSURANCE",
+      };
+      expect(run(input({ transactions: monthly(4, 2_900, plan) }))).toEqual([]);
+    },
+  );
+
   it("names a known insurer, not the bank's line for it", () => {
     const stateFarm = {
       description: "STATE FARM RO 27 DES:CPC-CLIENT",

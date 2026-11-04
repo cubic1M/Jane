@@ -13,7 +13,12 @@ export const INSURANCE_CATEGORIES: readonly string[] = ["GENERAL_SERVICES_INSURA
 // likely are. One not listed but in the insurance category is "other".
 // How an insurer's name is written when it isn't just capitalised (the policy found from
 // payments is named for the insurer, not the statement's "GEICO AUTO PAYMENT").
+// Government programs, not a market: there's nowhere to shop them (debugger 11-04: "Your SGLI
+// insurance could cost less").
+export const GOVERNMENT_COVER = /\b(?:sgli|vgli|fegli|tricare)\b/i;
+
 export const INSURER_NAMES: Readonly<Record<string, string>> = {
+  sgli: "SGLI",
   geico: "GEICO",
   usaa: "USAA",
   metlife: "MetLife",
@@ -32,6 +37,7 @@ export const INSURER_KINDS: readonly { words: readonly string[]; kind: PolicyKin
   { words: ["hippo", "openly", "kin insurance"], kind: "home" },
   {
     words: [
+      "sgli",
       "metlife",
       "haven life",
       "ladder",
@@ -46,7 +52,7 @@ export const INSURER_KINDS: readonly { words: readonly string[]; kind: PolicyKin
     kind: "pet",
   },
   {
-    words: ["blue cross", "aetna", "cigna", "kaiser", "united healthcare", "oscar"],
+    words: ["tricare", "blue cross", "aetna", "cigna", "kaiser", "united healthcare", "oscar"],
     kind: "health",
   },
   // A dental plan isn't the health cover a gap asks for, so it stays "other" (debugger 11-04).

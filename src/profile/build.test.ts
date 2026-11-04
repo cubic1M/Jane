@@ -524,3 +524,47 @@ describe("insurance charges with no bank account on file", () => {
     expect(facts.insurance_auto.value).toBe(false);
   });
 });
+
+// Debugger 11-04: a service member paid by DFAS twice a month read "How you're paid: not known" and
+// no employer, and VA disability beside it made "two employers", so tax was guessed as married.
+describe("military pay", () => {
+  const data = inputFor("renter");
+  const account = data.accounts[0].id;
+  const row = (
+    date: string,
+    description: string,
+    pfc: string,
+    amountCents: number,
+    id: string,
+  ) => ({
+    id,
+    date,
+    amountCents,
+    description,
+    pfc,
+    accountId: account,
+  });
+  const facts = (rows: ReturnType<typeof row>[]) =>
+    buildProfile({ ...data, transactions: rows }).facts;
+  const months = ["07", "08", "09", "10"];
+  const pay = months.flatMap((m) =>
+    ["01", "15"].map((d) =>
+      row(`2026-${m}-${d}`, "DFAS-CLEVELAND MIL PAY", "INCOME_MILITARY", -284_000, `p${m}${d}`),
+    ),
+  );
+  const va = months.map((m) =>
+    row(`2026-${m}-01`, "VA TREAS 310 VA BENEF", "INCOME_LONG_TERM_DISABILITY", -114_900, `v${m}`),
+  );
+
+  it("is a salary with an employer", () => {
+    const f = facts([...pay, ...va]);
+    expect(f.income_pattern.value).toBe("salary");
+    expect(f.employer.value).toBe("DFAS-CLEVELAND MIL PAY");
+  });
+
+  it("counts VA disability as money coming in, not a second earner", () => {
+    const f = facts([...pay, ...va]);
+    expect(f.earners.value).toBe(1);
+    expect(f.monthly_income.value).toBeGreaterThan(5_680_00);
+  });
+});
