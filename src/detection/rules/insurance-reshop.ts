@@ -1,4 +1,5 @@
 import { INSURANCE_CATEGORIES } from "@/config/detection";
+import { GOVERNMENT_COVER } from "@/config/found-policies";
 import { insurerName } from "@/insights/found-policies";
 import { formatCents } from "@/lib/money";
 import { inList } from "../helpers";
@@ -12,7 +13,10 @@ import { streamEvidence, type Rule } from "./rule";
 export const insuranceReshop: Rule = (input, streams) => {
   const found = streams.filter(
     (s) =>
-      s.active && inList(s.pfcDetailed, INSURANCE_CATEGORIES) && !coveringCard(s, input, streams),
+      s.active &&
+      inList(s.pfcDetailed, INSURANCE_CATEGORIES) &&
+      !GOVERNMENT_COVER.test(s.merchantKey) &&
+      !coveringCard(s, input, streams),
   );
   const nameOf = (s: (typeof found)[number]) =>
     insurerName(s.merchantKey) ??

@@ -222,7 +222,7 @@ describe("unemployment benefits", () => {
 describe("other pay that says DIRECT DEP", () => {
   it.each([
     ["DFAS CLEVELAND MIL PAY DIRECT DEP", "INCOME_MILITARY"],
-    ["VA BENEFITS DIRECT DEP", "INCOME_MILITARY"],
+    ["VA BENEFITS DIRECT DEP", "INCOME_LONG_TERM_DISABILITY"],
     ["CHILD SUPPORT DIRECT DEP", "INCOME_CHILD_SUPPORT"],
   ])("%s isn't a salary", (description, detailed) => {
     expect(categorizeByRules({ description, amountCents: -90_000, hints: {} })?.detailed).toBe(
@@ -314,7 +314,7 @@ describe("a move between a person's own accounts", () => {
 describe("pay and benefits, as banks write them", () => {
   it.each([
     ["SSI TREAS 310", "INCOME_RETIREMENT_PENSION"],
-    ["VA TREAS 310 VETERANS", "INCOME_MILITARY"],
+    ["VA TREAS 310 VETERANS", "INCOME_LONG_TERM_DISABILITY"],
     ["NY STATE TEACHERS RET", "INCOME_RETIREMENT_PENSION"],
     ["ACME CORP PAYRLL", "INCOME_SALARY"],
     ["ACME CORP PR PAYMENT", "INCOME_SALARY"],

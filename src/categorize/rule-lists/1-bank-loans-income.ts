@@ -251,11 +251,19 @@ export const BANK_LOANS_INCOME: readonly Rule[] = [
     ],
     direction: "in",
   },
+  // VA disability isn't pay: it isn't wages on a W-2 and generally isn't taxed (debugger 11-04: it
+  // read as a second employer, so tax was guessed as married filing jointly).
   {
-    category: "INCOME_MILITARY",
-    keywords: ["DFAS", "MIL PAY", "VA BENEFITS", "VA TREAS"],
+    category: "INCOME_LONG_TERM_DISABILITY",
+    keywords: ["VA BENEFITS", "VA BENEF", "VA TREAS"],
     direction: "in",
   },
+  {
+    category: "INCOME_MILITARY",
+    keywords: ["DFAS", "MIL PAY", "DEFENSE FINANCE"],
+    direction: "in",
+  },
+  { category: "INCOME_RETIREMENT_PENSION", keywords: ["TSP WITHDRAWAL"], direction: "in" },
   {
     category: "INCOME_RETIREMENT_PENSION",
     keywords: ["SSI TREAS", "TEACHERS RET"],

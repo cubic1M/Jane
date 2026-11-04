@@ -474,7 +474,7 @@ describe("categorizeByRules", () => {
     ["CA FTB TAX REFUND", "INCOME_TAX_REFUND"],
     ["TAX PRODUCTS PE1 SBTPG LLC", "INCOME_TAX_REFUND"],
     ["EDD UI BENEFITS", "INCOME_UNEMPLOYMENT"],
-    ["VA BENEFITS TREAS 310", "INCOME_MILITARY"],
+    ["VA BENEFITS TREAS 310", "INCOME_LONG_TERM_DISABILITY"],
     ["DEPOSIT - DFAS-CLEVELAND MIL PAY", "INCOME_MILITARY"],
     ["CHILD SUPPORT PAYMENT", "INCOME_CHILD_SUPPORT"],
     ["COINBASE INC", "TRANSFER_IN_INVESTMENT_AND_RETIREMENT_FUNDS"],
@@ -738,6 +738,38 @@ describe("a multi-currency account's words", () => {
 
   it("reads its fee as a fee", () => {
     expect(detailed("Wise fee for transfer", 430)).toBe("BANK_FEES_OTHER_BANK_FEES");
+  });
+});
+
+// Debugger 11-04: a service member's month was 70% uncategorized, and the report asked "Is Sgli
+// Premium a subscription to cancel?" of their life insurance.
+describe("what a service member pays", () => {
+  const detailed = (description: string, amountCents: number) =>
+    categorizeByRules({ description, amountCents, hints: {} })?.detailed;
+
+  it.each([
+    ["DECA COMMISSARY NORFOLK VA", "FOOD_AND_DRINK_GROCERIES"],
+    ["AAFES EXCHANGE", "GENERAL_MERCHANDISE_DEPARTMENT_STORES"],
+    ["NEX NAVY EXCHANGE", "GENERAL_MERCHANDISE_DEPARTMENT_STORES"],
+    ["MCX MARINE CORPS EXCHANGE", "GENERAL_MERCHANDISE_DEPARTMENT_STORES"],
+    ["MILITARY STAR CARD PMT", "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT"],
+    ["LINCOLN MILITARY HOUSING", "RENT_AND_UTILITIES_RENT"],
+    ["BASE HOUSING PAYMENT", "RENT_AND_UTILITIES_RENT"],
+    ["SGLI PREMIUM", "GENERAL_SERVICES_INSURANCE"],
+    ["TRICARE PRIME", "GENERAL_SERVICES_INSURANCE"],
+    ["TSP CONTRIBUTION", "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS"],
+    ["THRIFT SAVINGS PLAN", "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS"],
+    ["PIONEER SERVICES LOAN", "LOAN_PAYMENTS_PERSONAL_LOAN_PAYMENT"],
+    ["VETERANS UNITED HOME LOANS", "LOAN_PAYMENTS_MORTGAGE_PAYMENT"],
+  ])("%s is %s", (description, expected) => {
+    expect(detailed(description, 10_000)).toBe(expected);
+  });
+
+  it("reads pay as military and VA disability as what it is", () => {
+    expect(detailed("DFAS-CLEVELAND MIL PAY", -284_000)).toBe("INCOME_MILITARY");
+    expect(detailed("DEFENSE FINANCE ACCOUNTING", -284_000)).toBe("INCOME_MILITARY");
+    expect(detailed("VA TREAS 310 VA BENEF", -114_900)).toBe("INCOME_LONG_TERM_DISABILITY");
+    expect(detailed("TSP WITHDRAWAL", -200_000)).toBe("INCOME_RETIREMENT_PENSION");
   });
 });
 
