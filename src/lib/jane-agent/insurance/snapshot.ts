@@ -125,7 +125,7 @@ export async function loadInsuranceSnapshot(
     }),
   ]);
   const review =
-    checkup && !checkup.seenAt
+    advice && checkup && !checkup.seenAt
       ? await loadReview(userId, checkup, gaps.length, { client, now })
       : null;
   return {

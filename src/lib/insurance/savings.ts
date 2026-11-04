@@ -67,7 +67,9 @@ export async function listSavings(
     select: SELECT,
     orderBy: [{ yearlySavingCents: "desc" }, { id: "asc" }],
   });
-  return rows.map(toSaving);
+  // Found while the demo bank was all they had: once a real account joins, no longer on offer.
+  const advice = await adviceMode(userId, { client });
+  return rows.map(toSaving).filter((s) => advice || s.status !== "offered");
 }
 
 // Finds what applies now and keeps it: new offers added, current ones refreshed, ones that
