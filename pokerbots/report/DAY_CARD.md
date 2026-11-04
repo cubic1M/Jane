@@ -123,7 +123,8 @@ opens got re-raised** (opens re-raised / opens):
 - **≥ 35%** (fields 6 and 7: 29-49%; there we finish last at 18-20 per table) **and the re-raisers are
   competent** (they are not maniacs who also shove junk): resubmit with `open_mult=1.6` (field 7 +7.7*,
   field 6 +6.8*, mirror +10.4*; but field 3 −11.5*, all3 −9.1*, field 5 −7.3*: only when the read is clear).
-  (The default now does this by itself after 20 attacked opens: `rfi_lock=0.3`.) **Stronger, from hand 1: `rfi_mode=2;rfi_scale=1.3`** (position-based opening ranges, on only for a 52-card deck and
+  (The default now does this by itself after 20 attacked opens: `rfi_lock=0.3`.) Or submit **`icm_switch`** (`icm_tag` until attacked, then `f7_balanced`: field 6 +6.0*, field 7 +4.6*, champions +5.5*, but field 5 −1.7*; bundling needs `sng.field7`).
+   **Stronger, from hand 1: `rfi_mode=2;rfi_scale=1.3`** (position-based opening ranges, on only for a 52-card deck and
   not-top-heavy payouts): field 6 +10.5*, field 7 +10.2*, mirror +13.4*, field 4 +5.6*, but field 5 −9.6*
   (tight static fields that fold to steals): same condition, a clear "our opens get attacked" read.
   A one-way in-table lock (`lock_mult`) could not tell strong attackers from maniacs (default field −5.1*).
@@ -172,6 +173,8 @@ heads-up and payout changes):
 | **field 5** (written blind after tonight's tuning: out of sample) | **first: 60.8 per table** (was 58.1); `f3_exploiter` −13.9, every other bot −18 to −27 (all significant) |
 | **all three fields** (`results/sng_standing4.md`) | **first: 61.5 per table**; `f3_exploiter` −7.9, field 6's check-raiser −13.8, field 4's best −18.4 (all significant) |
 | hackathon-like field (`results/sng_standing4.md`) | first: 59.0 per table; `f3_exploiter` −1.2 (tie), everyone else −4 to −11 |
+| **field 8** (five bots written blind to WIN: equilibrium push/fold, solver ranges, modeller, endgame, ensemble) | 31.1 per table, level with `f3_exploiter` 31.7 / `f7_balanced` 29.9 / `f2_shark` 28.2 (n.s.); a strong field |
+| **champions table** (the best bot of every field) | **30.5 per table, mid-to-bottom**: `f7_balanced` +6.6*, `f2_shark` +6.1*; six-plus champions last (`f3_exploiter` +12.6*). Our weak spot: strong players who re-raise our opens |
 | **field 6** (postflop specialists written blind; they re-raise wide openers light) | **last: 17.5 per table** (was 14.0 before `rs_call`), busts 92%; `f2_shark` 50.5, the others 30–38. Our known weak spot: if the real field re-raises our opens a lot, try `rs_call=3` and `pev=1` on the day-of tuner |
 
 Today's changes on top (`rs_call`, `rfi_lock`, `icm_any` 2-card mode), measured together against this morning's bot (`results/sng_day2_total_*.md`, 13 fields): **+1.8 per table**, five significant (fields 6/7 +7.3 / +6.5, mirror +5.8, field 2 +2.6, field 4 +2.0), none negative.
