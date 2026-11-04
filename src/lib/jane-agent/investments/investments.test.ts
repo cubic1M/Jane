@@ -663,7 +663,7 @@ describe("retirementReply", () => {
 
   it("gives real accounts the balance only, and asks for the profile first", () => {
     expect(retirementReply(data, false).body).toBe(
-      "You have $84,250.40 in Demo 401(k). My retirement planner is only in demo advice mode for now.",
+      "You have $84,250.40 in Demo 401(k). I don't give retirement recommendations on real accounts yet.",
     );
     const ask = retirementReply(
       { ...data, profile: profileSummary(EMPTY_ANSWERS, ASOF), retirement: null },

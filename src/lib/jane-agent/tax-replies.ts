@@ -272,7 +272,7 @@ export function estimateMessage(view: TaxEstimateView): Reply {
       : "";
   const assumed = view.assumptions.find((a) => a.startsWith("You haven't told me how you file"));
   return {
-    body: `My estimate for your ${view.year} taxes: ${federalLine(e, view.withholdingKnown).replace(/^Federal: /, "federal, ")}${state ? ` ${state}` : ""}${sofar}${assumed ? ` ${assumed}` : ""} I update it after every sync.`,
+    body: `My estimate for your ${view.year} taxes: ${federalLine(e, view.withholdingKnown, view.input.federalEstimatedPaidCents).replace(/^Federal: /, "federal, ")}${state ? ` ${state}` : ""}${sofar}${assumed ? ` ${assumed}` : ""} I update it after every sync.`,
     actions: [
       link("See the estimate", "/taxes?focus=estimate:estimate"),
       ...(view.withholdingKnown ? [] : [link("Add pay stub figures", `${PROFILE_HREF}#pay-stub`)]),

@@ -670,6 +670,60 @@ describe("a card's cash advance", () => {
   });
 });
 
+// Debugger 11-04: a high earner's nanny, power bill, HELOC and state estimated tax were all
+// uncategorized: "You have children at home: no", and $8,400 of tax read as months of spending.
+describe("what a household pays", () => {
+  const detailed = (description: string, amountCents: number) =>
+    categorizeByRules({ description, amountCents, hints: {} })?.detailed;
+
+  it.each([
+    ["HOMEPAY NANNY PAYROLL DEBIT", "GENERAL_SERVICES_CHILDCARE"],
+    ["NANNY LANE PAYROLL", "GENERAL_SERVICES_CHILDCARE"],
+    ["POPPINS PAYROLL", "GENERAL_SERVICES_CHILDCARE"],
+    ["KUMON", "GENERAL_SERVICES_EDUCATION"],
+    ["PGE BILLPAY", "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY"],
+    ["GREEN MOUNTAIN POWER", "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY"],
+    ["SUNRUN SOLAR", "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY"],
+    ["FIGURE LENDING HELOC PMT", "LOAN_PAYMENTS_PERSONAL_LOAN_PAYMENT"],
+    ["HOME EQUITY LINE PMT", "LOAN_PAYMENTS_PERSONAL_LOAN_PAYMENT"],
+    ["NC DEPT REVENUE EST TAX", "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT"],
+    ["CA FTB TAX PMT", "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT"],
+    ["NYS DTF PIT", "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT"],
+    ["NY STATE TAX", "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT"],
+    ["MA DOR EFT", "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT"],
+    ["VA DEPT TAXATION", "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT"],
+    ["PA DEPT REVENUE", "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT"],
+    ["GA DEPT OF REV", "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT"],
+    ["LANDSCAPING SERVICES", "HOME_IMPROVEMENT_REPAIR_AND_MAINTENANCE"],
+    ["MERRY MAIDS", "HOME_IMPROVEMENT_REPAIR_AND_MAINTENANCE"],
+    ["HOUSE CLEANING", "HOME_IMPROVEMENT_REPAIR_AND_MAINTENANCE"],
+    ["TERMINIX", "HOME_IMPROVEMENT_REPAIR_AND_MAINTENANCE"],
+    ["ORKIN", "HOME_IMPROVEMENT_REPAIR_AND_MAINTENANCE"],
+    ["ADT SECURITY", "HOME_IMPROVEMENT_SECURITY"],
+    ["RING PROTECT", "HOME_IMPROVEMENT_SECURITY"],
+    ["WHOOP", "PERSONAL_CARE_GYMS_AND_FITNESS_CENTERS"],
+    ["EZ PASS", "TRANSPORTATION_TOLLS"],
+    ["TESLA SUPERCHARGER", "TRANSPORTATION_GAS"],
+    ["CHARGEPOINT", "TRANSPORTATION_GAS"],
+    ["BANFIELD PET", "MEDICAL_VETERINARY_SERVICES"],
+    ["MORGAN STANLEY", "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS"],
+    ["TREASURY DIRECT", "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS"],
+  ])("%s out is %s", (description, expected) => {
+    expect(detailed(description, 10_000)).toBe(expected);
+  });
+
+  it("reads a state's refund as a refund, and a mortgage's words as a mortgage", () => {
+    expect(detailed("NYS DTF PIT REFUND", -10_000)).toBe("INCOME_TAX_REFUND");
+    expect(detailed("ROCKET MORTGAGE PAYMENT", 428_000)).toBe("LOAN_PAYMENTS_MORTGAGE_PAYMENT");
+  });
+
+  it("doesn't take a shop for a power company or a tax", () => {
+    expect(detailed("PAGE ONE BOOKS", 2_000) ?? "").not.toMatch(/GAS_AND_ELECTRICITY/);
+    expect(detailed("EL DORADO CAFE", 2_000) ?? "").not.toMatch(/TAX_PAYMENT/);
+    expect(detailed("PRINGLE LANDSCAPE", 2_000) ?? "").not.toMatch(/INSURANCE/);
+  });
+});
+
 describe("taxonomy", () => {
   it("names every detailed category after its primary", () => {
     for (const detailed of ALL_DETAILED) {

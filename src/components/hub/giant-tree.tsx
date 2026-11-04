@@ -8,6 +8,7 @@ import type { AreaTile } from "@/lib/hub/view";
 import { STATUS, type TreeStatus } from "@/components/tree/interactive-tree";
 import { askedBefore, rememberAsked } from "@/lib/ask-jane";
 import { MarchingPath } from "@/components/marching-path";
+import { Blinded } from "./blinded";
 
 // The "What Jane does" tree on Home (src/lib/giant-tree.ts). The six areas are fixed tiles, a
 // row of six on a computer and two by three on a phone: nothing to drag, pan or zoom, and no
@@ -110,7 +111,9 @@ export function GiantTree({
                 </span>
                 {a.tile?.value != null && (
                   <span className="text-lg leading-tight font-semibold tabular-nums">
-                    {a.tile.value}
+                    {/* A dollar figure stays hidden until its tile is opened, as Home's big ones
+                        do (src/components/hub/blinded.tsx); "4 gaps" says no amount. */}
+                    {isOpen || !a.tile.value.includes("$") ? a.tile.value : <Blinded />}
                   </span>
                 )}
                 {a.tile && <span className="text-xs opacity-80">{a.tile.caption}</span>}

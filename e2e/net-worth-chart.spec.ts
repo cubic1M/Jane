@@ -41,6 +41,7 @@ test("the net worth chart scrubs, changes range and returns to today", async ({
 
   const chart = page.locator("[data-net-worth-chart]");
   await expect(chart).toBeVisible();
+  await chart.locator("[data-show-value]").click();
   const number = chart.locator('[data-hub-number="net-worth"]');
   const change = chart.locator("[data-net-worth-change]");
   const today = (await number.textContent()) ?? "";
@@ -128,6 +129,7 @@ test("every day money moved is a dot that opens where the money went, inside the
   expect(Number(await dots.getAttribute("data-movements"))).toBeGreaterThan(50);
   const count = Number(await dots.getAttribute("data-dots"));
   await expect(chart.locator("[data-net-worth-event]")).toHaveCount(0);
+  await chart.locator("[data-show-value]").click();
 
   // The last dot opens the day's summary inside the chart: the date, a line each for what moved
   // the money ("−$1,640 · card payment · Chase ····5003"), net worth then, and that day's

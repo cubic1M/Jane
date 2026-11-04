@@ -97,6 +97,7 @@ test("the headline is the newest balances' sum, the line ends there, and a day's
   // $6,030.00 in checking less $300.00 owed on the card.
   await page.goto("/home");
   const chart = page.locator("[data-net-worth-chart]");
+  await chart.locator("[data-show-value]").click();
   await expect(chart.locator('[data-hub-number="net-worth"]')).toHaveText("$5,730");
   // The line's last point is the headline.
   await expect(chart.locator("[data-net-worth-plot]")).toHaveAttribute(

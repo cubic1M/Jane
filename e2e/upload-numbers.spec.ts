@@ -132,6 +132,7 @@ test("an upload's numbers reach net worth, Home and the money page; a second fil
   // Home's chart: the same number, and it moved.
   await page.goto("/home");
   const chart = page.locator("[data-net-worth-chart]");
+  await chart.locator("[data-show-value]").click();
   await expect(chart.locator('[data-hub-number="net-worth"]')).toHaveText(
     dollars(checking.endCents).replace(/\.\d\d$/, ""),
   );

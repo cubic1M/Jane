@@ -48,6 +48,7 @@ test("new people land on Connect; once data is in, the hub matches the report @c
   // The report's "We found $X a year" and the hub's money found are the same number (the hub
   // shows whole dollars).
   const amount = (headline?.match(/\$[\d,.]+/)?.[0] ?? "").replace(/\.\d\d$/, "");
+  await page.locator('[data-hub-tile="saved"] [data-show-value]').click();
   await expect(page.locator('[data-hub-number="saved"]')).toContainText(amount);
   // It links to the report that shows it (hub QA: it linked to /plan, a bigger total).
   await expect(page.getByRole("link", { name: "Money found", exact: true })).toHaveAttribute(

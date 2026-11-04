@@ -14,6 +14,7 @@ describe("the figures an accountant reads", () => {
     totalTaxCents: 110_868,
     paidCents: 0,
     refundCents: -110_868,
+    estimatedPaidCents: 0,
   };
   const labels = (rows: readonly (readonly [string, number])[]) => rows.map(([label]) => label);
 
@@ -24,6 +25,16 @@ describe("the figures an accountant reads", () => {
       "Taxable income",
       "Tax",
     ]);
+  });
+
+  it("still gives the estimated payments it can see", () => {
+    expect(
+      accountantSummaryRows({
+        ...summary,
+        withholdingKnown: false,
+        estimatedPaidCents: 3_600_000,
+      }).at(-1),
+    ).toEqual(["Estimated payments seen", 3_600_000]);
   });
 
   it("gives them when it is", () => {

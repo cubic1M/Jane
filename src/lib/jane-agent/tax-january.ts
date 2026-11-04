@@ -24,7 +24,7 @@ export function januaryMessage(
   const received = expected.filter((f) => f.received).length;
   const estimateLine =
     estimate && estimate.year === pack.year
-      ? ` My estimate: ${federalLine(estimate.estimate, estimate.withholdingKnown).replace(/^Federal: /, "federal, ")}`
+      ? ` My estimate: ${federalLine(estimate.estimate, estimate.withholdingKnown, estimate.input.federalEstimatedPaidCents).replace(/^Federal: /, "federal, ")}`
       : "";
   const forms =
     expected.length > 0
