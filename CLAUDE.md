@@ -70,7 +70,8 @@ investment advice in this MVP.
 - Prefer small, readable modules over clever abstractions
 - Conflict habits: rebase just before you push and merge within about an hour; put new tests in a new
   file rather than growing a shared one; `node scripts/claim.mjs take <task> <lane:name>` before working
-  on something another session might pick up (claims expire, docs/agent-loop.md)
+  on something another session might pick up (claims expire, docs/agent-loop.md); push, then
+  `node scripts/claim.mjs wait <pr> <lane:name> <branch>` before stopping to wait on another PR
 - End each PR body with the line `node scripts/ops/attribution.mjs` prints (lane, model, Claude Code
   version, tokens): the numbers page reads it, because a product change looks like your own bug from
   inside

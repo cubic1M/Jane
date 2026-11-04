@@ -17,6 +17,7 @@ import {
   renderLoop,
   wakeText,
 } from "./loop-core.mjs";
+import { prsToLookUp, renderWaits, waitWakes } from "./loop-waits-core.mjs";
 
 const REPO = process.env.GITHUB_REPOSITORY ?? "cubic1M/Jane";
 const [OWNER, NAME] = REPO.split("/");
@@ -131,14 +132,36 @@ function readMainRuns() {
     }));
 }
 
-function readClaims() {
-  const out = quietly(() => {
-    const claims = mkdtempSync(join(tmpdir(), "claims-"));
-    run("git", ["-C", claims, "init", "-q"]);
-    run("git", ["-C", claims, "fetch", "-q", "--depth=1", remote, CLAIMS_BRANCH]);
-    return run("git", ["-C", claims, "show", "FETCH_HEAD:claims.json"]);
+// Claims and waits, read as data. Missing or broken, there are none, and a bad file can't stop this.
+function readClaimsFiles() {
+  const dir = quietly(() => {
+    const made = mkdtempSync(join(tmpdir(), "claims-"));
+    run("git", ["-C", made, "init", "-q"]);
+    run("git", ["-C", made, "fetch", "-q", "--depth=1", remote, CLAIMS_BRANCH]);
+    return made;
   });
-  return out ? JSON.parse(out) : [];
+  const read = (file) => {
+    if (!dir) return [];
+    const parsed = quietly(() =>
+      JSON.parse(run("git", ["-C", dir, "show", `FETCH_HEAD:${file}`], { stdio: "pipe" })),
+    );
+    return Array.isArray(parsed) ? parsed : [];
+  };
+  return { claims: read("claims.json"), waits: read("waits.json") };
+}
+
+// A PR that isn't open, or isn't aimed at main, for someone waiting on it. Numbers and ids only.
+function readClosedPr(number) {
+  const out = quietly(() => api(`pulls/${number}`));
+  if (!out) return null;
+  const pr = JSON.parse(out);
+  return {
+    merged: pr.merged === true,
+    closed: pr.state === "closed",
+    sha: pr.head.sha,
+    mergeSha: pr.merge_commit_sha,
+    checks: [],
+  };
 }
 
 // The live site says which commit it's built from (src/config/build-commit.ts).
@@ -236,7 +259,7 @@ function updateAlarm(found) {
 
 const paused = process.env.LOOP_PAUSED === "1";
 const dry = paused || !process.env.LANE_WAKE_TOKEN || !process.env.LANE_WAKE_URL;
-const claims = readClaims();
+const { claims, waits } = readClaimsFiles();
 const prs = readPrs();
 const mainRuns = readMainRuns();
 // A failed run past its first attempt has had its re-run, so that commit's failure is real.
@@ -244,7 +267,21 @@ const settledShas =
   process.env.EVENT_CONCLUSION === "failure" && Number(process.env.EVENT_ATTEMPT) >= 2
     ? [process.env.EVENT_SHA]
     : [];
-const decided = plan({ prs, mainRuns, wakes: state.wakes, claims, now, settledShas, dry });
+const openNumbers = prs.map((pr) => pr.number);
+const waitedOn = new Map(prs.map((pr) => [pr.number, pr]));
+for (const number of prsToLookUp(waits, openNumbers, now)) {
+  waitedOn.set(number, readClosedPr(number));
+}
+const decided = plan({
+  prs,
+  mainRuns,
+  wakes: state.wakes,
+  claims,
+  waitWakes: waitWakes({ waits, prs: waitedOn, wakes: state.wakes, claims, now, dry }),
+  now,
+  settledShas,
+  dry,
+});
 
 setLabels(decided.labels);
 for (const wake of decided.wakes) {
@@ -284,6 +321,7 @@ const page = renderLoop({
   redMinutes,
   wakes: state.wakes,
   claims: activeClaims(claims, now),
+  waiting: renderWaits(waits, state.wakes, now),
   dry,
 });
 state.numbers = {

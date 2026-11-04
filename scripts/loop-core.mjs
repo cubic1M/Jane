@@ -125,9 +125,19 @@ const wokenLately = (wakes, wake, now) =>
  * @param {{prs: any[], mainRuns: any[], wakes: any[], claims?: any[], now: string,
  *          settledShas?: string[], dry: boolean}} input
  */
-export function plan({ prs, mainRuns, wakes, claims = [], now, settledShas = [], dry }) {
+export function plan({
+  prs,
+  mainRuns,
+  wakes,
+  claims = [],
+  waitWakes = [],
+  now,
+  settledShas = [],
+  dry,
+}) {
   const labels = [];
   const wanted = [];
+  const redMain = [];
   const silent = [];
   const stuck = [];
   const claimed = new Set(activeClaims(claims, now).map((c) => c.task));
@@ -166,9 +176,12 @@ export function plan({ prs, mainRuns, wakes, claims = [], now, settledShas = [],
       !wokenLately(wakes, wake, now)
     ) {
       // Red main stops every deploy, so it goes first.
-      wanted.unshift(wake);
+      redMain.push(wake);
     }
   }
+
+  // Then a lane someone is waiting to hear about (scripts/loop-waits-core.mjs): one wake and done.
+  wanted.unshift(...redMain, ...waitWakes);
 
   const lastHour = wakes.filter((w) => !!w.dry === dry && minutes(now, w.at) < 60).length;
   const room = Math.max(0, Math.min(LIMITS.wakesPerRun, LIMITS.wakesPerHour - lastHour));
@@ -259,6 +272,7 @@ export function wakeText(wake, repo) {
     `sha=${wake.sha}`,
     wake.pr ? `pr=${base}/pull/${wake.pr}` : `branch=main`,
     wake.run ? `run=${base}/actions/runs/${wake.run}` : null,
+    wake.task ? `task=${wake.task}` : null,
   ]
     .filter(Boolean)
     .join(" ");
@@ -303,7 +317,17 @@ const prLinks = (numbers, repo) =>
     ? numbers.map((n) => `[#${n}](https://github.com/${repo}/pull/${n})`).join(", ")
     : "none";
 
-export function renderLoop({ repo, now, plan: decided, lag, redMinutes, wakes, claims, dry }) {
+export function renderLoop({
+  repo,
+  now,
+  plan: decided,
+  lag,
+  redMinutes,
+  wakes,
+  claims,
+  waiting = ["None."],
+  dry,
+}) {
   const lagText = lag.minutes === null ? `not known (${lag.why})` : `${lag.minutes} minutes`;
   const mainText =
     decided.main.state === "red" ? `red for ${decided.main.minutes} minutes` : decided.main.state;
@@ -329,6 +353,10 @@ export function renderLoop({ repo, now, plan: decided, lag, redMinutes, wakes, c
     ...(claims.length
       ? claims.map((c) => `- ${c.task}: ${c.lane}, until ${c.expires.slice(0, 16)}Z`)
       : ["None."]),
+    "",
+    "## Waiting on a PR",
+    "",
+    ...waiting,
     "",
     "## Latest wakes",
     "",
