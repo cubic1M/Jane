@@ -26,6 +26,7 @@ import {
   statementTrialEnabled,
 } from "@/lib/statement-trial";
 import { cleanUpTrials } from "@/lib/trial";
+import { countTry } from "@/lib/try-stats";
 import { clearTrialSession, setTrialSession } from "@/lib/trial-cookie";
 import { deleteTrialPerson } from "@/lib/trial-delete";
 import { isStatementTrialUser, isTrialUser } from "@/lib/trial-ids";
@@ -72,16 +73,27 @@ export async function tryWithStatement(_previous: TryState, formData: FormData):
     [read] = previewCsvFiles([{ name: file.name, text }], undefined, STATEMENT_ROW_LIMIT);
   } catch (error) {
     log.error("Reading a temporary try's statement failed", { error: errorName(error) });
+    await countTry("unreadable");
     return { error: UNREADABLE };
   }
   // A layout Jane doesn't know goes on, to the column picker on /import.
   const pickColumns = !read.ok && read.choices !== undefined;
-  if (!read.ok && !pickColumns) return { error: read.error };
+  if (!read.ok && !pickColumns) {
+    await countTry("unreadable");
+    return { error: read.error };
+  }
   if (read.ok && read.rowCount === 0) {
+    await countTry("no_rows");
     return { error: "This file has no transactions in it. Download it again from your bank." };
   }
-  if (read.ok && read.rowCount > STATEMENT_TRIAL_MAX_ROWS) return { error: statementTooManyRows() };
-  if (!(await hit(DAY_LIMIT, "all")).ok) return { error: STATEMENT_TRIAL_BUSY };
+  if (read.ok && read.rowCount > STATEMENT_TRIAL_MAX_ROWS) {
+    await countTry("too_many_rows");
+    return { error: statementTooManyRows() };
+  }
+  if (!(await hit(DAY_LIMIT, "all")).ok) {
+    await countTry("busy");
+    return { error: STATEMENT_TRIAL_BUSY };
+  }
 
   const person = await startStatementPerson({ userAgent: h.get("user-agent"), previous }).catch(
     (error) => {
@@ -89,7 +101,11 @@ export async function tryWithStatement(_previous: TryState, formData: FormData):
       return null;
     },
   );
-  if (!person) return { error: "That didn't go through. Please try again." };
+  if (!person) {
+    await countTry("failed_start");
+    return { error: "That didn't go through. Please try again." };
+  }
+  await countTry("started");
   await setTrialSession(person.sessionToken);
   // Other people's finished tries aren't this visitor's wait.
   after(() =>
@@ -97,7 +113,10 @@ export async function tryWithStatement(_previous: TryState, formData: FormData):
       log.error("Cleaning up trials failed", { error: errorName(error) }),
     ),
   );
-  if (pickColumns) return { next: "/import?columns=1" };
+  if (pickColumns) {
+    await countTry("needs_columns");
+    return { next: "/import?columns=1" };
+  }
 
   const upload = new FormData();
   upload.set("accountId", NEW_ACCOUNT_ID);
@@ -110,6 +129,7 @@ export async function tryWithStatement(_previous: TryState, formData: FormData):
   if (!saved?.ok) {
     await deleteTrialPerson(person.userId, "failed_start");
     await clearTrialSession();
+    await countTry("unreadable");
     return { error: saved?.error ?? UNREADABLE };
   }
   // Saved; the rest runs after the response, its progress on the scanning screen and on a chip.

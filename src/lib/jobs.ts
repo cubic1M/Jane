@@ -1,3 +1,5 @@
+import { countTry } from "@/lib/try-stats";
+import { isStatementTrialUser } from "@/lib/trial-ids";
 import {
   JOB_BACKOFF_MINUTES,
   JOB_BATCH,
@@ -60,9 +62,11 @@ export const HANDLERS: Required<Handlers> = {
   chat_notify: ({ userId }) => deliverChatNotifications(userId),
   controller_run: ({ userId }) => runController(userId),
   controller_step: ({ userId, step }) => retryControllerStep(userId, step ?? ""),
-  import_finish: (payload) => {
+  import_finish: async (payload) => {
     if (!payload.importRunId) throw new Error("This job needs an importRunId");
-    return finishImport(payload.userId, payload.importRunId);
+    const finished = await finishImport(payload.userId, payload.importRunId);
+    if (isStatementTrialUser(payload.userId)) await countTry("scan_finished");
+    return finished;
   },
 };
 
@@ -187,6 +191,13 @@ async function execute(
     // As in the logs: an error can quote a row of someone's statement.
     const lastError = logText(String(error)).slice(0, JOB_ERROR_LENGTH);
     const failed = job.attempts >= job.max_attempts;
+    if (
+      failed &&
+      job.kind === "import_finish" &&
+      isStatementTrialUser((job.payload as JobPayload)?.userId)
+    ) {
+      await countTry("scan_failed", { client, now });
+    }
     // A job out of time may still be running: it isn't stopped, only no longer waited for. Not again
     // until the function it's in has certainly ended, or two copies could run at once.
     const wait =

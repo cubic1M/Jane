@@ -75,7 +75,7 @@ the app code asks for Bob's, forgets the filter, or uses raw SQL.
 | The person | `users` | read their own row |
 | Shared by a household | `households` | read the one they belong to |
 | Reference data | `referral_partners` | read every row (no personal data) |
-| System records | `audit_log`, `analytics_events` | nothing |
+| System records | `audit_log`, `analytics_events`, `try_stats`, `try_feedback` | nothing |
 | Everything else | `jobs`, `verification_tokens` (magic links), `rate_limits`, `plaid_item_counter`, `invite_codes`, `waitlist`, `error_events`, `merchants`, market data, `_prisma_migrations`... | nothing |
 
 Any table that has a `user_id` column is "owned" automatically. A table without one that points

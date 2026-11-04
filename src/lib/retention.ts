@@ -29,7 +29,7 @@ export async function runRetention({
 > {
   const before = (kind: RetainedKind) =>
     new Date(now.getTime() - RETENTION_PERIODS[kind].days * DAY);
-  const [analytics, activity, errors, jobs, runs, limits, sessions, links, access] =
+  const [analytics, activity, errors, jobs, runs, limits, sessions, links, access, feedback] =
     await Promise.all([
       systemDb(WHY, client).analyticsEvent.deleteMany({
         where: { createdAt: { lt: before("analyticsEvents") } },
@@ -61,6 +61,9 @@ export async function runRetention({
       // Only the access log's entries: the rest of the audit log (consents, decisions) stays.
       systemDb(WHY, client).auditLog.deleteMany({
         where: { event: { in: [...ACCESS_EVENTS] }, createdAt: { lt: before("accessLog") } },
+      }),
+      systemDb(WHY, client).tryFeedback.deleteMany({
+        where: { createdAt: { lt: before("tryFeedback") } },
       }),
     ]);
   // What deleting an account leaves out of the audit log now, for people deleted before it did. The
@@ -95,6 +98,7 @@ export async function runRetention({
     }
   }
   return {
+    tryFeedback: feedback.count,
     analyticsEvents: analytics.count,
     activityEvents: activity.count,
     errorEvents: errors.count,

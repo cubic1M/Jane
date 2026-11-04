@@ -6,6 +6,8 @@ import { Suspense } from "react";
 import { conciergeMode } from "@/lib/concierge-mode";
 import { AppHeader, PageLoading } from "@/components/app-header";
 import { AutopilotChooser } from "@/components/autopilot-chooser";
+import { TryFeedbackBox } from "@/components/try-feedback-box";
+import { isTrialUser } from "@/lib/trial-ids";
 import { BankStatusNotice } from "@/components/bank-status-notice";
 import { BooksNotice } from "@/components/books-notice";
 import { CashFlowStrip } from "@/components/hub/cash-flow";
@@ -185,7 +187,7 @@ function NetWorthLoading({ todayCents }: { todayCents: number }) {
   );
 }
 
-async function HubContent() {
+async function HubContent({ searchParams }: { searchParams: PageProps<"/home">["searchParams"] }) {
   await connection();
   const user = await requireUser();
   // Everything the hub reads starts at once (speed pass, 2026-10-24): the tree's data too, which
@@ -241,6 +243,13 @@ async function HubContent() {
         <AreasTree userId={user.id} home={home} treeData={treeData} />
       </Suspense>
 
+      {isTrialUser(user.id) && (
+        <TryFeedbackBox
+          from="/home"
+          state={String((await searchParams).feedback ?? "") || undefined}
+        />
+      )}
+
       <CashFlowStrip
         view={cashFlowView(top.cashFlow)}
         endDate={addDays(top.cashFlow.asOf, CASH_FLOW_DAYS)}
@@ -276,11 +285,11 @@ async function HubContent() {
   );
 }
 
-export default function HomePage() {
+export default function HomePage({ searchParams }: PageProps<"/home">) {
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8">
       <Suspense fallback={<PageLoading label="Loading your hub" />}>
-        <HubContent />
+        <HubContent searchParams={searchParams} />
       </Suspense>
     </main>
   );

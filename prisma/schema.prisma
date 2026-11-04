@@ -5011,3 +5011,27 @@ model ProblemReport {
   @@index([userId])
   @@map("problem_reports")
 }
+
+// How landing-page tries with someone's own statement went, a total per day and event
+// (src/lib/try-stats.ts). No id and nothing from anyone's statement: only counts.
+model TryStat {
+  day   DateTime @db.Date
+  event String
+  count Int      @default(0)
+
+  @@id([day, event])
+  @@map("try_stats")
+}
+
+// What someone told us during a try (src/lib/try-feedback.ts). Deliberately not tied to a person,
+// so it stays when their try is deleted.
+model TryFeedback {
+  id        String   @id @default(cuid())
+  kind      String
+  path      String
+  message   String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([createdAt])
+  @@map("try_feedback")
+}

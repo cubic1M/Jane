@@ -2,7 +2,7 @@ import type { ScopedDb } from "@/lib/db-scoped";
 
 // "Report a problem" (closed beta): the person's own words and the page they were on, kept for the
 // founders (/admin/reports). Nothing else goes with it: no balances, no transactions, no
-// analytics. Deleted with the person, a trial person's too.
+// analytics. Deleted with the person. A trial person's goes to src/lib/try-feedback.ts instead.
 
 export const REPORT_MAX_CHARS = 2000;
 const PATH_MAX_CHARS = 200;

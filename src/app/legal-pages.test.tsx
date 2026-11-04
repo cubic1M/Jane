@@ -25,6 +25,17 @@ const text = (page: () => React.ReactElement) =>
 afterEach(() => vi.unstubAllEnvs());
 
 describe("the legal pages", () => {
+  it("say a try's totals and what's said during one stay, tied to no one", () => {
+    const privacy = text(PrivacyPage);
+    expect(privacy).toMatch(/daily totals of how tries went/);
+    expect(privacy).toMatch(/with no link to you, and they stay after your try is deleted/);
+    const schema = readFileSync("prisma/schema.prisma", "utf8");
+    for (const model of ["TryStat", "TryFeedback"]) {
+      const body = schema.slice(schema.indexOf(`model ${model} {`)).split("}")[0];
+      expect(body).not.toMatch(/user|User/);
+    }
+  });
+
   it("say Plaid is read-only: transactions, with loan and investment details optional", () => {
     const link = readFileSync("src/lib/plaid/link.ts", "utf8");
     expect(link).toMatch(/products: \[Products\.Transactions\]/);

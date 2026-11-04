@@ -3,6 +3,7 @@ import { ShownLink } from "@/components/shown-link";
 import { Suspense } from "react";
 import { AccountList } from "@/components/account-list";
 import { AppHeader, PageLoading } from "@/components/app-header";
+import { TryFeedbackBox } from "@/components/try-feedback-box";
 import { ViewTracker } from "@/components/view-tracker";
 import { isFirstDetectionComplete, moneyFoundParts, yearlyFoundCents } from "@/detection/engine";
 import { listAccountSummaries } from "@/lib/accounts";
@@ -56,7 +57,11 @@ const WHAT_WE_CHECK = [
   "Phone and internet bills above the typical price",
 ];
 
-async function ReportContent() {
+async function ReportContent({
+  searchParams,
+}: {
+  searchParams: PageProps<"/report">["searchParams"];
+}) {
   const user = await requireUser();
   const db = await scopedDb();
   const [accounts, findings, parts, firstDetectionDone, scanRunning, uploaded, read, sures] =
@@ -252,6 +257,14 @@ async function ReportContent() {
         </section>
       )}
 
+      {/* Where an upload from the landing page lands: the first findings someone sees. */}
+      {isTrialUser(user.id) && state !== "scanning" && (
+        <TryFeedbackBox
+          from="/report"
+          state={String((await searchParams).feedback ?? "") || undefined}
+        />
+      )}
+
       {accounts.length > 0 && (
         <details className="border-t border-zinc-200 pt-3 dark:border-zinc-800">
           <summary className={MORE}>Accounts we read ({accounts.length})</summary>
@@ -314,11 +327,11 @@ function OldStatements({ day }: { day: string }) {
   );
 }
 
-export default function ReportPage() {
+export default function ReportPage({ searchParams }: PageProps<"/report">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12">
       <Suspense fallback={<PageLoading />}>
-        <ReportContent />
+        <ReportContent searchParams={searchParams} />
       </Suspense>
     </main>
   );
