@@ -35,7 +35,7 @@ export const billNegotiation: Rule = (_input, streams) =>
         type: "bill_negotiation",
         key: stream.key,
         // Not "Comcast Xfinity Internet internet and TV bill".
-        title: `Your ${stream.merchant}${stream.merchant.toLowerCase().includes(benchmark.label.split(" ")[0]) ? "" : ` ${benchmark.label}`} bill is above the typical price`,
+        title: `Your ${stream.merchant}${stream.merchant.toLowerCase().includes(benchmark.label.split(" ")[0]!) ? "" : ` ${benchmark.label}`} bill is above the typical price`,
         annualSavingsCents: gap * MONTHS_PER_YEAR,
         amountCents: monthly,
         confidence: lowest(stream.confidence, "medium"),
