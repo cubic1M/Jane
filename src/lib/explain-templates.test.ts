@@ -25,6 +25,25 @@ describe("templateExplanation", () => {
     },
   );
 
+  it("says a card charging interest comes into idle cash, without promising a saving", () => {
+    const evidence = { excessCents: 3_166_152, referenceRateBps: 400, assumedCurrentRateBps: 50 };
+    const words = (extra: object) => {
+      const { input, allowedCents } = prepareExplainInput({
+        type: "idle_cash",
+        annualSavingsCents: null,
+        evidence: { ...evidence, ...extra },
+      });
+      const content = templateExplanation("Extra cash", input);
+      expect(checkGuardrails(contentText(content), allowedCents, "idle_cash")).toEqual({
+        ok: true,
+      });
+      return content.explanation;
+    };
+    expect(words({ cardInterest: true })).toMatch(/while a card charges you interest/);
+    expect(words({ cardInterest: true })).not.toMatch(/high-yield savings account paying/);
+    expect(words({})).toMatch(/high-yield savings account paying/);
+  });
+
   // Night QA 10-30: "down to about $680.15 around 2026-11-09" for a forecast of -$680.15.
   it("says a low point below zero with its sign, on a day people read", () => {
     const { input, allowedCents } = prepareExplainInput({

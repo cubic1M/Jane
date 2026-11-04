@@ -1,4 +1,4 @@
-import { ANNUAL_FEE_KIT, DIY_KITS } from "@/config/diy";
+import { ANNUAL_FEE_KIT, CARD_FIRST_KIT, DIY_KITS } from "@/config/diy";
 import { ANNUAL_FEE_WORDS } from "@/config/found-policies";
 import type { ActionType, FindingType } from "@/generated/prisma/client";
 import type { DecisionCard } from "./cards";
@@ -38,7 +38,11 @@ const feeDescriptions = (evidence: unknown): string[] => {
 export function selfServe(card: DecisionCard): DecisionCard {
   const annual =
     card.findingType === "bank_fees" && annualFeeOnly(card.evidence.map((r) => r.label));
-  const summary = annual ? ANNUAL_FEE_KIT.summary : DIY_KITS[card.actionType]?.summary;
+  const summary = annual
+    ? ANNUAL_FEE_KIT.summary
+    : card.cardFirst
+      ? CARD_FIRST_KIT.summary
+      : DIY_KITS[card.actionType]?.summary;
   return summary ? { ...card, whatChanges: summary } : card;
 }
 
@@ -132,7 +136,10 @@ export function buildKit(
   merchant: KitMerchant | null,
 ): Kit | null {
   const annual = finding.type === "bank_fees" && annualFeeOnly(feeDescriptions(finding.evidence));
-  const config = annual ? ANNUAL_FEE_KIT : DIY_KITS[actionType];
+  const cardFirst =
+    finding.type === "idle_cash" &&
+    (finding.evidence as { cardInterest?: unknown } | null)?.cardInterest === true;
+  const config = annual ? ANNUAL_FEE_KIT : cardFirst ? CARD_FIRST_KIT : DIY_KITS[actionType];
   if (!config) return null;
   // The facts for an email or a script, where the action has them; steps need none.
   const prepared = draftPayload(actionType, finding);

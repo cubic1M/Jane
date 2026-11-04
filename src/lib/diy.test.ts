@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DIY_KITS } from "@/config/diy";
+import { CARD_FIRST_KIT, DIY_KITS } from "@/config/diy";
 import { ACTION_FOR_FINDING, buildCard } from "./cards";
 import { buildKit, selfServe } from "./diy";
 import { draftPayload } from "./drafts";
@@ -61,6 +61,33 @@ describe("buildKit", () => {
     expect(card?.script?.join(" ")).toMatch(/lower my rate/);
   });
 
+  // Dev had $31,661.52 idle and paid $545.77 in card interest. The title said "while a card charges
+  // interest", and every step was about opening a savings account.
+  describe("idle cash while a card charges interest", () => {
+    const [, sample] = cases.find(([type]) => type === "idle_cash")!;
+    const withEvidence = (cardInterest: boolean) => ({
+      ...sample,
+      id: "idle",
+      explanation: null,
+      explanationHash: null,
+      evidence: { ...(sample.evidence as object), cardInterest },
+    });
+
+    it("starts with the card", () => {
+      const steps = buildKit("move_idle_cash", withEvidence(true), null)?.steps ?? [];
+      expect(steps[0]).toMatch(/card/i);
+      expect(steps[0]).not.toMatch(/savings/i);
+      expect(steps.join(" ")).toMatch(/pay it down/i);
+      expect(selfServe(buildCard(withEvidence(true))).whatChanges).toMatch(/pay down the card/i);
+    });
+
+    it("leaves someone with no card interest as before", () => {
+      const none = withEvidence(false);
+      expect(buildKit("move_idle_cash", none, null)?.steps[0]).toMatch(/high-yield savings/i);
+      expect(selfServe(buildCard(none)).whatChanges).toMatch(/high-yield savings/i);
+    });
+  });
+
   it.each(cases)("%s: says nothing private, promises nothing", (type, finding) => {
     const kit = buildKit(ACTION_FOR_FINDING[type], finding, null);
     const text = JSON.stringify(kit);
@@ -96,7 +123,9 @@ describe("selfServe (read-only mode)", () => {
         explanationHash: null,
       });
       const shown = selfServe(card);
-      expect(shown.whatChanges).toBe(DIY_KITS[card.actionType]?.summary);
+      expect(shown.whatChanges).toBe(
+        card.cardFirst ? CARD_FIRST_KIT.summary : DIY_KITS[card.actionType]?.summary,
+      );
       expect(shown.whatChanges).toMatch(/^You /);
       expect(shown.whatChanges).not.toMatch(/\b(we|our team)\b/i);
       expect({ ...shown, whatChanges: card.whatChanges }).toEqual(card);

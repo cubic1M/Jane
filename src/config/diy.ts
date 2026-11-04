@@ -29,6 +29,20 @@ export const ANNUAL_FEE_KIT: DiyKitConfig = {
     "You ask your card company to waive the annual fee or move you to a no-fee card: Jane gives you the steps and what to say.",
 };
 
+// Idle cash while a card charges interest: the title says so, so the steps can't only be about a
+// savings account (debugger 11-04: $31,661.52 idle beside $545.77 of card interest).
+export const CARD_FIRST_KIT: DiyKitConfig = {
+  link: "support",
+  steps: [
+    "Find the card charging you interest on its latest statement, and what you owe on it.",
+    "Pay it down from the extra cash Jane found, leaving your usual cushion behind: card interest usually costs far more than savings earn.",
+    "If there's extra left, compare two or three online banks' savings rates and move it there. Opening an account takes about ten minutes and doesn't affect your credit score.",
+  ],
+  message: "none",
+  summary:
+    "You pay down the card charging interest from the extra cash, then save what's left: Jane gives you the steps.",
+};
+
 export const DIY_KITS: Partial<Record<ActionType, DiyKitConfig>> = {
   cancel_subscription: {
     link: "cancel",
