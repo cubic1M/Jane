@@ -30,5 +30,13 @@
   "when": "merged",
   "since": "2026-11-04T02:56:31.895Z",
   "expires": "2026-11-07T02:56:31.895Z"
+ },
+ {
+  "on": 977,
+  "lane": "lane:proof",
+  "task": "claude/proof-red",
+  "when": "green",
+  "since": "2026-11-04T02:56:34.204Z",
+  "expires": "2026-11-07T02:56:34.204Z"
  }
 ]
