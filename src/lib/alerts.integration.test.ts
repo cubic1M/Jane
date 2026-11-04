@@ -122,7 +122,7 @@ describe.runIf(url)("raiseAlerts against a real database", () => {
     expect(send).toHaveBeenCalledWith(
       expect.objectContaining({
         to: user.email,
-        subject: "Unusually large charge: $1,200.00 at Best Electronics",
+        subject: "Jane: Unusually large charge",
         headers: expect.objectContaining({
           "List-Unsubscribe": expect.stringContaining("what=alerts"),
         }),
@@ -283,7 +283,8 @@ describe.runIf(url)("raiseAlerts against a real database", () => {
       expect(push).toHaveBeenCalledWith(
         user.id,
         expect.objectContaining({
-          title: "Unusually large charge: $1,200.00 at Best Electronics",
+          title: "Jane: Unusually large charge",
+          body: "Open Jane to see it.",
           url: "/jane#alerts",
         }),
         { client },

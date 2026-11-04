@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("@/lib/advice-mode", () => ({ adviceMode: vi.fn(async () => false) }));
 vi.mock("@/lib/session", () => ({
   requireUser: vi.fn(async () => ({ id: "u1", email: "alex@example.com" })),
 }));
@@ -15,7 +16,12 @@ vi.mock("@/lib/documents/store", () => ({
 
 import { revalidatePath } from "next/cache";
 import { MAX_DOCUMENT_BYTES } from "@/config/documents";
-import { SAMPLE_NO_DOCUMENTS, STATEMENT_TRIAL_NO_DOCUMENTS } from "@/config/statement-trial";
+import {
+  DEMO_NO_DOCUMENTS,
+  SAMPLE_NO_DOCUMENTS,
+  STATEMENT_TRIAL_NO_DOCUMENTS,
+} from "@/config/statement-trial";
+import { adviceMode } from "@/lib/advice-mode";
 import { requireUser } from "@/lib/session";
 import { track } from "@/lib/analytics";
 import { addDocument, removeDocument, saveDocumentFacts } from "@/lib/documents/store";
@@ -99,6 +105,16 @@ describe("document actions (spec step 68)", () => {
     expect([userId, documentId]).toEqual(["u1", "d1"]);
     expect(options?.file?.contentType).toBe("application/pdf");
     expect(Buffer.from(options!.file!.bytes).toString()).toBe(PDF);
+  });
+
+  it("takes no real document on an account with only the demo bank, which would get sample advice", async () => {
+    vi.mocked(adviceMode).mockResolvedValueOnce(true);
+    vi.mocked(addDocument).mockClear();
+    expect(await uploadDocument(null, uploadForm())).toEqual({
+      ok: false,
+      message: DEMO_NO_DOCUMENTS,
+    });
+    expect(addDocument).not.toHaveBeenCalled();
   });
 
   it("takes no file from a sample person: anyone can make one, and the bytes stay in the database", async () => {

@@ -349,6 +349,16 @@ export async function agentStep(
   const action = await loadAction(userId, actionId, client);
   if (!action || !canAgentWork(action)) return "skipped";
   const options = { client, now, notify };
+  // Someone who now has real data: what was started for the demo bank mustn't go to a real company.
+  if (!(await conciergeMode(userId, { client }))) {
+    await handOff(
+      userId,
+      action,
+      "This account has real data now, and the agent doesn't act on it.",
+      options,
+    );
+    return "handed_off";
+  }
 
   // A switch to an option the person picked (spec steps 76–77) replaces the usual request.
   if (switchOf(action.decision.options)) return startSwitch(userId, action, options);

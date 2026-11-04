@@ -37,7 +37,7 @@ export function inactivityStep(person: Person, now: Date): "warn" | "remove" | "
 async function warn(email: string, removalDate: Date, send: typeof sendEmail) {
   const date = removalDate.toISOString().slice(0, 10);
   const link = `${appBase()}/report`;
-  const text = `You haven't used Jane in a while, so on ${date} we'll disconnect your linked banks. Nothing else changes, and you can link them again anytime.\n\nWant to keep them connected? Just open your report: ${link}`;
+  const text = `You haven't used Jane in a while, so on ${date} we'll disconnect your linked banks. That removes what we hold from those banks, and while Jane is in beta you may not be able to link them again.\n\nWant to keep them connected? Just open your report: ${link}`;
   if (!process.env.RESEND_API_KEY && process.env.NODE_ENV !== "production") {
     log.dev(`[dev] Email to ${email}: inactivity warning\n${text}`);
     return;
@@ -46,7 +46,7 @@ async function warn(email: string, removalDate: Date, send: typeof sendEmail) {
     to: email,
     subject: "We'll disconnect your banks soon | Jane",
     text,
-    html: `<p>You haven't used Jane in a while, so on ${date} we'll disconnect your linked banks. Nothing else changes, and you can link them again anytime.</p><p>Want to keep them connected? <a href="${link}">Open your report</a>.</p>`,
+    html: `<p>You haven't used Jane in a while, so on ${date} we'll disconnect your linked banks. That removes what we hold from those banks, and while Jane is in beta you may not be able to link them again.</p><p>Want to keep them connected? <a href="${link}">Open your report</a>.</p>`,
   });
 }
 
@@ -78,7 +78,21 @@ export async function runInactiveCleanup({
     where: { userId: { in: people.map((p) => p.id) }, name: { in: [...ACTIVITY_EVENTS] } },
     _max: { createdAt: true },
   });
-  const lastActive = new Map(last.map((row) => [row.userId, row._max.createdAt]));
+  // Any page they opened counts too: a chip of a page view isn't an event, and someone who reads
+  // Home every day hasn't stopped using Jane.
+  const seen = await systemDb(WHY, client).session.groupBy({
+    by: ["userId"],
+    where: { userId: { in: people.map((p) => p.id) } },
+    _max: { lastSeenAt: true },
+  });
+  const lastActive = new Map<string, Date | null>(
+    last.map((row) => [row.userId as string, row._max.createdAt]),
+  );
+  for (const row of seen) {
+    const at = row._max.lastSeenAt;
+    const before = lastActive.get(row.userId);
+    if (at && (!before || at > before)) lastActive.set(row.userId, at);
+  }
 
   const run: InactiveRun = { warned: 0, removed: 0, failed: 0 };
   for (const person of people) {
