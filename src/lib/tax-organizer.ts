@@ -9,6 +9,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import {
   expectedForms,
+  BROKER_TRANSFER_CATEGORIES,
   LOAN_PAYMENT_CATEGORIES,
   type ExpectedForm,
 } from "@/planning/tax-documents";
@@ -268,6 +269,7 @@ async function loadTaxFormsFrom(
         OR: [
           { amountCents: { lt: 0 }, pfcDetailed: { in: incomeCategories } },
           { amountCents: { gt: 0 }, pfcDetailed: { in: [...LOAN_PAYMENT_CATEGORIES] } },
+          { amountCents: { lt: 0 }, pfcDetailed: { in: [...BROKER_TRANSFER_CATEGORIES] } },
         ],
       },
       select: {

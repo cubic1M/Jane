@@ -3,6 +3,7 @@ import {
   INT_THRESHOLD_CENTS,
   MORTGAGE_INTEREST_THRESHOLD_CENTS,
   STUDENT_INTEREST_THRESHOLD_CENTS,
+  BROKERS,
   TAXABLE_INVESTMENT_SUBTYPES,
   TAX_FORMS,
   necThreshold,
@@ -54,6 +55,11 @@ const LOAN_PAYMENT_FORMS: readonly ["mortgage" | "student", string][] = [
   ["student", "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT"],
 ];
 // What the loader reads besides income, so a lender seen only in payments reaches this file.
+// Money coming from a brokerage, as a bank's file calls it.
+export const BROKER_TRANSFER_CATEGORIES: readonly string[] = [
+  "TRANSFER_IN_ACCOUNT_TRANSFER",
+  "TRANSFER_IN_INVESTMENT_AND_RETIREMENT_FUNDS",
+];
 export const LOAN_PAYMENT_CATEGORIES: readonly string[] = LOAN_PAYMENT_FORMS.map(([, c]) => c);
 
 // Who sends the form, as a person reads it: without the bank's word for how the money came
@@ -128,6 +134,17 @@ export function expectedForms(input: {
     if (a.type === "investment" && TAXABLE_INVESTMENT_SUBTYPES.includes(a.subtype ?? "")) {
       forms.push(make("brokerage", a.name, null));
     }
+  }
+  // A brokerage seen only in money coming from it (an uploaded file has no investment account;
+  // debugger 11-04: $79,700 from E*TRADE and no form).
+  if (!input.accounts.some((a) => a.type === "investment")) {
+    const brokers = new Set<string>();
+    for (const t of inYear) {
+      if (t.amountCents >= 0 || !BROKER_TRANSFER_CATEGORIES.includes(t.pfcDetailed ?? "")) continue;
+      const broker = BROKERS.find(([words]) => words.test(t.description));
+      if (broker) brokers.add(broker[1]);
+    }
+    for (const name of [...brokers].sort()) forms.push(make("brokerage", name, null));
   }
   for (const x of input.cryptoSales ?? []) forms.push(make("da", x.name, x.proceedsCents));
   for (const loan of input.loans) {

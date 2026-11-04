@@ -175,6 +175,57 @@ describe("a loan seen only in its payments", () => {
 // from Stripe Transfer" and "W-2 from Blue Bottle Coffee Payroll": the bank's word for how the
 // money came, not who sends the form. Pages show formPayer(from); `from` and the key stay as they
 // were, since documents, checks and "I have it" are matched by them.
+// Debugger 11-04: $79,700 coming in from E*TRADE and no form expected, because an uploaded file
+// has no investment account.
+describe("a brokerage seen only in money coming from it", () => {
+  const fromBroker = (description: string, date = "2026-05-20") =>
+    tx({
+      description,
+      date,
+      amountCents: -3_850_000,
+      pfcDetailed: "TRANSFER_IN_ACCOUNT_TRANSFER",
+    });
+  const forms = (
+    transactions: FormTransaction[],
+    accounts: Parameters<typeof expectedForms>[0]["accounts"] = [],
+  ) =>
+    expectedForms({ year: 2026, transactions, accounts, loans: [] }).filter(
+      (f) => f.formKey === "brokerage",
+    );
+
+  it("expects its form once, by the usual date", () => {
+    expect(
+      forms([
+        fromBroker("ETRADE SECURITIES ACH TRANSFER"),
+        fromBroker("ETRADE SECURITIES ACH TRANSFER", "2026-08-20"),
+        fromBroker("SCHWAB MONEYLINK"),
+      ]).map((f) => [f.key, f.from, f.by, f.mayNotSend]),
+    ).toEqual([
+      ["brokerage:e-trade", "E*TRADE", "2027-02-15", false],
+      ["brokerage:schwab", "Schwab", "2027-02-15", false],
+    ]);
+  });
+
+  it("ignores other transfers, last year's, and money going to the broker", () => {
+    expect(
+      forms([
+        fromBroker("ONLINE TRANSFER FROM SAVINGS"),
+        fromBroker("ETRADE SECURITIES ACH TRANSFER", "2025-12-20"),
+        { ...fromBroker("VANGUARD BROKERAGE BUY"), amountCents: 250_000 },
+      ]),
+    ).toEqual([]);
+  });
+
+  it("leaves it to an investment account on file", () => {
+    expect(
+      forms(
+        [fromBroker("ETRADE SECURITIES ACH TRANSFER")],
+        [{ name: "E*TRADE brokerage", type: "investment", subtype: "brokerage" }],
+      ).map((f) => f.from),
+    ).toEqual(["E*TRADE brokerage"]);
+  });
+});
+
 describe("who sends each form, as pages say it", () => {
   it("is named without the bank's word for how the money came", () => {
     expect(formPayer("Blue Bottle Coffee Payroll")).toBe("Blue Bottle Coffee");
