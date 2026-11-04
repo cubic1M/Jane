@@ -4,13 +4,11 @@
 // public), each with its own way to show it right beside it. Never remembered: every visit starts
 // hidden. It hides them from someone looking at the screen; the browser still holds the numbers.
 
-export const BLINDED = "*****";
-
 // What stands in for a figure: read out as "Hidden", not as five asterisks.
 export function Blinded() {
   return (
     <>
-      <span aria-hidden="true">{BLINDED}</span>
+      <span aria-hidden="true">*****</span>
       <span className="sr-only">Hidden</span>
     </>
   );

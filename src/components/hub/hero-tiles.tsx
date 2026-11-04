@@ -115,15 +115,7 @@ export function SafeTile({ safe }: { safe: SafeHero }) {
 
   return (
     <div ref={tile} data-hub-tile="safe" className={CARD}>
-      <button
-        type="button"
-        aria-expanded={open}
-        aria-controls="safe-why"
-        onClick={toggleOpen}
-        className={TOGGLE}
-      >
-        <span className={LABEL}>{safe.label}</span>
-      </button>
+      <span className={LABEL}>{safe.label}</span>
       <div className={NUMBER_ROW}>
         <span
           data-hub-number="safe"
@@ -139,7 +131,7 @@ export function SafeTile({ safe }: { safe: SafeHero }) {
         type="button"
         aria-expanded={open}
         aria-controls="safe-why"
-        aria-label={open ? "Close why this number" : "Why this number"}
+        aria-label={`${safe.label}: why this number`}
         onClick={toggleOpen}
         className={TOGGLE}
       >
@@ -272,15 +264,7 @@ export function SavedTile({
     <div ref={tile} data-hub-tile="saved" className={wide ? `${CARD} sm:col-span-2` : CARD}>
       {savedSoFar ? (
         <>
-          <button
-            type="button"
-            aria-expanded={open}
-            aria-controls="saved-where"
-            onClick={toggleOpen}
-            className={TOGGLE}
-          >
-            <span className={LABEL}>{saved.label}</span>
-          </button>
+          <span className={LABEL}>{saved.label}</span>
           <div className={NUMBER_ROW}>
             <span
               data-hub-number="saved"
@@ -294,7 +278,7 @@ export function SavedTile({
             type="button"
             aria-expanded={open}
             aria-controls="saved-where"
-            aria-label={open ? "Close where it came from" : "Where it came from"}
+            aria-label={`${saved.label}: where it came from`}
             onClick={toggleOpen}
             className={TOGGLE}
           >

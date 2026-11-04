@@ -70,15 +70,12 @@ test("every big figure starts hidden, shows on its own, and is hidden again on t
 
   // Asking why this number is asking to see it; hiding it shuts the why.
   const safeTile = page.locator('[data-hub-tile="safe"]');
-  const why = safeTile.getByRole("button", { name: "Why this number" });
+  const why = safeTile.getByRole("button", { name: /why this number/ });
   await why.click();
   await expect(safe).toHaveText(/\$[\d,]+/);
   await safeTile.locator("[data-show-value]").click();
   await expect(safe).toContainText("*****");
-  await expect(safeTile.getByRole("button", { name: "Why this number" })).toHaveAttribute(
-    "aria-expanded",
-    "false",
-  );
+  await expect(why).toHaveAttribute("aria-expanded", "false");
 
   // Never remembered: the next visit starts hidden.
   await chart.getByRole("button", { name: /SHOW VALUE.* of net worth/ }).click();
