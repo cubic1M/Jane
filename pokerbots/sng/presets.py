@@ -26,6 +26,8 @@ PRESETS = {
     "omaha_hilo8": dict(spec=GameSpec(name="omaha_hilo8", showdown="hilo8", hole_cards=4, hole_usage="exactly",
                                       hole_exact=2, betting="pot_limit", starting_stack=2000, small_blind=10,
                                       big_blind=20, stack_reset_per_hand=False)),
+    "holdem_wild2": dict(spec=GameSpec(name="holdem_wild2", showdown="wild2", starting_stack=2000, small_blind=10,
+                                       big_blind=20, stack_reset_per_hand=False)),
     "double_board": dict(spec=GameSpec(name="double_board", showdown="double_board", board_cards_per_street=(0, 6, 2, 2),
                                        starting_stack=2000, small_blind=10, big_blind=20, stack_reset_per_hand=False)),
     "fixed_limit": dict(spec=GameSpec(name="fixed_limit", betting="fixed_limit", starting_stack=2000, small_blind=10,
@@ -60,4 +62,5 @@ PRESETS = {
 HOLDEM_HILO8 = PRESETS["holdem_hilo8"]["spec"]
 OMAHA_HILO8 = PRESETS["omaha_hilo8"]["spec"]
 DOUBLE_BOARD = PRESETS["double_board"]["spec"]
+HOLDEM_WILD2 = PRESETS["holdem_wild2"]["spec"]
 KIT4_SIXPLUS = PRESETS["kit4_sixplus"]["spec"]

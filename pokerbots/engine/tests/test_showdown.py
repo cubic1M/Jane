@@ -4,12 +4,13 @@ import unittest
 
 from engine.cards import parse_cards
 from engine.evaluator import get_evaluator
-from engine.showdown import best_low, part_keys, share, share_keys, split, split_boards
+from engine.showdown import best_low, part_keys, share, share_keys, split, split_boards, wild_high
 from engine.spec import GameSpec
 
 HL = GameSpec(name="hl", showdown="hilo8")
 OHL = GameSpec(name="ohl", showdown="hilo8", hole_cards=4, hole_usage="exactly", hole_exact=2, betting="pot_limit")
 DB = GameSpec(name="db", showdown="double_board", board_cards_per_street=(0, 6, 2, 2))
+WD = GameSpec(name="wd", showdown="wild2")
 
 
 class TestShowdown(unittest.TestCase):
@@ -42,7 +43,7 @@ class TestShowdown(unittest.TestCase):
     def test_share_keys_matches_split(self):
         """The builder's fast path gives the same shares as split() on random deals."""
         rng = random.Random(3)
-        for spec in (HL, OHL, DB):
+        for spec in (HL, OHL, DB, WD):
             ev = get_evaluator(spec)
             for _ in range(150):
                 deck = list(spec.deck)
@@ -64,12 +65,41 @@ class TestShowdown(unittest.TestCase):
         from sng.registry import make
         from sng.rules import SngRules
         from sng.table import play_table
-        for name in ("holdem_hilo8", "omaha_hilo8", "double_board"):
+        for name in ("holdem_hilo8", "omaha_hilo8", "double_board", "holdem_wild2"):
             r = SngRules(enforce_time=False, spec=PRESETS[name]["spec"])
             bots = [make(b) for b in ("icm_any", "icm_any", "chen_tag", "station", "lag", "nit", "random", "maniac")]
             res = play_table(bots, r, seed=11)
             self.assertEqual(sum(res.final_stacks), 8 * r.spec.starting_stack, name)
             self.assertEqual(sum(s.errors + s.illegal for s in res.stats), 0, name)
+
+    def test_wild_deuces_match_brute_force(self):
+        """1-2 wilds: the substitution shortcut equals trying all 52 cards for every wild."""
+        from itertools import product
+        ev = get_evaluator(WD)
+        self.assertEqual(ev.category(wild_high(WD, ev, parse_cards("2c 2d"), parse_cards("Ah As 7d 9c Jh"))), "quads")
+        self.assertEqual(ev.category(wild_high(WD, ev, parse_cards("2c Ah"), parse_cards("Kh Qh Jh 3d 4s"))),
+                         "straight_flush")
+        rng = random.Random(5)
+        deck = list(WD.deck)
+        n = 0
+        while n < 60:
+            rng.shuffle(deck)
+            hole, board = deck[:2], deck[2:7]
+            cards = hole + board
+            wpos = [i for i, c in enumerate(cards) if c >> 2 == 0]
+            if not 1 <= len(wpos) <= 2:
+                continue
+            n += 1
+            real = [c for i, c in enumerate(cards) if i not in wpos]
+            best = 0
+            for sub in product(range(52), repeat=len(wpos)):
+                if len(set(sub)) < len(sub) or set(real) & set(sub):
+                    continue
+                row = cards[:]
+                for i, c in zip(wpos, sub):
+                    row[i] = c
+                best = max(best, ev.evaluate(row[:2], row[2:]))
+            self.assertEqual(wild_high(WD, ev, hole, board), best)
 
     def test_unknown_rule_rejected(self):
         with self.assertRaises(ValueError):

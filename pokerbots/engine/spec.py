@@ -123,6 +123,8 @@ class GameSpec:
             raise ValueError("betting must be 'no_limit', 'pot_limit' or 'fixed_limit' (fixed: SNG table only)")
         if self.showdown not in _SHOWDOWNS:
             raise ValueError(f"showdown must be one of {_SHOWDOWNS}")
+        if self.showdown == "wild2" and 0 not in self.deck_ranks:
+            raise ValueError("wild2 needs the deuces in the deck")
         if self.showdown == "double_board" and any(k % 2 for k in self.board_cards_per_street[1:]):
             raise ValueError("double_board: every street deals an even number of cards (half per board)")
         if set(self.category_order) != CATEGORY_NAMES or len(self.category_order) != 9:
