@@ -1,10 +1,11 @@
+import { demoTransactions } from "@/data-sources/demo/demo-bank";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import { PEOPLE } from "@/config/people";
 import { buildProfile, type ProfileInput } from "@/profile/build";
-import { inputFor } from "@/profile/sample";
+import { SAMPLE_ANCHOR, SAMPLE_TODAY, inputFor } from "@/profile/sample";
 import { DETECTORS, runDetectors } from "./index";
 import { SPENDING_DETECTORS } from "./spending";
 
@@ -339,5 +340,63 @@ describe("fees and the emergency fund, for the people the QA sweep named", () =>
         "emergency_fund",
       ),
     ).toBeUndefined();
+  });
+});
+
+// Debugger 11-04: "Online Transfer To Savings now costs you $23,258.40 a year", on the demo bank's seed
+// where a move to savings began small (and on about 1 run in 250 the freelancer's top suggestion, which
+// failed suggestions.integration). Only something that could be cancelled can be a trial that converted.
+describe("a small first amount that isn't a trial", () => {
+  const topics = (rows: ProfileInput["transactions"]) => {
+    const data = { ...inputFor("renter"), transactions: rows };
+    return runDetectors({ profile: buildProfile(data), data }, undefined).map((s) => s.topic);
+  };
+  const row = (date: string, cents: number, description: string, pfc: string | null) => ({
+    date,
+    amountCents: cents,
+    description,
+    pfc,
+    accountId: "chk",
+    merchantName: null,
+  });
+  const small = (description: string, pfc: string | null) => [
+    row("2026-06-02", 100, description, pfc),
+    row("2026-07-02", 150_000, description, pfc),
+    row("2026-08-02", 150_000, description, pfc),
+  ];
+
+  it.each([
+    ["Online Transfer To Savings 9012", "TRANSFER_OUT_ACCOUNT_TRANSFER"],
+    ["ROCKET MORTGAGE PAYMENT", "LOAN_PAYMENTS_MORTGAGE_PAYMENT"],
+    ["CITY WATER UTILITY", "RENT_AND_UTILITIES_WATER"],
+    ["MAPLE COURT APTS RENT", "RENT_AND_UTILITIES_RENT"],
+    ["IRS USATAXPYMT", "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT"],
+  ])("%s isn't one", (description, pfc) => {
+    expect(topics(small(description, pfc))).not.toContain("trial_conversion");
+  });
+
+  it("a streaming trial still is", () => {
+    expect(topics(small("SKILLSHARE.COM", "ENTERTAINMENT_OTHER_ENTERTAINMENT"))).toContain(
+      "trial_conversion",
+    );
+  });
+
+  it("the seed that raised it on a move to savings doesn't", () => {
+    const seed = "a851f63700000103";
+    const rows = demoTransactions(
+      { seed, anchor: SAMPLE_ANCHOR, person: "freelancer" },
+      null,
+      SAMPLE_TODAY,
+    ).map((t) => ({
+      date: t.date,
+      amountCents: Math.round(t.amount * 100),
+      description: t.name,
+      pfc: t.personal_finance_category?.detailed ?? null,
+      accountId: t.account_id,
+      merchantName: t.merchant_name ?? null,
+    }));
+    const data = { ...inputFor("freelancer"), transactions: rows };
+    const fired = runDetectors({ profile: buildProfile(data), data }, undefined);
+    expect(fired.map((s) => s.topic)).not.toContain("trial_conversion");
   });
 });

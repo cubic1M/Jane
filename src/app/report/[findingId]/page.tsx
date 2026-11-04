@@ -67,6 +67,8 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
   // Options compared for this person, with Jane's pick (spec step 76).
   const comparison = open ? await comparisonFor(finding, { userId: user.id }) : null;
   const merchantName = (finding.evidence as { merchant?: unknown } | null)?.merchant;
+  const onlyItsPrice =
+    (finding.evidence as { onlyItsPrice?: unknown } | null)?.onlyItsPrice === true;
   // The company's directory row and how its cases usually go, in one lookup.
   const company =
     hasKit(card.actionType) && (open || diyDecision)
@@ -227,6 +229,8 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
             readOnly={readOnly}
             yesLabel={ownAccount?.yesLabel}
             approvedWords={ownAccount?.approvedWords}
+            // The title asks a question, so the buttons answer it.
+            {...(onlyItsPrice ? { showLabel: "Yes, show me how", noLabel: "No, it isn't" } : {})}
           />
         ) : diyDecision && kit ? (
           <DiyKit

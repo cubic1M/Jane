@@ -109,7 +109,11 @@ export function prepareExplainInput(finding: ExplainableFinding): PreparedInput 
   switch (finding.type) {
     case "subscription_review":
     case "insurance_reshop":
-      facts = stream(evidence);
+      facts = {
+        ...stream(evidence),
+        // Only its one price says it's a subscription: a question, not a fact.
+        ...(evidence.onlyItsPrice === true ? { onlyItsPrice: "yes" } : {}),
+      };
       sent = charges(evidence.charges);
       break;
     case "price_increase": {

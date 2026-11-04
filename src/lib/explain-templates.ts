@@ -28,6 +28,15 @@ const TEMPLATES: Record<FindingType, (input: ExplainInput) => Omit<ExplanationCo
     const merchant = fact(input.facts, "merchant") ?? "this service";
     const charge = fact(input.facts, "latestCharge");
     const billed = fact(input.facts, "billed") ?? "regularly";
+    // A question: the title asks it, so the rest doesn't take the answer as read (debugger 11-04).
+    if (fact(input.facts, "onlyItsPrice")) {
+      const cost = fact(input.facts, "yearlyCost");
+      return {
+        explanation: `You pay ${merchant}${charge ? ` ${charge} ${billed}` : ` ${billed}`}${cost ? `, about ${cost} a year` : ""}. Jane can't tell from your statements whether it's something you could cancel.`,
+        giveUp: `If it is one, you would lose access to ${merchant}.`,
+        alternatives: ["Switch to a cheaper plan", "Pause it instead of cancelling", "Keep it"],
+      };
+    }
     return {
       explanation: `You pay ${merchant}${charge ? ` ${charge} ${billed}` : ` ${billed}`}, ${yearly(input, "every year")}. If you no longer use it, cancelling keeps that money in your pocket.`,
       giveUp: `You would lose access to ${merchant}.`,

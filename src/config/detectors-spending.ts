@@ -26,6 +26,15 @@ export const SPENDING_DETECTOR_RATES = {
   phoneBillMinCents: 8_000,
   negotiationShare: 0.12,
   // A free trial: a charge this small or smaller, then a bigger one from the same merchant.
+  trialNeverPrimaries: [
+    "TRANSFER_OUT",
+    "TRANSFER_IN",
+    "LOAN_PAYMENTS",
+    "RENT_AND_UTILITIES",
+    "GOVERNMENT_AND_NON_PROFIT",
+    "BANK_FEES",
+    "INCOME",
+  ] as readonly string[],
   trialMaxCents: 200,
   trialConvertedMinCents: 500,
   // Low balance: checking and savings hold less than this share of a month's regular bills.
