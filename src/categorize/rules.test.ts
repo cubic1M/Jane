@@ -818,3 +818,18 @@ describe("a small utility, a payday lender", () => {
     expect(rule(description)).toBe("LOAN_PAYMENTS_OTHER_PAYMENT");
   });
 });
+
+// Debugger 11-04: only goods and services carry a PayPal fee, so a fee on money in says it's a sale.
+describe("a sale through PayPal", () => {
+  const sale = { description: "Priya Raman", hints: { bankCategory: "PayPal sale" } };
+
+  it("is income when the money comes in", () => {
+    expect(categorizeByRules({ ...sale, amountCents: -7_513 })?.detailed).toBe("INCOME_CONTRACTOR");
+  });
+
+  it("isn't when money goes out", () => {
+    expect(categorizeByRules({ ...sale, amountCents: 7_513 })?.detailed ?? "").not.toMatch(
+      /^INCOME/,
+    );
+  });
+});
