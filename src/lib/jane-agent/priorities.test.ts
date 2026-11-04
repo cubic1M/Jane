@@ -211,6 +211,33 @@ describe("the one ranked list", () => {
     expect(rankedFor(snapshot({ findings: withScan.findings }))[0].why).toMatch(/^First because/);
   });
 
+  // Debugger 11-04: "Stop paying bank and card fees" and "$422.96 in fees on Chase Sapphire", both in
+  // /jane's top three, were one thing said twice.
+  describe("a card and a suggestion on the same topic", () => {
+    const suggestion = { ...withScan.suggestions![0], key: "cost:bank_fees", topic: "bank_fees" };
+    const card = (findingId: string) =>
+      finding({ findingId, type: "bank_fees", title: "$422.96 in fees on Chase Sapphire" });
+
+    it("are one line, which opens the card", () => {
+      const ranked = rankedFor(
+        snapshot({
+          findings: [card("fee1"), finding({ findingId: "other" })],
+          suggestions: [suggestion],
+        }),
+      );
+      expect(ranked.map((r) => r.key)).toEqual(["suggestion:cost:bank_fees", "finding:other"]);
+      expect(ranked[0].href).toBe("/report/fee1");
+    });
+
+    it("with two cards, keeps the suggestion's own link", () => {
+      const ranked = rankedFor(
+        snapshot({ findings: [card("fee1"), card("fee2")], suggestions: [suggestion] }),
+      );
+      expect(ranked.map((r) => r.key)).toEqual(["suggestion:cost:bank_fees"]);
+      expect(ranked[0].href).toBe(suggestion.actionHref);
+    });
+  });
+
   it("is what the brief starts with and what 'what should I do first' answers", () => {
     const [brief] = gather(withScan, MORNING, SYNC).filter((m) => m.source === "brief");
     expect(brief.body).toContain(
