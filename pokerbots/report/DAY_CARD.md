@@ -174,6 +174,8 @@ heads-up and payout changes):
 | hackathon-like field (`results/sng_standing4.md`) | first: 59.0 per table; `f3_exploiter` −1.2 (tie), everyone else −4 to −11 |
 | **field 6** (postflop specialists written blind; they re-raise wide openers light) | **last: 17.5 per table** (was 14.0 before `rs_call`), busts 92%; `f2_shark` 50.5, the others 30–38. Our known weak spot: if the real field re-raises our opens a lot, try `rs_call=3` and `pev=1` on the day-of tuner |
 
+Today's changes on top (`rs_call`, `rfi_lock`, `icm_any` 2-card mode), measured together against this morning's bot (`results/sng_day2_total_*.md`, 13 fields): **+1.8 per table**, five significant (fields 6/7 +7.3 / +6.5, mirror +5.8, field 2 +2.6, field 4 +2.0), none negative.
+
 Tonight's changes (behind_k, push_steal, the re-shove with its read, exact-ICM calls, heads-up ranges, the payout-aware
 risk premium, bet discount 0.5 and `rs_call`), measured together on fresh seeds against the start-of-night bot
 (`results/sng_total4_*.md`, 600 paired tables x 11 fields): **+8.2 per table on average**, nine significant, none
