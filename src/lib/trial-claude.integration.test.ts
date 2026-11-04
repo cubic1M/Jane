@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { CHAT_ALL_TRIALS_DAILY_CAP_CENTS } from "@/config/agent-chat";
+import { CHAT_ALL_TRIALS_DAILY_CAP_CENTS, CHAT_TRIAL_RESERVE_CENTS } from "@/config/agent-chat";
 import { SAMPLE_NO_DOCUMENTS } from "@/config/statement-trial";
 import { TRIAL_ID_PREFIX } from "@/config/trial";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -22,7 +22,12 @@ import { syncItem } from "@/lib/plaid/sync";
 import { addDocument } from "@/lib/documents/store";
 import { draftMessage } from "@/lib/drafts";
 import { explainFindings } from "@/lib/explanations";
-import { addMonthlySpend, claudeLimit, monthlyCapCents } from "@/lib/jane-agent/claude-limits";
+import {
+  addMonthlySpend,
+  claudeFinished,
+  claudeLimit,
+  monthlyCapCents,
+} from "@/lib/jane-agent/claude-limits";
 import { addSpend, overDailyCap } from "@/lib/jane-agent/spend";
 import { runStrategist } from "@/lib/strategist";
 import { startTrial } from "@/lib/trial";
@@ -184,6 +189,32 @@ describe.runIf(url)("what a sample person can spend on Claude", { timeout: 120_0
     );
     expect(draft?.kind ?? "template").toBe("template");
     expect(claudeCalls).toBe(0);
+  });
+
+  it("can't overrun all sample people's day by asking at the same moment", async () => {
+    // A date of its own: the counter is shared by everyone in the database.
+    const options = { client, now: new Date("2031-05-05T12:00:00Z") };
+    const people = Array.from(
+      { length: 60 },
+      () => `${TRIAL_ID_PREFIX}${randomBytes(8).toString("hex")}`,
+    );
+    const answers = await Promise.all(people.map((id) => claudeLimit(id, options)));
+    const allowed = people.filter((_, i) => answers[i] === null);
+    expect(allowed.length).toBeGreaterThan(0);
+    expect(allowed.length).toBeLessThanOrEqual(
+      CHAT_ALL_TRIALS_DAILY_CAP_CENTS / CHAT_TRIAL_RESERVE_CENTS,
+    );
+    // Each hold goes back when its answer ends, so answers that are over don't use up the day.
+    await Promise.all(allowed.map((id) => claudeFinished(id, options)));
+    const later = `${TRIAL_ID_PREFIX}${randomBytes(8).toString("hex")}`;
+    expect(await claudeLimit(later, options)).toBeNull();
+    await claudeFinished(later, options);
+    await client.rateLimit.deleteMany({
+      where: { key: { in: ["trialspend:all"] }, windowStart: new Date("2031-05-05T00:00:00Z") },
+    });
+    await client.rateLimit.deleteMany({
+      where: { key: { in: [...people, later].map((id) => `claudeTrial:${id}`) } },
+    });
   });
 
   it("stops all sample people at the day's shared ceiling, and only them", async () => {

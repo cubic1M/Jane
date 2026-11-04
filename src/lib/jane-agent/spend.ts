@@ -3,6 +3,7 @@ import {
   addStatementTrialSpend,
   monthlyCapCents,
   monthlySpentCents,
+  ALL_TRIALS_KEY,
 } from "./claude-limits";
 import {
   CHAT_ALL_TRIALS_DAILY_CAP_CENTS,
@@ -37,7 +38,6 @@ export type Usage = {
 
 const SPEND_PREFIX = "chatspend:";
 const HIT_PREFIX = "chatcaphit:";
-const ALL_TRIALS_KEY = "trialspend:all";
 const keyOf = (userId: string) => `${SPEND_PREFIX}${userId}`;
 const dayStart = (now: Date) => new Date(Math.floor(now.getTime() / DAY_MS) * DAY_MS);
 

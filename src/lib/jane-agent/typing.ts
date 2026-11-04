@@ -309,23 +309,32 @@ async function answer(
     };
   }
   // Whatever goes wrong inside, the person gets an answer from the data, never a crash.
-  const result = await askClaudeInChat(userId, history, text, {
-    client,
-    now,
-    claude: claude ?? scripted ?? undefined,
-    onEvent,
-    primerMs,
-    advice: await adviceMode(userId, { client }),
-    concierge: await conciergeMode(userId, { client }),
-    style: styleInstructions(style),
-    // What Jane knows about them from earlier: the chat starts fresh, Jane doesn't.
-    memory: memoryForChat(await listFacts(userId, { client }).catch(() => [])),
-    topic,
-  }).catch((error): Awaited<ReturnType<typeof askClaudeInChat>> => {
-    log.error("Jane's chat failed unexpectedly", { error: String(error).slice(0, 300) });
-    return { kind: "unavailable", reply: { body: CHAT_UNAVAILABLE_TEXT, actions: [], refs: {} } };
-  });
-  await claudeFinished(userId, { client, now });
+  // In a finally: it holds part of the day for everyone trying Jane until this runs.
+  const result = await (async () => {
+    try {
+      return await askClaudeInChat(userId, history, text, {
+        client,
+        now,
+        claude: claude ?? scripted ?? undefined,
+        onEvent,
+        primerMs,
+        advice: await adviceMode(userId, { client }),
+        concierge: await conciergeMode(userId, { client }),
+        style: styleInstructions(style),
+        // What Jane knows about them from earlier: the chat starts fresh, Jane doesn't.
+        memory: memoryForChat(await listFacts(userId, { client }).catch(() => [])),
+        topic,
+      }).catch((error): Awaited<ReturnType<typeof askClaudeInChat>> => {
+        log.error("Jane's chat failed unexpectedly", { error: String(error).slice(0, 300) });
+        return {
+          kind: "unavailable",
+          reply: { body: CHAT_UNAVAILABLE_TEXT, actions: [], refs: {} },
+        };
+      });
+    } finally {
+      await claudeFinished(userId, { client, now });
+    }
+  })();
   if (result.kind === "answer") {
     return { reply: result.reply, intent: intent.kind, source: "claude" };
   }

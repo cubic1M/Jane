@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   AS_OF,
   CARD,
@@ -12,7 +12,7 @@ import {
   plaidStream,
   tx,
 } from "./__fixtures__/build";
-import { buildStreams, detectRecurring } from "./streams";
+import { buildStreams, detectRecurring, extends_ } from "./streams";
 import type { DetectionTransaction } from "./types";
 import { addDays } from "./units";
 
@@ -456,5 +456,52 @@ describe("a subscription with one double charge in it", () => {
   it("isn't a stream when the second charge is a different amount a day later", () => {
     const charges = withDouble().map((c) => (c.id === "double" ? { ...c, amountCents: 1000 } : c));
     expect(detectRecurring(input({ transactions: charges }))[0]?.charges).toHaveLength(6);
+  });
+});
+
+describe("a statement with thousands of different merchants", () => {
+  // It reaches here from an anonymous upload, and a slow pass here holds up everyone else's requests.
+  // Counted rather than timed: a job runs this many times over, and a clock would fail on a busy
+  // machine. Every merchant against every other, splitting each pair, was 2 million here.
+  it("doesn't split every pair of names", () => {
+    const word = (i: number) =>
+      Array.from(i.toString(26).padStart(6, "0"), (c) =>
+        String.fromCharCode(97 + parseInt(c, 26)),
+      ).join("");
+    const transactions = Array.from({ length: 1_000 }, (_, i) =>
+      tx({
+        merchantName: null,
+        pfcDetailed: null,
+        description: `SHOP ${word(i)} NYC`,
+        amountCents: 100 + i,
+        date: monthsAgo(i % 11),
+      }),
+    );
+    const split = vi.spyOn(String.prototype, "split");
+    detectRecurring(input({ transactions }));
+    const calls = split.mock.calls.length;
+    split.mockRestore();
+    expect(calls).toBeLessThan(500_000);
+  }, 120_000);
+
+  it("joins the same merchant names as before", () => {
+    // What this replaced, word for word.
+    const before = (short: string, long: string) => {
+      if (long.startsWith(`${short} `)) return true;
+      const a = short.split(" ");
+      const b = long.split(" ");
+      if (b.length !== a.length + 1 || a[0] !== b[0]) return false;
+      return b.some((_, i) => i > 0 && [...b.slice(0, i), ...b.slice(i + 1)].join(" ") === short);
+    };
+    const parts = ["a", "b", "c", "a b", ""];
+    const names = parts.flatMap((x) =>
+      parts.flatMap((y) => parts.flatMap((z) => [x, `${x} ${y}`, `${x} ${y} ${z}`])),
+    );
+    for (const short of names) {
+      for (const long of names) {
+        const now = extends_(short, long, short.split(" "), long.split(" "));
+        expect([short, long, now]).toEqual([short, long, before(short, long)]);
+      }
+    }
   });
 });

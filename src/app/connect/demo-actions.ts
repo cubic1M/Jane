@@ -1,5 +1,6 @@
 "use server";
 
+import { mayRescan } from "@/lib/trial-rescans";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { log } from "@/lib/log";
@@ -12,7 +13,7 @@ import { requireUser } from "@/lib/session";
 // response like a real link, and goes to the scan screen, then Jane's chat (spec step 82).
 export async function linkDemo(): Promise<void> {
   const user = await requireUser();
-  if (!(await hit("plaid", user.id)).ok) redirect("/connect");
+  if (!(await hit("plaid", user.id)).ok || !(await mayRescan(user.id))) redirect("/connect");
   let itemId: string;
   let created: boolean;
   try {

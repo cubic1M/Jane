@@ -26,14 +26,20 @@ type EdgeRequest = {
   cookies: { get(name: string): { value: string } | undefined };
 };
 
-export type EdgeKind = "api" | "action" | "authCallback";
+export type EdgeKind = "api" | "action" | "authCallback" | "page";
 
 // Which kind of request this is, or null for one with no backstop (pages, cron).
-export function edgeKind({ method, pathname, headers }: EdgeRequest): EdgeKind | null {
+export function edgeKind({ method, pathname, headers, cookies }: EdgeRequest): EdgeKind | null {
   if (pathname.startsWith("/api/cron/")) return null;
   if (pathname.startsWith("/api/auth/callback/")) return "authCallback";
   if (pathname.startsWith("/api/")) return "api";
-  if (method === "POST" && headers.has("next-action")) return "action";
+  // A form with no JavaScript runs an action with no header, so any POST to a page counts.
+  if (method === "POST") return "action";
+  // A prefetch stops at the page's loading state, and a page holds many links to prefetch. It's
+  // only a prefetch to Next.js with both headers: one alone renders the whole page.
+  const trial = sessionTokenFrom(cookies)?.startsWith(TRIAL_SESSION_PREFIX);
+  const prefetch = headers.has("next-router-prefetch") && headers.has("rsc");
+  if (trial && (method === "GET" || method === "HEAD") && !prefetch) return "page";
   return null;
 }
 
@@ -50,8 +56,14 @@ export function edgeChecks(request: EdgeRequest): Check[] {
   const ip = clientIp(request.headers) ? ipKey(request.headers) : null;
   if (kind === "authCallback") return ip ? [{ name: "authCallback", subject: ip }] : [];
 
-  const checks: Check[] = ip ? [{ name: kind === "api" ? "api" : "actions", subject: ip }] : [];
   const token = sessionTokenFrom(request.cookies);
+  if (kind === "page") {
+    return [
+      ...(ip ? [{ name: "trialPagesIp" as const, subject: ip }] : []),
+      { name: "trialPages", subject: sessionSubject(token!) },
+    ];
+  }
+  const checks: Check[] = ip ? [{ name: kind === "api" ? "api" : "actions", subject: ip }] : [];
   if (token) {
     const trial = token.startsWith(TRIAL_SESSION_PREFIX);
     const name =
@@ -71,7 +83,7 @@ export function edgeChecks(request: EdgeRequest): Check[] {
 // error's message; API callers get JSON, like every other route's refusal.
 export function refusal(kind: EdgeKind, result: RateResult): NextResponse {
   const headers = { "Retry-After": String(result.retryAfterSeconds) };
-  if (kind === "action") {
+  if (kind === "action" || kind === "page") {
     return new NextResponse(TOO_MANY_MESSAGE, {
       status: 429,
       headers: { ...headers, "Content-Type": "text/plain" },
@@ -79,6 +91,12 @@ export function refusal(kind: EdgeKind, result: RateResult): NextResponse {
   }
   return NextResponse.json({ error: TOO_MANY_MESSAGE }, { status: 429, headers });
 }
+
+// Auth.js takes any cookie starting with its name as part of a split session (a session here never
+// needs splitting), and sessionTokenFrom reads only the exact names. So a split one signs someone in
+// while every limit here sees no session.
+const oddSessionCookie = (cookie: string | null) =>
+  /(?:^|;\s*)(?:__Secure-)?authjs\.session-token[^=;\s]+\s*=/.test(cookie ?? "");
 
 const onUploadPage = (pathname: string) =>
   ACTION_UPLOAD_PAGES.some((page) => pathname === page || pathname.startsWith(`${page}/`));
@@ -97,6 +115,12 @@ export async function edgeLimit(
   request: EdgeRequest,
   { hit = hitMany }: { hit?: typeof hitMany } = {},
 ): Promise<NextResponse | null> {
+  if (oddSessionCookie(request.headers.get("cookie"))) {
+    return new NextResponse("Please clear this site's cookies and sign in again.", {
+      status: 400,
+      headers: { "Content-Type": "text/plain" },
+    });
+  }
   if (actionTooBig(request)) {
     return new NextResponse("That's too much text to send.", {
       status: 413,

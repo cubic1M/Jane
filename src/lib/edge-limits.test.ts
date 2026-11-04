@@ -37,10 +37,50 @@ describe("which requests the edge limits", () => {
     expect(edgeKind(request("/settings", { method: "POST", action: true }))).toBe("action");
   });
 
+  it("counts a sample session's page views, each hundreds of queries, by session and IP", () => {
+    const page = request("/home", { token: "trial_abc", ip: IP });
+    expect(edgeKind(page)).toBe("page");
+    expect(edgeChecks(page).map((c) => c.name)).toEqual(["trialPagesIp", "trialPages"]);
+    expect(edgeChecks(page).map((c) => c.subject)).not.toContain("trial_abc");
+    expect(refusal("page", { ok: false, remaining: 0, retryAfterSeconds: 9 }).status).toBe(429);
+  });
+
+  it("counts a form posted with no JavaScript, and refuses it when it's too big", async () => {
+    const post = request("/taxes", { method: "POST", ip: IP });
+    expect(edgeKind(post)).toBe("action");
+    post.headers.set("content-length", String(ACTION_BODY_MAX_BYTES + 1));
+    expect((await edgeLimit(post))?.status).toBe(413);
+  });
+
+  it("isn't fooled by half a prefetch, a HEAD, or a session cookie split in two", async () => {
+    const half = request("/home", { token: "trial_abc" });
+    half.headers.set("next-router-prefetch", "1");
+    expect(edgeKind(half)).toBe("page");
+    expect(edgeKind(request("/home", { method: "HEAD", token: "trial_abc" }))).toBe("page");
+    for (const cookie of [
+      "__Secure-authjs.session-token.0=trial_abc",
+      "a=b; authjs.session-token.1=x",
+    ]) {
+      const split = request("/home");
+      split.headers.set("cookie", cookie);
+      expect((await edgeLimit(split))?.status).toBe(400);
+    }
+    const ordinary = request("/home");
+    ordinary.headers.set("cookie", "a=b; __Secure-authjs.session-token=abc");
+    expect(await edgeLimit(ordinary, { hit: vi.fn() })).toBeNull();
+  });
+
+  it("doesn't count a sample session's prefetches, or a real person's page views", () => {
+    const prefetch = request("/home", { token: "trial_abc" });
+    prefetch.headers.set("next-router-prefetch", "1");
+    prefetch.headers.set("rsc", "1");
+    expect(edgeKind(prefetch)).toBeNull();
+    expect(edgeKind(request("/home", { token: "someone-real" }))).toBeNull();
+  });
+
   it("leaves cron routes (CRON_SECRET guards them) and plain page views alone", () => {
     expect(edgeKind(request("/api/cron/plaid-sync"))).toBeNull();
     expect(edgeKind(request("/home"))).toBeNull();
-    expect(edgeKind(request("/login", { method: "POST" }))).toBeNull();
   });
 
   it("counts per IP and per signed-in session, never by the raw token", () => {

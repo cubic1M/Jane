@@ -71,8 +71,8 @@ export async function hit(
 
 export type Check = { name: LimitName; subject: string };
 
-// Several limits in one round trip (the proxy's backstops, src/lib/edge-limits.ts): every
-// counter goes up, and the request is allowed only if all of them allow it.
+// Several limits in one round trip (the proxy's backstops, src/lib/edge-limits.ts), the widest first:
+// the request is allowed only if all of them allow it.
 export async function hitMany(
   checks: Check[],
   { client = defaultClient, now = new Date() }: Options = {},
@@ -84,13 +84,25 @@ export async function hitMany(
     }),
   );
   if (windows.size === 0) return { ok: true, remaining: Infinity, retryAfterSeconds: 0 };
-  const values = Prisma.join(
-    [...windows.values()].map((w) => Prisma.sql`(${w.key}, ${w.windowStart}, 1)`),
-  );
+  const [first, ...others] = [...windows.values()];
+  const row = (w: typeof first) => Prisma.sql`(${w.key}, ${w.windowStart}::timestamptz, 1)`;
+  // The rest only while the first still allows it. Each new session cookie is a new row, and anyone
+  // can make those up: a counter that goes up after its address is refused has nothing limiting it.
+  const firstLimit = RATE_LIMITS[first.name].limit;
   const rows = await systemDb(WHY, client).$queryRaw<{ key: string; count: number }[]>`
-    INSERT INTO rate_limits (key, window_start, count) VALUES ${values}
-    ON CONFLICT (key, window_start) DO UPDATE SET count = rate_limits.count + 1
-    RETURNING key, count`;
+    WITH first_counter AS (
+      INSERT INTO rate_limits (key, window_start, count) VALUES ${row(first)}
+      ON CONFLICT (key, window_start) DO UPDATE SET count = rate_limits.count + 1
+      RETURNING key, count
+    ), other_counters AS (
+      INSERT INTO rate_limits (key, window_start, count)
+      SELECT v.key, v.window_start, v.count
+      FROM (VALUES ${others.length > 0 ? Prisma.join(others.map(row)) : Prisma.sql`(NULL::text, NULL::timestamptz, 0)`}) AS v(key, window_start, count)
+      WHERE v.key IS NOT NULL AND (SELECT count FROM first_counter) <= ${firstLimit}
+      ON CONFLICT (key, window_start) DO UPDATE SET count = rate_limits.count + 1
+      RETURNING key, count
+    )
+    SELECT key, count FROM first_counter UNION ALL SELECT key, count FROM other_counters`;
   if (rows.some((r) => Number(r.count) === 1)) sometimesCleanUp(client, now);
   const results = rows.map((r) => {
     const w = windows.get(r.key)!;

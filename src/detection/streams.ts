@@ -567,12 +567,14 @@ function detectRuns(charges: DetectionTransaction[], asOf: string): Stream[] {
 
 // Whether `long` is `short` with words added at the end, or with one more word inside after the
 // first ("directv stream seattle" and "directv seattle", where a card wrote the city after it).
-function extends_(short: string, long: string): boolean {
+export function extends_(short: string, long: string, a: string[], b: string[]): boolean {
   if (long.startsWith(`${short} `)) return true;
-  const a = short.split(" ");
-  const b = long.split(" ");
   if (b.length !== a.length + 1 || a[0] !== b[0]) return false;
-  return b.some((_, i) => i > 0 && [...b.slice(0, i), ...b.slice(i + 1)].join(" ") === short);
+  // Where they first differ is the word to leave out.
+  let i = 1;
+  while (i < a.length && a[i] === b[i]) i++;
+  for (let j = i; j < a.length; j++) if (a[j] !== b[j + 1]) return false;
+  return true;
 }
 
 // One service written two ways from month to month, its name and its website ("DIRECTV STREAM",
@@ -582,12 +584,16 @@ function extends_(short: string, long: string): boolean {
 // prices.
 function joinVariants(groups: Map<string, DetectionTransaction[]>) {
   const accounts = (rows: DetectionTransaction[]) => new Set(rows.map((r) => r.accountId));
+  // Every key against every other, and a statement can hold thousands: words split once, not per
+  // pair (a file of 3,000 different merchants took 80 seconds here, with other requests waiting).
+  const words = new Map([...groups.keys()].map((key) => [key, key.split(" ")]));
   for (const short of [...groups.keys()].sort((a, b) => a.length - b.length)) {
     const base = groups.get(short);
     if (!base || merchantMatches(short, BILLING_PLATFORM_MERCHANTS)) continue;
+    const shortWords = words.get(short)!;
     for (const long of [...groups.keys()]) {
+      if (long === short || !extends_(short, long, shortWords, words.get(long)!)) continue;
       const rows = groups.get(long)!;
-      if (long === short || !extends_(short, long)) continue;
       const prices: Set<number> = new Set(base.map((r) => r.amountCents));
       const where = accounts(base);
       if (

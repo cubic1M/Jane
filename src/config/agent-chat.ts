@@ -427,6 +427,9 @@ export const CHAT_TRIAL_DAILY_CAP_CENTS = 60;
 // All sample people together, a day: anyone can make one, so many of them can't spend the month's
 // budget for the people who signed up. CHAT_TRIAL_MONTH_SHARE keeps part of it out of their reach.
 export const CHAT_ALL_TRIALS_DAILY_CAP_CENTS = 100;
+// Held from that when an answer starts, and given back when it ends: spend is only known after, so
+// without it any number started at once all pass a check that none of them has paid for.
+export const CHAT_TRIAL_RESERVE_CENTS = 5;
 export const CHAT_TRIAL_MONTH_SHARE = 0.5;
 
 // Claude outside the chat, per person (plan item 13, src/lib/claude-budget.ts): reading uploads,

@@ -1,3 +1,4 @@
+import { TRIAL_ID_PREFIX } from "@/config/trial";
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
@@ -126,6 +127,18 @@ describe.runIf(url)("the nightly controller run", { timeout: 120_000 }, () => {
     expect(
       logs.every((l) => l.status === "skipped" && l.did === "Out of time tonight; tomorrow."),
     ).toBe(true);
+  });
+
+  it("queues nothing for someone trying Jane: anyone can make one, and real people come first", async () => {
+    const id = `${TRIAL_ID_PREFIX}${crypto.randomUUID().replaceAll("-", "")}`;
+    await client.user.create({ data: { id, email: `${id}@example.test` } });
+    await client.account.create({
+      data: { userId: id, source: "csv", name: "Trying", type: "depository" },
+    });
+    const drain = vi.fn(async () => ({ done: 0, retried: 0, failed: 0 }));
+    const { queued } = await queueNightlyRuns({ client, now: NIGHT, drain, userIds: [id] });
+    expect(queued).toBe(0);
+    await client.user.delete({ where: { id } });
   });
 
   it("queues one run per person with an account, skipping who already ran", async () => {

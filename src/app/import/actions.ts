@@ -18,6 +18,7 @@ import {
   type Removed,
 } from "@/lib/import/remove";
 import { runJob } from "@/lib/jobs";
+import { mayRescan } from "@/lib/trial-rescans";
 import { previewCsvFiles, type FilePreview } from "@/lib/import/import-csv";
 import { alreadyInAnotherAccount, type AlreadyIn } from "@/lib/import/other-account";
 import {
@@ -38,6 +39,9 @@ import { requireUser } from "@/lib/session";
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
 // The scoped database for someone allowed to upload statements (see csv-access.ts), else null.
+const TOO_MANY_RESCANS =
+  "That's a lot of changes for one try. Try again in an hour, or start over.";
+
 async function csvDb(): Promise<ScopedDb | null> {
   const user = await requireUser();
   return canImportCsv(user) ? scopedDb() : null;
@@ -128,6 +132,7 @@ export async function setBalanceAction(accountId: string, text: string): Promise
   if (!db) return { ok: false, error: NOT_ALLOWED };
   const cents = parseMoneyToCents(text.trim());
   if (cents === null) return { ok: false, error: "Enter the amount as a number, like 1,234.56." };
+  if (!(await mayRescan(db.userId))) return { ok: false, error: TOO_MANY_RESCANS };
   const set = await setUploadedBalance(db, accountId, cents);
   if (!set) return { ok: false, error: "That account isn't here any more." };
   after(() => runJob(set.jobId).then(() => undefined));
@@ -154,23 +159,27 @@ async function afterRemoval(removed: Removed): Promise<ActionResult> {
 export async function removeUploadAction(runId: string): Promise<ActionResult> {
   const db = await csvDb();
   if (!db) return { ok: false, error: NOT_ALLOWED };
+  if (!(await mayRescan(db.userId, "trialRemovals"))) return { ok: false, error: TOO_MANY_RESCANS };
   return afterRemoval(await removeUpload(db, runId));
 }
 
 export async function removeEarlierRowsAction(accountId: string): Promise<ActionResult> {
   const db = await csvDb();
   if (!db) return { ok: false, error: NOT_ALLOWED };
+  if (!(await mayRescan(db.userId, "trialRemovals"))) return { ok: false, error: TOO_MANY_RESCANS };
   return afterRemoval(await removeEarlierRows(db, accountId));
 }
 
 export async function removeAccountAction(accountId: string): Promise<ActionResult> {
   const db = await csvDb();
   if (!db) return { ok: false, error: NOT_ALLOWED };
+  if (!(await mayRescan(db.userId, "trialRemovals"))) return { ok: false, error: TOO_MANY_RESCANS };
   return afterRemoval(await removeUploadedAccount(db, accountId));
 }
 
 export async function startOverAction(): Promise<ActionResult> {
   const db = await csvDb();
   if (!db) return { ok: false, error: NOT_ALLOWED };
+  if (!(await mayRescan(db.userId, "trialRemovals"))) return { ok: false, error: TOO_MANY_RESCANS };
   return afterRemoval(await startOver(db));
 }
