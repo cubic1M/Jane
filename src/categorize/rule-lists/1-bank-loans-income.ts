@@ -78,6 +78,13 @@ export const BANK_LOANS_INCOME: readonly Rule[] = [
     keywords: ["CASH ADVANCE INTEREST", "CASH ADVANCE FEE"],
     direction: "out",
   },
+  // The advance itself is cash taken, like an ATM, whatever the bank files it under (debugger
+  // 11-04: $300 under "Fees & Adjustments" read as a fee, and the year's fees as $750.92).
+  {
+    category: "TRANSFER_OUT_WITHDRAWAL",
+    pattern: /^CASH ADV(?:ANCE)?\b/,
+    direction: "out",
+  },
   {
     category: "BANK_FEES_INTEREST_CHARGE",
     keywords: ["INTEREST CHARGE", "INTEREST CHARGED", "PURCHASE INTEREST"],
