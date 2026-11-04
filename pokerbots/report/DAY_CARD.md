@@ -8,7 +8,7 @@
 
 **Before the event:**
 - [ ] Ask the organisers in writing: may we bring code we wrote beforehand? Written notes? AI tools after the build phase (rule 3.4)? Giving the variant to an AI (rule 6.4)?
-- [ ] Laptop: `git pull`, `./run_tests.sh` green (17 suites, about 5 min).
+- [ ] Laptop: `git pull`, `./run_tests.sh` green (18 suites, about 5 min).
 
 **The bot, in one line each (state on Nov 4):**
 - **Hold'em (2 cards, no discards), permissive kit (numpy, multi-module bundle allowed): submit `icm_switch`** = `icm_tag` until our opens get re-raised ≥ 30% of 20+ opens (the lock), then `f7_balanced` (warm: it shadows every hand). Fresh seeds, 600 tables x 14 setups: **+1.2 per table vs `icm_tag`, no setup significantly worse**; strong tables +3 to +5 (fields 6 / 7, champions, strongest-bots mix, field 9, our own copies), weak / static tables −1 to +0 (n.s.). Bundle: `python3 -m sng.bundle ... --with-switch`, adapter imports `from sng.ours.switch import IcmSwitch` (tests: `sng/tests/test_bundle_switch.py`). Timing (real bundle): with an end-of-hand callback, every decision p99 < 0.15 ms; if end-of-hand work counts inside the next decision (kit-4 style), 0 over 1 ms before the hand-over and **0.28% after it** (p99 0.87 ms) → if the interface is decision-only and the 1 ms is strict, weigh that against the +1.2.
