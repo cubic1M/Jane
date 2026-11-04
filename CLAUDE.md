@@ -37,7 +37,7 @@ investment advice in this MVP.
   admin, cron or webhook; the access proof attacks each one as what it says it is, and new raw
   database client uses fail lint (docs/security/access-proof.md)
 - Every sensitive event writes to audit_log; every funnel event to analytics_events
-- Detection thresholds and rates live in src/config/detection.ts, never inline
+- Detection thresholds and rates live in src/config/detection/ (imported through src/config/detection.ts), never inline
 - LLM output never gives investment, tax or legal advice; run it through the
   guardrail check in src/lib/guardrails.ts before display
 - Demo advice exception (step 98): when adviceMode(userId) in src/lib/advice-mode.ts
@@ -68,6 +68,9 @@ investment advice in this MVP.
 - Write tests for every rule and every API route you add
 - To say something works, name the command that proves it and show its output
 - Prefer small, readable modules over clever abstractions
+- Conflict habits: rebase just before you push and merge within about an hour; put new tests in a new
+  file rather than growing a shared one; `node scripts/claim.mjs take <task> <lane:name>` before working
+  on something another session might pick up (claims expire, docs/agent-loop.md)
 - End each PR body with the line `node scripts/ops/attribution.mjs` prints (lane, model, Claude Code
   version, tokens): the numbers page reads it, because a product change looks like your own bug from
   inside
