@@ -277,6 +277,11 @@ export async function forgetSince(
     // 11-01: the demo bank's figures stayed in /monthly and the chat); the next run remakes it.
     db.monthlyReports.deleteMany({ where: { createdAt: after } }),
     db.yearPlans.deleteMany({ where: { createdAt: after } }),
+    // The saved numbers for the chat and the agenda had that source's figures in them. Refused by
+    // their data stamp from now on, but still kept, and in the export, until something remade them.
+    db.janePreferences.deleteMany({
+      where: { kind: "system", key: { in: ["primer", "snapshot"] } },
+    }),
     // Securities nothing holds or traded any more (their holdings went with the accounts).
     db.securities.deleteMany({
       where: { holdings: { none: {} }, investmentTransactions: { none: {} } },

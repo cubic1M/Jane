@@ -8,6 +8,8 @@ import {
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { forgetSince, removeOrphans } from "@/lib/evidence/orphans";
+import { forgetPrimer } from "@/lib/jane-agent/primer-cache";
 import { ITEM_STATUS, syncItem } from "./sync";
 import { systemDb } from "@/lib/system-db";
 
@@ -55,7 +57,7 @@ export async function planWebhook(
   // Finds the item's owner; every write after this is scoped to them.
   const item = await systemDb(WHY, client).plaidItem.findUnique({
     where: { plaidItemId: body.item_id },
-    select: { id: true, userId: true },
+    select: { id: true, userId: true, createdAt: true },
   });
   if (!item) return null;
   const scoped = scopedFor(item.userId, client);
@@ -101,9 +103,16 @@ export async function planWebhook(
   }
   // The person stopped sharing one account: its data goes (its transactions with it).
   if (code === "USER_ACCOUNT_REVOKED" && typeof body.account_id === "string") {
-    await scoped.accounts.deleteMany({
+    const { count } = await scoped.accounts.deleteMany({
       where: { itemId: item.id, plaidAccountId: body.account_id },
     });
+    // As when a whole bank goes (src/lib/plaid/remove.ts): what stood on it goes too, and the
+    // nightly scan works out again whatever the other accounts still support.
+    if (count > 0) {
+      forgetPrimer(item.userId);
+      await removeOrphans(item.userId, { client });
+      await forgetSince(scoped, item.createdAt, "bank");
+    }
     return { itemId: item.id, sync: false };
   }
   return null;

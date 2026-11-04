@@ -114,7 +114,11 @@ export async function disconnectBank(
   // proposals, suggestions and the chat's numbers, as after an upload is removed.
   if (await mayRescan(user.id, "trialRemovals")) after(() => refreshAfterRemoval(user.id));
   revalidatePath("/settings");
-  return { ok: true, message: "Disconnected. We've removed that bank's data." };
+  return {
+    ok: true,
+    message:
+      "Disconnected. We've removed that bank's accounts and transactions and what was worked out from them. Past chat messages and emails can still mention it.",
+  };
 }
 
 // Deletes everything we hold about the person, once they type DELETE.

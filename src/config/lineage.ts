@@ -238,7 +238,7 @@ export const KEPT_WITHOUT_DATA: Readonly<Record<string, string>> = {
   PolicyReading: "read from a document the person uploaded",
   PracticeOpportunity: "from market data, on the simulated practice account",
   JaneMessage: "the open ones are put away below, as history",
-  JanePreference: "the saved numbers are refused by their data stamp",
+  JanePreference: "the saved numbers for the chat go below; the person's own settings stay",
   UserFact: "the ones read from statements go below; the person's own words stay",
 };
 
