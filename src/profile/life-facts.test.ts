@@ -92,6 +92,17 @@ describe("school", () => {
     ).toMatchObject({ value: true, source: "seen" });
   });
 
+  it("a daycare's tuition is a child's care, not the person's school", () => {
+    for (const [words, category] of [
+      ["BRIGHT HORIZONS TUITION ACH", "GENERAL_SERVICES_CHILDCARE"],
+      ["SUNNY DAYS LEARNING TUITION", "GENERAL_SERVICES_CHILDCARE"],
+      ["LITTLE OAKS PRESCHOOL TUITION", null],
+    ] as const) {
+      expect(studentReading(monthly(words, category, 6)).value).toBe(false);
+    }
+    expect(studentReading(monthly("STATE UNIVERSITY TUITION", null, 6)).value).toBe(true);
+  });
+
   // Debugger 11-02: a parent's 529 read "You're a student: yes" on 12 "tuition and campus payments".
   it.each([
     "OREGON COLLEGE SAVINGS PLAN",

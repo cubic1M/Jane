@@ -50,8 +50,8 @@ async function Insights() {
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Where your money goes</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
-          The last {INSIGHT_MONTHS} months from your accounts. Moving money between your own
-          accounts and paying off cards isn&apos;t counted as spending.{" "}
+          The last {INSIGHT_MONTHS} months from your accounts. Transfers, cash withdrawals and
+          paying off cards aren&apos;t counted as spending.{" "}
           <Link href="/transactions" className="font-medium text-emerald-700 hover:underline">
             Fix a category
           </Link>{" "}
