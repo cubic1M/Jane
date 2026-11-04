@@ -144,6 +144,16 @@ describe("the insurance tree", () => {
     ]);
   });
 
+  // Debugger 11-04: "Delta Dental other".
+  it("calls a policy of no listed kind a policy", () => {
+    const base = input();
+    const policies = [{ ...base.policies[0], carrier: "Delta Dental", kind: "other" as const }];
+    const { tree } = insuranceTree({ ...base, policies });
+    const labels = tree.branches.flatMap((b) => b.items.map((i) => i.label));
+    expect(labels).toContain("Delta Dental policy");
+    expect(labels.join()).not.toContain("Delta Dental other");
+  });
+
   // Debugger 11-03: "Urgent: Deductible, $1k short", for a deductible the person's cash could
   // safely raise, to pay less. It isn't short of anything.
   it("says a deductible could change, not that it's short, and a saving is never urgent", () => {

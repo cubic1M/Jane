@@ -833,3 +833,25 @@ describe("a sale through PayPal", () => {
     );
   });
 });
+
+// Debugger 11-04: a person's policies. A yearly umbrella policy had no category, and Delta Dental's fixed
+// monthly premium read as dental treatment, so neither was on the list of their insurance.
+describe("insurance that names no insurance", () => {
+  it.each([
+    "PEMCO UMBRELLA POLICY ANNUAL",
+    "PEMCO MUTUAL",
+    "DELTA DENTAL OF WA",
+    "UMBRELLA POLICY PREM",
+  ])("%s is a policy", (description) => {
+    expect(categorizeByRules({ description, amountCents: 3_100, hints: {} })?.detailed).toBe(
+      "GENERAL_SERVICES_INSURANCE",
+    );
+  });
+
+  it("a dentist is still a dentist", () => {
+    expect(
+      categorizeByRules({ description: "HILLSIDE DENTAL GROUP", amountCents: 18_000, hints: {} })
+        ?.detailed,
+    ).toBe("MEDICAL_DENTAL_CARE");
+  });
+});

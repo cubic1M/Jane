@@ -189,7 +189,8 @@ export function insuranceTree(input: InsuranceTreeInput): AreaTree {
         ? "look"
         : "good";
     return item("policies", p.id, {
-      label: `${p.carrier} ${POLICY_KINDS[p.kind].toLowerCase()}`,
+      // Not "Delta Dental other" (debugger 11-04).
+      label: `${p.carrier} ${p.kind === "other" ? "policy" : POLICY_KINDS[p.kind].toLowerCase()}`,
       status,
       figure: p.yearlyCents !== null ? perYear(p.yearlyCents) : undefined,
       summary:
