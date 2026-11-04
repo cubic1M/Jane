@@ -1,5 +1,6 @@
 "use server";
 
+import { isId } from "@/lib/action-args";
 import { revalidatePath } from "next/cache";
 import { EventsError, runEventOverlay, setEventsOverlay } from "@/lib/events/run";
 import { markEventSeen, revertEventAction } from "@/lib/events/updates";
@@ -26,6 +27,7 @@ export async function setEventsAction(on: boolean): Promise<SwitchResult> {
 
 // The trade pop-up's buttons on one of the overlay's own trades: OK, and Revert.
 export async function eventSeenAction(id: string): Promise<{ ok: boolean }> {
+  if (!isId(id)) return { ok: false };
   const user = await requireUser();
   return markEventSeen(user.id, id);
 }
@@ -33,6 +35,7 @@ export async function eventSeenAction(id: string): Promise<{ ok: boolean }> {
 export async function eventRevertAction(
   id: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!isId(id)) return { ok: false, error: "That trade isn't there." };
   const user = await requireUser();
   const result = await revertEventAction(user.id, id);
   if (result.ok) revalidatePath("/investments");

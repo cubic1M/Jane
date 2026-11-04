@@ -25,7 +25,12 @@ describe("withSystemRole", () => {
   });
 
   it("switches when the database has the role", async () => {
-    expect(await withSystemRole(async (switched) => switched)).toBe(true);
+    expect(
+      await withSystemRole(
+        async (switched) => switched,
+        () => true,
+      ),
+    ).toBe(true);
     expect(systemRoleStatus()).toBe("on");
   });
 
@@ -36,8 +41,8 @@ describe("withSystemRole", () => {
       return "ok";
     });
 
-    expect(await withSystemRole(attempt)).toBe("ok");
-    expect(await withSystemRole(attempt)).toBe("ok");
+    expect(await withSystemRole(attempt, () => true)).toBe("ok");
+    expect(await withSystemRole(attempt, () => true)).toBe("ok");
     expect(attempt.mock.calls.map(([switched]) => switched)).toEqual([true, false, false]);
     expect(systemRoleStatus()).toBe("off");
     await vi.waitFor(() => expect(recordError).toHaveBeenCalledTimes(1));
@@ -47,7 +52,12 @@ describe("withSystemRole", () => {
   it("fails closed with RLS_REQUIRED=1", async () => {
     vi.stubEnv("RLS_REQUIRED", "1");
 
-    await expect(withSystemRole(async () => Promise.reject(missingRole))).rejects.toBe(missingRole);
+    await expect(
+      withSystemRole(
+        async () => Promise.reject(missingRole),
+        () => true,
+      ),
+    ).rejects.toBe(missingRole);
     expect(systemRoleStatus()).toBe("unknown");
   });
 
@@ -55,7 +65,7 @@ describe("withSystemRole", () => {
     const other = new Error("permission denied for table jobs");
     const attempt = vi.fn(async () => Promise.reject(other));
 
-    await expect(withSystemRole(attempt)).rejects.toBe(other);
+    await expect(withSystemRole(attempt, () => true)).rejects.toBe(other);
     expect(attempt).toHaveBeenCalledTimes(1);
   });
 });
