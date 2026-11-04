@@ -49,6 +49,7 @@ class SngRules:
     hands_per_level: int = 25
     max_hands: int = 200
     payouts: tuple = SYNTHETIC_PAYOUTS    # points for places 1..num_players
+    bounty: float = 0.0                   # points to whoever knocks a player out (shared on a split); 0 = none
     time_limit: float = 0.001             # seconds per decision
     enforce_time: bool = True             # over the limit -> check if possible, else fold
     name: str = "sng_nlhe"

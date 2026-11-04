@@ -50,12 +50,13 @@ def value(my: float, others, pays) -> float:
     return f[size - 1]
 
 
-def allin_call_need(my_total: float, my_committed: float, shover: int, totals, committed, pays):
+def allin_call_need(my_total: float, my_committed: float, shover: int, totals, committed, pays, bounty=0.0):
     """Break-even equity for calling the all-in of seat `shover`.
 
     my_total: my stack + my chips already in this hand; totals / committed: the same for every
     other seat (index = seat, my own entry ignored: pass None); dead money = everyone else's
-    committed chips. Returns None when the call risks nothing (no decision to make)."""
+    committed chips. Returns None when the call risks nothing (no decision to make).
+    bounty: points for knocking a player out (added to the win when I cover the shover)."""
     j_total = totals[shover]
     risk = min(my_total, j_total)
     dead = sum(c for s, c in enumerate(committed) if c and s != shover and totals[s] is not None)
@@ -63,6 +64,8 @@ def allin_call_need(my_total: float, my_committed: float, shover: int, totals, c
             for c in (committed[s],)]
     rest = [x for x in rest if x > 0]
     win = value(my_total + risk + dead, rest + [j_total - risk], pays)
+    if bounty and my_total >= j_total:         # winning this call knocks the shover out
+        win += bounty
     lose = value(my_total - risk, rest + [j_total + risk + dead], pays)
     fold = value(my_total - my_committed, rest + [j_total + my_committed + dead], pays)
     if win - lose <= 1e-12:

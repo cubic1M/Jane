@@ -447,6 +447,7 @@ def play_table(bots, rules: SngRules, seed: int, deal_seed: Optional[int] = None
     deck_all = np.array(rules.spec.deck, dtype=np.int64)
     places = [None] * n
     bust_hand = [None] * n
+    bounties = [0.0] * n
     points = [0.0] * n
     limit = rules.time_limit
 
@@ -494,6 +495,11 @@ def play_table(bots, rules: SngRules, seed: int, deal_seed: Optional[int] = None
         new = h.stack
         assert sum(new) == sum(stacks), "chips not conserved"
         busted = [j for j in alive if new[j] == 0]
+        if busted and rules.bounty:              # knockout bounty: the biggest winner(s) of that hand
+            gain = max(deltas)
+            hunters = [j for j in alive if deltas[j] == gain and gain > 0]
+            for j in hunters:
+                bounties[j] += rules.bounty * len(busted) / len(hunters)
         info = dict(hand_number=hand_no, deltas=deltas, board=tuple(h.board), history=tuple(h.history),
                     showdown=None if h.showdown is None else {j: h.hole[j] for j in h.showdown},
                     stacks=tuple(new))
@@ -533,5 +539,7 @@ def play_table(bots, rules: SngRules, seed: int, deal_seed: Optional[int] = None
         for j, e in zip(alive, ev_pts):
             points[j] = e
             places[j] = None  # survived to the cap (ICM share)
+    if rules.bounty:
+        points = [p + bb for p, bb in zip(points, bounties)]
     return TableResult(points=points, places=places, hands=hand_no + 1, stats=stats,
                        bust_hand=bust_hand, final_stacks=stacks)

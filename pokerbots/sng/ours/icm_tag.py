@@ -313,7 +313,7 @@ class IcmTag:
         me = seats[obs.seat]
         try:
             return allin_call_need(obs.my_stack + me.committed, me.committed, r, totals, committed,
-                                   tuple(pays)[:left])
+                                   tuple(pays)[:left], getattr(self.rules, "bounty", 0.0))
         except Exception:  # noqa: BLE001  never fail a decision over ICM
             return None
 

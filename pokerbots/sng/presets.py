@@ -30,6 +30,8 @@ PRESETS = {
                                        starting_stack=2000, small_blind=10, big_blind=20, stack_reset_per_hand=False)),
     "fixed_limit": dict(spec=GameSpec(name="fixed_limit", betting="fixed_limit", starting_stack=2000, small_blind=10,
                                       big_blind=20, stack_reset_per_hand=False)),
+    # knockout bounty: 10 points per player knocked out (on top of the place points)
+    "bounty10": dict(bounty=10.0),
     # discard / draw variants (sng/tests/test_discards.py shapes)
     "discard_to_board": dict(spec=GameSpec(name="t_to_board", hole_cards=3, starting_stack=2000, small_blind=10,
                                            big_blind=20, stack_reset_per_hand=False,
