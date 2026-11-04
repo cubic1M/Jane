@@ -57,6 +57,10 @@ export function staleStatementsEnd(
   return now.getTime() - last.getTime() > after * DAY_MS ? last.toISOString().slice(0, 10) : null;
 }
 
+// With nothing found in statements this old, "Nothing to fix right now" says more than Jane knows.
+export const nothingHeading = (oldStatements: string | null): string =>
+  oldStatements ? "Nothing found in these old statements" : "Nothing to fix right now";
+
 // "We found $X a year", saying what comes back once as that (debugger 10-31: a $210 double
 // charge read "We found $210.00 a year").
 export function foundHeadline({ cents, onceCents }: { cents: number; onceCents: number }): string {

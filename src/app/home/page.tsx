@@ -1,3 +1,5 @@
+import { dayLabel } from "@/lib/day-label";
+import { staleStatementsEnd } from "@/lib/report-state";
 import Link from "next/link";
 import { ShownLink } from "@/components/shown-link";
 import { redirect } from "next/navigation";
@@ -195,17 +197,22 @@ async function HubContent({ searchParams }: { searchParams: PageProps<"/home">["
   const treeData = loadTreeData(user.id);
   // Read later by the tree; a failure shows there, not as an unhandled rejection here.
   treeData.catch(() => {});
-  const [top, checklist, autopilot, books, suggestions, banks, concierge] = await Promise.all([
-    loadHubTop(user.id),
-    firstWeekChecklist(user.id),
-    autopilotOf(user.id),
-    openBooks(user.id),
-    // Jane's cards, as the chat shows them (on a computer the dock above the chat has them).
-    loadPopupStack(user.id),
-    loadBankNotices(user.id),
-    conciergeMode(user.id),
-  ]);
+  const [top, checklist, autopilot, books, suggestions, banks, concierge, read] = await Promise.all(
+    [
+      loadHubTop(user.id),
+      firstWeekChecklist(user.id),
+      autopilotOf(user.id),
+      openBooks(user.id),
+      // Jane's cards, as the chat shows them (on a computer the dock above the chat has them).
+      loadPopupStack(user.id),
+      loadBankNotices(user.id),
+      conciergeMode(user.id),
+      scopedFor(user.id).transactions.aggregate({ _max: { date: true } }),
+    ],
+  );
   if (!top) redirect("/connect");
+  // Too old to say what's due or what's current: not "Nothing due", not "updated just now".
+  const oldStatements = staleStatementsEnd(read._max.date, new Date());
   const { home } = top;
   const todayCents = top.hero.netWorth?.todayCents ?? 0;
   if (checklist?.newlyDone.length) {
@@ -250,10 +257,12 @@ async function HubContent({ searchParams }: { searchParams: PageProps<"/home">["
         />
       )}
 
-      <CashFlowStrip
-        view={cashFlowView(top.cashFlow)}
-        endDate={addDays(top.cashFlow.asOf, CASH_FLOW_DAYS)}
-      />
+      {!oldStatements && (
+        <CashFlowStrip
+          view={cashFlowView(top.cashFlow)}
+          endDate={addDays(top.cashFlow.asOf, CASH_FLOW_DAYS)}
+        />
+      )}
 
       {/* The monthly close: Jane closing last month's books (src/app/close). */}
       <Link
@@ -272,11 +281,13 @@ async function HubContent({ searchParams }: { searchParams: PageProps<"/home">["
       {checklist && !checklist.complete && <FirstWeekChecklist items={checklist.items} />}
 
       <p className="text-xs text-zinc-500">
-        {home.lastUpdated
-          ? `Data last updated ${updatedAgo(home.lastUpdated, new Date())}.`
-          : "Waiting for your first update."}{" "}
-        <Link href="/connect" className="hover:underline">
-          Manage accounts
+        {oldStatements
+          ? `Your statements end ${dayLabel(oldStatements, { year: true })}.`
+          : home.lastUpdated
+            ? `Data last updated ${updatedAgo(home.lastUpdated, new Date())}.`
+            : "Waiting for your first update."}{" "}
+        <Link href={oldStatements ? "/import" : "/connect"} className="hover:underline">
+          {oldStatements ? "Upload newer statements" : "Manage accounts"}
         </Link>
       </p>
 

@@ -36,6 +36,54 @@ function doingWell(days = 182) {
 
 const byType = (lines: CheckLine[]) => new Map(lines.map((l) => [l.type, l]));
 
+describe("statements too old to say what's being paid now", () => {
+  // Netflix every month until 51 days ago. Its charges are judged against today, so it reads as
+  // stopped, and the checkup said "Passed: Subscriptions, None in 6 months".
+  const netflix = () => {
+    const transactions = [];
+    for (let back = 51 + 150; back >= 51; back -= 30) {
+      transactions.push(
+        tx({
+          accountId: CHECKING.id,
+          date: addDays(AS_OF, -back),
+          amountCents: 1_799,
+          description: "NETFLIX.COM",
+          merchantName: "Netflix",
+          pfcDetailed: "ENTERTAINMENT_TV_AND_MOVIES",
+          pfcPrimary: "ENTERTAINMENT",
+        }),
+      );
+    }
+    return input({
+      accounts: [{ ...CHECKING, currentBalanceCents: 300_000 }],
+      transactions,
+    });
+  };
+
+  it("doesn't pass what depends on what's being paid now", () => {
+    const lines = byType(checkup(netflix()));
+    for (const type of [
+      "subscription_review",
+      "duplicate_subscription",
+      "low_balance_risk",
+    ] as const) {
+      expect(lines.get(type)).toMatchObject({
+        status: "not_enough_data",
+        line: expect.stringMatching(/^Your statements end [A-Z][a-z]+ \d+, \d{4}$/),
+      });
+    }
+  });
+
+  it("still passes what the statements themselves show", () => {
+    expect(byType(checkup(netflix())).get("bank_fees")?.status).toBe("passed");
+  });
+
+  it("passes as usual when the statements are recent", () => {
+    const recent = byType(checkup(doingWell()));
+    expect(recent.get("subscription_review")?.status).toBe("passed");
+  });
+});
+
 describe("checkup", () => {
   it("says what each check found on a year with fees, interest and subscriptions", () => {
     const lines = checkup(sampleYear());
