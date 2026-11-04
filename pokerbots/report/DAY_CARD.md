@@ -7,8 +7,14 @@
 - Resubmit at most every 5 minutes; each round freezes the bot active at its start.
 
 **Before the event:**
-- [ ] Ask the organisers in writing: may we bring code we wrote beforehand? Written notes? AI tools after the build phase?
-- [ ] Laptop: `git pull`, `./run_tests.sh` green (8 suites, about 3 min).
+- [ ] Ask the organisers in writing: may we bring code we wrote beforehand? Written notes? AI tools after the build phase (rule 3.4)? Giving the variant to an AI (rule 6.4)?
+- [ ] Laptop: `git pull`, `./run_tests.sh` green (17 suites, about 5 min).
+
+**The bot, in one line each (state on Nov 4):**
+- **Submit `icm_tag`** (2-card games; `icm_any` for discard / draw / Omaha / split-pot / wild games, or when only the flat bundle is allowed). Best average over 14 practice setups (41.7 vs our next best 40.3); first by a lot against mixed and weak fields; legal and fast on 1.9M random rule sets (p99 ~0.1-0.3 ms).
+- **Its weak spot:** tables of strong players who re-raise wide openers (fields 6 / 7, the champions table: mid-to-bottom). It defends by itself once 30% of its first 20 opens get re-raised (`rfi_lock`).
+- **Between rounds, if the logs show our opens re-raised ≥ 35% by competent players:** resubmit with `rfi_mode=2;rfi_scale=1.3` (or `icm_switch`, see below); if our short shoves keep getting called: `rs_call=3`.
+- **Deploy times rehearsed:** Plan A (our bundle) accepted in 4.5 min on an unseen kit; Plan B (rebuild from `report/sng_codex_prompt.md`) verified in 5 min, scoring the same.
 
 ## Minute 0–10: read, do not type
 
