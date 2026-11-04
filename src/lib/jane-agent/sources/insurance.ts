@@ -1,3 +1,4 @@
+import { openGaps } from "@/lib/insurance/gaps";
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { PREMIUM_FREQUENCIES } from "@/config/documents";
 import { gapAdvice, kindWords } from "@/lib/insurance/gaps";
@@ -46,7 +47,7 @@ import { dayLabel } from "@/lib/day-label";
 type Policies = InsuranceSnapshot["policies"];
 
 function gapMessages(insurance: InsuranceSnapshot): Candidate[] {
-  return (insurance.gaps ?? []).map((gap) => ({
+  return openGaps(insurance.gaps ?? [], insurance.policies).map((gap) => ({
     kind: "heads_up",
     body: `${gap.title}. ${gap.why}${insurance.advice ? `\n${gapAdvice(gap).text}` : ""}`,
     refs: {

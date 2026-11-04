@@ -37,6 +37,13 @@ const has = (policies: Policy[], ...kinds: PolicyKind[]) =>
 const from = (fact: { from: "you" | "accounts" | null }, typed: string, accounts: string) =>
   fact.from === "you" ? typed : accounts;
 
+// The gaps worth saying. Cover seen in the payments and not yet confirmed has its own question, so
+// no "No renters insurance on file" beside "I found your renters insurance" (debugger 11-04).
+export const openGaps = (
+  gaps: readonly Gap[],
+  policies: readonly { status: string; kind: string }[],
+): Gap[] => gaps.filter((g) => !policies.some((p) => p.status === "found" && p.kind === g.key));
+
 export function coverageGaps(
   household: Household,
   policies: Policy[],
