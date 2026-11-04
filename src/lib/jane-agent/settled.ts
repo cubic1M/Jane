@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import { adviceMode } from "@/lib/advice-mode";
 import { autopilotOf } from "@/lib/autopilot";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -13,7 +14,8 @@ import { parseActions, parseRefs, type MessageAction, type MessageRefs } from ".
 // reading confirmed on Insurance (spec step 151), and a suggestion that stopped applying or was
 // answered on its page (overnight upload QA: after a second upload showed the car insurance
 // payments, "Check your car is insured" stayed in the dock though the scan had dropped it).
-// Their links stay.
+// Advice too, once a real account joins: the scan deletes the suggestion behind it, so nothing else
+// would ever close "Drop your mortgage insurance". Their links stay.
 
 type Open = { id: string; refs: MessageRefs; actions: MessageAction[] };
 
@@ -49,9 +51,11 @@ export async function closeAnsweredElsewhere(
   const suggestionKeys = ids((m) => m.refs.suggestion);
   const anyAutopilot = open.some(asksAutopilot);
   const anyProposal = open.some((m) => m.refs.proposalKey);
+  const anyAdvice = open.some((m) => m.refs.advice === true);
   if (
     !anyAutopilot &&
     !anyProposal &&
+    !anyAdvice &&
     !actionIds.length &&
     !deadlineIds.length &&
     !alertIds.length &&
@@ -131,6 +135,7 @@ export async function closeAnsweredElsewhere(
   const waitingReadings = new Set(readings.map((r) => r.id));
   const preparedCovers = new Set(covers.map((c) => `${c.event}|${c.eventKey}`));
   const stillAsked = new Set(asked.map((n) => n.id));
+  const adviceAllowed = anyAdvice && (await adviceMode(userId, { client }));
 
   const settled = (m: Open) => {
     const {
@@ -146,8 +151,10 @@ export async function closeAnsweredElsewhere(
       savingId,
       riskId,
       suggestion,
+      advice,
     } = m.refs;
     return (
+      (advice === true && !adviceAllowed) ||
       (asksAutopilot(m) && autopilot !== null) ||
       (proposalKey !== undefined && !openProposalKeys.has(proposalKey)) ||
       (step !== undefined && actionId !== undefined && stepNow.get(actionId) !== step) ||

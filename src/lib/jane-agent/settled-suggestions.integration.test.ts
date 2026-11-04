@@ -21,6 +21,14 @@ describe.runIf(url)("a suggestion's message once the suggestion is gone", () => 
     userId = (
       await client.user.create({ data: { email: `settled-${crypto.randomUUID()}@example.com` } })
     ).id;
+    // Only the demo bank, so the news theme's advice card below is allowed at all.
+    await client.plaidItem.create({
+      data: {
+        userId,
+        plaidItemId: `demo-${crypto.randomUUID()}`,
+        accessTokenEncrypted: "v1:unused",
+      },
+    });
   });
   afterAll(async () => {
     await client.user.deleteMany({ where: { id: userId } });
