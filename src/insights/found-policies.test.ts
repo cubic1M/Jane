@@ -153,3 +153,10 @@ describe("annualFeeDeadlines", () => {
     expect(annualFeeDeadlines(input({ transactions: [recent, late] }))).toEqual([]);
   });
 });
+
+// Debugger 11-04: "DELTA DENTAL OF WA" read "Your Delta Dental Of insurance could cost less".
+describe("a dental plan", () => {
+  it("goes by the insurer's own name", () => {
+    expect(insurerName("delta dental of")).toBe("Delta Dental");
+  });
+});

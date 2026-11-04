@@ -74,6 +74,10 @@ export const SHOPS_FUN_GOVERNMENT: readonly Rule[] = [
       "HAVEN LIFE",
       "BLUE CROSS",
       "BCBS",
+      // Debugger 11-04: a policy that says so only by its name.
+      "PEMCO",
+      "UMBRELLA POLICY",
+      "DELTA DENTAL",
       "AETNA",
       "UNITEDHEALTHCARE",
       "CIGNA",

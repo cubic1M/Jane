@@ -49,6 +49,8 @@ export const INSURER_KINDS: readonly { words: readonly string[]; kind: PolicyKin
     words: ["blue cross", "aetna", "cigna", "kaiser", "united healthcare", "oscar"],
     kind: "health",
   },
+  // A dental plan isn't the health cover a gap asks for, so it stays "other" (debugger 11-04).
+  { words: ["delta dental"], kind: "other" },
 ];
 
 // A stream's frequency as a premium frequency. Others (weekly, every two weeks) aren't
