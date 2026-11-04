@@ -1,10 +1,1 @@
-[
- {
-  "on": 1337,
-  "lane": "lane:proof",
-  "task": "claude/proof-merge-only",
-  "when": "merged",
-  "since": "2026-11-04T02:56:31.895Z",
-  "expires": "2026-11-07T02:56:31.895Z"
- }
-]
+[]
