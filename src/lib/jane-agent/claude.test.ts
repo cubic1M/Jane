@@ -74,7 +74,7 @@ import {
 } from "./claude";
 import { forgetPrimer } from "./primer-cache";
 import { CHAT_TOOLS, healthHeadline, proposeAction } from "./claude-tools";
-import { chatTools, toolsFor } from "./tool-select";
+import { areaTools, chatTools, toolsFor } from "./tool-select";
 import { loadSnapshot, type Snapshot } from "./snapshot";
 
 // Spec step 84: free questions go to Claude with read-only tools over the person's own data
@@ -1328,7 +1328,9 @@ describe("speed and failures", () => {
       outputTokens: 20,
     });
     // What the request carried, so a cost or a routing miss can be seen in the logs.
-    expect(logged.toolsSent).toBeLessThan(chatTools(CHAT_TOOLS).length);
+    expect(logged.toolsSent).toBe(
+      toolsFor(CHAT_TOOLS, "how am i doing", null, null, "2026-10-18").length,
+    );
     for (const key of ["primerMs", "firstEventMs", "firstTextMs", "totalMs"]) {
       expect(typeof logged[key], key).toBe("number");
     }
@@ -1422,7 +1424,10 @@ describe("open_area", () => {
     });
     // Its words name no area, so its tools come when Claude asks for them.
     expect(toolNames(0)).not.toContain("insurance_policies");
-    expect(toolNames(1)).toContain("insurance_policies");
+    expect(toolNames(1)).toEqual([
+      ...toolNames(0),
+      ...areaTools(CHAT_TOOLS, "insurance").map((t) => t.name),
+    ]);
     expect(lastToolResult(1).content).toMatch(
       /^The insurance tools, for your next step: .*insurance_policies/,
     );
