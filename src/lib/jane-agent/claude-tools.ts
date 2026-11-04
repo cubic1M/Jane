@@ -1399,8 +1399,10 @@ async function runChatToolWork(
       const loansSeen = await loansSeenWithoutBalance(userId, { client, now });
       return out({
         has: money(worth.assetsCents),
-        // Null when what's owed can't be seen: never a $0 for Claude to repeat.
-        owes: owedIsKnown(worth, loansSeen) ? money(worth.debtsCents) : null,
+        // Null when what's owed can't be seen, or no debt is: never a $0 for Claude to repeat.
+        owes:
+          owedIsKnown(worth, loansSeen) && worth.debtsCents > 0 ? money(worth.debtsCents) : null,
+        ...(worth.debtsCents === 0 ? { debtsSeen: false } : {}),
         // Not known when no balance is: never a $0 for Claude to repeat.
         netWorth: worth.known ? money(worth.netCents) : null,
         ...(worth.cryptoCents > 0 ? { ofWhichCryptoReadOnly: money(worth.cryptoCents) } : {}),

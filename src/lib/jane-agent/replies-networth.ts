@@ -35,9 +35,12 @@ export function netWorthReply(
       : "";
   const loans = loansNotCounted(loansSeen);
   const missing = `${left ? ` ${left.sentence}` : ""}${loans ? ` ${loans}` : ""}`;
-  const owed = owedIsKnown(worth, loansSeen)
-    ? ` and owe ${formatCents(worth.debtsCents)}.`
-    : "; I can't see everything you owe.";
+  // No debt seen isn't "owe $0.00": one uploaded statement shows no cards or loans at all.
+  const owed = !owedIsKnown(worth, loansSeen)
+    ? "; I can't see everything you owe."
+    : worth.debtsCents === 0
+      ? ", and I don't see any debts."
+      : ` and owe ${formatCents(worth.debtsCents)}.`;
   return {
     body: `Your net worth is ${formatCents(worth.netCents)}: you have ${formatCents(worth.assetsCents)}${owed}${crypto}${missing}`,
     actions: [link],

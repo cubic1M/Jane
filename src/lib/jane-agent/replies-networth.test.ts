@@ -76,4 +76,19 @@ describe("net worth in the chat", () => {
     );
     expect(reply.body).not.toMatch(/\$0/);
   });
+
+  it("says no debts are seen, not that nothing is owed", () => {
+    const { body } = netWorthReply({
+      assetsCents: 845_000,
+      debtsCents: 0,
+      netCents: 845_000,
+      cryptoCents: 0,
+      missing: [],
+      unbalanced: [],
+      known: true,
+    } as never);
+    expect(body).toBe(
+      "Your net worth is $8,450.00: you have $8,450.00, and I don't see any debts.",
+    );
+  });
 });
