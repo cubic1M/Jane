@@ -70,6 +70,57 @@ def icm_batch(stacks, pays):
     return ev
 
 
+_FAST: dict = {}
+
+
+def _fast_plan(n):
+    """Per level L: M [m_L, n] (1 if seat j is not yet placed in subset i) and T [m_L * n, m_{L+1}]
+    (subset i plus seat j -> its index on the next level), so a level is a few array ops."""
+    fp = _FAST.get(n)
+    if fp is None:
+        fp = []
+        for bits, sel, tgt, m_next in _plan(n):
+            m_l = bits.shape[1]
+            M = np.zeros((m_l, n))
+            T = np.zeros((m_l * n, m_next))
+            for j in range(n):
+                M[sel[j], j] = 1.0
+                T[sel[j] * n + j, tgt[j]] = 1.0
+            fp.append((bits, M, T))
+        _FAST[n] = fp
+    return fp
+
+
+def icm_batch_fast(stacks, pays):
+    """Same as icm_batch (Malmuth-Harville, exact), vectorised over seats: ~5x fewer numpy calls."""
+    st = np.asarray(stacks, dtype=np.float64)
+    if st.ndim == 1:
+        st = st[None, :]
+    C, n = st.shape
+    pay = [float(p) for p in pays[:n]] + [0.0] * max(0, n - len(pays))
+    ev = np.zeros((C, n))
+    zero = st <= 0
+    nz = (~zero).sum(axis=1)
+    for c in range(C):
+        k = int(nz[c])
+        if k < n:
+            ev[c, zero[c]] = sum(pay[k:n]) / (n - k)
+    last_paid = max((i for i, p in enumerate(pay) if p > 0), default=-1)
+    total = st.sum(axis=1, keepdims=True)
+    P = np.ones((C, 1))
+    sti = np.rint(st).astype(np.int64)
+    for L, (bits, M, T) in enumerate(_fast_plan(n)):
+        if L > last_paid:
+            break
+        rem = total - (sti @ bits).astype(np.float64)
+        q = np.where(rem > 0.5, P / np.where(rem > 0.5, rem, 1.0), 0.0)        # [C, m_L]
+        contrib = q[:, :, None] * M[None, :, :] * st[:, None, :]              # [C, m_L, n]
+        if pay[L]:
+            ev += pay[L] * contrib.sum(axis=1)
+        P = contrib.reshape(C, -1) @ T
+    return ev
+
+
 class PairIcm:
     def __init__(self, stacks, pays, me=None):
         # me = a seat: only the all-ins involving that seat (2(L-1) rows instead of L(L-1)); every
@@ -99,7 +150,7 @@ class PairIcm:
                 r[b] -= eff
                 rows.append(r)
                 pairs.append((a, b))
-        ev = icm_batch(np.array(rows), pays)
+        ev = icm_batch_fast(np.array(rows), pays)
         for a in range(L):
             self.base[alive[a]] = float(ev[0, a])
         for k, (a, b) in enumerate(pairs):

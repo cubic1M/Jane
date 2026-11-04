@@ -33,6 +33,8 @@ class IcmSwitch:
         self.any_deck = bool(any_deck)        # 1: the share rule also fires on short decks / top-heavy payouts
         self.a = IcmTag(**kw)
         self.b = _strong_bot(str(b))
+        if hasattr(self.b, "refresh_icm"):
+            self.b.shadow_only = True        # field-9 bots: opponent stats only until they take over (no ICM)
         self.switched = False
         self.switch_hand = None
 
@@ -41,6 +43,8 @@ class IcmSwitch:
         self.b.new_table(rules, seat, seed + 1)
         self.switched = False
         self.switch_hand = None
+        if hasattr(self.b, "refresh_icm"):
+            self.b.shadow_only = True
 
     def act(self, obs):
         return (self.b if self.switched else self.a).act(obs)
@@ -60,3 +64,9 @@ class IcmSwitch:
         if not self.switched and fire:
             self.switched = True
             self.switch_hand = info.get("hand_number")
+            if hasattr(self.b, "refresh_icm"):
+                self.b.shadow_only = False
+                try:
+                    self.b.refresh_icm()
+                except Exception:  # noqa: BLE001
+                    pass

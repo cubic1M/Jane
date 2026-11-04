@@ -40,6 +40,9 @@ class TestSwitch(unittest.TestCase):
             b.a.my_opens, b.a.my_opens_rr = 12, 4          # 33% of 12 opens re-raised
             b.end_hand(dict(history=post, stacks=(2000,) * 8, hand_number=30, deltas=[0] * 8))
             self.assertEqual(b.switched, want)
+            self.assertEqual(b.b.shadow_only, not want)     # the shadow skips ICM until it takes over
+            if want:
+                self.assertEqual(b.b.icm.stacks, [2000] * 8)
 
     def test_legal_with_field9_strong_bot(self):
         line = ["icm_switch:b=f9_meta;switch_share=0.2;switch_min=5;any_deck=1", "f9_threebet", "f9_bubble", "f9_meta",
