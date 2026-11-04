@@ -364,7 +364,8 @@ export async function openShops(
     select: SHOP_SELECT,
     orderBy: { createdAt: "desc" },
   });
-  return rows.map(toShop);
+  // Shopped while the demo bank was all they had: once a real account joins, no pick stands.
+  return (await adviceMode(userId, { client })) ? rows.map(toShop) : [];
 }
 
 // The newest shop of each policy that found nothing better, from the last few days, for
