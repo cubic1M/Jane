@@ -90,6 +90,21 @@ export const isIncomeKind = (value: unknown): value is IncomeKind =>
 
 // Investment accounts whose gains and dividends are taxed each year (Plaid investment
 // subtypes). Retirement and health accounts (401k, IRA, HSA, 529) aren't in it.
+// Brokerages as banks write them, for money coming from one (src/planning/tax-documents.ts).
+export const BROKERS: readonly (readonly [RegExp, string])[] = [
+  [/\bE\*?TRADE\b/i, "E*TRADE"],
+  [/\bSCHWAB\b/i, "Schwab"],
+  [/\bFIDELITY\b/i, "Fidelity"],
+  [/\bVANGUARD\b/i, "Vanguard"],
+  [/\bROBINHOOD\b/i, "Robinhood"],
+  [/\bMORGAN STANLEY\b/i, "Morgan Stanley"],
+  [/\bMERRILL\b/i, "Merrill"],
+  [/\bWEBULL\b/i, "Webull"],
+  [/\bINTERACTIVE BROKERS\b/i, "Interactive Brokers"],
+  [/\bWEALTHFRONT\b/i, "Wealthfront"],
+  [/\bBETTERMENT\b/i, "Betterment"],
+];
+
 export const TAXABLE_INVESTMENT_SUBTYPES: readonly string[] = [
   "brokerage",
   "mutual fund",
