@@ -16,7 +16,10 @@ from sng.ours.icm_tag import IcmTag
 class IcmSwitch:
     name = "icm_switch"
 
-    def __init__(self, **kw):
+    def __init__(self, switch_min=20, switch_share=0.0, **kw):
+        # switch_share > 0: hand over only after switch_min first-in opens with >= switch_share of them
+        # re-raised (stricter than the opening-range lock, which fires on noise at static fields); 0 = with the lock
+        self.switch_min, self.switch_share = int(switch_min), float(switch_share)
         self.a = IcmTag(**kw)
         self.b = Balanced()
         self.switched = False
@@ -37,6 +40,12 @@ class IcmSwitch:
             self.b.end_hand(info)
         except Exception:  # noqa: BLE001  the shadow bot must never cost a decision
             pass
-        if not self.switched and self.a.rfi_on:
+        a = self.a
+        if self.switch_share > 0:
+            fire = (a.rfi_ok2 and a.my_opens >= self.switch_min
+                    and a.my_opens_rr >= self.switch_share * a.my_opens)
+        else:
+            fire = a.rfi_on
+        if not self.switched and fire:
             self.switched = True
             self.switch_hand = info.get("hand_number")
