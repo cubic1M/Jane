@@ -42,6 +42,7 @@ describe("templateExplanation", () => {
     expect(words({ cardInterest: true })).toMatch(/while a card charges you interest/);
     expect(words({ cardInterest: true })).not.toMatch(/high-yield savings account paying/);
     expect(words({})).toMatch(/high-yield savings account paying/);
+  });
 
   // "above the typical price of $50.00 to $120.00 for a internet and TV bill".
   it("says an internet bill, not a internet bill", () => {
