@@ -36,6 +36,8 @@ export type FloatingCardData = {
   // A small label by the counter ("Jane's pick", only in demo advice mode).
   badge?: string;
   yesLabel: string;
+  // Yes goes to this page, as a link.
+  yesHref?: string;
   notNowLabel?: string;
   // Other answers than Yes (something Jane asked to decide between), behind More details.
   choices?: { id: string; label: string }[];

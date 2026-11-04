@@ -56,12 +56,12 @@ test("a theme idea comes to the chat as a card to decide", async ({ context, pag
   }).toPass({ timeout: 120_000 });
   await expect(headline).toHaveText(theme);
   await expect(showing.getByRole("button", { name: "Yes", exact: true })).toBeVisible();
-  // More details: how sure Jane is, when it gets out, and the demo advice label.
+  await expect(
+    showing.getByText(/Demo advice: sample data, not financial advice/).first(),
+  ).toBeVisible();
+  // More details: how sure Jane is, and when it gets out.
   await showing.getByRole("button", { name: "More details" }).click();
   const details = showing.locator('[id^="details-"]');
   await expect(details.getByText(/\d+% sure/).first()).toBeVisible();
   await expect(details.getByText(/Out after 20 trading days/).first()).toBeVisible();
-  await expect(
-    details.getByText(/Demo advice: sample data, not financial advice/).first(),
-  ).toBeVisible();
 });

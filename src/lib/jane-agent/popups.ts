@@ -1,3 +1,4 @@
+import { DEMO_ADVICE_LABEL } from "@/config/advice";
 import type { FloatingCardData } from "@/lib/floating-cards";
 import { GREETING_START, HELLO_START, MORNING_BRIEF } from "@/config/agent-chat";
 import { isChoice } from "./choices";
@@ -137,6 +138,9 @@ export function popupCard(m: MessageView): PopupCard {
   const snooze = live.find((b) => b.id === "snooze") ?? null;
   const rest = live.filter((b) => b !== snooze);
   const main = rest.find((b) => b.kind === "primary") ?? rest[0] ?? snooze!;
+  // Nothing to tap but its snooze: the page it points at comes first, and the snooze is Not now.
+  const link = main === snooze ? m.links[0] : undefined;
+  const snoozes = snooze && (snooze !== main || link);
   // Its first sentence in full, never cut short (founder: "slightly bigger so that the info
   // isn't all gone"); the rest of the message behind More details.
   const headline = firstSentence(m.body);
@@ -148,15 +152,16 @@ export function popupCard(m: MessageView): PopupCard {
     headline,
     details: {
       about: more.trim() || undefined,
-      notes: m.advice ? ["Demo advice: sample data, not financial advice"] : undefined,
       ...(m.confidence ? { confidence: m.confidence } : {}),
     },
-    yesLabel: main.label,
-    // Its own snooze is Not now, unless it is the only button (then Yes, and Not now just
+    ...(m.advice ? { badge: DEMO_ADVICE_LABEL } : {}),
+    ...(link ? { yesHref: link.href } : {}),
+    yesLabel: link?.label ?? (main.label === "Not now" ? "Got it" : main.label),
+    // Its own snooze is Not now, unless it is the only thing to tap (then Yes, and Not now just
     // puts the card away here): never the same button twice.
-    notNowLabel: snooze && snooze !== main ? snooze.label : "Not now",
+    notNowLabel: snoozes ? snooze.label : "Not now",
     yesAction: main.id,
-    notNowAction: snooze && snooze !== main ? snooze.id : null,
+    notNowAction: snoozes ? snooze.id : null,
     choices: rest.filter((b) => b !== main).map((b) => ({ id: b.id, label: b.label })),
     noNever: true,
     // One choice among several (how much Jane does): it stays on the card, with Revert.
