@@ -16,6 +16,7 @@ import { closeSettled } from "./messages";
 import { loadPopupStack } from "./popup-stack";
 import { AS_THEY_COME } from "./preferences";
 import { runJaneAgent } from "./run";
+import { findingFingerprint } from "./snapshot";
 import { setupBody } from "./sources/setup";
 import { suggestionCard } from "./sources/suggestions";
 import { stillTrue } from "./still-true";
@@ -189,6 +190,52 @@ describe.runIf(url)("Jane's cards are checked against the data before they show"
     expect(shown.body.split("\n")).toEqual(suggestionCard(now));
     expect(shown.body).not.toContain("$47,597.63");
     expect(shown.refs.suggestionWhy).toBe(now.why);
+  });
+
+  // Two files, one after the other: the idle cash card written after the first said "$54,016.78 ...
+  // Could earn about $1,890.59 a year". The second showed a card charging interest, so the finding
+  // promises nothing now. The card kept its old words, and its Yes said "This one changed".
+  it("says a finding's card as the finding is now, and its Yes still works", async () => {
+    const finding = await client.finding.create({
+      data: {
+        userId,
+        type: "idle_cash",
+        key: `depository-${randomBytes(4).toString("hex")}`,
+        title: "$54,016.78 more cash than 3 months of spending",
+        annualSavingsCents: 189_059,
+        confidence: "medium",
+        evidence: { excessCents: 5_401_678 },
+        status: "new",
+      },
+    });
+    const message = await client.janeMessage.create({
+      data: {
+        userId,
+        kind: "decision",
+        body: "$54,016.78 more cash than 3 months of spending. Could earn about $1,890.59 a year. Want the steps to do it yourself?",
+        refs: { findingId: finding.id, fingerprint: "the finding as it was" },
+        actions: [{ id: "finding.yes", label: "Yes", kind: "primary" }],
+        dedupeKey: finding.id,
+        createdAt: new Date(),
+      },
+    });
+    const changed = await client.finding.update({
+      where: { id: finding.id },
+      data: {
+        title: "$51,524.62 more cash than 3 months of spending, while a card charges interest",
+        annualSavingsCents: null,
+        evidence: { excessCents: 5_152_462, cardInterest: true },
+      },
+    });
+    const shown = (await loadPopupStack(userId, { client })).find((m) => m.id === message.id);
+    expect(shown?.body).toMatch(/^\$51,524\.62 more cash than 3 months of spending, while a card/);
+    expect(shown?.body).not.toMatch(/54,016|Could earn/);
+    expect(shown?.body).toMatch(/Want the steps to do it yourself\?$/);
+    const stored = await client.janeMessage.findUniqueOrThrow({ where: { id: message.id } });
+    expect(stored.body).toBe(shown?.body);
+    expect((stored.refs as { fingerprint?: string }).fingerprint).toBe(findingFingerprint(changed));
+    await client.janeMessage.delete({ where: { id: message.id } });
+    await client.finding.delete({ where: { id: finding.id } });
   });
 
   it("says a set-up card from its proposal as it is now, and puts it away once it's answered", async () => {

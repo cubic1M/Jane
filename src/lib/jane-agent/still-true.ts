@@ -7,8 +7,10 @@ import type { BudgetProposal, GoalProposal } from "@/planning/proposals";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { openGaps } from "@/lib/insurance/gaps";
+import { savingsLine } from "@/lib/savings-text";
 import { chatToday, todayOf } from "@/lib/today";
 import { deadlineHeadsUp } from "./sources/heads-ups";
+import { sentence } from "./sources/source";
 import { setupBody } from "./sources/setup";
 import { suggestionCard } from "./sources/suggestions";
 import { MESSAGE_SELECT, toChatMessage, type ChatMessage } from "./types";
@@ -22,6 +24,9 @@ import { MESSAGE_SELECT, toChatMessage, type ChatMessage } from "./types";
 // - an alert about a charge that's no longer in the accounts is put away, and so is a deadline
 //   reminder whose deadline is gone;
 // - a coverage gap that has closed (the policy was added, or found in the payments) is put away;
+// - a finding's card whose finding changed (a later file showed a card charging interest, so the
+//   idle cash no longer "could earn" anything) is said as the finding is now, and its stored words
+//   and fingerprint follow, or its Yes would say "This one changed since I posted it";
 // - a change Jane noticed ("By now you'd usually have spent about $37.08") is said as Jane
 //   sees it today, and put away once it no longer shows (src/lib/changes.ts).
 // The deadlines come from loadComingUp, the one loader Today, Ahead, the snapshot behind the
@@ -51,6 +56,8 @@ type Facts = {
   proposals: Map<string, BudgetProposal | GoalProposal> | null;
   // The coverage gaps still open, by key; null when no card here is about one.
   gaps: Set<string> | null;
+  // The open findings behind finding cards, by id, as they are now.
+  findings: Map<string, { title: string; savings: string; fingerprint: string }> | null;
 };
 
 type AlertRow = { id: string; type: string; key: string };
@@ -133,17 +140,21 @@ async function factsFor(
   const suggestionKeys = messages.flatMap((m) => (m.refs.suggestion ? [m.refs.suggestion] : []));
   const proposalKeys = messages.flatMap((m) => (m.refs.proposalKey ? [m.refs.proposalKey] : []));
   const withGaps = messages.some((m) => m.refs.insuranceGap !== undefined);
+  const findingIds = messages.flatMap((m) =>
+    m.refs.findingId && m.refs.fingerprint ? [m.refs.findingId] : [],
+  );
   if (
     !withDeadlines &&
     !withChanges &&
     !withGaps &&
+    findingIds.length === 0 &&
     alerts.length === 0 &&
     suggestionKeys.length === 0 &&
     proposalKeys.length === 0
   ) {
     return null;
   }
-  const [coming, changes, suggestions, proposals, insurance] = await Promise.all([
+  const [coming, changes, suggestions, proposals, insurance, findings] = await Promise.all([
     withDeadlines ? comingUp(userId, client, now) : null,
     withChanges
       ? import("@/lib/changes").then((m) => m.loadChanges(userId, { client, now }))
@@ -170,7 +181,15 @@ async function factsFor(
     withGaps
       ? import("@/lib/insurance/profile").then((m) => m.loadInsurance(userId, { client, now }))
       : null,
+    findingIds.length > 0
+      ? scopedFor(userId, client).findings.findMany({
+          where: { id: { in: findingIds }, status: { in: ["new", "shown"] } },
+          select: { id: true, type: true, title: true, annualSavingsCents: true, evidence: true },
+        })
+      : null,
   ]);
+  // Loaded here, not imported at the top: the snapshot reaches most of the app.
+  const fingerprintOf = findings && (await import("./snapshot")).findingFingerprint;
   const deadlines = new Map((coming?.deadlines ?? []).map((d) => [d.key, d]));
   return {
     asOf: coming?.asOf ?? (await chatToday(userId, { client, now })),
@@ -187,6 +206,18 @@ async function factsFor(
         }),
       ),
     gaps: insurance && new Set(openGaps(insurance.gaps, insurance.policies).map((g) => g.key)),
+    findings:
+      findings &&
+      new Map(
+        findings.map((f) => [
+          f.id,
+          {
+            title: f.title,
+            savings: savingsLine(f.type, f.annualSavingsCents),
+            fingerprint: fingerprintOf!(f),
+          },
+        ]),
+      ),
   };
 }
 
@@ -195,6 +226,16 @@ function asNow(m: ChatMessage, facts: Facts): ChatMessage | null {
   const { deadlineKey, deadlineEntryId, alertId, change, suggestion, proposalKey, insuranceGap } =
     m.refs;
   if (insuranceGap && facts.gaps && !facts.gaps.has(insuranceGap)) return null;
+  const finding = m.refs.findingId ? facts.findings?.get(m.refs.findingId) : undefined;
+  if (finding && m.refs.fingerprint && finding.fingerprint !== m.refs.fingerprint) {
+    // Its pick and its question stay as they were.
+    const rest = /(?:My pick: .*)?Want [^?]*\?$/.exec(m.body)?.[0];
+    return {
+      ...m,
+      body: [sentence(finding.title), sentence(finding.savings), rest].filter(Boolean).join(" "),
+      refs: { ...m.refs, fingerprint: finding.fingerprint },
+    };
+  }
   // A set-up card is said from its proposal as it is now (night debugger, 10-30: after a second
   // file the dock kept the first file's "$1,180 budget for Food and drink"); one no longer open
   // goes.
@@ -273,6 +314,16 @@ export async function stillTrue(
     else gone.push(m);
   }
   if (gone.length > 0) await putAway(userId, gone, client, now);
+  // What the Yes reads is the stored message, so a re-said finding card is stored as shown.
+  const before = new Map(messages.map((m) => [m.id, m.refs.fingerprint]));
+  for (const m of kept) {
+    if (m.refs.findingId && m.refs.fingerprint !== before.get(m.id)) {
+      await scopedFor(userId, client).janeMessages.updateMany({
+        where: { id: m.id, status: "open" },
+        data: { body: m.body, refs: m.refs as Prisma.InputJsonObject },
+      });
+    }
+  }
   return kept;
 }
 
