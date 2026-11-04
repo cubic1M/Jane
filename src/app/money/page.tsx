@@ -145,7 +145,7 @@ async function MoneyContent({
   details[itemId("spending", "month")] = <Go href="/insights">Month by month</Go>;
   more[itemId("spending", "month")] = (
     <p className={MUTED}>
-      Moving money between your own accounts and paying off cards isn&apos;t counted as spending.
+      Transfers, cash withdrawals and paying off cards aren&apos;t counted as spending.
     </p>
   );
   if (data.spending) {

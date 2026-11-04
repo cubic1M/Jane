@@ -116,9 +116,15 @@ export function petReading(txs: readonly LifeTx[]): Reading {
 }
 
 // --- School -------------------------------------------------------------------------------
+// A daycare's tuition is a child's care, not the person's school (debugger 11-04: a nurse paying
+// Bright Horizons read "You're a student: yes" and was told to switch to student plans).
+const isChildcare = (t: LifeTx) =>
+  (KIDS_SIGNALS.childcare.categories as readonly string[]).includes(t.pfc ?? "") ||
+  KIDS_SIGNALS.childcare.words.test(t.description.toUpperCase());
+
 export function studentReading(txs: readonly LifeTx[]): Reading {
   const h = hitsOf(
-    txs.filter((t) => !STUDENT_NOT_SCHOOL.test(t.description.toUpperCase())),
+    txs.filter((t) => !STUDENT_NOT_SCHOOL.test(t.description.toUpperCase()) && !isChildcare(t)),
     STUDENT_SIGNAL,
   );
   if (!meets(h, STUDENT_SIGNAL)) {
