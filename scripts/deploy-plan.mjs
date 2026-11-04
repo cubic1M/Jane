@@ -2,7 +2,7 @@
 // would have. `record ok|bad <sha> [deployment id]` writes down what happened. `last-good` prints
 // the deployment to go back to. The record is on the ci-deploy branch, one commit replaced each
 // time, with commit ids, times and deployment ids only.
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { appendFileSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -47,7 +47,16 @@ function save(message) {
     "-m",
     message,
   );
-  git("push", "-q", "--force", "origin", `HEAD:${BRANCH}`);
+  // GitHub sometimes answers a push with a server error, and a live deploy must stay written down.
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      git("push", "-q", "--force", "origin", `HEAD:${BRANCH}`);
+      return;
+    } catch (error) {
+      if (attempt === 3) throw error;
+      spawnSync("sleep", ["5"]);
+    }
+  }
 }
 
 // ahead: `head` has everything in `base`. identical: the same commit.
