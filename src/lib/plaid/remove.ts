@@ -50,7 +50,7 @@ export async function removePlaidItem(
   // Accounts, transactions and recurring streams go with it (ON DELETE CASCADE).
   await db.plaidItems.deleteMany({ where: { id: item.id } });
   // The chat's copy of the numbers had that bank's in it (card-chat mismatch). The saved copy
-  // and the snapshot are refused from now on by their data stamp (src/lib/data-stamp.ts).
+  // and the snapshot go in forgetSince below.
   forgetPrimer(userId);
   // And everything worked out from that bank goes with it: findings, the decisions and actions
   // on them, ledger lines and alerts (src/lib/evidence/orphans.ts).

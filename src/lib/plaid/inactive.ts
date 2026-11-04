@@ -37,7 +37,7 @@ export function inactivityStep(person: Person, now: Date): "warn" | "remove" | "
 async function warn(email: string, removalDate: Date, send: typeof sendEmail) {
   const date = removalDate.toISOString().slice(0, 10);
   const link = `${appBase()}/report`;
-  const text = `You haven't used Jane in a while, so on ${date} we'll disconnect your linked banks. That removes what we hold from those banks, and while Jane is in beta you may not be able to link them again.\n\nWant to keep them connected? Just open your report: ${link}`;
+  const text = `You haven't used Jane in a while, so on ${date} we'll disconnect your linked banks. That removes their accounts and transactions and what was worked out from them, and while Jane is in beta you may not be able to link them again.\n\nWant to keep them connected? Just open your report: ${link}`;
   if (!process.env.RESEND_API_KEY && process.env.NODE_ENV !== "production") {
     log.dev(`[dev] Email to ${email}: inactivity warning\n${text}`);
     return;
@@ -46,7 +46,7 @@ async function warn(email: string, removalDate: Date, send: typeof sendEmail) {
     to: email,
     subject: "We'll disconnect your banks soon | Jane",
     text,
-    html: `<p>You haven't used Jane in a while, so on ${date} we'll disconnect your linked banks. That removes what we hold from those banks, and while Jane is in beta you may not be able to link them again.</p><p>Want to keep them connected? <a href="${link}">Open your report</a>.</p>`,
+    html: `<p>You haven't used Jane in a while, so on ${date} we'll disconnect your linked banks. That removes their accounts and transactions and what was worked out from them, and while Jane is in beta you may not be able to link them again.</p><p>Want to keep them connected? <a href="${link}">Open your report</a>.</p>`,
   });
 }
 

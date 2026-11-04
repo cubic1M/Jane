@@ -3,7 +3,7 @@ import { E2E_DATABASE_URL, addBankNeedingSignIn, deleteUser } from "./db";
 import { demoPerson } from "./demo-person";
 
 // A bank that paused sharing until the person signs in again (Plaid's ITEM_LOGIN_REQUIRED):
-// Home says so calmly, once, with how old that bank's data is and a button that opens Plaid
+// Home says so calmly, once, with how old its data is and a button that opens Plaid
 // Link in update mode; /connect says the same beside the bank.
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
