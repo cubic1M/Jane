@@ -127,6 +127,8 @@ describe.runIf(url)(
       const view = result.view;
       expect(view.label).toBe("Dana at Hill & Co");
       expect(view.summary.totalTaxCents).toBeGreaterThan(0);
+      // Says whether "Already paid" and "Owed" mean anything for this person.
+      expect(typeof view.summary.withholdingKnown).toBe("boolean");
       expect(view.pack.forms.length).toBeGreaterThan(0);
       expect(view.deductions.length).toBeGreaterThan(0);
       // Nothing but tax data: the keys are exactly these, and nothing identifies the person or
