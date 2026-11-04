@@ -269,7 +269,7 @@ const SAYS_KIND: Record<PaidLoan["kind"], RegExp> = {
   student: /\bstudent\b/i,
   auto: /\b(?:auto|car) (?:loan|ln)\b/i,
   mortgage: /\b(?:mortgage|mtg)\b/i,
-  loan: /\b(?:loan|ln)\b/i,
+  loan: /\b(?:loan|ln|heloc|home equity)\b/i,
 };
 
 // A loan seen only in payments from checking (./paid-loans.ts): its payment and next date from
