@@ -508,6 +508,13 @@ describe("insurance charges with no bank account on file", () => {
     expect(facts.insurance_auto.value).toBe(true);
   });
 
+  // Main's CI on 11-04: "a renter adds their renters policy" has no accounts at all. Nothing on file
+  // isn't a card on its own: what they told Jane stands.
+  it("reads as none with no accounts at all", () => {
+    const { facts } = buildProfile({ ...inputFor(person.id), accounts: [], transactions: [] });
+    expect(facts.insurance_auto.value).toBe(false);
+  });
+
   it("reads as none once a bank account is there", () => {
     const data = inputFor(person.id);
     const { facts } = buildProfile({
