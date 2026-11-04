@@ -237,12 +237,16 @@ describe.runIf(url)("Claude as strategist", { timeout: 120_000 }, () => {
     for (const k of seen) {
       expect((ADVICE_TOPICS as readonly string[]).some((t) => k.key.endsWith(`:${t}`))).toBe(false);
     }
+    // Dates of its own: a sample person's spend also counts toward every sample person's total for
+    // that day, and other files in this database ask questions as sample people on NOW's date. On
+    // NOW, this used up their day: "I've hit today's limit" (seen 11-03/04, depending on the shard).
+    const spentOn = new Date("2031-06-02T15:00:00Z");
     await addSpend(
       userId,
       { model: "claude-sonnet-5-5", inputTokens: 5_000_000, outputTokens: 0 },
-      { client, now: NOW },
+      { client, now: spentOn },
     );
-    const later = new Date(NOW.getTime() + 8 * 86_400_000);
+    const later = new Date(spentOn.getTime() + 8 * 86_400_000);
     await addSpend(
       userId,
       { model: "claude-sonnet-5-5", inputTokens: 5_000_000, outputTokens: 0 },
