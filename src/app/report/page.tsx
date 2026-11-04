@@ -36,6 +36,9 @@ import { monthsCovered, statementsEnd } from "@/profile/build";
 import { ShareButton } from "./share-button";
 import { cardFor } from "@/lib/share-card";
 import { isTrialUser } from "@/lib/trial-ids";
+import { todayOf } from "@/lib/today";
+import { formatCents } from "@/lib/money";
+import { unseenCardPaymentsMonthly } from "@/lib/unseen-cards";
 import { SUGGESTED_UPLOAD_MONTHS } from "@/config/import";
 
 // Shown while the first scan runs, so the person knows what we look at. Once it's done, the
@@ -91,6 +94,7 @@ async function ReportContent() {
         )
       : 0;
   const uploadDays = shortUploadDays(uploaded._min.date, uploaded._max.date);
+  const toUnseenCards = await unseenCardPaymentsMonthly(db, await todayOf(user.id));
   const oldStatements = staleStatementsEnd(read._max.date, new Date());
   const transactions = accounts.reduce((sum, a) => sum + a.transactionCount, 0);
   const state = reportState({
@@ -199,6 +203,7 @@ async function ReportContent() {
             what it looked at.
           </p>
           {uploadDays !== null && <MoreMonths days={uploadDays} />}
+          {toUnseenCards !== null && <UnseenCards cents={toUnseenCards} />}
           {oldStatements && <OldStatements day={oldStatements} />}
           <Checkup lines={checks} />
           {share}
@@ -225,6 +230,7 @@ async function ReportContent() {
             </p>
           </div>
           {uploadDays !== null && <MoreMonths days={uploadDays} />}
+          {toUnseenCards !== null && <UnseenCards cents={toUnseenCards} />}
           {oldStatements && <OldStatements day={oldStatements} />}
           {/* What matters now (docs/design/area-pages.md): the three worth the most, open; the
               rest behind "more". */}
@@ -262,6 +268,22 @@ async function ReportContent() {
 }
 
 // Uploaded statements cover under three months: monthly charges need more to show.
+// A checking statement alone: card payments are all Jane can see of what was bought (debugger 11-03).
+function UnseenCards({ cents }: { cents: number }) {
+  return (
+    <p
+      data-unseen-cards=""
+      className="rounded-lg bg-zinc-100 p-3 text-sm text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
+    >
+      You pay about {formatCents(cents)} a month to cards with no statement here, so Jane can&apos;t
+      look through what they bought.{" "}
+      <Link href="/import" className="font-medium underline">
+        Upload those statements
+      </Link>
+    </p>
+  );
+}
+
 function MoreMonths({ days }: { days: number }) {
   return (
     <p

@@ -4,6 +4,7 @@ import {
   cardPaymentNames,
   cardPaymentOutflows,
   matchCardPayments,
+  paymentsToUnseenCards,
   type PairableRow,
 } from "./card-payments";
 
@@ -139,5 +140,63 @@ describe("matchCardPayments", () => {
     } as unknown as ScopedDb;
     expect(await matchCardPayments(db)).toBe(0);
     expect(findMany).not.toHaveBeenCalled();
+  });
+});
+
+// Debugger 11-03: payments to a card with no statement are all Jane can see of its spending; a card
+// that is on file must never be counted that way too (an Apple Card's own side reads as a transfer).
+describe("paymentsToUnseenCards", () => {
+  const accounts = [
+    { id: "chk", type: "depository", name: "Checking" },
+    { id: "apple", type: "credit", name: "Apple Card" },
+  ];
+  const row = (
+    id: string,
+    accountId: string,
+    date: string,
+    amountCents: number,
+    pfcDetailed: string | null,
+    description = "",
+  ) => ({
+    id,
+    accountId,
+    date,
+    amountCents,
+    pfcDetailed,
+    description,
+  });
+  const CARD = "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT";
+
+  it("finds a payment no card on file shows", () => {
+    const rows = [row("a", "chk", "2026-10-22", 28_400, CARD, "CAPITAL ONE MOBILE PMT")];
+    expect(paymentsToUnseenCards(rows, accounts).map((r) => r.id)).toEqual(["a"]);
+  });
+
+  it("takes money arriving on a card as that payment, whatever it's labelled", () => {
+    const rows = [
+      row("a", "chk", "2026-10-22", 49_500, CARD, "SOME BANK ONLINE PMT"),
+      row(
+        "b",
+        "apple",
+        "2026-10-23",
+        -49_500,
+        "TRANSFER_IN_ACCOUNT_TRANSFER",
+        "ACH DEPOSIT INTERNET TRANSFER",
+      ),
+    ];
+    expect(paymentsToUnseenCards(rows, accounts)).toEqual([]);
+  });
+
+  it("takes a payment that names a card on file as seen, even outside its statement", () => {
+    const rows = [row("a", "chk", "2026-05-22", 49_500, CARD, "APPLECARD GSBANK PAYMENT")];
+    expect(paymentsToUnseenCards(rows, accounts)).toEqual([]);
+  });
+
+  it("leaves money going to a different card unseen", () => {
+    const rows = [
+      row("a", "chk", "2026-10-22", 49_500, CARD, "CAPITAL ONE MOBILE PMT"),
+      row("b", "apple", "2026-10-23", -12_000, CARD, "PAYMENT"),
+    ];
+    expect(paymentsToUnseenCards(rows, accounts).map((r) => r.id)).toEqual(["a"]);
   });
 });

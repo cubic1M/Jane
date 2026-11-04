@@ -25,6 +25,8 @@ export type HealthInput = {
   cashCents: number | null;
   // Averages over the last few full months; null without enough history.
   monthlySpendingCents: number | null;
+  // The part of it paid to cards with no statement on file: all Jane can see of what they bought.
+  unseenCardPaymentsCents?: number;
   monthlyIncomeCents: number | null;
   // Late, overdraft and insufficient-funds fees lately; null without transactions.
   slips: number | null;

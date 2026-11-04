@@ -193,6 +193,15 @@ export async function explainFigure(
           label: id === "monthly_spending" ? "Average monthly spending" : "Average monthly income",
           value: value === null ? "unknown" : formatCents(value),
         },
+        ...(id === "monthly_spending" && (health.unseenCardPaymentsCents ?? 0) > 0
+          ? [
+              {
+                label: "Counted: paid to cards with no statement here, a month",
+                value: formatCents(health.unseenCardPaymentsCents ?? 0),
+                note: "Jane can't see what they bought. Upload those statements to see it, and to look through it for money you're losing.",
+              },
+            ]
+          : []),
         ...(id === "monthly_spending"
           ? (health.oneOffs ?? []).map((o) => ({
               label: `Left out: ${o.merchant}, ${dayLabel(o.date)} (a one-off)`,

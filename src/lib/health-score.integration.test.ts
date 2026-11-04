@@ -3,6 +3,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
+import { CARD, CHECKING, input, monthsAgo, tx } from "@/detection/__fixtures__/build";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
@@ -13,7 +14,7 @@ import { answerByRules } from "@/lib/jane-agent/answer";
 import { runChatTool } from "@/lib/jane-agent/claude-tools";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
-import { healthFor, healthOfMonth } from "./health-score";
+import { healthFor, healthInput, healthOfMonth } from "./health-score";
 
 // Spec step 146 against a real, migrated Postgres, with the demo bank: a score out of 100
 // from the person's own numbers, each part explained, kept for the month by Jane's run
@@ -167,5 +168,74 @@ describe.runIf(url)("money health score", { timeout: 120_000 }, () => {
     created.push(user.id);
     expect(await healthFor(user.id, { client, now: NOW, keep: true })).toBeNull();
     expect(await client.healthScore.count({ where: { userId: user.id } })).toBe(0);
+  });
+  // Debugger 11-03: a checking statement alone, so the $284 a month paid to cards was spending nobody
+  // could see, and monthly spending read that much too low. A try takes one file: this is the usual case.
+  describe("payments to cards", () => {
+    const CARD_PAYMENT = "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT";
+    const months = [3, 2, 1];
+    const rent = months.map((m) =>
+      tx({
+        date: monthsAgo(m, 1),
+        amountCents: 125_000,
+        description: "PARKSIDE APARTMENTS RENT",
+        pfcPrimary: "RENT_AND_UTILITIES",
+        pfcDetailed: "RENT_AND_UTILITIES_RENT",
+      }),
+    );
+    const paid = months.map((m) =>
+      tx({
+        date: monthsAgo(m, 8),
+        amountCents: 28_400,
+        description: "CAPITAL ONE MOBILE PMT",
+        pfcPrimary: "LOAN_PAYMENTS",
+        pfcDetailed: CARD_PAYMENT,
+      }),
+    );
+    const person = async () => {
+      const user = await client.user.create({
+        data: { email: `health-cards-${crypto.randomUUID()}@example.com` },
+      });
+      created.push(user.id);
+      return user.id;
+    };
+
+    it("counts them as spending when no card on file shows what they bought", async () => {
+      const data = input({
+        accounts: [{ ...CHECKING, currentBalanceCents: 200_000 }],
+        transactions: [...rent, ...paid],
+      });
+      const health = await healthInput(await person(), data, { client, now: NOW });
+      expect(health.monthlySpendingCents).toBe(125_000 + 28_400);
+      expect(health.unseenCardPaymentsCents).toBe(28_400);
+    });
+
+    it("doesn't count them twice when the card is on file", async () => {
+      const onCard = paid.flatMap((p, i) => [
+        tx({
+          accountId: CARD.id,
+          date: p.date,
+          amountCents: -28_400,
+          description: "PAYMENT THANK YOU",
+          pfcPrimary: "LOAN_PAYMENTS",
+          pfcDetailed: CARD_PAYMENT,
+        }),
+        tx({
+          accountId: CARD.id,
+          date: monthsAgo(months[i], 3),
+          amountCents: 28_400,
+          description: "KROGER #612",
+          pfcPrimary: "FOOD_AND_DRINK",
+          pfcDetailed: "FOOD_AND_DRINK_GROCERIES",
+        }),
+      ]);
+      const data = input({
+        accounts: [{ ...CHECKING, currentBalanceCents: 200_000 }, CARD],
+        transactions: [...rent, ...paid, ...onCard],
+      });
+      const health = await healthInput(await person(), data, { client, now: NOW });
+      expect(health.monthlySpendingCents).toBe(125_000 + 28_400);
+      expect(health.unseenCardPaymentsCents ?? 0).toBe(0);
+    });
   });
 });

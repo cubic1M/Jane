@@ -1671,6 +1671,11 @@ const RULES: readonly Rule[] = [
       "XCEL",
       "DOMINION ENERGY",
       "FPL",
+      "LIGHT AND POWER",
+      "POWER AND LIGHT",
+      "LIGHT & POWER",
+      "POWER & LIGHT",
+      "CITY LIGHT",
       "FLORIDA POWER",
       "GEORGIA POWER",
       "ALABAMA POWER",
@@ -2236,12 +2241,12 @@ const RULES: readonly Rule[] = [
   },
   // A payday loan or an app's cash advance landing in checking: borrowed money, never a refund
   // of spending (night QA 10-30: a server's "ADVANCE AMERICA LOAN", $400 in, uncategorized).
-  // Paying back a cash advance app: a debt, not a subscription (debugger 11-03: "Review your Dave Inc
+  // Paying back a cash advance app or payday lender: a debt, not a subscription (debugger 11-03: "Review your Dave Inc
   // Repayment subscription, could save $900 a year"). Its own membership stays a membership.
   {
     category: "LOAN_PAYMENTS_OTHER_PAYMENT",
     pattern:
-      /(?<![A-Z0-9])(?:(?:EARNIN|ACTIVEHOURS)(?!.*MEMBERSHIP)|(?:BRIGIT|MONEYLION(?: INSTACASH)?|DAVE INC)(?=.*(?:REPAY|PAYBACK|ADVANCE)))/,
+      /(?<![A-Z0-9])(?:(?:EARNIN|ACTIVEHOURS)(?!.*MEMBERSHIP)|ADVANCE AMERICA|CHECK INTO CASH|ACE CASH EXPRESS|SPEEDY CASH|CHECKSMART|(?:BRIGIT|MONEYLION(?: INSTACASH)?|DAVE INC)(?=.*(?:REPAY|PAYBACK|ADVANCE)))/,
     direction: "out",
   },
   {
