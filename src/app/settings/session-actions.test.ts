@@ -45,12 +45,14 @@ describe("session sign-out actions (spec step 73)", () => {
   it("signs out every other device and says how many", async () => {
     expect(await signOutOthers()).toEqual({
       ok: true,
-      message: "Signed out of 2 other devices.",
+      message: "Signed out of 2 other devices. If you use a calendar link, make a new one.",
     });
     expect(signOutOtherSessions).toHaveBeenCalledWith("u1", "this-token");
 
     vi.mocked(signOutOtherSessions).mockResolvedValueOnce(1);
-    expect((await signOutOthers())?.message).toBe("Signed out of 1 other device.");
+    expect((await signOutOthers())?.message).toBe(
+      "Signed out of 1 other device. If you use a calendar link, make a new one.",
+    );
     vi.mocked(signOutOtherSessions).mockResolvedValueOnce(0);
     expect((await signOutOthers())?.message).toBe("You're not signed in anywhere else.");
   });

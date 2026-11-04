@@ -65,3 +65,6 @@ export const RETURN_WINDOW_DAYS = 30;
 
 // Dates outside these years are treated as misread.
 export const DOCUMENT_YEARS = { min: 1990, max: 2100 } as const;
+
+// The demo draft return Jane checks for sample people (src/lib/draft-return): not their own file.
+export const SAMPLE_DRAFT_NAME = "Sample draft return.pdf";

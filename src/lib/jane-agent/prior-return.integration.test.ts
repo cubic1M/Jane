@@ -1,3 +1,4 @@
+import { SAMPLE_DRAFT_NAME } from "@/config/documents";
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
@@ -68,7 +69,8 @@ describe.runIf(url)("last year's return against a real database", { timeout: 120
       data: {
         userId: user.id,
         kind: "tax_return",
-        fileName: "2025-return.pdf",
+        // Sample data: a file of their own would turn demo advice off (src/lib/advice-mode.ts).
+        fileName: SAMPLE_DRAFT_NAME,
         contentType: "application/pdf",
         sizeBytes: 3,
         encryptedBytes: Buffer.from("abc"),
@@ -111,7 +113,7 @@ describe.runIf(url)("last year's return against a real database", { timeout: 120
       .gather((await loadSnapshot(userId, { client, now: LINKED }))!, context)
       .find((c) => c.dedupeKey === `prior:${reading.id}`)!;
     expect(message.body).toBe(
-      "I couldn't read all of 2025-return.pdf. Fill in the rest and confirm, and I'll check it against your accounts.",
+      `I couldn't read all of ${SAMPLE_DRAFT_NAME}. Fill in the rest and confirm, and I'll check it against your accounts.`,
     );
     expect(message.actions.map((a) => a.id)).toEqual(["open", "tax.prior_no"]);
   });

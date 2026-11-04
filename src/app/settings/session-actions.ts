@@ -31,6 +31,6 @@ export async function signOutOthers(): Promise<SessionsState> {
     message:
       count === 0
         ? "You're not signed in anywhere else."
-        : `Signed out of ${count} other ${count === 1 ? "device" : "devices"}.`,
+        : `Signed out of ${count} other ${count === 1 ? "device" : "devices"}. If you use a calendar link, make a new one.`,
   };
 }

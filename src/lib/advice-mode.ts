@@ -1,3 +1,4 @@
+import { SAMPLE_DRAFT_NAME } from "@/config/documents";
 import { cache } from "react";
 import { REAL_ACCOUNT_ADVICE } from "@/config/advice";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -44,11 +45,22 @@ export async function onlyDemoBank(userId: string, client: PrismaClient): Promis
   );
 }
 
+async function hasOwnDocument(userId: string, client: PrismaClient): Promise<boolean> {
+  const own = await scopedFor(userId, client).documents.count({
+    where: { fileName: { not: SAMPLE_DRAFT_NAME }, extractionSource: { not: "partner" } },
+  });
+  return own > 0;
+}
+
 async function adviceModeFrom(userId: string, client: PrismaClient): Promise<boolean> {
   // Someone's own statement (src/lib/statement-trial.ts) is real data, whatever else is there.
   if (isStatementTrialUser(userId)) return REAL_ACCOUNT_ADVICE;
   // Real data: off until REAL_ACCOUNT_ADVICE says otherwise (it doesn't).
   if (!(await onlyDemoBank(userId, client))) return REAL_ACCOUNT_ADVICE;
+  // So is a document of their own, whichever came first: documents/actions.ts stops one going up
+  // once advice is on, but linking the demo bank afterwards or removing a real bank would turn
+  // advice on with it already on file. The sample draft and a demo switch's papers aren't theirs.
+  if (await hasOwnDocument(userId, client)) return REAL_ACCOUNT_ADVICE;
   // Spec step 138: a trial person is sample data by construction, so always.
   return isSampleTrialUser(userId) || demoAdviceAllowed();
 }
