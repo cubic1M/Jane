@@ -1,6 +1,10 @@
 import { createHash, createPublicKey, timingSafeEqual, verify, type JsonWebKey } from "node:crypto";
 import type { PlaidApi } from "plaid";
-import { WEBHOOK_MAX_AGE_SECONDS } from "@/config/plaid";
+import {
+  WEBHOOK_KEY_LOOKUPS_PER_MINUTE,
+  WEBHOOK_KEY_RECHECK_HOURS,
+  WEBHOOK_MAX_AGE_SECONDS,
+} from "@/config/plaid";
 import { plaid, plaidCall } from "./client";
 
 // Checks a Plaid webhook before anything acts on it, following
@@ -8,10 +12,19 @@ import { plaid, plaidCall } from "./client";
 // Plaid-Verification header, signed by a key from /webhook_verification_key/get, issued in
 // the last 5 minutes, carrying the SHA-256 of the exact body.
 
-const keys = new Map<string, JsonWebKey>();
+const keys = new Map<string, { jwk: JsonWebKey; checkedAt: number }>();
+let lookups = { minute: 0, count: 0 };
 
 export function clearWebhookKeysForTests(): void {
   keys.clear();
+  lookups = { minute: 0, count: 0 };
+}
+
+function mayLookUp(now: Date): boolean {
+  const minute = Math.floor(now.getTime() / 60_000);
+  if (lookups.minute !== minute) lookups = { minute, count: 0 };
+  lookups.count += 1;
+  return lookups.count <= WEBHOOK_KEY_LOOKUPS_PER_MINUTE;
 }
 
 function base64urlJson(part: string): Record<string, unknown> | null {
@@ -23,22 +36,28 @@ function base64urlJson(part: string): Record<string, unknown> | null {
   }
 }
 
-async function keyFor(kid: string, api: PlaidApi): Promise<JsonWebKey | null> {
+async function keyFor(kid: string, api: PlaidApi, now: Date): Promise<JsonWebKey | null> {
   const cached = keys.get(kid);
-  if (cached) return cached;
+  const fresh = cached && now.getTime() - cached.checkedAt < WEBHOOK_KEY_RECHECK_HOURS * 3_600_000;
+  if (cached && fresh) return cached.jwk;
+  // Plaid being unreachable, or busy, doesn't turn away a key it already vouched for.
+  if (!mayLookUp(now)) return cached?.jwk ?? null;
   try {
     const data = await plaidCall(api.webhookVerificationKeyGet({ key_id: kid }));
-    if (data.key.expired_at !== null) return null;
+    if (data.key.expired_at !== null) {
+      keys.delete(kid);
+      return null;
+    }
     const jwk: JsonWebKey = {
       kty: data.key.kty,
       crv: data.key.crv,
       x: data.key.x,
       y: data.key.y,
     };
-    keys.set(kid, jwk);
+    keys.set(kid, { jwk, checkedAt: now.getTime() });
     return jwk;
   } catch {
-    return null;
+    return cached?.jwk ?? null;
   }
 }
 
@@ -55,7 +74,7 @@ export async function verifyPlaidWebhook(
   const claims = base64urlJson(payloadPart);
   if (!header || !claims || header.alg !== "ES256" || typeof header.kid !== "string") return false;
 
-  const jwk = await keyFor(header.kid, api);
+  const jwk = await keyFor(header.kid, api, now);
   if (!jwk) return false;
   const signed = verify(
     "sha256",

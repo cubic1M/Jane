@@ -68,5 +68,12 @@ export const CRON_SYNC_BUDGET_MS = 120_000;
 // Webhooks signed longer ago than this are rejected as possible replays (Plaid's advice).
 export const WEBHOOK_MAX_AGE_SECONDS = 5 * 60;
 
+// A forged webhook names any key id it likes, and each new one is a call to Plaid before the
+// signature can be checked. Past this many a minute per server, an unknown id is refused without
+// asking; Plaid sends a refused webhook again later.
+export const WEBHOOK_KEY_LOOKUPS_PER_MINUTE = 30;
+// A key we hold is asked about again after this long, since Plaid can retire one.
+export const WEBHOOK_KEY_RECHECK_HOURS = 24;
+
 // Rates above this from Plaid are treated as missing rather than shown: 100% a year.
 export const MAX_APR_BPS = 10_000;
