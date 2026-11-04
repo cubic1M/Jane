@@ -25,7 +25,7 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "results" / "sng_bughunt"
-OURS = ("icm_tag", "icm_any", "icm_lite")
+OURS = ("icm_tag", "icm_any", "icm_lite", "icm_switch")
 
 
 def random_rules(rng):
