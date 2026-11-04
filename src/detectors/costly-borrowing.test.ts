@@ -50,6 +50,31 @@ describe("costly short-term borrowing, brought unasked", () => {
     expect(s.action.href).toBe("/loans/costly");
   });
 
+  // Debugger 11-04: $210 a month to TitleMax wasn't costly borrowing at all, and only a $60 payday
+  // fee was brought up beside it.
+  it("names a title loan as what it is, and counts its cost", () => {
+    const data = inputFor("debt");
+    const others = data.transactions.filter(
+      (t) => !/advance america|cash|payday/i.test(t.description),
+    );
+    const payment = (date: string) => ({
+      ...others[0],
+      date,
+      amountCents: 21_000,
+      description: "TITLEMAX OF NC TITLE LOAN PAYMENT",
+      pfc: "LOAN_PAYMENTS_PERSONAL_LOAN_PAYMENT",
+    });
+    const s = costly({
+      ...data,
+      transactions: [...others, payment("2026-08-10"), payment("2026-09-10")],
+    })!;
+    expect(s.title).toBe("Replace the title loan with something cheaper");
+    expect(s.headline).toMatch(/^Replace your title loan, save/);
+    expect(s.short).toMatch(/^Your costly loans cost about \$/);
+    expect(s.worthCents).toBeGreaterThan(0);
+    expect(s.confidence.reason).toMatch(/costly loan payments in \d+ months of data/);
+  });
+
   it("names a pay advance app when that's all there is", () => {
     const base = inputFor("renter");
     const checking = base.accounts.find((a) => a.type === "depository")!.id;

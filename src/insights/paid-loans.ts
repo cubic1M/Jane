@@ -2,18 +2,19 @@ import { PAID_LOAN_MIN_PAYMENTS, PAID_LOAN_RECENT_DAYS } from "@/config/debt";
 import { normalizeMerchant } from "@/data-sources/merchant";
 import { addDays, addMonths } from "@/lib/dates";
 
-// Loans seen only in what the person pays from checking: a student loan, a car loan or a
-// mortgage with no loan account on file (an upload person's usual case). Night QA 10-30: a
+// Loans seen only in what the person pays from checking: a student loan, a car loan, a mortgage
+// or a personal or title loan with no loan account on file (an upload person's usual case). Night QA 10-30: a
 // person paying Nelnet $212.40 a month read "No loans, cards or plans yet" on /loans. One per
 // lender and kind, from the latest payment; what's owed isn't known until the person types it.
 // The debt book leaves out a kind already on file as a loan account. Pure.
 
-export type PaidLoanKind = "student" | "auto" | "mortgage";
+export type PaidLoanKind = "student" | "auto" | "mortgage" | "loan";
 
 export const PAID_LOAN_CATEGORIES: Readonly<Record<string, PaidLoanKind>> = {
   LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT: "student",
   LOAN_PAYMENTS_CAR_PAYMENT: "auto",
   LOAN_PAYMENTS_MORTGAGE_PAYMENT: "mortgage",
+  LOAN_PAYMENTS_PERSONAL_LOAN_PAYMENT: "loan",
 };
 
 export type PaidLoanPayment = {
