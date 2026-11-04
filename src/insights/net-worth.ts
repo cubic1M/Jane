@@ -34,6 +34,8 @@ export type NetWorth = {
   // Whether anything counted has a value: false when every balance is unknown (statements
   // without a balance column) and nothing owned is entered, so netCents' 0 means "not known".
   known: boolean;
+  // Nothing but cards and loans on file: what the person has isn't $0, it's not known.
+  onlyDebts: boolean;
 };
 
 export type Unbalanced = { name: string; card: boolean };
@@ -70,8 +72,18 @@ export function netWorth(
     missing: unbalanced.map((u) => u.name).sort(),
     unbalanced: unbalanced.sort((a, b) => a.name.localeCompare(b.name)),
     known: accounts.length > unbalanced.length || owned.length > 0 || cryptoCents > 0,
+    onlyDebts:
+      accounts.length > 0 &&
+      accounts.every((a) => isDebt(a.type)) &&
+      owned.length === 0 &&
+      cryptoCents === 0,
   };
 }
+
+// Said beside the figure when only a card or loan is on file (debugger 11-04: "You have $0.00",
+// paying a card $2,900 a month from an account Jane has never seen).
+export const NO_BANK_SEEN =
+  "Not counting any bank account: Jane has seen what you owe, not the account you pay it from.";
 
 export type Snapshot = { accountId: string; date: string; balanceCents: number };
 
