@@ -64,11 +64,13 @@ PARAMS = dict(
                          #   count, never tighter than range_k); the exact-ICM call decides. 0 = off.
                          #   2 validated on fresh seeds (results/sng_rscall_validate_*.md: 11 cells, mean
                          #   +1.6, field 4 +2.2*, field 5 +4.7*, field 6 +5.1*); 3 = day-of choice vs light re-shovers
-    rfi_lock=0.0,        # > 0: switch to rfi_mode=2 ranges for the rest of the table once >= rfi_lock of my first
-    rfi_lock_min=20,     #   rfi_lock_min opens were re-raised (fields 6/7: 29-49%, static fields 13-23%)
+    rfi_lock=0.3,        # > 0: switch to rfi_mode=2 ranges for the rest of the table once >= rfi_lock of my first
+    rfi_lock_min=20,     #   rfi_lock_min opens were re-raised (fields 6/7: 29-49%, static fields 13-23%).
+                         #   0.3 (with rfi_scale 1.3) validated on fresh seeds: 13 cells, mean +0.9, field 6 +4.2*,
+                         #   field 7 +3.7*, mirror +2.0*, worst field 3 -2.0 (n.s.): results/sng_rfilock_validate_*.md
     rfi_mode=0,          # 1 (or 2: only on a full 52-card deck with not-top-heavy payouts): first-in opens
                          #   (above push_bb, 3+ players dealt in) by position: open if the hand
-    rfi_scale=1.0,       #   is in the top rfi_scale x RFI[k] / steal factor of hands (k = players behind + limpers),
+    rfi_scale=1.3,       #   is in the top rfi_scale x RFI[k] / steal factor of hands (k = players behind + limpers),
                          #   instead of equity >= open_mult / (k + 1), which opens ~34% from EVERY position
                          #   (f2_shark-style ranges: 40% with 1 behind ... 11% with 7 behind). 2-card games only.
     two_card=1,          # icm_any only: on 2-card games without discards, use icm_tag's hold'em switches

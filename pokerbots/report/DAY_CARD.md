@@ -123,7 +123,7 @@ opens got re-raised** (opens re-raised / opens):
 - **≥ 35%** (fields 6 and 7: 29-49%; there we finish last at 18-20 per table) **and the re-raisers are
   competent** (they are not maniacs who also shove junk): resubmit with `open_mult=1.6` (field 7 +7.7*,
   field 6 +6.8*, mirror +10.4*; but field 3 −11.5*, all3 −9.1*, field 5 −7.3*: only when the read is clear).
-  **Better: `rfi_mode=2;rfi_scale=1.3`** (position-based opening ranges, on only for a 52-card deck and
+  (The default now does this by itself after 20 attacked opens: `rfi_lock=0.3`.) **Stronger, from hand 1: `rfi_mode=2;rfi_scale=1.3`** (position-based opening ranges, on only for a 52-card deck and
   not-top-heavy payouts): field 6 +10.5*, field 7 +10.2*, mirror +13.4*, field 4 +5.6*, but field 5 −9.6*
   (tight static fields that fold to steals): same condition, a clear "our opens get attacked" read.
   A one-way in-table lock (`lock_mult`) could not tell strong attackers from maniacs (default field −5.1*).
@@ -195,4 +195,5 @@ loop (tune on the real rules, validate, resubmit) matters.
 - **Heads-up, open and defend much wider** (open bar 0.6/2, a raiser = 2 random hands): +2 to +12 per heads-up table.
 - Surviving pays: even an always-fold bot scores mid-table. Busting early is the costly mistake.
 - **Call a re-shove of your open from a light re-raiser:** if my open is re-raised all-in, the shover holds the top 2 × (their re-raise rate vs one open) of hands, and the exact-ICM call decides (+1.6 per table over 11 fields, +2.2 field 4, +4.7 field 5, +5.1 field 6; we used to fold 99% of those at ≤ 15 bb). Hold'em bot only: on the discard presets it was −1.2, so `icm_any` keeps it off.
+- **Open tighter by position once your opens are attacked:** our first-in rule opens ~34% from every seat; after 20 opens, if ≥ 30% were re-raised (fields 6/7: 29-49%, static fields 13-23%), the bot switches for the rest of the table to position ranges (40% ... 11% by players behind, x 1.3); full 52-card deck and not-top-heavy payouts only (`rfi_lock=0.3`: +4.2* field 6, +3.7* field 7, 13-cell mean +0.9, no significant loss).
 - **These hold on other card rules too** (Omaha 4, PLO5, short deck, pineapple, 3-street, NLHE20): switching any of them off never won significantly; the short-shove read and the re-shove help most (−1.1 / −1.2 per table off). No variant needs its own setting for them. On slow variants, paired tables differ by ~±1 per table from timing alone: trust a day-of A/B there only beyond ~2.

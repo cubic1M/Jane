@@ -114,6 +114,12 @@ Short deck: AA ≈ 0.76. A draw variant: AA ≈ 0.80, weak hands 0.38–0.43.
 >     factor − 1)); else check or fold. (Half the steal factor: +1.45 per table.)
 >   - Else: open-raise to (2 + limpers) bb if equity(k) ≥ 1.07/(k+1) × steal factor;
 >     else check or fold.
+>   - **Attacked-opens lock** (+4 per table vs fields that re-raise wide openers): count my
+>     first-in opens and how many got re-raised. Once I have 20+ opens and ≥ 30% were re-raised
+>     (and the deck has all 52 cards and 1st does not take most of the points), for the rest of
+>     the table open instead only if my hand is in the top 1.3 × P(k+limpers) / steal factor of
+>     hands (the percentile table), P = 40, 33, 23, 17, 14, 12, 11% for 1..7 players behind.
+>     Never switch back.
 > * **Facing a raise.**
 >   - **Re-shove over wide openers** (+6.7 per table in all): one open, no callers, opener
 >     not all-in, eff ≤ 28 bb: all-in if my top share ≤ max(0.03, the opener's open rate × m),

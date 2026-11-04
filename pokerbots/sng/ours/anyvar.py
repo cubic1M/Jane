@@ -305,7 +305,8 @@ class IcmAny(IcmTag):
     # draw hold'em / discard-to-board / Omaha discard-2, results/sng_anyvar_behindk.md)
     # rs_call off: on the discard presets rs_call=2 scored -1.2 / -2.2 / -0.4 / -0.9 (none significant,
     # results/sng_anyvar_rscall_1.md); it was validated together with the exact-ICM call, which is off here
-    OVERRIDES = dict(hu_open_mult=0.0, hu_range_k=0.0, icm_call=0, bet_discount=0.6, rs_call=0.0)
+    # rfi_lock off: it needs the 2-card percentile table, which the flat bundle (icm_any's home) does not carry
+    OVERRIDES = dict(hu_open_mult=0.0, hu_range_k=0.0, icm_call=0, bet_discount=0.6, rs_call=0.0, rfi_lock=0.0)
     # 2-card games without discards (what a restrictive kit's flat bundle plays with icm_any instead of
     # icm_tag): icm_tag's hold'em switches. Under kit-4 rules they recovered icm_tag's whole edge over
     # icm_any (+3.1 per table on 4 fields, results/sng_planA_gap.md). Explicit kwargs still win.

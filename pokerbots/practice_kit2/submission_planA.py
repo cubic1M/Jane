@@ -425,7 +425,7 @@ def allin_call_need(my_total, my_committed, shover, totals, committed, pays, bou
     if win - lose <= 1e-12:
         return None
     return (fold - lose) / (win - lose)
-PARAMS = dict(open_mult=1.07, open_size=2.0, push_bb=9.0, push_mult=1.0, range_k=4.0, call_margin=0.06, threebet_eq=0.62, threebet_rel=2.6, risk=0.1, value_eq=0.62, cbet=0.55, bet_frac=0.65, bet_discount=0.5, steal_bonus=0.55, steal_max_behind=5, steal_sym=0.5, reshove_bb=24.0, read_alpha=0.5, base_pfr=0.12, raiser_discount=1.0, raise_eq=99.0, bluff_bonus=0.4, bluff_max_opp=2, pf_chart=0, pf_max_bb=15.0, pf_file='', cap_risk=0.0, cap_window=25, steal_floor=0.0, resteal_rel=1.0, resteal_read=6.0, resteal_rel_bb=28.0, rs_call=2.0, rfi_mode=0, rfi_scale=1.0, two_card=1, push_steal=0.5, behind_k=0.2, cbet_size=0.5, cbet_read=0.0, bluff_size=0.5, hu_risk=1.0, cap_fade=0, risk_payout=1, hu_open_mult=0.6, hu_range_k=2.0, sh_open_mult=0.0, sh_range_k=0.0, icm_call=1, icm_margin=0.02, pev=0, pev_bb=15.0, pev_margin=0.0, pev_loose=1.0, pev_risk=1.0, resteal=0, resteal_lo=10.0, resteal_hi=25.0, resteal_margin=0.0, resteal_cw=0.6, resteal_wake=0.3, resteal_risk=0.25, range_map=0.65, rk_floor=1.2, agg_alpha=0.0, base_agg=0.35, agg_raise=99.0, agg_seat=0.6, station_size=0.0, thin_value=0.0)
+PARAMS = dict(open_mult=1.07, open_size=2.0, push_bb=9.0, push_mult=1.0, range_k=4.0, call_margin=0.06, threebet_eq=0.62, threebet_rel=2.6, risk=0.1, value_eq=0.62, cbet=0.55, bet_frac=0.65, bet_discount=0.5, steal_bonus=0.55, steal_max_behind=5, steal_sym=0.5, reshove_bb=24.0, read_alpha=0.5, base_pfr=0.12, raiser_discount=1.0, raise_eq=99.0, bluff_bonus=0.4, bluff_max_opp=2, pf_chart=0, pf_max_bb=15.0, pf_file='', cap_risk=0.0, cap_window=25, steal_floor=0.0, resteal_rel=1.0, resteal_read=6.0, resteal_rel_bb=28.0, rs_call=2.0, rfi_lock=0.3, rfi_lock_min=20, rfi_mode=0, rfi_scale=1.3, two_card=1, push_steal=0.5, behind_k=0.2, cbet_size=0.5, cbet_read=0.0, bluff_size=0.5, hu_risk=1.0, cap_fade=0, risk_payout=1, hu_open_mult=0.6, hu_range_k=2.0, sh_open_mult=0.0, sh_range_k=0.0, icm_call=1, icm_margin=0.02, pev=0, pev_bb=15.0, pev_margin=0.0, pev_loose=1.0, pev_risk=1.0, resteal=0, resteal_lo=10.0, resteal_hi=25.0, resteal_margin=0.0, resteal_cw=0.6, resteal_wake=0.3, resteal_risk=0.25, range_map=0.65, rk_floor=1.2, agg_alpha=0.0, base_agg=0.35, agg_raise=99.0, agg_seat=0.6, station_size=0.0, thin_value=0.0)
 def payout_risk_scale(payouts):
     pay = [float(x) for x in payouts]
     if len(pay) < 2:
@@ -482,6 +482,16 @@ class IcmTag:
                 self.risk_scale = payout_risk_scale(tuple(pays)[:getattr(rules, 'num_players', len(pays))])
             except Exception:
                 self.risk_scale = 1.0
+        rm = self.p['rfi_mode']
+        flat = 1.0
+        if pays:
+            try:
+                flat = payout_risk_scale(tuple(pays)[:getattr(rules, 'num_players', len(pays))])
+            except Exception:
+                flat = 1.0
+        self.rfi_ok2 = len(getattr(self.spec, 'deck_ranks', ())) == 13 and flat >= 0.5
+        self.rfi_on = bool(rm == 1 or (rm == 2 and self.rfi_ok2))
+        self.my_opens = self.my_opens_rr = 0
         self.chart = None
         if self.p['pf_chart']:
             pass
@@ -537,6 +547,12 @@ class IcmTag:
                 self.o3_seen[op] += 1
                 if nxt[2] == 'fold':
                     self.o3_fold[op] += 1
+        if rz and pre3[rz[0]][0] == self.seat:
+            self.my_opens += 1
+            if len(rz) >= 2:
+                self.my_opens_rr += 1
+            if self.p['rfi_lock'] > 0 and (not self.rfi_on) and self.rfi_ok2 and (self.my_opens >= self.p['rfi_lock_min']) and (self.my_opens_rr >= self.p['rfi_lock'] * self.my_opens):
+                self.rfi_on = True
         if rz:
             op, end = (pre3[rz[0]][0], rz[1] if len(rz) >= 2 else len(pre3) - 1)
             done = {op}
@@ -755,7 +771,7 @@ class IcmTag:
                 if eq >= pbar and lg.can_raise:
                     return RaiseTo(lg.max_raise_to)
                 return lg.passive() if lg.can_check else Fold()
-            if p['rfi_mode'] and self._pct is not None and (not hu) and lg.can_raise:
+            if self.rfi_on and self._pct is not None and (not hu) and lg.can_raise:
                 top = 1.0 - bisect.bisect_left(self._pct, self._eq(obs, 1)) / len(self._pct)
                 ok = top <= min(0.95, _RFI[min(max(k + limpers, 1), 7)] * p['rfi_scale'] / max(sf, 0.05))
             else:
@@ -1011,7 +1027,7 @@ _STRENGTH: dict = {}
 class IcmAny(IcmTag):
     name = 'icm_any'
     handles_discards = True
-    OVERRIDES = dict(hu_open_mult=0.0, hu_range_k=0.0, icm_call=0, bet_discount=0.6, rs_call=0.0)
+    OVERRIDES = dict(hu_open_mult=0.0, hu_range_k=0.0, icm_call=0, bet_discount=0.6, rs_call=0.0, rfi_lock=0.0)
     TWO_CARD = dict(hu_open_mult=0.6, hu_range_k=2.0, icm_call=1, bet_discount=0.5, rs_call=2.0)
 
     def __init__(self, **kw):

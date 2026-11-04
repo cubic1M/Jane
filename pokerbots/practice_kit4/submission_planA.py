@@ -183,7 +183,7 @@ class Ctx:
   self.exact = spec.hole_usage == 'exactly'
   self.e = int(spec.hole_exact) if self.exact else 0
   self.order = tuple(spec.category_order)
-  cv = {bj: i + 1 for i, bj in enumerate(self.order)}
+  cv = {bi: i + 1 for i, bi in enumerate(self.order)}
   self.cv = cv
   self.c_hi, self.c_pr, self.c_2p, self.c_tr, self.c_st, self.c_fl, self.c_fh, self.c_q, self.c_sf = (cv[n] for n in CATS)
   rk = self.ranks
@@ -198,19 +198,19 @@ class Ctx:
   au.sort(key=lambda x: -x[1])
   self.windows = au
   av = [-1] * _NM
-  bh = [0] * _NM
+  bd = [0] * _NM
   for m in range(_NM):
    st, mx = (-1, 0)
-   for wm, bd in au:
-    if m & wm == wm and bd > st:
-     st = bd
+   for wm, bf in au:
+    if m & wm == wm and bf > st:
+     st = bf
     c = (m & wm).bit_count()
     if c > mx:
      mx = c
    av[m] = st
-   bh[m] = mx
+   bd[m] = mx
   self.stop = av
-  self.swin = bh
+  self.swin = bd
   fl = [0] * _NM
   for m in range(_NM):
    if m.bit_count() >= 5:
@@ -219,11 +219,11 @@ class Ctx:
      v = max(v, self.c_sf << 20 | av[m] << 16)
     fl[m] = v
   self.flush_tbl = fl
-  ba, self.street_of_nb = (0, {})
+  aw, self.street_of_nb = (0, {})
   for i, n in enumerate(spec.board_cards_per_street):
-   ba += n
-   self.street_of_nb[ba] = i
-  self.total_board = ba
+   aw += n
+   self.street_of_nb[aw] = i
+  self.total_board = aw
   self.need_b = 5 - self.e if self.exact else max(0, 5 - self.h)
   self.sd_cap = 2 if self.h <= 2 else 4
   if self.exact:
@@ -236,11 +236,11 @@ class Ctx:
   for bl in combinations_with_replacement(self.ranks, 5):
    if max((bl.count(r) for r in bl)) > 4:
     continue
-   br = [r << 2 | i % 4 for i, r in enumerate(bl)]
+   bq = [r << 2 | i % 4 for i, r in enumerate(bl)]
    p = 1
    for r in bl:
     p *= PRIMES[r]
-   t[p] = eval_any(self, br)[0]
+   t[p] = eval_any(self, bq)[0]
   return t
 
  def combo_idx(self, n, k):
@@ -257,14 +257,14 @@ def get_ctx(spec):
   c = _CTX[bw] = Ctx(spec)
  return c
 def eval_any(ctx, cards):
- cl = [0] * 13
+ cr = [0] * 13
  sm = [0, 0, 0, 0]
  S = P = T = Q = 0
  for c in cards:
   r = c >> 2
   b = 1 << r
-  n = cl[r] + 1
-  cl[r] = n
+  n = cr[r] + 1
+  cr[r] = n
   if n == 1:
    S |= b
   elif n == 2:
@@ -296,8 +296,8 @@ def eval_any(ctx, cards):
    by, fs = (v, -1)
   P2 = P & ~(1 << pr)
   if P2:
-   cs = HIGH[P2]
-   v = ctx.c_2p << 20 | pr << 16 | cs << 12 | HIGH0[Sx & ~(1 << cs)] << 8
+   ck = HIGH[P2]
+   v = ctx.c_2p << 20 | pr << 16 | ck << 12 | HIGH0[Sx & ~(1 << ck)] << 8
    if v > by:
     by, fs = (v, -1)
   if T:
@@ -319,18 +319,18 @@ def eval_any(ctx, cards):
 def eval_exact(ctx, hole, board, hs=None, bs=None):
  e = ctx.e
  dc = 5 - e
- df = [PRIMES[c >> 2] for c in hole]
- da = [PRIMES[c >> 2] for c in board]
+ dh = [PRIMES[c >> 2] for c in hole]
+ db = [PRIMES[c >> 2] for c in board]
  if e == 2:
-  hp = {df[i] * df[j] for i, j in ctx.combo_idx(len(hole), 2)}
+  hp = {dh[i] * dh[j] for i, j in ctx.combo_idx(len(hole), 2)}
  else:
-  hp = {prod([df[i] for i in dd]) for dd in ctx.combo_idx(len(hole), e)}
+  hp = {prod([dh[i] for i in di]) for di in ctx.combo_idx(len(hole), e)}
  if dc == 3:
-  bp = {da[i] * da[j] * da[k] for i, j, k in ctx.combo_idx(len(board), 3)}
+  bp = {db[i] * db[j] * db[k] for i, j, k in ctx.combo_idx(len(board), 3)}
  else:
-  bp = {prod([da[i] for i in dd]) for dd in ctx.combo_idx(len(board), dc)}
+  bp = {prod([db[i] for i in di]) for di in ctx.combo_idx(len(board), dc)}
  r5 = ctx.r5
- de = max([r5[a * b] for a in hp for b in bp])
+ dd = max([r5[a * b] for a in hp for b in bp])
  fs = -1
  if hs is None:
   hs = [0, 0, 0, 0]
@@ -343,15 +343,15 @@ def eval_exact(ctx, hole, board, hs=None, bs=None):
   hm, bm = (hs[s], bs[s])
   if bm.bit_count() >= dc and hm.bit_count() >= e:
    v = ctx.c_fl << 20 | _pack(sorted(_bits_desc(hm)[:e] + _bits_desc(bm)[:dc], reverse=True))
-   for wm, dq in ctx.windows:
+   for wm, dr in ctx.windows:
     hw = hm & wm
-    dp = wm & ~bm
-    if dp & ~hw == 0 and dp.bit_count() <= e <= hw.bit_count():
-     v = max(v, ctx.c_sf << 20 | dq << 16)
+    dm = wm & ~bm
+    if dm & ~hw == 0 and dm.bit_count() <= e <= hw.bit_count():
+     v = max(v, ctx.c_sf << 20 | dr << 16)
      break
-   if v > de:
-    de, fs = (v, s)
- return (de, fs)
+   if v > dd:
+    dd, fs = (v, s)
+ return (dd, fs)
 def evaluate(ctx, hole, board):
  if ctx.exact and len(board) >= 5 - ctx.e and (len(hole) >= ctx.e):
   return eval_exact(ctx, hole, board)
@@ -373,12 +373,12 @@ def _masks(k):
  t = _MASKS.get(k)
  if t is None:
   dw = 1 << k
-  dz = [[i for i in range(k) if m >> i & 1] for m in range(dw)]
-  ea = [0] * dw
+  dy = [[i for i in range(k) if m >> i & 1] for m in range(dw)]
+  dz = [0] * dw
   for m in range(1, dw):
-   ea[m] = (m & -m).bit_length() - 1
-  eb = [len(b) for b in dz]
-  t = _MASKS[k] = (dw, dz, ea, eb)
+   dz[m] = (m & -m).bit_length() - 1
+  ec = [len(b) for b in dy]
+  t = _MASKS[k] = (dw, dy, dz, ec)
  return t
 def value(my, others, pays):
  others = [float(s) for s in others if s > 0]
@@ -402,30 +402,30 @@ def value(my, others, pays):
   f[m] = v / eo
  return f[ef - 1]
 def allin_call_need(my_total, my_committed, shover, totals, committed, pays, bounty=0.0):
- ep = totals[shover]
- et = min(my_total, ep)
- ew = sum((c for s, c in enumerate(committed) if c and s != shover and (totals[s] is not None)))
- er = [t - c for s, t in enumerate(totals) if t is not None and s != shover for c in (committed[s],)]
- er = [x for x in er if x > 0]
- ex = value(my_total + et + ew, er + [ep - et], pays)
- if bounty and my_total >= ep:
-  ex += bounty
- ey = value(my_total - et, er + [ep + et + ew], pays)
- fb = value(my_total - my_committed, er + [ep + my_committed + ew], pays)
- if ex - ey <= 1e-12:
+ es = totals[shover]
+ et = min(my_total, es)
+ ex = sum((c for s, c in enumerate(committed) if c and s != shover and (totals[s] is not None)))
+ ep = [t - c for s, t in enumerate(totals) if t is not None and s != shover for c in (committed[s],)]
+ ep = [x for x in ep if x > 0]
+ ew = value(my_total + et + ex, ep + [es - et], pays)
+ if bounty and my_total >= es:
+  ew += bounty
+ ey = value(my_total - et, ep + [es + et + ex], pays)
+ fb = value(my_total - my_committed, ep + [es + my_committed + ex], pays)
+ if ew - ey <= 1e-12:
   return None
- return (fb - ey) / (ex - ey)
-PARAMS = dict(open_mult=1.07, open_size=2.0, push_bb=9.0, push_mult=1.0, range_k=4.0, call_margin=0.06, threebet_eq=0.62, threebet_rel=2.6, risk=0.1, value_eq=0.62, cbet=0.55, bet_frac=0.65, bet_discount=0.5, steal_bonus=0.55, steal_max_behind=5, steal_sym=0.5, reshove_bb=24.0, read_alpha=0.5, base_pfr=0.12, raiser_discount=1.0, raise_eq=99.0, bluff_bonus=0.4, bluff_max_opp=2, pf_chart=0, pf_max_bb=15.0, pf_file='', cap_risk=0.0, cap_window=25, steal_floor=0.0, resteal_rel=1.0, resteal_read=6.0, resteal_rel_bb=28.0, rs_call=2.0, rfi_mode=0, rfi_scale=1.0, two_card=1, push_steal=0.5, behind_k=0.2, cbet_size=0.5, cbet_read=0.0, bluff_size=0.5, hu_risk=1.0, cap_fade=0, risk_payout=1, hu_open_mult=0.6, hu_range_k=2.0, sh_open_mult=0.0, sh_range_k=0.0, icm_call=1, icm_margin=0.02, pev=0, pev_bb=15.0, pev_margin=0.0, pev_loose=1.0, pev_risk=1.0, resteal=0, resteal_lo=10.0, resteal_hi=25.0, resteal_margin=0.0, resteal_cw=0.6, resteal_wake=0.3, resteal_risk=0.25, range_map=0.65, rk_floor=1.2, agg_alpha=0.0, base_agg=0.35, agg_raise=99.0, agg_seat=0.6, station_size=0.0, thin_value=0.0)
+ return (fb - ey) / (ew - ey)
+PARAMS = dict(open_mult=1.07, open_size=2.0, push_bb=9.0, push_mult=1.0, range_k=4.0, call_margin=0.06, threebet_eq=0.62, threebet_rel=2.6, risk=0.1, value_eq=0.62, cbet=0.55, bet_frac=0.65, bet_discount=0.5, steal_bonus=0.55, steal_max_behind=5, steal_sym=0.5, reshove_bb=24.0, read_alpha=0.5, base_pfr=0.12, raiser_discount=1.0, raise_eq=99.0, bluff_bonus=0.4, bluff_max_opp=2, pf_chart=0, pf_max_bb=15.0, pf_file='', cap_risk=0.0, cap_window=25, steal_floor=0.0, resteal_rel=1.0, resteal_read=6.0, resteal_rel_bb=28.0, rs_call=2.0, rfi_lock=0.3, rfi_lock_min=20, rfi_mode=0, rfi_scale=1.3, two_card=1, push_steal=0.5, behind_k=0.2, cbet_size=0.5, cbet_read=0.0, bluff_size=0.5, hu_risk=1.0, cap_fade=0, risk_payout=1, hu_open_mult=0.6, hu_range_k=2.0, sh_open_mult=0.0, sh_range_k=0.0, icm_call=1, icm_margin=0.02, pev=0, pev_bb=15.0, pev_margin=0.0, pev_loose=1.0, pev_risk=1.0, resteal=0, resteal_lo=10.0, resteal_hi=25.0, resteal_margin=0.0, resteal_cw=0.6, resteal_wake=0.3, resteal_risk=0.25, range_map=0.65, rk_floor=1.2, agg_alpha=0.0, base_agg=0.35, agg_raise=99.0, agg_seat=0.6, station_size=0.0, thin_value=0.0)
 def payout_risk_scale(payouts):
  fc = [float(x) for x in payouts]
  if len(fc) < 2:
   return 1.0
  lo = min(fc)
- ff = [x - lo for x in fc]
- fg = sum(ff)
- if fg <= 0:
+ fg = [x - lo for x in fc]
+ ff = sum(fg)
+ if ff <= 0:
   return 1.0
- fi = 1.0 - max(ff) / fg
+ fi = 1.0 - max(fg) / ff
  return max(0.0, min(1.0, fi / 0.5))
 _PCT: dict = {}
 _RFI = {1: 0.4, 2: 0.33, 3: 0.23, 4: 0.17, 5: 0.14, 6: 0.12, 7: 0.11}
@@ -472,6 +472,16 @@ class IcmTag:
     self.risk_scale = payout_risk_scale(tuple(fq)[:getattr(rules, 'num_players', len(fq))])
    except Exception:
     self.risk_scale = 1.0
+  rm = self.p['rfi_mode']
+  fu = 1.0
+  if fq:
+   try:
+    fu = payout_risk_scale(tuple(fq)[:getattr(rules, 'num_players', len(fq))])
+   except Exception:
+    fu = 1.0
+  self.rfi_ok2 = len(getattr(self.spec, 'deck_ranks', ())) == 13 and fu >= 0.5
+  self.rfi_on = bool(rm == 1 or (rm == 2 and self.rfi_ok2))
+  self.my_opens = self.my_opens_rr = 0
   self.chart = None
   if self.p['pf_chart']:
    pass
@@ -492,66 +502,72 @@ class IcmTag:
   self._hand = -1
 
  def end_hand(self, info):
-  ga = info['history']
-  gm = {h[0] for h in ga if h[1] == 0}
-  gq = {h[0] for h in ga if h[1] == 0 and h[2] == 'raise'}
-  for s in gm:
+  gc = info['history']
+  gr = {h[0] for h in gc if h[1] == 0}
+  gs = {h[0] for h in gc if h[1] == 0 and h[2] == 'raise'}
+  for s in gr:
    self.dealt[s] += 1
-   if s in gq:
+   if s in gs:
     self.pre_raises[s] += 1
-  for st in sorted({h[1] for h in ga if h[1] > 0}):
-   gd = [h for h in ga if h[1] == st]
-   ge = next((i for i, h in enumerate(gd) if h[2] == 'raise'), None)
-   if ge is None:
-    for sv, _, fz, _ in gd:
-     if fz == 'check':
+  for st in sorted({h[1] for h in gc if h[1] > 0}):
+   gf = [h for h in gc if h[1] == st]
+   gg = next((i for i, h in enumerate(gf) if h[2] == 'raise'), None)
+   if gg is None:
+    for sv, _, ga, _ in gf:
+     if ga == 'check':
       self.bet_opp[sv] += 1
     continue
-   for sv, _, fz, _ in gd[:ge]:
+   for sv, _, ga, _ in gf[:gg]:
     self.bet_opp[sv] += 1
-   gh = gd[ge][0]
-   self.bet_opp[gh] += 1
-   self.bet_made[gh] += 1
-   for sv, _, fz, _ in gd[ge + 1:]:
-    if sv == gh or fz == 'raise':
+   gk = gf[gg][0]
+   self.bet_opp[gk] += 1
+   self.bet_made[gk] += 1
+   for sv, _, ga, _ in gf[gg + 1:]:
+    if sv == gk or ga == 'raise':
      break
     self.pf_faced[sv] += 1
-    if fz == 'fold':
+    if ga == 'fold':
      self.pf_fold[sv] += 1
-  fw = [h for h in ga if h[1] == 0 and h[2] != 'post']
-  rz = [i for i, h in enumerate(fw) if h[2] == 'raise']
-  if len(rz) >= 2 and fw[rz[1]][0] != fw[rz[0]][0]:
-   op = fw[rz[0]][0]
-   gl = next((h for h in fw[rz[1] + 1:] if h[0] == op), None)
-   if gl is not None:
+  fy = [h for h in gc if h[1] == 0 and h[2] != 'post']
+  rz = [i for i, h in enumerate(fy) if h[2] == 'raise']
+  if len(rz) >= 2 and fy[rz[1]][0] != fy[rz[0]][0]:
+   op = fy[rz[0]][0]
+   gn = next((h for h in fy[rz[1] + 1:] if h[0] == op), None)
+   if gn is not None:
     self.o3_seen[op] += 1
-    if gl[2] == 'fold':
+    if gn[2] == 'fold':
      self.o3_fold[op] += 1
+  if rz and fy[rz[0]][0] == self.seat:
+   self.my_opens += 1
+   if len(rz) >= 2:
+    self.my_opens_rr += 1
+   if self.p['rfi_lock'] > 0 and (not self.rfi_on) and self.rfi_ok2 and (self.my_opens >= self.p['rfi_lock_min']) and (self.my_opens_rr >= self.p['rfi_lock'] * self.my_opens):
+    self.rfi_on = True
   if rz:
-   op, gp = (fw[rz[0]][0], rz[1] if len(rz) >= 2 else len(fw) - 1)
-   gk = {op}
-   for h in fw[rz[0] + 1:gp + 1]:
-    if h[0] not in gk:
-     gk.add(h[0])
+   op, gp = (fy[rz[0]][0], rz[1] if len(rz) >= 2 else len(fy) - 1)
+   gl = {op}
+   for h in fy[rz[0] + 1:gp + 1]:
+    if h[0] not in gl:
+     gl.add(h[0])
      self.t3_seen[h[0]] += 1
      if h[2] == 'raise':
       self.t3_made[h[0]] += 1
-  gi = [h for h in ga if h[1] == 0 and h[2] != 'post']
-  gg = [h for h in gi if h[2] == 'raise']
-  if len(gg) >= 1:
-   go = gg[0][0]
-   gn = gi[gi.index(gg[0]) + 1:]
-   for s, st, fz, gr in gn:
+  gi = [h for h in gc if h[1] == 0 and h[2] != 'post']
+  gh = [h for h in gi if h[2] == 'raise']
+  if len(gh) >= 1:
+   go = gh[0][0]
+   gq = gi[gi.index(gh[0]) + 1:]
+   for s, st, ga, gt in gq:
     if s == go:
      break
     self.steal_seen[s] += 1
-    if fz == 'fold':
+    if ga == 'fold':
      self.steal_fold[s] += 1
 
  def _fold_rate(self, seats):
-  gt = sum((self.steal_fold[s] for s in seats)) + 1.0
-  gu = sum((self.steal_seen[s] for s in seats)) + 2.0
-  return gt / gu
+  gw = sum((self.steal_fold[s] for s in seats)) + 1.0
+  gv = sum((self.steal_seen[s] for s in seats)) + 2.0
+  return gw / gv
 
  def _eq(self, obs, k):
   k = max(1, min(7, int(round(k))))
@@ -561,18 +577,18 @@ class IcmTag:
   lo = max(1, min(7, int(kf)))
   hi = min(7, lo + 1)
   w = min(1.0, max(0.0, kf - lo))
-  gy = self._eq(obs, lo)
-  return gy if w == 0 or hi == lo else (1 - w) * gy + w * self._eq(obs, hi)
+  ha = self._eq(obs, lo)
+  return ha if w == 0 or hi == lo else (1 - w) * ha + w * self._eq(obs, hi)
 
  def _risk(self, obs):
   hb = obs.players_left
   r = self.p['risk'] * self.risk_scale * (1.0 + (8 - hb) * 0.15) if hb > 1 else 0.0
   hl = getattr(obs, 'hands_left', None)
   if self.p['cap_risk'] and hl is not None and (hl < self.p['cap_window']) and (hb > 1):
-   he = [sv.stack + sv.committed for sv in obs.seats if sv.in_hand]
-   hf = sum(he) / len(he)
-   hg = obs.my_stack + obs.seats[obs.seat].committed
-   r += self.p['cap_risk'] * (hg / hf - 1.0)
+   hg = [sv.stack + sv.committed for sv in obs.seats if sv.in_hand]
+   hj = sum(hg) / len(hg)
+   hh = obs.my_stack + obs.seats[obs.seat].committed
+   r += self.p['cap_risk'] * (hh / hj - 1.0)
   if hb == 2:
    r *= self.p['hu_risk']
   if self.p['cap_fade'] > 0 and hl is not None:
@@ -580,16 +596,16 @@ class IcmTag:
   return max(0.0, r)
 
  def _icm_need(self, obs, r):
-  hn = getattr(self.rules, 'payouts', None)
-  if not hn:
+  hq = getattr(self.rules, 'payouts', None)
+  if not hq:
    return None
-  hj = obs.seats
-  hq = [None if s == obs.seat or not sv.in_hand else sv.stack + sv.committed for s, sv in enumerate(hj)]
-  ht = [0 if s == obs.seat or not sv.in_hand else sv.committed for s, sv in enumerate(hj)]
-  hr = sum((1 for sv in hj if sv.in_hand))
-  me = hj[obs.seat]
+  hn = obs.seats
+  hx = [None if s == obs.seat or not sv.in_hand else sv.stack + sv.committed for s, sv in enumerate(hn)]
+  hv = [0 if s == obs.seat or not sv.in_hand else sv.committed for s, sv in enumerate(hn)]
+  ht = sum((1 for sv in hn if sv.in_hand))
+  me = hn[obs.seat]
   try:
-   return allin_call_need(obs.my_stack + me.committed, me.committed, r, hq, ht, tuple(hn)[:hr], getattr(self.rules, 'bounty', 0.0))
+   return allin_call_need(obs.my_stack + me.committed, me.committed, r, hx, hv, tuple(hq)[:ht], getattr(self.rules, 'bounty', 0.0))
   except Exception:
    return None
  _CALL_W = ((3, 0.75), (5, 0.55), (8, 0.4), (10, 0.33), (12, 0.28), (15, 0.22), (20, 0.16), (30, 0.11))
@@ -609,54 +625,54 @@ class IcmTag:
 
  def _push_ev(self, obs, behind):
   p = self.p
-  it = obs.seats
+  iu = obs.seats
   bb = obs.big_blind
   if not behind:
    return None
-  il = obs.my_stack + obs.my_bet
-  ij = obs.pot
-  iu = self._risk(obs) * p['pev_risk']
-  ev, ic = (0.0, 1.0)
+  it = obs.my_stack + obs.my_bet
+  ii = obs.pot
+  iw = self._risk(obs) * p['pev_risk']
+  ev, ik = (0.0, 1.0)
   for j in behind:
-   sj = it[j]
-   io = sj.stack + sj.bet
-   im = min(il, io)
-   ix = (self.pre_raises[j] + p['base_pfr'] * 8) / (self.dealt[j] + 8)
-   iv = min(1.8, max(0.6, (ix / p['base_pfr']) ** 0.5))
-   c = min(0.95, max(0.02, self._call_width(im / bb) * iv * p['pev_loose']))
+   sj = iu[j]
+   ip = sj.stack + sj.bet
+   iq = min(it, ip)
+   iy = (self.pre_raises[j] + p['base_pfr'] * 8) / (self.dealt[j] + 8)
+   iz = min(1.8, max(0.6, (iy / p['base_pfr']) ** 0.5))
+   c = min(0.95, max(0.02, self._call_width(iq / bb) * iz * p['pev_loose']))
    eq = self._eq_k(obs, self._k_for_top(c))
-   ik = im - obs.my_bet
-   iw = ij + min(io, il) - sj.bet
-   ir = eq * iw - (1.0 - eq) * ik - iu * (2 * ik + ij)
-   ev += ic * c * ir
-   ic *= 1.0 - c
-  ev += ic * ij
+   io = iq - obs.my_bet
+   iv = ii + min(ip, it) - sj.bet
+   ix = eq * iv - (1.0 - eq) * io - iw * (2 * io + ii)
+   ev += ik * c * ix
+   ik *= 1.0 - c
+  ev += ik * ii
   return ev / bb
 
  def _resteal_ev(self, obs, r, behind):
   p = self.p
-  jf = obs.seats
+  jh = obs.seats
   bb = obs.big_blind
-  jj = obs.my_stack + obs.my_bet
-  sr = jf[r]
+  jm = obs.my_stack + obs.my_bet
+  sr = jh[r]
   jr = sr.stack + sr.bet
-  jc = min(jj, jr)
-  jm = (self.pre_raises[r] + p['base_pfr'] * 8) / (self.dealt[r] + 8)
-  w = self._call_width(jc / bb) * p['resteal_cw']
-  jh = min(1.0, w / max(jm, 0.02))
-  jb = 1.0
+  jf = min(jm, jr)
+  jp = (self.pre_raises[r] + p['base_pfr'] * 8) / (self.dealt[r] + 8)
+  w = self._call_width(jf / bb) * p['resteal_cw']
+  jl = min(1.0, w / max(jp, 0.02))
+  je = 1.0
   for j in behind:
-   sj = jf[j]
-   jb *= 1.0 - p['resteal_wake'] * self._call_width(min(jj, sj.stack + sj.bet) / bb)
+   sj = jh[j]
+   je *= 1.0 - p['resteal_wake'] * self._call_width(min(jm, sj.stack + sj.bet) / bb)
   c = min(0.95, max(0.02, w))
   eq = self._eq_k(obs, self._k_for_top(c))
-  je = obs.pot
-  iz = jc - obs.my_bet
-  jq = je + jc - sr.bet
-  jo = self._risk(obs) * p['resteal_risk']
-  js = eq * jq - (1.0 - eq) * iz - jo * (2 * iz + je)
-  jl = -iz * 0.75
-  ev = jb * ((1.0 - jh) * je + jh * js) + (1.0 - jb) * jl
+  jc = obs.pot
+  jd = jf - obs.my_bet
+  jn = jc + jf - sr.bet
+  jv = self._risk(obs) * p['resteal_risk']
+  js = eq * jn - (1.0 - eq) * jd - jv * (2 * jd + jc)
+  jt = -jd * 0.75
+  ev = je * ((1.0 - jl) * jc + jl * js) + (1.0 - je) * jt
   return ev / bb
 
  def act(self, obs):
@@ -675,199 +691,199 @@ class IcmTag:
   pass
   pass
   lg = obs.legal
-  jv = next(iter(self.spec.discards_on_street(obs.street)), None)
+  jx = next(iter(self.spec.discards_on_street(obs.street)), None)
   try:
-   jx = choose_discard(get_ctx(self.spec), obs.hole, obs.board, lg.discard_min, lg.discard_count, bool(jv and jv.draw), bool(jv and jv.to_board))
+   jz = choose_discard(get_ctx(self.spec), obs.hole, obs.board, lg.discard_min, lg.discard_count, bool(jx and jx.draw), bool(jx and jx.to_board))
   except Exception:
-   jx = tuple(sorted(obs.hole, key=lambda c: c >> 2)[:lg.discard_min])
-  return Discard(jx)
+   jz = tuple(sorted(obs.hole, key=lambda c: c >> 2)[:lg.discard_min])
+  return Discard(jz)
 
  def _preflop(self, obs):
   p, lg = (self.p, obs.legal)
   bb = obs.big_blind
-  kc = obs.seats
-  n = len(kc)
-  kb = [h for h in obs.history if h[1] == 0 and h[2] == 'raise']
-  if not kb and (not obs.history):
-   kg = max(range(n), key=lambda s: kc[s].bet)
-   if kc[kg].bet > bb and kg != obs.seat:
-    kb = [(kg, 0, 'raise', kc[kg].bet)]
-  if kb:
-   self.aggressor = kb[-1][0]
-  mc = {h[0] for h in obs.history if h[1] == 0 and h[2] != 'post'}
+  ke = obs.seats
+  n = len(ke)
+  kd = [h for h in obs.history if h[1] == 0 and h[2] == 'raise']
+  if not kd and (not obs.history):
+   ki = max(range(n), key=lambda s: ke[s].bet)
+   if ke[ki].bet > bb and ki != obs.seat:
+    kd = [(ki, 0, 'raise', ke[ki].bet)]
+  if kd:
+   self.aggressor = kd[-1][0]
+  mb = {h[0] for h in obs.history if h[1] == 0 and h[2] != 'post'}
   ly = [(obs.seat + i) % n for i in range(1, n)]
-  km = [s for s in ly if kc[s].in_hand and (not kc[s].folded) and (s not in mc) and (s != obs.seat)]
-  ku = [s for s in range(n) if s != obs.seat and kc[s].in_hand and (not kc[s].folded)]
-  lu = min(obs.my_stack + obs.my_bet, max((kc[s].stack + kc[s].bet for s in ku), default=0))
-  ke = lu / bb
-  if self.chart is not None and ke <= p['pf_max_bb']:
-   a = self.chart.decide(obs, kb, ke)
+  kp = [s for s in ly if ke[s].in_hand and (not ke[s].folded) and (s not in mb) and (s != obs.seat)]
+  kz = [s for s in range(n) if s != obs.seat and ke[s].in_hand and (not ke[s].folded)]
+  mf = min(obs.my_stack + obs.my_bet, max((ke[s].stack + ke[s].bet for s in kz), default=0))
+  kh = mf / bb
+  if self.chart is not None and kh <= p['pf_max_bb']:
+   a = self.chart.decide(obs, kd, kh)
    if a is not None:
     return a
-  lm = sum((1 for sv in kc if sv.in_hand))
-  hu = lm == 2
-  sh = 3 <= lm <= 4
-  if not kb:
-   k = max(1, len(km))
-   ki = sum((1 for h in obs.history if h[1] == 0 and h[2] == 'call'))
+  lu = sum((1 for sv in ke if sv.in_hand))
+  hu = lu == 2
+  sh = 3 <= lu <= 4
+  if not kd:
+   k = max(1, len(kp))
+   km = sum((1 for h in obs.history if h[1] == 0 and h[2] == 'call'))
    om = p['hu_open_mult'] if hu and p['hu_open_mult'] > 0 else p['open_mult']
    if sh and p['sh_open_mult'] > 0:
     om = p['sh_open_mult']
-   lq = om / (k + 1 + ki)
+   lp = om / (k + 1 + km)
    sf = 1.0
-   if not ki and len(km) <= p['steal_max_behind']:
-    mb = [s for s in (obs.sb_seat, obs.bb_seat) if s != obs.seat]
-    fr = self._fold_rate(km if len(km) > 2 else mb)
+   if not km and len(kp) <= p['steal_max_behind']:
+    lw = [s for s in (obs.sb_seat, obs.bb_seat) if s != obs.seat]
+    fr = self._fold_rate(kp if len(kp) > 2 else lw)
     sf *= 1.0 - p['steal_bonus'] * max(0.0, fr - 0.5) * 2
     if p['steal_sym'] > 0 and fr < 0.5:
      sf *= 1.0 + p['steal_sym'] * (1.0 - 2 * fr)
     sf = max(sf, p['steal_floor'])
-   lq *= sf
-   eq = self._eq(obs, k + ki)
+   lp *= sf
+   eq = self._eq(obs, k + km)
    if not lg.can_raise and lg.can_call:
-    kd = lg.call_amount
-    kn = kd / (obs.pot + kd) + p['call_margin']
-    if kd >= obs.my_stack or kd > 0.4 * obs.my_stack:
+    kg = lg.call_amount
+    kn = kg / (obs.pot + kg) + p['call_margin']
+    if kg >= obs.my_stack or kg > 0.4 * obs.my_stack:
      kn += self._risk(obs)
     return Call() if eq >= kn else Fold()
-   if p['pev'] and ke <= p['pev_bb'] and lg.can_raise and (not ki):
-    ev = self._push_ev(obs, km)
+   if p['pev'] and kh <= p['pev_bb'] and lg.can_raise and (not km):
+    ev = self._push_ev(obs, kp)
     if ev is not None:
      if ev > p['pev_margin']:
       return RaiseTo(lg.max_raise_to)
-     if ke <= p['push_bb']:
+     if kh <= p['push_bb']:
       return lg.passive() if lg.can_check else Fold()
-   if ke <= p['push_bb']:
-    lw = 0.75 + 0.25 * ke / p['push_bb']
-    ld = p['push_mult'] * lw / (k + 1 + ki)
+   if kh <= p['push_bb']:
+    mc = 0.75 + 0.25 * kh / p['push_bb']
+    lm = p['push_mult'] * mc / (k + 1 + km)
     if p['push_steal'] > 0:
-     ld *= 1.0 + p['push_steal'] * (sf - 1.0)
-    if eq >= ld and lg.can_raise:
+     lm *= 1.0 + p['push_steal'] * (sf - 1.0)
+    if eq >= lm and lg.can_raise:
      return RaiseTo(lg.max_raise_to)
     return lg.passive() if lg.can_check else Fold()
-   if p['rfi_mode'] and self._pct is not None and (not hu) and lg.can_raise:
-    kg = 1.0 - bisect.bisect_left(self._pct, self._eq(obs, 1)) / len(self._pct)
-    ok = kg <= min(0.95, _RFI[min(max(k + ki, 1), 7)] * p['rfi_scale'] / max(sf, 0.05))
+   if self.rfi_on and self._pct is not None and (not hu) and lg.can_raise:
+    ki = 1.0 - bisect.bisect_left(self._pct, self._eq(obs, 1)) / len(self._pct)
+    ok = ki <= min(0.95, _RFI[min(max(k + km, 1), 7)] * p['rfi_scale'] / max(sf, 0.05))
    else:
-    ok = eq >= lq
+    ok = eq >= lp
    if ok and lg.can_raise:
-    to = (p['open_size'] + ki) * bb
+    to = (p['open_size'] + km) * bb
     self.aggressor = obs.seat
     return RaiseTo(lg.clamp(to))
    return lg.passive() if lg.can_check else Fold()
-  lc = len(ku)
+  le = len(kz)
   rk = p['hu_range_k'] if hu and p['hu_range_k'] > 0 else p['range_k']
   if sh and p['sh_range_k'] > 0:
    rk = p['sh_range_k']
   if p['read_alpha'] > 0:
-   r = kb[-1][0]
-   mf = (self.pre_raises[r] + p['base_pfr'] * 8) / (self.dealt[r] + 8)
-   rk = min(8.0, max(p['rk_floor'], rk * (p['base_pfr'] / max(mf, 0.01)) ** p['read_alpha']))
-  if p['rs_call'] > 0 and len(kb) == 2 and (kb[0][0] == obs.seat) and (kb[1][0] != obs.seat) and kc[kb[1][0]].all_in and (not any((h[1] == 0 and h[2] == 'call' and (h[0] != obs.seat) for h in obs.history))):
-   r3 = kb[1][0]
+   r = kd[-1][0]
+   mg = (self.pre_raises[r] + p['base_pfr'] * 8) / (self.dealt[r] + 8)
+   rk = min(8.0, max(p['rk_floor'], rk * (p['base_pfr'] / max(mg, 0.01)) ** p['read_alpha']))
+  if p['rs_call'] > 0 and len(kd) == 2 and (kd[0][0] == obs.seat) and (kd[1][0] != obs.seat) and ke[kd[1][0]].all_in and (not any((h[1] == 0 and h[2] == 'call' and (h[0] != obs.seat) for h in obs.history))):
+   r3 = kd[1][0]
    rr = (self.t3_made[r3] + 0.07 * 10) / (self.t3_seen[r3] + 10)
    rk = min(rk, self._k_for_top(min(0.5, p['rs_call'] * rr)))
   if p['behind_k'] != 0.8:
-   r0 = kb[-1][0]
-   ls = {h[0] for h in obs.history if h[1] == 0 and h[2] in ('call', 'raise') and (h[0] not in (r0, obs.seat)) and (not kc[h[0]].folded)}
-   kf = rk + len(ls) * 0.8 + max(0, lc - 1 - len(ls)) * p['behind_k']
+   r0 = kd[-1][0]
+   lt = {h[0] for h in obs.history if h[1] == 0 and h[2] in ('call', 'raise') and (h[0] not in (r0, obs.seat)) and (not ke[h[0]].folded)}
+   kf = rk + len(lt) * 0.8 + max(0, le - 1 - len(lt)) * p['behind_k']
   else:
-   kf = rk + max(0, lc - 1) * 0.8
+   kf = rk + max(0, le - 1) * 0.8
   eq = self._eq_k(obs, kf)
-  kd = lg.call_amount
-  mh = obs.pot
-  kn = kd / (mh + kd) + p['call_margin']
-  lk = kd >= obs.my_stack or any((kc[s].all_in for s in ku))
-  if lk or kd > 0.4 * obs.my_stack:
+  kg = lg.call_amount
+  lz = obs.pot
+  kn = kg / (lz + kg) + p['call_margin']
+  ll = kg >= obs.my_stack or any((ke[s].all_in for s in kz))
+  if ll or kg > 0.4 * obs.my_stack:
    kn += self._risk(obs)
-  if p['icm_call'] and lk and (kb[-1] in obs.history):
-   kz = list(obs.history)
-   kv = len(kz) - 1 - kz[::-1].index(kb[-1])
-   r = kb[-1][0]
-   if not any((h[1] == 0 and h[2] == 'call' and (h[0] != obs.seat) for h in kz[kv + 1:])):
-    li = self._icm_need(obs, r)
-    if li is not None:
-     kn = li + p['icm_margin']
-  if self._pct is not None and lg.can_raise and (len(kb) == 1) and (not kc[kb[0][0]].all_in) and (ke <= p['resteal_rel_bb']) and (not any((h[1] == 0 and h[2] == 'call' for h in obs.history if h[0] != obs.seat))):
-   r0 = kb[0][0]
+  if p['icm_call'] and ll and (kd[-1] in obs.history):
+   lb = list(obs.history)
+   ky = len(lb) - 1 - lb[::-1].index(kd[-1])
+   r = kd[-1][0]
+   if not any((h[1] == 0 and h[2] == 'call' and (h[0] != obs.seat) for h in lb[ky + 1:])):
+    ls = self._icm_need(obs, r)
+    if ls is not None:
+     kn = ls + p['icm_margin']
+  if self._pct is not None and lg.can_raise and (len(kd) == 1) and (not ke[kd[0][0]].all_in) and (kh <= p['resteal_rel_bb']) and (not any((h[1] == 0 and h[2] == 'call' for h in obs.history if h[0] != obs.seat))):
+   r0 = kd[0][0]
    o = (self.pre_raises[r0] + p['base_pfr'] * 8) / (self.dealt[r0] + 8)
    o = min(0.7, max(0.04, o))
    t = self._pct
-   kg = 1.0 - bisect.bisect_left(t, self._eq(obs, 1)) / len(t)
+   ki = 1.0 - bisect.bisect_left(t, self._eq(obs, 1)) / len(t)
    m = 1.0
    if p['resteal_read'] > 0:
     f3 = (self.o3_fold[r0] + 0.65 * p['resteal_read']) / (self.o3_seen[r0] + p['resteal_read'])
     m = min(1.6, max(0.4, f3 / 0.65))
-   if kg <= max(0.03, p['resteal_rel'] * o * m):
+   if ki <= max(0.03, p['resteal_rel'] * o * m):
     return RaiseTo(lg.max_raise_to)
-  if p['resteal'] and lg.can_raise and (len(kb) == 1) and (not kc[kb[0][0]].all_in) and (p['resteal_lo'] <= ke <= p['resteal_hi']) and (not any((h[1] == 0 and h[2] == 'call' for h in obs.history if h[0] != obs.seat))):
-   ev = self._resteal_ev(obs, kb[0][0], km)
+  if p['resteal'] and lg.can_raise and (len(kd) == 1) and (not ke[kd[0][0]].all_in) and (p['resteal_lo'] <= kh <= p['resteal_hi']) and (not any((h[1] == 0 and h[2] == 'call' for h in obs.history if h[0] != obs.seat))):
+   ev = self._resteal_ev(obs, kd[0][0], kp)
    if ev is not None and ev > p['resteal_margin']:
     return RaiseTo(lg.max_raise_to)
   if (eq >= p['threebet_eq'] or eq * (kf + 1) >= p['threebet_rel']) and lg.can_raise:
-   if ke <= p['reshove_bb']:
+   if kh <= p['reshove_bb']:
     return RaiseTo(lg.max_raise_to)
-   kv = kb[-1][3]
+   ky = kd[-1][3]
    self.aggressor = obs.seat
-   return RaiseTo(lg.clamp(3 * kv))
+   return RaiseTo(lg.clamp(3 * ky))
   if eq >= kn:
    return Call() if lg.can_call else Check()
   return lg.passive() if lg.can_check else Fold()
 
  def _postflop(self, obs):
   p, lg = (self.p, obs.legal)
-  mv = obs.seats
-  mk = [s for s in range(len(mv)) if s != obs.seat and mv[s].in_hand and (not mv[s].folded)]
-  k = len(mk)
+  mz = obs.seats
+  mm = [s for s in range(len(mz)) if s != obs.seat and mz[s].in_hand and (not mz[s].folded)]
+  k = len(mm)
   eq = self._eq(obs, k)
-  if p['raiser_discount'] != 1.0 and any((h[1] == 0 and h[2] == 'raise' and (h[0] in mk) for h in obs.history)):
+  if p['raiser_discount'] != 1.0 and any((h[1] == 0 and h[2] == 'raise' and (h[0] in mm) for h in obs.history)):
    eq *= p['raiser_discount']
-  nd = [h for h in obs.history if h[1] == obs.street]
-  nh = lg.call_amount > 0
-  mu = obs.pot
-  if nh:
-   ng = sum((1 for h in nd if h[2] == 'raise')) if obs.history else 1
-   mw = p['bet_discount']
-   mn = next((h[0] for h in reversed(nd) if h[2] == 'raise'), None) if obs.history else None
-   ag = (self.bet_made[mn] + p['base_agg'] * 6) / (self.bet_opp[mn] + 6) if mn is not None else 0.0
+  nh = [h for h in obs.history if h[1] == obs.street]
+  ni = lg.call_amount > 0
+  mt = obs.pot
+  if ni:
+   nk = sum((1 for h in nh if h[2] == 'raise')) if obs.history else 1
+   nb = p['bet_discount']
+   mq = next((h[0] for h in reversed(nh) if h[2] == 'raise'), None) if obs.history else None
+   ag = (self.bet_made[mq] + p['base_agg'] * 6) / (self.bet_opp[mq] + 6) if mq is not None else 0.0
    if p['agg_alpha'] > 0:
-    if mn is not None:
+    if mq is not None:
      xs = max(0.0, min(1.0, (ag - p['base_agg']) / (1.0 - p['base_agg'])))
-     mw = mw + (1.0 - mw) * min(1.0, p['agg_alpha'] * xs)
-   mz = eq * mw ** ng
-   mq = lg.call_amount
-   mp = mq / (mu + mq) + p['call_margin']
-   if mq >= obs.my_stack * 0.5:
-    mp += self._risk(obs)
-   if p['icm_call'] and k == 1 and (mn is not None) and (mq >= obs.my_stack or mv[mn].all_in):
-    nc = self._icm_need(obs, mn)
-    if nc is not None:
-     mp = nc + p['icm_margin']
-   if lg.can_raise and (mz >= max(p['value_eq'] + 0.15, mp + 0.25) or (eq >= p['raise_eq'] and mz >= mp) or (eq >= p['agg_raise'] and ag >= p['agg_seat'] and (mz >= mp))):
-    return RaiseTo(lg.clamp(obs.my_bet + mq + mu))
-   if mz >= mp:
+     nb = nb + (1.0 - nb) * min(1.0, p['agg_alpha'] * xs)
+   na = eq * nb ** nk
+   mu = lg.call_amount
+   mr = mu / (mt + mu) + p['call_margin']
+   if mu >= obs.my_stack * 0.5:
+    mr += self._risk(obs)
+   if p['icm_call'] and k == 1 and (mq is not None) and (mu >= obs.my_stack or mz[mq].all_in):
+    ng = self._icm_need(obs, mq)
+    if ng is not None:
+     mr = ng + p['icm_margin']
+   if lg.can_raise and (na >= max(p['value_eq'] + 0.15, mr + 0.25) or (eq >= p['raise_eq'] and na >= mr) or (eq >= p['agg_raise'] and ag >= p['agg_seat'] and (na >= mr))):
+    return RaiseTo(lg.clamp(obs.my_bet + mu + mt))
+   if na >= mr:
     return Call()
    return Fold()
-  nf = p['value_eq']
-  if p['thin_value'] > 0 and mk:
-   fr = (sum((self.pf_fold[s] for s in mk)) + 1.0) / (sum((self.pf_faced[s] for s in mk)) + 2.0)
-   nf -= p['thin_value'] * max(0.0, 1.0 - 2 * fr)
-  if eq >= nf and lg.can_raise:
+  nd = p['value_eq']
+  if p['thin_value'] > 0 and mm:
+   fr = (sum((self.pf_fold[s] for s in mm)) + 1.0) / (sum((self.pf_faced[s] for s in mm)) + 2.0)
+   nd -= p['thin_value'] * max(0.0, 1.0 - 2 * fr)
+  if eq >= nd and lg.can_raise:
    ne = p['bet_frac']
-   if p['station_size'] > 0 and mk:
-    fr = (sum((self.pf_fold[s] for s in mk)) + 1.0) / (sum((self.pf_faced[s] for s in mk)) + 2.0)
+   if p['station_size'] > 0 and mm:
+    fr = (sum((self.pf_fold[s] for s in mm)) + 1.0) / (sum((self.pf_faced[s] for s in mm)) + 2.0)
     ne += p['station_size'] * max(0.0, 1.0 - 2 * fr)
-   return RaiseTo(lg.clamp(ne * mu))
+   return RaiseTo(lg.clamp(ne * mt))
   cb = p['cbet']
   if p['cbet_read'] > 0 and k == 1:
-   fr = (self.pf_fold[mk[0]] + 1.0) / (self.pf_faced[mk[0]] + 2.0)
+   fr = (self.pf_fold[mm[0]] + 1.0) / (self.pf_faced[mm[0]] + 2.0)
    cb = min(1.0, max(0.0, cb + p['cbet_read'] * (2 * fr - 1)))
   if k == 1 and self.aggressor == obs.seat and lg.can_raise and (self.rng.random() < cb) and (obs.street == 1):
-   return RaiseTo(lg.clamp(p['cbet_size'] * mu))
+   return RaiseTo(lg.clamp(p['cbet_size'] * mt))
   if p['bluff_bonus'] > 0 and lg.can_raise and (1 <= k <= p['bluff_max_opp']):
-   fr = (sum((self.pf_fold[s] for s in mk)) + 1.0) / (sum((self.pf_faced[s] for s in mk)) + 2.0)
+   fr = (sum((self.pf_fold[s] for s in mm)) + 1.0) / (sum((self.pf_faced[s] for s in mm)) + 2.0)
    if self.rng.random() < p['bluff_bonus'] * max(0.0, 2 * fr - 1):
-    return RaiseTo(lg.clamp(p['bluff_size'] * mu))
+    return RaiseTo(lg.clamp(p['bluff_size'] * mt))
   return Check()
 class _NoFile:
 
@@ -883,22 +899,22 @@ def hole_key(hole):
   a, b = sorted(hole, key=lambda c: -(c >> 2))
   t = 'p' if rs[0] == rs[1] else 's' if a & 3 == b & 3 else 'o'
   return f'{rs[0]},{rs[1]},{t}'
- nq = sorted((rs.count(r) for r in set(rs)), reverse=True)
- nn = [0, 0, 0, 0]
+ nw = sorted((rs.count(r) for r in set(rs)), reverse=True)
+ np = [0, 0, 0, 0]
  for c in hole:
-  nn[c & 3] += 1
- nk = sorted(set(rs), reverse=True)
- nm = nl = 1
- for x, y in zip(nk, nk[1:]):
-  nm = nm + 1 if x - y == 1 else 1
-  nl = max(nl, nm)
- return f"{''.join(map(str, nq))},{rs[0]},{(nk[1] if len(nk) > 1 else -1)},{max(nn)},{nl}"
+  np[c & 3] += 1
+ nm = sorted(set(rs), reverse=True)
+ no = nn = 1
+ for x, y in zip(nm, nm[1:]):
+  no = no + 1 if x - y == 1 else 1
+  nn = max(nn, no)
+ return f"{''.join(map(str, nw))},{rs[0]},{(nm[1] if len(nm) > 1 else -1)},{max(np)},{nn}"
 def post_key(ctx, hole, board, street):
- nx = list(hole) + list(board)
- nv = [0, 0, 0, 0]
- for c in nx:
-  nv[c & 3] += 1
- fd = int(max(nv) == 4)
+ ny = list(hole) + list(board)
+ nx = [0, 0, 0, 0]
+ for c in ny:
+  nx[c & 3] += 1
+ fd = int(max(nx) == 4)
  return f'{street},{_cat(ctx, hole, board)},{(_cat(ctx, (), board) if board else 0)},{fd}'
 _HC = {}
 def _hc_code(ctx):
@@ -907,79 +923,79 @@ def _hc_code(ctx):
   _HC[ctx.sig] = evaluate(ctx, (lo[0] << 2 | 0, lo[2] << 2 | 1), ())[0] >> 20
  return _HC[ctx.sig]
 def _kept_value(ctx, kept, board, draw, out=(), to_board=False):
- oc = evaluate(ctx, kept, board)[0] if len(kept) + len(board) else 0
+ oe = evaluate(ctx, kept, board)[0] if len(kept) + len(board) else 0
  hc = _hc_code(ctx)
  if not draw:
   if to_board:
    on = evaluate(ctx, (), board)[0] >> 20 if board else hc
-   return ((oc >> 20) - on, oc, -max((c >> 2 for c in out), default=-1))
-  return (oc,)
- ob = (oc >> 20) - hc
- oh = list(kept) + list(board)
- oi = [0, 0, 0, 0]
- for c in oh:
-  oi[c & 3] += 1
- rs = sorted({c >> 2 for c in oh})
- oe = od = 1
+   return ((oe >> 20) - on, oe, -max((c >> 2 for c in out), default=-1))
+  return (oe,)
+ od = (oe >> 20) - hc
+ oi = list(kept) + list(board)
+ ol = [0, 0, 0, 0]
+ for c in oi:
+  ol[c & 3] += 1
+ rs = sorted({c >> 2 for c in oi})
+ og = of = 1
  for x, y in zip(rs, rs[1:]):
-  oe = oe + 1 if y - x == 1 else 1
-  od = max(od, oe)
- oo = 2 if max(oi) >= 4 else 1 if od >= 4 else 0
- oj = max((c >> 2 for c in kept), default=-1)
- return (ob if ob > 0 else 0, oo if ob == 0 else 0, oj if ob == 0 else 0, -len(kept))
+  og = og + 1 if y - x == 1 else 1
+  of = max(of, og)
+ ot = 2 if max(ol) >= 4 else 1 if of >= 4 else 0
+ oo = max((c >> 2 for c in kept), default=-1)
+ return (od if od > 0 else 0, ot if od == 0 else 0, oo if od == 0 else 0, -len(kept))
 def _draw_candidates(hole, board, n_min, n_max):
  rk = lambda c: c >> 2
- os = tuple(hole)
- pb = {}
- for c in os:
-  pb.setdefault(rk(c), []).append(c)
- pe = [c for g in pb.values() if len(g) >= 2 for c in g]
- pa = {}
- for c in os + tuple(board):
-  pa.setdefault(c & 3, []).append(c)
- pi = max(pa.values(), key=len)
- pj = [c for c in os if c in pi] if len(pi) >= 4 else []
- rs = sorted({rk(c) for c in os + tuple(board)})
- pc = []
+ ou = tuple(hole)
+ pi = {}
+ for c in ou:
+  pi.setdefault(rk(c), []).append(c)
+ pe = [c for g in pi.values() if len(g) >= 2 for c in g]
+ pk = {}
+ for c in ou + tuple(board):
+  pk.setdefault(c & 3, []).append(c)
+ pj = max(pk.values(), key=len)
+ pn = [c for c in ou if c in pj] if len(pj) >= 4 else []
+ rs = sorted({rk(c) for c in ou + tuple(board)})
+ pf = []
  for i in range(len(rs)):
-  pm = [r for r in rs if rs[i] <= r < rs[i] + 5]
-  if len(pm) >= 4:
-   pc = [c for c in os if rs[i] <= rk(c) < rs[i] + 5]
+  pl = [r for r in rs if rs[i] <= r < rs[i] + 5]
+  if len(pl) >= 4:
+   pf = [c for c in ou if rs[i] <= rk(c) < rs[i] + 5]
    break
- hi = sorted(os, key=lambda c: -rk(c))
- pk = [list(os), pe, pj, pc, hi[:1], hi[:2], pe + hi[:1]]
- pg, pd = ([], set())
- for ox in pk:
-  ox = list(dict.fromkeys(ox))
-  ou = [c for c in sorted(os, key=rk) if c not in ox]
-  while len(ou) > n_max:
-   ou.pop()
-  while len(ou) < n_min:
-   pl = [c for c in sorted(os, key=rk) if c not in ou]
-   ou.append(pl[0])
-  t = tuple(ou)
-  if t not in pd:
-   pd.add(t)
-   pg.append(t)
- return pg
+ hi = sorted(ou, key=lambda c: -rk(c))
+ pm = [list(ou), pe, pn, pf, hi[:1], hi[:2], pe + hi[:1]]
+ pd, pg = ([], set())
+ for oz in pm:
+  oz = list(dict.fromkeys(oz))
+  ox = [c for c in sorted(ou, key=rk) if c not in oz]
+  while len(ox) > n_max:
+   ox.pop()
+  while len(ox) < n_min:
+   po = [c for c in sorted(ou, key=rk) if c not in ox]
+   ox.append(po[0])
+  t = tuple(ox)
+  if t not in pg:
+   pg.add(t)
+   pd.append(t)
+ return pd
 def choose_discard(ctx, hole, board, n_min, n_max, draw, to_board):
- pp, po = (None, None)
+ pq, ps = (None, None)
  hole = tuple(hole)
  if draw and len(hole) >= 4 and (not to_board):
-  for pn in _draw_candidates(hole, board, n_min, n_max):
-   pt = tuple((c for c in hole if c not in pn))
-   v = _kept_value(ctx, pt, tuple(board), True, pn, False)
-   if po is None or v > po:
-    pp, po = (pn, v)
-  return pp if pp is not None else ()
+  for pp in _draw_candidates(hole, board, n_min, n_max):
+   pv = tuple((c for c in hole if c not in pp))
+   v = _kept_value(ctx, pv, tuple(board), True, pp, False)
+   if ps is None or v > ps:
+    pq, ps = (pp, v)
+  return pq if pq is not None else ()
  for n in range(n_min, n_max + 1):
-  for pn in combinations(hole, n):
-   pt = tuple((c for c in hole if c not in pn))
-   b = tuple(board) + (pn if to_board else ())
-   v = _kept_value(ctx, pt, b, draw, pn, to_board)
-   if po is None or v > po:
-    pp, po = (pn, v)
- return pp if pp is not None else ()
+  for pp in combinations(hole, n):
+   pv = tuple((c for c in hole if c not in pp))
+   b = tuple(board) + (pp if to_board else ())
+   v = _kept_value(ctx, pv, b, draw, pp, to_board)
+   if ps is None or v > ps:
+    pq, ps = (pp, v)
+ return pq if pq is not None else ()
 class AnyStrength:
 
  def __init__(self, spec, table=None):
@@ -1001,7 +1017,7 @@ _STRENGTH: dict = {}
 class IcmAny(IcmTag):
  name = 'icm_any'
  handles_discards = True
- OVERRIDES = dict(hu_open_mult=0.0, hu_range_k=0.0, icm_call=0, bet_discount=0.6, rs_call=0.0)
+ OVERRIDES = dict(hu_open_mult=0.0, hu_range_k=0.0, icm_call=0, bet_discount=0.6, rs_call=0.0, rfi_lock=0.0)
  TWO_CARD = dict(hu_open_mult=0.6, hu_range_k=2.0, icm_call=1, bet_discount=0.5, rs_call=2.0)
 
  def __init__(self, **kw):
@@ -1010,15 +1026,15 @@ class IcmAny(IcmTag):
 
  def new_table(self, rules, seat, seed=0):
   sp = rules.spec
-  qb = bool(self.p['two_card']) and getattr(sp, 'hole_cards', 2) == 2 and (not getattr(sp, 'discards', ()))
+  qd = bool(self.p['two_card']) and getattr(sp, 'hole_cards', 2) == 2 and (not getattr(sp, 'discards', ()))
   for k, v in self.TWO_CARD.items():
    if k not in self._explicit:
-    self.p[k] = v if qb else self.OVERRIDES[k]
+    self.p[k] = v if qd else self.OVERRIDES[k]
   super().new_table(rules, seat, seed)
-  py = card_signature(rules.spec)
-  if py not in _STRENGTH:
-   _STRENGTH[py] = AnyStrength(rules.spec)
-  self.A = _STRENGTH[py]
+  qa = card_signature(rules.spec)
+  if qa not in _STRENGTH:
+   _STRENGTH[qa] = AnyStrength(rules.spec)
+  self.A = _STRENGTH[qa]
   self.ctx = self.A.ctx
 
  def _eq(self, obs, k):
@@ -1028,9 +1044,9 @@ class IcmAny(IcmTag):
   lg = obs.legal
   if getattr(lg, 'discard_count', 0):
    pass
-   qc = next((r for r in self.spec.discards_on_street(obs.street)), None)
-   qe = choose_discard(self.ctx, obs.hole, obs.board, lg.discard_min, lg.discard_count, bool(qc and qc.draw), bool(qc and qc.to_board))
-   return Discard(qe)
+   qe = next((r for r in self.spec.discards_on_street(obs.street)), None)
+   qh = choose_discard(self.ctx, obs.hole, obs.board, lg.discard_min, lg.discard_count, bool(qe and qe.draw), bool(qe and qe.to_board))
+   return Discard(qh)
   return super().act(obs)
 def _expand(g):
  if isinstance(g, str):
@@ -1136,11 +1152,11 @@ class _Rules:
   self.payouts = tuple(payouts)
   self.max_hands = max_hands
 def parse_log(log, n=8):
- qv, qy, qu, qw = ([], [0] * n, [0] * n, 0)
+ qx, ra, qv, qy = ([], [0] * n, [0] * n, 0)
  for t in log.split():
   if t[0] == '|':
-   qw += 1
-   qu = [0] * n
+   qy += 1
+   qv = [0] * n
    continue
   if t[-1] == '!':
    t = t[:-1]
@@ -1148,32 +1164,32 @@ def parse_log(log, n=8):
   while t[i].isdigit():
    i += 1
   s = int(t[:i]) - 1
-  qx = t[i]
-  qs = int(t[i + 1:]) if len(t) > i + 1 else 0
-  if qx in 'sb':
-   qu[s] += qs
-   qy[s] += qs
-   qv.append((s, qw, 'post', qs))
-  elif qx == 'c':
-   qu[s] += qs
-   qy[s] += qs
-   qv.append((s, qw, 'call', qs))
-  elif qx == 'r':
-   qu[s] += qs
-   qy[s] += qs
-   qv.append((s, qw, 'raise', qu[s]))
-  elif qx == 'f':
-   qv.append((s, qw, 'fold', 0))
-  elif qx == 'k':
-   qv.append((s, qw, 'check', 0))
- return (qv, qy, qu)
+  qz = t[i]
+  qu = int(t[i + 1:]) if len(t) > i + 1 else 0
+  if qz in 'sb':
+   qv[s] += qu
+   ra[s] += qu
+   qx.append((s, qy, 'post', qu))
+  elif qz == 'c':
+   qv[s] += qu
+   ra[s] += qu
+   qx.append((s, qy, 'call', qu))
+  elif qz == 'r':
+   qv[s] += qu
+   ra[s] += qu
+   qx.append((s, qy, 'raise', qv[s]))
+  elif qz == 'f':
+   qx.append((s, qy, 'fold', 0))
+  elif qz == 'k':
+   qx.append((s, qy, 'check', 0))
+ return (qx, ra, qv)
 class Kit4Bot:
 
  def __init__(self, rules=None):
   r = rules or {}
   self.n = int(r.get('seats', 8))
-  ra = tuple(r.get('points') or _PAYOUTS)
-  self.rules = _Rules(self.n, ra + (0,) * (self.n - len(ra)), int(r.get('max_hands', 200)))
+  rc = tuple(r.get('points') or _PAYOUTS)
+  self.rules = _Rules(self.n, rc + (0,) * (self.n - len(rc)), int(r.get('max_hands', 200)))
   self.bot = _IcmAny()
   self.bot.new_table(self.rules, 0, 12345)
   self.me = None
@@ -1186,48 +1202,48 @@ class Kit4Bot:
   if self.me != me:
    self.me = me
    self.bot.new_table(self.rules, me, 12345)
-  sd, ry, rw = parse_log(v['log'], n)
-  rn = []
-  rf = 0
+  sc, sg, rx = parse_log(v['log'], n)
+  ro = []
+  rh = 0
   for k, sv in enumerate(v['seats']):
    st = sv['status']
    rq = st == 'out'
-   rf += not rq
-   rn.append(_Seat(k, sv['stack'], sv['bet'], sv['total'], st == 'folded', st == 'allin', not rq))
-  rp = v['seats'][me]
-  rg = rp['bet']
-  rc = v['owe']
+   rh += not rq
+   ro.append(_Seat(k, sv['stack'], sv['bet'], sv['total'], st == 'folded', st == 'allin', not rq))
+  rv = v['seats'][me]
+  rl = rv['bet']
+  rf = v['owe']
   mx = v['max_add']
   ma = v['min_add']
-  ri = ma is not None and mx > rc
-  lo = rg + min(ma, mx) if ri else 0
-  hi = rg + mx if ri else 0
-  rx = _Legal(rc == 0, rc > 0, min(rc, mx), ri, lo, hi)
-  ro = self.rules.payouts
-  rm = _Obs(hand_number=v['hand'] - 1, hands_left=v['hands_left'], level=v['level'] - 1, small_blind=v['sb'], big_blind=v['bb'], ante=0, seat=me, button=v['button'] - 1, sb_seat=v['sb_seat'] - 1, bb_seat=v['bb_seat'] - 1, street=v['street'], hole=tuple((kit_card(c) for c in v['hole'])), board=tuple((kit_card(c) for c in v['board'])), pot=v['pot'], my_stack=rp['stack'], my_bet=rg, legal=rx, seats=tuple(rn), history=tuple(sd), players_left=rf, payouts=ro, places_paid=tuple(((q, ro[q - 1]) for q in range(1, rf + 1))))
+  rn = ma is not None and mx > rf
+  lo = rl + min(ma, mx) if rn else 0
+  hi = rl + mx if rn else 0
+  sd = _Legal(rf == 0, rf > 0, min(rf, mx), rn, lo, hi)
+  rw = self.rules.payouts
+  rt = _Obs(hand_number=v['hand'] - 1, hands_left=v['hands_left'], level=v['level'] - 1, small_blind=v['sb'], big_blind=v['bb'], ante=0, seat=me, button=v['button'] - 1, sb_seat=v['sb_seat'] - 1, bb_seat=v['bb_seat'] - 1, street=v['street'], hole=tuple((kit_card(c) for c in v['hole'])), board=tuple((kit_card(c) for c in v['board'])), pot=v['pot'], my_stack=rv['stack'], my_bet=rl, legal=sd, seats=tuple(ro), history=tuple(sc), players_left=rh, payouts=rw, places_paid=tuple(((q, rw[q - 1]) for q in range(1, rh + 1))))
   if INVARIANTS:
-   self._check(v, rm, ry, rw)
-  return rm
+   self._check(v, rt, sg, rx)
+  return rt
 
  def feed_last(self, v):
   lh = v.get('last_hand')
   if not lh or lh['hand'] <= self.seen_hand:
    return
   self.seen_hand = lh['hand']
-  sl, _, _ = parse_log(lh['log'], self.n)
-  sk = tuple((sv['stack'] + sv['total'] for sv in v['seats']))
-  self.bot.end_hand(dict(history=tuple(sl), stacks=sk))
+  so, _, _ = parse_log(lh['log'], self.n)
+  sq = tuple((sv['stack'] + sv['total'] for sv in v['seats']))
+  self.bot.end_hand(dict(history=tuple(so), stacks=sq))
 
  @staticmethod
  def reply(a, v, obs):
-  sn = v['owe']
+  ss = v['owe']
   k = getattr(a, 'kind', None)
   if k == 'raise' and obs.legal.can_raise:
-   sq = int(a.amount) - obs.my_bet
-   return int(min(v['max_add'], max(v['min_add'], sq)))
+   sw = int(a.amount) - obs.my_bet
+   return int(min(v['max_add'], max(v['min_add'], sw)))
   if k in ('raise', 'call'):
-   return int(min(sn, v['max_add'])) if sn > 0 else 0
-  return 0 if sn == 0 else -1
+   return int(min(ss, v['max_add'])) if ss > 0 else 0
+  return 0 if ss == 0 else -1
 
  def play(self, v):
   try:
@@ -1236,11 +1252,11 @@ class Kit4Bot:
    if INVARIANTS:
     raise
   try:
-   ss = self.observe(v)
-   a = self.bot.act(ss)
-   if INVARIANTS and (not ss.legal.is_legal(a)):
-    self._bad(v, f'bot action {a} not legal under {ss.legal}')
-   return self.reply(a, v, ss)
+   sx = self.observe(v)
+   a = self.bot.act(sx)
+   if INVARIANTS and (not sx.legal.is_legal(a)):
+    self._bad(v, f'bot action {a} not legal under {sx.legal}')
+   return self.reply(a, v, sx)
   except Exception as e:
    if INVARIANTS:
     self._bad(v, f'exception {type(e).__name__}: {e}')
@@ -1268,16 +1284,16 @@ class Kit4Bot:
 _RULES = {}
 def _warm():
  b = Kit4Bot()
- tb = [dict(seat=k, stack=1980, bet=0, total=20 if k <= 2 else 0, status='in') for k in range(1, 9)]
- tb[0]['stack'], tb[0]['total'], tb[0]['bet'] = (1990, 10, 10)
- tb[1]['stack'], tb[1]['total'], tb[1]['bet'] = (1980, 20, 20)
+ te = [dict(seat=k, stack=1980, bet=0, total=20 if k <= 2 else 0, status='in') for k in range(1, 9)]
+ te[0]['stack'], te[0]['total'], te[0]['bet'] = (1990, 10, 10)
+ te[1]['stack'], te[1]['total'], te[1]['bet'] = (1980, 20, 20)
  for k in range(2, 8):
-  tb[k]['stack'], tb[k]['total'] = (2000, 0)
- v = dict(hand=1, hands_left=199, level=1, sb=10, bb=20, blinds_up_in=25, street=0, me=3, button=8, sb_seat=1, bb_seat=2, hole=['Ah', 'Kd'], board=[], pot=30, owe=20, min_add=40, max_add=2000, seats=tb, log='1s10 2b20', last_hand=None, ms=1.0)
+  te[k]['stack'], te[k]['total'] = (2000, 0)
+ v = dict(hand=1, hands_left=199, level=1, sb=10, bb=20, blinds_up_in=25, street=0, me=3, button=8, sb_seat=1, bb_seat=2, hole=['Ah', 'Kd'], board=[], pot=30, owe=20, min_add=40, max_add=2000, seats=te, log='1s10 2b20', last_hand=None, ms=1.0)
  b.play(v)
- for tg, st in ((['Th', '9s', '6d'], 1), (['Th', '9s', '6d', 'Jc'], 2), (['Th', '9s', '6d', 'Jc', '7h'], 3)):
-  v.update(street=st, board=tg, owe=0, min_add=20, log=v['log'] + ' |x')
-  for s in tb:
+ for tj, st in ((['Th', '9s', '6d'], 1), (['Th', '9s', '6d', 'Jc'], 2), (['Th', '9s', '6d', 'Jc', '7h'], 3)):
+  v.update(street=st, board=tj, owe=0, min_add=20, log=v['log'] + ' |x')
+  for s in te:
    s['bet'] = 0
   b.play(v)
 try:
