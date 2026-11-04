@@ -20,6 +20,8 @@ import type { MessageAction } from "./types";
 
 export type DecisionFacts = {
   cardDebtCents: number;
+  // A card is on file with no balance, so its debt isn't known.
+  cardBalanceUnknown?: boolean;
   // The highest rate on a credit card or loan, in basis points a year, when known.
   topRateBps: number | null;
   // Null when no checking or savings balance is known: an uploaded file often carries none, and
@@ -56,6 +58,7 @@ export async function loadDecisionFacts(
   const goals = await listGoals(userId, { client, now });
   return {
     cardDebtCents: typeof card === "number" ? card : 0,
+    cardBalanceUnknown: data.accounts.some((a) => a.type === "credit" && a.balanceKnown === false),
     topRateBps: rates.length > 0 ? Math.max(...rates) : null,
     cashCents: cash,
     monthlySpendCents: spend,
@@ -96,6 +99,8 @@ function standing(f: DecisionFacts): string[] {
     lines.push(
       `You owe ${formatCents(f.cardDebtCents)} on credit cards${f.topRateBps ? `, at up to ${rate(f.topRateBps)} a year` : ""}.`,
     );
+  } else if (f.cardBalanceUnknown) {
+    lines.push("I can't see your card's balance yet.");
   } else {
     lines.push("I don't see any credit card debt.");
   }

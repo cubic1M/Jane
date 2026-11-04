@@ -355,6 +355,16 @@ describe("comingUpReply", () => {
 });
 
 describe("safeReply", () => {
+  it("names a checking account it couldn't count", () => {
+    const { body } = safeReply(
+      { safeCents: 20_000, payday: null, leftOut: ["Joint checking"] },
+      TODAY,
+    );
+    expect(body).toContain(
+      "That leaves out Joint checking: I don't have a balance for it, so its money and bills aren't counted.",
+    );
+  });
+
   // Debugger 11-04: the number held back tax on freelance income, and the words only spoke of bills.
   it("says when tax was set aside, and not otherwise", () => {
     const held = safeReply({ safeCents: 20_000, payday: null, taxHeldCents: 403_875 }, TODAY).body;

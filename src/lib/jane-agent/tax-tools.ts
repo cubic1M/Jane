@@ -979,8 +979,9 @@ export async function runTaxTool(
       const v = await loadHealthTaxes(userId, { client, now });
       const c = v.marketplace.check;
       return out({
-        projectedIncome: money(v.pace.projectedCents),
-        incomeEarlyInTheYear: money(v.pace.enrollmentCents),
+        // Null when no income is on file: never $0 for Claude to repeat.
+        projectedIncome: v.pace.projectedCents > 0 ? money(v.pace.projectedCents) : null,
+        incomeEarlyInTheYear: v.pace.enrollmentCents > 0 ? money(v.pace.enrollmentCents) : null,
         marketplace:
           v.marketplace.payments === 0
             ? null

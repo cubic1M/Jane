@@ -47,6 +47,7 @@ import type { PreferenceDraft } from "./preferences";
 import type { MessageAction, MessageRefs } from "./types";
 import { shiftMonth } from "@/lib/dates";
 import { dayLabel } from "@/lib/day-label";
+import { endedOn } from "@/lib/data-ended";
 
 // Jane's answers to what the person typed (spec step 84), from the same loaders as the
 // pages. Pure: each takes the numbers and returns fixed wording in Jane's voice, with the
@@ -489,6 +490,17 @@ export function spendingReply(
       open,
     );
   }
+  // Nor is one after it ends: someone who uploaded a statement and came back.
+  const ended = endedOn(
+    transactions.reduce((last, t) => (t.date > last ? t.date : last), transactions[0].date),
+    asOf,
+  );
+  if (ended && intent.month > ended.slice(0, 7)) {
+    return reply(
+      `I can't see ${monthLabel(intent.month)}: what I have ends on ${dayLabel(ended)}.`,
+      open,
+    );
+  }
   const current = intent.month === monthOf(asOf);
   const when = `in ${monthLabel(intent.month)}${current ? " so far" : ""}`;
   const insights = spendingInsights(transactions, { asOf, monthCount: INSIGHT_MONTHS });
@@ -606,15 +618,23 @@ export function greetingReply(
 }
 
 export function safeReply(
-  safe: { safeCents: number; payday: string | null; taxHeldCents?: number } | null,
+  safe: {
+    safeCents: number;
+    payday: string | null;
+    taxHeldCents?: number;
+    leftOut?: string[];
+  } | null,
   asOf: string | null = null,
 ): Reply {
   if (!safe) {
     return reply(AFFORD_COPY.noChecking, [link("Add your accounts", "/connect")]);
   }
   const payday = safe.payday && (asOf ? dateAndDays(safe.payday, asOf) : dayLabel(safe.payday));
+  const leftOut = safe.leftOut?.length
+    ? ` That leaves out ${safe.leftOut.join(" and ")}: I don't have a balance for it, so its money and bills aren't counted.`
+    : "";
   return reply(
-    `You have ${fmt(safe.safeCents)} safe to spend${payday ? ` until your next payday, ${payday}` : ""}. That's after upcoming bills, what's left in your budgets and what goes to your goals${safe.taxHeldCents ? `, with ${fmt(safe.taxHeldCents)} set aside for tax on what you've earned on your own` : ""}.`,
+    `You have ${fmt(safe.safeCents)} safe to spend${payday ? ` until your next payday, ${payday}` : ""}. That's after upcoming bills, what's left in your budgets and what goes to your goals${safe.taxHeldCents ? `, with ${fmt(safe.taxHeldCents)} set aside for tax on what you've earned on your own` : ""}.${leftOut}`,
     [link("See today", "/home")],
   );
 }

@@ -61,6 +61,7 @@ import { OPTION_ACTIONS } from "./actions/options";
 import type { OfferedOptions } from "@/lib/option-card";
 import { oneLine, UNTRUSTED_TEXT_RULE } from "@/lib/untrusted-text";
 import { chatToday } from "@/lib/today";
+import { dataEndedOn } from "@/lib/data-ended";
 
 // Free questions in Jane's chat, with an Anthropic key (spec step 84): Claude, the
 // person's recent typed messages and Jane's answers to them, and read-only tools over their
@@ -687,6 +688,12 @@ async function askClaude(
   ledger.addLines(memory ?? "");
   ledger.addLines(primer.text);
   const figuresPass = (text: string) => ledger.problems(text, onToday).length === 0;
+  // Someone who uploaded a statement and came back: what's later isn't known, and isn't $0.
+  const ended = await dataEndedOn(userId, { client, today }).catch(() => null);
+  const endedLine = ended
+    ? `\n\nTheir transactions end on ${ended}. Nothing later is on file, so spending, bills and balances since then aren't known, and aren't $0. Say what you have ends then.`
+    : "";
+  if (ended) ledger.addToolResult(JSON.stringify({ transactionsEnd: ended }));
   let prepared: Awaited<ReturnType<typeof quotesAnswer>> | null = null;
   if (shopFetch) {
     const reply = await Promise.race([
@@ -803,7 +810,7 @@ async function askClaude(
     // Everything below changes with the person and the question, after the cached part.
     {
       type: "text",
-      text: `The person's numbers right now (today is ${today}):\n${primer.text || "None available."}${figuresLine(primer.cents)}${topic ? `\n\n${topicLine(topic)}` : ""}${focusLine}${findingBlock}${overviewBlock}${prepared ? `\n\nA card for this request is already prepared and will appear under your answer (never repeat its figures):\n${prepared.body}\nWrite one or two sentences saying what you found; do not call propose_action.` : ""}${style ? `\n\n${style}` : ""}${memory ? `\n\n${memory}` : ""}`,
+      text: `The person's numbers right now (today is ${today}):\n${primer.text || "None available."}${figuresLine(primer.cents)}${endedLine}${topic ? `\n\n${topicLine(topic)}` : ""}${focusLine}${findingBlock}${overviewBlock}${prepared ? `\n\nA card for this request is already prepared and will appear under your answer (never repeat its figures):\n${prepared.body}\nWrite one or two sentences saying what you found; do not call propose_action.` : ""}${style ? `\n\n${style}` : ""}${memory ? `\n\n${memory}` : ""}`,
     },
   ];
 

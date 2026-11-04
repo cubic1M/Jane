@@ -97,3 +97,26 @@ ${entries.join("\n")}
 </OFX>
 `;
 }
+
+// A made-up Chase card file: spending, a monthly payment and interest, no balance column.
+export function madeUpCardCsv(marker: string, now = new Date()): string {
+  const header = "Transaction Date,Post Date,Description,Category,Type,Amount,Memo";
+  const lines: string[] = [];
+  for (let back = 4; back >= 0; back -= 1) {
+    const month = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - back, 1));
+    const add = (day: number, what: string, category: string, type: string, cents: number) => {
+      const on = new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth(), day));
+      if (on > now) return;
+      const [y, m, d] = iso(on).split("-");
+      const date = `${m}/${d}/${y}`;
+      lines.push(`${date},${date},${what},${category},${type},${money(cents)},`);
+    };
+    add(2, `AMAZON MKTPL*${marker}`, "Shopping", "Sale", -8_420);
+    add(5, "CHIPOTLE 1234", "Food & Drink", "Sale", -1_475);
+    add(12, "HULU 877-8244858", "Bills & Utilities", "Sale", -1_799);
+    add(15, "PAYMENT THANK YOU-MOBILE", "", "Payment", 50_000);
+    add(18, "WHOLEFDS OAK 10234", "Groceries", "Sale", -9_631);
+    add(21, "INTEREST CHARGE ON PURCHASES", "Fees & Adjustments", "Fee", -4_122);
+  }
+  return [header, ...lines.reverse(), ""].join("\n");
+}

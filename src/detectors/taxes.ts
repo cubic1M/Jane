@@ -531,6 +531,8 @@ const fileReturn: Detector = {
   detect({ profile, data }) {
     const pattern = profile.facts.income_pattern;
     if (!inFilingWindow(profile.today) || pattern.value === "unknown") return null;
+    // No income seen at all (a card statement alone): it would read "0% sure".
+    if ((pattern as Fact).confidence === 0) return null;
     const refund = tx(
       data,
       (t) => t.pfc === "INCOME_TAX_REFUND" && t.date > `${profile.today.slice(0, 4)}-01-01`,

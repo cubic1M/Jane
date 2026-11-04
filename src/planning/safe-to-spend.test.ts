@@ -286,6 +286,20 @@ describe("safeToSpend", () => {
       }),
     );
 
+  it("names a checking account it can't count", () => {
+    const noBalance = { ...JOINT, currentBalanceCents: null };
+    const safe = safeToSpend(input({ accounts: [CHECKING, noBalance, CARD], transactions: pay }), {
+      budgetsLeftCents: 0,
+      goalsCents: 0,
+    });
+    expect(safe.leftOut).toEqual([JOINT.name]);
+    const counted = safeToSpend(input({ accounts: [CHECKING, JOINT, CARD], transactions: pay }), {
+      budgetsLeftCents: 0,
+      goalsCents: 0,
+    });
+    expect(counted.leftOut).toEqual([]);
+  });
+
   it("leaves a move between the person's own checking accounts alone", () => {
     const d = input({
       accounts: [{ ...CHECKING, currentBalanceCents: 150_000 }, JOINT, CARD],

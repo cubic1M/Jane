@@ -86,11 +86,14 @@ export function wholePicture(snapshot: Snapshot, ranked: Ranked[], focus: Focus)
   } else if (worry) {
     verdict = "watch";
     headline = money ? `Mostly: ${money}, but ${worry}.` : `Mostly, but ${worry}.`;
+  } else if (!money) {
+    // No checking balance seen: nothing overdue is all that's known, not that they're OK.
+    verdict = "watch";
+    headline =
+      "I can't say yet: I can't see your cash right now. Nothing I can see is overdue or urgent. Add a recent checking statement or balance and I'll tell you.";
   } else {
     verdict = "ok";
-    headline = money
-      ? `Yes, you're OK: ${money}, and nothing is overdue.`
-      : "Yes, you're OK: nothing is overdue and nothing urgent is waiting.";
+    headline = `Yes, you're OK: ${money}, and nothing is overdue.`;
   }
   return {
     verdict,

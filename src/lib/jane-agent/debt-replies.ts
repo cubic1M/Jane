@@ -66,7 +66,11 @@ export function debtsReply(book: DebtBook): Reply {
     };
   }
   const lines: string[] = [];
-  if (accounts.length > 0) {
+  const unread = accounts.filter((d) => d.balanceCents === null);
+  if (accounts.length > 0 && unread.length === accounts.length) {
+    // A file with no balance on it isn't "You owe $0.00".
+    lines.push(`I can't see what you owe on ${unread.map((d) => d.name).join(" or ")} yet.`);
+  } else if (accounts.length > 0) {
     lines.push(
       `You owe ${formatCents(book.accountsOwedCents)} on ${plural(accounts.length, "loan or card", "loans and cards")}, the same as your net worth counts.`,
     );
