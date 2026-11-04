@@ -64,7 +64,9 @@ class IcmSwitch:
     def new_table(self, rules, seat, seed=0):
         sp = rules.spec
         # the strong-table bots are hold'em bots: hand over only in 2-card high games without discards
-        self.holdem = (sp.hole_cards == 2 and not sp.discards and getattr(sp, "showdown", "high") == "high")
+        # (no-limit only: every validation was no-limit)
+        self.holdem = (sp.hole_cards == 2 and not sp.discards and getattr(sp, "showdown", "high") == "high"
+                       and getattr(sp, "betting", "no_limit") == "no_limit")
         # six-plus deck (field 9 has tables for it): the short-deck target and rule
         self.short = (self.b_sd is not None and tuple(sorted(sp.deck_ranks)) == tuple(range(4, 13))
                       and self._sd_tables())
