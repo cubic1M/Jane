@@ -242,7 +242,66 @@ export const SHOPS_FUN_GOVERNMENT: readonly Rule[] = [
   },
   {
     category: "GENERAL_SERVICES_CHILDCARE",
-    keywords: ["BRIGHT HORIZONS", "KINDERCARE", "GODDARD SCHOOL", "PRIMROSE SCHOOL", "CARE.COM"],
+    keywords: [
+      "BRIGHT HORIZONS",
+      "KINDERCARE",
+      "GODDARD SCHOOL",
+      "PRIMROSE SCHOOL",
+      "CARE.COM",
+      // A nanny, through a payroll service (debugger 11-04).
+      "HOMEPAY",
+      "NANNY",
+      "POPPINS PAYROLL",
+    ],
+    direction: "out",
+  },
+  { category: "GENERAL_SERVICES_EDUCATION", keywords: ["KUMON"], direction: "out" },
+  // A home equity line: a debt with a balance (debugger 11-04: uncategorized, and missing from what
+  // net worth leaves out).
+  {
+    category: "LOAN_PAYMENTS_PERSONAL_LOAN_PAYMENT",
+    keywords: ["HELOC", "HOME EQUITY"],
+    direction: "out",
+  },
+  // A state's tax office, as banks write it (debugger 11-04: $8,400 of state estimated tax was
+  // uncategorized, and read as months of spending).
+  {
+    category: "INCOME_TAX_REFUND",
+    pattern: /(?<![A-Z0-9])NYS DTF(?![A-Z0-9]).*REFUND/,
+    direction: "in",
+  },
+  {
+    category: "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
+    pattern:
+      /(?<![A-Z0-9])(?:DEPT (?:OF )?REV(?:ENUE)?|DEPT (?:OF )?TAXATION|[A-Z]{2} DOR EFT|STATE TAX|EST TAX|NYS DTF|CA FTB)(?![A-Z0-9])/,
+    direction: "out",
+  },
+  {
+    category: "HOME_IMPROVEMENT_REPAIR_AND_MAINTENANCE",
+    keywords: ["LANDSCAPING", "MERRY MAIDS", "HOUSE CLEANING", "TERMINIX", "ORKIN"],
+    direction: "out",
+  },
+  {
+    category: "HOME_IMPROVEMENT_SECURITY",
+    keywords: ["ADT SECURITY", "RING PROTECT"],
+    direction: "out",
+  },
+  { category: "PERSONAL_CARE_GYMS_AND_FITNESS_CENTERS", keywords: ["WHOOP"], direction: "out" },
+  { category: "TRANSPORTATION_TOLLS", keywords: ["EZ PASS"], direction: "out" },
+  {
+    category: "TRANSPORTATION_GAS",
+    keywords: ["TESLA SUPERCHARGER", "CHARGEPOINT", "ELECTRIFY AMERICA", "EVGO"],
+    direction: "out",
+  },
+  { category: "MEDICAL_VETERINARY_SERVICES", keywords: ["BANFIELD"], direction: "out" },
+  {
+    category: "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS",
+    keywords: ["MORGAN STANLEY", "TREASURY DIRECT", "TREASURYDIRECT"],
+    direction: "out",
+  },
+  {
+    category: "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY",
+    keywords: ["PGE", "GREEN MOUNTAIN POWER", "SUNRUN"],
     direction: "out",
   },
   {
