@@ -74,7 +74,7 @@ import {
 } from "./claude";
 import { forgetPrimer } from "./primer-cache";
 import { CHAT_TOOLS, healthHeadline, proposeAction } from "./claude-tools";
-import { chatTools } from "./tool-select";
+import { chatTools, toolsFor } from "./tool-select";
 import { loadSnapshot, type Snapshot } from "./snapshot";
 
 // Spec step 84: free questions go to Claude with read-only tools over the person's own data
@@ -192,12 +192,17 @@ describe("askClaudeInChat", () => {
       thinking: { type: "adaptive" },
       output_config: { effort: "low" },
     });
-    // Every tool, in the one fixed order that caches (./tool-select.ts).
+    // The general tools and the question's sectors, in the order that caches (./tool-select.ts).
     const request = create.mock.calls[0][0] as {
       tools: { name: string }[];
       system: { text: string }[];
     };
-    expect(request.tools.map((t) => t.name)).toEqual(chatTools(CHAT_TOOLS).map((t) => t.name));
+    expect(request.tools.map((t) => t.name)).toEqual(
+      toolsFor(CHAT_TOOLS, "Is a dinner out OK this week?", null, null, "2026-10-18").map(
+        (t) => t.name,
+      ),
+    );
+    expect(request.tools.length).toBeLessThan(chatTools(CHAT_TOOLS).length);
     // An information question is told to answer in words, with no button.
     expect(request.system[1].text).toMatch(/only asks for information: answer in words/);
   });
@@ -1322,8 +1327,8 @@ describe("speed and failures", () => {
       cachedInputTokens: 700,
       outputTokens: 20,
     });
-    // What the request carried: every tool, the same each time so it's cached.
-    expect(logged.toolsSent).toBe(chatTools(CHAT_TOOLS).length);
+    // What the request carried, so a cost or a routing miss can be seen in the logs.
+    expect(logged.toolsSent).toBeLessThan(chatTools(CHAT_TOOLS).length);
     for (const key of ["primerMs", "firstEventMs", "firstTextMs", "totalMs"]) {
       expect(typeof logged[key], key).toBe("number");
     }
@@ -1415,14 +1420,15 @@ describe("open_area", () => {
       ...options,
       maxTurns: 2,
     });
-    expect(toolNames(0)).toContain("insurance_policies");
+    // Its words name no area, so its tools come when Claude asks for them.
+    expect(toolNames(0)).not.toContain("insurance_policies");
+    expect(toolNames(1)).toContain("insurance_policies");
     expect(lastToolResult(1).content).toMatch(
       /^The insurance tools, for your next step: .*insurance_policies/,
     );
     // Asked again, it's said once.
     expect(lastToolResult(2).content).toBe("You already have the insurance tools.");
-    expect(toolNames(1)).toEqual(toolNames(0));
-    expect(toolNames(2)).toEqual(toolNames(0));
+    expect(toolNames(2)).toEqual(toolNames(1));
     // Two turns allowed, one more for the opened area: the answer still came.
     expect(result.kind).toBe("answer");
     expect(result.reply.body).toContain("Call your insurer");
@@ -1455,7 +1461,9 @@ describe("prompt caching", () => {
     system: { text: string; cache_control?: unknown }[];
   };
   const request = (call: number) => create.mock.calls[call][0] as Request;
-  const prefix = (r: Request) => JSON.stringify({ tools: r.tools, system: r.system[0] });
+  // What every request shares: the general tools, up to and including their breakpoint.
+  const prefix = (r: Request) =>
+    JSON.stringify(r.tools.slice(0, r.tools.findIndex((t) => t.cache_control) + 1));
 
   it("sends a byte-identical cached start for two different questions", async () => {
     create.mockResolvedValue(final("Your numbers look fine."));
@@ -1466,10 +1474,12 @@ describe("prompt caching", () => {
     const [a, b, c] = [request(0), request(1), request(2)];
     expect(prefix(b)).toBe(prefix(a));
     expect(prefix(c)).toBe(prefix(a));
-    // The breakpoints: after the last tool (shared by both instruction modes) and after the
+    // The instructions are the same bytes too, whatever sectors come before them.
+    expect(c.system[0].text).toBe(a.system[0].text);
+    // The breakpoints: after the general tools (shared whatever the question) and after the
     // instructions; nothing after them is marked.
     const marked = a.tools.flatMap((t, i) => (t.cache_control ? [i] : []));
-    expect(marked).toEqual([a.tools.length - 1]);
+    expect(marked).toEqual([a.tools.findIndex((t) => t.name === "open_area")]);
     expect(a.system[0].cache_control).toEqual({ type: "ephemeral" });
     expect(a.system.slice(1).every((block) => !block.cache_control)).toBe(true);
     // What varies is after the breakpoint: the question's areas and whether it gets a button.

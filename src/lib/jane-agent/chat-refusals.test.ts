@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/home", () => ({ homeSummary: vi.fn() }));
@@ -24,7 +24,9 @@ import {
   type ChatStreamEvent,
   type ChatTurn,
 } from "./claude";
+import { CHAT_TOOLS } from "./claude-tools";
 import { fakeChatClaude } from "./fake-chat-claude";
+import { chatTools } from "./tool-select";
 import { forgetPrimer } from "./primer-cache";
 import { loadSnapshot, type Snapshot } from "./snapshot";
 import { overDailyCap } from "./spend";
@@ -697,6 +699,77 @@ describe("a number across turns", () => {
     const reply = await after(history, "so what should i do first");
     expect(reply.reply?.body).toBe("Let me look that up first.");
     expect(create).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("which tools a request carries", () => {
+  const toolUse = (name: string, input: unknown) => ({
+    stop_reason: "tool_use",
+    content: [{ type: "tool_use", id: "t1", name, input }],
+  });
+  const sentTools = (call: number) =>
+    (create.mock.calls[call][0] as { tools: { name: string }[] }).tools.map((t) => t.name);
+  const asked = (question: string) => ask(question);
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("leaves out the sectors a question isn't about", async () => {
+    create.mockResolvedValue(final("Fine."));
+    await asked("how am i doing");
+    const tools = sentTools(0);
+    expect(tools).toContain("open_area");
+    expect(tools).toContain("calculate");
+    expect(tools).not.toContain("refinance_offers");
+    expect(tools).not.toContain("tax_estimate");
+  });
+
+  it("brings the sector a question is about", async () => {
+    create.mockResolvedValue(final("Fine."));
+    await asked("should i refinance my student loan");
+    expect(sentTools(0)).toContain("refinance_offers");
+    expect(sentTools(0)).not.toContain("insurance_quotes");
+  });
+
+  it("carries a sector open_area asked for from the next step on", async () => {
+    create
+      .mockResolvedValueOnce(toolUse("open_area", { area: "tax" }))
+      .mockResolvedValueOnce(final("Fine."));
+    await asked("how am i doing");
+    expect(sentTools(0)).not.toContain("tax_estimate");
+    expect(sentTools(1)).toContain("tax_estimate");
+    // The start of the request is unchanged, so its cached part is still read.
+    expect(sentTools(1).slice(0, sentTools(0).length)).toEqual(sentTools(0));
+    expect(new Set(sentTools(1)).size).toBe(sentTools(1).length);
+  });
+
+  it("shares one cached start between questions about different things", async () => {
+    create.mockResolvedValue(final("Fine."));
+    await asked("how am i doing");
+    await asked("should i refinance my student loan");
+    const start = (call: number) => {
+      const { tools } = create.mock.calls[call][0] as { tools: { cache_control?: unknown }[] };
+      return JSON.stringify(tools.slice(0, tools.findIndex((t) => t.cache_control) + 1));
+    };
+    expect(start(0)).toBe(start(1));
+    expect(start(0)).toContain("open_area");
+  });
+
+  it("costs far less to write to the cache", async () => {
+    create.mockResolvedValue(final("Fine."));
+    await asked("how am i doing");
+    const { tools } = create.mock.calls[0][0] as { tools: unknown[] };
+    expect(JSON.stringify(tools).length).toBeLessThan(
+      JSON.stringify(chatTools(CHAT_TOOLS)).length * 0.4,
+    );
+  });
+
+  it("can go back to all of them", async () => {
+    vi.stubEnv("CHAT_ALL_TOOLS", "1");
+    create.mockResolvedValue(final("Fine."));
+    await asked("how am i doing");
+    expect(sentTools(0)).toEqual(chatTools(CHAT_TOOLS).map((t) => t.name));
   });
 });
 

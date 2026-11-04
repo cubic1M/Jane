@@ -6,9 +6,10 @@ import { parseIntent } from "./intents";
 // Which of Claude's tools a free question is about. The general tools (spending, bills, goals,
 // net worth, findings, the whole picture, decisions, buttons) always; the four sectors' tools
 // (debt and credit, insurance, taxes, investing) when the question or the conversation is about
-// that sector: what the rules read it as, the last topic, or its words. Every request carries
-// all the tools, in one fixed order, so its start is cached (chatTools below); this says which
-// areas the question is about, as a hint after the cached part (./claude.ts).
+// that sector: what the rules read it as, the last topic, or its words. A request carries those
+// (toolsFor below), and open_area adds a sector it missed (./claude.ts). All 172 on every request
+// (chatTools, with CHAT_ALL_TOOLS=1) shared one cached start, but writing it cost two thirds of a
+// cold message, and with few people chatting most messages are cold.
 
 const SECTORS = {
   debt: {
