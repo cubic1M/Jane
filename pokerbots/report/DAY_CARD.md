@@ -22,6 +22,24 @@ Fill in each line:
 - [ ] Single-file submission? Allowed imports? `__init__` time limit? One process per table? →
 - [ ] How the 1 ms is measured (does first-call setup count? GC?) →
 
+## Which tweak for which variant (everything below is tested; build the any table in 2 min)
+
+| The secret variant changes... | Minimal tweak | Bot |
+|---|---|---|
+| deck (short deck, removed ranks) | `GameSpec(deck_ranks=...)`; ace-low straight follows the lowest rank | 2 cards: `icm_tag` (or `icm_any` two_card) |
+| hand ranking (flush > full house, ...) | `category_order=...` | same |
+| hole cards (3-5), Omaha "exactly 2" | `hole_cards=`, `hole_usage="exactly"`, `hole_exact=` | `icm_any` + table (Omaha: `icm_tag` has a finer table) |
+| streets / board cards (3-street, 4-card flop) | `board_cards_per_street=(0, 4, 1)` etc. | `icm_any` + table |
+| discards / draws (any timing, to board or muck, fixed or variable count) | `discards=(DiscardRule(...),)` | `icm_any` + table |
+| **split pots: hi-lo 8-or-better** | `showdown="hilo8"` (presets `holdem_hilo8`, `omaha_hilo8`) | `icm_any` + table |
+| **double board** | `showdown="double_board"`, `board_cards_per_street=(0, 6, 2, 2)` (preset `double_board`) | `icm_any` + table |
+| a new pot-splitting rule (lowball, ...) | one function in `engine/showdown.py` + its name in `VALID` | `icm_any` + table |
+| **fixed-limit betting** | `betting="fixed_limit"` (preset `fixed_limit`; SNG table only) | any (bots clamp to the one legal size) |
+| pot-limit | `betting="pot_limit"` | any |
+| blinds, antes, stacks, hand cap, players (2-8), points | `SngRules(blinds=, antes=, payouts=, max_hands=, num_players=)` or a preset | any |
+| interface (names, units, seats, history format) | adapter from a template (`practice_kit4/adapter_kit4.py`, kit 2, rehearsal) | - |
+| not modelled yet: wild cards, stud (no board), bounties, exposed hole cards | play legally via the adapter; strength model approximate | `icm_any` |
+
 ## Plan A: our code allowed (rehearsed: 8 minutes from kit to verified submission)
 
 1. Rules → `sng/presets.py` (one entry: card rules `GameSpec`, blinds, antes, points 1st-first).
