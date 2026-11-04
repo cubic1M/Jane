@@ -38,7 +38,8 @@ Fill in each line:
 | pot-limit | `betting="pot_limit"` | any |
 | blinds, antes, stacks, hand cap, players (2-8), points | `SngRules(blinds=, antes=, payouts=, max_hands=, num_players=)` or a preset | any |
 | interface (names, units, seats, history format) | adapter from a template (`practice_kit4/adapter_kit4.py`, kit 2, rehearsal) | - |
-| not modelled yet: wild cards, stud (no board), bounties, exposed hole cards | play legally via the adapter; strength model approximate | `icm_any` |
+| **knockout bounties** | `SngRules(bounty=<points>)` (preset `bounty10`); in a bundle set `bounty` on the adapter's `_Rules` (exact-ICM calls then add the bounty when we cover the shover) | `icm_tag` / `icm_any` (`icm_call=1`) |
+| not modelled yet: wild cards, stud (no board), exposed hole cards | play legally via the adapter; strength model approximate | `icm_any` |
 
 ## Plan A: our code allowed (rehearsed: 8 minutes from kit to verified submission)
 
