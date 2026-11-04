@@ -45,5 +45,5 @@ The saved prompt for the scheduled task:
 
 - A wake starts a new session. Nothing here can stop a session already running on someone's laptop, so a claim is how a running session says "mine".
 - Scheduled tasks are a research preview. They report "Succeeded" even when the work didn't get done, so the PR's own state is what counts, and the next sweep looks again.
-- GitHub's schedule can be late or skipped. The script also runs after every CI run, but on a quiet day only an outside check would notice it stopped: set `SWEEP_PING_URL`.
+- GitHub's schedule isn't a clock. On 11-03 Uptime's every-15-minutes ran at 08:18, 16:25 and 21:53. So the sweep really runs after each CI run, and on a quiet night a conflict can wait for hours. Only an outside check would notice it stopped: set `SWEEP_PING_URL`.
 - Number 1 reads `commit` from the live site's `/api/health`. It says "not known" until a deploy carrying it has gone live.

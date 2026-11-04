@@ -129,7 +129,7 @@ describe("the workflow", () => {
 
   it("has no trigger a pull request's code can use", () => {
     expect(workflow).not.toMatch(/^\s*pull_request/m);
-    expect(workflow).toContain("branches: [main]");
+    expect(workflow).toContain("workflow_run:");
   });
 
   it("only touches Vercel when a founder has set live, from the protected environment", () => {

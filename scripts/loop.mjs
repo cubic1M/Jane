@@ -1,7 +1,7 @@
 // Run by .github/workflows/ci-finished.yml when a CI run finishes and every 15 minutes. Reads
 // GitHub, applies scripts/loop-core.mjs, and records the result on the ci-loop branch: state.json
 // and LOOP.md. It runs main's copy, never a PR's code, and sends ids only (docs/agent-loop.md).
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -52,6 +52,20 @@ try {
   state = JSON.parse(readFileSync(join(dir, "state.json"), "utf8"));
 } catch {
   console.log(`No ${BRANCH} branch yet: starting one.`);
+}
+
+// GitHub sometimes answers a push with a server error, and a wake sent but not written down would be
+// sent again.
+function pushRecord() {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      git("push", "-q", "--force", "origin", `HEAD:${BRANCH}`);
+      return;
+    } catch (error) {
+      if (attempt === 3) throw error;
+      spawnSync("sleep", ["5"]);
+    }
+  }
 }
 
 const QUERY = `query($owner: String!, $name: String!) {
@@ -298,7 +312,7 @@ git(
   "-m",
   `Loop, ${now.slice(0, 16)}Z`,
 );
-git("push", "-q", "--force", "origin", `HEAD:${BRANCH}`);
+pushRecord();
 
 // The sweep's own heartbeat, once a founder sets a free outside check (docs/agent-loop.md).
 if (process.env.SWEEP_PING_URL?.startsWith("https://hc-ping.com/")) {

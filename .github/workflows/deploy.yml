@@ -7,11 +7,12 @@ name: Deploy
 # database and other production secrets stay on Vercel and never reach this runner, and no code from
 # the commit runs here beside the token. The public logs get no build output.
 on:
+  # Any CI run, a PR's too: a commit held by the 15-minute gap needs a later look, and GitHub fires
+  # schedules hours late (Uptime's every-15-minutes ran at 08:18, 16:25 and 21:53 on 11-03). This
+  # runs main's copy, never a PR's code, and the plan reads main's runs itself.
   workflow_run:
     workflows: [CI]
     types: [completed]
-    branches: [main]
-  # A green commit held by the 15-minute gap still ships when no later run comes along.
   schedule:
     - cron: "7,22,37,52 * * * *"
   workflow_dispatch:
