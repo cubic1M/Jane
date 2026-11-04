@@ -100,6 +100,65 @@ describe("readOfx", () => {
 
   // The metamorphic suite: a bank that cuts NAME at 32 and puts the whole line in MEMO read as a
   // merchant cut mid-word, and the line said twice.
+  // Debugger 11-04: a credit union's one file with checking and savings read as one account: 187
+  // rows in checking, savings' balance lost, and no word of it.
+  describe("a file with more than one account", () => {
+    const statement = (acct: string, from = "BANKACCTFROM", fitid = acct) => `<STMTTRNRS><STMTRS>
+<${from}><BANKID>253177049<ACCTID>${acct}<ACCTTYPE>CHECKING</${from}>
+<BANKTRANLIST><STMTTRN><TRNTYPE>POS<DTPOSTED>20261001<TRNAMT>-5.00<FITID>${fitid}<NAME>SHOP
+</STMTTRN></BANKTRANLIST></STMTRS></STMTTRNRS>`;
+
+    it("says so and adds nothing, without naming either account", () => {
+      const result = readOfx({
+        name: "cu.ofx",
+        text: `<OFX>${statement("00077123451")}${statement("00077123452")}</OFX>`,
+      });
+      expect(result.ok).toBe(false);
+      expect(!result.ok && result.error).toMatch(/holds 2 accounts/);
+      expect(!result.ok && result.error).not.toContain("0007712345");
+    });
+
+    it("counts a card beside a bank account", () => {
+      const result = readOfx({
+        name: "cu.ofx",
+        text: `<OFX>${statement("111")}${statement("222", "CCACCTFROM")}</OFX>`,
+      });
+      expect(!result.ok && result.error).toMatch(/holds 2 accounts/);
+    });
+
+    it("reads one account split over two statements", () => {
+      const result = readOfx({
+        name: "cu.ofx",
+        text: `<OFX>${statement("111", "BANKACCTFROM", "a")}${statement("111", "BANKACCTFROM", "b")}</OFX>`,
+      });
+      expect(result.ok && result.transactions).toHaveLength(2);
+    });
+
+    it("doesn't count where a transfer went as an account in the file", () => {
+      const text = `<OFX><STMTTRNRS><STMTRS><BANKACCTFROM><BANKID>1<ACCTID>111<ACCTTYPE>CHECKING</BANKACCTFROM>
+<BANKTRANLIST><STMTTRN><TRNTYPE>XFER<DTPOSTED>20261001<TRNAMT>-5.00<FITID>a<NAME>TO SAVINGS
+<BANKACCTTO><BANKID>1<ACCTID>222<ACCTTYPE>SAVINGS</BANKACCTTO></STMTTRN></BANKTRANLIST></STMTRS></STMTTRNRS></OFX>`;
+      expect(readOfx({ name: "cu.ofx", text }).ok).toBe(true);
+    });
+  });
+
+  // The same statement: a check often has a number and no name. "Transaction" was 44% of spending.
+  it("names a check with no payee by its number", () => {
+    const row = (fields: string) =>
+      `<OFX><STMTTRN><TRNTYPE>CHECK<DTPOSTED>20261001<TRNAMT>-950.00<FITID>a${fields}</STMTTRN></OFX>`;
+    const read = (fields: string) => {
+      const result = readOfx({ name: "a.ofx", text: row(fields) });
+      if (!result.ok) throw new Error(result.error);
+      return result.transactions[0];
+    };
+    expect(read("<CHECKNUM>2205")).toMatchObject({
+      description: "CHECK 2205",
+      merchantName: "Check",
+    });
+    expect(read("")).toMatchObject({ description: "CHECK", merchantName: "Check" });
+    expect(read("<CHECKNUM>2205<NAME>JOE SMITH").description).toBe("JOE SMITH");
+  });
+
   it("reads the line from MEMO when NAME is its start", () => {
     const block = (name: string, memo: string) => `<OFX><STMTRS><STMTTRN>
 <TRNTYPE>DEBIT

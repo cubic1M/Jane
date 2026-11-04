@@ -15,6 +15,9 @@ export function looksLikeOfx(name: string, text: string): boolean {
   return /\.(ofx|qfx)$/i.test(name) || /^\s*(OFXHEADER:|<\?xml[^>]*>\s*<\?OFX)/i.test(text);
 }
 
+// Enough to reach a statement's <ACCTID> from the tag that opens its account.
+const ACCOUNT_BLOCK_CHARS = 300;
+
 const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
 const decode = (value: string) =>
   value.replace(/&(amp|lt|gt|quot|apos);/g, (_, name: string) => ENTITIES[name]).trim();
@@ -78,12 +81,34 @@ function* transactionBlocks(text: string): Generator<{ block: string; line: numb
   }
 }
 
+// How many accounts a file speaks for, by each statement's own <BANKACCTFROM> or <CCACCTFROM>. A
+// transfer row's <BANKACCTTO> says where money went and doesn't count. One account split over
+// several statements is one.
+function accountsIn(text: string): number {
+  const ids = new Set<string>();
+  for (const from of text.matchAll(/<(?:BANK|CC)ACCTFROM>/gi)) {
+    const id = field(text.slice(from.index, from.index + ACCOUNT_BLOCK_CHARS), "ACCTID");
+    if (id) ids.add(id);
+  }
+  return ids.size;
+}
+
 export function readOfx(
   file: { name: string; text: string },
   limit: { rows: number; words: string } = { rows: Infinity, words: "" },
 ): OfxResult {
   if (!/<OFX>/i.test(file.text)) {
     return { ok: false, file: file.name, error: "This doesn't look like an OFX or QFX file." };
+  }
+  // Everything here goes into one account: rather than merge them, ask for them apart (debugger
+  // 11-04: a credit union's checking and savings read as one, and savings' balance was lost).
+  const accounts = accountsIn(file.text);
+  if (accounts > 1) {
+    return {
+      ok: false,
+      file: file.name,
+      error: `This file holds ${accounts} accounts. Download each account's statement on its own and upload them one at a time.`,
+    };
   }
   const transactions: Omit<NormalizedTransaction, "accountRef">[] = [];
   const skipped: SkippedRow[] = [];
@@ -105,7 +130,11 @@ export function readOfx(
     // starts with NAME is the line itself: "SUNRISE DO" isn't the merchant, nor the line twice.
     const [named, memo] = [field(block, "NAME"), field(block, "MEMO")];
     const whole = named && memo?.startsWith(named) ? memo : null;
-    const description = (whole ?? [named, memo].filter(Boolean).join(" ")).trim();
+    const type = field(block, "TRNTYPE");
+    // A check often has a number and no name.
+    const check = field(block, "CHECKNUM");
+    const unnamed = check ? `CHECK ${check}` : /^CHECK$/i.test(type ?? "") ? "CHECK" : "";
+    const description = (whole ?? [named, memo].filter(Boolean).join(" ")).trim() || unnamed;
     const reason = !date
       ? "Missing or unreadable date (DTPOSTED)"
       : amount === null
@@ -125,7 +154,6 @@ export function readOfx(
     }
     seen.set(fitid, amount);
     const name = whole ?? named ?? description;
-    const type = field(block, "TRNTYPE");
     // OFX signs money out as negative, and a DEBIT or CREDIT says the same thing in words.
     if (amount !== 0 && /^(?:DEBIT|CREDIT)$/i.test(type ?? "")) {
       typed += 1;
