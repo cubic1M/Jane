@@ -22,8 +22,11 @@ function fromThisSite(request: Request): boolean {
 // Auth.js does that next.
 export async function POST(request: Request) {
   const site = new URL(request.url).origin;
-  const back = (path: string) => NextResponse.redirect(new URL(path, site), 303);
-  if (!fromThisSite(request)) return back("/login");
+  if (!fromThisSite(request)) return NextResponse.redirect(new URL("/login", site), 303);
+  // The address the person is on, just checked above. The server's own name can differ, and the
+  // cookie below is only sent back to this one.
+  const here = request.headers.get("origin")!;
+  const back = (path: string) => NextResponse.redirect(new URL(path, here), 303);
   const form = await request.formData().catch(() => null);
   const field = (name: string) => {
     const value = form?.get(name);
