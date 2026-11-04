@@ -23,6 +23,43 @@ export type GuardrailResult = { ok: true } | { ok: false; issues: GuardrailIssue
 // Everyday words that share a spelling stay allowed (11-01: chat answers were blocked for them):
 // a bank that will "investigate", "in stock", someone who "shares the plan", "home equity", a
 // "bail bond" or "Bond Street Coffee", a "Treasury offset" or refund, and "Ira" the person.
+
+// A pick of what to own, however it's put (11-04: "I'd buy Apple over Microsoft", "Get into VTI
+// now"). A ticker is capitals, and these capitals aren't tickers: banks, insurers, plans, agencies
+// and shops people do choose between. "Go with GEICO" or "Pick an HMO" is about something else.
+const NOT_TICKERS =
+  "(?!(?:CDS?|HYSA|FDIC|USAA|PNC|ACH|APY|APR|BMO|HSBC|USD|PMI|HSA|FSA|ATM|IRS|SSA|CFPB|FTC|DMV|BBB|FHA|HUD|USDA|AAA|AARP|AMEX|VISA|GEICO|FICO|HELOC|ARM|PPO|HMO|EPO|HDHP|COBRA|CVS|UPS|USPS|BMW|HBO|ESPN|IKEA|KFC|NBA|NFL|NYC|USA|LLC|HVAC)\\b)";
+// Companies people own shares of, and not shops whose name is also where the groceries come from:
+// "Costco is a better buy than Safeway" is shopping.
+const COMPANY =
+  "(?:Apple|Microsoft|Tesla|Nvidia|Alphabet|Meta|Palantir|Berkshire|Coinbase|Robinhood|Vanguard|Fidelity|Schwab|Boeing|Intel|Ford)";
+const END_OF_PICK =
+  "(?=\\s*(?:now|today|this (?:week|month|year)|before\\b|and hold\\b|for (?:the long term|this)\\b|over\\b|[.!?,;]|$))";
+const OWN_IT =
+  "[Gg]et (?:into|out of)|[Gg]o (?:with|long(?: on)?|short(?: on)?)|[Pp]ick(?: up)?(?: some| more)?|[Cc]hoose|[Gg]rab(?: some| more)?|[Ll]oad up on|[Pp]ile into|[Bb]uy into|[Ss]tart with|[Ss]tick (?:with|to)|[Ss]tay in|[Cc]ash out of|[Bb]et on|[Ff]avou?r|[Hh]old|[Oo]wn(?: more)?|[Tt]rim|[Dd]ump|[Aa]dd to";
+const STOCK_PICKS = [
+  // "Get into VTI now", "Pick up some AAPL".
+  new RegExp(`\\b(?:${OWN_IT})\\s+${NOT_TICKERS}[A-Z]{3,5}\\b(?![&-])`),
+  // "Get into Apple now", "Grab some Nvidia": these verbs reach shops too, so only for a company.
+  new RegExp(`\\b(?:${OWN_IT})\\s+${COMPANY}\\b${END_OF_PICK}`),
+  // "Pile into Snowflake", "Go long Tesla": nobody says these of a shop, so any name.
+  /\b(?:[Pp]ile into|[Bb]uy into|[Gg]o (?:long|short)(?: on)?|[Bb]et on|[Ll]oad up on)\s+[A-Z][a-z]+\b(?=\s*(?:now|today|this (?:week|month|year)|[.!?,;]|$))/,
+  // "I'd buy Apple over Microsoft": one name against another, with nothing bought between them.
+  /\b(?:[Bb]uy|[Ss]ell)(?:ing)?\s+(?:some |more )?[A-Z][a-z]+\s+(?:over|instead of|rather than|versus|vs\.?)\s+[A-Z][a-z]+\b(?=\s*(?:[.!?,;]|$))/,
+  // "VTI is the better pick", "Apple is a better buy than Microsoft", "Tesla looks like a buy".
+  new RegExp(
+    `\\b(?:${NOT_TICKERS}[A-Z]{3,5}|${COMPANY})\\s+(?:is|looks|seems)(?: like)?(?: an?| the)?(?: (?:good|better|best|great|strong|smart|solid))?\\s+(?:buy|pick|bet)\\b`,
+  ),
+  // "My top pick is Apple".
+  new RegExp(
+    `\\b(?:pick|choice|favou?rite) (?:is|would be)\\s+(?:${NOT_TICKERS}[A-Z]{3,5}\\b(?![&-])|${COMPANY}\\b${END_OF_PICK})`,
+  ),
+  // "Tesla is overvalued". Of a home or a car it says nothing about a share.
+  new RegExp(
+    `\\b(?:${NOT_TICKERS}[A-Z]{3,5}|${COMPANY})\\s+(?:is|looks|seems)\\s+(?:\\w+\\s+)?(?:over|under)valued\\b`,
+  ),
+];
+
 const INVESTMENT = [
   /\binvest(?!igat)/i,
   /(?<!\b(?:in|of) )\bstocks?\b(?! up\b)/i,
@@ -66,6 +103,7 @@ const INVESTMENT = [
   /(?<!\b(?:[Yy]ou|[Ww]e|I|[Tt]hey)\s)\b(?:[Pp]ut|[Mm]ove)\b(?:[^.!?]|\.\d){0,40}\b(?:in|your \w+ to|it to) (?!(?:CDs?|HYSA|FDIC|USAA|PNC|ACH|APY|APR|TD|BMO|HSBC|SoFi|USD)\b)[A-Z]{2,5}\b(?=\s*(?:now|today|and [A-Z]{2,5}\b|for\b|each\b|every\b|[.!?,]|$))/,
   // Filling an HSA, FSA or 529 as the move (11-04). Naming one, or what's in it, stays a fact.
   /(?:^|[.!?:;]\s+|\byou should\s+|\bi(?:'|’)?d\s+)(?:max(?:ing)? (?:out|your)|maximi[sz]e|fill(?: up)?|put the max in(?:to)?|contribut(?:e|ing)(?: more| the max)? to|fund(?!:))\b[^.!?]{0,30}\b(?:hsa|fsa|529)\b/i,
+  ...STOCK_PICKS,
   /\brebalanc/i,
   // "Your budget allocation" is a budget.
   /\b(?:asset|portfolio|investment|fund) allocation\b/i,
