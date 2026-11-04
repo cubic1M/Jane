@@ -51,6 +51,16 @@ They can't catch a wrong rule applied the same way every time. What they found o
 
 Dates and time zones found no bug.
 
+Against small code changes they're weak: on `fee-totals.ts` and `price-increase.ts`, the relations alone killed 24 of 164 Stryker mutants, and all the tests together 142. They earn their place through the bugs above, which those tests hadn't found, and not through the mutation score.
+
+## What Stryker's survivors turned out to be
+
+The full run left 1,602 survived and 360 with no coverage. Not every one has been read:
+
+- **No coverage:** 243 of the 360 are in `engine.ts`, `balances.ts` and `corrections.ts`, database code that Stryker's no-database test set doesn't run and integration tests cover.
+- **Read:** all 51 surviving arithmetic and unary changes, the kind that move a dollar figure.
+- **Dollar-bearing files, tests added for limits nothing held:** 197 survived before, 172 after, from a fresh run on those files. `subscriptions.ts` 22 to 14, `duplicate-charge.ts` 21 to 15, `subscription-review.ts` 19 to 15, `units.ts` 4 to 0, `fee-totals.ts` 8 to 6, `price-increase.ts` 15 to 14. These tests found no new bug.
+
 ## Every night, on live data
 
 `src/lib/invariants/nightly.ts` (`/api/cron/invariants`, Vercel Cron) needs no labels and returns counts and fixed names only, never a description, merchant, amount, date or person. It's kept in `cron_runs`, and logged. Sample people aren't counted.

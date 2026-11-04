@@ -472,6 +472,74 @@ describe.runIf(url)("syncItem against a real database", () => {
     transactionsRecurringGet.mockReset();
   });
 
+  it("doesn't read a card or loan in another currency as dollars", async () => {
+    const cadItem = await client.plaidItem.create({
+      data: {
+        userId,
+        plaidItemId: `item-cad-${suffix}`,
+        accessTokenEncrypted: encrypt("access-sandbox-cad"),
+        institutionName: "First Platypus Bank",
+        liabilities: true,
+      },
+    });
+    const cardIn = (iso_currency_code: string) =>
+      plaidAccount({
+        account_id: `${suffix}-cad-card`,
+        name: "Maple Card",
+        type: "credit",
+        subtype: "credit card",
+        balances: { current: 410.5, available: null, limit: 2000, iso_currency_code },
+      } as never);
+    const liabilitiesIn = (iso_currency_code: string) => ({
+      data: {
+        accounts: [cardIn(iso_currency_code)],
+        liabilities: {
+          credit: [
+            {
+              account_id: `${suffix}-cad-card`,
+              aprs: [{ apr_percentage: 22.99, apr_type: "purchase_apr" }],
+              is_overdue: false,
+              last_statement_balance: 410.5,
+              minimum_payment_amount: 35,
+            },
+          ],
+          mortgage: [],
+          student: [],
+        },
+      },
+    });
+    const saved = () =>
+      Promise.all([
+        client.account.findFirstOrThrow({
+          where: { itemId: cadItem.id },
+          select: { name: true, currentBalanceCents: true },
+        }),
+        client.liability.count({ where: { account: { itemId: cadItem.id } } }),
+      ]);
+    transactionsRecurringGet.mockResolvedValue({
+      data: { outflow_streams: [], inflow_streams: [] },
+    });
+
+    // Figures read as dollars before: the next sync takes them away, and the account stays.
+    transactionsSync.mockResolvedValueOnce(
+      syncPage({ accounts: [cardIn("USD")], next_cursor: "cad-1" }),
+    );
+    liabilitiesGet.mockResolvedValueOnce(liabilitiesIn("USD"));
+    await syncItem(cadItem.id, { client, api, now: NOW });
+    expect(await saved()).toEqual([{ name: "Maple Card", currentBalanceCents: 41050 }, 1]);
+
+    transactionsSync.mockResolvedValueOnce(
+      syncPage({ accounts: [cardIn("CAD")], next_cursor: "cad-2" }),
+    );
+    liabilitiesGet.mockResolvedValueOnce(liabilitiesIn("CAD"));
+    expect((await syncItem(cadItem.id, { client, api, now: NOW })).liabilities).toBe("updated");
+    expect(await saved()).toEqual([{ name: "Maple Card", currentBalanceCents: null }, 0]);
+
+    transactionsSync.mockReset();
+    transactionsRecurringGet.mockReset();
+    await client.plaidItem.delete({ where: { id: cadItem.id } });
+  });
+
   it("keeps investment balances, holdings and investment transactions (spec step 128)", async () => {
     vi.stubEnv("PLAID_INVESTMENTS", "1");
     const investItem = await client.plaidItem.create({
