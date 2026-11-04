@@ -1,0 +1,12 @@
+loaded planb5/bot.py as 'PlanB5' (import + setup 1.2 ms)
+
+bot                     seats  avg pts  place  wins errors timeouts benched decisions  avg ms  max ms
+YOU: PlanB5                50    70.69   2.22    31      0        0       0      8356  0.0227   0.211
+calling station            59    10.59   6.19     0      0        0       0      3960  0.0003   0.014
+holdem habit               59    40.22   3.73     3      0        0       0      7280  0.0096   0.136
+random clicker             58    10.34   6.19     1      0        0       0      1603  0.0007   0.015
+rock                       58    42.07   3.33     0      0        0       0      7208  0.0024   0.026
+shove monkey               58    27.89   5.14    10      0        0       0      2210  0.0018   0.052
+sixplus shark              58    44.14   3.59     5      0        1       0      7435  0.0102   1.207
+
+your places: 1:31 2:2 3:3 4:5 5:7 6:2 7:0 8:0
