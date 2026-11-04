@@ -23,7 +23,7 @@ export type WholePicture = {
   verdict: "ok" | "watch" | "act";
   // The verdict as one sentence, answer first.
   headline: string;
-  safe: { safeCents: number; payday: string | null } | null;
+  safe: { safeCents: number; payday: string | null; taxHeldCents?: number } | null;
   due: { label: string; date: string; amountCents: number | null; href: string }[];
   budgetsOver: { category: string; overCents: number }[];
   goalsBehind: { name: string; leftCents: number }[];
@@ -77,7 +77,8 @@ export function wholePicture(snapshot: Snapshot, ranked: Ranked[], focus: Focus)
   } else if (safe && safe.safeCents === 0 && urgent.length === 0) {
     // "Yes, you're OK: you have $0.00 safe to spend" isn't a yes.
     verdict = "watch";
-    headline = `Not quite: nothing is safe to spend${until}, after your bills.`;
+    const tax = safe.taxHeldCents ? ` and ${formatCents(safe.taxHeldCents)} set aside for tax` : "";
+    headline = `Not quite: nothing is safe to spend${until}, after your bills${tax}.`;
   } else if (urgent.length > 0) {
     verdict = "act";
     const alert = urgent[0].replace(/[.!?]+$/, "");

@@ -80,7 +80,7 @@ export type Snapshot = {
   asOf: string;
   // The Monday of the person's week, for the weekly plan.
   weekStart: string;
-  safeToSpend: { safeCents: number; payday: string | null } | null;
+  safeToSpend: { safeCents: number; payday: string | null; taxHeldCents?: number } | null;
   comingUp: ComingUpRow[];
   waitingOnYou: { id: string; title: string; todo: string | null }[];
   // Open findings, in the plan's order.
@@ -395,7 +395,11 @@ export async function loadSnapshot(
     asOf: localDate(now, user?.timezone),
     weekStart: weekStart(now, user?.timezone).toISOString().slice(0, 10),
     safeToSpend: home.safeToSpend
-      ? { safeCents: home.safeToSpend.safeCents, payday: home.safeToSpend.payday }
+      ? {
+          safeCents: home.safeToSpend.safeCents,
+          payday: home.safeToSpend.payday,
+          taxHeldCents: home.safeToSpend.taxHeldCents,
+        }
       : null,
     comingUp: home.comingUp,
     waitingOnYou: home.waitingOnYou,

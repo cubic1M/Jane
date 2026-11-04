@@ -595,7 +595,7 @@ export function greetingReply(
 }
 
 export function safeReply(
-  safe: { safeCents: number; payday: string | null } | null,
+  safe: { safeCents: number; payday: string | null; taxHeldCents?: number } | null,
   asOf: string | null = null,
 ): Reply {
   if (!safe) {
@@ -603,7 +603,7 @@ export function safeReply(
   }
   const payday = safe.payday && (asOf ? dateAndDays(safe.payday, asOf) : dayLabel(safe.payday));
   return reply(
-    `You have ${fmt(safe.safeCents)} safe to spend${payday ? ` until your next payday, ${payday}` : ""}. That's after upcoming bills, what's left in your budgets and what goes to your goals.`,
+    `You have ${fmt(safe.safeCents)} safe to spend${payday ? ` until your next payday, ${payday}` : ""}. That's after upcoming bills, what's left in your budgets and what goes to your goals${safe.taxHeldCents ? `, with ${fmt(safe.taxHeldCents)} set aside for tax on what you've earned on your own` : ""}.`,
     [link("See today", "/home")],
   );
 }
