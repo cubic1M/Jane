@@ -78,7 +78,7 @@ describe.runIf(url)("a draft return checked before filing", { timeout: 120_000 }
       data: {
         userId: user.id,
         kind: "draft_return",
-        fileName: "2026-draft.pdf",
+        fileName: SAMPLE_DRAFT_NAME,
         contentType: "application/pdf",
         sizeBytes: 3,
         encryptedBytes: Buffer.from("abc"),

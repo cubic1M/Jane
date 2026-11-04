@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { UPLOADS_PAUSED_TEXT } from "@/config/kill-switches";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { jar, jarOptions, headerValues, afterJobs } = vi.hoisted(() => ({
   jar: new Map<string, string>(),
@@ -301,5 +302,20 @@ describe("clearing the cookie", () => {
       secure: true,
       maxAge: 0,
     });
+  });
+});
+
+// KILL_UPLOADS is the incident switch for files coming in: the anonymous upload is one of them.
+describe("with uploads stopped", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("reads nothing and makes nobody", async () => {
+    vi.stubEnv("KILL_UPLOADS", "1");
+    const data = new FormData();
+    data.set("consent", "on");
+    data.set("file", new File(["Date,Description,Amount\n2026-01-02,Coffee,-3.50\n"], "a.csv"));
+    const result = await tryWithStatement(null, data);
+    expect(result).toEqual({ error: UPLOADS_PAUSED_TEXT });
+    expect(startStatementPerson).not.toHaveBeenCalled();
   });
 });

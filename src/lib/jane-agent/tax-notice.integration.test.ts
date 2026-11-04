@@ -1,3 +1,4 @@
+import { SAMPLE_DRAFT_NAME } from "@/config/documents";
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
@@ -83,7 +84,8 @@ describe.runIf(url)("tax notices against a real database", { timeout: 120_000 },
       data: {
         userId: user.id,
         kind: "tax_notice",
-        fileName: "cp2000.jpg",
+        // Sample data: a file of their own would turn demo advice off (src/lib/advice-mode.ts).
+        fileName: SAMPLE_DRAFT_NAME,
         contentType: "image/jpeg",
         sizeBytes: 3,
         encryptedBytes: Buffer.from("abc"),
@@ -121,7 +123,7 @@ describe.runIf(url)("tax notices against a real database", { timeout: 120_000 },
     ).toBe(0);
     const message = (await gather(userId)).find((c) => c.dedupeKey === `notice:${reading.id}`)!;
     expect(message.body).toBe(
-      "I couldn't read all of cp2000.jpg. Fill in the rest and confirm, and I'll put its date on your deadlines.",
+      `I couldn't read all of ${SAMPLE_DRAFT_NAME}. Fill in the rest and confirm, and I'll put its date on your deadlines.`,
     );
   });
 

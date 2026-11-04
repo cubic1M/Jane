@@ -1,3 +1,4 @@
+import { turnOffCalendar } from "@/lib/calendar";
 import { SESSION_SEEN_EVERY_MINUTES, USER_AGENT_MAX_LENGTH } from "@/config/sessions";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
@@ -141,7 +142,11 @@ export async function signOutOtherSessions(
   const { count } = await scopedFor(userId, client).sessions.deleteMany({
     where: { userId, sessionToken: { not: token }, expires: { gt: now } },
   });
-  if (count > 0) await forgetDevices(userId, client);
+  if (count > 0) {
+    await forgetDevices(userId, client);
+    // A copied calendar link works without any session, so it goes too.
+    await turnOffCalendar(userId, { client });
+  }
   await logAudit(
     { type: "user", id: userId },
     "other_sessions_signed_out",

@@ -1,3 +1,4 @@
+import { SAMPLE_DRAFT_NAME } from "@/config/documents";
 import type { DocumentContentType } from "@/config/documents";
 import { DRAFT_FIELDS, type DraftFieldKey } from "@/config/draft-return";
 import { TUITION_PAYEE } from "@/config/tax";
@@ -212,7 +213,7 @@ export async function readDraftReturn(
 // Sample data only (demo advice, step 98): a sample draft to check without a file to upload, so
 // a Try Jane person can see the check. The stand-in reader fills it from their own figures, with
 // its planted mistakes; nothing goes to Claude. One at a time: a waiting sample is reused.
-export const SAMPLE_DRAFT_NAME = "Sample draft return.pdf";
+export { SAMPLE_DRAFT_NAME };
 const SAMPLE_DRAFT_BYTES = new TextEncoder().encode("%PDF-1.4\n% Sample draft return\n%%EOF\n");
 
 export async function addSampleDraft(

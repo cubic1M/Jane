@@ -1,5 +1,6 @@
 "use server";
 
+import { UPLOADS_PAUSED_TEXT, killed } from "@/config/kill-switches";
 import { cookies, headers } from "next/headers";
 import { after } from "next/server";
 import { NEW_ACCOUNT_ID } from "@/config/import";
@@ -48,6 +49,7 @@ export async function tryWithStatement(_previous: TryState, formData: FormData):
   if (formData.get("consent") !== "on") {
     return { error: "Tick the box to agree to the Terms and Privacy Policy first." };
   }
+  if (killed("uploads")) return { error: UPLOADS_PAUSED_TEXT };
   const file = formData.get("file");
   if (!(file instanceof File) || !file.name || file.size === 0) {
     return { error: "Choose a statement file first." };

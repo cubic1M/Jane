@@ -55,6 +55,12 @@ export async function deleteAllData(
       if (user?.email) {
         await tx.betaAccess.deleteMany({ where: { email: user.email } });
         await tx.waitlistEntry.deleteMany({ where: { email: user.email } });
+        // A code locked to their address (/admin/invites) forgets it, and with no address on it
+        // nobody else may use it.
+        await tx.inviteCode.updateMany({
+          where: { email: user.email.toLowerCase() },
+          data: { email: null, revokedAt: new Date() },
+        });
         // Request counters keyed by the email or the id: "You can delete everything" (/privacy), so
         // not a day later, when they'd expire (debugger 11-03).
         await tx.rateLimit.deleteMany({
