@@ -143,6 +143,7 @@ export async function verifySessionCode(
     ).session.deleteMany({
       where: { userId, sessionToken: { not: sessionToken } },
     });
+    await scopedFor(userId, client).pushSubscriptions.deleteMany({ where: { userId } });
     await logAudit(actor, eventFor(user, "enrolled"), target);
     backupCodes = await replaceBackupCodes(userId, user, client);
   }

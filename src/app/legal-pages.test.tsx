@@ -83,7 +83,7 @@ describe("the legal pages", () => {
     expect(privacy).toMatch(/a record that a try started and was deleted/);
     expect(privacy).toMatch(/nothing from your statement/);
     expect(privacy).toContain(
-      `sign-in cookie for that person, which works for ${TRIAL_HOURS} hours`,
+      `sign-in cookie for that person until the browser closes, and for ${TRIAL_HOURS} hours at most`,
     );
     expect(privacy).toMatch(/goes at the next daily clean-up/);
     // src/lib/edge-limits.ts counts a hash of the IP and of the session token.

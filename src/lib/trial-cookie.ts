@@ -15,19 +15,28 @@ function secureCookies(forwardedProto: string | null, authUrl = process.env.AUTH
   return forwardedProto === "https";
 }
 
-export async function setTrialSession(sessionToken: string, expires: Date): Promise<void> {
+// `expires` left out, it ends when the browser closes: for someone's own statement, so that the next
+// person at a shared computer doesn't find it by opening the site. Sample data can keep its day.
+export async function setTrialSession(sessionToken: string, expires?: Date): Promise<void> {
   const secure = secureCookies((await headers()).get("x-forwarded-proto"));
   (await cookies()).set(cookieName(secure), sessionToken, {
     httpOnly: true,
     sameSite: "lax",
     secure,
     path: "/",
-    expires,
+    ...(expires ? { expires } : {}),
   });
 }
 
 export async function clearTrialSession(): Promise<void> {
   const jar = await cookies();
   jar.delete(cookieName(false));
-  jar.delete(cookieName(true));
+  // A browser ignores a change to a __Secure- cookie unless it says Secure itself.
+  jar.set(cookieName(true), "", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: true,
+    path: "/",
+    maxAge: 0,
+  });
 }

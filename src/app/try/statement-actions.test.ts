@@ -1,14 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { jar, headerValues, afterJobs } = vi.hoisted(() => ({
+const { jar, jarOptions, headerValues, afterJobs } = vi.hoisted(() => ({
   jar: new Map<string, string>(),
+  jarOptions: new Map<string, Record<string, unknown>>(),
   headerValues: new Map<string, string>(),
   afterJobs: [] as (() => Promise<unknown>)[],
 }));
 vi.mock("next/headers", () => ({
   cookies: async () => ({
     get: (name: string) => (jar.has(name) ? { value: jar.get(name) } : undefined),
-    set: (name: string, value: string) => jar.set(name, value),
+    set: (name: string, value: string, options: Record<string, unknown>) => {
+      jarOptions.set(name, options);
+      // A cookie set to end at once is gone, as in a browser.
+      if (options?.maxAge === 0) jar.delete(name);
+      else jar.set(name, value);
+    },
     delete: (name: string) => jar.delete(name),
   }),
   headers: async () => new Headers([...headerValues]),
@@ -84,6 +90,12 @@ describe("tryWithStatement", () => {
   it("makes a person, signs them in with no email, saves the statement and scans", async () => {
     headerValues.set("user-agent", "Browser");
     expect(await tryWithStatement(null, submitted(statement()))).toEqual({ next: "/scanning" });
+    // Someone's own statement: gone when the browser closes, so the next person at a shared
+    // computer doesn't find it by opening the site.
+    const [options] = [...jarOptions.values()];
+    expect(options).toMatchObject({ httpOnly: true });
+    expect(options).not.toHaveProperty("expires");
+    expect(options).not.toHaveProperty("maxAge");
     expect(startStatementPerson).toHaveBeenCalledWith({ userAgent: "Browser", previous: null });
     expect(jar.get(COOKIE)).toBe("trial_token");
     // Into the new person, a new account named from the file; nothing else is stored from it.
@@ -278,5 +290,16 @@ describe("startOverTry", () => {
     vi.mocked(deleteTrialPerson).mockRejectedValueOnce(new Error("deadlock"));
     expect(await startOverTry()).toEqual({ error: expect.stringMatching(/try again/) });
     expect(jar.get(COOKIE)).toBe("trial_token");
+  });
+});
+
+describe("clearing the cookie", () => {
+  it("says Secure on the __Secure- one, or a browser ignores the change", async () => {
+    const { clearTrialSession } = await import("@/lib/trial-cookie");
+    await clearTrialSession();
+    expect(jarOptions.get("__Secure-authjs.session-token")).toMatchObject({
+      secure: true,
+      maxAge: 0,
+    });
   });
 });
