@@ -97,12 +97,15 @@ export function draftPayload(
 ): { payload: DraftPayload; allowedCents: number[] } | null {
   const spec = DRAFTABLE[actionType];
   if (!spec) return null;
-  const { input, allowedCents } = prepareExplainInput({
-    type: finding.type,
-    evidence: finding.evidence,
-    // The merchant doesn't need our estimate of what this saves.
-    annualSavingsCents: null,
-  });
+  const { input, allowedCents } = prepareExplainInput(
+    {
+      type: finding.type,
+      evidence: finding.evidence,
+      // The merchant doesn't need our estimate of what this saves.
+      annualSavingsCents: null,
+    },
+    { allCharges: true },
+  );
   const facts: Record<string, string> = {};
   for (const key of spec.facts) {
     const value = input.facts[key];

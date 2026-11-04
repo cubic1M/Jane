@@ -184,7 +184,7 @@ const TEMPLATES: Record<FindingType, (input: ExplainInput) => Omit<ExplanationCo
     const to = fact(input.facts, "typicalPriceTo");
     const typical = from && to ? `the typical price of ${from} to ${to}` : "the typical price";
     return {
-      explanation: `You pay ${merchant}${perMonth ? ` about ${perMonth} a month` : ""}, above ${typical} for a ${kind} bill. Providers often lower a bill when a customer asks, which could save ${yearly(input, "money every year")}.`,
+      explanation: `You pay ${merchant}${perMonth ? ` about ${perMonth} a month` : ""}, above ${typical} for ${/^[aeiou]/i.test(kind) ? "an" : "a"} ${kind} bill. Providers often lower a bill when a customer asks, which could save ${yearly(input, "money every year")}.`,
       giveUp: "Possibly a promotional price that ends later, or a plan with fewer extras.",
       alternatives: [
         "Ask them yourself for a loyalty offer",
