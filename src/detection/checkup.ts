@@ -21,7 +21,9 @@ import {
   TRIAL_MAX_START_CENTS,
   TRIAL_MIN_DAYS,
 } from "@/config/detection";
+import { STALE_UPLOAD_DAYS } from "@/config/import";
 import type { FindingType } from "@/generated/prisma/client";
+import { dayLabel } from "@/lib/day-label";
 import { formatCents, formatWholeDollars } from "@/lib/money";
 import { cashCushionOf } from "@/planning/idle-cash";
 import { detect } from "./detect";
@@ -56,6 +58,8 @@ type Facts = {
   // Days of statements inside the lookback window.
   days: number;
   transactions: number;
+  // The last day statements reach, when that's too long ago to say what's being paid now.
+  statementsEnd: string | null;
 };
 
 type Check = {
@@ -64,6 +68,10 @@ type Check = {
   missing: (f: Facts) => string | null;
   // Left off the list: nothing for it to look at (no cancellations, no card with cover).
   skip?: (f: Facts) => boolean;
+  // About what's being paid now. Old statements' charges are judged against today and read as
+  // stopped, so this can't pass on them (debugger 11-04: "Subscriptions: None in 6 months" for
+  // someone paying Netflix every month until seven weeks ago).
+  current?: true;
   passed: (f: Facts) => { line: string; detail: string };
 };
 
@@ -129,6 +137,7 @@ const first =
 export const CHECKS: Record<FindingType, Check> = {
   subscription_review: {
     label: "Subscriptions",
+    current: true,
     missing: shortHistory(CHECKUP_MIN_RECURRING_DAYS),
     passed: (f) => ({
       line: `None in ${spanOf(f.days)}`,
@@ -137,6 +146,7 @@ export const CHECKS: Record<FindingType, Check> = {
   },
   duplicate_subscription: {
     label: "Services that overlap",
+    current: true,
     missing: shortHistory(CHECKUP_MIN_RECURRING_DAYS),
     passed: (f) => ({
       line: "No two doing the same job",
@@ -145,6 +155,7 @@ export const CHECKS: Record<FindingType, Check> = {
   },
   price_increase: {
     label: "Price rises",
+    current: true,
     missing: first(shortHistory(CHECKUP_MIN_RECURRING_DAYS), (f) =>
       priced(f).length === 0
         ? `No recurring bill has charged ${PRICE_INCREASE_MIN_PRIOR_CHARGES + 1} times yet.`
@@ -171,6 +182,7 @@ export const CHECKS: Record<FindingType, Check> = {
   },
   idle_cash: {
     label: "Idle cash",
+    current: true,
     missing: first(shortHistory(CHECKUP_MIN_HISTORY_DAYS), (f) =>
       cushion(f) ? null : "No checking or savings balance with spending to compare it to yet.",
     ),
@@ -192,6 +204,7 @@ export const CHECKS: Record<FindingType, Check> = {
   },
   insurance_reshop: {
     label: "Insurance",
+    current: true,
     missing: first(shortHistory(CHECKUP_MIN_RECURRING_DAYS), (f) =>
       insurance(f).length === 0 ? "No insurance bill in your statements yet." : null,
     ),
@@ -212,6 +225,7 @@ export const CHECKS: Record<FindingType, Check> = {
   },
   low_balance_risk: {
     label: "Balance ahead",
+    current: true,
     // The forecast needs the bills, so as much history as the recurring checks.
     missing: first(shortHistory(CHECKUP_MIN_RECURRING_DAYS), (f) =>
       forecastAccounts(f.input, FORECAST_DAYS).length === 0
@@ -255,6 +269,7 @@ export const CHECKS: Record<FindingType, Check> = {
   },
   bill_negotiation: {
     label: "Phone and internet",
+    current: true,
     missing: first(shortHistory(CHECKUP_MIN_RECURRING_DAYS), (f) =>
       bills(f).length === 0 ? "No phone or internet bill in your statements yet." : null,
     ),
@@ -272,6 +287,7 @@ export const CHECKS: Record<FindingType, Check> = {
   },
   covered_by_card: {
     label: "Cover you pay for twice",
+    current: true,
     missing: () => null,
     skip: (f) => Object.keys(f.input.cardProducts ?? {}).length === 0,
     passed: (f) => ({
@@ -305,6 +321,14 @@ function foundLine(candidates: Candidate[], open: number): { line: string; detai
   };
 }
 
+function oldStatementsEnd(input: DetectionInput): string | null {
+  const newest = input.transactions.reduce<string | null>(
+    (latest, t) => (t.date <= input.asOf && (!latest || t.date > latest) ? t.date : latest),
+    null,
+  );
+  return newest && daysBetween(newest, input.asOf) > STALE_UPLOAD_DAYS ? newest : null;
+}
+
 // The checkup for one person: found first, then passed, then the checks short of data.
 // `open` counts the person's open findings by type, so a finding listed above never sits
 // beside a "passed" line.
@@ -318,6 +342,7 @@ export function checkup(
     streams,
     days: historyDays(input),
     transactions: inLookback(input).length,
+    statementsEnd: oldStatementsEnd(input),
   };
   const found = new Map<FindingType, Candidate[]>();
   for (const c of detect(input)) found.set(c.type, [...(found.get(c.type) ?? []), c]);
@@ -330,6 +355,18 @@ export function checkup(
       return [{ type, label: check.label, status: "found", ...foundLine(candidates, openCount) }];
     }
     if (check.skip?.(facts)) return [];
+    if (check.current && facts.statementsEnd) {
+      return [
+        {
+          type,
+          label: check.label,
+          status: "not_enough_data",
+          line: `Your statements end ${dayLabel(facts.statementsEnd, { year: true })}`,
+          detail:
+            "That's too long ago to say what you're paying now. Upload newer statements and Jane checks this again.",
+        },
+      ];
+    }
     const missing = check.missing(facts);
     if (missing) {
       return [

@@ -29,6 +29,7 @@ import {
   reportOrder,
   reportState,
   shortUploadDays,
+  nothingHeading,
   staleStatementsEnd,
 } from "@/lib/report-state";
 import { isoDay } from "@/lib/dates";
@@ -202,7 +203,7 @@ async function ReportContent({
         </section>
       ) : state === "nothing" ? (
         <section className="flex flex-col gap-3">
-          <h1 className="text-3xl font-semibold tracking-tight">Nothing to fix right now</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">{nothingHeading(oldStatements)}</h1>
           <p className="text-zinc-600 dark:text-zinc-400">
             Jane read {transactions} transactions and ran {checks.length} checks. Tap one to see
             what it looked at.

@@ -5,6 +5,7 @@ import {
   findingSure,
   foundHeadline,
   foundLine,
+  nothingHeading,
   reportOrder,
   reportState,
   shortUploadDays,
@@ -198,6 +199,13 @@ describe("a finding's % sure on the report", () => {
 
 // Debugger 10-30: statements from January to April uploaded in October got findings with no
 // word that they describe the spring.
+describe("nothingHeading", () => {
+  it("doesn't say there's nothing to fix when the statements are too old to tell", () => {
+    expect(nothingHeading(null)).toBe("Nothing to fix right now");
+    expect(nothingHeading("2026-09-14")).toBe("Nothing found in these old statements");
+  });
+});
+
 describe("staleStatementsEnd", () => {
   const now = new Date("2026-10-31T12:00:00Z");
   it("names the last day when the newest statement line is over STALE_UPLOAD_DAYS old", () => {
