@@ -50,7 +50,7 @@ public.
 
 **Before turning this on: deleted people.** "Delete all my data" can't reach a dump already made, so
 someone's rows can stay in a backup for 14 days after they delete their account. The privacy page
-doesn't say that yet, so it needs counsel's wording first. After any restore, delete again whoever
+mentions only the provider's restore history, so add the 14 days to it first. After any restore, delete again whoever
 asked to be deleted since that dump: `audit_log` keeps the ids.
 
 ## The timed drill

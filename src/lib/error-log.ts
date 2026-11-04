@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma/client";
-import { log } from "@/lib/log";
+import { log, logText } from "@/lib/log";
 import { scrub, scrubPath } from "@/lib/scrub";
 import { reportToSentry } from "@/lib/sentry";
 import { systemDb } from "@/lib/system-db";
@@ -16,13 +16,22 @@ export type RequestErrorContext = {
   routeType?: string;
 };
 
+const stackFrames = (stack: string) =>
+  stack
+    .split("\n")
+    .filter((line) => /^\s*at /.test(line))
+    .join("\n");
+
 export function describeError(error: unknown) {
   const err = error instanceof Error ? error : new Error(String(error));
   const digest =
     typeof error === "object" && error !== null && "digest" in error ? String(error.digest) : null;
   return {
-    message: scrub(`${err.name}: ${err.message}`).slice(0, MAX_MESSAGE),
-    stack: err.stack ? scrub(err.stack).slice(0, MAX_STACK) : null,
+    // As in the logs: an error can quote what it was given, a row of someone's statement, and these
+    // rows have no owner, so deleting a person can't reach them. Code locations only from the stack,
+    // whose first lines repeat the message.
+    message: logText(`${err.name}: ${err.message}`).slice(0, MAX_MESSAGE),
+    stack: err.stack ? scrub(stackFrames(err.stack)).slice(0, MAX_STACK) : null,
     digest,
   };
 }

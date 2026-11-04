@@ -11,11 +11,10 @@ import { finishImport } from "@/lib/import/background";
 import { db as defaultClient } from "@/lib/db";
 import { agentStep, handleReply, lookUpSupportFor } from "@/lib/agent/run";
 import { simulatedReply } from "@/lib/agent/simulated-company";
-import { log } from "@/lib/log";
+import { log, logText } from "@/lib/log";
 import { simulatedCallResult } from "@/lib/voice/calls";
 import { explainFindings } from "@/lib/explanations";
 import { deliverChatNotifications } from "@/lib/jane-agent/notify";
-import { scrub } from "@/lib/scrub";
 import { retryControllerStep, runController } from "@/lib/controller";
 import type { OnlyPeople } from "@/lib/only-people";
 import { systemDb } from "@/lib/system-db";
@@ -185,7 +184,8 @@ async function execute(
       });
       return "done" as const;
     }
-    const lastError = scrub(String(error)).slice(0, JOB_ERROR_LENGTH);
+    // As in the logs: an error can quote a row of someone's statement.
+    const lastError = logText(String(error)).slice(0, JOB_ERROR_LENGTH);
     const failed = job.attempts >= job.max_attempts;
     // A job out of time may still be running: it isn't stopped, only no longer waited for. Not again
     // until the function it's in has certainly ended, or two copies could run at once.
