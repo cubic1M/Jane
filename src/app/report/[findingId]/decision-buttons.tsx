@@ -30,6 +30,7 @@ export function DecisionButtons({
   approvedWords = "Approved. Jane is on it.",
   readOnly = false,
   showLabel = "Show me how",
+  noLabel = "No thanks",
 }: {
   findingId: string;
   cardHash: string;
@@ -45,6 +46,7 @@ export function DecisionButtons({
   readOnly?: boolean;
   // The yes in read-only mode.
   showLabel?: string;
+  noLabel?: string;
 }) {
   const router = useRouter();
   const [state, setState] = useState<State>({ kind: "idle" });
@@ -196,7 +198,7 @@ export function DecisionButtons({
       )}
       <div className="flex flex-col gap-3 sm:flex-row" data-decision-buttons="">
         {button("yes", yesText, PRIMARY_BUTTON)}
-        {button("no", "No thanks", SECONDARY_BUTTON)}
+        {button("no", noLabel, SECONDARY_BUTTON)}
         {chosen && canRevert && (
           <button type="button" onClick={revert} className={SECONDARY_BUTTON}>
             <span aria-hidden="true">↶ </span>Revert

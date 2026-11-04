@@ -75,3 +75,52 @@ describe("templateExplanation", () => {
     );
   });
 });
+
+// Debugger 11-04: "Is Northstar Data a subscription to cancel?" read on with "You pay Northstar Data
+// $49.00 monthly, every year" and "You would lose access", as if the answer were known.
+describe("a charge that may not be a subscription", () => {
+  const input = (facts: Record<string, string>, savingsPerYear: string | null = null) =>
+    ({ findingType: "subscription_review", savingsPerYear, facts }) as never;
+  const guess = templateExplanation(
+    "Is Northstar Data a subscription to cancel?",
+    input({
+      merchant: "Northstar Data",
+      latestCharge: "$49.00",
+      billed: "monthly",
+      onlyItsPrice: "yes",
+      yearlyCost: "$588.00",
+    }),
+  );
+
+  it("says what it costs and that Jane can't tell", () => {
+    expect(guess.explanation).toContain("about $588.00 a year");
+    expect(guess.explanation).toContain("can't tell");
+    expect(guess.explanation).not.toContain("every year");
+  });
+
+  it("doesn't assume what it would cost to stop", () => {
+    expect(guess.giveUp).toContain("If it is one");
+  });
+
+  it("leaves a known subscription as it was", () => {
+    const known = templateExplanation(
+      "Review your Netflix subscription",
+      input({ merchant: "Netflix", latestCharge: "$15.49", billed: "monthly" }, "$185.88"),
+    );
+    expect(known.explanation).toContain("about $185.88 a year");
+    expect(known.giveUp).toBe("You would lose access to Netflix.");
+  });
+
+  it("passes the guardrails with the finding's own figures", () => {
+    const [sample] = sampleFindings().filter((f) => f.type === "subscription_review");
+    const finding = {
+      ...sample,
+      annualSavingsCents: null,
+      evidence: { ...(sample.evidence as object), onlyItsPrice: true },
+    };
+    const { input: prepared, allowedCents } = prepareExplainInput(finding);
+    const content = templateExplanation(finding.title, prepared);
+    expect(content.giveUp).toContain("If it is one");
+    expect(checkGuardrails(contentText(content), allowedCents, finding.type)).toEqual({ ok: true });
+  });
+});
