@@ -51,12 +51,13 @@ export function StatementTry() {
       ref={box}
       id="try-upload"
       open={opened || undefined}
-      className="w-full max-w-md min-w-0 border border-dashed border-[var(--landing-dot)] p-4"
+      className="w-full max-w-md min-w-0"
     >
-      <summary className="cursor-pointer font-semibold text-[var(--landing-hi)]">
+      {/* The same box as "Try it with sample data" above it, words in the middle. */}
+      <summary className="flex h-12 cursor-pointer list-none items-center justify-center border border-[var(--landing-hi)] px-3 text-center text-base font-semibold text-[var(--landing-hi)] transition-colors hover:bg-[var(--landing-hi)] hover:text-[var(--landing-bg)] [&::-webkit-details-marker]:hidden">
         Try it with your own statement
       </summary>
-      <form action={action} onSubmit={checkSize} className="mt-3 flex min-w-0 flex-col gap-3">
+      <form action={action} onSubmit={checkSize} className="mt-3 flex min-w-0 flex-col gap-2">
         {deleted && (
           <p role="status" data-try-deleted="" className="text-sm text-[var(--landing-hi)]">
             Deleted. Your statement&apos;s data is gone from Jane.

@@ -133,14 +133,17 @@ export default function Home() {
               </p>
               <div className="flex flex-wrap items-center gap-6">
                 <GetStartedButton tone="landing" />
-                {trialEnabled() && <TryButton />}
-                {statementTrialEnabled() && <StatementTry />}
                 <Link
                   href="/login"
                   className="font-medium text-[var(--landing-hi)] underline underline-offset-2 hover:no-underline"
                 >
                   Sign in
                 </Link>
+                {/* The two ways to try Jane, one block: same width, close together. */}
+                <div className="flex w-full max-w-md min-w-0 flex-col gap-2">
+                  {trialEnabled() && <TryButton />}
+                  {statementTrialEnabled() && <StatementTry />}
+                </div>
               </div>
               <p className="-mb-5 text-xs text-[var(--landing-dot)]">an example scan</p>
               <ul
