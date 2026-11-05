@@ -84,9 +84,11 @@ const PROTECTED_PATHS = [
   /(^|\/)\.claude(\/|$)/,
   /(^|\/)\.mcp\.json$/,
   /^\.github\/workflows$/,
-  /^\.github\/workflows\/(ci|gates|merge-train|rerun-flaky)\.ya?ml$/,
+  /^\.github\/workflows\/(ci|gates|merge-train|rerun-flaky|review|review-confirm|review-drill)\.ya?ml$/,
   /^\.github\/scripts(\/|$)/,
   /^src\/config\/advice\.ts$/,
+  // With no person reading the flag, this file returning true is how a real account gets advice.
+  /^src\/lib\/advice-mode\.ts$/,
   /^src\/accuracy\/accuracy\.test\.ts$/,
   /^src\/accuracy\/csv\/csv-accuracy\.test\.ts$/,
   /^vitest\.([^/]*\.)?(config|workspace)\./,
@@ -102,7 +104,6 @@ const PROTECTED_PATHS = [
 // work while no founder can approve. A change to one is flagged instead.
 const WATCHED_PATHS = [
   /^\.github(\/|$)/,
-  /^src\/lib\/advice-mode\.ts$/,
   /^src\/lib\/guardrails\.ts$/,
   /(^|\/)tsconfig[^/]*\.json$/,
   /^\.gitleaks\.toml$/,
