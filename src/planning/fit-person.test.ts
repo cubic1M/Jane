@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { ProfileInput } from "@/profile/build";
+import { DETECTOR_RATES } from "@/config/detectors";
+import { buildProfile, type ProfileInput } from "@/profile/build";
+import { inputFor } from "@/profile/sample";
 import { fitPersonFrom } from "./fit-person";
 
 // The debt payments a lender counts: three months of loan payments, a month each. On the 1st, a
@@ -21,6 +23,16 @@ const input = (today: string, dates: string[]): ProfileInput => ({
 });
 
 describe("fitPersonFrom", () => {
+  it("counts a business owner's profit as income, not the business's sales", () => {
+    const data = inputFor("owner");
+    const profile = buildProfile(data);
+    const sales = profile.facts.monthly_income.value as number;
+    expect(profile.facts.income_pattern.value).toBe("business");
+    expect(fitPersonFrom(data).incomeCents).toBe(
+      Math.round(sales * DETECTOR_RATES.tax.businessProfitShare),
+    );
+  });
+
   it("counts one month's loan payments, whatever the day", () => {
     const dates = ["2026-07-01", "2026-08-01", "2026-09-01", "2026-10-01", "2026-11-01"];
     for (const today of ["2026-10-31", "2026-11-01", "2026-11-15"]) {

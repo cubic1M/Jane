@@ -484,6 +484,11 @@ export function buildProfile(input: ProfileInput): Profile {
   const otherIncome = income.filter(
     (t) => t.pfc === "INCOME_OTHER" && !PENSION_PATTERN.test(t.description),
   );
+  const moneyIn = (from: typeof income) => from.reduce((s, t) => s + Math.abs(t.amountCents), 0);
+  // A shop that also sells a little on Etsy is still a shop: going by count alone, 12 small payouts
+  // made $128,000 of card sales read as take-home pay (debugger 11-05).
+  const mostlySales =
+    otherIncome.length >= BUSINESS_DEPOSITS_MIN && moneyIn(otherIncome) > moneyIn(contractor);
   let pattern: "salary" | "uneven" | "business" | "pension" | "unknown" = "unknown";
   let patternMatches = 0;
   // Salaried while a job still pays; a new job counts its old one's paychecks as the same pattern.
@@ -494,7 +499,7 @@ export function buildProfile(input: ProfileInput): Profile {
   } else if (stillSalaried) {
     pattern = "salary";
     patternMatches = salary.length;
-  } else if (contractor.length >= UNEVEN_DEPOSITS_MIN) {
+  } else if (contractor.length >= UNEVEN_DEPOSITS_MIN && !mostlySales) {
     pattern = "uneven";
     patternMatches = contractor.length;
   } else if (otherIncome.length >= BUSINESS_DEPOSITS_MIN) {
