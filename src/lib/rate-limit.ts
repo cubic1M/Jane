@@ -39,10 +39,11 @@ function resultFor(name: LimitName, count: number, windowStart: Date, now: Date)
 }
 
 // Now and then, clear out old windows: never on the caller's wait (a delete that scans the
-// table once cost one visitor a second on the click).
-function sometimesCleanUp(client: PrismaClient, now: Date) {
+// table once cost one visitor a second on the click). Old by the real clock, not the hit's own
+// date: a hit dated years ahead counted every row anyone was using today as old.
+function sometimesCleanUp(client: PrismaClient) {
   if (Math.random() >= 0.01) return;
-  const cutoff = new Date(now.getTime() - RATE_LIMIT_RETENTION_HOURS * 60 * 60 * 1000);
+  const cutoff = new Date(Date.now() - RATE_LIMIT_RETENTION_HOURS * 60 * 60 * 1000);
   void systemDb(WHY, client)
     .rateLimit.deleteMany({
       where: {
@@ -65,7 +66,7 @@ export async function hit(
     ON CONFLICT (key, window_start) DO UPDATE SET count = rate_limits.count + ${by}
     RETURNING count`;
   const count = Number(row.count);
-  if (count === by) sometimesCleanUp(client, now);
+  if (count === by) sometimesCleanUp(client);
   return resultFor(name, count, windowStart, now);
 }
 
@@ -103,7 +104,7 @@ export async function hitMany(
       RETURNING key, count
     )
     SELECT key, count FROM first_counter UNION ALL SELECT key, count FROM other_counters`;
-  if (rows.some((r) => Number(r.count) === 1)) sometimesCleanUp(client, now);
+  if (rows.some((r) => Number(r.count) === 1)) sometimesCleanUp(client);
   const results = rows.map((r) => {
     const w = windows.get(r.key)!;
     return resultFor(w.name, Number(r.count), w.windowStart, now);
