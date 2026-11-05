@@ -1166,7 +1166,7 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
 * **Decision-time tail is the OS, not our code.** The slowest 0.1% of decisions are spread over every code path, including a preflop fold that took 2.4 ms. `gc.freeze()` (already in the adapters) trims the tail: max 0.71 vs 1.37 ms over 7,772 decisions.
 * **Host speed note (Nov 5, after a container restart):** this host is ~1.4x slower per decision (`icm_tag` p99 0.18 ms vs 0.10-0.14 earlier); with the parallel suites plus the bug hunter (load ~4.3 on 4 cores) the load-sensitive `bots` CFR match test and two timing tests failed; alone, the CFR test passes (2/2) and every serial timing test passes at `SNG_TIME_SCALE=1.5` (the documented slow-host setting). No code change behind it.
   On that slower host with the 1 ms limit on (`results/sng_slowhost_check.md`, 600 paired tables, fresh seeds 441000+), `icm_switch` vs `icm_tag`: room guess **+3.4***, field 10 +0.5, field 5 −0.0, field 7 **+6.5***, kit-4 room **+3.2***; decisions over 1 ms about equal for both bots (9-17 per 600 tables each, in-process end-of-hand untimed).
-* **Bug hunter:** 2.48M random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
+* **Bug hunter:** 2.52M random tables (all variants, 2–8 players, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
   - looser calls (a raiser = 3.2 hands, a 3% margin);
