@@ -36,6 +36,8 @@ export const REFUND_ACTION_TYPES: readonly ActionType[] = ["request_refund", "re
 // or, when the person cancels on the company's own page, by no charge arriving this many
 // days after the next one was due.
 export const CANCEL_CONFIRM_GRACE_DAYS = 5;
+// How recent a person's data must be for "no charge since" to mean anything.
+export const CANCEL_DATA_FRESH_DAYS = 7;
 // When we can't tell how often it charged, wait this long instead.
 export const CANCEL_CONFIRM_DEFAULT_DAYS = 35;
 

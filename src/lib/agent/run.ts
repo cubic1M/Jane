@@ -7,6 +7,7 @@ import {
   AGENT_REQUESTS,
   CANCEL_CONFIRM_DEFAULT_DAYS,
   CANCEL_CONFIRM_GRACE_DAYS,
+  CANCEL_DATA_FRESH_DAYS,
   AGENT_FOLLOW_UP_DAYS,
   AGENT_HOLD_HOURS,
   AGENT_MAX_BODY,
@@ -905,6 +906,18 @@ export async function markSelfCancelled(
   await track(userId, "self_cancel_reported", { action_type: action.type });
 }
 
+// Whether what Jane has for this person reaches close to today: a bank synced lately, or a statement
+// or row from the last few days. Only then does seeing no charge mean anything.
+async function dataReaches(userId: string, now: Date, client: PrismaClient): Promise<boolean> {
+  const db = scopedFor(userId, client);
+  const since = new Date(now.getTime() - CANCEL_DATA_FRESH_DAYS * DAY_MS);
+  const [synced, rows] = await Promise.all([
+    db.plaidItems.count({ where: { status: "active", lastSyncedAt: { gte: since } } }),
+    db.transactions.count({ where: { date: { gte: since } } }),
+  ]);
+  return synced > 0 || rows > 0;
+}
+
 // Confirms (or questions) cancellations whose wait is over: no charge from the company
 // since the person cancelled means done; a charge means it may not have gone through.
 export async function confirmCancellations({
@@ -942,6 +955,15 @@ export async function confirmCancellations({
       const got = normalizeMerchant(c.merchantName ?? c.description)?.key;
       return Boolean(want && got && (got === want || got.startsWith(`${want} `)));
     });
+    if (!after && !(await dataReaches(userId, now, client))) {
+      // No rows isn't no charge: signed out of the bank, or an old statement, shows nothing either.
+      // Told "done", they'd stop checking while they're still charged. Looks again in a week.
+      await scopedFor(userId, client).actions.updateMany({
+        where: { id },
+        data: { confirmAfter: new Date(now.getTime() + 7 * DAY_MS) },
+      });
+      continue;
+    }
     if (!after) {
       await setStatus(
         userId,

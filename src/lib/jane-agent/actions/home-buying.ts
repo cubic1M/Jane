@@ -17,7 +17,7 @@ export const homeGoal: ActionHandler = {
       const goal = await startHomeGoal(userId, { priceCents: target.priceCents }, { client, now });
       return {
         answeredWith: action.label,
-        note: `Started: ${formatCents(goal.targetCents)} by ${dayLabel(goal.targetDate, { year: true })}. It's on your goals page, and I'll invest it for its timeline.`,
+        note: `Started: ${formatCents(goal.targetCents)} by ${dayLabel(goal.targetDate, { year: true })}. It's on your goals page.`,
       };
     } catch (error) {
       throw error instanceof HomeBuyingError ? new ChatActionError("failed", error.message) : error;

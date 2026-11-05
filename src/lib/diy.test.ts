@@ -38,8 +38,9 @@ describe("buildKit", () => {
   // purchase", then both $46.18 charges: the person would ask for $92.36 back, not $46.18.
   it("asks for the one extra charge back on a double charge, not both", () => {
     const body = buildKit("request_refund", findingOfType("duplicate_charge"), null)?.email?.body;
-    expect(body).toContain("I was charged twice for one purchase");
-    expect(body).toMatch(/Please refund the extra charge of \$49\.99\./);
+    // The rule only sees that two charges look alike, so the letter doesn't state it as fact.
+    expect(body).toContain("It looks like I was charged twice for one purchase");
+    expect(body).toMatch(/Please check, and if so, refund the extra charge of \$49\.99\./);
     expect(body).not.toContain("Please refund the following charges");
   });
 

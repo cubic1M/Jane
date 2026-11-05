@@ -81,15 +81,15 @@ function email(actionType: ActionType, findingType: FindingType, p: DraftPayload
             : `the ${extra.length} extra charges${same ? ` of ${extra[0].amount} each` : ""}`;
         return {
           subject: "Refund request",
-          body: `Hello,\n\nI was charged twice for one purchase from ${merchant}:\n\n${charges}\n\nPlease refund ${ask}.\n\nThank you,`,
+          body: `Hello,\n\nIt looks like I was charged twice for one purchase from ${merchant}:\n\n${charges}\n\nPlease check, and if so, refund ${ask}.\n\nThank you,`,
         };
       }
       const why =
         findingType === "duplicate_charge"
-          ? "I was charged twice for one purchase"
+          ? "it looks like I was charged twice for one purchase"
           : findingType === "charge_after_cancel"
             ? `I cancelled${p.facts.cancelledOn ? ` on ${p.facts.cancelledOn}` : ""} but was still charged`
-            : "a free trial turned into a charge I didn't mean to keep";
+            : "it looks like a free trial turned into a charge I didn't mean to keep";
       return {
         subject: "Refund request",
         body: `Hello,\n\nPlease refund the following charges from ${merchant}; ${why}.\n\n${charges}\n\nThank you,`,
@@ -124,7 +124,7 @@ function script(actionType: ActionType, p: DraftPayload | null): string[] {
   const my = p?.facts.merchant ? `my ${p.facts.merchant}` : "my";
   return [
     `Hi, I'd like to talk about ${my} bill${p?.facts.perMonth ? `, which is about ${p.facts.perMonth} a month` : ""}.`,
-    "That's more than similar plans cost, and I'm looking at other providers.",
+    "I'm looking at what other providers charge.",
     "Is there a loyalty discount, a current promotion, or a cheaper plan with the same service?",
     "What would the new monthly price be, for how long, and is there a contract or any fee?",
   ];

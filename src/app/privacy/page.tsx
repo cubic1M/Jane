@@ -145,7 +145,9 @@ export default function PrivacyPage() {
             </li>
             <li>
               For the text on Jane&apos;s cards, the monthly check-in and the weekly review: the
-              figures and facts behind each one.
+              figures and facts behind each one, which can include the description your bank wrote
+              on a transaction and your employer&apos;s name. The weekly review runs without you
+              opening the chat.
             </li>
             <li>
               When you upload a document for Jane to read (a policy, a tax notice, a tax return):

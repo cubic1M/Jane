@@ -1,4 +1,6 @@
 import { cache } from "react";
+import { BANK_BALANCE_STALE_DAYS } from "@/config/detection/forecast";
+import { daysBetween } from "@/detection/units";
 import { log } from "@/lib/log";
 import { expectedFor, loadTaught, missingRefundAlerts } from "@/lib/unusual";
 import {
@@ -178,7 +180,7 @@ async function loadInput(
           currentBalanceCents: true,
           itemId: true,
           mask: true,
-          item: { select: { plaidItemId: true } },
+          item: { select: { plaidItemId: true, lastSyncedAt: true } },
         },
         orderBy: { id: "asc" },
       }),
@@ -219,6 +221,18 @@ async function loadInput(
   const balanceOn = new Map(
     balanceDays.flatMap((b) => (b._max.date ? [[b.accountId, isoDate(b._max.date)]] : [])),
   );
+  // A bank's balance is from its last sync. Days old (signed out, or the bank's down), it isn't
+  // today's: "safe to spend" read it as if it were. A sync that's merely overnight is today's.
+  for (const a of allAccounts) {
+    const synced = a.item?.lastSyncedAt;
+    if (
+      synced &&
+      !balanceOn.has(a.id) &&
+      daysBetween(isoDate(synced), asOf) >= BANK_BALANCE_STALE_DAYS
+    ) {
+      balanceOn.set(a.id, isoDate(synced));
+    }
+  }
 
   // Books QA: an account linked twice (through two logins) counts once.
   const copies = copiesToLeaveOut(allAccounts);

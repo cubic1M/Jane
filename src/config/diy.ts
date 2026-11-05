@@ -69,7 +69,7 @@ export const DIY_KITS: Partial<Record<ActionType, DiyKitConfig>> = {
     link: "support",
     steps: [
       "Contact the company's support and ask for a refund of the charges listed.",
-      "If they say no or don't answer within a week, ask your card company to dispute the charge.",
+      "First check the charges are really wrong: Jane can only see that they look alike. If they are, and the company says no or doesn't answer within a week, ask your card company to dispute them.",
     ],
     message: "email",
     summary:
