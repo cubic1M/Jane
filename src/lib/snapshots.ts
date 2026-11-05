@@ -1,7 +1,7 @@
 import { SNAPSHOT_RETENTION_DAYS } from "@/config/net-worth";
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
-import { ownedBy, type OnlyPeople } from "@/lib/only-people";
+import { ownedBy, ownedByStaying, type OnlyPeople } from "@/lib/only-people";
 import { scopedFor } from "@/lib/db-scoped";
 import { systemDb } from "@/lib/system-db";
 
@@ -22,7 +22,11 @@ export async function takeSnapshots({
     "Cron: finds who to run for, across people",
     client,
   ).account.findMany({
-    where: { currentBalanceCents: { not: null }, user: { deletedAt: null }, ...ownedBy(userIds) },
+    where: {
+      currentBalanceCents: { not: null },
+      user: { deletedAt: null },
+      ...ownedByStaying(userIds),
+    },
     select: { id: true, userId: true, currentBalanceCents: true },
   });
   let saved = 0;
