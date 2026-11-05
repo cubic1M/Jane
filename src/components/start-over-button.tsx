@@ -13,7 +13,10 @@ export function StartOverButton() {
   useEffect(() => {
     if (!next) return;
     forgetThisTry();
-    window.location.assign(next);
+    // The other tabs too. This one goes on to the landing page, a full page load.
+    void import("@/lib/page-cache")
+      .then((cache) => cache.leavingOtherTabs())
+      .finally(() => window.location.assign(next));
   }, [next]);
   return (
     <span className="inline-flex flex-wrap items-center gap-2">

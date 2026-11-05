@@ -9,6 +9,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SideChat } from "@/components/side-chat/side-chat";
 import { TradePopup } from "@/components/trade-popup";
 import { NavPending } from "@/components/nav-pending";
+import { PageCacheRoot } from "@/components/page-cache";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -60,6 +61,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         {/* Every link tap shows at once that the next page is on its way. */}
         <Suspense>
           <NavPending />
+        </Suspense>
+        {/* Pages kept in memory and loaded ahead, and what empties them. */}
+        <Suspense>
+          <PageCacheRoot />
         </Suspense>
         <ServiceWorker />
         {/* The beta's activity log: pages and buttons, not what anyone types (/privacy). */}

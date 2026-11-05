@@ -121,11 +121,16 @@ test("a visitor starts, sees their own numbers, gets the steps, and starts over"
 
   // What this tab kept about them, to check it goes.
   await page.evaluate(() => sessionStorage.setItem("jane:dock-cards", "[]"));
+  // On the window, which only a full page load takes away, with the pages in the router's memory.
+  await page.evaluate(() => {
+    (window as unknown as { kept: number }).kept = 1;
+  });
 
   // Start over deletes them now.
   await page.locator("[data-start-over-try]").click();
   await expect(page).toHaveURL(/\?try=upload&deleted=1/);
   await expect(page.locator("[data-try-deleted]")).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { kept?: number }).kept)).toBeUndefined();
   expect(await personIn(page)).toBeNull();
   const left = await query<{ n: string }>("SELECT count(*) AS n FROM users WHERE id = $1", [
     person,

@@ -167,6 +167,9 @@ async function ImportContent({
   );
 }
 
+// Never kept in the browser's memory (src/lib/page-cache.ts). It follows an upload as it runs.
+export const unstable_dynamicStaleTime = 0;
+
 export default function ImportPage({ searchParams }: PageProps<"/import">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-10 px-6 py-12">

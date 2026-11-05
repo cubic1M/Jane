@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { scanBarText } from "@/app/scanning/stages";
+import { scanBarText } from "@/components/bar-text";
 
 // The loading bar (founder: "when you open a subsection, it should always show a loading bar
 // ... instead of the simple 'Loading xxx....'. The loading bar should not cover up anything"):

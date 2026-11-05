@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type Response } from "@playwright/test";
 import { landInChat } from "./chat-page";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 
@@ -24,16 +24,20 @@ async function watchViolations(page: Page): Promise<string[]> {
   return seen;
 }
 
-// The nonce in the page's policy, and whether every script carries it.
-async function scriptsCarryTheNonce(page: Page, csp: string) {
-  const nonce = /'nonce-([^']+)'/.exec(csp)?.[1];
+// The nonce in the page's policy, and whether every script the page arrived with carries it.
+async function scriptsCarryTheNonce(page: Page, response: Response) {
+  const nonce = /'nonce-([^']+)'/.exec(response.headers()["content-security-policy"])?.[1];
   expect(nonce).toBeTruthy();
   const scripts = await page.evaluate(() =>
     Array.from(document.scripts).map((s) => ({ src: s.src, nonce: s.nonce })),
   );
   expect(scripts.length).toBeGreaterThan(0);
-  // Scripts added later by Jane's own (Plaid Link) need none: 'strict-dynamic' trusts them.
-  const parserInserted = scripts.filter((s) => !s.src.startsWith("https://cdn.plaid.com"));
+  // Scripts added later by Jane's own code need none: 'strict-dynamic' trusts them, and a violation
+  // would show in watchViolations. Those are Plaid Link and a chunk loaded after the page
+  // (src/components/page-cache.tsx), which aren't in the HTML.
+  const html = await response.text();
+  const parserInserted = scripts.filter((s) => !s.src || html.includes(new URL(s.src).pathname));
+  expect(parserInserted.length).toBeGreaterThan(0);
   expect(parserInserted.filter((s) => s.nonce !== nonce)).toEqual([]);
 }
 
@@ -58,7 +62,7 @@ test("every page has the security headers, a fresh nonce, and nothing blocked @c
     expect(headers["permissions-policy"]).toContain("microphone=(self)");
     expect(headers["permissions-policy"]).toContain("camera=()");
     expect(headers["cross-origin-opener-policy"]).toBe("same-origin-allow-popups");
-    await scriptsCarryTheNonce(page, csp);
+    await scriptsCarryTheNonce(page, response!);
     nonces.add(/'nonce-([^']+)'/.exec(csp)![1]);
   }
   // A new nonce on every request.
@@ -107,7 +111,7 @@ test.describe("signed in", () => {
     await page.goto("/connect");
     await page.getByRole("button", { name: "Link a demo bank" }).click();
     await expect(page).toHaveURL(/\/home(\?|$)/, { timeout: 60_000 });
-    await scriptsCarryTheNonce(page, (await page.reload())!.headers()["content-security-policy"]);
+    await scriptsCarryTheNonce(page, (await page.reload())!);
 
     // The chat's own page may be framed by ours (the side chat), and may use the microphone.
     await landInChat(page);
@@ -145,7 +149,7 @@ test.describe("signed in", () => {
     const response = await page.goto("/admin/errors");
     expect(response?.status()).toBe(200);
     await expect(page.getByRole("heading", { name: "Server errors" })).toBeVisible();
-    await scriptsCarryTheNonce(page, response!.headers()["content-security-policy"]);
+    await scriptsCarryTheNonce(page, response!);
     expect(violations).toEqual([]);
   });
 });

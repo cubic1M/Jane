@@ -125,6 +125,9 @@ async function Partners() {
   );
 }
 
+// Never kept in the browser's memory (src/lib/page-cache.ts). Every admin view goes on the access log, which a page kept in memory wouldn't reach.
+export const unstable_dynamicStaleTime = 0;
+
 export default function PartnersPage() {
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6">

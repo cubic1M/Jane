@@ -1,4 +1,4 @@
-import { ScanBar } from "@/components/scan-bar";
+import { ScanBarLazy } from "@/components/scan-bar-lazy";
 import { scanInProgress, scanProgress } from "@/lib/scan";
 
 // The loading bar only while a first scan runs (the sample person's, or a bank just linked);
@@ -8,5 +8,5 @@ import { scanInProgress, scanProgress } from "@/lib/scan";
 // which Next.js rejects connection() ("used connection() inside after()"), as it did on /home.
 export async function ScanBarGate({ userId }: { userId: string }) {
   if (!(await scanInProgress(userId))) return null;
-  return <ScanBar initial={await scanProgress(userId)} />;
+  return <ScanBarLazy initial={await scanProgress(userId)} />;
 }

@@ -3,11 +3,13 @@ import { AreaTabs } from "@/components/area-tabs";
 import { BackToChat } from "@/components/back-to-chat";
 import { DemoBanner } from "@/components/demo-banner";
 import { LoadingBar } from "@/components/loading-bar";
+import { PageCacheMark } from "@/components/page-cache";
 import { ProfileMenu } from "@/components/profile-menu";
 import { ScanBarGate } from "@/components/scan-bar-gate";
 import { ChatToggle } from "@/components/side-chat/chat-toggle";
 import { SideChatUser } from "@/components/side-chat/side-chat";
 import { TryWarnings } from "@/components/try-warnings";
+import type { Opened } from "@/lib/page-cache";
 import { isStatementTrialUser } from "@/lib/trial-ids";
 
 // The top of every signed-in page (spec step 79; the home hub, docs/design/home-hub.md): Jane's
@@ -42,9 +44,12 @@ function JaneLogo({ marked = true }: { marked?: boolean }) {
 export function AppHeader({
   user,
   chatMessageId,
+  opened,
 }: {
   user: { id: string; email?: string | null };
   chatMessageId?: string | null;
+  // What opening this page sets off (src/lib/page-opened.ts).
+  opened?: Opened;
 }) {
   return (
     <header className="flex flex-col gap-3 text-sm">
@@ -62,6 +67,9 @@ export function AppHeader({
         </div>
       </div>
       <SideChatUser userId={user.id} />
+      {/* A server component: this runs once for each time the page is made. */}
+      {/* eslint-disable-next-line react-hooks/purity */}
+      <PageCacheMark userId={user.id} renderedAt={Date.now()} opened={opened} />
       {/* A tapped link's loading bar (src/components/nav-pending.tsx) shows here, in the flow. */}
       <div id="page-loading" />
       {/* The first scan's loading bar, under the top bar of every page while it runs. */}

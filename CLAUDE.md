@@ -67,6 +67,12 @@ investment advice in this MVP.
   (src/lib/jane-agent/injection.test.ts)
 - Every path that calls Claude has a limit: the chat's, or meteredClaude(userId) from
   src/lib/claude-budget.ts; src/lib/claude-paths.test.ts fails on a path that isn't listed
+- A signed-in page's render is not someone seeing it: the main pages also render when they load
+  ahead of time (src/lib/page-cache.ts), and come back from the browser's memory with no render at
+  all. What opening a page sets off goes through AppHeader's `opened` (src/lib/page-opened.ts) or a
+  client component's effect, never a page's render, after() or a track() in it. The memory empties
+  on any post, sign-out and change of person; a page that must always be fresh sets
+  `unstable_dynamicStaleTime = 0`
 - Write tests for every rule and every API route you add
 - To say something works, name the command that proves it and show its output
 - Prefer small, readable modules over clever abstractions

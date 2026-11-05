@@ -53,6 +53,9 @@ async function Content({ searchParams }: { searchParams: PageProps<"/mfa">["sear
   );
 }
 
+// Never kept in the browser's memory (src/lib/page-cache.ts). A step of signing in.
+export const unstable_dynamicStaleTime = 0;
+
 export default function MfaPage({ searchParams }: PageProps<"/mfa">) {
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-4 py-16">

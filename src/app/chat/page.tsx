@@ -178,6 +178,9 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
   );
 }
 
+// Never kept in the browser's memory (src/lib/page-cache.ts). The chat's messages arrive from the server on their own, and opening it reads them.
+export const unstable_dynamicStaleTime = 0;
+
 export default function ChatPage({ searchParams }: PageProps<"/chat">) {
   return (
     // The whole height of its frame, the message box at the very bottom of it.
