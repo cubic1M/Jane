@@ -1,8 +1,7 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
-import { EMERGENCY_FUND_MONTHS } from "@/config/proposals";
 import { formatCents } from "@/lib/money";
-import type { BudgetProposal, GoalProposal } from "@/planning/proposals";
+import { goalBasis, type BudgetProposal, type GoalProposal } from "@/planning/proposals";
 import type { MessageAction } from "../types";
 import type { MessageSource } from "./source";
 
@@ -25,7 +24,7 @@ function describe(p: BudgetProposal | GoalProposal): string {
   if (p.monthlySetAsideCents !== undefined) {
     return `I could start a "${p.name}" goal: ${formatCents(p.targetCents)} by ${monthYear(p.targetDate)}. Your yearly and irregular bills come to ${formatCents(p.monthlySetAsideCents)} a month, so that's a year of it: math from your data, not advice.`;
   }
-  return `I could start an "${p.name}" goal: ${formatCents(p.targetCents)} by ${monthYear(p.targetDate)}. That's ${p.basis ?? `${EMERGENCY_FUND_MONTHS} months of your own average spending`} (${formatCents(p.monthlySpendingCents)} a month): math from your data, not advice.`;
+  return `I could start an "${p.name}" goal: ${formatCents(p.targetCents)} by ${monthYear(p.targetDate)}. That's ${goalBasis(p)}: math from your data, not advice.`;
 }
 
 // A set-up card's words, from the proposal as it is now (../still-true.ts says an open card again

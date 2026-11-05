@@ -1,5 +1,6 @@
 import {
   CATEGORY_PROPOSAL_MIN_TRANSACTIONS,
+  EMERGENCY_FUND_MONTHS,
   EMERGENCY_FUND_ROUNDING_CENTS,
   PROPOSAL_BUDGET_COUNT,
   PROPOSAL_MIN_BUDGET_CENTS,
@@ -12,6 +13,7 @@ import {
 import { UNCATEGORIZED } from "@/insights/labels";
 import { emergencyTarget, fundBasis } from "./emergency-fund";
 import { addMonths } from "@/lib/dates";
+import { formatCents } from "@/lib/money";
 
 // What Jane proposes to set up, from the person's own numbers. Pure.
 
@@ -34,6 +36,9 @@ export type GoalProposal = {
   // How an emergency fund was sized ("6 months of your own average spending"); goals drafted
   // before it was kept say three months.
   basis?: string;
+  // The monthly figure that basis is months of, when it isn't the spending above: a pension's gap,
+  // or null for a starter buffer, which isn't months of anything.
+  basisMonthlyCents?: number | null;
   // For the "Yearly bills" goal (spec step 70): the monthly set-aside the target is made of.
   monthlySetAsideCents?: number;
 };
@@ -69,6 +74,14 @@ export type ProposalInput = {
   }[];
 };
 
+// How a goal was sized, in words, with its monthly figure (debugger 11-04: a starter buffer "while
+// paying off debt comes first ($2,314.06 a month)" read as debt payments; it was the spending).
+export function goalBasis(p: GoalProposal): string {
+  const basis = p.basis ?? `${EMERGENCY_FUND_MONTHS} months of your own average spending`;
+  const perMonth = p.basisMonthlyCents === undefined ? p.monthlySpendingCents : p.basisMonthlyCents;
+  return perMonth === null ? basis : `${basis} (${formatCents(perMonth)} a month)`;
+}
+
 export function proposals(input: ProposalInput): Proposal[] {
   const out: Proposal[] = [];
   const budgeted = new Set(input.budgetedCategories);
@@ -99,6 +112,10 @@ export function proposals(input: ProposalInput): Proposal[] {
       targetDate: addMonths(input.asOf, fund.targetMonths),
       monthlySpendingCents: input.monthlySpendingCents,
       basis: fundBasis(fund),
+      ...(fund.kind === "starter" ? { basisMonthlyCents: null } : {}),
+      ...(fund.kind === "gap" && fund.months
+        ? { basisMonthlyCents: Math.round(fund.targetCents / fund.months) }
+        : {}),
     });
   }
 

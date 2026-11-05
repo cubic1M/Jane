@@ -52,10 +52,18 @@ export const LOANS_AND_LAST: readonly Rule[] = [
   // of spending (night QA 10-30: a server's "ADVANCE AMERICA LOAN", $400 in, uncategorized).
   // Paying back a cash advance app or payday lender: a debt, not a subscription (debugger 11-03: "Review your Dave Inc
   // Repayment subscription, could save $900 a year"). Its own membership stays a membership.
+  // The two categories the profile reads to see a payday loan or a pay advance (debugger 11-04:
+  // other loan payments here meant nobody who uploaded a file could read as in a payday cycle).
   {
-    category: "LOAN_PAYMENTS_OTHER_PAYMENT",
+    category: "LOAN_PAYMENTS_CASH_ADVANCES",
     pattern:
-      /(?<![A-Z0-9])(?:(?:EARNIN|ACTIVEHOURS)(?!.*MEMBERSHIP)|ADVANCE AMERICA|CHECK INTO CASH|ACE CASH EXPRESS|SPEEDY CASH|CHECKSMART|(?:BRIGIT|MONEYLION(?: INSTACASH)?|DAVE INC)(?=.*(?:REPAY|PAYBACK|ADVANCE)))/,
+      /(?<![A-Z0-9])(?:ADVANCE AMERICA|CHECK INTO CASH|ACE CASH EXPRESS|SPEEDY CASH|CHECKSMART)/,
+    direction: "out",
+  },
+  {
+    category: "LOAN_PAYMENTS_EWA",
+    pattern:
+      /(?<![A-Z0-9])(?:(?:EARNIN|ACTIVEHOURS)(?!.*MEMBERSHIP)|(?:BRIGIT|MONEYLION(?: INSTACASH)?|DAVE INC)(?=.*(?:REPAY|PAYBACK|ADVANCE)))/,
     direction: "out",
   },
   {
