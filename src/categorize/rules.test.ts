@@ -35,6 +35,23 @@ describe("a seller's money", () => {
   });
 });
 
+describe("paying back a payday lender or a pay advance app", () => {
+  // Uploads filed these under other loan payments, and the profile looks for these two: nobody who
+  // uploaded a file could read as having a payday loan, or as in a payday cycle. Rosa, with one every
+  // month, was offered a $7,000 emergency fund instead of a starter buffer.
+  it.each([
+    ["ADVANCE AMERICA PAYDAY", "LOAN_PAYMENTS_CASH_ADVANCES"],
+    ["ADVANCE AMERICA REPAYMENT", "LOAN_PAYMENTS_CASH_ADVANCES"],
+    ["CHECK INTO CASH", "LOAN_PAYMENTS_CASH_ADVANCES"],
+    ["SPEEDY CASH 1120", "LOAN_PAYMENTS_CASH_ADVANCES"],
+    ["EARNIN CASH OUT", "LOAN_PAYMENTS_EWA"],
+    ["DAVE INC REPAYMENT", "LOAN_PAYMENTS_EWA"],
+    ["BRIGIT REPAYMENT", "LOAN_PAYMENTS_EWA"],
+  ])("reads %s as %s", (description, category) => {
+    expect(out(description)).toBe(category);
+  });
+});
+
 describe("a bank's own category names", () => {
   // Apple's "Airlines" left a $1,320.40 flight on TAP uncategorized (debugger 11-04).
   it.each([
@@ -980,7 +997,7 @@ describe("a gig driver's money", () => {
     "BRIGIT REPAYMENT",
     "MONEYLION INSTACASH REPAYMENT",
   ])("%s going out pays back a loan", (description) => {
-    expect(rule(description, 7_500)).toBe("LOAN_PAYMENTS_OTHER_PAYMENT");
+    expect(rule(description, 7_500)).toBe("LOAN_PAYMENTS_EWA");
   });
 
   it.each(["DAVE INC MEMBERSHIP", "BRIGIT MEMBERSHIP"])(
@@ -1086,7 +1103,7 @@ describe("a small utility, a payday lender", () => {
     "ACE CASH EXPRESS",
     "SPEEDY CASH 4411",
   ])("%s going out pays back a loan", (description) => {
-    expect(rule(description)).toBe("LOAN_PAYMENTS_OTHER_PAYMENT");
+    expect(rule(description)).toBe("LOAN_PAYMENTS_CASH_ADVANCES");
   });
 });
 

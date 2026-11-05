@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { proposals, type ProposalInput } from "./proposals";
+import { setupBody } from "@/lib/jane-agent/sources/setup";
+import { proposals, type GoalProposal, type ProposalInput } from "./proposals";
 
 const input = (over: Partial<ProposalInput> = {}): ProposalInput => ({
   asOf: "2026-10-18",
@@ -143,6 +144,24 @@ describe("the emergency fund proposal", () => {
         profile: { pattern: "pension", debtTrouble: false, incomeCents: 452_000 },
       }),
     ).toBeUndefined();
+  });
+  it("doesn't put the spending beside a starter buffer, where it reads as debt payments", () => {
+    const f = fund({ profile: { pattern: "salary", debtTrouble: true, incomeCents: 242_000 } });
+    expect(setupBody(f as GoalProposal)).toBe(
+      'I could start an "Emergency starter buffer" goal: $1,000.00 by April 2027. That\'s a starter buffer while paying off debt comes first: math from your data, not advice. Want me to set it up?',
+    );
+  });
+  it("says the gap's figure beside a gap, not the spending", () => {
+    const f = fund({
+      monthlySpendingCents: 500_000,
+      profile: { pattern: "pension", debtTrouble: false, incomeCents: 452_000 },
+    });
+    expect(setupBody(f as GoalProposal)).toContain("your income ($480.00 a month)");
+  });
+  it("still says the spending beside months of spending", () => {
+    expect(setupBody(fund() as GoalProposal)).toContain(
+      "months of your own average spending ($3,200.00 a month)",
+    );
   });
   it("is the gap for a retiree whose pension falls short", () => {
     expect(
