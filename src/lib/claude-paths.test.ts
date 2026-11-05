@@ -113,10 +113,33 @@ function fakeDb({ role = "user", email = "person@example.com" } = {}) {
       },
     },
     user: { findUnique: async () => ({ role, email }) },
-    $executeRaw: async (_strings: TemplateStringsArray, key: string, at: Date, amount: number) => {
+    $executeRaw: async (strings: TemplateStringsArray, ...values: unknown[]) => {
+      // Letting go of a hold names the amount first; a charge names it last.
+      if (strings[0]?.includes("UPDATE")) {
+        const [amount, key, at] = values as [number, string, Date];
+        const id = `${key}@${at.toISOString()}`;
+        rows.set(id, Math.max((rows.get(id) ?? 0) - amount, 0));
+        return 1;
+      }
+      const [key, at, amount] = values as [string, Date, number];
       const id = `${key}@${at.toISOString()}`;
       rows.set(id, (rows.get(id) ?? 0) + amount);
       return 1;
+    },
+    // A hold: added unless the counter has reached its cap.
+    $queryRaw: async (
+      _strings: TemplateStringsArray,
+      key: string,
+      at: Date,
+      _first: number,
+      amount: number,
+      cap: number,
+    ) => {
+      const id = `${key}@${at.toISOString()}`;
+      const count = rows.get(id);
+      if (count !== undefined && count >= cap) return [];
+      rows.set(id, (count ?? 0) + amount);
+      return [{ count: rows.get(id) }];
     },
   };
   return { client: client as unknown as PrismaClient, rows };

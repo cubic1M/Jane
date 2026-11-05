@@ -25,6 +25,9 @@ type Options = { client?: PrismaClient; now?: Date };
 export const TRIAL_CAP_TEXT =
   "You've used all 25 answers this sample account gets. Sign up to keep asking Jane about your own money.";
 
+export const STILL_ANSWERING_TEXT =
+  "Jane is still answering your last messages. Send this one again in a moment.";
+
 const MONTH_KEY = "chatmonth:total";
 const monthStart = (now: Date) => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 
@@ -43,6 +46,13 @@ export async function addMonthlySpend(
     INSERT INTO rate_limits (key, window_start, count) VALUES (${MONTH_KEY}, ${monthStart(now)}, ${hundredthsOfCents})
     ON CONFLICT (key, window_start) DO UPDATE SET count = rate_limits.count + ${hundredthsOfCents}`;
 }
+
+// The month's counter, for what holds part of it before Claude is asked (src/lib/claude-budget.ts).
+export const monthCounter = (now: Date) => ({
+  key: MONTH_KEY,
+  windowStart: monthStart(now),
+  capCents: monthlyCapCents(),
+});
 
 export async function monthlySpentCents({
   client = defaultClient,
@@ -85,6 +95,11 @@ export async function claudeLimit(userId: string, options: Options = {}): Promis
       await releaseSampleAnswer(options);
       return { text: TRIAL_CAP_TEXT };
     }
+    return null;
+  }
+  if (!(await hit("claudeInFlight", userId, options)).ok) {
+    await giveBack("claudeInFlight", userId, options);
+    return { text: STILL_ANSWERING_TEXT };
   }
   return null;
 }
@@ -99,10 +114,12 @@ export async function refundClaudeUse(userId: string, options: Options = {}): Pr
 }
 
 // Claude has finished (or failed) for this message: what it cost is on the day's total by now
-// (addSpend), so the amount held back for it goes back. Only people trying Jane hold any.
+// (addSpend), so what was held back for it goes back: part of the day for people trying Jane, and a
+// place among the answers being written for everyone else.
 export async function claudeFinished(userId: string, options: Options = {}): Promise<void> {
   if (isStatementTrialUser(userId)) await releaseStatementTrialAnswer(options).catch(() => {});
   else if (isTrialUser(userId)) await releaseSampleAnswer(options).catch(() => {});
+  else await giveBack("claudeInFlight", userId, options).catch(() => {});
 }
 
 // All temporary people's Claude spend today, in the same hundredths of a cent as the month's, with

@@ -83,6 +83,12 @@ export const RATE_LIMITS = {
   auditPack: { limit: 30, windowSeconds: 60 * 60 },
   // Messages typed to Jane in the chat, per user (spec step 84).
   chat: { limit: 60, windowSeconds: 60 * 60 },
+  // Answers being written for one real person. Their day's cap is read before an answer and charged
+  // after it, so without this 60 at once all pass it. Given back as each finishes; the window is only
+  // for an answer that never reports back.
+  claudeInFlight: { limit: 3, windowSeconds: 2 * 60 },
+  // One tap on one message at a time: a handler runs before the message is marked answered.
+  chatTapInFlight: { limit: 1, windowSeconds: 60 },
   // Trying Jane with sample data, per IP (spec step 138): each makes a sample person.
   // 20, not 5: offices, schools and households share one IP, and people try several of the
   // eight sample lives (step 252).

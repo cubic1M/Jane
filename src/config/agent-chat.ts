@@ -441,6 +441,9 @@ export const CHAT_TRIAL_MONTH_SHARE = 0.5;
 // their scan and uploads use templates and rules (src/lib/trial.ts).
 export const CLAUDE_BACKGROUND_DAILY_CAP_CENTS = 50;
 export const CLAUDE_BACKGROUND_MONTHLY_CAP_CENTS = 150;
+// Held for each file sent to Claude until its real cost is known, since a file's size doesn't say
+// what it costs. About a 20-page PDF; a burst of uploads then stops at two against the day's cap.
+export const CLAUDE_ATTACHMENT_HOLD_CENTS = 25;
 export const CHAT_TYPICAL_ANSWER_CENTS = 2;
 // /admin/chat looks back this many days for what Jane couldn't answer.
 export const CHAT_UNANSWERED_DAYS = 30;
