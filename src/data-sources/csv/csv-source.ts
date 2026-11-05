@@ -262,7 +262,9 @@ export function readCsvFile(
     });
     parsed.splice(0, parsed.length, ...kept);
   }
-  const keys = dedupeKeys(parsed.map((p) => p.row));
+  const keys = dedupeKeys(
+    parsed.map(({ row }) => ({ ...row, description: row.dedupeAs ?? row.description })),
+  );
   const transactions = parsed.map(({ row }, i) => ({
     date: row.date,
     amountCents: row.amountCents,
