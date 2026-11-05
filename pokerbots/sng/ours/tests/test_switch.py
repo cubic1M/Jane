@@ -161,5 +161,29 @@ class TestSwitch(unittest.TestCase):
             b.end_hand(dict(history=post, stacks=(2000,) * 8))
             self.assertTrue(b.switched)
 
+    def test_reverse_switch_starts_strong_and_hands_back_once(self):
+        """start=b: the strong bot plays from hand 1; < back_share of switch_min+ opens re-raised hands the
+        table to icm_tag for good; a strong table keeps the strong bot."""
+        post = ((1, 0, "post", 10), (2, 0, "post", 20), (3, 0, "fold", 0))
+        b = make("icm_switch:start=b;back_share=0.22;switch_min=15")
+        b.new_table(SngRules(enforce_time=False), 0, 1)
+        self.assertTrue(b.switched)
+        self.assertFalse(b.b.shadow_only)
+        b.a.my_opens, b.a.my_opens_rr = 15, 5                  # 33%: a strong table, keep f9_meta
+        b.end_hand(dict(history=post, stacks=(2000,) * 8, hand_number=30, deltas=[0] * 8))
+        self.assertTrue(b.switched)
+        b.a.my_opens, b.a.my_opens_rr = 20, 3                  # 15% < 22%: static, back to icm_tag
+        b.end_hand(dict(history=post, stacks=(2000,) * 8, hand_number=50, deltas=[0] * 8))
+        self.assertFalse(b.switched)
+        self.assertTrue(b.backed)
+        b.a.my_opens, b.a.my_opens_rr = 40, 20                 # one-way
+        b.end_hand(dict(history=post, stacks=(2000,) * 8, hand_number=90, deltas=[0] * 8))
+        self.assertFalse(b.switched)
+        b.new_table(SngRules(enforce_time=False), 0, 2)        # a new table starts strong again
+        self.assertTrue(b.switched)
+        line = ["icm_switch:start=b", "f9_threebet", "station", "nit", "f7_balanced", "f8_ensemble", "f10_aggro", "f10_chen"]
+        res = play_table([make(n) for n in line], SngRules(enforce_time=False), seed=8)
+        self.assertEqual(res.stats[0].errors + res.stats[0].illegal, 0)
+
 if __name__ == "__main__":
     unittest.main()
