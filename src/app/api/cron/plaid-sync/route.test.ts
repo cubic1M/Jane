@@ -4,6 +4,7 @@ const { findMany } = vi.hoisted(() => ({ findMany: vi.fn() }));
 
 vi.mock("@/lib/db", () => ({ db: { plaidItem: { findMany } } }));
 vi.mock("@/lib/plaid/sync", () => ({ syncItem: vi.fn(), ITEM_STATUS: { active: "active" } }));
+vi.mock("@/lib/robinhood/refresh", () => ({ refreshAllRobinhood: vi.fn(async () => null) }));
 vi.mock("@/lib/plaid/inactive", () => ({
   runInactiveCleanup: vi.fn(async () => ({ warned: 0, removed: 1, failed: 0 })),
 }));
@@ -72,6 +73,8 @@ vi.mock("@/lib/controller", () => ({
 }));
 
 import { queueNightlyRuns } from "@/lib/controller";
+import { ROBINHOOD_LIMITS } from "@/config/robinhood";
+import { refreshAllRobinhood } from "@/lib/robinhood/refresh";
 import { syncItem } from "@/lib/plaid/sync";
 import { runDueJobs } from "@/lib/jobs";
 import { CRON_SYNC_BUDGET_MS } from "@/config/plaid";
@@ -254,6 +257,28 @@ describe("GET /api/cron/plaid-sync", () => {
     expect(budget).toBeLessThanOrEqual(
       Math.min(CONTROLLER_CRON_BUDGET_MS, maxDuration * 1000 - CONTROLLER_RUN_RESERVE_MS),
     );
+  });
+
+  // A slow Robinhood runs early in the night, and can overrun by one person's reads.
+  it("leaves Robinhood only what the rest of the night can spare", async () => {
+    let clock = 1_000_000;
+    const now = vi.spyOn(Date, "now").mockImplementation(() => clock);
+    findMany.mockResolvedValue([{ id: "a" }]);
+    vi.mocked(syncItem).mockImplementation(async () => {
+      clock += 100_000;
+      return undefined as never;
+    });
+    vi.mocked(refreshAllRobinhood).mockClear();
+    try {
+      await call("Bearer cron-secret");
+      const { budgetMs } = vi.mocked(refreshAllRobinhood).mock.calls[0][0]!;
+      expect(budgetMs).toBeLessThanOrEqual(ROBINHOOD_LIMITS.cronBudgetMs);
+      expect(budgetMs! + ROBINHOOD_LIMITS.personBudgetMs + 100_000).toBeLessThanOrEqual(
+        maxDuration * 1000 - CONTROLLER_RUN_RESERVE_MS,
+      );
+    } finally {
+      now.mockRestore();
+    }
   });
 
   // Debugger 11-01 (production logs): a 504 again at 10:18Z after #1103. The bank syncs ran one

@@ -14,6 +14,7 @@ import { limitOrNull } from "@/lib/rate-limit";
 import { whyCantConnect } from "@/lib/robinhood/connection";
 import {
   callbackOrigin,
+  fromAnotherSite,
   RobinhoodOAuthError,
   SIGN_IN_COOKIE,
   startSignIn,
@@ -38,8 +39,7 @@ export async function GET(request: Request) {
   const back = (word: "not_connected" | "paused") =>
     NextResponse.redirect(new URL(`/investments?robinhood=${word}`, origin), 303);
 
-  const from = request.headers.get("sec-fetch-site");
-  if (from && from !== "same-origin" && from !== "none") return back("not_connected");
+  if (fromAnotherSite(request)) return back("not_connected");
   const limited = await limitOrNull("robinhood", user.id);
   if (limited) return limited;
   await freshSwitches();

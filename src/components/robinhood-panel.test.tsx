@@ -91,6 +91,12 @@ describe("the Robinhood box on the Investing page", () => {
   });
 
   it("shows only its own fixed words from the address bar", async () => {
+    mocks.connectionView.mockResolvedValueOnce({
+      status: "active",
+      lastUpdated: null,
+      failing: false,
+      twins: [],
+    });
     expect(text(await render("connected"))).toContain("Robinhood is connected.");
     const forged = await render("<script>alert(1)</script>");
     expect(forged).not.toContain("alert(1)");

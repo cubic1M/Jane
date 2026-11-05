@@ -70,6 +70,8 @@ export const ROBINHOOD_LIMITS = {
   backoffMostHours: 7 * 24,
   // The most kept from one answer; a larger one fails the read.
   answerBytes: 2_000_000,
+  // The same for the sign-in addresses, whose answers are a few short fields.
+  signInAnswerBytes: 100_000,
   accounts: 10,
   positions: 1_000,
   orders: 1_000,

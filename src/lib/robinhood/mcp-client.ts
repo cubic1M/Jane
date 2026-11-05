@@ -1,4 +1,5 @@
 import { ROBINHOOD_LIMITS, robinhoodServer } from "@/config/robinhood";
+import { cappedText } from "./capped";
 
 // The one way into Robinhood's MCP server (docs/setup/robinhood.md). Robinhood's only OAuth scope
 // also lets a connection trade, so being read-only is decided here: READ_TOOLS is every tool Jane
@@ -48,25 +49,6 @@ const ACCEPT = "application/json, text/event-stream";
 
 type RpcMethod = "initialize" | "tools/call";
 type Reply = { id?: unknown; result?: unknown; error?: { code?: unknown } };
-
-// Reads a body up to the limit, and fails past it: a huge answer can't fill the memory.
-async function cappedText(response: Response): Promise<string> {
-  const reader = response.body?.getReader();
-  if (!reader) return "";
-  const parts: Uint8Array[] = [];
-  let size = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    size += value.length;
-    if (size > ROBINHOOD_LIMITS.answerBytes) {
-      await reader.cancel();
-      throw new RobinhoodReadError("too_large");
-    }
-    parts.push(value);
-  }
-  return Buffer.concat(parts).toString("utf8");
-}
 
 function parseJson(text: string): unknown {
   try {
@@ -152,7 +134,8 @@ export function openReader({
     const id = nextId++;
     const response = await post({ jsonrpc: "2.0", id, method, params });
     sessionId = response.headers.get("mcp-session-id") ?? sessionId;
-    const text = await cappedText(response);
+    const text = await cappedText(response, ROBINHOOD_LIMITS.answerBytes);
+    if (text === null) throw new RobinhoodReadError("too_large");
     const reply = (response.headers.get("content-type") ?? "").includes("text/event-stream")
       ? replyFromStream(text, id)
       : (parseJson(text) as Reply);

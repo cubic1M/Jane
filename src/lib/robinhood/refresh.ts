@@ -27,6 +27,7 @@ import {
   type Portfolio,
   type Position,
   RobinhoodShapeError,
+  shapeOf,
   symbolsWithoutPrice,
 } from "./parse";
 import {
@@ -76,6 +77,10 @@ async function readEverything(reader: RobinhoodReader, now: Date): Promise<Read[
             accounts,
           );
     const { positions, dropped } = parsePositions(held, accounts, quotes);
+    // Every row left out isn't someone who sold everything: it fails, and the numbers stay.
+    if (positions.length === 0 && dropped > 0) {
+      throw new RobinhoodShapeError("get_equity_positions", shapeOf(held));
+    }
     if (dropped > 0) log.warn("Robinhood positions left out", { dropped });
     read.push({
       account,
@@ -463,7 +468,8 @@ export async function refreshAllRobinhood({
   client = defaultClient,
   now = new Date(),
   userIds,
-}: Options & OnlyPeople = {}): Promise<RefreshRun | null> {
+  budgetMs = ROBINHOOD_LIMITS.cronBudgetMs,
+}: Options & OnlyPeople & { budgetMs?: number } = {}): Promise<RefreshRun | null> {
   if (!robinhoodOpen()) return null;
   const cutoff = new Date(now.getTime() - ROBINHOOD_LIMITS.staleHours * HOUR_MS);
   const due = await systemDb(WHY, client).robinhoodConnection.findMany({
@@ -482,7 +488,7 @@ export async function refreshAllRobinhood({
   const run: RefreshRun = { updated: 0, failed: 0, reconnect: 0, deferred: 0 };
   const started = Date.now();
   for (const { userId } of due) {
-    if (Date.now() - started >= ROBINHOOD_LIMITS.cronBudgetMs) {
+    if (Date.now() - started >= budgetMs) {
       run.deferred += 1;
       continue;
     }
