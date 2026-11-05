@@ -22,6 +22,14 @@ import { giveBack, hit, hitMany, ipKey } from "./rate-limit";
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).
 const url = process.env.TEST_DATABASE_URL;
 
+// A time in the current minute, never a fixed date: any hit can clear rows more than a day old from a
+// database other test files share, and a row dated in the past could go mid-count (62 allowed of 60).
+const thisMinuteAt = (seconds: number) => {
+  const now = new Date();
+  now.setUTCSeconds(seconds, 0);
+  return now;
+};
+
 describe.runIf(url)("rate limiting against a real database", () => {
   let client: PrismaClient;
 
@@ -36,7 +44,7 @@ describe.runIf(url)("rate limiting against a real database", () => {
 
   it("gives a use back, never below zero", async () => {
     const subject = `rl-test-${crypto.randomUUID()}`;
-    const now = new Date("2026-10-19T12:00:30Z");
+    const now = thisMinuteAt(30);
     await hit("chat", subject, { client, now });
     await hit("chat", subject, { client, now });
     await giveBack("chat", subject, { client, now });
@@ -48,7 +56,7 @@ describe.runIf(url)("rate limiting against a real database", () => {
 
   it("allows the limit within a window, then refuses until the next window", async () => {
     const subject = `rl-test-${crypto.randomUUID()}`;
-    const now = new Date("2026-10-19T12:00:30Z");
+    const now = thisMinuteAt(30);
     const { limit } = RATE_LIMITS.decisions;
 
     const results = [];
@@ -58,7 +66,7 @@ describe.runIf(url)("rate limiting against a real database", () => {
     expect(results.filter((r) => r.ok)).toHaveLength(limit);
     expect(results.at(-1)).toMatchObject({ ok: false, remaining: 0, retryAfterSeconds: 30 });
     expect(
-      (await hit("decisions", subject, { client, now: new Date("2026-10-19T12:01:00Z") })).ok,
+      (await hit("decisions", subject, { client, now: new Date(now.getTime() + 30_000) })).ok,
     ).toBe(true);
   });
 
@@ -99,7 +107,7 @@ describe.runIf(url)("rate limiting against a real database", () => {
   it("counts several limits in one round trip, refusing when any one is over", async () => {
     const ip = `rl-test-${crypto.randomUUID()}`;
     const session = `rl-test-${crypto.randomUUID()}`;
-    const now = new Date("2026-10-19T12:00:15Z");
+    const now = thisMinuteAt(15);
     const checks = [
       { name: "actions" as const, subject: ip },
       { name: "actionsSession" as const, subject: session },
@@ -127,7 +135,7 @@ describe.runIf(url)("rate limiting against a real database", () => {
   });
 
   it("makes no new counter for a made-up cookie once its address is refused", async () => {
-    const now = new Date("2031-06-01T12:00:30Z");
+    const now = thisMinuteAt(30);
     const ip = `flood-${crypto.randomUUID()}`;
     const session = (i: number) => `made-up-${ip}-${i}`;
     const limit = RATE_LIMITS.actions.limit;
