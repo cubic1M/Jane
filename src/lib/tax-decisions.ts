@@ -407,6 +407,15 @@ export async function decideTax(
           [],
           "/taxes?focus=estimate:set-aside",
         );
+      // Money kept apart is still to pay: nobody has set this aside for them but themselves.
+      if (aside.status === "covered" && aside.keptApartCents > 0) {
+        const unpaid = aside.notYetPaidCents ?? aside.keptApartCents;
+        return made(
+          `About ${roundDollars(unpaid)} of your ${aside.year} tax so far isn't withheld or paid yet. What you keep apart covers it, and it's an estimate.`,
+          [unpaid, aside.keptApartCents],
+          "/taxes?focus=estimate:set-aside",
+        );
+      }
       if (!se.active) {
         const per = est.paychecks.withheldPerPaycheckCents ?? 0;
         return made(

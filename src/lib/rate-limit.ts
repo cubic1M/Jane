@@ -137,6 +137,20 @@ export async function firstUseInWindow(
   return !before;
 }
 
+// Whether one more use would pass, without using it: for a limit counted only when something fails.
+export async function wouldPass(
+  name: LimitName,
+  subject: string,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<boolean> {
+  const { key, windowStart } = windowFor(name, subject, now);
+  const row = await systemDb(WHY, client).rateLimit.findUnique({
+    where: { key_windowStart: { key, windowStart } },
+    select: { count: true },
+  });
+  return (row?.count ?? 0) < RATE_LIMITS[name].limit;
+}
+
 // Gives back one use in the current window, for a request that didn't cost what the limit
 // protects (Claude failed or was too slow, so the rules answered): it shouldn't count.
 export async function giveBack(

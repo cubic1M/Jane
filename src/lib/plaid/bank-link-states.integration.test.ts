@@ -93,6 +93,10 @@ describe.runIf(url)("a bank connection", () => {
       await exchangePublicToken(userId, "public-x", null, { client, api: down }).catch(() => {});
     }
     await expect(reserveItemSlot(userId, { client })).rejects.toThrow();
+    // Only for today: an outage can't lock them out of linking for good.
+    expect(await client.plaidItemClaim.count({ where: { userId } })).toBe(0);
+    await client.rateLimit.deleteMany({ where: { key: `plaidUnclearExchange:${userId}` } });
+    await expect(reserveItemSlot(userId, { client })).resolves.not.toBeNull();
   });
 
   it("syncs again when a webhook came while it was running", async () => {

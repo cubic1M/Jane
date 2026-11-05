@@ -82,6 +82,17 @@ describe.runIf(url)("an invite use nobody claims", () => {
     expect(await onList(waiting)).toBe(true);
   });
 
+  it("a code taken back doesn't keep an unclaimed place going", async () => {
+    const code = await invite(2);
+    const waiting = address();
+    await redeemInvite(code, waiting, { client });
+    await age(waiting, 8);
+    await client.inviteCode.update({ where: { code }, data: { revokedAt: new Date() } });
+    await redeemInvite(code, waiting, { client });
+    await runRetention({ client, skipTrials: true });
+    expect(await onList(waiting)).toBe(false);
+  });
+
   it("stays spent once someone signed in with it", async () => {
     const code = await invite(2);
     const joined = address();

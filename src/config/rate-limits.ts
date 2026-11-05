@@ -23,8 +23,10 @@ export const RATE_LIMITS = {
   // Polling while a bank scans is about 100 requests a minute, well under these.
   api: { limit: 300, windowSeconds: 60 },
   apiSession: { limit: 300, windowSeconds: 60 },
-  // Connecting (there and back) and disconnecting Robinhood: a person does this a few times, not dozens.
+  // Connecting and disconnecting Robinhood: a person does this a few times, not dozens.
   robinhood: { limit: 20, windowSeconds: 60 * 60 },
+  // Answers at Robinhood's way back that aren't their sign-in: the most that write a security record.
+  robinhoodForgedBack: { limit: 20, windowSeconds: 60 * 60 },
   // Server actions (forms and buttons that change something).
   actions: { limit: 120, windowSeconds: 60 },
   actionsSession: { limit: 60, windowSeconds: 60 },

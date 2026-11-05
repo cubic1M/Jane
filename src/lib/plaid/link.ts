@@ -154,9 +154,10 @@ export async function exchangePublicToken(
     async (error) => {
       if (slot && noTokenMade(error)) await releaseItemSlot(slot, { client });
       // No clear answer: Plaid may have made one, so the count stays. The person's own claim doesn't:
-      // "try again" must be able to work, and it held the only one they get. A few times a day: each
-      // takes another of the lifetime count, and an outage mustn't use them all up.
-      else if (slot && (await hit("plaidUnclearExchange", userId, { client })).ok) {
+      // "try again" must be able to work, and it held the only one they get. Counted, because each
+      // takes another of the lifetime count: past a few a day, reserveItemSlot waits for tomorrow.
+      else if (slot) {
+        await hit("plaidUnclearExchange", userId, { client });
         await releaseItemClaim(slot, { client }).catch(() => undefined);
       }
       throw error;

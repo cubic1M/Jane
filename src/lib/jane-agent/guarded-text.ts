@@ -1,4 +1,4 @@
-import { checkGuardrails, type GuardrailProfile } from "@/lib/guardrails";
+import { checkGuardrails, closingTheirWords, type GuardrailProfile } from "@/lib/guardrails";
 
 // Claude's chat answer shown as it's written, without showing anything the guardrails
 // haven't passed: text is held back until a sentence (or line) ends, then released only if
@@ -56,7 +56,12 @@ export class GuardedText {
     if (this.stopped || end === 0) return;
     const next = this.held.slice(0, end);
     if (
-      !checkGuardrails(this.shown + next, this.allowedCents(), undefined, this.profile).ok ||
+      !checkGuardrails(
+        closingTheirWords(this.shown + next),
+        this.allowedCents(),
+        undefined,
+        this.profile,
+      ).ok ||
       !this.alsoPasses(this.shown + next)
     ) {
       this.stopped = true;

@@ -33,8 +33,9 @@ import { db } from "@/lib/db";
 import { limitOrNull } from "@/lib/rate-limit";
 import { systemDb } from "@/lib/system-db";
 import { removeConnection } from "./connection";
-import { forgetMetadataForTests } from "./oauth";
+import { forgetMetadataForTests, SIGN_IN_COOKIE } from "./oauth";
 import { refreshAllRobinhood, refreshConnection } from "./refresh";
+import { openSecrets } from "./secrets";
 
 const url = process.env.TEST_DATABASE_URL;
 const system = () => systemDb("Test: checks what was left behind, across tables");
@@ -131,17 +132,30 @@ describe.runIf(url)("attacks on the Robinhood connection", () => {
     expect(await connectionOf(userId)).toBeNull();
   });
 
-  it("the way back has a limit, since each bad answer writes a security record", async () => {
+  it("another site sending someone to the way back ends nothing and writes only so much", async () => {
     const userId = await person();
     session.userId = userId;
-    const refused = new Response("{}", { status: 429 });
-    vi.mocked(limitOrNull).mockResolvedValueOnce(refused as never);
-    const answer = await callback(
-      new Request("http://localhost/api/robinhood/callback?state=forged"),
-    );
-    expect(answer.status).toBe(429);
-    expect(limitOrNull).toHaveBeenCalledWith("robinhood", userId);
-    expect(await system().auditLog.count({ where: { actorId: userId } })).toBe(0);
+    const forged = () =>
+      callback(new Request("http://localhost/api/robinhood/callback?state=forged"));
+    const first = await forged();
+    expect(first.status).toBe(303);
+    expect(first.headers.get("set-cookie") ?? "").not.toContain(SIGN_IN_COOKIE);
+    expect(await system().auditLog.count({ where: { actorId: userId } })).toBe(1);
+    vi.mocked(limitOrNull).mockResolvedValueOnce(new Response("{}", { status: 429 }) as never);
+    expect((await forged()).status).toBe(303);
+    expect(await system().auditLog.count({ where: { actorId: userId } })).toBe(1);
+    // What Disconnect and Connect count isn't touched.
+    for (const [name] of vi.mocked(limitOrNull).mock.calls) {
+      expect(name).toBe("robinhoodForgedBack");
+    }
+  });
+
+  it("a sign-in under way survives a forged answer", async () => {
+    const userId = await person();
+    const back = await signIn(userId);
+    await callback(new Request("http://localhost/api/robinhood/callback?state=forged"));
+    const answer = await callback(new Request(back));
+    expect(answer.headers.get("location")).toContain("robinhood=connected");
   });
 
   it("the tokens are gone before anything waits on Robinhood's address for ending them", async () => {
@@ -179,6 +193,38 @@ describe.runIf(url)("attacks on the Robinhood connection", () => {
     expect(await refreshConnection(userId)).toBe("failed");
     const row = await connectionOf(userId);
     expect(row?.lastErrorCode).toBe("shape_get_equity_positions");
+  });
+
+  it("one row left out doesn't take a holding away", async () => {
+    const userId = await person();
+    await connected(userId);
+    const before = await heldBy(userId);
+    fake.options.answers = {
+      get_equity_positions: {
+        positions: [
+          { symbol: "AAPL", name: "Apple", quantity: "200", price: "50" },
+          { ticker_symbol: "FCNTX", quantity: "1000", price: "20" },
+        ],
+      },
+    };
+    expect(await refreshConnection(userId, { now: new Date(Date.now() + 86_400_000) })).toBe(
+      "updated",
+    );
+    expect(await heldBy(userId)).toBe(before);
+  });
+
+  it("a new token turned away waits and tries again, with the tokens kept", async () => {
+    const userId = await person();
+    await connected(userId);
+    const real = globalThis.fetch;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) =>
+      String(input).includes("/mcp/") ? new Response(null, { status: 401 }) : real(input, init),
+    );
+    expect(await refreshConnection(userId)).toBe("failed");
+    const row = await connectionOf(userId);
+    expect(row?.status).toBe("active");
+    expect(row?.lastErrorCode).toBe("refused_after_renewal");
+    expect(openSecrets(row?.secretsEncrypted ?? "").refreshToken).toBeTruthy();
   });
 
   it("someone with no holdings isn't a failure", async () => {

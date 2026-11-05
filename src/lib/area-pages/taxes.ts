@@ -237,6 +237,7 @@ export type TaxesTreeInput = {
   estimate: { refundCents: number; withholdingKnown: boolean };
   // The tax left to cover (src/planning/tax-set-aside.ts).
   setAside: {
+    keptApartCents?: number;
     status: "needed" | "covered" | "unknown" | "no_income";
     // How many things the person pointed out, each with its undo.
     corrections?: number;
@@ -300,6 +301,7 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
 
   const r = input.estimate.refundCents;
   const aside = input.setAside;
+  const kept = (aside.keptApartCents ?? 0) > 0;
   const estimate = [
     // Past that, it stays while there's something to undo: this is the one place to undo it.
     ...(aside.status === "no_income" && !aside.corrections
@@ -307,7 +309,8 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
       : [
           item("estimate", "set-aside", {
             label: aside.advice ? "Left to set aside" : "Tax not yet paid",
-            status: aside.status === "covered" ? ("good" as const) : ("look" as const),
+            // Money kept apart is still to pay, so it stays something to look at.
+            status: aside.status === "covered" && !kept ? ("good" as const) : ("look" as const),
             figure:
               aside.status === "needed"
                 ? shortMoney(aside.holdCents)
@@ -315,7 +318,9 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
                   ? "Not known"
                   : aside.status === "no_income"
                     ? "No income"
-                    : "Covered",
+                    : kept
+                      ? "Kept apart"
+                      : "Covered",
             cents: aside.holdCents,
             summary:
               aside.status === "needed"
@@ -324,7 +329,9 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
                   ? "Jane can't see all that's withheld from your pay."
                   : aside.status === "no_income"
                     ? "No income this year, with what you pointed out."
-                    : "What's withheld and paid covers your tax so far.",
+                    : kept
+                      ? "What you keep apart covers it. It's still to pay."
+                      : "What's withheld and paid covers your tax so far.",
           }),
         ]),
     item("estimate", "estimate", {
