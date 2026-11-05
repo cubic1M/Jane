@@ -1,3 +1,4 @@
+import { TERMS_VERSION } from "@/config/legal";
 import { randomBytes } from "node:crypto";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -17,7 +18,9 @@ vi.mock("@/lib/db", async () => {
 });
 const session = vi.hoisted(() => ({ userId: "" }));
 vi.mock("@/lib/session", () => ({
-  getCurrentUser: vi.fn(async () => (session.userId ? { id: session.userId } : null)),
+  getCurrentUser: vi.fn(async () =>
+    session.userId ? { id: session.userId, termsVersion: TERMS_VERSION } : null,
+  ),
   requireUser: vi.fn(async () => ({ id: session.userId })),
 }));
 vi.mock("@/lib/rate-limit", () => ({ limitOrNull: vi.fn(async () => null) }));

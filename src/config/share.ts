@@ -16,6 +16,10 @@ export const SHARE_ROUNDING: readonly { underCents: number; stepCents: number }[
 // How many friends one person's share link lets into the closed beta. Their link is one invite
 // code (invite_codes, shared_by_id), reused every time they share.
 export const SHARE_INVITE_MAX_USES = 10;
+// And how many everyone's share links may let in together. Each person who joins gets a link of
+// their own, so 1 becomes 10, then 100, in a beta meant for a few dozen, each with their own Claude
+// allowance out of one month's total. Past this a share link says it's used up.
+export const SHARE_INVITES_TOTAL = 50;
 
 // What /admin/invites shows as the code's note.
 export const SHARE_INVITE_NOTE = "Shared from a result card";

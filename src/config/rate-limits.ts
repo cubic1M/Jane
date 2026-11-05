@@ -152,4 +152,5 @@ export const KEEP_RATE_LIMIT_PREFIXES = [
   "claudeStatementTrial:",
   "statementRows:",
   "chatmonth:",
+  "claudebgmonth:",
 ] as const;

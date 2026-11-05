@@ -1,5 +1,6 @@
 import { randomInt } from "node:crypto";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { SHARE_INVITES_TOTAL } from "@/config/share";
 import { isAdminEmail } from "@/lib/admin-emails";
 import { track } from "@/lib/analytics";
 import { logAudit, SYSTEM_ACTOR } from "@/lib/audit";
@@ -53,14 +54,29 @@ export async function checkCode(
   const invite = code
     ? await systemDb(WHY, client).inviteCode.findUnique({
         where: { code },
-        select: { maxUses: true, uses: true, expiresAt: true, revokedAt: true, email: true },
+        select: {
+          maxUses: true,
+          uses: true,
+          expiresAt: true,
+          revokedAt: true,
+          email: true,
+          sharedById: true,
+        },
       })
     : null;
   if (!invite) return "invalid";
   if (invite.revokedAt) return "revoked";
   if (invite.expiresAt && invite.expiresAt <= now) return "expired";
   if (invite.email && email !== undefined && invite.email !== lower(email)) return "wrong_email";
-  return invite.uses < invite.maxUses ? "ok" : "used_up";
+  if (invite.uses >= invite.maxUses) return "used_up";
+  if (invite.sharedById) {
+    const { _sum } = await systemDb(WHY, client).inviteCode.aggregate({
+      where: { sharedById: { not: null } },
+      _sum: { uses: true },
+    });
+    if ((_sum.uses ?? 0) >= SHARE_INVITES_TOTAL) return "used_up";
+  }
+  return "ok";
 }
 
 // Uses one of the code's uses for this email, unless the email is already on the list.

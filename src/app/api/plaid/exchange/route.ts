@@ -1,4 +1,5 @@
 import { NextResponse, after } from "next/server";
+import { TERMS_VERSION } from "@/config/legal";
 import { log } from "@/lib/log";
 import { limitOrNull } from "@/lib/rate-limit";
 import { freshSwitches } from "@/lib/ops-switches";
@@ -15,6 +16,10 @@ const MAX_INSTITUTION_NAME = 100;
 export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+  // A direct call isn't past the Terms just because the page would have been.
+  if (user.termsVersion !== TERMS_VERSION) {
+    return NextResponse.json({ error: "Accept the Terms first." }, { status: 403 });
+  }
   const limited = await limitOrNull("plaid", user.id);
   if (limited) return limited;
   await freshSwitches();

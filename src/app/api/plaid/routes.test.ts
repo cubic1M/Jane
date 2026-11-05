@@ -37,6 +37,7 @@ import {
 import { syncItem } from "@/lib/plaid/sync";
 import { verifyPlaidWebhook } from "@/lib/plaid/webhook-verify";
 import { firstDelivery, planWebhook, syncFromWebhook } from "@/lib/plaid/webhooks";
+import { TERMS_VERSION } from "@/config/legal";
 import { getCurrentUser } from "@/lib/session";
 import { POST as exchange } from "./exchange/route";
 import { POST as linkToken } from "./link-token/route";
@@ -55,7 +56,7 @@ beforeEach(() => {
   vi.stubEnv("PLAID_SECRET", "secret");
   vi.mocked(getCurrentUser)
     .mockReset()
-    .mockResolvedValue({ id: "user_1" } as never);
+    .mockResolvedValue({ id: "user_1", termsVersion: TERMS_VERSION } as never);
   vi.mocked(createLinkToken).mockReset().mockResolvedValue("link-sandbox-1");
   vi.mocked(exchangePublicToken).mockReset().mockResolvedValue("item_row_1");
   vi.mocked(markItemRepaired).mockReset().mockResolvedValue(undefined);
