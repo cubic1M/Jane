@@ -138,6 +138,13 @@ export const STATE_AGENCY_CATEGORIES: readonly PfcDetailed[] = [
   "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
 ];
 
+// State tax agencies whose lines don't start with the state's code (debugger 11-05: a Californian's
+// "FRANCHISE TAX BD DES:PERSONAL" left the state unknown, so no state tax was counted).
+export const STATE_TAX_AGENCIES: readonly (readonly [RegExp, string])[] = [
+  [/^(?:CA )?FRANCHISE TAX BD\b/, "CA"],
+  [/^NYS DTF\b/, "NY"],
+];
+
 // The most dependants of each kind the profile takes.
 export const MAX_DEPENDANTS = 15;
 

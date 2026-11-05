@@ -117,6 +117,17 @@ describe("findTaxFacts", () => {
     expect(facts([tx("FOOD_AND_DRINK_GROCERIES", 100, "CA MARKET")]).state).toBeNull();
   });
 
+  // Debugger 11-05: a Californian paying the Franchise Tax Board had no state, so no state tax.
+  it("takes the state from a state tax agency known by its name, or a state's full name", () => {
+    const pay = (description: string) =>
+      tx("GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT", 210_000, description);
+    expect(facts([pay("FRANCHISE TAX BD DES:PERSONAL ID:XXXXX CCD")]).state?.code).toBe("CA");
+    expect(facts([pay("NYS DTF PIT DES:TAX PAYMNT")]).state?.code).toBe("NY");
+    expect(facts([pay("COLORADO DEPT OF REVENUE")]).state?.code).toBe("CO");
+    // The federal government isn't a state.
+    expect(facts([pay("IRS DES:USATAXPYMT ID:XXXXX CCD")]).state).toBeNull();
+  });
+
   it("hints at children from childcare or a new-baby checklist, never more", () => {
     expect(facts([]).childrenHint).toBe(false);
     expect(facts([tx("GENERAL_SERVICES_CHILDCARE", 80_000, "BRIGHT HORIZONS")]).childrenHint).toBe(
