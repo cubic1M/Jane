@@ -124,4 +124,16 @@ describe.runIf(url)("the learning loop", { timeout: 120_000 }, () => {
     await refreshKindStats({ client });
     expect((await loadKindStats({ client })).has(QUIET)).toBe(false);
   });
+  // One person's made-up statement, and the column holds 32 bits: past that the upsert threw every
+  // night, and everything after this step in the nightly job with it.
+  it("stops at what the column holds, whatever the total", async () => {
+    const topic = `${T}_huge`;
+    const a = await person();
+    await outcome(a, topic, "confirmed", { confirmedCents: 2_000_000_000 });
+    await outcome(a, topic, "confirmed", { confirmedCents: 2_000_000_000 });
+    await refreshKindStats({ client });
+    const stat = await client.suggestionKindStat.findUnique({ where: { topic } });
+    expect(stat?.confirmedCents).toBe(2_147_483_647);
+    expect(stat?.paidOff).toBe(2);
+  });
 });
