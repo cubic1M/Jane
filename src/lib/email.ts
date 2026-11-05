@@ -1,3 +1,4 @@
+import { OUTSIDE_CALL_TIMEOUT_MS } from "@/config/outside-calls";
 import { linkOnSite } from "@/lib/site-origin";
 import { killed } from "@/config/kill-switches";
 import { log } from "@/lib/log";
@@ -60,6 +61,8 @@ export async function sendEmail({
 
   const response = await fetch(RESEND_ENDPOINT, {
     method: "POST",
+    signal: AbortSignal.timeout(OUTSIDE_CALL_TIMEOUT_MS),
+    redirect: "error",
     headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
     body: JSON.stringify({
       from,

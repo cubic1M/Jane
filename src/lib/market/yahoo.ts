@@ -1,3 +1,4 @@
+import { OUTSIDE_CALL_TIMEOUT_MS } from "@/config/outside-calls";
 import type { Bar } from "./types";
 import { MarketDataError } from "./types";
 
@@ -25,6 +26,7 @@ type Chart = {
 };
 type Fetcher = (
   url: string,
+  init: { signal: AbortSignal },
 ) => Promise<{ ok?: boolean; status?: number; json(): Promise<unknown> }>;
 
 export const yahooUrl = (ticker: string, from: string, to: string) =>
@@ -69,7 +71,9 @@ export async function fetchYahooDaily(
   to: string,
   fetcher: Fetcher = fetch as unknown as Fetcher,
 ): Promise<YahooDay[]> {
-  const res = await fetcher(yahooUrl(ticker, from, to));
+  const res = await fetcher(yahooUrl(ticker, from, to), {
+    signal: AbortSignal.timeout(OUTSIDE_CALL_TIMEOUT_MS),
+  });
   const json = (await res.json().catch(() => null)) as Chart | null;
   if (res.ok === false || !json)
     throw new MarketDataError(`Yahoo answered ${res.status ?? "an error"} for ${ticker}.`);
