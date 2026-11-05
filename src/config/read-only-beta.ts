@@ -6,13 +6,13 @@ export const READ_ONLY_TAXES = {
   title: "What Jane does with your taxes",
   lines: [
     "Jane keeps your tax estimate up to date from your accounts and tags donations, medical, childcare and education spending.",
-    "Each month it tells you what is due, and it keeps your year's records ready as a tax-time pack.",
+    "Its tax calendar lists what is due each month, and it keeps your year's records ready as a tax-time pack. It doesn't remind you of those dates yet, so check them.",
     "You file, sign and pay yourself; Jane gives you the steps.",
   ],
 };
 
 export const READ_ONLY_TAX_CALENDAR =
-  "Jane tells you what is due each month of the tax year; you do each one yourself.";
+  "This is what is due each month of the tax year; you do each one yourself. Jane doesn't remind you of these yet, so check back.";
 
 const INSURANCE_LIMIT =
   "It doesn't buy, change or cancel insurance or call an insurer; it gives you the steps and drafts to do that yourself.";

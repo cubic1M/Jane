@@ -55,7 +55,7 @@ export function healthYearLines(year: HealthYear): string[] {
   }
   for (const d of year.disputes) {
     lines.push(
-      `${d.bill.provider} billed ${formatCents(d.paidCents)} on ${dayLabel(d.bill.date)}, but your plan's share looks like about ${formatCents(d.shouldPayCents)}. I've opened a card so the team can dispute the ${formatCents(d.overCents)} difference.`,
+      `${d.bill.provider} billed ${formatCents(d.paidCents)} on ${dayLabel(d.bill.date)}, but your plan's share looks like about ${formatCents(d.shouldPayCents)}. You can ask them to fix the ${formatCents(d.overCents)} difference; I've opened a card with the steps.`,
     );
   }
   if (year.sample) lines.push("This is the demo bank's sample plan.");

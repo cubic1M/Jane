@@ -7,7 +7,7 @@ export const priceCalled: ActionHandler = {
   async run(context) {
     return {
       answeredWith: context.action.label,
-      note: "Good. I'll check the next bill to see the price held.",
+      note: "Good.",
     };
   },
 };
