@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { READ_ONLY_TAXES, READ_ONLY_TAX_CALENDAR } from "@/config/read-only-beta";
 import { checkGuardrails, claimsAnAct } from "./guardrails";
+import { GuardedText } from "./jane-agent/guarded-text";
 import { healthYearLines } from "./jane-agent/insurance/health-year";
 import { changesSource } from "./jane-agent/sources/changes";
 import { leanSource } from "./jane-agent/sources/lean";
@@ -94,6 +95,9 @@ describe("what Claude may say it did", () => {
     "I'm cancelling it now.",
     "We'll file that for you.",
     "The team will look into it.",
+    "I'm calling them now.",
+    "We're disputing it for you.",
+    "I said it's done. I've cancelled it.",
   ])("stops %s", (text) => {
     expect(claimsAnAct(text)).toBe(true);
     expect(checkGuardrails(text, [])).toEqual({ ok: false, issues: ["claimed_action"] });
@@ -109,8 +113,27 @@ describe("what Claude may say it did", () => {
     "Jane's team can't send letters yet.",
     "I'll call it your buffer.",
     'You could say: "I have paid this already, and I\'ve sent proof."',
+    "Hi, I'm calling on behalf of Sam, the account holder.",
+    "> I am disputing this charge. I have paid it already.",
+    "Here's a letter to send:\n\nDear GEICO,\n\nI am disputing this charge. I have paid it.",
   ])("lets through %s", (text) => {
     expect(claimsAnAct(text)).toBe(false);
+  });
+
+  it("shows the whole of a script as it streams, its quote still open between sentences", () => {
+    const answer = 'You could say: "I am disputing this charge. I have paid it. Please fix it."';
+    let shown = "";
+    const guarded = new GuardedText(
+      () => [],
+      (text) => (shown += text),
+    );
+    for (const word of answer.split(/(?<= )/)) guarded.push(word);
+    guarded.finish();
+    expect(shown).toBe(answer);
+  });
+
+  it("still stops a claim after a script has ended", () => {
+    expect(claimsAnAct('Say: "I have paid this." I\'ve cancelled the other one.')).toBe(true);
   });
 
   it("leaves demo advice alone, where a stand-in really does these", () => {

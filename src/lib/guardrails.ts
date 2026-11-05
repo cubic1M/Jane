@@ -424,14 +424,20 @@ const WILL =
 const ACT_CLAIMS: readonly RegExp[] = [
   new RegExp(`\\bI(?:['’]ve| have)(?: already| just)? (?:${DONE})\\b`, "i"),
   new RegExp(`\\b(?:I|we)(?:['’]ll| will)(?: go ahead and)? (?:${WILL})\\b`, "i"),
-  new RegExp(`\\b(?:I['’]m|I am|we['’]re|we are) (?:${DOING})\\b`, "i"),
+  // Not "I'm calling on behalf of Sam": that's a script for the company, and Jane isn't its subject.
+  new RegExp(`\\b(?:I['’]m|I am|we['’]re|we are) (?:${DOING})\\b(?! on behalf)`, "i"),
   // Not "Jane's team can't": a refusal is the honest answer.
   /\b(?:the|our|my|Jane['’]s) team (?:will|has|is|can(?!['’]t|not\b))\b/i,
 ];
-// Words in quotes are a script or a letter for the person to use, in their voice, not Jane's.
-const withoutQuotes = (text: string) => text.replace(/["“][^"”]*["”]/g, " ");
+// A script or a letter for the person to use is in their voice, not Jane's: in quotes (still open
+// while the answer streams, src/lib/jane-agent/guarded-text.ts), a quoted block, or a "Dear ..." letter.
+const withoutTheirWords = (text: string) =>
+  text
+    .replace(/["“][^"”]*(?:["”]|$)/g, " ")
+    .replace(/^>.*$/gm, " ")
+    .replace(/^(?:Dear\b|To whom it may concern)[\s\S]*$/im, " ");
 export const claimsAnAct = (text: string): boolean => {
-  const said = withoutQuotes(text);
+  const said = withoutTheirWords(text);
   return ACT_CLAIMS.some((p) => p.test(said));
 };
 
