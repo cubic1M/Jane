@@ -65,6 +65,16 @@ async function limitSignIn(): Promise<void> {
   }
 }
 
+// A use is spent before the address is proved, so made-up addresses could use up someone's share
+// link. Until a use nobody claims comes back (runRetention), one address can only spend a few.
+async function limitOneCodeFromHere(invite: string): Promise<void> {
+  const here = `${ipKey(await headers())}:${normalizeCode(invite)}`;
+  if (!(await hit("inviteRedeem", here)).ok) {
+    await recordFailedSignIn("rate_limited");
+    redirect("/signup?error=TooManyRequests");
+  }
+}
+
 const INVITE_ERRORS: Record<Exclude<CodeCheck, "ok">, string> = {
   invalid: "InvalidInvite",
   used_up: "InviteUsedUp",
@@ -104,6 +114,7 @@ export async function signInWithEmail(formData: FormData): Promise<void> {
   // From /signup: redeem the invite for this email before sending the link.
   const invite = inviteFrom(formData);
   if (invite) {
+    await limitOneCodeFromHere(invite);
     const result = await redeemInvite(invite, email);
     if (result !== "ok") {
       await recordFailedSignIn(`invite_${result}`);

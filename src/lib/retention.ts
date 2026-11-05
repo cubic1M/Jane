@@ -79,6 +79,20 @@ export async function runRetention({
           AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id = a.metadata ->> 'user_id')
         )
       )`;
+  const released = await systemDb(WHY, client).$executeRaw`
+    WITH gone AS (
+      DELETE FROM beta_access b
+      WHERE b.created_at < ${before("unclaimedInvites")}
+        AND NOT EXISTS (SELECT 1 FROM users u WHERE lower(u.email) = b.email)
+      RETURNING b.invite_code_id
+    ), counted AS (
+      SELECT invite_code_id, count(*)::int AS n FROM gone GROUP BY invite_code_id
+    ), given_back AS (
+      UPDATE invite_codes c SET uses = GREATEST(c.uses - counted.n, 0)
+      FROM counted WHERE c.id = counted.invite_code_id
+      RETURNING 1
+    )
+    SELECT 1 FROM gone`;
   // Spec step 138: everything a trial person owns goes with them (it all cascades). After
   // the rest, not alongside: the cascade deletes sessions too, and the two deletes at once
   // can deadlock.
@@ -107,6 +121,7 @@ export async function runRetention({
     rateLimits: limits.count,
     expiredSessions: sessions.count + links.count,
     accessLog: access.count + orphans,
+    unclaimedInvites: released,
     trialPeople: trials,
   };
 }
