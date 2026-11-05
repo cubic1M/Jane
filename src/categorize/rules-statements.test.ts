@@ -55,6 +55,10 @@ describe("rules for statement uploads", () => {
       expect(into(d), d).toBe("INCOME_SALARY");
     // Paying a payroll company isn't pay.
     expect(out("GUSTO PAYROLL FEE")).not.toBe("INCOME_SALARY");
+    // A shop paying its staff and its payroll tax through one is a service, known and counted.
+    for (const d of ["GUSTO NET PAY EMPLOYEE", "GUSTO TAX", "PAYCHEX EIB INVOICE", "ADP WAGE PAY"])
+      expect(out(d), d).toBe("GENERAL_SERVICES_OTHER_GENERAL_SERVICES");
+    expect(out("ULINE SHIP SUPPLIES")).toBe("GENERAL_MERCHANDISE_OFFICE_SUPPLIES");
   });
 
   it("calls cash and cheques paid in a deposit", () => {
