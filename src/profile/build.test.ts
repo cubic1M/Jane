@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { DETECTOR_RATES } from "@/config/detectors";
 import { PEOPLE } from "@/config/people";
 import { buildProfile, monthsCovered, monthsForRate, monthsOfData } from "./build";
 import { confidenceOf, sureWords } from "./confidence";
 import { FACT_KEYS } from "./facts";
+import { personalPay } from "./pay";
 import { inputFor, SAMPLE_TODAY } from "./sample";
 
 // Spec step 253: each of the eight people's profiles matches their written description.
@@ -422,6 +424,31 @@ describe("income after a paycheck stops", () => {
     // 6 of the $450 weekly deposits in the last 45 days of data, as a month.
     expect(monthly).toBeGreaterThan(150_000);
     expect(monthly).toBeLessThan(220_000);
+  });
+
+  describe("a shop with a little gig money, and a driver with a little other money", () => {
+    const deposits = (days: number, cents: number, pfc: string, description: string) =>
+      every(days, "2026-01-02", "2026-10-23").map((date) => ({
+        date,
+        cents: -cents,
+        pfc,
+        description,
+      }));
+    const square = deposits(7, 267_000, "INCOME_OTHER", "SQUARE INC DEPOSIT");
+    const etsy = deposits(28, 66_000, "INCOME_GIG_ECONOMY", "ETSY INC PAYOUT");
+
+    it("reads a shop's sales as a business, however many small payouts sit beside them", () => {
+      const profile = buildProfile(person([...square, ...etsy, ...shopping]));
+      expect(profile.facts.income_pattern.value).toBe("business");
+      expect(personalPay(profile).assumedShare).toBe(DETECTOR_RATES.tax.businessProfitShare);
+    });
+
+    it("keeps a driver as uneven pay when their other money in is the smaller part", () => {
+      const dasher = deposits(7, 90_000, "INCOME_GIG_ECONOMY", "DOORDASH INC PAYOUT");
+      const cashBack = deposits(7, 3_000, "INCOME_OTHER", "CASH BACK REWARD");
+      const { facts } = buildProfile(person([...dasher, ...cashBack, ...shopping]));
+      expect(facts.income_pattern.value).toBe("uneven");
+    });
   });
 
   it("isn't salaried once the only job has stopped", () => {

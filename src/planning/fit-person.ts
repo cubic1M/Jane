@@ -1,6 +1,7 @@
 import { FIT_CARD_PAYMENT_SHARE } from "@/config/fit";
 import { liquidCents, monthlySpendCents } from "@/detectors/helpers";
 import { buildProfile, type ProfileInput } from "@/profile/build";
+import { personalPay } from "@/profile/pay";
 import { cashCushionCents } from "./emergency-fund";
 import type { FitPerson } from "./fit";
 import { monthsBefore } from "@/detection/units";
@@ -35,7 +36,8 @@ export function fitPersonFrom(input: ProfileInput, creditScore: number | null = 
   );
   return {
     creditScore,
-    incomeCents: typeof income === "number" && income > 0 ? income : null,
+    // What a lender counts: a business owner's profit, not the business's sales.
+    incomeCents: personalPay(profile).monthlyCents,
     // A loan co-signed for someone counts in full, as lenders count it (spec step 249).
     debtPaymentsCents:
       Math.round(paid / MONTHS) + cardMinimums + (input.familyCredit?.cosignedPaymentCents ?? 0),

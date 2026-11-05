@@ -1,5 +1,6 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { DETECTOR_RATES } from "@/config/detectors";
 import { PrismaClient } from "@/generated/prisma/client";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
@@ -12,12 +13,14 @@ import { runChatTool } from "@/lib/jane-agent/claude-tools";
 import { runJaneAgent } from "@/lib/jane-agent/run";
 import { sendToJane } from "@/lib/jane-agent/typing";
 import { parseActions, parseRefs } from "@/lib/jane-agent/types";
+import { loadProfile } from "@/lib/profile";
 import {
   LifeError,
   answerLifeQuestion,
   buyLife,
   dismissLife,
   latestLife,
+  lifeInput,
   saveDependants,
   sizeLife,
   startLifeApplication,
@@ -102,6 +105,41 @@ describe.runIf(url)("life insurance, sized and bought, against a real database",
   afterAll(async () => {
     await client.user.deleteMany({ where: { id: { in: created } } });
     await client.$disconnect();
+  });
+
+  it("sizes a shop owner's cover from their profit, not the shop's sales", async () => {
+    const user = await client.user.create({
+      data: { email: `ins-life-${crypto.randomUUID()}@example.com` },
+    });
+    created.push(user.id);
+    const account = await client.account.create({
+      data: {
+        userId: user.id,
+        source: "csv",
+        name: "Shop",
+        type: "depository",
+        subtype: "checking",
+      },
+    });
+    for (let i = 0; i < 30; i += 1) {
+      await client.transaction.create({
+        data: {
+          userId: user.id,
+          accountId: account.id,
+          source: "csv",
+          date: new Date(NOW.getTime() - (2 + 7 * i) * DAY),
+          amountCents: -250_000,
+          description: "SQUARE INC DEPOSIT",
+          pfcPrimary: "INCOME",
+          pfcDetailed: "INCOME_OTHER",
+        },
+      });
+    }
+    const { facts } = await loadProfile(user.id, opts());
+    const sales = facts.monthly_income.value as number;
+    expect(facts.income_pattern.value).toBe("business");
+    const { yearlyPayCents } = await lifeInput(user.id, opts());
+    expect(yearlyPayCents).toBe(Math.round(sales * DETECTOR_RATES.tax.businessProfitShare) * 12);
   });
 
   it("sizes the cover from the accounts, with the method and term quotes", async () => {

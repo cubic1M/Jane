@@ -6,6 +6,7 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { personalPay } from "@/profile/pay";
 import { loadHousehold } from "./household";
 import { lifeNeed, type LifeNeedInput, type NeedLine } from "./life-need";
 import { nextLifeQuestion, type LifeAnswers, type LifeDecision } from "./life-underwriting";
@@ -86,11 +87,12 @@ function toApplication(
 // depends on them when the page knows.
 async function profileFacts(userId: string, options: Options) {
   const { loadProfile } = await import("@/lib/profile");
-  const facts = (await loadProfile(userId, options)).facts;
-  const income = facts.monthly_income.value;
+  const profile = await loadProfile(userId, options);
+  // What they take home: a business owner's sales aren't pay, as in the need calculators.
+  const pay = personalPay(profile).monthlyCents;
   return {
-    hasChildren: facts.has_children.value === true,
-    yearlyPayCents: typeof income === "number" && income > 0 ? income * 12 : null,
+    hasChildren: profile.facts.has_children.value === true,
+    yearlyPayCents: pay !== null ? pay * 12 : null,
   };
 }
 
