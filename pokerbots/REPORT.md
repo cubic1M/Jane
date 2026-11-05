@@ -1167,6 +1167,16 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
 * **Host speed note (Nov 5, after a container restart):** this host is ~1.4x slower per decision (`icm_tag` p99 0.18 ms vs 0.10-0.14 earlier); with the parallel suites plus the bug hunter (load ~4.3 on 4 cores) the load-sensitive `bots` CFR match test and two timing tests failed; alone, the CFR test passes (2/2) and every serial timing test passes at `SNG_TIME_SCALE=1.5` (the documented slow-host setting). No code change behind it.
   Full suite at `SNG_TIME_SCALE=1.5` on that host (Nov 5, 08:30, bughunt alongside): 18 of 19 suites OK; the round-1 `opponents` suite had one 490 ms stall in a loose 200 ms check (passes alone); among the timing tests only field 3's opponent `f3_ladder_pro` misses its bound (p99 0.84-0.93 ms vs 0.75; it was 0.72 earlier that day). Every timing test of our own bots passes.
   On that slower host with the 1 ms limit on (`results/sng_slowhost_check.md`, 600 paired tables, fresh seeds 441000+), `icm_switch` vs `icm_tag`: room guess **+3.4***, field 10 +0.5, field 5 −0.0, field 7 **+6.5***, kit-4 room **+3.2***; decisions over 1 ms about equal for both bots (9-17 per 600 tables each, in-process end-of-hand untimed).
+* **New settings + 9-10-handed tables (Nov 5, `results/sng_newfield_check.md`, fresh seeds 601000+, 400 paired tables vs `icm_tag`).**
+  6-handed room / hackathon field: `icm_switch` −0.5 / +0.7, strong-room option +1.5 / +1.1 (n.s.); room top-2 payout +2.8* / +1.7;
+  linear +0.13* / +0.39*; slow blinds +0.6 / +3.4*; champions winner-take-all −0.2 / +5.4*. No setup significantly worse.
+  The 9-handed cells crashed in the arena: `--players 9` cut an 8-place point table, now padded with 0 (test added), and the
+  bug hunter now draws 2-10 players (it never drew 9-10 before). Timing at 9-10 players found a real cost: after the
+  hand-over, `f9_meta`'s exact ICM grows exponentially (~3 ms with 9 alive, ~60 ms with 10), so in a decision-only interface
+  p99 was 63 / 88 ms. Fixed in `icm_switch`: field 9 uses chip values while more than 8 are alive (`F9_ICM_MAX_ALIVE`, or
+  `f9_min_left` when set); 8-player tables are unchanged (test). After the fix, max 6-8 ms, and the >1 ms share (~4%,
+  decision-only, loaded host) is the same exact-ICM-at-8-alive cost as on 8-player tables. `icm_switch:b=f7` still has
+  p99 10 ms at 10 players (decision-only): not for >8-player tables (`results/tools/decision_timing_players.py`).
 * **Bug hunter:** 2.55M random tables (all variants, 2–8 players; 2–10 from Nov 5 10:20, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:

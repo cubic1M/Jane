@@ -196,6 +196,22 @@ class TestSwitch(unittest.TestCase):
         self.assertTrue(b.b.icm.ready)                                # 5 alive
         self.assertGreater(b.b.icm.bf(0, 1), 1.0)
 
+    def test_f9_icm_capped_at_8_alive_on_big_tables(self):
+        """Exact field-9 ICM grows exponentially (~60 ms with 10 alive): unless f9_min_left is set, the strong bot
+        uses chip values while more than 8 players are alive, so 8-player tables are unchanged."""
+        from sng.rules import SYNTHETIC_PAYOUTS
+        self.assertEqual(make("icm_switch").b.icm_min_left, 8)
+        self.assertEqual(make("icm_switch:f9_min_left=6").b.icm_min_left, 6)
+        b = make("icm_switch:start=b")
+        b.new_table(SngRules(enforce_time=False), 0, 1)
+        self.assertTrue(b.b.icm.ready)                                # 8-player table: exact ICM as before
+        pay = tuple(SYNTHETIC_PAYOUTS) + (0, 0)
+        b.new_table(SngRules(enforce_time=False, num_players=10, payouts=pay), 0, 1)
+        self.assertFalse(b.b.icm.ready)                               # 10 alive: chip values
+        post = ((1, 0, "post", 10), (2, 0, "post", 20), (3, 0, "fold", 0))
+        b.end_hand(dict(history=post, stacks=(3000, 3000, 2000, 2000, 2000, 2000, 3000, 3000, 0, 0)))
+        self.assertTrue(b.b.icm.ready)                                # 8 alive: exact ICM
+
     def test_hand_back_after_a_noise_hand_over(self):
         """hand_back=N: after the hand-over, < back_share of the next N opens re-raised -> icm_tag again, for good."""
         post = ((1, 0, "post", 10), (2, 0, "post", 20), (3, 0, "fold", 0))

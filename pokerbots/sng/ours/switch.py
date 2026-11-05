@@ -25,6 +25,9 @@ def _strong_bot(name):
     return {"f9_meta": f9.Meta, "f9_threebet": f9.ThreeBet, "f9_bubble": f9.Bubble}[name]()
 
 
+F9_ICM_MAX_ALIVE = 8   # field 9 exact ICM only with <= 8 players alive (cost grows exponentially)
+
+
 def _full_rules(rules):
     """The strong-table bots read the whole SngRules (starting_stack, blinds_for, ...); kit adapters
     often pass a small stand-in (spec, num_players, payouts): fill the rest with the format's defaults."""
@@ -80,7 +83,10 @@ class IcmSwitch:
                 self._setup_strong(bb, icm_slice)
                 if hasattr(bb, "icm_cache"):
                     bb.icm_cache = float(f9_cache)   # field 9: skip the ICM while stacks move < f9_cache
-                    bb.icm_min_left = int(f9_min_left)  # field 9: no ICM while > f9_min_left players alive
+                    # field 9: no ICM while > f9_min_left players alive. Unset, the cap is 8: exact ICM grows
+                    # exponentially (~3 ms at 9 alive, ~60 ms at 10), so 9-10-handed tables use chip values
+                    # until 8 are left; on <= 8-player tables the cap never applies (no change there)
+                    bb.icm_min_left = int(f9_min_left) or F9_ICM_MAX_ALIVE
         self.switched = False
         self.switch_hand = None
         self.short = False
