@@ -59,7 +59,7 @@ export function creditGoalReply(
   if (draft) {
     if (!draft.view) {
       return {
-        body: "I haven't pulled your score yet, so there's no plan to build. I'll check it with a soft pull, which never affects it.",
+        body: "I don't have your score yet, so there's no plan to build.",
         actions: [GOAL_PAGE],
         refs: {},
       };

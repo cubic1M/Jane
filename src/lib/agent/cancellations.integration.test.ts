@@ -97,6 +97,21 @@ describe.runIf(url)("cancellations by the agent, against a real database", () =>
 
   const reload = (id: string) => client.action.findUniqueOrThrow({ where: { id } });
 
+  // Something else on the statement that day: "no charge" only means something when Jane can see
+  // that far.
+  const dataReaching = (userId: string, accountId: string, day: Date) =>
+    client.transaction.create({
+      data: {
+        userId,
+        accountId,
+        source: "csv",
+        date: day,
+        amountCents: 500,
+        description: "SOMETHING ELSE",
+        dedupeKey: crypto.randomUUID(),
+      },
+    });
+
   beforeAll(() => {
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });
@@ -129,7 +144,7 @@ describe.runIf(url)("cancellations by the agent, against a real database", () =>
   });
 
   it("gives the person the company's cancel page, then confirms by a missed charge", async () => {
-    const { userId } = await person();
+    const { userId, accountId } = await person();
     const merchant = await pageOnlyMerchant();
     const { actionId } = await approve(userId, "subscription_review", merchant);
     expect(await agentStep(userId, actionId, { client, notify })).toBe("waiting");
@@ -152,6 +167,7 @@ describe.runIf(url)("cancellations by the agent, against a real database", () =>
       confirmed: 0,
     });
     const later = new Date(confirming.confirmAfter!.getTime() + DAY);
+    await dataReaching(userId, accountId, later);
     await confirmCancellations({ client, now: later, notify });
     expect(await reload(actionId)).toMatchObject({ status: "done", agentState: "finished" });
   });
@@ -232,12 +248,13 @@ describe.runIf(url)("cancellations by the agent, against a real database", () =>
   });
 
   it("confirms a cancellation the person never told Jane about, by the missing charge", async () => {
-    const { userId } = await person();
+    const { userId, accountId } = await person();
     const merchant = await pageOnlyMerchant();
     const { actionId } = await approve(userId, "subscription_review", merchant);
     await agentStep(userId, actionId, { client, notify });
     const offered = await reload(actionId);
     expect(offered.confirmAfter).not.toBeNull();
+    await dataReaching(userId, accountId, new Date(offered.confirmAfter!.getTime() + DAY));
     await confirmCancellations({
       client,
       now: new Date(offered.confirmAfter!.getTime() + DAY),

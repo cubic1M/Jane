@@ -89,6 +89,13 @@ async function ReportContent({
         orderBy: { lastSeenAt: "desc" },
       }),
     ]);
+  // A Yes on a real account shows the steps, and nobody does them for the person. It leaves the
+  // lists above, so this is where it stays until they say it's done.
+  const started = await db.findings.findMany({
+    where: { status: "in_progress", decisions: { some: { choice: "diy" } } },
+    select: { id: true, title: true },
+    orderBy: { createdAt: "desc" },
+  });
   const found = parts.cents;
   // The profile's own count (src/profile/build.ts), so every "N months of data" agrees.
   // To the last day the statements reach, never past today, as the profile counts.
@@ -212,6 +219,7 @@ async function ReportContent({
           {toUnseenCards !== null && <UnseenCards cents={toUnseenCards} />}
           {oldStatements && <OldStatements day={oldStatements} />}
           <Checkup lines={checks} />
+          <StepsStarted rows={started} />
           {share}
           <ShownLink href="/actions" className="font-medium text-emerald-700 hover:underline">
             See what we&apos;re working on
@@ -219,6 +227,7 @@ async function ReportContent({
         </section>
       ) : (
         <section className="flex flex-col gap-4">
+          <StepsStarted rows={started} />
           <div className="flex flex-col gap-2">
             <h1 className="text-3xl font-semibold tracking-tight">
               {found > 0
@@ -282,6 +291,28 @@ async function ReportContent({
 }
 
 // Uploaded statements cover under three months: monthly charges need more to show.
+// What the person said they'd do themselves. Nothing happens to these unless they do it.
+function StepsStarted({ rows }: { rows: { id: string; title: string }[] }) {
+  if (rows.length === 0) return null;
+  return (
+    <section aria-label="Steps you started" className="flex flex-col gap-2">
+      <h2 className="text-xl font-semibold">Steps you started</h2>
+      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        Nobody does these for you. Open one for its steps, or to mark it done.
+      </p>
+      <ul className="flex flex-col gap-1">
+        {rows.map((r) => (
+          <li key={r.id}>
+            <Link href={`/report/${r.id}`} className="underline">
+              {r.title}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 // A checking statement alone: card payments are all Jane can see of what was bought (debugger 11-03).
 function UnseenCards({ cents }: { cents: number }) {
   return (

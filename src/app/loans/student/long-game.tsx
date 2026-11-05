@@ -47,10 +47,12 @@ export function LongGameSection({
             <strong>
               {game.pslf.counted} of {PSLF_PAYMENTS}
             </strong>{" "}
-            qualifying payments counted for PSLF (Public Service Loan Forgiveness).{" "}
+            payments counted for PSLF (Public Service Loan Forgiveness), by Jane&apos;s rough count
+            of the payments it can see. It can&apos;t see your plan or employer, and only
+            studentaid.gov&apos;s count decides.{" "}
             {game.pslf.remaining === 0
-              ? "That's all of them: apply for forgiveness."
-              : `${game.pslf.remaining} to go: forgiven around ${dayLabel(game.pslf.forgivenOn!, { year: true })} if you pay on time.`}
+              ? "That's all of them, if they qualify: check your count at studentaid.gov."
+              : `${game.pslf.remaining} to go: around ${dayLabel(game.pslf.forgivenOn!, { year: true })} at this rate, if they all qualify.`}
           </p>
           <ol aria-label="PSLF months" className="grid grid-cols-3 gap-1 sm:grid-cols-6">
             {game.pslf.grid.map((m) => (

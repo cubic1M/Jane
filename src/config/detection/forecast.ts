@@ -6,6 +6,9 @@ export const FORECAST_DAYS = 31;
 // forward to today with what was due in between (a paycheck, a bill) before the forecast starts;
 // an older one isn't (its statements describe then, src/lib/report-state.ts).
 export const BALANCE_ROLL_MAX_DAYS = 35;
+// How old a bank's last sync may be before its balance stops counting as today's. A daily sync that
+// missed one night is still today's.
+export const BANK_BALANCE_STALE_DAYS = 3;
 // A checking account forecast to dip below this before more income arrives is a risk.
 // A deposit this big from a name that sounds like a cafe or a salon is a client paying, not a
 // refund: nothing bought there costs that much (src/categorize/rules.ts).

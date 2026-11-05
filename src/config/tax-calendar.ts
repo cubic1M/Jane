@@ -25,7 +25,7 @@ export const CALENDAR_ITEMS: Readonly<
   },
   documents: {
     title: "Tax forms",
-    ask: "I look for each form every day and tell you what came in and what didn't match.",
+    ask: "I list each form to expect, and tell you what came in and what didn't match.",
     auto: "I look for each form every day, tick off the ones that match your accounts and chase the missing ones.",
   },
   estimate: {

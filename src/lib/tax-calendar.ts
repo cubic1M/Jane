@@ -191,7 +191,7 @@ export async function loadTaxCalendar(
         return missing.length > 0
           ? view(
               "waiting",
-              `${missing.length} ${missing.length === 1 ? "form" : "forms"} still to come; I look every day.`,
+              `${missing.length} ${missing.length === 1 ? "form" : "forms"} still to come.`,
             )
           : view("done", "Every form is in.");
       }
