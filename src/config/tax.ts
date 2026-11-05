@@ -74,6 +74,9 @@ export type IncomeKind = keyof typeof INCOME_KINDS;
 // payouts already in INCOME_KINDS.self_employed's categories aren't counted twice.
 // A shop deposits its sales again and again; a one-off platform payout is side income (step 173).
 export const BUSINESS_SALES_MIN_DEPOSITS = 6;
+// Money in that reads as income but isn't a kind the estimate counts (cash deposits, regular payers
+// with no pay word). From this much in a year, the estimate says it left it out.
+export const LEFT_OUT_INCOME_MIN_CENTS = 100_000;
 export const BUSINESS_SALES_CATEGORIES = [
   "INCOME_OTHER",
   "INCOME_OTHER_INCOME",

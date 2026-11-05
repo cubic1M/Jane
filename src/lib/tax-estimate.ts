@@ -9,6 +9,7 @@ import {
 import {
   BUSINESS_SALES_CATEGORIES,
   BUSINESS_SALES_PAYEE,
+  LEFT_OUT_INCOME_MIN_CENTS,
   INCOME_KINDS,
   TAXABLE_INVESTMENT_SUBTYPES,
   type FilingStatus,
@@ -328,6 +329,28 @@ async function loadTaxEstimateFrom(
         ? takeHomeProjected
         : pay.projected.wagesCents;
   if (fixes.wagesCents !== null) assumptions.push("Your wages so far are the figure you gave.");
+  // Income on the money pages (src/categorize/cash-income.ts) that isn't a kind counted here: tips
+  // are taxable, but Jane can't tell that's what they are, so it says so rather than guess or stay
+  // quiet (debugger 11-05: a bartender's $18,340 of cash, and an estimate of $0).
+  const leftOutCents = rows
+    .filter(
+      (t) =>
+        t.amountCents < 0 &&
+        t.pfcDetailed === "INCOME_OTHER" &&
+        Number(t.date.slice(0, 4)) === year &&
+        !ONE_OFF_PAY.test(t.description) &&
+        !BUSINESS_SALES_PAYEE.test(t.description),
+    )
+    .reduce((sum, t) => sum - t.amountCents, 0);
+  if (
+    leftOutCents >= LEFT_OUT_INCOME_MIN_CENTS &&
+    fixes.wagesCents === null &&
+    fixes.selfEmployedCents === null
+  ) {
+    assumptions.push(
+      `${formatCents(leftOutCents)} more came in this year that I can't place, like cash deposits, so I've left it out. If it's tips or pay, it's taxable and your tax would be higher: point it out on the calculation.`,
+    );
+  }
   if (fixes.withheldCents !== null) {
     pay = {
       ...pay,

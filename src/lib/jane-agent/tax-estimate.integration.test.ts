@@ -135,6 +135,30 @@ describe.runIf(url)("the tax estimate against a real database", () => {
     expect(married.assumptions.some((a) => a.includes("how you file"))).toBe(false);
   });
 
+  // Debugger 11-05: a bartender with $18,340 of cash deposits this year, which the money pages count as
+  // income (a founder's ask), had an estimate of $0 on the paychecks alone, with nothing said about it.
+  it("says out loud what came in that it left out", async () => {
+    const userId = await realPerson("tax-estimate-cash");
+    const account = await client.account.findFirstOrThrow({ where: { userId } });
+    const before = await loadTaxEstimate(userId, { client, now: LINKED });
+    expect(before.assumptions.join(" ")).not.toContain("left it out");
+    await client.transaction.createMany({
+      data: ["2026-03-02", "2026-04-02", "2026-05-02"].map((date) => ({
+        userId,
+        accountId: account.id,
+        source: "csv" as const,
+        date: new Date(`${date}T00:00:00Z`),
+        amountCents: -200_000,
+        description: "ATM CASH DEPOSIT",
+        pfcDetailed: "INCOME_OTHER",
+      })),
+    });
+    const view = await loadTaxEstimate(userId, { client, now: LINKED });
+    expect(view.assumptions.join(" ")).toContain("$6,000.00 more came in");
+    expect(view.assumptions.join(" ")).toContain("left it out");
+    expect(view.estimate.totalTaxCents).toBe(before.estimate.totalTaxCents);
+  });
+
   // Debugger 11-05: $19,500 a year of daycare beside "You haven't told me about dependants".
   it("says it sees a child, without counting one, when there's childcare", async () => {
     const userId = await realPerson("tax-estimate-child");
