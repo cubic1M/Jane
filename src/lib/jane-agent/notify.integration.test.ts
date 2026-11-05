@@ -113,6 +113,12 @@ describe.runIf(url)("Jane's messages as notifications, against a real database",
   const messagesOf = (userId: string) =>
     client.janeMessage.findMany({ where: { userId }, orderBy: { createdAt: "asc" } });
 
+  // What the pushes were about: a notification itself only says what kind of thing it is.
+  const pushedBodies = async (userId: string, push: ReturnType<typeof fakes>["push"]) => {
+    const ids = push.mock.calls.map(([, p]) => p.messageId);
+    return (await messagesOf(userId)).filter((m) => ids.includes(m.id)).map((m) => m.body);
+  };
+
   const fakes = (pushResult = 1) => ({
     push: vi.fn<typeof sendPush>(async () => pushResult),
     send: vi.fn<(email: Email) => Promise<void>>(async () => {}),
@@ -257,9 +263,10 @@ describe.runIf(url)("Jane's messages as notifications, against a real database",
       expect(result).toEqual({ pushed: decisions.length, emailed: 0 });
       const [, payload] = push.mock.calls[0];
       expect(payload).toMatchObject({ title: "Jane", url: expect.stringMatching(/^\/chat#/) });
-      expect(payload.actions?.length).toBeGreaterThan(0);
-      expect(payload.actions?.length).toBeLessThanOrEqual(2);
-      expect(push.mock.calls.some(([, p]) => p.body.startsWith("Good morning"))).toBe(false);
+      expect(payload.actions).toBeUndefined();
+      expect(await pushedBodies(userId, push)).not.toContainEqual(
+        expect.stringMatching(/^Good morning/),
+      );
       expect(send).not.toHaveBeenCalled();
 
       expect(
@@ -272,7 +279,9 @@ describe.runIf(url)("Jane's messages as notifications, against a real database",
       await device(userId);
       const { push, send } = fakes();
       await deliverChatNotifications(userId, { client, now: at(MINUTE), push, send });
-      expect(push.mock.calls.some(([, p]) => p.body.startsWith("Good morning"))).toBe(true);
+      expect(await pushedBodies(userId, push)).toContainEqual(
+        expect.stringMatching(/^Good morning/),
+      );
     });
 
     // Spec step 184: by default the day is one agenda message, and what it lists is hidden
@@ -289,8 +298,9 @@ describe.runIf(url)("Jane's messages as notifications, against a real database",
       expect(
         await deliverChatNotifications(userId, { client, now: at(MINUTE), push, send }),
       ).toEqual({ pushed: shown.length + 1, emailed: 0 });
-      const agenda = push.mock.calls.find(([, p]) => p.body.startsWith("Good morning!"));
-      expect(agenda?.[1].actions?.length).toBeGreaterThan(0);
+      expect(await pushedBodies(userId, push)).toContainEqual(
+        expect.stringMatching(/^Good morning!/),
+      );
       expect(
         await deliverChatNotifications(userId, { client, now: at(2 * MINUTE), push, send }),
       ).toEqual({ pushed: 0, emailed: 0 });

@@ -2,16 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
-import { CHAT_PUSH_BODY_LENGTH } from "@/config/chat-notify";
 import { chatNotifyPrefs } from "./notify-prefs";
 import type { PrismaClient } from "@/generated/prisma/client";
-import {
-  chatPushMessage,
-  chooseToNotify,
-  notificationButtons,
-  queueChatNotifications,
-  trimBody,
-} from "./notify";
+import { chatPushMessage, chooseToNotify, queueChatNotifications } from "./notify";
 
 // Spec step 85: which messages go out, and what a push notification carries.
 
@@ -36,44 +29,14 @@ function message(overrides: Partial<Parameters<typeof chatPushMessage>[0]> = {})
 }
 
 describe("chatPushMessage", () => {
-  it("is titled Jane, says the message and opens it in the chat", () => {
-    expect(chatPushMessage(message(), NOW)).toEqual({
+  it("is titled Jane, says what kind of thing it is and opens it in the chat", () => {
+    expect(chatPushMessage(message())).toEqual({
       title: "Jane",
-      body: "You paid $35 in overdraft fees. Want me to ask for them back?",
+      body: "Jane has a question for you.",
       url: "/chat#m1",
       tag: "jane-m1",
       messageId: "m1",
-      // The first two buttons; never a link.
-      actions: [
-        { action: "finding.yes", title: "Yes" },
-        { action: "finding.pick", title: "Switch to Ally" },
-      ],
     });
-  });
-
-  it("leaves out an Undo whose time is up", () => {
-    const done = message({
-      kind: "done",
-      refs: { undoUntil: "2026-10-18T15:00:00Z" },
-      actions: [
-        { id: "undo.rule", label: "Undo", kind: "secondary" },
-        { id: "open", label: "Open", kind: "link", href: "/plan" },
-      ],
-    });
-    expect(chatPushMessage(done, NOW).actions).toEqual([]);
-    expect(notificationButtons(done, new Date("2026-10-18T14:00:00Z"))).toHaveLength(1);
-  });
-});
-
-describe("trimBody", () => {
-  it("keeps short text and cuts long text at a word", () => {
-    expect(trimBody("Good morning!\nSafe to spend: $420.")).toBe(
-      "Good morning! Safe to spend: $420.",
-    );
-    const long = "word ".repeat(100);
-    const cut = trimBody(long);
-    expect(cut.length).toBeLessThanOrEqual(CHAT_PUSH_BODY_LENGTH);
-    expect(cut).toMatch(/word…$/);
   });
 });
 

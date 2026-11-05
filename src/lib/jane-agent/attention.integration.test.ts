@@ -180,14 +180,14 @@ describe.runIf(url)("asking less, against a real database", { timeout: 120_000 }
     const payloads = push.mock.calls.map(([, p]) => p);
     expect(payloads).toEqual([
       expect.objectContaining({
-        body: "Coming up tomorrow: rent.",
+        body: "Jane has something to show you.",
         url: expect.stringMatching(/^\/chat#/),
       }),
       expect.objectContaining({
         title: "Jane",
         url: "/chat",
         tag: "jane-bundle",
-        body: "2 things for you. Something to decide.",
+        body: "Jane has 2 things for you.",
       }),
     ]);
   });
@@ -234,7 +234,7 @@ describe.runIf(url)("asking less, against a real database", { timeout: 120_000 }
     const push = vi.fn<typeof sendPush>(async () => 1);
     const send = vi.fn<(email: Email) => Promise<void>>(async () => {});
     await deliverChatNotifications(userId, { client, now: NOW, push, send, emailAfterMinutes: 0 });
-    expect(push.mock.calls.map(([, p]) => p.body)).toEqual(["Coming up tomorrow: rent."]);
+    expect(push.mock.calls.map(([, p]) => p.body)).toEqual(["Jane has something to show you."]);
     expect(send).toHaveBeenCalledTimes(1);
     expect(send.mock.calls[0][0].text).toContain("A budget to look at.");
   });
