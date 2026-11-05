@@ -57,7 +57,7 @@ describe("prepareExplainInput", () => {
     expect(input.facts).toEqual({
       account: "bank account",
       total: "$69.00",
-      period: "the last 12 months",
+      period: "the last 7 months",
     });
     expect(input.charges.map((c) => c.kind)).toEqual(["overdraft fee", "overdraft fee"]);
   });

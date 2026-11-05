@@ -13,17 +13,15 @@ function historyDays(input: DetectionInput): number {
   return daysBetween(first, input.asOf);
 }
 
-// The months a fee or interest total covers, given the days of history: under
-// SHORT_HISTORY_DAYS it's those months (and the total is counted at a year's pace), otherwise
-// the LOOKBACK_MONTHS window. The one count the report's finding and the dock's card-interest
+// The months a fee or interest total covers, given the days of history, at most the
+// LOOKBACK_MONTHS window. Under SHORT_HISTORY_DAYS the total is also counted at a year's pace.
+// The one count the report's finding and the dock's card-interest
 // suggestion share (review 10-31: they scaled differently and disagreed by up to $1,000).
 export function paceMonths(days: number): { short: boolean; months: number } {
   const short = days < SHORT_HISTORY_DAYS;
   return {
     short,
-    months: short
-      ? Math.min(LOOKBACK_MONTHS, Math.max(1, Math.round(days / DAYS_PER_MONTH)))
-      : LOOKBACK_MONTHS,
+    months: Math.min(LOOKBACK_MONTHS, Math.max(1, Math.round(days / DAYS_PER_MONTH))),
   };
 }
 
