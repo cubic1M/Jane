@@ -166,6 +166,29 @@ describe("checkup", () => {
     expect(line.line).toMatch(/after \$4,000 held back/);
   });
 
+  // Debugger 11-05: "$27,884 cash, under 3 months of spending", at about $3,300 a month.
+  it("says what the cash is worth in months once a paycheck has stopped", () => {
+    const data = doingWell();
+    const others = data.transactions.filter((t) => t.pfcDetailed !== "INCOME_SALARY");
+    const job = [100, 114, 128, 142, 156, 170, 184].map((days) =>
+      tx({
+        description: "NORTHWIND PAYROLL",
+        pfcPrimary: "INCOME",
+        pfcDetailed: "INCOME_SALARY",
+        accountId: CHECKING.id,
+        date: addDays(AS_OF, -days),
+        amountCents: -300_000,
+      }),
+    );
+    const checking = data.accounts.find((a) => a.id === CHECKING.id)!;
+    checking.currentBalanceCents = 10_000_000;
+    data.transactions = [...others, ...job];
+    const line = byType(checkup(data)).get("idle_cash")!;
+    expect(line.status).toBe("passed");
+    expect(line.line).toMatch(/^\$[\d,]+ cash, about \d+ months of spending$/);
+    expect(line.detail).toMatch(/Your pay looks like it stopped/);
+  });
+
   it("says not enough data, not passed, where there's nothing to judge by", () => {
     const lines = byType(checkup(doingWell()));
 
