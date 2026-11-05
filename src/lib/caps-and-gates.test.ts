@@ -17,12 +17,22 @@ describe("what a read of the promises and the people-to-people paths found", () 
     expect(KEEP_RATE_LIMIT_PREFIXES).toContain("claudebgmonth:");
   });
 
-  it("gives nobody admin in production when the list has gone missing", () => {
+  it("gives nobody admin on a deployment when the list has gone missing", () => {
     vi.stubEnv("ADMIN_EMAILS", "");
+    for (const deployed of ["production", "preview"]) {
+      vi.stubEnv("VERCEL_ENV", deployed);
+      expect(stillAnAdmin("former@example.com")).toBe(false);
+    }
+  });
+
+  // main went red without this: the end-to-end tests run a production build with no list.
+  it("goes by the role in local runs and on a production build that isn't deployed", () => {
+    vi.stubEnv("ADMIN_EMAILS", "");
+    vi.stubEnv("VERCEL_ENV", "");
     vi.stubEnv("NODE_ENV", "production");
-    expect(stillAnAdmin("former@example.com")).toBe(false);
+    expect(stillAnAdmin("someone@example.com")).toBe(true);
     vi.stubEnv("NODE_ENV", "test");
-    expect(stillAnAdmin("former@example.com")).toBe(true);
+    expect(stillAnAdmin("someone@example.com")).toBe(true);
   });
 
   // Each person who joins gets a share link of 10, so 1 becomes 10, then 100, in a beta of a few
@@ -51,7 +61,7 @@ describe("what a read of the promises and the people-to-people paths found", () 
 
   it("still goes by the list when there is one", () => {
     vi.stubEnv("ADMIN_EMAILS", "team@example.com");
-    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("VERCEL_ENV", "production");
     expect(stillAnAdmin("TEAM@example.com")).toBe(true);
     expect(stillAnAdmin("former@example.com")).toBe(false);
   });
