@@ -301,7 +301,7 @@ export const FOOD_SHOPS: readonly Rule[] = [
   },
   {
     category: "GENERAL_MERCHANDISE_OFFICE_SUPPLIES",
-    keywords: ["STAPLES", "OFFICE DEPOT", "OFFICEMAX"],
+    keywords: ["STAPLES", "OFFICE DEPOT", "OFFICEMAX", "ULINE"],
     direction: "out",
   },
   {

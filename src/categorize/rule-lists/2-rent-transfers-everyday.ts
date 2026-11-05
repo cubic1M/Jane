@@ -221,6 +221,13 @@ export const RENT_TRANSFERS_EVERYDAY: readonly Rule[] = [
     keywords: ["TURBOTAX", "H&R BLOCK", "HRB TAX", "TAXACT", "JACKSON HEWITT", "FREETAXUSA"],
     direction: "out",
   },
+  // A business paying its staff through a payroll service: money out, so never someone's paycheck
+  // (debugger 11-05: a shop's biggest category was "Uncategorized").
+  {
+    category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+    keywords: ["GUSTO", "ADP", "PAYCHEX", "TRINET", "RIPPLING", "JUSTWORKS"],
+    direction: "out",
+  },
   {
     category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
     keywords: [
