@@ -217,6 +217,29 @@ describe("coverage gaps", () => {
     ).toBeUndefined();
   });
 
+  // Debugger 11-05: "Urgent: Business liability, Missing" beside the Hiscox policy in their payments.
+  it("says a business policy found in the payments would close a business's gap", () => {
+    const shop = household(
+      {},
+      {
+        ...NO_SIGNS,
+        selfEmployment: {
+          declared: true,
+          serviceCents: 0,
+          gigCents: 0,
+          salesCents: 10_000_000,
+          miles: 0,
+          equipmentCents: 0,
+          payments: 48,
+          gasMonthlyCents: 0,
+        },
+      },
+    );
+    const found = policy({ id: "p9", kind: "business", carrier: "Hiscox", status: "found" });
+    const gap = coverageGaps(shop, [found]).find((g) => g.key === "business_liability");
+    expect(gap?.found).toEqual({ policyId: "p9", carrier: "Hiscox" });
+  });
+
   it("finds renting with no renters cover, in plain words", () => {
     const [gap] = coverageGaps(household({}, { ...NO_SIGNS, rentPaid: true }), []);
     expect(gap).toMatchObject({

@@ -300,8 +300,10 @@ export function businessNeedsFor(input: NeedInput): Need[] {
   const out: Need[] = [];
   if (needsGeneralLiability(work)) {
     const have = best("generalLiability");
-    out.push(
-      need(
+    const limitUnknown =
+      business.length > 0 && business.every((p) => typeof p.coverage.generalLiability !== "number");
+    out.push({
+      ...need(
         "business_liability",
         BUSINESS_LIABILITY_TARGET_CENTS,
         have,
@@ -311,7 +313,8 @@ export function businessNeedsFor(input: NeedInput): Need[] {
           : // A sentence, not a label: it is a card's "Why you" (phone walk: it read as cover held).
             `I'd look at ${formatCents(BUSINESS_LIABILITY_TARGET_CENTS)} of general liability for your business; ${have > 0 ? `yours is ${formatCents(have)}` : "your personal policies don't cover it"}.`,
       ),
-    );
+      ...(limitUnknown ? { limitUnknown } : {}),
+    });
   }
   if (doesServiceWork(work)) {
     const have = best("professionalLiability");

@@ -208,6 +208,90 @@ describe("the insurance tree", () => {
     });
   });
 
+  // "Urgent: Business liability, Missing" and "You need $1M; you have $0" beside the Hiscox policy
+  // the shop's payments show. Its limits aren't known: it asks, and doesn't say $0.
+  it("asks to confirm a business policy it found, in the gap and in what's needed", () => {
+    const found = {
+      ...input().policies[0],
+      id: "p9",
+      kind: "business",
+      carrier: "Hiscox",
+      status: "found",
+    };
+    const gap = { key: "business_liability", why: "Your sales show a business.", policyId: null };
+    const need = {
+      kind: "business_liability",
+      applies: true,
+      unit: "total",
+      needCents: 100_000_000,
+      haveCents: 0,
+      gapCents: 100_000_000,
+      lines: [],
+      summary: "",
+      policyId: null,
+      opened: true,
+    };
+    const { tree, summaries } = insuranceTree(
+      input({
+        gaps: [gap],
+        needs: [need],
+        policies: [found],
+      } as unknown as Partial<InsuranceTreeInput>),
+    );
+    const missing = tree.branches.find((b) => b.id === "missing")!.items[0];
+    expect(missing).toMatchObject({ status: "look", figure: "Confirm it" });
+    const needed = tree.branches.find((b) => b.id === "needs")!.items[0];
+    expect(needed).toMatchObject({ status: "look", figure: "Confirm it" });
+    expect(summaries[needed.id]).toBe(
+      "Hiscox is in your payments. Confirm it and its limits so they count.",
+    );
+  });
+
+  it("asks for a confirmed policy's limit, without calling it missing or short", () => {
+    const hiscox = { ...input().policies[0], id: "p9", kind: "business", status: "active" };
+    const gap = {
+      key: "business_liability",
+      why: "No limit on file.",
+      policyId: "p9",
+      limit: "unknown",
+    };
+    const need = {
+      kind: "business_liability",
+      applies: true,
+      unit: "total",
+      needCents: 100_000_000,
+      haveCents: 0,
+      gapCents: 100_000_000,
+      lines: [],
+      summary: "",
+      policyId: "p9",
+      limitUnknown: true,
+      opened: true,
+    };
+    const { tree, summaries } = insuranceTree(
+      input({
+        gaps: [gap],
+        needs: [need],
+        policies: [hiscox],
+      } as unknown as Partial<InsuranceTreeInput>),
+    );
+    const branch = (id: string) => tree.branches.find((b) => b.id === id)!.items[0];
+    expect(branch("missing")).toMatchObject({ status: "look", figure: "Add its limit" });
+    expect(branch("needs")).toMatchObject({ status: "look", figure: "Add its limit" });
+    expect(summaries[branch("needs").id]).toBe("Your policy's limit isn't on file yet.");
+    expect(branch("policies").status).not.toBe("act");
+
+    const low = insuranceTree(
+      input({
+        gaps: [{ ...gap, limit: "low" }],
+        needs: [],
+        policies: [hiscox],
+      } as unknown as Partial<InsuranceTreeInput>),
+    );
+    const lowItem = low.tree.branches.find((b) => b.id === "missing")!.items[0];
+    expect(lowItem).toMatchObject({ status: "look", figure: "Limit is low" });
+  });
+
   it("marks each item and its branch by how pressing it is", () => {
     const { tree } = insuranceTree(input());
     const branch = (id: string) => tree.branches.find((b) => b.id === id)!;

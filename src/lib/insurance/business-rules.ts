@@ -39,6 +39,8 @@ export type BusinessGap = {
   key: GapKey;
   kind: PolicyKind;
   policyId: string | null;
+  // There's a policy, so it isn't missing: its limit isn't on file, or is under what's asked for.
+  limit?: "unknown" | "low";
   title: string;
   why: string;
   // Every dollar figure in the text, for the guardrails.
@@ -81,11 +83,25 @@ export function businessGaps(s: SelfEmployment | undefined, policies: Policy[]):
       0,
       ...businessPolicies.map((p) => number(p.coverage.generalLiability)),
     );
-    if (liability < BUSINESS_LIABILITY_TARGET_CENTS) {
+    // A policy with no limit on file: Jane doesn't know it's low (debugger 11-05: a confirmed
+    // Hiscox policy read "covers $0.00", "Urgent: Missing", and offered to add a second one).
+    const held = businessPolicies[0];
+    if (held && businessPolicies.every((p) => typeof p.coverage.generalLiability !== "number")) {
       gaps.push({
         key: "business_liability",
         kind: "business",
-        policyId: null,
+        policyId: held.id,
+        limit: "unknown",
+        title: `Add your ${held.carrier} policy's liability limit`,
+        why: `Jane doesn't have your ${held.carrier} policy's general liability limit yet. It's usually on your policy's first page, and many clients ask for ${formatCents(BUSINESS_LIABILITY_TARGET_CENTS)}.`,
+        cents: [BUSINESS_LIABILITY_TARGET_CENTS],
+      });
+    } else if (liability < BUSINESS_LIABILITY_TARGET_CENTS) {
+      gaps.push({
+        key: "business_liability",
+        kind: "business",
+        policyId: held?.id ?? null,
+        ...(held ? { limit: "low" as const } : {}),
         title:
           businessPolicies.length > 0
             ? "Your business policy's liability cover is low"

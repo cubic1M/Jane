@@ -169,6 +169,9 @@ describe("policiesFromStreams", () => {
     ["geico autopay", "auto"],
     ["lemonade", "renters"],
     ["kaiser permanente dues", "health"],
+    ["hiscox business insurance", "business"],
+    ["next insurance premium", "business"],
+    ["state farm business", "business"],
   ])("reads %s as %s", (key, kind) => {
     expect(insurerKind(key)).toBe(kind);
   });

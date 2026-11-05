@@ -8,6 +8,7 @@ import {
   type GapKey,
   type PolicyKind,
 } from "@/config/insurance";
+import { coverKindOf } from "@/config/found-policies";
 import { formatCents } from "@/lib/money";
 import { businessGaps } from "./business-rules";
 import { isLiabilityOnly } from "./coverage";
@@ -26,6 +27,8 @@ export type Gap = {
   kind: PolicyKind;
   // The policy it's about, for liability only.
   policyId: string | null;
+  // There's a policy, so it isn't missing: its limit isn't on file, or is under what's asked for.
+  limit?: "unknown" | "low";
   title: string;
   // Why it matters, in plain words: what's at stake, never what to buy.
   why: string;
@@ -122,7 +125,7 @@ export function coverageGaps(
   return gaps
     .filter((g) => !household.dismissedGaps.includes(g.key))
     .map((g) => {
-      const found = policies.find((p) => p.status === "found" && p.kind === g.key);
+      const found = policies.find((p) => p.status === "found" && p.kind === coverKindOf(g.key));
       return found ? { ...g, found: { policyId: found.id, carrier: found.carrier } } : g;
     });
 }
