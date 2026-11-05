@@ -196,5 +196,32 @@ class TestSwitch(unittest.TestCase):
         self.assertTrue(b.b.icm.ready)                                # 5 alive
         self.assertGreater(b.b.icm.bf(0, 1), 1.0)
 
+    def test_hand_back_after_a_noise_hand_over(self):
+        """hand_back=N: after the hand-over, < back_share of the next N opens re-raised -> icm_tag again, for good."""
+        post = ((1, 0, "post", 10), (2, 0, "post", 20), (3, 0, "fold", 0))
+        b = make("icm_switch:hand_back=15;back_share=0.18")
+        b.new_table(SngRules(enforce_time=False), 0, 1)
+        b.a.rfi_on = True
+        b.a.my_opens, b.a.my_opens_rr = 20, 6
+        b.end_hand(dict(history=post, stacks=(2000,) * 8, hand_number=60, deltas=[0] * 8))
+        self.assertTrue(b.switched)
+        b.a.my_opens, b.a.my_opens_rr = 30, 7                  # 10 more opens: not yet judged
+        b.end_hand(dict(history=post, stacks=(2000,) * 8, hand_number=80, deltas=[0] * 8))
+        self.assertTrue(b.switched)
+        b.a.my_opens, b.a.my_opens_rr = 35, 8                  # 15 opens since, 2 re-raised (13%)
+        b.end_hand(dict(history=post, stacks=(2000,) * 8, hand_number=90, deltas=[0] * 8))
+        self.assertFalse(b.switched)
+        self.assertTrue(b.backed)
+        b.end_hand(dict(history=post, stacks=(2000,) * 8, hand_number=91, deltas=[0] * 8))
+        self.assertFalse(b.switched)                           # one-way, even with the lock still on
+        strong = make("icm_switch:hand_back=15;back_share=0.18")
+        strong.new_table(SngRules(enforce_time=False), 0, 1)
+        strong.a.rfi_on = True
+        strong.a.my_opens, strong.a.my_opens_rr = 20, 6
+        strong.end_hand(dict(history=post, stacks=(2000,) * 8, hand_number=60, deltas=[0] * 8))
+        strong.a.my_opens, strong.a.my_opens_rr = 35, 12       # 6 of 15 re-raised: keep f9_meta
+        strong.end_hand(dict(history=post, stacks=(2000,) * 8, hand_number=90, deltas=[0] * 8))
+        self.assertTrue(strong.switched)
+
 if __name__ == "__main__":
     unittest.main()

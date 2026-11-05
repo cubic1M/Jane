@@ -49,7 +49,9 @@ class IcmSwitch:
     name = "icm_switch"
 
     def __init__(self, switch_min=20, switch_share=0.0, b="f9_meta", any_deck=0, icm_slice=0, sd_share=0.3,
-                 sd_b="f9_meta", f9_cache=0.0, start="a", back_share=0.18, f9_min_left=0, **kw):
+                 sd_b="f9_meta", f9_cache=0.0, start="a", back_share=0.18, f9_min_left=0, hand_back=0, **kw):
+        # hand_back=N > 0 (start="a"): after a hand-over, hand the table back to icm_tag (one-way) if of the
+        # next N first-in opens fewer than back_share got re-raised (the hand-over fired on noise)
         # start="b": play the strong bot from hand 1 and hand the table BACK to icm_tag (one-way) once
         # >= switch_min first-in opens were played and < back_share of them got re-raised (a static table,
         # where icm_tag is far better); start="a" (default): icm_tag first, hand-over as above
@@ -62,6 +64,8 @@ class IcmSwitch:
         self.any_deck = bool(any_deck)        # 1: the share rule also fires on short decks / top-heavy payouts
         self.sd_share, self.sd_name = float(sd_share), str(sd_b)
         self.start_b, self.back_share = str(start) == "b", float(back_share)
+        self.hand_back = int(hand_back)
+        self._at_switch = (0, 0)
         self.backed = False
         self.a = IcmTag(**kw)
         self.b = self.b_main = _strong_bot(str(b))
@@ -149,9 +153,18 @@ class IcmSwitch:
                     and a.my_opens_rr >= self.switch_share * a.my_opens)
         else:
             fire = a.rfi_on
-        if not self.switched and fire and self.holdem:
+        if self.hand_back and self.switched and not self.backed:
+            n0, r0 = self._at_switch
+            n, r = a.my_opens - n0, a.my_opens_rr - r0
+            if n >= self.hand_back and r < self.back_share * n:
+                self.switched = False            # the hand-over fired on noise: back to icm_tag (one-way)
+                self.backed = True
+                self.b.shadow_only = True
+            return
+        if not self.switched and fire and self.holdem and not self.backed:
             self.switched = True
             self.switch_hand = info.get("hand_number")
+            self._at_switch = (a.my_opens, a.my_opens_rr)
             self.b.shadow_only = False
             self._refresh_b()
 
