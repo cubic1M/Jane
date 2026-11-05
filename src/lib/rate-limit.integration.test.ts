@@ -15,6 +15,7 @@ vi.mock("@/lib/plaid/link", async (importOriginal) => ({
 }));
 
 import { RATE_LIMITS } from "@/config/rate-limits";
+import { TERMS_VERSION } from "@/config/legal";
 import { getCurrentUser } from "@/lib/session";
 import { giveBack, hit, hitMany, ipKey } from "./rate-limit";
 
@@ -75,7 +76,10 @@ describe.runIf(url)("rate limiting against a real database", () => {
   it("returns 429 under a simple load test on a real route", async () => {
     vi.stubEnv("PLAID_CLIENT_ID", "client");
     vi.stubEnv("PLAID_SECRET", "secret");
-    vi.mocked(getCurrentUser).mockResolvedValue({ id: `rl-test-${crypto.randomUUID()}` } as never);
+    vi.mocked(getCurrentUser).mockResolvedValue({
+      id: `rl-test-${crypto.randomUUID()}`,
+      termsVersion: TERMS_VERSION,
+    } as never);
     const { POST } = await import("@/app/api/plaid/link-token/route");
 
     const responses = await Promise.all(
