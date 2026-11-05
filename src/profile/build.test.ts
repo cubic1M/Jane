@@ -466,6 +466,27 @@ describe("income after a paycheck stops", () => {
     expect(facts.monthly_income.value).toBe(without.facts.monthly_income.value);
   });
 
+  it("knows there's an HSA from the money going into it, linked or not", () => {
+    const hsa = every(30, "2026-01-03", "2026-10-03").map((date) => ({
+      date,
+      cents: 30_000,
+      pfc: "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS",
+      description: "Withdrawal to HEALTHEQUITY HSA CONTRIB",
+    }));
+    const { facts } = buildProfile(person([...job("2026-02-06", "2026-10-23"), ...hsa]));
+    expect(facts.has_hsa).toMatchObject({ value: true, source: "seen" });
+    expect(facts.has_hsa.evidence).toMatch(/HSA deposits/);
+    // A warehouse club's line has the letters, not the word.
+    const club = hsa.map((t) => ({
+      ...t,
+      pfc: "GENERAL_MERCHANDISE_SUPERSTORES",
+      description: "BJS WHSALE CLUB #0112",
+    }));
+    expect(
+      buildProfile(person([...job("2026-02-06", "2026-10-23"), ...club])).facts.has_hsa.value,
+    ).toBe(false);
+  });
+
   it("isn't salaried once the only job has stopped", () => {
     const { facts } = buildProfile(
       person([...job("2026-02-06", "2026-08-07"), severance, ...benefits, ...shopping]),
