@@ -34,7 +34,7 @@ import { listPolicies, nextRenewal } from "@/lib/insurance/policies";
 import { loadInsurance } from "@/lib/insurance/profile";
 import { log } from "@/lib/log";
 import { priceRiseDeadlines } from "@/lib/price-rises";
-import { peopleIn, type OnlyPeople } from "@/lib/only-people";
+import { stayingPeople, type OnlyPeople } from "@/lib/only-people";
 import { DEBT_ACCOUNT_SELECT } from "@/insights/loans";
 import { systemDb } from "@/lib/system-db";
 
@@ -286,7 +286,7 @@ export async function remindAllDeadlines({
     where: {
       deletedAt: null,
       OR: [{ accounts: { some: {} } }, { deadlines: { some: { doneAt: null } } }],
-      ...peopleIn(userIds),
+      ...stayingPeople(userIds),
     },
     select: { id: true },
     orderBy: { id: "asc" },

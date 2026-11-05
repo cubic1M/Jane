@@ -19,6 +19,7 @@ import { actingPartnerFor, type InsurancePartner } from "./partner";
 import { listPolicies, type Policy } from "./policies";
 import { DAY_MS as DAY } from "@/lib/dates";
 import { systemDb } from "@/lib/system-db";
+import { STAYING } from "@/lib/only-people";
 
 // Cover changes with life events (spec step 154). When the person buys a car, moves, has a
 // baby, marries or starts a new job (from step 100's life events, their accounts, or what
@@ -337,7 +338,7 @@ export async function coverChangesAll({
     "Cron: finds who to run for, across people",
     client,
   ).insurancePolicy.findMany({
-    where: { status: "active" },
+    where: { status: "active", userId: STAYING },
     select: { userId: true },
     distinct: ["userId"],
     take: COVER_CHANGES_DAILY_LIMIT,

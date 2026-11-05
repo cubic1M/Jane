@@ -44,7 +44,7 @@ export type { LastRun, StepLog, StepResult } from "./controller-log";
 import type { StepLog, StepResult } from "./controller-log";
 import { logsOf } from "./controller-log";
 import { isoDay as day } from "@/lib/dates";
-import { ownedBy, type OnlyPeople } from "@/lib/only-people";
+import { ownedByStaying, type OnlyPeople } from "@/lib/only-people";
 import { isTrialUser } from "@/lib/trial-ids";
 import { systemDb } from "@/lib/system-db";
 
@@ -321,7 +321,7 @@ export async function queueNightlyRuns({
   // A system job across people: ids only. Each run is scoped to its person.
   const [people, ran, waiting] = await Promise.all([
     systemDb(WHY, client).account.findMany({
-      where: ownedBy(userIds),
+      where: ownedByStaying(userIds),
       distinct: ["userId"],
       select: { userId: true },
     }),

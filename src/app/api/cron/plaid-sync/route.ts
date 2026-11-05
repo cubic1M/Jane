@@ -31,6 +31,7 @@ import { runAutomaticInvestingForAll } from "@/lib/investments/automatic";
 import { forgetRemovedDemoBanks } from "@/lib/evidence/backfill";
 import { removeAllOrphans } from "@/lib/evidence/orphans";
 import { refreshAfterRemoval } from "@/lib/import/background";
+import { STAYING } from "@/lib/only-people";
 import { systemDb } from "@/lib/system-db";
 
 // Vercel Cron, daily: syncs linked items that haven't synced in STALE_SYNC_HOURS, in case
@@ -144,6 +145,7 @@ async function dailyWork(startedAt: number) {
   const items = await systemDb("Cron: finds every bank connection due a sync").plaidItem.findMany({
     where: {
       status: ITEM_STATUS.active,
+      userId: STAYING,
       OR: [{ lastSyncedAt: null }, { lastSyncedAt: { lt: cutoff } }],
     },
     select: { id: true },

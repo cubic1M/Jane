@@ -16,6 +16,7 @@ import { openDisputeCards } from "./health-year";
 import { refreshRisks } from "./risks";
 import { log } from "@/lib/log";
 import { systemDb } from "@/lib/system-db";
+import { STAYING } from "@/lib/only-people";
 
 const WHY = "Cron: finds who to run for, across people";
 
@@ -42,7 +43,7 @@ export async function insuranceDaily({ client = defaultClient, now = new Date() 
 export async function lifeAll({ client = defaultClient, now = new Date() }: Options = {}) {
   // A system job across users: ids only; everything after is scoped to the person.
   const people = await systemDb(WHY, client).insurancePolicy.findMany({
-    where: { status: "active" },
+    where: { status: "active", userId: STAYING },
     select: { userId: true },
     distinct: ["userId"],
     take: LIFE_DAILY_LIMIT,
@@ -63,7 +64,7 @@ export async function lifeAll({ client = defaultClient, now = new Date() }: Opti
 export async function benefitsAll({ client = defaultClient, now = new Date() }: Options = {}) {
   // A system job across users: ids only; everything after is scoped to the person.
   const people = await systemDb(WHY, client).insurancePolicy.findMany({
-    where: { status: "active" },
+    where: { status: "active", userId: STAYING },
     select: { userId: true },
     distinct: ["userId"],
     take: BENEFITS_DAILY_LIMIT,
@@ -116,7 +117,7 @@ export async function insuranceAfterSync(
 export async function claimStatusesAll({ client = defaultClient, now = new Date() }: Options = {}) {
   // A system job across users: ids only; everything after is scoped to the person.
   const people = await systemDb(WHY, client).insuranceClaim.findMany({
-    where: { filing: "filed", status: "open" },
+    where: { filing: "filed", status: "open", userId: STAYING },
     select: { userId: true },
     distinct: ["userId"],
     take: CLAIMS_DAILY_LIMIT,
