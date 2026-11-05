@@ -1,3 +1,4 @@
+import { shareWithAccountant } from "./accountant-message";
 import type { BusinessView } from "@/lib/business-structure";
 import { formatCents } from "@/lib/money";
 import { roundDollars } from "@/planning/tax-estimate-copy";
@@ -19,7 +20,7 @@ export function sCorpMessage(v: BusinessView): Message | null {
     refs: { advice: true, taxYear: v.year },
     actions: [
       { id: "open", label: "See the numbers", kind: "link", href: BUSINESS_HREF },
-      { id: "open", label: "Share with my accountant", kind: "link", href: "/taxes/accountant" },
+      shareWithAccountant,
     ],
   };
 }

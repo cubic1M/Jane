@@ -270,6 +270,8 @@ describe("who sends each form, as pages say it", () => {
   it("is named without the bank's word for how the money came", () => {
     expect(formPayer("Blue Bottle Coffee Payroll")).toBe("Blue Bottle Coffee");
     expect(formPayer("Stripe Transfer")).toBe("Stripe");
+    expect(formPayer("Etsy Inc Deposit")).toBe("Etsy Inc");
+    expect(formPayer("Deposit")).toBe("Deposit");
     expect(formPayer("Shopify Payouts")).toBe("Shopify");
     expect(formPayer("ACME CORP DIRECT DEP")).toBe("ACME CORP");
     // Debugger 11-02: a driver's 1099s, "Uber Technologies Payout" and "Lyft Inc Driver Pay".

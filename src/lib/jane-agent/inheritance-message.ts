@@ -1,3 +1,4 @@
+import { shareWithAccountant } from "./accountant-message";
 import { ELIGIBLE_BENEFICIARIES } from "@/config/inheritance";
 import type { InheritanceView, InheritedIra } from "@/lib/inheritance";
 import { formatCents } from "@/lib/money";
@@ -29,7 +30,7 @@ export function inheritedIraMessage(v: InheritanceView, ira: InheritedIra): Mess
     refs: { advice: true, taxYear: v.year },
     actions: [
       { id: "open", label: "Tell Jane when they died", kind: "link", href: INHERITED_HREF },
-      { id: "open", label: "Share with my accountant", kind: "link", href: "/taxes/accountant" },
+      shareWithAccountant,
     ],
   };
 }
@@ -40,9 +41,7 @@ export function giftsMessage(v: InheritanceView): Message | null {
   return {
     body: `You sent ${g.recipient} ${formatCents(g.cents)} this year, ${formatCents(g.overCents)} over the ${formatCents(v.exclusionCents)} a person can give another without telling the IRS. ${g.splitCovers ? "As a married couple you can split it, which covers it, but that still takes a gift tax return (Form 709)." : "That takes a gift tax return (Form 709) due April 15."} No tax is usually owed: the extra counts against a lifetime allowance of ${roundDollars(1_500_000_000)} per person. A tax professional can prepare the form.`,
     refs: { taxYear: v.year },
-    actions: [
-      { id: "open", label: "Share with my accountant", kind: "link", href: "/taxes/accountant" },
-    ],
+    actions: [shareWithAccountant],
   };
 }
 
