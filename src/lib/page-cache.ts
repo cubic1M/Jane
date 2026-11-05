@@ -11,6 +11,7 @@ import {
   PRELOAD_START_MS,
   PRELOAD_STEP_MS,
   SIGNED_OUT_PAGES,
+  STILL_HERE_EVERY_MS,
   STILL_LOADING_SELECTOR,
 } from "@/config/page-cache";
 
@@ -21,8 +22,9 @@ import {
 // - In: once a signed-in page has settled, a round loads the main pages one at a time.
 // - Old: a page older than PAGE_OLD_MS shows at once, then refreshes quietly.
 // - Changed: a post that may change data empties the memory and refreshes, in every tab.
-// - Someone else: another person's page, signing out, or a page restored by the browser empties
-//   it with a full page load. Money must never show to the next person on a shared computer.
+// - Someone else: another person's page, signing out, a session ended elsewhere, or a page restored
+//   by the browser empties it with a full page load. Money must never show to the next person on a
+//   shared computer.
 //
 // Nothing leaves memory: no page is stored on the device (public/sw.js).
 
@@ -106,6 +108,26 @@ const here = () => window.location.pathname + window.location.search;
 function reload() {
   owner = null;
   window.location.reload();
+}
+
+let lastAsked = 0;
+
+// Still this person? Only a clear no empties the memory: no network, or a server having trouble,
+// says nothing about the session.
+async function askStillHere() {
+  const now = Date.now();
+  if (!owner || framed() || now - lastAsked < STILL_HERE_EVERY_MS) return;
+  lastAsked = now;
+  const asked = owner;
+  const response = await fetch("/api/still-here", { cache: "no-store" }).catch(() => null);
+  if (!response || asked !== owner) return;
+  if (response.status === 401) {
+    leaving();
+    return;
+  }
+  if (!response.ok) return;
+  const body = (await response.json().catch(() => null)) as { id?: unknown } | null;
+  if (body?.id !== undefined && body.id !== asked) leaving();
 }
 
 function tell(message: Message) {
@@ -229,6 +251,7 @@ export function startPageCache(next: PageCacheRouter) {
   });
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) return;
+    void askStillHere();
     if (refreshOwed) refreshNow();
     else if (roundOwed) scheduleRound();
     roundOwed = false;
@@ -246,6 +269,7 @@ export function pageShown(userId: string, renderedAt: number, opened?: Opened) {
     tell({ type: "owner", owner: userId });
   }
   keep(here());
+  void askStillHere();
   if (opened) {
     fetch("/api/opened", {
       method: "POST",
@@ -287,6 +311,7 @@ export function resetPageCacheForTests() {
   started = false;
   owner = null;
   lastPath = null;
+  lastAsked = 0;
   clockGap = null;
   forgetMemory();
   rounds = [];
