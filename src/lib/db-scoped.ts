@@ -139,7 +139,9 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
               query(),
             ]).then(([, result]) => result)
           : query(),
-      () => rlsSwitchFails(asUserFlight([asUser(client, userId, "reads")])),
+      // Unmarked: a marked switch is answered by the pool itself (src/lib/rls-pg.ts), so it could never
+      // fail, and a role really missing would never be seen.
+      () => rlsSwitchFails(asUserFlight([asUser(client, userId)])),
     ),
   );
   // Inside an interactive transaction the transaction itself is switched to the user once.

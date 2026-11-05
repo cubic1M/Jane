@@ -97,7 +97,9 @@ export function syncedKindOf(type: string, subtype: string | null): SyncedKind |
   // saw nothing of it and was told nothing.
   if (type === "depository") {
     if (subtype === "cash management" || subtype === "prepaid") return "checking";
-    if (subtype === "money market" || subtype === "cd" || subtype === "hsa") return "savings";
+    if (subtype === "money market") return "savings";
+    // Money with penalties or rules on it: never "idle cash" to move. For net worth, like investments.
+    if (subtype === "cd" || subtype === "hsa") return "investment_account";
     return null;
   }
   if (type === "credit") return "credit_card";

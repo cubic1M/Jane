@@ -91,6 +91,9 @@ describe("what Claude may say it did", () => {
     "I'll remind you next week.",
     "Our team will take care of that.",
     "Jane's team has it.",
+    "I'm cancelling it now.",
+    "We'll file that for you.",
+    "The team will look into it.",
   ])("stops %s", (text) => {
     expect(claimsAnAct(text)).toBe(true);
     expect(checkGuardrails(text, [])).toEqual({ ok: false, issues: ["claimed_action"] });
@@ -103,6 +106,9 @@ describe("what Claude may say it did", () => {
     "You've paid $0 this month.",
     "Call them and ask to cancel.",
     "If you've cancelled it, tell me.",
+    "Jane's team can't send letters yet.",
+    "I'll call it your buffer.",
+    'You could say: "I have paid this already, and I\'ve sent proof."',
   ])("lets through %s", (text) => {
     expect(claimsAnAct(text)).toBe(false);
   });

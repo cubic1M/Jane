@@ -6,6 +6,9 @@ import { firstDelivery, forgetDelivery, planWebhook, syncFromWebhook } from "@/l
 // Plaid's webhooks: what keeps each bank's data fresh (the daily job is only the backstop).
 // Nothing is read or changed until the signature checks out; a delivery Plaid repeats is
 // acknowledged and ignored; syncs run after the response so Plaid isn't kept waiting.
+// A sync, and sometimes a whole first scan, runs after the answer.
+export const maxDuration = 300;
+
 export async function POST(request: Request) {
   const rawBody = await request.text();
   const verified = await verifyPlaidWebhook(rawBody, request.headers.get("plaid-verification"));

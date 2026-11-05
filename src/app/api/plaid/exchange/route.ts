@@ -8,6 +8,7 @@ import { PlaidRequestError, plaidEnabled } from "@/lib/plaid/client";
 import { LinkingClosedError, linkClosedAnswer } from "@/lib/plaid/item-slots";
 import { exchangePublicToken } from "@/lib/plaid/link";
 import { syncItem } from "@/lib/plaid/sync";
+import { syncFromWebhook } from "@/lib/plaid/webhooks";
 import { getCurrentUser } from "@/lib/session";
 
 const MAX_INSTITUTION_NAME = 100;
@@ -59,9 +60,15 @@ export async function POST(request: Request) {
   }
   after(async () => {
     try {
+      // Under the webhooks' lock: Plaid's webhook can arrive between tries, and only one may run a scan.
       for (let tries = 0; tries < FIRST_SYNC_TRIES; tries++) {
-        const result = await syncItem(itemId, { progressive: true });
-        if (!result?.notReady) break;
+        let notReady = false;
+        const ran = await syncFromWebhook(itemId, {
+          sync: async (id) => {
+            notReady = Boolean((await syncItem(id, { progressive: true }))?.notReady);
+          },
+        });
+        if (!ran || !notReady) break;
         await new Promise((resolve) => setTimeout(resolve, FIRST_SYNC_WAIT_MS));
       }
     } catch (error) {

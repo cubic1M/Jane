@@ -64,7 +64,12 @@ beforeEach(() => {
   vi.mocked(verifyPlaidWebhook).mockReset();
   vi.mocked(planWebhook).mockReset();
   vi.mocked(firstDelivery).mockReset().mockResolvedValue(true);
-  vi.mocked(syncFromWebhook).mockReset().mockResolvedValue(true);
+  vi.mocked(syncFromWebhook)
+    .mockReset()
+    .mockImplementation(async (id, options) => {
+      await options?.sync?.(id);
+      return true;
+    });
   afterCallbacks.length = 0;
 });
 

@@ -52,7 +52,9 @@ function extended(client: PrismaClient): SystemDb {
                 : (query(args) as Promise<unknown>),
             () =>
               systemSwitchFails(
-                client.$transaction([asSystem(client, "reads")], SCOPED_QUERY_TRANSACTION),
+                // Unmarked: a marked switch is answered by the pool itself (src/lib/rls-pg.ts), so it could
+                // never fail, and a role really missing would never be seen.
+                client.$transaction([asSystem(client)], SCOPED_QUERY_TRANSACTION),
               ),
           );
         if (READ_OPERATIONS.has(operation)) return send();
