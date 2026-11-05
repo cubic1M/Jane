@@ -1,3 +1,4 @@
+import { siteOrigin } from "@/lib/site-origin";
 import { DAILY_JOBS, HEALTH_ERROR_HOURS, JOB_STALE_HOURS } from "@/config/health";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { logAudit } from "@/lib/audit";
@@ -160,7 +161,7 @@ export async function reportRlsGaps({
     const message = {
       subject: "Row-level security has a gap",
       text: `Row-level security (docs/security/rls.md) no longer covers every user-owned table: ${what}. The app's own filters still apply. Check /admin/health; the next deploy re-runs scripts/rls-protect.mjs. You'll get one email per lapse.`,
-      html: `<p>Row-level security no longer covers every user-owned table: ${what}.</p><p>The app's own filters still apply. Check <a href="${process.env.APP_URL ?? ""}/admin/health">/admin/health</a>; the next deploy re-runs <code>scripts/rls-protect.mjs</code>.</p><p>You'll get one email per lapse.</p>`,
+      html: `<p>Row-level security no longer covers every user-owned table: ${what}.</p><p>The app's own filters still apply. Check <a href="${siteOrigin() ?? ""}/admin/health">/admin/health</a>; the next deploy re-runs <code>scripts/rls-protect.mjs</code>.</p><p>You'll get one email per lapse.</p>`,
     };
     await Promise.all(to.map((address) => send({ ...message, to: address })));
   } catch (error) {
@@ -289,7 +290,7 @@ export async function reportMissedJobs({
             ? `Daily job "${job.name}" hasn't run since ${job.lastSuccessAt.toISOString().slice(0, 16)} UTC`
             : `Daily job "${job.name}" has never run successfully`,
           text: `The "${job.name}" job hasn't finished successfully for over ${JOB_STALE_HOURS} hours. Check /admin/health and the Vercel cron logs. You'll get one email per outage.`,
-          html: `<p>The "${job.name}" job hasn't finished successfully for over ${JOB_STALE_HOURS} hours. Check <a href="${process.env.APP_URL ?? ""}/admin/health">/admin/health</a> and the Vercel cron logs.</p><p>You'll get one email per outage.</p>`,
+          html: `<p>The "${job.name}" job hasn't finished successfully for over ${JOB_STALE_HOURS} hours. Check <a href="${siteOrigin() ?? ""}/admin/health">/admin/health</a> and the Vercel cron logs.</p><p>You'll get one email per outage.</p>`,
         };
         await Promise.all(to.map((address) => send({ ...message, to: address })));
       } catch (error) {

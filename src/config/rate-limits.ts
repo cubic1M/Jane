@@ -124,6 +124,7 @@ export const RATE_LIMITS = {
   inviteRedeem: { limit: 8, windowSeconds: 60 * 60 * 24 },
   // Retrying a bank link after Plaid gave no clear answer, per person: each takes a lifetime slot.
   plaidUnclearExchange: { limit: 2, windowSeconds: 60 * 60 * 24 },
+  plaidUnclearExchangeEveryone: { limit: 4, windowSeconds: 60 * 60 * 24 },
   // Invite codes made by an admin, per admin.
   invites: { limit: 30, windowSeconds: 60 * 60 },
   // Server errors kept for /admin/errors, and alert emails to the team, across every request. Anyone

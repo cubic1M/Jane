@@ -64,6 +64,13 @@ async function limitFor(userId: string, limit: number, client: PrismaClient): Pr
   return access?.inviteCode?.note === SHARE_INVITE_NOTE ? plaidShareLinkItemLimit(limit) : limit;
 }
 
+// Exchanges with no clear answer may each have taken one of a lifetime's count, so an outage waits
+// a day instead of using them all up: for this person, and for everyone together, since the count
+// is everyone's. Tomorrow they can try again.
+const triesLeft = async (userId: string, client: PrismaClient): Promise<boolean> =>
+  (await wouldPass("plaidUnclearExchange", userId, { client })) &&
+  (await wouldPass("plaidUnclearExchangeEveryone", "all", { client }));
+
 // Whether a new bank could be linked right now. A guard before opening Link; only
 // reserveItemSlot decides. Trial people are sample data: a real Item for them would spend a slot
 // on someone deleted within a day, so in Production they keep to the demo bank.
@@ -78,7 +85,7 @@ export async function linkAvailability(
   const [claims, use, tries] = await Promise.all([
     scopedFor(userId, client).plaidItemClaims.count(),
     itemSlotUse({ client }),
-    wouldPass("plaidUnclearExchange", userId, { client }),
+    triesLeft(userId, client),
   ]);
   if (claims >= plaidItemsPerPerson() || !tries) return { open: false, reason: "person" };
   if (use.used >= (await limitFor(userId, use.limit, client))) {
@@ -97,11 +104,7 @@ export async function reserveItemSlot(
   if (isStatementTrialUser(userId)) throw new LinkingClosedError("trial");
   if (plaidEnvironment() !== "production") return null;
   if (isTrialUser(userId)) throw new LinkingClosedError("trial");
-  // Exchanges with no clear answer may each have taken one of a lifetime's count, so an outage waits
-  // a day here instead of using them all up. Tomorrow they can try again.
-  if (!(await wouldPass("plaidUnclearExchange", userId, { client }))) {
-    throw new LinkingClosedError("person");
-  }
+  if (!(await triesLeft(userId, client))) throw new LinkingClosedError("person");
 
   const db = scopedFor(userId, client);
   const claims = await db.plaidItemClaims.findMany({ select: { ordinal: true } });

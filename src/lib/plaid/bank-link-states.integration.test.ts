@@ -72,6 +72,7 @@ describe.runIf(url)("a bank connection", () => {
   });
 
   it("can try again after Plaid gave no clear answer", async () => {
+    await client.rateLimit.deleteMany({ where: { key: "plaidUnclearExchangeEveryone:all" } });
     vi.stubEnv("PLAID_ENV", "production");
     vi.stubEnv("PLAID_ITEMS_PER_PERSON", "1");
     // The count is shared across the test database, and this isn't about the count.
@@ -97,6 +98,45 @@ describe.runIf(url)("a bank connection", () => {
     expect(await client.plaidItemClaim.count({ where: { userId } })).toBe(0);
     await client.rateLimit.deleteMany({ where: { key: `plaidUnclearExchange:${userId}` } });
     await expect(reserveItemSlot(userId, { client })).resolves.not.toBeNull();
+  });
+
+  it("a key that can't encrypt fails before Plaid makes anything, and takes nothing of the count", async () => {
+    vi.stubEnv("PLAID_ENV", "production");
+    vi.stubEnv("PLAID_ITEMS_PER_PERSON", "1");
+    vi.stubEnv("PLAID_TRIAL_ITEM_LIMIT", "1000000");
+    vi.stubEnv("TOKEN_ENCRYPTION_KEY", "too-short");
+    const userId = await person();
+    const asked = vi.fn();
+    const api = { itemPublicTokenExchange: asked } as unknown as PlaidApi;
+    const used = async () =>
+      (await client.plaidItemCounter.findFirst({ select: { used: true } }))?.used ?? 0;
+    const before = await used();
+    await expect(exchangePublicToken(userId, "public-x", null, { client, api })).rejects.toThrow();
+    expect(asked).not.toHaveBeenCalled();
+    expect(await used()).toBe(before);
+  });
+
+  it("an outage waits for everyone together, since the count is everyone's", async () => {
+    vi.stubEnv("PLAID_ENV", "production");
+    vi.stubEnv("PLAID_ITEMS_PER_PERSON", "1");
+    vi.stubEnv("PLAID_TRIAL_ITEM_LIMIT", "1000000");
+    const down = {
+      itemPublicTokenExchange: async () => {
+        throw Object.assign(new Error("timeout"), { isAxiosError: true });
+      },
+    } as unknown as PlaidApi;
+    const everyone = "plaidUnclearExchangeEveryone:all";
+    await client.rateLimit.deleteMany({ where: { key: everyone } });
+    for (let people = 0; people < 3; people++) {
+      const userId = await person();
+      for (let tries = 0; tries < 2; tries++) {
+        await exchangePublicToken(userId, "public-x", null, { client, api: down }).catch(() => {});
+      }
+    }
+    const next = await person();
+    await expect(reserveItemSlot(next, { client })).rejects.toThrow();
+    await client.rateLimit.deleteMany({ where: { key: everyone } });
+    await expect(reserveItemSlot(next, { client })).resolves.not.toBeNull();
   });
 
   it("syncs again when a webhook came while it was running", async () => {

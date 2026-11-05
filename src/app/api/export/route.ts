@@ -1,14 +1,19 @@
 import { NextResponse } from "next/server";
 import { logAudit } from "@/lib/audit";
 import { exportUserData } from "@/lib/data-export";
+import { fromAnotherSite } from "@/lib/from-another-site";
 import { limitOrNull } from "@/lib/rate-limit";
 import { getCurrentUser } from "@/lib/session";
 import { localDate } from "@/lib/today";
 
-// "Download my data" from /settings: a JSON file of everything we hold about the person.
-export async function GET() {
+// "Download my data" from /settings: a JSON file of everything we hold about the person. Not from
+// another site's link, which would drop it in their downloads on whatever computer they're at.
+export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+  if (fromAnotherSite(request)) {
+    return NextResponse.redirect(new URL("/settings", request.url), 303);
+  }
   const limited = await limitOrNull("export", user.id);
   if (limited) return limited;
 

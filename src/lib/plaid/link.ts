@@ -141,6 +141,9 @@ export async function exchangePublicToken(
   institutionName: string | null,
   { client = defaultClient, api = plaid() }: Options = {},
 ): Promise<string> {
+  // A key that can't encrypt fails here, not after Plaid has made an Item and used up one of a
+  // lifetime's count. Every try would, and it would look like nothing but a failed link.
+  encrypt("key check");
   let slot: ItemSlot | null;
   try {
     slot = await reserveItemSlot(userId, { client });
@@ -157,8 +160,10 @@ export async function exchangePublicToken(
       // "try again" must be able to work, and it held the only one they get. Counted, because each
       // takes another of the lifetime count: past a few a day, reserveItemSlot waits for tomorrow.
       else if (slot) {
-        await hit("plaidUnclearExchange", userId, { client });
+        // The claim first: a failure counting this can't leave them locked out for good.
         await releaseItemClaim(slot, { client }).catch(() => undefined);
+        await hit("plaidUnclearExchange", userId, { client });
+        await hit("plaidUnclearExchangeEveryone", "all", { client });
       }
       throw error;
     },

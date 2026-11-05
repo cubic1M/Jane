@@ -172,13 +172,6 @@ export function callbackOrigin(request: Request): string | null {
   return process.env.NODE_ENV === "production" ? null : new URL(request.url).origin;
 }
 
-// A browser saying this came from another site. Older browsers send nothing, and the session cookie
-// (SameSite=Lax) is still what stops a form posted from elsewhere.
-export function fromAnotherSite(request: Request): boolean {
-  const from = request.headers.get("sec-fetch-site");
-  return Boolean(from) && from !== "same-origin" && from !== "none";
-}
-
 const redirectUriFor = (origin: string) => `${origin}${ROBINHOOD_CALLBACK_PATH}`;
 
 type SignIn = {

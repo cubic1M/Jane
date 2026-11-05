@@ -9,9 +9,12 @@ export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   const progress = await scanProgress(user.id);
-  return NextResponse.json({
-    complete: progress.detection,
-    ready: progress.transactions,
-    progress,
-  });
+  return NextResponse.json(
+    {
+      complete: progress.detection,
+      ready: progress.transactions,
+      progress,
+    },
+    { headers: { "cache-control": "no-store" } },
+  );
 }

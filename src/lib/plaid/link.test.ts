@@ -55,10 +55,10 @@ describe("Plaid Link", () => {
       expect(itemRemove).toHaveBeenCalledWith({ access_token: madeUp.access_token });
     });
 
-    it("ends it when the token can't be encrypted either", async () => {
+    it("makes nothing when the token couldn't be encrypted", async () => {
       vi.stubEnv("TOKEN_ENCRYPTION_KEY", "");
       await expect(exchangePublicToken("user_1", "public-1", "Bank", { api })).rejects.toThrow();
-      expect(itemRemove).toHaveBeenCalledWith({ access_token: madeUp.access_token });
+      expect(api.itemPublicTokenExchange).not.toHaveBeenCalled();
     });
 
     it("tells the person about the failure even if Plaid can't remove it, without the token", async () => {
