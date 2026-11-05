@@ -7,6 +7,7 @@ import { freshSwitches } from "@/lib/ops-switches";
 import { plaidEnabled } from "@/lib/plaid/client";
 import { runInactiveCleanup } from "@/lib/plaid/inactive";
 import { ITEM_STATUS, syncItem } from "@/lib/plaid/sync";
+import { ROBINHOOD_LIMITS } from "@/config/robinhood";
 import { refreshAllRobinhood } from "@/lib/robinhood/refresh";
 import { alertError } from "@/lib/error-alerts";
 import { recordRun, reportMissedJobs } from "@/lib/health";
@@ -89,6 +90,20 @@ const jobsBudget = (startedAt: number) =>
     ),
   );
 
+// Robinhood's reads, if there's time for one more person's and the rest of the night: it runs early,
+// and a slow Robinhood mustn't use up what retention and the deadlines need.
+const robinhoodBudget = (startedAt: number) =>
+  Math.max(
+    0,
+    Math.min(
+      ROBINHOOD_LIMITS.cronBudgetMs,
+      maxDuration * 1000 -
+        CONTROLLER_RUN_RESERVE_MS -
+        ROBINHOOD_LIMITS.personBudgetMs -
+        (Date.now() - startedAt),
+    ),
+  );
+
 const controller = (startedAt: number) =>
   queueNightlyRuns({
     budgetMs: Math.max(
@@ -108,7 +123,7 @@ async function dailyWork(startedAt: number) {
       failed: 0,
       deferred: 0,
       inactive: null,
-      robinhood: await refreshAllRobinhood(),
+      robinhood: await refreshAllRobinhood({ budgetMs: robinhoodBudget(startedAt) }),
       snapshots: await takeSnapshots(),
       jobs: await runDueJobs({ budgetMs: jobsBudget(startedAt) }),
       agent: await runAgentFollowUps(),
@@ -179,7 +194,7 @@ async function dailyWork(startedAt: number) {
     failed,
     deferred,
     inactive,
-    robinhood: await refreshAllRobinhood(),
+    robinhood: await refreshAllRobinhood({ budgetMs: robinhoodBudget(startedAt) }),
     snapshots: await takeSnapshots(),
     jobs: await runDueJobs({ budgetMs: jobsBudget(startedAt) }),
     agent: await runAgentFollowUps(),

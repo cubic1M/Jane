@@ -14,6 +14,8 @@ import { E2E_AUTH_SECRET, E2E_DATABASE_URL, deleteUser, signedInUser } from "./d
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 test.skip(process.env.E2E_PROD !== "1", "needs a production build to start its own server");
 test.setTimeout(180_000);
+// One server of its own, on one port, for the whole file: never two workers at once.
+test.describe.configure({ mode: "serial" });
 
 const PORT = Number(process.env.E2E_ROBINHOOD_PORT ?? 3197);
 const BASE = `http://localhost:${PORT}`;

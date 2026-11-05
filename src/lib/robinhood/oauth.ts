@@ -11,6 +11,7 @@ import { decrypt, encrypt } from "@/lib/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { siteOrigin } from "@/lib/site-origin";
 import { systemDb } from "@/lib/system-db";
+import { cappedText } from "./capped";
 
 // Signing in with Robinhood: its server's metadata, registering this app once, the authorization
 // code flow with PKCE and state, and refreshing tokens. The person signs in on Robinhood's page, so
@@ -62,13 +63,26 @@ async function call(url: string, init: RequestInit): Promise<Response> {
 }
 
 async function jsonOf(response: Response): Promise<Record<string, unknown>> {
+  let text: string | null;
   try {
-    const body = (await response.json()) as unknown;
+    text = await cappedText(response, ROBINHOOD_LIMITS.signInAnswerBytes);
+  } catch {
+    return {};
+  }
+  if (text === null) throw new RobinhoodOAuthError("too_large");
+  try {
+    const body = JSON.parse(text) as unknown;
     return typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
   } catch {
     return {};
   }
 }
+
+// A token or client id, as OAuth defines them: printable, and short enough to save.
+const isOAuthValue = (value: unknown): value is string =>
+  typeof value === "string" && /^[\x20-\x7e]{1,16384}$/.test(value);
+// Past this it isn't a lifetime, and a date from it can't be saved.
+const MOST_EXPIRES_IN = 10 * 365 * 24 * 60 * 60;
 
 const METADATA_MS = 60 * 60 * 1000;
 let remembered: { key: string; at: number; metadata: Metadata } | null = null;
@@ -91,7 +105,13 @@ export async function loadMetadata(now = Date.now()): Promise<Metadata> {
   };
   const revocation = body.revocation_endpoint;
   const metadata: Metadata = {
-    issuer: typeof body.issuer === "string" ? body.issuer : metadataUrl,
+    // A key for this app's registration, so it has to fit in one and be Robinhood's.
+    issuer:
+      typeof body.issuer === "string" &&
+      body.issuer.length <= 300 &&
+      robinhoodAddressAllowed(body.issuer)
+        ? body.issuer
+        : metadataUrl,
     authorizationEndpoint: required("authorization_endpoint"),
     tokenEndpoint: required("token_endpoint"),
     registrationEndpoint: required("registration_endpoint"),
@@ -130,7 +150,7 @@ async function clientFor(
   });
   if (!response.ok) throw new RobinhoodOAuthError(`register_http_${response.status}`);
   const clientId = (await jsonOf(response)).client_id;
-  if (typeof clientId !== "string" || !clientId) throw new RobinhoodOAuthError("register_answer");
+  if (!isOAuthValue(clientId)) throw new RobinhoodOAuthError("register_answer");
   // Two first connections at once: the later one's is as good, and each sign-in carries its own.
   await systemDb(WHY, client).robinhoodOauthClient.upsert({
     where: { issuer_redirectUri: where },
@@ -150,6 +170,13 @@ export function callbackOrigin(request: Request): string | null {
     (URL.canParse(process.env.AUTH_URL ?? "") ? new URL(process.env.AUTH_URL ?? "").origin : null);
   if (configured) return configured;
   return process.env.NODE_ENV === "production" ? null : new URL(request.url).origin;
+}
+
+// A browser saying this came from another site. Older browsers send nothing, and the session cookie
+// (SameSite=Lax) is still what stops a form posted from elsewhere.
+export function fromAnotherSite(request: Request): boolean {
+  const from = request.headers.get("sec-fetch-site");
+  return Boolean(from) && from !== "same-origin" && from !== "none";
 }
 
 const redirectUriFor = (origin: string) => `${origin}${ROBINHOOD_CALLBACK_PATH}`;
@@ -236,14 +263,15 @@ async function tokenRequest(
     throw new RobinhoodOAuthError(`token_http_${response.status}`);
   }
   const accessToken = body.access_token;
-  if (typeof accessToken !== "string" || !accessToken) {
-    throw new RobinhoodOAuthError("token_answer");
-  }
+  if (!isOAuthValue(accessToken)) throw new RobinhoodOAuthError("token_answer");
   const expiresIn = typeof body.expires_in === "number" ? body.expires_in : null;
   return {
     accessToken,
-    refreshToken: typeof body.refresh_token === "string" ? body.refresh_token : null,
-    expiresAt: expiresIn !== null && expiresIn > 0 ? new Date(now + expiresIn * 1000) : null,
+    refreshToken: isOAuthValue(body.refresh_token) ? body.refresh_token : null,
+    expiresAt:
+      expiresIn !== null && expiresIn > 0 && expiresIn <= MOST_EXPIRES_IN
+        ? new Date(now + expiresIn * 1000)
+        : null,
   };
 }
 

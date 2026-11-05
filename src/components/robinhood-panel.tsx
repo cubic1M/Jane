@@ -14,6 +14,10 @@ const NOTICES: Record<string, string> = {
     "Disconnected. Jane deleted its access and what it read. Robinhood gives Jane no way to end the connection on its side, so ask Robinhood if you want it removed there too.",
 };
 
+// The address bar is anyone's to write, so a link can't say it's connected or gone when it isn't.
+const trueNow = (notice: string, connected: boolean) =>
+  notice === "connected" ? connected : notice === "disconnected" ? !connected : true;
+
 const BUTTON =
   "w-fit cursor-pointer border border-zinc-300 px-3 py-1.5 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900";
 
@@ -55,9 +59,13 @@ export async function RobinhoodPanel({
   notice: string | undefined;
 }) {
   if (!robinhoodOffered()) return null;
-  if (await whyCantConnect(userId)) return null;
   const view = await connectionView(userId);
-  const said = notice && Object.hasOwn(NOTICES, notice) ? NOTICES[notice] : null;
+  // Someone refused a new connection who already has one can still end it.
+  if (view === null && (await whyCantConnect(userId))) return null;
+  const said =
+    notice && Object.hasOwn(NOTICES, notice) && trueNow(notice, view !== null)
+      ? NOTICES[notice]
+      : null;
   return (
     <section
       data-robinhood=""

@@ -4,6 +4,7 @@ import { ROBINHOOD_CALLBACK_PATH, robinhoodOffered, robinhoodOpen } from "@/conf
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { log } from "@/lib/log";
+import { limitOrNull } from "@/lib/rate-limit";
 import { freshSwitches } from "@/lib/ops-switches";
 import { saveConnection, whyCantConnect } from "@/lib/robinhood/connection";
 import {
@@ -25,6 +26,9 @@ export async function GET(request: Request) {
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   const origin = callbackOrigin(request);
   if (!origin) return NextResponse.json({ error: "Not set up" }, { status: 503 });
+  // Each answer that doesn't fit writes a security record, so this can't be asked for endlessly.
+  const limited = await limitOrNull("robinhood", user.id);
+  if (limited) return limited;
 
   const back = (word: "connected" | "not_connected" | "paused") => {
     const response = NextResponse.redirect(new URL(`/investments?robinhood=${word}`, origin), 303);

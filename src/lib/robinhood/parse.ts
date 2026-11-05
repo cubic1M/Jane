@@ -116,13 +116,15 @@ export class AccountHandle {
 }
 
 // Jane's own words for the account, from its type. Unknown types have no subtype, so no tax is
-// worked out on an account that may be a retirement one.
+// worked out on an account that may be a retirement one. Never from a nickname: "Brother's fund" isn't
+// a Roth IRA, and what someone calls an account can't take its gains out of their taxes.
 function kindOf(row: Obj): { subtype: string | null; label: string | null } {
-  const words = ["type", "account_type", "brokerage_account_type", "agentic", "nickname"]
+  const words = ["type", "account_type", "brokerage_account_type", "agentic"]
     .map((key) => (typeof row[key] === "string" ? (row[key] as string) : ""))
     .join(" ")
-    .toLowerCase();
-  if (/roth/.test(words)) return { subtype: "roth", label: "Roth IRA" };
+    .toLowerCase()
+    .replace(/[^a-z]+/g, " ");
+  if (/\broth/.test(words)) return { subtype: "roth", label: "Roth IRA" };
   if (/\bira\b|traditional/.test(words)) return { subtype: "ira", label: "IRA" };
   if (/agent|\bmcp\b/.test(words) || row.agentic === true) {
     return { subtype: "brokerage", label: "agent account" };

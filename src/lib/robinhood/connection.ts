@@ -109,10 +109,11 @@ export async function connectionView(
 
 export type RemovalReason = "user_disconnected" | "user_deleted_data" | "inactive";
 
-// Ends it at Robinhood if Robinhood offers a way, then deletes the tokens and everything read
-// through it: its accounts, with their holdings, trades and balance history (ON DELETE CASCADE), and
-// what was worked out from them. False when there was nothing to remove. With the switch off nothing
-// reaches Robinhood, and account deletion still removes everything here.
+// Deletes the tokens and everything read through it: its accounts, with their holdings, trades and
+// balance history (ON DELETE CASCADE), and what was worked out from them. Only then does it end the
+// connection at Robinhood, if Robinhood offers a way: a slow server, or running out of time waiting
+// on one, can't leave the tokens here. False when there was nothing to remove. With the switch off
+// nothing reaches Robinhood, and account deletion still removes everything here.
 export async function removeConnection(
   userId: string,
   reason: RemovalReason,
@@ -126,22 +127,18 @@ export async function removeConnection(
     select: { id: true, secretsEncrypted: true, clientId: true, createdAt: true },
   });
   if (!row) return false;
-  let revoked = false;
-  if (robinhoodOffered()) {
-    try {
-      const { accessToken, refreshToken } = openSecrets(row.secretsEncrypted);
-      revoked = await revokeTokens(
-        row.clientId,
-        [refreshToken, accessToken].filter((t): t is string => Boolean(t)),
-      );
-    } catch {
-      // A value that can't be opened can't be sent: it's still deleted below.
-    }
+  let tokens: string[] = [];
+  try {
+    const { accessToken, refreshToken } = openSecrets(row.secretsEncrypted);
+    tokens = [refreshToken, accessToken].filter((t): t is string => Boolean(t));
+  } catch {
+    // A value that can't be opened can't be sent: it's still deleted below.
   }
   await db.robinhoodConnections.deleteMany({ where: { id: row.id } });
   forgetPrimer(userId);
   await removeOrphans(userId, { client });
   await forgetSince(db, row.createdAt, "bank");
+  const revoked = robinhoodOffered() && (await revokeTokens(row.clientId, tokens));
   await logAudit(
     actor,
     "robinhood_disconnected",
