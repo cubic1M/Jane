@@ -24,7 +24,7 @@ export function oneOffsOf(data: ProfileInput): Set<ProfileTx> {
     date: t.date,
     amountCents: t.amountCents,
     description: t.description,
-    merchantName: null,
+    merchantName: t.merchantName ?? null,
     pfcPrimary: t.pfc ? (categoryOf(t.pfc)?.primary ?? null) : null,
     pfcDetailed: t.pfc,
     pending: false,

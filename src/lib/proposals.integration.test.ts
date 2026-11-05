@@ -6,10 +6,13 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
 
+import { cushionSpendCents } from "@/detectors/helpers";
+import { loadProfileInput } from "@/lib/profile";
 import {
   ProposalError,
   acceptAllProposals,
   answerProposal,
+  currentProposals,
   openProposals,
   recentAutoCategories,
   refreshProposals,
@@ -87,6 +90,76 @@ describe.runIf(url)("set-up proposals against a real database", () => {
     await client.user.deleteMany({ where: { id: { in: created } } });
     await client.merchant.deleteMany({ where: { key: { in: merchantKeys } } });
     await client.$disconnect();
+  });
+
+  // Debugger 11-04: "a cushion for you is $19,072.86" beside an "Emergency fund" goal of $20,700. The
+  // goal read a few months, where a bill paid twice a year looks like a usual one; the card read a year.
+  it("sizes the goal from the same month as the cushion card, with a bill paid twice a year", async () => {
+    const user = await client.user.create({
+      data: { email: `proposals-${crypto.randomUUID()}@example.com`, autopilot: "ask" },
+    });
+    created.push(user.id);
+    const account = await client.account.create({
+      data: {
+        userId: user.id,
+        source: "csv",
+        name: "Checking",
+        type: "depository",
+        subtype: "checking",
+      },
+    });
+    const row = (
+      date: string,
+      cents: number,
+      description: string,
+      primary: string,
+      detailed: string,
+    ) => ({
+      userId: user.id,
+      accountId: account.id,
+      source: "csv" as const,
+      dedupeKey: crypto.randomUUID(),
+      date: new Date(`${date}T00:00:00Z`),
+      amountCents: cents,
+      description,
+      pfcPrimary: primary,
+      pfcDetailed: detailed,
+      categorySource: "rule" as const,
+    });
+    const months = [
+      "2025-11",
+      "2025-12",
+      "2026-01",
+      "2026-02",
+      "2026-03",
+      "2026-04",
+      "2026-05",
+      "2026-06",
+      "2026-07",
+      "2026-08",
+      "2026-09",
+    ];
+    await client.transaction.createMany({
+      data: [
+        ...months.map((m) =>
+          row(`${m}-10`, 300_000, "WHOLEFDS MKT", "FOOD_AND_DRINK", "FOOD_AND_DRINK_GROCERIES"),
+        ),
+        ...["2026-03-22", "2026-09-22"].map((d) =>
+          row(
+            d,
+            312_075,
+            "MECKLENBURG CO PROPERTY TAX",
+            "GOVERNMENT_AND_NON_PROFIT",
+            "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
+          ),
+        ),
+      ],
+    });
+    const goal = (await currentProposals(user.id, { client, now: NOW })).find(
+      (p) => p.key === "goal:emergency_fund",
+    );
+    const data = await loadProfileInput(user.id, { client, now: NOW });
+    expect(goal).toMatchObject({ monthlySpendingCents: cushionSpendCents(data, 12) });
   });
 
   it("proposes from the person's numbers and creates nothing until they say yes", async () => {
