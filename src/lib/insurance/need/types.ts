@@ -31,6 +31,8 @@ export type Need = {
   needCents: number;
   haveCents: number;
   gapCents: number;
+  // There's a policy, and its limit isn't on file: the gap is unknown, not the whole amount.
+  limitUnknown?: boolean;
   // For a deductible: whether a higher or lower one fits their cash, or it already fits.
   direction?: "raise" | "lower" | "ok";
   // For a deductible to raise: the next step up the ladder their cash carries, a smaller move

@@ -45,6 +45,17 @@ const businessPolicy = (coverage: NeedPolicy["coverage"]): NeedPolicy => ({
 });
 
 describe("business needs", () => {
+  it("knows a policy with no limit on file isn't a limit of $0", () => {
+    const sam = work({ serviceCents: 7_200_000 });
+    const [noLimit] = businessNeedsFor(input(sam, [businessPolicy({})]));
+    expect(noLimit).toMatchObject({ kind: "business_liability", limitUnknown: true });
+    const [typed] = businessNeedsFor(
+      input(sam, [businessPolicy({ generalLiability: 30_000_000 })]),
+    );
+    expect(typed.limitUnknown).toBeUndefined();
+    expect(typed.gapCents).toBe(BUSINESS_LIABILITY_TARGET_CENTS - 30_000_000);
+  });
+
   it("gives a freelancer general and professional liability (Sam)", () => {
     const sam = input(work({ serviceCents: 7_200_000 }));
     expect(kinds(sam)).toEqual(["business_liability", "professional_liability"]);

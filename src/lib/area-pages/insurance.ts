@@ -1,6 +1,7 @@
 import { POLICY_KINDS, RENEWAL_SOON_DAYS, type CoverEvent, type GapKey } from "@/config/insurance";
 import type { RiskKind, SavingKind } from "@/config/insurance";
 import type { TreeStatus } from "@/components/tree/interactive-tree";
+import { coverKindOf } from "@/config/found-policies";
 import { shortMoney } from "@/lib/hub/view";
 import { formatCents } from "@/lib/money";
 import { buildAreaTree, firstSentences, type AreaItem, type AreaTree } from "./tree";
@@ -105,6 +106,7 @@ export type InsuranceTreeInput = {
   noBankSeen?: boolean;
   needs: {
     kind: string;
+    limitUnknown?: boolean;
     policyId: string | null;
     gapCents: number;
     haveCents: number;
@@ -122,7 +124,7 @@ export type InsuranceTreeInput = {
     yearlyCents: number | null;
     renewsOn: string | null;
   }[];
-  gaps: { key: GapKey; why: string; policyId: string | null }[];
+  gaps: { key: GapKey; why: string; policyId: string | null; limit?: "unknown" | "low" }[];
   savings: { id: string; kind: SavingKind; yearlySavingCents: number; line: string }[];
   renewals: {
     id: string;
@@ -153,12 +155,19 @@ export function insuranceTree(input: InsuranceTreeInput): AreaTree {
     summary: firstSentences(rest.summary),
   });
 
+  // Cover seen in the person's payments, not yet confirmed: what's asked for stays until they do,
+  // but it isn't missing, and "you have $0" isn't known (debugger 11-03, 11-05).
+  const foundFor = (key: string) =>
+    input.policies.find((p) => p.status === "found" && p.kind === coverKindOf(key));
+
   const needs = input.needs.map((n) => {
     const short = n.direction ? n.direction !== "ok" : n.gapCents > 0;
+    const seen = short ? foundFor(n.kind) : undefined;
+    const limitUnknown = short && n.limitUnknown === true;
     // Raising a deductible the person's cash can carry is a saving, never urgent.
     const status: TreeStatus = !short
       ? "good"
-      : n.opened && n.direction !== "raise"
+      : n.opened && n.direction !== "raise" && !seen && !limitUnknown
         ? "act"
         : "look";
     const money = (c: number) => (n.unit === "per_month" ? `${shortMoney(c)}/mo` : shortMoney(c));
@@ -169,20 +178,33 @@ export function insuranceTree(input: InsuranceTreeInput): AreaTree {
       status,
       figure: !short
         ? "Covered"
-        : deductible
-          ? `Could be ${money(n.needCents)}`
-          : n.gapCents > 0
-            ? `${money(n.gapCents)} short`
-            : "Check",
+        : seen
+          ? "Confirm it"
+          : limitUnknown
+            ? "Add its limit"
+            : deductible
+              ? `Could be ${money(n.needCents)}`
+              : n.gapCents > 0
+                ? `${money(n.gapCents)} short`
+                : "Check",
       cents: n.gapCents,
       // The working (n.summary and its lines) is behind "More".
-      summary: deductible
-        ? `Your cash can carry ${money(n.needCents)}; yours is ${money(n.haveCents)}.`
-        : `You need ${money(n.needCents)}; you have ${money(n.haveCents)}.`,
+      summary: seen
+        ? `${seen.carrier} is in your payments. Confirm it and its limits so they count.`
+        : limitUnknown
+          ? "Your policy's limit isn't on file yet."
+          : deductible
+            ? `Your cash can carry ${money(n.needCents)}; yours is ${money(n.haveCents)}.`
+            : `You need ${money(n.needCents)}; you have ${money(n.haveCents)}.`,
     });
   });
 
-  const gapPolicies = new Set(input.gaps.map((g) => g.policyId).filter(Boolean));
+  const gapPolicies = new Set(
+    input.gaps
+      .filter((g) => !g.limit)
+      .map((g) => g.policyId)
+      .filter(Boolean),
+  );
   const policies = input.policies.map((p) => {
     const soon = p.renewsOn !== null && daysBetween(input.asOf, p.renewsOn) <= RENEWAL_SOON_DAYS;
     const status: TreeStatus = gapPolicies.has(p.id)
@@ -209,15 +231,22 @@ export function insuranceTree(input: InsuranceTreeInput): AreaTree {
   // disability usually come with a job, out of pay before it reaches the bank; travel cover
   // often comes with a card; pet cover is the person's choice (overnight upload QA: a flyer had
   // an urgent "Travel cover: Missing"). Renters cover stays urgent: a lease often requires it.
-  // Cover seen in the person's payments, not yet confirmed: the gap stays until they do, but it
-  // isn't missing (debugger 11-03: "Urgent: Renters insurance, Missing" beside "Lemonade renters").
+  // Found cover: "Urgent: Renters insurance, Missing" sat beside "Lemonade renters" (foundFor).
   const missing = input.gaps.map((g) => {
     const guessed = NOT_URGENT_GAPS.includes(g.key) || input.noBankSeen === true;
-    const seen = input.policies.find((p) => p.status === "found" && p.kind === g.key);
+    const seen = foundFor(g.key);
     return item("missing", g.key + (g.policyId ? `-${g.policyId}` : ""), {
       label: GAP_LABELS[g.key],
-      status: guessed || seen ? "look" : "act",
-      figure: seen ? "Confirm it" : guessed ? "Not on file" : "Missing",
+      status: guessed || seen || g.limit ? "look" : "act",
+      figure: seen
+        ? "Confirm it"
+        : g.limit
+          ? g.limit === "low"
+            ? "Limit is low"
+            : "Add its limit"
+          : guessed
+            ? "Not on file"
+            : "Missing",
       summary: seen ? `${seen.carrier} is in your payments. Confirm it so it counts.` : g.why,
     });
   });

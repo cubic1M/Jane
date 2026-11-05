@@ -51,6 +51,12 @@ export const INSURER_KINDS: readonly { words: readonly string[]; kind: PolicyKin
   },
   { words: ["lemonade", "assurant"], kind: "renters" },
   { words: ["hippo", "openly", "kin insurance"], kind: "home" },
+  // Sold to small businesses (debugger 11-05: "Hiscox Business Insurance" read as other cover, so a
+  // shop paying it was told "Business liability: Missing").
+  {
+    words: ["hiscox", "next insurance", "biberk", "thimble", "simply business"],
+    kind: "business",
+  },
   {
     words: [
       "sgli",
@@ -121,7 +127,16 @@ export const COVER_WORDS: readonly { words: readonly string[]; kind: PolicyKind 
   { words: ["pet"], kind: "pet" },
   { words: ["dental", "vision"], kind: "other" },
   { words: ["auto", "car"], kind: "auto" },
+  { words: ["business"], kind: "business" },
 ];
+
+// The kind of policy that would hold what a need or gap asks for: its own name, except a business's.
+const BUSINESS_COVER: Readonly<Record<string, PolicyKind>> = {
+  business_liability: "business",
+  professional_liability: "business",
+  business_equipment: "business",
+};
+export const coverKindOf = (key: string): string => BUSINESS_COVER[key] ?? key;
 
 // A stream's frequency as a premium frequency. Others (weekly, every two weeks) aren't
 // premiums.

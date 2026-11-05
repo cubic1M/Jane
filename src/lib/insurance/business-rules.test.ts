@@ -71,11 +71,25 @@ describe("general and professional liability", () => {
     expect(keys(freelancer, [business])).toEqual([]);
   });
 
+  it("asks for the limit of a business policy that has none on file, and never says $0", () => {
+    const hiscox = {
+      ...policy("business", { professionalLiability: 1 }),
+      id: "p1",
+      carrier: "Hiscox",
+    };
+    const [gap] = businessGaps(freelancer, [hiscox]);
+    expect(gap).toMatchObject({ key: "business_liability", policyId: "p1", limit: "unknown" });
+    expect(gap.title).toBe("Add your Hiscox policy's liability limit");
+    expect(gap.why).not.toContain("$0");
+  });
+
   it("says when a business policy's liability is too low", () => {
     const low = policy("business", { generalLiability: 30_000_000, professionalLiability: 1 });
     const gaps = businessGaps(freelancer, [low]);
     expect(gaps.map((g) => g.key)).toEqual(["business_liability"]);
     expect(gaps[0].title).toMatch(/liability cover is low/);
+    expect(gaps[0].limit).toBe("low");
+    expect(gaps[0].policyId).toBe(low.id);
   });
 });
 

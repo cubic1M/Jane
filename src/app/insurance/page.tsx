@@ -12,6 +12,7 @@ import { needKey } from "@/lib/area-pages/insurance-coverage";
 import { loadInsuranceArea } from "@/lib/area-pages/insurance-load";
 import { ViewTracker } from "@/components/view-tracker";
 import { PREMIUM_FREQUENCIES } from "@/config/documents";
+import { coverKindOf } from "@/config/found-policies";
 import {
   HOUSEHOLD_RELATIONS,
   HOUSING,
@@ -246,9 +247,27 @@ async function InsuranceContent({
   const details: Record<string, ReactNode> = {};
   const more: Record<string, ReactNode> = {};
 
+  // Cover seen in their payments, confirmed from whatever asks for it.
+  const editPolicy = (policyId: string, words: string) => (
+    <Link
+      href={`/insurance?edit=${policyId}&focus=${encodeURIComponent(itemId("policies", policyId))}`}
+      className={`text-sm ${LINK}`}
+    >
+      {words}
+    </Link>
+  );
+
   for (const n of coverage.needs) {
     const id = itemId("needs", needKey(n));
-    details[id] = (
+    const found =
+      n.gapCents > 0
+        ? policies.find((p) => p.status === "found" && p.kind === coverKindOf(n.kind))
+        : undefined;
+    details[id] = found ? (
+      editPolicy(found.id, "Confirm it")
+    ) : n.limitUnknown && n.policyId ? (
+      editPolicy(n.policyId, "Add its limit")
+    ) : (
       <NeedDetail need={n} coverage={coverage} advice={advice} policyId={one("policy")} />
     );
     more[id] = <NeedWorking need={n} />;
@@ -256,12 +275,7 @@ async function InsuranceContent({
   for (const gap of gaps) {
     const id = itemId("missing", gap.key + (gap.policyId ? `-${gap.policyId}` : ""));
     details[id] = gap.found ? (
-      <Link
-        href={`/insurance?edit=${gap.found.policyId}&focus=${encodeURIComponent(itemId("policies", gap.found.policyId))}`}
-        className={`text-sm ${LINK}`}
-      >
-        Confirm it
-      </Link>
+      editPolicy(gap.found.policyId, "Confirm it")
     ) : (
       <div className="flex flex-col gap-2 text-sm">
         <h3 className="text-base font-semibold">{gap.title}</h3>
