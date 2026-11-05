@@ -173,9 +173,18 @@ export function directionOf(description: string): "in" | "out" | null {
   return asOut && SPENDING.includes(asOut.primary) ? "out" : null;
 }
 
+type Directions = Map<string, ReturnType<typeof directionOf>>;
+
 // Which sign is spending: known merchants and pay first, then most rows (spending is
-// usually most of a statement).
-export function guessSign(rows: string[][], amount: number, description: number | null): SignGuess {
+// usually most of a statement). `directions` keeps what each description said across the file's
+// columns: each number column reads the same descriptions, and asking the rules again for each
+// let a 1 MB file with 79 columns take 35 seconds of CPU, with no account needed.
+export function guessSign(
+  rows: string[][],
+  amount: number,
+  description: number | null,
+  directions: Directions = new Map(),
+): SignGuess {
   let negative = 0;
   let positive = 0;
   const votes = { negative: [] as string[], positive: [] as string[] };
@@ -185,7 +194,8 @@ export function guessSign(rows: string[][], amount: number, description: number 
     if (cents < 0) negative++;
     else positive++;
     const text = description === null ? "" : (row[description] ?? "").trim();
-    const direction = text ? directionOf(text) : null;
+    if (text && !directions.has(text)) directions.set(text, directionOf(text));
+    const direction = directions.get(text);
     if (!direction) continue;
     const spendingSign = cents < 0 === (direction === "out") ? "negative" : "positive";
     votes[spendingSign].push(text);
@@ -287,12 +297,13 @@ export function mappingChoices(all: CsvRecord[]): MappingChoices {
 
   const dateOrders: MappingChoices["dateOrders"] = {};
   const signs: MappingChoices["signs"] = {};
+  const directions: Directions = new Map();
   for (let i = 0; i < width; i++) {
     const values = rows.map((r) => r[i] ?? "").filter((v) => v.trim() !== "");
     const order = detectDateOrder(values);
     if (order) dateOrders[i] = order;
     else if (values.some((v) => parseAmount(v) !== null)) {
-      signs[i] = guessSign(rows, i, guess.description);
+      signs[i] = guessSign(rows, i, guess.description, directions);
     }
   }
   // Amounts that are never negative, beside a column that says which way they went: that column
