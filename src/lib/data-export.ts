@@ -340,7 +340,7 @@ export async function exportUserData(
       client,
     ).analyticsEvent.findMany({
       where: { userId },
-      select: { name: true, createdAt: true },
+      select: { name: true, properties: true, createdAt: true },
       orderBy: { createdAt: "asc" },
     }),
     // Things they own, at their values (spec step 67).
@@ -699,10 +699,34 @@ export async function exportUserData(
   // Insurance (spec Phase X): every policy on the profile and the household facts.
   const insurance = await insuranceExport(userId, { client });
   const everythingElse = await restOfTheirData(db);
+  // What the privacy page says we record about how they used Jane, and the security and consent
+  // records with their name on them: theirs to see, though the database keeps them apart.
+  const [activityLog, records] = await Promise.all([
+    systemDb(
+      "A person's own export: jane_rls can't read the activity log",
+      client,
+    ).activityEvent.findMany({
+      where: { userId },
+      select: { kind: true, path: true, role: true, label: true, createdAt: true },
+      orderBy: { createdAt: "asc" },
+    }),
+    systemDb("A person's own export: jane_rls can't read the audit log", client).auditLog.findMany({
+      where: { actorId: userId },
+      select: {
+        event: true,
+        targetType: true,
+        metadata: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "asc" },
+    }),
+  ]);
 
   return {
     exportedAt: now.toISOString(),
     formatVersion: EXPORT_FORMAT_VERSION,
+    activityLog,
+    records,
     profile,
     insurance,
     banks,
