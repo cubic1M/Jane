@@ -208,10 +208,10 @@ describe("GET /api/cron/plaid-sync", () => {
     const response = await call("Bearer cron-secret");
     expect(response.status).toBe(200);
     expect(takeSnapshots).toHaveBeenCalled();
-    expect(alertError).toHaveBeenCalledWith({
-      message: "TypeError: trial clean-up failed",
-      path: "/api/cron/plaid-sync",
-    });
+    expect(alertError).toHaveBeenCalledWith(
+      { message: "TypeError: trial clean-up failed", path: "/api/cron/plaid-sync" },
+      { pastCeiling: true },
+    );
     expect(JSON.stringify(error.mock.calls)).not.toContain("a person's data");
   });
 

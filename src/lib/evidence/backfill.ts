@@ -15,16 +15,22 @@ import { systemDb } from "@/lib/system-db";
 // the deploy; nothing connects to production. Counts only in the logs.
 
 const DONE = "demo-forgotten:";
+// forgetSince landed with #1023, and every removal since cleans up after itself. Only rows from
+// before then are this job's: anyone can link and remove the demo bank all day, and each of those
+// rows would otherwise cost the night a query for 400 days, and a full refresh.
+const FORGET_SINCE_LANDED = new Date("2026-10-31T00:00:00Z");
 
 export async function forgetRemovedDemoBanks({
   client = defaultClient,
   now = new Date(),
   userIds,
   refresh,
+  removedBefore = FORGET_SINCE_LANDED,
 }: {
   client?: PrismaClient;
   now?: Date;
   refresh?: (userId: string) => Promise<void>;
+  removedBefore?: Date;
 } & OnlyPeople = {}): Promise<{
   forgotten: number;
   failed: number;
@@ -37,6 +43,7 @@ export async function forgetRemovedDemoBanks({
     where: {
       event: "item_removed",
       targetType: "plaid_item",
+      createdAt: { lt: removedBefore },
       metadata: { path: ["institution"], equals: DEMO_INSTITUTION },
     },
     select: { targetId: true, metadata: true },

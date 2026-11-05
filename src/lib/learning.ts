@@ -25,6 +25,7 @@ type Options = { client?: PrismaClient };
 const ACTED = ["open", "unverifiable", "confirmed", "partial", "not_seen", "lapsed"];
 const DECIDED = ["confirmed", "partial", "not_seen", "lapsed"];
 const PAID_OFF = ["confirmed", "partial"];
+const MOST_IN_A_COLUMN = 2_147_483_647;
 
 // Each night. A do-it-yourself finding card (capability "finding") is only on the record once it
 // was done, so it would read as always acted on: it isn't counted.
@@ -68,7 +69,8 @@ export async function refreshKindStats({ client = defaultClient }: Options = {})
       declined: k.declined,
       decided: k.decided,
       paidOff: k.paidOff,
-      confirmedCents: k.confirmedCents,
+      // The total across everyone, in a column of 32 bits: past it, the night would stop here.
+      confirmedCents: Math.min(k.confirmedCents, MOST_IN_A_COLUMN),
     };
     await systemDb(WHY, client).suggestionKindStat.upsert({
       where: { topic: k.topic },

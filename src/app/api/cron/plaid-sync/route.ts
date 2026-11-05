@@ -36,6 +36,8 @@ import { refreshAfterRemoval } from "@/lib/import/background";
 import { STAYING } from "@/lib/only-people";
 import { systemDb } from "@/lib/system-db";
 
+const ROUTE = "/api/cron/plaid-sync";
+
 // Vercel Cron, daily: syncs linked items that haven't synced in STALE_SYNC_HOURS, in case
 // a webhook was missed, then removes items of people inactive for INACTIVE_ITEM_DAYS
 // (after a warning email), then snapshots every account's balance for net worth over
@@ -65,7 +67,10 @@ async function deleteTemporaryTries() {
   } catch (error) {
     const kind = error instanceof Error ? error.name : "Error";
     log.error("Deleting temporary tries failed", { error: kind });
-    await alertError({ message: `${kind}: trial clean-up failed`, path: "/api/cron/plaid-sync" });
+    await alertError(
+      { message: `${kind}: trial clean-up failed`, path: ROUTE },
+      { pastCeiling: true },
+    );
   }
 }
 
@@ -115,50 +120,30 @@ const controller = (startedAt: number) =>
     ),
   });
 
-async function dailyWork(startedAt: number) {
-  await freshSwitches();
-  if (!plaidEnabled()) {
-    return {
-      synced: 0,
-      failed: 0,
-      deferred: 0,
-      inactive: null,
-      robinhood: await refreshAllRobinhood({ budgetMs: robinhoodBudget(startedAt) }),
-      snapshots: await takeSnapshots(),
-      jobs: await runDueJobs({ budgetMs: jobsBudget(startedAt) }),
-      agent: await runAgentFollowUps(),
-      outcomes: await refreshMerchantOutcomes(),
-      retention: await runRetention({ skipTrials: true }),
-      // Derived rows whose evidence is gone (card-chat mismatch): also the one-off cleanup.
-      orphans: await removeAllOrphans(),
-      // Demo banks removed before their derived rows went with them: once each.
-      demoCleanup: await forgetRemovedDemoBanks({ refresh: (id) => refreshAfterRemoval(id) }),
-      // The learning loop: what everyone did with each kind of suggestion, for tomorrow's ranking.
-      learning: await refreshKindStats(),
-      deadlines: await remindAllDeadlines(),
-      // Spec steps 104 and 106: insurance reshopped and checked by itself.
-      insurance: await insuranceDaily(),
-      // Spec step 134: automatic investing on new paychecks.
-      autoInvest: await runAutoInvestForAll(),
-      // Spec step 156: demo holdings revalued at the stand-in feed's prices.
-      prices: await refreshDemoPrices(),
-      // Spec step 159: medical charges saved to the HSA receipts vault.
-      hsaReceipts: await collectAllReceipts(),
-      // Spec step 161: crypto balances read again (read-only).
-      crypto: await syncAllCrypto(),
-      // Spec step 164: fully automatic investing, within the person's caps.
-      automaticInvesting: await runAutomaticInvestingForAll(),
-      // Spec step 211: rollovers whose money has arrived.
-      rollovers: await settleAllRollovers(),
-      // Spec step 234: Treasury bills that matured are rolled into the next (stand-in).
-      ladders: await settleAllLadders(),
-      // Spec step 142: each person's nightly controller run, through the jobs table. Last.
-      controller: await controller(startedAt),
-    };
-  }
+// One step of the night. If it fails, the team hears now and the steps after it still run: one
+// person's odd row mustn't cost everyone their deadlines, or the deleting the legal pages promise.
+// The run still ends as failed, so the health check counts it. Only the step and the error's class
+// are logged: a database error's message can carry someone's values.
+const stepRunner = (failed: string[]) =>
+  async function step<T>(name: string, run: () => Promise<T>): Promise<T | null> {
+    try {
+      return await run();
+    } catch (error) {
+      const kind = error instanceof Error ? error.name : "Error";
+      failed.push(name);
+      log.error("A nightly step failed", { step: name, error: kind });
+      await alertError(
+        { message: `${kind}: nightly step failed`, path: `${ROUTE}/${name}` },
+        { pastCeiling: true },
+      );
+      return null;
+    }
+  };
 
+// Linked banks not synced lately. A system job across all users: it reads item ids only, and
+// syncItem scopes each one.
+async function syncBanks() {
   const cutoff = new Date(Date.now() - STALE_SYNC_HOURS * 60 * 60 * 1000);
-  // A system job across all users: it reads item ids only, and syncItem scopes each one.
   const items = await systemDb("Cron: finds every bank connection due a sync").plaidItem.findMany({
     where: {
       status: ITEM_STATUS.active,
@@ -188,33 +173,71 @@ async function dailyWork(startedAt: number) {
       log.error("Scheduled Plaid sync failed", { itemId: item.id, error: String(error) });
     }
   }
+  return { synced, failed, deferred };
+}
+
+// Banks of people gone quiet. We tell them we disconnect these, so a removal that failed is the
+// team's to hear about, though the person's own failure doesn't stop the others.
+async function inactiveCleanup() {
   const inactive = await runInactiveCleanup();
-  return {
-    synced,
-    failed,
-    deferred,
+  if (inactive.failed > 0) {
+    await alertError(
+      { message: "InactiveCleanupFailed: a bank wasn't disconnected", path: `${ROUTE}/inactive` },
+      { pastCeiling: true },
+    );
+  }
+  return inactive;
+}
+
+async function dailyWork(startedAt: number) {
+  const failedSteps: string[] = [];
+  const step = stepRunner(failedSteps);
+  await step("switches", freshSwitches);
+  // Early, like the temporary tries: the privacy page promises it, and it needs little time.
+  const retention = await step("retention", () => runRetention({ skipTrials: true }));
+  const banks = plaidEnabled()
+    ? await step("banks", syncBanks)
+    : { synced: 0, failed: 0, deferred: 0 };
+  const inactive = plaidEnabled() ? await step("inactive", inactiveCleanup) : null;
+  const night = {
+    ...(banks ?? { synced: 0, failed: 0, deferred: 0 }),
     inactive,
-    robinhood: await refreshAllRobinhood({ budgetMs: robinhoodBudget(startedAt) }),
-    snapshots: await takeSnapshots(),
-    jobs: await runDueJobs({ budgetMs: jobsBudget(startedAt) }),
-    agent: await runAgentFollowUps(),
-    outcomes: await refreshMerchantOutcomes(),
-    retention: await runRetention({ skipTrials: true }),
+    robinhood: await step("robinhood", () =>
+      refreshAllRobinhood({ budgetMs: robinhoodBudget(startedAt) }),
+    ),
+    snapshots: await step("snapshots", () => takeSnapshots()),
+    jobs: await step("jobs", () => runDueJobs({ budgetMs: jobsBudget(startedAt) })),
+    agent: await step("agent", () => runAgentFollowUps()),
+    outcomes: await step("outcomes", () => refreshMerchantOutcomes()),
+    retention,
     // Derived rows whose evidence is gone (card-chat mismatch): also the one-off cleanup.
-    orphans: await removeAllOrphans(),
+    orphans: await step("orphans", () => removeAllOrphans()),
     // Demo banks removed before their derived rows went with them: once each.
-    demoCleanup: await forgetRemovedDemoBanks({ refresh: (id) => refreshAfterRemoval(id) }),
-    learning: await refreshKindStats(),
-    deadlines: await remindAllDeadlines(),
-    insurance: await insuranceDaily(),
-    autoInvest: await runAutoInvestForAll(),
-    prices: await refreshDemoPrices(),
-    hsaReceipts: await collectAllReceipts(),
-    crypto: await syncAllCrypto(),
-    automaticInvesting: await runAutomaticInvestingForAll(),
-    rollovers: await settleAllRollovers(),
-    ladders: await settleAllLadders(),
+    demoCleanup: await step("demoCleanup", () =>
+      forgetRemovedDemoBanks({ refresh: (id) => refreshAfterRemoval(id) }),
+    ),
+    // The learning loop: what everyone did with each kind of suggestion, for tomorrow's ranking.
+    learning: await step("learning", () => refreshKindStats()),
+    deadlines: await step("deadlines", () => remindAllDeadlines()),
+    // Spec steps 104 and 106: insurance reshopped and checked by itself.
+    insurance: await step("insurance", () => insuranceDaily()),
+    // Spec step 134: automatic investing on new paychecks.
+    autoInvest: await step("autoInvest", () => runAutoInvestForAll()),
+    // Spec step 156: demo holdings revalued at the stand-in feed's prices.
+    prices: await step("prices", () => refreshDemoPrices()),
+    // Spec step 159: medical charges saved to the HSA receipts vault.
+    hsaReceipts: await step("hsaReceipts", () => collectAllReceipts()),
+    // Spec step 161: crypto balances read again (read-only).
+    crypto: await step("crypto", () => syncAllCrypto()),
+    // Spec step 164: fully automatic investing, within the person's caps.
+    automaticInvesting: await step("automaticInvesting", () => runAutomaticInvestingForAll()),
+    // Spec step 211: rollovers whose money has arrived.
+    rollovers: await step("rollovers", () => settleAllRollovers()),
+    // Spec step 234: Treasury bills that matured are rolled into the next (stand-in).
+    ladders: await step("ladders", () => settleAllLadders()),
     // Spec step 142: each person's nightly controller run, through the jobs table. Last.
-    controller: await controller(startedAt),
+    controller: await step("controller", () => controller(startedAt)),
   };
+  if (failedSteps.length > 0) throw new Error(`Nightly steps failed: ${failedSteps.join(", ")}`);
+  return night;
 }

@@ -78,7 +78,10 @@ describe.runIf(url)("demo banks removed before the cleanup existed", () => {
 
   it("forgets what came after the demo bank was linked, once, and keeps what came before", async () => {
     const refresh = vi.fn(async () => {});
-    expect(await forgetRemovedDemoBanks({ client, userIds: [userId], refresh })).toEqual({
+    const removedBefore = new Date();
+    expect(
+      await forgetRemovedDemoBanks({ client, userIds: [userId], refresh, removedBefore }),
+    ).toEqual({
       forgotten: 1,
       failed: 0,
     });
@@ -87,7 +90,9 @@ describe.runIf(url)("demo banks removed before the cleanup existed", () => {
       (await client.alert.findMany({ where: { userId }, select: { key: true } })).map((a) => a.key),
     ).toEqual(["own"]);
     // Once: a second night does nothing.
-    expect(await forgetRemovedDemoBanks({ client, userIds: [userId], refresh })).toEqual({
+    expect(
+      await forgetRemovedDemoBanks({ client, userIds: [userId], refresh, removedBefore }),
+    ).toEqual({
       forgotten: 0,
       failed: 0,
     });
