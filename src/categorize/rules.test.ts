@@ -1144,6 +1144,59 @@ describe("a student loan by those words", () => {
   });
 });
 
+// Debugger 11-05: a divorced father's Zelle to his ex, the line saying alimony, read as a transfer: Jane
+// asked if it was rent, and $14,400 a year wasn't in his spending. Therapy through Venmo the same.
+describe("what a payment app's line says it's for", () => {
+  const detailed = (description: string) =>
+    categorizeByRules({ description, amountCents: 120_000, hints: {} })?.detailed;
+
+  it.each(["ZELLE TO KAREN M ALIMONY", "VENMO PAYMENT SPOUSAL SUPPORT"])(
+    "%s is a bill, not a transfer",
+    (description) => {
+      expect(detailed(description)).toBe("GENERAL_SERVICES_CONSULTING_AND_LEGAL");
+    },
+  );
+
+  it.each(["VENMO PAYMENT DR LIN THERAPY", "ZELLE TO HOPE COUNSELING", "PHYSICAL THERAPY ASSOC"])(
+    "%s is care",
+    (description) => {
+      expect(detailed(description)).toBe("MEDICAL_PRIMARY_CARE");
+    },
+  );
+
+  it("child support by Zelle isn't a transfer either", () => {
+    expect(detailed("ZELLE TO SAM CHILD SUPPORT")).not.toMatch(/^TRANSFER_/);
+  });
+
+  it("child support coming in stays income", () => {
+    expect(
+      categorizeByRules({ description: "CSE CHILD SUPPORT", amountCents: -62_000, hints: {} })
+        ?.detailed,
+    ).toBe("INCOME_CHILD_SUPPORT");
+  });
+
+  it("a massage isn't therapy, and a plain Zelle is still a transfer", () => {
+    expect(detailed("BLUE LOTUS MASSAGE THERAPY")).not.toBe("MEDICAL_PRIMARY_CARE");
+    expect(detailed("ZELLE TO KAREN M")).toMatch(/^TRANSFER_OUT/);
+  });
+
+  it.each(["LAW OFFICES OF R PATEL RETAINER", "SMITH ATTORNEY AT LAW"])(
+    "%s is legal",
+    (description) => {
+      expect(detailed(description)).toBe("GENERAL_SERVICES_CONSULTING_AND_LEGAL");
+    },
+  );
+
+  it.each([
+    "BMW FINANCIAL SVCS LEASE",
+    "MERCEDES-BENZ FINANCIAL",
+    "AUDI FINANCIAL SVCS",
+    "VW CREDIT PMT",
+  ])("%s is a car payment", (description) => {
+    expect(detailed(description)).toBe("LOAN_PAYMENTS_CAR_PAYMENT");
+  });
+});
+
 // Debugger 11-05: "Review your Amex Annual Fee subscription". A card's fee has its own rule, and it
 // said so only when the line started with the fee.
 describe("a card's annual fee, with the card's name first", () => {
