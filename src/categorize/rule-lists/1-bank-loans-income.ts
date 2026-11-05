@@ -57,7 +57,8 @@ export const BANK_LOANS_INCOME: readonly Rule[] = [
   // FEE", which is the membership's yearly price.
   {
     category: "BANK_FEES_OTHER_BANK_FEES",
-    pattern: /^(?:ANNUAL (?:CARD )?FEE|YEARLY FEE)\b/,
+    pattern:
+      /^(?:ANNUAL (?:CARD )?FEE|YEARLY FEE)\b|^(?:AMEX|AMERICAN EXPRESS|DISCOVER|CAPITAL ONE|CITI|CHASE)\b.*\bANNUAL (?:MEMBERSHIP )?FEE\b|(?<!(?:DEBIT|CHECK) )\bCARD ANNUAL (?:MEMBERSHIP )?FEE\b/,
     direction: "out",
   },
   // A fee given back, however the bank words it (Chase's "FEE REVERSAL"): it nets against the

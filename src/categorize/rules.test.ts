@@ -1124,6 +1124,31 @@ describe("a sale through PayPal", () => {
 
 // Debugger 11-04: a person's policies. A yearly umbrella policy had no category, and Delta Dental's fixed
 // monthly premium read as dental treatment, so neither was on the list of their insurance.
+// Debugger 11-05: "Review your Amex Annual Fee subscription". A card's fee has its own rule, and it
+// said so only when the line started with the fee.
+describe("a card's annual fee, with the card's name first", () => {
+  it.each(["AMEX ANNUAL FEE", "PLATINUM CARD ANNUAL FEE", "CHASE SAPPHIRE ANNUAL MEMBERSHIP FEE"])(
+    "%s is a bank fee",
+    (description) => {
+      expect(categorizeByRules({ description, amountCents: 9_500, hints: {} })?.detailed).toMatch(
+        /^BANK_FEES_/,
+      );
+    },
+  );
+
+  // "Card" and "Visa" in how a bank writes a debit card purchase aren't the fee's card.
+  it.each([
+    "DEBIT CARD PURCHASE - PLANET FITNESS ANNUAL FEE",
+    "VISA DDA PUR PLANET FITNESS ANNUAL FEE",
+    "CHECK CARD LA FITNESS ANNUAL FEE",
+    "PLANET FITNESS ANNUAL FEE",
+  ])("%s isn't", (description) => {
+    expect(categorizeByRules({ description, amountCents: 4_900, hints: {} })?.detailed).not.toMatch(
+      /^BANK_FEES_/,
+    );
+  });
+});
+
 // Debugger 11-05: a student's campus job had no category, so when the summer internship ended Jane
 // said "Your pay looks like it stopped", 93% sure, with the job still paying every two weeks.
 describe("wages by that word", () => {

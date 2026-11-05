@@ -96,6 +96,11 @@ describe("gap rules for every kind", () => {
     expect(keys(household({ medicalCents: 0 }), [policy("health")])).not.toContain("health");
   });
 
+  // Debugger 11-05: "No health insurance on file" for someone on active-duty pay, who has TRICARE.
+  it("health: not for military pay, which comes with it", () => {
+    expect(keys(household({ medicalCents: 0, militaryPay: true }))).not.toContain("health");
+  });
+
   it("disability: a paycheck and nothing to replace it", () => {
     expect(keys(household({ paycheck: true }))).toContain("disability");
     expect(keys(household({ paycheck: false }))).not.toContain("disability");

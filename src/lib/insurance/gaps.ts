@@ -181,7 +181,7 @@ function moreGaps(household: Household, policies: Policy[]): Gap[] {
     why,
   });
   // Only with bank data to go on: without it, there's nothing to say.
-  if (signals.medicalCents !== null && !has(policies, "health")) {
+  if (signals.medicalCents !== null && !signals.militaryPay && !has(policies, "health")) {
     gaps.push(
       gap(
         "health",

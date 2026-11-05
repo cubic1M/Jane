@@ -299,21 +299,26 @@ const employerOfPayroll = (name: string) =>
 
 // The paychecks that could be a couple's: from employers paying over the same time. One employer
 // after another is one person changing jobs, so only the latest counts (debugger 11-03: "I see two
-// employers' paychecks", and $4,097 of tax on $70,000).
+// employers' paychecks", and $4,097 of tax on $70,000). A single deposit isn't an employer either: a
+// bonus's own line, a reimbursement or a day's work isn't someone else's job (debugger 11-05).
 export function payingTogether(
   paychecks: readonly { description: string; date: string }[],
 ): string[] {
-  const spans = new Map<string, { first: string; last: string }>();
+  const all = new Map<string, { first: string; last: string; count: number }>();
   for (const { description, date } of paychecks) {
     const key = employerOfPayroll(description);
-    const span = spans.get(key);
-    spans.set(key, {
+    const span = all.get(key);
+    all.set(key, {
       first: span && span.first < date ? span.first : date,
       last: span && span.last > date ? span.last : date,
+      count: (span?.count ?? 0) + 1,
     });
   }
+  const repeated = [...all].filter(([, span]) => span.count >= 2);
+  const spans = new Map(repeated.length > 0 ? repeated : all);
   const overlaps = (key: string) => {
-    const a = spans.get(key)!;
+    const a = spans.get(key);
+    if (!a) return false;
     return [...spans].some(([other, b]) => other !== key && a.first <= b.last && b.first <= a.last);
   };
   const latest = [...spans].sort(([, a], [, b]) => b.last.localeCompare(a.last))[0]?.[0];

@@ -53,6 +53,8 @@ export type Household = {
 export type Signals = {
   // A paycheck in the last INCOME_LOOKBACK_DAYS.
   paycheck: boolean;
+  // Military pay in the same days: TRICARE comes with it.
+  militaryPay?: boolean;
   // Cash and investments plus the things they own, by their values; null with no balances.
   assetsCents: number | null;
   // Flights and hotels in the last TRAVEL_LOOKBACK_DAYS.
@@ -107,6 +109,7 @@ export function resolveHousehold(
     ),
     signals: {
       paycheck: signs.paycheck ?? false,
+      ...(signs.militaryPay ? { militaryPay: true } : {}),
       assetsCents: signs.assetsCents ?? null,
       travelCents: signs.travelCents ?? 0,
       medicalCents: signs.medicalCents ?? null,
@@ -144,6 +147,7 @@ async function loadHouseholdFrom(
     anyTransactions,
     sideWork,
     taxProfile,
+    militaryPay,
   ] = await Promise.all([
     db.insuranceProfiles.findFirst({
       select: {
@@ -208,6 +212,13 @@ async function loadHouseholdFrom(
     db.taxProfiles.findFirst({
       select: { incomeKinds: true, businessMiles: true, businessMilesYear: true },
     }),
+    db.transactions.count({
+      where: {
+        pfcDetailed: "INCOME_MILITARY",
+        date: { gte: days(INCOME_LOOKBACK_DAYS) },
+        amountCents: { lt: 0 },
+      },
+    }),
   ]);
   // A car loan and the car it's linked to are one car.
   const carLoans = loans.filter((l) => l.subtype === "auto").map((l) => l.id);
@@ -224,6 +235,7 @@ async function loadHouseholdFrom(
     rentPaid: rent > 0,
     cars,
     paycheck: paychecks > 0,
+    militaryPay: militaryPay > 0,
     assetsCents:
       balances.some((b) => b.currentBalanceCents !== null) || owned.length > 0
         ? balances.reduce((sum, b) => sum + Math.max(0, b.currentBalanceCents ?? 0), 0) +

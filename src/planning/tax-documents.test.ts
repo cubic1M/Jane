@@ -268,6 +268,25 @@ describe("Social Security", () => {
 
 // Debugger 11-05: a student paid $13,000 of tuition and the forms to expect had no 1098-T, which is
 // what the education credits need.
+// Debugger 11-05: "W-2 from Dity Ppm Move Reimbursement DFAS" beside the service member's own W-2.
+describe("military pay", () => {
+  it("expects one W-2, from DFAS, whatever each deposit's line says", () => {
+    const pay = (description: string, date: string) =>
+      tx({ date, amountCents: -341_260, description, pfcDetailed: "INCOME_MILITARY" });
+    const forms = expectedForms({
+      year: 2026,
+      transactions: [
+        pay("DFAS-CLEVELAND MILITARY PAY", "2026-03-01"),
+        pay("DFAS-CLEVELAND MILITARY PAY", "2026-03-15"),
+        pay("DITY PPM MOVE REIMBURSEMENT DFAS", "2026-06-20"),
+      ],
+      accounts: [],
+      loans: [],
+    });
+    expect(forms.map((f) => [f.form, f.from])).toEqual([["W-2", "DFAS"]]);
+  });
+});
+
 describe("tuition paid to a school", () => {
   const formsFor = (transactions: FormTransaction[]) =>
     expectedForms({ year: 2026, transactions, accounts: [], loans: [] }).map((f) => [
