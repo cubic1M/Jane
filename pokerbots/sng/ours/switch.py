@@ -49,7 +49,10 @@ class IcmSwitch:
     name = "icm_switch"
 
     def __init__(self, switch_min=20, switch_share=0.0, b="f9_meta", any_deck=0, icm_slice=0, sd_share=0.3,
-                 sd_b="f9_meta", f9_cache=0.0, **kw):
+                 sd_b="f9_meta", f9_cache=0.0, start="a", back_share=0.18, **kw):
+        # start="b": play the strong bot from hand 1 and hand the table BACK to icm_tag (one-way) once
+        # >= switch_min first-in opens were played and < back_share of them got re-raised (a static table,
+        # where icm_tag is far better); start="a" (default): icm_tag first, hand-over as above
         # sd_share > 0: on a six-plus deck (where the lock is off) hand over to sd_b once >= sd_share of
         # >= switch_min first-in opens were re-raised (fresh seeds, 10 short-deck cells: +2.7, no significant
         # loss; results/sng_sdswitch_validate.md); 0 = never on short decks
@@ -58,6 +61,8 @@ class IcmSwitch:
         self.switch_min, self.switch_share = int(switch_min), float(switch_share)
         self.any_deck = bool(any_deck)        # 1: the share rule also fires on short decks / top-heavy payouts
         self.sd_share, self.sd_name = float(sd_share), str(sd_b)
+        self.start_b, self.back_share = str(start) == "b", float(back_share)
+        self.backed = False
         self.a = IcmTag(**kw)
         self.b = self.b_main = _strong_bot(str(b))
         self.b_sd = None
@@ -97,12 +102,18 @@ class IcmSwitch:
         self.a.new_table(rules, seat, seed)
         self.switched = False
         self.switch_hand = None
+        self.backed = False
         try:
             self.b.new_table(_full_rules(rules), seat, seed + 1)
             self.b.shadow_only = True
             self.b_ok = True
         except Exception:  # noqa: BLE001  a strong bot that cannot start: this table stays icm_tag
             self.b_ok = False
+        if self.start_b and self.b_ok and self.holdem:
+            self.switched = True                 # the strong bot plays from hand 1
+            self.switch_hand = 0
+            self.b.shadow_only = False
+            self._refresh_b()
 
     def _sd_tables(self):
         try:
@@ -123,6 +134,13 @@ class IcmSwitch:
         except Exception:  # noqa: BLE001  the shadow bot must never cost a decision
             pass
         a = self.a
+        if self.start_b:
+            if (self.switched and not self.backed and a.my_opens >= self.switch_min
+                    and a.my_opens_rr < self.back_share * a.my_opens):
+                self.switched = False            # a static table: icm_tag from now on (one-way)
+                self.backed = True
+                self.b.shadow_only = True
+            return
         if self.short:
             fire = a.my_opens >= self.switch_min and a.my_opens_rr >= self.sd_share * a.my_opens
         elif self.switch_share > 0:
@@ -134,11 +152,14 @@ class IcmSwitch:
             self.switched = True
             self.switch_hand = info.get("hand_number")
             self.b.shadow_only = False
-            try:
-                if hasattr(self.b, "refresh_icm"):
-                    self.b.refresh_icm(force=True)  # field 9
-                else:
-                    self.b._icm_key = None        # field 7: recompute now
-                    self.b._update_icm()
-            except Exception:  # noqa: BLE001
-                pass
+            self._refresh_b()
+
+    def _refresh_b(self):
+        try:
+            if hasattr(self.b, "refresh_icm"):
+                self.b.refresh_icm(force=True)    # field 9
+            else:
+                self.b._icm_key = None            # field 7: recompute now
+                self.b._update_icm()
+        except Exception:  # noqa: BLE001
+            pass
