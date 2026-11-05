@@ -89,13 +89,31 @@ export function noticeOpenMessage(
   };
 }
 
-export function noticeDraftMessage(n: NoticeView): Message {
+export function noticeDraftMessage(n: NoticeView, team: boolean): Message {
   return {
-    body: `Here's the draft reply to your ${n.kind === "OTHER" ? "notice" : n.kind}. Add your details where it's in [brackets]:\n\n${n.draft}\n\nHave Jane's team send it, or send it yourself?`,
+    body: `Here's the draft reply to your ${n.kind === "OTHER" ? "notice" : n.kind}. Add your details where it's in [brackets]:\n\n${n.draft}\n\n${team ? "Have Jane's team send it, or send it yourself?" : "Send it yourself, before the date on the notice, and keep a copy."}`,
     refs: { taxNotice: n.id },
     actions: [
-      { id: "tax.notice_team", label: "Have Jane's team send it", kind: "primary" },
-      { id: "tax.notice_mine", label: "I'll send it myself", kind: "secondary" },
+      ...(team
+        ? [
+            {
+              id: "tax.notice_team" as const,
+              label: "Have Jane's team send it",
+              kind: "primary" as const,
+            },
+            {
+              id: "tax.notice_mine" as const,
+              label: "I'll send it myself",
+              kind: "secondary" as const,
+            },
+          ]
+        : [
+            {
+              id: "tax.notice_mine" as const,
+              label: "I'll send it myself",
+              kind: "primary" as const,
+            },
+          ]),
       { id: "open", label: "See the notice", kind: "link", href: LETTERS_HREF },
     ],
   };
