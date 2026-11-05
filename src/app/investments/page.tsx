@@ -1,7 +1,7 @@
 import type { Route } from "next";
 import { isHiddenPage } from "@/config/hidden-pages";
 import Link from "next/link";
-import { after, connection } from "next/server";
+import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
 import { AppHeader, PageLoading } from "@/components/app-header";
 import { AreaPage } from "@/components/area-page/area-page";
@@ -17,14 +17,12 @@ import { ViewTracker } from "@/components/view-tracker";
 import { PAGES, itemId } from "@/lib/area-pages/investing";
 import { RETURNS_NOTE } from "@/config/returns";
 import { strategyTreeFor } from "@/lib/investments/strategy-board-load";
-import { loadPaperView, runPaperIfStale, strategyLabel, strategyOf } from "@/lib/paper/account";
+import { loadPaperView, strategyLabel, strategyOf } from "@/lib/paper/account";
 import { PaperAccount } from "@/components/paper-account";
 import { TradingAgent } from "@/components/trading-agent";
 import { AGENT_INTERVAL_IDS, AGENT_MARKET_IDS } from "@/config/trading-agent";
 import { agentChoices, loadAgentView } from "@/lib/trading-agent/agent";
 import { EventsBox } from "@/components/events-box";
-import { refreshEventsIfStale } from "@/lib/events/refresh";
-import { runEventsIfStale } from "@/lib/events/run";
 import { loadEventsView } from "@/lib/events/view";
 import { formatReturn } from "@/insights/returns";
 import { ruleReplaysFor } from "@/lib/investments/rule-replay";
@@ -32,7 +30,6 @@ import { latestStrategies } from "@/lib/investments/strategy-eval";
 import { practiceProfileOf } from "@/lib/practice/preferences";
 import { type HoldingView } from "@/insights/investments";
 import { formatCents } from "@/lib/money";
-import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { READ_ONLY_INVESTMENTS } from "@/config/read-only-beta";
 import { conciergeMode } from "@/lib/concierge-mode";
 import { requireUser } from "@/lib/session";
@@ -217,16 +214,6 @@ async function InvestmentsContent({
   await connection();
   const params = await searchParams;
   const focus = typeof params.focus === "string" ? params.focus : undefined;
-  // Constant search (Phase AW): a cheap practice scan, after the page is sent.
-  after(() => scanOnOpenQuietly(user.id));
-  // The paper account valued at the latest closes, when its last run is stale.
-  after(() => runPaperIfStale(user.id));
-  // The events: read again when the last check is over an hour old (one shared refresh, locked),
-  // then the overlay on top of the paper account, when its run was missed or there's news.
-  after(async () => {
-    const refreshed = await refreshEventsIfStale();
-    await runEventsIfStale(user.id, { news: Boolean(refreshed?.ran && refreshed.report.stored) });
-  });
   const {
     data,
     simulated,
@@ -457,7 +444,8 @@ async function InvestmentsContent({
 
   return (
     <>
-      <AppHeader user={user} />
+      {/* Opening it sets off the practice scan, the paper account and the events. */}
+      <AppHeader user={user} opened={{ page: "investments" }} />
       <ViewTracker event="investments_viewed" />
       {simulated > 0 && <SimulatedBanner />}
       <div className="flex flex-col gap-2">

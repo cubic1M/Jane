@@ -6,6 +6,8 @@ import { db as defaultClient } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { describeError } from "@/lib/error-log";
 import { heartbeat } from "@/lib/heartbeat";
+import { CHAT_TRIAL_MONTH_SHARE } from "@/config/agent-chat";
+import { monthlyCapCents, monthlySpentCents } from "@/lib/jane-agent/claude-limits";
 import { log } from "@/lib/log";
 import { plaidEnvironment } from "@/lib/plaid/client";
 import { bankConnectionsLine, itemSlotUse } from "@/lib/plaid/item-count";
@@ -205,8 +207,47 @@ export async function reportPlaidSlots({
   return true;
 }
 
+// Claude's month is shared, and past it everyone gets answers from their data alone until the 1st.
+// Sample people can take up to the share by themselves (about $1 a day, from anywhere), and
+// nothing else says so, so the team hears at the share and again at the cap, once each a month.
+async function reportClaudeMonth({
+  client = defaultClient,
+  now = new Date(),
+  send = sendEmail,
+}: Options = {}): Promise<boolean> {
+  const spent = await monthlySpentCents({ client, now });
+  const cap = monthlyCapCents();
+  const usedUp = spent >= cap;
+  if (!usedUp && spent < cap * CHAT_TRIAL_MONTH_SHARE) return false;
+  const key = `claude-month:${now.toISOString().slice(0, 7)}:${usedUp ? "cap" : "share"}`;
+  const { count } = await systemDb(WHY, client).healthNotice.createMany({
+    data: [{ key, reportedAt: now }],
+    skipDuplicates: true,
+  });
+  if (count === 0) return false;
+  const line = `Claude has used $${(spent / 100).toFixed(2)} of this month's $${(cap / 100).toFixed(2)}`;
+  const then = usedUp
+    ? "Everyone gets answers from their data alone until the 1st."
+    : "Sample people's and statement tries' answers have stopped, and what's left is for people who signed up.";
+  const raise = "CHAT_MONTHLY_CAP_CENTS raises the limit. The admin page shows the day's spend.";
+  try {
+    const message = {
+      subject: `Claude: ${line}`,
+      text: `${line}. ${then} ${raise}`,
+      html: `<p>${line}. ${then}</p><p>${raise}</p>`,
+    };
+    await Promise.all(teamEmails().map((address) => send({ ...message, to: address })));
+  } catch (error) {
+    await systemDb(WHY, client).healthNotice.deleteMany({ where: { key } });
+    log.error("Claude month email failed", { error: String(error) });
+    return false;
+  }
+  return true;
+}
+
 // Emails the team about each missed daily job, once per outage, about a gap in row-level security
-// ("row-level security" in what it returns) and about Plaid's Trial plan nearly used up.
+// ("row-level security" in what it returns), about Plaid's Trial plan nearly used up and about
+// Claude's month.
 export async function reportMissedJobs({
   client = defaultClient,
   now = new Date(),
@@ -225,6 +266,12 @@ export async function reportMissedJobs({
   } catch (error) {
     // Never stops the job report.
     log.error("Plaid connections check failed", { error: String(error) });
+  }
+  try {
+    if (await reportClaudeMonth({ client, now, send })) reported.push("claude month");
+  } catch (error) {
+    // Never stops the job report.
+    log.error("Claude month check failed", { error: String(error) });
   }
   for (const job of missed) {
     const key = `missed:${job.name}`;

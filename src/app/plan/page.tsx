@@ -7,7 +7,7 @@ import { AppHeader, PageLoading } from "@/components/app-header";
 import { ViewTracker } from "@/components/view-tracker";
 import { scopedDb } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
-import { markPlanShown, planFor, planOnceCents, planTotalCents } from "@/lib/plan";
+import { planFor, planOnceCents, planTotalCents } from "@/lib/plan";
 import { savingsLine } from "@/lib/savings-text";
 import { requireUser } from "@/lib/session";
 import { conciergeMode } from "@/lib/concierge-mode";
@@ -52,10 +52,6 @@ async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["search
   const readOnly = !concierge;
   const year = await loadYearPlan(user.id).catch(() => null);
   const setupMoney = setup.filter((p) => p.kind !== "category").length;
-  await markPlanShown(
-    user.id,
-    items.map((i) => i.card.findingId),
-  );
   const total = planTotalCents(items);
   const onceCents = planOnceCents(items);
   // After "Yes to all".
@@ -88,7 +84,11 @@ async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["search
 
   return (
     <>
-      <AppHeader user={user} />
+      {/* Seeing the plan counts as seeing each card in it. */}
+      <AppHeader
+        user={user}
+        opened={{ page: "plan", findingIds: items.map((i) => i.card.findingId) }}
+      />
       <ViewTracker event="plan_viewed" />
       {approved !== null && (
         <p role="status" className="rounded-xl bg-emerald-50 p-4 dark:bg-emerald-950">

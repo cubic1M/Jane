@@ -35,6 +35,9 @@ function Sparkline({ values }: { values: (number | null)[] }) {
   );
 }
 
+// Never kept in the browser's memory (src/lib/page-cache.ts). Every admin view goes on the access log, which a page kept in memory wouldn't reach.
+export const unstable_dynamicStaleTime = 0;
+
 export default async function FounderNumbersPage() {
   const admin = await requireAdmin();
   const [numbers, connections] = await Promise.all([loadFounderNumbers(), itemSlotUse()]);

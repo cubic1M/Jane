@@ -9,7 +9,7 @@ import { PERSON_ASSETS } from "@/data-sources/demo/demo-people";
 import { merchantOf } from "@/detection/streams";
 import { log } from "@/lib/log";
 import { DEMO_ASSETS } from "@/lib/plaid/demo-assets";
-import { peopleIn, type OnlyPeople } from "@/lib/only-people";
+import { stayingPeople, type OnlyPeople } from "@/lib/only-people";
 import { hasDemoBank } from "@/lib/plaid/demo";
 import { SAMPLE_WIN_KEY } from "@/lib/sample-wins";
 import { systemDb } from "@/lib/system-db";
@@ -329,7 +329,7 @@ export async function removeAllOrphans({
         { userFacts: { some: { source: { in: ["upload", "detector"] } } } },
         { insurancePolicies: { some: { status: "found" } } },
       ],
-      ...peopleIn(userIds),
+      ...stayingPeople(userIds),
     },
     select: { id: true },
     orderBy: { id: "asc" },

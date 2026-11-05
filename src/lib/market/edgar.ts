@@ -1,3 +1,4 @@
+import { OUTSIDE_CALL_TIMEOUT_MS } from "@/config/outside-calls";
 import type { Bar, Filing, Headline, MarketData } from "./types";
 import { MarketDataNotConfigured } from "./types";
 
@@ -45,7 +46,7 @@ export function parseSubmissions(json: Submissions, ticker: string, cik: string)
 
 type Fetcher = (
   url: string,
-  init: { headers: Record<string, string> },
+  init: { headers: Record<string, string>; signal?: AbortSignal },
 ) => Promise<{ json(): Promise<unknown> }>;
 
 export class EdgarMarketData implements MarketData {
@@ -73,6 +74,7 @@ export class EdgarMarketData implements MarketData {
     if (!cik) return [];
     const res = await this.fetcher(submissionsUrl(cik), {
       headers: { "User-Agent": this.userAgent },
+      signal: AbortSignal.timeout(OUTSIDE_CALL_TIMEOUT_MS),
     });
     return parseSubmissions((await res.json()) as Submissions, ticker.toUpperCase(), cik).filter(
       (f) => f.date >= from && f.date <= to,

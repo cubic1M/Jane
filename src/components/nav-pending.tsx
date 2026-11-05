@@ -3,13 +3,15 @@
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { BAR_WAIT_MS, BAR_WAIT_READY_MS, isInMemory } from "@/lib/page-memory";
 import { LoadingBar } from "./loading-bar";
 
 // Every tap on a link answers at once (the founder's "every button is an instant response"):
 // from the tap until the next page is on screen, the ASCII loading bar under the top bar (in
-// the flow, so it covers nothing; founder: "it should always show a loading bar"). Most pages are prefetched and come in a frame later; on a slow
-// network or a page that wasn't, this is what the person sees instead of nothing. It clears
-// when the address changes, and on its own after a while in case the link went nowhere.
+// the flow, so it covers nothing; founder: "it should always show a loading bar"). Only when the
+// page truly isn't ready (founder: "Only show loading bar when it's not done loading"): a page
+// in memory comes up without it, and a quick load doesn't flash it. It clears when the address
+// changes, and on its own after a while in case the link went nowhere.
 
 const GIVE_UP_MS = 15_000;
 
@@ -46,18 +48,27 @@ function tapOf(event: MouseEvent): Tap {
   };
 }
 
+// How long the bar waits before it shows for a tap on this page.
+export const barWaitFor = (ready: boolean) => (ready ? BAR_WAIT_READY_MS : BAR_WAIT_MS);
+
 export function NavPending() {
   const pathname = usePathname();
   const search = useSearchParams().toString();
+  // The tap, and how long its bar waits; then whether the wait is over.
+  const [waiting, setWaiting] = useState<{ ms: number } | null>(null);
   const [pending, setPending] = useState(false);
 
   // The new page is here.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => setPending(false), [pathname, search]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setWaiting(null);
+    setPending(false);
+  }, [pathname, search]);
 
   useEffect(() => {
     const onClick = (event: MouseEvent) => {
-      if (pageLinkTarget(tapOf(event), new URL(window.location.href))) setPending(true);
+      const to = pageLinkTarget(tapOf(event), new URL(window.location.href));
+      if (to) setWaiting({ ms: barWaitFor(isInMemory(to.pathname + to.search)) });
     };
     // Capture: Next's <Link> cancels the click's default before it would bubble up here.
     document.addEventListener("click", onClick, true);
@@ -67,10 +78,17 @@ export function NavPending() {
   }, []);
 
   useEffect(() => {
-    if (!pending) return;
-    const id = window.setTimeout(() => setPending(false), GIVE_UP_MS);
-    return () => window.clearTimeout(id);
-  }, [pending]);
+    if (!waiting) return;
+    const show = window.setTimeout(() => setPending(true), waiting.ms);
+    const giveUp = window.setTimeout(() => {
+      setWaiting(null);
+      setPending(false);
+    }, GIVE_UP_MS);
+    return () => {
+      window.clearTimeout(show);
+      window.clearTimeout(giveUp);
+    };
+  }, [waiting]);
 
   if (!pending) return null;
   // Under the top bar, in the flow (the app header's #page-loading): the ASCII bar, covering

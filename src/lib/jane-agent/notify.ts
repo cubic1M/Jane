@@ -6,9 +6,8 @@ import {
   CHAT_NOTIFY_DAILY_LIMIT,
   CHAT_NOTIFY_KINDS,
   CHAT_NOTIFY_MAX_AGE_HOURS,
-  CHAT_PUSH_BODY_LENGTH,
-  CHAT_PUSH_BUTTONS,
 } from "@/config/chat-notify";
+import { DEMO_ADVICE_LABEL } from "@/config/advice";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit, SYSTEM_ACTOR } from "@/lib/audit";
@@ -27,7 +26,7 @@ import { chatNotifyPrefs, notifiesKind, type ChatNotifyPrefs } from "./notify-pr
 import { isTrialUser } from "@/lib/trial-ids";
 import { inQuietHours } from "./quiet-hours";
 import type { Trigger } from "./sources";
-import { parseActions, parseRefs, type MessageAction } from "./types";
+import { parseRefs } from "./types";
 
 // Jane's chat messages as notifications (spec step 85). When Jane's brain posts, the
 // important messages go out: as a phone notification straight away where push is on, or,
@@ -59,36 +58,28 @@ export type Notifiable = {
 type Channel = "push" | "email" | "both";
 const SENT: Channel[] = ["push", "email", "both"];
 
-// The buttons a notification offers: the message's own, minus links and an Undo whose
-// time is up. Every one is checked again when tapped.
-export function notificationButtons(message: Notifiable, now: Date): MessageAction[] {
-  const { undoUntil } = parseRefs(message.refs);
-  const undoOver = undoUntil !== undefined && new Date(undoUntil) <= now;
-  return parseActions(message.actions).filter(
-    (a) => a.kind !== "link" && !(undoOver && a.id.startsWith("undo.")),
-  );
-}
+// What a notification may say. It shows on a lock screen, so an amount, a clinic's name or a goal's
+// name stays inside the app, as an alert's does (src/lib/alerts.ts). No buttons either: they name
+// things ("Switch to Ally", "Invest $200"), and a Yes under these words wouldn't say to what.
+const LOCK_SCREEN: Readonly<Record<string, string>> = {
+  decision: "Jane has a question for you.",
+  heads_up: "Jane has something to show you.",
+  done: "Jane finished something for you.",
+};
+const LOCK_SCREEN_ANY = "Jane has something for you.";
 
-// The text, cut at a word to fit a notification.
-export function trimBody(body: string, max = CHAT_PUSH_BODY_LENGTH): string {
-  const text = body.replace(/\s+/g, " ").trim();
-  if (text.length <= max) return text;
-  const cut = text.slice(0, max - 1);
-  const space = cut.lastIndexOf(" ");
-  return `${(space > max / 2 ? cut.slice(0, space) : cut).trimEnd()}…`;
-}
+// A message's text in an email. Demo advice is always labelled (CLAUDE.md), there as in the chat.
+export const emailBody = (m: Pick<Notifiable, "body" | "refs">): string =>
+  parseRefs(m.refs).advice ? `${DEMO_ADVICE_LABEL}\n${m.body}` : m.body;
 
-// The push notification: "Jane", the message, its first buttons, opening it in the chat.
-export function chatPushMessage(message: Notifiable, now: Date): PushMessage {
+// The push notification: "Jane", what kind of thing it is, opening it in the chat.
+export function chatPushMessage(message: Notifiable): PushMessage {
   return {
     title: "Jane",
-    body: trimBody(message.body),
+    body: LOCK_SCREEN[message.kind] ?? LOCK_SCREEN_ANY,
     url: `/chat#${message.id}`,
     tag: `jane-${message.id}`,
     messageId: message.id,
-    actions: notificationButtons(message, now)
-      .slice(0, CHAT_PUSH_BUTTONS)
-      .map((a) => ({ action: a.id, title: a.label })),
   };
 }
 
@@ -97,7 +88,7 @@ export function chatPushMessage(message: Notifiable, now: Date): PushMessage {
 export function bundledPushMessage(messages: Notifiable[]): PushMessage {
   return {
     title: "Jane",
-    body: trimBody(`${messages.length} things for you. ${messages[0].body}`),
+    body: `Jane has ${messages.length} things for you.`,
     url: "/chat",
     tag: "jane-bundle",
   };
@@ -266,7 +257,7 @@ export async function deliverChatNotifications(
       for (const m of group.slice(0, room)) if (await claim(m, "push")) claimed.push(m);
       if (claimed.length === 0) continue;
       const message =
-        claimed.length === 1 ? chatPushMessage(claimed[0], now) : bundledPushMessage(claimed);
+        claimed.length === 1 ? chatPushMessage(claimed[0]) : bundledPushMessage(claimed);
       if ((await push(userId, message, { client })) === 0) {
         // No device took it (all gone): give them back for email.
         for (const m of claimed) await unclaim(m);
@@ -319,7 +310,7 @@ export async function deliverChatNotifications(
       // message opens in the chat, where its buttons are.
       messages.push({
         kind: m.kind,
-        body: m.body,
+        body: emailBody(m),
         buttons: [],
         chatUrl: `${appBase()}/chat#${m.id}`,
       });

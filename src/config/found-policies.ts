@@ -15,10 +15,22 @@ export const INSURANCE_CATEGORIES: readonly string[] = ["GENERAL_SERVICES_INSURA
 // payments is named for the insurer, not the statement's "GEICO AUTO PAYMENT").
 // Government programs, not a market: there's nowhere to shop them (debugger 11-04: "Your SGLI
 // insurance could cost less").
-export const GOVERNMENT_COVER = /\b(?:sgli|vgli|fegli|tricare|medicare premium|cms medicare)\b/i;
+export const GOVERNMENT_COVER =
+  /\b(?:sgli|vgli|fegli|tricare|medicare premium|cms medicare|cms med ins)\b/i;
 
 export const INSURER_NAMES: Readonly<Record<string, string>> = {
   sgli: "SGLI",
+  "aarp supplemental": "AARP",
+  "aarp uhc": "AARP",
+  "aarp medicare": "AARP",
+  "aarp health": "AARP",
+  unitedhealthcare: "UnitedHealthcare",
+  unitedhealth: "UnitedHealth",
+  uhc: "UnitedHealthcare",
+  bcbs: "BCBS",
+  "medicare premium": "Medicare",
+  "cms medicare": "Medicare",
+  "cms med ins": "Medicare",
   "cobra admin": "COBRA",
   "cobra premium": "COBRA",
   "cobra payment": "COBRA",
@@ -57,6 +69,11 @@ export const INSURER_KINDS: readonly { words: readonly string[]; kind: PolicyKin
   },
   {
     words: [
+      // Named before the insurer behind them: "AARP SUPPLEMENTAL HEALTH UHC" goes by AARP.
+      "aarp supplemental",
+      "aarp uhc",
+      "aarp medicare",
+      "aarp health",
       "tricare",
       "cobra admin",
       "cobra premium",
@@ -68,6 +85,26 @@ export const INSURER_KINDS: readonly { words: readonly string[]; kind: PolicyKin
       "kaiser",
       "united healthcare",
       "oscar",
+      // Every health plan the bank rules know, so paying one directly isn't "No health insurance
+      // on file" (debugger 11-04: a retiree paying Humana for Part D and AARP for a supplement).
+      "humana",
+      "anthem",
+      "unitedhealthcare",
+      "unitedhealth",
+      "uhc",
+      "bcbs",
+      "blue shield",
+      "blueshield",
+      "covered california",
+      "molina",
+      "ambetter",
+      "health net",
+      "medigap",
+      "medicare supp",
+      "medicare supplement",
+      "medicare premium",
+      "cms medicare",
+      "cms med ins",
     ],
     kind: "health",
   },

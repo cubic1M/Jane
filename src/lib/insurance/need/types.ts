@@ -56,6 +56,9 @@ export type NeedPolicy = {
 
 export type NeedInput = {
   yearlyPayCents: number | null;
+  // False when that income doesn't come from work (a pension, benefits): nothing for disability
+  // cover to replace.
+  payFromWork?: boolean;
   // People who depend on the income.
   dependants: number;
   mortgageCents: number;

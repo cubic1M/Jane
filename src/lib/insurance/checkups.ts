@@ -11,6 +11,7 @@ import { coverageCheckup, type Recommendation } from "./checkup";
 import { loadHousehold } from "./household";
 import { listPolicies } from "./policies";
 import { systemDb } from "@/lib/system-db";
+import { STAYING } from "@/lib/only-people";
 
 // Running the coverage checkup (spec step 106): on its own once a year and after a life
 // event (spec step 100), or when the person asks. Only in demo advice mode (spec step 98):
@@ -162,7 +163,7 @@ export async function checkupAll({
     "Cron: finds who to run for, across people",
     client,
   ).insurancePolicy.findMany({
-    where: { status: "active" },
+    where: { status: "active", userId: STAYING },
     select: { userId: true },
     distinct: ["userId"],
     orderBy: { userId: "asc" },

@@ -1136,6 +1136,24 @@ describe("insurance that names no insurance", () => {
     );
   });
 
+  // Debugger 11-04: $178 a month to a Medicare supplement, uncategorized, and the charge to confirm
+  // before closing the month. AARP's own dues aren't insurance.
+  it.each(["AARP SUPPLEMENTAL HEALTH UHC PREM", "AARP MEDICARE RX", "AARP HEALTH INS"])(
+    "%s is a policy",
+    (description) => {
+      expect(categorizeByRules({ description, amountCents: 17_825, hints: {} })?.detailed).toBe(
+        "GENERAL_SERVICES_INSURANCE",
+      );
+    },
+  );
+
+  it("AARP's membership isn't insurance", () => {
+    expect(
+      categorizeByRules({ description: "AARP MEMBERSHIP", amountCents: 2_000, hints: {} })
+        ?.detailed,
+    ).not.toBe("GENERAL_SERVICES_INSURANCE");
+  });
+
   it("a dentist is still a dentist", () => {
     expect(
       categorizeByRules({ description: "HILLSIDE DENTAL GROUP", amountCents: 18_000, hints: {} })

@@ -1,3 +1,4 @@
+import { POSTHOG_RETRIES, POSTHOG_TIMEOUT_MS } from "@/config/outside-calls";
 import { PostHog } from "posthog-node";
 import { POSTHOG_EVENTS, forPostHog } from "@/lib/analytics-events";
 import { db } from "@/lib/db";
@@ -12,7 +13,13 @@ let posthog: PostHog | null | undefined;
 function getPostHog(): PostHog | null {
   if (posthog === undefined) {
     const key = process.env.POSTHOG_KEY;
-    posthog = key ? new PostHog(key, { host: process.env.POSTHOG_HOST }) : null;
+    posthog = key
+      ? new PostHog(key, {
+          host: process.env.POSTHOG_HOST,
+          requestTimeout: POSTHOG_TIMEOUT_MS,
+          fetchRetryCount: POSTHOG_RETRIES,
+        })
+      : null;
   }
   return posthog;
 }

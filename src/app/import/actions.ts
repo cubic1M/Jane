@@ -75,7 +75,7 @@ export async function previewImport(formData: FormData): Promise<PreviewResult> 
     await uploadFailed(db.userId, files.reason);
     return { ok: false, error: files.error };
   }
-  const refused = await trialUploadRefusal(db, formData, files);
+  const refused = await trialUploadRefusal(db, formData, files, { charge: false });
   if (refused) return { ok: false, error: refused };
 
   const previews = previewCsvFiles(files);

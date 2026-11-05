@@ -1,3 +1,4 @@
+import { OUTSIDE_CALL_TIMEOUT_MS } from "@/config/outside-calls";
 import { CRYPTO_TICKERS } from "@/config/portfolios";
 import type { Bar, Headline, MarketData } from "./types";
 import { MarketDataError, MarketDataNotConfigured, type Filing } from "./types";
@@ -70,7 +71,7 @@ export function parseNews(json: AlpacaNews): Headline[] {
 
 type Fetcher = (
   url: string,
-  init: { headers: Record<string, string> },
+  init: { headers: Record<string, string>; signal?: AbortSignal; redirect?: "error" },
 ) => Promise<{ ok?: boolean; status?: number; json(): Promise<unknown> }>;
 
 // The body of an answer, or an error with Alpaca's reason when it refused (a 403 for a feed the
@@ -102,6 +103,15 @@ export class AlpacaMarketData implements MarketData {
     return { "APCA-API-KEY-ID": this.keys.id, "APCA-API-SECRET-KEY": this.keys.secret };
   }
 
+  // The secret is in the headers, so a redirect isn't followed with it.
+  private request() {
+    return {
+      headers: this.headers(),
+      signal: AbortSignal.timeout(OUTSIDE_CALL_TIMEOUT_MS),
+      redirect: "error" as const,
+    };
+  }
+
   // History comes in pages of up to 10,000 bars; follow the page tokens (a hard stop at 50
   // pages so a bad response can't loop).
   async prices(ticker: string, from: string, to: string): Promise<Bar[]> {
@@ -112,7 +122,7 @@ export class AlpacaMarketData implements MarketData {
       const url = crypto
         ? cryptoBarsUrl(ticker, from, to, token)
         : barsUrl([ticker], from, to, this.feed, token);
-      const res = await this.fetcher(url, { headers: this.headers() });
+      const res = await this.fetcher(url, this.request());
       const json = (await bodyOf(res)) as AlpacaBars;
       out.push(...parseBars(json, crypto ? cryptoPair(ticker) : ticker));
       token = nextPage(json);
@@ -130,7 +140,7 @@ export class AlpacaMarketData implements MarketData {
   }
 
   async news(tickers: readonly string[], from: string, to: string): Promise<Headline[]> {
-    const res = await this.fetcher(newsUrl(tickers, from, to), { headers: this.headers() });
+    const res = await this.fetcher(newsUrl(tickers, from, to), this.request());
     return parseNews((await bodyOf(res)) as AlpacaNews);
   }
 

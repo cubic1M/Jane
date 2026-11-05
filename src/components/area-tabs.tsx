@@ -43,7 +43,8 @@ export function AreaTabs() {
                 href={tab.href}
                 // Every area page reads the person's data when it renders, so prefetching all
                 // six on every page kept the database busy for the page being shown (speed pass,
-                // 2026-10-24). A tap loads it; its shell streams at once.
+                // 2026-10-24). They load one at a time once the page has settled, and only once
+                // (src/lib/page-cache.ts).
                 prefetch={false}
                 aria-current={current ? "page" : undefined}
                 className={`relative inline-flex min-h-11 items-center px-2.5 text-sm whitespace-nowrap ${

@@ -3,7 +3,7 @@ import { staleStatementsEnd } from "@/lib/report-state";
 import Link from "next/link";
 import { ShownLink } from "@/components/shown-link";
 import { redirect } from "next/navigation";
-import { after, connection } from "next/server";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { conciergeMode } from "@/lib/concierge-mode";
 import { AppHeader, PageLoading } from "@/components/app-header";
@@ -24,7 +24,7 @@ import { CASH_FLOW_DAYS } from "@/config/areas";
 import { addDays } from "@/detection/units";
 import { autopilotOf } from "@/lib/autopilot";
 import { openBooks } from "@/lib/books";
-import { firstWeekChecklist, recordChecklistProgress } from "@/lib/checklist";
+import { firstWeekChecklist } from "@/lib/checklist";
 import type { HomeSummary } from "@/lib/home";
 import { loadHubAreas, loadHubTop } from "@/lib/hub/load";
 import { netWorthEvents } from "@/lib/hub/net-worth-events";
@@ -32,7 +32,6 @@ import { Blinded } from "@/components/hub/blinded";
 import { netWorthHistory } from "@/lib/hub/net-worth-history";
 import { NetWorthChart } from "@/components/hub/net-worth-chart";
 import { cashFlowView, heroView, tilesView } from "@/lib/hub/view";
-import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { requireUser } from "@/lib/session";
 import { loadPopupStack } from "@/lib/jane-agent/popup-stack";
 import { loadBankNotices, updatedAgo } from "@/lib/plaid/bank-status";
@@ -215,16 +214,11 @@ async function HubContent({ searchParams }: { searchParams: PageProps<"/home">["
   const oldStatements = staleStatementsEnd(read._max.date, new Date());
   const { home } = top;
   const todayCents = top.hero.netWorth?.todayCents ?? 0;
-  if (checklist?.newlyDone.length) {
-    after(() => recordChecklistProgress(user.id, checklist));
-  }
-  // Constant search (Phase AW): a cheap practice scan, after the page is sent. It ran when the
-  // chat's own page opened; Home is where people land now.
-  after(() => scanOnOpenQuietly(user.id));
 
   return (
     <>
-      <AppHeader user={user} />
+      {/* Opening Home sets off the practice scan and the checklist's progress. */}
+      <AppHeader user={user} opened={{ page: "home" }} />
       <BankStatusNotice notices={banks} />
       <BooksNotice books={books} skipItems={banks.map((b) => b.itemId)} />
       <h1 className="sr-only">Home</h1>

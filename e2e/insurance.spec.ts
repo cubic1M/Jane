@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { isHiddenPage } from "../src/config/hidden-pages";
 import { pickItem } from "./area-tree";
-import { E2E_DATABASE_URL, deleteUser, signedInUser, waitForFullScan } from "./db";
+import { E2E_DATABASE_URL, addFoundPolicy, deleteUser, signedInUser, waitForFullScan } from "./db";
 import { landInChat } from "./chat-page";
 
 // Insurance (spec step 102): a person says they rent, sees the missing renters cover, adds
@@ -60,6 +60,38 @@ test("a renter adds their renters policy and the gap goes", async ({ context, pa
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
   expect(overflow).toBeLessThanOrEqual(0);
+});
+
+// Debugger 11-04: the pane said "No renters insurance on file" and offered to add a second policy,
+// and a link on the page to another of its items changed the address and nothing else.
+test("a policy found in the payments is confirmed from its gap", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await addFoundPolicy(user.userId, "renters", "Lemonade");
+
+  await page.goto("/insurance");
+  await page.getByText("Your household details").click();
+  await page.getByLabel("Your home").selectOption("rent");
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByText("Saved. Jane checks your cover against it.")).toBeVisible();
+
+  const gap = await pickItem(page, "Insurance", "Cover that looks missing", "Renters insurance");
+  await expect(gap.getByText("Lemonade is in your payments.")).toBeVisible();
+  await expect(gap.getByText("No renters insurance on file")).toHaveCount(0);
+  await expect(gap.getByRole("link", { name: "I have this: add it" })).toHaveCount(0);
+
+  await gap.getByRole("link", { name: "Confirm it" }).click();
+  await expect(page.getByRole("heading", { name: "Lemonade renters insurance" })).toBeVisible();
+  await page.getByRole("button", { name: "Save", exact: true }).first().click();
+  await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Renters insurance/ })).toHaveCount(0);
 });
 
 test("a demo-bank person sees the sample policy, like-for-like quotes and Jane's pick (steps 102–104)", async ({

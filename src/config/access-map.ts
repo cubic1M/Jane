@@ -81,6 +81,7 @@ export const ACCESS_MAP: Record<string, Access> = {
   "src/app/api/membership/dismiss/route.ts": "signed-in",
   "src/app/api/membership/reserve/route.ts": "signed-in",
   "src/app/api/net-worth/movements/route.ts": "signed-in",
+  "src/app/api/opened/route.ts": "signed-in",
   "src/app/api/paper/signals/route.ts": "signed-in",
   "src/app/api/plaid/exchange/route.ts": "signed-in",
   "src/app/api/plaid/link-token/route.ts": "signed-in",

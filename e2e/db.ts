@@ -156,6 +156,22 @@ export async function addPayment(
 
 // Posts one of Jane's chat messages as the app stores them (a reply with refs.options, say),
 // for a test that needs one Claude would write: there's no Anthropic key in tests.
+// A policy Jane found in the payments, not confirmed yet.
+export async function addFoundPolicy(userId: string, kind: string, carrier: string): Promise<void> {
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    await client.query(
+      `INSERT INTO insurance_policies
+         (id, user_id, kind, carrier, status, source, premium_cents, premium_frequency, updated_at)
+       VALUES ($1, $2, $3, $4, 'found', 'payments', 1200, 'monthly', now())`,
+      [`e2e-found-${userId}`, userId, kind, carrier],
+    );
+  } finally {
+    await client.end();
+  }
+}
+
 export async function addJaneMessage(
   userId: string,
   message: { kind: string; body: string; refs: object; actions: object[] },

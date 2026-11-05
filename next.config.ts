@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import { hiddenRedirects } from "./src/config/hidden-pages";
+import { PAGE_KEEP_SECONDS } from "./src/config/page-cache";
 import {
   API_CSP,
   CHAT_FRAME_HEADERS,
@@ -29,6 +30,11 @@ const nextConfig: NextConfig = {
     // CSV uploads go through server actions; the 1 MB default is too small for a
     // year of transactions. Matches MAX_FILE_BYTES in src/lib/import/import-csv.ts.
     serverActions: { bodySizeLimit: "5mb" },
+    // Pages stay in the browser's memory, so coming back to one is instant (src/lib/page-cache.ts,
+    // which empties it when data changes or the person does). "dynamic" is a page that has been
+    // open, "static" one that was preloaded. A page that must always be fresh sets
+    // unstable_dynamicStaleTime = 0.
+    staleTimes: { dynamic: PAGE_KEEP_SECONDS, static: PAGE_KEEP_SECONDS },
   },
   // Pages the read-only beta can't use go to their area page (src/config/hidden-pages.ts).
   async redirects() {

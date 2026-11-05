@@ -23,6 +23,7 @@ import { requestQuotes, type StoredQuote } from "./quotes";
 import { isoDay as day } from "@/lib/dates";
 import { log } from "@/lib/log";
 import { systemDb } from "@/lib/system-db";
+import { STAYING } from "@/lib/only-people";
 
 // Shopped for you (spec step 104). Jane reshops each policy on its own, at every autopilot
 // level: RESHOP_DAYS_BEFORE_RENEWAL days before it renews, and whenever its price goes up
@@ -320,7 +321,7 @@ export async function reshopAll({
     "Cron: finds who to run for, across people",
     client,
   ).insurancePolicy.findMany({
-    where: { status: "active" },
+    where: { status: "active", userId: STAYING },
     select: { userId: true },
     distinct: ["userId"],
     orderBy: { userId: "asc" },

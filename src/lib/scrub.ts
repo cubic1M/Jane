@@ -36,10 +36,19 @@ export function scrub(text: string): string {
   return RULES.reduce((out, [pattern, replacement]) => out.replace(pattern, replacement), text);
 }
 
-// A request path without its query string, which can hold tokens or emails.
+// A request path without its query string, which can hold tokens or emails, and without the
+// secret in a link's address: /accountant/<token> opens someone's numbers, and only its hash is
+// stored anywhere else. A long run of one word's characters is a token or an id, and an invite
+// code has its own shape.
 const MAX_PATH = 300;
+const LINK_SECRET = /^(?:[A-Za-z0-9_-]{20,}|[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4})$/;
 
 export function scrubPath(path: string | null | undefined): string | null {
   if (!path) return null;
-  return scrub(path.split("?")[0].slice(0, MAX_PATH));
+  const bare = path
+    .split("?")[0]
+    .split("/")
+    .map((segment) => (LINK_SECRET.test(segment) ? "[secret]" : segment))
+    .join("/");
+  return scrub(bare.slice(0, MAX_PATH));
 }

@@ -90,6 +90,9 @@ async function Chat() {
 // Spend is in fractions of a cent: whole cents shown, rounded up so a little never reads as $0.
 const cents = (n: number) => formatCents(Math.ceil(n));
 
+// Never kept in the browser's memory (src/lib/page-cache.ts). Every admin view goes on the access log, which a page kept in memory wouldn't reach.
+export const unstable_dynamicStaleTime = 0;
+
 export default function AdminChatPage() {
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6">

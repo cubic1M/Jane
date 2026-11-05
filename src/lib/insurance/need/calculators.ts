@@ -104,6 +104,9 @@ export function disabilityNeedFor(input: NeedInput): Need {
   if (!input.yearlyPayCents) {
     return empty("disability", "per_month", "I need your pay to size disability cover.");
   }
+  if (input.payFromWork === false) {
+    return empty("disability", "per_month", "Disability cover replaces pay from work.");
+  }
   const need = Math.round((input.yearlyPayCents * DISABILITY_PAY_SHARE) / 12);
   const have = sum(of(input, "disability").map((p) => num(p.coverage.monthlyBenefit)));
   const lines: NeedLine[] = [

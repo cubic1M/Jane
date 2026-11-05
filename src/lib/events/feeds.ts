@@ -1,3 +1,4 @@
+import { EVENTS_MAX_BODY_CHARS } from "@/config/outside-calls";
 import {
   CPI_HOT_MONTHLY_PCT,
   EVENT_FEEDS,
@@ -175,11 +176,21 @@ async function text(url: string, fetcher: Fetcher): Promise<string | null> {
       headers: { "User-Agent": EVENTS_USER_AGENT },
       signal: AbortSignal.timeout(EVENTS_REQUEST_TIMEOUT_MS),
     });
-    return res.ok ? await res.text() : null;
+    return res.ok ? (await res.text()).slice(0, EVENTS_MAX_BODY_CHARS) : null;
   } catch {
     return null;
   }
 }
+
+// A page a feed links to, only on that feed's own site: what's in the feed isn't ours to trust.
+const onFeedsSite = (url: string, feed: string): boolean => {
+  try {
+    const { protocol, host } = new URL(url);
+    return protocol === "https:" && host === new URL(feed).host;
+  } catch {
+    return false;
+  }
+};
 
 // Every feed's events now. A feed that doesn't answer gives none; the rest go on.
 export async function feedEvents({
@@ -194,7 +205,9 @@ export async function feedEvents({
   const [fed, cpi, eia] = await Promise.all([read("fed"), read("bls_cpi"), read("eia")]);
   return {
     events: [
-      ...(await fedEvents(fed, (url) => text(url, fetcher))),
+      ...(await fedEvents(fed, (url) =>
+        onFeedsSite(url, EVENT_FEEDS.fed) ? text(url, fetcher) : Promise.resolve(null),
+      )),
       ...cpiEvents(cpi),
       ...eiaEvents(eia),
     ],

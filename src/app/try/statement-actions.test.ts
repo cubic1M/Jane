@@ -176,7 +176,8 @@ describe("tryWithStatement", () => {
     expect(await tryWithStatement(null, submitted(many))).toEqual({
       error: expect.stringMatching(/transactions at a time/),
     });
-    expect(hit).toHaveBeenCalledTimes(1);
+    // The hour's and the day's count for this address.
+    expect(hit).toHaveBeenCalledTimes(2);
     expect(startStatementPerson).not.toHaveBeenCalled();
   });
 
@@ -201,6 +202,17 @@ describe("tryWithStatement", () => {
       .mockResolvedValueOnce(OK)
       .mockResolvedValueOnce({ ...OK, ok: false });
     expect(await tryWithStatement(null, submitted(statement()))).toEqual({
+      error: expect.stringMatching(/from here today/),
+    });
+    expect(hit).toHaveBeenLastCalledWith("trialStatementAddressDay", "iphash");
+    expect(startStatementPerson).not.toHaveBeenCalled();
+
+    vi.mocked(hit).mockClear();
+    vi.mocked(hit)
+      .mockResolvedValueOnce(OK)
+      .mockResolvedValueOnce(OK)
+      .mockResolvedValueOnce({ ...OK, ok: false });
+    expect(await tryWithStatement(null, submitted(statement()))).toEqual({
       error: STATEMENT_TRIAL_BUSY,
     });
     expect(hit).toHaveBeenLastCalledWith("trialStatementDay", "all");
@@ -216,8 +228,9 @@ describe("tryWithStatement", () => {
     expect(startStatementPerson).not.toHaveBeenCalled();
     expect(deleteTrialPerson).not.toHaveBeenCalled();
     // Reading files must not be free to repeat.
-    expect(hit).toHaveBeenCalledTimes(1);
+    expect(hit).toHaveBeenCalledTimes(2);
     expect(hit).toHaveBeenCalledWith("trialStatement", "iphash");
+    expect(hit).toHaveBeenCalledWith("trialStatementAddressDay", "iphash");
   });
 
   it("sends a layout it doesn't know to the column picker", async () => {
