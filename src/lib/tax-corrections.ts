@@ -3,6 +3,7 @@ import {
   TAX_CORRECTION_KINDS,
   TAX_CORRECTION_LABEL_MAX,
   TAX_CORRECTION_MAX_CENTS,
+  TAX_CORRECTION_MAX_PER_YEAR,
   type TaxCorrectionKind,
 } from "@/config/tax-set-aside";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -14,6 +15,7 @@ import { log } from "@/lib/log";
 import { scanSuggestions } from "@/lib/suggestions";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
 import { todayOf } from "@/lib/today";
+import { oneLine } from "@/lib/untrusted-text";
 import { defaultTaxYear } from "@/planning/tax-pack";
 
 // What a person points out on their tax calculation: income that isn't, a deduction, a payment, a
@@ -57,6 +59,8 @@ export async function addTaxCorrection(
 ): Promise<void> {
   const db = scopedFor(userId, client);
   const year = defaultTaxYear(await todayOf(userId, { client, now }));
+  if ((await db.taxCorrections.count({ where: { year } })) >= TAX_CORRECTION_MAX_PER_YEAR)
+    throw new TaxCorrectionError("That's as many as Jane can keep for a year. Undo one first.");
   let data: { payerKey: string | null; label: string; cents: number | null; paidTo: string | null };
   if (correction.kind === "not_income") {
     // Only a payer on this person's own calculation, with the name from their own deposits.
@@ -71,7 +75,7 @@ export async function addTaxCorrection(
       throw new TaxCorrectionError("Enter an amount in dollars.");
     data = {
       payerKey: null,
-      label: (correction.label?.trim() || WORDS[kind]).slice(0, TAX_CORRECTION_LABEL_MAX),
+      label: (oneLine(correction.label ?? "") || WORDS[kind]).slice(0, TAX_CORRECTION_LABEL_MAX),
       cents,
       paidTo: correction.kind === "paid" ? correction.paidTo : null,
     };

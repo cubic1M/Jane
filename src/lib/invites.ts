@@ -88,16 +88,20 @@ export async function redeemInvite(
   const address = lower(email);
   const access = await systemDb(WHY, client).betaAccess.findUnique({
     where: { email: address },
-    select: { inviteCode: { select: { code: true } } },
+    select: { inviteCode: { select: { code: true, revokedAt: true, expiresAt: true } } },
   });
   const code = normalizeCode(input);
   // Already on the list: their own code still works, even used up. Asking again starts its days
   // again (runRetention), so the link just sent isn't refused for a place given up meanwhile.
   if (access && code && access.inviteCode?.code === code) {
-    await systemDb(WHY, client).betaAccess.updateMany({
-      where: { email: address },
-      data: { createdAt: now },
-    });
+    // A code taken back or past its date doesn't keep an unclaimed place going: its days run out.
+    const { revokedAt, expiresAt } = access.inviteCode;
+    if (!revokedAt && !(expiresAt && expiresAt <= now)) {
+      await systemDb(WHY, client).betaAccess.updateMany({
+        where: { email: address },
+        data: { createdAt: now },
+      });
+    }
     return "ok";
   }
   // Any other code is checked as for anyone, so a made-up one can't test who is on the list.

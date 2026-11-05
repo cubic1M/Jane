@@ -18,6 +18,9 @@ import {
 import { refreshConnection } from "@/lib/robinhood/refresh";
 import { getCurrentUser } from "@/lib/session";
 
+// A first read can take a person's whole budget (ROBINHOOD_LIMITS), after the exchange.
+export const maxDuration = 120;
+
 // The way back from Robinhood's page. Its path is registered with Robinhood, so it stays. Every answer
 // goes back to /investments with one fixed word; nothing from the address bar is shown or stored.
 export async function GET(request: Request) {
@@ -26,15 +29,25 @@ export async function GET(request: Request) {
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   const origin = callbackOrigin(request);
   if (!origin) return NextResponse.json({ error: "Not set up" }, { status: 503 });
-  // Each answer that doesn't fit writes a security record, so this can't be asked for endlessly.
-  const limited = await limitOrNull("robinhood", user.id);
-  if (limited) return limited;
 
   const back = (word: "connected" | "not_connected" | "paused") => {
     const response = NextResponse.redirect(new URL(`/investments?robinhood=${word}`, origin), 303);
     // The sign-in is used up, whichever way it went.
     response.cookies.set(SIGN_IN_COOKIE, "", { path: ROBINHOOD_CALLBACK_PATH, maxAge: 0 });
     return response;
+  };
+  // Not their sign-in: another site can send them here as often as it likes, so this can't end the
+  // one they have under way, use up what Disconnect needs, or write security records without end.
+  const notTheirs = async () => {
+    if (!(await limitOrNull("robinhoodForgedBack", user.id))) {
+      await logAudit(
+        { type: "user", id: user.id },
+        "robinhood_connect_failed",
+        { type: "user", id: user.id },
+        { user_id: user.id, code: "state" },
+      );
+    }
+    return NextResponse.redirect(new URL("/investments?robinhood=not_connected", origin), 303);
   };
   const failed = async (code: string) => {
     await logAudit(
@@ -55,7 +68,7 @@ export async function GET(request: Request) {
     state: params.get("state"),
   });
   // Not the sign-in this person started: nothing from the address bar is trusted, or used.
-  if (!signIn) return failed("state");
+  if (!signIn) return notTheirs();
   const code = params.get("code");
   if (!code) return failed(params.get("error") === "access_denied" ? "denied" : "no_code");
   if (await whyCantConnect(user.id)) return failed("refused");

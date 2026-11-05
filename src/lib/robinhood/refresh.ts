@@ -59,6 +59,8 @@ type Read = {
   positions: Position[];
   // Null when the orders couldn't be read: the holdings are still good.
   orders: FilledOrder[] | null;
+  // A row was left out, so what isn't in this answer may still be held.
+  partial: boolean;
 };
 
 async function readEverything(reader: RobinhoodReader, now: Date): Promise<Read[]> {
@@ -87,6 +89,7 @@ async function readEverything(reader: RobinhoodReader, now: Date): Promise<Read[
       portfolio,
       positions,
       orders: await readOrders(reader, account, accounts, now),
+      partial: dropped > 0,
     });
   }
   return read;
@@ -194,7 +197,9 @@ async function saveHoldings(db: ScopedDb, accountId: string, read: Read, today: 
       costBasisCents: null,
     });
   }
-  await db.holdings.deleteMany({ where: { accountId, securityId: { notIn: kept } } });
+  if (!read.partial) {
+    await db.holdings.deleteMany({ where: { accountId, securityId: { notIn: kept } } });
+  }
 }
 
 // Filled orders, in Plaid's sign (money out is positive), which is how the tax figures read them.
@@ -357,7 +362,13 @@ export async function refreshConnection(
       if (!(error instanceof RobinhoodSignedOutError)) throw error;
       // The token may only have expired early, so try one new one before calling it gone.
       secrets = await renew(db, row.id, row.clientId, secrets, now);
-      reads = await readWith(secrets.accessToken ?? "");
+      // Renewing worked, so the grant stands: a new token turned away is trouble at Robinhood, which
+      // waits and tries again. Wiping the tokens would make them connect again for an outage.
+      reads = await readWith(secrets.accessToken ?? "").catch((error: unknown) => {
+        throw error instanceof RobinhoodSignedOutError
+          ? new RobinhoodReadError("refused_after_renewal")
+          : error;
+      });
     }
     await saveEverything(db, row.id, secrets.accountKey, reads, now);
     await db.robinhoodConnections.updateMany({

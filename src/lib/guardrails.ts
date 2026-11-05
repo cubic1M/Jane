@@ -417,29 +417,46 @@ export const asksForCredentials = (text: string): boolean =>
 // Saying Jane did or will do something for someone. Nobody acts for a real account, and a person told
 // "I've cancelled it" stops looking. The prompt says so too; what's allowed mustn't depend on that.
 const DONE = "cancel(?:l)?ed|sent|filed|disputed|called|emailed|switched|negotiated|submitted|paid";
+// "I sent you a reminder" can be true. "I paid" is a person's words in a script, far more than Jane's.
+const SAID_DONE = "cancel(?:l)?ed|sent(?! you)|filed|disputed|called|emailed|switched|negotiated";
 const DOING = "cancel(?:l)?ing|sending|filing|disputing|calling|emailing|switching|negotiating";
 // "I'll call it your buffer" names something; nobody's phoned.
 const WILL =
   "cancel|call(?! (?:it|this|that|these)\\b)|email|send|file|dispute|negotiate|switch|remind you";
+const ALREADY = "(?: already| just| gone ahead and)?";
 const ACT_CLAIMS: readonly RegExp[] = [
-  new RegExp(`\\bI(?:['’]ve| have)(?: already| just)? (?:${DONE})\\b`, "i"),
+  new RegExp(`\\b(?:I|we)(?:['’]ve| have)${ALREADY} (?:${DONE})\\b`, "i"),
+  new RegExp(`\\bJane(?: has|['’]s)${ALREADY} (?:${DONE})\\b`, "i"),
+  // Not "I cancelled on May 2 but was still charged": a person's words, in a kit to copy.
+  new RegExp(`\\b(?:I|we)(?: already| just)? (?:${SAID_DONE})\\b(?! on\\b| but\\b)`, "i"),
   new RegExp(`\\b(?:I|we)(?:['’]ll| will)(?: go ahead and)? (?:${WILL})\\b`, "i"),
   // Not "I'm calling on behalf of Sam": that's a script for the company, and Jane isn't its subject.
   new RegExp(`\\b(?:I['’]m|I am|we['’]re|we are) (?:${DOING})\\b(?! on behalf)`, "i"),
-  // Not "Jane's team can't": a refusal is the honest answer.
-  /\b(?:the|our|my|Jane['’]s) team (?:will|has|is|can(?!['’]t|not\b))\b/i,
+  // Not "Jane's team can't": a refusal is the honest answer. Not "the team can often waive it": that
+  // team may be a company's.
+  /\b(?:our|my|Jane['’]s) team (?:will|has|is|can(?!['’]t|not\b))\b|\bthe team (?:will|has)\b/i,
 ];
-// A script or a letter for the person to use is in their voice, not Jane's: in quotes (still open
-// while the answer streams, src/lib/jane-agent/guarded-text.ts), a quoted block, or a "Dear ..." letter.
+// A script or a letter for the person to use is in their voice, not Jane's: in quotes, a quoted
+// block, after "say:", or a "Dear ..." letter up to its sign-off and the name under it. A mark that
+// only looks like a quote (12" subs) opens nothing, and words after a letter are Jane's again.
+const QUOTED = /(^|[\s(:])["“][^"”]*["”]/gm;
+const QUOTE_OPENS = /(?:^|[\s(:])["“]/m;
+const LETTER =
+  /^(?:Dear\b|To whom it may concern)[\s\S]*?^(?:Sincerely|Best regards|Regards|Best|Thanks|Thank you|Yours truly|Respectfully)\b[^\n]*(?:\n[^\n]*)?$/gim;
+const LETTER_OPENS = /^(?:Dear\b|To whom it may concern)/im;
+const SAYS = /\b(?:say|ask|tell them|write)(?: this| something like)?:(?!\s*["“]).*$/gim;
 const withoutTheirWords = (text: string) =>
-  text
-    .replace(/["“][^"”]*(?:["”]|$)/g, " ")
-    .replace(/^>.*$/gm, " ")
-    .replace(/^(?:Dear\b|To whom it may concern)[\s\S]*$/im, " ");
+  text.replace(SAYS, " ").replace(QUOTED, "$1 ").replace(/^>.*$/gm, " ").replace(LETTER, " ");
 export const claimsAnAct = (text: string): boolean => {
   const said = withoutTheirWords(text);
   return ACT_CLAIMS.some((p) => p.test(said));
 };
+// For an answer still being written: its quote or letter may close further on. The finished answer
+// is checked as it stands, so one that never closes doesn't get to keep what it hid.
+export function closingTheirWords(text: string): string {
+  const closed = text.replace(QUOTED, "$1 ").replace(LETTER, " ");
+  return `${text}${QUOTE_OPENS.test(closed) ? '"' : ""}${LETTER_OPENS.test(closed) ? "\n\nThanks,\nName" : ""}`;
+}
 
 type Scan = { issues: GuardrailIssue[]; matched: string[] };
 
@@ -489,7 +506,8 @@ function scan(
     issues.push("credential_request");
     matched.push("credentials");
   }
-  if (!advice && claimsAnAct(unnegated)) {
+  // From the words with their lines still in them, which is how a letter is told apart.
+  if (!advice && claimsAnAct(withoutApprovedSentences(original))) {
     issues.push("claimed_action");
     matched.push("claimed_action");
   }

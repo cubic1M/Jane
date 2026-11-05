@@ -13,6 +13,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { log } from "@/lib/log";
+import { wouldPass } from "@/lib/rate-limit";
 import { isStatementTrialUser, isTrialUser } from "@/lib/trial-ids";
 import { plaidEnvironment } from "./client";
 import { COUNTER_ID, itemSlotUse } from "./item-count";
@@ -74,11 +75,12 @@ export async function linkAvailability(
   if (isStatementTrialUser(userId)) return { open: false, reason: "trial" };
   if (plaidEnvironment() !== "production") return { open: true };
   if (isTrialUser(userId)) return { open: false, reason: "trial" };
-  const [claims, use] = await Promise.all([
+  const [claims, use, tries] = await Promise.all([
     scopedFor(userId, client).plaidItemClaims.count(),
     itemSlotUse({ client }),
+    wouldPass("plaidUnclearExchange", userId, { client }),
   ]);
-  if (claims >= plaidItemsPerPerson()) return { open: false, reason: "person" };
+  if (claims >= plaidItemsPerPerson() || !tries) return { open: false, reason: "person" };
   if (use.used >= (await limitFor(userId, use.limit, client))) {
     return { open: false, reason: "full" };
   }
@@ -95,6 +97,11 @@ export async function reserveItemSlot(
   if (isStatementTrialUser(userId)) throw new LinkingClosedError("trial");
   if (plaidEnvironment() !== "production") return null;
   if (isTrialUser(userId)) throw new LinkingClosedError("trial");
+  // Exchanges with no clear answer may each have taken one of a lifetime's count, so an outage waits
+  // a day here instead of using them all up. Tomorrow they can try again.
+  if (!(await wouldPass("plaidUnclearExchange", userId, { client }))) {
+    throw new LinkingClosedError("person");
+  }
 
   const db = scopedFor(userId, client);
   const claims = await db.plaidItemClaims.findMany({ select: { ordinal: true } });

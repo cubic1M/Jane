@@ -34,6 +34,19 @@ const node = (setAside: TaxesTreeInput["setAside"]) => {
 const FIGURE = { advice: false, holdCents: 410_000, percent: 72 };
 
 describe("the tax left to cover in the tree", () => {
+  it("doesn't call money kept apart paid", () => {
+    const { item, summary } = node({
+      status: "covered",
+      ...FIGURE,
+      holdCents: 0,
+      keptApartCents: 500_000,
+    });
+    expect(item?.status).toBe("look");
+    expect(item?.figure).toBe("Kept apart");
+    expect(summary).toContain("still to pay");
+    expect(summary).not.toContain("withheld and paid covers");
+  });
+
   // Debugger 11-05: "That isn't income" on someone's only income took away the one place to undo it.
   it("stays while there's something pointed out to undo, whatever the income", () => {
     const { item, summary } = node({

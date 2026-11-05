@@ -162,7 +162,7 @@ const TEMPLATES: Record<FindingType, (input: ExplainInput) => Omit<ExplanationCo
     const refund = fact(input.facts, "refundAmount");
     const on = fact(input.facts, "cancelledOn");
     return {
-      explanation: `We cancelled ${merchant}${on ? ` on ${on}` : ""}, but it charged you${refund ? ` ${refund}` : " again"} afterwards. Charges after a cancellation are usually refunded when you show the cancellation.`,
+      explanation: `${merchant} was cancelled${on ? ` on ${on}` : ""}, but it charged you${refund ? ` ${refund}` : " again"} afterwards. Charges after a cancellation are usually refunded when you show the cancellation.`,
       giveUp: "Nothing.",
       alternatives: ["Ask the merchant yourself", "Dispute it with your card company"],
     };

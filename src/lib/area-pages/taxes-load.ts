@@ -122,6 +122,7 @@ export async function loadTaxesArea(userId: string, { now = new Date() }: { now?
       status: setAside.status,
       advice: setAside.advice,
       holdCents: setAside.holdCents,
+      keptApartCents: setAside.keptApartCents,
       percent: setAside.confidence.percent,
       corrections: setAside.estimateView.corrections.length,
     },

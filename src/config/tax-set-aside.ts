@@ -56,3 +56,5 @@ export const ONE_PER_YEAR: readonly TaxCorrectionKind[] = [
 
 export const TAX_CORRECTION_MAX_CENTS = 1_000_000_000;
 export const TAX_CORRECTION_LABEL_MAX = 80;
+// A person points out a few things a year. Each is read every time the estimate is worked out.
+export const TAX_CORRECTION_MAX_PER_YEAR = 200;

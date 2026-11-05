@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { READ_ONLY_TAXES, READ_ONLY_TAX_CALENDAR } from "@/config/read-only-beta";
-import { checkGuardrails, claimsAnAct } from "./guardrails";
+import { checkGuardrails, claimsAnAct, closingTheirWords } from "./guardrails";
 import { GuardedText } from "./jane-agent/guarded-text";
 import { healthYearLines } from "./jane-agent/insurance/health-year";
 import { changesSource } from "./jane-agent/sources/changes";
@@ -98,6 +98,17 @@ describe("what Claude may say it did", () => {
     "I'm calling them now.",
     "We're disputing it for you.",
     "I said it's done. I've cancelled it.",
+    "We've cancelled it.",
+    "I cancelled your gym.",
+    "We cancelled Netflix for you.",
+    "I've gone ahead and cancelled it.",
+    "Jane has cancelled it.",
+    "Jane's filed the dispute.",
+    "Dear Comcast,\n\nI am disputing this.\n\nI'll send this to Comcast once you say yes.",
+    "Dear Comcast,\n\nPlease fix this.\n\nThanks,\nSam\n\nI'll send this to Comcast once you say yes.",
+    "BEST 12\" SUBS is cheap. I've cancelled it.",
+    'You said "keep it" so I\'ve cancelled it.',
+    "Keep it, \"I've cancelled the other one.",
   ])("stops %s", (text) => {
     expect(claimsAnAct(text)).toBe(true);
     expect(checkGuardrails(text, [])).toEqual({ ok: false, issues: ["claimed_action"] });
@@ -115,7 +126,12 @@ describe("what Claude may say it did", () => {
     'You could say: "I have paid this already, and I\'ve sent proof."',
     "Hi, I'm calling on behalf of Sam, the account holder.",
     "> I am disputing this charge. I have paid it already.",
-    "Here's a letter to send:\n\nDear GEICO,\n\nI am disputing this charge. I have paid it.",
+    "Here's a letter:\n\nDear GEICO,\n\nI am disputing this charge. I have paid it.\n\nThanks,\nSam",
+    "The team can often waive it.",
+    "Say this: I'm calling to cancel my plan.",
+    "I sent you a reminder on Monday.",
+    "I cancelled on May 2 but was still charged.",
+    "When you paid it, did they confirm?",
   ])("lets through %s", (text) => {
     expect(claimsAnAct(text)).toBe(false);
   });
@@ -130,6 +146,38 @@ describe("what Claude may say it did", () => {
     for (const word of answer.split(/(?<= )/)) guarded.push(word);
     guarded.finish();
     expect(shown).toBe(answer);
+  });
+
+  it("shows a letter as it streams, up to its sign-off and past it", () => {
+    const letter = "Dear GEICO,\n\nI am disputing this charge. I have paid it.\n\nThanks,\nSam\n";
+    let shown = "";
+    const guarded = new GuardedText(
+      () => [],
+      (text) => (shown += text),
+    );
+    for (const word of letter.split(/(?<= )/)) guarded.push(word);
+    guarded.finish();
+    expect(shown).toBe(letter);
+  });
+
+  it("stops what comes after a letter as it streams", () => {
+    let shown = "";
+    const guarded = new GuardedText(
+      () => [],
+      (text) => (shown += text),
+    );
+    const answer =
+      "Dear GEICO,\n\nPlease fix this.\n\nThanks,\nSam\n\nI've cancelled the policy too.\n";
+    for (const word of answer.split(/(?<= )/)) guarded.push(word);
+    guarded.finish();
+    expect(shown).not.toContain("cancelled");
+  });
+
+  it("a finished answer gets nothing from a quote or letter that never closed", () => {
+    expect(claimsAnAct('Tell them "I have paid this.')).toBe(true);
+    expect(claimsAnAct("Dear GEICO,\n\nI am disputing this.")).toBe(true);
+    expect(closingTheirWords('Tell them "I have paid this.')).toMatch(/"$/);
+    expect(closingTheirWords("All good here.")).toBe("All good here.");
   });
 
   it("still stops a claim after a script has ended", () => {
