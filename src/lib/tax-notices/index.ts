@@ -11,6 +11,7 @@ import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { anthropic, llmModel } from "@/lib/anthropic";
 import { logAudit } from "@/lib/audit";
+import { conciergeMode } from "@/lib/concierge-mode";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { addDeadline } from "@/lib/deadlines";
@@ -355,7 +356,9 @@ export async function chooseResponse(
 }
 
 // The person's tap: the team sends it, or they will. Nothing here pays or sends anything
-// outside Jane; the team's queue and the person's own copy are what this records.
+// outside Jane; the team's queue and the person's own copy are what this records. There's no team
+// for a real account (src/lib/concierge-mode.ts), and "Jane's team has it" stops the reminders, so
+// saying yes would leave a real deadline with nobody on it.
 export async function sendResponse(
   userId: string,
   id: string,
@@ -365,6 +368,11 @@ export async function sendResponse(
   const notice = await getTaxNotice(userId, id, { client });
   if (!notice?.draft || !notice.response) throw new NoticeError("Choose a response first.");
   if (notice.handledBy) throw new NoticeError("This one's already been sent.");
+  if (by === "team" && !(await conciergeMode(userId, { client }))) {
+    throw new NoticeError(
+      "Jane's team can't send letters yet. Please send this one yourself, before the date on the notice.",
+    );
+  }
   await scopedFor(userId, client).taxNotices.updateMany({
     where: { id, handledBy: null },
     data: { handledBy: by, handledAt: now },

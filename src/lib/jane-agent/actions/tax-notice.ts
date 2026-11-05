@@ -55,7 +55,7 @@ const respond = (
     await chooseResponse(userId, idOf(context), response, { client, now }).catch(failed);
     return {
       answeredWith: action.label,
-      note: "Here's a draft. It's on the Letters page; nothing is sent until you choose who sends it.",
+      note: "Here's a draft. It's on the Letters page; nothing is sent unless you send it or ask for it to be.",
     };
   },
 });

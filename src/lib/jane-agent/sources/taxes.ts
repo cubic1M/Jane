@@ -678,7 +678,7 @@ export const taxesSource: MessageSource = {
         if (n.draft) {
           out.push({
             kind: "decision",
-            ...noticeDraftMessage(n),
+            ...noticeDraftMessage(n, snapshot.concierge !== false),
             dedupeKey: `notice-draft:${n.id}:${n.response}`,
             priority: TAX_MESSAGE_PRIORITY.notice,
           });
