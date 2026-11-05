@@ -174,7 +174,9 @@ def main(argv=None):
         rules_kw.update(PRESETS[a.preset])
     if a.players:
         rules_kw["num_players"] = a.players
-        rules_kw["payouts"] = tuple(rules_kw.get("payouts", PAYOUT_SETS[a.payouts]))[:a.players]
+        pay = tuple(rules_kw.get("payouts", PAYOUT_SETS[a.payouts]))
+        # more players than paid places (e.g. 9-handed): the extra places pay 0, like last place
+        rules_kw["payouts"] = (pay + (0,) * a.players)[:a.players]
     field = field_weights(a.field)
     t0 = time.time()
     out = run(cands, field, rules_kw, a.tables, a.seed0, a.workers)

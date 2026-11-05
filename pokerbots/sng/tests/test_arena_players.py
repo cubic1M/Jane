@@ -22,6 +22,17 @@ class TestArenaPlayers(unittest.TestCase):
         self.assertIn("paired difference", out)
         self.assertIn("8 tables", out)       # 2 candidates x 4 tables
 
+    def test_more_players_than_paid_places(self):
+        """--players 9 with an 8-place point table: the 9th place pays 0 instead of failing validation."""
+        buf = io.StringIO()
+        raw = Path(tempfile.mkdtemp()) / "raw.json"
+        with contextlib.redirect_stdout(buf):
+            arena.main(["--players", "9", "--candidates", "icm_tag,nit", "--tables", "2", "--workers", "1",
+                        "--field", "custom:random=1,station=1", "--no-enforce", "--out", str(raw)])
+        for r in json.loads(raw.read_text()):
+            self.assertEqual(len(r["lineup"]), 9)
+        self.assertIn("paired difference", buf.getvalue())
+
 
     def test_top3_counts_cap_survivors_by_chip_rank(self):
         """P(top 3): a survivor at the hand cap counts only if at most 2 stacks are bigger."""
