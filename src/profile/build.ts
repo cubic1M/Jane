@@ -1,3 +1,4 @@
+import { HSA_DEPOSIT } from "@/config/health-taxes";
 import { FIT_CARD_PAYMENT_SHARE } from "@/config/fit";
 import { TROUBLE_MONEY_LEFT_DAYS } from "@/config/debt-trouble";
 import { moneyLeftOver, troubleReason } from "@/planning/debt-trouble";
@@ -730,7 +731,14 @@ export function buildProfile(input: ProfileInput): Profile {
     "retirement accounts",
     accounts.filter((a) => a.subtype === "401k").length,
   );
-  set("has_hsa", has("hsa"), "seen", "HSAs", accounts.filter((a) => a.subtype === "hsa").length);
+  // An HSA isn't always linked: money going into one by name says there is one (debugger 11-05:
+  // "You have an HSA: no, 81% sure" beside $300 a month to HealthEquity).
+  const hsaDeposits = txs.filter((t) => t.amountCents > 0 && HSA_DEPOSIT.test(t.description));
+  if (has("hsa") || hsaDeposits.length === 0) {
+    set("has_hsa", has("hsa"), "seen", "HSAs", accounts.filter((a) => a.subtype === "hsa").length);
+  } else {
+    set("has_hsa", true, "seen", "HSA deposits", hsaDeposits.length);
+  }
   // Spec step 270: the county, as the property tax payee names it ("HARRIS COUNTY TAX ...").
   const county = countyFromPayments(txs);
   if (county)
