@@ -35,6 +35,29 @@ describe("findRefunds", () => {
   });
 });
 
+// Debugger 11-04: a retiree's page said "Your federal tax refund of $1,842.00 landed on Oct 3", once
+// for each of 12 Social Security payments. TREAS 310 says the Treasury paid, not what for.
+describe("a Treasury payment that isn't a refund", () => {
+  it.each([
+    ["SSA TREAS 310 XXSOC SEC", "INCOME_RETIREMENT_PENSION"],
+    ["SSI TREAS 310 XXSUPP SEC", "INCOME_LONG_TERM_DISABILITY"],
+    ["VA TREAS 310 VA BENEF", "INCOME_LONG_TERM_DISABILITY"],
+    ["FEMA IHP TREAS 310 DISASTER ASSIST", null],
+    ["TREAS 310 MISC PAY", null],
+  ])("%s isn't one", (description, pfcDetailed) => {
+    expect(findRefunds([dep({ description, pfcDetailed })])).toEqual([]);
+  });
+
+  it.each(["IRS TREAS 310 TAX REF", "TREAS 310 TAX REF", "US TREASURY 310 TAX REF"])(
+    "%s still is, from the IRS",
+    (description) => {
+      expect(findRefunds([dep({ description, pfcDetailed: null })])).toMatchObject([
+        { to: "federal" },
+      ]);
+    },
+  );
+});
+
 describe("matchRefund", () => {
   it("matches within $50 or 5%", () => {
     expect(matchRefund(320_000, 310_000)).toEqual({
