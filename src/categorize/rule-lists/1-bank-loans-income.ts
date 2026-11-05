@@ -392,6 +392,12 @@ export const BANK_LOANS_INCOME: readonly Rule[] = [
     ],
     direction: "in",
   },
+  // Taken out of a 401(k): taxed as income, on a 1099-R. A rollover has words of its own.
+  {
+    category: "INCOME_RETIREMENT_PENSION",
+    pattern: /\b401\(?K\)?\s+(?:DIST|DISTRIB|DISTRIBUTION|WITHDRAWAL|PAYOUT)\b/,
+    direction: "in",
+  },
   { category: "INCOME_DIVIDENDS", keywords: ["DIVIDEND"], direction: "in" },
   {
     category: "INCOME_RENTAL",

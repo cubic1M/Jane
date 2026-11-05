@@ -318,6 +318,8 @@ describe("who sends each form, as pages say it", () => {
 
   it("is named without the bank's word for how the money came", () => {
     expect(formPayer("Blue Bottle Coffee Payroll")).toBe("Blue Bottle Coffee");
+    expect(formPayer("Fidelity Investments 401k Distrib")).toBe("Fidelity Investments");
+    expect(formPayer("Ca Edd Ui Benefits")).toBe("Ca Edd");
     expect(formPayer("Stripe Transfer")).toBe("Stripe");
     expect(formPayer("Etsy Inc Deposit")).toBe("Etsy Inc");
     expect(formPayer("Deposit")).toBe("Deposit");

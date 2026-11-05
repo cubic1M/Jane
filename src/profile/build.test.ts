@@ -451,6 +451,21 @@ describe("income after a paycheck stops", () => {
     });
   });
 
+  it("doesn't read one 401(k) withdrawal as a pension, or as what comes in each month", () => {
+    const withdrawal = {
+      date: "2026-09-15",
+      cents: -1_200_000,
+      pfc: "INCOME_RETIREMENT_PENSION",
+      description: "FIDELITY INVESTMENTS 401K DISTRIB",
+    };
+    const without = buildProfile(person([...job("2026-02-06", "2026-08-07"), ...shopping]));
+    const { facts } = buildProfile(
+      person([...job("2026-02-06", "2026-08-07"), withdrawal, ...shopping]),
+    );
+    expect(facts.income_pattern.value).not.toBe("pension");
+    expect(facts.monthly_income.value).toBe(without.facts.monthly_income.value);
+  });
+
   it("isn't salaried once the only job has stopped", () => {
     const { facts } = buildProfile(
       person([...job("2026-02-06", "2026-08-07"), severance, ...benefits, ...shopping]),

@@ -52,7 +52,7 @@ export const INCOME_KINDS = {
     categories: ["INCOME_DIVIDENDS", "INCOME_INTEREST_EARNED"],
   },
   retirement: {
-    label: "A pension or retirement payouts",
+    label: "Pension or retirement payouts",
     seen: "pension or retirement payouts",
     form: "1099-R",
     categories: ["INCOME_RETIREMENT_PENSION"],

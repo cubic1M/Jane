@@ -322,6 +322,14 @@ describe("takeHomePay", () => {
     }
   });
 
+  it("doesn't run on pay from a job that has stopped", () => {
+    const old = { amountCents: -500_000, description: "OLD JOB PAYROLL" };
+    expect(takeHomePay([pay, old], 0.5, (d) => d.startsWith("OLD JOB"))).toEqual({
+      soFarCents: 1_000_000,
+      projectedCents: 1_500_000,
+    });
+  });
+
   it("doesn't pace a year that's over or hasn't begun", () => {
     expect(takeHomePay([pay], 1).projectedCents).toBe(500_000);
     expect(takeHomePay([pay], 0).projectedCents).toBe(500_000);
