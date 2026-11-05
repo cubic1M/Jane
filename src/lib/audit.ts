@@ -245,6 +245,9 @@ export type AuditEvent =
   // Devices and sessions (spec step 73): one other session, or all the others, signed out.
   | "session_signed_out"
   | "other_sessions_signed_out"
+  // A private calendar link: anyone holding it can read merchants, amounts and dates.
+  | "calendar_link_created"
+  | "calendar_link_stopped"
   // One of Jane's chat messages went out as a notification (spec step 85): the channel
   // and the kind of message, never its text.
   | "chat_notification_sent"

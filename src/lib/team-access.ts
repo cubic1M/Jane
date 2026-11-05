@@ -246,6 +246,8 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   donor_fund_opened: own,
   session_signed_out: own,
   other_sessions_signed_out: own,
+  calendar_link_created: own,
+  calendar_link_stopped: own,
   // Jane's chat messages as notifications (spec step 85).
   chat_notification_sent: automatic,
   investor_profile_saved: own,

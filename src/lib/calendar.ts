@@ -5,6 +5,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { sameThing } from "@/insights/coming-up";
 import type { Deadline } from "@/insights/deadlines";
 import { loadComingUp } from "@/lib/coming-up";
+import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
@@ -38,13 +39,25 @@ export async function createCalendarToken(
     where: { id: userId },
     data: { calendarTokenHash: sha256Hex(token), calendarCreatedAt: now },
   });
+  await logAudit({ type: "user", id: userId }, "calendar_link_created", {
+    type: "user",
+    id: userId,
+  });
   return token;
 }
 
 export async function turnOffCalendar(userId: string, { client = defaultClient }: Options = {}) {
-  await systemDb("A person's own row: jane_rls only reads users", client).user.update({
-    where: { id: userId },
+  const { count } = await systemDb(
+    "A person's own row: jane_rls only reads users",
+    client,
+  ).user.updateMany({
+    where: { id: userId, calendarTokenHash: { not: null } },
     data: { calendarTokenHash: null, calendarCreatedAt: null },
+  });
+  if (count === 0) return;
+  await logAudit({ type: "user", id: userId }, "calendar_link_stopped", {
+    type: "user",
+    id: userId,
   });
 }
 

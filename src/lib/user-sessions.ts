@@ -142,11 +142,10 @@ export async function signOutOtherSessions(
   const { count } = await scopedFor(userId, client).sessions.deleteMany({
     where: { userId, sessionToken: { not: token }, expires: { gt: now } },
   });
-  if (count > 0) {
-    await forgetDevices(userId, client);
-    // A copied calendar link works without any session, so it goes too.
-    await turnOffCalendar(userId, { client });
-  }
+  if (count > 0) await forgetDevices(userId, client);
+  // A copied calendar link works without any session, so it goes too, even if the session that
+  // copied it is already gone.
+  await turnOffCalendar(userId, { client });
   await logAudit(
     { type: "user", id: userId },
     "other_sessions_signed_out",

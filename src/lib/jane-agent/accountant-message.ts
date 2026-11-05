@@ -37,7 +37,8 @@ export function answersMessage(v: AccountantPageView): Message | null {
   if (fresh.length === 0) return null;
   const first = fresh[0];
   return {
-    body: `Your accountant wrote back${fresh.length > 1 ? ` (${fresh.length} notes)` : ""}. ${first.fromName} said: "${first.body.length > 240 ? `${first.body.slice(0, 240)}…` : first.body}"${first.questionText ? ` (about: ${first.questionText})` : ""}`,
+    // Whoever holds the link typed that name: what they wrote, not who they are.
+    body: `A note came in on your accountant link${fresh.length > 1 ? ` (${fresh.length} notes)` : ""}. Signed ${first.fromName}: "${first.body.length > 240 ? `${first.body.slice(0, 240)}…` : first.body}"${first.questionText ? ` (about: ${first.questionText})` : ""}`,
     refs: { taxYear: v.year },
     actions: [
       { id: "tax.accountant_seen", label: "Got it", kind: "primary" },
@@ -62,7 +63,7 @@ export function accountantReply(v: AccountantPageView): Message {
   }
   lines.push(
     v.activeCount > 0
-      ? `You have ${v.activeCount} live ${v.activeCount === 1 ? "link" : "links"} for an accountant.`
+      ? `You have ${v.activeCount} live ${v.activeCount === 1 ? "link" : "links"} for an accountant. You can stop ${v.activeCount === 1 ? "it" : "them"} in Settings.`
       : "You haven't made a link for an accountant yet.",
   );
   if (v.questions.length > 0) {

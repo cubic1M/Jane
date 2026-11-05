@@ -1,5 +1,6 @@
 "use server";
 
+import { revokeAllAccountantLinks } from "@/lib/accountant";
 import { mayRescan } from "@/lib/trial-rescans";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
@@ -78,6 +79,17 @@ export async function stopCalendar(): Promise<CalendarState> {
   await turnOffCalendar(user.id);
   revalidatePath("/settings");
   return { ok: true, message: "Calendar link turned off." };
+}
+
+export async function stopAccountantLinks(): Promise<CalendarState> {
+  const user = await requireUser();
+  const stopped = await revokeAllAccountantLinks(user.id);
+  revalidatePath("/settings");
+  return {
+    ok: true,
+    message:
+      stopped === 1 ? "That link no longer works." : `Those ${stopped} links no longer work.`,
+  };
 }
 
 // Which alerts the person gets, and how. Unknown values fall back to the defaults.
