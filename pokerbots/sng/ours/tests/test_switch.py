@@ -185,5 +185,16 @@ class TestSwitch(unittest.TestCase):
         res = play_table([make(n) for n in line], SngRules(enforce_time=False), seed=8)
         self.assertEqual(res.stats[0].errors + res.stats[0].illegal, 0)
 
+    def test_f9_min_left_skips_icm_early(self):
+        """f9_min_left=N: the field-9 strong bot uses chip values (no ICM) while more than N players are alive,
+        exact ICM once N or fewer remain."""
+        b = make("icm_switch:start=b;f9_min_left=6")
+        b.new_table(SngRules(enforce_time=False), 0, 1)
+        self.assertFalse(b.b.icm.ready)                               # 8 alive
+        post = ((1, 0, "post", 10), (2, 0, "post", 20), (3, 0, "fold", 0))
+        b.end_hand(dict(history=post, stacks=(4000, 3000, 3000, 3000, 3000, 0, 0, 0)))
+        self.assertTrue(b.b.icm.ready)                                # 5 alive
+        self.assertGreater(b.b.icm.bf(0, 1), 1.0)
+
 if __name__ == "__main__":
     unittest.main()
