@@ -1,3 +1,4 @@
+import { conciergeMode } from "@/lib/concierge-mode";
 import { RentingError, setRentReporting } from "@/lib/renting";
 import { ChatActionError, type ActionHandler } from "./handler";
 
@@ -8,6 +9,10 @@ export const rentReportOn: ActionHandler = {
   id: "rent.report_on",
   on: "open",
   async run({ userId, action, client, now }) {
+    // Nothing reports rent yet: only sample data may hear that it's being reported.
+    if (!(await conciergeMode(userId, { client }))) {
+      throw new ChatActionError("failed", "Rent reporting isn't available yet.");
+    }
     try {
       await setRentReporting(userId, true, { client, now });
     } catch (error) {

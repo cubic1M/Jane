@@ -6,7 +6,7 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { partnerFor, type InsurancePartner } from "./partner";
+import { actingPartnerFor, partnerFor, type InsurancePartner } from "./partner";
 import { listPolicies, type Policy } from "./policies";
 import { findSavings, type SavingCandidate, type SavingPolicy } from "./saving-rules";
 
@@ -136,7 +136,7 @@ export async function applySaving(
     select: SELECT,
   });
   if (!row) throw new SavingError("That one's already been answered.");
-  const applying = partner === undefined ? await partnerFor(userId, { client }) : partner;
+  const applying = partner === undefined ? await actingPartnerFor(userId, { client }) : partner;
   if (!applying) throw new SavingError("Changing a policy isn't available right now.");
 
   // The figures as they are today, not as they were when offered.

@@ -1,3 +1,4 @@
+import { onlyDemoBank } from "@/lib/advice-mode";
 import { createHash, randomUUID } from "node:crypto";
 import {
   DEFAULT_LONG_TERM_RATE,
@@ -337,7 +338,10 @@ export async function linkDemoStockPlan(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ) {
-  const itemId = await addDemoExtra(userId, "stock_plan", { client });
+  // Only the demo bank: sample shares beside a real account would count in real totals.
+  const itemId = (await onlyDemoBank(userId, client))
+    ? await addDemoExtra(userId, "stock_plan", { client })
+    : null;
   if (!itemId) throw new CompanyStockError("A demo stock plan needs the demo bank.");
   await syncDemoInvestments(itemId, { client, now });
   const db = scopedFor(userId, client);

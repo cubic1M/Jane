@@ -13,6 +13,7 @@ import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadInvestments } from "@/lib/investments/holdings";
+import { onlyDemoBank } from "@/lib/advice-mode";
 import { demoAnchorFor } from "@/lib/plaid/demo";
 import {
   DEMO_CRYPTO_PARTNER,
@@ -122,7 +123,8 @@ export async function linkDemoCrypto(
   kind: CryptoConnectionKind,
   { client = defaultClient, now = new Date() }: Options = {},
 ) {
-  if (!(await demoAnchorFor(userId, { client })))
+  // Only the demo bank: sample coins beside a real account would count in real net worth.
+  if (!(await demoAnchorFor(userId, { client })) || !(await onlyDemoBank(userId, client)))
     throw new CryptoError("A demo crypto connection needs the demo bank.");
   const db = scopedFor(userId, client);
   const name = kind === "exchange" ? DEMO_EXCHANGE_NAME : DEMO_WALLET_NAME;
@@ -203,7 +205,7 @@ export async function loadCrypto(
   const traded = exchanges.reduce((s, c) => s + c.tradedCents, 0);
   return {
     advice,
-    demo: anchor !== null,
+    demo: anchor !== null && (await onlyDemoBank(userId, client)),
     connections: connections.map((c) => {
       const own = holdings.filter((h) => h.connectionId === c.id);
       return {
