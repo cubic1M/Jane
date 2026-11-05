@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ACTING_TOOLS, FakeRobinhood } from "@/test-setup/fake-robinhood";
+import { ACTING_TOOLS, FakeRobinhood } from "./__fixtures__/fake-robinhood";
 import {
   openReader,
   READ_TOOLS,
@@ -168,9 +168,9 @@ describe("no other code calls it", () => {
 
   it("only the client module says tools/call", () => {
     const callers = app.filter((f) => readFileSync(f, "utf8").includes('"tools/call"'));
-    expect(callers.filter((f) => !f.endsWith("src/test-setup/fake-robinhood.ts"))).toEqual([
-      "src/lib/robinhood/mcp-client.ts",
-    ]);
+    expect(
+      callers.filter((f) => !f.endsWith("src/lib/robinhood/__fixtures__/fake-robinhood.ts")),
+    ).toEqual(["src/lib/robinhood/mcp-client.ts"]);
   });
 
   it("only the client module opens a reader, and only the refresh asks it", () => {
@@ -181,9 +181,14 @@ describe("no other code calls it", () => {
     ]);
   });
 
+  it("the fake server is for tests: no app code imports it", () => {
+    const importers = app.filter((f) => /from "[^"]*fake-robinhood"/.test(readFileSync(f, "utf8")));
+    expect(importers).toEqual([]);
+  });
+
   it("no acting tool's name appears in the app's code", () => {
     const named = app
-      .filter((f) => !f.endsWith("src/test-setup/fake-robinhood.ts"))
+      .filter((f) => !f.endsWith("src/lib/robinhood/__fixtures__/fake-robinhood.ts"))
       .filter((f) => ACTING_TOOLS.some((tool) => readFileSync(f, "utf8").includes(`"${tool}"`)));
     expect(named).toEqual([]);
   });

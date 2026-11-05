@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ACCOUNT_NUMBER_MARKER } from "@/test-setup/fake-robinhood";
+import { ACCOUNT_NUMBER_MARKER } from "./__fixtures__/fake-robinhood";
 import {
   AccountHandle,
   parseAccounts,

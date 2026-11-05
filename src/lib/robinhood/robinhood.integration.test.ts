@@ -1,7 +1,7 @@
 import { TERMS_VERSION } from "@/config/legal";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PlaidApi } from "plaid";
-import { ACCOUNT_NUMBER_MARKER, FakeRobinhood } from "@/test-setup/fake-robinhood";
+import { ACCOUNT_NUMBER_MARKER, FakeRobinhood } from "./__fixtures__/fake-robinhood";
 
 // The Robinhood connection end to end through its real routes, against a real database and a fake
 // server. Nothing here talks to Robinhood.

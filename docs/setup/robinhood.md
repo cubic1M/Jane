@@ -64,7 +64,7 @@ Then the founder's test, below, passes.
 
 ## The founder's test
 
-Nothing has ever talked to a real Robinhood account: every test uses `src/test-setup/fake-robinhood.ts`.
+Nothing has ever talked to a real Robinhood account: every test uses `src/lib/robinhood/__fixtures__/fake-robinhood.ts`.
 So the first real connection is the test of everything the fake assumes. It needs Robinhood's yes first.
 
 On a scratch database, with the founder's own account, and `ROBINHOOD_LINK=1` only on that local server:

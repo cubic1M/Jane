@@ -1,7 +1,10 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { expect, test } from "@playwright/test";
 import { Client } from "pg";
-import { ACCOUNT_NUMBER_MARKER, FakeRobinhood } from "../src/test-setup/fake-robinhood";
+import {
+  ACCOUNT_NUMBER_MARKER,
+  FakeRobinhood,
+} from "../src/lib/robinhood/__fixtures__/fake-robinhood";
 import { E2E_AUTH_SECRET, E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 
 // Connect and disconnect through a real browser, against a fake Robinhood. The switch is off for the

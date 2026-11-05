@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { encrypt } from "@/lib/crypto";
-import { FakeRobinhood } from "@/test-setup/fake-robinhood";
+import { FakeRobinhood } from "./__fixtures__/fake-robinhood";
 import {
   callbackOrigin,
   exchangeCode,
