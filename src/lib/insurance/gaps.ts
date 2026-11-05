@@ -29,6 +29,8 @@ export type Gap = {
   title: string;
   // Why it matters, in plain words: what's at stake, never what to buy.
   why: string;
+  // A policy seen in the payments that would close it, once the person confirms it.
+  found?: { policyId: string; carrier: string };
 };
 
 const has = (policies: Policy[], ...kinds: PolicyKind[]) =>
@@ -117,7 +119,12 @@ export function coverageGaps(
     ...business,
     ...risk.filter((g) => !(g.key === "home_business" && businessSaid.has("business_liability"))),
   );
-  return gaps.filter((g) => !household.dismissedGaps.includes(g.key));
+  return gaps
+    .filter((g) => !household.dismissedGaps.includes(g.key))
+    .map((g) => {
+      const found = policies.find((p) => p.status === "found" && p.kind === g.key);
+      return found ? { ...g, found: { policyId: found.id, carrier: found.carrier } } : g;
+    });
 }
 
 // "car insurance", "renters insurance".
