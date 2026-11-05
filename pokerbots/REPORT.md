@@ -1215,6 +1215,14 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   significantly better there). No significant loss in any unseen-opponent cell (9 cells). One 62 ms decision for the
   strong-room option in the bounty cell (`icm_tag` 18.5 ms on the same run): a host spike under 3 processes; rerun on
   one worker (200 tables, same field and rules) its slowest is 3.5 ms (`icm_tag` 3.1 ms), >1 ms 6 vs 5.
+* **All-55-bot room and the short-deck default (Nov 5 evening).** Every seat drawn from the room guess (24 bots) plus the
+  31 unseen bots (`results/sng_allbots_check.md`, seeds 661000+, 600 paired tables): vs `icm_tag`, `icm_switch` / strong-
+  room option hold'em +1.1 / **+4.3***, kit-4 six-plus **+2.7*** / **+8.8***; strong-room option vs `icm_switch` directly:
+  hold'em +0.1 ± 3.4, six-plus **+5.3 ± 3.6***. Its hold'em weak spots (field 5 −8, field 10 −4) checked on short deck
+  (`results/sng_sd_strong_check.md`, seeds 671000+, 400 paired tables vs `icm_switch`): field 5 kit-4 +0.3, field 10
+  −2.7, field 3 −1.0, field 5 rehearsal six-plus −2.0 (all n.s.), Plan B field **+7.7*** (rehearsal) / **+8.1***
+  (kit-4), room guess kit-4 **+5.0***. **Short deck: start with the strong-room option** (mean +2.6 over 8 setups, no
+  significant loss); hold'em stays `icm_switch` (+0.1 in the widest room, −8 on tight fields). DAY_CARD updated.
 * **Bug hunter:** 2.64M random tables (all variants, 2–8 players; 2–10 from Nov 5 10:20, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
