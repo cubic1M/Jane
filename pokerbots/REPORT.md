@@ -1225,8 +1225,9 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   significant loss); hold'em stays `icm_switch` (+0.1 in the widest room, −8 on tight fields). DAY_CARD updated.
   Confirmed on fresh seeds and for decision-only interfaces (`results/sng_sd_strong_fast.md`, seeds 681000+, 400 paired
   tables, kit-4 six-plus, vs `icm_switch`; exact / `f9_min_left=6`): Plan B field **+9.8*** / **+26.3***, room guess
-  **+7.2*** / **+7.6***, field 10 +1.5 / −1.3, field 5 −0.8 / −1.1. The decision-only version keeps the edge (why it is so
-  much better vs Plan B's copies is not investigated), so on short deck use it in kit-4-style interfaces.
+  **+7.2*** / **+7.6***, field 10 +1.5 / −1.3, field 5 −0.8 / −1.1. The decision-only version keeps the edge (vs Plan B's copies
+  it is a real strategy gap, not timing: +17.0 ± 5.3* over the exact version with the time limit off, 200 tables; it wins
+  35% of tables vs 13%: chip-value play early builds a stack against seven cautious copies, exact ICM from hand 1 does not), so on short deck use it in kit-4-style interfaces.
 * **Bug hunter:** 2.64M random tables (all variants, 2–8 players; 2–10 from Nov 5 10:20, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
