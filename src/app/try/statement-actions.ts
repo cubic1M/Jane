@@ -9,6 +9,7 @@ import {
   STATEMENT_TRIAL_MAX_FILE_BYTES,
   STATEMENT_TRIAL_MAX_ROWS,
   STATEMENT_TRIAL_TOO_MANY,
+  STATEMENT_TRIAL_TOO_MANY_TODAY,
   statementTooBig,
   statementTooManyRows,
 } from "@/config/statement-trial";
@@ -40,6 +41,7 @@ import type { TryState } from "./actions";
 const UNREADABLE = "Jane couldn't read this file just now. Try again, or try another file.";
 const IP_LIMIT = "trialStatement";
 const DAY_LIMIT = "trialStatementDay";
+const ADDRESS_DAY_LIMIT = "trialStatementAddressDay";
 // An error's kind only: its message could quote a row of someone's statement.
 const errorName = (error: unknown) => (error instanceof Error ? error.name : "unknown");
 
@@ -66,6 +68,7 @@ export async function tryWithStatement(_previous: TryState, formData: FormData):
   const h = await headers();
   const ip = ipKey(h);
   if (!(await hit(IP_LIMIT, ip)).ok) return { error: STATEMENT_TRIAL_TOO_MANY };
+  if (!(await hit(ADDRESS_DAY_LIMIT, ip)).ok) return { error: STATEMENT_TRIAL_TOO_MANY_TODAY };
 
   // Read here, in memory, before anyone is made. A start that gets this far has been counted,
   // whatever the file turns out to be: a refund would make reading files free to repeat.
