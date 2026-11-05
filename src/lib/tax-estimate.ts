@@ -318,7 +318,8 @@ async function loadTaxEstimateFrom(
       lastPayFrom.set(key, { date: t.date, label: formPayer(t.merchantName ?? t.description) });
     }
   }
-  const stillPaidSince = addDays(dataEnds, -EARNER_ACTIVE_DAYS);
+  // Nothing in the data, nothing stopped (and no date to count back from).
+  const stillPaidSince = dataEnds ? addDays(dataEnds, -EARNER_ACTIVE_DAYS) : "";
   const stoppedPay = new Map([...lastPayFrom].filter(([, last]) => last.date <= stillPaidSince));
   const { soFarCents: takeHome, projectedCents: takeHomeProjected } = takeHomePay(
     [...paychecks, ...bonuses],

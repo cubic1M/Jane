@@ -23,6 +23,15 @@ describe.runIf(url)("the tax estimate after a job ends", () => {
     await client.$disconnect();
   });
 
+  it("still works for someone with nothing in their accounts yet", async () => {
+    const user = await client.user.create({
+      data: { email: `tax-job-loss-${crypto.randomUUID()}@example.com` },
+    });
+    created.push(user.id);
+    const view = await loadTaxEstimate(user.id, { client, now: NOW });
+    expect(view?.input.income.wagesCents ?? 0).toBe(0);
+  });
+
   it("stops the pay where it stopped, and counts a 401(k) withdrawal once", async () => {
     const user = await client.user.create({
       data: { email: `tax-job-loss-${crypto.randomUUID()}@example.com` },
