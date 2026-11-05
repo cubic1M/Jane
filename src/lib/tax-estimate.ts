@@ -1,6 +1,6 @@
 import { dependantsWords } from "@/planning/tax-profile";
 import { DETECTOR_RATES } from "@/config/detectors";
-import { ONE_OFF_PAY } from "@/config/profile";
+import { EARNER_ACTIVE_DAYS, ONE_OFF_PAY, RETIREMENT_LUMP_SUM } from "@/config/profile";
 import {
   IRA_DISTRIBUTION,
   RETIREMENT_DEPOSIT_WORDS,
@@ -56,13 +56,14 @@ import {
   type TaxFixes,
 } from "@/planning/tax-corrections";
 import { dayLabel } from "@/lib/day-label";
+import { formPayer } from "@/planning/tax-documents";
 import {
   guessFilingStatus,
   payingTogether,
   stateName,
   type ProfileField,
 } from "@/planning/tax-profile";
-import { DAY_MS, isoDay as iso } from "@/lib/dates";
+import { addDays, DAY_MS, isoDay as iso } from "@/lib/dates";
 
 // The tax estimate (spec step 120), loaded from the person's own accounts, pay stubs and
 // tax profile: what they'll owe or get back for the year, federal and state. Worked out
@@ -308,10 +309,30 @@ async function loadTaxEstimateFrom(
   const bonuses = rows.filter(
     (t) => t.amountCents < 0 && t.pfcDetailed === "INCOME_OTHER" && ONE_OFF_PAY.test(t.description),
   );
+  // Regular pay that has stopped, by where the data ends: an old statement isn't a lost job.
+  const dataEnds = rows.reduce((latest, t) => (t.date > latest ? t.date : latest), "");
+  const lastPayFrom = new Map<string, { date: string; label: string }>();
+  for (const t of paychecks) {
+    const key = payerKeyOf(t.description);
+    if ((lastPayFrom.get(key)?.date ?? "") < t.date) {
+      lastPayFrom.set(key, { date: t.date, label: formPayer(t.merchantName ?? t.description) });
+    }
+  }
+  // Nothing in the data, nothing stopped (and no date to count back from).
+  const stillPaidSince = dataEnds ? addDays(dataEnds, -EARNER_ACTIVE_DAYS) : "";
+  const stoppedPay = new Map([...lastPayFrom].filter(([, last]) => last.date <= stillPaidSince));
   const { soFarCents: takeHome, projectedCents: takeHomeProjected } = takeHomePay(
     [...paychecks, ...bonuses],
     elapsed,
+    (description) => stoppedPay.has(payerKeyOf(description)),
   );
+  if (pay.source === "none" && elapsed < 1) {
+    for (const { date, label } of stoppedPay.values()) {
+      assumptions.push(
+        `I don't see pay from ${label} since ${dayLabel(date)}, so I haven't carried it on to the end of the year.`,
+      );
+    }
+  }
   const withholdingKnown = pay.source !== "none" || takeHome === 0 || fixes.withheldCents !== null;
   if (!withholdingKnown) {
     assumptions.push(
@@ -392,6 +413,22 @@ async function loadTaxEstimateFrom(
     shortTermGainsCents: gains.shortTerm + equity.shortTermGainsCents,
     longTermGainsCents: gains.longTerm + equity.longTermGainsCents,
   };
+  // Money taken out of a 401(k) happens once: it doesn't run on to the year's end.
+  const lumpSums = rows
+    .filter(
+      (t) =>
+        t.amountCents < 0 &&
+        Number(t.date.slice(0, 4)) === year &&
+        (INCOME_KINDS.retirement.categories as readonly string[]).includes(t.pfcDetailed ?? "") &&
+        RETIREMENT_LUMP_SUM.test(t.description),
+    )
+    .reduce((s, t) => s - t.amountCents, 0);
+  if (lumpSums > 0) {
+    paced.retirementCents -= paceOf(lumpSums) - lumpSums;
+    assumptions.push(
+      `The ${formatCents(lumpSums)} you took out of your 401(k) is taxed as income. Any tax already held back from it isn't counted, and before age 59½ there's usually a 10% penalty too, which isn't counted either.`,
+    );
+  }
   // Spec step 173: a rental's net (rent less tagged expenses less depreciation, with the
   // passive loss allowance), and a hobby's income without its expenses.
   const sideStored = stored;

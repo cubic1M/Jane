@@ -73,7 +73,7 @@ export const TUITION_CATEGORY = "GENERAL_SERVICES_EDUCATION";
 // (debugger 11-02: "1099-NEC or 1099-K from Stripe Transfer", "W-2 from Blue Bottle Coffee
 // Payroll"). For display only: forms are matched to documents and checks by `from` as it is.
 const HOW_IT_CAME =
-  / (?:payroll|payouts?|transfers?|deposits?|direct dep(?:osit)?|dir dep|driver pay|(?:student )?wages)$/i;
+  / (?:payroll|payouts?|transfers?|deposits?|direct dep(?:osit)?|dir dep|driver pay|(?:student )?wages|ui benefits|401\(?k\)? (?:dist(?:rib(?:ution)?)?|withdrawal|payout))$/i;
 export const formPayer = (name: string) => name.replace(HOW_IT_CAME, "").trim() || name;
 
 const PAYER_FORMS: readonly [IncomeKind, TaxFormKey][] = [

@@ -271,12 +271,17 @@ export function otherIncomeSoFar(
 // Take-home pay standing in for wages when there's no pay stub. Regular pay runs at its pace for the
 // year; pay that comes once (a bonus, severance) counts once (debugger 11-03: half a year's statements
 // with a $12,000 bonus read as $24,000 of it).
+// Pay from a job that's stopped counts once too (debugger 11-05: paychecks that ended in June ran on
+// to December).
 export function takeHomePay(
   paychecks: readonly { amountCents: number; description: string }[],
   elapsed: number,
+  stopped: (description: string) => boolean = () => false,
 ): { soFarCents: number; projectedCents: number } {
   const sum = (list: typeof paychecks) => list.reduce((s, t) => s - t.amountCents, 0);
-  const once = sum(paychecks.filter((t) => ONE_OFF_PAY.test(t.description)));
+  const once = sum(
+    paychecks.filter((t) => ONE_OFF_PAY.test(t.description) || stopped(t.description)),
+  );
   const soFarCents = sum(paychecks);
   const projectedCents =
     elapsed > 0 && elapsed < 1 ? Math.round((soFarCents - once) / elapsed) + once : soFarCents;

@@ -39,6 +39,8 @@ export const PENSION_PATTERN =
 export const EARNER_ACTIVE_DAYS = 45;
 // Paid once and not coming back: not part of what comes in each month.
 export const ONE_OFF_PAY = /\b(?:SEVERANCE|BONUS)\b/i;
+// Money taken out of a 401(k): income once, not a pension (debugger 11-05).
+export const RETIREMENT_LUMP_SUM = /\b401\(?K\)?\b/i;
 
 // Debt trouble (loans QA: it rests on the debts, not on fees): card debt of this many months of
 // income, debt payments at step 229's share of income (src/config/debt-trouble.ts), or payday

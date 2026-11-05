@@ -11,6 +11,7 @@ import {
   PENSION_PATTERN,
   PROFILE_MONTHS,
   ONE_OFF_PAY,
+  RETIREMENT_LUMP_SUM,
   PAYROLL_SERVICES,
   SALARY_DEPOSITS_MIN,
   STARTING_MAX_INCOME_CENTS,
@@ -458,7 +459,9 @@ export function buildProfile(input: ProfileInput): Profile {
   // --- Income -----------------------------------------------------------------------
   const income = txs.filter((t) => t.amountCents < 0 && t.pfc?.startsWith("INCOME_"));
   const pension = income.filter(
-    (t) => t.pfc === "INCOME_RETIREMENT_PENSION" || PENSION_PATTERN.test(t.description),
+    (t) =>
+      (t.pfc === "INCOME_RETIREMENT_PENSION" || PENSION_PATTERN.test(t.description)) &&
+      !RETIREMENT_LUMP_SUM.test(t.description),
   );
   // Military pay is a salary from one employer; retired pay isn't (PENSION_PATTERN reads that).
   const salary = income.filter(
@@ -534,7 +537,8 @@ export function buildProfile(input: ProfileInput): Profile {
   const regularIncome = income.filter(
     (t) =>
       !(t.pfc === "INCOME_TAX_REFUND" || t.pfc === "INCOME_INTEREST_EARNED") &&
-      !ONE_OFF_PAY.test(t.description),
+      !ONE_OFF_PAY.test(t.description) &&
+      !RETIREMENT_LUMP_SUM.test(t.description),
   );
   const incomeTotal = regularIncome.reduce((s, t) => s - t.amountCents, 0);
   // Once a paycheck has stopped, a year's average says what used to come in (debugger 11-02: $5,818
