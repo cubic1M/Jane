@@ -1,3 +1,4 @@
+import { categorizeByRules } from "@/categorize/rules";
 import { describe, expect, it } from "vitest";
 import {
   AS_OF,
@@ -47,6 +48,47 @@ describe("COBRA", () => {
       expect(insurerName(key)).toBe("COBRA");
     },
   );
+});
+
+// Debugger 11-04: a retiree paying Humana for Part D and AARP for a supplement was told "No health
+// insurance on file". The bank rules knew these as insurance, the policy list didn't know them as health.
+describe("a health plan paid directly", () => {
+  it.each([
+    ["humana part d premium", "Humana"],
+    ["aarp supplemental health uhc prem", "AARP"],
+    ["aarp uhc", "AARP"],
+    ["anthem", "Anthem"],
+    ["unitedhealthcare", "UnitedHealthcare"],
+    ["uhc supplement", "UnitedHealthcare"],
+    ["bcbs of il", "BCBS"],
+    ["blue shield of ca", "Blue Shield"],
+    ["covered california", "Covered California"],
+    ["ambetter", "Ambetter"],
+    ["molina healthcare", "Molina"],
+    ["medicare premium", "Medicare"],
+    ["cms med ins", "Medicare"],
+  ])("%s is health cover from %s", (key, name) => {
+    expect(insurerKind(key)).toBe("health");
+    expect(insurerName(key)).toBe(name);
+  });
+
+  it("a dental plan from a health insurer stays apart from health cover", () => {
+    expect(insurerKind("humana dental")).toBe("other");
+  });
+
+  it("every name the bank rules read as a health plan is one here too", () => {
+    for (const [description, key] of [
+      ["HUMANA INS PREM", "humana"],
+      ["ANTHEM BLUE CROSS", "anthem blue cross"],
+      ["BLUESHIELD OF CA", "blueshield of ca"],
+      ["HEALTH NET PREMIUM", "health net"],
+    ]) {
+      expect(categorizeByRules({ description, amountCents: 30_000, hints: {} })?.detailed).toBe(
+        "GENERAL_SERVICES_INSURANCE",
+      );
+      expect(insurerKind(key)).toBe("health");
+    }
+  });
 });
 
 describe("policiesFromStreams", () => {

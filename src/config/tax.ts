@@ -318,10 +318,10 @@ export const OPEN_ENROLLMENT_BY = "11-30";
 // Spec step 125: tax refunds. A deposit is a refund when Plaid says so or its description
 // reads like one; federal when it's from the Treasury. A refund matches the estimate when
 // it's within matchCents or matchShare of it. Debt worth paying from a refund: rates from
-// debtAprBps up. Refunds Jane brings up: from the last recentDays.
+// debtAprBps up. Refunds Jane brings up: from the last recentDays. "TREAS 310" alone isn't a refund:
+// Social Security, SSI, VA and FEMA are paid through it too.
 export const REFUND = {
-  payee:
-    /\b(?:TAX REF(?:UND)?|TREAS 310|IRS TREAS|FRANCHISE TAX BD|DEPT OF REVENUE|STATE TAX REFUND)\b/i,
+  payee: /\b(?:TAX REF(?:UND)?|IRS TREAS|FRANCHISE TAX BD|DEPT OF REVENUE|STATE TAX REFUND)\b/i,
   federalPayee: /\b(?:IRS|TREAS 310|US TREASURY)\b/i,
   matchCents: 5_000,
   matchShare: 0.05,

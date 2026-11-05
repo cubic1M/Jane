@@ -59,6 +59,9 @@ export function needInputFromProfile(profile: Profile, data: ProfileInput): Need
   const payoff = data.liabilities.find((l) => l.kind === "mortgage")?.payoffDate ?? null;
   return {
     yearlyPayCents: pay !== null ? pay * 12 : null,
+    payFromWork: ["salary", "uneven", "business"].includes(
+      String(profile.facts.income_pattern.value),
+    ),
     // The profile knows whether there are children, not how many: at least one depends on them.
     dependants: profile.facts.has_children.value === true ? 1 : 0,
     mortgageCents: mortgage,
