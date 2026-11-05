@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { CARD, CHECKING, input, tx } from "../__fixtures__/build";
+import { AS_OF, CARD, CHECKING, input, tx } from "../__fixtures__/build";
+import { addDays } from "../units";
 import { cardInterest } from "./card-interest";
 
 const interest = (amountCents: number, date: string, accountId = CARD.id) =>
@@ -16,7 +17,7 @@ describe("card_interest", () => {
   it("totals interest on credit accounts over the last 12 months", () => {
     // A card with a year of history.
     const transactions = [
-      tx({ accountId: CARD.id, date: "2025-11-02", amountCents: 1200, description: "TARGET" }),
+      tx({ accountId: CARD.id, date: "2025-10-02", amountCents: 1200, description: "TARGET" }),
       interest(2310, "2026-08-25"),
       interest(2655, "2026-09-25"),
     ];
@@ -30,6 +31,16 @@ describe("card_interest", () => {
       annualSavingsCents: 4965,
       confidence: "high",
     });
+  });
+
+  // Seven months of statements read "$545.77 in interest on USAA Card in the last 12 months".
+  it("says the months the history covers, past the short-history line too", () => {
+    const transactions = [];
+    for (let back = 210; back >= 0; back -= 30) {
+      transactions.push(interest(5_000, addDays(AS_OF, -back)));
+    }
+    const [finding] = cardInterest(input({ transactions }), []);
+    expect(finding.title).toMatch(/ in the last 7 months$/);
   });
 
   // Overnight upload QA: 3 months of statements said "$66.77 … in the last 12 months" and

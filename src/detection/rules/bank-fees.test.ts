@@ -20,7 +20,7 @@ describe("bank_fees", () => {
       fee("BANK_FEES_OTHER_BANK_FEES", 1200, "2026-09-30"),
       fee("BANK_FEES_LATE_FEES", 4000, "2026-08-20", CARD.id),
       // A year of history on the card.
-      tx({ accountId: CARD.id, date: "2025-11-02", amountCents: 2_000, description: "TARGET" }),
+      tx({ accountId: CARD.id, date: "2025-10-02", amountCents: 2_000, description: "TARGET" }),
     ];
 
     const findings = bankFees(input({ transactions }), []);
