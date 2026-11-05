@@ -77,6 +77,18 @@ export const RENT_TRANSFERS_EVERYDAY: readonly Rule[] = [
     ],
     direction: "out",
   },
+  // What a payment app's line says it's for, before it reads as a transfer (debugger 11-05: alimony by
+  // Zelle, asked about as rent, and $14,400 a year missing from spending; therapy by Venmo).
+  {
+    category: "GENERAL_SERVICES_CONSULTING_AND_LEGAL",
+    keywords: ["ALIMONY", "SPOUSAL SUPPORT", "LAW OFFICES", "LAW OFFICE", "ATTORNEY AT LAW"],
+    direction: "out",
+  },
+  {
+    category: "MEDICAL_PRIMARY_CARE",
+    pattern: /(?<!MASSAGE )(?<![A-Z0-9])(?:THERAPY|COUNSELING)(?![A-Z0-9])/,
+    direction: "out",
+  },
   // Rent, even when it goes by Zelle or Venmo (overnight upload QA: "ZELLE TO OAK RIDGE APTS
   // RENT" was a transfer, so a student's biggest bill was missing from spending and bills).
   // Renting a car or clothes is not rent, so those go first.
