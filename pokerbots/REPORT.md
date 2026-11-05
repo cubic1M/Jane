@@ -1177,6 +1177,10 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   `f9_min_left` when set); 8-player tables are unchanged (test). After the fix, max 6-8 ms, and the >1 ms share (~4%,
   decision-only, loaded host) is the same exact-ICM-at-8-alive cost as on 8-player tables. `icm_switch:b=f7` still has
   p99 10 ms at 10 players (decision-only): not for >8-player tables (`results/tools/decision_timing_players.py`).
+  Bug hunter run 44 (2-10 players) flags ~50 slow tables per 10 minutes, all 9-10-handed, all four of our bots alike
+  (Omaha too): replayed, the outliers sit near 8 ms in any code path (not GC: 1 of 47 had a collection inside). Same
+  load, interleaved: our bots p99 0.23 ms (8 players) vs 0.36 ms (10), >1 ms 0.03% vs 0.17%. The flags are the bug
+  hunter's 0.5 ms p99 bar on ~150 decisions on an oversubscribed host, not a code path of ours.
 * **Bug hunter:** 2.55M random tables (all variants, 2–8 players; 2–10 from Nov 5 10:20, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
