@@ -1,9 +1,7 @@
-import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { REFUND } from "@/config/tax";
 import type { PrismaClient } from "@/generated/prisma/client";
-import { loadInsightTransactions } from "@/insights/load";
+import { loadTypicalMonthlySpending } from "@/insights/load";
 import { fundProfile, fundTarget } from "@/lib/emergency-fund";
-import { typicalMonthlySpending } from "@/insights/typical-month";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
@@ -43,8 +41,8 @@ const EMERGENCY_GOAL = "Emergency fund";
 async function planInputs(userId: string, client: PrismaClient, now: Date) {
   const db = scopedFor(userId, client);
   const asOf = iso(now);
-  const [transactions, savings, cards, goals] = await Promise.all([
-    loadInsightTransactions(db, asOf, BUDGET_SUGGESTION_MONTHS + 1),
+  const [monthly, savings, cards, goals] = await Promise.all([
+    loadTypicalMonthlySpending(db, asOf, now),
     db.accounts.findMany({
       where: { type: "depository", subtype: { in: ["savings", "money market", "cd"] } },
       select: { currentBalanceCents: true },
@@ -55,7 +53,6 @@ async function planInputs(userId: string, client: PrismaClient, now: Date) {
     }),
     listGoals(userId, { client, now }),
   ]);
-  const monthly = typicalMonthlySpending(transactions, asOf, BUDGET_SUGGESTION_MONTHS);
   // Their own emergency fund goal, else the fund sized for them, as on the cash page.
   const goal = goals.find((g) => /emergency/i.test(g.name));
   return {

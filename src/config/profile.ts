@@ -2,6 +2,9 @@
 // Thresholds and the confidence recipe live here, never inline.
 
 export const PROFILE_MONTHS = 12;
+// How far back the profile reads, and so a typical month's history (src/insights/load.ts).
+export const profileHistoryStart = (now: Date) =>
+  new Date(now.getTime() - (PROFILE_MONTHS * 31 + 2) * 86_400_000);
 
 // How sure Jane is of a fact (spec step 254's founder ask: a percentage worked out from the
 // evidence, never made up). Told facts are the person's own word: sure. Seen and guessed

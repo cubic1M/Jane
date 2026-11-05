@@ -1,5 +1,4 @@
 import { createHash, randomUUID } from "node:crypto";
-import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import {
   CASH_MOVE_DAYS,
   CURRENT_CASH_RATE_BPS,
@@ -8,10 +7,9 @@ import {
 } from "@/config/cash";
 import { FUND_NAMES } from "@/config/funds";
 import type { PrismaClient } from "@/generated/prisma/client";
-import { loadInsightTransactions } from "@/insights/load";
+import { loadTypicalMonthlySpending } from "@/insights/load";
 import { fundProfile, fundTarget } from "@/lib/emergency-fund";
 import { fundBasis } from "@/planning/emergency-fund";
-import { typicalMonthlySpending } from "@/insights/typical-month";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
@@ -54,7 +52,7 @@ export async function loadCash(
 ): Promise<CashView> {
   const db = scopedFor(userId, client);
   const asOf = now.toISOString().slice(0, 10);
-  const [advice, accounts, investments, transactions, goals, moved] = await Promise.all([
+  const [advice, accounts, investments, monthlySpendingCents, goals, moved] = await Promise.all([
     adviceMode(userId, { client }),
     db.accounts.findMany({
       where: { type: "depository", subtype: { in: ["checking", "savings"] } },
@@ -62,7 +60,7 @@ export async function loadCash(
       orderBy: { name: "asc" },
     }),
     loaded ?? loadInvestments(userId, { client, now }),
-    loadInsightTransactions(db, asOf, BUDGET_SUGGESTION_MONTHS + 1),
+    loadTypicalMonthlySpending(db, asOf, now),
     db.savingsGoals.findMany({ select: { name: true, targetCents: true } }),
     // Cash Jane moved lately: the demo bank's balances don't show stand-in transfers.
     db.moneyTransfers.findMany({
@@ -106,7 +104,6 @@ export async function loadCash(
       });
     }
   }
-  const monthlySpendingCents = typicalMonthlySpending(transactions, asOf, BUDGET_SUGGESTION_MONTHS);
   // Their own emergency fund goal, else the fund sized for them, as the drafted goal is.
   const goal = goals.find((g) => /emergency/i.test(g.name));
   const fund = goal

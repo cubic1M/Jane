@@ -1124,6 +1124,47 @@ describe("a sale through PayPal", () => {
 
 // Debugger 11-04: a person's policies. A yearly umbrella policy had no category, and Delta Dental's fixed
 // monthly premium read as dental treatment, so neither was on the list of their insurance.
+// Debugger 11-04: a landlord's second mortgage was uncategorized, and their landlord cover read as rent.
+describe("a landlord", () => {
+  it.each([
+    "PENNYMAC LOAN SVC 412 OAK ST",
+    "MR COOPER PAYMENT",
+    "NATIONSTAR MTG",
+    "NEWREZ SHELLPOINT PMT",
+    "LOANDEPOT.COM PAYMENT",
+    "LOANCARE SERVICING",
+    "CENLAR FSB LOAN PMT",
+    "ROUNDPOINT LOAN",
+    "DOVENMUEHLE MORTGAGE",
+    "SELECT PORTFOLIO SVCING",
+  ])("%s is a mortgage", (description) => {
+    expect(categorizeByRules({ description, amountCents: 114_000, hints: {} })?.detailed).toBe(
+      "LOAN_PAYMENTS_MORTGAGE_PAYMENT",
+    );
+  });
+
+  // It was income of no kind, so the tax page's rental left it out, and Jane didn't ask about it.
+  it.each(["ZELLE FROM JORDAN TENANT RENT 412 OAK", "VENMO FROM TENANT", "TENANT PAYMENT UNIT B"])(
+    "%s is rent collected",
+    (description) => {
+      expect(categorizeByRules({ description, amountCents: -145_000, hints: {} })?.detailed).toBe(
+        "INCOME_RENTAL",
+      );
+    },
+  );
+
+  it("buys landlord insurance, and still pays a landlord rent", () => {
+    expect(
+      categorizeByRules({ description: "LANDLORD INS OBIE POLICY", amountCents: 48_000, hints: {} })
+        ?.detailed,
+    ).toBe("GENERAL_SERVICES_INSURANCE");
+    expect(
+      categorizeByRules({ description: "ZELLE TO LANDLORD", amountCents: 120_000, hints: {} })
+        ?.detailed,
+    ).not.toBe("GENERAL_SERVICES_INSURANCE");
+  });
+});
+
 describe("insurance that names no insurance", () => {
   it.each([
     "PEMCO UMBRELLA POLICY ANNUAL",

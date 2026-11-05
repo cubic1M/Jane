@@ -1,7 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { roomFromPlan, tradeGoalOf } from "@/planning/goal-tradeoffs";
 import { PAY_PERIODS } from "@/config/benefits";
-import { PROFILE_MONTHS } from "@/config/profile";
+import { profileHistoryStart } from "@/config/profile";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { copiesToLeaveOut } from "@/planning/books";
@@ -67,7 +67,7 @@ async function loadProfileInputFrom(
 ): Promise<ProfileInput> {
   const db = scopedFor(userId, client);
   const today = dayOf(now);
-  const since = new Date(now.getTime() - (PROFILE_MONTHS * 31 + 2) * 86_400_000);
+  const since = profileHistoryStart(now);
   const [
     allTransactions,
     allAccounts,
