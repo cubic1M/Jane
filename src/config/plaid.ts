@@ -77,3 +77,11 @@ export const WEBHOOK_KEY_RECHECK_HOURS = 24;
 
 // Rates above this from Plaid are treated as missing rather than shown: 100% a year.
 export const MAX_APR_BPS = 10_000;
+
+// A bank just linked: how often the first sync asks again while Plaid has nothing yet, and how many
+// times. Plaid's webhook does it too, but a person is watching their first scan.
+export const FIRST_SYNC_WAIT_MS = 10_000;
+export const FIRST_SYNC_TRIES = 6;
+
+// A webhook that came while a sync ran has that sync run again, this many times at most.
+export const SYNC_AGAIN_MAX = 3;

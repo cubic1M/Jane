@@ -98,6 +98,7 @@ export type SyncResult = {
   updated: number;
   removed: number;
   firstSync: boolean;
+  notReady?: boolean;
   recurring: "updated" | "unavailable";
   // "off" for items linked before Liabilities was asked for.
   liabilities: "updated" | "unavailable" | "off";
@@ -798,7 +799,8 @@ async function syncItemWork(
   await db.plaidItems.updateMany({
     where: { id: item.id },
     data: {
-      transactionsCursor: sync.nextCursor,
+      // Plaid's empty cursor means it has nothing yet, which isn't a first sync done.
+      transactionsCursor: sync.nextCursor || null,
       lastSyncedAt: now,
       status: ITEM_STATUS.active,
       lastErrorCode: null,
@@ -809,12 +811,14 @@ async function syncItemWork(
   const result: SyncResult = {
     accounts: accountIds.size,
     ...counts,
-    firstSync: item.transactionsCursor === null,
+    firstSync: !item.transactionsCursor,
     recurring,
     liabilities,
     investments,
   };
   if (secondLogin) return result;
+  // A first report from no rows would say nothing's wrong: the next sync does the first scan's work.
+  if (sync.notReady && result.firstSync) return { ...result, notReady: true };
   if (result.firstSync) {
     await track(item.userId, "first_sync_completed", {
       accounts: result.accounts,

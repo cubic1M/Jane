@@ -1,5 +1,5 @@
 import type { AccountBase, PlaidApi, Transaction } from "plaid";
-import { PersonalFinanceCategoryVersion } from "plaid";
+import { PersonalFinanceCategoryVersion, TransactionsUpdateStatus } from "plaid";
 import { SYNC_MAX_RESTARTS, SYNC_PAGE_SIZE, SYNC_RETRY_ATTEMPTS } from "@/config/plaid";
 import { plaidCall, plaidErrorCode } from "@/lib/plaid/client";
 import { backoffMs, retryablePlaidError } from "@/lib/plaid/retry";
@@ -20,6 +20,8 @@ import {
 export type PlaidSync = SourceBatch & {
   removedTransactionIds: string[];
   nextCursor: string;
+  // Plaid has nothing yet for a bank just linked: its webhook says when it has.
+  notReady: boolean;
 };
 
 // The most a cents column holds (32 bits). Past it, saving throws and the bank stops syncing.
@@ -117,6 +119,7 @@ export class PlaidDataSource implements DataSource {
     const changed = new Map<string, Transaction>();
     const removed = new Set<string>();
     let cursor = this.cursor ?? undefined;
+    let notReady = false;
 
     for (;;) {
       const data = await plaidCall(
@@ -139,6 +142,7 @@ export class PlaidDataSource implements DataSource {
         }
       }
       cursor = data.next_cursor;
+      notReady = data.transactions_update_status === TransactionsUpdateStatus.NotReady;
       if (!data.has_more) break;
     }
 
@@ -154,6 +158,7 @@ export class PlaidDataSource implements DataSource {
       skipped: [],
       removedTransactionIds: [...removed],
       nextCursor: cursor ?? "",
+      notReady,
     };
   }
 }
