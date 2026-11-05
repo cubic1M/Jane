@@ -42,6 +42,11 @@ export const POSTS_THAT_CHANGE_NOTHING: readonly string[] = [
   "/api/opened",
 ];
 
+// A page from memory asks the server nothing, so a session ended somewhere else ("Sign out other
+// devices", a deletion on another device, an expired one) wouldn't show. Whether it's still this
+// person is asked when a page comes up or the tab comes back, at most this often.
+export const STILL_HERE_EVERY_MS = 10_000;
+
 // Reaching one of these with a person's pages in memory means they left: the memory goes.
 export const SIGNED_OUT_PAGES: readonly string[] = ["/", "/login", "/signup", "/goodbye"];
 

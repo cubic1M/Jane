@@ -316,7 +316,7 @@ describe("in the browser", () => {
       vi.stubGlobal("fetch", b.fetchImpl);
       startPageCache(b.router);
       pageShown("person_a", Date.now());
-      expect(b.fetchImpl).not.toHaveBeenCalled();
+      expect(b.fetchImpl).not.toHaveBeenCalledWith("/api/opened", expect.anything());
       pageShown("person_a", Date.now(), { page: "plan", findingIds: ["abc"] });
       expect(b.fetchImpl).toHaveBeenCalledWith(
         "/api/opened",
