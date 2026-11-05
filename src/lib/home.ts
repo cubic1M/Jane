@@ -1,3 +1,4 @@
+import { isRefund } from "@/lib/savings-text";
 import { staleBalanceFrom } from "@/detection/forecast";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { YEARLY_BILLS_GOAL_PATTERN } from "@/config/irregular";
@@ -135,6 +136,7 @@ export async function homeSummary(
       items: open.length,
       // The same total as /plan: every item's yearly saving, if the person says yes to all.
       annualSavingsCents: planTotal(open),
+      onceCents: planTotal(open.filter((f) => isRefund(f.type))),
       // The biggest few, as the Saved tile's "Your plan" lists them (one of overlapping items).
       top: planTop(open),
     },

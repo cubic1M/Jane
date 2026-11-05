@@ -223,6 +223,24 @@ describe("the week's plan", () => {
   // Debugger 11-02: a real account in the read-only beta read "1 thing … It's safe for me to just
   // do." with "Approve all safe ones", which answers "I'm on it": Jane doesn't act for a real
   // account; the person does each step.
+  // A $64.20 double charge and a $120.00 trial don't come back each year, so "worth up to $304.20
+  // a year" said more than it knew. The report has told them apart since 10-31.
+  it("doesn't call money that comes back once a yearly figure", () => {
+    const plan = (annualSavingsCents: number, onceCents: number) =>
+      bySource(
+        snapshot({
+          concierge: false,
+          plan: { items: 3, annualSavingsCents, onceCents, safeItems: 0 },
+        }),
+        "plan",
+      )[0].body;
+    expect(plan(30_420, 18_420)).toMatch(
+      /worth up to \$120\.00 a year and \$184\.20 to get back if you say yes to all/,
+    );
+    expect(plan(18_420, 18_420)).toMatch(/worth up to \$184\.20 to get back if you say yes to all/);
+    expect(plan(12_000, 0)).toMatch(/worth up to \$120\.00 a year if you say yes to all/);
+  });
+
   it("tells a real account the steps are theirs, with no approve button", () => {
     const [message] = bySource(
       snapshot({ concierge: false, plan: { items: 1, annualSavingsCents: 28_000, safeItems: 1 } }),

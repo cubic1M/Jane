@@ -1,3 +1,4 @@
+import { yearlyAndOnce } from "@/lib/report-state";
 import Link from "next/link";
 import { isHiddenPage } from "@/config/hidden-pages";
 import { redirect } from "next/navigation";
@@ -6,7 +7,7 @@ import { AppHeader, PageLoading } from "@/components/app-header";
 import { ViewTracker } from "@/components/view-tracker";
 import { scopedDb } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
-import { markPlanShown, planFor, planTotalCents } from "@/lib/plan";
+import { markPlanShown, planFor, planOnceCents, planTotalCents } from "@/lib/plan";
 import { savingsLine } from "@/lib/savings-text";
 import { requireUser } from "@/lib/session";
 import { conciergeMode } from "@/lib/concierge-mode";
@@ -57,6 +58,7 @@ async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["search
     items.map((i) => i.card.findingId),
   );
   const total = planTotalCents(items);
+  const onceCents = planOnceCents(items);
   // After "Yes to all".
   const params = await searchParams;
   const count = (value: unknown) => {
@@ -127,7 +129,7 @@ async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["search
             {items.length} {items.length === 1 ? "thing" : "things"}{" "}
             {readOnly ? "you could do" : "Jane can do for you"}
             {total > 0
-              ? `, worth up to about ${formatCents(total)} a year ${readOnly ? "if you do them all" : "if you say yes to all"}`
+              ? `, worth up to about ${yearlyAndOnce({ cents: total, onceCents })} ${readOnly ? "if you do them all" : "if you say yes to all"}`
               : ""}
             .{" "}
             {readOnly

@@ -1,5 +1,5 @@
+import { yearlyAndOnce } from "@/lib/report-state";
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
-import { formatCents } from "@/lib/money";
 import type { MessageAction } from "../types";
 import { things, type MessageSource } from "./source";
 
@@ -10,11 +10,11 @@ import { things, type MessageSource } from "./source";
 export const planSource: MessageSource = {
   key: "plan",
   gather(snapshot) {
-    const { items, annualSavingsCents, safeItems } = snapshot.plan;
+    const { items, annualSavingsCents, onceCents = 0, safeItems } = snapshot.plan;
     if (items === 0) return [];
     const headline =
       annualSavingsCents > 0
-        ? `Your plan for this week is ready: ${things(items)}, worth up to ${formatCents(annualSavingsCents)} a year if you say yes to all.`
+        ? `Your plan for this week is ready: ${things(items)}, worth up to ${yearlyAndOnce({ cents: annualSavingsCents, onceCents })} if you say yes to all.`
         : `Your plan for this week is ready: ${things(items)}.`;
     // A real account in the read-only beta: Jane doesn't act for it, so nothing is "safe for me to
     // just do" and there's nothing to approve; each step is the person's (debugger 11-02).
