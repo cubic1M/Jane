@@ -123,7 +123,30 @@ export async function loadSelfEmployed(
 
   const e = estimate.estimate;
   const dueDates = estimatedTaxDates(year);
-  const withheld = estimate.pay.projected.federalWithheldCents;
+  // Paychecks seen but not what's withheld: the tax on that pay counts as covered, as the estimate
+  // says it assumes, so only income with nothing taken out needs paying (debugger 11-05: all of
+  // someone's tax on their wages planned as one payment in January).
+  const onWagesAlone = estimate.withholdingKnown
+    ? null
+    : estimateTaxes({
+        ...input,
+        income: {
+          ...input.income,
+          selfEmploymentCents: 0,
+          interestCents: 0,
+          dividendsCents: 0,
+          qualifiedDividendsCents: 0,
+          shortTermGainsCents: 0,
+          longTermGainsCents: 0,
+          rentalCents: 0,
+          retirementCents: 0,
+          unemploymentCents: 0,
+          otherCents: 0,
+        },
+      });
+  const withheld = onWagesAlone
+    ? onWagesAlone.totalTaxCents
+    : estimate.pay.projected.federalWithheldCents;
   const federal = quarterlyPlan({
     dueDates,
     today,
@@ -137,7 +160,9 @@ export async function loadSelfEmployed(
           dueDates,
           today,
           totalTaxCents: e.state.taxCents,
-          withheldCents: estimate.pay.projected.stateWithheldCents,
+          withheldCents: onWagesAlone
+            ? (onWagesAlone.state?.taxCents ?? 0)
+            : estimate.pay.projected.stateWithheldCents,
           paidCents: input.stateEstimatedPaidCents,
         })
       : null;

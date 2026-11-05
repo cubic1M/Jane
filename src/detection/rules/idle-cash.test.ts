@@ -39,6 +39,22 @@ describe("idle_cash", () => {
     );
   });
 
+  it("doesn't call any cash extra just after a paycheck stopped", () => {
+    const pay = (i: number) =>
+      tx({
+        date: monthsAgo(i + 3, 5),
+        amountCents: -300_000,
+        description: "NORTHWIND PAYROLL",
+        pfcPrimary: "INCOME",
+        pfcDetailed: "INCOME_SALARY",
+      });
+    const job = [0, 1, 2, 3, 4, 5].map(pay);
+    expect(idleCash(input({ transactions: [...spending, ...job] }), [])).toEqual([]);
+    // The same money and a paycheck last week: a job still paying, and the cash is extra.
+    const paid = tx({ ...pay(0), date: monthsAgo(0, 2) });
+    expect(idleCash(input({ transactions: [...spending, ...job, paid] }), [])).toHaveLength(1);
+  });
+
   // Debugger 11-04: "could earn $196", counted in "We found", to someone paying 28% on $7,600.
   it("promises nothing while a card charges interest, but still says the cash is there", () => {
     const interest = tx({

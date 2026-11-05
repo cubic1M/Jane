@@ -8,8 +8,8 @@ import {
 } from "@/config/detection";
 import { idleCashOf, payingCardInterest } from "@/planning/idle-cash";
 import { formatCents } from "@/lib/money";
+import { stoppedEmployer } from "@/profile/stopped-employer";
 import { inLookback } from "../helpers";
-import type { DetectionInput } from "../types";
 import type { Rule } from "./rule";
 
 function confidenceFor(historyMonths: number): ConfidenceLevel {
@@ -38,6 +38,9 @@ export const idleCash: Rule = (input) => {
       description: t.description,
     })),
   };
+  // None of it is "more than you need" just after a paycheck stopped (debugger 11-05: the first thing
+  // someone laid off in June read was "$18,465.62 more cash than 3 months of spending").
+  if (stoppedEmployer(facts)) return [];
   const idle = idleCashOf(facts);
   if (!idle) return [];
   // The cash is still there, but a savings rate isn't what it could earn while a card charges far

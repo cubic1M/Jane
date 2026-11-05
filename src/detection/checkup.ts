@@ -25,7 +25,8 @@ import { STALE_UPLOAD_DAYS } from "@/config/import";
 import type { FindingType } from "@/generated/prisma/client";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents, formatWholeDollars } from "@/lib/money";
-import { cashCushionOf } from "@/planning/idle-cash";
+import { cashCushionOf, idleCashOf } from "@/planning/idle-cash";
+import { stoppedEmployer } from "@/profile/stopped-employer";
 import { detect } from "./detect";
 import { forecastAccounts } from "./forecast";
 import { inList, inLookback, isProcessorFee } from "./helpers";
@@ -112,23 +113,23 @@ const bills = (f: Facts) =>
     return benchmark && s.annualCostCents !== null ? [{ stream: s, benchmark }] : [];
   });
 const credit = (f: Facts) => f.input.accounts.filter((a) => a.type === "credit");
-const cushion = (f: Facts) =>
-  cashCushionOf({
-    asOf: f.input.asOf,
-    accounts: f.input.accounts.map((a) => ({
-      id: a.id,
-      type: a.type,
-      subtype: a.subtype,
-      balanceCents: a.currentBalanceCents,
-    })),
-    transactions: inLookback(f.input).map((t) => ({
-      date: t.date,
-      amountCents: t.amountCents,
-      accountId: t.accountId,
-      pfc: t.pfcDetailed,
-      description: t.description,
-    })),
-  });
+const cashFacts = (f: Facts) => ({
+  asOf: f.input.asOf,
+  accounts: f.input.accounts.map((a) => ({
+    id: a.id,
+    type: a.type,
+    subtype: a.subtype,
+    balanceCents: a.currentBalanceCents,
+  })),
+  transactions: inLookback(f.input).map((t) => ({
+    date: t.date,
+    amountCents: t.amountCents,
+    accountId: t.accountId,
+    pfc: t.pfcDetailed,
+    description: t.description,
+  })),
+});
+const cushion = (f: Facts) => cashCushionOf(cashFacts(f));
 const first =
   <T>(...reasons: ((f: Facts) => T | null)[]) =>
   (f: Facts) =>
@@ -188,6 +189,15 @@ export const CHECKS: Record<FindingType, Check> = {
     ),
     passed: (f) => {
       const c = cushion(f)!;
+      // A paycheck stopped, so the rule leaves the cash alone, however much there is: this isn't
+      // "under 3 months" (debugger 11-05: $27,884 at $3,300 a month read that way).
+      const facts = cashFacts(f);
+      if (idleCashOf(facts) && stoppedEmployer(facts)) {
+        return {
+          line: `${formatWholeDollars(c.balanceCents)} cash, about ${plural(Math.round(c.balanceCents / c.monthlyCents), "month")} of spending`,
+          detail: `You spend about ${formatWholeDollars(c.monthlyCents)} a month. Your pay looks like it stopped, so Jane doesn't call any of this extra.`,
+        };
+      }
       return {
         // Not "cushion": that's the emergency cushion's word, a typical month's spending sized
         // for the person ("a cushion for you is $11,558.01"); this is idle cash's own line
