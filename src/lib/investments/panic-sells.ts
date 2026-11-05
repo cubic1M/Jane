@@ -1,5 +1,6 @@
 import { PANIC_HISTORY_DAYS } from "@/config/panic-sells";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { onlyDemoBank } from "@/lib/advice-mode";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { marketData, type MarketData } from "@/lib/market";
@@ -45,6 +46,11 @@ export async function loadPanicSells(
       : [],
   );
   if (sales.length === 0) return { sales: [], costCents: 0, avoidedCents: 0 };
+  // The sample market's prices are invented: "those shares are worth $X" from them is a figure
+  // about real money only someone with just the demo bank may read.
+  if (feed.simulated && !(await onlyDemoBank(userId, client))) {
+    return { sales: [], costCents: 0, avoidedCents: 0 };
+  }
   const today = iso(now);
   const bars: Record<string, { date: string; closeCents: number }[]> = {};
   for (const ticker of new Set(sales.map((s) => s.ticker))) {
