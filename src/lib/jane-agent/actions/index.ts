@@ -3,6 +3,7 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { giveBack, hit } from "@/lib/rate-limit";
 import { closeSettled } from "../messages";
 import { MESSAGE_SELECT, toChatMessage, type ActionId, type ChatMessage } from "../types";
 import { DEBT_ACTION_HANDLERS } from "./debt-handlers";
@@ -504,9 +505,24 @@ export async function takeChatAction(
   actionId: string,
   options: Options = {},
 ): Promise<TakenAction> {
-  return withReadCache(options.client ?? defaultClient, (client) =>
-    takeChatActionWork(userId, messageId, actionId, { ...options, client }),
-  );
+  // A handler runs before the message is marked answered, so two taps at once would both run it:
+  // two goals, two transfers. One at a time per message; the second then finds it answered. A place
+  // refused or finished goes back, so a message left open can be tapped again.
+  if (!MESSAGE_ID.test(messageId)) {
+    throw new ChatActionError("not_found", "That message isn't there anymore.");
+  }
+  const tap = `${userId}:${messageId}`;
+  if (!(await hit("chatTapInFlight", tap, options)).ok) {
+    await giveBack("chatTapInFlight", tap, options);
+    throw new ChatActionError("not_open", "This one's already being answered.");
+  }
+  try {
+    return await withReadCache(options.client ?? defaultClient, (client) =>
+      takeChatActionWork(userId, messageId, actionId, { ...options, client }),
+    );
+  } finally {
+    await giveBack("chatTapInFlight", tap, options).catch(() => {});
+  }
 }
 
 async function takeChatActionWork(
@@ -516,9 +532,10 @@ async function takeChatActionWork(
   { client = defaultClient, now = new Date(), defer, choice }: Options = {},
 ): Promise<TakenAction> {
   const db = scopedFor(userId, client);
-  const row = MESSAGE_ID.test(messageId)
-    ? await db.janeMessages.findFirst({ where: { id: messageId }, select: MESSAGE_SELECT })
-    : null;
+  const row = await db.janeMessages.findFirst({
+    where: { id: messageId },
+    select: MESSAGE_SELECT,
+  });
   if (!row) throw new ChatActionError("not_found", "That message isn't there anymore.");
   const message = toChatMessage(row);
   const handler = Object.hasOwn(ACTION_HANDLERS, actionId)
