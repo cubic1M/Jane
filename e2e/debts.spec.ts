@@ -677,7 +677,9 @@ test("student loans show PSLF month by month, save dates as deadlines, and warn 
   ).toBeVisible();
 
   const game = page.getByRole("region", { name: "The long game" });
-  await expect(game).toContainText("qualifying payments counted for PSLF");
+  await expect(game).toContainText("payments counted for PSLF");
+  // It can't see the plan or the employer, so it says whose count decides.
+  await expect(game).toContainText("only studentaid.gov's count decides");
   await expect(game.getByRole("list", { name: "PSLF months" }).getByRole("listitem")).toHaveCount(
     13,
   );
