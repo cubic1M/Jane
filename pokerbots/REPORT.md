@@ -1244,7 +1244,7 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   ran kit-4 payouts. Now an explicit `--payouts` wins (`test_explicit_payouts_override_preset`). No earlier result is
   affected: no script combined the two flags in one cell. On the day, the tuner must be run with the kit's real point
   table either way.
-* **Bug hunter:** 2.66M random tables (all variants, 2–8 players; 2–10 from Nov 5 10:20, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
+* **Bug hunter:** 2.68M random tables (all variants, 2–8 players; 2–10 from Nov 5 10:20, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
   - looser calls (a raiser = 3.2 hands, a 3% margin);
