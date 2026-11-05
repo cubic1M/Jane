@@ -25,6 +25,8 @@ const BOILERPLATE = [
   /^CARD TRANSACTION OF [\d.,]+ [A-Z]{3} ISSUED BY\s+/,
   // How a deposit came, after the payer (debugger 11-04: "W-2 from Acme Logistics Inc Ach Credit").
   /(?<=\S)\s+ACH (?:CREDIT|DEPOSIT)$/,
+  // An ACH line's entry words (debugger 11-05: "Uber Technologies Inc Edi Paymnt").
+  /(?<=\S)\s+EDI (?:PAYMNTS?|PYMNTS?|PMTS?|PAYMENTS?)$/,
   // A brokerage cash account's "DIRECT DEBIT ALTA APARTMENTS RENT (Cash)" (debugger 11-04).
   /\s*\(CASH\)\s*$/,
   /^DIRECT DEBIT\s+/,

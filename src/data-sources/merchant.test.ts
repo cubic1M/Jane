@@ -2,6 +2,17 @@ import { describe, expect, it } from "vitest";
 import { normalizeMerchant, withoutCity, withoutPaymentApp, withoutAchDetails } from "./merchant";
 
 describe("normalizeMerchant", () => {
+  // Debugger 11-05: "Uber Technologies Inc Edi Paymnt" 28 times on a driver's pages, down to the tax
+  // forms. An ACH line's entry words, not the company.
+  it.each([
+    ["UBER TECHNOLOGIES INC EDI PAYMNT", "Uber Technologies Inc"],
+    ["LYFT INC EDI PYMNTS", "Lyft Inc"],
+    ["ACME CORP EDI PMT", "Acme Corp"],
+    ["WALMART ASSOCIATES EDI PAYMENTS", "Walmart Associates"],
+  ])("%s goes by the company's name", (description, name) => {
+    expect(normalizeMerchant(description)?.name).toBe(name);
+  });
+
   // Local build: one 2 KB row froze the server for 14 seconds, and 4 KB took 87.
   it("reads a line that is nearly all spaces without slowing down", () => {
     const started = performance.now();
