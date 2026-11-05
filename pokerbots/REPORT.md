@@ -1234,9 +1234,11 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   significant loss.
   Triton short deck (`--variant e_shortdeck`: synthetic blinds and payouts, no antes; `results/sng_sd_triton_check.md`,
   seeds 701000+, 400 paired tables vs `icm_switch`): room guess −0.2, field 5 −1.8, field 10 −1.3 (n.s.), Plan B field
-  **+27.3***. So the room-wide gain is a kit-rules effect (six-plus presets with antes from level 3 and their point
-  tables), not short deck as such; without antes the short-deck submission is level with `icm_switch` (and far ahead
-  of Plan B-style bots). 17 short-deck setups, no significant loss: the rule stands.
+  **+27.3***. Is the room gain tied to the kit rules? Kit-4 six-plus with synthetic payouts (seeds 706000+): room
+  **+5.1 ± 4.4***. Kit 4 has no antes, the same cards and ranking as Triton and nearly the same blinds (20/40, 30/60 vs
+  15/30, 25/50 at levels 2-3), so the Triton room −0.2 vs kit-4 +5.1 is a 5.3 ± 6.1 gap: noise, not a rule effect.
+  Room guess pooled over 5 short-deck runs: +5.0, +7.2, +5.1, −0.2 and the 6-handed +1.1. 18 short-deck setups, no
+  significant loss: the rule stands.
 * **Tool fix (Nov 5, 21:55): `--payouts` with `--preset`.** Both `sng.arena` and `sng.tune` let `--preset` silently replace
   an explicit `--payouts` (the kit presets carry their own point table), so e.g. `--preset kit4_sixplus --payouts winner`
   ran kit-4 payouts. Now an explicit `--payouts` wins (`test_explicit_payouts_override_preset`). No earlier result is

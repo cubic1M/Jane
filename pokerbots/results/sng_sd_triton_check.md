@@ -24,3 +24,8 @@ paired difference vs icm_switch (same tables):
   icm_switch:start=b;back_share=0.22;switch_min=15;f9_min_left=6 +27.33 ± 3.44 *
 
 done
+
+## isolate: room, kit-4 six-plus rules but synthetic payouts (seeds 706000+)
+paired difference vs icm_switch (same tables):
+  icm_switch:start=b;back_share=0.22;switch_min=15;f9_min_left=6 +5.05 ± 4.37 *
+
