@@ -14,6 +14,9 @@ async function SignedInProgress({
   return <ScanningProgress next={then === "home" || then === "chat" ? "/home" : "/report"} />;
 }
 
+// Never kept in the browser's memory (src/lib/page-cache.ts). It follows a scan as it runs.
+export const unstable_dynamicStaleTime = 0;
+
 export default function ScanningPage({ searchParams }: PageProps<"/scanning">) {
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-6 py-20">

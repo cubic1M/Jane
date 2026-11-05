@@ -427,6 +427,9 @@ async function JaneContent() {
   );
 }
 
+// Never kept in the browser's memory (src/lib/page-cache.ts). Opening this page marks alerts read, and new ones arrive on their own.
+export const unstable_dynamicStaleTime = 0;
+
 export default function JanePage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12">

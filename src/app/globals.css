@@ -1010,6 +1010,21 @@ html[data-giant-picked] .floating-cards[data-floating-cards="queue"] {
   }
 }
 
+/* A page's own loading bar stays out of sight for a moment, so a part of a page that arrives right
+   away never flashes it (founder: "Only show loading bar when it's not done loading"). A tapped
+   link's bar (src/components/nav-pending.tsx) has already waited. */
+[data-loading-bar] {
+  animation: loading-bar-waits 120ms step-end;
+}
+#page-loading [data-loading-bar] {
+  animation: none;
+}
+@keyframes loading-bar-waits {
+  from {
+    visibility: hidden;
+  }
+}
+
 /* The first scan's loading bar (src/components/scan-bar.tsx): it fades out at 100%; under
    reduced motion it just goes. */
 .scan-bar {
