@@ -1186,6 +1186,9 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   our bots included; the one failure is the round-1 opponent `opp_lag` on Irish (104 ms vs a 100 ms check), not ours.
   Switch bundle rebuilt with today's code (8.12 MB, contains the 8-alive cap) on the rehearsal kit: 20 tables, 0 errors,
   0 timeouts, end-of-hand 0 errors, slowest decision 0.78 ms, 4 s from build to result.
+  Strong-room resubmit built the day-of way (adapter `_IcmTag(start="b", back_share=0.22, switch_min=15)`, 8.12 MB,
+  bug hunter alongside), rehearsal kit 20 tables: 0 errors, 0 timeouts, end-of-hand 0 errors, slowest 0.93 ms; with
+  `f9_min_left=6` the same, slowest 0.86 ms. Both deploy cleanly; the 0.9 ms worst cases are on a loaded host.
   Bug hunter run 44 (2-10 players) flags ~50 slow tables per 10 minutes, all 9-10-handed, all four of our bots alike
   (Omaha too): replayed, the outliers sit near 8 ms in any code path (not GC: 1 of 47 had a collection inside). Same
   load, interleaved: our bots p99 0.23 ms (8 players) vs 0.36 ms (10), >1 ms 0.03% vs 0.17%. The flags are the bug
