@@ -611,7 +611,14 @@ async function runChatToolWork(
         leftInBudgets: money(safe.budgetsLeftCents),
         forGoals: money(safe.goalsCents),
         setAsideForYearlyBills: money(safe.setAsideCents),
-        heldForTaxOnFreelanceIncome: money(safe.taxHeldCents),
+        // An estimate: tax on the income so far not yet withheld or paid, line by line in tax_estimate.
+        heldBackForTaxNotYetPaid: money(safe.taxHeldCents),
+        ...(safe.taxStatus === "unknown"
+          ? {
+              taxNote:
+                "Tax isn't held back because what's withheld from pay isn't known. That isn't the same as none being due: say so.",
+            }
+          : {}),
         // Say this beside the figure: no balance on file, so their bills aren't counted either.
         ...(safe.leftOut?.length ? { leavesOut: safe.leftOut } : {}),
       });

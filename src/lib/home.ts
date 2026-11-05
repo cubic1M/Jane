@@ -17,6 +17,7 @@ import { db as defaultClient } from "@/lib/db";
 import { listGoals } from "@/lib/goals";
 import { roomFromPlan } from "@/planning/goal-tradeoffs";
 import { safeToSpend } from "@/planning/safe-to-spend";
+import { loadTaxSetAside } from "@/lib/tax-set-aside";
 import { scopedFor } from "@/lib/db-scoped";
 import { savedItems } from "@/lib/membership/service";
 import { verifiedSavings } from "@/lib/savings-proof";
@@ -89,12 +90,14 @@ export async function homeSummary(
   ]);
   // The person's own day, as the bills and safe to spend read it (src/lib/today.ts).
   const asOf = input.asOf;
-  const [budgetRows, { bills, deposits, deadlines }, verified] = await Promise.all([
+  const [budgetRows, { bills, deposits, deadlines }, verified, taxAside] = await Promise.all([
     budgets.length === 0 ? null : loadInsightTransactions(db, asOf, BUDGET_SUGGESTION_MONTHS + 1),
     // Bills and deadlines from the one coming-up source, reusing the transactions loaded above.
     loadComingUp(userId, { client, now, days: COMING_UP_DAYS, input }),
     // What the person's transactions confirm (the verified savings record), for the Saved tile.
     verifiedSavings(userId, { client, now, input }),
+    // The tax left to cover: one figure for this, the card, the chat and the Taxes page.
+    loadTaxSetAside(userId, { client, now }),
   ]);
   const budget = budgetRows === null ? null : budgetSummary(budgetRows, budgets, asOf);
 
@@ -163,6 +166,12 @@ export async function homeSummary(
           ),
           goalsCents,
           setAsideCents,
+          tax: {
+            holdCents: taxAside.holdCents,
+            status: taxAside.status,
+            keptApartCents: taxAside.keptApartCents,
+            confidencePercent: taxAside.confidence.percent,
+          },
         })
       : null,
     waitingOnYou: waiting.map((a) => ({

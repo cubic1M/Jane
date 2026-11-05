@@ -85,6 +85,7 @@ export const LINEAGE: Readonly<Record<string, Lineage>> = {
   InsuranceSaving: rescan,
   PolicyReading: rescan,
   TaxTag: rescan,
+  TaxCorrection: "entered",
   PayrollChange: rescan,
   SuddenMoney: rescan,
 
@@ -221,6 +222,7 @@ export const CLEARED_WITHOUT_DATA: Readonly<Record<string, string | [string, obj
   BooksIssue: "booksIssues",
   CostlyProduct: "costlyProducts",
   TaxTag: "taxTags",
+  TaxCorrection: "taxCorrections",
   PayrollChange: "payrollChanges",
   SuddenMoney: "suddenMoneys",
   MonthClose: "monthCloses",

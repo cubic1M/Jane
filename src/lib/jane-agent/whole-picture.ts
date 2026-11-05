@@ -77,7 +77,7 @@ export function wholePicture(snapshot: Snapshot, ranked: Ranked[], focus: Focus)
   } else if (safe && safe.safeCents === 0 && urgent.length === 0) {
     // "Yes, you're OK: you have $0.00 safe to spend" isn't a yes.
     verdict = "watch";
-    const tax = safe.taxHeldCents ? ` and ${formatCents(safe.taxHeldCents)} set aside for tax` : "";
+    const tax = safe.taxHeldCents ? ` and ${formatCents(safe.taxHeldCents)} held back for tax` : "";
     headline = `Not quite: nothing is safe to spend${until}, after your bills${tax}.`;
   } else if (urgent.length > 0) {
     verdict = "act";

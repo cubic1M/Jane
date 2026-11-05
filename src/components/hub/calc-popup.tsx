@@ -48,7 +48,7 @@ export function CalcLines({ lines, label }: { lines: CalcLine[]; label: string }
             {l.label}
             {l.note && <span className="text-zinc-500"> · {l.note}</span>}
           </dt>
-          <dd className="shrink-0">{dollars(l.cents)}</dd>
+          <dd className="shrink-0">{l.unknown ? "Not known" : dollars(l.cents)}</dd>
         </div>
       ))}
     </dl>

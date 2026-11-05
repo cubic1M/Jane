@@ -34,6 +34,12 @@ export type SafeInput = {
   goalsCents: number;
   setAsideCents: number;
   taxHeldCents?: number;
+  // All the tax left to cover, when the money left can't hold it all.
+  taxSoFarCents?: number;
+  // "unknown": Jane can't see what's withheld, so it holds nothing back and says so.
+  taxStatus?: "needed" | "covered" | "unknown" | "no_income";
+  // Kept apart for this tax, seen or told: 0 is said plainly.
+  taxKeptApartCents?: number;
   safeCents: number;
   // The bills before payday, one by one (src/planning/safe-to-spend.ts); transfer marks a
   // regular move out that isn't a bill.
@@ -131,7 +137,14 @@ export type SafeHero = {
 };
 
 // One line of a worked-out sum: what it is, its sign, the amount, and a note (a bill's date).
-export type CalcLine = { label: string; sign: "" | "−" | "+" | "="; cents: number; note?: string };
+// With unknown, the amount isn't known, and the line says so rather than $0.
+export type CalcLine = {
+  label: string;
+  sign: "" | "−" | "+" | "=";
+  cents: number;
+  note?: string;
+  unknown?: true;
+};
 
 // "Your plan" beside Saved so far (founder: "Same for the Your plan next to saved so far"):
 // what's saved and where from, what the plan adds, and the goal it goes toward.
@@ -323,7 +336,31 @@ function planHero(input: HeroInput): PlanHero | null {
   return { count: plan.items, steps, goal: input.goal ?? null };
 }
 
-const TAX_HELD_LABEL = "Tax on your self-employed income so far";
+const TAX_HELD_LABEL = "Tax not yet withheld or paid";
+
+// The tax line's note: an estimate, how much in all if it couldn't all be held, and plainly when
+// nothing is kept apart for it.
+function taxNote(safe: SafeInput): string {
+  const all = safe.taxSoFarCents ?? 0;
+  return [
+    "estimate",
+    ...(all > (safe.taxHeldCents ?? 0) ? [`${wholeDollars(all)} in all`] : []),
+    ...(safe.taxKeptApartCents ? [] : ["none kept apart that Jane can see"]),
+  ].join(", ");
+}
+
+// Withholding unknown: not held back, and not $0 either.
+const taxUnknownLine = (safe: SafeInput): CalcLine[] =>
+  safe.taxStatus === "unknown"
+    ? [
+        {
+          label: "Not counted: tax, as Jane can't see all that's withheld from your pay",
+          sign: "",
+          cents: 0,
+          unknown: true,
+        },
+      ]
+    : [];
 
 function safeHero(safe: SafeInput): SafeHero {
   const short = safe.safeCents < 0;
@@ -344,7 +381,7 @@ function safeHero(safe: SafeInput): SafeHero {
     { label: "Left in your budgets", cents: safe.budgetsLeftCents },
     { label: "Goals this month", cents: safe.goalsCents },
     { label: "Set aside for yearly bills", cents: safe.setAsideCents },
-    { label: TAX_HELD_LABEL, cents: safe.taxHeldCents ?? 0 },
+    { label: TAX_HELD_LABEL, cents: safe.taxHeldCents ?? 0, note: taxNote(safe) },
   ].filter((l) => l.cents > 0);
   return {
     label: safe.payday ? `Safe to spend until ${dayLabel(safe.payday)}` : "Safe to spend",
@@ -364,6 +401,7 @@ function safeHero(safe: SafeInput): SafeHero {
             },
           ]
         : []),
+      ...taxUnknownLine(safe),
     ],
     steps: safeSteps(safe, short),
   };
@@ -393,7 +431,12 @@ function safeSteps(safe: SafeInput, short: boolean): CalcLine[] {
     { label: "Left in your budgets", sign: "−" as const, cents: safe.budgetsLeftCents },
     { label: "Planned savings: goals this month", sign: "−" as const, cents: safe.goalsCents },
     { label: "Set aside for yearly bills", sign: "−" as const, cents: safe.setAsideCents },
-    { label: TAX_HELD_LABEL, sign: "−" as const, cents: safe.taxHeldCents ?? 0 },
+    {
+      label: TAX_HELD_LABEL,
+      sign: "−" as const,
+      cents: safe.taxHeldCents ?? 0,
+      note: taxNote(safe),
+    },
   ].filter((l) => l.cents > 0);
   return [
     { label: "In checking today", sign: "", cents: safe.balanceCents },

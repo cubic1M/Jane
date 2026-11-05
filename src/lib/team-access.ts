@@ -237,6 +237,8 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   accountant_link_revoked: own,
   tax_profile_changed: own,
   tax_tag_changed: own,
+  tax_correction_added: own,
+  tax_correction_removed: own,
   tax_return_started: own,
   tax_return_signed: own,
   tax_document_collected: own,

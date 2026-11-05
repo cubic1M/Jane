@@ -200,6 +200,7 @@ export const TAXES_ANCHORS: Record<string, string> = {
   plan: "soon",
   savings: "savings",
   estimate: "estimate:estimate",
+  "set-aside": "estimate:set-aside",
   withholding: "estimate:withholding",
   refund: "estimate:refund",
   investments: "estimate:investments",
@@ -234,6 +235,13 @@ export type TaxesTreeInput = {
   // Null when savings suggestions are off (real accounts, outside demo advice).
   savings: { key: SavingKey; title: string; estimateCents: number }[] | null;
   estimate: { refundCents: number; withholdingKnown: boolean };
+  // The tax left to cover (src/planning/tax-set-aside.ts).
+  setAside: {
+    status: "needed" | "covered" | "unknown" | "no_income";
+    advice: boolean;
+    holdCents: number;
+    percent: number;
+  };
   withholding: "unknown" | "on_track" | "big_refund" | "bill_coming";
   w4Sent: boolean;
   refunds: number;
@@ -289,7 +297,29 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
   );
 
   const r = input.estimate.refundCents;
+  const aside = input.setAside;
   const estimate = [
+    ...(aside.status === "no_income"
+      ? []
+      : [
+          item("estimate", "set-aside", {
+            label: aside.advice ? "Left to set aside" : "Tax not yet paid",
+            status: aside.status === "covered" ? ("good" as const) : ("look" as const),
+            figure:
+              aside.status === "needed"
+                ? shortMoney(aside.holdCents)
+                : aside.status === "unknown"
+                  ? "Not known"
+                  : "Covered",
+            cents: aside.holdCents,
+            summary:
+              aside.status === "needed"
+                ? `An estimate, ${aside.percent}% sure. Safe to spend leaves it out.`
+                : aside.status === "unknown"
+                  ? "Jane can't see all that's withheld from your pay."
+                  : "What's withheld and paid covers your tax so far.",
+          }),
+        ]),
     item("estimate", "estimate", {
       label: `Your ${input.year} estimate`,
       status: r >= 0 ? "good" : "look",

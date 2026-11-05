@@ -95,6 +95,7 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "retirement_self_employed",
     "student_repayment",
     "subscriptions",
+    "tax_set_aside",
     "vehicle_deduction",
   ],
   equity: [
@@ -225,6 +226,7 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "renters_insurance",
     "retirement_self_employed",
     "s_corp_election",
+    "tax_set_aside",
     "vehicle_deduction",
   ],
 };

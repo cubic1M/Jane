@@ -220,6 +220,7 @@ export const ACCESS_MAP: Record<string, Access> = {
   "src/app/taxes/profile/actions.ts": "signed-in",
   "src/app/taxes/property/actions.ts": "signed-in",
   "src/app/taxes/self-employed/actions.ts": "signed-in",
+  "src/app/taxes/set-aside-actions.ts": "signed-in",
   "src/app/taxes/tags/actions.ts": "signed-in",
   "src/app/taxes/years/actions.ts": "signed-in",
   "src/app/terms/accept/actions.ts": "signed-in",

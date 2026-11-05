@@ -21,6 +21,7 @@ import { PRACTICE_IDEA_DETECTORS } from "./practice-ideas";
 import { SPENDING_DETECTORS } from "./spending";
 import { PRICE_RISE_DETECTORS } from "./price-rises";
 import { TAX_DETECTORS } from "./taxes";
+import { TAX_SET_ASIDE_DETECTORS } from "./tax-set-aside";
 import { TWO_DETECTORS } from "./two";
 import { TRADEOFF_DETECTORS } from "./tradeoffs";
 import { WORK_DETECTORS } from "./work";
@@ -45,6 +46,7 @@ export const DETECTORS: readonly Detector[] = [
   ...BORROWING_POWER_DETECTORS,
   ...FAMILY_CREDIT_DETECTORS,
   ...TAX_DETECTORS,
+  ...TAX_SET_ASIDE_DETECTORS,
   ...INVESTING_DETECTORS,
   ...HOLDINGS_DETECTORS,
   ...INVESTED_CASH_DETECTORS,

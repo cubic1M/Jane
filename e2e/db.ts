@@ -614,3 +614,38 @@ export async function deleteShareInvite(userId: string): Promise<void> {
     await client.end();
   }
 }
+
+// A real (not demo) account with ten months of a client's pay and one deposit that isn't income, for
+// the tax left to cover. Made-up names.
+export async function addFreelancer(userId: string): Promise<void> {
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    const account = `tax-aside-${userId}`;
+    await client.query(
+      `INSERT INTO accounts (id, user_id, source, name, type, subtype, current_balance_cents, updated_at)
+       VALUES ($1, $2, 'csv', 'Checking', 'depository', 'checking', 6000000, now())`,
+      [account, userId],
+    );
+    const rows = [
+      ...["01", "02", "03", "04", "05", "06", "07", "08", "09", "10"].map(
+        (m) => [`${new Date().getUTCFullYear()}-${m}-15`, -500000, "BRIGHTLEAF MEDIA"] as const,
+      ),
+      [`${new Date().getUTCFullYear()}-03-02`, -1000000, "AUNT ROSE"] as const,
+    ];
+    for (const [date, cents, description] of rows)
+      await client.query(
+        `INSERT INTO transactions (id, user_id, account_id, source, dedupe_key, date, amount_cents,
+           description, merchant_name, pfc_primary, pfc_detailed, category_source, updated_at)
+         VALUES ($1, $2, $3, 'csv', $1, $4, $5, $6, $6, 'INCOME', 'INCOME_CONTRACTOR', 'rule', now())`,
+        [`${account}-${date}-${description}`, userId, account, date, cents, description],
+      );
+    await client.query(
+      `INSERT INTO tax_profiles (id, user_id, filing_status, state, children_under_17, other_dependants, answered, updated_at)
+       VALUES ($1, $2, 'single', 'TX', 0, 0, ARRAY['filingStatus','state','dependants'], now())`,
+      [`tax-aside-${userId}`, userId],
+    );
+  } finally {
+    await client.end();
+  }
+}

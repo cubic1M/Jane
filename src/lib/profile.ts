@@ -310,6 +310,7 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     goals,
     plan,
     lastClose,
+    taxAside,
   ] = await Promise.all([
     loadMatchPace(userId, { client, now }),
     hasStock
@@ -337,6 +338,8 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
       where: { month: previousMonthOf(now) },
       select: { status: true },
     }),
+    // The tax left to cover, as Safe to spend holds it back.
+    import("@/lib/tax-set-aside").then((m) => m.taxSetAsideForDetector(userId, { client, now })),
   ]);
   const month = now.toISOString().slice(0, 7);
   const planMonths = Array.isArray(plan?.months)
@@ -345,6 +348,7 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
   return {
     matchPace,
     rsuGap: equity ? equity.rsuGap : null,
+    taxSetAside: taxAside,
     subscriptions,
     // A card whose balance or rate isn't known goes by its interest charges seen, as the report
     // does (debugger 10-30: a statement-file card charging interest read $0 a year, so the dock

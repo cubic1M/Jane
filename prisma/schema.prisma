@@ -370,6 +370,7 @@ model User {
   taxProfile             TaxProfile?
   lifeEventAnswers       LifeEventAnswer[]
   taxTags                TaxTag[]
+  taxCorrections         TaxCorrection[]
   taxDocuments           TaxDocument[]
   priorReturns           PriorReturn[]
   taxAmendments          TaxAmendment[]
@@ -3069,6 +3070,32 @@ model TaxTag {
   @@unique([userId, merchantKey])
   @@index([userId])
   @@map("tax_tags")
+}
+
+// What the person pointed out on their tax calculation (/taxes, "This year's numbers"): income
+// that isn't, a deduction, a payment, a number that's wrong. Read each time the estimate is worked
+// out, so it holds across later syncs and scans; deleting the row undoes it (src/lib/tax-corrections.ts).
+model TaxCorrection {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  year      Int
+  // src/config/tax-set-aside.ts TAX_CORRECTION_KINDS.
+  kind      String
+  // not_income: the payer's merchant key, so their later deposits are left out too.
+  payerKey  String?  @map("payer_key")
+  // The payer's name, or the person's own words.
+  label     String
+  cents     Int?
+  // paid: "federal" or "state".
+  paidTo    String?  @map("paid_to")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, year, kind, payerKey])
+  @@index([userId, year])
+  @@map("tax_corrections")
 }
 
 // Tax forms the person said have arrived (spec step 119), for a tax year: one row per form

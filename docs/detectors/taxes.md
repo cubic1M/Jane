@@ -320,3 +320,24 @@ The reach scoreboard (`/admin/reach`, "Taxes, tool by tool", `src/detectors/tax-
 eight sample people's year moved to each month, so seasonal detectors show when they reach whom.
 Every tax tool reaches a sample person, never suggests by itself (`TOOL_EXEMPT`), or needs something
 only the person can give first (`TAX_REACH_NEEDS_PERSON`: the draft return); a test holds this.
+
+## The tax left to cover (`tax_not_yet_paid`, `tax_set_aside`)
+
+The tax on the income so far that isn't withheld or paid: `src/planning/tax-set-aside.ts`, loaded by
+`src/lib/tax-set-aside.ts`. One figure for the card, Safe to spend (a named line, never making it
+"short"), `/figures/safe_to_spend`, the chat and the "This year's numbers" branch of `/taxes`.
+
+- **Fires for:** freelancers, anyone with income and no withholding, withholding that falls short.
+  Not when less than `TAX_SET_ASIDE.minLeftCents` is left, or when withholding is unknown and nothing
+  else shows a gap: that says "Not known", never $0.
+- **Wording:** a real account gets `tax_not_yet_paid`, a fact and an estimate ("isn't withheld or
+  paid yet"). `tax_set_aside` is an advice topic, for demo advice only, with its label: "set aside
+  $X" tells someone what to do with their money (`src/lib/guardrails.ts`, `src/lib/real-account-text.ts`).
+- **Confidence:** starts at `TAX_SET_ASIDE.topPercent` and only falls: months of income seen, a
+  part-year file, unknown withholding, an assumed filing status, an unknown state, assumed profit.
+  Each one is also said out loud on the card and the page.
+- **Corrections:** what a person points out (`tax_corrections`, `src/lib/tax-corrections.ts`) is read
+  whenever the estimate is worked out, so it holds across syncs and scans, and deleting it undoes it.
+- **Known limits:** from January to April the figure is for the year just ended, so the new year's
+  income isn't counted until May. A balance paid in April for the year before counts toward both
+  that year here and, from May, the new year's payments, as the estimate already did.

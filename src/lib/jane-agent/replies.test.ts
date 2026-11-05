@@ -368,7 +368,7 @@ describe("safeReply", () => {
   // Debugger 11-04: the number held back tax on freelance income, and the words only spoke of bills.
   it("says when tax was set aside, and not otherwise", () => {
     const held = safeReply({ safeCents: 20_000, payday: null, taxHeldCents: 403_875 }, TODAY).body;
-    expect(held).toContain("$4,038.75 set aside for tax");
+    expect(held).toContain("$4,038.75 held back for tax");
     const none = safeReply({ safeCents: 20_000, payday: null }, TODAY).body;
     expect(none).not.toContain("tax");
   });

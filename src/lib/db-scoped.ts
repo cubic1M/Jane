@@ -263,6 +263,7 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     // Taxes (spec steps 118–127).
     taxProfiles: scoped.taxProfile,
     taxTags: scoped.taxTag,
+    taxCorrections: scoped.taxCorrection,
     taxForms: scoped.taxForm,
     taxDocuments: scoped.taxDocument,
     priorReturns: scoped.priorReturn,

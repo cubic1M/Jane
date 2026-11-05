@@ -117,7 +117,7 @@ export async function explainFigure(
       ...base,
       ...empty,
       value: formatCents(safe.safeCents),
-      summary: `What's in checking, less the bills and regular transfers due before ${safe.payday ? dayLabel(safe.payday) : "your next paycheck"}, what's left in this month's budgets, this month's goal amounts and the set-aside for yearly bills.`,
+      summary: `What's in checking, less the bills and regular transfers due before ${safe.payday ? dayLabel(safe.payday) : "your next paycheck"}, what's left in this month's budgets, this month's goal amounts, the set-aside for yearly bills and any tax not yet withheld or paid.`,
       rows: [
         { label: "In checking today", value: formatCents(safe.balanceCents) },
         ...safe.bills.map((b) => ({
@@ -133,9 +133,18 @@ export async function explainFigure(
         ...(safe.taxHeldCents > 0
           ? [
               {
-                label: "Tax on your self-employed income so far",
+                label: "Tax not yet withheld or paid",
                 value: `−${formatCents(safe.taxHeldCents)}`,
-                note: `${formatCents(safe.taxSoFarCents)} in all: what you've earned on your own this year, at a typical rate, less income tax paid`,
+                note: `An estimate, ${safe.taxConfidencePercent}% sure: ${formatCents(safe.taxSoFarCents)} in all, line by line on your Taxes page.${safe.taxKeptApartCents > 0 ? "" : " Jane can't see any money kept apart for it."}`,
+              },
+            ]
+          : []),
+        ...(safe.taxStatus === "unknown"
+          ? [
+              {
+                label: "Not counted: tax",
+                value: "Not known",
+                note: "Jane can see your pay but not all that's withheld from it, so it holds nothing back. Your own figure on your Taxes page would settle it.",
               },
             ]
           : []),

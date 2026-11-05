@@ -16,10 +16,7 @@ import {
   type Expected,
 } from "@/detection/forecast";
 import { daysBetween } from "@/detection/units";
-import { DETECTOR_RATES } from "@/config/detectors";
-import { INCOME_KINDS } from "@/config/tax";
 import { nextPayday } from "@/detection/paydays";
-import { businessSalesSoFar, taxPaymentsFor } from "./tax-income";
 import type { DetectionInput } from "@/detection/types";
 
 // "Safe to spend until payday": checking balance today, minus regular bills and regular moves
@@ -28,31 +25,13 @@ import type { DetectionInput } from "@/detection/types";
 // (spec step 70). Each part comes from the page that shows it (bills forecast, budgets,
 // goals), so the number reconciles with them. Math only.
 
-// Tax on this year's income from working for oneself, less the income tax paid this year: a
-// freelancer's clients, and the share of a shop's sales taken as profit. Nobody withholds it, so without
-// this it reads as money to spend (debugger 11-03: "Safe to spend $24,254" with $8,915 of tax to pay).
-export function freelanceTaxHeldCents({
-  asOf,
-  transactions,
-}: Pick<DetectionInput, "asOf" | "transactions">): number {
-  const year = Number(asOf.slice(0, 4));
-  const thisYear = transactions.filter((t) => t.date.slice(0, 4) === asOf.slice(0, 4));
-  const clients = thisYear
-    .filter(
-      (t) =>
-        t.amountCents < 0 &&
-        (INCOME_KINDS.self_employed.categories as readonly (string | null)[]).includes(
-          t.pfcDetailed,
-        ),
-    )
-    .reduce((sum, t) => sum - t.amountCents, 0);
-  const profit = businessSalesSoFar(thisYear, year) * DETECTOR_RATES.tax.businessProfitShare;
-  const { federalCents, stateCents } = taxPaymentsFor(thisYear, year);
-  return Math.max(
-    0,
-    Math.round((clients + profit) * DETECTOR_RATES.selfEmployedTaxRate) - federalCents - stateCents,
-  );
-}
+// The tax left to cover, as src/lib/tax-set-aside.ts works it out.
+export type SafeTax = {
+  holdCents: number;
+  status: "needed" | "covered" | "unknown" | "no_income";
+  keptApartCents: number;
+  confidencePercent: number;
+};
 
 export type SafeToSpend = {
   // The next expected paycheck, or null when none is expected in the forecast window.
@@ -63,10 +42,14 @@ export type SafeToSpend = {
   budgetsLeftCents: number;
   goalsCents: number;
   setAsideCents: number;
-  // Tax on income from working for oneself so far, not paid yet: all of it, and as much as the money left can hold.
-  // It isn't due before payday, so it takes the number to zero but never makes it "short".
+  // Tax on the income so far not yet withheld or paid (src/planning/tax-set-aside.ts): all of it, and
+  // as much as the money left can hold. It isn't due before payday, so it takes the number to zero
+  // but never makes it "short".
   taxSoFarCents: number;
   taxHeldCents: number;
+  taxStatus: SafeTax["status"];
+  taxKeptApartCents: number;
+  taxConfidencePercent: number;
   safeCents: number;
   // About what comes in a month into checking with no payday to count it on; not in safeCents.
   unevenPayMonthlyCents: number | null;
@@ -80,7 +63,13 @@ export function safeToSpend(
     budgetsLeftCents,
     goalsCents,
     setAsideCents = 0,
-  }: { budgetsLeftCents: number; goalsCents: number; setAsideCents?: number },
+    tax = { holdCents: 0, status: "no_income", keptApartCents: 0, confidencePercent: 0 },
+  }: {
+    budgetsLeftCents: number;
+    goalsCents: number;
+    setAsideCents?: number;
+    tax?: SafeTax;
+  },
 ): SafeToSpend {
   const checking = input.accounts.filter(
     (a) =>
@@ -145,7 +134,7 @@ export function safeToSpend(
     setAsideCents - bills.reduce((sum, b) => sum + (b.setAsideCents ?? 0), 0),
   );
   const beforeTax = balance - billsCents - budgetsLeftCents - goalsCents - setAside;
-  const taxSoFarCents = freelanceTaxHeldCents(input);
+  const taxSoFarCents = tax.holdCents;
   const taxHeldCents = Math.min(taxSoFarCents, Math.max(0, beforeTax));
   return {
     payday,
@@ -157,6 +146,9 @@ export function safeToSpend(
     setAsideCents: setAside,
     taxSoFarCents,
     taxHeldCents,
+    taxStatus: tax.status,
+    taxKeptApartCents: tax.keptApartCents,
+    taxConfidencePercent: tax.confidencePercent,
     safeCents: beforeTax - taxHeldCents,
     unevenPayMonthlyCents:
       checking.reduce((sum, a) => sum + (unevenPay(input, a.id) ?? 0), 0) || null,
