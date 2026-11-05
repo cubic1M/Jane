@@ -1,3 +1,4 @@
+import { isRefund } from "@/lib/savings-text";
 import {
   PLAN_NEVER_PRESELECTED,
   PLAN_OPTIONS,
@@ -46,6 +47,11 @@ export function planTotalCents(items: readonly Pick<PlanItem, "card" | "countedE
     (sum, i) => sum + (i.countedElsewhere ? 0 : (i.card.annualSavingsCents ?? 0)),
     0,
   );
+}
+
+// The part of the total that comes back once, not each year (a double charge, a trial).
+export function planOnceCents(items: readonly Pick<PlanItem, "card" | "countedElsewhere">[]) {
+  return planTotalCents(items.filter((i) => isRefund(i.card.findingType)));
 }
 
 export async function planFor(

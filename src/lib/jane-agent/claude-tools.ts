@@ -1231,7 +1231,8 @@ async function runChatToolWork(
         thisWeeksPlan: snapshot?.plan.items
           ? {
               things: snapshot.plan.items,
-              worthAYear: money(snapshot.plan.annualSavingsCents),
+              worthAYear: money(snapshot.plan.annualSavingsCents - (snapshot.plan.onceCents ?? 0)),
+              comesBackOnce: money(snapshot.plan.onceCents ?? 0),
               safeToJustDo: snapshot.plan.safeItems,
             }
           : null,

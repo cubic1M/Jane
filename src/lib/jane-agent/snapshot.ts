@@ -88,6 +88,8 @@ export type Snapshot = {
   plan: {
     items: number;
     annualSavingsCents: number;
+    // The part of that which comes back once, not each year.
+    onceCents?: number;
     // Ticked, no-risk items: what "Approve all safe ones" would approve.
     safeItems: number;
   };
@@ -427,6 +429,7 @@ export async function loadSnapshot(
     plan: {
       items: home.plan.items,
       annualSavingsCents: home.plan.annualSavingsCents,
+      onceCents: home.plan.onceCents,
       safeItems: plan.filter(isNoRisk).length,
     },
     ruleApprovals,

@@ -1,3 +1,4 @@
+import { yearlyAndOnce } from "@/lib/report-state";
 import { doneSummary, savedSoFarLine } from "@/lib/saved-amount";
 import { isHiddenPage } from "@/config/hidden-pages";
 import Link from "next/link";
@@ -241,7 +242,7 @@ async function JaneContent() {
             ? "nothing right now"
             : `${decide.total} ${decide.total === 1 ? "thing" : "things"} to look at${
                 decide.totalSavingsCents > 0
-                  ? `, worth up to about ${formatCents(decide.totalSavingsCents)} a year`
+                  ? `, worth up to about ${yearlyAndOnce({ cents: decide.totalSavingsCents, onceCents: decide.onceCents })}`
                   : ""
               }`
         }

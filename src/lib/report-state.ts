@@ -63,11 +63,16 @@ export const nothingHeading = (oldStatements: string | null): string =>
 
 // "We found $X a year", saying what comes back once as that (debugger 10-31: a $210 double
 // charge read "We found $210.00 a year").
-export function foundHeadline({ cents, onceCents }: { cents: number; onceCents: number }): string {
+export function foundHeadline(total: { cents: number; onceCents: number }): string {
+  return `We found ${yearlyAndOnce(total)}`;
+}
+
+// "$120.00 a year and $184.20 to get back": a total that holds both, each called what it is.
+export function yearlyAndOnce({ cents, onceCents }: { cents: number; onceCents: number }): string {
   const yearly = cents - onceCents;
-  if (onceCents <= 0) return `We found ${formatCents(cents)} a year`;
-  if (yearly <= 0) return `We found ${formatCents(onceCents)} to get back`;
-  return `We found ${formatCents(yearly)} a year and ${formatCents(onceCents)} to get back`;
+  if (onceCents <= 0) return `${formatCents(cents)} a year`;
+  if (yearly <= 0) return `${formatCents(onceCents)} to get back`;
+  return `${formatCents(yearly)} a year and ${formatCents(onceCents)} to get back`;
 }
 
 // The line under "We found $X a year". Subscriptions count toward the total only once the
