@@ -2,6 +2,7 @@ import Link from "next/link";
 import { LegalPage } from "@/components/legal-page";
 import { ACTIVITY_DISCLOSURE } from "@/config/activity";
 import { COMPANY_NAME, contactEmail } from "@/config/legal";
+import { ROBINHOOD_NAME, robinhoodOffered } from "@/config/robinhood";
 import { STATEMENT_TRIAL_CHAT_ANSWERS, TRIAL_DELETED_WITHIN_HOURS } from "@/config/statement-trial";
 import { TRIAL_HOURS } from "@/config/trial";
 import { retentionPolicy } from "@/lib/retention";
@@ -13,6 +14,8 @@ export const metadata = { title: `Privacy Policy | ${COMPANY_NAME}` };
 // step with src/app/terms/page.tsx. The retention list comes from src/config/retention.ts, so
 // the two can't disagree.
 export default function PrivacyPage() {
+  // Said only while the connection is on (docs/setup/robinhood.md).
+  const robinhood = robinhoodOffered();
   return (
     <LegalPage title="Privacy Policy">
       <p>
@@ -41,6 +44,14 @@ export default function PrivacyPage() {
           loan and card details (such as rates and payments) and, once Jane turns investment
           accounts on, investment holdings and their trades.
         </li>
+        {robinhood && (
+          <li>
+            If you connect {ROBINHOOD_NAME}, read-only, on its own sign-in page: your accounts&apos;
+            types, balances, what they hold and their filled orders. Robinhood&apos;s connection
+            also sends full account numbers; Jane throws them away as they arrive, and never stores,
+            shows or sends them on.
+          </li>
+        )}
         <li>
           CSV statements you upload. Each file is read once, in memory, and never stored as a file;
           we keep only the transactions read from it.
@@ -134,6 +145,15 @@ export default function PrivacyPage() {
           details too, once Jane turns investment accounts on); never for anything that moves money.
           Plaid&apos;s own privacy policy covers what Plaid does with your data.
         </li>
+        {robinhood && (
+          <li>
+            <strong>{ROBINHOOD_NAME}</strong> runs the connection if you make one, and you sign in
+            on its own page. Jane only ever asks it to read. It has one kind of permission, which
+            also lets a connection trade in an agent account if you open one; Jane never uses that
+            and doesn&apos;t need that account. Robinhood&apos;s own privacy policy covers what it
+            does with your data.
+          </li>
+        )}
         <li>
           <strong>Anthropic</strong> makes Claude, the AI model that writes Jane&apos;s answers and
           explanations. What it receives:
@@ -165,6 +185,8 @@ export default function PrivacyPage() {
               details taken out.
             </li>
           </ul>
+          {robinhood &&
+            "If you connect Robinhood, it can receive your balances and the names and symbols of what you hold, never your account numbers or that connection. "}
           It never receives your password, your bank sign-in or your Plaid connection. When you
           chat, it can receive the description your bank wrote on a transaction, which can include
           the name of a person or company, or part of a reference number.
@@ -212,6 +234,11 @@ export default function PrivacyPage() {
       <h2>How we protect it</h2>
       <ul>
         <li>Plaid connection tokens are encrypted (AES-256-GCM) and never shown or logged.</li>
+        {robinhood && (
+          <li>
+            Robinhood connection tokens are encrypted the same way, and never shown or logged.
+          </li>
+        )}
         <li>Documents you upload are encrypted (AES-256-GCM), and only you can open them.</li>
         <li>
           Each person&apos;s data is read for that person. A few jobs work across everyone, such as
@@ -233,6 +260,13 @@ export default function PrivacyPage() {
           paper accounts) stays until you delete it, or delete your account.
         </li>
         <li>Disconnecting a bank deletes the transactions we read from it.</li>
+        {robinhood && (
+          <li>
+            Disconnecting Robinhood deletes Jane&apos;s access and everything read through it, as
+            does a long time without using Jane, after an email first. Robinhood gives Jane no way
+            to end the connection on its side, so ask Robinhood if you want it removed there too.
+          </li>
+        )}
         {retentionPolicy().map((line) => (
           <li key={line}>{line}</li>
         ))}
@@ -302,16 +336,17 @@ export default function PrivacyPage() {
       <h2>Deleting your data</h2>
       <p>
         In Settings, &quot;Delete all my data&quot; does it in one step. Jane first disconnects
-        every bank at Plaid, then deletes your account and everything in it: transactions, balances,
-        chats, answers, documents, notifications, and practice and paper accounts. If Plaid
-        can&apos;t be reached, nothing is deleted and you can try again. Afterwards you see a page
-        confirming your data is deleted. A record that the deletion happened, with ids, the time and
-        the IP address and browser it came from, stays in our security log for the period listed
-        above, along with the record of which banks you linked and your sign-ins, two-factor changes
-        and downloads, with the time, IP address, browser and rough location of each. Companies that
-        work for us (listed above) keep what they already received for their own retention periods,
-        and PostHog&apos;s product analytics stay under your id, with no name or email, after your
-        account is gone. You can download a copy of your data in Settings first.
+        every bank at Plaid{robinhood && " and deletes its Robinhood access"}, then deletes your
+        account and everything in it: transactions, balances, chats, answers, documents,
+        notifications, and practice and paper accounts. If Plaid can&apos;t be reached, nothing is
+        deleted and you can try again. Afterwards you see a page confirming your data is deleted. A
+        record that the deletion happened, with ids, the time and the IP address and browser it came
+        from, stays in our security log for the period listed above, along with the record of which
+        banks you linked and your sign-ins, two-factor changes and downloads, with the time, IP
+        address, browser and rough location of each. Companies that work for us (listed above) keep
+        what they already received for their own retention periods, and PostHog&apos;s product
+        analytics stay under your id, with no name or email, after your account is gone. You can
+        download a copy of your data in Settings first.
       </p>
 
       <h2>Cookies and your browser</h2>

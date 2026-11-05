@@ -7,6 +7,7 @@ import { freshSwitches } from "@/lib/ops-switches";
 import { plaidEnabled } from "@/lib/plaid/client";
 import { runInactiveCleanup } from "@/lib/plaid/inactive";
 import { ITEM_STATUS, syncItem } from "@/lib/plaid/sync";
+import { refreshAllRobinhood } from "@/lib/robinhood/refresh";
 import { alertError } from "@/lib/error-alerts";
 import { recordRun, reportMissedJobs } from "@/lib/health";
 import { deleteTrialsPastTheirTime } from "@/lib/trial-delete";
@@ -107,6 +108,7 @@ async function dailyWork(startedAt: number) {
       failed: 0,
       deferred: 0,
       inactive: null,
+      robinhood: await refreshAllRobinhood(),
       snapshots: await takeSnapshots(),
       jobs: await runDueJobs({ budgetMs: jobsBudget(startedAt) }),
       agent: await runAgentFollowUps(),
@@ -177,6 +179,7 @@ async function dailyWork(startedAt: number) {
     failed,
     deferred,
     inactive,
+    robinhood: await refreshAllRobinhood(),
     snapshots: await takeSnapshots(),
     jobs: await runDueJobs({ budgetMs: jobsBudget(startedAt) }),
     agent: await runAgentFollowUps(),

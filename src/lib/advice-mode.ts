@@ -1,4 +1,5 @@
 import { SAMPLE_DRAFT_NAME } from "@/config/documents";
+import { NOT_FROM_A_BANK } from "@/data-sources/types";
 import { cache } from "react";
 import { REAL_ACCOUNT_ADVICE } from "@/config/advice";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -35,13 +36,13 @@ const adviceModeOnce = cache((userId: string) => adviceModeFrom(userId, defaultC
 // Every account this person has comes from the demo bank, so all they see is sample data.
 export async function onlyDemoBank(userId: string, client: PrismaClient): Promise<boolean> {
   const db = scopedFor(userId, client);
-  const [items, csvAccounts] = await Promise.all([
+  const [items, ownAccounts] = await Promise.all([
     db.plaidItems.findMany({ select: { plaidItemId: true } }),
-    db.accounts.count({ where: { source: "csv" } }),
+    db.accounts.count({ where: { source: { in: [...NOT_FROM_A_BANK] } } }),
   ]);
   return isDemoOnly(
     items.map((i) => i.plaidItemId),
-    csvAccounts,
+    ownAccounts,
   );
 }
 

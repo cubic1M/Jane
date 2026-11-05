@@ -1,3 +1,4 @@
+import { NOT_FROM_A_BANK } from "@/data-sources/types";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { TRIAL_ID_PREFIX } from "@/config/trial";
 import { logAudit } from "@/lib/audit";
@@ -38,7 +39,7 @@ async function betaUsers(
       select: { userId: true, plaidItemId: true },
     }),
     systemDb(WHY, client).account.findMany({
-      where: { userId: { in: ids }, source: "csv" },
+      where: { userId: { in: ids }, source: { in: [...NOT_FROM_A_BANK] } },
       select: { userId: true },
       distinct: ["userId"],
     }),

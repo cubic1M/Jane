@@ -6,6 +6,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { plaid } from "@/lib/plaid/client";
 import { removePlaidItem } from "@/lib/plaid/remove";
+import { removeConnection } from "@/lib/robinhood/connection";
 import { deleteTrialPerson } from "@/lib/trial-delete";
 import { isStatementTrialUser } from "@/lib/trial-ids";
 import { systemTransaction } from "@/lib/system-db";
@@ -28,6 +29,7 @@ export async function deleteAllData(
   for (const item of items) {
     await removePlaidItem(userId, item.id, "user_deleted_data", { client, api });
   }
+  await removeConnection(userId, "user_deleted_data", { client });
   // Shared bills belong to the household, not the user row, so they're ended here, as when
   // someone leaves; the partner keeps the household and their own data.
   const membership = await scopedFor(userId, client).householdMembers.findUnique({

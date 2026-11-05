@@ -184,6 +184,7 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     householdMembers: scoped.householdMember,
     plaidItems: scoped.plaidItem,
     plaidItemClaims: scoped.plaidItemClaim,
+    robinhoodConnections: scoped.robinhoodConnection,
     accounts: scoped.account,
     transactions: scoped.transaction,
     recurringStreams: scoped.recurringStream,

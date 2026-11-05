@@ -1,6 +1,6 @@
 # Encryption keys: adding, rotating and retiring them
 
-Jane encrypts three things before they're saved: bank connection tokens (from Plaid),
+Jane encrypts four things before they're saved: Robinhood connection tokens (when that's on), bank connection tokens (from Plaid),
 two-factor secrets, and uploaded files. A key is what locks and unlocks them. This page is how
 you, the founder, change that key safely. **Only you ever handle a key.** Nobody else, no
 Claude session and no script, generates, sees, copies or moves one.

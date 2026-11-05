@@ -7,8 +7,9 @@ const SWITCHES = {
   site: "KILL_SITE",
   // No call reaches Claude.
   claude: "KILL_CLAUDE",
-  // No new bank links and no syncing. Removing a bank at Plaid keeps working, so deleting an
-  // account still does everything it promises. The demo bank carries on: it reaches no one.
+  // No new bank or Robinhood links and no syncing. Removing a bank at Plaid and disconnecting keep
+  // working, so deleting an account still does everything it promises. The demo bank carries on: it
+  // reaches no one.
   banks: "KILL_BANKS",
   // No statement, positions or document upload is read.
   uploads: "KILL_UPLOADS",

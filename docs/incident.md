@@ -50,7 +50,7 @@ this on the real project yet, so time it the first time you practise.
 | Set this | What stops | What keeps working | How it was checked |
 | --- | --- | --- | --- |
 | `KILL_SITE` | Everything: pages, API routes, webhooks, scheduled jobs. All answer 503. Plaid and Stripe retry webhooks later. The uptime check opens an outage issue, as it should | Nothing, including `/admin` | Real run and test |
-| `KILL_BANKS` | New bank links and all syncing of real banks | Deleting an account still removes the bank at Plaid. Uploads and the demo bank carry on | Real run and test |
+| `KILL_BANKS` | New bank links and all syncing of real banks, and the Robinhood connection's when it's on | Deleting an account still removes the bank at Plaid. Uploads and the demo bank carry on | Real run and test |
 | `KILL_CLAUDE` | Every call to Claude. Typed chat falls back to the rules' answers, which are much thinner | The rest of the app | Test |
 | `KILL_UPLOADS` | Statement, positions and document uploads. People are told uploads are paused | Everything already uploaded | Test |
 | `KILL_EMAIL` | All email, **sign-in links included**. Google sign-in still works | Everything else. Jobs that send email log a failure | Test |
