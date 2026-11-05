@@ -240,6 +240,21 @@ describe("how a couple is estimated before they say how they file (taxes QA)", (
     expect(payingTogether(pay("HARBOR", "2026-05-15", "2026-07-15"))).toHaveLength(2);
   });
 
+  // Debugger 11-05: a one-off moving reimbursement beside military pay read as a second earner, so the
+  // tax used the married standard deduction, $32,200.
+  it("doesn't take a single deposit from another payer as a second earner", () => {
+    const pay = (name: string, ...dates: string[]) =>
+      dates.map((date) => ({ description: `${name} PAYROLL`, date }));
+    const oneOff = [
+      ...pay("HARBOR", "2026-01-15", "2026-03-15", "2026-06-15", "2026-10-15"),
+      ...pay("ONE DAY GIG", "2026-06-20"),
+    ];
+    expect(guessFilingStatus({ jointAccounts: 0, payrollNames: payingTogether(oneOff) })).toBe(
+      null,
+    );
+    expect(payingTogether(oneOff).every((name) => name.startsWith("HARBOR"))).toBe(true);
+  });
+
   it("guesses married filing jointly from a joint account or two employers, and says why", () => {
     expect(
       guessFilingStatus({

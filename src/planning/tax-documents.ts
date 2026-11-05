@@ -52,6 +52,9 @@ const slug = (text: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
 
+// However each deposit's line reads, the military sends one W-2 (debugger 11-05).
+const MILITARY_PAYER = "DFAS";
+
 const LOAN_PAYMENT_FORMS: readonly ["mortgage" | "student", string][] = [
   ["mortgage", "LOAN_PAYMENTS_MORTGAGE_PAYMENT"],
   ["student", "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT"],
@@ -124,7 +127,11 @@ export function expectedForms(input: {
     // A seller's customers don't send 1099s; the payment app does (debugger 11-02: "1099 from Jo
     // Rivera").
     const payerOf = (t: FormTransaction) =>
-      formKey === "nec" && t.inPaymentApp ? t.accountName : payer(t);
+      formKey === "nec" && t.inPaymentApp
+        ? t.accountName
+        : t.pfcDetailed === "INCOME_MILITARY" && /\bDFAS\b/i.test(t.description)
+          ? MILITARY_PAYER
+          : payer(t);
     for (const [from, cents] of totals(INCOME_KINDS[kind].categories, payerOf)) {
       // Social Security has a form of its own (debugger 11-04: "1099-R from Ssa Treas Xxsoc Sec").
       if (formKey === "r" && SOCIAL_SECURITY_PAYEE.test(from)) {
