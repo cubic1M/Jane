@@ -2,6 +2,7 @@ import {
   CHILD_TAX_CREDIT_AGE,
   CHILDCARE_HINT_CATEGORIES,
   STATE_AGENCY_CATEGORIES,
+  STATE_TAX_AGENCIES,
   FILING_STATUSES,
   INCOME_KIND_ORDER,
   INCOME_KINDS,
@@ -166,10 +167,17 @@ function stateOf(input: {
         (STATE_AGENCY_CATEGORIES as readonly string[]).includes(t.pfcDetailed),
     )
     .sort((a, b) => b.date.localeCompare(a.date))
-    .find((t) => isState(t.description.slice(0, 2)) && /^[A-Z]{2} /.test(t.description));
-  return agency
-    ? { code: agency.description.slice(0, 2), from: `a ${payerOf(agency)} payment` }
-    : null;
+    .map((t) => ({ t, code: agencyState(t.description.toUpperCase()) }))
+    .find((a) => a.code !== null);
+  return agency ? { code: agency.code!, from: `a ${payerOf(agency.t)} payment` } : null;
+}
+
+// "CA DMV …", "COLORADO DEPT OF REVENUE", or a state tax agency known by its own name.
+function agencyState(line: string): string | null {
+  if (/^[A-Z]{2} /.test(line) && isState(line.slice(0, 2))) return line.slice(0, 2);
+  const named = STATE_TAX_AGENCIES.find(([pattern]) => pattern.test(line));
+  if (named) return named[1];
+  return US_STATES.find((s) => line.startsWith(`${s.name.toUpperCase()} `))?.code ?? null;
 }
 
 export type FieldStatus = "yours" | "found" | "missing";
