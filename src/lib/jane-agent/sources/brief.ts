@@ -24,7 +24,7 @@ export function safeLine(snapshot: Snapshot, date: string): string | null {
   return safe.safeCents < 0
     ? `You're short by ${formatCents(-safe.safeCents)}${until}, after your bills.`
     : `You have ${formatCents(safe.safeCents)} safe to spend${until}${
-        safe.taxHeldCents ? `, after setting aside ${formatCents(safe.taxHeldCents)} for tax` : ""
+        safe.taxHeldCents ? `, after holding back ${formatCents(safe.taxHeldCents)} for tax` : ""
       }.`;
 }
 

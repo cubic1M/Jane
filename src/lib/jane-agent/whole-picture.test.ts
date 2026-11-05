@@ -113,7 +113,7 @@ describe("the whole-picture answer", () => {
   it("says when tax is what took it to nothing", () => {
     const zero = snapshot({ safeToSpend: { safeCents: 0, payday: null, taxHeldCents: 47_267 } });
     expect(answer(zero).body.split("\n")[0]).toBe(
-      "Not quite: nothing is safe to spend this month, after your bills and $472.67 set aside for tax.",
+      "Not quite: nothing is safe to spend this month, after your bills and $472.67 held back for tax.",
     );
   });
 

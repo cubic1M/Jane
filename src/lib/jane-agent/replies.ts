@@ -634,7 +634,7 @@ export function safeReply(
     ? ` That leaves out ${safe.leftOut.join(" and ")}: I don't have a balance for it, so its money and bills aren't counted.`
     : "";
   return reply(
-    `You have ${fmt(safe.safeCents)} safe to spend${payday ? ` until your next payday, ${payday}` : ""}. That's after upcoming bills, what's left in your budgets and what goes to your goals${safe.taxHeldCents ? `, with ${fmt(safe.taxHeldCents)} set aside for tax on what you've earned on your own` : ""}.${leftOut}`,
+    `You have ${fmt(safe.safeCents)} safe to spend${payday ? ` until your next payday, ${payday}` : ""}. That's after upcoming bills, what's left in your budgets and what goes to your goals${safe.taxHeldCents ? `, with ${fmt(safe.taxHeldCents)} held back for tax not yet withheld or paid (an estimate)` : ""}.${leftOut}`,
     [link("See today", "/home")],
   );
 }

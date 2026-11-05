@@ -11,6 +11,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import type { ToolOutput } from "@/lib/ask/tools";
 import { formatCents } from "@/lib/money";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
+import { loadTaxSetAside } from "@/lib/tax-set-aside";
 import { loadWithholding } from "@/lib/tax-withholding";
 import { loadTaxSavings } from "@/lib/tax-savings";
 import { loadSelfEmployed } from "@/lib/self-employed";
@@ -362,13 +363,22 @@ export async function runTaxTool(
       });
     }
     case "tax_estimate": {
-      const view = await loadTaxEstimate(userId, { client, now });
+      const aside = await loadTaxSetAside(userId, { client, now });
+      const view = aside.estimateView;
       const e = view.estimate;
       // No income on file for the year isn't no tax: there's nothing to estimate from.
       if (e.totalIncomeCents === 0) return out(noIncomeSeen(view.year));
       return out({
         year: view.year,
         isAnEstimate: true,
+        // The same figure Safe to spend holds back and the card brings up. Null: not known.
+        taxOnIncomeSoFar: money(aside.taxSoFarCents),
+        withheldOrPaidSoFar: view.withholdingKnown ? money(aside.paidSoFarCents) : null,
+        notYetWithheldOrPaid: aside.notYetPaidCents === null ? null : money(aside.notYetPaidCents),
+        confidencePercent: aside.confidence.percent,
+        whatJaneDoesNotKnow: aside.unknowns,
+        correctedByThePerson: view.corrections.length,
+
         shareOfYearGone: Math.round(view.elapsed * 100) / 100,
         incomeSoFar: money(view.incomeSoFarCents),
         payFrom: view.pay.source,

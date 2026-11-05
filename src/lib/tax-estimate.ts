@@ -8,6 +8,7 @@ import {
 } from "@/config/retirement-taxes";
 import {
   BUSINESS_SALES_CATEGORIES,
+  BUSINESS_SALES_PAYEE,
   INCOME_KINDS,
   TAXABLE_INVESTMENT_SUBTYPES,
   type FilingStatus,
@@ -46,6 +47,13 @@ import {
   type PayPicture,
 } from "@/planning/tax-income";
 import { defaultTaxYear } from "@/planning/tax-pack";
+import {
+  fixesFrom,
+  incomePayers,
+  payerKeyOf,
+  type TaxCorrectionRow,
+  type TaxFixes,
+} from "@/planning/tax-corrections";
 import { dayLabel } from "@/lib/day-label";
 import {
   guessFilingStatus,
@@ -93,6 +101,29 @@ export type TaxEstimateView = {
   residency: ResidencyView;
   keepRefundYear: number | null;
   lastYearRefundCents: number | null;
+  // What the person pointed out on the calculation (src/lib/tax-corrections.ts), already used above.
+  corrections: TaxCorrectionRow[];
+  fixes: TaxFixes;
+  // The tax set-aside's working (src/planning/tax-set-aside.ts): where each figure so far came from.
+  soFar: {
+    firstSeen: string | null;
+    // Months of this year with income in them.
+    incomeMonths: number;
+    // Who paid the income counted, for "That isn't income".
+    payers: { key: string; label: string; cents: number }[];
+    federalWithheldCents: number;
+    stateWithheldCents: number;
+    // Tax payments in the accounts, and those the person told Jane about.
+    seenPaidCents: number;
+    toldPaidCents: number;
+    // Business costs tagged or told, so far and at the year's pace, and the home office.
+    businessCostsCents: number;
+    businessCostsYearCents: number;
+    homeOfficeCents: number;
+    // Shop sales counted at an assumed profit share, with no costs tagged.
+    profitAssumed: boolean;
+    filingStatusKnown: boolean;
+  };
 };
 
 export async function loadTaxEstimate(
@@ -107,7 +138,7 @@ export async function loadTaxEstimate(
   } = {},
 ): Promise<TaxEstimateView> {
   // Worked out once per piece of work (src/lib/read-cache.ts): Jane's snapshot asks 11 times.
-  return cachedCopy(`taxEstimate:${userId}:${now.toISOString()}:${asked ?? ""}`, client, () =>
+  return cachedCopy(`taxEstimate:${userId}:${iso(now)}:${asked ?? ""}`, client, () =>
     loadTaxEstimateFrom(userId, { client, now, year: asked }),
   );
 }
@@ -138,6 +169,7 @@ async function loadTaxEstimateFrom(
     tags,
     stored,
     residency,
+    corrections,
   ] = await Promise.all([
     loadWorkingProfile(userId, { client, now }),
     hasDemoBank(userId, { client }),
@@ -197,9 +229,20 @@ async function loadTaxEstimateFrom(
       },
     }),
     loadResidency(userId, year, { client }),
+    db.taxCorrections.findMany({
+      where: { year },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, kind: true, payerKey: true, label: true, cents: true, paidTo: true },
+    }),
   ]);
 
-  const rows = transactions.map((t) => ({ ...t, date: iso(t.date) }));
+  const fixes = fixesFrom(corrections);
+  // "That isn't income": the payer's deposits are left out, today's and later ones.
+  const isNotIncome = (t: { amountCents: number; description: string }) =>
+    t.amountCents < 0 && fixes.notIncome.has(payerKeyOf(t.description));
+  const rows = transactions
+    .map((t) => ({ ...t, date: iso(t.date) }))
+    .filter((t) => !isNotIncome(t));
   const taxable = new Set(
     accounts.filter((a) => TAXABLE_INVESTMENT_SUBTYPES.includes(a.subtype ?? "")).map((a) => a.id),
   );
@@ -268,23 +311,45 @@ async function loadTaxEstimateFrom(
     [...paychecks, ...bonuses],
     elapsed,
   );
-  const withholdingKnown = pay.source !== "none" || takeHome === 0;
+  const withholdingKnown = pay.source !== "none" || takeHome === 0 || fixes.withheldCents !== null;
   if (!withholdingKnown) {
     assumptions.push(
       "I can see your paychecks but not your pay stubs, so I've used your take-home pay as your wages and can't tell what was withheld. Add your pay stub figures for a refund-or-owe estimate.",
     );
   }
-  const wagesSoFar = pay.source === "none" ? takeHome : pay.soFar.wagesCents;
-  const wagesProjected = pay.source === "none" ? takeHomeProjected : pay.projected.wagesCents;
+  const paceOf = (cents: number) =>
+    elapsed > 0 && elapsed < 1 ? Math.round(cents / elapsed) : cents;
+  // "That number's wrong": the person's own figures for wages and withholding so far.
+  const wagesSoFar = fixes.wagesCents ?? (pay.source === "none" ? takeHome : pay.soFar.wagesCents);
+  const wagesProjected =
+    fixes.wagesCents !== null
+      ? paceOf(fixes.wagesCents)
+      : pay.source === "none"
+        ? takeHomeProjected
+        : pay.projected.wagesCents;
+  if (fixes.wagesCents !== null) assumptions.push("Your wages so far are the figure you gave.");
+  if (fixes.withheldCents !== null) {
+    pay = {
+      ...pay,
+      soFar: { ...pay.soFar, federalWithheldCents: fixes.withheldCents },
+      projected: { ...pay.projected, federalWithheldCents: paceOf(fixes.withheldCents) },
+    };
+    assumptions.push("Federal tax withheld so far is the figure you gave.");
+  }
 
   // Spec step 123: freelance income less business expenses (tagged, and miles driven), and
   // the home office for the year; estimated payments made from accounts Jane can't see.
   const miles = stored?.businessMilesYear === year ? (stored.businessMiles ?? 0) : 0;
-  const businessSoFar = tags.totals.business.totalCents + mileageDeduction(miles);
+  const businessSoFar =
+    tags.totals.business.totalCents + mileageDeduction(miles) + fixes.businessCostCents;
   const otherSoFar = otherIncomeSoFar(rows, cash, year, businessSoFar);
   // A shop's card sales (taxes QA): profit is sales less the business expenses tagged; with
   // none tagged, the share of sales the detectors assume, said as an assumption.
-  const sales = businessSalesSoFar(rows, year);
+  const sales = fixes.selfEmployedCents !== null ? 0 : businessSalesSoFar(rows, year);
+  if (fixes.selfEmployedCents !== null) {
+    otherSoFar.selfEmploymentCents = fixes.selfEmployedCents - businessSoFar;
+    assumptions.push("Your self-employment income so far is the figure you gave.");
+  }
   if (sales > 0) {
     const profit =
       businessSoFar > 0 ? sales : Math.round(sales * DETECTOR_RATES.tax.businessProfitShare);
@@ -370,12 +435,12 @@ async function loadTaxEstimateFrom(
     elapsed > 0 && elapsed < 1 ? Math.round(cents / elapsed) : cents;
   const benefits = paceYear(
     retirementRows
-      .filter((t) => SOCIAL_SECURITY_PAYEE.test(t.description))
+      .filter((t) => !isNotIncome(t) && SOCIAL_SECURITY_PAYEE.test(t.description))
       .reduce((s, t) => s - t.amountCents, 0),
   );
   const iraDraws = paceYear(
     retirementRows
-      .filter((t) => IRA_DISTRIBUTION.test(t.description))
+      .filter((t) => !isNotIncome(t) && IRA_DISTRIBUTION.test(t.description))
       .reduce((s, t) => s - t.amountCents, 0),
   );
   paced.retirementCents += iraDraws;
@@ -393,8 +458,8 @@ async function loadTaxEstimateFrom(
   const seen = taxPaymentsFor(rows, year);
   const typed = enteredTaxPayments(stored?.taxPayments, year);
   const payments = {
-    federalCents: seen.federalCents + typed.federalCents,
-    stateCents: seen.stateCents + typed.stateCents,
+    federalCents: seen.federalCents + typed.federalCents + fixes.paid.federalCents,
+    stateCents: seen.stateCents + typed.stateCents + fixes.paid.stateCents,
   };
   const loanInterest = (kind: string) => {
     const ytd = loans
@@ -478,9 +543,13 @@ async function loadTaxEstimateFrom(
       socialSecurityBenefitsCents: benefits,
       wagesCents: wagesProjected + equity.ordinaryCents,
       socialSecurityWagesCents:
-        pay.source === "none" ? wagesProjected : pay.projected.socialSecurityWagesCents,
+        pay.source === "none" || fixes.wagesCents !== null
+          ? wagesProjected
+          : pay.projected.socialSecurityWagesCents,
     },
     studentLoanInterestCents: loanInterest("student"),
+    // "That's a deduction": what the person told Jane might count, off their income.
+    ...(fixes.deductionCents > 0 ? { otherAdjustmentsCents: fixes.deductionCents } : {}),
     amtPreferenceCents: equity.amtPreferenceCents,
     mortgageInterestCents: loanInterest("mortgage"),
     charityCents: tags.totals.donation.totalCents,
@@ -562,6 +631,18 @@ async function loadTaxEstimateFrom(
     )
     .reduce((s, t) => s - t.amountCents, 0);
 
+  // The deposits the estimate counted as income, whoever paid them.
+  const incomeCategorySet = new Set<string>(
+    Object.values(INCOME_KINDS).flatMap((k) => [...k.categories]),
+  );
+  const counted = rows.filter(
+    (t) =>
+      t.amountCents < 0 &&
+      t.date.startsWith(String(year)) &&
+      ((t.pfcDetailed !== null && incomeCategorySet.has(t.pfcDetailed)) ||
+        (sales > 0 && BUSINESS_SALES_PAYEE.test(t.description)) ||
+        bonuses.includes(t)),
+  );
   const otherSoFarCents = Object.entries(otherSoFar)
     .filter(([key]) => key !== "qualifiedDividendsCents")
     .reduce((sum, [, cents]) => sum + cents, 0);
@@ -592,6 +673,24 @@ async function loadTaxEstimateFrom(
     w4,
     keepRefundYear: stored?.keepRefundYear ?? null,
     lastYearRefundCents: lastYearRefundCents > 0 ? lastYearRefundCents : null,
+    corrections,
+    fixes,
+    soFar: {
+      firstSeen,
+      incomeMonths: new Set(counted.filter((t) => t.date <= today).map((t) => t.date.slice(0, 7)))
+        .size,
+      payers: incomePayers(counted),
+      federalWithheldCents: pay.soFar.federalWithheldCents,
+      stateWithheldCents: pay.soFar.stateWithheldCents,
+      seenPaidCents: seen.federalCents + seen.stateCents,
+      toldPaidCents:
+        typed.federalCents + typed.stateCents + fixes.paid.federalCents + fixes.paid.stateCents,
+      businessCostsCents: hobby ? 0 : businessSoFar,
+      businessCostsYearCents: hobby ? 0 : paceOf(businessSoFar),
+      homeOfficeCents: homeOffice,
+      profitAssumed: sales > 0 && businessSoFar === 0,
+      filingStatusKnown: Boolean(profile.filingStatus),
+    },
   };
 }
 

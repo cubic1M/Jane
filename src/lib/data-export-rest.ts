@@ -58,6 +58,7 @@ const WRITTEN_OUT = new Set([
   "subscriptionChecks",
   "suggestionOutcomes",
   "suggestions",
+  "taxCorrections",
   "taxDocuments",
   "taxForms",
   "taxProfiles",

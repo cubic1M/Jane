@@ -92,6 +92,8 @@ export const YEAR_END_FROM_DAY = 1;
 // the return). Urgent ones ("now") go in this month; "soon" ones in this month or the next.
 export const TAX_TOPIC_MONTH: Readonly<Record<string, number>> = {
   estimated_taxes: 1,
+  tax_not_yet_paid: 1,
+  tax_set_aside: 1,
   business_separation: 1,
   // A business's quarterly sales or payroll tax: set aside from January's sales (detector
   // coverage); a payment due within a month makes it "soon" any month.

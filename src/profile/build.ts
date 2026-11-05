@@ -127,6 +127,20 @@ export type ProfileInput = {
     } | null;
     // RSU withholding that falls short, from the person's vests this year or, with none known,
     // an assumed share of their stock plan (the same figure as the chat's answer). Null: none.
+    // The tax left to cover (src/lib/tax-set-aside.ts), the same figure Safe to spend holds back.
+    // Absent: not loaded (the sample people).
+    taxSetAside?: {
+      year: number;
+      status: "needed" | "covered" | "unknown" | "no_income";
+      advice: boolean;
+      holdCents: number;
+      taxSoFarCents: number;
+      paidSoFarCents: number;
+      keptApartCents: number;
+      withholdingKnown: boolean;
+      unknowns: readonly string[];
+      confidence: { percent: number; reason: string };
+    };
     // What the person's subscriptions cost in a year, as the subscriptions page and the chat
     // count them (recurring charges that are subscriptions). Absent: not loaded.
     subscriptions?: { yearlyCents: number; count: number } | null;

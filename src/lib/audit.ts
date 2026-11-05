@@ -229,6 +229,10 @@ export type AuditEvent =
   // A tax tag the person changed (spec step 119): the tag and whether on one transaction or
   // a merchant, never which.
   | "tax_tag_changed"
+  // Something the person pointed out on their tax calculation, added or undone: the kind and
+  // year, never the words or the amount.
+  | "tax_correction_added"
+  | "tax_correction_removed"
   // Filing (spec step 126): a return started with the filing partner, and signed.
   | "tax_return_started"
   | "tax_return_signed"

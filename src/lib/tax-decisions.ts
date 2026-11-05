@@ -22,6 +22,7 @@ import { loadInvestmentTaxes } from "@/lib/investment-taxes";
 import { loadMultiYear } from "@/lib/multi-year";
 import { loadPropertyTax } from "@/lib/property-tax";
 import { loadSelfEmployed } from "@/lib/self-employed";
+import { loadTaxSetAside } from "@/lib/tax-set-aside";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
 import { loadTaxSavings } from "@/lib/tax-savings";
 import { checkFrom } from "@/lib/tax-withholding";
@@ -387,6 +388,24 @@ export async function decideTax(
     }
     case "setaside": {
       const se = await loadSelfEmployed(userId, { client, now, loaded: { estimate: est, advice } });
+      // The same figure Safe to spend holds back and the card brings up.
+      const aside = await loadTaxSetAside(userId, { client, now });
+      if (aside.status === "needed") {
+        const left = roundDollars(aside.holdCents);
+        return made(
+          advice
+            ? `About ${left} so far: that's the tax on your income so far, less what's withheld and paid. It's an estimate, and Safe to spend leaves it out.`
+            : `About ${left} of your ${aside.year} tax so far isn't withheld or paid yet. That's an estimate, and Safe to spend leaves it out.`,
+          [aside.holdCents],
+          "/taxes?focus=estimate:set-aside",
+        );
+      }
+      if (aside.status === "unknown")
+        return made(
+          "I can't tell yet: your employer withholds tax from your paychecks, but I can't see how much. Your pay stub figures on your Taxes page would settle it.",
+          [],
+          "/taxes?focus=estimate:set-aside",
+        );
       if (!se.active) {
         const per = est.paychecks.withheldPerPaycheckCents ?? 0;
         return made(

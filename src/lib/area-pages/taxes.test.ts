@@ -46,6 +46,7 @@ const input = (over: Partial<TaxesTreeInput> = {}): TaxesTreeInput => ({
     },
   ],
   estimate: { refundCents: 81_200, withholdingKnown: true },
+  setAside: { status: "no_income", advice: false, holdCents: 0, percent: 40 },
   withholding: "big_refund",
   w4Sent: false,
   refunds: 0,
@@ -175,7 +176,13 @@ describe("the taxes tree", () => {
   });
 
   it("opens the item each old #anchor named", () => {
-    const { tree } = taxesTree(input({ refunds: 1, sideIncome: { differs: 0, waiting: 1 } }));
+    const { tree } = taxesTree(
+      input({
+        setAside: { status: "covered", advice: false, holdCents: 0, percent: 85 },
+        refunds: 1,
+        sideIncome: { differs: 0, waiting: 1 },
+      }),
+    );
     const ids = new Set(tree.branches.flatMap((b) => [b.id, ...b.items.map((i) => i.id)]));
     for (const [anchor, id] of Object.entries(TAXES_ANCHORS)) expect(ids, anchor).toContain(id);
   });

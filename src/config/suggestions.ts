@@ -131,6 +131,9 @@ export const ADVICE_TOPICS: readonly SuggestionTopic[] = [
   "concentration",
   "retirement_self_employed",
   "estimated_taxes",
+  // "Set aside $X for tax" tells someone what to do with their money. Real accounts get the same
+  // figure as a fact, under tax_not_yet_paid.
+  "tax_set_aside",
   "business_separation",
   "life_insurance",
   "business_insurance",

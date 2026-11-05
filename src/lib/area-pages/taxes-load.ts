@@ -3,6 +3,7 @@ import { taxesTree } from "@/lib/area-pages/taxes";
 import { loadTaxTags } from "@/lib/tax-organizer";
 import { adviceMode } from "@/lib/advice-mode";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
+import { loadTaxSetAside } from "@/lib/tax-set-aside";
 import { checkFrom } from "@/lib/tax-withholding";
 import { loadTaxSavings } from "@/lib/tax-savings";
 import { loadWorkingProfile } from "@/lib/tax-profile";
@@ -29,13 +30,14 @@ export async function loadTaxesArea(userId: string, { now = new Date() }: { now?
   const today = now.toISOString().slice(0, 10);
   // The year being gathered: last year until the end of April, then this one.
   const year = defaultTaxYear(today);
-  const [{ view, taxes }, tags, forms, estimate, advice] = await Promise.all([
+  const [{ view, taxes }, tags, forms, estimate, advice, setAside] = await Promise.all([
     loadWorkingProfile(userId, { now }),
     loadTaxTags(userId, year),
     // Spec step 166: with what Jane collected and how each checked.
     loadTaxDocuments(userId, year, { now }),
     loadTaxEstimate(userId, { now }),
     adviceMode(userId),
+    loadTaxSetAside(userId, { now }),
   ]);
   // The audit records are built from the page's own estimate, tags, forms, gifts and home (#687).
   const homeLoad = loadHomeTaxes(userId, { now, loaded: { estimate } });
@@ -106,6 +108,12 @@ export async function loadTaxesArea(userId: string, { now = new Date() }: { now?
       refundCents: estimate.estimate.refundCents,
       withholdingKnown: estimate.withholdingKnown,
     },
+    setAside: {
+      status: setAside.status,
+      advice: setAside.advice,
+      holdCents: setAside.holdCents,
+      percent: setAside.confidence.percent,
+    },
     withholding: check.status,
     w4Sent: !!estimate.w4,
     refunds: refunds.length,
@@ -152,6 +160,7 @@ export async function loadTaxesArea(userId: string, { now = new Date() }: { now?
     tags,
     forms,
     estimate,
+    setAside,
     advice,
     refunds,
     investments,

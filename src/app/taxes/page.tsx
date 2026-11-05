@@ -18,6 +18,7 @@ import { type TaxTagsView } from "@/lib/tax-organizer";
 import { byHerself } from "@/lib/jane-agent/replies-autopilot";
 import { type FieldStatus } from "@/planning/tax-profile";
 import { EstimateSection } from "./estimate-section";
+import { SetAsideSection } from "./set-aside-section";
 import { SavingActions } from "./savings-section";
 import { InvestmentsSection } from "./investments-section";
 import { RefundSection } from "./refund-section";
@@ -220,6 +221,7 @@ async function TaxesContent({
     tags,
     forms,
     estimate,
+    setAside,
     advice,
     refunds,
     investments,
@@ -267,6 +269,7 @@ async function TaxesContent({
       );
     }
 
+  details[itemId("estimate", "set-aside")] = <SetAsideSection view={setAside} />;
   details[itemId("estimate", "estimate")] = <EstimateSection view={estimate} />;
   details[itemId("estimate", "withholding")] = (
     <WithholdingSection view={{ estimate, check, advice }} />

@@ -27,6 +27,10 @@ export const SUGGESTION_TOPICS = [
   "concentration",
   "withholding_gap",
   "estimated_taxes",
+  // The tax left to cover (src/detectors/tax-set-aside.ts): a fact for real accounts, "set aside"
+  // only in demo advice.
+  "tax_not_yet_paid",
+  "tax_set_aside",
   "retirement_self_employed",
   "income_smoothing",
   "health_insurance",
