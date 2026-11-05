@@ -1182,6 +1182,10 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   −1.0 / −1.5, fast blinds room −2.0 / +0.7: none significant either way. Pot-limit never hands over: with the time
   limit off `icm_switch` = `icm_tag` exactly (+0.00 ± 0.00 on 30 tables); with it on, the odd over-time fold on this
   host changes the rest of the table, so the nonzero values are timing noise.
+  After today's `icm_switch` change (13:00, `SNG_TIME_SCALE=1.5`, bughunt alongside): 18 of 19 suites OK, every suite of
+  our bots included; the one failure is the round-1 opponent `opp_lag` on Irish (104 ms vs a 100 ms check), not ours.
+  Switch bundle rebuilt with today's code (8.12 MB, contains the 8-alive cap) on the rehearsal kit: 20 tables, 0 errors,
+  0 timeouts, end-of-hand 0 errors, slowest decision 0.78 ms, 4 s from build to result.
   Bug hunter run 44 (2-10 players) flags ~50 slow tables per 10 minutes, all 9-10-handed, all four of our bots alike
   (Omaha too): replayed, the outliers sit near 8 ms in any code path (not GC: 1 of 47 had a collection inside). Same
   load, interleaved: our bots p99 0.23 ms (8 players) vs 0.36 ms (10), >1 ms 0.03% vs 0.17%. The flags are the bug
