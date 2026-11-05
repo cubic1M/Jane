@@ -302,6 +302,7 @@ export const BANK_LOANS_INCOME: readonly Rule[] = [
       "PAYCHEX",
       "ADP WAGE",
       "WAGE PAY",
+      "WAGES",
       "RIPPLING",
     ],
     direction: "in",

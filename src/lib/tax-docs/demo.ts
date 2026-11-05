@@ -141,6 +141,9 @@ export const demoDocumentPartner: TaxDocumentPartner = {
               null;
             return interest !== null && interest > 0 ? { interest } : null;
           }
+          // Schools aren't in the demo's sample forms: this one is the person's to add.
+          case "tuition":
+            return null;
         }
       })();
       if (boxes) out.push({ key: form.key, boxes });

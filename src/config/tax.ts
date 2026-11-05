@@ -238,6 +238,7 @@ export const TAX_FORMS = {
   g: { form: "1099-G", what: "unemployment benefits", by: "01-31" },
   mortgage: { form: "1098", what: "mortgage interest", by: "01-31" },
   student: { form: "1098-E", what: "student loan interest", by: "01-31" },
+  tuition: { form: "1098-T", what: "tuition", by: "01-31" },
   // Spec step 219: an exchange that sold crypto in the year reports the proceeds (brokers
   // report from 2025; cost basis from 2026).
   da: { form: "1099-DA", what: "crypto sales", by: "02-15" },

@@ -1124,6 +1124,26 @@ describe("a sale through PayPal", () => {
 
 // Debugger 11-04: a person's policies. A yearly umbrella policy had no category, and Delta Dental's fixed
 // monthly premium read as dental treatment, so neither was on the list of their insurance.
+// Debugger 11-05: a student's campus job had no category, so when the summer internship ended Jane
+// said "Your pay looks like it stopped", 93% sure, with the job still paying every two weeks.
+describe("wages by that word", () => {
+  it.each(["CAMPUS BOOKSTORE STUDENT WAGES", "CITY OF SEATTLE WAGES", "MAPLE CAFE WAGES 0412"])(
+    "%s is pay",
+    (description) => {
+      expect(categorizeByRules({ description, amountCents: -31_200, hints: {} })?.detailed).toBe(
+        "INCOME_SALARY",
+      );
+    },
+  );
+
+  it("a payment going out isn't", () => {
+    expect(
+      categorizeByRules({ description: "ADP WAGES GARNISHMENT", amountCents: 20_000, hints: {} })
+        ?.detailed,
+    ).not.toBe("INCOME_SALARY");
+  });
+});
+
 // Debugger 11-05: a new parent's month. Leave pay and the delivery bill had no category, and a Kaiser
 // prescription read as the plan's premium, so the tax pack's medical left it out.
 describe("having a baby", () => {
