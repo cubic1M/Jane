@@ -1210,6 +1210,11 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   tables vs `icm_switch`): `f9_gto` +3.1 ± 4.1, `f9_meta` +2.1 ± 4.1, strong-room option +2.1 ± 4.1, `f9_limptrap`
   +1.4 ± 4.4: none significant, so no change. The lean matches the existing plan: in a room of strong, hard-to-
   exploit bots, resubmit the strong-room option (it starts as `f9_meta`).
+  Part 2 (`results/sng_unseen_check2.md`, seeds 651000+, 400 paired tables): 31-bot unseen field with bounties +0.3 /
+  +1.1, fixed-limit −0.9 / +0.2; strongest 8 unseen, winner-take-all +0.3 / **+4.3*** (the strong-room option is
+  significantly better there). No significant loss in any unseen-opponent cell (9 cells). One 62 ms decision for the
+  strong-room option in the bounty cell (`icm_tag` 18.5 ms on the same run): a host spike under 3 processes, not
+  repeatable in the timing runs above.
 * **Bug hunter:** 2.62M random tables (all variants, 2–8 players; 2–10 from Nov 5 10:20, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
