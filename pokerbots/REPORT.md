@@ -1181,7 +1181,7 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   (Omaha too): replayed, the outliers sit near 8 ms in any code path (not GC: 1 of 47 had a collection inside). Same
   load, interleaved: our bots p99 0.23 ms (8 players) vs 0.36 ms (10), >1 ms 0.03% vs 0.17%. The flags are the bug
   hunter's 0.5 ms p99 bar on ~150 decisions on an oversubscribed host, not a code path of ours.
-* **Bug hunter:** 2.55M random tables (all variants, 2–8 players; 2–10 from Nov 5 10:20, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
+* **Bug hunter:** 2.56M random tables (all variants, 2–8 players; 2–10 from Nov 5 10:20, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
   - looser calls (a raiser = 3.2 hands, a 3% margin);
