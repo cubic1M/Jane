@@ -1190,6 +1190,15 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   (Omaha too): replayed, the outliers sit near 8 ms in any code path (not GC: 1 of 47 had a collection inside). Same
   load, interleaved: our bots p99 0.23 ms (8 players) vs 0.36 ms (10), >1 ms 0.03% vs 0.17%. The flags are the bug
   hunter's 0.5 ms p99 bar on ~150 decisions on an oversubscribed host, not a code path of ours.
+* **Unseen opponents (Nov 5, `results/sng_unseen_check.md`, seeds 621000+, 400 paired tables vs `icm_tag`).** A field
+  of the 31 opponent bots that are in none of our test fields (solver / Nash / GTO / limp-trap / bully / river-bluff
+  bots from fields 2-9, plus `adaptive`, `mc_fast`, `station0`), as an over-fitting check. `icm_switch` / strong-room
+  option: default payouts +1.2 / −0.5, top 3 −0.8 / **+3.2***, kit-4 six-plus +2.5 / +3.1. No significant loss.
+  Standing (400 tables): `icm_switch` 43.6 ± 3.5 points/table, top tier with `f7_bully` 45.4 ± 6.7, `f9_gto` 44.4,
+  `f9_limptrap` 44.3, `f8_nash` 44.0 (all within noise); no unseen bot beats it significantly. This field is heavier
+  to decide in (p99 0.17 ms vs 0.07 in field 10): with 3 workers + bug hunter on 4 cores, 333 of ~60k decisions went
+  over 1 ms; one worker on the same seeds gives 1 for `icm_switch` (max 1.8 ms) and 1 for `icm_tag` (max 6.2 ms), so
+  that was host load.
 * **Bug hunter:** 2.61M random tables (all variants, 2–8 players; 2–10 from Nov 5 10:20, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
