@@ -7,6 +7,7 @@ import {
   BROKERS,
   TAXABLE_INVESTMENT_SUBTYPES,
   TAX_FORMS,
+  TUITION_PAYEE,
   necThreshold,
   type IncomeKind,
   type TaxFormKey,
@@ -62,12 +63,14 @@ export const BROKER_TRANSFER_CATEGORIES: readonly string[] = [
   "TRANSFER_IN_INVESTMENT_AND_RETIREMENT_FUNDS",
 ];
 export const LOAN_PAYMENT_CATEGORIES: readonly string[] = LOAN_PAYMENT_FORMS.map(([, c]) => c);
+// Tuition, told from a course app by who it's paid to (TUITION_PAYEE, as the education credits do).
+export const TUITION_CATEGORY = "GENERAL_SERVICES_EDUCATION";
 
 // Who sends the form, as a person reads it: without the bank's word for how the money came
 // (debugger 11-02: "1099-NEC or 1099-K from Stripe Transfer", "W-2 from Blue Bottle Coffee
 // Payroll"). For display only: forms are matched to documents and checks by `from` as it is.
 const HOW_IT_CAME =
-  / (?:payroll|payouts?|transfers?|deposits?|direct dep(?:osit)?|dir dep|driver pay)$/i;
+  / (?:payroll|payouts?|transfers?|deposits?|direct dep(?:osit)?|dir dep|driver pay|(?:student )?wages)$/i;
 export const formPayer = (name: string) => name.replace(HOW_IT_CAME, "").trim() || name;
 
 const PAYER_FORMS: readonly [IncomeKind, TaxFormKey][] = [
@@ -189,5 +192,17 @@ export function expectedForms(input: {
     );
     for (const lender of [...lenders].sort()) forms.push(make(kind, lender, null));
   }
+  const schools = new Set(
+    input.transactions
+      .filter(
+        (t) =>
+          Number(t.date.slice(0, 4)) === input.year &&
+          t.amountCents > 0 &&
+          t.pfcDetailed === TUITION_CATEGORY &&
+          TUITION_PAYEE.test(`${t.description} ${t.merchantName ?? ""}`),
+      )
+      .map((t) => payer(t).replace(/ tuition(?: payment| pmt)?$/i, "")),
+  );
+  for (const school of [...schools].sort()) forms.push(make("tuition", school, null));
   return forms;
 }

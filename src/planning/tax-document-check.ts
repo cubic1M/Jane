@@ -40,6 +40,7 @@ export const DOCUMENT_BOXES: Readonly<Record<TaxFormKey, Readonly<Record<string,
   g: { amount: "Box 1, unemployment", federalWithheld: "Box 4, federal tax withheld" },
   mortgage: { interest: "Box 1, mortgage interest", points: "Box 6, points" },
   student: { interest: "Box 1, student loan interest" },
+  tuition: { paid: "Box 1, tuition paid", scholarships: "Box 5, scholarships and grants" },
   da: { proceeds: "Box 1d, proceeds", costBasis: "Box 1e, cost basis" },
 };
 
@@ -54,6 +55,7 @@ export const COMPARED: Readonly<Record<TaxFormKey, string>> = {
   g: "payments after tax",
   mortgage: "mortgage interest",
   student: "student loan interest",
+  tuition: "tuition paid",
   da: "crypto sale proceeds",
 };
 
@@ -88,6 +90,8 @@ export function formAmount(formKey: TaxFormKey, boxes: DocumentBoxes): number {
     case "mortgage":
     case "student":
       return box(boxes, "interest");
+    case "tuition":
+      return box(boxes, "paid");
   }
 }
 

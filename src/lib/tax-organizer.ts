@@ -11,6 +11,7 @@ import {
   expectedForms,
   BROKER_TRANSFER_CATEGORIES,
   LOAN_PAYMENT_CATEGORIES,
+  TUITION_CATEGORY,
   type ExpectedForm,
 } from "@/planning/tax-documents";
 import {
@@ -268,7 +269,10 @@ async function loadTaxFormsFrom(
         date: yearRange(year),
         OR: [
           { amountCents: { lt: 0 }, pfcDetailed: { in: incomeCategories } },
-          { amountCents: { gt: 0 }, pfcDetailed: { in: [...LOAN_PAYMENT_CATEGORIES] } },
+          {
+            amountCents: { gt: 0 },
+            pfcDetailed: { in: [...LOAN_PAYMENT_CATEGORIES, TUITION_CATEGORY] },
+          },
           { amountCents: { lt: 0 }, pfcDetailed: { in: [...BROKER_TRANSFER_CATEGORIES] } },
         ],
       },

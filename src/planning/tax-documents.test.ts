@@ -266,7 +266,37 @@ describe("Social Security", () => {
   });
 });
 
+// Debugger 11-05: a student paid $13,000 of tuition and the forms to expect had no 1098-T, which is
+// what the education credits need.
+describe("tuition paid to a school", () => {
+  const formsFor = (transactions: FormTransaction[]) =>
+    expectedForms({ year: 2026, transactions, accounts: [], loans: [] }).map((f) => [
+      f.form,
+      f.from,
+    ]);
+  const paid = (description: string, date = "2026-09-08") =>
+    tx({ date, amountCents: 431_000, description, pfcDetailed: "GENERAL_SERVICES_EDUCATION" });
+
+  it("expects one 1098-T from the school, however many times it's paid", () => {
+    expect(
+      formsFor([
+        paid("UNIV OF WASHINGTON TUITION"),
+        paid("UNIV OF WASHINGTON TUITION", "2026-01-08"),
+      ]),
+    ).toEqual([["1098-T", "UNIV OF WASHINGTON"]]);
+  });
+
+  it("not from a course app, or for another year", () => {
+    expect(formsFor([paid("CHEGG ORDER"), paid("UNIV OF WASHINGTON", "2025-09-08")])).toEqual([]);
+  });
+});
+
 describe("who sends each form, as pages say it", () => {
+  it("leaves out the word for wages", () => {
+    expect(formPayer("Campus Bookstore Student Wages")).toBe("Campus Bookstore");
+    expect(formPayer("City Of Seattle Wages")).toBe("City Of Seattle");
+  });
+
   it("is named without the bank's word for how the money came", () => {
     expect(formPayer("Blue Bottle Coffee Payroll")).toBe("Blue Bottle Coffee");
     expect(formPayer("Stripe Transfer")).toBe("Stripe");
