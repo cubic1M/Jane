@@ -471,3 +471,37 @@ test.describe("what a person has seen", () => {
     await expect(figure).not.toHaveText(old);
   });
 });
+
+// Debugger 11-05: "Link a demo bank", the scan, then back on /connect for good. Home, with no bank yet,
+// sends someone to /connect. A first round of preloads that started on the scan's page kept that answer
+// for the hand-off. Forced without touching the database (the suite shares it): the round can't start
+// until the click, and the scan's page stays up while we watch for it.
+test("the first scan's page starts no preloads", async ({ context, page, baseURL }) => {
+  await person(context, baseURL);
+  let clicked: () => void = () => {};
+  const afterClick = new Promise<void>((resolve) => (clicked = resolve));
+  await page.route(/\/_next\/static\/.*\.js/, async (route) => {
+    const answer = await route.fetch();
+    if ((await answer.text()).includes("jane:page-cache")) await afterClick;
+    await route.fulfill({ response: answer }).catch(() => undefined);
+  });
+  let scanRunning = true;
+  await page.route("**/api/detection/status", (route) =>
+    scanRunning ? route.fulfill({ json: {} }) : route.continue(),
+  );
+  const askedForHome: string[] = [];
+  page.on("request", (request) => {
+    if (/\/home\?_rsc=/.test(request.url()) && /\/scanning/.test(page.url()))
+      askedForHome.push(request.url());
+  });
+
+  // Not "load": the script held above could be what the page's load is waiting on.
+  await page.goto("/connect", { waitUntil: "commit" });
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await page.waitForURL(/\/scanning/, { timeout: 60_000 });
+  clicked();
+  await holds(() => expect(askedForHome).toEqual([]), 4_000);
+
+  scanRunning = false;
+  await expect(page).toHaveURL(/\/home(\?|$)/, { timeout: 90_000 });
+});

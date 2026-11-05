@@ -1,6 +1,7 @@
 import { forgetMemory, keepInMemory } from "@/lib/page-memory";
 import type { OpenedPage } from "@/lib/page-opened";
 import {
+  NO_ROUND_FROM,
   PAGE_KEEP_SECONDS,
   PAGE_OLD_MS,
   POSTS_THAT_CHANGE_NOTHING,
@@ -64,6 +65,7 @@ export function connectionAllowsPreload(connection: Connection): boolean {
 
 // The pages a round asks for, from where the person is now.
 export function pagesToPreload(here: string): string[] {
+  if (NO_ROUND_FROM.includes(here)) return [];
   return PRELOAD_PAGES.filter((page) => page !== here);
 }
 
@@ -200,7 +202,10 @@ function runRound() {
     roundOwed = true;
     return;
   }
-  if (document.querySelector(STILL_LOADING_SELECTOR)) {
+  if (
+    NO_ROUND_FROM.includes(window.location.pathname) ||
+    document.querySelector(STILL_LOADING_SELECTOR)
+  ) {
     roundTimer = setTimeout(runRound, 500);
     return;
   }

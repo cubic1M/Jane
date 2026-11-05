@@ -209,6 +209,7 @@ export function prepareExplainInput(
         lowestAround: text(evidence.lowestDate) && dayLabel(text(evidence.lowestDate)!),
         cushion: money(num(evidence.cushionCents)),
         unevenPayMonthly: money(num(evidence.unevenPayMonthlyCents)),
+        otherMoneyMonthly: money(num(evidence.otherMoneyMonthlyCents)),
       };
       sent = list(evidence.bills)
         .map(obj)

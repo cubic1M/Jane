@@ -70,6 +70,51 @@ describe("a balance from a statement too old to walk forward", () => {
   });
 });
 
+// Debugger 11-05: a bartender's small paychecks were on the calendar, so the forecast counted only those,
+// said nothing of the cash that's most of what they live on, and "could drop to -$95.81" read as sure.
+describe("a low balance for someone with a payday and cash besides", () => {
+  const withPayday = (cents: number, cash: readonly number[]) =>
+    input({
+      accounts: [{ ...CHECKING, currentBalanceCents: cents }],
+      transactions: [
+        ...geico,
+        ...[0, 14, 28, 42, 56, 70].map((back) =>
+          tx({
+            date: addDays(AS_OF, -back),
+            amountCents: -25_000,
+            description: "RUSTY ANCHOR PAYROLL",
+            merchantName: "Rusty Anchor",
+            pfcPrimary: "INCOME",
+            pfcDetailed: "INCOME_SALARY",
+          }),
+        ),
+        ...cash.map((back, i) =>
+          tx({
+            date: addDays(AS_OF, -back),
+            amountCents: -(21_000 + i * 3_700),
+            description: "ATM CASH DEPOSIT",
+            pfcPrimary: "INCOME",
+            pfcDetailed: "INCOME_OTHER",
+          }),
+        ),
+      ],
+    });
+
+  it("says what else comes in, and isn't sure", () => {
+    const [finding] = run(withPayday(5_000, [3, 9, 16, 24, 33, 41, 50, 58, 67, 75, 84]));
+    expect(finding.title).toMatch(/could drop to .* if nothing else comes in$/);
+    expect(finding.confidence).toBe("low");
+    expect(finding.evidence.otherMoneyMonthlyCents).toBeGreaterThan(50_000);
+    expect(finding.evidence.unevenPayMonthlyCents).toBeUndefined();
+  });
+
+  it("stays as it was with only the paychecks", () => {
+    const [finding] = run(withPayday(5_000, []));
+    expect(finding.title).not.toContain("if nothing else");
+    expect(finding.evidence.otherMoneyMonthlyCents).toBeUndefined();
+  });
+});
+
 describe("a low balance for someone paid at uneven times", () => {
   it("says it counts no pay, what has been coming in, and isn't sure", () => {
     const [finding] = run(uneven(5_000));
