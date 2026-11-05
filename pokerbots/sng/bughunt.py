@@ -1,7 +1,7 @@
 """Continuous bug-hunter for the sit-and-go stack (resumable, bounded by --minutes).
 
 Each round draws random rules: card variant (all engine variants plus the discard /
-draw shapes), 2..8 players, random blind schedule, antes, point table and hand cap;
+draw shapes), 2..10 players, random blind schedule, antes, point table and hand cap;
 then a random line-up of bots from every registry (ours + all three fields). Checks:
   * the engine never raises;
   * chips are conserved and points add up to the paid places;
@@ -45,7 +45,7 @@ def random_rules(rng):
     spec = spec.with_(stack_reset_per_hand=False, starting_stack=2000, small_blind=10, big_blind=20, ante=0)
     if rng.random() < 0.3:
         spec = spec.with_(betting="pot_limit")
-    n = rng.choice([2, 3, 4, 5, 6, 7, 8, 8, 8])
+    n = rng.choice([2, 3, 4, 5, 6, 7, 8, 8, 8, 9, 10])
     if spec.hole_cards * n + spec.total_board_dealt > len(spec.deck):
         n = max(2, (len(spec.deck) - spec.total_board_dealt) // spec.hole_cards)
     growth = rng.choice([1.25, 1.5, 2.0])
