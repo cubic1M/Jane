@@ -194,6 +194,8 @@ describe("what Jane doesn't know", () => {
     expect(out.confidence.percent).toBeLessThanOrEqual(50);
     expect(out.unknowns.join(" ")).toMatch(/not all that's withheld/);
     expect(out.lines.find((l) => l.key === "withheld")?.source).toBe("assumed");
+    // Debugger 11-05: the headline said "Jane can't say what's left" over a last line of $0.00.
+    expect(out.lines.find((l) => l.key === "left")?.cents).toBeNull();
   });
 
   it("with wages it can't see into, still counts the freelance tax, at low confidence", () => {

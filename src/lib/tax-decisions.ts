@@ -392,11 +392,12 @@ export async function decideTax(
       const aside = await loadTaxSetAside(userId, { client, now });
       if (aside.status === "needed") {
         const left = roundDollars(aside.holdCents);
+        const unpaid = aside.notYetPaidCents ?? aside.holdCents;
         return made(
           advice
             ? `About ${left} so far: that's the tax on your income so far, less what's withheld and paid. It's an estimate, and Safe to spend leaves it out.`
-            : `About ${left} of your ${aside.year} tax so far isn't withheld or paid yet. That's an estimate, and Safe to spend leaves it out.`,
-          [aside.holdCents],
+            : `About ${roundDollars(unpaid)} of your ${aside.year} tax so far isn't withheld or paid yet. That's an estimate, and Safe to spend leaves out what isn't kept apart.`,
+          [aside.holdCents, unpaid],
           "/taxes?focus=estimate:set-aside",
         );
       }

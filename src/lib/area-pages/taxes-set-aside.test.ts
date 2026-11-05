@@ -34,6 +34,20 @@ const node = (setAside: TaxesTreeInput["setAside"]) => {
 const FIGURE = { advice: false, holdCents: 410_000, percent: 72 };
 
 describe("the tax left to cover in the tree", () => {
+  // Debugger 11-05: "That isn't income" on someone's only income took away the one place to undo it.
+  it("stays while there's something pointed out to undo, whatever the income", () => {
+    const { item, summary } = node({
+      status: "no_income",
+      ...FIGURE,
+      holdCents: 0,
+      corrections: 1,
+    });
+    expect(item?.label).toBe("Tax not yet paid");
+    expect(item?.status).toBe("look");
+    expect(item?.figure).toBe("No income");
+    expect(summary).toContain("what you pointed out");
+  });
+
   it("has the figure and a short label, within the budgets", () => {
     const { item, summary } = node({ status: "needed", ...FIGURE });
     expect(item?.label).toBe("Tax not yet paid");

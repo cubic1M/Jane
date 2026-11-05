@@ -40,6 +40,16 @@ function run(taxSetAside: Figure | undefined): Suggestion[] {
 }
 
 describe("the unasked tax card", () => {
+  // Debugger 11-05: with $1,000 kept apart, "About $2,317 of your tax isn't withheld or paid yet", of
+  // $3,317 unpaid. Keeping money apart doesn't pay tax: only what Safe to spend holds back goes down.
+  it("doesn't count money kept apart as paid", () => {
+    const [card] = run(figure({ holdCents: 310_000, keptApartCents: 100_000 }));
+    expect(card?.title).toContain(formatWholeDollars(410_000));
+    expect(card?.headline).toContain(formatWholeDollars(410_000));
+    expect(card?.why).toContain(`${formatWholeDollars(100_000)} of it is kept apart`);
+    expect(card?.worthCents).toBe(310_000);
+  });
+
   it("comes up when tax is left to cover, with its confidence", () => {
     const [card, ...rest] = run(figure());
     expect(rest).toEqual([]);
@@ -67,7 +77,7 @@ describe("the unasked tax card", () => {
     const [card] = run(figure({ unknowns: ["Only 2 months of income are in your accounts."] }));
     expect(card?.why).toContain("Only 2 months of income");
     expect(card?.why).toContain("can't see any money kept apart");
-    expect(run(figure({ keptApartCents: 5_000 }))[0]?.why).not.toContain("kept apart");
+    expect(run(figure({ keptApartCents: 5_000 }))[0]?.why).not.toContain("can't see any money");
   });
 
   it("names the assumption when withholding isn't known", () => {

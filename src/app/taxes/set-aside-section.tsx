@@ -40,12 +40,16 @@ function Line({ line }: { line: TaxLine }) {
 }
 
 const headline = (view: TaxSetAsideView) => {
+  // Money kept apart is still to pay: only what's left to set aside is less for it.
+  const unpaid = `About ${formatWholeDollars(view.notYetPaidCents ?? 0)} of your ${view.year} tax so far isn't withheld or paid yet.`;
+  const kept = formatWholeDollars(view.keptApartCents);
   if (view.status === "needed") {
-    const cents = formatWholeDollars(view.holdCents);
-    return view.advice
-      ? `Set aside about ${cents} for your ${view.year} tax so far.`
-      : `About ${cents} of your ${view.year} tax so far isn't withheld or paid yet.`;
+    if (view.advice)
+      return `Set aside about ${formatWholeDollars(view.holdCents)} for your ${view.year} tax so far.`;
+    return view.keptApartCents > 0 ? `${unpaid} ${kept} of it is kept apart.` : unpaid;
   }
+  if (view.status === "covered" && view.keptApartCents > 0)
+    return `${unpaid} What's kept apart covers it.`;
   if (view.status === "unknown")
     return "Jane can't say what's left: it can see your pay, not all that's withheld from it.";
   if (view.status === "no_income") return "No income for this year in your accounts yet.";

@@ -46,7 +46,12 @@ const taxNotYetPaid: Detector = {
   detect({ profile, data }): Suggestion | null {
     const figure = data.extras?.taxSetAside;
     if (!dueHere(figure, false)) return null;
-    const cents = formatWholeDollars(figure.holdCents);
+    // Money kept apart is still to pay: only what Safe to spend holds back is less for it.
+    const cents = formatWholeDollars(figure.holdCents + figure.keptApartCents);
+    const kept =
+      figure.keptApartCents > 0
+        ? ` ${formatWholeDollars(figure.keptApartCents)} of it is kept apart.`
+        : "";
     const { worked, tail, ...card } = shared(figure, profile.today);
     return {
       id: suggestionId("taxes", "tax_not_yet_paid"),
@@ -56,7 +61,7 @@ const taxNotYetPaid: Detector = {
       headline: `Check tax not yet paid: about ${cents}`,
       short: `An estimate from your ${figure.year} income so far. Safe to spend leaves it out.`,
       ...card,
-      why: `${worked} That leaves about ${cents}, as an estimate, not tax advice. ${tail}`,
+      why: `${worked} That leaves about ${cents}, as an estimate, not tax advice.${kept} ${tail}`,
       action: { label: "See the calculation", href: HREF },
     };
   },
