@@ -16,6 +16,8 @@ import { limitOrNull } from "@/lib/rate-limit";
 import { getCurrentUser } from "@/lib/session";
 import { GET } from "./route";
 
+const asked = new Request("http://localhost/api/export");
+
 describe("GET /api/export", () => {
   beforeEach(() => {
     vi.mocked(getCurrentUser)
@@ -26,12 +28,12 @@ describe("GET /api/export", () => {
 
   it("refuses visitors who aren't signed in", async () => {
     vi.mocked(getCurrentUser).mockResolvedValue(null);
-    expect((await GET()).status).toBe(401);
+    expect((await GET(asked)).status).toBe(401);
     expect(exportUserData).not.toHaveBeenCalled();
   });
 
   it("downloads the signed-in person's data as a dated JSON file and audit-logs it", async () => {
-    const response = await GET();
+    const response = await GET(asked);
 
     expect(response.headers.get("content-disposition")).toBe(
       'attachment; filename="jane-data-2026-10-19.json"',
@@ -49,7 +51,7 @@ describe("GET /api/export", () => {
 
   it("is rate limited", async () => {
     vi.mocked(limitOrNull).mockResolvedValue(new Response(null, { status: 429 }) as never);
-    expect((await GET()).status).toBe(429);
+    expect((await GET(asked)).status).toBe(429);
   });
 
   // Debugger 10-30: downloaded at 9:54pm in Los Angeles on Oct 30, the file said Oct 31.
@@ -59,7 +61,7 @@ describe("GET /api/export", () => {
       profile: { timezone: "America/Los_Angeles" },
       transactions: [],
     } as never);
-    expect((await GET()).headers.get("content-disposition")).toBe(
+    expect((await GET(asked)).headers.get("content-disposition")).toBe(
       'attachment; filename="jane-data-2026-10-30.json"',
     );
   });

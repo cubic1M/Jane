@@ -8,13 +8,13 @@ import {
 } from "@/config/robinhood";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
+import { fromAnotherSite } from "@/lib/from-another-site";
 import { log } from "@/lib/log";
 import { freshSwitches } from "@/lib/ops-switches";
 import { limitOrNull } from "@/lib/rate-limit";
 import { whyCantConnect } from "@/lib/robinhood/connection";
 import {
   callbackOrigin,
-  fromAnotherSite,
   RobinhoodOAuthError,
   SIGN_IN_COOKIE,
   startSignIn,

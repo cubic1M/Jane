@@ -28,6 +28,8 @@ export function verifyResendSignature(
   if (!Number.isFinite(sentAt)) return false;
   if (Math.abs(now.getTime() / 1000 - sentAt) > RESEND_WEBHOOK_TOLERANCE_SECONDS) return false;
   const key = Buffer.from(secret.replace(/^whsec_/, ""), "base64");
+  // "whsec_" alone is an empty key, which anyone could sign with.
+  if (key.length === 0) return false;
   const expected = createHmac("sha256", key).update(`${id}.${timestamp}.${body}`).digest();
   return signatures.split(" ").some((part) => {
     const [version, signature] = part.split(",");

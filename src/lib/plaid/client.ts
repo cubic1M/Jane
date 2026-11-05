@@ -1,4 +1,5 @@
 import { killed } from "@/config/kill-switches";
+import { siteOrigin } from "@/lib/site-origin";
 import { PLAID_TIMEOUT_MS } from "@/config/plaid";
 import { Configuration, PlaidApi, PlaidEnvironments } from "plaid";
 
@@ -75,12 +76,8 @@ export function plaidErrorCode(error: unknown): string | null {
   return error instanceof PlaidRequestError ? error.code : null;
 }
 
-// Where Plaid sends webhooks. APP_URL wins; on Vercel the production domain is the default.
+// Where Plaid sends webhooks: the site's own address, so an empty APP_URL can't leave a link without any.
 export function webhookUrl(): string | undefined {
-  const base =
-    process.env.APP_URL ??
-    (process.env.VERCEL_PROJECT_PRODUCTION_URL
-      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-      : undefined);
-  return base ? `${base.replace(/\/$/, "")}/api/plaid/webhook` : undefined;
+  const base = siteOrigin();
+  return base ? `${base}/api/plaid/webhook` : undefined;
 }

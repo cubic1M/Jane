@@ -1,3 +1,4 @@
+import { siteOrigin } from "@/lib/site-origin";
 import { ERROR_ALERT_MINUTES, ERROR_DIGEST_KINDS } from "@/config/health";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
@@ -25,7 +26,7 @@ const DAY = 24 * 60 * MINUTE;
 export { errorKind, safePath };
 
 const escape = (text: string) => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-const adminLink = (path: string) => `${process.env.APP_URL ?? ""}${path}`;
+const adminLink = (path: string) => `${siteOrigin() ?? ""}${path}`;
 
 // Emails the team about this error unless the same kind, in the same place, was emailed in the
 // last ERROR_ALERT_MINUTES. Returns whether it emailed. Never throws: an alert must not cause

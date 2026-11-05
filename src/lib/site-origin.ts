@@ -14,6 +14,11 @@ export function siteOrigin(env: Record<string, string | undefined> = process.env
   }
 }
 
+// For a link in an email: the site, or on a developer's machine, the usual local address. An unset
+// APP_URL on Vercel still has its production domain, so a person is never sent a link to localhost.
+export const siteBase = (env?: Record<string, string | undefined>): string =>
+  siteOrigin(env) ?? "http://localhost:3000";
+
 // The same link on the site's own address, with its way back there too. Without a configured
 // address (local runs), the link as it came.
 export function linkOnSite(link: string, env?: Record<string, string | undefined>): string {

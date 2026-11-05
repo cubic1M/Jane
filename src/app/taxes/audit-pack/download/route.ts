@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { logAudit } from "@/lib/audit";
+import { fromAnotherSite } from "@/lib/from-another-site";
 import { loadAuditRecords } from "@/lib/audit-records";
 import { limitOrNull } from "@/lib/rate-limit";
 import { getCurrentUser } from "@/lib/session";
@@ -11,6 +12,9 @@ import { taxYearFrom } from "@/planning/tax-pack";
 export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+  if (fromAnotherSite(request)) {
+    return NextResponse.redirect(new URL("/taxes", request.url), 303);
+  }
   const limited = await limitOrNull("auditPack", user.id);
   if (limited) return limited;
 

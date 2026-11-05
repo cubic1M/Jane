@@ -1,3 +1,4 @@
+import { siteBase } from "@/lib/site-origin";
 import type { ActionStatus } from "@/generated/prisma/client";
 import { sendEmail } from "@/lib/email";
 import { log } from "@/lib/log";
@@ -7,10 +8,7 @@ import { log } from "@/lib/log";
 
 const APP_NAME = "Jane";
 
-function appUrl(path: string): string {
-  const base = process.env.APP_URL ?? "http://localhost:3000";
-  return `${base.replace(/\/$/, "")}${path}`;
-}
+const appUrl = (path: string): string => `${siteBase()}${path}`;
 
 function escapeHtml(value: string): string {
   return value

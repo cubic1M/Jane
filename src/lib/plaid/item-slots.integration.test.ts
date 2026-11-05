@@ -8,6 +8,10 @@ import { PrismaClient } from "@/generated/prisma/client";
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
+vi.mock("@/lib/crypto", async (original) => {
+  const real = await original<typeof import("@/lib/crypto")>();
+  return { ...real, encrypt: vi.fn(real.encrypt) };
+});
 
 import { deleteAllData } from "@/lib/account-deletion";
 import { track } from "@/lib/analytics";
@@ -164,11 +168,14 @@ describe.runIf(url)("Plaid's Trial plan Items against a real database", () => {
 
   it("removes the Item when saving it fails, counts it, and lets the person try again", async () => {
     const userId = await person();
-    // A made-up failure: the save itself, once.
-    const realEncrypt = process.env.TOKEN_ENCRYPTION_KEY;
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", "");
+    // A made-up failure: the save itself, once, after the key check before anything is made.
+    const real = await vi.importActual<typeof import("@/lib/crypto")>("@/lib/crypto");
+    vi.mocked(encrypt)
+      .mockImplementationOnce(real.encrypt)
+      .mockImplementationOnce(() => {
+        throw new Error("couldn't save");
+      });
     await expect(link(userId)).rejects.toThrow();
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", realEncrypt!);
     expect(itemRemove).toHaveBeenCalledWith({ access_token: "access-production-made-up" });
     expect(await used()).toBe(1);
     expect(await client.plaidItemClaim.count({ where: { userId } })).toBe(0);

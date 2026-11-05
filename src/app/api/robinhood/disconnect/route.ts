@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { robinhoodOffered } from "@/config/robinhood";
+import { fromAnotherSite } from "@/lib/from-another-site";
 import { limitOrNull } from "@/lib/rate-limit";
 import { removeConnection } from "@/lib/robinhood/connection";
-import { callbackOrigin, fromAnotherSite } from "@/lib/robinhood/oauth";
+import { callbackOrigin } from "@/lib/robinhood/oauth";
 import { getCurrentUser } from "@/lib/session";
 
 // The Disconnect form: deletes the person's Robinhood connection and everything read through it, then
