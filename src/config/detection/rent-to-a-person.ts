@@ -41,9 +41,11 @@ export const PAYCHECK_MAX_GAP_DAYS = 17;
 export const PAYCHECK_MAX_GAP_CV = 0.35;
 export const PAYCHECK_AMOUNT_ROOM = 0.25;
 export const PAYCHECK_MIN_STEADY_SHARE = 0.75;
-// Likely the person's own money moving: a bank, a broker or a payment app.
+// Likely the person's own money moving: a bank, a broker or a payment app. Or a friend paying back a
+// shared cost, by the note on a payment app's line (debugger 11-04: "Lee Tran: dinner" as income).
+// Not "share" alone, which can be a profit share, and not "rent" alone, which can be a tenant.
 export const REGULAR_PAYER_NOT_INCOME =
-  /\b(?:bank|savings|checking|transfer|credit union|fcu|investments?|brokerage|schwab|fidelity|vanguard|robinhood|coinbase|venmo|paypal|zelle|cash ?app|apple cash)\b/i;
+  /\b(?:dinner|lunch|brunch|drinks|groceries|split|rent share|bank|savings|checking|transfer|credit union|fcu|investments?|brokerage|schwab|fidelity|vanguard|robinhood|coinbase|venmo|paypal|zelle|cash ?app|apple cash)\b/i;
 
 // Also their own money: the same amount left another of their accounts within this many days, on
 // at least this share of the deposits.

@@ -26,6 +26,21 @@ describe("regular money in from one payer", () => {
     expect(regularPayers(biweekly("Northwind Labs", 261_025))).toHaveLength(8);
   });
 
+  // A friend's "Lee Tran: dinner" through Venmo counted as income, $235 a month in "In", while the
+  // same friend's "utilities" didn't. A note saying it's a shared cost is someone paying back.
+  it.each(["Lee Tran Dinner", "Jordan Lee Groceries", "Sam Okafor Split", "Lee Tran Rent Share"])(
+    "isn't income when the line says it's a shared cost: %s",
+    (name) => {
+      const rows = ["07", "08", "09", "10"].map((m, i) => ({
+        id: `r${i}`,
+        date: `2026-${m}-12`,
+        amountCents: -23_500,
+        merchantName: name,
+      }));
+      expect(regularPayers(rows)).toEqual([]);
+    },
+  );
+
   it("keeps monthly pay, four months of it", () => {
     const monthly = ["07", "08", "09", "10"].map((m, i) => ({
       id: `m${i}`,
