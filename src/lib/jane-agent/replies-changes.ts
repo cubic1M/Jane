@@ -7,24 +7,33 @@ import type { Reply } from "./replies";
 // lead to (src/lib/changes.ts). `yes` names the button that says yes, when "Look into it"
 // would undersell it.
 export const CHANGE_ASK: Partial<
-  Record<FindingType, { offer: string; did: string; yes?: string }>
+  Record<FindingType, { offer: string; diy: string; did: string; yes?: string; diyYes?: string }>
 > = {
   price_increase: {
     offer: "Want me to ask them for your old price?",
+    diy: "Want the steps to ask for your old price?",
     did: "I've already asked them for your old price.",
   },
   insurance_reshop: {
     offer: "Want me to shop it for a better price?",
+    diy: "Want the steps to shop it for a better price?",
     did: "I'm shopping it for a better price.",
   },
   bill_negotiation: {
     offer: "Want me to try to get it lowered?",
+    diy: "Want the steps to get it lowered?",
     did: "I'm working on getting it lowered.",
   },
-  bank_fees: { offer: "Want me to ask for it back?", did: "I've already asked for it back." },
+  bank_fees: {
+    offer: "Want me to ask for it back?",
+    diy: "Want the steps to ask for it back?",
+    did: "I've already asked for it back.",
+  },
   // A new subscription and its subscription card, said once (docs/feature-audit.md, cluster 10).
   subscription_review: {
     offer: "Did you mean to sign up? If not, I can cancel it.",
+    diy: "Did you mean to sign up? If not, I can show you how to cancel it.",
+    diyYes: "Show me how to cancel",
     did: "I'm cancelling it.",
     yes: "Cancel it",
   },

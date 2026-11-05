@@ -14,7 +14,8 @@ export type GuardrailIssue =
   | "guaranteed_outcome"
   | "missing_required_wording"
   | "untrusted_link"
-  | "credential_request";
+  | "credential_request"
+  | "claimed_action";
 
 export type GuardrailResult = { ok: true } | { ok: false; issues: GuardrailIssue[] };
 
@@ -413,6 +414,17 @@ export const asksForCredentials = (text: string): boolean =>
         (CREDENTIAL_ASK.test(sentence) || GIFT_CARD_PAYMENT.test(sentence)),
     );
 
+// Saying Jane did or will do something for someone. Nobody acts for a real account, and a person told
+// "I've cancelled it" stops looking. The prompt says so too; what's allowed mustn't depend on that.
+const DONE = "cancel(?:l)?ed|sent|filed|disputed|called|emailed|switched|negotiated|submitted|paid";
+const WILL = "cancel|call|email|send|file|dispute|negotiate|switch|remind you";
+const ACT_CLAIMS: readonly RegExp[] = [
+  new RegExp(`\\bI(?:['’]ve| have)(?: already| just)? (?:${DONE})\\b`, "i"),
+  new RegExp(`\\bI(?:['’]ll| will)(?: go ahead and)? (?:${WILL})\\b`, "i"),
+  /\b(?:our|my|Jane['’]s) team (?:will|has|is|can)\b/i,
+];
+export const claimsAnAct = (text: string): boolean => ACT_CLAIMS.some((p) => p.test(text));
+
 type Scan = { issues: GuardrailIssue[]; matched: string[] };
 
 function scan(
@@ -460,6 +472,10 @@ function scan(
   if (asksForCredentials(original)) {
     issues.push("credential_request");
     matched.push("credentials");
+  }
+  if (!advice && claimsAnAct(unnegated)) {
+    issues.push("claimed_action");
+    matched.push("claimed_action");
   }
   return { issues, matched };
 }

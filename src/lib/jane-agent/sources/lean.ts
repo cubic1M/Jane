@@ -13,7 +13,7 @@ export const leanSource: MessageSource = {
         .filter((l) => l.status === "proposed")
         .map((l) => ({
           kind: "decision" as const,
-          body: `Your paycheck from ${l.employer} hasn't come in; it was due ${l.dueOn}. Want me to switch to a lean plan until it does? I'd pause automatic transfers and list what can wait, help with hardship options and the unemployment steps.`,
+          body: `Your paycheck from ${l.employer} hasn't come in; it was due ${l.dueOn}. Want me to switch to a lean plan until it does? I'd ${snapshot.concierge === false ? "" : "pause automatic transfers and "}list what can wait, help with hardship options and the unemployment steps.${snapshot.concierge === false ? " Your bank's automatic transfers keep running unless you pause them." : ""}`,
           refs: { leanId: l.id },
           actions: [
             { id: "lean.start" as const, label: "Yes, lean plan", kind: "primary" as const },
@@ -24,7 +24,7 @@ export const leanSource: MessageSource = {
         })),
       ...lean.ended.map((l) => ({
         kind: "done" as const,
-        body: `Your paycheck from ${l.employer} is back, so I'm back to normal: automatic transfers are on again.`,
+        body: `Your paycheck from ${l.employer} is back, so I'm back to normal${snapshot.concierge === false ? "" : ": automatic transfers are on again"}.`,
         refs: {},
         actions: [],
         dedupeKey: `ended:${l.id}`,

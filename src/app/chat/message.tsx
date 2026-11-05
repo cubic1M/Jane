@@ -66,7 +66,8 @@ function tappedView(current: MessageView, tapped: MessageView["buttons"][number]
     ...current,
     status: "answered",
     answeredWith: tapped.label,
-    note: tapped.kind === "primary" ? "Done: Jane's on it." : "Got it.",
+    // Until the server says what really happened: nothing has happened yet.
+    note: tapped.kind === "primary" ? "One moment." : "Got it.",
     buttons: [],
   };
 }

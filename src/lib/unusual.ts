@@ -6,6 +6,7 @@ import {
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
+import { conciergeMode } from "@/lib/concierge-mode";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
@@ -99,7 +100,10 @@ export async function answerUnusual(
   }
   const amount = Number(/\$([\d,]+\.\d\d)/.exec(alert.title)?.[1]?.replace(/,/g, "") ?? 0) * 100;
   let findingId: string | null = null;
-  if (answer === "not_me") {
+  // There's a team behind a dispute card for sample data only. A real person's card would ask for
+  // the money back with nobody asking, and they'd stop looking while the time to dispute runs.
+  const team = await conciergeMode(userId, { client });
+  if (answer === "not_me" && team) {
     const finding = await db.findings.create({
       data: {
         userId,
@@ -144,7 +148,9 @@ export async function answerUnusual(
       }
     : {
         answer,
-        note: "I've opened a dispute card on your plan: say yes there and our team asks the card for the money back. Meanwhile, lock the card.",
+        note: team
+          ? "I've opened a dispute card on your plan: say yes there and our team asks the card for the money back. Meanwhile, lock the card."
+          : "Call your card company today and tell them this charge isn't yours: they're the ones who can get it back, and the time to dispute is limited. I can't do it for you. Meanwhile, lock the card.",
         steps: CARD_LOCK_STEPS,
       };
 }

@@ -115,7 +115,7 @@ describe.runIf(url)("price rises seen before they land", { timeout: 120_000 }, (
       client,
       now: NOW,
     });
-    expect(message.refs.note).toBe("Good. I'll check the next bill to see the price held.");
+    expect(message.refs.note).toBe("Good.");
     // Once each: asking again posts nothing new.
     await postMessages(
       userId,

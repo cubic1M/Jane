@@ -12,6 +12,9 @@ import { healthReport, jobHealth, recordRun, reportMissedJobs } from "./health";
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).
 // Cron runs are global, so this file works far in the future (2200) and cleans up after.
 const url = process.env.TEST_DATABASE_URL;
+// The database is shared with test files running at the same time. Wiping every notice let
+// claude-month-alert.integration.test.ts send its once-a-month email twice.
+const THIS_FILES_NOTICES = { where: { NOT: { key: { startsWith: "claude-month:" } } } };
 const T0 = new Date("2200-01-01T00:00:00Z");
 const HOUR = 60 * 60 * 1000;
 const at = (hours: number) => new Date(T0.getTime() + hours * HOUR);
@@ -27,11 +30,11 @@ describe.runIf(url)("health checks against a real database", () => {
   beforeEach(async () => {
     send.mockReset().mockResolvedValue(undefined);
     await client.cronRun.deleteMany({ where: { startedAt: { gte: T0 } } });
-    await client.healthNotice.deleteMany({});
+    await client.healthNotice.deleteMany(THIS_FILES_NOTICES);
   });
   afterAll(async () => {
     await client.cronRun.deleteMany({ where: { startedAt: { gte: T0 } } });
-    await client.healthNotice.deleteMany({});
+    await client.healthNotice.deleteMany(THIS_FILES_NOTICES);
     await client.$disconnect();
     vi.unstubAllEnvs();
   });

@@ -55,10 +55,15 @@ function candidate(change: ChangeView, snapshot: Snapshot): Candidate | null {
       // Something to say yes to, so it closes like a finding's own message when the
       // finding is answered elsewhere (../messages.ts closeSettled).
       kind: "decision",
-      body: `${change.title} ${ask.offer}`,
+      // Nobody does these for a real account: a Yes shows the person the steps.
+      body: `${change.title} ${snapshot.concierge === false ? ask.diy : ask.offer}`,
       refs: { ...refs, findingId: planned.findingId, fingerprint: planned.fingerprint },
       actions: [
-        ask.yes ? { ...lookInto, label: ask.yes } : lookInto,
+        snapshot.concierge === false && ask.diyYes
+          ? { ...lookInto, label: ask.diyYes }
+          : ask.yes
+            ? { ...lookInto, label: ask.yes }
+            : lookInto,
         expected,
         open("Open", `/report/${planned.findingId}`),
       ],

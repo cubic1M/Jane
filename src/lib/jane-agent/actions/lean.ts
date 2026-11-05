@@ -1,3 +1,4 @@
+import { conciergeMode } from "@/lib/concierge-mode";
 import { LeanError, declineLean, loadLeanPlan, startLean } from "@/lib/lean-plan";
 import {
   ChatActionError,
@@ -29,7 +30,10 @@ export const leanStart: ActionHandler = {
     const { message } = await loadLeanPlan(userId, { client, now });
     return {
       answeredWith: context.action.label,
-      body: `Lean plan on: automatic transfers are paused until pay is back. ${message}`,
+      // Nothing here touches a real bank: its automatic transfers go on unless the person stops them.
+      body: (await conciergeMode(userId, { client }))
+        ? `Lean plan on: automatic transfers are paused until pay is back. ${message}`
+        : `Lean plan on. Your bank's automatic transfers keep running, so pause any you can't cover from your bank's app. ${message}`,
       note: "I'll go back to normal when your pay resumes.",
     };
   },
