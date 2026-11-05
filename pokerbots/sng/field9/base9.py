@@ -29,6 +29,18 @@ DEBUG = bool(os.environ.get("FIELD9_DEBUG"))
 OPEN_CHART = {0: 0.74, 1: 0.44, 2: 0.42, 3: 0.28, 4: 0.21, 5: 0.17, 6: 0.145, 7: 0.125}
 
 
+class _NoIcm:
+    """Stand-in PairIcm with ready = False: the bots fall back to chip values / bubble factor 1."""
+    ready = False
+    total_pts = 0.0
+
+    def bf(self, i, j):
+        return 1.0
+
+
+_NO_ICM = _NoIcm()
+
+
 def clip(x, lo, hi):
     return lo if x < lo else hi if x > hi else x
 
@@ -298,9 +310,14 @@ class Base:
 
     # ---- ICM helpers -------------------------------------------------------------------
     icm_cache = 0.0     # > 0 (icm_switch): recompute only when the alive set changes or a stack moves > icm_cache
+    icm_min_left = 0    # > 0 (icm_switch): no ICM while more than icm_min_left players are alive (chip values)
 
     def refresh_icm(self, force=False):
         left = sum(1 for s in self.stacks if s > 0)
+        if self.icm_min_left and left > self.icm_min_left:
+            self.icm = _NO_ICM                   # early: chip values (bubble factors 1), no ICM cost
+            self._icm_key = None
+            return
         if self.icm_cache > 0 and not force:
             key = getattr(self, "_icm_key", None)
             alive = tuple(j for j, s in enumerate(self.stacks) if s > 0)

@@ -49,7 +49,7 @@ class IcmSwitch:
     name = "icm_switch"
 
     def __init__(self, switch_min=20, switch_share=0.0, b="f9_meta", any_deck=0, icm_slice=0, sd_share=0.3,
-                 sd_b="f9_meta", f9_cache=0.0, start="a", back_share=0.18, **kw):
+                 sd_b="f9_meta", f9_cache=0.0, start="a", back_share=0.18, f9_min_left=0, **kw):
         # start="b": play the strong bot from hand 1 and hand the table BACK to icm_tag (one-way) once
         # >= switch_min first-in opens were played and < back_share of them got re-raised (a static table,
         # where icm_tag is far better); start="a" (default): icm_tag first, hand-over as above
@@ -76,6 +76,7 @@ class IcmSwitch:
                 self._setup_strong(bb, icm_slice)
                 if hasattr(bb, "icm_cache"):
                     bb.icm_cache = float(f9_cache)   # field 9: skip the ICM while stacks move < f9_cache
+                    bb.icm_min_left = int(f9_min_left)  # field 9: no ICM while > f9_min_left players alive
         self.switched = False
         self.switch_hand = None
         self.short = False
