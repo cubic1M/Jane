@@ -22,8 +22,9 @@ export default function SecurityPage() {
           key is kept outside our code, and connections use HTTPS with HSTS.
         </li>
         <li>
-          <strong>Separation.</strong> Every query for your data is limited to your account by a
-          single, tested helper.
+          <strong>Separation.</strong> Queries for your data are limited to your account, by tested
+          helpers and by row-level rules in the database behind them. The few jobs that work across
+          people have to say why in the code.
         </li>
         <li>
           <strong>Team access.</strong> Our team pages require an admin role and a second sign-in
@@ -45,7 +46,8 @@ export default function SecurityPage() {
         <li>
           <strong>Sign-in records.</strong> Every sign-in, sign-out and failed attempt, two-factor
           change, bank link, data download and account deletion is recorded with its time, IP
-          address and browser. Signed in, you see your own at the top of this page.
+          address and browser. Signed in, you see your own at the top of this page, apart from
+          failed attempts, which aren&apos;t tied to an account.
         </li>
         <li>
           <strong>Browser protections.</strong> Pages only run Jane&apos;s own code, can&apos;t be

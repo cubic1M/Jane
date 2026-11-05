@@ -110,8 +110,10 @@ export default function PrivacyPage() {
           still used.
         </li>
         <li>
-          Jane never keeps anything about your health, religion, politics, sexual orientation,
-          ethnicity or immigration status, even when your transactions or your words hint at it.
+          What Jane remembers about you never includes your health, religion, politics, sexual
+          orientation, ethnicity or immigration status, even when your transactions or your words
+          hint at it. Your transactions, chats, documents and tax tags can still show those things
+          (a medical bill, for example), and are kept as this page says.
         </li>
         <li>
           Signed in, Settings has{" "}
@@ -156,6 +158,10 @@ export default function PrivacyPage() {
               To put a category on a transaction your bank or file didn&apos;t label: its
               description.
             </li>
+            <li>
+              When we check on a problem with the service: recent error reports, with personal
+              details taken out.
+            </li>
           </ul>
           It never receives your password, your bank sign-in or your Plaid connection. When you
           chat, it can receive the description your bank wrote on a transaction, which can include
@@ -170,6 +176,14 @@ export default function PrivacyPage() {
           servers: the names of actions taken in Jane (like &quot;opened a suggestion&quot;),
           sometimes with a figure such as an amount saved, keyed by a random account id. Never your
           email, your account details or your transactions.
+        </li>
+        <li>
+          <strong>Google</strong>, if you choose to sign in with Google: it tells us your email
+          address and that it has checked it, and knows you signed in to Jane.
+        </li>
+        <li>
+          <strong>Sentry</strong>, when we have it switched on, receives server errors: the kind of
+          error, code locations and a page path with ids taken out. Never who you are.
         </li>
         <li>
           <strong>Your browser&apos;s push service</strong> (from Google, Apple or Mozilla, say)
@@ -197,7 +211,10 @@ export default function PrivacyPage() {
       <ul>
         <li>Plaid connection tokens are encrypted (AES-256-GCM) and never shown or logged.</li>
         <li>Documents you upload are encrypted (AES-256-GCM), and only you can open them.</li>
-        <li>Each person&apos;s data is only ever read for that person.</li>
+        <li>
+          Each person&apos;s data is read for that person. A few jobs work across everyone, such as
+          counting which kinds of suggestion people act on, and keep no one&apos;s details from it.
+        </li>
         <li>
           Team access needs a second sign-in factor, and team pages that show your data are logged.
           The copy of your data you can download in Settings lists those views. A problem report you
@@ -288,10 +305,11 @@ export default function PrivacyPage() {
         can&apos;t be reached, nothing is deleted and you can try again. Afterwards you see a page
         confirming your data is deleted. A record that the deletion happened, with ids, the time and
         the IP address and browser it came from, stays in our security log for the period listed
-        above, along with the record of which banks you linked. Companies that work for us (listed
-        above) keep what they already received for their own retention periods, and PostHog&apos;s
-        product analytics stay under your id, with no name or email, after your account is gone. You
-        can download a copy of your data in Settings first.
+        above, along with the record of which banks you linked and your sign-ins, two-factor changes
+        and downloads, with the time, IP address, browser and rough location of each. Companies that
+        work for us (listed above) keep what they already received for their own retention periods,
+        and PostHog&apos;s product analytics stay under your id, with no name or email, after your
+        account is gone. You can download a copy of your data in Settings first.
       </p>
 
       <h2>Cookies and your browser</h2>

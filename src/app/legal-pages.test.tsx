@@ -113,7 +113,7 @@ describe("the legal pages", () => {
     expect(privacy).toMatch(/What Jane remembers about you/);
     expect(privacy).toMatch(/the chat starts empty/);
     expect(privacy).toMatch(
-      /never keeps anything about your health, religion, politics, sexual orientation, ethnicity or immigration status/,
+      /never includes your health, religion, politics, sexual orientation, ethnicity or immigration status/,
     );
     expect(privacy).toMatch(/correct or forget any of them, or delete all of Jane's memory/);
   });
