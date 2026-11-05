@@ -1213,8 +1213,8 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   Part 2 (`results/sng_unseen_check2.md`, seeds 651000+, 400 paired tables): 31-bot unseen field with bounties +0.3 /
   +1.1, fixed-limit −0.9 / +0.2; strongest 8 unseen, winner-take-all +0.3 / **+4.3*** (the strong-room option is
   significantly better there). No significant loss in any unseen-opponent cell (9 cells). One 62 ms decision for the
-  strong-room option in the bounty cell (`icm_tag` 18.5 ms on the same run): a host spike under 3 processes, not
-  repeatable in the timing runs above.
+  strong-room option in the bounty cell (`icm_tag` 18.5 ms on the same run): a host spike under 3 processes; rerun on
+  one worker (200 tables, same field and rules) its slowest is 3.5 ms (`icm_tag` 3.1 ms), >1 ms 6 vs 5.
 * **Bug hunter:** 2.62M random tables (all variants, 2–8 players; 2–10 from Nov 5 10:20, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
