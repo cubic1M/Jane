@@ -45,7 +45,7 @@ export async function onlyDemoBank(userId: string, client: PrismaClient): Promis
   );
 }
 
-async function hasOwnDocument(userId: string, client: PrismaClient): Promise<boolean> {
+export async function hasOwnDocument(userId: string, client: PrismaClient): Promise<boolean> {
   const own = await scopedFor(userId, client).documents.count({
     where: { fileName: { not: SAMPLE_DRAFT_NAME }, extractionSource: { not: "partner" } },
   });

@@ -1,3 +1,4 @@
+import { onlyDemoBank } from "@/lib/advice-mode";
 import { randomUUID } from "node:crypto";
 import {
   HSA_FUND,
@@ -171,7 +172,10 @@ export async function linkDemoHsa(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ) {
-  const itemId = await addDemoExtra(userId, "hsa", { client });
+  // Only the demo bank: sample money beside a real account would count in real totals.
+  const itemId = (await onlyDemoBank(userId, client))
+    ? await addDemoExtra(userId, "hsa", { client })
+    : null;
   if (!itemId) throw new HsaError("A demo HSA needs the demo bank.");
   await syncDemoInvestments(itemId, { client, now });
   await track(userId, "demo_hsa_linked", {});

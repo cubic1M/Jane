@@ -1,3 +1,4 @@
+import { conciergeMode } from "@/lib/concierge-mode";
 import {
   PropertyTaxError,
   chooseFiler,
@@ -55,6 +56,14 @@ const filer = (
   id,
   on: "open",
   async run({ userId, action, client, now }) {
+    // A message from before a real account joined: there's no team for a real one, and this would
+    // tell them it's being filed with nobody on it.
+    if (by === "team" && !(await conciergeMode(userId, { client }))) {
+      throw new ChatActionError(
+        "failed",
+        "My team can't file this yet. The draft is on your property tax page for you to file.",
+      );
+    }
     await chooseFiler(userId, by, { client, now }).catch(failed);
     return { answeredWith: action.label, note };
   },

@@ -9,7 +9,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { loadHousehold } from "./household";
 import { lifeNeed, type LifeNeedInput, type NeedLine } from "./life-need";
 import { nextLifeQuestion, type LifeAnswers, type LifeDecision } from "./life-underwriting";
-import { partnerFor, type InsurancePartner, type QuoteCarrier } from "./partner";
+import { actingPartnerFor, partnerFor, type InsurancePartner, type QuoteCarrier } from "./partner";
 import { listPolicies } from "./policies";
 import { DAY_MS as DAY, isoDay as day } from "@/lib/dates";
 
@@ -343,7 +343,7 @@ export async function submitLifeApplication(
     throw new LifeError("There are still questions to answer.");
   }
   const quote = quoteOf(application);
-  const applying = partner === undefined ? await partnerFor(userId, { client }) : partner;
+  const applying = partner === undefined ? await actingPartnerFor(userId, { client }) : partner;
   if (!quote || !applying) throw new LifeError("Applying isn't available right now.");
   const decision = await applying.applyLife({ quote, answers: application.answers }, { now });
   const sent = await save(
@@ -383,7 +383,7 @@ export async function buyLife(
   if (decision.offerExpiresAt && decision.offerExpiresAt <= now.toISOString()) {
     throw new LifeError("That offer has expired. Apply again for a fresh one.");
   }
-  const binding = partner === undefined ? await partnerFor(userId, { client }) : partner;
+  const binding = partner === undefined ? await actingPartnerFor(userId, { client }) : partner;
   if (!binding) throw new LifeError("Buying isn't available right now.");
   const startDate = day(new Date(now.getTime() + DAY));
   const coverage = { deathBenefit: application.amountCents, termYears: application.termYears };
