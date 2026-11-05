@@ -115,7 +115,7 @@ async function detectForWork(
 // What a real account may see: no advice topic, and no card telling them what to do with their
 // money, whichever topic its author filed it under (src/lib/real-account-text.ts).
 export function forRealAccount(
-  s: Pick<Suggestion, "topic" | "title" | "headline" | "short" | "why">,
+  s: Pick<Suggestion, "title" | "headline" | "short" | "why"> & { topic: string },
 ): boolean {
   return (
     !(ADVICE_TOPICS as readonly string[]).includes(s.topic) &&
@@ -491,15 +491,16 @@ export async function offeredToday(
   const partOf = new Map(parts.map((p) => [p.key, p]));
   // Loaded when needed: the practice modules reach this file again (through the profile).
   const { practiceCardDetails } = await import("@/lib/practice/ideas");
-  const [practice, kinds] = await Promise.all([
+  const [practice, kinds, advice] = await Promise.all([
     practiceCardDetails(
       userId,
       rows.map((r) => r.key),
       { client },
     ),
     loadKindStats({ client }),
+    adviceMode(userId, { client }),
   ]);
-  return rows.map((r) => {
+  const offered = rows.map((r) => {
     const mine = isIdea(r.key) ? partsOfIdea(r.key).flatMap((k) => partOf.get(k) ?? []) : [];
     const topics = mine.length > 0 ? mine.map((p) => p.topic) : [r.topic];
     return {
@@ -525,6 +526,9 @@ export async function offeredToday(
       ...(peopleLine(r.topic, kinds) ? { people: peopleLine(r.topic, kinds)! } : {}),
     };
   });
+  // The scan removes what was picked in demo advice mode, but until it next runs those rows are
+  // still here, and a real account's chat reads them.
+  return advice ? offered : offered.filter((s) => !s.advice && forRealAccount(s));
 }
 
 export class SuggestionError extends Error {}
