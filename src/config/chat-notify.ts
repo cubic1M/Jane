@@ -46,8 +46,3 @@ export const CHAT_EMAIL_MAX_MESSAGES = 5;
 export const CHAT_EMAIL_AFTER_MINUTES = 60;
 // Messages older than this never go out: by then it's old news, and it's in the chat.
 export const CHAT_NOTIFY_MAX_AGE_HOURS = 24;
-
-// A push notification's text is the message, cut to this many characters.
-export const CHAT_PUSH_BODY_LENGTH = 180;
-// And at most this many of the message's buttons as notification buttons.
-export const CHAT_PUSH_BUTTONS = 2;
