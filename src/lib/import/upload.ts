@@ -108,7 +108,7 @@ export async function trialUploadRefusal(
   db: ScopedDb,
   formData: FormData,
   files: CsvFile[],
-  options: { client?: PrismaClient } = {},
+  options: { client?: PrismaClient; charge?: boolean } = {},
 ): Promise<string | null> {
   if (!isStatementTrialUser(db.userId)) return null;
   // Before anything parses: the size limit is what keeps the parsing cheap.

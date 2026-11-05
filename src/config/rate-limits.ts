@@ -3,6 +3,7 @@ import {
   STATEMENT_TRIAL_CHAT_ANSWERS,
   STATEMENT_TRIAL_MAX_PERSON_ROWS,
   STATEMENT_TRIAL_ROWS_A_DAY,
+  STATEMENT_TRIAL_ROWS_AN_ADDRESS,
 } from "./statement-trial";
 
 // Requests allowed per window, per user (signed in) or per IP (signed out). Generous for
@@ -93,6 +94,7 @@ export const RATE_LIMITS = {
   // everyone in a UTC day, and answers Claude writes for one temporary person, in all.
   trialStatement: { limit: 10, windowSeconds: 60 * 60 },
   trialStatementDay: { limit: 200, windowSeconds: 60 * 60 * 24 },
+  trialStatementAddressDay: { limit: 30, windowSeconds: 60 * 60 * 24 },
   claudeStatementTrial: {
     limit: STATEMENT_TRIAL_CHAT_ANSWERS,
     windowSeconds: 60 * 60 * 24 * 365 * 10,
@@ -113,6 +115,7 @@ export const RATE_LIMITS = {
     windowSeconds: 60 * 60 * 24 * 365 * 10,
   },
   statementRowsDay: { limit: STATEMENT_TRIAL_ROWS_A_DAY, windowSeconds: 60 * 60 * 24 },
+  statementRowsAddress: { limit: STATEMENT_TRIAL_ROWS_AN_ADDRESS, windowSeconds: 60 * 60 * 24 },
   // Invite codes made by an admin, per admin.
   invites: { limit: 30, windowSeconds: 60 * 60 },
   // Server errors kept for /admin/errors, and alert emails to the team, across every request. Anyone

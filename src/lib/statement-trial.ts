@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { headers } from "next/headers";
 import { TERMS_VERSION } from "@/config/legal";
 import {
   STATEMENT_TRIAL_ID_PREFIX,
@@ -14,13 +15,14 @@ import {
   STATEMENT_TRIAL_MAX_PERSON_ROWS,
   STATEMENT_TRIAL_MAX_ROWS,
   STATEMENT_TRIAL_MAX_UPLOADS,
+  STATEMENT_TRIAL_TOO_MANY_TODAY,
   STATEMENT_TRIAL_TURNED_OFF,
   statementTooBig,
   statementTooManyRows,
 } from "@/config/statement-trial";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
-import { giveBack, hit } from "@/lib/rate-limit";
+import { giveBack, hit, ipKey } from "@/lib/rate-limit";
 import { systemDb } from "@/lib/system-db";
 import { isStatementTrialUser } from "@/lib/trial-ids";
 import type { ScopedDb } from "@/lib/db-scoped";
@@ -127,11 +129,22 @@ export function statementFilesRefusal(bytes: number[]): string | null {
   return bytes.some((b) => b > STATEMENT_TRIAL_MAX_FILE_BYTES) ? statementTooBig() : null;
 }
 
+// Outside a request (a test, a job) there's no address to count.
+async function requestAddress(): Promise<string | null> {
+  try {
+    return ipKey(await headers());
+  } catch {
+    return null;
+  }
+}
+
 // What's wrong with one more upload for a temporary person, or null. Rows, as the file was read.
+// `charge: false` only looks: a preview keeps nothing, and counting it spent a person's allowance
+// and the day's on rows the upload after it counted again.
 export async function statementUploadRefusal(
   db: Pick<ScopedDb, "userId" | "transactions" | "importRuns">,
   files: { rows: number }[],
-  { client = defaultClient, now = new Date() }: Options = {},
+  { client = defaultClient, now = new Date(), charge = true }: Options & { charge?: boolean } = {},
 ): Promise<string | null> {
   const rows = files.reduce((sum, f) => sum + f.rows, 0);
   if (rows > STATEMENT_TRIAL_MAX_ROWS) return statementTooManyRows();
@@ -144,7 +157,7 @@ export async function statementUploadRefusal(
   }
   const tooManyHeld = `A temporary try holds up to ${STATEMENT_TRIAL_MAX_PERSON_ROWS.toLocaleString("en-US")} transactions. Start over to try different statements.`;
   if (held + rows > STATEMENT_TRIAL_MAX_PERSON_ROWS) return tooManyHeld;
-  if (rows === 0) return null;
+  if (rows === 0 || !charge) return null;
   // The count above can't see uploads still running, so these are taken before any row is written:
   // 30 uploads at once all saw nothing held, and all got in.
   const options = { client, now, by: rows };
@@ -152,8 +165,15 @@ export async function statementUploadRefusal(
     await giveBack("statementRows", db.userId, options);
     return tooManyHeld;
   }
+  const address = await requestAddress();
+  if (address && !(await hit("statementRowsAddress", address, options)).ok) {
+    await giveBack("statementRowsAddress", address, options);
+    await giveBack("statementRows", db.userId, options);
+    return STATEMENT_TRIAL_TOO_MANY_TODAY;
+  }
   if (!(await hit("statementRowsDay", "all", options)).ok) {
     await giveBack("statementRowsDay", "all", options);
+    if (address) await giveBack("statementRowsAddress", address, options);
     await giveBack("statementRows", db.userId, options);
     return STATEMENT_TRIAL_BUSY;
   }

@@ -15,6 +15,9 @@ export const STATEMENT_TRIAL_MAX_ACCOUNTS = 10;
 // All temporary people together in a UTC day. 200 starts of a few hundred rows fit; without this,
 // the day's starts at the most each may hold is 1.2 million rows from one address.
 export const STATEMENT_TRIAL_ROWS_A_DAY = 50_000;
+// And what one address may add of them, so one visitor can't use up the day for everyone (10 starts
+// from one address reached 48,000 in five minutes). Several people on one network still fit.
+export const STATEMENT_TRIAL_ROWS_AN_ADDRESS = 12_000;
 
 // Answers Claude writes for one temporary person, in all (rate limit "claudeStatementTrial"), and
 // what they may cost that person in a day. Typing past the count gets STATEMENT_TRIAL_CAP_TEXT.
@@ -46,6 +49,8 @@ export const TRIAL_SWEEP_LOOKBACK_DAYS = 3;
 
 export const STATEMENT_TRIAL_BUSY =
   "So many people are trying Jane today that this has to wait. Please come back tomorrow, or try it with sample data.";
+export const STATEMENT_TRIAL_TOO_MANY_TODAY =
+  "Lots of people are trying Jane from here today. Please come back tomorrow.";
 export const STATEMENT_TRIAL_TOO_MANY =
   "Lots of people are trying Jane from here. Please try again in an hour.";
 
