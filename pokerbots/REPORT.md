@@ -1177,6 +1177,11 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   `f9_min_left` when set); 8-player tables are unchanged (test). After the fix, max 6-8 ms, and the >1 ms share (~4%,
   decision-only, loaded host) is the same exact-ICM-at-8-alive cost as on 8-player tables. `icm_switch:b=f7` still has
   p99 10 ms at 10 players (decision-only): not for >8-player tables (`results/tools/decision_timing_players.py`).
+  Part 2 (`results/sng_newfield_check2.md`, seeds 611000+, 400 paired tables): heads-up room −0.3 / +0.2, 3-handed room
+  −0.4 / −0.3, 4-handed field 7 −0.3 / +2.1, bounty room +1.0 / +5.4, bounty champions +3.8 / +2.6, pot-limit room
+  −1.0 / −1.5, fast blinds room −2.0 / +0.7: none significant either way. Pot-limit never hands over: with the time
+  limit off `icm_switch` = `icm_tag` exactly (+0.00 ± 0.00 on 30 tables); with it on, the odd over-time fold on this
+  host changes the rest of the table, so the nonzero values are timing noise.
   Bug hunter run 44 (2-10 players) flags ~50 slow tables per 10 minutes, all 9-10-handed, all four of our bots alike
   (Omaha too): replayed, the outliers sit near 8 ms in any code path (not GC: 1 of 47 had a collection inside). Same
   load, interleaved: our bots p99 0.23 ms (8 players) vs 0.36 ms (10), >1 ms 0.03% vs 0.17%. The flags are the bug
