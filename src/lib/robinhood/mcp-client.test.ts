@@ -96,6 +96,25 @@ describe("talking to the server", () => {
     expect(await reader().read("get_portfolio")).toMatchObject({ total_value: "90000.00" });
   });
 
+  it.each(["constructor", "__proto__", "toString", "hasOwnProperty"])(
+    "the fake server knows no tool called %s, even with answers given",
+    async (name) => {
+      fake.options.answers = { get_accounts: [] };
+      const { accessToken } = fake.issueTokensForTest();
+      const response = await fetch(fake.mcpUrl, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: { name, arguments: {} },
+        }),
+      });
+      expect(await response.json()).toMatchObject({ error: { code: -32602 } });
+    },
+  );
+
   it("says when the token isn't accepted", async () => {
     await expect(openReader({ accessToken: "wrong" }).read("get_accounts")).rejects.toThrow(
       RobinhoodSignedOutError,

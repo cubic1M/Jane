@@ -13,8 +13,8 @@ import type { AddressInfo } from "node:net";
 export const ACCOUNT_NUMBER_MARKER = "RHMARKER5551234";
 
 export type FakeOptions = {
-  // Tool name to answer; a function can throw to make that call fail.
-  answers?: Record<string, unknown | (() => unknown)>;
+  // Tool name to answer, in place of the sample one.
+  answers?: Record<string, unknown>;
   // Every MCP request answers this HTTP status.
   mcpStatus?: number;
   // Answer tool calls as an event stream rather than JSON.
@@ -39,56 +39,65 @@ export type FakeRequest = { path: string; method: string; rpc?: string; tool?: s
 
 type Grant = { challenge: string; redirectUri: string; clientId: string };
 
-const SAMPLE_ANSWERS: Record<string, unknown> = {
-  get_accounts: {
-    accounts: [
-      {
-        account_number: ACCOUNT_NUMBER_MARKER,
-        type: "margin",
-        brokerage_account_type: "individual",
-        nickname: `Individual ${ACCOUNT_NUMBER_MARKER}`,
-      },
-    ],
-  },
-  get_portfolio: { total_value: "90000.00", cash: "20000.00", buying_power: "40000.00" },
-  get_equity_positions: {
-    positions: [
-      {
-        symbol: "FCNTX",
-        name: "Fidelity Contrafund",
-        type: "mutual_fund",
-        quantity: "1000",
-        price: "20.00",
-        average_buy_price: "15.00",
-        account_number: ACCOUNT_NUMBER_MARKER,
-      },
-      {
-        symbol: "AAPL",
-        name: "Apple",
-        type: "stock",
-        quantity: "200",
-        market_value: "50000.00",
-        average_buy_price: "100.00",
-      },
-    ],
-  },
-  get_equity_quotes: { quotes: [{ symbol: "AAPL", last_trade_price: "250.00" }] },
-  get_equity_orders: {
-    orders: [
-      {
-        id: "order-1",
-        side: "sell",
-        state: "filled",
-        symbol: "AAPL",
-        filled_quantity: "10",
-        average_price: "250.00",
-        last_transaction_at: "2026-03-02T15:00:00Z",
-        account_number: ACCOUNT_NUMBER_MARKER,
-      },
-      { id: "order-2", side: "buy", state: "cancelled", symbol: "AAPL", quantity: "1", price: "1" },
-    ],
-  },
-};
+const SAMPLE_ANSWERS = new Map<string, unknown>(
+  Object.entries({
+    get_accounts: {
+      accounts: [
+        {
+          account_number: ACCOUNT_NUMBER_MARKER,
+          type: "margin",
+          brokerage_account_type: "individual",
+          nickname: `Individual ${ACCOUNT_NUMBER_MARKER}`,
+        },
+      ],
+    },
+    get_portfolio: { total_value: "90000.00", cash: "20000.00", buying_power: "40000.00" },
+    get_equity_positions: {
+      positions: [
+        {
+          symbol: "FCNTX",
+          name: "Fidelity Contrafund",
+          type: "mutual_fund",
+          quantity: "1000",
+          price: "20.00",
+          average_buy_price: "15.00",
+          account_number: ACCOUNT_NUMBER_MARKER,
+        },
+        {
+          symbol: "AAPL",
+          name: "Apple",
+          type: "stock",
+          quantity: "200",
+          market_value: "50000.00",
+          average_buy_price: "100.00",
+        },
+      ],
+    },
+    get_equity_quotes: { quotes: [{ symbol: "AAPL", last_trade_price: "250.00" }] },
+    get_equity_orders: {
+      orders: [
+        {
+          id: "order-1",
+          side: "sell",
+          state: "filled",
+          symbol: "AAPL",
+          filled_quantity: "10",
+          average_price: "250.00",
+          last_transaction_at: "2026-03-02T15:00:00Z",
+          account_number: ACCOUNT_NUMBER_MARKER,
+        },
+        {
+          id: "order-2",
+          side: "buy",
+          state: "cancelled",
+          symbol: "AAPL",
+          quantity: "1",
+          price: "1",
+        },
+      ],
+    },
+  }),
+);
 
 // Robinhood's tools that do something, from its "Trading with your agent" article. Offered like the
 // real server offers them.
@@ -355,7 +364,7 @@ export class FakeRobinhood {
     }
     if (body.method === "tools/list") {
       reply({
-        tools: [...Object.keys(SAMPLE_ANSWERS), ...ACTING_TOOLS].map((name) => ({ name })),
+        tools: [...SAMPLE_ANSWERS.keys(), ...ACTING_TOOLS].map((name) => ({ name })),
       });
       return;
     }
@@ -369,7 +378,9 @@ export class FakeRobinhood {
         reply({ content: [{ type: "text", text: JSON.stringify({ placed: true }) }] });
         return;
       }
-      const answer = this.options.answers?.[name] ?? SAMPLE_ANSWERS[name];
+      // Maps, so a name from the request can only find a tool: "constructor" isn't one.
+      const answers = new Map(Object.entries(this.options.answers ?? {}));
+      const answer = answers.get(name) ?? SAMPLE_ANSWERS.get(name);
       if (answer === undefined) {
         sendJson(response, 200, {
           jsonrpc: "2.0",
@@ -378,8 +389,7 @@ export class FakeRobinhood {
         });
         return;
       }
-      const value = typeof answer === "function" ? (answer as () => unknown)() : answer;
-      reply({ content: [{ type: "text", text: JSON.stringify(value) }] });
+      reply({ content: [{ type: "text", text: JSON.stringify(answer) }] });
       return;
     }
     sendJson(response, 200, {
