@@ -1169,7 +1169,7 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   On that slower host with the 1 ms limit on (`results/sng_slowhost_check.md`, 600 paired tables, fresh seeds 441000+), `icm_switch` vs `icm_tag`: room guess **+3.4***, field 10 +0.5, field 5 −0.0, field 7 **+6.5***, kit-4 room **+3.2***; decisions over 1 ms about equal for both bots (9-17 per 600 tables each, in-process end-of-hand untimed).
 * **New settings + 9-10-handed tables (Nov 5, `results/sng_newfield_check.md`, fresh seeds 601000+, 400 paired tables vs `icm_tag`).**
   6-handed room / hackathon field: `icm_switch` −0.5 / +0.7, strong-room option +1.5 / +1.1 (n.s.); room top-2 payout +2.8* / +1.7;
-  linear +0.13* / +0.39*; slow blinds +0.6 / +3.4*; champions winner-take-all −0.2 / +5.4*. No setup significantly worse.
+  linear +0.13* / +0.39*; slow blinds +0.6 / +3.4*; champions winner-take-all −0.2 / +5.4*; 9-handed (after the fixes below, 300 tables) field 7 +9.8* / +16.2*, room +3.0 / +2.4. No setup significantly worse.
   The 9-handed cells crashed in the arena: `--players 9` cut an 8-place point table, now padded with 0 (test added), and the
   bug hunter now draws 2-10 players (it never drew 9-10 before). Timing at 9-10 players found a real cost: after the
   hand-over, `f9_meta`'s exact ICM grows exponentially (~3 ms with 9 alive, ~60 ms with 10), so in a decision-only interface

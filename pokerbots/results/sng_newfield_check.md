@@ -54,3 +54,17 @@ paired difference vs icm_tag (same tables):
 
 field archetypes (points/table):
 done
+
+# 9-player cells, rerun after the payout-padding and 8-alive ICM fixes (same seeds, 300 tables)
+
+## cell 4 (rerun after the 9-player fixes): field7 --players 9 (300 tables)
+paired difference vs icm_tag (same tables):
+  icm_switch                   +9.82 ± 3.90 *
+  icm_switch:start=b;back_share=0.22;switch_min=15 +16.22 ± 4.24 *
+
+
+## cell 2 (rerun after the 9-player fixes): room --players 9 (300 tables)
+paired difference vs icm_tag (same tables):
+  icm_switch                   +2.99 ± 4.49
+  icm_switch:start=b;back_share=0.22;switch_min=15 +2.38 ± 5.30
+
