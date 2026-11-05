@@ -119,6 +119,7 @@ describe.runIf(url)("home summary against a real database", () => {
     expect(home?.plan).toEqual({
       items: 2,
       annualSavingsCents: open.reduce((sum, f) => sum + (f.annualSavingsCents ?? 0), 0),
+      onceCents: 0,
       top: biggest.map((f) => ({ title: f.title, cents: f.annualSavingsCents })),
     });
     // No goal yet: nothing to save toward.

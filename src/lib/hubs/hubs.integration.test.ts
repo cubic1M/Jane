@@ -342,7 +342,7 @@ describe.runIf(url)("the hubs against a real database", () => {
 
   it("someone with nothing linked gets empty states, not errors", async () => {
     const jane = await loadJaneHub(emptyId, { client, now: NOW });
-    expect(jane.decide).toEqual({ total: 0, totalSavingsCents: 0, items: [] });
+    expect(jane.decide).toEqual({ total: 0, totalSavingsCents: 0, onceCents: 0, items: [] });
     expect(jane.inProgress).toEqual({ total: 0, items: [] });
     expect(jane.done).toEqual({ total: 0, savedToDateCents: 0, confirmedCents: 0, items: [] });
     expect(jane.alerts).toEqual({ unread: 0, items: [] });
