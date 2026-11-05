@@ -7,6 +7,7 @@ import { CONCIERGE_ACTIONS } from "@/config/concierge";
 import { STATEMENT_TRIAL_CHAT_ANSWERS, TRIAL_DELETED_WITHIN_HOURS } from "@/config/statement-trial";
 import { TRIAL_HOURS } from "@/config/trial";
 import { retentionPolicy } from "@/lib/retention";
+import { READ_TOOLS } from "@/lib/robinhood/mcp-client";
 import PrivacyPage from "./privacy/page";
 import TermsPage from "./terms/page";
 
@@ -51,6 +52,64 @@ describe("the legal pages", () => {
     expect(privacy).toMatch(/investment details too, once Jane turns investment accounts on/);
     expect(privacy).toMatch(/It can never move money/);
     expect(text(TermsPage)).toMatch(/Jane never moves money/);
+  });
+
+  describe("the Robinhood connection", () => {
+    it("isn't mentioned while it's off", () => {
+      vi.stubEnv("ROBINHOOD_LINK", "");
+      expect(text(PrivacyPage)).not.toMatch(/connect Robinhood|Robinhood connection/i);
+      expect(text(TermsPage)).not.toMatch(/connect Robinhood/i);
+    });
+
+    it("says what's read, and that the code asks for no more than that", () => {
+      vi.stubEnv("ROBINHOOD_LINK", "1");
+      const privacy = text(PrivacyPage);
+      expect(privacy).toMatch(/balances, what they hold and their filled orders/);
+      // The claim, and the list behind it.
+      expect([...READ_TOOLS].sort()).toEqual([
+        "get_accounts",
+        "get_equity_orders",
+        "get_equity_positions",
+        "get_equity_quotes",
+        "get_portfolio",
+      ]);
+    });
+
+    it("says account numbers are thrown away and Claude never gets them", () => {
+      vi.stubEnv("ROBINHOOD_LINK", "1");
+      const privacy = text(PrivacyPage);
+      expect(privacy).toMatch(/throws them away as they arrive/);
+      expect(privacy).toMatch(/never your account numbers or that connection/);
+      // Only the request reads the number out of a handle; a saved account has no mask.
+      expect(readFileSync("src/lib/robinhood/refresh.ts", "utf8")).not.toMatch(/\bmask\b/);
+    });
+
+    it("says what its connection can do, and that Jane can't trade", () => {
+      vi.stubEnv("ROBINHOOD_LINK", "1");
+      expect(text(PrivacyPage)).toMatch(/also lets a connection trade in an agent account/);
+      const terms = text(TermsPage);
+      expect(terms).toMatch(/Jane can't place, change or cancel a trade/);
+      expect(terms).toMatch(/Jane never moves money/);
+    });
+
+    it("says how it goes: disconnecting, inactivity and deleting the account", () => {
+      vi.stubEnv("ROBINHOOD_LINK", "1");
+      const privacy = text(PrivacyPage);
+      expect(privacy).toMatch(/Disconnecting Robinhood deletes Jane's access/);
+      expect(privacy).toMatch(/no way to end the connection on its side/);
+      expect(privacy).toMatch(/deletes its Robinhood access/);
+      const deletion = readFileSync("src/lib/account-deletion.ts", "utf8");
+      expect(deletion).toMatch(/removeConnection\(userId, "user_deleted_data"/);
+      expect(readFileSync("src/lib/plaid/inactive.ts", "utf8")).toMatch(/removeRobinhood\(/);
+    });
+
+    it("says its tokens are encrypted, and they are", () => {
+      vi.stubEnv("ROBINHOOD_LINK", "1");
+      expect(text(PrivacyPage)).toMatch(/Robinhood connection tokens are encrypted/);
+      expect(readFileSync("src/lib/robinhood/secrets.ts", "utf8")).toMatch(
+        /encrypt\(JSON\.stringify/,
+      );
+    });
   });
 
   it("say real accounts get no advice and no one contacts a company for them", () => {

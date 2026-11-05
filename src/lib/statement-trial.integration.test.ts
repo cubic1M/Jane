@@ -113,6 +113,7 @@ const NOT_A_PERSONS = new Set([
   "refresh_locks",
   "plaid_webhook_events",
   "plaid_item_counter",
+  "robinhood_oauth_clients",
   "referral_partners",
   "ops_switches",
   // Market data, and the beta's sign-up lists, by email or code: a temporary person has neither.

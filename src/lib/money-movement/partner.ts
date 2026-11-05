@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { REAL_MONEY_MOVEMENT, STAND_IN_PARTNER } from "@/config/money-movement";
+import { NOT_FROM_A_BANK } from "@/data-sources/types";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -53,10 +54,11 @@ export async function moneyPartnerFor(
 ): Promise<MoneyMovementPartner | null> {
   if (REAL_MONEY_MOVEMENT) return null;
   const db = scopedFor(userId, client);
-  const [items, csv] = await Promise.all([
+  const [items, ownAccounts] = await Promise.all([
     db.plaidItems.findMany({ select: { plaidItemId: true } }),
-    db.accounts.count({ where: { source: "csv" } }),
+    db.accounts.count({ where: { source: { in: [...NOT_FROM_A_BANK] } } }),
   ]);
-  const demoOnly = items.length > 0 && csv === 0 && items.every((i) => isDemoItemId(i.plaidItemId));
+  const demoOnly =
+    items.length > 0 && ownAccounts === 0 && items.every((i) => isDemoItemId(i.plaidItemId));
   return demoOnly ? standInPartner : null;
 }

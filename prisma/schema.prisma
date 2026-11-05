@@ -188,6 +188,8 @@ enum AlertType {
 enum DataSourceKind {
   csv
   plaid
+  // Read from a person's own Robinhood connection (src/lib/robinhood/), off unless ROBINHOOD_LINK=1.
+  robinhood
 
   @@map("data_source")
 }
@@ -386,31 +388,32 @@ model User {
 
   savedShares SavedShare[]
 
-  autopilotSectors   AutopilotSector[]
-  autopilotActs      AutopilotAct[]
-  collegePlans       CollegePlan[]
-  hsaReceipts        HsaReceipt[]
-  equityGrants       EquityGrant[]
-  cryptoConnections  CryptoConnection[]
-  cryptoHoldings     CryptoHolding[]
-  controllerRuns     ControllerRun[]
-  moneyTransfers     MoneyTransfer[]
-  paycheckPlans      PaycheckPlan[]
-  healthScores       HealthScore[]
-  monthlyReports     MonthlyReport[]
-  monthCloses        MonthClose[]
-  whatIfPlans        WhatIfPlan[]
-  taxPlanEvents      TaxPlanEvent[]
-  propertyAppeals    PropertyAppeal[]
-  accountantLinks    AccountantLink[]
-  accountantNotes    AccountantNote[]
-  taxPayments        TaxPayment[]
-  leanPlans          LeanPlan[]
-  booksIssues        BooksIssue[]
-  suggestions        Suggestion[]
-  suggestionOutcomes SuggestionOutcome[]
-  yearPlans          YearPlan[]
-  unusualAnswers     UnusualAnswer[]
+  autopilotSectors    AutopilotSector[]
+  autopilotActs       AutopilotAct[]
+  collegePlans        CollegePlan[]
+  hsaReceipts         HsaReceipt[]
+  equityGrants        EquityGrant[]
+  cryptoConnections   CryptoConnection[]
+  cryptoHoldings      CryptoHolding[]
+  robinhoodConnection RobinhoodConnection?
+  controllerRuns      ControllerRun[]
+  moneyTransfers      MoneyTransfer[]
+  paycheckPlans       PaycheckPlan[]
+  healthScores        HealthScore[]
+  monthlyReports      MonthlyReport[]
+  monthCloses         MonthClose[]
+  whatIfPlans         WhatIfPlan[]
+  taxPlanEvents       TaxPlanEvent[]
+  propertyAppeals     PropertyAppeal[]
+  accountantLinks     AccountantLink[]
+  accountantNotes     AccountantNote[]
+  taxPayments         TaxPayment[]
+  leanPlans           LeanPlan[]
+  booksIssues         BooksIssue[]
+  suggestions         Suggestion[]
+  suggestionOutcomes  SuggestionOutcome[]
+  yearPlans           YearPlan[]
+  unusualAnswers      UnusualAnswer[]
 
   payrollChanges PayrollChange[]
   oldPlans       OldPlan[]
@@ -530,6 +533,49 @@ model PlaidItem {
   @@map("plaid_items")
 }
 
+// A person's read-only Robinhood connection (src/lib/robinhood/, off unless ROBINHOOD_LINK=1). One
+// per person. What it reads is saved as accounts, securities, holdings and investment transactions.
+model RobinhoodConnection {
+  id               String    @id @default(cuid())
+  userId           String    @unique @map("user_id")
+  // AES-256-GCM via src/lib/crypto.ts: the tokens and the random value that keeps account numbers
+  // out of the database (src/lib/robinhood/secrets.ts). Never log or return it.
+  secretsEncrypted String    @map("secrets_encrypted")
+  clientId         String    @map("client_id")
+  accessExpiresAt  DateTime? @map("access_expires_at") @db.Timestamptz(3)
+  // active, or reconnect: Robinhood stopped accepting it, and its tokens have been wiped.
+  status           String    @default("active")
+  lastSyncedAt     DateTime? @map("last_synced_at") @db.Timestamptz(3)
+  // A short code of ours, never Robinhood's words. Cleared by the next good refresh.
+  lastErrorCode    String?   @map("last_error_code")
+  lastErrorAt      DateTime? @map("last_error_at") @db.Timestamptz(3)
+  // Failures in a row, and when to try again (src/config/robinhood.ts).
+  failures         Int       @default(0)
+  nextTryAt        DateTime? @map("next_try_at") @db.Timestamptz(3)
+  // Held while a refresh runs, so two can't spend one refresh token.
+  syncingSince     DateTime? @map("syncing_since") @db.Timestamptz(3)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accounts Account[]
+
+  @@map("robinhood_connections")
+}
+
+// This app's registration with Robinhood's sign-in, one per address it comes back to. Not personal
+// data, and no secret: the registration asks for a public client, which proves itself with PKCE.
+model RobinhoodOauthClient {
+  id          String   @id @default(cuid())
+  issuer      String
+  redirectUri String   @map("redirect_uri")
+  clientId    String   @map("client_id")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@unique([issuer, redirectUri])
+  @@map("robinhood_oauth_clients")
+}
+
 // How many Plaid Production Items were ever created (src/lib/plaid/item-slots.ts). Plaid's Trial
 // plan counts every access token for good, so this is never lowered by removing an Item or
 // deleting an account. One row, a number, no personal data.
@@ -575,6 +621,8 @@ model Account {
   source                DataSourceKind
   // Plaid-only; null for CSV accounts.
   itemId                String?        @map("item_id")
+  // Robinhood-only: goes when the connection goes.
+  robinhoodConnectionId String?        @map("robinhood_connection_id")
   plaidAccountId        String?        @unique @map("plaid_account_id")
   name                  String
   mask                  String?
@@ -591,6 +639,7 @@ model Account {
 
   user                   User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   item                   PlaidItem?              @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  robinhoodConnection    RobinhoodConnection?    @relation(fields: [robinhoodConnectionId], references: [id], onDelete: Cascade)
   transactions           Transaction[]
   recurringStreams       RecurringStream[]
   balanceSnapshots       BalanceSnapshot[]
@@ -607,6 +656,7 @@ model Account {
 
   @@index([userId])
   @@index([itemId])
+  @@index([robinhoodConnectionId])
   @@map("accounts")
 }
 

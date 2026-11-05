@@ -3,6 +3,10 @@
 
 export type DataSourceKind = "csv" | "plaid";
 
+// Accounts that aren't from a bank link: an upload, or a Robinhood connection. Either next to the
+// demo bank is real data, so the demo bank's sample-only rules don't apply.
+export const NOT_FROM_A_BANK = ["csv", "robinhood"] as const;
+
 // The account kinds a person picks on /import, mapped to Plaid's type/subtype values
 // so Plaid accounts and CSV accounts look the same in the database.
 export const ACCOUNT_KINDS = {

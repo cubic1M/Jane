@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { CONCIERGE_ACTIONS } from "@/config/concierge";
+import { NOT_FROM_A_BANK } from "@/data-sources/types";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -40,9 +41,9 @@ export async function onSampleDataOnly(
   if (isStatementTrialUser(userId)) return false;
   if (isTrialUser(userId)) return true;
   const db = scopedFor(userId, client);
-  const [items, csvAccounts] = await Promise.all([
+  const [items, ownAccounts] = await Promise.all([
     db.plaidItems.findMany({ select: { plaidItemId: true } }),
-    db.accounts.count({ where: { source: "csv" } }),
+    db.accounts.count({ where: { source: { in: [...NOT_FROM_A_BANK] } } }),
   ]);
-  return items.length > 0 && csvAccounts === 0 && items.every((i) => isDemoItemId(i.plaidItemId));
+  return items.length > 0 && ownAccounts === 0 && items.every((i) => isDemoItemId(i.plaidItemId));
 }

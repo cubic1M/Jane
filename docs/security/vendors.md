@@ -86,6 +86,29 @@ failed jobs are sent. Failures caught and logged with `log.error` reach the logs
 - The docs don't state the period and grace of a check made automatically by `?create=1`, so set
   them by hand (`Founder only` in the notes).
 
+## Robinhood (a person's brokerage, off unless `ROBINHOOD_LINK=1`)
+
+[Agentic trading overview](https://robinhood.com/us/en/support/articles/agentic-trading-overview/),
+[trading with your agent](https://robinhood.com/us/en/support/articles/trading-with-your-agent/),
+[onboarding an external agent](https://robinhood.com/us/en/support/articles/onboarding-an-external-agent/),
+[metadata](https://agent.robinhood.com/.well-known/oauth-authorization-server). Read on 2026-11-05.
+
+- **Not in use.** The switch is off, and `/privacy` mentions it only when it's on. Whether its terms
+  allow an app to connect for its users is unknown, and the founder is asking.
+- **What the connection can see:** every Robinhood account, including account numbers, positions,
+  balances, and transaction and order history.
+- **What it can do:** trade in a separate agent account, if the person opens one. One scope,
+  `internal`; no read-only one. Trade approvals are off by default for external agents.
+- **Who's named:** the onboarding article lists platforms it supports and says to contact support for
+  others. Whether a site's own sign-in address is accepted isn't stated.
+- **Revoking:** the metadata has no revocation address, and the articles give no steps beyond
+  disconnecting on the platform and contacting support.
+- **Terms on data:** its disclosures have the person assume the risk of any use of their data by
+  third-party AI providers. That's worth counsel's read before this is offered.
+
+**What Jane sends** (`src/lib/robinhood/`): the tokens, and an account number in a request about that
+account. It calls only the tools on the list in `mcp-client.ts`. See `docs/setup/robinhood.md`.
+
 ## The hourly probe's host
 
 GitHub Actions rather than Checkly: free on a public repository, nothing to sign up for, and the

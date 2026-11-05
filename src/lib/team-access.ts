@@ -132,6 +132,12 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   membership_paid: automatic,
   // By the person, or automatically when a bank sat unused (spec step 11).
   item_removed: own,
+  // The person's own Robinhood connection, and the nightly read of it.
+  robinhood_connected: own,
+  robinhood_disconnected: own,
+  robinhood_connect_failed: own,
+  robinhood_refresh_failed: automatic,
+  robinhood_reconnect_needed: automatic,
   derived_removed: own,
   user_data_deleted: own,
   admin_mfa_enrolled: own,

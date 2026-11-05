@@ -97,6 +97,12 @@ export type AuditEvent =
   | "action_status_changed"
   | "membership_paid"
   | "item_removed"
+  // The read-only Robinhood connection (src/lib/robinhood/): a code of ours, never its words.
+  | "robinhood_connected"
+  | "robinhood_disconnected"
+  | "robinhood_connect_failed"
+  | "robinhood_refresh_failed"
+  | "robinhood_reconnect_needed"
   // Card-chat mismatch: rows worked out from data that is gone (src/lib/evidence/orphans.ts).
   | "derived_removed"
   | "user_data_deleted"

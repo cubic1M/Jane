@@ -7,6 +7,7 @@ import { DIGEST_CHANGE_KINDS } from "@/config/digest";
 import { TRIAL_ID_PREFIX } from "@/config/trial";
 import { loadDetectionInput, moneyFoundParts } from "@/detection/engine";
 import { alertPrefs } from "@/lib/alerts";
+import { NOT_FROM_A_BANK } from "@/data-sources/types";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
@@ -334,7 +335,7 @@ export async function runDigests({
   });
   const csvAccounts = await systemDb(WHY, client).account.groupBy({
     by: ["userId"],
-    where: { source: "csv", userId: { in: candidates.map((c) => c.id) } },
+    where: { source: { in: [...NOT_FROM_A_BANK] }, userId: { in: candidates.map((c) => c.id) } },
     _count: { _all: true },
   });
   const csvCount = new Map(csvAccounts.map((a) => [a.userId, a._count._all]));

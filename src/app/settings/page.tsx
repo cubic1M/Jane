@@ -161,7 +161,7 @@ async function SettingsContent({
       .filter((o) => importEnded(o) && o.accountId)
       .map((o) => [o.accountId as string, o.words]),
   );
-  const imported = accounts.filter((a) => a.source !== "plaid");
+  const imported = accounts.filter((a) => a.source === "csv");
   const autopilotLabel =
     autopilot === null
       ? null

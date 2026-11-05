@@ -88,6 +88,9 @@ export const ACCESS_MAP: Record<string, Access> = {
   "src/app/api/plaid/link-token/route.ts": "signed-in",
   "src/app/api/plaid/repaired/route.ts": "signed-in",
   "src/app/api/plaid/webhook/route.ts": "webhook",
+  "src/app/api/robinhood/callback/route.ts": "signed-in",
+  "src/app/api/robinhood/connect/route.ts": "signed-in",
+  "src/app/api/robinhood/disconnect/route.ts": "signed-in",
   "src/app/api/push/route.ts": "signed-in",
   "src/app/api/share/card/route.tsx": public_(
     "Draws a share card from what's in its URL, nothing of anyone's.",

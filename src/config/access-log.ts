@@ -26,6 +26,8 @@ export const ACCESS_EVENTS = [
   "item_linked",
   "item_relinked",
   "item_removed",
+  "robinhood_connected",
+  "robinhood_disconnected",
   "data_exported",
   "user_data_deleted",
   // A temporary try starting and being deleted (src/lib/trial-delete.ts): what the privacy page says
@@ -74,6 +76,8 @@ export const ACTIVITY_LABELS: Partial<Record<AccessEvent, string>> = {
   item_linked: "Linked a bank",
   item_relinked: "Reconnected a bank",
   item_removed: "Disconnected a bank",
+  robinhood_connected: "Connected Robinhood",
+  robinhood_disconnected: "Disconnected Robinhood",
   data_exported: "Downloaded your data",
 };
 

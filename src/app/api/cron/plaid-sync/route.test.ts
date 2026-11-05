@@ -121,6 +121,8 @@ describe("GET /api/cron/plaid-sync", () => {
       failed: 1,
       deferred: 0,
       inactive: { warned: 0, removed: 1, failed: 0 },
+      // Off unless ROBINHOOD_LINK=1: nothing is read.
+      robinhood: null,
       snapshots: { saved: 3, removed: 0 },
       jobs: { done: 1, retried: 0, failed: 0 },
       agent: { checked: 0 },
@@ -158,6 +160,7 @@ describe("GET /api/cron/plaid-sync", () => {
       failed: 0,
       deferred: 0,
       inactive: null,
+      robinhood: null,
       snapshots: { saved: 3, removed: 0 },
       jobs: { done: 1, retried: 0, failed: 0 },
       agent: { checked: 0 },

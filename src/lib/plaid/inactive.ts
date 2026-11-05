@@ -5,13 +5,14 @@ import { db as defaultClient } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { appBase } from "@/lib/digest/links";
 import { removePlaidItem } from "./remove";
+import { removeConnection } from "@/lib/robinhood/connection";
 import { log } from "@/lib/log";
 import { peopleIn, type OnlyPeople } from "@/lib/only-people";
 import { systemDb } from "@/lib/system-db";
 
 const WHY = "Cron: finds inactive people across everyone";
 
-// Daily: people who haven't used the app for INACTIVE_ITEM_DAYS lose their Plaid
+// Daily: people who haven't used the app for INACTIVE_ITEM_DAYS lose their Plaid and Robinhood
 // connections, with an email REMOVAL_WARNING_DAYS before. Using the app at any point
 // after the warning cancels it.
 
@@ -34,10 +35,15 @@ export function inactivityStep(person: Person, now: Date): "warn" | "remove" | "
   return quietDays >= INACTIVE_ITEM_DAYS - REMOVAL_WARNING_DAYS ? "warn" : "none";
 }
 
-async function warn(email: string, removalDate: Date, send: typeof sendEmail) {
+async function warn(
+  email: string,
+  removalDate: Date,
+  send: typeof sendEmail,
+  what = "your linked banks",
+) {
   const date = removalDate.toISOString().slice(0, 10);
   const link = `${appBase()}/report`;
-  const text = `You haven't used Jane in a while, so on ${date} we'll disconnect your linked banks. That removes their accounts and transactions and what was worked out from them, and while Jane is in beta you may not be able to link them again.\n\nWant to keep them connected? Just open your report: ${link}`;
+  const text = `You haven't used Jane in a while, so on ${date} we'll disconnect ${what}. That removes their accounts and transactions and what was worked out from them, and while Jane is in beta you may not be able to link them again.\n\nWant to keep them connected? Just open your report: ${link}`;
   if (!process.env.RESEND_API_KEY && process.env.NODE_ENV !== "production") {
     log.dev(`[dev] Email to ${email}: inactivity warning\n${text}`);
     return;
@@ -46,7 +52,7 @@ async function warn(email: string, removalDate: Date, send: typeof sendEmail) {
     to: email,
     subject: "We'll disconnect your banks soon | Jane",
     text,
-    html: `<p>You haven't used Jane in a while, so on ${date} we'll disconnect your linked banks. That removes their accounts and transactions and what was worked out from them, and while Jane is in beta you may not be able to link them again.</p><p>Want to keep them connected? <a href="${link}">Open your report</a>.</p>`,
+    html: `<p>You haven't used Jane in a while, so on ${date} we'll disconnect ${what}. That removes their accounts and transactions and what was worked out from them, and while Jane is in beta you may not be able to link them again.</p><p>Want to keep them connected? <a href="${link}">Open your report</a>.</p>`,
   });
 }
 
@@ -55,22 +61,28 @@ export async function runInactiveCleanup({
   now = new Date(),
   send = sendEmail,
   remove = removePlaidItem,
+  removeRobinhood = removeConnection,
   userIds,
 }: {
   client?: PrismaClient;
   now?: Date;
   send?: typeof sendEmail;
   remove?: typeof removePlaidItem;
+  removeRobinhood?: typeof removeConnection;
 } & OnlyPeople = {}): Promise<InactiveRun> {
   // A system job across users: reads who has linked banks and when they were last active.
   const people = await systemDb(WHY, client).user.findMany({
-    where: { plaidItems: { some: {} }, ...peopleIn(userIds) },
+    where: {
+      OR: [{ plaidItems: { some: {} } }, { robinhoodConnection: { isNot: null } }],
+      ...peopleIn(userIds),
+    },
     select: {
       id: true,
       email: true,
       createdAt: true,
       plaidRemovalWarnedAt: true,
       plaidItems: { select: { id: true } },
+      robinhoodConnection: { select: { id: true } },
     },
   });
   const last = await systemDb(WHY, client).analyticsEvent.groupBy({
@@ -105,7 +117,16 @@ export async function runInactiveCleanup({
     );
     try {
       if (step === "warn") {
-        await warn(person.email, new Date(now.getTime() + REMOVAL_WARNING_DAYS * DAY_MS), send);
+        await warn(
+          person.email,
+          new Date(now.getTime() + REMOVAL_WARNING_DAYS * DAY_MS),
+          send,
+          person.plaidItems.length === 0
+            ? "your Robinhood connection"
+            : person.robinhoodConnection
+              ? "your linked banks and Robinhood"
+              : "your linked banks",
+        );
         await systemDb(WHY, client).user.update({
           where: { id: person.id },
           data: { plaidRemovalWarnedAt: now },
@@ -114,6 +135,9 @@ export async function runInactiveCleanup({
       } else if (step === "remove") {
         for (const item of person.plaidItems) {
           await remove(person.id, item.id, "inactive", { client, actor: SYSTEM_ACTOR });
+        }
+        if (person.robinhoodConnection) {
+          await removeRobinhood(person.id, "inactive", { client, actor: SYSTEM_ACTOR });
         }
         await systemDb(WHY, client).user.update({
           where: { id: person.id },

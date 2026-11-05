@@ -1,5 +1,6 @@
 import { LegalPage } from "@/components/legal-page";
 import { COMPANY_NAME, contactEmail } from "@/config/legal";
+import { robinhoodOffered } from "@/config/robinhood";
 import { TRIAL_DELETED_WITHIN_HOURS } from "@/config/statement-trial";
 import { TRIAL_HOURS } from "@/config/trial";
 
@@ -44,6 +45,15 @@ export default function TermsPage() {
           Jane never moves money. It can&apos;t make payments, transfers or trades, and it never
           holds your funds.
         </li>
+        {robinhoodOffered() && (
+          <li>
+            If you connect Robinhood, Jane reads your accounts there, on your say-so on
+            Robinhood&apos;s own sign-in page, and shows you facts about them. Jane can&apos;t
+            place, change or cancel a trade. Robinhood&apos;s connection itself can trade if you
+            open its agent account; Jane doesn&apos;t need one, and anything in it is between you
+            and Robinhood.
+          </li>
+        )}
         <li>
           When you decide to make a change, such as cancelling a subscription, Jane gives you the
           steps and a draft message, and you make the change yourself. For your real accounts, Jane
