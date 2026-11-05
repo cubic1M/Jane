@@ -1124,6 +1124,26 @@ describe("a sale through PayPal", () => {
 
 // Debugger 11-04: a person's policies. A yearly umbrella policy had no category, and Delta Dental's fixed
 // monthly premium read as dental treatment, so neither was on the list of their insurance.
+// Debugger 11-05: "Is Discover Student Loans a subscription to cancel?", and "SOFI STUDENT LOAN PMT" read
+// as another loan, so there was no 1098-E to expect.
+describe("a student loan by those words", () => {
+  it.each(["DISCOVER STUDENT LOANS", "SOFI STUDENT LOAN PMT", "CITIZENS BANK STUDENT LOAN"])(
+    "%s is a student loan",
+    (description) => {
+      expect(categorizeByRules({ description, amountCents: 3_500, hints: {} })?.detailed).toBe(
+        "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT",
+      );
+    },
+  );
+
+  it("the loan arriving isn't a payment", () => {
+    expect(
+      categorizeByRules({ description: "STUDENT LOAN DISB", amountCents: -500_000, hints: {} })
+        ?.detailed,
+    ).not.toBe("LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT");
+  });
+});
+
 // Debugger 11-05: "Review your Amex Annual Fee subscription". A card's fee has its own rule, and it
 // said so only when the line started with the fee.
 describe("a card's annual fee, with the card's name first", () => {

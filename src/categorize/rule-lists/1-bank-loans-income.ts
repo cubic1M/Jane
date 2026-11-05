@@ -454,7 +454,16 @@ export const BANK_LOANS_INCOME: readonly Rule[] = [
   },
   {
     category: "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT",
-    keywords: ["NAVIENT", "NELNET", "MOHELA", "SALLIE MAE", "AIDVANTAGE", "DEPT EDUCATION"],
+    keywords: [
+      "NAVIENT",
+      "NELNET",
+      "MOHELA",
+      "SALLIE MAE",
+      "AIDVANTAGE",
+      "DEPT EDUCATION",
+      "STUDENT LOAN",
+      "STUDENT LOANS",
+    ],
     direction: "out",
   },
   {
