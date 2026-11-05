@@ -93,6 +93,14 @@ export function syncedKindOf(type: string, subtype: string | null): SyncedKind |
   for (const [kind, plaid] of Object.entries(SYNCED_KINDS)) {
     if (plaid.type === type && plaid.subtype === subtype) return kind as SyncedKind;
   }
+  // Plaid's other cash accounts: left out, someone whose main account is a cash management account
+  // saw nothing of it and was told nothing.
+  if (type === "depository") {
+    if (subtype === "cash management" || subtype === "prepaid") return "checking";
+    if (subtype === "money market" || subtype === "cd" || subtype === "hsa") return "savings";
+    return null;
+  }
+  if (type === "credit") return "credit_card";
   return type === "loan" ? "other_loan" : null;
 }
 

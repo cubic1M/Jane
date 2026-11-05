@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import {
   SIGN_IN_PLAID_CODES,
+  SYNC_AGAIN_MAX,
   SYNC_LOCK_MINUTES,
   WEBHOOK_EVENT_DAYS,
   WEBHOOK_REPEAT_MINUTES,
@@ -163,8 +164,9 @@ export async function forgetDelivery(
 }
 
 // A sync from a webhook, unless one for the same bank is already running (a burst of
-// SYNC_UPDATES_AVAILABLE, or one Plaid repeated): the running one reads everything up to now.
-// A sync that died is taken over after SYNC_LOCK_MINUTES. Returns whether it ran.
+// SYNC_UPDATES_AVAILABLE, or one Plaid repeated). The running one may be past reading, and a person's
+// year of history arrives this way, so it's told to read again when it's done. A sync that died is
+// taken over after SYNC_LOCK_MINUTES. Returns whether it ran.
 export async function syncFromWebhook(
   itemId: string,
   {
@@ -178,9 +180,22 @@ export async function syncFromWebhook(
     where: { id: itemId, OR: [{ syncingSince: null }, { syncingSince: { lt: stale } }] },
     data: { syncingSince: now },
   });
-  if (count === 0) return false;
+  if (count === 0) {
+    await systemDb(WHY, client).plaidItem.updateMany({
+      where: { id: itemId },
+      data: { syncAgain: true },
+    });
+    return false;
+  }
   try {
-    await sync(itemId);
+    for (let runs = 0; runs <= SYNC_AGAIN_MAX; runs++) {
+      await sync(itemId);
+      const { count: again } = await systemDb(WHY, client).plaidItem.updateMany({
+        where: { id: itemId, syncAgain: true },
+        data: { syncAgain: false },
+      });
+      if (again === 0) break;
+    }
   } finally {
     await systemDb(WHY, client).plaidItem.updateMany({
       where: { id: itemId },

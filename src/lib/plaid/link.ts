@@ -152,6 +152,9 @@ export async function exchangePublicToken(
   const data = await plaidCall(api.itemPublicTokenExchange({ public_token: publicToken })).catch(
     async (error) => {
       if (slot && noTokenMade(error)) await releaseItemSlot(slot, { client });
+      // No clear answer: Plaid may have made one, so the count stays. The person's own claim doesn't:
+      // "try again" must be able to work, and it held the only one they get.
+      else if (slot) await releaseItemClaim(slot, { client }).catch(() => undefined);
       throw error;
     },
   );

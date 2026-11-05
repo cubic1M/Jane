@@ -1,5 +1,6 @@
 import { NextResponse, after } from "next/server";
 import { TERMS_VERSION } from "@/config/legal";
+import { FIRST_SYNC_TRIES, FIRST_SYNC_WAIT_MS } from "@/config/plaid";
 import { log } from "@/lib/log";
 import { limitOrNull } from "@/lib/rate-limit";
 import { freshSwitches } from "@/lib/ops-switches";
@@ -10,6 +11,9 @@ import { syncItem } from "@/lib/plaid/sync";
 import { getCurrentUser } from "@/lib/session";
 
 const MAX_INSTITUTION_NAME = 100;
+
+// The first sync, and a whole scan, run after the answer.
+export const maxDuration = 300;
 
 // Called by Plaid Link's onSuccess. Stores the item (the access token, encrypted, stays
 // on the server) and runs the first sync after responding.
@@ -55,7 +59,11 @@ export async function POST(request: Request) {
   }
   after(async () => {
     try {
-      await syncItem(itemId, { progressive: true });
+      for (let tries = 0; tries < FIRST_SYNC_TRIES; tries++) {
+        const result = await syncItem(itemId, { progressive: true });
+        if (!result?.notReady) break;
+        await new Promise((resolve) => setTimeout(resolve, FIRST_SYNC_WAIT_MS));
+      }
     } catch (error) {
       log.error("First Plaid sync failed", { itemId, error: String(error) });
     }

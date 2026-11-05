@@ -518,6 +518,8 @@ model PlaidItem {
   // A sync started from a webhook holds this while it runs, so a burst of webhooks (or Plaid
   // retrying one) runs one sync, not several at once.
   syncingSince         DateTime? @map("syncing_since") @db.Timestamptz(3)
+  // A webhook came while a sync ran: it reads again when it's done.
+  syncAgain            Boolean   @default(false) @map("sync_again")
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
