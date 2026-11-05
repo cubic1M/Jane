@@ -4,7 +4,7 @@ import {
   LOW_BALANCE_HIGH_CONFIDENCE_BELOW_CENTS,
 } from "@/config/detection";
 import { formatCents } from "@/lib/money";
-import { forecastAccounts, unevenPay } from "../forecast";
+import { forecastAccounts, otherMoneyIn, unevenPay } from "../forecast";
 import type { Rule } from "./rule";
 import { dayLabel } from "@/lib/day-label";
 
@@ -16,20 +16,26 @@ export const lowBalanceRisk: Rule = (input) =>
   forecastAccounts(input, FORECAST_DAYS)
     // A balance from a statement too old to walk forward says nothing about the days ahead.
     .filter((f) => !f.staleFrom && f.lowest.balanceCents < LOW_BALANCE_CUSHION_CENTS)
-    .map((f) => ({ f, uneven: unevenPay(input, f.accountId) }))
-    .map(({ f, uneven }) => ({
+    .map((f) => ({
+      f,
+      uneven: unevenPay(input, f.accountId),
+      other: otherMoneyIn(input, f.accountId),
+    }))
+    .map(({ f, uneven, other }) => ({
       type: "low_balance_risk",
       key: `account:${f.accountId}`,
-      title: `${f.accountName} could drop to ${formatCents(f.lowest.balanceCents)} around ${dayLabel(f.lowest.date)}${uneven ? " if no pay comes in" : ""}`,
+      title: `${f.accountName} could drop to ${formatCents(f.lowest.balanceCents)} around ${dayLabel(f.lowest.date)}${uneven ? " if no pay comes in" : other ? " if nothing else comes in" : ""}`,
       annualSavingsCents: null,
       amountCents: f.lowest.balanceCents,
-      confidence: uneven
-        ? "low"
-        : f.lowest.balanceCents < LOW_BALANCE_HIGH_CONFIDENCE_BELOW_CENTS
-          ? "high"
-          : "medium",
+      confidence:
+        uneven || other
+          ? "low"
+          : f.lowest.balanceCents < LOW_BALANCE_HIGH_CONFIDENCE_BELOW_CENTS
+            ? "high"
+            : "medium",
       evidence: {
         ...(uneven ? { unevenPayMonthlyCents: uneven } : {}),
+        ...(other ? { otherMoneyMonthlyCents: other } : {}),
         accountId: f.accountId,
         accountName: f.accountName,
         balanceCents: f.todayCents,

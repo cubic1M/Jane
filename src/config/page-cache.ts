@@ -20,6 +20,10 @@ export const PRELOAD_PAGES = [
   "/report",
 ] as const;
 
+// No round from here: with no bank yet, Home's answer is a redirect to /connect, and the hand-off to
+// Home would take it from memory. By the address, so it holds before the page has drawn.
+export const NO_ROUND_FROM: readonly string[] = ["/scanning"];
+
 // One page at a time, so a round never fills the database pool ahead of the page being opened
 // (speed pass, 2026-10-24): one round is about 2,000 statements.
 export const PRELOAD_STEP_MS = 800;

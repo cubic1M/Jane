@@ -137,6 +137,30 @@ export function unevenPay(input: DetectionInput, accountId: string): number | nu
     : null;
 }
 
+// Beside a payday: about what else comes in a month with no date to count on, like cash and tips
+// (debugger 11-05: a bartender's small paychecks were on the calendar, so nothing was said of the cash
+// that's most of what they live on). Not in the forecast; said beside it. Null when there's no payday
+// (that's unevenPay), or not enough of it.
+export function otherMoneyIn(input: DetectionInput, accountId: string): number | null {
+  if (!nextPayday(input, FORECAST_DAYS)) return null;
+  const account = input.accounts.find((a) => a.id === accountId);
+  if (account && staleBalanceFrom(account, input.asOf)) return null;
+  const counted = new Set(
+    incomeStreams(input).flatMap((s) =>
+      s.charges.map((c) => `${c.date}:${Math.abs(c.amountCents)}`),
+    ),
+  );
+  const other = unevenDeposits(input, accountId).filter(
+    (t) => !isPaycheck(t) && !counted.has(`${t.date}:${Math.abs(t.amountCents)}`),
+  );
+  const monthly = Math.round(
+    other.reduce((sum, t) => sum - t.amountCents, 0) / UNEVEN_PAY_LOOKBACK_MONTHS,
+  );
+  return other.length >= UNEVEN_PAY_MIN_DEPOSITS && monthly >= UNEVEN_PAY_MIN_MONTHLY_CENTS
+    ? monthly
+    : null;
+}
+
 // The day by when uneven pay into these accounts is likely to have come again, when it comes often
 // enough to count on (a gig driver's payouts); null otherwise, or when a payday is on the calendar.
 export function nextUnevenPayBy(
