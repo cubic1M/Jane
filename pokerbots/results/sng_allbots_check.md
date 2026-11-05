@@ -27,3 +27,10 @@ done
 
 ## strong-room option vs icm_switch directly (same seeds as cells 1-2)
 ### cell 1 
+paired difference vs icm_switch (same tables):
+  icm_switch:start=b;back_share=0.22;switch_min=15 +0.10 ± 3.41
+
+### cell 2 --preset kit4_sixplus
+paired difference vs icm_switch (same tables):
+  icm_switch:start=b;back_share=0.22;switch_min=15 +5.34 ± 3.63 *
+
