@@ -401,6 +401,7 @@ export const PEOPLE: readonly Person[] = [
     },
     should: [
       "estimated_taxes",
+      "tax_set_aside",
       "retirement_self_employed",
       "income_smoothing",
       "health_insurance",
@@ -792,6 +793,7 @@ export const PEOPLE: readonly Person[] = [
     },
     should: [
       "estimated_taxes",
+      "tax_set_aside",
       "business_separation",
       "business_insurance",
       "retirement_self_employed",

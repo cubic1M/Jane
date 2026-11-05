@@ -33,6 +33,7 @@ import { RENTING_DETECTORS } from "@/detectors/renting";
 import { RETIREMENT_DETECTORS } from "@/detectors/retirement";
 import { SPENDING_DETECTORS } from "@/detectors/spending";
 import { TAX_DETECTORS } from "@/detectors/taxes";
+import { TAX_SET_ASIDE_DETECTORS } from "@/detectors/tax-set-aside";
 import { TRADEOFF_DETECTORS } from "@/detectors/tradeoffs";
 import { TWO_DETECTORS } from "@/detectors/two";
 import { WORK_DETECTORS } from "@/detectors/work";
@@ -60,7 +61,7 @@ export const DETECTOR_FAMILIES: readonly { key: FamilyKey; detectors: readonly D
   { key: "renting", detectors: RENTING_DETECTORS },
   { key: "borrowing", detectors: BORROWING_POWER_DETECTORS },
   { key: "familyCredit", detectors: FAMILY_CREDIT_DETECTORS },
-  { key: "taxes", detectors: TAX_DETECTORS },
+  { key: "taxes", detectors: [...TAX_DETECTORS, ...TAX_SET_ASIDE_DETECTORS] },
   { key: "investing", detectors: INVESTING_DETECTORS },
   { key: "holdings", detectors: [...HOLDINGS_DETECTORS, ...INVESTED_CASH_DETECTORS] },
   { key: "priceRises", detectors: PRICE_RISE_DETECTORS },

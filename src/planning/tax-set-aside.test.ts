@@ -192,7 +192,7 @@ describe("what Jane doesn't know", () => {
     expect(out.notYetPaidCents).toBeNull();
     expect(out.holdCents).toBe(0);
     expect(out.confidence.percent).toBeLessThanOrEqual(50);
-    expect(out.unknowns.join(" ")).toMatch(/not what's withheld/);
+    expect(out.unknowns.join(" ")).toMatch(/not all that's withheld/);
     expect(out.lines.find((l) => l.key === "withheld")?.source).toBe("assumed");
   });
 
@@ -205,6 +205,40 @@ describe("what Jane doesn't know", () => {
     expect(out.status).toBe("needed");
     expect(out.confidence.percent).toBeLessThanOrEqual(50);
     expectToAddUp(out.lines);
+  });
+
+  // Found on the sample retiree: "nothing is withheld" on a pension Jane can't see into.
+  it.each([
+    ["a pension", { retirementCents: 3_000_000 }],
+    ["unemployment", { unemploymentCents: 3_000_000 }],
+    ["Social Security", { socialSecurityBenefitsCents: 5_000_000, retirementCents: 3_000_000 }],
+  ])("never reads %s with nothing seen withheld as $0 withheld", (_name, income) => {
+    const out = workOutSetAside(asked(income));
+    expect(out.withholdingKnown).toBe(false);
+    expect(out.status).toBe("unknown");
+    expect(out.notYetPaidCents).toBeNull();
+    expect(out.holdCents).toBe(0);
+    expect(out.confidence.percent).toBeLessThanOrEqual(50);
+    expect(out.lines.find((l) => l.key === "withheld")?.source).toBe("assumed");
+    expectToAddUp(out.lines);
+  });
+
+  it("with a pension, still counts the tax on freelance work beside it", () => {
+    const out = workOutSetAside(
+      asked({ retirementCents: 3_000_000, selfEmploymentCents: 2_000_000 }),
+    );
+    expect(out.status).toBe("needed");
+    expect(out.holdCents).toBeGreaterThan(0);
+    expect(out.confidence.percent).toBeLessThanOrEqual(50);
+    expectToAddUp(out.lines);
+  });
+
+  it("their own withholding figure settles a pension", () => {
+    const out = workOutSetAside(
+      asked({ retirementCents: 3_000_000 }, 100_000, { withheldFrom: "told" }),
+    );
+    expect(out.withholdingKnown).toBe(true);
+    expect(out.lines.find((l) => l.key === "withheld")?.source).toBe("told");
   });
 
   it.each([

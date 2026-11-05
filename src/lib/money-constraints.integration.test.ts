@@ -72,6 +72,7 @@ const CASES: Case[] = [
   not("hsa_receipts", "ck_hsa_receipts_amount_positive", "amount_cents", 1, 0),
   not("medical_bills", "ck_medical_bills_amount_not_negative", "amount_cents", 0, -1),
   not("tax_payments", "ck_tax_payments_cents_positive", "cents", 1, 0),
+  not("tax_corrections", "ck_tax_corrections_cents_not_negative", "cents", 0, -1),
 ];
 
 type Column = { name: string; type: string; udt: string; enumLabel: string | null };

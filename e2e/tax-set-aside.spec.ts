@@ -1,4 +1,6 @@
 import { expect, test } from "@playwright/test";
+import { walkToCard } from "./card-walk";
+import { CHAT } from "./chat-page";
 import { E2E_DATABASE_URL, addFreelancer, deleteUser, signedInUser, treatAsDemoBank } from "./db";
 
 // The tax left to cover, on a real account: a fact, not advice; the calculation line by line; and a
@@ -83,18 +85,42 @@ test("it comes up unasked: the card has the figure and how sure Jane is", async 
   context,
   page,
   baseURL,
+  isMobile,
 }) => {
+  test.setTimeout(300_000);
   const user = await signedInUser("user");
   userId = user.userId;
   await addFreelancer(user.userId);
   await context.addCookies([
     { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
   ]);
-  await page.goto("/chat");
-  const card = page.getByText(/Check tax not yet paid: about \$/).first();
-  await expect(card).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByText(/\d+% sure/).first()).toBeVisible();
-  await expect(page.locator("body")).not.toContainText(/set aside \$/i);
+  // The figure the calculation shows is the figure the card must say.
+  await page.goto("/taxes?focus=estimate:set-aside");
+  const line = await page
+    .locator("#set-aside")
+    .getByText(/^About \$[\d,]+ of your/)
+    .innerText();
+  const figure = /\$[\d,]+/.exec(line)?.[0];
+
+  // Opening the chat runs Jane's first scan before it answers, which posts the card.
+  await page.goto(CHAT);
+  await page.setViewportSize(isMobile ? { width: 375, height: 812 } : { width: 1440, height: 900 });
+  const docked = !isMobile;
+  const scope = docked
+    ? page.getByRole("complementary", { name: "Chat with Jane" }).locator("[data-card-dock]")
+    : page.locator('.floating-cards[data-floating-cards="queue"]');
+  const card = await walkToCard(
+    page,
+    async () => {
+      await page.goto("/home");
+      if (isMobile) await page.locator('[data-card-state="folded"]').click({ timeout: 60_000 });
+      return scope;
+    },
+    `Check tax not yet paid: about ${figure}`,
+    { docked },
+  );
+  await expect(card).toContainText(/\d+% sure/);
+  await expect(card).not.toContainText(/set aside/i);
 });
 
 test("demo advice says set aside, with its label", async ({ context, page, baseURL }) => {

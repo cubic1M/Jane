@@ -316,7 +316,7 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
               aside.status === "needed"
                 ? `An estimate, ${aside.percent}% sure. Safe to spend leaves it out.`
                 : aside.status === "unknown"
-                  ? "Jane can't see what's withheld from your pay."
+                  ? "Jane can't see all that's withheld from your pay."
                   : "What's withheld and paid covers your tax so far.",
           }),
         ]),

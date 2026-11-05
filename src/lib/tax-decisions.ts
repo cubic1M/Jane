@@ -402,7 +402,7 @@ export async function decideTax(
       }
       if (aside.status === "unknown")
         return made(
-          "I can't tell yet: your employer withholds tax from your paychecks, but I can't see how much. Your pay stub figures on your Taxes page would settle it.",
+          "I can't tell yet: tax may be withheld from your pay before it reaches you, but I can't see how much. Your own figure on your Taxes page would settle it.",
           [],
           "/taxes?focus=estimate:set-aside",
         );

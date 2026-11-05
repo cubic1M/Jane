@@ -9,7 +9,7 @@ describe("safeLine", () => {
 
   it("says what tax took", () => {
     expect(line({ safeCents: 0, payday: null, taxHeldCents: 47_267 })).toBe(
-      "You have $0.00 safe to spend this month, after setting aside $472.67 for tax.",
+      "You have $0.00 safe to spend this month, after holding back $472.67 for tax.",
     );
   });
 

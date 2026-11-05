@@ -63,6 +63,29 @@ const SAMPLE_POLICIES: Readonly<Record<string, readonly NeedPolicy[]>> = {
   retiree: [house("retiree-home", 30_000_000, 100_000)],
 };
 
+// The tax left to cover, as the Try Jane path works it out for the two sample people it fires for
+// (src/lib/tax-set-aside.ts reads the database, which the sample people don't have): checked against
+// a real trial of each. Neither has anything withheld.
+const SAMPLE_FIGURE = {
+  year: 2026,
+  status: "needed",
+  advice: true,
+  keptApartCents: 0,
+  paidSoFarCents: 0,
+  withholdingKnown: true,
+  unknowns: [],
+  confidence: {
+    percent: 65,
+    reason: "income in your accounts, with what is withheld and paid known",
+  },
+} as const;
+const SAMPLE_TAX_SET_ASIDE: Readonly<
+  Record<string, NonNullable<ProfileInput["extras"]>["taxSetAside"]>
+> = {
+  freelancer: { ...SAMPLE_FIGURE, holdCents: 1_249_321, taxSoFarCents: 1_249_321 },
+  owner: { ...SAMPLE_FIGURE, holdCents: 1_280_901, taxSoFarCents: 1_280_901 },
+};
+
 // What the daily books check (spec step 238) leaves open for the sample people: the Reyes
 // family's savings comes in twice, once through each parent's bank login (the demo bank's
 // second login, DEMO_SECOND_LOGINS), and the copies can't be proven the same. The words are
@@ -128,6 +151,7 @@ export function inputFor(person: string, told: ProfileInput["told"] = {}): Profi
       householdMembers: 0,
       coverPolicies: SAMPLE_POLICIES[person] ?? [],
       books: SAMPLE_BOOKS[person] ?? [],
+      ...(SAMPLE_TAX_SET_ASIDE[person] ? { taxSetAside: SAMPLE_TAX_SET_ASIDE[person] } : {}),
       // The sample people are all the demo bank's, so they read the stand-in disaster feed.
       disasterRelief: SAMPLE_RELIEF,
       // A home is worth about what its policy insures the dwelling for (the demo bank's owned things).

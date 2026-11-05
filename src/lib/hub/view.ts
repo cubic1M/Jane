@@ -354,7 +354,7 @@ const taxUnknownLine = (safe: SafeInput): CalcLine[] =>
   safe.taxStatus === "unknown"
     ? [
         {
-          label: "Not counted: tax, as Jane can't see what's withheld from your pay",
+          label: "Not counted: tax, as Jane can't see all that's withheld from your pay",
           sign: "",
           cents: 0,
           unknown: true,

@@ -103,13 +103,24 @@ function otherLinesOf(e: TaxEstimate) {
   return { credits: credits + otherCredits, otherTaxes };
 }
 
-const taxOnWagesOnly = (input: EstimateInput) => {
+// Pay Jane can't see the withholding on: a pension, Social Security and unemployment can all have tax
+// taken out before they land, and wages can when there's no pay stub.
+const paidOut = (input: EstimateInput) =>
+  input.income.retirementCents +
+    input.income.unemploymentCents +
+    (input.income.socialSecurityBenefitsCents ?? 0) >
+  0;
+
+const taxOnPay = (input: EstimateInput) => {
   const e = estimateTaxes({
     ...input,
     income: {
       ...NO_INCOME,
       wagesCents: input.income.wagesCents,
       socialSecurityWagesCents: input.income.socialSecurityWagesCents,
+      retirementCents: input.income.retirementCents,
+      unemploymentCents: input.income.unemploymentCents,
+      socialSecurityBenefitsCents: input.income.socialSecurityBenefitsCents ?? 0,
     },
   });
   return Math.max(0, e.totalTaxCents + (e.state?.taxCents ?? 0));
@@ -342,7 +353,7 @@ function confidenceOf(
   if (!x.withholdingKnown)
     caps.push({
       percent: C.withholdingUnknownPercent,
-      said: "Jane can see your paychecks but not what's withheld from them. It assumed that covers the tax on your wages, and it might not.",
+      said: "Jane can see your pay but not all that's withheld from it. It assumed that covers the tax on that pay, and it might not.",
     });
   if (!x.filingStatusKnown)
     caps.push({
@@ -377,7 +388,13 @@ export function workOutSetAside(x: SetAsideInput): TaxSetAside {
   const share = Math.min(1, Math.max(0, x.elapsed));
   const partYear = x.firstSeen !== null && x.firstSeen > `${x.year}-${C.partYearAfter}`;
   const total = e.totalTaxCents + (e.state?.taxCents ?? 0);
-  const { percent, unknowns, reason } = confidenceOf(x, stateKnown, partYear);
+  // Known only when Jane can see it, or the person gave the figure.
+  const withholdingKnown = x.withholdingKnown && (!paidOut(x.input) || x.withheldFrom === "told");
+  const { percent, unknowns, reason } = confidenceOf(
+    { ...x, withholdingKnown },
+    stateKnown,
+    partYear,
+  );
   const taxSoFar = Math.round(total * share);
 
   const lines: TaxLine[] = [
@@ -407,19 +424,19 @@ export function workOutSetAside(x: SetAsideInput): TaxSetAside {
 
   // With paychecks and no stubs, withholding is unknown: Jane assumes it covers the tax on the
   // wages, so what's left is the tax on everything else. Never $0 by default.
-  const wagesCovered = x.withholdingKnown
-    ? 0
-    : Math.min(Math.max(0, taxSoFar), Math.round(taxOnWagesOnly(x.input) * share));
   const withheld = x.federalWithheldCents + x.stateWithheldCents;
+  const payCovered = withholdingKnown
+    ? 0
+    : Math.min(Math.max(0, taxSoFar), Math.max(withheld, Math.round(taxOnPay(x.input) * share)));
   const hasPay = withheld > 0 || x.withheldFrom !== "none";
-  if (!x.withholdingKnown)
+  if (!withholdingKnown)
     lines.push({
       key: "withheld",
       label: "Withheld from your pay",
       sign: "−",
-      cents: wagesCovered,
+      cents: payCovered,
       source: "assumed",
-      from: "Jane can't see what's withheld. It assumed it covers the tax on your wages; a pay stub or your own figure makes this exact.",
+      from: "Jane can't see all that's withheld. It assumed it covers the tax on your wages, pension and benefits; your own figure makes this exact.",
     });
   else if (hasPay)
     lines.push({
@@ -464,7 +481,7 @@ export function workOutSetAside(x: SetAsideInput): TaxSetAside {
       source: "told",
       from: "Payments from accounts Jane can't see.",
     });
-  const paid = (x.withholdingKnown ? withheld : wagesCovered) + x.seenPaidCents + x.toldPaidCents;
+  const paid = (withholdingKnown ? withheld : payCovered) + x.seenPaidCents + x.toldPaidCents;
   const short = taxSoFar - paid;
   const left = Math.max(0, short);
   if (short < 0)
@@ -515,7 +532,7 @@ export function workOutSetAside(x: SetAsideInput): TaxSetAside {
     ? "no_income"
     : hold >= C.minLeftCents
       ? "needed"
-      : !x.withholdingKnown
+      : !withholdingKnown
         ? "unknown"
         : "covered";
   return {
@@ -530,7 +547,7 @@ export function workOutSetAside(x: SetAsideInput): TaxSetAside {
     notYetPaidCents: status === "unknown" ? null : left,
     keptApartCents: kept,
     holdCents: status === "needed" ? hold : 0,
-    withholdingKnown: x.withholdingKnown,
+    withholdingKnown,
     unknowns,
     confidence: { percent, reason },
   };

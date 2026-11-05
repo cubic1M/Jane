@@ -47,7 +47,7 @@ const headline = (view: TaxSetAsideView) => {
       : `About ${cents} of your ${view.year} tax so far isn't withheld or paid yet.`;
   }
   if (view.status === "unknown")
-    return "Jane can't say what's left: it can see your paychecks, not what's withheld from them.";
+    return "Jane can't say what's left: it can see your pay, not all that's withheld from it.";
   if (view.status === "no_income") return "No income for this year in your accounts yet.";
   return "What's withheld and paid covers your tax so far.";
 };

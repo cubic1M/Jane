@@ -361,7 +361,7 @@ describe.runIf(url)("the tax left to cover", { timeout: 120_000 }, () => {
       foundCents: 0,
       savedCents: 0,
     }).safe!;
-    expect(hero.why.find((l) => l.unknown)?.label).toContain("can't see what's withheld");
+    expect(hero.why.find((l) => l.unknown)?.label).toContain("can't see all that's withheld");
     const working = await explainFigure(userId, "safe_to_spend", options());
     expect(working?.rows.find((r) => r.label === "Not counted: tax")?.value).toBe("Not known");
     const topics = (await detectFor(userId, options())).suggestions.map((s) => s.topic);

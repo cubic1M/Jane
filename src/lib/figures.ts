@@ -144,7 +144,7 @@ export async function explainFigure(
               {
                 label: "Not counted: tax",
                 value: "Not known",
-                note: "Jane can see your paychecks but not what's withheld from them, so it holds nothing back. Your pay stub figures on your Taxes page would settle it.",
+                note: "Jane can see your pay but not all that's withheld from it, so it holds nothing back. Your own figure on your Taxes page would settle it.",
               },
             ]
           : []),
