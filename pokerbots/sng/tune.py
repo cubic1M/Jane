@@ -55,7 +55,7 @@ def main(argv=None):
     ap.add_argument("--tables", type=int, default=500)
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--field", default="default")
-    ap.add_argument("--payouts", default="synthetic")
+    ap.add_argument("--payouts", default=None, help="point table (default synthetic, or the preset's); explicit beats --preset")
     ap.add_argument("--accept-se", type=float, default=2.0)   # 1.0 overfit once gains got small
     ap.add_argument("--multi-se", type=float, default=2.0)
     ap.add_argument("--tag", default="")
@@ -78,10 +78,12 @@ def main(argv=None):
     state = json.loads(state_f.read_text()) if state_f.exists() else dict(params=base, history=[], round=0)
     state["params"] = {**base, **state["params"]}   # parameters added since the last run
     field = field_weights(a.field)
-    rules_kw = dict(payouts=PAYOUT_SETS[a.payouts])
+    rules_kw = dict(payouts=PAYOUT_SETS[a.payouts or "synthetic"])
     if a.preset:
         from sng.presets import PRESETS
         rules_kw.update(PRESETS[a.preset])
+        if a.payouts:                       # an explicit --payouts beats the preset's point table
+            rules_kw["payouts"] = PAYOUT_SETS[a.payouts]
     while state["round"] < a.rounds:
         r = state["round"]
         inc = dict(state["params"])

@@ -143,7 +143,7 @@ def field_table(out):
     return "\n".join(f"  {x:22s} {m:6.2f} ± {h:.2f}  (n={n})" for x, m, h, n in rows)
 
 
-def main(argv=None):
+def _parser():
     ap = argparse.ArgumentParser()
     ap.add_argument("--candidates", required=True)
     ap.add_argument("--baseline", default=None)
@@ -151,17 +151,22 @@ def main(argv=None):
     ap.add_argument("--tables", type=int, default=200)
     ap.add_argument("--seed0", type=int, default=1)
     ap.add_argument("--workers", type=int, default=4)
-    ap.add_argument("--payouts", default="synthetic", choices=sorted(PAYOUT_SETS))
+    ap.add_argument("--payouts", default=None, choices=sorted(PAYOUT_SETS),
+                    help="point table (default synthetic, or the preset's); given explicitly, it overrides --preset")
     ap.add_argument("--no-enforce", action="store_true", help="do not fold over-time decisions")
     ap.add_argument("--out", default=None, help="write raw results JSON here")
     ap.add_argument("--variant", default=None, help="card rules from engine.variants (default NLHE)")
     ap.add_argument("--betting", default=None, choices=[None, "no_limit", "pot_limit"])
     ap.add_argument("--blinds", default="synthetic", choices=sorted(BLIND_SETS))
-    ap.add_argument("--preset", default=None, help="full rule set from sng.presets (overrides the above)")
+    ap.add_argument("--preset", default=None, help="full rule set from sng.presets (overrides the above, except --payouts)")
     ap.add_argument("--players", type=int, default=None, help="players per table (default: the rules' 8)")
-    a = ap.parse_args(argv)
-    cands = a.candidates.split(",")
-    rules_kw = dict(payouts=PAYOUT_SETS[a.payouts], enforce_time=not a.no_enforce, blinds=BLIND_SETS[a.blinds])
+    return ap
+
+
+def rules_kw_from(a):
+    """SngRules keyword arguments from parsed arena arguments."""
+    rules_kw = dict(payouts=PAYOUT_SETS[a.payouts or "synthetic"], enforce_time=not a.no_enforce,
+                    blinds=BLIND_SETS[a.blinds])
     if a.variant or a.betting:
         from engine.variants import get_variant
         from sng.rules import NLHE
@@ -172,11 +177,20 @@ def main(argv=None):
     if a.preset:
         from sng.presets import PRESETS
         rules_kw.update(PRESETS[a.preset])
+        if a.payouts:                       # an explicit --payouts beats the preset's point table
+            rules_kw["payouts"] = PAYOUT_SETS[a.payouts]
     if a.players:
         rules_kw["num_players"] = a.players
-        pay = tuple(rules_kw.get("payouts", PAYOUT_SETS[a.payouts]))
+        pay = tuple(rules_kw["payouts"])
         # more players than paid places (e.g. 9-handed): the extra places pay 0, like last place
         rules_kw["payouts"] = (pay + (0,) * a.players)[:a.players]
+    return rules_kw
+
+
+def main(argv=None):
+    a = _parser().parse_args(argv)
+    cands = a.candidates.split(",")
+    rules_kw = rules_kw_from(a)
     field = field_weights(a.field)
     t0 = time.time()
     out = run(cands, field, rules_kw, a.tables, a.seed0, a.workers)

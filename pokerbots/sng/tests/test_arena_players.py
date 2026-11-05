@@ -34,6 +34,19 @@ class TestArenaPlayers(unittest.TestCase):
         self.assertIn("paired difference", buf.getvalue())
 
 
+    def test_explicit_payouts_override_preset(self):
+        """--preset sets its own point table; an explicit --payouts wins over it, and --players pads it."""
+        from sng.presets import PRESETS
+        from sng.rules import PAYOUT_SETS
+        args = lambda *x: arena._parser().parse_args(["--candidates", "icm_tag", *x])
+        self.assertEqual(tuple(arena.rules_kw_from(args("--preset", "kit4_sixplus"))["payouts"]),
+                         tuple(PRESETS["kit4_sixplus"]["payouts"]))
+        self.assertEqual(tuple(arena.rules_kw_from(args("--preset", "kit4_sixplus", "--payouts", "top3"))["payouts"]),
+                         tuple(PAYOUT_SETS["top3"]))
+        self.assertEqual(tuple(arena.rules_kw_from(args())["payouts"]), tuple(PAYOUT_SETS["synthetic"]))
+        kw = arena.rules_kw_from(args("--preset", "kit4_sixplus", "--payouts", "winner", "--players", "6"))
+        self.assertEqual(tuple(kw["payouts"]), tuple(PAYOUT_SETS["winner"])[:6])
+
     def test_top3_counts_cap_survivors_by_chip_rank(self):
         """P(top 3): a survivor at the hand cap counts only if at most 2 stacks are bigger."""
         def rec(place, survived, chip_rank):
