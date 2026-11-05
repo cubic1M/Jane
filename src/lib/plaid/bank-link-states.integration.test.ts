@@ -23,8 +23,9 @@ describe("Plaid's other cash accounts", () => {
     ["cash management", "checking"],
     ["prepaid", "checking"],
     ["money market", "savings"],
-    ["cd", "savings"],
-    ["hsa", "savings"],
+    // Money with penalties or rules on it: never told it's idle cash to move.
+    ["cd", "investment_account"],
+    ["hsa", "investment_account"],
   ])("keeps %s, as %s", (subtype, kind) => {
     expect(syncedKindOf("depository", subtype)).toBe(kind);
   });
@@ -86,6 +87,12 @@ describe.runIf(url)("a bank connection", () => {
     ).rejects.toThrow();
     // Their one claim isn't spent, so "Please try again" can work.
     await expect(reserveItemSlot(userId, { client })).resolves.not.toBeNull();
+    await client.plaidItemClaim.deleteMany({ where: { userId } });
+    // But each try takes one of a lifetime's count, so an outage can't use them all.
+    for (let tries = 0; tries < 3; tries++) {
+      await exchangePublicToken(userId, "public-x", null, { client, api: down }).catch(() => {});
+    }
+    await expect(reserveItemSlot(userId, { client })).rejects.toThrow();
   });
 
   it("syncs again when a webhook came while it was running", async () => {

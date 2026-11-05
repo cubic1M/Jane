@@ -417,13 +417,29 @@ export const asksForCredentials = (text: string): boolean =>
 // Saying Jane did or will do something for someone. Nobody acts for a real account, and a person told
 // "I've cancelled it" stops looking. The prompt says so too; what's allowed mustn't depend on that.
 const DONE = "cancel(?:l)?ed|sent|filed|disputed|called|emailed|switched|negotiated|submitted|paid";
-const WILL = "cancel|call|email|send|file|dispute|negotiate|switch|remind you";
+const DOING = "cancel(?:l)?ing|sending|filing|disputing|calling|emailing|switching|negotiating";
+// "I'll call it your buffer" names something; nobody's phoned.
+const WILL =
+  "cancel|call(?! (?:it|this|that|these)\\b)|email|send|file|dispute|negotiate|switch|remind you";
 const ACT_CLAIMS: readonly RegExp[] = [
   new RegExp(`\\bI(?:['’]ve| have)(?: already| just)? (?:${DONE})\\b`, "i"),
-  new RegExp(`\\bI(?:['’]ll| will)(?: go ahead and)? (?:${WILL})\\b`, "i"),
-  /\b(?:our|my|Jane['’]s) team (?:will|has|is|can)\b/i,
+  new RegExp(`\\b(?:I|we)(?:['’]ll| will)(?: go ahead and)? (?:${WILL})\\b`, "i"),
+  // Not "I'm calling on behalf of Sam": that's a script for the company, and Jane isn't its subject.
+  new RegExp(`\\b(?:I['’]m|I am|we['’]re|we are) (?:${DOING})\\b(?! on behalf)`, "i"),
+  // Not "Jane's team can't": a refusal is the honest answer.
+  /\b(?:the|our|my|Jane['’]s) team (?:will|has|is|can(?!['’]t|not\b))\b/i,
 ];
-export const claimsAnAct = (text: string): boolean => ACT_CLAIMS.some((p) => p.test(text));
+// A script or a letter for the person to use is in their voice, not Jane's: in quotes (still open
+// while the answer streams, src/lib/jane-agent/guarded-text.ts), a quoted block, or a "Dear ..." letter.
+const withoutTheirWords = (text: string) =>
+  text
+    .replace(/["“][^"”]*(?:["”]|$)/g, " ")
+    .replace(/^>.*$/gm, " ")
+    .replace(/^(?:Dear\b|To whom it may concern)[\s\S]*$/im, " ");
+export const claimsAnAct = (text: string): boolean => {
+  const said = withoutTheirWords(text);
+  return ACT_CLAIMS.some((p) => p.test(said));
+};
 
 type Scan = { issues: GuardrailIssue[]; matched: string[] };
 

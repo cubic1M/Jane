@@ -91,8 +91,15 @@ export async function redeemInvite(
     select: { inviteCode: { select: { code: true } } },
   });
   const code = normalizeCode(input);
-  // Already on the list: their own code still works, even used up.
-  if (access && code && access.inviteCode?.code === code) return "ok";
+  // Already on the list: their own code still works, even used up. Asking again starts its days
+  // again (runRetention), so the link just sent isn't refused for a place given up meanwhile.
+  if (access && code && access.inviteCode?.code === code) {
+    await systemDb(WHY, client).betaAccess.updateMany({
+      where: { email: address },
+      data: { createdAt: now },
+    });
+    return "ok";
+  }
   // Any other code is checked as for anyone, so a made-up one can't test who is on the list.
   const check = await checkCode(input, { client, now, email: address });
   if (check !== "ok" || access) return check;

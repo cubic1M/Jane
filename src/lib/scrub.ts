@@ -41,7 +41,8 @@ export function scrub(text: string): string {
 // stored anywhere else. A long run of one word's characters is a token or an id, and an invite
 // code has its own shape.
 const MAX_PATH = 300;
-const LINK_SECRET = /^(?:[A-Za-z0-9_-]{20,}|[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4})$/;
+const LINK_SECRET =
+  /^(?:[A-Za-z0-9_-]{20,}(?:\.[a-z0-9]+)?|[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4})$/;
 
 export function scrubPath(path: string | null | undefined): string | null {
   if (!path) return null;

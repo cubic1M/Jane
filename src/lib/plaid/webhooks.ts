@@ -172,7 +172,9 @@ export async function syncFromWebhook(
   {
     client = defaultClient,
     now = new Date(),
-    sync = (id: string) => syncItem(id, { client }),
+    // Progressive only counts on a first sync: a webhook can be what finishes the first scan, once
+    // Plaid has data, and that person is owed their first brief like anyone.
+    sync = (id: string) => syncItem(id, { client, progressive: true }),
   }: { client?: PrismaClient; now?: Date; sync?: (itemId: string) => Promise<unknown> } = {},
 ): Promise<boolean> {
   const stale = new Date(now.getTime() - SYNC_LOCK_MINUTES * 60_000);

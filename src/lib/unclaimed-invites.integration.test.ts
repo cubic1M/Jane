@@ -54,7 +54,7 @@ describe.runIf(url)("an invite use nobody claims", () => {
     const nobody = address();
     expect(await redeemInvite(code, nobody, { client })).toBe("ok");
     expect(await redeemInvite(code, address(), { client })).toBe("used_up");
-    await age(nobody, 4);
+    await age(nobody, 8);
     await runRetention({ client, skipTrials: true });
     expect(await onList(nobody)).toBe(false);
     expect(await uses(code)).toBe(0);
@@ -70,6 +70,16 @@ describe.runIf(url)("an invite use nobody claims", () => {
     await runRetention({ client, skipTrials: true });
     expect(await onList(soon)).toBe(true);
     expect(await uses(code)).toBe(1);
+  });
+
+  it("starts its days again when they ask for another link", async () => {
+    const code = await invite(2);
+    const waiting = address();
+    await redeemInvite(code, waiting, { client });
+    await age(waiting, 8);
+    expect(await redeemInvite(code, waiting, { client })).toBe("ok");
+    await runRetention({ client, skipTrials: true });
+    expect(await onList(waiting)).toBe(true);
   });
 
   it("stays spent once someone signed in with it", async () => {

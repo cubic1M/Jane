@@ -90,7 +90,7 @@ export const RETENTION_PERIODS = {
   // An address someone typed with an invite code and nobody ever signed in with: it could be
   // anyone's, and its use goes back to the code (src/lib/retention.ts).
   unclaimedInvites: {
-    days: 3,
+    days: 7,
     policy: "An email address given with an invite code, if nobody signs in with it",
   },
   // Spec step 138.

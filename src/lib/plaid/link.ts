@@ -5,6 +5,7 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { decrypt, encrypt } from "@/lib/crypto";
 import { db as defaultClient } from "@/lib/db";
+import { hit } from "@/lib/rate-limit";
 import { scopedFor } from "@/lib/db-scoped";
 import { log } from "@/lib/log";
 import { PlaidRequestError, plaid, plaidCall, plaidInvestmentsEnabled, webhookUrl } from "./client";
@@ -153,8 +154,11 @@ export async function exchangePublicToken(
     async (error) => {
       if (slot && noTokenMade(error)) await releaseItemSlot(slot, { client });
       // No clear answer: Plaid may have made one, so the count stays. The person's own claim doesn't:
-      // "try again" must be able to work, and it held the only one they get.
-      else if (slot) await releaseItemClaim(slot, { client }).catch(() => undefined);
+      // "try again" must be able to work, and it held the only one they get. A few times a day: each
+      // takes another of the lifetime count, and an outage mustn't use them all up.
+      else if (slot && (await hit("plaidUnclearExchange", userId, { client })).ok) {
+        await releaseItemClaim(slot, { client }).catch(() => undefined);
+      }
       throw error;
     },
   );

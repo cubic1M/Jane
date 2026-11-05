@@ -16,6 +16,8 @@ describe("the secret in a link's address", () => {
     [`/api/calendar/${token}`, "/api/calendar/[secret]"],
     [`/household/join/${token}?x=1`, "/household/join/[secret]"],
     ["/join/ABCD-EFGH-JKMN", "/join/[secret]"],
+    ["/join/abcd-efgh-jkmn", "/join/[secret]"],
+    [`/api/calendar/${token}.ics`, "/api/calendar/[secret]"],
   ])("isn't kept from %s", (path, kept) => {
     expect(scrubPath(path)).toBe(kept);
   });

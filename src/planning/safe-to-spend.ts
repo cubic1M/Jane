@@ -6,6 +6,7 @@ import {
 } from "@/config/detection";
 import {
   balanceDay,
+  staleBalanceFrom,
   expectedBetween,
   irregularDue,
   nextUnevenPayBy,
@@ -75,7 +76,9 @@ export function safeToSpend(
     (a) =>
       a.type === "depository" &&
       FORECAST_SUBTYPES.includes(a.subtype ?? "") &&
-      a.currentBalanceCents !== null,
+      a.currentBalanceCents !== null &&
+      // Too old to walk forward (a bank signed out for weeks, an old statement): it isn't today's.
+      staleBalanceFrom(a, input.asOf) === null,
   );
   const checkingIds = new Set(checking.map((a) => a.id));
   // Today's balance: an uploaded statement's, walked forward with what was due since, as the
@@ -157,7 +160,7 @@ export function safeToSpend(
         (a) =>
           a.type === "depository" &&
           FORECAST_SUBTYPES.includes(a.subtype ?? "") &&
-          a.currentBalanceCents === null,
+          (a.currentBalanceCents === null || staleBalanceFrom(a, input.asOf) !== null),
       )
       .map((a) => a.name),
   };

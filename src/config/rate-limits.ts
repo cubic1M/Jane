@@ -119,7 +119,9 @@ export const RATE_LIMITS = {
   statementRowsDay: { limit: STATEMENT_TRIAL_ROWS_A_DAY, windowSeconds: 60 * 60 * 24 },
   statementRowsAddress: { limit: STATEMENT_TRIAL_ROWS_AN_ADDRESS, windowSeconds: 60 * 60 * 24 },
   // Redeeming one invite code, per IP: each use is spent before the address is proved.
-  inviteRedeem: { limit: 5, windowSeconds: 60 * 60 * 24 },
+  inviteRedeem: { limit: 8, windowSeconds: 60 * 60 * 24 },
+  // Retrying a bank link after Plaid gave no clear answer, per person: each takes a lifetime slot.
+  plaidUnclearExchange: { limit: 2, windowSeconds: 60 * 60 * 24 },
   // Invite codes made by an admin, per admin.
   invites: { limit: 30, windowSeconds: 60 * 60 },
   // Server errors kept for /admin/errors, and alert emails to the team, across every request. Anyone
