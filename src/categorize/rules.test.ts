@@ -1124,6 +1124,41 @@ describe("a sale through PayPal", () => {
 
 // Debugger 11-04: a person's policies. A yearly umbrella policy had no category, and Delta Dental's fixed
 // monthly premium read as dental treatment, so neither was on the list of their insurance.
+// Debugger 11-05: a new parent's month. Leave pay and the delivery bill had no category, and a Kaiser
+// prescription read as the plan's premium, so the tax pack's medical left it out.
+describe("having a baby", () => {
+  it.each([
+    "CA EDD PAID FAMILY LEAVE",
+    "EDD SDI PAYMENT",
+    "WA PFML BENEFIT",
+    "PAID FAMILY LEAVE NY",
+  ])("%s is income", (description) => {
+    expect(categorizeByRules({ description, amountCents: -110_000, hints: {} })?.detailed).toBe(
+      "INCOME_OTHER",
+    );
+  });
+
+  it.each(["STANFORD HEALTH PATIENT PMT DELIVERY", "SUTTER PATIENT PAYMENT"])(
+    "%s is a medical bill",
+    (description) => {
+      expect(categorizeByRules({ description, amountCents: 125_000, hints: {} })?.detailed).toBe(
+        "MEDICAL_PRIMARY_CARE",
+      );
+    },
+  );
+
+  it("a Kaiser prescription isn't the plan's premium, and the premium still is", () => {
+    expect(
+      categorizeByRules({ description: "KAISER PHARMACY", amountCents: 4_000, hints: {} })
+        ?.detailed,
+    ).toBe("MEDICAL_PHARMACIES_AND_SUPPLEMENTS");
+    expect(
+      categorizeByRules({ description: "KAISER PREMIUM", amountCents: 60_000, hints: {} })
+        ?.detailed,
+    ).toBe("GENERAL_SERVICES_INSURANCE");
+  });
+});
+
 // Debugger 11-04: a landlord's second mortgage was uncategorized, and their landlord cover read as rent.
 describe("a landlord", () => {
   it.each([

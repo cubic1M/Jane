@@ -256,7 +256,7 @@ export type TaxesTreeInput = {
   profile: {
     complete: boolean;
     newIncome: number;
-    fields: { key: string; label: string; value: string; status: FieldStatus }[];
+    fields: { key: string; label: string; value: string; status: FieldStatus; note?: string }[];
   };
 };
 
@@ -451,7 +451,7 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
       label: p.label,
       status: p.status === "yours" ? "good" : "look",
       figure: p.status === "missing" ? "Not set" : p.status === "found" ? "Check it" : undefined,
-      summary: p.value === "—" ? "Not set yet." : `${p.value}.`,
+      summary: p.note ?? (p.value === "—" ? "Not set yet." : `${p.value}.`),
     }),
   );
   if (input.profile.newIncome > 0)

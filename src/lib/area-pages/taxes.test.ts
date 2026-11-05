@@ -175,6 +175,30 @@ describe("the taxes tree", () => {
     expect(tree.sub).toBe("All good");
   });
 
+  // Debugger 11-05: "Dependants: Not set yet" beside $19,500 a year of daycare.
+  it("says what it saw on a field that isn't set", () => {
+    const { summaries } = taxesTree(
+      input({
+        profile: {
+          complete: false,
+          newIncome: 0,
+          fields: [
+            {
+              key: "dependants",
+              label: "Dependants",
+              value: "—",
+              status: "missing",
+              note: "Saw a child.",
+            },
+            { key: "state", label: "State", value: "—", status: "missing" },
+          ],
+        },
+      }),
+    );
+    expect(summaries["profile:dependants"]).toBe("Saw a child.");
+    expect(summaries["profile:state"]).toBe("Not set yet.");
+  });
+
   it("opens the item each old #anchor named", () => {
     const { tree } = taxesTree(
       input({

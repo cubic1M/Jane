@@ -16,7 +16,14 @@ export const HEALTH_TRAVEL_HOME: readonly Rule[] = [
   },
   {
     category: "MEDICAL_PHARMACIES_AND_SUPPLEMENTS",
-    keywords: ["DUANE READE", "GNC", "VITAMIN SHOPPE", "EXPRESS SCRIPTS", "OPTUM RX"],
+    keywords: [
+      "DUANE READE",
+      "GNC",
+      "VITAMIN SHOPPE",
+      "EXPRESS SCRIPTS",
+      "OPTUM RX",
+      "KAISER PHARMACY",
+    ],
     direction: "out",
   },
   {
