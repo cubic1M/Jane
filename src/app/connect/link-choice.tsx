@@ -6,7 +6,14 @@ export const SECONDARY_BUTTON =
   "inline-flex h-11 items-center justify-center rounded-full border border-zinc-300 px-5 text-sm font-semibold hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900";
 
 const PROMISES = [
-  ["Read-only", "We can see transactions and balances. We can never move your money."],
+  [
+    "Read-only",
+    "We can see up to a year of transactions, your balances and what you owe on cards and loans. We can never move your money.",
+  ],
+  [
+    "Who reads it",
+    "Claude, the AI that writes Jane's answers, gets the parts an answer needs. The Privacy Policy lists what goes where.",
+  ],
   ["Through Plaid", "You sign in to your bank in Plaid's window. We never see your password."],
   ["Disconnect anytime", "Remove a bank or delete all your data whenever you want."],
 ];
