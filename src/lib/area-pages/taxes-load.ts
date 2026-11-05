@@ -123,6 +123,7 @@ export async function loadTaxesArea(userId: string, { now = new Date() }: { now?
       advice: setAside.advice,
       holdCents: setAside.holdCents,
       percent: setAside.confidence.percent,
+      corrections: setAside.estimateView.corrections.length,
     },
     withholding: check.status,
     w4Sent: !!estimate.w4,

@@ -238,6 +238,8 @@ export type TaxesTreeInput = {
   // The tax left to cover (src/planning/tax-set-aside.ts).
   setAside: {
     status: "needed" | "covered" | "unknown" | "no_income";
+    // How many things the person pointed out, each with its undo.
+    corrections?: number;
     advice: boolean;
     holdCents: number;
     percent: number;
@@ -299,7 +301,8 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
   const r = input.estimate.refundCents;
   const aside = input.setAside;
   const estimate = [
-    ...(aside.status === "no_income"
+    // Past that, it stays while there's something to undo: this is the one place to undo it.
+    ...(aside.status === "no_income" && !aside.corrections
       ? []
       : [
           item("estimate", "set-aside", {
@@ -310,14 +313,18 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
                 ? shortMoney(aside.holdCents)
                 : aside.status === "unknown"
                   ? "Not known"
-                  : "Covered",
+                  : aside.status === "no_income"
+                    ? "No income"
+                    : "Covered",
             cents: aside.holdCents,
             summary:
               aside.status === "needed"
                 ? `An estimate, ${aside.percent}% sure. Safe to spend leaves it out.`
                 : aside.status === "unknown"
                   ? "Jane can't see all that's withheld from your pay."
-                  : "What's withheld and paid covers your tax so far.",
+                  : aside.status === "no_income"
+                    ? "No income this year, with what you pointed out."
+                    : "What's withheld and paid covers your tax so far.",
           }),
         ]),
     item("estimate", "estimate", {

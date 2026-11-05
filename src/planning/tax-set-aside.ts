@@ -539,7 +539,15 @@ export function workOutSetAside(x: SetAsideInput): TaxSetAside {
     year: x.year,
     status,
     advice: x.advice,
-    lines,
+    // Unknown withholding isn't $0 left: the lines above rest on an assumption about it.
+    lines:
+      status === "unknown"
+        ? lines.map((l) =>
+            l.key === "left"
+              ? { ...l, cents: null, from: "Jane can't see all that's withheld from your pay." }
+              : l,
+          )
+        : lines,
     share,
     taxForYearCents: total,
     taxSoFarCents: taxSoFar,
