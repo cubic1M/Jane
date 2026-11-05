@@ -1203,6 +1203,10 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   option vs `icm_tag` default +1.7 / +1.3, top 3 +0.3 / +1.3, 6-handed +0.3 / +0.9: no significant loss. But this
   is the hardest room we have: `icm_switch` makes 33.1 ± 3.1 points/table (seat average 34.8) against `f9_gto` 38.5,
   `f9_limptrap` 38.0, `f8_solver` 36.7 (seeds 635000+), so a room of only these bots would put us mid-table.
+  Would another strategy do better from our seat there? (`results/sng_unseen_alt.md`, seeds 641000+, 400 paired
+  tables vs `icm_switch`): `f9_gto` +3.1 ± 4.1, `f9_meta` +2.1 ± 4.1, strong-room option +2.1 ± 4.1, `f9_limptrap`
+  +1.4 ± 4.4: none significant, so no change. The lean matches the existing plan: in a room of strong, hard-to-
+  exploit bots, resubmit the strong-room option (it starts as `f9_meta`).
 * **Bug hunter:** 2.61M random tables (all variants, 2–8 players; 2–10 from Nov 5 10:20, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
