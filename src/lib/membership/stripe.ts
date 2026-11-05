@@ -1,3 +1,4 @@
+import { OUTSIDE_CALL_TIMEOUT_MS } from "@/config/outside-calls";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { STRIPE_WEBHOOK_TOLERANCE_SECONDS } from "@/config/membership";
 
@@ -36,6 +37,8 @@ export async function createCheckoutSession({
   });
   const response = await fetch(CHECKOUT_URL, {
     method: "POST",
+    signal: AbortSignal.timeout(OUTSIDE_CALL_TIMEOUT_MS),
+    redirect: "error",
     headers: {
       authorization: `Bearer ${key}`,
       "content-type": "application/x-www-form-urlencoded",

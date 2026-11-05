@@ -1,3 +1,4 @@
+import { OUTSIDE_CALL_TIMEOUT_MS } from "@/config/outside-calls";
 import { ALPACA_DATA_URL, DEFAULT_FEED } from "./alpaca";
 import { MarketDataError, MarketDataNotConfigured, type IntradayBar } from "./types";
 
@@ -15,7 +16,7 @@ type AlpacaIntraday = {
 };
 type Fetcher = (
   url: string,
-  init: { headers: Record<string, string> },
+  init: { headers: Record<string, string>; signal?: AbortSignal; redirect?: "error" },
 ) => Promise<{ ok?: boolean; status?: number; json(): Promise<unknown> }>;
 
 export const intradayUrl = (
@@ -52,7 +53,11 @@ export async function fetchIntraday(
   let token: string | null = null;
   // At most 400 pages of 10,000 bars: years of 5-minute bars, and a stop for a bad response.
   for (let page = 0; page < 400; page += 1) {
-    const res = await fetcher(intradayUrl(ticker, from, to, timeframe, feed, token), { headers });
+    const res = await fetcher(intradayUrl(ticker, from, to, timeframe, feed, token), {
+      headers,
+      signal: AbortSignal.timeout(OUTSIDE_CALL_TIMEOUT_MS),
+      redirect: "error",
+    });
     const json = (await res.json().catch(() => null)) as AlpacaIntraday | null;
     if (res.ok === false || !json) {
       const reason =

@@ -1,3 +1,4 @@
+import { CLAUDE_CALL_RETRIES, CLAUDE_CALL_TIMEOUT_MS } from "@/config/outside-calls";
 import Anthropic from "@anthropic-ai/sdk";
 import { killed } from "@/config/kill-switches";
 import { ALL_DETAILED, type PfcDetailed } from "./taxonomy";
@@ -37,7 +38,11 @@ const SCHEMA = {
 let client: Anthropic | undefined;
 
 function getClient(): Anthropic {
-  client ??= new Anthropic({ fetch: claudeFetch });
+  client ??= new Anthropic({
+    fetch: claudeFetch,
+    timeout: CLAUDE_CALL_TIMEOUT_MS,
+    maxRetries: CLAUDE_CALL_RETRIES,
+  });
   return client;
 }
 

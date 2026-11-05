@@ -1,3 +1,4 @@
+import { CLAUDE_CALL_RETRIES, CLAUDE_CALL_TIMEOUT_MS } from "@/config/outside-calls";
 import Anthropic from "@anthropic-ai/sdk";
 import { killed } from "@/config/kill-switches";
 import { freshSwitches } from "@/lib/ops-switches";
@@ -34,7 +35,11 @@ export const claudeFetch: typeof fetch = async (input, init) => {
 export function anthropic(): Anthropic {
   // For a caller that didn't check llmEnabled() first: it fails rather than reaching Claude.
   if (killed("claude")) throw new Error("Claude is paused (KILL_CLAUDE)");
-  client ??= new Anthropic({ fetch: claudeFetch });
+  client ??= new Anthropic({
+    fetch: claudeFetch,
+    timeout: CLAUDE_CALL_TIMEOUT_MS,
+    maxRetries: CLAUDE_CALL_RETRIES,
+  });
   return client;
 }
 
