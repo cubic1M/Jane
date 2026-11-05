@@ -14,6 +14,9 @@ export type ParsedRow = {
   // The merchant's name where the export gives one of its own (Apple Card's Merchant column):
   // cleaner than the description's ("SPOTIFY P2D3F STOCKHOLM" is "Spotify"; debugger 10-31).
   merchant?: string;
+  // What the row was told apart by in earlier versions, where the format changed which column is
+  // the description: so a file uploaded again still finds the rows it already has.
+  dedupeAs?: string;
   hints: { bankCategory?: string; bankType?: string };
   // The account's balance after this row, where the export has a running-balance column.
   balanceCents?: number;
@@ -566,6 +569,8 @@ export const navyFederal: CsvFormat = {
 // name ("Lockheed Martin"), Original Description the bank's line; Category is USAA's own
 // ("Paycheck"), read as the bank's category (debugger 11-02: through the column picker a
 // veteran's pay matched no rule and wasn't income). A pending row is left out until it posts.
+// The rules read the bank's line and the name is USAA's (debugger 11-05: "Upstart", "Midland
+// Credit" and "IRS" matched nothing where "UPSTART LOAN PMT" would have).
 export const usaa: CsvFormat = {
   id: "usaa",
   bank: "USAA",
@@ -576,10 +581,11 @@ export const usaa: CsvFormat = {
     if (/^pending$/i.test(get("status").trim())) {
       return { ok: false, reason: "Still pending", silent: true };
     }
+    const name = get("description").trim();
     const common = parseCommon(
       get("date"),
       get("amount"),
-      get("description"),
+      get("original description").trim() || name,
       (value) => parseIsoDate(value) ?? parseUsDate(value),
     );
     if (!common.ok) return common;
@@ -590,6 +596,7 @@ export const usaa: CsvFormat = {
         // Plaid's sign: money out is positive.
         amountCents: -common.cents || 0,
         description: common.description,
+        ...(name ? { merchant: name, dedupeAs: name } : {}),
         hints: { bankCategory: optional(get("category")) },
       },
     };

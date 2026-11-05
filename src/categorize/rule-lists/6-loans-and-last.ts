@@ -60,6 +60,14 @@ export const LOANS_AND_LAST: readonly Rule[] = [
       /(?<![A-Z0-9])(?:ADVANCE AMERICA|CHECK INTO CASH|ACE CASH EXPRESS|SPEEDY CASH|CHECKSMART)/,
     direction: "out",
   },
+  // Paying a debt collector is paying a debt, never a subscription to cancel (debugger 11-05:
+  // "Is Midland Credit a subscription to cancel?", with a cancellation email to copy).
+  {
+    category: "LOAN_PAYMENTS_OTHER_PAYMENT",
+    pattern:
+      /(?<![A-Z0-9])(?:MIDLAND (?:CREDIT|FUNDING)|PORTFOLIO RECOVERY|LVNV FUNDING|CAVALRY (?:SPV|PORTFOLIO)|JEFFERSON CAPITAL|ENCORE CAPITAL|IC SYSTEM|CONVERGENT OUTSOURCING|ENHANCED RECOVERY|TRANSWORLD SYSTEMS|CREDIT COLLECTION SERV)/,
+    direction: "out",
+  },
   {
     category: "LOAN_PAYMENTS_EWA",
     pattern:

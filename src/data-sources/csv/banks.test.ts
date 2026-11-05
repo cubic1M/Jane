@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { categorizeByRules } from "@/categorize/rules";
+import { dedupeKeys } from "@/data-sources/dedupe";
 import { readCsvFile } from "./csv-source";
 
 // Fixtures are made-up transactions in each bank's export layout (headers checked against
@@ -442,11 +443,41 @@ describe("USAA", () => {
       ["2026-10-21", 8299],
       ["2026-10-20", 6412],
     ]);
-    expect(result.transactions.map((t) => t.description)).toEqual([
-      "Lockheed Martin",
-      "YouTube TV",
-      "Commissary",
+    // The rules read the bank's own line; the name shown is USAA's.
+    expect(result.transactions.map((t) => [t.description, t.merchantName])).toEqual([
+      ["LOCKHEED MARTIN DIRECT DEP", "Lockheed Martin"],
+      ["GOOGLE *YouTubeTV", "Youtube Tv"],
+      ["DECA COMMISSARY NORFOLK VA", "Commissary"],
     ]);
+  });
+
+  // Debugger 11-05: "Upstart", "Midland Credit", "Dave" and "IRS" matched no rule.
+  it("places a loan, a collector, a pay advance and a refund by the bank's line", () => {
+    const csv = [
+      "Date,Description,Original Description,Category,Amount,Status",
+      "2026-10-15,Midland Credit,MIDLAND CREDIT MGMT,Other,-50.00,Posted",
+      "2026-10-06,Upstart,UPSTART LOAN PMT,Loan,-212.00,Posted",
+      "2026-10-22,Dave,DAVE INC REPAYMENT,Other,-127.00,Posted",
+      "2026-04-20,IRS,IRS TREAS 310 TAX REF,Tax Refund,2115.00,Posted",
+    ].join("\n");
+    const rows = readCsvFile({ name: "usaa.csv", text: csv });
+    if (!rows.ok) throw new Error("not read");
+    expect(rows.transactions.map((t) => categorizeByRules(t)?.detailed)).toEqual([
+      "LOAN_PAYMENTS_OTHER_PAYMENT",
+      "LOAN_PAYMENTS_OTHER_PAYMENT",
+      "LOAN_PAYMENTS_EWA",
+      "INCOME_TAX_REFUND",
+    ]);
+  });
+
+  // Uploading the same export again, after the change, still adds nothing: the rows are told
+  // apart by USAA's name, as before.
+  it("keeps telling rows apart as it did, so a file uploaded again adds nothing", () => {
+    expect(result.transactions.map((t) => t.externalId)).toEqual(
+      dedupeKeys(
+        result.transactions.map((t) => ({ ...t, description: t.merchantName ?? t.description })),
+      ),
+    );
   });
 
   it("counts a paycheck as pay, by USAA's own category", () => {
