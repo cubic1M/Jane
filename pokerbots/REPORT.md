@@ -1199,6 +1199,10 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   to decide in (p99 0.17 ms vs 0.07 in field 10): with 3 workers + bug hunter on 4 cores, 333 of ~60k decisions went
   over 1 ms; one worker on the same seeds gives 1 for `icm_switch` (max 1.8 ms) and 1 for `icm_tag` (max 6.2 ms), so
   that was host load.
+  Strongest 8 unseen only (`results/sng_unseen_top.md`, seeds 631000+, 400 paired tables): `icm_switch` / strong-room
+  option vs `icm_tag` default +1.7 / +1.3, top 3 +0.3 / +1.3, 6-handed +0.3 / +0.9: no significant loss. But this
+  is the hardest room we have: `icm_switch` makes 33.1 ± 3.1 points/table (seat average 34.8) against `f9_gto` 38.5,
+  `f9_limptrap` 38.0, `f8_solver` 36.7 (seeds 635000+), so a room of only these bots would put us mid-table.
 * **Bug hunter:** 2.61M random tables (all variants, 2–8 players; 2–10 from Nov 5 10:20, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
