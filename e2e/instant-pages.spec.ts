@@ -471,3 +471,40 @@ test.describe("what a person has seen", () => {
     await expect(figure).not.toHaveText(old);
   });
 });
+
+// Debugger 11-05: "Link a demo bank", then the scan, then back on /connect for good, on main's CI and
+// under load. Home, with no bank yet, sends someone to /connect. When the first round of preloads
+// started on the scan's page, before the bank's accounts were in, Home's answer was that redirect,
+// and the hand-off to Home took it from memory. Forced here: the round waits for the click, and the
+// accounts wait for the round.
+test("preloading during the first scan can't send the person back to /connect", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  await person(context, baseURL);
+  let clicked: () => void = () => {};
+  const afterClick = new Promise<void>((resolve) => (clicked = resolve));
+  await page.route(/\/_next\/static\/.*\.js/, async (route) => {
+    const answer = await route.fetch();
+    if ((await answer.text()).includes("jane:page-cache")) await afterClick;
+    await route.fulfill({ response: answer }).catch(() => undefined);
+  });
+  const lock = new Client({ connectionString: E2E_DATABASE_URL });
+  await lock.connect();
+  await lock.query("BEGIN");
+  await lock.query("LOCK TABLE accounts IN SHARE ROW EXCLUSIVE MODE");
+  try {
+    await page.goto("/connect");
+    await page.getByRole("button", { name: "Link a demo bank" }).click();
+    await page.waitForURL(/\/scanning/, { timeout: 60_000 });
+    clicked();
+    // Long enough for a round to start and ask for Home while there are no accounts.
+    await holds(() => expect(page.url()).toMatch(/\/scanning/), 4_000);
+  } finally {
+    await lock.query("COMMIT");
+    await lock.end();
+  }
+  await expect(page).toHaveURL(/\/home(\?|$)/, { timeout: 90_000 });
+  await holds(() => expect(page.url()).toMatch(/\/home(\?|$)/), 1_500);
+});

@@ -79,7 +79,7 @@ export function ScanningProgress({ next = "/report" }: { next?: "/report" | "/ho
   }, [done]);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div data-scan-page="" className="flex flex-col gap-6">
       <div
         role="progressbar"
         aria-label="Scanning your money"

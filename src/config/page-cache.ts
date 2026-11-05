@@ -50,6 +50,7 @@ export const STILL_HERE_EVERY_MS = 10_000;
 // Reaching one of these with a person's pages in memory means they left: the memory goes.
 export const SIGNED_OUT_PAGES: readonly string[] = ["/", "/login", "/signup", "/goodbye"];
 
-// A running first scan or a page still streaming holds a round back.
+// A running first scan or a page still streaming holds a round back. The first scan's own page too:
+// with no bank yet, Home's answer is a redirect to /connect, which the hand-off would take from memory.
 export const STILL_LOADING_SELECTOR =
-  "main [data-loading-bar],[data-header-loading],[data-scan-bar],[data-nav-pending]";
+  "main [data-loading-bar],[data-header-loading],[data-scan-bar],[data-scan-page],[data-nav-pending]";
