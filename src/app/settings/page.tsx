@@ -19,6 +19,7 @@ import { formatCents } from "@/lib/money";
 import { vapidPublicKey } from "@/lib/push";
 import { US_STATES } from "@/config/referrals";
 import { AlertsForm } from "./alerts-form";
+import { AccountantLinksForm } from "./accountant-links-form";
 import { CalendarForm } from "./calendar-form";
 import { StateForm } from "./state-form";
 import { NotificationsToggle } from "./notifications";
@@ -197,6 +198,10 @@ async function SettingsContent({
     documents,
     twoFactor: twoFactor.enabledAt !== null,
     calendar: prefs.calendarCreatedAt !== null,
+  });
+
+  const accountantLinks = await mine.accountantLinks.count({
+    where: { revokedAt: null, expiresAt: { gt: new Date() } },
   });
 
   const details: Record<string, ReactNode> = {};
@@ -436,6 +441,7 @@ async function SettingsContent({
   details[itemId("security", "calendar")] = (
     <div id="calendar" className={BOX}>
       <CalendarForm since={prefs.calendarCreatedAt?.toISOString().slice(0, 10) ?? null} />
+      <AccountantLinksForm live={accountantLinks} />
     </div>
   );
 

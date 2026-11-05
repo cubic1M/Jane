@@ -278,6 +278,21 @@ export async function revokeAccountantLink(
   await track(userId, "accountant_link_revoked", {});
 }
 
+// Every live link, from Settings: /taxes/accountant, where each can be stopped, is hidden, and a
+// link already out there has to be stoppable from somewhere.
+export async function revokeAllAccountantLinks(
+  userId: string,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<number> {
+  const db = scopedFor(userId, client);
+  const live = await db.accountantLinks.findMany({
+    where: { revokedAt: null, expiresAt: { gt: now } },
+    select: { id: true },
+  });
+  for (const { id } of live) await revokeAccountantLink(userId, id, { client, now });
+  return live.length;
+}
+
 export async function markNotesSeen(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},

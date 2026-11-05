@@ -327,7 +327,9 @@ describe.runIf(url)(
 
       // Back in Jane: a message with a Got it button, and the owner's page.
       const message = (await messageFrom(userId, "accountant_answer:"))!;
-      expect(message.body).toMatch(/^Your accountant wrote back \(2 notes\)\. Dana Hill said: "/);
+      expect(message.body).toMatch(
+        /^A note came in on your accountant link \(2 notes\)\. Signed Dana Hill: "/,
+      );
       expect((await loadAccountantPage(userId, { client, now: LINKED })).unseen).toBe(2);
       const done = (
         await takeChatAction(userId, message.id, "tax.accountant_seen", { client, now: LINKED })
