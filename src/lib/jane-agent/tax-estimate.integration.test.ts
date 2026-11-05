@@ -135,6 +135,30 @@ describe.runIf(url)("the tax estimate against a real database", () => {
     expect(married.assumptions.some((a) => a.includes("how you file"))).toBe(false);
   });
 
+  // Debugger 11-05: $19,500 a year of daycare beside "You haven't told me about dependants".
+  it("says it sees a child, without counting one, when there's childcare", async () => {
+    const userId = await realPerson("tax-estimate-child");
+    const before = await loadTaxEstimate(userId, { client, now: LINKED });
+    const account = await client.account.findFirstOrThrow({ where: { userId } });
+    await client.transaction.create({
+      data: {
+        userId,
+        accountId: account.id,
+        source: "csv",
+        date: new Date("2026-05-02T00:00:00Z"),
+        amountCents: 162_500,
+        description: "BRIGHT HORIZONS TUITION",
+        pfcDetailed: "GENERAL_SERVICES_CHILDCARE",
+      },
+    });
+    const view = await loadTaxEstimate(userId, { client, now: LINKED });
+    expect(view.assumptions.join(" ")).toContain("It looks like you have a child");
+    expect(view.assumptions.join(" ")).toContain("up to $2,200.00 off your tax");
+    expect(view.estimate.credits.childTaxCreditCents).toBe(
+      before.estimate.credits.childTaxCreditCents,
+    );
+  });
+
   it("without pay stubs: the tax from take-home pay, no refund until pay stub figures", async () => {
     const userId = await realPerson("tax-estimate-real");
     let view = await loadTaxEstimate(userId, { client, now: LINKED });

@@ -27,7 +27,7 @@ import { loadEquityIncome } from "@/lib/equity-income";
 import { loadInvestmentTaxes } from "@/lib/investment-taxes";
 import { rentalDepreciation, rentalNet } from "@/planning/side-income";
 import { formatCents } from "@/lib/money";
-import { EITC } from "@/config/tax-rates";
+import { CHILD_TAX_CREDIT, EITC } from "@/config/tax-rates";
 import { loadResidency, residencyFor, type ResidencyView } from "@/lib/tax-states";
 import { LOCAL_TAXES } from "@/config/tax-states";
 import {
@@ -441,7 +441,11 @@ async function loadTaxEstimateFrom(
         : `I've counted no dependants yet: say yes to ${found} on your tax profile to count them.`,
     );
   } else if (view.dependants.status !== "yours") {
-    assumptions.push("You haven't told me about dependants, so I've counted none.");
+    assumptions.push(
+      view.dependants.hint
+        ? `It looks like you have a child, from your payments or a new baby you told me about. I've counted none until you add them on your tax profile: each child under 17 can take up to ${formatCents(CHILD_TAX_CREDIT.perChild)} off your tax.`
+        : "You haven't told me about dependants, so I've counted none.",
+    );
   }
   if (elapsed > 0 && elapsed < 1) {
     assumptions.push(

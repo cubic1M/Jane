@@ -251,6 +251,12 @@ export const BANK_LOANS_INCOME: readonly Rule[] = [
     ],
     direction: "in",
   },
+  // State pay during leave for a new baby or an illness: income, with a job still there (debugger 11-05).
+  {
+    category: "INCOME_OTHER",
+    keywords: ["PAID FAMILY LEAVE", "EDD PFL", "EDD SDI", "PFML"],
+    direction: "in",
+  },
   // VA disability and SSI aren't pay or a pension: no W-2 or 1099-R, and generally not taxed (debugger
   // 11-04: VA read as a second employer, so tax was guessed as married filing jointly).
   {

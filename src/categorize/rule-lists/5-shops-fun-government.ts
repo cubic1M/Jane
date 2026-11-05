@@ -484,6 +484,8 @@ export const SHOPS_FUN_GOVERNMENT: readonly Rule[] = [
       "URGENT CARE",
       "MEDICAL CENTER",
       "CLINIC",
+      "PATIENT PMT",
+      "PATIENT PAYMENT",
       "PEDIATRICS",
       "PEDIATRIC",
       "PHYSICIANS",

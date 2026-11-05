@@ -21,7 +21,14 @@ import { loadTaxDocuments } from "@/lib/tax-documents";
 import type { FieldStatus } from "@/planning/tax-profile";
 
 // A line of the "what Jane knows" profile on the page.
-export type ProfileField = { key: string; label: string; value: string; status: FieldStatus };
+export type ProfileField = {
+  key: string;
+  label: string;
+  value: string;
+  status: FieldStatus;
+  // What to say in place of the value, when there's something more useful than "not set".
+  note?: string;
+};
 
 // Everything the Taxes tree is built from (docs/design/area-pages.md), loaded once for the Taxes
 // page and for the home tree, so both show the same statuses.
@@ -75,6 +82,9 @@ export async function loadTaxesArea(userId: string, { now = new Date() }: { now?
           ? "—"
           : `${kids.childrenUnder17} under 17, ${kids.otherDependants} other`,
       status: kids.status,
+      ...(kids.status === "missing" && kids.hint
+        ? { note: "It looks like you have a child. Add them so the credit counts." }
+        : {}),
     },
     {
       key: "state",
