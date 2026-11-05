@@ -1,5 +1,6 @@
 import { EARNER_ACTIVE_DAYS, SALARY_DEPOSITS_MIN } from "@/config/profile";
 import { addDays } from "@/lib/dates";
+import { employerName } from "./employer-name";
 
 // The employer whose paychecks stopped, going by where the data ends: an old statement isn't a lost
 // job. Null with pay still coming, or too few paychecks to call it a job. Pure.
@@ -19,7 +20,7 @@ export function stoppedEmployer(data: {
   const paid = new Map<string, number>();
   for (const t of data.transactions) {
     if (t.amountCents >= 0 || t.pfc !== "INCOME_SALARY") continue;
-    const name = t.description.replace(/\s+PAYROLL.*$/i, "").trim();
+    const name = employerName(t.description);
     if ((last.get(name) ?? "") < t.date) last.set(name, t.date);
     paid.set(name, (paid.get(name) ?? 0) + 1);
   }

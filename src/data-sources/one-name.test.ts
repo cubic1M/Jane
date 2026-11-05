@@ -15,7 +15,6 @@ const ALLOWED: Readonly<Record<string, string>> = {
   "src/planning/costly-borrowing.ts": "a lender's name from a loan deposit's words, not a merchant",
   "src/planning/money-for-two.ts": "a payer's name from a paycheck's words, not a merchant",
   "src/detectors/life.ts": "an employer's name from a paycheck's words, not a merchant",
-  "src/profile/stopped-employer.ts": "an employer's name from a paycheck's words, not a merchant",
   "src/lib/insurance/claim-filing.ts": "the person's own claim description, not a bank name",
 };
 

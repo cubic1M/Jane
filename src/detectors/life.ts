@@ -1,5 +1,6 @@
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { dayLabel } from "@/lib/day-label";
+import { employerName } from "@/profile/employer-name";
 import { stoppedEmployer } from "@/profile/stopped-employer";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
@@ -143,7 +144,7 @@ const payStopped: Detector = {
       typeof profile.facts.monthly_income.value === "number"
         ? profile.facts.monthly_income.value
         : 0;
-    const paychecks = pay.filter((t) => t.description.startsWith(name));
+    const paychecks = pay.filter((t) => employerName(t.description) === name);
     const total = paychecks.reduce((s, t) => s - t.amountCents, 0);
     const firstDay = paychecks.reduce((m, t) => (t.date < m ? t.date : m), lastDay);
     const months = Math.max(1, daysBetween(firstDay, lastDay) / 30);

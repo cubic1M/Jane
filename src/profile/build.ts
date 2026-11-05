@@ -30,7 +30,8 @@ import { countyFromPayments, countyOf } from "@/planning/disasters";
 import { confidenceOf, evidenceText, type Source } from "./confidence";
 import { FACT_SPECS, type FactKey, factSpec } from "./facts";
 import { addDays } from "@/lib/dates";
-import { normalizeMerchant, withoutAchDetails } from "@/data-sources/merchant";
+import { employerName } from "./employer-name";
+import { normalizeMerchant } from "@/data-sources/merchant";
 import type { PolicyKind } from "@/config/insurance";
 import { insurerKind } from "@/insights/found-policies";
 import { lifeEventGuesses } from "@/insights/life-signals";
@@ -398,21 +399,6 @@ function babyReading(input: ProfileInput, txs: readonly ProfileTx[], today: stri
     what: "baby-goods payments",
     matches: recent.length,
   };
-}
-
-// The payer on a paycheck line: no ACH details, no bank's "Deposit from" (Capital One 360),
-// "DEPOSIT - " (Navy Federal) or "ACH CREDIT" (Truist) in front, and nothing from "PAYROLL" on
-// (debugger 11-01, 11-02).
-function employerName(description: string): string {
-  return withoutAchDetails(description)
-    .replace(
-      /^(?:DEPOSIT FROM|DEPOSIT -|ACH CREDIT|ACH DEPOSIT,?|DIRECT DEP(?:OSIT)?(?: FROM)?)\s+/i,
-      "",
-    )
-    .replace(/\s+PAYROLL.*$/i, "")
-    .replace(/\s+ACH (?:CREDIT|DEPOSIT)$/i, "")
-    .replace(/\s+(?:PPD|WEB|CCD)\s+ID:\s*\d+\s*$/i, "")
-    .trim();
 }
 
 export function buildProfile(input: ProfileInput): Profile {
