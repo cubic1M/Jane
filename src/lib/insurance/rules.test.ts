@@ -203,6 +203,20 @@ describe("coverage gaps", () => {
   const household = (saved: Partial<Saved>, signs = NO_SIGNS) =>
     resolveHousehold({ ...nothingSaid, ...saved }, signs);
 
+  // Debugger 11-04: "AARP is in your payments" sat over "No health insurance on file" and "I have
+  // this: add it", which adds a second policy instead of confirming the one Jane found.
+  it("says which policy found in the payments would close the gap", () => {
+    const found = policy({ id: "p9", kind: "renters", carrier: "Lemonade", status: "found" });
+    const gaps = coverageGaps(household({ housing: "rent" }), [found]);
+    expect(gaps.find((g) => g.key === "renters")?.found).toEqual({
+      policyId: "p9",
+      carrier: "Lemonade",
+    });
+    expect(
+      coverageGaps(household({ housing: "rent" }), []).find((g) => g.key === "renters")?.found,
+    ).toBeUndefined();
+  });
+
   it("finds renting with no renters cover, in plain words", () => {
     const [gap] = coverageGaps(household({}, { ...NO_SIGNS, rentPaid: true }), []);
     expect(gap).toMatchObject({

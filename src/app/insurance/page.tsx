@@ -255,7 +255,14 @@ async function InsuranceContent({
   }
   for (const gap of gaps) {
     const id = itemId("missing", gap.key + (gap.policyId ? `-${gap.policyId}` : ""));
-    details[id] = (
+    details[id] = gap.found ? (
+      <Link
+        href={`/insurance?edit=${gap.found.policyId}&focus=${encodeURIComponent(itemId("policies", gap.found.policyId))}`}
+        className={`text-sm ${LINK}`}
+      >
+        Confirm it
+      </Link>
+    ) : (
       <div className="flex flex-col gap-2 text-sm">
         <h3 className="text-base font-semibold">{gap.title}</h3>
         {advice && (

@@ -58,6 +58,22 @@ export function AreaPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // A link on this page to another of its nodes moves there: the state above only reads ?focus= on
+  // arrival (debugger 11-04: a gap's "Confirm it" changed the address and nothing on the page).
+  const arrivedAt = useRef(focus);
+  useEffect(() => {
+    if (focus === arrivedAt.current) return;
+    arrivedAt.current = focus;
+    if (!known(focus)) return;
+    requestAnimationFrame(() => {
+      setOpen(branchOf(focus!));
+      setPicked(focus!.includes(":") ? focus! : null);
+      requestAnimationFrame(() => panel.current?.scrollIntoView({ block: "nearest" }));
+    });
+    // Only when the link's target changes; the tree it looks in comes with it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus]);
+
   // The address follows what's open, so a reload or a shared link comes back to it.
   useEffect(() => {
     const url = new URL(window.location.href);
