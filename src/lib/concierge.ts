@@ -91,6 +91,8 @@ const titleOf = (snapshot: unknown): string => {
 
 type Options = { client?: PrismaClient; now?: Date; notify?: typeof sendStatusEmail };
 
+const CHANGED_MEANWHILE = "Someone changed this action just now. Open it again to see it.";
+
 export async function changeActionStatus(
   admin: Admin,
   actionId: string,
@@ -106,6 +108,7 @@ export async function changeActionStatus(
       status: true,
       startedAt: true,
       assignee: true,
+      agentState: true,
       decision: { select: { findingId: true, cardSnapshot: true } },
       user: { select: { email: true } },
     },
@@ -120,9 +123,13 @@ export async function changeActionStatus(
   await systemTransaction(
     why,
     async (tx) => {
-      await tx.action.update({
-        where: { id: action.id },
+      // Only from the status this change was checked against: a double-click or two of the team at
+      // once would otherwise each apply it, with an email each, or reopen what the other closed.
+      const { count } = await tx.action.updateMany({
+        where: { id: action.id, status: action.status },
         data: {
+          // The team has it now: the agent stops writing to the company.
+          ...(moved && action.agentState ? { agentState: "handed_off", agentNextAt: null } : {}),
           status: change.status,
           assignee: change.assignee,
           notes: change.notes,
@@ -133,6 +140,7 @@ export async function changeActionStatus(
           completedAt: closing ? now : null,
         },
       });
+      if (count === 0) throw new ConciergeError(CHANGED_MEANWHILE);
       await tx.finding.updateMany({
         where: { id: action.decision.findingId, userId: action.userId },
         data: { status: FINDING_STATUS[change.status] },

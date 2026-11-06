@@ -1,4 +1,4 @@
-import { AGENT_CALL_TYPES } from "@/config/agent";
+import { AGENT_CALL_LOWEST_SHARE, AGENT_CALL_TYPES } from "@/config/agent";
 import { isTrialUser } from "@/lib/trial-ids";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { sendStatusEmail } from "@/lib/action-emails";
@@ -217,71 +217,104 @@ export async function handleCallResult(
     client,
   );
   if (action.agentState !== "waiting_reply" || action.status !== "in_progress") return "kept";
-
-  const options = { client, now, notify };
-  // An offer inside the person's limit (spec step 62) counts as accepted on the call.
-  const terms = result.offerTerms;
-  const withinLimit =
-    result.outcome === "offer" &&
-    action.user.acceptSimpleOffers &&
-    terms !== undefined &&
-    terms !== null &&
-    terms.contractMonths === 0 &&
-    terms.feeCents === 0 &&
-    monthlyCents !== null &&
-    terms.monthlyCents < monthlyCents;
-  const lowerTo = withinLimit ? terms!.monthlyCents : result.newMonthlyCents;
-  if (
-    (result.outcome === "lowered" || withinLimit) &&
-    lowerTo !== null &&
-    monthlyCents !== null &&
-    lowerTo < monthlyCents
-  ) {
-    await setStatus(
-      userId,
-      action,
-      "done",
-      {
-        agentState: "finished",
-        confirmedAnnualCents: (monthlyCents - lowerTo) * 12,
-        userTodo: null,
-      },
-      options,
-    );
-    if (withinLimit) {
-      await note(
+  // One result: two at once both saw the call waiting, and each sent its own "done" email.
+  const { count } = await scopedFor(userId, client).actions.updateMany({
+    where: { id: action.id, agentState: "waiting_reply", status: "in_progress" },
+    data: { agentState: "working" },
+  });
+  if (count === 0) return "kept";
+  try {
+    const options = { client, now, notify };
+    // An offer inside the person's limit (spec step 62) counts as accepted on the call.
+    const terms = result.offerTerms;
+    const withinLimit =
+      result.outcome === "offer" &&
+      action.user.acceptSimpleOffers &&
+      terms !== undefined &&
+      terms !== null &&
+      terms.contractMonths === 0 &&
+      terms.feeCents === 0 &&
+      monthlyCents !== null &&
+      terms.monthlyCents < monthlyCents;
+    const lowerTo = withinLimit ? terms!.monthlyCents : result.newMonthlyCents;
+    // The new price comes from the call provider, not from a bill: one far below what it was is a
+    // person's to check before a whole bill counts as saved.
+    const plausible =
+      lowerTo !== null &&
+      monthlyCents !== null &&
+      lowerTo >= monthlyCents * AGENT_CALL_LOWEST_SHARE;
+    if (
+      (result.outcome === "lowered" || withinLimit) &&
+      lowerTo !== null &&
+      monthlyCents !== null &&
+      lowerTo < monthlyCents &&
+      !plausible
+    ) {
+      await handOff(
         userId,
-        action.id,
-        `Accepted on the call, within your limit: ${result.offer ?? "a lower price"}.`,
-        client,
+        action,
+        `The call says ${company} lowered the bill to ${formatCents(lowerTo)} a month, from ${formatCents(monthlyCents)}. Check it on the next bill before it counts.`,
+        options,
       );
+    } else if (
+      (result.outcome === "lowered" || withinLimit) &&
+      lowerTo !== null &&
+      monthlyCents !== null &&
+      lowerTo < monthlyCents
+    ) {
+      await setStatus(
+        userId,
+        action,
+        "done",
+        {
+          agentState: "finished",
+          confirmedAnnualCents: (monthlyCents - lowerTo) * 12,
+          userTodo: null,
+        },
+        options,
+      );
+      if (withinLimit) {
+        await note(
+          userId,
+          action.id,
+          `Accepted on the call, within your limit: ${result.offer ?? "a lower price"}.`,
+          client,
+        );
+      }
+      await track(userId, "agent_call_lowered", { action_type: action.type });
+    } else if (result.outcome === "offer") {
+      await setStatus(
+        userId,
+        action,
+        "waiting_on_user",
+        {
+          agentState: "confirming",
+          userTodo: `${company} offered ${result.offer ?? "a new plan"}. Nothing was accepted: say yes or no on your actions page.`,
+        },
+        options,
+      );
+    } else if (result.outcome === "needs_person") {
+      await setStatus(
+        userId,
+        action,
+        "waiting_on_user",
+        {
+          agentState: "handed_off",
+          handoffReason: "The provider will only talk to the account holder.",
+          userTodo: `${company} will only discuss the account with you. Our team will set up a three-way call.`,
+        },
+        options,
+      );
+    } else {
+      await handOff(userId, action, `On the call: ${summary}`, options);
     }
-    await track(userId, "agent_call_lowered", { action_type: action.type });
-  } else if (result.outcome === "offer") {
-    await setStatus(
-      userId,
-      action,
-      "waiting_on_user",
-      {
-        agentState: "confirming",
-        userTodo: `${company} offered ${result.offer ?? "a new plan"}. Nothing was accepted: say yes or no on your actions page.`,
-      },
-      options,
-    );
-  } else if (result.outcome === "needs_person") {
-    await setStatus(
-      userId,
-      action,
-      "waiting_on_user",
-      {
-        agentState: "handed_off",
-        handoffReason: "The provider will only talk to the account holder.",
-        userTodo: `${company} will only discuss the account with you. Our team will set up a three-way call.`,
-      },
-      options,
-    );
-  } else {
-    await handOff(userId, action, `On the call: ${summary}`, options);
+  } catch (error) {
+    // Waiting again, so the result can be sent again rather than left half done.
+    await scopedFor(userId, client).actions.updateMany({
+      where: { id: action.id, agentState: "working" },
+      data: { agentState: "waiting_reply" },
+    });
+    throw error;
   }
   return "acted";
 }

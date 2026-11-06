@@ -30,6 +30,21 @@ export function replyAddress(token: string): string {
   return `reply+${token}@${domain}`;
 }
 
+// The domain an address is at, from "Name <someone@help.example.com>" or a bare address, as its
+// last two labels (help.example.com and example.com are the same company). Null if none.
+function companyDomain(address: string): string | null {
+  const match = /@([a-z0-9.-]+\.[a-z]{2,})>?\s*$/i.exec(address.trim());
+  return match ? match[1].toLowerCase().split(".").slice(-2).join(".") : null;
+}
+
+// Whether a reply comes from the company Jane wrote to: the same domain as the address it sent
+// to. The token in the reply address is in every email to them, so anyone in that thread holds
+// it; it finds the action, and this decides whether the reply is acted on.
+export function fromTheCompany(from: string, sentTo: string): boolean {
+  const domain = companyDomain(from);
+  return domain !== null && domain === companyDomain(sentTo);
+}
+
 // The token in a reply address, or null if it isn't one of ours.
 export function tokenFromAddress(address: string): string | null {
   const match = /reply\+([a-z0-9]{20,40})@/i.exec(address);
