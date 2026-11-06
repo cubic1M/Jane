@@ -3,6 +3,7 @@ import { roomFromPlan, tradeGoalOf } from "@/planning/goal-tradeoffs";
 import { PAY_PERIODS } from "@/config/benefits";
 import { profileHistoryStart } from "@/config/profile";
 import { db as defaultClient } from "@/lib/db";
+import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { copiesToLeaveOut } from "@/planning/books";
 import { markPrimerStale } from "@/lib/jane-agent/primer-store";
@@ -66,8 +67,10 @@ async function loadProfileInputFrom(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<ProfileInput> {
   const db = scopedFor(userId, client);
-  const today = dayOf(now);
-  const since = profileHistoryStart(now);
+  // The person's day, and the year of data counted back from its start: from the clock, a payment
+  // made a year ago today fell out at 7pm (night round 11-06: "23 gym payments" became 22).
+  const today = await todayOf(userId, { client, now });
+  const since = profileHistoryStart(new Date(`${today}T00:00:00Z`));
   const [
     allTransactions,
     allAccounts,

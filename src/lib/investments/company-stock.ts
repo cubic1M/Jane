@@ -19,6 +19,7 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { brokeragePartner } from "@/lib/brokerage/partner";
 import { db as defaultClient } from "@/lib/db";
+import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { addDemoExtra } from "@/lib/plaid/demo";
 import { syncDemoInvestments } from "@/lib/plaid/sync";
@@ -79,7 +80,7 @@ export async function loadCompanyStock(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<CompanyStockView> {
   const db = scopedFor(userId, client);
-  const today = iso(now);
+  const today = await todayOf(userId, { client, now });
   const [advice, investments, pay, grants, estimate, lastSale, demoItem] = await Promise.all([
     adviceMode(userId, { client }),
     loadInvestments(userId, { client, now }),
@@ -87,7 +88,7 @@ export async function loadCompanyStock(
       where: {
         pfcPrimary: "INCOME",
         amountCents: { lt: 0 },
-        date: { gte: new Date(now.getTime() - 90 * DAY_MS) },
+        date: { gte: new Date(Date.parse(`${today}T00:00:00Z`) - 90 * DAY_MS) },
       },
       select: { description: true, merchantName: true },
       distinct: ["description"],

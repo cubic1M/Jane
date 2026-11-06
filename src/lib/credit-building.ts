@@ -10,6 +10,7 @@ import { logAudit } from "@/lib/audit";
 import { creditPartnerFor } from "@/lib/credit";
 import type { CreditRequest } from "@/lib/credit/partner";
 import { db as defaultClient } from "@/lib/db";
+import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { debtsOr } from "@/lib/debts";
 import { moneyPartnerFor } from "@/lib/money-movement/partner";
@@ -94,7 +95,7 @@ export async function loadCreditBuilding(
 ): Promise<CreditBuilding> {
   const found = await creditPartnerFor(userId, { client });
   if (!found) return none;
-  const asOf = isoDay(now);
+  const asOf = await todayOf(userId, { client, now });
   const db = scopedFor(userId, client);
   const [book, report, lateFees, first, setting, checking, mover] = await Promise.all([
     debtsOr(given, userId, { client, now }),
@@ -103,7 +104,7 @@ export async function loadCreditBuilding(
     }),
     db.transactions.findMany({
       where: {
-        date: { gte: new Date(now.getTime() - STREAK_LOOKBACK_DAYS * DAY_MS) },
+        date: { gte: new Date(Date.parse(`${asOf}T00:00:00Z`) - STREAK_LOOKBACK_DAYS * DAY_MS) },
         amountCents: { gt: 0 },
         pfcDetailed: "BANK_FEES_LATE_FEES",
       },
@@ -116,7 +117,12 @@ export async function loadCreditBuilding(
   ]);
   const historyStart = first
     ? isoDay(
-        new Date(Math.max(first.date.getTime(), now.getTime() - STREAK_LOOKBACK_DAYS * DAY_MS)),
+        new Date(
+          Math.max(
+            first.date.getTime(),
+            Date.parse(`${asOf}T00:00:00Z`) - STREAK_LOOKBACK_DAYS * DAY_MS,
+          ),
+        ),
       )
     : asOf;
   const streak = onTimeStreak(

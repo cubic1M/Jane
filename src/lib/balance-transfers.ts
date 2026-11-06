@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
+import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { debtsOr, loadDebts } from "@/lib/debts";
 import type { DebtBook } from "@/insights/debts";
@@ -104,7 +105,7 @@ export async function loadTransfers(
   const transfers = rows.map(toView);
   if (!found) return { available: false, comparisons: [], transfers };
   const quotes = (Array.isArray(row?.transfers) ? row.transfers : []) as unknown as TransferQuote[];
-  const asOf = isoDay(now);
+  const asOf = await todayOf(userId, { client, now });
   const comparisons = quotes.flatMap((q) => {
     const debt = book.debts.find((d) => d.key === q.debtKey);
     const comparison = debt && compareTransfers(debt, q.offers, asOf);
@@ -145,7 +146,7 @@ export async function startTransfer(
   if (!offer || !debt || !debt.balanceCents || debt.aprBps === null) {
     throw new TransferError("That offer isn't there anymore. Check rates again.");
   }
-  const asOf = isoDay(now);
+  const asOf = await todayOf(userId, { client, now });
   const scored = scoreTransfer(debt.balanceCents, debt.aprBps, offer, asOf);
   const title = `0% ends on ${offer.cardName}: pay off the balance you moved`;
   await addDeadline(

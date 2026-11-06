@@ -6,6 +6,7 @@ import {
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
+import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { demoHasEmployer } from "@/lib/plaid/demo";
 import { formatCents } from "@/lib/money";
@@ -25,7 +26,6 @@ import {
 } from "./health-year-rules";
 import { partnerFor } from "./partner";
 import { listPolicies } from "./policies";
-import { isoDay as asOfOf } from "@/lib/dates";
 
 // Health cover all year (spec step 200): the person's health plan's year so far, from the
 // plan's terms and their medical spending; the FSA and HSA money, the plan's network for the
@@ -51,7 +51,7 @@ export async function loadHealthYear(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<HealthYear | null> {
   const db = scopedFor(userId, client);
-  const asOf = asOfOf(now);
+  const asOf = await todayOf(userId, { client, now });
   const year = asOf.slice(0, 4);
   const [policies, benefits, partner, txs, accounts] = await Promise.all([
     listPolicies(userId, { client }),

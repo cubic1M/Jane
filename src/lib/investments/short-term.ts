@@ -9,6 +9,7 @@ import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
+import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { listGoals } from "@/lib/goals";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
@@ -86,7 +87,7 @@ export async function loadShortTerm(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<ShortTermView> {
   const db = scopedFor(userId, client);
-  const today = iso(now);
+  const today = await todayOf(userId, { client, now });
   const [advice, goals, ladders, estimate, working, cash] = await Promise.all([
     adviceMode(userId, { client }),
     listGoals(userId, { client, now }),
@@ -237,7 +238,7 @@ export async function settleLadders(
   { client = defaultClient, now = new Date() }: Options = {},
 ) {
   const db = scopedFor(userId, client);
-  const today = iso(now);
+  const today = await todayOf(userId, { client, now });
   const rows = await db.billLadders.findMany({ where: { status: "active" } });
   let rolled = 0;
   for (const l of rows) {

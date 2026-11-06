@@ -4,6 +4,7 @@ import { normalizeMerchant } from "@/data-sources/merchant";
 import { loadTransactionsBetween } from "@/detection/engine";
 import { dayLabel } from "@/lib/day-label";
 import { db as defaultClient } from "@/lib/db";
+import { todayOf } from "@/lib/today";
 import { formatCents } from "@/lib/money";
 import { priceRises, type PriceRise } from "@/planning/price-rises";
 import { DAY_MS } from "@/lib/dates";
@@ -22,12 +23,14 @@ export async function loadPriceRises(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<PriceRise[]> {
-  const today = now.toISOString().slice(0, 10);
+  const today = await todayOf(userId, { client, now });
   // Read as the rest of the app reads them, under the names it gives (not "Amc Online -- Ks
   // 12/06"), so the chat's search finds what a card names.
   const rows = await loadTransactionsBetween(userId, {
     client,
-    from: new Date(now.getTime() - LOOKBACK_DAYS * DAY_MS).toISOString().slice(0, 10),
+    from: new Date(Date.parse(`${today}T00:00:00Z`) - LOOKBACK_DAYS * DAY_MS)
+      .toISOString()
+      .slice(0, 10),
     to: today,
   });
   return priceRises(

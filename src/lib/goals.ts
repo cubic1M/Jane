@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
+import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { parseMoneyToCents } from "@/lib/money";
 import { GOAL_ORDER_FACT } from "@/config/tradeoffs";
@@ -140,7 +141,9 @@ async function listGoalsFrom(
     }),
   ]);
   const byId = new Map(accounts.map((a) => [a.id, a]));
-  const asOf = now.toISOString().slice(0, 10);
+  // The person's day: whole months to a goal count from it (night round 11-06: at 7pm in Los
+  // Angeles, Jun 5 was 6 months off, not 7, and the trip needed $2,000 a month, not $1,714.29).
+  const asOf = await todayOf(userId, { client, now });
   const ordered = orderGoals(
     goals,
     parseGoalOrder((order?.value as { order?: unknown } | null)?.order),

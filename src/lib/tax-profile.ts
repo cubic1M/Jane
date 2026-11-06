@@ -15,6 +15,7 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { autopilotFor, type SectorAutopilot } from "@/lib/sector-autopilot";
 import { db as defaultClient } from "@/lib/db";
+import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { readPeople } from "@/lib/insurance/family-rules";
 import {
@@ -61,7 +62,8 @@ async function loadTaxFactsFrom(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<{ found: FoundFacts; stored: StoredTaxProfile | null }> {
   const db = scopedFor(userId, client);
-  const since = new Date(Date.parse(`${iso(now)}T00:00:00Z`) - TAX_PROFILE_LOOKBACK_DAYS * DAY_MS);
+  const today = await todayOf(userId, { client, now });
+  const since = new Date(Date.parse(`${today}T00:00:00Z`) - TAX_PROFILE_LOOKBACK_DAYS * DAY_MS);
   const [transactions, accounts, user, newBaby, stored, insurance] = await Promise.all([
     db.transactions.findMany({
       where: { pending: false, date: { gte: since } },
