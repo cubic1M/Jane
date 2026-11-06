@@ -72,34 +72,37 @@ describe("the gates, on real commits", () => {
     expect(judge(base).status).toBe(0);
   });
 
-  it("fails a protected file whose name git would quote", () => {
+  it("flags a protected file whose name git would quote, without failing", () => {
     const base = git("rev-parse", "HEAD");
     write(".claude/é.json", "{}\n");
     commit();
     const result = judge(base);
-    expect(result.status).toBe(1);
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("Protected files changed (a flag, not a block): 1");
     expect(result.stdout).toContain(".claude/é.json");
   });
 
-  it("fails a protected file in other capitals", () => {
+  it("flags a protected file in other capitals", () => {
     const base = git("rev-parse", "HEAD");
     write(".MCP.json", "{}\n");
     commit();
-    expect(judge(base).status).toBe(1);
+    expect(judge(base).stdout).toContain("Protected files changed (a flag, not a block): 1");
   });
 
-  it("fails a protected file with a name git would read as a pattern", () => {
+  it("flags a protected file with a name git would read as a pattern", () => {
     const base = git("rev-parse", "HEAD");
     write(".claude/:(glob)x*.json", "{}\n");
     commit();
-    expect(judge(base).status).toBe(1);
+    expect(judge(base).stdout).toContain("Protected files changed (a flag, not a block): 1");
   });
 
-  it("fails a change to what decides how many tests run", () => {
+  it("flags a change to what decides how many tests run", () => {
     const base = git("rev-parse", "HEAD");
     write("scripts/test-scope-core.mjs", 'export const testScope = () => ({ mode: "docs" });\n');
     commit();
-    expect(judge(base).status).toBe(1);
+    const result = judge(base);
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("scripts/test-scope-core.mjs");
   });
 
   describe("the suite's bypass switch", () => {
@@ -116,13 +119,13 @@ describe("the gates, on real commits", () => {
       expect(result.stdout).toContain("Sensitive files changed (a flag, not a block): 1");
     });
 
-    it("may not be turned back off", () => {
+    it("is flagged when turned back off", () => {
       write(file, set(true));
       const base = commit();
       write(file, set(false));
       commit();
       const result = judge(base);
-      expect(result.status).toBe(1);
+      expect(result.status).toBe(0);
       expect(result.stdout).toContain("went back to running with a bypass");
     });
   });
@@ -136,23 +139,23 @@ describe("the gates, on real commits", () => {
     expect(result.stdout).toContain("Sensitive files changed (a flag, not a block): 1");
   });
 
-  it("fails a baseline score set to null", () => {
+  it("flags a baseline score set to null", () => {
     const base = git("rev-parse", "HEAD");
     write("src/accuracy/baseline.json", JSON.stringify({ tuning: { bills: { recall: null } } }));
     commit();
     const result = judge(base);
-    expect(result.status).toBe(1);
+    expect(result.status).toBe(0);
     expect(result.stdout).toContain("went from 1 to null");
   });
 
-  it("fails a baseline that no longer reads as JSON", () => {
+  it("flags a baseline that no longer reads as JSON", () => {
     const base = git("rev-parse", "HEAD");
     write("src/accuracy/baseline.json", "not json");
     commit();
-    expect(judge(base).status).toBe(1);
+    expect(judge(base).stdout).toContain("Accuracy baselines dropped (a flag, not a block): 1");
   });
 
-  it("fails package.json's scripts changing, not its other parts", () => {
+  it("flags package.json's scripts changing, not its other parts", () => {
     const base = git("rev-parse", "HEAD");
     write("package.json", JSON.stringify({ version: "2", scripts: { test: "vitest run" } }));
     commit();
@@ -160,51 +163,8 @@ describe("the gates, on real commits", () => {
     write("package.json", JSON.stringify({ version: "2", scripts: { test: "true" } }));
     commit();
     const result = judge(base);
-    expect(result.status).toBe(1);
+    expect(result.status).toBe(0);
     expect(result.stdout).toContain("package.json: its scripts changed");
-  });
-
-  describe("a founder's approval", () => {
-    const founder = { FOUNDER_LOGINS: "founder" };
-    const approvalOf = (commit: string) => ({
-      reviews: [{ login: "founder", state: "APPROVED", commit }],
-    });
-
-    it("lets the exact commit through", () => {
-      const base = git("rev-parse", "HEAD");
-      write(".mcp.json", "{}\n");
-      const head = commit();
-      const result = judge(base, approvalOf(head), founder);
-      expect(result.status).toBe(0);
-      expect(result.stdout).toContain("approved by founder");
-    });
-
-    it("doesn't reach a later commit back-dated to before the approval", () => {
-      const base = git("rev-parse", "HEAD");
-      write(".mcp.json", "{}\n");
-      const approved = commit();
-      write(".mcp.json", '{ "mcpServers": { "added": {} } }\n');
-      const old = "2020-01-01T00:00:00Z";
-      commit({ GIT_AUTHOR_DATE: old, GIT_COMMITTER_DATE: old });
-      expect(git("show", "-s", "--format=%cI", "HEAD")).toContain("2020");
-      const result = judge(base, approvalOf(approved), founder);
-      expect(result.status).toBe(1);
-      expect(result.stdout).toContain("older commit");
-    });
-
-    it("judges the PR's own commit when it runs on GitHub's merge commit", () => {
-      const base = git("rev-parse", "HEAD");
-      git("checkout", "-qb", "lane");
-      write(".mcp.json", "{}\n");
-      const prHead = commit();
-      git("checkout", "-q", "main");
-      write("README.md", "main moved\n");
-      const newBase = commit();
-      git("merge", "-q", "--no-ff", "--no-edit", "lane");
-      expect(git("rev-parse", "HEAD^2")).toBe(prHead);
-      expect(judge(newBase, approvalOf(prHead), founder).status).toBe(0);
-      expect(judge(newBase, approvalOf(base), founder).status).toBe(1);
-    });
   });
 
   describe("weakened tests", () => {
@@ -248,7 +208,7 @@ describe("the gates, on real commits", () => {
       write(".claude/x\n::error::forged", "{}\n");
       commit();
       const result = judge(base, {}, { GITHUB_ACTIONS: "true" });
-      expect(result.status).toBe(1);
+      expect(result.status).toBe(0);
       const forged = result.stdout
         .split(/[\r\n]/)
         .filter((line) => line.trimStart().startsWith("::error::forged"));

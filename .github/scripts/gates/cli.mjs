@@ -5,7 +5,7 @@
 //   node cli.mjs --pr 123 --base <sha> --head <sha> [--comment]
 //   node cli.mjs --pr-json pr.json --base <sha> --head <sha>     (no GitHub: for a local run)
 //
-// Exits 1 when a gate fails. On GitHub it also writes the step summary, and sets `proof` when the
+// Every gate here flags rather than blocks (founder, 11-06). On GitHub it also writes the step summary, and sets `proof` when the
 // PR is a fix that proof.mjs must check.
 import { execFileSync } from "node:child_process";
 import { appendFileSync, readFileSync } from "node:fs";
@@ -14,7 +14,6 @@ import {
   BASELINE_FILES,
   baselineDrops,
   bypassTurnedBackOn,
-  founderApproval,
   fixMarking,
   isProtectedPath,
   isTestPath,
@@ -76,15 +75,6 @@ function loadPr() {
 
 const changedFiles = (base, head) =>
   parseNameStatus(git("diff", "-z", "--name-status", "-M", base, head));
-
-// The PR's own newest commit: the merge's second parent on GitHub, the commit itself in a local run.
-function prHeadSha(head) {
-  try {
-    return git("rev-parse", "--verify", "-q", `${head}^2`).trim();
-  } catch {
-    return git("rev-parse", head).trim();
-  }
-}
 
 // File names and test lines are the PR's words. One with a line break in it could start a workflow
 // command of its own in the log.
@@ -185,17 +175,6 @@ function main() {
   const { base, head } = args;
   const pr = loadPr();
   const changes = changedFiles(base, head);
-  const founders = (process.env.FOUNDER_LOGINS ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const approval = founderApproval({
-    reviews: pr.reviews ?? [],
-    founders,
-    author: pr.author,
-    headSha: prHeadSha(head),
-  });
-
   const drops = baselineProblems(base, head);
   const protectedFiles = protectedProblems(base, head, changes);
   const watched = changes.filter((c) => isWatchedPath(c.file)).map((c) => oneLine(c.file));
@@ -207,25 +186,17 @@ function main() {
   }));
   const fix = fixMarking(pr);
 
-  const failures = [];
   const lines = ["## Gates", ""];
-  const judged = (title, items, ok) => {
-    if (!items.length) {
-      lines.push(`- ${title}: pass`);
-      return;
+  // Founder's call (11-06): these flag a PR for a look instead of blocking it on an approval.
+  const flagged = (title, items) => {
+    lines.push(`- ${title} (a flag, not a block): ${items.length}`);
+    for (const item of items) {
+      lines.push(`  - ${item}`);
+      annotate("warning", `${title}: ${item}`);
     }
-    lines.push(`- ${title}: ${ok ? `allowed (${approval.why})` : "**FAIL**"}`);
-    for (const item of items) lines.push(`  - ${item}`);
-    if (!ok) failures.push(title);
   };
-  judged("Accuracy baselines only rise", drops, approval.ok);
-  judged("Protected files changed", protectedFiles.map(oneLine), approval.ok);
-  if ((drops.length || protectedFiles.length) && !approval.ok) {
-    lines.push(
-      `  - This needs a founder to approve this commit on GitHub: ${approval.why}.`,
-      "  - Leave the PR open and tell a founder. Then re-run this check; a new push needs a new approval.",
-    );
-  }
+  flagged("Accuracy baselines dropped", drops);
+  flagged("Protected files changed", protectedFiles.map(oneLine));
   lines.push(`- Fix PR: ${fix.isFix ? "yes" : "no"} (${fix.why})`);
   lines.push(`- Tests weakened (a flag, not a block): ${flags.length}`);
   for (const f of flags) {
@@ -249,10 +220,6 @@ function main() {
     }
   }
   output("proof", fix.isFix ? "true" : "false");
-  if (failures.length) {
-    annotate("error", `Gate failed: ${failures.join(", ")}`);
-    process.exit(1);
-  }
 }
 
 main();
