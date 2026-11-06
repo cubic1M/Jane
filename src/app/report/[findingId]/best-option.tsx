@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Comparison, Scored } from "@/planning/compare";
 import { DecisionButtons } from "./decision-buttons";
+import { apyDisclosures, apyHeadline } from "@/lib/apy-disclosure";
 import { dayLabel } from "@/lib/day-label";
 
 // The best option for this person, picked by Jane and already selected, with the runners
@@ -16,7 +17,8 @@ const money = (cents: number) =>
   });
 
 function priceOf(s: Scored): string {
-  if (s.option.apyBps !== null) return `${(s.option.apyBps / 100).toFixed(2)}% a year`;
+  // A savings rate is always an annual percentage yield, with the day it was checked (Reg DD).
+  if (s.option.apyBps !== null) return apyHeadline(s.option.apyBps, s.option.checkedAt);
   return s.option.monthlyCents === null ? "" : `${money(s.option.monthlyCents)} a month`;
 }
 
@@ -71,6 +73,11 @@ function OptionRow({
         </span>
         {option.includes && (
           <span className="text-sm text-zinc-600 dark:text-zinc-400">{option.includes}</span>
+        )}
+        {option.apyBps !== null && (
+          <span className="text-xs text-zinc-600 dark:text-zinc-400">
+            {apyDisclosures(option.minimumBalanceCents).join(" ")}
+          </span>
         )}
         {scored.notes.length > 0 && (
           <span className="text-sm text-zinc-600 dark:text-zinc-400">

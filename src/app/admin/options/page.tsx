@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { OPTION_STALE_DAYS } from "@/config/compare";
+import { OPTION_STALE_DAYS, SAVINGS_APY_STALE_DAYS } from "@/config/compare";
 import { db } from "@/lib/db";
 import { formatCents } from "@/lib/money";
 import { requireAdmin } from "@/lib/session";
@@ -23,13 +23,16 @@ async function Options() {
   const now = new Date();
   const today = now.toISOString().slice(0, 10);
   const staleBefore = new Date(now.getTime() - OPTION_STALE_DAYS * 86_400_000);
+  const savingsStaleBefore = new Date(now.getTime() - SAVINGS_APY_STALE_DAYS * 86_400_000);
   const options = await systemDb(
     "Admin page: works across people, behind ADMIN_EMAILS and two-factor",
   ).switchOption.findMany({
     orderBy: [{ kind: "asc" }, { category: "asc" }, { name: "asc" }],
   });
   const needsWork = options.filter(
-    (o) => !o.demo && (!o.reviewedAt || o.checkedAt < staleBefore),
+    (o) =>
+      !o.demo &&
+      (!o.reviewedAt || o.checkedAt < (o.kind === "savings" ? savingsStaleBefore : staleBefore)),
   ).length;
 
   return (
@@ -40,8 +43,8 @@ async function Options() {
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           What Jane compares bills, subscriptions and idle cash against, to pick the best one for
           each person. Jane only uses options you checked on the provider&apos;s own page in the
-          last {OPTION_STALE_DAYS} days. Never insurance or investments.{" "}
-          {needsWork > 0 && <strong>{needsWork} need checking.</strong>}
+          last {OPTION_STALE_DAYS} days, or {SAVINGS_APY_STALE_DAYS} for a savings rate. Never
+          insurance or investments. {needsWork > 0 && <strong>{needsWork} need checking.</strong>}
         </p>
       </div>
 
@@ -62,7 +65,8 @@ async function Options() {
             ) : (
               <ul className="flex flex-col divide-y divide-zinc-200 rounded-xl border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
                 {rows.map((o) => {
-                  const stale = o.checkedAt < staleBefore;
+                  const stale =
+                    o.checkedAt < (o.kind === "savings" ? savingsStaleBefore : staleBefore);
                   return (
                     <li
                       key={o.id}

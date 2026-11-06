@@ -58,11 +58,12 @@ const home = (key: CashHome["key"]) => CASH_HOMES.find((h) => h.key === key)!;
 // Only homes the emergency fund can be reached from in days.
 export const canHoldEmergency = (h: CashHome) => h.reachDays <= EMERGENCY_MAX_REACH_DAYS;
 
-// The emergency fund's home: in reach within days, and insured, the best rate of those.
+// The emergency fund's home: in reach within days, and FDIC insured or government-backed, the
+// best rate of those.
 export function emergencyHome(): CashHome {
-  return CASH_HOMES.filter((h) => canHoldEmergency(h) && h.insured).sort(
-    (a, b) => b.rateBps - a.rateBps,
-  )[0];
+  return CASH_HOMES.filter(
+    (h) => canHoldEmergency(h) && (h.fdicInsured || h.governmentBacked),
+  ).sort((a, b) => b.rateBps - a.rateBps)[0];
 }
 
 export function cashPlan(input: {
