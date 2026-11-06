@@ -128,7 +128,7 @@ export const DIY_KITS: Partial<Record<ActionType, DiyKitConfig>> = {
     ],
     message: "none",
     summary:
-      "You get quotes with the same coverage and switch only if one is cheaper: Jane gives you the steps.",
+      "You compare quotes for the same coverage and keep your current policy until a new one starts: Jane gives you the steps.",
   },
   review_cash_flow: {
     link: "support",

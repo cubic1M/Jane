@@ -125,7 +125,7 @@ function whatChanges(type: FindingType, evidence: Json): string {
     case "idle_cash":
       return "We help you open a high-yield savings account and move the extra cash there.";
     case "insurance_reshop":
-      return `We get quotes with the same coverage as your ${merchant} policy and show you any cheaper option before anything changes.`;
+      return `We get quotes with the same coverage as your ${merchant} policy and show them to you side by side before anything changes.`;
     case "card_interest":
       // Spec step 282: a loan option picked from the options card. Never an application.
       if (evidence.loanPick === true) {
