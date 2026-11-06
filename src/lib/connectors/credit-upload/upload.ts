@@ -43,6 +43,12 @@ export class CreditUploadError extends Error {
 }
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+// A YYYY-MM-DD day that is on the calendar: "2025-13-01" has no age, so it must never pass as fresh.
+const realDay = (value: unknown): value is string => {
+  if (typeof value !== "string" || !ISO_DAY.test(value)) return false;
+  const time = Date.parse(`${value}T00:00:00Z`);
+  return !Number.isNaN(time) && new Date(time).toISOString().slice(0, 10) === value;
+};
 const BUREAUS = new Set(["equifax", "experian", "transunion"]);
 const count = (value: unknown, field: string, max = 1000): number => {
   if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0 || value > max) {
@@ -51,21 +57,22 @@ const count = (value: unknown, field: string, max = 1000): number => {
   return value;
 };
 const cents = (value: unknown, field: string) => count(value, field, 2_000_000_000);
-// A creditor is a company: no digits that could be an account number, no @, a short name.
+// A creditor is a company: no digits that could be an account number (4 or more in all, however
+// they're grouped: "123-456-789" is one), no @, a short name.
 const creditorName = (value: unknown): string => {
   if (typeof value !== "string") throw new CreditUploadError("collections.creditor");
   const name = value.trim().replace(/\s+/g, " ").slice(0, 80);
-  if (!name || /\d{4,}|@/.test(name)) throw new CreditUploadError("collections.creditor");
+  if (!name || name.replace(/\D/g, "").length >= 4 || name.includes("@")) {
+    throw new CreditUploadError("collections.creditor");
+  }
   return name;
 };
 
 // The only way a report gets in: exactly these fields, checked, anything else dropped.
-export function validateCreditUpload(raw: unknown): CreditUpload {
+export function validateCreditUpload(raw: unknown, { today }: { today: string }): CreditUpload {
   const r = (raw ?? {}) as Record<string, unknown>;
   if (typeof r.bureau !== "string" || !BUREAUS.has(r.bureau)) throw new CreditUploadError("bureau");
-  if (typeof r.reportDate !== "string" || !ISO_DAY.test(r.reportDate)) {
-    throw new CreditUploadError("reportDate");
-  }
+  if (!realDay(r.reportDate) || r.reportDate > today) throw new CreditUploadError("reportDate");
   if (!Array.isArray(r.openCards) || r.openCards.length > 100)
     throw new CreditUploadError("openCards");
   if (!Array.isArray(r.collections) || r.collections.length > 100) {
@@ -116,7 +123,7 @@ export function validateScore(raw: unknown, { today }: { today: string }): Score
   ) {
     throw new CreditUploadError("score");
   }
-  if (typeof r.asOf !== "string" || !ISO_DAY.test(r.asOf) || r.asOf > today) {
+  if (!realDay(r.asOf) || r.asOf > today) {
     throw new CreditUploadError("score date");
   }
   const age = (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${r.asOf}T00:00:00Z`)) / 86_400_000;
@@ -158,7 +165,7 @@ export async function saveCreditUpload(
   const connector = await usableConnector(userId, creditUpload.id, { client });
   if (!(await consentCovers(userId, connector, { client }))) throw new CreditUploadError("consent");
   const today = now.toISOString().slice(0, 10);
-  const upload = validateCreditUpload(raw.report);
+  const upload = validateCreditUpload(raw.report, { today });
   const score = validateScore(raw.score, { today });
   const { low, high, label } = CREDIT_SCORE_MODELS[score.model];
   const row = await scopedFor(userId, client).creditReports.create({
