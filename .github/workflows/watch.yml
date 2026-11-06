@@ -22,7 +22,7 @@ concurrency:
 jobs:
   watch:
     if: vars.OPS_WATCH == '1'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 20
     environment: ops-actor
     steps:

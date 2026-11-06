@@ -29,7 +29,7 @@ jobs:
   # at the end is the one name the branch ruleset requires, and it fails if any of them did.
   static:
     name: Lint, format and typecheck
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
@@ -57,7 +57,7 @@ jobs:
   # on most PRs. The jobs below read the answer.
   scope:
     name: Test scope
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     outputs:
       mode: ${{ steps.scope.outputs.mode }}
       shards: ${{ steps.scope.outputs.shards }}
@@ -90,7 +90,7 @@ jobs:
   # history's trees and not its files.
   migrations:
     name: Migration safety
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -105,7 +105,7 @@ jobs:
     name: Unit tests (${{ matrix.shard }}/${{ needs.scope.outputs.total }})
     needs: [scope]
     if: needs.scope.outputs.mode != 'docs'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
@@ -117,7 +117,7 @@ jobs:
           POSTGRES_DB: test
           POSTGRES_HOST_AUTH_METHOD: trust
         ports:
-          - 5432:5432
+          - 5432
         # The database lives in memory: the tests' writes never wait on the runner's disk.
         options: >-
           --tmpfs /var/lib/postgresql/data
@@ -125,9 +125,13 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
-    env:
-      TEST_DATABASE_URL: postgresql://postgres@localhost:5432/test
     steps:
+      # Docker picks the database port (and the app port for end-to-end runs), so jobs that
+      # share one machine, as on the team runner, never clash.
+      - name: Point at this job's database
+        run: |
+          port=${{ job.services.postgres.ports['5432'] }}
+          echo "TEST_DATABASE_URL=postgresql://postgres@localhost:$port/test" >> "$GITHUB_ENV"
       # Two commits: the changed-tests run compares the test merge with its first parent.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -198,7 +202,7 @@ jobs:
   # (docs/security/access-proof.md). Alone because it writes for every person and table it finds.
   access-proof:
     name: Access proof
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     services:
       postgres:
         image: postgres:16
@@ -206,16 +210,20 @@ jobs:
           POSTGRES_DB: test
           POSTGRES_HOST_AUTH_METHOD: trust
         ports:
-          - 5432:5432
+          - 5432
         options: >-
           --tmpfs /var/lib/postgresql/data
           --health-cmd "pg_isready -U postgres"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
-    env:
-      TEST_DATABASE_URL: postgresql://postgres@localhost:5432/test
     steps:
+      # Docker picks the database port (and the app port for end-to-end runs), so jobs that
+      # share one machine, as on the team runner, never clash.
+      - name: Point at this job's database
+        run: |
+          port=${{ job.services.postgres.ports['5432'] }}
+          echo "TEST_DATABASE_URL=postgresql://postgres@localhost:$port/test" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
@@ -255,7 +263,7 @@ jobs:
     if: >-
       github.event_name == 'pull_request' ||
       (github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main')
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 8
     permissions:
       contents: read
@@ -332,7 +340,7 @@ jobs:
 
   checks:
     name: Lint, typecheck and unit tests
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     needs: [scope, static, unit, access-proof, migrations, gates]
     if: always()
     steps:
@@ -355,7 +363,7 @@ jobs:
     name: End-to-end build
     needs: [scope]
     if: needs.scope.outputs.mode != 'docs'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     # How much to test (docs/ci.md). Every PR push: the tests tagged @critical, on a computer. Main,
     # whatever started the run (the merge train starts main's runs with workflow_dispatch, so
     # "push" alone skipped them; 10-27 a dock change reached main untested): every test on a
@@ -421,7 +429,7 @@ jobs:
     name: End-to-end tests (${{ matrix.shard }}/${{ needs.e2e-build.outputs.total }})
     # Each shard serves the one build; with no page to compile, it costs only its minute of setup.
     needs: [scope, e2e-build]
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
@@ -433,7 +441,7 @@ jobs:
           POSTGRES_DB: e2e
           POSTGRES_HOST_AUTH_METHOD: trust
         ports:
-          - 5432:5432
+          - 5432
         # The database lives in memory: the tests' writes never wait on the runner's disk.
         options: >-
           --tmpfs /var/lib/postgresql/data
@@ -442,10 +450,16 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
-      E2E_DATABASE_URL: postgresql://postgres@localhost:5432/e2e
       # playwright.config.ts: `next start` on the build, with what the tests need turned on.
       E2E_PROD: "1"
     steps:
+      # Docker picks the database port (and the app port for end-to-end runs), so jobs that
+      # share one machine, as on the team runner, never clash.
+      - name: Point at this job's database
+        run: |
+          port=${{ job.services.postgres.ports['5432'] }}
+          echo "E2E_DATABASE_URL=postgresql://postgres@localhost:$port/e2e" >> "$GITHUB_ENV"
+          echo "E2E_PORT=$(python3 -c 'import socket; s = socket.socket(); s.bind(("", 0)); print(s.getsockname()[1])')" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
@@ -505,7 +519,7 @@ jobs:
   # shard passed, so auto-merge waits for the shards by itself.
   e2e-result:
     name: End-to-end tests
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     needs: [scope, e2e-build, e2e]
     if: always()
     steps:
@@ -518,7 +532,7 @@ jobs:
 
   dependency-audit:
     name: Dependency audit
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
@@ -530,7 +544,7 @@ jobs:
 
   secret-scan:
     name: Secret scan
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
