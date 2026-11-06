@@ -78,5 +78,13 @@
   "when": "merged",
   "since": "2026-11-06T23:13:18.455Z",
   "expires": "2026-11-09T23:13:18.455Z"
+ },
+ {
+  "on": 1578,
+  "lane": "lane:connectors",
+  "task": "claude/tax-form-upload",
+  "when": "merged",
+  "since": "2026-11-06T23:31:05.663Z",
+  "expires": "2026-11-09T23:31:05.663Z"
  }
 ]
