@@ -107,6 +107,27 @@ describe("document actions (spec step 68)", () => {
     expect(Buffer.from(options!.file!.bytes).toString()).toBe(PDF);
   });
 
+  // Debugger 11-05: with nothing read from the file, a reading from the person's payments said
+  // "Jane read the policy in it" over "No facts yet".
+  it("doesn't say it read a policy when nothing came from the file", async () => {
+    vi.mocked(addDocument).mockResolvedValue({
+      ok: true,
+      id: "d1",
+      read: "you",
+      summaryRejected: false,
+    });
+    vi.mocked(readPolicyDocument).mockResolvedValueOnce({
+      id: "r1",
+      sources: { carrier: "payments", premium: "payments" },
+    } as never);
+
+    expect(await uploadDocument(null, uploadForm())).toEqual({
+      ok: true,
+      message:
+        "Saved. Jane couldn't read the details in it, so it started from your payments: check it on Insurance or in the chat, and it's added.",
+    });
+  });
+
   it("takes no real document on an account with only the demo bank, which would get sample advice", async () => {
     vi.mocked(adviceMode).mockResolvedValueOnce(true);
     vi.mocked(addDocument).mockClear();

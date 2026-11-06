@@ -114,10 +114,16 @@ export async function uploadDocument(_previous: FormState, formData: FormData): 
       return null;
     });
     if (reading) {
+      // Only what came from the file is "read": a reading can start from the person's payments to
+      // the same insurer when Claude couldn't read it (debugger 11-05: "Jane read the policy in it"
+      // over "No facts yet").
+      const fromFile =
+        result.read === "claude" || Object.values(reading.sources ?? {}).includes("document");
       return {
         ok: true,
-        message:
-          "Saved. Jane read the policy in it: confirm what Jane read on Insurance or in the chat, and it's added.",
+        message: fromFile
+          ? "Saved. Jane read the policy in it: confirm what Jane read on Insurance or in the chat, and it's added."
+          : "Saved. Jane couldn't read the details in it, so it started from your payments: check it on Insurance or in the chat, and it's added.",
       };
     }
   }
