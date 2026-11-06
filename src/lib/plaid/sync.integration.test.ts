@@ -472,6 +472,109 @@ describe.runIf(url)("syncItem against a real database", () => {
     transactionsRecurringGet.mockReset();
   });
 
+  it("stores a student loan's plan and status, and a loan's payoff and term", async () => {
+    const item = await client.plaidItem.create({
+      data: {
+        userId,
+        plaidItemId: `item-student-${suffix}`,
+        accessTokenEncrypted: encrypt("access-sandbox-student"),
+        institutionName: "First Platypus Bank",
+        liabilities: true,
+      },
+    });
+    const student = plaidAccount({
+      account_id: `${suffix}-student`,
+      name: "Federal loan",
+      type: "loan",
+      subtype: "student",
+      balances: { current: 21000, available: null, limit: null, iso_currency_code: "USD" },
+    } as never);
+    const auto = plaidAccount({
+      account_id: `${suffix}-auto`,
+      name: "Car loan",
+      type: "loan",
+      subtype: "auto",
+      balances: { current: 18000, available: null, limit: null, iso_currency_code: "USD" },
+    } as never);
+    transactionsSync.mockResolvedValue(syncPage({ accounts: [], next_cursor: "student-1" }));
+    transactionsRecurringGet.mockResolvedValue({
+      data: { outflow_streams: [], inflow_streams: [] },
+    });
+    liabilitiesGet.mockResolvedValueOnce({
+      data: {
+        accounts: [student, auto],
+        liabilities: {
+          credit: [],
+          mortgage: [],
+          student: [
+            {
+              account_id: `${suffix}-student`,
+              interest_rate_percentage: 5.5,
+              minimum_payment_amount: 230,
+              outstanding_interest_amount: 412.5,
+              loan_status: { end_date: "2027-01-31", type: "forbearance" },
+              repayment_plan: { description: "Repayment Assistance Plan", type: "rap" },
+              pslf_status: { payments_made: 40 },
+            },
+          ],
+          loan: [
+            {
+              account_id: `${suffix}-auto`,
+              interest_rate: { percentage: 9.9, type: "fixed" },
+              principal_balance: 17950,
+              payoff_amount: 18010.25,
+              loan_term_months: 60,
+              payment_count: 12,
+            },
+          ],
+        },
+      },
+    });
+    await syncItem(item.id, { client, api, now: NOW });
+    const rows = await client.liability.findMany({
+      where: { userId, account: { itemId: item.id } },
+      select: {
+        kind: true,
+        repaymentPlan: true,
+        loanStatus: true,
+        loanStatusEndDate: true,
+        outstandingInterestCents: true,
+        principalBalanceCents: true,
+        payoffAmountCents: true,
+        loanTermMonths: true,
+        paymentCount: true,
+      },
+      orderBy: { kind: "asc" },
+    });
+    expect(rows).toEqual([
+      {
+        kind: "loan",
+        repaymentPlan: null,
+        loanStatus: null,
+        loanStatusEndDate: null,
+        outstandingInterestCents: null,
+        principalBalanceCents: 1_795_000,
+        payoffAmountCents: 1_801_025,
+        loanTermMonths: 60,
+        paymentCount: 12,
+      },
+      {
+        kind: "student",
+        // A plan Plaid has no name for is unknown, never guessed.
+        repaymentPlan: "unknown",
+        loanStatus: "forbearance",
+        loanStatusEndDate: new Date("2027-01-31T00:00:00Z"),
+        outstandingInterestCents: 41_250,
+        principalBalanceCents: null,
+        payoffAmountCents: null,
+        loanTermMonths: null,
+        paymentCount: null,
+      },
+    ]);
+    transactionsSync.mockReset();
+    transactionsRecurringGet.mockReset();
+  });
+
   it("doesn't read a card or loan in another currency as dollars", async () => {
     const cadItem = await client.plaidItem.create({
       data: {

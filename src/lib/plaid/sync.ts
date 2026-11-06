@@ -356,6 +356,14 @@ async function saveLiabilities(
           hasPrepaymentPenalty: l.hasPrepaymentPenalty,
           lastStatementIssueDate: day(l.lastStatementIssueDate),
           lastStatementBalanceCents: l.lastStatementBalanceCents,
+          repaymentPlan: l.repaymentPlan,
+          loanStatus: l.loanStatus,
+          loanStatusEndDate: day(l.loanStatusEndDate),
+          outstandingInterestCents: l.outstandingInterestCents,
+          principalBalanceCents: l.principalBalanceCents,
+          payoffAmountCents: l.payoffAmountCents,
+          loanTermMonths: l.loanTermMonths,
+          paymentCount: l.paymentCount,
         };
         await db.liabilities.upsert({
           where: { accountId },
