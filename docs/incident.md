@@ -54,6 +54,7 @@ this on the real project yet, so time it the first time you practise.
 | `KILL_CLAUDE` | Every call to Claude. Typed chat falls back to the rules' answers, which are much thinner | The rest of the app | Test |
 | `KILL_UPLOADS` | Statement, positions and document uploads. People are told uploads are paused | Everything already uploaded | Test |
 | `KILL_EMAIL` | All email, **sign-in links included**. Google sign-in still works | Everything else. Jobs that send email log a failure | Test |
+| `KILL_CONNECTORS` | Every connector read, prefill and action (`src/lib/connectors/`), sandbox included. Queued actions wait and are refused when they come up | Cancelling an action, revoking consent, the rest of the app | Test |
 
 ### Already there
 
