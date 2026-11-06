@@ -1,3 +1,4 @@
+import { SHARED_MAIL_DOMAINS, SHARED_SUFFIXES } from "@/config/agent";
 import { sendEmail } from "@/lib/email";
 import { isSampleTrialUser, isStatementTrialUser } from "@/lib/trial-ids";
 
@@ -32,17 +33,34 @@ export function replyAddress(token: string): string {
 
 // The domain an address is at, from "Name <someone@help.example.com>" or a bare address, as its
 // last two labels (help.example.com and example.com are the same company). Null if none.
-function companyDomain(address: string): string | null {
-  const match = /@([a-z0-9.-]+\.[a-z]{2,})>?\s*$/i.exec(address.trim());
-  return match ? match[1].toLowerCase().split(".").slice(-2).join(".") : null;
+// The one address in a From line ("Acme <support@acme.example>"), or null for none or several.
+function onlyAddress(line: string): string | null {
+  const found = (line.match(/[^\s<>(),"']+@[a-z0-9.-]+\.[a-z]{2,}/gi) ?? []).map((a) =>
+    a.toLowerCase(),
+  );
+  const [first] = found;
+  return first !== undefined && new Set(found).size === 1 ? first : null;
+}
+
+// Who a company is, by its address: the domain it owns (a subdomain counts as it), or the whole
+// address where the domain is shared.
+function companyOf(address: string): string | null {
+  const one = onlyAddress(address);
+  if (!one) return null;
+  const domain = one.slice(one.indexOf("@") + 1);
+  if (SHARED_MAIL_DOMAINS.includes(domain)) return one;
+  const parts = domain.split(".");
+  const keep = SHARED_SUFFIXES.includes(parts.slice(-2).join(".")) ? 3 : 2;
+  return parts.length < keep ? null : parts.slice(-keep).join(".");
 }
 
 // Whether a reply comes from the company Jane wrote to: the same domain as the address it sent
-// to. The token in the reply address is in every email to them, so anyone in that thread holds
-// it; it finds the action, and this decides whether the reply is acted on.
+// to, or the same address where that domain is anyone's. The token in the reply address is in
+// every email to them, so anyone in that thread holds it; it finds the action, and this decides
+// whether the reply is acted on. The From line itself is only as true as the mail provider says.
 export function fromTheCompany(from: string, sentTo: string): boolean {
-  const domain = companyDomain(from);
-  return domain !== null && domain === companyDomain(sentTo);
+  const company = companyOf(sentTo);
+  return company !== null && companyOf(from) === company;
 }
 
 // The token in a reply address, or null if it isn't one of ours.
