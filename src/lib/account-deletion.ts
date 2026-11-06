@@ -70,6 +70,8 @@ export async function deleteAllData(
             OR: [
               { key: { endsWith: `:email:${user.email.toLowerCase()}` } },
               { key: { endsWith: `:${userId}` } },
+              // A tap on one of their messages, "chatTapInFlight:<id>:<message>" (debugger 11-05).
+              { key: { contains: `:${userId}:` } },
             ],
           },
         });
