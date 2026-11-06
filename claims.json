@@ -3,5 +3,10 @@
   "task": "federal-refi-idr",
   "lane": "lane:connectors",
   "expires": "2026-11-06T19:51:19.000Z"
+ },
+ {
+  "task": "card-transfer-maths",
+  "lane": "lane:connectors",
+  "expires": "2026-11-06T20:03:38.704Z"
  }
 ]
