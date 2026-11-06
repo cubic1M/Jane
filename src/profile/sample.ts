@@ -223,6 +223,9 @@ export function inputFor(person: string, told: ProfileInput["told"] = {}): Profi
       hasPmi: l.hasPmi,
       payoffDate: l.payoffDate,
       minimumCents: l.minimumPaymentCents,
+      description: l.description,
+      repaymentPlan: l.repaymentPlan,
+      loanStatus: l.loanStatus,
     })),
   };
   // Phase AW: their practice portfolio starts by itself at the first scan

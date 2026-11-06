@@ -137,6 +137,46 @@ export const INCOME_DRIVEN_PLAN_NAMES: readonly string[] = [
   "unknown",
 ];
 
+// Federal autopay (connectors roadmap round 15, loans 3.1): the autopay rate cut on Direct Loans
+// went from 0.25% to 1% on July 1, 2026, through June 30, 2028, for anyone enrolled by 11:59 p.m.
+// Eastern on December 31, 2026 (extended from September 30; servicer pages and news reports, the
+// studentaid.gov pages didn't load: re-check there before it reaches anyone). Forbearance or
+// deferment ends the cut.
+export const FED_AUTOPAY = {
+  // The last day to enrol, Eastern time, and the moment after it.
+  lastDay: "2026-12-31",
+  deadline: "2027-01-01T04:59:00Z",
+  cutBps: 100,
+  until: "2028-06-30",
+  // "now" once it's this close.
+  urgentDays: 30,
+  // Plaid's loan statuses that end the cut or mean nothing is being repaid yet.
+  stoppedStatuses: [
+    "forbearance",
+    "deferment",
+    "delinquent",
+    "charged off",
+    "claim",
+    "in school",
+    "in grace",
+    "paid in full",
+    "discharged",
+    "consolidated",
+    "transferred",
+    "cancelled",
+    "refunded",
+    "pending idr",
+  ],
+  // Plans only federal loans have: a loan on one is federal.
+  federalPlans: [
+    "income-based repayment",
+    "income-contingent repayment",
+    "pay as you earn",
+    "revised pay as you earn",
+    "saving on a valuable education",
+  ],
+} as const;
+
 // What a federal loan has that a private refinance gives up for good.
 export const FEDERAL_PROTECTIONS = [
   "Public Service Loan Forgiveness and income-driven forgiveness",

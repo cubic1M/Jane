@@ -96,6 +96,11 @@ export type ProfileLiability = {
   payoffDate: string | null;
   // What's due each month as the bank says (a card's minimum); absent when not loaded.
   minimumCents?: number | null;
+  // Student loans (Plaid Liabilities): the loan's name ("Direct Subsidized"), its repayment plan
+  // and status as Plaid names them; absent when not loaded.
+  description?: string | null;
+  repaymentPlan?: string | null;
+  loanStatus?: string | null;
 };
 // What the person told Jane: corrections on the profile and answers in other places.
 export type Told = Partial<Record<FactKey, string | number | boolean>>;
