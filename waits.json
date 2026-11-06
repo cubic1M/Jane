@@ -30,5 +30,13 @@
   "when": "merged",
   "since": "2026-11-06T21:45:48.044Z",
   "expires": "2026-11-09T21:45:48.044Z"
+ },
+ {
+  "on": 1564,
+  "lane": "lane:connectors",
+  "task": "claude/tax-config-obbba",
+  "when": "merged",
+  "since": "2026-11-06T21:51:10.633Z",
+  "expires": "2026-11-09T21:51:10.633Z"
  }
 ]
