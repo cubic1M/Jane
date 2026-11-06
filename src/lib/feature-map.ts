@@ -13,6 +13,7 @@ import { BORROWING_POWER_DETECTORS } from "@/detectors/borrowing-power";
 import { CONTROLLER_DETECTORS } from "@/detectors/controller";
 import { COVER_GAP_DETECTORS } from "@/detectors/cover-gaps";
 import { DEBT_DETECTORS } from "@/detectors/debt";
+import { STUDENT_AID_DETECTORS } from "@/detectors/student-aid";
 import { FAMILY_CREDIT_DETECTORS } from "@/detectors/family-credit";
 import { FIGURES_DETECTORS } from "@/detectors/figures";
 import { FIT_DETECTORS } from "@/detectors/fit";
@@ -55,7 +56,7 @@ export const DETECTOR_FAMILIES: readonly { key: FamilyKey; detectors: readonly D
   { key: "life", detectors: [...LIFE_DETECTORS, ...LIFE_FACT_DETECTORS] },
   { key: "insurance", detectors: INSURANCE_DETECTORS },
   { key: "coverGaps", detectors: COVER_GAP_DETECTORS },
-  { key: "debt", detectors: DEBT_DETECTORS },
+  { key: "debt", detectors: [...DEBT_DETECTORS, ...STUDENT_AID_DETECTORS] },
   { key: "fit", detectors: FIT_DETECTORS },
   { key: "spending", detectors: SPENDING_DETECTORS },
   { key: "renting", detectors: RENTING_DETECTORS },
