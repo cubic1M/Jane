@@ -21,6 +21,8 @@ import { CONNECTOR_HOLD_MINUTES } from "@/config/connectors";
 import { KILL_SWITCH_VARS } from "@/config/kill-switches";
 import { db } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { CONTROLLER_STEPS } from "@/config/controller";
+import { runController } from "@/lib/controller";
 import { systemDb } from "@/lib/system-db";
 import { realPerson, removePeople, trialPerson } from "../__fixtures__/people";
 import { grantConsent } from "../consent";
@@ -135,6 +137,45 @@ describe.runIf(url)('"Jane prepares, you pay"', () => {
       note: "Paid: seen in your account on 2026-11-19.",
     });
     expect(await settleManualPayments(userId, { now: LATER })).toBe(0);
+  });
+
+  it("is settled by the nightly run's money step, only while connectors are on", async () => {
+    flags.real.manual_bill_pay = true;
+    const { userId, accountId } = await withChecking();
+    await grantConsent(userId, "manual_bill_pay", ["prefill_payments"], { now: NOW });
+    const planned = await planAction(userId, "manual_bill_pay", bill(accountId), {
+      idempotencyKey: crypto.randomUUID(),
+      now: NOW,
+    });
+    await answerAction(
+      userId,
+      planned.id,
+      { yes: true, amountCents: 8412, fingerprint: planned.fingerprint },
+      { now: NOW },
+    );
+    await executeAction(userId, planned.id, { now: LATER });
+    await bankLine(userId, accountId, "2026-11-18", 8412, "CON EDISON PAYMENT");
+    // Every other step stands still: only the money step runs for real.
+    const others = Object.fromEntries(
+      CONTROLLER_STEPS.filter((s) => s !== "money").map((s) => [
+        s,
+        async () => ({ did: "skipped", changed: 0 }),
+      ]),
+    );
+    vi.stubEnv("CONNECTORS", "");
+    const off = await runController(userId, {
+      now: new Date("2026-11-19T12:00:00Z"),
+      steps: others,
+    });
+    expect(off.find((l) => l.step === "money")?.did).toBe("Nothing to move.");
+    vi.stubEnv("CONNECTORS", "1");
+    const on = await runController(userId, {
+      now: new Date("2026-11-20T12:00:00Z"),
+      steps: others,
+    });
+    expect(on.find((l) => l.step === "money")?.did).toBe("Saw 1 bill you paid go through.");
+    const row = await system().connectorAction.findUniqueOrThrow({ where: { id: planned.id } });
+    expect(row.status).toBe("succeeded");
   });
 
   it("doesn't suggest paying by hand what autopay already pays", async () => {

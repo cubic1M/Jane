@@ -160,4 +160,5 @@ check the person's own data.
   business days), that names the biller. An amount-only match stays handed off with "Looks paid
   on ..., check it's this bill". A bank line settles one payment at most, ever: it's claimed in
   `connector_webhook_events`. A match moves the action from `handed_off` to `succeeded` through
-  the same door a partner's webhook uses. Not yet called by a scheduled job.
+  the same door a partner's webhook uses. The nightly controller's money step
+  (`src/lib/controller.ts`) runs it while `CONNECTORS=1`.
