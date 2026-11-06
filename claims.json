@@ -1,7 +1,7 @@
 [
  {
-  "task": "retirement-all-clear",
-  "lane": "lane:chat-refusals",
-  "expires": "2026-11-06T10:37:06.461Z"
+  "task": "federal-refi-idr",
+  "lane": "lane:connectors",
+  "expires": "2026-11-06T19:51:19.000Z"
  }
 ]
