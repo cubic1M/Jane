@@ -13,6 +13,7 @@ import { BORROWING_POWER_DETECTORS } from "@/detectors/borrowing-power";
 import { CONTROLLER_DETECTORS } from "@/detectors/controller";
 import { COVER_GAP_DETECTORS } from "@/detectors/cover-gaps";
 import { DEBT_DETECTORS } from "@/detectors/debt";
+import { EFTPS_DETECTORS } from "@/detectors/eftps";
 import { STUDENT_AID_DETECTORS } from "@/detectors/student-aid";
 import { FAMILY_CREDIT_DETECTORS } from "@/detectors/family-credit";
 import { FIGURES_DETECTORS } from "@/detectors/figures";
@@ -62,7 +63,7 @@ export const DETECTOR_FAMILIES: readonly { key: FamilyKey; detectors: readonly D
   { key: "renting", detectors: RENTING_DETECTORS },
   { key: "borrowing", detectors: BORROWING_POWER_DETECTORS },
   { key: "familyCredit", detectors: FAMILY_CREDIT_DETECTORS },
-  { key: "taxes", detectors: [...TAX_DETECTORS, ...TAX_SET_ASIDE_DETECTORS] },
+  { key: "taxes", detectors: [...TAX_DETECTORS, ...TAX_SET_ASIDE_DETECTORS, ...EFTPS_DETECTORS] },
   { key: "investing", detectors: INVESTING_DETECTORS },
   { key: "holdings", detectors: [...HOLDINGS_DETECTORS, ...INVESTED_CASH_DETECTORS] },
   { key: "priceRises", detectors: PRICE_RISE_DETECTORS },

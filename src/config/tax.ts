@@ -225,6 +225,16 @@ export const QUARTERLY = {
   minOwedCents: 100_000,
 } as const;
 export const IRS_DIRECT_PAY_URL = "https://www.irs.gov/payments/direct-pay";
+// EFTPS is closing to individuals (connectors roadmap round 16): no new individual enrollments
+// since 2025-10-17, and EFTPS.gov says everyone moves off "later in 2026 (anticipated September
+// 2026)"; the IRS's page (2026-11-04) still says current users can use it "for now". Businesses
+// keep it. The IRS sends individuals to their Online Account, which schedules up to 365 days ahead.
+export const EFTPS_INDIVIDUALS = {
+  enrollmentClosed: "2025-10-17",
+  moveBy: "later in 2026",
+  match: /\bEFTPS\b/i,
+  onlineAccountUrl: "https://www.irs.gov/payments/your-online-account",
+} as const;
 // Paying the IRS by card (connectors roadmap round 16): only two processors are left (payUSAtax
 // stopped), each charging its own fee, which the IRS doesn't get. As of 2026-11-06, from
 // irs.gov/payments/pay-your-taxes-by-debit-or-credit-card. Personal cards only (commercial cards
