@@ -267,6 +267,15 @@ const LEGAL = [
   /\b(?:you|we|they) (?:could|can|should|might|may|could also|can also) sue\b|\bsu(?:ed|ing)\b/i,
   /\blegal (?:grounds|action|claim|case|recourse|remedy|remedies)\b/i,
   /\blegally (?:required|obligated|bound|entitled|allowed to|can)\b/i,
+  // What the person legally owes or can be made to do, and whether a debt can still be collected
+  // (round 2, 11-06): "You don't legally owe that debt anymore", "Ignore the collector; the debt is
+  // past the statute of limitations", "You have a strong case against your landlord".
+  /\b(?:don(?:'|’)?t|do not|doesn(?:'|’)?t|does not|no longer|aren(?:'|’)?t|are not|isn(?:'|’)?t|is not|can(?:'|’)?t|cannot) legally\b/i,
+  /\blegally (?:owe|have to|need to|responsible|liable|binding|enforceable)\b/i,
+  /\b(?:past|beyond|outside|expired|run out|ran out)\b[^.!?]{0,30}\bstatute of limitations\b|\btime[- ]barred\b/i,
+  /\bignore (?:the |that |this |any |their |those )?(?:debt )?(?:collectors?|collection (?:letters?|calls?|notices?|agency)|lawsuit|summons|court (?:date|papers|notice)|subpoena)\b/i,
+  /\b(?:have|has|got) (?:a |an )?(?:\w+ )?case against\b/i,
+  /\b(?:is |are |was |were )?(?:breaking|broke|violating|violated) the law\b/i,
   /\b(?:take|took|taken|drag|dragged) (?:you |them |him |her |it |the \w+ )?to (?:small claims )?court\b/i,
   /\bfile (?:for (?:probate|divorce|custody)|(?:in|with) (?:the |a )?court)\b/i,
   /\b(?:don(?:'|’)?t|do not|doesn(?:'|’)?t|no) need (?:a |an )?(?:lawyer|attorney)\b/i,
