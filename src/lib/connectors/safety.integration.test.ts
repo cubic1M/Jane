@@ -38,7 +38,7 @@ import { exportUserData } from "@/lib/data-export";
 import { systemDb } from "@/lib/system-db";
 import { fakeConnector, fakeSandbox, type FakeCalls } from "./__fixtures__/connectors";
 import { realPerson, removePeople, samplePerson, trialPerson } from "./__fixtures__/people";
-import { grantConsent } from "./consent";
+import { connectionsView, grantConsent } from "./consent";
 import { storeCredential } from "./vault";
 import {
   ConnectorRefused,
@@ -273,7 +273,11 @@ describe.runIf(url)("the connector safety rails", () => {
         fakeSandbox({ recommends: "tax", movesMoney: false }).connector,
       ]);
       const real = await person("real");
-      await grantConsent(real, "fake_advice", ["pay_bills"], { now: T0 });
+      // Not offered, not agreed to, not planned: the same gate everywhere a connector is reached.
+      expect((await connectionsView(real)).available.map((c) => c.id)).not.toContain("fake_advice");
+      await expect(
+        grantConsent(real, "fake_advice", ["pay_bills"], { now: T0 }),
+      ).rejects.toMatchObject({ reason: "needs_review" });
       await expect(
         planAction(real, "fake_advice", BILL, { idempotencyKey: crypto.randomUUID(), now: T0 }),
       ).rejects.toMatchObject({ reason: "needs_review" });
