@@ -29,8 +29,8 @@ import {
 } from "@/planning/home-buying";
 import { compareCarOffers, type ScoredCarOffer } from "@/planning/car";
 import { formatCents } from "@/lib/money";
-import { isoDay } from "@/lib/dates";
 import { formatRate } from "@/lib/percent";
+import { todayOf } from "@/lib/today";
 
 // Buying a home (spec step 179), from saving to closing. From the person's own income,
 // debt payments, savings and monthly cash flow: the most they can afford under the usual
@@ -98,7 +98,9 @@ export async function loadHomeBuying(
   question: HomeQuestion = {},
   { client = defaultClient, now = new Date(), input: given, book: givenBook }: Options = {},
 ): Promise<HomeBuying> {
-  const asOf = isoDay(now);
+  // The person's day, not UTC's: at 7pm in Los Angeles the date to save by moved a day ahead
+  // (night round 11-06, 3pm against 7pm).
+  const asOf = await todayOf(userId, { client, now });
   const downShare = question.downShare ?? HOME_DEFAULT_DOWN_SHARE;
   const targetDate = question.targetDate ?? addMonths(asOf, HOME_DEFAULT_SAVE_MONTHS);
   const found = await lenderPartnerFor(userId, { client });
