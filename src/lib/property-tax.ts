@@ -4,6 +4,7 @@ import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
+import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { addDeadline } from "@/lib/deadlines";
 import { loadHomeTaxes, type HomeTaxesView } from "@/lib/home-taxes";
@@ -79,7 +80,7 @@ export async function loadPropertyTax(
 ): Promise<PropertyTaxView> {
   const estimate = loaded?.estimate ?? (await loadTaxEstimate(userId, { client, now }));
   const db = scopedFor(userId, client);
-  const today = iso(now);
+  const today = await todayOf(userId, { client, now });
   const [advice, home, loans, profile, appeal, partner] = await Promise.all([
     loaded ? loaded.advice : adviceMode(userId, { client }),
     loaded?.home ?? loadHomeTaxes(userId, { client, now, loaded: { estimate } }),

@@ -10,6 +10,7 @@ import { loanPaymentCents, type Debt, type DebtBook } from "@/insights/debts";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
+import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { debtsOr } from "@/lib/debts";
 import { parseMoneyToCents } from "@/lib/money";
@@ -84,8 +85,10 @@ export async function loadStudentLoans(
   { client = defaultClient, now = new Date(), book: given }: Options & { book?: DebtBook } = {},
 ): Promise<StudentLoans> {
   const db = scopedFor(userId, client);
-  const since = new Date(now.getTime() - STUDENT_PAYMENT_LOOKBACK_DAYS * DAY_MS);
-  const yearAgo = new Date(now.getTime() - 365 * DAY_MS);
+  // Whole days back from the person's day (night round 11-06: a year's pay moved at 7pm).
+  const today = await todayOf(userId, { client, now });
+  const since = new Date(Date.parse(`${today}T00:00:00Z`) - STUDENT_PAYMENT_LOOKBACK_DAYS * DAY_MS);
+  const yearAgo = new Date(Date.parse(`${today}T00:00:00Z`) - 365 * DAY_MS);
   const [book, advice, profile, payments, pay] = await Promise.all([
     debtsOr(given, userId, { client, now }),
     adviceMode(userId, { client }),

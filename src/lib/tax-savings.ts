@@ -4,6 +4,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
+import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
 import { loadTaxTags } from "@/lib/tax-organizer";
@@ -85,7 +86,7 @@ export async function loadTaxSavings(
   const dismissed = new Set(profile?.savingsDismissed ?? []);
   const savings = findTaxSavings({
     year,
-    today: now.toISOString().slice(0, 10),
+    today: await todayOf(userId, { client, now }),
     input: estimate.input,
     estimate: estimate.estimate,
     pay: {

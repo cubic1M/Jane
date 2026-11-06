@@ -17,6 +17,7 @@ import { monthsEnding, spendingInsights } from "@/insights/spending";
 import { oneOffCharges, typicalMonthlySpending } from "@/insights/typical-month";
 import { ACTION_STATUS_LABELS } from "@/lib/action-status";
 import { db as defaultClient } from "@/lib/db";
+import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
 import type { OfferedOptions } from "@/lib/option-card";
@@ -138,7 +139,9 @@ export async function runAskTool(
     cents.push(Math.abs(value));
     return formatCents(Math.abs(value));
   };
-  const today = isoDate(now);
+  // The person's day, as the chat's (night round 11-06: at 7pm in Los Angeles every tool here
+  // read UTC's tomorrow, so "this month" turned over at 4pm on the last of the month).
+  const today = await todayOf(userId, { client, now });
   const out = (value: unknown): ToolOutput => ({ content: JSON.stringify(value), cents });
 
   switch (name) {

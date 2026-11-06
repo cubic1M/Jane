@@ -10,6 +10,7 @@ import type { Debt, DebtBook } from "@/insights/debts";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
+import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { debtsOr } from "@/lib/debts";
 import { householdOf } from "@/lib/household";
@@ -92,9 +93,9 @@ export async function loadFamilyLoans(
   userId: string,
   { client = defaultClient, now = new Date(), book: given }: Options = {},
 ): Promise<FamilyLoans> {
-  const asOf = isoDay(now);
+  const asOf = await todayOf(userId, { client, now });
   const db = scopedFor(userId, client);
-  const since = new Date(now.getTime() - CANDIDATE_LOOKBACK_DAYS * DAY_MS);
+  const since = new Date(Date.parse(`${asOf}T00:00:00Z`) - CANDIDATE_LOOKBACK_DAYS * DAY_MS);
   const rows = await db.personalLoans.findMany({ orderBy: { openedOn: "desc" } });
   const earliest = rows.reduce((min, r) => (r.openedOn < min ? r.openedOn : min), since);
   const [book, txs, sharedAccounts, household] = await Promise.all([
