@@ -46,5 +46,13 @@
   "when": "merged",
   "since": "2026-11-06T22:15:46.586Z",
   "expires": "2026-11-09T22:15:46.586Z"
+ },
+ {
+  "on": 1570,
+  "lane": "lane:connectors",
+  "task": "claude/save-ending-card",
+  "when": "merged",
+  "since": "2026-11-06T22:21:25.301Z",
+  "expires": "2026-11-09T22:21:25.301Z"
  }
 ]
