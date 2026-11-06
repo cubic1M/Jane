@@ -266,6 +266,16 @@ export const LOANS_AND_LAST: readonly Rule[] = [
   },
   { category: "RENT_AND_UTILITIES_OTHER_UTILITIES", keywords: ["HOA"], direction: "out" },
 
+  // A card's own payment plan for a purchase: Apple Card's "MONTHLY INSTALLMENTS (6 OF 24)", its
+  // Type "Installment". It pays off a phone, like buy now, pay later (debugger 11-06: "Review your
+  // Apple subscription: could save about $499.44 a year").
+  {
+    category: "LOAN_PAYMENTS_OTHER_PAYMENT",
+    pattern: /^MONTHLY INSTALLMENTS? \(\d+ OF \d+\)/,
+    direction: "out",
+  },
+  { category: "LOAN_PAYMENTS_OTHER_PAYMENT", bankType: ["Installment"], direction: "out" },
+
   // The bank's own labels, when no keyword matched
   { category: "BANK_FEES_OTHER_BANK_FEES", bankType: ["FEE_TRANSACTION", "Fee"] },
   { category: "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT", bankType: ["Payment"] },

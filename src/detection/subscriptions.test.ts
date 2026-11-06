@@ -60,6 +60,24 @@ describe("recurringCharges", () => {
     expect(detect(data).filter((f) => f.key.includes("bitcoin"))).toEqual([]);
   });
 
+  // Debugger 11-06: Apple Card's iPhone plan read "Review your Apple subscription: could save about
+  // $499.44 a year". Categorised as on import, it's a loan payment: nothing to cancel.
+  it("doesn't call a card's monthly installments a subscription", () => {
+    const hints = { bankType: "Installment", bankCategory: "Installment" };
+    const description = "MONTHLY INSTALLMENTS (6 OF 24)";
+    const category = categorizeByRules({ description, amountCents: 4_162, hints });
+    const data = input({
+      transactions: monthly(6, 4_162, {
+        description,
+        merchantName: "Apple",
+        pfcPrimary: category?.primary ?? null,
+        pfcDetailed: category?.detailed ?? null,
+      }),
+    });
+    expect(recurringCharges(data).filter((r) => r.subscription)).toEqual([]);
+    expect(detect(data).filter((f) => f.type === "subscription_review")).toEqual([]);
+  });
+
   it("lists the biggest yearly cost first, and marks non-subscriptions", () => {
     expect(rows.map((r) => r.annualCostCents)).toEqual(
       [...rows.map((r) => r.annualCostCents)].sort((a, b) => b - a),
