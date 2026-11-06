@@ -1,4 +1,9 @@
-import type { APR, LiabilitiesObject } from "plaid";
+import {
+  StudentLoanStatusTypeEnum,
+  StudentRepaymentPlanTypeEnum,
+  type APR,
+  type LiabilitiesObject,
+} from "plaid";
 import { MAX_APR_BPS } from "@/config/plaid";
 import { toCents } from "./plaid-source";
 
@@ -35,6 +40,20 @@ export type NormalizedLiability = {
   // the next one closes; null for everything else.
   lastStatementIssueDate: string | null;
   lastStatementBalanceCents: number | null;
+  // Student loans only (connectors roadmap round 15): the repayment plan and the loan's status as
+  // Plaid names them ("standard", "saving on a valuable education", "forbearance", "pending
+  // idr"...). A value Plaid adds later is "unknown", never guessed as a known one; Plaid's "null"
+  // or nothing at all is null. PSLF status is never read: Plaid no longer fills it in.
+  repaymentPlan: string | null;
+  loanStatus: string | null;
+  loanStatusEndDate: string | null;
+  outstandingInterestCents: number | null;
+  // Other loans only (auto, personal): what's left on the principal, what paying it off today
+  // takes, the term and how many payments are made a year.
+  principalBalanceCents: number | null;
+  payoffAmountCents: number | null;
+  loanTermMonths: number | null;
+  paymentCount: number | null;
 };
 
 // 15.24 (percent) -> 1524. Anything that can't be a real yearly rate is missing.
@@ -48,6 +67,21 @@ const day = (value: string | null | undefined): string | null =>
   typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
 
 const text = (value: string | null | undefined): string | null => value?.trim() || null;
+
+const REPAYMENT_PLANS = new Set<string>(Object.values(StudentRepaymentPlanTypeEnum));
+const LOAN_STATUSES = new Set<string>(Object.values(StudentLoanStatusTypeEnum));
+
+// One of Plaid's own names, "unknown" for anything else it sends, null for nothing.
+function known(value: unknown, names: ReadonlySet<string>): string | null {
+  if (typeof value !== "string") return null;
+  const name = value.trim().toLowerCase();
+  if (!name || name === "null") return null;
+  return names.has(name) ? name : "unknown";
+}
+
+// A whole, positive count (months, payments); anything else is missing.
+const count = (value: number | null | undefined): number | null =>
+  typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : null;
 
 // A card's rate: the purchase APR, which is what new spending is charged; otherwise the
 // first one the bank lists.
@@ -70,6 +104,14 @@ const EMPTY = {
   hasPrepaymentPenalty: null,
   lastStatementIssueDate: null,
   lastStatementBalanceCents: null,
+  repaymentPlan: null,
+  loanStatus: null,
+  loanStatusEndDate: null,
+  outstandingInterestCents: null,
+  principalBalanceCents: null,
+  payoffAmountCents: null,
+  loanTermMonths: null,
+  paymentCount: null,
 } as const;
 
 export function normalizeLiabilities(liabilities: LiabilitiesObject): NormalizedLiability[] {
@@ -93,6 +135,7 @@ export function normalizeLiabilities(liabilities: LiabilitiesObject): Normalized
   for (const m of liabilities.mortgage ?? []) {
     const pastDueCents = toCents(m.past_due_amount);
     out.push({
+      ...EMPTY,
       accountRef: m.account_id,
       kind: "mortgage",
       aprBps: toBps(m.interest_rate?.percentage),
@@ -113,8 +156,6 @@ export function normalizeLiabilities(liabilities: LiabilitiesObject): Normalized
       escrowBalanceCents: toCents(m.escrow_balance),
       hasPrepaymentPenalty:
         typeof m.has_prepayment_penalty === "boolean" ? m.has_prepayment_penalty : null,
-      lastStatementIssueDate: null,
-      lastStatementBalanceCents: null,
     });
   }
   for (const s of liabilities.student ?? []) {
@@ -134,6 +175,10 @@ export function normalizeLiabilities(liabilities: LiabilitiesObject): Normalized
       isOverdue: s.is_overdue,
       ytdInterestPaidCents: toCents(s.ytd_interest_paid),
       description: text(s.loan_name),
+      repaymentPlan: known(s.repayment_plan?.type, REPAYMENT_PLANS),
+      loanStatus: known(s.loan_status?.type, LOAN_STATUSES),
+      loanStatusEndDate: day(s.loan_status?.end_date),
+      outstandingInterestCents: toCents(s.outstanding_interest_amount),
     });
   }
   for (const l of liabilities.loan ?? []) {
@@ -151,6 +196,10 @@ export function normalizeLiabilities(liabilities: LiabilitiesObject): Normalized
       originationDate: day(l.origination_date),
       payoffDate: day(l.maturity_date),
       ytdInterestPaidCents: toCents(l.ytd_interest_paid),
+      principalBalanceCents: toCents(l.principal_balance),
+      payoffAmountCents: toCents(l.payoff_amount),
+      loanTermMonths: count(l.loan_term_months),
+      paymentCount: count(l.payment_count),
     });
   }
   return out;

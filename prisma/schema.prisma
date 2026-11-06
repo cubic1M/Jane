@@ -875,6 +875,17 @@ model Liability {
   // Cards (spec step 175): the last statement's date and balance, as Plaid reports them.
   lastStatementIssueDate    DateTime? @map("last_statement_issue_date") @db.Date
   lastStatementBalanceCents Int?      @map("last_statement_balance_cents")
+  // Student loans (connectors roadmap round 15): Plaid's plan and status names, "unknown" for
+  // a name Plaid adds later; the status's end date; unpaid interest.
+  repaymentPlan             String?   @map("repayment_plan")
+  loanStatus                String?   @map("loan_status")
+  loanStatusEndDate         DateTime? @map("loan_status_end_date") @db.Date
+  outstandingInterestCents  Int?      @map("outstanding_interest_cents")
+  // Other loans: principal left, the payoff amount today, the term, payments a year.
+  principalBalanceCents     Int?      @map("principal_balance_cents")
+  payoffAmountCents         Int?      @map("payoff_amount_cents")
+  loanTermMonths            Int?      @map("loan_term_months")
+  paymentCount              Int?      @map("payment_count")
   createdAt                 DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt                 DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 

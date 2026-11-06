@@ -183,6 +183,79 @@ describe("Plaid liabilities", () => {
     });
   });
 
+  it("reads a student loan's plan, status and unpaid interest, and a loan's payoff and term", () => {
+    const [, mortgage, student, auto] = normalizeLiabilities(SANDBOX);
+    expect(student).toMatchObject({
+      repaymentPlan: "standard",
+      loanStatus: "repayment",
+      loanStatusEndDate: "2032-07-28",
+      outstandingInterestCents: 622_736,
+      principalBalanceCents: null,
+    });
+    expect(auto).toMatchObject({
+      principalBalanceCents: 1_800_000,
+      payoffAmountCents: null,
+      loanTermMonths: 60,
+      paymentCount: null,
+      repaymentPlan: null,
+    });
+    // A mortgage has none of these.
+    expect(mortgage).toMatchObject({ repaymentPlan: null, loanTermMonths: null });
+  });
+
+  it("calls a plan or status Plaid adds later unknown, never a known one like SAVE", () => {
+    const student = SANDBOX.student![0]!;
+    const read = (plan: unknown, status: unknown) =>
+      normalizeLiabilities({
+        credit: null,
+        mortgage: null,
+        student: [{ ...student, repayment_plan: plan, loan_status: status }],
+      } as unknown as LiabilitiesObject)[0]!;
+    expect(read({ type: "saving on a valuable education" }, { type: "pending idr" })).toMatchObject(
+      { repaymentPlan: "saving on a valuable education", loanStatus: "pending idr" },
+    );
+    // RAP and Tiered Standard have no Plaid name yet.
+    expect(read({ type: "repayment assistance plan" }, { type: "forbearance" })).toMatchObject({
+      repaymentPlan: "unknown",
+      loanStatus: "forbearance",
+    });
+    expect(read({ type: "null" }, null)).toMatchObject({ repaymentPlan: null, loanStatus: null });
+    expect(read({ type: "Other" }, { type: "" })).toMatchObject({
+      repaymentPlan: "other",
+      loanStatus: null,
+    });
+  });
+
+  it("never reads PSLF status, which Plaid no longer fills in", () => {
+    const withPslf = {
+      ...SANDBOX,
+      student: [
+        {
+          ...SANDBOX.student![0]!,
+          pslf_status: {
+            estimated_eligibility_date: "2030-01-01",
+            payments_made: 77,
+            payments_remaining: 43,
+          },
+        },
+      ],
+    } as LiabilitiesObject;
+    const stored = JSON.stringify(normalizeLiabilities(withPslf));
+    expect(stored).not.toContain("2030-01-01");
+    expect(stored).not.toMatch(/pslf/i);
+  });
+
+  it("refuses a term or payment count that isn't a whole positive number", () => {
+    const loan = SANDBOX.loan![0]!;
+    const [row] = normalizeLiabilities({
+      credit: null,
+      mortgage: null,
+      student: null,
+      loan: [{ ...loan, loan_term_months: 0, payment_count: 12.5 }],
+    } as LiabilitiesObject);
+    expect(row).toMatchObject({ loanTermMonths: null, paymentCount: null });
+  });
+
   it("never keeps account numbers, addresses or reference numbers", () => {
     const stored = JSON.stringify(normalizeLiabilities(SANDBOX));
     for (const secret of [
