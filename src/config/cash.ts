@@ -27,8 +27,11 @@ export type CashHome = {
   rateBps: number;
   // Business days to have the money in checking.
   reachDays: number;
-  // Insured by the FDIC or backed by the US government.
-  insured: boolean;
+  // Two things, never one: FDIC insurance covers a bank's failure; Treasuries are backed by the US
+  // government and are not FDIC insured. Kept apart so no screen can say "insured" of a Treasury
+  // (12 CFR 328.102; connectors roadmap round 13).
+  fdicInsured: boolean;
+  governmentBacked: boolean;
   note: string;
 };
 export const CASH_HOMES: readonly CashHome[] = [
@@ -37,15 +40,17 @@ export const CASH_HOMES: readonly CashHome[] = [
     name: "High-yield savings",
     rateBps: HIGH_YIELD_SAVINGS_BPS,
     reachDays: 2,
-    insured: true,
-    note: "Insured by the FDIC; a transfer back takes a day or two",
+    fdicInsured: true,
+    governmentBacked: false,
+    note: "FDIC insured at the bank that holds it; a transfer back takes a day or two",
   },
   {
     key: "money_market",
     name: "Money market fund",
     rateBps: 420,
     reachDays: 1,
-    insured: false,
+    fdicInsured: false,
+    governmentBacked: false,
     note: "Not FDIC insured; sold the next business day",
   },
   {
@@ -53,8 +58,9 @@ export const CASH_HOMES: readonly CashHome[] = [
     name: "Treasury ladder (3, 6 and 12-month bills)",
     rateBps: 410,
     reachDays: 365,
-    insured: true,
-    note: "Backed by the US government, no state income tax; each rung is only cash at maturity",
+    fdicInsured: false,
+    governmentBacked: true,
+    note: "Backed by the US government, not FDIC insured; no state income tax; each rung is only cash at maturity",
   },
 ];
 export const CASH_HOMES_SOURCE =

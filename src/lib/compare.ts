@@ -1,5 +1,5 @@
 import { BILL_BENCHMARKS } from "@/config/detection";
-import { OPTION_STALE_DAYS } from "@/config/compare";
+import { OPTION_STALE_DAYS, SAVINGS_APY_STALE_DAYS } from "@/config/compare";
 import { DEMO_OPTIONS } from "@/data-sources/demo/demo-options";
 import {
   findInDirectory,
@@ -39,6 +39,11 @@ export async function usableOptions({
   const rows = await systemDb(WHY, client).switchOption.findMany({
     where: {
       checkedAt: { gte: new Date(now.getTime() - OPTION_STALE_DAYS * DAY_MS) },
+      // A savings rate goes stale within days, not months.
+      NOT: {
+        kind: "savings",
+        checkedAt: { lt: new Date(now.getTime() - SAVINGS_APY_STALE_DAYS * DAY_MS) },
+      },
       OR: [
         { reviewedAt: { not: null }, demo: false },
         ...(includeDemo && demoOptionsAllowed() ? [{ demo: true }] : []),
