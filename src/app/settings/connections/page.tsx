@@ -59,6 +59,7 @@ const STATUS_WORDS: Record<string, string> = {
   approved: "You said yes. It runs after a short wait, and you can cancel until then.",
   running: "Running now.",
   partner_pending: "Sent. Waiting to hear back.",
+  handed_off: "Your steps are ready. The last one is yours.",
   succeeded: "Done.",
   failed: "It didn't go through.",
   cancelled: "Cancelled.",

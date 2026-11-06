@@ -118,3 +118,19 @@ signer, and people (real, sample, trial).
 Real partners, one at a time, each needing a contract, counsel's answer and the founders' word
 before its `REAL_CONNECTORS` switch: see `connector-infra.md` in the shared notes for the list and
 the open questions.
+
+## Cancelling: the route the merchant allows
+
+`src/lib/connectors/cancel/route.ts` picks how a subscription gets cancelled, from
+`src/config/cancel-methods.ts` (56 merchants, from the connectors-roadmap research's round 7, each
+with its sources). Only 3 of the 56 document cancelling by email, so steps come first:
+
+1. **App-store billing**: a charge whose descriptor says `APPLE.COM/BILL` or `GOOGLE *` can only be
+   cancelled in that store, whatever the merchant's own route, so the store's steps win.
+2. **A known merchant**: its own route. `email` only where its page takes a cancellation by email
+   (Equinox, Blue Apron); `letter` where written notice is the way (LA Fitness); a phone-only
+   merchant gets its steps, since Jane makes no calls.
+3. **Anyone else**: plain guided steps.
+
+A guided or app-store cancel ends `handed_off`: nothing for Jane to send, and the last step is the
+person's. `sandbox_subscription_cancel` uses the route; nothing real is emailed or mailed.

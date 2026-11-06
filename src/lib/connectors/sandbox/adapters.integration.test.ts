@@ -58,21 +58,26 @@ const REQUESTS = {
     },
     cents: 8412,
     steps: ["Pay to", "Amount", "From", "Sends on"],
+    ran: "succeeded",
   },
   sandbox_own_transfer: {
     request: { fromAccount: "Checking ••1234", toAccount: "Savings ••9876", amountCents: 25_000 },
     cents: 25_000,
     steps: ["From", "To", "Amount"],
+    ran: "succeeded",
   },
   sandbox_subscription_cancel: {
     request: { merchant: "StreamCo", monthlyCents: 1599 },
     cents: 0,
-    steps: ["Cancel", "Saves"],
+    // A merchant Jane doesn't know: plain guided steps, finished by the person.
+    steps: ["Cancel", "Saves", "How", "Step 1", "Step 2"],
+    ran: "handed_off",
   },
   sandbox_insurance_quote: {
     request: { coverage: "renters", currentMonthlyCents: 2500, state: "CA" },
     cents: 0,
     steps: ["Coverage", "You pay now", "State"],
+    ran: "succeeded",
   },
 } as const;
 
@@ -134,7 +139,7 @@ describe.runIf(url)("the sandbox adapters end to end", () => {
   });
   afterEach(() => vi.unstubAllGlobals());
 
-  for (const [id, { request, cents, steps }] of Object.entries(REQUESTS)) {
+  for (const [id, { request, cents, steps, ran }] of Object.entries(REQUESTS)) {
     it(`${id}: allow, plan, yes, run, all simulated`, async () => {
       const userId = await samplePerson(db);
       people.push(userId);
@@ -160,7 +165,7 @@ describe.runIf(url)("the sandbox adapters end to end", () => {
         ? CONNECTOR_HOLD_MINUTES.money
         : CONNECTOR_HOLD_MINUTES.other;
       const later = new Date(Date.now() + (hold + 1) * MINUTE);
-      await expect(executeAction(userId, planned.id, { now: later })).resolves.toBe("succeeded");
+      await expect(executeAction(userId, planned.id, { now: later })).resolves.toBe(ran);
       const row = await system().connectorAction.findUniqueOrThrow({ where: { id: planned.id } });
       expect(row.simulated).toBe(true);
       expect(row.note).toMatch(/^Simulated: nothing real was sent\./);
