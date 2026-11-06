@@ -129,3 +129,17 @@ export const MANUAL_TRANSFER_SETTLE_BUSINESS_DAYS = 3;
 // A new savings bank pulls the opening deposit by ACH once the person links their account: about
 // one to three business days after they open it (round 13); five to allow a slow sign-up.
 export const MANUAL_SAVINGS_SETTLE_BUSINESS_DAYS = 5;
+
+// --- A person's own credit report (src/lib/connectors/credit-upload.ts) ---------------------------
+
+// Scores the person can type in, by the model their free source shows, with the model's range
+// (roadmap round 9: Experian's free membership shows FICO Score 8; Chase Credit Journey and Capital
+// One CreditWise show VantageScore 3.0). Ranges are the models' published 300-850.
+export const CREDIT_SCORE_MODELS = {
+  fico_8: { label: "FICO Score 8", low: 300, high: 850 },
+  vantagescore_3: { label: "VantageScore 3.0", low: 300, high: 850 },
+  vantagescore_4: { label: "VantageScore 4.0", low: 300, high: 850 },
+} as const;
+export type CreditScoreModel = keyof typeof CREDIT_SCORE_MODELS;
+// A typed-in score older than this isn't saved: free sources refresh monthly.
+export const CREDIT_SCORE_MAX_AGE_DAYS = 45;

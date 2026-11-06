@@ -201,3 +201,20 @@ nothing, moves nothing and opens nothing. Off until its switch.
   options don't record the insurer yet.
 - **Settlement**: a line out of that account, of the exact amount, within five business days,
   naming the bank. A same-amount line without the bank's name doesn't count.
+
+## A person's own credit report
+
+`credit_upload` (`src/lib/connectors/credit-upload/`, roadmap round 9) is read only, with no vendor:
+the person gets their free weekly reports at AnnualCreditReport.com and types in a free score.
+Nothing is pulled from a bureau. Off until its switch, and saving needs their `read_credit` consent.
+
+- **What's kept** (`validateCreditUpload`): bureau, report date, open cards' limits and balances,
+  oldest and average age, hard inquiries in 12 months, late payments by 30/60/90 days in 24 months,
+  and collections (creditor, amount, medical). Anything else a reader returns (name, address, SSN,
+  account numbers, tradelines) is dropped; a creditor with a long digit run or an @ is refused.
+- **The score** (`validateScore`): a model from `CREDIT_SCORE_MODELS` (FICO Score 8, VantageScore
+  3.0 and 4.0), within its range, dated within `CREDIT_SCORE_MAX_AGE_DAYS` and not in the future.
+- **What Claude may see** (`creditForLlm`): numbers and the model's label only, never a creditor's
+  name or any text from the report.
+- Saved as a `credit_reports` row with partner `upload`. Not built yet: reading the PDF itself (a
+  `credit_report` document kind through the existing extractor, budget permitting) and the page.
