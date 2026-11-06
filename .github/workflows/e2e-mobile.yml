@@ -57,7 +57,7 @@ jobs:
           POSTGRES_DB: e2e
           POSTGRES_HOST_AUTH_METHOD: trust
         ports:
-          - 5432:5432
+          - 5432
         options: >-
           --tmpfs /var/lib/postgresql/data
           --health-cmd "pg_isready -U postgres"
@@ -65,9 +65,15 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
-      E2E_DATABASE_URL: postgresql://postgres@localhost:5432/e2e
       E2E_PROD: "1"
     steps:
+      # Docker picks the database port (and the app port for end-to-end runs), so jobs that
+      # share one machine, as on the team runner, never clash.
+      - name: Point at this job's database
+        run: |
+          port=${{ job.services.postgres.ports['5432'] }}
+          echo "E2E_DATABASE_URL=postgresql://postgres@localhost:$port/e2e" >> "$GITHUB_ENV"
+          echo "E2E_PORT=$(python3 -c 'import socket; s = socket.socket(); s.bind(("", 0)); print(s.getsockname()[1])')" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:

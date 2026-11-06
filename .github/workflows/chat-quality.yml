@@ -34,20 +34,25 @@ jobs:
           POSTGRES_DB: test
           POSTGRES_HOST_AUTH_METHOD: trust
         ports:
-          - 5432:5432
+          - 5432
         options: >-
           --health-cmd "pg_isready -U postgres"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
-      TEST_DATABASE_URL: postgresql://postgres@localhost:5432/test
       # The founder keeps a $10/month Anthropic limit shared with the live chat (2026-10-21), so the
       # nightly schedule runs only the free rules part; the Claude part runs when started by hand.
       ANTHROPIC_API_KEY: ${{ github.event_name == 'workflow_dispatch' && secrets.ANTHROPIC_API_KEY || '' }}
       ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL }}
       ANTHROPIC_CHAT_MODEL: ${{ vars.ANTHROPIC_CHAT_MODEL }}
     steps:
+      # Docker picks the database port (and the app port for end-to-end runs), so jobs that
+      # share one machine, as on the team runner, never clash.
+      - name: Point at this job's database
+        run: |
+          port=${{ job.services.postgres.ports['5432'] }}
+          echo "TEST_DATABASE_URL=postgresql://postgres@localhost:$port/test" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:

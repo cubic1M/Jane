@@ -117,7 +117,7 @@ jobs:
           POSTGRES_DB: test
           POSTGRES_HOST_AUTH_METHOD: trust
         ports:
-          - 5432:5432
+          - 5432
         # The database lives in memory: the tests' writes never wait on the runner's disk.
         options: >-
           --tmpfs /var/lib/postgresql/data
@@ -125,9 +125,13 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
-    env:
-      TEST_DATABASE_URL: postgresql://postgres@localhost:5432/test
     steps:
+      # Docker picks the database port (and the app port for end-to-end runs), so jobs that
+      # share one machine, as on the team runner, never clash.
+      - name: Point at this job's database
+        run: |
+          port=${{ job.services.postgres.ports['5432'] }}
+          echo "TEST_DATABASE_URL=postgresql://postgres@localhost:$port/test" >> "$GITHUB_ENV"
       # Two commits: the changed-tests run compares the test merge with its first parent.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -206,16 +210,20 @@ jobs:
           POSTGRES_DB: test
           POSTGRES_HOST_AUTH_METHOD: trust
         ports:
-          - 5432:5432
+          - 5432
         options: >-
           --tmpfs /var/lib/postgresql/data
           --health-cmd "pg_isready -U postgres"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
-    env:
-      TEST_DATABASE_URL: postgresql://postgres@localhost:5432/test
     steps:
+      # Docker picks the database port (and the app port for end-to-end runs), so jobs that
+      # share one machine, as on the team runner, never clash.
+      - name: Point at this job's database
+        run: |
+          port=${{ job.services.postgres.ports['5432'] }}
+          echo "TEST_DATABASE_URL=postgresql://postgres@localhost:$port/test" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
@@ -433,7 +441,7 @@ jobs:
           POSTGRES_DB: e2e
           POSTGRES_HOST_AUTH_METHOD: trust
         ports:
-          - 5432:5432
+          - 5432
         # The database lives in memory: the tests' writes never wait on the runner's disk.
         options: >-
           --tmpfs /var/lib/postgresql/data
@@ -442,10 +450,16 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
-      E2E_DATABASE_URL: postgresql://postgres@localhost:5432/e2e
       # playwright.config.ts: `next start` on the build, with what the tests need turned on.
       E2E_PROD: "1"
     steps:
+      # Docker picks the database port (and the app port for end-to-end runs), so jobs that
+      # share one machine, as on the team runner, never clash.
+      - name: Point at this job's database
+        run: |
+          port=${{ job.services.postgres.ports['5432'] }}
+          echo "E2E_DATABASE_URL=postgresql://postgres@localhost:$port/e2e" >> "$GITHUB_ENV"
+          echo "E2E_PORT=$(python3 -c 'import socket; s = socket.socket(); s.bind(("", 0)); print(s.getsockname()[1])')" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
