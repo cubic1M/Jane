@@ -1,3 +1,4 @@
+import { MAX_GOALS } from "@/lib/goals";
 import {
   BIG_MOVE_MAX_CENTS,
   BIG_MOVE_MIN_CENTS,
@@ -310,6 +311,8 @@ export async function loadMoneyForTwo(
     // Joint goals only: a goal neither shared stays with its owner.
     systemDb(WHY, client).savingsGoal.findMany({
       where: { userId: { in: ids }, sharedWithHousehold: true },
+      // Each of two people's goals, at most (src/lib/goals.ts MAX_GOALS).
+      take: 2 * MAX_GOALS,
       select: {
         id: true,
         userId: true,

@@ -61,11 +61,20 @@ async function checkedData(userId: string, form: GoalForm, client: PrismaClient)
   };
 }
 
+// More than anyone saves for at once. Without a cap, goals had no limit, and a partner's joint ones
+// go into the other partner's chat each time it looks.
+export const MAX_GOALS = 50;
+
 export async function addGoal(
   userId: string,
   form: GoalForm,
   { client = defaultClient }: Options = {},
 ) {
+  if ((await scopedFor(userId, client).savingsGoals.count()) >= MAX_GOALS) {
+    throw new GoalError(
+      `You have ${MAX_GOALS} goals, as many as Jane keeps. Remove one to add another.`,
+    );
+  }
   const data = await checkedData(userId, form, client);
   await scopedFor(userId, client).savingsGoals.create({ data: { userId, ...data } });
 }
