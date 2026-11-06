@@ -272,3 +272,23 @@ student refinance lenders round 15 names (demo advice mode only: naming lenders 
 Every one is unpaid (`paid: false`): the beta takes no pay for any loan product. A test holds every
 link, and every URL written anywhere in `src/config`, to carrying no affiliate tag (`subid`,
 `clickref`, `irclickid`, `utm_*`, Impact's `p.*` and the like) and nothing about the person.
+
+## Card offers (mock)
+
+`src/lib/connectors/card-offers/offer.ts` (roadmap round 15) reads card offers shaped like Engine's
+marketplace and shows them the way Regulation Z wants a card's terms shown. Mock only: no partner,
+no pay, and named offers stay in demo advice mode.
+
+- `parseCardOffer`: tolerant of Engine's shapes (rates as numbers or "21.99%", both spellings of
+  the credit-rating disclaimer, the balance-transfer fee as a bare percent with its minimum read
+  from the fee's disclaimer). An offer with no name or no https Rates & Fees page is refused.
+- `offerBlock`: one block of same-size lines. Every intro rate says "intro", with its end, the APR
+  after and, for a transfer, the fee; the regular APR and whether it varies; the annual fee; the
+  Rates & Fees link; "pre-approved" only when the issuer says so.
+- `regZProblems`: what's wrong with a block under those rules, for any screen that shows an offer.
+- `cardSuggestionExcluded`: no new-credit suggestion while overdue, after a late fee in 12 months,
+  within 6 months of a new card, with hardship flagged, or under 21 without independent income; an
+  age band is asked once, never a date of birth.
+
+Not built yet: the disclosure component, balance-transfer and rewards-fit maths, the CFPB card-terms
+importer, and wiring offers into a card.
