@@ -85,11 +85,17 @@ export async function revokeConsent(
   connectorId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<boolean> {
-  const { count } = await scopedFor(userId, client).connectorConsents.updateMany({
+  const db = scopedFor(userId, client);
+  const { count } = await db.connectorConsents.updateMany({
     where: { connectorId, revokedAt: null },
     data: { revokedAt: now },
   });
   await deleteCredential(userId, connectorId, { client });
+  // Anything not yet run through it stops too (the pipeline checks consent again before acting).
+  await db.connectorActions.updateMany({
+    where: { connectorId, status: { in: ["awaiting_yes", "approved"] } },
+    data: { status: "cancelled", reason: "consent_revoked", finishedAt: now },
+  });
   if (count === 0) return false;
   await logAudit(
     { type: "user", id: userId },
@@ -113,6 +119,20 @@ export async function currentScopes(
     select: { scopes: true },
   });
   return row ? row.scopes.filter(isConsentScope) : null;
+}
+
+// The current consent's id, kept on an action as the consent its yes was given under.
+export async function currentConsentId(
+  userId: string,
+  connectorId: string,
+  { client = defaultClient }: Options = {},
+): Promise<string | null> {
+  const row = await scopedFor(userId, client).connectorConsents.findFirst({
+    where: { connectorId, revokedAt: null },
+    orderBy: { grantedAt: "desc" },
+    select: { id: true },
+  });
+  return row?.id ?? null;
 }
 
 export async function consentCovers(

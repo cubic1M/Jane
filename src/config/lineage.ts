@@ -52,6 +52,7 @@ export const LINEAGE: Readonly<Record<string, Lineage>> = {
   RobinhoodConnection: "source",
   ConnectorConsent: "entered",
   ConnectorCredential: "system",
+  ConnectorAction: "record",
   Account: "source",
   Transaction: "source",
   RecurringStream: "source",

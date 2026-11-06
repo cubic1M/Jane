@@ -108,6 +108,15 @@ export type AuditEvent =
   | "connector_consent_revoked"
   | "connector_credential_stored"
   | "connector_credential_deleted"
+  // The connector action pipeline (src/lib/connectors/pipeline.ts): every step of every action.
+  | "connector_action_planned"
+  | "connector_action_approved"
+  | "connector_action_declined"
+  | "connector_action_cancelled"
+  | "connector_action_refused"
+  | "connector_action_executed"
+  | "connector_action_failed"
+  | "connector_action_updated"
   // Card-chat mismatch: rows worked out from data that is gone (src/lib/evidence/orphans.ts).
   | "derived_removed"
   | "user_data_deleted"

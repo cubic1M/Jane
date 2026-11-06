@@ -190,6 +190,7 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     // Connectors (src/lib/connectors/): consent, and the vault of encrypted credentials.
     connectorConsents: scoped.connectorConsent,
     connectorCredentials: scoped.connectorCredential,
+    connectorActions: scoped.connectorAction,
     accounts: scoped.account,
     transactions: scoped.transaction,
     recurringStreams: scoped.recurringStream,
