@@ -268,6 +268,10 @@ describe("renderDigest", () => {
     const text = renderDigest({ ...payload, plan: { items: 6, readOnly: true } }, LINKS).text;
     expect(text).toContain("6 things you could do, each with Jane's steps.");
     expect(text).not.toContain("Jane can do for you");
+    // Debugger 11-06: "1 thing you could do, each with Jane's steps".
+    const one = renderDigest({ ...payload, plan: { items: 1, readOnly: true } }, LINKS).text;
+    expect(one).toContain("1 thing you could do, with Jane's steps.");
+    expect(one).not.toContain("1 thing you could do, each");
   });
 
   it("says what Jane did this week, with only confirmed money", () => {
