@@ -86,5 +86,13 @@
   "when": "merged",
   "since": "2026-11-06T23:31:05.663Z",
   "expires": "2026-11-09T23:31:05.663Z"
+ },
+ {
+  "on": 1579,
+  "lane": "lane:connectors",
+  "task": "claude/paystub-deductions",
+  "when": "merged",
+  "since": "2026-11-06T23:56:07.451Z",
+  "expires": "2026-11-09T23:56:07.451Z"
  }
 ]
