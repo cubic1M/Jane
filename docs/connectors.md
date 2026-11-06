@@ -84,3 +84,37 @@ a 404 unless `CONNECTORS=1`. In order:
 
 A kill switch doesn't stop webhooks: they record what the partner already did and act on nothing.
 A body over the limit is refused on its `Content-Length` before it is read.
+
+## Sandbox adapters
+
+`src/lib/connectors/sandbox/adapters.ts`: four simulated partners, each shaped like the partner the
+connector plan picked, so the whole path runs on sample data. Each calls nobody (a test reads their
+code and another blocks every request while they run), says "Simulated: nothing real was sent.",
+and is offered only to sample-data people.
+
+| Id | Does | Moves money | Cancel |
+| --- | --- | --- | --- |
+| `sandbox_bill_pay` | Pays a bill from the person's account (Spinwheel Pay or Method later) | Yes | 15 minutes, Spinwheel's window |
+| `sandbox_own_transfer` | Moves money between two of their own accounts (Dwolla or Astra later) | Yes | 15 minutes |
+| `sandbox_subscription_cancel` | Cancels a subscription (Jane's email agent, then Pinwheel) | No | No |
+| `sandbox_insurance_quote` | Asks for quotes in their name, never buys (Coverage Cat or Canopy later) | No | No |
+
+Fakes for tests live in `src/lib/connectors/__fixtures__/`: a pretend real connector, a webhook
+signer, and people (real, sample, trial).
+
+## The safety rails, and where each is tested
+
+| Rail | Test |
+| --- | --- |
+| A real account never moves money while any lock is shut; with all open, only after its yes on that exact action and amount | `safety.integration.test.ts` 1 |
+| Trial people never reach a real connector, even with every lock open, even with a forged approved row | `safety.integration.test.ts` 2 |
+| Each action runs once under concurrent taps and runners | `safety.integration.test.ts` 3, `pipeline.integration.test.ts` |
+| Nobody reaches another person's consent, credential or action | `consent-vault`, `pipeline` and `webhooks` integration tests, and the access proof over every route |
+| The flags are off in code, and a real connector's switch is never read from env | `registry.test.ts` |
+| Sandbox adapters call nobody | `sandbox/adapters.integration.test.ts` |
+
+## What's next
+
+Real partners, one at a time, each needing a contract, counsel's answer and the founders' word
+before its `REAL_CONNECTORS` switch: see `connector-infra.md` in the shared notes for the list and
+the open questions.

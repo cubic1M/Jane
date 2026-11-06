@@ -88,5 +88,14 @@ export type Connector = {
   };
 };
 
+// What prefill throws for a request it can't fill in (a missing payee, a move to the same account).
+// The pipeline refuses it as "bad_request"; the message is for the team, never shown as is.
+export class BadRequest extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BadRequest";
+  }
+}
+
 // The methods the gate guards.
 export const ACTING_METHODS = ["act", "cancel"] as const satisfies readonly (keyof Connector)[];
