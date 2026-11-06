@@ -101,6 +101,31 @@ const STORES: Store[] = [
     },
   },
   {
+    name: "Connector credentials",
+    async scan(client, after, take, userIds) {
+      const rows = await systemDb(WHY, client).connectorCredential.findMany({
+        where: { ...afterId(after), ...(userIds && { userId: { in: userIds } }) },
+        orderBy: { id: "asc" },
+        take,
+        select: { id: true, secretEncrypted: true },
+      });
+      return rows.map((r) => ({ id: r.id, keyId: labelOf(() => keyIdOf(r.secretEncrypted)) }));
+    },
+    async rotateOne(client, id) {
+      const row = await systemDb(WHY, client).connectorCredential.findUnique({
+        where: { id },
+        select: { secretEncrypted: true },
+      });
+      const next = row && rotate(row.secretEncrypted);
+      if (!row || !next) return false;
+      const { count } = await systemDb(WHY, client).connectorCredential.updateMany({
+        where: { id, secretEncrypted: row.secretEncrypted },
+        data: { secretEncrypted: next },
+      });
+      return count === 1;
+    },
+  },
+  {
     name: "Two-factor secrets",
     async scan(client, after, take, userIds) {
       const rows = await systemDb(WHY, client).user.findMany({

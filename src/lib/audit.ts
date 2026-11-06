@@ -103,6 +103,11 @@ export type AuditEvent =
   | "robinhood_connect_failed"
   | "robinhood_refresh_failed"
   | "robinhood_reconnect_needed"
+  // Connectors (src/lib/connectors/): consent and the vault. Scopes and ids only, never a secret.
+  | "connector_consent_granted"
+  | "connector_consent_revoked"
+  | "connector_credential_stored"
+  | "connector_credential_deleted"
   // Card-chat mismatch: rows worked out from data that is gone (src/lib/evidence/orphans.ts).
   | "derived_removed"
   | "user_data_deleted"

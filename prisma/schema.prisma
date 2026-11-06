@@ -388,32 +388,34 @@ model User {
 
   savedShares SavedShare[]
 
-  autopilotSectors    AutopilotSector[]
-  autopilotActs       AutopilotAct[]
-  collegePlans        CollegePlan[]
-  hsaReceipts         HsaReceipt[]
-  equityGrants        EquityGrant[]
-  cryptoConnections   CryptoConnection[]
-  cryptoHoldings      CryptoHolding[]
-  robinhoodConnection RobinhoodConnection?
-  controllerRuns      ControllerRun[]
-  moneyTransfers      MoneyTransfer[]
-  paycheckPlans       PaycheckPlan[]
-  healthScores        HealthScore[]
-  monthlyReports      MonthlyReport[]
-  monthCloses         MonthClose[]
-  whatIfPlans         WhatIfPlan[]
-  taxPlanEvents       TaxPlanEvent[]
-  propertyAppeals     PropertyAppeal[]
-  accountantLinks     AccountantLink[]
-  accountantNotes     AccountantNote[]
-  taxPayments         TaxPayment[]
-  leanPlans           LeanPlan[]
-  booksIssues         BooksIssue[]
-  suggestions         Suggestion[]
-  suggestionOutcomes  SuggestionOutcome[]
-  yearPlans           YearPlan[]
-  unusualAnswers      UnusualAnswer[]
+  autopilotSectors     AutopilotSector[]
+  autopilotActs        AutopilotAct[]
+  collegePlans         CollegePlan[]
+  hsaReceipts          HsaReceipt[]
+  equityGrants         EquityGrant[]
+  cryptoConnections    CryptoConnection[]
+  cryptoHoldings       CryptoHolding[]
+  robinhoodConnection  RobinhoodConnection?
+  connectorConsents    ConnectorConsent[]
+  connectorCredentials ConnectorCredential[]
+  controllerRuns       ControllerRun[]
+  moneyTransfers       MoneyTransfer[]
+  paycheckPlans        PaycheckPlan[]
+  healthScores         HealthScore[]
+  monthlyReports       MonthlyReport[]
+  monthCloses          MonthClose[]
+  whatIfPlans          WhatIfPlan[]
+  taxPlanEvents        TaxPlanEvent[]
+  propertyAppeals      PropertyAppeal[]
+  accountantLinks      AccountantLink[]
+  accountantNotes      AccountantNote[]
+  taxPayments          TaxPayment[]
+  leanPlans            LeanPlan[]
+  booksIssues          BooksIssue[]
+  suggestions          Suggestion[]
+  suggestionOutcomes   SuggestionOutcome[]
+  yearPlans            YearPlan[]
+  unusualAnswers       UnusualAnswer[]
 
   payrollChanges PayrollChange[]
   oldPlans       OldPlan[]
@@ -561,6 +563,42 @@ model RobinhoodConnection {
   accounts Account[]
 
   @@map("robinhood_connections")
+}
+
+// A person's consent to one connector (src/lib/connectors/consent.ts, docs/connectors.md): the
+// scopes they agreed to and when. A new grant is a new row; revoking stamps revoked_at, so the
+// history stays. Shown on /settings/connections.
+model ConnectorConsent {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  connectorId String    @map("connector_id")
+  // Names from CONSENT_SCOPES in src/config/connectors.ts.
+  scopes      String[]
+  grantedAt   DateTime  @default(now()) @map("granted_at") @db.Timestamptz(3)
+  revokedAt   DateTime? @map("revoked_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, connectorId])
+  @@map("connector_consents")
+}
+
+// A connector's credential for one person: the vault (src/lib/connectors/vault.ts). One per person
+// and connector. Never log or return it.
+model ConnectorCredential {
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id")
+  connectorId     String    @map("connector_id")
+  // AES-256-GCM via src/lib/crypto.ts, rotated with the other secrets (src/lib/key-rotation.ts).
+  secretEncrypted String    @map("secret_encrypted")
+  expiresAt       DateTime? @map("expires_at") @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, connectorId])
+  @@map("connector_credentials")
 }
 
 // This app's registration with Robinhood's sign-in, one per address it comes back to. Not personal

@@ -28,3 +28,14 @@ A real connector acts only when all of these hold. Each is tested.
 - **`src/lib/connectors/gate.ts`**: a connector's `act` and `cancel` work only inside a grant naming
   that connector, that action and that person, and only the pipeline hands one out. Ported from the
   controller drafts' permission gate (#1190).
+- **`src/lib/connectors/consent.ts`**: a person's consent to each connector, by scope
+  (`CONSENT_SCOPES` in `src/config/connectors.ts`, with the words the person sees). A new grant is
+  a new row and the old one is stamped revoked, so history stays. Revoking deletes the credential
+  too. `consentCovers` is what the pipeline checks before every step. `/settings/connections` shows
+  what's allowed, since when, a Revoke button, and the history; a 404 unless `CONNECTORS=1`.
+- **`src/lib/connectors/vault.ts`**: each person's credential per connector, AES-256-GCM through
+  `src/lib/crypto.ts`, rotated by `src/lib/key-rotation.ts` like Plaid's and Robinhood's tokens.
+  `withCredential` opens it for the length of a callback; nothing returns the value, and errors
+  name the connector only. An expired or undecryptable one is `NoCredential`.
+- **`src/lib/oauth-pkce.ts`**: the PKCE and state helpers Robinhood's sign-in used, shared so a
+  connector's OAuth sign-in doesn't copy them.
