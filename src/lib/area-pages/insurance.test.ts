@@ -348,6 +348,21 @@ describe("the insurance tree", () => {
     ]);
   });
 
+  // Debugger 11-06: the demo bank's homeowner, with $4,210.55 in escrow on the mortgage, read
+  // "Urgent: Home insurance, Missing".
+  it("says home cover a mortgage's escrow likely pays is not on file, worth a look", () => {
+    const { tree, chips } = insuranceTree(
+      input({
+        gaps: [{ key: "home", why: "You have a mortgage.", policyId: null, likelyElsewhere: true }],
+      } as Partial<InsuranceTreeInput>),
+    );
+    const missing = tree.branches.find((b) => b.id === "missing")!;
+    expect(missing.items.map((i) => [i.label, i.status, i.figure])).toEqual([
+      ["Home insurance", "look", "Not on file"],
+    ]);
+    expect(chips.map((c) => c.label)).not.toContain("Home insurance");
+  });
+
   it("says optional cover is not on file, worth a look", () => {
     const { tree } = insuranceTree(
       input({

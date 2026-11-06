@@ -124,7 +124,13 @@ export type InsuranceTreeInput = {
     yearlyCents: number | null;
     renewsOn: string | null;
   }[];
-  gaps: { key: GapKey; why: string; policyId: string | null; limit?: "unknown" | "low" }[];
+  gaps: {
+    key: GapKey;
+    why: string;
+    policyId: string | null;
+    limit?: "unknown" | "low";
+    likelyElsewhere?: true;
+  }[];
   savings: { id: string; kind: SavingKind; yearlySavingCents: number; line: string }[];
   renewals: {
     id: string;
@@ -232,8 +238,11 @@ export function insuranceTree(input: InsuranceTreeInput): AreaTree {
   // often comes with a card; pet cover is the person's choice (overnight upload QA: a flyer had
   // an urgent "Travel cover: Missing"). Renters cover stays urgent: a lease often requires it.
   // Found cover: "Urgent: Renters insurance, Missing" sat beside "Lemonade renters" (foundFor).
+  // Home cover on a mortgage is likely paid from escrow (debugger 11-06: a homeowner with escrow
+  // read "Urgent: Home insurance, Missing").
   const missing = input.gaps.map((g) => {
-    const guessed = NOT_URGENT_GAPS.includes(g.key) || input.noBankSeen === true;
+    const guessed =
+      NOT_URGENT_GAPS.includes(g.key) || g.likelyElsewhere === true || input.noBankSeen === true;
     const seen = foundFor(g.key);
     return item("missing", g.key + (g.policyId ? `-${g.policyId}` : ""), {
       label: GAP_LABELS[g.key],
