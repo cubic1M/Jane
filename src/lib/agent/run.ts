@@ -56,6 +56,9 @@ import { DAY_MS, isoDay } from "@/lib/dates";
 import { ownedBy, type OnlyPeople } from "@/lib/only-people";
 import { meteredClaude } from "@/lib/claude-budget";
 import { systemDb } from "@/lib/system-db";
+import { holderName } from "@/lib/holder-name";
+
+export { holderName };
 
 const WHY = "The agent's cron and reply links: finds actions across people, nobody is signed in";
 
@@ -260,18 +263,6 @@ export async function handOff(
     { reason, user_id: userId },
   );
   await track(userId, "agent_handed_off", { action_type: action.type });
-}
-
-// The name Jane gives a company for the account holder, or null: one line of a name's letters, at
-// most five words. It comes from the person's Google profile, which they write, and goes out under
-// Jane's name, so it can't carry a second paragraph, a number or an address.
-export function holderName(name: string | null | undefined): string | null {
-  const words = (name ?? "")
-    .replace(/[^\p{L}\p{M}' .-]/gu, " ")
-    .split(/\s+/)
-    .filter(Boolean);
-  const kept = words.slice(0, 5).join(" ").slice(0, 60).trim();
-  return /\p{L}/u.test(kept) ? kept : null;
 }
 
 // The person's name and account email in place of the placeholders, and the company's
