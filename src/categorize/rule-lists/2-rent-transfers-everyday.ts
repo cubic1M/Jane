@@ -115,10 +115,19 @@ export const RENT_TRANSFERS_EVERYDAY: readonly Rule[] = [
     keywords: ["RENT THE RUNWAY"],
     direction: "out",
   },
-  // Cover a landlord buys, not rent paid to one (debugger 11-04).
+  // Cover a landlord buys, not rent paid to one (debugger 11-04), spelled out too (debugger 11-06:
+  // "OBIE INSURANCE LANDLORD POLICY" read as rent, so a homeowner was asked about renters cover).
   {
     category: "GENERAL_SERVICES_INSURANCE",
-    keywords: ["LANDLORD INS", "LANDLORDS INS", "OBIE INS"],
+    keywords: [
+      "LANDLORD INS",
+      "LANDLORDS INS",
+      "OBIE INS",
+      "LANDLORD INSURANCE",
+      "LANDLORDS INSURANCE",
+      "LANDLORD POLICY",
+      "OBIE INSURANCE",
+    ],
     direction: "out",
   },
   {
