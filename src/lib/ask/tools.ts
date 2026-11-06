@@ -13,6 +13,7 @@ import { comingUpBills } from "@/detection/forecast";
 import { addDays, isoDate } from "@/detection/units";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { categoryLabel } from "@/insights/labels";
+import { primaryOf, SUBCATEGORIES, subcategorySpending } from "@/insights/subcategories";
 import { monthsEnding, spendingInsights } from "@/insights/spending";
 import { oneOffCharges, typicalMonthlySpending } from "@/insights/typical-month";
 import { ACTION_STATUS_LABELS } from "@/lib/action-status";
@@ -52,7 +53,7 @@ export const ASK_TOOLS: Anthropic.Tool[] = [
   {
     name: "spending_by_category",
     description:
-      "Spending and income for one month, with spending by category, largest first. Money moved between the person's own accounts and card payments aren't counted.",
+      "Spending and income for one month, with spending by category, largest first, and the parts people ask about by name (groceries, eating out, coffee, gas, rent, utilities) where the data says which part each charge is: groceries are part of Food and drink, not all of it. Money moved between the person's own accounts and card payments aren't counted.",
     input_schema: {
       type: "object",
       properties: {
@@ -303,10 +304,18 @@ export async function runAskTool(
         month,
         spending: money(totals.spendingCents),
         income: incomeSeen ? money(totals.incomeCents) : null,
-        categories: (insights.categoriesByMonth[month] ?? []).map((c) => ({
-          category: c.category,
-          amount: money(c.cents),
-        })),
+        categories: (insights.categoriesByMonth[month] ?? []).map((c) => {
+          // The parts people ask about by name ("groceries" isn't all of Food and drink).
+          const parts = SUBCATEGORIES.filter((sub) => categoryLabel(primaryOf(sub)) === c.category)
+            .map((sub) => ({ part: sub.name, cents: subcategorySpending(dated, month, sub) }))
+            .filter((p): p is { part: string; cents: number } => p.cents !== null && p.cents > 0)
+            .map((p) => ({ part: p.part, amount: money(p.cents) }));
+          return {
+            category: c.category,
+            amount: money(c.cents),
+            ...(parts.length > 0 ? { parts } : {}),
+          };
+        }),
         ...(leftOutIn(month) > 0 ? { unusual: true, oneOffs: oneOffsIn(month) } : {}),
       });
     }

@@ -12,7 +12,8 @@ import { RULE_UNDO_HOURS } from "@/config/rules";
 import { normalizeMerchant } from "@/data-sources/merchant";
 import type { FindingType } from "@/generated/prisma/client";
 import type { ComingUpRow } from "@/insights/coming-up";
-import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
+import { CATEGORY_LABELS, UNCATEGORIZED, categoryLabel } from "@/insights/labels";
+import { matchSubcategory, primaryOf, subcategorySpending } from "@/insights/subcategories";
 import { fullMonths } from "@/insights/typical-month";
 import {
   kindOf,
@@ -549,6 +550,19 @@ export function spendingReply(
   // Spec step 88: a merchant named word for word ("Uber") before the category it's in.
   const byName = spentAt((name) => name.split(/[^a-z0-9&+']+/).includes(q));
   if (byName.length > 0) return atMerchant(byName);
+  // A part of a category by its own name ("groceries", "gas", "rent"), with the whole beside it,
+  // when the data says which part each charge is.
+  const sub = matchSubcategory(intent.category);
+  const subCents = sub && subcategorySpending(transactions, intent.month, sub);
+  if (sub && subCents !== null) {
+    const label = categoryLabel(primaryOf(sub));
+    const whole = categories.find((c) => c.category === label)?.cents ?? 0;
+    const then = before === undefined ? undefined : subcategorySpending(transactions, before, sub);
+    return reply(
+      `You spent ${fmt(subCents)} on ${sub.name} ${when}, of ${fmt(whole)} on ${label} in all.${versus(subCents, then ?? undefined)}`,
+      open,
+    );
+  }
   const labels = [...new Set([...Object.values(CATEGORY_LABELS), UNCATEGORIZED])];
   const category = matchCategory(intent.category, labels);
   if (category) {
