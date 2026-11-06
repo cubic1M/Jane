@@ -19,8 +19,11 @@ describe("/api/auth/[...nextauth]", () => {
     vi.mocked(limitOrNull).mockReset().mockResolvedValue(null);
   });
 
-  it("hands GET to Auth.js", () => {
-    expect(route.GET).toBe(GET);
+  it("hands GET to Auth.js", async () => {
+    GET.mockResolvedValueOnce(new Response("from Auth.js", { status: 200 }));
+    const response = await route.GET(new Request("http://localhost/api/auth/providers"));
+    expect(GET).toHaveBeenCalledTimes(1);
+    expect(await response.text()).toBe("from Auth.js");
   });
 
   it("hands POST to Auth.js once the IP is within its limit", async () => {
