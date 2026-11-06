@@ -105,6 +105,21 @@ const INVESTMENT = [
   /(?<!\b(?:[Yy]ou|[Ww]e|I|[Tt]hey)\s)\b(?:[Pp]ut|[Mm]ove)\b(?:[^.!?]|\.\d){0,40}\b(?:in|your \w+ to|it to) (?!(?:CDs?|HYSA|FDIC|USAA|PNC|ACH|APY|APR|TD|BMO|HSBC|SoFi|USD)\b)[A-Z]{2,5}\b(?=\s*(?:now|today|and [A-Z]{2,5}\b|for\b|each\b|every\b|[.!?,]|$))/,
   // Filling an HSA, FSA or 529 as the move (11-04). Naming one, or what's in it, stays a fact.
   /(?:^|[.!?:;]\s+|\byou should\s+|\bi(?:'|’)?d\s+)(?:max(?:ing)? (?:out|your)|maximi[sz]e|fill(?: up)?|put the max in(?:to)?|contribut(?:e|ing)(?: more| the max)? to|fund(?!:))\b[^.!?]{0,30}\b(?:hsa|fsa|529)\b/i,
+  // Retirement and other investment moves as the move (aup-audit 11-06, Anthropic's Usage Policy
+  // from Nov 12, 2026): "Put the bonus in your HSA", "Use a 529 plan", "Put 10% of your pay into
+  // retirement", "Take Social Security at 70", "Exercise your options now", "Harvest the loss",
+  // "Pick the target-date fund" got through. What someone did ("You put $400 into your HSA") and
+  // what's there ("Your pension pays $1,200") stay facts.
+  /(?:^|[.!?:;]\s+|\byou should\s+|\bi(?:'|’)?d\s+)(?:put|move|add|contribut(?:e|ing)|deposit|open|start|set up)\b[^.!?]{0,40}\b(?:hsa|529)\b/i,
+  /\buse an? 529\b/i,
+  /(?:^|[.!?:;]\s+|\byou should\s+|\bi(?:'|’)?d\s+)(?:put|save|set aside|move|contribut(?:e|ing)|add|send)\b[^.!?]{0,40}\b(?:into|in|to|toward|for) (?:your |a )?retirement\b/i,
+  /(?:^|[.!?:;]\s+|\byou should\s+|\bi(?:'|’)?d\s+)(?:take|claim|start|begin|delay|wait)\b[^.!?]{0,30}\b(?:social security|pension)\b/i,
+  /\bexercis(?:e|ing) (?:your |the |those |some |all )?(?:vested |incentive )?(?:stock )?options\b/i,
+  /\b(?:sell|hold|keep|dump)\w*\b[^.!?]{0,30}\b(?:rsus?|espp)\b/i,
+  /\btax[- ]loss harvest/i,
+  /\bharvest(?:ing)? (?:the |a |your |some |those )?(?:loss|losses|gains?)\b/i,
+  /\btarget[- ]date\b/i,
+  /(?:^|[.!?:;]\s+|\byou should\s+|\bi(?:'|’)?d\s+)(?:take|withdraw|skip|delay)\b[^.!?]{0,30}\b(?:rmds?|required minimum distributions?)\b/i,
   ...STOCK_PICKS,
   /\brebalanc/i,
   // "Your budget allocation" is a budget.
@@ -173,6 +188,10 @@ const TAX_ADVICE = [
   /\bmarried filing (?:jointly|separately)\b/i,
   /\b(?:put|enter|list|include|show|claim|report|take)\b[^.!?]{0,40}\bon your (?:\d{4} )?(?:tax |federal |state )?return\b/i,
   /\bclaim (?:your|my|their|her|his|the) (?:daughter|son|kids?|children|child|parents?|mom|dad|mother|father|niece|nephew|grand\w+|girlfriend|boyfriend|partner)\b(?!['’]s)/i,
+  // Changing what's withheld (aup-audit 11-06): "Increase your withholding on your W-4". What was
+  // withheld stays a fact.
+  /(?:^|[.!?:;]\s+|\byou should\s+|\bi(?:'|’)?d\s+)(?:increase|raise|lower|reduce|change|adjust|update|bump|boost)\b[^.!?]{0,30}\bwithholding\b/i,
+  /\b(?:file|fill out|submit|give|send) (?:your employer )?a new w-?4\b/i,
 ];
 // In a sentence that talks about tax: telling them to do something, or what the rules say
 // their money counts as. "You'll owe about $X" is a figure; "you should set aside $X" is advice.
