@@ -74,6 +74,9 @@ export type Connector = {
   capabilities: readonly ConnectorCapability[];
   // Every one must be in the person's consent before anything runs.
   scopes: readonly ConsentScope[];
+  // The exact consent text for a scope in EXACT_TEXT_SCOPES, as the partner and counsel approved
+  // it, with its version. Shown and stored word for word when the person agrees.
+  consentText?: Partial<Record<ConsentScope, { version: string; text: string }>>;
   // A sandbox adapter reaches nobody: it simulates the partner. Only sample-data people get one, so
   // a real account never sees a pretend success; real connectors are the other way round.
   sandbox: boolean;

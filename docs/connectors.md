@@ -169,3 +169,15 @@ Both accounts must be the person's own, named from their rows, never from the re
 review on #1508), and a second open move of the same amount between the same accounts on the same
 day is refused. It settles only when both lines show: out of one, the same amount into the other,
 within three business days, each line used once. Off until its switch.
+
+## What a person agreed to
+
+Each consent row keeps exactly what the person was shown (`shown_text`: one line per scope), a
+version of it (a hash, so the same words always give the same version and changed words a new one),
+and the IP address and browser they agreed from. The connections page shows the words under "What
+you agreed to", for current and revoked consents. Three scopes are legal texts, not Jane's words
+(`EXACT_TEXT_SCOPES`: `soft_credit_pull` for FCRA, `ach_debit_authorization` for Nacha,
+`tax_7216_disclosure` for IRS 7216): a connector asking for one must carry the partner's and
+counsel's approved text in `consentText`, stored word for word, or the grant is refused. Jane writes
+none of them. Still open for those: emailing the person a copy, Nacha's two-year retention after
+revoking (account deletion removes the rows today), and 7216's one consent per use.

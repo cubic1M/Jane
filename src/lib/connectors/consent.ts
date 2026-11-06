@@ -1,8 +1,15 @@
-import { CONSENT_SCOPES, isConsentScope, type ConsentScope } from "@/config/connectors";
+import { createHash } from "node:crypto";
+import {
+  CONSENT_SCOPES,
+  EXACT_TEXT_SCOPES,
+  isConsentScope,
+  type ConsentScope,
+} from "@/config/connectors";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { onSampleDataOnly } from "@/lib/concierge-mode";
+import { currentRequestDetails } from "@/lib/request-details";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { allConnectors, connectorById, whyUnavailable, type Unavailable } from "./registry";
@@ -15,13 +22,15 @@ import { deleteCredential } from "./vault";
 // again just before acting. /settings/connections shows all of it.
 
 export class ConsentError extends Error {
-  constructor(readonly reason: "unknown" | "scopes" | Unavailable) {
+  constructor(readonly reason: "unknown" | "scopes" | "needs_text" | Unavailable) {
     super(
       reason === "unknown"
         ? "Jane doesn't know that connection."
         : reason === "scopes"
           ? "That isn't something this connection asks for."
-          : "That connection isn't available for you yet.",
+          : reason === "needs_text"
+            ? "That needs its approved wording first."
+            : "That connection isn't available for you yet.",
     );
     this.name = "ConsentError";
   }
@@ -43,6 +52,25 @@ export async function usableConnector(
   return connector;
 }
 
+// What the person is shown and agrees to, one line per scope: our words, or for a legal scope the
+// connector's approved text with its version. Null if a legal scope has no approved text.
+export function consentWords(
+  connector: Pick<Connector, "name" | "consentText">,
+  scopes: readonly ConsentScope[],
+): string | null {
+  const lines = [`${connector.name} may:`];
+  for (const scope of scopes) {
+    if (EXACT_TEXT_SCOPES.includes(scope)) {
+      const approved = connector.consentText?.[scope];
+      if (!approved?.text.trim()) return null;
+      lines.push(`- ${approved.text.trim()} (version ${approved.version})`);
+    } else {
+      lines.push(`- ${CONSENT_SCOPES[scope]}`);
+    }
+  }
+  return lines.join("\n");
+}
+
 export async function grantConsent(
   userId: string,
   connectorId: string,
@@ -57,6 +85,11 @@ export async function grantConsent(
   ) {
     throw new ConsentError("scopes");
   }
+  const shownText = consentWords(connector, asked as ConsentScope[]);
+  // A legal scope needs its approved text: without it, there is nothing the person could agree to.
+  if (shownText === null) throw new ConsentError("needs_text");
+  const textVersion = createHash("sha256").update(shownText).digest("hex").slice(0, 16);
+  const { ip, user_agent: userAgent } = await currentRequestDetails();
   // One current consent per connector: the new one replaces the old, which stays as history. Two
   // grants at once may both stay current; the newest is the one read (currentScopes).
   const db = scopedFor(userId, client);
@@ -65,13 +98,22 @@ export async function grantConsent(
     data: { revokedAt: now },
   });
   await db.connectorConsents.create({
-    data: { userId, connectorId, scopes: asked, grantedAt: now },
+    data: {
+      userId,
+      connectorId,
+      scopes: asked,
+      grantedAt: now,
+      shownText,
+      textVersion,
+      ip,
+      userAgent,
+    },
   });
   await logAudit(
     { type: "user", id: userId },
     "connector_consent_granted",
     { type: "user", id: userId },
-    { connector: connectorId, scopes: asked.join(",") },
+    { connector: connectorId, scopes: asked.join(","), text_version: textVersion },
   );
   await track(userId, "connector_consent_granted", {
     connector: connectorId,
@@ -151,6 +193,8 @@ export type ConsentRow = {
   scopes: { scope: string; label: string }[];
   grantedAt: Date;
   revokedAt: Date | null;
+  // Word for word what they agreed to; null on rows from before it was kept.
+  shownText: string | null;
 };
 
 // Every consent the person gave, newest first, current and revoked, for the settings page.
@@ -160,7 +204,14 @@ export async function listConsents(
 ): Promise<ConsentRow[]> {
   const rows = await scopedFor(userId, client).connectorConsents.findMany({
     orderBy: { grantedAt: "desc" },
-    select: { id: true, connectorId: true, scopes: true, grantedAt: true, revokedAt: true },
+    select: {
+      id: true,
+      connectorId: true,
+      scopes: true,
+      grantedAt: true,
+      revokedAt: true,
+      shownText: true,
+    },
   });
   return rows.map((row) => ({
     ...row,

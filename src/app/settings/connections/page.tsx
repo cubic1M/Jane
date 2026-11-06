@@ -36,6 +36,17 @@ function Scopes({ scopes }: { scopes: { scope: string; label: string }[] }) {
   );
 }
 
+// Word for word what they agreed to, for their records.
+function AgreedTo({ text }: { text: string | null }) {
+  if (!text) return null;
+  return (
+    <details className="text-sm">
+      <summary className={`cursor-pointer ${LINK}`}>What you agreed to</summary>
+      <p className="whitespace-pre-line pt-2">{text}</p>
+    </details>
+  );
+}
+
 function CurrentItem({ row, timezone }: { row: ConsentRow; timezone: string }) {
   return (
     <li
@@ -45,6 +56,7 @@ function CurrentItem({ row, timezone }: { row: ConsentRow; timezone: string }) {
       <span className="font-medium">{row.connectorName}</span>
       <p className={MUTED}>Allowed since {momentLabel(row.grantedAt, timezone, { year: true })}</p>
       <Scopes scopes={row.scopes} />
+      <AgreedTo text={row.shownText} />
       <form action={revokeConnector}>
         <input type="hidden" name="connectorId" value={row.connectorId} />
         <SubmitButton className={`relative inline-flex min-h-11 items-center text-sm ${LINK}`}>
@@ -186,6 +198,7 @@ async function ConnectionsContent() {
               <li key={row.id} className={MUTED}>
                 {row.connectorName}: allowed {momentLabel(row.grantedAt, timezone, { year: true })},
                 revoked {row.revokedAt && momentLabel(row.revokedAt, timezone, { year: true })}
+                <AgreedTo text={row.shownText} />
               </li>
             ))}
           </ul>
