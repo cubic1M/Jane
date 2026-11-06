@@ -1,6 +1,7 @@
 import { APPROVED_DEBT_SENTENCES } from "@/config/debt-trouble";
 import { APPROVED_FAMILY_SENTENCES } from "@/config/family-file";
 import { APPROVED_ESTATE_SENTENCES } from "@/config/inheritance";
+import { INSURER_KINDS } from "@/config/found-policies";
 import { RESHOP_BANNED_PHRASES } from "@/config/insurance";
 import type { FindingType } from "@/generated/prisma/client";
 
@@ -593,6 +594,63 @@ export function reshopBannedPhrases(text: string): string[] {
   return RESHOP_BANNED_PHRASES.filter((phrase) => words.includes(` ${phrase} `));
 }
 
+// The same rule for Claude's own words in the chat and anywhere else no finding is named (security
+// round 48): a real account's answer never tells someone to switch insurers or drop a policy, and
+// never calls another insurer cheaper or says it saves. Only in a sentence about insurance, so
+// "Switch to T-Mobile; it's cheaper" stays a phone answer, and only to the person ("you", or an
+// order), so a letter's "please cancel my policy" stays the person's own words.
+const insurerName = (word: string) => [
+  word.replace(/\b\w/g, (c) => c.toUpperCase()),
+  word.toUpperCase(),
+];
+const INSURER = new RegExp(
+  `\\b(?:${INSURER_KINDS.flatMap((k) => k.words.flatMap(insurerName)).join("|")})\\b`,
+);
+const ABOUT_INSURANCE =
+  /\binsur(?:e|ed|er|ers|ance|ing)\b|\b(?:premiums?|deductibles?|policyholders?)\b|\b(?:auto|car|home|homeowners?|renters?|life|pet|health|umbrella|current|existing|insurance) polic(?:y|ies)\b/i;
+const TO_THEM =
+  "(?:^|[,;:]\\s*|\\b(?:you (?:should|could|can|might|may want to)|i(?:'|’)?d|consider|just|then|and|so|maybe|go ahead and)\\s+)";
+const RESHOP_STEERING: readonly { why: string; pattern: RegExp }[] = [
+  {
+    why: "switch",
+    pattern: new RegExp(
+      `${TO_THEM}(?:switch(?:\\s+over)?(?:\\s+(?:to|carriers|insurers|companies|providers|polic(?:y|ies))\\b|\\s*[.!?]?$)|move(?:\\s+over)?\\s+to\\s+(?:${INSURER.source}|(?:another|a (?:new|different|cheaper)) (?:insurer|carrier|company|policy)\\b))|\\b(?:consider|try|recommend|suggest)\\s+switching\\b`,
+      "i",
+    ),
+  },
+  {
+    why: "drop the policy",
+    pattern:
+      /(?<!\b(?:don(?:'|’)?t|do not|never|not|before you|until you)\s)\b(?:cancel|drop|ditch|dump|leave|end)\s+your\s+(?:current\s+|existing\s+|old\s+)?(?:\w+\s+){0,2}?(?:polic(?:y|ies)|coverage|insurance|insurer|carrier)\b/i,
+  },
+  {
+    why: "drop the insurer",
+    pattern: new RegExp(`${TO_THEM}(?:cancel|drop|ditch|dump|leave)\\s+${INSURER.source}`, "i"),
+  },
+  {
+    why: "cheaper",
+    pattern:
+      /\b(?:cheaper|less expensive|lower[- ](?:priced|cost)|better (?:deal|price|rate|value|coverage)|same coverage for less)\b|\b(?:would|could|might|may|will)\s+(?:cost|pay)\s+(?:you\s+(?:\$[\d,.]+\s+)?|\$[\d,.]+\s+)less\b|\bcosts?\s+\$[\d,.]+\s+less\b/i,
+  },
+  {
+    why: "saves",
+    pattern:
+      /\b(?:you(?:'|’)?ll|you will|you(?:'|’)?d|you could|you can|you might|could|would|will)\s+(?:likely\s+|probably\s+|easily\s+)?save\b/i,
+  },
+];
+
+// What in the text steers someone off their policy. `everySentence` for a reshop's own words,
+// which are all about insurance.
+export function reshopSteering(text: string, { everySentence = false } = {}): string[] {
+  const found = new Set<string>();
+  for (const sentence of text.split(/(?<=[.!?])\s+|\n+/)) {
+    if (!everySentence && !ABOUT_INSURANCE.test(sentence) && !INSURER.test(sentence)) continue;
+    for (const { why, pattern } of RESHOP_STEERING)
+      if (pattern.test(sentence.trim())) found.add(why);
+  }
+  return [...found];
+}
+
 type Scan = { issues: GuardrailIssue[]; matched: string[] };
 
 function scan(
@@ -646,8 +704,15 @@ function scan(
     issues.push("deposit_insurance");
     matched.push("deposit_insurance");
   }
-  // A reshop for a real account never says it saves or tells them to switch (round 14).
-  const reshop = !advice && findingType === "insurance_reshop" ? reshopBannedPhrases(original) : [];
+  // A reshop for a real account never says it saves or tells them to switch (round 14), nor does
+  // any answer about insurance with no finding named (the chat).
+  const reshop = advice
+    ? []
+    : findingType === "insurance_reshop"
+      ? [...reshopBannedPhrases(original), ...reshopSteering(original, { everySentence: true })]
+      : findingType === undefined
+        ? reshopSteering(original)
+        : [];
   if (reshop.length > 0) {
     issues.push("insurance_comparison");
     matched.push(...reshop.map((phrase) => `insurance_comparison:${phrase}`));
