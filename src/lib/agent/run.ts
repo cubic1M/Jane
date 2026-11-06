@@ -609,7 +609,7 @@ async function firstEmail(
 // the timeline; it's acted on only while the agent is waiting for one.
 export async function handleReply(
   toAddress: string,
-  mail: { from: string; subject: string; body: string },
+  mail: { from: string; subject: string; body: string; verified?: boolean },
   {
     client = defaultClient,
     now = new Date(),
@@ -646,6 +646,8 @@ export async function handleReply(
     where: {
       actionId: action.id,
       direction: "inbound",
+      // Only one that was read: a copy kept unread (unverified, say) mustn't block the real one.
+      outcome: { not: null },
       fromAddress: mail.from,
       subject: mail.subject.slice(0, 300),
       body: mail.body.slice(0, AGENT_MAX_BODY),
@@ -653,7 +655,9 @@ export async function handleReply(
     select: { id: true },
   });
   if (repeat) return "kept";
+  // Unverified: the From line is only what the sender wrote (src/lib/agent/received-email.ts).
   if (
+    mail.verified !== true ||
     !fromTheCompany(mail.from, sentTo) ||
     !canAgentWork(action) ||
     action.agentState !== "waiting_reply"
@@ -685,7 +689,7 @@ export async function handleReply(
 async function actOnReply(
   userId: string,
   action: LoadedAction,
-  mail: { from: string; subject: string; body: string },
+  mail: { from: string; subject: string; body: string; verified?: boolean },
   inbound: Parameters<typeof record>[2],
   {
     client,

@@ -78,7 +78,7 @@ export async function simulatedReply(
     client?: PrismaClient;
     deliver: (
       toAddress: string,
-      mail: { from: string; subject: string; body: string },
+      mail: { from: string; subject: string; body: string; verified: boolean },
     ) => Promise<unknown>;
   },
 ): Promise<void> {
@@ -112,5 +112,7 @@ export async function simulatedReply(
     from: latest.toAddress,
     subject: latest.subject.startsWith("Re: ") ? latest.subject : `Re: ${latest.subject}`,
     body: simulatedBody(kind, action.type, merchant),
+    // Jane's own stand-in, written here: no outside sender can be it.
+    verified: true,
   });
 }

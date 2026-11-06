@@ -87,7 +87,7 @@ describe.runIf(url)("the action agent against a real database", () => {
     });
     return handleReply(
       `reply+${action.replyToken}@agent.jane.test`,
-      { from: toAddress, subject: "Re: your request", body },
+      { from: toAddress, subject: "Re: your request", body, verified: true },
       { client, read, notify },
     );
   };

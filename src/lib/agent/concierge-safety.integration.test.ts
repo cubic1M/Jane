@@ -96,7 +96,7 @@ describe.runIf(url)(
       const reply = (body: string, from = toAddress) =>
         handleReply(
           `reply+${action.replyToken}@agent.jane.test`,
-          { from, subject: "Re: your request", body },
+          { from, subject: "Re: your request", body, verified: true },
           { client, read, notify, send: deliver },
         );
       return { userId, actionId, toAddress, reply };
