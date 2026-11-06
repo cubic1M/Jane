@@ -1,4 +1,5 @@
 import {
+  HUMAN_REVIEW_READY,
   REAL_CONNECTORS,
   connectorsKilledByEnv,
   connectorsOn,
@@ -82,14 +83,16 @@ export type Unavailable =
   | "trial"
   // A sandbox adapter is only for sample data, a real connector only for real data.
   | "sandbox_for_samples"
-  | "real_for_real";
+  | "real_for_real"
+  // A personalized investment or tax recommendation for a real person, before HUMAN_REVIEW_READY.
+  | "needs_review";
 
 export type Who = { userId: string; sampleData: boolean };
 
 // Why this connector can't be used for this person now, or null when it can. Pure: the caller works
 // out whether their data is sample data (onSampleDataOnly).
 export function whyUnavailable(
-  connector: Pick<Connector, "id" | "sandbox">,
+  connector: Pick<Connector, "id" | "sandbox" | "recommends">,
   who: Who,
   env: Record<string, string | undefined> = process.env,
 ): Unavailable | null {
@@ -98,7 +101,9 @@ export function whyUnavailable(
   if (connector.sandbox) return who.sampleData ? null : "sandbox_for_samples";
   if (isTrialUser(who.userId)) return "trial";
   if (who.sampleData) return "real_for_real";
-  return REAL_CONNECTORS[connector.id] === true ? null : "switched_off";
+  if (REAL_CONNECTORS[connector.id] !== true) return "switched_off";
+  // Here, so the connections page, consent, uploads and the pipeline all hold it back alike.
+  return connector.recommends && !HUMAN_REVIEW_READY ? "needs_review" : null;
 }
 
 // Whether acting through it may move real money: only a real connector, only once money movement is
