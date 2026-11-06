@@ -356,9 +356,10 @@ const GUARANTEE = [
 // about it. Jane isn't a bank and holds nobody's money, so nothing is insured "with Jane"; and a
 // Treasury, a money market fund, a stock, a bond or crypto is never FDIC insured. "Not FDIC
 // insured" says so plainly, and stays allowed.
-// Every way of saying it: "FDIC insured", "-backed", "protected by the FDIC", "carry FDIC insurance".
+// Every way of saying it: "FDIC insured", "-backed", "protected by the FDIC", "carry FDIC insurance",
+// "guaranteed by the FDIC", "protected up to $250,000 by the FDIC" (debugger 11-06).
 const FDIC_SAID =
-  "(?:FDIC[- ](?:insured|backed|protected|covered)|(?:insured|protected|backed|covered) by (?:the )?FDIC|FDIC (?:insurance|coverage|protection))";
+  "(?:FDIC[- ](?:insured|backed|protected|covered|guaranteed)|(?:insured|protected|backed|covered|guaranteed)(?: up to \\$[\\d,.]+k?)? by (?:the )?FDIC|FDIC (?:insurance|coverage|protection))";
 // "Not FDIC insured" and its kin are the truth, said plainly; "no less FDIC insured" isn't.
 const NOT_INSURED = new RegExp(
   `\\b(?:not|never|isn(?:'|’)?t|aren(?:'|’)?t|no)\\s+(?:(?!less\\b|more\\b)\\w+\\s+)?${FDIC_SAID}`,
@@ -382,8 +383,19 @@ const DEPOSIT_INSURANCE = [
   ),
   new RegExp(`\\b(?:with|through|inside)\\s+Jane\\b[^.!?]{0,60}${FDIC_SAID}`, "i"),
   new RegExp(`${FDIC_SAID}[^.!?]{0,40}\\b(?:in|with|at|through)\\s+Jane\\b`, "i"),
+  // Jane keeping or holding money, then insured: "Jane keeps your money FDIC insured" (debugger
+  // 11-06). Not "Jane keeps an eye on whether your bank is FDIC insured".
+  new RegExp(
+    `\\bJane\\s+(?:keeps|holds|stores|puts)\\s+(?:\\w+\\s+){0,2}?${MONEY}\\b[^.!?]{0,60}(?:${FDIC_SAID}|\\binsured\\b)`,
+    "i",
+  ),
   // An investment is never FDIC insured, however it's put.
   new RegExp(`\\b${NEVER_INSURED}\\b${NO_BANK_WORD}${FDIC_SAID}`, "i"),
+  // The FDIC said to insure one: "The FDIC insures your Treasuries" (debugger 11-06).
+  new RegExp(
+    `\\bFDIC\\s+(?:insures|guarantees|covers|protects|backs)\\b${NO_BANK_WORD}\\b${NEVER_INSURED}\\b`,
+    "i",
+  ),
 ];
 export const misstatesDepositInsurance = (text: string): boolean => {
   const said = text.replace(NOT_INSURED, " ");

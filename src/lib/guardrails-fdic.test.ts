@@ -28,8 +28,27 @@ describe("deposit insurance", () => {
     }
   });
 
+  // Debugger 11-06: wordings that got through after #1532.
+  it("blocks the FDIC said to insure an investment, and Jane said to keep money insured", () => {
+    for (const text of [
+      "The FDIC insures your Treasuries.",
+      "The FDIC insures your index fund up to $250,000.",
+      "Your stocks are protected up to $250,000 by the FDIC.",
+      "Treasuries are guaranteed by the FDIC.",
+      "Jane keeps your money FDIC insured.",
+      "Jane holds your cash in FDIC-insured accounts.",
+    ]) {
+      expect(misstatesDepositInsurance(text), text).toBe(true);
+    }
+  });
+
   it("lets plain, true statements through", () => {
     for (const text of [
+      "Your Ally savings are FDIC insured up to $250,000.",
+      "Stocks aren't insured by the FDIC.",
+      "The FDIC insures deposits at member banks up to $250,000.",
+      "Move it from your brokerage's money market fund to savings at an FDIC-insured bank.",
+      "Jane keeps an eye on whether your bank is FDIC insured.",
       "Jane is not a bank and never holds your money.",
       "Treasuries are backed by the US government and are not FDIC insured.",
       "A money market fund isn't FDIC insured.",
