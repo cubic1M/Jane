@@ -186,4 +186,25 @@ describe.runIf(url)('"Jane shows, you open and move it"', () => {
       note: "Moved: Ally Bank took the deposit on 2026-11-10.",
     });
   });
+
+  // A bank whose name starts with a common word: a store or airline line of the same amount
+  // isn't the deposit, and the bank's own pull still is.
+  it.each([
+    ["The Bancorp Bank", "THE HOME DEPOT #4410", "THE BANCORP BANK TRANSFER"],
+    ["American Express National Bank", "AMERICAN AIRLINES 0012", "AMERICAN EXPRESS TRANSFER"],
+  ])("settles a %s opening only on the bank's own name", async (provider, other, own) => {
+    const { userId, accountId } = await person();
+    const planned = await plan(userId, request(accountId, await option({ provider })));
+    await answerAction(
+      userId,
+      planned.id,
+      { yes: true, amountCents: 80_000, fingerprint: planned.fingerprint },
+      { now: NOW },
+    );
+    await executeAction(userId, planned.id, { now: LATER });
+    await line(userId, accountId, "2026-11-09", 80_000, other);
+    expect(await settleManualPayments(userId, { now: LATER })).toBe(0);
+    await line(userId, accountId, "2026-11-10", 80_000, own);
+    expect(await settleManualPayments(userId, { now: LATER })).toBe(1);
+  });
 });

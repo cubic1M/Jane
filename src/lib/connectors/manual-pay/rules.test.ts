@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { BILLERS } from "@/config/billers";
 import {
   autopayCovers,
+  bankNameToken,
   billerFor,
   findSettlement,
   findTransferSettlement,
@@ -45,6 +46,17 @@ describe("billerFor", () => {
     expect(billerFor("Chase Home Lending")?.biller).toBe("Chase Home Lending");
     expect(billerFor("Chase")?.biller).toBe("Chase (credit cards)");
     expect(billerFor("Some Local Water Co")).toBeNull();
+  });
+});
+
+describe("bankNameToken", () => {
+  it("keeps what names the bank and drops the filler", () => {
+    expect(bankNameToken("Ally Bank")).toBe("ALLY");
+    expect(bankNameToken("The Bancorp Bank")).toBe("BANCORP");
+    expect(bankNameToken("American Express National Bank")).toBe("AMERICAN EXPRESS");
+    expect(bankNameToken("Marcus by Goldman Sachs")).toBe("MARCUS");
+    expect(bankNameToken("Capital One, N.A.")).toBe("CAPITAL ONE");
+    expect(bankNameToken("The Bank")).toBe("");
   });
 });
 
