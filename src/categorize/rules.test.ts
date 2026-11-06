@@ -478,6 +478,22 @@ describe("categorizeByRules", () => {
     expect(into("Bitcoin Sell")).toBe("TRANSFER_IN_INVESTMENT_AND_RETIREMENT_FUNDS");
   });
 
+  // Debugger 11-06: a Cash App driver's "Direct deposit from DoorDash Inc", and every bank layout
+  // that adds DIR DEP to "DOORDASH, INC. PAYOUT", read as a salary: the tax estimate assumed tax
+  // was withheld and counted no self-employment tax.
+  it.each([
+    ["Direct deposit from DoorDash Inc", "INCOME_GIG_ECONOMY"],
+    ["Direct deposit from Instacart", "INCOME_GIG_ECONOMY"],
+    ["DOORDASH, INC. PAYOUT DIR DEP PPD ID: 4656933486", "INCOME_GIG_ECONOMY"],
+    ["Deposit from DOORDASH, INC. PAYOUT DIR DEP", "INCOME_GIG_ECONOMY"],
+    ["DOORDASH, INC. PAYOUT DES:DIR DEP ID:XXXXX83928 CO ID:XXXXX76671 PPD", "INCOME_GIG_ECONOMY"],
+    // Working for the company itself is a salary.
+    ["DOORDASH, INC. PAYROLL DIR DEP", "INCOME_SALARY"],
+    ["Direct deposit from Acme Corp", "INCOME_SALARY"],
+  ])("reads pay in %s as %s", (description, category) => {
+    expect(into(description)).toBe(category);
+  });
+
   // Debugger 11-01: a freelancer's Bank of America lines put "DES:" between the company and the
   // entry: six Stripe payouts ($14,086) read as transfers between her own accounts, so the tax
   // estimate saw a fraction of her income, and the IRS estimated payment had no category.

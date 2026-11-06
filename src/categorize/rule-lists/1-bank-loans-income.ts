@@ -278,6 +278,15 @@ export const BANK_LOANS_INCOME: readonly Rule[] = [
   },
   // Above the salary rule's DIRECT DEP: a driver's pay isn't a salary.
   { category: "INCOME_GIG_ECONOMY", keywords: ["LYFT DIRECT", "UBER DIRECT"], direction: "in" },
+  // A gig platform's PAYOUT, whatever deposit words the bank adds ("DOORDASH, INC. PAYOUT DIR
+  // DEP"), and Cash App's "Direct deposit from DoorDash Inc" (debugger 11-06: both read as a
+  // salary, so tax was assumed withheld). The company's own PAYROLL stays a salary.
+  {
+    category: "INCOME_GIG_ECONOMY",
+    pattern:
+      /^(?=.*(?<![A-Z0-9])(?:UBER|LYFT|DOORDASH|GRUBHUB|INSTACART|SHIPT|POSTMATES)(?![A-Z0-9]))(?=.*(?<![A-Z0-9])PAYOUT(?![A-Z0-9]))|^DIRECT DEPOSIT FROM (?:DOORDASH|GRUBHUB|INSTACART|SHIPT|POSTMATES)(?![A-Z0-9])/,
+    direction: "in",
+  },
   { category: "INCOME_CHILD_SUPPORT", keywords: ["CHILD SUPPORT", "CHILD SUPP"], direction: "in" },
   // Paid, it goes through the state's collection office (debugger 11-04: left uncategorized).
   {
