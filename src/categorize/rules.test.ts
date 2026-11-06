@@ -1345,6 +1345,17 @@ describe("a landlord", () => {
       categorizeByRules({ description: "LANDLORD INS OBIE POLICY", amountCents: 48_000, hints: {} })
         ?.detailed,
     ).toBe("GENERAL_SERVICES_INSURANCE");
+    // Debugger 11-06: spelled out, it read as rent, so a homeowner with two mortgages read "Your
+    // rent goes to Obie Insurance Landlord Policy" and was asked about renters insurance.
+    for (const description of [
+      "OBIE INSURANCE LANDLORD POLICY 261006 XXXXX1102",
+      "LANDLORD INSURANCE STEADILY",
+      "NATIONAL GENERAL LANDLORD POLICY",
+    ]) {
+      expect(categorizeByRules({ description, amountCents: 9_800, hints: {} })?.detailed).toBe(
+        "GENERAL_SERVICES_INSURANCE",
+      );
+    }
     expect(
       categorizeByRules({ description: "ZELLE TO LANDLORD", amountCents: 120_000, hints: {} })
         ?.detailed,
