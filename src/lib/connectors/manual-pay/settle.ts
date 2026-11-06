@@ -8,7 +8,7 @@ import {
   MANUAL_SAVINGS_SETTLE_BUSINESS_DAYS,
   MANUAL_TRANSFER_SETTLE_BUSINESS_DAYS,
 } from "@/config/connectors";
-import { billerFor, findSettlement, findTransferSettlement } from "./rules";
+import { bankNameToken, billerFor, findSettlement, findTransferSettlement } from "./rules";
 
 // After "Jane prepares, you pay": the person's own transactions say whether they paid. A bill is
 // marked paid only on a line from the account it was to come from, of the exact amount, in its
@@ -83,7 +83,7 @@ export async function settleManualPayments(
       // The new bank pulls the deposit: a line out of that account, of the exact amount, in the
       // window, naming the bank. Nothing less counts.
       const provider = String(details.provider ?? "");
-      const token = provider.toUpperCase().split(/\s+/)[0] ?? "";
+      const token = bankNameToken(provider);
       const accountId = typeof details.fromAccountId === "string" ? details.fromAccountId : null;
       if (!token || !accountId || !action.externalRef) continue;
       const found = findSettlement(

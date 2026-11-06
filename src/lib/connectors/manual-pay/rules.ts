@@ -45,6 +45,29 @@ export function billerFor(name: string): Biller | null {
   return best?.biller ?? null;
 }
 
+// Words a bank's legal name carries that say nothing about which bank it is.
+const BANK_FILLER = new Set([
+  "THE",
+  "BANK",
+  "NATIONAL",
+  "ASSOCIATION",
+  "N",
+  "A",
+  "NA",
+  "FSB",
+  "INC",
+]);
+
+// What a bank line must say for a deposit to be this bank's pull: its name without the filler,
+// up to "by" ("Marcus by Goldman Sachs" is MARCUS). "The Bancorp Bank" is BANCORP, never THE (a
+// Home Depot line), and "American Express National Bank" is AMERICAN EXPRESS, never AMERICAN
+// (an airline). Empty when nothing is left.
+export function bankNameToken(provider: string): string {
+  const name = words(provider).split(" ");
+  const by = name.indexOf("BY");
+  return (by > 0 ? name.slice(0, by) : name).filter((w) => w && !BANK_FILLER.has(w)).join(" ");
+}
+
 // The day to pay: three business days before it's due (five through a bank's own bill pay), and
 // never before today. Weekends move it earlier, to a business day.
 export function payOnFor(
