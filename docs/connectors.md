@@ -222,3 +222,20 @@ Nothing is pulled from a bureau. Off until its switch, and saving needs their `r
   name or any text from the report.
 - Saved as a `credit_reports` row with partner `upload`. Not built yet: reading the PDF itself (a
   `credit_report` document kind through the existing extractor, budget permitting) and the page.
+
+## Insurance referrals: how Jane may be paid
+
+Round 14 of the connectors roadmap, on the existing referral partners (`src/lib/referrals.ts`,
+`/admin/partners`). Each partner has a `payModel` (`none`, `flat_click`, `flat_lead`, `per_quote`,
+`per_policy`) and the insurance `lines` it compares. For insurance:
+
+- Nothing is offered until counsel's answer is recorded (`COUNSEL_INSURANCE_REFERRALS.approved`).
+- Unpaid partners then follow the state list as before. A flat fee or per-quote pay also needs
+  that pay model approved for the person's state (`approvedStates`, empty today).
+- Per policy sold is never allowed: refused at `/admin/partners`, and skipped if a row says so.
+- The card shows the partner's disclosure and then how Jane is paid, word for word
+  (`PAY_DISCLOSURES`), for example "Jane isn't an insurance agent and isn't paid for this."
+
+Not built yet from round 14: renewal timing by kind (auto 30 days, home 45, never in the last 7),
+which moves the demo's auto reshop and needs its demo data and tests updated together; the link
+builder for affiliate networks; the postback receiver; the banned-phrase check on card copy.

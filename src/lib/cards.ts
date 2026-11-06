@@ -238,7 +238,9 @@ export function buildCard(finding: CardFinding, partner: CardPartner | null = nu
     alternatives: text.alternatives,
     evidence: evidenceRows(finding.type, evidence),
     referralPartner: partner ? { key: partner.key, name: partner.name } : null,
-    referralDisclosure: partner ? partner.disclosure : null,
+    referralDisclosure: partner
+      ? [partner.disclosure, partner.payDisclosure].filter(Boolean).join(" ")
+      : null,
   };
 }
 

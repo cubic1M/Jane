@@ -31,6 +31,8 @@ const EMPTY: PartnerFormValues = {
   referralUrl: "",
   allowedStates: "",
   revenuePerConversion: "",
+  payModel: "none",
+  lines: "",
   active: false,
 };
 
@@ -112,6 +114,8 @@ async function Partners() {
                         p.revenuePerConversionCents === null
                           ? ""
                           : String(p.revenuePerConversionCents / 100),
+                      payModel: p.payModel,
+                      lines: p.lines.join(", "),
                       active: p.active,
                     }}
                   />

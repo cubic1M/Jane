@@ -12,7 +12,18 @@ export type PartnerFormValues = {
   referralUrl: string;
   allowedStates: string;
   revenuePerConversion: string;
+  payModel: string;
+  lines: string;
   active: boolean;
+};
+
+// How a partner pays Jane (src/config/referrals.ts). Per policy sold is refused for insurance.
+const PAY_MODEL_LABELS: Record<string, string> = {
+  none: "Not paid",
+  flat_click: "Flat fee per click",
+  flat_lead: "Flat fee per lead",
+  per_quote: "Per quote",
+  per_policy: "Per policy sold (never for insurance)",
 };
 
 const INPUT =
@@ -95,6 +106,25 @@ export function PartnerForm({
           defaultValue={values.revenuePerConversion}
           className={INPUT}
         />
+      </label>
+      <label htmlFor={id("payModel")} className="flex flex-col gap-1 text-xs font-medium">
+        How it pays Jane
+        <select
+          id={id("payModel")}
+          name="payModel"
+          defaultValue={values.payModel}
+          className={INPUT}
+        >
+          {Object.entries(PAY_MODEL_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label htmlFor={id("lines")} className="flex flex-col gap-1 text-xs font-medium">
+        Insurance lines (auto, home, renters, life)
+        <input id={id("lines")} name="lines" defaultValue={values.lines} className={INPUT} />
       </label>
       <label className="flex items-center gap-2 text-sm sm:col-span-2">
         <input type="checkbox" name="active" defaultChecked={values.active} className="h-4 w-4" />

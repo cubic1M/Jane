@@ -28,6 +28,8 @@ describe("validatePartner", () => {
         referralUrl: "https://example.com/r/jane",
         allowedStates: ["CA", "NY"],
         revenuePerConversionCents: 4_000,
+        payModel: "none",
+        lines: [],
         active: true,
       },
     });
@@ -57,5 +59,52 @@ describe("validatePartner", () => {
         ok: true,
       },
     );
+  });
+
+  it("never lets an insurance partner pay per policy sold, and checks the lines", () => {
+    expect(
+      validatePartner(
+        input({ actionType: "insurance_reshop", active: false, payModel: "per_policy" }),
+      ),
+    ).toMatchObject({ ok: false, message: expect.stringContaining("per policy") });
+    expect(validatePartner(input({ payModel: "per_sale" }))).toMatchObject({ ok: false });
+    expect(
+      validatePartner(
+        input({ actionType: "insurance_reshop", active: false, lines: "Auto, home, auto" }),
+      ),
+    ).toMatchObject({ ok: true, data: { lines: ["auto", "home"] } });
+    expect(validatePartner(input({ lines: "boat" }))).toMatchObject({ ok: false });
+  });
+});
+
+describe("partnerAllowed by pay model", () => {
+  it("keeps insurance off before counsel, and per policy off for good", async () => {
+    for (const model of ["none", "flat_click", "flat_lead", "per_quote", "per_policy"] as const) {
+      expect(partnerAllowed("insurance_reshop", model, "NY"), model).toBe(false);
+    }
+    // Other referrals don't change.
+    expect(partnerAllowed("move_idle_cash", "per_policy", "NY")).toBe(true);
+  });
+
+  it("with counsel's answer: unpaid anywhere, paid only where approved for that pay model", async () => {
+    vi.resetModules();
+    vi.doMock("@/config/referrals", async (importOriginal) => {
+      const original = await importOriginal<typeof import("@/config/referrals")>();
+      return {
+        ...original,
+        COUNSEL_INSURANCE_REFERRALS: {
+          ...original.COUNSEL_INSURANCE_REFERRALS,
+          approved: true,
+          approvedStates: { flat_click: ["NY"] },
+        },
+      };
+    });
+    const { partnerAllowed: allowed } = await import("./referrals");
+    expect(allowed("insurance_reshop", "none", "CA")).toBe(true);
+    expect(allowed("insurance_reshop", "flat_click", "NY")).toBe(true);
+    expect(allowed("insurance_reshop", "flat_click", "CA")).toBe(false);
+    expect(allowed("insurance_reshop", "per_quote", "NY")).toBe(false);
+    expect(allowed("insurance_reshop", "per_policy", "NY")).toBe(false);
+    vi.doUnmock("@/config/referrals");
   });
 });
