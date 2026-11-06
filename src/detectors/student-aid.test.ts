@@ -2,11 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
-import { FED_AUTOPAY } from "@/config/student-loans";
+import { FED_AUTOPAY, SAVE_ENDING } from "@/config/student-loans";
 import { PEOPLE } from "@/config/people";
 import { buildProfile, type ProfileInput, type ProfileLiability } from "@/profile/build";
 import { inputFor } from "@/profile/sample";
 import { HEADLINE_MAX } from "./contract";
+import { levelPaymentCents } from "@/planning/refinance";
+import { recommendsAChoice } from "@/lib/guardrails";
 import { runDetectors } from "./index";
 import { STUDENT_AID_DETECTORS, federalDirect } from "./student-aid";
 
@@ -39,10 +41,15 @@ const withLoan = (loan: Partial<ProfileLiability> = {}, today = "2026-11-06") =>
     ],
     liabilities: [...base.liabilities.filter((l) => l.kind !== "student"), { ...LOAN, ...loan }],
   };
-  return runDetectors({ profile: buildProfile(data), data }, STUDENT_AID_DETECTORS)[0] ?? null;
+  const found = runDetectors({ profile: buildProfile(data), data }, STUDENT_AID_DETECTORS);
+  return found.find((s) => s.topic === topic) ?? null;
 };
+let topic = "student_autopay";
 
-beforeEach(() => vi.stubEnv("CONNECTORS", "1"));
+beforeEach(() => {
+  vi.stubEnv("CONNECTORS", "1");
+  topic = "student_autopay";
+});
 afterEach(() => vi.unstubAllEnvs());
 
 describe("the federal autopay card", () => {
@@ -71,9 +78,19 @@ describe("the federal autopay card", () => {
     expect(withLoan({}, "2027-01-01")).toBeNull();
   });
 
-  it("says nothing while CONNECTORS is off", () => {
+  it("shows on real accounts whether CONNECTORS is on or off: no partner, just a link", () => {
     vi.stubEnv("CONNECTORS", "");
-    expect(withLoan()).toBeNull();
+    expect(withLoan()).not.toBeNull();
+    vi.stubEnv("CONNECTORS", "1");
+    expect(withLoan()).not.toBeNull();
+  });
+
+  it("states facts and a link, with no advice words", () => {
+    const s = withLoan()!;
+    const words = `${s.title} ${s.short} ${s.why}`;
+    expect(words).not.toMatch(/\b(should|recommend|we suggest|best)\b/i);
+    expect(recommendsAChoice(words)).toBe(false);
+    expect(s.more?.every((m) => m.href.startsWith("https://studentaid.gov/"))).toBe(true);
   });
 
   it("says nothing in forbearance, deferment or default, or before repayment starts", () => {
@@ -102,6 +119,18 @@ describe("the federal autopay card", () => {
     expect(withLoan()!.why).not.toContain("July 1, 2012");
   });
 
+  it("puts no figure in the headline when it can't tell the loan gets the cut", () => {
+    expect(withLoan({ originationDate: null })!.headline).toBe("Turn on student loan autopay");
+    expect(withLoan()!.headline).toMatch(/\$240/);
+  });
+
+  it("says deferment or forbearance pauses the cut, and returned payments end it", () => {
+    const why = withLoan()!.why;
+    expect(why).toContain("Deferment or forbearance pauses it");
+    expect(why).toContain("three payments returned in a row end it");
+    expect(why).toContain("11:59 p.m. Eastern on December 31, 2026");
+  });
+
   it("says it can save less on RAP, which Plaid can't name yet", () => {
     expect(withLoan({ repaymentPlan: "unknown" })!.why).toContain("On RAP it can save less");
     expect(withLoan({ repaymentPlan: "standard" })!.why).not.toContain("RAP");
@@ -122,12 +151,78 @@ describe("the federal autopay card", () => {
     expect(federalDirect({ ...LOAN, description: null, repaymentPlan: "unknown" })).toBe(false);
   });
 
-  it("changes nothing for the sample people while CONNECTORS is off", () => {
+  it("gives the sample people the same cards with CONNECTORS on or off", () => {
+    const cards = () =>
+      PEOPLE.map((person) => {
+        const data = inputFor(person.id);
+        return runDetectors({ profile: buildProfile(data), data }, STUDENT_AID_DETECTORS).map(
+          (s) => `${person.id}:${s.topic}`,
+        );
+      });
     vi.stubEnv("CONNECTORS", "");
-    for (const person of PEOPLE) {
-      const data = inputFor(person.id);
-      const found = runDetectors({ profile: buildProfile(data), data }, STUDENT_AID_DETECTORS);
-      expect(found, person.id).toEqual([]);
-    }
+    const off = cards();
+    vi.stubEnv("CONNECTORS", "1");
+    expect(cards()).toEqual(off);
+  });
+});
+
+describe("the SAVE-ending card", () => {
+  beforeEach(() => {
+    topic = "student_save_ending";
+  });
+  const onSave = { repaymentPlan: "saving on a valuable education", loanStatus: "forbearance" };
+
+  it("asks a borrower still on SAVE to pick a plan, worth what Standard would add", () => {
+    const s = withLoan({ ...onSave, minimumCents: 0 })!;
+    const standard = levelPaymentCents(2_400_000, 553, SAVE_ENDING.standardMonths);
+    expect(s.worthCents).toBe(standard * 12);
+    expect(s.worthKind).toBe("risk");
+    expect(s.urgency).toBe("now");
+    expect(s.why).toContain("90 days from your notice");
+    expect(s.why).toContain("Consolidating now leaves only RAP and Tiered Standard");
+    expect(s.more?.[0]?.href).toBe("https://studentaid.gov/loan-simulator/");
+    // SAVE borrowers sat in forbearance while it was in court: that doesn't hide it.
+    expect(s).not.toBeNull();
+  });
+
+  it("says the default is Standard or Tiered Standard", () => {
+    expect(withLoan(onSave)!.why).toContain("put on Standard or Tiered Standard");
+  });
+
+  it("gives a Direct Consolidation Loan's Standard its longer term, set by what's owed", () => {
+    // $24,000 consolidated: a 20-year Standard plan, not 10.
+    const consolidated = withLoan({
+      ...onSave,
+      description: "Direct Consolidation Unsubsidized",
+      minimumCents: 0,
+    })!;
+    expect(consolidated.worthCents).toBe(levelPaymentCents(2_400_000, 553, 240) * 12);
+    expect(consolidated.worthCents).toBeLessThan(
+      withLoan({ ...onSave, minimumCents: 0 })!.worthCents,
+    );
+  });
+
+  it("counts what's paid now, and says nothing when Standard costs no more", () => {
+    const standard = levelPaymentCents(2_400_000, 553, SAVE_ENDING.standardMonths);
+    expect(withLoan({ ...onSave, minimumCents: 10_000 })!.worthCents).toBe(
+      (standard - 10_000) * 12,
+    );
+    expect(withLoan({ ...onSave, minimumCents: standard })).toBeNull();
+  });
+
+  it("states facts and a link, with no advice words", () => {
+    const s = withLoan(onSave)!;
+    expect(recommendsAChoice(`${s.title} ${s.short} ${s.why}`)).toBe(false);
+    expect(s.more?.every((m) => m.href.startsWith("https://studentaid.gov/"))).toBe(true);
+  });
+
+  it("reads the old REPAYE name too, and stops once a new plan is applied for or it's gone", () => {
+    expect(withLoan({ ...onSave, repaymentPlan: "revised pay as you earn" })).not.toBeNull();
+    expect(withLoan({ ...onSave, loanStatus: "pending idr" })).toBeNull();
+    expect(withLoan({ ...onSave, loanStatus: "paid in full" })).toBeNull();
+    expect(withLoan({ repaymentPlan: "income-based repayment" })).toBeNull();
+    // No partner: it shows with the connectors phase off too.
+    vi.stubEnv("CONNECTORS", "");
+    expect(withLoan(onSave)).not.toBeNull();
   });
 });
