@@ -207,7 +207,9 @@ export function withoutAchDetails(description: string): string {
 // MEHTA" and Wells Fargo's "USAA P&C AUTOPAY 260908 12345678 MEHTA RAJ" put the account holder's
 // name in the merchant's. Saved keys moved in prisma/migrations/20270505000000_merchant_without_ach_
 // details: keep them in step.
-const ACH_DETAILS = /\s(?:ORIG ID:.*|\d{6}\s+\d{6,}(?:\s.*)?)$/;
+// The account number may come masked: "MR COOPER MORTGAGE 261004 XXXXX3390 OKAFOR CHIDI" (debugger
+// 11-06). As in the migration's note, a saved key can't be told apart, so it moves on a new upload.
+const ACH_DETAILS = /\s(?:ORIG ID:.*|\d{6}\s+(?:\d{6,}|X{3,}\d{2,})(?:\s.*)?)$/;
 // The entry's word for what it is, after the company: "STATE FARM INSURANCE BILL PAY". Not "CHASE
 // AUTOPAY", Chase's own line for paying its card: "Chase" alone would be the bank.
 const ACH_ENTRY = /(?<!^CHASE)\s+(?:BILL ?PAY|AUTO ?PAY|(?:WEB|ONLINE|MOBILE) PMT)$/;
