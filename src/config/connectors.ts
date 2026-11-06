@@ -126,3 +126,6 @@ export const MANUAL_PAY_AUTOPAY_LOOKBACK_DAYS = 45;
 // A move between the person's own accounts at one bank is instant; between banks, ACH takes up to
 // three business days to show on both sides.
 export const MANUAL_TRANSFER_SETTLE_BUSINESS_DAYS = 3;
+// A new savings bank pulls the opening deposit by ACH once the person links their account: about
+// one to three business days after they open it (round 13); five to allow a slow sign-up.
+export const MANUAL_SAVINGS_SETTLE_BUSINESS_DAYS = 5;

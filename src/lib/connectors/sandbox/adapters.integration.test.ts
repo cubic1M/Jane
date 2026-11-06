@@ -106,7 +106,7 @@ describe("the sandbox adapters' definitions", () => {
       allConnectors()
         .filter((c) => !c.sandbox)
         .map((c) => c.id),
-    ).toEqual(["manual_bill_pay", "manual_own_transfer"]);
+    ).toEqual(["manual_bill_pay", "manual_own_transfer", "manual_open_savings"]);
   });
 
   it("call nobody: no fetch, http, net or SDK in their code", () => {

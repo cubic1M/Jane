@@ -184,3 +184,20 @@ you agreed to", for current and revoked consents. Three scopes are legal texts, 
 counsel's approved text in `consentText`, stored word for word, or the grant is refused. Jane writes
 none of them. Still open for those: emailing the person a copy, Nacha's two-year retention after
 revoking (account deletion removes the rows today), and 7216's one consent per use.
+
+## "Jane shows, you open and move it"
+
+`manual_open_savings` (`src/lib/connectors/manual-pay/savings.ts`, roadmap round 13's Path A): a
+better savings account from the team's reviewed options (`/admin/options`), opened by the person on
+the bank's own page; the bank then pulls the opening deposit from their checking itself. Jane holds
+nothing, moves nothing and opens nothing. Off until its switch.
+
+- **Checked against the database, not the caller**: the option is a reviewed savings option with an
+  https sign-up page and a rate checked within `SAVINGS_APY_STALE_DAYS`; the account is the
+  person's and holds the amount; one opening per option at a time.
+- **The card**: the rate as "Annual Percentage Yield (APY) X.XX% as of <day>" with the Reg DD lines
+  (`src/lib/apy-disclosure.ts`), the steps (open, link, let the bank pull it), and "Jane is not a
+  bank and never holds your money", pointing to the FDIC's BankFind. It never says FDIC insured:
+  options don't record the insurer yet.
+- **Settlement**: a line out of that account, of the exact amount, within five business days,
+  naming the bank. A same-amount line without the bank's name doesn't count.
