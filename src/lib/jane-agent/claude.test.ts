@@ -448,7 +448,12 @@ describe("askClaudeInChat", () => {
       .mockResolvedValueOnce(
         final("Yes, I can shop it. Lighthouse would save you money on your car insurance."),
       );
-    const result = await askClaudeInChat("u1", [], "can you change my car insurance", options);
+    // A shop is only ever opened in demo advice mode (src/lib/insurance/shop.ts), so the chat
+    // that shows one is in it too.
+    const result = await askClaudeInChat("u1", [], "can you change my car insurance", {
+      ...options,
+      advice: true,
+    });
     expect(result.reply.actions.map((a) => a.id)).toEqual([
       "insurance.shop_yes",
       "insurance.shop_no",
@@ -499,7 +504,12 @@ describe("askClaudeInChat", () => {
   it("has the switch card ready before Claude writes, so it answers in one round", async () => {
     create.mockResolvedValueOnce(final("Yes, I found a cheaper car policy for you."));
     const before = create.mock.calls.length;
-    const result = await askClaudeInChat("u1", [], "can you change my car insurance", options);
+    // A shop is only ever opened in demo advice mode (src/lib/insurance/shop.ts), so the chat
+    // that shows one is in it too.
+    const result = await askClaudeInChat("u1", [], "can you change my car insurance", {
+      ...options,
+      advice: true,
+    });
     expect(create.mock.calls.length - before).toBe(1);
     const request = create.mock.calls.at(-1)?.[0] as {
       tools: { name: string }[];

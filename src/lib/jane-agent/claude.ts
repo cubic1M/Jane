@@ -316,6 +316,8 @@ function rewriteRequest(
       }
       case "guaranteed_outcome":
         return 'It promises a result. Say "could" or "about" instead of "will", "definitely" or "guaranteed".';
+      case "insurance_comparison":
+        return "It tells them to switch insurers or drop a policy, or says another insurer is cheaper or would save them money, which Jane can't say for this person. Keep the facts about their own policy, and say they can compare quotes for the same coverage themselves and keep their current policy until a new one starts.";
       default:
         return "It's missing required wording.";
     }
