@@ -16,7 +16,7 @@ const P2P = new RegExp(
     String.raw`((?:[ \t*]+(?:payment|pmt|transfer|xfer|instant|sent|received|recurring|online|mobile|money|cashout))*)`,
     String.raw`((?:[ \t]+(?:to|from))|[ \t]*\*)?`,
     String.raw`((?:[ \t:#*-]+(?:conf(?:irmation)?|ref|id)?[ \t#:]*[a-z]{0,3}\d[\w-]*)*)`,
-    String.raw`((?:[ \t*]*[a-z][\w'.&-]*)(?:[ \t*]+[a-z][\w'.&-]*){0,3})`,
+    String.raw`((?:[ \t*]*[a-z][\w'.&,-]*)(?:[ \t*]+[a-z][\w'.&,-]*){0,3})`,
   ].join(""),
   "gi",
 );
@@ -28,11 +28,19 @@ const NOT_A_NAME = new Set(
   ),
 );
 
-// The text with the names after a payment app replaced by PERSON. Prose about the apps ("Venmo,
-// Zelle or Cash App") is left alone: a name starts with a capital, after "to", "from", "*" or
-// "payment".
+// Text that may hold a person's name in a form this file knows.
+const MAY_NAME = /zelle|venmo|cash|paypal|indn:|transfer|xfer|payment|pmt/i;
+
+// The text with people's names replaced by PERSON: after a payment app, after PayPal's "*" when
+// what follows is a person, and Bank of America's LAST,FIRST forms.
 export function redactPersonPayees(text: string): string {
-  if (!/zelle|venmo|cash/i.test(text)) return text;
+  if (!MAY_NAME.test(text)) return text;
+  return redactLastFirst(redactPayPal(redactAppPayees(text)));
+}
+
+// The names after a payment app. Prose about the apps ("Venmo, Zelle or Cash App") is left alone: a
+// name starts with a capital, after "to", "from", "*" or "payment".
+function redactAppPayees(text: string): string {
   return text.replace(
     P2P,
     (match, _app, filler: string, direction: string | undefined, _ids, name: string) => {
@@ -56,6 +64,38 @@ export function redactPersonPayees(text: string): string {
   );
 }
 
+// PayPal is a merchant's processor as often as a payment app ("PAYPAL *NETFLIX"), so only what
+// looks like a person after its "*" is redacted ("PAYPAL *JANE DOE").
+const PAYPAL = /\bpaypal[ \t]*\*[ \t]*([a-z][a-z'.-]*(?:[ \t]+[a-z][a-z'.-]*){1,2})/gi;
+
+function redactPayPal(text: string): string {
+  return text.replace(PAYPAL, (match, tail: string) =>
+    personName(tail) ? match.slice(0, match.length - tail.length) + PERSON : match,
+  );
+}
+
+// Bank of America's forms, last name first: an ACH line's "INDN:LEE,JORDAN" (the individual it's
+// for, usually the account holder) and "Online Banking transfer to LEE,JORDAN". No space at the
+// comma, as the bank writes it, so prose ("a payment to Chase, then") isn't touched.
+const INDN =
+  /\bINDN:[ \t]*([^:\n"]*?)(?=[ \t]+CO[ \t]*ID\b|[ \t]+[A-Z]{2,}[ \t]?:|[ \t]{2,}|[\n"]|$)/gi;
+const TO_LAST_FIRST =
+  /\b(?:transfer|xfer|payment|pmt)[ \t]+(?:to|from)[ \t]+([a-z][a-z'-]*,[a-z][a-z'-]*(?:[ \t]+[a-z]\b\.?)?)/gi;
+
+function redactLastFirst(text: string): string {
+  return text
+    .replace(INDN, (match, name: string) =>
+      /[a-z]/i.test(name) ? match.slice(0, match.length - name.length) + PERSON : match,
+    )
+    .replace(TO_LAST_FIRST, (match, name: string) => {
+      const [last, first] = name.split(",").map((part) => part.trim());
+      const capitalized = (word = "") => /^[A-Z]/.test(word);
+      return capitalized(last) && capitalized(first)
+        ? match.slice(0, match.length - name.length) + PERSON
+        : match;
+    });
+}
+
 // Whether merchant text names a payment app at all, so it's a transfer to or from someone.
 export const viaPaymentApp = (text: string): boolean =>
   /\b(zelle|venmo|cash[ \t]?app|square[ \t]+cash|sq[ \t]*\*[ \t]*cash|apple[ \t]+cash)\b/i.test(
@@ -75,6 +115,12 @@ const BUSINESS = new Set(
 // a business kept out only misses Claude's category.
 export function looksLikePersonPayee(text: string): boolean {
   if (viaPaymentApp(text)) return true;
+  if (redactPersonPayees(text) !== text) return true;
+  return personName(text);
+}
+
+// Two or three words, a common first name first, no business word and no digits.
+function personName(text: string): boolean {
   const words = text
     .toUpperCase()
     .replace(/[^A-Z' ]+/g, " ")
@@ -112,7 +158,7 @@ export function redactJson(value: unknown, key?: string): unknown {
 
 // A request body for Claude with people's names taken out; the same string when there were none.
 export function redactRequestBody(body: string): string {
-  if (!/zelle|venmo|cash/i.test(body)) return body;
+  if (!MAY_NAME.test(body)) return body;
   let parsed: unknown;
   try {
     parsed = JSON.parse(body);
