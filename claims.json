@@ -1,10 +1,5 @@
 [
  {
-  "task": "eftps-move-detector",
-  "lane": "lane:connectors",
-  "expires": "2026-11-07T00:12:23.884Z"
- },
- {
   "task": "transcript-partner-mock",
   "lane": "lane:connectors",
   "expires": "2026-11-07T01:11:40.528Z"
