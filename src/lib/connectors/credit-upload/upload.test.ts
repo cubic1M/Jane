@@ -26,7 +26,7 @@ const READ = {
 
 describe("validateCreditUpload", () => {
   it("keeps exactly the derived fields and drops the rest", () => {
-    const kept = validateCreditUpload(READ);
+    const kept = validateCreditUpload(READ, { today: "2026-11-06" });
     expect(Object.keys(kept).sort()).toEqual(
       [
         "averageAgeMonths",
@@ -54,9 +54,19 @@ describe("validateCreditUpload", () => {
       { ...READ, averageAgeMonths: 1.5 },
       { ...READ, collections: [{ creditor: "Acct 12345678", amountCents: 1, medical: false }] },
       { ...READ, collections: [{ creditor: "a@b.com", amountCents: 1, medical: false }] },
+      // An account number in short groups is still one.
+      { ...READ, collections: [{ creditor: "Acct 123-456-789", amountCents: 1, medical: false }] },
       { ...READ, openCards: "none" },
+      // A day that isn't on the calendar, or one after today.
+      { ...READ, reportDate: "2026-99-99" },
+      { ...READ, reportDate: "2026-02-30" },
+      { ...READ, reportDate: "2026-11-07" },
     ];
-    for (const raw of bad) expect(() => validateCreditUpload(raw)).toThrow(CreditUploadError);
+    for (const raw of bad) {
+      expect(() => validateCreditUpload(raw, { today: "2026-11-06" }), JSON.stringify(raw)).toThrow(
+        CreditUploadError,
+      );
+    }
   });
 });
 
@@ -75,6 +85,9 @@ describe("validateScore", () => {
       { model: "vantagescore_3", score: 700, asOf: "2026-11-07" },
       { model: "vantagescore_3", score: 700, asOf: "2026-09-01" },
       { model: "vantagescore_3", score: 700.5, asOf: "2026-11-01" },
+      // Not on the calendar: no age to check, so never taken as fresh.
+      { model: "fico_8", score: 700, asOf: "2025-13-01" },
+      { model: "fico_8", score: 700, asOf: "2026-00-10" },
     ]) {
       expect(() => validateScore(raw, { today }), JSON.stringify(raw)).toThrow(CreditUploadError);
     }
@@ -83,7 +96,7 @@ describe("validateScore", () => {
 
 describe("creditForLlm", () => {
   it("is numbers and labels only: no creditor, no name, no address, no account digits", () => {
-    const view = creditForLlm(validateCreditUpload(READ), {
+    const view = creditForLlm(validateCreditUpload(READ, { today: "2026-11-06" }), {
       model: "vantagescore_3",
       score: 688,
       asOf: "2026-11-01",
