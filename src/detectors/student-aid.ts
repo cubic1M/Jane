@@ -1,6 +1,7 @@
 import { connectorsOn } from "@/config/connectors";
-import { FED_AUTOPAY, STUDENT_STEPS } from "@/config/student-loans";
+import { FED_AUTOPAY, SAVE_ENDING, STUDENT_STEPS } from "@/config/student-loans";
 import { formatCents } from "@/lib/money";
+import { levelPaymentCents } from "@/planning/refinance";
 import { confidenceOf } from "@/profile/confidence";
 import type { ProfileLiability } from "@/profile/build";
 import { type Detector, suggestionId } from "./contract";
@@ -88,4 +89,53 @@ const studentAutopay: Detector = {
   },
 };
 
-export const STUDENT_AID_DETECTORS: readonly Detector[] = [studentAutopay];
+// SAVE has ended: each borrower has 90 days from their own notice to pick a plan, or is put on
+// Standard. Worth what Standard would add to the payment in a year: the risk of not choosing.
+const saveEnding: Detector = {
+  capability: "debt",
+  topic: "student_save_ending",
+  covers: ["student_loans"],
+  needs: [],
+  detect({ profile, data }) {
+    if (!connectorsOn()) return null;
+    const loans = data.liabilities.filter(
+      (l) =>
+        l.kind === "student" &&
+        (SAVE_ENDING.plans as readonly string[]).includes(l.repaymentPlan ?? "") &&
+        !(SAVE_ENDING.doneStatuses as readonly string[]).includes(l.loanStatus ?? ""),
+    );
+    let owed = 0;
+    let standard = 0;
+    let now = 0;
+    for (const l of loans) {
+      const balance = Math.abs(data.accounts.find((a) => a.id === l.accountId)?.balanceCents ?? 0);
+      if (balance <= 0 || l.aprBps === null) continue;
+      owed += balance;
+      standard += levelPaymentCents(balance, l.aprBps, SAVE_ENDING.standardMonths);
+      now += l.minimumCents ?? 0;
+    }
+    const rise = standard - now;
+    if (owed <= 0 || rise <= 0) return null;
+    const simulate = STUDENT_STEPS.find((s) => s.key === "simulate")!;
+    return {
+      id: suggestionId("debt", "student_save_ending"),
+      capability: "debt",
+      topic: "student_save_ending",
+      title: "Pick a new repayment plan now that SAVE has ended",
+      headline: "Pick a new student loan plan",
+      short: `SAVE has ended: without a choice, Standard is about ${formatCents(standard)} a month.`,
+      worthCents: rise * 12,
+      worthKind: "risk",
+      confidence: {
+        percent: confidenceOf("guessed", { months: profile.months, matches: loans.length }),
+        reason: "your bank reports a loan on SAVE; I can't see your notice's date",
+      },
+      urgency: "now",
+      why: `Your bank still shows ${formatCents(owed)} on SAVE, which has ended. You have ${SAVE_ENDING.chooseDays} days from your notice to pick a plan, or you're put on Standard: about ${formatCents(standard)} a month, ${formatCents(rise)} more than now. Compare RAP, IBR and Standard first. Consolidating now leaves only RAP and Tiered Standard.`,
+      action: { label: "Compare repayment plans", href: "/loans/student" },
+      more: [{ label: simulate.title, href: simulate.url }],
+    };
+  },
+};
+
+export const STUDENT_AID_DETECTORS: readonly Detector[] = [studentAutopay, saveEnding];

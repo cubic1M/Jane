@@ -183,6 +183,27 @@ export const FED_AUTOPAY = {
   ],
 } as const;
 
+// SAVE ended by court settlement (connectors roadmap round 15, loans 3.1): notices went out from
+// July 1, 2026, and each borrower has 90 days from their own to choose a plan, or is put on
+// Standard. Consolidating now leaves only RAP and Tiered Standard. Re-check on studentaid.gov.
+export const SAVE_ENDING = {
+  // Plaid's names: REPAYE became SAVE in 2023, and some servicers still report the old name.
+  plans: ["saving on a valuable education", "revised pay as you earn"],
+  chooseDays: 90,
+  // Standard: level payments over ten years.
+  standardMonths: 120,
+  // Statuses where there's nothing left to choose: paid, gone, or a new plan applied for.
+  doneStatuses: [
+    "paid in full",
+    "discharged",
+    "consolidated",
+    "transferred",
+    "cancelled",
+    "refunded",
+    "pending idr",
+  ],
+} as const;
+
 // What a federal loan has that a private refinance gives up for good.
 export const FEDERAL_PROTECTIONS = [
   "Public Service Loan Forgiveness and income-driven forgiveness",

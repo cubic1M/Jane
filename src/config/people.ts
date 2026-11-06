@@ -80,6 +80,7 @@ export const SUGGESTION_TOPICS = [
   "family_loans",
   // Connectors roadmap round 15: the federal autopay rate cut, before its deadline.
   "student_autopay",
+  "student_save_ending",
   // Spec step 263: spending, bills and cash.
   "duplicate_subscription",
   "price_increase",
