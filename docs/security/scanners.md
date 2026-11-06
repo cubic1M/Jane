@@ -1,12 +1,13 @@
 # Security scanners
 
-`.github/workflows/scanners.yml` runs on every pull request, on main and weekly. Findings from
-main go to the repository's Security tab (Code scanning), which only people with write access can
-see.
+`.github/workflows/scanners.yml` runs on every pull request, on main and weekly, on GitHub's own
+machines. Each run keeps what it found as an artifact (`codeql-sarif`, `semgrep-sarif`, 30 days):
+nothing is uploaded to the Security tab, because GitHub's code scanning is paid on a private
+repository.
 
 | Scanner | Finds | On a pull request | Cost |
 | --- | --- | --- | --- |
-| CodeQL (`security-extended`, `.github/codeql/codeql-config.yml`) | How data flows from input to a dangerous place: XSS, injection, log injection | Fails on new high-severity alerts, through GitHub's code scanning check | Free on a public repository. If the repository goes private it needs GitHub Advanced Security |
+| CodeQL (`security-extended`, `.github/codeql/codeql-config.yml`) | How data flows from input to a dangerous place: XSS, injection, log injection | Fails on a finding in a file the pull request changes, in the job itself | Free: no upload, so no GitHub Advanced Security |
 | Semgrep free rules | `p/typescript`, `p/nextjs`, `p/react`, `p/nodejs`, `p/owasp-top-ten`, `p/secrets` | Fails only on what the pull request adds | Free, no login, no code leaves the runner except rule downloads |
 | Semgrep, Jane's rules (`.semgrep/rules/jane.yaml`) | The two things below | Same | Free |
 | `npm audit` (the "Dependency audit" job in `ci.yml`) | Known high or critical holes in what ships to production | Fails on any | Free |
@@ -35,8 +36,9 @@ rule's list, so add new tables there.
    // nosemgrep: jane-user-table-query-without-scope -- daily retention job, across everyone
    ```
 
-For CodeQL, dismiss the alert in the Security tab with a reason. An alert on code that exists
-today gets the same treatment: fix it, or dismiss it with a reason, one by one.
+For CodeQL, fix it, or say in the pull request why it isn't one: the job fails on any finding in a
+file the pull request changes, so a founder decides on the reason. The full list from main is the
+latest `codeql-sarif` artifact.
 
 ## Why main's Semgrep job doesn't fail
 
