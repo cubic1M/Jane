@@ -39,7 +39,18 @@ export const rmdLine = (v: View) =>
     ? `Required minimum distributions start at ${v.rmd.startAge}${v.rmd.firstYearCents !== null ? `; on today's pre-tax balance the first year's minimum would be about ${formatCents(v.rmd.firstYearCents)}` : ""}.`
     : null;
 
+// Each kind by its plain name. The page's labels carry "first", "then" and "last", which read
+// wrong once an empty kind is left out ("1. then pre-tax accounts"), and lower-casing them made
+// "IRA" "ira" (night round 11-06).
+const DRAW_NAMES: Record<View["draw"][number]["key"], string> = {
+  taxableCents: "taxable accounts",
+  preTaxCents: "pre-tax accounts (401(k), traditional IRA)",
+  rothCents: "Roth",
+};
+
 export const drawLine = (v: View) =>
-  v.draw.length > 0
-    ? `The order to draw: ${v.draw.map((d, i) => `${i + 1}. ${d.label.split(":")[0].toLowerCase()}`).join(", ")}.`
-    : null;
+  v.draw.length === 0
+    ? null
+    : v.draw.length === 1
+      ? `Draw from your ${DRAW_NAMES[v.draw[0].key]}.`
+      : `The order to draw: ${v.draw.map((d, i) => `${i + 1}. ${DRAW_NAMES[d.key]}`).join(", ")}.`;

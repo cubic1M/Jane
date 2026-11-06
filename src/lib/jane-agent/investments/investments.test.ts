@@ -2308,7 +2308,7 @@ describe("retirementIncomeReply and the retirement income message", () => {
       /Required minimum distributions start at 75; on today's pre-tax balance the first year's minimum would be about \$24,390\.24/,
     );
     expect(reply.body).toMatch(
-      /The order to draw: 1\. taxable accounts first, 2\. then pre-tax accounts \(401\(k\)/,
+      /The order to draw: 1\. taxable accounts, 2\. pre-tax accounts \(401\(k\), traditional IRA\)/,
     );
     expect(reply.refs).toEqual({ advice: true });
   });
