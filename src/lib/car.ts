@@ -33,7 +33,6 @@ import {
   type DealerCheck,
   type ScoredCarOffer,
 } from "@/planning/car";
-import { isoDay } from "@/lib/dates";
 
 // Buying a car (spec step 178), before the dealer. From the person's own income, current
 // auto insurance and gas spending, what they can afford with insurance and running costs
@@ -103,8 +102,9 @@ export async function loadCar(
   const termMonths = question.termMonths ?? CAR_DEFAULT_TERM_MONTHS;
   const found = await lenderPartnerFor(userId, { client });
   if (!found) return none(termMonths);
-  const asOf = isoDay(now);
   const input = given ?? (await loadDetectionInput(userId, { client, now }));
+  // The person's day, as the detection input's (night round 11-06, Oct 31 at 8pm in Los Angeles).
+  const asOf = input.asOf;
   const db = scopedFor(userId, client);
   const [policies, assets, creditBand] = await Promise.all([
     listPolicies(userId, { client }),

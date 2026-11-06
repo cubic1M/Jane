@@ -4,6 +4,7 @@ import { mustBeEmptyBy } from "@/planning/inheritance";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { db as defaultClient } from "@/lib/db";
+import { todayOf } from "@/lib/today";
 import { loadProfileInput } from "@/lib/profile";
 import type { ProfileInput } from "@/profile/build";
 import type { TaxEstimateView } from "@/lib/tax-estimate";
@@ -60,7 +61,8 @@ export async function loadInheritance(
     loaded?: { estimate: TaxEstimateView; advice: boolean; input?: ProfileInput };
   } = {},
 ): Promise<InheritanceView> {
-  const year = now.getUTCFullYear();
+  // The person's year: this year's gifts at 7pm on Dec 31 in Los Angeles (night round 11-06).
+  const year = Number((await todayOf(userId, { client, now })).slice(0, 4));
   const [input, estimate, advice] = await Promise.all([
     loaded?.input ? Promise.resolve(loaded.input) : loadProfileInput(userId, { client, now }),
     loaded ? Promise.resolve(loaded.estimate) : loadTaxEstimate(userId, { client, now }),

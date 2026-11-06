@@ -12,6 +12,7 @@ import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
+import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { listPolicies } from "@/lib/insurance/policies";
 import { formatCents, parseMoneyToCents } from "@/lib/money";
@@ -92,7 +93,9 @@ export async function loadMedicalBills(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<MedicalBills> {
-  const asOf = isoDay(now);
+  // The person's day, and whole days back from it (night round 11-06: a bill from the window's
+  // first day dropped out at 8pm on Oct 31 in Los Angeles).
+  const asOf = await todayOf(userId, { client, now });
   const empty: MedicalBills = {
     available: false,
     asOf,
@@ -105,7 +108,7 @@ export async function loadMedicalBills(
   const [transactions, typed, rows, policies] = await Promise.all([
     db.transactions.findMany({
       where: {
-        date: { gte: new Date(now.getTime() - MEDICAL_LOOKBACK_DAYS * DAY_MS) },
+        date: { gte: new Date(Date.parse(`${asOf}T00:00:00Z`) - MEDICAL_LOOKBACK_DAYS * DAY_MS) },
         pfcPrimary: "MEDICAL",
         amountCents: { gte: MEDICAL_MIN_BILL_CENTS },
         pending: false,

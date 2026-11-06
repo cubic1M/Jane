@@ -5,6 +5,7 @@ import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
+import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
@@ -81,7 +82,7 @@ export async function loadYearEnd(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<YearEndView | null> {
-  const today = iso(now);
+  const today = await todayOf(userId, { client, now });
   if (Number(today.slice(5, 7)) !== 12 || Number(today.slice(8, 10)) < YEAR_END_FROM_DAY)
     return null;
   const year = Number(today.slice(0, 4));
@@ -129,7 +130,8 @@ export async function loadTaxCalendar(
     };
   } = {},
 ): Promise<TaxCalendarView> {
-  const today = iso(now);
+  // The person's month: on Oct 31 at 8pm in Los Angeles UTC's said November (night round 11-06).
+  const today = await todayOf(userId, { client, now });
   const month = Number(today.slice(5, 7));
   const db = scopedFor(userId, client);
   const fYear = filingYear(today);

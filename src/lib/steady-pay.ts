@@ -68,7 +68,7 @@ export async function loadSteady(
   const input = given ?? (await loadDetectionInput(userId, { client, now }));
   if (input.accounts.length === 0) return null;
   const uneven = await hasUnevenIncome(userId, { client, now });
-  const month = monthOf(now);
+  const month = monthOf(input.asOf);
   const checking = input.accounts.find((a) => a.type === "depository" && a.subtype === "checking");
   const buffer = input.accounts.find((a) => a.type === "depository" && a.subtype === "savings");
   const base = {

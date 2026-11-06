@@ -41,8 +41,6 @@ import { rollOf } from "@/lib/hash";
 
 type Options = { client?: PrismaClient; now?: Date; book?: DebtBook };
 
-const monthOf = (now: Date) => isoDay(now).slice(0, 7);
-
 export class CardInterestError extends Error {}
 
 export type RateRequestView = {
@@ -132,7 +130,7 @@ export async function loadCardInterest(
   };
   if (!(await lenderPartnerFor(userId, { client }))) return empty;
   const db = scopedFor(userId, client);
-  const since = new Date(now.getTime() - 31 * PROMO_PACE_MONTHS * DAY_MS);
+  const since = new Date(Date.parse(`${asOf}T00:00:00Z`) - 31 * PROMO_PACE_MONTHS * DAY_MS);
   const [book, liabilities, promoRows, requestRows, payments] = await Promise.all([
     debtsOr(given, userId, { client, now }),
     db.liabilities.findMany({
@@ -172,7 +170,7 @@ export async function loadCardInterest(
     const amount = d.paymentCents ?? 0;
     const early =
       dueOn && amount > 0 ? payEarlySaving({ amountCents: amount, aprBps, asOf, dueOn }) : null;
-    const key = `account:${d.accountId}:${monthOf(now)}`;
+    const key = `account:${d.accountId}:${asOf.slice(0, 7)}`;
     const sent = requestRows.find((r) => r.key === key);
     const askable = aprBps >= RATE_ASK_MIN_APR_BPS && balanceCents >= RATE_ASK_MIN_BALANCE_CENTS;
     cards.push({

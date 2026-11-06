@@ -3,6 +3,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
+import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { addDeadline } from "@/lib/deadlines";
 import { filingYear } from "@/lib/tax-filing";
@@ -57,7 +58,7 @@ export async function loadIdentity(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<IdentityView> {
-  const today = iso(now);
+  const today = await todayOf(userId, { client, now });
   const year = Number(today.slice(0, 4));
   const db = scopedFor(userId, client);
   const [profile, open, rejected, notices] = await Promise.all([

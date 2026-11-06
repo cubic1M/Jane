@@ -4,6 +4,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
+import { todayOf } from "@/lib/today";
 import { listGoals, type GoalView } from "@/lib/goals";
 import { listPreferences, savePreference, type Preference } from "@/lib/jane-agent/preferences";
 import { loadYearPlan } from "@/lib/year-plan";
@@ -51,7 +52,7 @@ export async function loadTradeoffs(
     listPreferences(userId, { client }),
   ]);
   if (!plan) return null;
-  const startMonth = now.toISOString().slice(0, 7);
+  const startMonth = (await todayOf(userId, { client, now })).slice(0, 7);
   const open = goals.flatMap((g) => tradeGoalOf(g) ?? []);
   const capacity = roomFromPlan(plan.months, startMonth);
   const view = tradeoffs(open, capacity, startMonth);
