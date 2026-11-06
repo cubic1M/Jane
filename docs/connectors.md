@@ -246,3 +246,16 @@ the action's id; a template or deep link with a parameter that could carry the p
 `p.*`, `sharedid`, email, name, phone, zip, date of birth, VIN, user id, or a value that looks like
 an email or phone number) is refused, and a deep link may only point at the partner's allowed
 domain. Not wired to `/admin/partners` yet: partners don't record their network.
+
+## A person's federal student loans
+
+`my_aid_upload` (`src/lib/connectors/my-aid/`, roadmap round 15) is read only, with no vendor: the
+person downloads "Download My Aid Data" from studentaid.gov, a plain-text file of `name:value`
+lines. `parseMyAid` reads it in memory and keeps each loan's fields (type, balances, rate, repayment
+plan and code, scheduled payment, IDR anniversary, next due date, PSLF months, status, loan date,
+disbursed amount, servicer); the person's name, address, phone and email are dropped and the file is
+never stored. Values are read loosely (the 2022 layout doesn't pin their formats), and an unknown
+plan code stays as it is. `myAidForLlm` gives Claude numbers, codes and plan or status names only,
+never the servicer and no date finer than a month. Off until its switch; reading needs
+`read_accounts` consent and is audited with the number of loans only. Not built yet: saving the
+loans into the student-loan lane's tables and the upload page.

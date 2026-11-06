@@ -10,6 +10,7 @@ import { isTrialUser } from "@/lib/trial-ids";
 import { gated } from "./gate";
 import { manualBillPay, manualOwnTransfer } from "./manual-pay/connector";
 import { creditUpload } from "./credit-upload/connector";
+import { myAidUpload } from "./my-aid/connector";
 import { manualOpenSavings } from "./manual-pay/savings";
 import { SANDBOX_CONNECTORS } from "./sandbox/adapters";
 import type { Connector } from "./types";
@@ -56,6 +57,8 @@ const CONNECTORS: readonly Connector[] = [
   manualOpenSavings,
   // Real, read only, no vendor: the person's own report and score (./credit-upload/).
   creditUpload,
+  // Real, read only, no vendor: the person's federal student loans from studentaid.gov (./my-aid/).
+  myAidUpload,
 ];
 
 let registry: ReadonlyMap<string, Connector> = buildRegistry(CONNECTORS);
