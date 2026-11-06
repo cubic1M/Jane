@@ -1244,6 +1244,9 @@ Code in `sng/`, plan in `report/dayof_sng.md`.
   ran kit-4 payouts. Now an explicit `--payouts` wins (`test_explicit_payouts_override_preset`). No earlier result is
   affected: no script combined the two flags in one cell. On the day, the tuner must be run with the kit's real point
   table either way.
+* **Full suite after tonight's tool fix (Nov 6, 00:00, `SNG_TIME_SCALE=1.5`, bug hunter alongside):** 18 of 19 suites OK
+  (sng 53 tests, sng_ours 86, every field suite and both kit adapters); the one failure is again the round-1 opponent
+  `opp_lag` on Irish (107-110 ms vs a 100 ms check), not ours. 744 s wall.
 * **Bug hunter:** 2.68M random tables (all variants, 2–8 players; 2–10 from Nov 5 10:20, random blinds, antes and payouts, every field), **0 functional failures**. The slow flags it raises under load do not reproduce on replay.
 * **icm_any tuning on five-card draw rejected** (`results/sng_anyvar_validate.md`). Round 1
   accepted:
