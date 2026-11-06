@@ -36,10 +36,15 @@ export type FoundPolicy = {
   termMonths: number;
 };
 
-export function insurerKind(merchantKey: string): PolicyKind | null {
+// `said`: the charge's own words, when the merchant's name leaves out what the cover is: "STATE
+// FARM HOME" and "STATE FARM AUTO" both have the merchant "State Farm" (night round 11-06: the
+// home policy was saved as a second car policy, and the chat said "I don't have the renewal date
+// for your State Farm car insurance" twice).
+export function insurerKind(merchantKey: string, said = ""): PolicyKind | null {
   const insurer = INSURER_KINDS.find((i) => merchantMatches(merchantKey, i.words));
   if (!insurer) return null;
-  return COVER_WORDS.find((c) => merchantMatches(merchantKey, c.words))?.kind ?? insurer.kind;
+  const words = `${merchantKey} ${said.toLowerCase().replace(/[^a-z0-9]+/g, " ")}`.trim();
+  return COVER_WORDS.find((c) => merchantMatches(words, c.words))?.kind ?? insurer.kind;
 }
 
 // A known insurer's own name ("GEICO", "State Farm"), not the statement's words around it
@@ -68,7 +73,7 @@ export function policiesFromStreams(input: DetectionInput, streams: Stream[]): F
     const frequency = s.frequency && PREMIUM_FREQUENCY_OF[s.frequency];
     const first = s.charges[0];
     if (!s.active || !frequency || !first) return [];
-    const kind = insurerKind(s.merchantKey);
+    const kind = insurerKind(s.merchantKey, s.charges.at(-1)?.description);
     // An insurer's name counts only for services (USAA and Nationwide are banks too).
     const byName = kind !== null && (s.pfcPrimary === null || s.pfcPrimary === "GENERAL_SERVICES");
     if (!byName && !inList(s.pfcDetailed, INSURANCE_CATEGORIES)) return [];

@@ -230,7 +230,8 @@ export function insuranceReply(
       ? [{ id: "insurance.quotes", label: "Compare quotes", kind: "secondary" } as const]
       : [];
   return {
-    body: `${answers.map((a) => a.line).join("\n")}${missing ? "\nAdd it from your policy and I'll keep it on file." : ""}`,
+    // Two policies alike in carrier and kind say the same line once.
+    body: `${[...new Set(answers.map((a) => a.line))].join("\n")}${missing ? "\nAdd it from your policy and I'll keep it on file." : ""}`,
     actions: missing ? [editLink(missing.p), ...compare, SEE] : [...compare, SEE],
     refs: policies.length === 1 ? { policyId: policies[0].id } : {},
   };
