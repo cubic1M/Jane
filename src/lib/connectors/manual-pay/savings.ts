@@ -4,6 +4,7 @@ import { apyDisclosures, apyHeadline } from "@/lib/apy-disclosure";
 import { formatCents } from "@/lib/money";
 import { scopedFor } from "@/lib/db-scoped";
 import { systemDb } from "@/lib/system-db";
+import { todayOf } from "@/lib/today";
 import { BadRequest, type ActionDetails, type Connector } from "../types";
 import { ownAccount, refuseOpenTwin } from "./guards";
 
@@ -92,6 +93,8 @@ export const manualOpenSavings: Connector = {
       signUpUrl: option.signUpUrl,
       fromAccount: from.name,
       fromAccountId: from.id,
+      // The person's own day, never the caller's: the deposit is looked for from then on.
+      today: await todayOf(userId, { client, now }),
     };
   },
   guard: async (details, { userId, client, now, actionId }) => {

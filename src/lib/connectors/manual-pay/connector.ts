@@ -1,5 +1,6 @@
 import { MANUAL_PAY_CUTOFF } from "@/config/connectors";
 import { formatCents } from "@/lib/money";
+import { todayOf } from "@/lib/today";
 import { BadRequest, type ActionDetails, type Connector } from "../types";
 import { autopayOn, ownAccount, refuseOpenTwin } from "./guards";
 import { billerFor, payOnFor } from "./rules";
@@ -45,7 +46,13 @@ export const manualBillPay: Connector = {
     if (await autopayOn(userId, name, { client, now })) {
       throw new BadRequest("autopay already pays this bill");
     }
-    const prepared = { ...request, fromAccount: account.name, fromAccountId: account.id };
+    const prepared = {
+      ...request,
+      fromAccount: account.name,
+      fromAccountId: account.id,
+      // The person's own day, never the caller's: an earlier one would let an old line settle it.
+      today: await todayOf(userId, { client, now }),
+    };
     await refuseOpenTwin(
       userId,
       "manual_bill_pay",
@@ -142,7 +149,7 @@ export const manualOwnTransfer: Connector = {
   movesMoney: false,
   // Both accounts are the person's own, named from their rows (security review on #1508): a name
   // or id from a request, a chat or a message is never taken as theirs. And no twin is open.
-  prepare: async (request, { userId, client, actionId }) => {
+  prepare: async (request, { userId, client, now, actionId }) => {
     const from = await ownAccount(userId, request.fromAccountId, client);
     const to = await ownAccount(userId, request.toAccountId, client);
     if (from.id === to.id) throw new BadRequest("the same account on both sides");
@@ -156,6 +163,8 @@ export const manualOwnTransfer: Connector = {
       fromAccountId: from.id,
       toAccount: to.name,
       toAccountId: to.id,
+      // The person's own day: a move can't be set for a day already gone, nor settle on one.
+      today: await todayOf(userId, { client, now }),
     };
   },
   guard: async (details, { userId, client, actionId }) => {
