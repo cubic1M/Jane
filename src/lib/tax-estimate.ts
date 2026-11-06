@@ -65,6 +65,7 @@ import {
   type ProfileField,
 } from "@/planning/tax-profile";
 import { addDays, DAY_MS, isoDay as iso } from "@/lib/dates";
+import { todayOf } from "@/lib/today";
 
 // The tax estimate (spec step 120), loaded from the person's own accounts, pay stubs and
 // tax profile: what they'll owe or get back for the year, federal and state. Worked out
@@ -150,7 +151,9 @@ async function loadTaxEstimateFrom(
   userId: string,
   { client, now, year: asked }: { client: PrismaClient; now: Date; year?: number },
 ): Promise<TaxEstimateView> {
-  const today = iso(now);
+  // The person's day: at 7pm in Los Angeles UTC's tomorrow moved the year's projection (night
+  // round 11-06, charity $160 at 3pm and $161 at 7pm).
+  const today = await todayOf(userId, { client, now });
   const year = asked ?? defaultTaxYear(today);
   const db = scopedFor(userId, client);
   const incomeCategories = [
@@ -205,7 +208,7 @@ async function loadTaxEstimateFrom(
       select: { date: true, amountCents: true, subtype: true, accountId: true },
     }),
     // Banks report loan interest for the current year only.
-    year === now.getUTCFullYear()
+    year === Number(today.slice(0, 4))
       ? db.liabilities.findMany({ select: { kind: true, ytdInterestPaidCents: true } })
       : Promise.resolve([]),
     loadTaxTags(userId, year, { client }),
