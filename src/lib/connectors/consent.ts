@@ -52,21 +52,29 @@ export async function usableConnector(
   return connector;
 }
 
-// What the person is shown and agrees to, one line per scope: our words, or for a legal scope the
-// connector's approved text with its version. Null if a legal scope has no approved text.
+// The words for one scope, as the person sees them on the card and as the record keeps them: ours,
+// or for a legal scope the connector's approved text with its version. Null if a legal scope has no
+// approved text.
+export function scopeWords(
+  connector: Pick<Connector, "consentText">,
+  scope: ConsentScope,
+): string | null {
+  if (!EXACT_TEXT_SCOPES.includes(scope)) return CONSENT_SCOPES[scope];
+  const approved = connector.consentText?.[scope];
+  return approved?.text.trim() ? `${approved.text.trim()} (version ${approved.version})` : null;
+}
+
+// What the person is shown and agrees to, one line per scope (scopeWords). Null if a legal scope
+// has no approved text.
 export function consentWords(
   connector: Pick<Connector, "name" | "consentText">,
   scopes: readonly ConsentScope[],
 ): string | null {
   const lines = [`${connector.name} may:`];
   for (const scope of scopes) {
-    if (EXACT_TEXT_SCOPES.includes(scope)) {
-      const approved = connector.consentText?.[scope];
-      if (!approved?.text.trim()) return null;
-      lines.push(`- ${approved.text.trim()} (version ${approved.version})`);
-    } else {
-      lines.push(`- ${CONSENT_SCOPES[scope]}`);
-    }
+    const words = scopeWords(connector, scope);
+    if (words === null) return null;
+    lines.push(`- ${words}`);
   }
   return lines.join("\n");
 }
@@ -240,12 +248,19 @@ export async function connectionsView(
   ]);
   const current = consents.filter((row) => row.revokedAt === null);
   const consented = new Set(current.map((row) => row.connectorId));
+  // Each scope in the words the record will keep (scopeWords), so what's stored as shown is what
+  // was shown; one whose legal text isn't approved yet can't be agreed to, so it isn't offered.
   const available = allConnectors()
-    .filter((c) => !consented.has(c.id) && whyUnavailable(c, { userId, sampleData }) === null)
+    .filter(
+      (c) =>
+        !consented.has(c.id) &&
+        whyUnavailable(c, { userId, sampleData }) === null &&
+        consentWords(c, c.scopes) !== null,
+    )
     .map((c) => ({
       id: c.id,
       name: c.name,
-      scopes: c.scopes.map((scope) => ({ scope, label: CONSENT_SCOPES[scope] })),
+      scopes: c.scopes.map((scope) => ({ scope, label: scopeWords(c, scope) ?? "" })),
     }));
   return { available, current, past: consents.filter((row) => row.revokedAt !== null) };
 }
