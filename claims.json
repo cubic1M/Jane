@@ -3,5 +3,10 @@
   "task": "federal-autopay-card",
   "lane": "lane:connectors",
   "expires": "2026-11-06T23:01:29.304Z"
+ },
+ {
+  "task": "eftps-move-detector",
+  "lane": "lane:connectors",
+  "expires": "2026-11-07T00:12:23.884Z"
  }
 ]
