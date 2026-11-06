@@ -459,6 +459,20 @@ export const RESHOP_DAYS_BEFORE_RENEWAL_BY_KIND: Partial<Record<PolicyKind, numb
 };
 // Never this close to renewal, unless the price already went up: too late to compare calmly.
 export const RESHOP_LAST_CALL_DAYS = 7;
+// Words a reshop never uses for a real account, on the card or from Claude (connectors roadmap
+// round 14, 4.3: CA CIC 790.03, NAIC Model 880, WA RCW 48.30.180 bar misleading comparisons
+// that lead someone to drop a policy). Demo advice may say a quote saves, because it shows the
+// quote and where it came from. Matched as whole words, any case.
+export const RESHOP_BANNED_PHRASES = [
+  "you'll save",
+  "you will save",
+  "cheaper",
+  "better coverage",
+  "same coverage for less",
+  "cancel your policy",
+  "switch now",
+  "apply",
+] as const;
 // A carrier's price counts this much more for each rating point below 100 (0.5% a point),
 // so a much better-rated carrier can win at a slightly higher price.
 export const PICK_RATING_PENALTY_PER_POINT = 0.005;

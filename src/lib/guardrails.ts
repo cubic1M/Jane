@@ -1,6 +1,7 @@
 import { APPROVED_DEBT_SENTENCES } from "@/config/debt-trouble";
 import { APPROVED_FAMILY_SENTENCES } from "@/config/family-file";
 import { APPROVED_ESTATE_SENTENCES } from "@/config/inheritance";
+import { RESHOP_BANNED_PHRASES } from "@/config/insurance";
 import type { FindingType } from "@/generated/prisma/client";
 
 // Every piece of Claude-written text passes through checkGuardrails before anyone sees it.
@@ -16,7 +17,8 @@ export type GuardrailIssue =
   | "untrusted_link"
   | "credential_request"
   | "claimed_action"
-  | "deposit_insurance";
+  | "deposit_insurance"
+  | "insurance_comparison";
 
 export type GuardrailResult = { ok: true } | { ok: false; issues: GuardrailIssue[] };
 
@@ -552,6 +554,16 @@ export function closingTheirWords(text: string): string {
   return `${text}${QUOTE_OPENS.test(closed) ? '"' : ""}${LETTER_OPENS.test(closed) ? "\n\nThanks,\nName" : ""}`;
 }
 
+// A reshop's words for a real account (round 14): none of RESHOP_BANNED_PHRASES, as whole words,
+// with a curly apostrophe read as a straight one.
+export function reshopBannedPhrases(text: string): string[] {
+  const words = ` ${text
+    .toLowerCase()
+    .replace(/\u2019/g, "'")
+    .replace(/[^a-z']+/g, " ")} `;
+  return RESHOP_BANNED_PHRASES.filter((phrase) => words.includes(` ${phrase} `));
+}
+
 type Scan = { issues: GuardrailIssue[]; matched: string[] };
 
 function scan(
@@ -604,6 +616,12 @@ function scan(
   if (misstatesDepositInsurance(original)) {
     issues.push("deposit_insurance");
     matched.push("deposit_insurance");
+  }
+  // A reshop for a real account never says it saves or tells them to switch (round 14).
+  const reshop = !advice && findingType === "insurance_reshop" ? reshopBannedPhrases(original) : [];
+  if (reshop.length > 0) {
+    issues.push("insurance_comparison");
+    matched.push(...reshop.map((phrase) => `insurance_comparison:${phrase}`));
   }
   // From the words with their lines still in them, which is how a letter is told apart.
   if (!advice && claimsAnAct(withoutApprovedSentences(original))) {
