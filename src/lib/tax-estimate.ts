@@ -9,6 +9,7 @@ import {
 import {
   BUSINESS_SALES_CATEGORIES,
   BUSINESS_SALES_PAYEE,
+  CHECK_DEPOSIT,
   LEFT_OUT_INCOME_MIN_CENTS,
   INCOME_KINDS,
   TAXABLE_INVESTMENT_SUBTYPES,
@@ -357,7 +358,8 @@ async function loadTaxEstimateFrom(
     .filter(
       (t) =>
         t.amountCents < 0 &&
-        t.pfcDetailed === "INCOME_OTHER" &&
+        (t.pfcDetailed === "INCOME_OTHER" ||
+          (t.pfcDetailed === "TRANSFER_IN_DEPOSIT" && CHECK_DEPOSIT.test(t.description))) &&
         Number(t.date.slice(0, 4)) === year &&
         !ONE_OFF_PAY.test(t.description) &&
         !BUSINESS_SALES_PAYEE.test(t.description),
@@ -369,7 +371,7 @@ async function loadTaxEstimateFrom(
     fixes.selfEmployedCents === null
   ) {
     assumptions.push(
-      `${formatCents(leftOutCents)} more came in this year that I can't place, like cash deposits, so I've left it out. If it's tips or pay, it's taxable and your tax would be higher: point it out on the calculation.`,
+      `${formatCents(leftOutCents)} more came in this year that I can't place, like cash or check deposits, so I've left it out. If it's tips or pay, it's taxable and your tax would be higher: point it out on the calculation.`,
     );
   }
   if (fixes.withheldCents !== null) {
