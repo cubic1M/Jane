@@ -38,5 +38,13 @@
   "when": "merged",
   "since": "2026-11-06T21:51:10.633Z",
   "expires": "2026-11-09T21:51:10.633Z"
+ },
+ {
+  "on": 1568,
+  "lane": "lane:connectors",
+  "task": "claude/eftps-move",
+  "when": "merged",
+  "since": "2026-11-06T22:15:46.586Z",
+  "expires": "2026-11-09T22:15:46.586Z"
  }
 ]
