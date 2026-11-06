@@ -48,3 +48,24 @@ publishes deploy lag, red main minutes and silent tasks. See [the loop](agent-lo
 ## Writing an end-to-end test
 
 No fixed sleeps: ESLint refuses `waitForTimeout`. `e2e/waits.ts` has what to use.
+
+## A self-hosted runner (CI_RUNNER)
+
+Setting the repository variable `CI_RUNNER` moves only the jobs that hold no secret and no token that
+writes to the repo: `ci.yml`, `holdout-seal.yml` and `mutation.yml`. Every other workflow names
+`ubuntu-latest` itself, and `src/gates/workflow-trust.test.ts` fails if one that holds a secret or a
+write token names anything else. Those workflows are protected files too, so a change to one needs a
+founder's approval.
+
+Why: any branch can name any runner label in its own workflow file, and a runner that isn't wiped
+between jobs keeps what a branch's code left on it (a process, a changed cache, a file in the work
+folder) for the next job. So the machine behind `CI_RUNNER` must:
+
+- be **ephemeral**: a fresh machine or container for each job (`./config.sh --ephemeral`), never one
+  reused across jobs;
+- hold **no credentials of its own**: no cloud keys, no SSH keys, no logged-in `gh`, and nothing on a
+  network it can reach beyond GitHub and the package registries;
+- be registered to this repository only.
+
+And, once the repository is private: Settings, Actions, General: leave "Run workflows from fork pull
+requests" off, and keep "Require approval for all outside collaborators" on.
