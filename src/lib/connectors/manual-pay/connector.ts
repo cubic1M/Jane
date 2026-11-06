@@ -120,3 +120,88 @@ export const manualBillPay: Connector = {
     )}. Jane checks your account for it afterwards.`,
   }),
 };
+
+// The same move: between the same two accounts, of the same amount, on the same day.
+const twinOf = (details: ActionDetails, fromAccountId: string, toAccountId: string) => ({
+  fromAccountId,
+  toAccountId,
+  amountCents: typeof details.amountCents === "number" ? details.amountCents : null,
+  on: typeof details.on === "string" ? details.on : String(details.today ?? ""),
+});
+
+// "Jane prepares, you move it": a move between two of the person's own accounts, in their own
+// bank's app. Same as the bill: Jane fills in from, to, amount and day; the person moves it; the
+// two lines in their transactions settle it (./settle.ts). Off until its REAL_CONNECTORS switch.
+export const manualOwnTransfer: Connector = {
+  id: "manual_own_transfer",
+  name: "Move money between your accounts yourself, prepared by Jane",
+  category: "own_transfer",
+  capabilities: ["prefill", "act"],
+  scopes: ["prefill_payments"],
+  sandbox: false,
+  movesMoney: false,
+  // Both accounts are the person's own, named from their rows (security review on #1508): a name
+  // or id from a request, a chat or a message is never taken as theirs. And no twin is open.
+  prepare: async (request, { userId, client, actionId }) => {
+    const from = await ownAccount(userId, request.fromAccountId, client);
+    const to = await ownAccount(userId, request.toAccountId, client);
+    if (from.id === to.id) throw new BadRequest("the same account on both sides");
+    await refuseOpenTwin(userId, "manual_own_transfer", twinOf(request, from.id, to.id), {
+      client,
+      exceptId: actionId,
+    });
+    return {
+      ...request,
+      fromAccount: from.name,
+      fromAccountId: from.id,
+      toAccount: to.name,
+      toAccountId: to.id,
+    };
+  },
+  guard: async (details, { userId, client, actionId }) => {
+    const from = await ownAccount(userId, details.fromAccountId, client);
+    const to = await ownAccount(userId, details.toAccountId, client);
+    await refuseOpenTwin(userId, "manual_own_transfer", twinOf(details, from.id, to.id), {
+      client,
+      exceptId: actionId,
+    });
+  },
+  prefill: (details) => {
+    const from = words(details, "fromAccount");
+    const to = words(details, "toAccount");
+    const amountCents = details.amountCents;
+    if (typeof amountCents !== "number" || !Number.isSafeInteger(amountCents) || amountCents <= 0) {
+      throw new BadRequest("amountCents must be a positive whole number of cents");
+    }
+    const today = day(details, "today");
+    const on = typeof details.on === "string" ? day(details, "on") : today;
+    if (on < today) throw new BadRequest("the day has passed");
+    const fromAccountId = typeof details.fromAccountId === "string" ? details.fromAccountId : null;
+    const toAccountId = typeof details.toAccountId === "string" ? details.toAccountId : null;
+    if (from === to || (fromAccountId !== null && fromAccountId === toAccountId)) {
+      throw new BadRequest("the same account on both sides");
+    }
+    return {
+      kind: "manual_move_own",
+      amountCents,
+      summary: `Move ${formatCents(amountCents)} from ${from} to ${to} on ${on}`,
+      steps: [
+        { label: "From", value: from },
+        { label: "To", value: to },
+        { label: "Amount", value: formatCents(amountCents) },
+        { label: "On", value: on },
+        { label: "Where", value: "Your bank's app or site: Transfers, between your own accounts" },
+        { label: "Who moves it", value: "You do. Jane never sees or types your account numbers." },
+      ],
+      details: { fromAccount: from, toAccount: to, amountCents, on, fromAccountId, toAccountId },
+    };
+  },
+  act: async (draft, context) => ({
+    externalRef: `manual_${context.actionId}`,
+    state: "handed_off",
+    cancelUntil: null,
+    note: `Move ${formatCents(draft.amountCents)} from ${String(draft.details.fromAccount)} to ${String(
+      draft.details.toAccount,
+    )} on ${String(draft.details.on)}. Jane checks your accounts for it afterwards.`,
+  }),
+};

@@ -8,7 +8,7 @@ import { killed } from "@/config/kill-switches";
 import { REAL_MONEY_MOVEMENT } from "@/config/money-movement";
 import { isTrialUser } from "@/lib/trial-ids";
 import { gated } from "./gate";
-import { manualBillPay } from "./manual-pay/connector";
+import { manualBillPay, manualOwnTransfer } from "./manual-pay/connector";
 import { SANDBOX_CONNECTORS } from "./sandbox/adapters";
 import type { Connector } from "./types";
 
@@ -47,9 +47,10 @@ export function buildRegistry(connectors: readonly Connector[]): ReadonlyMap<str
 // contract, counsel's answer and its switch in REAL_CONNECTORS.
 const CONNECTORS: readonly Connector[] = [
   ...SANDBOX_CONNECTORS,
-  // Real, but it reaches nobody and moves nothing: the person pays (./manual-pay/). Off until its
-  // switch.
+  // Real, but they reach nobody and move nothing: the person pays or moves it (./manual-pay/). Off
+  // until their switches.
   manualBillPay,
+  manualOwnTransfer,
 ];
 
 let registry: ReadonlyMap<string, Connector> = buildRegistry(CONNECTORS);

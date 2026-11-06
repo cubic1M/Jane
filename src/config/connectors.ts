@@ -102,3 +102,6 @@ export const MANUAL_PAY_BANK_BILL_PAY_LEAD_BUSINESS_DAYS = 5;
 export const MANUAL_PAY_CUTOFF = "7 PM ET";
 // An autopay line from the biller in this many days means autopay is on: no manual payment then.
 export const MANUAL_PAY_AUTOPAY_LOOKBACK_DAYS = 45;
+// A move between the person's own accounts at one bank is instant; between banks, ACH takes up to
+// three business days to show on both sides.
+export const MANUAL_TRANSFER_SETTLE_BUSINESS_DAYS = 3;

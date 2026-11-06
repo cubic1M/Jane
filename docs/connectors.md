@@ -162,3 +162,10 @@ check the person's own data.
   `connector_webhook_events`. A match moves the action from `handed_off` to `succeeded` through
   the same door a partner's webhook uses. The nightly controller's money step
   (`src/lib/controller.ts`) runs it while `CONNECTORS=1`.
+
+`manual_own_transfer` is the same for a move between two of the person's own accounts: Jane fills in
+from, to, amount and day, the person moves it in their bank's app, and Jane checks both sides.
+Both accounts must be the person's own, named from their rows, never from the request (security
+review on #1508), and a second open move of the same amount between the same accounts on the same
+day is refused. It settles only when both lines show: out of one, the same amount into the other,
+within three business days, each line used once. Off until its switch.

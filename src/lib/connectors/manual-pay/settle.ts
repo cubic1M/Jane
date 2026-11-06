@@ -4,7 +4,8 @@ import { scopedFor } from "@/lib/db-scoped";
 import { systemDb } from "@/lib/system-db";
 import { applyPartnerEvent } from "../pipeline";
 import { linesSince } from "./guards";
-import { billerFor, findSettlement } from "./rules";
+import { MANUAL_TRANSFER_SETTLE_BUSINESS_DAYS } from "@/config/connectors";
+import { billerFor, findSettlement, findTransferSettlement } from "./rules";
 
 // After "Jane prepares, you pay": the person's own transactions say whether they paid. A bill is
 // marked paid only on a line from the account it was to come from, of the exact amount, in its
@@ -40,29 +41,78 @@ async function claim(lineId: string, client: PrismaClient, now: Date): Promise<b
   return count === 1;
 }
 
-// Every handed-off manual payment of this person's that has now posted. Returns how many settled.
+const release = (lineId: string, client: PrismaClient) =>
+  systemDb(WHY, client).connectorWebhookEvent.deleteMany({
+    where: { connectorId: LINES, eventId: lineId },
+  });
+
+// Every handed-off manual payment or move of this person's that has now posted. Returns how many
+// settled.
 export async function settleManualPayments(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<number> {
   const db = scopedFor(userId, client);
   const waiting = await db.connectorActions.findMany({
-    where: { connectorId: "manual_bill_pay", status: "handed_off" },
+    where: {
+      connectorId: { in: ["manual_bill_pay", "manual_own_transfer"] },
+      status: "handed_off",
+    },
     orderBy: { createdAt: "asc" },
-    select: { id: true, externalRef: true, details: true, note: true },
+    select: { id: true, connectorId: true, externalRef: true, details: true, note: true },
   });
   if (waiting.length === 0) return 0;
-  const payOns = waiting.map((w) => String((w.details as { payOn?: unknown }).payOn ?? ""));
-  const lines = (await linesSince(userId, payOns.sort()[0]!, client)).filter(
-    (line) => line.amountCents > 0,
-  );
+  const days = waiting.map((w) => {
+    const details = w.details as { payOn?: unknown; on?: unknown };
+    return String(details.payOn ?? details.on ?? "");
+  });
+  // Both signs: a move lands as money in on its other side.
+  const all = await linesSince(userId, days.sort()[0]!, client);
+  const lines = all.filter((line) => line.amountCents > 0);
   const taken = await claimedAlready(
-    lines.map((line) => line.id),
+    all.map((line) => line.id),
     client,
   );
   let settled = 0;
   for (const action of waiting) {
     const details = action.details as Record<string, unknown>;
+    if (action.connectorId === "manual_own_transfer") {
+      if (typeof details.fromAccountId !== "string" || typeof details.toAccountId !== "string")
+        continue;
+      if (!action.externalRef) continue;
+      const move = findTransferSettlement(
+        {
+          amountCents: Number(details.amountCents),
+          on: String(details.on ?? ""),
+          fromAccountId: details.fromAccountId,
+          toAccountId: details.toAccountId,
+          settleBusinessDays: MANUAL_TRANSFER_SETTLE_BUSINESS_DAYS,
+        },
+        all,
+        taken,
+      );
+      if (!move) continue;
+      // Both lines or neither: a line another run just took means this isn't settled yet.
+      if (!(await claim(move.lineIds[0], client, now))) continue;
+      if (!(await claim(move.lineIds[1], client, now))) {
+        await release(move.lineIds[0], client);
+        continue;
+      }
+      for (const id of move.lineIds) taken.add(id);
+      const moved = await applyPartnerEvent(
+        userId,
+        action.id,
+        {
+          eventId: `bank_lines_${move.lineIds.join("_")}`,
+          externalRef: action.externalRef,
+          outcome: "done",
+          note: "Moved: seen leaving one account and arriving in the other.",
+        },
+        { client, now },
+      );
+      if (moved) settled += 1;
+      continue;
+    }
     const biller = billerFor(String(details.biller ?? ""));
     const accountId = typeof details.fromAccountId === "string" ? details.fromAccountId : null;
     // No account to look in, or a biller Jane can't name on a bank line: nothing to settle on.
