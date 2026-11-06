@@ -5,6 +5,7 @@ import { ALL_DETAILED, type PfcDetailed } from "./taxonomy";
 import { claudeFetch } from "@/lib/anthropic";
 import { UNTRUSTED_TEXT_RULE } from "@/lib/untrusted-text";
 import { log } from "@/lib/log";
+import { looksLikePersonPayee } from "@/lib/person-payees";
 
 const DEFAULT_MODEL = "claude-opus-5-5";
 const BATCH_SIZE = 50;
@@ -85,6 +86,9 @@ export async function classifyMerchants(
   { claude }: { claude?: () => Anthropic } = {},
 ): Promise<Map<string, PfcDetailed>> {
   const results = new Map<string, PfcDetailed>();
+  // A person's name never goes to Claude: those stay with the keyword rules, which call a payment
+  // app's line a transfer anyway.
+  merchants = merchants.filter((merchant) => !looksLikePersonPayee(merchant));
   if (!process.env.ANTHROPIC_API_KEY || killed("claude") || merchants.length === 0) return results;
 
   // The batches at once rather than one after another: the same calls, less waiting.

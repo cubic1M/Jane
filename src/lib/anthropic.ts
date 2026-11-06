@@ -2,6 +2,7 @@ import { CLAUDE_CALL_RETRIES, CLAUDE_CALL_TIMEOUT_MS } from "@/config/outside-ca
 import Anthropic from "@anthropic-ai/sdk";
 import { killed } from "@/config/kill-switches";
 import { freshSwitches } from "@/lib/ops-switches";
+import { redactRequestBody } from "@/lib/person-payees";
 
 // One shared client for the explanation and subscription calls. Everything that calls
 // Claude must work without a key too: callers check llmEnabled() and fall back.
@@ -25,11 +26,17 @@ export function chatModel(): string {
   return process.env.ANTHROPIC_CHAT_MODEL || DEFAULT_CHAT_MODEL;
 }
 
-// Every request to Claude's last step, so the store's switch holds whichever path made it.
+// Every request to Claude's last step, so the store's switch holds whichever path made it, and so
+// no path sends a person's name from a payment app's merchant text (src/lib/person-payees.ts).
 export const claudeFetch: typeof fetch = async (input, init) => {
   await freshSwitches();
   if (killed("claude")) throw new Error("Claude is paused (KILL_CLAUDE)");
-  return fetch(input, init);
+  if (typeof init?.body !== "string") return fetch(input, init);
+  const body = redactRequestBody(init.body);
+  if (body === init.body) return fetch(input, init);
+  const headers = new Headers(init.headers);
+  headers.delete("content-length");
+  return fetch(input, { ...init, body, headers });
 };
 
 export function anthropic(): Anthropic {

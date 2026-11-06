@@ -59,6 +59,7 @@ import type { PayoffPlan } from "@/planning/debt";
 import type { ScoredOffer } from "@/planning/refinance";
 import { monthAfter } from "@/planning/payoff";
 import { formatRate } from "@/lib/percent";
+import { initialsOf } from "@/lib/person-payees";
 
 // Claude's tools about debts in Jane's chat (spec Phase Y): read-only, over the same debt
 // book as the loans page (src/lib/debts.ts). Every dollar figure goes through `money`, so
@@ -204,7 +205,7 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
   {
     name: "family_loans",
     description:
-      "Money between the person and family or friends: payment-app transfers (Venmo, Zelle, Cash App) of $100 or more, or noted like a loan, that Jane asked about and haven't been answered (a transfer is a loan only after the person says so); loans the person confirmed, lent or borrowed, with the balance after the transfers that came back and the kind reminder drafted for them to send themselves once a loan has been open a month; loans they co-signed with whether a payment looks late; and the household's shared debts with each person's half of the monthly payment. Jane never messages the other person. Confirming or dismissing a transfer is the person's tap (the famloan.yes and famloan.no buttons).",
+      "Money between the person and family or friends: payment-app transfers (Venmo, Zelle, Cash App) of $100 or more, or noted like a loan, that Jane asked about and haven't been answered (a transfer is a loan only after the person says so); loans the person confirmed, lent or borrowed, with the balance after the transfers that came back and whether a kind reminder for them to send themselves is ready on the family page (once a loan has been open a month); the other person appears by initials only, never by name; loans they co-signed with whether a payment looks late; and the household's shared debts with each person's half of the monthly payment. Jane never messages the other person. Confirming or dismissing a transfer is the person's tap (the famloan.yes and famloan.no buttons).",
     input_schema: noInput,
   },
   {
@@ -1134,27 +1135,30 @@ export function familyLoansToolOutput(data: FamilyLoans, money: (cents: number) 
     waitingForYourAnswer: data.candidates.map((c) => ({
       id: c.id,
       app: c.parsed.app,
-      with: c.parsed.counterparty,
+      // Initials, never the name: the person sees who on the family page (src/lib/person-payees.ts).
+      with: initialsOf(c.parsed.counterparty),
       amount: money(Math.abs(c.transfer.amountCents)),
       on: c.transfer.date,
-      note: c.parsed.note,
+      // The other person's own words in the app stay out too.
+      hasNote: Boolean(c.parsed.note),
       wouldBe: c.kind,
     })),
     loans: data.loans.map((l) => ({
       kind: l.kind,
-      with: l.counterparty,
+      with: initialsOf(l.counterparty),
       lentOrBorrowed: money(l.principalCents),
       stillOwed: money(l.balanceCents),
       openedOn: l.openedOn,
       paidBack: l.repaid.map((r) => ({ on: r.date, amount: money(r.cents) })),
-      reminderToSendYourself: l.reminder?.text ?? null,
+      // The drafted reminder greets them by name: it's on the family page, not sent to Claude.
+      reminderOnTheFamilyPage: Boolean(l.reminder),
     })),
     cosigned: data.cosigned.map((c) => ({
       loan: c.debtName,
-      for: c.counterparty,
+      for: initialsOf(c.counterparty),
       looksLate: c.missed,
       pastDue: c.pastDueCents === null ? null : money(c.pastDueCents),
-      noteToSendYourself: c.text,
+      noteOnTheFamilyPage: Boolean(c.text),
     })),
     sharedDebts: data.shared.map((s) => ({
       debt: s.name,
