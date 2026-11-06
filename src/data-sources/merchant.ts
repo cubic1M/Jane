@@ -61,6 +61,11 @@ const BOILERPLATE = [
   // read "Autopay Toyota Financial"). Saved keys moved in prisma/migrations/
   // 20270504000000_merchant_without_ach_autopay: keep them in step.
   /^(?:ACH(?: TRANSACTION| TRANS)?|AUTO ?PAY)\s+(?!(?:DEBIT|CREDIT|WITHDRAWAL|PAYMENT|PMT|DEPOSIT)$)(?=\S)/,
+  // U.S. Bank's "WEB AUTHORIZED PMT TOYOTA FINANCIAL", "ELECTRONIC DEPOSIT ST LUKES HEALTH" and
+  // "DEBIT PURCHASE -VISA NETFLIX.COM", after "RECURRING" above (debugger 11-06: the debt page read
+  // "Web Authorized Pmt Toyota Financial"). Saved keys moved in prisma/migrations/
+  // 20270511000000_merchant_without_us_bank_prefix: keep them in step.
+  /^(?:WEB AUTHORIZED PMT|ELECTRONIC DEPOSIT|DEBIT PURCHASE(?: -VISA)?)\s+(?=\S)/,
 ];
 
 // A payment app in front of the person or company paid: "ZELLE TO OAK RIDGE APTS RENT" is Oak
