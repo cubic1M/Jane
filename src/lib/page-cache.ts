@@ -1,3 +1,4 @@
+import { TRIAL_ID_PREFIX } from "@/config/trial";
 import { forgetMemory, keepInMemory } from "@/lib/page-memory";
 import type { OpenedPage } from "@/lib/page-opened";
 import {
@@ -226,7 +227,9 @@ function runRound() {
 }
 
 export function scheduleRound() {
-  if (roundTimer || !owner || framed()) return;
+  // Not for someone trying Jane: every preloaded page counts toward their 120 pages a minute
+  // (src/lib/edge-limits.ts), so after four pages their own taps were refused (debugger 11-06).
+  if (roundTimer || !owner || owner.startsWith(TRIAL_ID_PREFIX) || framed()) return;
   const connection = (navigator as Navigator & { connection?: Connection }).connection;
   if (!connectionAllowsPreload(connection)) return;
   const at = nextRoundAt(rounds, Date.now() + PRELOAD_START_MS);

@@ -498,10 +498,13 @@ test("the first scan's page starts no preloads", async ({ context, page, baseURL
   // Not "load": the script held above could be what the page's load is waiting on.
   await page.goto("/connect", { waitUntil: "commit" });
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await page.waitForURL(/\/scanning/, { timeout: 60_000 });
+  // Not its load either: that waits on the same held script, which only goes after this.
+  await page.waitForURL(/\/scanning/, { timeout: 60_000, waitUntil: "commit" });
   clicked();
   await holds(() => expect(askedForHome).toEqual([]), 4_000);
 
   scanRunning = false;
   await expect(page).toHaveURL(/\/home(\?|$)/, { timeout: 90_000 });
+  // A script still being fetched here would throw once the test has ended, and fail the run.
+  await page.unrouteAll({ behavior: "ignoreErrors" });
 });
