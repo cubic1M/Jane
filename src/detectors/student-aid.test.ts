@@ -8,6 +8,7 @@ import { buildProfile, type ProfileInput, type ProfileLiability } from "@/profil
 import { inputFor } from "@/profile/sample";
 import { HEADLINE_MAX } from "./contract";
 import { levelPaymentCents } from "@/planning/refinance";
+import { recommendsAChoice } from "@/lib/guardrails";
 import { runDetectors } from "./index";
 import { STUDENT_AID_DETECTORS, federalDirect } from "./student-aid";
 
@@ -77,9 +78,19 @@ describe("the federal autopay card", () => {
     expect(withLoan({}, "2027-01-01")).toBeNull();
   });
 
-  it("says nothing while CONNECTORS is off", () => {
+  it("shows on real accounts whether CONNECTORS is on or off: no partner, just a link", () => {
     vi.stubEnv("CONNECTORS", "");
-    expect(withLoan()).toBeNull();
+    expect(withLoan()).not.toBeNull();
+    vi.stubEnv("CONNECTORS", "1");
+    expect(withLoan()).not.toBeNull();
+  });
+
+  it("states facts and a link, with no advice words", () => {
+    const s = withLoan()!;
+    const words = `${s.title} ${s.short} ${s.why}`;
+    expect(words).not.toMatch(/\b(should|recommend|we suggest|best)\b/i);
+    expect(recommendsAChoice(words)).toBe(false);
+    expect(s.more?.every((m) => m.href.startsWith("https://studentaid.gov/"))).toBe(true);
   });
 
   it("says nothing in forbearance, deferment or default, or before repayment starts", () => {
@@ -128,13 +139,18 @@ describe("the federal autopay card", () => {
     expect(federalDirect({ ...LOAN, description: null, repaymentPlan: "unknown" })).toBe(false);
   });
 
-  it("changes nothing for the sample people while CONNECTORS is off", () => {
+  it("gives the sample people the same cards with CONNECTORS on or off", () => {
+    const cards = () =>
+      PEOPLE.map((person) => {
+        const data = inputFor(person.id);
+        return runDetectors({ profile: buildProfile(data), data }, STUDENT_AID_DETECTORS).map(
+          (s) => `${person.id}:${s.topic}`,
+        );
+      });
     vi.stubEnv("CONNECTORS", "");
-    for (const person of PEOPLE) {
-      const data = inputFor(person.id);
-      const found = runDetectors({ profile: buildProfile(data), data }, STUDENT_AID_DETECTORS);
-      expect(found, person.id).toEqual([]);
-    }
+    const off = cards();
+    vi.stubEnv("CONNECTORS", "1");
+    expect(cards()).toEqual(off);
   });
 });
 
@@ -165,12 +181,19 @@ describe("the SAVE-ending card", () => {
     expect(withLoan({ ...onSave, minimumCents: standard })).toBeNull();
   });
 
+  it("states facts and a link, with no advice words", () => {
+    const s = withLoan(onSave)!;
+    expect(recommendsAChoice(`${s.title} ${s.short} ${s.why}`)).toBe(false);
+    expect(s.more?.every((m) => m.href.startsWith("https://studentaid.gov/"))).toBe(true);
+  });
+
   it("reads the old REPAYE name too, and stops once a new plan is applied for or it's gone", () => {
     expect(withLoan({ ...onSave, repaymentPlan: "revised pay as you earn" })).not.toBeNull();
     expect(withLoan({ ...onSave, loanStatus: "pending idr" })).toBeNull();
     expect(withLoan({ ...onSave, loanStatus: "paid in full" })).toBeNull();
     expect(withLoan({ repaymentPlan: "income-based repayment" })).toBeNull();
+    // No partner: it shows with the connectors phase off too.
     vi.stubEnv("CONNECTORS", "");
-    expect(withLoan(onSave)).toBeNull();
+    expect(withLoan(onSave)).not.toBeNull();
   });
 });

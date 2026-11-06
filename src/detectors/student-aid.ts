@@ -1,4 +1,3 @@
-import { connectorsOn } from "@/config/connectors";
 import { FED_AUTOPAY, SAVE_ENDING, STUDENT_STEPS } from "@/config/student-loans";
 import { formatCents } from "@/lib/money";
 import { levelPaymentCents } from "@/planning/refinance";
@@ -7,9 +6,9 @@ import type { ProfileLiability } from "@/profile/build";
 import { type Detector, suggestionId } from "./contract";
 import { headlineOf } from "./helpers";
 
-// Federal student loans (connectors roadmap round 15, the student_aid connector's cards). Behind
-// CONNECTORS while the connectors phase is off in production. Pure apart from reading that flag;
-// see ./contract.ts.
+// Federal student loans (connectors roadmap round 15, the student_aid connector's cards). Facts
+// and a studentaid.gov link, no partner and no advice, so they show on real accounts with the
+// connectors phase off (manager, 11-06: the autopay cut ends December 31). Pure; see ./contract.ts.
 
 const DAY = 86_400_000;
 
@@ -45,7 +44,6 @@ const studentAutopay: Detector = {
   covers: ["student_loans"],
   needs: [],
   detect({ profile, data }) {
-    if (!connectorsOn()) return null;
     const left = daysTo(data.today, FED_AUTOPAY.lastDay);
     if (left < 0) return null;
     const loans = data.liabilities.filter((l) => federalDirect(l) && repaying(l) && !tooOld(l));
@@ -97,7 +95,6 @@ const saveEnding: Detector = {
   covers: ["student_loans"],
   needs: [],
   detect({ profile, data }) {
-    if (!connectorsOn()) return null;
     const loans = data.liabilities.filter(
       (l) =>
         l.kind === "student" &&
