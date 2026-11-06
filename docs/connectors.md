@@ -65,7 +65,8 @@ Every connector's webhooks come to `/api/connectors/<id>/webhook` (`src/lib/conn
 a 404 unless `CONNECTORS=1`. In order:
 
 1. **The provider's signature**, with its own secret from the env var its connector names
-   (`webhook.signing`): HMAC-SHA256 of `<timestamp>.<body>` in the provider's headers, or Svix's
+   (`webhook.signing`): HMAC-SHA256 of `<timestamp>.<body>` in the provider's headers, or in one
+   `t=<seconds>,v1=<hex>` header (PostGrid, Teller), or Svix's
    (Resend and others), checked with the same code as the weekly email's webhook. A delivery signed
    more than `WEBHOOK_TOLERANCE_SECONDS` away from now is refused, so an old one can't be replayed
    later. Over `WEBHOOK_MAX_BYTES` is refused before anything is read.
@@ -98,6 +99,7 @@ and is offered only to sample-data people.
 | `sandbox_own_transfer` | Moves money between two of their own accounts (Dwolla or Astra later) | Yes | 15 minutes |
 | `sandbox_subscription_cancel` | Cancels a subscription (Jane's email agent, then Pinwheel) | No | No |
 | `sandbox_insurance_quote` | Asks for quotes in their name, never buys (Coverage Cat or Canopy later) | No | No |
+| `sandbox_letters` | A certified letter to a company: a cancellation by written notice or a stop-payment notice, shaped like PostGrid in test mode | No | Until midnight Eastern, PostGrid's window |
 
 Fakes for tests live in `src/lib/connectors/__fixtures__/`: a pretend real connector, a webhook
 signer, and people (real, sample, trial).

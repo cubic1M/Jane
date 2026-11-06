@@ -55,7 +55,10 @@ export type WebhookSigning =
   // HMAC-SHA256 of `${timestamp}.${body}` in one header, the time in another (Stripe-like).
   | { kind: "hmac_sha256"; secretEnv: string; signatureHeader: string; timestampHeader: string }
   // Svix (Resend, and others): svix-id, svix-timestamp and svix-signature, "v1,<base64>".
-  | { kind: "svix"; secretEnv: string };
+  | { kind: "svix"; secretEnv: string }
+  // One header "t=<unix seconds>,v1=<hex>" over `${t}.${body}` (PostGrid, Teller; several v1 while a
+  // secret rotates).
+  | { kind: "hmac_sha256_tv"; secretEnv: string; header: string };
 
 // A verified event, read by the connector: whose action it is about, and what happened.
 export type WebhookEvent = {

@@ -1,4 +1,5 @@
 import { cancelRoute, type CancelRoute } from "../cancel/route";
+import { sandboxLetters } from "./letters";
 import { BadRequest, type Connector } from "../types";
 import { SIMULATED, cancelUntil, cents, dollars, sandboxRef, text } from "./shared";
 
@@ -190,4 +191,5 @@ export const SANDBOX_CONNECTORS: readonly Connector[] = [
   ownTransfer,
   subscriptionCancel,
   insuranceQuote,
+  sandboxLetters,
 ];

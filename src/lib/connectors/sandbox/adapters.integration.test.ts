@@ -73,6 +73,17 @@ const REQUESTS = {
     steps: ["Cancel", "Saves", "How", "Step 1", "Step 2"],
     ran: "handed_off",
   },
+  sandbox_letters: {
+    request: {
+      company: "LA Fitness",
+      toAddress: "P.O. Box 54170, Irvine, CA 92619",
+      fromName: "Alex Sample",
+    },
+    cents: 0,
+    steps: ["To", "From", "Says", "Sent as", "Can be stopped", "Says who it is"],
+    // Queued to print; PostGrid's webhooks say when it's mailed.
+    ran: "partner_pending",
+  },
   sandbox_insurance_quote: {
     request: { coverage: "renters", currentMonthlyCents: 2500, state: "CA" },
     cents: 0,
