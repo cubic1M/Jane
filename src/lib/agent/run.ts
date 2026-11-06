@@ -829,8 +829,13 @@ const MAX_ANSWER = 1_000;
 // any number after "call", "text" or "reach me". A shorter number a company asked for, named or
 // not ("Account number 4402918837"), isn't one; anything long is LONG_NUMBER's.
 const A_NUMBER = /\+?\(?\d[\d\s().-]{4,}\d/g;
-const PHONE_WORDS =
-  /\b(?:call|text|reach|ring|phone|cell|mobile|tel|whatsapp|signal|telegram)\b[^.!?]{0,20}$/i;
+// "Call, text or reach me at": a number to contact. "Phone" or "mobile" says what a number is
+// about, and a phone bill's account number is what a company asks for when Jane negotiates it, so
+// a named account, plan or customer number after the word wins ("My phone plan account …").
+const CONTACT_WORDS = /\b(?:call|text|reach|ring|whatsapp|signal|telegram)\b[^.!?]{0,20}$/i;
+const DEVICE_WORDS = /\b(?:phone|cell|mobile|tel)\b[^.!?]{0,20}$/i;
+const NAMED_AFTER_DEVICE =
+  /\b(?:phone|cell|mobile|tel)\b.*\b(?:account|acct|plan|customer|member|policy|order|reference|ref|invoice|case|ticket|id)\b[^.!?]{0,15}$/i;
 const PHONE_SHAPED = /^(?:\+\d.*|.*\(\d{3}\).*|1?[\s.-]?\d{3}[\s.-]\d{3}[\s.-]\d{4})$/;
 
 function hasPhoneNumber(words: string): boolean {
@@ -838,7 +843,8 @@ function hasPhoneNumber(words: string): boolean {
     const number = match[0].trim();
     if (number.replace(/\D/g, "").length < 7) continue;
     const before = words.slice(Math.max(0, (match.index ?? 0) - 40), match.index ?? 0);
-    if (PHONE_WORDS.test(before) || PHONE_SHAPED.test(number)) return true;
+    if (CONTACT_WORDS.test(before) || PHONE_SHAPED.test(number)) return true;
+    if (DEVICE_WORDS.test(before) && !NAMED_AFTER_DEVICE.test(before)) return true;
   }
   return false;
 }

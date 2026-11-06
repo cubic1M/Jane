@@ -97,6 +97,9 @@ describe.runIf(url)("numbers in a person's answer to a company", { timeout: 60_0
       "My account number is 4402918837",
       "Order 112-3456789",
       "Member ID 908112447",
+      // A phone bill's numbers, which Jane negotiates.
+      "My phone plan account 7731004412",
+      "The mobile account is 4402918837",
     ]) {
       const { userId, actionId } = await asked();
       await answerCompany(userId, actionId, answer, { client });
@@ -120,6 +123,8 @@ describe.runIf(url)("numbers in a person's answer to a company", { timeout: 60_0
       "Reach me on 555-123-4567",
       "My number is +1 555 123 4567",
       "text 5551234",
+      "My phone number is 5551234567",
+      "Reach me at 5551234567 on my mobile",
       "4111 1111 1111 1111",
     ]) {
       await expect(answerCompany(userId, actionId, answer, { client })).rejects.toBeInstanceOf(
