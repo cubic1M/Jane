@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { checkGuardrails } from "@/lib/guardrails";
 import { compareOptions, optionLabel, type CompareOption } from "./compare";
@@ -133,6 +134,67 @@ describe("comparing options", () => {
         }),
       ])!;
       expect(checkGuardrails(result.why, [1_500_000]), result.why).toEqual({ ok: true });
+    }
+  });
+});
+
+// Connectors roadmap round 13 (cash, item 9): Jane's list is neutral. Savings accounts are ordered
+// by what they'd earn among those the person qualifies for, bills by what they'd cost, and never
+// by what a bank or partner pays Jane.
+describe("a neutral list", () => {
+  const cash = { kind: "savings", amountCents: 1_500_000, currentRateBps: 50 } as const;
+  const savings = [
+    ["meadow", 410, 0],
+    ["granite", 375, 0],
+    ["harbor", 425, 2_000_000],
+    ["birch", 395, 0],
+    ["alder", 395, 0],
+  ].map(([id, apyBps, minimumBalanceCents]) =>
+    option({
+      id: id as string,
+      name: id as string,
+      kind: "savings",
+      category: "savings",
+      monthlyCents: null,
+      apyBps: apyBps as number,
+      minimumBalanceCents: minimumBalanceCents as number,
+    }),
+  );
+  const order = (options: CompareOption[]) => {
+    const result = compareOptions(cash, options)!;
+    return [result.pick, ...result.runnersUp].map((s) => s.option.id);
+  };
+  // What a paid list would carry: a payout per account, a partner, a "sponsored" flag.
+  const paid = (options: CompareOption[], richest: string) =>
+    options.map(
+      (o) =>
+        ({
+          ...o,
+          paid: true,
+          sponsored: o.id === richest,
+          payoutCents: o.id === richest ? 50_000 : 500,
+          referralPartnerKey: "partner",
+        }) as CompareOption,
+    );
+
+  it("orders by earnings after the minimum-balance fit, then by name", () => {
+    expect(order(savings)).toEqual(["meadow", "alder", "birch"]);
+  });
+
+  it("doesn't change when a payout is attached, whichever account pays most", () => {
+    for (const richest of ["granite", "harbor", "birch", "meadow"]) {
+      expect(order(paid(savings, richest)), richest).toEqual(order(savings));
+    }
+  });
+
+  it("doesn't depend on the order the options were stored in", () => {
+    expect(order([...savings].reverse())).toEqual(order(savings));
+  });
+
+  it("is built from no payout, partner or sponsor field", () => {
+    for (const path of ["src/planning/compare.ts", "src/lib/compare.ts"]) {
+      const code = readFileSync(path, "utf8");
+      expect(code, path).not.toMatch(/payout|commission|sponsor|referral|bounty|\bpaid\b/i);
     }
   });
 });
