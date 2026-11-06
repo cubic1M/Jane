@@ -87,6 +87,9 @@ export type Connector = {
   sandbox: boolean;
   // Whether acting moves money (a payment, a transfer). Needs REAL_MONEY_MOVEMENT to be real.
   movesMoney: boolean;
+  // Set when what it prefills is a personalized investment or tax recommendation: held back from
+  // real people until HUMAN_REVIEW_READY (src/config/connectors.ts).
+  recommends?: "investment" | "tax";
   // What the person asked for, filled in for them to check. Pure: no call to the partner.
   prefill?: (request: ActionDetails) => ActionDraft;
   // Checks a pure prefill can't make, against the person's own data (their accounts, their

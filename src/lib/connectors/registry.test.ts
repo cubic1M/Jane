@@ -1,7 +1,12 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { REAL_CONNECTORS, connectorsKilledByEnv, connectorsOn } from "@/config/connectors";
+import {
+  HUMAN_REVIEW_READY,
+  REAL_CONNECTORS,
+  connectorsKilledByEnv,
+  connectorsOn,
+} from "@/config/connectors";
 import { KILL_SWITCH_VARS, mayChange, rememberStoredSwitches } from "@/config/kill-switches";
 import { REAL_MONEY_MOVEMENT } from "@/config/money-movement";
 import { fakeConnector, fakeSandbox } from "./__fixtures__/connectors";
@@ -42,6 +47,8 @@ describe("the flags", () => {
   it("turns on no real connector and no real money movement in code", () => {
     expect(Object.values(REAL_CONNECTORS).filter(Boolean)).toEqual([]);
     expect(REAL_MONEY_MOVEMENT).toBe(false);
+    // No qualified reviewer for investment or tax recommendations yet.
+    expect(HUMAN_REVIEW_READY).toBe(false);
   });
 
   it("never reads a real connector's switch from the environment", () => {

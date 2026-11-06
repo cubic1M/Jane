@@ -26,6 +26,13 @@ export function connectorsKilledByEnv(
   );
 }
 
+// Whether a qualified person reviews each personalized investment or tax recommendation before a
+// real person sees it, with the authority to change it (Anthropic's Usage Policy from 2026-11-12,
+// "High-risk AI Recommendations"; connectors roadmap round 13). Until that review exists, no
+// connector that recommends (Connector.recommends) serves a real person. Code only, never an env
+// var; sample data isn't a real person's and isn't held back.
+export const HUMAN_REVIEW_READY = false;
+
 // The real connectors that may act, by id. None until a partner is signed, counsel has answered and
 // the founders say so. Turning one on is a code change, never an env var (registry.test.ts checks).
 export const REAL_CONNECTORS: Readonly<Record<string, boolean>> = {};

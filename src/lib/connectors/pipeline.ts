@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import {
+  HUMAN_REVIEW_READY,
   CONNECTOR_ACTION_CAP_CENTS,
   CONNECTOR_DAILY_ACTIONS,
   CONNECTOR_DAILY_CENTS,
@@ -72,7 +73,8 @@ export type RefuseReason =
   | "expired"
   | "not_waiting"
   | "key_reused"
-  | "no_real_money";
+  | "no_real_money"
+  | "needs_review";
 
 const REFUSED_WORDS: Record<RefuseReason, string> = {
   off: "Connections aren't on yet.",
@@ -95,6 +97,7 @@ const REFUSED_WORDS: Record<RefuseReason, string> = {
   not_waiting: "That's already been answered.",
   key_reused: "That was already asked for, differently.",
   no_real_money: "Jane doesn't move real money yet.",
+  needs_review: "That needs a qualified person's review before Jane can suggest it.",
 };
 
 export class ConnectorRefused extends Error {
@@ -136,6 +139,11 @@ async function usable(userId: string, connectorId: string, client: PrismaClient)
   const sampleData = await onSampleDataOnly(userId, { client });
   const why = whyUnavailable(connector, { userId, sampleData });
   if (why) throw new ConnectorRefused(why);
+  // A personalized investment or tax recommendation waits for a qualified reviewer, at plan, yes
+  // and run alike.
+  if (connector.recommends && !sampleData && !HUMAN_REVIEW_READY) {
+    throw new ConnectorRefused("needs_review");
+  }
   return connector;
 }
 
