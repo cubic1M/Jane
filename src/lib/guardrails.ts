@@ -15,7 +15,8 @@ export type GuardrailIssue =
   | "missing_required_wording"
   | "untrusted_link"
   | "credential_request"
-  | "claimed_action";
+  | "claimed_action"
+  | "deposit_insurance";
 
 export type GuardrailResult = { ok: true } | { ok: false; issues: GuardrailIssue[] };
 
@@ -332,6 +333,23 @@ const GUARANTEE = [
   /\b(will|you'll|you will) (save|get|recover|receive|earn)\b(?! paid\b)/i,
 ];
 
+// (g) Deposit insurance (12 CFR 328.102; connectors roadmap round 13): no false or misleading word
+// about it. Jane isn't a bank and holds nobody's money, so nothing is insured "with Jane"; and a
+// Treasury, a money market fund, a stock, a bond or crypto is never FDIC insured. "Not FDIC
+// insured" says so plainly, and stays allowed.
+const NOT_INSURED =
+  /\b(?:not|never|isn(?:'|’)?t|aren(?:'|’)?t|no)\s+(?:\w+\s+)?(?:FDIC[- ]insured|insured by the FDIC|FDIC insurance)\b/gi;
+const DEPOSIT_INSURANCE = [
+  /\bJane\b[^.!?]{0,30}\b(?:is|are)\s+(?:an?\s+)?(?:FDIC[- ]insured|insured by the FDIC|(?:FDIC[- ]insured\s+)?bank)\b/i,
+  /\b(?:in|with|at|through|inside)\s+Jane\b[^.!?]{0,60}\b(?:FDIC[- ]insured|insured|FDIC insurance)\b/i,
+  /\b(?:FDIC[- ]insured|insured by the FDIC)\b[^.!?]{0,40}\b(?:in|with|at|through)\s+Jane\b/i,
+  /\b(?:treasur(?:y|ies)|t-?bills?|money[- ]market funds?|stocks?|shares|bonds?|ETFs?|index funds?|crypto\w*|bitcoin)\b[^.!?]{0,40}\b(?:are|is)\s+(?:also\s+)?(?:FDIC[- ]insured|insured by the FDIC)\b/i,
+];
+export const misstatesDepositInsurance = (text: string): boolean => {
+  const said = text.replace(NOT_INSURED, " ");
+  return DEPOSIT_INSURANCE.some((pattern) => pattern.test(said));
+};
+
 // "$1,234.56", "$15", "$ 15.5", plus "15 dollars". A k/m suffix makes the figure unreadable
 // for matching, so it counts as unsupported.
 const DOLLAR_SIGN =
@@ -529,6 +547,11 @@ function scan(
   if (asksForCredentials(original)) {
     issues.push("credential_request");
     matched.push("credentials");
+  }
+  // In every profile: demo advice is still never allowed to misstate deposit insurance.
+  if (misstatesDepositInsurance(original)) {
+    issues.push("deposit_insurance");
+    matched.push("deposit_insurance");
   }
   // From the words with their lines still in them, which is how a letter is told apart.
   if (!advice && claimsAnAct(withoutApprovedSentences(original))) {

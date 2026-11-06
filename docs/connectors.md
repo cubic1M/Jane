@@ -16,6 +16,7 @@ A real connector acts only when all of these hold. Each is tested.
 | `CONNECTORS=1` | env | Every connector route answers 404 and the pipeline refuses everything, sandbox included |
 | `REAL_CONNECTORS[id]` | `src/config/connectors.ts`, code only | That real connector is refused (`switched_off`) |
 | `REAL_MONEY_MOVEMENT` | `src/config/money-movement.ts`, code only | A real connector that moves money is refused |
+| `HUMAN_REVIEW_READY` | `src/config/connectors.ts`, code only | A connector marked `recommends` (a personalized investment or tax recommendation) is refused for a real person (`needs_review`), at plan, yes and run, until a qualified reviewer approves each one (Anthropic's Usage Policy from 2026-11-12). Sample data isn't held back |
 | `KILL_CONNECTORS`, `CONNECTORS_KILLED=id,id` | env or the ops store (`docs/incident.md`) | Stops them again in seconds |
 | Who the person is | `whyUnavailable` in `src/lib/connectors/registry.ts` | Sandbox adapters are for sample data only; real connectors for real data only; trial people never reach a real one |
 
@@ -195,6 +196,9 @@ nothing, moves nothing and opens nothing. Off until its switch.
 - **Checked against the database, not the caller**: the option is a reviewed savings option with an
   https sign-up page and a rate checked within `SAVINGS_APY_STALE_DAYS`; the account is the
   person's and holds the amount; one opening per option at a time.
+- **Every Claude-written sentence** also passes a deposit-insurance check in `src/lib/guardrails.ts`
+  (`deposit_insurance`, in both profiles): never "Jane is a bank" or FDIC insured, never money
+  "with Jane" insured, never a Treasury, fund, stock or crypto FDIC insured.
 - **The card**: the rate as "Annual Percentage Yield (APY) X.XX% as of <day>" with the Reg DD lines
   (`src/lib/apy-disclosure.ts`), the steps (open, link, let the bank pull it), and "Jane is not a
   bank and never holds your money", pointing to the FDIC's BankFind. It never says FDIC insured:

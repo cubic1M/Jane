@@ -36,7 +36,7 @@ import { KILL_SWITCH_VARS } from "@/config/kill-switches";
 import { db } from "@/lib/db";
 import { exportUserData } from "@/lib/data-export";
 import { systemDb } from "@/lib/system-db";
-import { fakeConnector, type FakeCalls } from "./__fixtures__/connectors";
+import { fakeConnector, fakeSandbox, type FakeCalls } from "./__fixtures__/connectors";
 import { realPerson, removePeople, samplePerson, trialPerson } from "./__fixtures__/people";
 import { grantConsent } from "./consent";
 import { storeCredential } from "./vault";
@@ -261,6 +261,28 @@ describe.runIf(url)("the connector safety rails", () => {
       expect(exported).toContain("fake_bills");
       expect(exported).not.toContain(secret);
       expect(exported).not.toContain(row.secretEncrypted);
+    });
+  });
+
+  describe("4. recommendations wait for a qualified reviewer", () => {
+    it("never plan a personalized investment or tax recommendation for a real person", async () => {
+      allOn();
+      flags.real.fake_advice = true;
+      useConnectorsForTests([
+        fakeConnector({ id: "fake_advice", recommends: "investment", movesMoney: false }).connector,
+        fakeSandbox({ recommends: "tax", movesMoney: false }).connector,
+      ]);
+      const real = await person("real");
+      await grantConsent(real, "fake_advice", ["pay_bills"], { now: T0 });
+      await expect(
+        planAction(real, "fake_advice", BILL, { idempotencyKey: crypto.randomUUID(), now: T0 }),
+      ).rejects.toMatchObject({ reason: "needs_review" });
+      // Sample data is nobody's real money: the demo keeps working.
+      const sample = await person("sample");
+      await grantConsent(sample, "fake_sandbox", ["pay_bills"], { now: T0 });
+      await expect(
+        planAction(sample, "fake_sandbox", BILL, { idempotencyKey: crypto.randomUUID(), now: T0 }),
+      ).resolves.toMatchObject({ status: "awaiting_yes" });
     });
   });
 
