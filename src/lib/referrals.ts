@@ -51,6 +51,14 @@ export function partnerAllowed(
   return state !== null && states.includes(state);
 }
 
+// Whether Jane may be paid by this partner at all. An unpaid insurance partner's card tells the
+// person "Jane isn't paid for this", so no revenue may be recorded or expected from it; per policy
+// sold is never allowed (round 14). Other partners pay as their row says.
+export function paysJane(actionType: string, payModel: string): boolean {
+  if (actionType !== "insurance_reshop") return true;
+  return isPayModel(payModel) && payModel !== "none" && payModel !== "per_policy";
+}
+
 // The active partner for this action in the person's state, or null. No state, no partner.
 export async function partnerFor(
   actionType: ActionType,
@@ -192,6 +200,13 @@ export function validatePartner(input: PartnerInput):
       ok: false,
       message:
         "Insurance referrals stay off until counsel's answer is recorded in src/config/referrals.ts.",
+    };
+  }
+  if (revenuePerConversionCents !== null && !paysJane(actionType, payModel)) {
+    return {
+      ok: false,
+      message:
+        "This partner is set as unpaid, and its card says Jane isn't paid: leave revenue per conversion empty.",
     };
   }
   return {

@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { draftMessage, type Draft } from "@/lib/drafts";
 import { requireAdmin } from "@/lib/session";
 import { meteredClaude } from "@/lib/claude-budget";
+import { paysJane } from "@/lib/referrals";
 import { systemDb } from "@/lib/system-db";
 
 const WHY = "Admin page: works across people, behind ADMIN_EMAILS and two-factor";
@@ -102,9 +103,13 @@ export async function recordConversion(
   }
   const partner = await systemDb(WHY).referralPartner.findUnique({
     where: { key },
-    select: { id: true },
+    select: { id: true, actionType: true, payModel: true },
   });
   if (!partner) return { ok: false, message: "That partner no longer exists." };
+  // The card told the person Jane isn't paid by this one (src/lib/referrals.ts paysJane).
+  if (!paysJane(partner.actionType, partner.payModel)) {
+    return { ok: false, message: "This partner doesn't pay Jane, so there's nothing to record." };
+  }
   const dollars = Number(String(formData.get("amount") ?? "").replace(/[$,]/g, ""));
   if (!Number.isFinite(dollars) || dollars <= 0) {
     return { ok: false, message: "Enter the amount the partner paid, like 40." };

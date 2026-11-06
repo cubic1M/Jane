@@ -54,11 +54,12 @@ describe("validatePartner", () => {
       message: expect.stringContaining("counsel"),
     });
     // It can be added switched off, ready for when it's allowed.
-    expect(validatePartner(input({ actionType: "insurance_reshop", active: false }))).toMatchObject(
-      {
-        ok: true,
-      },
-    );
+    // Unpaid, so no revenue per conversion (./referrals-unpaid.test.ts).
+    expect(
+      validatePartner(
+        input({ actionType: "insurance_reshop", active: false, revenuePerConversion: "" }),
+      ),
+    ).toMatchObject({ ok: true });
   });
 
   it("never lets an insurance partner pay per policy sold, and checks the lines", () => {
@@ -70,7 +71,12 @@ describe("validatePartner", () => {
     expect(validatePartner(input({ payModel: "per_sale" }))).toMatchObject({ ok: false });
     expect(
       validatePartner(
-        input({ actionType: "insurance_reshop", active: false, lines: "Auto, home, auto" }),
+        input({
+          actionType: "insurance_reshop",
+          active: false,
+          revenuePerConversion: "",
+          lines: "Auto, home, auto",
+        }),
       ),
     ).toMatchObject({ ok: true, data: { lines: ["auto", "home"] } });
     expect(validatePartner(input({ lines: "boat" }))).toMatchObject({ ok: false });
