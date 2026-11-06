@@ -1,7 +1,8 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { sessionTokenFrom } from "@/lib/admin-gate";
 import { recordFailedSignIn } from "@/lib/auth-events";
-import { isAdminEmail, mayCreateAccount, redeemInvite } from "@/lib/invites";
+import { isAdminEmail, mayCreateAccount, normalizeCode, redeemInvite } from "@/lib/invites";
+import { hit, ipKey } from "@/lib/rate-limit";
 import { emailOfSession } from "@/lib/user-sessions";
 
 // Auth.js's signIn callback: who may sign in or sign up. Existing users always may;
@@ -57,6 +58,16 @@ export async function allowSignIn({
   if (await mayCreateAccount(email)) return true;
 
   const code = (await cookies()).get(INVITE_COOKIE)?.value;
+  // Auth.js's own email route reaches here without the form's limit on one code from one place
+  // (src/lib/auth-actions.ts), and the cookie is anyone's to set: each try spent a use for an
+  // address nobody had proven, so one script emptied a code in a minute. The same limit here.
+  if (code && asked?.verificationRequest) {
+    const here = `${ipKey(await headers())}:${normalizeCode(code)}`;
+    if (!(await hit("inviteRedeem", here)).ok) {
+      await recordFailedSignIn("rate_limited");
+      return CHECK_EMAIL_PATH;
+    }
+  }
   if (code && (await redeemInvite(code, email)) === "ok") return true;
   await recordFailedSignIn("no_invite");
   if (asked?.verificationRequest) return CHECK_EMAIL_PATH;
