@@ -37,3 +37,7 @@ export function formatCents(cents: number): string {
 // Whole dollars, rounded, with thousands separators: "$1,235" for 123,456 cents.
 export const formatWholeDollars = (cents: number): string =>
   formatCents(Math.round(cents / 100) * 100).replace(/\.00$/, "");
+
+// The most an amount column keeps: 32 bits of cents, rounded down to $20 million. Past it a save
+// fails with a server error, and a half-made row can be left behind; forms refuse it in words.
+export const MOST_CENTS_KEPT = 2_000_000_000;

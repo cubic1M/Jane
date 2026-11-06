@@ -1,3 +1,4 @@
+import { MOST_CENTS_KEPT } from "@/lib/money";
 import { TUITION_PAYEE } from "@/config/tax";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
@@ -185,7 +186,9 @@ export async function saveFamilyDetails(
   }
   if (
     details.spouseWagesCents !== null &&
-    (!Number.isInteger(details.spouseWagesCents) || details.spouseWagesCents < 0)
+    (!Number.isInteger(details.spouseWagesCents) ||
+      details.spouseWagesCents < 0 ||
+      details.spouseWagesCents > MOST_CENTS_KEPT)
   ) {
     throw new FamilyTaxesError("Your spouse's wages must be dollars and cents.");
   }

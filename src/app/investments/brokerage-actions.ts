@@ -6,7 +6,7 @@ import { canImportHoldings } from "@/lib/csv-access";
 import { scopedDb } from "@/lib/db-scoped";
 import { setBrokerageBalance } from "@/lib/investing/brokerage-balance";
 import { runJob } from "@/lib/jobs";
-import { parseMoneyToCents } from "@/lib/money";
+import { MOST_CENTS_KEPT, parseMoneyToCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 
 // "What's in your Robinhood account today?" on /investments (read-only beta). The answer is the
@@ -24,6 +24,7 @@ export async function setBrokerageBalanceAction(
   if (cents === null || cents < 0) {
     return { ok: false, error: "Enter the amount as a number, like 1,234.56." };
   }
+  if (cents > MOST_CENTS_KEPT) return { ok: false, error: "That's more than Jane can keep." };
   const set = await setBrokerageBalance(await scopedDb(), app, cents);
   if (!set) return { ok: false, error: "Jane doesn't know that account." };
   after(() => runJob(set.jobId).then(() => undefined));

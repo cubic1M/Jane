@@ -1,3 +1,4 @@
+import { MOST_CENTS_KEPT } from "@/lib/money";
 import {
   AUTHORIZED_USER,
   COSIGNING,
@@ -150,7 +151,7 @@ export async function addFamilyCredit(
   if (!person) throw new FamilyCreditError("Who is it for?");
   const money = (c: number | null | undefined, label: string) => {
     if (c == null) return null;
-    if (!Number.isInteger(c) || c < 0)
+    if (!Number.isInteger(c) || c < 0 || c > MOST_CENTS_KEPT)
       throw new FamilyCreditError(`${label} should be a dollar amount.`);
     return c;
   };

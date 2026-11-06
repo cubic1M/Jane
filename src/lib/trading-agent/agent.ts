@@ -91,7 +91,7 @@ export async function startTradingAgent(
     throw new AgentError("The 24-hour agent runs on the demo bank only for now.");
   const policy = policyByKey(choice.policy);
   const market = marketOfPolicy(choice.policy);
-  if (!policy || !market || !(choice.interval in AGENT_INTERVALS))
+  if (!policy || !market || !Object.hasOwn(AGENT_INTERVALS, choice.interval))
     throw new AgentError("Pick a strategy and how often it runs.");
   const db = scopedFor(userId, client);
   const account = await db.paperAccounts.findFirst({ include: { positions: true } });
