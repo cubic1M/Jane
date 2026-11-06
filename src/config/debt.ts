@@ -727,6 +727,18 @@ export const BT_MIN_SAVING_CENTS = 10_000;
 export const BT_REMIND_DAYS: readonly number[] = [60, 30, 7];
 // The demo bank shows a moved card balance gone this many days after the transfer.
 export const DEMO_TRANSFER_DAYS = 2;
+// Round 15 (connectors roadmap, cards 7.2): a card offer is scored at what the person can pay,
+// not at whatever clears it in time. It's shown only if that pays it off within the intro months
+// plus this slack; otherwise the card says what payment it would take.
+export const BT_PROMO_SLACK_MONTHS = 2;
+// An offer that gives the fee as a percent with no minimum: the usual minimum is $5 or $10
+// (LendingTree), so the higher is assumed.
+export const BT_DEFAULT_FEE_MIN_CENTS = 1_000;
+// Past this many months a payment is taken never to clear the balance.
+export const BT_MAX_MONTHS = 600;
+// What applying does to a score, said the same way every time (myFICO).
+export const HARD_PULL_TEXT =
+  "Applying usually means a hard inquiry. For most people it takes less than five points off a FICO Score, counts for 12 months, and stays on the report up to two years.";
 
 // --- Step 115: mortgage ------------------------------------------------------------------
 
