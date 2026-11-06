@@ -1,8 +1,11 @@
 import type { ConnectorCapability, ConnectorCategory, ConsentScope } from "@/config/connectors";
+import type { PrismaClient } from "@/generated/prisma/client";
 
 // What every connector is (docs/connectors.md). A connector is a partner Jane reads from, fills in
 // steps for, or acts through. Each one says what it can do and what consent it needs; the pipeline
 // (./pipeline.ts) decides whether it may, and its acting methods only work inside a grant (./gate.ts).
+
+export type CheckContext = { userId: string; client: PrismaClient; now: Date };
 
 // One line the person sees before saying yes: "Pay to: Con Edison", "Amount: $84.12".
 export type PrefilledStep = { label: string; value: string };
@@ -78,6 +81,17 @@ export type Connector = {
   movesMoney: boolean;
   // What the person asked for, filled in for them to check. Pure: no call to the partner.
   prefill?: (request: ActionDetails) => ActionDraft;
+  // Checks a pure prefill can't make, against the person's own data (their accounts, their
+  // autopay, an open action for the same thing). `prepare` runs at plan time and returns the
+  // request prefill gets, with facts from the database in place of what the caller sent. `guard`
+  // runs again at the yes and just before acting. Either throws BadRequest to refuse. They read
+  // through scopedFor(context.userId): never anyone else's rows.
+  // actionId: the plan already made with this idempotency key, when it's asked for again.
+  prepare?: (
+    request: ActionDetails,
+    context: CheckContext & { actionId?: string },
+  ) => Promise<ActionDetails>;
+  guard?: (details: ActionDetails, context: CheckContext & { actionId: string }) => Promise<void>;
   // Carries out a draft the person said yes to. Gated: only inside the pipeline's grant.
   act?: (draft: ActionDraft, context: ActContext) => Promise<ActResult>;
   // Takes it back at the partner, while ActResult.cancelUntil allows. Gated.

@@ -134,3 +134,30 @@ with its sources). Only 3 of the 56 document cancelling by email, so steps come 
 
 A guided or app-store cancel ends `handed_off`: nothing for Jane to send, and the last step is the
 person's. `sandbox_subscription_cancel` uses the route; nothing real is emailed or mailed.
+
+## "Jane prepares, you pay"
+
+`manual_bill_pay` (`src/lib/connectors/manual-pay/`) is the first real connector, and it reaches
+nobody: Jane works out the amount and the day, fills in the steps and the biller's own pay page from
+`src/config/billers.ts` (47 billers, roadmap round 8, with sources), and the person pays it
+themselves. Jane never moves the money or types an account number. It's off until its switch in
+`REAL_CONNECTORS`.
+
+- **Day**: three business days before the due date, five through a bank's own bill pay, never
+  before today, before 7 PM ET.
+
+Nothing here rests on what the caller sends (security review on #1506): the connector's `prepare`
+and `guard` hooks, which the pipeline runs at plan time, at the yes and before handing it over,
+check the person's own data.
+
+- **The account**: `fromAccountId` must be one of theirs, and the name shown comes from that row.
+- **Autopay guard**: no manual payment where autopay already pays (an autopay line from that biller
+  in the last 45 days), since Chase's mortgage autopay still withdraws after a manual payment. Buy
+  now, pay later pays itself, so it's always refused.
+- **No twin**: a second open payment of the same bill and due day is refused.
+- **Settlement**: `settleManualPayments` marks a bill paid only on a line out of that account, of
+  the exact amount (or that plus the biller's documented fee), in the biller's window (usually 3
+  business days), that names the biller. An amount-only match stays handed off with "Looks paid
+  on ..., check it's this bill". A bank line settles one payment at most, ever: it's claimed in
+  `connector_webhook_events`. A match moves the action from `handed_off` to `succeeded` through
+  the same door a partner's webhook uses. Not yet called by a scheduled job.

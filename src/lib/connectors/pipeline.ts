@@ -21,6 +21,7 @@ import {
   type ActContext,
   type ActionDetails,
   type ActionDraft,
+  type CheckContext,
   type Connector,
   type PrefilledStep,
   type WebhookEvent,
@@ -59,6 +60,8 @@ export type RefuseReason =
   | "cant_do"
   | "no_consent"
   | "bad_request"
+  // A connector's own check against the person's data said no (Connector.prepare / guard).
+  | "check_failed"
   | "bad_amount"
   | "over_cap"
   | "daily_count"
@@ -80,6 +83,7 @@ const REFUSED_WORDS: Record<RefuseReason, string> = {
   cant_do: "That connection can't do that.",
   no_consent: "You haven't allowed that connection to do this.",
   bad_request: "Some of that is missing or doesn't fit together.",
+  check_failed: "That doesn't check out against your accounts: it could pay twice, or isn't yours.",
   bad_amount: "That amount doesn't look right.",
   over_cap: "That's more than Jane can do in one go.",
   daily_count: "That's more actions than Jane does in one day.",
@@ -159,6 +163,21 @@ function checkAmount(cents: number) {
   if (cents > CONNECTOR_ACTION_CAP_CENTS) throw new ConnectorRefused("over_cap");
 }
 
+// The connector's own check against the person's data, again at the yes and before acting.
+async function runGuard(
+  connector: Connector,
+  details: ActionDetails,
+  context: CheckContext & { actionId: string },
+) {
+  if (!connector.guard) return;
+  try {
+    await connector.guard(details, context);
+  } catch (error) {
+    if (error instanceof BadRequest) throw new ConnectorRefused("check_failed");
+    throw error;
+  }
+}
+
 export type PlannedAction = {
   id: string;
   connectorId: string;
@@ -209,9 +228,21 @@ export async function planAction(
   if (!(await consentCovers(userId, connector, { client }))) {
     throw new ConnectorRefused("no_consent");
   }
+  // The plan already made with this key, if any: its own row isn't a twin of itself.
+  const prior = await scopedFor(userId, client).connectorActions.findFirst({
+    where: { idempotencyKey },
+    select: { id: true },
+  });
   let draft: ActionDraft;
   try {
-    draft = connector.prefill(request);
+    const checked = connector.prepare
+      ? await connector
+          .prepare(request, { userId, client, now, ...(prior && { actionId: prior.id }) })
+          .catch((error: unknown) => {
+            throw error instanceof BadRequest ? new ConnectorRefused("check_failed") : error;
+          })
+      : request;
+    draft = connector.prefill(checked);
   } catch (error) {
     if (error instanceof BadRequest) throw new ConnectorRefused("bad_request");
     throw error;
@@ -309,6 +340,7 @@ export async function answerAction(
       fingerprint: true,
       expiresAt: true,
       kind: true,
+      details: true,
     },
   });
   if (!action) throw new ConnectorRefused("not_waiting");
@@ -339,6 +371,7 @@ export async function answerAction(
   }
   checkAmount(action.amountCents);
   await withinDailyCaps(userId, action.amountCents, { client, now, except: actionId });
+  await runGuard(connector, action.details as ActionDetails, { userId, client, now, actionId });
 
   const hold = connector.movesMoney ? CONNECTOR_HOLD_MINUTES.money : CONNECTOR_HOLD_MINUTES.other;
   const runAt = new Date(now.getTime() + hold * MINUTE);
@@ -477,6 +510,7 @@ export async function executeAction(
       throw new ConnectorRefused("no_real_money");
     }
     await withinDailyCaps(userId, action.amountCents, { client, now, except: actionId });
+    await runGuard(connector, draft.details, { userId, client, now, actionId });
   } catch (error) {
     if (!(error instanceof ConnectorRefused)) {
       // Nothing reached the connector yet: hand the claim back, so the queue's retry (or a cancel)
@@ -566,7 +600,8 @@ const AFTER_EVENT: Record<
   WebhookEvent["outcome"],
   { from: ConnectorStatus[]; to: ConnectorStatus } | null
 > = {
-  done: { from: ["partner_pending"], to: "succeeded" },
+  // handed_off: the person's own last step, seen done (a manual payment in their transactions).
+  done: { from: ["partner_pending", "handed_off"], to: "succeeded" },
   failed: { from: ["partner_pending"], to: "failed" },
   // Money can come back up to about 60 days after it settled (connector-plan.md).
   reversed: { from: ["partner_pending", "succeeded"], to: "reversed" },
