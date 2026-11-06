@@ -38,6 +38,7 @@ export const ACCESS_MAP: Record<string, Access> = {
   "src/app/api/client-error/route.ts": public_(
     "Browsers post errors here, signed in or not; it only stores a scrubbed report.",
   ),
+  "src/app/api/connectors/[connectorId]/webhook/route.ts": "webhook",
   "src/app/api/cron/digest/route.ts": "cron",
   "src/app/api/cron/events/route.ts": "cron",
   "src/app/api/cron/invariants/route.ts": "cron",

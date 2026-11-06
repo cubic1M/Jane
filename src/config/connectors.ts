@@ -81,3 +81,13 @@ export const CONNECTOR_HOLD_MINUTES = {
 
 // A plan the person hasn't answered within this long expires: the yes is for what they saw then.
 export const CONNECTOR_PLAN_HOURS = 72;
+
+// --- Webhooks (src/lib/connectors/webhooks.ts) ---------------------------------------------------
+
+// A signed delivery older or newer than this is refused, as Stripe's and Svix's defaults do.
+export const WEBHOOK_TOLERANCE_SECONDS = 5 * 60;
+// The most a delivery may be. Partners send small JSON events.
+export const WEBHOOK_MAX_BYTES = 64 * 1024;
+// How long an event id is remembered, to refuse a replay. Far longer than any provider retries
+// (Svix retries for about 28 hours, Stripe for 3 days).
+export const WEBHOOK_EVENT_DAYS = 30;

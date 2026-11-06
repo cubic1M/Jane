@@ -112,6 +112,8 @@ const NOT_A_PERSONS = new Set([
   "suggestion_kind_stats",
   "refresh_locks",
   "plaid_webhook_events",
+  // A connector delivery's event id, kept against replays: no body, no person.
+  "connector_webhook_events",
   "plaid_item_counter",
   "robinhood_oauth_clients",
   "referral_partners",
