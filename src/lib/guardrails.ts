@@ -122,6 +122,13 @@ const INVESTMENT = [
   /\bharvest(?:ing)? (?:the |a |your |some |those )?(?:loss|losses|gains?)\b/i,
   /\btarget[- ]date\b/i,
   /(?:^|[.!?:;]\s+|\byou should\s+|\bi(?:'|’)?d\s+)(?:take|withdraw|skip|delay)\b[^.!?]{0,30}\b(?:rmds?|required minimum distributions?)\b/i,
+  // The same moves said another way (security round 48): "Hold off on Social Security until 70",
+  // "Don't take Social Security yet", "Your best move is to claim Social Security at 67", "Wait
+  // until 70 to claim your benefits", "Exercise your ISOs". "You started Social Security at 62" and
+  // "If you wait until 70, ..." (how the rule works) stay facts.
+  /\b(?:hold(?:ing)? off|don(?:'|’)?t (?:take|claim|start)|do not (?:take|claim|start)|(?:best|smart|right|better) (?:move|bet|choice|option|plan) (?:is|would be) to (?:take|claim|start|delay|wait))\b[^.!?]{0,30}\b(?:social security|pension)\b/i,
+  /(?<!\bif (?:you|they) )\b(?:wait|hold off|delay)\w*\b[^.!?]{0,20}\b(?:until|till|to) (?:age )?(?:6[2-9]|70)\b[^.!?]{0,30}\b(?:claim|take|start|collect|benefits|social security|pension)\b/i,
+  /\bexercis(?:e|ing)\b[^.!?]{0,20}\b(?:isos?|nsos?)\b/i,
   ...STOCK_PICKS,
   /\brebalanc/i,
   // "Your budget allocation" is a budget.
@@ -194,6 +201,10 @@ const TAX_ADVICE = [
   // withheld stays a fact.
   /(?:^|[.!?:;]\s+|\byou should\s+|\bi(?:'|’)?d\s+)(?:increase|raise|lower|reduce|change|adjust|update|bump|boost)\b[^.!?]{0,30}\bwithholding\b/i,
   /\b(?:file|fill out|submit|give|send) (?:your employer )?a new w-?4\b/i,
+  // Said another way (security round 48): "Withhold more from your paycheck", "Have your employer
+  // withhold an extra $100", "Claim fewer allowances". "Your employer withholds $300" is a fact.
+  /\bwithhold (?:more|less|an extra|extra|an additional|additional)\b/i,
+  /\b(?:claim|put|take) (?:fewer|more|zero|0|no) allowances\b/i,
 ];
 // In a sentence that talks about tax: telling them to do something, or what the rules say
 // their money counts as. "You'll owe about $X" is a figure; "you should set aside $X" is advice.
