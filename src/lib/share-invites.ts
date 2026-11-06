@@ -1,3 +1,4 @@
+import { hit } from "@/lib/rate-limit";
 import { LINK_PREVIEW_AGENTS, SHARE_INVITE_MAX_USES, SHARE_INVITE_NOTE } from "@/config/share";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
@@ -130,8 +131,11 @@ export const isLinkPreview = (userAgent: string | null) =>
 export async function recordInviteOpened(
   inviteId: string,
   userAgent: string | null,
+  from: string,
+  { client = defaultClient }: Options = {},
 ): Promise<boolean> {
   if (isLinkPreview(userAgent)) return false;
+  if (!(await hit("inviteOpened", `${from}:${inviteId}`, { client })).ok) return false;
   await track(null, "invite_opened", { invite_id: inviteId });
   return true;
 }

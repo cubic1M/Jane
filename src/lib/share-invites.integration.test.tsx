@@ -227,12 +227,22 @@ describe.runIf(url)("share links against a real database", () => {
     });
 
     expect(
-      await recordInviteOpened(inviteId, "facebookexternalhit/1.1 Facebot Twitterbot/1.0"),
+      await recordInviteOpened(
+        inviteId,
+        "facebookexternalhit/1.1 Facebot Twitterbot/1.0",
+        `opened-${inviteId}`,
+        { client },
+      ),
     ).toBe(false);
-    expect(await recordInviteOpened(inviteId, null)).toBe(false);
-    expect(await recordInviteOpened(inviteId, "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0)")).toBe(
-      true,
-    );
+    expect(await recordInviteOpened(inviteId, null, `opened-${inviteId}`, { client })).toBe(false);
+    expect(
+      await recordInviteOpened(
+        inviteId,
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0)",
+        `opened-${inviteId}`,
+        { client },
+      ),
+    ).toBe(true);
     expect(track).toHaveBeenCalledWith(null, "invite_opened", { invite_id: inviteId });
 
     const friend = `friend-${crypto.randomUUID()}@example.test`;

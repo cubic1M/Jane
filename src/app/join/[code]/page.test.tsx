@@ -59,7 +59,12 @@ describe("/join/[code]", () => {
     await renderJoin();
     expect(after).toHaveBeenCalledTimes(1);
     await after.mock.calls[0][0]();
-    expect(recordInviteOpened).toHaveBeenCalledWith("inv_1", "Mozilla/5.0 (iPhone)");
+    // And where it came from, so the same place counts once a day.
+    expect(recordInviteOpened).toHaveBeenCalledWith(
+      "inv_1",
+      "Mozilla/5.0 (iPhone)",
+      expect.any(String),
+    );
   });
 
   it("counts nothing for a wrong link", async () => {
