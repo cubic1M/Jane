@@ -1,3 +1,4 @@
+import { adviceMode } from "@/lib/advice-mode";
 import type { Route } from "next";
 import { isHiddenPage } from "@/config/hidden-pages";
 import Link from "next/link";
@@ -33,7 +34,6 @@ import { practiceProfileOf } from "@/lib/practice/preferences";
 import { type HoldingView } from "@/insights/investments";
 import { formatCents } from "@/lib/money";
 import { READ_ONLY_INVESTMENTS } from "@/config/read-only-beta";
-import { conciergeMode } from "@/lib/concierge-mode";
 import { requireUser } from "@/lib/session";
 import { loadInvestingLeak } from "@/lib/investments/leak";
 import { loadPanicSells } from "@/lib/investments/panic-sells";
@@ -231,7 +231,9 @@ async function InvestmentsContent({
     area,
   } = await loadInvestingArea(user.id);
   // Debugger 11-01: a real account read that Jane says what it would change, and that trades wait.
-  const actsForYou = await conciergeMode(user.id);
+  // What it describes (what Jane would change, orders ready, investing every payday) is advice and
+  // trading, so it's demo advice's to say, not concierge's.
+  const actsForYou = await adviceMode(user.id);
   const doesTitle = actsForYou ? "What Jane does on its own" : READ_ONLY_INVESTMENTS.title;
 
   const facts = ownedFacts(data.accounts);
