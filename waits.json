@@ -70,5 +70,13 @@
   "when": "merged",
   "since": "2026-11-06T22:51:48.480Z",
   "expires": "2026-11-09T22:51:48.480Z"
+ },
+ {
+  "on": 1576,
+  "lane": "lane:connectors",
+  "task": "claude/transcript-partner",
+  "when": "merged",
+  "since": "2026-11-06T23:13:18.455Z",
+  "expires": "2026-11-09T23:13:18.455Z"
  }
 ]
