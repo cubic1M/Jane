@@ -195,6 +195,9 @@ nothing, moves nothing and opens nothing. Off until its switch.
 - **Checked against the database, not the caller**: the option is a reviewed savings option with an
   https sign-up page and a rate checked within `SAVINGS_APY_STALE_DAYS`; the account is the
   person's and holds the amount; one opening per option at a time.
+- **Every Claude-written sentence** also passes a deposit-insurance check in `src/lib/guardrails.ts`
+  (`deposit_insurance`, in both profiles): never "Jane is a bank" or FDIC insured, never money
+  "with Jane" insured, never a Treasury, fund, stock or crypto FDIC insured.
 - **The card**: the rate as "Annual Percentage Yield (APY) X.XX% as of <day>" with the Reg DD lines
   (`src/lib/apy-disclosure.ts`), the steps (open, link, let the bank pull it), and "Jane is not a
   bank and never holds your money", pointing to the FDIC's BankFind. It never says FDIC insured:
