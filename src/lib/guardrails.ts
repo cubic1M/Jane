@@ -643,6 +643,11 @@ const INSURANCE_OR_LOANS = [
   /\b(loans?|mortgages?|refinanc\w*|apr|interest rates?|lenders?|debt)\b/i,
 ];
 
+// Whether text is about investing or taxes, said as a fact or as advice: what an answer needs
+// AI_WRITTEN_LABEL for (src/config/advice.ts).
+export const aboutInvestingOrTaxes = (text: string): boolean =>
+  [...INVESTMENT, ...TAX].some((pattern) => pattern.test(text));
+
 // Whether text is advice that needs DEMO_ADVICE_LABEL (spec step 98): it talks about
 // investments, taxes, insurance or loans, or recommends one choice over another.
 export function isAdvice(text: string): boolean {

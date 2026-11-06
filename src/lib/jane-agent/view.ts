@@ -29,6 +29,8 @@ export type MessageView = {
   note: string | null;
   // Demo advice (spec step 98): shown with DEMO_ADVICE_LABEL.
   advice: boolean;
+  // Claude wrote it about investing or taxes: shown with AI_WRITTEN_LABEL.
+  aiWritten?: true;
   // How sure Jane is of a heads-up (refs.confidence), shown on its card.
   confidence?: { percent: number; reason: string };
   buttons: { id: ActionId; label: string; kind: "primary" | "secondary" | "quick" }[];
@@ -182,6 +184,7 @@ export function toView(
     answeredWith: message.answeredWith,
     note: message.refs.note ?? null,
     advice: message.refs.advice === true,
+    ...(message.refs.aiWritten ? { aiWritten: true as const } : {}),
     ...(message.refs.confidence ? { confidence: message.refs.confidence } : {}),
     buttons,
     // Spec step 86: a page opened from here links back to this message. An old link to an

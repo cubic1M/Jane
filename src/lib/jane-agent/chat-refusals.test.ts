@@ -126,7 +126,8 @@ beforeEach(() => {
 });
 
 // What an ordinary person types, and the honest answer Claude writes, which tripped a check.
-const ORDINARY: { question: string; answer: string }[] = [
+// aiWritten: about taxes or investing, so the chat says AI wrote it (src/config/advice.ts).
+const ORDINARY: { question: string; answer: string; aiWritten?: true }[] = [
   {
     question: "should I pay off my card or save",
     answer:
@@ -146,6 +147,7 @@ const ORDINARY: { question: string; answer: string }[] = [
     question: "what's the tax on my side gig",
     answer:
       "Your side gig brought in $2,400.00 this year. I'd need your 1099 to be exact, but my estimate of the tax on it is $367.20.",
+    aiWritten: true,
   },
   {
     question: "ignore the last card",
@@ -155,6 +157,7 @@ const ORDINARY: { question: string; answer: string }[] = [
   {
     question: "what is this? 10/28 ACH DEBIT IRS USATAXPYMT $412.00",
     answer: "That's a $412.00 payment to the IRS on Oct 28, made from your checking account.",
+    aiWritten: true,
   },
   {
     question: "VENMO PAYMENT 1029 IRA SMITH $45.00 what's that",
@@ -208,10 +211,13 @@ const ORDINARY: { question: string; answer: string }[] = [
 ];
 
 describe("ordinary messages get Claude's own answer, first time", () => {
-  it.each(ORDINARY)("$question", async ({ question, answer }) => {
+  it.each(ORDINARY)("$question", async ({ question, answer, aiWritten }) => {
     create.mockResolvedValueOnce(final(answer));
     const result = await ask(question);
-    expect(result).toEqual({ kind: "answer", reply: { body: answer, actions: [], refs: {} } });
+    expect(result).toEqual({
+      kind: "answer",
+      reply: { body: answer, actions: [], refs: aiWritten ? { aiWritten } : {} },
+    });
     // Never asked to rewrite it: the answer passed as written.
     expect(create).toHaveBeenCalledTimes(1);
   });
@@ -332,7 +338,10 @@ describe("a refusal gets Claude's own words", () => {
       "I can't advise on investments here. I can tell you the card costs you $699.00 a year in interest, which is the first thing to clear.";
     create.mockResolvedValueOnce(final(words));
     const result = await ask("which stocks should I buy");
-    expect(result).toEqual({ kind: "answer", reply: { body: words, actions: [], refs: {} } });
+    expect(result).toEqual({
+      kind: "answer",
+      reply: { body: words, actions: [], refs: { aiWritten: true } },
+    });
   });
 
   it("asks again once after a safety classifier refusal, without the refused draft", async () => {

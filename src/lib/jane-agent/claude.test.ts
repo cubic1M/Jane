@@ -827,7 +827,7 @@ describe("proposeAction", () => {
 
       expect(result).toEqual({
         kind: "answer",
-        reply: { body: ADVICE, actions: [], refs: { advice: true } },
+        reply: { body: ADVICE, actions: [], refs: { advice: true, aiWritten: true } },
       });
       expect(shown.join("")).toBe(ADVICE);
       expect(systemOf(0)).toMatch(/you may recommend what to do about investments/);
@@ -1541,7 +1541,7 @@ describe("a blocked answer keeps its facts", () => {
     const result = await ask();
     expect(result).toEqual({
       kind: "answer",
-      reply: { body: `${FACTS} ${ESTIMATE}`, actions: [], refs: {} },
+      reply: { body: `${FACTS} ${ESTIMATE}`, actions: [], refs: { aiWritten: true } },
     });
     expect(create).toHaveBeenCalledTimes(1);
   });
@@ -1553,7 +1553,10 @@ describe("a blocked answer keeps its facts", () => {
       .mockResolvedValueOnce(final(`${FACTS} ${ADVICE} ${ESTIMATE}`))
       .mockResolvedValueOnce(final(fixed));
     const result = await ask();
-    expect(result).toEqual({ kind: "answer", reply: { body: fixed, actions: [], refs: {} } });
+    expect(result).toEqual({
+      kind: "answer",
+      reply: { body: fixed, actions: [], refs: { aiWritten: true } },
+    });
     const note = sent[1].at(-1)!.content as string;
     expect(note).toContain(`"${ADVICE}"`);
     expect(note).toMatch(/Drop only that advice\. Keep every fact/);
@@ -1569,7 +1572,11 @@ describe("a blocked answer keeps its facts", () => {
     const result = await ask();
     expect(result).toEqual({
       kind: "answer",
-      reply: { body: `${FACTS} ${ESTIMATE} ${CANT_ADVISE_TAX}`, actions: [], refs: {} },
+      reply: {
+        body: `${FACTS} ${ESTIMATE} ${CANT_ADVISE_TAX}`,
+        actions: [],
+        refs: { aiWritten: true },
+      },
     });
     warn.mockRestore();
   });

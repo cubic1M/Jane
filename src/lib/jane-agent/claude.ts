@@ -23,6 +23,7 @@ import { anthropic, chatModel } from "@/lib/anthropic";
 import { addSpend, costInHundredthsOfCents, overDailyCap } from "./spend";
 import type { Topic } from "./context";
 import {
+  aboutInvestingOrTaxes,
   checkGuardrails,
   guardrailMatches,
   dollarFigures,
@@ -35,7 +36,15 @@ import type { PolicyKind } from "@/config/insurance";
 import { quotesAnswer } from "./insurance/quotes";
 import { DEBT_TOOL_STATUS } from "./debt-tools";
 import { parseDecision } from "./decision-intents";
-import { areaTools, chatTools, isArea, lookupsFor, sectorsFor, toolsFor } from "./tool-select";
+import {
+  areaTools,
+  chatTools,
+  isArea,
+  lookupsFor,
+  sectorOf,
+  sectorsFor,
+  toolsFor,
+} from "./tool-select";
 import { CHAT_TOOLS, chatPrimer, proposeAction, runChatTool, type Proposal } from "./claude-tools";
 import {
   calculatorInputsNotOnFile,
@@ -526,6 +535,19 @@ type ChatTiming = {
   fallbackModel?: string;
 };
 
+// Claude's words about investing or taxes say so (AI_WRITTEN_LABEL, src/config/advice.ts): the
+// answer's own words, or a tool it looked something up with in those areas. A tool counted in
+// timing is named as it was called ("x (up front)" for a lookup made before the first turn).
+export function withAiNote(answer: ClaudeAnswer, timing: Pick<ChatTiming, "tools">): ClaudeAnswer {
+  if (answer.kind !== "answer") return answer;
+  const looked = timing.tools.some((t) => {
+    const sector = sectorOf(t.name.replace(/ \(up front\)$/, ""));
+    return sector === "investing" || sector === "tax";
+  });
+  if (!looked && !aboutInvestingOrTaxes(answer.reply.body)) return answer;
+  return { ...answer, reply: { ...answer.reply, refs: { ...answer.reply.refs, aiWritten: true } } };
+}
+
 // What the last answer was about, in words for Claude (spec step 193).
 export function topicLine(topic: Topic): string {
   const what = oneLine([topic.target, topic.category, topic.month].filter(Boolean).join(", "));
@@ -565,7 +587,7 @@ export async function askClaudeInChat(
   try {
     const answer = await askClaude(userId, history, question, options, timing);
     outcome = answer.kind;
-    return answer;
+    return answer.kind === "answer" ? withAiNote(answer, timing) : answer;
   } finally {
     const { startedAt, ...rest } = timing;
     log.json("chat_timing", {
