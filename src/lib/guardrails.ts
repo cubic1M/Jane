@@ -161,6 +161,17 @@ const TAX_ADVICE = [
   /\bamend\w*\b[^.!?]{0,30}\breturns?\b/i,
   /\bfil(?:e|ing)\b (?:your|their|my|the|a joint|an amended|a federal|a state|federal|state) (?:\w+ )?returns?\b(?! (?:request|label|policy|window|shipping))/i,
   /\bschedule [a-z]\b/i,
+  // What to report, and how to file: advising a person on their own taxes, which Anthropic's
+  // Usage Policy (from Nov 12, 2026) holds for a qualified person's review (aup-audit 11-06:
+  // "Report the Venmo money as hobby income" and "File as head of household" got through).
+  /\bhobby income\b/i,
+  /\b(?:report|declare|list|count|enter|record|call|treat|classify|book)\b[^.!?]{0,40}?\bas (?:hobby|business|self-employment|rental|gift|investment|capital gains?|ordinary|other|side|1099|w-?2) (?:income|earnings|money|pay)\b/i,
+  /(?:^|[.!?:]\s+|\b(?:you|to|and|then|just|never|don(?:'|’)?t|do not|no need to|needn(?:'|’)?t)\s+)(?:report|declare)\b(?! (?:it|this|that|them) to (?:your|the) (?:bank|card|issuer|police|ftc|lender))[^.!?]{0,50}\b(?:income|earnings|tips|wages|gains?|winnings|side money|cash (?:pay|payments|tips))\b/i,
+  /\bfil(?:e|ing) as\b/i,
+  /\bhead of household\b/i,
+  /\bmarried filing (?:jointly|separately)\b/i,
+  /\b(?:put|enter|list|include|show|claim|report|take)\b[^.!?]{0,40}\bon your (?:\d{4} )?(?:tax |federal |state )?return\b/i,
+  /\bclaim (?:your|my|their|her|his|the) (?:daughter|son|kids?|children|child|parents?|mom|dad|mother|father|niece|nephew|grand\w+|girlfriend|boyfriend|partner)\b(?!['’]s)/i,
 ];
 // In a sentence that talks about tax: telling them to do something, or what the rules say
 // their money counts as. "You'll owe about $X" is a figure; "you should set aside $X" is advice.
@@ -172,6 +183,8 @@ const TAX_DIRECTIVE = [
   /\b(?:is|are) (?:taxable|tax[- ]free|not taxable|deductible)\b/i,
   // In a tax sentence: filing a return, a schedule, a form or an extension.
   /\b(?:file|filing|amend\w*)\b[^.!?]{0,30}\b(?:returns?|schedule|form|extension)\b/i,
+  // In a tax sentence: whether to report it ("you don't have to report it", "report it all").
+  /\b(?:report|declare)\b (?:it|this|that|them|those|all|every)\b/i,
 ];
 
 // The sentences that talk about tax and tell the person what to do about it.
