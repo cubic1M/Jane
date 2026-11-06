@@ -130,6 +130,15 @@ const INVESTMENT = [
   /\b(?:hold(?:ing)? off|don(?:'|’)?t (?:take|claim|start)|do not (?:take|claim|start)|(?:best|smart|right|better) (?:move|bet|choice|option|plan) (?:is|would be) to (?:take|claim|start|delay|wait))\b[^.!?]{0,30}\b(?:social security|pension)\b/i,
   /(?<!\bif (?:you|they) )\b(?:wait|hold off|delay)\w*\b[^.!?]{0,20}\b(?:until|till|to) (?:age )?(?:6[2-9]|70)\b[^.!?]{0,30}\b(?:claim|take|start|collect|benefits|social security|pension)\b/i,
   /\bexercis(?:e|ing)\b[^.!?]{0,20}\b(?:isos?|nsos?)\b/i,
+  // Other words for the same moves (chat policy round 2, 11-06): "Now is a good time to buy", "Dollar-cost
+  // average $200 a month into VOO", "Pick the growth fund over the value fund", "Sell the losers
+  // before December 31 to offset the gains". A good time to buy a car is shopping: only "now".
+  /\b(?:now|today|this (?:week|month)) (?:is|looks like|seems like) (?:a |the )?(?:good|great|bad|right|wrong|smart|perfect|best|ideal) time to (?:buy|sell|get in|get out|cash out)\b(?=\s*(?:in|more|back|[.!?,;]|$))/i,
+  /\b(?:buy the dip|time the market|(?:get|stay|be) (?:back )?(?:in(?:to)?|out of) the (?:stock )?market)\b/i,
+  /\bdollar[- ]cost averag/i,
+  /\b(?:growth|value|balanced|total[- ](?:stock )?market|large[- ]cap|mid[- ]cap|small[- ]cap|emerging[- ]markets?|sector|dividend) (?:funds?|etfs?)\b/i,
+  /\boffset(?:ting)? (?:the |your |some |those |any )?(?:capital )?gains?\b/i,
+  /\bsell(?:ing)? (?:the |your |some |those )?(?:losers|winners)\b/i,
   ...STOCK_PICKS,
   /\brebalanc/i,
   // "Your budget allocation" is a budget.
@@ -206,6 +215,15 @@ const TAX_ADVICE = [
   // withhold an extra $100", "Claim fewer allowances". "Your employer withholds $300" is a fact.
   /\bwithhold (?:more|less|an extra|extra|an additional|additional)\b/i,
   /\b(?:claim|put|take) (?:fewer|more|zero|0|no) allowances\b/i,
+  // Other words for the same advice (chat policy round 2, 11-06): "You can skip reporting the Venmo
+  // payments", "Count your nephew as a dependent", "Treat the side gig as a hobby", "Bunch your
+  // donations into December", "Ask for an extension and file in October". Reporting a charge to
+  // the bank is about the charge.
+  /\bskip(?:ping)? (?:reporting|declaring)\b(?![^.!?]*\b(?:bank|card|issuer|police|ftc|fraud|scam)\b)/i,
+  /\b(?:count|list|claim|put|add|name|include|treat)\b[^.!?]{0,30}\bas (?:a |your |their )?dependents?\b/i,
+  /\b(?:treat|count|classify|call|report|file)\b[^.!?]{0,30}\bas (?:a )?hobby\b/i,
+  /\bbunch(?:ing)?\b[^.!?]{0,20}\b(?:donations?|gifts|giving|deductions|contributions)\b/i,
+  /\b(?:tax|irs|filing) extension\b|\bextension and file\b|\bfile for an extension\b|\bfile (?:it |your return )?(?:in|by) october\b/i,
 ];
 // In a sentence that talks about tax: telling them to do something, or what the rules say
 // their money counts as. "You'll owe about $X" is a figure; "you should set aside $X" is advice.
@@ -249,6 +267,15 @@ const LEGAL = [
   /\b(?:you|we|they) (?:could|can|should|might|may|could also|can also) sue\b|\bsu(?:ed|ing)\b/i,
   /\blegal (?:grounds|action|claim|case|recourse|remedy|remedies)\b/i,
   /\blegally (?:required|obligated|bound|entitled|allowed to|can)\b/i,
+  // What the person legally owes or can be made to do, and whether a debt can still be collected
+  // (round 2, 11-06): "You don't legally owe that debt anymore", "Ignore the collector; the debt is
+  // past the statute of limitations", "You have a strong case against your landlord".
+  /\b(?:don(?:'|’)?t|do not|doesn(?:'|’)?t|does not|no longer|aren(?:'|’)?t|are not|isn(?:'|’)?t|is not|can(?:'|’)?t|cannot) legally\b/i,
+  /\blegally (?:owe|have to|need to|responsible|liable|binding|enforceable)\b/i,
+  /\b(?:past|beyond|outside|expired|run out|ran out)\b[^.!?]{0,30}\bstatute of limitations\b|\btime[- ]barred\b/i,
+  /\bignore (?:the |that |this |any |their |those )?(?:debt )?(?:collectors?|collection (?:letters?|calls?|notices?|agency)|lawsuit|summons|court (?:date|papers|notice)|subpoena)\b/i,
+  /\b(?:have|has|got) (?:a |an )?(?:\w+ )?case against\b/i,
+  /\b(?:is |are |was |were )?(?:breaking|broke|violating|violated) the law\b/i,
   /\b(?:take|took|taken|drag|dragged) (?:you |them |him |her |it |the \w+ )?to (?:small claims )?court\b/i,
   /\bfile (?:for (?:probate|divorce|custody)|(?:in|with) (?:the |a )?court)\b/i,
   /\b(?:don(?:'|’)?t|do not|doesn(?:'|’)?t|no) need (?:a |an )?(?:lawyer|attorney)\b/i,

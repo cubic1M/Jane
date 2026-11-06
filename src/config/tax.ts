@@ -235,6 +235,19 @@ export const EFTPS_INDIVIDUALS = {
   match: /\bEFTPS\b/i,
   onlineAccountUrl: "https://www.irs.gov/payments/your-online-account",
 } as const;
+// Paying the IRS by card (connectors roadmap round 16): only two processors are left (payUSAtax
+// stopped), each charging its own fee, which the IRS doesn't get. As of 2026-11-06, from
+// irs.gov/payments/pay-your-taxes-by-debit-or-credit-card. Personal cards only (commercial cards
+// cost more). Estimated-tax (1040-ES) card payments are limited to two a quarter.
+export const IRS_CARD_PAYMENTS = {
+  asOf: "2026-11-06",
+  source: "https://www.irs.gov/payments/pay-your-taxes-by-debit-or-credit-card",
+  estimatedPerQuarter: 2,
+  processors: [
+    { name: "Pay1040", debitFeeCents: 215, creditFeeBps: 175, creditMinCents: 250 },
+    { name: "ACI Payments", debitFeeCents: 210, creditFeeBps: 185, creditMinCents: 250 },
+  ],
+} as const;
 // Paying at Direct Pay yourself (connectors roadmap round 16, irs_direct_pay_steps): it takes a
 // date up to this many days ahead, at most this many payments in a day, and a payment can be
 // changed or cancelled up to this many business days before its date. Its confirmation number

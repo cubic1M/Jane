@@ -7,6 +7,16 @@ import { IP_PIN, SIGNS, STEPS, type SignKey, type StepKey } from "@/config/tax-i
 export const inIpPinSeason = (today: string) =>
   today.slice(5) >= IP_PIN.from && today.slice(5) <= IP_PIN.until;
 
+// Whether the IRS's online IP PIN tool is open on `today` (YYYY-MM-DD).
+export const ipPinToolOpen = (today: string) => {
+  const md = today.slice(5);
+  return md < IP_PIN.toolDown.from && md > IP_PIN.toolDown.until;
+};
+
+// What to say while it's off.
+export const IP_PIN_TOOL_DOWN =
+  "The IRS's online tool is off until mid-January, so get it after that.";
+
 export const isSign = (v: unknown): v is SignKey =>
   typeof v === "string" && Object.hasOwn(SIGNS, v);
 export const isStep = (v: unknown): v is StepKey => STEPS.some((s) => s.key === v);
