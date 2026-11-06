@@ -54,5 +54,13 @@
   "when": "merged",
   "since": "2026-11-06T22:21:25.301Z",
   "expires": "2026-11-09T22:21:25.301Z"
+ },
+ {
+  "on": 1571,
+  "lane": "lane:connectors",
+  "task": "claude/irs-card-fee",
+  "when": "merged",
+  "since": "2026-11-06T22:32:27.014Z",
+  "expires": "2026-11-09T22:32:27.014Z"
  }
 ]
