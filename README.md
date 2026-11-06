@@ -1,31 +1,41 @@
-# Jane: a financial controller for your own money
+# Jane: an AI financial controller that runs your money on autopilot
 
-Jane reads your bank accounts, finds where you're losing money, and tells you what to do
-about it. That includes forgotten subscriptions, fees, cash sitting idle, card interest,
-insurance you overpay for and taxes you haven't set aside.
+**The goal.** Jane looks through your bank accounts securely through Plaid and builds a
+picture of who you are, such as a college student, a dog owner or a mother of three. Then it
+goes through every area of your money:
 
-Each finding comes as a short card with the amount, how sure Jane is, and the steps to fix
-it. You can also ask Jane about your money in a chat, and it answers from your own numbers.
+- subscriptions and bills
+- bank fees and idle cash
+- cards, loans and debt
+- insurance
+- taxes
+- investing and retirement
+- goals and plans
 
-**Live:** [jane-dusky.vercel.app](https://jane-dusky.vercel.app). Jane is in a closed,
-read-only beta. To try it without an account, upload a bank statement on the landing page.
-It's analyzed as a temporary visitor and deleted within 24 hours.
+In each area it finds the best plan for you. It then prefills the steps through connectors, so
+all you do is tap yes or no.
 
-## What it does
+**Where it is now.** Jane is in a closed, read-only beta at
+[jane-dusky.vercel.app](https://jane-dusky.vercel.app). To try it without an account, upload a
+bank statement on the landing page. It's analyzed as a temporary visitor and deleted within 24
+hours.
 
-- **Connects your money.** Bank accounts link through Plaid (read-only), or you can upload a
-  CSV or OFX export.
-- **Finds money you're losing.** A detection engine runs rules over your transactions, such
-  as recurring charges, fee patterns, overlapping services and unusual charges. Detectors for
-  debt, insurance, investing, taxes and planning add suggestions, each with a confidence
-  percentage.
-- **Explains and answers.** A chat built on Claude answers questions using tools over your
-  own data. Every sentence passes a guardrail check before you see it.
-- **Keeps you in charge.** Jane never moves money. A "yes" on a card gives you the exact
-  steps to take yourself.
-- **Shows the whole picture.** One home page covers net worth, safe-to-spend, what's coming
-  up, and a page for each area: money, loans, insurance, investments, taxes and plan. Large
-  figures are hidden until you choose to show them.
+## What the MVP does
+
+- **Reads your money.** Bank accounts link through Plaid, read-only, or you can upload a CSV
+  or OFX export.
+- **Builds a picture of you.** Jane works out who you are from your money: income and paydays,
+  household, pets, vehicles, housing, school, life events. That picture shapes every plan.
+- **Finds the best plan in every area.** A detection engine and detectors for each area find
+  what each part of your money is costing you and what would be better. Each suggestion shows
+  a confidence percentage.
+- **Gives you the steps.** Each plan comes as a short card. In the beta, a "yes" gives you the
+  exact steps to take yourself. Next, connectors will prefill and carry out those steps for
+  you, in stages, starting read-only.
+- **Explains and answers.** A chat built on Claude answers questions using tools over your own
+  data. Every sentence passes a guardrail check before you see it.
+- **Shows the whole picture.** One home page covers net worth, safe-to-spend and what's coming
+  up, with a page for each area. Large figures are hidden until you choose to show them.
 
 ## How it's built
 
