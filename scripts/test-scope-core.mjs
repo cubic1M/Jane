@@ -53,9 +53,19 @@ const isDoc = (path) => path.endsWith(".md");
 
 // "docs" | "changed" | "full". Tests read many docs and compare them, so a doc a test names isn't
 // docs-only. An empty diff is "full": something odd is going on, and a skip would hide it.
-export function testScope({ changedPaths, event, onMain, labels = [], docsReadByTests = [] }) {
+export function testScope({
+  changedPaths,
+  event,
+  onMain,
+  labels = [],
+  docsReadByTests = [],
+  draft = false,
+}) {
   if (onMain || event !== "pull_request") return { mode: "full", why: "not a pull request" };
   const label = labels.find((l) => FULL_RUN_LABELS.includes(l));
+  // Nobody merges a draft, and most pushes to one aren't the last. Its heavy jobs wait until it's
+  // ready for review; the static checks, the gates and the secret scan still run. Labels still win.
+  if (draft && !label) return { mode: "docs", why: "a draft" };
   if (label) return { mode: "full", why: `label ${label}` };
   if (changedPaths.length === 0) return { mode: "full", why: "no changed files seen" };
   const trigger = changedPaths.find((path) => FULL_RUN_PATHS.some((p) => p.test(path)));
@@ -91,7 +101,17 @@ export function vitestArgs(mode, { event, labels = [] }) {
   return args.join(" ");
 }
 
+// Pages whose spec isn't critical, but whose words have broken main from a PR that passed (#1241:
+// /privacy, then e2e/legal.spec.ts red on main).
+const SPECS_FOR_PATHS = [[/^src\/app\/(privacy|terms)\//, "e2e/legal.spec.ts"]];
+
 // A PR runs the end-to-end spec files it changes, on top of the critical tests: rewriting a spec
-// and first running it on main would turn main red.
-export const changedSpecs = (changedPaths) =>
-  changedPaths.filter((path) => /^e2e\/[\w./-]+\.spec\.ts$/.test(path));
+// and first running it on main would turn main red. It also runs the spec a changed page maps to.
+export const changedSpecs = (changedPaths) => [
+  ...new Set([
+    ...changedPaths.filter((path) => /^e2e\/[\w./-]+\.spec\.ts$/.test(path)),
+    ...SPECS_FOR_PATHS.filter(([rule]) => changedPaths.some((path) => rule.test(path))).map(
+      ([, spec]) => spec,
+    ),
+  ]),
+];

@@ -7,8 +7,13 @@
 | A PR labelled `full-tests` | The whole unit suite, whatever changed |
 | A PR labelled `e2e` | The whole unit suite, and every end-to-end test on a computer and a phone. Use it when a PR changes a page people see |
 | A PR changing only docs that no test reads | Skips the unit and end-to-end tests. Everything else still runs, and the required checks still report |
-| Main | Everything, with end-to-end tests on a computer. Production ships only from a green run here, so a miss on a PR turns main red and can't reach production, but a red main stops every deploy |
+| A draft PR | The same skip, until it's marked ready for review or gets a full-run label |
+| Main | Everything, with end-to-end tests on a computer, one run per commit so each gets its own verdict. Production ships only from a green run here, so a miss on a PR turns main red and can't reach production, but a red main stops every deploy |
 | Every night (`e2e-mobile.yml`) | Every end-to-end test on a phone. A failure opens one `mobile-e2e` issue and goes to the top of the flake list, and the debugger owns it. It doesn't stop a deploy, so a phone-only break can ship and be found up to a day later |
+
+The unit and end-to-end jobs wait for lint, typecheck and the migration gate, so a lint error costs
+minutes and not a whole run. A whole-suite run splits its shards by how long each file took last
+(`scripts/shard-plan-core.mjs`, timings on the `ci-flakes` branch).
 
 A PR also leaves out the tests in `MAIN_ONLY_TESTS` (one file, 11% of the suite's time), unless it
 has a full-run label.
@@ -44,6 +49,12 @@ key on `ci-flakes` would red every PR.
 
 `ci-finished.yml` labels PRs by lane, decides who to wake when one goes red, conflicts or goes quiet, and
 publishes deploy lag, red main minutes and silent tasks. See [the loop](agent-loop.md).
+
+## Quarantine
+
+A plain rule decides, in `scripts/quarantine-core.mjs`, and no session can add to it by hand. An end-to-end test stops blocking when it flaked on 3 different main commits, has been around for 7 days, and isn't `@critical`, about access, guardrails, money rules or legal pages. It keeps running in a step of its own, reports to the flake list, gets one `quarantined` issue, and blocks again after 14 days. At most 10 at a time. On a PR that changes its spec file it runs as normal and blocks.
+
+Inside a job, what fails every Playwright retry gets one more pass on the same commit before the job goes red.
 
 ## Writing an end-to-end test
 

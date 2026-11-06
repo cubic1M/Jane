@@ -8,17 +8,18 @@ on:
   # "labeled" too: a PR made with its "e2e" label (gh pr create --label e2e) can start its first
   # run before the label is on it, and the shards then skip.
   pull_request:
-    types: [opened, synchronize, reopened, labeled]
+    types: [opened, synchronize, reopened, labeled, ready_for_review]
   merge_group:
   # The merge train (merge-train.yml) starts CI on a branch it brought up to date, since
   # pushes made with the workflow token start no workflows.
   workflow_dispatch:
 
-# A newer push to the same pull request cancels its older run. On main a started run finishes, but
-# GitHub keeps only the newest waiting one, so a busy main doesn't test every commit (44% of main's
-# commits from 10-24 to 11-02 had no finished run of their own).
+# A newer push to the same pull request cancels its older run. Main gets one group per commit, so
+# every commit gets its own verdict: with one group, GitHub kept only the newest waiting run, and
+# 44% of main's commits from 10-24 to 11-02 had no finished run. A broken merge now has a name, and
+# a red main can be bisected from the runs alone.
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
@@ -64,6 +65,8 @@ jobs:
       total: ${{ steps.scope.outputs.total }}
       args: ${{ steps.scope.outputs.args }}
       specs: ${{ steps.scope.outputs.specs }}
+      quarantine: ${{ steps.scope.outputs.quarantine }}
+      plan: ${{ steps.scope.outputs.plan }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -81,10 +84,24 @@ jobs:
         run: npm ci
       - if: steps.modules.outputs.cache-hit == 'true'
         run: npx prisma generate
+      # The list the flake list keeps, read as data. Missing, nothing is quarantined.
+      - name: Read the quarantine list and timings
+        run: |
+          git fetch -q --depth=1 origin ci-flakes || exit 0
+          for file in QUARANTINE.json timings.json; do
+            git show "FETCH_HEAD:$file" > "$RUNNER_TEMP/$file" 2>/dev/null || rm -f "$RUNNER_TEMP/$file"
+          done
       - id: scope
         run: node scripts/test-scope.mjs
         env:
           PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          PR_DRAFT: ${{ github.event.pull_request.draft }}
+      - if: steps.scope.outputs.plan == 'yes'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: shard-plan
+          path: ci-results/shard-plan.json
+          retention-days: 1
 
   # New migrations against docs/migrations.md. Only needs to run git and Squawk, so it reads the
   # history's trees and not its files.
@@ -101,9 +118,10 @@ jobs:
           node-version-file: .nvmrc
       - run: npm run check:migrations
 
+  # The heavy jobs start once the cheap ones have passed: a lint error costs 3 minutes, not 80.
   unit:
     name: Unit tests (${{ matrix.shard }}/${{ needs.scope.outputs.total }})
-    needs: [scope]
+    needs: [scope, static, migrations]
     if: needs.scope.outputs.mode != 'docs'
     runs-on: ubuntu-latest
     strategy:
@@ -166,15 +184,31 @@ jobs:
       # temporary-try tests read every table and hold a database's connections for long stretches,
       # so they don't sit alongside the rest either.
       # The JSON reports go to the flake list (scripts/flake-list.mjs).
-      - run: >-
-          npx vitest run --shard=${{ matrix.shard }}/${{ needs.scope.outputs.total }}
-          ${{ needs.scope.outputs.args }}
-          --reporter=default --reporter=json --outputFile.json=ci-results/unit.json
-          --exclude src/lib/trial.integration.test.ts
-          --exclude src/lib/retention.integration.test.ts
-          --exclude src/lib/learning.integration.test.ts
-          --exclude src/lib/statement-trial.integration.test.ts
-          --exclude src/lib/jane-agent/statement-trial-chat.integration.test.ts
+      - if: needs.scope.outputs.plan == 'yes'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: shard-plan
+      - name: Unit tests
+        env:
+          SHARD: ${{ matrix.shard }}
+          TOTAL: ${{ needs.scope.outputs.total }}
+          ARGS: ${{ needs.scope.outputs.args }}
+          PLANNED: ${{ needs.scope.outputs.plan }}
+        run: |
+          # By time when there's a plan (a whole-suite run with timings), else Vitest's own split.
+          if [ "$PLANNED" = yes ]; then
+            pick=$(node -e 'const p=require("./shard-plan.json");console.log(p[process.env.SHARD-1].join(" "))')
+          else
+            pick="--shard=$SHARD/$TOTAL"
+          fi
+          # shellcheck disable=SC2086
+          npx vitest run $pick $ARGS \
+            --reporter=default --reporter=json --outputFile.json=ci-results/unit.json \
+            --exclude src/lib/trial.integration.test.ts \
+            --exclude src/lib/retention.integration.test.ts \
+            --exclude src/lib/learning.integration.test.ts \
+            --exclude src/lib/statement-trial.integration.test.ts \
+            --exclude src/lib/jane-agent/statement-trial-chat.integration.test.ts
       - if: matrix.shard == 1
         name: Trial, retention and learning-loop tests, alone
         run: >-
@@ -353,7 +387,7 @@ jobs:
   # first visit, which made the shards slow and their timings flaky.
   e2e-build:
     name: End-to-end build
-    needs: [scope]
+    needs: [scope, static, migrations]
     if: needs.scope.outputs.mode != 'docs'
     runs-on: ubuntu-latest
     # How much to test (docs/ci.md). Every PR push: the tests tagged @critical, on a computer. Main,
@@ -474,10 +508,29 @@ jobs:
           DIRECT_URL: ${{ env.E2E_DATABASE_URL }}
       - name: Row-level security on every table, as each deploy does
         run: node scripts/rls-protect.mjs "$E2E_DATABASE_URL"
-      - run: >-
-          npm run test:e2e --
-          ${{ needs.e2e-build.outputs.args }}
-          --shard=${{ matrix.shard }}/${{ needs.e2e-build.outputs.total }}
+      # Quarantined tests (docs/ci.md) run in the step after this and don't block. What fails every
+      # Playwright retry gets one more pass here, on this commit, before the job says red, so a merge
+      # queue wouldn't throw a PR out over a flake that rerun-flaky.yml would have saved later.
+      - name: End-to-end tests
+        env:
+          ARGS: ${{ needs.e2e-build.outputs.args }}
+          SHARD: ${{ matrix.shard }}/${{ needs.e2e-build.outputs.total }}
+          QUARANTINE: ${{ needs.scope.outputs.quarantine }}
+        run: |
+          set -- $ARGS --shard="$SHARD"
+          npm run test:e2e -- "$@" ${QUARANTINE:+--grep-invert "$QUARANTINE"} && exit 0
+          echo "::warning::Failed every retry: one more pass, on this commit"
+          # No shard here: the list of what failed is this shard's already.
+          # shellcheck disable=SC2086
+          E2E_RESULTS_FILE=ci-results/e2e-again.json npm run test:e2e -- $ARGS --last-failed
+      - name: Quarantined tests, which report and don't block
+        if: always() && needs.scope.outputs.quarantine != ''
+        continue-on-error: true
+        env:
+          QUARANTINE: ${{ needs.scope.outputs.quarantine }}
+          E2E_RESULTS_FILE: ci-results/e2e-quarantined.json
+          SHARD: ${{ matrix.shard }}/${{ needs.e2e-build.outputs.total }}
+        run: npm run test:e2e -- --project=chromium --shard="$SHARD" --grep "$QUARANTINE"
       # A PR on the critical tests also runs the spec files it changes. A full run has them already.
       - if: contains(needs.e2e-build.outputs.args, '@critical') && needs.scope.outputs.specs != ''
         run: npm run test:e2e -- --project=chromium ${{ needs.scope.outputs.specs }}

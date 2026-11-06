@@ -84,7 +84,10 @@ const PROTECTED_PATHS = [
   /(^|\/)\.claude(\/|$)/,
   /(^|\/)\.mcp\.json$/,
   /^\.github\/workflows$/,
-  /^\.github\/workflows\/(ci|gates|merge-train|rerun-flaky)\.ya?ml$/,
+  /^\.github\/workflows\/(ci|gates|merge-train|rerun-flaky|deploy|ci-finished)\.ya?ml$/,
+  // What those two run holds a production token and the power to wake a lane.
+  /^scripts\/deploy-(plan|plan-core|live-check)\.(mjs|sh)$/,
+  /^scripts\/loop(-core)?\.mjs$/,
   /^\.github\/scripts(\/|$)/,
   /^src\/config\/advice\.ts$/,
   /^src\/accuracy\/accuracy\.test\.ts$/,

@@ -18,6 +18,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - run: gh run rerun "${{ github.event.workflow_run.id }}" --failed -R "${{ github.repository }}"
-        env:
+      # Not when the branch has moved on: re-running an old commit's run joins the PR's concurrency
+      # group and cancels the newer push's run (seen on #1315, 11-03).
+      - env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN: ${{ github.event.workflow_run.id }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          EVENT: ${{ github.event.workflow_run.event }}
+        run: |
+          if [ "$EVENT" = pull_request ]; then
+            newest=$(gh run list -R "$REPO" --workflow CI --branch "$BRANCH" --limit 1 --json headSha --jq '.[0].headSha')
+            [ "$newest" = "$SHA" ] || { echo "The branch has moved on."; exit 0; }
+          fi
+          gh run rerun "$RUN" --failed -R "$REPO"
