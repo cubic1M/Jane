@@ -83,6 +83,18 @@ describe("buildCard", () => {
     );
   });
 
+  it("says how Jane is paid after an insurance partner's own disclosure", () => {
+    const partner = {
+      key: "i",
+      name: "I",
+      disclosure: "Example is a licensed insurance agency.",
+      payDisclosure: "Jane isn't an insurance agent and isn't paid for this.",
+    };
+    expect(buildCard(asStored("idle_cash"), partner).referralDisclosure).toBe(
+      "Example is a licensed insurance agency. Jane isn't an insurance agent and isn't paid for this.",
+    );
+  });
+
   it("changes the card hash when a partner is turned off, so old answers are refused", () => {
     const partner = { key: "p", name: "P", disclosure: "We may earn a fee." };
     expect(cardHash(buildCard(asStored("idle_cash"), partner))).not.toBe(

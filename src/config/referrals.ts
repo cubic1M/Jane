@@ -8,10 +8,35 @@ export const COUNSEL_INSURANCE_REFERRALS: {
   approved: boolean;
   recordedOn: string | null;
   note: string;
+  // Where counsel approved each way of being paid, by state (connectors roadmap round 14: a flat
+  // fee not tied to a sale is allowed in writing in NY, TX, FL, WA and IL; nothing found for CA).
+  // Empty: no paid insurance referral anywhere.
+  approvedStates: Partial<Record<PayModel, readonly string[]>>;
 } = {
   approved: false,
   recordedOn: null,
   note: "Waiting for counsel. Until then insurance_reshop gets quotes only, with no referral fee.",
+  approvedStates: {},
+};
+
+// How a referral partner pays Jane (round 14). Per sale ("per_policy") is barred for an
+// unlicensed referrer in NY, TX, FL, WA and IL and high risk in CA, so it's never allowed for
+// insurance. A flat fee or per-quote pay needs counsel's approval for that state.
+export const PAY_MODELS = ["none", "flat_click", "flat_lead", "per_quote", "per_policy"] as const;
+export type PayModel = (typeof PAY_MODELS)[number];
+export const isPayModel = (value: unknown): value is PayModel =>
+  typeof value === "string" && (PAY_MODELS as readonly string[]).includes(value);
+
+// Said on the card word for word, next to the partner's own disclosure, so the person knows how
+// Jane is paid (round 14, card rule 5). Never one for per sale: it's never shown.
+export const PAY_DISCLOSURES: Record<Exclude<PayModel, "per_policy">, string> = {
+  none: "Jane isn't an insurance agent and isn't paid for this.",
+  flat_click:
+    "Jane isn't an insurance agent. Jane gets a flat fee when you click, the same whether or not you buy.",
+  flat_lead:
+    "Jane isn't an insurance agent. Jane gets a flat fee when you ask for quotes, the same whether or not you buy.",
+  per_quote:
+    "Jane isn't an insurance agent. Jane gets a flat fee for each quote, the same whether or not you buy.",
 };
 
 // US states (and DC) a person can pick on /settings, and partners can be allowed in.

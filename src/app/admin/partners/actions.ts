@@ -27,6 +27,8 @@ export async function savePartner(
     referralUrl: field(formData, "referralUrl"),
     allowedStates: field(formData, "allowedStates"),
     revenuePerConversion: field(formData, "revenuePerConversion"),
+    payModel: field(formData, "payModel"),
+    lines: field(formData, "lines"),
     active: formData.get("active") === "on",
   });
   if (!checked.ok) return checked;
@@ -47,6 +49,7 @@ export async function savePartner(
       {
         key: checked.data.key,
         active: checked.data.active,
+        pay_model: checked.data.payModel,
         referralUrl: checked.data.referralUrl,
       },
     );

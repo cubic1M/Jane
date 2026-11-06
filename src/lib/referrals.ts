@@ -1,4 +1,10 @@
-import { COUNSEL_INSURANCE_REFERRALS, isStateCode } from "@/config/referrals";
+import {
+  COUNSEL_INSURANCE_REFERRALS,
+  PAY_DISCLOSURES,
+  isPayModel,
+  isStateCode,
+  type PayModel,
+} from "@/config/referrals";
 import type { ActionType, PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -9,7 +15,14 @@ import { systemDb } from "@/lib/system-db";
 
 type Options = { client?: PrismaClient };
 
-export type CardPartner = { key: string; name: string; disclosure: string };
+export type CardPartner = {
+  key: string;
+  name: string;
+  disclosure: string;
+  // Insurance only: how Jane is paid, said word for word after the partner's own disclosure
+  // (connectors roadmap round 14).
+  payDisclosure?: string;
+};
 
 const ACTION_TYPES: readonly ActionType[] = [
   "cancel_subscription",
@@ -23,9 +36,19 @@ const ACTION_TYPES: readonly ActionType[] = [
   "negotiate_bill",
 ];
 
-// Insurance partners stay off until counsel's answer is recorded as approved.
-export function partnerAllowed(actionType: ActionType): boolean {
-  return actionType !== "insurance_reshop" || COUNSEL_INSURANCE_REFERRALS.approved;
+// Insurance partners stay off until counsel's answer is recorded as approved. Then, by how the
+// partner pays (connectors roadmap round 14): unpaid follows that answer; a flat fee or per-quote pay
+// also needs counsel's approval for that pay model in this state; per sale is never allowed.
+export function partnerAllowed(
+  actionType: ActionType,
+  payModel: PayModel = "none",
+  state: string | null = null,
+): boolean {
+  if (actionType !== "insurance_reshop") return true;
+  if (!COUNSEL_INSURANCE_REFERRALS.approved || payModel === "per_policy") return false;
+  if (payModel === "none") return true;
+  const states = COUNSEL_INSURANCE_REFERRALS.approvedStates[payModel] ?? [];
+  return state !== null && states.includes(state);
 }
 
 // The active partner for this action in the person's state, or null. No state, no partner.
@@ -35,14 +58,25 @@ export async function partnerFor(
   { client = defaultClient }: Options = {},
 ): Promise<CardPartner | null> {
   if (!state || !partnerAllowed(actionType)) return null;
-  return systemDb(
+  const partners = await systemDb(
     "Referral partners are shared reference data, no one's own",
     client,
-  ).referralPartner.findFirst({
+  ).referralPartner.findMany({
     where: { actionType, active: true, allowedStates: { has: state } },
     orderBy: { key: "asc" },
-    select: { key: true, name: true, disclosure: true },
+    select: { key: true, name: true, disclosure: true, payModel: true },
   });
+  // The first whose way of paying is allowed here; a pay model Jane doesn't know never is.
+  const found = partners.find(
+    (p) => isPayModel(p.payModel) && partnerAllowed(actionType, p.payModel, state),
+  );
+  if (!found || !isPayModel(found.payModel) || found.payModel === "per_policy") return null;
+  return {
+    key: found.key,
+    name: found.name,
+    disclosure: found.disclosure,
+    ...(actionType === "insurance_reshop" && { payDisclosure: PAY_DISCLOSURES[found.payModel] }),
+  };
 }
 
 export async function partnerForUser(
@@ -65,6 +99,9 @@ export type PartnerInput = {
   referralUrl: string;
   allowedStates: string;
   revenuePerConversion: string;
+  // Optional: unpaid unless said.
+  payModel?: string;
+  lines?: string;
   active: boolean;
 };
 
@@ -81,6 +118,8 @@ export function validatePartner(input: PartnerInput):
         referralUrl: string;
         allowedStates: string[];
         revenuePerConversionCents: number | null;
+        payModel: PayModel;
+        lines: string[];
         active: boolean;
       };
     }
@@ -128,6 +167,26 @@ export function validatePartner(input: PartnerInput):
     }
     revenuePerConversionCents = Math.round(dollars * 100);
   }
+  const payModel = (input.payModel ?? "none").trim() || "none";
+  if (!isPayModel(payModel)) return { ok: false, message: "Pick how the partner pays." };
+  if (actionType === "insurance_reshop" && payModel === "per_policy") {
+    return {
+      ok: false,
+      message:
+        "Insurance partners can't pay per policy sold: an unlicensed referrer can't be paid per sale.",
+    };
+  }
+  const lines = [
+    ...new Set(
+      (input.lines ?? "")
+        .split(/[\s,]+/)
+        .map((l) => l.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  ].sort();
+  if (lines.some((l) => !["auto", "home", "renters", "life"].includes(l))) {
+    return { ok: false, message: "Lines are auto, home, renters or life." };
+  }
   if (input.active && !partnerAllowed(actionType)) {
     return {
       ok: false,
@@ -145,6 +204,8 @@ export function validatePartner(input: PartnerInput):
       referralUrl: referralUrl.toString(),
       allowedStates,
       revenuePerConversionCents,
+      payModel,
+      lines,
       active: input.active,
     },
   };

@@ -1922,6 +1922,11 @@ model ReferralPartner {
   referralUrl               String     @map("referral_url")
   // Two-letter state codes where the partner may be offered.
   allowedStates             String[]   @default([]) @map("allowed_states")
+  // How it pays Jane: none, flat_click, flat_lead, per_quote or per_policy (PAY_MODELS in
+  // src/config/referrals.ts). Per sale is never allowed for insurance.
+  payModel                  String     @default("none") @map("pay_model")
+  // The lines of insurance it compares (auto, home, renters, life); empty for other partners.
+  lines                     String[]   @default([])
   active                    Boolean    @default(false)
   // What one conversion pays us, for revenue estimates; the real amount is recorded each time.
   revenuePerConversionCents Int?       @map("revenue_per_conversion_cents")
