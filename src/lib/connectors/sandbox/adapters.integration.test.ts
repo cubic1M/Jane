@@ -89,8 +89,13 @@ describe("the sandbox adapters' definitions", () => {
       expect(connectorById(connector.id)).not.toBeNull();
     }
     expect(Object.keys(REQUESTS).sort()).toEqual(SANDBOX_CONNECTORS.map((c) => c.id).sort());
-    // Only sandbox adapters are registered today: no real partner exists yet.
-    expect(allConnectors().every((c) => c.sandbox)).toBe(true);
+    // Only sandbox adapters and "Jane prepares, you pay" (which reaches nobody) are registered: no
+    // real partner exists yet.
+    expect(
+      allConnectors()
+        .filter((c) => !c.sandbox)
+        .map((c) => c.id),
+    ).toEqual(["manual_bill_pay"]);
   });
 
   it("call nobody: no fetch, http, net or SDK in their code", () => {

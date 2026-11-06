@@ -32,6 +32,10 @@ export const APP_STORE_DESCRIPTORS = {
   google: ["GOOGLE *", "GOOGLE PLAY"],
 } as const;
 
+// Google charges that aren't Google Play (security review on #1506): Workspace, Cloud, Ads, Domains
+// and Fiber are billed by Google itself and cancelled in their own consoles, not in Play.
+export const NOT_GOOGLE_PLAY = ["GSUITE", "WORKSPACE", "CLOUD", "ADS", "DOMAINS", "FIBER"] as const;
+
 export const CANCEL_METHODS: readonly CancelMethod[] = [
   {
     merchant: "Netflix",

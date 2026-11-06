@@ -1,4 +1,9 @@
-import { APP_STORE_DESCRIPTORS, CANCEL_METHODS, type CancelMethod } from "@/config/cancel-methods";
+import {
+  APP_STORE_DESCRIPTORS,
+  CANCEL_METHODS,
+  NOT_GOOGLE_PLAY,
+  type CancelMethod,
+} from "@/config/cancel-methods";
 import type { PrefilledStep } from "../types";
 
 // How a subscription gets cancelled (roadmap round 7): steps first, because only 3 of the 56 most
@@ -41,7 +46,12 @@ export function billedVia(descriptor: string | null | undefined): "apple" | "goo
   if (!descriptor) return null;
   const text = descriptor.toUpperCase();
   if (APP_STORE_DESCRIPTORS.apple.some((mark) => text.includes(mark))) return "apple";
-  if (APP_STORE_DESCRIPTORS.google.some((mark) => text.includes(mark))) return "google";
+  if (
+    APP_STORE_DESCRIPTORS.google.some((mark) => text.includes(mark)) &&
+    !NOT_GOOGLE_PLAY.some((mark) => text.includes(mark))
+  ) {
+    return "google";
+  }
   return null;
 }
 

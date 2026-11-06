@@ -33,6 +33,9 @@ describe("billedVia", () => {
     expect(billedVia("APPLE.COM/BILL 866-712-7753 CA")).toBe("apple");
     expect(billedVia("GOOGLE *YouTubePremium g.co/helppay#")).toBe("google");
     expect(billedVia("NETFLIX.COM LOS GATOS CA")).toBeNull();
+    // Google bills Workspace and Cloud itself, not through Play.
+    expect(billedVia("GOOGLE *GSUITE_example.com")).toBeNull();
+    expect(billedVia("GOOGLE *CLOUD 3XK9")).toBeNull();
     expect(billedVia(null)).toBeNull();
   });
 });

@@ -91,3 +91,14 @@ export const WEBHOOK_MAX_BYTES = 64 * 1024;
 // How long an event id is remembered, to refuse a replay. Far longer than any provider retries
 // (Svix retries for about 28 hours, Stripe for 3 days).
 export const WEBHOOK_EVENT_DAYS = 30;
+
+// --- "Jane prepares, you pay" (src/lib/connectors/manual-pay/) ------------------------------------
+
+// Pay this many business days before the due date, so it posts in time (roadmap round 8: most
+// billers credit the same day, a bank's own bill pay can take five).
+export const MANUAL_PAY_LEAD_BUSINESS_DAYS = 3;
+export const MANUAL_PAY_BANK_BILL_PAY_LEAD_BUSINESS_DAYS = 5;
+// The latest cutoff most billers share for same-day credit (Chase Home Lending's is 7:30 PM ET).
+export const MANUAL_PAY_CUTOFF = "7 PM ET";
+// An autopay line from the biller in this many days means autopay is on: no manual payment then.
+export const MANUAL_PAY_AUTOPAY_LOOKBACK_DAYS = 45;
