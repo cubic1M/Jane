@@ -262,11 +262,23 @@ export async function handOff(
   await track(userId, "agent_handed_off", { action_type: action.type });
 }
 
+// The name Jane gives a company for the account holder, or null: one line of a name's letters, at
+// most five words. It comes from the person's Google profile, which they write, and goes out under
+// Jane's name, so it can't carry a second paragraph, a number or an address.
+export function holderName(name: string | null | undefined): string | null {
+  const words = (name ?? "")
+    .replace(/[^\p{L}\p{M}' .-]/gu, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+  const kept = words.slice(0, 5).join(" ").slice(0, 60).trim();
+  return /\p{L}/u.test(kept) ? kept : null;
+}
+
 // The person's name and account email in place of the placeholders, and the company's
 // name where the draft only knew "the bank" or "the company".
 export function fill(text: string, action: LoadedAction): string {
   const filled = text
-    .replaceAll(PLACEHOLDERS.name, action.user.name?.trim() || "the account holder")
+    .replaceAll(PLACEHOLDERS.name, holderName(action.user.name) ?? "the account holder")
     .replaceAll(PLACEHOLDERS.email, action.user.email);
   return action.company
     ? filled.replace(/^Hello the (bank|company|provider),/m, `Hello ${action.company},`)
@@ -808,6 +820,20 @@ const AUTO_ANSWER_MARK = "From the account holder's records:";
 // Card, account or other long numbers never go out in an answer.
 const LONG_NUMBER = /\d[\d\s-]{10,}\d/;
 const MAX_ANSWER = 1_000;
+// What would send a company's money or contact somewhere else, written into an answer Jane signs:
+// an email address (the account's own is allowed, below), a phone number, a web address, or a way
+// to pay. The answer is also one paragraph, so it can't add a sign-off and a "P.S. from Jane".
+const EMAIL_IN = /[^\s@]+@[^\s@]+\.[a-z]{2,}/i;
+const PHONE_IN = /\+?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/;
+const WEB_IN =
+  /\b[a-z0-9-]{2,}\.(?:com|org|net|io|co|us|me|app|info|biz|pay|money|xyz|link|site|online)\b/i;
+const PAY_IN =
+  /\b(?:zelle|venmo|cash ?app|paypal|wire|routing|iban|swift|bitcoin|crypto|gift ?cards?|western union|moneygram)\b/i;
+const sendsElsewhere = (words: string) =>
+  PHONE_IN.test(words) ||
+  PAY_IN.test(words) ||
+  WEB_IN.test(words.replace(new RegExp(EMAIL_IN.source, "gi"), ""));
+
 // What the person's own words may not carry in an email Jane signs. Their figures and what they
 // say they did are theirs to state; advice, promises, links and requests for credentials aren't.
 const NOT_UNDER_JANES_NAME: readonly GuardrailIssue[] = [
@@ -833,7 +859,13 @@ export async function answerCompany(
       "Leave out card and account numbers. If they need the last 4 digits, give only those.",
     );
   }
-  const check = checkGuardrails(text, []);
+  const words = text.replace(/\s+/g, " ");
+  if (sendsElsewhere(words)) {
+    throw new AnswerError(
+      "Jane only passes on what the company asked about: no other addresses, phone numbers, links or payment details. If they need those, contact them yourself.",
+    );
+  }
+  const check = checkGuardrails(words, []);
   if (!check.ok && check.issues.some((issue) => NOT_UNDER_JANES_NAME.includes(issue))) {
     throw new AnswerError(
       "Jane can't send that under its name. Keep to what the company asked, with no links.",
@@ -843,6 +875,11 @@ export async function answerCompany(
   const first = action?.agentMessages[0];
   if (!action || !first || !canAgentWork(action) || action.status !== "waiting_on_user") {
     throw new AnswerError("Jane isn't waiting on an answer for this one.");
+  }
+  if (EMAIL_IN.test(words.replaceAll(action.user.email, ""))) {
+    throw new AnswerError(
+      "Jane only passes on the email on your account. If they need another, contact them yourself.",
+    );
   }
   if (!(await hit("agentAnswer", userId, { client, now })).ok) {
     throw new AnswerError("That's a lot of answers. Try again in an hour.");
@@ -854,7 +891,7 @@ export async function answerCompany(
   });
   if (count === 0) throw new AnswerError("Your answer is already on its way.");
   try {
-    await replyToCompany(userId, action, `From the account holder: ${text}`, {
+    await replyToCompany(userId, action, `From the account holder: ${words}`, {
       client,
       now,
       deliver,
@@ -926,7 +963,7 @@ async function knownFacts(
   return {
     cardLast4: account?.mask ?? null,
     email: action.user.email,
-    name: action.user.name,
+    name: holderName(action.user.name),
     charges: charges.map((c) => ({ date: c.date as string, amountCents: c.amountCents as number })),
   };
 }

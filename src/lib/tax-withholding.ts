@@ -57,6 +57,11 @@ export async function recordW4Change(
   if (!Number.isInteger(change.amountCents) || change.amountCents <= 0) {
     throw new WithholdingError("The amount must be more than zero.");
   }
+  // The column holds 32 bits; past it the save failed with a server error. $1 million is far above
+  // any W-4 line.
+  if (change.amountCents > 100_000_000) {
+    throw new WithholdingError("That amount is too large for a W-4 line.");
+  }
   const { estimate } = await loadWithholding(userId, { client, now });
   const data = {
     w4Step: change.step,

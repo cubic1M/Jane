@@ -33,7 +33,9 @@ export async function answerItem(_previous: ItemState, formData: FormData): Prom
     return { kind: "error", message: "Something went wrong. Reload the page and try again." };
   }
   const options =
-    choice === "yes" && formData.get("changed") === "true" && actionType in PLAN_OPTIONS
+    choice === "yes" &&
+    formData.get("changed") === "true" &&
+    Object.hasOwn(PLAN_OPTIONS, actionType)
       ? Object.fromEntries(
           PLAN_OPTIONS[actionType].map((o) => [o.key, formData.get(`option.${o.key}`)]),
         )

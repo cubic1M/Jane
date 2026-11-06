@@ -52,6 +52,9 @@ export async function rulesFor(
 
 export class RuleError extends Error {}
 
+// $1 million a year: more than any rule here is for, and well inside what the column holds.
+const MOST_A_RULE_ALLOWS = 100_000_000;
+
 export async function saveRules(
   userId: string,
   rules: SavedRule[],
@@ -67,6 +70,10 @@ export async function saveRules(
     const maxAnnualCents = definition.maxAmount ? rule.maxAnnualCents : null;
     if (definition.maxAmount && (maxAnnualCents === null || maxAnnualCents <= 0)) {
       throw new RuleError(`Enter an amount for "${definition.label}".`);
+    }
+    // The column holds 32 bits; past it the save failed with a server error.
+    if (maxAnnualCents !== null && maxAnnualCents > MOST_A_RULE_ALLOWS) {
+      throw new RuleError(`Enter a smaller amount for "${definition.label}".`);
     }
     const data = { enabled: rule.enabled, monthlyLimit: rule.monthlyLimit, maxAnnualCents };
     // Upsert by hand: scoped tables match on userId as well as the unique key.
