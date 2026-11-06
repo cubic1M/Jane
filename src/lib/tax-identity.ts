@@ -11,6 +11,7 @@ import { listTaxNotices } from "@/lib/tax-notices";
 import {
   caseView,
   inIpPinSeason,
+  ipPinToolOpen,
   isStep,
   noticeLooksLikeTheft,
   stepsFor,
@@ -29,6 +30,8 @@ export class IdentityError extends Error {}
 export type IdentityView = {
   year: number;
   season: boolean;
+  // The IRS's online tool is open today (off mid-November to mid-January).
+  toolOpen?: boolean;
   havePin: boolean;
   reminded: boolean;
   case: (CaseView & { id: string }) | null;
@@ -93,6 +96,7 @@ export async function loadIdentity(
   return {
     year,
     season: inIpPinSeason(today),
+    toolOpen: ipPinToolOpen(today),
     havePin: profile?.ipPinHaveYear === year,
     reminded: profile?.ipPinRemindedYear === year,
     case: open ? toCase(open) : null,

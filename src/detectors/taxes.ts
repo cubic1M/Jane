@@ -31,6 +31,7 @@ import { casualtyLoss, computedMoves, damageSince, reliefFor } from "@/planning/
 import { mustBeEmptyBy, spreadIra } from "@/planning/inheritance";
 import { NO_INCOME, marginalRateOf, type EstimateInput } from "@/planning/tax-estimate";
 import { careShare } from "@/planning/tax-savings";
+import { IP_PIN_TOOL_DOWN, ipPinToolOpen } from "@/planning/tax-identity";
 import type { Fact } from "@/profile/build";
 import { type Detector, type Urgency, suggestionId } from "./contract";
 import { evidence, factEvidence, tx, weakest, headlineOf } from "./helpers";
@@ -328,7 +329,7 @@ const identityPin: Detector = {
         reason: `you're paid regularly so you'll file; the figure is the average refund times a ${Math.round(T.ipPinTheftChance * 100)}% chance of being targeted`,
       },
       urgency: "soon",
-      why: `Few people are ever targeted, but someone who files first with your Social Security number can take your refund (about ${formatCents(T.typicalRefundCents)} for the average filer) and it takes months to sort out. A free IP PIN from the IRS stops it, so the cost of asking is a few minutes.`,
+      why: `Few people are ever targeted, but someone who files first with your Social Security number can take your refund (about ${formatCents(T.typicalRefundCents)} for the average filer) and it takes months to sort out. A free IP PIN from the IRS stops it, so the cost of asking is a few minutes.${ipPinToolOpen(profile.today) ? "" : ` ${IP_PIN_TOOL_DOWN}`}`,
       action: { label: "Get your IP PIN", href: "/taxes/identity" },
     };
   },
