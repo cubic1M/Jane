@@ -11,6 +11,7 @@ import type { PayStub } from "@/lib/payroll/types";
 import type { EstimateIncome } from "./tax-estimate";
 import { DAY_MS } from "@/lib/dates";
 import { ONE_OFF_PAY } from "@/config/profile";
+import { IRA_DISTRIBUTION, SOCIAL_SECURITY_PAYEE } from "@/config/retirement-taxes";
 
 // The year's income for the tax estimate (spec step 120): so far, from the person's
 // transactions and pay stubs, and projected to the end of the year at the same pace. Pure;
@@ -235,16 +236,22 @@ export function otherIncomeSoFar(
   businessExpensesCents = 0,
 ): OtherIncome {
   const inYear = (d: string) => Number(d.slice(0, 4)) === year;
-  const money = (list: readonly string[]) =>
+  const money = (list: readonly string[], counted = (_: IncomeTransaction) => true) =>
     transactions
       .filter(
         (t) =>
           inYear(t.date) &&
           t.amountCents < 0 &&
           t.pfcDetailed !== null &&
-          list.includes(t.pfcDetailed),
+          list.includes(t.pfcDetailed) &&
+          counted(t),
       )
       .reduce((sum, t) => sum - t.amountCents, 0);
+  // Social Security and IRA withdrawals have their own lines in the estimate (only Social
+  // Security's taxable part counts), though the categorizer files them as pension (debugger 11-06:
+  // a retiree's Social Security counted twice).
+  const ownLine = (t: IncomeTransaction) =>
+    SOCIAL_SECURITY_PAYEE.test(t.description) || IRA_DISTRIBUTION.test(t.description);
   const cash = investmentCash.filter((c) => inYear(c.date) && c.amountCents < 0);
   const dividends = cash
     .filter((c) => DIVIDENDS.has(c.subtype))
@@ -263,7 +270,7 @@ export function otherIncomeSoFar(
     shortTermGainsCents: 0,
     longTermGainsCents: 0,
     rentalCents: money(categories("rental")),
-    retirementCents: money(categories("retirement")),
+    retirementCents: money(categories("retirement"), (t) => !ownLine(t)),
     unemploymentCents: money(categories("unemployment")),
   };
 }
