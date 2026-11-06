@@ -262,3 +262,13 @@ plan code stays as it is. `myAidForLlm` gives Claude numbers, codes and plan or 
 never the servicer and no date finer than a month. Off until its switch; reading needs
 `read_accounts` consent and is audited with the number of loans only. Not built yet: saving the
 loans into the student-loan lane's tables and the upload page.
+
+## Loan links
+
+`src/config/loan-links.ts` (roadmap rounds 14 and 15) is the one list of links Jane gives for a
+loan: studentaid.gov's own tools (reused from `STUDENT_STEPS`), the home pages of the private
+student refinance lenders round 15 names (demo advice mode only: naming lenders is a pick, and
+`REAL_ACCOUNT_ADVICE` stays false), and Engine's hosted page, empty until Engine gives its address.
+Every one is unpaid (`paid: false`): the beta takes no pay for any loan product. A test holds every
+link, and every URL written anywhere in `src/config`, to carrying no affiliate tag (`subid`,
+`clickref`, `irclickid`, `utm_*`, Impact's `p.*` and the like) and nothing about the person.
