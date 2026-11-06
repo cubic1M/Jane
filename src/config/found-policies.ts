@@ -163,6 +163,7 @@ export const FOUND_START_SEEN_DAYS = 35;
 // statements said "Could save about $140.00 a year"), so it counts once.
 export const FEE_PACE_MIN_CHARGES = 2;
 
-// Card annual fees: a fee with these words, charged again a year after the last.
+// Card annual fees: a fee with these words, charged again a year after the last. Capital One's
+// is "CAPITAL ONE MEMBER FEE" (debugger 11-06); a monthly member fee isn't one.
 export const ANNUAL_FEE_WORDS =
-  /\bannual (?:membership )?fee\b|\bannual card fee\b|\byearly fee\b/i;
+  /\bannual (?:membership )?fee\b|\bannual card fee\b|\byearly fee\b|(?<!\bmonthly )\bmember fee\b/i;

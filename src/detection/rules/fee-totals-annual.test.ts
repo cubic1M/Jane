@@ -53,4 +53,28 @@ describe("a fee finding with an annual fee and a refund", () => {
     expect(finding?.amountCents).toBe(10500);
     expect(finding?.annualSavingsCents).toBe(9500 + 1000 * 4);
   });
+
+  // Debugger 11-06: Capital One writes its annual fee "CAPITAL ONE MEMBER FEE". Beside one late
+  // fee it was paced, "$135.00 in fees … could save about $270.00 a year".
+  it("counts Capital One's member fee once, as an annual fee", () => {
+    const [finding] = detect(
+      input([
+        fee("1", "2026-08-03", 9500, "CAPITAL ONE MEMBER FEE"),
+        fee("2", "2026-09-28", 4000, "PAST DUE FEE"),
+      ]),
+    ).filter((c) => c.type === "bank_fees");
+    expect(finding?.amountCents).toBe(13500);
+    expect(finding?.annualSavingsCents).toBe(13500);
+  });
+
+  it("still paces a monthly member fee", () => {
+    const [finding] = detect(
+      input([
+        fee("1", "2026-08-03", 500, "MONTHLY MEMBER FEE"),
+        fee("2", "2026-09-03", 500, "MONTHLY MEMBER FEE"),
+        fee("3", "2026-10-03", 500, "MONTHLY MEMBER FEE"),
+      ]),
+    ).filter((c) => c.type === "bank_fees");
+    expect(finding?.annualSavingsCents).toBeGreaterThan(1500);
+  });
 });
