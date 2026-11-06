@@ -189,7 +189,22 @@ describe("a withdrawal's words in front", () => {
     expect(normalizeMerchant(description)?.name).toBe(name);
   });
 
+  // Debugger 11-06: U.S. Bank's words in front ("Web Authorized Pmt Toyota Financial" on the debt
+  // page, "Debit Purchase -Visa Netflix" as a subscription). The migration
+  // 20270511000000_merchant_without_us_bank_prefix moves saved keys and names.
+  it.each([
+    ["WEB AUTHORIZED PMT TOYOTA FINANCIAL", "Toyota Financial"],
+    ["ELECTRONIC DEPOSIT ST LUKES HEALTH", "St Lukes Health"],
+    ["DEBIT PURCHASE -VISA NETFLIX.COM 866-579-7172 CA", "Netflix"],
+    ["DEBIT PURCHASE -VISA SQ *BLUE BOTTLE", "Blue Bottle"],
+    ["RECURRING DEBIT PURCHASE PLANET FITNESS", "Planet Fitness"],
+    ["DEBIT PURCHASE KING SOOPERS #0123 DENVER CO", "King Soopers"],
+  ])("%s is %s", (description, name) => {
+    expect(normalizeMerchant(description)?.name).toBe(name);
+  });
+
   it("gives a name saved the old way the new key", () => {
+    expect(normalizeMerchant("Web Authorized Pmt Toyota Financial")?.key).toBe("toyota financial");
     expect(normalizeMerchant("Ach Withdrawal Rocket Mortgage Payment")?.key).toBe(
       "rocket mortgage payment",
     );
@@ -201,6 +216,8 @@ describe("a withdrawal's words in front", () => {
       "acme ach withdrawal services",
     );
     expect(normalizeMerchant("AUTOPAY")?.key).toBe("autopay");
+    expect(normalizeMerchant("DEBIT PURCHASE")?.key).toBe("debit purchase");
+    expect(normalizeMerchant("ELECTRONIC DEPOSIT")?.key).toBe("electronic deposit");
     expect(normalizeMerchant("CHASE AUTOPAY")?.key).toBe("chase autopay");
   });
 });
