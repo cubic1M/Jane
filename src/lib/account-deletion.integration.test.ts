@@ -442,6 +442,10 @@ describe.runIf(url)("deleting data against a real database", () => {
     await client.rateLimit.create({
       data: { key: `plaid:${user.id}`, windowStart: new Date(), count: 1 },
     });
+    // A tap on one of their messages, keyed by person and message (debugger 11-05).
+    await client.rateLimit.create({
+      data: { key: `chatTapInFlight:${user.id}:msg1`, windowStart: new Date(), count: 1 },
+    });
     await deleteAllData(user.id, { client, api });
 
     const columns = await client.$queryRaw<{ table_name: string; column_name: string }[]>`
@@ -457,6 +461,7 @@ describe.runIf(url)("deleting data against a real database", () => {
     }
     expect(left).toEqual([]);
     expect(await client.rateLimit.count({ where: { key: `plaid:${user.id}` } })).toBe(0);
+    expect(await client.rateLimit.count({ where: { key: { contains: user.id } } })).toBe(0);
   });
 
   it("deletes nothing if Plaid can't remove an item, so the person can retry", async () => {
