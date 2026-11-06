@@ -4,7 +4,10 @@ import { scopedFor } from "@/lib/db-scoped";
 import { systemDb } from "@/lib/system-db";
 import { applyPartnerEvent } from "../pipeline";
 import { linesSince } from "./guards";
-import { MANUAL_TRANSFER_SETTLE_BUSINESS_DAYS } from "@/config/connectors";
+import {
+  MANUAL_SAVINGS_SETTLE_BUSINESS_DAYS,
+  MANUAL_TRANSFER_SETTLE_BUSINESS_DAYS,
+} from "@/config/connectors";
 import { billerFor, findSettlement, findTransferSettlement } from "./rules";
 
 // After "Jane prepares, you pay": the person's own transactions say whether they paid. A bill is
@@ -55,7 +58,7 @@ export async function settleManualPayments(
   const db = scopedFor(userId, client);
   const waiting = await db.connectorActions.findMany({
     where: {
-      connectorId: { in: ["manual_bill_pay", "manual_own_transfer"] },
+      connectorId: { in: ["manual_bill_pay", "manual_own_transfer", "manual_open_savings"] },
       status: "handed_off",
     },
     orderBy: { createdAt: "asc" },
@@ -63,8 +66,8 @@ export async function settleManualPayments(
   });
   if (waiting.length === 0) return 0;
   const days = waiting.map((w) => {
-    const details = w.details as { payOn?: unknown; on?: unknown };
-    return String(details.payOn ?? details.on ?? "");
+    const details = w.details as { payOn?: unknown; on?: unknown; today?: unknown };
+    return String(details.payOn ?? details.on ?? details.today ?? "");
   });
   // Both signs: a move lands as money in on its other side.
   const all = await linesSince(userId, days.sort()[0]!, client);
@@ -76,6 +79,53 @@ export async function settleManualPayments(
   let settled = 0;
   for (const action of waiting) {
     const details = action.details as Record<string, unknown>;
+    if (action.connectorId === "manual_open_savings") {
+      // The new bank pulls the deposit: a line out of that account, of the exact amount, in the
+      // window, naming the bank. Nothing less counts.
+      const provider = String(details.provider ?? "");
+      const token = provider.toUpperCase().split(/\s+/)[0] ?? "";
+      const accountId = typeof details.fromAccountId === "string" ? details.fromAccountId : null;
+      if (!token || !accountId || !action.externalRef) continue;
+      const found = findSettlement(
+        {
+          biller: {
+            biller: provider,
+            type: "utility",
+            payUrl: null,
+            guestPay: "no",
+            autopayOffered: false,
+            autopayByDefault: false,
+            matchTokens: [token],
+            settleBusinessDays: MANUAL_SAVINGS_SETTLE_BUSINESS_DAYS,
+            feeCents: 0,
+            janeStep: "",
+            sources: [],
+          },
+          amountCents: Number(details.amountCents),
+          payOn: String(details.today ?? ""),
+          accountId,
+        },
+        lines,
+        taken,
+      );
+      if (!found || found.confidence !== "amount_days_and_name") continue;
+      if (!(await claim(found.lineId, client, now))) continue;
+      taken.add(found.lineId);
+      const line = lines.find((l) => l.id === found.lineId)!;
+      const moved = await applyPartnerEvent(
+        userId,
+        action.id,
+        {
+          eventId: `bank_line_${line.id}`,
+          externalRef: action.externalRef,
+          outcome: "done",
+          note: `Moved: ${provider} took the deposit on ${line.date}.`,
+        },
+        { client, now },
+      );
+      if (moved) settled += 1;
+      continue;
+    }
     if (action.connectorId === "manual_own_transfer") {
       if (typeof details.fromAccountId !== "string" || typeof details.toAccountId !== "string")
         continue;

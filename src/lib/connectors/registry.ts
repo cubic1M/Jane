@@ -9,6 +9,8 @@ import { REAL_MONEY_MOVEMENT } from "@/config/money-movement";
 import { isTrialUser } from "@/lib/trial-ids";
 import { gated } from "./gate";
 import { manualBillPay, manualOwnTransfer } from "./manual-pay/connector";
+import { creditUpload } from "./credit-upload/connector";
+import { manualOpenSavings } from "./manual-pay/savings";
 import { SANDBOX_CONNECTORS } from "./sandbox/adapters";
 import type { Connector } from "./types";
 
@@ -51,6 +53,9 @@ const CONNECTORS: readonly Connector[] = [
   // until their switches.
   manualBillPay,
   manualOwnTransfer,
+  manualOpenSavings,
+  // Real, read only, no vendor: the person's own report and score (./credit-upload/).
+  creditUpload,
 ];
 
 let registry: ReadonlyMap<string, Connector> = buildRegistry(CONNECTORS);
