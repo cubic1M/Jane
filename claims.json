@@ -8,5 +8,10 @@
   "task": "irs-direct-pay-steps",
   "lane": "lane:connectors",
   "expires": "2026-11-06T23:44:35.664Z"
+ },
+ {
+  "task": "tax-config-qbi-obbba",
+  "lane": "lane:connectors",
+  "expires": "2026-11-06T23:47:20.095Z"
  }
 ]
