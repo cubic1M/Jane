@@ -35,6 +35,8 @@ describe("POST /api/agent/inbound", () => {
       from: "support@co.example",
       subject: "Re",
       body: "Refunded.",
+      // No DMARC result from the provider: not the company's, whatever the From line says.
+      verified: false,
     });
     expect((await post("not json", "Bearer s3cret")).status).toBe(400);
     expect((await post({ from: "x" }, "Bearer s3cret")).status).toBe(400);

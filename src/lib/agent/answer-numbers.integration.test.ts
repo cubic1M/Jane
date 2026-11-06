@@ -79,6 +79,7 @@ describe.runIf(url)("numbers in a person's answer to a company", { timeout: 60_0
         from: toAddress,
         subject: "Re: your request",
         body: simulatedBody("needs_info", "request_refund", "Target"),
+        verified: true,
       },
       { client, read, notify },
     );
