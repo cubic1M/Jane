@@ -359,12 +359,15 @@ const GUARANTEE = [
 // Treasury, a money market fund, a stock, a bond or crypto is never FDIC insured. "Not FDIC
 // insured" says so plainly, and stays allowed.
 // Every way of saying it: "FDIC insured", "-backed", "protected by the FDIC", "carry FDIC insurance",
-// "guaranteed by the FDIC", "protected up to $250,000 by the FDIC" (debugger 11-06).
+// "guaranteed by the FDIC", "protected up to $250,000 by the FDIC" (debugger 11-06), "FDIC eligible"
+// (security round 48).
 const FDIC_SAID =
-  "(?:FDIC[- ](?:insured|backed|protected|covered|guaranteed)|(?:insured|protected|backed|covered|guaranteed)(?: up to \\$[\\d,.]+k?)? by (?:the )?FDIC|FDIC (?:insurance|coverage|protection))";
+  "(?:FDIC[- ](?:insured|backed|protected|covered|guaranteed|eligible)|(?:insured|protected|backed|covered|guaranteed)(?: up to \\$[\\d,.]+k?)? by (?:the )?FDIC|FDIC (?:insurance|coverage|protection))";
+// What an investment is never called either: "T-bills are federally insured" (security round 48).
+const INSURED_SAID = `(?:${FDIC_SAID}|federally insured)`;
 // "Not FDIC insured" and its kin are the truth, said plainly; "no less FDIC insured" isn't.
 const NOT_INSURED = new RegExp(
-  `\\b(?:not|never|isn(?:'|’)?t|aren(?:'|’)?t|no)\\s+(?:(?!less\\b|more\\b)\\w+\\s+)?${FDIC_SAID}`,
+  `\\b(?:not|never|isn(?:'|’)?t|aren(?:'|’)?t|no)\\s+(?:(?!less\\b|more\\b)\\w+\\s+)?${INSURED_SAID}`,
   "gi",
 );
 const MONEY = "(?:money|cash|savings|deposits?|funds|balances?)";
@@ -376,6 +379,21 @@ const DEPOSIT_INSURANCE = [
   // Jane itself (or "Jane's account") said to be a bank or insured, not a clause that mentions it.
   new RegExp(
     `\\bJane(?:['’]s(?:\\s+\\w+){1,2})?\\s+(?:is|are)\\s+(?:an?\\s+)?(?:${FDIC_SAID}|(?:FDIC[- ]insured\\s+)?bank\\b)`,
+    "i",
+  ),
+  // An account or balance named for Jane, said to be insured: "Jane accounts are FDIC insured",
+  // "Your Jane balance is FDIC-insured" (security round 48).
+  new RegExp(
+    `\\bJane(?:['’]s)?\\s+(?:\\w+\\s+){0,2}?(?:accounts?|balances?|wallets?|cash|savings|money|funds|deposits?)\\s+(?:is|are)\\s+(?:\\w+\\s+)?${FDIC_SAID}`,
+    "i",
+  ),
+  // Jane said to be an FDIC member, which only an insured bank may say (12 CFR 328): "Jane,
+  // Member FDIC", "Jane is a member of the FDIC" (security round 48).
+  /\bJane(?:['’]s)?,?\s+(?:is\s+)?(?:an?\s+)?member\s+(?:of\s+(?:the\s+)?)?FDIC\b/i,
+  // Money said to be held by Jane, then insured: "Money held by Jane is insured up to $250,000"
+  // (security round 48). "Nothing is held by Jane; your bank is insured" is two clauses.
+  new RegExp(
+    `\\b(?:held|kept|stored|parked|deposited)\\s+(?:by|with|at|in)\\s+Jane\\b[^.!?;]{0,30}?\\b(?:is|are|stays?)\\s+(?:(?!not\\b|never\\b)\\w+\\s+)?(?:${FDIC_SAID}|insured\\b|protected\\b)`,
     "i",
   ),
   // Money said to be with Jane, then insured: "your savings in Jane are insured".
@@ -392,7 +410,7 @@ const DEPOSIT_INSURANCE = [
     "i",
   ),
   // An investment is never FDIC insured, however it's put.
-  new RegExp(`\\b${NEVER_INSURED}\\b${NO_BANK_WORD}${FDIC_SAID}`, "i"),
+  new RegExp(`\\b${NEVER_INSURED}\\b${NO_BANK_WORD}${INSURED_SAID}`, "i"),
   // The FDIC said to insure one: "The FDIC insures your Treasuries" (debugger 11-06).
   new RegExp(
     `\\bFDIC\\s+(?:insures|guarantees|covers|protects|backs)\\b${NO_BANK_WORD}\\b${NEVER_INSURED}\\b`,
