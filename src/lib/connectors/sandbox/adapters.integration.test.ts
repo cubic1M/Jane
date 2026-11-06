@@ -113,6 +113,7 @@ describe("the sandbox adapters' definitions", () => {
       "credit_upload",
       "my_aid_upload",
       "irs_transcript_upload",
+      "tax_form_upload",
     ]);
   });
 
