@@ -18,7 +18,7 @@ permissions:
 jobs:
   run:
     if: vars.OPS_CANARY == '1'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 15
     environment: ops-canary
     outputs:
@@ -42,7 +42,7 @@ jobs:
 
   record:
     needs: run
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 5
     permissions:
       contents: write

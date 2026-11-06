@@ -20,7 +20,7 @@ permissions:
 jobs:
   gates:
     name: Protected files and baselines
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 3
     steps:
       # Main's copy only. Never the PR's code in this workflow.

@@ -16,7 +16,7 @@ permissions:
 # self-hosted runner keeps what a branch's code leaves on it for the next job (docs/ci.md).
 jobs:
   run:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 30
     outputs:
       record: ${{ steps.counts.outputs.record }}
@@ -65,7 +65,7 @@ jobs:
   record:
     needs: run
     if: always() && needs.run.outputs.record != ''
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 5
     permissions:
       contents: write

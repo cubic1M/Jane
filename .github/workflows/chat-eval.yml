@@ -41,7 +41,7 @@ concurrency:
 jobs:
   scenarios:
     name: Run the scenarios
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 330
     services:
       postgres:
