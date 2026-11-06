@@ -101,6 +101,8 @@ export const SUGGESTION_TOPICS = [
   "roth_conversion",
   "childcare_tax_break",
   "identity_ip_pin",
+  // Connectors roadmap round 16: EFTPS is closing to individuals.
+  "eftps_move",
   "year_end_moves",
   // Spec step 262: investing.
   "investment_fees",

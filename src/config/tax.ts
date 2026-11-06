@@ -225,6 +225,16 @@ export const QUARTERLY = {
   minOwedCents: 100_000,
 } as const;
 export const IRS_DIRECT_PAY_URL = "https://www.irs.gov/payments/direct-pay";
+// EFTPS is closing to individuals (connectors roadmap round 16): no new individual enrollments
+// since 2025-10-17, and EFTPS.gov says everyone moves off "later in 2026 (anticipated September
+// 2026)"; the IRS's page (2026-11-04) still says current users can use it "for now". Businesses
+// keep it. The IRS sends individuals to their Online Account, which schedules up to 365 days ahead.
+export const EFTPS_INDIVIDUALS = {
+  enrollmentClosed: "2025-10-17",
+  moveBy: "later in 2026",
+  match: /\bEFTPS\b/i,
+  onlineAccountUrl: "https://www.irs.gov/payments/your-online-account",
+} as const;
 // Paying at Direct Pay yourself (connectors roadmap round 16, irs_direct_pay_steps): it takes a
 // date up to this many days ahead, at most this many payments in a day, and a payment can be
 // changed or cancelled up to this many business days before its date. Its confirmation number

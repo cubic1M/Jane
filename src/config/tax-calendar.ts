@@ -99,6 +99,8 @@ export const TAX_TOPIC_MONTH: Readonly<Record<string, number>> = {
   // coverage); a payment due within a month makes it "soon" any month.
   cash_flow: 1,
   identity_ip_pin: 1,
+  // EFTPS is closing to individuals: any month an EFTPS payment is seen.
+  eftps_move: 1,
   charity_receipts: 1,
   social_security_tax: 1,
   s_corp_election: 2,
