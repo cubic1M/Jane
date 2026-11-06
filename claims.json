@@ -3,10 +3,5 @@
   "task": "federal-autopay-card",
   "lane": "lane:connectors",
   "expires": "2026-11-06T23:01:29.304Z"
- },
- {
-  "task": "tax-config-qbi-obbba",
-  "lane": "lane:connectors",
-  "expires": "2026-11-06T23:47:20.095Z"
  }
 ]
