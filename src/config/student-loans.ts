@@ -140,14 +140,17 @@ export const INCOME_DRIVEN_PLAN_NAMES: readonly string[] = [
 // Federal autopay (connectors roadmap round 15, loans 3.1): the autopay rate cut on Direct Loans
 // went from 0.25% to 1% on July 1, 2026, through June 30, 2028, for anyone enrolled by 11:59 p.m.
 // Eastern on December 31, 2026 (extended from September 30; servicer pages and news reports, the
-// studentaid.gov pages didn't load: re-check there before it reaches anyone). Forbearance or
-// deferment ends the cut.
+// studentaid.gov pages didn't load: re-check there before it reaches anyone; Education's June
+// release still says September 30). Forbearance or deferment ends the cut.
 export const FED_AUTOPAY = {
   // The last day to enrol, Eastern time, and the moment after it.
   lastDay: "2026-12-31",
   deadline: "2027-01-01T04:59:00Z",
   cutBps: 100,
   until: "2028-06-30",
+  // Only Direct Loans first disbursed on or after this day get the cut (Education's release,
+  // 2026-06-18). Plaid's origination date stands in for the first disbursement.
+  disbursedFrom: "2012-07-01",
   // "now" once it's this close.
   urgentDays: 30,
   // Plaid's loan statuses that end the cut or mean nothing is being repaid yet.
@@ -166,6 +169,9 @@ export const FED_AUTOPAY = {
     "cancelled",
     "refunded",
     "pending idr",
+    "extension",
+    "in military",
+    "not fully disbursed",
   ],
   // Plans only federal loans have: a loan on one is federal.
   federalPlans: [

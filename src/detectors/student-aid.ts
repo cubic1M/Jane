@@ -12,13 +12,21 @@ import { headlineOf } from "./helpers";
 
 const DAY = 86_400_000;
 
-// A federal Direct Loan, as the bank reports it: its name says Direct, or it's on a plan only
-// federal loans have.
+// A federal Direct Loan, as the bank reports it: its name is a Direct Loan's ("Direct
+// Unsubsidized", "Direct PLUS", "Direct Consolidation"), not just any name with "direct" in it (a
+// private "direct to consumer" loan), or it's on a plan only federal loans have.
+const DIRECT_NAME =
+  /\bdirect\s+(sub|subsidized|unsub|unsubsidized|plus|grad plus|parent plus|consolidation|consolidated|stafford|loan)\b/i;
+
 export function federalDirect(l: ProfileLiability): boolean {
   if (l.kind !== "student") return false;
-  if (/\bdirect\b/i.test(l.description ?? "")) return true;
+  if (DIRECT_NAME.test(l.description ?? "")) return true;
   return (FED_AUTOPAY.federalPlans as readonly string[]).includes(l.repaymentPlan ?? "");
 }
+
+// Old enough to miss the cut: first disbursed before July 1, 2012. Unknown counts as maybe.
+const tooOld = (l: ProfileLiability) =>
+  !!l.originationDate && l.originationDate < FED_AUTOPAY.disbursedFrom;
 
 // Being repaid now, as far as the bank says: no status counts, a stopped one doesn't.
 const repaying = (l: ProfileLiability) =>
@@ -39,7 +47,7 @@ const studentAutopay: Detector = {
     if (!connectorsOn()) return null;
     const left = daysTo(data.today, FED_AUTOPAY.lastDay);
     if (left < 0) return null;
-    const loans = data.liabilities.filter((l) => federalDirect(l) && repaying(l));
+    const loans = data.liabilities.filter((l) => federalDirect(l) && repaying(l) && !tooOld(l));
     if (loans.length === 0) return null;
     const owed = loans
       .map((l) => data.accounts.find((a) => a.id === l.accountId)?.balanceCents ?? 0)
@@ -53,6 +61,12 @@ const studentAutopay: Detector = {
       timeZone: "UTC",
     });
     const see = STUDENT_STEPS.find((s) => s.key === "see_loans")!;
+    // What Jane can't tell from the bank: when a loan was first paid out, and whether it's on RAP
+    // (no Plaid name yet: "unknown" or "other"), where unpaid interest is waived anyway.
+    const undated = loans.some((l) => !l.originationDate);
+    const maybeRap = loans.some(
+      (l) => l.repaymentPlan === "unknown" || l.repaymentPlan === "other",
+    );
     return {
       id: suggestionId("debt", "student_autopay"),
       capability: "debt",
@@ -67,7 +81,7 @@ const studentAutopay: Detector = {
         reason: "your bank reports a federal loan being repaid; I can't see whether autopay is on",
       },
       urgency: left <= FED_AUTOPAY.urgentDays ? "now" : "soon",
-      why: `Federal Direct Loans get 1% off their rate through June 30, 2028 for anyone signed up for autopay with their servicer by 11:59 p.m. Eastern on ${deadline}. On your ${formatCents(owed)} that's about ${formatCents(yearly)} a year. Forbearance or deferment ends it. If autopay is already on, nothing to do.`,
+      why: `Federal Direct Loans get 1% off their rate through June 30, 2028 for anyone signed up for autopay with their servicer by 11:59 p.m. Eastern on ${deadline}. On your ${formatCents(owed)} that's about ${formatCents(yearly)} a year${undated ? ", if your loans were first paid out after July 1, 2012" : ""}. Forbearance or deferment ends it.${maybeRap ? " On RAP it can save less, since unpaid interest is waived there." : ""} If autopay is already on, nothing to do.`,
       action: { label: "See your loans and servicer", href: "/loans/student" },
       more: [{ label: see.title, href: see.url }],
     };

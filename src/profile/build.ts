@@ -99,6 +99,8 @@ export type ProfileLiability = {
   // Student loans (Plaid Liabilities): the loan's name ("Direct Subsidized"), its repayment plan
   // and status as Plaid names them; absent when not loaded.
   description?: string | null;
+  // YYYY-MM-DD, as the bank gives it.
+  originationDate?: string | null;
   repaymentPlan?: string | null;
   loanStatus?: string | null;
 };

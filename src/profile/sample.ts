@@ -224,6 +224,7 @@ export function inputFor(person: string, told: ProfileInput["told"] = {}): Profi
       payoffDate: l.payoffDate,
       minimumCents: l.minimumPaymentCents,
       description: l.description,
+      originationDate: l.originationDate,
       repaymentPlan: l.repaymentPlan,
       loanStatus: l.loanStatus,
     })),

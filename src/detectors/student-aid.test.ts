@@ -19,6 +19,7 @@ const LOAN: ProfileLiability = {
   hasPmi: null,
   payoffDate: null,
   description: "Direct Unsubsidized",
+  originationDate: "2019-08-20",
   repaymentPlan: "standard",
   loanStatus: "repayment",
 };
@@ -76,15 +77,44 @@ describe("the federal autopay card", () => {
   });
 
   it("says nothing in forbearance, deferment or default, or before repayment starts", () => {
-    for (const loanStatus of ["forbearance", "deferment", "delinquent", "in school", "in grace"]) {
+    for (const loanStatus of [
+      "forbearance",
+      "deferment",
+      "delinquent",
+      "in school",
+      "in grace",
+      "extension",
+      "in military",
+      "not fully disbursed",
+    ]) {
       expect(withLoan({ loanStatus }), loanStatus).toBeNull();
     }
     // No status from the bank: still worth checking.
     expect(withLoan({ loanStatus: null })).not.toBeNull();
   });
 
+  it("leaves out a loan first paid out before July 2012, and says so when it can't tell", () => {
+    // Education limits the 1% cut to Direct Loans first disbursed on or after July 1, 2012.
+    expect(withLoan({ originationDate: "2010-09-01" })).toBeNull();
+    expect(withLoan({ originationDate: "2012-07-01" })).not.toBeNull();
+    const undated = withLoan({ originationDate: null })!;
+    expect(undated.why).toContain("if your loans were first paid out after July 1, 2012");
+    expect(withLoan()!.why).not.toContain("July 1, 2012");
+  });
+
+  it("says it can save less on RAP, which Plaid can't name yet", () => {
+    expect(withLoan({ repaymentPlan: "unknown" })!.why).toContain("On RAP it can save less");
+    expect(withLoan({ repaymentPlan: "standard" })!.why).not.toContain("RAP");
+  });
+
   it("is for federal Direct Loans only, by name or a federal-only plan", () => {
     expect(withLoan({ description: "Sallie Mae Smart Option" })).toBeNull();
+    // A private loan sold "direct to consumer" isn't a Direct Loan.
+    expect(
+      withLoan({ description: "Direct to Consumer Student Loan", repaymentPlan: "standard" }),
+    ).toBeNull();
+    expect(withLoan({ description: "DIRECT PLUS" })).not.toBeNull();
+    expect(withLoan({ description: "Direct Consolidation Loan" })).not.toBeNull();
     expect(
       withLoan({ description: "Student loan", repaymentPlan: "income-based repayment" }),
     ).not.toBeNull();
