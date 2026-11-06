@@ -182,6 +182,22 @@ describe.runIf(url)(
       expect(parseRefs(reply.refs).advice).toBe(true);
     });
 
+    it("never points a federal loan the bank reports on an income-driven plan at a refinance", async () => {
+      const id = await demoPerson("sl-idr");
+      expect((await loadStudentLongGame(id, opts())).refi!.text).not.toContain(
+        "income-driven plan",
+      );
+      await client.liability.updateMany({
+        where: { userId: id, kind: "student" },
+        data: { repaymentPlan: "income-based repayment" },
+      });
+      const g = await loadStudentLongGame(id, opts());
+      expect(g.refi!.verdict).toBe("keep");
+      expect(g.refi!.text).toContain(
+        "Don't refinance a federal loan while you're on an income-driven plan",
+      );
+    });
+
     it("answers in the chat and gives Claude the same numbers", async () => {
       const id = await demoPerson("sl-chat", { publicService: true, countedBefore: 90 });
       const { reply } = await sendToJane(id, "how many PSLF payments have I made?", {

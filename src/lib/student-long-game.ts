@@ -12,6 +12,7 @@ import {
   nextOnCycle,
   pslfCount,
   taxPlanDue,
+  onIncomeDrivenPlan,
   refiGuide,
   taxOnForgiven,
   type PslfCount,
@@ -71,7 +72,7 @@ export async function loadStudentLongGame(
   if (!loans.loan) return { ...none, advice: loans.advice };
   const db = scopedFor(userId, client);
   const since = new Date(now.getTime() - STUDENT_PAYMENT_LOOKBACK_DAYS * DAY_MS);
-  const [extra, payments, refi] = await Promise.all([
+  const [extra, payments, refi, reported] = await Promise.all([
     db.studentLoanProfiles.findFirst({
       select: { loanType: true, lastCertifiedOn: true, recertifyOn: true },
     }),
@@ -84,6 +85,13 @@ export async function loadStudentLongGame(
       select: { date: true },
     }),
     loans.advice ? loadRefinance(userId, { client, now, book }) : null,
+    // What the bank says about the plan and status (Plaid Liabilities).
+    loans.loan.accountId
+      ? db.liabilities.findFirst({
+          where: { accountId: loans.loan.accountId },
+          select: { repaymentPlan: true, loanStatus: true },
+        })
+      : null,
   ]);
   const loanType = extra?.loanType === "private" ? "private" : "federal";
   const seenMonths = [...new Set(payments.map((p) => isoDay(p.date).slice(0, 7)))];
@@ -135,6 +143,11 @@ export async function loadStudentLongGame(
       ? refiGuide({
           loanType,
           publicService: loans.profile.publicService,
+          incomeDriven: onIncomeDrivenPlan({
+            repaymentPlan: reported?.repaymentPlan ?? null,
+            loanStatus: reported?.loanStatus ?? null,
+            recertifies: recertifyOn !== null,
+          }),
           currentAprBps: loans.loan.aprBps ?? 0,
           offer: offer
             ? {
