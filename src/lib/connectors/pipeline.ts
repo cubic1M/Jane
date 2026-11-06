@@ -127,10 +127,12 @@ async function withinDailyCaps(
   { client, now, except }: { client: PrismaClient; now: Date; except?: string },
 ) {
   const since = new Date(now.getTime() - 24 * 60 * MINUTE);
+  // Said yes to in the last day, or run (or due to run) since then: a money action's hold is a whole
+  // day, so counting yeses alone would let it run alongside a day's worth of new ones.
   const counted = await scopedFor(userId, client).connectorActions.findMany({
     where: {
       status: { in: COUNTED },
-      approvedAt: { gte: since },
+      OR: [{ approvedAt: { gte: since } }, { runAt: { gte: since } }],
       ...(except && { id: { not: except } }),
     },
     select: { amountCents: true },
@@ -458,7 +460,15 @@ export async function executeAction(
     }
     await withinDailyCaps(userId, action.amountCents, { client, now, except: actionId });
   } catch (error) {
-    if (!(error instanceof ConnectorRefused)) throw error;
+    if (!(error instanceof ConnectorRefused)) {
+      // Nothing reached the connector yet: hand the claim back, so the queue's retry (or a cancel)
+      // finds it waiting rather than running forever.
+      await db.connectorActions.updateMany({
+        where: { id: actionId, status: "running" },
+        data: { status: "approved" },
+      });
+      throw error;
+    }
     await refuse(userId, actionId, "running", error.reason, { client, now });
     return "refused";
   }
