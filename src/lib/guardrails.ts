@@ -91,7 +91,7 @@ const INVESTMENT = [
   /\bannuit(y|ies)\b/i,
   // What to buy, sell or hold, and how investments did (spec step 66: balances only).
   // A bank "holding the funds" from a deposit is a hold, not a holding.
-  /\b(buy|buying|sell|selling|dump|trim)\b(?:[^.!?]|\.\d){0,40}\b(positions?|holdings?|funds?|shares?|stocks?|assets?)\b/i,
+  /\b(buy|buying|sell|selling|dump|trim|trimm(?:ing|ed))\b(?:[^.!?]|\.\d){0,40}\b(positions?|holdings?|funds?|shares?|stocks?|assets?)\b/i,
   /\b(hold|holding)\b(?:[^.!?]|\.\d){0,40}\b(positions?|holdings?|shares?|stocks?)\b/i,
   // A bare ticker (11-03): "Buy NVDA", "$NVDA", "put it into TSLA". Written in capitals, so "buy a TV"
   // and the things in capitals people do buy aren't one.
@@ -139,6 +139,16 @@ const INVESTMENT = [
   /\b(?:growth|value|balanced|total[- ](?:stock )?market|large[- ]cap|mid[- ]cap|small[- ]cap|emerging[- ]markets?|sector|dividend) (?:funds?|etfs?)\b/i,
   /\boffset(?:ting)? (?:the |your |some |those |any )?(?:capital )?gains?\b/i,
   /\bsell(?:ing)? (?:the |your |some |those )?(?:losers|winners)\b/i,
+  // Dressed up (chat policy round 3, 11-06): "Many people in your spot move their savings into
+  // the market", "Personally, I'd go all in on the S&P", "The numbers say you should hold, not
+  // sell", "An 80/20 split would suit you", "You're too conservative; take on more risk", "Keep
+  // buying no matter what the market does".
+  /\b(?:move|put|get|stay|go|jump|pull|take)\w*\b[^.!?]{0,30}\b(?:in(?:to)?|out of) the (?:stock )?market\b/i,
+  /\bs&p\b|\ball[- ]in on\b/i,
+  /\b(?:hold|sell|buy),? (?:not|rather than|instead of) (?:sell|hold|buy)\b/i,
+  /\b[1-9]0\/[1-9]0 (?:split|mix|portfolio|allocation)\b(?!\s+(?:of|between)\b)/i,
+  /\byou(?:'|’)?re too (?:conservative|aggressive)\b|\btake on (?:more|less) risk\b/i,
+  /\bwhat the market does\b/i,
   ...STOCK_PICKS,
   /\brebalanc/i,
   // "Your budget allocation" is a budget.
@@ -188,7 +198,7 @@ const TAX_ADVICE = [
   // checking", "it was deducted on Oct 3") is a charge, not a tax deduction.
   /(?<!\b(?:was|were|been|be|being|is|are|get|gets|got|automatically|auto)[- ])\bdeduct(?:s|ed|ing)?\b(?! (?:\$[\d,.]+ )?(?:automatically )?(?:from|out of) (?:your|my|the|their|each|this|that) (?:\w+ )?(?:pay|paycheck|paychecks|wages|account|checking|savings|balance|card)\b)/i,
   /\bitemi[sz]\w*/i,
-  /\bclaim(?:s|ed|ing)?\b[^.!?]{0,40}\b(?:deductions?|credits?|expenses?|dependents?|exemptions?|losses|as a (?:business|loss|dependent))\b/i,
+  /\bclaim(?:s|ed|ing)?\b[^.!?]{0,40}\b(?:deductions?|credits?|expenses?|dependents?|exemptions?|losses|home office|as a (?:business|loss|dependent))\b/i,
   /\btax[- ](?:free|break|breaks|loophole|shelter|strateg\w+|advantaged?|planning)\b/i,
   /\b(?:lower|reduce|cut|shrink|minimi[sz]e|avoid|save on|pay less)\b[^.!?]{0,40}\btax/i,
   // Filing taxes. Filing a complaint form or a return request with a store is not (11-01).
@@ -224,6 +234,11 @@ const TAX_ADVICE = [
   /\b(?:treat|count|classify|call|report|file)\b[^.!?]{0,30}\bas (?:a )?hobby\b/i,
   /\bbunch(?:ing)?\b[^.!?]{0,20}\b(?:donations?|gifts|giving|deductions|contributions)\b/i,
   /\b(?:tax|irs|filing) extension\b|\bextension and file\b|\bfile for an extension\b|\bfile (?:it |your return )?(?:in|by) october\b/i,
+  // Dressed up (chat policy round 3, 11-06): "Keep it off your return", "You'd probably owe less
+  // if you filed separately", "Don't pay the quarterly estimate; just pay in April".
+  /\b(?:keep|leave)\b[^.!?]{0,20}\boff (?:your|the) (?:tax )?return\b/i,
+  /\bif you fil(?:e|ed) (?:jointly|separately|as)\b/i,
+  /\b(?:skip|don(?:'|’)?t pay|do not pay|hold off on)\b[^.!?]{0,20}\b(?:quarterly|estimated) (?:estimates?|payments?|tax(?:es)?)\b/i,
 ];
 // In a sentence that talks about tax: telling them to do something, or what the rules say
 // their money counts as. "You'll owe about $X" is a figure; "you should set aside $X" is advice.
@@ -276,6 +291,13 @@ const LEGAL = [
   /\bignore (?:the |that |this |any |their |those )?(?:debt )?(?:collectors?|collection (?:letters?|calls?|notices?|agency)|lawsuit|summons|court (?:date|papers|notice)|subpoena)\b/i,
   /\b(?:have|has|got) (?:a |an )?(?:\w+ )?case against\b/i,
   /\b(?:is |are |was |were )?(?:breaking|broke|violating|violated) the law\b/i,
+  // Dressed up (chat policy round 3, 11-06): "Most lawyers would say you have a case", "You'd
+  // likely win in small claims", "The collector has no right to call you at work", "You're
+  // entitled to your full deposit back by law".
+  /\b(?:have|has) a (?:strong |good |solid |winning |real )?(?:legal )?case\b(?! (?:open|number|id|with|about|on file|in progress|of|for (?:saving|keeping|cutting|paying)))/i,
+  /\bwin\b[^.!?]{0,20}\b(?:small claims|in court|at trial)\b/i,
+  /\b(?:has|have) no (?:legal )?right to\b/i,
+  /\bentitled to\b[^.!?]{0,40}\b(?:by|under(?: the)?) law\b|\bthe law (?:says|requires|entitles|gives) you\b/i,
   /\b(?:take|took|taken|drag|dragged) (?:you |them |him |her |it |the \w+ )?to (?:small claims )?court\b/i,
   /\bfile (?:for (?:probate|divorce|custody)|(?:in|with) (?:the |a )?court)\b/i,
   /\b(?:don(?:'|’)?t|do not|doesn(?:'|’)?t|no) need (?:a |an )?(?:lawyer|attorney)\b/i,
