@@ -19,10 +19,12 @@ concurrency:
   group: watch
   cancel-in-progress: false
 
+# GitHub's own machines, whatever CI_RUNNER says: these jobs hold secrets or a write token, and a
+# self-hosted runner keeps what a branch's code leaves on it for the next job (docs/ci.md).
 jobs:
   watch:
     if: vars.OPS_WATCH == '1'
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: ops-actor
     steps:

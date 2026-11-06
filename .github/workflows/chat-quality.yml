@@ -22,10 +22,12 @@ concurrency:
   group: chat-quality
   cancel-in-progress: false
 
+# GitHub's own machines, whatever CI_RUNNER says: these jobs hold secrets or a write token, and a
+# self-hosted runner keeps what a branch's code leaves on it for the next job (docs/ci.md).
 jobs:
   nightly:
     name: Run the question bank
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 75
     services:
       postgres:

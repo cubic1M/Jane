@@ -36,10 +36,12 @@ concurrency:
   group: chat-eval
   cancel-in-progress: false
 
+# GitHub's own machines, whatever CI_RUNNER says: these jobs hold secrets or a write token, and a
+# self-hosted runner keeps what a branch's code leaves on it for the next job (docs/ci.md).
 jobs:
   scenarios:
     name: Run the scenarios
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 330
     services:
       postgres:
