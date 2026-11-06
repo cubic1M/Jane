@@ -1,6 +1,5 @@
 import { landing } from "@/lib/area-pages/landing";
 import { STRATEGIST_CAPABILITY, STRATEGIST_IDEA_DAYS, STRATEGIST_TOPIC } from "@/config/strategist";
-import { isIdeaKey } from "@/planning/strategist";
 import { promisesHiddenPage } from "@/config/hidden-pages";
 import { ADVICE_TOPICS, RESELECT_AFTER_DAYS, rankValue } from "@/config/suggestions";
 import { tellsThemToAct } from "@/lib/real-account-text";
@@ -134,6 +133,7 @@ export function forTheBeta<T extends Pick<Suggestion, "action" | "more">>(sugges
   );
 }
 
+const isIdea = (key: string) => key.startsWith(`${STRATEGIST_CAPABILITY}:`);
 const partsOfIdea = (key: string) => key.slice(STRATEGIST_CAPABILITY.length + 1).split("+");
 
 // Strategist ideas (step 256) still open and still resting on suggestions that fire tonight,
@@ -153,7 +153,7 @@ function openIdeas(
   now: Date,
 ): Suggestion[] {
   return existing.flatMap((e) => {
-    if (!isIdeaKey(e.key) || (e.status !== "waiting" && e.status !== "selected")) return [];
+    if (!isIdea(e.key) || (e.status !== "waiting" && e.status !== "selected")) return [];
     if (now.getTime() - e.lastSeenAt.getTime() > STRATEGIST_IDEA_DAYS * DAY_MS) return [];
     const parts = partsOfIdea(e.key).map((id) => fired.get(id));
     if (parts.some((p) => !p)) return [];
@@ -196,7 +196,7 @@ export function stillChosen<T extends { key: string }>(
   chosen: readonly T[],
   firing: ReadonlySet<string>,
 ): { keep: T[]; outdated: T[] } {
-  const outdated = chosen.filter((c) => !isIdeaKey(c.key) && !firing.has(c.key));
+  const outdated = chosen.filter((c) => !isIdea(c.key) && !firing.has(c.key));
   return { keep: chosen.filter((c) => !outdated.includes(c)), outdated };
 }
 
@@ -237,7 +237,7 @@ async function refreshFigures(
   const byId = new Map(found.map((f) => [f.id, f]));
   for (const pick of keep) {
     const s = byId.get(pick.key);
-    if (!s || isIdeaKey(pick.key)) continue;
+    if (!s || isIdea(pick.key)) continue;
     await db.suggestions.updateMany({
       where: { id: pick.id },
       data: {
@@ -433,7 +433,7 @@ async function scanSuggestionsWork(
   const stale = existing.filter(
     (e) =>
       (e.status === "waiting" || e.status === "selected") &&
-      (isIdeaKey(e.key) ? !liveIdeas.has(e.key) : !firedKeys.has(e.key)),
+      (isIdea(e.key) ? !liveIdeas.has(e.key) : !firedKeys.has(e.key)),
   );
   if (stale.length > 0) {
     await db.suggestions.updateMany({
@@ -480,7 +480,7 @@ export async function offeredToday(
       : []
   ).sort((a, b) => byRank({ ...a, id: a.key }, { ...b, id: b.key }));
   // An idea's buttons are those of the suggestions it combines.
-  const partKeys = rows.filter((r) => isIdeaKey(r.key)).flatMap((r) => partsOfIdea(r.key));
+  const partKeys = rows.filter((r) => isIdea(r.key)).flatMap((r) => partsOfIdea(r.key));
   const parts =
     partKeys.length > 0
       ? await scopedFor(userId, client).suggestions.findMany({
@@ -501,7 +501,7 @@ export async function offeredToday(
     adviceMode(userId, { client }),
   ]);
   const offered = rows.map((r) => {
-    const mine = isIdeaKey(r.key) ? partsOfIdea(r.key).flatMap((k) => partOf.get(k) ?? []) : [];
+    const mine = isIdea(r.key) ? partsOfIdea(r.key).flatMap((k) => partOf.get(k) ?? []) : [];
     const topics = mine.length > 0 ? mine.map((p) => p.topic) : [r.topic];
     return {
       id: r.id,

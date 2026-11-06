@@ -1,48 +1,50 @@
 import { describe, expect, it } from "vitest";
+import { STRATEGIST_CAPABILITY } from "@/config/strategist";
 import type { OfferedSuggestion } from "@/lib/suggestions";
-import { ideaId } from "@/planning/strategist";
 import type { Snapshot } from "../snapshot";
 import type { SourceContext } from "./source";
 import { suggestionsSource } from "./suggestions";
 
-// Anthropic's usage policy (from Nov 12, 2026): what Claude writes about someone's money says AI
-// was involved. A strategist idea (step 256) is Claude's own title and explanation, so its
-// message carries aiWritten; a detector's suggestion is fixed wording and doesn't.
+// A strategist idea (spec step 256) is Claude's own words, often about taxes or investing ("part
+// of your bonus to the HSA to cut tax"), so its card carries AI_WRITTEN_LABEL as a chat answer
+// would (src/config/advice.ts; Anthropic's Usage Policy from Nov 12, 2026). A detector's
+// suggestion is written by rules and doesn't.
 
-const offered = (key: string, over: Partial<OfferedSuggestion> = {}): OfferedSuggestion => ({
-  id: `row-${key}`,
-  chosenOn: "2026-11-06",
+const offered = (key: string, topic: string): OfferedSuggestion => ({
+  id: key,
   key,
-  topic: "strategist",
-  title: "Your bonus: part to the HSA, the rest to the car loan",
-  headline: "Bonus to the HSA and car loan",
-  short: "Your $2,000 bonus covers both.",
-  why: "Your $2,000 bonus covers both.",
-  worthCents: 40_000,
-  worthKind: "saves",
+  chosenOn: "2026-11-06",
+  topic,
+  title: "Put part of the bonus in the HSA to cut tax, the rest on the 9% car loan",
+  headline: "Bonus: HSA and the car loan",
+  short: "Your March bonus could do two jobs",
+  why: "An HSA deposit lowers taxable income, and the car loan costs 9%.",
+  worthCents: 120_000,
+  worthKind: "yearly",
   confidencePercent: 70,
-  confidenceReason: "the weakest part of this idea",
-  actionLabel: "Open",
-  actionHref: "/taxes",
+  confidenceReason: "your pay stubs",
+  actionLabel: "See the HSA",
+  actionHref: "/investments/hsa",
   more: [],
-  advice: false,
-  ...over,
+  advice: true,
 });
 
-const gather = (suggestions: OfferedSuggestion[]) =>
-  suggestionsSource.gather({ suggestions } as unknown as Snapshot, {} as SourceContext);
+const refsOf = (s: OfferedSuggestion) => {
+  const [message] = suggestionsSource.gather(
+    { suggestions: [s] } as unknown as Snapshot,
+    {} as unknown as SourceContext,
+  );
+  return message!.refs as Record<string, unknown>;
+};
 
-describe("a strategist idea says Claude wrote it", () => {
-  it("marks an idea's message, on a real account and in demo advice alike", () => {
-    const key = ideaId(["hsa:room", "loans:car_payoff"]);
-    for (const advice of [false, true]) {
-      const [message] = gather([offered(key, { advice })]);
-      expect(message.refs.aiWritten).toBe(true);
-    }
+describe("a suggestion's card", () => {
+  it("says AI wrote it when it's a strategist idea", () => {
+    expect(refsOf(offered(`${STRATEGIST_CAPABILITY}:hsa+car_loan`, "strategist")).aiWritten).toBe(
+      true,
+    );
   });
 
-  it("leaves a detector's own suggestion unmarked", () => {
-    const [message] = gather([offered("subscriptions:unused", { topic: "subscriptions" })]);
-    expect(message.refs.aiWritten).toBeUndefined();
+  it("doesn't when a detector's rules wrote it", () => {
+    expect(refsOf(offered("hsa_room", "hsa")).aiWritten).toBeUndefined();
   });
 });

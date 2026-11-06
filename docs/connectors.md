@@ -239,3 +239,10 @@ Round 14 of the connectors roadmap, on the existing referral partners (`src/lib/
 Not built yet from round 14: renewal timing by kind (auto 30 days, home 45, never in the last 7),
 which moves the demo's auto reshop and needs its demo data and tests updated together; the link
 builder for affiliate networks; the postback receiver; the banned-phrase check on card copy.
+
+`src/lib/referral-links.ts` builds an affiliate-network link (Impact, CJ, Awin, FlexOffers) that
+carries nothing about the person: the only thing added is a sub-ID, the first 16 hex of an HMAC of
+the action's id; a template or deep link with a parameter that could carry the person (Impact's
+`p.*`, `sharedid`, email, name, phone, zip, date of birth, VIN, user id, or a value that looks like
+an email or phone number) is refused, and a deep link may only point at the partner's allowed
+domain. Not wired to `/admin/partners` yet: partners don't record their network.

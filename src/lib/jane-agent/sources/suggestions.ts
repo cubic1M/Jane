@@ -1,7 +1,7 @@
 import { cardHeadline } from "@/detectors/contract";
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
+import { STRATEGIST_CAPABILITY } from "@/config/strategist";
 import type { OfferedSuggestion } from "@/lib/suggestions";
-import { isIdeaKey } from "@/planning/strategist";
 import { sentence, type MessageSource } from "./source";
 
 // What Jane worked out for this person (spec step 255): the nightly scan's top suggestions, a
@@ -20,6 +20,10 @@ export function suggestionCard(
   ];
 }
 
+// A strategist idea (spec step 256) is Claude's own words, often about taxes or investing, so it
+// carries AI_WRITTEN_LABEL like a chat answer would (src/config/advice.ts), "Why?" included.
+const byClaude = (key: string) => key.startsWith(`${STRATEGIST_CAPABILITY}:`);
+
 export const suggestionsSource: MessageSource = {
   key: "suggestions",
   gather(snapshot) {
@@ -31,8 +35,7 @@ export const suggestionsSource: MessageSource = {
         suggestionWhy: s.why,
         ...(s.people ? { suggestionPeople: s.people } : {}),
         ...(s.advice ? { advice: true as const } : {}),
-        // A strategist idea (step 256) is Claude's own combination, so it says so.
-        ...(isIdeaKey(s.key) ? { aiWritten: true as const } : {}),
+        ...(byClaude(s.key) ? { aiWritten: true as const } : {}),
         ...(s.cardDetails ? { cardDetails: s.cardDetails } : {}),
       },
       actions: [

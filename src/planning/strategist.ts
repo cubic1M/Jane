@@ -27,9 +27,6 @@ export function ideaId(parts: readonly string[]): string {
   return `${STRATEGIST_CAPABILITY}:${[...parts].sort().join("+")}`;
 }
 
-// Whether a suggestion's key is a strategist idea's: Claude wrote its title and explanation.
-export const isIdeaKey = (key: string) => key.startsWith(`${STRATEGIST_CAPABILITY}:`);
-
 export function vetIdea(
   raw: RawIdea,
   {
