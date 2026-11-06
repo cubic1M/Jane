@@ -146,6 +146,22 @@ const tx = (o: Partial<IncomeTransaction>): IncomeTransaction => ({
 });
 
 describe("other income", () => {
+  // Debugger 11-06: a retiree's QFX read SSA deposits as pension (the categorizer's rule), and the
+  // estimate counted Social Security twice: in full as a pension, then its taxable part again.
+  it("leaves Social Security and IRA withdrawals to their own lines, whatever their category", () => {
+    const pension = { pfcDetailed: "INCOME_RETIREMENT_PENSION" };
+    const income = otherIncomeSoFar(
+      [
+        tx({ ...pension, amountCents: -312_455, description: "CALSTRS PENSION PAYMENT" }),
+        tx({ ...pension, amountCents: -241_800, description: "SSA TREAS 310 XXSOC SEC" }),
+        tx({ ...pension, amountCents: -50_000, description: "VANGUARD IRA DISTRIBUTION" }),
+      ],
+      [],
+      2026,
+    );
+    expect(income.retirementCents).toBe(312_455);
+  });
+
   it("adds freelance, interest, dividends, rent, pensions and unemployment, less business costs", () => {
     const income = otherIncomeSoFar(
       [
