@@ -1,7 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-// @ts-expect-error: a plain JavaScript module, with no types.
 import { isProtectedPath } from "../../.github/scripts/gates/core.mjs";
 
 // Two rules for every workflow, read from the files themselves.
