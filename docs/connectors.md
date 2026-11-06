@@ -81,7 +81,8 @@ a 404 unless `CONNECTORS=1`. In order:
    gives up.
 4. **The move**: `applyPartnerEvent` moves the action on only from a status where that makes sense
    (`partner_pending` to `succeeded` or `failed`; `succeeded` to `reversed`, as money can come back
-   weeks later), audited and counted.
+   weeks later; `succeeded` to `undone` for what isn't money and didn't hold, like a letter
+   returned to sender), audited and counted.
 
 A kill switch doesn't stop webhooks: they record what the partner already did and act on nothing.
 A body over the limit is refused on its `Content-Length` before it is read.

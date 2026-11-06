@@ -66,7 +66,9 @@ export type WebhookEvent = {
   eventId: string;
   // The ActResult.externalRef it is about.
   externalRef: string;
-  outcome: "done" | "failed" | "reversed" | "info";
+  // reversed: money came back after it was done. undone: something that isn't money didn't hold
+  // after it was done (a letter returned, a company saying it didn't cancel).
+  outcome: "done" | "failed" | "reversed" | "undone" | "info";
   note: string;
 };
 

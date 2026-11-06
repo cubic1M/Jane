@@ -78,6 +78,7 @@ const STATUS_WORDS: Record<string, string> = {
   declined: "You said no.",
   refused: "Jane stopped it before it ran.",
   reversed: "Taken back by the other side.",
+  undone: "It didn't hold. Jane will tell you what's next.",
 };
 
 function ActionItem({ action }: { action: ActionRow }) {

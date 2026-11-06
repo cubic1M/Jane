@@ -234,6 +234,15 @@ describe.runIf(url)("connector webhook intake", () => {
     expect(await statusOf(id)).toBe("reversed");
   });
 
+  it("takes undone after done, for what isn't money, and nothing after that", async () => {
+    const { id, ref } = await pendingAction();
+    for (const outcome of ["done", "undone", "done", "reversed"]) {
+      const raw = event(ref, outcome);
+      await post("fake_sandbox", raw, signedHeaders(raw, SECRET));
+    }
+    expect(await statusOf(id)).toBe("undone");
+  });
+
   it("forgets the delivery when handling it fails, so the retry counts", async () => {
     const { id, ref } = await pendingAction();
     const raw = event(ref, "done", `evt_${crypto.randomUUID()}`);

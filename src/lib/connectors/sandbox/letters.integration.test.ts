@@ -86,7 +86,7 @@ describe("PostGrid's signature and events", () => {
       outcome: "info",
     });
     expect(parse({ status: "completed", imbStatus: "returned_to_sender" })).toMatchObject({
-      outcome: "failed",
+      outcome: "undone",
     });
     expect(
       parsePostGridEvent({ type: "postcard.updated", data: { id: "x", status: "ready" } }),
@@ -160,11 +160,10 @@ describe.runIf(url)("the sandbox letters connector end to end", () => {
     const mailed = letterEvent(ref, { status: "completed" });
     expect((await post(mailed, sign(mailed))).status).toBe(200);
     expect(await statusOf(id)).toBe("succeeded");
-    // Returned after it was mailed: PostGrid's late return can't undo a finished action yet (the
-    // roadmap's "undone" outcome, not built), so it stays as it was.
+    // Returned after it was mailed: done, then it didn't hold.
     const returned = letterEvent(ref, { status: "completed", imbStatus: "returned_to_sender" });
     await post(returned, sign(returned));
-    expect(await statusOf(id)).toBe("succeeded");
+    expect(await statusOf(id)).toBe("undone");
   });
 
   it("fails when PostGrid refuses to print it", async () => {

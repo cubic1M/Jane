@@ -52,7 +52,9 @@ export type ConnectorStatus =
   | "cancelled"
   | "declined"
   | "refused"
-  | "reversed";
+  | "reversed"
+  // Done, then it didn't hold (WebhookEvent "undone").
+  | "undone";
 
 export type RefuseReason =
   | Unavailable
@@ -605,6 +607,9 @@ const AFTER_EVENT: Record<
   failed: { from: ["partner_pending"], to: "failed" },
   // Money can come back up to about 60 days after it settled (connector-plan.md).
   reversed: { from: ["partner_pending", "succeeded"], to: "reversed" },
+  // A letter returned to sender, a company replying that it didn't cancel: done, or about to be,
+  // then not. The person is told, and Jane can try another way.
+  undone: { from: ["partner_pending", "succeeded", "handed_off"], to: "undone" },
   info: null,
 };
 

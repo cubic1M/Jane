@@ -65,10 +65,11 @@ export function parsePostGridEvent(body: unknown): WebhookEvent | null {
     letter.trackingNumber ?? "",
   ].join(":");
   const base = { eventId, externalRef: letter.id };
+  // Returned after it was mailed, or before: either way it never arrived.
   if (letter.imbStatus === "returned_to_sender") {
     return {
       ...base,
-      outcome: "failed",
+      outcome: "undone",
       note: "The letter came back: the address didn't take it.",
     };
   }
