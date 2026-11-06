@@ -29,6 +29,7 @@ import {
   type RateAsk,
 } from "@/planning/card-interest";
 import { DAY_MS, isoDay } from "@/lib/dates";
+import { todayOf } from "@/lib/today";
 import { formatRate } from "@/lib/percent";
 import { rollOf } from "@/lib/hash";
 
@@ -116,7 +117,9 @@ export async function loadCardInterest(
   userId: string,
   { client = defaultClient, now = new Date(), book: given }: Options = {},
 ): Promise<CardInterest> {
-  const asOf = isoDay(now);
+  // The person's day: at 7pm in Los Angeles UTC's tomorrow made paying early save less
+  // (night round 11-06, $0.90 at 3pm and $0.86 at 7pm).
+  const asOf = await todayOf(userId, { client, now });
   const empty: CardInterest = {
     available: false,
     asOf,
