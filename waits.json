@@ -22,5 +22,13 @@
   "when": "merged",
   "since": "2026-11-06T21:02:20.533Z",
   "expires": "2026-11-09T21:02:20.533Z"
+ },
+ {
+  "on": 1563,
+  "lane": "lane:connectors",
+  "task": "claude/direct-pay-steps",
+  "when": "merged",
+  "since": "2026-11-06T21:45:48.044Z",
+  "expires": "2026-11-09T21:45:48.044Z"
  }
 ]
