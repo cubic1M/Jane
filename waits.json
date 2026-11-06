@@ -1,1 +1,10 @@
-[]
+[
+ {
+  "on": 1551,
+  "lane": "lane:connectors",
+  "task": "claude/federal-refi-idr",
+  "when": "merged",
+  "since": "2026-11-06T18:02:41.960Z",
+  "expires": "2026-11-09T18:02:41.960Z"
+ }
+]
