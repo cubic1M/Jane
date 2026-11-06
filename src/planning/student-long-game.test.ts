@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { FEDERAL_PROTECTIONS, LONG_GAME, PSLF_PAYMENTS } from "@/config/student-loans";
-import { nextOnCycle, pslfCount, refiGuide, taxOnForgiven, taxPlanDue } from "./student-long-game";
+import {
+  nextOnCycle,
+  onIncomeDrivenPlan,
+  pslfCount,
+  refiGuide,
+  taxOnForgiven,
+  taxPlanDue,
+} from "./student-long-game";
 import { addMonths } from "@/lib/dates";
 
 describe("Public Service Loan Forgiveness, month by month", () => {
@@ -69,6 +76,34 @@ describe("when the tax on forgiven debt goes on the deadlines list", () => {
   });
 });
 
+describe("on an income-driven plan", () => {
+  const plan = (repaymentPlan: string | null, loanStatus: string | null = "repayment") =>
+    onIncomeDrivenPlan({ repaymentPlan, loanStatus, recertifies: false });
+
+  it("by the plan the bank names, including one it has no name for yet (RAP)", () => {
+    for (const name of [
+      "income-based repayment",
+      "income-contingent repayment",
+      "pay as you earn",
+      "revised pay as you earn",
+      "saving on a valuable education",
+      "unknown",
+    ]) {
+      expect(plan(name), name).toBe(true);
+    }
+    for (const name of ["standard", "graduated", "extended standard", "interest only", null]) {
+      expect(plan(name), String(name)).toBe(false);
+    }
+  });
+
+  it("by a pending IDR application, or a recertification date the person gave", () => {
+    expect(plan("standard", "pending idr")).toBe(true);
+    expect(onIncomeDrivenPlan({ repaymentPlan: null, loanStatus: null, recertifies: true })).toBe(
+      true,
+    );
+  });
+});
+
 describe("whether to refinance", () => {
   const offer = { lender: "Maple Student Refi", aprBps: 449, savingCents: 210_000 };
   it("never refinances a federal loan away from PSLF", () => {
@@ -76,6 +111,30 @@ describe("whether to refinance", () => {
     expect(g.verdict).toBe("keep");
     expect(g.lost).toEqual([...FEDERAL_PROTECTIONS]);
     expect(g.text).toContain("Don't refinance a federal loan");
+  });
+  it("never refinances a federal loan off an income-driven plan, whatever the offer", () => {
+    const g = refiGuide({
+      loanType: "federal",
+      publicService: false,
+      incomeDriven: true,
+      currentAprBps: 650,
+      offer,
+    });
+    expect(g.verdict).toBe("keep");
+    expect(g.lost).toEqual([...FEDERAL_PROTECTIONS]);
+    expect(g.text).toContain(
+      "Don't refinance a federal loan while you're on an income-driven plan",
+    );
+    // A private loan has no plan to lose.
+    expect(
+      refiGuide({
+        loanType: "private",
+        publicService: false,
+        incomeDriven: true,
+        currentAprBps: 650,
+        offer,
+      }).verdict,
+    ).toBe("consider");
   });
   it("says what a federal loan loses even when the offer is good", () => {
     const g = refiGuide({ loanType: "federal", publicService: false, currentAprBps: 650, offer });

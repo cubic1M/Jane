@@ -1,6 +1,7 @@
 import {
   FEDERAL_PROTECTIONS,
   FORGIVEN_TAX,
+  INCOME_DRIVEN_PLAN_NAMES,
   LONG_GAME,
   PSLF_PAYMENTS,
 } from "@/config/student-loans";
@@ -89,10 +90,26 @@ export type RefiGuide = {
   text: string;
 };
 
+// On an income-driven plan, by what the bank says (Plaid's plan or status, see
+// INCOME_DRIVEN_PLAN_NAMES) or by a recertification date the person gave.
+export function onIncomeDrivenPlan(input: {
+  repaymentPlan: string | null;
+  loanStatus: string | null;
+  recertifies: boolean;
+}): boolean {
+  return (
+    input.recertifies ||
+    input.loanStatus === "pending idr" ||
+    (input.repaymentPlan !== null && INCOME_DRIVEN_PLAN_NAMES.includes(input.repaymentPlan))
+  );
+}
+
 // Whether refinancing makes sense. `offer` is the best refinance offer for the loan, if any.
 export function refiGuide(input: {
   loanType: "federal" | "private";
   publicService: boolean;
+  // On an income-driven plan (onIncomeDrivenPlan).
+  incomeDriven?: boolean;
   currentAprBps: number;
   offer: { lender: string; aprBps: number; savingCents: number } | null;
 }): RefiGuide {
@@ -120,6 +137,13 @@ export function refiGuide(input: {
       verdict: "keep",
       lost,
       text: "Don't refinance a federal loan while you're counting payments for Public Service Loan Forgiveness: a private lender ends the forgiveness for good, and every payment counted so far is lost.",
+    };
+  }
+  if (input.incomeDriven) {
+    return {
+      verdict: "keep",
+      lost,
+      text: "Don't refinance a federal loan while you're on an income-driven plan: a private lender ends the payments tied to your income and any forgiveness at the end, for good.",
     };
   }
   return {

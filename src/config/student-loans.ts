@@ -123,6 +123,20 @@ export const LONG_GAME_SOURCES = {
   recertify: "https://studentaid.gov/manage-loans/repayment/plans/income-driven/recertify",
 } as const;
 
+// Plaid's names (student repayment_plan.type) for income-driven plans: a federal loan on one is
+// never pointed at a refinance (connectors roadmap round 15, round 14 rule 6). RAP and Tiered
+// Standard have no Plaid name yet and come in as "unknown", which counts too: it could be RAP.
+// So does the status "pending idr".
+export const INCOME_DRIVEN_PLAN_NAMES: readonly string[] = [
+  "income-based repayment",
+  "income-contingent repayment",
+  "income-sensitive repayment",
+  "pay as you earn",
+  "revised pay as you earn",
+  "saving on a valuable education",
+  "unknown",
+];
+
 // What a federal loan has that a private refinance gives up for good.
 export const FEDERAL_PROTECTIONS = [
   "Public Service Loan Forgiveness and income-driven forgiveness",
