@@ -3,5 +3,10 @@
   "task": "eftps-move-detector",
   "lane": "lane:connectors",
   "expires": "2026-11-07T00:12:23.884Z"
+ },
+ {
+  "task": "irs-card-fee-check",
+  "lane": "lane:connectors",
+  "expires": "2026-11-07T00:31:18.331Z"
  }
 ]
