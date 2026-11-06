@@ -817,20 +817,37 @@ export class AnswerError extends Error {}
 
 const AUTO_ANSWER_MARK = "From the account holder's records:";
 
-// Card, account or other long numbers never go out in an answer.
+// Card, account or other long numbers never go out in an answer: the person gives the last 4.
 const LONG_NUMBER = /\d[\d\s-]{10,}\d/;
 const MAX_ANSWER = 1_000;
+
+// A phone number Jane would be passing on: shaped like one ("+1 …", "(555) …", "555-123-4567"), or
+// any number after "call", "text" or "reach me". A shorter number a company asked for, named or
+// not ("Account number 4402918837"), isn't one; anything long is LONG_NUMBER's.
+const A_NUMBER = /\+?\(?\d[\d\s().-]{4,}\d/g;
+const PHONE_WORDS =
+  /\b(?:call|text|reach|ring|phone|cell|mobile|tel|whatsapp|signal|telegram)\b[^.!?]{0,20}$/i;
+const PHONE_SHAPED = /^(?:\+\d.*|.*\(\d{3}\).*|1?[\s.-]?\d{3}[\s.-]\d{3}[\s.-]\d{4})$/;
+
+function hasPhoneNumber(words: string): boolean {
+  for (const match of words.matchAll(A_NUMBER)) {
+    const number = match[0].trim();
+    if (number.replace(/\D/g, "").length < 7) continue;
+    const before = words.slice(Math.max(0, (match.index ?? 0) - 40), match.index ?? 0);
+    if (PHONE_WORDS.test(before) || PHONE_SHAPED.test(number)) return true;
+  }
+  return false;
+}
 // What would send a company's money or contact somewhere else, written into an answer Jane signs:
 // an email address (the account's own is allowed, below), a phone number, a web address, or a way
 // to pay. The answer is also one paragraph, so it can't add a sign-off and a "P.S. from Jane".
 const EMAIL_IN = /[^\s@]+@[^\s@]+\.[a-z]{2,}/i;
-const PHONE_IN = /\+?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/;
 const WEB_IN =
   /\b[a-z0-9-]{2,}\.(?:com|org|net|io|co|us|me|app|info|biz|pay|money|xyz|link|site|online)\b/i;
 const PAY_IN =
   /\b(?:zelle|venmo|cash ?app|paypal|wire|routing|iban|swift|bitcoin|crypto|gift ?cards?|western union|moneygram)\b/i;
 const sendsElsewhere = (words: string) =>
-  PHONE_IN.test(words) ||
+  hasPhoneNumber(words) ||
   PAY_IN.test(words) ||
   WEB_IN.test(words.replace(new RegExp(EMAIL_IN.source, "gi"), ""));
 
@@ -854,17 +871,7 @@ export async function answerCompany(
   const text = answer.trim();
   if (!text) throw new AnswerError("Write your answer first.");
   if (text.length > MAX_ANSWER) throw new AnswerError(`Keep it under ${MAX_ANSWER} characters.`);
-  if (LONG_NUMBER.test(text)) {
-    throw new AnswerError(
-      "Leave out card and account numbers. If they need the last 4 digits, give only those.",
-    );
-  }
   const words = text.replace(/\s+/g, " ");
-  if (sendsElsewhere(words)) {
-    throw new AnswerError(
-      "Jane only passes on what the company asked about: no other addresses, phone numbers, links or payment details. If they need those, contact them yourself.",
-    );
-  }
   const check = checkGuardrails(words, []);
   if (!check.ok && check.issues.some((issue) => NOT_UNDER_JANES_NAME.includes(issue))) {
     throw new AnswerError(
@@ -876,7 +883,19 @@ export async function answerCompany(
   if (!action || !first || !canAgentWork(action) || action.status !== "waiting_on_user") {
     throw new AnswerError("Jane isn't waiting on an answer for this one.");
   }
-  if (EMAIL_IN.test(words.replaceAll(action.user.email, ""))) {
+  // The account's own email may go, and its digits aren't a number Jane would be passing on.
+  const others = words.replaceAll(action.user.email, " ");
+  if (LONG_NUMBER.test(others)) {
+    throw new AnswerError(
+      "Leave out card and account numbers. If they need the last 4 digits, give only those.",
+    );
+  }
+  if (sendsElsewhere(others)) {
+    throw new AnswerError(
+      "Jane only passes on what the company asked about: no other addresses, phone numbers, links or payment details. If they need those, contact them yourself.",
+    );
+  }
+  if (EMAIL_IN.test(others)) {
     throw new AnswerError(
       "Jane only passes on the email on your account. If they need another, contact them yourself.",
     );
