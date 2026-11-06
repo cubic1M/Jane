@@ -16,7 +16,14 @@ import { enqueueJob } from "@/lib/jobs";
 import { consentCovers, currentConsentId } from "./consent";
 import { withGrant } from "./gate";
 import { connectorById, mayMoveRealMoney, whyUnavailable, type Unavailable } from "./registry";
-import type { ActContext, ActionDetails, ActionDraft, Connector, PrefilledStep } from "./types";
+import type {
+  ActContext,
+  ActionDetails,
+  ActionDraft,
+  Connector,
+  PrefilledStep,
+  WebhookEvent,
+} from "./types";
 import { NoCredential, withCredential } from "./vault";
 
 // The one way anything happens through a connector (docs/connectors.md):
@@ -525,6 +532,48 @@ export async function executeAction(
     await track(userId, "connector_action_failed", { connector: connector.id, reason });
     return "failed";
   }
+}
+
+// What a partner's verified webhook says happened to an action (./webhooks.ts). Moves it on only
+// from a status where that makes sense; a late or repeated event changes nothing.
+const AFTER_EVENT: Record<
+  WebhookEvent["outcome"],
+  { from: ConnectorStatus[]; to: ConnectorStatus } | null
+> = {
+  done: { from: ["partner_pending"], to: "succeeded" },
+  failed: { from: ["partner_pending"], to: "failed" },
+  // Money can come back up to about 60 days after it settled (connector-plan.md).
+  reversed: { from: ["partner_pending", "succeeded"], to: "reversed" },
+  info: null,
+};
+
+export async function applyPartnerEvent(
+  userId: string,
+  actionId: string,
+  event: WebhookEvent,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<ConnectorStatus | null> {
+  const move = AFTER_EVENT[event.outcome];
+  let moved: ConnectorStatus | null = null;
+  if (move) {
+    const { count } = await scopedFor(userId, client).connectorActions.updateMany({
+      where: { id: actionId, status: { in: move.from } },
+      data: {
+        status: move.to,
+        note: event.note.slice(0, 500),
+        ...(move.to === "failed" && { reason: "partner_failed" }),
+        finishedAt: now,
+      },
+    });
+    if (count === 1) moved = move.to;
+  }
+  await auditStep(SYSTEM_ACTOR, "connector_action_updated", userId, {
+    action: actionId,
+    outcome: event.outcome,
+    moved: moved ?? "no",
+  });
+  if (moved) await track(userId, `connector_action_${moved}`, { via: "webhook" });
+  return moved;
 }
 
 export type ActionRow = {

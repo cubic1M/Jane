@@ -58,3 +58,29 @@ Every step writes to `audit_log` (`connector_action_*`) and `analytics_events`. 
 `src/config/connectors.ts`: `CONNECTOR_ACTION_CAP_CENTS`, `CONNECTOR_DAILY_ACTIONS`,
 `CONNECTOR_DAILY_CENTS`, `CONNECTOR_PLAN_HOURS`. `/settings/connections` lists the person's
 actions with the steps, Yes and No, and Cancel while it can still be taken back.
+
+## Webhooks
+
+Every connector's webhooks come to `/api/connectors/<id>/webhook` (`src/lib/connectors/webhooks.ts`),
+a 404 unless `CONNECTORS=1`. In order:
+
+1. **The provider's signature**, with its own secret from the env var its connector names
+   (`webhook.signing`): HMAC-SHA256 of `<timestamp>.<body>` in the provider's headers, or Svix's
+   (Resend and others), checked with the same code as the weekly email's webhook. A delivery signed
+   more than `WEBHOOK_TOLERANCE_SECONDS` away from now is refused, so an old one can't be replayed
+   later. Over `WEBHOOK_MAX_BYTES` is refused before anything is read.
+2. **Replay protection**: each event id (or the body's hash, if the provider sends none) is kept in
+   `connector_webhook_events` for `WEBHOOK_EVENT_DAYS`. A repeat is acknowledged and ignored. If
+   handling fails, the id is forgotten, so the provider's retry is handled.
+3. **Per-person routing**: the event names the partner's own id for the action (`externalRef`); the
+   action found by connector and that id says whose it is, and everything after goes through that
+   person's scoped door. An id Jane hasn't stored yet (a fast partner can answer while `act` is
+   still returning) is forgotten and answered 409, so the provider's retry lands once it is; a 200
+   would lose a failed payment for good. An id that's never Jane's is retried until the provider
+   gives up.
+4. **The move**: `applyPartnerEvent` moves the action on only from a status where that makes sense
+   (`partner_pending` to `succeeded` or `failed`; `succeeded` to `reversed`, as money can come back
+   weeks later), audited and counted.
+
+A kill switch doesn't stop webhooks: they record what the partner already did and act on nothing.
+A body over the limit is refused on its `Content-Length` before it is read.

@@ -651,6 +651,19 @@ model ConnectorAction {
   @@map("connector_actions")
 }
 
+// Each connector webhook delivery's event id, kept WEBHOOK_EVENT_DAYS to refuse a replay
+// (src/lib/connectors/webhooks.ts). Ids only: no body, no person.
+model ConnectorWebhookEvent {
+  id          String   @id @default(cuid())
+  connectorId String   @map("connector_id")
+  eventId     String   @map("event_id")
+  receivedAt  DateTime @default(now()) @map("received_at") @db.Timestamptz(3)
+
+  @@unique([connectorId, eventId])
+  @@index([receivedAt])
+  @@map("connector_webhook_events")
+}
+
 // This app's registration with Robinhood's sign-in, one per address it comes back to. Not personal
 // data, and no secret: the registration asks for a public client, which proves itself with PKCE.
 model RobinhoodOauthClient {

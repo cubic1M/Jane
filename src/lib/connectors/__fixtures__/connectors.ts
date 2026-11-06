@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import type { ActContext, ActionDetails, ActionDraft, Connector } from "../types";
 
 // Fake connectors for the framework's own tests: one that pretends to be a real partner (never
@@ -53,3 +54,33 @@ export function fakeConnector(overrides: Partial<Connector> = {}): {
 
 export const fakeSandbox = (overrides: Partial<Connector> = {}) =>
   fakeConnector({ id: "fake_sandbox", name: "Fake Sandbox", sandbox: true, ...overrides });
+
+// A webhook like most partners send: HMAC-SHA256 of "<timestamp>.<body>", hex, in its own headers.
+export const FAKE_WEBHOOK_SECRET_ENV = "FAKE_CONNECTOR_WEBHOOK_SECRET";
+export const fakeWebhook: NonNullable<Connector["webhook"]> = {
+  signing: {
+    kind: "hmac_sha256",
+    secretEnv: FAKE_WEBHOOK_SECRET_ENV,
+    signatureHeader: "x-fake-signature",
+    timestampHeader: "x-fake-timestamp",
+  },
+  parse: (body) => {
+    const event = body as { id?: unknown; ref?: unknown; outcome?: unknown };
+    if (typeof event.ref !== "string") return null;
+    const outcome = ["done", "failed", "reversed", "info"].includes(String(event.outcome))
+      ? (event.outcome as "done" | "failed" | "reversed" | "info")
+      : "info";
+    return {
+      eventId: typeof event.id === "string" ? event.id : "",
+      externalRef: event.ref,
+      outcome,
+      note: `The partner said ${outcome}`,
+    };
+  },
+};
+
+export function signedHeaders(rawBody: string, secret: string, at = new Date()): Headers {
+  const timestamp = String(Math.floor(at.getTime() / 1000));
+  const signature = createHmac("sha256", secret).update(`${timestamp}.${rawBody}`).digest("hex");
+  return new Headers({ "x-fake-timestamp": timestamp, "x-fake-signature": signature });
+}
