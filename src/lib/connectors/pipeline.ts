@@ -16,13 +16,14 @@ import { enqueueJob } from "@/lib/jobs";
 import { consentCovers, currentConsentId } from "./consent";
 import { withGrant } from "./gate";
 import { connectorById, mayMoveRealMoney, whyUnavailable, type Unavailable } from "./registry";
-import type {
-  ActContext,
-  ActionDetails,
-  ActionDraft,
-  Connector,
-  PrefilledStep,
-  WebhookEvent,
+import {
+  BadRequest,
+  type ActContext,
+  type ActionDetails,
+  type ActionDraft,
+  type Connector,
+  type PrefilledStep,
+  type WebhookEvent,
 } from "./types";
 import { NoCredential, withCredential } from "./vault";
 
@@ -55,6 +56,7 @@ export type RefuseReason =
   | "unknown"
   | "cant_do"
   | "no_consent"
+  | "bad_request"
   | "bad_amount"
   | "over_cap"
   | "daily_count"
@@ -75,6 +77,7 @@ const REFUSED_WORDS: Record<RefuseReason, string> = {
   unknown: "Jane doesn't know that connection.",
   cant_do: "That connection can't do that.",
   no_consent: "You haven't allowed that connection to do this.",
+  bad_request: "Some of that is missing or doesn't fit together.",
   bad_amount: "That amount doesn't look right.",
   over_cap: "That's more than Jane can do in one go.",
   daily_count: "That's more actions than Jane does in one day.",
@@ -204,7 +207,13 @@ export async function planAction(
   if (!(await consentCovers(userId, connector, { client }))) {
     throw new ConnectorRefused("no_consent");
   }
-  const draft = connector.prefill(request);
+  let draft: ActionDraft;
+  try {
+    draft = connector.prefill(request);
+  } catch (error) {
+    if (error instanceof BadRequest) throw new ConnectorRefused("bad_request");
+    throw error;
+  }
   checkAmount(draft.amountCents);
   const fingerprint = fingerprintOf(connector.id, draft);
   const db = scopedFor(userId, client);

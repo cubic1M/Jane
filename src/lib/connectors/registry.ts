@@ -8,6 +8,7 @@ import { killed } from "@/config/kill-switches";
 import { REAL_MONEY_MOVEMENT } from "@/config/money-movement";
 import { isTrialUser } from "@/lib/trial-ids";
 import { gated } from "./gate";
+import { SANDBOX_CONNECTORS } from "./sandbox/adapters";
 import type { Connector } from "./types";
 
 // Every connector Jane knows, and whether one may be used for a person right now. Adapters register
@@ -41,8 +42,9 @@ export function buildRegistry(connectors: readonly Connector[]): ReadonlyMap<str
   return registry;
 }
 
-// The registered connectors. Sandbox adapters arrive with ./sandbox/; real partners after a contract.
-const CONNECTORS: readonly Connector[] = [];
+// The registered connectors: the sandbox adapters (./sandbox/), and real partners once each has a
+// contract, counsel's answer and its switch in REAL_CONNECTORS.
+const CONNECTORS: readonly Connector[] = [...SANDBOX_CONNECTORS];
 
 let registry: ReadonlyMap<string, Connector> = buildRegistry(CONNECTORS);
 
