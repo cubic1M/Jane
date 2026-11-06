@@ -1,1 +1,7 @@
-[]
+[
+ {
+  "task": "retirement-all-clear",
+  "lane": "lane:chat-refusals",
+  "expires": "2026-11-06T10:37:06.461Z"
+ }
+]
