@@ -77,6 +77,9 @@ export const BUSINESS_SALES_MIN_DEPOSITS = 6;
 // Money in that reads as income but isn't a kind the estimate counts (cash deposits, regular payers
 // with no pay word). From this much in a year, the estimate says it left it out.
 export const LEFT_OUT_INCOME_MIN_CENTS = 100_000;
+// Checks paid in at the bank or by phone: often a client's payment, which Jane can't tell from a
+// friend's (debugger 11-06: a photographer's $11,366 of client checks went unmentioned).
+export const CHECK_DEPOSIT = /\b(?:MOBILE|REMOTE|E-?CHECK|CHECK) DEP(?:OSIT)?\b/i;
 export const BUSINESS_SALES_CATEGORIES = [
   "INCOME_OTHER",
   "INCOME_OTHER_INCOME",
