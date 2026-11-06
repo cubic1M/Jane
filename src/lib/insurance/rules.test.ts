@@ -255,6 +255,12 @@ describe("coverage gaps", () => {
     const gaps = coverageGaps(household({}, { ...NO_SIGNS, mortgage: true, cars: 1 }), []);
     expect(gaps.map((g) => g.key)).toEqual(["home", "auto"]);
     expect(gaps[0].why).toContain("escrow");
+    // A mortgage's lender requires home cover and often pays it from escrow: likely had, not missing.
+    expect(gaps[0].likelyElsewhere).toBe(true);
+    // Owning by the person's word (maybe outright): nothing says it's paid.
+    const [told] = coverageGaps(household({ housing: "own" }), []);
+    expect(told).toMatchObject({ key: "home" });
+    expect(told.likelyElsewhere).toBeUndefined();
   });
 
   it("finds dependants with no life cover", () => {

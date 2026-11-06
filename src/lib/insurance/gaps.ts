@@ -34,6 +34,9 @@ export type Gap = {
   why: string;
   // A policy seen in the payments that would close it, once the person confirms it.
   found?: { policyId: string; carrier: string };
+  // Likely had another way, so not on file rather than missing: home cover on a mortgage seen in
+  // the accounts, which the lender requires and often pays from escrow.
+  likelyElsewhere?: true;
 };
 
 const has = (policies: Policy[], ...kinds: PolicyKind[]) =>
@@ -76,6 +79,7 @@ export function coverageGaps(
       policyId: null,
       title: "No home insurance on file",
       why: `${from(housing, "You told me you own your home", "You have a mortgage or a home on your profile")}, and there's no home policy on it. If your mortgage pays it from escrow, add it here so I can keep an eye on it too.`,
+      ...(housing.from === "accounts" && { likelyElsewhere: true as const }),
     });
   }
   if ((vehicles.value ?? 0) > 0 && !has(everyone, "auto")) {
