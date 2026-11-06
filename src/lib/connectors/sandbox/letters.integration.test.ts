@@ -114,6 +114,8 @@ describe.runIf(url)("the sandbox letters connector end to end", () => {
   async function sent() {
     const userId = await samplePerson(db);
     people.push(userId);
+    // Letters are signed with the person's own name, from their profile.
+    await system().user.update({ where: { id: userId }, data: { name: "Alex Sample" } });
     await grantConsent(userId, "sandbox_letters", ["cancel_subscriptions", "contact_companies"], {
       now: T0,
     });

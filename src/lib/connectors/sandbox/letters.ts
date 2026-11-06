@@ -1,4 +1,8 @@
-import type { Connector, WebhookEvent } from "../types";
+import type { PrismaClient } from "@/generated/prisma/client";
+import { holderName } from "@/lib/holder-name";
+import { scopedFor } from "@/lib/db-scoped";
+import { knownMerchant } from "../cancel/route";
+import { BadRequest, type ActionDetails, type Connector, type WebhookEvent } from "../types";
 import { SIMULATED, sandboxRef, text } from "./shared";
 
 // Letters to a company (a cancellation by written notice, a stop-payment notice), shaped like
@@ -86,6 +90,40 @@ export function parsePostGridEvent(body: unknown): WebhookEvent | null {
   return { ...base, outcome: "info", note: `On its way (${letter.status}).${tracking}` };
 }
 
+// Who a letter is from and to comes from Jane's own records, never the request (security review,
+// round 46): signed with the person's own name, and sent only to a company Jane knows takes a
+// cancellation by letter, at the address that company documents. A caller, a chat or a message
+// can't make Jane mail a letter in someone else's name, or to an address of its choosing.
+async function senderName(userId: string, client: PrismaClient): Promise<string> {
+  const me = await scopedFor(userId, client).me.findUnique({
+    where: { id: userId },
+    select: { name: true },
+  });
+  const name = holderName(me?.name);
+  if (!name) throw new BadRequest("needs the person's name on their profile");
+  return name;
+}
+
+// The company's own documented mailing address for a cancellation by letter (src/config/
+// cancel-methods.ts: "mail: written notice to <merchant>, <address> (...)").
+export function documentedLetterAddress(
+  company: string,
+): { merchant: string; address: string } | null {
+  const method = knownMerchant(company);
+  if (!method || method.channel !== "letter") return null;
+  for (const step of method.steps) {
+    const match = /^mail: written notice to [^,]+, (.+?)(?: \(|$)/.exec(step);
+    if (match?.[1]) return { merchant: method.merchant, address: match[1].trim() };
+  }
+  return null;
+}
+
+function recipient(details: ActionDetails): { merchant: string; address: string } {
+  const to = documentedLetterAddress(typeof details.company === "string" ? details.company : "");
+  if (!to) throw new BadRequest("not a company Jane knows takes a letter");
+  return to;
+}
+
 export const sandboxLetters: Connector = {
   id: "sandbox_letters",
   name: "Letters to a company (sandbox)",
@@ -94,6 +132,23 @@ export const sandboxLetters: Connector = {
   scopes: ["cancel_subscriptions", "contact_companies"],
   sandbox: true,
   movesMoney: false,
+  prepare: async (request, { userId, client }) => {
+    const to = recipient(request);
+    return {
+      ...request,
+      company: to.merchant,
+      toAddress: to.address,
+      fromName: await senderName(userId, client),
+    };
+  },
+  // Again at the yes and before it's queued: still that company's address, still their name.
+  guard: async (details, { userId, client }) => {
+    const to = recipient(details);
+    if (details.toAddress !== to.address) throw new BadRequest("not the company's address");
+    if (details.fromName !== (await senderName(userId, client))) {
+      throw new BadRequest("not the person's own name");
+    }
+  },
   prefill: (details) => {
     const company = text(details, "company");
     const address = text(details, "toAddress");

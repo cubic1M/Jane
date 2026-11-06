@@ -159,6 +159,8 @@ describe.runIf(url)("the sandbox adapters end to end", () => {
     it(`${id}: allow, plan, yes, run, all simulated`, async () => {
       const userId = await samplePerson(db);
       people.push(userId);
+      // A letter is signed with the person's own name (./letters.ts).
+      await system().user.update({ where: { id: userId }, data: { name: "Alex Sample" } });
       session.userId = userId;
       const offered = (await connectionsView(userId)).available.find((c) => c.id === id);
       expect(offered).toBeDefined();
