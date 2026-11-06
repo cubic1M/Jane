@@ -28,6 +28,8 @@ export const RENT_TRANSFERS_EVERYDAY: readonly Rule[] = [
       "M1 FINANCE",
       "PUBLIC.COM",
       "COINBASE",
+      // Cash App's own bitcoin purchase (debugger 11-06: "Is Bitcoin Buy a subscription to cancel?").
+      "BITCOIN BUY",
       "WEBULL",
       "SOFI INVEST",
       "IRA CONTRIB",

@@ -363,6 +363,7 @@ export const BANK_LOANS_INCOME: readonly Rule[] = [
     category: "TRANSFER_IN_INVESTMENT_AND_RETIREMENT_FUNDS",
     keywords: [
       "COINBASE",
+      "BITCOIN SELL",
       "ROBINHOOD",
       "MONEYLINE",
       "MONEYLINK",
