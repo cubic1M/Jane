@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { anthropic, finishedText, llmEnabled, llmModel } from "@/lib/anthropic";
 import { UNTRUSTED_TEXT_RULE } from "@/lib/untrusted-text";
 import { log } from "@/lib/log";
+import { looksLikePersonPayee } from "@/lib/person-payees";
 
 // Answers one question for merchants whose category can't: is a recurring charge here a
 // subscription? Claude sees cleaned merchant names only: no amounts, dates, account
@@ -68,6 +69,8 @@ export async function checkSubscriptions(
   { claude = anthropic }: { claude?: typeof anthropic } = {},
 ): Promise<Map<string, boolean>> {
   const answers = new Map<string, boolean>();
+  // Money to a person isn't a subscription, and their name never goes to Claude.
+  merchants = merchants.filter((merchant) => !looksLikePersonPayee(merchant));
   if (!llmEnabled() || merchants.length === 0) return answers;
 
   for (let i = 0; i < merchants.length; i += BATCH_SIZE) {
