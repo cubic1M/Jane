@@ -514,7 +514,13 @@ function newsFlags(input: ScanInput, total: number, blocked: ReadonlySet<string>
       figures: [
         { label: "Headline", value: h.title },
         ...(h.summary
-          ? [{ label: h.summaryBy === "claude" ? "Summary" : "Summary (rules)", value: h.summary }]
+          ? [
+              {
+                // Claude's sentence says AI wrote it (AI_WRITTEN_LABEL, src/config/advice.ts).
+                label: h.summaryBy === "claude" ? "Summary (written by AI)" : "Summary (rules)",
+                value: h.summary,
+              },
+            ]
           : []),
         { label: "Source", value: `${h.source}, ${h.date}` },
         { label: "Position", value: formatCents(own + amount) },
