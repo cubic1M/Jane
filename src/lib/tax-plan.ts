@@ -3,6 +3,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
+import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { addDeadline } from "@/lib/deadlines";
 import { loadInvestmentTaxes } from "@/lib/investment-taxes";
@@ -64,7 +65,9 @@ export async function loadTaxPlan(
   const top = investments?.harvest[0];
   const moves = taxPlan({
     year,
-    today: iso(now),
+    // The person's day: at 7pm on Dec 31 in Los Angeles UTC's Jan 1 dropped every year-end move
+    // (night round 11-06).
+    today: await todayOf(userId, { client, now }),
     advice,
     savings: savings.savings,
     estimated: self.active && self.federal.needed ? self.federal.payments : [],

@@ -58,7 +58,7 @@ export async function loadYearPlan(
   const input = given ?? (await loadDetectionInput(userId, { client, now }));
   if (input.accounts.length === 0) return null;
   const db = scopedFor(userId, client);
-  const currentMonth = monthOf(now);
+  const currentMonth = monthOf(input.asOf);
 
   // The twelve months in force: the stored plan whose window holds this month, or a new one.
   const stored = await db.yearPlans.findMany({ orderBy: { startMonth: "desc" }, take: 1 });

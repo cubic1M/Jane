@@ -15,6 +15,7 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { brokeragePartner } from "@/lib/brokerage/partner";
 import { db as defaultClient } from "@/lib/db";
+import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { scheduleTransfer, TransferError } from "@/lib/money-movement/transfers";
 import { syncDemoInvestments } from "@/lib/plaid/sync";
@@ -51,7 +52,7 @@ export async function loadCash(
   }: Options & { investments?: Investments } = {},
 ): Promise<CashView> {
   const db = scopedFor(userId, client);
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await todayOf(userId, { client, now });
   const [advice, accounts, investments, monthlySpendingCents, goals, moved] = await Promise.all([
     adviceMode(userId, { client }),
     db.accounts.findMany({

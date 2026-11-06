@@ -12,6 +12,7 @@ import { budgetSummary } from "@/insights/budgets";
 import { loadInsightTransactions } from "@/insights/load";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
+import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { mayAct, recordAct } from "@/lib/sector-autopilot";
 import { listGoals } from "@/lib/goals";
@@ -46,7 +47,7 @@ export async function currentTuneUp(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<TuneUpView | null> {
-  const asOf = isoDay(now);
+  const asOf = await todayOf(userId, { client, now });
   const month = asOf.slice(0, 7);
   const db = scopedFor(userId, client);
   const saved = await db.budgetTuneUps.findFirst({ where: { month } });
@@ -153,7 +154,7 @@ export async function pendingGoalTransfers(
     where: { id: goal.id },
     select: { createdAt: true },
   });
-  const since = addDays(isoDay(now), -GOAL_TRANSFER_DAYS);
+  const since = addDays(await todayOf(userId, { client, now }), -GOAL_TRANSFER_DAYS);
   const from = created && isoDay(created.createdAt) > since ? isoDay(created.createdAt) : since;
   const [transfers, seen] = await Promise.all([
     db.transactions.findMany({

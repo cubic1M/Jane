@@ -15,6 +15,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
+import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
 import { currentAge } from "@/planning/investor-profile";
@@ -95,7 +96,7 @@ export async function loadRetirementIncome(
   { client = defaultClient, now = new Date(), investments: loaded }: Options = {},
 ): Promise<RetirementIncomeView> {
   const db = scopedFor(userId, client);
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await todayOf(userId, { client, now });
   const [advice, answers, plan, saved, investments, estimate, taxes, transactions] =
     await Promise.all([
       adviceMode(userId, { client }),

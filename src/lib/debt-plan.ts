@@ -9,6 +9,7 @@ import type { DebtBook } from "@/insights/debts";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
+import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { debtsOr, loadDebts } from "@/lib/debts";
 import type { Strategy } from "@/planning/debt";
@@ -122,7 +123,7 @@ export async function loadPayoff(
     advice,
     book,
     summary,
-    debtFreeMonth: debtFreeOf(summary, strategy, isoDay(now)),
+    debtFreeMonth: debtFreeOf(summary, strategy, await todayOf(userId, { client, now })),
     stored,
   };
 }

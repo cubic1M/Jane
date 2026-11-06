@@ -16,7 +16,6 @@ import {
   type DmpSketch,
   type TroubleReason,
 } from "@/planning/debt-trouble";
-import { isoDay } from "@/lib/dates";
 
 // When debt is too much (spec step 229), for one person: what their debt payments are as a
 // share of their income, what to ask each lender, a sketch of a debt management plan from
@@ -68,7 +67,9 @@ export async function loadDebtTrouble(
   }
   const input = givenInput ?? (await loadDetectionInput(userId, { client, now }));
   // Full months only: the ones before this one.
-  const lastFull = addDays(`${isoDay(now).slice(0, 7)}-01`, -1);
+  // The person's month, as the detection input's: on Oct 31 at 8pm in Los Angeles UTC's November
+  // made October a full month (night round 11-06).
+  const lastFull = addDays(`${input.asOf.slice(0, 7)}-01`, -1);
   const months = spendingInsights(
     input.transactions.map((t) => ({ ...t, pending: false })),
     { asOf: lastFull, monthCount: TROUBLE_INCOME_MONTHS },
@@ -100,7 +101,7 @@ export async function loadDebtTrouble(
     moneyLeftCents: moneyLeftOver(
       input.transactions,
       input.accounts.filter((a) => a.type === "depository").map((a) => a.id),
-      addDays(isoDay(now), -TROUBLE_MONEY_LEFT_DAYS),
+      addDays(input.asOf, -TROUBLE_MONEY_LEFT_DAYS),
     ),
   });
   return {
