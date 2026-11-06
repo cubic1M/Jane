@@ -112,6 +112,7 @@ describe("the sandbox adapters' definitions", () => {
       "manual_open_savings",
       "credit_upload",
       "my_aid_upload",
+      "irs_transcript_upload",
     ]);
   });
 
