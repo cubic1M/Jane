@@ -337,13 +337,34 @@ const GUARANTEE = [
 // about it. Jane isn't a bank and holds nobody's money, so nothing is insured "with Jane"; and a
 // Treasury, a money market fund, a stock, a bond or crypto is never FDIC insured. "Not FDIC
 // insured" says so plainly, and stays allowed.
-const NOT_INSURED =
-  /\b(?:not|never|isn(?:'|’)?t|aren(?:'|’)?t|no)\s+(?:\w+\s+)?(?:FDIC[- ]insured|insured by the FDIC|FDIC insurance)\b/gi;
+// Every way of saying it: "FDIC insured", "-backed", "protected by the FDIC", "carry FDIC insurance".
+const FDIC_SAID =
+  "(?:FDIC[- ](?:insured|backed|protected|covered)|(?:insured|protected|backed|covered) by (?:the )?FDIC|FDIC (?:insurance|coverage|protection))";
+// "Not FDIC insured" and its kin are the truth, said plainly; "no less FDIC insured" isn't.
+const NOT_INSURED = new RegExp(
+  `\\b(?:not|never|isn(?:'|’)?t|aren(?:'|’)?t|no)\\s+(?:(?!less\\b|more\\b)\\w+\\s+)?${FDIC_SAID}`,
+  "gi",
+);
+const MONEY = "(?:money|cash|savings|deposits?|funds|balances?)";
+const NEVER_INSURED =
+  "(?:treasur(?:y|ies)|t-?bills?|money[- ]market funds?|stocks?|shares|bonds?|ETFs?|index funds?|crypto\\w*|bitcoin)";
+// Until a bank word turns up, so "from a money market fund to savings with FDIC insurance" is fine.
+const NO_BANK_WORD = "(?:(?!savings|deposit|bank|checking|\\bCDs?\\b)[^.!?]){0,40}";
 const DEPOSIT_INSURANCE = [
-  /\bJane\b[^.!?]{0,30}\b(?:is|are)\s+(?:an?\s+)?(?:FDIC[- ]insured|insured by the FDIC|(?:FDIC[- ]insured\s+)?bank)\b/i,
-  /\b(?:in|with|at|through|inside)\s+Jane\b[^.!?]{0,60}\b(?:FDIC[- ]insured|insured|FDIC insurance)\b/i,
-  /\b(?:FDIC[- ]insured|insured by the FDIC)\b[^.!?]{0,40}\b(?:in|with|at|through)\s+Jane\b/i,
-  /\b(?:treasur(?:y|ies)|t-?bills?|money[- ]market funds?|stocks?|shares|bonds?|ETFs?|index funds?|crypto\w*|bitcoin)\b[^.!?]{0,40}\b(?:are|is)\s+(?:also\s+)?(?:FDIC[- ]insured|insured by the FDIC)\b/i,
+  // Jane itself (or "Jane's account") said to be a bank or insured, not a clause that mentions it.
+  new RegExp(
+    `\\bJane(?:['’]s(?:\\s+\\w+){1,2})?\\s+(?:is|are)\\s+(?:an?\\s+)?(?:${FDIC_SAID}|(?:FDIC[- ]insured\\s+)?bank\\b)`,
+    "i",
+  ),
+  // Money said to be with Jane, then insured: "your savings in Jane are insured".
+  new RegExp(
+    `\\b${MONEY}\\s+(?:\\w+\\s+){0,3}?(?:in|with|at|inside|through)\\s+Jane\\b[^.!?]{0,60}(?:${FDIC_SAID}|\\b(?:insured|protected)\\b)`,
+    "i",
+  ),
+  new RegExp(`\\b(?:with|through|inside)\\s+Jane\\b[^.!?]{0,60}${FDIC_SAID}`, "i"),
+  new RegExp(`${FDIC_SAID}[^.!?]{0,40}\\b(?:in|with|at|through)\\s+Jane\\b`, "i"),
+  // An investment is never FDIC insured, however it's put.
+  new RegExp(`\\b${NEVER_INSURED}\\b${NO_BANK_WORD}${FDIC_SAID}`, "i"),
 ];
 export const misstatesDepositInsurance = (text: string): boolean => {
   const said = text.replace(NOT_INSURED, " ");
