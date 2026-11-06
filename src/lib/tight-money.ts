@@ -16,6 +16,7 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { todayOf } from "@/lib/today";
 import { debtsOr } from "@/lib/debts";
 import {
   firstShortfall,
@@ -98,7 +99,8 @@ export async function loadTightMoney(
   userId: string,
   { client = defaultClient, now = new Date(), input: given, book: givenBook }: Options = {},
 ): Promise<TightMoney> {
-  const asOf = isoDay(now);
+  // The person's day, as the detection input's (night round 11-06, 3pm against 7pm).
+  const asOf = await todayOf(userId, { client, now });
   if (!(await adviceMode(userId, { client }))) return empty(asOf);
   const db = scopedFor(userId, client);
   const [book, input, rows, lateFees] = await Promise.all([
@@ -107,7 +109,9 @@ export async function loadTightMoney(
     db.tightRequests.findMany({ orderBy: { sentAt: "desc" } }),
     db.transactions.findMany({
       where: {
-        date: { gte: new Date(now.getTime() - LATE_FEE_LOOKBACK_DAYS * DAY_MS) },
+        // Whole days back from the person's day: a fee charged on a date isn't out of the window
+        // at 7pm because UTC's clock has passed its midnight.
+        date: { gte: new Date(Date.parse(`${asOf}T00:00:00Z`) - LATE_FEE_LOOKBACK_DAYS * DAY_MS) },
         amountCents: { gt: 0 },
         pfcDetailed: "BANK_FEES_LATE_FEES",
       },

@@ -9,6 +9,7 @@ import type { CreditCardPartner, CardProduct } from "@/lib/credit-cards/partner"
 import { creditBandFor } from "@/lib/credit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { todayOf } from "@/lib/today";
 import { debtsOr } from "@/lib/debts";
 import { autopilotFor } from "@/lib/sector-autopilot";
 import {
@@ -101,7 +102,8 @@ export async function loadCreditCards(
   userId: string,
   { client = defaultClient, now = new Date(), book: given }: Options & { book?: DebtBook } = {},
 ): Promise<CreditCards> {
-  const asOf = isoDay(now);
+  // The person's day, as the detection input's (night round 11-06, 3pm against 7pm).
+  const asOf = await todayOf(userId, { client, now });
   const found = await creditCardPartnerFor(userId, { client });
   if (!found) return empty(asOf);
   const db = scopedFor(userId, client);
