@@ -44,6 +44,8 @@ export type ConnectorStatus =
   | "approved"
   | "running"
   | "partner_pending"
+  // The last step is the person's: the steps are theirs to follow (ActResult "handed_off").
+  | "handed_off"
   | "succeeded"
   | "failed"
   | "cancelled"
@@ -512,7 +514,12 @@ export async function executeAction(
     const result = await withGrant({ connectorId: connector.id, actionId, userId }, () =>
       act(draft, contextFor(userId, connector.id, actionId, now)),
     );
-    const status: ConnectorStatus = result.state === "done" ? "succeeded" : "partner_pending";
+    const status: ConnectorStatus =
+      result.state === "done"
+        ? "succeeded"
+        : result.state === "handed_off"
+          ? "handed_off"
+          : "partner_pending";
     await db.connectorActions.updateMany({
       where: { id: actionId, status: "running" },
       data: {

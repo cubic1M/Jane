@@ -38,8 +38,9 @@ export type ActContext = {
 export type ActResult = {
   // The partner's id for what it did, for its webhooks and a cancel.
   externalRef: string;
-  // done: finished. pending: the partner will say how it went (a webhook).
-  state: "done" | "pending";
+  // done: finished. pending: the partner will say how it went (a webhook). handed_off: the last step
+  // is the person's (a guided cancel, a partner's own screen); the note says what to do.
+  state: "done" | "pending" | "handed_off";
   // Until when the partner can still take it back, if it can.
   cancelUntil: Date | null;
   // What came back, in the person's words, without secrets.

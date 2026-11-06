@@ -1,3 +1,4 @@
+import { cancelRoute, type CancelRoute } from "../cancel/route";
 import { BadRequest, type Connector } from "../types";
 import { SIMULATED, cancelUntil, cents, dollars, sandboxRef, text } from "./shared";
 
@@ -78,8 +79,17 @@ const ownTransfer: Connector = {
   cancel: async () => true,
 };
 
-// Cancelling a subscription (Jane's email agent first, then a partner like Pinwheel). Moves no
-// money: the amount is 0, and what it saves goes in the steps.
+// Cancelling a subscription, by the route the merchant allows (../cancel/route.ts): the steps for
+// the person first, the app store's when it bills the charge, an email only where the merchant
+// documents one, a letter where written notice is the way. Moves no money: the amount is 0, and what
+// it saves goes in the steps.
+const HOW: Record<CancelRoute["channel"], string> = {
+  app_store: "In the app store that bills it: only it can cancel this",
+  guided: "You, with these steps",
+  email: "Jane emails them, the way they accept",
+  letter: "Jane sends a letter, the way they ask for",
+};
+
 const subscriptionCancel: Connector = {
   id: "sandbox_subscription_cancel",
   name: "Cancel a subscription (sandbox)",
@@ -91,23 +101,49 @@ const subscriptionCancel: Connector = {
   prefill: (details) => {
     const merchant = text(details, "merchant");
     const monthly = cents(details, "monthlyCents");
+    const descriptor = typeof details.descriptor === "string" ? details.descriptor : null;
+    const route = cancelRoute({ merchant, descriptor });
     return {
       kind: "cancel_subscription",
       amountCents: 0,
-      summary: `Cancel ${merchant}`,
+      summary: `Cancel ${route.merchant}`,
       steps: [
-        { label: "Cancel", value: merchant },
+        { label: "Cancel", value: route.merchant },
         { label: "Saves", value: `${dollars(monthly)} a month` },
+        { label: "How", value: HOW[route.channel] },
+        ...(route.email ? [{ label: "Email to", value: route.email }] : []),
+        ...route.steps,
       ],
-      details: { merchant, monthlyCents: monthly },
+      details: {
+        merchant: route.merchant,
+        monthlyCents: monthly,
+        descriptor,
+        channel: route.channel,
+        email: route.email,
+      },
     };
   },
-  act: async (draft, context) => ({
-    externalRef: sandboxRef("sbx_cancel", context.idempotencyKey),
-    state: "done",
-    cancelUntil: null,
-    note: `${SIMULATED} Cancellation of ${String(draft.details.merchant)} confirmed.`,
-  }),
+  act: async (draft, context) => {
+    const ref = sandboxRef("sbx_cancel", context.idempotencyKey);
+    const merchant = String(draft.details.merchant);
+    const channel = draft.details.channel;
+    if (channel === "email" || channel === "letter") {
+      const sent = channel === "email" ? `An email to ${String(draft.details.email)}` : "A letter";
+      return {
+        externalRef: ref,
+        state: "done",
+        cancelUntil: null,
+        note: `${SIMULATED} ${sent} asking ${merchant} to cancel.`,
+      };
+    }
+    // Guided and app-store routes: nothing for Jane to send; the steps are the person's.
+    return {
+      externalRef: ref,
+      state: "handed_off",
+      cancelUntil: null,
+      note: `${SIMULATED} Your steps to cancel ${merchant} are ready.`,
+    };
+  },
 };
 
 // Asking for an insurance quote in the person's name (Coverage Cat or Canopy later). A quote, never
