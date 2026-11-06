@@ -1,3 +1,4 @@
+import { READ_ONLY_INVESTMENTS } from "@/config/read-only-beta";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { loadInvestments } from "@/lib/investments/holdings";
 import type { Reply } from "../replies";
@@ -219,6 +220,14 @@ export async function answerInvestments(
     case "returns":
       return returnsReply(await loadReturns(userId, { client, now }));
     case "autopilot":
+      // Only demo advice may hear what Jane would change or trade; a real account hears what it does.
+      if (!(await adviceMode(userId, { client }))) {
+        return {
+          body: READ_ONLY_INVESTMENTS.lines.join(" "),
+          actions: [{ id: "open", label: "See investments", kind: "link", href: "/investments" }],
+          refs: {},
+        };
+      }
       return autopilotReply(
         await autopilotOf(userId, { client }),
         await autopilotFor(userId, "investing", { client, now }),

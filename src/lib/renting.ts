@@ -1,3 +1,4 @@
+import { onSampleDataOnly } from "@/lib/concierge-mode";
 import {
   DEPOSIT_STATES,
   DEPOSIT_WARN_DAYS,
@@ -121,6 +122,11 @@ export async function setRentReporting(
   on: boolean,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<void> {
+  // Nothing reports rent yet (the partner is a stand-in): only sample data may hear that it's being
+  // reported, whatever concierge mode is. Turning it off is always allowed.
+  if (on && !(await onSampleDataOnly(userId, { client }))) {
+    throw new RentingError("Rent reporting isn't available yet.");
+  }
   if (on) {
     await scopedFor(userId, client).rentReporting.upsert({
       where: { userId },

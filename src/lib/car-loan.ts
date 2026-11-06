@@ -10,7 +10,7 @@ import {
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { Debt, DebtBook } from "@/insights/debts";
 import { adviceMode } from "@/lib/advice-mode";
-import { conciergeMode } from "@/lib/concierge-mode";
+import { conciergeMode, onSampleDataOnly } from "@/lib/concierge-mode";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { creditBandFor } from "@/lib/credit";
@@ -358,8 +358,9 @@ export async function requestCancellation(
   if (!row || row.status !== "confirmed") {
     throw new CarLoanError("That add-on isn't waiting on a cancellation.");
   }
-  // Read-only mode: nobody sends anything for a real account.
-  if (by === "team" && !(await conciergeMode(userId, { client }))) {
+  // Nothing takes the team's cancellations yet (no queue entry is made), so only sample data may be
+  // told the team will send it, whatever concierge mode is.
+  if (by === "team" && !(await onSampleDataOnly(userId, { client }))) {
     throw new CarLoanError("Jane can't send it for you. Copy the letter and send it yourself.");
   }
   await db.carAddons.updateMany({ where: { id: addonId }, data: { status: by } });
