@@ -27,11 +27,13 @@ concurrency:
   group: ci-loop
   cancel-in-progress: false
 
+# GitHub's own machines, whatever CI_RUNNER says: these jobs hold secrets or a write token, and a
+# self-hosted runner keeps what a branch's code leaves on it for the next job (docs/ci.md).
 jobs:
   reconcile:
     name: Reconcile
     if: github.event_name != 'pull_request_target' || github.event.pull_request.merged == true
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7

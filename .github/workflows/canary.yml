@@ -13,10 +13,12 @@ on:
 permissions:
   contents: read
 
+# GitHub's own machines, whatever CI_RUNNER says: these jobs hold secrets or a write token, and a
+# self-hosted runner keeps what a branch's code leaves on it for the next job (docs/ci.md).
 jobs:
   run:
     if: vars.OPS_CANARY == '1'
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: ops-canary
     outputs:
@@ -40,7 +42,7 @@ jobs:
 
   record:
     needs: run
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       contents: write

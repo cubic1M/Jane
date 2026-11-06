@@ -85,6 +85,10 @@ const PROTECTED_PATHS = [
   /(^|\/)\.mcp\.json$/,
   /^\.github\/workflows$/,
   /^\.github\/workflows\/(ci|gates|merge-train|rerun-flaky)\.ya?ml$/,
+  // Every workflow holding a secret beyond the run's own token, or a token that writes to the repo:
+  // a change merged there runs with it on the next run of main, so it's a founder's to approve
+  // (src/gates/workflow-trust.test.ts keeps this list complete).
+  /^\.github\/workflows\/(canary|chat-eval|chat-quality|ci-finished|deploy|flake-list|holdouts|incident-reader|numbers|probe|strategy-research|watch)\.ya?ml$/,
   /^\.github\/scripts(\/|$)/,
   /^src\/config\/advice\.ts$/,
   /^src\/accuracy\/accuracy\.test\.ts$/,

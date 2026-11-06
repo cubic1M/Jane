@@ -36,11 +36,13 @@ concurrency:
   group: strategy-research-${{ github.ref }}
   cancel-in-progress: false
 
+# GitHub's own machines, whatever CI_RUNNER says: these jobs hold secrets or a write token, and a
+# self-hosted runner keeps what a branch's code leaves on it for the next job (docs/ci.md).
 jobs:
   bars:
     name: Fetch daily bars
     if: inputs.kind == 'daily'
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
@@ -72,7 +74,7 @@ jobs:
   level:
     name: Level ${{ matrix.level }}
     needs: bars
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -103,7 +105,7 @@ jobs:
   summary:
     name: Summary
     needs: level
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
@@ -134,7 +136,7 @@ jobs:
   intraday:
     name: Day-trading rules
     if: inputs.kind == 'intraday'
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
@@ -168,7 +170,7 @@ jobs:
   catalog:
     name: Strategy catalog
     if: inputs.kind == 'catalog'
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
@@ -205,7 +207,7 @@ jobs:
   crypto:
     name: Crypto rules
     if: inputs.kind == 'crypto'
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
@@ -238,7 +240,7 @@ jobs:
   regimes:
     name: Through past regimes
     if: inputs.kind == 'regimes'
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
@@ -266,7 +268,7 @@ jobs:
   agent:
     name: The 24-hour agent at 15 minutes and 1 hour
     if: inputs.kind == 'agent'
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 300
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
