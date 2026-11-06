@@ -41,7 +41,6 @@ import { rollOf } from "@/lib/hash";
 
 type Options = { client?: PrismaClient; now?: Date; book?: DebtBook };
 
-
 export class CardInterestError extends Error {}
 
 export type RateRequestView = {
