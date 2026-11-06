@@ -67,8 +67,8 @@ export const fakeWebhook: NonNullable<Connector["webhook"]> = {
   parse: (body) => {
     const event = body as { id?: unknown; ref?: unknown; outcome?: unknown };
     if (typeof event.ref !== "string") return null;
-    const outcome = ["done", "failed", "reversed", "info"].includes(String(event.outcome))
-      ? (event.outcome as "done" | "failed" | "reversed" | "info")
+    const outcome = ["done", "failed", "reversed", "undone", "info"].includes(String(event.outcome))
+      ? (event.outcome as "done" | "failed" | "reversed" | "undone" | "info")
       : "info";
     return {
       eventId: typeof event.id === "string" ? event.id : "",

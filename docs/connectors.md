@@ -65,7 +65,8 @@ Every connector's webhooks come to `/api/connectors/<id>/webhook` (`src/lib/conn
 a 404 unless `CONNECTORS=1`. In order:
 
 1. **The provider's signature**, with its own secret from the env var its connector names
-   (`webhook.signing`): HMAC-SHA256 of `<timestamp>.<body>` in the provider's headers, or Svix's
+   (`webhook.signing`): HMAC-SHA256 of `<timestamp>.<body>` in the provider's headers, or in one
+   `t=<seconds>,v1=<hex>` header (PostGrid, Teller), or Svix's
    (Resend and others), checked with the same code as the weekly email's webhook. A delivery signed
    more than `WEBHOOK_TOLERANCE_SECONDS` away from now is refused, so an old one can't be replayed
    later. Over `WEBHOOK_MAX_BYTES` is refused before anything is read.
@@ -80,7 +81,8 @@ a 404 unless `CONNECTORS=1`. In order:
    gives up.
 4. **The move**: `applyPartnerEvent` moves the action on only from a status where that makes sense
    (`partner_pending` to `succeeded` or `failed`; `succeeded` to `reversed`, as money can come back
-   weeks later), audited and counted.
+   weeks later; `succeeded` to `undone` for what isn't money and didn't hold, like a letter
+   returned to sender), audited and counted.
 
 A kill switch doesn't stop webhooks: they record what the partner already did and act on nothing.
 A body over the limit is refused on its `Content-Length` before it is read.
@@ -98,6 +100,7 @@ and is offered only to sample-data people.
 | `sandbox_own_transfer` | Moves money between two of their own accounts (Dwolla or Astra later) | Yes | 15 minutes |
 | `sandbox_subscription_cancel` | Cancels a subscription (Jane's email agent, then Pinwheel) | No | No |
 | `sandbox_insurance_quote` | Asks for quotes in their name, never buys (Coverage Cat or Canopy later) | No | No |
+| `sandbox_letters` | A certified letter to a company: a cancellation by written notice or a stop-payment notice, shaped like PostGrid in test mode | No | Until midnight Eastern, PostGrid's window |
 
 Fakes for tests live in `src/lib/connectors/__fixtures__/`: a pretend real connector, a webhook
 signer, and people (real, sample, trial).
@@ -160,4 +163,24 @@ check the person's own data.
   business days), that names the biller. An amount-only match stays handed off with "Looks paid
   on ..., check it's this bill". A bank line settles one payment at most, ever: it's claimed in
   `connector_webhook_events`. A match moves the action from `handed_off` to `succeeded` through
-  the same door a partner's webhook uses. Not yet called by a scheduled job.
+  the same door a partner's webhook uses. The nightly controller's money step
+  (`src/lib/controller.ts`) runs it while `CONNECTORS=1`.
+
+`manual_own_transfer` is the same for a move between two of the person's own accounts: Jane fills in
+from, to, amount and day, the person moves it in their bank's app, and Jane checks both sides.
+Both accounts must be the person's own, named from their rows, never from the request (security
+review on #1508), and a second open move of the same amount between the same accounts on the same
+day is refused. It settles only when both lines show: out of one, the same amount into the other,
+within three business days, each line used once. Off until its switch.
+
+## What a person agreed to
+
+Each consent row keeps exactly what the person was shown (`shown_text`: one line per scope), a
+version of it (a hash, so the same words always give the same version and changed words a new one),
+and the IP address and browser they agreed from. The connections page shows the words under "What
+you agreed to", for current and revoked consents. Three scopes are legal texts, not Jane's words
+(`EXACT_TEXT_SCOPES`: `soft_credit_pull` for FCRA, `ach_debit_authorization` for Nacha,
+`tax_7216_disclosure` for IRS 7216): a connector asking for one must carry the partner's and
+counsel's approved text in `consentText`, stored word for word, or the grant is refused. Jane writes
+none of them. Still open for those: emailing the person a copy, Nacha's two-year retention after
+revoking (account deletion removes the rows today), and 7216's one consent per use.

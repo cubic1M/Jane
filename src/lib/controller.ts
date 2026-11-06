@@ -28,6 +28,8 @@ import { planQuestion } from "@/lib/questions";
 import { scanSuggestions } from "@/lib/suggestions";
 import { markCashIncome } from "@/categorize/cash-income";
 import { reapplyRules } from "@/categorize/reapply";
+import { connectorsOn } from "@/config/connectors";
+import { settleManualPayments } from "@/lib/connectors/manual-pay/settle";
 import { runDetection } from "@/detection/engine";
 import { plural } from "@/lib/plural";
 
@@ -154,7 +156,10 @@ const STEPS: Record<
     const auto = plan?.moves.filter((m) => m.status === "auto").length ?? 0;
     const asked = plan?.moves.filter((m) => m.status === "asked").length ?? 0;
     const bills = await runBillPay(userId, { client, now });
-    if (settled === 0 && auto === 0 && asked === 0 && bills === 0) {
+    // "Jane prepares, you pay": payments the person made themselves, seen in their transactions.
+    // Nothing to look for unless connectors are on (src/lib/connectors/).
+    const paid = connectorsOn() ? await settleManualPayments(userId, { client, now }) : 0;
+    if (settled === 0 && auto === 0 && asked === 0 && bills === 0 && paid === 0) {
       return { did: "Nothing to move.", changed: 0 };
     }
     return {
@@ -163,12 +168,13 @@ const STEPS: Record<
         auto > 0 ? `moved ${plural(auto, "part")} of a paycheck by myself` : null,
         asked > 0 ? `${plural(asked, "part")} of a paycheck to ask you about` : null,
         bills > 0 ? `scheduled ${plural(bills, "bill payment")} on time` : null,
+        paid > 0 ? `saw ${plural(paid, "bill")} you paid go through` : null,
       ]
         .filter(Boolean)
         .join(", ")
         .replace(/^./, (c) => c.toUpperCase())
         .concat("."),
-      changed: settled + auto + asked + bills,
+      changed: settled + auto + asked + bills + paid,
     };
   },
   async suggestions(userId, { client, now }) {

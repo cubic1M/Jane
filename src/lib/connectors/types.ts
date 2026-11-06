@@ -55,7 +55,10 @@ export type WebhookSigning =
   // HMAC-SHA256 of `${timestamp}.${body}` in one header, the time in another (Stripe-like).
   | { kind: "hmac_sha256"; secretEnv: string; signatureHeader: string; timestampHeader: string }
   // Svix (Resend, and others): svix-id, svix-timestamp and svix-signature, "v1,<base64>".
-  | { kind: "svix"; secretEnv: string };
+  | { kind: "svix"; secretEnv: string }
+  // One header "t=<unix seconds>,v1=<hex>" over `${t}.${body}` (PostGrid, Teller; several v1 while a
+  // secret rotates).
+  | { kind: "hmac_sha256_tv"; secretEnv: string; header: string };
 
 // A verified event, read by the connector: whose action it is about, and what happened.
 export type WebhookEvent = {
@@ -63,7 +66,9 @@ export type WebhookEvent = {
   eventId: string;
   // The ActResult.externalRef it is about.
   externalRef: string;
-  outcome: "done" | "failed" | "reversed" | "info";
+  // reversed: money came back after it was done. undone: something that isn't money didn't hold
+  // after it was done (a letter returned, a company saying it didn't cancel).
+  outcome: "done" | "failed" | "reversed" | "undone" | "info";
   note: string;
 };
 
@@ -74,6 +79,9 @@ export type Connector = {
   capabilities: readonly ConnectorCapability[];
   // Every one must be in the person's consent before anything runs.
   scopes: readonly ConsentScope[];
+  // The exact consent text for a scope in EXACT_TEXT_SCOPES, as the partner and counsel approved
+  // it, with its version. Shown and stored word for word when the person agrees.
+  consentText?: Partial<Record<ConsentScope, { version: string; text: string }>>;
   // A sandbox adapter reaches nobody: it simulates the partner. Only sample-data people get one, so
   // a real account never sees a pretend success; real connectors are the other way round.
   sandbox: boolean;

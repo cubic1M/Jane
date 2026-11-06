@@ -56,8 +56,29 @@ export const CONSENT_SCOPES = {
   move_own_money: "Move money between your own accounts, after your yes on that move",
   cancel_subscriptions: "Cancel a subscription, after your yes",
   request_quotes: "Ask for insurance quotes in your name, after your yes",
+  // From the connectors roadmap's gaps (2026-11-06), for Stage 2 and later connectors.
+  contact_companies: "Email or write to a company for you, after your yes",
+  call_companies: "Call a company's customer service for you, after your yes",
+  record_calls: "Record those calls (each call says so at the start)",
+  share_with_partner: "Share the details a partner needs for a quote or offer",
+  read_credit: "See your credit report and score",
+  soft_credit_pull: "Let a partner check your credit without affecting your score",
+  ach_debit_authorization: "Let a partner take a payment from your bank account, as you authorize",
+  tax_7216_disclosure: "Share your tax information with a tax partner, for the use you choose",
+  place_orders: "Place investment orders, after your yes on each",
+  open_accounts: "Open an account in your name with a partner, after your yes",
 } as const;
 export type ConsentScope = keyof typeof CONSENT_SCOPES;
+
+// Scopes whose consent is a legal text, not our words: FCRA's written instruction for a soft pull,
+// Nacha's debit authorization, IRS 7216's disclosure consent. A connector asking for one must carry
+// the exact text its partner and counsel approved (Connector.consentText), and granting stores that
+// text as shown. Jane never writes these.
+export const EXACT_TEXT_SCOPES: readonly ConsentScope[] = [
+  "soft_credit_pull",
+  "ach_debit_authorization",
+  "tax_7216_disclosure",
+];
 
 export const isConsentScope = (scope: unknown): scope is ConsentScope =>
   typeof scope === "string" && Object.hasOwn(CONSENT_SCOPES, scope);
@@ -102,3 +123,6 @@ export const MANUAL_PAY_BANK_BILL_PAY_LEAD_BUSINESS_DAYS = 5;
 export const MANUAL_PAY_CUTOFF = "7 PM ET";
 // An autopay line from the biller in this many days means autopay is on: no manual payment then.
 export const MANUAL_PAY_AUTOPAY_LOOKBACK_DAYS = 45;
+// A move between the person's own accounts at one bank is instant; between banks, ACH takes up to
+// three business days to show on both sides.
+export const MANUAL_TRANSFER_SETTLE_BUSINESS_DAYS = 3;

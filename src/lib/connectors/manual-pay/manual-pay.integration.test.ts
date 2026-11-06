@@ -21,6 +21,8 @@ import { CONNECTOR_HOLD_MINUTES } from "@/config/connectors";
 import { KILL_SWITCH_VARS } from "@/config/kill-switches";
 import { db } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { CONTROLLER_STEPS } from "@/config/controller";
+import { runController } from "@/lib/controller";
 import { systemDb } from "@/lib/system-db";
 import { realPerson, removePeople, trialPerson } from "../__fixtures__/people";
 import { grantConsent } from "../consent";
@@ -135,6 +137,45 @@ describe.runIf(url)('"Jane prepares, you pay"', () => {
       note: "Paid: seen in your account on 2026-11-19.",
     });
     expect(await settleManualPayments(userId, { now: LATER })).toBe(0);
+  });
+
+  it("is settled by the nightly run's money step, only while connectors are on", async () => {
+    flags.real.manual_bill_pay = true;
+    const { userId, accountId } = await withChecking();
+    await grantConsent(userId, "manual_bill_pay", ["prefill_payments"], { now: NOW });
+    const planned = await planAction(userId, "manual_bill_pay", bill(accountId), {
+      idempotencyKey: crypto.randomUUID(),
+      now: NOW,
+    });
+    await answerAction(
+      userId,
+      planned.id,
+      { yes: true, amountCents: 8412, fingerprint: planned.fingerprint },
+      { now: NOW },
+    );
+    await executeAction(userId, planned.id, { now: LATER });
+    await bankLine(userId, accountId, "2026-11-18", 8412, "CON EDISON PAYMENT");
+    // Every other step stands still: only the money step runs for real.
+    const others = Object.fromEntries(
+      CONTROLLER_STEPS.filter((s) => s !== "money").map((s) => [
+        s,
+        async () => ({ did: "skipped", changed: 0 }),
+      ]),
+    );
+    vi.stubEnv("CONNECTORS", "");
+    const off = await runController(userId, {
+      now: new Date("2026-11-19T12:00:00Z"),
+      steps: others,
+    });
+    expect(off.find((l) => l.step === "money")?.did).toBe("Nothing to move.");
+    vi.stubEnv("CONNECTORS", "1");
+    const on = await runController(userId, {
+      now: new Date("2026-11-20T12:00:00Z"),
+      steps: others,
+    });
+    expect(on.find((l) => l.step === "money")?.did).toBe("Saw 1 bill you paid go through.");
+    const row = await system().connectorAction.findUniqueOrThrow({ where: { id: planned.id } });
+    expect(row.status).toBe("succeeded");
   });
 
   it("doesn't suggest paying by hand what autopay already pays", async () => {
@@ -299,6 +340,125 @@ describe.runIf(url)('"Jane prepares, you pay"', () => {
       });
       expect(statuses.map((s) => s.status).sort()).toEqual(["handed_off", "succeeded"]);
     });
+  });
+
+  it("prepares a move between their own accounts and settles it from both sides", async () => {
+    flags.real.manual_own_transfer = true;
+    const { userId, accountId } = await withChecking();
+    const savings = await system().account.create({
+      data: { userId, source: "csv", name: "Savings", type: "depository", subtype: "savings" },
+    });
+    await grantConsent(userId, "manual_own_transfer", ["prefill_payments"], { now: NOW });
+    const move = {
+      fromAccount: "Checking",
+      fromAccountId: accountId,
+      toAccount: "Savings",
+      toAccountId: savings.id,
+      amountCents: 25_000,
+      today: "2026-11-06",
+      on: "2026-11-09",
+    };
+    await expect(
+      planAction(
+        userId,
+        "manual_own_transfer",
+        { ...move, toAccountId: accountId },
+        { idempotencyKey: crypto.randomUUID(), now: NOW },
+      ),
+    ).rejects.toMatchObject({ reason: "check_failed" });
+    const planned = await planAction(userId, "manual_own_transfer", move, {
+      idempotencyKey: crypto.randomUUID(),
+      now: NOW,
+    });
+    expect(planned.steps.map((s) => s.label)).toEqual([
+      "From",
+      "To",
+      "Amount",
+      "On",
+      "Where",
+      "Who moves it",
+    ]);
+    await answerAction(
+      userId,
+      planned.id,
+      { yes: true, amountCents: 25_000, fingerprint: planned.fingerprint },
+      { now: NOW },
+    );
+    await expect(executeAction(userId, planned.id, { now: LATER })).resolves.toBe("handed_off");
+    await bankLine(userId, accountId, "2026-11-09", 25_000, "ONLINE TRANSFER TO SAV");
+    expect(await settleManualPayments(userId, { now: LATER })).toBe(0);
+    await bankLine(userId, savings.id, "2026-11-10", -25_000, "ONLINE TRANSFER FROM CHK");
+    expect(await settleManualPayments(userId, { now: LATER })).toBe(1);
+    const row = await system().connectorAction.findUniqueOrThrow({ where: { id: planned.id } });
+    expect(row).toMatchObject({
+      status: "succeeded",
+      note: "Moved: seen leaving one account and arriving in the other.",
+    });
+  });
+
+  it("moves only between the person's own accounts, named as they are, once", async () => {
+    flags.real.manual_own_transfer = true;
+    const { userId, accountId } = await withChecking();
+    const savings = await system().account.create({
+      data: { userId, source: "csv", name: "Savings", type: "depository", subtype: "savings" },
+    });
+    const stranger = await withChecking();
+    await grantConsent(userId, "manual_own_transfer", ["prefill_payments"], { now: NOW });
+    const move = {
+      fromAccount: "Checking",
+      fromAccountId: accountId,
+      toAccount: "Savings",
+      toAccountId: savings.id,
+      amountCents: 50_000,
+      today: "2026-11-06",
+      on: "2026-11-09",
+    };
+    // Someone else's account, or none at all, on either side: refused.
+    for (const bad of [
+      { toAccountId: stranger.accountId },
+      { fromAccountId: stranger.accountId },
+      { toAccountId: "made-up" },
+      { toAccountId: null },
+    ]) {
+      await expect(
+        planAction(
+          userId,
+          "manual_own_transfer",
+          { ...move, ...bad },
+          {
+            idempotencyKey: crypto.randomUUID(),
+            now: NOW,
+          },
+        ),
+      ).rejects.toMatchObject({ reason: "check_failed" });
+    }
+    // The names on the card are the accounts' own, whatever the request said.
+    const planned = await planAction(
+      userId,
+      "manual_own_transfer",
+      { ...move, toAccount: "My landlord" },
+      { idempotencyKey: crypto.randomUUID(), now: NOW },
+    );
+    expect(planned.steps.find((s) => s.label === "To")!.value).toBe("Savings");
+    // The same move again, while that one is open: refused.
+    await expect(
+      planAction(userId, "manual_own_transfer", move, {
+        idempotencyKey: crypto.randomUUID(),
+        now: NOW,
+      }),
+    ).rejects.toMatchObject({ reason: "check_failed" });
+    await answerAction(
+      userId,
+      planned.id,
+      { yes: true, amountCents: 50_000, fingerprint: planned.fingerprint },
+      { now: NOW },
+    );
+    await executeAction(userId, planned.id, { now: LATER });
+    // A Zelle of the same amount out of checking isn't the move.
+    await bankLine(userId, accountId, "2026-11-09", 50_000, "ZELLE TO LANDLORD");
+    expect(await settleManualPayments(userId, { now: LATER })).toBe(0);
+    const row = await system().connectorAction.findUniqueOrThrow({ where: { id: planned.id } });
+    expect(row.status).toBe("handed_off");
   });
 
   it("never settles from someone else's transactions", async () => {

@@ -41,16 +41,25 @@ export function signatureValid(
   const secret = env[signing.secretEnv]?.trim();
   if (!secret) return false;
   if (signing.kind === "svix") return verifyResendSignature(rawBody, headers, secret, now);
-  const timestamp = headers.get(signing.timestampHeader);
-  const signature = headers.get(signing.signatureHeader);
-  if (!timestamp || !signature || !/^\d{1,12}$/.test(timestamp)) return false;
+  let timestamp: string | null;
+  let signatures: string[];
+  if (signing.kind === "hmac_sha256_tv") {
+    // "t=1793988000,v1=ab12...,v1=cd34..."
+    const parts = (headers.get(signing.header) ?? "").split(",").map((part) => part.trim());
+    timestamp = parts.find((part) => part.startsWith("t="))?.slice(2) ?? null;
+    signatures = parts.filter((part) => part.startsWith("v1=")).map((part) => part.slice(3));
+  } else {
+    timestamp = headers.get(signing.timestampHeader);
+    // Several while a secret rotates, comma-separated.
+    signatures = (headers.get(signing.signatureHeader) ?? "").split(",").map((p) => p.trim());
+  }
+  if (!timestamp || !/^\d{1,12}$/.test(timestamp)) return false;
   if (Math.abs(now.getTime() / 1000 - Number(timestamp)) > WEBHOOK_TOLERANCE_SECONDS) return false;
   const expected = createHmac("sha256", secret).update(`${timestamp}.${rawBody}`).digest();
-  // Several while a secret rotates, comma-separated, each hex.
-  return signature
-    .split(",")
-    .map((part) => part.trim())
-    .some((part) => /^[0-9a-f]{64}$/i.test(part) && sameBytes(Buffer.from(part, "hex"), expected));
+  // Hex: PostGrid doesn't say which encoding it uses; check against its sandbox before going live.
+  return signatures.some(
+    (part) => /^[0-9a-f]{64}$/i.test(part) && sameBytes(Buffer.from(part, "hex"), expected),
+  );
 }
 
 // Records the event once. False if this connector already sent this event id.

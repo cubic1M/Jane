@@ -73,6 +73,17 @@ const REQUESTS = {
     steps: ["Cancel", "Saves", "How", "Step 1", "Step 2"],
     ran: "handed_off",
   },
+  sandbox_letters: {
+    request: {
+      company: "LA Fitness",
+      toAddress: "P.O. Box 54170, Irvine, CA 92619",
+      fromName: "Alex Sample",
+    },
+    cents: 0,
+    steps: ["To", "From", "Says", "Sent as", "Can be stopped", "Says who it is"],
+    // Queued to print; PostGrid's webhooks say when it's mailed.
+    ran: "partner_pending",
+  },
   sandbox_insurance_quote: {
     request: { coverage: "renters", currentMonthlyCents: 2500, state: "CA" },
     cents: 0,
@@ -89,13 +100,13 @@ describe("the sandbox adapters' definitions", () => {
       expect(connectorById(connector.id)).not.toBeNull();
     }
     expect(Object.keys(REQUESTS).sort()).toEqual(SANDBOX_CONNECTORS.map((c) => c.id).sort());
-    // Only sandbox adapters and "Jane prepares, you pay" (which reaches nobody) are registered: no
+    // Only sandbox adapters and "Jane prepares, you do it" (which reach nobody) are registered: no
     // real partner exists yet.
     expect(
       allConnectors()
         .filter((c) => !c.sandbox)
         .map((c) => c.id),
-    ).toEqual(["manual_bill_pay"]);
+    ).toEqual(["manual_bill_pay", "manual_own_transfer"]);
   });
 
   it("call nobody: no fetch, http, net or SDK in their code", () => {

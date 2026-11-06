@@ -122,3 +122,32 @@ export function findSettlement(
   if (candidates.length === 1) return { lineId: candidates[0]!.id, confidence: "amount_and_days" };
   return null;
 }
+
+// The two lines of a move between the person's own accounts: out of one, the same amount into the
+// other, from the day to MANUAL_TRANSFER_SETTLE_BUSINESS_DAYS after. Both sides, always: one line
+// of that amount could be anything (security review on #1508: a Zelle to a landlord isn't a move
+// to savings). Exact cents only: a transfer has no fee.
+export function findTransferSettlement(
+  move: {
+    amountCents: number;
+    on: string;
+    fromAccountId: string;
+    toAccountId: string;
+    settleBusinessDays: number;
+  },
+  lines: readonly BankLine[],
+  taken: ReadonlySet<string> = new Set(),
+): { lineIds: [string, string] } | null {
+  const last = addBusinessDays(move.on, move.settleBusinessDays);
+  const inWindow = (line: BankLine) =>
+    !taken.has(line.id) && line.date >= move.on && line.date <= last;
+  const out = lines.filter(
+    (l) => inWindow(l) && l.accountId === move.fromAccountId && l.amountCents === move.amountCents,
+  );
+  const into = lines.filter(
+    (l) => inWindow(l) && l.accountId === move.toAccountId && l.amountCents === -move.amountCents,
+  );
+  // Each side must be one line, so two equal moves in a window aren't guessed.
+  if (out.length !== 1 || into.length !== 1) return null;
+  return { lineIds: [out[0]!.id, into[0]!.id] };
+}

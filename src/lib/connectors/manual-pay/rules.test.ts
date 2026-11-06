@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { BILLERS } from "@/config/billers";
-import { autopayCovers, billerFor, findSettlement, payOnFor, type BankLine } from "./rules";
+import {
+  autopayCovers,
+  billerFor,
+  findSettlement,
+  findTransferSettlement,
+  payOnFor,
+  type BankLine,
+} from "./rules";
 
 const line = (over: Partial<BankLine>): BankLine => ({
   id: crypto.randomUUID(),
@@ -108,5 +115,39 @@ describe("findSettlement", () => {
     const withFee = line({ amountCents: 8412 + pge.feeCents });
     expect(pge.feeCents).toBe(150);
     expect(findSettlement({ ...payment, biller: pge }, [withFee])?.lineId).toBe(withFee.id);
+  });
+});
+
+describe("findTransferSettlement", () => {
+  const move = {
+    amountCents: 25_000,
+    on: "2026-11-10",
+    fromAccountId: "checking",
+    toAccountId: "savings",
+    settleBusinessDays: 3,
+  };
+  const out = line({ accountId: "checking", amountCents: 25_000, date: "2026-11-10" });
+  const into = line({ accountId: "savings", amountCents: -25_000, date: "2026-11-11" });
+
+  it("needs both sides when both accounts are linked", () => {
+    expect(findTransferSettlement(move, [out, into])).toEqual({ lineIds: [out.id, into.id] });
+    expect(findTransferSettlement(move, [out])).toBeNull();
+    expect(findTransferSettlement(move, [out, { ...into, amountCents: -24_999 }])).toBeNull();
+  });
+
+  it("never settles on one side alone: one line of that amount could be anything", () => {
+    const zelle = line({
+      accountId: "checking",
+      amountCents: 25_000,
+      description: "ZELLE TO LANDLORD",
+    });
+    expect(findTransferSettlement(move, [zelle])).toBeNull();
+    expect(findTransferSettlement(move, [into])).toBeNull();
+  });
+
+  it("won't guess between two equal moves, nor reach outside the window", () => {
+    const again = line({ accountId: "checking", amountCents: 25_000, date: "2026-11-12" });
+    expect(findTransferSettlement(move, [out, again, into])).toBeNull();
+    expect(findTransferSettlement(move, [{ ...out, date: "2026-11-09" }, into])).toBeNull();
   });
 });

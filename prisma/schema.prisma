@@ -577,6 +577,13 @@ model ConnectorConsent {
   scopes      String[]
   grantedAt   DateTime  @default(now()) @map("granted_at") @db.Timestamptz(3)
   revokedAt   DateTime? @map("revoked_at") @db.Timestamptz(3)
+  // Exactly what the person was shown and agreed to (each scope's words, or a legal scope's exact
+  // text), a version of it (a hash: the same words always give the same version), and where they
+  // agreed from. Null on rows from before these were kept.
+  shownText   String?   @map("shown_text")
+  textVersion String?   @map("text_version")
+  ip          String?
+  userAgent   String?   @map("user_agent")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
