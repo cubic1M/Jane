@@ -1,10 +1,5 @@
 [
  {
-  "task": "transcript-partner-mock",
-  "lane": "lane:connectors",
-  "expires": "2026-11-07T01:11:40.528Z"
- },
- {
   "task": "tax-form-upload",
   "lane": "lane:connectors",
   "expires": "2026-11-07T01:28:17.277Z"
