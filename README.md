@@ -103,6 +103,11 @@ A change reaches users only after passing:
 Separate agents keep running security-audit and debugging rounds against local builds. Each
 fix ships with a test that fails without it.
 
+## License
+
+Proprietary. All rights reserved. See [LICENSE](LICENSE). No part of this repository may be
+used, copied or deployed without written permission.
+
 ## Running it locally
 
 1. Use the Node version in `.nvmrc` (`nvm use`).
