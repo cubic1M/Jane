@@ -1,3 +1,4 @@
+import { ipKey } from "@/lib/rate-limit";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { after, connection } from "next/server";
@@ -37,8 +38,10 @@ async function Join({ params }: { params: Params }) {
   await connection();
   const landing = await inviteLanding((await params).code);
   if (landing) {
-    const userAgent = (await headers()).get("user-agent");
-    after(() => recordInviteOpened(landing.inviteId, userAgent));
+    const asked = await headers();
+    const userAgent = asked.get("user-agent");
+    const from = ipKey(asked);
+    after(() => recordInviteOpened(landing.inviteId, userAgent, from));
   }
   return <JoinContent landing={landing} />;
 }

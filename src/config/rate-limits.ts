@@ -83,6 +83,9 @@ export const RATE_LIMITS = {
   auditPack: { limit: 30, windowSeconds: 60 * 60 },
   // Messages typed to Jane in the chat, per user (spec step 84).
   chat: { limit: 60, windowSeconds: 60 * 60 },
+  // One "invite opened" a day for each share link from each place: anyone can load /join, and each
+  // load counted toward the invite funnel the team reads.
+  inviteOpened: { limit: 1, windowSeconds: 60 * 60 * 24 },
   // Answers being written for one real person. Their day's cap is read before an answer and charged
   // after it, so without this 60 at once all pass it. Given back as each finishes; the window is only
   // for an answer that never reports back.
