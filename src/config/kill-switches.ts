@@ -15,6 +15,8 @@ const SWITCHES = {
   uploads: "KILL_UPLOADS",
   // No email leaves, sign-in links included (Google sign-in still works).
   email: "KILL_EMAIL",
+  // No connector reads, prefills or acts (src/lib/connectors/). Cancelling an action still works.
+  connectors: "KILL_CONNECTORS",
 } as const;
 
 export type KillSwitch = keyof typeof SWITCHES;
@@ -49,7 +51,7 @@ export function siteStoppedFor(pathname: string): boolean {
 // Who may change what. A secret that can only reduce exposure can't stop webhooks or sign-in links,
 // and only a founder's can turn anything back on.
 export type SwitchTier = "reduce" | "high_bar" | "founder";
-const REDUCES_ONLY: readonly KillSwitch[] = ["banks", "uploads", "claude"];
+const REDUCES_ONLY: readonly KillSwitch[] = ["banks", "uploads", "claude", "connectors"];
 
 export function mayChange(tier: SwitchTier, name: KillSwitch, on: boolean): boolean {
   if (tier === "founder") return true;
