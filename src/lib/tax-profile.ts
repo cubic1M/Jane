@@ -1,3 +1,4 @@
+import { MOST_CENTS_KEPT } from "@/lib/money";
 import {
   INCOME_KIND_ORDER,
   MAX_DEPENDANTS,
@@ -270,7 +271,7 @@ export async function savePayStub(
       entry.retirementCents,
       entry.pretaxCents,
     ];
-    if (amounts.some((c) => !Number.isInteger(c) || c < 0)) {
+    if (amounts.some((c) => !Number.isInteger(c) || c < 0 || c > MOST_CENTS_KEPT)) {
       throw new TaxProfileError("Amounts must be dollars and cents, none below zero.");
     }
     if (entry.retirementCents + entry.pretaxCents + entry.federalCents > entry.grossCents) {

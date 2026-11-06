@@ -1,3 +1,4 @@
+import { MOST_CENTS_KEPT } from "@/lib/money";
 import {
   ANNUITY_TAX_NOTE,
   DEMO_ANNUITY,
@@ -260,7 +261,7 @@ export type ProductForm = {
 const money = (s: string, label: string) => {
   if (!s.trim()) return 0;
   const n = Math.round(Number(s.replace(/[$,]/g, "")) * 100);
-  if (!Number.isFinite(n) || n < 0 || n > 5_000_000_000)
+  if (!Number.isFinite(n) || n < 0 || n > MOST_CENTS_KEPT)
     throw new CostlyProductError(`Check the ${label}.`);
   return n;
 };

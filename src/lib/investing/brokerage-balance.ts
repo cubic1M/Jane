@@ -1,3 +1,4 @@
+import { MOST_CENTS_KEPT } from "@/lib/money";
 import { INVESTMENT_KINDS } from "@/data-sources/types";
 import type { ScopedDb } from "@/lib/db-scoped";
 import { setUploadedBalance } from "@/lib/import/account-balance";
@@ -63,7 +64,9 @@ export async function setBrokerageBalance(
   app: string,
   cents: number,
 ): Promise<{ jobId: string } | null> {
-  if (!isInvestingApp(app) || !Number.isInteger(cents) || cents < 0) return null;
+  if (!isInvestingApp(app) || !Number.isInteger(cents) || cents < 0 || cents > MOST_CENTS_KEPT) {
+    return null;
+  }
   const existing = await db.accounts.findMany({
     where: { type: "investment", source: "csv" },
     select: { id: true, name: true },

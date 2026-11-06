@@ -124,9 +124,16 @@ export async function saveBeneficiaries(
       tier: n.tier === "contingent" ? "contingent" : "primary",
     }))
     .filter((n) => n.name !== "");
+  if (clean.some((n) => !Number.isInteger(n.sharePct) || n.sharePct < 1 || n.sharePct > 100)) {
+    throw new FamilyFileError("Each share is from 1 to 100.");
+  }
   const primary = clean.filter((n) => n.tier === "primary");
   if (clean.length > 0 && primary.reduce((s, n) => s + n.sharePct, 0) !== 100) {
     throw new FamilyFileError("The shares of the main names need to add up to 100.");
+  }
+  const contingent = clean.filter((n) => n.tier === "contingent");
+  if (contingent.length > 0 && contingent.reduce((s, n) => s + n.sharePct, 0) !== 100) {
+    throw new FamilyFileError("The shares of the backup names need to add up to 100.");
   }
   await db.accountBeneficiaries.deleteMany({ where: { accountId } });
   for (const n of clean) {
