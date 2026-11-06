@@ -8,5 +8,10 @@
   "task": "irs-card-fee-check",
   "lane": "lane:connectors",
   "expires": "2026-11-07T00:31:18.331Z"
+ },
+ {
+  "task": "irs-transcript-upload",
+  "lane": "lane:connectors",
+  "expires": "2026-11-07T00:48:54.443Z"
  }
 ]
