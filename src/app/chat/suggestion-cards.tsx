@@ -14,7 +14,7 @@ import {
   subscribeGone,
   withoutGone,
 } from "@/lib/dock-gone";
-import { DEMO_ADVICE_LABEL } from "@/config/advice";
+import { AI_WRITTEN_LABEL, DEMO_ADVICE_LABEL } from "@/config/advice";
 import { noteDetailsOpened, tapButton } from "./actions";
 
 // Jane's pop-ups over the chat or the page (src/lib/jane-agent/popups.ts): the day's suggestions,
@@ -59,10 +59,16 @@ export function cardOf(message: MessageView): FloatingCardData {
     ...(message.cardPeople ? [message.cardPeople] : []),
     ...(extra?.caps ?? []).map((c) => `Cap: ${c}`),
   ];
+  // On the card's face: demo advice, and that Claude wrote it (a strategist idea; Anthropic's
+  // usage policy asks that it say so).
+  const badges = [
+    ...(message.advice ? [DEMO_ADVICE_LABEL] : []),
+    ...(message.aiWritten ? [AI_WRITTEN_LABEL] : []),
+  ];
   return {
     id: message.id,
     headline: parts.headline,
-    ...(message.advice ? { badge: DEMO_ADVICE_LABEL } : {}),
+    ...(badges.length > 0 ? { badge: badges.join(" · ") } : {}),
     details: {
       // The whole reason, so the headline's figure is explained; the short line otherwise.
       why: message.cardWhy ?? parts.why ?? undefined,

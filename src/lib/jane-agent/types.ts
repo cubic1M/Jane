@@ -605,8 +605,8 @@ export type MessageRefs = {
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;
-  // Claude wrote it and it's about investing or taxes: the chat shows AI_WRITTEN_LABEL under it
-  // (src/config/advice.ts), whatever the account.
+  // Claude wrote it and it's about investing or taxes, or it is a strategist idea: the chat shows
+  // AI_WRITTEN_LABEL under it (src/config/advice.ts), whatever the account.
   aiWritten?: true;
   // Spec step 129: the investor-profile question the answer buttons answer, and whether
   // Jane is going through all four again (the yearly check).

@@ -33,7 +33,7 @@ export type FloatingCardData = {
   headline: string;
   summary?: string;
   details: CardDetails;
-  // A small label by the counter ("Jane's pick", only in demo advice mode).
+  // A small label by the counter ("Jane's pick" or the demo-advice label, and "Written by AI").
   badge?: string;
   yesLabel: string;
   // Yes goes to this page, as a link.
