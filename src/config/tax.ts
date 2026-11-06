@@ -225,6 +225,15 @@ export const QUARTERLY = {
   minOwedCents: 100_000,
 } as const;
 export const IRS_DIRECT_PAY_URL = "https://www.irs.gov/payments/direct-pay";
+// Paying at Direct Pay yourself (connectors roadmap round 16, irs_direct_pay_steps): it takes a
+// date up to this many days ahead, at most this many payments in a day, and a payment can be
+// changed or cancelled up to this many business days before its date. Its confirmation number
+// can't be looked up later.
+export const DIRECT_PAY = {
+  maxDaysAhead: 365,
+  maxPerDay: 5,
+  cancelBusinessDays: 2,
+} as const;
 // Freelance payments from the last this-many days get a set-aside message.
 export const SET_ASIDE_RECENT_DAYS = 14;
 // The most square feet and miles the helpers take.
