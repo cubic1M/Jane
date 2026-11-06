@@ -9,6 +9,7 @@ import {
   plaidStream,
   sampleYear,
 } from "./__fixtures__/build";
+import { categorizeByRules } from "@/categorize/rules";
 import { renewalAlerts } from "./alerts";
 import { detect } from "./detect";
 import { upcomingBills } from "./forecast";
@@ -37,6 +38,26 @@ describe("recurringCharges", () => {
       const next = bills.find((b) => b.merchant === row.merchant);
       if (next) expect(row.nextDate, row.merchant).toBe(next.date);
     }
+  });
+
+  // Debugger 11-06: Cash App's "Bitcoin Buy" every month read "Is Bitcoin Buy a subscription to
+  // cancel?" on a first report. Categorised as it's read on import, it's money moved to investing.
+  it("doesn't ask whether a monthly bitcoin buy is a subscription", () => {
+    const category = categorizeByRules({
+      description: "Bitcoin Buy",
+      amountCents: 5_000,
+      hints: {},
+    });
+    const data = input({
+      transactions: monthly(6, 5_000, {
+        description: "Bitcoin Buy",
+        merchantName: "Bitcoin Buy",
+        pfcPrimary: category?.primary ?? null,
+        pfcDetailed: category?.detailed ?? null,
+      }),
+    });
+    expect(recurringCharges(data)).toEqual([]);
+    expect(detect(data).filter((f) => f.key.includes("bitcoin"))).toEqual([]);
   });
 
   it("lists the biggest yearly cost first, and marks non-subscriptions", () => {

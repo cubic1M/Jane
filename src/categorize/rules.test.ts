@@ -471,6 +471,13 @@ describe("categorizeByRules", () => {
     expect(out(description)).toBe(category);
   });
 
+  // Debugger 11-06: a Cash App driver's $50 "Bitcoin Buy" every month read "Is Bitcoin Buy a
+  // subscription to cancel?" on their first report.
+  it("reads Cash App's bitcoin buys and sells as money moved to and from investing", () => {
+    expect(out("Bitcoin Buy")).toBe("TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS");
+    expect(into("Bitcoin Sell")).toBe("TRANSFER_IN_INVESTMENT_AND_RETIREMENT_FUNDS");
+  });
+
   // Debugger 11-01: a freelancer's Bank of America lines put "DES:" between the company and the
   // entry: six Stripe payouts ($14,086) read as transfers between her own accounts, so the tax
   // estimate saw a fraction of her income, and the IRS estimated payment had no category.
