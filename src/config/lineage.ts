@@ -50,6 +50,9 @@ export const LINEAGE: Readonly<Record<string, Lineage>> = {
   // From the data sources.
   PlaidItem: "source",
   RobinhoodConnection: "source",
+  ConnectorConsent: "entered",
+  ConnectorCredential: "system",
+  ConnectorAction: "record",
   Account: "source",
   Transaction: "source",
   RecurringStream: "source",

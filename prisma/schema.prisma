@@ -388,32 +388,35 @@ model User {
 
   savedShares SavedShare[]
 
-  autopilotSectors    AutopilotSector[]
-  autopilotActs       AutopilotAct[]
-  collegePlans        CollegePlan[]
-  hsaReceipts         HsaReceipt[]
-  equityGrants        EquityGrant[]
-  cryptoConnections   CryptoConnection[]
-  cryptoHoldings      CryptoHolding[]
-  robinhoodConnection RobinhoodConnection?
-  controllerRuns      ControllerRun[]
-  moneyTransfers      MoneyTransfer[]
-  paycheckPlans       PaycheckPlan[]
-  healthScores        HealthScore[]
-  monthlyReports      MonthlyReport[]
-  monthCloses         MonthClose[]
-  whatIfPlans         WhatIfPlan[]
-  taxPlanEvents       TaxPlanEvent[]
-  propertyAppeals     PropertyAppeal[]
-  accountantLinks     AccountantLink[]
-  accountantNotes     AccountantNote[]
-  taxPayments         TaxPayment[]
-  leanPlans           LeanPlan[]
-  booksIssues         BooksIssue[]
-  suggestions         Suggestion[]
-  suggestionOutcomes  SuggestionOutcome[]
-  yearPlans           YearPlan[]
-  unusualAnswers      UnusualAnswer[]
+  autopilotSectors     AutopilotSector[]
+  autopilotActs        AutopilotAct[]
+  collegePlans         CollegePlan[]
+  hsaReceipts          HsaReceipt[]
+  equityGrants         EquityGrant[]
+  cryptoConnections    CryptoConnection[]
+  cryptoHoldings       CryptoHolding[]
+  robinhoodConnection  RobinhoodConnection?
+  connectorConsents    ConnectorConsent[]
+  connectorCredentials ConnectorCredential[]
+  connectorActions     ConnectorAction[]
+  controllerRuns       ControllerRun[]
+  moneyTransfers       MoneyTransfer[]
+  paycheckPlans        PaycheckPlan[]
+  healthScores         HealthScore[]
+  monthlyReports       MonthlyReport[]
+  monthCloses          MonthClose[]
+  whatIfPlans          WhatIfPlan[]
+  taxPlanEvents        TaxPlanEvent[]
+  propertyAppeals      PropertyAppeal[]
+  accountantLinks      AccountantLink[]
+  accountantNotes      AccountantNote[]
+  taxPayments          TaxPayment[]
+  leanPlans            LeanPlan[]
+  booksIssues          BooksIssue[]
+  suggestions          Suggestion[]
+  suggestionOutcomes   SuggestionOutcome[]
+  yearPlans            YearPlan[]
+  unusualAnswers       UnusualAnswer[]
 
   payrollChanges PayrollChange[]
   oldPlans       OldPlan[]
@@ -561,6 +564,91 @@ model RobinhoodConnection {
   accounts Account[]
 
   @@map("robinhood_connections")
+}
+
+// A person's consent to one connector (src/lib/connectors/consent.ts, docs/connectors.md): the
+// scopes they agreed to and when. A new grant is a new row; revoking stamps revoked_at, so the
+// history stays. Shown on /settings/connections.
+model ConnectorConsent {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  connectorId String    @map("connector_id")
+  // Names from CONSENT_SCOPES in src/config/connectors.ts.
+  scopes      String[]
+  grantedAt   DateTime  @default(now()) @map("granted_at") @db.Timestamptz(3)
+  revokedAt   DateTime? @map("revoked_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, connectorId])
+  @@map("connector_consents")
+}
+
+// A connector's credential for one person: the vault (src/lib/connectors/vault.ts). One per person
+// and connector. Never log or return it.
+model ConnectorCredential {
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id")
+  connectorId     String    @map("connector_id")
+  // AES-256-GCM via src/lib/crypto.ts, rotated with the other secrets (src/lib/key-rotation.ts).
+  secretEncrypted String    @map("secret_encrypted")
+  expiresAt       DateTime? @map("expires_at") @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, connectorId])
+  @@map("connector_credentials")
+}
+
+// One action through a connector (src/lib/connectors/pipeline.ts): the prefilled steps, the person's
+// yes or no on exactly this amount, and what happened when it ran. Runs once: every move between
+// statuses is a compare-and-set on the old one.
+model ConnectorAction {
+  id             String    @id @default(cuid())
+  userId         String    @map("user_id")
+  connectorId    String    @map("connector_id")
+  kind           String
+  // awaiting_yes, approved, running, partner_pending, succeeded, failed, cancelled, declined,
+  // refused (a check said no when it came to run), reversed (the partner took it back later).
+  status         String    @default("awaiting_yes")
+  amountCents    Int       @map("amount_cents")
+  summary        String
+  // PrefilledStep[] and ActionDetails (src/lib/connectors/types.ts): ids and plain values, never a
+  // secret.
+  steps          Json
+  details        Json
+  // SHA-256 of the connector, kind, amount and details: a yes is for exactly what was shown.
+  fingerprint    String
+  // The caller's key: asking for the same action twice returns the first.
+  idempotencyKey String    @map("idempotency_key")
+  dryRun         Boolean   @default(false) @map("dry_run")
+  // True for a sandbox adapter or a dry run: nothing real happened.
+  simulated      Boolean   @default(true)
+  consentId      String?   @map("consent_id")
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz(3)
+  approvedAt     DateTime? @map("approved_at") @db.Timestamptz(3)
+  approvedCents  Int?      @map("approved_cents")
+  // Not before: the hold after the yes, when it can still be cancelled in Jane.
+  runAt          DateTime? @map("run_at") @db.Timestamptz(3)
+  // The partner's id for it, and until when the partner can take it back.
+  externalRef    String?   @map("external_ref")
+  cancelUntil    DateTime? @map("cancel_until") @db.Timestamptz(3)
+  // A short code of ours (why it was refused or failed), never a partner's words.
+  reason         String?
+  // What came back, in the person's words.
+  note           String?
+  finishedAt     DateTime? @map("finished_at") @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, idempotencyKey])
+  @@unique([connectorId, externalRef])
+  @@index([userId, createdAt])
+  @@map("connector_actions")
 }
 
 // This app's registration with Robinhood's sign-in, one per address it comes back to. Not personal

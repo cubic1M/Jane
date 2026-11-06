@@ -1,3 +1,5 @@
+import { TRANSFER_DELAY_DAYS } from "./money-movement";
+
 // Connectors (docs/connectors.md): the partners Jane reads from, prefills for and, later, acts through.
 // Everything here is off in production. Three locks, all needed before a real connector acts:
 //
@@ -59,3 +61,23 @@ export type ConsentScope = keyof typeof CONSENT_SCOPES;
 
 export const isConsentScope = (scope: unknown): scope is ConsentScope =>
   typeof scope === "string" && Object.hasOwn(CONSENT_SCOPES, scope);
+
+// --- The action pipeline (src/lib/connectors/pipeline.ts) ---------------------------------------
+
+// The most one action may move or commit. Above it the pipeline refuses, whatever the yes says. Kept
+// low for the first partner: a typical bill or a move between own accounts, not rent.
+export const CONNECTOR_ACTION_CAP_CENTS = 100_000;
+// Per person per rolling 24 hours: how many actions may be approved or run, and how much in all.
+export const CONNECTOR_DAILY_ACTIONS = 5;
+export const CONNECTOR_DAILY_CENTS = 200_000;
+
+// How long after the yes an action waits before it runs, so the person can still cancel it in Jane.
+// Money keeps the one-day undo the money-movement stand-in already promises (TRANSFER_DELAY_DAYS);
+// anything else waits a few minutes, enough to catch a wrong tap.
+export const CONNECTOR_HOLD_MINUTES = {
+  money: TRANSFER_DELAY_DAYS * 24 * 60,
+  other: 10,
+} as const;
+
+// A plan the person hasn't answered within this long expires: the yes is for what they saw then.
+export const CONNECTOR_PLAN_HOURS = 72;

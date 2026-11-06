@@ -1,4 +1,3 @@
-import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import {
   ROBINHOOD_CALLBACK_PATH,
   ROBINHOOD_LIMITS,
@@ -7,8 +6,9 @@ import {
   robinhoodServer,
 } from "@/config/robinhood";
 import type { PrismaClient } from "@/generated/prisma/client";
-import { decrypt, encrypt } from "@/lib/crypto";
+import { encrypt } from "@/lib/crypto";
 import { db as defaultClient } from "@/lib/db";
+import { openSignIn, pkceChallenge, randomValue } from "@/lib/oauth-pkce";
 import { siteOrigin } from "@/lib/site-origin";
 import { systemDb } from "@/lib/system-db";
 import { cappedText } from "./capped";
@@ -160,9 +160,6 @@ async function clientFor(
   return clientId;
 }
 
-const randomValue = () => randomBytes(32).toString("base64url");
-const challengeOf = (verifier: string) => createHash("sha256").update(verifier).digest("base64url");
-
 // The site's own address for the way back: from settings, except on a developer's machine.
 export function callbackOrigin(request: Request): string | null {
   const configured =
@@ -210,17 +207,11 @@ export async function startSignIn(
     redirect_uri: redirectUri,
     scope: ROBINHOOD_SCOPE,
     state: signIn.state,
-    code_challenge: challengeOf(signIn.verifier),
+    code_challenge: pkceChallenge(signIn.verifier),
     code_challenge_method: "S256",
     resource: robinhoodServer().mcpUrl,
   }).toString();
   return { url: url.toString(), cookie: encrypt(JSON.stringify(signIn)) };
-}
-
-function sameText(a: string, b: string): boolean {
-  const left = Buffer.from(a);
-  const right = Buffer.from(b);
-  return left.length === right.length && timingSafeEqual(left, right);
 }
 
 // The sign-in this browser started, if this answer belongs to it: the same person, within the time
@@ -229,15 +220,12 @@ export function matchSignIn(
   cookie: string | undefined,
   { userId, state, now = Date.now() }: { userId: string; state: string | null; now?: number },
 ): SignIn | null {
-  if (!cookie || !state) return null;
-  let signIn: SignIn;
-  try {
-    signIn = JSON.parse(decrypt(cookie)) as SignIn;
-  } catch {
-    return null;
-  }
-  const fresh = now - signIn.at < ROBINHOOD_LIMITS.signInMinutes * 60 * 1000;
-  return fresh && signIn.userId === userId && sameText(signIn.state, state) ? signIn : null;
+  return openSignIn<SignIn>(cookie, {
+    userId,
+    state,
+    now,
+    maxAgeMs: ROBINHOOD_LIMITS.signInMinutes * 60 * 1000,
+  });
 }
 
 async function tokenRequest(

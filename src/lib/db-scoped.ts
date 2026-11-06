@@ -187,6 +187,10 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     plaidItems: scoped.plaidItem,
     plaidItemClaims: scoped.plaidItemClaim,
     robinhoodConnections: scoped.robinhoodConnection,
+    // Connectors (src/lib/connectors/): consent, and the vault of encrypted credentials.
+    connectorConsents: scoped.connectorConsent,
+    connectorCredentials: scoped.connectorCredential,
+    connectorActions: scoped.connectorAction,
     accounts: scoped.account,
     transactions: scoped.transaction,
     recurringStreams: scoped.recurringStream,
