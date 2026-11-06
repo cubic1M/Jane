@@ -231,6 +231,15 @@ describe("categorizeByRules", () => {
     expect(out("TARGETED ADS LLC")).toBeNull();
   });
 
+  // Debugger 11-06: Apple Card's iPhone plan, "MONTHLY INSTALLMENTS (6 OF 24)" at $41.62, read
+  // "Review your Apple subscription: could save about $499.44 a year".
+  it("reads a card's monthly installments as paying off a purchase", () => {
+    const apple = { bankType: "Installment", bankCategory: "Installment" };
+    expect(out("MONTHLY INSTALLMENTS (6 OF 24)", apple)).toBe("LOAN_PAYMENTS_OTHER_PAYMENT");
+    expect(out("MONTHLY INSTALLMENTS (6 OF 24)")).toBe("LOAN_PAYMENTS_OTHER_PAYMENT");
+    expect(out("IPHONE 17 PRO", { bankType: "Installment" })).toBe("LOAN_PAYMENTS_OTHER_PAYMENT");
+  });
+
   it("falls back to the bank's own labels", () => {
     expect(out("SOMETHING", { bankType: "FEE_TRANSACTION" })).toBe("BANK_FEES_OTHER_BANK_FEES");
     expect(out("CORNER MARKET", { bankCategory: "Groceries" })).toBe("FOOD_AND_DRINK_GROCERIES");
