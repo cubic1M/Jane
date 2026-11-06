@@ -1,4 +1,5 @@
 import { IP_PIN, SIGNS } from "@/config/tax-identity";
+import { IP_PIN_TOOL_DOWN } from "@/planning/tax-identity";
 import type { IdentityView } from "@/lib/tax-identity";
 import type { MessageAction, MessageRefs } from "./types";
 
@@ -10,7 +11,7 @@ export const IDENTITY_HREF = "/taxes/identity";
 type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 
 export function ipPinMessage(view: IdentityView, setByJane: boolean): Message {
-  const guide = `Get an Identity Protection PIN from the IRS: a six-digit number only you have, so no one else can file a return with your Social Security number. ${IP_PIN.who} Get a new one each January.`;
+  const guide = `Get an Identity Protection PIN from the IRS: a six-digit number only you have, so no one else can file a return with your Social Security number. ${IP_PIN.who} Get a new one each January.${view.toolOpen === false ? ` ${IP_PIN_TOOL_DOWN}` : ""}`;
   if (setByJane) {
     return {
       body: `${guide} I've put it on your deadlines for the end of January.`,

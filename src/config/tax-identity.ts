@@ -12,6 +12,10 @@ export const IP_PIN = {
   who: "Anyone with a Social Security number can get one online after verifying their identity.",
   // The reminder goes on the deadlines for this day of January.
   remindOn: "01-31",
+  // The IRS's online tool is down from mid-November to mid-January (an IRS notice of 2026-10-22,
+  // as reported; the 2027 reopening day isn't published: connectors roadmap round 16). Until it
+  // reopens, Jane says so rather than sending the person to a tool that's off.
+  toolDown: { from: "11-15", until: "01-14" },
 } as const;
 
 export type SignKey = "efile_rejected" | "unknown_form" | "irs_letter";
