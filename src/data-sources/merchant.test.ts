@@ -329,6 +329,14 @@ describe("an ACH line's words after the company", () => {
     ["USAA P&C AUTOPAY PPD ID: 1234567890", "usaa p&c"],
     ["STATE FARM INSURANCE BILL PAY", "state farm insurance"],
     ["ROOT INSURANCE WEB PMT 260908 87654321 PARK OWEN", "root insurance"],
+    // Debugger 11-06: with the account number masked, the holder's name stayed ("Mr Cooper
+    // Mortgage Okafor Chidi", "Multnomah County Property Tax Okafor Chidi").
+    ["MR COOPER MORTGAGE 261004 XXXXX3390 OKAFOR CHIDI", "mr cooper mortgage"],
+    [
+      "MULTNOMAH COUNTY PROPERTY TAX 261030 XXXXX0090 OKAFOR CHIDI",
+      "multnomah county property tax",
+    ],
+    ["ACME CORP PAYROLL 260926 XXXXX9028", "acme corp payroll"],
     ["TRAVELERS INS ONLINE PMT", "travelers ins"],
   ])("%s is %s", (line, key) => {
     expect(normalizeMerchant(line)?.key).toBe(key);
