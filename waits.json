@@ -14,5 +14,13 @@
   "when": "merged",
   "since": "2026-11-06T18:06:23.260Z",
   "expires": "2026-11-09T18:06:23.260Z"
+ },
+ {
+  "on": 1556,
+  "lane": "lane:connectors",
+  "task": "claude/federal-autopay-card",
+  "when": "merged",
+  "since": "2026-11-06T21:02:20.533Z",
+  "expires": "2026-11-09T21:02:20.533Z"
  }
 ]
