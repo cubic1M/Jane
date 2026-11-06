@@ -112,6 +112,7 @@ export type AuditEvent =
   | "credit_report_uploaded"
   // The person's studentaid.gov file, read in memory (src/lib/connectors/my-aid/).
   | "my_aid_uploaded"
+  | "irs_transcript_uploaded"
   // The connector action pipeline (src/lib/connectors/pipeline.ts): every step of every action.
   | "connector_action_planned"
   | "connector_action_approved"

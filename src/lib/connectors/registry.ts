@@ -12,6 +12,7 @@ import { gated } from "./gate";
 import { manualBillPay, manualOwnTransfer } from "./manual-pay/connector";
 import { creditUpload } from "./credit-upload/connector";
 import { myAidUpload } from "./my-aid/connector";
+import { irsTranscriptUpload } from "./irs-transcript/connector";
 import { manualOpenSavings } from "./manual-pay/savings";
 import { SANDBOX_CONNECTORS } from "./sandbox/adapters";
 import type { Connector } from "./types";
@@ -60,6 +61,8 @@ const CONNECTORS: readonly Connector[] = [
   creditUpload,
   // Real, read only, no vendor: the person's federal student loans from studentaid.gov (./my-aid/).
   myAidUpload,
+  // Real, read only, no vendor: the person's own IRS account transcript (./irs-transcript/).
+  irsTranscriptUpload,
 ];
 
 let registry: ReadonlyMap<string, Connector> = buildRegistry(CONNECTORS);
