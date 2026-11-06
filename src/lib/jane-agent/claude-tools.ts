@@ -1,3 +1,4 @@
+import { oneLine } from "@/lib/untrusted-text";
 import { adviceMode } from "@/lib/advice-mode";
 import { log } from "@/lib/log";
 import { loadPractice } from "@/lib/practice/portfolio";
@@ -1033,7 +1034,8 @@ async function runChatToolWork(
       const view = await loadMoneyForTwo(userId, { client, now });
       if (!view) return out({ view: null, why: "No partner in their household yet." });
       return out({
-        partner: view.partnerName,
+        // The partner's own words, each kept to one line (UNTRUSTED_TEXT_RULE covers them).
+        partner: oneLine(view.partnerName),
         split: view.rule,
         chosen: view.chosen,
         yourShare: `${Math.round(view.myShareBps / 100)}%`,
@@ -1042,7 +1044,7 @@ async function runChatToolWork(
         spentTogetherThisMonth: money(view.sharedSpentCents),
         bothTapsFrom: money(view.bigMoveCents),
         jointGoals: view.jointGoals.map((g) => ({
-          name: g.name,
+          name: oneLine(g.name),
           saved: money(g.savedCents),
           target: money(g.targetCents),
           by: g.targetDate,
