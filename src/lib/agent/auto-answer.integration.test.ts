@@ -18,6 +18,10 @@ import { readReplyByRules } from "./read-reply";
 import { agentStep, handleReply } from "./run";
 
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).
+// The refund email carries the person's address, and these tests look for the card's last 4
+// digits in what was sent: a random id with digits held "4821" about once in 2,000 runs (#1500's
+// first CI run). Letters only, so a digit in an email is always the card's.
+const lettersOnly = (id: string) => id.replace(/\d/g, (d) => "ghijklmnop"[Number(d)]);
 const url = process.env.TEST_DATABASE_URL;
 
 describe.runIf(url)("the agent answering for itself, against a real database", () => {
@@ -30,7 +34,10 @@ describe.runIf(url)("the agent answering for itself, against a real database", (
   // A refund in progress for a charge on a card whose last 4 digits Jane knows (or not).
   async function waiting(mask: string | null) {
     const user = await client.user.create({
-      data: { email: `answer-${crypto.randomUUID()}@example.com`, name: "Alex Rivera" },
+      data: {
+        email: `answer-${lettersOnly(crypto.randomUUID())}@example.com`,
+        name: "Alex Rivera",
+      },
     });
     created.push(user.id);
     const account = await client.account.create({
