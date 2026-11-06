@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useOptimistic, useState } from "react";
+import { AiWrittenLabel } from "@/components/ai-written-label";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { concise } from "@/lib/jane-agent/popups";
 import type { MessageView } from "@/lib/jane-agent/view";
@@ -171,6 +172,7 @@ export function ChatMessageItem({ initial }: { initial: MessageView }) {
         </figure>
       )}
       {message.advice && <DemoAdviceLabel />}
+      {message.aiWritten && <AiWrittenLabel />}
 
       {message.status !== "open" && (
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
