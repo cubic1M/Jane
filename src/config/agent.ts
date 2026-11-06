@@ -82,3 +82,37 @@ export const SWITCH_WATCH_DAYS = 45;
 export const SWITCH_PRICE_TOLERANCE_CENTS = 150;
 // A transfer out of at least this share of the idle cash counts as the money moved.
 export const SWITCH_MIN_MOVED_SHARE = 0.5;
+
+// Endings shared by unrelated companies: the name before them is the company's (debugger 11-06: a
+// reply from any .co.uk address passed as one from support@bigco.co.uk).
+export const SHARED_SUFFIXES: readonly string[] = [
+  "co.uk",
+  "org.uk",
+  "ac.uk",
+  "com.au",
+  "net.au",
+  "org.au",
+  "co.nz",
+  "co.jp",
+  "com.br",
+  "co.in",
+  "com.mx",
+];
+// Mail anyone can sign up for: a company there is its address, not its domain (any Gmail user
+// holding the reply address isn't the business Jane wrote to).
+export const SHARED_MAIL_DOMAINS: readonly string[] = [
+  "gmail.com",
+  "googlemail.com",
+  "yahoo.com",
+  "outlook.com",
+  "hotmail.com",
+  "live.com",
+  "msn.com",
+  "icloud.com",
+  "me.com",
+  "aol.com",
+  "proton.me",
+  "protonmail.com",
+  "gmx.com",
+  "zoho.com",
+];
