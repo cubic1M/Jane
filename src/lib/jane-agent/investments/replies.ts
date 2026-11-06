@@ -343,11 +343,18 @@ export function retirementReply(
   const plan = data.retirement;
   const lines = [projectionLine(plan), matchLine(plan)].filter(Boolean).join(" ");
   const paycheck = income?.advice && income.applies ? paycheckLine(income) : null;
+  // "Nothing to change" only when the plan says on track: without their pay there's no target to
+  // measure against, and short of one with nothing left to suggest isn't an all-clear (night round
+  // 11-06: every sample person was told to keep going as they are).
   const changes =
     plan.changes.length === 0
       ? plan.years === 0
         ? ""
-        : "Nothing to change: keep going as you are."
+        : plan.status === "on_track"
+          ? "Nothing to change: keep going as you are."
+          : plan.status === "unknown"
+            ? "Whether that's enough I can't say yet: I don't see your pay before deductions or your employer's match."
+            : ""
       : `What I'd change:\n${plan.changes.map((c, i) => `${i + 1}. ${c.what} ${c.why}`).join("\n")}`;
   const roth = plan.rothOrTraditional ? `\n${ROTH_WORDS[plan.rothOrTraditional]}` : "";
   return {
