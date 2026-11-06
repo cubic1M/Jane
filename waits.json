@@ -62,5 +62,13 @@
   "when": "merged",
   "since": "2026-11-06T22:32:27.014Z",
   "expires": "2026-11-09T22:32:27.014Z"
+ },
+ {
+  "on": 1574,
+  "lane": "lane:connectors",
+  "task": "claude/irs-transcript",
+  "when": "merged",
+  "since": "2026-11-06T22:51:48.480Z",
+  "expires": "2026-11-09T22:51:48.480Z"
  }
 ]
