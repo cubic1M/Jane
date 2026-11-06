@@ -119,6 +119,18 @@ describe("the federal autopay card", () => {
     expect(withLoan()!.why).not.toContain("July 1, 2012");
   });
 
+  it("puts no figure in the headline when it can't tell the loan gets the cut", () => {
+    expect(withLoan({ originationDate: null })!.headline).toBe("Turn on student loan autopay");
+    expect(withLoan()!.headline).toMatch(/\$240/);
+  });
+
+  it("says deferment or forbearance pauses the cut, and returned payments end it", () => {
+    const why = withLoan()!.why;
+    expect(why).toContain("Deferment or forbearance pauses it");
+    expect(why).toContain("three payments returned in a row end it");
+    expect(why).toContain("11:59 p.m. Eastern on December 31, 2026");
+  });
+
   it("says it can save less on RAP, which Plaid can't name yet", () => {
     expect(withLoan({ repaymentPlan: "unknown" })!.why).toContain("On RAP it can save less");
     expect(withLoan({ repaymentPlan: "standard" })!.why).not.toContain("RAP");
@@ -171,6 +183,23 @@ describe("the SAVE-ending card", () => {
     expect(s.more?.[0]?.href).toBe("https://studentaid.gov/loan-simulator/");
     // SAVE borrowers sat in forbearance while it was in court: that doesn't hide it.
     expect(s).not.toBeNull();
+  });
+
+  it("says the default is Standard or Tiered Standard", () => {
+    expect(withLoan(onSave)!.why).toContain("put on Standard or Tiered Standard");
+  });
+
+  it("gives a Direct Consolidation Loan's Standard its longer term, set by what's owed", () => {
+    // $24,000 consolidated: a 20-year Standard plan, not 10.
+    const consolidated = withLoan({
+      ...onSave,
+      description: "Direct Consolidation Unsubsidized",
+      minimumCents: 0,
+    })!;
+    expect(consolidated.worthCents).toBe(levelPaymentCents(2_400_000, 553, 240) * 12);
+    expect(consolidated.worthCents).toBeLessThan(
+      withLoan({ ...onSave, minimumCents: 0 })!.worthCents,
+    );
   });
 
   it("counts what's paid now, and says nothing when Standard costs no more", () => {

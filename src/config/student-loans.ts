@@ -139,9 +139,11 @@ export const INCOME_DRIVEN_PLAN_NAMES: readonly string[] = [
 
 // Federal autopay (connectors roadmap round 15, loans 3.1): the autopay rate cut on Direct Loans
 // went from 0.25% to 1% on July 1, 2026, through June 30, 2028, for anyone enrolled by 11:59 p.m.
-// Eastern on December 31, 2026 (extended from September 30; servicer pages and news reports, the
-// studentaid.gov pages didn't load: re-check there before it reaches anyone; Education's June
-// release still says September 30). Forbearance or deferment ends the cut.
+// Eastern on December 31, 2026, for Direct Loans originated on or after July 1, 2012 (checked
+// 2026-11-06 on Education's servicer pages at edfinancial.studentaid.gov/auto-pay and
+// mohela.studentaid.gov; the deadline was September 30 before it was extended, which is what
+// Education's June release says). Deferment or forbearance pauses the cut; three payments returned
+// in a row end autopay and the cut with it.
 export const FED_AUTOPAY = {
   // The last day to enrol, Eastern time, and the moment after it.
   lastDay: "2026-12-31",
@@ -185,13 +187,22 @@ export const FED_AUTOPAY = {
 
 // SAVE ended by court settlement (connectors roadmap round 15, loans 3.1): notices went out from
 // July 1, 2026, and each borrower has 90 days from their own to choose a plan, or is put on
-// Standard. Consolidating now leaves only RAP and Tiered Standard. Re-check on studentaid.gov.
+// Standard or Tiered Standard. Consolidating now leaves only RAP and Tiered Standard.
 export const SAVE_ENDING = {
   // Plaid's names: REPAYE became SAVE in 2023, and some servicers still report the old name.
   plans: ["saving on a valuable education", "revised pay as you earn"],
   chooseDays: 90,
-  // Standard: level payments over ten years.
+  // Standard: level payments over ten years; for a Direct Consolidation Loan, over a term set by
+  // what's owed (34 CFR 685.208(j)): up to 30 years.
   standardMonths: 120,
+  consolidationMonths: [
+    { underCents: 750_000, months: 120 },
+    { underCents: 1_000_000, months: 144 },
+    { underCents: 2_000_000, months: 180 },
+    { underCents: 4_000_000, months: 240 },
+    { underCents: 6_000_000, months: 300 },
+    { underCents: Number.MAX_SAFE_INTEGER, months: 360 },
+  ],
   // Statuses where there's nothing left to choose: paid, gone, or a new plan applied for.
   doneStatuses: [
     "paid in full",

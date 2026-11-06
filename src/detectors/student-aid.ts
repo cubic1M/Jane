@@ -71,7 +71,10 @@ const studentAutopay: Detector = {
       capability: "debt",
       topic: "student_autopay",
       title: `Make sure autopay is on for your federal student loans by ${deadline}`,
-      headline: headlineOf("Turn on student loan autopay", yearly, "saves"),
+      // Without a date Jane can't say the loan gets the cut, so no figure in the headline.
+      headline: undated
+        ? "Turn on student loan autopay"
+        : headlineOf("Turn on student loan autopay", yearly, "saves"),
       short: `Autopay by ${deadline} takes 1% off the rate on ${formatCents(owed)} owed.`,
       worthCents: yearly,
       worthKind: "saves",
@@ -80,12 +83,18 @@ const studentAutopay: Detector = {
         reason: "your bank reports a federal loan being repaid; I can't see whether autopay is on",
       },
       urgency: left <= FED_AUTOPAY.urgentDays ? "now" : "soon",
-      why: `Federal Direct Loans get 1% off their rate through June 30, 2028 for anyone signed up for autopay with their servicer by 11:59 p.m. Eastern on ${deadline}. On your ${formatCents(owed)} that's about ${formatCents(yearly)} a year${undated ? ", if your loans were first paid out after July 1, 2012" : ""}. Forbearance or deferment ends it.${maybeRap ? " On RAP it can save less, since unpaid interest is waived there." : ""} If autopay is already on, nothing to do.`,
+      why: `Federal Direct Loans get 1% off their rate through June 30, 2028 for anyone signed up for autopay with their servicer by 11:59 p.m. Eastern on ${deadline}. On your ${formatCents(owed)} that's about ${formatCents(yearly)} a year${undated ? ", if your loans were first paid out after July 1, 2012" : ""}. Deferment or forbearance pauses it, and three payments returned in a row end it.${maybeRap ? " On RAP it can save less, since unpaid interest is waived there." : ""} If autopay is already on, nothing to do.`,
       action: { label: "See your loans and servicer", href: "/loans/student" },
       more: [{ label: see.title, href: see.url }],
     };
   },
 };
+
+// Standard's term: ten years, or for a Direct Consolidation Loan a term set by what's owed.
+function standardMonths(l: ProfileLiability, balanceCents: number): number {
+  if (!/\bconsolidat/i.test(l.description ?? "")) return SAVE_ENDING.standardMonths;
+  return SAVE_ENDING.consolidationMonths.find((t) => balanceCents < t.underCents)!.months;
+}
 
 // SAVE has ended: each borrower has 90 days from their own notice to pick a plan, or is put on
 // Standard. Worth what Standard would add to the payment in a year: the risk of not choosing.
@@ -108,7 +117,7 @@ const saveEnding: Detector = {
       const balance = Math.abs(data.accounts.find((a) => a.id === l.accountId)?.balanceCents ?? 0);
       if (balance <= 0 || l.aprBps === null) continue;
       owed += balance;
-      standard += levelPaymentCents(balance, l.aprBps, SAVE_ENDING.standardMonths);
+      standard += levelPaymentCents(balance, l.aprBps, standardMonths(l, balance));
       now += l.minimumCents ?? 0;
     }
     const rise = standard - now;
@@ -120,7 +129,7 @@ const saveEnding: Detector = {
       topic: "student_save_ending",
       title: "Pick a new repayment plan now that SAVE has ended",
       headline: "Pick a new student loan plan",
-      short: `SAVE has ended: without a choice, Standard is about ${formatCents(standard)} a month.`,
+      short: `SAVE has ended: without a choice, Standard could be about ${formatCents(standard)} a month.`,
       worthCents: rise * 12,
       worthKind: "risk",
       confidence: {
@@ -128,7 +137,7 @@ const saveEnding: Detector = {
         reason: "your bank reports a loan on SAVE; I can't see your notice's date",
       },
       urgency: "now",
-      why: `Your bank still shows ${formatCents(owed)} on SAVE, which has ended. You have ${SAVE_ENDING.chooseDays} days from your notice to pick a plan, or you're put on Standard: about ${formatCents(standard)} a month, ${formatCents(rise)} more than now. Compare RAP, IBR and Standard first. Consolidating now leaves only RAP and Tiered Standard.`,
+      why: `Your bank still shows ${formatCents(owed)} on SAVE, which has ended. You have ${SAVE_ENDING.chooseDays} days from your notice to pick a plan, or you're put on Standard or Tiered Standard. Standard would be about ${formatCents(standard)} a month, ${formatCents(rise)} more than now. Compare RAP, IBR and Standard first. Consolidating now leaves only RAP and Tiered Standard.`,
       action: { label: "Compare repayment plans", href: "/loans/student" },
       more: [{ label: simulate.title, href: simulate.url }],
     };
