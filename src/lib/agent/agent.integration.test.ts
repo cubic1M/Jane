@@ -81,9 +81,13 @@ describe.runIf(url)("the action agent against a real database", () => {
   const reload = (id: string) => client.action.findUniqueOrThrow({ where: { id } });
   const reply = async (actionId: string, body: string) => {
     const action = await reload(actionId);
+    // The company answers from the address Jane wrote to.
+    const { toAddress } = await client.agentMessage.findFirstOrThrow({
+      where: { actionId, direction: "outbound" },
+    });
     return handleReply(
       `reply+${action.replyToken}@agent.jane.test`,
-      { from: "support@company.example", subject: "Re: your request", body },
+      { from: toAddress, subject: "Re: your request", body },
       { client, read, notify },
     );
   };

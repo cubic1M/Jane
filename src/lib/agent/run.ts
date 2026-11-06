@@ -10,6 +10,7 @@ import {
   CANCEL_DATA_FRESH_DAYS,
   AGENT_FOLLOW_UP_DAYS,
   AGENT_HOLD_HOURS,
+  AGENT_MAX_AUTO_ANSWERS,
   AGENT_MAX_BODY,
   AGENT_MAX_FOLLOW_UPS,
   AGENT_SIGNATURE,
@@ -31,10 +32,18 @@ import { scopedFor } from "@/lib/db-scoped";
 import { PLACEHOLDERS, draftMessage, draftPayload } from "@/lib/drafts";
 import { CARD_SELECT, buildCard, cardHash } from "@/lib/cards";
 import { DecisionError, recordDecision } from "@/lib/decisions";
-import { checkGuardrails } from "@/lib/guardrails";
+import { checkGuardrails, type GuardrailIssue } from "@/lib/guardrails";
+import { hit } from "@/lib/rate-limit";
 import { enqueueJob, runJob } from "@/lib/jobs";
 import { cancelsFromOwnAccountOnly, companyFacts } from "@/lib/merchants";
-import { agentFromAddress, mailMode, replyAddress, sendAgentMail, tokenFromAddress } from "./mail";
+import {
+  agentFromAddress,
+  fromTheCompany,
+  mailMode,
+  replyAddress,
+  sendAgentMail,
+  tokenFromAddress,
+} from "./mail";
 import { readReply, readReplyByRules, type ReplyReading } from "./read-reply";
 import { findSupportContact } from "./find-contact";
 import { composeAnswer, whatIsAsked, type KnownFacts } from "./auto-answer";
@@ -107,6 +116,7 @@ export async function loadAction(userId: string, actionId: string, client: Prism
       startedAt: true,
       agentState: true,
       agentFollowUps: true,
+      agentNextAt: true,
       replyToken: true,
       decision: {
         select: {
@@ -336,6 +346,32 @@ async function send(
 
 export type StepResult = "sent" | "followed_up" | "handed_off" | "waiting" | "skipped";
 
+// Takes the next email for this job, or reports that another took it: two agent_step jobs for one
+// action (a double-click on /admin/merchants, a job run again) both read it before either wrote,
+// and both sent. Returns how to give it back if the email doesn't go.
+async function claimStep(
+  userId: string,
+  action: LoadedAction,
+  data: { agentNextAt: Date; agentFollowUps?: { increment: number } },
+  client: PrismaClient,
+): Promise<(() => Promise<unknown>) | null> {
+  const db = scopedFor(userId, client);
+  const { count } = await db.actions.updateMany({
+    where: {
+      id: action.id,
+      agentNextAt: action.agentNextAt,
+      agentFollowUps: action.agentFollowUps,
+    },
+    data,
+  });
+  if (count === 0) return null;
+  return () =>
+    db.actions.updateMany({
+      where: { id: action.id },
+      data: { agentNextAt: action.agentNextAt, agentFollowUps: action.agentFollowUps },
+    });
+}
+
 // One step: the first email, a follow-up when one is due, or a hand-off.
 export async function agentStep(
   userId: string,
@@ -439,56 +475,21 @@ export async function agentStep(
   }
 
   const first = action.agentMessages[0];
+  const next = new Date(now.getTime() + AGENT_FOLLOW_UP_DAYS * DAY_MS);
   if (!first) {
-    const finding = action.decision.finding;
-    // What the person picked on the plan, e.g. a downgrade instead of a cancel.
-    const choice =
-      action.type === "cancel_subscription"
-        ? chosen.plan
-        : action.type === "fight_price_increase"
-          ? chosen.ask
-          : undefined;
-    const request =
-      (typeof choice === "string" ? AGENT_REQUESTS[action.type]?.[choice] : null) ?? undefined;
-    const draft = await draftMessage(action.type, finding, {
-      request,
-      useClaude: !isTrialUser(userId),
-      client: meteredClaude(userId),
-    });
-    const prepared = draftPayload(action.type, finding, { request });
-    if (!draft || !prepared || draft.draft.channel !== "email") {
-      await handOff(userId, action, "This kind of request needs a call, not an email.", options);
-      return "handed_off";
+    const giveBack = await claimStep(userId, action, { agentNextAt: next }, client);
+    if (!giveBack) return "waiting";
+    try {
+      return await firstEmail(userId, action, to, chosen, { client, now, deliver, options });
+    } catch (error) {
+      await giveBack();
+      throw error;
     }
-    const subject = fill(draft.draft.subject, action) || `Request about ${merchantOf(action)}`;
-    const body = `${fill(draft.draft.body, action)}\n\nReplies to this email reach us.\n${AGENT_SIGNATURE}`;
-    if (!checkGuardrails(`${subject}\n${body}`, prepared.allowedCents).ok) {
-      await handOff(
-        userId,
-        action,
-        "The message didn't pass Jane's checks; it needs a person.",
-        options,
-      );
-      return "handed_off";
-    }
-    await send(userId, action, { to, subject, body }, { client, send: deliver });
-    await setStatus(
-      userId,
-      action,
-      "in_progress",
-      {
-        agentState: "waiting_reply",
-        agentNextAt: new Date(now.getTime() + AGENT_FOLLOW_UP_DAYS * DAY_MS),
-        userTodo: null,
-      },
-      options,
-    );
-    await track(userId, "agent_message_sent", { action_type: action.type, source: draft.kind });
-    return "sent";
   }
 
   // Already written: follow up if nothing came back in time, then pass it on.
   if (action.agentState !== "waiting_reply") return "waiting";
+  if (action.agentNextAt && action.agentNextAt > now) return "waiting";
   if (action.agentFollowUps >= AGENT_MAX_FOLLOW_UPS) {
     await handOff(
       userId,
@@ -498,28 +499,98 @@ export async function agentStep(
     );
     return "handed_off";
   }
+  const giveBack = await claimStep(
+    userId,
+    action,
+    { agentNextAt: next, agentFollowUps: { increment: 1 } },
+    client,
+  );
+  if (!giveBack) return "waiting";
   const quoted = first.body
     .split("\n")
     .map((line) => `> ${line}`)
     .join("\n");
-  await send(
+  try {
+    await send(
+      userId,
+      action,
+      {
+        to: first.toAddress,
+        subject: first.subject.startsWith("Re: ") ? first.subject : `Re: ${first.subject}`,
+        body: `Hello again,\n\nFollowing up on my message below. Could you let us know where this stands?\n\nThank you.\n${AGENT_SIGNATURE}\n\n${quoted}`,
+      },
+      { client, send: deliver },
+    );
+  } catch (error) {
+    await giveBack();
+    throw error;
+  }
+  return "followed_up";
+}
+
+// The first email to the company, drafted from the finding and checked before it goes.
+async function firstEmail(
+  userId: string,
+  action: LoadedAction,
+  to: string,
+  chosen: Record<string, unknown>,
+  {
+    client,
+    now,
+    deliver,
+    options,
+  }: {
+    client: PrismaClient;
+    now: Date;
+    deliver: typeof sendAgentMail;
+    options: Required<Pick<Options, "client" | "now" | "notify">>;
+  },
+): Promise<StepResult> {
+  const finding = action.decision.finding;
+  // What the person picked on the plan, e.g. a downgrade instead of a cancel.
+  const choice =
+    action.type === "cancel_subscription"
+      ? chosen.plan
+      : action.type === "fight_price_increase"
+        ? chosen.ask
+        : undefined;
+  const request =
+    (typeof choice === "string" ? AGENT_REQUESTS[action.type]?.[choice] : null) ?? undefined;
+  const draft = await draftMessage(action.type, finding, {
+    request,
+    useClaude: !isTrialUser(userId),
+    client: meteredClaude(userId),
+  });
+  const prepared = draftPayload(action.type, finding, { request });
+  if (!draft || !prepared || draft.draft.channel !== "email") {
+    await handOff(userId, action, "This kind of request needs a call, not an email.", options);
+    return "handed_off";
+  }
+  const subject = fill(draft.draft.subject, action) || `Request about ${merchantOf(action)}`;
+  const body = `${fill(draft.draft.body, action)}\n\nReplies to this email reach us.\n${AGENT_SIGNATURE}`;
+  if (!checkGuardrails(`${subject}\n${body}`, prepared.allowedCents).ok) {
+    await handOff(
+      userId,
+      action,
+      "The message didn't pass Jane's checks; it needs a person.",
+      options,
+    );
+    return "handed_off";
+  }
+  await send(userId, action, { to, subject, body }, { client, send: deliver });
+  await setStatus(
     userId,
     action,
+    "in_progress",
     {
-      to: first.toAddress,
-      subject: first.subject.startsWith("Re: ") ? first.subject : `Re: ${first.subject}`,
-      body: `Hello again,\n\nFollowing up on my message below. Could you let us know where this stands?\n\nThank you.\n${AGENT_SIGNATURE}\n\n${quoted}`,
-    },
-    { client, send: deliver },
-  );
-  await scopedFor(userId, client).actions.updateMany({
-    where: { id: action.id },
-    data: {
-      agentFollowUps: { increment: 1 },
+      agentState: "waiting_reply",
       agentNextAt: new Date(now.getTime() + AGENT_FOLLOW_UP_DAYS * DAY_MS),
+      userTodo: null,
     },
-  });
-  return "followed_up";
+    options,
+  );
+  await track(userId, "agent_message_sent", { action_type: action.type, source: draft.kind });
+  return "sent";
 }
 
 // A company's reply, by the token in the address it was sent to. Every reply is kept on
@@ -547,7 +618,77 @@ export async function handleReply(
   const { userId } = found;
   const action = await loadAction(userId, found.id, client);
   if (!action) return "unknown";
+  const inbound = {
+    direction: "inbound" as const,
+    to: toAddress,
+    from: mail.from,
+    subject: mail.subject,
+    body: mail.body,
+  };
 
+  // Only the company Jane wrote to, while Jane waits for it, and only once: anyone in that email
+  // thread holds the token, and a provider can deliver the same reply twice. Anything else is
+  // kept on the timeline unread, so it costs no Claude and changes nothing.
+  const sentTo = action.agentMessages[0]?.toAddress ?? "";
+  const repeat = await scopedFor(userId, client).agentMessages.findFirst({
+    where: {
+      actionId: action.id,
+      direction: "inbound",
+      fromAddress: mail.from,
+      subject: mail.subject.slice(0, 300),
+      body: mail.body.slice(0, AGENT_MAX_BODY),
+    },
+    select: { id: true },
+  });
+  if (repeat) return "kept";
+  if (
+    !fromTheCompany(mail.from, sentTo) ||
+    !canAgentWork(action) ||
+    action.agentState !== "waiting_reply"
+  ) {
+    await record(userId, action.id, inbound, null, client);
+    return "kept";
+  }
+  // One reply at a time: two at once both saw "waiting".
+  const { count: claimed } = await scopedFor(userId, client).actions.updateMany({
+    where: { id: action.id, agentState: "waiting_reply" },
+    data: { agentState: "working" },
+  });
+  if (claimed === 0) {
+    await record(userId, action.id, inbound, null, client);
+    return "kept";
+  }
+  try {
+    return await actOnReply(userId, action, mail, inbound, { client, now, read, notify, deliver });
+  } catch (error) {
+    // Waiting again, so the reply can be tried again rather than left half done.
+    await scopedFor(userId, client).actions.updateMany({
+      where: { id: action.id, agentState: "working" },
+      data: { agentState: "waiting_reply" },
+    });
+    throw error;
+  }
+}
+
+async function actOnReply(
+  userId: string,
+  action: LoadedAction,
+  mail: { from: string; subject: string; body: string },
+  inbound: Parameters<typeof record>[2],
+  {
+    client,
+    now,
+    read,
+    notify,
+    deliver,
+  }: {
+    client: PrismaClient;
+    now: Date;
+    read: typeof readReply;
+    notify: typeof sendStatusEmail;
+    deliver: typeof sendAgentMail;
+  },
+): Promise<"acted"> {
   // A sample person's simulated company is read by the rules: it can't cost anything.
   const reading = isTrialUser(userId)
     ? readReplyByRules(mail.body.slice(0, AGENT_MAX_BODY))
@@ -555,19 +696,7 @@ export async function handleReply(
         { subject: mail.subject, body: mail.body.slice(0, AGENT_MAX_BODY) },
         { client: meteredClaude(userId) },
       );
-  await record(
-    userId,
-    action.id,
-    {
-      direction: "inbound",
-      to: toAddress,
-      from: mail.from,
-      subject: mail.subject,
-      body: mail.body,
-    },
-    reading,
-    client,
-  );
+  await record(userId, action.id, inbound, reading, client);
   await logAudit(
     SYSTEM_ACTOR,
     "agent_reply_received",
@@ -577,7 +706,6 @@ export async function handleReply(
       outcome: reading.outcome,
     },
   );
-  if (!canAgentWork(action) || action.agentState !== "waiting_reply") return "kept";
 
   const options = { client, now, notify };
   const merchant = merchantOf(action);
@@ -618,8 +746,12 @@ export async function handleReply(
         asked.kind === "facts"
           ? composeAnswer(asked.facts, await knownFacts(userId, action, client))
           : null;
-      if (answer) {
-        await replyToCompany(userId, action, `From the account holder's records: ${answer}`, {
+      // Each answer sends some of the person's details, so only a few before they're asked.
+      const answeredBefore = action.agentMessages.filter((m) =>
+        m.body.includes(AUTO_ANSWER_MARK),
+      ).length;
+      if (answer && answeredBefore < AGENT_MAX_AUTO_ANSWERS) {
+        await replyToCompany(userId, action, `${AUTO_ANSWER_MARK} ${answer}`, {
           client,
           now,
           deliver,
@@ -633,6 +765,7 @@ export async function handleReply(
         action,
         "waiting_on_user",
         {
+          agentState: "waiting_reply",
           agentNextAt: null,
           userTodo: `${merchant} asked: ${question} Answer on your actions page and Jane will reply.`,
         },
@@ -670,9 +803,20 @@ export async function handleReply(
 
 export class AnswerError extends Error {}
 
+const AUTO_ANSWER_MARK = "From the account holder's records:";
+
 // Card, account or other long numbers never go out in an answer.
 const LONG_NUMBER = /\d[\d\s-]{10,}\d/;
 const MAX_ANSWER = 1_000;
+// What the person's own words may not carry in an email Jane signs. Their figures and what they
+// say they did are theirs to state; advice, promises, links and requests for credentials aren't.
+const NOT_UNDER_JANES_NAME: readonly GuardrailIssue[] = [
+  "investment_advice",
+  "tax_or_legal_advice",
+  "guaranteed_outcome",
+  "untrusted_link",
+  "credential_request",
+];
 
 // The person answers a company's question; the agent sends it on and waits again.
 export async function answerCompany(
@@ -689,16 +833,39 @@ export async function answerCompany(
       "Leave out card and account numbers. If they need the last 4 digits, give only those.",
     );
   }
+  const check = checkGuardrails(text, []);
+  if (!check.ok && check.issues.some((issue) => NOT_UNDER_JANES_NAME.includes(issue))) {
+    throw new AnswerError(
+      "Jane can't send that under its name. Keep to what the company asked, with no links.",
+    );
+  }
   const action = await loadAction(userId, actionId, client);
   const first = action?.agentMessages[0];
   if (!action || !first || !canAgentWork(action) || action.status !== "waiting_on_user") {
     throw new AnswerError("Jane isn't waiting on an answer for this one.");
   }
-  await replyToCompany(userId, action, `From the account holder: ${text}`, {
-    client,
-    now,
-    deliver,
+  if (!(await hit("agentAnswer", userId, { client, now })).ok) {
+    throw new AnswerError("That's a lot of answers. Try again in an hour.");
+  }
+  // One answer goes: two sent at once both saw the action waiting on the person.
+  const { count } = await scopedFor(userId, client).actions.updateMany({
+    where: { id: action.id, status: "waiting_on_user" },
+    data: { status: "in_progress" },
   });
+  if (count === 0) throw new AnswerError("Your answer is already on its way.");
+  try {
+    await replyToCompany(userId, action, `From the account holder: ${text}`, {
+      client,
+      now,
+      deliver,
+    });
+  } catch (error) {
+    await scopedFor(userId, client).actions.updateMany({
+      where: { id: action.id, status: "in_progress" },
+      data: { status: "waiting_on_user" },
+    });
+    throw error;
+  }
 }
 
 // Sends an answer to the company's question and waits for their reply again.
@@ -1097,10 +1264,12 @@ export async function resumeForMerchant(
     select: { id: true, userId: true },
   });
   for (const { id, userId } of waiting) {
-    await scopedFor(userId, client).actions.updateMany({
+    const { count } = await scopedFor(userId, client).actions.updateMany({
       where: { id, agentState: "handed_off" },
       data: { agentState: "working", handoffReason: null, agentNextAt: now },
     });
+    // Another save of the same merchant took it back already, and queued its step.
+    if (count === 0) continue;
     await note(
       userId,
       id,

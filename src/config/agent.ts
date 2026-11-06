@@ -18,6 +18,13 @@ export const AGENT_ACTION_TYPES: readonly ActionType[] = [
 // the action to the team.
 export const AGENT_FOLLOW_UP_DAYS = 3;
 export const AGENT_MAX_FOLLOW_UPS = 2;
+// Answers Jane writes itself to a company's questions, from the person's records, before the
+// person is asked instead: each one sends some of their details.
+export const AGENT_MAX_AUTO_ANSWERS = 2;
+// A call that lowered a bill below this share of what it was is checked by the team before it
+// counts as savings: the result comes from the call provider, and a mistake there would count a
+// whole bill as saved.
+export const AGENT_CALL_LOWEST_SHARE = 0.3;
 
 // The longest email body the agent sends or keeps from a reply.
 export const AGENT_MAX_BODY = 4_000;

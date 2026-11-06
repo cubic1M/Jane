@@ -89,6 +89,8 @@ export const RATE_LIMITS = {
   claudeInFlight: { limit: 3, windowSeconds: 2 * 60 },
   // One tap on one message at a time: a handler runs before the message is marked answered.
   chatTapInFlight: { limit: 1, windowSeconds: 60 },
+  // Answers a person sends a company through Jane, each signed by Jane.
+  agentAnswer: { limit: 10, windowSeconds: 60 * 60 },
   // Trying Jane with sample data, per IP (spec step 138): each makes a sample person.
   // 20, not 5: offices, schools and households share one IP, and people try several of the
   // eight sample lives (step 252).
