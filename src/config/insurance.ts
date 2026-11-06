@@ -447,6 +447,18 @@ export const DEMO_PRICING = {
 // renews, and whenever its price goes up. It picks the lowest price for the same cover,
 // weighted by the carrier's rating, and asks once. Nothing is bought without a tap.
 export const RESHOP_DAYS_BEFORE_RENEWAL = 45;
+// By kind (connectors roadmap round 14): California insurers must offer a home or renters renewal 45
+// days ahead (CIC 678) and an auto renewal 20 days ahead (CIC 663), so the new price can be known by
+// then; auto gets its reshop at 30 days. Life isn't reshopped at renewal. Kinds not listed use
+// RESHOP_DAYS_BEFORE_RENEWAL.
+export const RESHOP_DAYS_BEFORE_RENEWAL_BY_KIND: Partial<Record<PolicyKind, number | null>> = {
+  home: 45,
+  renters: 45,
+  auto: 30,
+  life: null,
+};
+// Never this close to renewal, unless the price already went up: too late to compare calmly.
+export const RESHOP_LAST_CALL_DAYS = 7;
 // A carrier's price counts this much more for each rating point below 100 (0.5% a point),
 // so a much better-rated carrier can win at a slightly higher price.
 export const PICK_RATING_PENALTY_PER_POINT = 0.005;

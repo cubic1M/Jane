@@ -137,8 +137,8 @@ test("a demo-bank person sees the sample policy, like-for-like quotes and Jane's
   await pickItem(page, "Insurance", "Your policies", "GEICO car");
   await page.getByRole("link", { name: "Compare quotes" }).click();
   await expect(page.getByText("Sample quotes from Jane's demo carrier catalog")).toBeVisible();
-  // The policy renews in 40 days, so Jane shopped it on its own when the bank linked
-  // (spec step 104): its pick, why, labelled as demo advice.
+  // The policy renews in 25 days (inside the 30-day auto window), so Jane shopped it on its own
+  // when the bank linked (spec step 104): its pick, why, labelled as demo advice.
   // Its pick and the other cheaper quotes as comparison cards, Jane's tagged.
   const pick = page.getByRole("region", { name: "Jane's pick" });
   const janes = pick.locator("li[data-option-id]").filter({ hasText: "JANE'S PICK" });

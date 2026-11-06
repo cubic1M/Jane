@@ -13,9 +13,9 @@ import { runJaneAgent } from "@/lib/jane-agent/run";
 import { sendToJane } from "@/lib/jane-agent/typing";
 import { parseActions, parseRefs } from "@/lib/jane-agent/types";
 import { AcceptShopError, acceptShop, insuranceSwitchOf } from "./accept";
-import { EMPTY_POLICY_INPUT, addPolicy, updatePolicy } from "./policies";
+import { EMPTY_POLICY_INPUT, addPolicy, listPolicies, updatePolicy } from "./policies";
 import { ensureDemoPolicies } from "./profile";
-import { declineShop, openShops, reshopAll, reshopPerson, shopById } from "./shop";
+import { declineShop, openShops, reshopAll, reshopDue, reshopPerson, shopById } from "./shop";
 
 // Shopped for you against a real, migrated Postgres (spec step 104): reshops run by
 // themselves before renewal and on a price rise, Jane's pick is asked about once in the
@@ -93,6 +93,30 @@ describe.runIf(url)("insurance shopped for you, against a real database", () => 
     expect(shop.why).toHaveLength(3);
     // The same renewal is never shopped twice.
     expect(await reshopPerson(userId, { client, now: new Date(NOW.getTime() + DAY) })).toEqual([]);
+  });
+
+  // Connectors roadmap round 14: when the renewal price can be known, by kind.
+  it("reshops at renewal by kind: auto from 30 days, home from 45, never in the last week or for life", async () => {
+    const { userId } = await demoPerson();
+    const [base] = await listPolicies(userId, { client });
+    const due = (kind: "auto" | "home" | "renters" | "life", daysOut: number) =>
+      reshopDue(
+        userId,
+        {
+          ...base!,
+          kind,
+          renewalDate: new Date(NOW.getTime() + daysOut * DAY).toISOString().slice(0, 10),
+        },
+        { client, now: NOW },
+      );
+    expect(await due("auto", 40)).toBeNull();
+    expect(await due("auto", 30)).toMatchObject({ reason: "renewal" });
+    expect(await due("home", 45)).toMatchObject({ reason: "renewal" });
+    expect(await due("renters", 44)).toMatchObject({ reason: "renewal" });
+    expect(await due("home", 46)).toBeNull();
+    expect(await due("auto", 6)).toBeNull();
+    expect(await due("home", 7)).toMatchObject({ reason: "renewal" });
+    expect(await due("life", 20)).toBeNull();
   });
 
   it("reshops when the price goes up, from the policy or from a charge", async () => {

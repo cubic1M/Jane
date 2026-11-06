@@ -3,6 +3,8 @@ import {
   PRICE_UP_TOLERANCE_CENTS,
   RESHOP_DAILY_LIMIT,
   RESHOP_DAYS_BEFORE_RENEWAL,
+  RESHOP_DAYS_BEFORE_RENEWAL_BY_KIND,
+  RESHOP_LAST_CALL_DAYS,
   RESHOP_NEWS_DAYS,
   PICK_REFRESH_DAYS,
 } from "@/config/insurance";
@@ -26,7 +28,8 @@ import { systemDb } from "@/lib/system-db";
 import { STAYING } from "@/lib/only-people";
 
 // Shopped for you (spec step 104). Jane reshops each policy on its own, at every autopilot
-// level: RESHOP_DAYS_BEFORE_RENEWAL days before it renews, and whenever its price goes up
+// level: RESHOP_DAYS_BEFORE_RENEWAL_BY_KIND days before it renews (never within
+// RESHOP_LAST_CALL_DAYS), and whenever its price goes up
 // (a higher price saved on the policy, or a higher charge from the insurer). Each reshop is
 // kept as a shop: the pick and why, or "nothing better". The person then says Yes (a
 // switch, spec step 105) or Not now. Nothing is bought without that tap.
@@ -227,8 +230,14 @@ export async function reshopDue(
     return { reason: "price_up", key: `price:${policy.id}:${yearly}` };
   }
   const renews = nextRenewal(policy, asOf);
-  if (renews && daysBetween(asOf, renews) <= RESHOP_DAYS_BEFORE_RENEWAL) {
-    return { reason: "renewal", key: `renewal:${policy.id}:${renews}` };
+  // By kind; null for a kind that isn't reshopped at renewal (life).
+  const byKind = RESHOP_DAYS_BEFORE_RENEWAL_BY_KIND[policy.kind];
+  const window = byKind === undefined ? RESHOP_DAYS_BEFORE_RENEWAL : byKind;
+  if (renews && window !== null) {
+    const daysLeft = daysBetween(asOf, renews);
+    if (daysLeft <= window && daysLeft >= RESHOP_LAST_CALL_DAYS) {
+      return { reason: "renewal", key: `renewal:${policy.id}:${renews}` };
+    }
   }
   return null;
 }

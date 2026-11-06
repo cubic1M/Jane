@@ -236,9 +236,12 @@ Round 14 of the connectors roadmap, on the existing referral partners (`src/lib/
 - The card shows the partner's disclosure and then how Jane is paid, word for word
   (`PAY_DISCLOSURES`), for example "Jane isn't an insurance agent and isn't paid for this."
 
-Not built yet from round 14: renewal timing by kind (auto 30 days, home 45, never in the last 7),
-which moves the demo's auto reshop and needs its demo data and tests updated together; the link
-builder for affiliate networks; the postback receiver; the banned-phrase check on card copy.
+Renewal reshops come by kind (`RESHOP_DAYS_BEFORE_RENEWAL_BY_KIND`): home and renters from 45 days
+out, auto from 30 (California's renewal offers arrive 45 and 20 days ahead), never life, and never
+within the last week (`RESHOP_LAST_CALL_DAYS`) unless the price already rose. The demo's auto
+policy now renews in 25 days, inside its window.
+
+Not built yet from round 14: the postback receiver and the banned-phrase check on card copy.
 
 `src/lib/referral-links.ts` builds an affiliate-network link (Impact, CJ, Awin, FlexOffers) that
 carries nothing about the person: the only thing added is a sub-ID, the first 16 hex of an HMAC of

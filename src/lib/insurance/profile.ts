@@ -74,7 +74,9 @@ export const DEMO_POLICY = {
   merchantKey: "geico",
 } as const;
 // Days from the first sync to the demo policy's renewal.
-export const DEMO_RENEWAL_DAYS = 40;
+// Inside the auto reshop window (30 days, RESHOP_DAYS_BEFORE_RENEWAL_BY_KIND), so the demo's
+// policy is shopped at once, and well before the last week.
+export const DEMO_RENEWAL_DAYS = 25;
 
 export async function ensureDemoPolicies(
   userId: string,
