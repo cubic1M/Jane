@@ -21,7 +21,7 @@ concurrency:
 # self-hosted runner keeps what a branch's code leaves on it for the next job (docs/ci.md).
 jobs:
   probe:
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
       SITE: https://jane-dusky.vercel.app

@@ -30,7 +30,7 @@ concurrency:
 jobs:
   plan:
     name: Decide
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       action: ${{ steps.plan.outputs.action }}
@@ -55,7 +55,7 @@ jobs:
     name: Live check (read only)
     needs: plan
     if: needs.plan.outputs.mode == 'dry' && needs.plan.outputs.action == 'deploy'
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -68,7 +68,7 @@ jobs:
     name: Ship to production
     needs: plan
     if: needs.plan.outputs.mode == 'live' && needs.plan.outputs.action == 'deploy'
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     # Holds the Vercel token. A founder limits this environment to main.
     environment: production
