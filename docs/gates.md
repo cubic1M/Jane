@@ -6,8 +6,8 @@ Agents build nearly all of Jane, and agents edit or game tests when tests stand 
 
 | Gate | What it does | Blocks? |
 | --- | --- | --- |
-| Accuracy baselines only rise | `src/accuracy/baseline.json` and `src/accuracy/csv/baseline.json`: any score that got worse, left the file, or stopped being a number fails. Errors and counts (`dollarError`, `extraRows`) count as worse when they rise. | Yes, unless a founder approves |
-| Protected files | A change to `.claude/**`, `.mcp.json`, the workflows `ci`, `gates`, `merge-train` and `rerun-flaky`, `.github/scripts/**`, `src/config/advice.ts`, the two tests that read the baselines, `vitest.config.*`, `src/test-setup/**`, the scripts that decide how many tests run and whether a migration is safe (`scripts/test-scope*.mjs`, `scripts/check-migrations.mjs`, `scripts/migration-gate-core.mjs`, `scripts/check-ratchets.mjs`), the `scripts` in `package.json`, or `SUITE_RUNS_WITHOUT_BYPASS` in `src/config/deny-by-default.ts` going from true back to false. Names are matched in lower case, and `.claude` and `.mcp.json` count in any folder, since a Mac's disk finds `.CLAUDE/x` at `.claude/x`. | Yes, unless a founder approves |
+| Accuracy baselines only rise | `src/accuracy/baseline.json` and `src/accuracy/csv/baseline.json`: any score that got worse, left the file, or stopped being a number fails. Errors and counts (`dollarError`, `extraRows`) count as worse when they rise. | No, it's a flag (founder, 11-06) |
+| Protected files | A change to `.claude/**`, `.mcp.json`, the workflows `ci`, `gates`, `merge-train` and `rerun-flaky`, `.github/scripts/**`, `src/config/advice.ts`, the two tests that read the baselines, `vitest.config.*`, `src/test-setup/**`, the scripts that decide how many tests run and whether a migration is safe (`scripts/test-scope*.mjs`, `scripts/check-migrations.mjs`, `scripts/migration-gate-core.mjs`, `scripts/check-ratchets.mjs`), the `scripts` in `package.json`, or `SUITE_RUNS_WITHOUT_BYPASS` in `src/config/deny-by-default.ts` going from true back to false. Names are matched in lower case, and `.claude` and `.mcp.json` count in any folder, since a Mac's disk finds `.CLAUDE/x` at `.claude/x`. | No, it's a flag (founder, 11-06) |
 | Proof of fix | On a fix PR, the PR's tests run against the base commit's source and must fail on what they check, then against the PR's source and must pass. | Yes |
 | Weakened tests | An `expect` line deleted or replaced by a weaker check, a test newly skipped, or a test file deleted or renamed so it no longer runs. Shows as a warning, in the run's summary and in one PR comment. To find them: `gh search prs --repo cubic1M/Jane "Worth a look"`. | No, it's a flag |
 | Sensitive files | Any other file under `.github/`, `src/lib/advice-mode.ts`, `src/lib/guardrails.ts`, `tsconfig*.json`, `.gitleaks.toml`, `CLAUDE.md`, `AGENTS.md`, the rest of `src/config/deny-by-default.ts`, the scanners' and lint rules (`.semgrep/**`, `eslint.config.*`, `.dependency-cruiser.*`, `knip.json`, `stryker.config.*`), `src/security/**`, `src/config/access-map.ts`, `scripts/rls-protect.mjs`, and the database doors (`src/lib/system-db.ts`, `src/lib/db-scoped.ts`, `src/lib/rls*.ts`). Same warning and comment. These change often, and blocking them would hold up other work while no founder can approve, so `src/lib/advice-mode.ts` returning true is caught by a person reading the flag, not by the gate. | No, it's a flag |
@@ -24,13 +24,9 @@ Agents build nearly all of Jane, and agents edit or game tests when tests stand 
 
 **A run started by hand** reports on its commit, so it judges every open PR from this repo with that commit, whatever branch it was started on.
 
-## A founder's approval
+## No approvals (founder, 11-06)
 
-A founder approves the PR on GitHub, then re-runs the failed check. It counts only if it is an approval of the PR's exact newest commit, by a login in the `FOUNDER_LOGINS` repository variable that didn't open the PR, and that founder hasn't since asked for changes or had it dismissed. GitHub records which commit a review was of, so any new push needs a new approval, whatever date that push's commit claims. A rebase counts as a new push.
-
-Every session opens PRs under one shared login, and that login can't approve its own PRs. Until a founder has a login of their own in `FOUNDER_LOGINS`, nobody can approve, and a PR that breaks a gate stays blocked. The deny hook refuses a session's attempt to approve.
-
-**Can a PR fake the check?** A PR's own workflow can post a job called "Protected files and baselines" on its commit, and GitHub can't tell the two apart by name. Tested on a throwaway repo with the same kind of ruleset (`cubic1M/jane-gates-test`): with the real job failing, the PR stayed blocked in all 6 tries, including when the fake passed last, and a merge was refused while the real job was still running. It would only help if the real job didn't run at all, and GitHub always starts that one from main.
+The baseline and protected-file gates used to block until a founder approved the PR from a login of their own. The founder found that too much to run day to day, so since 11-06 they flag instead: the PR's run lists what changed and leaves a warning on it, and the PR merges like any other. `core.mjs` still has `founderApproval`, unused, if blocking is ever wanted back.
 
 ## Claude Code hooks
 
