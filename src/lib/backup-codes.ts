@@ -1,4 +1,4 @@
-import { createHash, randomInt } from "node:crypto";
+import { createHash, createHmac, randomInt } from "node:crypto";
 import { BACKUP_CODE_COUNT, BACKUP_CODE_LENGTH } from "@/config/two-factor";
 
 // No 0/O or 1/I/L, so codes copied from paper aren't misread.
@@ -9,8 +9,23 @@ export function normalizeBackupCode(code: string): string {
   return code.toLowerCase().replace(/[\s-]/g, "");
 }
 
+// Keyed with the site's own secret (AUTH_SECRET): a copy of the database alone can't be tried
+// offline, and a plain hash of about 50 bits let every admin's 10 codes be guessed at once on a GPU.
+// Changing AUTH_SECRET ends the codes made under it, as it ends every session.
 export function hashBackupCode(code: string): string {
-  return createHash("sha256").update(normalizeBackupCode(code)).digest("hex");
+  const secret = process.env.AUTH_SECRET;
+  const text = normalizeBackupCode(code);
+  return secret
+    ? createHmac("sha256", `backup-code:${secret}`).update(text).digest("hex")
+    : legacyHash(text);
+}
+
+// How codes were kept before they were keyed: still accepted, so nobody's printed codes stop working.
+const legacyHash = (text: string) => createHash("sha256").update(text).digest("hex");
+
+// Every way this code may be kept, for looking it up.
+export function backupCodeHashes(code: string): string[] {
+  return [...new Set([hashBackupCode(code), legacyHash(normalizeBackupCode(code))])];
 }
 
 // Fresh codes, formatted for showing once ("abcde-fghjk").

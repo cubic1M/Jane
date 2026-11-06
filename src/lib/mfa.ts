@@ -1,6 +1,11 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { logAudit, type AuditEvent } from "@/lib/audit";
-import { generateBackupCodes, hashBackupCode, looksLikeBackupCode } from "@/lib/backup-codes";
+import {
+  backupCodeHashes,
+  generateBackupCodes,
+  hashBackupCode,
+  looksLikeBackupCode,
+} from "@/lib/backup-codes";
 import { decrypt, encrypt } from "@/lib/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { firstUseInWindow, hit } from "@/lib/rate-limit";
@@ -85,7 +90,7 @@ async function checkCode(
   }
   if (!user.mfaEnabledAt || !looksLikeBackupCode(code)) return false;
   const { count } = await scopedFor(userId, client).mfaBackupCodes.updateMany({
-    where: { userId, codeHash: hashBackupCode(code), usedAt: null },
+    where: { userId, codeHash: { in: backupCodeHashes(code) }, usedAt: null },
     data: { usedAt: now },
   });
   if (count === 0) return false;
