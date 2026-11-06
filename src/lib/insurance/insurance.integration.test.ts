@@ -219,7 +219,7 @@ describe.runIf(url)("the insurance profile against a real database", () => {
       carrier: "GEICO",
       source: "demo",
       premiumCents: DEMO_POLICY.premiumCents,
-      renewalDate: "2026-11-28",
+      renewalDate: "2026-11-13",
     });
     await removePolicy(me, policy.id, opts());
     expect(await ensureDemoPolicies(me, opts())).toBe(false);

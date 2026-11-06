@@ -24,9 +24,9 @@ import { confirmInsuranceSwitches } from "./switch";
 // one's start day. A failed payment or no partner goes to the team with the old policy kept.
 
 const url = process.env.TEST_DATABASE_URL;
-// 9am in Los Angeles. The demo policy renews in 40 days: Nov 28.
+// 9am in Los Angeles. The demo policy renews in 25 days: Nov 13.
 const NOW = new Date("2026-10-19T16:00:00Z");
-const START = new Date("2026-11-28T16:00:00Z");
+const START = new Date("2026-11-13T16:00:00Z");
 const notify = vi.fn(async () => {});
 
 describe.runIf(url)("the insurance switch, against a real database", () => {
@@ -100,8 +100,8 @@ describe.runIf(url)("the insurance switch, against a real database", () => {
       actionId,
     });
     expect(fresh.policyNumber).toMatch(/^DEMO-LIGHTHOUSE-/);
-    expect(fresh.startsOn?.toISOString().slice(0, 10)).toBe("2026-11-28");
-    expect(fresh.renewalDate?.toISOString().slice(0, 10)).toBe("2027-11-28");
+    expect(fresh.startsOn?.toISOString().slice(0, 10)).toBe("2026-11-13");
+    expect(fresh.renewalDate?.toISOString().slice(0, 10)).toBe("2027-11-13");
     const document = await client.document.findUniqueOrThrow({ where: { id: fresh.documentId! } });
     expect(document).toMatchObject({
       kind: "insurance_policy",
@@ -133,19 +133,19 @@ describe.runIf(url)("the insurance switch, against a real database", () => {
     await runJaneAgent(userId, { client, now: NOW, trigger: "open" });
     const messages = await client.janeMessage.findMany({ where: { userId } });
     expect(messages.find((m) => m.dedupeKey === `insurance:bound:${fresh.id}`)?.body).toBe(
-      "I've bought your new Lighthouse Insurance (demo) car insurance, starting Nov 28. GEICO stays in place until its first payment goes through; then I cancel it from the same day, so you're never without cover.",
+      "I've bought your new Lighthouse Insurance (demo) car insurance, starting Nov 13. GEICO stays in place until its first payment goes through; then I cancel it from the same day, so you're never without cover.",
     );
     const { reply } = await sendToJane(userId, "how's my insurance switch going", {
       client,
       now: NOW,
     });
     expect(reply.body).toMatch(
-      /^I bought your new Lighthouse Insurance \(demo\) car insurance, starting Nov 28, 2026\./,
+      /^I bought your new Lighthouse Insurance \(demo\) car insurance, starting Nov 13, 2026\./,
     );
     const tool = JSON.parse(
       (await runChatTool(userId, "insurance_policies", {}, { client, now: NOW })).content,
     );
-    expect(tool.switches[0]).toMatchObject({ replaces: "GEICO", startsOn: "2026-11-28" });
+    expect(tool.switches[0]).toMatchObject({ replaces: "GEICO", startsOn: "2026-11-13" });
   });
 
   it("cancels the old policy only once the first payment went through, from the start day", async () => {
@@ -168,7 +168,7 @@ describe.runIf(url)("the insurance switch, against a real database", () => {
       confirmedAnnualCents: 40_800,
     });
     expect(action.agentMessages.at(-1)?.body).toMatch(
-      /^First payment to Lighthouse Insurance \(demo\) went through: your new policy is active\. Cancelled GEICO from Nov 28/,
+      /^First payment to Lighthouse Insurance \(demo\) went through: your new policy is active\. Cancelled GEICO from Nov 13/,
     );
     // Never twice.
     expect(await confirmInsuranceSwitches({ client, now: START, notify, userId })).toEqual({
@@ -180,7 +180,7 @@ describe.runIf(url)("the insurance switch, against a real database", () => {
       m.dedupeKey.startsWith("insurance:switched:"),
     );
     expect(done?.body).toBe(
-      "Your switch is done: the first payment to Lighthouse Insurance (demo) went through, so your new car insurance is in place and I cancelled GEICO from Nov 28. No gap in cover.",
+      "Your switch is done: the first payment to Lighthouse Insurance (demo) went through, so your new car insurance is in place and I cancelled GEICO from Nov 13. No gap in cover.",
     );
     expect(parseRefs(done?.refs).actionId).toBe(actionId);
   });
