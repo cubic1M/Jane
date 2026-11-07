@@ -114,6 +114,7 @@ export type AuditEvent =
   | "my_aid_uploaded"
   | "irs_transcript_uploaded"
   | "tax_form_uploaded"
+  | "connector_link_changed"
   // The connector action pipeline (src/lib/connectors/pipeline.ts): every step of every action.
   | "connector_action_planned"
   | "connector_action_approved"

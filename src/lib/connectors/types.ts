@@ -72,6 +72,19 @@ export type WebhookEvent = {
   note: string;
 };
 
+// A verified event about a person's link rather than an action (connectors roadmap round 4): fresh
+// data is ready, the bank link broke, or it works again. Found by the partner's id for the link
+// (ConnectorCredential.linkRef), never by anything the body says about the person.
+export type LinkEvent = {
+  kind: "link";
+  eventId: string;
+  linkRef: string;
+  change: "refreshed" | "disconnected" | "reconnected";
+};
+
+export const isLinkEvent = (event: WebhookEvent | LinkEvent): event is LinkEvent =>
+  "kind" in event && event.kind === "link";
+
 export type Connector = {
   id: string;
   name: string;
@@ -110,7 +123,7 @@ export type Connector = {
   webhook?: {
     signing: WebhookSigning;
     // Reads a body whose signature already checked out. Null for one the connector doesn't know.
-    parse: (body: unknown) => WebhookEvent | null;
+    parse: (body: unknown) => WebhookEvent | LinkEvent | null;
   };
 };
 

@@ -9,9 +9,10 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { verifyResendSignature } from "@/lib/digest/resend-webhook";
 import { systemDb } from "@/lib/system-db";
+import { applyLinkEvent } from "./link-events";
 import { applyPartnerEvent } from "./pipeline";
 import { connectorById } from "./registry";
-import type { WebhookSigning } from "./types";
+import { isLinkEvent, type WebhookSigning } from "./types";
 
 // Webhook intake for every connector (docs/connectors.md): one route, /api/connectors/<id>/webhook.
 // Nothing is read or believed until the provider's signature checks out with its own secret; a
@@ -114,6 +115,25 @@ export async function receiveWebhook(
   const eventId = event.eventId || createHash("sha256").update(rawBody).digest("hex");
   if (!(await firstDelivery(connector.id, eventId, client, now))) {
     return answer(200, { received: true, repeat: true });
+  }
+  // About a link, not an action: the person whose link the partner names, by its id for it.
+  if (isLinkEvent(event)) {
+    const link = await systemDb(WHY, client).connectorCredential.findUnique({
+      where: { connectorId_linkRef: { connectorId: connector.id, linkRef: event.linkRef } },
+      select: { userId: true },
+    });
+    // A link not stored yet (the partner answered before Jane saved its id): sent again later.
+    if (!link) {
+      await forgetDelivery(connector.id, eventId, client);
+      return answer(409, { error: "Not ready, send it again later" });
+    }
+    try {
+      await applyLinkEvent(link.userId, connector.id, event.change, { client, now });
+    } catch (error) {
+      await forgetDelivery(connector.id, eventId, client);
+      throw error;
+    }
+    return answer(200, { received: true });
   }
   // Whose it is: the action the partner names, found by its own id. Everything after is scoped.
   const action = await systemDb(WHY, client).connectorAction.findUnique({
