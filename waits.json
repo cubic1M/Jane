@@ -110,5 +110,13 @@
   "when": "merged",
   "since": "2026-11-07T00:52:11.048Z",
   "expires": "2026-11-10T00:52:11.048Z"
+ },
+ {
+  "on": 1591,
+  "lane": "lane:connectors",
+  "task": "claude/savers-match",
+  "when": "merged",
+  "since": "2026-11-07T01:18:35.187Z",
+  "expires": "2026-11-10T01:18:35.187Z"
  }
 ]
