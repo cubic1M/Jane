@@ -4,6 +4,7 @@ import type {
   TreeLeaf,
   TreeStatus,
 } from "@/components/tree/interactive-tree";
+import { shortMoney } from "@/lib/hub/view";
 import { plural } from "@/lib/plural";
 
 // The area page pattern's shared rules (docs/design/area-pages.md): the copy budget, how a
@@ -39,6 +40,20 @@ export const sentences = (text: string) =>
 export function firstSentences(text: string, n = SUMMARY_MAX_SENTENCES): string {
   const parts = text.trim().split(/(?<=[.!?])\s+(?=[A-Z0-9$"“])/);
   return parts.slice(0, n).join(" ");
+}
+
+// A suggestion's worth on a tree: a risk, or a worth that comes once, is a bare figure; a yearly
+// one has "/yr". Its headline says which (headlineOf in src/detectors/helpers.ts: "save $216 a
+// year", "get $27,716 back"); rows scanned before headlines existed have none and stay yearly
+// (debugger 11-06: PSLF forgiveness, once, read "$28k/yr").
+export function worthFigure(s: {
+  worthCents: number | null;
+  worthKind?: string;
+  headline?: string;
+}): string | undefined {
+  if (!s.worthCents || s.worthCents <= 0) return undefined;
+  const yearly = s.worthKind !== "risk" && (!s.headline || /\ba year\b/.test(s.headline));
+  return `${shortMoney(s.worthCents)}${yearly ? "/yr" : ""}`;
 }
 
 // The worst status among items: one urgent item makes its branch urgent.

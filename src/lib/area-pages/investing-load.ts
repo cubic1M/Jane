@@ -44,6 +44,7 @@ export async function loadInvestingArea(userId: string) {
           key: true,
           capability: true,
           topic: true,
+          headline: true,
           short: true,
           why: true,
           worthCents: true,
