@@ -27,6 +27,10 @@ import { useConnectorsForTests } from "./registry";
 import type { Connector, LinkEvent } from "./types";
 import { storeCredential } from "./vault";
 import { receiveWebhook } from "./webhooks";
+import { createHmac } from "node:crypto";
+import { STRIPE_FC } from "@/config/connectors";
+import { connectionsView } from "./consent";
+import { stripeFc } from "./stripe-fc/connector";
 
 const url = process.env.TEST_DATABASE_URL;
 const SECRET = "fake-webhook-secret-for-tests";
@@ -127,6 +131,37 @@ describe.runIf(url)("link events through the webhook intake", () => {
       { status: 200 },
     );
     expect((await status(person)).status).toBe("needs_relink");
+  });
+
+  it("takes a signed Stripe event, marks the person's link, and the connections view says so", async () => {
+    useConnectorsForTests([stripeFc]);
+    const person = await realPerson(db);
+    people.push(person);
+    const account = `fca_${randomBytes(6).toString("hex")}`;
+    await storeCredential(person, stripeFc.id, "stripe-session-token", {
+      client: db,
+      linkRef: account,
+    });
+    const raw = JSON.stringify({
+      id: `evt_${account}`,
+      type: "financial_connections.account.disconnected",
+      data: { object: { id: account, object: "financial_connections.account" } },
+    });
+    const now = new Date();
+    const t = Math.floor(now.getTime() / 1000);
+    const signature = createHmac("sha256", SECRET).update(`${t}.${raw}`).digest("hex");
+    const headers = new Headers({ "Stripe-Signature": `t=${t},v1=${signature}` });
+    const answer = await receiveWebhook(stripeFc.id, raw, headers, {
+      client: db,
+      now,
+      env: { CONNECTORS: "1", [STRIPE_FC.secretEnv]: SECRET },
+    });
+    expect(answer.status).toBe(200);
+    expect((await connectionsView(person, { client: db })).needsRelink).toEqual([stripeFc.id]);
+    // Someone else's view doesn't carry it.
+    const other = await realPerson(db);
+    people.push(other);
+    expect((await connectionsView(other, { client: db })).needsRelink).toEqual([]);
   });
 
   it("puts a link back to active when the person links again", async () => {

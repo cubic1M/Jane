@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { STRIPE_FC } from "@/config/connectors";
 import { definitionProblems, whyUnavailable } from "../registry";
 import { signatureValid } from "../webhooks";
-import { STRIPE_FC_SIGNING, stripeFc } from "./connector";
+import { STRIPE_FC_SIGNING, parseStripeFcEvent, stripeFc } from "./connector";
 import { balanceRefreshDue, historyFrom, sameBankAccount } from "./refresh";
 
 // Connectors roadmap round 20: Stripe Financial Connections, registered and off.
@@ -72,5 +72,64 @@ describe("the same account through Plaid and Stripe", () => {
     ).toBe(false);
     // Without a mask, never assumed the same.
     expect(sameBankAccount({ ...plaid, mask: null }, { ...plaid, mask: null })).toBe(false);
+  });
+});
+
+describe("Stripe's Financial Connections events", () => {
+  const event = (type: string, object: Record<string, unknown> = {}) => ({
+    id: "evt_123",
+    type,
+    data: { object: { id: "fca_abc", ...object } },
+  });
+
+  it("are link events on the account they name", () => {
+    expect(parseStripeFcEvent(event("financial_connections.account.disconnected"))).toEqual({
+      kind: "link",
+      eventId: "evt_123",
+      linkRef: "fca_abc",
+      change: "disconnected",
+    });
+    expect(parseStripeFcEvent(event("financial_connections.account.deactivated"))?.change).toBe(
+      "disconnected",
+    );
+    expect(parseStripeFcEvent(event("financial_connections.account.reactivated"))?.change).toBe(
+      "reconnected",
+    );
+  });
+
+  it("count a refresh only when it succeeded", () => {
+    const ok = { transaction_refresh: { status: "succeeded" } };
+    expect(
+      parseStripeFcEvent(event("financial_connections.account.refreshed_transactions", ok))?.change,
+    ).toBe("refreshed");
+    expect(
+      parseStripeFcEvent(
+        event("financial_connections.account.refreshed_transactions", {
+          transaction_refresh: { status: "failed" },
+        }),
+      ),
+    ).toBeNull();
+    expect(
+      parseStripeFcEvent(
+        event("financial_connections.account.refreshed_balance", {
+          balance_refresh: { status: "succeeded" },
+        }),
+      )?.change,
+    ).toBe("refreshed");
+    expect(parseStripeFcEvent(event("financial_connections.account.refreshed_balance"))).toBeNull();
+  });
+
+  it("ignore anything else, or an object that isn't a Financial Connections account", () => {
+    expect(parseStripeFcEvent(event("financial_connections.account.created"))).toBeNull();
+    expect(parseStripeFcEvent(event("payment_intent.succeeded"))).toBeNull();
+    expect(
+      parseStripeFcEvent({
+        id: "evt_1",
+        type: "financial_connections.account.disconnected",
+        data: { object: { id: "cus_1" } },
+      }),
+    ).toBeNull();
+    expect(parseStripeFcEvent(null)).toBeNull();
+    expect(stripeFc.webhook?.signing).toBe(STRIPE_FC_SIGNING);
   });
 });

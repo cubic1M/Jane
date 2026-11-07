@@ -236,15 +236,21 @@ export type ConnectionsView = {
   available: { id: string; name: string; scopes: { scope: string; label: string }[] }[];
   current: ConsentRow[];
   past: ConsentRow[];
+  // Connectors whose link the partner says stopped working (src/lib/connectors/link-events.ts).
+  needsRelink: string[];
 };
 
 export async function connectionsView(
   userId: string,
   { client = defaultClient }: Options = {},
 ): Promise<ConnectionsView> {
-  const [consents, sampleData] = await Promise.all([
+  const [consents, sampleData, broken] = await Promise.all([
     listConsents(userId, { client }),
     onSampleDataOnly(userId, { client }),
+    scopedFor(userId, client).connectorCredentials.findMany({
+      where: { status: "needs_relink" },
+      select: { connectorId: true },
+    }),
   ]);
   const current = consents.filter((row) => row.revokedAt === null);
   const consented = new Set(current.map((row) => row.connectorId));
@@ -262,5 +268,10 @@ export async function connectionsView(
       name: c.name,
       scopes: c.scopes.map((scope) => ({ scope, label: scopeWords(c, scope) ?? "" })),
     }));
-  return { available, current, past: consents.filter((row) => row.revokedAt !== null) };
+  return {
+    available,
+    current,
+    past: consents.filter((row) => row.revokedAt !== null),
+    needsRelink: broken.map((row) => row.connectorId),
+  };
 }
