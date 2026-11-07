@@ -47,7 +47,15 @@ function AgreedTo({ text }: { text: string | null }) {
   );
 }
 
-function CurrentItem({ row, timezone }: { row: ConsentRow; timezone: string }) {
+function CurrentItem({
+  row,
+  timezone,
+  broken,
+}: {
+  row: ConsentRow;
+  timezone: string;
+  broken: boolean;
+}) {
   return (
     <li
       data-connector={row.connectorId}
@@ -55,6 +63,12 @@ function CurrentItem({ row, timezone }: { row: ConsentRow; timezone: string }) {
     >
       <span className="font-medium">{row.connectorName}</span>
       <p className={MUTED}>Allowed since {momentLabel(row.grantedAt, timezone, { year: true })}</p>
+      {broken && (
+        <p role="status" className="text-sm font-medium">
+          The link to your bank stopped working, so this isn&apos;t up to date. Link it again to
+          pick it back up.
+        </p>
+      )}
       <Scopes scopes={row.scopes} />
       <AgreedTo text={row.shownText} />
       <form action={revokeConnector}>
@@ -129,7 +143,7 @@ function ActionItem({ action }: { action: ActionRow }) {
 async function ConnectionsContent() {
   await connection();
   const user = await requireUser();
-  const [{ available, current, past }, actions, timezone] = await Promise.all([
+  const [{ available, current, past, needsRelink }, actions, timezone] = await Promise.all([
     connectionsView(user.id),
     listActions(user.id),
     timezoneOf(user.id),
@@ -163,7 +177,12 @@ async function ConnectionsContent() {
       ) : (
         <ul aria-label="Allowed connections" className="flex flex-col">
           {current.map((row) => (
-            <CurrentItem key={row.id} row={row} timezone={timezone} />
+            <CurrentItem
+              key={row.id}
+              row={row}
+              timezone={timezone}
+              broken={needsRelink.includes(row.connectorId)}
+            />
           ))}
         </ul>
       )}
