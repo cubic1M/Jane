@@ -1,1 +1,7 @@
-[]
+[
+ {
+  "task": "stripe-fc-events",
+  "lane": "lane:connectors",
+  "expires": "2026-11-07T06:15:11.068Z"
+ }
+]
