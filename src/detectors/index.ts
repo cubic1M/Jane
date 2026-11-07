@@ -1,5 +1,6 @@
 import { DEBT_DETECTORS } from "./debt";
 import { EFTPS_DETECTORS } from "./eftps";
+import { SAVERS_CREDIT_DETECTORS } from "./savers-credit";
 import { HOLDINGS_DETECTORS } from "./holdings";
 import { INVESTED_CASH_DETECTORS } from "./invested-cash";
 import { FIT_DETECTORS } from "./fit";
@@ -51,6 +52,7 @@ export const DETECTORS: readonly Detector[] = [
   ...TAX_DETECTORS,
   ...TAX_SET_ASIDE_DETECTORS,
   ...EFTPS_DETECTORS,
+  ...SAVERS_CREDIT_DETECTORS,
   ...INVESTING_DETECTORS,
   ...HOLDINGS_DETECTORS,
   ...INVESTED_CASH_DETECTORS,
