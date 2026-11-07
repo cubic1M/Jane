@@ -1,6 +1,7 @@
 import { DETECTOR_RATES } from "@/config/detectors";
 import { isFilingStatus, type FilingStatus } from "@/config/tax";
-import { SAVERS_CREDIT } from "@/config/tax-rates";
+import { IRA_SUBTYPES, WORKPLACE_SUBTYPES } from "@/config/retirement-accounts";
+import { SAVERS_CREDIT, SAVERS_MATCH } from "@/config/tax-rates";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
 import { factEvidence, headlineOf, weakest } from "./helpers";
@@ -68,4 +69,58 @@ const saversCredit: Detector = {
   },
 };
 
-export const SAVERS_CREDIT_DETECTORS: readonly Detector[] = [saversCredit];
+// The Saver's Match from 2027 (round 17, savers_match_ready_2027): someone whose income looks to be
+// in range hears that the match only lands in a traditional IRA or a plan that accepts it, never a
+// Roth IRA, and which of their linked accounts could take it. Labelled proposed.
+const saversMatch: Detector = {
+  capability: "taxes",
+  topic: "savers_match",
+  covers: ["tax_plan"],
+  needs: ["monthly_income"],
+  detect({ profile, data }) {
+    const { today, facts } = profile;
+    if (today < SAVERS_MATCH.shownFrom || today > SAVERS_MATCH.shownUntil) return null;
+    if (facts.is_student.value === true || facts.debt_trouble.value === true) return null;
+    const monthly = facts.monthly_income.value;
+    if (typeof monthly !== "number" || monthly <= 0) return null;
+    const agi = Math.round(monthly * 12 * DETECTOR_RATES.tax.netToGross);
+    const status = statusOf(facts.filing_status.value, facts.household.value);
+    const [from, to] = SAVERS_MATCH.phaseOut[status];
+    if (agi >= to) return null;
+    const people = status === "married_joint" ? 2 : 1;
+    const share = agi <= from ? 1 : (to - agi) / (to - from);
+    const match = Math.round(SAVERS_MATCH.maxContribution * SAVERS_MATCH.rate * share) * people;
+    if (match <= 0) return null;
+    const subtypes = data.accounts.map((a) => (a.subtype ?? "").toLowerCase());
+    const has = (list: readonly string[]) => subtypes.some((s) => list.includes(s));
+    const lines = [
+      has(["roth"]) ? "a Roth IRA (it can't take the match)" : null,
+      has(IRA_SUBTYPES.filter((s) => s !== "roth"))
+        ? "a traditional IRA (if the provider accepts it)"
+        : null,
+      has(WORKPLACE_SUBTYPES) ? "a workplace plan (if the plan opts in)" : null,
+    ].filter((l): l is string => l !== null);
+    return {
+      id: suggestionId("taxes", "savers_match"),
+      capability: "taxes",
+      topic: "savers_match",
+      title: `From ${SAVERS_MATCH.firstYear}, a federal match on retirement saving may apply to you (proposed rules)`,
+      headline: headlineOf("Check the 2027 Saver's Match", match, "earns"),
+      short: `Proposed: up to ${formatCents(match)} a year, paid only into a traditional IRA or a plan, not a Roth IRA.`,
+      worthCents: match,
+      worthKind: "earns",
+      confidence: weakest([
+        factEvidence(facts.monthly_income),
+        {
+          percent: 45,
+          reason: "the rules are proposed, and your income is estimated from your pay",
+        },
+      ]),
+      urgency: "later",
+      why: `Under proposed rules (${SAVERS_MATCH.rule}), from ${SAVERS_MATCH.firstYear} the federal government matches ${Math.round(SAVERS_MATCH.rate * 100)}% of up to ${formatCents(SAVERS_MATCH.maxContribution)}${people === 2 ? " each" : ""} of retirement saving, less as income rises from ${formatCents(from)} to ${formatCents(to)}. With income near ${formatCents(agi)}, that's up to ${formatCents(match)} a year. The match is paid only into a traditional IRA or a workplace plan that accepts it, never into a Roth IRA. ${lines.length ? `Your linked retirement accounts: ${lines.join("; ")}.` : "No retirement account is linked."} The IRS sends a CP321J letter to people who may qualify; it's real, not a bill.`,
+      action: { label: "See your tax plan", href: "/taxes" },
+    };
+  },
+};
+
+export const SAVERS_CREDIT_DETECTORS: readonly Detector[] = [saversCredit, saversMatch];

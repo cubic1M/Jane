@@ -110,6 +110,7 @@ export const SUGGESTION_TOPICS = [
   "eftps_move",
   // Connectors roadmap round 17: the Saver's Credit's last year.
   "savers_credit",
+  "savers_match",
   "year_end_moves",
   // Spec step 262: investing.
   "investment_fees",
