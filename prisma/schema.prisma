@@ -600,12 +600,20 @@ model ConnectorCredential {
   // AES-256-GCM via src/lib/crypto.ts, rotated with the other secrets (src/lib/key-rotation.ts).
   secretEncrypted String    @map("secret_encrypted")
   expiresAt       DateTime? @map("expires_at") @db.Timestamptz(3)
+  // The partner's own id for this link (a Stripe account id, a Plaid item id), so its webhooks find
+  // the person (src/lib/connectors/link-events.ts). Never a secret.
+  linkRef         String?   @map("link_ref")
+  // active, or needs_relink once the partner says the link broke.
+  status          String    @default("active")
+  // When the partner last said it had fresh data for the link.
+  refreshedAt     DateTime? @map("refreshed_at") @db.Timestamptz(3)
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, connectorId])
+  @@unique([connectorId, linkRef])
   @@map("connector_credentials")
 }
 
