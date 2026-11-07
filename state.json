@@ -1,0 +1,1144 @@
+{
+ "wakes": [
+  {
+   "pr": 977,
+   "sha": "f6ba33a5c9e1cdbdf51824e3d5b2a9a3d6957e0f",
+   "reason": "red",
+   "lane": "lane:general",
+   "at": "2026-11-03T23:04:50.863Z",
+   "dry": true
+  },
+  {
+   "pr": 977,
+   "sha": "f6ba33a5c9e1cdbdf51824e3d5b2a9a3d6957e0f",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-03T23:09:29.120Z",
+   "dry": true
+  },
+  {
+   "pr": 1320,
+   "sha": "53a17c0a0f8266f78cef7311834611959118d30f",
+   "reason": "red",
+   "lane": "lane:general",
+   "at": "2026-11-03T23:18:16.650Z",
+   "dry": true
+  },
+  {
+   "pr": null,
+   "sha": "d40fd2e00143b2982e2f2a772d604bffc507060f",
+   "reason": "red-main",
+   "lane": "lane:debugger",
+   "run": 41736137048,
+   "at": "2026-11-03T23:39:53.256Z",
+   "dry": true
+  },
+  {
+   "pr": 977,
+   "sha": "f6ba33a5c9e1cdbdf51824e3d5b2a9a3d6957e0f",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-03T23:39:53.256Z",
+   "dry": true
+  },
+  {
+   "pr": 1322,
+   "sha": "0f58e5e79b4b9519cae0ef550472687b453862c4",
+   "reason": "red",
+   "lane": "lane:general",
+   "at": "2026-11-03T23:40:15.573Z",
+   "dry": true
+  },
+  {
+   "pr": null,
+   "sha": "f0b2a157bf5dff7a0c48134c76afbb575a53607a",
+   "reason": "red-main",
+   "lane": "lane:debugger",
+   "run": 41738038682,
+   "at": "2026-11-04T00:05:00.604Z",
+   "dry": true
+  },
+  {
+   "pr": 1324,
+   "sha": "f11d6d0ff8a293f34b823d06559474d75304c42d",
+   "reason": "red",
+   "lane": "lane:general",
+   "at": "2026-11-04T00:06:59.554Z",
+   "dry": true
+  },
+  {
+   "pr": 1322,
+   "sha": "0f58e5e79b4b9519cae0ef550472687b453862c4",
+   "reason": "red",
+   "lane": "lane:general",
+   "at": "2026-11-04T00:22:49.980Z",
+   "dry": true
+  },
+  {
+   "pr": 1324,
+   "sha": "f11d6d0ff8a293f34b823d06559474d75304c42d",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-04T00:23:25.626Z",
+   "dry": true
+  },
+  {
+   "pr": 977,
+   "sha": "f6ba33a5c9e1cdbdf51824e3d5b2a9a3d6957e0f",
+   "reason": "red",
+   "lane": "lane:general",
+   "at": "2026-11-04T01:00:35.194Z",
+   "dry": true
+  },
+  {
+   "pr": 1322,
+   "sha": "dcaa4f576eaca9312f955e083780a4140e3e5547",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-04T01:03:01.040Z",
+   "dry": true
+  },
+  {
+   "pr": 1337,
+   "sha": "2e68c2410a5964f390ee34e6154caabf63804425",
+   "reason": "red",
+   "lane": "lane:security",
+   "at": "2026-11-04T02:29:32.239Z",
+   "dry": true
+  },
+  {
+   "pr": 1335,
+   "lane": "lane:proof",
+   "task": "claude/proof-merged",
+   "wait": "1335:claude/proof-merged:2026-11-04T02:56:25.397Z",
+   "reason": "waited-merged",
+   "sha": "a07b16de86cab886c6b617b074468769bbdc1549",
+   "at": "2026-11-04T02:56:49.962Z",
+   "dry": true
+  },
+  {
+   "pr": 1277,
+   "lane": "lane:proof",
+   "task": "claude/proof-closed",
+   "wait": "1277:claude/proof-closed:2026-11-04T02:56:27.693Z",
+   "reason": "waited-closed",
+   "sha": "5679510d88e303e265524fb365cf75cccf5ae328",
+   "at": "2026-11-04T02:56:49.962Z",
+   "dry": true
+  },
+  {
+   "pr": 1337,
+   "lane": "lane:proof",
+   "task": "claude/proof-green",
+   "wait": "1337:claude/proof-green:2026-11-04T02:56:29.772Z",
+   "reason": "waited-green",
+   "sha": "002c8ec9962326ffb3a18ffd55f31da2a6187150",
+   "at": "2026-11-04T02:56:49.962Z",
+   "dry": true
+  },
+  {
+   "pr": 1340,
+   "sha": "2bb73f6fdf68dd3e7b15f80852190e33eb89f135",
+   "reason": "red",
+   "lane": "lane:general",
+   "at": "2026-11-04T02:59:12.651Z",
+   "dry": true
+  },
+  {
+   "pr": 1337,
+   "lane": "lane:proof",
+   "task": "claude/proof-merge-only",
+   "wait": "1337:claude/proof-merge-only:2026-11-04T02:56:31.895Z",
+   "reason": "waited-merged",
+   "sha": "1c9e2e36663ca1e53b6504cef7fc9844318d7407",
+   "at": "2026-11-04T03:00:10.086Z",
+   "dry": true
+  },
+  {
+   "pr": null,
+   "sha": "1705d24909a8439c917493aa5b96eab481427cb4",
+   "reason": "red-main",
+   "lane": "lane:debugger",
+   "run": 41769404726,
+   "at": "2026-11-04T04:30:49.753Z",
+   "dry": true
+  },
+  {
+   "pr": 1348,
+   "sha": "b97f2f61e250d0efb4feaf06cf5203c39a15151c",
+   "reason": "red",
+   "lane": "lane:security",
+   "at": "2026-11-04T05:00:36.158Z",
+   "dry": true
+  },
+  {
+   "pr": 1356,
+   "sha": "6ac296e23c56795ec3c374095b95409f7e0f53b4",
+   "reason": "conflict",
+   "lane": "lane:debugger",
+   "at": "2026-11-04T05:25:23.725Z",
+   "dry": true
+  },
+  {
+   "pr": 1363,
+   "sha": "1b87d919f252f80a590165c73eff3f7cae500ed7",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-04T05:54:19.106Z",
+   "dry": true
+  },
+  {
+   "pr": 1361,
+   "sha": "4022692a8a102c8aed520e4067be0d6fec81f55b",
+   "reason": "conflict",
+   "lane": "lane:debugger",
+   "at": "2026-11-04T05:56:33.519Z",
+   "dry": true
+  },
+  {
+   "pr": 1367,
+   "sha": "97bafa562c3da91c1797c8dbbed791bf90de159e",
+   "reason": "red",
+   "lane": "lane:general",
+   "at": "2026-11-04T06:57:15.145Z",
+   "dry": true
+  },
+  {
+   "pr": 1372,
+   "sha": "f7c6c2e6d3350a1caf1437f46bb59225d7dd8030",
+   "reason": "conflict",
+   "lane": "lane:debugger",
+   "at": "2026-11-04T07:18:18.251Z",
+   "dry": true
+  },
+  {
+   "pr": null,
+   "sha": "be22fb186731b1eac03aef5e951162a94850b9ac",
+   "reason": "red-main",
+   "lane": "lane:debugger",
+   "run": 41786734227,
+   "at": "2026-11-04T07:23:01.671Z",
+   "dry": true
+  },
+  {
+   "pr": 1370,
+   "sha": "20a3e3c4b4fb7bf8c5e52dcfd7b1b3f3d9ec0be8",
+   "reason": "red",
+   "lane": "lane:security",
+   "at": "2026-11-04T07:40:34.651Z",
+   "dry": true
+  },
+  {
+   "pr": null,
+   "sha": "f48e68847171750125794efa3cc79aa78ee44428",
+   "reason": "red-main",
+   "lane": "lane:debugger",
+   "run": 41788393004,
+   "at": "2026-11-04T07:52:27.465Z",
+   "dry": true
+  },
+  {
+   "pr": 1377,
+   "sha": "ef648c4723827e4070f5f9b54a274ab824408142",
+   "reason": "conflict",
+   "lane": "lane:debugger",
+   "at": "2026-11-04T07:55:34.464Z",
+   "dry": true
+  },
+  {
+   "pr": 1379,
+   "sha": "8e74caf66cce713ddd8b75485d9572698e9a86eb",
+   "reason": "conflict",
+   "lane": "lane:debugger",
+   "at": "2026-11-04T07:55:34.464Z",
+   "dry": true
+  },
+  {
+   "pr": null,
+   "sha": "27dc439f64116bd50d81c24798360953720b11d9",
+   "reason": "red-main",
+   "lane": "lane:debugger",
+   "run": 41795692810,
+   "at": "2026-11-04T08:37:15.490Z",
+   "dry": true
+  },
+  {
+   "pr": 1377,
+   "sha": "265aad118bea12f887daf8507e041fd6229a68a3",
+   "reason": "conflict",
+   "lane": "lane:debugger",
+   "at": "2026-11-04T08:55:31.406Z",
+   "dry": true
+  },
+  {
+   "pr": 1379,
+   "sha": "1ffdf1040e97fed008f811a522e511f091b960b6",
+   "reason": "conflict",
+   "lane": "lane:debugger",
+   "at": "2026-11-04T08:55:31.406Z",
+   "dry": true
+  },
+  {
+   "pr": 1396,
+   "sha": "02076036071a7662e940d7cfc76d99784de96667",
+   "reason": "red",
+   "lane": "lane:security",
+   "at": "2026-11-04T11:24:38.829Z",
+   "dry": true
+  },
+  {
+   "pr": 1407,
+   "sha": "bb1199b551a90899423a87685bfa9485e0d8163c",
+   "reason": "red",
+   "lane": "lane:debugger",
+   "at": "2026-11-04T18:03:06.087Z",
+   "dry": true
+  },
+  {
+   "pr": 1407,
+   "sha": "bb1199b551a90899423a87685bfa9485e0d8163c",
+   "reason": "red",
+   "lane": "lane:debugger",
+   "at": "2026-11-04T18:35:32.710Z",
+   "dry": true
+  },
+  {
+   "pr": 1407,
+   "sha": "3b468a0bbe7d0552b37bc56b975474a3984923f2",
+   "reason": "conflict",
+   "lane": "lane:debugger",
+   "at": "2026-11-04T22:53:44.072Z",
+   "dry": true
+  },
+  {
+   "pr": 1413,
+   "sha": "f199b26c231e541901437019912d5bfa04df89f7",
+   "reason": "red",
+   "lane": "lane:debugger",
+   "at": "2026-11-05T04:10:34.065Z",
+   "dry": true
+  },
+  {
+   "pr": 1430,
+   "sha": "a115358f7c6f9f7cf89602354d5af50ff622a38c",
+   "reason": "red",
+   "lane": "lane:security",
+   "at": "2026-11-05T07:36:37.903Z",
+   "dry": true
+  },
+  {
+   "pr": null,
+   "sha": "1a3c3abaee6acd37b6345a490cef8be5f6d9c87a",
+   "reason": "red-main",
+   "lane": "lane:debugger",
+   "run": 41985386464,
+   "at": "2026-11-05T08:00:38.901Z",
+   "dry": true
+  },
+  {
+   "pr": 1440,
+   "sha": "96b88aa50718fd56a9dad2a4178b1de8234ca64b",
+   "reason": "conflict",
+   "lane": "lane:security",
+   "at": "2026-11-05T08:01:57.682Z",
+   "dry": true
+  },
+  {
+   "pr": null,
+   "sha": "1a3c3abaee6acd37b6345a490cef8be5f6d9c87a",
+   "reason": "red-main",
+   "lane": "lane:debugger",
+   "run": 41985386464,
+   "at": "2026-11-05T08:31:25.626Z",
+   "dry": true
+  },
+  {
+   "pr": 1438,
+   "sha": "92b41eaee46c546f71428b00b10b96b1b56c0935",
+   "reason": "red",
+   "lane": "lane:security",
+   "at": "2026-11-05T08:37:15.319Z",
+   "dry": true
+  },
+  {
+   "pr": null,
+   "sha": "ba15ad81e6f2e1bcc5f7ec2530e770913c7e9a1c",
+   "reason": "red-main",
+   "lane": "lane:debugger",
+   "run": 41991504556,
+   "at": "2026-11-05T09:09:14.445Z",
+   "dry": true
+  },
+  {
+   "pr": null,
+   "sha": "5d02a14b5ace45129c78eff794d785af1313465d",
+   "reason": "red-main",
+   "lane": "lane:debugger",
+   "run": 41998958054,
+   "at": "2026-11-05T09:42:04.464Z",
+   "dry": true
+  },
+  {
+   "pr": null,
+   "sha": "5d02a14b5ace45129c78eff794d785af1313465d",
+   "reason": "red-main",
+   "lane": "lane:debugger",
+   "run": 41998958054,
+   "at": "2026-11-05T10:12:42.446Z",
+   "dry": true
+  },
+  {
+   "pr": 1448,
+   "sha": "24a7c2ae5ddd80407d8ed9ff1a702d4b6f6237d8",
+   "reason": "red",
+   "lane": "lane:security",
+   "at": "2026-11-05T10:34:35.980Z",
+   "dry": true
+  },
+  {
+   "pr": null,
+   "sha": "1b490309818b4946a61c8d7311dbd98e321475fc",
+   "reason": "red-main",
+   "lane": "lane:debugger",
+   "run": 42008804807,
+   "at": "2026-11-05T10:57:02.815Z",
+   "dry": true
+  },
+  {
+   "pr": 1451,
+   "sha": "d612352ead4380fb8ab965e72305262d28426c2d",
+   "reason": "red",
+   "lane": "lane:debugger",
+   "at": "2026-11-05T12:13:04.797Z",
+   "dry": true
+  },
+  {
+   "pr": null,
+   "sha": "d9d70786abdfb40ff14121ec22fe8e20039f2cbe",
+   "reason": "red-main",
+   "lane": "lane:debugger",
+   "run": 42036636159,
+   "at": "2026-11-05T14:20:28.480Z",
+   "dry": true
+  },
+  {
+   "pr": null,
+   "sha": "d9d70786abdfb40ff14121ec22fe8e20039f2cbe",
+   "reason": "red-main",
+   "lane": "lane:debugger",
+   "run": 42036636159,
+   "at": "2026-11-05T14:54:46.516Z",
+   "dry": true
+  },
+  {
+   "pr": null,
+   "sha": "236910ad6bd0f5f4c9c53b2c62b166d71673ff0e",
+   "reason": "red-main",
+   "lane": "lane:debugger",
+   "run": 42046445284,
+   "at": "2026-11-05T15:12:59.570Z",
+   "dry": true
+  },
+  {
+   "pr": 1456,
+   "sha": "924061e16c66323034aa4b493665dcc4492144bf",
+   "reason": "silent",
+   "lane": "lane:security",
+   "at": "2026-11-05T16:25:53.759Z",
+   "dry": true
+  },
+  {
+   "pr": 1459,
+   "sha": "5bc2c622c1c51e40e374e7088820362ece859494",
+   "reason": "red",
+   "lane": "lane:debugger",
+   "at": "2026-11-05T16:25:53.759Z",
+   "dry": true
+  },
+  {
+   "pr": null,
+   "sha": "50a46c0417e5b182187946e3743b7c7c758a2da9",
+   "reason": "red-main",
+   "lane": "lane:debugger",
+   "run": 42067873738,
+   "at": "2026-11-05T17:34:07.226Z",
+   "dry": true
+  },
+  {
+   "pr": null,
+   "sha": "1a241da00cb868f071095c715425c901979a25dc",
+   "reason": "red-main",
+   "lane": "lane:debugger",
+   "run": 42071739608,
+   "at": "2026-11-05T17:58:30.661Z",
+   "dry": true
+  },
+  {
+   "pr": 1466,
+   "sha": "ec7aa9ed67c3163bd6e0d5f9f60673ba945d28f3",
+   "reason": "red",
+   "lane": "lane:debugger",
+   "at": "2026-11-05T18:20:34.345Z",
+   "dry": true
+  },
+  {
+   "pr": null,
+   "sha": "7135211c550725f626a7afb5dcfe2a0f9a44a9a4",
+   "reason": "red-main",
+   "lane": "lane:debugger",
+   "run": 42082897194,
+   "at": "2026-11-05T18:58:56.413Z",
+   "dry": true
+  },
+  {
+   "pr": 1468,
+   "sha": "9fd2057d4a396a4a8825bcc6efc81c66c4425719",
+   "reason": "red",
+   "lane": "lane:security",
+   "at": "2026-11-05T19:14:48.405Z",
+   "dry": true
+  },
+  {
+   "pr": 1468,
+   "sha": "9fd2057d4a396a4a8825bcc6efc81c66c4425719",
+   "reason": "red",
+   "lane": "lane:security",
+   "at": "2026-11-05T21:24:58.889Z",
+   "dry": true
+  },
+  {
+   "pr": null,
+   "sha": "409afb3cad753a96617fc26ac72b05dac3446439",
+   "reason": "red-main",
+   "lane": "lane:debugger",
+   "run": 42148457216,
+   "at": "2026-11-06T02:54:32.851Z",
+   "dry": true
+  },
+  {
+   "pr": 1490,
+   "sha": "b76cdcd84d3f1b3c647e40b6ec630b08e1520b60",
+   "reason": "red",
+   "lane": "lane:general",
+   "at": "2026-11-06T06:04:06.754Z",
+   "dry": true
+  },
+  {
+   "pr": 1490,
+   "sha": "44e1cb05af446f4f28ab90a20d03eee36b26298d",
+   "reason": "red",
+   "lane": "lane:general",
+   "at": "2026-11-06T07:04:07.182Z",
+   "dry": true
+  },
+  {
+   "pr": 1493,
+   "sha": "b0e50304bcd2574d03e55f7c5d8a43470714ab6c",
+   "reason": "red",
+   "lane": "lane:general",
+   "at": "2026-11-06T07:08:41.366Z",
+   "dry": true
+  },
+  {
+   "pr": 1498,
+   "sha": "502f8711779f5dcaa4a5e9389af3754b21c7d1ca",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T08:57:34.155Z",
+   "dry": true
+  },
+  {
+   "pr": 1499,
+   "sha": "7fef447a682dc59811a5f338d73478bdef29eff7",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T08:57:34.155Z",
+   "dry": true
+  },
+  {
+   "pr": 1498,
+   "sha": "5525d67d80ac3f758cfc82e88e592d645ce3ddad",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T09:26:02.761Z",
+   "dry": true
+  },
+  {
+   "pr": 1501,
+   "sha": "33f4b012d85e954c7b9853406303b7b224a51667",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T09:26:02.761Z",
+   "dry": true
+  },
+  {
+   "pr": 1503,
+   "sha": "13741f75de0a8c5ba9467c060c96965a5509ed00",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T09:26:02.761Z",
+   "dry": true
+  },
+  {
+   "pr": null,
+   "sha": "591a3d333fa02aea20da5358613def8135bce84d",
+   "reason": "red-main",
+   "lane": "lane:debugger",
+   "run": 42191420513,
+   "at": "2026-11-06T10:07:09.348Z",
+   "dry": true
+  },
+  {
+   "pr": 1505,
+   "sha": "b45033b14614757c9e35337e54a9f298e3d5a6aa",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T10:36:05.782Z",
+   "dry": true
+  },
+  {
+   "pr": 1506,
+   "sha": "0f9c8c4f4ac00e39b8c3bacc882f5084b80c539f",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T10:36:05.782Z",
+   "dry": true
+  },
+  {
+   "pr": 1507,
+   "sha": "c145fcceac421cd2168ddba17a5d4402e82d9a0c",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T10:36:05.782Z",
+   "dry": true
+  },
+  {
+   "pr": 1508,
+   "sha": "ddbd1ea01dc8402c778c75fd3420ce00dcff8899",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T10:36:05.782Z",
+   "dry": true
+  },
+  {
+   "pr": 1510,
+   "sha": "0abdc5c7c3cd80721129d4109bf1c42581f3382a",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T10:36:05.782Z",
+   "dry": true
+  },
+  {
+   "pr": 1506,
+   "sha": "10306d116e44b4a03c0aeb8c0c049f0190cc3b2e",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T11:01:05.042Z",
+   "dry": true
+  },
+  {
+   "pr": 1507,
+   "sha": "42de5ede4aa991b5a94985d37e2508f4b59569a0",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T11:01:05.042Z",
+   "dry": true
+  },
+  {
+   "pr": 1508,
+   "sha": "23af753819931c7f755b3d585b036a4295ac334a",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T11:01:05.042Z",
+   "dry": true
+  },
+  {
+   "pr": 1510,
+   "sha": "670351fd3b8f8682b062dfd9c01dc13dd95de29e",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T11:01:05.042Z",
+   "dry": true
+  },
+  {
+   "pr": 1511,
+   "sha": "20efa1a6a6e533e6708761af2b3f575748dfa4c4",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T11:01:05.042Z",
+   "dry": true
+  },
+  {
+   "pr": 1512,
+   "sha": "33424c8e49abab91eff491e9a1ec62821ade8d14",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T11:02:00.357Z",
+   "dry": true
+  },
+  {
+   "pr": 1507,
+   "sha": "1710e78eed3b8e11be78f36fbdc12a97241c4329",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T11:28:55.307Z",
+   "dry": true
+  },
+  {
+   "pr": 1508,
+   "sha": "302114345a7820d55f0810ec3a0967860b2b518c",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T11:28:55.307Z",
+   "dry": true
+  },
+  {
+   "pr": 1510,
+   "sha": "8122aeb86a036a0d3ee64d275bc4f7d3d05e2d73",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T11:28:55.307Z",
+   "dry": true
+  },
+  {
+   "pr": 1511,
+   "sha": "a61f66ff4e9c8ccee63e2c2546ba73181f16a723",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T11:28:55.307Z",
+   "dry": true
+  },
+  {
+   "pr": 1512,
+   "sha": "060b42beda9f68ac17d5c0494916003a4f553934",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T11:28:55.307Z",
+   "dry": true
+  },
+  {
+   "pr": 1507,
+   "sha": "c7c89ef9f0adb9a998698686dd3e1ecb9006155f",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T11:47:57.547Z",
+   "dry": true
+  },
+  {
+   "pr": 1508,
+   "sha": "2b77096de9c7625d9ee2fbaca62040756fe32b5e",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T11:47:57.547Z",
+   "dry": true
+  },
+  {
+   "pr": 1511,
+   "sha": "bba2b15c05544b9dc7cef3e0c687dd33fe24f290",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T11:47:57.547Z",
+   "dry": true
+  },
+  {
+   "pr": 1519,
+   "sha": "afbbfcbe72057cccd38620e60d10437522277ab3",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T12:50:57.101Z",
+   "dry": true
+  },
+  {
+   "pr": 1521,
+   "sha": "d60c56b97286ab596f89e87b4402dd0015f2bb14",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T12:50:57.101Z",
+   "dry": true
+  },
+  {
+   "pr": 1523,
+   "sha": "21de60f19ec593df0aaa868b6f3f256c0d317d82",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T12:50:57.101Z",
+   "dry": true
+  },
+  {
+   "pr": 1527,
+   "sha": "4bc67e908dd7df983627e5e8a0c44c9b07040009",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T14:57:56.861Z",
+   "dry": true
+  },
+  {
+   "pr": 1533,
+   "sha": "667e56f842ed2178f938484a1edd8eb0d8dcb0cc",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T14:57:56.861Z",
+   "dry": true
+  },
+  {
+   "pr": null,
+   "sha": "6a2c3da325f7f59f8565d1fe5517e1d4f9a1dc12",
+   "reason": "red-main",
+   "lane": "lane:debugger",
+   "run": 42241408231,
+   "at": "2026-11-06T15:53:12.013Z",
+   "dry": true
+  },
+  {
+   "pr": 1536,
+   "sha": "8353de2001e315980c2076dd5d65f1a7d27b499b",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T15:53:54.278Z",
+   "dry": true
+  },
+  {
+   "pr": null,
+   "sha": "edd8cedae8d2f00f3e5beaef2d1f4553489e64a7",
+   "reason": "red-main",
+   "lane": "lane:debugger",
+   "run": 42243622038,
+   "at": "2026-11-06T16:17:51.553Z",
+   "dry": true
+  },
+  {
+   "pr": 1547,
+   "sha": "f4ba99fdffe2ff529b8a053e5885cf21045507de",
+   "reason": "conflict",
+   "lane": "lane:debugger",
+   "at": "2026-11-06T17:58:01.276Z",
+   "dry": true
+  },
+  {
+   "pr": 1551,
+   "lane": "lane:connectors",
+   "task": "claude/federal-refi-idr",
+   "wait": "1551:claude/federal-refi-idr:2026-11-06T18:02:41.960Z",
+   "reason": "waited-merged",
+   "sha": "2c814493ab2c141e8d214482e7821ce5d42364e1",
+   "at": "2026-11-06T18:26:25.380Z",
+   "dry": true
+  },
+  {
+   "pr": 1547,
+   "sha": "f4ba99fdffe2ff529b8a053e5885cf21045507de",
+   "reason": "conflict",
+   "lane": "lane:debugger",
+   "at": "2026-11-06T18:30:25.573Z",
+   "dry": true
+  },
+  {
+   "pr": 1552,
+   "lane": "lane:connectors",
+   "task": "claude/card-transfer-maths",
+   "wait": "1552:claude/card-transfer-maths:2026-11-06T18:06:23.260Z",
+   "reason": "waited-merged",
+   "sha": "78376185bf14562304e9dab25c3aaba20c1ff35f",
+   "at": "2026-11-06T18:31:29.612Z",
+   "dry": true
+  },
+  {
+   "pr": 1556,
+   "sha": "0480528cd59fed421356e3ad6929c7ab8ea5121c",
+   "reason": "red",
+   "lane": "lane:general",
+   "at": "2026-11-06T21:30:47.756Z",
+   "dry": true
+  },
+  {
+   "pr": 1563,
+   "lane": "lane:connectors",
+   "task": "claude/direct-pay-steps",
+   "wait": "1563:claude/direct-pay-steps:2026-11-06T21:45:48.044Z",
+   "reason": "waited-merged",
+   "sha": "c50638489dfbac4265be72cd436f600c0e280fce",
+   "at": "2026-11-06T22:01:36.323Z",
+   "dry": true
+  },
+  {
+   "pr": 1564,
+   "lane": "lane:connectors",
+   "task": "claude/tax-config-obbba",
+   "wait": "1564:claude/tax-config-obbba:2026-11-06T21:51:10.633Z",
+   "reason": "waited-merged",
+   "sha": "3291120115f6b297e4453223c09d926fe6775505",
+   "at": "2026-11-06T22:10:50.419Z",
+   "dry": true
+  },
+  {
+   "pr": 1556,
+   "lane": "lane:connectors",
+   "task": "claude/federal-autopay-card",
+   "wait": "1556:claude/federal-autopay-card:2026-11-06T21:02:20.533Z",
+   "reason": "waited-merged",
+   "sha": "d2b3008c2cdd0f23a9a7a2f4c318c709adbba3a6",
+   "at": "2026-11-06T22:28:00.090Z",
+   "dry": true
+  },
+  {
+   "pr": 1568,
+   "sha": "88b038ede84803d231f606ccc93bfa89f2a65e64",
+   "reason": "conflict",
+   "lane": "lane:general",
+   "at": "2026-11-06T22:28:00.090Z",
+   "dry": true
+  },
+  {
+   "pr": 1570,
+   "lane": "lane:connectors",
+   "task": "claude/save-ending-card",
+   "wait": "1570:claude/save-ending-card:2026-11-06T22:21:25.301Z",
+   "reason": "waited-merged",
+   "sha": "7175ab0401d9eda2ea0cba7302a80b4f4e29031b",
+   "at": "2026-11-06T22:47:04.875Z",
+   "dry": true
+  },
+  {
+   "pr": 1571,
+   "lane": "lane:connectors",
+   "task": "claude/irs-card-fee",
+   "wait": "1571:claude/irs-card-fee:2026-11-06T22:32:27.014Z",
+   "reason": "waited-merged",
+   "sha": "f17f744a60665f8f58c3244df0eb83639854cbee",
+   "at": "2026-11-06T22:49:47.651Z",
+   "dry": true
+  },
+  {
+   "pr": 1574,
+   "lane": "lane:connectors",
+   "task": "claude/irs-transcript",
+   "wait": "1574:claude/irs-transcript:2026-11-06T22:51:48.480Z",
+   "reason": "waited-merged",
+   "sha": "3b84c082263e6b6bf7e30053395c4c6772070fba",
+   "at": "2026-11-06T23:10:53.156Z",
+   "dry": true
+  },
+  {
+   "pr": 1568,
+   "lane": "lane:connectors",
+   "task": "claude/eftps-move",
+   "wait": "1568:claude/eftps-move:2026-11-06T22:15:46.586Z",
+   "reason": "waited-merged",
+   "sha": "ed10133eaa67cb57ff210f01fd26d25094763f7f",
+   "at": "2026-11-06T23:26:48.934Z",
+   "dry": true
+  },
+  {
+   "pr": 1576,
+   "lane": "lane:connectors",
+   "task": "claude/transcript-partner",
+   "wait": "1576:claude/transcript-partner:2026-11-06T23:13:18.455Z",
+   "reason": "waited-merged",
+   "sha": "d44664eb0f2a4cec7e99abb944cdd95cdf622b96",
+   "at": "2026-11-06T23:28:23.572Z",
+   "dry": true
+  },
+  {
+   "pr": 1578,
+   "lane": "lane:connectors",
+   "task": "claude/tax-form-upload",
+   "wait": "1578:claude/tax-form-upload:2026-11-06T23:31:05.663Z",
+   "reason": "waited-merged",
+   "sha": "6f20678ad8223d9301fc56dda2a0edd05725407c",
+   "at": "2026-11-06T23:53:18.709Z",
+   "dry": true
+  },
+  {
+   "pr": 1579,
+   "lane": "lane:connectors",
+   "task": "claude/paystub-deductions",
+   "wait": "1579:claude/paystub-deductions:2026-11-06T23:56:07.451Z",
+   "reason": "waited-merged",
+   "sha": "32188c0f2695e754272f600706615ce67c875085",
+   "at": "2026-11-07T00:13:21.235Z",
+   "dry": true
+  },
+  {
+   "pr": 1580,
+   "sha": "2041284dffbb699796ec2a9a94ed496ebe9ef053",
+   "reason": "conflict",
+   "lane": "lane:debugger",
+   "at": "2026-11-07T00:13:49.128Z",
+   "dry": true
+  },
+  {
+   "pr": 1584,
+   "lane": "lane:connectors",
+   "task": "claude/rollover-clock",
+   "wait": "1584:claude/rollover-clock:2026-11-07T00:16:48.815Z",
+   "reason": "waited-merged",
+   "sha": "085d01c5d95e12469f69226e3a3adb196389a08b",
+   "at": "2026-11-07T00:53:34.195Z",
+   "dry": true
+  },
+  {
+   "pr": 1589,
+   "lane": "lane:connectors",
+   "task": "claude/savers-credit",
+   "wait": "1589:claude/savers-credit:2026-11-07T00:52:11.048Z",
+   "reason": "waited-merged",
+   "sha": "66dc9c266a353fdfd8f4faa85ee33f40fc6a5467",
+   "at": "2026-11-07T01:16:12.969Z",
+   "dry": true
+  },
+  {
+   "pr": 1591,
+   "lane": "lane:connectors",
+   "task": "claude/savers-match",
+   "wait": "1591:claude/savers-match:2026-11-07T01:18:35.187Z",
+   "reason": "waited-merged",
+   "sha": "56d613dfc132d4d8f533e4d6524f2c6badb19b0a",
+   "at": "2026-11-07T01:37:56.944Z",
+   "dry": true
+  },
+  {
+   "pr": 1592,
+   "sha": "efde7c603bc4bf5e02afa809366d707b09013160",
+   "reason": "conflict",
+   "lane": "lane:debugger",
+   "at": "2026-11-07T01:38:24.789Z",
+   "dry": true
+  },
+  {
+   "pr": 1592,
+   "sha": "efde7c603bc4bf5e02afa809366d707b09013160",
+   "reason": "conflict",
+   "lane": "lane:debugger",
+   "at": "2026-11-07T02:09:28.628Z",
+   "dry": true
+  },
+  {
+   "pr": 1596,
+   "sha": "7ee942edd0b75d692af9a3fc941db44cb9be79f4",
+   "reason": "red",
+   "lane": "lane:debugger",
+   "at": "2026-11-07T02:17:55.746Z",
+   "dry": true
+  },
+  {
+   "pr": 1594,
+   "lane": "lane:connectors",
+   "task": "claude/budget-billing",
+   "wait": "1594:claude/budget-billing:2026-11-07T01:43:06.631Z",
+   "reason": "waited-merged",
+   "sha": "ea64c1321939669e26097fa8d82fdc1d8cfd1d2e",
+   "at": "2026-11-07T02:52:27.058Z",
+   "dry": true
+  },
+  {
+   "pr": 1597,
+   "lane": "lane:connectors",
+   "task": "claude/care-hint",
+   "wait": "1597:claude/care-hint:2026-11-07T02:33:21.606Z",
+   "reason": "waited-merged",
+   "sha": "f6c693ff5cd5b08eeb8d46602b75d486cebfa6e7",
+   "at": "2026-11-07T02:52:27.058Z",
+   "dry": true
+  },
+  {
+   "pr": 1596,
+   "sha": "7ee942edd0b75d692af9a3fc941db44cb9be79f4",
+   "reason": "red",
+   "lane": "lane:debugger",
+   "at": "2026-11-07T02:52:27.058Z",
+   "dry": true
+  },
+  {
+   "pr": 1598,
+   "lane": "lane:connectors",
+   "task": "claude/lifeline-internet",
+   "wait": "1598:claude/lifeline-internet:2026-11-07T03:00:28.864Z",
+   "reason": "waited-merged",
+   "sha": "803f86c34bb06f76e86ff1001eadebdb422a50ff",
+   "at": "2026-11-07T03:25:49.947Z",
+   "dry": true
+  },
+  {
+   "pr": 1599,
+   "lane": "lane:connectors",
+   "task": "claude/stripe-fc",
+   "wait": "1599:claude/stripe-fc:2026-11-07T03:29:25.405Z",
+   "reason": "waited-merged",
+   "sha": "fea7686b6e613ba16178c216f85aa5cbcdc6753b",
+   "at": "2026-11-07T03:48:06.035Z",
+   "dry": true
+  },
+  {
+   "pr": 1600,
+   "lane": "lane:connectors",
+   "task": "claude/link-events",
+   "wait": "1600:claude/link-events:2026-11-07T03:55:15.802Z",
+   "reason": "waited-merged",
+   "sha": "5a0cf09436cdf71b41758bb4e1bd3758a6d2268d",
+   "at": "2026-11-07T04:14:10.540Z",
+   "dry": true
+  },
+  {
+   "pr": 1601,
+   "lane": "lane:connectors",
+   "task": "claude/stripe-fc-events",
+   "wait": "1601:claude/stripe-fc-events:2026-11-07T04:17:39.356Z",
+   "reason": "waited-merged",
+   "sha": "81712a1b63460852f4b2c2f99485a2663b2e1c8f",
+   "at": "2026-11-07T04:42:40.717Z",
+   "dry": true
+  },
+  {
+   "pr": 1592,
+   "sha": "efde7c603bc4bf5e02afa809366d707b09013160",
+   "reason": "silent",
+   "lane": "lane:debugger",
+   "at": "2026-11-07T04:42:40.717Z",
+   "dry": true
+  },
+  {
+   "pr": 1602,
+   "lane": "lane:connectors",
+   "task": "claude/user-sends-email",
+   "wait": "1602:claude/user-sends-email:2026-11-07T04:46:01.314Z",
+   "reason": "waited-merged",
+   "sha": "ecb5468bc5a972f131d0737d9565e2e923c1ce17",
+   "at": "2026-11-07T05:05:28.721Z",
+   "dry": true
+  },
+  {
+   "pr": 1603,
+   "lane": "lane:connectors",
+   "task": "claude/voice-gate",
+   "wait": "1603:claude/voice-gate:2026-11-07T05:09:01.919Z",
+   "reason": "waited-merged",
+   "sha": "4f3858870a04578afb89394ff22565e15e19ea28",
+   "at": "2026-11-07T05:34:22.847Z",
+   "dry": true
+  },
+  {
+   "pr": 1592,
+   "sha": "efde7c603bc4bf5e02afa809366d707b09013160",
+   "reason": "silent",
+   "lane": "lane:debugger",
+   "at": "2026-11-07T05:34:22.847Z",
+   "dry": true
+  }
+ ],
+ "labelsMade": true,
+ "numbers": {
+  "at": "2026-11-07T14:22:48.968Z",
+  "deployLagMinutes": 0,
+  "redMinutes": {
+   "2026-11-07": 25,
+   "2026-11-06": 68
+  },
+  "silent": [],
+  "stuck": [
+   977,
+   1592,
+   1596
+  ],
+  "live": "4f3858870a04578afb89394ff22565e15e19ea28"
+ }
+}
