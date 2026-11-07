@@ -86,6 +86,8 @@ export const SUGGESTION_TOPICS = [
   "price_increase",
   "trial_conversion",
   "bill_negotiation",
+  // Connectors roadmap round 17: an energy bill that swings with the seasons.
+  "budget_billing",
   "duplicate_charge",
   "low_balance",
   "budget_overrun",
