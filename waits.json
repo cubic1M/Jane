@@ -126,5 +126,13 @@
   "when": "merged",
   "since": "2026-11-07T01:43:06.631Z",
   "expires": "2026-11-10T01:43:06.631Z"
+ },
+ {
+  "on": 1597,
+  "lane": "lane:connectors",
+  "task": "claude/care-hint",
+  "when": "merged",
+  "since": "2026-11-07T02:33:21.606Z",
+  "expires": "2026-11-10T02:33:21.606Z"
  }
 ]
