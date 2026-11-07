@@ -155,6 +155,39 @@ describe.runIf(url)("student loans against a real database", () => {
     expect((await loadStudentLoans(userId, opts())).profile.stepsDone).toBe(STUDENT_STEPS.length);
   });
 
+  // Debugger 11-06: a teacher's six months of statements, two paychecks a month, read as a year's
+  // pay ($26,572), so IBR came out $22 a month.
+  it("paces under a year of paychecks to a year", async () => {
+    const user = await client.user.create({
+      data: { email: `student-half-${crypto.randomUUID()}@example.com` },
+    });
+    created.push(user.id);
+    const account = await client.account.create({
+      data: { userId: user.id, source: "csv", name: "Checking", type: "depository" },
+    });
+    const days = [5, 6, 7, 8, 9, 10].flatMap((m) =>
+      [15, 30].map((d) => `2026-${String(m).padStart(2, "0")}-${d}`),
+    );
+    await client.transaction.createMany({
+      data: [...days, "2026-05-01"].map((d, i) => ({
+        userId: user.id,
+        accountId: account.id,
+        source: "csv" as const,
+        dedupeKey: `pay-${i}`,
+        date: new Date(`${d}T00:00:00Z`),
+        amountCents: i < days.length ? -221_437 : 138_500,
+        description: i < days.length ? "SPRINGFIELD SCH DIST PAYROLL" : "PINE HOLLOW APTS RENT",
+        pfcPrimary: i < days.length ? "INCOME" : "RENT_AND_UTILITIES",
+        pfcDetailed: i < days.length ? "INCOME_SALARY" : "RENT_AND_UTILITIES_RENT",
+        categorySource: "rule" as const,
+      })),
+    });
+    const data = await loadStudentLoans(user.id, opts(new Date("2026-11-06T18:00:00Z")));
+    expect(data.agiFrom).toBe("paychecks");
+    // $26,572.44 over May 1 to October 30, 183 days: about $53,000 a year.
+    expect(data.agiCents).toBe(Math.round((2_657_244 * 365) / 183));
+  });
+
   it("gives Claude the plans, the count and the official pages", async () => {
     const tool = await runChatTool(userId, "student_loans", {}, opts());
     const output = JSON.parse(tool.content);
