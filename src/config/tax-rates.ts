@@ -232,6 +232,26 @@ export const OBBBA_DEDUCTIONS = {
   },
 } as const;
 
+// The Saver's Credit's last year (connectors roadmap round 17; from 2027 the Saver's Match replaces
+// it): a nonrefundable credit (Form 8880) on IRA and workplace-plan money put in for 2026, for
+// anyone 18 or older who isn't a full-time student or someone's dependent, with AGI at or under the
+// limit. The credit is 50%, 20% or 10% of up to $2,000 each; the tier lines aren't confirmed
+// (round 17), so only the 10% everyone under the limit gets is said. IRA money counts until the
+// filing deadline.
+export const SAVERS_CREDIT = {
+  taxYear: 2026,
+  agiLimit: {
+    single: $(40_250),
+    married_separate: $(40_250),
+    head_of_household: $(60_375),
+    married_joint: $(80_500),
+  } satisfies Record<FilingStatus, number>,
+  maxContribution: $(2_000),
+  lowestRate: 0.1,
+  iraDeadline: "2027-04-15",
+  rule: "26 USC 25B; IRS Form 8880",
+} as const;
+
 // Catch-up contributions must go to Roth for anyone whose FICA wages the year before were over
 // this (SECURE 2.0; final regulations T.D. 10033 apply from 2027, good-faith use in 2026).
 export const ROTH_CATCH_UP = {

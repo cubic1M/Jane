@@ -108,6 +108,8 @@ export const SUGGESTION_TOPICS = [
   "identity_ip_pin",
   // Connectors roadmap round 16: EFTPS is closing to individuals.
   "eftps_move",
+  // Connectors roadmap round 17: the Saver's Credit's last year.
+  "savers_credit",
   "year_end_moves",
   // Spec step 262: investing.
   "investment_fees",
