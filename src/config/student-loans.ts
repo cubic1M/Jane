@@ -95,6 +95,9 @@ export const STUDENT_STEPS = [
 
 // Payments seen this long ago or less count toward forgiveness tracking from transactions.
 export const STUDENT_PAYMENT_LOOKBACK_DAYS = 400;
+// Under a year of statements, the paychecks are paced to a year over the days they cover, but
+// never fewer days than this: one paycheck in a week's statements isn't a pace.
+export const STUDENT_INCOME_MIN_DAYS = 30;
 
 // --- The long game (spec step 225) ----------------------------------------------------------
 

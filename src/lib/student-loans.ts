@@ -2,6 +2,7 @@ import {
   IBR,
   PSLF_PAYMENTS,
   RAP,
+  STUDENT_INCOME_MIN_DAYS,
   STUDENT_PAYMENT_LOOKBACK_DAYS,
   STUDENT_STEPS,
 } from "@/config/student-loans";
@@ -89,7 +90,7 @@ export async function loadStudentLoans(
   const today = await todayOf(userId, { client, now });
   const since = new Date(Date.parse(`${today}T00:00:00Z`) - STUDENT_PAYMENT_LOOKBACK_DAYS * DAY_MS);
   const yearAgo = new Date(Date.parse(`${today}T00:00:00Z`) - 365 * DAY_MS);
-  const [book, advice, profile, payments, pay] = await Promise.all([
+  const [book, advice, profile, payments, pay, seen] = await Promise.all([
     debtsOr(given, userId, { client, now }),
     adviceMode(userId, { client }),
     profileOf(userId, client),
@@ -109,13 +110,29 @@ export async function loadStudentLoans(
       },
       _sum: { amountCents: true },
     }),
+    db.transactions.aggregate({
+      where: { date: { gte: yearAgo } },
+      _min: { date: true },
+      _max: { date: true },
+    }),
   ]);
   const loan =
     [...book.debts]
       .filter((d) => d.kind === "student" && (d.balanceCents ?? 0) > 0 && d.aprBps !== null)
       .sort((a, b) => (b.balanceCents ?? 0) - (a.balanceCents ?? 0))[0] ?? null;
   const agiFrom = profile.agiCents !== null ? "you" : "paychecks";
-  const agiCents = profile.agiCents ?? Math.abs(pay._sum.amountCents ?? 0);
+  // A year's pay: under a year of statements, the paychecks paced over the days they cover (debugger
+  // 11-06: six months of a teacher's pay read as a year's, $26,572, and IBR came out $22 a month).
+  const coveredDays =
+    seen._min.date && seen._max.date
+      ? Math.round((seen._max.date.getTime() - seen._min.date.getTime()) / DAY_MS) + 1
+      : 365;
+  const agiCents =
+    profile.agiCents ??
+    Math.round(
+      (Math.abs(pay._sum.amountCents ?? 0) * 365) /
+        Math.min(365, Math.max(STUDENT_INCOME_MIN_DAYS, coveredDays)),
+    );
   // One qualifying payment a month at most.
   const paymentsSeen = new Set(payments.map((p) => p.date.toISOString().slice(0, 7))).size;
   const paymentsCounted = profile.countedBefore + paymentsSeen;
