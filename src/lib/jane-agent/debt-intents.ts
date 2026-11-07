@@ -140,8 +140,16 @@ export const DEBT_KINDS = new Set<string>([
   "loan_fit",
 ]);
 
+// A question that names student loans is about them (chat policy round 4, 11-06): "should i
+// consolidate my student loans" and "should i pay off my student loans early or invest" were
+// answered about the costliest card, because these decisions work on cards. Paying a student
+// loan off instead of investing is paying it early, and consolidating one is the student loans'
+// long game.
+const STUDENT_DEBT = /\bstudent (?:loans?|debt)\b/;
+const CARD_DECISIONS: ReadonlySet<DecisionId> = new Set(["pay_or_invest", "consolidate"]);
+
 // The decisions people ask about debt and credit, in the order they're tried.
-export const DECISION_PATTERNS: readonly (readonly [DecisionId, RegExp])[] = [
+const DECISION_PATTERNS: readonly (readonly [DecisionId, RegExp])[] = [
   [
     "pay_or_invest",
     /\b(?:pay(?:ing)? (?:off|down)|extra (?:on|toward|payments?))\b.*\b(?:or|vs\.?|versus|instead of)\b.*\binvest\w*|\binvest\w*\b.*\b(?:or|vs\.?|versus|instead of|before)\b.*\b(?:pay(?:ing)? (?:off|down)|debt|cards?|mortgage)\b|\bpay (?:extra|more) on (?:my )?(?:mortgage|card|cards)\b.*\binvest/,
@@ -191,6 +199,18 @@ export const DECISION_PATTERNS: readonly (readonly [DecisionId, RegExp])[] = [
     /\b(?:should|worth|better|good idea)\b.*\b(?:pay(?:ing)? (?:off|down)|extra (?:on|toward|payments? (?:on|to)))\b.*\bstudent (?:loans?|debt)\b|\bstudent (?:loans?|debt)\b.*\b(?:early|ahead of schedule|faster)\b|\bpay(?:ing)? (?:off|down) (?:my )?student (?:loans?|debt) (?:early|faster|ahead)\b/,
   ],
 ];
+
+// Which decision a question asks for, in the order above. One that names student loans never
+// gets a card decision: paying it off instead of investing is paying it early.
+export function decisionFor(text: string): DecisionId | null {
+  const student = STUDENT_DEBT.test(text);
+  for (const [which, pattern] of DECISION_PATTERNS) {
+    if (!pattern.test(text)) continue;
+    if (!student || !CARD_DECISIONS.has(which)) return which;
+    if (which === "pay_or_invest") return "student_early";
+  }
+  return null;
+}
 
 // "What's the best loan for me?", "which loan should I get for a car?": the fit engine.
 const LOAN_FIT =
@@ -458,7 +478,7 @@ export function parseDebtIntent(
   // out with the person's own numbers; with an amount it's the step 246 comparison.
   const payOrInvest = DECISION_PATTERNS.find(([which]) => which === "pay_or_invest")![1];
   if (amountCents === null && !/\brecast/.test(text) && payOrInvest.test(text)) {
-    return { kind: "debt_decision", which: "pay_or_invest" };
+    return { kind: "debt_decision", which: decisionFor(text) ?? "pay_or_invest" };
   }
   if (MORTGAGE_MONEY.test(text) && !/\b(?:paid off|payoff date|when will)\b/.test(text)) {
     const monthly = PER_MONTH.test(text);
@@ -478,9 +498,8 @@ export function parseDebtIntent(
   ) {
     return { kind: "loan_fit", need: fitNeedOf(text), amountCents };
   }
-  for (const [which, pattern] of DECISION_PATTERNS) {
-    if (pattern.test(text)) return { kind: "debt_decision", which };
-  }
+  const which = decisionFor(text);
+  if (which) return { kind: "debt_decision", which };
   if (MORE.test(text) && amountCents !== null)
     return { kind: "payoff_plan", extraCents: amountCents };
   if (PAYOFF.test(text)) return { kind: "payoff_plan", extraCents: null };

@@ -2,7 +2,7 @@ import { DECISION_CONFIDENCE } from "@/config/debt-decisions";
 import { decide } from "@/lib/debt-decisions";
 import type { DecisionId } from "@/planning/debt-decisions";
 import { decisionLink } from "./debt-decision-replies";
-import { DECISION_PATTERNS } from "./debt-intents";
+import { decisionFor } from "./debt-intents";
 import type { DecideContext, Decision } from "./decision";
 
 // The loans sector's answer to "should I ...?" (docs/decisions.md): the question is matched to
@@ -12,8 +12,7 @@ import type { DecideContext, Decision } from "./decision";
 
 export function decisionIdFor(item: string, label: string): DecisionId | null {
   if (item === "payoff_or_invest") return "pay_or_invest";
-  const text = `should i ${label.toLowerCase()}`;
-  return DECISION_PATTERNS.find(([, pattern]) => pattern.test(text))?.[0] ?? null;
+  return decisionFor(`should i ${label.toLowerCase()}`);
 }
 
 export async function debtDecide(c: DecideContext): Promise<Decision | null> {
