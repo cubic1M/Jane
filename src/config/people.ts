@@ -99,6 +99,8 @@ export const SUGGESTION_TOPICS = [
   "family_credit",
   "cosign_risk",
   "social_security_timing",
+  // Connectors roadmap round 17: a plan or IRA payout that can still be rolled over.
+  "rollover_clock",
   "medicare",
   "rmd",
   "roth_conversion",

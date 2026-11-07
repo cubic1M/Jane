@@ -76,5 +76,21 @@ export const STATE_AUTO_IRAS: readonly { state: string; name: string; match: Reg
   { state: "NY", name: "New York Secure Choice", match: /\b(?:ny|new york) secure choice\b/i },
 ];
 
+// The 60-day rollover clock (connectors roadmap round 17; IRS "Rollovers of retirement plan and IRA
+// distributions"): a payout from a plan or IRA can still be rolled over if it goes into an IRA or
+// plan within 60 days of being received. A plan withholds 20% from a payout it could have rolled
+// over directly. A bank deposit counts as one when its words name a plan or IRA and a payout, and
+// it's at least minCents. FOR REVIEW.
+export const ROLLOVER_CLOCK = {
+  days: 60,
+  planWithholdingShare: 0.2,
+  minCents: 100_000,
+  urgentDays: 14,
+  plan: /\b(?:401\s?\(?k\)?|403\s?\(?b\)?|457|ira|pension|retirement plan|tsp)\b/i,
+  payout: /\b(?:dist(?:ribution)?|distr|withdrawal|payout|rollover)\b/i,
+  source:
+    "https://www.irs.gov/retirement-plans/plan-participant-employee/rollovers-of-retirement-plan-and-ira-distributions",
+} as const;
+
 // Suggesting more each year: never more than this share of pay at once.
 export const MAX_SUGGESTED_RAISE = 0.1;

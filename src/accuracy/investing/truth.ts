@@ -36,4 +36,6 @@ export const INVESTING_TRUTH: Readonly<Record<string, Truth>> = {
   retirement_self_employed: { yes: ["freelancer", "owner"] },
   idle_cash: { yes: ["equity", "preretire", "retiree"], maybe: ["family"] },
   social_security_timing: { yes: ["preretire"] },
+  // Nobody got a one-off plan or IRA payout in the last 60 days; Ruth's IRA draw is monthly income.
+  rollover_clock: { yes: [] },
 };
