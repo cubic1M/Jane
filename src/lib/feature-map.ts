@@ -35,6 +35,7 @@ import { PRICE_RISE_DETECTORS } from "@/detectors/price-rises";
 import { RENTING_DETECTORS } from "@/detectors/renting";
 import { RETIREMENT_DETECTORS } from "@/detectors/retirement";
 import { SPENDING_DETECTORS } from "@/detectors/spending";
+import { UTILITY_DETECTORS } from "@/detectors/utilities";
 import { TAX_DETECTORS } from "@/detectors/taxes";
 import { TAX_SET_ASIDE_DETECTORS } from "@/detectors/tax-set-aside";
 import { TRADEOFF_DETECTORS } from "@/detectors/tradeoffs";
@@ -60,7 +61,7 @@ export const DETECTOR_FAMILIES: readonly { key: FamilyKey; detectors: readonly D
   { key: "coverGaps", detectors: COVER_GAP_DETECTORS },
   { key: "debt", detectors: [...DEBT_DETECTORS, ...STUDENT_AID_DETECTORS] },
   { key: "fit", detectors: FIT_DETECTORS },
-  { key: "spending", detectors: SPENDING_DETECTORS },
+  { key: "spending", detectors: [...SPENDING_DETECTORS, ...UTILITY_DETECTORS] },
   { key: "renting", detectors: RENTING_DETECTORS },
   { key: "borrowing", detectors: BORROWING_POWER_DETECTORS },
   { key: "familyCredit", detectors: FAMILY_CREDIT_DETECTORS },

@@ -63,4 +63,10 @@ export const SPENDING_DETECTOR_RATES = {
     "MEDICAL",
     "GOVERNMENT_AND_NON_PROFIT",
   ],
+  // Budget billing (connectors roadmap round 17, budget_billing_hint): one gas or electric payee
+  // seen in at least this many months, whose biggest month is at least this many times its smallest,
+  // and at least this much above its average.
+  budgetBillingMonthsMin: 9,
+  budgetBillingSwingRatio: 2,
+  budgetBillingMinJumpCents: 5_000,
 } as const;
