@@ -3,5 +3,10 @@
   "task": "savers-credit-2026",
   "lane": "lane:connectors",
   "expires": "2026-11-07T02:48:17.523Z"
+ },
+ {
+  "task": "savers-match-ready-2027",
+  "lane": "lane:connectors",
+  "expires": "2026-11-07T02:54:55.354Z"
  }
 ]
