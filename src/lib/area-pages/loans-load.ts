@@ -28,6 +28,7 @@ export async function loadLoansArea(userId: string, { now = new Date() }: { now?
         key: true,
         capability: true,
         topic: true,
+        headline: true,
         short: true,
         why: true,
         worthCents: true,
