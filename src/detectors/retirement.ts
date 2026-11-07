@@ -1,4 +1,5 @@
 import { MEDICARE, SOCIAL_SECURITY } from "@/config/retirement-taxes";
+import { ROLLOVER_DETECTORS } from "./rollover";
 import { formatCents } from "@/lib/money";
 import { readRetirementTaxes } from "@/planning/retirement-taxes-read";
 import { type Detector, suggestionId } from "./contract";
@@ -115,4 +116,8 @@ const socialSecurityTiming: Detector = {
   },
 };
 
-export const RETIREMENT_DETECTORS: readonly Detector[] = [medicare, socialSecurityTiming];
+export const RETIREMENT_DETECTORS: readonly Detector[] = [
+  medicare,
+  socialSecurityTiming,
+  ...ROLLOVER_DETECTORS,
+];
