@@ -164,6 +164,7 @@ export async function loadMoneyArea(
       summary: s.short || s.headline || s.title,
       worthCents: s.worthCents,
       worthKind: s.worthKind,
+      headline: s.headline,
       urgency: s.urgency,
     })),
     lows: forecastAccounts(input, FORECAST_DAYS).map((f) => ({
