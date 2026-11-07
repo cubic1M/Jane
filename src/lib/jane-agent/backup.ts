@@ -92,9 +92,10 @@ const COMMON = new Set(
 );
 
 // On their own these are everyday words that are also part of a merchant's name: "my whole savings"
-// isn't Whole Foods, though "whole foods" is, and "cash" isn't Cash App.
+// isn't Whole Foods, though "whole foods" is, and "cash" isn't Cash App. "State estimated tax" isn't
+// State Farm or State Teachers Retirement either (11-06), though "state farm" is.
 const NOT_A_NAME_ALONE = new Set(
-  "whole cash loan loans check checks insurance report stolen legal free government checking overdraft charge charges store market monthly thank thanks protection student".split(
+  "whole cash loan loans check checks insurance report stolen legal free government checking overdraft charge charges store market monthly thank thanks protection student state federal".split(
     " ",
   ),
 );
