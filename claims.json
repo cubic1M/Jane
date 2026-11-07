@@ -1,1 +1,7 @@
-[]
+[
+ {
+  "task": "rollover-60-day-clock",
+  "lane": "lane:connectors",
+  "expires": "2026-11-07T02:14:13.883Z"
+ }
+]
