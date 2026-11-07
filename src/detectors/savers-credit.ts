@@ -1,7 +1,8 @@
 import { DETECTOR_RATES } from "@/config/detectors";
 import { isFilingStatus, type FilingStatus } from "@/config/tax";
-import { SAVERS_CREDIT } from "@/config/tax-rates";
+import { FEDERAL_BRACKETS, SAVERS_CREDIT, STANDARD_DEDUCTION } from "@/config/tax-rates";
 import { formatCents } from "@/lib/money";
+import { bracketTax } from "@/planning/tax-brackets";
 import { type Detector, suggestionId } from "./contract";
 import { factEvidence, headlineOf, weakest } from "./helpers";
 
@@ -44,7 +45,20 @@ const saversCredit: Detector = {
     const limit = SAVERS_CREDIT.agiLimit[status];
     if (agi > limit) return null;
     const people = status === "married_joint" ? 2 : 1;
-    const least = Math.round(SAVERS_CREDIT.maxContribution * SAVERS_CREDIT.lowestRate) * people;
+    // The credit only lowers income tax owed (it's nonrefundable): under the standard deduction
+    // there's none, so nothing to get, and a little tax caps it.
+    const owed = bracketTax(
+      Math.max(0, agi - STANDARD_DEDUCTION[status]),
+      FEDERAL_BRACKETS[status],
+    );
+    const tenPercent =
+      Math.round(SAVERS_CREDIT.maxContribution * SAVERS_CREDIT.lowestRate) * people;
+    const least = Math.min(tenPercent, owed);
+    if (least <= 0) return null;
+    const cap =
+      owed < tenPercent
+        ? ` It can't be more than the federal income tax you owe, about ${formatCents(owed)} on this income.`
+        : "";
     return {
       id: suggestionId("taxes", "savers_credit"),
       capability: "taxes",
@@ -62,7 +76,7 @@ const saversCredit: Detector = {
         },
       ]),
       urgency: "later",
-      why: `With ${SAVERS_CREDIT.taxYear} income near ${formatCents(agi)}, under the ${formatCents(limit)} limit for your filing status, you may qualify for the Saver's Credit (Form 8880): at least ${Math.round(SAVERS_CREDIT.lowestRate * 100)}% back on up to ${formatCents(SAVERS_CREDIT.maxContribution)}${people === 2 ? " each" : ""} of IRA or 401(k) money put in for ${SAVERS_CREDIT.taxYear}, and more at lower incomes. Workplace-plan money counts by December 31; IRA money until ${longDate(SAVERS_CREDIT.iraDeadline)}. Not for full-time students or anyone claimed as a dependent. It's the credit's last year: from 2027 the Saver's Match replaces it.`,
+      why: `With ${SAVERS_CREDIT.taxYear} income near ${formatCents(agi)}, under the ${formatCents(limit)} limit for your filing status, you may qualify for the Saver's Credit (Form 8880): at least ${Math.round(SAVERS_CREDIT.lowestRate * 100)}% back on up to ${formatCents(SAVERS_CREDIT.maxContribution)}${people === 2 ? " each" : ""} of IRA or 401(k) money put in for ${SAVERS_CREDIT.taxYear}, and more at lower incomes.${cap} Workplace-plan money counts by December 31; IRA money until ${longDate(SAVERS_CREDIT.iraDeadline)}. Not for full-time students or anyone claimed as a dependent. It's the credit's last year: from 2027 the Saver's Match replaces it.`,
       action: { label: "See your tax plan", href: "/taxes" },
     };
   },
