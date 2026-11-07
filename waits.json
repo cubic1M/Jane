@@ -94,5 +94,13 @@
   "when": "merged",
   "since": "2026-11-06T23:56:07.451Z",
   "expires": "2026-11-09T23:56:07.451Z"
+ },
+ {
+  "on": 1584,
+  "lane": "lane:connectors",
+  "task": "claude/rollover-clock",
+  "when": "merged",
+  "since": "2026-11-07T00:16:48.815Z",
+  "expires": "2026-11-10T00:16:48.815Z"
  }
 ]
