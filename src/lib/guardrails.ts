@@ -239,6 +239,11 @@ const TAX_ADVICE = [
   /\b(?:keep|leave)\b[^.!?]{0,20}\boff (?:your|the) (?:tax )?return\b/i,
   /\bif you fil(?:e|ed) (?:jointly|separately|as)\b/i,
   /\b(?:skip|don(?:'|’)?t pay|do not pay|hold off on)\b[^.!?]{0,20}\b(?:quarterly|estimated) (?:estimates?|payments?|tax(?:es)?)\b/i,
+  // The new tax forms and state estimates (chat policy round 4, 11-06): "Skip the state estimate
+  // this time", "You don't need to report the 1099-K", "Leave the W-2 off". What a form shows
+  // ("Your 1099-NEC shows $8,000.00") stays a fact.
+  /\b(?:skip|don(?:'|’)?t pay|do not pay|hold off on)\b[^.!?]{0,20}\bstate (?:estimates?|estimated (?:payments?|tax(?:es)?)|tax payments?)\b/i,
+  /\b(?:don(?:'|’)?t|do not|no) (?:need to|have to)\s+(?:report|declare|include|list|file)\b[^.!?]{0,30}\b(?:1099|w-?2|k-?1)\b|\b(?:skip|leave out|leave off|ignore|never report)\b[^.!?]{0,20}\b(?:the |your |that |this )?(?:1099|w-?2|k-?1)\b|\b(?:leave|keep)\b[^.!?]{0,20}\b(?:1099|w-?2|k-?1)\w*(?:-[a-z]+)? off\b/i,
 ];
 // In a sentence that talks about tax: telling them to do something, or what the rules say
 // their money counts as. "You'll owe about $X" is a figure; "you should set aside $X" is advice.
