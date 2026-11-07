@@ -11,12 +11,16 @@ import { factEvidence, headlineOf, weakest } from "./helpers";
 // workplace-plan money put in for 2026. Facts and the deadline only: whether to save, and where,
 // is the person's. Pure; see ./contract.ts.
 
-const statusOf = (filing: unknown, household: unknown): FilingStatus =>
-  isFilingStatus(filing)
-    ? filing
-    : household === "couple" || household === "family"
-      ? "married_joint"
-      : "single";
+// Before they say how they file: a couple, or a family with two earners, files jointly; one
+// earner with children is a head of household (debugger 11-06: a single parent was measured
+// against the joint limit and told "$2,000 each").
+const statusOf = (filing: unknown, household: unknown, earners: unknown): FilingStatus => {
+  if (isFilingStatus(filing)) return filing;
+  if (household === "couple") return "married_joint";
+  if (household === "family")
+    return typeof earners === "number" && earners >= 2 ? "married_joint" : "head_of_household";
+  return "single";
+};
 
 const longDate = (day: string) =>
   new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", {
@@ -41,7 +45,7 @@ const saversCredit: Detector = {
     if (typeof monthly !== "number" || monthly <= 0) return null;
     // Take-home pay, grossed up like the other tax cards: a rough AGI.
     const agi = Math.round(monthly * 12 * DETECTOR_RATES.tax.netToGross);
-    const status = statusOf(facts.filing_status.value, facts.household.value);
+    const status = statusOf(facts.filing_status.value, facts.household.value, facts.earners.value);
     const limit = SAVERS_CREDIT.agiLimit[status];
     if (agi > limit) return null;
     const people = status === "married_joint" ? 2 : 1;
@@ -84,7 +88,7 @@ const saversMatch: Detector = {
     const monthly = facts.monthly_income.value;
     if (typeof monthly !== "number" || monthly <= 0) return null;
     const agi = Math.round(monthly * 12 * DETECTOR_RATES.tax.netToGross);
-    const status = statusOf(facts.filing_status.value, facts.household.value);
+    const status = statusOf(facts.filing_status.value, facts.household.value, facts.earners.value);
     const [from, to] = SAVERS_MATCH.phaseOut[status];
     if (agi >= to) return null;
     const people = status === "married_joint" ? 2 : 1;
