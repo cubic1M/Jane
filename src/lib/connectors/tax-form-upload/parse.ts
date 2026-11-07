@@ -69,18 +69,34 @@ export function parseTaxForm(text: string): ReadForm {
   for (const [box, label] of Object.entries(LABELS[kind])) {
     const at = label.exec(text);
     if (!at) continue;
-    // The amount on the label's line or the next one, never further.
-    const after = text
-      .slice(at.index + at[0].length)
-      .split(/\r?\n/)
-      .slice(0, 2)
-      .join(" ");
-    const amount = AMOUNT.exec(after);
-    if (!amount) continue;
-    boxes[box] = Math.round(Number(amount[1]!.replace(/,/g, "")) * 100);
+    const cents = boxAmount(text, at.index, at.index + at[0].length);
+    if (cents !== null) boxes[box] = cents;
   }
   if (Object.keys(boxes).length === 0) throw new TaxFormError("no boxes found");
   return { kind, boxes };
+}
+
+// Where a box's label starts: "2 Federal income tax withheld", "16 State wages", "12a See
+// instructions". The amount before it, if any, belongs to the box before.
+const BOX_LABEL = /(?<![\w$.,])\d{1,2}[a-z]?\s+[a-z]{3,}/i;
+
+const upToLabel = (line: string) => {
+  const next = line.search(BOX_LABEL);
+  return next === -1 ? line : line.slice(0, next);
+};
+
+// A box's amount: on the label's line, before the next box's label, or, when the label stands
+// alone on its line, on the next line before any label there; never further. A blank box has no
+// amount of its own, and the next one on the page is another box's, so it's left out, never
+// borrowed (a W-2 with nothing withheld read as the Social Security wages under it). Labels side
+// by side over a row of amounts can't be told apart, so those are left out too.
+function boxAmount(text: string, labelStart: number, labelEnd: number): number | null {
+  const [rest = "", next = ""] = text.slice(labelEnd).split(/\r?\n/, 2);
+  const before = text.slice(text.lastIndexOf("\n", labelStart) + 1, labelStart);
+  const aloneOnLine = !BOX_LABEL.test(before) && !BOX_LABEL.test(rest);
+  const amount =
+    AMOUNT.exec(upToLabel(rest)) ?? (aloneOnLine ? AMOUNT.exec(upToLabel(next)) : null);
+  return amount ? Math.round(Number(amount[1]!.replace(/,/g, "")) * 100) : null;
 }
 
 type Options = { client?: PrismaClient };
