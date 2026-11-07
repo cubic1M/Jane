@@ -22,6 +22,9 @@ export type CancelMethod = {
   fallback: CancelChannel;
   steps: readonly string[];
   email: string | null;
+  // The merchant says it takes cancellation email from an assistant on someone's behalf (round 19's
+  // email_send_gate). Unset everywhere: none has said so.
+  acceptsAgentEmail?: boolean;
   sources: readonly string[];
 };
 
