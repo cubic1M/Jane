@@ -142,5 +142,13 @@
   "when": "merged",
   "since": "2026-11-07T03:00:28.864Z",
   "expires": "2026-11-10T03:00:28.864Z"
+ },
+ {
+  "on": 1599,
+  "lane": "lane:connectors",
+  "task": "claude/stripe-fc",
+  "when": "merged",
+  "since": "2026-11-07T03:29:25.405Z",
+  "expires": "2026-11-10T03:29:25.405Z"
  }
 ]
