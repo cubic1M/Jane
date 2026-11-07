@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { areaOfCapability } from "@/config/areas";
+import { DETECTORS } from "@/detectors";
 import {
   COMPARE_TOPICS,
   LOANS_BRANCHES,
@@ -82,6 +84,16 @@ const input = (over: Partial<LoansTreeInput> = {}): LoansTreeInput => ({
 });
 
 describe("the Loans & credit tree", () => {
+  // Debugger 11-06: the SAVE-ending and autopay cards (#1570) were drawn as "Something to look
+  // at" on a real account's tree. Every topic that lands on this page has its own name.
+  it("names every suggestion a detector can put on the page", () => {
+    const topics = DETECTORS.filter((d) => areaOfCapability(d.capability) === "loans").map(
+      (d) => d.topic,
+    );
+    expect(topics).toContain("student_save_ending");
+    for (const topic of topics) expect(TOPIC_LABELS[topic], topic).toBeDefined();
+  });
+
   it("keeps every node to six words and every summary to two sentences", () => {
     const { tree, summaries } = loansTree(input());
     const labels = tree.branches.flatMap((b) => [b.label, ...b.items.map((i) => i.label)]);

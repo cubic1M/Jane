@@ -37,6 +37,8 @@ const TOPIC_BRANCH: Record<string, LoansBranch> = {
   consolidation: "cheaper",
   student_repayment: "cheaper",
   student_forgiveness: "cheaper",
+  student_autopay: "cheaper",
+  student_save_ending: "cheaper",
   mortgage_extra: "cheaper",
   pmi_removal: "cheaper",
   car_addons: "cheaper",
@@ -78,6 +80,9 @@ export const TOPIC_LABELS: Record<string, string> = {
   auto_refinance: "A cheaper car loan",
   student_repayment: "A better student loan plan",
   student_forgiveness: "Student loan forgiveness",
+  // Debugger 11-06: both read "Something to look at" on a real account's tree.
+  student_autopay: "Student loan autopay by Dec 31",
+  student_save_ending: "SAVE ended: pick a plan",
   mortgage_extra: "Extra mortgage payments",
   pmi_removal: "Drop your mortgage insurance",
   car_addons: "Car loan add-ons to cancel",
