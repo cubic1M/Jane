@@ -4,6 +4,7 @@ import {
   NOT_GOOGLE_PLAY,
   type CancelMethod,
 } from "@/config/cancel-methods";
+import { composeLinks, emailSender, type ComposeLinks } from "../email/compose";
 import type { PrefilledStep } from "../types";
 
 // How a subscription gets cancelled (roadmap round 7): steps first, because only 3 of the 56 most
@@ -25,6 +26,10 @@ export type CancelRoute = {
   steps: PrefilledStep[];
   // Only for email, and only the merchant's own documented address.
   email: string | null;
+  // For email: who sends it (round 19's gate), and, when it's the person, the draft ready to send
+  // from their own address.
+  sentBy: "jane" | "person" | null;
+  compose: ComposeLinks | null;
 };
 
 // Apple's own route covers every Apple-billed subscription (support.apple.com/en-us/118428, in the
@@ -105,6 +110,8 @@ export function cancelRoute({
       method,
       steps: numbered(APP_STORE_STEPS[via]),
       email: null,
+      sentBy: null,
+      compose: null,
     };
   }
   if (!method) {
@@ -118,6 +125,8 @@ export function cancelRoute({
         "Keep the confirmation email or screenshot",
       ]),
       email: null,
+      sentBy: null,
+      compose: null,
     };
   }
   const channel =
@@ -126,12 +135,23 @@ export function cancelRoute({
       : method.channel === "letter"
         ? "letter"
         : "guided";
+  const email = channel === "email" ? method.email : null;
+  const sentBy = email ? emailSender({ acceptsAgentEmail: method.acceptsAgentEmail }) : null;
   return {
     channel,
     billedVia: null,
     merchant: name,
     method,
     steps: numbered(method.steps),
-    email: channel === "email" ? method.email : null,
+    email,
+    sentBy,
+    compose:
+      email && sentBy === "person"
+        ? composeLinks({
+            to: email,
+            subject: `Please cancel my ${name} membership`,
+            body: `Hello,\n\nPlease cancel my ${name} membership on the account under this email address, and confirm by email when it's done.\n\nThank you.`,
+          })
+        : null,
   };
 }

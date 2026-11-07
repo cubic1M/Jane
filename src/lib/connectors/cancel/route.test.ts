@@ -103,9 +103,16 @@ describe("the sandbox cancel connector", () => {
       "Saves",
       "How",
       "Email to",
+      // Round 19: the person sends the drafted email from their own address.
+      "Send it",
       ...equinox.steps.map((_, i) => `Step ${i + 1}`),
     ]);
-    expect(draft.details).toMatchObject({ channel: "email", email: "Cancellations@Equinox.com" });
+    expect(draft.details).toMatchObject({
+      channel: "email",
+      email: "Cancellations@Equinox.com",
+      sentBy: "person",
+    });
+    expect(draft.steps.find((s) => s.label === "Send it")?.value).toMatch(/^mailto:/);
     const apple = cancel.prefill!({
       merchant: "Equinox",
       monthlyCents: 26_000,

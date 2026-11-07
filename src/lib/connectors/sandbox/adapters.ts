@@ -87,7 +87,7 @@ const ownTransfer: Connector = {
 const HOW: Record<CancelRoute["channel"], string> = {
   app_store: "In the app store that bills it: only it can cancel this",
   guided: "You, with these steps",
-  email: "Jane emails them, the way they accept",
+  email: "By email, the way they accept: you send the draft from your own address",
   letter: "Jane sends a letter, the way they ask for",
 };
 
@@ -113,6 +113,7 @@ const subscriptionCancel: Connector = {
         { label: "Saves", value: `${dollars(monthly)} a month` },
         { label: "How", value: HOW[route.channel] },
         ...(route.email ? [{ label: "Email to", value: route.email }] : []),
+        ...(route.compose ? [{ label: "Send it", value: route.compose.mailto }] : []),
         ...route.steps,
       ],
       details: {
@@ -121,6 +122,7 @@ const subscriptionCancel: Connector = {
         descriptor,
         channel: route.channel,
         email: route.email,
+        sentBy: route.sentBy,
       },
     };
   },
@@ -128,6 +130,15 @@ const subscriptionCancel: Connector = {
     const ref = sandboxRef("sbx_cancel", context.idempotencyKey);
     const merchant = String(draft.details.merchant);
     const channel = draft.details.channel;
+    // An email the person sends from their own address: the draft is theirs to send.
+    if (channel === "email" && draft.details.sentBy === "person") {
+      return {
+        externalRef: ref,
+        state: "handed_off",
+        cancelUntil: null,
+        note: `${SIMULATED} Your email to ${String(draft.details.email)} is drafted: send it from your own address.`,
+      };
+    }
     if (channel === "email" || channel === "letter") {
       const sent = channel === "email" ? `An email to ${String(draft.details.email)}` : "A letter";
       return {
