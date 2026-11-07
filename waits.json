@@ -134,5 +134,13 @@
   "when": "merged",
   "since": "2026-11-07T02:33:21.606Z",
   "expires": "2026-11-10T02:33:21.606Z"
+ },
+ {
+  "on": 1598,
+  "lane": "lane:connectors",
+  "task": "claude/lifeline-internet",
+  "when": "merged",
+  "since": "2026-11-07T03:00:28.864Z",
+  "expires": "2026-11-10T03:00:28.864Z"
  }
 ]
