@@ -63,7 +63,9 @@ const MONTHS: Record<string, string> = {
 };
 
 // A transaction row: the code, its words, maybe a cycle number, the date (MM-DD-YYYY) and the
-// amount, which ends the row.
+// amount, which ends the row. A real row is under a hundred characters; a longer line is never
+// one, and this pattern on a crafted line of a few hundred thousand characters takes minutes.
+const ROW_MAX = 500;
 const ROW = /^\s*(\d{3})\s+.+?\s(\d{2})-(\d{2})-(\d{4})\s+(-?\(?\$[\d,]+\.\d{2}\)?)\s*$/;
 
 export function parseTranscript(text: string): Transcript {
@@ -77,7 +79,7 @@ export function parseTranscript(text: string): Transcript {
     if (period && taxYear === null && MONTHS[period[1]!.toLowerCase()]) taxYear = Number(period[2]);
     const balance = /^\s*account balance:\s*(-?\(?\$[\d,]+\.\d{2}\)?)/i.exec(raw);
     if (balance && balanceCents === null) balanceCents = money(balance[1]!);
-    const row = ROW.exec(raw);
+    const row = raw.length <= ROW_MAX ? ROW.exec(raw) : null;
     if (!row) continue;
     const code = row[1] as Code;
     if (!(code in TRANSCRIPT_CODES)) continue;

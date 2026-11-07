@@ -50,7 +50,10 @@ const KINDS: [Readable, RegExp][] = [
   ["int", /\b1099-int\b/i],
 ];
 
-const AMOUNT = /\$?\s*(-?[\d,]+\.\d{2})\b/;
+// An amount, from the start of its digits: "61,240.00", "48000.00", "-12.00". Each try ends within a
+// few characters unless it is an amount, so a long run of digits or spaces is read in one pass
+// (an open-ended "[\d,]+" from every position took minutes on a 2 MB line).
+const AMOUNT = /(?<![\d.,])(-?(?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2})(?!\d)/;
 
 class TaxFormError extends Error {
   constructor(reason: string) {
