@@ -150,5 +150,13 @@
   "when": "merged",
   "since": "2026-11-07T03:29:25.405Z",
   "expires": "2026-11-10T03:29:25.405Z"
+ },
+ {
+  "on": 1600,
+  "lane": "lane:connectors",
+  "task": "claude/link-events",
+  "when": "merged",
+  "since": "2026-11-07T03:55:15.802Z",
+  "expires": "2026-11-10T03:55:15.802Z"
  }
 ]
