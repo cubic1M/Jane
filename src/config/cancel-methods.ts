@@ -11,8 +11,10 @@
 // - email: set only where the merchant's own page accepts a cancellation by email.
 // - steps: as the research wrote them, the merchant's own words where it had them.
 
+// card_stop_recurring (round 19, was card_lock): ask the card issuer to stop that one merchant's
+// recurring charges; a dispute comes after that, and locking the whole card last.
 export type CancelChannel =
-  "guided" | "email" | "letter" | "phone" | "stop_payment_letter" | "card_lock";
+  "guided" | "email" | "letter" | "phone" | "stop_payment_letter" | "card_stop_recurring";
 
 export type CancelMethod = {
   merchant: string;
@@ -44,7 +46,7 @@ export const CANCEL_METHODS: readonly CancelMethod[] = [
     merchant: "Netflix",
     aliases: ["netflix"],
     channel: "guided",
-    fallback: "card_lock",
+    fallback: "card_stop_recurring",
     steps: ["online: netflix.com Account > Manage membership > Cancel > Finish Cancellation"],
     email: null,
     sources: ["https://help.netflix.com/en/node/407"],
@@ -65,7 +67,7 @@ export const CANCEL_METHODS: readonly CancelMethod[] = [
     merchant: "Hulu",
     aliases: ["hulu"],
     channel: "guided",
-    fallback: "card_lock",
+    fallback: "card_stop_recurring",
     steps: ["online: hulu.com/account > Cancel"],
     email: null,
     sources: [
@@ -77,7 +79,7 @@ export const CANCEL_METHODS: readonly CancelMethod[] = [
     merchant: "Disney+",
     aliases: ["disney+"],
     channel: "guided",
-    fallback: "card_lock",
+    fallback: "card_stop_recurring",
     steps: [
       "online: disneyplus.com/account/cancel-subscription > Cancel Subscription",
       "in-app: Account > Subscription",
@@ -93,7 +95,7 @@ export const CANCEL_METHODS: readonly CancelMethod[] = [
     merchant: "HBO Max (Max)",
     aliases: ["hbo max", "max.com"],
     channel: "guided",
-    fallback: "card_lock",
+    fallback: "card_stop_recurring",
     steps: [
       "online: hbomax.com/subscription > Cancel Your Subscription",
       "in-app: profile > Subscription",
@@ -106,7 +108,7 @@ export const CANCEL_METHODS: readonly CancelMethod[] = [
     merchant: "Peacock",
     aliases: ["peacock"],
     channel: "guided",
-    fallback: "card_lock",
+    fallback: "card_stop_recurring",
     steps: [
       "online: peacocktv.com/account/plans > Cancel All Subscriptions",
       "chat: via help page if you can't log in",
@@ -121,7 +123,7 @@ export const CANCEL_METHODS: readonly CancelMethod[] = [
     merchant: "Paramount+",
     aliases: ["paramount+"],
     channel: "guided",
-    fallback: "card_lock",
+    fallback: "card_stop_recurring",
     steps: [
       "online: paramountplus.com/account > Cancel Subscription",
       "Google Play: g.co/play/subscriptions",
@@ -135,7 +137,7 @@ export const CANCEL_METHODS: readonly CancelMethod[] = [
     merchant: "YouTube Premium",
     aliases: ["youtube premium", "youtube"],
     channel: "guided",
-    fallback: "card_lock",
+    fallback: "card_stop_recurring",
     steps: [
       "online: youtube.com/paid_memberships > Manage membership > Deactivate",
       "in-app (Android): profile > Purchases and memberships > Cancel",
@@ -147,7 +149,7 @@ export const CANCEL_METHODS: readonly CancelMethod[] = [
     merchant: "Apple One / iCloud+ (Apple subscriptions)",
     aliases: ["apple one", "icloud"],
     channel: "guided",
-    fallback: "card_lock",
+    fallback: "card_stop_recurring",
     steps: [
       "web: account.apple.com > Subscriptions",
       "iPhone/iPad: Settings > [name] > Subscriptions > Cancel",
@@ -167,7 +169,7 @@ export const CANCEL_METHODS: readonly CancelMethod[] = [
     merchant: "Amazon Prime",
     aliases: ["amazon prime", "amzn prime"],
     channel: "guided",
-    fallback: "card_lock",
+    fallback: "card_stop_recurring",
     steps: [
       "online: Prime Central > End Membership (Cancel Your Prime Membership page)",
       "online: Your Memberships and Subscriptions > Manage Subscription > Cancel",
@@ -200,7 +202,7 @@ export const CANCEL_METHODS: readonly CancelMethod[] = [
     merchant: "Kindle Unlimited",
     aliases: ["kindle unlimited"],
     channel: "guided",
-    fallback: "card_lock",
+    fallback: "card_stop_recurring",
     steps: ["online: Kindle Unlimited Central / Memberships & Subscriptions > Cancel membership"],
     email: null,
     sources: [
@@ -212,7 +214,7 @@ export const CANCEL_METHODS: readonly CancelMethod[] = [
     merchant: "Adobe Creative Cloud",
     aliases: ["adobe"],
     channel: "guided",
-    fallback: "card_lock",
+    fallback: "card_stop_recurring",
     steps: [
       "online: account.adobe.com > Plans and payment > Manage plan > Cancel plan",
       "chat: helpx.adobe.com/contact.html",
@@ -228,7 +230,7 @@ export const CANCEL_METHODS: readonly CancelMethod[] = [
     merchant: "Microsoft 365",
     aliases: ["microsoft 365", "msft"],
     channel: "guided",
-    fallback: "card_lock",
+    fallback: "card_stop_recurring",
     steps: ["online: account.microsoft.com/services > Manage > Cancel subscription"],
     email: null,
     sources: [
@@ -241,7 +243,7 @@ export const CANCEL_METHODS: readonly CancelMethod[] = [
     merchant: "Google One",
     aliases: ["google one"],
     channel: "guided",
-    fallback: "card_lock",
+    fallback: "card_stop_recurring",
     steps: [
       "online: one.google.com > Settings > Cancel membership",
       "in-app (Android): Menu > Settings > Cancel membership",
@@ -272,7 +274,7 @@ export const CANCEL_METHODS: readonly CancelMethod[] = [
     merchant: "ChatGPT Plus (OpenAI)",
     aliases: ["chatgpt", "openai"],
     channel: "guided",
-    fallback: "card_lock",
+    fallback: "card_stop_recurring",
     steps: [
       "online: chatgpt.com > Settings > Billing (or Account) > Cancel plan",
       "iOS: Settings > [name] > Subscriptions > ChatGPT",
@@ -290,7 +292,7 @@ export const CANCEL_METHODS: readonly CancelMethod[] = [
     merchant: "Claude Pro (Anthropic)",
     aliases: ["claude.ai", "anthropic"],
     channel: "guided",
-    fallback: "card_lock",
+    fallback: "card_stop_recurring",
     steps: [
       "online: claude.ai > name > Settings > Billing > Cancel",
       "in-app (iOS/Android): initials > Billing > Manage subscription",
@@ -306,7 +308,7 @@ export const CANCEL_METHODS: readonly CancelMethod[] = [
     merchant: "Duolingo (Super/Max)",
     aliases: ["duolingo"],
     channel: "guided",
-    fallback: "card_lock",
+    fallback: "card_stop_recurring",
     steps: [
       "online: duolingo.com > Settings > Super Duolingo > Cancel subscription",
       "in-app: Settings > Manage subscription (hands off to App Store / Play)",
@@ -321,7 +323,7 @@ export const CANCEL_METHODS: readonly CancelMethod[] = [
     merchant: "Grammarly",
     aliases: ["grammarly"],
     channel: "guided",
-    fallback: "card_lock",
+    fallback: "card_stop_recurring",
     steps: ["online: account.grammarly.com > Subscription > Cancel Subscription"],
     email: null,
     sources: [
@@ -333,7 +335,7 @@ export const CANCEL_METHODS: readonly CancelMethod[] = [
     merchant: "Canva Pro",
     aliases: ["canva"],
     channel: "guided",
-    fallback: "card_lock",
+    fallback: "card_stop_recurring",
     steps: ["online: canva.com > Settings > Billing > Cancel plan", "pause (annual plans)"],
     email: null,
     sources: [
@@ -345,7 +347,7 @@ export const CANCEL_METHODS: readonly CancelMethod[] = [
     merchant: "Notion",
     aliases: ["notion"],
     channel: "guided",
-    fallback: "card_lock",
+    fallback: "card_stop_recurring",
     steps: ["online: Settings > Billing > Change plan > Free", "support: in-app contact support"],
     email: null,
     sources: [
@@ -417,7 +419,7 @@ export const CANCEL_METHODS: readonly CancelMethod[] = [
     merchant: "ClassPass",
     aliases: ["classpass"],
     channel: "guided",
-    fallback: "card_lock",
+    fallback: "card_stop_recurring",
     steps: [
       "online: classpass.com > Account > Settings > Cancel your membership",
       "in-app: Profile > Settings > Billing > Cancel my membership",
@@ -432,7 +434,7 @@ export const CANCEL_METHODS: readonly CancelMethod[] = [
     merchant: "Peloton (All-Access / App)",
     aliases: ["peloton"],
     channel: "guided",
-    fallback: "card_lock",
+    fallback: "card_stop_recurring",
     steps: [
       "online (All-Access): membership page > Manage > Pause or cancel",
       "online (App): members.onepeloton.com/preferences/subscriptions > Cancel",
@@ -464,7 +466,7 @@ export const CANCEL_METHODS: readonly CancelMethod[] = [
     merchant: "Uber One",
     aliases: ["uber one"],
     channel: "guided",
-    fallback: "card_lock",
+    fallback: "card_stop_recurring",
     steps: [
       "in-app: Account > Uber One > Manage Membership > End Membership",
       "online: ubereats.com > Uber One > Manage Membership > End Membership",
@@ -480,7 +482,7 @@ export const CANCEL_METHODS: readonly CancelMethod[] = [
     merchant: "Instacart+",
     aliases: ["instacart"],
     channel: "guided",
-    fallback: "card_lock",
+    fallback: "card_stop_recurring",
     steps: ["online / in-app: Account > Your Instacart+ membership > Cancel membership > Confirm"],
     email: null,
     sources: [
@@ -492,7 +494,7 @@ export const CANCEL_METHODS: readonly CancelMethod[] = [
     merchant: "HelloFresh",
     aliases: ["hellofresh"],
     channel: "guided",
-    fallback: "card_lock",
+    fallback: "card_stop_recurring",
     steps: [
       "online: Account Settings > Plan settings > Status > Cancel Plan",
       "chat / phone: Customer Care via contact page (number not found on official page)",
@@ -754,7 +756,7 @@ export const CANCEL_METHODS: readonly CancelMethod[] = [
     merchant: "Ring (Ring Protect)",
     aliases: ["ring protect", "ring.com"],
     channel: "guided",
-    fallback: "card_lock",
+    fallback: "card_stop_recurring",
     steps: ["online: ring.com account > Plan > select plan > Cancel"],
     email: null,
     sources: [
@@ -765,7 +767,7 @@ export const CANCEL_METHODS: readonly CancelMethod[] = [
     merchant: "Chegg",
     aliases: ["chegg"],
     channel: "guided",
-    fallback: "card_lock",
+    fallback: "card_stop_recurring",
     steps: ["online (desktop only): My Account > Orders > Cancel Subscription"],
     email: null,
     sources: [
@@ -809,7 +811,7 @@ export const CANCEL_METHODS: readonly CancelMethod[] = [
     merchant: "LinkedIn Premium",
     aliases: ["linkedin"],
     channel: "guided",
-    fallback: "card_lock",
+    fallback: "card_stop_recurring",
     steps: [
       "online: Me > Premium features > Manage subscription > Cancel",
       "in-app: Premium features > Manage your subscription > Cancel",
@@ -825,7 +827,7 @@ export const CANCEL_METHODS: readonly CancelMethod[] = [
     merchant: "Patreon",
     aliases: ["patreon"],
     channel: "guided",
-    fallback: "card_lock",
+    fallback: "card_stop_recurring",
     steps: [
       "online: Settings > Memberships > creator > Cancel paid membership",
       "in-app: creator page > membership menu > cancel",
@@ -840,7 +842,7 @@ export const CANCEL_METHODS: readonly CancelMethod[] = [
     merchant: "Calm",
     aliases: ["calm"],
     channel: "guided",
-    fallback: "card_lock",
+    fallback: "card_stop_recurring",
     steps: [
       "online: calm.com > Settings > Manage Subscription > Cancel",
       "store: Apple / Google Play / Samsung Health",
@@ -871,7 +873,7 @@ export const CANCEL_METHODS: readonly CancelMethod[] = [
     merchant: "Noom",
     aliases: ["noom"],
     channel: "guided",
-    fallback: "card_lock",
+    fallback: "card_stop_recurring",
     steps: [
       "in-app: profile > Settings > Manage Subscription",
       "online: account.noom.com > Cancel Subscription",
