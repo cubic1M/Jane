@@ -22,6 +22,40 @@ $48,000.00
 $4,200.00
 `;
 
+// The IRS grid as a layout-keeping extractor gives it: two boxes a row, the amounts on the line
+// under their labels, box 2 blank on the second form.
+export const W2_GRID = `Form W-2 Wage and Tax Statement 2025
+a Employee's social security number 123-45-6789
+1 Wages, tips, other compensation          2 Federal income tax withheld
+61240.00                                   6120.50
+3 Social security wages                    4 Social security tax withheld
+64000.00                                   3968.00
+5 Medicare wages and tips                  6 Medicare tax withheld
+64000.00                                   928.00
+15 State  Employer's state ID number   16 State wages, tips, etc.   17 State income tax
+ZZ        12-3456789                   61240.00                     2450.10
+`;
+
+export const W2_GRID_BLANK = `Form W-2 Wage and Tax Statement 2025\r
+1 Wages, tips, other compensation          2 Federal income tax withheld\r
+18200.00\r
+3 Social security wages                    4 Social security tax withheld\r
+18200.00                                   1128.40\r
+`;
+
+// Each text run on its own line: the labels, then their amounts.
+export const W2_STACKED = `Form W-2 Wage and Tax Statement 2025
+1 Wages, tips, other compensation
+2 Federal income tax withheld
+61240.00
+6120.50
+`;
+
+export const NEC_GRID = `Form 1099-NEC 2025 Nonemployee Compensation
+1 Nonemployee compensation      4 Federal income tax withheld
+$12,500.00                      $1,250.00
+`;
+
 export const NEC = `Form 1099-NEC 2025 Nonemployee Compensation
 PAYER'S TIN 98-7654321  RECIPIENT'S TIN ***-**-6789
 RECIPIENT'S name JORDAN SAMPLE  Account number 00012345
