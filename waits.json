@@ -118,5 +118,13 @@
   "when": "merged",
   "since": "2026-11-07T01:18:35.187Z",
   "expires": "2026-11-10T01:18:35.187Z"
+ },
+ {
+  "on": 1594,
+  "lane": "lane:connectors",
+  "task": "claude/budget-billing",
+  "when": "merged",
+  "since": "2026-11-07T01:43:06.631Z",
+  "expires": "2026-11-10T01:43:06.631Z"
  }
 ]
