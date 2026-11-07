@@ -1,6 +1,12 @@
 import { DETECTOR_RATES } from "@/config/detectors";
 import { SPENDING_DETECTOR_RATES as S } from "@/config/detectors-spending";
-import { CA_CARE_FERA, caLimit } from "@/config/utility-assistance";
+import {
+  CA_CARE_FERA,
+  LIFELINE,
+  LOW_COST_INTERNET,
+  caLimit,
+  povertyLine,
+} from "@/config/utility-assistance";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
 import { evidence, factEvidence, headlineOf, nice, outCents, tx, weakest } from "./helpers";
@@ -119,4 +125,113 @@ const careDiscount: Detector = {
   },
 };
 
-export const UTILITY_DETECTORS: readonly Detector[] = [budgetBilling, careDiscount];
+const INTERNET = "RENT_AND_UTILITIES_INTERNET_AND_CABLE";
+const PHONE = "RENT_AND_UTILITIES_TELEPHONE";
+
+// How many people the household has: the tax profile's count, else one for a single person and two
+// for a couple; a family of unknown size isn't guessed.
+function householdOf(data: { householdSize?: number | null }, household: unknown): number | null {
+  if (data.householdSize) return data.householdSize;
+  return household === "single" ? 1 : household === "couple" ? 2 : null;
+}
+
+// Gross yearly household income from take-home pay, as the other income-tested cards read it.
+const grossOf = (monthly: unknown) =>
+  typeof monthly === "number" && monthly > 0
+    ? Math.round(monthly * 12 * DETECTOR_RATES.tax.netToGross)
+    : null;
+
+// Lifeline (lifeline_eligibility_hint): a household whose income looks to be at or under 135% of the
+// poverty line, paying for phone or internet, may qualify for up to $9.25 a month off.
+const lifeline: Detector = {
+  capability: "cost",
+  topic: "lifeline",
+  covers: [],
+  needs: ["monthly_income"],
+  detect({ profile, data }) {
+    if (data.state && (LIFELINE.excludedStates as readonly string[]).includes(data.state))
+      return null;
+    const people = householdOf(data, profile.facts.household.value);
+    const gross = grossOf(profile.facts.monthly_income.value);
+    if (!people || gross === null) return null;
+    const pays = tx(data, (t) => (t.pfc === PHONE || t.pfc === INTERNET) && t.amountCents > 0);
+    if (pays.length === 0) return null;
+    const limit = povertyLine(people, LIFELINE.incomeShare);
+    if (gross > limit) return null;
+    const yearly = LIFELINE.monthlyCents * 12;
+    return {
+      id: suggestionId("cost", "lifeline"),
+      capability: "cost",
+      topic: "lifeline",
+      title: "Your household may qualify for Lifeline: money off a phone or internet bill",
+      headline: headlineOf("Check Lifeline for your phone bill", yearly, "saves"),
+      short: `Income near ${formatCents(gross)} for ${people} is under Lifeline's ${formatCents(limit)} line.`,
+      worthCents: yearly,
+      worthKind: "saves",
+      confidence: weakest([
+        factEvidence(profile.facts.monthly_income),
+        { percent: 50, reason: "the limit is on household income, estimated here from your pay" },
+      ]),
+      urgency: "later",
+      why: `For a household of ${people}, Lifeline takes income up to ${formatCents(limit)} a year (135% of the poverty line); yours looks to be near ${formatCents(gross)}. It takes up to $9.25 a month off one phone or internet bill per household, and getting SNAP, Medicaid, SSI, Federal Public Housing or a VA pension also qualifies. You apply yourself through the FCC's National Verifier.`,
+      action: { label: "See your bills", href: "/bills" },
+      more: [
+        { label: "Apply: National Verifier", href: LIFELINE.apply },
+        { label: "Who qualifies", href: LIFELINE.url },
+      ],
+    };
+  },
+};
+
+// A provider's own low-income internet plan (low_cost_internet_hint): the person's internet bill is
+// with a provider that has one, and their income looks to be at or under its 200% line.
+const lowCostInternet: Detector = {
+  capability: "cost",
+  topic: "low_cost_internet",
+  covers: [],
+  needs: ["monthly_income"],
+  detect({ profile, data }) {
+    const people = householdOf(data, profile.facts.household.value);
+    const gross = grossOf(profile.facts.monthly_income.value);
+    if (!people || gross === null) return null;
+    const bills = tx(data, (t) => t.pfc === INTERNET && t.amountCents > 0);
+    const plan = LOW_COST_INTERNET.plans.find((p) =>
+      bills.some((t) => p.match.test(`${t.description} ${t.merchantName ?? ""}`)),
+    );
+    if (!plan) return null;
+    const limit = povertyLine(people, LOW_COST_INTERNET.incomeShare);
+    if (gross > limit) return null;
+    const paid = bills.filter((t) => plan.match.test(`${t.description} ${t.merchantName ?? ""}`));
+    const monthly = Math.round(
+      outCents(paid) / Math.max(1, new Set(paid.map((t) => t.date.slice(0, 7))).size),
+    );
+    const off = "priceCents" in plan ? monthly - plan.priceCents : Math.min(plan.offCents, monthly);
+    if (off <= 0) return null;
+    return {
+      id: suggestionId("cost", "low_cost_internet"),
+      capability: "cost",
+      topic: "low_cost_internet",
+      title: `${plan.isp} has a low-income internet plan your household may qualify for`,
+      headline: headlineOf(`Check ${plan.isp}'s low-cost internet`, off * 12, "saves"),
+      short: `You pay ${plan.isp} about ${formatCents(monthly)} a month; ${plan.plan}.`,
+      worthCents: off * 12,
+      worthKind: "saves",
+      confidence: weakest([
+        factEvidence(profile.facts.monthly_income),
+        evidence("seen", profile.months, paid.length, `${plan.isp} bills`),
+        { percent: 50, reason: "the limit is on household income, estimated here from your pay" },
+      ]),
+      urgency: "later",
+      why: `You pay ${plan.isp} about ${formatCents(monthly)} a month for internet. ${plan.isp} offers ${plan.plan}, for households at or under 200% of the poverty line (${formatCents(limit)} a year for ${people}) or getting help like SNAP; yours looks to be near ${formatCents(gross)}. ${plan.isp} decides who qualifies, and its terms are its own.`,
+      action: { label: "See your bills", href: "/bills" },
+      more: [{ label: `About ${plan.isp}'s plan`, href: plan.url }],
+    };
+  },
+};
+
+export const UTILITY_DETECTORS: readonly Detector[] = [
+  budgetBilling,
+  careDiscount,
+  lifeline,
+  lowCostInternet,
+];
