@@ -280,12 +280,22 @@ describe("card use, pay-later plans, medical bills, collections, forgiveness and
     ).not.toContain("student_forgiveness");
     // Debugger 11-06: the whole US military is paid by DFAS ("DEPOSIT - DFAS-CLEVELAND MIL PAY"),
     // and service counts for PSLF.
-    for (const employer of ["Dfas-Cleveland Mil Pay", "DFAS-INDIANAPOLIS"]) {
+    // A school district's payroll is written short: "SPRINGFIELD SCH DIST PAYROLL", "HOUSTON ISD".
+    for (const employer of [
+      "Dfas-Cleveland Mil Pay",
+      "DFAS-INDIANAPOLIS",
+      "Springfield Sch Dist",
+      "Houston ISD",
+      "Dayton Bd of Ed",
+    ]) {
       expect(
         topics("family", (d) => ({ ...d, told: { ...d.told, employer } })),
         employer,
       ).toContain("student_forgiveness");
     }
+    expect(
+      topics("family", (d) => ({ ...d, told: { ...d.told, employer: "Charles Schwab" } })),
+    ).not.toContain("student_forgiveness");
   });
 
   it("doesn't take rent paid by Zelle for money lent", () => {

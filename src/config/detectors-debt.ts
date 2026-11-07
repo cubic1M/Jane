@@ -53,9 +53,10 @@ export const DEBT_DETECTOR_RATES = {
   collectorPayee:
     /\b(?:portfolio recovery|midland (?:credit|funding)|encore capital|lvnv|cavalry|asset acceptance|collection|collections|recovery (?:assoc|services)|credit collection)\b/i,
   // Public Service Loan Forgiveness: a public-service employer, and the number of payments. DFAS
-  // pays the whole US military ("DFAS-CLEVELAND MIL PAY"; debugger 11-06).
+  // pays the whole US military ("DFAS-CLEVELAND MIL PAY"; debugger 11-06). A school district's
+  // payroll is written short: "SPRINGFIELD SCH DIST", "HOUSTON ISD", "DAYTON BD OF ED".
   publicEmployer:
-    /\b(?:school|schools|district|county|city of|state of|library|university|college|hospital|health system|department|dept|u\.?s\.? (?:army|navy|air force)|public|dfas|mil pay)\b/i,
+    /\b(?:school|schools|sch|district|isd|bd of ed|board of ed(?:ucation)?|county|city of|state of|library|university|college|hospital|health system|department|dept|u\.?s\.? (?:army|navy|air force)|public|dfas|mil pay)\b/i,
   pslfPayments: 120,
   // Money sent through a payment app that might be a loan to family or friends: this much or more.
   familyLoanMinCents: 20_000,
