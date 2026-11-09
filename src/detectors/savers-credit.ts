@@ -1,7 +1,12 @@
 import { DETECTOR_RATES } from "@/config/detectors";
 import { isFilingStatus, type FilingStatus } from "@/config/tax";
 import { IRA_SUBTYPES, WORKPLACE_SUBTYPES } from "@/config/retirement-accounts";
-import { FEDERAL_BRACKETS, SAVERS_CREDIT, SAVERS_MATCH, STANDARD_DEDUCTION } from "@/config/tax-rates";
+import {
+  FEDERAL_BRACKETS,
+  SAVERS_CREDIT,
+  SAVERS_MATCH,
+  STANDARD_DEDUCTION,
+} from "@/config/tax-rates";
 import { formatCents } from "@/lib/money";
 import { bracketTax } from "@/planning/tax-brackets";
 import { type Detector, suggestionId } from "./contract";
