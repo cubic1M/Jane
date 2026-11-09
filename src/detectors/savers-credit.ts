@@ -55,7 +55,8 @@ const saversCredit: Detector = {
       capability: "taxes",
       topic: "savers_credit",
       title: `You may qualify for the Saver's Credit on retirement money you put in for ${SAVERS_CREDIT.taxYear}`,
-      headline: headlineOf("Check the Saver's Credit", least, "earns"),
+      // Its last year, so worth this once, not every year (debugger 11-09).
+      headline: headlineOf("Check the Saver's Credit", least, "earns", true),
       short: `Income near ${formatCents(agi)} is under its ${formatCents(limit)} limit; ${SAVERS_CREDIT.taxYear} is its last year.`,
       worthCents: least,
       worthKind: "earns",
