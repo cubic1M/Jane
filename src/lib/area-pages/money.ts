@@ -4,7 +4,7 @@ import { notCounting, owedIsKnown, type Unbalanced } from "@/insights/net-worth"
 import { formatCents } from "@/lib/money";
 import { monthLabel } from "@/lib/day-label";
 import { CATEGORY_UP_MIN_CENTS, CATEGORY_UP_MIN_SHARE } from "@/config/insights";
-import { buildAreaTree, firstSentences, type AreaItem, type AreaTree } from "./tree";
+import { buildAreaTree, firstSentences, worthFigure, type AreaItem, type AreaTree } from "./tree";
 
 // Spending & bills as a tree (docs/design/area-pages.md): Spending & bills → its branches
 // (charges to look at, what's coming up, subscriptions, budgets, yearly bills, where it goes,
@@ -84,6 +84,8 @@ export type MoneyTreeInput = {
     urgency: string;
     // "risk": what's protected (a cushion, cover), an amount, not a yearly saving.
     worthKind?: string;
+    // Says whether the worth is yearly (worthFigure in ./tree).
+    headline?: string;
   }[];
   // Each checking or savings account's lowest point over the forecast.
   // startCents: today's balance; estimated when walked forward from a statement's.
@@ -207,13 +209,9 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
         // never a bare "$941" beside "Balance running low", which reads as the balance (night
         // QA 10-30: the balance was $798).
         figure:
-          s.worthCents > 0
-            ? s.topic === "low_balance"
-              ? `${shortMoney(s.worthCents)} short`
-              : s.worthKind === "risk"
-                ? shortMoney(s.worthCents)
-                : perYear(s.worthCents)
-            : undefined,
+          s.topic === "low_balance" && s.worthCents > 0
+            ? `${shortMoney(s.worthCents)} short`
+            : worthFigure(s),
         summary: s.summary,
         cents: s.worthCents,
       }),
