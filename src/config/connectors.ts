@@ -150,3 +150,21 @@ export const CREDIT_SCORE_MODELS = {
 export type CreditScoreModel = keyof typeof CREDIT_SCORE_MODELS;
 // A typed-in score older than this isn't saved: free sources refresh monthly.
 export const CREDIT_SCORE_MAX_AGE_DAYS = 45;
+
+// Stripe Financial Connections (connectors roadmap round 20; Teller withdrew its API in July 2026):
+// a second bank-data source behind Plaid, read only. Checking, savings, card and loan accounts, no
+// investments or liability details, at most 180 days of transactions, refreshed daily with a webhook
+// (Stripe-Signature, "t=,v1=" over `${t}.${body}`). Balances cost $0.10 a call, so they're refreshed
+// at most weekly, never on a page view; transactions $0.30 per bank, per person, per month. Off
+// until Stripe approves Jane's purpose in writing (REAL_CONNECTORS). Its terms: data shared only with
+// service providers bound by consistent obligations, stored in the US, consent records kept 24
+// months after the contract ends.
+export const STRIPE_FC = {
+  historyDays: 180,
+  balanceRefreshDays: 7,
+  balanceCallCents: 10,
+  transactionsMonthlyCents: 30,
+  consentRecordMonths: 24,
+  signatureHeader: "stripe-signature",
+  secretEnv: "STRIPE_FC_WEBHOOK_SECRET",
+} as const;

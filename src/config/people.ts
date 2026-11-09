@@ -86,6 +86,11 @@ export const SUGGESTION_TOPICS = [
   "price_increase",
   "trial_conversion",
   "bill_negotiation",
+  // Connectors roadmap round 17: an energy bill that swings with the seasons.
+  "budget_billing",
+  "utility_discount",
+  "lifeline",
+  "low_cost_internet",
   "duplicate_charge",
   "low_balance",
   "budget_overrun",
@@ -110,6 +115,7 @@ export const SUGGESTION_TOPICS = [
   "eftps_move",
   // Connectors roadmap round 17: the Saver's Credit's last year.
   "savers_credit",
+  "savers_match",
   "year_end_moves",
   // Spec step 262: investing.
   "investment_fees",

@@ -146,6 +146,7 @@ async function loadProfileInputFrom(
         childrenUnder17: true,
         otherDependants: true,
         answered: true,
+        state: true,
       },
     }),
     db.insuranceProfiles.findFirst({ select: { housing: true } }),
@@ -265,6 +266,15 @@ async function loadProfileInputFrom(
       repaymentPlan: l.repaymentPlan,
       loanStatus: l.loanStatus,
     })),
+    state: tax?.state ?? null,
+    // The person, a spouse on a joint return, and dependants, once they've answered both.
+    householdSize:
+      tax?.answered.includes("dependants") && tax.filingStatus
+        ? 1 +
+          (tax.filingStatus === "married_joint" ? 1 : 0) +
+          (tax.childrenUnder17 ?? 0) +
+          (tax.otherDependants ?? 0)
+        : null,
     creditScore: report?.score ?? null,
     valuesExcludes: values?.excludes ?? [],
     namedAccountIds: [...new Set(named.map((n) => n.accountId))],

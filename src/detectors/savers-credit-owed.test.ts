@@ -18,7 +18,13 @@ const run = (told: ProfileInput["told"]) => {
     today: "2026-11-06",
     told: { ...inputFor("renter").told, ...told },
   };
-  return runDetectors({ profile: buildProfile(data), data }, SAVERS_CREDIT_DETECTORS)[0] ?? null;
+  // Only the credit's card: the Saver's Match from 2027 is paid into the account whatever tax is
+  // owed, so it may still show for these people.
+  return (
+    runDetectors({ profile: buildProfile(data), data }, SAVERS_CREDIT_DETECTORS).find(
+      (s) => s.topic === "savers_credit",
+    ) ?? null
+  );
 };
 
 describe("the Saver's Credit card and the tax a person owes", () => {

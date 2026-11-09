@@ -27,14 +27,19 @@ export async function storeCredential(
   userId: string,
   connectorId: string,
   secret: string,
-  { client = defaultClient, expiresAt = null }: Options & { expiresAt?: Date | null } = {},
+  {
+    client = defaultClient,
+    expiresAt = null,
+    linkRef = null,
+  }: Options & { expiresAt?: Date | null; linkRef?: string | null } = {},
 ): Promise<void> {
   if (!secret) throw new Error("A credential can't be empty");
   const secretEncrypted = encrypt(secret);
+  // A fresh credential is a working link.
   await scopedFor(userId, client).connectorCredentials.upsert({
     where: whereOf(userId, connectorId),
-    create: { userId, connectorId, secretEncrypted, expiresAt },
-    update: { secretEncrypted, expiresAt },
+    create: { userId, connectorId, secretEncrypted, expiresAt, linkRef },
+    update: { secretEncrypted, expiresAt, linkRef, status: "active" },
   });
   await logAudit(
     { type: "user", id: userId },

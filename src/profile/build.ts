@@ -121,6 +121,10 @@ export type ProfileInput = {
   // did not read them.
   namedAccountIds?: readonly string[];
   told: Told;
+  // Two-letter US state from the tax profile, and how many people the household has (the person,
+  // a spouse on a joint return, dependants); absent or null when not known.
+  state?: string | null;
+  householdSize?: number | null;
   // What else is known about the person's setup in Jane (step 264); a sample person's is
   // given by ./sample.ts.
   extras?: {

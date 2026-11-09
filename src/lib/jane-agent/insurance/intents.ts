@@ -115,6 +115,13 @@ const CLAIM_EVENTS: readonly [PolicyKind, string, RegExp][] = [
 const CLAIM_ASK =
   /\b(?:file|make|start|open|need to (?:make|file)) (?:a |an )?(?:insurance )?claim\b|\bclaim\b/;
 
+// Claiming a credit, a deduction, a dependent or a benefit is taxes or a government program, not
+// an insurance claim (chat policy round 5, 11-06: "how do i claim the saver's credit" and "can i
+// claim my son as a dependent" were sent to file an insurance claim). Something that happened ("my
+// car was stolen") is still a claim.
+const NOT_AN_INSURANCE_CLAIM =
+  /\b(?:credit|deduction|deductions|dependents?|exemption|refund|unemployment|social security|benefits|tax|taxes|return|irs|form \d{3,4})\b|\bclaim (?:my|our|the|a) (?:son|daughter|kids?|children|child|parents?|mom|dad|mother|father|niece|nephew|baby|spouse|wife|husband|girlfriend|boyfriend|partner)\b/;
+
 // "Am I covered if my car is stolen?" asks about cover; it isn't something that happened.
 const HYPOTHETICAL = /\b(?:if|would|could|in case|what happens|am i covered|does my|is my)\b/;
 
@@ -122,6 +129,7 @@ export function parseClaim(text: string): InsuranceIntent | null {
   if (HYPOTHETICAL.test(text) && !CLAIM_ASK.test(text)) return null;
   const found = CLAIM_EVENTS.find(([, , words]) => words.test(text));
   if (found) return { kind: "insurance", ask: "claim", policyKind: found[0], event: found[1] };
+  if (NOT_AN_INSURANCE_CLAIM.test(text)) return null;
   if (CLAIM_ASK.test(text)) return { kind: "insurance", ask: "claim", policyKind: kindIn(text) };
   return null;
 }

@@ -14,6 +14,7 @@ import { creditUpload } from "./credit-upload/connector";
 import { myAidUpload } from "./my-aid/connector";
 import { irsTranscriptUpload } from "./irs-transcript/connector";
 import { taxFormUpload } from "./tax-form-upload/connector";
+import { stripeFc } from "./stripe-fc/connector";
 import { manualOpenSavings } from "./manual-pay/savings";
 import { SANDBOX_CONNECTORS } from "./sandbox/adapters";
 import type { Connector } from "./types";
@@ -66,6 +67,9 @@ const CONNECTORS: readonly Connector[] = [
   irsTranscriptUpload,
   // Real, read only, no vendor: the person's own W-2s and 1099s (./tax-form-upload/).
   taxFormUpload,
+  // Real, read only, off until Stripe approves Jane's purpose: a second bank-data source
+  // (./stripe-fc/).
+  stripeFc,
 ];
 
 let registry: ReadonlyMap<string, Connector> = buildRegistry(CONNECTORS);

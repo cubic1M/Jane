@@ -252,6 +252,25 @@ export const SAVERS_CREDIT = {
   rule: "26 USC 25B; IRS Form 8880",
 } as const;
 
+// The Saver's Match from 2027 (connectors roadmap round 17; IRS Notice 2026-48, proposed rules, not
+// final): a federal match of 50% of up to $2,000 each, phased out over these incomes, paid only
+// into a traditional IRA or a workplace plan that accepts it, never into a Roth IRA. Shown labelled
+// "proposed" until the rules are final.
+export const SAVERS_MATCH = {
+  firstYear: 2027,
+  shownFrom: "2026-08-07",
+  shownUntil: "2027-12-31",
+  rate: 0.5,
+  maxContribution: $(2_000),
+  phaseOut: {
+    single: [$(20_500), $(35_500)],
+    married_separate: [$(20_500), $(35_500)],
+    head_of_household: [$(30_750), $(53_250)],
+    married_joint: [$(41_000), $(71_000)],
+  } satisfies Record<FilingStatus, [number, number]>,
+  rule: "IRS Notice 2026-48 (proposed)",
+} as const;
+
 // Catch-up contributions must go to Roth for anyone whose FICA wages the year before were over
 // this (SECURE 2.0; final regulations T.D. 10033 apply from 2027, good-faith use in 2026).
 export const ROTH_CATCH_UP = {

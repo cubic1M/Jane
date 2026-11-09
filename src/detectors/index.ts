@@ -21,6 +21,7 @@ import { PRACTICE_DETECTORS } from "./practice";
 import { BORROWING_POWER_DETECTORS } from "./borrowing-power";
 import { PRACTICE_IDEA_DETECTORS } from "./practice-ideas";
 import { SPENDING_DETECTORS } from "./spending";
+import { UTILITY_DETECTORS } from "./utilities";
 import { STUDENT_AID_DETECTORS } from "./student-aid";
 import { PRICE_RISE_DETECTORS } from "./price-rises";
 import { TAX_DETECTORS } from "./taxes";
@@ -46,6 +47,7 @@ export const DETECTORS: readonly Detector[] = [
   ...STUDENT_AID_DETECTORS,
   ...FIT_DETECTORS,
   ...SPENDING_DETECTORS,
+  ...UTILITY_DETECTORS,
   ...RENTING_DETECTORS,
   ...BORROWING_POWER_DETECTORS,
   ...FAMILY_CREDIT_DETECTORS,
