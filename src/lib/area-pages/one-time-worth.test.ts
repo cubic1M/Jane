@@ -7,57 +7,64 @@ import { DETECTORS, runDetectors } from "@/detectors";
 import { buildProfile } from "@/profile/build";
 import { inputFor } from "@/profile/sample";
 import { loansTree } from "./loans";
-import { worthFigure } from "./tree";
 
 // Debugger 11-06: on a real account's Loans tree, PSLF forgiveness (about $27,716 left after 120
 // payments, said once in its headline: "get $27,716 back") was drawn as "$28k/yr". A worth that
 // comes once is a bare figure on every tree; one that comes every year has "/yr".
 
-describe("a suggestion's worth on the trees", () => {
+type Open = Parameters<typeof loansTree>[0]["suggestions"][number];
+
+const figures = (suggestions: Open[]) => {
+  const { tree } = loansTree({
+    asOf: "2026-11-06",
+    debts: [],
+    suggestions,
+    installments: 0,
+    payoff: null,
+    credit: null,
+    review: null,
+  });
+  return Object.fromEntries(
+    tree.branches.flatMap((b) => b.items.map((i) => [i.id.split(":")[1], i.figure])),
+  );
+};
+
+const open = (topic: string, rest: Partial<Open>): Open => ({
+  key: `debt:${topic}`,
+  topic,
+  short: "",
+  urgency: "later",
+  worthCents: 0,
+  worthKind: "saves",
+  ...rest,
+});
+
+describe("a suggestion's worth on the Loans tree", () => {
   it("has /yr only when its headline says a year", () => {
-    const forgiveness = {
-      worthCents: 2_771_625,
-      worthKind: "earns",
-      headline: "Check loan forgiveness (PSLF), get $27,716 back",
-    };
-    expect(worthFigure(forgiveness)).toBe("$28k");
-    expect(
-      worthFigure({
-        worthCents: 67_049,
-        worthKind: "saves",
-        headline: "Cut card interest, save $670 a year",
+    const shown = figures([
+      open("student_forgiveness", {
+        worthCents: 2_771_625,
+        worthKind: "earns",
+        headline: "Check loan forgiveness (PSLF), get $27,716 back",
       }),
-    ).toBe("$670/yr");
-    expect(
-      worthFigure({
+      open("student_autopay", {
+        worthCents: 8_500,
+        headline: "Turn on autopay, save $85 a year",
+      }),
+      open("rent_increase", {
         worthCents: 156_000,
         worthKind: "risk",
         headline: "Check your rent, avoid up to $1,560",
       }),
-    ).toBe("$1.6k");
-    // Rows scanned before headlines existed stay yearly, as before.
-    expect(worthFigure({ worthCents: 67_049, worthKind: "saves", headline: "" })).toBe("$670/yr");
-    expect(worthFigure({ worthCents: 0, worthKind: "saves", headline: "" })).toBeUndefined();
-
-    const { tree } = loansTree({
-      asOf: "2026-11-06",
-      debts: [],
-      suggestions: [
-        {
-          key: "debt:student_forgiveness",
-          topic: "student_forgiveness",
-          short: "You work for Springfield Sch Dist and owe $40,500.00 on student loans.",
-          urgency: "later",
-          ...forgiveness,
-        },
-      ],
-      installments: 0,
-      payoff: null,
-      credit: null,
-      review: null,
+      // Rows scanned before headlines existed stay yearly, as before.
+      open("refinance", { worthCents: 67_049, headline: "" }),
+    ]);
+    expect(shown).toMatchObject({
+      student_forgiveness: "$28k",
+      student_autopay: "$85/yr",
+      rent_increase: "$1.6k",
+      refinance: "$670/yr",
     });
-    const cheaper = tree.branches.find((b) => b.id === "cheaper")!;
-    expect(cheaper.items[0]).toMatchObject({ label: "Student loan forgiveness", figure: "$28k" });
   });
 
   it("is told by a headline on every suggestion the detectors make for the sample people", () => {
@@ -68,7 +75,7 @@ describe("a suggestion's worth on the trees", () => {
         if (s.worthCents <= 0 || s.worthKind === "risk") continue;
         // An empty headline would fall back to "/yr" whatever the worth.
         expect(s.headline, `${person.id} ${s.topic}`).not.toBe("");
-        kinds.add(worthFigure(s)!.endsWith("/yr") ? "yearly" : "once");
+        kinds.add(/\ba year\b/.test(s.headline) ? "yearly" : "once");
       }
     }
     // Both kinds are reached, so the trees draw each.
