@@ -32,8 +32,10 @@ const unavailable: Reply = {
   refs: {},
 };
 
-// "What buy now pay later payments do I have coming?"
-export function bnplReply(data: Bnpl): Reply {
+// "What buy now pay later payments do I have coming?" Paying one off early is a suggestion on a
+// loan, demo advice only (CLAUDE.md, step 98): a real account gets its plans and installments
+// (11-12: the suggestion and its demo-advice label reached real accounts).
+export function bnplReply(data: Bnpl, advice: boolean): Reply {
   if (data.plans.length === 0) return unavailable;
   const total = data.installments.reduce((s, i) => s + i.cents, 0);
   const missing = data.missing.reduce((s, i) => s + i.cents, 0);
@@ -47,7 +49,9 @@ export function bnplReply(data: Bnpl): Reply {
       `${formatCents(missing)} of that isn't in your forecast yet, so I take it off your safe to spend.`,
     );
   }
-  const free = data.plans.find((p) => p.freePayoff && p.canCoverPayoff && !p.payoffScheduled);
+  const free = advice
+    ? data.plans.find((p) => p.freePayoff && p.canCoverPayoff && !p.payoffScheduled)
+    : undefined;
   if (free) {
     lines.push(
       `Paying off the ${free.name} now (${formatCents(free.balanceCents!)}) costs nothing extra: Pay in 4 plans charge no interest or fee for paying early.`,
@@ -60,8 +64,9 @@ export function bnplReply(data: Bnpl): Reply {
   };
 }
 
-// "Can I afford a $300 Klarna plan?": the warning, from the checking forecast.
-export function bnplNewPlanReply(data: Bnpl, totalCents: number): Reply {
+// "Can I afford a $300 Klarna plan?": the warning, from the checking forecast. What to do about
+// it (wait for payday, pay in full) is demo advice; a real account gets the forecast.
+export function bnplNewPlanReply(data: Bnpl, totalCents: number, advice: boolean): Reply {
   const strain = warnNewPlan(data, totalCents);
   if (!strain) {
     return {
@@ -76,15 +81,15 @@ export function bnplNewPlanReply(data: Bnpl, totalCents: number): Reply {
     return {
       body: [
         `${first} It would take your checking down to ${formatCents(strain.lowestWith.balanceCents)} on ${dayLabel(strain.lowestWith.date)}, ${formatCents(strain.shortCents)} under the ${formatCents(LOW_BALANCE_CUSHION_CENTS)} I like to keep.`,
-        `Without it, your lowest is ${formatCents(strain.lowestWithout.balanceCents)} on ${dayLabel(strain.lowestWithout.date)}. Waiting for payday, or paying in full, avoids the squeeze.`,
+        `Without it, your lowest is ${formatCents(strain.lowestWithout.balanceCents)} on ${dayLabel(strain.lowestWithout.date)}.${advice ? " Waiting for payday, or paying in full, avoids the squeeze." : ""}`,
       ].join("\n"),
       actions: [BNPL_PAGE],
-      refs: { advice: true },
+      refs: advice ? { advice: true } : {},
     };
   }
   return {
     body: `${first} Your checking forecast stays above ${formatCents(LOW_BALANCE_CUSHION_CENTS)}: the lowest is ${formatCents(strain.lowestWith.balanceCents)} on ${dayLabel(strain.lowestWith.date)}, so it fits.`,
     actions: [BNPL_PAGE],
-    refs: { advice: true },
+    refs: advice ? { advice: true } : {},
   };
 }
