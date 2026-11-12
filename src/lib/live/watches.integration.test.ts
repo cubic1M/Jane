@@ -15,7 +15,10 @@ import { matchOffers, refreshWatches } from "./watches";
 
 const url = process.env.TEST_DATABASE_URL;
 const NOW = new Date("2026-11-12T18:00:00Z");
-const SERVICE = `watchfm${crypto.randomUUID().replace(/[^a-f]/g, "").slice(0, 8)}`;
+const SERVICE = `watchfm${crypto
+  .randomUUID()
+  .replace(/[^a-f]/g, "")
+  .slice(0, 8)}`;
 const BANK = `savings.watch_bank_${Date.now()}`;
 
 describe.runIf(url)("reverse matching", () => {
