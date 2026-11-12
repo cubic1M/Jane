@@ -87,10 +87,16 @@ export const BUNDLED_UNTIL = new Date("9999-12-31T00:00:00Z");
 
 // Writes the brain's messages in its order, a millisecond apart so the chat keeps that
 // order. One that was posted meanwhile (the same dedupeKey) is skipped, never doubled.
+// freshStart: messages from before the last bank or file was removed (./fresh-start.ts) were
+// about data that's gone, so one with the same dedupeKey comes back as new.
 export async function postMessages(
   userId: string,
   planned: PlannedMessage[],
-  { client = defaultClient, now = new Date() }: Options = {},
+  {
+    client = defaultClient,
+    now = new Date(),
+    freshStart = null,
+  }: Options & { freshStart?: Date | null } = {},
 ): Promise<number> {
   if (planned.length === 0) return 0;
   const created = await scopedFor(userId, client).janeMessages.createManyAndReturn({
@@ -109,12 +115,19 @@ export async function postMessages(
     select: { kind: true, dedupeKey: true, snoozedUntil: true },
   });
   // Spec step 83: one the person said "Not now" to, whose snooze is over, comes back at the
-  // bottom of the chat as it is now, buttons and all (the brain only plans it then).
+  // bottom of the chat as it is now, buttons and all (the brain only plans it then). So does
+  // one from before a fresh start.
   const createdKeys = new Set(created.map((m) => m.dedupeKey));
   for (const [index, m] of planned.entries()) {
     if (createdKeys.has(m.dedupeKey)) continue;
     const { count } = await scopedFor(userId, client).janeMessages.updateMany({
-      where: { dedupeKey: m.dedupeKey, snoozedUntil: { lte: now } },
+      where: {
+        dedupeKey: m.dedupeKey,
+        OR: [
+          { snoozedUntil: { lte: now } },
+          ...(freshStart ? [{ createdAt: { lte: freshStart } }] : []),
+        ],
+      },
       data: {
         kind: m.kind,
         body: m.body,
@@ -124,15 +137,18 @@ export async function postMessages(
         status: "open",
         answeredWith: null,
         answeredAt: null,
-        readAt: null,
-        snoozedUntil: null,
+        readAt: m.hidden ? now : null,
+        snoozedUntil: m.hidden ? BUNDLED_UNTIL : null,
         createdAt: new Date(now.getTime() + index),
         // Back as new, so it can go out as a notification again (spec step 85).
         notifiedAt: null,
         notifiedVia: null,
       },
     });
-    if (count > 0) created.push({ kind: m.kind, dedupeKey: m.dedupeKey, snoozedUntil: null });
+    if (count > 0) {
+      const snoozedUntil = m.hidden ? BUNDLED_UNTIL : null;
+      created.push({ kind: m.kind, dedupeKey: m.dedupeKey, snoozedUntil });
+    }
   }
   // What the person sees: not the findings hidden behind a bundle.
   const shown = created.filter((m) => m.snoozedUntil?.getTime() !== BUNDLED_UNTIL.getTime());

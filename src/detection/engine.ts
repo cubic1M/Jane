@@ -503,7 +503,9 @@ export async function runDetection(
     "A person's own row: jane_rls only reads users",
     client,
   ).user.updateMany({
-    where: { id: userId, firstDetectionAt: null },
+    // Not for someone with nothing linked or uploaded (left after removing the last one): their
+    // next bank or file is a first scan (src/lib/jane-agent/fresh-start.ts).
+    where: { id: userId, firstDetectionAt: null, accounts: { some: {} } },
     data: { firstDetectionAt: now },
   });
 

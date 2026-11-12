@@ -30,7 +30,9 @@ export async function markScanDone(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<void> {
   await systemDb("A person's own row: jane_rls only reads users", client).user.updateMany({
-    where: { id: userId, firstScanDoneAt: null },
+    // Not with nothing linked or uploaded: the next bank or file is a first scan
+    // (src/lib/jane-agent/fresh-start.ts).
+    where: { id: userId, firstScanDoneAt: null, accounts: { some: {} } },
     data: { firstScanDoneAt: now },
   });
 }

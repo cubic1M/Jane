@@ -6,6 +6,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { PlaidRequestError, plaid, plaidCall } from "./client";
 import { forgetSince, removeOrphans } from "@/lib/evidence/orphans";
+import { markFreshStartIfEmpty } from "@/lib/jane-agent/fresh-start";
 import { forgetPrimer } from "@/lib/jane-agent/primer-cache";
 import { isDemoToken } from "./demo";
 
@@ -57,6 +58,8 @@ export async function removePlaidItem(
   await removeOrphans(userId, { client });
   // What was worked out since it was linked may stand on it: worked out again from what's left.
   await forgetSince(db, item.createdAt, "bank", { demo: isDemoToken(accessToken) });
+  // The last bank gone: the next one linked is a fresh start for Jane's messages.
+  await markFreshStartIfEmpty(db, client);
   await logAudit(
     actor,
     "item_removed",

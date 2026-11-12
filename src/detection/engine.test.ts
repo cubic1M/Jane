@@ -277,7 +277,8 @@ describe("runDetection", () => {
       }),
     ]);
     expect(updateMany).toHaveBeenCalledWith({
-      where: { id: "user_1", firstDetectionAt: null },
+      // Only with something linked or uploaded (src/lib/jane-agent/fresh-start.ts).
+      where: { id: "user_1", firstDetectionAt: null, accounts: { some: {} } },
       data: { firstDetectionAt: now },
     });
     expect(summary).toMatchObject({ created: 1, updated: 0, resurfaced: 0 });
