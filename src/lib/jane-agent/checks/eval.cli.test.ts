@@ -66,16 +66,23 @@ it.runIf(process.env.CHAT_EVAL === "1" && url && process.env.ANTHROPIC_API_KEY)(
     if (batch.length === 0) return;
     const client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     const now = new Date();
-    // Each sample person the batch asks as, made once.
+    // Each sample person the batch asks as, made once: on the demo bank alone, and with an
+    // account of their own for the real-account scenarios.
+    const keyOf = (s: { person?: string; account?: "real" }) =>
+      `${s.person ?? "default"}${s.account === "real" ? ":real" : ""}`;
     const people = new Map<string, { userId: string; facts: Facts }>();
     try {
-      for (const key of new Set(batch.map((s) => s.person ?? "default"))) {
+      for (const key of new Set(batch.map(keyOf))) {
+        const [person, account] = key.split(":");
         const userId = await createCheckPerson({
           client,
           now,
-          person: key === "default" ? undefined : (key as PersonId),
+          person: person === "default" ? undefined : (person as PersonId),
+          ownAccount: account === "real",
         });
-        people.set(key, { userId, facts: await loadFacts(userId, { client, now }) });
+        const facts = await loadFacts(userId, { client, now });
+        expect(facts.advice, `${key}: advice mode`).toBe(account !== "real");
+        people.set(key, { userId, facts });
       }
       const [first] = [...people.values()];
       const run = await runAnswerChecks(first.userId, {
@@ -84,7 +91,7 @@ it.runIf(process.env.CHAT_EVAL === "1" && url && process.env.ANTHROPIC_API_KEY)(
         capCents: CAP_CENTS,
         questions: scenarioQuestions(batch),
         facts: first.facts,
-        personFor: (lead) => people.get(lead.person ?? "default")!,
+        personFor: (lead) => people.get(keyOf(lead))!,
       });
       const state = addToState(before, batch, run.results, run.costCents);
       writeFileSync(STATE, `${JSON.stringify(state)}\n`);

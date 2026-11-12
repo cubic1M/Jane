@@ -49,6 +49,8 @@ export type CheckQuestion = {
   // The sample person it is asked as (src/config/people.ts), and the rules the judge holds
   // the answer to (scenario files; see scenarios.ts).
   person?: string;
+  // Asked as someone with an account of their own (scenarios.ts): a real account, no advice.
+  account?: "real";
   judge?: { mustDo?: string[]; mustNot?: string[] };
 };
 

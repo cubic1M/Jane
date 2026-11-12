@@ -9,6 +9,7 @@ import { startPractice } from "@/lib/practice/portfolio";
 import { runPracticeDay } from "@/lib/practice/scan";
 import { DAY_MS } from "@/lib/dates";
 import { scopedFor } from "@/lib/db-scoped";
+import { createCsvAccountRow } from "@/lib/import/upload";
 import { systemDb } from "@/lib/system-db";
 
 // The person Jane's answer checks talk to (spec step 87): a new account with the demo bank
@@ -29,11 +30,16 @@ export async function createCheckPerson({
   client,
   now,
   person,
+  ownAccount = false,
 }: {
   client: PrismaClient;
   now: Date;
   // One of the sample lives (src/config/people.ts); the original demo bank without it.
   person?: PersonId;
+  // An account of the person's own beside the demo bank, as an upload makes one: then not every
+  // account is the demo bank, so advice mode is off and Jane answers as it does a real person
+  // (CLAUDE.md, step 98). Sample data only, still.
+  ownAccount?: boolean;
 }): Promise<string> {
   const user = await systemDb(
     "Answer checks make and remove their own throwaway person",
@@ -57,6 +63,13 @@ export async function createCheckPerson({
     !(await scopedFor(user.id, client).practicePortfolios.findFirst({ where: { userId: user.id } }))
   )
     await seedPractice(user.id, client, now);
+  if (ownAccount) {
+    await createCsvAccountRow(scopedFor(user.id, client), {
+      name: "Own checking",
+      kind: "checking",
+      balance: null,
+    });
+  }
   return user.id;
 }
 
