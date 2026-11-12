@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { announceScanned } from "@/lib/side-chat";
 
 const POLL_MS = 2_000;
 
@@ -22,6 +23,7 @@ export function RefreshWhenScanned() {
           stopped = true;
           clearInterval(id);
           router.refresh();
+          announceScanned();
         }
       } catch {
         // Tried again on the next tick.
