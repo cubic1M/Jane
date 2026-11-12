@@ -164,11 +164,52 @@ describe("one stack of cards, never repeated", () => {
         message({ id: "s0", suggestion: true, status: "answered" }),
         message({ id: "twin", body: "Cancel Hulu, save $216/yr\nFrom spending." }),
         message({ id: "r1", kind: "reply", body: "Here's your plan." }),
-        message({ id: "old", body: "Cancel Hulu, save $216/yr", status: "answered" }),
+        message({ id: "old", body: "Cancel Hulu, save $216/yr", status: "answered", buttons: [] }),
       ],
       stack,
     );
-    expect(list.map((m) => m.id)).toEqual(["r1", "old"]);
+    expect(list.map((m) => m.id)).toEqual(["r1"]);
+  });
+
+  // Founder (11-11): "after the user interacts with the suggestion, it should just disappear and
+  // not leave like a trace in the chatbot". The list is read from the server, so a reload agrees.
+  it("leaves no trace of a card once it's answered or put away", () => {
+    const answered = [
+      message({ id: "yes", status: "answered", answeredWith: "Yes", buttons: [] }),
+      message({ id: "no", status: "dismissed", buttons: [] }),
+      // An Undo, a Revert or a Done isn't something left to do.
+      message({
+        id: "undo",
+        status: "answered",
+        answeredWith: "No",
+        buttons: [{ id: "undo.no", label: "Undo", kind: "secondary" }],
+      }),
+      message({
+        id: "chosen",
+        status: "answered",
+        buttons: [
+          { id: "choice.revert", label: "Revert", kind: "secondary" },
+          { id: "choice.done", label: "Done", kind: "secondary" },
+        ],
+      }),
+    ];
+    expect(chatList(answered, [])).toEqual([]);
+    // Its answer to a typed question stays: that's the conversation, not a card.
+    const reply = message({ id: "reply", kind: "reply", status: "answered", buttons: [] });
+    expect(chatList([reply], []).map((m) => m.id)).toEqual(["reply"]);
+  });
+
+  it("keeps a real account's Yes while its steps wait on Mark done, then lets it go", () => {
+    const steps = message({
+      id: "diy",
+      kind: "decision",
+      status: "answered",
+      answeredWith: "Yes",
+      note: "Here's how to do it yourself:\n1. Call them.\nTap Mark done once it's done.",
+      buttons: [{ id: "diy.done", label: "Mark done", kind: "primary" }],
+    });
+    expect(chatList([steps], []).map((m) => m.id)).toEqual(["diy"]);
+    expect(chatList([{ ...steps, buttons: [] }], [])).toEqual([]);
   });
 });
 

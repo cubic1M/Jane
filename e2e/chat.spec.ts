@@ -80,14 +80,18 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding @critical", 
     (r) => r.request().method() === "POST" && new URL(r.url()).pathname === "/chat",
   );
   await finding.getByRole("button", { name: "Yes", exact: true }).click();
-  await expect(finding.getByText("You chose:")).toBeVisible();
   await saved;
   await expect(finding.getByRole("button", { name: NOT_PIN })).toHaveCount(0);
   await expect(finding.getByRole("link", { name: /Open/ })).toBeVisible();
+  // No trace of the tap in the chat (founder 11-11): the answer stays, nothing says what was chosen.
+  await expect(finding.getByText("You chose:")).toHaveCount(0);
 
-  // Still answered after a reload.
+  // Still answered after a reload, still without a trace.
   await page.reload();
-  await expect(messages.filter({ hasText: body }).getByText("You chose:")).toBeVisible();
+  await expect(
+    messages.filter({ hasText: body }).getByRole("button", { name: NOT_PIN }),
+  ).toHaveCount(0);
+  await expect(messages.filter({ hasText: body }).getByText("You chose:")).toHaveCount(0);
 
   // Spec step 86: the finding's page shows the same answer and links back to its message.
   // A plain link: it works before the reloaded page has hydrated (spec step 194).
@@ -101,7 +105,7 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding @critical", 
 
   // Spec step 83: the autopilot question, answered with one tap on its pop-up. The card stays,
   // its choices greyed and the chosen one marked, with Revert, until Done (founder, 2026-10-25);
-  // then it's one line of history in the list, its choices and Revert still there.
+  // then it's gone from the chat, with no line of history (founder 11-11), after a reload too.
   await expect(messages.filter({ hasText: "How much should I do on my own?" })).toHaveCount(0);
   const autopilotCard = await popupCard(page, /^How much should I do on my own\?/);
   const release = await holdSaves(page);
@@ -110,15 +114,11 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding @critical", 
   await release();
   await autopilotCard.getByRole("button", { name: "Done" }).click();
   const autopilot = messages.filter({ hasText: "How much should I do on my own?" });
-  await expect(autopilot.getByText("You chose:")).toBeVisible({ timeout: 15_000 });
-  await expect(autopilot).toHaveAttribute("data-history", "true");
-  await expect(autopilot.getByRole("status")).toContainText("I'll handle the safe stuff");
-  await expect(autopilot.locator("[data-chosen-choices] button")).toHaveCount(3);
-  await expect(autopilot.getByRole("button", { name: /^Handle the safe stuff/ })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  await expect(autopilot.getByRole("button", { name: /Revert/ })).toBeVisible();
+  await expect(page.locator("[data-card-chosen]")).toHaveCount(0, { timeout: 15_000 });
+  await expect(autopilot).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole("heading", { level: 1, name: "Chat with Jane" })).toBeVisible();
+  await expect(autopilot).toHaveCount(0);
 
   // The chat as the side panel shows it: no page header of its own, the message box at the end.
   await expect(page.getByRole("navigation", { name: "Main" })).toHaveCount(0);
@@ -150,7 +150,8 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding @critical", 
   // Found by its words: once answered, it's no longer the last message.
   const question = messages.filter({ hasText: "Which one do you mean?" }).last();
   await question.getByRole("button", { name: NOT_PIN }).first().click();
-  await expect(question.getByText("You chose:")).toBeVisible();
+  await expect(question.getByRole("button", { name: NOT_PIN })).toHaveCount(0);
+  await expect(question.getByText("You chose:")).toHaveCount(0);
   await expect(messages.last()).toContainText("Want me to handle it?");
   await expect(messages.last().getByRole("button", { name: "Yes", exact: true })).toBeVisible();
 

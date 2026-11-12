@@ -6,6 +6,7 @@ import { flushSync } from "react-dom";
 import { CHAT_SENT_EVENT } from "@/config/side-chat";
 import { MicButton } from "./mic-button";
 import { ANSWER_WAIT_MS, FAILED, readAnswer } from "./read-answer";
+import { boxHeight } from "./box-height";
 import { scrollChatToEnd } from "./scroll-to-end";
 import { sendMessage, type SendState } from "./send";
 
@@ -46,7 +47,27 @@ export function ChatComposer({
   const [heard, setHeard] = useState("");
   const [refreshing, startRefresh] = useTransition();
   const form = useRef<HTMLFormElement>(null);
-  const input = useRef<HTMLInputElement>(null);
+  const input = useRef<HTMLTextAreaElement>(null);
+  // Founder (11-11): the box keeps its width and grows with what's typed, up to a share of the
+  // screen that's showing (less with a phone's keyboard open), then scrolls inside; back to one
+  // line once it's sent.
+  const fit = () => {
+    const box = input.current;
+    if (!box) return;
+    box.style.height = "auto";
+    const { height, scrolls } = boxHeight(
+      box.scrollHeight,
+      window.visualViewport?.height ?? window.innerHeight,
+    );
+    box.style.height = `${height}px`;
+    box.style.overflowY = scrolls ? "auto" : "hidden";
+  };
+  useEffect(() => {
+    fit();
+    const viewport = window.visualViewport;
+    viewport?.addEventListener("resize", fit);
+    return () => viewport?.removeEventListener("resize", fit);
+  }, []);
   const pending = actionPending || draft !== null || refreshing;
   // Spec step 194: a second tap or Enter in the same instant never sends it twice.
   const sending = useRef(false);
@@ -58,6 +79,7 @@ export function ChatComposer({
   useEffect(() => {
     const onHint = (event: Event) => {
       const d = (event as CustomEvent<{ text: string; hint: string | null }>).detail;
+      fit();
       if (!d?.hint) return setHint(null);
       // Drawn after the text first; cut off there, it moves under the box.
       flushSync(() => setHint({ text: d.text, hint: d.hint!, under: false }));
@@ -72,6 +94,7 @@ export function ChatComposer({
   useEffect(() => {
     if (state.sentAt === 0) return;
     form.current?.reset();
+    fit();
     input.current?.focus();
     scrollChatToEnd();
   }, [state.sentAt]);
@@ -106,12 +129,14 @@ export function ChatComposer({
     setDraft({ question, before: new Set(typed.map((m) => m.id)), status: null, answer: "" });
     form.current?.reset();
     window.dispatchEvent(new Event(CHAT_SENT_EVENT));
+    fit();
 
     const fail = (text: string) => {
       sending.current = false;
       setDraft(null);
       setError(text);
       if (input.current) input.current.value = question;
+      fit();
     };
     let response: Response;
     try {
@@ -216,15 +241,15 @@ export function ChatComposer({
         data-chat-composer=""
         className="sticky bottom-0 z-30 mt-auto -mx-4 flex flex-col gap-1 bg-white px-4 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:-mx-6 sm:px-6 dark:bg-zinc-950"
       >
-        <div className="flex min-h-12 items-center gap-2 border border-zinc-400 px-3 focus-within:border-emerald-700 dark:border-zinc-600">
-          <span aria-hidden="true" className="text-emerald-700">
+        <div className="flex min-h-12 items-end gap-2 border border-zinc-400 px-3 focus-within:border-emerald-700 dark:border-zinc-600">
+          <span aria-hidden="true" className="self-start py-3 leading-6 text-emerald-700">
             &gt;
           </span>
           <div className="relative flex min-w-0 flex-1">
-            <input
+            <textarea
               ref={input}
               name="message"
-              type="text"
+              rows={1}
               required
               maxLength={maxLength}
               autoComplete="off"
@@ -235,8 +260,16 @@ export function ChatComposer({
               disabled={pending}
               onInput={(e) => {
                 if (hint && e.currentTarget.value !== hint.text) setHint(null);
+                fit();
               }}
-              className="min-h-11 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-zinc-500 disabled:opacity-60"
+              onKeyDown={(e) => {
+                // Enter sends, as it did; Shift+Enter starts a new line. Not while an input
+                // method is still putting a word together.
+                if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
+                e.preventDefault();
+                form.current?.requestSubmit();
+              }}
+              className="block min-h-11 min-w-0 flex-1 resize-none overflow-y-hidden bg-transparent py-2.5 text-base leading-6 outline-none placeholder:text-zinc-500 disabled:opacity-60"
             />
             {hint && !hint.under && (
               // Drawn over the box just after the text: the text itself invisible, to measure.
@@ -244,7 +277,7 @@ export function ChatComposer({
                 ref={hintLine}
                 id={`${id}-hint`}
                 data-composer-hint=""
-                className="pointer-events-none absolute inset-0 flex items-center overflow-hidden text-base whitespace-pre"
+                className="pointer-events-none absolute inset-x-0 top-0 flex h-11 items-center overflow-hidden text-base leading-6 whitespace-pre"
               >
                 <span aria-hidden="true" className="invisible">
                   {hint.text}
@@ -260,6 +293,7 @@ export function ChatComposer({
               if (!input.current) return;
               setHint(null);
               input.current.value = text.slice(0, maxLength);
+              fit();
               if (final) input.current.focus();
             }}
           />
