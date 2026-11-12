@@ -1200,6 +1200,13 @@ textarea {
     display: none;
   }
 }
+/* Home's "Jane found" cards (src/app/home/page.tsx) are in the page on a phone or tablet; on a
+   computer with the chat docked they're in the dock beside it, so the page's copy stays out. */
+@media (min-width: 1024px) {
+  html:not([data-side-chat="rail"]):not([data-side-chat="none"]) [data-home-cards] {
+    display: none;
+  }
+}
 /* In the chat the cards sit just above its pinned message box (src/app/chat/composer.tsx sets
    --chat-composer-h), never over it, and need no room of their own at the page's end. */
 body:has([data-chat-composer]) .floating-cards {

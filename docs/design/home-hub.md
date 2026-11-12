@@ -15,6 +15,28 @@ Built in four PRs, each labelled `e2e`:
 | c | Compact suggestion pop-ups | `src/components/floating-cards.tsx`, `src/lib/floating-cards.ts` |
 | d | The feature map | `src/app/home/map/page.tsx`, `src/lib/feature-map.ts`, `src/components/feature-tree.tsx` |
 
+## Home redesign (2026-11-12)
+
+The founder: "there are way too many options the users can click on which is very confusing … Jane
+is supposed to watch your finances 24/7, proactively search for opportunities where you can save
+money, and then find you the solution and prefill the step." Home now shows only that loop. The
+sections below describe the hub as first built; where they differ, this section wins.
+
+| On Home | Where the rest went |
+| --- | --- |
+| Notices that need action (bank sign-in, books, stale statements) | |
+| Net worth, the line and its figure (hidden until shown) | |
+| **Jane found**: one line, the yes/no cards (in the page on a phone or tablet, in the dock beside the chat on a computer), "Full list ›" to /plan | Money found and saved so far: /plan and /saved |
+| Needs you (only when something waits) | |
+| "Everything Jane watches", folded: the six areas' tree | |
+| | Safe to spend, the next 30 days, last month's close: Spending & bills (/money) |
+| | How much Jane does on its own: Settings and the chat |
+| | The getting-started checklist: removed (it asked people to explore features) |
+| | "Data last updated / Manage accounts": Settings, Banks and files |
+
+At 1280 wide on the demo bank, Home went from 86 things to click and 314 words to 37 and 99
+(phone: 80 and 317 to 32 and 129). `e2e/home-simple.spec.ts` holds it there.
+
 ## Principles
 
 - **Graphs first, few words.** The hub shows at most nine numbers: three big ones in the hero

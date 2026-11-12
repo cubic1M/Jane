@@ -5,8 +5,8 @@ import { holdSaves } from "./waits";
 
 // Jane's cards (docs/design/area-pages.md): on a computer they sit in a dock directly above
 // the side chat, in the right column and never in the chat itself, a little bigger, one at a
-// time with "+N" and arrows. On a phone they pop up at the bottom of Home, a short card that
-// never covers more than about a third of the screen. Either way the details open in place
+// time with "+N" and arrows. On a phone they're in Home's own flow under "Jane found" (home
+// redesign 11-12), a short card no taller than about a third of the screen. Either way the details open in place
 // with the chevron, and the next card is on screen within 100 ms of a tap.
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
@@ -17,7 +17,7 @@ test.afterEach(async () => {
   if (userId) await deleteUser(userId);
 });
 
-test("suggestions pop up small at the bottom of the hub and open in place", async ({
+test("suggestions sit beside the chat or under what Jane found, small, and open in place", async ({
   context,
   page,
   baseURL,
@@ -29,7 +29,9 @@ test("suggestions pop up small at the bottom of the hub and open in place", asyn
   await page.goto("/home");
 
   const panel = page.getByRole("complementary", { name: "Chat with Jane" });
-  const overlay = (isMobile ? page : panel).getByRole("region", { name: "Suggestions for you" });
+  const overlay = (isMobile ? page.locator("[data-home-cards]") : panel).getByRole("region", {
+    name: "Suggestions for you",
+  });
   await expect(overlay).toBeVisible({ timeout: 60_000 });
   const showing = overlay.locator('[data-card-state="showing"]');
   const viewport = page.viewportSize()!;
@@ -38,22 +40,16 @@ test("suggestions pop up small at the bottom of the hub and open in place", asyn
   if (isMobile) await expect(page.getByRole("button", { name: /^Chat with Jane/ })).toBeVisible();
   else await expect(page.getByRole("complementary", { name: "Chat with Jane" })).toBeVisible();
 
-  // On a small phone they start folded into one line at the very bottom, beside the Jane
-  // button, so the net worth isn't covered (QA round 6); a tap opens them.
+  // On a small phone they're in the page under "Jane found", below the net worth, never over it.
   if (isMobile) {
-    const fold = overlay.locator('[data-card-state="folded"]');
-    await expect(fold).toHaveText(/^\[JANE\]\d+ for you▲$/);
-    await expect(showing).toHaveCount(0);
     // The net worth streams in after the page (every page renders per request): wait for it.
     const netWorth = page.locator('[data-hub-number="net-worth"]');
     await expect(netWorth).toBeVisible();
-    const box = (await fold.boundingBox())!;
+    await expect(showing).toBeVisible();
+    const card = (await showing.boundingBox())!;
     const figure = (await netWorth.boundingBox())!;
-    expect(box.y).toBeGreaterThanOrEqual(figure.y + figure.height);
-    const jane = (await page.getByRole("button", { name: /^Chat with Jane/ }).boundingBox())!;
-    expect(box.x + box.width).toBeLessThanOrEqual(jane.x + 1);
-    await fold.click();
-    await expect(fold).toHaveCount(0);
+    expect(card.y).toBeGreaterThanOrEqual(figure.y + figure.height);
+    expect(await overlay.evaluate((e) => getComputedStyle(e).position)).not.toBe("fixed");
   }
 
   // Shut: a headline, Yes and Not now, and a third of the screen at most.
@@ -63,19 +59,12 @@ test("suggestions pop up small at the bottom of the hub and open in place", asyn
   await expect(showing.getByRole("button", { name: "Not now", exact: true })).toBeVisible();
   const counter = overlay.locator("p[aria-live]");
   const total = Number(((await counter.textContent()) ?? "").split(" ")[0]);
-  // How many: "+N" on the stack on a phone; the dock's header line on a computer.
-  if (isMobile && total > 1) await expect(showing).toContainText(`+${total - 1}`);
-  if (!isMobile) {
-    await expect(overlay.locator("[data-dock-header]")).toContainText(
-      `1 of ${total} ${total === 1 ? "suggestion" : "suggestions"}`,
-    );
-  }
+  // How many: the stack's header line, on a phone and a computer alike.
+  await expect(overlay.locator("[data-dock-header]")).toContainText(
+    `1 of ${total} ${total === 1 ? "suggestion" : "suggestions"}`,
+  );
 
-  // Clear of the Jane button on a phone, and of the docked chat on a computer.
-  if (isMobile) {
-    const jane = (await page.getByRole("button", { name: /^Chat with Jane/ }).boundingBox())!;
-    expect(shut.y + shut.height).toBeLessThanOrEqual(jane.y + 1);
-  } else {
+  if (!isMobile) {
     // Above the chat, in its column: the page has no floating stack of its own, and the chat
     // has no card in it.
     const box = (await panel.boundingBox())!;

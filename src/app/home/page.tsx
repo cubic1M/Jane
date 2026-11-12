@@ -5,39 +5,31 @@ import { ShownLink } from "@/components/shown-link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { conciergeMode } from "@/lib/concierge-mode";
 import { AppHeader, PageLoading } from "@/components/app-header";
-import { AutopilotChooser } from "@/components/autopilot-chooser";
 import { TryFeedbackBox } from "@/components/try-feedback-box";
 import { isTrialUser } from "@/lib/trial-ids";
 import { BankStatusNotice } from "@/components/bank-status-notice";
 import { BooksNotice } from "@/components/books-notice";
-import { CashFlowStrip } from "@/components/hub/cash-flow";
-import { HeroRow } from "@/components/hub/hub";
 import { GiantTree } from "@/components/hub/giant-tree";
+import { JaneFound } from "@/components/hub/jane-found";
 import { loadAreaTrees } from "@/lib/hub/area-trees";
 import { readingTiles, withAreaStatus } from "@/lib/hub/area-status";
 import { isFirstDetectionComplete } from "@/detection/engine";
 import { adviceMode } from "@/lib/advice-mode";
 import { scopedFor } from "@/lib/db-scoped";
 import { buildFeatureMap, sampleExamples } from "@/lib/feature-map";
-import { CASH_FLOW_DAYS } from "@/config/areas";
-import { addDays } from "@/detection/units";
-import { autopilotOf } from "@/lib/autopilot";
 import { openBooks } from "@/lib/books";
-import { firstWeekChecklist } from "@/lib/checklist";
 import type { HomeSummary } from "@/lib/home";
 import { loadHubAreas, loadHubTop } from "@/lib/hub/load";
 import { netWorthEvents } from "@/lib/hub/net-worth-events";
 import { Blinded } from "@/components/hub/blinded";
 import { netWorthHistory } from "@/lib/hub/net-worth-history";
 import { NetWorthChart } from "@/components/hub/net-worth-chart";
-import { cashFlowView, heroView, tilesView } from "@/lib/hub/view";
+import { tilesView } from "@/lib/hub/view";
 import { requireUser } from "@/lib/session";
 import { loadPopupStack } from "@/lib/jane-agent/popup-stack";
-import { loadBankNotices, updatedAgo } from "@/lib/plaid/bank-status";
+import { loadBankNotices } from "@/lib/plaid/bank-status";
 import { SuggestionCards } from "../chat/suggestion-cards";
-import { FirstWeekChecklist } from "./checklist";
 import { LoadingBar } from "@/components/loading-bar";
 import { loansNotCounted, NO_BANK_SEEN, notCounting } from "@/insights/net-worth";
 import {
@@ -46,11 +38,12 @@ import {
   onlyDebtsSeen,
 } from "@/lib/net-worth-history";
 
-// Home, the hub (docs/design/home-hub.md; it was Today, spec step 79): graphs first, few
-// words. The hero row (safe to spend, net worth, saved), the next 30 days of bills and
-// paydays, and a tile per area with its health, one number and a tiny chart. What needs the
-// person shows only when there is something. The day's suggestions pop up at the bottom of the
-// hub (the chat beside it leaves them out here). The chat is docked beside it (the side chat).
+// Home, the hub (docs/design/home-hub.md; it was Today, spec step 79). Redesigned 11-12 to the
+// founder's loop ("Jane is supposed to watch your finances 24/7, proactively search for
+// opportunities where you can save money, and then find you the solution and prefill the step"):
+// where you stand (net worth), what Jane found with a yes or not now for each, and what needs
+// you. Everything else is one tap away: the area tabs, "Everything Jane watches" folded at the
+// end, and Safe to spend, the next 30 days and last month's close on Spending & bills.
 
 function NeedsYou({
   waiting,
@@ -202,21 +195,17 @@ async function HubContent({ searchParams }: { searchParams: PageProps<"/home">["
   const treeData = loadTreeData(user.id);
   // Read later by the tree; a failure shows there, not as an unhandled rejection here.
   treeData.catch(() => {});
-  const [top, checklist, autopilot, books, suggestions, banks, concierge, read, looked] =
-    await Promise.all([
-      loadHubTop(user.id),
-      firstWeekChecklist(user.id),
-      autopilotOf(user.id),
-      openBooks(user.id),
-      // Jane's cards, as the chat shows them (on a computer the dock above the chat has them).
-      loadPopupStack(user.id),
-      loadBankNotices(user.id),
-      conciergeMode(user.id),
-      scopedFor(user.id).transactions.aggregate({ _max: { date: true } }),
-      isFirstDetectionComplete(user.id),
-    ]);
+  const [top, books, suggestions, banks, read, looked] = await Promise.all([
+    loadHubTop(user.id),
+    openBooks(user.id),
+    // Jane's cards, as the chat shows them (on a computer the dock above the chat has them).
+    loadPopupStack(user.id),
+    loadBankNotices(user.id),
+    scopedFor(user.id).transactions.aggregate({ _max: { date: true } }),
+    isFirstDetectionComplete(user.id),
+  ]);
   if (!top) redirect("/connect");
-  // Too old to say what's due or what's current: not "Nothing due", not "updated just now".
+  // Too old to say what's current: say so, with the way to fix it.
   const oldStatements = staleStatementsEnd(read._max.date, new Date());
   const { home } = top;
   const todayCents = top.hero.netWorth?.todayCents ?? 0;
@@ -227,29 +216,36 @@ async function HubContent({ searchParams }: { searchParams: PageProps<"/home">["
       <AppHeader user={user} opened={{ page: "home" }} />
       <BankStatusNotice notices={banks} />
       <BooksNotice books={books} skipItems={banks.map((b) => b.itemId)} />
+      {oldStatements && (
+        <p className="border border-zinc-300 p-3 text-sm dark:border-zinc-700">
+          Your statements end {dayLabel(oldStatements, { year: true })}.{" "}
+          <Link href="/import" className="font-medium underline">
+            Upload newer statements
+          </Link>
+        </p>
+      )}
       <h1 className="sr-only">Home</h1>
 
-      <HeroRow
-        hero={heroView(top.hero)}
-        planItems={home.plan.items}
-        looking={!looked}
-        chart={
-          top.hero.netWorth?.known === false ? (
-            <NetWorthUnknown />
-          ) : (
-            // Its own boundary: the history and what moved it are read after the top row's net
-            // worth, so the rest of the hub paints without waiting for them (speed pass).
-            <Suspense fallback={<NetWorthLoading />}>
-              <NetWorthHero userId={user.id} todayCents={todayCents} />
-            </Suspense>
-          )
-        }
-      />
+      {/* Where you stand. */}
+      {top.hero.netWorth?.known === false ? (
+        <NetWorthUnknown />
+      ) : (
+        // Its own boundary: the history and what moved it are read after the rest, so the page
+        // paints without waiting for them (speed pass).
+        <Suspense fallback={<NetWorthLoading />}>
+          <NetWorthHero userId={user.id} todayCents={todayCents} />
+        </Suspense>
+      )}
 
-      {/* Under the hero, before anything else: everything Jane does, as one tree. */}
-      <Suspense fallback={<LoadingBar label="Loading what Jane does" />}>
-        <AreasTree userId={user.id} home={home} treeData={treeData} />
-      </Suspense>
+      {/* What Jane found, each a yes or not now. On a computer the cards are in the dock beside
+          the chat (CSS hides this copy, src/app/globals.css [data-home-cards]). */}
+      <JaneFound items={home.plan.items} looking={!looked}>
+        <div data-home-cards="">
+          <SuggestionCards messages={suggestions} docked inPage />
+        </div>
+      </JaneFound>
+
+      <NeedsYou waiting={home.waitingOnYou} unreadAlerts={home.unreadAlerts} />
 
       {isTrialUser(user.id) && (
         <TryFeedbackBox
@@ -258,41 +254,19 @@ async function HubContent({ searchParams }: { searchParams: PageProps<"/home">["
         />
       )}
 
-      {!oldStatements && (
-        <CashFlowStrip
-          view={cashFlowView(top.cashFlow)}
-          endDate={addDays(top.cashFlow.asOf, CASH_FLOW_DAYS)}
-        />
-      )}
-
-      {/* The monthly close: Jane closing last month's books (src/app/close). */}
-      <Link
-        href="/close"
-        prefetch={false}
-        data-home-close=""
-        className="self-start font-mono text-sm font-medium underline-offset-2 hover:underline"
-      >
-        [CLOSE] Last month&apos;s close ›
-      </Link>
-
-      <NeedsYou waiting={home.waitingOnYou} unreadAlerts={home.unreadAlerts} />
-      {/* Only where Jane can act on its own: the read-only beta's real accounts can't, so the
-          question would promise what it won't do (as in the chat). */}
-      {autopilot === null && concierge && <AutopilotChooser compact />}
-      {checklist && !checklist.complete && <FirstWeekChecklist items={checklist.items} />}
-
-      <p className="text-xs text-zinc-500">
-        {oldStatements
-          ? `Your statements end ${dayLabel(oldStatements, { year: true })}.`
-          : home.lastUpdated
-            ? `Data last updated ${updatedAgo(home.lastUpdated, new Date())}.`
-            : "Waiting for your first update."}{" "}
-        <Link href={oldStatements ? "/import" : "/connect"} className="hover:underline">
-          {oldStatements ? "Upload newer statements" : "Manage accounts"}
-        </Link>
-      </p>
-
-      <SuggestionCards messages={suggestions} foldOnPhone />
+      {/* Everything else Jane watches, one tap away (home redesign 11-12: the six areas' tree
+          was the page's biggest set of things to click). Safe to spend, the next 30 days and
+          last month's close are on Spending & bills; the area tabs above open each area. */}
+      <details data-home-more="" className="border-t border-zinc-200 pt-3 dark:border-zinc-800">
+        <summary className="cursor-pointer font-mono text-sm font-medium">
+          Everything Jane watches
+        </summary>
+        <div className="mt-3">
+          <Suspense fallback={<LoadingBar label="Loading what Jane does" />}>
+            <AreasTree userId={user.id} home={home} treeData={treeData} />
+          </Suspense>
+        </div>
+      </details>
     </>
   );
 }

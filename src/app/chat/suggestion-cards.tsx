@@ -127,6 +127,7 @@ export function SuggestionCards({
   foldOnPhone = false,
   foldOnSend = false,
   docked = false,
+  inPage = false,
   onAnswered,
   onShowing,
 }: {
@@ -135,6 +136,8 @@ export function SuggestionCards({
   foldOnPhone?: boolean;
   // The chat: fold on a small phone once the person sends a message, so the answer shows.
   foldOnSend?: boolean;
+  // Docked style in a page's own flow (Home's "Jane found").
+  inPage?: boolean;
   // In the dock above the side chat, not floating over the page.
   docked?: boolean;
   // Told once the server has the answer (the dock reloads its cards).
@@ -174,6 +177,7 @@ export function SuggestionCards({
         links={links}
         foldOnPhone={foldOnPhone}
         foldOnSend={foldOnSend}
+        inPage={inPage}
         docked={docked}
         onShowing={onShowing}
         onDetails={(id) => {

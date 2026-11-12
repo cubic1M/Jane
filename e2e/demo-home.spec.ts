@@ -1,4 +1,5 @@
 import { expect, test, type Locator } from "@playwright/test";
+import { openHomeMore } from "./home-more";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { uploadSampleCard } from "./demo-upload";
 
@@ -49,6 +50,7 @@ test("beside the docked chat, Home and /jane keep their words and marks in place
   await uploadSampleCard(page, "e2e/fixtures/messy/checking.csv");
 
   await page.goto("/home");
+  await openHomeMore(page);
   const tiles = page.locator("[data-giant-tree] ul").first().locator("button");
   await expect(tiles.first()).toBeVisible();
   expect(await brokenWords(tiles)).toEqual([]);

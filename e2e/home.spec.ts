@@ -45,26 +45,13 @@ test("new people land on Connect; once data is in, the hub matches the report @c
 
   await page.goto("/home");
   await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeAttached();
-  // The report's "We found $X a year" and the hub's money found are the same number (the hub
-  // shows whole dollars).
-  const amount = (headline?.match(/\$[\d,.]+/)?.[0] ?? "").replace(/\.\d\d$/, "");
-  await page.locator('[data-hub-tile="saved"] [data-show-value]').click();
-  await expect(page.locator('[data-hub-number="saved"]')).toContainText(amount);
-  // It links to the report that shows it (hub QA: it linked to /plan, a bigger total).
-  await expect(page.getByRole("link", { name: "Money found", exact: true })).toHaveAttribute(
-    "href",
-    "/report",
-  );
-  // "Your plan" opens beside the tile, with the whole plan a link inside (founder: no
-  // teleporting to another page).
-  await page.getByRole("button", { name: /^Your plan: \d+ things? ›$/ }).click();
-  await expect(
-    page
-      .getByRole("dialog", { name: "Your plan" })
-      .getByRole("link", { name: /See the whole plan/ }),
-  ).toHaveAttribute("href", "/plan");
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("heading", { name: "Next 30 days" })).toBeVisible();
+  // What Jane found (home redesign 11-12): the report found something, so Home asks for a yes or
+  // not now, with the whole list one tap away.
+  expect(headline).toMatch(/\$[\d,.]+/);
+  const found = page.locator("[data-jane-found]");
+  await expect(found.getByRole("heading", { name: "Jane found" })).toBeVisible();
+  await expect(found).toContainText("Yes or not now, one at a time.");
+  await expect(found.getByRole("link", { name: "Full list ›" })).toHaveAttribute("href", "/plan");
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
