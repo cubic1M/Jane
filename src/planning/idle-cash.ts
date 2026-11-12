@@ -111,7 +111,11 @@ export function cashCushionOf(input: IdleInput): Omit<IdleCash, "earnsCents"> | 
     if (bought.length === 0) continue;
     const earliest = bought.reduce((min, t) => (t.date < min ? t.date : min), input.asOf);
     const months = Math.max(1, daysBetween(earliest, input.asOf) / DAYS_PER_MONTH);
-    monthly += Math.max(0, rows.reduce((sum, t) => sum + t.amountCents, 0)) / months;
+    monthly +=
+      Math.max(
+        0,
+        rows.reduce((sum, t) => sum + t.amountCents, 0),
+      ) / months;
     shortest = Math.min(shortest, months);
   }
   const monthlyCents = Math.round(monthly);
