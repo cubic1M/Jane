@@ -26,7 +26,7 @@ export function CodeForm({
     return (
       <Link
         href={next}
-        className="inline-flex h-11 items-center justify-center self-start rounded-full bg-emerald-700 px-6 font-semibold text-white hover:bg-emerald-800"
+        className="inline-flex h-11 items-center justify-center self-start rounded-full bg-zinc-900 px-6 font-semibold text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900"
       >
         Continue
       </Link>
