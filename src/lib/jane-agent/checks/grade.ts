@@ -42,6 +42,15 @@ export function firstSentence(body: string): string {
   return end ? line.slice(0, end.index + 1) : line;
 }
 
+/** The words that matched, with a little either side: the log shows only the start of an answer. */
+export function avoidHit(body: string, avoid: RegExp): string | null {
+  const m = new RegExp(avoid.source, avoid.flags.replace("g", "")).exec(body);
+  if (!m) return null;
+  const from = Math.max(0, m.index - 30);
+  const to = Math.min(body.length, m.index + m[0].length + 30);
+  return `${from > 0 ? "…" : ""}${body.slice(from, to).replace(/\s+/g, " ")}${to < body.length ? "…" : ""}`;
+}
+
 export function fixedChecks(question: CheckQuestion, answer: Answer, facts: Facts): Check[] {
   const { expect } = question;
   const body = answer.body.trim();
@@ -164,11 +173,8 @@ export function fixedChecks(question: CheckQuestion, answer: Answer, facts: Fact
     );
   }
   if (expect.avoid) {
-    checks.push(
-      expect.avoid.test(body)
-        ? fail("avoids", `Says what it shouldn't (${expect.avoid.source}).`)
-        : pass("avoids"),
-    );
+    const hit = avoidHit(body, expect.avoid);
+    checks.push(hit ? fail("avoids", `Says what it shouldn't: "${hit}".`) : pass("avoids"));
   }
 
   if (expect.maxSentences) {
