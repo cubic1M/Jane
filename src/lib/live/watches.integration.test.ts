@@ -11,7 +11,8 @@ import { matchOffers, refreshWatches } from "./watches";
 
 // Reverse matching against a real, migrated Postgres: each scan leaves the person's watches, and an
 // offer that moves reaches only the people it now helps, each once per offer and value. The offers
-// here are made up (their own keys and service), so other files' catalog rows don't matter.
+// here are made up (their own keys and service), and its bank pays more than any rate the catalog's
+// own test saves (src/lib/offers/), so that file's rows, written alongside, never become the best.
 
 const url = process.env.TEST_DATABASE_URL;
 const NOW = new Date("2026-11-12T18:00:00Z");
@@ -113,7 +114,7 @@ describe.runIf(url)("reverse matching", () => {
     const onStudent = await person([
       { type: "subscription_review", evidence: { merchant: SERVICE, lastAmountCents: 699 } },
     ]);
-    await offer(BANK, { valueBps: 365 });
+    await offer(BANK, { valueBps: 565 });
     await offer(`plan.${SERVICE}.student`, { valueCents: 699 }, { merchantKey: SERVICE });
 
     const scanned: string[] = [];
@@ -131,7 +132,7 @@ describe.runIf(url)("reverse matching", () => {
     expect(scanned.filter((id) => [idle, small, fullPrice, onStudent].includes(id))).toEqual([]);
 
     // The bank's rate moves: the idle saver again, nobody else of ours.
-    await offer(BANK, { valueBps: 380 });
+    await offer(BANK, { valueBps: 580 });
     await matchOffers({ client, now: NOW, scan });
     expect(scanned.filter((id) => [idle, small, fullPrice, onStudent].includes(id))).toEqual([
       idle,
@@ -139,7 +140,7 @@ describe.runIf(url)("reverse matching", () => {
 
     // A quarantined or expired offer helps no one.
     scanned.length = 0;
-    await offer(BANK, { valueBps: 395 }, { status: "quarantined" });
+    await offer(BANK, { valueBps: 595 }, { status: "quarantined" });
     await matchOffers({ client, now: NOW, scan });
     expect(scanned).not.toContain(idle);
   });
@@ -148,11 +149,11 @@ describe.runIf(url)("reverse matching", () => {
     const idle = await person([
       { type: "idle_cash", evidence: { excessCents: 2_000_000, assumedCurrentRateBps: 50 } },
     ]);
-    await offer(BANK, { valueBps: 410 }, { status: "live" });
+    await offer(BANK, { valueBps: 610 }, { status: "live" });
     const result = await matchOffers({ client, now: NOW });
     expect(result.matched).toBeGreaterThan(0);
     // Matched for this offer and value: the watch says so (or went with a finding the scan dropped).
     const watch = await client.offerWatch.findFirst({ where: { userId: idle, target: "savings" } });
-    expect(watch === null || watch.lastMatch === `${BANK}:410`).toBe(true);
+    expect(watch === null || watch.lastMatch === `${BANK}:610`).toBe(true);
   });
 });

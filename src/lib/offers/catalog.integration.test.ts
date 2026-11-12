@@ -15,6 +15,7 @@ import {
 } from "@/config/offers";
 import { usableOptions } from "@/lib/compare";
 import { alertError } from "@/lib/error-alerts";
+import { log } from "@/lib/log";
 import {
   liveOffers,
   recheckPlanPrices,
@@ -280,5 +281,85 @@ describe.runIf(url)("the offers catalog", () => {
     });
     expect(rechecked?.source).toBe("spotify.plans");
     expect(await recheckPlanPrices("no_such_service", { client, now: NOW, fetcher })).toBeNull();
+  });
+  it("logs every source's outcome on every run: read, unchanged, failed or skipped, and why", async () => {
+    vi.stubEnv("FRED_API_KEY", "");
+    const info = vi.spyOn(log, "info").mockImplementation(() => undefined);
+    const said = () => {
+      const lines = info.mock.calls
+        .filter(([event]) => event === "offers_refreshed")
+        .map(([, fields]) => fields as { source: string; outcome: string; reason?: string });
+      info.mockClear();
+      return new Map(lines.map((l) => [l.source, l]));
+    };
+    // Barclays and Spotify answer; every other source's address is a 404.
+    const pages = {
+      ...barclaysPage("3.65"),
+      "https://www.spotify.com/us/premium/":
+        "<p>Individual $12.99 / month</p><p>Student $6.99 / month</p>",
+    };
+    const fetcher = web(pages);
+    try {
+      await refreshDueOffers({ client, now: NOW, fetcher, extract: null });
+      let lines = said();
+      expect([...lines.keys()].sort()).toEqual(OFFER_SOURCES.map((s) => s.key).sort());
+      expect(lines.get("barclays.savings")).toMatchObject({ outcome: "changed", changed: 1 });
+      expect(lines.get("spotify.plans")).toMatchObject({ outcome: "changed", changed: 2 });
+      expect(lines.get("cit.platinum")).toMatchObject({
+        outcome: "fetch_failed",
+        reason: "http_404",
+        missing: 1,
+      });
+      expect(lines.get("fred.rates")).toEqual({
+        source: "fred.rates",
+        outcome: "skipped",
+        reason: "no FRED_API_KEY",
+      });
+
+      // An hour on: nothing is due, and each says when it will be.
+      await refreshDueOffers({
+        client,
+        now: new Date(NOW.getTime() + HOUR),
+        fetcher,
+        extract: null,
+      });
+      lines = said();
+      expect(lines.size).toBe(OFFER_SOURCES.length);
+      expect(lines.get("barclays.savings")).toMatchObject({
+        outcome: "skipped",
+        reason: "not_due",
+        due: new Date(NOW.getTime() + barclays.everyMinutes * 60_000).toISOString(),
+      });
+
+      // A day on, the same rate again is a run that changed nothing, not a silence.
+      await refreshDueOffers({
+        client,
+        now: new Date(NOW.getTime() + 24 * HOUR),
+        fetcher,
+        extract: null,
+      });
+      lines = said();
+      expect(lines.get("barclays.savings")).toMatchObject({
+        outcome: "no_change",
+        changed: 0,
+        unchanged: 1,
+      });
+    } finally {
+      info.mockRestore();
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("keeps an address, and the key in it, out of a failed read's reason", async () => {
+    const fetcher: Fetcher = async (address) => {
+      if (new URL(address).pathname === "/robots.txt") return new Response("", { status: 200 });
+      throw new Error("connect failed: https://api.stlouisfed.org/fred?api_key=sekrit");
+    };
+    const result = await refreshSource(barclays, { client, now: NOW, fetcher, extract: null });
+    expect(result.failed).toBe("connect failed: <url>");
+    const event = await client.marketOfferEvent.findFirst({
+      where: { source: barclays.key, kind: "failed" },
+    });
+    expect(JSON.stringify(event?.detail)).not.toContain("sekrit");
   });
 });

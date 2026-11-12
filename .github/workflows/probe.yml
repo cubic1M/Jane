@@ -44,8 +44,10 @@ jobs:
             echo "state=failed" >> "$GITHUB_OUTPUT"
           fi
 
-      # The offers catalog's sources, each on its own cadence (src/config/offers.ts): one call an
-      # hour, which reads only what's due. Its failures are the catalog's own alerts, not this issue.
+      # The offers catalog's sources, each on its own cadence (src/config/offers.ts): a call reads
+      # only what's due. GitHub runs this schedule every 6 to 9 hours, not hourly, so the hourly
+      # call is an outside pinger's (OFFERS_PING_SECRET, jane-24-7.md); this one is extra. Its
+      # failures are the catalog's own alerts, not this issue.
       - name: Refresh the offers catalog
         if: steps.probe.outputs.state != 'off'
         continue-on-error: true

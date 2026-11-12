@@ -97,7 +97,14 @@ export function readSavingsApy(html: string, key: string): Readings {
 // A streaming service's plans page: the monthly price after "Individual" and after "Student",
 // skipping a free first month ("$0 for 1 month, then $12.99").
 export function readPlanPrices(html: string, merchantKey: string): Readings {
-  const text = pageText(html);
+  // What the page shows wins; what it carries for a script to draw fills in what it doesn't show.
+  return {
+    ...planPricesIn(embeddedText(html), merchantKey),
+    ...planPricesIn(pageText(html), merchantKey),
+  };
+}
+
+function planPricesIn(text: string, merchantKey: string): Readings {
   const out: Readings = {};
   for (const [plan, word] of [
     ["individual", "Individual"],
@@ -115,4 +122,22 @@ export function readPlanPrices(html: string, merchantKey: string): Readings {
     }
   }
   return out;
+}
+
+// The words a page carries in its own JSON for a script to draw, in order: each "content" string.
+// YouTube's plans and prices are only there. Zero-width joiners between "$8.99" and "/month" go.
+function embeddedText(html: string): string {
+  const parts: string[] = [];
+  for (const m of html.matchAll(/"content":"((?:[^"\\]|\\.){1,300})"/g)) {
+    try {
+      parts.push(JSON.parse(`"${m[1]}"`) as string);
+    } catch {
+      // Not a JSON string after all: left out.
+    }
+  }
+  return parts
+    .join(" ")
+    .replace(/[\u200b-\u200d\u2060\ufeff]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }

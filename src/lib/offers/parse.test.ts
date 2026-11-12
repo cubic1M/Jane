@@ -85,6 +85,30 @@ describe("a streaming service's plans page", () => {
     });
   });
 
+  it("reads plans a page carries only in its own JSON, however far down the page", () => {
+    // YouTube's page (read 2026-11-12): the plans sit in a script ~860k characters in, with
+    // zero-width joiners between the price and "/month".
+    const card = (title: string, price: string) =>
+      `{"title":{"content":"${title}"},"offerOptions":[{"eyebrowText":{"content":"Monthly"},` +
+      `"title":{"content":"${price}\u200b/month"}}]}`;
+    const youtube =
+      `<html><body><h1>YouTube Premium</h1><script>var filler = "${"x".repeat(860_000)}";` +
+      `var ytInitialData = [${card("Individual", "$15.99")},${card("Family", "$26.99")},` +
+      `{"subtitles":[{"content":"1-month trial for $0 \u2022 Then $8.99\u2060/\u2060month"}]},` +
+      `${card("Student", "$8.99")}];</script></body></html>`;
+    expect(readPlanPrices(youtube, "youtube_premium")).toEqual({
+      "plan.youtube_premium.individual": 1_599,
+      "plan.youtube_premium.student": 899,
+    });
+  });
+
+  it("prefers what the page shows over what its script carries", () => {
+    const page =
+      `<p>Student $5.99/month</p>` +
+      `<script>x = {"a":{"content":"Student"},"b":{"content":"$9.99/month"}}</script>`;
+    expect(readPlanPrices(page, "spotify")).toEqual({ "plan.spotify.student": 599 });
+  });
+
   it("leaves out a plan it can't price", () => {
     expect(readPlanPrices("<p>Student plans available</p>", "x")).toEqual({});
   });
