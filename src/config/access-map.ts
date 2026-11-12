@@ -243,6 +243,7 @@ export const ACCESS_MAP: Record<string, Access> = {
   ),
   "src/lib/auth-actions.ts": public_("Signing in and signing up: before there is a session."),
   "src/lib/compare-actions.ts": "signed-in",
+  "src/lib/refresh-in-place.ts": "signed-in",
   // Pages
   "src/app/(auth)/login/continue/page.tsx": public_(
     "Where a sign-in link lands: shows the address in the link, and reads nothing.",

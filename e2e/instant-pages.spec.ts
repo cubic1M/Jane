@@ -135,9 +135,16 @@ test.describe("coming back to a page", () => {
     await tab(page, "/taxes");
     await page.clock.fastForward("06:00");
     const pages = fetched(page);
+    const remade: string[] = [];
+    page.on("request", (r) => {
+      if (r.method() === "POST" && r.headers()["next-action"])
+        remade.push(new URL(r.url()).pathname);
+    });
     await watchForBar(page);
     await tab(page, "/insurance");
-    await expect.poll(() => pages.started).toContain("/insurance");
+    // From memory at once, then made again in place (src/lib/refresh-in-place.ts).
+    expect(pages.started).not.toContain("/insurance");
+    await expect.poll(() => remade).toContain("/insurance");
     expect(await barSeen(page)).toBe(false);
   });
 });
