@@ -37,6 +37,8 @@ import { loadMoneyForTwo } from "@/lib/money-for-two";
 import { loadTradeoffs } from "@/lib/goal-tradeoffs";
 import type { TradeOrder } from "@/planning/goal-tradeoffs";
 import { FACT_KEYS } from "@/profile/facts";
+import type { Profile } from "@/profile/build";
+import { isSensitivePreference, isSensitiveProfileFact } from "@/lib/memory/sensitive";
 import { whoAmI } from "./who-am-i";
 import { scopedFor } from "@/lib/db-scoped";
 import { withReadCache } from "@/lib/read-cache";
@@ -823,7 +825,8 @@ async function runChatToolWork(
     }
     case "my_profile": {
       const profile = await loadProfile(userId, { client, now });
-      const who = whoAmI(profile);
+      // Never a health, religion or other sensitive fact, even one worked out from their spending.
+      const who = whoAmI(withoutSensitiveFacts(profile));
       return out({
         // For "give me a summary of who I am" and "what do you know about me": this paragraph is
         // built from the facts below, each worded as sure as Jane is. Say it warmly in your own
@@ -831,13 +834,15 @@ async function runChatToolWork(
         // point to /profile to correct anything.
         summaryOfThem: who.body,
         months: profile.months,
-        facts: Object.values(profile.facts).map((f) => ({
-          fact: f.label,
-          value: sayFact(f.key, f.value),
-          source: f.source,
-          sureness: `${f.confidence}%`,
-          because: f.evidence,
-        })),
+        facts: Object.values(profile.facts)
+          .filter((f) => !isSensitiveProfileFact(f.key, f.value))
+          .map((f) => ({
+            fact: f.label,
+            value: sayFact(f.key, f.value),
+            source: f.source,
+            sureness: `${f.confidence}%`,
+            because: f.evidence,
+          })),
       });
     }
     case "long_view": {
@@ -1641,6 +1646,7 @@ async function computePrimer(
       const fact = profile.facts[key];
       if (!fact || fact.value === null || fact.value === "unknown" || fact.confidence < 60)
         return [];
+      if (isSensitiveProfileFact(key, fact.value)) return [];
       if (typeof fact.value === "number" && /_cents$/.test(key)) cents.push(Math.abs(fact.value));
       return [`${fact.label}: ${sayFact(key, fact.value)}`];
     });
@@ -1648,10 +1654,28 @@ async function computePrimer(
   }
   // Spec step 91: what they told Jane, and suggestions not to make again.
   const remembered = await listPreferences(userId, { client }).catch(() => []);
-  if (remembered.length > 0) {
-    parts.push(`remembered: ${JSON.stringify(remembered.map((p) => p.label))}`);
-  }
+  // Not one that names their health, religion and the rest (src/lib/memory/sensitive.ts).
+  const told = remembered.filter((p) => !isSensitivePreference(p)).map((p) => p.label);
+  if (told.length > 0) parts.push(`remembered: ${JSON.stringify(told)}`);
   return { text: parts.join("\n"), cents };
+}
+
+// The profile as Claude may read it: a sensitive fact (src/lib/memory/sensitive.ts) as if Jane
+// didn't know it, so a summary of who they are never mentions it.
+function withoutSensitiveFacts(profile: Profile): Profile {
+  const facts = { ...profile.facts };
+  for (const key of FACT_KEYS) {
+    const fact = facts[key];
+    if (!fact || !isSensitiveProfileFact(key, fact.value)) continue;
+    facts[key] = {
+      ...fact,
+      value: null,
+      source: "guessed",
+      confidence: 0,
+      evidence: "not known yet",
+    };
+  }
+  return { ...profile, facts };
 }
 
 // Works the numbers out and saves them for the chat to read. Run after a sync, a scan or a

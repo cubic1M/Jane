@@ -426,6 +426,11 @@ export const CHAT_PRIMER_BUDGET_MS = 1_500;
 // strategist, so the trial cap is the limit they meet. Admins (ADMIN_EMAILS) have no daily
 // limit; the monthly cap applies to everyone on top.
 export const CHAT_PERSON_DAILY_CAP_CENTS = 20;
+// And in a calendar month (UTC), for the beta (11-12): 20 cents every day would be $6 of the $8
+// month, so one person could all but use it up. This is about 75 typical answers, under a fifth of
+// CHAT_MONTHLY_CAP_CENTS_DEFAULT; with CLAUDE_BACKGROUND_MONTHLY_CAP_CENTS one person can reach at
+// most $3.00 of the month. Admins have none.
+export const CHAT_PERSON_MONTHLY_CAP_CENTS = 150;
 export const CHAT_TRIAL_DAILY_CAP_CENTS = 60;
 // All sample people together, a day: anyone can make one, so many of them can't spend the month's
 // budget for the people who signed up. CHAT_TRIAL_MONTH_SHARE keeps part of it out of their reach.
@@ -434,6 +439,9 @@ export const CHAT_ALL_TRIALS_DAILY_CAP_CENTS = 100;
 // without it any number started at once all pass a check that none of them has paid for.
 export const CHAT_TRIAL_RESERVE_CENTS = 5;
 export const CHAT_TRIAL_MONTH_SHARE = 0.5;
+// The team hears when the month's Claude spend reaches this share of CHAT_MONTHLY_CAP_CENTS
+// (src/lib/claude-month-alert.ts), with time to raise it before everyone loses written answers.
+export const CLAUDE_MONTH_WARN_SHARE = 0.7;
 
 // Claude outside the chat, per person (plan item 13, src/lib/claude-budget.ts): reading uploads,
 // card words, sorting merchants, drafts. A first scan is the biggest day; the month stays well

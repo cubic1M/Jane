@@ -8,6 +8,7 @@ import {
 import {
   CHAT_ALL_TRIALS_DAILY_CAP_CENTS,
   CHAT_PERSON_DAILY_CAP_CENTS,
+  CHAT_PERSON_MONTHLY_CAP_CENTS,
   CHAT_TRIAL_DAILY_CAP_CENTS,
 } from "@/config/agent-chat";
 import { STATEMENT_TRIAL_PERSON_CAP_CENTS } from "@/config/statement-trial";
@@ -39,7 +40,10 @@ export type Usage = {
 const SPEND_PREFIX = "chatspend:";
 const HIT_PREFIX = "chatcaphit:";
 const keyOf = (userId: string) => `${SPEND_PREFIX}${userId}`;
+// The person's month, apart from the day's counters /admin/chat adds up.
+const monthKeyOf = (userId: string) => `chatspendmonth:${userId}`;
 const dayStart = (now: Date) => new Date(Math.floor(now.getTime() / DAY_MS) * DAY_MS);
+const monthStart = (now: Date) => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 
 // Cents ×100 for one call at the listed price (the dearest listed price for a model that
 // isn't listed, so the cap never undercounts). Cached input is billed at a tenth, writing
@@ -60,10 +64,16 @@ export function costInHundredthsOfCents(usage: Usage): number {
   );
 }
 
-// Adds to one of today's counters, in hundredths of a cent.
-async function addToToday(key: string, amount: number, client: PrismaClient, now: Date) {
+// Adds to one of the counters, in hundredths of a cent: today's unless another window is given.
+async function addToToday(
+  key: string,
+  amount: number,
+  client: PrismaClient,
+  now: Date,
+  windowStart = dayStart(now),
+) {
   await systemDb(WHY, client).$executeRaw`
-    INSERT INTO rate_limits (key, window_start, count) VALUES (${key}, ${dayStart(now)}, ${amount})
+    INSERT INTO rate_limits (key, window_start, count) VALUES (${key}, ${windowStart}, ${amount})
     ON CONFLICT (key, window_start) DO UPDATE SET count = rate_limits.count + ${amount}`;
 }
 
@@ -75,6 +85,7 @@ export async function addSpend(
   const amount = costInHundredthsOfCents(usage);
   if (amount <= 0) return;
   await addToToday(keyOf(userId), amount, client, now);
+  await addToToday(monthKeyOf(userId), amount, client, now, monthStart(now));
   if (isTrialUser(userId)) await addToToday(ALL_TRIALS_KEY, amount, client, now);
   // And the month's total, which guards all of Claude's chat spend together.
   await addMonthlySpend(amount, { client, now });
@@ -126,10 +137,35 @@ export async function overDailyCap(userId: string, options: Options = {}): Promi
   return cap !== null && (await spentTodayCents(userId, options)) >= cap;
 }
 
-// The person's day and the month's total, for what runs without them waiting (the strategist).
+async function spentThisMonthCents(
+  userId: string,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<number> {
+  const row = await systemDb(WHY, client).rateLimit.findUnique({
+    where: { key_windowStart: { key: monthKeyOf(userId), windowStart: monthStart(now) } },
+    select: { count: true },
+  });
+  return (row?.count ?? 0) / 100;
+}
+
+// The person's month (beta, 11-12): a day's allowance every day of the month was most of the
+// month's budget for everyone, so one person can use at most CHAT_PERSON_MONTHLY_CAP_CENTS of it.
+// An admin has none, as with the day.
+export async function overMonthlyPersonCap(
+  userId: string,
+  options: Options = {},
+): Promise<boolean> {
+  if ((await dailyCapCents(userId, options)) === null) return false;
+  return (await spentThisMonthCents(userId, options)) >= CHAT_PERSON_MONTHLY_CAP_CENTS;
+}
+
+// The person's day and month and the month's total, for what runs without them waiting (the
+// strategist).
 export async function overChatLimits(userId: string, options: Options = {}): Promise<boolean> {
   return (
-    (await overDailyCap(userId, options)) || (await monthlySpentCents(options)) >= monthlyCapCents()
+    (await overDailyCap(userId, options)) ||
+    (await overMonthlyPersonCap(userId, options)) ||
+    (await monthlySpentCents(options)) >= monthlyCapCents()
   );
 }
 

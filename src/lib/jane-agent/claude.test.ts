@@ -52,6 +52,7 @@ vi.mock("./decision", async (original) => ({
 vi.mock("./spend", async (original) => ({
   ...(await original<typeof import("./spend")>()),
   overDailyCap: vi.fn(async () => false),
+  overMonthlyPersonCap: vi.fn(async () => false),
   addSpend: vi.fn(),
 }));
 
@@ -73,6 +74,7 @@ import {
   READ_ONLY,
 } from "./claude";
 import { forgetPrimer } from "./primer-cache";
+import { maskFor } from "./payee-mask";
 import { CHAT_TOOLS, healthHeadline, proposeAction } from "./claude-tools";
 import { areaTools, chatTools, toolsFor } from "./tool-select";
 import { loadSnapshot, type Snapshot } from "./snapshot";
@@ -205,6 +207,30 @@ describe("askClaudeInChat", () => {
     expect(request.tools.length).toBeLessThan(chatTools(CHAT_TOOLS).length);
     // An information question is told to answer in words, with no button.
     expect(request.system[1].text).toMatch(/only asks for information: answer in words/);
+  });
+
+  // Beta (11-12): a payment app's payee is a person; Claude only ever sees a tag for them.
+  it("never sends Claude a payee's name, and the person reads the name", async () => {
+    create.mockResolvedValueOnce(final("Your rent goes to [person DS] each month."));
+    const events: string[] = [];
+    const result = await askClaudeInChat(
+      "u1",
+      [{ role: "assistant", content: "Your rent goes to Daniel Smith." }],
+      "how much did I send Daniel Smith?",
+      {
+        ...options,
+        mask: maskFor(["Daniel Smith"]),
+        onEvent: (e) => {
+          if (e.type === "text") events.push(e.text);
+        },
+      },
+    );
+    for (const [request] of create.mock.calls) {
+      expect(JSON.stringify(request)).not.toMatch(/daniel|smith/i);
+    }
+    expect(JSON.stringify(create.mock.calls[0][0])).toContain("[person DS]");
+    expect(result.reply.body).toBe("Your rent goes to Daniel Smith each month.");
+    expect(events.join("")).toBe("Your rent goes to Daniel Smith each month.");
   });
 
   it("writes the answer again in words when the last one was only about a button", async () => {
@@ -722,6 +748,13 @@ describe("proposeAction", () => {
     expect(readOnly[0]).toMatchObject({ cache_control: { type: "ephemeral" } });
     expect(readOnly[1].text).toBe(READ_ONLY);
     expect(READ_ONLY).toMatch(/never cancel, call, email, switch/);
+    expect(READ_ONLY).toMatch(/never move money, pay a bill, or file, sign or submit anything/);
+    // Beta (11-12): the instructions every account shares promise nothing done for them, and say
+    // what Jane is: a controller, not an adviser, and "it".
+    expect(readOnly[0].text).not.toMatch(/take care of it|the team makes|doing for them/i);
+    expect(readOnly[0].text).toMatch(/financial controller/);
+    expect(readOnly[0].text).toMatch(/not a financial adviser/);
+    expect(readOnly[0].text).toMatch(/Jane is "it", never "she"/);
 
     create.mockResolvedValueOnce(final("Hi there."));
     await askClaudeInChat("u1", [], "cancel netflix", options);

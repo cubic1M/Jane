@@ -5,6 +5,7 @@ import { useActionState, useEffect, useRef, useState, useTransition, type FormEv
 import { flushSync } from "react-dom";
 import { CHAT_SENT_EVENT } from "@/config/side-chat";
 import { MicButton } from "./mic-button";
+import { ANSWER_WAIT_MS, FAILED, readAnswer } from "./read-answer";
 import { scrollChatToEnd } from "./scroll-to-end";
 import { sendMessage, type SendState } from "./send";
 
@@ -22,15 +23,6 @@ type Draft = {
   status: string | null;
   answer: string;
 };
-
-type StreamLine =
-  | { type: "status"; text: string }
-  | { type: "text"; text: string }
-  | { type: "reset" }
-  | { type: "done" }
-  | { type: "error"; text: string };
-
-const FAILED = "Something went wrong. Try again.";
 
 export function ChatComposer({
   id,
@@ -127,6 +119,7 @@ export function ChatComposer({
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ message: question }),
+        signal: AbortSignal.timeout(ANSWER_WAIT_MS),
       });
     } catch {
       return fail(FAILED);
@@ -137,32 +130,16 @@ export function ChatComposer({
       return fail(FAILED);
     }
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    let finished = false;
-    while (!finished) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() ?? "";
-      for (const line of lines.filter(Boolean)) {
-        const event = JSON.parse(line) as StreamLine;
-        if (event.type === "status") {
-          setDraft((d) => d && { ...d, status: event.text });
-        } else if (event.type === "text") {
-          setDraft((d) => d && { ...d, status: null, answer: d.answer + event.text });
-        } else if (event.type === "reset") {
-          setDraft((d) => d && { ...d, answer: "" });
-        } else if (event.type === "error") {
-          return fail(event.text);
-        } else {
-          finished = true;
-        }
+    const failed = await readAnswer(response.body, (event) => {
+      if (event.type === "status") {
+        setDraft((d) => d && { ...d, status: event.text });
+      } else if (event.type === "text") {
+        setDraft((d) => d && { ...d, status: null, answer: d.answer + event.text });
+      } else {
+        setDraft((d) => d && { ...d, answer: "" });
       }
-    }
-    if (!finished) return fail(FAILED);
+    });
+    if (failed !== null) return fail(failed);
     // The stored messages replace the draft in the same render.
     sending.current = false;
     startRefresh(() => {

@@ -17,7 +17,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { log } from "@/lib/log";
 import { hit } from "@/lib/rate-limit";
 import { claudeFinished, claudeLimit, refundClaudeUse } from "./claude-limits";
-import { overDailyCap, recordLimitHit } from "./spend";
+import { overDailyCap, overMonthlyPersonCap, recordLimitHit } from "./spend";
 import { answerByRules } from "./answer";
 import {
   UNSAFE_TEXT,
@@ -188,6 +188,9 @@ const STATUS_QUESTION =
 // The person's daily allowance of written answers is used up (founder, 2026-10-26): short and
 // honest, then whatever the data answers for free.
 export const DAILY_LIMIT_NOTE = "I've hit today's limit for written answers, back tomorrow.";
+// And this month's (CHAT_PERSON_MONTHLY_CAP_CENTS): when it comes back, as plainly.
+export const MONTH_LIMIT_NOTE =
+  "I've hit this month's limit for your written answers, back on the 1st.";
 // The budget for written answers is used up, for the month or for everyone's day. "Please ask
 // again" wouldn't help, and when it comes back depends on which.
 export const BUDGET_LIMIT_NOTE = "I've hit my limit for written answers for now.";
@@ -294,11 +297,16 @@ async function answer(
   };
   // Today's allowance of written answers for this person is used up: say so, then what the data
   // gives, with its buttons. Before the no-Claude check, so the note is the same wherever it runs.
-  if (await overDailyCap(userId, { client, now })) {
-    log.info("chat_timing", { outcome: "capped", reason: "daily_cap", costCents: 0 });
+  const capped = (await overDailyCap(userId, { client, now }))
+    ? "daily_cap"
+    : (await overMonthlyPersonCap(userId, { client, now }))
+      ? "month_cap"
+      : null;
+  if (capped) {
+    log.info("chat_timing", { outcome: "capped", reason: capped, costCents: 0 });
     await recordLimitHit(userId, { client, now }).catch(() => {});
     return {
-      reply: await backup({ note: DAILY_LIMIT_NOTE }),
+      reply: await backup({ note: capped === "daily_cap" ? DAILY_LIMIT_NOTE : MONTH_LIMIT_NOTE }),
       intent: intent.kind,
       source: "capped",
     };

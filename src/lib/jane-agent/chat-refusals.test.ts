@@ -7,6 +7,7 @@ vi.mock("./snapshot", () => ({ loadSnapshot: vi.fn() }));
 vi.mock("./spend", async (original) => ({
   ...(await original<typeof import("./spend")>()),
   overDailyCap: vi.fn(async () => false),
+  overMonthlyPersonCap: vi.fn(async () => false),
   addSpend: vi.fn(),
 }));
 

@@ -20,7 +20,7 @@ import { FIGURE_NAMES_LIMIT } from "@/config/figure-ledger";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { scopedFor } from "@/lib/db-scoped";
 import { anthropic, chatModel } from "@/lib/anthropic";
-import { addSpend, costInHundredthsOfCents, overDailyCap } from "./spend";
+import { addSpend, costInHundredthsOfCents, overDailyCap, overMonthlyPersonCap } from "./spend";
 import type { Topic } from "./context";
 import {
   aboutInvestingOrTaxes,
@@ -46,6 +46,7 @@ import {
   toolsFor,
 } from "./tool-select";
 import { CHAT_TOOLS, chatPrimer, proposeAction, runChatTool, type Proposal } from "./claude-tools";
+import { hideIn, NO_MASK, payeeMask, showIn, type PayeeMask } from "./payee-mask";
 import {
   calculatorInputsNotOnFile,
   FigureLedger,
@@ -85,16 +86,16 @@ import { dataEndedOn } from "@/lib/data-ended";
 // the answer streamed as it's written (onEvent), a sentence at a time once each passes the
 // guardrails (./guarded-text), with what Jane is looking up in between.
 
-export const CHAT_PROMPT_VERSION = "chat-v34";
+export const CHAT_PROMPT_VERSION = "chat-v35";
 
 // The one rule that differs in demo advice mode (spec step 98).
 const NO_ADVICE = `- Never give investment, tax or legal advice: don't mention investments, and never tell them what to buy, sell, file, deduct, claim, write off or set aside, how to pay less tax, or how the tax rules or the law treat their money. Facts from their own accounts and your tools are not advice, so give them: what came in and went out (what a company paid them, what they paid it, the net), and a tax figure a tool gives, said as your estimate. For a tax question, give those facts first, then say in one sentence that you can't tell them what to file or deduct. Don't suggest financial products beyond Jane's pick from finding_details.`;
 const DEMO_ADVICE = `- This person is using the demo bank with sample data, so you may recommend what to do about investments, taxes, insurance and loans: say what you'd do and why, from their numbers. Never promise a result or a return, and never give legal advice. The app labels your answer as demo advice; don't add a label or disclaimer yourself.`;
 
-const SYSTEM = `You are Jane, the money helper inside a personal finance app, answering in the app's chat. Speak as "I"; if you ever name Jane in the third person, Jane is "it", never "she". You know the person's own money: spending, bills, subscriptions, safe to spend, goals, budgets, and what the app has found or is doing for them.
+const SYSTEM = `You are Jane, the financial controller inside a personal finance app, answering in the app's chat: you keep track of all of the person's money and tell them plainly what you find and what you'd look at first. You are a controller, not a financial adviser. Speak as "I"; if you ever name Jane in the third person, Jane is "it", never "she". You know the person's own money: spending, bills, subscriptions, safe to spend, goals, budgets, and what the app has found for them.
 
 Be useful, like a friend who's good with money and has their numbers in front of them:
-- Answer the actual question, with their figures. When they ask what to do about a subscription, a bill, a fee, a charge or their spending ("should I cancel Netflix?"), give your honest suggestion and the reason in a sentence or two: what it costs, what changed, what they'd save, and what you'd do. For example: "Netflix went up from $A to $B a month, which is $C a year. If you're not watching much, I'd cancel it, or switch to the cheaper plan I found. Tap Yes and I'll take care of it." (with their real amounts in place of $A, $B and $C)
+- Answer the actual question, with their figures. When they ask what to do about a subscription, a bill, a fee, a charge or their spending ("should I cancel Netflix?"), give your honest suggestion and the reason in a sentence or two: what it costs, what changed, what they'd save, and what you'd do. For example: "Netflix went up from $A to $B a month, which is $C a year. If you're not watching much, I'd cancel it, or switch to the cheaper plan I found." (with their real amounts in place of $A, $B and $C)
 - "Should I buy / invest in / pay off ...?" (bitcoin, stocks, a house, a car, "pay off my card or invest") is a decision about their money, not a lookup of the thing: call decision first and answer from their debts and rates, their cash cushion and their goals, the order being high-rate debt, then the cushion, then the goal, then the thing. Crypto, investments or afford tools come only as a follow-up. A bare "should I buy?" is about the last thing you discussed: never answer it by describing a button or page from an earlier message. Never predict what the thing will do.
 - Before suggesting what to do about something the app found, look at finding_details for it. Use subscriptions for what they pay on a schedule.
 - For "am I OK?", "how am I doing" or "what should I do this month", use whole_picture: start with its headline, then the one to three things that matter most, with the first one's button.
@@ -149,7 +150,7 @@ How to answer:
 - Follow-ups add the new thing asked. Never say you "covered it above" or point back to an earlier answer, and don't repeat figures you already gave unless the new answer needs them.
 - You can't do anything yourself. A button is only for when the person asked Jane to DO something ("cancel Netflix", "yes, do it"), or when one clear next step follows from your answer. Then call propose_action once, and say what tapping it does. Never say it's done. For a question that only asks for information ("do I have any debts", "what are my options", "explain my budget"), answer in words and offer no button at all.
 - Jane can only act on: something it found for them (an id in open_findings), approving the safe plan items, starting a goal, the rebalance it offers, or shopping a policy for a cheaper price (propose_action insurance.reshop with the policy kind (auto, home, renters, life or pet): it gets the quotes and offers the switch with its pick). Before you say it can change, switch or cancel something, check it is one of those. If it isn't (move money, file something with a company), say so plainly in one sentence first ("I can't switch your insurer myself."), then what it can do, with their figures, and offer no button.
-- When they ask you to change, cancel or start something Jane CAN act on, treat it as a request to act: say plainly what you can do and what it takes (the best option with its real figures, then that the team makes the change once they say yes), then offer the button. A list of their current details is not the answer.
+- When they ask you to change, cancel or start something Jane CAN act on, treat it as a request to act: say plainly what you can do and what it takes (the best option with its real figures, then what saying yes gets them), then offer the button. A list of their current details is not the answer.
 - "How can I pay less / save more / lower ..." gets two or three concrete moves with their own numbers (which to do first and what it saves, or when it's paid off), written out. Offer a button only for the one move that can be done for them. Never answer by pointing at a page.
 - Write your answer first, then call propose_action or show_block at the very end of that same turn if a button or a picture helps: the answer you wrote is the answer.
 - Savings are estimates: say "could save" or "about", never "will save" or "definitely".
@@ -161,7 +162,7 @@ const SYSTEM_DEMO_ADVICE = SYSTEM.replace(NO_ADVICE, DEMO_ADVICE);
 
 // Read-only mode (CONCIERGE_ACTIONS): for a real account nobody acts on the person's behalf.
 // Its own block after the cached instructions, so both modes share the cache.
-export const READ_ONLY = `This person's accounts are real, and nobody acts on their behalf: Jane and the app never cancel, call, email, switch, negotiate or dispute anything for them. Never say "I'll take care of it", "I'll cancel / call / write to them" or "our team will". When they want something done, say how they can do it themselves in two or three short steps; a button (propose_action) gives them Jane's full steps and drafts (an email, a call script, a letter) to copy, and Mark done when it's done.`;
+export const READ_ONLY = `This person's accounts are real, and the app only reads them: nobody acts on their behalf. Jane and the app never cancel, call, email, switch, negotiate or dispute anything for them, and never move money, pay a bill, or file, sign or submit anything. Never say "I'll take care of it", "I'll cancel / call / write to them" or "our team will". When they want something done, say how they can do it themselves in two or three short steps; a button (propose_action) gives them Jane's full steps and drafts (an email, a call script, a letter) to copy, and Mark done when it's done.`;
 
 export type ChatTurn = { role: "user" | "assistant"; content: string };
 
@@ -198,6 +199,8 @@ type Options = {
   deadlineMs?: number;
   // How long to wait for the person's main numbers before starting without them.
   primerMs?: number;
+  // Their payment-app payees' names, kept out of what Claude is sent (./payee-mask.ts).
+  mask?: PayeeMask;
 };
 
 // Spec step 93: when Claude last failed, free questions get the rules' answer at once until
@@ -588,7 +591,24 @@ export async function askClaudeInChat(
   };
   let outcome = "error";
   try {
-    const answer = await askClaude(userId, history, question, options, timing);
+    // Names go to Claude as tags, and come back as names in all the person reads.
+    const mask = options.mask ?? (await payeeMask(userId, options.client).catch(() => NO_MASK));
+    const { onEvent } = options;
+    const shown = await askClaude(
+      userId,
+      history,
+      question,
+      {
+        ...options,
+        mask,
+        onEvent:
+          onEvent &&
+          ((event) =>
+            onEvent(event.type === "text" ? { ...event, text: mask.show(event.text) } : event)),
+      },
+      timing,
+    );
+    const answer = { ...shown, reply: { ...shown.reply, body: mask.show(shown.reply.body) } };
     outcome = answer.kind;
     return answer.kind === "answer" ? withAiNote(answer, timing) : answer;
   } finally {
@@ -629,6 +649,7 @@ async function askClaude(
     firstWordsMs = CHAT_CLAUDE_FIRST_WORDS_MS,
     deadlineMs = CHAT_CLAUDE_DEADLINE_MS,
     primerMs = CHAT_PRIMER_BUDGET_MS,
+    mask = NO_MASK,
   }: Options,
   timing: ChatTiming,
 ): Promise<ClaudeAnswer> {
@@ -641,6 +662,7 @@ async function askClaude(
   if (Date.now() < claudeDownUntil) return fail("cooldown");
   // Spec step 191: today's cost cap for this person.
   if (await overDailyCap(userId, { client, now })) return fail("daily_cap");
+  if (await overMonthlyPersonCap(userId, { client, now })) return fail("month_cap");
   const profile = advice ? "demo_advice" : "standard";
   onEvent({ type: "status", text: "Looking at your numbers…" });
   // The person's main numbers, for at most primerMs: a slow lookup finishes in the
@@ -870,19 +892,22 @@ async function askClaude(
       const stream = claude()
         .messages.stream(
           ...withRefusalFallback(
-            {
-              model: chatModel(),
-              max_tokens: CHAT_CLAUDE_MAX_TOKENS,
-              system,
-              tools,
-              // The last round answers from what it has: a lookup there would leave no answer.
-              tool_choice: turn === turnLimit - 1 ? { type: "none" } : { type: "auto" },
-              // Adaptive thinking at low effort (the request that worked). Turning thinking off
-              // made the nightly's every chat request fail with a 400.
-              thinking: { type: "adaptive" },
-              output_config: { effort: CHAT_CLAUDE_EFFORT },
-              messages,
-            },
+            hideIn(
+              {
+                model: chatModel(),
+                max_tokens: CHAT_CLAUDE_MAX_TOKENS,
+                system,
+                tools,
+                // The last round answers from what it has: a lookup there would leave no answer.
+                tool_choice: turn === turnLimit - 1 ? { type: "none" } : { type: "auto" },
+                // Adaptive thinking at low effort (the request that worked). Turning thinking off
+                // made the nightly's every chat request fail with a 400.
+                thinking: { type: "adaptive" },
+                output_config: { effort: CHAT_CLAUDE_EFFORT },
+                messages,
+              },
+              mask,
+            ),
             fallbackOn,
           ),
         )
@@ -1167,7 +1192,10 @@ async function askClaude(
           }
         }
         const toolStarted = Date.now();
-        const output = await runChatTool(userId, block.name, block.input, { client, now });
+        const output = await runChatTool(userId, block.name, showIn(block.input, mask), {
+          client,
+          now,
+        });
         timing.tools.push({ name: block.name, ms: Date.now() - toolStarted });
         allowedCents.push(...output.cents, ...dollarFigures(output.content).map((f) => f.cents));
         ledger.addToolResult(output.content);

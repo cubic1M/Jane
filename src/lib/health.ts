@@ -7,7 +7,7 @@ import { db as defaultClient } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { describeError } from "@/lib/error-log";
 import { heartbeat } from "@/lib/heartbeat";
-import { CHAT_TRIAL_MONTH_SHARE } from "@/config/agent-chat";
+import { CHAT_TRIAL_MONTH_SHARE, CLAUDE_MONTH_WARN_SHARE } from "@/config/agent-chat";
 import { monthlyCapCents, monthlySpentCents } from "@/lib/jane-agent/claude-limits";
 import { log } from "@/lib/log";
 import { plaidEnvironment } from "@/lib/plaid/client";
@@ -210,26 +210,38 @@ export async function reportPlaidSlots({
 
 // Claude's month is shared, and past it everyone gets answers from their data alone until the 1st.
 // Sample people can take up to the share by themselves (about $1 a day, from anywhere), and
-// nothing else says so, so the team hears at the share and again at the cap, once each a month.
-async function reportClaudeMonth({
+// nothing else says so, so the team hears at the share, again at CLAUDE_MONTH_WARN_SHARE (time to
+// raise it before the beta loses written answers) and at the cap, once each a month. Run by the
+// daily jobs, and by the spend that crosses one of them (src/lib/jane-agent/claude-limits.ts).
+export async function reportClaudeMonth({
   client = defaultClient,
   now = new Date(),
   send = sendEmail,
 }: Options = {}): Promise<boolean> {
   const spent = await monthlySpentCents({ client, now });
   const cap = monthlyCapCents();
-  const usedUp = spent >= cap;
-  if (!usedUp && spent < cap * CHAT_TRIAL_MONTH_SHARE) return false;
-  const key = `claude-month:${now.toISOString().slice(0, 7)}:${usedUp ? "cap" : "share"}`;
+  const level =
+    spent >= cap
+      ? "cap"
+      : spent >= cap * CLAUDE_MONTH_WARN_SHARE
+        ? "low"
+        : spent >= cap * CHAT_TRIAL_MONTH_SHARE
+          ? "share"
+          : null;
+  if (!level) return false;
+  const key = `claude-month:${now.toISOString().slice(0, 7)}:${level}`;
   const { count } = await systemDb(WHY, client).healthNotice.createMany({
     data: [{ key, reportedAt: now }],
     skipDuplicates: true,
   });
   if (count === 0) return false;
   const line = `Claude has used $${(spent / 100).toFixed(2)} of this month's $${(cap / 100).toFixed(2)}`;
-  const then = usedUp
-    ? "Everyone gets answers from their data alone until the 1st."
-    : "Sample people's and statement tries' answers have stopped, and what's left is for people who signed up.";
+  const then =
+    level === "cap"
+      ? "Everyone gets answers from their data alone until the 1st."
+      : level === "low"
+        ? `It's running low: past ${Math.round(CLAUDE_MONTH_WARN_SHARE * 100)}%, and at the limit everyone gets answers from their data alone until the 1st. Sample people's and statement tries' answers have stopped already.`
+        : "Sample people's and statement tries' answers have stopped, and what's left is for people who signed up.";
   const raise = "CHAT_MONTHLY_CAP_CENTS raises the limit. The admin page shows the day's spend.";
   try {
     const message = {

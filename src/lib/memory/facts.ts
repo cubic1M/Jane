@@ -310,7 +310,8 @@ const SOURCE_WORDS: Record<FactSource, string> = {
 // from and how sure. Empty when nothing is known well enough.
 export function memoryForChat(facts: readonly KnownFact[]): string {
   const usable = facts
-    .filter((f) => f.confidence >= USE_FROM_CONFIDENCE)
+    // Never stored, but whatever wrote it, never sent either (./sensitive.ts).
+    .filter((f) => f.confidence >= USE_FROM_CONFIDENCE && !isSensitiveFact(f))
     .slice(0, CHAT_MEMORY_FACTS);
   if (usable.length === 0) return "";
   return [

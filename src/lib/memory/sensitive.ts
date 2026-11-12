@@ -50,3 +50,19 @@ export function isSensitiveFact(fact: { key: string; label: string; value: unkno
   const value = typeof fact.value === "string" ? fact.value : "";
   return sensitiveCategory(`${fact.key} ${fact.label} ${value}`) !== null;
 }
+
+// Whether a profile fact (src/profile/facts.ts) stays out of what Claude is sent: one of the
+// inferences above whatever its value, or a value in the person's own words that touches a
+// sensitive category (an employer that is a church). The labels are the app's own words, so not
+// those: "You pay for health insurance yourself" is about insurance.
+export function isSensitiveProfileFact(key: string, value: unknown): boolean {
+  if (SENSITIVE_KEYS.has(key)) return true;
+  return typeof value === "string" && sensitiveCategory(value) !== null;
+}
+
+// Whether something the person told Jane (a preference, src/lib/jane-agent/preferences.ts) stays
+// out of what Claude is sent. Stored before the fact filter runs, as the person's own wish, so it
+// is checked here instead: "never suggest cutting my therapy" names their health.
+export function isSensitivePreference(p: { key: string; label: string; value: unknown }): boolean {
+  return isSensitiveFact({ key: p.key, label: p.label, value: JSON.stringify(p.value ?? "") });
+}
