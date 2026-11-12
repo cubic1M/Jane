@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { VERIFIED_PERCENT, WATCH_DAYS } from "@/config/outcomes";
+import { HELD_DAYS, VERIFIED_PERCENT, WATCH_DAYS } from "@/config/outcomes";
+import type { TransactionWatch } from "@/detectors/contract";
 import { addDays } from "@/detection/units";
-import { asWatch, outcomeYearly, verifyWatch, watchOfFinding, type OutcomeTx } from "./outcomes";
+import {
+  asWatch,
+  checkHeld,
+  outcomeYearly,
+  verifyWatch,
+  watchOfFinding,
+  type OutcomeTx,
+} from "./outcomes";
 
 // The verified savings record's check: a saving counts only when later transactions show it,
 // and the transactions that show it are kept as the evidence.
@@ -243,5 +251,70 @@ describe("watchOfFinding, for a charge every six months", () => {
       kind: "charge_stops",
       payees: [{ description: "GEICO AUTO PAY 6MO PREMIUM", amountCents: 61_240, perYear: 2 }],
     });
+  });
+});
+
+// Jane's 24/7 engine, phase 4: idle cash moved by the person themselves is confirmed from the bank,
+// as a transfer out of the account it sat in, and held while it doesn't come back.
+describe("idle cash moved to a better account", () => {
+  const finding = {
+    accounts: [{ id: "chk", name: "Checking", balanceCents: 3_000_000 }],
+    excessCents: 1_500_000,
+  };
+  const move = (date: string, cents: number, accountId = "chk", pfc = "TRANSFER_OUT_SAVINGS") => ({
+    id: `${accountId}-${date}-${cents}`,
+    date,
+    amountCents: cents,
+    description: "ONLINE TRANSFER TO BARCLAYS",
+    pfc,
+    accountId,
+  });
+
+  it("watches transfers out of the idle accounts for the extra cash", () => {
+    expect(watchOfFinding("idle_cash", finding)).toEqual({
+      kind: "cash_moved",
+      accountIds: ["chk"],
+      amountCents: 1_500_000,
+    });
+    expect(watchOfFinding("idle_cash", { excessCents: 1_500_000 })).toBeNull();
+  });
+
+  it("is verified when transfers out reach half the extra cash, at the share that moved", () => {
+    const watch = watchOfFinding("idle_cash", finding) as TransactionWatch;
+    const on = { startedOn: START, asOf: addDays(START, 10), expectedCents: 6_000 };
+    const check = verifyWatch(watch, on, [move(addDays(START, 3), 1_000_000)]);
+    expect(check).toMatchObject({
+      status: "partial",
+      cents: 4_000,
+      yearly: true,
+      percent: VERIFIED_PERCENT.cash_moved,
+    });
+    expect(verifyWatch(watch, on, [move(addDays(START, 3), 1_500_000)])).toMatchObject({
+      status: "confirmed",
+      cents: 6_000,
+    });
+    // Too little, another account's, a purchase, or before acting: not the move.
+    for (const t of [
+      move(addDays(START, 3), 500_000),
+      move(addDays(START, 3), 1_500_000, "other"),
+      move(addDays(START, 3), 1_500_000, "chk", "GENERAL_MERCHANDISE_OTHER"),
+      move(addDays(START, -3), 1_500_000),
+    ]) {
+      expect(verifyWatch(watch, on, [t])).toEqual({ status: "waiting" });
+    }
+    expect(
+      verifyWatch(watch, { ...on, asOf: addDays(START, WATCH_DAYS.cash_moved + 1) }, []),
+    ).toMatchObject({ status: "not_seen" });
+  });
+
+  it("is held while the money stays moved, and lapses when it comes back", () => {
+    const watch = watchOfFinding("idle_cash", finding) as TransactionWatch;
+    const verifiedOn = addDays(START, 5);
+    const later = addDays(verifiedOn, HELD_DAYS + 1);
+    const on = { startedOn: START, verifiedOn, asOf: later, confirmedCents: 6_000 };
+    const statement = move(later, 100, "chk", "BANK_FEES_OTHER");
+    expect(checkHeld(watch, on, [statement])).toMatchObject({ status: "held" });
+    const back = move(addDays(verifiedOn, 20), -1_400_000, "chk", "TRANSFER_IN_ACCOUNT_TRANSFER");
+    expect(checkHeld(watch, on, [statement, back])).toMatchObject({ status: "lapsed" });
   });
 });

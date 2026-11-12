@@ -1,4 +1,5 @@
 import {
+  CASH_MOVED_MIN_SHARE,
   CONFIRMED_SHARE,
   FEE_COMPARE_DAYS,
   HELD_DAYS,
@@ -64,6 +65,22 @@ function reachOf(coveredThrough: Coverage | undefined, asOf: string, fallback: s
   return (accountId: string | undefined) =>
     !coveredThrough || !accountId ? asOf : minDay(asOf, coveredThrough[accountId] ?? fallback);
 }
+
+// Transfers out of an idle account since acting: the move to the better account.
+const movedOut = (
+  watch: Extract<TransactionWatch, { kind: "cash_moved" }>,
+  transactions: readonly OutcomeTx[],
+  startedOn: string,
+) =>
+  transactions
+    .filter(
+      (t) =>
+        t.amountCents > 0 &&
+        t.date >= startedOn &&
+        watch.accountIds.includes(t.accountId ?? "") &&
+        /^TRANSFER_OUT/.test(t.pfc ?? ""),
+    )
+    .sort((a, b) => a.date.localeCompare(b.date));
 
 const chargesFrom = (transactions: readonly OutcomeTx[]) => {
   const charges = transactions.filter((t) => t.amountCents > 0);
@@ -242,6 +259,25 @@ export function verifyWatch(
       : { status: "waiting" };
   }
 
+  if (watch.kind === "cash_moved") {
+    const out = movedOut(watch, transactions, startedOn);
+    const moved = out.reduce((sum, t) => sum + t.amountCents, 0);
+    if (moved >= watch.amountCents * CASH_MOVED_MIN_SHARE) {
+      const cents = Math.round(expectedCents * Math.min(1, moved / watch.amountCents));
+      return {
+        status: verdict(cents, expectedCents),
+        cents,
+        yearly: true,
+        percent: VERIFIED_PERCENT.cash_moved,
+        evidence: out.map((t) => t.id),
+        proof: `${formatCents(moved)} moved out of the account by ${dayLabel(out[out.length - 1]?.date ?? asOf)}.`,
+      };
+    }
+    return over
+      ? { status: "not_seen", evidence: [], proof: "No transfer out of the account came." }
+      : { status: "waiting" };
+  }
+
   // Fees that should stop: the FEE_COMPARE_DAYS after acting against the month before, once the
   // statements reach the end of them.
   const end = addDays(startedOn, FEE_COMPARE_DAYS);
@@ -395,6 +431,28 @@ export function checkHeld(
     return { status: "held", evidence, proof: sentence(proofs) };
   }
 
+  // Moved cash: held while no transfer of that size came back into the accounts.
+  if (watch.kind === "cash_moved") {
+    const back = transactions.filter(
+      (t) =>
+        t.amountCents < 0 &&
+        t.date > verifiedOn &&
+        t.date <= heldOn &&
+        watch.accountIds.includes(t.accountId ?? "") &&
+        /^TRANSFER_IN/.test(t.pfc ?? ""),
+    );
+    const returned = -back.reduce((sum, t) => sum + t.amountCents, 0);
+    if (returned >= watch.amountCents * CASH_MOVED_MIN_SHARE) {
+      return {
+        status: "lapsed",
+        evidence: back.map((t) => t.id),
+        proof: `${formatCents(returned)} came back into the account.`,
+      };
+    }
+    if (watch.accountIds.map(reach).reduce(minDay, asOf) < heldOn) return { status: "waiting" };
+    return { status: "held", evidence: [], proof: "The moved cash stayed where it went." };
+  }
+
   // Fees: the HELD_DAYS after verifying, against the month before acting.
   if (feeReach(watch, transactions, reach, asOf) < heldOn) return { status: "waiting" };
   const fees = transactions.filter(
@@ -433,6 +491,9 @@ export function checksOn(
   }
   if (watch.kind === "fee_stops") {
     return { on: addDays(startedOn, FEE_COMPARE_DAYS), until: false };
+  }
+  if (watch.kind === "cash_moved") {
+    return { on: addDays(startedOn, WATCH_DAYS.cash_moved), until: true };
   }
   const from = chargesFrom(transactions);
   const days = watch.payees.flatMap((p) => {
@@ -555,6 +616,16 @@ export function watchOfFinding(type: string, evidence: unknown): Watch | null {
       ];
       return total !== null && pfcs.length > 0
         ? { kind: "fee_stops", pfcs, monthlyCents: Math.round(total / 12) }
+        : null;
+    }
+    case "idle_cash": {
+      const accounts = (e as { accounts?: unknown }).accounts;
+      const ids = (Array.isArray(accounts) ? (accounts as { id?: unknown }[]) : [])
+        .map((a) => a.id)
+        .filter((id): id is string => typeof id === "string");
+      const amountCents = num((e as { excessCents?: unknown }).excessCents);
+      return ids.length > 0 && amountCents !== null && amountCents > 0
+        ? { kind: "cash_moved", accountIds: ids, amountCents }
         : null;
     }
     default:

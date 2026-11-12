@@ -22,6 +22,25 @@ function priceOf(s: Scored): string {
   return s.option.monthlyCents === null ? "" : `${money(s.option.monthlyCents)} a month`;
 }
 
+// "Checked 2:05 PM from barclaysus.com" for an option the offers catalog read today (src/lib/offers/),
+// with the hour; "Price checked Nov 3, 2026 ·" for one the team checked by hand.
+export function checkedLine(option: Scored["option"]): string {
+  if (!option.checkedTime) return `Price checked ${dayLabel(option.checkedAt, { year: true })} ·`;
+  // A moment, read on the person's own clock: the day and the hour where they are.
+  const at = new Date(option.checkedTime);
+  const day = at.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const time = at.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  return `Checked ${day}, ${time} from`;
+}
+
+const hostOf = (url: string) => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "").replace(/^banking\./, "");
+  } catch {
+    return "source";
+  }
+};
+
 function gainOf(s: Scored, savings: boolean): string {
   return savings
     ? `Earns about ${money(s.savingCents)} more a year`
@@ -85,14 +104,14 @@ function OptionRow({
           </span>
         )}
         <span className="text-xs text-zinc-500">
-          Price checked {dayLabel(option.checkedAt, { year: true })} ·{" "}
+          {checkedLine(option)}{" "}
           <a
             href={option.sourceUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="underline"
           >
-            source
+            {option.checkedTime ? hostOf(option.sourceUrl) : "source"}
           </a>
         </span>
       </span>
