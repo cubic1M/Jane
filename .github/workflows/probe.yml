@@ -44,6 +44,16 @@ jobs:
             echo "state=failed" >> "$GITHUB_OUTPUT"
           fi
 
+      # The offers catalog's sources, each on its own cadence (src/config/offers.ts): one call an
+      # hour, which reads only what's due. Its failures are the catalog's own alerts, not this issue.
+      - name: Refresh the offers catalog
+        if: steps.probe.outputs.state != 'off'
+        continue-on-error: true
+        run: |
+          code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 130 \
+            -H "Authorization: Bearer $PROBE_SECRET" "$SITE/api/cron/offers" || echo 000)
+          echo "HTTP $code"
+
       - name: Open or close the issue
         if: steps.probe.outputs.state != 'off'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9

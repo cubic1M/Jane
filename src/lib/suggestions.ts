@@ -4,7 +4,8 @@ import { promisesHiddenPage } from "@/config/hidden-pages";
 import { ADVICE_TOPICS, RESELECT_AFTER_DAYS, rankValue } from "@/config/suggestions";
 import { tellsThemToAct } from "@/lib/real-account-text";
 import { runDetectors } from "@/detectors";
-import type { Suggestion } from "@/detectors/contract";
+import type { MarketPrices, Suggestion } from "@/detectors/contract";
+import { liveOffers } from "@/lib/offers/catalog";
 import { ideaShortForms } from "@/detectors/helpers";
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
@@ -97,12 +98,13 @@ async function detectForWork(
   profile: Profile;
   input: ProfileInput;
 }> {
-  const [input, advice] = await Promise.all([
+  const [input, advice, market] = await Promise.all([
     loadProfileInput(userId, { client, now }),
     adviceMode(userId, { client }),
+    marketPrices({ client, now }),
   ]);
   const profile = buildProfile(input);
-  const suggestions = runDetectors({ profile, data: input }, undefined, (d, error) =>
+  const suggestions = runDetectors({ profile, data: input, market }, undefined, (d, error) =>
     log.error("Detector failed", {
       userId,
       detector: `${d.capability}:${d.topic}`,
@@ -114,6 +116,33 @@ async function detectForWork(
 
 // What a real account may see: no advice topic, and no card telling them what to do with their
 // money, whichever topic its author filed it under (src/lib/real-account-text.ts).
+// Today's plan prices for the detectors (src/detectors/contract.ts MarketPrices): the catalog's
+// live ones. A catalog that can't be read leaves the detectors on their typical prices.
+async function marketPrices({ client, now }: { client: PrismaClient; now: Date }) {
+  const offers = await liveOffers({ client, now, kind: "plan_price" }).catch(() => null);
+  if (!offers) return undefined;
+  return {
+    plans: offers.flatMap((o) => {
+      const plan = o.key.endsWith(".student")
+        ? "student"
+        : o.key.endsWith(".individual")
+          ? "individual"
+          : null;
+      return plan && o.merchantKey && o.valueCents !== null
+        ? [
+            {
+              merchantKey: o.merchantKey,
+              plan,
+              cents: o.valueCents,
+              checkedAt: o.checkedAt.toISOString(),
+              sourceUrl: o.sourceUrl,
+            },
+          ]
+        : [];
+    }),
+  } satisfies MarketPrices;
+}
+
 export function forRealAccount(
   s: Pick<Suggestion, "title" | "headline" | "short" | "why"> & { topic: string },
 ): boolean {

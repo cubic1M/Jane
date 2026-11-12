@@ -15,6 +15,8 @@ export const DAILY_JOBS: readonly string[] = [
   "invariants",
   // Every real person's figures against what must hold, in counts only (src/lib/invariants/accuracy.ts).
   "accuracy",
+  // The offers catalog (src/lib/offers/catalog.ts): hourly from the probe's workflow, daily as backstop.
+  "offers",
 ];
 // A daily job counts as missed once its last good run is this old (a day plus slack for
 // Vercel's scheduling).

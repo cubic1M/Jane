@@ -1827,6 +1827,63 @@ model SwitchOption {
   @@map("switch_options")
 }
 
+// Jane's offers catalog (src/lib/offers/, src/config/offers.ts): today's market options and figures,
+// each read from an official free API or the provider's own page, with where it came from, when it
+// was checked and when it stops being shown. Never an aggregator. A row past expires_at, or
+// quarantined (a value that failed its checks), is never shown. Shared reference data: no user_id.
+model MarketOffer {
+  id                  String    @id @default(cuid())
+  // Stable name, e.g. "tbill.13w", "fdic.savings", "savings.barclays", "plan.spotify.student".
+  key                 String    @unique
+  // The source in src/config/offers.ts that reads it.
+  source              String
+  // savings_apy, tbill_yield, national_rate, benchmark_rate or plan_price.
+  kind                String
+  provider            String
+  name                String
+  // Rates in basis points, prices in cents a month.
+  valueBps            Int?      @map("value_bps")
+  valueCents          Int?      @map("value_cents")
+  minimumBalanceCents Int       @default(0) @map("minimum_balance_cents")
+  // For a plan: the merchant directory key of the service.
+  merchantKey         String?   @map("merchant_key")
+  sourceUrl           String    @map("source_url")
+  signUpUrl           String?   @map("sign_up_url")
+  checkedAt           DateTime  @map("checked_at") @db.Timestamptz(3)
+  expiresAt           DateTime  @map("expires_at") @db.Timestamptz(3)
+  // live or quarantined.
+  status              String    @default("live")
+  // api, parser, claude or seed.
+  extractedBy         String    @map("extracted_by")
+  // The page's fingerprint when it was read: a changed page is what lets Claude try.
+  fingerprint         String?
+  // When the value last moved (or first appeared): what reverse matching starts from.
+  changedAt           DateTime? @map("changed_at") @db.Timestamptz(3)
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([kind, status, expiresAt])
+  @@index([source])
+  @@map("market_offers")
+}
+
+// What happened to the catalog, for the founders and the caps: a value that changed, one
+// quarantined, a source that failed, a Claude read (counted against its monthly cap).
+model MarketOfferEvent {
+  id        String   @id @default(cuid())
+  source    String
+  offerKey  String?  @map("offer_key")
+  // changed, new, quarantined, failed, claude or seeded.
+  kind      String
+  // Old and new value, or the reason; never anything about a person.
+  detail    Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([kind, createdAt])
+  @@index([source, createdAt])
+  @@map("market_offer_events")
+}
+
 model Merchant {
   id                     String    @id @default(cuid())
   // Normalized merchant key (src/data-sources/merchant.ts), lower case.

@@ -108,7 +108,19 @@ export type Suggestion = {
   more?: { label: string; href: string }[];
 };
 
-export type DetectorContext = { profile: Profile; data: ProfileInput };
+// Today's plan prices from the offers catalog (src/lib/offers/), live ones only: a price past its time
+// or quarantined is never here. Absent in pure runs (the harness, tests): the config's typical prices.
+export type MarketPrices = {
+  plans: readonly {
+    merchantKey: string;
+    plan: "individual" | "student";
+    cents: number;
+    checkedAt: string;
+    sourceUrl: string;
+  }[];
+};
+
+export type DetectorContext = { profile: Profile; data: ProfileInput; market?: MarketPrices };
 
 export type Detector = {
   // The registry capability this detector belongs to (src/lib/jane-agent/capabilities).
