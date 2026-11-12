@@ -53,11 +53,11 @@ const STOCK_PICKS = [
   /\b(?:[Bb]uy|[Ss]ell)(?:ing)?\s+(?:some |more )?[A-Z][a-z]+\s+(?:over|instead of|rather than|versus|vs\.?)\s+[A-Z][a-z]+\b(?=\s*(?:[.!?,;]|$))/,
   // "VTI is the better pick", "Apple is a better buy than Microsoft", "Tesla looks like a buy".
   new RegExp(
-    `\\b(?:${NOT_TICKERS}[A-Z]{3,5}|${COMPANY})\\s+(?:is|looks|seems|would be|could be|might be|makes)(?: like)?(?: an?| the)?(?: (?:good|better|best|great|strong|smart|solid))?\\s+(?:buy|pick|bet)\\b`,
+    `\\b(?:${NOT_TICKERS}[A-Z]{3,5}|${COMPANY})\\s+(?:is|looks|seems|would be|could be|might be|makes)(?: like)?(?: an?| the)?(?: (?:good|better|best|great|strong|stronger|strongest|smart|smarter|safe|safer|safest|solid|top|clear))?\\s+(?:buy|pick|bet|choice|play)\\b`,
   ),
-  // "My top pick is Apple".
+  // "My top pick is Apple", "The safer bet is VOO" (chat policy round 10, 11-12).
   new RegExp(
-    `\\b(?:pick|choice|favou?rite) (?:is|would be)\\s+(?:${NOT_TICKERS}[A-Z]{3,5}\\b(?![&-])|${COMPANY}\\b${END_OF_PICK})`,
+    `\\b(?:pick|choice|favou?rite|bet|buy|play) (?:is|would be)\\s+(?:${NOT_TICKERS}[A-Z]{3,5}\\b(?![&-])|${COMPANY}\\b${END_OF_PICK})`,
   ),
   // "Tesla is overvalued". Of a home or a car it says nothing about a share.
   new RegExp(
@@ -91,7 +91,7 @@ const INVESTMENT = [
   /\bannuit(y|ies)\b/i,
   // What to buy, sell or hold, and how investments did (spec step 66: balances only).
   // A bank "holding the funds" from a deposit is a hold, not a holding.
-  /\b(buy|buying|sell|selling|dump|trim|trimm(?:ing|ed))\b(?:[^.!?]|\.\d){0,40}\b(positions?|holdings?|funds?|shares?|stocks?|assets?)\b/i,
+  /\b(buy|buying|sell|selling|dump|trim|trimm(?:ing|ed))\b(?:[^.!?]|\.\d){0,40}\b(positions?|holdings?|funds?|shares?|stocks?|assets?|stakes?(?! in (?:the|your|a|my|their) (?:car|house|home|condo|boat|truck)\b))\b/i,
   /\b(hold|holding)\b(?:[^.!?]|\.\d){0,40}\b(positions?|holdings?|shares?|stocks?)\b/i,
   // A bare ticker (11-03): "Buy NVDA", "$NVDA", "put it into TSLA". Written in capitals, so "buy a TV"
   // and the things in capitals people do buy aren't one.
@@ -229,6 +229,11 @@ const TAX_ADVICE = [
   // withheld stays a fact.
   /(?:^|[.!?:;]\s+|\byou should\s+|\bi(?:'|’)?d\s+)(?:increase|raise|lower|reduce|change|adjust|update|bump|boost)\b[^.!?]{0,30}\bwithholding\b/i,
   /\b(?:file|fill out|submit|give|send) (?:your employer )?a new w-?4\b/i,
+  // What to put on it, and claiming a credit (chat policy round 10, 11-12): "Put 0 on line 4(c) of
+  // your W-4", "Set your W-4 to single", "You qualify for the EITC, so claim it". Where the IRS's
+  // estimator says what to put stays a pointer.
+  /(?:^|[.!?:;]\s+|\byou should\s+|\bi(?:'|’)?d\s+)(?:put|enter|write|set|mark|claim|list|choose|select|pick|add|leave)\b[^.!?]{0,60}\bw-?4\b/i,
+  /\b(?:credits?|deductions?|exemptions?)\b[^.!?]{0,40}\bclaim (?:it|them|that|this|one|both)\b/i,
   // Said another way (security round 48): "Withhold more from your paycheck", "Have your employer
   // withhold an extra $100", "Claim fewer allowances". "Your employer withholds $300" is a fact.
   /\bwithhold (?:more|less|an extra|extra|an additional|additional)\b/i,
@@ -306,6 +311,9 @@ const LEGAL = [
   /\bstatute of limitations\b[^.!?]{0,30}\b(?:has |had |is )?(?:run out|ran out|passed|expired|ended|up|over)\b/i,
   /\blegally,? (?:they|you|he|she|it|the \w+|your \w+) (?:can(?:'|’)?t|cannot|can|must|have to|don(?:'|’)?t have to|do not have to)\b/i,
   /\bmake (?:them|the collector|the agency|the lender) prove\b|\b(?:don(?:'|’)?t|do not) have to pay (?:it|this|that|them|the debt)(?: back)? (?:blindly|at all)\b/i,
+  // Holding back from a collector (chat policy round 10, 11-12): "Don't pay the collector until they
+  // send validation".
+  /\b(?:don(?:'|’)?t|do not|never|hold off on|wait to) pay(?:ing)? (?:the |a |that |this |any |your )?(?:debt )?(?:collectors?|collection agency|collections?|creditors?)\b/i,
   /\bignore (?:the |that |this |any |their |those )?(?:debt )?(?:collectors?|collection (?:letters?|calls?|notices?|agency)|lawsuit|summons|court (?:date|papers|notice)|subpoena)\b/i,
   /\b(?:have|has|got) (?:a |an )?(?:\w+ )?case against\b/i,
   /\b(?:is |are |was |were )?(?:breaking|broke|violating|violated) the law\b/i,
