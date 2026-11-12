@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { percentFor, scanBarText, stageLabel, stagesDone } from "@/app/scanning/stages";
+import { announceScanned } from "@/lib/side-chat";
 import type { ScanProgress } from "@/lib/scan";
 
 // The first scan's loading bar (founder: "replace it with like a loading bar during the initial
@@ -66,6 +67,7 @@ export function ScanBar({ initial }: { initial: ScanProgress }) {
   useEffect(() => {
     if (!done) return;
     router.refresh();
+    announceScanned();
     const timer = setTimeout(() => setGone(true), 900);
     return () => clearTimeout(timer);
   }, [done, router]);

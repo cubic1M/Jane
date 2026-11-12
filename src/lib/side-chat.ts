@@ -1,5 +1,7 @@
 import { tabFor } from "@/config/navigation";
 import {
+  CARDS_CHANGED_EVENT,
+  DATA_CHANGED_EVENT,
   FAB_END_PX,
   FAB_SCROLL_SLACK_PX,
   FAB_TOP_PX,
@@ -182,4 +184,13 @@ export function fabTucked(
   if (to < FAB_TOP_PX || to >= end - FAB_END_PX) return false;
   if (Math.abs(to - from) < FAB_SCROLL_SLACK_PX) return tucked;
   return to > from;
+}
+
+// The first scan finished while a page was open (after its router.refresh()): the side chat, a
+// page of its own in a frame, reloads, and the card dock loads the cards the scan made. Without
+// this the dock only looked again a minute later, so a new person saw no yes/no card at the end
+// of their first sync until they reloaded (debugger 11-12).
+export function announceScanned(target: EventTarget = window) {
+  target.dispatchEvent(new Event(DATA_CHANGED_EVENT));
+  target.dispatchEvent(new Event(CARDS_CHANGED_EVENT));
 }
