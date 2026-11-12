@@ -92,6 +92,11 @@ jobs:
         with:
           # A pull request is compared with its base commit, so the base must be here.
           fetch-depth: 0
+      # The runner's own python3 became 3.14 (11-12), and this Semgrep crashes importing on it
+      # ("Metaclasses with custom tp_new are not supported").
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
       # setuptools: this Semgrep still imports pkg_resources, which newer setuptools removed.
       - name: Install Semgrep
         run: |
