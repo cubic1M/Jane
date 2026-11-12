@@ -91,6 +91,30 @@ describe("idle_cash", () => {
     );
   });
 
+  it("nets refunds against the months of spending, as the Money page does", () => {
+    // The same months with a $900 order sent back in full: the same spending.
+    const returned = [
+      tx({
+        ...GROCERIES,
+        accountId: CARD.id,
+        date: monthsAgo(2),
+        amountCents: 90_000,
+        description: "BIG STORE",
+      }),
+      tx({
+        ...GROCERIES,
+        accountId: CARD.id,
+        date: monthsAgo(1),
+        amountCents: -90_000,
+        description: "BIG STORE",
+      }),
+    ];
+    const average = (transactions: typeof spending) =>
+      idleCash(input({ transactions }), [])[0].evidence.averageMonthlySpendingCents;
+
+    expect(average([...spending, ...returned])).toBe(average(spending));
+  });
+
   it("is low confidence with under three months of history", () => {
     const transactions = [tx({ ...GROCERIES, date: "2026-09-20", amountCents: 150_000 })];
 

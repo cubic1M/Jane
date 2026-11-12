@@ -12,6 +12,7 @@ import {
   plaidStream,
   tx,
 } from "./__fixtures__/build";
+import { incomeStreams } from "./forecast";
 import { buildStreams, detectRecurring, extends_ } from "./streams";
 import type { DetectionTransaction } from "./types";
 import { addDays } from "./units";
@@ -347,6 +348,36 @@ describe("buildStreams", () => {
         input({ transactions: [...onCard, ...onChecking], recurringStreams: [hulu] }),
       ).map((s) => s.merchant),
     ).toEqual(["Spotify", "Hulu"]);
+  });
+
+  it("leaves out a Plaid stream that rests on one charge (EARLY_DETECTION)", () => {
+    const guess = plaidStream({
+      merchantName: "The Local Cafe",
+      status: "EARLY_DETECTION",
+      lastAmountCents: 4800,
+      averageAmountCents: 4800,
+      transactionIds: ["plaid_seen_a"],
+    });
+
+    expect(
+      buildStreams(input({ recurringStreams: [guess, plaidStream()] })).map((s) => s.merchant),
+    ).toEqual(["Netflix"]);
+    // Paydays too: one paycheck is no schedule.
+    expect(
+      incomeStreams(
+        input({
+          recurringStreams: [
+            {
+              ...guess,
+              merchantName: "Acme Corp",
+              pfcPrimary: "INCOME",
+              lastAmountCents: -125000,
+              averageAmountCents: -125000,
+            },
+          ],
+        }),
+      ),
+    ).toEqual([]);
   });
 
   it("keeps the Plaid stream when the fallback finds the same merchant elsewhere", () => {

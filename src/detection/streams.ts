@@ -6,6 +6,7 @@ import {
   FALLBACK_AMOUNT_TOLERANCE,
   FALLBACK_INTERVAL_DAYS,
   FALLBACK_MIN_CHARGES,
+  PLAID_STREAM_MIN_CHARGES,
   RUN_MIN_SHARE_OF_CHARGES,
   USAGE_BILL_DAY_SPREAD,
   USAGE_BILL_MIN_CHARGES,
@@ -669,7 +670,7 @@ export function buildStreams(input: DetectionInput): Stream[] {
     input.transactions.flatMap((t) => (t.plaidTransactionId ? [[t.plaidTransactionId, t]] : [])),
   );
   const fromPlaid = input.recurringStreams
-    .filter((s) => s.averageAmountCents > 0)
+    .filter((s) => s.averageAmountCents > 0 && s.transactionIds.length >= PLAID_STREAM_MIN_CHARGES)
     .sort((a, b) => a.plaidStreamId.localeCompare(b.plaidStreamId))
     .map((s) => fromPlaidStream(s, byPlaidId));
 

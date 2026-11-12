@@ -1,3 +1,4 @@
+import { accountCopies, withoutCopies } from "@/lib/account-copies";
 import {
   BNPL_LOOKBACK_DAYS,
   BNPL_PROVIDERS,
@@ -40,104 +41,118 @@ async function loadDebtsFrom(
   const asOf = isoDay(now);
   const since = new Date(Date.parse(`${asOf}T00:00:00Z`) - BNPL_LOOKBACK_DAYS * DAY_MS);
   const words = BNPL_PROVIDERS.flatMap((p) => p.words);
-  const [accounts, payments, typed, newLoans, transfers, loanPayments] = await Promise.all([
-    db.accounts.findMany({
-      where: { type: { in: ["credit", "loan"] } },
-      select: {
-        id: true,
-        name: true,
-        mask: true,
-        type: true,
-        subtype: true,
-        currentBalanceCents: true,
-        liability: {
-          select: {
-            aprBps: true,
-            rateType: true,
-            minimumPaymentCents: true,
-            nextPaymentDueDate: true,
-            payoffDate: true,
-            isOverdue: true,
-            pastDueCents: true,
-            originationPrincipalCents: true,
-            description: true,
+  const [listedAccounts, payments, typed, newLoans, transfers, loanPayments, copies] =
+    await Promise.all([
+      db.accounts.findMany({
+        where: { type: { in: ["credit", "loan"] } },
+        select: {
+          id: true,
+          name: true,
+          mask: true,
+          type: true,
+          subtype: true,
+          currentBalanceCents: true,
+          liability: {
+            select: {
+              aprBps: true,
+              rateType: true,
+              minimumPaymentCents: true,
+              nextPaymentDueDate: true,
+              payoffDate: true,
+              isOverdue: true,
+              pastDueCents: true,
+              originationPrincipalCents: true,
+              description: true,
+            },
           },
         },
-      },
-      orderBy: { id: "asc" },
-    }),
-    db.transactions.findMany({
-      where: {
-        date: { gte: since },
-        amountCents: { gt: 0 },
-        OR: words.flatMap((w) => [
-          { merchantName: { contains: w, mode: "insensitive" as const } },
-          { description: { contains: w, mode: "insensitive" as const } },
-        ]),
-      },
-      select: { date: true, amountCents: true, description: true, merchantName: true },
-    }),
-    db.debtTerms.findMany({
-      select: {
-        debtKey: true,
-        aprBps: true,
-        minimumPaymentCents: true,
-        balanceCents: true,
-        payoffDate: true,
-        updatedAt: true,
-      },
-    }),
-    // Spec step 112: loans the person accepted through Jane, once funded.
-    db.loanApplications.findMany({
-      where: { status: { in: ["funded", "paid_off"] }, fundedAt: { not: null } },
-      select: {
-        id: true,
-        lender: true,
-        product: true,
-        aprBps: true,
-        rateType: true,
-        termMonths: true,
-        amountCents: true,
-        monthlyCents: true,
-        fundedAt: true,
-      },
-    }),
-    // Spec step 113: balances moved to a 0% card, until that card is linked.
-    db.balanceTransfers.findMany({
-      where: { status: "active" },
-      select: {
-        id: true,
-        issuer: true,
-        cardName: true,
-        amountCents: true,
-        feeCents: true,
-        promoMonths: true,
-        monthlyNeededCents: true,
-        startedOn: true,
-        promoEndsOn: true,
-      },
-    }),
-    // Loans paid from checking with no loan account on file (src/insights/paid-loans.ts).
-    db.transactions.findMany({
-      where: {
-        date: { gte: since },
-        amountCents: { gt: 0 },
-        pfcDetailed: { in: Object.keys(PAID_LOAN_CATEGORIES) },
-      },
-      select: {
-        date: true,
-        amountCents: true,
-        description: true,
-        merchantName: true,
-        pfcDetailed: true,
-      },
-    }),
-  ]);
+        orderBy: { id: "asc" },
+      }),
+      db.transactions.findMany({
+        where: {
+          date: { gte: since },
+          amountCents: { gt: 0 },
+          OR: words.flatMap((w) => [
+            { merchantName: { contains: w, mode: "insensitive" as const } },
+            { description: { contains: w, mode: "insensitive" as const } },
+          ]),
+        },
+        select: {
+          accountId: true,
+          date: true,
+          amountCents: true,
+          description: true,
+          merchantName: true,
+        },
+      }),
+      db.debtTerms.findMany({
+        select: {
+          debtKey: true,
+          aprBps: true,
+          minimumPaymentCents: true,
+          balanceCents: true,
+          payoffDate: true,
+          updatedAt: true,
+        },
+      }),
+      // Spec step 112: loans the person accepted through Jane, once funded.
+      db.loanApplications.findMany({
+        where: { status: { in: ["funded", "paid_off"] }, fundedAt: { not: null } },
+        select: {
+          id: true,
+          lender: true,
+          product: true,
+          aprBps: true,
+          rateType: true,
+          termMonths: true,
+          amountCents: true,
+          monthlyCents: true,
+          fundedAt: true,
+        },
+      }),
+      // Spec step 113: balances moved to a 0% card, until that card is linked.
+      db.balanceTransfers.findMany({
+        where: { status: "active" },
+        select: {
+          id: true,
+          issuer: true,
+          cardName: true,
+          amountCents: true,
+          feeCents: true,
+          promoMonths: true,
+          monthlyNeededCents: true,
+          startedOn: true,
+          promoEndsOn: true,
+        },
+      }),
+      // Loans paid from checking with no loan account on file (src/insights/paid-loans.ts).
+      db.transactions.findMany({
+        where: {
+          date: { gte: since },
+          amountCents: { gt: 0 },
+          pfcDetailed: { in: Object.keys(PAID_LOAN_CATEGORIES) },
+        },
+        select: {
+          accountId: true,
+          date: true,
+          amountCents: true,
+          description: true,
+          merchantName: true,
+          pfcDetailed: true,
+        },
+      }),
+      accountCopies(db),
+    ]);
+  // An account linked twice counts once (src/lib/account-copies.ts).
+  const accounts = withoutCopies(listedAccounts, copies, (a) => a.id);
   return debtBook(
     {
       accounts,
       plans: bnplPlans(
-        payments.map((p) => ({ ...p, date: isoDay(p.date) })),
+        withoutCopies(payments, copies, (p) => p.accountId).map(({ accountId: _, ...p }) => ({
+          ...p,
+          date: isoDay(p.date),
+        })),
         asOf,
       ),
       typed: typed.map((t) => ({
@@ -149,7 +164,10 @@ async function loadDebtsFrom(
         updatedOn: isoDay(t.updatedAt),
       })),
       paid: paidLoans(
-        loanPayments.map((p) => ({ ...p, date: isoDay(p.date) })),
+        withoutCopies(loanPayments, copies, (p) => p.accountId).map(({ accountId: _, ...p }) => ({
+          ...p,
+          date: isoDay(p.date),
+        })),
         asOf,
       ),
       newLoans: [

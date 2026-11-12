@@ -1,3 +1,4 @@
+import { accountCopies, withoutCopies } from "@/lib/account-copies";
 import {
   DEADLINE_HORIZON_DAYS,
   DEADLINE_MAX_YEARS_AHEAD,
@@ -81,11 +82,19 @@ export const transactionDeadlines: DeadlineSource = async (userId, options) =>
 
 // Card and loan due dates the bank reports (spec step 65).
 export const loanDeadlines: DeadlineSource = async (userId, { client, now }) => {
-  const accounts = await scopedFor(userId, client).accounts.findMany({
-    where: { type: { in: ["credit", "loan"] } },
-    select: DEBT_ACCOUNT_SELECT,
-  });
-  return paymentDeadlines(accounts, isoDate(now));
+  const db = scopedFor(userId, client);
+  const [accounts, copies] = await Promise.all([
+    db.accounts.findMany({
+      where: { type: { in: ["credit", "loan"] } },
+      select: DEBT_ACCOUNT_SELECT,
+    }),
+    accountCopies(db),
+  ]);
+  // An account linked twice is due once (src/lib/account-copies.ts).
+  return paymentDeadlines(
+    withoutCopies(accounts, copies, (a) => a.id),
+    isoDate(now),
+  );
 };
 
 // The ones the person typed in.

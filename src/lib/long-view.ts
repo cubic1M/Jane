@@ -1,3 +1,4 @@
+import { accountCopies, withoutCopies } from "@/lib/account-copies";
 import {
   CASH_REAL_GROWTH,
   DEFAULT_INVEST_SHARE_OF_MARGIN,
@@ -82,17 +83,23 @@ export async function loadLongView(
   const input = given ?? (await loadDetectionInput(userId, { client, now }));
   if (input.accounts.length === 0) return null;
   const db = scopedFor(userId, client);
-  const [accounts, ownedRows, crypto, payoff, health, auto, advice] = await Promise.all([
-    db.accounts.findMany({
-      select: { id: true, name: true, type: true, currentBalanceCents: true },
-    }),
-    db.ownedAssets.findMany({ select: { id: true, kind: true, valueCents: true, valuedOn: true } }),
-    cryptoTotal(userId, { client }),
-    loadPayoff(userId, { client, now }),
-    healthInput(userId, input, { client, now }),
-    db.autoInvestPlans.findFirst({ where: { status: "active" }, select: { amountCents: true } }),
-    adviceMode(userId, { client }),
-  ]);
+  const [listedAccounts, ownedRows, crypto, payoff, health, auto, advice, copies] =
+    await Promise.all([
+      db.accounts.findMany({
+        select: { id: true, name: true, type: true, currentBalanceCents: true },
+      }),
+      db.ownedAssets.findMany({
+        select: { id: true, kind: true, valueCents: true, valuedOn: true },
+      }),
+      cryptoTotal(userId, { client }),
+      loadPayoff(userId, { client, now }),
+      healthInput(userId, input, { client, now }),
+      db.autoInvestPlans.findFirst({ where: { status: "active" }, select: { amountCents: true } }),
+      adviceMode(userId, { client }),
+      accountCopies(db),
+    ]);
+  // An account linked twice counts once (src/lib/account-copies.ts).
+  const accounts = withoutCopies(listedAccounts, copies, (a) => a.id);
   const owned = ownedRows.map((o) => ({
     id: o.id,
     valueCents: o.valueCents,

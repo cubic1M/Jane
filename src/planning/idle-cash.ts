@@ -75,11 +75,14 @@ export function cashCushionOf(input: IdleInput): Omit<IdleCash, "earnsCents"> | 
     .sort((a, b) => a.id.localeCompare(b.id));
   // Spending in the lookback window only, the same twelve months wherever the data came from.
   const cutoff = monthsBefore(input.asOf, LOOKBACK_MONTHS);
+  // Refunds (money back in a spending category) net against it, as on the Money page: a fully
+  // returned order isn't a month's spending (beta accuracy: "You spend about $1,247 a month" where
+  // the Money page's months averaged $1,189). Money in with no category, or as income, isn't one.
   const spending = input.transactions.filter(
     (t) =>
       t.date > cutoff &&
       t.date <= input.asOf &&
-      t.amountCents > 0 &&
+      (t.amountCents > 0 || (t.pfc !== null && !t.pfc.startsWith("INCOME"))) &&
       !NON_SPENDING_PRIMARIES.some((p) => (t.pfc ?? "").startsWith(p)) &&
       !NON_SPENDING_CATEGORIES.includes(t.pfc as never),
   );
@@ -104,9 +107,11 @@ export function cashCushionOf(input: IdleInput): Omit<IdleCash, "earnsCents"> | 
   let shortest = Infinity;
   for (const accountId of [...new Set(usual.map((t) => t.accountId))].sort()) {
     const rows = usual.filter((t) => t.accountId === accountId);
-    const earliest = rows.reduce((min, t) => (t.date < min ? t.date : min), input.asOf);
+    const bought = rows.filter((t) => t.amountCents > 0);
+    if (bought.length === 0) continue;
+    const earliest = bought.reduce((min, t) => (t.date < min ? t.date : min), input.asOf);
     const months = Math.max(1, daysBetween(earliest, input.asOf) / DAYS_PER_MONTH);
-    monthly += rows.reduce((sum, t) => sum + t.amountCents, 0) / months;
+    monthly += Math.max(0, rows.reduce((sum, t) => sum + t.amountCents, 0)) / months;
     shortest = Math.min(shortest, months);
   }
   const monthlyCents = Math.round(monthly);

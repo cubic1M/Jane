@@ -7,11 +7,13 @@ import {
 import type { PrismaClient } from "@/generated/prisma/client";
 import { netWorth, netWorthLine, type Unbalanced } from "@/insights/net-worth";
 import { monthsEnding } from "@/insights/spending";
+import { withoutCopies } from "@/lib/account-copies";
 import { cryptoTotal } from "@/lib/crypto/crypto";
 import { DAY_MS } from "@/lib/dates";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { todayOf } from "@/lib/today";
+import { copiesToLeaveOut } from "@/planning/books";
 
 // Net worth today and at the end of each month before it, worked out one way for the home hub,
 // /net-worth and the monthly report (src/insights/net-worth.ts, netWorthLine), so they never
@@ -36,9 +38,17 @@ export async function loadNetWorthHistory(
   const db = scopedFor(userId, client);
   const asOf = await todayOf(userId, { client, now });
   const [first] = monthsEnding(asOf, months);
-  const [accounts, snapshots, ownedRows, crypto] = await Promise.all([
+  const [allAccounts, allSnapshots, ownedRows, crypto] = await Promise.all([
     db.accounts.findMany({
-      select: { id: true, name: true, type: true, subtype: true, currentBalanceCents: true },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        subtype: true,
+        currentBalanceCents: true,
+        itemId: true,
+        mask: true,
+      },
     }),
     db.balanceSnapshots.findMany({
       where: { date: { gte: new Date(`${first}-01T00:00:00Z`) } },
@@ -49,7 +59,11 @@ export async function loadNetWorthHistory(
     }),
     cryptoTotal(userId, { client }),
   ]);
-  if (accounts.length === 0) return null;
+  if (allAccounts.length === 0) return null;
+  // An account linked twice counts once (src/lib/account-copies.ts).
+  const copies = copiesToLeaveOut(allAccounts);
+  const accounts = withoutCopies(allAccounts, copies, (a) => a.id);
+  const snapshots = withoutCopies(allSnapshots, copies, (s) => s.accountId);
   const owned = ownedRows.map((o) => ({ ...o, valuedOn: o.valuedOn.toISOString().slice(0, 10) }));
   const today = netWorth(
     accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })),
@@ -93,7 +107,15 @@ export async function onlyDebtsSeen(
   const db = scopedFor(userId, client);
   const [accounts, owned, crypto] = await Promise.all([
     db.accounts.findMany({
-      select: { id: true, name: true, type: true, currentBalanceCents: true },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        currentBalanceCents: true,
+        itemId: true,
+        mask: true,
+        subtype: true,
+      },
     }),
     db.ownedAssets.findMany({
       select: { id: true, valueCents: true, valuedOn: true, loanAccountId: true },
@@ -101,7 +123,10 @@ export async function onlyDebtsSeen(
     cryptoTotal(userId, { client }),
   ]);
   return netWorth(
-    accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })),
+    withoutCopies(accounts, copiesToLeaveOut(accounts), (a) => a.id).map((a) => ({
+      ...a,
+      balanceCents: a.currentBalanceCents,
+    })),
     owned.map((o) => ({ ...o, valuedOn: o.valuedOn.toISOString().slice(0, 10) })),
     crypto,
   ).onlyDebts;

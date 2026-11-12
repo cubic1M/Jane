@@ -1,3 +1,4 @@
+import { accountCopies, withoutCopies } from "@/lib/account-copies";
 import Link from "next/link";
 import { ShownLink } from "@/components/shown-link";
 import { connection } from "next/server";
@@ -32,7 +33,7 @@ async function NetWorthContent() {
   const db = await scopedDb();
   const asOf = await todayOf(user.id);
   const [first] = monthsEnding(asOf, NET_WORTH_MONTHS);
-  const [accounts, snapshots, ownedRows, crypto] = await Promise.all([
+  const [listedAccounts, snapshots, ownedRows, crypto, copies] = await Promise.all([
     db.accounts.findMany({
       select: { id: true, name: true, type: true, subtype: true, currentBalanceCents: true },
       orderBy: { name: "asc" },
@@ -47,7 +48,10 @@ async function NetWorthContent() {
     }),
     // Crypto, read-only (spec step 161).
     cryptoTotal(user.id),
+    accountCopies(db),
   ]);
+  // An account linked twice counts once (src/lib/account-copies.ts).
+  const accounts = withoutCopies(listedAccounts, copies, (a) => a.id);
   const owned = ownedRows.map((o) => ({ ...o, valuedOn: o.valuedOn.toISOString().slice(0, 10) }));
   const today = netWorth(
     accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })),

@@ -1,3 +1,4 @@
+import { accountCopies, withoutCopies } from "@/lib/account-copies";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { loadDetectionInput } from "@/detection/engine";
 import { recurringCharges } from "@/detection/subscriptions";
@@ -9,6 +10,7 @@ import { netWorth, type NetWorth } from "@/insights/net-worth";
 import { spendingInsights } from "@/insights/spending";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { todayOf } from "@/lib/today";
 import { listGoals } from "@/lib/goals";
 import { formatCents } from "@/lib/money";
 import { assetPrompts, promptHref, type AssetPrompt } from "@/lib/owned-assets";
@@ -182,9 +184,10 @@ export async function loadMoneyHub(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<MoneyData> {
   const db = scopedFor(userId, client);
-  const asOf = now.toISOString().slice(0, 10);
+  // The person's own day, as every other page reads it (3pm and 7pm in Los Angeles agree).
+  const asOf = await todayOf(userId, { client, now });
   const [
-    accounts,
+    listedAccounts,
     owned,
     goals,
     budgets,
@@ -194,6 +197,7 @@ export async function loadMoneyHub(
     documents,
     insurance,
     crypto,
+    copies,
   ] = await Promise.all([
     db.accounts.findMany({
       select: DEBT_ACCOUNT_SELECT,
@@ -213,7 +217,10 @@ export async function loadMoneyHub(
     loadInsurance(userId, { client, now }),
     // Crypto, read-only (spec step 161).
     cryptoTotal(userId, { client }),
+    accountCopies(db),
   ]);
+  // An account linked twice counts once (src/lib/account-copies.ts).
+  const accounts = withoutCopies(listedAccounts, copies, (a) => a.id);
 
   // Net worth today, as /net-worth works it out.
   const worth = netWorth(

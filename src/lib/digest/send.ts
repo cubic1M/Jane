@@ -1,3 +1,4 @@
+import { accountCopies, withoutCopies } from "@/lib/account-copies";
 import { log } from "@/lib/log";
 import { actionWorthCents } from "@/lib/saved-amount";
 import { conciergeMode } from "@/lib/concierge-mode";
@@ -229,7 +230,7 @@ async function plansFor(userId: string, now: Date, client: PrismaClient): Promis
   const db = scopedFor(userId, client);
   const asOf = now.toISOString().slice(0, 10);
   const weekAgo = new Date(now.getTime() - WEEK_MS).toISOString().slice(0, 10);
-  const [budgetRows, goals, accounts, snapshots] = await Promise.all([
+  const [budgetRows, goals, listedAccounts, snapshots, copies] = await Promise.all([
     db.budgets.findMany({ select: { category: true, amountCents: true } }),
     listGoals(userId, { client, now }),
     db.accounts.findMany({
@@ -239,7 +240,10 @@ async function plansFor(userId: string, now: Date, client: PrismaClient): Promis
       where: { date: { lte: new Date(`${weekAgo}T00:00:00Z`) } },
       select: { accountId: true, date: true, balanceCents: true },
     }),
+    accountCopies(db),
   ]);
+  // An account linked twice counts once (src/lib/account-copies.ts).
+  const accounts = withoutCopies(listedAccounts, copies, (a) => a.id);
   const summary =
     budgetRows.length === 0
       ? null

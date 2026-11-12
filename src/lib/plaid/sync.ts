@@ -178,9 +178,19 @@ async function saveTransactions(db: ScopedDb, accountIds: Map<string, string>, s
   const categorized = await categorizeTransactions(sync.transactions, db, {
     claude: meteredClaude(db.userId),
   });
+  // A posted transaction replaces its pending one (Plaid's pending_transaction_id), whether or
+  // not Plaid has listed the pending one as removed yet: never both, so nothing counts twice.
+  // A category the person set on the pending one carries over. Inside one sync too: a charge
+  // pending and posted since the last one can come as both, its removal in a later update (beta
+  // accuracy), so the pending one isn't saved.
+  const pendingOf = new Map(
+    categorized.flatMap((t) =>
+      t.pendingExternalId && !t.pending ? [[t.pendingExternalId, t.externalId] as const] : [],
+    ),
+  );
   const rows = categorized.flatMap((t) => {
     const accountId = accountIds.get(t.accountRef);
-    if (!accountId) return [];
+    if (!accountId || pendingOf.has(t.externalId)) return [];
     return [
       {
         plaidTransactionId: t.externalId,
@@ -197,14 +207,6 @@ async function saveTransactions(db: ScopedDb, accountIds: Map<string, string>, s
     ];
   });
 
-  // A posted transaction replaces its pending one (Plaid's pending_transaction_id), whether or
-  // not Plaid has listed the pending one as removed yet: never both, so nothing counts twice.
-  // A category the person set on the pending one carries over.
-  const pendingOf = new Map(
-    categorized.flatMap((t) =>
-      t.pendingExternalId && !t.pending ? [[t.pendingExternalId, t.externalId] as const] : [],
-    ),
-  );
   const replaced =
     pendingOf.size === 0
       ? []
