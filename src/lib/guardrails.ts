@@ -87,6 +87,12 @@ const INVESTMENT = [
   /\bdividends?\b/i,
   /\bcrypto/i,
   /\b(bitcoin|ethereum|btc|eth|solana|dogecoin|stablecoins?)\b/i,
+  // Chat policy round 10 (11-12): "Stack some sats every payday", "Buy puts on Tesla before
+  // earnings", "Gold is a good hedge right now; get some". Gold's Gym and a Gold card are bills.
+  /\bstack(?:ing)? (?:some |more |a few )?sats\b|\bsatoshis?\b/i,
+  /\b(?:buy|buying|sell|selling|write|writing|short|shorting) (?:some |a few |the )?(?:covered |naked |cash[- ]secured |long |short )?(?:puts?|calls?|call options?|put options?|straddles?|strangles?|leaps)\b/i,
+  /\b(?:gold|silver|bullion|precious metals|commodities)\b(?!(?:'|’)s)[^.!?]{0,20}\b(?:is|are|makes?) (?:a |an )?(?:good |great |solid |smart |safe |safer |better )?(?:hedge|buy|investment|store of value|bet)\b/i,
+  /\b(?:buy|buying|get|own|add|grab|put (?:some|money|it|\$[\d,.]+) (?:in|into))\b[^.!?]{0,25}(?:\bgold\b(?!(?:'|’)s| (?:card|member|plan|tier|status|level|package|gym|rewards))|\b(?:bullion|precious metals)\b)/i,
   /\b(nyse|nasdaq|s&p ?500|dow jones|ticker)\b/i,
   /\b401\(?k\)?/i,
   // An IRA is written in capitals; "Ira" is a person.
@@ -326,6 +332,14 @@ const LEGAL = [
   /\b(?:don(?:'|’)?t|do not|never|hold off on|wait to) pay(?:ing)? (?:the |a |that |this |any |your )?(?:debt )?(?:collectors?|collection agency|collections?|creditors?)\b/i,
   /\bignore (?:the |that |this |any |their |those )?(?:debt )?(?:collectors?|collection (?:letters?|calls?|notices?|agency)|lawsuit|summons|court (?:date|papers|notice)|subpoena)\b/i,
   /\b(?:have|has|got) (?:a |an )?(?:\w+ )?case against\b/i,
+  // Chat policy round 10 (11-12): "Sue them in small claims court for the deposit", "You can break
+  // your lease without penalty because of the mold", "Under the FCRA they have to delete it". An
+  // insurance claim that is small ("I file small claims for you") is not a court.
+  /(?:^|[.!?:;]\s+)Sue (?:them|him|her|the|your|their|in)\b/,
+  /\bsmall[- ]claims (?:court|case|lawsuit|suit|judge)\b|\b(?:in|to|into) small[- ]claims\b/i,
+  /\b(?:break|end|terminate|get out of) (?:your |the |a )?lease\b[^.!?]{0,30}\bwithout (?:a |any )?(?:penalty|penalties|fee|fees|paying)\b/i,
+  /\b(?:have|has) (?:the |a )?right to (?:break|end|terminate|get out of|withhold|your deposit)\b|\b(?:are|is) (?:allowed|entitled) to (?:break|end|terminate|get out of|withhold)\b/i,
+  /\bunder (?:the )?(?:fcra|fdcpa|fair credit reporting act|fair debt collection practices act|(?:state|federal|consumer protection|tenant|landlord[- ]tenant|your state(?:'|’)s) laws?|the law)\b[^.!?]{0,50}\b(?:have to|has to|must|can(?:'|’)?t|cannot|required|entitled|allowed|owe)\b/i,
   /\b(?:is |are |was |were )?(?:breaking|broke|violating|violated) the law\b/i,
   // Dressed up (chat policy round 3, 11-06): "Most lawyers would say you have a case", "You'd
   // likely win in small claims", "The collector has no right to call you at work", "You're
