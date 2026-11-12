@@ -4,7 +4,7 @@ import { AHEAD_DATES_DAYS, AHEAD_URGENT_DAYS, HUB_DEADLINE_DAYS } from "@/config
 import type { TreeStatus } from "@/components/tree/interactive-tree";
 import { notCounting, type Unbalanced } from "@/insights/net-worth";
 import { shortMoney } from "@/lib/hub/view";
-import { buildAreaTree, type AreaItem, type AreaTree } from "./tree";
+import { type AreaItem, type AreaTree, buildAreaTree, shortLabel } from "./tree";
 import { daysBetween } from "@/lib/dates";
 import { dayLabel } from "@/lib/day-label";
 import { plural } from "@/lib/plural";
@@ -63,7 +63,6 @@ const monthLabel = (day: string) =>
     year: "numeric",
     timeZone: "UTC",
   });
-const sixWords = (text: string) => text.split(/\s+/).slice(0, 6).join(" ");
 
 export type PlansTreeInput = {
   asOf: string;
@@ -107,7 +106,7 @@ export function plansTree(input: PlansTreeInput): AreaTree {
   const coming = near.map((d) => {
     const left = daysBetween(input.asOf, d.date);
     return item("coming", d.key, {
-      label: sixWords(d.title),
+      label: shortLabel(d.title),
       status: left <= AHEAD_URGENT_DAYS ? "act" : "look",
       figure:
         d.amountCents !== null
@@ -133,7 +132,7 @@ export function plansTree(input: PlansTreeInput): AreaTree {
     const behind = g.status === "date_passed" || (g.lateMonths ?? 0) > 0;
     const status: TreeStatus = g.status === "date_passed" ? "act" : behind ? "look" : "good";
     return item("goals", g.id, {
-      label: sixWords(g.name),
+      label: shortLabel(g.name),
       status,
       figure: `${shortMoney(g.savedCents)} of ${shortMoney(g.targetCents)}`,
       summary:
@@ -197,7 +196,7 @@ export function plansTree(input: PlansTreeInput): AreaTree {
   const life = [
     newest
       ? item("life", "open", {
-          label: sixWords(newest.title),
+          label: shortLabel(newest.title),
           status: newest.done < newest.total ? "look" : "good",
           figure: `${newest.done} of ${newest.total} done`,
           summary:

@@ -30,6 +30,21 @@ export type AreaTree = {
 const RANK: Record<TreeStatus, number> = { good: 0, look: 1, act: 2 };
 
 export const words = (text: string) => text.trim().split(/\s+/).filter(Boolean).length;
+
+// Words that lead into what follows: a label cut short never ends on one (debugger 11-12: "Last day
+// of open enrollment at" on Plans & goals, its employer cut off).
+const LEADS_ON = new Set(
+  "at of for to the a an in on with and or by from & - : ,".split(" ").filter(Boolean),
+);
+
+// A name or title as a node's label: its first LABEL_MAX_WORDS words, without a dangling end.
+export function shortLabel(text: string, max = LABEL_MAX_WORDS): string {
+  const all = text.trim().split(/\s+/).filter(Boolean);
+  if (all.length <= max) return all.join(" ");
+  const kept = all.slice(0, max);
+  while (kept.length > 1 && LEADS_ON.has(kept[kept.length - 1]!.toLowerCase())) kept.pop();
+  return kept.join(" ");
+}
 export const sentences = (text: string) =>
   text
     .trim()

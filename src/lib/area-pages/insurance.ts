@@ -4,7 +4,7 @@ import type { TreeStatus } from "@/components/tree/interactive-tree";
 import { coverKindOf } from "@/config/found-policies";
 import { shortMoney } from "@/lib/hub/view";
 import { formatCents } from "@/lib/money";
-import { buildAreaTree, firstSentences, type AreaItem, type AreaTree } from "./tree";
+import { type AreaItem, type AreaTree, buildAreaTree, firstSentences, shortLabel } from "./tree";
 import { daysBetween } from "@/lib/dates";
 import { dayLabel } from "@/lib/day-label";
 
@@ -292,7 +292,7 @@ export function insuranceTree(input: InsuranceTreeInput): AreaTree {
 
   const documents = input.readings.map((r) =>
     item("documents", r.id, {
-      label: r.title.split(/\s+/).slice(0, 6).join(" "),
+      label: shortLabel(r.title),
       status: "look",
       figure: "To confirm",
       summary: "Nothing here is on your insurance until you confirm it.",
@@ -302,7 +302,7 @@ export function insuranceTree(input: InsuranceTreeInput): AreaTree {
   const cards = [
     ...input.payingTwice.map((d) =>
       item("cards", `twice-${d.findingId}`, {
-        label: `Paying twice: ${d.merchant}`.split(/\s+/).slice(0, 6).join(" "),
+        label: shortLabel(`Paying twice: ${d.merchant}`),
         status: "act",
         figure: d.annualSavingsCents ? perYear(d.annualSavingsCents) : undefined,
         cents: d.annualSavingsCents ?? 0,
@@ -311,7 +311,7 @@ export function insuranceTree(input: InsuranceTreeInput): AreaTree {
     ),
     ...input.cards.map((c) =>
       item("cards", c.accountId, {
-        label: c.card.split(/\s+/).slice(0, 6).join(" "),
+        label: shortLabel(c.card),
         status: "good",
         figure: `${c.benefits} ${c.benefits === 1 ? "benefit" : "benefits"}`,
         summary: "Cover your card gives you, from its benefit guide.",

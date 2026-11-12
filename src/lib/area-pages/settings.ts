@@ -1,4 +1,4 @@
-import { buildAreaTree, firstSentences, type AreaItem, type AreaTree } from "./tree";
+import { type AreaItem, type AreaTree, buildAreaTree, firstSentences, shortLabel } from "./tree";
 import { isHiddenPage } from "@/config/hidden-pages";
 import { plural } from "@/lib/plural";
 
@@ -73,7 +73,7 @@ export type SettingsTreeInput = {
   calendar: boolean;
 };
 
-const asLabel = (name: string) => name.trim().split(/\s+/).slice(0, 6).join(" ");
+const asLabel = (name: string) => shortLabel(name);
 
 // #banks and #your-accounts open the first bank or file, when there is one.
 export function anchorFocus(anchor: string, tree: AreaTree): string | undefined {
