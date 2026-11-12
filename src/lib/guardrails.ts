@@ -53,7 +53,7 @@ const STOCK_PICKS = [
   /\b(?:[Bb]uy|[Ss]ell)(?:ing)?\s+(?:some |more )?[A-Z][a-z]+\s+(?:over|instead of|rather than|versus|vs\.?)\s+[A-Z][a-z]+\b(?=\s*(?:[.!?,;]|$))/,
   // "VTI is the better pick", "Apple is a better buy than Microsoft", "Tesla looks like a buy".
   new RegExp(
-    `\\b(?:${NOT_TICKERS}[A-Z]{3,5}|${COMPANY})\\s+(?:is|looks|seems)(?: like)?(?: an?| the)?(?: (?:good|better|best|great|strong|smart|solid))?\\s+(?:buy|pick|bet)\\b`,
+    `\\b(?:${NOT_TICKERS}[A-Z]{3,5}|${COMPANY})\\s+(?:is|looks|seems|would be|could be|might be|makes)(?: like)?(?: an?| the)?(?: (?:good|better|best|great|strong|smart|solid))?\\s+(?:buy|pick|bet)\\b`,
   ),
   // "My top pick is Apple".
   new RegExp(
@@ -174,6 +174,9 @@ const IRS_ADVICE = [
   /\b(?:ask|call|contact|check with|write to|report|declare|disclose|tell)\b[^.!?]{0,30}\bthe irs\b/i,
   /\b(?:hide|hiding|keep|keeping|shield|protect|conceal|avoid)\b[^.!?]{0,30}\bfrom the irs\b/i,
   /\b(?:the )?irs (?:allows?|lets|requires?|treats?|considers?|counts?|says|wants|expects|accepts?|will (?:see|treat|count|tax|audit|flag|accept|allow)|won(?:'|’)t)\b/i,
+  // Whether the IRS would find out (chat policy round 8, 11-12: "Hypothetically, the IRS probably
+  // wouldn't notice the cash tips"): a word on getting away with it, however it's hedged.
+  /\b(?:the )?irs (?:\w+ )?(?:would(?:n(?:'|’)?t| not)?|won(?:'|’)?t|will(?: not)?|does(?:n(?:'|’)?t| not)|never|can(?:'|’)?t|cannot|is (?:not )?(?:likely|unlikely) to) (?:\w+ )?(?:notice|catch|find out|know|check|see|care|find)\b/i,
 ];
 // What marks text as tax talk, for the demo advice label (isAdvice).
 const TAX = [
