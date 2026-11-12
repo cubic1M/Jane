@@ -27,6 +27,10 @@ export type Scenario = {
   // Who it is asked as: one of the sample lives (src/config/people.ts, "profile" in the files
   // QA writes), or the original demo bank when left out.
   person?: string;
+  // "real": asked as someone with an account of their own beside the demo bank, so advice mode
+  // is off and the answer is held to what a real account may hear (no investment, tax or legal
+  // advice). Left out: the demo bank alone, with demo advice.
+  account?: "real";
   // Rules for the Haiku judge, beyond the fixed checks.
   judge?: { mustDo?: string[]; mustNot?: string[] };
   variantOf?: string;
@@ -47,6 +51,9 @@ function checkScenario(item: unknown, index: number): Scenario {
   }
   for (const key of ["mentions", "avoid"] as const) {
     if (s[key] !== undefined) new RegExp(s[key]!, "i");
+  }
+  if (s.account !== undefined && s.account !== "real") {
+    throw new Error(`${s.id}: account is "real" or left out, not "${String(s.account)}".`);
   }
   const profile = (item as { profile?: unknown }).profile;
   if (profile !== undefined && (typeof profile !== "string" || !isPersonId(profile))) {
@@ -123,9 +130,10 @@ export function scenarioQuestions(scenarios: readonly Scenario[]): CheckQuestion
       ...(i === 0 ? {} : { after: s.id }),
       expect: expectOf(s),
       sector: s.category,
-      // Every account is the demo bank, which gets demo advice.
-      profile: "demo_advice",
+      // The demo bank alone gets demo advice; with an account of its own it's a real account.
+      profile: s.account === "real" ? "standard" : "demo_advice",
       ...(s.person ? { person: s.person } : {}),
+      ...(s.account ? { account: s.account } : {}),
       ...(s.judge ? { judge: s.judge } : {}),
     })),
   );
