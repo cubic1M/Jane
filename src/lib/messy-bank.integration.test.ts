@@ -118,6 +118,14 @@ describe.runIf(url)("a messy real bank, through the CSV import", { timeout: 120_
         title: "$1.28 in fees on Chase Freedom in the last 4 months",
         annualSavingsCents: 128,
       },
+      // $9,015.59 in checking and savings over three months of $2,615.00: the Best Buy TV left
+      // out as a one-off, and the cancelled flight, the return and the reversed fee netted, as on
+      // the Money page (beta accuracy: idle cash had counted them as spending).
+      {
+        type: "idle_cash",
+        title: "$1,170.59 more cash than 3 months of spending",
+        annualSavingsCents: 4_097,
+      },
       // $15.49, $15.49, $17.99, $17.99: still a rise after the second charge at the new price.
       {
         type: "price_increase",

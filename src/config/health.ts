@@ -13,6 +13,8 @@ export const DAILY_JOBS: readonly string[] = [
   "events",
   // What must hold on live data, in counts only (src/lib/invariants/nightly.ts).
   "invariants",
+  // Every real person's figures against what must hold, in counts only (src/lib/invariants/accuracy.ts).
+  "accuracy",
 ];
 // A daily job counts as missed once its last good run is this old (a day plus slack for
 // Vercel's scheduling).

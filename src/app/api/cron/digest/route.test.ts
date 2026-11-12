@@ -6,6 +6,7 @@ vi.mock("@/lib/digest/send", () => ({
 }));
 vi.mock("@/lib/error-alerts", () => ({ sendErrorDigest: vi.fn(async () => {}) }));
 vi.mock("@/lib/ops-alerts", () => ({ sendOpsDigest: vi.fn(async () => 0) }));
+vi.mock("@/lib/invariants/accuracy-email", () => ({ sendAccuracyEmail: vi.fn(async () => false) }));
 vi.mock("@/lib/health", () => ({
   reportMissedJobs: vi.fn(async () => []),
   recordRun: vi.fn(async (_name: string, run: () => Promise<unknown>) => run()),
@@ -19,6 +20,7 @@ vi.mock("@/lib/news/store", () => ({ runNews: vi.fn(async () => ({ batches: 0 })
 
 import { CONTROLLER_RUN_RESERVE_MS } from "@/config/controller";
 import { runDigests } from "@/lib/digest/send";
+import { sendAccuracyEmail } from "@/lib/invariants/accuracy-email";
 import { runMonthlyReports } from "@/lib/monthly-report";
 import { runDueJobs } from "@/lib/jobs";
 import { runJaneAgentForAll } from "@/lib/jane-agent/run";
@@ -36,6 +38,15 @@ describe("GET /api/cron/digest", () => {
   beforeEach(() => {
     vi.stubEnv("CRON_SECRET", "cron-secret");
     vi.mocked(runDueJobs).mockClear();
+  });
+
+  // Beta accuracy: the daily health email carries the morning's failed accuracy checks, and a
+  // failure to send it never stops the digests.
+  it("sends the accuracy checks' email, and goes on when it fails", async () => {
+    vi.mocked(sendAccuracyEmail).mockRejectedValueOnce(new Error("Resend is down"));
+    expect((await call("Bearer cron-secret")).status).toBe(200);
+    expect(sendAccuracyEmail).toHaveBeenCalled();
+    expect(runDigests).toHaveBeenCalled();
   });
 
   it("refuses calls without Vercel's cron secret", async () => {

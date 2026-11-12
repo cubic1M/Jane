@@ -373,7 +373,7 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 6 | 59% | 100% |
+| 50–59% | 4 | 59% | 100% |
 | 60–69% | 31 | 63% | 100% |
 | 70–79% | 9 | 73% | 100% |
 | 80–89% | 8 | 82% | 100% |
@@ -387,7 +387,7 @@ Second tuning set (20 people, 137 files, 5926 transactions):
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
 | Category right (rules only) | 98.7% (78 left for Claude) |
 | False "Charged twice?" | 14 (14 people) |
-| Findings, $/yr | Jane $90,029, truth $94,265; error on the ones found 0.4% |
+| Findings, $/yr | Jane $90,030, truth $94,265; error on the ones found 0.4% |
 | Asked "a subscription to cancel?", no dollars on it | 18 are, $4,454; 2 aren't, $1,536 |
 | Monthly spending, error | 0.3% |
 | Monthly income, error | 0.0% |
@@ -460,8 +460,8 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
 | 50–59% | 5 | 59% | 100% |
-| 60–69% | 33 | 64% | 100% |
-| 70–79% | 9 | 74% | 100% |
+| 60–69% | 31 | 63% | 100% |
+| 70–79% | 8 | 75% | 100% |
 | 80–89% | 15 | 83% | 100% |
 | 90–100% | 0 | – | – |
 
@@ -503,8 +503,8 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
 | 50–59% | 4 | 59% | 100% |
-| 60–69% | 40 | 63% | 100% |
-| 70–79% | 9 | 73% | 100% |
+| 60–69% | 38 | 63% | 100% |
+| 70–79% | 7 | 74% | 100% |
 | 80–89% | 10 | 82% | 100% |
 | 90–100% | 0 | – | – |
 
@@ -516,7 +516,7 @@ Third held-out set (20 people, 148 files, 5695 transactions):
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
 | Category right (rules only) | 83.9% (883 left for Claude) |
 | False "Charged twice?" | 3 (3 people) |
-| Findings, $/yr | Jane $20,178, truth $33,026; error on the ones found 0.3% |
+| Findings, $/yr | Jane $20,181, truth $33,026; error on the ones found 0.3% |
 | Asked "a subscription to cancel?", no dollars on it | 42 are, $12,845; 32 aren't, $16,560 |
 | Monthly spending, error | 0.0% |
 | Monthly income, error | 0.0% |
@@ -546,7 +546,7 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
 | 50–59% | 7 | 59% | 57% |
-| 60–69% | 37 | 63% | 100% |
+| 60–69% | 36 | 63% | 100% |
 | 70–79% | 11 | 74% | 100% |
 | 80–89% | 11 | 84% | 100% |
 | 90–100% | 0 | – | – |
