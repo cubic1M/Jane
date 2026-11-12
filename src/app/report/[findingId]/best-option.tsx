@@ -26,9 +26,10 @@ function priceOf(s: Scored): string {
 // with the hour; "Price checked Nov 3, 2026 ·" for one the team checked by hand.
 export function checkedLine(option: Scored["option"]): string {
   if (!option.checkedTime) return `Price checked ${dayLabel(option.checkedAt, { year: true })} ·`;
+  // A moment, read on the person's own clock: the day and the hour where they are.
   const at = new Date(option.checkedTime);
+  const day = at.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   const time = at.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  const day = dayLabel(option.checkedTime.slice(0, 10));
   return `Checked ${day}, ${time} from`;
 }
 

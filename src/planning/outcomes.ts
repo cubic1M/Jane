@@ -270,7 +270,7 @@ export function verifyWatch(
         yearly: true,
         percent: VERIFIED_PERCENT.cash_moved,
         evidence: out.map((t) => t.id),
-        proof: `${formatCents(moved)} moved out of the account by ${dayLabel(out.at(-1)?.date ?? asOf)}.`,
+        proof: `${formatCents(moved)} moved out of the account by ${dayLabel(out[out.length - 1]?.date ?? asOf)}.`,
       };
     }
     return over
