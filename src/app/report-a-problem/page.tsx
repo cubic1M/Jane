@@ -19,11 +19,6 @@ async function Report({
       <AppHeader user={user} />
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Send feedback</h1>
-        <p className="text-zinc-600 dark:text-zinc-400">
-          Something wrong, confusing or good on <span className="font-medium">{from}</span>? Tell us
-          in a few words. Only what you write, the page and any screenshot you add go to the
-          founders, never your balances or transactions.
-        </p>
       </div>
       <ReportForm from={from} />
     </>

@@ -125,6 +125,12 @@ export function tabFor(pathname: string): TabKey | null {
   return ALL_TABS.find((tab) => tab.paths.some((path) => covers(path, pathname)))?.key ?? null;
 }
 
+// The name the person knows a page by: its tab's label ("/ahead" is "Plans & goals"), or null for
+// a page no tab claims (debugger 11-12: Send feedback said "on /ahead").
+export function pageLabel(pathname: string): string | null {
+  return ALL_TABS.find((tab) => tab.paths.some((path) => covers(path, pathname)))?.label ?? null;
+}
+
 // Every tab that claims a page; exactly one for every signed-in page (see the tests).
 export function tabsClaiming(pathname: string): TabKey[] {
   return ALL_TABS.filter((tab) => tab.paths.some((path) => covers(path, pathname))).map(

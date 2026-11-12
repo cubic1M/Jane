@@ -34,7 +34,10 @@ test("a person sends feedback from any page, and the founders read it", async ({
   await page.getByRole("button", { name: "Your account and settings" }).click();
   await page.getByRole("link", { name: "Send feedback" }).click();
   await expect(page).toHaveURL("/report-a-problem?from=%2Fnet-worth");
-  await expect(page.getByText("Something wrong, confusing or good on /net-worth?")).toBeVisible();
+  // Named as the menu names it; the address still goes with the report (below).
+  await expect(
+    page.getByText("Something wrong, confusing or good on Plans & goals?"),
+  ).toBeVisible();
 
   const words = `The line looks wrong ${crypto.randomUUID().slice(0, 8)}`;
   await page.getByLabel("What's on your mind?").fill(words);
