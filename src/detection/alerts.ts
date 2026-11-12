@@ -217,7 +217,9 @@ export function largeChargeAlerts(
   });
 }
 
-// The later of two identical charges (see rules/duplicate-charge.ts), when recent.
+// The later of two identical charges (see rules/duplicate-charge.ts), when recent. Its words are
+// the same for every account, so they promise only what the read-only beta does: the steps, not
+// "we can ask for the money back" (beta walk 11-12).
 export function duplicateChargeAlerts(input: DetectionInput): AlertCandidate[] {
   return duplicatePairs(input)
     .filter(({ second }) => isRecent(second.date, input.asOf))
@@ -225,7 +227,7 @@ export function duplicateChargeAlerts(input: DetectionInput): AlertCandidate[] {
       type: "duplicate_charge",
       key: second.id,
       title: `Charged twice? ${formatCents(second.amountCents)} at ${merchantName(second)}`,
-      body: `Two charges of ${formatCents(second.amountCents)} on ${accountName(input, second.accountId)}, ${dayLabel(first.date)} and ${dayLabel(second.date)}. If you only bought once, it's on your report and we can ask for the money back.`,
+      body: `Two charges of ${formatCents(second.amountCents)} on ${accountName(input, second.accountId)}, ${dayLabel(first.date)} and ${dayLabel(second.date)}. If you only bought once, it's on your report with the steps to get the money back.`,
       confidence: seenConfidence(
         input,
         [first, second].length,

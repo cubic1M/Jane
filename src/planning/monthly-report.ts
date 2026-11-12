@@ -149,16 +149,20 @@ export function reportLines(report: MonthlyReport): ReportLine[] {
       href: "/saved",
     });
   }
-  if (report.plan) {
-    const t = report.plan.nextTargets;
-    const planned =
-      report.plan.planned.saving + report.plan.planned.debt + report.plan.planned.investing;
+  // A plan with nothing in it says nothing (beta walk 11-12: "You did $0.00 of $0.00 planned.
+  // This month: saving $0.00, extra debt $0.00, investing $0.00.").
+  const t = report.plan?.nextTargets;
+  const planned = report.plan
+    ? report.plan.planned.saving + report.plan.planned.debt + report.plan.planned.investing
+    : 0;
+  const next = t ? t.saving + t.debt + t.investing : 0;
+  if (report.plan && t && (planned > 0 || next > 0)) {
     const did = report.plan.did
       ? report.plan.did.saving + report.plan.did.debt + report.plan.did.investing
       : null;
     lines.push({
       label: "Your plan",
-      text: `${did === null ? "" : `You did ${formatCents(did)} of ${formatCents(planned)} planned. `}This month: saving ${formatCents(t.saving)}, extra debt ${formatCents(t.debt)}, investing ${formatCents(t.investing)}.`,
+      text: `${did === null || planned === 0 ? "" : `You did ${formatCents(did)} of ${formatCents(planned)} planned. `}This month: saving ${formatCents(t.saving)}, extra debt ${formatCents(t.debt)}, investing ${formatCents(t.investing)}.`,
       href: "/plan",
     });
   }

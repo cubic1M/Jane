@@ -14,6 +14,14 @@ export function areaStatus(area: AreaTree): { status: TreeStatus; why: string } 
   };
 }
 
+// While the first scan is still reading (beta walk 11-12), an area's tree has nothing to judge
+// and reads "Good: All good" before a single transaction is in. Until Jane has looked, no tile
+// says how an area is doing.
+export const STILL_READING = "Still reading your accounts";
+export function readingTiles(tiles: readonly AreaTile[]): AreaTile[] {
+  return tiles.map((tile) => ({ ...tile, health: null, healthWhy: STILL_READING }));
+}
+
 // The tiles, each with its area's status from its tree when it has one.
 export function withAreaStatus(tiles: readonly AreaTile[], trees: AreaTrees): AreaTile[] {
   return tiles.map((tile) => {

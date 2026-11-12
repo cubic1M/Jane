@@ -45,11 +45,15 @@ export function AppHeader({
   user,
   chatMessageId,
   opened,
+  bare = false,
 }: {
   user: { id: string; email?: string | null };
   chatMessageId?: string | null;
   // What opening this page sets off (src/lib/page-opened.ts).
   opened?: Opened;
+  // Nothing linked yet (/connect): no area tabs, chat button or side chat, which would all lead
+  // to empty pages (beta walk 11-12, from the debugger: "empty account, full app").
+  bare?: boolean;
 }) {
   return (
     <header className="flex flex-col gap-3 text-sm">
@@ -57,16 +61,18 @@ export function AppHeader({
           pressed; the chat expanded to the whole window (z-50, later on the page) still covers it. */}
       <div id="app-top-bar" data-app-top-bar="" className={TOP_BAR}>
         <JaneLogo />
-        <div className="order-last w-full min-w-0 lg:order-none lg:w-auto lg:flex-1">
-          <AreaTabs />
-        </div>
+        {!bare && (
+          <div className="order-last w-full min-w-0 lg:order-none lg:w-auto lg:flex-1">
+            <AreaTabs />
+          </div>
+        )}
         <div className="ml-auto flex shrink-0 items-center gap-1">
-          <ChatToggle />
+          {!bare && <ChatToggle />}
           {/* A temporary try's address is an internal, made-up one. */}
           <ProfileMenu email={isStatementTrialUser(user.id) ? "a temporary try" : user.email} />
         </div>
       </div>
-      <SideChatUser userId={user.id} />
+      {!bare && <SideChatUser userId={user.id} />}
       {/* A server component: this runs once for each time the page is made. */}
       {/* eslint-disable-next-line react-hooks/purity */}
       <PageCacheMark userId={user.id} renderedAt={Date.now()} opened={opened} />

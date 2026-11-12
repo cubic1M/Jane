@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { OpenJaneLink } from "@/components/open-jane-link";
 import { preload } from "react-dom";
 import { GetStartedButton } from "@/components/get-started-button";
 import { ColumnArt } from "@/components/column-art";
@@ -16,7 +17,7 @@ import { LandingTheme } from "./landing-theme";
 const POINTS = [
   {
     title: "Read-only access",
-    body: "Jane sees your transactions and can never move your money.",
+    body: "Jane reads your transactions. The beta doesn't move money yet: every move is yours.",
   },
   {
     title: "You stay in charge",
@@ -132,6 +133,7 @@ export default function Home() {
                 a forgotten subscription to a cheaper loan.
               </p>
               <div className="flex flex-wrap items-center gap-6">
+                <OpenJaneLink />
                 <GetStartedButton tone="landing" />
                 <Link
                   href="/login"

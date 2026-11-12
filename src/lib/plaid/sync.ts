@@ -269,7 +269,8 @@ async function saveTransactions(db: ScopedDb, accountIds: Map<string, string>, s
 function streamRow(stream: TransactionStream, accountId: string) {
   return {
     accountId,
-    merchantName: stream.merchant_name ?? stream.description ?? null,
+    // Plaid sends "" when it has no merchant name, so empty falls through to the description.
+    merchantName: stream.merchant_name || stream.description || null,
     frequency: stream.frequency,
     lastAmountCents: toCents(stream.last_amount.amount) ?? 0,
     averageAmountCents: toCents(stream.average_amount.amount) ?? 0,

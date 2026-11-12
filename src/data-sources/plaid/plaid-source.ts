@@ -71,7 +71,7 @@ export function normalizeTransaction(t: Transaction): NormalizedTransaction {
     date: t.date,
     amountCents: toCents(t.amount) ?? 0,
     description: t.name,
-    merchantName: t.merchant_name ?? null,
+    merchantName: t.merchant_name || null,
     categoryPrimary: t.personal_finance_category?.primary ?? null,
     categoryDetailed: t.personal_finance_category?.detailed ?? null,
     pending: t.pending,

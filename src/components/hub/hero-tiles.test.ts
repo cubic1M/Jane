@@ -10,6 +10,12 @@ describe("foundWords", () => {
     expect(foundWords(found(0), 0)).toBe("Nothing yet");
   });
 
+  // Beta walk 11-12 (debugger): right after linking, before the first scan had looked.
+  it("says Jane is still looking before the first scan has looked, not nothing yet", () => {
+    expect(foundWords(found(0), 0, true)).toBe("Still looking");
+    expect(foundWords(found(0), 3, true)).toBe("3 to look at");
+  });
+
   it("leaves a dollar figure, and saved money, to the number", () => {
     expect(foundWords(found(63_728), 3)).toBeNull();
     expect(foundWords({ label: "Saved so far", cents: 0 }, 0)).toBeNull();

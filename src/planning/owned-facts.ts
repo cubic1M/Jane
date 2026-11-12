@@ -13,7 +13,7 @@ export type OwnedFacts = {
   biggestStock: { ticker: string | null; name: string; valueCents: number; share: number } | null;
   fees: {
     yearlyCents: number;
-    // Holdings whose yearly cost Jane knows, and those she doesn't.
+    // Holdings whose yearly cost Jane knows, and those it doesn't.
     knownCents: number;
     unknownCents: number;
     unknownNames: string[];

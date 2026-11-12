@@ -30,6 +30,17 @@ describe("what the pages promise", () => {
     expect(security).toMatch(/apart from failed attempts/);
   });
 
+  // Beta walk 11-12: the read-only beta says what's true today, not that Jane never will move
+  // money (the Terms and Privacy Policy keep their wording until counsel reads them).
+  it("says the beta doesn't move money yet, not that Jane never will", () => {
+    const landing = page("src/app/page.tsx");
+    const switching = page("src/lib/agent/switch.ts");
+    for (const words of [landing, connect, switching]) {
+      expect(words).not.toMatch(/(can never|never) moves? (your )?money/i);
+      expect(words).toMatch(/the beta doesn't move money yet/i);
+    }
+  });
+
   it("names what linking reads, and every company it goes to", () => {
     expect(connect).toMatch(/what you owe on cards and loans/);
     expect(privacy).toMatch(/<strong>Google<\/strong>/);

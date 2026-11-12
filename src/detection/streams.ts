@@ -138,12 +138,19 @@ export function fromPlaidStream(
     .map((id) => byPlaidId.get(id))
     .filter((t): t is DetectionTransaction => t !== undefined)
     .sort(byDate);
-  const merchant = normalizeMerchant(stream.merchantName ?? "");
+  // Plaid sends "" for a stream it couldn't name (beta walk 11-12: a blank row on Bills).
+  const named = stream.merchantName?.trim() || null;
+  const merchant = normalizeMerchant(named ?? "");
   const merchantKey = merchant?.key ?? stream.plaidStreamId;
+  const lastCharge = charges.at(-1);
   const frequency = isFrequency(stream.frequency) ? stream.frequency : null;
   return {
     key: `merchant:${merchantKey}`,
-    merchant: stream.merchantName ?? merchant?.name ?? "A recurring charge",
+    merchant:
+      named ??
+      merchant?.name ??
+      (lastCharge && merchantOf(lastCharge)?.name) ??
+      "A recurring charge",
     merchantKey,
     frequency,
     charges,

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/db", () => ({ db: {} }));
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
-import { inactivityStep } from "./inactive";
+import { inactivityStep, removalWords } from "./inactive";
 
 const NOW = new Date("2026-10-19T12:00:00Z");
 const daysAgo = (n: number) => new Date(NOW.getTime() - n * 24 * 60 * 60 * 1000);
@@ -25,5 +25,12 @@ describe("inactivityStep", () => {
   it("cancels the warning when the person comes back", () => {
     // Active after the warning: the old warning no longer stands, and they're not quiet.
     expect(inactivityStep({ lastActive: daysAgo(2), warnedAt: daysAgo(5) }, NOW)).toBe("none");
+  });
+});
+
+// Beta walk 11-12: the warning said "on 2027-02-07 we'll disconnect your linked banks".
+describe("the warning's date", () => {
+  it("is in words", () => {
+    expect(removalWords(new Date("2027-02-07T03:00:00Z"))).toBe("Sunday, February 7, 2027");
   });
 });

@@ -42,6 +42,6 @@ describe("switches", () => {
       "Change your Netflix plan",
     );
     const savings = switchTodo(switchOf({ ...OPTIONS, switchKind: "savings" })!, "the bank");
-    expect(savings).toContain("Jane never moves money");
+    expect(savings).toContain("the beta doesn't move money yet");
   });
 });

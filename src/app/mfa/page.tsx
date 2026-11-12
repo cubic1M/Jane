@@ -17,14 +17,18 @@ async function Content({ searchParams }: { searchParams: PageProps<"/mfa">["sear
   const next = safeNext((await searchParams).next, user.role);
   if (!mfaPending && user.role !== "admin") redirect(next);
   const setup = await enrollment(user.id, user.email ?? user.id);
-  // An admin who already entered a code in this session has nothing to do here.
-  if (!mfaPending && setup.enrolled) redirect(next);
+  // An admin who already entered a code in this session has nothing to do here: a Continue
+  // button, not a redirect, since this page renders again right after an admin's first code and
+  // a redirect then took the new backup codes off the screen unseen (beta walk 11-12).
+  const done = !mfaPending && setup.enrolled;
   if (!setup.enrolled && user.role !== "admin") notFound();
 
   return (
     <>
       <h1 className="text-3xl font-semibold tracking-tight">Two-factor check</h1>
-      {setup.enrolled ? (
+      {done ? (
+        <p className="text-zinc-600 dark:text-zinc-400">Two-factor is on for this sign-in.</p>
+      ) : setup.enrolled ? (
         <p className="text-zinc-600 dark:text-zinc-400">
           Enter the code from your authenticator app. Lost your phone? Use one of your backup codes.
         </p>
@@ -43,7 +47,7 @@ async function Content({ searchParams }: { searchParams: PageProps<"/mfa">["sear
           </a>
         </div>
       )}
-      <CodeForm next={next} allowBackup={setup.enrolled} />
+      <CodeForm next={next} allowBackup={setup.enrolled} done={done} />
       <SignOutForm>
         <SubmitButton className="text-sm text-zinc-600 hover:underline dark:text-zinc-400">
           Sign out instead

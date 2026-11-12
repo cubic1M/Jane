@@ -31,7 +31,7 @@ describe("totp", () => {
     expect(base32Decode(base32Encode(bytes))).toEqual(bytes);
     expect(generateSecret()).toMatch(/^[A-Z2-7]{32}$/);
     expect(otpauthUri("team@example.com", "ABC")).toBe(
-      "otpauth://totp/Financial%20Controller%3Ateam%40example.com?secret=ABC&issuer=Financial+Controller&algorithm=SHA1&digits=6&period=30",
+      "otpauth://totp/Jane%3Ateam%40example.com?secret=ABC&issuer=Jane&algorithm=SHA1&digits=6&period=30",
     );
   });
 });

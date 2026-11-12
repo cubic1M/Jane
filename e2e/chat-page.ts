@@ -39,6 +39,9 @@ export async function popupCard(page: Page, headline: RegExp, timeout = 30_000) 
   const showing = overlay.locator('[data-card-state="showing"]');
   const title = showing.getByRole("heading", { level: 3 });
   await expect(overlay).toBeVisible({ timeout });
+  // Folded to one line on a phone after a message was sent: open it first.
+  const folded = overlay.locator('[data-card-state="folded"]');
+  if (await folded.isVisible()) await folded.click();
   await expect(async () => {
     // The cards ignore the arrow keys while someone is typing: out of the message box first
     // (a phone can hold focus there).

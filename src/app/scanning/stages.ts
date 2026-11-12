@@ -40,6 +40,10 @@ export function percentFor(done: number, creep: number): number {
   return Math.round(base + (next - base) * 0.9 * Math.min(1, Math.max(0, creep)));
 }
 
+// What a slow scan says first. A real bank's first year often takes a few minutes to arrive from
+// Plaid (sandbox is instant), so it isn't "longer than usual" (beta walk 11-12).
+export const SLOW_WORDS = "Banks can take a few minutes to send a year of transactions.";
+
 // What a slow scan offers instead of the bar: where this screen was heading. From Try Jane
 // (then=home) that's Home, whose chat opens with Jane saying it's still looking.
 export function slowLink(next: "/report" | "/home"): {

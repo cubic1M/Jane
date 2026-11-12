@@ -22,6 +22,15 @@ export type InactiveRun = { warned: number; removed: number; failed: number };
 
 type Person = { lastActive: Date; warnedAt: Date | null };
 
+export const removalWords = (date: Date) =>
+  date.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+
 // Pure: what to do for one person with linked banks today.
 export function inactivityStep(person: Person, now: Date): "warn" | "remove" | "none" {
   const quietDays = (now.getTime() - person.lastActive.getTime()) / DAY_MS;
@@ -41,7 +50,8 @@ async function warn(
   send: typeof sendEmail,
   what = "your linked banks",
 ) {
-  const date = removalDate.toISOString().slice(0, 10);
+  // In words, not "2027-02-07" (beta walk 11-12). UTC, as the removal is counted in days.
+  const date = removalWords(removalDate);
   const link = `${appBase()}/report`;
   const text = `You haven't used Jane in a while, so on ${date} we'll disconnect ${what}. That removes their accounts and transactions and what was worked out from them, and while Jane is in beta you may not be able to link them again.\n\nWant to keep them connected? Just open your report: ${link}`;
   if (!process.env.RESEND_API_KEY && process.env.NODE_ENV !== "production") {

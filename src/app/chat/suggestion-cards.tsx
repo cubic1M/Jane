@@ -103,6 +103,7 @@ export function followAction(message: Pick<MessageView, "suggestion" | "buttons"
 export function SuggestionCards({
   messages: given,
   foldOnPhone = false,
+  foldOnSend = false,
   docked = false,
   onAnswered,
   onShowing,
@@ -110,6 +111,8 @@ export function SuggestionCards({
   messages: MessageView[];
   // Home: start folded on a small phone, so the net worth shows first.
   foldOnPhone?: boolean;
+  // The chat: fold on a small phone once the person sends a message, so the answer shows.
+  foldOnSend?: boolean;
   // In the dock above the side chat, not floating over the page.
   docked?: boolean;
   // Told once the server has the answer (the dock reloads its cards).
@@ -148,6 +151,7 @@ export function SuggestionCards({
         neverLabel="Don't suggest this again"
         links={links}
         foldOnPhone={foldOnPhone}
+        foldOnSend={foldOnSend}
         docked={docked}
         onShowing={onShowing}
         onDetails={(id) => {
