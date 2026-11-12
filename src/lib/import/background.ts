@@ -1,7 +1,7 @@
 import { matchCardPayments } from "@/categorize/card-payments";
 import { markCashIncome } from "@/categorize/cash-income";
 import { categorizeLeftovers } from "@/categorize/categorize";
-import { IMPORT_RUN_SHOWN_HOURS } from "@/config/import";
+import { IMPORT_DONE_SHOWN_MINUTES, IMPORT_RUN_SHOWN_HOURS } from "@/config/import";
 import { moneyFoundYearly, runDetection } from "@/detection/engine";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { confirmSwitches } from "@/lib/agent/switch";
@@ -198,11 +198,24 @@ export async function currentImportRun(
       createdAt: { gte: new Date(now.getTime() - IMPORT_RUN_SHOWN_HOURS * 60 * 60 * 1000) },
     },
     orderBy: { createdAt: "desc" },
-    select: { id: true, kind: true, rows: true, stage: true, foundCents: true, seenAt: true },
+    select: {
+      id: true,
+      kind: true,
+      rows: true,
+      stage: true,
+      foundCents: true,
+      seenAt: true,
+      updatedAt: true,
+    },
   });
   if (!run || run.seenAt) return null;
+  // A finished upload has said its piece a few minutes after it's done.
+  const doneSince = run.stage === "done" ? run.updatedAt.getTime() : null;
+  if (doneSince !== null && now.getTime() - doneSince > IMPORT_DONE_SHOWN_MINUTES * 60 * 1000) {
+    return null;
+  }
   const stage = (run.stage in STAGE_PERCENT ? run.stage : "queued") as ImportStage;
-  const { seenAt: _seen, ...shown } = run;
+  const { seenAt: _seen, updatedAt: _updated, ...shown } = run;
   return { ...shown, stage, percent: STAGE_PERCENT[stage] };
 }
 

@@ -47,6 +47,10 @@ export const IMPORT_STARTED_EVENT = "jane:import-started";
 
 // How long the progress chip keeps showing an upload the person hasn't closed.
 export const IMPORT_RUN_SHOWN_HOURS = 24;
+// How long a finished upload's "Done" chip stays once it's done: by then its findings are in Jane's
+// cards, and a chip closed only on /report or by its x followed a student to every page for a
+// day (debugger 11-12).
+export const IMPORT_DONE_SHOWN_MINUTES = 10;
 // How often the chip asks how an upload is getting on.
 export const IMPORT_POLL_MS = 1500;
 
