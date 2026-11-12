@@ -53,18 +53,20 @@ const STOCK_PICKS = [
   /\b(?:[Bb]uy|[Ss]ell)(?:ing)?\s+(?:some |more )?[A-Z][a-z]+\s+(?:over|instead of|rather than|versus|vs\.?)\s+[A-Z][a-z]+\b(?=\s*(?:[.!?,;]|$))/,
   // "VTI is the better pick", "Apple is a better buy than Microsoft", "Tesla looks like a buy".
   new RegExp(
-    `\\b(?:${NOT_TICKERS}[A-Z]{3,5}|${COMPANY})\\s+(?:is|looks|seems|would be|could be|might be|makes)(?: like)?(?: an?| the)?(?: (?:good|better|best|great|strong|stronger|strongest|smart|smarter|safe|safer|safest|solid|top|clear))?\\s+(?:buy|pick|bet|choice|play)\\b`,
+    `\\b(?:${NOT_TICKERS}[A-Z]{3,5}|${COMPANY})(?:\\s+(?:is|looks|seems|would be|could be|might be|makes)|(?:'|’)s)(?: like)?(?: an?| the)?(?: (?:good|better|best|great|strong|stronger|strongest|smart|smarter|safe|safer|safest|solid|top|clear))?\\s+(?:buy|pick|bet|choice|play|hold|sell|move)\\b`,
   ),
   // "My top pick is Apple", "The safer bet is VOO" (chat policy round 10, 11-12).
   new RegExp(
     `\\b(?:pick|choice|favou?rite|bet|buy|play) (?:is|would be)\\s+(?:${NOT_TICKERS}[A-Z]{3,5}\\b(?![&-])|${COMPANY}\\b${END_OF_PICK})`,
   ),
   // A verdict after a dash or a colon, and a pick shouted (chat policy round 12, 11-12): "Tesla — sell",
-  // "SELL TESLA NOW". "Buy now, pay later" is a kind of plan.
+  // "SELL TESLA NOW". "Buy now, pay later" is a kind of plan. Round 13 (11-12): "Tesla → sell",
+  // "Apple: strong buy", "Tesla's a hold for now", "NVDA is the move", "📈 TSLA 🚀".
   new RegExp(
-    `\\b(?:${NOT_TICKERS}[A-Z]{3,5}|${COMPANY})\\s*[—–:-]+\\s*(?:[Bb]uy|[Ss]ell|[Hh]old|[Dd]ump|[Tt]rim|[Ss]hort)\\b`,
+    `\\b(?:${NOT_TICKERS}[A-Z]{3,5}|${COMPANY})\\s*(?:[—–:-]+|→|=>|⇒|->)\\s*(?:(?:[Ss]trong|[Cc]lear|[Ee]asy|[Ss]olid) )?(?:[Bb]uy|[Ss]ell|[Hh]old|[Dd]ump|[Tt]rim|[Ss]hort)\\b`,
   ),
   /\b(?:BUY|SELL|SHORT|DUMP)\s+(?!(?:NOW|PAY|IT|THE|A|AN|ONE|MORE|LESS)\b)[A-Z]{3,}\b/,
+  /\$?\b[A-Z]{3,5}\s*(?:🚀|📈|💎|🌕)|(?:🚀|📈|💎)\s*\$?[A-Z]{3,5}\b/u,
   // "Tesla is overvalued". Of a home or a car it says nothing about a share.
   new RegExp(
     `\\b(?:${NOT_TICKERS}[A-Z]{3,5}|${COMPANY})\\s+(?:is|looks|seems)\\s+(?:\\w+\\s+)?(?:over|under)valued\\b`,
@@ -124,6 +126,13 @@ const INVESTMENT = [
   // in vti". In capitals the rules above judge them, so a simulated strategy's own rule ("buy $500
   // of VTI") still passes.
   /\b(?:[Vv](?:oo|ti|tsax|fiax|xus|btlx|gt)|[Ff](?:xaix|zrox)|[Ss](?:wppx|chd|qqq)|[Qq]qq|[Tt]qqq|[Aa]rkk|[Bb]nd)\b/,
+  // Round 13 (11-12): a stock written small ("Dump your tsla"), a mutual fund in capitals ("I'd go
+  // with FXAIX": four letters and an X; a watch, a shipper or a word isn't one), "HODL", and the
+  // employer match ("Take the match, it's free money").
+  /\b(?:[Tt]sla|[Nn]vda|[Aa]apl|[Mm]sft|[Aa]mzn|[Gg]oogl?|[Pp]ltr)\b/,
+  /\b(?!(?:ROLEX|FEDEX|TIMEX|LATEX|XEROX|PYREX|DUREX|CODEX|INDEX|RELAX|ANNEX|SPANX|UNISEX|DUPLEX|COMPLEX)\b)[A-Z]{4}X\b/,
+  /\bhodl(?:ing)?\b/i,
+  /\b(?:take|get|grab|capture|claim|max(?:imi[sz]e)?|don(?:'|’)t (?:miss|leave|skip|lose))\b[^.!?]{0,25}\b(?:employer(?:'|’)?s?|company(?:'|’)?s?|full|401\(?k\)?) match\b|\bmatch\b[^.!?]{0,20}\bfree money\b|\bfree money\b[^.!?]{0,20}\bmatch\b/i,
   // A company by name and nothing after it (11-04): "You should buy Tesla now". "Buy Costco gas"
   // has a thing after the name, and it's the thing being bought.
   // "Buy Now, Pay Later" is a kind of plan.
@@ -286,6 +295,8 @@ const TAX_ADVICE = [
   // ("Your 1099-NEC shows $8,000.00") stays a fact.
   /\b(?:skip|don(?:'|’)?t pay|do not pay|hold off on)\b[^.!?]{0,20}\bstate (?:estimates?|estimated (?:payments?|tax(?:es)?)|tax payments?)\b/i,
   /\b(?:don(?:'|’)?t|do not|no) (?:need to|have to)\s+(?:report|declare|include|list|file)\b[^.!?]{0,30}\b(?:1099|w-?2|k-?1)\b|\b(?:skip|leave out|leave off|ignore|never report)\b[^.!?]{0,20}\b(?:the |your |that |this )?(?:1099|w-?2|k-?1)\b|\b(?:leave|keep)\b[^.!?]{0,20}\b(?:1099|w-?2|k-?1)\w*(?:-[a-z]+)? off\b/i,
+  // Round 13 (11-12): "File an extension". A phone extension has a number after it.
+  /(?:^|[.!?:;]\s+|\byou should\s+|\bi(?:'|’)?d\s+|\bjust\s+)(?:file|request|get)\b (?:for )?(?:an? |the )?(?:tax )?extension\b(?! \d)/i,
 ];
 // In a sentence that talks about tax: telling them to do something, or what the rules say
 // their money counts as. "You'll owe about $X" is a figure; "you should set aside $X" is advice.
@@ -400,6 +411,10 @@ const LEGAL = [
   /\bexecutor\b/i,
   // Claims about what a court does with what someone leaves (the reviewed fact says "usually").
   /\bcourts? (?:always|never|must|will|won(?:'|’)t|has to|have to|doesn(?:'|’)t have to)\b[^.!?]{0,40}\b(?:approve|decide|take|split|divide|get)\b/i,
+  // Round 13 (11-12): legal letters and what they make a collector do ("Send them a cease and
+  // desist letter", "Send a demand letter for your deposit", "they have to stop").
+  /\bcease[- ](?:and|&)[- ]desist\b|\bdemand letter\b/i,
+  /\b(?:have|has) to stop (?:contacting|calling|texting|emailing|writing to)\b/i,
 ];
 
 // Saying Jane can't help with something legal, or pointing to a lawyer for it, is not legal
