@@ -564,7 +564,11 @@ describe.runIf(url)("typing to Jane against a real database", () => {
 
   it("is rate-limited per person", async () => {
     const busy = await person("typing-busy");
-    const now = new Date(LINKED.getTime() + 5 * 60 * MINUTE);
+    // Today, not a day in October: the rate limiter's occasional clean-up (src/lib/rate-limit.ts,
+    // sometimesCleanUp) deletes counters older than its retention by the real clock, and any test in
+    // the shard can set it off, so an October counter could vanish mid-loop and the 61st message got
+    // through (#1615's unit shard 1, 11-12).
+    const now = new Date();
     for (let i = 0; i < RATE_LIMITS.chat.limit; i += 1) {
       await sendToJane(busy, "help", { client, now });
     }
