@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { hydrated } from "./waits";
 
 // Every tap answers at once (the founder's "every button is an instant response"; the audit is
 // tap-audit.md in the side-session notes). One control of each kind the audit found: a link to
@@ -32,6 +33,10 @@ async function tapTime(page: Page, target: Locator, changed: string): Promise<nu
     await target.scrollIntoViewIfNeeded({ timeout: 2_000 });
     await expect(target).toBeVisible({ timeout: 2_000 });
   }).toPass({ timeout: 30_000 });
+  // React has it: "taps ready" is the root's, and the header's tabs hydrate in their own boundary
+  // after it, so a tap before then is a full page load that nothing in the page can time (#1615's
+  // e2e shard 2, 11-12: the Insurance tab, 3 of 3 tries).
+  await hydrated(target);
   const result = new Promise<number>((resolve, reject) => {
     reported = resolve;
     setTimeout(() => reject(new Error(`no change to ${changed} within 10 s`)), 10_000);
