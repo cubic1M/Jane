@@ -91,25 +91,52 @@ export function paymentsToUnseenCards<R extends PairableRow & { description?: st
   accounts: readonly { id: string; type: string; name: string }[],
 ): R[] {
   const type = new Map(accounts.map((a) => [a.id, a.type]));
-  // Money arriving on a card, whatever it's labelled: an Apple Card's own side reads as a transfer.
+  const seen = seenArriving(rows, type);
+  return rows.filter(
+    (r) =>
+      isBankCardPayment(r, type) &&
+      !seen.has(r.id) &&
+      // Named for a card on file: its statement may just not reach this far back.
+      paidCardOnFile(r.description ?? "", accounts) === null,
+  );
+}
+
+// Card payments out of a bank account that a card on file shows arriving, whoever issued it:
+// money moved between the person's own accounts (debugger 11-12: the demo bank's "PAYMENT TO
+// DEMO CARD" was a bill on /subscriptions, beside the purchases made on that card).
+export function paymentsSeenArriving(
+  rows: readonly PairableRow[],
+  accounts: readonly { id: string; type: string }[],
+): Set<string> {
+  return seenArriving(rows, new Map(accounts.map((a) => [a.id, a.type])));
+}
+
+const isBankCardPayment = (r: PairableRow, type: ReadonlyMap<string, string>) =>
+  type.get(r.accountId) === "depository" && r.amountCents > 0 && r.pfcDetailed === CARD_PAYMENT;
+
+// Each bank-account card payment matched to money arriving on a card of the same amount within
+// CARD_PAYMENT_MATCH_DAYS, whatever the card's side is labelled (an Apple Card's own side reads as
+// a transfer). Each arrival pays for one payment.
+function seenArriving(
+  rows: readonly PairableRow[],
+  type: ReadonlyMap<string, string>,
+): Set<string> {
   const arrived = rows.filter((r) => type.get(r.accountId) === "credit" && r.amountCents < 0);
   const used = new Set<string>();
-  return rows.filter((r) => {
-    if (type.get(r.accountId) !== "depository" || r.amountCents <= 0) return false;
-    if (r.pfcDetailed !== CARD_PAYMENT) return false;
+  const seen = new Set<string>();
+  for (const r of rows) {
+    if (!isBankCardPayment(r, type)) continue;
     const match = arrived.find(
       (a) =>
         !used.has(a.id) &&
         a.amountCents === -r.amountCents &&
         days(a.date, r.date) <= CARD_PAYMENT_MATCH_DAYS,
     );
-    if (match) {
-      used.add(match.id);
-      return false;
-    }
-    // Named for a card on file: its statement may just not reach this far back.
-    return paidCardOnFile(r.description ?? "", accounts) === null;
-  });
+    if (!match) continue;
+    used.add(match.id);
+    seen.add(r.id);
+  }
+  return seen;
 }
 
 // A card payment out of a bank account, named from its words when its card's side isn't known:

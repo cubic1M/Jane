@@ -1,5 +1,5 @@
 import { NEXT_CHARGE_WINDOW_DAYS, OWN_ACCOUNT_TRANSFERS, type Frequency } from "@/config/detection";
-import { paidCardOnFile } from "@/categorize/card-payments";
+import { paidCardOnFile, paymentsSeenArriving } from "@/categorize/card-payments";
 import { billName, expectedDates, isBillStream } from "./forecast";
 import {
   isAmbiguousRecurring,
@@ -37,6 +37,8 @@ export type RecurringCharge = {
 export function recurringCharges(input: DetectionInput): RecurringCharge[] {
   const confirmed = new Set(input.subscriptionMerchantKeys ?? []);
   const declined = new Set(input.declinedSubscriptionMerchantKeys ?? []);
+  const cards = cardsWithCharges(input);
+  const arrived = paymentsSeenArriving(input.transactions, input.accounts);
   return (
     buildStreams(input)
       .filter((s) => s.active && s.frequency !== null && s.annualCostCents !== null)
@@ -44,7 +46,7 @@ export function recurringCharges(input: DetectionInput): RecurringCharge[] {
       // Paying a card that's on file isn't a bill of its own: what's bought on it is counted
       // where it's bought (night QA 10-30: "Other regular bills $52,534.88 a year" counted a
       // $1,640/mo Chase card payment beside the NYT and Audible charged to that card).
-      .filter((s) => !paysCardOnFile(s, cardsWithCharges(input)))
+      .filter((s) => !paysCardOnFile(s, cards, arrived))
       .map((s) => {
         const subscription =
           isSubscriptionUnless(declined)(s) ||
@@ -75,10 +77,16 @@ function cardsWithCharges(input: DetectionInput): DetectionInput["accounts"] {
   return input.accounts.filter((a) => a.type === "credit" && charged.has(a.id));
 }
 
-function paysCardOnFile(s: Stream, accounts: DetectionInput["accounts"]): boolean {
+function paysCardOnFile(
+  s: Stream,
+  accounts: DetectionInput["accounts"],
+  arrived: ReadonlySet<string>,
+): boolean {
   if (s.pfcDetailed !== "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT") return false;
   return (
     accounts.some((a) => a.type === "credit" && a.id === s.accountId) ||
-    paidCardOnFile(`${s.charges[0]?.description ?? ""} ${s.merchant}`, accounts) !== null
+    paidCardOnFile(`${s.charges[0]?.description ?? ""} ${s.merchant}`, accounts) !== null ||
+    // A card on file shows its payments arriving, whoever issued it (debugger 11-12).
+    s.charges.some((c) => arrived.has(c.id))
   );
 }
