@@ -181,4 +181,46 @@ describe.runIf(url)("a bank connection", () => {
     const user = await client.user.findUniqueOrThrow({ where: { id: userId } });
     expect(user.firstScanDoneAt).toBeNull();
   });
+
+  // Closed beta: the founders' daily email counts a bank that broke, once, and a sync that failed.
+  it("tells the founders once when a bank needs a sign-in, and counts other failed syncs", async () => {
+    const plaidSays = (code: string) =>
+      ({
+        transactionsSync: async () => {
+          throw Object.assign(new Error("Request failed"), {
+            response: { status: 400, data: { error_code: code } },
+          });
+        },
+      }) as unknown as PlaidApi;
+    const since = new Date();
+    const broken = await item(await person());
+    for (let i = 0; i < 2; i++) {
+      await expect(
+        syncItem(broken.id, { client, api: plaidSays("ITEM_LOGIN_REQUIRED") }),
+      ).rejects.toThrow();
+    }
+    const down = await item(await person());
+    await expect(
+      syncItem(down.id, { client, api: plaidSays("INSTITUTION_DOWN") }),
+    ).rejects.toThrow();
+
+    expect((await client.plaidItem.findUniqueOrThrow({ where: { id: broken.id } })).status).toBe(
+      "login_required",
+    );
+    const events = await client.opsEvent.findMany({
+      where: {
+        createdAt: { gte: since },
+        code: { in: ["ITEM_LOGIN_REQUIRED", "INSTITUTION_DOWN"] },
+      },
+      select: { kind: true, code: true },
+    });
+    // Other files sync at the same time, and rows name no bank, so: at least this file's. (Once per
+    // break is the update's "status not login_required" guard, in webhooks.test.ts.)
+    expect(events).toEqual(
+      expect.arrayContaining([
+        { kind: "bank_connection_broken", code: "ITEM_LOGIN_REQUIRED" },
+        { kind: "plaid_sync_failed", code: "INSTITUTION_DOWN" },
+      ]),
+    );
+  });
 });

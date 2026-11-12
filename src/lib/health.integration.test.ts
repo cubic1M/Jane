@@ -14,7 +14,18 @@ import { healthReport, jobHealth, recordRun, reportMissedJobs } from "./health";
 const url = process.env.TEST_DATABASE_URL;
 // The database is shared with test files running at the same time. Wiping every notice let
 // claude-month-alert.integration.test.ts send its once-a-month email twice.
-const THIS_FILES_NOTICES = { where: { NOT: { key: { startsWith: "claude-month:" } } } };
+// Not another file's: Claude's month (claude-month-alert) and the ops alarms (ops-alerts) run beside it.
+const THIS_FILES_NOTICES = {
+  where: {
+    NOT: {
+      OR: [
+        { key: { startsWith: "claude-month:" } },
+        { key: { startsWith: "ops:" } },
+        { key: { startsWith: "ops-digest:" } },
+      ],
+    },
+  },
+};
 const T0 = new Date("2200-01-01T00:00:00Z");
 const HOUR = 60 * 60 * 1000;
 const at = (hours: number) => new Date(T0.getTime() + hours * HOUR);

@@ -2,6 +2,7 @@ import { cronAuthorized } from "@/lib/cron-auth";
 import { NextResponse } from "next/server";
 import { runDigests } from "@/lib/digest/send";
 import { sendErrorDigest } from "@/lib/error-alerts";
+import { sendOpsDigest } from "@/lib/ops-alerts";
 import { recordRun, reportMissedJobs } from "@/lib/health";
 import { runDueJobs } from "@/lib/jobs";
 import { runJaneAgentForAll } from "@/lib/jane-agent/run";
@@ -35,6 +36,12 @@ export async function GET(request: Request) {
     await sendErrorDigest();
   } catch (error) {
     log.error("Error digest failed", { error: String(error) });
+  }
+  // And the day's failed syncs, webhooks and sign-in emails and broken banks (src/lib/ops-alerts.ts).
+  try {
+    await sendOpsDigest();
+  } catch (error) {
+    log.error("Ops digest failed", { error: String(error) });
   }
   return NextResponse.json(
     await recordRun("digest", async () => {

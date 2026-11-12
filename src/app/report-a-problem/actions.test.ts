@@ -1,12 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { create, logAudit, track, saveTryFeedback } = vi.hoisted(() => ({
-  saveTryFeedback: vi.fn(),
-  create: vi.fn(async () => ({ id: "rep_1" })),
-  logAudit: vi.fn(),
-  track: vi.fn(),
+const { create, logAudit, track, saveTryFeedback, emailFeedback, afterCallbacks } = vi.hoisted(
+  () => ({
+    emailFeedback: vi.fn(),
+    afterCallbacks: [] as (() => unknown)[],
+    saveTryFeedback: vi.fn(),
+    create: vi.fn(async () => ({ id: "rep_1" })),
+    logAudit: vi.fn(),
+    track: vi.fn(),
+  }),
+);
+vi.mock("@/lib/session", () => ({
+  requireUser: vi.fn(async () => ({ id: "user_1", email: "student@example.edu" })),
 }));
-vi.mock("@/lib/session", () => ({ requireUser: vi.fn(async () => ({ id: "user_1" })) }));
+vi.mock("next/server", () => ({
+  after: (callback: () => unknown) => afterCallbacks.push(callback),
+}));
+vi.mock("@/lib/feedback-email", () => ({ emailFeedback }));
+vi.mock("@/lib/crypto", () => ({ encryptBytes: (b: Uint8Array) => new Uint8Array([9, ...b]) }));
 vi.mock("@/lib/db-scoped", () => ({
   scopedDb: vi.fn(async () => ({ userId: "user_1", problemReports: { create } })),
 }));
@@ -21,14 +32,18 @@ import { hit } from "@/lib/rate-limit";
 import { requireUser } from "@/lib/session";
 import { sendProblemReport } from "./actions";
 
-const form = (fields: Record<string, string>) => {
+const form = (fields: Record<string, string | Blob>) => {
   const data = new FormData();
   for (const [k, v] of Object.entries(fields)) data.set(k, v);
   return data;
 };
+const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
 
 describe("sendProblemReport", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    afterCallbacks.length = 0;
+  });
 
   it("keeps the words and the page, audits it by id, and tells analytics nothing", async () => {
     const result = await sendProblemReport(
@@ -39,11 +54,59 @@ describe("sendProblemReport", () => {
       data: { userId: "user_1", path: "/transactions", message: "A row is missing." },
       select: { id: true },
     });
-    expect(logAudit).toHaveBeenCalledWith({ type: "user", id: "user_1" }, "problem_reported", {
-      type: "problem_report",
-      id: "rep_1",
-    });
+    expect(logAudit).toHaveBeenCalledWith(
+      { type: "user", id: "user_1" },
+      "problem_reported",
+      { type: "problem_report", id: "rep_1" },
+      { screenshot: false },
+    );
     expect(track).not.toHaveBeenCalled();
+  });
+
+  // The founders hear as it arrives: the words and the page, and they can reply to the person.
+  it("emails the founders the words and the page after answering", async () => {
+    await sendProblemReport(form({ from: "/home", message: "Love the tree." }));
+    expect(emailFeedback).not.toHaveBeenCalled();
+    for (const callback of afterCallbacks) await callback();
+    expect(emailFeedback).toHaveBeenCalledWith({
+      path: "/home",
+      message: "Love the tree.",
+      screenshot: false,
+      replyTo: "student@example.edu",
+    });
+  });
+
+  it("keeps an attached screenshot encrypted with the report, and the email only says there is one", async () => {
+    const shot = new File([PNG], "shot.png", { type: "image/png" });
+    expect(
+      await sendProblemReport(form({ from: "/home", message: "See this.", screenshot: shot })),
+    ).toEqual({
+      ok: true,
+    });
+    expect(create).toHaveBeenCalledWith({
+      data: {
+        userId: "user_1",
+        path: "/home",
+        message: "See this.",
+        screenshotEncrypted: new Uint8Array([9, ...PNG]),
+        screenshotType: "image/png",
+      },
+      select: { id: true },
+    });
+    for (const callback of afterCallbacks) await callback();
+    expect(emailFeedback).toHaveBeenCalledWith(expect.objectContaining({ screenshot: true }));
+  });
+
+  it("refuses a file that isn't a picture, whatever it's called", async () => {
+    const fake = new File(["%PDF-1.4"], "shot.png", { type: "image/png" });
+    const result = await sendProblemReport(
+      form({ from: "/home", message: "See this.", screenshot: fake }),
+    );
+    expect(result).toEqual({
+      ok: false,
+      error: "Attach a screenshot as a PNG, JPEG or WebP picture.",
+    });
+    expect(create).not.toHaveBeenCalled();
   });
 
   it("asks for words instead of saving nothing", async () => {

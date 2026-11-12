@@ -3,11 +3,32 @@
 import { revalidatePath } from "next/cache";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
+import { emailInvite, type InviteEmailResult } from "@/lib/invite-email";
 import { createInviteCode, normalizeCode, revokeInviteCode } from "@/lib/invites";
 import { hit } from "@/lib/rate-limit";
 import { requireAdmin } from "@/lib/session";
 
 export type InviteState = { ok: boolean; message: string; code?: string } | null;
+
+const EMAIL_WORDS: Record<InviteEmailResult, string> = {
+  sent: "Emailed it.",
+  not_found: "That code isn't one of the team's.",
+  not_locked: "Only a code made for one email can be emailed: copy the link instead.",
+  not_active: "That code no longer works, so it wasn't emailed.",
+  failed: "The email didn't send (see /admin/health). Copy the link instead.",
+};
+
+// Emails the code to the address it's locked to, audited by the code's id (never the address).
+async function sendAndAudit(adminId: string, adminEmail: string | null | undefined, code: string) {
+  const { result, id } = await emailInvite(code, { replyTo: adminEmail ?? undefined });
+  if (result === "sent" && id) {
+    await logAudit({ type: "admin", id: adminId }, "invite_code_emailed", {
+      type: "invite_code",
+      id,
+    });
+  }
+  return result;
+}
 
 const MAX_USES = 500;
 
@@ -56,8 +77,24 @@ export async function createInvite(
     },
   );
   await track(admin.id, "invite_created", { uses, locked_to_email: email !== null });
+  // "Email it to them now": one step from a student's address to an invite in their inbox.
+  const sent =
+    email && formData.get("send") === "on" ? await sendAndAudit(admin.id, admin.email, code) : null;
   revalidatePath("/admin/invites");
-  return { ok: true, message: `Created ${code}`, code };
+  return {
+    ok: sent === null || sent === "sent",
+    message: `Created ${code}${sent ? `. ${EMAIL_WORDS[sent]}` : ""}`,
+    code,
+  };
+}
+
+// Emails (or emails again) an active code to the address it's locked to.
+export async function sendInvite(formData: FormData): Promise<void> {
+  const admin = await requireAdmin();
+  if (!(await hit("invites", admin.id)).ok) return;
+  const code = normalizeCode(String(formData.get("code") ?? ""));
+  if (code) await sendAndAudit(admin.id, admin.email, code);
+  revalidatePath("/admin/invites");
 }
 
 export async function revokeInvite(formData: FormData): Promise<void> {

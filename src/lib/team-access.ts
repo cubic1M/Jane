@@ -121,6 +121,13 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   admin_viewed_action: onAction(() => "Viewed your request"),
   admin_viewed_metrics: notOnePerson,
   // The beta's activity log: the list holds no one person's data; their own timeline does.
+  // A founder opened the screenshot the person attached to their feedback: it can show their money.
+  admin_viewed_feedback_screenshot: {
+    shown: true,
+    whose: "person",
+    what: () => "Looked at the screenshot you sent with your feedback",
+  },
+  admin_viewed_costs: notOnePerson,
   admin_viewed_activity: {
     shown: true,
     whose: "person",
@@ -163,6 +170,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   user_made_admin: own,
   invite_code_created: notOnePerson,
   invite_code_revoked: notOnePerson,
+  invite_code_emailed: notOnePerson,
   invite_redeemed: notOnePerson,
   terms_accepted: own,
   data_exported: own,

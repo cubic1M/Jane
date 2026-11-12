@@ -31,6 +31,10 @@ export function InviteForm() {
         Note
         <input name="note" placeholder="Who it's for" className={FIELD} />
       </label>
+      <label className="flex h-10 items-center gap-2">
+        <input name="send" type="checkbox" defaultChecked className="h-4 w-4" />
+        Email it to them now
+      </label>
       <button
         type="submit"
         disabled={pending}

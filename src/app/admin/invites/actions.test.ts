@@ -7,6 +7,7 @@ vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/rate-limit", () => ({
   hit: vi.fn(async () => ({ ok: true, remaining: 1, retryAfterSeconds: 0 })),
 }));
+vi.mock("@/lib/invite-email", () => ({ emailInvite: vi.fn() }));
 vi.mock("@/lib/invites", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/invites")>()),
   createInviteCode: vi.fn(),
@@ -16,9 +17,10 @@ vi.mock("@/lib/invites", async (importOriginal) => ({
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { hit } from "@/lib/rate-limit";
+import { emailInvite } from "@/lib/invite-email";
 import { createInviteCode, revokeInviteCode } from "@/lib/invites";
 import { requireAdmin } from "@/lib/session";
-import { createInvite, revokeInvite } from "./actions";
+import { createInvite, revokeInvite, sendInvite } from "./actions";
 
 const form = (fields: Record<string, string>) => {
   const data = new FormData();
@@ -30,7 +32,8 @@ describe("the invite admin actions", () => {
   beforeEach(() => {
     vi.mocked(requireAdmin)
       .mockReset()
-      .mockResolvedValue({ id: "admin_1", role: "admin" } as never);
+      .mockResolvedValue({ id: "admin_1", role: "admin", email: "founder@example.test" } as never);
+    vi.mocked(emailInvite).mockReset().mockResolvedValue({ result: "sent", id: "inv_1" });
     vi.mocked(createInviteCode)
       .mockReset()
       .mockResolvedValue({ id: "inv_1", code: "ABCD-EFGH-JKMN" });
@@ -43,7 +46,9 @@ describe("the invite admin actions", () => {
     vi.mocked(requireAdmin).mockRejectedValue(new Error("notFound"));
     await expect(createInvite(null, form({ maxUses: "1" }))).rejects.toThrow("notFound");
     await expect(revokeInvite(form({ code: "ABCD-EFGH-JKMN" }))).rejects.toThrow("notFound");
+    await expect(sendInvite(form({ code: "ABCD-EFGH-JKMN" }))).rejects.toThrow("notFound");
     expect(createInviteCode).not.toHaveBeenCalled();
+    expect(emailInvite).not.toHaveBeenCalled();
     expect(revokeInviteCode).not.toHaveBeenCalled();
   });
 
@@ -101,5 +106,53 @@ describe("the invite admin actions", () => {
     vi.mocked(logAudit).mockClear();
     await revokeInvite(form({ code: "ABCD-EFGH-JKMN" }));
     expect(logAudit).not.toHaveBeenCalled();
+  });
+
+  it("emails a new code to its one address when asked, audited by id, replies going to the founder", async () => {
+    const state = await createInvite(
+      null,
+      form({ maxUses: "1", email: "student@example.edu", send: "on" }),
+    );
+    expect(state).toEqual({
+      ok: true,
+      message: "Created ABCD-EFGH-JKMN. Emailed it.",
+      code: "ABCD-EFGH-JKMN",
+    });
+    expect(emailInvite).toHaveBeenCalledWith("ABCD-EFGH-JKMN", {
+      replyTo: "founder@example.test",
+    });
+    expect(logAudit).toHaveBeenCalledWith({ type: "admin", id: "admin_1" }, "invite_code_emailed", {
+      type: "invite_code",
+      id: "inv_1",
+    });
+    expect(JSON.stringify(vi.mocked(logAudit).mock.calls)).not.toContain("student@");
+  });
+
+  it("never emails a code for anyone, and says when the email didn't go", async () => {
+    await createInvite(null, form({ maxUses: "5", send: "on" }));
+    expect(emailInvite).not.toHaveBeenCalled();
+
+    vi.mocked(emailInvite).mockResolvedValue({ result: "failed", id: "inv_1" });
+    const state = await createInvite(
+      null,
+      form({ maxUses: "1", email: "student@example.edu", send: "on" }),
+    );
+    expect(state).toMatchObject({ ok: false, code: "ABCD-EFGH-JKMN" });
+    expect(state?.message).toContain("didn't send");
+    expect(logAudit).not.toHaveBeenCalledWith(
+      expect.anything(),
+      "invite_code_emailed",
+      expect.anything(),
+    );
+  });
+
+  it("emails an existing code again from the list", async () => {
+    await sendInvite(form({ code: "abcd-efgh-jkmn" }));
+    expect(emailInvite).toHaveBeenCalledWith("ABCD-EFGH-JKMN", {
+      replyTo: "founder@example.test",
+    });
+    vi.mocked(emailInvite).mockClear();
+    await sendInvite(form({ code: "not a code" }));
+    expect(emailInvite).not.toHaveBeenCalled();
   });
 });

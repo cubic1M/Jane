@@ -1,4 +1,5 @@
 import pg from "pg";
+import { withVerifyFull } from "@/lib/pg-url";
 import {
   AS_SYSTEM_READ_SQL,
   AS_SYSTEM_SQL,
@@ -174,14 +175,15 @@ export class RlsClient extends pg.Client {
   }
 }
 
-// The app's connection pool: pg's own, with the fast path.
+// The app's connection pool: pg's own, with the fast path. sslmode=require is named verify-full,
+// what pg does with it anyway, so it doesn't log a security warning (src/lib/pg-url.ts).
 export function rlsPool(
   connectionString: string | undefined,
   options: pg.PoolConfig = {},
 ): pg.Pool {
   return new pg.Pool({
     ...options,
-    connectionString,
+    connectionString: withVerifyFull(connectionString),
     Client: RlsClient as unknown as new () => pg.ClientBase,
   });
 }

@@ -183,6 +183,33 @@ const STORES: Store[] = [
       return count === 1;
     },
   },
+  {
+    name: "Feedback screenshots",
+    async scan(client, after, take, userIds) {
+      const rows = await systemDb(WHY, client).$queryRaw<{ id: string; head: Uint8Array }[]>`
+        SELECT id, substring(screenshot_encrypted from 1 for ${BYTES_HEADER_LENGTH}) AS head
+        FROM problem_reports
+        WHERE screenshot_encrypted IS NOT NULL
+          AND ${after ? Prisma.sql`id > ${after}` : Prisma.sql`TRUE`}
+          AND ${userIds ? Prisma.sql`user_id = ANY(${userIds})` : Prisma.sql`TRUE`}
+        ORDER BY id
+        LIMIT ${take}`;
+      return rows.map((r) => ({ id: r.id, keyId: labelOf(() => keyIdOfBytes(r.head)) }));
+    },
+    async rotateOne(client, id) {
+      const row = await systemDb(WHY, client).problemReport.findUnique({
+        where: { id },
+        select: { screenshotEncrypted: true },
+      });
+      const next = row?.screenshotEncrypted ? rotateBytes(row.screenshotEncrypted) : null;
+      if (!row?.screenshotEncrypted || !next) return false;
+      const { count } = await systemDb(WHY, client).problemReport.updateMany({
+        where: { id, screenshotEncrypted: { equals: row.screenshotEncrypted } },
+        data: { screenshotEncrypted: next },
+      });
+      return count === 1;
+    },
+  },
 ];
 
 const SCAN_BATCH = 200;

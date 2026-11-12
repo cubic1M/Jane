@@ -65,6 +65,8 @@ export async function removePlaidItem(
       user_id: userId,
       institution: item.institutionName,
       reason,
+      // /admin/costs counts real banks removed this month: Plaid bills them for the month too.
+      demo: isDemoToken(accessToken),
     },
   );
 }

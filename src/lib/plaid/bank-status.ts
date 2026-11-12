@@ -1,6 +1,8 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { momentLabel } from "@/lib/day-label";
+import { timezoneOf } from "@/lib/today";
 import { ITEM_STATUS } from "./sync";
 
 // What a linked bank needs from the person, said calmly and honestly (the founder: "Your bank
@@ -37,18 +39,21 @@ export type BankItem = {
   lastSyncedAt: Date | null;
   newAccountsAvailable: boolean;
   lastErrorCode: string | null;
+  // Plaid's PENDING_DISCONNECT / PENDING_EXPIRATION deadline, if one is coming.
+  reconnectBy?: Date | null;
 };
 
 export type BankNotice = {
   itemId: string;
-  kind: "sign_in" | "new_accounts" | "trouble";
+  kind: "sign_in" | "reconnect_soon" | "new_accounts" | "trouble";
   title: string;
   words: string;
   // Opens Plaid Link in update mode for this bank.
   action: string | null;
 };
 
-export function bankNotices(items: readonly BankItem[], now: Date): BankNotice[] {
+// `timezone`: the person's own, so a disconnect's day is their day (Plaid gives a moment in UTC).
+export function bankNotices(items: readonly BankItem[], now: Date, timezone = "UTC"): BankNotice[] {
   return items.flatMap((item): BankNotice[] => {
     const name = item.name ?? "Your bank";
     const age = `What you see from there was last updated ${updatedAgo(item.lastSyncedAt, now)}.`;
@@ -63,6 +68,15 @@ export function bankNotices(items: readonly BankItem[], now: Date): BankNotice[]
         },
       ];
     const notices: BankNotice[] = [];
+    if (item.reconnectBy && item.reconnectBy > now)
+      notices.push({
+        itemId: item.id,
+        kind: "reconnect_soon",
+        title: `Sign in to ${name} again by ${momentLabel(item.reconnectBy, timezone)}`,
+        words:
+          "The bank asks you to sign in again, or sharing stops on that day. It takes a minute, and everything keeps updating until then.",
+        action: "Sign in again",
+      });
     if (item.newAccountsAvailable)
       notices.push({
         itemId: item.id,
@@ -95,11 +109,15 @@ export async function loadBankNotices(
       lastSyncedAt: true,
       newAccountsAvailable: true,
       lastErrorCode: true,
+      reconnectBy: true,
     },
     orderBy: { createdAt: "asc" },
   });
+  // Their timezone only matters for a disconnect's day, which is rare.
+  const timezone = items.some((i) => i.reconnectBy) ? await timezoneOf(userId) : "UTC";
   return bankNotices(
     items.map((i) => ({ ...i, name: i.institutionName })),
     now,
+    timezone,
   );
 }

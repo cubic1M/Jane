@@ -5,6 +5,7 @@ vi.mock("@/lib/digest/send", () => ({
   runDigests: vi.fn(async () => ({ sent: 1, previews: [] })),
 }));
 vi.mock("@/lib/error-alerts", () => ({ sendErrorDigest: vi.fn(async () => {}) }));
+vi.mock("@/lib/ops-alerts", () => ({ sendOpsDigest: vi.fn(async () => 0) }));
 vi.mock("@/lib/health", () => ({
   reportMissedJobs: vi.fn(async () => []),
   recordRun: vi.fn(async (_name: string, run: () => Promise<unknown>) => run()),

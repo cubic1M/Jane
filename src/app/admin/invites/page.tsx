@@ -1,9 +1,10 @@
 import { Suspense } from "react";
 import { db } from "@/lib/db";
+import { signUpLink } from "@/lib/invite-email";
 import { inviteStatus, invitesRequired, type InviteStatus } from "@/lib/invites";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
-import { revokeInvite } from "./actions";
+import { revokeInvite, sendInvite } from "./actions";
 import { CopyButton } from "./copy-button";
 import { InviteForm } from "./invite-form";
 import { LoadingBar } from "@/components/loading-bar";
@@ -14,7 +15,7 @@ const WHY = "Admin page: works across people, behind ADMIN_EMAILS and two-factor
 
 const STATUS: Record<InviteStatus, string> = {
   active: "Active",
-  revoked: "Revoked",
+  revoked: "Turned off",
   expired: "Expired",
   used_up: "Used up",
 };
@@ -34,6 +35,8 @@ async function Invites() {
         revokedAt: true,
         expiresAt: true,
         createdAt: true,
+        emailedAt: true,
+        sharedById: true,
         access: { select: { email: true, createdAt: true }, orderBy: { createdAt: "asc" } },
       },
       orderBy: { createdAt: "desc" },
@@ -52,7 +55,15 @@ async function Invites() {
     select: { id: true, email: true },
   });
   const maker = new Map(makers.map((m) => [m.id, m.email]));
-  const base = process.env.APP_URL ?? "http://localhost:3000";
+  // Who of those let in by a code has made an account (and when), so a founder can nudge the rest.
+  const joined = new Map(
+    (
+      await systemDb(WHY).user.findMany({
+        where: { email: { in: codes.flatMap((c) => c.access.map((a) => a.email)) } },
+        select: { email: true, createdAt: true },
+      })
+    ).map((u) => [u.email.toLowerCase(), u.createdAt]),
+  );
 
   return (
     <>
@@ -85,6 +96,7 @@ async function Invites() {
               <p className="text-xs text-zinc-500">
                 Made {day(c.createdAt)}
                 {c.createdById ? ` by ${maker.get(c.createdById) ?? "a former admin"}` : ""}
+                {c.emailedAt ? ` · emailed ${day(c.emailedAt)}` : ""}
                 {c.revokedAt ? ` · revoked ${day(c.revokedAt)}` : ""}
               </p>
               {c.access.length > 0 && (
@@ -92,27 +104,39 @@ async function Invites() {
                   aria-label={`Used ${c.code}`}
                   className="text-xs text-zinc-600 dark:text-zinc-400"
                 >
-                  {c.access.map((a) => (
-                    <li key={a.email}>
-                      {a.email}, {day(a.createdAt)}
-                    </li>
-                  ))}
+                  {c.access.map((a) => {
+                    const signedUp = joined.get(a.email.toLowerCase());
+                    return (
+                      <li key={a.email} data-invite-person={signedUp ? "signed-up" : "waiting"}>
+                        {a.email}: used the code {day(a.createdAt)} ·{" "}
+                        {signedUp ? `signed up ${day(signedUp)}` : "no account yet"}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
               {status === "active" && (
                 <div className="flex flex-wrap gap-2">
                   <CopyButton text={c.code} label="Copy code" />
-                  <CopyButton
-                    text={`${base}/signup?invite=${encodeURIComponent(c.code)}`}
-                    label="Copy sign-up link"
-                  />
+                  <CopyButton text={signUpLink(c.code)} label="Copy sign-up link" />
+                  {c.email && !c.sharedById && (
+                    <form action={sendInvite}>
+                      <input type="hidden" name="code" value={c.code} />
+                      <button
+                        type="submit"
+                        className="rounded-full border border-zinc-900 px-3 py-1 text-xs font-semibold hover:bg-zinc-100 dark:border-zinc-100 dark:hover:bg-zinc-900"
+                      >
+                        {c.emailedAt ? "Email again" : "Email invite"}
+                      </button>
+                    </form>
+                  )}
                   <form action={revokeInvite}>
                     <input type="hidden" name="code" value={c.code} />
                     <button
                       type="submit"
                       className="rounded-full border border-zinc-900 px-3 py-1 text-xs font-semibold hover:bg-zinc-100 dark:border-zinc-100 dark:hover:bg-zinc-900"
                     >
-                      Revoke
+                      Turn off
                     </button>
                   </form>
                 </div>

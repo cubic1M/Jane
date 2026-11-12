@@ -152,6 +152,8 @@ describe("Plaid Link", () => {
         newAccountsAvailable: false,
         lastErrorCode: null,
         lastErrorAt: null,
+        // A pending disconnect (PENDING_DISCONNECT) is answered too.
+        reconnectBy: null,
       },
     });
     expect(logAudit).toHaveBeenCalledWith({ type: "user", id: "user_1" }, "item_relinked", {

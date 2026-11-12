@@ -79,8 +79,13 @@ export type AuditEvent =
   | "uploads_reset"
   // An uploaded account's balance given after its upload (src/lib/import/account-balance.ts).
   | "uploaded_balance_set"
-  // "Report a problem" sent (src/app/report-a-problem): the report's id only, never its words.
+  // Feedback sent (src/app/report-a-problem): the report's id and whether a screenshot came with
+  // it, never its words.
   | "problem_reported"
+  // A founder opened a feedback screenshot (/admin/reports): it can show the person's money.
+  | "admin_viewed_feedback_screenshot"
+  // /admin/costs: counts and spend only, across people.
+  | "admin_viewed_costs"
   // Finding data was sent to Claude for card text.
   | "explanations_generated"
   | "decision_made"
@@ -133,6 +138,8 @@ export type AuditEvent =
   | "user_made_admin"
   | "invite_code_created"
   | "invite_code_revoked"
+  // A code emailed to the address it's locked to, from /admin/invites.
+  | "invite_code_emailed"
   | "invite_redeemed"
   | "terms_accepted"
   | "data_exported"

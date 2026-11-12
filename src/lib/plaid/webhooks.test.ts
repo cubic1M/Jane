@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { updateMany, deleteAccounts } = vi.hoisted(() => ({
+const { updateMany, deleteAccounts, recordOpsEvent } = vi.hoisted(() => ({
   updateMany: vi.fn(),
   deleteAccounts: vi.fn(),
+  recordOpsEvent: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({ db: {} }));
+vi.mock("@/lib/ops-alerts", () => ({ recordOpsEvent }));
 vi.mock("@/lib/evidence/orphans", () => ({ forgetSince: vi.fn(), removeOrphans: vi.fn() }));
 vi.mock("@/lib/db-scoped", () => ({
   scopedFor: vi.fn(() => ({
@@ -27,7 +29,8 @@ const plan = (body: Record<string, unknown>) =>
 describe("planWebhook", () => {
   beforeEach(() => {
     findUnique.mockReset().mockResolvedValue({ id: "item_1", userId: "user_1" });
-    updateMany.mockReset();
+    updateMany.mockReset().mockResolvedValue({ count: 1 });
+    recordOpsEvent.mockReset();
     deleteAccounts.mockReset().mockResolvedValue({ count: 1 });
   });
 
@@ -54,13 +57,55 @@ describe("planWebhook", () => {
       webhook_code: "ERROR",
       error: { error_code: "ITEM_LOGIN_REQUIRED" },
     });
-    await plan({ webhook_type: "ITEM", webhook_code: "PENDING_EXPIRATION" });
 
     expect(scopedFor).toHaveBeenCalledWith("user_1", client);
-    expect(updateMany).toHaveBeenCalledTimes(2);
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: "item_1", status: { not: "login_required" } },
+      data: { status: "login_required" },
+    });
+    // The founders' daily email counts it, with the code and no one's id in the row.
+    expect(recordOpsEvent).toHaveBeenCalledWith(
+      "bank_connection_broken",
+      expect.objectContaining({ code: "ITEM_LOGIN_REQUIRED", userId: "user_1" }),
+    );
+  });
+
+  it("counts a broken connection once: a repeat of an item already waiting isn't news", async () => {
+    updateMany.mockResolvedValue({ count: 0 });
+    await plan({
+      webhook_type: "ITEM",
+      webhook_code: "ERROR",
+      error: { error_code: "ITEM_LOGIN_REQUIRED" },
+    });
+    expect(recordOpsEvent).not.toHaveBeenCalled();
+  });
+
+  // Plaid: the Item is disconnected 7 days later, and update mode before then resolves it. Until
+  // then it works, so it keeps syncing (status stays active) and the person gets a date.
+  it.each([
+    ["PENDING_DISCONNECT", { disconnect_time: "2026-11-02T08:00:00Z" }],
+    ["PENDING_EXPIRATION", { consent_expiration_time: "2026-11-02T08:00:00Z" }],
+  ])("asks for a sign-in by Plaid's date on %s, and keeps syncing", async (code, extra) => {
+    expect(await plan({ webhook_type: "ITEM", webhook_code: code, ...extra })).toEqual({
+      itemId: "item_1",
+      sync: false,
+    });
     expect(updateMany).toHaveBeenCalledWith({
       where: { id: "item_1" },
-      data: { status: "login_required" },
+      data: { reconnectBy: new Date("2026-11-02T08:00:00Z") },
+    });
+    expect(updateMany.mock.calls.some((c) => "status" in c[0].data)).toBe(false);
+    expect(recordOpsEvent).toHaveBeenCalledWith(
+      "bank_disconnect_pending",
+      expect.objectContaining({ code }),
+    );
+  });
+
+  it("gives a pending disconnect without a time 7 days", async () => {
+    await plan({ webhook_type: "ITEM", webhook_code: "PENDING_DISCONNECT" });
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: "item_1" },
+      data: { reconnectBy: new Date("2026-11-02T08:00:00Z") },
     });
   });
 
@@ -83,11 +128,11 @@ describe("planWebhook", () => {
         error: { error_code: "USER_PERMISSION_REVOKED" },
       }),
     ).toEqual({ itemId: "item_1", sync: false });
-    await plan({ webhook_type: "ITEM", webhook_code: "PENDING_DISCONNECT" });
-    expect(updateMany.mock.calls.map((c) => c[0].data)).toEqual([
-      { status: "login_required" },
-      { status: "login_required" },
-    ]);
+    expect(updateMany.mock.calls.map((c) => c[0].data)).toEqual([{ status: "login_required" }]);
+    expect(recordOpsEvent).toHaveBeenCalledWith(
+      "bank_connection_broken",
+      expect.objectContaining({ code: "USER_PERMISSION_REVOKED" }),
+    );
   });
 
   it("keeps any other item error, to say why the data is old", async () => {

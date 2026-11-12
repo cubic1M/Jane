@@ -526,6 +526,10 @@ model PlaidItem {
   syncingSince         DateTime? @map("syncing_since") @db.Timestamptz(3)
   // A webhook came while a sync ran: it reads again when it's done.
   syncAgain            Boolean   @default(false) @map("sync_again")
+  // Plaid's PENDING_DISCONNECT or PENDING_EXPIRATION: the connection still works, and keeps
+  // syncing, until this time; the person is asked to sign in again (Link's update mode) before
+  // it. Cleared when they do, or by LOGIN_REPAIRED.
+  reconnectBy          DateTime? @map("reconnect_by") @db.Timestamptz(3)
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -2235,6 +2239,8 @@ model InviteCode {
   // else about the person.
   cardKind    String?   @map("card_kind")
   cardValue   Int?      @map("card_value")
+  // When the team last emailed this code to its locked address from /admin/invites.
+  emailedAt   DateTime? @map("emailed_at") @db.Timestamptz(3)
 
   access BetaAccess[]
 
@@ -2291,6 +2297,21 @@ model ErrorEvent {
 
   @@index([createdAt])
   @@map("error_events")
+}
+
+// Things the founders hear about that aren't thrown errors (src/lib/ops-alerts.ts): a Plaid sync or
+// webhook that failed, a sign-in email that didn't send, a bank connection that broke. A kind and
+// at most Plaid's error code: never a person, an email address, an item or anything from a bank.
+// A system table, kept OPS_EVENT_DAYS.
+model OpsEvent {
+  id        String   @id @default(cuid())
+  kind      String
+  code      String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([kind, createdAt])
+  @@index([createdAt])
+  @@map("ops_events")
 }
 
 // Deliberately no foreign keys: the log must outlive the users and rows it describes,
@@ -5210,11 +5231,15 @@ model RefreshLock {
 // founders (/admin/reports). Nothing else is attached, never balances or transactions, and it
 // never goes to analytics. Deleted with the person (a trial person's too).
 model ProblemReport {
-  id        String   @id @default(cuid())
-  userId    String   @map("user_id")
-  path      String
-  message   String
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  id                  String   @id @default(cuid())
+  userId              String   @map("user_id")
+  path                String
+  message             String
+  // An optional screenshot the person chose to attach (PNG, JPEG or WebP), AES-256-GCM like
+  // documents: it can show their balances, so it never leaves /admin/reports and is never emailed.
+  screenshotEncrypted Bytes?   @map("screenshot_encrypted")
+  screenshotType      String?  @map("screenshot_type")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

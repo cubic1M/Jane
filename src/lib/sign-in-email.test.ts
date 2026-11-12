@@ -2,12 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/rate-limit", () => ({ hit: vi.fn() }));
 vi.mock("@/lib/email", () => ({ sendMagicLink: vi.fn() }));
+vi.mock("@/lib/ops-alerts", () => ({ recordOpsEvent: vi.fn() }));
 vi.mock("next-auth", () => ({ AuthError: class AuthError extends Error {} }));
 
 import { sendMagicLink } from "@/lib/email";
 import { MagicLinkSendError } from "@/lib/magic-link-error";
+import { recordOpsEvent } from "@/lib/ops-alerts";
 import { hit } from "@/lib/rate-limit";
-import { addressKey, sendSignInEmail } from "./sign-in-email";
+import { addressKey, emailFailureCode, sendSignInEmail } from "./sign-in-email";
 
 const ok = { ok: true, remaining: 1, retryAfterSeconds: 0 };
 const over = { ok: false, remaining: 0, retryAfterSeconds: 60 };
@@ -67,6 +69,27 @@ describe("sendSignInEmail", () => {
     await expect(sendSignInEmail({ to: "a@b.com", url: URL })).rejects.toBeInstanceOf(
       MagicLinkSendError,
     );
+  });
+
+  // Closed beta: people who can't get their link can't get in, so the founders hear at once, with a
+  // code and never the address.
+  it("tells the founders when a sign-in email fails, with only a code", async () => {
+    vi.mocked(recordOpsEvent).mockClear();
+    vi.mocked(sendMagicLink).mockRejectedValue(
+      new Error("Resend rejected the email (403): you can only send to <address>"),
+    );
+    await expect(sendSignInEmail({ to: "a@b.com", url: URL })).rejects.toThrow();
+    expect(recordOpsEvent).toHaveBeenCalledWith("sign_in_email_failed", { code: "RESEND_403" });
+    expect(JSON.stringify(vi.mocked(recordOpsEvent).mock.calls)).not.toContain("b.com");
+  });
+
+  it("names why an email failed without the address", () => {
+    expect(emailFailureCode(new Error("Email is paused (KILL_EMAIL)"))).toBe("EMAIL_PAUSED");
+    expect(emailFailureCode(new Error("RESEND_API_KEY and EMAIL_FROM must be set"))).toBe(
+      "EMAIL_NOT_CONFIGURED",
+    );
+    expect(emailFailureCode(new DOMException("t", "TimeoutError"))).toBe("EMAIL_TIMEOUT");
+    expect(emailFailureCode(new Error("refused for a@b.com"))).toBe("EMAIL_FAILED");
   });
 
   it("reduces an address to the one Auth.js sends to", () => {
