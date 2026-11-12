@@ -58,6 +58,7 @@ import {
 import { keepFullSnapshot, runJaneAgentSafely } from "@/lib/jane-agent/run";
 import { scanSuggestions } from "@/lib/suggestions";
 import { recordArrivalsSafely, whatSetOffSync } from "@/lib/live/arrivals";
+import { refreshWatchesSafely } from "@/lib/live/watches";
 import { markScanDone } from "@/lib/scan";
 import { phaseTimer } from "@/lib/trial-timing";
 import { meteredClaude } from "@/lib/claude-budget";
@@ -883,6 +884,8 @@ async function syncItemWork(
     foundAt,
     firstScan: result.firstSync,
   });
+  // What a market change could help this person with, for reverse matching (src/lib/live/watches.ts).
+  await refreshWatchesSafely(item.userId, { client });
   // Phase AW: a sample person's practice portfolio starts by itself, weeks back, before the
   // first suggestions, so "start a practice portfolio" never is one; its days are replayed
   // beside the sector work below. Never fails the sync. Loaded here, not at the top: the practice

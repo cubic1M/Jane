@@ -143,6 +143,21 @@ describe.runIf(url)("new findings told the moment they're found", () => {
     expect(await notifications(userId)).toBe(1);
   });
 
+  // CI 11-12: a scan run on a set clock (tests, replays) against the real clock gave a latency past
+  // the int column, and every such recording failed. It's capped, and recording never throws.
+  it("records a finding whose trigger was long ago, without overflowing", async () => {
+    const userId = await person();
+    const longAgo = new Date(NOW.getTime() - 40 * 24 * HOUR);
+    await recordArrivals(userId, [await finding(userId, "old", 2_000)], {
+      client,
+      now: NOW,
+      trigger: "sync",
+      triggerAt: longAgo,
+      foundAt: NOW,
+    });
+    expect((await arrivals(userId)).map((r) => r.latencyMs)).toEqual([2_147_483_647]);
+  });
+
   it("tells at most one a day", async () => {
     const userId = await person();
     await recordArrivals(userId, [await finding(userId, "phone", 30_000)], {

@@ -12,3 +12,6 @@ export const LIVE_NOTICE_MIN_CONFIDENCE: ConfidenceLevel = "medium";
 export const LIVE_NOTICES_PER_DAY = 1;
 // A Plaid webhook received this recently is what set a sync off, for the latency it records.
 export const LIVE_WEBHOOK_WINDOW_MINUTES = 30;
+// Reverse matching (src/lib/live/watches.ts): people scanned again for an offer that moved, per
+// run of the offers job; the next hourly run takes the rest.
+export const LIVE_MATCHES_PER_RUN = 25;

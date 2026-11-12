@@ -19,6 +19,7 @@ import { withReadCache } from "@/lib/read-cache";
 import { markScanDone } from "@/lib/scan";
 import { takeSnapshots } from "@/lib/snapshots";
 import { scanSuggestions } from "@/lib/suggestions";
+import { refreshWatchesSafely } from "@/lib/live/watches";
 import { meteredClaude } from "@/lib/claude-budget";
 
 // An upload finished in the background (founder: "the import must not hold the page"). The tap
@@ -87,6 +88,8 @@ export async function refreshAfterRemoval(userId: string, options: Options = {})
   return withReadCache(client, async (client) => {
     const now = options.now ?? new Date();
     await runDetection(userId, { client, now });
+    // What a market change could help them with, from what's left (src/lib/live/watches.ts).
+    await refreshWatchesSafely(userId, { client });
     await refreshAfterUpload(userId, { client, now });
     // Jane's cards about what went: put away now, not when the chat next opens.
     await closeSettled(userId, { client, now });
@@ -122,6 +125,7 @@ async function workOut(userId: string, options: Options, stage: (s: ImportStage)
   await rebuildUploadedBalances(db, options.now);
   await stage("looking");
   await runDetection(userId, options);
+  await refreshWatchesSafely(userId, { client: options.client });
   await stage("refreshing");
   await refreshAfterUpload(userId, options);
 }

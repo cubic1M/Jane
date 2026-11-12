@@ -103,6 +103,21 @@ describe.runIf(url)("deleting data against a real database", () => {
     const decision = await client.decision.create({
       data: { userId, findingId: finding.id, choice: "yes", cardSnapshot: {} },
     });
+    // Jane's 24/7 engine: when the finding arrived, and what a market change could help with.
+    await client.findingArrival.create({
+      data: {
+        userId,
+        findingId: finding.id,
+        trigger: "webhook",
+        triggerAt: new Date(),
+        foundAt: new Date(),
+        latencyMs: 300,
+        notice: "posted",
+      },
+    });
+    await client.offerWatch.create({
+      data: { userId, target: "savings", idleCents: 2_000_000, rateBps: 50 },
+    });
     await client.action.create({
       data: { userId, decisionId: decision.id, type: "recover_bank_fees" },
     });
@@ -326,6 +341,8 @@ describe.runIf(url)("deleting data against a real database", () => {
       taxTags: await client.taxTag.count(where),
       taxForms: await client.taxForm.count(where),
       taxReturns: await client.taxReturn.count(where),
+      findingArrivals: await client.findingArrival.count(where),
+      offerWatches: await client.offerWatch.count(where),
     };
   }
 

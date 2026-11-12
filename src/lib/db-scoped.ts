@@ -237,6 +237,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     findings: scoped.finding,
     // When and why each finding first appeared (src/lib/live/arrivals.ts).
     findingArrivals: scoped.findingArrival,
+    // What a market change could help the person with (src/lib/live/watches.ts).
+    offerWatches: scoped.offerWatch,
     decisions: scoped.decision,
     actions: scoped.action,
     digests: scoped.digest,

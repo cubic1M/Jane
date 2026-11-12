@@ -77,6 +77,8 @@ export const LINEAGE: Readonly<Record<string, Lineage>> = {
   // When and why a finding first appeared (src/lib/live/arrivals.ts): goes with its finding.
   FindingArrival: cascade,
   Suggestion: rescan,
+  // Reverse matching's index (src/lib/live/watches.ts): rebuilt from the findings on every scan.
+  OfferWatch: rescan,
   // A month summed up from the transactions: cleared with them.
   MonthClose: rescan,
   HealthScore: rescan,
@@ -222,6 +224,7 @@ export const CLEARED_WITHOUT_DATA: Readonly<Record<string, string | [string, obj
   SuggestionOutcome: "suggestionOutcomes",
   Alert: "alerts",
   Suggestion: "suggestions",
+  OfferWatch: "offerWatches",
   PlanProposal: "planProposals",
   DebtWatch: "debtWatches",
   CarLoanWatch: "carLoanWatches",
