@@ -57,6 +57,7 @@ import {
 } from "./demo";
 import { keepFullSnapshot, runJaneAgentSafely } from "@/lib/jane-agent/run";
 import { scanSuggestions } from "@/lib/suggestions";
+import { recordArrivalsSafely, whatSetOffSync } from "@/lib/live/arrivals";
 import { markScanDone } from "@/lib/scan";
 import { phaseTimer } from "@/lib/trial-timing";
 import { meteredClaude } from "@/lib/claude-budget";
@@ -717,6 +718,7 @@ async function syncItemWork(
     select: {
       id: true,
       userId: true,
+      plaidItemId: true,
       accessTokenEncrypted: true,
       transactionsCursor: true,
       liabilities: true,
@@ -864,7 +866,18 @@ async function syncItemWork(
   timing.mark("cursor_and_track");
   // Regular cash deposits count as income before Jane reads the month (src/categorize/cash-income.ts).
   await markCashIncome(db);
-  await runDetection(item.userId, { client, now });
+  const detection = await runDetection(item.userId, { client, now });
+  // Jane's 24/7 engine: what this change found that's new, and the best of it told now, not at
+  // tomorrow's brief (src/lib/live/arrivals.ts). Never fails the sync.
+  await recordArrivalsSafely(item.userId, detection.createdKeys, {
+    client,
+    now,
+    ...(await whatSetOffSync(item.plaidItemId, { client, startedAt: now }).catch(() => ({
+      trigger: "sync" as const,
+      triggerAt: now,
+    }))),
+    firstScan: result.firstSync,
+  });
   // Phase AW: a sample person's practice portfolio starts by itself, weeks back, before the
   // first suggestions, so "start a practice portfolio" never is one; its days are replayed
   // beside the sector work below. Never fails the sync. Loaded here, not at the top: the practice

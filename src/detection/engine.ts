@@ -347,6 +347,8 @@ export type DetectionSummary = {
   resurfaced: number;
   removed: number;
   moneyFoundCents: number;
+  // What this run found that wasn't there before, for Jane's 24/7 engine (src/lib/live/arrivals.ts).
+  createdKeys: { type: FindingType; key: string }[];
 };
 
 const NO_FINDINGS: Record<FindingType, number> = {
@@ -586,6 +588,7 @@ export async function runDetection(
     resurfaced: plan.update.filter((u) => u.resurface).length,
     removed: plan.remove.length,
     moneyFoundCents: await moneyFound(userId, { client }),
+    createdKeys: plan.create.map((c) => ({ type: c.type, key: c.key })),
   };
   await track(userId, "detection_completed", {
     ...counts,

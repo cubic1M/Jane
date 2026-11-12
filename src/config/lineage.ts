@@ -74,6 +74,8 @@ export const LINEAGE: Readonly<Record<string, Lineage>> = {
   Alert: evidence,
   Decision: cascade,
   Action: cascade,
+  // When and why a finding first appeared (src/lib/live/arrivals.ts): goes with its finding.
+  FindingArrival: cascade,
   Suggestion: rescan,
   // A month summed up from the transactions: cleared with them.
   MonthClose: rescan,
@@ -238,6 +240,7 @@ export const CLEARED_WITHOUT_DATA: Readonly<Record<string, string | [string, obj
 // or hanging off a row above.
 export const KEPT_WITHOUT_DATA: Readonly<Record<string, string>> = {
   Decision: "goes with its finding (ON DELETE CASCADE)",
+  FindingArrival: "goes with its finding (ON DELETE CASCADE)",
   Action: "goes with its decision (ON DELETE CASCADE)",
   InsuranceRisk: "from the person's policies and profile",
   InsuranceSaving: "from the person's policies and quotes",
