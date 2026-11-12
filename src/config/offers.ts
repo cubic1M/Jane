@@ -200,6 +200,16 @@ export const OFFER_SOURCES: readonly SourceSpec[] = [
     showHours: 7 * 24,
     offers: planPair("apple_music", "Apple", "Apple Music"),
   },
+  {
+    // The prices are in the page's own JSON, not its markup (src/lib/offers/parse.ts embeddedText).
+    key: "youtube.premium",
+    how: "page",
+    url: "https://www.youtube.com/premium/student",
+    sourceUrl: "https://www.youtube.com/premium/student",
+    everyMinutes: DAY,
+    showHours: 7 * 24,
+    offers: planPair("youtube_premium", "YouTube", "YouTube Premium"),
+  },
 ];
 
 // A service's usual plan and its student plan, as two rows.

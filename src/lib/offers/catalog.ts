@@ -221,8 +221,12 @@ ${UNTRUSTED_TEXT_RULE}`,
 export type SourceResult = {
   source: string;
   changed: string[];
+  // Read, believable, and the same as last time.
+  unchanged: string[];
   quarantined: string[];
   missing: string[];
+  // The page or API couldn't be read at all: why (robots, http_403, a timeout).
+  failed?: string;
 };
 
 // Reads one source and saves what it says. Never throws for a source that failed: that's an event.
@@ -236,7 +240,13 @@ export async function refreshSource(
   }: RefreshOptions = {},
 ): Promise<SourceResult> {
   const sys = systemDb(WHY, client);
-  const result: SourceResult = { source: source.key, changed: [], quarantined: [], missing: [] };
+  const result: SourceResult = {
+    source: source.key,
+    changed: [],
+    unchanged: [],
+    quarantined: [],
+    missing: [],
+  };
   const event = (kind: string, offerKey: string | null, detail: Record<string, unknown>) =>
     sys.marketOfferEvent.create({
       data: {
@@ -251,10 +261,13 @@ export async function refreshSource(
   try {
     read = await readSource(source, fetcher);
   } catch (error) {
-    await event("failed", null, {
-      reason: error instanceof Error ? error.message.slice(0, 80) : "error",
-    });
-    return { ...result, missing: source.offers.map((o) => o.key) };
+    // No address in the reason: FRED's carries its key.
+    const reason =
+      error instanceof Error
+        ? error.message.replace(/https?:\/\/\S+/g, "<url>").slice(0, 80)
+        : "error";
+    await event("failed", null, { reason });
+    return { ...result, missing: source.offers.map((o) => o.key), failed: reason };
   }
   const rows = await sys.marketOffer.findMany({
     where: { key: { in: source.offers.map((o) => o.key) } },
@@ -338,6 +351,7 @@ export async function refreshSource(
       create: { key: offer.key, ...common, changedAt: now },
       update: common,
     });
+    if (!moved) result.unchanged.push(offer.key);
     if (moved) {
       result.changed.push(offer.key);
       await event(last ? "changed" : "new", offer.key, {
@@ -372,11 +386,24 @@ export async function refreshDueOffers({
   await seedOffers({ client });
   const last = await lastRead(client);
   const results: SourceResult[] = [];
+  // One line per source, every run, whatever happened to it (docs: jane-24-7.md "Reading the logs").
+  const outcome = (source: string, said: Record<string, unknown>) =>
+    log.info("offers_refreshed", { source, ...said });
   for (const source of OFFER_SOURCES) {
-    if (Date.now() - started > budgetMs) break;
-    if (source.needsEnv && !process.env[source.needsEnv]) continue;
+    if (Date.now() - started > budgetMs) {
+      outcome(source.key, { outcome: "skipped", reason: "out_of_time" });
+      continue;
+    }
+    if (source.needsEnv && !process.env[source.needsEnv]) {
+      outcome(source.key, { outcome: "skipped", reason: `no ${source.needsEnv}` });
+      continue;
+    }
     const at = last.get(source.key);
-    if (at && now.getTime() - at.getTime() < source.everyMinutes * 60_000) continue;
+    if (at && now.getTime() - at.getTime() < source.everyMinutes * 60_000) {
+      const due = new Date(at.getTime() + source.everyMinutes * 60_000);
+      outcome(source.key, { outcome: "skipped", reason: "not_due", due: due.toISOString() });
+      continue;
+    }
     const result = await refreshSource(source, {
       client,
       now,
@@ -394,20 +421,29 @@ export async function refreshDueOffers({
         },
       });
     }
+    outcome(source.key, {
+      outcome: outcomeOf(result),
+      changed: result.changed.length,
+      unchanged: result.unchanged.length,
+      quarantined: result.quarantined.length,
+      missing: result.missing.length,
+      ...(result.failed ? { reason: result.failed } : {}),
+    });
     results.push(result);
   }
   await systemDb(WHY, client).marketOfferEvent.deleteMany({
     where: { createdAt: { lt: new Date(now.getTime() - EVENT_DAYS * DAY_MS) } },
   });
-  for (const r of results) {
-    log.info("offers_refreshed", {
-      source: r.source,
-      changed: r.changed.length,
-      quarantined: r.quarantined.length,
-      missing: r.missing.length,
-    });
-  }
   return results;
+}
+
+// A source's run in a word, for its log line.
+function outcomeOf(r: SourceResult): string {
+  if (r.failed) return "fetch_failed";
+  if (r.quarantined.length > 0) return "quarantined";
+  if (r.changed.length > 0) return "changed";
+  if (r.unchanged.length > 0) return "no_change";
+  return "nothing_read";
 }
 
 // A person's own charge for a service just changed: its prices are read again first when the

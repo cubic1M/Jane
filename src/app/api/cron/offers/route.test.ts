@@ -1,3 +1,4 @@
+import { readFileSync, readdirSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => ({ db: {} }));
@@ -7,8 +8,20 @@ vi.mock("@/lib/health", () => ({
 }));
 vi.mock("@/lib/offers/catalog", () => ({
   refreshDueOffers: vi.fn(async () => [
-    { source: "barclays.savings", changed: ["savings.barclays"], quarantined: [], missing: [] },
-    { source: "spotify.plans", changed: [], quarantined: ["plan.spotify.student"], missing: [] },
+    {
+      source: "barclays.savings",
+      changed: ["savings.barclays"],
+      unchanged: [],
+      quarantined: [],
+      missing: [],
+    },
+    {
+      source: "spotify.plans",
+      changed: [],
+      unchanged: ["plan.spotify.individual"],
+      quarantined: ["plan.spotify.student"],
+      missing: [],
+    },
   ]),
 }));
 
@@ -20,8 +33,8 @@ import { recordRun } from "@/lib/health";
 import { refreshDueOffers } from "@/lib/offers/catalog";
 import { GET } from "./route";
 
-// The offers catalog's refresher: the hourly call from the probe's workflow (PROBE_SECRET) and Vercel's
-// daily backstop (CRON_SECRET) both reach it; nobody else does.
+// The offers catalog's refresher: the hourly pinger (OFFERS_PING_SECRET), the probe's workflow
+// (PROBE_SECRET) and Vercel's daily cron (CRON_SECRET) reach it; nobody else does.
 
 const call = (authorization?: string) =>
   GET(
@@ -33,7 +46,8 @@ const call = (authorization?: string) =>
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubEnv("CRON_SECRET", "daily");
-  vi.stubEnv("PROBE_SECRET", "hourly");
+  vi.stubEnv("PROBE_SECRET", "probe");
+  vi.stubEnv("OFFERS_PING_SECRET", "hourly");
 });
 afterEach(() => vi.unstubAllEnvs());
 
@@ -45,7 +59,7 @@ describe("the offers refresher", () => {
   });
 
   it("runs for the hourly call and the daily one, as a recorded job", async () => {
-    for (const secret of ["hourly", "daily"]) {
+    for (const secret of ["hourly", "probe", "daily"]) {
       const response = await call(`Bearer ${secret}`);
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({
@@ -57,12 +71,22 @@ describe("the offers refresher", () => {
       });
     }
     expect(recordRun).toHaveBeenCalledWith("offers", expect.any(Function));
-    expect(refreshDueOffers).toHaveBeenCalledTimes(2);
+    expect(refreshDueOffers).toHaveBeenCalledTimes(3);
   });
 
-  it("refuses everyone while neither secret is set", async () => {
+  it("refuses everyone while no secret is set", async () => {
     vi.stubEnv("CRON_SECRET", "");
     vi.stubEnv("PROBE_SECRET", "");
+    vi.stubEnv("OFFERS_PING_SECRET", "");
     expect((await call("Bearer ")).status).toBe(401);
+  });
+
+  // The pinger is an outside service: its secret opens this route and no other.
+  it("is the only route the pinger's secret opens", () => {
+    const readers = readdirSync("src", { recursive: true, encoding: "utf8" })
+      .filter((file) => /\.tsx?$/.test(file) && !/\.test\.tsx?$/.test(file))
+      .filter((file) => !file.startsWith("generated/"))
+      .filter((file) => readFileSync(`src/${file}`, "utf8").includes("OFFERS_PING_SECRET"));
+    expect(readers).toEqual(["app/api/cron/offers/route.ts"]);
   });
 });
