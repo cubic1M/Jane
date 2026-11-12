@@ -25,6 +25,13 @@ describe("the offer to link a bank on /connect", () => {
     expect(html).not.toContain("data-link-full");
   });
 
+  it('says another bank, not "instead", once one is linked', () => {
+    const html = render({ hasBanks: true });
+    expect(html).toContain("Add another bank");
+    expect(html).toContain("Link another bank");
+    expect(html).not.toContain("Link your bank instead");
+  });
+
   it("offers uploading a statement, in a short plain line, once there isn't", () => {
     const html = render({ linkOpen: false });
     expect(html).toContain("data-link-full");

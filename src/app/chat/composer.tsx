@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 import { flushSync } from "react-dom";
+import { CHAT_SENT_EVENT } from "@/config/side-chat";
 import { MicButton } from "./mic-button";
 import { scrollChatToEnd } from "./scroll-to-end";
 import { sendMessage, type SendState } from "./send";
@@ -112,6 +113,7 @@ export function ChatComposer({
     sent.current = true;
     setDraft({ question, before: new Set(typed.map((m) => m.id)), status: null, answer: "" });
     form.current?.reset();
+    window.dispatchEvent(new Event(CHAT_SENT_EVENT));
 
     const fail = (text: string) => {
       sending.current = false;

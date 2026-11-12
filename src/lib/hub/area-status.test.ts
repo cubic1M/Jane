@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildAreaTree } from "@/lib/area-pages/tree";
-import { areaStatus, withAreaStatus } from "./area-status";
+import { STILL_READING, areaStatus, readingTiles, withAreaStatus } from "./area-status";
 import type { AreaTile } from "./view";
 
 // One status per area: its own tree decides, for its tile and for Home's tree alike.
@@ -46,5 +46,17 @@ describe("one status per area", () => {
     );
     expect(tiles[0]).toMatchObject({ health: "act", healthWhy: insurance.tree.sub });
     expect(tiles[1]).toMatchObject({ health: "good", healthWhy: "All good" });
+  });
+});
+
+// Beta walk 11-12: during a new person's first scan, Home said "Good: All good" for Spending and
+// Loans before a single transaction was in.
+describe("before the first scan has looked", () => {
+  it("rates no area and says Jane is still reading", () => {
+    const tiles = readingTiles([tile("money", "good", "All good"), tile("loans", "act", "1 late")]);
+    expect(tiles.map((t) => [t.health, t.healthWhy])).toEqual([
+      [null, STILL_READING],
+      [null, STILL_READING],
+    ]);
   });
 });

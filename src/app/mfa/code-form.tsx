@@ -1,13 +1,36 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { submitCode, type MfaState } from "./actions";
 import { BackupCodes } from "./backup-codes";
 
-export function CodeForm({ next, allowBackup }: { next: string; allowBackup: boolean }) {
+// `done`: the code is already in for this session. The page renders that once the first code
+// turns two-factor on, and it must not take the backup codes away (beta walk 11-12: its redirect
+// did, and Settings said "10 backup codes left" for codes nobody had seen). So this form stays in
+// place and keeps the codes until the person moves on.
+export function CodeForm({
+  next,
+  allowBackup,
+  done = false,
+}: {
+  next: string;
+  allowBackup: boolean;
+  done?: boolean;
+}) {
   const [state, action, pending] = useActionState<MfaState, FormData>(submitCode, null);
   if (state && "backupCodes" in state) {
     return <BackupCodes codes={state.backupCodes} next={state.next} />;
+  }
+  if (done) {
+    return (
+      <Link
+        href={next}
+        className="inline-flex h-11 items-center justify-center self-start rounded-full bg-zinc-900 px-6 font-semibold text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900"
+      >
+        Continue
+      </Link>
+    );
   }
   return (
     <form action={action} className="flex flex-col gap-3">

@@ -4,6 +4,7 @@ import {
   monthsLabel,
   percentFor,
   scanBarText,
+  SLOW_WORDS,
   slowLink,
   stageLabel,
   STAGES,
@@ -64,6 +65,12 @@ describe("a slow scan", () => {
   it("offers where the screen was heading: the chat from Try Jane, else the report", () => {
     expect(slowLink("/home")).toMatchObject({ href: "/home", label: "Open Jane" });
     expect(slowLink("/report")).toMatchObject({ href: "/report", label: "See your report" });
+  });
+
+  // A real bank's first year takes minutes; that isn't something going wrong (beta walk 11-12).
+  it("says banks take a few minutes, not that something is slow", () => {
+    expect(SLOW_WORDS).toMatch(/a few minutes/);
+    expect(SLOW_WORDS).not.toMatch(/longer than usual/);
   });
 });
 

@@ -16,6 +16,9 @@ export const SHEET_CLOSE_BELOW = 0.25;
 // side chat reloads, and with it Jane's cards (demo-video list: the chat said "Upload your bank
 // statements" next to "We found $813/yr" until a full reload).
 export const DATA_CHANGED_EVENT = "jane:data-changed";
+// Told on the chat's window when the person sends a message: on a phone the cards fold back to
+// their one line, so the answer isn't under them (beta walk 11-12).
+export const CHAT_SENT_EVENT = "jane:sent";
 // Told on the page's window when the framed chat's cards changed: the dock above it reloads.
 export const CARDS_CHANGED_EVENT = "jane:cards";
 

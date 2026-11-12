@@ -73,7 +73,7 @@ export function switchTodo(sw: Switch, company: string): string {
   if (sw.kind === "plan") {
     return `Sign up for ${sw.name}${sw.signUpUrl ? " with the link" : ""}. When Jane sees its first bill, our team cancels ${company} for you, so you're never without service.`;
   }
-  return `Open ${sw.name}${sw.signUpUrl ? " with the link" : ""} and move the money yourself; Jane never moves money. Jane watches for the transfer and counts what it earns.`;
+  return `Open ${sw.name}${sw.signUpUrl ? " with the link" : ""} and move the money yourself; the beta doesn't move money yet. Jane watches for the transfer and counts what it earns.`;
 }
 
 // The agent's step for an action with a switch: ask the person to sign up, then watch.

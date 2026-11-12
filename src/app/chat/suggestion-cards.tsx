@@ -15,7 +15,8 @@ import {
   withoutGone,
 } from "@/lib/dock-gone";
 import { AI_WRITTEN_LABEL, DEMO_ADVICE_LABEL } from "@/config/advice";
-import { noteDetailsOpened, tapButton } from "./actions";
+import { STEP_LINK_LABELS } from "@/config/suggestion-step";
+import { noteDetailsOpened, tapButton, type MessageState } from "./actions";
 
 // Jane's pop-ups over the chat or the page (src/lib/jane-agent/popups.ts): the day's suggestions,
 // then anything else it brought up that waits on the person, one card at a time. A suggestion
@@ -48,6 +49,27 @@ const ACTION_FOR: Record<CardAnswer, string> = {
   not_now: "snooze",
   never: "suggestion.no",
 };
+
+// The step a Yes came back with (the "Open it" link), or null: a card answered elsewhere, an
+// error, or an answer with nowhere to go (debugger round 208: Yes recorded the answer and the dock
+// moved on, the step shown nowhere).
+export function stepAfterYes(result: MessageState | null | undefined): string | null {
+  if (!result || result.error) return null;
+  return result.message.links.find((l) => STEP_LINK_LABELS.includes(l.label))?.href ?? null;
+}
+
+// Opens a page from wherever the cards are: the page itself (the dock, Home), or the chat's frame
+// on a phone, whose bridge opens it in the page and closes the sheet (src/app/chat/embed-bridge.tsx).
+// False for the chat opened on its own (only tests do): it stays the chat.
+function openStep(href: string, push: (href: string) => void): boolean {
+  if (window.self !== window.top) {
+    window.parent.postMessage({ type: "jane:navigate", href }, window.location.origin);
+    return true;
+  }
+  if (document.querySelector("[data-chat-embed]")) return false;
+  push(href);
+  return true;
+}
 
 export function cardOf(message: MessageView): FloatingCardData {
   const parts = cardParts(message.body);
@@ -103,6 +125,7 @@ export function followAction(message: Pick<MessageView, "suggestion" | "buttons"
 export function SuggestionCards({
   messages: given,
   foldOnPhone = false,
+  foldOnSend = false,
   docked = false,
   onAnswered,
   onShowing,
@@ -110,6 +133,8 @@ export function SuggestionCards({
   messages: MessageView[];
   // Home: start folded on a small phone, so the net worth shows first.
   foldOnPhone?: boolean;
+  // The chat: fold on a small phone once the person sends a message, so the answer shows.
+  foldOnSend?: boolean;
   // In the dock above the side chat, not floating over the page.
   docked?: boolean;
   // Told once the server has the answer (the dock reloads its cards).
@@ -148,6 +173,7 @@ export function SuggestionCards({
         neverLabel="Don't suggest this again"
         links={links}
         foldOnPhone={foldOnPhone}
+        foldOnSend={foldOnSend}
         docked={docked}
         onShowing={onShowing}
         onDetails={(id) => {
@@ -222,8 +248,10 @@ export function SuggestionCards({
     if (!message) return;
     const sent = queue(message, actionId);
     startTransition(async () => {
-      await sent;
-      router.refresh();
+      const result = await sent.catch(() => null);
+      // Yes ends on the step Jane prepared, not on the next card (find → prefill → yes).
+      const step = actionId === ACTION_FOR.yes ? stepAfterYes(result) : null;
+      if (!step || !openStep(step, router.push)) router.refresh();
       onAnswered?.();
     });
   }

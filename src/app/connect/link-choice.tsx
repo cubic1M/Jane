@@ -8,7 +8,7 @@ export const SECONDARY_BUTTON =
 const PROMISES = [
   [
     "Read-only",
-    "We can see up to a year of transactions, your balances and what you owe on cards and loans. We can never move your money.",
+    "We can see up to a year of transactions, your balances and what you owe on cards and loans. The link is read-only, and the beta doesn't move money yet.",
   ],
   [
     "Who reads it",
@@ -63,7 +63,10 @@ export function LinkChoice({
   if (plaidOn && uploadFirst) {
     return (
       <div data-link-instead="" className="flex flex-col gap-2">
-        <h2 className="font-semibold">Link your bank instead</h2>
+        {/* Not "instead" under a bank that's already linked (beta walk 11-12). */}
+        <h2 className="font-semibold">
+          {hasBanks ? "Add another bank" : "Link your bank instead"}
+        </h2>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Read-only, through Plaid: you sign in to your bank in Plaid&apos;s window, and Jane keeps
           up with new transactions on its own.

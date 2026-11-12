@@ -201,13 +201,17 @@ export function SafeTile({ safe }: { safe: SafeHero }) {
 }
 
 // Money found with no dollar figure: what's to look at, as the report says it, or "Nothing yet"
-// when there's nothing at all, never "$0/yr" (night QA 10-30). Null when there's a figure.
+// when there's nothing at all, never "$0/yr" (night QA 10-30). Null when there's a figure. Before
+// the first scan has looked (`looking`), nothing found isn't "Nothing yet" (beta walk 11-12, from
+// the debugger: Home said so right after linking, beside tiles full of things to look at).
 export function foundWords(
   saved: Pick<SavedHero, "label" | "cents">,
   planItems: number,
+  looking = false,
 ): string | null {
   if (saved.label !== "Money found" || saved.cents !== 0) return null;
-  return planItems > 0 ? `${planItems} to look at` : "Nothing yet";
+  if (planItems > 0) return `${planItems} to look at`;
+  return looking ? "Still looking" : "Nothing yet";
 }
 
 export function SavedTile({
@@ -215,9 +219,12 @@ export function SavedTile({
   planItems,
   plan = null,
   wide = false,
+  looking = false,
 }: {
   saved: SavedHero;
   planItems: number;
+  // The first scan hasn't looked yet.
+  looking?: boolean;
   plan?: PlanHero | null;
   // The whole row on a wide screen, when there's no Safe to spend beside it.
   wide?: boolean;
@@ -229,7 +236,7 @@ export function SavedTile({
   const [showPlan, setShowPlan] = useState(false);
   const closePlan = useCallback(() => setShowPlan(false), []);
   const savedSoFar = saved.label === "Saved so far";
-  const words = foundWords(saved, planItems);
+  const words = foundWords(saved, planItems, looking);
   const number =
     words !== null ? (
       words

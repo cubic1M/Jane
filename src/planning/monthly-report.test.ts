@@ -89,6 +89,23 @@ describe("reportLines", () => {
       "$900.00, no change over the month.",
     );
   });
+
+  // Beta walk 11-12: "You did $0.00 of $0.00 planned. This month: saving $0.00, ..." for a person
+  // with no plan.
+  it("says nothing about a plan with nothing in it", () => {
+    const zero = { saving: 0, debt: 0, investing: 0 };
+    const plan = (planned: typeof zero, next: typeof zero) =>
+      reportLines({ ...report, plan: { planned, did: zero, nextTargets: next } }).find(
+        (l) => l.label === "Your plan",
+      )?.text;
+    expect(plan(zero, zero)).toBeUndefined();
+    expect(plan(zero, { ...zero, saving: 10_000 })).toBe(
+      "This month: saving $100.00, extra debt $0.00, investing $0.00.",
+    );
+    expect(plan({ ...zero, saving: 10_000 }, zero)).toMatch(
+      /^You did \$0\.00 of \$100\.00 planned\./,
+    );
+  });
 });
 
 describe("reportPage", () => {

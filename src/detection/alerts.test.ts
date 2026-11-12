@@ -129,6 +129,9 @@ describe("duplicate_charge", () => {
     expect(alerts).toHaveLength(1);
     expect(alerts[0]).toMatchObject({ type: "duplicate_charge", key: second.id });
     expect(alerts[0].title).toBe("Charged twice? $49.99 at Gadget Shop");
+    // The read-only beta asks no company for anything: the person does, with Jane's steps.
+    expect(alerts[0].body).toContain("with the steps to get the money back");
+    expect(alerts[0].body).not.toMatch(/\bwe\b/i);
   });
 
   it("says nothing for different amounts, days apart, small amounts or coffee", () => {

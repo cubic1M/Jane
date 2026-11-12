@@ -603,7 +603,7 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
   {
     feature: "retirement",
     ask: "Once Social Security comes in I work out how much of it is taxable and whether anything withholds it, and from October I tell you Medicare's surcharge line two years ahead with the room you have under it. The order to take money from your accounts, tuned to stay under the line, goes to your retirement paycheck.",
-    auto: "I keep Social Security's taxable part and Medicare's surcharge line current, tell you when either matters, and keep the order to draw from your accounts tuned to stay under the line. I never move money or change your withholding: Form W-4V is yours.",
+    auto: "I keep Social Security's taxable part and Medicare's surcharge line current, tell you when either matters, and keep the order to draw from your accounts tuned to stay under the line. I don't move money or change your withholding: Form W-4V is yours.",
   },
   {
     feature: "draft",

@@ -65,7 +65,8 @@ export function verifyTotp(secret: string, code: string, now: Date): boolean {
 }
 
 // The link authenticator apps understand (tap it on a phone to add the account).
-export function otpauthUri(label: string, secret: string, issuer = "Financial Controller"): string {
+// The name a person sees in their authenticator app (beta walk 11-12: it said "Financial Controller").
+export function otpauthUri(label: string, secret: string, issuer = "Jane"): string {
   const params = new URLSearchParams({
     secret,
     issuer,

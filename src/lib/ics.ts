@@ -58,7 +58,7 @@ export function buildCalendar(name: string, events: CalendarEvent[], now: Date):
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Financial Controller//Money calendar//EN",
+    "PRODID:-//Jane//Money calendar//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     `X-WR-CALNAME:${escapeText(name)}`,

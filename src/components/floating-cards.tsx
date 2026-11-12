@@ -8,6 +8,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import { CHAT_SENT_EVENT } from "@/config/side-chat";
 import { PixelIcon } from "@/components/pixel-icon";
 import {
   answer,
@@ -214,6 +215,7 @@ export function FloatingCards({
   neverLabel,
   links,
   foldOnPhone = false,
+  foldOnSend = false,
   docked = false,
   onShowing,
   onDetails,
@@ -237,6 +239,8 @@ export function FloatingCards({
   // Start folded into one line at the bottom on a small phone, until it's tapped (Home, where
   // the cards would cover the net worth).
   foldOnPhone?: boolean;
+  // Fold to that line on a small phone once the person sends a message (the chat).
+  foldOnSend?: boolean;
   // In the dock above the side chat (src/components/side-chat/card-dock.tsx): in the flow
   // there, not floating; a little bigger, with arrows between the cards.
   docked?: boolean;
@@ -266,12 +270,25 @@ export function FloatingCards({
   const phone = usePhone();
   const hydrated = useHydrated();
   const [unfolded, setUnfolded] = useState(false);
+  // The chat on a phone: a message sent folds the cards to their one line, so its answer isn't
+  // under them (beta walk 11-12: in the half-height sheet a card covered every new message). A tap
+  // opens them again.
+  const [foldedBySend, setFoldedBySend] = useState(false);
+  useEffect(() => {
+    if (!foldOnSend) return;
+    const fold = () => {
+      setFoldedBySend(true);
+      setUnfolded(false);
+    };
+    window.addEventListener(CHAT_SENT_EVENT, fold);
+    return () => window.removeEventListener(CHAT_SENT_EVENT, fold);
+  }, [foldOnSend]);
   const current = held?.card ?? currentCard(cards, state);
   const left = waiting(cards, state);
   const open = current !== null && expanded;
   // Cards waiting behind the one showing, drawn as edges under it.
   const behind = Math.max(0, left.length - 1);
-  const folded = foldOnPhone && phone && !unfolded && current !== null;
+  const folded = (foldOnPhone || foldedBySend) && phone && !unfolded && current !== null;
 
   // Followed to a page: off the stack like an answer; the caller says what it means.
   function follow(card: FloatingCardData, href: string): boolean {

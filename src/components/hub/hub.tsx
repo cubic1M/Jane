@@ -11,10 +11,13 @@ export function HeroRow({
   hero,
   planItems,
   chart,
+  looking = false,
 }: {
   hero: HeroView;
   planItems: number;
   chart: ReactNode;
+  // The first scan hasn't looked yet: money found says "Still looking", not "Nothing yet".
+  looking?: boolean;
 }) {
   const { safe, saved, plan } = hero;
   return (
@@ -24,7 +27,7 @@ export function HeroRow({
           in the left half with nothing beside it); Saved takes the row when it's alone. */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {safe && <SafeTile safe={safe} />}
-        <SavedTile saved={saved} planItems={planItems} plan={plan} wide={!safe} />
+        <SavedTile saved={saved} planItems={planItems} plan={plan} wide={!safe} looking={looking} />
       </div>
     </section>
   );

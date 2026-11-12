@@ -106,6 +106,8 @@ describe("Plaid Link", () => {
         user: { client_user_id: "user_1" },
         country_codes: ["US"],
         webhook: "https://app.example.com/api/plaid/webhook",
+        // Plaid's window says "Jane uses Plaid", the name the person signed up to.
+        client_name: "Jane",
       }),
     );
     expect(track).toHaveBeenCalledWith("user_1", "link_started", { update_mode: false });

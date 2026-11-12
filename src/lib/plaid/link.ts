@@ -23,7 +23,9 @@ import {
 // Link's public token into a stored item. The access token is encrypted before it is
 // saved and never leaves the server.
 
-const CLIENT_NAME = "Financial Controller";
+// What Plaid's window calls us ("Jane uses Plaid to connect your account"); beta walk 11-12: it
+// said "Financial Controller", a name the person has never seen.
+const CLIENT_NAME = "Jane";
 
 type Options = { client?: PrismaClient; api?: PlaidApi };
 

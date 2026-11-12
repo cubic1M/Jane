@@ -16,7 +16,8 @@ import { CashFlowStrip } from "@/components/hub/cash-flow";
 import { HeroRow } from "@/components/hub/hub";
 import { GiantTree } from "@/components/hub/giant-tree";
 import { loadAreaTrees } from "@/lib/hub/area-trees";
-import { withAreaStatus } from "@/lib/hub/area-status";
+import { readingTiles, withAreaStatus } from "@/lib/hub/area-status";
+import { isFirstDetectionComplete } from "@/detection/engine";
 import { adviceMode } from "@/lib/advice-mode";
 import { scopedFor } from "@/lib/db-scoped";
 import { buildFeatureMap, sampleExamples } from "@/lib/feature-map";
@@ -105,18 +106,23 @@ async function AreasTree({
   home: HomeSummary;
   treeData: Promise<TreeData>;
 }) {
-  const [[reached, advice, areaTrees], areas] = await Promise.all([
+  const [[reached, advice, areaTrees], areas, looked] = await Promise.all([
     treeData,
     loadHubAreas(userId, {
       budgetsOver: home.budgetsOver.length,
       safeShort: (home.safeToSpend?.safeCents ?? 0) < 0,
     }),
+    isFirstDetectionComplete(userId),
   ]);
   const maps = buildFeatureMap({
     examples: sampleExamples(),
     reached: new Set(reached.map((r) => r.key)),
     advice,
   });
+  // Before the first scan has looked, no area is "Good" yet.
+  if (!looked) {
+    return <GiantTree maps={maps} tiles={readingTiles(tilesView(areas))} />;
+  }
   return (
     <GiantTree
       maps={maps}
@@ -196,8 +202,8 @@ async function HubContent({ searchParams }: { searchParams: PageProps<"/home">["
   const treeData = loadTreeData(user.id);
   // Read later by the tree; a failure shows there, not as an unhandled rejection here.
   treeData.catch(() => {});
-  const [top, checklist, autopilot, books, suggestions, banks, concierge, read] = await Promise.all(
-    [
+  const [top, checklist, autopilot, books, suggestions, banks, concierge, read, looked] =
+    await Promise.all([
       loadHubTop(user.id),
       firstWeekChecklist(user.id),
       autopilotOf(user.id),
@@ -207,8 +213,8 @@ async function HubContent({ searchParams }: { searchParams: PageProps<"/home">["
       loadBankNotices(user.id),
       conciergeMode(user.id),
       scopedFor(user.id).transactions.aggregate({ _max: { date: true } }),
-    ],
-  );
+      isFirstDetectionComplete(user.id),
+    ]);
   if (!top) redirect("/connect");
   // Too old to say what's due or what's current: not "Nothing due", not "updated just now".
   const oldStatements = staleStatementsEnd(read._max.date, new Date());
@@ -226,6 +232,7 @@ async function HubContent({ searchParams }: { searchParams: PageProps<"/home">["
       <HeroRow
         hero={heroView(top.hero)}
         planItems={home.plan.items}
+        looking={!looked}
         chart={
           top.hero.netWorth?.known === false ? (
             <NetWorthUnknown />

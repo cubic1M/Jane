@@ -26,7 +26,7 @@ async function ConnectContent() {
   // bank is the smaller second choice. Trial people (sample data) can't upload, so they see
   // linking and the demo bank as before.
   const uploadFirst = canImportCsv(user);
-  const [items, uploadedAccounts, link] = await Promise.all([
+  const [items, uploadedAccounts, link, accounts] = await Promise.all([
     db.plaidItems.findMany({
       select: {
         id: true,
@@ -42,6 +42,7 @@ async function ConnectContent() {
     }),
     uploadFirst ? db.accounts.count({ where: { source: "csv" } }) : 0,
     linkAvailability(user.id),
+    db.accounts.count(),
   ]);
   const now = new Date();
   // Someone's own statement in a temporary try: no bank links and no demo bank beside it.
@@ -55,7 +56,7 @@ async function ConnectContent() {
 
   return (
     <>
-      <AppHeader user={user} />
+      <AppHeader user={user} bare={accounts === 0} />
       {uploadFirst ? (
         <>
           <div className="flex flex-col gap-2">
