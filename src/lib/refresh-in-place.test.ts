@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/cache", () => ({ refresh: vi.fn() }));
-vi.mock("@/lib/session", () => ({ getCurrentUser: vi.fn() }));
+vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import { refresh } from "next/cache";
-import { getCurrentUser } from "@/lib/session";
+import { requireUser } from "@/lib/session";
 import { refreshInPlace } from "./refresh-in-place";
 
 describe("refreshing the page on screen in place", () => {
@@ -13,14 +13,14 @@ describe("refreshing the page on screen in place", () => {
   });
 
   it("makes the page again for someone signed in", async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue({ id: "user_1" } as never);
+    vi.mocked(requireUser).mockResolvedValue({ id: "user_1" } as never);
     await refreshInPlace();
     expect(refresh).toHaveBeenCalledOnce();
   });
 
-  it("does nothing for nobody", async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue(null);
-    await refreshInPlace();
+  it("sends nobody to sign in, and makes nothing", async () => {
+    vi.mocked(requireUser).mockRejectedValue(new Error("NEXT_REDIRECT /login"));
+    await expect(refreshInPlace()).rejects.toThrow("NEXT_REDIRECT");
     expect(refresh).not.toHaveBeenCalled();
   });
 });
