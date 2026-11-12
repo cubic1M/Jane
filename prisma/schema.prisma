@@ -445,6 +445,7 @@ model User {
   problemReports       ProblemReport[]
   userFacts            UserFact[]
   findingArrivals      FindingArrival[]
+  offerWatches         OfferWatch[]
 
   @@map("users")
 }
@@ -1603,6 +1604,29 @@ model FindingArrival {
   @@index([userId, notice, createdAt])
   @@index([trigger, createdAt])
   @@map("finding_arrivals")
+}
+
+// Reverse matching's index (src/lib/live/watches.ts): what each person's last scan says a market
+// change could help with, so an offer that moves reaches the people it helps without scanning
+// everyone. "savings" (idle cash, with how much and what it earns now) or "plan:<merchant key>" (a
+// service they pay for, and what they pay). Rebuilt on every scan of the person.
+model OfferWatch {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  target       String
+  idleCents    Int?     @map("idle_cents")
+  rateBps      Int?     @map("rate_bps")
+  monthlyCents Int?     @map("monthly_cents")
+  // The offer and value this watch last re-scanned the person for, so the same one never twice.
+  lastMatch    String?  @map("last_match")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, target])
+  @@index([target])
+  @@map("offer_watches")
 }
 
 // Append-only log of every yes or no, with the card exactly as the user saw it.

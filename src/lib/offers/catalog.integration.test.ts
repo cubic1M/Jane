@@ -7,7 +7,12 @@ vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 vi.mock("@/lib/error-alerts", () => ({ alertError: vi.fn(async () => true) }));
 
-import { OFFER_SOURCES, OFFERS_CLAUDE_MONTHLY_CALLS, type SourceSpec } from "@/config/offers";
+import {
+  OFFER_SEEDS,
+  OFFER_SOURCES,
+  OFFERS_CLAUDE_MONTHLY_CALLS,
+  type SourceSpec,
+} from "@/config/offers";
 import { usableOptions } from "@/lib/compare";
 import { alertError } from "@/lib/error-alerts";
 import {
@@ -26,6 +31,11 @@ const url = process.env.TEST_DATABASE_URL;
 const NOW = new Date("2026-11-12T18:00:00Z");
 const HOUR = 3_600_000;
 
+const SOURCES = [...OFFER_SOURCES.map((s) => s.key), "seed"];
+const KEYS = [
+  ...OFFER_SOURCES.flatMap((s) => s.offers.map((o) => o.key)),
+  ...OFFER_SEEDS.map((s) => s.key),
+];
 const source = (key: string) => OFFER_SOURCES.find((s) => s.key === key) as SourceSpec;
 const barclays = source("barclays.savings");
 const spotify = source("spotify.plans");
@@ -41,6 +51,8 @@ function web(pages: Record<string, string>, robots = ""): Fetcher {
       : new Response(body, { status: 200 });
   };
 }
+const ours = (offers: { key: string }[]) =>
+  offers.map((o) => o.key).filter((k) => KEYS.includes(k));
 const barclaysPage = (apy: string) => ({
   "https://banking.barclaysus.com/online-savings.html": `<h1>Online Savings</h1><p>${apy}% APY</p>`,
 });
@@ -51,15 +63,18 @@ describe.runIf(url)("the offers catalog", () => {
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });
   beforeEach(async () => {
-    await client.marketOfferEvent.deleteMany({});
-    await client.marketOffer.deleteMany({});
+    await clear();
     vi.mocked(alertError).mockClear();
   });
   afterAll(async () => {
-    await client.marketOfferEvent.deleteMany({});
-    await client.marketOffer.deleteMany({});
+    await clear();
     await client.$disconnect();
   });
+  // Only the catalog's own rows: other files' made-up offers in the same database are theirs.
+  const clear = async () => {
+    await client.marketOfferEvent.deleteMany({ where: { source: { in: [...SOURCES, "x"] } } });
+    await client.marketOffer.deleteMany({ where: { key: { in: KEYS } } });
+  };
 
   const row = (key: string) => client.marketOffer.findUnique({ where: { key } });
 
@@ -84,7 +99,7 @@ describe.runIf(url)("the offers catalog", () => {
     ]);
     // Past its time it's never shown, though the row stays.
     const later = new Date(NOW.getTime() + barclays.showHours * HOUR + 1);
-    expect(await liveOffers({ client, now: later })).toEqual([]);
+    expect(ours(await liveOffers({ client, now: later }))).toEqual([]);
     // The same reading again moves nothing.
     const again = await refreshSource(barclays, {
       client,
@@ -127,7 +142,7 @@ describe.runIf(url)("the offers catalog", () => {
     });
     expect(jumped.quarantined).toEqual(["savings.barclays"]);
     expect(await row("savings.barclays")).toMatchObject({ status: "quarantined", valueBps: 365 });
-    expect(await liveOffers({ client, now: NOW })).toEqual([]);
+    expect(ours(await liveOffers({ client, now: NOW }))).toEqual([]);
     expect(alertError).toHaveBeenCalledTimes(1);
     // Still wrong an hour later: quarantined still, and the founders aren't told again.
     await refreshSource(barclays, {
@@ -216,7 +231,7 @@ describe.runIf(url)("the offers catalog", () => {
     expect(
       (await liveOffers({ client, now: new Date("2026-11-10T00:00:00Z") })).length,
     ).toBeGreaterThan(0);
-    expect(await liveOffers({ client, now: new Date("2026-12-01T00:00:00Z") })).toEqual([]);
+    expect(ours(await liveOffers({ client, now: new Date("2026-12-01T00:00:00Z") }))).toEqual([]);
     // A real reading replaces a seed even when it's far from it (the seed was only an estimate).
     await refreshSource(spotify, {
       client,

@@ -12,6 +12,10 @@ vi.mock("@/lib/offers/catalog", () => ({
   ]),
 }));
 
+vi.mock("@/lib/live/watches", () => ({
+  matchOffers: vi.fn(async () => ({ matched: 3, left: 0 })),
+}));
+
 import { recordRun } from "@/lib/health";
 import { refreshDueOffers } from "@/lib/offers/catalog";
 import { GET } from "./route";
@@ -44,7 +48,13 @@ describe("the offers refresher", () => {
     for (const secret of ["hourly", "daily"]) {
       const response = await call(`Bearer ${secret}`);
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({ sources: 2, changed: 1, quarantined: 1 });
+      expect(await response.json()).toEqual({
+        sources: 2,
+        changed: 1,
+        quarantined: 1,
+        matched: 3,
+        left: 0,
+      });
     }
     expect(recordRun).toHaveBeenCalledWith("offers", expect.any(Function));
     expect(refreshDueOffers).toHaveBeenCalledTimes(2);
