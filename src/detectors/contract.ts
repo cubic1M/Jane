@@ -56,7 +56,10 @@ export type TransactionWatch =
   // Money that should come back from a payee: at least about this much.
   | { kind: "refund"; payees: { description: string; amountCents: number }[] }
   // Fees of these categories that should stop: what they came to a month before.
-  | { kind: "fee_stops"; pfcs: string[]; monthlyCents: number };
+  | { kind: "fee_stops"; pfcs: string[]; monthlyCents: number }
+  // Idle cash that should move to a better-paying account: transfers out of these accounts adding
+  // up to about this much (24/7 engine, phase 4: a do-it-yourself move confirmed from bank data).
+  | { kind: "cash_moved"; accountIds: string[]; amountCents: number };
 
 // Investing savings show in what the person holds, not in their transactions (the next holdings
 // or statement data): a fund they held is gone or smaller, waiting cash was put to work, an old

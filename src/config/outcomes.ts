@@ -12,6 +12,8 @@ export const SAME_CHARGE_SHARE = 0.5;
 export const LOWER_BILL_SHARE = 0.97;
 // A refund counts when a credit of at least this share of what was asked for arrives.
 export const REFUND_MIN_SHARE = 0.5;
+// Idle cash counts as moved once transfers out of its accounts reach this share of it.
+export const CASH_MOVED_MIN_SHARE = 0.5;
 // How long after acting each kind of saving can take to show; after this with nothing, it is
 // "not seen" (a fee or a bill still charged in full, no refund).
 export const WATCH_DAYS = {
@@ -19,6 +21,8 @@ export const WATCH_DAYS = {
   bill_drops: 75,
   refund: 60,
   fee_stops: 60,
+  // A transfer is seen within days; a person may take a few weeks to open the new account.
+  cash_moved: 45,
   // Investing: the next holdings or statement data after acting (a transfer takes days to settle,
   // a rollover a few weeks).
   funds_left: 60,
@@ -36,6 +40,8 @@ export const VERIFIED_PERCENT = {
   // The next charge was due and never came: one missed cycle, then two.
   charge_stopped: 85,
   charge_stopped_twice: 95,
+  // Transfers out of the idle account came to at least CASH_MOVED_MIN_SHARE of the extra cash.
+  cash_moved: 85,
   // A lower bill arrived from the same payee.
   bill_dropped: 90,
   // The money came back from the payee.

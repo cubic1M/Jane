@@ -1,4 +1,5 @@
 import {
+  CASH_MOVED_MIN_SHARE,
   FEE_COMPARE_DAYS,
   HELD_DAYS,
   LOWER_BILL_SHARE,
@@ -82,6 +83,8 @@ export function verifyRule(watch: Watch | null): string {
       return `Verified when at least ${pct(REFUND_MIN_SHARE)} of the money comes back from them.`;
     case "fee_stops":
       return `Verified when ${FEE_COMPARE_DAYS} days of statements after you acted show fewer fees than before.`;
+    case "cash_moved":
+      return `Verified when transfers out of the account reach ${pct(CASH_MOVED_MIN_SHARE)} of the extra cash.`;
     case "funds_left":
       return "Verified when your holdings show the fund sold.";
     case "cash_invested":
