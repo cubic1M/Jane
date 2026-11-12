@@ -39,7 +39,7 @@ const NOT_TICKERS =
 const COMPANY =
   "(?:Apple|Microsoft|Tesla|Nvidia|Alphabet|Meta|Palantir|Berkshire|Coinbase|Robinhood|Vanguard|Fidelity|Schwab|Boeing|Intel|Ford)";
 const END_OF_PICK =
-  "(?=\\s*(?:now|today|this (?:week|month|year)|before\\b|and hold\\b|for (?:the long term|this)\\b|over\\b|[.!?,;]|$))";
+  "(?=[ \\t]*\\n|\\s*(?:now|today|this (?:week|month|year)|before\\b|and hold\\b|for (?:the long term|this)\\b|over\\b|[.!?,;]|$))";
 const OWN_IT =
   "[Gg]et (?:into|out of)|[Gg]o (?:with|long(?: on)?|short(?: on)?)|[Pp]ick(?: up)?(?: some| more)?|[Cc]hoose|[Gg]rab(?: some| more)?|[Ll]oad up on|[Pp]ile into|[Bb]uy into|[Ss]tart with|[Ss]tick (?:with|to)|[Ss]tay in|[Cc]ash out of|[Bb]et on|[Ff]avou?r|[Hh]old|[Oo]wn(?: more)?|[Tt]rim|[Dd]ump|[Aa]dd to";
 const STOCK_PICKS = [
@@ -59,6 +59,12 @@ const STOCK_PICKS = [
   new RegExp(
     `\\b(?:pick|choice|favou?rite|bet|buy|play) (?:is|would be)\\s+(?:${NOT_TICKERS}[A-Z]{3,5}\\b(?![&-])|${COMPANY}\\b${END_OF_PICK})`,
   ),
+  // A verdict after a dash or a colon, and a pick shouted (chat policy round 12, 11-12): "Tesla — sell",
+  // "SELL TESLA NOW". "Buy now, pay later" is a kind of plan.
+  new RegExp(
+    `\\b(?:${NOT_TICKERS}[A-Z]{3,5}|${COMPANY})\\s*[—–:-]+\\s*(?:[Bb]uy|[Ss]ell|[Hh]old|[Dd]ump|[Tt]rim|[Ss]hort)\\b`,
+  ),
+  /\b(?:BUY|SELL|SHORT|DUMP)\s+(?!(?:NOW|PAY|IT|THE|A|AN|ONE|MORE|LESS)\b)[A-Z]{3,}\b/,
   // "Tesla is overvalued". Of a home or a car it says nothing about a share.
   new RegExp(
     `\\b(?:${NOT_TICKERS}[A-Z]{3,5}|${COMPANY})\\s+(?:is|looks|seems)\\s+(?:\\w+\\s+)?(?:over|under)valued\\b`,
@@ -98,10 +104,14 @@ const INVESTMENT = [
   /\b(?:[Bb]uy|[Ss]ell|[Ss]hort|[Dd]ump)(?:ing)?\s+(?:some |more |a lot of )?(?!(?:TVs?|PCs?|CDs?|USB|AAA|IKEA|GPS|HD|DVDs?|EVs?|SUVs?)\b)[A-Z]{2,5}\b/,
   /\b(?:[Pp]ut(?:ting)?|[Mm]ov(?:e|ing))\b(?:[^.!?]|\.\d){0,40}\binto (?!(?:CDs?|HYSA|FDIC)\b)[A-Z]{2,5}\b/,
   /\$[A-Z]{1,5}\b/,
+  // The best-known funds' tickers written small (chat policy round 12, 11-12): "Buy voo now", "Put it
+  // in vti". In capitals the rules above judge them, so a simulated strategy's own rule ("buy $500
+  // of VTI") still passes.
+  /\b(?:[Vv](?:oo|ti|tsax|fiax|xus|btlx|gt)|[Ff](?:xaix|zrox)|[Ss](?:wppx|chd|qqq)|[Qq]qq|[Tt]qqq|[Aa]rkk|[Bb]nd)\b/,
   // A company by name and nothing after it (11-04): "You should buy Tesla now". "Buy Costco gas"
   // has a thing after the name, and it's the thing being bought.
   // "Buy Now, Pay Later" is a kind of plan.
-  /\b(?:[Bb]uy|[Ss]ell|[Ss]hort)(?:ing)?\s+(?:some |more )?(?!Now\b)[A-Z][a-z]+\b(?=\s*(?:now|today|this week|before\b|and hold\b|[.!?,]|$))/,
+  /\b(?:[Bb]uy|[Ss]ell|[Ss]hort)(?:ing)?\s+(?:some |more )?(?!Now\b)[A-Z][a-z]+\b(?=[ \t]*\n|\s*(?:now|today|this week|before\b|and hold\b|[.!?,]|$))/,
   // A bare ticker after "in" or "to" (11-04): "Put the extra in VOO", "Move your savings to VOO". A
   // bank's or a card's own letters, or more words after the letters ("in PNC savings"), aren't one.
   // Nor is what someone did or might do: "You put $400.00 on your card for the trip in CA".
