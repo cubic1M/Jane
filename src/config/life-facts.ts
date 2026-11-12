@@ -198,26 +198,49 @@ export const PET_COVER_WORDS =
 // suggested only for a service the person is already paying for in at least two months.
 export const STUDENT_PLANS: readonly {
   name: string;
+  // Its key in the offers catalog (plan.<key>.student and plan.<key>.individual, src/config/offers.ts),
+  // where today's prices come from once they've been read from the service's own page.
+  merchantKey: string;
   words: RegExp;
   yearlySavingCents: number;
   // The student plan's monthly price: someone paying about this is already on it.
   studentMonthlyCents: number;
 }[] = [
-  { name: "Spotify", words: /SPOTIFY/, yearlySavingCents: 7_200, studentMonthlyCents: 599 },
+  {
+    name: "Spotify",
+    merchantKey: "spotify",
+    words: /SPOTIFY/,
+    yearlySavingCents: 7_200,
+    studentMonthlyCents: 599,
+  },
   {
     name: "Amazon Prime",
+    merchantKey: "amazon_prime",
     words: /AMAZON PRIME|AMZN PRIME|PRIME VIDEO/,
     yearlySavingCents: 9_000,
     studentMonthlyCents: 749,
   },
-  { name: "Apple Music", words: /APPLE MUSIC/, yearlySavingCents: 6_000, studentMonthlyCents: 599 },
+  {
+    name: "Apple Music",
+    merchantKey: "apple_music",
+    words: /APPLE MUSIC/,
+    yearlySavingCents: 6_000,
+    studentMonthlyCents: 599,
+  },
   {
     name: "YouTube Premium",
+    merchantKey: "youtube_premium",
     words: /YOUTUBE ?PREMIUM|GOOGLE \*YOUTUBE/,
     yearlySavingCents: 7_200,
     studentMonthlyCents: 799,
   },
-  { name: "Adobe", words: /ADOBE/, yearlySavingCents: 24_000, studentMonthlyCents: 1_999 },
+  {
+    name: "Adobe",
+    merchantKey: "adobe",
+    words: /ADOBE/,
+    yearlySavingCents: 24_000,
+    studentMonthlyCents: 1_999,
+  },
 ];
 export const STUDENT_PLAN_MIN_MONTHS = 2;
 // Sales tax on a student price, so $6.47 for a $5.99 plan is still that plan.

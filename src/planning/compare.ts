@@ -24,6 +24,8 @@ export type CompareOption = {
   sourceUrl: string;
   // YYYY-MM-DD.
   checkedAt: string;
+  // The moment it was read, for an option from the offers catalog (src/lib/offers/), read hourly.
+  checkedTime?: string;
   demo: boolean;
 };
 

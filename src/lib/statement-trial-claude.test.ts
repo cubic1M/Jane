@@ -30,6 +30,8 @@ const NOT_REACHED = new Set([
   "src/lib/agent/read-reply.ts",
   "src/lib/agent/find-contact.ts",
   "src/lib/news/summarize.ts",
+  // The offers catalog's page reader: the offers cron, never a person (src/lib/offers/catalog.ts).
+  "src/lib/offers/catalog.ts",
   "src/lib/jane-agent/checks/grader.ts",
   "src/lib/jane-agent/checks/run.ts",
   "src/lib/jane-agent/checks/proof.ts",

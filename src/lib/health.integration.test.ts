@@ -137,6 +137,7 @@ describe.runIf(url)("health checks against a real database", () => {
       "events",
       "invariants",
       "accuracy",
+      "offers",
     ]);
     // And row-level security, whole on a protected database (src/lib/rls-coverage.ts).
     expect(report.rls).toMatchObject({ role: true, missing: [], ok: true, switchWorks: true });

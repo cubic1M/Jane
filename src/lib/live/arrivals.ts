@@ -17,6 +17,8 @@ import { hasDemoBank } from "@/lib/plaid/demo";
 import { tellsThemToAct } from "@/lib/real-account-text";
 import { savingsLine } from "@/lib/savings-text";
 import { systemDb } from "@/lib/system-db";
+import { normalizeAlias } from "@/data-sources/merchant-directory";
+import { recheckPlanPrices } from "@/lib/offers/catalog";
 import { isTrialUser } from "@/lib/trial-ids";
 import { postMessages } from "@/lib/jane-agent/messages";
 import { queueChatNotificationsSafely } from "@/lib/jane-agent/notify";
@@ -35,7 +37,7 @@ import { findingCandidate } from "@/lib/jane-agent/sources/findings";
 // Running it again for the same findings changes nothing.
 
 export type Trigger = "webhook" | "sync" | "import" | "offer" | "daily";
-export type Notice =
+type Notice =
   | "posted"
   | "first_scan"
   | "below_bar"
@@ -47,6 +49,7 @@ export type Notice =
   | "failed";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const MAX_LATENCY_MS = 2_147_483_647;
 
 type Created = { type: FindingType; key: string };
 type Arrived = {
@@ -70,7 +73,7 @@ export type ArrivalOptions = {
 };
 
 // Worth telling someone about straight away.
-export const clearsBar = (f: Pick<Arrived, "annualSavingsCents" | "confidence">): boolean =>
+const clearsBar = (f: Pick<Arrived, "annualSavingsCents" | "confidence">): boolean =>
   (f.annualSavingsCents ?? 0) >= LIVE_NOTICE_MIN_ANNUAL_CENTS &&
   atLeast(f.confidence, LIVE_NOTICE_MIN_CONFIDENCE);
 
@@ -152,8 +155,11 @@ export async function recordArrivals(
     },
   })) as Arrived[];
   if (found.length === 0) return { recorded: 0, posted: null };
-
   const held = await heldForEveryone(userId, { client, now, firstScan });
+  // A charge that changed for a service the catalog prices: its prices are read again first when
+  // they're old, so what Jane compares with is today's (src/lib/offers/catalog.ts). Only for someone
+  // who may be told now: never a sample person's or the demo bank's scan.
+  if (!held) await recheckChargedServices(found, { client, now });
   const best = held ? null : ([...found].filter(clearsBar).sort(byValue)[0] ?? null);
   const sentToday = best
     ? await db.findingArrivals.count({
@@ -172,7 +178,8 @@ export async function recordArrivals(
     trigger,
     triggerAt,
     foundAt,
-    latencyMs: Math.max(0, foundAt.getTime() - triggerAt.getTime()),
+    // An int column: a clock that's off (a stored webhook against a replayed scan) can't overflow it.
+    latencyMs: Math.min(MAX_LATENCY_MS, Math.max(0, foundAt.getTime() - triggerAt.getTime())),
     notice: noticeOf(f),
     // The day's count reads this, against the same clock as the rest of the run.
     createdAt: now,
@@ -215,6 +222,26 @@ export async function recordArrivals(
     log.error("Telling the person about a new finding failed", { error: String(error) });
     await settle("failed");
     return { recorded: inserted.length, posted: null };
+  }
+}
+
+const CHARGE_TYPES: readonly FindingType[] = ["price_increase", "subscription_review"];
+
+async function recheckChargedServices(
+  found: readonly Arrived[],
+  { client, now }: { client: PrismaClient; now: Date },
+): Promise<void> {
+  const services = new Set(
+    found.flatMap((f) => {
+      const merchant = (f.evidence as { merchant?: unknown } | null)?.merchant;
+      const key = typeof merchant === "string" ? normalizeAlias(merchant) : null;
+      return CHARGE_TYPES.includes(f.type) && key ? [key.replace(/\s+/g, "_")] : [];
+    }),
+  );
+  for (const service of services) {
+    await recheckPlanPrices(service, { client, now }).catch((error) =>
+      log.error("Rechecking a service's prices failed", { error: String(error) }),
+    );
   }
 }
 

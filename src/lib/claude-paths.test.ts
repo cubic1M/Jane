@@ -43,6 +43,9 @@ const LIMITED_BY: Record<string, string> = {
   "src/lib/claude-budget.ts": "backgroundCapHit",
   // No person: its own monthly cap (NEWS_MONTHLY_CAP_CENTS) and calls a day.
   "src/lib/news/summarize.ts": "NEWS_MONTHLY_CAP",
+  // No person: reading a provider's changed page, OFFERS_CLAUDE_MONTHLY_CALLS a month, and off
+  // unless OFFERS_CLAUDE_MODEL is set (src/config/offers.ts).
+  "src/lib/offers/catalog.ts": "OFFERS_CLAUDE_MONTHLY_CALLS",
   // The eval CLI, never the app: ANSWER_CHECK_CAP_CENTS.
   "src/lib/jane-agent/checks/grader.ts": "eval only",
   "src/lib/jane-agent/checks/run.ts": "eval only",

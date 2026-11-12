@@ -98,6 +98,43 @@ describe("student plans", () => {
     expect(s.confidence.reason).toMatch(/typical list prices/);
   });
 
+  // Jane's 24/7 engine (src/lib/offers/): today's prices, read from each service's own page, in
+  // place of the typical ones, and a service whose prices aren't live is left out.
+  it("uses today's prices from the catalog, and says when and where they were checked", () => {
+    const market = {
+      plans: [
+        {
+          merchantKey: "spotify",
+          plan: "individual" as const,
+          cents: 1_299,
+          checkedAt: "2026-11-12T18:00:00.000Z",
+          sourceUrl: "https://www.spotify.com/us/premium/",
+        },
+        {
+          merchantKey: "spotify",
+          plan: "student" as const,
+          cents: 699,
+          checkedAt: "2026-11-12T18:00:00.000Z",
+          sourceUrl: "https://www.spotify.com/us/premium/",
+        },
+      ],
+    };
+    const data = student();
+    const [s] = runDetectors({ profile: buildProfile(data), data, market }, LIFE_FACT_DETECTORS);
+    // Amazon Prime's prices aren't live, so only Spotify: ($12.99 - $6.99) x 12.
+    expect(s?.worthCents).toBe(7_200);
+    expect(s?.why).toMatch(/you pay for Spotify\./);
+    expect(s?.why).toMatch(/Prices checked Nov 12 from spotify\.com\./);
+    expect(s?.confidence.reason).toMatch(/each service's own page/);
+    // Nothing live at all: no suggestion rather than an old price.
+    expect(
+      runDetectors(
+        { profile: buildProfile(data), data, market: { plans: [] } },
+        LIFE_FACT_DETECTORS,
+      ),
+    ).toEqual([]);
+  });
+
   it("is not made for someone who is not a student, or who pays for none of them", () => {
     const notStudent = {
       ...base(),

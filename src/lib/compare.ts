@@ -17,6 +17,7 @@ import {
 } from "@/planning/compare";
 import { DAY_MS } from "@/lib/dates";
 import { systemDb } from "@/lib/system-db";
+import { liveOffers } from "@/lib/offers/catalog";
 
 const WHY = "Provider options are shared reference data, no one's own";
 
@@ -51,25 +52,62 @@ export async function usableOptions({
     },
     orderBy: { id: "asc" },
   });
-  return rows.map((r) => ({
-    id: r.id,
-    kind: r.kind as CompareOption["kind"],
-    category: r.category,
-    merchantKey: r.merchantKey,
-    provider: r.provider,
-    name: r.name,
-    monthlyCents: r.monthlyCents,
-    apyBps: r.apyBps,
-    contractMonths: r.contractMonths,
-    oneTimeFeeCents: r.oneTimeFeeCents,
-    minimumBalanceCents: r.minimumBalanceCents,
-    includes: r.includes,
-    givesUp: r.givesUp,
-    signUpUrl: r.signUpUrl,
-    sourceUrl: r.sourceUrl,
-    checkedAt: r.checkedAt.toISOString().slice(0, 10),
-    demo: r.demo,
-  }));
+  return [
+    ...rows.map((r) => ({
+      id: r.id,
+      kind: r.kind as CompareOption["kind"],
+      category: r.category,
+      merchantKey: r.merchantKey,
+      provider: r.provider,
+      name: r.name,
+      monthlyCents: r.monthlyCents,
+      apyBps: r.apyBps,
+      contractMonths: r.contractMonths,
+      oneTimeFeeCents: r.oneTimeFeeCents,
+      minimumBalanceCents: r.minimumBalanceCents,
+      includes: r.includes,
+      givesUp: r.givesUp,
+      signUpUrl: r.signUpUrl,
+      sourceUrl: r.sourceUrl,
+      checkedAt: r.checkedAt.toISOString().slice(0, 10),
+      demo: r.demo,
+    })),
+    ...(await catalogSavings({ client, now })),
+  ];
+}
+
+// Savings accounts from the offers catalog (src/lib/offers/): a bank's own rate, read from its own
+// page and still inside its time. Never the national averages or the old hand-kept reference rate.
+async function catalogSavings({
+  client,
+  now,
+}: {
+  client: PrismaClient;
+  now: Date;
+}): Promise<CompareOption[]> {
+  const offers = await liveOffers({ client, now, kind: "savings_apy" });
+  return offers
+    .filter((o) => o.extractedBy !== "seed" && o.valueBps !== null && o.signUpUrl)
+    .map((o) => ({
+      id: `offer:${o.key}`,
+      kind: "savings" as const,
+      category: "savings",
+      merchantKey: null,
+      provider: o.provider,
+      name: o.name,
+      monthlyCents: null,
+      apyBps: o.valueBps,
+      contractMonths: 0,
+      oneTimeFeeCents: 0,
+      minimumBalanceCents: o.minimumBalanceCents,
+      includes: null,
+      givesUp: null,
+      signUpUrl: o.signUpUrl,
+      sourceUrl: o.sourceUrl,
+      checkedAt: o.checkedAt.toISOString().slice(0, 10),
+      checkedTime: o.checkedAt.toISOString(),
+      demo: false,
+    }));
 }
 
 // Puts the demo examples in place (checked today), for the demo bank's syncs.
