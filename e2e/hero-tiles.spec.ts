@@ -1,13 +1,13 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { E2E_DATABASE_URL, addSavedChange, deleteUser } from "./db";
+import { E2E_DATABASE_URL, deleteUser } from "./db";
 import { demoPerson } from "./demo-person";
 import { expectMarchingLine } from "./marching";
 
-// Home's Safe to spend and Saved tiles open in place (founder: "When you click safe to spend
-// till… it should expand first having a summary on why that number is what it is. On the
-// bottom, that box should suggest smth like what are u aiming to spend and it would link you to
-// the chat on the right with a dotted line … Saved so far should also … expand and show a
-// summary of where was saved"). At 1440 wide and on a phone (the mobile project).
+// Safe to spend opens in place (founder: "When you click safe to spend till… it should expand
+// first having a summary on why that number is what it is. On the bottom, that box should suggest
+// smth like what are u aiming to spend and it would link you to the chat on the right with a
+// dotted line"). On Spending & bills since the home redesign (11-12); saved so far is /saved. At
+// 1440 wide and on a phone (the mobile project).
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 test.setTimeout(180_000);
@@ -50,7 +50,8 @@ test("safe to spend says why it's that number, and hands what to spend to the ch
 }) => {
   if (!isMobile) await page.setViewportSize({ width: 1440, height: 900 });
   userId = await demoPerson(context, page, baseURL);
-  await page.goto("/home");
+  // On Spending & bills since the home redesign (11-12).
+  await page.goto("/money");
 
   const tile = page.locator('[data-hub-tile="safe"]');
   const open = tile.getByRole("button", { name: /^Safe to spend/ });
@@ -73,13 +74,13 @@ test("safe to spend says why it's that number, and hands what to spend to the ch
   expect(Math.abs(money(values[0]) - held - total)).toBeLessThanOrEqual(count);
   expect(money(await tile.locator('[data-hub-number="safe"]').textContent())).toBe(total);
 
-  // "How it's worked out" stays on Home: a pop-up beside the tile, joined to it by a dashed line,
+  // "How it's worked out" stays on the page: a pop-up beside the tile, joined to it by a dashed line,
   // with the sum line by line (each bill on its own) and the full page as a link inside.
   const how = tile.getByRole("button", { name: /How it's worked out/ });
   await how.click();
   const popup = page.getByRole("dialog", { name: "How it's worked out" });
   await expect(popup).toBeVisible();
-  await expect(page).toHaveURL(/\/home$/);
+  await expect(page).toHaveURL(/\/money$/);
   await expect(how).toHaveAttribute("aria-expanded", "true");
   await expect(page.locator("[data-popup-line] path")).toHaveAttribute("d", /^M/);
   await expectMarchingLine(page.locator("[data-popup-line]"));
@@ -141,69 +142,4 @@ test("safe to spend says why it's that number, and hands what to spend to the ch
   await box.pressSequentially("40 on shoes");
   await expect(hint).toHaveCount(0);
   await expect(box).toHaveValue("I'm aiming to spend $40 on shoes");
-});
-
-test("saved so far opens on where the savings came from", async ({
-  context,
-  page,
-  baseURL,
-  isMobile,
-}) => {
-  if (!isMobile) await page.setViewportSize({ width: 1440, height: 900 });
-  userId = await demoPerson(context, page, baseURL);
-  await addSavedChange(userId, { title: "Cancel Hulu", annualCents: 21_600 });
-  await addSavedChange(userId, { title: "Cancel the gym", annualCents: 48_000 });
-  await page.goto("/home");
-
-  const tile = page.locator('[data-hub-tile="saved"]');
-  // On a phone each tile takes the whole row; on a wide screen the two share it (debugger
-  // 10-30: on a phone Saved so far sat in the left half with nothing beside it).
-  const safeBox = (await page.locator('[data-hub-tile="safe"]').boundingBox())!;
-  const savedBox = (await tile.boundingBox())!;
-  if (isMobile) expect(Math.abs(savedBox.width - safeBox.width)).toBeLessThanOrEqual(1);
-  else expect(Math.abs(savedBox.y - safeBox.y)).toBeLessThanOrEqual(1);
-  const open = tile.getByRole("button", { name: /^Saved so far/ });
-  await open.click();
-  await expect(open).toHaveAttribute("aria-expanded", "true");
-  const where = tile.locator("[data-saved-where]");
-  await expect(where).toBeVisible();
-  // Biggest first, each with what kind of saving it was and its amount.
-  await expect(where.getByRole("listitem")).toHaveText([
-    /^Cancel the gym · you did it\s*\$480\/yr$/,
-    /^Cancel Hulu · you did it\s*\$216\/yr$/,
-  ]);
-  // Saved so far is confirmed money only: these were done by hand and aren't in the
-  // transactions yet, so $0 saved, with the $696 a year expected beside it, labelled.
-  await expect(tile.locator('[data-hub-number="saved"]')).toContainText("$0");
-  await expect(tile.locator("[data-hub-expected]")).toContainText(
-    "Expected, not confirmed yet: $696/yr",
-  );
-  await expect(tile.getByRole("link", { name: /See every saving/ })).toHaveAttribute(
-    "href",
-    "/saved",
-  );
-
-  // "Your plan" stays on Home too: what's saved and where from, what the plan adds, and the goal
-  // it goes toward, in a pop-up beside the tile.
-  const planButton = tile.getByRole("button", { name: /^Your plan: \d+ things?/ });
-  await planButton.click();
-  const popup = page.getByRole("dialog", { name: "Your plan" });
-  await expect(popup).toBeVisible();
-  await expect(page).toHaveURL(/\/home$/);
-  const lines = popup.locator("[data-calc-lines] > div");
-  await expect(lines.nth(0)).toContainText("Cancel the gym");
-  await expect(lines.filter({ hasText: "Expected so far" })).toContainText("$696");
-  await expect(lines.last()).toContainText("Expected, plus your plan if you say yes");
-  await expect(popup.locator("[data-plan-goal]")).toBeVisible();
-  await expect(page.locator("[data-popup-line] path")).toHaveAttribute("d", /^M/);
-  await expectMarchingLine(page.locator("[data-popup-line]"));
-  // The page can still be settling just after it opens: it must end up clear.
-  await expect(() => clearOf(page, popup, tile)).toPass();
-  await expect(popup.getByRole("link", { name: /See the whole plan/ })).toHaveAttribute(
-    "href",
-    "/plan",
-  );
-  await page.keyboard.press("Escape");
-  await expect(popup).toHaveCount(0);
-  await expect(planButton).toBeFocused();
 });

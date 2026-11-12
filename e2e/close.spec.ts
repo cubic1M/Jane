@@ -8,14 +8,16 @@ test.setTimeout(240_000);
 
 const PARTS = ["Found", "You did", "Verified", "Changed", "Open for next month"];
 
-test("a sample person's monthly close, from Home", async ({ page }) => {
+test("a sample person's monthly close, from Spending & bills", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Try it with sample data" }).click();
   await expect(page).toHaveURL(/\/home$/, { timeout: 60_000 });
   await expect(page.locator("[data-scan-bar]")).toHaveCount(0, { timeout: 150_000 });
 
-  await page.locator("[data-home-close]").click();
+  // On Spending & bills since the home redesign (11-12).
+  await page.goto("/money");
+  await page.getByRole("link", { name: "Last month's close" }).click();
   await expect(page).toHaveURL(/\/close\/\d{4}-\d{2}$/);
   const month = page.url().slice(-7);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(/ close$/);

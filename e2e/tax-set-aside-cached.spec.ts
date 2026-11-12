@@ -8,7 +8,7 @@ import {
 } from "./db";
 
 // Pages come back from the browser's memory (src/lib/page-cache.ts), so a correction on the tax
-// calculation has to reach a Home that was kept: coming back by a link, or by Back, shows Safe to
+// calculation has to reach a Spending & bills that was kept: coming back by a link, or by Back, shows Safe to
 // spend as it is now. Prefetching and the memory only run on a production build.
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
@@ -60,7 +60,7 @@ async function openCalculation(page: Page) {
   return page.locator("#set-aside");
 }
 
-test("a correction reaches a Home kept in memory, and so does its undo", async ({
+test("a correction reaches a Spending & bills kept in memory, and so does its undo", async ({
   context,
   page,
   baseURL,
@@ -73,15 +73,15 @@ test("a correction reaches a Home kept in memory, and so does its undo", async (
   await context.addCookies([
     { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
   ]);
-  await page.goto("/home");
+  await page.goto("/money");
   await settled(page);
   const first = await safeDollars(page);
   expect(first).toBeGreaterThan(0);
 
-  // The money moves on the server and nothing tells the browser: Home is coming from its memory.
+  // The money moves on the server and nothing tells the browser: the page is coming from its memory.
   await setCheckingBalance(user.userId, 6_000_100);
   await tab(page, "/taxes");
-  await tab(page, "/home");
+  await tab(page, "/money");
   expect(await safeDollars(page)).toBe(first);
 
   // A payment pointed out: $1,000 less held back, on top of the $1 above.
@@ -93,14 +93,14 @@ test("a correction reaches a Home kept in memory, and so does its undo", async (
   await section.getByRole("button", { name: "Work it out again" }).click();
   await expect(section).toContainText("A tax payment, $1,000.00");
 
-  await tab(page, "/home");
+  await tab(page, "/money");
   const corrected = await safeDollars(page);
   expect(Math.abs(corrected - (first + 1001))).toBeLessThanOrEqual(1);
 
-  // Back to the calculation, and Back to Home: neither shows the old number.
+  // Back to the calculation, and Back to Spending & bills: neither shows the old number.
   await tab(page, "/taxes");
   await page.goBack();
-  await expect(page).toHaveURL(/\/home(\?|$)/);
+  await expect(page).toHaveURL(/\/money(\?|$)/);
   await settled(page);
   expect(await safeDollars(page)).toBe(corrected);
 
@@ -109,6 +109,6 @@ test("a correction reaches a Home kept in memory, and so does its undo", async (
   section = await openCalculation(page);
   await section.getByRole("button", { name: /Undo\s*:\s*A tax payment/ }).click();
   await expect(section).not.toContainText("A tax payment, $1,000.00");
-  await tab(page, "/home");
+  await tab(page, "/money");
   expect(Math.abs((await safeDollars(page)) - (first + 1))).toBeLessThanOrEqual(1);
 });

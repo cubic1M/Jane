@@ -4,7 +4,7 @@ import { CHAT } from "./chat-page";
 import { E2E_DATABASE_URL, addFreelancer, deleteUser, signedInUser, treatAsDemoBank } from "./db";
 
 // The tax left to cover, on a real account: a fact, not advice; the calculation line by line; and a
-// correction that moves it, on Home's Safe to spend too, and can be undone.
+// correction that moves it, on Safe to spend too, and can be undone.
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 test.setTimeout(180_000);
@@ -46,8 +46,9 @@ test("the calculation is shown, says no advice, and takes a correction", async (
   await row("Standard deduction").locator("summary").click();
   await expect(row("Standard deduction")).toContainText("check with a tax professional");
 
-  // Home and the full working quote the same line.
-  await page.goto("/home");
+  // Safe to spend (on Spending & bills since the home redesign) and the full working quote the
+  // same line.
+  await page.goto("/money");
   await page
     .getByRole("button", { name: /why this number/i })
     .first()
@@ -105,15 +106,16 @@ test("it comes up unasked: the card has the figure and how sure Jane is", async 
   // Opening the chat runs Jane's first scan before it answers, which posts the card.
   await page.goto(CHAT);
   await page.setViewportSize(isMobile ? { width: 375, height: 812 } : { width: 1440, height: 900 });
-  const docked = !isMobile;
-  const scope = docked
-    ? page.getByRole("complementary", { name: "Chat with Jane" }).locator("[data-card-dock]")
-    : page.locator('.floating-cards[data-floating-cards="queue"]');
+  // Beside the chat on a computer; on a phone in Home's own flow under "Jane found" (home
+  // redesign 11-12). Both are the docked stack, with its arrows.
+  const docked = true;
+  const scope = isMobile
+    ? page.locator("[data-home-cards] [data-card-dock]")
+    : page.getByRole("complementary", { name: "Chat with Jane" }).locator("[data-card-dock]");
   const card = await walkToCard(
     page,
     async () => {
       await page.goto("/home");
-      if (isMobile) await page.locator('[data-card-state="folded"]').click({ timeout: 60_000 });
       return scope;
     },
     `Check tax not yet paid: about ${figure}`,

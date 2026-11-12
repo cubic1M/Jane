@@ -217,6 +217,7 @@ export function FloatingCards({
   foldOnPhone = false,
   foldOnSend = false,
   docked = false,
+  inPage = false,
   onShowing,
   onDetails,
   onFollow,
@@ -241,6 +242,9 @@ export function FloatingCards({
   foldOnPhone?: boolean;
   // Fold to that line on a small phone once the person sends a message (the chat).
   foldOnSend?: boolean;
+  // Docked, but in a page's own flow (Home's "Jane found"), not the dock's scroller: its buttons
+  // don't stick to the bottom, which in a page pinned them over the headline.
+  inPage?: boolean;
   // In the dock above the side chat (src/components/side-chat/card-dock.tsx): in the flow
   // there, not floating; a little bigger, with arrows between the cards.
   docked?: boolean;
@@ -618,7 +622,7 @@ export function FloatingCards({
               className={`flex flex-wrap items-center gap-2 p-3 ${
                 // Docked, the choices stay in sight at the dock's foot while the details scroll
                 // (QA round 12: the buttons keep their room).
-                docked ? "sticky bottom-0 z-10 bg-[var(--background)]" : ""
+                docked && !inPage ? "sticky bottom-0 z-10 bg-[var(--background)]" : ""
               }`}
             >
               {/* Every choice always in view, labels whole (founder: "not all the choices are

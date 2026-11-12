@@ -10,6 +10,15 @@ import { loadMoneyArea } from "@/lib/area-pages/money-load";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { ProgressBar } from "@/components/progress-bar";
+import { CASH_FLOW_DAYS } from "@/config/areas";
+import { addDays } from "@/detection/units";
+import { CashFlowStrip } from "@/components/hub/cash-flow";
+import { SafeTile } from "@/components/hub/hero-tiles";
+import { LoadingBar } from "@/components/loading-bar";
+import { loadHubTop } from "@/lib/hub/load";
+import { cashFlowView, heroView } from "@/lib/hub/view";
+import { staleStatementsEnd } from "@/lib/report-state";
+import { scopedFor } from "@/lib/db-scoped";
 
 // Spending & bills (spec step 80; docs/design/area-pages.md): what matters now, the area's
 // tree, and the detail of the one thing picked. Each detail links to the page that has the
@@ -25,6 +34,30 @@ function Go({ href, children }: { href: string; children: ReactNode }) {
     <Link href={href} className={`self-start text-sm ${LINK}`}>
       {children}
     </Link>
+  );
+}
+
+// Safe to spend and the next 30 days of bills and paydays: on Home until the home redesign (11-12),
+// which kept Home to net worth and what Jane found. Below the tree, in its own boundary.
+async function MoneyNow({ userId }: { userId: string }) {
+  const [top, read] = await Promise.all([
+    loadHubTop(userId),
+    scopedFor(userId).transactions.aggregate({ _max: { date: true } }),
+  ]);
+  if (!top) return null;
+  const safe = heroView(top.hero).safe;
+  // Too old to say what's due: no strip (as Home did).
+  const old = staleStatementsEnd(read._max.date, new Date());
+  return (
+    <>
+      {safe && <SafeTile safe={safe} />}
+      {!old && (
+        <CashFlowStrip
+          view={cashFlowView(top.cashFlow)}
+          endDate={addDays(top.cashFlow.asOf, CASH_FLOW_DAYS)}
+        />
+      )}
+    </>
   );
 }
 
@@ -269,6 +302,9 @@ async function MoneyContent({
           <Link href="/net-worth" className={LINK}>
             Net worth
           </Link>
+          <Link href="/close" prefetch={false} className={LINK}>
+            Last month&apos;s close
+          </Link>
         </nav>
       </div>
 
@@ -290,6 +326,12 @@ async function MoneyContent({
         more={more}
         focus={focus}
       />
+
+      {data.hasAccounts && (
+        <Suspense fallback={<LoadingBar label="Loading what's coming up" />}>
+          <MoneyNow userId={user.id} />
+        </Suspense>
+      )}
 
       {/* Below the tree: nothing open by default (docs/design/area-pages.md). */}
       <details className="border-t border-zinc-200 pt-2 dark:border-zinc-800">

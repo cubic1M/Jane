@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openHomeMore } from "./home-more";
 import { E2E_DATABASE_URL, deleteUser } from "./db";
 import { demoPerson } from "./demo-person";
 import { expectMarchingLine } from "./marching";
@@ -25,6 +26,7 @@ test("Ask Jane always draws its line, and asked again finds the earlier answer",
   if (!isMobile) await page.setViewportSize({ width: 1440, height: 900 });
   userId = await demoPerson(context, page, baseURL);
   await page.goto("/home");
+  await openHomeMore(page);
   const tree = page.locator("[data-giant-tree]");
   await tree.locator('[data-giant-area-tile="taxes"]').click({ timeout: 60_000 });
   const feature = tree.locator('[data-giant-area="taxes"] [data-giant-feature]').first();

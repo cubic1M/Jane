@@ -1,10 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, addJaneMessage, deleteUser } from "./db";
 import { demoPerson } from "./demo-person";
-import { holds, nextSave, settled } from "./waits";
+import { openHomeMore } from "./home-more";
+import { holds, settled } from "./waits";
 
 // Founder's Home fixes (2026-10-25): an opened card in the dock stays put through a reload and
-// while stepping; "Hide this for good" is instant; an area's tree starts at its branches; and
+// while stepping; an area's tree starts at its branches; and
 // no "Good morning" greeting for now.
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
@@ -122,7 +123,7 @@ test("an opened card keeps the next ones open, until one is shut", async ({
   await expect(more).toHaveAttribute("aria-expanded", "false");
 });
 
-test("Home: hide the checklist at once, trees start at their branches, no greeting", async ({
+test("Home: trees start at their branches, no greeting", async ({
   context,
   page,
   baseURL,
@@ -132,26 +133,9 @@ test("Home: hide the checklist at once, trees start at their branches, no greeti
   userId = await demoPerson(context, page, baseURL);
   await page.goto("/home");
 
-  // "Hide this for good": gone on the tap, and still gone after a reload.
-  const checklist = page.getByRole("region", { name: "Getting started" });
-  if ((await checklist.count()) > 0) {
-    // Gone in the same frame as the tap (QA round 12: it took about half a second).
-    await expect(checklist.getByRole("button", { name: "Hide this for good" })).toBeEnabled();
-    const saved = nextSave(page);
-    const goneAtOnce = await page.evaluate(() => {
-      const button = [...document.querySelectorAll("button")].find(
-        (b) => b.textContent?.trim() === "Hide this for good",
-      )!;
-      button.click();
-      return document.getElementById("checklist-heading") === null;
-    });
-    expect(goneAtOnce).toBe(true);
-    await expect(checklist).toHaveCount(0);
-    await saved;
-    await page.reload();
-    await expect(page.locator("[data-giant-tree]")).toBeVisible({ timeout: 60_000 });
-    await expect(checklist).toHaveCount(0);
-  }
+  // The getting-started checklist is off Home since the home redesign (11-12).
+  await expect(page.getByRole("region", { name: "Getting started" })).toHaveCount(0);
+  await openHomeMore(page);
 
   // An area opens straight into its branches: nothing in it repeats the area's name.
   const tree = page.locator("[data-giant-tree]");

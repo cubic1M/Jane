@@ -55,7 +55,7 @@ test("the top bar holds still while pages load", async ({ context, page, baseURL
   // The tabs are in the page's own boundary, which hydrates after the root's "taps ready": a tap
   // before that follows the plain link, a full load (still a working tab, just not the test).
   await tab.waitForLoadState("load");
-  await expect(tab.locator("[data-giant-tree]")).toBeVisible();
+  await expect(tab.locator("[data-jane-found]")).toBeVisible();
   await hydrated(
     tab.getByRole("navigation", { name: "Main" }).getByRole("link", {
       name: "Spending & bills",

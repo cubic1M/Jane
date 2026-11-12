@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openHomeMore } from "./home-more";
 import { E2E_DATABASE_URL, deleteUser } from "./db";
 import { demoPerson } from "./demo-person";
 import { holds } from "./waits";
@@ -25,7 +26,7 @@ const AREAS = [
   "Plans & goals",
 ];
 
-test("the hub shows the money at a glance, the month ahead and every area", async ({
+test("the hub shows where you stand, what Jane found and every area; the month ahead is on Spending & bills", async ({
   context,
   page,
   baseURL,
@@ -36,16 +37,56 @@ test("the hub shows the money at a glance, the month ahead and every area", asyn
   await page.goto("/home");
   await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeAttached();
 
-  // The hero row: safe to spend with its bar, net worth, and money found or saved.
-  const hero = page.getByRole("region", { name: "Your money at a glance" });
-  await expect(hero.locator("[data-hub-number]")).toHaveCount(3);
-  // Safe to spend opens in place on why it's that number (e2e/hero-tiles.spec.ts).
-  await expect(hero.getByRole("button", { name: /^Safe to spend/ })).toHaveAttribute(
+  // Home redesign (11-12): net worth, what Jane found, and the rest one tap away. No safe-to-spend
+  // or money-found tiles, no month strip, no checklist.
+  const chart = page.locator("[data-net-worth-chart]");
+  await expect(chart.locator('[data-hub-number="net-worth"]')).toBeVisible({ timeout: 60_000 });
+  await expect(chart.getByRole("link", { name: "Net worth" })).toHaveAttribute(
+    "href",
+    "/net-worth",
+  );
+  await expect(page.locator("[data-jane-found]")).toBeVisible();
+  await expect(page.locator('[data-hub-tile="safe"]')).toHaveCount(0);
+  await expect(page.getByRole("group", { name: /^Next 30 days:/ })).toHaveCount(0);
+
+  // One set of area tiles (audit round 2: the areas were on Home twice): "What Jane does", a
+  // tile per area in tab order, each with its status and its figure; no "Your areas" too.
+  await expect(page.getByRole("region", { name: "Your areas" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Your areas" })).toHaveCount(0);
+  await openHomeMore(page);
+  const tiles = page.locator("[data-giant-tree] [data-giant-area-tile]");
+  await expect(tiles).toHaveCount(6, { timeout: 60_000 });
+  await expect(tiles.last()).toBeVisible();
+  for (const [i, name] of AREAS.entries()) {
+    await expect(tiles.nth(i)).toContainText(name);
+    // A status (said in words for screen readers), or what to set up.
+    await expect(tiles.nth(i)).toContainText(/Good: |Needs a look: |Urgent: |Not set up/);
+  }
+  // Few numbers: at most one per tile.
+  const tileNumbers = await tiles.locator("span.text-lg").count();
+  expect(tileNumbers).toBeLessThanOrEqual(6);
+  expect(tileNumbers).toBeGreaterThan(0);
+
+  // On a computer the chat is docked beside the hub; on a phone nothing scrolls sideways.
+  if (!isMobile) {
+    await expect(page.getByRole("complementary", { name: "Chat with Jane" })).toBeVisible();
+  } else {
+    await expect(page.getByRole("button", { name: /^Chat with Jane/ })).toBeVisible();
+  }
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
+
+  // Safe to spend and the month ahead, on Spending & bills.
+  await page.goto("/money");
+  const safe = page.locator('[data-hub-tile="safe"]');
+  await expect(safe.getByRole("button", { name: /^Safe to spend/ })).toHaveAttribute(
     "aria-expanded",
     "false",
+    { timeout: 60_000 },
   );
-  await expect(hero.getByRole("img", { name: /Safe to spend \d+%/ })).toBeVisible();
-  await expect(hero.getByRole("link", { name: "Net worth" })).toHaveAttribute("href", "/net-worth");
+  await expect(safe.getByRole("img", { name: /Safe to spend \d+%/ })).toBeVisible();
 
   // The month ahead: one tab stop, the arrow keys step along it, each mark says what it is.
   const strip = page.getByRole("group", { name: /^Next 30 days:/ });
@@ -69,35 +110,9 @@ test("the hub shows the money at a glance, the month ahead and every area", asyn
   );
   expect(new Set(spots).size).toBe(spots.length);
 
-  // One set of area tiles (audit round 2: the areas were on Home twice): "What Jane does", a
-  // tile per area in tab order, each with its status and its figure; no "Your areas" too.
-  await expect(page.getByRole("region", { name: "Your areas" })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Your areas" })).toHaveCount(0);
-  const tiles = page.locator("[data-giant-tree] [data-giant-area-tile]");
-  await expect(tiles).toHaveCount(6, { timeout: 60_000 });
-  await expect(tiles.last()).toBeVisible();
-  for (const [i, name] of AREAS.entries()) {
-    await expect(tiles.nth(i)).toContainText(name);
-    // A status (said in words for screen readers), or what to set up.
-    await expect(tiles.nth(i)).toContainText(/Good: |Needs a look: |Urgent: |Not set up/);
-  }
-  // Few numbers: three up top and at most one per tile.
-  const tileNumbers = await tiles.locator("span.text-lg").count();
-  expect(tileNumbers).toBeLessThanOrEqual(6);
-  expect(tileNumbers).toBeGreaterThan(0);
-
-  // On a computer the chat is docked beside the hub; on a phone nothing scrolls sideways.
-  if (!isMobile) {
-    await expect(page.getByRole("complementary", { name: "Chat with Jane" })).toBeVisible();
-  } else {
-    await expect(page.getByRole("button", { name: /^Chat with Jane/ })).toBeVisible();
-  }
-  const overflow = await page.evaluate(
-    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-  );
-  expect(overflow).toBeLessThanOrEqual(0);
-
-  // A tile opens its tree, and the tree's link opens its page.
+  // A Home tile opens its tree, and the tree's link opens its page.
+  await page.goto("/home");
+  await openHomeMore(page);
   await tiles.nth(1).click();
   const insurance = page.locator('[data-giant-area="insurance"]');
   await expect(insurance).toBeVisible();
@@ -114,6 +129,7 @@ test("the areas are fixed tiles that each open into their tree, and a feature's 
   if (!isMobile) await page.setViewportSize({ width: 1440, height: 900 });
   userId = await demoPerson(context, page, baseURL);
   await page.goto("/home");
+  await openHomeMore(page);
 
   // Six fixed tiles: no Jane box above them, nothing to drag or zoom.
   const tree = page.locator("[data-giant-tree]");

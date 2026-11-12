@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openHomeMore } from "./home-more";
 import { E2E_DATABASE_URL, deleteUser } from "./db";
 import { demoPerson } from "./demo-person";
 
@@ -21,16 +22,14 @@ test("every big figure starts hidden, shows on its own, and is hidden again on t
   userId = await demoPerson(context, page, baseURL);
   await page.goto("/home");
 
+  // Home's one big figure is net worth (home redesign 11-12); Safe to spend is on Spending &
+  // bills, below.
   const chart = page.locator("[data-net-worth-chart]");
   const netWorth = chart.locator('[data-hub-number="net-worth"]');
-  const safe = page.locator('[data-hub-number="safe"]');
-  const saved = page.locator('[data-hub-number="saved"]');
   const dollars = /\$/;
 
-  for (const figure of [netWorth, safe, saved]) {
-    await expect(figure).toContainText("*****");
-    await expect(figure).not.toContainText(dollars);
-  }
+  await expect(netWorth).toContainText("*****");
+  await expect(netWorth).not.toContainText(dollars);
   // Nothing on the chart gives the figure away: no scale, no dollars moved, none read out.
   await expect(chart.locator("[data-net-worth-scale]")).toHaveCount(0);
   await expect(chart.locator("[data-net-worth-change]")).not.toContainText(dollars);
@@ -39,6 +38,7 @@ test("every big figure starts hidden, shows on its own, and is hidden again on t
     "Today: hidden",
   );
   // Nor do the area tiles: an amount waits for its tile to open.
+  await openHomeMore(page);
   const tree = page.locator("[data-giant-tree]");
   await expect(tree).toBeVisible({ timeout: 60_000 });
   const tiles = tree.locator("[data-giant-area-tile]");
@@ -55,20 +55,28 @@ test("every big figure starts hidden, shows on its own, and is hidden again on t
   expect(showBox.x).toBeGreaterThanOrEqual(figureBox.x + figureBox.width);
   expect(showBox.y).toBeLessThan(figureBox.y + figureBox.height);
 
-  // Shown: that figure and its scale, and no other figure.
+  // Shown: that figure and its scale.
   await show.click();
   await expect(netWorth).toHaveText(/^-?\$[\d,]+$/);
   await expect(chart.locator('[data-net-worth-scale="high"]')).toBeVisible();
   await expect(chart.locator("[data-net-worth-change]")).toContainText(dollars);
-  await expect(safe).toContainText("*****");
-  await expect(saved).toContainText("*****");
 
   // Hidden again with the same button.
   await chart.getByRole("button", { name: /HIDE VALUE.* of net worth/ }).click();
   await expect(netWorth).toContainText("*****");
   await expect(chart.locator("[data-net-worth-scale]")).toHaveCount(0);
 
-  // Asking why this number is asking to see it; hiding it shuts the why.
+  // Never remembered: the next visit starts hidden.
+  await chart.getByRole("button", { name: /SHOW VALUE.* of net worth/ }).click();
+  await expect(netWorth).toHaveText(/^-?\$[\d,]+$/);
+  await page.reload();
+  await expect(netWorth).toContainText("*****");
+
+  // Safe to spend, on Spending & bills: hidden too. Asking why this number is asking to see it;
+  // hiding it shuts the why.
+  await page.goto("/money");
+  const safe = page.locator('[data-hub-number="safe"]');
+  await expect(safe).toContainText("*****", { timeout: 60_000 });
   const safeTile = page.locator('[data-hub-tile="safe"]');
   const why = safeTile.getByRole("button", { name: /why this number/ });
   await why.click();
@@ -76,10 +84,4 @@ test("every big figure starts hidden, shows on its own, and is hidden again on t
   await safeTile.locator("[data-show-value]").click();
   await expect(safe).toContainText("*****");
   await expect(why).toHaveAttribute("aria-expanded", "false");
-
-  // Never remembered: the next visit starts hidden.
-  await chart.getByRole("button", { name: /SHOW VALUE.* of net worth/ }).click();
-  await expect(netWorth).toHaveText(/^-?\$[\d,]+$/);
-  await page.reload();
-  await expect(netWorth).toContainText("*****");
 });
