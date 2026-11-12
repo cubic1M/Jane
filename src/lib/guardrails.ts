@@ -96,7 +96,7 @@ const INVESTMENT = [
   // A bare ticker (11-03): "Buy NVDA", "$NVDA", "put it into TSLA". Written in capitals, so "buy a TV"
   // and the things in capitals people do buy aren't one.
   /\b(?:[Bb]uy|[Ss]ell|[Ss]hort|[Dd]ump)(?:ing)?\s+(?:some |more |a lot of )?(?!(?:TVs?|PCs?|CDs?|USB|AAA|IKEA|GPS|HD|DVDs?|EVs?|SUVs?)\b)[A-Z]{2,5}\b/,
-  /\b(?:[Pp]ut|[Mm]ove)\b(?:[^.!?]|\.\d){0,40}\binto (?!(?:CDs?|HYSA|FDIC)\b)[A-Z]{2,5}\b/,
+  /\b(?:[Pp]ut(?:ting)?|[Mm]ov(?:e|ing))\b(?:[^.!?]|\.\d){0,40}\binto (?!(?:CDs?|HYSA|FDIC)\b)[A-Z]{2,5}\b/,
   /\$[A-Z]{1,5}\b/,
   // A company by name and nothing after it (11-04): "You should buy Tesla now". "Buy Costco gas"
   // has a thing after the name, and it's the thing being bought.
@@ -136,6 +136,11 @@ const INVESTMENT = [
   /\b(?:now|today|this (?:week|month)) (?:is|looks like|seems like) (?:a |the )?(?:good|great|bad|right|wrong|smart|perfect|best|ideal) time to (?:buy|sell|get in|get out|cash out)\b(?=\s*(?:in|more|back|[.!?,;]|$))/i,
   /\b(?:buy the dip|time the market|(?:get|stay|be) (?:back )?(?:in(?:to)?|out of) the (?:stock )?market)\b/i,
   /\bdollar[- ]cost averag/i,
+  // A judgment rather than an instruction (chat policy round 9, 11-12): "Holding makes more sense
+  // than selling", "Selling now would lock in your loss, so wait", "Traditional wins for you".
+  /\b(?:holding|keeping) (?:on |it |them )?makes (?:more )?sense\b|\b(?:holding|selling|buying|keeping)\b[^.!?]{0,30}\bthan (?:selling|holding|buying|keeping)\b/i,
+  /\block in (?:your |the |a |any )?(?:loss|losses|gains?|profits?)\b/i,
+  /\btraditional (?:wins|is (?:the )?better|comes out ahead|makes more sense|fits you)\b/i,
   /\b(?:growth|value|balanced|total[- ](?:stock )?market|large[- ]cap|mid[- ]cap|small[- ]cap|emerging[- ]markets?|sector|dividend) (?:funds?|etfs?)\b/i,
   /\boffset(?:ting)? (?:the |your |some |those |any )?(?:capital )?gains?\b/i,
   /\bsell(?:ing)? (?:the |your |some |those )?(?:losers|winners)\b/i,
@@ -219,7 +224,7 @@ const TAX_ADVICE = [
   /\bhead of household\b/i,
   /\bmarried filing (?:jointly|separately)\b/i,
   /\b(?:put|enter|list|include|show|claim|report|take)\b[^.!?]{0,40}\bon your (?:\d{4} )?(?:tax |federal |state )?return\b/i,
-  /\bclaim (?:your|my|their|her|his|the) (?:daughter|son|kids?|children|child|parents?|mom|dad|mother|father|niece|nephew|grand\w+|girlfriend|boyfriend|partner)\b(?!['’]s)/i,
+  /\bclaim(?:ing)? (?:your|my|their|her|his|the) (?:daughter|son|kids?|children|child|parents?|mom|dad|mother|father|niece|nephew|grand\w+|girlfriend|boyfriend|partner)\b(?!['’]s)/i,
   // Changing what's withheld (aup-audit 11-06): "Increase your withholding on your W-4". What was
   // withheld stays a fact.
   /(?:^|[.!?:;]\s+|\byou should\s+|\bi(?:'|’)?d\s+)(?:increase|raise|lower|reduce|change|adjust|update|bump|boost)\b[^.!?]{0,30}\bwithholding\b/i,
@@ -296,6 +301,11 @@ const LEGAL = [
   /\b(?:don(?:'|’)?t|do not|doesn(?:'|’)?t|does not|no longer|aren(?:'|’)?t|are not|isn(?:'|’)?t|is not|can(?:'|’)?t|cannot) legally\b/i,
   /\blegally (?:owe|have to|need to|responsible|liable|binding|enforceable)\b/i,
   /\b(?:past|beyond|outside|expired|run out|ran out)\b[^.!?]{0,30}\bstatute of limitations\b|\btime[- ]barred\b/i,
+  // Chat policy round 9 (11-12): "The statute of limitations has run out on that debt", "Legally
+  // they can't garnish your wages", "You don't have to pay it blindly; make them prove the debt".
+  /\bstatute of limitations\b[^.!?]{0,30}\b(?:has |had |is )?(?:run out|ran out|passed|expired|ended|up|over)\b/i,
+  /\blegally,? (?:they|you|he|she|it|the \w+|your \w+) (?:can(?:'|’)?t|cannot|can|must|have to|don(?:'|’)?t have to|do not have to)\b/i,
+  /\bmake (?:them|the collector|the agency|the lender) prove\b|\b(?:don(?:'|’)?t|do not) have to pay (?:it|this|that|them|the debt)(?: back)? (?:blindly|at all)\b/i,
   /\bignore (?:the |that |this |any |their |those )?(?:debt )?(?:collectors?|collection (?:letters?|calls?|notices?|agency)|lawsuit|summons|court (?:date|papers|notice)|subpoena)\b/i,
   /\b(?:have|has|got) (?:a |an )?(?:\w+ )?case against\b/i,
   /\b(?:is |are |was |were )?(?:breaking|broke|violating|violated) the law\b/i,
