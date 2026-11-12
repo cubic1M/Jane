@@ -106,11 +106,10 @@ describe("the card", () => {
     });
     expect(card.badge).toBe("Demo advice: sample data, not financial advice");
     expect(card.details.whatYesDoes).toMatch(/^Cancel it\. Nothing is bought or moved/);
-    // Yes answers in place; Open is what goes to the page (manager decision 10-30).
-    expect(card.details.whatYesDoes).toMatch(
-      /Yes puts it on your list; Open takes you to the page/,
-    );
-    expect(card.details.whatYesDoes).not.toMatch(/Yes takes you/);
+    // Yes opens the step it links since #1615 (founder 11-12: find, solve, prefill, yes), which
+    // replaced the 10-30 "Yes answers in place"; see ./what-yes-does.test.tsx.
+    expect(card.details.whatYesDoes).toMatch(/Yes opens the page where you do it/);
+    expect(card.details.whatYesDoes).not.toMatch(/puts it on your list/);
   });
 
   it("explains the headline's figure with the whole reason when there is one", () => {
