@@ -5,7 +5,7 @@ vi.mock("./actions", () => ({ tapButton: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 import type { MessageView } from "@/lib/jane-agent/view";
-import { SuggestionCards, cardOf, cardParts, followAction } from "./suggestion-cards";
+import { SuggestionCards, cardOf, cardParts, followAction, stepAfterYes } from "./suggestion-cards";
 
 // The day's suggestions as floating cards (founder request): the short card with Yes and Not
 // now, the details already on the page, and nothing at all with none waiting.
@@ -174,5 +174,35 @@ describe("following a card to its page", () => {
     ).toBe("snooze");
     expect(followAction({ suggestion: false, buttons: [button("finding.yes")] })).toBeNull();
     expect(followAction({ suggestion: true, buttons: [] })).toBeNull();
+  });
+});
+
+// Debugger round 208: Yes recorded the answer and the dock moved on to the next card; the step
+// Jane prepared ("Good. Here's where to do it." with Open it) showed nowhere.
+describe("the step a Yes opens", () => {
+  const answered = (links: MessageView["links"]) => ({
+    message: message(1, { status: "answered", answeredWith: "Cancel it", links }),
+    error: null,
+  });
+
+  it("is the Open it link the Yes came back with", () => {
+    expect(
+      stepAfterYes(
+        answered([
+          { label: "Open", href: "/subscriptions" },
+          { label: "Open it", href: "/subscriptions?focus=review&from=m1" },
+        ]),
+      ),
+    ).toBe("/subscriptions?focus=review&from=m1");
+    // A practice idea's Yes: where its trades are.
+    expect(stepAfterYes(answered([{ label: "See it", href: "/investments/practice" }]))).toBe(
+      "/investments/practice",
+    );
+  });
+
+  it("is nothing when the tap failed or came back without a step", () => {
+    expect(stepAfterYes(null)).toBeNull();
+    expect(stepAfterYes({ ...answered([]), error: "That's already been answered." })).toBeNull();
+    expect(stepAfterYes(answered([{ label: "Open", href: "/subscriptions" }]))).toBeNull();
   });
 });

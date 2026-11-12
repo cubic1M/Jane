@@ -1,4 +1,5 @@
 import { parsePracticeIdeaId } from "@/config/practice-suggestions";
+import { PRACTICE_STEP_LABEL, STEP_LINK_LABEL } from "@/config/suggestion-step";
 import { answerIdeaHere } from "@/lib/practice/ideas-view";
 import { SuggestionError, answerSuggestion, explainSuggestion } from "@/lib/suggestions";
 import {
@@ -46,7 +47,7 @@ function handler(id: "suggestion.yes" | "suggestion.no", answer: "yes" | "no"): 
                   actions: [
                     {
                       id: "open" as const,
-                      label: "See it",
+                      label: PRACTICE_STEP_LABEL,
                       kind: "link" as const,
                       href: practice.href,
                     },
@@ -59,7 +60,7 @@ function handler(id: "suggestion.yes" | "suggestion.no", answer: "yes" | "no"): 
           ? {
               answeredWith: context.action.label,
               note: "Good. Here's where to do it.",
-              actions: [{ id: "open", label: "Open it", kind: "link", href: out.actionHref }],
+              actions: [{ id: "open", label: STEP_LINK_LABEL, kind: "link", href: out.actionHref }],
             }
           : {
               answeredWith: context.action.label,
