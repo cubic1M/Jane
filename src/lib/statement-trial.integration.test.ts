@@ -108,6 +108,9 @@ const NOT_A_PERSONS = new Set([
   "health_notices",
   "merchants",
   "switch_options",
+  // The offers catalog: market figures read from public pages, no person in them.
+  "market_offers",
+  "market_offer_events",
   "answer_check_runs",
   "suggestion_kind_stats",
   "refresh_locks",

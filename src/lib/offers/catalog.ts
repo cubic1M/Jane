@@ -17,6 +17,7 @@ import { db as defaultClient } from "@/lib/db";
 import { alertError } from "@/lib/error-alerts";
 import { log } from "@/lib/log";
 import { systemDb } from "@/lib/system-db";
+import { UNTRUSTED_TEXT_RULE } from "@/lib/untrusted-text";
 import { politeFetch, type Fetcher } from "./fetch";
 import {
   fingerprintOf,
@@ -190,8 +191,9 @@ function claudeExtractor(): Extractor | null {
     const response = await anthropic().messages.create({
       model,
       max_tokens: OFFERS_CLAUDE_MAX_TOKENS,
-      system:
-        "You read a company's public web page and report figures it states. Answer with JSON only: an object whose keys are the ids asked for and whose values are the number the page states (a percent like 4.10, or a monthly price in dollars like 6.99), or null when the page doesn't state it. Never estimate.",
+      system: `You read a company's public web page and report figures it states. Answer with JSON only: an object whose keys are the ids asked for and whose values are the number the page states (a percent like 4.10, or a monthly price in dollars like 6.99), or null when the page doesn't state it. Never estimate.
+
+${UNTRUSTED_TEXT_RULE}`,
       messages: [
         {
           role: "user",

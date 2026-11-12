@@ -709,6 +709,7 @@ async function syncItemWork(
 ): Promise<SyncResult> {
   // The first scan's phases, logged once as trial_timing (where the first minute goes).
   const timing = phaseTimer("first_sync");
+  const wallStart = Date.now();
   // The one unscoped read: finds the item's owner so everything after is scoped to them.
   const item = await systemDb(
     "A sync job starts from the item's id, before it knows whose",
@@ -867,6 +868,8 @@ async function syncItemWork(
   // Regular cash deposits count as income before Jane reads the month (src/categorize/cash-income.ts).
   await markCashIncome(db);
   const detection = await runDetection(item.userId, { client, now });
+  // When the findings existed, on the sync's own clock: its "now" may be set (a test, a replay).
+  const foundAt = new Date(now.getTime() + (Date.now() - wallStart));
   // Jane's 24/7 engine: what this change found that's new, and the best of it told now, not at
   // tomorrow's brief (src/lib/live/arrivals.ts). Never fails the sync.
   await recordArrivalsSafely(item.userId, detection.createdKeys, {
@@ -876,6 +879,7 @@ async function syncItemWork(
       trigger: "sync" as const,
       triggerAt: now,
     }))),
+    foundAt,
     firstScan: result.firstSync,
   });
   // Phase AW: a sample person's practice portfolio starts by itself, weeks back, before the

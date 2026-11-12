@@ -49,6 +49,7 @@ type Notice =
   | "failed";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const MAX_LATENCY_MS = 2_147_483_647;
 
 type Created = { type: FindingType; key: string };
 type Arrived = {
@@ -177,7 +178,8 @@ export async function recordArrivals(
     trigger,
     triggerAt,
     foundAt,
-    latencyMs: Math.max(0, foundAt.getTime() - triggerAt.getTime()),
+    // An int column: a clock that's off (a stored webhook against a replayed scan) can't overflow it.
+    latencyMs: Math.min(MAX_LATENCY_MS, Math.max(0, foundAt.getTime() - triggerAt.getTime())),
     notice: noticeOf(f),
     // The day's count reads this, against the same clock as the rest of the run.
     createdAt: now,
