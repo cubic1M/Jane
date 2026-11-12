@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { Suspense } from "react";
 import { AuthError } from "@/components/auth-error";
@@ -7,6 +8,7 @@ import { RedirectIfSignedIn } from "@/components/redirect-if-signed-in";
 import { SubmitButton } from "@/components/submit-button";
 import { joinTheWaitlist } from "@/lib/auth-actions";
 import { invitesRequired, normalizeCode } from "@/lib/invites";
+import { readDraft, SIGNUP_DRAFT_COOKIE } from "@/lib/signup-draft";
 
 const FIELD =
   "h-12 rounded-lg border border-zinc-300 bg-transparent px-4 text-base focus-visible:outline-2 focus-visible:outline-zinc-900 dark:border-zinc-700 dark:focus-visible:outline-zinc-100";
@@ -24,6 +26,8 @@ const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v
 async function SignupForm({ searchParams }: { searchParams: Params }) {
   const params = await searchParams;
   const invite = normalizeCode(first(params.invite) ?? "") ?? undefined;
+  // Sent back with an error: what they typed, so only the wrong part needs fixing.
+  const draft = params.error ? readDraft((await cookies()).get(SIGNUP_DRAFT_COOKIE)?.value) : {};
   const closed = invitesRequired();
   const joined = first(params.waitlist) === "joined";
   // Sent here from sign-in without an invite: the error above already says who to ask.
@@ -39,7 +43,12 @@ async function SignupForm({ searchParams }: { searchParams: Params }) {
         </p>
       )}
 
-      <AuthForm submitLabel="Email me a sign-up link" signUp invite={invite} />
+      <AuthForm
+        submitLabel="Email me a sign-up link"
+        signUp
+        invite={invite ?? draft.invite}
+        email={draft.email}
+      />
 
       {closed && !invite && (
         <section aria-labelledby="waitlist-title" className="flex flex-col gap-3">
