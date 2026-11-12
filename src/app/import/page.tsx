@@ -61,7 +61,8 @@ async function ImportContent({
 
   return (
     <>
-      <AppHeader user={user} />
+      {/* Before the first account, nothing around the upload to wander into, as on /connect. */}
+      <AppHeader user={user} bare={accounts.length === 0} />
 
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Upload your statements</h1>

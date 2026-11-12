@@ -37,12 +37,14 @@ test("after an upload the side chat catches up, and the chip keeps out of the wa
   await page.setViewportSize({ width: 1280, height: 800 });
   await signIn(page, baseURL);
 
-  // Before: the chat asks for a statement, in one sentence.
+  // Before: nothing around the upload while there's no account, the chat included (debugger
+  // 11-12, as /connect since #1615); the page itself asks for the statement.
   await page.goto("/import");
-  const chat = page.frameLocator('iframe[title="Chat with Jane"]');
-  await expect(chat.locator("[data-chat-embed]").first()).toContainText(
-    "Upload a bank statement and I'll start looking after your money.",
+  await expect(page.getByRole("heading", { level: 1, name: "Upload your statements" })).toBeVisible(
+    { timeout: 60_000 },
   );
+  await expect(page.locator('iframe[title="Chat with Jane"]')).toHaveCount(0);
+  const chat = page.frameLocator('iframe[title="Chat with Jane"]');
 
   await uploadSampleCard(page);
   // The chip sits clear of the page's headings.
