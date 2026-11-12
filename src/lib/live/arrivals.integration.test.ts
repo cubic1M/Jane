@@ -211,9 +211,11 @@ describe.runIf(url)("new findings told the moment they're found", () => {
       triggerAt: NOW,
     });
     expect((await arrivals(sample)).map((r) => r.notice)).toEqual(["sample"]);
-    expect([...(await posted(night)), ...(await posted(firstScan)), ...(await posted(sample))]).toEqual(
-      [],
-    );
+    expect([
+      ...(await posted(night)),
+      ...(await posted(firstScan)),
+      ...(await posted(sample)),
+    ]).toEqual([]);
   });
 
   it("finds what a bank's webhook set off, through the real sync, and times it", async () => {
@@ -255,14 +257,20 @@ describe.runIf(url)("new findings told the moment they're found", () => {
     });
     expect(back.map((r) => r.findingId)).toContain(again.id);
     expect(back.filter((r) => r.findingId === again.id)).toHaveLength(1);
-    expect(back.find((r) => r.findingId === again.id)).toMatchObject({ trigger: "webhook", notice: "demo" });
+    expect(back.find((r) => r.findingId === again.id)).toMatchObject({
+      trigger: "webhook",
+      notice: "demo",
+    });
     expect(back.find((r) => r.findingId === again.id)?.triggerAt.toISOString()).toBe(
       later.toISOString(),
     );
     // The same delivery again is a repeat, and nothing is recorded twice.
     expect(await firstDelivery(raw, body, { client, now: later })).toBe(false);
     expect(
-      await whatSetOffSync(item.plaidItemId, { client, startedAt: new Date(later.getTime() + 2 * HOUR) }),
+      await whatSetOffSync(item.plaidItemId, {
+        client,
+        startedAt: new Date(later.getTime() + 2 * HOUR),
+      }),
     ).toEqual({ trigger: "sync", triggerAt: new Date(later.getTime() + 2 * HOUR) });
   });
 });
