@@ -10,6 +10,7 @@ import { log } from "@/lib/log";
 import { liveOffers, type LiveOffer } from "@/lib/offers/catalog";
 import { systemDb } from "@/lib/system-db";
 import { isTrialUser } from "@/lib/trial-ids";
+import { hasDemoBank } from "@/lib/plaid/demo";
 import { recordArrivalsSafely } from "./arrivals";
 
 // Jane's 24/7 engine, step three: reverse matching. Each scan of a person leaves a small index of
@@ -34,6 +35,11 @@ export async function refreshWatches(
   // A sample person is never matched to anything (src/lib/trial.ts).
   if (isTrialUser(userId)) return 0;
   const db = scopedFor(userId, client);
+  // Nor is the demo bank's sample data: an offer can't help a made-up balance.
+  if (await hasDemoBank(userId, { client })) {
+    await db.offerWatches.deleteMany({});
+    return 0;
+  }
   const findings = await db.findings.findMany({
     where: {
       status: { in: ["new", "shown"] },
