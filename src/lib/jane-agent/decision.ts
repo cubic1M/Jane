@@ -195,6 +195,35 @@ function cushionReply(f: DecisionFacts, advice: boolean): Reply {
   };
 }
 
+// The label is whatever followed "should I", and the answer says it after "before". A leading
+// "of" or a verb doesn't read there (11-12: "before of my company's stock", "before consolidate my
+// student loans"): the "of" goes and the verb takes -ing.
+const VERB_ING: Record<string, string> = {
+  consolidate: "consolidating",
+  refinance: "refinancing",
+  open: "opening",
+  close: "closing",
+  pay: "paying",
+  sell: "selling",
+  move: "moving",
+  take: "taking",
+  switch: "switching",
+  roll: "rolling",
+  cash: "cashing",
+  invest: "investing",
+  put: "putting",
+  start: "starting",
+  stop: "stopping",
+  lease: "leasing",
+  rent: "renting",
+};
+function asSubject(label: string): string {
+  const trimmed = label.replace(/^(?:(?:more|some|any|all) )?of /, "");
+  const [verb, ...rest] = trimmed.split(" ");
+  const ing = VERB_ING[verb ?? ""];
+  return ing ? [ing, ...rest].join(" ") : trimmed;
+}
+
 export function decisionReply(
   intent: DecisionIntent,
   topic: Topic | null,
@@ -214,7 +243,7 @@ export function decisionReply(
   const label = intent.label ?? fromTopic?.target ?? THING[item as CoreSubject] ?? THING.other;
   if (item === "cushion") return cushionReply(facts, advice);
   // What it's called in the answer ("should i do roth or traditional": "roth or traditional").
-  const said = label.replace(/^(?:do|buy|get)\s+/, "");
+  const said = asSubject(label.replace(/^(?:do|buy|get)\s+/, ""));
   const lines = standing(facts);
   const lead = first(facts);
   const body = advice
