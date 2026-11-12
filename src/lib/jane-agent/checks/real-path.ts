@@ -262,7 +262,16 @@ export async function runRealPath(
       for (const question of questions) {
         resetClaudeHealth();
         await systemDb("Rate limits are the system's own counters", client).rateLimit.deleteMany({
-          where: { key: { in: [`chat:${userId}`, `ask:${userId}`, `chatspend:${userId}`] } },
+          where: {
+            key: {
+              in: [
+                `chat:${userId}`,
+                `ask:${userId}`,
+                `chatspend:${userId}`,
+                `chatspendmonth:${userId}`,
+              ],
+            },
+          },
         });
         const played = newPlayed();
         const failed: string[] = [];
