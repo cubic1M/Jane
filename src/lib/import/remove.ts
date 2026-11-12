@@ -1,8 +1,10 @@
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
+import type { PrismaClient } from "@/generated/prisma/client";
 import type { ScopedDb } from "@/lib/db-scoped";
 import { FILE_SOURCE } from "@/lib/import/balances";
 import { forgetSince } from "@/lib/evidence/orphans";
+import { markFreshStartIfEmpty } from "@/lib/jane-agent/fresh-start";
 import { enqueueJob } from "@/lib/jobs";
 
 // Taking uploads back (founder: old and new statements shouldn't mix): one upload's rows, an
@@ -137,6 +139,8 @@ async function record(
 }
 
 type RemoveDb = ScopedDb;
+// The database the person's own row is on, when nothing is left (./fresh-start.ts).
+type FreshStartOptions = { client?: PrismaClient };
 
 // Exactly the rows one upload added (rows it found already there stay with the upload that
 // added them), and the statement balances kept for the days it covered.
@@ -177,7 +181,11 @@ export async function removeEarlierRows(db: RemoveDb, accountId: string): Promis
 
 // An uploaded account and everything in it (its rows, balances and uploads go with it).
 // Never a linked bank's account: those are disconnected from Settings.
-export async function removeUploadedAccount(db: RemoveDb, accountId: string): Promise<Removed> {
+export async function removeUploadedAccount(
+  db: RemoveDb,
+  accountId: string,
+  { client }: FreshStartOptions = {},
+): Promise<Removed> {
   const account = await db.accounts.findFirst({
     where: { id: accountId, source: "csv" },
     select: { id: true, createdAt: true },
@@ -186,11 +194,15 @@ export async function removeUploadedAccount(db: RemoveDb, accountId: string): Pr
   const rows = await db.transactions.count({ where: { accountId: account.id } });
   await db.accounts.deleteMany({ where: { id: account.id, source: "csv" } });
   await record(db.userId, "uploaded_account_removed", { rows, accounts: 1 });
+  await markFreshStartIfEmpty(db, client);
   return { rows, accounts: 1, jobId: await refreshAfterRemoval(db, account.createdAt) };
 }
 
 // Every uploaded account and statement, in one step. Linked banks and settings stay.
-export async function startOver(db: RemoveDb): Promise<Removed> {
+export async function startOver(
+  db: RemoveDb,
+  { client }: FreshStartOptions = {},
+): Promise<Removed> {
   const totals = await uploadedTotals(db);
   if (totals.accounts === 0) return null;
   const first = await db.accounts.findFirst({
@@ -200,5 +212,6 @@ export async function startOver(db: RemoveDb): Promise<Removed> {
   });
   await db.accounts.deleteMany({ where: { source: "csv" } });
   await record(db.userId, "uploads_reset", totals);
+  await markFreshStartIfEmpty(db, client);
   return { ...totals, jobId: await refreshAfterRemoval(db, first?.createdAt ?? new Date(0)) };
 }

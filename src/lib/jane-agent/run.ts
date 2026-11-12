@@ -29,6 +29,7 @@ import { loadYearPlan } from "@/lib/year-plan";
 import { runPlanUpkeep } from "@/lib/plan-upkeep";
 import { runTaxAutopilotSafely } from "@/lib/tax-autopilot";
 import { gather, plan, type BrainSettings } from "./brain";
+import { freshStartAfter } from "./fresh-start";
 import { BUNDLED_UNTIL, closeSettled, postMessages } from "./messages";
 import { queueChatNotificationsSafely } from "./notify";
 import { inQuietHours, personIsThere } from "./quiet-hours";
@@ -173,16 +174,21 @@ async function runJaneAgentWork(
   const keys = gather(snapshot, now, settings).map((c) => c.dedupeKey);
   // Spec step 273: what each monthly-limited source posted since the first of this month.
   const monthStart = new Date(`${localTime(now, snapshot.timezone).date.slice(0, 7)}-01T00:00:00Z`);
+  // What Jane said before the last bank or file was removed was about data that's gone: it
+  // neither uses up the day nor counts as said (./fresh-start.ts).
+  const freshStart = await freshStartAfter(db);
+  const since = (from: Date) =>
+    freshStart && freshStart >= from ? { gt: freshStart } : { gte: from };
   const [seen, recent, ...monthly] = await Promise.all([
     keys.length === 0
       ? []
       : db.janeMessages.findMany({
-          where: { dedupeKey: { in: keys } },
+          where: { dedupeKey: { in: keys }, createdAt: since(new Date(0)) },
           select: { dedupeKey: true, snoozedUntil: true },
         }),
     db.janeMessages.findMany({
       where: {
-        createdAt: { gte: new Date(now.getTime() - CHAT_HISTORY_HOURS * HOUR_MS) },
+        createdAt: since(new Date(now.getTime() - CHAT_HISTORY_HOURS * HOUR_MS)),
         // Findings behind a bundle (spec step 92) don't count toward the day.
         OR: [{ snoozedUntil: null }, { snoozedUntil: { not: BUNDLED_UNTIL } }],
       },
@@ -194,7 +200,7 @@ async function runJaneAgentWork(
           dedupeKey: { startsWith: `${source}:` },
           kind: { in: ["decision", "done", "heads_up"] },
           // A line folded into the day's agenda (or behind a bundle) was said too.
-          createdAt: { gte: monthStart },
+          createdAt: since(monthStart),
         },
       }),
     ),
@@ -219,7 +225,7 @@ async function runJaneAgentWork(
   // They started typing while this run worked: Jane's own messages wait for the next run, so
   // none lands after Jane's answer to what they just asked.
   if ((await typedCount(userId, client)) > typedAtStart) return { posted: 0 };
-  const posted = await postMessages(userId, planned, { client, now });
+  const posted = await postMessages(userId, planned, { client, now, freshStart });
   // What's important goes out as a notification, unless the person is looking (spec step 85).
   await queueChatNotificationsSafely(userId, { client, now, trigger });
   return { posted };

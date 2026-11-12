@@ -226,7 +226,7 @@ describe.runIf(url)("derived data never outlives its evidence", { timeout: 240_0
       },
     });
 
-    await startOver(scopedFor(userId, client));
+    await startOver(scopedFor(userId, client), { client });
     // The gate drops them at once, before the background job's detection cleans up.
     expect((await verifiedSavings(userId, { client, now: NOW })).expectedCents).toBe(0);
     expect((await said(userId)).join("\n")).not.toMatch(/Comcast/);
