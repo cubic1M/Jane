@@ -61,7 +61,9 @@ const STOCK_PICKS = [
   ),
   // A verdict after a dash or a colon, and a pick shouted (chat policy round 12, 11-12): "Tesla — sell",
   // "SELL TESLA NOW". "Buy now, pay later" is a kind of plan.
-  new RegExp(`\\b(?:${NOT_TICKERS}[A-Z]{3,5}|${COMPANY})\\s*[—–:-]+\\s*(?:[Bb]uy|[Ss]ell|[Hh]old|[Dd]ump|[Tt]rim|[Ss]hort)\\b`),
+  new RegExp(
+    `\\b(?:${NOT_TICKERS}[A-Z]{3,5}|${COMPANY})\\s*[—–:-]+\\s*(?:[Bb]uy|[Ss]ell|[Hh]old|[Dd]ump|[Tt]rim|[Ss]hort)\\b`,
+  ),
   /\b(?:BUY|SELL|SHORT|DUMP)\s+(?!(?:NOW|PAY|IT|THE|A|AN|ONE|MORE|LESS)\b)[A-Z]{3,}\b/,
   // "Tesla is overvalued". Of a home or a car it says nothing about a share.
   new RegExp(
