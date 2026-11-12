@@ -9,6 +9,7 @@ import { loadCredit } from "@/lib/credit";
 import { loadDebtAutopilot } from "@/lib/debt-autopilot";
 import { loadCreditCards } from "@/lib/credit-cards";
 import { loadCreditBuilding } from "@/lib/credit-building";
+import { adviceMode } from "@/lib/advice-mode";
 import { loadBnpl } from "@/lib/bnpl";
 import { loadTightMoney } from "@/lib/tight-money";
 import { loadCar } from "@/lib/car";
@@ -250,7 +251,10 @@ export async function answerDebt(
     case "tight_money":
       return tightReply(await loadTightMoney(userId, { client, now }));
     case "bnpl":
-      return bnplReply(await loadBnpl(userId, { client, now }));
+      return bnplReply(
+        await loadBnpl(userId, { client, now }),
+        await adviceMode(userId, { client }),
+      );
     case "bnpl_new": {
       const data = await loadBnpl(userId, { client, now });
       if (intent.totalCents === null) {
@@ -260,7 +264,7 @@ export async function answerDebt(
           refs: {},
         };
       }
-      return bnplNewPlanReply(data, intent.totalCents);
+      return bnplNewPlanReply(data, intent.totalCents, await adviceMode(userId, { client }));
     }
     case "card_for":
       return cardForReply(await loadCreditCards(userId, { client, now }), intent.category);
