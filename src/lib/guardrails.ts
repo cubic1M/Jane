@@ -93,7 +93,17 @@ const INVESTMENT = [
   /\b(?:buy|buying|sell|selling|write|writing|short|shorting) (?:some |a few |the )?(?:covered |naked |cash[- ]secured |long |short )?(?:puts?|calls?|call options?|put options?|straddles?|strangles?|leaps)\b/i,
   /\b(?:gold|silver|bullion|precious metals|commodities)\b(?!(?:'|’)s)[^.!?]{0,20}\b(?:is|are|makes?) (?:a |an )?(?:good |great |solid |smart |safe |safer |better )?(?:hedge|buy|investment|store of value|bet)\b/i,
   /\b(?:buy|buying|get|own|add|grab|put (?:some|money|it|\$[\d,.]+) (?:in|into))\b[^.!?]{0,25}(?:\bgold\b(?!(?:'|’)s| (?:card|member|plan|tier|status|level|package|gym|rewards))|\b(?:bullion|precious metals)\b)/i,
+  // Chat policy round 11 (11-12): Jane answers in the person's language (the lang- scenarios), and
+  // "Compra acciones de Tesla ahora", "Invierte los $5,000.00 en un fondo indexado", "Achète des
+  // actions Tesla" and "Kauf Aktien" passed every English rule. Spanish, French, German, Portuguese
+  // and Chinese words for investing; "acciones" alone is "actions" too, so only shares of something.
+  /\b(?:invierte|inviertas?|invertir|invi[eé]rtelo|investis|investissez|investir|investiere|investieren|invista|investe)\b/i,
+  /\b(?:fondos? indexados?|fondos? de inversi[oó]n|bolsa de valores|criptomonedas?|fonds indiciels?|la bourse|en bourse|aktien|indexfonds|börse|a[cç][oõ]es|fundos? de [ií]ndice)\b/i,
+  /\b(?:compra|compre|vende|venda|achète|achetez|vends|vendez|kauf|kaufe|verkauf|verkaufe)\b[^.!?]{0,20}\b(?:acciones|actions)\b|\b(?:acciones|actions) (?:de |d(?:'|’))[A-Z]/i,
+  /股票|基金|投资|买入|卖出|加密货币|比特币|股市/,
   /\b(nyse|nasdaq|s&p ?500|dow jones|ticker)\b/i,
+  // A call on where the market goes (round 11): "The market is due for a correction; stay in cash".
+  /\b(?:stocks?|the (?:stock )?market|markets|the s&p(?: 500)?|the dow|equities)\b[^.!?]{0,20}\b(?:is|are|'s|’s) (?:due for|headed for|about to|going to|set to) (?:a |an )?(?:correction|crash|drop|dip|rally|fall|rise|go (?:up|down)|recover|bounce)\b|\bstay in cash\b/i,
   /\b401\(?k\)?/i,
   // An IRA is written in capitals; "Ira" is a person.
   /\broth\b/i,
@@ -213,6 +223,9 @@ const TAX = [
 ];
 // What is advice wherever it is said.
 const TAX_ADVICE = [
+  // Round 11 (11-12): whether someone qualifies for a credit is a tax call ("You qualify for the
+  // EITC this year").
+  /\b(?:you |you(?:'|’)d |you would |you(?:'|’)ll |you will |you probably )?(?:qualify|are eligible|(?:'|’)re eligible|be eligible) for (?:the |a )?(?:eitc|earned income (?:tax )?credit|child tax credit|ctc|saver(?:'|’)?s credit|american opportunity|aotc|lifetime learning|premium tax credit|education credit|[^.!?]{0,20}\btax (?:credit|break|deduction))\b/i,
   DEDUCTIONS,
   /\bwrit(?:e|es|ing|ten)[- ](?:[\w$.,']+ ){0,3}?offs?\b/i,
   ...IRS_ADVICE,
@@ -340,7 +353,15 @@ const LEGAL = [
   /\b(?:break|end|terminate|get out of) (?:your |the |a )?lease\b[^.!?]{0,30}\bwithout (?:a |any )?(?:penalty|penalties|fee|fees|paying)\b/i,
   /\b(?:have|has) (?:the |a )?right to (?:break|end|terminate|get out of|withhold|your deposit)\b|\b(?:are|is) (?:allowed|entitled) to (?:break|end|terminate|get out of|withhold)\b/i,
   /\bunder (?:the )?(?:fcra|fdcpa|fair credit reporting act|fair debt collection practices act|(?:state|federal|consumer protection|tenant|landlord[- ]tenant|your state(?:'|’)s) laws?|the law)\b[^.!?]{0,50}\b(?:have to|has to|must|can(?:'|’)?t|cannot|required|entitled|allowed|owe)\b/i,
+  // The same in the person's language (round 11): suing and court in Spanish, French, German and
+  // Chinese. A pointer to a lawyer in any language is not here.
+  /\bdemand(?:a|ar|arl[oa]s?|arle)\b(?! (?:de |del )?(?:pago|empleo|trabajo))|\bcorte de reclamos menores\b|\ben justice\b|\bverklagen\b|起诉|告他们|上法庭/i,
   /\b(?:is |are |was |were )?(?:breaking|broke|violating|violated) the law\b/i,
+  // Round 11: "That fee is illegal in California", "Your employer owes you overtime", "That's wage
+  // theft", "The contract is void, so you don't owe it".
+  /\b(?:is|are|was|were|it(?:'|’)s|that(?:'|’)s|they(?:'|’)re) (?:illegal|unlawful|against the law|not legal)\b/i,
+  /\bowes? you (?:overtime|back pay|unpaid wages|wages|damages)\b|\bwage theft\b/i,
+  /\b(?:contract|lease|agreement|clause|debt|fee|charge) (?:is|was|are|were) (?:void|unenforceable|invalid|null and void)\b/i,
   // Dressed up (chat policy round 3, 11-06): "Most lawyers would say you have a case", "You'd
   // likely win in small claims", "The collector has no right to call you at work", "You're
   // entitled to your full deposit back by law".
