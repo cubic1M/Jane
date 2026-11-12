@@ -101,7 +101,13 @@ export async function markItemRepaired(
 ): Promise<void> {
   const { count } = await scopedFor(userId, client).plaidItems.updateMany({
     where: { id: itemId },
-    data: { status: "active", newAccountsAvailable: false, lastErrorCode: null, lastErrorAt: null },
+    data: {
+      status: "active",
+      newAccountsAvailable: false,
+      lastErrorCode: null,
+      lastErrorAt: null,
+      reconnectBy: null,
+    },
   });
   if (count === 0) throw new ItemNotFoundError();
   await logAudit({ type: "user", id: userId }, "item_relinked", { type: "plaid_item", id: itemId });

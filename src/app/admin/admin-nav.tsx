@@ -42,7 +42,10 @@ export function AdminNav({ email }: { email: string | null | undefined }) {
           Errors
         </Link>
         <Link href="/admin/reports" className="hover:underline">
-          Reports
+          Feedback
+        </Link>
+        <Link href="/admin/costs" className="hover:underline">
+          Costs
         </Link>
         <Link href="/admin/access-log" className="hover:underline">
           Access log

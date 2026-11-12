@@ -72,6 +72,7 @@ describe("the mapping covers every audit event", () => {
         "admin_viewed_queue",
         "admin_viewed_action",
         "admin_viewed_activity",
+        "admin_viewed_feedback_screenshot",
         "action_status_changed",
         "action_assigned",
         "admin_drafted_message",

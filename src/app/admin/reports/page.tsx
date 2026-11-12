@@ -7,7 +7,11 @@ import { systemDb } from "@/lib/system-db";
 import { recentTryFeedback } from "@/lib/try-feedback";
 import { tryTotals } from "@/lib/try-stats";
 
-// What beta testers reported (src/app/report-a-problem): their words, the page and when, newest first.
+// The screenshot's own route (./[id]/screenshot/route.ts), founders only.
+const screenshotPath = (id: string) => ["/admin/reports", id, "screenshot"].join("/");
+
+// What beta testers sent (src/app/report-a-problem): their words, the page, when, and a link to the
+// screenshot if they added one, newest first.
 async function Reports() {
   const admin = await requireAdmin();
   const reports = await systemDb(
@@ -20,6 +24,7 @@ async function Reports() {
       path: true,
       message: true,
       createdAt: true,
+      screenshotType: true,
       user: { select: { email: true } },
     },
   });
@@ -27,7 +32,7 @@ async function Reports() {
   return (
     <>
       <AdminNav email={admin.email} />
-      <h1 className="text-3xl font-semibold tracking-tight">Problem reports</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">Feedback</h1>
       <section aria-labelledby="try-totals" className="flex flex-col gap-2">
         <h2 id="try-totals" className="text-xl font-semibold">
           Landing-page tries with a real statement
@@ -105,6 +110,19 @@ async function Reports() {
               <p className="mt-1 text-zinc-500">
                 {r.createdAt.toISOString().replace("T", " ").slice(0, 16)} UTC · {r.path} ·{" "}
                 {r.user.email ?? "no email"}
+                {r.screenshotType && (
+                  <>
+                    {" · "}
+                    <a
+                      href={screenshotPath(r.id)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-medium underline"
+                    >
+                      Screenshot
+                    </a>
+                  </>
+                )}
               </p>
             </li>
           ))}

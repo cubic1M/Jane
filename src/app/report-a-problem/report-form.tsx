@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { REPORT_MAX_CHARS } from "@/lib/problem-reports";
+import { FEEDBACK_MAX_UPLOAD_BYTES, REPORT_MAX_CHARS } from "@/lib/problem-reports";
 import { sendProblemReport } from "./actions";
 
-// The report itself: a few words, sent with the page it's about.
+// The feedback itself: a few words, sent with the page it's about, and a screenshot if they want.
 export function ReportForm({ from }: { from: string }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +28,11 @@ export function ReportForm({ from }: { from: string }) {
         event.preventDefault();
         const data = new FormData(event.currentTarget);
         setError(null);
+        // Said before the upload, not after a long wait for the server to refuse it.
+        const shot = data.get("screenshot");
+        if (shot instanceof File && shot.size > FEEDBACK_MAX_UPLOAD_BYTES) {
+          return setError("That picture is too big. Try one under 4 MB.");
+        }
         start(async () => {
           const result = await sendProblemReport(data).catch(() => null);
           if (!result) return setError("That didn't send. Try again in a moment.");
@@ -38,7 +43,7 @@ export function ReportForm({ from }: { from: string }) {
     >
       <input type="hidden" name="from" value={from} />
       <label htmlFor="report-message" className="font-medium">
-        What went wrong?
+        What&apos;s on your mind?
       </label>
       <textarea
         id="report-message"
@@ -48,6 +53,19 @@ export function ReportForm({ from }: { from: string }) {
         maxLength={REPORT_MAX_CHARS}
         className="rounded-lg border border-zinc-300 bg-transparent p-3 text-base dark:border-zinc-700"
       />
+      <label htmlFor="report-screenshot" className="flex flex-col gap-1 text-sm">
+        <span className="font-medium">Screenshot (optional)</span>
+        <span className="text-zinc-600 dark:text-zinc-400">
+          Only the founders see it. Cover anything you&apos;d rather not share.
+        </span>
+        <input
+          id="report-screenshot"
+          name="screenshot"
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          className="text-sm"
+        />
+      </label>
       {error && (
         <p role="alert" className="text-sm font-medium">
           {error}

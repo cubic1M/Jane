@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import {
+  PENDING_DISCONNECT_DAYS,
   SIGN_IN_PLAID_CODES,
   SYNC_AGAIN_MAX,
   SYNC_LOCK_MINUTES,
@@ -11,6 +12,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { forgetSince, removeOrphans } from "@/lib/evidence/orphans";
 import { forgetPrimer } from "@/lib/jane-agent/primer-cache";
+import { recordOpsEvent } from "@/lib/ops-alerts";
 import { ITEM_STATUS, syncItem } from "./sync";
 import { systemDb } from "@/lib/system-db";
 
@@ -34,13 +36,10 @@ const SYNC_CODES = new Set([
   "DEFAULT_UPDATE",
   "TRANSACTIONS_REMOVED",
 ]);
-// The bank connection needs the person to sign in again (Link's update mode): access is
-// about to end, or they took it back at their bank or my.plaid.com.
-const RELINK_CODES = new Set([
-  "PENDING_EXPIRATION",
-  "PENDING_DISCONNECT",
-  "USER_PERMISSION_REVOKED",
-]);
+// Access ends in about 7 days (PENDING_DISCONNECT in the US, PENDING_EXPIRATION in the EU and UK):
+// the connection still works until then, so it keeps syncing, and the person is asked to sign in
+// again (Link's update mode) before the date Plaid gives.
+const PENDING_CODES = new Set(["PENDING_EXPIRATION", "PENDING_DISCONNECT"]);
 
 type Body = {
   webhook_type?: unknown;
@@ -48,7 +47,19 @@ type Body = {
   item_id?: unknown;
   account_id?: unknown;
   error?: { error_code?: unknown } | null;
+  // PENDING_DISCONNECT's and PENDING_EXPIRATION's deadline, ISO 8601.
+  disconnect_time?: unknown;
+  consent_expiration_time?: unknown;
 };
+
+// When a pending disconnect happens: Plaid's own time, or PENDING_DISCONNECT_DAYS from now without one.
+export function reconnectDeadline(body: Body, now: Date): Date {
+  const given = body.disconnect_time ?? body.consent_expiration_time;
+  const at = typeof given === "string" ? new Date(given) : null;
+  return at && !Number.isNaN(at.getTime())
+    ? at
+    : new Date(now.getTime() + PENDING_DISCONNECT_DAYS * 86_400_000);
+}
 
 export async function planWebhook(
   body: Body,
@@ -79,11 +90,30 @@ export async function planWebhook(
   if (body.webhook_type !== "ITEM") return null;
   const code = String(body.webhook_code);
   const errorCode = typeof body.error?.error_code === "string" ? body.error.error_code : null;
+  if (PENDING_CODES.has(code)) {
+    await update({ reconnectBy: reconnectDeadline(body, now) });
+    await recordOpsEvent("bank_disconnect_pending", { code, userId: item.userId, client, now });
+    return { itemId: item.id, sync: false };
+  }
+  // A sign-in is needed now (ITEM_LOGIN_REQUIRED and its kin), or the person took access back at
+  // my.plaid.com (USER_PERMISSION_REVOKED: Plaid's docs say update mode may restore it; if it
+  // can't, /api/plaid/link-token says to remove the bank and link it again).
   if (
-    RELINK_CODES.has(code) ||
+    code === "USER_PERMISSION_REVOKED" ||
     (code === "ERROR" && errorCode && SIGN_IN_PLAID_CODES.includes(errorCode))
   ) {
-    await update({ status: ITEM_STATUS.loginRequired });
+    const { count } = await scoped.plaidItems.updateMany({
+      where: { id: item.id, status: { not: ITEM_STATUS.loginRequired } },
+      data: { status: ITEM_STATUS.loginRequired },
+    });
+    if (count > 0) {
+      await recordOpsEvent("bank_connection_broken", {
+        code: code === "ERROR" ? errorCode : code,
+        userId: item.userId,
+        client,
+        now,
+      });
+    }
     return { itemId: item.id, sync: false };
   }
   // Any other item error (an institution outage, say): kept beside how old the data is, so the

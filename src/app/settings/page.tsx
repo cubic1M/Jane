@@ -63,6 +63,11 @@ const RECONNECT =
   "inline-flex h-11 items-center justify-center self-start rounded-full border border-zinc-300 px-5 text-sm font-semibold hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900";
 const BOX = "flex scroll-mt-8 flex-col gap-3";
 
+// A bank that needs a sign-in now, or by a date Plaid gave (PENDING_DISCONNECT): both get Reconnect.
+const needsSignIn = (item: { status: string; reconnectBy: Date | null }) =>
+  item.status === ITEM_STATUS.loginRequired ||
+  (item.reconnectBy !== null && item.reconnectBy.getTime() > Date.now());
+
 // How Jane's messages go out, as the tree shows it.
 const CHANNEL_WORDS: Record<string, string> = {
   push: "Phone",
@@ -117,6 +122,7 @@ async function SettingsContent({
         institutionName: true,
         status: true,
         lastSyncedAt: true,
+        reconnectBy: true,
         accounts: { select: { name: true, mask: true } },
       },
       orderBy: { createdAt: "asc" },
@@ -175,7 +181,7 @@ async function SettingsContent({
       name: item.institutionName ?? "Your bank",
       updated: day(item.lastSyncedAt),
       accounts: item.accounts.length,
-      needsSignIn: item.status === ITEM_STATUS.loginRequired,
+      needsSignIn: needsSignIn(item),
     })),
     imports: imported.map((a) => ({
       id: a.id,
@@ -213,7 +219,7 @@ async function SettingsContent({
     const id = itemId("banks", `item-${item.id}`);
     details[id] = (
       <div className={BOX}>
-        {item.status === ITEM_STATUS.loginRequired && (
+        {needsSignIn(item) && (
           // The same Reconnect as /connect: Plaid Link in update mode.
           <LinkButton itemId={item.id} label="Reconnect" className={RECONNECT} />
         )}

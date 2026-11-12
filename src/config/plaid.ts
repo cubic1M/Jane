@@ -50,6 +50,17 @@ export const SIGN_IN_PLAID_CODES: readonly string[] = [
   "INVALID_MFA",
   "PASSWORD_RESET_REQUIRED",
 ];
+// Update mode can't start for these: the Item is gone at Plaid (taken back at my.plaid.com, or
+// removed). Plaid's docs: make a fresh Link instead, so the person is told to remove the bank and
+// link it again.
+export const ENDED_ITEM_PLAID_CODES: readonly string[] = [
+  "ITEM_NOT_FOUND",
+  "INVALID_ACCESS_TOKEN",
+  "USER_PERMISSION_REVOKED",
+];
+// PENDING_DISCONNECT / PENDING_EXPIRATION without a time of their own: Plaid sends them this many
+// days ahead.
+export const PENDING_DISCONNECT_DAYS = 7;
 // A webhook sync that started longer ago than this is taken to have died, and another may run.
 export const SYNC_LOCK_MINUTES = 10;
 // Handled webhooks are kept this long, for looking back.

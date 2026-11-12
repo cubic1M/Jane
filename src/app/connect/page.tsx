@@ -6,6 +6,7 @@ import { scopedDb } from "@/lib/db-scoped";
 import { plaidEnabled } from "@/lib/plaid/client";
 import { demoBankEnabled } from "@/lib/plaid/demo";
 import { bankNotices, updatedAgo } from "@/lib/plaid/bank-status";
+import { timezoneOf } from "@/lib/today";
 import { linkAvailability } from "@/lib/plaid/item-slots";
 import { requireUser } from "@/lib/session";
 import { isStatementTrialUser } from "@/lib/trial-ids";
@@ -34,6 +35,7 @@ async function ConnectContent() {
         lastSyncedAt: true,
         newAccountsAvailable: true,
         lastErrorCode: true,
+        reconnectBy: true,
         accounts: { select: { id: true, name: true, mask: true }, orderBy: { name: "asc" } },
       },
       orderBy: { createdAt: "asc" },
@@ -47,6 +49,8 @@ async function ConnectContent() {
   const notices = bankNotices(
     items.map((i) => ({ ...i, name: i.institutionName })),
     now,
+    // A disconnect's day is the person's own (rare, so read only then).
+    items.some((i) => i.reconnectBy) ? await timezoneOf(user.id) : "UTC",
   );
 
   return (

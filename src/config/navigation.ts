@@ -103,7 +103,7 @@ export const SETTINGS_TAB: Tab = {
   key: "settings",
   label: "Settings",
   href: "/settings",
-  // "Report a problem" is in the profile menu with Settings (src/components/profile-menu.tsx).
+  // "Send feedback" is in the profile menu with Settings (src/components/profile-menu.tsx).
   paths: [
     "/settings",
     "/connect",

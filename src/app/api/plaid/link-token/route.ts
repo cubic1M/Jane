@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { TERMS_VERSION } from "@/config/legal";
+import { ENDED_ITEM_PLAID_CODES } from "@/config/plaid";
 import { log } from "@/lib/log";
 import { limitOrNull } from "@/lib/rate-limit";
 import { freshSwitches } from "@/lib/ops-switches";
@@ -40,6 +41,19 @@ export async function POST(request: Request) {
     }
     if (error instanceof ItemNotFoundError) {
       return NextResponse.json({ error: error.message }, { status: 404 });
+    }
+    if (
+      error instanceof PlaidRequestError &&
+      itemId !== null &&
+      error.code !== null &&
+      ENDED_ITEM_PLAID_CODES.includes(error.code)
+    ) {
+      return NextResponse.json(
+        {
+          error: "This bank connection has ended. Remove the bank in Settings, then link it again.",
+        },
+        { status: 410 },
+      );
     }
     if (error instanceof PlaidRequestError) {
       log.error("Plaid link token failed", { code: error.code });

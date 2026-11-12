@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { REPORT_MAX_CHARS, cleanReport, reportPath } from "./problem-reports";
+import {
+  REPORT_MAX_CHARS,
+  FEEDBACK_MAX_UPLOAD_BYTES,
+  cleanReport,
+  cleanScreenshot,
+  imageType,
+  reportPath,
+} from "./problem-reports";
 
 describe("reportPath", () => {
   it("keeps our own page's path, never its query or another site", () => {
@@ -44,5 +51,35 @@ describe("the page a report goes back to", () => {
 
   it("keeps an ordinary page", () => {
     expect(reportPath("/report/abc.x?q=1")).toBe("/report/abc.x");
+  });
+});
+
+describe("a feedback screenshot", () => {
+  const file = (bytes: number[], size?: number) =>
+    new File(
+      [new Uint8Array(size ? new Array(size).fill(0).map((_, i) => bytes[i] ?? 0) : bytes)],
+      "x",
+    );
+
+  it("is known by its first bytes: PNG, JPEG or WebP, nothing else", () => {
+    expect(imageType(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))).toBe(
+      "image/png",
+    );
+    expect(imageType(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]))).toBe("image/jpeg");
+    expect(
+      imageType(new Uint8Array([0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50])),
+    ).toBe("image/webp");
+    expect(imageType(new TextEncoder().encode("<svg onload=alert(1)>"))).toBeNull();
+  });
+
+  it("is optional, and refused when too big", async () => {
+    expect(await cleanScreenshot(null)).toBeNull();
+    expect(await cleanScreenshot(new File([], "empty.png"))).toBeNull();
+    expect(await cleanScreenshot(file([0xff, 0xd8, 0xff], FEEDBACK_MAX_UPLOAD_BYTES + 1))).toMatch(
+      /too big/,
+    );
+    expect(await cleanScreenshot(file([0xff, 0xd8, 0xff, 1]))).toMatchObject({
+      type: "image/jpeg",
+    });
   });
 });

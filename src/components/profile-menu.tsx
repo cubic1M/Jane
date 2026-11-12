@@ -78,7 +78,7 @@ export function ProfileMenu({ email }: { email: string | null | undefined }) {
           onClick={() => setOpen(false)}
           className="flex min-h-11 items-center px-3 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800"
         >
-          Report a problem
+          Send feedback
         </Link>
         <form action={signOutToHome} onSubmit={forgetOnThisBrowser}>
           <SubmitButton className="flex min-h-11 w-full items-center rounded-lg px-3 text-left font-medium text-emerald-700 hover:bg-zinc-100 dark:hover:bg-zinc-800">

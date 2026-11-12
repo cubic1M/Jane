@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { JOB_STALE_HOURS } from "@/config/health";
 import { healthReport } from "@/lib/health";
+import { opsCounts } from "@/lib/ops-alerts";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
 import { LoadingBar } from "@/components/loading-bar";
@@ -11,6 +12,12 @@ const when = (date: Date | null) =>
 async function Health() {
   const admin = await requireAdmin();
   const report = await healthReport(admin);
+  const now = new Date();
+  // Counts only, no one's data (src/lib/ops-alerts.ts); viewing the page is audit-logged above.
+  const [opsDay, opsWeek] = await Promise.all([
+    opsCounts(new Date(now.getTime() - 24 * 3_600_000), { now }),
+    opsCounts(new Date(now.getTime() - 7 * 24 * 3_600_000), { now }),
+  ]);
   const count = (counts: Record<string, number>, key: string) => counts[key] ?? 0;
   const rlsWhole = report.rls.ok && report.rls.switchWorks;
 
@@ -114,6 +121,51 @@ async function Health() {
           <h2 className="font-semibold">Errors</h2>
           <p>{report.errorsLastDay} in the last day</p>
         </div>
+      </section>
+
+      <section className="flex flex-col gap-2" aria-labelledby="ops-heading" data-ops-alarms="">
+        <h2 id="ops-heading" className="text-xl font-semibold">
+          Beta alarms
+        </h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Sign-in emails and Plaid webhook failures email the team at once; everything here is in
+          one daily email, sent only on a day something happened.
+        </p>
+        {opsWeek.length === 0 ? (
+          <p className="text-sm">Nothing in the last 7 days.</p>
+        ) : (
+          <table className="w-full text-left text-sm tabular-nums">
+            <thead>
+              <tr>
+                <th scope="col" className="py-1 font-medium">
+                  What happened
+                </th>
+                <th scope="col" className="py-1 text-right font-medium">
+                  Last day
+                </th>
+                <th scope="col" className="py-1 text-right font-medium">
+                  Last 7 days
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {opsWeek.map((o) => (
+                <tr key={o.kind} className="border-t border-zinc-200 dark:border-zinc-800">
+                  <th scope="row" className="py-1 font-normal">
+                    {o.label}
+                    {o.codes.length > 0 && (
+                      <span className="block text-xs text-zinc-500">{o.codes.join(", ")}</span>
+                    )}
+                  </th>
+                  <td className="py-1 text-right">
+                    {opsDay.find((d) => d.kind === o.kind)?.count ?? 0}
+                  </td>
+                  <td className="py-1 text-right">{o.count}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </section>
     </>
   );

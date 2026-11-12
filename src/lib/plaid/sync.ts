@@ -1,5 +1,6 @@
 import type { Holding, InvestmentTransaction, PlaidApi, TransactionStream } from "plaid";
 import { log } from "@/lib/log";
+import { recordOpsEvent } from "@/lib/ops-alerts";
 import { scrub } from "@/lib/scrub";
 import { categorizeTransactions } from "@/categorize/categorize";
 import { normalizeLiabilities } from "@/data-sources/plaid/liabilities";
@@ -76,16 +77,37 @@ export const ITEM_STATUS = {
 
 // Why a sync failed, kept on the item so the person is told plainly: a sign-in needed marks it
 // for Link's update mode; anything else (an outage, a rate limit that didn't pass) is recorded
-// beside how old the data is. Never throws: the sync's own error is what the caller sees.
-async function noteSyncFailure(db: ScopedDb, itemId: string, error: unknown, now: Date) {
+// beside how old the data is. The founders' daily email counts both (src/lib/ops-alerts.ts): a
+// connection breaking once, when it breaks. Never throws: the sync's own error is what the caller
+// sees.
+async function noteSyncFailure(
+  db: ScopedDb,
+  itemId: string,
+  error: unknown,
+  now: Date,
+  client: PrismaClient,
+) {
   const code = plaidErrorCode(error);
   try {
+    if (code && SIGN_IN_PLAID_CODES.includes(code)) {
+      const { count } = await db.plaidItems.updateMany({
+        where: { id: itemId, status: { not: ITEM_STATUS.loginRequired } },
+        data: { status: ITEM_STATUS.loginRequired },
+      });
+      if (count > 0) {
+        await recordOpsEvent("bank_connection_broken", { code, userId: db.userId, client, now });
+      }
+      return;
+    }
     await db.plaidItems.updateMany({
       where: { id: itemId },
-      data:
-        code && SIGN_IN_PLAID_CODES.includes(code)
-          ? { status: ITEM_STATUS.loginRequired }
-          : { lastErrorCode: code ?? "UNKNOWN", lastErrorAt: now },
+      data: { lastErrorCode: code ?? "UNKNOWN", lastErrorAt: now },
+    });
+    await recordOpsEvent("plaid_sync_failed", {
+      code: code ?? (error instanceof Error ? error.name.toUpperCase() : null),
+      userId: db.userId,
+      client,
+      now,
     });
   } catch (saveError) {
     log.error("Saving why a Plaid sync failed failed", { itemId, error: String(saveError) });
@@ -738,7 +760,7 @@ async function syncItemWork(
     sync = await new PlaidDataSource(api, accessToken, item.transactionsCursor).load();
   } catch (error) {
     // The cursor stays where it was, so the next sync (a webhook, the daily job) resumes from it.
-    await noteSyncFailure(db, item.id, error, now);
+    await noteSyncFailure(db, item.id, error, now, client);
     throw error;
   }
   timing.mark("load");
@@ -756,7 +778,7 @@ async function syncItemWork(
     ]);
     return [ids, saved] as const;
   })().catch(async (error) => {
-    await noteSyncFailure(db, item.id, error, now);
+    await noteSyncFailure(db, item.id, error, now, client);
     throw error;
   });
   // From here the chat can open (accounts and transactions are in).

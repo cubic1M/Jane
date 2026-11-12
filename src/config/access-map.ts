@@ -25,6 +25,7 @@ export const ACCESS_MAP: Record<string, Access> = {
   "src/app/api/activity/route.ts": public_(
     "Anonymous views of the landing page are kept; anything else needs a session.",
   ),
+  "src/app/admin/reports/[id]/screenshot/route.ts": "admin",
   "src/app/api/agent/inbound/route.ts": "webhook",
   "src/app/api/auth/[...nextauth]/route.ts": public_("Auth.js's own sign-in endpoints."),
   "src/app/api/calendar/[token]/route.ts": public_(
@@ -261,6 +262,7 @@ export const ACCESS_MAP: Record<string, Access> = {
   "src/app/admin/activity/page.tsx": "admin",
   "src/app/admin/chat-quality/page.tsx": "admin",
   "src/app/admin/chat/page.tsx": "admin",
+  "src/app/admin/costs/page.tsx": "admin",
   "src/app/admin/errors/page.tsx": "admin",
   "src/app/admin/health/page.tsx": "admin",
   "src/app/admin/invites/page.tsx": "admin",

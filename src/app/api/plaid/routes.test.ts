@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { afterCallbacks } = vi.hoisted(() => ({ afterCallbacks: [] as (() => Promise<void>)[] }));
+const { afterCallbacks, recordOpsEvent } = vi.hoisted(() => ({
+  afterCallbacks: [] as (() => Promise<void>)[],
+  recordOpsEvent: vi.fn(),
+}));
+
+vi.mock("@/lib/ops-alerts", () => ({ recordOpsEvent }));
 
 vi.mock("@/lib/rate-limit", () => ({
   limitOrNull: vi.fn(async () => null),
@@ -23,6 +28,7 @@ vi.mock("@/lib/plaid/webhook-verify", () => ({ verifyPlaidWebhook: vi.fn() }));
 vi.mock("@/lib/plaid/webhooks", () => ({
   planWebhook: vi.fn(),
   firstDelivery: vi.fn(),
+  forgetDelivery: vi.fn(),
   syncFromWebhook: vi.fn(),
 }));
 
@@ -71,6 +77,7 @@ beforeEach(() => {
       return true;
     });
   afterCallbacks.length = 0;
+  recordOpsEvent.mockReset();
 });
 
 describe("POST /api/plaid/link-token", () => {
@@ -130,6 +137,17 @@ describe("POST /api/plaid/link-token", () => {
     expect(response.status).toBe(502);
     expect(await response.json()).toEqual({ error: "Couldn't start linking. Try again." });
   });
+
+  // Plaid: a revoked Item may not come back through update mode; then a fresh Link is the way.
+  it.each(["ITEM_NOT_FOUND", "INVALID_ACCESS_TOKEN", "USER_PERMISSION_REVOKED"])(
+    "says to remove and link again when update mode can't start (%s)",
+    async (code) => {
+      vi.mocked(createLinkToken).mockRejectedValue(new PlaidRequestError(code, 400));
+      const response = await post({ itemId: "item1" });
+      expect(response.status).toBe(410);
+      expect((await response.json()).error).toMatch(/Remove the bank in Settings, then link it/);
+    },
+  );
 });
 
 describe("POST /api/plaid/exchange", () => {
@@ -199,6 +217,16 @@ describe("POST /api/plaid/webhook", () => {
     expect(planWebhook).not.toHaveBeenCalled();
     expect(firstDelivery).not.toHaveBeenCalled();
     expect(afterCallbacks).toHaveLength(0);
+    // Counted for the founders: a day of these means verification itself broke.
+    expect(recordOpsEvent).toHaveBeenCalledWith("plaid_webhook_unverified");
+  });
+
+  it("tells the founders at once when handling a webhook fails, and answers 500 for Plaid's retry", async () => {
+    vi.mocked(verifyPlaidWebhook).mockResolvedValue(true);
+    vi.mocked(planWebhook).mockRejectedValue(new TypeError("boom"));
+
+    await expect(post()).rejects.toThrow("boom");
+    expect(recordOpsEvent).toHaveBeenCalledWith("plaid_webhook_failed", { code: "TYPEERROR" });
   });
 
   it("syncs the item after acknowledging a verified webhook", async () => {
