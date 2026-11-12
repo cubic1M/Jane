@@ -20,9 +20,9 @@ import { SubmitButton } from "@/components/submit-button";
 
 // One message in Jane's chat (spec step 81). Jane's sit on the left. What it brings up on its
 // own that waits on the person floats as a pop-up (src/lib/jane-agent/popups.ts) and isn't in
-// the list until it's answered; then it's one line of history (what it was and what was
-// chosen, the whole message behind More details), with Undo while it still works. Its briefs
-// and answers are plain text tagged "jane>": no cards in the list.
+// the list; once answered it's gone, unless the tap left a next step (a real account's steps and
+// Mark done), shown as one line with the steps under it. Nothing says what was chosen (founder
+// 11-11: no trace). Its briefs and answers are plain text tagged "jane>": no cards in the list.
 
 const BUTTON = "inline-flex min-h-11 items-center justify-center px-3 text-sm font-semibold";
 const STYLES = {
@@ -96,9 +96,11 @@ export function ChatMessageItem({ initial }: { initial: MessageView }) {
     return () => window.removeEventListener("beforeunload", keep);
   }, [pending]);
   const undoExpired = useUndoTimer(message.undoUntil);
-  // Done belongs to the floating card; in the chat a choice keeps Revert alone.
+  // Revert and Done belong to the floating card: the chat keeps no trace of a choice (founder
+  // 11-11).
   const buttons = message.buttons.filter(
-    (b) => !(undoExpired && b.id.startsWith("undo.")) && b.id !== DONE_ACTION,
+    (b) =>
+      !(undoExpired && b.id.startsWith("undo.")) && b.id !== DONE_ACTION && b.id !== REVERT_ACTION,
   );
 
   if (!message.fromJane) {
@@ -174,20 +176,6 @@ export function ChatMessageItem({ initial }: { initial: MessageView }) {
       {message.advice && <DemoAdviceLabel />}
       {message.aiWritten && <AiWrittenLabel />}
 
-      {message.status !== "open" && (
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          {message.answeredWith ? (
-            <>
-              <span aria-hidden="true">&gt; </span>
-              You chose: <strong>{message.answeredWith}</strong>
-            </>
-          ) : message.status === "answered" ? (
-            "Already answered."
-          ) : (
-            "Dismissed."
-          )}
-        </p>
-      )}
       {message.note && (
         <p role="status" className="text-sm">
           {message.note}
@@ -211,41 +199,6 @@ export function ChatMessageItem({ initial }: { initial: MessageView }) {
           </SubmitButton>
         </form>
       </div>
-      {/* A choice that was made: every choice still here, the chosen one inverted and marked,
-          the others greyed and off (founder, 2026-10-25); Revert is among the buttons. */}
-      {message.chosen && message.chosen.choices.length > 0 && (
-        <div
-          role="group"
-          aria-label="Your choice"
-          data-chosen-choices=""
-          className="flex flex-wrap gap-2"
-        >
-          {message.chosen.choices.map((c) =>
-            c.key === message.chosen!.key ? (
-              <button
-                key={c.key}
-                type="button"
-                disabled
-                aria-pressed="true"
-                className="inline-flex min-h-11 items-center gap-1 border-2 border-zinc-950 bg-zinc-950 px-3 text-sm font-semibold text-white dark:border-white dark:bg-white dark:text-zinc-950"
-              >
-                {c.label} <span aria-hidden="true">[✓ chosen]</span>
-                <span className="sr-only">, chosen</span>
-              </button>
-            ) : (
-              <button
-                key={c.key}
-                type="button"
-                disabled
-                aria-pressed="false"
-                className="inline-flex min-h-11 items-center border border-zinc-400 px-3 text-sm opacity-40 dark:border-zinc-600"
-              >
-                {c.label}
-              </button>
-            ),
-          )}
-        </div>
-      )}
       {(buttons.length > 0 || message.links.length > 0) && (
         <div className="flex flex-wrap items-center gap-2">
           {buttons.length > 0 && (

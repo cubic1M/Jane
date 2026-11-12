@@ -1,8 +1,21 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
-import { CHAT_PERSON_DAILY_CAP_CENTS, CHAT_TRIAL_DAILY_CAP_CENTS } from "@/config/agent-chat";
-import { addSpend, dailyCapCents, overDailyCap, recordLimitHit, spendToday } from "./spend";
+import {
+  CHAT_PERSON_DAILY_CAP_CENTS,
+  CHAT_MONTHLY_CAP_CENTS_DEFAULT,
+  CHAT_PERSON_MONTHLY_CAP_CENTS,
+  CHAT_TRIAL_DAILY_CAP_CENTS,
+} from "@/config/agent-chat";
+import {
+  addSpend,
+  dailyCapCents,
+  overChatLimits,
+  overDailyCap,
+  overMonthlyPersonCap,
+  recordLimitHit,
+  spendToday,
+} from "./spend";
 
 // Founder (2026-10-26): a per-person daily allowance for Claude's written answers, so one
 // person can't use up the month. Against a real, migrated Postgres: the limits, the reset at
@@ -74,6 +87,39 @@ describe.runIf(url)("a person's daily allowance of written answers", () => {
     // The new day has the whole allowance.
     await spend(id, CHAT_PERSON_DAILY_CAP_CENTS / 2, NEXT_MIDNIGHT);
     expect(await overDailyCap(id, { client, now: NEXT_MIDNIGHT })).toBe(false);
+  });
+
+  // Beta (11-12): a day's allowance every day was most of everyone's month.
+  it("gives a person CHAT_PERSON_MONTHLY_CAP_CENTS a month across days, and starts over on the 1st", async () => {
+    const id = await person();
+    const day = (d: number) => new Date(`2031-05-${String(d).padStart(2, "0")}T12:00:00Z`);
+    const perDay = CHAT_PERSON_DAILY_CAP_CENTS - 1;
+    const days = Math.ceil(CHAT_PERSON_MONTHLY_CAP_CENTS / perDay);
+    for (let d = 1; d < days; d += 1) {
+      await spend(id, perDay, day(d));
+      expect(await overMonthlyPersonCap(id, { client, now: day(d) })).toBe(false);
+    }
+    await spend(id, perDay, day(days));
+    // A new day, under its own allowance, but the month's is used up.
+    const next = day(days + 1);
+    expect(await overDailyCap(id, { client, now: next })).toBe(false);
+    expect(await overMonthlyPersonCap(id, { client, now: next })).toBe(true);
+    expect(await overChatLimits(id, { client, now: next })).toBe(true);
+    expect(await overMonthlyPersonCap(id, { client, now: new Date("2031-06-01T00:00:00Z") })).toBe(
+      false,
+    );
+    // So one person can't spend most of the month for everyone.
+    expect(CHAT_PERSON_MONTHLY_CAP_CENTS).toBeLessThanOrEqual(CHAT_MONTHLY_CAP_CENTS_DEFAULT / 4);
+  });
+
+  it("never stops an admin's month either", async () => {
+    const email = `boss-${crypto.randomUUID()}@example.com`;
+    vi.stubEnv("ADMIN_EMAILS", email);
+    const admin = await person({ email });
+    await spend(admin, CHAT_PERSON_MONTHLY_CAP_CENTS * 2, new Date("2031-07-02T12:00:00Z"));
+    const later = new Date("2031-07-03T12:00:00Z");
+    expect(await overMonthlyPersonCap(admin, { client, now: later })).toBe(false);
+    vi.unstubAllEnvs();
   });
 
   it("gives a sample person their own limit", async () => {

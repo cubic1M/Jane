@@ -84,7 +84,7 @@ export function EmbedBridge({ cards = "" }: { cards?: string }) {
     };
     let watching: MutationObserver | null = null;
     const sendNow = (text: string) => {
-      const box = document.querySelector<HTMLInputElement>('input[name="message"]');
+      const box = document.querySelector<HTMLTextAreaElement>('textarea[name="message"]');
       const form = box?.form;
       // One at a time: while an answer is coming, a second ask waits for the next click.
       if (!box || !form || document.querySelector('[aria-label="Sending"]')) return;
@@ -134,7 +134,7 @@ export function EmbedBridge({ cards = "" }: { cards?: string }) {
         router.refresh();
       } else if (event.data.type === "jane:ask") {
         // "Ask Jane about this" (the feature map): the question waits in the box to be sent.
-        const box = document.querySelector<HTMLInputElement>('input[name="message"]');
+        const box = document.querySelector<HTMLTextAreaElement>('textarea[name="message"]');
         if (box) {
           box.value = event.data.text;
           // The composer shows the hint greyed after the text until the person types.

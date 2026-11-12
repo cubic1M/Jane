@@ -1,7 +1,7 @@
 import { DEMO_ADVICE_LABEL } from "@/config/advice";
 import type { FloatingCardData } from "@/lib/floating-cards";
 import { GREETING_START, HELLO_START, MORNING_BRIEF } from "@/config/agent-chat";
-import { isChoice } from "./choices";
+import { DONE_ACTION, isChoice, REVERT_ACTION } from "./choices";
 import type { MessageView } from "./view";
 
 // Jane's own messages as pop-ups (founder: "replace all the yellow cards in the chat as pop up
@@ -9,7 +9,9 @@ import type { MessageView } from "./view";
 // understand, with users having the ability to click more details to see more"). Anything Jane
 // brings up that waits on the person (a suggestion, something to decide, a heads-up with a
 // button) floats over the page as a card and never sits in the chat's list while it's open;
-// once answered it's in the list again as one line of history. Pure, so the rules are tested.
+// once answered it's gone (founder 11-11: "after the user interacts with the suggestion, it should
+// just disappear and not leave like a trace"), unless the tap left them something to do. Pure, so
+// the rules are tested.
 
 // A card's headline: this many words at most.
 export const POPUP_HEADLINE_WORDS = 8;
@@ -74,8 +76,23 @@ export function popupStack(
   return out;
 }
 
+// Something the tap left for the person to do in the message (a real account's Yes: its steps and
+// Mark done), not an Undo, Revert or Done: until then it's a next step, not a trace.
+function stillToDo(m: Pick<MessageView, "buttons">): boolean {
+  return m.buttons.some(
+    (b) => !b.id.startsWith("undo.") && b.id !== REVERT_ACTION && b.id !== DONE_ACTION,
+  );
+}
+
+// Jane's own message, answered or put away, with nothing left in it to do: no trace of it in the
+// chat, after a reload too. What was chosen is still in the audit log and the analytics.
+function answeredAndDone(m: MessageView): boolean {
+  return m.fromJane && m.kind !== "reply" && m.status !== "open" && !stillToDo(m);
+}
+
 // The chat's list (founder: the cards are "right above the chat ... but not in the chat"): no
-// suggestion at all, waiting or answered, and nothing that's floating; no gaps, no placeholders.
+// suggestion at all, waiting or answered, nothing that's floating, and nothing already answered;
+// no gaps, no placeholders.
 export function chatList(
   messages: readonly MessageView[],
   stack: readonly MessageView[],
@@ -86,6 +103,7 @@ export function chatList(
     (m) =>
       !m.suggestion &&
       !hiddenBrief(m) &&
+      !answeredAndDone(m) &&
       !floating.has(m.id) &&
       !(
         m.status === "open" &&

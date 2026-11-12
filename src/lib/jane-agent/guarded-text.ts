@@ -29,10 +29,28 @@ export class GuardedText {
   push(delta: string): void {
     this.held += delta;
     // One sentence at a time, so a bad one never holds back the good ones before it.
-    for (let end = sentenceEnd(this.held); end > 0 && !this.stopped;) {
+    for (let end = this.nextEnd(); end > 0 && !this.stopped;) {
       this.release(end);
-      end = this.stopped ? 0 : sentenceEnd(this.held);
+      end = this.stopped ? 0 : this.nextEnd();
     }
+  }
+
+  // The end of the next sentence to show. A lead-in that ends in a colon ("Since you asked:") goes
+  // with what it leads into, so it never stands on the screen alone when that is stopped: what is
+  // shown stays shown (./claude.ts continueAfter).
+  private nextEnd(): number {
+    let end = sentenceEnd(this.held);
+    while (end > 0 && /:\s*$/.test(this.held.slice(0, end))) {
+      const more = sentenceEnd(this.held.slice(end));
+      if (more === 0) return 0;
+      end += more;
+    }
+    return end;
+  }
+
+  // Whether something was held back for good: the answer as shown ends before the answer written.
+  stoppedEarly(): boolean {
+    return this.stopped;
   }
 
   // What has been shown so far (everything released, nothing held back).
@@ -43,6 +61,13 @@ export class GuardedText {
   // The answer is complete: whatever is left, if it passes.
   finish(): void {
     this.release(this.held.length);
+  }
+
+  // What was shown stays and the answer goes on after it (a rewrite of the rest): anything held
+  // back is dropped, and the next sentence starts with a space.
+  keepShown(): void {
+    this.held = this.shown && !/\s$/.test(this.shown) ? " " : "";
+    this.stopped = false;
   }
 
   // The text so far was a lead-in to a lookup, not the answer: start again.

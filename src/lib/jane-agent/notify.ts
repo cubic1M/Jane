@@ -8,6 +8,7 @@ import {
   CHAT_NOTIFY_MAX_AGE_HOURS,
 } from "@/config/chat-notify";
 import { DEMO_ADVICE_LABEL } from "@/config/advice";
+import { adviceMode } from "@/lib/advice-mode";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit, SYSTEM_ACTOR } from "@/lib/audit";
@@ -200,7 +201,10 @@ export async function deliverChatNotifications(
       select: { notifiedAt: true },
     }),
   ]);
-  const due = chooseToNotify(waiting, prefs);
+  // Demo advice goes out only to someone still in demo advice: a message written in it before
+  // they linked a real bank waits to be closed in the chat (./settled.ts), never emailed meanwhile.
+  const advice = await adviceMode(userId, { client });
+  const due = chooseToNotify(waiting, prefs).filter((m) => advice || !parseRefs(m.refs).advice);
   let room = CHAT_NOTIFY_DAILY_LIMIT - sentToday;
   // Spec step 147: which way this person answers, for what isn't urgent.
   const attention =

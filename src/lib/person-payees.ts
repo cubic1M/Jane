@@ -119,8 +119,16 @@ export function looksLikePersonPayee(text: string): boolean {
   return personName(text);
 }
 
+// Whether a name has a word only a business has ("Oak Ridge Realty", "Smith Dental").
+export function hasBusinessWord(text: string): boolean {
+  return text
+    .toUpperCase()
+    .split(/[^A-Z']+/)
+    .some((word) => BUSINESS.has(word));
+}
+
 // Two or three words, a common first name first, no business word and no digits.
-function personName(text: string): boolean {
+export function personName(text: string): boolean {
   const words = text
     .toUpperCase()
     .replace(/[^A-Z' ]+/g, " ")

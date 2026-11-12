@@ -7,13 +7,14 @@ import type Anthropic from "@anthropic-ai/sdk";
 // Every other message goes the usual way (no key in e2e: the rules).
 
 type Round = { text: string };
-// The rounds of one message: the first answer, then the answer to the app's rewrite note.
+// The rounds of one message: the first answer, then the answer to the app's rewrite note, which
+// goes on after what the person has already read (./claude.ts continueAfter).
 const SCRIPTS: Record<string, Round[]> = {
   // e2e/chat-refusals.spec.ts: a draft the guardrails block (a promised result), then the rewrite.
   "should i pay off my card before saving?": [
     { text: "Yes. Paying off your card first will definitely save you the most." },
     {
-      text: "Yes: paying off your card first could save you the most, because it charges more interest than your savings earn. I can help you plan the payments from your numbers.",
+      text: "Paying off your card first could save you the most, because it charges more interest than your savings earn. I can help you plan the payments from your numbers.",
     },
   ],
 };

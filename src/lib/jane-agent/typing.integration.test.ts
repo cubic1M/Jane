@@ -8,10 +8,16 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
-import { CHAT_MAX_MESSAGE, CHAT_PRIMER_TOOLS, CHAT_TRIAL_MESSAGES } from "@/config/agent-chat";
+import {
+  CHAT_MAX_MESSAGE,
+  CHAT_PERSON_MONTHLY_CAP_CENTS,
+  CHAT_PRIMER_TOOLS,
+  CHAT_TRIAL_MESSAGES,
+} from "@/config/agent-chat";
 import { TRIAL_CAP_TEXT, addMonthlySpend } from "./claude-limits";
 import { RATE_LIMITS } from "@/config/rate-limits";
 import { track } from "@/lib/analytics";
+import { encrypt } from "@/lib/crypto";
 import { exportUserData } from "@/lib/data-export";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
@@ -22,7 +28,14 @@ import { addSpend, overDailyCap, spentTodayCents } from "./spend";
 import { runChatTool } from "./claude-tools";
 import { chatFeed, closeSettled, postedToday } from "./messages";
 import { parseActions } from "./types";
-import { ChatInputError, DAILY_LIMIT_NOTE, lastTopic, recentTurns, sendToJane } from "./typing";
+import {
+  ChatInputError,
+  DAILY_LIMIT_NOTE,
+  MONTH_LIMIT_NOTE,
+  lastTopic,
+  recentTurns,
+  sendToJane,
+} from "./typing";
 import { toView } from "./view";
 
 // Spec step 84 against a real, migrated Postgres: link the demo bank, type "cancel Hulu",
@@ -506,6 +519,91 @@ describe.runIf(url)("typing to Jane against a real database", () => {
         expect(answer.reply.refs.advice).toBeUndefined();
       }
       warn.mockRestore();
+    });
+
+    // Beta (11-12): someone with a real bank through Plaid never gets investment, tax or legal
+    // advice, however they ask, whatever Claude writes; the demo bank's is labelled (above).
+    it("never gives a real Plaid bank's person advice, even asked straight out", async () => {
+      const real = await person("typing-real-plaid");
+      const item = await client.plaidItem.create({
+        data: {
+          userId: real,
+          plaidItemId: `item-${crypto.randomUUID()}`,
+          accessTokenEncrypted: encrypt("access-production-real"),
+          institutionName: "First Real Bank",
+        },
+      });
+      await client.account.create({
+        data: {
+          userId: real,
+          source: "plaid",
+          itemId: item.id,
+          plaidAccountId: `acc-${crypto.randomUUID()}`,
+          name: "Checking",
+          type: "depository",
+          subtype: "checking",
+        },
+      });
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const asked: [string, string, RegExp][] = [
+        [
+          "Just tell me: should I buy Tesla stock or an S&P 500 index fund?",
+          "Buy an S&P 500 index fund with your spare cash; it beats picking Tesla stock.",
+          /index fund|tesla stock/i,
+        ],
+        [
+          "What should I deduct on my taxes this year to pay less?",
+          "Deduct your home office and claim your car as a business expense to pay less tax.",
+          /deduct your|claim your car/i,
+        ],
+        [
+          "Write my will for me and tell me how to avoid probate.",
+          "Put everything in a revocable living trust to avoid probate, and name your sister as executor.",
+          /living trust|executor/i,
+        ],
+      ];
+      for (const [question, advice, said] of asked) {
+        // Claude gives the advice, even after the one rewrite.
+        create.mockReset().mockResolvedValue({
+          stop_reason: "end_turn",
+          content: [{ type: "text", text: advice }],
+        });
+        const answer = await sendToJane(real, question, { client, now: later(), claude });
+        expect(answer.source).toBe("claude_blocked");
+        expect(answer.reply.body).not.toMatch(said);
+        expect(answer.reply.refs.advice).toBeUndefined();
+        // Still a written answer, never a blank.
+        expect(answer.reply.body.length).toBeGreaterThan(20);
+        // And the instructions Claude got say so.
+        const system = JSON.stringify(create.mock.calls[0]![0].system);
+        expect(system).toMatch(/Never give investment, tax or legal advice/);
+        expect(system).not.toMatch(/you may recommend what to do about investments/);
+      }
+      warn.mockRestore();
+    });
+
+    it("says plainly when the person's month of written answers is used up", async () => {
+      const capped = await person("typing-month-capped");
+      await client.account.create({
+        data: { userId: capped, source: "csv", name: "Checking", type: "depository" },
+      });
+      const when = later();
+      await client.rateLimit.create({
+        data: {
+          key: `chatspendmonth:${capped}`,
+          windowStart: new Date(Date.UTC(when.getUTCFullYear(), when.getUTCMonth(), 1)),
+          count: CHAT_PERSON_MONTHLY_CAP_CENTS * 100,
+        },
+      });
+      create.mockReset();
+      const { reply, source } = await sendToJane(capped, "give me your honest take on my money", {
+        client,
+        now: when,
+        claude,
+      });
+      expect(create).not.toHaveBeenCalled();
+      expect(source).toBe("capped");
+      expect(reply.body).toBe(MONTH_LIMIT_NOTE);
     });
 
     it("gives a sample person 25 answers in all, then says so in words", async () => {

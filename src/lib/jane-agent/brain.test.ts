@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { CHAT_DAILY_LIMIT, CHAT_SOURCE_LIMITS, MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { gather, plan, type BrainSettings, type History } from "./brain";
 import type { Snapshot, SnapshotFinding } from "./snapshot";
+import type { MessageSource } from "./sources/source";
 
 // Spec step 82: Jane's brain, source by source, then its limits: quiet hours in the
 // person's timezone, never the same thing twice, a daily cap, the most important first.
@@ -679,5 +680,37 @@ describe("taxes speak once a month unless it's urgent (spec step 273)", () => {
 
   it("doesn't limit when the month isn't counted", () => {
     expect(run()).toEqual(["taxes:p85", "taxes:p55", "taxes:p40"]);
+  });
+});
+
+describe("a real account (beta, 11-12)", () => {
+  // A source that marks one of its cards as demo advice, in words no pattern would catch.
+  const source: MessageSource = {
+    key: "test",
+    gather: () => [
+      {
+        kind: "heads_up",
+        body: "Here is an idea for your spare cash.",
+        refs: { advice: true },
+        actions: [],
+        dedupeKey: "idea",
+        priority: 10,
+      },
+      {
+        kind: "heads_up",
+        body: "Netflix went up to $17.99 a month.",
+        refs: {},
+        actions: [],
+        dedupeKey: "netflix",
+        priority: 10,
+      },
+    ],
+  };
+
+  it("never gets a card marked as demo advice; demo advice still does", () => {
+    const real = gather(snapshot(), MORNING, { ...SYNC, sources: [source], realAccount: true });
+    expect(keys(real)).toEqual(["test:netflix"]);
+    const demo = gather(snapshot(), MORNING, { ...SYNC, sources: [source], realAccount: false });
+    expect(keys(demo)).toEqual(["test:idea", "test:netflix"]);
   });
 });

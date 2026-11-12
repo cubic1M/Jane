@@ -472,6 +472,42 @@ describe.runIf(url)("Jane's messages as notifications, against a real database",
       expect(push).not.toHaveBeenCalled();
     });
 
+    it("never emails or pushes demo advice to someone with a real account since", async () => {
+      // Written in demo advice, then a real account came: the message waits to be closed in the
+      // chat, and isn't sent meanwhile; the rest still go.
+      const userId = await person("notify-advice-real", { channel: "both" });
+      await client.account.create({
+        data: { userId, source: "csv", name: "Checking", type: "depository" },
+      });
+      await device(userId);
+      const advice = await client.janeMessage.create({
+        data: {
+          userId,
+          kind: "heads_up",
+          body: "I'd move $2,000.00 into an index fund this month.",
+          dedupeKey: "investments:idea:test",
+          refs: { advice: true },
+          createdAt: at(0),
+        },
+      });
+      const plain = await client.janeMessage.create({
+        data: {
+          userId,
+          kind: "heads_up",
+          body: "Your Geico premium went up at renewal, from $612.00 to $689.00.",
+          dedupeKey: "changes:premium:geico:tx_2",
+          createdAt: at(0),
+        },
+      });
+      const { push, send } = fakes();
+      await deliverChatNotifications(userId, { client, now: at(MINUTE), push, send });
+      await deliverChatNotifications(userId, { client, now: at(2 * HOUR), push, send });
+      const sentIds = (await messagesOf(userId)).filter((m) => m.notifiedVia).map((m) => m.id);
+      expect(sentIds).toContain(plain.id);
+      expect(sentIds).not.toContain(advice.id);
+      expect(JSON.stringify(send.mock.calls)).not.toMatch(/index fund|Demo advice/);
+    });
+
     it("emails when no phone takes the push", async () => {
       const userId = await withMessages("notify-fallback");
       await device(userId);

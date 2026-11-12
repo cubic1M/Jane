@@ -3,8 +3,12 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { PrismaClient } from "@/generated/prisma/client";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
+// What crossing a share sends at once goes through the app's own sender.
+vi.mock("@/lib/email", () => ({ sendEmail: vi.fn(async () => undefined) }));
 
-import { CHAT_MONTHLY_CAP_CENTS_DEFAULT } from "@/config/agent-chat";
+import { CHAT_MONTHLY_CAP_CENTS_DEFAULT, CLAUDE_MONTH_WARN_SHARE } from "@/config/agent-chat";
+import { sendEmail } from "@/lib/email";
+import { addMonthlySpend } from "@/lib/jane-agent/claude-limits";
 import { reportMissedJobs } from "./health";
 
 // A read of what's shared between people: sample people can take half of Claude's month from
@@ -52,17 +56,48 @@ describe.runIf(url)("Claude's month", () => {
     expect(told()).toEqual([]);
   });
 
-  it("tells the team once at the share, and once more at the cap", async () => {
+  it("tells the team once at the share, once when it runs low, and once more at the cap", async () => {
     await spent(CHAT_MONTHLY_CAP_CENTS_DEFAULT / 2);
     await reportMissedJobs({ client, now: NOW, send });
     await reportMissedJobs({ client, now: NOW, send });
     expect(told()).toHaveLength(1);
     expect(told()[0]).toContain("$4.00 of this month's $8.00");
 
-    await spent(CHAT_MONTHLY_CAP_CENTS_DEFAULT);
+    // Beta (11-12): at 70%, with time to raise it before everyone loses written answers.
+    await spent(CHAT_MONTHLY_CAP_CENTS_DEFAULT * CLAUDE_MONTH_WARN_SHARE);
     await reportMissedJobs({ client, now: NOW, send });
     await reportMissedJobs({ client, now: NOW, send });
     expect(told()).toHaveLength(2);
-    expect(told()[1]).toContain("$8.00 of this month's $8.00");
+    expect(told()[1]).toContain("$5.60 of this month's $8.00");
+    const low = (send.mock.calls as unknown as [{ text: string }][])
+      .map(([m]) => m.text)
+      .find((text) => text.includes("$5.60"));
+    expect(low).toMatch(/running low: past 70%/);
+    expect(low).toMatch(/CHAT_MONTHLY_CAP_CENTS raises the limit/);
+
+    await spent(CHAT_MONTHLY_CAP_CENTS_DEFAULT);
+    await reportMissedJobs({ client, now: NOW, send });
+    await reportMissedJobs({ client, now: NOW, send });
+    expect(told()).toHaveLength(3);
+    expect(told()[2]).toContain("$8.00 of this month's $8.00");
+  });
+
+  it("tells the team the moment an answer takes the month past 70%, not at the next daily job", async () => {
+    const mailed = vi.mocked(sendEmail);
+    mailed.mockClear();
+    await spent(CHAT_MONTHLY_CAP_CENTS_DEFAULT * 0.65);
+    // Under every share's line already passed: nothing new.
+    await addMonthlySpend(100, { client, now: NOW });
+    expect(mailed).not.toHaveBeenCalled();
+    // This one crosses 70%.
+    await addMonthlySpend(CHAT_MONTHLY_CAP_CENTS_DEFAULT * 0.06 * 100, { client, now: NOW });
+    expect(mailed).toHaveBeenCalledTimes(1);
+    expect(mailed.mock.calls[0]![0]).toMatchObject({ to: "team@example.test" });
+    expect(mailed.mock.calls[0]![0].subject).toMatch(
+      /^Claude: Claude has used \$5\.\d\d of this month's \$8\.00/,
+    );
+    // And the next answer past it doesn't send it again.
+    await addMonthlySpend(100, { client, now: NOW });
+    expect(mailed).toHaveBeenCalledTimes(1);
   });
 });

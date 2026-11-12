@@ -52,6 +52,7 @@ vi.mock("./decision", async (original) => ({
 vi.mock("./spend", async (original) => ({
   ...(await original<typeof import("./spend")>()),
   overDailyCap: vi.fn(async () => false),
+  overMonthlyPersonCap: vi.fn(async () => false),
   addSpend: vi.fn(),
 }));
 
@@ -66,13 +67,15 @@ import {
   factsOnly,
   plainText,
   resetClaudeHealth,
-  tooLong,
+  answerLimit,
+  type ChatStreamEvent,
   shopKindOf,
   withoutButtonTalk,
   withoutTapYes,
   READ_ONLY,
 } from "./claude";
 import { forgetPrimer } from "./primer-cache";
+import { maskFor } from "./payee-mask";
 import { CHAT_TOOLS, healthHeadline, proposeAction } from "./claude-tools";
 import { areaTools, chatTools, toolsFor } from "./tool-select";
 import { loadSnapshot, type Snapshot } from "./snapshot";
@@ -205,6 +208,30 @@ describe("askClaudeInChat", () => {
     expect(request.tools.length).toBeLessThan(chatTools(CHAT_TOOLS).length);
     // An information question is told to answer in words, with no button.
     expect(request.system[1].text).toMatch(/only asks for information: answer in words/);
+  });
+
+  // Beta (11-12): a payment app's payee is a person; Claude only ever sees a tag for them.
+  it("never sends Claude a payee's name, and the person reads the name", async () => {
+    create.mockResolvedValueOnce(final("Your rent goes to [person DS] each month."));
+    const events: string[] = [];
+    const result = await askClaudeInChat(
+      "u1",
+      [{ role: "assistant", content: "Your rent goes to Daniel Smith." }],
+      "how much did I send Daniel Smith?",
+      {
+        ...options,
+        mask: maskFor(["Daniel Smith"]),
+        onEvent: (e) => {
+          if (e.type === "text") events.push(e.text);
+        },
+      },
+    );
+    for (const [request] of create.mock.calls) {
+      expect(JSON.stringify(request)).not.toMatch(/daniel|smith/i);
+    }
+    expect(JSON.stringify(create.mock.calls[0][0])).toContain("[person DS]");
+    expect(result.reply.body).toBe("Your rent goes to Daniel Smith each month.");
+    expect(events.join("")).toBe("Your rent goes to Daniel Smith each month.");
   });
 
   it("writes the answer again in words when the last one was only about a button", async () => {
@@ -375,20 +402,28 @@ describe("askClaudeInChat", () => {
     expect(own.reply.body).toBe("A $500.00 TV would fit this month.");
   });
 
-  it("asks for a shorter answer once when it is long or a list nobody asked for", async () => {
-    const long = `${"Your spending is a bit high this month, mostly on food and shopping. ".repeat(10)}`;
-    create
-      .mockResolvedValueOnce(final(long))
-      .mockResolvedValueOnce(final("You spent more on food this month. Eating out is most of it."));
-    const result = await askClaudeInChat("u1", [], "why was march so bad", options);
-    expect(result.reply.body).toBe("You spent more on food this month. Eating out is most of it.");
-    expect(JSON.stringify(create.mock.calls.at(-1)?.[0].messages.at(-1))).toMatch(
-      /at most 3 short sentences/,
+  // Founder 11-11: "the chat often reloads the response after producing a response". A long
+  // answer used to stream in full, vanish and be written again shorter; it now ends where the
+  // chat's length stops it, and what streamed is the answer, never taken back.
+  it("ends a long answer at the chat's length as it streams, and never writes it again", async () => {
+    const sentence = "Your spending is a bit high this month, mostly on food and shopping. ";
+    create.mockResolvedValueOnce(final(sentence.repeat(10)));
+    const events: ChatStreamEvent[] = [];
+    const result = await askClaudeInChat("u1", [], "why was march so bad", {
+      ...options,
+      onEvent: (e) => events.push(e),
+    });
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(events.some((e) => e.type === "reset")).toBe(false);
+    const streamed = events.flatMap((e) => (e.type === "text" ? [e.text] : [])).join("");
+    expect(result.reply.body).toBe(streamed.trim());
+    expect(result.reply.body.length).toBeLessThanOrEqual(answerLimit("why was march so bad"));
+    expect(result.reply.body.length).toBeGreaterThan(
+      answerLimit("why was march so bad") - sentence.length,
     );
-    // A list is fine when it was asked for; a short answer is left alone.
-    expect(tooLong("- a\n- b\n- c", "list my bills")).toBe(false);
-    expect(tooLong("- a\n- b\n- c", "how am i doing")).toBe(true);
-    expect(tooLong("Short.", "how am i doing")).toBe(false);
+    // A list that was asked for may run longer; under a card, a sentence or two.
+    expect(answerLimit("list my bills")).toBeGreaterThan(answerLimit("how am i doing"));
+    expect(answerLimit("can you change my car insurance", true)).toBe(320);
   });
 
   it("keeps links but drops an action button on a question that only asks for information", async () => {
@@ -484,8 +519,6 @@ describe("askClaudeInChat", () => {
     expect(
       withoutButtonTalk("I couldn't set up the button for the switch. GEICO is $408.00 cheaper."),
     ).toBe("GEICO is $408.00 cheaper.");
-    expect(tooLong("x".repeat(400), "can you change my car insurance", true)).toBe(true);
-    expect(tooLong("x".repeat(400), "can you change my car insurance", false)).toBe(false);
     create
       .mockResolvedValueOnce(toolUse("propose_action", { action: "finding.delete" }))
       .mockResolvedValueOnce(final("Here is what GEICO shows."));
@@ -534,8 +567,8 @@ describe("askClaudeInChat", () => {
     expect(shopKindOf("what is my car insurance")).toBe(false);
     expect(shopKindOf("how am i doing")).toBe(false);
     // A list that was asked for may run to 700; others stop at 600.
-    expect(tooLong("x".repeat(650), "what are my options", false)).toBe(false);
-    expect(tooLong("x".repeat(650), "how am i doing", false)).toBe(true);
+    expect(answerLimit("what are my options")).toBe(700);
+    expect(answerLimit("how am i doing")).toBe(600);
   });
 
   it("says what it can see, not what 'the tool shows', and drops 'my earlier guess'", () => {
@@ -722,11 +755,62 @@ describe("proposeAction", () => {
     expect(readOnly[0]).toMatchObject({ cache_control: { type: "ephemeral" } });
     expect(readOnly[1].text).toBe(READ_ONLY);
     expect(READ_ONLY).toMatch(/never cancel, call, email, switch/);
+    expect(READ_ONLY).toMatch(/never move money, pay a bill, or file, sign or submit anything/);
+    // Beta (11-12): the instructions every account shares promise nothing done for them, and say
+    // what Jane is: a controller, not an adviser, and "it".
+    expect(readOnly[0].text).not.toMatch(/take care of it|the team makes|doing for them/i);
+    expect(readOnly[0].text).toMatch(/financial controller/);
+    expect(readOnly[0].text).toMatch(/not a financial adviser/);
+    expect(readOnly[0].text).toMatch(/Jane is "it", never "she"/);
+    // The words the guardrails stop on a real account are named, so a first draft isn't blocked
+    // and written again for them (live run 11-12: 36 of 44 were): that doubles the cost.
+    expect(readOnly[0].text).toMatch(/can't appear in your answer at all[^.]*401\(k\), IRA, Roth/);
 
     create.mockResolvedValueOnce(final("Hi there."));
     await askClaudeInChat("u1", [], "cancel netflix", options);
     const demo = create.mock.calls[1][0].system as { text: string }[];
     expect(demo.map((b) => b.text)).not.toContain(READ_ONLY);
+  });
+
+  // Chat testing (11-12, 44 live real-account questions): 36 first drafts used an investing
+  // word even in a fact, were blocked and written again, about twice the cost. The instructions
+  // now name the words and the shape that passes; the guardrail is as strict as before.
+  it("lets a real account's investing answer in the instructed shape through on its first draft", async () => {
+    const shaped =
+      "I can't advise on investments here. You have $1,234.56 safe to spend until Oct 30, and I can help you plan around that.";
+    vi.mocked(homeSummary).mockResolvedValue({
+      safeToSpend: {
+        safeCents: 123_456,
+        payday: "2026-10-30",
+        balanceCents: 300_000,
+        billsCents: 50_000,
+        budgetsLeftCents: 0,
+        goalsCents: 0,
+        setAsideCents: 0,
+      },
+    } as never);
+    create.mockResolvedValueOnce(toolUse("safe_to_spend")).mockResolvedValueOnce(final(shaped));
+    const passed = await askClaudeInChat("u1", [], "should i buy tesla stock", options);
+    expect(passed.reply.body).toBe(shaped);
+    // Two rounds (the lookup and the answer), no rewrite.
+    expect(create).toHaveBeenCalledTimes(2);
+    const system = (create.mock.calls[0][0].system as { text: string }[])[0].text;
+    expect(system).toMatch(
+      /answered in this shape the first time: the one sentence "I can't advise on investments here\."/,
+    );
+
+    // As strict as before: the same facts with "your 401(k)" in them are stopped and asked again.
+    create.mockReset();
+    sent.length = 0;
+    create
+      .mockResolvedValueOnce(
+        final("I can't advise on investments here. Your 401(k) is separate from your $1,234.56."),
+      )
+      .mockResolvedValueOnce(final("I can help you plan around that."));
+    const strict = await askClaudeInChat("u1", [], "should i buy tesla stock", options);
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(strict.reply.body).not.toMatch(/401/);
+    expect(JSON.stringify(sent[1].at(-1))).toMatch(/From the app, not the person/);
   });
 
   it("uses the chat model from the environment when one is set", async () => {
@@ -804,17 +888,24 @@ describe("proposeAction", () => {
       final("Here's the plan. You'll definitely save $9,999.00 with this. Okay?"),
     );
     const shown: string[] = [];
+    let resets = 0;
 
     const result = await askClaudeInChat("u1", [], "save me money", {
       ...options,
       onEvent: (e) => {
         if (e.type === "text") shown.push(e.text);
+        if (e.type === "reset") resets += 1;
       },
     });
 
-    // Once per try (the rewrite starts the draft again), never the sentence after it.
-    expect(shown).toEqual(["Here's the plan.", "Here's the plan."]);
-    expect(result.kind).toBe("blocked");
+    // Never the sentence after it, and what was shown is never taken back for the rewrite: the
+    // rewrite goes on after it (founder 11-11).
+    expect(shown.join("")).not.toMatch(/definitely|9,999/);
+    expect(shown[0]).toBe("Here's the plan.");
+    expect(resets).toBe(0);
+    expect(result.kind).toBe("answer");
+    expect(result.reply.body.startsWith("Here's the plan.")).toBe(true);
+    expect(result.reply.body).not.toMatch(/definitely|9,999/);
   });
 
   // Spec step 98: demo advice mode, decided by the caller (adviceMode, see ./typing.ts).
@@ -1056,14 +1147,15 @@ describe("speed and failures", () => {
     ]) {
       expect(withoutButtonTalk(talk), talk).toBe("");
     }
-    // Only button talk, even with a sentence about what the page shows: no answer at all.
-    for (let i = 0; i < 2; i += 1) {
-      create.mockResolvedValueOnce(
+    // Only button talk, even with a sentence about what the page shows: no answer at all. The
+    // shown sentence stays and Claude is asked for the rest; more button talk is still none.
+    create
+      .mockResolvedValueOnce(
         final(
           "I've put a link to your debt plan under this answer. It shows how to pay off your cards, highest interest first.",
         ),
-      );
-    }
+      )
+      .mockResolvedValueOnce(final("I've put a link to your debt plan under this answer."));
     const info = vi.spyOn(console, "info").mockImplementation(() => {});
     expect((await askClaudeInChat("u1", [], "should i buy bitcoin", options)).kind).toBe(
       "unavailable",
@@ -1559,9 +1651,11 @@ describe("a blocked answer keeps its facts", () => {
   it("asks once for the same answer without the advice, naming the sentence, and shows it", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const fixed = `${FACTS} ${ESTIMATE} ${CANT_ADVISE_TAX}`;
+    // The facts were on the screen before the advice was stopped: they stay, and Claude writes
+    // only what follows them (founder 11-11: no answer is written again in front of the person).
     create
       .mockResolvedValueOnce(final(`${FACTS} ${ADVICE} ${ESTIMATE}`))
-      .mockResolvedValueOnce(final(fixed));
+      .mockResolvedValueOnce(final(`${ESTIMATE} ${CANT_ADVISE_TAX}`));
     const result = await ask();
     expect(result).toEqual({
       kind: "answer",
@@ -1569,6 +1663,9 @@ describe("a blocked answer keeps its facts", () => {
     });
     const note = sent[1].at(-1)!.content as string;
     expect(note).toContain(`"${ADVICE}"`);
+    expect(note).toContain(
+      `has already read the start of your answer, and it stays as it is: "${FACTS}"`,
+    );
     expect(note).toMatch(/Drop only that advice\. Keep every fact/);
     expect(note).not.toMatch(/Leave that out/);
     warn.mockRestore();
@@ -1578,7 +1675,7 @@ describe("a blocked answer keeps its facts", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     create
       .mockResolvedValueOnce(final(`${FACTS} ${ADVICE}`))
-      .mockResolvedValueOnce(final(`${FACTS} ${ESTIMATE} Write the fees off on Schedule C.`));
+      .mockResolvedValueOnce(final(`${ESTIMATE} Write the fees off on Schedule C.`));
     const result = await ask();
     expect(result).toEqual({
       kind: "answer",

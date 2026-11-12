@@ -3,6 +3,7 @@ import {
   CHAT_MONTHLY_CAP_CENTS_DEFAULT,
   CHAT_TRIAL_MONTH_SHARE,
   CHAT_TRIAL_RESERVE_CENTS,
+  CLAUDE_MONTH_WARN_SHARE,
 } from "@/config/agent-chat";
 import {
   STATEMENT_TRIAL_CAP_TEXT,
@@ -12,6 +13,7 @@ import {
 import type { PrismaClient } from "@/generated/prisma/client";
 import { DAY_MS } from "@/lib/dates";
 import { db as defaultClient } from "@/lib/db";
+import { log } from "@/lib/log";
 import { giveBack, hit } from "@/lib/rate-limit";
 import { systemDb } from "@/lib/system-db";
 import { statementTrialEnabled } from "@/lib/statement-trial";
@@ -36,15 +38,43 @@ export const monthlyCapCents = () => {
   return Number.isFinite(set) && set > 0 ? set : CHAT_MONTHLY_CAP_CENTS_DEFAULT;
 };
 
-// Adds one answer's cost (hundredths of a cent) to the month.
+// Adds one answer's cost (hundredths of a cent) to the month. The one that takes the month past a
+// share the team hears about tells them now (reportClaudeMonth), not at the next daily job: a busy
+// day can go from 70% to the cap in between.
 export async function addMonthlySpend(
   hundredthsOfCents: number,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<void> {
   if (hundredthsOfCents <= 0) return;
-  await systemDb("Rate limits are the system's own counters", client).$executeRaw`
+  const [row] = await systemDb("Rate limits are the system's own counters", client).$queryRaw<
+    { count: number }[]
+  >`
     INSERT INTO rate_limits (key, window_start, count) VALUES (${MONTH_KEY}, ${monthStart(now)}, ${hundredthsOfCents})
-    ON CONFLICT (key, window_start) DO UPDATE SET count = rate_limits.count + ${hundredthsOfCents}`;
+    ON CONFLICT (key, window_start) DO UPDATE SET count = rate_limits.count + ${hundredthsOfCents}
+    RETURNING count`;
+  const after = Number(row?.count ?? 0);
+  if (crossesMonthAlert(after - hundredthsOfCents, after)) await tellTeam({ client, now });
+}
+
+// The shares of the month the team hears about (src/lib/health.ts reportClaudeMonth).
+const MONTH_ALERT_SHARES = [CHAT_TRIAL_MONTH_SHARE, CLAUDE_MONTH_WARN_SHARE, 1] as const;
+
+// Whether going from `before` to `after` (hundredths of a cent) passes one of them.
+export function crossesMonthAlert(before: number, after: number, capCents = monthlyCapCents()) {
+  return MONTH_ALERT_SHARES.some((share) => {
+    const at = capCents * 100 * share;
+    return before < at && after >= at;
+  });
+}
+
+// Never stops the answer that crossed it; the daily jobs check again.
+async function tellTeam(options: Options) {
+  try {
+    const { reportClaudeMonth } = await import("@/lib/health");
+    await reportClaudeMonth(options);
+  } catch (error) {
+    log.error("Claude month alert failed", { error: String(error).slice(0, 300) });
+  }
 }
 
 // The month's counter, for what holds part of it before Claude is asked (src/lib/claude-budget.ts).

@@ -70,7 +70,9 @@ export function gather(snapshot: Snapshot, now: Date, settings: BrainSettings): 
   return (settings.sources ?? MESSAGE_SOURCES).flatMap((source) =>
     source
       .gather(snapshot, context)
-      .filter((c) => !settings.realAccount || !tellsThemToAct(c.body))
+      // Outside demo advice, nothing that tells them what to do with their money, and nothing a
+      // source marked as demo advice, whatever it says (beta, 11-12).
+      .filter((c) => !settings.realAccount || (!tellsThemToAct(c.body) && !c.refs.advice))
       .map((c) => ({ ...c, source: source.key, dedupeKey: `${source.key}:${c.dedupeKey}` })),
   );
 }

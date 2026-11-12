@@ -198,14 +198,21 @@ async function runChecks(
   let stoppedAtCap = false;
   let tick = 0;
   for (const conversation of rotated(conversations(questions), rotate)) {
-    // A fresh conversation: no earlier questions, and the chat's hourly limits reset.
+    // A fresh conversation: no earlier questions, and the chat's limits (hour, day, month) reset.
     const who = personFor?.(conversation[0]) ?? { userId, facts: baseFacts! };
     const facts = who.facts;
     const db = scopedFor(who.userId, client);
     await db.janeMessages.deleteMany({ where: { kind: { in: ["user", "reply"] } } });
     await systemDb("Rate limits are the system's own counters", client).rateLimit.deleteMany({
       where: {
-        key: { in: [`chat:${who.userId}`, `ask:${who.userId}`, `chatspend:${who.userId}`] },
+        key: {
+          in: [
+            `chat:${who.userId}`,
+            `ask:${who.userId}`,
+            `chatspend:${who.userId}`,
+            `chatspendmonth:${who.userId}`,
+          ],
+        },
       },
     });
     const earlier: { role: "user" | "assistant"; content: string }[] = [];

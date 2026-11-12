@@ -7,6 +7,7 @@ vi.mock("./snapshot", () => ({ loadSnapshot: vi.fn() }));
 vi.mock("./spend", async (original) => ({
   ...(await original<typeof import("./spend")>()),
   overDailyCap: vi.fn(async () => false),
+  overMonthlyPersonCap: vi.fn(async () => false),
   addSpend: vi.fn(),
 }));
 
@@ -266,13 +267,16 @@ describe("a blocked draft is rewritten by Claude, not replaced by a canned line"
           "My estimate of the tax on your side gig is $367.20. You should set aside $367.20 for it.",
         ),
       )
+      // The estimate was on the screen already: it stays, and Claude writes what follows it.
       .mockResolvedValueOnce(
         final(
-          "Your side gig brought in $2,400.00 this year, and my estimate of the tax on it is $367.20. I can't tell you what to file or deduct; a tax professional can.",
+          "Your side gig brought in $2,400.00 this year. I can't tell you what to file or deduct; a tax professional can.",
         ),
       );
     const result = await ask("what's the tax on my side gig");
-    expect(result.reply.body).toMatch(/^Your side gig brought in \$2,400\.00/);
+    expect(result.reply.body).toBe(
+      "My estimate of the tax on your side gig is $367.20. Your side gig brought in $2,400.00 this year. I can't tell you what to file or deduct; a tax professional can.",
+    );
     expect(result.reply.body).not.toMatch(/set aside/);
   });
 
@@ -291,11 +295,7 @@ describe("a blocked draft is rewritten by Claude, not replaced by a canned line"
   it("shows the passing facts when the rewrite is blocked too, even without a figure", async () => {
     create
       .mockResolvedValueOnce(final("Pay off the card first. Then buy an index fund."))
-      .mockResolvedValueOnce(
-        final(
-          "Pay off the card first. It costs more than it earns. Then put it in an S&P 500 fund.",
-        ),
-      );
+      .mockResolvedValueOnce(final("It costs more than it earns. Then put it in an S&P 500 fund."));
     const result = await ask("should I pay off my card or invest");
     expect(result.kind).toBe("answer");
     expect(result.reply.body).toBe(
@@ -575,7 +575,10 @@ describe("a number about the wrong thing is rewritten by Claude", () => {
   it("drops only the wrong sentence when the rewrite gets it wrong too", async () => {
     const wrong =
       "Hulu is $17.99 a month, and your Netflix is $15.49. Netflix is also $17.99 a month.";
-    create.mockResolvedValue(final(wrong));
+    // The rewrite goes on after the true sentence the person already read, wrong again.
+    create
+      .mockResolvedValueOnce(final(wrong))
+      .mockResolvedValueOnce(final("Netflix is also $17.99 a month."));
     const answer = await askAbout();
     expect(answer.kind).toBe("answer");
     expect(answer.reply?.body).toBe("Hulu is $17.99 a month, and your Netflix is $15.49.");
@@ -913,7 +916,7 @@ describe("fakeChatClaude", () => {
       onEvent: (e) => events.push(e),
     });
     expect(result.kind).toBe("answer");
-    expect(result.reply.body).toMatch(/^Yes: paying off your card first could save you the most/);
+    expect(result.reply.body).toMatch(/^Yes\. Paying off your card first could save you the most/);
     const shown = events.flatMap((e) => (e.type === "text" ? [e.text] : [])).join("");
     expect(shown).not.toMatch(/definitely/);
   });

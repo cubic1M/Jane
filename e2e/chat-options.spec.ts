@@ -126,21 +126,18 @@ test("a pick on the options card is instant, and the next card follows within 10
   await expect(pickCard).toHaveCount(0);
   await release();
 
-  // Behind it, the pick went to the team, and the chat's history shows what was chosen.
-  await expect(answer.getByText("You chose:")).toBeVisible({ timeout: 30_000 });
-  // The options stay, greyed, the chosen one marked, with Revert (founder, 2026-10-25).
-  const choices = answer.locator("[data-chosen-choices] button");
-  await expect(choices).toHaveCount(options.length);
-  await expect(answer.locator('[data-chosen-choices] [aria-pressed="true"]')).toContainText(
-    options[0].label,
-  );
-  for (const choice of await choices.all()) await expect(choice).toBeDisabled();
-  await expect(answer.getByRole("button", { name: /Revert/ })).toBeVisible();
-  await expect(answer.getByText(/My team will/)).toBeVisible();
+  // Behind it, the pick went to the team: Jane's answer says what happens next, and nothing in
+  // the chat is left of the card (founder 11-11: "it should just disappear and not leave like a
+  // trace"): no "You chose", no greyed options, no Revert.
+  await expect(answer.getByText(/My team will/)).toBeVisible({ timeout: 30_000 });
+  await expect(answer.getByText("You chose:")).toHaveCount(0);
+  await expect(answer.locator("[data-chosen-choices]")).toHaveCount(0);
+  await expect(answer.getByRole("button", { name: /Revert/ })).toHaveCount(0);
 
-  // Reloaded, the card stays gone.
+  // Reloaded, the card stays gone, and so does any trace of it.
   await page.reload();
   await expect(page.getByRole("region", { name: title })).toHaveCount(0);
+  await expect(page.getByRole("listitem").filter({ hasText: "You chose:" })).toHaveCount(0);
 });
 
 // Gap audit: switching to cheaper insurance is a pick-one card too, Jane's pick first and the
@@ -195,12 +192,11 @@ test("cheaper car insurance comes as comparison cards, and a pick starts the swi
   await expect(first).toHaveAttribute("data-chosen", "");
   await expect(sheet.getByRole("status")).toContainText(`Chosen: ${carrier}`);
   await release();
-  // Behind it, the switch started, and the chat's history says what was chosen.
+  // Behind it, the switch started; once the sheet is closed, the chat keeps no trace of the pick.
   await expect(sheet.getByRole("status")).toContainText("I'm switching you now", {
     timeout: 30_000,
   });
   await sheet.getByRole("button", { name: "Close" }).click();
   await expect(sheet).toHaveCount(0);
-  const answer = page.getByRole("listitem").filter({ hasText: "You chose:" }).last();
-  await expect(answer).toContainText(carrier, { timeout: 30_000 });
+  await expect(page.getByRole("listitem").filter({ hasText: "You chose:" })).toHaveCount(0);
 });
