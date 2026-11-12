@@ -3,6 +3,10 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
+// Linking the demo bank writes its audit row through the app's own client: the same database.
+vi.hoisted(() => {
+  process.env.DATABASE_URL = process.env.TEST_DATABASE_URL ?? "";
+});
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 
