@@ -59,6 +59,13 @@ async function loadFactsWork(
     adviceMode(userId, { client }),
   ]);
   const insights = spendingInsights(transactions, { asOf, monthCount: INSIGHT_MONTHS });
+  // The lookups run with no input, so the spending tool gives this month only; an answer about
+  // an earlier month (and its parts: groceries, eating out) needs that month's figures too.
+  const earlierMonths = await Promise.all(
+    insights.months.map((m) =>
+      runChatTool(userId, "spending_by_category", { month: m.month }, { client, now }),
+    ),
+  );
   const months: Facts["months"] = {};
   for (const m of insights.months) {
     months[m.month] = {
@@ -72,7 +79,7 @@ async function loadFactsWork(
     asOf,
     safeCents: snapshot?.safeToSpend?.safeCents ?? null,
     payday: snapshot?.safeToSpend?.payday ?? null,
-    allowedCents: lookups.flatMap((out) => [
+    allowedCents: [...lookups, ...earlierMonths].flatMap((out) => [
       ...out.cents,
       ...dollarFigures(out.content).map((f) => f.cents),
     ]),
