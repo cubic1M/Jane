@@ -211,8 +211,12 @@ export function withoutAchDetails(description: string): string {
 // 11-06). As in the migration's note, a saved key can't be told apart, so it moves on a new upload.
 const ACH_DETAILS = /\s(?:ORIG ID:.*|\d{6}\s+(?:\d{6,}|X{3,}\d{2,})(?:\s.*)?)$/;
 // The entry's word for what it is, after the company: "STATE FARM INSURANCE BILL PAY". Not "CHASE
-// AUTOPAY", Chase's own line for paying its card: "Chase" alone would be the bank.
-const ACH_ENTRY = /(?<!^CHASE)\s+(?:BILL ?PAY|AUTO ?PAY|(?:WEB|ONLINE|MOBILE) PMT)$/;
+// AUTOPAY", Chase's own line for paying its card: "Chase" alone would be the bank. However the
+// bank abbreviates it, and T-Mobile's "PCS SVC" (debugger 11-12: "Maple Court Apts Rent Web
+// Pmts" on a student's cards). Saved keys moved in prisma/migrations/
+// 20270516000000_merchant_without_ach_entry_words: keep them in step.
+const ACH_ENTRY =
+  /(?<!^CHASE)\s+(?:BILL ?(?:PAY|PAYMT|PYMT|PMT)|AUTO ?PAY|(?:WEB|ONLINE|MOBILE) (?:PMTS?|PYMTS?)|PCS SVC)$/;
 
 export function normalizeMerchant(description: string): Merchant | null {
   let text = normalizeDescription(beforePadding(description.slice(0, MERCHANT_TEXT_MAX_CHARS)));
