@@ -1,13 +1,15 @@
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { profileHistoryStart } from "@/config/profile";
+import { accountCopies, withoutCopies } from "@/lib/account-copies";
 import type { ScopedDb } from "@/lib/db-scoped";
 import { monthsEnding, type InsightTransaction } from "./spending";
 import { typicalMonthlySpending } from "./typical-month";
 
 // The transactions insights and budgets read: everything from the start of the first
-// month, as stored. One loader, so the two pages (and over-budget alerts) always agree.
+// month, as stored, an account linked twice counted once. One loader, so the two pages (and
+// over-budget alerts) always agree.
 export async function loadInsightTransactions(
-  db: Pick<ScopedDb, "transactions">,
+  db: Pick<ScopedDb, "transactions" | "accounts">,
   asOf: string,
   monthCount: number,
 ): Promise<InsightTransaction[]> {
@@ -18,7 +20,7 @@ export async function loadInsightTransactions(
 // A typical month's spending for the emergency fund, from the year the cushion card reads (profile
 // history, cushionSpendCents): whether a bill is rare can't be told from the few months averaged.
 export async function loadTypicalMonthlySpending(
-  db: Pick<ScopedDb, "transactions">,
+  db: Pick<ScopedDb, "transactions" | "accounts">,
   asOf: string,
   now: Date,
 ): Promise<number> {
@@ -27,22 +29,28 @@ export async function loadTypicalMonthlySpending(
 }
 
 async function transactionsSince(
-  db: Pick<ScopedDb, "transactions">,
+  db: Pick<ScopedDb, "transactions" | "accounts">,
   since: Date,
 ): Promise<InsightTransaction[]> {
-  const rows = await db.transactions.findMany({
-    where: { date: { gte: since } },
-    select: {
-      id: true,
-      accountId: true,
-      date: true,
-      amountCents: true,
-      description: true,
-      merchantName: true,
-      pfcPrimary: true,
-      pfcDetailed: true,
-      pending: true,
-    },
-  });
-  return rows.map((t) => ({ ...t, date: t.date.toISOString().slice(0, 10) }));
+  const [rows, copies] = await Promise.all([
+    db.transactions.findMany({
+      where: { date: { gte: since } },
+      select: {
+        id: true,
+        accountId: true,
+        date: true,
+        amountCents: true,
+        description: true,
+        merchantName: true,
+        pfcPrimary: true,
+        pfcDetailed: true,
+        pending: true,
+      },
+    }),
+    accountCopies(db),
+  ]);
+  return withoutCopies(rows, copies, (t) => t.accountId).map((t) => ({
+    ...t,
+    date: t.date.toISOString().slice(0, 10),
+  }));
 }

@@ -2,6 +2,7 @@ import { cronAuthorized } from "@/lib/cron-auth";
 import { NextResponse } from "next/server";
 import { runDigests } from "@/lib/digest/send";
 import { sendErrorDigest } from "@/lib/error-alerts";
+import { sendAccuracyEmail } from "@/lib/invariants/accuracy-email";
 import { sendOpsDigest } from "@/lib/ops-alerts";
 import { recordRun, reportMissedJobs } from "@/lib/health";
 import { runDueJobs } from "@/lib/jobs";
@@ -42,6 +43,12 @@ export async function GET(request: Request) {
     await sendOpsDigest();
   } catch (error) {
     log.error("Ops digest failed", { error: String(error) });
+  }
+  // And the morning's accuracy checks, when one failed, by check name (src/lib/invariants/accuracy.ts).
+  try {
+    await sendAccuracyEmail();
+  } catch (error) {
+    log.error("Accuracy email failed", { error: String(error) });
   }
   return NextResponse.json(
     await recordRun("digest", async () => {

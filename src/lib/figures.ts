@@ -1,3 +1,4 @@
+import { accountCopies, withoutCopies } from "@/lib/account-copies";
 import {
   FIGURE_CORRECTIONS,
   FIGURE_LABELS,
@@ -266,14 +267,17 @@ export async function explainFigure(
   }
 
   if (id === "net_worth") {
-    const [accounts, owned] = await Promise.all([
+    const [listedAccounts, owned, copies] = await Promise.all([
       db.accounts.findMany({
         select: { id: true, name: true, type: true, currentBalanceCents: true },
       }),
       db.ownedAssets.findMany({
         select: { id: true, name: true, valueCents: true, valuedOn: true },
       }),
+      accountCopies(db),
     ]);
+    // An account linked twice counts once (src/lib/account-copies.ts).
+    const accounts = withoutCopies(listedAccounts, copies, (a) => a.id);
     const worth = netWorth(
       accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })),
       owned.map((o) => ({ id: o.id, valueCents: o.valueCents, valuedOn: iso(o.valuedOn) })),

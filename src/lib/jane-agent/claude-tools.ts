@@ -1,3 +1,4 @@
+import { accountCopies, withoutCopies } from "@/lib/account-copies";
 import { oneLine } from "@/lib/untrusted-text";
 import { adviceMode } from "@/lib/advice-mode";
 import { log } from "@/lib/log";
@@ -1406,13 +1407,16 @@ async function runChatToolWork(
     }
     case "net_worth": {
       const db = scopedFor(userId, client);
-      const [accounts, owned, crypto] = await Promise.all([
+      const [listedAccounts, owned, crypto, copies] = await Promise.all([
         db.accounts.findMany({
           select: { id: true, name: true, type: true, subtype: true, currentBalanceCents: true },
         }),
         db.ownedAssets.findMany({ select: { id: true, valueCents: true, valuedOn: true } }),
         cryptoTotal(userId, { client }),
+        accountCopies(db),
       ]);
+      // An account linked twice counts once (src/lib/account-copies.ts).
+      const accounts = withoutCopies(listedAccounts, copies, (a) => a.id);
       const worth = netWorth(
         accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })),
         owned.map((o) => ({ ...o, valuedOn: o.valuedOn.toISOString().slice(0, 10) })),

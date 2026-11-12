@@ -135,7 +135,9 @@ export function plaidStream(
     isActive: true,
     pfcPrimary: "ENTERTAINMENT",
     pfcDetailed: "ENTERTAINMENT_TV_AND_MOVIES",
-    transactionIds: [],
+    // A mature stream: Plaid has seen three charges (none of them among a test's own rows unless
+    // it says so). A stream on fewer than two isn't counted (PLAID_STREAM_MIN_CHARGES).
+    transactionIds: ["plaid_seen_a", "plaid_seen_b", "plaid_seen_c"],
     ...overrides,
   };
 }

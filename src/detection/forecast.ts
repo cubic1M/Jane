@@ -9,6 +9,7 @@ import {
   NOT_BILL_HABIT_FREQUENCIES,
   NOT_BILL_HABIT_PRIMARIES,
   OWN_ACCOUNT_TRANSFERS,
+  PLAID_STREAM_MIN_CHARGES,
   UNEVEN_PAY_LOOKBACK_DAYS,
   UNEVEN_PAY_LOOKBACK_MONTHS,
   UNEVEN_PAY_MIN_DEPOSITS,
@@ -93,7 +94,12 @@ export function incomeStreams(input: DetectionInput): Stream[] {
     input.transactions.flatMap((t) => (t.plaidTransactionId ? [[t.plaidTransactionId, t]] : [])),
   );
   const plaid = input.recurringStreams
-    .filter((s) => s.averageAmountCents < 0 && s.pfcPrimary === "INCOME")
+    .filter(
+      (s) =>
+        s.averageAmountCents < 0 &&
+        s.pfcPrimary === "INCOME" &&
+        s.transactionIds.length >= PLAID_STREAM_MIN_CHARGES,
+    )
     .map((s) =>
       fromPlaidStream(
         { ...s, lastAmountCents: -s.lastAmountCents, averageAmountCents: -s.averageAmountCents },

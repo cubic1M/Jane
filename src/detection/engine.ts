@@ -169,7 +169,7 @@ async function loadInput(
   client: PrismaClient,
 ): Promise<DetectionInput> {
   const cutoff = monthsBefore(asOf, LOOKBACK_MONTHS);
-  const [allAccounts, allTransactions, streams, cancelled, directory, first, balanceDays] =
+  const [allAccounts, allTransactions, allStreams, cancelled, directory, first, balanceDays] =
     await Promise.all([
       db.accounts.findMany({
         select: {
@@ -234,10 +234,12 @@ async function loadInput(
     }
   }
 
-  // Books QA: an account linked twice (through two logins) counts once.
+  // Books QA: an account linked twice (through two logins) counts once, its Plaid streams too (beta
+  // accuracy: a bank linked again showed every bill and payday twice in the cash flow).
   const copies = copiesToLeaveOut(allAccounts);
   const accounts = allAccounts.filter((a) => !copies.has(a.id));
   const transactions = allTransactions.filter((t) => !copies.has(t.accountId));
+  const streams = allStreams.filter((s) => !copies.has(s.accountId));
 
   // Company names and categories from the merchant directory (detection/merchants.ts).
   return withDirectory(

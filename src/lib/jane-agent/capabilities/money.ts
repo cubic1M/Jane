@@ -1,3 +1,4 @@
+import { accountCopies, withoutCopies } from "@/lib/account-copies";
 import { FORECAST_DAYS } from "@/config/detection";
 import { loadSnapshotFast } from "../snapshot-store";
 import { loadDetectionInput } from "@/detection/engine";
@@ -185,13 +186,16 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     // What they own and owe, from the net worth page's own math.
     case "net_worth": {
       const db = scopedFor(userId, client);
-      const [accounts, owned, crypto] = await Promise.all([
+      const [listedAccounts, owned, crypto, copies] = await Promise.all([
         db.accounts.findMany({
           select: { id: true, name: true, type: true, subtype: true, currentBalanceCents: true },
         }),
         db.ownedAssets.findMany({ select: { id: true, valueCents: true, valuedOn: true } }),
         cryptoTotal(userId, { client }),
+        accountCopies(db),
       ]);
+      // An account linked twice counts once (src/lib/account-copies.ts).
+      const accounts = withoutCopies(listedAccounts, copies, (a) => a.id);
       return netWorthReply(
         netWorth(
           accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })),

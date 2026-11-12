@@ -1,3 +1,4 @@
+import { accountCopies, withoutCopies } from "@/lib/account-copies";
 import { areaOfCapability } from "@/config/areas";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { FORECAST_DAYS, LOW_BALANCE_CUSHION_CENTS } from "@/config/detection";
@@ -17,6 +18,7 @@ import { listMerchantRules } from "@/lib/categories";
 import { cryptoTotal } from "@/lib/crypto/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { todayOf } from "@/lib/today";
 import { frequencyWords } from "@/lib/explain-input";
 import { listGoals } from "@/lib/goals";
 import { listTransfers } from "@/lib/money-movement/transfers";
@@ -47,10 +49,11 @@ export async function loadMoneyArea(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<MoneyArea> {
   const db = scopedFor(userId, client);
-  const asOf = now.toISOString().slice(0, 10);
+  // The person's own day, as every other page reads it (3pm and 7pm in Los Angeles agree).
+  const asOf = await todayOf(userId, { client, now });
   const [
     input,
-    accounts,
+    listedAccounts,
     owned,
     crypto,
     goals,
@@ -62,6 +65,7 @@ export async function loadMoneyArea(
     books,
     transfers,
     rules,
+    copies,
   ] = await Promise.all([
     loadDetectionInput(userId, { client, now }),
     db.accounts.findMany({
@@ -122,7 +126,10 @@ export async function loadMoneyArea(
     openBooks(userId, { client }),
     listTransfers(userId, { client, now }),
     listMerchantRules(userId, { client }),
+    accountCopies(db),
   ]);
+  // An account linked twice counts once (src/lib/account-copies.ts).
+  const accounts = withoutCopies(listedAccounts, copies, (a) => a.id);
 
   input.subscriptionMerchantKeys = confirmed
     .filter((c) => c.isSubscription)
