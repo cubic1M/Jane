@@ -444,6 +444,7 @@ model User {
   importRuns           ImportRun[]
   problemReports       ProblemReport[]
   userFacts            UserFact[]
+  findingArrivals      FindingArrival[]
 
   @@map("users")
 }
@@ -1568,12 +1569,40 @@ model Finding {
   createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt          DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   decisions Decision[]
+  arrival   FindingArrival?
 
   @@unique([userId, type, key])
   @@index([userId, status])
   @@map("findings")
+}
+
+// When and why a finding first appeared (src/lib/live/arrivals.ts): what set the scan off (a bank's
+// webhook, a sync, an offer that changed), when that happened, and how long until the finding
+// existed. One row per finding, so a second scan of the same change records nothing twice. Also
+// whether Jane told the person at once, or why not (below the bar, quiet hours, today's one used).
+model FindingArrival {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  findingId String   @unique @map("finding_id")
+  // webhook, sync, import, offer or daily.
+  trigger   String
+  // When the change happened: the webhook's arrival, or the scan's start.
+  triggerAt DateTime @map("trigger_at") @db.Timestamptz(3)
+  foundAt   DateTime @map("found_at") @db.Timestamptz(3)
+  latencyMs Int      @map("latency_ms")
+  // posted (told now), or why not: first_scan, below_bar, quiet_hours, chatting, today_used,
+  // sample, demo.
+  notice    String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  finding Finding @relation(fields: [findingId], references: [id], onDelete: Cascade)
+
+  @@index([userId, notice, createdAt])
+  @@index([trigger, createdAt])
+  @@map("finding_arrivals")
 }
 
 // Append-only log of every yes or no, with the card exactly as the user saw it.

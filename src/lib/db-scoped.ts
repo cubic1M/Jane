@@ -235,6 +235,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     borrowingChecks: scoped.borrowingCheck,
     balanceTransfers: scoped.balanceTransfer,
     findings: scoped.finding,
+    // When and why each finding first appeared (src/lib/live/arrivals.ts).
+    findingArrivals: scoped.findingArrival,
     decisions: scoped.decision,
     actions: scoped.action,
     digests: scoped.digest,
