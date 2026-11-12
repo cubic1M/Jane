@@ -4,7 +4,14 @@ import { notCounting, owedIsKnown, type Unbalanced } from "@/insights/net-worth"
 import { formatCents } from "@/lib/money";
 import { monthLabel } from "@/lib/day-label";
 import { CATEGORY_UP_MIN_CENTS, CATEGORY_UP_MIN_SHARE } from "@/config/insights";
-import { buildAreaTree, firstSentences, worthFigure, type AreaItem, type AreaTree } from "./tree";
+import {
+  type AreaItem,
+  type AreaTree,
+  buildAreaTree,
+  firstSentences,
+  shortLabel,
+  worthFigure,
+} from "./tree";
 
 // Spending & bills as a tree (docs/design/area-pages.md): Spending & bills → its branches
 // (charges to look at, what's coming up, subscriptions, budgets, yearly bills, where it goes,
@@ -171,7 +178,7 @@ export const dayLabel = (day: string) =>
 const perYear = (cents: number) => `${shortMoney(cents)}/yr`;
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 // A name as a label: its first six words (a merchant's or a category's name is rarely more).
-const asLabel = (name: string) => name.trim().split(/\s+/).slice(0, 6).join(" ");
+const asLabel = (name: string) => shortLabel(name);
 
 export function moneyTree(input: MoneyTreeInput): AreaTree {
   const item = (branch: MoneyBranch, key: string, rest: Omit<AreaItem, "id">): AreaItem => ({
