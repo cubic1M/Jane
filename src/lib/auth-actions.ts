@@ -20,6 +20,7 @@ import {
 import { hit, ipKey } from "@/lib/rate-limit";
 import { TERMS_COOKIE } from "@/lib/terms";
 import { HOME_PATH } from "@/lib/session";
+import { draftFrom, SIGNUP_DRAFT_COOKIE, SIGNUP_DRAFT_MINUTES } from "@/lib/signup-draft";
 import { deleteTrialPerson } from "@/lib/trial-delete";
 import { isStatementTrialUser, isTrialUser } from "@/lib/trial-ids";
 
@@ -91,11 +92,21 @@ const SHORT_COOKIE = {
   path: "/",
 };
 
+// Back to /signup with what was wrong, and what they typed kept for the form (src/lib/signup-draft.ts).
+async function backToSignup(formData: FormData, error: string): Promise<never> {
+  (await cookies()).set(SIGNUP_DRAFT_COOKIE, draftFrom(formData), {
+    ...SHORT_COOKIE,
+    maxAge: SIGNUP_DRAFT_MINUTES * 60,
+    path: "/signup",
+  });
+  redirect(`/signup?error=${error}`);
+}
+
 // Sign-up (a form with an invite field) needs the Terms box ticked; the consent is
 // recorded once the account exists (see auth-events.ts).
 async function requireConsent(formData: FormData): Promise<void> {
   if (!formData.has("invite") && !formData.has("consent")) return;
-  if (formData.get("consent") !== "on") redirect("/signup?error=ConsentRequired");
+  if (formData.get("consent") !== "on") await backToSignup(formData, "ConsentRequired");
   (await cookies()).set(TERMS_COOKIE, TERMS_VERSION, SHORT_COOKIE);
 }
 
@@ -118,7 +129,7 @@ export async function signInWithEmail(formData: FormData): Promise<void> {
     const result = await redeemInvite(invite, email);
     if (result !== "ok") {
       await recordFailedSignIn(`invite_${result}`);
-      redirect(`/signup?error=${INVITE_ERRORS[result]}`);
+      await backToSignup(formData, INVITE_ERRORS[result]);
     }
   }
   await signInOrShowError("resend", { email: email.trim() });
