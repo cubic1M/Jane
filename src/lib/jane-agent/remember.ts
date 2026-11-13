@@ -1,6 +1,7 @@
 import type { PreferenceDraft } from "./preferences";
 import { parseStyle } from "./style";
 import { dateAndDays } from "./sources/source";
+import { ordinal } from "@/planning/due-dates";
 
 // Things the person tells Jane about themselves (spec step 91), understood by rules: their
 // payday, something they need ("I need my car", "don't cancel Netflix") or anything after
@@ -15,12 +16,6 @@ const PAYDAY = new RegExp(
 const KEEP =
   /^i (?:really )?(?:need|use|love|want to keep|can'?t live without|keep using) (?:my |the |our )?(.+)$|^(?:don'?t|never|stop) (?:cancel(?:ling)?|suggest(?:ing)?(?: (?:cancell?ing|that i cancel|i cancel))?) (?:my |the |our )?(.+)$|^keep (?:my |the |our )?(.+)$/;
 const REMEMBER = /^(?:please )?remember (?:that )?(.+)$/;
-
-const ordinal = (n: number) => {
-  const tens = n % 100;
-  const suffix = tens >= 11 && tens <= 13 ? "th" : (["th", "st", "nd", "rd"][n % 10] ?? "th");
-  return `${n}${suffix}`;
-};
 
 const sentence = (text: string) => {
   const t = text.trim().replace(/[.!]+$/, "");

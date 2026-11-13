@@ -1,5 +1,5 @@
 import type { EventKind, NetWorthEvent } from "./net-worth-events";
-import { DAY_MS } from "@/lib/dates";
+import { dayNumber, fromDayNumber } from "@/detection/units";
 
 // Every movement on the expanded net worth chart (founder: "the expansion of the networth graph
 // should have a dot for EVERY single little movement in cash, so you can zoom in on each to know
@@ -29,9 +29,6 @@ const KINDS: readonly EventKind[] = [
   "jane_saved",
   "transfer",
 ];
-
-const dayNumber = (iso: string) => Math.round(Date.parse(`${iso}T00:00:00Z`) / DAY_MS);
-const isoOf = (n: number) => new Date(n * DAY_MS).toISOString().slice(0, 10);
 
 export function encodeMovements(from: string, events: readonly NetWorthEvent[]): MovementWire {
   const strings: string[] = [];
@@ -66,7 +63,7 @@ export function decodeMovements(wire: MovementWire): NetWorthEvent[] {
   const start = dayNumber(wire.from);
   const str = (i: number) => (i < 0 ? undefined : wire.strings[i]);
   return wire.rows.map(([day, cents, moved, kind, label, name, account, href]) => ({
-    date: isoOf(start + day),
+    date: fromDayNumber(start + day),
     kind: KINDS[kind] ?? "purchase",
     label: str(label) ?? "",
     cents,

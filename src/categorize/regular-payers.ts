@@ -23,8 +23,9 @@ import {
   REGULAR_PAYER_OWN_MONEY_SHARE,
   REGULAR_PAYER_PERSON_WORD,
 } from "@/config/detection";
-import { DAY_MS, isoDay } from "@/lib/dates";
+import { isoDay } from "@/lib/dates";
 import type { ScopedDb } from "@/lib/db-scoped";
+import { dayNumber } from "@/detection/units";
 
 // Pay with no pay word in the line (debugger 11-02): "NORTHWIND LABS" matched no rule, and Claude
 // is only asked what a typical purchase at a merchant is, so a person's pay wasn't income on any
@@ -62,8 +63,6 @@ const spread = (xs: number[]) => {
   const variance = xs.reduce((s, x) => s + (x - mean) ** 2, 0) / xs.length;
   return mean === 0 ? Infinity : Math.sqrt(variance) / mean;
 };
-
-const dayNumber = (day: string) => Date.parse(`${day}T00:00:00Z`) / DAY_MS;
 
 function isRegularPay(rows: readonly PayerRow[]): boolean {
   if (rows.length < CASH_INCOME_MIN_DEPOSITS) return false;

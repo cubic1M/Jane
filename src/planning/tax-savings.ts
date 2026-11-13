@@ -8,7 +8,7 @@ import {
   PAYROLL_TAX,
   SELF_EMPLOYMENT_TAX,
 } from "@/config/tax-rates";
-import { formatCents } from "@/lib/money";
+import { formatWholeDollars } from "@/lib/money";
 import { estimateTaxes, type EstimateInput, type TaxEstimate } from "./tax-estimate";
 import { addDays } from "@/lib/dates";
 
@@ -67,7 +67,6 @@ export type SavingsInput = {
 };
 
 const total = (e: TaxEstimate) => e.totalTaxCents + (e.state?.taxCents ?? 0);
-const dollars = (cents: number) => formatCents(Math.round(cents / 100) * 100).replace(/\.00$/, "");
 
 // The next time a MM-DD comes round, today or later.
 const nextDate = (today: string, monthDay: string) => {
@@ -124,14 +123,14 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
       out.push({
         key: "retirement",
         title: thisYear
-          ? `Put about ${dollars(perPaycheck)} more a paycheck into your 401(k)`
+          ? `Put about ${formatWholeDollars(perPaycheck)} more a paycheck into your 401(k)`
           : "Raise your 401(k) contribution from January",
-        why: `You're on course to put ${dollars(s.pay.projectedRetirementCents)} into your workplace plan this year, and the ${s.year} limit is ${dollars(CONTRIBUTION_LIMITS.workplace)} (more from age 50). Pre-tax contributions come off your taxable pay${thisYear ? `: ${dollars(extra)} more over your last ${s.pay.paychecksLeft} paychecks` : ""}.`,
+        why: `You're on course to put ${formatWholeDollars(s.pay.projectedRetirementCents)} into your workplace plan this year, and the ${s.year} limit is ${formatWholeDollars(CONTRIBUTION_LIMITS.workplace)} (more from age 50). Pre-tax contributions come off your taxable pay${thisYear ? `: ${formatWholeDollars(extra)} more over your last ${s.pay.paychecksLeft} paychecks` : ""}.`,
         estimateCents: saved(lessWages(extra)),
         action: {
           kind: "task",
           title: thisYear
-            ? `Raise my 401(k) contribution by ${dollars(perPaycheck)} a paycheck`
+            ? `Raise my 401(k) contribution by ${formatWholeDollars(perPaycheck)} a paycheck`
             : "Raise my 401(k) contribution for next year",
           dueOn: thisYear ? addDays(s.today, 7) : `${s.year + 1}-01-15`,
           note: "Change it on your employer's payroll or benefits site.",
@@ -145,7 +144,7 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
     if (room > 0) {
       out.push({
         key: "ira",
-        title: `Put up to ${dollars(CONTRIBUTION_LIMITS.ira)} in a traditional IRA for ${s.year}`,
+        title: `Put up to ${formatWholeDollars(CONTRIBUTION_LIMITS.ira)} in a traditional IRA for ${s.year}`,
         why: `With no workplace plan, a traditional IRA contribution comes off your income. You have until the April filing deadline to make one for ${s.year}.`,
         estimateCents: saved((i) => ({
           ...i,
@@ -169,7 +168,7 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
     out.push({
       key: "hsa",
       title: "Use your HSA's room",
-      why: `You have an HSA. Up to ${dollars(limit)} a year (${s.year}) goes in before tax, through payroll free of payroll tax too, and comes out tax-free for medical costs.`,
+      why: `You have an HSA. Up to ${formatWholeDollars(limit)} a year (${s.year}) goes in before tax, through payroll free of payroll tax too, and comes out tax-free for medical costs.`,
       estimateCents: saved(lessWages(limit)) + payroll(limit),
       action: {
         kind: "task",
@@ -186,14 +185,14 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
     const amount = Math.min(s.medicalCents, CONTRIBUTION_LIMITS.healthFsa);
     out.push({
       key: "health_fsa",
-      title: `Pay about ${dollars(amount)} of medical costs from a health FSA`,
-      why: `You spend about ${dollars(s.medicalCents)} a year on medical costs. Paid from a health FSA (up to ${dollars(CONTRIBUTION_LIMITS.healthFsa)}), that money skips income and payroll tax. Most employers let you sign up at open enrollment.`,
+      title: `Pay about ${formatWholeDollars(amount)} of medical costs from a health FSA`,
+      why: `You spend about ${formatWholeDollars(s.medicalCents)} a year on medical costs. Paid from a health FSA (up to ${formatWholeDollars(CONTRIBUTION_LIMITS.healthFsa)}), that money skips income and payroll tax. Most employers let you sign up at open enrollment.`,
       estimateCents: saved(lessWages(amount)) + payroll(amount),
       action: {
         kind: "task",
         title: "Sign up for a health FSA at open enrollment",
         dueOn: nextDate(s.today, OPEN_ENROLLMENT_BY),
-        note: `About ${dollars(amount)} for the year.`,
+        note: `About ${formatWholeDollars(amount)} for the year.`,
       },
     });
   }
@@ -221,15 +220,15 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
         ? `Pay childcare through a dependent care FSA`
         : "Claim the child and dependent care credit",
       why: useFsa
-        ? `You spend about ${dollars(s.childcareCents)} a year on childcare. Up to ${dollars(limit)} of it from a dependent care FSA skips income and payroll tax: more than the credit would give (about ${dollars(credit)}).`
-        : `You spend about ${dollars(s.childcareCents)} a year on childcare. The credit is worth more to you than a dependent care FSA (about ${dollars(fsa)}).`,
+        ? `You spend about ${formatWholeDollars(s.childcareCents)} a year on childcare. Up to ${formatWholeDollars(limit)} of it from a dependent care FSA skips income and payroll tax: more than the credit would give (about ${formatWholeDollars(credit)}).`
+        : `You spend about ${formatWholeDollars(s.childcareCents)} a year on childcare. The credit is worth more to you than a dependent care FSA (about ${formatWholeDollars(fsa)}).`,
       estimateCents: Math.max(fsa, credit),
       action: useFsa
         ? {
             kind: "task",
             title: "Sign up for a dependent care FSA at open enrollment",
             dueOn: nextDate(s.today, OPEN_ENROLLMENT_BY),
-            note: `About ${dollars(amount)} for the year.`,
+            note: `About ${formatWholeDollars(amount)} for the year.`,
           }
         : { kind: "link", label: "See your childcare tags", href: "/taxes/tags" },
     });
@@ -241,7 +240,7 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
     out.push({
       key: "itemize",
       title: "Itemize: it's worth more than the standard deduction",
-      why: `Your mortgage interest, state taxes and gifts come to about ${dollars(d.itemizedCents)}, more than the ${dollars(d.standardCents)} standard deduction. Keep the receipts; your tax tags and forms have them.`,
+      why: `Your mortgage interest, state taxes and gifts come to about ${formatWholeDollars(d.itemizedCents)}, more than the ${formatWholeDollars(d.standardCents)} standard deduction. Keep the receipts; your tax tags and forms have them.`,
       estimateCents: Math.round(margin * s.estimate.marginalRate),
       action: { kind: "link", label: "See tax tags", href: "/taxes/tags" },
     });
@@ -256,13 +255,13 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
     out.push({
       key: "bunch_gifts",
       title: "Give next year's donations this December",
-      why: `Two years of gifts in one (about ${dollars(gifts * 2)}) would take your itemized deductions past the ${dollars(d.standardCents)} standard deduction this year; next year you'd take the standard deduction as usual.`,
+      why: `Two years of gifts in one (about ${formatWholeDollars(gifts * 2)}) would take your itemized deductions past the ${formatWholeDollars(d.standardCents)} standard deduction this year; next year you'd take the standard deduction as usual.`,
       estimateCents: thisYear - nextYearLoss,
       action: {
         kind: "task",
         title: "Give next year's donations before Dec 31",
         dueOn: `${s.year}-12-15`,
-        note: `About ${dollars(gifts)}, to the charities you already give to.`,
+        note: `About ${formatWholeDollars(gifts)}, to the charities you already give to.`,
       },
     });
   }
@@ -271,7 +270,7 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
     out.push({
       key: "student_loan",
       title: "Your student loan interest lowers your tax",
-      why: `About ${dollars(s.estimate.adjustments.studentLoanInterestCents)} of student loan interest comes off your income. Your servicer's 1098-E shows the exact amount.`,
+      why: `About ${formatWholeDollars(s.estimate.adjustments.studentLoanInterestCents)} of student loan interest comes off your income. Your servicer's 1098-E shows the exact amount.`,
       // What taking it away would cost.
       estimateCents: -saved((i) => ({ ...i, studentLoanInterestCents: 0 })),
       action: { kind: "link", label: "See tax forms", href: "/taxes?focus=records:forms" },
@@ -292,7 +291,7 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
     out.push({
       key: "education_credit",
       title: "Claim an education credit for tuition",
-      why: `You paid about ${dollars(tuition)} to ${payee} this year. The Lifetime Learning Credit is 20% of up to ${dollars(EDUCATION_CREDITS.llcCostLimit)}; for a student in their first four years of college, the American Opportunity Credit can be more.`,
+      why: `You paid about ${formatWholeDollars(tuition)} to ${payee} this year. The Lifetime Learning Credit is 20% of up to ${formatWholeDollars(EDUCATION_CREDITS.llcCostLimit)}; for a student in their first four years of college, the American Opportunity Credit can be more.`,
       estimateCents: saved((i) => ({
         ...i,
         otherCreditsCents: (i.otherCreditsCents ?? 0) + credit,
@@ -315,7 +314,7 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
     out.push({
       key: "energy_credit",
       title: `Claim the ${s.year - 1} energy credit for ${job.payee}`,
-      why: `You paid ${job.payee} about ${dollars(job.cents)} in ${s.year - 1}. Home energy work finished in ${s.year - 1} can still get 30% back on that year's return (Form 5695), amended if it's already filed. These credits ended for work after 2025.`,
+      why: `You paid ${job.payee} about ${formatWholeDollars(job.cents)} in ${s.year - 1}. Home energy work finished in ${s.year - 1} can still get 30% back on that year's return (Form 5695), amended if it's already filed. These credits ended for work after 2025.`,
       estimateCents: credit,
       action: {
         kind: "task",

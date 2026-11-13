@@ -7,7 +7,7 @@ import {
   CASH_INCOME_MIN_SPAN_DAYS,
   CASH_INCOME_ONE_OFF_FACTOR,
 } from "@/config/detection";
-import { DAYS_PER_MONTH } from "@/detection/units";
+import { DAYS_PER_MONTH, dayNumber } from "@/detection/units";
 import { DAY_MS, isoDay } from "@/lib/dates";
 import type { ScopedDb } from "@/lib/db-scoped";
 import { confidenceOf } from "@/profile/confidence";
@@ -54,8 +54,6 @@ const spread = (xs: number[]) => {
   const variance = xs.reduce((s, x) => s + (x - mean) ** 2, 0) / xs.length;
   return Math.sqrt(variance) / mean;
 };
-
-const dayNumber = (day: string) => Date.parse(`${day}T00:00:00Z`) / DAY_MS;
 
 // The person said these deposits aren't income.
 export function saidNotIncome(rows: readonly DepositRow[]): boolean {
