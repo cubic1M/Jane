@@ -9,10 +9,14 @@ export function CorrectForm({
   factKey,
   choices,
   placeholder,
+  current,
 }: {
   factKey: string;
   choices?: readonly string[];
   placeholder: string;
+  // What Jane holds now: a choice box starts on it, not on its first choice (debugger 11-13: "You
+  // pay for Medicare supplement cover: no" sat over a box reading "yes").
+  current?: string;
 }) {
   const [state, action, pending] = useActionState<CorrectState, FormData>(correctProfileFact, null);
   return (
@@ -25,11 +29,12 @@ export function CorrectForm({
         <select
           id={`answer-${factKey}`}
           name="answer"
+          defaultValue={current}
           className="h-10 rounded-lg border border-zinc-300 bg-white px-2 dark:border-zinc-700 dark:bg-zinc-900"
         >
           {choices.map((c) => (
             <option key={c} value={c}>
-              {choiceWords(c)}
+              {choiceWords(c, factKey)}
             </option>
           ))}
         </select>

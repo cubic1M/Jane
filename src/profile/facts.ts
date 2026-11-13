@@ -126,13 +126,21 @@ const CHOICE_WORDS: Readonly<Record<string, string>> = {
   peak: "peak earning years",
   approaching: "approaching retirement",
 };
-export const choiceWords = (choice: string) => CHOICE_WORDS[choice] ?? choice.replaceAll("_", " ");
+// A code two facts share, said differently by each: "single" is "just you" for a household and
+// "single" for a tax return (debugger 11-13: "How you file taxes: just you").
+const FACT_CHOICE_WORDS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  filing_status: { single: "single" },
+};
+export const choiceWords = (choice: string, key?: string) =>
+  (key ? FACT_CHOICE_WORDS[key]?.[choice] : undefined) ??
+  CHOICE_WORDS[choice] ??
+  choice.replaceAll("_", " ");
 
 // A fact's value in words, where the stored value isn't how anyone says it. Money and yes or no are
 // said where they're shown.
 export function factWords(key: string, value: string | number): string {
   if (key === "mortgage_rate_bps") return `${(Number(value) / 100).toFixed(2)}%`;
-  return factSpec(key)?.kind === "choice" ? choiceWords(String(value)) : String(value);
+  return factSpec(key)?.kind === "choice" ? choiceWords(String(value), key) : String(value);
 }
 
 export const FACT_KEYS = FACT_SPECS.map((f) => f.key) as readonly FactKey[];
