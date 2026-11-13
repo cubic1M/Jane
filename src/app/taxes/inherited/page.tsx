@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { INHERITED_HREF, inheritanceLines } from "@/lib/jane-agent/inheritance-message";
 import { loadInheritance } from "@/lib/inheritance";
 import { requireUser } from "@/lib/session";
+import { PageShell } from "@/components/page-shell";
 
 // Inherited money and gifts (spec step 268): an inherited IRA's deadline under the 10-year rule
 // and (demo advice) spreading it, gifts over the annual exclusion that need Form 709, the
@@ -59,10 +59,8 @@ async function Content() {
 
 export default function InheritedPage() {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <Content />
-      </Suspense>
-    </main>
+    <PageShell>
+      <Content />
+    </PageShell>
   );
 }

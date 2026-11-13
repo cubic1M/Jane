@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { LOW_COST_SOURCE } from "@/config/costly-products";
 import { loadCostlyProducts, type ProductView } from "@/lib/investments/costly-products";
@@ -11,6 +10,7 @@ import { answer, demoProducts } from "./actions";
 import { ProductForm } from "./product-form";
 import { SubmitButton } from "@/components/submit-button";
 import { dayLabel } from "@/lib/day-label";
+import { PageShell } from "@/components/page-shell";
 
 // What costly products really cost (spec step 215, demo advice): annuities, whole life and
 // advisory fees in dollars, with the surrender charge by year, what the same money would do
@@ -186,10 +186,8 @@ async function Content({
 
 export default function CostlyProductsPage(props: PageProps<"/investments/costly-products">) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <Content searchParams={props.searchParams} />
-      </Suspense>
-    </main>
+    <PageShell>
+      <Content searchParams={props.searchParams} />
+    </PageShell>
   );
 }

@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { dayLabel } from "@/lib/day-label";
 import { loadAccountantPage } from "@/lib/accountant";
 import { requireUser } from "@/lib/session";
 import { CreateForm, RevokeButton, SeenButton } from "./forms";
+import { PageShell } from "@/components/page-shell";
 
 // Working with an accountant (spec step 222): a read-only link, and what comes back.
 
@@ -114,10 +114,8 @@ async function Content() {
 
 export default function AccountantPage() {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <Content />
-      </Suspense>
-    </main>
+    <PageShell>
+      <Content />
+    </PageShell>
   );
 }

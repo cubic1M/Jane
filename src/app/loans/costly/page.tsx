@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { COSTLY_LABELS, COSTLY_SOURCES, PAL } from "@/config/costly-borrowing";
 import { loadCostlyBorrowing } from "@/lib/costly-borrowing";
@@ -9,6 +8,7 @@ import { wayOutLines } from "@/lib/jane-agent/costly-borrowing-replies";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { formatRate } from "@/lib/percent";
+import { PageShell } from "@/components/page-shell";
 
 // Out of costly short-term borrowing (spec step 247): what payday loans, cash advances,
 // overdrafts and pay advance apps cost over the last year, in dollars and as a yearly rate, and
@@ -95,10 +95,8 @@ async function CostlyContent() {
 
 export default function CostlyPage() {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <CostlyContent />
-      </Suspense>
-    </main>
+    <PageShell>
+      <CostlyContent />
+    </PageShell>
   );
 }

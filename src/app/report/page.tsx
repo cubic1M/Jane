@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { ShownLink } from "@/components/shown-link";
-import { Suspense } from "react";
 import { AccountList } from "@/components/account-list";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { TryFeedbackBox } from "@/components/try-feedback-box";
 import { ViewTracker } from "@/components/view-tracker";
 import { isFirstDetectionComplete, moneyFoundParts, yearlyFoundCents } from "@/detection/engine";
@@ -42,6 +41,7 @@ import { todayOf } from "@/lib/today";
 import { formatCents } from "@/lib/money";
 import { unseenCardPaymentsMonthly } from "@/lib/unseen-cards";
 import { SUGGESTED_UPLOAD_MONTHS } from "@/config/import";
+import { PageShell } from "@/components/page-shell";
 
 // Shown while the first scan runs, so the person knows what we look at. Once it's done, the
 // checkup (./checkup.tsx) says what each check found.
@@ -361,10 +361,8 @@ function OldStatements({ day }: { day: string }) {
 
 export default function ReportPage({ searchParams }: PageProps<"/report">) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <ReportContent searchParams={searchParams} />
-      </Suspense>
-    </main>
+    <PageShell layout="roomy">
+      <ReportContent searchParams={searchParams} />
+    </PageShell>
   );
 }

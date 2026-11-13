@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { SubmitButton } from "@/components/submit-button";
 import type { FactSource } from "@/config/memory";
 import { dayLabel } from "@/lib/day-label";
@@ -10,6 +9,7 @@ import { requireUser } from "@/lib/session";
 import { factSpec } from "@/profile/facts";
 import { forgetAllMemory, forgetMemoryFact } from "./actions";
 import { CorrectMemoryForm } from "./correct-form";
+import { PageShell } from "@/components/page-shell";
 
 // What Jane knows about you (src/lib/memory/): every fact Jane learned from the person's
 // statements, answers, chat and what they did with its suggestions, with where it came from and
@@ -148,10 +148,8 @@ async function MemoryContent() {
 
 export default function MemoryPage() {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading label="Loading what Jane knows" />}>
-        <MemoryContent />
-      </Suspense>
-    </main>
+    <PageShell label="Loading what Jane knows">
+      <MemoryContent />
+    </PageShell>
   );
 }

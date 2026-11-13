@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { CAR_COST_SOURCE, CAR_TERMS_MONTHS } from "@/config/car";
 import { loadCar } from "@/lib/car";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { formatRate } from "@/lib/percent";
+import { PageShell } from "@/components/page-shell";
 
 // Buying a car (spec step 178): what the person can afford with insurance and running
 // costs in, preapproval offers compared by what they cost in all, and a dealer's financing
@@ -239,10 +239,8 @@ async function CarContent({ searchParams }: Pick<PageProps<"/loans/car">, "searc
 
 export default function CarPage({ searchParams }: PageProps<"/loans/car">) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <CarContent searchParams={searchParams} />
-      </Suspense>
-    </main>
+    <PageShell>
+      <CarContent searchParams={searchParams} />
+    </PageShell>
   );
 }

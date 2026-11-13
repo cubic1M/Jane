@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { PROMO_SOURCE } from "@/config/card-interest";
 import { dayLabel } from "@/lib/day-label";
@@ -11,6 +10,7 @@ import { requireUser } from "@/lib/session";
 import { promoLine } from "@/planning/card-interest";
 import { addPromoAction, removePromoAction, sendRateAction } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { PageShell } from "@/components/page-shell";
 
 // Less interest on every card (spec step 224): each card's interest, what paying earlier
 // saves, 0% promotions with their pace, and a request for a lower rate sent only on a tap.
@@ -215,10 +215,8 @@ async function InterestContent({
 
 export default function InterestPage({ searchParams }: PageProps<"/loans/interest">) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <InterestContent searchParams={searchParams} />
-      </Suspense>
-    </main>
+    <PageShell>
+      <InterestContent searchParams={searchParams} />
+    </PageShell>
   );
 }

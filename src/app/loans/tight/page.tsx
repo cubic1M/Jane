@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { HARDSHIP_SOURCE, TIGHT_ANSWER_DAYS } from "@/config/tight-money";
 import { dayLabel } from "@/lib/day-label";
@@ -10,6 +9,7 @@ import { requireUser } from "@/lib/session";
 import { loadTightMoney } from "@/lib/tight-money";
 import { sendRequestAction } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { PageShell } from "@/components/page-shell";
 
 // When money is tight (spec step 177): the bills in the order to pay them (housing,
 // utilities and insurance first), and the requests Jane prepared, each written out and sent
@@ -132,10 +132,8 @@ async function TightContent({ searchParams }: Pick<PageProps<"/loans/tight">, "s
 
 export default function TightPage({ searchParams }: PageProps<"/loans/tight">) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <TightContent searchParams={searchParams} />
-      </Suspense>
-    </main>
+    <PageShell>
+      <TightContent searchParams={searchParams} />
+    </PageShell>
   );
 }

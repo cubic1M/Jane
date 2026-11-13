@@ -2,8 +2,7 @@ import { accountCopies, withoutCopies } from "@/lib/account-copies";
 import Link from "next/link";
 import { ShownLink } from "@/components/shown-link";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { AssetPrompts } from "@/components/asset-prompts";
 import { NET_WORTH_MONTHS } from "@/config/net-worth";
 import { monthsEnding } from "@/insights/spending";
@@ -26,6 +25,7 @@ import { todayOf } from "@/lib/today";
 import { BooksNotice } from "@/components/books-notice";
 import { openBooks } from "@/lib/books";
 import { monthLabel } from "@/lib/day-label";
+import { PageShell } from "@/components/page-shell";
 
 async function NetWorthContent() {
   const user = await requireUser();
@@ -252,10 +252,8 @@ async function NetWorthContent() {
 
 export default function NetWorthPage() {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <NetWorthContent />
-      </Suspense>
-    </main>
+    <PageShell>
+      <NetWorthContent />
+    </PageShell>
   );
 }

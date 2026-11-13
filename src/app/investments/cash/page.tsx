@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { SimulatedBanner } from "@/components/simulated-banner";
 import {
@@ -19,6 +18,7 @@ import { moveNow } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { dayLabel } from "@/lib/day-label";
 import { formatRate } from "@/lib/percent";
+import { PageShell } from "@/components/page-shell";
 
 // Cash done right (spec step 162, demo advice): where each dollar of cash sits and what it
 // earns, the plan for it, and its moves, each a tap. The emergency fund stays in reach.
@@ -191,10 +191,8 @@ async function CashContent({
 
 export default function CashPage(props: PageProps<"/investments/cash">) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <CashContent searchParams={props.searchParams} />
-      </Suspense>
-    </main>
+    <PageShell>
+      <CashContent searchParams={props.searchParams} />
+    </PageShell>
   );
 }

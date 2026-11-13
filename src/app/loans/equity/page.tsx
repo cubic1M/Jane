@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import {
   ESCROW_EXPLAINER,
@@ -16,6 +15,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { requestSentAction, saveFactsAction } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { PageShell } from "@/components/page-shell";
 
 // A home's equity, used well (spec step 228): PMI against the home's original value, escrow
 // against the real bills, and ways to borrow for a project with each one's total cost (demo
@@ -298,10 +298,8 @@ async function EquityContent({ searchParams }: Pick<PageProps<"/loans/equity">, 
 
 export default function EquityPage({ searchParams }: PageProps<"/loans/equity">) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <EquityContent searchParams={searchParams} />
-      </Suspense>
-    </main>
+    <PageShell>
+      <EquityContent searchParams={searchParams} />
+    </PageShell>
   );
 }

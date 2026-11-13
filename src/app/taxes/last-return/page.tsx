@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
@@ -9,6 +8,7 @@ import { listPriorReturns } from "@/lib/prior-return";
 import { loadReturnReviews } from "@/lib/prior-return/review";
 import { requireUser } from "@/lib/session";
 import { PrepareForm, ReadingForm, SignAmendmentForm } from "./forms";
+import { PageShell } from "@/components/page-shell";
 
 // Last year's return, reviewed (spec step 172): what Jane read from an uploaded return, for
 // the person to confirm; then what it found against their accounts (demo advice); and an
@@ -113,10 +113,8 @@ async function Content() {
 
 export default function LastReturnPage() {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <Content />
-      </Suspense>
-    </main>
+    <PageShell>
+      <Content />
+    </PageShell>
   );
 }

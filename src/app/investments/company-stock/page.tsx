@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { SimulatedBanner } from "@/components/simulated-banner";
 import {
@@ -19,6 +18,7 @@ import { GrantForm } from "./grant-form";
 import { SubmitButton } from "@/components/submit-button";
 import { formatPercent as pct } from "@/lib/percent";
 import { dayLabel } from "@/lib/day-label";
+import { PageShell } from "@/components/page-shell";
 
 // Company stock (spec step 160, demo advice): how much of what's invested is in the
 // employer's stock, what's still to vest, and a plan to sell down in parts with the tax
@@ -168,10 +168,8 @@ async function CompanyContent({
 
 export default function CompanyStockPage(props: PageProps<"/investments/company-stock">) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <CompanyContent searchParams={props.searchParams} />
-      </Suspense>
-    </main>
+    <PageShell>
+      <CompanyContent searchParams={props.searchParams} />
+    </PageShell>
   );
 }

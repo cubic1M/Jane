@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { isHiddenPage } from "@/config/hidden-pages";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { REFI_MIN_SAVING_CENTS } from "@/config/debt";
 import { formatCents } from "@/lib/money";
@@ -16,6 +15,7 @@ import { applyAction, checkNow, endTransferAction, startTransferAction } from ".
 import { SubmitButton } from "@/components/submit-button";
 import { dayLabel } from "@/lib/day-label";
 import { formatRate } from "@/lib/percent";
+import { PageShell } from "@/components/page-shell";
 
 // Refinance offers (spec step 111): for each loan and card, the offers Jane checked, each over
 // the debt's own remaining months, compared with keeping it (paying what you pay now until it's
@@ -342,10 +342,8 @@ async function RefinanceContent({
 
 export default function RefinancePage({ searchParams }: PageProps<"/loans/refinance">) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <RefinanceContent searchParams={searchParams} />
-      </Suspense>
-    </main>
+    <PageShell>
+      <RefinanceContent searchParams={searchParams} />
+    </PageShell>
   );
 }

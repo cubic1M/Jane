@@ -1,6 +1,5 @@
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { FAMILY_LABELS } from "@/config/family-credit";
 import { loadFamilyCredit } from "@/lib/family-credit";
@@ -9,6 +8,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { addAction, missedAction, removeAction } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { PageShell } from "@/components/page-shell";
 
 // Helping family with credit (spec step 249): an authorized user, a first card for a student
 // and co-signing, with the risks shown and a co-signed loan counted in full in your own debt
@@ -146,10 +146,8 @@ async function HelpingContent({ searchParams }: Pick<PageProps<"/loans/helping">
 
 export default function HelpingPage(props: PageProps<"/loans/helping">) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <HelpingContent searchParams={props.searchParams} />
-      </Suspense>
-    </main>
+    <PageShell>
+      <HelpingContent searchParams={props.searchParams} />
+    </PageShell>
   );
 }

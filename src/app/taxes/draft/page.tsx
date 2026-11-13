@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { adviceMode } from "@/lib/advice-mode";
 import { listDraftReturns } from "@/lib/draft-return";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { DraftForm, SampleDraftButton } from "./forms";
+import { PageShell } from "@/components/page-shell";
 
 // Your draft return (spec step 272): a draft uploaded to Documents, read for you to confirm, then
 // checked line by line against what Jane knows for the year. Each thing to fix has its dollars.
@@ -96,10 +96,8 @@ async function Content() {
 
 export default function DraftReturnPage() {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <Content />
-      </Suspense>
-    </main>
+    <PageShell>
+      <Content />
+    </PageShell>
   );
 }

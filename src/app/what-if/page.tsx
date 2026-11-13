@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { SCENARIOS, SCENARIO_LABELS } from "@/config/what-if";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { isScenario, whatIf } from "@/lib/what-if";
+import { PageShell } from "@/components/page-shell";
 
 // What if (spec step 203): pick a scenario, see it month by month and sector by sector,
 // with every assumption shown. Nothing here changes anything; "Use this plan" is in the chat.
@@ -114,10 +114,8 @@ async function WhatIfContent({
 
 export default function WhatIfPage({ searchParams }: PageProps<"/what-if">) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <WhatIfContent searchParams={searchParams} />
-      </Suspense>
-    </main>
+    <PageShell>
+      <WhatIfContent searchParams={searchParams} />
+    </PageShell>
   );
 }

@@ -2,8 +2,7 @@ import { yearlyAndOnce } from "@/lib/report-state";
 import Link from "next/link";
 import { isHiddenPage } from "@/config/hidden-pages";
 import { redirect } from "next/navigation";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { ViewTracker } from "@/components/view-tracker";
 import { scopedDb } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
@@ -28,6 +27,7 @@ import { autopilotOf } from "@/lib/autopilot";
 import { YesToAll } from "./yes-to-all";
 import { loadYearPlan } from "@/lib/year-plan";
 import { YearPlanSection } from "./year-plan-section";
+import { PageShell } from "@/components/page-shell";
 
 // How many items the plan opens with; the rest are behind "More" (founder: "show what matters,
 // hide the rest").
@@ -292,10 +292,8 @@ function setupView(p: Proposal): SetupView {
 
 export default function PlanPage({ searchParams }: PageProps<"/plan">) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading label="Putting your plan together" />}>
-        <Plan searchParams={searchParams} />
-      </Suspense>
-    </main>
+    <PageShell label="Putting your plan together">
+      <Plan searchParams={searchParams} />
+    </PageShell>
   );
 }

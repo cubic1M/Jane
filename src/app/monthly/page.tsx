@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { previousMonth } from "@/insights/check-in";
 import { loadCheckIn, summaryFor } from "@/lib/check-in";
 import { formatCents } from "@/lib/money";
@@ -11,6 +10,7 @@ import { timezoneOf, todayOf } from "@/lib/today";
 import { categoryWords } from "@/planning/month-close";
 import { reportLines } from "@/planning/monthly-report";
 import { momentLabel, monthLabel } from "@/lib/day-label";
+import { PageShell } from "@/components/page-shell";
 
 // The month's one report (spec step 148), with the monthly check-in folded in (spec step 45;
 // docs/feature-audit.md, cluster 2). For any month: Jane's short summary, what was spent and
@@ -262,10 +262,8 @@ function MonthClose({ view, timezone }: { view: CloseView; timezone: string }) {
 
 export default function MonthlyPage({ searchParams }: PageProps<"/monthly">) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <MonthlyContent searchParams={searchParams} />
-      </Suspense>
-    </main>
+    <PageShell>
+      <MonthlyContent searchParams={searchParams} />
+    </PageShell>
   );
 }

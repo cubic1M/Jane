@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { SubmitButton } from "@/components/submit-button";
 import { connectorsOn } from "@/config/connectors";
 import { connectionsView, type ConsentRow } from "@/lib/connectors/consent";
@@ -17,6 +16,7 @@ import {
   cancelConnectorAction,
   revokeConnector,
 } from "./actions";
+import { PageShell } from "@/components/page-shell";
 
 // Connections (docs/connectors.md): what each connector may do for the person, since when, and a
 // way to take it back. A 404 unless CONNECTORS=1.
@@ -235,10 +235,8 @@ async function ConnectionsContent() {
 export default function ConnectionsPage() {
   if (!connectorsOn()) notFound();
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading label="Loading your connections" />}>
-        <ConnectionsContent />
-      </Suspense>
-    </main>
+    <PageShell label="Loading your connections">
+      <ConnectionsContent />
+    </PageShell>
   );
 }
