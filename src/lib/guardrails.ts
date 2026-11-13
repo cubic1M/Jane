@@ -70,6 +70,11 @@ const STOCK_PICKS = [
   new RegExp(
     `\\b[Ii]f I were you,?\\s+(?:I(?:'|’)?d\\s+(?:\\w+\\s+){1,2})?\\$?${NOT_TICKERS}[A-Z]{3,5}\\b`,
   ),
+  // Round 24 (11-13): "Something like VOO would do", "1. VOO 2. VTI 3. QQQ".
+  new RegExp(`\\b(?:[Ss]omething|[Aa]nything|[Aa] fund) like \\$?${NOT_TICKERS}[A-Z]{3,5}\\b`),
+  new RegExp(
+    `(?:^|\\s)1[.)]\\s*\\$?${NOT_TICKERS}[A-Z]{3,5}\\b[^.!?\\n]{0,20}?\\s2[.)]\\s*\\$?${NOT_TICKERS}[A-Z]{3,5}\\b`,
+  ),
   new RegExp(
     `\\b${NOT_TICKERS}[A-Z]{3,5}\\s+(?:beats|>|tops|edges out|wins over|is better than|over)\\s+\\$?${NOT_TICKERS}[A-Z]{3,5}\\b`,
   ),
@@ -491,7 +496,7 @@ const LEGAL = [
   /\bavoid(?:ing)? probate\b/i,
   /\bdisclaim(?:ing|er of)? (?:the |your |an |this |that )?(?:inheritance|bequest|inherited \w+|ira)\b/i,
   // Only a debt: "stop paying overdraft fees" is the opposite of legal trouble.
-  /\b(?:stop|quit) paying (?:on |off )?(?:my |your |the |their )?(?:(?:student|car|auto|personal|private|federal) )?(?:cards?|credit cards?|loans?|debts?|creditors?|collectors?|minimums?|mortgage|bills)\b/i,
+  /\b(?:stop|quit) paying (?:on |off )?(?:my |your |the |their )?(?:(?:student|car|auto|personal|private|federal) )?(?:cards?|credit cards?|loans?|debts?|creditors?|collectors?|minimums?|mortgage|bills|hoa(?: dues| fees)?)\b/i,
   // Spec step 237: wills, trusts and what to do with an estate are legal advice. The facts
   // Jane gives are fixed sentences (src/config/family-file.ts) that pass below.
   /\b(?:last )?will and testament\b/i,
@@ -543,7 +548,10 @@ const LEGAL = [
   // Round 18 (11-13): what someone can't do to you by law ("They can't garnish your wages", "Your
   // landlord can't evict you for that", "They can't take your car"), and money called a gift to
   // dodge tax ("Call it a gift so it isn't taxed").
-  /\b(?:they|he|she|the (?:landlord|lender|collector|creditor|bank|irs|company|dealer|servicer|court)|your (?:landlord|lender|creditor|employer|ex)|collectors|creditors|landlords)\s+(?:legally )?(?:can(?:'|’)?t|cannot|can not|aren(?:'|’)?t allowed to|isn(?:'|’)?t allowed to|have no right to|has no right to)\s+(?:legally )?(?:garnish|evict|repossess|seize|levy|foreclose|sue|take (?:your|the|away)|freeze|touch|come after|kick you out|fire you|charge you)\b/i,
+  /\b(?:they|he|she|the (?:landlord|lender|collector|creditor|bank|irs|company|dealer|servicer|court)|your (?:landlord|lender|creditor|employer|ex|hoa)|collectors|creditors|landlords)\s+(?:legally )?(?:can(?:'|’)?t|cannot|can not|aren(?:'|’)?t allowed to|isn(?:'|’)?t allowed to|have no right to|has no right to)\s+(?:legally )?(?:garnish|evict|repossess|seize|levy|foreclose|sue|take (?:your|the|away)|freeze|touch|come after|kick you out|fire you|charge you|fine you|tow)\b/i,
+  // Round 24 (11-13): what a contract does by law, and signing it ("That clause isn't enforceable",
+  // "Sign it; it's a standard contract").
+  /\b(?:isn(?:'|’)?t|is not|aren(?:'|’)?t|are not|not) (?:legally )?(?:enforceable|binding)\b|\bunenforceable\b|\b(?:it|this|that)(?:'|’)?s a standard (?:contract|lease|agreement|clause|waiver)\b|\bsafe to sign\b/i,
   /\b(?:call|report|list|label|treat|record|count|write)\b[^.!?]{0,20}\b(?:as )?a gift\b[^.!?]{0,30}\b(?:so|instead of|to avoid|to dodge|rather than|and (?:skip|avoid))\b/i,
   // Round 17 (11-13): signing someone else's name, a made-up figure or address on an application,
   // and a dispute that isn't true ("Just sign your roommate's name on the lease", "Put a lower
@@ -646,7 +654,9 @@ const GUARANTEE = [
   /\b(?:you(?:'|’)ll|you will) (?:easily |surely )?(?:be approved|get approved|be accepted|get accepted|qualify for|get the (?:loan|card|rate|apartment))\b/i,
   // Round 18 (11-13): "This will raise your credit score by 50 points". "Could help your score" is
   // hedged and passes.
-  /\b(?:will|you(?:'|’)ll|it(?:'|’)ll|this(?:'|’)ll|that(?:'|’)ll)\s+(?:\w+\s+)?(?:raise|boost|improve|increase|lift|bump|fix|repair|jump|add)\b[^.!?]{0,15}\b(?:credit )?score\b|\bscore (?:will|is going to) (?:go up|jump|rise|climb|increase|improve)\b/i,
+  /\b(?:will|you(?:'|’)ll|it(?:'|’)ll|this(?:'|’)ll|that(?:'|’)ll)\s+(?:\w+\s+)?(?:raise|boost|improve|increase|lift|bump|fix|repair|jump|add)\b[^.!?]{0,15}\b(?:credit )?score\b|\bscore (?:will|is going to) (?:go up|jump|rise|climb|increase|improve|hit|reach|top|pass|cross)\b/i,
+  // Round 24 (11-13): "This always works".
+  /\b(?:this|it|that) always works\b|\bworks every time\b|\bnever fails\b/i,
 ];
 
 // (g) Deposit insurance (12 CFR 328.102; connectors roadmap round 13): no false or misleading word
