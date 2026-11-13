@@ -11,8 +11,10 @@ import { savingsLine } from "@/lib/savings-text";
 import { chatToday, todayOf } from "@/lib/today";
 import { deadlineHeadsUp } from "./sources/heads-ups";
 import { sentence } from "./sources/source";
+import { planWords } from "./sources/plan";
 import { setupBody } from "./sources/setup";
 import { suggestionCard } from "./sources/suggestions";
+import type { Snapshot } from "./snapshot";
 import { MESSAGE_SELECT, toChatMessage, type ChatMessage } from "./types";
 
 // Jane's cards say what was true when they were posted, and stay open for days. Before one
@@ -28,7 +30,10 @@ import { MESSAGE_SELECT, toChatMessage, type ChatMessage } from "./types";
 //   idle cash no longer "could earn" anything) is said as the finding is now, and its stored words
 //   and fingerprint follow, or its Yes would say "This one changed since I posted it";
 // - a change Jane noticed ("By now you'd usually have spent about $37.08") is said as Jane
-//   sees it today, and put away once it no longer shows (src/lib/changes.ts).
+//   sees it today, and put away once it no longer shows (src/lib/changes.ts);
+// - the week's plan is said as the plan is now (debugger 11-13: a new student's card said "22
+//   things, worth up to $3,560.81 a year" from the first scan's early run, while Home and /plan
+//   said 23 and $3,720.81 once the slower work had added an item), and put away once it's empty.
 // The deadlines come from loadComingUp, the one loader Today, Ahead, the snapshot behind the
 // heads-ups and the chat's coming_up all read, so the dock can't say what they don't.
 
@@ -58,6 +63,8 @@ type Facts = {
   gaps: Set<string> | null;
   // The open findings behind finding cards, by id, as they are now.
   findings: Map<string, { title: string; savings: string; fingerprint: string }> | null;
+  // The plan as /plan has it now, for the week's plan card; null when no card here is one.
+  plan: { now: Snapshot["plan"]; concierge: boolean } | null;
 };
 
 type AlertRow = { id: string; type: string; key: string };
@@ -143,7 +150,9 @@ async function factsFor(
   const findingIds = messages.flatMap((m) =>
     m.refs.findingId && m.refs.fingerprint ? [m.refs.findingId] : [],
   );
+  const withPlan = messages.some((m) => m.refs.weekStart !== undefined);
   if (
+    !withPlan &&
     !withDeadlines &&
     !withChanges &&
     !withGaps &&
@@ -154,7 +163,7 @@ async function factsFor(
   ) {
     return null;
   }
-  const [coming, changes, suggestions, proposals, insurance, findings] = await Promise.all([
+  const [coming, changes, suggestions, proposals, insurance, findings, plan] = await Promise.all([
     withDeadlines ? comingUp(userId, client, now) : null,
     withChanges
       ? import("@/lib/changes").then((m) => m.loadChanges(userId, { client, now }))
@@ -187,6 +196,7 @@ async function factsFor(
           select: { id: true, type: true, title: true, annualSavingsCents: true, evidence: true },
         })
       : null,
+    withPlan ? planNow(userId, client) : null,
   ]);
   // Loaded here, not imported at the top: the snapshot reaches most of the app.
   const fingerprintOf = findings && (await import("./snapshot")).findingFingerprint;
@@ -218,6 +228,34 @@ async function factsFor(
           },
         ]),
       ),
+    plan,
+  };
+}
+
+// The plan's figures as /plan works them out (src/lib/plan.ts), and whether Jane acts for this
+// person: what the plan card says.
+async function planNow(
+  userId: string,
+  client: PrismaClient,
+): Promise<{ now: Snapshot["plan"]; concierge: boolean }> {
+  const [{ planFor, planTotalCents, planOnceCents }, { isNoRisk }, { conciergeMode }] =
+    await Promise.all([
+      import("@/lib/plan"),
+      import("@/lib/plan-links"),
+      import("@/lib/concierge-mode"),
+    ]);
+  const [items, concierge] = await Promise.all([
+    planFor(userId, { client }),
+    conciergeMode(userId, { client }),
+  ]);
+  return {
+    now: {
+      items: items.length,
+      annualSavingsCents: planTotalCents(items),
+      onceCents: planOnceCents(items),
+      safeItems: items.filter(isNoRisk).length,
+    },
+    concierge,
   };
 }
 
@@ -225,6 +263,10 @@ async function factsFor(
 function asNow(m: ChatMessage, facts: Facts): ChatMessage | null {
   const { deadlineKey, deadlineEntryId, alertId, change, suggestion, proposalKey, insuranceGap } =
     m.refs;
+  if (m.refs.weekStart !== undefined && facts.plan) {
+    const { now, concierge } = facts.plan;
+    return now.items === 0 ? null : { ...m, body: planWords(now, concierge) };
+  }
   if (insuranceGap && facts.gaps && !facts.gaps.has(insuranceGap)) return null;
   const finding = m.refs.findingId ? facts.findings?.get(m.refs.findingId) : undefined;
   if (finding && m.refs.fingerprint && finding.fingerprint !== m.refs.fingerprint) {
