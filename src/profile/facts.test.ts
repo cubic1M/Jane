@@ -4,9 +4,10 @@ import { choiceWords, factSpec, factWords } from "./facts";
 // Debugger 11-02: /profile read "eats_out" and "Your mortgage rate (in basis points)".
 describe("how a fact reads", () => {
   it("says a choice in words", () => {
-    expect(choiceWords("eats_out")).toBe("eats out");
-    expect(factWords("eating_style", "eats_out")).toBe("eats out");
-    expect(factWords("eating_style", "cooks")).toBe("cooks");
+    // In words, not the stored code (src/lib/memory/plain-words.test.ts).
+    expect(choiceWords("eats_out")).toBe("mostly out");
+    expect(factWords("eating_style", "eats_out")).toBe("mostly out");
+    expect(factWords("eating_style", "cooks")).toBe("mostly at home");
   });
 
   it("says a mortgage rate as a rate", () => {

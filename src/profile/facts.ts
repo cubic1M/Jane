@@ -93,8 +93,40 @@ export const FACT_SPECS = [
 ] as const satisfies readonly FactSpec[];
 
 export type FactKey = (typeof FACT_SPECS)[number]["key"];
-// A choice as a person reads it: its stored value is a code ("eats_out").
-export const choiceWords = (choice: string) => choice.replaceAll("_", " ");
+// A choice as a person reads it: its stored value is a code ("eats_out"). The ones a code's own
+// words don't say well have words here (debugger 11-13: "Where you live: own", "How you eat:
+// cooks" on What Jane knows); any other loses its underscores.
+const CHOICE_WORDS: Readonly<Record<string, string>> = {
+  own: "you own your home",
+  rent: "you rent",
+  cooks: "mostly at home",
+  eats_out: "mostly out",
+  mixed: "some of both",
+  salary: "a salary",
+  uneven: "uneven pay",
+  business: "your own business",
+  pension: "a pension",
+  single: "just you",
+  couple: "a couple",
+  family: "a family",
+  commuter: "you commute",
+  remote: "you work from home",
+  married_joint: "married, filing jointly",
+  married_separate: "married, filing separately",
+  head_of_household: "head of household",
+  sole_proprietor: "sole proprietor",
+  llc: "LLC",
+  s_corp: "S corporation",
+  job_loss: "losing a job",
+  overspending: "spending more than came in",
+  under_30: "under 30",
+  "73_plus": "73 or older",
+  starting: "starting out",
+  raising: "raising a family",
+  peak: "peak earning years",
+  approaching: "approaching retirement",
+};
+export const choiceWords = (choice: string) => CHOICE_WORDS[choice] ?? choice.replaceAll("_", " ");
 
 // A fact's value in words, where the stored value isn't how anyone says it. Money and yes or no are
 // said where they're shown.
