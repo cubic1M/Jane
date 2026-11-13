@@ -11,6 +11,8 @@ import { quotesFor, type StoredQuote } from "@/lib/insurance/quotes";
 import { scopedFor } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { momentLabel } from "@/lib/day-label";
+import { timezoneOf } from "@/lib/today";
 import { RESHOP_DAYS_BEFORE_RENEWAL } from "@/config/insurance";
 import { openShops, type Shop } from "@/lib/insurance/shop";
 import { ComparisonCards } from "@/components/comparison-cards";
@@ -29,15 +31,16 @@ const LINK = "font-medium text-emerald-700 hover:underline";
 const BUTTON =
   "inline-flex h-11 items-center justify-center rounded-full bg-emerald-700 px-6 font-semibold text-white hover:bg-emerald-800";
 
-const dateLabel = (date: Date) =>
-  date.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
-
 function QuoteCard({
   quote,
   currentAnnualCents,
+  timezone,
 }: {
   quote: StoredQuote;
   currentAnnualCents: number | null;
+  // The person's own day: a quote good for 30 days from 6pm in Los Angeles ends that day, not the
+  // next UTC day (debugger 11-13).
+  timezone: string;
 }) {
   const saving = currentAnnualCents === null ? null : currentAnnualCents - quote.annualPremiumCents;
   return (
@@ -88,7 +91,7 @@ function QuoteCard({
           </ul>
         </div>
       )}
-      <p className="text-xs text-zinc-500">Good until {dateLabel(quote.expiresAt)}.</p>
+      <p className="text-xs text-zinc-500">Good until {momentLabel(quote.expiresAt, timezone)}.</p>
     </li>
   );
 }
@@ -125,7 +128,7 @@ async function QuotesContent({
 }) {
   const user = await requireUser();
   await connection();
-  const params = await searchParams;
+  const [params, timezone] = await Promise.all([searchParams, timezoneOf(user.id)]);
   const policyId = typeof params.policy === "string" ? params.policy : "";
   // Opened without a policy (an old link, a typed address): the policies list is where to pick one.
   if (!policyId) redirect("/insurance");
@@ -207,7 +210,12 @@ async function QuotesContent({
               {quotes.length > 0 && (
                 <ul className="flex flex-col gap-3">
                   {quotes.map((q) => (
-                    <QuoteCard key={q.id} quote={q} currentAnnualCents={current} />
+                    <QuoteCard
+                      key={q.id}
+                      quote={q}
+                      currentAnnualCents={current}
+                      timezone={timezone}
+                    />
                   ))}
                 </ul>
               )}

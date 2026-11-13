@@ -14,7 +14,8 @@ import type { LoadedRuleReplays, RuleVerdict } from "@/lib/investments/rule-repl
 import { formatCents } from "@/lib/money";
 import type { Reply } from "../replies";
 import { type MessageAction, openLink } from "../types";
-import { dayLabel } from "@/lib/day-label";
+import { dayLabel, momentLabel } from "@/lib/day-label";
+import { validTimezone } from "@/lib/digest/week";
 
 // Jane's rule answers about the practice portfolio (spec step 297, Phase AW, Stage A): what it
 // bought and sold this week and why, the pause switch, and how a level would have done in a
@@ -53,9 +54,6 @@ export type PracticeTradeRow = {
   rule: string;
 };
 
-const day = (d: Date) =>
-  d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
-
 // "What did you buy this week and why": the week's practice trades, newest first, each with
 // the rule that allowed it and the first one's reason in full.
 export function practiceLogReply(
@@ -64,6 +62,9 @@ export function practiceLogReply(
   advice: boolean,
   // "Why?": every trade with its reason, as many as fit.
   explain = false,
+  // The person's own day: a trade placed at 6pm in Los Angeles is that day's, not the next UTC
+  // day's (debugger 11-13). US Pacific when unknown, as timezoneOf says.
+  timezone = validTimezone(null),
 ): Reply {
   if (!advice) return { body: PRACTICE_ONLY_NOTE, actions: [], refs: {} };
   if (!practice) {
@@ -90,8 +91,8 @@ export function practiceLogReply(
     const what = `${t.side === "buy" ? "bought" : "sold"} ${formatCents(t.amountCents)} of ${t.ticker}`;
     const rule = RULE_LABELS[t.rule] ?? t.rule;
     return i === 0 || explain
-      ? `- ${day(t.placedAt)}: ${what}. ${t.reason}`
-      : `- ${day(t.placedAt)}: ${what} (${rule}).`;
+      ? `- ${momentLabel(t.placedAt, timezone)}: ${what}. ${t.reason}`
+      : `- ${momentLabel(t.placedAt, timezone)}: ${what} (${rule}).`;
   });
   let shown = lines.slice(0, MAX_LINES);
   const text = () => {

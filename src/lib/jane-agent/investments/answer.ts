@@ -44,7 +44,7 @@ import { practiceProfileOf } from "@/lib/practice/preferences";
 import { PRACTICE_LOG_DAYS } from "@/config/practice-cards";
 import { setPaused, tradeLog } from "@/lib/practice/autopilot";
 import { loadPractice } from "@/lib/practice/portfolio";
-import { chatToday } from "@/lib/today";
+import { chatToday, timezoneOf } from "@/lib/today";
 import {
   backtestReply,
   levelStrategyReply,
@@ -104,7 +104,13 @@ export async function answerInvestments(
       const since = now.getTime() - PRACTICE_LOG_DAYS * 86_400_000;
       const log = view ? await tradeLog(userId, { client }) : [];
       const week = log.filter((t) => !t.undone && t.placedAt.getTime() >= since);
-      return practiceLogReply(view, week, advice, intent.explain ?? false);
+      return practiceLogReply(
+        view,
+        week,
+        advice,
+        intent.explain ?? false,
+        await timezoneOf(userId, { client }),
+      );
     }
     case "practice_pause":
     case "practice_resume": {

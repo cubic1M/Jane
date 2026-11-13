@@ -41,6 +41,13 @@ export const chatToday = (userId: string, options: { client: PrismaClient; now: 
 
 // The person's timezone for labelling moments (momentLabel in src/lib/day-label.ts): theirs, or
 // US Pacific when unknown or not a real zone.
-export async function timezoneOf(userId: string): Promise<string> {
-  return validTimezone(await timezoneOnce(userId));
+export async function timezoneOf(
+  userId: string,
+  { client = defaultClient }: { client?: PrismaClient } = {},
+): Promise<string> {
+  return validTimezone(
+    client === defaultClient
+      ? await timezoneOnce(userId)
+      : await cachedRead(`timezone:${userId}`, client, () => timezoneFrom(userId, client)),
+  );
 }
