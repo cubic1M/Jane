@@ -5,6 +5,7 @@ import { SEE_DEBTS } from "../debt-replies";
 import { snoozeButton, type MessageSource } from "./source";
 import { formatRate } from "@/lib/percent";
 import { dayLabel } from "@/lib/day-label";
+import { openLink } from "../types";
 
 // Debts (spec step 109): Jane keeps every debt up to date on its own and says so when
 // something new turns up. A buy now, pay later plan found from payments gets one message
@@ -43,12 +44,7 @@ export const debtsSource: MessageSource = {
         body: `Your bank doesn't report a rate for your ${d.name}. Add it and I'll count it in your debts and in how you pay them off.`,
         refs: {},
         actions: [
-          {
-            id: "open" as const,
-            label: "Add the rate",
-            kind: "link" as const,
-            href: `/loans?terms=${encodeURIComponent(d.key)}#terms`,
-          },
+          openLink("Add the rate", `/loans?terms=${encodeURIComponent(d.key)}#terms`),
           snoozeButton(),
         ],
         dedupeKey: `rate:${d.key}`,

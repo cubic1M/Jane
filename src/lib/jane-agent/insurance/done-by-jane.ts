@@ -11,18 +11,14 @@ import {
   draftActions,
   draftBody,
 } from "./done-by-jane-words";
+import { openLink } from "../types";
 
 // "Can you get my renewal lowered?" and "file my claim for me" (spec step 155), answered
 // from what Jane has: a renewal it can call about (with the person's OK, or done within
 // their autopilot limits), and a claim it can file once they've checked the draft.
 
-const INSURANCE = {
-  id: "open",
-  label: "Your insurance",
-  kind: "link",
-  href: "/insurance",
-} as const;
-const CLAIMS = { id: "open", label: "Claims", kind: "link", href: "/insurance/claims" } as const;
+const INSURANCE = openLink("Your insurance", "/insurance");
+const CLAIMS = openLink("Claims", "/insurance/claims");
 
 export async function renewalCallAnswer(
   userId: string,
@@ -65,7 +61,7 @@ export async function fileClaimAnswer(
     if (await canFile(userId, claim, { client })) {
       return {
         body: `I can file your claim with ${claim.carrier ?? "your insurer"}. Tell me how much it is and what happened on the claims page, and I'll write it up for you to check before it goes.`,
-        actions: [{ ...CLAIMS, href: `/insurance/claims#claim-${claim.id}` }],
+        actions: [openLink("Claims", `/insurance/claims#claim-${claim.id}`)],
         refs: {},
       };
     }

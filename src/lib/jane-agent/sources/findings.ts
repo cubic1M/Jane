@@ -1,7 +1,7 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { WORKED_MIN_SAMPLE, WORKED_QUIET_PER_RUN } from "@/config/worked";
 import { formatCents } from "@/lib/money";
-import type { Candidate, MessageAction } from "../types";
+import { type Candidate, type MessageAction, openLink } from "../types";
 import type { Snapshot, SnapshotFinding } from "../snapshot";
 import { rankedFor } from "../priorities";
 import { sentence, type MessageSource } from "./source";
@@ -65,7 +65,7 @@ export function findingCandidate(finding: SnapshotFinding, concierge = true): Ca
       : []),
     // Spec step 91: No for good.
     { id: "suggest.never", label: "Don't suggest again", kind: "secondary" },
-    { id: "open", label: "Open", kind: "link", href: `/report/${finding.findingId}` },
+    openLink("Open", `/report/${finding.findingId}`),
   );
   return {
     kind: "decision",

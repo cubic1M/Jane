@@ -4,18 +4,14 @@ import { monthWords } from "@/lib/insurance/health-year-rules";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "../replies";
 import { dayLabel } from "@/lib/day-label";
+import { openLink } from "../types";
 
 // "How much of my deductible have I met?" (spec step 200): where the person is in their
 // health plan's year: the deductible, the out-of-pocket maximum and the month at this pace,
 // FSA and HSA money, the plan's network for the providers they've paid, and big bills above
 // the plan's share (with a card for the team). Facts only.
 
-const PAGE = {
-  id: "open",
-  label: "Your health year",
-  kind: "link",
-  href: "/insurance?focus=health",
-} as const;
+const PAGE = openLink("Your health year", "/insurance?focus=health");
 
 // Pure: the lines of the answer.
 export function healthYearLines(year: HealthYear): string[] {
@@ -70,7 +66,7 @@ export async function healthYearAnswer(
   if (!year) {
     return {
       body: "I don't have your health plan's deductible and out-of-pocket maximum yet. Add your health plan on your insurance page and I'll track the year for you.",
-      actions: [{ id: "open", label: "Your insurance", kind: "link", href: "/insurance" }],
+      actions: [openLink("Your insurance", "/insurance")],
       refs: {},
     };
   }

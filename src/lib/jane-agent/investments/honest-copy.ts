@@ -1,15 +1,13 @@
 import { formatReturn } from "@/insights/returns";
 import type { HonestView } from "@/lib/investments/honest";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 
 // Honest performance in the chat (spec step 233): what happened, never what will.
 
-export const HONEST_LINK: MessageAction = {
-  id: "open",
-  label: "See the full picture",
-  kind: "link",
-  href: "/investments/performance",
-};
+export const HONEST_LINK: MessageAction = openLink(
+  "See the full picture",
+  "/investments/performance",
+);
 
 const pts = (p: number) => `${p >= 0 ? "+" : "−"}${Math.abs(p * 100).toFixed(1)} points`;
 

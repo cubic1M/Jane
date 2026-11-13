@@ -61,7 +61,7 @@ import { chatToday } from "@/lib/today";
 import { pauseNote } from "../investments/steady-copy";
 import { CASH_LINK } from "../investments/cash-copy";
 import { mixLine, SIMULATED_WORDS } from "../investments/rebalance-copy";
-import type { ActionId } from "../types";
+import { type ActionId, openLink } from "../types";
 import { answeredElsewhere, ChatActionError, type ActionHandler } from "./handler";
 
 // An answer button on Jane's investor-profile question (spec step 129), saved through the
@@ -102,9 +102,7 @@ function answer(position: number): ActionHandler {
         note: summary.complete
           ? `Thanks. Your profile: ${summary.why} You can change it any time.`
           : "Thanks.",
-        actions: [
-          { id: "open", label: "See your profile", kind: "link", href: "/investments/profile" },
-        ],
+        actions: [openLink("See your profile", "/investments/profile")],
       };
     },
   };
@@ -138,9 +136,7 @@ export const investRebalance: ActionHandler = {
       return {
         answeredWith: action.label,
         note: `Done ${SIMULATED_WORDS}: ${filled} of ${confirmations.length} orders filled. Your mix is now ${mixLine(plan.after)}.`,
-        actions: [
-          { id: "open", label: "See the orders", kind: "link", href: "/investments/rebalance" },
-        ],
+        actions: [openLink("See the orders", "/investments/rebalance")],
       };
     } catch (error) {
       if (error instanceof RebalanceError) throw answeredElsewhere(error.message);
@@ -252,9 +248,7 @@ export const collegeStart: ActionHandler = {
       return {
         answeredWith: action.label,
         note: `Done: a goal of ${formatCents(goal.targetCents)} by September ${goal.targetDate.slice(0, 4)}. I'll invest for it with your other goals; turn on automatic investing and it fills every payday.`,
-        actions: [
-          { id: "open", label: "See college savings", kind: "link", href: "/investments/college" },
-        ],
+        actions: [openLink("See college savings", "/investments/college")],
       };
     } catch (error) {
       if (error instanceof CollegeError) throw answeredElsewhere(error.message);
@@ -278,7 +272,7 @@ export const hsaLink: ActionHandler = {
     return {
       answeredWith: action.label,
       note: "Linked. I'll keep your HSA's cash cushion and tell you when there's money to invest.",
-      actions: [{ id: "open", label: "See your HSA", kind: "link", href: "/investments/hsa" }],
+      actions: [openLink("See your HSA", "/investments/hsa")],
     };
   },
 };
@@ -292,7 +286,7 @@ export const hsaInvest: ActionHandler = {
       return {
         answeredWith: action.label,
         note: `Done in the simulated brokerage (no real money moves): ${formatCents(amountCents)} of your HSA cash invested.`,
-        actions: [{ id: "open", label: "See your HSA", kind: "link", href: "/investments/hsa" }],
+        actions: [openLink("See your HSA", "/investments/hsa")],
       };
     } catch (error) {
       if (error instanceof HsaError) throw answeredElsewhere(error.message);

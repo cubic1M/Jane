@@ -1,17 +1,12 @@
 import type { Candidate } from "@/lib/investments/short-term";
 import { formatCents } from "@/lib/money";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 import { dayLabel } from "@/lib/day-label";
 import { formatRate } from "@/lib/percent";
 
 // Short-term money in the chat (spec step 234): shared words and buttons.
 
-export const SHORT_LINK: MessageAction = {
-  id: "open",
-  label: "See the options",
-  kind: "link",
-  href: "/investments/short-term",
-};
+export const SHORT_LINK: MessageAction = openLink("See the options", "/investments/short-term");
 
 export function candidateLine(c: Candidate): string {
   const top = c.options

@@ -7,7 +7,7 @@ import {
   type LoanApplicationView,
 } from "@/lib/loan-applications";
 import { formatCents } from "@/lib/money";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 import { ChatActionError, type ActionHandler } from "./handler";
 import { formatRate } from "@/lib/percent";
 
@@ -20,12 +20,7 @@ const failed = (error: unknown) => {
   return error;
 };
 
-const review = (id: string): MessageAction => ({
-  id: "open",
-  label: "Review it in full",
-  kind: "link",
-  href: `/loans/apply/${id}`,
-});
+const review = (id: string): MessageAction => openLink("Review it in full", `/loans/apply/${id}`);
 
 // The terms, as the person reviews them before submitting.
 function termsText(app: LoanApplicationView): string {

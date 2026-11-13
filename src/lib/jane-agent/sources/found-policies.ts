@@ -2,7 +2,7 @@ import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { PREMIUM_FREQUENCIES } from "@/config/documents";
 import { POLICY_KINDS } from "@/config/insurance";
 import { formatCents } from "@/lib/money";
-import type { Candidate } from "../types";
+import { type Candidate, openLink } from "../types";
 import { type MessageSource } from "./source";
 import { dayLabel } from "@/lib/day-label";
 
@@ -33,7 +33,7 @@ export const foundPoliciesSource: MessageSource = {
           actions: [
             { id: "policy.confirm", label: "Confirm", kind: "primary" },
             { id: "policy.not_insurance", label: "Not insurance", kind: "secondary" },
-            { id: "open", label: "See insurance", kind: "link", href: "/insurance" },
+            openLink("See insurance", "/insurance"),
           ],
           dedupeKey: p.id,
           priority: MESSAGE_PRIORITY.found_policy,

@@ -1,17 +1,15 @@
 import type { AdvisoryView, ProductView } from "@/lib/investments/costly-products";
 import { formatCents } from "@/lib/money";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 import { dayLabel } from "@/lib/day-label";
 
 // Costly products in the chat (spec step 215): shared words. Rule: any sentence about
 // leaving carries the surrender charge and when it ends. Nothing says "cancel".
 
-export const COSTLY_LINK: MessageAction = {
-  id: "open",
-  label: "See what they cost",
-  kind: "link",
-  href: "/investments/costly-products",
-};
+export const COSTLY_LINK: MessageAction = openLink(
+  "See what they cost",
+  "/investments/costly-products",
+);
 
 export function productLine(p: ProductView): string {
   const cost =

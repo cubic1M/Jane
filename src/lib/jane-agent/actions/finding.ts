@@ -14,6 +14,7 @@ import {
   type ActionHandler,
   type ActionOutcome,
 } from "./handler";
+import { openLink } from "../types";
 
 // Yes, No and Jane's pick on a finding (spec step 81), through recordDecision with the
 // card's hash, like a tap on the card itself, from source "chat". A pick goes as the
@@ -118,12 +119,7 @@ function diyOutcome(
     refs: { ...context.message.refs, decisionId: outcome.decisionId },
     actions: [
       { id: "diy.done", label: "Mark done", kind: "primary" },
-      {
-        id: "open",
-        label: "Steps and drafts",
-        kind: "link",
-        href: `/report/${findingId}#diy`,
-      },
+      openLink("Steps and drafts", `/report/${findingId}#diy`),
     ],
   };
 }

@@ -4,18 +4,13 @@ import type { LifeApplication, LifeQuote } from "@/lib/insurance/life";
 import { methodLines } from "@/lib/insurance/life-need";
 import { nextLifeQuestion } from "@/lib/insurance/life-underwriting";
 import { formatCents } from "@/lib/money";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 
 // Life insurance in Jane's chat (spec step 153): how much and for how long with the method,
 // the best quote, the health questions one at a time, and the carrier's decision. Each
 // step that commits the person (applying, buying) is its own tap. Pure.
 
-export const LIFE_LINK: MessageAction = {
-  id: "open",
-  label: "Life cover",
-  kind: "link",
-  href: "/insurance/life",
-};
+export const LIFE_LINK: MessageAction = openLink("Life cover", "/insurance/life");
 
 const dateWords = (iso: string) =>
   new Date(iso).toLocaleDateString("en-US", {

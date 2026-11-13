@@ -8,6 +8,7 @@ import {
   type ActionContext,
   type ActionHandler,
 } from "./handler";
+import { openLink } from "../types";
 
 // "Yes" and "Not for me" on one of Jane's suggestions (spec step 255), through
 // answerSuggestion. A no is for good: the nightly scan never offers it again. A practice idea
@@ -44,14 +45,7 @@ function handler(id: "suggestion.yes" | "suggestion.no", answer: "yes" | "no"): 
             note: practice.note,
             ...(answer === "yes"
               ? {
-                  actions: [
-                    {
-                      id: "open" as const,
-                      label: PRACTICE_STEP_LABEL,
-                      kind: "link" as const,
-                      href: practice.href,
-                    },
-                  ],
+                  actions: [openLink(PRACTICE_STEP_LABEL, practice.href)],
                 }
               : {}),
           };
@@ -60,7 +54,7 @@ function handler(id: "suggestion.yes" | "suggestion.no", answer: "yes" | "no"): 
           ? {
               answeredWith: context.action.label,
               note: "Good. Here's where to do it.",
-              actions: [{ id: "open", label: STEP_LINK_LABEL, kind: "link", href: out.actionHref }],
+              actions: [openLink(STEP_LINK_LABEL, out.actionHref)],
             }
           : {
               answeredWith: context.action.label,

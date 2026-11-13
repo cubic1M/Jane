@@ -1,5 +1,5 @@
 import type { Decider } from "../decision";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 import { withNeeds } from "@/lib/insurance/need/load";
 import { chatToday } from "@/lib/today";
 import { decide, decisionConfidence, decisionKindOf } from "./decisions";
@@ -14,14 +14,7 @@ import { loadInsuranceSnapshot } from "./snapshot";
 
 const linkOnly = (actions: readonly MessageAction[]): MessageAction[] =>
   actions.map((a) =>
-    a.kind === "link"
-      ? a
-      : ({
-          id: "open",
-          label: "See the details",
-          kind: "link",
-          href: "/insurance",
-        } as MessageAction),
+    a.kind === "link" ? a : (openLink("See the details", "/insurance") as MessageAction),
   );
 
 export const insuranceDecider: Required<Pick<Decider, "decides" | "decide">> = {

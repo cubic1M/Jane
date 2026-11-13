@@ -1,6 +1,7 @@
 import { FilingError, startReturn } from "@/lib/tax-filing";
 import { balancePhrase } from "@/planning/tax-estimate-copy";
 import { ChatActionError, type ActionHandler } from "./handler";
+import { openLink } from "../types";
 
 // "Start my return" from the chat (spec step 126): hands the year over to the filing
 // partner, through src/lib/tax-filing.ts. It files nothing: the person reviews and signs on
@@ -15,7 +16,7 @@ export const taxFileStart: ActionHandler = {
       return {
         answeredWith: action.label,
         note: `Started: your ${ret.year} return is ready to review (federal, ${balancePhrase(ret.preview.federalRefundCents)}). Sign it on the page when you're happy with it.`,
-        actions: [{ id: "open", label: "Review and sign", kind: "link", href: "/taxes/file" }],
+        actions: [openLink("Review and sign", "/taxes/file")],
       };
     } catch (error) {
       if (error instanceof FilingError) throw new ChatActionError("failed", error.message);

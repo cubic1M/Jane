@@ -1,16 +1,11 @@
 import { PROFILE_QUESTIONS, type ProfileQuestion } from "@/config/investing";
-import type { ActionId, MessageAction, MessageRefs } from "../types";
+import { type ActionId, type MessageAction, type MessageRefs, openLink } from "../types";
 
 // The investor-profile questions in the chat (spec step 129): one message that asks all
 // four in turn. Each tap saves the answer and swaps in the next question and its buttons
 // (./../actions/investments.ts); the profile page takes them all at once.
 
-const PROFILE_LINK: MessageAction = {
-  id: "open",
-  label: "Answer on the profile page",
-  kind: "link",
-  href: "/investments/profile",
-};
+const PROFILE_LINK: MessageAction = openLink("Answer on the profile page", "/investments/profile");
 
 export const PROFILE_INTRO =
   "Before I check whether your investments fit you, four quick questions about what the money is for. Tap an answer; you can change them any time.";

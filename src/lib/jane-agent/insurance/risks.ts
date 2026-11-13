@@ -2,16 +2,12 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { listRisks, refreshRisks } from "@/lib/insurance/risks";
 import type { Reply } from "../replies";
 import { riskActions, riskQuestion } from "./risk-words";
+import { openLink } from "../types";
 
 // "What am I missing?" (spec step 197): the question Jane has about how they live, with
 // Yes and No right there, or what it's already noticed and been told.
 
-const INSURANCE = {
-  id: "open",
-  label: "Your insurance",
-  kind: "link",
-  href: "/insurance?focus=questions",
-} as const;
+const INSURANCE = openLink("Your insurance", "/insurance?focus=questions");
 
 export async function risksAnswer(
   userId: string,

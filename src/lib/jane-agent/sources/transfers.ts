@@ -2,7 +2,7 @@ import { BT_REMIND_DAYS } from "@/config/debt";
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { formatCents } from "@/lib/money";
 import { daysUntil, dueReminder, shortMonth } from "@/planning/balance-transfer";
-import type { Candidate } from "../types";
+import { type Candidate, openLink } from "../types";
 import { snoozeButton, type MessageSource } from "./source";
 import { formatRate } from "@/lib/percent";
 
@@ -11,12 +11,7 @@ import { formatRate } from "@/lib/percent";
 // and, once the person has moved a balance, reminds them 60, 30 and 7 days before the 0%
 // ends, each once, so the end date is never missed.
 
-const OFFERS = {
-  id: "open" as const,
-  label: "See the offers",
-  kind: "link" as const,
-  href: "/loans/refinance#transfers",
-};
+const OFFERS = openLink("See the offers", "/loans/refinance#transfers");
 
 export const transfersSource: MessageSource = {
   key: "transfers",
@@ -65,7 +60,7 @@ export const transfersSource: MessageSource = {
           refs: { transferId: t.id },
           actions: [
             { id: "transfer.done", label: "It's paid off", kind: "primary" },
-            { id: "open", label: "See deadlines", kind: "link", href: "/deadlines" },
+            openLink("See deadlines", "/deadlines"),
           ],
           dedupeKey: `remind:${t.id}:${due}`,
           priority: MESSAGE_PRIORITY.transfer_reminder,

@@ -1,6 +1,6 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { AUTOPILOT_LEVELS, AUTOPILOT_ORDER, AUTOPILOT_RECOMMENDED } from "@/config/autopilot";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 import type { MessageSource } from "./source";
 
 // The autopilot question (spec step 83): until the person picks how much Jane does on its
@@ -29,7 +29,7 @@ export const autopilotSource: MessageSource = {
             label: AUTOPILOT_LEVELS[level].label,
             kind: level === AUTOPILOT_RECOMMENDED ? "primary" : "secondary",
           })),
-          { id: "open", label: "Settings", kind: "link", href: "/settings#autopilot" },
+          openLink("Settings", "/settings#autopilot"),
         ],
         dedupeKey: "ask",
         priority: MESSAGE_PRIORITY.autopilot,

@@ -32,7 +32,7 @@ import {
   draftBody,
 } from "../insurance/done-by-jane-words";
 import type { InsuranceSnapshot } from "../insurance/snapshot";
-import type { Candidate } from "../types";
+import { type Candidate, openLink } from "../types";
 import { snoozeButton, type MessageSource } from "./source";
 import { dayLabel } from "@/lib/day-label";
 
@@ -57,18 +57,8 @@ function gapMessages(insurance: InsuranceSnapshot): Candidate[] {
     },
     actions: [
       gap.policyId
-        ? {
-            id: "open",
-            label: "Update the policy",
-            kind: "link",
-            href: `/insurance?edit=${gap.policyId}#policy-${gap.policyId}`,
-          }
-        : {
-            id: "open",
-            label: `I have ${kindWords(gap.kind)}`,
-            kind: "link",
-            href: `/insurance?add=${gap.kind}#add`,
-          },
+        ? openLink("Update the policy", `/insurance?edit=${gap.policyId}#policy-${gap.policyId}`)
+        : openLink(`I have ${kindWords(gap.kind)}`, `/insurance?add=${gap.kind}#add`),
       // Spec step 197: sample prices for the cover a yes to a risk question opened.
       ...(insurance.canQuote && gap.key in RISK_GAP_KINDS
         ? [{ id: "insurance.gap_quotes" as const, label: "Get quotes", kind: "primary" as const }]
@@ -122,12 +112,7 @@ function shopMessages(insurance: InsuranceSnapshot, autopilot: string | null): C
         refs: { insuranceShopId: shop.id, policyId: shop.policyId, advice: true },
         actions: [
           { id: "insurance.shop_yes", label: "Yes, switch", kind: "primary" },
-          {
-            id: "open",
-            label: "Show options",
-            kind: "link",
-            href: `/insurance/quotes?policy=${shop.policyId}`,
-          },
+          openLink("Show options", `/insurance/quotes?policy=${shop.policyId}`),
           { id: "insurance.shop_no", label: "Not now", kind: "secondary" },
         ],
         dedupeKey: `shop:${shop.id}`,
@@ -152,14 +137,7 @@ function checkedMessages(insurance: InsuranceSnapshot): Candidate[] {
         kind: "done",
         body: `I shopped your ${policy.carrier} ${kindWords(policy.kind)} ${why}: of ${shop.quoteCount === 1 ? "1 quote" : `${shop.quoteCount} quotes`}, nothing with the same cover saved enough to switch. I'll look again next time.`,
         refs: { insuranceShopId: shop.id, policyId: policy.id },
-        actions: [
-          {
-            id: "open",
-            label: "See the quotes",
-            kind: "link",
-            href: `/insurance/quotes?policy=${policy.id}`,
-          },
-        ],
+        actions: [openLink("See the quotes", `/insurance/quotes?policy=${policy.id}`)],
         dedupeKey: `checked:${shop.id}`,
         priority: MESSAGE_PRIORITY.insurance_checked,
       },
@@ -173,12 +151,7 @@ function switchMessages(insurance: InsuranceSnapshot): Candidate[] {
   return (insurance.switches ?? []).flatMap((sw): Candidate[] => {
     const name = `${sw.carrier} ${kindWords(sw.kind as PolicyKind)}`;
     const starts = sw.startsOn ? dayLabel(sw.startsOn) : "soon";
-    const open = {
-      id: "open",
-      label: "See your insurance",
-      kind: "link",
-      href: "/insurance",
-    } as const;
+    const open = openLink("See your insurance", "/insurance");
     if (sw.status === "pending") {
       return [
         {
@@ -229,7 +202,7 @@ function checkupMessages(insurance: InsuranceSnapshot): Candidate[] {
       refs: { insuranceCheckupId: checkup.id, advice: true },
       actions: [
         { id: "insurance.checkup_seen", label: "Got it", kind: "secondary" },
-        { id: "open", label: "See the checkup", kind: "link", href: "/insurance/checkup" },
+        openLink("See the checkup", "/insurance/checkup"),
       ],
       dedupeKey: `checkup:${checkup.id}`,
       priority: MESSAGE_PRIORITY.insurance_checkup,
@@ -372,7 +345,7 @@ function doneByJaneMessages(insurance: InsuranceSnapshot): Candidate[] {
           kind: "heads_up",
           body: callResultBody(n, policyOf(n.policyId)),
           refs: {},
-          actions: [{ id: "open", label: "Your insurance", kind: "link", href: "/insurance" }],
+          actions: [openLink("Your insurance", "/insurance")],
           dedupeKey: `renewal-result:${n.id}`,
           priority: MESSAGE_PRIORITY.renewal_result,
         },
@@ -393,7 +366,7 @@ function doneByJaneMessages(insurance: InsuranceSnapshot): Candidate[] {
     kind: "heads_up",
     body: claimStatusBody(c),
     refs: {},
-    actions: [{ id: "open", label: "Your claim", kind: "link", href: "/insurance/claims" }],
+    actions: [openLink("Your claim", "/insurance/claims")],
     dedupeKey: `claim-status:${c.id}:${c.carrierStatus}`,
     priority: MESSAGE_PRIORITY.claim_status,
   }));
@@ -445,9 +418,7 @@ function fsaMessages(insurance: InsuranceSnapshot): Candidate[] {
       kind: "heads_up",
       body: `You have ${formatCents(fsa.leftCents)} left in your FSA, and it's lost after ${dayLabel(fsa.deadline)} (${fsa.daysLeft} days), unless your employer allows a carryover. Eligible care and medicine count, like prescriptions, glasses and dental work.`,
       refs: {},
-      actions: [
-        { id: "open", label: "Your health year", kind: "link", href: "/insurance?focus=health" },
-      ],
+      actions: [openLink("Your health year", "/insurance?focus=health")],
       dedupeKey: `fsa-deadline:${fsa.deadline}`,
       priority: MESSAGE_PRIORITY.fsa_deadline,
     },

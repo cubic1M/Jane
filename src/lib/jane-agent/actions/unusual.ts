@@ -5,6 +5,7 @@ import {
   type ActionContext,
   type ActionHandler,
 } from "./handler";
+import { openLink } from "../types";
 
 // "This was me" and "Not me" on unusual activity (spec step 208), through answerUnusual.
 // "This was me" teaches the merchant; "Not me" opens a dispute card on the plan and gives
@@ -32,10 +33,7 @@ function handler(id: "unusual.me" | "unusual.not_me", answer: "me" | "not_me"): 
           ...(out.steps.length > 0
             ? { body: `${out.note} ${out.steps.map((s, i) => `${i + 1}. ${s}`).join(" ")}` }
             : {}),
-          actions:
-            out.answer === "not_me"
-              ? [{ id: "open", label: "See the dispute card", kind: "link", href: "/plan" }]
-              : [],
+          actions: out.answer === "not_me" ? [openLink("See the dispute card", "/plan")] : [],
         };
       } catch (error) {
         if (error instanceof UnusualError) throw answeredElsewhere(error.message);

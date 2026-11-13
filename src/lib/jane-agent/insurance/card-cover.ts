@@ -2,18 +2,13 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { cardCover, conditionWords, limitWords } from "@/lib/insurance/card-cover";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "../replies";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 
 // "Does my card cover my phone?" (spec step 152): the cover the person's cards come with,
 // with the limits and what they have to do for it to apply, and any plan they pay for
 // twice. Cancelling one is the finding's own Yes.
 
-const INSURANCE: MessageAction = {
-  id: "open",
-  label: "Your insurance",
-  kind: "link",
-  href: "/insurance?focus=cards",
-};
+const INSURANCE: MessageAction = openLink("Your insurance", "/insurance?focus=cards");
 
 export async function cardCoverAnswer(
   userId: string,
@@ -47,12 +42,9 @@ export async function cardCoverAnswer(
   return {
     body: lines.join("\n"),
     actions: [
-      ...open.slice(0, 2).map((d): MessageAction => ({
-        id: "open",
-        label: `Cancel ${d.merchant}`,
-        kind: "link",
-        href: `/report/${d.findingId}`,
-      })),
+      ...open
+        .slice(0, 2)
+        .map((d): MessageAction => openLink(`Cancel ${d.merchant}`, `/report/${d.findingId}`)),
       INSURANCE,
     ],
     refs: {},

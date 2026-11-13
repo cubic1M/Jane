@@ -2,20 +2,13 @@ import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { BUDGET_SUGGESTION_ROUNDING_CENTS } from "@/config/budgets";
 import type { ChangeView } from "@/lib/changes";
 import type { Snapshot } from "../snapshot";
-import type { Candidate, MessageAction } from "../types";
+import { type Candidate, type MessageAction, openLink } from "../types";
 import { CHANGE_ASK } from "../replies-changes";
 import type { MessageSource } from "./source";
 
 // Jane notices changes (spec step 97): a heads-up for each change it spotted, with "Look
 // into it", "Set a budget" and "That's expected". One a standing rule (autopilot) already
 // acted on isn't asked about: the rule's own "I did this" message says so.
-
-const open = (label: string, href: string): MessageAction => ({
-  id: "open",
-  label,
-  kind: "link",
-  href,
-});
 const expected: MessageAction = {
   id: "change.expected",
   label: "That's expected",
@@ -65,7 +58,7 @@ function candidate(change: ChangeView, snapshot: Snapshot): Candidate | null {
             ? { ...lookInto, label: ask.yes }
             : lookInto,
         expected,
-        open("Open", `/report/${planned.findingId}`),
+        openLink("Open", `/report/${planned.findingId}`),
       ],
     };
   }
@@ -79,7 +72,7 @@ function candidate(change: ChangeView, snapshot: Snapshot): Candidate | null {
           ? `${change.title} If you didn't expect that, take a look.`
           : `Good news: ${change.title}`,
         refs,
-        actions: [expected, open("Look into it", "/subscriptions")],
+        actions: [expected, openLink("Look into it", "/subscriptions")],
       };
     case "new_subscription":
       return {
@@ -87,7 +80,7 @@ function candidate(change: ChangeView, snapshot: Snapshot): Candidate | null {
         kind: "heads_up",
         body: `${change.title} Did you mean to sign up?`,
         refs,
-        actions: [expected, open("Look into it", "/subscriptions")],
+        actions: [expected, openLink("Look into it", "/subscriptions")],
       };
     case "paycheck_late":
     case "paycheck_smaller":
@@ -96,7 +89,7 @@ function candidate(change: ChangeView, snapshot: Snapshot): Candidate | null {
         kind: "heads_up",
         body: `${change.title} If something changed at work, tell me and I'll keep your plan up to date.`,
         refs,
-        actions: [expected, open("Look into it", "/transactions")],
+        actions: [expected, openLink("Look into it", "/transactions")],
       };
     case "new_employer":
       return {
@@ -104,7 +97,7 @@ function candidate(change: ChangeView, snapshot: Snapshot): Candidate | null {
         kind: "heads_up",
         body: `${change.title} New job? Congratulations.`,
         refs,
-        actions: [expected, open("Look into it", "/transactions")],
+        actions: [expected, openLink("Look into it", "/transactions")],
       };
     case "category_pace": {
       const category = change.category!;
@@ -120,7 +113,7 @@ function candidate(change: ChangeView, snapshot: Snapshot): Candidate | null {
           ...(canBudget
             ? [{ id: "change.budget", label: "Set a budget", kind: "primary" } as const]
             : []),
-          open("Look into it", "/insights"),
+          openLink("Look into it", "/insights"),
           expected,
         ],
       };
@@ -131,7 +124,7 @@ function candidate(change: ChangeView, snapshot: Snapshot): Candidate | null {
         kind: "heads_up",
         body: `${change.title} Fees can often be refunded.`,
         refs,
-        actions: [expected, open("Look into it", "/transactions")],
+        actions: [expected, openLink("Look into it", "/transactions")],
       };
     case "premium_renewed":
       return {
@@ -139,7 +132,7 @@ function candidate(change: ChangeView, snapshot: Snapshot): Candidate | null {
         kind: "heads_up",
         body: `${change.title} If you didn't expect that, take a look.`,
         refs,
-        actions: [expected, open("Look into it", "/insurance")],
+        actions: [expected, openLink("Look into it", "/insurance")],
       };
   }
 }

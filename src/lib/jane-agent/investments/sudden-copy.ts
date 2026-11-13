@@ -1,17 +1,15 @@
 import { SUDDEN_KINDS, type SuddenKind } from "@/config/sudden-money";
 import type { SuddenView } from "@/lib/investments/sudden-money";
 import { formatCents } from "@/lib/money";
-import type { ActionId, MessageAction } from "../types";
+import { type ActionId, type MessageAction, openLink } from "../types";
 
 // Sudden money in the chat (spec step 235): the one question, then the plan a stage at a
 // time in the same message. Every stage is a tap.
 
-export const SUDDEN_LINK: MessageAction = {
-  id: "open",
-  label: "See the whole plan",
-  kind: "link",
-  href: "/investments/sudden-money",
-};
+export const SUDDEN_LINK: MessageAction = openLink(
+  "See the whole plan",
+  "/investments/sudden-money",
+);
 
 const KIND_ACTIONS: Record<SuddenKind | "transfer", ActionId> = {
   bonus: "sudden.bonus",

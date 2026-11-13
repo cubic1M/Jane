@@ -1,6 +1,7 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { priceRiseLine } from "../replies-price-rises";
 import type { MessageSource } from "./source";
+import { openLink } from "../types";
 
 // Price rises seen before they land (spec step 243): one heads-up for each, a month or more
 // before the higher price, with the cheaper choice and the call script.
@@ -15,12 +16,7 @@ export const priceRisesSource: MessageSource = {
         refs: {},
         actions: [
           { id: "price.called" as const, label: "I called", kind: "primary" as const },
-          {
-            id: "open" as const,
-            label: "See deadlines",
-            kind: "link" as const,
-            href: "/deadlines",
-          },
+          openLink("See deadlines", "/deadlines"),
         ],
         dedupeKey: r.key,
         priority: MESSAGE_PRIORITY.price_rises,

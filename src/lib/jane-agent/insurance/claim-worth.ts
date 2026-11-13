@@ -3,12 +3,13 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceLines, payoutLine } from "@/lib/insurance/claim-worth";
 import { claimWorthFor } from "@/lib/insurance/claim-worth-for";
 import type { Reply } from "../replies";
+import { openLink } from "../types";
 
 // "Is it worth claiming $1,200?" (spec step 199): what the insurer would pay after the
 // deductible (a fact, for everyone), and, in demo advice mode, the three-year cost of the
 // premium rise and the claims-free discount against it, with a plain verdict.
 
-const CLAIMS = { id: "open", label: "Claims", kind: "link", href: "/insurance/claims" } as const;
+const CLAIMS = openLink("Claims", "/insurance/claims");
 
 export async function claimWorthAnswer(
   userId: string,
@@ -30,7 +31,7 @@ export async function claimWorthAnswer(
   if (!result.found) {
     return {
       body: "I don't see a policy on your insurance that this would be a claim on. Add it on your insurance page and I'll work out what a claim would pay.",
-      actions: [{ id: "open", label: "Your insurance", kind: "link", href: "/insurance" }],
+      actions: [openLink("Your insurance", "/insurance")],
       refs: {},
     };
   }

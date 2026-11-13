@@ -1,7 +1,7 @@
 import { COMPANY_DROP, EMPLOYER_STOCK_LIMIT } from "@/config/company-stock";
 import type { CompanyStockView } from "@/lib/investments/company-stock";
 import { formatCents } from "@/lib/money";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 import { SIMULATED_WORDS } from "./rebalance-copy";
 import { formatPercent as pct } from "@/lib/percent";
 import { dayLabel } from "@/lib/day-label";
@@ -10,12 +10,10 @@ import { dayLabel } from "@/lib/day-label";
 
 type View = Pick<CompanyStockView, "company" | "concentration" | "plan">;
 
-export const COMPANY_LINK: MessageAction = {
-  id: "open",
-  label: "See your company stock",
-  kind: "link",
-  href: "/investments/company-stock",
-};
+export const COMPANY_LINK: MessageAction = openLink(
+  "See your company stock",
+  "/investments/company-stock",
+);
 
 // "Acme Corp is 28% of what you've invested (36% with what's still to vest)."
 export function concentrationLine(view: View): string {

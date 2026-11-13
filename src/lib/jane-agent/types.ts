@@ -396,6 +396,14 @@ export type MessageAction =
   | { id: ActionId; label: string; kind: "primary" | "secondary" | "quick" }
   | { id: "open"; label: string; kind: "link"; href: string };
 
+// A button that opens a page.
+export const openLink = (label: string, href: string): MessageAction => ({
+  id: "open",
+  label,
+  kind: "link",
+  href,
+});
+
 // What a message is about. Every field is optional; each source and action uses its own.
 export type CardExtras = {
   figures: { label: string; value: string }[];

@@ -85,6 +85,7 @@ import {
   retirementReply,
   reviewReply,
 } from "./replies";
+import { openLink } from "../types";
 
 // Rule answers to investment questions (spec step 128 on), loaded with the same code as
 // the investments page and scoped to the person.
@@ -224,7 +225,7 @@ export async function answerInvestments(
       if (!(await adviceMode(userId, { client }))) {
         return {
           body: READ_ONLY_INVESTMENTS.lines.join(" "),
-          actions: [{ id: "open", label: "See investments", kind: "link", href: "/investments" }],
+          actions: [openLink("See investments", "/investments")],
           refs: {},
         };
       }

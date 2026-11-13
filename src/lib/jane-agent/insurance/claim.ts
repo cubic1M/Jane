@@ -3,7 +3,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { claimContact } from "@/lib/insurance/claim-rules";
 import { kindWords } from "@/lib/insurance/gaps";
 import type { Reply } from "../replies";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 import { guideBody } from "./claim-words";
 import type { InsuranceIntent } from "./intents";
 import { loadInsuranceSnapshot } from "./snapshot";
@@ -11,12 +11,7 @@ import { loadInsuranceSnapshot } from "./snapshot";
 // "I had an accident", "someone broke in" (spec step 107): the claims guide for the policy
 // it's on, with "Start a claim tracker". Works for every kind of policy, and without one.
 
-const CLAIMS_PAGE: MessageAction = {
-  id: "open",
-  label: "Your claims",
-  kind: "link",
-  href: "/insurance/claims",
-};
+const CLAIMS_PAGE: MessageAction = openLink("Your claims", "/insurance/claims");
 
 export async function claimAnswer(
   userId: string,

@@ -1,6 +1,6 @@
 import { SAFE_TO_SPEND_FLOOR_CENTS } from "@/config/auto-invest";
 import { formatCents } from "@/lib/money";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 
 // Jane's words and buttons for automatic investing (spec step 134). Pure.
 
@@ -25,12 +25,7 @@ export const resumeButton = (): MessageAction => ({
   label: "Turn it back on",
   kind: "primary",
 });
-export const AUTO_LINK: MessageAction = {
-  id: "open",
-  label: "See every payday",
-  kind: "link",
-  href: "/investments/auto",
-};
+export const AUTO_LINK: MessageAction = openLink("See every payday", "/investments/auto");
 
 export function runLine(run: {
   status: string;

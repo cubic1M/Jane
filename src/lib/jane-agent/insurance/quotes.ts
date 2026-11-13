@@ -9,7 +9,7 @@ import { OPTION_ACTIONS } from "../actions/options";
 import { shopBody } from "../sources/insurance";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "../replies";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 import type { InsuranceIntent } from "./intents";
 import { loadInsuranceSnapshot } from "./snapshot";
 
@@ -17,12 +17,7 @@ import { loadInsuranceSnapshot } from "./snapshot";
 // partner for quotes with the same cover and deductible, and says what came back, like for
 // like. Asking commits to nothing; buying is a tap later (spec step 105).
 
-const link = (label: string, href: string): MessageAction => ({
-  id: "open",
-  label,
-  kind: "link",
-  href,
-});
+const link = (label: string, href: string): MessageAction => openLink(label, href);
 
 // Shown up to this many quotes in the chat; the rest are on the quotes page.
 const SHOWN = 3;
@@ -115,7 +110,7 @@ function healthReply(
         : []),
       "Nothing changes unless you say so.",
     ].join("\n"),
-    actions: [{ id: "open", label: "See the plans", kind: "link", href }],
+    actions: [openLink("See the plans", href)],
     refs: { policyId: result.policy.id },
   };
 }

@@ -1,16 +1,11 @@
 import type { PropertyView } from "@/lib/investments/property";
 import { formatCents } from "@/lib/money";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 
 // Property in the chat (spec step 214): shared words. Both sides of the paydown question
 // are always given; a rental's figures are the person's own transactions.
 
-export const PROPERTY_LINK: MessageAction = {
-  id: "open",
-  label: "See your property",
-  kind: "link",
-  href: "/investments/property",
-};
+export const PROPERTY_LINK: MessageAction = openLink("See your property", "/investments/property");
 
 const pct = (n: number | null) => (n === null ? "n/a" : `${Math.round(n * 1000) / 10}%`);
 

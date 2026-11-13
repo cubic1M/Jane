@@ -11,6 +11,7 @@ import {
   sizedActions,
   sizedBody,
 } from "./life-words";
+import { openLink } from "../types";
 
 // "How much life insurance do I need?" (spec step 153): sized now from the person's
 // numbers, with the method and the best quote, as demo advice. Real accounts get no
@@ -26,7 +27,7 @@ export async function lifeAnswer(
     case "no_advice":
       return {
         body: "I can't tell you how much life insurance to get on your real accounts yet: that's advice, and I'll only give it once a licensed partner is connected. I can show you what you have on your insurance page.",
-        actions: [{ id: "open", label: "Your insurance", kind: "link", href: "/insurance" }],
+        actions: [openLink("Your insurance", "/insurance")],
         refs: {},
       };
     case "ask_dependants":

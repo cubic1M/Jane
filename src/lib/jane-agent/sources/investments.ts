@@ -25,7 +25,7 @@ import {
   sellDue,
   SELL_WORDS,
 } from "../investments/company-copy";
-import type { Candidate } from "../types";
+import { type Candidate, openLink } from "../types";
 import { detectDrop } from "@/planning/steady-hand";
 import { STEADY_LINK, steadyMessage } from "../investments/steady-copy";
 import { MATCH_MIN_MISSED_CENTS, ROOM_MIN_CENTS } from "@/config/retirement-accounts";
@@ -151,10 +151,7 @@ export const investmentsSource: MessageSource = {
         kind: "heads_up",
         body: `I can see what's in your investment accounts now: ${inv.holdingCount} ${inv.holdingCount === 1 ? "holding" : "holdings"} worth ${formatCents(inv.totalCents)} in ${list(inv.accounts.map((a) => a.name))}. Every number shows where it came from, and I'll keep it up to date.`,
         refs: {},
-        actions: [
-          { id: "open", label: "See what you own", kind: "link", href: "/investments" },
-          snoozeButton(),
-        ],
+        actions: [openLink("See what you own", "/investments"), snoozeButton()],
         dedupeKey: "holdings",
         priority: MESSAGE_PRIORITY.investments,
       },
@@ -186,10 +183,7 @@ export const investmentsSource: MessageSource = {
         kind: "heads_up",
         body: `Your investments cost about ${formatCents(fees.totalYearlyCents)} a year in fees. ${equivalentLine(fees.equivalents[0])}${fees.equivalents.length > 1 ? ` I found ${fees.equivalents.length - 1} more like it.` : ""} ${switchSummary(fees.equivalents, fees.years)}`,
         refs: { advice: true },
-        actions: [
-          { id: "open", label: "See the fees", kind: "link", href: "/investments/fees" },
-          snoozeButton(),
-        ],
+        actions: [openLink("See the fees", "/investments/fees"), snoozeButton()],
         dedupeKey: `fees:${tickers.join(",")}`,
         priority: MESSAGE_PRIORITY.investment_fees,
       });
@@ -205,7 +199,7 @@ export const investmentsSource: MessageSource = {
         refs: { advice: true, ...(plan ? { rebalanceKey: plan.key } : {}) },
         actions: [
           ...(plan ? [rebalanceButton()] : []),
-          { id: "open", label: "See the review", kind: "link", href: "/investments/review" },
+          openLink("See the review", "/investments/review"),
           snoozeButton(),
         ],
         // Step 137: drift is watched every day; while the mix stays off target Jane says so
@@ -230,15 +224,7 @@ export const investmentsSource: MessageSource = {
           .filter(Boolean)
           .join(" "),
         refs: { advice: true },
-        actions: [
-          {
-            id: "open",
-            label: "See your retirement plan",
-            kind: "link",
-            href: "/investments/retirement",
-          },
-          snoozeButton(),
-        ],
+        actions: [openLink("See your retirement plan", "/investments/retirement"), snoozeButton()],
         dedupeKey: `retirement:${retirement.status}:${retirement.match?.captured ?? "none"}`,
         priority: MESSAGE_PRIORITY.retirement,
       });
@@ -250,10 +236,7 @@ export const investmentsSource: MessageSource = {
         kind: "heads_up",
         body: `Here's the order I'd fill your accounts in: ${order.map((s, i) => `${i + 1}. ${s.title}`).join("; ")}.${move ? ` And ${move.holding.name} is better held in ${move.better}: about ${formatCents(move.taxDragCents)} a year in tax where it is.` : ""}`,
         refs: { advice: true },
-        actions: [
-          { id: "open", label: "See why", kind: "link", href: "/investments/accounts" },
-          snoozeButton(),
-        ],
+        actions: [openLink("See why", "/investments/accounts"), snoozeButton()],
         dedupeKey: `accounts:${order.map((s) => s.key).join(",")}:${inv.accountPlan.location.map((m) => m.holding.ticker).join(",")}`,
         priority: MESSAGE_PRIORITY.account_order,
       });
@@ -278,7 +261,7 @@ export const investmentsSource: MessageSource = {
       },
       actions: [
         ...(note.decision ? [rebalanceButton()] : []),
-        { id: "open", label: "See your investments", kind: "link", href: "/investments" },
+        openLink("See your investments", "/investments"),
         snoozeButton(),
       ],
       dedupeKey: `monthly:${inv.month.month}`,
@@ -291,10 +274,7 @@ export const investmentsSource: MessageSource = {
         kind: "heads_up",
         body: `I've given each goal its own mix, by when you need it: ${goalBuckets.map(bucketLine).join("; ")}. ${byHerselfLine(inv.goalBuckets.byHerself)}`,
         refs: { advice: true },
-        actions: [
-          { id: "open", label: "See each goal", kind: "link", href: "/investments/goals" },
-          snoozeButton(),
-        ],
+        actions: [openLink("See each goal", "/investments/goals"), snoozeButton()],
         dedupeKey: `goals:${goalBuckets.map((b) => `${b.id}:${b.nearTerm ? "cash" : "invested"}`).join(",")}`,
         priority: MESSAGE_PRIORITY.goal_buckets,
       });
@@ -305,10 +285,7 @@ export const investmentsSource: MessageSource = {
         kind: "heads_up",
         body: `Your tax profile has ${inv.college.children === 1 ? "a child" : `${inv.college.children} children`} under 17. Want to start saving for college? Tell me their age, like "college for my 5 year old", and I'll work out what to put aside a month and the 529 plan that comes out ahead.`,
         refs: { advice: true },
-        actions: [
-          { id: "open", label: "Plan for college", kind: "link", href: "/investments/college" },
-          snoozeButton(),
-        ],
+        actions: [openLink("Plan for college", "/investments/college"), snoozeButton()],
         dedupeKey: "college:offer",
         priority: MESSAGE_PRIORITY.college,
       });
@@ -321,7 +298,7 @@ export const investmentsSource: MessageSource = {
         kind: "done",
         body: `I've saved ${hsa.receipts} medical ${hsa.receipts === 1 ? "receipt" : "receipts"} (${formatCents(hsa.savedCents)}) to your HSA receipts vault. Paid out of pocket now, they can be paid back from an HSA tax-free later.`,
         refs: {},
-        actions: [{ id: "open", label: "See the vault", kind: "link", href: "/investments/hsa" }],
+        actions: [openLink("See the vault", "/investments/hsa")],
         dedupeKey: `hsa:receipts:${hsa.receipts}`,
         priority: MESSAGE_PRIORITY.hsa,
       });
@@ -337,7 +314,7 @@ export const investmentsSource: MessageSource = {
             label: `Invest ${formatCents(hsa.plan.toInvestCents)}`,
             kind: "primary",
           },
-          { id: "open", label: "See your HSA", kind: "link", href: "/investments/hsa" },
+          openLink("See your HSA", "/investments/hsa"),
           snoozeButton(),
         ],
         dedupeKey: `hsa:invest:${hsa.plan.toInvestCents}`,

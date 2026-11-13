@@ -1,16 +1,14 @@
 import { formatCents } from "@/lib/money";
 import type { RetirementAccountsView } from "@/lib/investments/retirement-accounts";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 import { formatPercentTenths } from "@/lib/percent";
 
 // Retirement accounts used fully in the chat (spec step 210): shared words and buttons.
 
-export const RA_LINK: MessageAction = {
-  id: "open",
-  label: "See your limits",
-  kind: "link",
-  href: "/investments/retirement-accounts",
-};
+export const RA_LINK: MessageAction = openLink(
+  "See your limits",
+  "/investments/retirement-accounts",
+);
 
 type View = Pick<
   RetirementAccountsView,

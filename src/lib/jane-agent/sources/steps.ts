@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
-import type { Candidate, MessageAction } from "../types";
+import { type Candidate, type MessageAction, openLink } from "../types";
 import type { SnapshotAgentStep } from "../snapshot-more";
 import { snoozeButton, type MessageSource } from "./source";
 
@@ -15,12 +15,7 @@ import { snoozeButton, type MessageSource } from "./source";
 const PRIORITY = MESSAGE_PRIORITY.agent_step;
 
 const detailsHref = (s: SnapshotAgentStep) => `/actions#action-${s.actionId}`;
-const link = (label: string, href: string): MessageAction => ({
-  id: "open",
-  label,
-  kind: "link",
-  href,
-});
+const link = (label: string, href: string): MessageAction => openLink(label, href);
 
 // The actions page's own instruction, said for the chat instead.
 const withoutPageHint = (todo: string | null) =>

@@ -4,19 +4,14 @@ import { formatReturn } from "@/insights/returns";
 import { formatCents } from "@/lib/money";
 import type { Bucket } from "@/planning/goal-buckets";
 import { givenUp, type Drop } from "@/planning/steady-hand";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 import { bucketLine } from "./goals-copy";
 
 // A steady hand in the chat (spec step 163): one calm message with what changed, what it
 // means for each goal's timeline, and the plan. Past-tense facts and the person's own plan;
 // never a word about what markets will do.
 
-export const STEADY_LINK: MessageAction = {
-  id: "open",
-  label: "See how they've done",
-  kind: "link",
-  href: "/investments",
-};
+export const STEADY_LINK: MessageAction = openLink("See how they've done", "/investments");
 
 const whatChanged = (drop: Drop) =>
   `Your investments are down ${formatReturn(drop.rate).replace("−", "")} over ${drop.windowLabel}, not counting money you put in or took out.`;

@@ -5,7 +5,7 @@ import type { Policy } from "@/lib/insurance/policies";
 import { adviceLines, claimWorth, payoutLine } from "@/lib/insurance/claim-worth";
 import { PREMIUM_FREQUENCIES } from "@/config/documents";
 import { formatCents } from "@/lib/money";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 
 // Renewal negotiation and claims, done by Jane, in its chat (spec step 155): the call it
 // offers to make (or made on autopilot) and what the carrier said; a claim's draft for the
@@ -79,7 +79,7 @@ export function draftBody(
 
 export const draftActions = (claim: Claim): MessageAction[] => [
   { id: "claim.file", label: "File it", kind: "primary" },
-  { id: "open", label: "Change it", kind: "link", href: `/insurance/claims#claim-${claim.id}` },
+  openLink("Change it", `/insurance/claims#claim-${claim.id}`),
 ];
 
 // Pure: the carrier's status, once it moves.

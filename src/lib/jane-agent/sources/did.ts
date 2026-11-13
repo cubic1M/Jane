@@ -2,7 +2,7 @@ import { BACK_OR_AGREED } from "@/lib/saved-amount";
 import { DID_LOOKBACK_DAYS, MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { RULE_UNDO_HOURS } from "@/config/rules";
 import { formatCents } from "@/lib/money";
-import type { Candidate } from "../types";
+import { type Candidate, openLink } from "../types";
 import type { MessageSource } from "./source";
 
 // "I did this" (spec step 82): what Jane did on autopilot that it hasn't said yet. A yes a
@@ -28,7 +28,7 @@ export const didSource: MessageSource = {
           ...(canUndo
             ? [{ id: "undo.rule" as const, label: "Undo", kind: "secondary" as const }]
             : []),
-          { id: "open", label: "Open", kind: "link", href: "/plan" },
+          openLink("Open", "/plan"),
         ],
         dedupeKey: `rule:${approval.decisionId}`,
         priority: MESSAGE_PRIORITY.rule_approval,
@@ -45,7 +45,7 @@ export const didSource: MessageSource = {
             ? `Done: "${action.title}". ${formatCents(action.confirmedCents)} ${BACK_OR_AGREED}.`
             : `Done: "${action.title}".`,
         refs: { actionId: action.actionId },
-        actions: [{ id: "open", label: "See every step", kind: "link", href: "/actions" }],
+        actions: [openLink("See every step", "/actions")],
         dedupeKey: `action:${action.actionId}`,
         priority: MESSAGE_PRIORITY.finished,
       }));

@@ -3,12 +3,13 @@ import { gapAdvice, kindWords } from "@/lib/insurance/gaps";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "../replies";
 import type { InsuranceSnapshot } from "./snapshot";
+import { openLink } from "../types";
 
 // "Do I need umbrella insurance?" (spec step 149), answered from the person's numbers: what
 // they have, the gap rule's reason, or why the rule doesn't fire for them. What to add is
 // demo advice, only in demo advice mode and labelled. Pure.
 
-const SEE = { id: "open", label: "See your insurance", kind: "link", href: "/insurance" } as const;
+const SEE = openLink("See your insurance", "/insurance");
 
 // Why a kind of cover doesn't look needed from what Jane can see.
 function noGapWords(kind: PolicyKind, profile: Pick<InsuranceSnapshot, "household">): string {
@@ -61,15 +62,7 @@ export function needReply(kind: PolicyKind, profile: InsuranceSnapshot | undefin
   if (gap) {
     return {
       body: `${gap.title}. ${gap.why}${profile.advice ? `\n${gapAdvice(gap).text}` : ""}`,
-      actions: [
-        {
-          id: "open",
-          label: `Add ${kindWords(kind)}`,
-          kind: "link",
-          href: `/insurance?add=${kind}#add`,
-        },
-        SEE,
-      ],
+      actions: [openLink(`Add ${kindWords(kind)}`, `/insurance?add=${kind}#add`), SEE],
       refs: { insuranceGap: gap.key, ...(profile.advice ? { advice: true as const } : {}) },
     };
   }

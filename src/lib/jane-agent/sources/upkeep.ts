@@ -1,7 +1,7 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { formatCents } from "@/lib/money";
 import { tuneUpLines } from "../replies-review";
-import type { Candidate } from "../types";
+import { type Candidate, openLink } from "../types";
 import { type MessageSource } from "./source";
 import { dayLabel, monthLabel } from "@/lib/day-label";
 
@@ -9,7 +9,7 @@ import { dayLabel, monthLabel } from "@/lib/day-label";
 // Keep) or, when autopilot applied it, what Jane changed (with Undo); and transfers to
 // savings to count toward a goal (Count it, Not this one), or the ones autopilot counted.
 
-const budgetsLink = { id: "open", label: "Change", kind: "link", href: "/budgets" } as const;
+const budgetsLink = openLink("Change", "/budgets");
 
 export const upkeepSource: MessageSource = {
   key: "upkeep",
@@ -63,7 +63,7 @@ export const upkeepSource: MessageSource = {
         kind: "done",
         body: `I counted the ${formatCents(c.amountCents)} you moved to savings toward "${c.goalName}" (autopilot). That's ${formatCents(c.savedCents)} of ${formatCents(c.targetCents)}.`,
         refs: {},
-        actions: [{ id: "open", label: "See goals", kind: "link", href: "/goals" }],
+        actions: [openLink("See goals", "/goals")],
         dedupeKey: `counted:${c.transactionId}`,
         priority: MESSAGE_PRIORITY.upkeep,
       });
