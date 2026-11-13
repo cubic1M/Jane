@@ -1,7 +1,7 @@
 import { fetchYahooDaily } from "@/lib/market/yahoo";
 import { marketData } from "@/lib/market";
 import type { Bar } from "@/lib/market/types";
-import { isoDay as day } from "@/lib/dates";
+import { addDays } from "@/lib/dates";
 
 // Where the paper account's prices come from (founder: real prices, "not just from the sample
 // data anymore"), all free: Alpaca's daily bars when its keys are set (as the practice portfolio
@@ -29,8 +29,7 @@ export function paperPrices(env: Record<string, string | undefined> = process.en
   return { name: "sample", real: false, closes: (t, from, to) => feed.prices(t, from, to) };
 }
 
-export const daysBefore = (iso: string, n: number) =>
-  day(new Date(Date.parse(`${iso}T00:00:00Z`) - n * 86_400_000));
+export const daysBefore = (iso: string, n: number) => addDays(iso, -n);
 
 // The last close of each ticker on or before `asOf` (from the last two weeks), and its date.
 export async function latestCloses(

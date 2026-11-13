@@ -27,7 +27,7 @@ import { addMonthlyIfDue, runAutopilot } from "./autopilot";
 import { loadLedger, NoPracticePortfolio, practiceBroker } from "./broker";
 import { scanPreferences } from "./opportunity-prefs";
 import { practiceProfileOf } from "./preferences";
-import { DAY_MS } from "@/lib/dates";
+import { addDays } from "@/lib/dates";
 import { systemDb } from "@/lib/system-db";
 
 // The daily scan of each practice portfolio (spec step 292, Phase AW, Stage A), run by Vercel
@@ -63,8 +63,7 @@ type ScanOutcome = {
 export type ScanResult =
   { scanned: false; why: "no_portfolio" | "paused" } | { scanned: true; flags: ScanOutcome[] };
 
-const daysBefore = (iso: string, days: number) =>
-  new Date(Date.parse(`${iso}T00:00:00Z`) - days * DAY_MS).toISOString().slice(0, 10);
+const daysBefore = (iso: string, days: number) => addDays(iso, -days);
 
 // Step 293's summary for each headline: the stored one (Claude's, checked, or the rules one),
 // else the rules summary made here. No call out.

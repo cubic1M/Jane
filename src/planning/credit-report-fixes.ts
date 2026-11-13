@@ -7,14 +7,11 @@ import {
 import type { ReportItem } from "@/lib/credit/partner";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
-import { DAY_MS } from "@/lib/dates";
+import { addDays } from "@/lib/dates";
 
 // Collections and credit report errors (spec step 181). Pure: the letters Jane drafts for an
 // item on the person's report, each citing the right rule and giving the deadline from
 // config, and the dates to track.
-
-export const addDays = (day: string, days: number) =>
-  new Date(Date.parse(`${day}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
 
 type FixKind = "validation" | "dispute";
 

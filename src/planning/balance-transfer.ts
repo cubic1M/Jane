@@ -4,6 +4,7 @@ import type { TransferOffer } from "@/lib/lenders/partner";
 import { formatCents } from "@/lib/money";
 import { payoffPlan } from "./debt";
 import { formatRate } from "@/lib/percent";
+import { dayLabel } from "@/lib/day-label";
 
 // Balance transfers (spec step 113): moving a card's balance to a 0% card. For each offer,
 // the payment that clears the balance and the fee before the 0% ends, and what keeping the
@@ -39,13 +40,7 @@ const addMonths = (day: string, months: number) => {
   return new Date(Date.UTC(y, m - 1 + months, d)).toISOString().slice(0, 10);
 };
 
-export const shortMonth = (day: string) =>
-  new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+export const shortMonth = (day: string) => dayLabel(day, { year: true });
 
 export function scoreTransfer(
   balanceCents: number,

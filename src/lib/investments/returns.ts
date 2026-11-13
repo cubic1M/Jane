@@ -1,4 +1,4 @@
-import { addDays } from "@/data-sources/demo/demo-bank";
+import { addDays } from "@/lib/dates";
 import { CORE_FUNDS, type AssetClass } from "@/config/funds";
 import {
   INCOME_SUBTYPES,

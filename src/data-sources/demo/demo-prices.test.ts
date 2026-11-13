@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { addDays } from "./demo-bank";
 import { DEMO_PRICE_PROFILES, demoPrice } from "./demo-prices";
+import { addDays } from "@/lib/dates";
 
 // Spec step 156: the stand-in price feed.
 

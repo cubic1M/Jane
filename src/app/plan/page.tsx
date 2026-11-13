@@ -28,6 +28,7 @@ import { YesToAll } from "./yes-to-all";
 import { loadYearPlan } from "@/lib/year-plan";
 import { YearPlanSection } from "./year-plan-section";
 import { PageShell } from "@/components/page-shell";
+import { monthLabel } from "@/lib/day-label";
 
 // How many items the plan opens with; the rest are behind "More" (founder: "show what matters,
 // hide the rest").
@@ -241,12 +242,7 @@ async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["search
 const CATEGORIES = categoryOptions().flatMap((group) =>
   group.options.map((o) => ({ value: o.value, label: `${group.label}: ${o.label}` })),
 );
-const monthYear = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+const monthYear = (iso: string) => monthLabel(iso, { long: true });
 
 // A proposal as the plan shows it: what Jane would set up, and the numbers behind it.
 function setupView(p: Proposal): SetupView {

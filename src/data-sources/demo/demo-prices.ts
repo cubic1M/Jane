@@ -1,5 +1,4 @@
-import { addDays } from "./demo-bank";
-import { DAY_MS } from "@/lib/dates";
+import { DAY_MS, addDays } from "@/lib/dates";
 
 // The stand-in daily price feed (spec step 156) for the demo bank's funds: made-up prices
 // that move a little every day, together like a real market, so returns, drift and drops

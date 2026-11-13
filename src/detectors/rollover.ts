@@ -2,6 +2,7 @@ import { ROLLOVER_CLOCK } from "@/config/retirement";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestion } from "./contract";
 import { evidence, headlineOf, tx } from "./helpers";
+import { addDays } from "@/lib/dates";
 
 // A payout from a retirement plan or IRA landed in the bank (connectors roadmap round 17,
 // rollover_60_day_clock): it can still be rolled over if it goes into an IRA or plan within 60
@@ -9,8 +10,6 @@ import { evidence, headlineOf, tx } from "./helpers";
 // person's. Pure; see ./contract.ts.
 
 const DAY = 86_400_000;
-const addDays = (day: string, n: number) =>
-  new Date(Date.parse(`${day}T00:00:00Z`) + n * DAY).toISOString().slice(0, 10);
 const daysBetween = (from: string, to: string) =>
   Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / DAY);
 const longDate = (day: string) =>

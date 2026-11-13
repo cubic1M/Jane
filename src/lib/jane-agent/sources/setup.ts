@@ -4,18 +4,14 @@ import { formatCents } from "@/lib/money";
 import { goalBasis, type BudgetProposal, type GoalProposal } from "@/planning/proposals";
 import { type MessageAction, openLink } from "../types";
 import type { MessageSource } from "./source";
+import { monthLabel } from "@/lib/day-label";
 
 // Set-up suggestions (spec step 83): each budget and goal Jane proposes on the plan
 // (src/lib/proposals.ts), including the "Yearly bills" goal, as a message with "Set it up"
 // and "No", plus "Use all N suggestions" when there's more than one. The numbers are the
 // person's own, said as math, never advice. Each once (a new amount is a new suggestion).
 
-const monthYear = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+const monthYear = (iso: string) => monthLabel(iso, { long: true });
 
 function describe(p: BudgetProposal | GoalProposal): string {
   if (p.kind === "budget") {
