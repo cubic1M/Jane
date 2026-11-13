@@ -4,18 +4,13 @@ import { formatCents } from "@/lib/money";
 import type { MortgageMoneyView } from "@/lib/mortgage-money";
 import type { MoneyOption } from "@/planning/mortgage-money";
 import type { Reply } from "./replies";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 
 // Jane's answers about recasting, refinancing or paying extra on the mortgage (spec step 246),
 // from src/lib/mortgage-money.ts. Pure. Demo advice: both sides shown, the choice left to the
 // person.
 
-const MONEY_PAGE: MessageAction = {
-  id: "open",
-  label: "Compare for your mortgage",
-  kind: "link",
-  href: "/loans/recast",
-};
+const MONEY_PAGE: MessageAction = openLink("Compare for your mortgage", "/loans/recast");
 
 const months = (n: number) => `${n} ${n === 1 ? "month" : "months"}`;
 

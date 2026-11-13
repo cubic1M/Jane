@@ -1,6 +1,7 @@
 import { formatCents } from "@/lib/money";
 import type { LongView } from "@/lib/long-view";
 import type { Reply } from "./replies";
+import { openLink } from "./types";
 
 // The long view in the chat (spec step 209): the 10, 20 and 30 year ranges and that it's
 // a range with assumptions; for demo-advice people also what moves it most (labelled by the
@@ -27,7 +28,7 @@ export function longViewReply(view: LongView | null): Reply {
   }
   return {
     body: lines.join(" "),
-    actions: [{ id: "open", label: "See the long view", kind: "link", href: "/long-view" }],
+    actions: [openLink("See the long view", "/long-view")],
     refs: view.advice && view.levers[0] ? { advice: true } : {},
   };
 }

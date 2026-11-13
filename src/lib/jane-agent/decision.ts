@@ -10,7 +10,7 @@ import { buildProfile } from "@/profile/build";
 import type { CoreSubject, DecisionIntent, DecisionItem } from "./decision-intents";
 import type { Topic } from "./context";
 import type { Reply } from "./replies";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 
 // A decision question ("should I buy bitcoin?") answered from the person's own numbers: what
 // they owe and at what rate, whether their cash cushion is built, and the goals still short.
@@ -71,12 +71,7 @@ export async function loadDecisionFacts(
   };
 }
 
-const link = (label: string, href: string): MessageAction => ({
-  id: "open",
-  label,
-  kind: "link",
-  href,
-});
+const link = (label: string, href: string): MessageAction => openLink(label, href);
 
 const THING: Record<CoreSubject, string> = {
   crypto: "crypto",

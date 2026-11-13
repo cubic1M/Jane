@@ -5,7 +5,7 @@ import type { Charge, Recurring } from "./recurring";
 import { clarifyReply, findingReply, type Reply } from "./replies";
 import type { Snapshot } from "./snapshot";
 import { dateAndDays } from "./sources/source";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 
 // Spec step 88: what one thing costs, the subscriptions list and the next payday, from the
 // same numbers as the Subscriptions page and safe to spend. Pure. Where Jane found a way to
@@ -22,12 +22,7 @@ const EVERY: Record<Frequency, string> = {
   ANNUALLY: "a year",
 };
 
-const subscriptionsLink: MessageAction = {
-  id: "open",
-  label: "Open subscriptions",
-  kind: "link",
-  href: "/subscriptions",
-};
+const subscriptionsLink: MessageAction = openLink("Open subscriptions", "/subscriptions");
 
 // The charges a name could mean ("netflix", "my phone bill", "the gym").
 function matchCharges(charges: readonly Charge[], target: string): Charge[] {
@@ -157,13 +152,13 @@ export function paydayReply(recurring: Recurring, asOf: string): Reply {
   if (!income) {
     return {
       body: "I don't see a regular paycheck yet. Once one has come in a few times, I'll know when the next is due.",
-      actions: [{ id: "open", label: "See bills", kind: "link", href: "/bills" }],
+      actions: [openLink("See bills", "/bills")],
       refs: {},
     };
   }
   return {
     body: `Your next payday is ${dateAndDays(income.date, asOf)}: about ${formatCents(income.amountCents)} from ${income.from}.`,
-    actions: [{ id: "open", label: "See today", kind: "link", href: "/home" }],
+    actions: [openLink("See today", "/home")],
     refs: {},
   };
 }

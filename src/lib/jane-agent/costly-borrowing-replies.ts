@@ -2,7 +2,7 @@ import { COSTLY_LABELS, COSTLY_SOURCES, EMPLOYER_ADVANCE } from "@/config/costly
 import type { CostlyBorrowing } from "@/lib/costly-borrowing";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "./replies";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 import { formatRate } from "@/lib/percent";
 import { plural } from "@/lib/plural";
 
@@ -10,12 +10,7 @@ import { plural } from "@/lib/plural";
 // src/lib/costly-borrowing.ts. Pure. What was found and what it cost are facts from the
 // payments; the cheaper ways out are demo advice.
 
-export const COSTLY_PAGE: MessageAction = {
-  id: "open",
-  label: "Your costly borrowing",
-  kind: "link",
-  href: "/loans/costly",
-};
+export const COSTLY_PAGE: MessageAction = openLink("Your costly borrowing", "/loans/costly");
 
 function foundLines(d: CostlyBorrowing): string[] {
   return d.kinds.map(

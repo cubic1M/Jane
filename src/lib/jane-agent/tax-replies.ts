@@ -29,19 +29,14 @@ import { listOf } from "@/planning/tax-profile";
 import type { Reply } from "./replies";
 
 import { FILING_BUTTONS, KIDS_BUTTONS, PROFILE_HREF, TAGS_HREF, nextQuestion } from "./tax-flow";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 import { dayLabel } from "@/lib/day-label";
 
 // Jane's answers about taxes (spec steps 118–127), in fixed wording from the profile's own
 // numbers. Each answer that would change something offers a button, checked again when
 // tapped; typing alone changes nothing.
 
-const link = (label: string, href = PROFILE_HREF): MessageAction => ({
-  id: "open",
-  label,
-  kind: "link",
-  href,
-});
+const link = (label: string, href = PROFILE_HREF): MessageAction => openLink(label, href);
 
 const WHERE: Readonly<Record<FieldStatus, string>> = {
   yours: "",

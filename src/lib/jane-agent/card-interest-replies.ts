@@ -3,17 +3,12 @@ import type { CardInterest } from "@/lib/card-interest";
 import { formatCents } from "@/lib/money";
 import { promoLine } from "@/planning/card-interest";
 import type { Reply } from "./replies";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 
 // Jane's answers about card interest (spec step 224), from src/lib/card-interest.ts. Pure.
 // Demo advice, labelled; a request for a lower rate is sent only on a tap.
 
-export const INTEREST_PAGE: MessageAction = {
-  id: "open",
-  label: "Cut your card interest",
-  kind: "link",
-  href: "/loans/interest",
-};
+export const INTEREST_PAGE: MessageAction = openLink("Cut your card interest", "/loans/interest");
 
 export const askButton = (card: string): MessageAction => ({
   id: "cardrate.send",

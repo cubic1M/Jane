@@ -6,7 +6,7 @@ import { monthAfter, type LeftOut } from "@/planning/payoff";
 import type { DebtIntent } from "./debt-intents";
 import type { Reply } from "./replies";
 
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 import { dayLabel } from "@/lib/day-label";
 import { formatRate } from "@/lib/percent";
 import { monthLabel } from "@/lib/day-label";
@@ -15,12 +15,7 @@ import { plural } from "@/lib/plural";
 // Jane's answers about debts (spec Phase Y), from the same debt book as the loans page
 // (src/lib/debts.ts). Pure: fixed wording, every rate with where it came from.
 
-const link = (label: string, href: string): MessageAction => ({
-  id: "open",
-  label,
-  kind: "link",
-  href,
-});
+const link = (label: string, href: string): MessageAction => openLink(label, href);
 export const SEE_DEBTS = link("See every debt", "/loans");
 
 // "at 6.90% fixed (from your bank)" or "with no rate yet".

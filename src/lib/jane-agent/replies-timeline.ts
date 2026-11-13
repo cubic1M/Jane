@@ -3,6 +3,7 @@ import type { TimelineEntry } from "@/lib/timeline";
 import type { Reply } from "./replies";
 import { dateAndDays } from "./sources/source";
 import { DAY_MS } from "@/lib/dates";
+import { openLink } from "./types";
 
 // "Why did you do that?" and "show me everything you did" (spec step 187), from the same
 // record as /jane: what Jane did, when, why, and the money involved.
@@ -25,12 +26,7 @@ const line = (e: TimelineEntry, asOf: string) =>
   `${when(e, asOf)}: ${e.what.replace(/[.]$/, "")}${e.cents ? ` (${formatCents(e.cents)})` : ""}`;
 
 export function timelineReply(entries: TimelineEntry[], why: boolean, asOf: string): Reply {
-  const open = {
-    id: "open" as const,
-    label: "Everything Jane did",
-    kind: "link" as const,
-    href: "/jane#activity",
-  };
+  const open = openLink("Everything Jane did", "/jane#activity");
   if (entries.length === 0) {
     return {
       body: "I haven't done anything by myself yet. When I do, it will be listed here with why.",
@@ -42,19 +38,7 @@ export function timelineReply(entries: TimelineEntry[], why: boolean, asOf: stri
     const [latest] = entries;
     return {
       body: `${line(latest, asOf)}. ${latest.why}`,
-      actions: [
-        ...(latest.undoHref
-          ? [
-              {
-                id: "open" as const,
-                label: "Undo it",
-                kind: "link" as const,
-                href: latest.undoHref,
-              },
-            ]
-          : []),
-        open,
-      ],
+      actions: [...(latest.undoHref ? [openLink("Undo it", latest.undoHref)] : []), open],
       refs: {},
     };
   }

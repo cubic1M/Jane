@@ -2,17 +2,12 @@ import { dayLabel } from "@/lib/day-label";
 import type { ReportFixes } from "@/lib/credit-report-fixes";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "./replies";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 
 // Jane's answers about collections and errors on the credit report (spec step 181), from
 // src/lib/credit-report-fixes.ts. Pure. The rule and deadline in each letter come from config.
 
-export const REPORT_PAGE: MessageAction = {
-  id: "open",
-  label: "See your report fixes",
-  kind: "link",
-  href: "/loans/report",
-};
+export const REPORT_PAGE: MessageAction = openLink("See your report fixes", "/loans/report");
 
 export const sendButton = (label: string): MessageAction => ({
   id: "creditfix.send",

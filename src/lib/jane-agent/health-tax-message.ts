@@ -2,7 +2,7 @@ import { PTC_MIN_REPAY_CENTS, MEDICAL_MIN_SAVING_CENTS } from "@/config/health-t
 import type { HealthTaxView } from "@/lib/health-taxes";
 import { formatCents } from "@/lib/money";
 import { roundDollars } from "@/planning/tax-estimate-copy";
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 // The tax side of health insurance in the chat (spec step 269): a Marketplace credit that may
 // come back as a bill, an HSA over its limit, a year of care worth itemizing, and the answer to
@@ -13,12 +13,7 @@ const HEALTH_HREF = "/taxes/health";
 
 type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 
-const see: MessageAction = {
-  id: "open",
-  label: "See the numbers",
-  kind: "link",
-  href: HEALTH_HREF,
-};
+const see: MessageAction = openLink("See the numbers", HEALTH_HREF);
 
 const people = (n: number) => (n === 1 ? "one person" : `${n} people`);
 

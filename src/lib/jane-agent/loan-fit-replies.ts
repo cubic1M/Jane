@@ -2,18 +2,13 @@ import { FIT_DEFAULT_AMOUNT_CENTS, FIT_NEED_LABELS, type FitNeed } from "@/confi
 import type { FitView } from "@/lib/fit";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "./replies";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 
 // Jane's answer to "what's the best loan for me?" (spec step 283), from the fit engine
 // (src/lib/fit.ts): its pick first, with how sure Jane is, then the options to choose from. The
 // pick is demo advice; the choice is theirs, and choosing never applies for anything.
 
-const LOAN_FIT_PAGE: MessageAction = {
-  id: "open",
-  label: "Compare your loan options",
-  kind: "link",
-  href: "/loans/refinance",
-};
+const LOAN_FIT_PAGE: MessageAction = openLink("Compare your loan options", "/loans/refinance");
 
 export function loanFitReply(view: FitView, assumedAmount: boolean): Reply {
   const what = FIT_NEED_LABELS[view.need];

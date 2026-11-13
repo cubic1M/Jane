@@ -4,18 +4,13 @@ import type { BillPayItem, BillPayView } from "@/lib/money-movement/bill-pay";
 import type { Reply } from "./replies";
 import { STAND_IN_NOTE } from "./replies-paycheck";
 import { dateAndDays } from "./sources/source";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 import { dayLabel } from "@/lib/day-label";
 
 // Bills paid on time in the chat (spec step 145): what Jane scheduled on its own, what it'd
 // like to pay (one tap), and a due date worth moving when it lands before payday.
 
-const SEE_TRANSFERS: MessageAction = {
-  id: "open",
-  label: "See transfers",
-  kind: "link",
-  href: "/transfers",
-};
+const SEE_TRANSFERS: MessageAction = openLink("See transfers", "/transfers");
 
 const amountWords = (item: { amountCents: number; full: boolean }, minimumCents: number) =>
   item.full

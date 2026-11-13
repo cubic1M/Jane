@@ -2,7 +2,7 @@ import { IRMAA_WATCH, SS_TAX_MIN_CENTS } from "@/config/retirement-taxes";
 import { formatCents } from "@/lib/money";
 import type { RetirementTaxView } from "@/lib/retirement-taxes";
 import { roundDollars } from "@/planning/tax-estimate-copy";
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 import { formatPercent as pct } from "@/lib/percent";
 
 // Taxes on retirement income in the chat (spec step 271): Social Security's taxable part that
@@ -14,12 +14,7 @@ export const RETIREMENT_PAYCHECK_HREF = "/investments/retirement-income";
 
 type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 
-const paycheck: MessageAction = {
-  id: "open",
-  label: "See my retirement paycheck",
-  kind: "link",
-  href: RETIREMENT_PAYCHECK_HREF,
-};
+const paycheck: MessageAction = openLink("See my retirement paycheck", RETIREMENT_PAYCHECK_HREF);
 
 export function ssWithholdingMessage(v: RetirementTaxView): Message | null {
   const tax = Math.round(v.ss.taxableCents * v.bracket);

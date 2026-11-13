@@ -5,19 +5,14 @@ import type { HomeEquity, ProjectComparison } from "@/lib/home-equity";
 import { formatCents } from "@/lib/money";
 import { cheapest, type PmiTimeline } from "@/planning/home-equity";
 import type { Reply } from "./replies";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 import { formatPercentTenths } from "@/lib/percent";
 
 // Jane's answers about a home's equity (spec step 228), from src/lib/home-equity.ts. Pure.
 // PMI and escrow are rules it can state for anyone; comparing ways to borrow for a project
 // is advice, so it is demo advice mode only and carries the label.
 
-export const EQUITY_PAGE: MessageAction = {
-  id: "open",
-  label: "Your home loan",
-  kind: "link",
-  href: "/loans/equity",
-};
+export const EQUITY_PAGE: MessageAction = openLink("Your home loan", "/loans/equity");
 
 export const sentButton = (which: "pmi" | "escrow"): MessageAction => ({
   id: "homeeq.sent",

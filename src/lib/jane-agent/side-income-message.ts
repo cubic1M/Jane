@@ -1,7 +1,7 @@
 import { formatCents } from "@/lib/money";
 import type { SideIncomeView } from "@/lib/side-income";
 import { roundDollars } from "@/planning/tax-estimate-copy";
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 // Side income and rentals in the chat (spec step 173): a rental that needs its property
 // for depreciation, hobby or business (both taxes shown, demo advice), and the answer to
@@ -25,7 +25,7 @@ export function rentalSetupMessage(view: SideIncomeView): Message | null {
   return {
     body: `You've had ${formatCents(r.rentCents)} of rent in ${view.year}. Rental buildings are depreciated over 27.5 years on a return. Tell me the price you paid and when it was ready to rent, and tag what you spend on it as rental expenses.`,
     refs: { taxYear: view.year },
-    actions: [{ id: "open", label: "Add my rental", kind: "link", href: SIDE_FORM_HREF }],
+    actions: [openLink("Add my rental", SIDE_FORM_HREF)],
   };
 }
 
@@ -39,7 +39,7 @@ export function hobbyMessage(view: SideIncomeView): Message | null {
     actions: [
       { id: "tax.side_business", label: "It's a business", kind: "primary" },
       { id: "tax.side_hobby", label: "It's a hobby", kind: "secondary" },
-      { id: "open", label: "See my side income", kind: "link", href: SIDE_HREF },
+      openLink("See my side income", SIDE_HREF),
     ],
   };
 }
@@ -62,6 +62,6 @@ export function sideIncomeReply(view: SideIncomeView): Message {
         ? `Your side income for ${view.year}:\n${lines.map((l) => `• ${l}`).join("\n")}\nIt's all in your estimate, your quarterly amounts and your tax-time pack.`
         : `I don't see rent or gig income in ${view.year}. If you have a rental, add it and tag its expenses.`,
     refs: {},
-    actions: [{ id: "open", label: "See my side income", kind: "link", href: SIDE_HREF }],
+    actions: [openLink("See my side income", SIDE_HREF)],
   };
 }

@@ -7,7 +7,13 @@ import type { Intent } from "./intents";
 import { nameMatches } from "./names";
 import type { Reply } from "./replies";
 import { snoozeButton } from "./sources/source";
-import type { ActionId, MessageAction, MessageRefs, MultiStep } from "./types";
+import {
+  type ActionId,
+  type MessageAction,
+  type MessageRefs,
+  type MultiStep,
+  openLink,
+} from "./types";
 
 // Requests that span sectors (spec step 185): "switch my car insurance and put the savings
 // in my emergency fund" becomes one plan. Each step is what its feature's own answer offers
@@ -123,10 +129,7 @@ function moveGuideReply(amountCents: number | "savings", where: string): Reply {
       `3. Enter ${amount}, pick today, and confirm.`,
       "Once a money-movement partner is connected, I'll do this myself, with your yes.",
     ].join("\n"),
-    actions: [
-      snoozeButton("Remind me tomorrow"),
-      { id: "open", label: "See your accounts", kind: "link", href: "/net-worth" },
-    ],
+    actions: [snoozeButton("Remind me tomorrow"), openLink("See your accounts", "/net-worth")],
     refs: {},
   };
 }

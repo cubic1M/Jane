@@ -1,7 +1,7 @@
 import type { HomeTaxesView } from "@/lib/home-taxes";
 import { formatCents } from "@/lib/money";
 import { figuresOf, type Figure, type Source } from "@/planning/home-taxes";
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 // Homeowner taxes in the chat (spec step 170): the state and local tax cap when it bites,
 // a home sale against the exclusion, and "my mortgage interest / property tax". Facts from
@@ -33,7 +33,7 @@ export function saltCapMessage(view: HomeTaxesView): Message | null {
   return {
     body: `Your state and local taxes for ${view.year} come to ${formatCents(salt.totalCents)}: ${formatCents(salt.stateIncome.cents)} of income tax and ${formatCents(salt.property.cents)} of property tax. Only ${formatCents(salt.capCents)} counts if you itemize (the state and local tax cap), so ${formatCents(salt.overCents)} doesn't.`,
     refs: { taxYear: view.year },
-    actions: [{ id: "open", label: "See your home's taxes", kind: "link", href: HOME_HREF }],
+    actions: [openLink("See your home's taxes", HOME_HREF)],
   };
 }
 
@@ -48,7 +48,7 @@ export function homeSaleMessage(view: HomeTaxesView): Message | null {
   return {
     body: `Your home sale: a gain of about ${formatCents(Math.max(0, s.gainCents))} (sold for ${formatCents(s.sale.cents)} after costs; it cost you ${formatCents(s.basis.cents)} with improvements). ${outcome} Keep the closing papers and improvement receipts.`,
     refs: { taxYear: view.year },
-    actions: [{ id: "open", label: "See your home's taxes", kind: "link", href: HOME_HREF }],
+    actions: [openLink("See your home's taxes", HOME_HREF)],
   };
 }
 
@@ -58,9 +58,7 @@ export function homeReply(view: HomeTaxesView): Message {
     return {
       body: `I don't see a mortgage, property tax or a home sale for ${view.year} in your accounts. If you have them somewhere I can't see, add them on your tax profile.`,
       refs: {},
-      actions: [
-        { id: "open", label: "Your tax profile", kind: "link", href: "/taxes/profile#home" },
-      ],
+      actions: [openLink("Your tax profile", "/taxes/profile#home")],
     };
   }
   const salt = view.salt;
@@ -69,6 +67,6 @@ export function homeReply(view: HomeTaxesView): Message {
   return {
     body: `Here is what your home changes on your ${view.year} taxes.\n${figures.map(figureLine).join("\n")}\n${cap}${sale}`,
     refs: {},
-    actions: [{ id: "open", label: "See your home's taxes", kind: "link", href: HOME_HREF }],
+    actions: [openLink("See your home's taxes", HOME_HREF)],
   };
 }

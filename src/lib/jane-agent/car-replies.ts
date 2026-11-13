@@ -1,18 +1,13 @@
 import type { Car } from "@/lib/car";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "./replies";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 import { formatRate } from "@/lib/percent";
 
 // Jane's answers about buying a car (spec step 178), from src/lib/car.ts. Pure. Demo advice:
 // every answer carries the label and shows its assumptions on the page.
 
-const CAR_PAGE: MessageAction = {
-  id: "open",
-  label: "Plan a car purchase",
-  kind: "link",
-  href: "/loans/car",
-};
+const CAR_PAGE: MessageAction = openLink("Plan a car purchase", "/loans/car");
 
 const unavailable: Reply = {
   body: "Car loan offers come from a lending partner, and there isn't one for your accounts yet, so I can't plan a purchase yet.",

@@ -1,7 +1,7 @@
 import type { PropertyTaxView } from "@/lib/property-tax";
 import { formatCents } from "@/lib/money";
 import { roundDollars } from "@/planning/tax-estimate-copy";
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 import { formatPercent as pct } from "@/lib/percent";
 
 // Property tax in the chat (spec step 221): an assessment worth appealing (demo advice), the
@@ -20,7 +20,7 @@ export function appealSuggestedMessage(v: PropertyTaxView): Message {
     actions: [
       { id: "tax.property_draft", label: "Draft the appeal", kind: "primary" },
       { id: "tax.property_remind", label: "Just remind me of the deadline", kind: "secondary" },
-      { id: "open", label: "See the details", kind: "link", href: PROPERTY_HREF },
+      openLink("See the details", PROPERTY_HREF),
     ],
   };
 }
@@ -34,7 +34,7 @@ export function appealDraftedMessage(v: PropertyTaxView): Message {
       { id: "tax.property_team", label: "My team files it", kind: "primary" },
       { id: "tax.property_self", label: "I'll file it", kind: "secondary" },
       { id: "tax.property_drop", label: "Never mind", kind: "secondary" },
-      { id: "open", label: "Read the draft", kind: "link", href: PROPERTY_HREF },
+      openLink("Read the draft", PROPERTY_HREF),
     ],
   };
 }
@@ -48,7 +48,7 @@ export function exemptionMessage(v: PropertyTaxView): Message | null {
     actions: [
       { id: "tax.exemption_remind", label: "Remind me to apply", kind: "primary" },
       { id: "tax.exemption_claimed", label: "I already have it", kind: "secondary" },
-      { id: "open", label: "See the details", kind: "link", href: PROPERTY_HREF },
+      openLink("See the details", PROPERTY_HREF),
     ],
   };
 }
@@ -58,9 +58,7 @@ export function propertyReply(v: PropertyTaxView): Message {
     return {
       body: "I don't see a home in your accounts. If you own one, tell me what it's worth and what the county assessed it at, and I'll check whether your property tax is too high.",
       refs: {},
-      actions: [
-        { id: "open", label: "Tell Jane about your home", kind: "link", href: PROPERTY_HREF },
-      ],
+      actions: [openLink("Tell Jane about your home", PROPERTY_HREF)],
     };
   }
   const lines: string[] = [];
@@ -109,7 +107,7 @@ export function propertyReply(v: PropertyTaxView): Message {
             },
           ]
         : []),
-      { id: "open", label: "See my property tax", kind: "link", href: PROPERTY_HREF },
+      openLink("See my property tax", PROPERTY_HREF),
     ],
   };
 }

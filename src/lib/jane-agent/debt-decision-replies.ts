@@ -1,6 +1,6 @@
 import type { Decision } from "@/planning/debt-decisions";
 import type { Reply } from "./replies";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 
 // Jane's straight answers to debt and credit decisions (src/planning/debt-decisions.ts): up
 // to three sentences from the person's numbers, a link to the detail, and the demo advice
@@ -14,12 +14,8 @@ const LABELS: Readonly<Record<string, string>> = {
   "/loans/student": "Student loans",
 };
 
-export const decisionLink = (href: string): MessageAction => ({
-  id: "open",
-  label: LABELS[href] ?? "See the detail",
-  kind: "link",
-  href,
-});
+export const decisionLink = (href: string): MessageAction =>
+  openLink(LABELS[href] ?? "See the detail", href);
 
 export function decisionReply(d: Decision): Reply {
   return {

@@ -1,7 +1,7 @@
 import type { EquityTaxView } from "@/lib/equity-tax";
 import { formatCents } from "@/lib/money";
 import { roundDollars } from "@/planning/tax-estimate-copy";
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 // Crypto and equity pay in the chat (spec step 219): what these add to the tax and what to
 // set aside, with its button (demo advice), and the answer to "my crypto taxes", "ESPP",
@@ -24,7 +24,7 @@ export function equitySetAsideMessage(view: EquityTaxView): Message {
         label: `Start a goal for ${roundDollars(view.setAside.cents)}`,
         kind: "primary",
       },
-      { id: "open", label: "See the details", kind: "link", href: EQUITY_HREF },
+      openLink("See the details", EQUITY_HREF),
     ],
   };
 }
@@ -82,7 +82,7 @@ export function equityReply(view: EquityTaxView): Message {
             } as MessageAction,
           ]
         : []),
-      { id: "open", label: "See my crypto and equity", kind: "link", href: EQUITY_HREF },
+      openLink("See my crypto and equity", EQUITY_HREF),
     ],
   };
 }

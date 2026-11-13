@@ -1,15 +1,10 @@
 import { HELP_GROUPS, HELP_MORE_LINKS } from "@/config/help";
 import type { Reply } from "./replies";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 
 // Help inside the chat (spec step 140): what Jane can do, in groups, each with its page.
 
-const link = (l: { label: string; href: string }): MessageAction => ({
-  id: "open",
-  label: l.label,
-  kind: "link",
-  href: l.href,
-});
+const link = (l: { label: string; href: string }): MessageAction => openLink(l.label, l.href);
 
 export function groupedHelpReply(): Reply {
   const lines = [

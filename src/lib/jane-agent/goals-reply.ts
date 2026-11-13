@@ -2,16 +2,12 @@ import type { GoalView } from "@/lib/goals";
 import { formatCents } from "@/lib/money";
 import { goalsBlock } from "./block-data";
 import type { Reply } from "./replies";
+import { openLink } from "./types";
 
 // Spec step 94: "how are my goals doing?": how many are on track first, then any that need
 // something, with each goal's progress as bars (the same numbers as Goals). Pure.
 
-const goalsLink = {
-  id: "open" as const,
-  label: "See goals",
-  kind: "link" as const,
-  href: "/goals",
-};
+const goalsLink = openLink("See goals", "/goals");
 
 export function goalsReply(goals: readonly GoalView[]): Reply {
   if (goals.length === 0) {

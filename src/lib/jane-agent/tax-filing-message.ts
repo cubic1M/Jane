@@ -3,7 +3,7 @@ import type { TaxProfileView } from "@/planning/tax-profile";
 import { balancePhrase } from "@/planning/tax-estimate-copy";
 import { listOf } from "@/planning/tax-profile";
 import { snoozeButton } from "./sources/source";
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 // Filing in the chat (spec step 126): the offer to start, the return ready to review (signed
 // only on the page), and its status. Nothing is filed from the chat.
@@ -28,12 +28,10 @@ export function filingOffer(year: number, profile: TaxProfileView, formsWaiting:
       ...(missing.length === 0
         ? [{ id: "tax.file_start" as const, label: "Start my return", kind: "primary" as const }]
         : []),
-      {
-        id: "open",
-        label: missing.length === 0 ? "See what I'd send" : "Finish my tax profile",
-        kind: "link",
-        href: missing.length === 0 ? FILE_HREF : "/taxes/profile",
-      },
+      openLink(
+        missing.length === 0 ? "See what I'd send" : "Finish my tax profile",
+        missing.length === 0 ? FILE_HREF : "/taxes/profile",
+      ),
       snoozeButton(),
     ],
     refs: { taxYear: year },
@@ -43,7 +41,7 @@ export function filingOffer(year: number, profile: TaxProfileView, formsWaiting:
 export function filingReady(ret: ReturnView): Said {
   return {
     body: `Your ${ret.year} return is ready to review: federal, ${balancePhrase(ret.preview.federalRefundCents)}. Check what I handed over and sign it on the page; nothing is filed until you do.`,
-    actions: [{ id: "open", label: "Review and sign", kind: "link", href: FILE_HREF }],
+    actions: [openLink("Review and sign", FILE_HREF)],
     refs: { taxYear: ret.year },
   };
 }
@@ -51,7 +49,7 @@ export function filingReady(ret: ReturnView): Said {
 export function filingAccepted(ret: ReturnView): Said {
   return {
     body: `Your ${ret.year} return was accepted. ${ret.preview.federalRefundCents > 0 ? "I'll tell you when the refund lands." : "If you owe, pay by the deadline with IRS Direct Pay."}`,
-    actions: [{ id: "open", label: "See your return", kind: "link", href: FILE_HREF }],
+    actions: [openLink("See your return", FILE_HREF)],
     refs: { taxYear: ret.year },
   };
 }

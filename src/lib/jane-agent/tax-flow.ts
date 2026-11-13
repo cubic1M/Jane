@@ -7,7 +7,7 @@ import {
   type ProfileField,
   type TaxProfileView,
 } from "@/planning/tax-profile";
-import type { ActionId, MessageAction, MessageRefs } from "./types";
+import { type ActionId, type MessageAction, type MessageRefs, openLink } from "./types";
 
 // The tax profile in the chat (spec step 118): one question at a time, in one message.
 // Each answer goes through the profile's own code (src/lib/tax-profile.ts) and the same
@@ -18,12 +18,7 @@ import type { ActionId, MessageAction, MessageRefs } from "./types";
 export const PROFILE_HREF = "/taxes/profile";
 export const TAGS_HREF = "/taxes/tags";
 
-const link = (label: string, href = PROFILE_HREF): MessageAction => ({
-  id: "open",
-  label,
-  kind: "link",
-  href,
-});
+const link = (label: string, href = PROFILE_HREF): MessageAction => openLink(label, href);
 const button = (id: ActionId, label: string, primary = false): MessageAction => ({
   id,
   label,

@@ -5,6 +5,7 @@ import type { TuneUpChange } from "@/planning/tune-up";
 import type { Snapshot } from "./snapshot";
 import type { Reply } from "./replies";
 import { DAY_MS } from "@/lib/dates";
+import { openLink } from "./types";
 
 // The weekly review (spec step 101). Pure: the snapshot in, the words and buttons out. Also
 // the words for budget tune-ups and transfers counted toward goals.
@@ -74,9 +75,9 @@ export function weeklyReview(snapshot: Snapshot, now: Date): Reply {
       ? [
           { id: "finding.yes", label: "Yes", kind: "primary" },
           { id: "finding.no", label: "No", kind: "secondary" },
-          { id: "open", label: "Open", kind: "link", href: `/report/${decision.findingId}` },
+          openLink("Open", `/report/${decision.findingId}`),
         ]
-      : [{ id: "open", label: "See the plan", kind: "link", href: "/plan" }],
+      : [openLink("See the plan", "/plan")],
     refs: decision ? { findingId: decision.findingId, fingerprint: decision.fingerprint } : {},
   };
 }

@@ -3,7 +3,7 @@ import type { FamilyView } from "@/lib/family-taxes";
 import type { FamilyChoice } from "@/planning/family-taxes";
 import { roundDollars } from "@/planning/tax-estimate-copy";
 import { FILING_BUTTONS } from "./tax-flow";
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 // Family taxes in the chat (spec step 169, demo advice): a choice with both sides' tax, and
 // the answer to "should we file jointly or separately", "FSA or the credit" and the like.
@@ -49,7 +49,7 @@ export function familyChoiceMessage(c: FamilyChoice, year: number): Message {
             } as MessageAction,
           ]
         : []),
-      { id: "open", label: "See family taxes", kind: "link", href: FAMILY_HREF },
+      openLink("See family taxes", FAMILY_HREF),
     ],
   };
 }
@@ -59,22 +59,20 @@ export function familyReply(view: FamilyView): Message {
     return {
       body: "Comparing family tax choices will come once Jane works with a tax professional. Your estimate counts your children already.",
       refs: {},
-      actions: [{ id: "open", label: "See your taxes", kind: "link", href: "/taxes" }],
+      actions: [openLink("See your taxes", "/taxes")],
     };
   }
   if (view.choices.length === 0) {
     return {
       body: `I don't see a family tax choice for ${view.year}: no children, childcare, tuition, 529 or spouse on your tax profile. Add family details and I'll compare.`,
       refs: { advice: true },
-      actions: [
-        { id: "open", label: "Add family details", kind: "link", href: "/taxes/profile#family" },
-      ],
+      actions: [openLink("Add family details", "/taxes/profile#family")],
     };
   }
   const notes = view.assumptions.length > 0 ? `\n${view.assumptions.join(" ")}` : "";
   return {
     body: `Your family tax choices for ${view.year}, each side's federal tax (estimated):\n${view.choices.map(choiceLines).join("\n")}${notes}`,
     refs: { advice: true },
-    actions: [{ id: "open", label: "See family taxes", kind: "link", href: FAMILY_HREF }],
+    actions: [openLink("See family taxes", FAMILY_HREF)],
   };
 }

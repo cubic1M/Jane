@@ -1,6 +1,6 @@
 import type { PlanMoveView, TaxPlanView } from "@/lib/tax-plan";
 
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 import { dayLabel } from "@/lib/day-label";
 
 // The year-round tax plan in the chat (spec step 167): a move that's open now, with its
@@ -21,7 +21,7 @@ export function planMoveMessage(m: PlanMoveView): Message {
     return {
       body: `Tax move: ${m.title}, by ${dayLabel(m.deadline)}. ${m.detail} I've put it on your deadlines.`,
       refs: refsOf(m),
-      actions: [{ id: "open", label: "See your tax plan", kind: "link", href: PLAN_HREF }],
+      actions: [openLink("See your tax plan", PLAN_HREF)],
     };
   }
   return {
@@ -30,7 +30,7 @@ export function planMoveMessage(m: PlanMoveView): Message {
     actions: [
       { id: "tax.plan_add", label: "Add to my deadlines", kind: "primary" },
       { id: "tax.plan_no", label: "Not for me", kind: "secondary" },
-      { id: "open", label: "See your tax plan", kind: "link", href: PLAN_HREF },
+      openLink("See your tax plan", PLAN_HREF),
     ],
   };
 }
@@ -49,7 +49,7 @@ export function planReply(plan: TaxPlanView, today: string): Message {
     return {
       body: `There's nothing left on your ${plan.year} tax plan: every move's deadline has passed or doesn't apply to you.`,
       refs: {},
-      actions: [{ id: "open", label: "See your taxes", kind: "link", href: PLAN_HREF }],
+      actions: [openLink("See your taxes", PLAN_HREF)],
     };
   }
   const lines = plan.moves.map(
@@ -58,6 +58,6 @@ export function planReply(plan: TaxPlanView, today: string): Message {
   return {
     body: `You have ${plan.moves.length} tax ${plan.moves.length === 1 ? "move" : "moves"} left for ${plan.year}, by deadline.\n${lines.join("\n")}`,
     refs: plan.moves.some((m) => m.advice) ? { advice: true } : {},
-    actions: [{ id: "open", label: "See your tax plan", kind: "link", href: PLAN_HREF }],
+    actions: [openLink("See your tax plan", PLAN_HREF)],
   };
 }

@@ -3,25 +3,15 @@ import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import type { LongGame } from "@/lib/student-long-game";
 import type { Reply } from "./replies";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 
 // Jane's answers about the long game on student loans (spec step 225), from
 // src/lib/student-long-game.ts. Pure. The tax on forgiven debt is handed to the taxes side;
 // refinancing a federal loan always says what's lost.
 
-export const STUDENT_PAGE: MessageAction = {
-  id: "open",
-  label: "Your student loan plan",
-  kind: "link",
-  href: "/loans/student",
-};
+export const STUDENT_PAGE: MessageAction = openLink("Your student loan plan", "/loans/student");
 
-const TAXES_PAGE: MessageAction = {
-  id: "open",
-  label: "Your taxes",
-  kind: "link",
-  href: "/taxes",
-};
+const TAXES_PAGE: MessageAction = openLink("Your taxes", "/taxes");
 
 const unavailable: Reply = {
   body: "I don't see a student loan with a balance and a rate, so there's no long game to plan yet. Link the account or type in its terms on the debts page.",

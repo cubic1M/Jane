@@ -1,18 +1,14 @@
 import { formatCents } from "@/lib/money";
 import { loansNotCounted, notCounting, owedIsKnown, type netWorth } from "@/insights/net-worth";
 import type { Reply } from "./replies";
+import { openLink } from "./types";
 
 // "What's my net worth?": what they own less what they owe, as the net worth page says it.
 export function netWorthReply(
   worth: ReturnType<typeof netWorth>,
   loansSeen: readonly string[] = [],
 ): Reply {
-  const link = {
-    id: "open" as const,
-    label: "See net worth",
-    kind: "link" as const,
-    href: "/net-worth",
-  };
+  const link = openLink("See net worth", "/net-worth");
   const left = notCounting(worth.unbalanced);
   // Accounts there, but no balance on any: not known, never $0 (QA rounds 6-7).
   if (!worth.known && left) {
@@ -25,7 +21,7 @@ export function netWorthReply(
   if (worth.assetsCents === 0 && worth.debtsCents === 0) {
     return {
       body: "I can't work out your net worth yet: add your accounts or something you own, and I'll add it up.",
-      actions: [{ id: "open", label: "Add your accounts", kind: "link", href: "/connect" }],
+      actions: [openLink("Add your accounts", "/connect")],
       refs: {},
     };
   }

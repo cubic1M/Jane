@@ -3,7 +3,7 @@ import { formatCents } from "@/lib/money";
 import type { SelfEmployedView } from "@/lib/self-employed";
 import { roundDollars } from "@/planning/tax-estimate-copy";
 import { stateName } from "@/planning/tax-profile";
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 import { DAY_MS } from "@/lib/dates";
 import { dayLabel } from "@/lib/day-label";
 
@@ -12,12 +12,7 @@ import { dayLabel } from "@/lib/day-label";
 
 export type Said = { body: string; actions: MessageAction[]; refs: MessageRefs };
 
-const link = (label: string, href: string): MessageAction => ({
-  id: "open",
-  label,
-  kind: "link",
-  href,
-});
+const link = (label: string, href: string): MessageAction => openLink(label, href);
 
 // The next payment within QUARTERLY.remindDays of today, if any.
 export function nextQuarter(view: SelfEmployedView, today: string) {

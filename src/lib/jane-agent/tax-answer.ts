@@ -84,6 +84,7 @@ import {
   selfEmployedReply,
   withholdingReply,
 } from "./tax-replies";
+import { openLink } from "./types";
 
 // Answers a typed tax question by rules (spec steps 118–127), with the same loaders as
 // /taxes, scoped to the person.
@@ -136,7 +137,7 @@ export async function answerTaxIntent(
       return {
         body: d.text,
         refs: d.advice ? { advice: true } : {},
-        actions: [{ id: "open", label: "See the numbers", kind: "link", href: d.href }],
+        actions: [openLink("See the numbers", d.href)],
       };
     }
     case "profile": {

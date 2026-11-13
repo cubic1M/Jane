@@ -3,7 +3,7 @@ import type { PriorReturnView } from "@/lib/prior-return";
 import type { ReturnReview } from "@/lib/prior-return/review";
 import { formatCents } from "@/lib/money";
 import { dayLabel } from "@/lib/day-label";
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 // Last year's return in the chat (spec step 172): a return Jane read from an upload, to
 // confirm with a tap; then what the review found, with a button to prepare the amended
@@ -41,12 +41,7 @@ export function readingMessage(r: PriorReturnView): Message {
             } as MessageAction,
           ]
         : []),
-      {
-        id: "open",
-        label: complete ? "Fix a field" : "Fill it in",
-        kind: "link",
-        href: RETURN_HREF,
-      },
+      openLink(complete ? "Fix a field" : "Fill it in", RETURN_HREF),
       { id: "tax.prior_no", label: "Not my return", kind: "secondary" },
     ],
   };
@@ -59,7 +54,7 @@ export function reviewMessage(r: ReturnReview): Message {
     return {
       body: `${body}\nYour amended return is ${r.amendment.status === "ready_for_review" ? "ready for you to review and sign" : r.amendment.status}.`,
       refs: { advice: true, taxYear: r.year },
-      actions: [{ id: "open", label: "Review and sign", kind: "link", href: RETURN_HREF }],
+      actions: [openLink("Review and sign", RETURN_HREF)],
     };
   }
   return {
@@ -67,7 +62,7 @@ export function reviewMessage(r: ReturnReview): Message {
     refs: { advice: true, taxYear: r.year },
     actions: [
       { id: "tax.amend_prepare", label: "Prepare the amended return", kind: "primary" },
-      { id: "open", label: "See what I found", kind: "link", href: RETURN_HREF },
+      openLink("See what I found", RETURN_HREF),
     ],
   };
 }
@@ -81,7 +76,7 @@ export function lastReturnReply(
     return {
       body: "Checking last year's return for money left behind will come once Jane works with a tax professional.",
       refs: {},
-      actions: [{ id: "open", label: "Last year's return", kind: "link", href: RETURN_HREF }],
+      actions: [openLink("Last year's return", RETURN_HREF)],
     };
   }
   if (reviews.length === 0) {
@@ -91,7 +86,7 @@ export function lastReturnReply(
           ? "I've read a return you uploaded; confirm it and I'll check it against your accounts."
           : 'Upload a copy of a return you filed (Documents, kind "Tax return"). I\'ll read it, you confirm it, and I\'ll look for money left behind. To check one before you file, upload the draft as "Draft tax return" instead and I\'ll check every line.',
       refs: {},
-      actions: [{ id: "open", label: "Last year's return", kind: "link", href: RETURN_HREF }],
+      actions: [openLink("Last year's return", RETURN_HREF)],
     };
   }
   return {

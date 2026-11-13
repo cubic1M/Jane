@@ -3,7 +3,7 @@ import { ELIGIBLE_BENEFICIARIES } from "@/config/inheritance";
 import type { InheritanceView, InheritedIra } from "@/lib/inheritance";
 import { formatCents } from "@/lib/money";
 import { roundDollars } from "@/planning/tax-estimate-copy";
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 // Inherited money and gifts in the chat (spec step 268): an inherited IRA's deadline and how to
 // spread it (demo advice), gifts over the annual exclusion, and the answer to "I inherited
@@ -28,10 +28,7 @@ export function inheritedIraMessage(v: InheritanceView, ira: InheritedIra): Mess
   return {
     body: `You have ${roundDollars(ira.balanceCents)} in ${ira.name}. ${deadline} Taking it out evenly, about ${roundDollars(s.perYearCents)} a year, instead of all at the end would save about ${roundDollars(s.savesCents)} in tax, because it keeps each year in a lower bracket. If the original owner had already started required withdrawals, there are yearly ones too, and a few heirs (${ELIGIBLE_BENEFICIARIES.join("; ")}) follow other rules. A tax professional should confirm which applies to you.`,
     refs: { advice: true, taxYear: v.year },
-    actions: [
-      { id: "open", label: "Tell Jane when they died", kind: "link", href: INHERITED_HREF },
-      shareWithAccountant,
-    ],
+    actions: [openLink("Tell Jane when they died", INHERITED_HREF), shareWithAccountant],
   };
 }
 
@@ -79,8 +76,6 @@ export function inheritanceReply(v: InheritanceView): Message {
   return {
     body: `Here is what I can say about inherited money and gifts.\n${lines.map((l) => `• ${l}`).join("\n")}`,
     refs: {},
-    actions: [
-      { id: "open", label: "Tell Jane what you inherited", kind: "link", href: INHERITED_HREF },
-    ],
+    actions: [openLink("Tell Jane what you inherited", INHERITED_HREF)],
   };
 }

@@ -2,7 +2,7 @@ import type { AuditRecordsView } from "@/lib/audit-records";
 import { formatCents } from "@/lib/money";
 import type { Retention } from "@/planning/audit-records";
 
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 import { dayLabel } from "@/lib/day-label";
 
 // Audit-ready records in the chat (spec step 171): a year's records that can go soon, the
@@ -21,7 +21,7 @@ export function retentionMessage(r: Retention): Message {
     refs: { taxYear: r.year },
     actions: [
       { id: "tax.records_remind", label: "Remind me", kind: "primary" },
-      { id: "open", label: "See my records", kind: "link", href: `${RECORDS_HREF}` },
+      openLink("See my records", `${RECORDS_HREF}`),
     ],
   };
 }
@@ -52,13 +52,8 @@ export function recordsReply(view: AuditRecordsView): Message {
       .join("\n"),
     refs: {},
     actions: [
-      {
-        id: "open",
-        label: "Download the audit pack",
-        kind: "link",
-        href: `/taxes/audit-pack/download?year=${view.year}`,
-      },
-      { id: "open", label: "See my records", kind: "link", href: RECORDS_HREF },
+      openLink("Download the audit pack", `/taxes/audit-pack/download?year=${view.year}`),
+      openLink("See my records", RECORDS_HREF),
     ],
   };
 }

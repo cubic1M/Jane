@@ -4,6 +4,7 @@ import { categoryWords } from "@/planning/month-close";
 
 import type { Reply } from "./replies";
 import { dayLabel, monthLabel } from "@/lib/day-label";
+import { openLink } from "./types";
 
 // The monthly close in the chat (spec step 244).
 
@@ -60,7 +61,7 @@ export function closeReply(view: CloseView | null): Reply {
   if (!view) {
     return {
       body: "I close each month on the first of the next: the books checked, anything I'm unsure of asked in one message, then the figures kept. Nothing's been closed yet.",
-      actions: [{ id: "open", label: "Monthly report", kind: "link", href: "/monthly" }],
+      actions: [openLink("Monthly report", "/monthly")],
       refs: {},
     };
   }
@@ -69,14 +70,14 @@ export function closeReply(view: CloseView | null): Reply {
       body: waitingBody(view),
       actions: [
         { id: "close.confirm", label: "Looks right", kind: "primary" },
-        { id: "open", label: "Fix categories", kind: "link", href: "/transactions" },
+        openLink("Fix categories", "/transactions"),
       ],
       refs: { closeMonth: view.month },
     };
   }
   return {
     body: closedBody(view),
-    actions: [{ id: "open", label: "Monthly report", kind: "link", href: "/monthly" }],
+    actions: [openLink("Monthly report", "/monthly")],
     refs: {},
   };
 }

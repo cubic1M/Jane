@@ -3,18 +3,13 @@ import { dayLabel } from "@/lib/day-label";
 import type { AddonView, CarLoan } from "@/lib/car-loan";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "./replies";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 import { formatRate } from "@/lib/percent";
 
 // Jane's answers about the car loan you already have (spec step 245), from src/lib/car-loan.ts.
 // Pure. Refunds are estimates from a contract's usual terms; Jane sends nothing.
 
-export const CAR_LOAN_PAGE: MessageAction = {
-  id: "open",
-  label: "Your car loan",
-  kind: "link",
-  href: "/loans/auto",
-};
+export const CAR_LOAN_PAGE: MessageAction = openLink("Your car loan", "/loans/auto");
 
 export const yesButton = (label: string): MessageAction => ({
   id: "caraddon.yes",

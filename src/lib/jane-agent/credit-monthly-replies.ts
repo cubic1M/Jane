@@ -1,17 +1,12 @@
 import type { CreditMonthly, MonthlyItem } from "@/lib/credit-monthly";
 import type { Reply } from "./replies";
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 // The monthly credit check-up in the chat (spec step 251), from src/lib/credit-monthly.ts.
 // Pure. One message: what Jane did on its own, and each item that waits for the person with a
 // button to the page where they act (applying, cancelling and sending stay there, on a tap).
 
-const MONTHLY_PAGE: MessageAction = {
-  id: "open",
-  label: "See the check-up",
-  kind: "link",
-  href: "/loans/review",
-};
+const MONTHLY_PAGE: MessageAction = openLink("See the check-up", "/loans/review");
 
 const MARK = { done: "Done", tap: "Needs you", ok: "Fine" } as const;
 
@@ -33,7 +28,7 @@ export function monthlyMessage(d: CreditMonthly): {
   for (const i of waiting) {
     if (!i.link || seen.has(i.link.href)) continue;
     seen.add(i.link.href);
-    actions.push({ id: "open", label: i.link.label, kind: "link", href: i.link.href });
+    actions.push(openLink(i.link.label, i.link.href));
   }
   return {
     body: [head, ...d.items.map(monthlyLine)].join("\n"),

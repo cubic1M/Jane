@@ -2,7 +2,7 @@ import type { Gift, GivingView } from "@/lib/giving";
 import { formatCents } from "@/lib/money";
 import { roundDollars } from "@/planning/tax-estimate-copy";
 
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 import { dayLabel } from "@/lib/day-label";
 
 // Giving in the chat (spec step 168): a gift's missing receipt, the giving options before
@@ -18,7 +18,7 @@ export function receiptMessage(g: Gift): Message {
     refs: { taxGift: g.transactionId },
     actions: [
       { id: "tax.receipt_got", label: "I have it", kind: "primary" },
-      { id: "open", label: "See your giving", kind: "link", href: GIVING_HREF },
+      openLink("See your giving", GIVING_HREF),
     ],
   };
 }
@@ -40,7 +40,7 @@ export function givingOptionsMessage(view: GivingView): Message | null {
         ? [{ id: "tax.fund_open", label: "Open a donor-advised fund", kind: "primary" } as const]
         : []),
       { id: "tax.giving_no", label: "Not this year", kind: "secondary" },
-      { id: "open", label: "See your giving", kind: "link", href: GIVING_HREF },
+      openLink("See your giving", GIVING_HREF),
     ],
   };
 }
@@ -60,7 +60,7 @@ export function givingReply(view: GivingView): Message {
     return {
       body: `${head}${fund} Ways to give for less tax will come once Jane works with a tax professional.`,
       refs: {},
-      actions: [{ id: "open", label: "See your giving", kind: "link", href: GIVING_HREF }],
+      actions: [openLink("See your giving", GIVING_HREF)],
     };
   }
   const lines = optionLines(view);
@@ -70,6 +70,6 @@ export function givingReply(view: GivingView): Message {
         ? `${head}${fund}\nWays to do more good for the same money:\n${lines.join("\n")}`
         : `${head}${fund} At this level of giving, nothing changes your tax: the standard deduction is bigger.`,
     refs: { advice: true },
-    actions: [{ id: "open", label: "See your giving", kind: "link", href: GIVING_HREF }],
+    actions: [openLink("See your giving", GIVING_HREF)],
   };
 }

@@ -2,6 +2,7 @@ import { BUFFER_FLOOR_MONTHS, BUFFER_TARGET_MONTHS } from "@/config/steady-pay";
 import { formatCents } from "@/lib/money";
 import type { SteadyView } from "@/lib/steady-pay";
 import type { Reply } from "./replies";
+import { openLink } from "./types";
 
 // A steady paycheck from uneven income in the chat (spec step 240).
 
@@ -47,7 +48,7 @@ export function steadyReply(view: SteadyView | null): Reply {
             { id: "steady.skip" as const, label: "Not this month", kind: "secondary" as const },
           ]
         : []),
-      { id: "open", label: "See transfers", kind: "link", href: "/transfers" },
+      openLink("See transfers", "/transfers"),
     ],
     refs: {},
   };

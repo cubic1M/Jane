@@ -32,7 +32,7 @@ import {
   type PreferencePatch,
 } from "@/planning/practice-preferences";
 import { chatToday } from "@/lib/today";
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 // The practice portfolio's settings in Jane's chat (Phase AW, Stage A). practice_settings reads
 // them; change_practice_settings turns "make it less risky", "stop the extra moves", "avoid oil
@@ -237,7 +237,7 @@ export async function proposePracticeChange(
     ok: true,
     actions: [
       { id: "practice.prefs_save", label: "Make the change", kind: "primary" },
-      { id: "open", label: "See practice settings", kind: "link", href: PRACTICE_SETTINGS_PATH },
+      openLink("See practice settings", PRACTICE_SETTINGS_PATH),
     ],
     refs: { practicePrefs },
     line,

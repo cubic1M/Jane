@@ -2,18 +2,13 @@ import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import type { TightMoney } from "@/lib/tight-money";
 import type { Reply } from "./replies";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 
 // Jane's answers when money is tight (spec step 177), from src/lib/tight-money.ts. Pure.
 // Essentials (housing, utilities, insurance) always come first, and every request waits
 // for the person's tap.
 
-export const TIGHT_PAGE: MessageAction = {
-  id: "open",
-  label: "See the plan",
-  kind: "link",
-  href: "/loans/tight",
-};
+export const TIGHT_PAGE: MessageAction = openLink("See the plan", "/loans/tight");
 
 export const sendButton = (label: string): MessageAction => ({
   id: "tight.send",

@@ -1,7 +1,7 @@
 import type { DisasterView, ReliefView } from "@/lib/disasters";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 // Disasters and losses in the chat (spec step 270): a postponement declared for the person's
 // county (Jane moves their tax deadlines on its own at the levels that let it act, on a tap at
@@ -48,7 +48,7 @@ export function reliefMessage(v: DisasterView, r: ReliefView): Message {
       label: "Keep the loss with my claim",
       kind: "secondary",
     });
-  actions.push({ id: "open", label: "See my deadlines", kind: "link", href: DISASTER_HREF });
+  actions.push(openLink("See my deadlines", DISASTER_HREF));
   return {
     body: `${lead}${dates ? ` That covers ${dates}.` : ""}${r.relief.stateFollows ? " The state's tax agency postponed its deadlines to the same date." : ""} ${lossLine(r)}${sample(r)}`,
     refs: { disasterRelief: r.relief.id, taxYear: v.year },
@@ -90,7 +90,7 @@ export function disasterReply(v: DisasterView): Message {
   const actions: MessageAction[] = [];
   if (!first.applied && first.moves.length > 0)
     actions.push({ id: "tax.disaster_move", label: "Move my tax deadlines", kind: "primary" });
-  actions.push({ id: "open", label: "See my deadlines", kind: "link", href: DISASTER_HREF });
+  actions.push(openLink("See my deadlines", DISASTER_HREF));
   return {
     body: `Here is the disaster relief for ${v.county} County.\n${lines.map((l) => `• ${l}`).join("\n")}`,
     refs: { disasterRelief: first.relief.id },

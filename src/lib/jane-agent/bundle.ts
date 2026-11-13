@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { CHAT_BUNDLE_MAX, CHAT_BUNDLE_MIN } from "@/config/agent-chat";
 import { formatCents } from "@/lib/money";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 
 // Spec step 92: related suggestions become one message, with a list and a Yes each. Pure.
 // Findings of the same kind (three subscriptions to review, two bills to lower) go
@@ -71,7 +71,7 @@ export function bundleOf(items: readonly Bundlable[]): Bundle {
         label,
         kind: "primary",
       })),
-      { id: "open", label: "Review the plan", kind: "link", href: "/plan" },
+      openLink("Review the plan", "/plan"),
     ],
     dedupeKey: `${first.source}:bundle:${id}`,
     priority: Math.max(...items.map((i) => i.priority)),

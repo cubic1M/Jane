@@ -1,6 +1,7 @@
 import { formatCents } from "@/lib/money";
 import type { VerifiedSavings } from "@/lib/savings-proof";
 import type { Reply } from "./replies";
+import { openLink } from "./types";
 
 // "How much have you saved me?" (spec step 139): the confirmed total, apart from estimates.
 // Jane's own receipts and the suggestions the person acted on, both confirmed in their transactions.
@@ -16,7 +17,7 @@ export function savedReply(saved: VerifiedSavings): Reply {
       : "";
   return {
     body: `${confirmed}${estimate}`,
-    actions: [{ id: "open", label: "See the receipts", kind: "link", href: "/saved" }],
+    actions: [openLink("See the receipts", "/saved")],
     refs: {},
   };
 }

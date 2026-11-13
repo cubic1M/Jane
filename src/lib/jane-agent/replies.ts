@@ -45,7 +45,7 @@ import type { Snapshot, SnapshotFinding } from "./snapshot";
 import { findingCandidate } from "./sources/findings";
 import { dateAndDays, inDays, snoozeButton, things } from "./sources/source";
 import type { PreferenceDraft } from "./preferences";
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 import { shiftMonth } from "@/lib/dates";
 import { dayLabel } from "@/lib/day-label";
 import { endedOn } from "@/lib/data-ended";
@@ -65,12 +65,7 @@ const reply = (body: string, actions: MessageAction[] = [], refs: MessageRefs = 
   actions,
   refs,
 });
-const link = (label: string, href: string): MessageAction => ({
-  id: "open",
-  label,
-  kind: "link",
-  href,
-});
+const link = (label: string, href: string): MessageAction => openLink(label, href);
 const fmt = (cents: number) => (cents < 0 ? `−${formatCents(-cents)}` : formatCents(cents));
 
 const utc = (iso: string, options: Intl.DateTimeFormatOptions) =>

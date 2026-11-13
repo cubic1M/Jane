@@ -1,6 +1,7 @@
 import { FIGURE_IDS, FIGURE_LABELS } from "@/config/figures";
 import type { Working } from "@/lib/figures";
 import type { Reply } from "./replies";
+import { openLink } from "./types";
 
 // "How did you get that?" in the chat (spec step 239): the working in a few lines, with the
 // page that shows all of it and where to say it's wrong.
@@ -24,7 +25,7 @@ export function figureReply(working: Working | null): Reply {
   ].filter((l): l is string => Boolean(l));
   return {
     body: lines.join(" "),
-    actions: [{ id: "open", label: "See all of it", kind: "link", href: `/figures/${working.id}` }],
+    actions: [openLink("See all of it", `/figures/${working.id}`)],
     refs: {},
   };
 }
@@ -33,12 +34,7 @@ export function figureReply(working: Working | null): Reply {
 export function whichFigureReply(): Reply {
   return {
     body: "Which figure? I can show how I got any of these: safe to spend, your spending, your income, net worth, your money health score or your debt-free date.",
-    actions: FIGURE_IDS.slice(0, 4).map((id) => ({
-      id: "open" as const,
-      label: FIGURE_LABELS[id],
-      kind: "link" as const,
-      href: `/figures/${id}`,
-    })),
+    actions: FIGURE_IDS.slice(0, 4).map((id) => openLink(FIGURE_LABELS[id], `/figures/${id}`)),
     refs: {},
   };
 }

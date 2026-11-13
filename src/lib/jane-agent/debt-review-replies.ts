@@ -5,18 +5,13 @@ import { payButton } from "./credit-building-replies";
 import { doneButton } from "./credit-goal-replies";
 import { sentButton } from "./home-equity-replies";
 import type { Reply } from "./replies";
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 // Jane's debt review in the chat (spec step 230), from src/lib/debt-review.ts. Pure. One
 // message with every item that waits for a tap, each with its own button; what Jane did by
 // itself is listed without one.
 
-const REVIEW_PAGE: MessageAction = {
-  id: "open",
-  label: "See the review",
-  kind: "link",
-  href: "/loans/review",
-};
+const REVIEW_PAGE: MessageAction = openLink("See the review", "/loans/review");
 
 const MARK = { done: "Done", tap: "Needs you", ok: "Fine" } as const;
 
@@ -39,7 +34,7 @@ function tapButton(tap: ReviewTap): { action: MessageAction; refs: MessageRefs }
     case "goal":
       return { action: doneButton(), refs: { creditGoalId: tap.goalId } };
     case "link":
-      return { action: { id: "open", label: tap.label, kind: "link", href: tap.href }, refs: {} };
+      return { action: openLink(tap.label, tap.href), refs: {} };
   }
 }
 
