@@ -15,9 +15,9 @@ import { SubmitButton } from "@/components/submit-button";
 const MUTED = "text-zinc-600 dark:text-zinc-400";
 const SOURCE_WORDS = { seen: "I saw this", told: "You told me", guessed: "My guess" } as const;
 
-// One fact: what Jane holds, where it came from and how sure it is, and a way to correct it. A fact
-// with no value has no source to give: "My guess · not known yet" guessed nothing.
-function factItem(f: Fact) {
+// One fact: what Jane holds, where it came from and how sure it is, and a way to correct it. One
+// Jane doesn't know has no value or source to give: "My guess · not known yet" guessed nothing.
+function factItem(f: Fact, known: boolean) {
   const spec = factSpec(f.key)!;
   return (
     <li
@@ -26,11 +26,9 @@ function factItem(f: Fact) {
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <span className="font-medium">{f.label}</span>
-        {f.value !== null && (
-          <span className="text-lg font-semibold">{sayFact(f.key, f.value)}</span>
-        )}
+        {known && <span className="text-lg font-semibold">{sayFact(f.key, f.value)}</span>}
       </div>
-      {f.value !== null && (
+      {known && (
         <p className={`text-sm ${MUTED}`}>
           {SOURCE_WORDS[f.source]} · {f.confidence}% sure, based on {f.evidence}
         </p>
@@ -47,7 +45,7 @@ function factItem(f: Fact) {
                   : undefined
             }
             current={
-              f.value === null
+              !known || f.value === null
                 ? undefined
                 : typeof f.value === "boolean"
                   ? f.value
@@ -81,8 +79,12 @@ async function ProfileContent() {
   const user = await requireUser();
   const profile = await loadProfile(user.id);
   const facts = Object.values(profile.facts);
-  const known = facts.filter((f) => f.value !== null);
-  const unknown = facts.filter((f) => f.value === null);
+  // With no months of data Jane has watched nothing: only what the person told it is known
+  // (debugger 11-13, a new student: "Your household: just you · My guess · 15% sure" and "You have
+  // a 401(k): no · I saw this · 81% sure", both "in 0 months of data").
+  const isKnown = (f: Fact) => f.value !== null && (profile.months > 0 || f.source === "told");
+  const known = facts.filter(isKnown);
+  const unknown = facts.filter((f) => !isKnown(f));
   return (
     <>
       <AppHeader user={user} />
@@ -95,7 +97,7 @@ async function ProfileContent() {
         </p>
       </div>
       {known.length > 0 ? (
-        <ul className="flex flex-col gap-3">{known.map((f) => factItem(f))}</ul>
+        <ul className="flex flex-col gap-3">{known.map((f) => factItem(f, true))}</ul>
       ) : (
         <p className={MUTED}>
           I don&apos;t know anything about you yet. Once an account is in, I&apos;ll work it out.
@@ -111,7 +113,7 @@ async function ProfileContent() {
         >
           <summary className="cursor-pointer font-medium">Not known yet ({unknown.length})</summary>
           <p className={`mt-2 text-sm ${MUTED}`}>Tell me any that apply to you.</p>
-          <ul className="mt-3 flex flex-col gap-3">{unknown.map((f) => factItem(f))}</ul>
+          <ul className="mt-3 flex flex-col gap-3">{unknown.map((f) => factItem(f, false))}</ul>
         </details>
       )}
     </>

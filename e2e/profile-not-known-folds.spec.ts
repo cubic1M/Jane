@@ -30,6 +30,8 @@ test("what Jane doesn't know yet is folded away, and says no guess", async ({ pa
   // Folded, the niche questions aren't on the page to read past.
   await expect(page.getByText("The year the person you inherited an IRA from died")).toBeHidden();
   await expect(page.getByText(/not known yet$/)).toHaveCount(0);
+  // A new student has no months of data: nothing is claimed out of nothing.
+  await expect(page.getByText(/in 0 months of data/)).toHaveCount(0);
 
   // Opened, each can still be told, in its own words.
   await fold.locator("summary").click();
@@ -42,7 +44,8 @@ test("what Jane doesn't know yet is folded away, and says no guess", async ({ pa
   // (not on the box's first choice, "single").
   await filing.getByRole("combobox").selectOption("head_of_household");
   await filing.getByRole("button", { name: "Correct" }).click();
-  await expect(filing.getByRole("status")).toBeVisible();
+  // Saved, the page comes back with it out of the fold; a reload says the same.
+  await expect(fold.locator("li").filter({ hasText: "How you file taxes" })).toHaveCount(0);
   await page.reload();
   await expect(fold.locator("li").filter({ hasText: "How you file taxes" })).toHaveCount(0);
   const told = page.locator("li").filter({ hasText: "How you file taxes" });
