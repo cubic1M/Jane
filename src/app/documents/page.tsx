@@ -20,7 +20,7 @@ import { DOCUMENT_SELECT } from "@/lib/documents/store";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { timezoneOf } from "@/lib/today";
-import { momentLabel } from "@/lib/day-label";
+import { momentLabel, dayLabel } from "@/lib/day-label";
 import { deleteDocument } from "./actions";
 import { FactsSection, UploadForm } from "./forms";
 import { SubmitButton } from "@/components/submit-button";
@@ -30,13 +30,7 @@ import { PageShell } from "@/components/page-shell";
 
 const LINK = "font-medium text-emerald-700 hover:underline";
 
-const dateLabel = (date: Date) =>
-  date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+const dateLabel = (date: Date) => dayLabel(date, { year: true });
 
 const sizeLabel = (bytes: number) =>
   bytes < 1024 * 1024

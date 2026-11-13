@@ -5,7 +5,8 @@ import {
   VALIDATION_WINDOW_DAYS,
 } from "@/config/credit-report-fixes";
 import type { ReportItem } from "@/lib/credit/partner";
-import { addDays, fixItems } from "./credit-report-fixes";
+import { addDays } from "@/lib/dates";
+import { fixItems } from "./credit-report-fixes";
 
 const collection: ReportItem = {
   id: "c1",

@@ -5,15 +5,13 @@ import {
   NEW_PLAN_INSTALLMENTS,
 } from "@/config/bnpl";
 import { LOW_BALANCE_CUSHION_CENTS } from "@/config/detection";
-import { DAY_MS } from "@/lib/dates";
+import { addDays } from "@/lib/dates";
 import { dayNumber } from "@/detection/units";
 
 // Buy now, pay later under control (spec step 176). Pure: each plan's next installments
 // from its own schedule, which of them the forecast already counts, and what a new plan
 // would do to the checking forecast.
 
-export const addDays = (day: string, days: number) =>
-  new Date((dayNumber(day) + days) * DAY_MS).toISOString().slice(0, 10);
 const addMonths = (day: string, months: number) => {
   const [y, m, d] = day.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1 + months, d)).toISOString().slice(0, 10);

@@ -5,6 +5,7 @@ import type { WithholdingView } from "@/lib/tax-withholding";
 import { balancePhrase } from "@/planning/tax-estimate-copy";
 import type { W4Change } from "@/planning/withholding";
 import { W4Buttons } from "./w4-buttons";
+import { dayLabel } from "@/lib/day-label";
 
 // The withholding checkup on /taxes (spec step 121). The W-4 suggestion is demo advice,
 // labelled; real accounts get the comparison and the IRS's estimator.
@@ -19,12 +20,6 @@ const where = (c: W4Change) =>
 
 export function WithholdingSection({ view }: { view: WithholdingView }) {
   const { check, estimate, advice } = view;
-  const day = (iso: string) =>
-    new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      timeZone: "UTC",
-    });
   return (
     <section aria-labelledby="withholding-heading" id="withholding" className={CARD}>
       <h2 id="withholding-heading" className="text-xl font-semibold">
@@ -33,7 +28,7 @@ export function WithholdingSection({ view }: { view: WithholdingView }) {
       {estimate.w4 && (
         <div className="flex flex-col gap-2 text-sm">
           <p>
-            You sent a new W-4 on {day(estimate.w4.changedOn)}. Your estimate counts it:{" "}
+            You sent a new W-4 on {dayLabel(estimate.w4.changedOn)}. Your estimate counts it:{" "}
             {balancePhrase(estimate.estimate.refundCents)}.
           </p>
           <W4Buttons kind="undo" />

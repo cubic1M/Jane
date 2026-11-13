@@ -1,5 +1,7 @@
 import { PANIC_DROP_SHARE, PANIC_LOOKBACK_DAYS, PANIC_MIN_SALE_CENTS } from "@/config/panic-sells";
 import { formatCents } from "@/lib/money";
+import { dayLabel } from "@/lib/day-label";
+import { addDays } from "@/lib/dates";
 
 // What selling after a big drop cost against holding, from the person's own sales (investing).
 // Pure: their sales and the closing prices since, out the sales that came after a drop, each with
@@ -30,17 +32,8 @@ export type PanicResult = {
   avoidedCents: number;
 };
 
-const DAY_MS = 86_400_000;
-const addDays = (d: string, n: number) =>
-  new Date(Date.parse(`${d}T00:00:00Z`) + n * DAY_MS).toISOString().slice(0, 10);
 const pct = (n: number) => `${Math.round(n * 100)}%`;
-const day = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+const day = (iso: string) => dayLabel(iso, { year: true });
 
 export function panicSells(
   sales: readonly Sale[],

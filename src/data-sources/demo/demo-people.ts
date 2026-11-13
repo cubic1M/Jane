@@ -5,7 +5,6 @@ import { ledgered } from "./demo-ledger";
 import { PEOPLE_EXTRAS } from "./people-extras";
 import {
   accountId,
-  addDays,
   type DemoSeed,
   lastDayOfMonth,
   lastDayOfMonthOn,
@@ -14,6 +13,7 @@ import {
   random,
 } from "./demo-bank";
 import { monthsAfter, monthsToPayOff, mortgagePiDollars } from "./demo-loans";
+import { addDays } from "@/lib/dates";
 
 // The eight sample people's banks (spec step 252): each a year of transactions, accounts,
 // loans and investments in the same Plaid shapes as the demo bank, so they sync through the

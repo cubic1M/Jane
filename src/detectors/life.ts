@@ -5,6 +5,7 @@ import { stoppedEmployer } from "@/profile/stopped-employer";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestion } from "./contract";
 import { evidence, factEvidence, headlineOf, tx, weakest } from "./helpers";
+import { addDays } from "@/lib/dates";
 
 // Detectors for life events and households (spec step 264). Pure; see ./contract.ts.
 
@@ -13,9 +14,6 @@ const nice = (name: string) => name.toLowerCase().replace(/\b[a-z]/g, (c) => c.t
 
 const daysBetween = (from: string, to: string) =>
   (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000;
-
-const addDays = (day: string, days: number) =>
-  new Date(Date.parse(`${day}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
 
 const lifeChecklist: Detector = {
   covers: ["life_events"],

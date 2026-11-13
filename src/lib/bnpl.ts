@@ -13,7 +13,6 @@ import { debtsOr } from "@/lib/debts";
 import { moneyPartnerFor } from "@/lib/money-movement/partner";
 import { scheduleTransfer, TransferError } from "@/lib/money-movement/transfers";
 import {
-  addDays,
   freePayoff,
   installments,
   notInForecast,
@@ -21,7 +20,7 @@ import {
   type Installment,
   type PlanSchedule,
 } from "@/planning/bnpl";
-import { isoDay } from "@/lib/dates";
+import { isoDay, addDays } from "@/lib/dates";
 
 // Buy now, pay later under control (spec step 176). Every plan with its next installments
 // from the plan's own schedule, the ones the checking forecast doesn't count yet, a

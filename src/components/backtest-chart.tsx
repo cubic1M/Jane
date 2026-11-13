@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { formatWholeDollars } from "@/lib/money";
+import { monthLabel } from "@/lib/day-label";
 
 // The backtests' value paths (spec step 295): one line per risk level on one axis, from the same
 // sample amount. Levels are ordered, so one hue runs light (Very low) to dark (Very high); in
@@ -34,12 +35,6 @@ const DEFAULT_WIDTH = 640;
 const PAD = { left: 52, right: 8, top: 8, bottom: 24 };
 
 const compact = (cents: number) => `$${Math.round(cents / 100_000)}k`;
-const month = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 export function BacktestChart({ series }: { series: ChartSeries[] }) {
   const [hover, setHover] = useState<number | null>(null);
@@ -161,7 +156,7 @@ export function BacktestChart({ series }: { series: ChartSeries[] }) {
             className="pointer-events-none absolute top-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs shadow-sm dark:border-zinc-800 dark:bg-zinc-950"
             style={hover > n / 2 ? { left: "4rem" } : { right: "0.5rem" }}
           >
-            <p className="font-medium">{month(dates[hover])}</p>
+            <p className="font-medium">{monthLabel(dates[hover])}</p>
             <ul>
               {[...series].reverse().map((s) => (
                 <li key={s.level} className="flex items-center justify-between gap-3">

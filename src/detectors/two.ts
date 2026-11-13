@@ -3,14 +3,13 @@ import { formatCents, formatWholeDollars } from "@/lib/money";
 import { HALF, incomeSplitMatters, partnerShareBps, twoEarners } from "@/planning/money-for-two";
 import { type Detector, suggestion } from "./contract";
 import { evidence, tx } from "./helpers";
+import { addDays } from "@/lib/dates";
 
 // Money for two (spec step 242), brought to the person unasked: two people's pay lands in the
 // accounts Jane sees, it differs a lot, and they haven't chosen how shared bills split. Pure;
 // see ./contract.ts.
 
-const DAY_MS = 86_400_000;
-const before = (day: string, days: number) =>
-  new Date(Date.parse(`${day}T00:00:00Z`) - days * DAY_MS).toISOString().slice(0, 10);
+const before = (day: string, days: number) => addDays(day, -days);
 
 const billSplit: Detector = {
   covers: ["money_for_two"],

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { PEOPLE, SUGGESTION_TOPICS } from "@/config/people";
-import { addDays, demoAccounts, demoLiabilities, demoTransactions } from "./demo-bank";
+import { demoAccounts, demoLiabilities, demoTransactions } from "./demo-bank";
 import { demoHoldings, demoInvestmentTransactions } from "./demo-holdings";
+import { addDays } from "@/lib/dates";
 
 // Spec step 252: eight sample people, each a full demo bank. Built from the same code as the
 // original demo bank, so they sync the same way.

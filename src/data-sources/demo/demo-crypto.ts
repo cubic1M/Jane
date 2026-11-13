@@ -1,6 +1,6 @@
 import { CRYPTO_ASSETS } from "@/config/crypto";
-import { addDays } from "./demo-bank";
 import { demoCryptoPrice } from "./demo-prices";
+import { addDays } from "@/lib/dates";
 
 // The demo exchange and the demo wallet (spec step 161): made-up crypto balances, valued at
 // the demo crypto prices, and the exchange's last year of buys with their fees. Read-only,

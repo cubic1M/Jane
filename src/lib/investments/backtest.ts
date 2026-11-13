@@ -17,6 +17,7 @@ import { HISTORY_START, storedHistory } from "@/lib/market/history";
 import { SAMPLE_START, SampleMarketData } from "@/lib/market/sample";
 import type { Bar } from "@/lib/market/types";
 import { alignBars, runBacktest, type BacktestResult } from "@/planning/backtest";
+import { dayLabel } from "@/lib/day-label";
 
 // Backtests by level (spec step 295) for the investments page and Jane's chat tool: each of the
 // five model portfolios replayed over stored real history when it is there ("Replay of real
@@ -57,13 +58,7 @@ type Options = { client?: PrismaClient; now?: Date };
 const CLASSES = Object.keys(PRACTICE_ETFS) as PracticeClass[];
 const LEVELS = [1, 2, 3, 4, 5] as const satisfies readonly RiskLevel[];
 
-export const longDate = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+export const longDate = (iso: string) => dayLabel(iso, { year: true });
 
 const byClass = (byTicker: Record<string, readonly Bar[]>) =>
   Object.fromEntries(CLASSES.map((c) => [c, byTicker[PRACTICE_ETFS[c].ticker] ?? []])) as Record<

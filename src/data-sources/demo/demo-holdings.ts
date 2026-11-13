@@ -1,7 +1,8 @@
 import type { Holding, InvestmentTransaction, Security } from "plaid";
-import { accountId, addDays, demoAccounts, type DemoExtra, type DemoSeed } from "./demo-bank";
+import { accountId, demoAccounts, type DemoExtra, type DemoSeed } from "./demo-bank";
 import { isPersonSeed, personPositions } from "./demo-people";
 import { demoPrice } from "./demo-prices";
+import { addDays } from "@/lib/dates";
 
 // What the demo bank's investment accounts hold (spec step 128), shaped like Plaid
 // Investments' /investments/holdings/get and /investments/transactions/get. The funds are

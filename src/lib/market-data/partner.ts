@@ -1,4 +1,4 @@
-import { addDays } from "@/data-sources/demo/demo-bank";
+import { addDays } from "@/lib/dates";
 import { DEMO_PRICES, demoPriceOn } from "@/data-sources/demo/demo-holdings";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";

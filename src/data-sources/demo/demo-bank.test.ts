@@ -4,12 +4,12 @@ import { normalizeLiabilities } from "@/data-sources/plaid/liabilities";
 import { normalizeAccount } from "@/data-sources/plaid/plaid-source";
 import { escrowChange } from "@/planning/mortgage";
 import {
-  addDays,
   demoAccounts,
   demoLiabilities,
   demoSwitchTransactions,
   demoTransactions,
 } from "./demo-bank";
+import { addDays } from "@/lib/dates";
 
 const DEMO = { seed: "abc123", anchor: "2026-10-18" };
 const THROUGH = "2026-10-17";

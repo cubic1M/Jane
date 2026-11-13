@@ -1,6 +1,7 @@
 import type { Transaction } from "plaid";
 import type { PfcDetailed } from "@/categorize/taxonomy";
-import { addDays, primaryOf, random } from "./demo-bank";
+import { primaryOf, random } from "./demo-bank";
+import { addDays } from "@/lib/dates";
 
 // A sample person's year as a ledger (founder, 2026-10-23): every balance rolls back through
 // its own transactions to a believable one a year ago, so the net worth line is their real

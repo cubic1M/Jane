@@ -6,17 +6,12 @@ import { longDate, type Backtests } from "@/lib/investments/backtest";
 import { formatCents } from "@/lib/money";
 import { monthlyPath } from "@/planning/backtest";
 import { formatPercent as pct, formatRate } from "@/lib/percent";
+import { monthLabel } from "@/lib/day-label";
 
 // Backtests by level on the investments page (spec step 295): the value paths as one chart, a
 // few figures per level and the assumptions beside them. Demo advice, always labelled, and
 // always called a replay, never a forecast.
 
-const monthYear = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 const drop = (fraction: number) => (fraction === 0 ? "None" : formatReturn(fraction));
 
 export function BacktestsSection({ backtests }: { backtests: Backtests }) {
@@ -67,7 +62,7 @@ export function BacktestsSection({ backtests }: { backtests: Backtests }) {
                     {r.worstDrop.fraction !== 0 && (
                       <span className="block text-xs text-zinc-500">
                         {r.worstDrop.recoveredOn
-                          ? `back ${monthYear(r.worstDrop.recoveredOn)}`
+                          ? `back ${monthLabel(r.worstDrop.recoveredOn)}`
                           : "not back yet"}
                       </span>
                     )}
@@ -124,7 +119,7 @@ export function BacktestsSection({ backtests }: { backtests: Backtests }) {
                       {r.worstDrop.fraction === 0
                         ? ""
                         : r.worstDrop.recoveredOn
-                          ? `back ${monthYear(r.worstDrop.recoveredOn)}`
+                          ? `back ${monthLabel(r.worstDrop.recoveredOn)}`
                           : "not back yet"}
                     </span>
                   </td>

@@ -7,7 +7,6 @@ import {
   type DemoOrder,
 } from "@/data-sources/demo/demo-holdings";
 import {
-  addDays,
   DEMO_EXTRAS,
   DEMO_INSTITUTION,
   type DemoExtra,
@@ -34,6 +33,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { cachedRead } from "@/lib/read-cache";
 import { plaidEnabled } from "./client";
+import { addDays } from "@/lib/dates";
 
 // The demo bank (spec step 75): a stand-in for Plaid's API while there are no keys. A demo
 // item is an ordinary plaid_items row whose ids start with "demo-" and whose (encrypted)
