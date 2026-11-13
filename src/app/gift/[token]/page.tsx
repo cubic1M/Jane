@@ -7,6 +7,7 @@ import { giftPage } from "@/lib/investments/family";
 import { formatCents } from "@/lib/money";
 import { GiftForm } from "./gift-form";
 import { ProgressBar } from "@/components/progress-bar";
+import { DoneBanner } from "@/components/done-banner";
 
 // A gift link (spec step 213): the goal and how far along it is, and nothing else about
 // the family. Not indexed by search engines. A demo: no real money moves.
@@ -44,14 +45,7 @@ async function Page({
         The goal is {formatCents(gift.targetCents)}, and it is {gift.percent}% of the way there.
       </p>
       <ProgressBar label="How far along the goal is" percent={gift.percent} tall />
-      {thanks === "1" && (
-        <p
-          role="status"
-          className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100"
-        >
-          Thank you! Your gift was added.
-        </p>
-      )}
+      {thanks === "1" && <DoneBanner>Thank you! Your gift was added.</DoneBanner>}
       <GiftForm token={token} />
       <p className="text-xs text-zinc-500">
         This is a demo of Jane: no real money moves. A gift can be up to{" "}

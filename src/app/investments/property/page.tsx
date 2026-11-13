@@ -10,6 +10,7 @@ import { demoRental } from "./actions";
 import { RentalForm } from "./rental-form";
 import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
+import { DoneBanner } from "@/components/done-banner";
 
 // Property as an investment (spec step 214, demo advice): home equity, each rental's
 // figures from its own transactions, depreciation for the taxes side, and paying the
@@ -43,12 +44,7 @@ async function Content({
         </p>
       </div>
       {(done === "saved" || done === "linked") && (
-        <p
-          role="status"
-          className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100"
-        >
-          {done === "saved" ? "Rental added." : "Demo rental added."}
-        </p>
+        <DoneBanner>{done === "saved" ? "Rental added." : "Demo rental added."}</DoneBanner>
       )}
 
       {v.homes.map((h) => (

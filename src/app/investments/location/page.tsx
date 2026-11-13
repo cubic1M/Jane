@@ -11,6 +11,7 @@ import { requireUser } from "@/lib/session";
 import { CLASSES } from "@/planning/location";
 import { swapNow } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { DoneBanner } from "@/components/done-banner";
 
 // The right investment in the right account (spec step 231, demo advice): one allocation
 // across every account, with the swaps that put the tax-heavy holdings in tax-advantaged
@@ -54,14 +55,11 @@ async function Content({
         </p>
       </div>
       {(done === "swapped" || done === "changed") && (
-        <p
-          role="status"
-          className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100"
-        >
+        <DoneBanner>
           {done === "swapped"
             ? "Done in the simulated brokerage (no real money moves)."
             : "Your accounts changed since that plan. Here's the new one."}
-        </p>
+        </DoneBanner>
       )}
       {!plan && (
         <p className="text-zinc-600 dark:text-zinc-400">

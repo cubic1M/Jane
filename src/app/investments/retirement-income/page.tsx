@@ -16,6 +16,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { IncomeForm } from "./income-form";
 import { PageShell } from "@/components/page-shell";
+import { DoneBanner } from "@/components/done-banner";
 
 // Income in retirement (spec step 212, demo advice): Social Security at 62, full age and
 // 70, required minimum distributions, the order to draw, and a monthly paycheck with how
@@ -52,14 +53,7 @@ async function Content({
             : ""}
         </p>
       </div>
-      {done === "saved" && (
-        <p
-          role="status"
-          className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100"
-        >
-          Saved.
-        </p>
-      )}
+      {done === "saved" && <DoneBanner>Saved.</DoneBanner>}
 
       {v.advice && p && (
         <section className="flex flex-col gap-2 rounded-xl border border-emerald-300 p-4 dark:border-emerald-800">

@@ -19,6 +19,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { formatPercent as pct } from "@/lib/percent";
 import { dayLabel } from "@/lib/day-label";
 import { PageShell } from "@/components/page-shell";
+import { DoneBanner } from "@/components/done-banner";
 
 // Company stock (spec step 160, demo advice): how much of what's invested is in the
 // employer's stock, what's still to vest, and a plan to sell down in parts with the tax
@@ -59,12 +60,7 @@ async function CompanyContent({
         </p>
       </div>
       {typeof done === "string" && Object.hasOwn(DONE, done) && (
-        <p
-          role="status"
-          className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100"
-        >
-          {DONE[done]}
-        </p>
+        <DoneBanner>{DONE[done]}</DoneBanner>
       )}
       {(done === "sold" || (view.advice && (view.plan?.parts.length ?? 0) > 0)) && (
         <SimulatedBanner />

@@ -13,6 +13,7 @@ import { AssetForm } from "./asset-form";
 import { SubmitButton } from "@/components/submit-button";
 import { dayLabel } from "@/lib/day-label";
 import { PageShell } from "@/components/page-shell";
+import { DoneBanner } from "@/components/done-banner";
 
 // Things you own (spec step 67): a home, a car, anything else of value, at the value the
 // person gives. Counted in net worth; with the loan against it, shown as equity.
@@ -99,14 +100,7 @@ async function ThingsContent({
         </p>
       </div>
 
-      {saved && (
-        <p
-          role="status"
-          className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100"
-        >
-          {saved}
-        </p>
-      )}
+      {saved && <DoneBanner>{saved}</DoneBanner>}
 
       {assets.length > 0 && (
         <>

@@ -7,6 +7,7 @@ import { requireUser } from "@/lib/session";
 import { addEvent, saveFileContacts, saveNames, saveSharing, stillRight } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
+import { DoneBanner } from "@/components/done-banner";
 
 // The family looked after (spec step 237): who is named on each account, what a life event makes
 // out of date, and a file the person shares in part. Facts only about wills and trusts, with a
@@ -45,14 +46,11 @@ async function Content({
         </p>
       </div>
       {done && (
-        <p
-          role="status"
-          className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100"
-        >
+        <DoneBanner>
           {done === "shares" || done === "event" || done === "none"
             ? "That didn't save. Check the shares add up to 100, or the date."
             : "Saved."}
-        </p>
+        </DoneBanner>
       )}
 
       <section className="flex flex-col gap-3">

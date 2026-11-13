@@ -10,6 +10,7 @@ import { requireUser } from "@/lib/session";
 import { RebalanceButton } from "./rebalance-button";
 import { formatPercent as pct } from "@/lib/percent";
 import { PageShell } from "@/components/page-shell";
+import { DoneBanner } from "@/components/done-banner";
 
 // Rebalance with one tap (spec step 133): the orders that move each account to the target
 // mix, the mix before and after, and the confirmations. Orders go to the simulated
@@ -68,12 +69,9 @@ async function RebalanceContent({
       <SimulatedBanner />
 
       {done && (
-        <p
-          role="status"
-          className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100"
-        >
+        <DoneBanner>
           Done: your orders were filled in the simulation. Your holdings show the new mix.
-        </p>
+        </DoneBanner>
       )}
 
       {!advice ? (

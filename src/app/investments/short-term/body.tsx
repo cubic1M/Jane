@@ -11,6 +11,7 @@ import { buildLadder } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { dayLabel } from "@/lib/day-label";
 import { formatRate } from "@/lib/percent";
+import { DoneBanner } from "@/components/done-banner";
 
 // Short-term money, placed safely (spec step 234, demo advice): money needed within three
 // years, compared after tax in the person's own state, with a Treasury bill ladder that
@@ -50,14 +51,11 @@ export async function ShortTermBody({
         </p>
       </div>
       {done && (
-        <p
-          role="status"
-          className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100"
-        >
+        <DoneBanner>
           {done === "started"
             ? "Started in the stand-in: no real bills are bought."
             : "That changed since you last looked."}
-        </p>
+        </DoneBanner>
       )}
       {v.candidates.length === 0 && v.ladders.length === 0 && (
         <p className="text-zinc-600 dark:text-zinc-400">

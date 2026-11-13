@@ -15,6 +15,7 @@ import { linkCrypto, refreshCrypto } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { formatPercentTenths } from "@/lib/percent";
 import { PageShell } from "@/components/page-shell";
+import { DoneBanner } from "@/components/done-banner";
 
 // Crypto (spec step 161): seen and sized, never traded. Each balance says where it came
 // from and when; in demo advice mode, flags for too big a share and costly fees.
@@ -62,12 +63,7 @@ async function CryptoContent({
         </p>
       </div>
       {typeof done === "string" && Object.hasOwn(DONE, done) && (
-        <p
-          role="status"
-          className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100"
-        >
-          {DONE[done]}
-        </p>
+        <DoneBanner>{DONE[done]}</DoneBanner>
       )}
 
       {view.connections.length === 0 ? (

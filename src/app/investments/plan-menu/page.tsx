@@ -11,6 +11,7 @@ import { ReadForm } from "./read-form";
 import { SubmitButton } from "@/components/submit-button";
 import { formatPercent as pct, formatRate } from "@/lib/percent";
 import { PageShell } from "@/components/page-shell";
+import { DoneBanner } from "@/components/done-banner";
 
 // The workplace plan's menu, used well (spec step 232, demo advice): the funds the plan
 // offers, read from a disclosure and confirmed, and the cheapest mix of them for the
@@ -78,16 +79,13 @@ async function Content({
         </p>
       </div>
       {done && (
-        <p
-          role="status"
-          className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100"
-        >
+        <DoneBanner>
           {done === "confirmed"
             ? "Saved."
             : done === "requested"
               ? "Requested through the payroll stand-in. Your plan changes when it does."
               : "That changed since you last looked."}
-        </p>
+        </DoneBanner>
       )}
       {v.proposed && (
         <section className="flex flex-col gap-2 rounded-xl border border-amber-300 p-4 dark:border-amber-800">
