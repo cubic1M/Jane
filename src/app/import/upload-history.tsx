@@ -33,6 +33,14 @@ type Account = {
 };
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+// What "Remove account" asks first, by how much is in it (debugger 11-12: "Remove Wells Fargo
+// checking and all 0 transactions in it?").
+export function removeAccountQuestion(name: string, rows: number): string {
+  if (rows === 0) return `Remove ${name}? There are no transactions in it.`;
+  if (rows === 1) return `Remove ${name} and the 1 transaction in it?`;
+  return `Remove ${name} and all ${rows} transactions in it?`;
+}
 // "Jul 28 to Oct 20, 2026", as the rest of the page writes dates.
 // Dates read as the account list writes them, each with its year: "Jul 29, 2026 to Oct 24,
 // 2026" (overnight beta list).
@@ -218,7 +226,7 @@ export function UploadHistory({
             <Confirm
               label="Remove account"
               what={a.name}
-              question={`Remove ${a.name} and all ${plural(a.rows, "transaction")} in it?`}
+              question={removeAccountQuestion(a.name, a.rows)}
               yes="Yes, remove the account"
               run={() => removeAccountAction(a.id)}
             />
