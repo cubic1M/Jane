@@ -7,6 +7,13 @@ import { auth } from "@/auth";
 import { TERMS_VERSION } from "@/config/legal";
 import { adminSessionState, sessionTokenFrom } from "@/lib/admin-gate";
 import { log } from "@/lib/log";
+import {
+  PAGE_PATH_HEADER,
+  pageOf,
+  renderKind,
+  renderLine,
+  renderTiming,
+} from "@/lib/render-timing";
 import { noteSessionSeen } from "@/lib/user-sessions";
 
 export type SessionUser = Session["user"];
@@ -18,6 +25,8 @@ export type SessionState = { user: SessionUser; mfaPending: boolean };
 // The signed-in person, including one who still owes a two-factor code. Only /mfa uses
 // this directly; everything else goes through getCurrentUser or requireUser.
 export async function getSessionState(): Promise<SessionState | null> {
+  // The render's clock starts here, before the session is read (src/lib/render-timing.ts).
+  renderTiming();
   // Auth.js makes a random CSRF token on every session lookup. Waiting for the
   // request first keeps Next.js from treating that as part of a prerender.
   await connection();
@@ -26,6 +35,7 @@ export async function getSessionState(): Promise<SessionState | null> {
   const session = await auth();
   if (!session?.user) return null;
   await noteDevice();
+  await noteRender();
   return { user: session.user, mfaPending: session.mfaPending };
 }
 
@@ -43,6 +53,18 @@ const noteDevice = cache(async (): Promise<void> => {
       log.error("Couldn't note the session's device", { error }),
     ),
   );
+});
+
+// One log line per signed-in page render, after it has finished streaming: how long it took and
+// where the time went, nothing about the person (src/lib/render-timing.ts). The proxy names the
+// page; API routes it doesn't name, and they aren't renders.
+const noteRender = cache(async (): Promise<void> => {
+  const asked = await headers();
+  const page = pageOf(asked.get(PAGE_PATH_HEADER));
+  if (!page) return;
+  const kind = renderKind(asked);
+  const timing = renderTiming();
+  after(() => log.json("render timing", renderLine(timing, page, kind)));
 });
 
 // Signed in, with the two-factor code entered if two-factor is on. Null otherwise, so
