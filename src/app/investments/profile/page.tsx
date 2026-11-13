@@ -7,6 +7,7 @@ import { todayOf } from "@/lib/today";
 import { currentAge, profileSummary } from "@/planning/investor-profile";
 import { ProfileForm } from "./profile-form";
 import { PageShell } from "@/components/page-shell";
+import { DoneBanner } from "@/components/done-banner";
 
 // What the investments are for (spec step 129): the four answers, the risk level that
 // follows and why, changeable any time. Jane asks the same questions in the chat.
@@ -38,14 +39,7 @@ async function ProfileContent({
         </p>
       </div>
 
-      {saved && (
-        <p
-          role="status"
-          className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100"
-        >
-          Saved.
-        </p>
-      )}
+      {saved && <DoneBanner>Saved.</DoneBanner>}
 
       <section className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
         {summary.complete ? (

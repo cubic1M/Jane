@@ -17,6 +17,7 @@ import type { Range } from "@/planning/college";
 import { CollegeForm } from "./college-form";
 import { formatPercent as pct } from "@/lib/percent";
 import { PageShell } from "@/components/page-shell";
+import { DoneBanner } from "@/components/done-banner";
 
 // College savings (spec step 158, demo advice): what college could cost, what to put aside
 // a month, which 529 plan comes out ahead with the state's tax break, set up as a goal.
@@ -48,12 +49,7 @@ async function CollegeContent({
         </p>
       </div>
       {saved && (
-        <p
-          role="status"
-          className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100"
-        >
-          Saved as a goal. Jane invests for it with your other goals.
-        </p>
+        <DoneBanner>Saved as a goal. Jane invests for it with your other goals.</DoneBanner>
       )}
       {!data.advice ? (
         <p className="text-zinc-600 dark:text-zinc-400">

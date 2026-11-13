@@ -12,6 +12,7 @@ import { AutoInvestForm } from "./auto-form";
 import { SubmitButton } from "@/components/submit-button";
 import { dayLabel } from "@/lib/day-label";
 import { PageShell } from "@/components/page-shell";
+import { DoneBanner } from "@/components/done-banner";
 
 // Automatic investing (spec step 134): set it up once, see every payday's contribution
 // (or why it was paused), pause and resume. Through the simulated brokerage, and said so.
@@ -44,14 +45,7 @@ async function AutoContent({
         </p>
       </div>
       <SimulatedBanner />
-      {saved && (
-        <p
-          role="status"
-          className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100"
-        >
-          Saved.
-        </p>
-      )}
+      {saved && <DoneBanner>Saved.</DoneBanner>}
 
       {!data.advice ? (
         <p className="text-zinc-600 dark:text-zinc-400">

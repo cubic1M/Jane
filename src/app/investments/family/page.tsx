@@ -15,6 +15,7 @@ import { requireUser } from "@/lib/session";
 import { makeLink, openAccount, putIn, saveChild, takeDown } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
+import { DoneBanner } from "@/components/done-banner";
 
 // Investing for the family (spec step 213, demo advice): a child's custodial account, a Roth
 // IRA for a child with earned income, and a gift link for their college fund.
@@ -59,12 +60,7 @@ async function Content({
         </p>
       </div>
       {typeof done === "string" && Object.hasOwn(DONE, done) && (
-        <p
-          role="status"
-          className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100"
-        >
-          {DONE[done]}
-        </p>
+        <DoneBanner>{DONE[done]}</DoneBanner>
       )}
 
       {v.children.map((c, i) => (

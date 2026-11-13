@@ -22,6 +22,7 @@ import { requireUser } from "@/lib/session";
 import { pauseSwitch, runNow, startPracticePortfolio, undoLast } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
+import { DoneBanner } from "@/components/done-banner";
 
 // The practice portfolio (spec steps 288 to 294, Phase AW, Stage A): a paper portfolio run by
 // Jane on practice money, with its trade log and a pause switch. Nothing here is a real account
@@ -102,14 +103,7 @@ async function Content({
           real account is touched.
         </p>
       </div>
-      {done && MESSAGES[done] && (
-        <p
-          role="status"
-          className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100"
-        >
-          {MESSAGES[done]}
-        </p>
-      )}
+      {done && MESSAGES[done] && <DoneBanner>{MESSAGES[done]}</DoneBanner>}
       {!advice && (
         <p className="text-zinc-600 dark:text-zinc-400">
           The practice portfolio is only available in demo advice mode for now.

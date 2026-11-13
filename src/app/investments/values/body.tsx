@@ -9,6 +9,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { saveValues, switchFunds } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { DoneBanner } from "@/components/done-banner";
 
 // Investing by your values (spec step 236, demo advice): leave out fossil fuels, weapons or
 // tobacco, or lean towards a theme, inside each kind of investment so the risk target holds.
@@ -37,16 +38,13 @@ export async function ValuesBody({ done, embed }: { done?: string | string[]; em
         <p className="text-zinc-600 dark:text-zinc-400">{v.note}</p>
       </div>
       {done && (
-        <p
-          role="status"
-          className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100"
-        >
+        <DoneBanner>
           {done === "saved"
             ? "Saved. Nothing moved."
             : done === "switched"
               ? "Switched in the stand-in: no real trades are made."
               : "That changed since you last looked."}
-        </p>
+        </DoneBanner>
       )}
       <form action={saveValues} className="flex flex-col gap-3">
         <fieldset className="flex flex-col gap-1">

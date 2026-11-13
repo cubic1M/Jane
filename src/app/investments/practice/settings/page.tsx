@@ -27,6 +27,7 @@ import { PREFERENCE_LABELS, type PreferenceField } from "@/planning/practice-pre
 import { savePracticeSettings } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
+import { DoneBanner } from "@/components/done-banner";
 
 // What the person wants from the practice portfolio (Phase AW, Stage A), in plain words: how much
 // risk, a goal and its date, the monthly practice money, extra moves, what never to buy, loss
@@ -92,12 +93,9 @@ async function Content({
     <>
       {header}
       {done && (
-        <p
-          role="status"
-          className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100"
-        >
+        <DoneBanner>
           {done === "saved" ? "Saved. Jane uses it from the next run." : "Nothing changed."}
-        </p>
+        </DoneBanner>
       )}
       {errorField && (
         <p

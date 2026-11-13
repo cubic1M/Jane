@@ -9,6 +9,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { answerKind, demoDeposit, stage } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { DoneBanner } from "@/components/done-banner";
 
 // Sudden money (spec step 235, demo advice): a bonus, an inheritance or a sale, with a staged
 // plan. Tax set aside first; every part is your tap.
@@ -45,14 +46,11 @@ export async function SuddenMoneyBody({
         </p>
       </div>
       {done && (
-        <p
-          role="status"
-          className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100"
-        >
+        <DoneBanner>
           {done === "moved"
             ? "Done through the stand-ins (no real money moves)."
             : "That changed since you last looked."}
-        </p>
+        </DoneBanner>
       )}
       {v.items.length === 0 && (
         <p className="text-zinc-600 dark:text-zinc-400">No large deposit to plan.</p>

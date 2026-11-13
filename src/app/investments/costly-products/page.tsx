@@ -11,6 +11,7 @@ import { ProductForm } from "./product-form";
 import { SubmitButton } from "@/components/submit-button";
 import { dayLabel } from "@/lib/day-label";
 import { PageShell } from "@/components/page-shell";
+import { DoneBanner } from "@/components/done-banner";
 
 // What costly products really cost (spec step 215, demo advice): annuities, whole life and
 // advisory fees in dollars, with the surrender charge by year, what the same money would do
@@ -118,12 +119,7 @@ async function Content({
         </p>
       </div>
       {(done === "saved" || done === "linked") && (
-        <p
-          role="status"
-          className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100"
-        >
-          {done === "saved" ? "Saved." : "Demo products added."}
-        </p>
+        <DoneBanner>{done === "saved" ? "Saved." : "Demo products added."}</DoneBanner>
       )}
       {v.asked.map((a) => (
         <form
