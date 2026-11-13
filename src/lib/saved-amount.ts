@@ -27,8 +27,12 @@ export function doneSummary(
   confirmedCents = 0,
 ): string {
   if (confirmedCents > 0) return `${formatCents(confirmedCents)} confirmed`;
+  // A yes is a decision, not something done: with nothing finished, an expected total from
+  // answers alone isn't "Done" (debugger 11-12: "about $2,360.26 a year expected" above
+  // "Nothing finished yet").
+  if (finished === 0) return "nothing yet";
   if (savedToDateCents > 0) return `about ${formatCents(savedToDateCents)} a year expected`;
-  return finished === 0 ? "nothing yet" : `${finished} finished`;
+  return `${finished} finished`;
 }
 
 // The line over /jane's "Done": what the transactions confirm, as Home says it, and no "a year",

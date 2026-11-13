@@ -122,7 +122,11 @@ async function JaneContent() {
   // Read once shown, after the page is sent, so this visit still says they're new.
   const shownNew = alerts.items.filter((a) => a.isNew).map((a) => a.id);
   if (shownNew.length > 0) after(() => markAlertsRead(user.id, { ids: shownNew }));
-  const savedLine = savedSoFarLine(done.savedToDateCents, done.confirmedCents);
+  // Under Done only once something is finished or confirmed: a yes alone isn't done.
+  const savedLine =
+    done.items.length > 0 || done.confirmedCents > 0
+      ? savedSoFarLine(done.savedToDateCents, done.confirmedCents)
+      : null;
 
   return (
     <>
