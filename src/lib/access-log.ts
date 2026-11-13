@@ -22,7 +22,7 @@ const text = (meta: Meta, key: string) =>
   typeof meta[key] === "string" ? (meta[key] as string) : null;
 
 // "Berlin, DE", "DE" or null.
-export function placeOf(meta: Meta): string | null {
+function placeOf(meta: Meta): string | null {
   return [text(meta, "city"), text(meta, "country")].filter(Boolean).join(", ") || null;
 }
 

@@ -9,7 +9,7 @@ import { isInvestingApp, summarize, type AppSummary } from "./apps";
 // balance asks what is owed (src/lib/import/account-balance.ts). The answer becomes a typed-balance
 // investment account, counted in net worth, with nothing about what it holds.
 
-export const WINDOW_DAYS = 92;
+const WINDOW_DAYS = 92;
 const DAY_MS = 86_400_000;
 const TRANSFER = "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS";
 

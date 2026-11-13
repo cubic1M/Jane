@@ -106,7 +106,7 @@ export async function raiseAlerts(
 // person is under ALERT_EMAILS_PER_DAY in the last 24 hours: as a phone notification when
 // push is set up and they turned it on, by email otherwise (and if no device takes it).
 // emailed_at records either. Whatever doesn't fit, or fails, goes in the weekly email.
-export async function emailUrgentAlerts(
+async function emailUrgentAlerts(
   userId: string,
   { client = defaultClient, now = new Date(), send = sendEmail, push = sendPush }: Options = {},
 ): Promise<number> {

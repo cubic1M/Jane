@@ -12,7 +12,7 @@ import { systemDb } from "@/lib/system-db";
 // "v1,<sig>" (several, space-separated, while a secret rotates).
 
 // Deliveries signed longer ago than this are refused, so an old one can't be replayed.
-export const RESEND_WEBHOOK_TOLERANCE_SECONDS = 5 * 60;
+const RESEND_WEBHOOK_TOLERANCE_SECONDS = 5 * 60;
 
 export function verifyResendSignature(
   body: string,

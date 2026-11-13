@@ -27,7 +27,7 @@ export type EventUpdate = {
   at: string;
 };
 
-export function updateHeadline(l: {
+function updateHeadline(l: {
   kind: string;
   ticker: string | null;
   side: string | null;

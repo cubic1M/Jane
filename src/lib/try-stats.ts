@@ -7,7 +7,7 @@ import { systemDb } from "@/lib/system-db";
 // event, on /admin/reports. Only counts: no id, no file, nothing that could point back to a person,
 // so they stay after a try is deleted. Not analytics: nothing here is about anyone.
 
-export const TRY_EVENTS = {
+const TRY_EVENTS = {
   started: "Tries started",
   scan_finished: "Scans finished",
   scan_failed: "Scans failed",

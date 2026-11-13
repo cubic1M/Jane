@@ -38,13 +38,13 @@ import { meteredClaude } from "@/lib/claude-budget";
 // saved numbers and snapshot for the chat are kept (seconds, and no page reads them); the card
 // text is written and Jane says what's new in the chat.
 
-export type ImportStage =
+type ImportStage =
   "queued" | "matching" | "balances" | "looking" | "refreshing" | "done" | "failed";
 
 type Options = { client?: PrismaClient; now?: Date };
 
 // The share of the chip's bar each stage starts at.
-export const STAGE_PERCENT: Record<ImportStage, number> = {
+const STAGE_PERCENT: Record<ImportStage, number> = {
   queued: 5,
   matching: 15,
   balances: 25,

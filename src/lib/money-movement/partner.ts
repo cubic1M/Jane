@@ -11,7 +11,7 @@ import { isDemoItemId } from "@/lib/plaid/demo";
 // be connected later; until then the stand-in below records each transfer and moves nothing.
 // Real money never moves without that partner and counsel's sign-off (REAL_MONEY_MOVEMENT).
 
-export type TransferRequest = {
+type TransferRequest = {
   fromAccountId: string;
   toAccountId: string | null;
   toName: string;
@@ -32,7 +32,7 @@ export interface MoneyMovementPartner {
 }
 
 // Records only. A transfer "goes through" on its day; nothing leaves the app.
-export const standInPartner: MoneyMovementPartner = {
+const standInPartner: MoneyMovementPartner = {
   name: STAND_IN_PARTNER,
   simulated: true,
   async schedule() {

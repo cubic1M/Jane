@@ -104,7 +104,7 @@ type Rankable = {
   annualSavingsCents: number | null;
   confidence: keyof typeof CONFIDENCE_SCORE;
 };
-export const likelyWorth = (f: Rankable): number =>
+const likelyWorth = (f: Rankable): number =>
   (f.annualSavingsCents ?? 0) * (REPORT_LIKELIHOOD[f.type] ?? 1) * CONFIDENCE_SCORE[f.confidence];
 
 export function reportOrder<T extends Rankable>(findings: readonly T[]): T[] {

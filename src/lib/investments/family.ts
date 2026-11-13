@@ -29,7 +29,7 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export class FamilyError extends Error {}
 
-export type ChildView = {
+type ChildView = {
   id: string;
   name: string;
   age: number;

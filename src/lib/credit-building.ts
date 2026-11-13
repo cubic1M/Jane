@@ -38,12 +38,11 @@ import { DAY_MS, isoDay } from "@/lib/dates";
 
 type Options = { client?: PrismaClient; now?: Date };
 
-export const statementKey = (accountId: string, closesOn: string) =>
-  `statement:${accountId}:${closesOn}`;
+const statementKey = (accountId: string, closesOn: string) => `statement:${accountId}:${closesOn}`;
 
 export class CreditBuildingError extends Error {}
 
-export type StatementView = StatementPlan & {
+type StatementView = StatementPlan & {
   accountId: string;
   cardName: string;
   // What Jane would pay: under 10% when checking can spare it, else under 30%.

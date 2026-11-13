@@ -57,7 +57,7 @@ const STATUS_ORDER: readonly BoardStatus[] = ["default", "recommended", "watch",
 
 // Whether a row can be run in the practice portfolio (at the person's own level): at once, after
 // a one-line warning (it lost money in the replay), or not at all, with why.
-export type BoardUse =
+type BoardUse =
   { kind: "yes" } | { kind: "confirm"; warning: string } | { kind: "no"; why: string };
 
 export const LOST_WARNING = "This lost money after costs in the replay. Use it anyway?";

@@ -5,7 +5,6 @@ import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { hasDemoBank } from "@/lib/plaid/demo";
-import { loadSideIncome } from "@/lib/side-income";
 import { rentalDepreciation } from "@/planning/side-income";
 import {
   homeEquity,
@@ -19,8 +18,8 @@ import { DAY_MS, isoDay as iso } from "@/lib/dates";
 
 // Property as an investment (spec step 214, demo advice), for its page, Jane's answers and
 // its tool: home equity, each rental's figures from its own transactions (rent in, the
-// mortgage, property tax, repairs), depreciation handed to the taxes side (step 173 reads
-// rentalDepreciationFor), and whether paying the mortgage down beats investing.
+// mortgage, property tax, repairs), depreciation left to the taxes side (step 173), and
+// whether paying the mortgage down beats investing.
 
 type Options = { client?: PrismaClient; now?: Date };
 
@@ -36,7 +35,7 @@ const hits = (description: string, patterns: string[]) => {
   return patterns.some((p) => d.includes(p));
 };
 
-export type HomeView = {
+type HomeView = {
   id: string;
   name: string;
   valueCents: number;
@@ -47,7 +46,7 @@ export type HomeView = {
   paymentCents: number | null;
 };
 
-export type RentalView = {
+type RentalView = {
   id: string;
   name: string;
   figures: RentalFigures;
@@ -68,18 +67,6 @@ export type PropertyView = {
   // The home's mortgage: extra money put toward it against investing the same.
   paydown: (Paydown & { homeName: string; rateBps: number }) | null;
 };
-
-// Depreciation is figured once, by the taxes side (step 173): this reads its answer for
-// the year, so there is a single source for it.
-export async function rentalDepreciationFor(
-  userId: string,
-  year: number,
-  { client = defaultClient }: Options = {},
-) {
-  const side = await loadSideIncome(userId, { client, now: new Date(Date.UTC(year, 11, 31)) });
-  const d = side.rental?.depreciation;
-  return d ? [{ name: "Your rental", depreciationCents: d.cents }] : [];
-}
 
 // The extra a month Jane compares for the home's mortgage.
 const EXTRA_MONTHLY_CENTS = 50_000;

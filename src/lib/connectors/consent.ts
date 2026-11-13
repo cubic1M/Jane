@@ -55,10 +55,7 @@ export async function usableConnector(
 // The words for one scope, as the person sees them on the card and as the record keeps them: ours,
 // or for a legal scope the connector's approved text with its version. Null if a legal scope has no
 // approved text.
-export function scopeWords(
-  connector: Pick<Connector, "consentText">,
-  scope: ConsentScope,
-): string | null {
+function scopeWords(connector: Pick<Connector, "consentText">, scope: ConsentScope): string | null {
   if (!EXACT_TEXT_SCOPES.includes(scope)) return CONSENT_SCOPES[scope];
   const approved = connector.consentText?.[scope];
   return approved?.text.trim() ? `${approved.text.trim()} (version ${approved.version})` : null;
@@ -206,7 +203,7 @@ export type ConsentRow = {
 };
 
 // Every consent the person gave, newest first, current and revoked, for the settings page.
-export async function listConsents(
+async function listConsents(
   userId: string,
   { client = defaultClient }: Options = {},
 ): Promise<ConsentRow[]> {

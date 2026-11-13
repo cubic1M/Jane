@@ -17,7 +17,7 @@ export type WorthResult =
 
 // Which policy a claim would be on: the named kind, else a car policy, else a home or renters
 // one, else the only active policy.
-export function pickPolicy(policies: Policy[], kind: PolicyKind | null): Policy | null {
+function pickPolicy(policies: Policy[], kind: PolicyKind | null): Policy | null {
   const active = policies.filter((p) => p.status === "active");
   if (kind) return active.find((p) => p.kind === kind) ?? null;
   return (

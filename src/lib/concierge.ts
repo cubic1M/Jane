@@ -28,11 +28,7 @@ export const ACTION_STATUSES: readonly ActionStatus[] = [
   "done",
   "failed",
 ];
-export const OPEN_ACTION_STATUSES: readonly ActionStatus[] = [
-  "queued",
-  "in_progress",
-  "waiting_on_user",
-];
+const OPEN_ACTION_STATUSES: readonly ActionStatus[] = ["queued", "in_progress", "waiting_on_user"];
 const CLOSED: readonly ActionStatus[] = ["done", "failed"];
 // Spec step 138: a person trying Jane is sample data and never contacts a company, so the
 // team never works their requests by hand: they're left out of the queue and its workload.

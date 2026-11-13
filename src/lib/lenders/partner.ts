@@ -37,7 +37,7 @@ export type LoanOffer = {
 // What the lender says about an application: approved (on the offer's terms) or declined
 // after the soft check; then accepted once the person signs, and funded when the lender has
 // paid the old loan off.
-export type ApplicationStatus = "approved" | "declined" | "accepted" | "funded";
+type ApplicationStatus = "approved" | "declined" | "accepted" | "funded";
 
 export type Applicant = {
   name: string;

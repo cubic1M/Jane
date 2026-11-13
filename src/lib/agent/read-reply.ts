@@ -8,7 +8,7 @@ import { log } from "@/lib/log";
 // available; otherwise (or if Claude's answer doesn't fit) a few plain word rules do, and
 // anything they can't place goes to the team rather than being guessed.
 
-export type ReplyOutcome =
+type ReplyOutcome =
   // The company did what was asked (a refund issued, the old price kept).
   | "done"
   // The company said no.

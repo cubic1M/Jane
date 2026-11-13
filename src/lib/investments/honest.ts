@@ -18,7 +18,7 @@ import { DAY_MS } from "@/lib/dates";
 
 type Options = { client?: PrismaClient; now?: Date; investments?: Investments };
 
-export type HonestRow = HonestPeriod & {
+type HonestRow = HonestPeriod & {
   key: string;
   label: string;
   from: string;

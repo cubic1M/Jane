@@ -31,7 +31,7 @@ import { systemDb } from "@/lib/system-db";
 
 type Options = { client?: PrismaClient; now?: Date; input?: DetectionInput };
 
-export type ReceiptKind = "refund" | "lower_bill" | "switched" | "cancelled";
+type ReceiptKind = "refund" | "lower_bill" | "switched" | "cancelled";
 
 export type Receipt = {
   actionId: string;

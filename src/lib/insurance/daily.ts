@@ -40,7 +40,7 @@ export async function insuranceDaily({ client = defaultClient, now = new Date() 
 
 // Spec step 153: life cover sized, with fresh term quotes, for people in demo advice mode
 // (sizeLife checks). Quotes are only asked for again when they expire or the numbers move.
-export async function lifeAll({ client = defaultClient, now = new Date() }: Options = {}) {
+async function lifeAll({ client = defaultClient, now = new Date() }: Options = {}) {
   // A system job across users: ids only; everything after is scoped to the person.
   const people = await systemDb(WHY, client).insurancePolicy.findMany({
     where: { status: "active", userId: STAYING },
@@ -61,7 +61,7 @@ export async function lifeAll({ client = defaultClient, now = new Date() }: Opti
 
 // Spec step 150: benefits through work read from the newest pay stub, and Jane's review ready
 // before the employer's open enrollment, for everyone with a policy on file.
-export async function benefitsAll({ client = defaultClient, now = new Date() }: Options = {}) {
+async function benefitsAll({ client = defaultClient, now = new Date() }: Options = {}) {
   // A system job across users: ids only; everything after is scoped to the person.
   const people = await systemDb(WHY, client).insurancePolicy.findMany({
     where: { status: "active", userId: STAYING },
@@ -114,7 +114,7 @@ export async function insuranceAfterSync(
 }
 
 // Spec step 155: the carrier's status on every claim Jane filed.
-export async function claimStatusesAll({ client = defaultClient, now = new Date() }: Options = {}) {
+async function claimStatusesAll({ client = defaultClient, now = new Date() }: Options = {}) {
   // A system job across users: ids only; everything after is scoped to the person.
   const people = await systemDb(WHY, client).insuranceClaim.findMany({
     where: { filing: "filed", status: "open", userId: STAYING },

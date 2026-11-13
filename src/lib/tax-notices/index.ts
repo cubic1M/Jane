@@ -176,7 +176,7 @@ export async function listTaxNotices(
   return rows.map(toView);
 }
 
-export async function getTaxNotice(
+async function getTaxNotice(
   userId: string,
   id: string,
   { client = defaultClient }: Options = {},
@@ -258,7 +258,7 @@ export async function dismissTaxNotice(
 
 // What Jane knows that bears on a notice: the forms it collected for its year, the income
 // the accounts show from each payer, and payments to the IRS and the state.
-export async function noticeFacts(
+async function noticeFacts(
   userId: string,
   fields: Fields,
   { client = defaultClient, now = new Date() }: Options = {},

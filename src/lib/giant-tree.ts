@@ -16,7 +16,7 @@ export type AreaTrees = Partial<Record<AreaKey, AreaTree>>;
 
 // One area's branches as the giant tree shows them: its own tree's, or else what Jane looks for
 // there (the feature map's).
-export type GiantBranch = {
+type GiantBranch = {
   id: string;
   label: string;
   line: string;
@@ -37,7 +37,7 @@ export type GiantBranch = {
 
 const things = (n: number) => `${n} ${n === 1 ? "thing" : "things"}`;
 
-export function branchesOf(map: AreaMap, own: AreaTree | undefined): GiantBranch[] {
+function branchesOf(map: AreaMap, own: AreaTree | undefined): GiantBranch[] {
   if (own) {
     const focus = (id: string) => `${map.href}?focus=${encodeURIComponent(id)}`;
     return own.tree.branches.map((b) => ({

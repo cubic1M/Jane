@@ -6,7 +6,6 @@ import {
   FSA_WARN_MIN_CENTS,
   HEALTH_PLAN_EXCLUDED_CATEGORIES,
 } from "@/config/insurance";
-import { formatCents } from "@/lib/money";
 
 // Health cover all year (spec step 200): where the person is in their plan's year, from the
 // plan's terms and their medical spending. Facts only, no advice. Pure.
@@ -98,7 +97,7 @@ export function progress(plan: Plan, bills: Bill[], asOf: string): Progress {
   };
 }
 
-export const MONTH_NAMES = [
+const MONTH_NAMES = [
   "January",
   "February",
   "March",
@@ -199,5 +198,3 @@ export function disputes(
 
 export const monthWords = (m: Progress["maxMonth"]) =>
   m === null ? null : m === "reached" ? "reached" : MONTH_NAMES[m - 1];
-
-export const money = formatCents;

@@ -29,7 +29,7 @@ type Options = { client?: PrismaClient; now?: Date; book?: DebtBook; mortgage?: 
 
 export class HomeEquityError extends Error {}
 
-export type HomeFacts = {
+type HomeFacts = {
   originalValueCents: number | null;
   yearlyTaxCents: number | null;
   yearlyInsuranceCents: number | null;

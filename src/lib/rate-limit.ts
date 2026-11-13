@@ -193,7 +193,7 @@ export function ipKey(headers: Headers): string {
 // The calm words every refusal uses.
 export const TOO_MANY_MESSAGE = "Too many requests. Please wait a moment and try again.";
 
-export function tooManyRequests(result: RateResult): NextResponse {
+function tooManyRequests(result: RateResult): NextResponse {
   return NextResponse.json(
     { error: TOO_MANY_MESSAGE },
     { status: 429, headers: { "Retry-After": String(result.retryAfterSeconds) } },

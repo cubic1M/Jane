@@ -31,7 +31,7 @@ type Options = { client?: PrismaClient; now?: Date };
 
 const AVERAGE_MONTH_DAYS = 30.44;
 
-export const isStrategy = (v: unknown): v is Strategy => v === "avalanche" || v === "snowball";
+const isStrategy = (v: unknown): v is Strategy => v === "avalanche" || v === "snowball";
 
 export type StoredPlan = {
   strategy: Strategy;
@@ -94,7 +94,7 @@ function toStored(row: {
 }
 
 // The debt-free month of a summary in a given order.
-export function debtFreeOf(summary: PayoffSummary, strategy: Strategy, asOf: string) {
+function debtFreeOf(summary: PayoffSummary, strategy: Strategy, asOf: string) {
   const plan = summary[strategy];
   return plan.ok ? monthAfter(asOf, plan.months) : null;
 }

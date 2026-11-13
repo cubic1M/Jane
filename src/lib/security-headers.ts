@@ -9,7 +9,7 @@
 export type Header = { key: string; value: string };
 
 // Where the CSP's violation reports go (src/app/api/csp-report/route.ts).
-export const CSP_REPORT_PATH = "/api/csp-report";
+const CSP_REPORT_PATH = "/api/csp-report";
 
 // 128 random bits, base64: a new one for every page request.
 export function newNonce(): string {
@@ -69,7 +69,7 @@ export function contentSecurityPolicy({
 
 // The chat's pages (/chat and under it) may be framed by our own pages only: the side chat
 // shows /chat?embed=1 in a frame. Every other page refuses to be framed at all.
-export function framedByUs(pathname: string): boolean {
+function framedByUs(pathname: string): boolean {
   return pathname === "/chat" || pathname.startsWith("/chat/");
 }
 

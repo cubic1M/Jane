@@ -31,11 +31,11 @@ import { isoDay } from "@/lib/dates";
 
 type Options = { client?: PrismaClient; now?: Date; input?: DetectionInput; book?: DebtBook };
 
-export const payoffKey = (planKey: string) => `${planKey}:payoff`;
+const payoffKey = (planKey: string) => `${planKey}:payoff`;
 
 export class BnplError extends Error {}
 
-export type BnplPlanView = PlanSchedule & {
+type BnplPlanView = PlanSchedule & {
   provider: string;
   aprBps: number | null;
   // Paying it off now costs nothing extra (a Pay in 4 plan), and checking can cover it.

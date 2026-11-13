@@ -24,7 +24,7 @@ import { alignBars, runBacktest, type BacktestResult } from "@/planning/backtest
 // never a forecast. The sample market is read directly, never through marketData(), so a replay
 // never calls a live service. Demo advice: only under adviceMode, with its label.
 
-export type LevelBacktest = {
+type LevelBacktest = {
   level: RiskLevel;
   label: string;
   weights: Readonly<Record<PracticeClass, number>>;
@@ -91,7 +91,7 @@ async function sampleBars(to: string): Promise<Record<PracticeClass, readonly Ba
   return Object.fromEntries(entries) as Record<PracticeClass, readonly Bar[]>;
 }
 
-export const yearlyFeeBps = (weights: Readonly<Record<PracticeClass, number>>) =>
+const yearlyFeeBps = (weights: Readonly<Record<PracticeClass, number>>) =>
   CLASSES.reduce((s, c) => s + weights[c] * BACKTEST_FEE_BPS[c], 0);
 
 // The five replays, up to today (the sample market runs past today; the future is never shown).

@@ -43,7 +43,7 @@ type Options = { client?: PrismaClient; now?: Date; book?: DebtBook };
 
 export class CardInterestError extends Error {}
 
-export type RateRequestView = {
+type RateRequestView = {
   id: string;
   status: string;
   sentOn: string;
@@ -53,7 +53,7 @@ export type RateRequestView = {
   outcome: string | null;
 };
 
-export type CardView = {
+type CardView = {
   accountId: string;
   debtKey: string;
   name: string;
@@ -66,7 +66,7 @@ export type CardView = {
   rate: (RateAsk & { id: string; sent: RateRequestView | null }) | null;
 };
 
-export type PromoView = {
+type PromoView = {
   id: string;
   cardName: string;
   balanceCents: number;
@@ -363,7 +363,7 @@ export async function askNextRateHerself(
 }
 
 // The lender stand-in's answer: the same each time for a request.
-export function standInRateAnswer(
+function standInRateAnswer(
   requestId: string,
   oldAprBps: number,
   savingYearlyCents: number,

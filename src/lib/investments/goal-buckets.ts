@@ -14,7 +14,7 @@ import { profileOf } from "./profile";
 
 // Jane splits new money by bucket on its own at these autopilot levels; below them it
 // only shows the buckets.
-export const BUCKETS_BY_HERSELF: readonly string[] = ["safe", "all", "custom"];
+const BUCKETS_BY_HERSELF: readonly string[] = ["safe", "all", "custom"];
 
 export async function loadGoalBuckets(
   userId: string,

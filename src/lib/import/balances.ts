@@ -10,7 +10,7 @@ import { addDays, isoDay } from "@/lib/dates";
 // everywhere (net worth subtracts them), so a purchase raises them.
 
 export const FILE_SOURCE = "file";
-export const DERIVED_SOURCE = "derived";
+const DERIVED_SOURCE = "derived";
 // A balance the person typed (a new account's, or the answer to "what's in it today?"), as of
 // the day they gave it.
 export const GIVEN_SOURCE = "given";

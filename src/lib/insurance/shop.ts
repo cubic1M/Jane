@@ -37,7 +37,7 @@ import { STAYING } from "@/lib/only-people";
 type Options = { client?: PrismaClient; now?: Date; partner?: InsurancePartner | null };
 
 export type ShopReason = "renewal" | "price_up" | "asked";
-export type ShopStatus = "open" | "no_better" | "accepted" | "declined" | "expired";
+type ShopStatus = "open" | "no_better" | "accepted" | "declined" | "expired";
 
 export type Shop = {
   id: string;
@@ -78,7 +78,7 @@ function quoteOf(value: unknown): StoredQuote | null {
   return { ...q, expiresAt: new Date(q.expiresAt), createdAt: new Date(q.createdAt) };
 }
 
-export function toShop(row: Prisma.InsuranceShopGetPayload<{ select: typeof SHOP_SELECT }>): Shop {
+function toShop(row: Prisma.InsuranceShopGetPayload<{ select: typeof SHOP_SELECT }>): Shop {
   return {
     id: row.id,
     policyId: row.policyId,
@@ -245,7 +245,7 @@ export async function reshopDue(
 // Spec step 108: at "handle everything", Jane keeps its open picks ready for the one tap:
 // quotes about to expire are asked for again and the same pick is updated in place (no new
 // message). A pick that's no longer the best, or gone, is left to expire.
-export async function refreshPicks(
+async function refreshPicks(
   userId: string,
   { client = defaultClient, now = new Date(), partner }: Options = {},
 ): Promise<number> {

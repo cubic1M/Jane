@@ -46,7 +46,7 @@ export async function loadPriceRises(
 }
 
 // "AT&T Fiber: intro price ends", a month or more ahead.
-export function priceRiseDeadline(r: PriceRise): Deadline {
+function priceRiseDeadline(r: PriceRise): Deadline {
   return {
     key: `price_rise:${r.key}`,
     title: `${r.name}: intro price ends`,

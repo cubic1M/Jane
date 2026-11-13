@@ -50,7 +50,7 @@ type Options = { client?: PrismaClient; now?: Date };
 // run acts on it).
 type ScanOptions = Options & { act?: boolean };
 
-export type ScanOutcome = {
+type ScanOutcome = {
   kind: ScanKind;
   ticker: string;
   // acted: traded in the practice ledger; autopilot: the autopilot's own rebalance; held: a

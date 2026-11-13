@@ -5,13 +5,13 @@ import { demoCryptoBalances, demoCryptoTrades } from "@/data-sources/demo/demo-c
 // then the demo source below stands in for demo-bank people. By design it has no way to
 // place an order, move coins or hold keys: Jane never trades crypto.
 
-export type CryptoConnectionRef = {
+type CryptoConnectionRef = {
   kind: "exchange" | "wallet";
   partner: string;
   address: string | null;
 };
 
-export type CryptoBalance = {
+type CryptoBalance = {
   asset: string;
   name: string;
   quantity: number;
@@ -20,7 +20,7 @@ export type CryptoBalance = {
   costBasisCents: number | null;
 };
 
-export type CryptoTrade = {
+type CryptoTrade = {
   date: string;
   asset: string;
   side: "buy" | "sell";

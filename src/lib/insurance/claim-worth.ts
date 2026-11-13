@@ -30,7 +30,7 @@ export type ClaimWorth = {
   verdict: "pay_yourself" | "claim" | "close_call" | "unknown";
 };
 
-export function surchargeShare(kind: PolicyKind, event: string | null): number {
+function surchargeShare(kind: PolicyKind, event: string | null): number {
   const rule = CLAIM_SURCHARGE[kind];
   return (event ? rule.events?.[event] : undefined) ?? rule.default;
 }

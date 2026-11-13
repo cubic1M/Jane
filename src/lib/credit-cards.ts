@@ -44,7 +44,7 @@ export async function creditCardPartnerFor(
   return (await adviceMode(userId, { client })) ? { key: "demo", partner: demoCreditCards } : null;
 }
 
-export type OwnCard = {
+type OwnCard = {
   accountId: string | null;
   // The card's name at the bank, or the new card's name.
   name: string;

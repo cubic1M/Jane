@@ -54,8 +54,7 @@ export type BillPayView = {
   items: BillPayItem[];
 };
 
-export const billKey = (b: Pick<DueBill, "accountId" | "dueOn">) =>
-  `bill:${b.accountId}:${b.dueOn}`;
+const billKey = (b: Pick<DueBill, "accountId" | "dueOn">) => `bill:${b.accountId}:${b.dueOn}`;
 
 async function dueBills(
   userId: string,

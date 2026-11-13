@@ -37,7 +37,7 @@ export type EvaluationRun =
 
 const LEVELS = [1, 2, 3, 4, 5] as const satisfies readonly RiskLevel[];
 
-export function chosenOf(s: LevelSelection): ChosenStrategy {
+function chosenOf(s: LevelSelection): ChosenStrategy {
   return {
     level: s.level,
     id: s.chosen.id,
@@ -52,7 +52,7 @@ export function chosenOf(s: LevelSelection): ChosenStrategy {
 }
 
 // The choice for every level from closes by ticker, or why there is none.
-export function evaluate(bars: Readonly<Record<string, readonly Bar[]>>) {
+function evaluate(bars: Readonly<Record<string, readonly Bar[]>>) {
   const data = alignUniverse(bars);
   if (!data) return { ok: false as const, why: "Not every strategy fund has stored closes yet." };
   if (data.dates.length < STRATEGY_EVAL_MIN_DAYS)

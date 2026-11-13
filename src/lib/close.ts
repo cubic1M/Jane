@@ -32,7 +32,7 @@ const FINDING_CHANGES: Partial<Record<FindingType, CloseChange["kind"]>> = {
 };
 
 // A finding stores a level, the band its percentage fell in.
-export function bandOf(level: Confidence): string {
+function bandOf(level: Confidence): string {
   const { high, medium } = SUGGESTION_CONFIDENCE_FROM;
   if (level === "high") return `${high}%+`;
   if (level === "medium") return `${medium}%+`;
@@ -46,7 +46,7 @@ const lastDay = (month: string) => {
 
 // The month's changes: changes.ts looks back from a day, so it is read as of a few days of the
 // month and put together, each once.
-export function monthChanges(input: DetectionInput, month: string): SureChange[] {
+function monthChanges(input: DetectionInput, month: string): SureChange[] {
   const end = lastDay(month) < input.asOf ? lastDay(month) : input.asOf;
   const days = [
     ...CLOSE_CHANGE_DAYS.map((d) => `${month}-${String(d).padStart(2, "0")}`),

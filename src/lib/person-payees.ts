@@ -97,7 +97,7 @@ function redactLastFirst(text: string): string {
 }
 
 // Whether merchant text names a payment app at all, so it's a transfer to or from someone.
-export const viaPaymentApp = (text: string): boolean =>
+const viaPaymentApp = (text: string): boolean =>
   /\b(zelle|venmo|cash[ \t]?app|square[ \t]+cash|sq[ \t]*\*[ \t]*cash|apple[ \t]+cash)\b/i.test(
     text,
   );
@@ -153,7 +153,7 @@ export function initialsOf(name: string): string {
 }
 
 // Every string in a JSON value with redactPersonPayees applied, except base64 file data.
-export function redactJson(value: unknown, key?: string): unknown {
+function redactJson(value: unknown, key?: string): unknown {
   if (typeof value === "string") return key === "data" ? value : redactPersonPayees(value);
   if (Array.isArray(value)) return value.map((item) => redactJson(item));
   if (value && typeof value === "object") {

@@ -34,7 +34,7 @@ export type LifeQuote = {
   demo: boolean;
 };
 
-export type LifeStatus = "sized" | "asking" | "offered" | "referred" | "bought" | "dismissed";
+type LifeStatus = "sized" | "asking" | "offered" | "referred" | "bought" | "dismissed";
 
 export type LifeApplication = {
   id: string;

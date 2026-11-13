@@ -29,7 +29,7 @@ import { DAY_MS } from "@/lib/dates";
 
 type Options = { client?: PrismaClient; now?: Date };
 
-export type StudentProfile = {
+type StudentProfile = {
   agiCents: number | null;
   familySize: number;
   dependants: number;
@@ -183,7 +183,7 @@ const wholeNumber = (text: string, what: string, max: number) => {
 };
 
 // Pure: the form's fields, checked. Income may be left empty (Jane estimates it).
-export function checkStudentProfile(form: StudentProfileForm) {
+function checkStudentProfile(form: StudentProfileForm) {
   let agiCents: number | null = null;
   if (form.agi.trim()) {
     agiCents = parseMoneyToCents(form.agi);

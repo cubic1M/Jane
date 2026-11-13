@@ -24,7 +24,7 @@ type Options = { client?: PrismaClient; now?: Date };
 export class FitPickError extends Error {}
 
 // What the decision keeps about the pick, for the concierge (src/lib/plan-options.ts shows it).
-export type LoanPickOptions = {
+type LoanPickOptions = {
   loanPick: {
     topic: string;
     optionId: string;

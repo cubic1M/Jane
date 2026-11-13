@@ -8,7 +8,7 @@ import { dayNumber, fromDayNumber } from "@/detection/units";
 // next spring) so every scan and backtest has something to find. Nothing here is a real price.
 
 export const SAMPLE_START = "2018-01-02";
-export const SAMPLE_END = "2028-12-29";
+const SAMPLE_END = "2028-12-29";
 
 // Per ticker: the first close in dollars, the yearly drift, how much it moves a day (as a share),
 // how much of its move is the whole market's, and how hard the planted events hit it.

@@ -38,13 +38,8 @@ export const barsUrl = (
   `${ALPACA_DATA_URL}/v2/stocks/bars?symbols=${encodeURIComponent(tickers.join(","))}&timeframe=1Day&start=${from}&end=${to}&adjustment=all&feed=${feed}&limit=10000${pageToken ? `&page_token=${encodeURIComponent(pageToken)}` : ""}`;
 // Crypto's daily bars (the sleeve's coins, CRYPTO_PRACTICE_TICKERS): Alpaca's crypto endpoint,
 // with the pair as "BTC/USD".
-export const cryptoPair = (ticker: string) => `${ticker.slice(0, -3)}/${ticker.slice(-3)}`;
-export const cryptoBarsUrl = (
-  ticker: string,
-  from: string,
-  to: string,
-  pageToken?: string | null,
-) =>
+const cryptoPair = (ticker: string) => `${ticker.slice(0, -3)}/${ticker.slice(-3)}`;
+const cryptoBarsUrl = (ticker: string, from: string, to: string, pageToken?: string | null) =>
   `${ALPACA_DATA_URL}/v1beta3/crypto/us/bars?symbols=${encodeURIComponent(cryptoPair(ticker))}&timeframe=1Day&start=${from}&end=${to}&limit=10000${pageToken ? `&page_token=${encodeURIComponent(pageToken)}` : ""}`;
 export const newsUrl = (tickers: readonly string[], from: string, to: string) =>
   `${ALPACA_DATA_URL}/v1beta1/news?symbols=${encodeURIComponent(tickers.join(","))}&start=${from}&end=${to}&limit=50`;
@@ -56,7 +51,7 @@ export function parseBars(json: AlpacaBars, ticker: string): Bar[] {
   }));
 }
 
-export const nextPage = (json: AlpacaBars): string | null => json.next_page_token ?? null;
+const nextPage = (json: AlpacaBars): string | null => json.next_page_token ?? null;
 
 export function parseNews(json: AlpacaNews): Headline[] {
   return (json.news ?? []).map((n) => ({

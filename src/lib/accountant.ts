@@ -43,7 +43,7 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export class AccountantError extends Error {}
 
-export type LinkView = {
+type LinkView = {
   id: string;
   label: string;
   state: LinkState;
@@ -53,7 +53,7 @@ export type LinkView = {
   lastViewedOn: string | null;
 };
 
-export type NoteView = {
+type NoteView = {
   id: string;
   fromName: string;
   questionText: string | null;
@@ -75,7 +75,7 @@ export type AccountantPageView = {
 // The questions Jane has for an accountant, from what it found: deductions missing their
 // proof, a form that doesn't match the accounts, side income not yet called a business or a
 // hobby, and a letter still open.
-export async function loadQuestions(
+async function loadQuestions(
   userId: string,
   year: number,
   { client = defaultClient, now = new Date() }: Options = {},
@@ -128,7 +128,7 @@ export type ComplexityLoaded = {
   side?: SideIncomeView;
 };
 
-export async function loadComplexity(
+async function loadComplexity(
   userId: string,
   {
     client = defaultClient,

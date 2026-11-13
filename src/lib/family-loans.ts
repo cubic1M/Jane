@@ -37,7 +37,7 @@ type Options = { client?: PrismaClient; now?: Date; book?: DebtBook };
 
 export class FamilyLoanError extends Error {}
 
-export type FamilyLoan = {
+type FamilyLoan = {
   id: string;
   kind: "lent" | "borrowed";
   counterparty: string;
@@ -51,7 +51,7 @@ export type FamilyLoan = {
   reminder: { text: string; round: number } | null;
 };
 
-export type CosignedLoan = {
+type CosignedLoan = {
   id: string;
   counterparty: string;
   debtKey: string;
@@ -62,7 +62,7 @@ export type CosignedLoan = {
   text: string | null;
 };
 
-export type SharedDebt = {
+type SharedDebt = {
   debtKey: string;
   name: string;
   balanceCents: number | null;

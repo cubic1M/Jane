@@ -23,7 +23,7 @@ export const PROBE_ID_PREFIX = `${TRIAL_ID_PREFIX}probe_`;
 
 // leak: this failure shows someone got what isn't theirs, which the watch rolls back for at once
 // (scripts/ops/watch-core.mjs). A non-answer isn't that: a slow site proves nothing either way.
-export type ProbeCheck = { name: string; ok: boolean; detail?: string; leak?: boolean };
+type ProbeCheck = { name: string; ok: boolean; detail?: string; leak?: boolean };
 export type ProbeResult = { ok: boolean; checks: ProbeCheck[] };
 
 export class ProbeFailed extends Error {

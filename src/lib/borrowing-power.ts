@@ -196,7 +196,7 @@ export async function ensureBorrowingChecked(
 }
 
 // What moved between two checks, in words.
-export function changesBetween(before: readonly Figure[], now: readonly Figure[]): string[] {
+function changesBetween(before: readonly Figure[], now: readonly Figure[]): string[] {
   const out: string[] = [];
   for (const f of now) {
     const b = before.find((x) => x.product === f.product);

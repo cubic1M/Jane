@@ -47,7 +47,7 @@ export function rulesSummary(h: Pick<Headline, "ticker" | "title" | "source" | "
 }
 
 // What Claude is told. Facts from the headline only: no forecasts, no advice, no new figures.
-export const NEWS_SYSTEM = `You summarise financial news headlines for a practice (paper money) portfolio that uses sample data.
+const NEWS_SYSTEM = `You summarise financial news headlines for a practice (paper money) portfolio that uses sample data.
 For each headline, write one plain sentence of at most ${NEWS_SUMMARY_MAX_CHARS} characters that says what happened, using only facts in the headline itself.
 Rules:
 - Never predict or hint where a price, a stock or the market is going (no "could rise", "may fall", "expected to rebound", price targets).
@@ -74,7 +74,7 @@ export const NEWS_SCHEMA = {
   additionalProperties: false,
 };
 
-export type BatchUsage = { inputTokens: number; outputTokens: number };
+type BatchUsage = { inputTokens: number; outputTokens: number };
 export type BatchResult = { summaries: Map<string, string>; usage: BatchUsage };
 
 // Reads Claude's answer: the summaries for the ids asked about, nothing else. A recorded response

@@ -20,7 +20,7 @@ import {
 // so a date is the same everywhere. Bill reminders (spec step 32) and bill pay (spec step 145)
 // work from the same forecast and the bank's own due dates.
 
-export type Deposit = { merchant: string; date: string; amountCents: number };
+type Deposit = { merchant: string; date: string; amountCents: number };
 
 export type ComingUp = {
   asOf: string;

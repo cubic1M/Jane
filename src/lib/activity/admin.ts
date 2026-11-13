@@ -21,7 +21,7 @@ type Options = { client?: PrismaClient; now?: Date };
 // Most events read for one person's timeline, newest first.
 const TIMELINE_LIMIT = 2000;
 
-export type BetaUser = { id: string; email: string; createdAt: Date };
+type BetaUser = { id: string; email: string; createdAt: Date };
 
 // Real beta users: not admins, not trial people, not people whose only bank is the demo bank.
 async function betaUsers(
@@ -50,7 +50,7 @@ async function betaUsers(
   return { users: users.filter((u) => linked.has(u.id) || !demo.has(u.id)), linked };
 }
 
-export type ActivityUserRow = BetaUser & {
+type ActivityUserRow = BetaUser & {
   // The furthest funnel step they reached.
   reached: string;
   lastSeen: Date | null;

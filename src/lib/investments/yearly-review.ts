@@ -33,7 +33,7 @@ export type ReviewExtras = {
 
 // A raise or new job: the last two paychecks average at least this much more than the
 // four before them.
-export const RAISE_SHARE = 0.08;
+const RAISE_SHARE = 0.08;
 
 export async function loadReviewExtras(
   userId: string,

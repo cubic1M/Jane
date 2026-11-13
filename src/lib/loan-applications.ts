@@ -16,7 +16,7 @@ import {
 } from "./loan-application-status";
 import { isoDay } from "@/lib/dates";
 
-export { statusLine, type ApplicationStatus, type LoanApplicationView };
+export { statusLine, type LoanApplicationView };
 
 // One-tap apply (spec step 112). Jane prepares the application for a refinance offer from
 // what it already knows (the person's name and email, the loan being paid off and what's
@@ -31,7 +31,7 @@ const ACTIVE: readonly ApplicationStatus[] = ["draft", "approved", "accepted", "
 
 export class LoanApplicationError extends Error {}
 
-export const APPLICATION_SELECT = {
+const APPLICATION_SELECT = {
   id: true,
   debtKey: true,
   oldAccountId: true,

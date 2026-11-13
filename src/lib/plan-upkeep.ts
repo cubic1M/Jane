@@ -245,7 +245,7 @@ export async function skipGoalTransfer(
 }
 
 // What autopilot did lately: transfers it counted, for Jane to say so.
-export async function recentAutoTransfers(
+async function recentAutoTransfers(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ) {

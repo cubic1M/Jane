@@ -15,7 +15,7 @@ const yearsUntil = (today: string, day: string) =>
 
 // Spec step 201: what the profile's transactions say about a business or side work, over the
 // months the profile covers (the tax profile's mileage isn't in it, so no miles).
-export function selfEmploymentFrom(profile: Profile, data: ProfileInput): SelfEmployment {
+function selfEmploymentFrom(profile: Profile, data: ProfileInput): SelfEmployment {
   const sum = (f: (t: ProfileInput["transactions"][number]) => boolean) =>
     data.transactions.filter(f).reduce((s, t) => s + Math.abs(t.amountCents), 0);
   const months = rateMonthsOf(profile);

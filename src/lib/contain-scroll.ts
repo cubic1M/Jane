@@ -27,7 +27,7 @@ export function takesScroll(path: readonly Scroller[], deltaY: number): boolean 
 
 // From the element under the pointer up to `box` (inclusive): a box that keeps every scroll
 // begun over it to itself (the card dock above the side chat).
-export function pathWithin(target: EventTarget | null, box: Element): Scroller[] {
+function pathWithin(target: EventTarget | null, box: Element): Scroller[] {
   const out: Scroller[] = [];
   for (let el = target instanceof Element ? target : null; el; el = el.parentElement) {
     const { overflowY } = getComputedStyle(el);

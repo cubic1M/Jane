@@ -19,7 +19,7 @@ const WHY = "Invite codes are checked before sign-up, and aren't anyone's own";
 type Options = { client?: PrismaClient };
 
 // "ABCD-EFGH-JKMN" -> "/join/ABCD-EFGH-JKMN".
-export const joinPath = (code: string) => `/join/${code}`;
+const joinPath = (code: string) => `/join/${code}`;
 
 export type ShareLink = { code: string; path: string; card: ShareCard };
 
@@ -124,7 +124,7 @@ export async function inviteLanding(
   };
 }
 
-export const isLinkPreview = (userAgent: string | null) =>
+const isLinkPreview = (userAgent: string | null) =>
   !userAgent || LINK_PREVIEW_AGENTS.test(userAgent);
 
 // A friend opened the invite page. Link previewers drawing the card don't count.

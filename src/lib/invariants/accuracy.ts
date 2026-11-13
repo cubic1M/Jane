@@ -66,9 +66,9 @@ export const ACCURACY_CHECKS = [
   },
 ] as const;
 
-export type AccuracyCheckName = (typeof ACCURACY_CHECKS)[number]["name"];
+type AccuracyCheckName = (typeof ACCURACY_CHECKS)[number]["name"];
 export type Tally = { passed: number; failed: number; notApplicable: number };
-export type CheckTally = Tally & { name: AccuracyCheckName };
+type CheckTally = Tally & { name: AccuracyCheckName };
 export type AccuracySummary = {
   // Real people with accounts, and how many the run reached in its time.
   people: number;
@@ -289,7 +289,7 @@ const OPEN_FINDINGS = ["new", "shown", "approved", "in_progress"] as const;
 // Each month's parts are checked for the months the Money page and tile show.
 const MONTHS_CHECKED = 3;
 
-export async function checkPerson(
+async function checkPerson(
   userId: string,
   { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
 ): Promise<Tallies> {
@@ -385,7 +385,7 @@ export async function checkPerson(
 
 // Real people with something to check: not a trial person, not deleted, with accounts, and not
 // only the demo bank.
-export async function realPeople({
+async function realPeople({
   client = defaultClient,
   userIds,
 }: { client?: PrismaClient } & OnlyPeople = {}): Promise<string[]> {

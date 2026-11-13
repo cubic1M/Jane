@@ -13,4 +13,4 @@ export async function propertyPartnerFor(
   return (await adviceMode(userId, { client })) ? demoPropertyPartner : null;
 }
 
-export type { PropertyPartner, PropertyRecord } from "./types";
+export type { PropertyPartner } from "./types";

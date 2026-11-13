@@ -17,13 +17,13 @@ import type { EmployerPlan } from "@/planning/retirement";
 // isn't the demo paycheck, and their demo data has no 401(k) contributions to measure a pace from,
 // so the plan read them all as putting in 0% (found in the investing debugging pass).
 
-export interface EmployerPlanSource {
+interface EmployerPlanSource {
   planFor(userId: string, client: PrismaClient): Promise<EmployerPlan | null>;
 }
 
 const PAYCHECKS_A_YEAR = 24;
 
-export const demoEmployerPlans: EmployerPlanSource = {
+const demoEmployerPlans: EmployerPlanSource = {
   async planFor(userId, client) {
     const items = await scopedFor(userId, client).plaidItems.findMany({
       select: { plaidItemId: true },
@@ -39,7 +39,7 @@ export const demoEmployerPlans: EmployerPlanSource = {
 };
 
 // The source in use. Swap in a payroll or plan-record-keeper partner here.
-export const EMPLOYER_PLANS: EmployerPlanSource = demoEmployerPlans;
+const EMPLOYER_PLANS: EmployerPlanSource = demoEmployerPlans;
 
 export const employerPlanFor = (userId: string, client: PrismaClient = defaultClient) =>
   EMPLOYER_PLANS.planFor(userId, client);

@@ -87,7 +87,7 @@ export const DETECTOR_FAMILIES: readonly { key: FamilyKey; detectors: readonly D
   { key: "retirement", detectors: RETIREMENT_DETECTORS },
 ];
 
-export type FeatureNode = {
+type FeatureNode = {
   // "<capability>:<topic>", the detector's suggestion key.
   id: string;
   name: string;
@@ -99,7 +99,7 @@ export type FeatureNode = {
   ask: string;
 };
 
-export type BranchNode = { id: string; name: string; forYou: number; features: FeatureNode[] };
+type BranchNode = { id: string; name: string; forYou: number; features: FeatureNode[] };
 
 export type AreaMap = {
   key: AreaKey;

@@ -42,7 +42,7 @@ import { plural } from "@/lib/plural";
 
 type Options = { client?: PrismaClient; now?: Date; api?: PlaidApi };
 
-export type { LastRun, StepLog, StepResult } from "./controller-log";
+export type { StepLog } from "./controller-log";
 import type { StepLog, StepResult } from "./controller-log";
 import { logsOf } from "./controller-log";
 import { isoDay as day } from "@/lib/dates";

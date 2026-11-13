@@ -13,7 +13,7 @@ const appUrl = (path: string): string => `${siteBase()}${path}`;
 
 export type StatusEmail = { subject: string; lines: string[] };
 
-export const MEMBERSHIP_LINE =
+const MEMBERSHIP_LINE =
   "We'll keep doing this for you, ongoing. See your actions page to become a founding member.";
 
 export function statusEmail(

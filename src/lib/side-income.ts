@@ -32,7 +32,7 @@ export class SideIncomeError extends Error {}
 const payerOf = (t: { merchantName: string | null; description: string }) =>
   (t.merchantName ?? t.description).trim();
 
-export type Platform = {
+type Platform = {
   payer: string;
   payoutsCents: number;
   payouts: { id: string; date: string; cents: number }[];

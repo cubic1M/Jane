@@ -255,7 +255,7 @@ export async function declineBigMove(
   );
 }
 
-export type BigMove = {
+type BigMove = {
   id: string;
   amountCents: number;
   toName: string;
@@ -264,7 +264,7 @@ export type BigMove = {
   mine: boolean;
 };
 
-export type JointGoal = {
+type JointGoal = {
   id: string;
   name: string;
   targetCents: number;

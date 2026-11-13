@@ -17,7 +17,7 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export class AutopilotError extends Error {}
 
-export const isAutopilotChoice = (value: unknown): value is AutopilotChoice =>
+const isAutopilotChoice = (value: unknown): value is AutopilotChoice =>
   typeof value === "string" && Object.hasOwn(AUTOPILOT_LEVELS, value);
 
 // Returns how many open items the new level approved at once.

@@ -12,7 +12,7 @@ import { dueMoves, paydaysOf, type DueMove } from "@/planning/due-dates";
 import { rateChanges, type RateChange } from "@/planning/rate-watch";
 import { DAY_MS, isoDay } from "@/lib/dates";
 
-export { rateChanges, type RateChange };
+export { type RateChange };
 
 // Debt on autopilot (spec step 117). What Jane keeps up on its own for debts, at the
 // person's debt autopilot level (step 141's sectors): it watches every rate the bank
@@ -68,7 +68,7 @@ export async function runDebtAutopilot(
   return { changes, planStarted };
 }
 
-export type DebtDue = {
+type DebtDue = {
   debtKey: string;
   name: string;
   due: string;
