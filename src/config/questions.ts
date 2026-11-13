@@ -6,7 +6,7 @@ import type { FactKey } from "@/profile/facts";
 // "unlock" figures only order the questions: what the answer could make worth acting on, at
 // typical rates. They are never shown as a claim.
 
-export type QuestionChoice = { label: string; value: string };
+type QuestionChoice = { label: string; value: string };
 export type QuestionSpec = {
   fact: FactKey;
   text: string;

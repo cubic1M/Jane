@@ -116,7 +116,7 @@ export const SAMPLE_WINS: Record<PersonId, readonly SampleWin[]> = {
 // two (Jane caught it early), so no subscription or spending rule counts it as a habit. The wins
 // are five months back, before the months the spending detectors compare, so they don't change
 // what Jane suggests today.
-export const SUBSCRIPTION_DAY = 8;
+const SUBSCRIPTION_DAY = 8;
 const RAN_FOR_DAYS = 45;
 
 const extraOf = (wins: readonly SampleWin[]): PersonExtra => ({

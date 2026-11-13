@@ -24,7 +24,7 @@ import { formatWholeDollars } from "@/lib/money";
 // The moves are changes to that plan; each one's effect is the tax over all the years with
 // it against without it.
 
-export type PlannedEvent = {
+type PlannedEvent = {
   id: string;
   kind: PlannedEventKind;
   year: number;

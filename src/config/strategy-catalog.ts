@@ -6,7 +6,7 @@
 // recommendable (docs/backtests/strategy-results.md). Generic versions of public concepts only;
 // nothing from paid material. Practice money and demo advice only. FOR REVIEW: every number.
 
-export type CatalogKind =
+type CatalogKind =
   // Replaces the level mix's US-stocks share (a tilt, a timing rule on US stocks).
   | "equity"
   // A whole portfolio, blended with bills so its volatility matches the level's mix on the

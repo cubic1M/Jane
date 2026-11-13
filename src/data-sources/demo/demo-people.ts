@@ -38,9 +38,9 @@ export type Recurring = {
   pays?: string;
 };
 
-export type Once = Omit<Recurring, "days" | "months"> & { offsets: number[] };
+type Once = Omit<Recurring, "days" | "months"> & { offsets: number[] };
 
-export type Acct = {
+type Acct = {
   key: string;
   name: string;
   mask: string;
@@ -50,7 +50,7 @@ export type Acct = {
   limit?: number;
 };
 
-export type Position = {
+type Position = {
   account: string;
   key: string;
   quantity: number;
@@ -58,7 +58,7 @@ export type Position = {
   cash?: number;
 };
 
-export type Card = {
+type Card = {
   account: string;
   apr: number;
   balance: number;

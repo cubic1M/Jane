@@ -16,7 +16,7 @@ import { formatRate } from "@/lib/percent";
 
 const monthOf = (day: string) => day.slice(0, 7);
 
-export type PslfMonth = { month: string; state: "before" | "seen" | "to_come" };
+type PslfMonth = { month: string; state: "before" | "seen" | "to_come" };
 
 export type PslfCount = {
   counted: number;

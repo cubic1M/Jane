@@ -44,13 +44,13 @@ export function paydownBalances(input: {
   return out;
 }
 
-export type GoalItem = {
+type GoalItem = {
   key: string;
   kind: "pay" | "keep_open" | "no_inquiry" | "rescore" | "check";
   text: string;
 };
 
-export type GoalMonth = {
+type GoalMonth = {
   // YYYY-MM.
   month: string;
   index: number;

@@ -100,7 +100,7 @@ export type ReplayInput = {
   tradeCostBps: number;
 };
 
-export type ReplayTrade = {
+type ReplayTrade = {
   date: string;
   ticker: string;
   side: "buy" | "sell";

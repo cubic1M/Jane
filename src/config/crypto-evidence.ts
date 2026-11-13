@@ -7,7 +7,7 @@ import type { CryptoStrategyId } from "@/config/crypto-strategies";
 // src/planning/crypto-strategies.test.ts, which otherwise checks these are the fixture's own. A
 // replay of the past, not a forecast. Fractions throughout.
 
-export type CryptoPeriod = {
+type CryptoPeriod = {
   from: string;
   to: string;
   cagr: number;

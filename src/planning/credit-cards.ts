@@ -71,7 +71,7 @@ export function yearSpend(transactions: readonly InsightTransaction[], asOf: str
   };
 }
 
-export const rateOf = (card: CardProduct, category: RewardCategory) =>
+const rateOf = (card: CardProduct, category: RewardCategory) =>
   card.rateBps[category] ?? card.baseRateBps;
 
 // What a card would earn in a year if all of this spending went on it.
@@ -82,7 +82,7 @@ export function earnsCents(card: CardProduct, spend: Spend): number {
   );
 }
 
-export type WalletPick = {
+type WalletPick = {
   category: RewardCategory;
   cardId: string;
   rateBps: number;

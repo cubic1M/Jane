@@ -285,7 +285,7 @@ function stateLocalCap(agiCents: number, status: FilingStatus): number {
 
 // The state (and local) estimate: every state's part, totalled, against what was withheld
 // and paid to the states. Named after the state lived in at the year's end.
-export function stateEstimate(input: EstimateInput, agiCents: number): StateEstimate | null {
+function stateEstimate(input: EstimateInput, agiCents: number): StateEstimate | null {
   if (!input.state && !input.residency?.moves.length) return null;
   const { parts, local } = stateParts({
     year: input.year,
@@ -317,7 +317,7 @@ export function stateEstimate(input: EstimateInput, agiCents: number): StateEsti
 // Spec step 124: short- and long-term gains netted. A net gain counts as income, its long-
 // term part (up to the net) at the capital gains rates; a net loss comes off income only up
 // to the limit.
-export function netCapital(stCents: number, ltCents: number, status: FilingStatus) {
+function netCapital(stCents: number, ltCents: number, status: FilingStatus) {
   const net = stCents + ltCents;
   if (net < 0) {
     const limit =

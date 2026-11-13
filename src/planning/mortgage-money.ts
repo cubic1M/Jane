@@ -68,7 +68,7 @@ export type MoneyOption = {
   breakEvenOn: string | null;
 };
 
-export type InvestOption = {
+type InvestOption = {
   putCents: number;
   years: number;
   lowGainCents: number;

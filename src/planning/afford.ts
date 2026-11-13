@@ -31,7 +31,7 @@ export type AffordChange =
   // the starting month, or from today when that's this month.
   | { kind: "monthly"; amountCents: number; startMonth: string };
 
-export type GoalEffect =
+type GoalEffect =
   // A purchase taken from a goal's savings: the monthly amount to still reach it on time.
   | {
       kind: "monthly_needed";

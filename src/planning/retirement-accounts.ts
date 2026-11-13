@@ -30,7 +30,7 @@ export type LimitRow = {
   roomCents: number;
 };
 
-export function workplaceLimit(age: number) {
+function workplaceLimit(age: number) {
   const catchUp =
     age >= SUPER_CATCH_UP_AGES[0] && age <= SUPER_CATCH_UP_AGES[1]
       ? SUPER_CATCH_UP_CENTS
@@ -40,7 +40,7 @@ export function workplaceLimit(age: number) {
   return { baseCents: EMPLOYEE_DEFERRAL_LIMIT_CENTS, catchUpCents: catchUp };
 }
 
-export function iraLimit(age: number) {
+function iraLimit(age: number) {
   return { baseCents: IRA_LIMIT_CENTS, catchUpCents: age >= CATCH_UP_AGE ? IRA_CATCH_UP_CENTS : 0 };
 }
 

@@ -5,7 +5,7 @@ import { LONG_VIEW_HORIZONS, ROLL_FREED_PAYMENTS } from "@/config/long-view";
 // most. All growth rates are real (after inflation) and handed in, so the page can show
 // and edit them. A range from the low to the high return, never a promise.
 
-export type LongViewDebt = {
+type LongViewDebt = {
   name: string;
   balanceCents: number;
   aprBps: number;

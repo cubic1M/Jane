@@ -126,7 +126,7 @@ const SECURITIES: Readonly<Record<string, DemoSecurity>> = {
 };
 
 type Key = keyof typeof SECURITIES;
-export const demoSecurityId = (key: string) => `demo-sec-${key.toLowerCase()}`;
+const demoSecurityId = (key: string) => `demo-sec-${key.toLowerCase()}`;
 
 type Position = { key: Key; quantity: number; price: number; costBasis: number };
 
@@ -181,7 +181,7 @@ const POSITIONS: Readonly<
 
 // Spec step 160: when the demo stock plan's shares vested (days from the anchor), and at
 // what price: they're the lots behind its cost basis.
-export const DEMO_VESTS: readonly { offset: number; shares: number; price: number }[] = [
+const DEMO_VESTS: readonly { offset: number; shares: number; price: number }[] = [
   { offset: -400, shares: 37.5, price: 92 },
   { offset: -300, shares: 37.5, price: 96 },
   { offset: -200, shares: 37.5, price: 101 },
@@ -295,7 +295,7 @@ type LedgerRow = {
 // What each demo account holds: the seed, then each order, by quantity and cash. A sale
 // takes its share of the cost basis with it; the cash row takes every dollar in and out.
 // Pure.
-export function demoLedger(
+function demoLedger(
   demo: DemoSeed,
   orders: DemoOrder[] = [],
   extras: readonly DemoExtra[] = [],
@@ -410,7 +410,7 @@ const round = (n: number, places: number) => Number(n.toFixed(places));
 
 // Spec step 159: the demo HSA's payroll contribution, each payday: $2,400 a year, below the
 // limit.
-export const DEMO_HSA_PER_PAYCHECK = 100;
+const DEMO_HSA_PER_PAYCHECK = 100;
 
 function eventsOn(day: string, anchor: string, extras: readonly DemoExtra[] = []): Event[] {
   const md = day.slice(5);

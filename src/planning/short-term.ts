@@ -54,7 +54,7 @@ export function compare(input: {
     .sort((a, b) => b.afterTaxBps - a.afterTaxBps || a.product.lockMonths - b.product.lockMonths);
 }
 
-export type Bill = { term: number; startMonth: number; endMonth: number; rateBps: number };
+type Bill = { term: number; startMonth: number; endMonth: number; rateBps: number };
 export type Rung = { amountCents: number; bills: Bill[] };
 
 const BILL_RATE: Record<number, number> = Object.fromEntries(

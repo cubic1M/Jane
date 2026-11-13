@@ -38,7 +38,7 @@ const TIME_AFTER =
 const dayOnly = (value: string) => value.trim().replace(TIME_AFTER, "");
 
 // 05/09/2026, 5-9-26, 05.09.2026: the two numbers before the year, in the order written.
-export function numericParts(value: string): [number, number, number] | null {
+function numericParts(value: string): [number, number, number] | null {
   const match = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|\d{4})$/.exec(dayOnly(value));
   return match ? [Number(match[1]), Number(match[2]), fullYear(match[3])] : null;
 }

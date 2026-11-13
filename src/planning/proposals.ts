@@ -43,7 +43,7 @@ export type GoalProposal = {
   monthlySetAsideCents?: number;
 };
 
-export type CategoryProposal = {
+type CategoryProposal = {
   kind: "category";
   key: string;
   merchantKey: string;

@@ -70,7 +70,7 @@ export function hitsOf(txs: readonly LifeTx[], signal: Signal, direction: "out" 
     txs: found,
   } satisfies Hits;
 }
-export const meets = (h: Hits, s: Signal) => h.matches >= s.minMatches && h.months >= s.minMonths;
+const meets = (h: Hits, s: Signal) => h.matches >= s.minMatches && h.months >= s.minMonths;
 
 const list = (parts: string[]) =>
   parts.length <= 1

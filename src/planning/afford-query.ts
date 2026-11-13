@@ -7,9 +7,9 @@ import { affordWindow, monthOf, type AffordChange } from "./afford";
 // result can be shared or bookmarked and nothing is saved (spec step 69).
 
 export const AFFORD_KINDS = ["purchase", "more", "less"] as const;
-export type AffordKind = (typeof AFFORD_KINDS)[number];
+type AffordKind = (typeof AFFORD_KINDS)[number];
 
-export type AffordForm = { kind: AffordKind; amount: string; date: string; month: string };
+type AffordForm = { kind: AffordKind; amount: string; date: string; month: string };
 
 export type AffordQuery = {
   form: AffordForm;

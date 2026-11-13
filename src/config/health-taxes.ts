@@ -14,7 +14,7 @@
 const $ = (d: number) => Math.round(d * 100);
 
 // The federal poverty line (48 states) used for 2026 coverage: one person, and each more.
-export const FPL = { year: 2026, first: $(15_650), each: $(5_500) } as const;
+const FPL = { year: 2026, first: $(15_650), each: $(5_500) } as const;
 export const fplFor = (householdSize: number) =>
   FPL.first + FPL.each * Math.max(0, householdSize - 1);
 

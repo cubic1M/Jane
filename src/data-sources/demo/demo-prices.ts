@@ -9,7 +9,7 @@ import { DAY_MS } from "@/lib/dates";
 // the familiar numbers and prices move from there, forwards and back. Pure.
 
 // The feed starts here; earlier days use the first price.
-export const PRICE_HISTORY_START = "2020-10-01";
+const PRICE_HISTORY_START = "2020-10-01";
 
 type Profile = {
   // Price on the anchor's eve, in dollars.
@@ -41,7 +41,7 @@ export const DEMO_PRICE_PROFILES: Readonly<Record<string, Profile>> = {
 };
 
 // Cash-like holdings always cost a dollar.
-export const CASH_TICKERS: readonly string[] = ["DSVXX", "CASH", "KMMXX"];
+const CASH_TICKERS: readonly string[] = ["DSVXX", "CASH", "KMMXX"];
 
 // A seeded number in [0, 1).
 function unit(key: string): number {
@@ -104,7 +104,7 @@ function priced(key: string, p: Profile, day: string, anchor: string): number {
 
 // Spec step 161: the demo exchange's crypto prices, from the same kind of walk but kept
 // apart from the funds' feed, so nothing that trades (the brokerage) can price crypto.
-export const DEMO_CRYPTO_PROFILES: Readonly<Record<string, Profile>> = {
+const DEMO_CRYPTO_PROFILES: Readonly<Record<string, Profile>> = {
   BTC: { base: 67_250, drift: 0.2, vol: 0.03, beta: 0.4 },
   ETH: { base: 2_610, drift: 0.2, vol: 0.038, beta: 0.4 },
   SOL: { base: 152.4, drift: 0.2, vol: 0.05, beta: 0.4 },

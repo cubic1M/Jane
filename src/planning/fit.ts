@@ -103,11 +103,11 @@ export type FitOption = {
   details: string[];
 };
 
-export type FitIneligible = { lender: string; aprBps: number; termMonths: number; reason: string };
+type FitIneligible = { lender: string; aprBps: number; termMonths: number; reason: string };
 
 // The best loan's lender at each term it offers, so "what about a shorter term?" is answered from
 // the same numbers; the differences are against that best loan, worked out here.
-export type FitTerm = {
+type FitTerm = {
   id: string;
   termMonths: number;
   aprBps: number;

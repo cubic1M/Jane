@@ -6,7 +6,7 @@ import type { CatalogId } from "@/config/strategy-catalog";
 // on CATALOG_CURVE_DATES (month ends), from 100, after costs. Written by the strategy research
 // workflow (kind: catalog). A replay of the past, not a forecast.
 
-export type CurveStats = { cagr: number; maxDrawdown: number; sortino: number };
+type CurveStats = { cagr: number; maxDrawdown: number; sortino: number };
 export type LevelCurves = {
   mix: { values: (number | null)[]; stats: CurveStats };
   pick: { label: string; values: (number | null)[]; stats: CurveStats } | null;

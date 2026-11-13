@@ -145,7 +145,7 @@ function Field({
   );
 }
 
-export function FactsForm({
+function FactsForm({
   documentId,
   kind,
   values,

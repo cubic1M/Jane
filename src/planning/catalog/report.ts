@@ -7,7 +7,7 @@ import {
   CATALOG_WALK_FROM_YEAR,
   type CatalogId,
 } from "@/config/strategy-catalog";
-import type { CatalogMetrics, CatalogResult } from "./engine";
+import type { CatalogResult } from "./engine";
 
 // The catalog's results written up (Phase AW, Stage A): docs/backtests/strategy-results.md, a
 // ranked table per risk level, and src/config/catalog-evidence.ts, the compact record the app
@@ -136,5 +136,3 @@ ${rows.join("\n")}
 };
 `;
 }
-
-export type { CatalogMetrics };

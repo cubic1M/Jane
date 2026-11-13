@@ -1,4 +1,4 @@
-import { CLASS_WORDS, MENU_COSTLY_BPS, type MenuClass } from "@/config/plan-menu";
+import { CLASS_WORDS, type MenuClass } from "@/config/plan-menu";
 import { FUND_FACTS } from "@/config/funds";
 import { TARGET_MIXES, type RiskLevel } from "@/config/investing";
 import { glideMix } from "@/planning/goal-buckets";
@@ -25,7 +25,7 @@ export function classOf(text: string): MenuClass {
 }
 
 // A target-date fund's mix from its year, using the glide path; null without a year.
-export function targetDateMix(text: string, today: string, risk: RiskLevel): MenuMix | null {
+function targetDateMix(text: string, today: string, risk: RiskLevel): MenuMix | null {
   const year = Number(/\b(20[2-6]\d)\b/.exec(text)?.[1]);
   if (!year) return null;
   return glideMix(Math.max(0, year - Number(today.slice(0, 4))), risk);
@@ -82,7 +82,7 @@ export type Allocation = { ticker: string; name: string; share: number; expenseB
 const PURE = ["us_stocks", "intl_stocks", "bonds", "cash"] as const;
 
 // The cheapest pure fund of each kind on the menu.
-export function cheapestByKind(menu: MenuFund[]): Partial<Record<(typeof PURE)[number], MenuFund>> {
+function cheapestByKind(menu: MenuFund[]): Partial<Record<(typeof PURE)[number], MenuFund>> {
   const out: Partial<Record<(typeof PURE)[number], MenuFund>> = {};
   for (const f of menu) {
     if (!(PURE as readonly string[]).includes(f.kind)) continue;
@@ -156,4 +156,3 @@ export function currentAllocation(
 }
 
 export const targetFor = (risk: RiskLevel): MenuMix => ({ ...TARGET_MIXES[risk] });
-export { MENU_COSTLY_BPS };

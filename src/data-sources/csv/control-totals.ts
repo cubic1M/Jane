@@ -19,7 +19,7 @@ import { plural } from "@/lib/plural";
 // rather than shown as the account's balance. Pure, and says only numbers and dates: warnings are
 // kept with the upload's record, and nothing from a row's description goes in them.
 
-export type ControlWarning = {
+type ControlWarning = {
   code:
     | "balance_gap"
     | "not_a_balance"
@@ -223,7 +223,7 @@ function statedWarnings(
 
 // Which way the file's signs run where there's no balance to check them by: what the rules know
 // about each row, and on a card, that most rows are purchases.
-export function signsLookReversed(
+function signsLookReversed(
   rows: readonly { amountCents: number; description: string }[],
   kind: AccountKind | null,
 ): boolean {

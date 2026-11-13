@@ -31,7 +31,7 @@ import { formatPercentTenths } from "@/lib/percent";
 // levered); equity strategies take the mix's US-stocks share; overlays rule over the mix fund
 // by fund. Pure. Practice money only.
 
-export const CATALOG_FOLLOW_BAND = 0.02;
+const CATALOG_FOLLOW_BAND = 0.02;
 const YEAR = 252;
 
 function mixOf(level: RiskLevel): Weights {

@@ -7,9 +7,9 @@ export const PLAID_TRIAL_ITEM_LIMIT = 10;
 export const PLAID_ITEMS_PER_PERSON = 1;
 // Kept for people the team invited: someone who came in by a person's share link can't take these.
 // A share link has 10 uses, so one person with email aliases could otherwise spend every Item, for good.
-export const PLAID_ITEMS_KEPT_FROM_SHARE_LINKS = 5;
+const PLAID_ITEMS_KEPT_FROM_SHARE_LINKS = 5;
 // The team is emailed, and a line logged, from this share of the limit on: 8 of 10.
-export const PLAID_ITEM_WARN_SHARE = 0.8;
+const PLAID_ITEM_WARN_SHARE = 0.8;
 
 // What a person is told when no new bank can be linked.
 export const LINKING_FULL_WORDS = "Bank linking is full for now.";

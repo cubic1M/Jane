@@ -64,7 +64,7 @@ export const POLICY_STATUSES = ["found", "active", "pending", "cancelled", "remo
 export type PolicyStatus = (typeof POLICY_STATUSES)[number];
 
 // A cover limit: money (cents), yes or no, a number of years, or a share in percent.
-export type CoverageFieldType = "money" | "yesno" | "years" | "percent" | "days";
+type CoverageFieldType = "money" | "yesno" | "years" | "percent" | "days";
 export type CoverageField = { key: string; label: string; type: CoverageFieldType };
 
 // The cover limits that matter for each kind, in the order they're shown. Stored in
@@ -622,16 +622,14 @@ export const LIFE_OFFER_DAYS = 30;
 export const COVER_EVENT_WINDOW_DAYS = 60;
 export const COVER_EVENTS = ["car_bought", "moving", "new_baby", "married", "new_job"] as const;
 export type CoverEvent = (typeof COVER_EVENTS)[number];
-export const COVER_CHANGES = [
-  "address",
-  "add_vehicle",
-  "add_spouse",
-  "add_dependant",
-  "review_life",
-  "review_benefits",
-  "get_auto",
-] as const;
-export type CoverChangeKind = (typeof COVER_CHANGES)[number];
+export type CoverChangeKind =
+  | "address"
+  | "add_vehicle"
+  | "add_spouse"
+  | "add_dependant"
+  | "review_life"
+  | "review_benefits"
+  | "get_auto";
 // Changes that never change the price: at "handle everything" Jane makes them itself.
 export const NO_PRICE_CHANGES: readonly CoverChangeKind[] = ["address"];
 // Changes made with the carrier through the partner; the rest are reviews and links.
@@ -671,15 +669,8 @@ export const CLAIMS_DAILY_LIMIT = 200;
 // --- Paying less for the same cover (spec step 196) -----------------------------------------
 // Rates are estimates from typical carrier programs, said as "about". Every one is shown with
 // what changes; none drops cover unless it says so (a higher deductible).
-export const SAVING_KINDS = [
-  "pay_in_full",
-  "autopay",
-  "paperless",
-  "bundle",
-  "telematics",
-  "higher_deductible",
-] as const;
-export type SavingKind = (typeof SAVING_KINDS)[number];
+export type SavingKind =
+  "pay_in_full" | "autopay" | "paperless" | "bundle" | "telematics" | "higher_deductible";
 
 export const SAVING_RATES = {
   // Paying a year up front: the installment fee on each payment, and the carrier's discount.

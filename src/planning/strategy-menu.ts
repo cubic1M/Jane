@@ -49,7 +49,7 @@ export function alignMenu(bars: Readonly<Record<string, readonly Bar[]>>): Unive
 }
 
 // The first day every strategy can decide: after the longest look-back.
-export const menuStart = () => Math.max(SECTOR_LOOKBACK_DAYS, ALL_WEATHER_WINDOW_DAYS) + 1;
+const menuStart = () => Math.max(SECTOR_LOOKBACK_DAYS, ALL_WEATHER_WINDOW_DAYS) + 1;
 
 function mix(level: RiskLevel): Record<string, number> {
   const m = TARGET_MIXES[level];
@@ -160,7 +160,7 @@ export type MenuResult = {
 // whichever allows more, in worst drop and in volatility, with MENU_FIT_SLACK of each for noise.
 // The budgets are the research's targets; on these years even the mix of Very low and Low fell
 // further than theirs, so the mix is the fairer bar there.
-export const fitsLevel = (
+const fitsLevel = (
   m: Pick<Metrics, "maxDrawdown" | "vol">,
   mix: Pick<Metrics, "maxDrawdown" | "vol">,
   level: RiskLevel,

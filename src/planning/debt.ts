@@ -20,7 +20,7 @@ export type DebtCard = {
 
 export type Strategy = "avalanche" | "snowball";
 
-export type PayoffMonth = {
+type PayoffMonth = {
   month: number;
   interestCents: number;
   paidCents: number;

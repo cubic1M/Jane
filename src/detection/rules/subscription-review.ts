@@ -54,7 +54,7 @@ function onePriceOrOneStep(amounts: readonly number[]): boolean {
   return changes === 1 && last > first && last <= first * (1 + FIXED_PRICE_SUBSCRIPTION_MAX_STEP);
 }
 
-export function isFixedPricePlan(stream: Stream): boolean {
+function isFixedPricePlan(stream: Stream): boolean {
   return (
     !inList(stream.pfcPrimary, FIXED_PRICE_SUBSCRIPTION_EXCLUDED_PRIMARIES) &&
     !inList(stream.pfcDetailed, FIXED_PRICE_SUBSCRIPTION_EXCLUDED_CATEGORIES) &&

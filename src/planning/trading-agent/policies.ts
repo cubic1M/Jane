@@ -18,7 +18,7 @@ export const CALENDAR_RULES: readonly CatalogId[] = CATALOG_IDS.filter(
   (id) => CATALOG[id].family === "seasonal",
 );
 const singleAsset = (id: CatalogId) => CATALOG[id].tickers.every((t) => t === "SPY" || t === "BIL");
-export const SINGLE_ASSET_RULES: readonly CatalogId[] = CATALOG_IDS.filter(
+const SINGLE_ASSET_RULES: readonly CatalogId[] = CATALOG_IDS.filter(
   (id) => singleAsset(id) && !CALENDAR_RULES.includes(id),
 );
 

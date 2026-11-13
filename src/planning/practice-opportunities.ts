@@ -153,11 +153,11 @@ const stocksOf = (w: Readonly<Record<PracticeClass, number>>) => w.us_stocks + w
 // for a stated drop). A mix between models is placed by how it would fare in a crash like
 // 2007-09 (STRESS_DROP) relative to its level's model, so a mix on its model reads exactly its
 // level's figure, and one that has drifted toward stocks reads proportionally more.
-export function stressDrop(shares: Readonly<Record<PracticeClass, number>>): number {
+function stressDrop(shares: Readonly<Record<PracticeClass, number>>): number {
   return CLASSES.reduce((s, c) => s + shares[c] * STRESS_DROP[c], 0);
 }
 
-export const levelWorstDrop = (l: RiskLevel) => LEVEL_WORST_DROP_PERCENT[l] / 100;
+const levelWorstDrop = (l: RiskLevel) => LEVEL_WORST_DROP_PERCENT[l] / 100;
 
 // The portfolio as held, on that measure: every holding by its kind (an opportunity stock
 // counts as US stocks), cash waiting at none.
@@ -182,7 +182,7 @@ export function levelWithin(limit: number): RiskLevel {
 
 // The portfolio as held today, valued on each of the last days every holding has a close, and
 // the fall from the highest of them to today.
-export function recentDrop(
+function recentDrop(
   state: LedgerState,
   prices: Prices,
   history: ScanInput["history"],

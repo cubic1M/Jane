@@ -18,7 +18,7 @@ import { formatPercent as pct } from "@/lib/percent";
 // change and why, in plain words. Pure. Never says what returns will be: only how the mix
 // compares with the target their own answers chose.
 
-export type MixRow = {
+type MixRow = {
   assetClass: AssetClass;
   label: string;
   valueCents: number;
@@ -29,7 +29,7 @@ export type MixRow = {
   offTarget: boolean;
 };
 
-export type Concentration = {
+type Concentration = {
   holding: HoldingView;
   accountName: string;
   share: number;
@@ -39,7 +39,7 @@ export type Concentration = {
   overCents: number;
 };
 
-export type Recommendation = {
+type Recommendation = {
   kind: "rebalance" | "concentration" | "cash";
   // How much it moves.
   amountCents: number;

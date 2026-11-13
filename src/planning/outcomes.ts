@@ -38,7 +38,7 @@ export type OutcomeTx = {
 // Per account, the last day its statements reach (YYYY-MM-DD).
 export type Coverage = Readonly<Record<string, string>>;
 
-export type Verified = {
+type Verified = {
   status: "confirmed" | "partial";
   cents: number;
   yearly: boolean;

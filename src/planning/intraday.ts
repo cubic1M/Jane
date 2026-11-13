@@ -19,7 +19,7 @@ import { worstDropOf, type PathPoint } from "./backtest";
 // INTRADAY_TRAIN_END by Sortino and scored on the later ones against holding the fund over the
 // same sessions (walk-forward). Pure. A replay of the past, never a forecast.
 
-export type SessionBar = IntradayBar & { minute: number };
+type SessionBar = IntradayBar & { minute: number };
 export type Session = { date: string; bars: SessionBar[] };
 
 const NY = new Intl.DateTimeFormat("en-US", {

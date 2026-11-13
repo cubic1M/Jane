@@ -84,7 +84,7 @@ export function checkPriorReturn(
 export const centsOf = (fields: Fields, key: PriorReturnFieldKey): number =>
   (fields[key] ? parseMoneyToCents(fields[key]!) : null) ?? 0;
 
-export type Finding = {
+type Finding = {
   key: "itemize" | "student_loan_interest" | "education_credit" | "dependent_care_credit";
   title: string;
   why: string;

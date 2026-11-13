@@ -22,7 +22,7 @@ export type GivingOption = {
   savesCents: number;
 };
 
-export type AppreciatedHolding = {
+type AppreciatedHolding = {
   name: string;
   valueCents: number;
   // Long-term gain (held over a year).

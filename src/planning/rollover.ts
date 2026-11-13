@@ -34,7 +34,7 @@ export function olderPlans(plans: readonly LinkedPlan[], gapBps: number) {
   };
 }
 
-export const newSteps = (): Step[] => ROLLOVER_STEPS.map((s) => ({ ...s, doneOn: null }));
+const newSteps = (): Step[] => ROLLOVER_STEPS.map((s) => ({ ...s, doneOn: null }));
 
 // The steps as they stand on `today`, given when the rollover was requested: the first two
 // are done at once, the money arrives ROLLOVER_DAYS later, and is invested the same day.

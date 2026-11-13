@@ -87,7 +87,7 @@ const portVar = (w: readonly number[], cov: readonly (readonly number[])[]) =>
   w.reduce((s, wi, i) => s + wi * cov[i].reduce((t, cij, j) => t + cij * w[j], 0), 0);
 
 // Projection onto { w ≥ 0, Σw = 1, w ≤ cap } (bisection on the shift).
-export function projectCapped(v: readonly number[], cap: number): number[] {
+function projectCapped(v: readonly number[], cap: number): number[] {
   const c = Math.max(cap, 1 / v.length);
   let lo = Math.min(...v) - 1;
   let hi = Math.max(...v);

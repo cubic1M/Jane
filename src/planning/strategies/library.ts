@@ -63,7 +63,7 @@ export function limitsFor(level: RiskLevel): LevelLimits {
 }
 
 // Every strategy's last step: the limits, whatever the strategy asked for.
-export function finish(raw: Weights, limits: LevelLimits): Weights {
+function finish(raw: Weights, limits: LevelLimits): Weights {
   const w: Weights = {};
   for (const a of IDS) {
     const x = raw[a] ?? 0;
@@ -260,7 +260,7 @@ const CPPI: Strategy = {
   },
 };
 
-export const STRATEGIES: Readonly<Record<StrategyId, Strategy>> = {
+const STRATEGIES: Readonly<Record<StrategyId, Strategy>> = {
   static: STATIC,
   inverse_vol: INVERSE_VOL,
   vol_target: VOL_TARGET,

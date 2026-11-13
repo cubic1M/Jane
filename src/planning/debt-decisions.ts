@@ -15,13 +15,13 @@ import { formatCents } from "@/lib/money";
 // ("I'd pay it first") only when `advice` is on (demo advice mode), otherwise it ends at the
 // math.
 
-export type DecisionCard = {
+type DecisionCard = {
   name: string;
   balanceCents: number;
   aprBps: number | null;
   limitCents: number | null;
 };
-export type DecisionLoan = {
+type DecisionLoan = {
   name: string;
   balanceCents: number;
   aprBps: number | null;

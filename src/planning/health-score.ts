@@ -78,7 +78,7 @@ export type HealthScore = {
   counted: { points: number; max: number };
 };
 
-export const HEALTH_LABELS: Record<HealthPart, string> = {
+const HEALTH_LABELS: Record<HealthPart, string> = {
   cushion: "Cash cushion",
   margin: "Room each month",
   onTime: "Bills on time",

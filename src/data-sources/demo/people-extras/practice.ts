@@ -13,7 +13,7 @@ import type { PracticePreferences } from "@/planning/practice-preferences";
 // seeded when the demo bank is linked): live reads the profile itself, and falls back to these
 // only when it has none. A level set in `start` is their own choice in the practice settings.
 
-export type DemoPracticeChange = { daysAgo: number; set: Partial<PracticePreferences> };
+type DemoPracticeChange = { daysAgo: number; set: Partial<PracticePreferences> };
 export type DemoPractice = {
   // The practice money they started with: a stated sample amount, sized to their life, so no
   // two portfolios look alike. Never linked to anything.

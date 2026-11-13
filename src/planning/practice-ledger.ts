@@ -4,7 +4,7 @@
 // tickers the market data knows are allowed, bought and sold outright). The state always
 // balances to the cent, and can be rebuilt from the trades.
 
-export type Position = { quantity: number; costBasisCents: number };
+type Position = { quantity: number; costBasisCents: number };
 export type LedgerState = {
   cashCents: number;
   positions: Readonly<Record<string, Position>>;

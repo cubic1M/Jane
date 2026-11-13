@@ -56,7 +56,7 @@ export type TightDebt = {
   nextDue: string | null;
 };
 
-export type TightKind = "due_move" | "hardship" | "lower_rate" | "waive_fee";
+type TightKind = "due_move" | "hardship" | "lower_rate" | "waive_fee";
 
 export type TightItem = {
   // "<kind>:<debt key>", the same for a shortfall's whole life.

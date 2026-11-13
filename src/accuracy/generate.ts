@@ -15,19 +15,19 @@ import { normalizeMerchant } from "@/data-sources/merchant";
 // with names neither of the others uses, is kept for checking fixes the first one's mistakes
 // suggested: once a set's mistakes have been read, it is no longer a clean check.
 
-export const SEED = 20261026;
+const SEED = 20261026;
 export const PEOPLE_COUNT = 60;
 // The first ORIGINAL_COUNT tuning people are #766's, row for row; the rest add the causes.
-export const ORIGINAL_COUNT = 40;
-export const HELD_OUT_SEED = 77_031_337;
+const ORIGINAL_COUNT = 40;
+const HELD_OUT_SEED = 77_031_337;
 export const HELD_OUT_COUNT = 40;
-export const HELD_OUT_2_SEED = 90_210_455;
-export const HELD_OUT_3_SEED = 31_415_927;
-export const AS_OF = "2026-10-21";
+const HELD_OUT_2_SEED = 90_210_455;
+const HELD_OUT_3_SEED = 31_415_927;
+const AS_OF = "2026-10-21";
 
 export type BenchSet = "tuning" | "held-out" | "held-out-2" | "held-out-3";
 
-export type RawRow = {
+type RawRow = {
   id: string;
   accountId: string;
   date: string;
@@ -39,7 +39,7 @@ export type RawRow = {
   bankType?: string;
 };
 
-export type HistoryAccount = {
+type HistoryAccount = {
   id: string;
   name: string;
   type: string;
@@ -71,7 +71,7 @@ export type History = {
   labels: Labels;
 };
 
-export type Archetype = "salaried" | "hourly" | "freelancer" | "retiree" | "struggling" | "saver";
+type Archetype = "salaried" | "hourly" | "freelancer" | "retiree" | "struggling" | "saver";
 const ARCHETYPES: readonly Archetype[] = [
   "salaried",
   "hourly",

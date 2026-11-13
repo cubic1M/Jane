@@ -29,7 +29,7 @@ import { addMonths } from "@/lib/dates";
 // a monthly amount to set aside. Never anything from loan or investment accounts. Math
 // from the person's own data, not a recommendation. Pure.
 
-export type IrregularFrequency = "QUARTERLY" | "SEMIANNUALLY" | "ANNUALLY";
+type IrregularFrequency = "QUARTERLY" | "SEMIANNUALLY" | "ANNUALLY";
 
 export type IrregularItem = {
   // "merchant:duolingo" for a bill, "season:holiday_gifts" for a seasonal spike.

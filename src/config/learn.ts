@@ -6,7 +6,7 @@ import { formatWholeDollars as dollars } from "@/lib/money";
 // outcome, and every figure comes from the app's own config. Each is marked with its review:
 // all are waiting for counsel's review before anyone relies on them, and the page says so.
 
-export type ReviewStatus = "awaiting_counsel" | "reviewed";
+type ReviewStatus = "awaiting_counsel" | "reviewed";
 
 export type Explainer = {
   slug: string;

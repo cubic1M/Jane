@@ -54,7 +54,7 @@ import { formatPercentTenths } from "@/lib/percent";
 // win: nothing a preference says can raise AUTOPILOT_LIMITS or the opportunity hard caps, or
 // bring opportunities below High. Practice money only.
 
-export type Caps = { sizeShare: number; positionShare: number; perMonth: number };
+type Caps = { sizeShare: number; positionShare: number; perMonth: number };
 
 export type PracticeProfile = {
   // The level the mix is built from, and the one chosen before the drop limit.
@@ -144,7 +144,7 @@ export function avoidedTickers(
 
 // The limits for one person: the hard ones, with their rebalance pace's band and their cap on
 // one fund, which can only lower the hard cap.
-export function limitsFor(
+function limitsFor(
   prefs: Pick<PracticePreferences, "rebalancePace" | "maxFundPercent">,
 ): AutopilotLimits {
   const fund = prefs.maxFundPercent === null ? 1 : prefs.maxFundPercent / 100;

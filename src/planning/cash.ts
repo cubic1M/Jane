@@ -22,7 +22,7 @@ export type CashPlace = {
   rateBps: number;
 };
 
-export type CashBucket = {
+type CashBucket = {
   key: "buffer" | "emergency" | "longer_term";
   label: string;
   cents: number;
@@ -30,7 +30,7 @@ export type CashBucket = {
   rateBps: number;
 };
 
-export type CashMove = {
+type CashMove = {
   key: "checking_to_savings" | "sweep_to_money_market";
   fromId: string;
   fromName: string;

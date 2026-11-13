@@ -16,7 +16,7 @@ import { DAY_MS } from "@/lib/dates";
 export const addDays = (day: string, days: number) =>
   new Date(Date.parse(`${day}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
 
-export type FixKind = "validation" | "dispute";
+type FixKind = "validation" | "dispute";
 
 export type FixItem = {
   id: string;

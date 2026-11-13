@@ -23,7 +23,7 @@ import { dayLabel } from "@/lib/day-label";
 // guess needs LIFE_SIGNALS_NEEDED different kinds of signal inside LIFE_SIGNAL_DAYS: one
 // signal never asks.
 
-export type LifeSignal = { key: string; text: string; date: string };
+type LifeSignal = { key: string; text: string; date: string };
 export type LifeGuess = { kind: LifeEventKind; signals: LifeSignal[] };
 
 type Window = { from: string; asOf: string };

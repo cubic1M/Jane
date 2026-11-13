@@ -15,7 +15,7 @@ const interest = (data: ProfileInput) =>
     .reduce((s, t) => s + t.amountCents, 0);
 
 // What an answer could unlock for this person, or 0 when the question doesn't apply.
-export function unlockOf(fact: FactKey, profile: Profile, data: ProfileInput): number {
+function unlockOf(fact: FactKey, profile: Profile, data: ProfileInput): number {
   const f = profile.facts;
   switch (fact) {
     case "employer_match":

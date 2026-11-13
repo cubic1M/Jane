@@ -3,7 +3,7 @@ import type { ActionType, FindingType } from "@/generated/prisma/client";
 // Jane's plan (spec step 49): what the person can change before saying yes, and how the
 // plan is ordered.
 
-export type PlanChoiceOption = {
+type PlanChoiceOption = {
   key: string;
   label: string;
   kind: "choice";
@@ -11,7 +11,7 @@ export type PlanChoiceOption = {
   // The first choice is Jane's default.
 };
 
-export type PlanAmountOption = {
+type PlanAmountOption = {
   key: string;
   label: string;
   kind: "amount";

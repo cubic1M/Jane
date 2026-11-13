@@ -21,7 +21,7 @@ import type { Detector, Suggestion } from "./contract";
 type Kind = keyof typeof PRACTICE_TOPIC;
 
 // The rule, the numbers and the caps, for "Why?".
-export function practiceWhy(idea: PracticeIdea): string {
+function practiceWhy(idea: PracticeIdea): string {
   const end = (t: string) => (/[.!?]$/.test(t) ? t : `${t}.`);
   return [
     end(idea.short),

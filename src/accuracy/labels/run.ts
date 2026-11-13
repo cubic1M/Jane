@@ -23,7 +23,7 @@ import { readSheet, sheetFromStatements } from "./sheet";
 // returned is what's printed: counts, category names and scores only.
 
 export const SEALED = "labels.sealed";
-export const SCORES = "scores.json";
+const SCORES = "scores.json";
 
 const NO_RULES_DB = {
   userId: "labels",
@@ -63,7 +63,7 @@ export function sealSheets(dir: string, key: string): string {
 }
 
 // The rules alone, with no merchant cache and no Claude, as a new person's first upload sorts.
-export async function predict(rows: readonly LabelledRow[]): Promise<Map<string, string | null>> {
+async function predict(rows: readonly LabelledRow[]): Promise<Map<string, string | null>> {
   const incoming = rows.map((r): NormalizedTransaction => ({
     accountRef: "labels",
     date: r.date,

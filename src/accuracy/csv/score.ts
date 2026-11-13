@@ -65,7 +65,7 @@ const CUSTOM_COLUMNS = { date: 0, description: 1, amount: 2 } as const;
 
 // The column picker as the person fills it in: Jane's first guesses where it has them, and the
 // right column where it asks (`asked` counts those).
-export function pickedMapping(text: string): { mapping: ColumnMapping; asked: number } {
+function pickedMapping(text: string): { mapping: ColumnMapping; asked: number } {
   const choices = mappingChoices(parseCsv(text));
   const { guess } = choices;
   let asked = 0;
@@ -258,7 +258,7 @@ export async function runUpload(
 // idle cash must be the hand-worked figures. Skipped, every account whose files carry no balance
 // must be named as not counted (never a silent $0 or a figure that leaves it out), and idle cash
 // must not fire from the cash Jane can see when the truth has none.
-export type BalancePaths = {
+type BalancePaths = {
   typedRight: boolean;
   idleTypedRight: boolean;
   // "Is this your rent?" (round 24): payees asked about, those that aren't rent, and idle cash
@@ -271,7 +271,7 @@ export type BalancePaths = {
   idleSkippedFalse: boolean;
 };
 
-export function balancePaths(up: Upload): BalancePaths {
+function balancePaths(up: Upload): BalancePaths {
   const { person } = up;
   const withBalances = (balanceOf: (a: CsvPerson["accounts"][number]) => number | null) =>
     up.input.accounts.map((a) => {
@@ -321,7 +321,7 @@ export function balancePaths(up: Upload): BalancePaths {
 
 // The profile the suggestions are made from, as an uploaded person's would be: the upload's rows
 // and categories, and a balance only where one was typed or read from the statement.
-export function profileInputOfUpload(up: Upload): ProfileInput {
+function profileInputOfUpload(up: Upload): ProfileInput {
   return {
     today: up.person.asOf,
     transactions: up.input.transactions.map((t) => ({
@@ -359,7 +359,7 @@ const TOPIC_TRUTH: Record<string, (p: CsvPerson) => boolean> = {
 };
 
 // Every suggestion Jane would show this person on a topic the truth can judge, with its "% sure".
-export function judgedOfUpload(up: Upload): Judged[] {
+function judgedOfUpload(up: Upload): Judged[] {
   const data = profileInputOfUpload(up);
   return runDetectors({ profile: buildProfile(data), data }).flatMap((s) => {
     const isTrue = TOPIC_TRUTH[s.topic];
@@ -383,9 +383,9 @@ const ratio = (num: number, den: number) => (den === 0 ? 1 : num / den);
 export const precision = (t: Tally) => ratio(t.tp, t.tp + t.fp);
 export const recall = (t: Tally) => ratio(t.tp, t.tp + t.fn);
 
-export type Mistake = { person: string; what: string; kind: string; detail: string };
+type Mistake = { person: string; what: string; kind: string; detail: string };
 
-export type AskedTally = { right: number; rightCents: number; wrong: number; wrongCents: number };
+type AskedTally = { right: number; rightCents: number; wrong: number; wrongCents: number };
 
 export type PersonScore = {
   person: string;

@@ -10,7 +10,7 @@ import { parseMoneyToCents } from "@/lib/money";
 // position, 0-based. Where the file can't tell (day or month first, which sign is spending),
 // Jane guesses from the rows and shows the guess, or asks; it never guesses silently.
 
-export type MoneyOut = "negative" | "positive";
+type MoneyOut = "negative" | "positive";
 
 export type ColumnMapping = {
   // Whether the first row is column names rather than a transaction.
@@ -36,7 +36,7 @@ export type SignGuess = { moneyOut: MoneyOut | null; why: string };
 
 // A column that could say which way each amount went: its few values, and the one for money
 // out when Jane recognizes it (null: the person picks).
-export type MarkerColumn = { values: string[]; out: string | null };
+type MarkerColumn = { values: string[]; out: string | null };
 
 // What the picker shows for a file: each column with a sample value, and first guesses.
 export type MappingChoices = {
@@ -224,7 +224,7 @@ const PREAMBLE_MIN_TABLE_WIDTH = 3;
 // print after the rows (Fidelity's "The data and information in this spreadsheet…"; debugger
 // 11-02): a last run of lines under half as wide, so a short row in the middle is still reported.
 // The picker and the read both use the same rows, so their column numbers agree.
-export function withoutPreamble(records: CsvRecord[]): CsvRecord[] {
+function withoutPreamble(records: CsvRecord[]): CsvRecord[] {
   const counts = new Map<number, number>();
   for (const r of records) counts.set(r.fields.length, (counts.get(r.fields.length) ?? 0) + 1);
   const width = [...counts.entries()].sort((a, b) => b[1] - a[1] || b[0] - a[0])[0]?.[0] ?? 0;

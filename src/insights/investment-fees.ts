@@ -49,7 +49,7 @@ const range = (cost: (growth: number) => number): Range => ({
 
 export type FeeTransaction = { accountId: string; amountCents: number; subtype: string };
 
-export type FundCost = {
+type FundCost = {
   holding: HoldingView;
   accountName: string;
   expenseRatioBps: number;

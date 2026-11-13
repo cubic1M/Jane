@@ -12,7 +12,7 @@
 // - settleBusinessDays: how long after the day it was paid to look for it.
 // - feeCents: a documented guest or card fee that may be added to the amount.
 
-export type BillerType =
+type BillerType =
   | "card_issuer"
   | "student_loan"
   | "auto_lender"

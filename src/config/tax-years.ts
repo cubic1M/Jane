@@ -9,7 +9,7 @@ import { TAX_RATES_YEAR } from "@/config/tax-rates";
 // Source for the 2026 figures: IRS Rev. Proc. 2025-32. The indexing rate is the chained CPI
 // the IRS uses, ESTIMATE TO VERIFY: 2026's adjustments were about 2.3% to 2.7%.
 
-export const BRACKET_INDEXING_RATE = 0.025;
+const BRACKET_INDEXING_RATE = 0.025;
 // Pay grows by this a year in the projection, until the retirement year.
 export const WAGE_GROWTH_RATE = 0.03;
 // Money in a traditional retirement account grows by this a year (a plain assumption).

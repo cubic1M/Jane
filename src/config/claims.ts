@@ -9,7 +9,7 @@ import type { PolicyKind } from "./insurance";
 // the person of the next step when it's due. It never files a claim or talks to the
 // insurer for them: the claim is the person's own statement.
 
-export type ClaimStep = { key: string; label: string; dueDays: number };
+type ClaimStep = { key: string; label: string; dueDays: number };
 
 export type ClaimGuide = {
   // What happened, by key, as the person would say it.

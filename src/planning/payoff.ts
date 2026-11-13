@@ -55,7 +55,7 @@ export function planDebts(debts: readonly Debt[]): { cards: PlanDebt[]; leftOut:
   return { cards, leftOut };
 }
 
-export const minimumsOf = (cards: readonly DebtCard[]) =>
+const minimumsOf = (cards: readonly DebtCard[]) =>
   cards.reduce((sum, c) => sum + c.minimumCents, 0);
 
 // Paying only each debt's own minimum, with nothing rolled over when one is paid off: what
@@ -76,7 +76,7 @@ export function minimumsOnly(cards: readonly DebtCard[]): PayoffPlan {
   };
 }
 
-export type Scenario = {
+type Scenario = {
   extraCents: number;
   months: number;
   interestCents: number;

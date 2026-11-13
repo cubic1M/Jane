@@ -17,7 +17,7 @@ const EXCHANGE: readonly Position[] = [
 const WALLET: readonly Position[] = [{ asset: "ETH", quantity: 0.4, costBasis: 760 }];
 
 // A buy of Bitcoin on the 5th of every month, with the exchange's fee (about 1.49%).
-export const DEMO_CRYPTO_BUY = { asset: "BTC", amount: 150, fee: 2.24, dayOfMonth: "05" };
+const DEMO_CRYPTO_BUY = { asset: "BTC", amount: 150, fee: 2.24, dayOfMonth: "05" };
 
 export type DemoCryptoBalance = {
   asset: string;

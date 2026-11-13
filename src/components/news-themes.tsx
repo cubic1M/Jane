@@ -23,7 +23,7 @@ import {
 const pct = (n: number) => `${n >= 0 ? "+" : "−"}${(Math.abs(n) * 100).toFixed(1)}%`;
 const points = (n: number) => `${n >= 0 ? "+" : "−"}${(Math.abs(n) * 100).toFixed(1)} points`;
 
-export function themeRecordLine(r: ThemeRecord): string {
+function themeRecordLine(r: ThemeRecord): string {
   return `Beat the whole US market in ${r.hits} of ${r.events} past events, ${points(r.averageExcess)} on average over a month; worst ${pct(r.worst)}, best ${pct(r.best)}.`;
 }
 

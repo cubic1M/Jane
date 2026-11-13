@@ -114,15 +114,12 @@ export const subtypeLabel = (subtype: string | null) =>
   (subtype && SUBTYPE_LABELS[subtype.toLowerCase()]) ?? (subtype ? subtype : "Investment account");
 
 // "Demo Bank (fake data), Demo 401(k), price as of Oct 18, 2026".
-export function sourceLine(
-  account: { name: string; institution: string | null },
-  asOf: string | null,
-) {
+function sourceLine(account: { name: string; institution: string | null }, asOf: string | null) {
   const from = account.institution ?? "Your bank";
   return `${from}, ${account.name}${asOf ? `, price as of ${dayLabel(asOf, { year: true })}` : ""}`;
 }
 
-export function holdingView(
+function holdingView(
   holding: HoldingRow,
   security: SecurityRow,
   account: { name: string; institution: string | null },

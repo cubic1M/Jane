@@ -44,7 +44,7 @@ export const CONDITION_WORDS: Record<CardCondition, string> = {
   trips: "you pay for the trip with the card",
 };
 
-export const CARD_BENEFIT_LABELS: Record<CardBenefitKind, string> = {
+const CARD_BENEFIT_LABELS: Record<CardBenefitKind, string> = {
   phone: "Cell phone protection",
   rental_car: "Rental car damage cover",
   extended_warranty: "Extended warranty",

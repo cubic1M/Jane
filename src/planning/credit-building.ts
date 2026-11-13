@@ -16,7 +16,7 @@ import { dayNumber } from "@/detection/units";
 // simulator tries.
 
 const iso = (n: number) => new Date(n * DAY_MS).toISOString().slice(0, 10);
-export const addDays = (day: string, days: number) => iso(dayNumber(day) + days);
+const addDays = (day: string, days: number) => iso(dayNumber(day) + days);
 
 // The next statement after `asOf`, a month at a time from the last one.
 export function nextStatementClose(lastIssue: string, asOf: string): string {

@@ -8,7 +8,7 @@ import type { Sector } from "@/config/autopilot-sectors";
 // debt extra only from safe to spend itself, both above the cushion, and never more than
 // the paycheck.
 
-export type PlanGoal = {
+type PlanGoal = {
   id: string;
   name: string;
   monthlyCents: number;

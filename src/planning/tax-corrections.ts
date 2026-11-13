@@ -24,17 +24,6 @@ export type TaxFixes = {
   keptApartCents: number | null;
 };
 
-export const NO_FIXES: TaxFixes = {
-  notIncome: new Set(),
-  wagesCents: null,
-  selfEmployedCents: null,
-  withheldCents: null,
-  businessCostCents: 0,
-  deductionCents: 0,
-  paid: { federalCents: 0, stateCents: 0 },
-  keptApartCents: null,
-};
-
 // The key a payer's deposits go by, so a correction reaches their later ones.
 export const payerKeyOf = (description: string): string =>
   normalizeMerchant(description)?.key ?? description.trim().toLowerCase();
