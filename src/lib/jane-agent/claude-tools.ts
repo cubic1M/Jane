@@ -21,7 +21,7 @@ import { budgetSummary } from "@/insights/budgets";
 import { loadInsightTransactions } from "@/insights/load";
 import { loansNotCounted, netWorth, notCounting, owedIsKnown } from "@/insights/net-worth";
 import { loansSeenWithoutBalance } from "@/lib/net-worth-history";
-import { ASK_TOOLS, runAskTool, type ToolOutput } from "@/lib/ask/tools";
+import { ASK_TOOLS, runAskTool, type ToolOutput, toolAnswer, noInput } from "@/lib/ask/tools";
 import { CARD_SELECT, buildCard } from "@/lib/cards";
 import { conciergeMode } from "@/lib/concierge-mode";
 import { selfServe } from "@/lib/diy";
@@ -191,8 +191,6 @@ export const CHAT_PAGES: Readonly<Record<string, { label: string; href: string }
   tax_tags: { label: "See tax tags", href: "/taxes/tags" },
   tax_pack: { label: "Open the tax-time pack", href: "/tax-pack" },
 };
-
-const noInput = { type: "object" as const, properties: {}, additionalProperties: false };
 
 export const CHAT_TOOLS: Anthropic.Tool[] = [
   ...FROM_ASK,
@@ -585,12 +583,7 @@ async function runChatToolWork(
   if (isPracticeTool(name)) return runPracticeTool(userId, name, input, { client, now });
   if (isInsuranceTool(name)) return runInsuranceTool(userId, name, input, { client, now });
   if (isSettingsTool(name)) return runSettingsTool(userId, name, input, { client, now });
-  const cents: number[] = [];
-  const money = (value: number) => {
-    cents.push(Math.abs(value));
-    return value < 0 ? `-${formatCents(-value)}` : formatCents(value);
-  };
-  const out = (value: unknown): ToolOutput => ({ content: JSON.stringify(value), cents });
+  const { cents, money, out } = toolAnswer();
   const asOf = await chatToday(userId, { client, now });
 
   switch (name) {

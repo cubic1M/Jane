@@ -9,7 +9,6 @@ import {
 } from "@/config/tax";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { ToolOutput } from "@/lib/ask/tools";
-import { formatCents } from "@/lib/money";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
 import { loadTaxSetAside } from "@/lib/tax-set-aside";
 import { loadWithholding } from "@/lib/tax-withholding";
@@ -58,14 +57,13 @@ import { figuresOf, type Source } from "@/planning/home-taxes";
 import { sourceText } from "./home-taxes-message";
 import { COMPARED } from "@/planning/tax-document-check";
 import { chatToday } from "@/lib/today";
+import { toolAnswer, noInput } from "@/lib/ask/tools";
 
 // Claude's tax tools in Jane's chat (spec steps 118–127): read-only, over the person's own
 // data, through the same loaders as /taxes. Every dollar figure is recorded for the
 // guardrails, like the other chat tools (./claude-tools.ts).
 
 type Options = { client: PrismaClient; now: Date };
-
-const noInput = { type: "object" as const, properties: {}, additionalProperties: false };
 
 export const TAX_TOOLS: Anthropic.Tool[] = [
   {
@@ -293,12 +291,7 @@ export async function runTaxTool(
 ): Promise<ToolOutput> {
   const args = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
   const year = defaultTaxYear(await chatToday(userId, { client, now }));
-  const cents: number[] = [];
-  const money = (value: number) => {
-    cents.push(Math.abs(value));
-    return formatCents(value);
-  };
-  const out = (value: unknown): ToolOutput => ({ content: JSON.stringify(value), cents });
+  const { cents, money, out } = toolAnswer();
   switch (name) {
     case "tax_profile": {
       const { view, taxes } = await loadWorkingProfile(userId, { client, now });

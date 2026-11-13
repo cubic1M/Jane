@@ -96,6 +96,20 @@ export const ASK_TOOLS: Anthropic.Tool[] = [
 // show with the answer (refs.options).
 export type ToolOutput = { content: string; cents: number[]; options?: OfferedOptions };
 
+// The chat's tools: one that takes no input, and a run's answer as JSON with money() for each
+// amount it names. Every amount goes in `cents`, which the guardrail checks the reply's figures
+// against.
+export const noInput = { type: "object" as const, properties: {}, additionalProperties: false };
+export function toolAnswer() {
+  const cents: number[] = [];
+  const money = (value: number) => {
+    cents.push(Math.abs(value));
+    return formatCents(value);
+  };
+  const out = (value: unknown): ToolOutput => ({ content: JSON.stringify(value), cents });
+  return { cents, money, out };
+}
+
 type Options = { client?: PrismaClient; now?: Date };
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
