@@ -17,6 +17,7 @@ import {
   residencyFrom,
   sideIncomeFrom,
 } from "./answers";
+import { ignoring } from "@/lib/ignoring";
 
 // The tax profile page (spec step 118): saves every field the person filled in. A field
 // left empty stays unanswered, so nothing is assumed.
@@ -160,11 +161,7 @@ export async function saveSideIncomeAction(
 // for insurance, saved as their answer with one tap (from /taxes or the tax profile).
 export async function confirmDependants(): Promise<void> {
   const user = await requireUser();
-  try {
-    await confirmFound(user.id, "dependants", { via: "page" });
-  } catch (error) {
-    if (!(error instanceof TaxProfileError)) throw error;
-  }
+  await ignoring(TaxProfileError, () => confirmFound(user.id, "dependants", { via: "page" }));
   revalidatePath("/taxes");
   revalidatePath("/taxes/profile");
 }

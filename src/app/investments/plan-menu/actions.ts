@@ -9,6 +9,7 @@ import {
   sampleDisclosure,
 } from "@/lib/investments/plan-menu";
 import { requireUser } from "@/lib/session";
+import { ignoring } from "@/lib/ignoring";
 
 // The plan menu page (spec step 232): read what the person pasted, confirm it, send a change.
 
@@ -28,21 +29,13 @@ export async function readMenu(_previous: ReadState, formData: FormData): Promis
 
 export async function useSample(): Promise<void> {
   const user = await requireUser();
-  try {
-    await proposeMenu(user.id, sampleDisclosure(), "demo");
-  } catch (error) {
-    if (!(error instanceof PlanMenuError)) throw error;
-  }
+  await ignoring(PlanMenuError, () => proposeMenu(user.id, sampleDisclosure(), "demo"));
   redirect(BASE);
 }
 
 export async function confirm(formData: FormData): Promise<void> {
   const user = await requireUser();
-  try {
-    await confirmMenu(user.id, String(formData.get("id") ?? ""));
-  } catch (error) {
-    if (!(error instanceof PlanMenuError)) throw error;
-  }
+  await ignoring(PlanMenuError, () => confirmMenu(user.id, String(formData.get("id") ?? "")));
   redirect(`${BASE}?done=confirmed`);
 }
 

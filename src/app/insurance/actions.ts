@@ -40,6 +40,7 @@ import {
 } from "@/lib/insurance/family";
 import { log } from "@/lib/log";
 import { requireUser } from "@/lib/session";
+import { ignoring } from "@/lib/ignoring";
 
 // Insurance (spec step 102). A save goes back to /insurance with ?saved=, so the
 // confirmation shows on the freshly loaded profile.
@@ -115,11 +116,7 @@ export async function confirmReadingForm(
 
 export async function dismissReadingForm(formData: FormData): Promise<void> {
   const user = await requireUser();
-  try {
-    await dismissReading(user.id, text(formData, "readingId"));
-  } catch (error) {
-    if (!(error instanceof ReadingError)) throw error;
-  }
+  await ignoring(ReadingError, () => dismissReading(user.id, text(formData, "readingId")));
   refreshOthers();
   redirect("/insurance");
 }
@@ -148,22 +145,16 @@ export async function dismissChanges(formData: FormData): Promise<void> {
 // Spec step 155: the renewal call, on the person's tap, or not.
 export async function callRenewal(formData: FormData): Promise<void> {
   const user = await requireUser();
-  try {
-    await callCarrier(user.id, text(formData, "negotiationId"));
-  } catch (error) {
-    if (!(error instanceof NegotiationError)) throw error;
-  }
+  await ignoring(NegotiationError, () => callCarrier(user.id, text(formData, "negotiationId")));
   refreshOthers();
   redirect("/insurance?saved=called&focus=renewals");
 }
 
 export async function skipRenewal(formData: FormData): Promise<void> {
   const user = await requireUser();
-  try {
-    await declineNegotiation(user.id, text(formData, "negotiationId"));
-  } catch (error) {
-    if (!(error instanceof NegotiationError)) throw error;
-  }
+  await ignoring(NegotiationError, () =>
+    declineNegotiation(user.id, text(formData, "negotiationId")),
+  );
   refreshOthers();
   redirect("/insurance");
 }
@@ -171,22 +162,14 @@ export async function skipRenewal(formData: FormData): Promise<void> {
 // Spec step 196: a cheaper way to pay for the same cover, on the person's tap, or not.
 export async function applyOneSaving(formData: FormData): Promise<void> {
   const user = await requireUser();
-  try {
-    await applySaving(user.id, text(formData, "savingId"));
-  } catch (error) {
-    if (!(error instanceof SavingError)) throw error;
-  }
+  await ignoring(SavingError, () => applySaving(user.id, text(formData, "savingId")));
   refreshOthers();
   redirect("/insurance?saved=saving&focus=savings");
 }
 
 export async function skipSaving(formData: FormData): Promise<void> {
   const user = await requireUser();
-  try {
-    await dismissSaving(user.id, text(formData, "savingId"));
-  } catch (error) {
-    if (!(error instanceof SavingError)) throw error;
-  }
+  await ignoring(SavingError, () => dismissSaving(user.id, text(formData, "savingId")));
   refreshOthers();
   redirect("/insurance");
 }
@@ -194,11 +177,9 @@ export async function skipSaving(formData: FormData): Promise<void> {
 // Spec step 197: a question about how they live, answered on the page.
 export async function answerRiskForm(formData: FormData): Promise<void> {
   const user = await requireUser();
-  try {
-    await answerRisk(user.id, text(formData, "riskId"), text(formData, "answer") === "yes");
-  } catch (error) {
-    if (!(error instanceof RiskError)) throw error;
-  }
+  await ignoring(RiskError, () =>
+    answerRisk(user.id, text(formData, "riskId"), text(formData, "answer") === "yes"),
+  );
   refreshOthers();
   redirect("/insurance?saved=risk&focus=questions");
 }

@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { addRental, linkDemoRental, PropertyError } from "@/lib/investments/property";
 import { requireUser } from "@/lib/session";
+import { ignoring } from "@/lib/ignoring";
 
 // The property page's form and demo button (spec step 214).
 
@@ -35,10 +36,6 @@ export async function saveRental(_previous: RentalState, formData: FormData): Pr
 
 export async function demoRental(): Promise<void> {
   const user = await requireUser();
-  try {
-    await linkDemoRental(user.id);
-  } catch (error) {
-    if (!(error instanceof PropertyError)) throw error;
-  }
+  await ignoring(PropertyError, () => linkDemoRental(user.id));
   redirect("/investments/property?done=linked");
 }

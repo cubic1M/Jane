@@ -8,6 +8,7 @@ import {
   saveProduct,
 } from "@/lib/investments/costly-products";
 import { requireUser } from "@/lib/session";
+import { ignoring } from "@/lib/ignoring";
 
 // The costly products page's buttons and form (spec step 215). Nothing here leaves or
 // cancels anything: it only records what the person tells Jane.
@@ -41,20 +42,14 @@ export async function addProduct(
 
 export async function answer(formData: FormData): Promise<void> {
   const user = await requireUser();
-  try {
-    await answerPremium(user.id, String(formData.get("id") ?? ""), formData.get("yes") === "yes");
-  } catch (error) {
-    if (!(error instanceof CostlyProductError)) throw error;
-  }
+  await ignoring(CostlyProductError, () =>
+    answerPremium(user.id, String(formData.get("id") ?? ""), formData.get("yes") === "yes"),
+  );
   redirect("/investments/costly-products");
 }
 
 export async function demoProducts(): Promise<void> {
   const user = await requireUser();
-  try {
-    await linkDemoProducts(user.id);
-  } catch (error) {
-    if (!(error instanceof CostlyProductError)) throw error;
-  }
+  await ignoring(CostlyProductError, () => linkDemoProducts(user.id));
   redirect("/investments/costly-products?done=linked");
 }

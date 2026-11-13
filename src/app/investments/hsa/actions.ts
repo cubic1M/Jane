@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { HsaError, investHsaCash, linkDemoHsa, markReimbursed } from "@/lib/investments/hsa";
 import { requireUser } from "@/lib/session";
+import { ignoring } from "@/lib/ignoring";
 
 // The HSA page's buttons (spec step 159).
 
@@ -14,11 +15,7 @@ const back = (done: string) => {
 
 export async function linkHsa(): Promise<void> {
   const user = await requireUser();
-  try {
-    await linkDemoHsa(user.id);
-  } catch (error) {
-    if (!(error instanceof HsaError)) throw error;
-  }
+  await ignoring(HsaError, () => linkDemoHsa(user.id));
   back("linked");
 }
 
@@ -35,10 +32,6 @@ export async function investHsa(): Promise<void> {
 
 export async function reimburse(formData: FormData): Promise<void> {
   const user = await requireUser();
-  try {
-    await markReimbursed(user.id, String(formData.get("receiptId") ?? ""));
-  } catch (error) {
-    if (!(error instanceof HsaError)) throw error;
-  }
+  await ignoring(HsaError, () => markReimbursed(user.id, String(formData.get("receiptId") ?? "")));
   back("reimbursed");
 }
