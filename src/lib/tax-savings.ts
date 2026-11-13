@@ -1,4 +1,5 @@
 import { debtFirst } from "@/lib/debt-first";
+import { hasHealthFsa } from "@/lib/insurance/health-year";
 import { ENERGY_PAYEE, TUITION_PAYEE } from "@/config/tax";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
@@ -99,6 +100,7 @@ export async function loadTaxSavings(
         stubs.source === "none" ? 0 : Math.round(stubs.soFar.grossCents / paychecks),
     },
     hasHsa: accounts.some((a) => a.subtype === "hsa"),
+    hasFsa: await hasHealthFsa(userId, { client }),
     medicalCents: pace(tags.totals.medical.totalCents),
     childcareCents: pace(tags.totals.childcare.totalCents),
     tuition: [...tuitionByPayee.entries()].map(([payee, cents]) => ({ payee, cents })),
