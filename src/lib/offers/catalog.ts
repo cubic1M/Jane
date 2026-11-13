@@ -7,6 +7,7 @@ import {
   OFFERS_CLAUDE_PAGE_CHARS,
   OFFERS_RECHECK_HOURS,
   OFFERS_RUN_BUDGET_MS,
+  OFFERS_UNREADABLE_READS,
   type OfferKind,
   type OfferSpec,
   type SourceSpec,
@@ -257,6 +258,42 @@ export async function refreshSource(
         createdAt: now,
       },
     });
+  const rows = await sys.marketOffer.findMany({
+    where: { key: { in: source.offers.map((o) => o.key) } },
+  });
+  const byKey = new Map(rows.map((r) => [r.key, r]));
+  // The latest verdict on an offer (quarantined, or a good reading saved), for alerting once.
+  const lastVerdict = async (offerKey: string) =>
+    (
+      await sys.marketOfferEvent.findFirst({
+        where: { offerKey, kind: { in: ["quarantined", "new", "changed"] } },
+        orderBy: { createdAt: "desc" },
+        select: { kind: true },
+      })
+    )?.kind ?? null;
+  // A figure on screen that its source hasn't given for OFFERS_UNREADABLE_READS reads: the founders
+  // hear once, before it quietly runs out (a page moved, a 403, robots.txt changed).
+  const notRead = async (offer: OfferSpec, reason: string) => {
+    const row = byKey.get(offer.key);
+    if (!row || row.status !== "live" || row.extractedBy === "seed") return;
+    if (
+      now.getTime() - row.checkedAt.getTime() <=
+      OFFERS_UNREADABLE_READS * source.everyMinutes * 60_000
+    )
+      return;
+    const told = await sys.marketOfferEvent.count({
+      where: { offerKey: offer.key, kind: "unreadable", createdAt: { gt: row.checkedAt } },
+    });
+    if (told > 0) return;
+    await event("unreadable", offer.key, { reason, lastRead: row.checkedAt.toISOString() });
+    await alertError(
+      {
+        message: `OfferUnreadable: ${offer.key} not read since ${row.checkedAt.toISOString().slice(0, 16)}Z (${reason})`,
+        path: "/api/cron/offers",
+      },
+      { client, now },
+    ).catch(() => undefined);
+  };
   let read: { readings: Readings; html: string | null };
   try {
     read = await readSource(source, fetcher);
@@ -267,12 +304,9 @@ export async function refreshSource(
         ? error.message.replace(/https?:\/\/\S+/g, "<url>").slice(0, 80)
         : "error";
     await event("failed", null, { reason });
+    for (const offer of source.offers) await notRead(offer, reason);
     return { ...result, missing: source.offers.map((o) => o.key), failed: reason };
   }
-  const rows = await sys.marketOffer.findMany({
-    where: { key: { in: source.offers.map((o) => o.key) } },
-  });
-  const byKey = new Map(rows.map((r) => [r.key, r]));
   const fingerprint = read.html ? fingerprintOf(read.html) : null;
   const readings: Record<string, { value: number; by: string }> = {};
   for (const [key, value] of Object.entries(read.readings)) {
@@ -298,11 +332,15 @@ export async function refreshSource(
     if (!reading) {
       result.missing.push(offer.key);
       await event("failed", offer.key, { reason: "not_found" });
+      await notRead(offer, "not_found");
       continue;
     }
     const verdict = checkReading(offer, reading.value, last);
     if (verdict !== "ok") {
       result.quarantined.push(offer.key);
+      // Already in quarantine: its row says so, or (a first reading, with no row) its last verdict.
+      const already =
+        last?.status === "quarantined" || (await lastVerdict(offer.key)) === "quarantined";
       await event("quarantined", offer.key, {
         reason: verdict,
         before: last ? valueOf(last) : null,
@@ -316,7 +354,7 @@ export async function refreshSource(
         });
       }
       // Once, when it goes into quarantine: a person checks the page and the reader.
-      if (last?.status !== "quarantined") {
+      if (!already) {
         await alertError(
           {
             message: `OfferQuarantined: ${offer.key} read ${reading.value} (${verdict})`,

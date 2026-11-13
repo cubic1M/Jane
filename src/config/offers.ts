@@ -17,6 +17,9 @@ export const OFFERS_MAX_PAGE_CHARS = 2_000_000;
 export const OFFERS_RUN_BUDGET_MS = 60_000;
 // A person's own charge just changed: a plan price older than this is read again first.
 export const OFFERS_RECHECK_HOURS = 6;
+// A figure still on screen that its source hasn't given for this many of its reads: the founders
+// are told once (a page moved, a 403, robots.txt changed), well before it runs out.
+export const OFFERS_UNREADABLE_READS = 2;
 // How long robots.txt is believed.
 export const OFFERS_ROBOTS_HOURS = 24;
 
