@@ -84,11 +84,13 @@ export function ScanBar({ initial }: { initial: ScanProgress }) {
       aria-valuenow={percent}
       aria-valuetext={`${percent}%, ${label}`}
       data-scan-bar=""
-      className={`scan-bar flex h-6 items-center justify-center overflow-hidden bg-zinc-950 px-3 font-mono text-xs whitespace-nowrap text-zinc-50 tabular-nums dark:bg-zinc-50 dark:text-zinc-950 ${
+      // From the left on a phone, the label cut at its end: centred, a line wider than the screen
+      // lost both ends ("░░] 71% · checking insurance, taxes, investi", debugger 11-13 at 375).
+      className={`scan-bar flex h-6 items-center justify-start overflow-hidden bg-zinc-950 px-3 font-mono text-xs whitespace-nowrap text-zinc-50 tabular-nums sm:justify-center dark:bg-zinc-50 dark:text-zinc-950 ${
         done ? "scan-bar-out" : ""
       }`}
     >
-      {scanBarText(percent, label)}
+      <span className="min-w-0 truncate">{scanBarText(percent, label)}</span>
     </div>
   );
 }
