@@ -5,6 +5,7 @@ import { adminSession, sessionTokenFrom } from "@/lib/admin-gate";
 import { edgeLimit } from "@/lib/edge-limits";
 import { log } from "@/lib/log";
 import { freshSwitches } from "@/lib/ops-switches";
+import { PAGE_PATH_HEADER } from "@/lib/render-timing";
 import { newNonce, pageCsp } from "@/lib/security-headers";
 import { linkNeedsConfirming } from "@/lib/sign-in-link";
 
@@ -48,6 +49,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   const csp = pageCsp(pathname, newNonce(), process.env.NODE_ENV === "development");
   const headers = new Headers(request.headers);
   headers.set("content-security-policy", csp);
+  headers.set(PAGE_PATH_HEADER, pathname);
   const init = { request: { headers } };
 
   let response = NextResponse.next(init);

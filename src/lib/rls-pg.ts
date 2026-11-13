@@ -8,6 +8,7 @@ import {
   AS_USER_SQL,
   AS_USER_WRITE_SQL,
 } from "@/lib/rls";
+import { connectStarted, roundTripStarted } from "@/lib/render-timing";
 
 // The fast path for a scoped read (src/lib/rls.ts, docs/security/rls.md). Prisma runs it as
 // four statements, each a network round trip to the database: BEGIN, the switch to the person,
@@ -118,19 +119,35 @@ export class RlsClient extends pg.Client {
     return this.next(config as Config) as never;
   }
 
+  // Counted toward the render that asked (src/lib/render-timing.ts).
+  connect(...args: unknown[]): never {
+    const ended = connectStarted();
+    const connect = super.connect as (...a: unknown[]) => Promise<unknown> | void;
+    const [callback] = args;
+    if (typeof callback === "function") {
+      return connect.call(this, (...result: unknown[]) => {
+        ended();
+        (callback as (...r: unknown[]) => void)(...result);
+      }) as never;
+    }
+    return (connect.call(this) as Promise<unknown>).finally(ended) as never;
+  }
+
   private send(config: Config | string): Promise<Result> {
-    return (super.query as (c: Config | string) => Promise<Result>)(config);
+    const ended = roundTripStarted(1);
+    return (super.query as (c: Config | string) => Promise<Result>)(config).finally(ended);
   }
 
   private sendSwitched(to: Switch, begin: boolean, config: Config): Promise<Result> {
-    return new Promise((resolve, reject) => {
+    const ended = roundTripStarted(begin ? 3 : 2);
+    return new Promise<Result>((resolve, reject) => {
       const query = new SwitchedQuery(to, begin, {
         ...config,
         callback: (error: Error | null, result: Result) =>
           error ? reject(error) : resolve(result),
       });
       (super.query as (q: unknown) => unknown)(query);
-    });
+    }).finally(ended);
   }
 
   private next(config: Config): Promise<Result> {
