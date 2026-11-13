@@ -123,6 +123,21 @@ export function verifyWatch(
   const charges = transactions.filter((t) => t.amountCents > 0);
   const from = chargesFrom(transactions);
   const reach = reachOf(coveredThrough, asOf, startedOn);
+  // What the transactions show, its proof in one sentence.
+  const found = (
+    cents: number,
+    yearly: boolean,
+    percent: number,
+    evidence: string[],
+    proofs: string[],
+  ): Verified => ({
+    status: verdict(cents, expectedCents),
+    cents,
+    yearly,
+    percent,
+    evidence,
+    proof: sentence(proofs),
+  });
 
   if (watch.kind === "charge_stops") {
     let cents = 0;
@@ -160,14 +175,13 @@ export function verifyWatch(
       );
     }
     if (cents > 0) {
-      return {
-        status: verdict(cents, expectedCents),
+      return found(
         cents,
-        yearly: true,
-        percent: twice ? VERIFIED_PERCENT.charge_stopped_twice : VERIFIED_PERCENT.charge_stopped,
+        true,
+        twice ? VERIFIED_PERCENT.charge_stopped_twice : VERIFIED_PERCENT.charge_stopped,
         evidence,
-        proof: `${proofs.join("; ")}.`.replace(/^./, (c) => c.toUpperCase()),
-      };
+        proofs,
+      );
     }
     if (pending && !over) return { status: "waiting" };
     if (still.length > 0 || over) {
@@ -202,14 +216,7 @@ export function verifyWatch(
       } else full.push(...after);
     }
     if (cents > 0) {
-      return {
-        status: verdict(cents, expectedCents),
-        cents,
-        yearly: true,
-        percent: VERIFIED_PERCENT.bill_dropped,
-        evidence,
-        proof: `${proofs.join("; ")}.`.replace(/^./, (c) => c.toUpperCase()),
-      };
+      return found(cents, true, VERIFIED_PERCENT.bill_dropped, evidence, proofs);
     }
     // Two bills at the full price since, or the time is up: it didn't come down.
     if (full.length >= 2 || over) {
@@ -245,14 +252,7 @@ export function verifyWatch(
       proofs.push(`${formatCents(-back.amountCents)} came back on ${dayLabel(back.date)}`);
     }
     if (cents > 0) {
-      return {
-        status: verdict(cents, expectedCents),
-        cents,
-        yearly: false,
-        percent: VERIFIED_PERCENT.refund_seen,
-        evidence,
-        proof: `${proofs.join("; ")}.`.replace(/^./, (c) => c.toUpperCase()),
-      };
+      return found(cents, false, VERIFIED_PERCENT.refund_seen, evidence, proofs);
     }
     return over
       ? { status: "not_seen", evidence: [], proof: "No refund came back." }
