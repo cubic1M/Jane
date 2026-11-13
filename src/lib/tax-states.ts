@@ -35,7 +35,7 @@ export type ResidencyView = {
   movingEvent: string | null;
 };
 
-export function parseMoves(value: unknown): Move[] {
+function parseMoves(value: unknown): Move[] {
   if (!Array.isArray(value)) return [];
   return value.filter(
     (m): m is Move =>

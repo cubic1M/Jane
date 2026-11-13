@@ -74,7 +74,7 @@ function toNegotiation(
 // The renewal price a policy is going to, and the key that stops it being negotiated twice:
 // from a renewal notice waiting for the person's confirm (spec step 151), or from a higher
 // charge from the insurer. Null when there's no rise worth a call.
-export async function renewalRise(
+async function renewalRise(
   userId: string,
   policy: Policy,
   { client = defaultClient, now = new Date() }: Options = {},

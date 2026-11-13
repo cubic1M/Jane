@@ -6,7 +6,7 @@
 export const COLUMN_IMAGE = "/landing/column.webp";
 
 // Light to dark: paper is a space, the darkest ink the densest glyph.
-export const RAMP = " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
+const RAMP = " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
 // Lighter than this is paper.
 export const PAPER = 0.94;
 

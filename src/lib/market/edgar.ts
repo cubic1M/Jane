@@ -7,7 +7,7 @@ import { MarketDataNotConfigured } from "./types";
 // A stub for Stage B: the URL and the parsing of a submissions response are tested against a
 // recorded response.
 
-export const EDGAR_DATA_URL = "https://data.sec.gov";
+const EDGAR_DATA_URL = "https://data.sec.gov";
 export const submissionsUrl = (cik: string) =>
   `${EDGAR_DATA_URL}/submissions/CIK${cik.padStart(10, "0")}.json`;
 

@@ -19,7 +19,7 @@ import { normalizeDescription } from "@/data-sources/merchant";
 const CARD_PAYMENT = "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT";
 const USER = "user";
 export const MISREAD_MIN_ROWS = 2;
-export const MISREAD_MIN_SHARE = 0.5;
+const MISREAD_MIN_SHARE = 0.5;
 
 export type StoredRow = {
   id: string;

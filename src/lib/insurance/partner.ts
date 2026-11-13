@@ -76,7 +76,7 @@ export type PartnerQuote = {
   demo: boolean;
 };
 
-export type Binding = {
+type Binding = {
   // The new policy's number at the carrier.
   policyNumber: string;
   carrier: QuoteCarrier;
@@ -87,9 +87,9 @@ export type Binding = {
   documents: { title: string; text: string }[];
 };
 
-export type PaymentStatus = "paid" | "pending" | "failed";
+type PaymentStatus = "paid" | "pending" | "failed";
 
-export type Cancellation = {
+type Cancellation = {
   status: "cancelled";
   // YYYY-MM-DD: the last day of cover.
   effectiveDate: string;
@@ -189,7 +189,7 @@ export interface InsurancePartner {
   ): Promise<{ status: CarrierClaimStatus; payoutCents: number | null }>;
 }
 
-export type Negotiation = {
+type Negotiation = {
   outcome: "lowered" | "kept";
   annualPremiumCents: number;
   // What was said, line by line.
@@ -198,7 +198,7 @@ export type Negotiation = {
   offer: string | null;
 };
 
-export type Endorsement = {
+type Endorsement = {
   premiumCents: number | null;
   // YYYY-MM-DD.
   effectiveDate: string;

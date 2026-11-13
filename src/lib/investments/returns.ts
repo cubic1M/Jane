@@ -26,7 +26,7 @@ import { isoDay as iso } from "@/lib/dates";
 // from what's held today at the market-data partner's prices (demo bank only, until a real
 // provider is connected). Money paid in counts as money in, not as a gain. Facts only.
 
-export type PeriodReturn = {
+type PeriodReturn = {
   key: ReturnPeriodKey | string;
   label: string;
   from: string;

@@ -9,7 +9,7 @@ import { HIDDEN_TAX_ITEMS, TAXES_ANCHORS } from "./taxes";
 // wherever a link is shown (the chat, the cards) or a suggestion is stored. Sub-pages are
 // left as they are: each is still reached from its node.
 
-export const AREA_ROOTS = ["/insurance", "/loans", "/taxes", "/investments", "/ahead"] as const;
+const AREA_ROOTS = ["/insurance", "/loans", "/taxes", "/investments", "/ahead"] as const;
 export type AreaRoot = (typeof AREA_ROOTS)[number];
 export const isAreaRoot = (path: string): path is AreaRoot =>
   (AREA_ROOTS as readonly string[]).includes(path);
@@ -42,7 +42,7 @@ const TAXES_TOPIC_NODE: Readonly<Record<string, string>> = {
 
 export type Suggested = { key: string; topic: string };
 
-export function topicNode(root: AreaRoot, s: Suggested): string | null {
+function topicNode(root: AreaRoot, s: Suggested): string | null {
   switch (root) {
     case "/loans":
       return loansTopicNode(s.topic);

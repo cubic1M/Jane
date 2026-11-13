@@ -31,12 +31,11 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export class HouseholdFactsError extends Error {}
 
-export const isHousing = (v: unknown): v is Housing =>
-  typeof v === "string" && Object.hasOwn(HOUSING, v);
+const isHousing = (v: unknown): v is Housing => typeof v === "string" && Object.hasOwn(HOUSING, v);
 
 // One fact and where it came from: typed by the person, read from their accounts, or not
 // known.
-export type Fact<T> = { value: T | null; from: "you" | "accounts" | null };
+type Fact<T> = { value: T | null; from: "you" | "accounts" | null };
 
 export type Household = {
   housing: Fact<Housing>;
@@ -51,7 +50,7 @@ export type Household = {
   risks?: RiskKind[];
 };
 
-export type Signals = {
+type Signals = {
   // A paycheck in the last INCOME_LOOKBACK_DAYS.
   paycheck: boolean;
   // Military pay in the same days: TRICARE comes with it.

@@ -44,7 +44,7 @@ import { systemDb } from "@/lib/system-db";
 
 type Options = { client?: PrismaClient; now?: Date };
 
-export type SourceOptions = { client: PrismaClient; now: Date };
+type SourceOptions = { client: PrismaClient; now: Date };
 
 // One place deadlines come from. Each gets the person's id and returns their deadlines.
 export type DeadlineSource = (userId: string, options: SourceOptions) => Promise<Deadline[]>;
@@ -81,7 +81,7 @@ export const transactionDeadlines: DeadlineSource = async (userId, options) =>
   transactionDeadlinesFrom(await loadDetectionInput(userId, options))(userId, options);
 
 // Card and loan due dates the bank reports (spec step 65).
-export const loanDeadlines: DeadlineSource = async (userId, { client, now }) => {
+const loanDeadlines: DeadlineSource = async (userId, { client, now }) => {
   const db = scopedFor(userId, client);
   const [accounts, copies] = await Promise.all([
     db.accounts.findMany({
@@ -98,7 +98,7 @@ export const loanDeadlines: DeadlineSource = async (userId, { client, now }) => 
 };
 
 // The ones the person typed in.
-export const handEnteredDeadlines: DeadlineSource = async (userId, { client }) =>
+const handEnteredDeadlines: DeadlineSource = async (userId, { client }) =>
   enteredDeadlines(
     await scopedFor(userId, client).deadlines.findMany({
       where: { doneAt: null },
@@ -114,7 +114,7 @@ export const documentDeadlines: DeadlineSource = async (userId, { client }) =>
 // Insurance renewals from the profile (spec step 99), confirmed or found from payments
 // (an estimate until confirmed). A policy read from a document has its date from the
 // document already.
-export const insuranceDeadlines: DeadlineSource = async (userId, { client, now }) => {
+const insuranceDeadlines: DeadlineSource = async (userId, { client, now }) => {
   const asOf = isoDate(now);
   const until = addDays(asOf, DEADLINE_HORIZON_DAYS);
   const policies = await listPolicies(userId, { client });
@@ -315,8 +315,8 @@ export async function remindAllDeadlines({
 
 // --- Hand-entered deadlines ----------------------------------------------------------
 
-export const ENTERED_KINDS = ["fsa", "card_benefit", "warranty", "other"] as const;
-export type EnteredKind = (typeof ENTERED_KINDS)[number];
+const ENTERED_KINDS = ["fsa", "card_benefit", "warranty", "other"] as const;
+type EnteredKind = (typeof ENTERED_KINDS)[number];
 
 export class DeadlineError extends Error {}
 

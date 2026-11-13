@@ -11,7 +11,7 @@ import { systemDb } from "@/lib/system-db";
 // person's rows, never secrets (Plaid access tokens and sync cursors, the two-factor
 // secret, session tokens), and not the team's private notes about actions.
 
-export const EXPORT_FORMAT_VERSION = 1;
+const EXPORT_FORMAT_VERSION = 1;
 
 export async function exportUserData(
   userId: string,

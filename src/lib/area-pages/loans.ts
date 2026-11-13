@@ -61,7 +61,7 @@ const TOPIC_BRANCH: Record<string, LoansBranch> = {
 };
 
 // The page an item that is only a way to a page opens.
-export const ITEM_PAGE: Readonly<Record<string, string>> = {
+const ITEM_PAGE: Readonly<Record<string, string>> = {
   "credit:goal": "/loans/goal",
   "borrow:power": "/loans/borrow",
   "borrow:home": "/loans/home",

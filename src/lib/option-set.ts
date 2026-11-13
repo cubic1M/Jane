@@ -87,7 +87,7 @@ function detailsOf(card: OptionCard, o: CardOption): CardDetails {
 }
 
 // The pick first, then by price (cheapest first); options of the same price keep their order.
-export function orderedOptions(card: OptionCard): CardOption[] {
+function orderedOptions(card: OptionCard): CardOption[] {
   return card.options
     .map((o, i) => ({ o, i }))
     .sort(

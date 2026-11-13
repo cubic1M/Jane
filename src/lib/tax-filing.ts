@@ -19,7 +19,7 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export class FilingError extends Error {}
 
-export type ReturnStatus = "ready_for_review" | "submitted" | "accepted" | "rejected";
+type ReturnStatus = "ready_for_review" | "submitted" | "accepted" | "rejected";
 
 export type ReturnView = {
   id: string;

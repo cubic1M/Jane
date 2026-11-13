@@ -15,7 +15,7 @@ import type { Investments } from "@/lib/investments/holdings";
 // For tests: the demo bank's investments as loadInvestments would return them, built with
 // the same normalizers and summary as a real sync, without a database.
 
-export const DEMO_FIXTURE_SEED = { seed: "fixture", anchor: "2026-10-18" };
+const DEMO_FIXTURE_SEED = { seed: "fixture", anchor: "2026-10-18" };
 
 export function demoInvestments(asOf = "2026-10-19"): Investments {
   const accounts = demoAccounts(DEMO_FIXTURE_SEED)

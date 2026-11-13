@@ -53,7 +53,7 @@ const actionIdOf = (payload: JobPayload) => {
   return payload.actionId;
 };
 
-export const HANDLERS: Required<Handlers> = {
+const HANDLERS: Required<Handlers> = {
   explain_findings: ({ userId }) => explainFindings(userId),
   agent_step: (payload) => agentStep(payload.userId, actionIdOf(payload)),
   agent_simulated_reply: (payload) =>

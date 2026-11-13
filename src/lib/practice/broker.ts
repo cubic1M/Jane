@@ -15,7 +15,7 @@ import { cachedCopy } from "@/lib/read-cache";
 
 type Options = { client?: PrismaClient; now?: Date };
 
-export type Order = {
+type Order = {
   ticker: string;
   side: "buy" | "sell";
   amountCents: number;
@@ -70,7 +70,7 @@ async function loadLedgerFrom(userId: string, client: PrismaClient) {
   return { portfolio, state };
 }
 
-export class PaperBroker implements Broker {
+class PaperBroker implements Broker {
   readonly name = "paper";
   readonly simulated = true;
 

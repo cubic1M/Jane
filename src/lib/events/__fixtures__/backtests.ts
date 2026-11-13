@@ -39,7 +39,7 @@ export const CRYPTO_EVIDENCE_BASE = 1;
 // Every day's closes the backtests read: the funds, plus bitcoin and ether under the 24-hour
 // agent's names.
 let bars: Record<string, Bar[]> | null = null;
-export function backtestBars(): Record<string, Bar[]> {
+function backtestBars(): Record<string, Bar[]> {
   if (bars) return bars;
   const crypto = realCryptoBars();
   bars = { ...realFixtureBars(), "BTC/USD": crypto.BTC ?? [], "ETH/USD": crypto.ETH ?? [] };

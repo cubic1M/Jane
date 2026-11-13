@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 // then the stand-in records the request and moves nothing: the change takes effect when
 // the person's employer makes it. Pay never changes without the person's tap.
 
-export const PAYROLL_STAND_IN = "stand-in";
+const PAYROLL_STAND_IN = "stand-in";
 
 export interface PayrollPartner {
   readonly name: string;
@@ -20,9 +20,9 @@ export interface PayrollPartner {
   requestAllocationChange(allocation: AllocationChange): Promise<{ partnerRef: string }>;
 }
 
-export type AllocationChange = { ticker: string; share: number }[];
+type AllocationChange = { ticker: string; share: number }[];
 
-export const standInPayroll: PayrollPartner = {
+const standInPayroll: PayrollPartner = {
   name: PAYROLL_STAND_IN,
   simulated: true,
   async requestContributionChange() {

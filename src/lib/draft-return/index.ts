@@ -89,7 +89,7 @@ function toView(row: {
 
 // What Jane knows for a tax year: its estimate, the forms it collected (only usable ones), and
 // the tags for tuition and childcare.
-export async function knownFor(
+async function knownFor(
   userId: string,
   year: number,
   { client = defaultClient, now = new Date() }: Options = {},
@@ -262,7 +262,7 @@ export async function listDraftReturns(
   return rows.map(toView);
 }
 
-export async function getDraftReturn(
+async function getDraftReturn(
   userId: string,
   id: string,
   { client = defaultClient }: Options = {},

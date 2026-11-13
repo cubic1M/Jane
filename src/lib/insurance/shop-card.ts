@@ -12,13 +12,12 @@ import type { Shop } from "./shop";
 // through acceptShop). The topic names the shop: "switch:<shop id>". Shops exist only in demo
 // advice mode, so the pick and the label always show. Pure.
 
-export const SWITCH_TOPIC = "switch:";
+const SWITCH_TOPIC = "switch:";
 export const shopIdOf = (topic: string) =>
   topic.startsWith(SWITCH_TOPIC) ? topic.slice(SWITCH_TOPIC.length) : null;
 
 // What switching to a quote saves a year (negative: it costs more).
-export const savingOf = (shop: Shop, q: StoredQuote) =>
-  shop.currentAnnualCents - q.annualPremiumCents;
+const savingOf = (shop: Shop, q: StoredQuote) => shop.currentAnnualCents - q.annualPremiumCents;
 
 function optionOf(shop: Shop, q: StoredQuote, isPick: boolean): CardOption {
   const saving = savingOf(shop, q);

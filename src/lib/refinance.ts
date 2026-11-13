@@ -41,7 +41,7 @@ export type TransferQuote = { debtKey: string; amountCents: number; offers: Tran
 // keeping their emergency cushion (one rule for cards, car and student loans alike).
 // pickLender: the lender of the fit engine's pick over the debt's own months, or null when it
 // picked none (keep what you have, or the above); the offers page names the same.
-export type FitVerdict = {
+type FitVerdict = {
   turnedDown: string | null;
   cashPayoffCents: number | null;
   pickLender?: string | null;

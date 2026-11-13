@@ -13,4 +13,4 @@ export async function documentPartnerFor(
   return (await adviceMode(userId, { client })) ? demoDocumentPartner : null;
 }
 
-export type { FetchedForm, TaxDocumentPartner } from "./types";
+export type { TaxDocumentPartner } from "./types";

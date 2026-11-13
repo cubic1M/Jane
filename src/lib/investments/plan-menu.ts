@@ -1,4 +1,4 @@
-import { DEMO_PLAN_NAME, MENU_MIN_SAVING_CENTS, MENU_SUBTYPES } from "@/config/plan-menu";
+import { DEMO_PLAN_NAME, MENU_SUBTYPES } from "@/config/plan-menu";
 import { FUND_FACTS, DEMO_EMPLOYER_PLAN_MENU } from "@/config/funds";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
@@ -57,7 +57,7 @@ export function sampleDisclosure(): string {
   ].join("\n");
 }
 
-export type MenuView = {
+type MenuView = {
   id: string;
   planName: string;
   status: string;
@@ -235,5 +235,3 @@ export async function requestPlanChange(
   await track(userId, "plan_change_requested", {});
   return { savingCents: view.plan.savingCents, funds: allocation.length };
 }
-
-export { MENU_MIN_SAVING_CENTS };

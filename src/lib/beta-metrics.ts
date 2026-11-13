@@ -56,7 +56,7 @@ const VERIFIED_OUTCOMES = ["confirmed", "partial"];
 
 // The founders' own accounts that aren't admins (a personal email with their own bank data),
 // comma-separated in FOUNDER_EMAILS.
-export function isFounderEmail(email: string): boolean {
+function isFounderEmail(email: string): boolean {
   return (process.env.FOUNDER_EMAILS ?? "")
     .split(",")
     .map((e) => e.trim().toLowerCase())

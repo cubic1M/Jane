@@ -72,5 +72,3 @@ export function findingOfType(type: Candidate["type"]): Candidate {
   if (!finding) throw new Error(`no ${type} in the sample`);
   return finding;
 }
-
-export { CARD };

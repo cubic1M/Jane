@@ -26,7 +26,7 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export class CreditFixError extends Error {}
 
-export type SentLetter = {
+type SentLetter = {
   id: string;
   kind: string;
   itemName: string;
@@ -38,7 +38,7 @@ export type SentLetter = {
   outcome: string | null;
 };
 
-export type ReportFix = {
+type ReportFix = {
   item: ReportItem;
   // Gone from the report because a dispute removed or corrected it.
   fixed: boolean;
@@ -180,7 +180,7 @@ export async function sendReportLetter(
 
 // The stand-in's answer: an error is always corrected; a collection is removed for most
 // validation requests and bureau disputes, and verified (kept) otherwise.
-export function standInAnswer(
+function standInAnswer(
   requestId: string,
   kind: string,
   itemKind: string,

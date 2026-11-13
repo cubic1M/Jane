@@ -23,14 +23,14 @@ export const KIND_PREFERENCES: Record<OptionCardKind, readonly Preference[]> = {
   loan: ["lowest_total", "lowest_monthly", "fastest_payoff"],
 };
 
-export const TAGS = {
+const TAGS = {
   cheapest: "CHEAPEST",
   best_cover: "BEST COVER",
   lowest_monthly: "LOWEST MONTHLY",
   lowest_total: "LOWEST TOTAL",
   fastest_payoff: "FASTEST PAYOFF",
 } as const satisfies Record<Preference, string>;
-export type Tag = (typeof TAGS)[Preference];
+type Tag = (typeof TAGS)[Preference];
 
 export type ComparedOption = {
   id: string;

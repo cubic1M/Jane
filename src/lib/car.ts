@@ -9,7 +9,6 @@ import {
   CAR_MAINTENANCE_YEARLY_SHARE,
   CAR_REFERENCE_VALUE_CENTS,
   CAR_REGISTRATION_YEARLY_SHARE,
-  CAR_TERMS_MONTHS,
 } from "@/config/car";
 import { BORROW_ROUND_CENTS, BORROW_STEP_DOWN, BORROW_STEP_TRIES } from "@/config/borrowing-power";
 import { loadDetectionInput } from "@/detection/engine";
@@ -250,5 +249,3 @@ export async function loadCar(
     ],
   };
 }
-
-export { CAR_TERMS_MONTHS };

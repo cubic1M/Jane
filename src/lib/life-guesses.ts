@@ -1,5 +1,5 @@
 import { BUDGET_SUGGESTION_MONTHS, BUDGET_SUGGESTION_ROUNDING_CENTS } from "@/config/budgets";
-import { LIFE_EVENTS, isLifeEventKind, type LifeEventKind } from "@/config/life-events";
+import { LIFE_EVENTS, type LifeEventKind } from "@/config/life-events";
 import { LIFE_AUTOMATION } from "@/config/life-signals";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { loadDetectionInput } from "@/detection/engine";
@@ -24,8 +24,7 @@ import { centsToInput } from "@/lib/money";
 
 type Options = { client?: PrismaClient; now?: Date };
 
-export const LIFE_ANSWERS = ["yes", "not_me", "never"] as const;
-export type LifeAnswer = (typeof LIFE_ANSWERS)[number];
+export type LifeAnswer = "yes" | "not_me" | "never";
 
 // "Don't ask again" covers every kind.
 const ALL = "all";
@@ -113,4 +112,4 @@ export async function runLifeChecklist(
   return { eventId, budgets, reminders };
 }
 
-export { LifeEventError, isLifeEventKind };
+export { LifeEventError };

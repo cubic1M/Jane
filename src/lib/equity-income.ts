@@ -30,7 +30,7 @@ type Options = { client?: PrismaClient; now?: Date; source?: CryptoSource | null
 // How far back the exchange's trades are read to build lots.
 const HISTORY_YEARS = 5;
 
-export type CryptoHoldingTax = {
+type CryptoHoldingTax = {
   asset: string;
   connection: string;
   quantity: number;
@@ -63,7 +63,7 @@ export type EquityIncome = {
   amtPreferenceCents: number;
 };
 
-export const toEvent = (r: {
+const toEvent = (r: {
   kind: string;
   company: string;
   shares: number;

@@ -7,7 +7,7 @@ import type { CardPartner } from "@/lib/referrals";
 // is saved word for word with their decision, and its hash makes sure the card they
 // answered is the card we save.
 
-export type CardEvidenceRow = { date: string | null; label: string; amountCents: number | null };
+type CardEvidenceRow = { date: string | null; label: string; amountCents: number | null };
 
 export type DecisionCard = {
   findingId: string;

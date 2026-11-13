@@ -9,7 +9,7 @@ const KEY = "jane:dock-gone";
 // The newest this many are kept, and the newest SKIP_SENT are sent with a load.
 const MAX = 200;
 export const SKIP_SENT = 50;
-export const GONE_EVENT = "jane:card-gone";
+const GONE_EVENT = "jane:card-gone";
 
 let memory: string[] = [];
 

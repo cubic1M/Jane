@@ -6,7 +6,7 @@ import type { AuditEvent } from "@/lib/audit";
 
 export const TEAM = "Our concierge team";
 export const AGENT = "Jane's agent";
-export type Who = typeof TEAM | typeof AGENT;
+type Who = typeof TEAM | typeof AGENT;
 
 // Why an event isn't on the page:
 // - own: the person's own doing (signing in, deciding, uploading, exporting…), or an

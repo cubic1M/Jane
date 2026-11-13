@@ -76,7 +76,7 @@ export const DEMO_POLICY = {
 // Days from the first sync to the demo policy's renewal.
 // Inside the auto reshop window (30 days, RESHOP_DAYS_BEFORE_RENEWAL_BY_KIND), so the demo's
 // policy is shopped at once, and well before the last week.
-export const DEMO_RENEWAL_DAYS = 25;
+const DEMO_RENEWAL_DAYS = 25;
 
 export async function ensureDemoPolicies(
   userId: string,

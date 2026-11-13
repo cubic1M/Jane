@@ -28,7 +28,7 @@ export type PlansBranch = keyof typeof PLANS_BRANCHES;
 export const itemId = (branch: PlansBranch, key: string) => `${branch}:${key}`;
 
 // The page an item that is only a way to a page opens.
-export const ITEM_PAGE: Readonly<Record<string, string>> = {
+const ITEM_PAGE: Readonly<Record<string, string>> = {
   "life:open": "/life-events",
   "life:start": "/life-events",
   "back:monthly": "/monthly",

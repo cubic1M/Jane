@@ -22,11 +22,11 @@ import { plural } from "@/lib/plural";
 // from the pages that already show them, shaped for the charts. Pure, and no new math: it only
 // picks, orders, labels and scales what it is given.
 
-export type Health = "good" | "look" | "act";
+type Health = "good" | "look" | "act";
 
 // --- Input: what ./load.ts gathers ---
 
-export type SafeInput = {
+type SafeInput = {
   payday: string | null;
   balanceCents: number;
   billsCents: number;
@@ -154,7 +154,7 @@ export type PlanHero = {
   goal: { name: string; percent: number } | null;
 };
 
-export type NetWorthHero = {
+type NetWorthHero = {
   cents: number;
   // The 12 months' values, oldest first (months with no balances left out).
   points: { month: string; cents: number }[];

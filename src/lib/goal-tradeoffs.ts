@@ -37,7 +37,7 @@ export type TradeoffView = Tradeoffs & {
 };
 
 // The person's pick, from their remembered facts.
-export function goalOrderOf(prefs: readonly Preference[]): string[] | null {
+function goalOrderOf(prefs: readonly Preference[]): string[] | null {
   const fact = prefs.find((p) => p.kind === "fact" && p.key === GOAL_ORDER_FACT);
   return parseGoalOrder(fact?.value.order);
 }

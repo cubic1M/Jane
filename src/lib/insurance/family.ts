@@ -132,7 +132,7 @@ export async function loadFamily(
 }
 
 // Who else lives with the person, for matching cover to them. Replaces the list.
-export async function savePeople(
+async function savePeople(
   userId: string,
   people: Person[],
   { client = defaultClient }: Options = {},

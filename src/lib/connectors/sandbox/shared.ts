@@ -10,7 +10,7 @@ export const SIMULATED = "Simulated: nothing real was sent.";
 
 // Spinwheel deletes a payment request only within about 15 minutes of making it, and Dwolla cancels
 // only while pending (connector-plan.md): the sandbox keeps the shorter of the two.
-export const SANDBOX_CANCEL_MINUTES = 15;
+const SANDBOX_CANCEL_MINUTES = 15;
 
 export const text = (details: ActionDetails, key: string): string => {
   const value = details[key];

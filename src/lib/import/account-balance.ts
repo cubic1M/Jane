@@ -10,7 +10,7 @@ import { enqueueJob } from "@/lib/jobs";
 // leaving the debt out silently (CSV bench: card debt missing for most upload-only people).
 // Skipping stays allowed.
 
-export { balanceQuestion, type BalanceAsk } from "./balance-question";
+export { type BalanceAsk } from "./balance-question";
 import type { BalanceAsk } from "./balance-question";
 
 // Uploaded accounts still without a balance.

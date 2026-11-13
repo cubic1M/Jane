@@ -22,7 +22,7 @@ type Answers = {
   };
 };
 
-export const SAMPLE_TAX_ANSWERS: Readonly<Record<PersonId, Answers>> = {
+const SAMPLE_TAX_ANSWERS: Readonly<Record<PersonId, Answers>> = {
   renter: { filingStatus: "single", childrenUnder17: 0, otherDependants: 0 },
   // Two kids in childcare; the spouse is paid $2,480 twice a month by Springfield Schools.
   family: {

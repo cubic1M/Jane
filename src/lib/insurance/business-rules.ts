@@ -65,7 +65,7 @@ export const doesServiceWork = (s: SelfEmployment) =>
 export const needsGeneralLiability = (s: SelfEmployment) =>
   doesServiceWork(s) || s.salesCents >= BUSINESS_MIN_INCOME_CENTS || s.declared;
 // Driving for the business: for pay, logged miles, or a shop owner's driving to suppliers.
-export const drivesForWork = (s: SelfEmployment) =>
+const drivesForWork = (s: SelfEmployment) =>
   s.gigCents > 0 ||
   s.miles >= BUSINESS_MILES_MIN ||
   (s.salesCents >= BUSINESS_MIN_INCOME_CENTS &&

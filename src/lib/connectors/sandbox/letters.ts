@@ -106,9 +106,7 @@ async function senderName(userId: string, client: PrismaClient): Promise<string>
 
 // The company's own documented mailing address for a cancellation by letter (src/config/
 // cancel-methods.ts: "mail: written notice to <merchant>, <address> (...)").
-export function documentedLetterAddress(
-  company: string,
-): { merchant: string; address: string } | null {
+function documentedLetterAddress(company: string): { merchant: string; address: string } | null {
   const method = knownMerchant(company);
   if (!method || method.channel !== "letter") return null;
   for (const step of method.steps) {

@@ -62,7 +62,7 @@ export type BooksView = {
 // Merges a duplicate account into the one kept, after both sides are proven to match. The
 // copy's transactions the kept one lacks (older ones) move across; matched ones are dropped;
 // then the copy goes. Refuses an account that carries anything else (a loan's terms, holdings).
-export async function mergeDuplicate(
+async function mergeDuplicate(
   userId: string,
   keepId: string,
   duplicateId: string,

@@ -41,7 +41,7 @@ export const CALL_OUTCOMES: readonly CallOutcome[] = [
   "no_answer",
 ];
 
-export type OfferTerms = { monthlyCents: number; contractMonths: number; feeCents: number };
+type OfferTerms = { monthlyCents: number; contractMonths: number; feeCents: number };
 
 export type CallResult = {
   outcome: CallOutcome;

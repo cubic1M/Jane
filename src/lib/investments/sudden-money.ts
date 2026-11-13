@@ -66,7 +66,7 @@ export type SuddenView = {
 export type SuddenMoneyView = { advice: boolean; demo: boolean; items: SuddenView[] };
 
 // New large non-pay deposits become a question, once each.
-export async function findSuddenDeposits(userId: string, client: PrismaClient, now: Date) {
+async function findSuddenDeposits(userId: string, client: PrismaClient, now: Date) {
   const db = scopedFor(userId, client);
   const rows = await db.transactions.findMany({
     where: {

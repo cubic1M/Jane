@@ -30,7 +30,7 @@ export type ReturnPackage = {
 
 export type ReturnPreview = { federalRefundCents: number; stateRefundCents: number | null };
 
-export type PartnerStatus = "submitted" | "accepted" | "rejected";
+type PartnerStatus = "submitted" | "accepted" | "rejected";
 
 export interface FilingPartner {
   readonly name: string;

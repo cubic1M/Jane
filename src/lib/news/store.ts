@@ -52,7 +52,7 @@ export const NEWS_WATCHLIST: readonly string[] = [
   ...new Set([...PRACTICE_TICKERS, ...Object.keys(WATCH_CIKS)]),
 ];
 
-export function newsCapCents(env: Record<string, string | undefined> = process.env): number {
+function newsCapCents(env: Record<string, string | undefined> = process.env): number {
   const set = Number(env.NEWS_MONTHLY_CAP_CENTS);
   return Number.isFinite(set) && set > 0 ? set : NEWS_MONTHLY_CAP_CENTS_DEFAULT;
 }
@@ -75,7 +75,7 @@ export function worstCaseHundredths(model: string, headlines: number): number {
   });
 }
 
-export async function newsSpend({ client = defaultClient, now = new Date() }: Options = {}) {
+async function newsSpend({ client = defaultClient, now = new Date() }: Options = {}) {
   const [month, today] = await Promise.all([
     systemDb(WHY, client).newsSummaryCall.aggregate({
       where: { calledAt: { gte: monthStartUtc(now) } },
@@ -90,7 +90,7 @@ export async function newsSpend({ client = defaultClient, now = new Date() }: Op
 
 // Why a call may not be made now, or null when it may: no key or model, today's calls used, or
 // the call could take the month past the cap.
-export async function callBlocked(
+async function callBlocked(
   headlines: number,
   options: Options = {},
 ): Promise<"off" | "daily_calls" | "monthly_cap" | null> {

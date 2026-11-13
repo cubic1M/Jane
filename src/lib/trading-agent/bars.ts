@@ -46,7 +46,7 @@ async function patiently(
   }
 }
 
-export const isCryptoPair = (ticker: string) => ticker.includes("/");
+const isCryptoPair = (ticker: string) => ticker.includes("/");
 
 export const cryptoIntradayUrl = (
   pair: string,
@@ -59,7 +59,7 @@ export const cryptoIntradayUrl = (
 
 const cents = (x: number) => Math.round(x * 100);
 
-export function parseCryptoBars(json: AlpacaCryptoBars, pair: string): AgentBar[] {
+function parseCryptoBars(json: AlpacaCryptoBars, pair: string): AgentBar[] {
   return (json.bars?.[pair] ?? []).map((b) => ({
     t: new Date(b.t).toISOString(),
     o: cents(b.o),
@@ -151,7 +151,7 @@ export function parseYahooIntraday(json: YahooChart): AgentBar[] {
   return out;
 }
 
-export async function fetchYahooIntraday(
+async function fetchYahooIntraday(
   ticker: string,
   from: string,
   to: string,
@@ -201,7 +201,7 @@ export function sessionBars(bars: readonly AgentBar[], minutes: number): AgentBa
 
 export type BarSource = "alpaca" | "yahoo" | "alpaca-crypto";
 
-export function alpacaKeys(env: Record<string, string | undefined> = process.env) {
+function alpacaKeys(env: Record<string, string | undefined> = process.env) {
   const id = env.ALPACA_API_KEY_ID;
   const secret = env.ALPACA_API_SECRET_KEY;
   return id && secret ? { id, secret } : null;

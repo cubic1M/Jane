@@ -20,7 +20,7 @@ import { systemDb } from "@/lib/system-db";
 
 type Options = { client?: PrismaClient; now?: Date; market?: MarketData };
 
-export type NewsHeadline = {
+type NewsHeadline = {
   ticker: string | null;
   date: string;
   title: string;
@@ -29,7 +29,7 @@ export type NewsHeadline = {
   summary: string;
   summaryBy: "claude" | "rules";
 };
-export type NewsFiling = {
+type NewsFiling = {
   ticker: string;
   date: string;
   form: string;

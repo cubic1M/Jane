@@ -25,7 +25,7 @@ import {
 type Options = { client?: PrismaClient; now?: Date };
 
 // "ZELLE TO DANIEL", "VENMO PAYMENT TO EMILY ROSE": the person the money went to.
-export function giftRecipient(description: string): string | null {
+function giftRecipient(description: string): string | null {
   const m = /\bTO\s+([A-Z][A-Z]*(?: [A-Z][A-Z]*)?)\s*$/.exec(description.toUpperCase().trim());
   return m ? m[1] : null;
 }

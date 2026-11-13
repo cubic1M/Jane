@@ -1,15 +1,11 @@
-import {
-  EQUITY_EVENT_KINDS,
-  EQUITY_SET_ASIDE_MIN_CENTS,
-  type EquityEventKind,
-} from "@/config/equity-tax";
+import { EQUITY_EVENT_KINDS } from "@/config/equity-tax";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { loadEquityIncome, toEvent, type EquityIncome } from "@/lib/equity-income";
+import { loadEquityIncome, type EquityIncome } from "@/lib/equity-income";
 import { addGoal } from "@/lib/goals";
 import { loadTaxDocuments } from "@/lib/tax-documents";
 import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
@@ -60,7 +56,7 @@ export type EquityTaxView = {
   };
 };
 
-export const setAsideGoalName = (year: number) => `Taxes set aside for equity and crypto ${year}`;
+const setAsideGoalName = (year: number) => `Taxes set aside for equity and crypto ${year}`;
 
 export async function loadEquityTax(
   userId: string,
@@ -325,6 +321,3 @@ export async function removeEquityEvent(
   const res = await scopedFor(userId, client).equityEvents.deleteMany({ where: { id } });
   if (res.count === 0) throw new EquityTaxError("That one's already gone.");
 }
-
-export { EQUITY_SET_ASIDE_MIN_CENTS, toEvent };
-export type { EquityEventKind };

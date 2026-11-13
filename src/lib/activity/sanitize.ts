@@ -15,7 +15,7 @@ export type ActivityRow = {
   createdAt: Date;
 };
 
-export type ActivityData = {
+type ActivityData = {
   ms?: number;
   count?: number;
   typed?: boolean;

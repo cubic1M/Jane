@@ -4,7 +4,7 @@ import { strategyBoard, type Board, type BoardInput } from "./strategy-board";
 import { strategyTree } from "./strategy-tree";
 
 // The strategy board's input for a person: their practice portfolio's level and what it runs.
-export async function boardInputOf(userId: string): Promise<Omit<BoardInput, "level">> {
+async function boardInputOf(userId: string): Promise<Omit<BoardInput, "level">> {
   const profile = await practiceProfileOf(userId);
   return {
     yourLevel: profile.level,

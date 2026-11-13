@@ -10,7 +10,7 @@ import { systemDb, systemTransaction } from "@/lib/system-db";
 // person has actually done (never from clicks on the checklist), and each fires a funnel
 // event the first time it's seen done.
 
-export type ChecklistKey = "link_bank" | "review_cards" | "budget_or_goal" | "alerts";
+type ChecklistKey = "link_bank" | "review_cards" | "budget_or_goal" | "alerts";
 
 export type ChecklistItem = {
   key: ChecklistKey;

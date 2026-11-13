@@ -24,7 +24,7 @@ import { openLink } from "../jane-agent/types";
 
 type Options = { client?: PrismaClient; now?: Date };
 
-export const THEME_ALERT_SOURCE = "themes";
+const THEME_ALERT_SOURCE = "themes";
 
 type StoredDetails = {
   figures?: { label: string; value: string }[];

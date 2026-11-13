@@ -41,9 +41,9 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export class TaxCalendarError extends Error {}
 
-export type ItemStatus = "done" | "tap" | "waiting" | "nothing";
+type ItemStatus = "done" | "tap" | "waiting" | "nothing";
 
-export type CalendarItemView = {
+type CalendarItemView = {
   key: CalendarKey;
   title: string;
   status: ItemStatus;
@@ -78,7 +78,7 @@ export type YearEndView = {
   open: number;
 };
 
-export async function loadYearEnd(
+async function loadYearEnd(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<YearEndView | null> {

@@ -231,12 +231,3 @@ export async function savingsLedger(userId: string, options: Options = {}): Prom
     counts,
   };
 }
-
-// The entries whose state moved inside a month (YYYY-MM): what was done, verified, held.
-export function inMonth(
-  entry: LedgerEntry,
-  month: string,
-  field: "actedOn" | "verifiedOn" | "heldOn",
-) {
-  return entry[field]?.slice(0, 7) === month;
-}

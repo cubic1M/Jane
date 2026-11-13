@@ -14,7 +14,7 @@ type Cached = { source: string; from: string; to: string; bars: AgentBar[] };
 const fileOf = (dir: string, source: string, ticker: string, interval: AgentInterval) =>
   join(dir, `${source}-${ticker.replace(/[^A-Za-z0-9]/g, "-")}-${interval}.json`);
 
-export function readCached(
+function readCached(
   dir: string,
   source: string,
   ticker: string,

@@ -23,7 +23,7 @@ const WHY = "A link's token is the key: nobody is signed in";
 // works once, for a week, for that person and those items, and can then take them back
 // for a short while.
 
-export const PLAN_LINK_DAYS = 7;
+const PLAN_LINK_DAYS = 7;
 const LINK_UNDO_HOURS = AGENT_HOLD_HOURS.link ?? 1;
 
 type Options = { client?: PrismaClient; now?: Date };
@@ -112,7 +112,7 @@ export class LinkError extends Error {}
 
 // Approves each item as its own decision from this source, checked against the card as it
 // was; an item that changed or was answered meanwhile is skipped.
-export async function approveItems(
+async function approveItems(
   userId: string,
   items: LinkItem[],
   source: "link",
@@ -138,7 +138,7 @@ export async function approveItems(
 
 // Takes back what a link approved, while the work hasn't started and within
 // its hold (AGENT_HOLD_HOURS). Returns how many were taken back.
-export async function takeBackApprovals(
+async function takeBackApprovals(
   userId: string,
   decisionIds: string[],
   source: "link",

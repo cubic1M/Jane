@@ -56,7 +56,7 @@ export type Candidate = {
   hasLadder: boolean;
 };
 
-export type LadderView = {
+type LadderView = {
   id: string;
   name: string;
   amountCents: number;

@@ -24,7 +24,7 @@ export const hasKit = (actionType: ActionType) => Boolean(DIY_KITS[actionType]);
 // never "We ...". For showing only: the card's hash, and what's saved with a decision, stay
 // the card as built.
 // A fee finding that is only a card's annual fee gets ANNUAL_FEE_KIT.
-export function annualFeeOnly(descriptions: readonly string[]): boolean {
+function annualFeeOnly(descriptions: readonly string[]): boolean {
   return descriptions.length > 0 && descriptions.every((d) => ANNUAL_FEE_WORDS.test(d));
 }
 

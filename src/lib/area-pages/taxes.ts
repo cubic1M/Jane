@@ -30,7 +30,7 @@ export type TaxesBranch = keyof typeof TAXES_BRANCHES;
 
 export const itemId = (branch: TaxesBranch, key: string) => `${branch}:${key}`;
 
-export const PLAN_LABELS: Record<PlanMoveKey, string> = {
+const PLAN_LABELS: Record<PlanMoveKey, string> = {
   workplace_retirement: "Add to your 401(k)",
   ira: "Put money in an IRA",
   hsa: "Fill your HSA",
@@ -45,7 +45,7 @@ export const PLAN_LABELS: Record<PlanMoveKey, string> = {
   file: "File your return",
 };
 
-export const SAVING_LABELS: Record<SavingKey, string> = {
+const SAVING_LABELS: Record<SavingKey, string> = {
   retirement: "Save more for retirement",
   ira: "Put money in an IRA",
   hsa: "Fill your HSA",

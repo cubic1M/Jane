@@ -53,7 +53,7 @@ type Body = {
 };
 
 // When a pending disconnect happens: Plaid's own time, or PENDING_DISCONNECT_DAYS from now without one.
-export function reconnectDeadline(body: Body, now: Date): Date {
+function reconnectDeadline(body: Body, now: Date): Date {
   const given = body.disconnect_time ?? body.consent_expiration_time;
   const at = typeof given === "string" ? new Date(given) : null;
   return at && !Number.isNaN(at.getTime())

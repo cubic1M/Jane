@@ -115,7 +115,7 @@ const viewOf = (row: {
 });
 
 // Makes sure each past employer has a row, asked about once.
-export async function syncPastEmployers(userId: string, { client = defaultClient }: Options = {}) {
+async function syncPastEmployers(userId: string, { client = defaultClient }: Options = {}) {
   const db = scopedFor(userId, client);
   for (const employer of await payrollHistory(userId, client)) {
     const have = await db.oldPlans.count({ where: { employer } });

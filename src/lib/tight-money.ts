@@ -40,7 +40,7 @@ type Options = { client?: PrismaClient; now?: Date; input?: DetectionInput; book
 
 export class TightMoneyError extends Error {}
 
-export type SentRequest = {
+type SentRequest = {
   id: string;
   itemId: string;
   kind: string;
@@ -205,7 +205,7 @@ export async function sendTightItem(
 }
 
 // The lender stand-in's answer: the same each time for a request, mostly yes.
-export function standInAnswer(requestId: string, kind: string): { granted: boolean; text: string } {
+function standInAnswer(requestId: string, kind: string): { granted: boolean; text: string } {
   const n = rollOf(requestId);
   const granted = n < DEMO_GRANT_TENTHS;
   const text = granted

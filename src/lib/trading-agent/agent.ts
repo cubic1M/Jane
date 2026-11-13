@@ -51,7 +51,7 @@ type Stored = { state: AgentState; hold: { ticker: string; units: number } | nul
 const BAR_MS = (interval: AgentInterval) => AGENT_INTERVALS[interval].minutes * 60_000;
 
 // The replay's row for a strategy at a market and interval, if it was run.
-export function evidenceFor(
+function evidenceFor(
   market: AgentMarketId,
   interval: AgentInterval,
   key: string,
@@ -382,7 +382,7 @@ export function agentIsStale(
 }
 
 // The paper account's own trades (its start, the daily rule's, news ideas) and the switch to cash.
-export const NOT_AGENT = ["start", "rule", "news", "agent_start"] as const;
+const NOT_AGENT = ["start", "rule", "news", "agent_start"] as const;
 
 export type AgentView = {
   policy: string;

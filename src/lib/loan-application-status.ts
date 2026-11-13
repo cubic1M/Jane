@@ -7,7 +7,7 @@ import type { Applicant } from "@/lib/lenders/partner";
 
 export type ApplicationStatus =
   "draft" | "approved" | "declined" | "accepted" | "funded" | "paid_off" | "withdrawn";
-export type LoanApplicationRow = Prisma.LoanApplicationGetPayload<{
+type LoanApplicationRow = Prisma.LoanApplicationGetPayload<{
   select: {
     id: true;
     debtKey: true;

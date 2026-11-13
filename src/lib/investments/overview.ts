@@ -1,5 +1,4 @@
 import type { PrismaClient } from "@/generated/prisma/client";
-import type { PortfolioReview } from "@/insights/portfolio-review";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import type { Investments } from "./holdings";
@@ -29,5 +28,3 @@ export async function loadMonthFacts(
     contributedCents: rows.reduce((s, r) => s - r.amountCents, 0),
   };
 }
-
-export type { PortfolioReview };

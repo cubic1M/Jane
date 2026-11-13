@@ -29,7 +29,7 @@ export type CardProduct = {
   demo: boolean;
 };
 
-export type CardApplicant = { name: string; email: string };
+type CardApplicant = { name: string; email: string };
 
 export type CreditCardPartner = {
   name: string;

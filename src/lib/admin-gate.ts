@@ -4,7 +4,7 @@ import { db as defaultClient } from "@/lib/db";
 import { systemDb } from "@/lib/system-db";
 
 // Auth.js's database-session cookie: the __Secure- name on HTTPS, the plain one locally.
-export const SESSION_COOKIES = ["__Secure-authjs.session-token", "authjs.session-token"];
+const SESSION_COOKIES = ["__Secure-authjs.session-token", "authjs.session-token"];
 
 export type AdminSessionState = "verified" | "needs_mfa" | "none";
 

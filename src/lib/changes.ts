@@ -24,7 +24,7 @@ type Options = { client?: PrismaClient; now?: Date };
 // The detection input, when the caller already loaded it (Jane's snapshot shares one).
 type LoadOptions = Options & { input?: DetectionInput };
 
-export type ChangeFinding = {
+type ChangeFinding = {
   id: string;
   type: FindingType;
   status: FindingStatus;

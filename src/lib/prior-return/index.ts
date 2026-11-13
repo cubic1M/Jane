@@ -155,7 +155,7 @@ export async function listPriorReturns(
   return rows.map(toView);
 }
 
-export async function getPriorReturn(
+async function getPriorReturn(
   userId: string,
   id: string,
   { client = defaultClient }: Options = {},

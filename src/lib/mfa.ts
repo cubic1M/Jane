@@ -45,7 +45,7 @@ export async function enrollment(
   return { enrolled: false, secret, uri: otpauthUri(email, secret) };
 }
 
-export type VerifyResult = "ok" | "wrong_code" | "too_many_attempts" | "not_enrolled";
+type VerifyResult = "ok" | "wrong_code" | "too_many_attempts" | "not_enrolled";
 
 // The first code turns two-factor on and makes backup codes, shown once.
 export type VerifyOutcome = { result: VerifyResult; backupCodes?: string[] };

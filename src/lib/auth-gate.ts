@@ -1,7 +1,7 @@
 import { cookies, headers } from "next/headers";
 import { sessionTokenFrom } from "@/lib/admin-gate";
 import { recordFailedSignIn } from "@/lib/auth-events";
-import { isAdminEmail, mayCreateAccount, normalizeCode, redeemInvite } from "@/lib/invites";
+import { mayCreateAccount, normalizeCode, redeemInvite } from "@/lib/invites";
 import { hit, ipKey } from "@/lib/rate-limit";
 import { emailOfSession } from "@/lib/user-sessions";
 
@@ -73,5 +73,3 @@ export async function allowSignIn({
   if (asked?.verificationRequest) return CHECK_EMAIL_PATH;
   return "/signup?error=InviteRequired";
 }
-
-export { isAdminEmail };

@@ -17,7 +17,7 @@ import {
 
 // Docked beside the page, a slim rail, or over the whole window.
 export type PanelState = "open" | "rail" | "full";
-export const PANEL_STATES: readonly PanelState[] = ["open", "rail", "full"];
+const PANEL_STATES: readonly PanelState[] = ["open", "rail", "full"];
 export const DEFAULT_PANEL: PanelState = "open";
 
 // The bottom sheet on a phone.
@@ -28,7 +28,7 @@ export const EMBED_PATH = "/chat?embed=1";
 // The chat has no page of its own (the founder: "I don't want an individual chat"): a visit to
 // /chat opens Home with the side chat open (?chat=open), keeping what the chat was asked to
 // show (?pages=, and a #message the browser keeps through the redirect).
-export const CHAT_OPEN = "chat";
+const CHAT_OPEN = "chat";
 
 export function chatRedirect(params: Record<string, string | string[] | undefined>): string {
   const kept = new URLSearchParams({ [CHAT_OPEN]: "open" });

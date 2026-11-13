@@ -18,8 +18,8 @@ import { practiceProfileOf } from "./preferences";
 
 type Options = { client?: PrismaClient; now?: Date };
 
-export type IdeaWaiting = PracticeIdea & { suggestionKey: string };
-export type PracticeStrategyNow = { label: string; key: string; followed: boolean; note: string };
+type IdeaWaiting = PracticeIdea & { suggestionKey: string };
+type PracticeStrategyNow = { label: string; key: string; followed: boolean; note: string };
 export type PracticeIdeasView = {
   ideas: IdeaWaiting[];
   learned: Learned[];

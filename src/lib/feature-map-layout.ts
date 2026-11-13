@@ -9,7 +9,7 @@ export type TreeShape = { key: string; branches: { id: string; features: { id: s
 // view. Pure, so it is tested; src/components/feature-tree.tsx draws it.
 
 export type Box = { x: number; y: number; w: number; h: number };
-export type PlacedNode = Box & { id: string; level: 1 | 2 | 3 };
+type PlacedNode = Box & { id: string; level: 1 | 2 | 3 };
 export type Edge = { id: string; from: { x: number; y: number }; to: { x: number; y: number } };
 
 export type MapLayout = {

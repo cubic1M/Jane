@@ -7,7 +7,7 @@ import { scrubPath } from "@/lib/scrub";
 
 type AdminRequest = { method: string; pathname: string; headers: Headers };
 
-export function adminAccessEvent({ method, headers }: AdminRequest) {
+function adminAccessEvent({ method, headers }: AdminRequest) {
   if (method === "POST" && headers.has("next-action")) return "admin_action" as const;
   if (method !== "GET" || headers.has("next-router-prefetch")) return null;
   return "admin_page_viewed" as const;

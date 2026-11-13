@@ -31,7 +31,7 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export class FamilyCreditError extends Error {}
 
-export type CardView = {
+type CardView = {
   accountId: string;
   name: string;
   balanceCents: number;
@@ -39,7 +39,7 @@ export type CardView = {
   au: AuView;
 };
 
-export type FamilyEntry = {
+type FamilyEntry = {
   id: string;
   kind: FamilyKind;
   person: string;

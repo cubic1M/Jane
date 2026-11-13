@@ -629,7 +629,7 @@ async function saveInvestmentTransactions(
 
 // Simulated orders the person placed through the stand-in brokerage (spec step 133), for
 // the demo bank to replay into its holdings.
-export async function demoOrders(db: ScopedDb): Promise<DemoOrder[]> {
+async function demoOrders(db: ScopedDb): Promise<DemoOrder[]> {
   const orders = await db.brokerageOrders.findMany({
     where: { partner: SIMULATED_PARTNER, status: "filled" },
     select: {

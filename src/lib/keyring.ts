@@ -11,7 +11,7 @@
 // that need it, so one typo can't stop every bank sync.
 
 export const LEGACY_KEY_ID = "legacy";
-export const KEY_BYTES = 32;
+const KEY_BYTES = 32;
 
 const KEY_ID = /^[A-Za-z0-9_-]{1,32}$/;
 

@@ -3,8 +3,7 @@
 // real partner (a bureau or licensed score provider) implements the same interface, and
 // nothing is pulled for a real account until one is connected.
 
-export type CreditFactorKey =
-  "payment_history" | "utilisation" | "credit_age" | "inquiries" | "mix";
+type CreditFactorKey = "payment_history" | "utilisation" | "credit_age" | "inquiries" | "mix";
 
 export type CreditFactor = {
   key: CreditFactorKey;

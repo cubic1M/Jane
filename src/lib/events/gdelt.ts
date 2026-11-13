@@ -104,10 +104,10 @@ export type CoverageAt = { at: string; count: number; total: number };
 // A window to the minute ("20261026T071500Z"): GDELT answers a window of a few days in 15-minute
 // buckets.
 const stampAt = (iso: string) => iso.slice(0, 19).replaceAll(/[-:T]/g, "");
-export const gdeltUrlAt = (query: string, fromIso: string, toIso: string) =>
+const gdeltUrlAt = (query: string, fromIso: string, toIso: string) =>
   `${GDELT_DOC_URL}?query=${encodeURIComponent(query)}&mode=timelinevolraw&format=json&startdatetime=${stampAt(fromIso)}&enddatetime=${stampAt(toIso)}`;
 
-export function parseTimelineAt(json: Timeline): CoverageAt[] {
+function parseTimelineAt(json: Timeline): CoverageAt[] {
   const data = json.timeline?.[0]?.data ?? [];
   return data.flatMap((d) => {
     const m = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/.exec(d.date);

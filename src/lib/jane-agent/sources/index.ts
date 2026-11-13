@@ -93,4 +93,4 @@ export const MESSAGE_SOURCES: readonly MessageSource[] = [
   investmentsSource,
 ];
 
-export type { MessageSource, SourceContext, Trigger } from "./source";
+export type { MessageSource, Trigger } from "./source";

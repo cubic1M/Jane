@@ -3,10 +3,10 @@
 // FUNDS). Jane asks what is in each today, since an upload shows the money going in and not what
 // it grew to. Pure.
 
-export type InvestingApp = { name: string; words: readonly string[] };
+type InvestingApp = { name: string; words: readonly string[] };
 
 // The names are the ones people use; the words are what bank statements print.
-export const INVESTING_APPS: readonly InvestingApp[] = [
+const INVESTING_APPS: readonly InvestingApp[] = [
   { name: "Robinhood", words: ["ROBINHOOD"] },
   { name: "Fidelity", words: ["FIDELITY", "FID BKG SVC"] },
   { name: "Vanguard", words: ["VANGUARD"] },

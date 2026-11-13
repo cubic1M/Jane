@@ -15,8 +15,8 @@ import { scopedFor } from "@/lib/db-scoped";
 
 type Options = { client?: PrismaClient; now?: Date; input?: DetectionInput };
 
-export const RENT_CATEGORY = "RENT_AND_UTILITIES_RENT";
-export const NOT_RENT_CATEGORY = "TRANSFER_OUT_ACCOUNT_TRANSFER";
+const RENT_CATEGORY = "RENT_AND_UTILITIES_RENT";
+const NOT_RENT_CATEGORY = "TRANSFER_OUT_ACCOUNT_TRANSFER";
 
 // The payees and payers the person has answered for (their own rules).
 async function answeredKeys(userId: string, client: PrismaClient): Promise<Set<string>> {
@@ -53,8 +53,8 @@ export async function answerRentQuestion(
 // "Is it rent you collect?" (debugger 11-01): money in by Zelle or Venmo from one person near each
 // month's start, filed as a transfer. A yes files it as rental income (the tax estimate's Schedule
 // E source), past and future; a no keeps it a transfer (a roommate's share of the person's rent).
-export const RENTAL_INCOME_CATEGORY = "INCOME_RENTAL";
-export const NOT_RENTAL_CATEGORY = "TRANSFER_IN_ACCOUNT_TRANSFER";
+const RENTAL_INCOME_CATEGORY = "INCOME_RENTAL";
+const NOT_RENTAL_CATEGORY = "TRANSFER_IN_ACCOUNT_TRANSFER";
 
 export async function loadRentInQuestion(
   userId: string,

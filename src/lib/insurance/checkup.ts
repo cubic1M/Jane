@@ -29,7 +29,7 @@ import { yearlyPremium, type Policy } from "./policies";
 // fixed rules as the stand-in quotes (DEMO_PRICING), and the risk it changes. Pure. It's
 // advice: shown in demo advice mode only (spec step 98).
 
-export type CheckupKey =
+type CheckupKey =
   // Spec step 201: cover for what they earn on the side.
   | "business_liability"
   | "professional_liability"

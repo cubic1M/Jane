@@ -43,7 +43,7 @@ export type SteadyView = {
 };
 
 // Uneven income: contracting or gig deposits in the last year, or the person said so.
-export async function hasUnevenIncome(
+async function hasUnevenIncome(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<boolean> {

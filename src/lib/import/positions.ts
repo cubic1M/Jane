@@ -16,11 +16,10 @@ import type { ScopedDb } from "@/lib/db-scoped";
 // page, net worth and the investing checks read like a linked brokerage's. Files are read in
 // memory and never stored. A newer download of the same account replaces what it holds.
 
-// The form field for an account's type: one per account across the files.
-export const accountKey = (layout: string, ref: string) => `${layout}:${ref}`;
-export const subtypeField = (key: string) => `subtype.${key}`;
+// An account's key, one per account across the files (its type's form field is "subtype.<key>").
+const accountKey = (layout: string, ref: string) => `${layout}:${ref}`;
 
-export type PositionsAccountPreview = {
+type PositionsAccountPreview = {
   key: string;
   name: string;
   subtype: string;
@@ -98,7 +97,7 @@ export type PositionsImportResult =
 
 // A security's own id for uploads: its ticker, or its name when the file gives none, so the
 // same fund in two accounts or two downloads is one security. Never a Plaid id.
-export function fileSecurityRef(p: Pick<ParsedPosition, "ticker" | "name" | "isCash">): string {
+function fileSecurityRef(p: Pick<ParsedPosition, "ticker" | "name" | "isCash">): string {
   if (p.ticker) return `file:${p.ticker}`;
   if (p.isCash) return "file:cash";
   return `file:name:${p.name.toLowerCase().replace(/\s+/g, " ").trim()}`;

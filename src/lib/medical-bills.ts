@@ -35,7 +35,7 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export class MedicalBillError extends Error {}
 
-export type MedicalSent = {
+type MedicalSent = {
   id: string;
   kind: string;
   provider: string;
@@ -47,7 +47,7 @@ export type MedicalSent = {
   savedCents: number;
 };
 
-export type MedicalBill = MedicalBillInput & {
+type MedicalBill = MedicalBillInput & {
   source: "payment" | "typed";
   items: (MedicalItem & { sent: MedicalSent | null })[];
 };
@@ -223,7 +223,7 @@ export async function sendMedicalItem(
 }
 
 // The provider stand-in's answer: the same each time for a request.
-export function standInAnswer(
+function standInAnswer(
   requestId: string,
   kind: string,
   amountCents: number,

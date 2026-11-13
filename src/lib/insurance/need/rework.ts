@@ -8,7 +8,7 @@ import type { Need } from "./types";
 
 export type OpenedGap = { need: Need; event: string; because: string };
 
-export const isOpen = (n: Need) => (n.direction ? n.direction !== "ok" : n.gapCents > 0);
+const isOpen = (n: Need) => (n.direction ? n.direction !== "ok" : n.gapCents > 0);
 
 export function openedGaps(needs: readonly Need[], events: readonly string[]): OpenedGap[] {
   const out: OpenedGap[] = [];

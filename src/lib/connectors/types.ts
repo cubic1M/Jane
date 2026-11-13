@@ -38,7 +38,7 @@ export type ActContext = {
   withSecret: <T>(use: (secret: string) => Promise<T>) => Promise<T>;
 };
 
-export type ActResult = {
+type ActResult = {
   // The partner's id for what it did, for its webhooks and a cancel.
   externalRef: string;
   // done: finished. pending: the partner will say how it went (a webhook). handed_off: the last step

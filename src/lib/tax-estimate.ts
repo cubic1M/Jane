@@ -779,7 +779,7 @@ export function parseTaxPayments(value: unknown): EnteredTaxPayment[] {
   );
 }
 
-export function enteredTaxPayments(value: unknown, year: number) {
+function enteredTaxPayments(value: unknown, year: number) {
   const inYear = parseTaxPayments(value).filter(
     (p) => p.date >= `${year}-02-01` && p.date <= `${year + 1}-01-31`,
   );

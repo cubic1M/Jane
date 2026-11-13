@@ -32,7 +32,7 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export class RentingError extends Error {}
 
-export type DepositRow = {
+type DepositRow = {
   id: string;
   amountCents: number;
   state: string;

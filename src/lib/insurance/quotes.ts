@@ -91,7 +91,7 @@ const QUOTE_SELECT = {
 
 type QuoteRow = Prisma.InsuranceQuoteGetPayload<{ select: typeof QUOTE_SELECT }>;
 
-export function toStoredQuote(r: QuoteRow): StoredQuote {
+function toStoredQuote(r: QuoteRow): StoredQuote {
   const kind = isPolicyKind(r.kind) ? r.kind : "other";
   return {
     id: r.id,

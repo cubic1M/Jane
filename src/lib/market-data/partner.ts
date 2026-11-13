@@ -10,7 +10,7 @@ import { demoAnchorFor } from "@/lib/plaid/demo";
 // (src/data-sources/demo/demo-prices.ts), for demo-bank people only. Real accounts get their
 // prices from the bank on each sync, and no history until a provider is connected.
 
-export type PricePoint = { day: string; priceCents: number };
+type PricePoint = { day: string; priceCents: number };
 
 export interface MarketDataPartner {
   readonly name: string;
@@ -22,7 +22,7 @@ export interface MarketDataPartner {
   history(ticker: string, from: string, to: string): PricePoint[];
 }
 
-export function demoMarketData(anchor: string): MarketDataPartner {
+function demoMarketData(anchor: string): MarketDataPartner {
   const carries = (ticker: string) => Object.hasOwn(DEMO_PRICES, ticker.toUpperCase());
   const priceCents = (ticker: string, day: string) =>
     carries(ticker) ? Math.round(demoPriceOn(ticker.toUpperCase(), day, anchor) * 100) : null;

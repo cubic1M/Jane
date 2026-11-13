@@ -58,8 +58,6 @@ import { meteredClaude } from "@/lib/claude-budget";
 import { systemDb } from "@/lib/system-db";
 import { holderName } from "@/lib/holder-name";
 
-export { holderName };
-
 const WHY = "The agent's cron and reply links: finds actions across people, nobody is signed in";
 
 // The action agent (spec step 51). An approved action of a type in AGENT_ACTION_TYPES is
@@ -82,7 +80,7 @@ export const isAgentAction = (type: ActionType) => AGENT_ACTION_TYPES.includes(t
 
 // The start of the hand-off reason when a company has no support email, so the actions can
 // be picked up again once the team adds one.
-export const NO_SUPPORT_EMAIL = "No support email in the merchant directory for";
+const NO_SUPPORT_EMAIL = "No support email in the merchant directory for";
 
 // Called when an action is approved: hands it to the agent and queues its first step.
 // Returns the job, so a request can run it straight away.

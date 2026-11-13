@@ -59,8 +59,7 @@ const levelSure = (level: Confidence | undefined) => {
 const fact = (title: string) => title.replace(/\.$/, "");
 
 // The things that changed this week: the alerts and the changes Jane noticed.
-export const changedCount = (p: DigestPayload) =>
-  (p.alerts?.length ?? 0) + (p.changes?.length ?? 0);
+const changedCount = (p: DigestPayload) => (p.alerts?.length ?? 0) + (p.changes?.length ?? 0);
 
 export function checkupLine(c: DigestCheckup): string {
   const parts = [
