@@ -45,11 +45,10 @@ import { eventLabel, listClaims } from "@/lib/insurance/claims";
 import { formatCents } from "@/lib/money";
 import { chatToday } from "@/lib/today";
 import { loadInsuranceSnapshot } from "./snapshot";
+import { noInput } from "@/lib/ask/tools";
 
 // Claude's tools for insurance questions in Jane's chat (spec Phase X): read-only, over
 // the person's own profile, with every dollar figure recorded for the guardrails.
-
-const noInput = { type: "object" as const, properties: {}, additionalProperties: false };
 
 // The covers insurance_needs can price options for (src/lib/insurance/need/types.ts).
 const NEED_KINDS: readonly Need["kind"][] = [

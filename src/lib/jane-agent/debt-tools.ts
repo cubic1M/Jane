@@ -60,12 +60,11 @@ import type { ScoredOffer } from "@/planning/refinance";
 import { monthAfter } from "@/planning/payoff";
 import { formatRate } from "@/lib/percent";
 import { initialsOf } from "@/lib/person-payees";
+import { noInput } from "@/lib/ask/tools";
 
 // Claude's tools about debts in Jane's chat (spec Phase Y): read-only, over the same debt
 // book as the loans page (src/lib/debts.ts). Every dollar figure goes through `money`, so
 // the guardrails know it came from a tool (./claude-tools.ts).
-
-const noInput = { type: "object" as const, properties: {}, additionalProperties: false };
 
 const REFINANCE_TOOL: Anthropic.Tool = {
   name: "refinance_offers",

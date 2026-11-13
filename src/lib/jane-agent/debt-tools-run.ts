@@ -1,7 +1,6 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { ToolOutput } from "@/lib/ask/tools";
 import { loadDebts } from "@/lib/debts";
-import { formatCents } from "@/lib/money";
 import { loadPayoff } from "@/lib/debt-plan";
 import { loadTransfers } from "@/lib/balance-transfers";
 import { loadStudentLoans } from "@/lib/student-loans";
@@ -79,6 +78,7 @@ import {
   familyCreditToolOutput,
   loanFitToolOutput,
 } from "./debt-tools";
+import { toolAnswer } from "@/lib/ask/tools";
 
 // Runs Claude's debt tools (./debt-tools.ts) for one person: read-only but for a first check (see
 // checkFirst), scoped to them, every dollar figure recorded for the guardrails, like
@@ -124,12 +124,7 @@ export async function runDebtTool(
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<ToolOutput> {
   await checkFirst(userId, name, { client, now });
-  const cents: number[] = [];
-  const money = (value: number) => {
-    cents.push(Math.abs(value));
-    return value < 0 ? `-${formatCents(-value)}` : formatCents(value);
-  };
-  const out = (value: unknown): ToolOutput => ({ content: JSON.stringify(value), cents });
+  const { cents, money, out } = toolAnswer();
   switch (name) {
     case "debts":
       return out(debtsToolOutput(await loadDebts(userId, { client, now }), money));

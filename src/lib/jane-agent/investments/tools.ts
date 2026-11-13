@@ -45,7 +45,6 @@ import { loadRetirement } from "@/lib/investments/retirement";
 import { loadReview } from "@/lib/investments/review";
 import { profileOf } from "@/lib/investments/profile";
 import { profileSummary } from "@/planning/investor-profile";
-import { formatCents } from "@/lib/money";
 import { INTRADAY_AGENT_EVIDENCE } from "@/config/intraday-agent-evidence";
 import { AGENT_INTERVALS, AGENT_MARKETS } from "@/config/trading-agent";
 import { loadAgentView } from "@/lib/trading-agent/agent";
@@ -87,12 +86,11 @@ import { PRACTICE_ONLY_NOTE, RULE_LABELS } from "./practice-copy";
 import { formatRate } from "@/lib/percent";
 import { scopedFor } from "@/lib/db-scoped";
 import { chatToday } from "@/lib/today";
+import { toolAnswer, noInput } from "@/lib/ask/tools";
 
 // Claude's tools for investment questions in Jane's chat (spec step 128 on): read-only,
 // scoped to the person, and every dollar figure recorded for the guardrails. Each later
 // investment step adds its tools here; ../claude-tools.ts lists and runs them.
-
-const noInput = { type: "object" as const, properties: {}, additionalProperties: false };
 
 export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
   {
@@ -381,12 +379,7 @@ export async function runInvestmentTool(
   input: unknown,
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<ToolOutput> {
-  const cents: number[] = [];
-  const money = (value: number) => {
-    cents.push(Math.abs(value));
-    return value < 0 ? `-${formatCents(-value)}` : formatCents(value);
-  };
-  const out = (value: unknown): ToolOutput => ({ content: JSON.stringify(value), cents });
+  const { money, out } = toolAnswer();
 
   switch (name) {
     case "holdings": {
