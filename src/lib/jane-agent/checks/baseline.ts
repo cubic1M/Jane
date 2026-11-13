@@ -9,7 +9,7 @@ import { QUESTIONS, sectorOfQuestion } from "./bank";
 // fallback. This is the baseline Claude-first (step 191) is measured against, by sector and
 // by page. A follow-up (after another question) is skipped: it needs the conversation.
 
-export type Understood = {
+type Understood = {
   id: string;
   text: string;
   sector: string;

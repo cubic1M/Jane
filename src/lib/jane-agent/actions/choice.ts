@@ -13,9 +13,9 @@ import { systemDb } from "@/lib/system-db";
 // them from previousActions), and one Revert, which puts back what the choice changed: the level
 // and standing rules from before, or the queued pick, while the team hasn't started on it.
 
-export const REVERT: MessageAction = { id: "choice.revert", label: "Revert", kind: "secondary" };
+const REVERT: MessageAction = { id: "choice.revert", label: "Revert", kind: "secondary" };
 // Done on the chosen card: it stops floating and settles into the chat's history.
-export const DONE: MessageAction = { id: "choice.done", label: "Done", kind: "secondary" };
+const DONE: MessageAction = { id: "choice.done", label: "Done", kind: "secondary" };
 
 const links = (actions: MessageAction[]) => actions.filter((a) => a.kind === "link");
 

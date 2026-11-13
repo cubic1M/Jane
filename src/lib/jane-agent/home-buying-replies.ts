@@ -9,14 +9,14 @@ import { formatRate } from "@/lib/percent";
 // Jane's answers about buying a home (spec step 179), from src/lib/home-buying.ts. Pure.
 // Demo advice, labelled; every assumption is on the page.
 
-export const HOME_PAGE: MessageAction = {
+const HOME_PAGE: MessageAction = {
   id: "open",
   label: "Plan a home purchase",
   kind: "link",
   href: "/loans/home",
 };
 
-export const goalButton = (cents: number): MessageAction => ({
+const goalButton = (cents: number): MessageAction => ({
   id: "home.goal",
   label: `Start a ${formatCents(cents)} down payment goal`,
   kind: "primary",

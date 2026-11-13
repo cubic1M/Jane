@@ -187,7 +187,7 @@ export async function closeAnsweredElsewhere(
 
 // The suggestion keys whose suggestion has settled (gone, yes, no): any status but waiting or
 // selected. A key with no suggestion row isn't settled; its message settles some other way.
-export async function settledSuggestionKeys(
+async function settledSuggestionKeys(
   db: ReturnType<typeof scopedFor>,
   keys: readonly string[],
 ): Promise<Set<string>> {

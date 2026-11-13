@@ -7,7 +7,7 @@ import type { MessageAction, MessageRefs } from "./types";
 // confirmed, each thing its check found as a card with its dollars, and the answer to "check my
 // return before I file". Jane never files.
 
-export const DRAFT_HREF = "/taxes/draft";
+const DRAFT_HREF = "/taxes/draft";
 
 type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 

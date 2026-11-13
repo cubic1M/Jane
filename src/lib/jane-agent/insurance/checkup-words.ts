@@ -5,7 +5,7 @@ import type { Checkup } from "@/lib/insurance/checkups";
 
 // Recommendations said in the chat; the rest are on the checkup page. As many as fit in the
 // chars too, so a long one (a business's liability, spec step 201) doesn't make the answer long.
-export const CHECKUP_SHOWN = 3;
+const CHECKUP_SHOWN = 3;
 export const CHECKUP_MAX_CHARS = 650;
 
 const WHY = {

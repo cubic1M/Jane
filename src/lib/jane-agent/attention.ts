@@ -30,7 +30,7 @@ export type AttentionMessage = {
   notifiedVia: string | null;
 };
 
-export type StoppedKind = {
+type StoppedKind = {
   source: string;
   label: string;
   // How many in a row went without a yes, and the day of the newest.
@@ -58,7 +58,7 @@ const primaryLabels = (actions: unknown) =>
     .map((a) => a.label);
 
 // Said yes: answered with one of the message's primary buttons.
-export const actedOn = (m: AttentionMessage) =>
+const actedOn = (m: AttentionMessage) =>
   m.status === "answered" &&
   m.answeredWith !== null &&
   primaryLabels(m.actions).includes(m.answeredWith);

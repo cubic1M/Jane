@@ -5,7 +5,7 @@ import type { ActionId, MessageAction, MessageRefs } from "../types";
 // four in turn. Each tap saves the answer and swaps in the next question and its buttons
 // (./../actions/investments.ts); the profile page takes them all at once.
 
-export const PROFILE_LINK: MessageAction = {
+const PROFILE_LINK: MessageAction = {
   id: "open",
   label: "Answer on the profile page",
   kind: "link",
@@ -15,10 +15,10 @@ export const PROFILE_LINK: MessageAction = {
 export const PROFILE_INTRO =
   "Before I check whether your investments fit you, four quick questions about what the money is for. Tap an answer; you can change them any time.";
 
-export const questionLine = (q: ProfileQuestion) =>
+const questionLine = (q: ProfileQuestion) =>
   `${PROFILE_QUESTIONS.indexOf(q) + 1} of ${PROFILE_QUESTIONS.length}: ${q.text}`;
 
-export const answerButtons = (q: ProfileQuestion): MessageAction[] =>
+const answerButtons = (q: ProfileQuestion): MessageAction[] =>
   q.choices.map((c, i) => ({
     id: `invest.answer.${i + 1}` as ActionId,
     label: c.label,

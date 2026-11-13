@@ -8,8 +8,8 @@ import type { FactKey } from "@/profile/facts";
 // trace it). Nothing is said about a fact Jane doesn't hold, nothing about health beyond what it
 // costs, and no figures. Pure.
 
-export type Level = "told" | "sure" | "probably" | "guess";
-export type Claim = { fact: FactKey; text: string; level: Level; percent: number };
+type Level = "told" | "sure" | "probably" | "guess";
+type Claim = { fact: FactKey; text: string; level: Level; percent: number };
 export type WhoAmI = { body: string; claims: Claim[] };
 
 // At or above this a fact is said plainly; from GUESS_BELOW up, as "probably"; below, as a guess.

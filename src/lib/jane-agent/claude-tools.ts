@@ -150,7 +150,7 @@ export const PROPOSABLE: readonly ActionId[] = [
 
 // Shopping a policy for the person: Jane gets the quotes now and, in demo advice, offers the
 // switch with its pick (insurance/quotes.ts). The buttons it returns are the quote reply's.
-export const RESHOP = "insurance.reshop";
+const RESHOP = "insurance.reshop";
 
 // The score and its band, or, when it is low, words instead: "0, Building" would read as a
 // verdict, so under the line Claude is told to say it plainly and kindly.

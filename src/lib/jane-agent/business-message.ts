@@ -8,7 +8,7 @@ import type { MessageAction, MessageRefs } from "./types";
 // save more than it costs at this profit (demo advice), and the answer to "should I be an S
 // corp", "what's my QBI deduction".
 
-export const BUSINESS_HREF = "/taxes/business";
+const BUSINESS_HREF = "/taxes/business";
 
 type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 

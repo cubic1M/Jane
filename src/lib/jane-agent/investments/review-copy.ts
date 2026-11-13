@@ -18,7 +18,7 @@ export const REVIEW_LINK: MessageAction = {
   href: "/investments",
 };
 
-export const reviewBody = (input: Pick<ReviewInput, "year" | "reason">, items: ReviewItem[]) =>
+const reviewBody = (input: Pick<ReviewInput, "year" | "reason">, items: ReviewItem[]) =>
   [
     reviewIntro(input),
     ...items.map(
@@ -37,7 +37,7 @@ const LABELS: Record<string, string> = {
 };
 
 // One button per item that needs a tap, using the action each already has.
-export const reviewButtons = (items: ReviewItem[]): MessageAction[] => {
+const reviewButtons = (items: ReviewItem[]): MessageAction[] => {
   const seen = new Set<string>();
   const out: MessageAction[] = [];
   for (const i of items) {
@@ -53,7 +53,7 @@ export const reviewButtons = (items: ReviewItem[]): MessageAction[] => {
 };
 
 // The review's input from what the investing snapshot already holds.
-export function reviewInput(inv: InvestmentSnapshot, year: number): ReviewInput {
+function reviewInput(inv: InvestmentSnapshot, year: number): ReviewInput {
   const ra = inv.retirementAccounts;
   const iraRoom = ra.limits.find((l) => l.key === "ira")?.roomCents ?? 0;
   const iraTap = ra.ira && ra.iraAllowedCents > 0 && ra.roth.access?.kind !== "backdoor";

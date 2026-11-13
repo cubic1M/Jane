@@ -39,7 +39,7 @@ export function spendingBlock(
 }
 
 // Spending each month, oldest first (as on Insights).
-export function monthsBlock(transactions: InsightTransaction[], asOf: string): AnswerBlock | null {
+function monthsBlock(transactions: InsightTransaction[], asOf: string): AnswerBlock | null {
   const insights = spendingInsights(transactions, { asOf, monthCount: INSIGHT_MONTHS });
   const rows = insights.months
     .slice(-CHAT_BLOCK_ROWS)

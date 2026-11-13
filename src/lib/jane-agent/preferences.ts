@@ -22,10 +22,10 @@ import {
 // kind "style" is how they like Jane to talk and post (spec steps 184 and 188): "posting"
 // (value { posting: "daily" | "as_they_come" }).
 
-export type PreferenceKind = "never" | "fact" | "style";
+type PreferenceKind = "never" | "fact" | "style";
 
 // Plain JSON, so it can sit on a message's refs.
-export type PreferenceValue = { [key: string]: string | number | boolean | number[] };
+type PreferenceValue = { [key: string]: string | number | boolean | number[] };
 
 export type Preference = {
   id: string;
@@ -62,7 +62,7 @@ export async function listPreferences(
 
 // The fact a preference stands for in what Jane knows (src/lib/memory/): a profile correction is
 // that profile fact, "Don't suggest again" is what the person did, the rest is their answer.
-export function factFromPreference(draft: PreferenceDraft): FactDraft {
+function factFromPreference(draft: PreferenceDraft): FactDraft {
   const v = draft.value;
   const pick = (x: unknown): FactValue | undefined =>
     typeof x === "string" || typeof x === "number" || typeof x === "boolean" ? x : undefined;

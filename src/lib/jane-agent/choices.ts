@@ -5,11 +5,7 @@ import type { MessageView } from "./view";
 // the pop-up cards and the tests share it.
 
 // The buttons that are one choice among several: how much Jane does on its own.
-export const CHOICE_ACTIONS: readonly string[] = [
-  "autopilot.safe",
-  "autopilot.all",
-  "autopilot.ask",
-];
+const CHOICE_ACTIONS: readonly string[] = ["autopilot.safe", "autopilot.all", "autopilot.ask"];
 
 export const REVERT_ACTION = "choice.revert";
 export const DONE_ACTION = "choice.done";

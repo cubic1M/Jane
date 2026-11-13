@@ -26,7 +26,7 @@ const SYNONYMS: Readonly<Record<string, readonly string[]>> = {
 };
 
 // The words that matter in what the person typed.
-export function wordsOf(target: string): string[] {
+function wordsOf(target: string): string[] {
   return target
     .toLowerCase()
     .split(/[^a-z0-9+&'-]+/)
@@ -42,7 +42,7 @@ const inName = (word: string, text: string) =>
         .split(/[^a-z0-9+&'-]+/)
         .some((t) => t === word || (word.length >= 4 && t.startsWith(word)));
 
-export function wordMatches(word: string, haystack: string): boolean {
+function wordMatches(word: string, haystack: string): boolean {
   const text = haystack.toLowerCase();
   if (inName(word, text)) return true;
   if (SYNONYMS[word]?.some((s) => text.includes(s))) return true;

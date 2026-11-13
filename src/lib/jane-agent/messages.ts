@@ -284,7 +284,7 @@ export const CHOICE_WORDS: Record<DecisionChoice, string> = {
   diy: "I'll do it myself",
 };
 
-export function answeredWhere(source: DecisionSource): string {
+function answeredWhere(source: DecisionSource): string {
   switch (source) {
     case "card":
       return "You answered this on its page.";
@@ -436,7 +436,7 @@ export async function stackedSuggestions(
 // from the last POPUP_DAYS. The day's suggestions are stackedSuggestions' (the caller leaves
 // them out: a JSON path filter here would drop every message without the field).
 export const POPUP_LIMIT = 12;
-export const POPUP_DAYS = 14;
+const POPUP_DAYS = 14;
 
 export async function openPopupMessages(
   userId: string,
@@ -498,4 +498,4 @@ export async function openPopupMessages(
 }
 
 // Jane's first message this soon after the person typed is its answer to it.
-export const ANSWER_WINDOW_MS = 5 * 60 * 1000;
+const ANSWER_WINDOW_MS = 5 * 60 * 1000;

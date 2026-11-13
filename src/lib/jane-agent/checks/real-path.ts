@@ -18,7 +18,7 @@ import { systemDb } from "@/lib/system-db";
 // or errors on a real person, a question routed away from its tool, a tool's own figure blocked by
 // the guardrails, or an answer that falls back or never starts.
 
-export type RealPathResult = {
+type RealPathResult = {
   id: string;
   text: string;
   ok: boolean;

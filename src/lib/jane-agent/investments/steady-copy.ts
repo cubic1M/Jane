@@ -18,7 +18,7 @@ export const STEADY_LINK: MessageAction = {
   href: "/investments",
 };
 
-export const whatChanged = (drop: Drop) =>
+const whatChanged = (drop: Drop) =>
   `Your investments are down ${formatReturn(drop.rate).replace("−", "")} over ${drop.windowLabel}, not counting money you put in or took out.`;
 
 export function timelines(buckets: Bucket[]): string {
@@ -37,7 +37,7 @@ export function timelines(buckets: Bucket[]): string {
   return parts.filter(Boolean).join(" ");
 }
 
-export const planLine =
+const planLine =
   "The plan stays as it is: automatic investing keeps going on each payday, and each goal keeps its mix. Nothing needs doing today.";
 
 export const steadyMessage = (drop: Drop, buckets: Bucket[]) =>

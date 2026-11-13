@@ -7,7 +7,7 @@ import { formatRate } from "@/lib/percent";
 // Jane's answers about buying a car (spec step 178), from src/lib/car.ts. Pure. Demo advice:
 // every answer carries the label and shows its assumptions on the page.
 
-export const CAR_PAGE: MessageAction = {
+const CAR_PAGE: MessageAction = {
   id: "open",
   label: "Plan a car purchase",
   kind: "link",

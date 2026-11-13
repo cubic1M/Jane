@@ -41,7 +41,7 @@ export const DEPENDANTS_QUESTION: { body: string; actions: MessageAction[] } = {
 export const bestQuote = (application: Pick<LifeApplication, "quotes">, asOf: string) =>
   application.quotes.find((q) => q.expiresAt > asOf) ?? null;
 
-export const chosenQuote = (application: Pick<LifeApplication, "quotes" | "quoteId">) =>
+const chosenQuote = (application: Pick<LifeApplication, "quotes" | "quoteId">) =>
   application.quotes.find((q) => q.partnerQuoteId === application.quoteId) ?? null;
 
 // Pure: the amount and term, the method, and the best price.

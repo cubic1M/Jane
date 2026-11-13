@@ -11,7 +11,7 @@ import type { MessageAction, MessageRefs } from "./types";
 // message with every item that waits for a tap, each with its own button; what Jane did by
 // itself is listed without one.
 
-export const REVIEW_PAGE: MessageAction = {
+const REVIEW_PAGE: MessageAction = {
   id: "open",
   label: "See the review",
   kind: "link",
@@ -20,12 +20,12 @@ export const REVIEW_PAGE: MessageAction = {
 
 const MARK = { done: "Done", tap: "Needs you", ok: "Fine" } as const;
 
-export function itemLine(i: ReviewItem): string {
+function itemLine(i: ReviewItem): string {
   return `- ${i.title} (${MARK[i.status]}): ${i.text}`;
 }
 
 // The button an item's tap becomes, with the refs the button's handler reads.
-export function tapButton(tap: ReviewTap): { action: MessageAction; refs: MessageRefs } {
+function tapButton(tap: ReviewTap): { action: MessageAction; refs: MessageRefs } {
   switch (tap.kind) {
     case "pay":
       return {

@@ -12,7 +12,7 @@ import type { MessageAction } from "./types";
 // save on it, the answer ends with that finding's buttons.
 
 // "a month", "every 3 months": how often, after an amount.
-export const EVERY: Record<Frequency, string> = {
+const EVERY: Record<Frequency, string> = {
   WEEKLY: "a week",
   BIWEEKLY: "every 2 weeks",
   SEMI_MONTHLY: "twice a month",
@@ -30,7 +30,7 @@ const subscriptionsLink: MessageAction = {
 };
 
 // The charges a name could mean ("netflix", "my phone bill", "the gym").
-export function matchCharges(charges: readonly Charge[], target: string): Charge[] {
+function matchCharges(charges: readonly Charge[], target: string): Charge[] {
   return charges.filter((c) => nameMatches(target, c.merchant));
 }
 

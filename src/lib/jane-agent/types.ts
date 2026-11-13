@@ -11,13 +11,13 @@ import type { OfferedOptions } from "@/lib/option-card";
 
 import { DEBT_ACTION_IDS } from "./debt-action-ids";
 
-export const MESSAGE_KINDS = ["brief", "decision", "done", "heads_up", "reply", "user"] as const;
+const MESSAGE_KINDS = ["brief", "decision", "done", "heads_up", "reply", "user"] as const;
 // brief: the morning brief. decision: something to say yes or no to. done: something Jane
 // did. heads_up: something coming or gone wrong. reply: Jane's answer to what the person
 // typed (step 84). user: what the person typed (step 84).
 export type MessageKind = (typeof MESSAGE_KINDS)[number];
 
-export const MESSAGE_STATUSES = ["open", "answered", "dismissed"] as const;
+const MESSAGE_STATUSES = ["open", "answered", "dismissed"] as const;
 export type MessageStatus = (typeof MESSAGE_STATUSES)[number];
 
 // Every button that does something, by id. Each is one handler in

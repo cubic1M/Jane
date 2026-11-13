@@ -10,7 +10,7 @@ import { dayLabel } from "@/lib/day-label";
 // A policy read from a document in Jane's chat (spec step 151): what it read, each field
 // with where it came from, and what the rules left out, for one Confirm tap. Pure.
 
-export const READING_LABELS: Record<string, string> = {
+const READING_LABELS: Record<string, string> = {
   carrier: "Insurer",
   kind: "Kind",
   premium: "Price",
@@ -21,7 +21,7 @@ export const READING_LABELS: Record<string, string> = {
 };
 
 // The kind as said in a sentence: "car", or "" for other.
-export function kindWords(kind: string): string {
+function kindWords(kind: string): string {
   return isPolicyKind(kind) && kind !== "other" ? POLICY_KINDS[kind].toLowerCase() : "";
 }
 

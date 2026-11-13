@@ -118,7 +118,7 @@ export async function lastTopic(
 // The last card Jane put up in this conversation (a reply about a finding), same window and day
 // as lastTopic: what "why?" means when the answer just before it has nothing to explain
 // (answer-check sweep: "cancel Hulu", "what's my net worth", "why?" asked which one).
-export async function lastCardTopic(
+async function lastCardTopic(
   userId: string,
   {
     client = defaultClient,

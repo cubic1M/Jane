@@ -23,7 +23,7 @@ import { systemDb } from "@/lib/system-db";
 // figures); and the questions for those features, plus QA's casual ones, are asked. Without a
 // key this walks the rules and the tools; the live Claude walk is QA's graded run.
 
-export type ProofQuestion = {
+type ProofQuestion = {
   text: string;
   understood: boolean;
   answer: string;
@@ -37,7 +37,7 @@ export type ProofQuestion = {
 const NOTHING_THERE =
   /\bI don't see\b|\bthere's no\b.*\byet\b|\bLink (?:the|an|your) account\b|\bnothing to\b/i;
 
-export type ProofSuggestion = {
+type ProofSuggestion = {
   key: string;
   headline: string;
   confidence: string;

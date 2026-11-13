@@ -13,7 +13,7 @@ export const SUDDEN_LINK: MessageAction = {
   href: "/investments/sudden-money",
 };
 
-export const KIND_ACTIONS: Record<SuddenKind | "transfer", ActionId> = {
+const KIND_ACTIONS: Record<SuddenKind | "transfer", ActionId> = {
   bonus: "sudden.bonus",
   inheritance: "sudden.inheritance",
   home_sale: "sudden.home_sale",

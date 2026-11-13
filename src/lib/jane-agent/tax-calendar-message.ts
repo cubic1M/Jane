@@ -8,7 +8,7 @@ import type { MessageAction, MessageRefs } from "./types";
 // needs the person's tap (over the cap, or they asked Jane to ask first), December's
 // year-end moves in one message, and the answer to "my tax calendar".
 
-export const CALENDAR_HREF = "/taxes/calendar";
+const CALENDAR_HREF = "/taxes/calendar";
 
 type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 

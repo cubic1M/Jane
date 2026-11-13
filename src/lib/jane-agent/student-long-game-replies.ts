@@ -16,7 +16,7 @@ export const STUDENT_PAGE: MessageAction = {
   href: "/loans/student",
 };
 
-export const TAXES_PAGE: MessageAction = {
+const TAXES_PAGE: MessageAction = {
   id: "open",
   label: "Your taxes",
   kind: "link",
@@ -29,7 +29,7 @@ const unavailable: Reply = {
   refs: {},
 };
 
-export function longGameLines(g: LongGame): string[] {
+function longGameLines(g: LongGame): string[] {
   const lines: string[] = [];
   if (!g.pslf) {
     lines.push(

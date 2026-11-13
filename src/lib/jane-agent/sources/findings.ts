@@ -44,8 +44,8 @@ const byPriority = (snapshot: Snapshot) => {
 // One finding as Jane's question about it. Also how it answers about it when asked
 // (spec step 88), whatever else is waiting.
 // Read-only mode: a real account is offered Jane's steps, never its doing it for them.
-export const ASK_TO_HANDLE = "Want me to handle it?";
-export const ASK_FOR_STEPS = "Want the steps to do it yourself?";
+const ASK_TO_HANDLE = "Want me to handle it?";
+const ASK_FOR_STEPS = "Want the steps to do it yourself?";
 
 export function findingCandidate(finding: SnapshotFinding, concierge = true): Candidate {
   const actions: MessageAction[] = [{ id: "finding.yes", label: "Yes", kind: "primary" }];

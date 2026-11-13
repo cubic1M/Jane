@@ -41,7 +41,7 @@ import type { MessageAction, MessageRefs } from "./types";
 // person taps it (practice.prefs_save), which saves through savePreferences and the audit log.
 // Practice money and demo advice only.
 
-export const PRACTICE_SETTINGS_PATH = "/investments/practice/settings";
+const PRACTICE_SETTINGS_PATH = "/investments/practice/settings";
 export const CHANGE_PRACTICE_TOOL = "change_practice_settings";
 
 const LEVEL_LABELS = Object.values(RISK_LEVELS).map((l) => l.label);
@@ -129,7 +129,7 @@ function goalDay(raw: string): string {
 // The tool's input as a change to the preferences, with relative changes ("one lower", "add
 // oil") made absolute from where they stand. Unknown values pass through for applyPatch to
 // refuse.
-export async function patchFromInput(
+async function patchFromInput(
   userId: string,
   input: unknown,
   { client, now }: Options,

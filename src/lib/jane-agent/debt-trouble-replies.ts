@@ -44,7 +44,7 @@ export function headline(data: DebtTrouble): string {
     : `Your debt payments are ${pay} a month, ${pct(data.share)} of your ${formatCents(data.incomeCents)} income, under the ${pct(TROUBLE_PAYMENT_SHARE)} mark where I'd bring this up myself, but the options are here if you want them.`;
 }
 
-export function hardshipLines(data: DebtTrouble): string[] {
+function hardshipLines(data: DebtTrouble): string[] {
   return data.debts
     .slice(0, SHOWN_DEBTS)
     .map(

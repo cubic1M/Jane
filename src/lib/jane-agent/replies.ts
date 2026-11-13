@@ -79,7 +79,7 @@ const utc = (iso: string, options: Intl.DateTimeFormatOptions) =>
 export const monthLabel = (month: string) => utc(`${month}-01`, { month: "long", year: "numeric" });
 const longDate = (iso: string) => utc(iso, { month: "short", day: "numeric", year: "numeric" });
 
-export const EXAMPLES = [
+const EXAMPLES = [
   "can I afford $900 for a trip in March",
   "how much did I spend on food last month",
   "what's due this week",
@@ -131,7 +131,7 @@ const NEARBY: readonly { label: string; words: RegExp; intent: (asOf: string) =>
   },
 ];
 
-export function nearbyChoices(text: string, asOf: string): { label: string; intent: Intent }[] {
+function nearbyChoices(text: string, asOf: string): { label: string; intent: Intent }[] {
   const lower = text.toLowerCase();
   return [...NEARBY]
     .map((n, index) => ({ n, index, hit: n.words.test(lower) ? 0 : 1 }))
@@ -142,7 +142,7 @@ export function nearbyChoices(text: string, asOf: string): { label: string; inte
 
 // What Jane says when it can't answer: always the same words, so the answer checks know
 // it (src/lib/jane-agent/checks), with the closest things it can answer as buttons.
-export const UNKNOWN_TEXT =
+const UNKNOWN_TEXT =
   "I can't answer that one yet. Tap one of these and I'll answer it now, with your numbers.";
 
 // Spec step 91: something the person told Jane, offered to remember. Nothing is saved
@@ -733,7 +733,7 @@ export function findingReply(
 
 // A button's label: short enough for a phone.
 const CHOICE_LABEL_MAX = 40;
-export const choiceLabel = (text: string) =>
+const choiceLabel = (text: string) =>
   text.length <= CHOICE_LABEL_MAX ? text : `${text.slice(0, CHOICE_LABEL_MAX - 1).trimEnd()}…`;
 
 // Spec step 88: when a message could mean more than one thing, a question with a button

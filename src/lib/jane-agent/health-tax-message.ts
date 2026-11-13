@@ -9,7 +9,7 @@ import type { MessageAction, MessageRefs } from "./types";
 // "do I have to pay back my subsidy", "did I put too much in my HSA", "can I deduct medical
 // bills". The rules are facts for everyone; what to do about them is demo advice.
 
-export const HEALTH_HREF = "/taxes/health";
+const HEALTH_HREF = "/taxes/health";
 
 type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 

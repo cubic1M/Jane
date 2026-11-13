@@ -17,7 +17,7 @@ export const GOAL_PAGE: MessageAction = {
 export const ESTIMATE_NOTE =
   "These scores are estimates from the stand-in score's simulator, and nothing changes until you act.";
 
-export const startButton = (): MessageAction => ({
+const startButton = (): MessageAction => ({
   id: "creditgoal.start",
   label: "Start this plan",
   kind: "primary",
@@ -31,7 +31,7 @@ export const doneButton = (): MessageAction => ({
 const monthLine = (m: GoalView["plan"]["months"][number]) =>
   `- ${m.month}: ${m.payCents > 0 ? `pay ${formatCents(m.payCents)}, ` : ""}about ${m.projectedScore}`;
 
-export function planLines(g: GoalView): string[] {
+function planLines(g: GoalView): string[] {
   const p = g.plan;
   const lines = [
     p.reaches

@@ -7,7 +7,7 @@ import type { MessageAction, MessageRefs } from "./types";
 // set aside, with its button (demo advice), and the answer to "my crypto taxes", "ESPP",
 // "AMT", "RSU withholding".
 
-export const EQUITY_HREF = "/taxes/equity";
+const EQUITY_HREF = "/taxes/equity";
 
 type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 

@@ -43,7 +43,7 @@ export function betterLine(b: BetterCard): string {
 }
 
 // Which of the person's cards to use for a kind of spending, and what it earns there.
-export function cardFor(cards: CreditCards, category: RewardCategory) {
+function cardFor(cards: CreditCards, category: RewardCategory) {
   const pick = cards.wallet.picks.find((p) => p.category === category);
   if (!pick) return null;
   const card = cards.cards.find((c) => c.product?.id === pick.cardId)!;
