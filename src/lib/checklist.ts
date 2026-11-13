@@ -80,7 +80,10 @@ export async function firstWeekChecklist(
     },
     {
       key: "review_cards",
-      label: toReview === 1 ? "Decide on your card" : `Decide on ${toReview} of your cards`,
+      // Jane's suggestions, as the dock names them: "your cards" read as credit cards on Home
+      // (debugger 11-13).
+      label:
+        toReview === 1 ? "Answer Jane's suggestion" : `Answer ${toReview} of Jane's suggestions`,
       href: "/report",
       done: decisions >= toReview,
       progress: reviewed > 0 && reviewed < toReview ? `${reviewed} of ${toReview}` : undefined,

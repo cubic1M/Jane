@@ -108,13 +108,13 @@ describe.runIf(url)("first-week checklist against a real database", () => {
     await decide(userId, 1, true);
     const one = await firstWeekChecklist(userId, { client, now: NOW });
     expect(one?.items.find((i) => i.key === "review_cards")).toMatchObject({
-      label: "Decide on your card",
+      label: "Answer Jane's suggestion",
       done: false,
     });
     await decide(userId, 1);
     const two = await firstWeekChecklist(userId, { client, now: NOW });
     expect(two?.items.find((i) => i.key === "review_cards")).toMatchObject({
-      label: "Decide on 2 of your cards",
+      label: "Answer 2 of Jane's suggestions",
       done: false,
       progress: "1 of 2",
     });
