@@ -66,6 +66,41 @@ function fixed(u: Universe, t: number, w: Weights): Weights | null {
   return isMonthEnd(u, t) ? w : null;
 }
 
+// Keller's DAA and BAA: the twelve offensive funds.
+const KELLER_OFFENSE = [
+  "SPY",
+  "IWM",
+  "QQQ",
+  "EFA",
+  "EEM",
+  "VNQ",
+  "DBC",
+  "GLD",
+  "TLT",
+  "HYG",
+  "LQD",
+  "IEF",
+];
+
+// Minimum-variance weights over `picks`, from one covariance: each fund's volatility over the
+// last `volDays` and their correlation over the last `corrDays`.
+function scaledMinVariance(
+  u: Universe,
+  t: number,
+  picks: string[],
+  volDays: number,
+  corrDays: number,
+): number[] {
+  const closes = picks.map((x) => c(u, x));
+  const vol = returnsBefore(closes, t + 1, volDays).map((r) => sd(r));
+  const corr = covariance(returnsBefore(closes, t + 1, corrDays));
+  const s = corr.map((row, i) => Math.sqrt(row[i]));
+  return minVariance(
+    corr.map((row, i) => row.map((v, j) => (v / (s[i] * s[j])) * vol[i] * vol[j])),
+    1,
+  );
+}
+
 // The volatility-scaled, optimizer and clustering rules over a set of funds.
 function optimized(
   u: Universe,
@@ -162,49 +197,22 @@ export function decide(
     }
     case "daa": {
       if (!isMonthEnd(u, t) || !has(u, e.tickers, t, YEAR)) return null;
-      const off = [
-        "SPY",
-        "IWM",
-        "QQQ",
-        "EFA",
-        "EEM",
-        "VNQ",
-        "DBC",
-        "GLD",
-        "TLT",
-        "HYG",
-        "LQD",
-        "IEF",
-      ];
       const m = (x: string) => m13612w(c(u, x), t)!;
       const bad = ["EEM", "BND"].filter((x) => m(x) <= 0).length;
       const cash = top(["SHY", "IEF", "LQD"], 1, m)[0];
       const share = bad === 0 ? 1 : bad === 1 ? 0.5 : 0;
       const w: Weights = {};
-      for (const f of top(off, p, m)) add(w, f, share / p);
+      for (const f of top(KELLER_OFFENSE, p, m)) add(w, f, share / p);
       if (share < 1) add(w, cash, 1 - share);
       return w;
     }
     case "baa": {
       if (!isMonthEnd(u, t) || !has(u, e.tickers, t, YEAR)) return null;
       const canary = ["SPY", "EEM", "EFA", "BND"];
-      const off = [
-        "SPY",
-        "IWM",
-        "QQQ",
-        "EFA",
-        "EEM",
-        "VNQ",
-        "DBC",
-        "GLD",
-        "TLT",
-        "HYG",
-        "LQD",
-        "IEF",
-      ];
       const def = ["TIP", "DBC", "BIL", "IEF", "TLT", "LQD", "BND"];
       const sma12 = (x: string) => c(u, x)[t] / sma(c(u, x), t, YEAR)! - 1;
-      if (canary.every((x) => m13612w(c(u, x), t)! > 0)) return equal(top(off, p, sma12));
+      if (canary.every((x) => m13612w(c(u, x), t)! > 0))
+        return equal(top(KELLER_OFFENSE, p, sma12));
       const w: Weights = {};
       for (const f of top(def, 3, sma12)) add(w, sma12(f) < sma12("BIL") ? "BIL" : f, 1 / 3);
       return w;
@@ -307,23 +315,7 @@ export function decide(
       const rest = m("IEF") > 0 ? "IEF" : "BIL";
       if (share === 0) return { [rest]: 1 };
       const picks = top(pool, p, m);
-      const r21 = returnsBefore(
-        picks.map((x) => c(u, x)),
-        t + 1,
-        21,
-      );
-      const r252 = returnsBefore(
-        picks.map((x) => c(u, x)),
-        t + 1,
-        252,
-      );
-      const vol = r21.map((x) => sd(x));
-      const cov252 = covariance(r252);
-      const s252 = cov252.map((row, i) => Math.sqrt(row[i]));
-      const cov = cov252.map((row, i) =>
-        row.map((v, j) => (v / (s252[i] * s252[j])) * vol[i] * vol[j]),
-      );
-      const mv = minVariance(cov, 1);
+      const mv = scaledMinVariance(u, t, picks, 21, 252);
       const w: Weights = {};
       picks.forEach((f, i) => add(w, f, share * mv[i]));
       if (share < 1) add(w, rest, 1 - share);
@@ -379,24 +371,8 @@ export function decide(
     case "adaptive_aa": {
       if (!isMonthEnd(u, t) || !has(u, TEN, t, 251)) return null;
       const picks = top([...TEN], p, (x) => ret(c(u, x), t, 6 * MONTH)!);
-      // Volatility from the last 60 days, correlation from the last 250: their covariance.
-      const r60 = returnsBefore(
-        picks.map((x) => c(u, x)),
-        t + 1,
-        60,
-      );
-      const r250 = returnsBefore(
-        picks.map((x) => c(u, x)),
-        t + 1,
-        250,
-      );
-      const vol = r60.map((r) => sd(r));
-      const cov250 = covariance(r250);
-      const s250 = cov250.map((row, i) => Math.sqrt(row[i]));
-      const cov = cov250.map((row, i) =>
-        row.map((v, j) => (v / (s250[i] * s250[j])) * vol[i] * vol[j]),
-      );
-      const w = minVariance(cov, 1);
+      // Volatility from the last 60 days, correlation from the last 250.
+      const w = scaledMinVariance(u, t, picks, 60, 250);
       return Object.fromEntries(picks.map((x, i) => [x, w[i]]));
     }
     case "risk_parity": {

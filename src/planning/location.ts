@@ -125,37 +125,28 @@ export function locationPlan(input: {
   const swaps: Swap[] = [];
   const byId = new Map(accounts.map((a) => [a.id, a]));
   const left = JSON.parse(JSON.stringify(delta)) as typeof delta;
+  // Account a sells x and buys y while b sells y and buys x.
+  const pairUp = (x: Class, y: Class) => {
+    for (const a of accounts) {
+      if (left[a.id][x] >= 0 || left[a.id][y] <= 0) continue;
+      for (const b of accounts) {
+        if (b.id === a.id || left[b.id][y] >= 0 || left[b.id][x] <= 0) continue;
+        const amount = Math.min(-left[a.id][x], left[a.id][y], -left[b.id][y], left[b.id][x]);
+        if (amount < MIN_SWAP_CENTS) continue;
+        left[a.id][x] += amount;
+        left[a.id][y] -= amount;
+        left[b.id][y] += amount;
+        left[b.id][x] -= amount;
+        swaps.push(makeSwap(byId.get(a.id)!, byId.get(b.id)!, x, y, amount, input.gainRate));
+      }
+    }
+  };
   for (const c1 of CLASSES) {
     for (const c2 of CLASSES) {
       if (c1 >= c2) continue;
-      for (const a of accounts) {
-        // a sells c1 and buys c2
-        if (left[a.id][c1] >= 0 || left[a.id][c2] <= 0) continue;
-        for (const b of accounts) {
-          if (b.id === a.id || left[b.id][c2] >= 0 || left[b.id][c1] <= 0) continue;
-          const amount = Math.min(-left[a.id][c1], left[a.id][c2], -left[b.id][c2], left[b.id][c1]);
-          if (amount < MIN_SWAP_CENTS) continue;
-          left[a.id][c1] += amount;
-          left[a.id][c2] -= amount;
-          left[b.id][c2] += amount;
-          left[b.id][c1] -= amount;
-          swaps.push(makeSwap(byId.get(a.id)!, byId.get(b.id)!, c1, c2, amount, input.gainRate));
-        }
-      }
+      pairUp(c1, c2);
       // The reverse direction: a sells c2 and buys c1.
-      for (const a of accounts) {
-        if (left[a.id][c2] >= 0 || left[a.id][c1] <= 0) continue;
-        for (const b of accounts) {
-          if (b.id === a.id || left[b.id][c1] >= 0 || left[b.id][c2] <= 0) continue;
-          const amount = Math.min(-left[a.id][c2], left[a.id][c1], -left[b.id][c1], left[b.id][c2]);
-          if (amount < MIN_SWAP_CENTS) continue;
-          left[a.id][c2] += amount;
-          left[a.id][c1] -= amount;
-          left[b.id][c1] += amount;
-          left[b.id][c2] -= amount;
-          swaps.push(makeSwap(byId.get(a.id)!, byId.get(b.id)!, c2, c1, amount, input.gainRate));
-        }
-      }
+      pairUp(c2, c1);
     }
   }
   // Tax drag now and after, in taxable accounts only.
