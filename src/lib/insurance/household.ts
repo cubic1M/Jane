@@ -21,6 +21,7 @@ import { db as defaultClient } from "@/lib/db";
 import { cachedCopy } from "@/lib/read-cache";
 import { scopedFor } from "@/lib/db-scoped";
 import { runsBusiness, type SelfEmployment } from "./business-rules";
+import { partnerFor } from "./partner";
 
 // The household facts that matter for cover (spec step 102): whether the person owns or
 // rents, and how many cars, dependants and pets. What they typed wins; until they do,
@@ -63,6 +64,9 @@ export type Signals = {
   medicalCents: number | null;
   // Spec step 201: what the tax lane's signals say about freelance and gig work.
   selfEmployment?: SelfEmployment;
+  // The demo bank's sample health plan stands in for one (src/lib/insurance/health-year.ts): its
+  // year is shown, so it isn't also "no health insurance on file".
+  sampleHealthPlan?: boolean;
 };
 
 // What the accounts say, for the facts not typed.
@@ -114,6 +118,7 @@ export function resolveHousehold(
       travelCents: signs.travelCents ?? 0,
       medicalCents: signs.medicalCents ?? null,
       ...(signs.selfEmployment ? { selfEmployment: signs.selfEmployment } : {}),
+      ...(signs.sampleHealthPlan ? { sampleHealthPlan: true } : {}),
     },
   };
 }
@@ -229,7 +234,10 @@ async function loadHouseholdFrom(
     where: { status: "yes" },
     select: { kind: true },
   });
+  // As the health year decides it: the demo bank's partner and no health plan of their own.
+  const sampleHealthPlan = (await partnerFor(userId, { client })) !== null;
   const household = resolveHousehold(saved, {
+    sampleHealthPlan,
     mortgage: loans.some((l) => l.subtype === "mortgage"),
     homeOwned: owned.some((o) => o.kind === "home"),
     rentPaid: rent > 0,
