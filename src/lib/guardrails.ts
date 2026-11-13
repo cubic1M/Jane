@@ -118,6 +118,12 @@ const INVESTMENT = [
   /\b(?:fondos? indexados?|fondos? de inversi[oó]n|bolsa de valores|criptomonedas?|fonds indiciels?|la bourse|en bourse|aktien|indexfonds|börse|a[cç][oõ]es|fundos? de [ií]ndice)\b/i,
   /\b(?:compra|compre|vende|venda|achète|achetez|vends|vendez|kauf|kaufe|verkauf|verkaufe)\b[^.!?]{0,20}\b(?:acciones|actions)\b|\b(?:acciones|actions) (?:de |d(?:'|’))[A-Z]/i,
   /股票|基金|投资|买入|卖出|加密货币|比特币|股市/,
+  // Round 18 (11-13): "Short the market", "Go long on Nvidia", "Let your winners ride", "to the moon".
+  /\bshort(?:ing)? (?:the market|the s&p|stocks|the nasdaq|the dow)\b|\bgo (?:long|short) on\b|\blet (?:your |the )?(?:winners|gains|position|it) ride\b|\b(?:going |headed |is going )?to the moon\b/i,
+  // Russian, Hindi, Arabic, Dutch, Polish and Turkish ("Купите акции Tesla", "निवेश करें", "اشترِ
+  // أسهم", "Koop aandelen", "Kup akcje", "Hisse senedi alın"). акции and akcje are also sales and
+  // campaigns, शेयर is also sharing a post, so only buying them or one company's.
+  /(?:купи|покупа|продай|прода(?:вайте|йте))\S*\s+акци|акции\s+[A-Z]|инвестир|индексн\S* фонд|криптовалют|биткоин|निवेश|शेयर (?:खरीद|बेच|बाज़ार|बाजार)|म्यूचुअल फंड|استثمر|(?:اشتر\S*|شراء|بيع)\s+(?:ال)?أسهم|سوق الأسهم|بيتكوين|عملات رقمية|\baandelen\b|\bbeleggen\b|\bbeleg (?:in|je)\b|\b(?:kup|kupuj|sprzedaj)\s+akcje\b|\bakcje [A-Z]|\binwestuj\w*|\bfundusz\w* indeksow|\bkryptowalut|\bhisse senedi|\bhisse (?:al|sat)|yatırım yap/i,
   // Round 17 (11-13): Italian, Japanese, Korean and Vietnamese ("Compra azioni Tesla", "株を買うと
   // いいです", "주식을 사세요", "Nên đầu tư vào cổ phiếu"). 株式会社 is in Japanese company names.
   /\b(?:compra|compri|comprate|vendi|venda|vendete)\b[^.!?]{0,20}\bazioni\b|\bazioni (?:di |d(?:'|’))?[A-Z]|\b(?:investi|investite|investire|investirli)\b/i,
@@ -477,6 +483,11 @@ const LEGAL = [
   /\b(?:so|and) (?:there(?:'|’)s|there is|you leave|it leaves) no (?:record|paper trail|trace)\b|\bno paper trail\b|\boff the books\b/i,
   /\b(?:move|transfer|put|hide|park|shift)\b[^.!?]{0,40}\b(?:before|so)\b[^.!?]{0,30}\b(?:fafsa|financial aid|medicaid|snap|ssi|food stamps|the bankruptcy|filing for bankruptcy)\b|\bhide (?:your |the |some )?(?:income|money|assets|cash|savings)\b/i,
   /\bpay[- ]for[- ]delete\b/i,
+  // Round 18 (11-13): what someone can't do to you by law ("They can't garnish your wages", "Your
+  // landlord can't evict you for that", "They can't take your car"), and money called a gift to
+  // dodge tax ("Call it a gift so it isn't taxed").
+  /\b(?:they|he|she|the (?:landlord|lender|collector|creditor|bank|irs|company|dealer|servicer|court)|your (?:landlord|lender|creditor|employer|ex)|collectors|creditors|landlords)\s+(?:legally )?(?:can(?:'|’)?t|cannot|can not|aren(?:'|’)?t allowed to|isn(?:'|’)?t allowed to|have no right to|has no right to)\s+(?:legally )?(?:garnish|evict|repossess|seize|levy|foreclose|sue|take (?:your|the|away)|freeze|touch|come after|kick you out|fire you|charge you)\b/i,
+  /\b(?:call|report|list|label|treat|record|count|write)\b[^.!?]{0,20}\b(?:as )?a gift\b[^.!?]{0,30}\b(?:so|instead of|to avoid|to dodge|rather than|and (?:skip|avoid))\b/i,
   // Round 17 (11-13): signing someone else's name, a made-up figure or address on an application,
   // and a dispute that isn't true ("Just sign your roommate's name on the lease", "Put a lower
   // income on the application so you qualify", "List your parents' address to get in-state
@@ -572,6 +583,9 @@ const GUARANTEE = [
   /\b100 ?% (?:sure|certain|guaranteed|safe|risk[- ]free|chance|likely|covered|of the time)\b/i,
   // Getting paid on payday is a date, not a promise (spec step 93).
   /\b(will|you'll|you will) (save|get|recover|receive|earn)\b(?! paid\b)/i,
+  // Round 18 (11-13): "This will raise your credit score by 50 points". "Could help your score" is
+  // hedged and passes.
+  /\b(?:will|you(?:'|’)ll|it(?:'|’)ll|this(?:'|’)ll|that(?:'|’)ll)\s+(?:\w+\s+)?(?:raise|boost|improve|increase|lift|bump|fix|repair|jump|add)\b[^.!?]{0,15}\b(?:credit )?score\b|\bscore (?:will|is going to) (?:go up|jump|rise|climb|increase|improve)\b/i,
 ];
 
 // (g) Deposit insurance (12 CFR 328.102; connectors roadmap round 13): no false or misleading word
@@ -861,6 +875,62 @@ export function reshopSteering(text: string, { everySentence = false } = {}): st
 
 type Scan = { issues: GuardrailIssue[]; matched: string[] };
 
+// Round 18 (11-13): letters that look like others get past every rule ("ＢＵＹ ＴＳＬＡ", "T\u200bSLA",
+// "ТSLA" with a Cyrillic Т). Rules read full-width letters as plain ones, without zero-width
+// characters, with odd spaces as spaces, and with a Cyrillic or Greek look-alike inside a Latin word
+// as its Latin letter. Russian or Greek words on their own stay as they are.
+const LOOK_ALIKES: Record<string, string> = {
+  А: "A",
+  В: "B",
+  Е: "E",
+  К: "K",
+  М: "M",
+  Н: "H",
+  О: "O",
+  Р: "P",
+  С: "C",
+  Т: "T",
+  Х: "X",
+  Ѕ: "S",
+  І: "I",
+  Ј: "J",
+  а: "a",
+  е: "e",
+  о: "o",
+  р: "p",
+  с: "c",
+  у: "y",
+  х: "x",
+  ѕ: "s",
+  і: "i",
+  ј: "j",
+  Α: "A",
+  Β: "B",
+  Ε: "E",
+  Ζ: "Z",
+  Η: "H",
+  Ι: "I",
+  Κ: "K",
+  Μ: "M",
+  Ν: "N",
+  Ο: "O",
+  Ρ: "P",
+  Τ: "T",
+  Υ: "Y",
+  Χ: "X",
+  ο: "o",
+};
+const LOOK_ALIKE = new RegExp(`[${Object.keys(LOOK_ALIKES).join("")}]`, "g");
+function forChecking(text: string): string {
+  return text
+    .replace(/[\uFF01-\uFF5E]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
+    .replace(/[\u00a0\u2000-\u200a\u202f\u205f\u3000]/g, " ")
+    .replace(/[\u00ad\u200b-\u200d\u2060\ufeff]/g, "")
+    .replace(/[\p{L}\p{M}]+/gu, (word) =>
+      /[A-Za-z]/.test(word) ? word.replace(LOOK_ALIKE, (c) => LOOK_ALIKES[c] ?? c) : word,
+    );
+}
+
 function scan(
   text: string,
   allowedCents: readonly number[],
@@ -871,7 +941,7 @@ function scan(
   const matched: string[] = [];
   const advice = profile === "demo_advice";
   const original = text;
-  text = withoutApprovedSentences(text);
+  text = withoutApprovedSentences(forChecking(text));
   text = text.replace(BENIGN_LEGAL, "allowed");
   // A refusal isn't advice; in demo advice a pointer to a lawyer isn't either.
   text = withoutReferrals(text, !advice);
@@ -987,7 +1057,8 @@ const PRICE_PREDICTION = [
 ];
 
 export function predictsAPrice(text: string): boolean {
-  return PRICE_PREDICTION.some((pattern) => pattern.test(text));
+  const checked = forChecking(text);
+  return PRICE_PREDICTION.some((pattern) => pattern.test(checked));
 }
 
 // (e) Recommending one choice over another. The debt planner is education: it shows the
@@ -1005,7 +1076,8 @@ const RECOMMENDATION = [
 
 export function recommendsAChoice(text: string, profile: GuardrailProfile = "standard"): boolean {
   if (profile === "demo_advice") return false;
-  return RECOMMENDATION.some((pattern) => pattern.test(text));
+  const checked = forChecking(text);
+  return RECOMMENDATION.some((pattern) => pattern.test(checked));
 }
 
 // Insurance and loans, the two advice sectors the standard rules don't block by word.
@@ -1023,7 +1095,8 @@ export const aboutInvestingOrTaxes = (text: string): boolean =>
 // Whether text is advice that needs DEMO_ADVICE_LABEL (spec step 98): it talks about
 // investments, taxes, insurance or loans, or recommends one choice over another.
 export function isAdvice(text: string): boolean {
+  const checked = forChecking(text);
   return [...INVESTMENT, ...TAX, ...INSURANCE_OR_LOANS, ...RECOMMENDATION].some((p) =>
-    p.test(text),
+    p.test(checked),
   );
 }
