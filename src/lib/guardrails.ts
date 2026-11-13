@@ -127,6 +127,8 @@ const INVESTMENT = [
   // Chat policy round 10 (11-12): "Stack some sats every payday", "Buy puts on Tesla before
   // earnings", "Gold is a good hedge right now; get some". Gold's Gym and a Gold card are bills.
   /\bstack(?:ing)? (?:some |more |a few )?sats\b|\bsatoshis?\b/i,
+  // Round 22 (11-13): "Stack silver every month".
+  /\bstack(?:ing)? (?:some |more )?(?:silver|gold|bullion)\b/i,
   /\b(?:buy|buying|sell|selling|write|writing|short|shorting) (?:some |a few |the )?(?:covered |naked |cash[- ]secured |long |short )?(?:puts?|calls?|call options?|put options?|straddles?|strangles?|leaps)\b/i,
   /\b(?:gold|silver|bullion|precious metals|commodities)\b(?!(?:'|’)s)[^.!?]{0,20}\b(?:is|are|makes?) (?:a |an )?(?:good |great |solid |smart |safe |safer |better )?(?:hedge|buy|investment|store of value|bet)\b/i,
   /\b(?:buy|buying|get|own|add|grab|put (?:some|money|it|\$[\d,.]+) (?:in|into))\b[^.!?]{0,25}(?:\bgold\b(?!(?:'|’)s| (?:card|member|plan|tier|status|level|package|gym|rewards))|\b(?:bullion|precious metals)\b)/i,
@@ -148,6 +150,8 @@ const INVESTMENT = [
   // いいです", "주식을 사세요", "Nên đầu tư vào cổ phiếu"). 株式会社 is in Japanese company names.
   /\b(?:compra|compri|comprate|vendi|venda|vendete)\b[^.!?]{0,20}\bazioni\b|\bazioni (?:di |d(?:'|’))?[A-Z]|\b(?:investi|investite|investire|investirli)\b/i,
   /株を|株式投資|株式市場|株価|投資|仮想通貨|ビットコイン|주식|투자|펀드|코인|비트코인|매수|매도|đầu tư|cổ phiếu|chứng khoán|tiền điện tử|tiền mã hóa/i,
+  // Round 22 (11-13): Ukrainian and Thai ("Інвестуй у акції", "ลงทุนในหุ้น").
+  /інвест|(?:купи|купуй|продай)\S*\s+акці|криптовалют|біткоїн|ลงทุน|หุ้น|คริปโต|บิตคอยน์|บิทคอยน์/i,
   // Round 16 (11-13): a pick put as a tilt ("Overweight tech for the next decade", "Tilt toward small
   // caps", "Rotate out of growth into value", "Trim your winners").
   /\b(?:overweight|underweight|tilt(?:ing)? (?:toward|towards|into|to)|rotat(?:e|ing) (?:out of|into|to)|lean(?:ing)? into)\b[^.!?]{0,30}\b(?:tech|stocks?|equities|bonds|small[- ]caps?|large[- ]caps?|mid[- ]caps?|growth|value|sectors?|international|emerging markets|dividend)\b|\b(?:trim|sell) (?:your |the )?winners\b|\b(?:small|mid|large)[- ]caps?\b|\bemerging markets\b/i,
@@ -506,6 +510,8 @@ const LEGAL = [
   /\b(?:landlord|lender|servicer|collector|creditor|employer|insurer|they|he|she) (?:is|are) (?:legally )?(?:required|obligated) to\b/i,
   // Round 20 (11-13): "Your employer has to pay you for that time".
   /\b(?:employer|boss|landlord|lender|servicer|collector|creditor|insurer|company|bank|store|they|he|she) (?:has|have) to (?:pay|refund|reimburse|give|return|cover)(?: you| it| the| your)\b/i,
+  // Round 22 (11-13): "Your landlord must return your deposit within 21 days".
+  /\b(?:employer|boss|landlord|lender|servicer|collector|creditor|insurer) (?:legally )?must (?:pay|refund|reimburse|give|return|cover)\b/i,
   /\b(?:they|he|she|the (?:landlord|lender|collector|company|bank|store|seller|merchant))(?:(?:'|’)ll| will) have to (?:refund|pay|return|stop|remove|delete|fix|cover)\b/i,
   /\byou (?:don(?:'|’)?t|do not) (?:legally )?owe (?:it|that|this|them|the debt|that debt|this debt)\b/i,
   /\b(?:protected|covered) (?:under|by) (?:the )?(?:card act|credit card act|fdcpa|fcra|tila|truth in lending act|scra|servicemembers civil relief act|fair housing act|(?:state|federal) law|the law)\b/i,
@@ -986,6 +992,12 @@ function forChecking(text: string): string {
       .replace(/(?<=\w)\s*(?:\p{Extended_Pictographic}\uFE0F?\s*)+(?=\w)/gu, " ")
       // Round 19 (11-13): bold, italics and code around a word ("Buy **TSLA**", "Buy `VOO`") hid it.
       .replace(/`+|(?<![\w*_])[*_~]+(?=\w)|(?<=\w)[*_~]+(?![\w*_])/g, "")
+      // Round 22 (11-13): quotes around a word ('Buy "VOO"') and letters spaced out ("B U Y  V O O",
+      // "b.u.y. v.o.o") read as the word.
+      .replace(/(?<![\w"“”«»])["“«](?=\w)|(?<=\w)["”»](?![\w"“”«»])/g, "")
+      .replace(/(?<![\w.])[A-Za-z](?:[ .-][A-Za-z]){2,}\.?(?![\w])/g, (letters) =>
+        letters.replace(/[ .-]/g, "").toUpperCase(),
+      )
       .replace(/[\p{L}\p{M}]+/gu, (word) =>
         /[A-Za-z]/.test(word) ? word.replace(LOOK_ALIKE, (c) => LOOK_ALIKES[c] ?? c) : word,
       )
