@@ -50,6 +50,15 @@ export type FloatingCardData = {
   chosen?: string;
 };
 
+// What a card's link opens (founder, 11-12: "that box just disappears and you get sent to the page
+// with the details, i don't want that"). One that only leads to details ("See the details") opens
+// the card's own details in place; any other goes to its page. Neither answers the card: only
+// Yes, Not now, Don't suggest again or Done does.
+const DETAILS_ONLY = /^(?:(?:see|open|show|more)\s+)?(?:the\s+)?details$/i;
+export function linkOpens(label: string): "details" | "page" {
+  return DETAILS_ONLY.test(label.trim()) ? "details" : "page";
+}
+
 export type CardsState = {
   // Cards no longer waiting (answered or put off).
   gone: readonly string[];

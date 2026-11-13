@@ -3,10 +3,12 @@ import { E2E_DATABASE_URL, deleteUser } from "./db";
 import { demoPerson } from "./demo-person";
 import { holds } from "./waits";
 
-// Founder: "Whenever I switch to a page based on the suggestion card's suggestion, the
-// suggestion just reappears." A card followed to its page, or answered, leaves the dock and
-// doesn't come back: not on that page, not on the next, not after a reload; and once its answer
-// is in, not in a fresh tab either (src/lib/dock-gone.ts and the cards route's ?skip).
+// Founder (11-12): "when you click open details or open or whatever for the suggestion box, that
+// box just disappears and you get sent to the page with the details, i don't want that". A card
+// followed to its page stays in the dock, unanswered and showing, so Yes still works there; its
+// details open in the card. An answered card leaves the dock and doesn't come back: not on that
+// page, not on the next, not after a reload; and once its answer is in, not in a fresh tab either
+// (src/lib/dock-gone.ts and the cards route's ?skip).
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 test.setTimeout(240_000);
@@ -49,7 +51,44 @@ async function stepTo(page: Page, has: (card: Locator) => Locator): Promise<Loca
 const headlineOf = async (card: Locator) =>
   ((await card.locator("h3").first().textContent()) ?? "").trim();
 
-test("a card followed to its page, or answered, doesn't come back", async ({
+// Followed to its page from `start`: the page opens, the card is still the one showing in the
+// dock, after a reload too, and its Yes still answers it.
+async function followThenYes(page: Page, start: string) {
+  await page.goto(start);
+  await dockReady(page);
+  await showingIn(page).getByRole("button", { name: "More details" }).click();
+  // One with a page to follow and a Yes to answer it with.
+  const linked = await stepTo(page, (card) =>
+    card
+      .filter({ has: page.locator("a[href^='/']") })
+      .filter({ has: page.getByRole("button", { name: "Yes", exact: true }) }),
+  );
+  const followed = await headlineOf(linked);
+  // More details opened them in the card: no page, no answer.
+  await expect(linked.locator("[id^='details-']")).toBeVisible();
+  await expect(page).toHaveURL((url) => url.pathname === start);
+  const href = (await linked.locator("a[href^='/']").first().getAttribute("href"))!;
+  const path = new URL(href, "http://x").pathname;
+  // The dock can step between cards as the tap lands, so try again until the page opens.
+  await expect(async () => {
+    await linked.locator("a[href^='/']").first().click({ timeout: 2_000 });
+    await expect(page).toHaveURL((url) => url.pathname === path, { timeout: 5_000 });
+  }).toPass({ timeout: 30_000 });
+  // Still there, still showing, on the page it opened, through the dock's own reload.
+  await holds(async () => {
+    await expect(showingIn(page).locator("h3").first()).toHaveText(followed);
+  }, 2_000);
+  await page.reload();
+  await expect(cardNamed(page, followed)).toHaveCount(1, { timeout: 30_000 });
+  // Yes still answers it: then it goes.
+  const card = await stepTo(page, (c) => c.getByText(followed, { exact: true }));
+  await card.getByRole("button", { name: "Yes", exact: true }).click();
+  await expect(cardNamed(page, followed)).toHaveCount(0);
+  await staysGone(page, followed);
+  return followed;
+}
+
+test("a card followed to its page stays and Yes still works; an answered one doesn't come back", async ({
   context,
   page,
   baseURL,
@@ -58,26 +97,11 @@ test("a card followed to its page, or answered, doesn't come back", async ({
   test.skip(isMobile, "the dock is the computer's");
   await page.setViewportSize({ width: 1280, height: 800 });
   userId = await demoPerson(context, page, baseURL);
+  // From an area page, and from Home.
+  await followThenYes(page, "/money");
+  await followThenYes(page, "/home");
   await page.goto("/report");
   await dockReady(page);
-
-  // Followed to its page: the page opens and the card is gone, there and after.
-  await showingIn(page).getByRole("button", { name: "More details" }).click();
-  const linked = await stepTo(page, (card) => card.locator("a[href^='/']"));
-  const followed = await headlineOf(linked);
-  const href = (await linked.locator("a[href^='/']").first().getAttribute("href"))!;
-  const path = new URL(href, "http://x").pathname;
-  // The dock can step between cards as the tap lands, so try again until the page opens.
-  await expect(async () => {
-    await linked.locator("a[href^='/']").first().click({ timeout: 2_000 });
-    await expect(page).toHaveURL((url) => url.pathname === path, { timeout: 5_000 });
-  }).toPass({ timeout: 30_000 });
-  await expect(cardNamed(page, followed)).toHaveCount(0);
-  await staysGone(page, followed);
-  await page.goto("/money");
-  await staysGone(page, followed);
-  await page.reload();
-  await staysGone(page, followed);
 
   // Answered Yes, then off to another page: gone, and still gone after a reload.
   const yes = await stepTo(page, (card) => card.getByRole("button", { name: "Yes", exact: true }));

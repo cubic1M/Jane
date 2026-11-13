@@ -16,6 +16,7 @@ import {
   counter,
   currentCard,
   initialState,
+  linkOpens,
   move,
   paragraphs,
   waiting,
@@ -249,9 +250,9 @@ export function FloatingCards({
   // Called when a card's More details is opened (the verified savings record keeps that a
   // suggestion was looked at); nothing waits on it.
   onDetails?: (id: string) => void;
-  // A card followed to one of its pages: it leaves like an answer (the next one shows in the
-  // same frame) and the caller records it. True when the caller opened the page itself (a client
-  // navigation); otherwise the link goes as links do.
+  // A card followed to one of its pages: it stays where it is, unanswered (founder, 11-12), and
+  // the caller opens the page. True when the caller opened it itself (a client navigation);
+  // otherwise the link goes as links do.
   onFollow?: (id: string, href: string) => boolean;
 }) {
   const [state, setState] = useState(initialState);
@@ -290,9 +291,8 @@ export function FloatingCards({
   const behind = Math.max(0, left.length - 1);
   const folded = (foldOnPhone || foldedBySend) && phone && !unfolded && current !== null;
 
-  // Followed to a page: off the stack like an answer; the caller says what it means.
+  // Followed to a page: the card stays on the stack, showing, for Yes or Not now there.
   function follow(card: FloatingCardData, href: string): boolean {
-    depart(card, [card], "yes");
     return onFollow?.(card.id, href) ?? false;
   }
 
@@ -586,16 +586,19 @@ export function FloatingCards({
                     {note}
                   </p>
                 ))}
-                {(links?.[current.id] ?? []).map((link) => (
-                  <a
-                    key={link.href + link.label}
-                    href={link.href}
-                    onClick={(event) => onLink(event, current, link.href)}
-                    className="inline-flex min-h-11 items-center text-sm font-medium text-emerald-700 hover:underline"
-                  >
-                    {link.label} ›
-                  </a>
-                ))}
+                {/* Details already open here: a link that only leads to them isn't shown. */}
+                {(links?.[current.id] ?? [])
+                  .filter((link) => linkOpens(link.label) === "page")
+                  .map((link) => (
+                    <a
+                      key={link.href + link.label}
+                      href={link.href}
+                      onClick={(event) => onLink(event, current, link.href)}
+                      className="inline-flex min-h-11 items-center text-sm font-medium text-emerald-700 hover:underline"
+                    >
+                      {link.label} ›
+                    </a>
+                  ))}
                 {neverLabel && mode === "queue" && !current.noNever && (
                   <button
                     type="button"
@@ -648,7 +651,18 @@ export function FloatingCards({
                 />
               ) : (
                 <div data-card-actions="" className="flex min-w-0 flex-wrap gap-2">
-                  {current.yesHref ? (
+                  {current.yesHref && linkOpens(current.yesLabel) === "details" ? (
+                    // Its details, here in the card: never a page, never an answer.
+                    <button
+                      type="button"
+                      aria-expanded={open}
+                      aria-controls={`details-${current.id}`}
+                      onClick={() => setExpanded(true)}
+                      className={`${PRIMARY} ${COMPACT}`}
+                    >
+                      {current.yesLabel}
+                    </button>
+                  ) : current.yesHref ? (
                     <a
                       href={current.yesHref}
                       onClick={(event) => onLink(event, current, current.yesHref!)}

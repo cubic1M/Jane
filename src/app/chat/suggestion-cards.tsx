@@ -112,15 +112,26 @@ export function cardOf(message: MessageView): FloatingCardData {
   };
 }
 
-// Following a card to the page it points at is engaging with it (founder: the card came straight
-// back on that page): a suggestion takes its own Yes (answered yes; what it saves stays an
-// estimate until the transactions show it), anything else its own Not now (put off until
-// tomorrow). A card with neither is only left out for the rest of the tab's session.
-export function followAction(message: Pick<MessageView, "suggestion" | "buttons">): string | null {
-  if (message.suggestion && message.buttons.some((b) => b.id === "suggestion.yes")) {
-    return "suggestion.yes";
-  }
-  return message.buttons.some((b) => b.id === "snooze") ? "snooze" : null;
+// Following a card to one of its pages (founder, 11-12: "that box just disappears and you get sent
+// to the page with the details, i don't want that"): the page opens and the card stays where it
+// is, unanswered, so Yes or Not now is still a tap away there. It is never an answer and never
+// leaves the stack; a suggestion only notes that it was looked at (its outcome's openedAt, as
+// More details does). On the page itself the navigation is a client one, so the dock stays; in
+// the chat's frame the link goes as links do, to the bridge that opens it in the page
+// (embed-bridge.tsx). True when it opened the page itself.
+export function followCard(
+  message: Pick<MessageView, "id" | "suggestion"> | undefined,
+  href: string,
+  {
+    push,
+    noteOpened,
+    onPage = window.self === window.top,
+  }: { push: (href: string) => void; noteOpened: (id: string) => void; onPage?: boolean },
+): boolean {
+  if (message?.suggestion) noteOpened(message.id);
+  const here = onPage && href.startsWith("/");
+  if (here) push(href);
+  return here;
 }
 
 export function SuggestionCards({
@@ -185,22 +196,19 @@ export function SuggestionCards({
             });
           }
         }}
-        onFollow={(id, href) => {
-          setOpen((n) => Math.max(0, n - 1));
-          const message = messages.find((m) => m.id === id);
-          markGone(id);
-          // On the page itself, a client navigation: instant, and the dock stays. In the chat's
-          // frame the link goes to the bridge, which opens it in the page (embed-bridge.tsx).
-          const here = window.self === window.top && href.startsWith("/");
-          if (here) router.push(href);
-          const actionId = message ? followAction(message) : null;
-          if (!message || !actionId) return here;
-          // Behind the navigation: the next page's dock already leaves it out.
-          void queue(message, actionId)
-            .catch(() => undefined)
-            .then(() => onAnswered?.());
-          return here;
-        }}
+        onFollow={(id, href) =>
+          followCard(
+            messages.find((m) => m.id === id),
+            href,
+            {
+              push: router.push,
+              noteOpened: (opened) =>
+                startTransition(async () => {
+                  await noteDetailsOpened(opened).catch(() => {});
+                }),
+            },
+          )
+        }
         onAnswer={(id, how, choice) => {
           setOpen((n) => Math.max(0, n - 1));
           const message = messages.find((m) => m.id === id)!;
