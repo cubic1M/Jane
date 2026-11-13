@@ -63,6 +63,16 @@ test("suggestions pop up small at the bottom of the hub and open in place", asyn
   await expect(showing.getByRole("button", { name: "Not now", exact: true })).toBeVisible();
   const counter = overlay.locator("p[aria-live]");
   const total = Number(((await counter.textContent()) ?? "").split(" ")[0]);
+  // The server's stack as the count was read: the count has sometimes been one short of what
+  // it became after Not now ("expected 11 left, received 12 left", 13 of 18 main runs on 11-13),
+  // and nothing reproduces it locally. A failure below names the cards on each side.
+  const stack = async () => {
+    const body = (await (await page.request.get("/api/chat/cards")).json()) as {
+      cards?: { kind: string; body: string }[];
+    };
+    return (body.cards ?? []).map((c) => `${c.kind}: ${c.body.split("\n")[0].slice(0, 60)}`);
+  };
+  const counted = await stack();
   // How many: "+N" on the stack on a phone; the dock's header line on a computer.
   if (isMobile && total > 1) await expect(showing).toContainText(`+${total - 1}`);
   if (!isMobile) {
@@ -153,7 +163,14 @@ test("suggestions pop up small at the bottom of the hub and open in place", asyn
   await showing.getByRole("button", { name: "Not now", exact: true }).click();
   if (total > 1) {
     await expect(headline).not.toHaveText(first);
-    await expect(counter).toHaveText(`${total - 1} left`);
+    await expect(counter)
+      .toHaveText(`${total - 1} left`)
+      .catch(async (error: Error) => {
+        const now = await stack();
+        throw new Error(
+          `${error.message}\nThe dock counted ${total}; the server's stack then (${counted.length}):\n  ${counted.join("\n  ")}\nand now (${now.length}):\n  ${now.join("\n  ")}`,
+        );
+      });
   } else {
     await expect(overlay).toBeHidden();
   }
