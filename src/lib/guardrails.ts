@@ -62,6 +62,8 @@ const STOCK_PICKS = [
   // A verdict after a dash or a colon, and a pick shouted (chat policy round 12, 11-12): "Tesla — sell",
   // "SELL TESLA NOW". "Buy now, pay later" is a kind of plan. Round 13 (11-12): "Tesla → sell",
   // "Apple: strong buy", "Tesla's a hold for now", "NVDA is the move", "📈 TSLA 🚀". Round 16 (11-13): a
+  // Round 17 (11-13): a ticker spelled out ("Buy T S L A", "Grab some v-o-o"); "Get a T-shirt" is shopping.
+  /\b(?:buy|buying|grab|get|add|pick up|own|load up on)\s+(?:some |more )?(?![Aa][\s-])(?:[A-Za-z][ -]){2,4}[A-Za-z]\b(?![\w'’-])/i,
   // table row ("| VOO | Buy |") and a line of code ("buy: TSLA").
   new RegExp(
     `\\b(?:${NOT_TICKERS}[A-Z]{3,5}|${COMPANY})\\s*(?:[—–:|-]+|→|=>|⇒|->)\\s*(?:(?:[Ss]trong|[Cc]lear|[Ee]asy|[Ss]olid) )?(?:[Bb]uy|[Ss]ell|[Hh]old|[Dd]ump|[Tt]rim|[Ss]hort)\\b`,
@@ -116,6 +118,10 @@ const INVESTMENT = [
   /\b(?:fondos? indexados?|fondos? de inversi[oó]n|bolsa de valores|criptomonedas?|fonds indiciels?|la bourse|en bourse|aktien|indexfonds|börse|a[cç][oõ]es|fundos? de [ií]ndice)\b/i,
   /\b(?:compra|compre|vende|venda|achète|achetez|vends|vendez|kauf|kaufe|verkauf|verkaufe)\b[^.!?]{0,20}\b(?:acciones|actions)\b|\b(?:acciones|actions) (?:de |d(?:'|’))[A-Z]/i,
   /股票|基金|投资|买入|卖出|加密货币|比特币|股市/,
+  // Round 17 (11-13): Italian, Japanese, Korean and Vietnamese ("Compra azioni Tesla", "株を買うと
+  // いいです", "주식을 사세요", "Nên đầu tư vào cổ phiếu"). 株式会社 is in Japanese company names.
+  /\b(?:compra|compri|comprate|vendi|venda|vendete)\b[^.!?]{0,20}\bazioni\b|\bazioni (?:di |d(?:'|’))?[A-Z]|\b(?:investi|investite|investire|investirli)\b/i,
+  /株を|株式投資|株式市場|株価|投資|仮想通貨|ビットコイン|주식|투자|펀드|코인|비트코인|매수|매도|đầu tư|cổ phiếu|chứng khoán|tiền điện tử|tiền mã hóa/i,
   // Round 16 (11-13): a pick put as a tilt ("Overweight tech for the next decade", "Tilt toward small
   // caps", "Rotate out of growth into value", "Trim your winners").
   /\b(?:overweight|underweight|tilt(?:ing)? (?:toward|towards|into|to)|rotat(?:e|ing) (?:out of|into|to)|lean(?:ing)? into)\b[^.!?]{0,30}\b(?:tech|stocks?|equities|bonds|small[- ]caps?|large[- ]caps?|mid[- ]caps?|growth|value|sectors?|international|emerging markets|dividend)\b|\b(?:trim|sell) (?:your |the )?winners\b|\b(?:small|mid|large)[- ]caps?\b|\bemerging markets\b/i,
@@ -199,6 +205,8 @@ const INVESTMENT = [
   /\b(?:now|today|this (?:week|month)) (?:is|looks like|seems like) (?:a |the )?(?:good|great|bad|right|wrong|smart|perfect|best|ideal) time to (?:buy|sell|get in|get out|cash out)\b(?=\s*(?:in|more|back|[.!?,;]|$))/i,
   /\b(?:buy the dip|time the market|(?:get|stay|be) (?:back )?(?:in(?:to)?|out of) the (?:stock )?market)\b/i,
   /\bdollar[- ]cost averag/i,
+  // Round 17 (11-13): the short form ("DCA into VTI every payday"); DCA is also an airport.
+  /\bdca(?:ing)? (?:into|in|every)\b/i,
   // A judgment rather than an instruction (chat policy round 9, 11-12): "Holding makes more sense
   // than selling", "Selling now would lock in your loss, so wait", "Traditional wins for you".
   /\b(?:holding|keeping) (?:on |it |them )?makes (?:more )?sense\b|\b(?:holding|selling|buying|keeping)\b[^.!?]{0,30}\bthan (?:selling|holding|buying|keeping)\b/i,
@@ -332,6 +340,8 @@ const TAX_ADVICE = [
   // The same in the person's language (round 16, 11-13): "No declares esos ingresos", "Puedes
   // deducir…", "Ne déclare pas ces revenus", "Tu peux déduire ces frais", "这些收入不用报税".
   /\bno declares\b|\bno (?:tienes|necesitas|hace falta)(?: que)? declarar\b|\bn[aã]o (?:precisa|precisas|tem que|tens que) declarar\b|\bne (?:d[ée]clare|d[ée]clarez) pas\b|\b(?:puedes|podés|pueden|puede) deducir\b|\b(?:tu peux|vous pouvez|on peut) d[ée]duire\b|\b(?:pode|podes|você pode) deduzir\b|\bdeducci[oó]n(?:es)? (?:fiscal|de impuestos)\b|\bd[ée]duction fiscale\b|\b(?:steuerlich )?absetzen\b|不用报税|不需要报税|可以抵扣|可以抵税|不用交税/i,
+  // Round 17 (11-13): Italian, Japanese, Korean, Vietnamese ("税金を払わなくていいです").
+  /\bnon (?:dichiarare|dichiarate|devi dichiarare)\b|\b(?:puoi|potete) (?:detrarre|dedurre|scaricare)\b|\bdetrazione fiscale\b|税金を払わなくて|申告しなくて(?:いい|よい|大丈夫)|確定申告は(?:不要|いらない)|控除できます|経費にできます|세금(?:을)? 안 내도|신고(?:하지)? 않아도|신고 안 해도|공제받을 수 있|không cần (?:nộp|khai|đóng) thuế|được khấu trừ/i,
 ];
 // In a sentence that talks about tax: telling them to do something, or what the rules say
 // their money counts as. "You'll owe about $X" is a figure; "you should set aside $X" is advice.
@@ -467,6 +477,17 @@ const LEGAL = [
   /\b(?:so|and) (?:there(?:'|’)s|there is|you leave|it leaves) no (?:record|paper trail|trace)\b|\bno paper trail\b|\boff the books\b/i,
   /\b(?:move|transfer|put|hide|park|shift)\b[^.!?]{0,40}\b(?:before|so)\b[^.!?]{0,30}\b(?:fafsa|financial aid|medicaid|snap|ssi|food stamps|the bankruptcy|filing for bankruptcy)\b|\bhide (?:your |the |some )?(?:income|money|assets|cash|savings)\b/i,
   /\bpay[- ]for[- ]delete\b/i,
+  // Round 17 (11-13): signing someone else's name, a made-up figure or address on an application,
+  // and a dispute that isn't true ("Just sign your roommate's name on the lease", "Put a lower
+  // income on the application so you qualify", "List your parents' address to get in-state
+  // tuition", "Tell the bank the charge was fraud so you get the money back"). An honest dispute
+  // ("Dispute it if you don't recognize the charge") still passes.
+  /\bsign (?:your |his |her |their |the )?(?:roommate|spouse|husband|wife|partner|mom|mother|dad|father|parent|friend|boss|landlord|ex|brother|sister|kid|son|daughter)(?:'|’)?s? (?:name|signature)\b|\bforge (?:a |the |their |his |her )?signature\b/i,
+  /\b(?:put|list|write|enter|report|claim|say|state|use)\s+(?:a |an )?(?:lower|higher|smaller|bigger|fake|made-up|inflated|different) (?:income|salary|pay|household size|address|age|mileage)\b[^.!?]{0,40}\b(?:so (?:that )?(?:you|they|it) (?:qualify|qualifies|approve|get approved|can qualify|look)|to (?:qualify|get approved|get in))\b/i,
+  /\b(?:use|list|put|give)\s+(?:your |a )?(?:parents?(?:'|’)?s?|friend(?:'|’)?s|relative(?:'|’)?s|cousin(?:'|’)?s|aunt(?:'|’)?s|uncle(?:'|’)?s|grandparents?(?:'|’)?s?|mom(?:'|’)?s|dad(?:'|’)?s) address\b[^.!?]{0,40}\b(?:to get|so you (?:get|qualify|can get|pay)|for) (?:in-state|instate|lower|cheaper|a lower|a cheaper)\b/i,
+  /\b(?:say|claim|tell (?:them|the bank|your bank|the card company|the store)|pretend)\b[^.!?]{0,40}\b(?:never (?:got|received|arrived|came)|was (?:fraud|unauthori[sz]ed|stolen)|didn(?:'|’)?t (?:make|authori[sz]e|order|get))\b[^.!?]{0,40}\b(?:even though|so (?:you|they|that you)(?: can|(?:'|’)ll| will)? (?:get|refund|reverse)|to get (?:your |the )?money back|to get a refund)\b|\beven though you (?:made|bought|got|received|authori[sz]ed|ordered|used) (?:it|them|the|that)\b/i,
+  // In other languages (round 17): "Non pagare l'affitto", "税金を払わなくていいです".
+  /\bnon (?:pagare|pagate) (?:l(?:'|’)|il |la )?(?:affitto|debito|esattore|agenzia di recupero|padrone di casa)\b|\bnon devi pagare (?:il |quel |questo )?debito\b|家賃を払わな|借金を返さなくて|返済しなくて(?:いい|よい|大丈夫)|월세(?:를)? 내지 마|빚(?:을)? 갚지 않아도|갚지 마세요|đừng trả (?:tiền )?(?:nhà|nợ)|không cần trả nợ/i,
 ];
 
 // Saying Jane can't help with something legal, or pointing to a lawyer for it, is not legal
