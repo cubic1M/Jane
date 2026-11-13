@@ -15,6 +15,7 @@ import type { BalanceAsk } from "@/lib/import/balance-question";
 import { ControlWarnings } from "@/components/control-warnings";
 import { formatCents } from "@/lib/money";
 import type { EarlierRows, UploadView } from "@/lib/import/remove";
+import { plural } from "@/lib/plural";
 
 // What's been uploaded, and taking it back (src/lib/import/remove.ts): one upload's rows, an
 // uploaded account with everything in it, or everything uploaded ("Start over"). Each asks
@@ -31,8 +32,6 @@ type Account = {
   firstDate: string | null;
   lastDate: string | null;
 };
-
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 // What "Remove account" asks first, by how much is in it (debugger 11-12: "Remove Wells Fargo
 // checking and all 0 transactions in it?").

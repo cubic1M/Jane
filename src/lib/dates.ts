@@ -3,6 +3,12 @@
 // One day in milliseconds.
 export const DAY_MS = 86_400_000;
 
+// The start (UTC midnight) of a moment's day, and of its month.
+export const dayStartUtc = (now: Date): Date =>
+  new Date(Math.floor(now.getTime() / DAY_MS) * DAY_MS);
+export const monthStartUtc = (now: Date): Date =>
+  new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+
 // The UTC calendar day of a moment, as "YYYY-MM-DD".
 export const isoDay = (date: Date): string => date.toISOString().slice(0, 10);
 

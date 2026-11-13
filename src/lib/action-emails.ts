@@ -2,6 +2,7 @@ import { siteBase } from "@/lib/site-origin";
 import type { ActionStatus } from "@/generated/prisma/client";
 import { sendEmail } from "@/lib/email";
 import { log } from "@/lib/log";
+import { escapeHtml } from "@/lib/escape-html";
 
 // Emails the person gets when the team moves one of their actions. Failure reasons stay
 // internal; the person gets a plain note and can reply.
@@ -9,14 +10,6 @@ import { log } from "@/lib/log";
 const APP_NAME = "Jane";
 
 const appUrl = (path: string): string => `${siteBase()}${path}`;
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
-}
 
 export type StatusEmail = { subject: string; lines: string[] };
 

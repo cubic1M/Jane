@@ -28,6 +28,7 @@ import {
 import { oldUploadNewest } from "@/lib/import/old-upload";
 import { savedLine } from "@/lib/import/saved-line";
 import { formatCents } from "@/lib/money";
+import { plural } from "@/lib/plural";
 
 type AccountOption = { id: string; name: string; kindLabel: string; kind: AccountKind | null };
 
@@ -489,8 +490,6 @@ export function ImportForm({
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 // Days from the earliest to the latest transaction across the files, counting both ends.
 function coveredDays(files: Extract<PreviewResult, { ok: true }>["files"]): number | null {

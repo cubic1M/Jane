@@ -14,6 +14,7 @@ import { median } from "@/lib/metrics";
 import { formatWholeDollars } from "@/lib/money";
 import { FINDING_OUTCOME_PREFIX } from "@/lib/outcomes";
 import { systemDb } from "@/lib/system-db";
+import { plural } from "@/lib/plural";
 
 // The founders' beta numbers on /admin/numbers, the ones they quote in applications. The same
 // real people as /admin/metrics' closed beta block (src/lib/beta-metrics.ts): no trial people,
@@ -122,8 +123,6 @@ export function snapshot(all: FounderRows, at: Date): Snapshot {
     medianMsToFirstFinding: median(toFirst),
   };
 }
-
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 // The line to paste into an application, from the same numbers as the page.
 export function copyLine(s: Snapshot): string {

@@ -18,7 +18,7 @@ import { db as defaultClient } from "@/lib/db";
 import { stillAnAdmin } from "@/lib/admin-emails";
 import { isAdminEmail } from "@/lib/invites";
 import { isStatementTrialUser, isTrialUser } from "@/lib/trial-ids";
-import { DAY_MS } from "@/lib/dates";
+import { dayStartUtc, monthStartUtc } from "@/lib/dates";
 import { scopedFor } from "@/lib/db-scoped";
 import { systemDb } from "@/lib/system-db";
 
@@ -42,8 +42,6 @@ const HIT_PREFIX = "chatcaphit:";
 const keyOf = (userId: string) => `${SPEND_PREFIX}${userId}`;
 // The person's month, apart from the day's counters /admin/chat adds up.
 const monthKeyOf = (userId: string) => `chatspendmonth:${userId}`;
-const dayStart = (now: Date) => new Date(Math.floor(now.getTime() / DAY_MS) * DAY_MS);
-const monthStart = (now: Date) => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 
 // Cents ×100 for one call at the listed price (the dearest listed price for a model that
 // isn't listed, so the cap never undercounts). Cached input is billed at a tenth, writing
@@ -70,7 +68,7 @@ async function addToToday(
   amount: number,
   client: PrismaClient,
   now: Date,
-  windowStart = dayStart(now),
+  windowStart = dayStartUtc(now),
 ) {
   await systemDb(WHY, client).$executeRaw`
     INSERT INTO rate_limits (key, window_start, count) VALUES (${key}, ${windowStart}, ${amount})
@@ -85,7 +83,7 @@ export async function addSpend(
   const amount = costInHundredthsOfCents(usage);
   if (amount <= 0) return;
   await addToToday(keyOf(userId), amount, client, now);
-  await addToToday(monthKeyOf(userId), amount, client, now, monthStart(now));
+  await addToToday(monthKeyOf(userId), amount, client, now, monthStartUtc(now));
   if (isTrialUser(userId)) await addToToday(ALL_TRIALS_KEY, amount, client, now);
   // And the month's total, which guards all of Claude's chat spend together.
   await addMonthlySpend(amount, { client, now });
@@ -95,7 +93,7 @@ export async function addSpend(
 
 async function centsToday(key: string, { client = defaultClient, now = new Date() }: Options) {
   const row = await systemDb(WHY, client).rateLimit.findUnique({
-    where: { key_windowStart: { key, windowStart: dayStart(now) } },
+    where: { key_windowStart: { key, windowStart: dayStartUtc(now) } },
     select: { count: true },
   });
   return (row?.count ?? 0) / 100;
@@ -142,7 +140,7 @@ async function spentThisMonthCents(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<number> {
   const row = await systemDb(WHY, client).rateLimit.findUnique({
-    where: { key_windowStart: { key: monthKeyOf(userId), windowStart: monthStart(now) } },
+    where: { key_windowStart: { key: monthKeyOf(userId), windowStart: monthStartUtc(now) } },
     select: { count: true },
   });
   return (row?.count ?? 0) / 100;
@@ -177,7 +175,7 @@ export async function recordLimitHit(
 ): Promise<void> {
   if (isTrialUser(userId)) return;
   await systemDb(WHY, client).$executeRaw`
-    INSERT INTO rate_limits (key, window_start, count) VALUES (${HIT_PREFIX + userId}, ${dayStart(now)}, 1)
+    INSERT INTO rate_limits (key, window_start, count) VALUES (${HIT_PREFIX + userId}, ${dayStartUtc(now)}, 1)
     ON CONFLICT (key, window_start) DO UPDATE SET count = rate_limits.count + 1`;
 }
 
@@ -203,7 +201,7 @@ export async function spendToday({
   const [rows, monthSpentCents] = await Promise.all([
     systemDb(WHY, client).rateLimit.findMany({
       where: {
-        windowStart: dayStart(now),
+        windowStart: dayStartUtc(now),
         OR: [{ key: { startsWith: SPEND_PREFIX } }, { key: { startsWith: HIT_PREFIX } }],
       },
       select: { key: true, count: true },

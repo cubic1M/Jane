@@ -11,7 +11,7 @@ import {
   STATEMENT_TRIAL_RESERVE_CENTS,
 } from "@/config/statement-trial";
 import type { PrismaClient } from "@/generated/prisma/client";
-import { DAY_MS } from "@/lib/dates";
+import { dayStartUtc, monthStartUtc } from "@/lib/dates";
 import { db as defaultClient } from "@/lib/db";
 import { log } from "@/lib/log";
 import { giveBack, hit } from "@/lib/rate-limit";
@@ -31,7 +31,6 @@ export const STILL_ANSWERING_TEXT =
   "Jane is still answering your last messages. Send this one again in a moment.";
 
 const MONTH_KEY = "chatmonth:total";
-const monthStart = (now: Date) => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 
 export const monthlyCapCents = () => {
   const set = Number(process.env.CHAT_MONTHLY_CAP_CENTS);
@@ -49,7 +48,7 @@ export async function addMonthlySpend(
   const [row] = await systemDb("Rate limits are the system's own counters", client).$queryRaw<
     { count: number }[]
   >`
-    INSERT INTO rate_limits (key, window_start, count) VALUES (${MONTH_KEY}, ${monthStart(now)}, ${hundredthsOfCents})
+    INSERT INTO rate_limits (key, window_start, count) VALUES (${MONTH_KEY}, ${monthStartUtc(now)}, ${hundredthsOfCents})
     ON CONFLICT (key, window_start) DO UPDATE SET count = rate_limits.count + ${hundredthsOfCents}
     RETURNING count`;
   const after = Number(row?.count ?? 0);
@@ -80,7 +79,7 @@ async function tellTeam(options: Options) {
 // The month's counter, for what holds part of it before Claude is asked (src/lib/claude-budget.ts).
 export const monthCounter = (now: Date) => ({
   key: MONTH_KEY,
-  windowStart: monthStart(now),
+  windowStart: monthStartUtc(now),
   capCents: monthlyCapCents(),
 });
 
@@ -92,7 +91,7 @@ export async function monthlySpentCents({
     "Rate limits are the system's own counters",
     client,
   ).rateLimit.findUnique({
-    where: { key_windowStart: { key: MONTH_KEY, windowStart: monthStart(now) } },
+    where: { key_windowStart: { key: MONTH_KEY, windowStart: monthStartUtc(now) } },
     select: { count: true },
   });
   return (row?.count ?? 0) / 100;
@@ -156,7 +155,6 @@ export async function claudeFinished(userId: string, options: Options = {}): Pro
 // the holds of answers being written. One counter, so two answers at once see each other.
 const STATEMENT_DAY_KEY = "statementtrial:claude";
 const STATEMENT_DAY_WHY = "One counter for everyone trying Jane with their own statement";
-const dayStart = (now: Date) => new Date(Math.floor(now.getTime() / DAY_MS) * DAY_MS);
 const RESERVE = STATEMENT_TRIAL_RESERVE_CENTS * 100;
 
 export const statementTrialDailyCents = () => {
@@ -172,7 +170,7 @@ async function addToDay(
 ): Promise<number> {
   const [row] = await systemDb(STATEMENT_DAY_WHY, client).$queryRaw<{ count: number }[]>`
     INSERT INTO rate_limits (key, window_start, count)
-    VALUES (${key}, ${dayStart(now)}, GREATEST(${amount}, 0))
+    VALUES (${key}, ${dayStartUtc(now)}, GREATEST(${amount}, 0))
     ON CONFLICT (key, window_start) DO UPDATE SET count = GREATEST(rate_limits.count + ${amount}, 0)
     RETURNING count`;
   return Number(row.count);
@@ -211,7 +209,7 @@ export async function statementTrialSpentCents({
   now = new Date(),
 }: Options = {}): Promise<number> {
   const row = await systemDb(STATEMENT_DAY_WHY, client).rateLimit.findUnique({
-    where: { key_windowStart: { key: STATEMENT_DAY_KEY, windowStart: dayStart(now) } },
+    where: { key_windowStart: { key: STATEMENT_DAY_KEY, windowStart: dayStartUtc(now) } },
     select: { count: true },
   });
   return (row?.count ?? 0) / 100;
