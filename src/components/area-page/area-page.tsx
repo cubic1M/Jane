@@ -128,11 +128,16 @@ export function AreaPage({
               type="button"
               aria-pressed={picked === c.id}
               onClick={() => pick(c.id)}
-              className="inline-flex min-h-11 items-center gap-2 border-2 border-zinc-900 bg-white px-3 text-sm font-semibold hover:bg-zinc-100 dark:border-zinc-100 dark:bg-zinc-950 dark:hover:bg-zinc-900"
+              // A long label wraps on a phone: from the left, as the page reads, with its figure kept
+              // on one line ("Return window for West Marine $640 · Nov 13" wrapped centred, the
+              // figure split in two: debugger 11-13).
+              className="inline-flex min-h-11 items-center gap-2 border-2 border-zinc-900 bg-white px-3 text-left text-sm font-semibold hover:bg-zinc-100 dark:border-zinc-100 dark:bg-zinc-950 dark:hover:bg-zinc-900"
             >
               <StatusMark status="act" />
               {c.label}
-              {c.figure && <span className="tabular-nums">{c.figure}</span>}
+              {c.figure && (
+                <span className="shrink-0 tabular-nums whitespace-nowrap">{c.figure}</span>
+              )}
             </button>
           ))}
         </div>
