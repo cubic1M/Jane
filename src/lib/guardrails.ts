@@ -62,6 +62,23 @@ const STOCK_PICKS = [
   // A verdict after a dash or a colon, and a pick shouted (chat policy round 12, 11-12): "Tesla — sell",
   // "SELL TESLA NOW". "Buy now, pay later" is a kind of plan. Round 13 (11-12): "Tesla → sell",
   // "Apple: strong buy", "Tesla's a hold for now", "NVDA is the move", "📈 TSLA 🚀". Round 16 (11-13): a
+  // Round 19 (11-13): "My top pick: VOO", "If I were you, VOO", "VOO beats VTI for you", "VOO > VTI",
+  // "Buy Tesla (TSLA)", "Have you considered putting it in VTI?". "Moving it into a HYSA" is savings.
+  new RegExp(
+    `\\b(?:[Tt]op |[Mm]y |[Bb]est |[Ff]avou?rite )?[Pp]icks?:\\s*\\$?${NOT_TICKERS}[A-Z]{3,5}\\b`,
+  ),
+  new RegExp(
+    `\\b[Ii]f I were you,?\\s+(?:I(?:'|’)?d\\s+(?:\\w+\\s+){1,2})?\\$?${NOT_TICKERS}[A-Z]{3,5}\\b`,
+  ),
+  new RegExp(
+    `\\b${NOT_TICKERS}[A-Z]{3,5}\\s+(?:beats|>|tops|edges out|wins over|is better than|over)\\s+\\$?${NOT_TICKERS}[A-Z]{3,5}\\b`,
+  ),
+  new RegExp(
+    `\\b(?:[Bb]uy|[Ss]ell|[Ss]hort|[Gg]rab|[Oo]wn|[Aa]dd)\\b[^.!?\\n]{0,30}\\(\\$?${NOT_TICKERS}[A-Z]{2,5}\\)`,
+  ),
+  new RegExp(
+    `\\b(?:[Pp]ut|[Pp]utting|[Mm]ove|[Mm]oving|[Pp]ark|[Pp]arking|[Ii]nvest|[Ii]nvesting|[Dd]ump|[Dd]umping)\\b[^.!?\\n]{0,20}\\b(?:in|into)\\s+\\$?${NOT_TICKERS}[A-Z]{3,5}\\b`,
+  ),
   // Round 17 (11-13): a ticker spelled out ("Buy T S L A", "Grab some v-o-o"); "Get a T-shirt" is shopping.
   /\b(?:buy|buying|grab|get|add|pick up|own|load up on)\s+(?:some |more )?(?![Aa][\s-])(?:[A-Za-z][ -]){2,4}[A-Za-z]\b(?![\w'’-])/i,
   // table row ("| VOO | Buy |") and a line of code ("buy: TSLA").
@@ -406,6 +423,8 @@ const LEGAL = [
   // send validation".
   /\b(?:don(?:'|’)?t|do not|never|hold off on|wait to) pay(?:ing)? (?:the |a |that |this |any |your )?(?:debt )?(?:collectors?|collection agency|collections?|creditors?)\b/i,
   /\bignore (?:the |that |this |any |their |those )?(?:debt )?(?:collectors?|collection (?:letters?|calls?|notices?|agency)|lawsuit|summons|court (?:date|papers|notice)|subpoena)\b/i,
+  // Round 19 (11-13): "Don't answer the court papers", "Let it charge off and settle later".
+  /\b(?:don(?:'|’)?t|do not|no need to|never) (?:answer|respond to|reply to|show up (?:to|for)|go to) (?:the |that |this |their )?(?:summons|lawsuit|complaint|court (?:date|papers|notice|hearing)|hearing|subpoena)\b|\blet (?:it|the (?:card|debt|loan|account)) (?:charge off|go to collections|default)\b/i,
   /\b(?:have|has|got) (?:a |an )?(?:\w+ )?case against\b/i,
   // Chat policy round 10 (11-12): "Sue them in small claims court for the deposit", "You can break
   // your lease without penalty because of the mold", "Under the FCRA they have to delete it". An
@@ -583,6 +602,8 @@ const GUARANTEE = [
   /\b100 ?% (?:sure|certain|guaranteed|safe|risk[- ]free|chance|likely|covered|of the time)\b/i,
   // Getting paid on payday is a date, not a promise (spec step 93).
   /\b(will|you'll|you will) (save|get|recover|receive|earn)\b(?! paid\b)/i,
+  // Round 19 (11-13): "You'll be approved for the loan", "You'll qualify for the lower rate".
+  /\b(?:you(?:'|’)ll|you will) (?:easily |surely )?(?:be approved|get approved|be accepted|get accepted|qualify for|get the (?:loan|card|rate|apartment))\b/i,
   // Round 18 (11-13): "This will raise your credit score by 50 points". "Could help your score" is
   // hedged and passes.
   /\b(?:will|you(?:'|’)ll|it(?:'|’)ll|this(?:'|’)ll|that(?:'|’)ll)\s+(?:\w+\s+)?(?:raise|boost|improve|increase|lift|bump|fix|repair|jump|add)\b[^.!?]{0,15}\b(?:credit )?score\b|\bscore (?:will|is going to) (?:go up|jump|rise|climb|increase|improve)\b/i,
@@ -922,13 +943,17 @@ const LOOK_ALIKES: Record<string, string> = {
 };
 const LOOK_ALIKE = new RegExp(`[${Object.keys(LOOK_ALIKES).join("")}]`, "g");
 function forChecking(text: string): string {
-  return text
-    .replace(/[\uFF01-\uFF5E]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
-    .replace(/[\u00a0\u2000-\u200a\u202f\u205f\u3000]/g, " ")
-    .replace(/[\u00ad\u200b-\u200d\u2060\ufeff]/g, "")
-    .replace(/[\p{L}\p{M}]+/gu, (word) =>
-      /[A-Za-z]/.test(word) ? word.replace(LOOK_ALIKE, (c) => LOOK_ALIKES[c] ?? c) : word,
-    );
+  return (
+    text
+      .replace(/[\uFF01-\uFF5E]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
+      .replace(/[\u00a0\u2000-\u200a\u202f\u205f\u3000]/g, " ")
+      .replace(/[\u00ad\u200b-\u200d\u2060\ufeff]/g, "")
+      // Round 19 (11-13): bold, italics and code around a word ("Buy **TSLA**", "Buy `VOO`") hid it.
+      .replace(/`+|(?<![\w*_])[*_~]+(?=\w)|(?<=\w)[*_~]+(?![\w*_])/g, "")
+      .replace(/[\p{L}\p{M}]+/gu, (word) =>
+        /[A-Za-z]/.test(word) ? word.replace(LOOK_ALIKE, (c) => LOOK_ALIKES[c] ?? c) : word,
+      )
+  );
 }
 
 function scan(
