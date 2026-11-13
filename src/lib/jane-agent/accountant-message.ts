@@ -1,6 +1,6 @@
 import { HIDDEN_PAGES } from "@/config/hidden-pages";
 import type { AccountantPageView } from "@/lib/accountant";
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 // Working with an accountant in the chat (spec step 222): a situation people usually bring
 // an accountant to (facts only), what the accountant wrote back, and the answer to "share
@@ -12,8 +12,8 @@ const ACCOUNTANT_HREF = "/taxes/accountant";
 // /taxes with nothing to make. Until it's back, what there is to hand over is the tax-time pack.
 const LINK_IS_HIDDEN = HIDDEN_PAGES.some((p) => p.path === ACCOUNTANT_HREF);
 export const shareWithAccountant: MessageAction = LINK_IS_HIDDEN
-  ? { id: "open", label: "Open your tax-time pack", kind: "link", href: "/tax-pack" }
-  : { id: "open", label: "Share with my accountant", kind: "link", href: ACCOUNTANT_HREF };
+  ? openLink("Open your tax-time pack", "/tax-pack")
+  : openLink("Share with my accountant", ACCOUNTANT_HREF);
 
 type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 
@@ -42,7 +42,7 @@ export function answersMessage(v: AccountantPageView): Message | null {
     refs: { taxYear: v.year },
     actions: [
       { id: "tax.accountant_seen", label: "Got it", kind: "primary" },
-      { id: "open", label: "See what they wrote", kind: "link", href: ACCOUNTANT_HREF },
+      openLink("See what they wrote", ACCOUNTANT_HREF),
     ],
   };
 }

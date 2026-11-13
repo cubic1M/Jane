@@ -8,19 +8,14 @@ import { shortMonth } from "@/planning/balance-transfer";
 import type { Refinance } from "@/lib/refinance";
 import type { RefinanceComparison, ScoredOffer } from "@/planning/refinance";
 import type { Reply } from "./replies";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 import { formatRate } from "@/lib/percent";
 
 // Jane's answers about refinancing (spec step 111), from the offers it keeps
 // (src/lib/refinance.ts). Pure. A pick is a loan recommendation, so it only exists in demo
 // advice mode (the stand-in catalog is only for demo-bank people) and is labelled.
 
-export const SEE_OFFERS: MessageAction = {
-  id: "open",
-  label: "See the offers",
-  kind: "link",
-  href: "/loans/refinance",
-};
+export const SEE_OFFERS: MessageAction = openLink("See the offers", "/loans/refinance");
 
 const months = (n: number) => `${n} ${n === 1 ? "month" : "months"}`;
 
@@ -150,9 +145,7 @@ export function loanStatusReply(apps: readonly LoanApplicationView[]): Reply {
   const latest = shown[0];
   return {
     body: lines.join("\n"),
-    actions: [
-      { id: "open", label: "See the application", kind: "link", href: `/loans/apply/${latest.id}` },
-    ],
+    actions: [openLink("See the application", `/loans/apply/${latest.id}`)],
     refs: {},
   };
 }
@@ -203,7 +196,7 @@ export function transferReply(data: Transfers): Reply {
             },
           ]
         : []),
-      { id: "open", label: "See the offers", kind: "link", href: "/loans/refinance#transfers" },
+      openLink("See the offers", "/loans/refinance#transfers"),
     ],
     refs: only
       ? { advice: true, transfer: { debtKey: only.debtKey, offerId: only.pick!.offer.id } }

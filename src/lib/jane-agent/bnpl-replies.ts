@@ -4,16 +4,11 @@ import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import { warnNewPlan } from "@/planning/bnpl";
 import type { Reply } from "./replies";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 
 // Jane's answers about buy now, pay later (spec step 176), from src/lib/bnpl.ts. Pure.
 
-export const BNPL_PAGE: MessageAction = {
-  id: "open",
-  label: "See every debt",
-  kind: "link",
-  href: "/loans",
-};
+export const BNPL_PAGE: MessageAction = openLink("See every debt", "/loans");
 
 export const payoffButton = (name: string): MessageAction => ({
   id: "bnpl.payoff",

@@ -3,18 +3,13 @@ import type { HomeBuying } from "@/lib/home-buying";
 import { homeMeasureOf, homeVsBorrowClause } from "@/planning/home-vs-borrow";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "./replies";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 import { formatRate } from "@/lib/percent";
 
 // Jane's answers about buying a home (spec step 179), from src/lib/home-buying.ts. Pure.
 // Demo advice, labelled; every assumption is on the page.
 
-const HOME_PAGE: MessageAction = {
-  id: "open",
-  label: "Plan a home purchase",
-  kind: "link",
-  href: "/loans/home",
-};
+const HOME_PAGE: MessageAction = openLink("Plan a home purchase", "/loans/home");
 
 const goalButton = (cents: number): MessageAction => ({
   id: "home.goal",

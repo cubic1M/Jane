@@ -2,17 +2,12 @@ import { dayLabel } from "@/lib/day-label";
 import type { CreditGoals, GoalDraft, GoalView } from "@/lib/credit-goals";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "./replies";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 
 // Jane's answers about a credit score for a goal (spec step 227), from src/lib/credit-goals.ts.
 // Pure. The scores are the stand-in simulator's estimates, always labelled so.
 
-export const GOAL_PAGE: MessageAction = {
-  id: "open",
-  label: "See your credit plan",
-  kind: "link",
-  href: "/loans/goal",
-};
+export const GOAL_PAGE: MessageAction = openLink("See your credit plan", "/loans/goal");
 
 export const ESTIMATE_NOTE =
   "These scores are estimates from the stand-in score's simulator, and nothing changes until you act.";

@@ -2,6 +2,7 @@ import { CHANGES_IN_REPLY } from "@/config/changes";
 import type { ChangeView } from "@/lib/changes";
 import type { FindingType } from "@/generated/prisma/client";
 import type { Reply } from "./replies";
+import { openLink } from "./types";
 
 // What Jane offers to do about a change, and says it did, for each finding a change can
 // lead to (src/lib/changes.ts). `yes` names the button that says yes, when "Look into it"
@@ -49,7 +50,7 @@ export function changeLine(change: ChangeView): string {
 // "What changed?" (spec step 97): the changes Jane noticed lately, newest first, in the
 // same words as its heads-ups.
 export function changesReply(changes: ChangeView[]): Reply {
-  const links = [{ id: "open", label: "See insights", kind: "link", href: "/insights" } as const];
+  const links = [openLink("See insights", "/insights")];
   if (changes.length === 0) {
     return {
       body: "Nothing's changed that I'd flag. Your bills, paychecks and spending look as usual, and I'll tell you here when something moves.",

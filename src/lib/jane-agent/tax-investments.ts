@@ -6,7 +6,7 @@ import type { HarvestChance, Realised } from "@/planning/investment-taxes";
 import { estimateTaxes } from "@/planning/tax-estimate";
 import { roundDollars } from "@/planning/tax-estimate-copy";
 import { snoozeButton } from "./sources/source";
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 import { dayLabel } from "@/lib/day-label";
 
 // Investment taxes in the chat (spec step 124): wash-sale warnings for everyone, and (demo
@@ -20,14 +20,7 @@ export function washSaleMessage(r: Realised): Said {
   const shares = Number(r.quantity.toFixed(3));
   return {
     body: `Your sale of ${shares} ${label(r)} on ${dayLabel(r.date)} was at a loss of ${formatCents(loss)}, but ${label(r)} was bought again within ${WASH_SALE_DAYS} days (${dayLabel(r.washReplacements[0].date)}), so ${formatCents(r.washDisallowedCents)} of the loss can't count this year: it's a wash sale. That part is added to the new shares' cost instead.`,
-    actions: [
-      {
-        id: "open",
-        label: "See investment taxes",
-        kind: "link",
-        href: "/taxes?focus=estimate:investments",
-      },
-    ],
+    actions: [openLink("See investment taxes", "/taxes?focus=estimate:investments")],
     refs: {},
   };
 }
@@ -102,14 +95,7 @@ export function investmentsReply(
       : "";
   return {
     body: `${realisedLine}${open}${wash}${harvest}`,
-    actions: [
-      {
-        id: "open",
-        label: "See investment taxes",
-        kind: "link",
-        href: "/taxes?focus=estimate:investments",
-      },
-    ],
+    actions: [openLink("See investment taxes", "/taxes?focus=estimate:investments")],
     refs: harvest ? { advice: true } : {},
   };
 }

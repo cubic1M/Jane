@@ -1,16 +1,11 @@
 import type { Credit } from "@/lib/credit";
 import type { Reply } from "./replies";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 
 // Jane's answers about the credit score (spec step 116). Pure. The stand-in score is
 // always called that.
 
-export const CREDIT_PAGE: MessageAction = {
-  id: "open",
-  label: "See your credit score",
-  kind: "link",
-  href: "/loans/credit",
-};
+export const CREDIT_PAGE: MessageAction = openLink("See your credit score", "/loans/credit");
 
 export const STAND_IN_LABEL =
   "This is a stand-in score for the demo bank, not your real credit score.";

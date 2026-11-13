@@ -3,17 +3,12 @@ import type { Mortgage } from "@/lib/mortgage";
 import { formatCents } from "@/lib/money";
 import { EQUITY_PAGE, pmiTimelineLines } from "./home-equity-replies";
 import type { Reply } from "./replies";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 import { formatRate } from "@/lib/percent";
 
 // Jane's answers about the mortgage (spec step 115). Pure.
 
-export const MORTGAGE_PAGE: MessageAction = {
-  id: "open",
-  label: "See your mortgage",
-  kind: "link",
-  href: "/loans/mortgage",
-};
+export const MORTGAGE_PAGE: MessageAction = openLink("See your mortgage", "/loans/mortgage");
 
 const months = (n: number) =>
   n >= 24 ? `${Math.round(n / 12)} years` : `${n} ${n === 1 ? "month" : "months"}`;
@@ -39,7 +34,7 @@ export function mortgageReply(m: Mortgage | null): Reply {
   if (!m) {
     return {
       body: "I don't see a mortgage in your accounts.",
-      actions: [{ id: "open", label: "See every debt", kind: "link", href: "/loans" }],
+      actions: [openLink("See every debt", "/loans")],
       refs: {},
     };
   }

@@ -5,19 +5,14 @@ import { formatCents } from "@/lib/money";
 import { dueMoveLine } from "@/planning/due-dates";
 import type { Reply } from "./replies";
 
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 import { formatRate } from "@/lib/percent";
 import { dayLabel } from "@/lib/day-label";
 
 // Jane's answers about debts on autopilot (spec step 117). Pure.
 
-const SETTINGS: MessageAction = {
-  id: "open",
-  label: "Autopilot settings",
-  kind: "link",
-  href: "/settings#autopilot",
-};
-const LOANS: MessageAction = { id: "open", label: "See every debt", kind: "link", href: "/loans" };
+const SETTINGS: MessageAction = openLink("Autopilot settings", "/settings#autopilot");
+const LOANS: MessageAction = openLink("See every debt", "/loans");
 
 // "What do you do about my debts?": what Jane does on its own at the person's debt level.
 export function debtAutopilotReply(data: DebtAutopilot): Reply {

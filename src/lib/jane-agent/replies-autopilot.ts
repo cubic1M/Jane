@@ -9,17 +9,12 @@ import { formatCents } from "@/lib/money";
 import type { SectorAutopilot } from "@/lib/sector-autopilot";
 import type { SectorIntent } from "./autopilot-intents";
 import type { Reply } from "./replies";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 
 // One autopilot, every sector (spec step 141): what Jane does on its own, area by area, and
 // a change typed in the chat, set only on the person's tap.
 
-const settings: MessageAction = {
-  id: "open",
-  label: "Area by area",
-  kind: "link",
-  href: "/settings#sectors",
-};
+const settings: MessageAction = openLink("Area by area", "/settings#sectors");
 
 type SectorSettingView = Pick<
   SectorAutopilot,
@@ -51,7 +46,7 @@ export function overviewReply(sectors: SectorAutopilot[], global: string | null)
   if (global === "ask" || global === null) {
     return {
       body: "Right now I ask you before doing anything. Pick how much I may do in Settings, then set each area.",
-      actions: [{ id: "open", label: "Settings", kind: "link", href: "/settings#autopilot" }],
+      actions: [openLink("Settings", "/settings#autopilot")],
       refs: {},
     };
   }

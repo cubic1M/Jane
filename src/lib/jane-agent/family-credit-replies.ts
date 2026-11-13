@@ -2,18 +2,13 @@ import { FAMILY_LABELS } from "@/config/family-credit";
 import type { FamilyCredit } from "@/lib/family-credit";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "./replies";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 
 // Jane's answers about helping family with credit (spec step 249), from
 // src/lib/family-credit.ts. Pure. What reporting does with a co-signed loan is a fact; what to
 // do for a young person is demo advice; what a lender may do is for a lawyer.
 
-const FAMILY_CREDIT_PAGE: MessageAction = {
-  id: "open",
-  label: "Helping with credit",
-  kind: "link",
-  href: "/loans/helping",
-};
+const FAMILY_CREDIT_PAGE: MessageAction = openLink("Helping with credit", "/loans/helping");
 
 const pct = (share: number | null) => (share === null ? null : `${Math.round(share * 100)}%`);
 

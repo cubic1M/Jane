@@ -2,6 +2,7 @@ import { formatCents } from "@/lib/money";
 import type { AccountForecast } from "@/detection/forecast";
 import type { Reply } from "./replies";
 import { dayLabel } from "@/lib/day-label";
+import { openLink } from "./types";
 
 // "Why is my checking going negative?": where each checking account is heading over the next
 // month, and the bills and paychecks (on their pay schedule) that drive the lowest point.
@@ -9,18 +10,13 @@ import { dayLabel } from "@/lib/day-label";
 const SHOWN = 3;
 
 export function forecastReply(forecasts: AccountForecast[]): Reply {
-  const link = {
-    id: "open" as const,
-    label: "See your bills",
-    kind: "link" as const,
-    href: "/bills",
-  };
+  const link = openLink("See your bills", "/bills");
   // A balance too old to walk forward says nothing about where the account is heading.
   const current = forecasts.filter((f) => !f.staleFrom);
   if (current.length === 0 && forecasts[0]) {
     return {
       body: `I can't forecast your balance: what I have for ${forecasts[0].accountName} ends on ${dayLabel(forecasts[0].staleFrom!)}. Add a newer statement and I'll show where it's heading.`,
-      actions: [{ id: "open", label: "Add a statement", kind: "link", href: "/import" }],
+      actions: [openLink("Add a statement", "/import")],
       refs: {},
     };
   }
@@ -28,7 +24,7 @@ export function forecastReply(forecasts: AccountForecast[]): Reply {
   if (!worst) {
     return {
       body: "I can't forecast your balance yet: add your checking account and I'll show where it's heading.",
-      actions: [{ id: "open", label: "Add your accounts", kind: "link", href: "/connect" }],
+      actions: [openLink("Add your accounts", "/connect")],
       refs: {},
     };
   }

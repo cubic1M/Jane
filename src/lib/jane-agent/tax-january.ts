@@ -3,7 +3,7 @@ import type { TaxEstimateView } from "@/lib/tax-estimate";
 import type { TaxPack } from "@/planning/tax-pack";
 import { federalLine, roundDollars } from "@/planning/tax-estimate-copy";
 import { listOf } from "@/planning/tax-profile";
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 // The one message in January (spec step 127): last year's taxes, ready. The estimate, what
 // the tax-time pack holds, and which forms are in.
@@ -33,13 +33,8 @@ export function januaryMessage(
   return {
     body: `Your ${pack.year} taxes are ready to go.${estimateLine} Your tax-time pack has ${tagged.length > 0 ? listOf(tagged) : "your income and forms"}.${forms}`,
     actions: [
-      {
-        id: "open",
-        label: "Open the tax-time pack",
-        kind: "link",
-        href: `/tax-pack?year=${pack.year}`,
-      },
-      { id: "open", label: "See your taxes", kind: "link", href: "/taxes" },
+      openLink("Open the tax-time pack", `/tax-pack?year=${pack.year}`),
+      openLink("See your taxes", "/taxes"),
     ],
     refs: { taxYear: pack.year },
   };

@@ -1,7 +1,7 @@
 import { IP_PIN, SIGNS } from "@/config/tax-identity";
 import { IP_PIN_TOOL_DOWN } from "@/planning/tax-identity";
 import type { IdentityView } from "@/lib/tax-identity";
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 // A protected tax identity in the chat (spec step 218): the January IP PIN reminder, a sign
 // of theft Jane noticed, and a case's next step with the rest of the list.
@@ -17,7 +17,7 @@ export function ipPinMessage(view: IdentityView, setByJane: boolean): Message {
       body: `${guide} I've put it on your deadlines for the end of January.`,
       refs: { taxYear: view.year },
       actions: [
-        { id: "open", label: "Get my IP PIN", kind: "link", href: IP_PIN.url },
+        openLink("Get my IP PIN", IP_PIN.url),
         { id: "tax.ippin_have", label: "I have it", kind: "secondary" },
       ],
     };
@@ -28,7 +28,7 @@ export function ipPinMessage(view: IdentityView, setByJane: boolean): Message {
     actions: [
       { id: "tax.ippin_remind", label: "Remind me", kind: "primary" },
       { id: "tax.ippin_have", label: "I have it", kind: "secondary" },
-      { id: "open", label: "Get my IP PIN", kind: "link", href: IP_PIN.url },
+      openLink("Get my IP PIN", IP_PIN.url),
     ],
   };
 }
@@ -66,10 +66,8 @@ export function caseMessage(view: IdentityView): Message | null {
     refs: { identityStep: next.key },
     actions: [
       { id: "tax.identity_step", label: "I've done it", kind: "primary" },
-      ...(next.url
-        ? [{ id: "open", label: "Open the guide", kind: "link", href: next.url } as MessageAction]
-        : []),
-      { id: "open", label: "See all the steps", kind: "link", href: IDENTITY_HREF },
+      ...(next.url ? [openLink("Open the guide", next.url) as MessageAction] : []),
+      openLink("See all the steps", IDENTITY_HREF),
     ],
   };
 }
@@ -84,7 +82,7 @@ export function identityReply(view: IdentityView, sign: string | null): Message 
       refs: { identitySign: sign, identitySource: "told" },
       actions: [
         { id: "tax.identity_open", label: "Yes, that's happened", kind: "primary" },
-        { id: "open", label: "See the steps", kind: "link", href: IDENTITY_HREF },
+        openLink("See the steps", IDENTITY_HREF),
       ],
     };
   }
@@ -93,9 +91,6 @@ export function identityReply(view: IdentityView, sign: string | null): Message 
       ? `You have your IP PIN for ${view.year}. If a return is rejected because one was already filed, or you get a W-2 or 1099 from a payer you don't know, or an IRS letter about a return you didn't file, tell me and I'll give you the steps.`
       : `The best protection is an IRS Identity Protection PIN: a six-digit number only you have, so no one else can file with your Social Security number. ${IP_PIN.who} If a return is rejected because one was already filed, or you get a W-2 or 1099 from a payer you don't know, or an IRS letter about a return you didn't file, tell me and I'll give you the steps.`,
     refs: {},
-    actions: [
-      { id: "open", label: "Get my IP PIN", kind: "link", href: IP_PIN.url },
-      { id: "open", label: "My tax identity", kind: "link", href: IDENTITY_HREF },
-    ],
+    actions: [openLink("Get my IP PIN", IP_PIN.url), openLink("My tax identity", IDENTITY_HREF)],
   };
 }

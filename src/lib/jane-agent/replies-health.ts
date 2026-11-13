@@ -3,19 +3,14 @@ import type { HealthView } from "@/lib/health-score";
 import type { HealthPartScore } from "@/planning/health-score";
 import type { Reply } from "./replies";
 import { sentence } from "./sources/source";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 import { monthLabel } from "@/lib/day-label";
 
 // Money health score in the chat (spec step 146): the number, the band, how it moved since
 // last month and what moved it, and the one step that would raise it most. Kind words
 // only: a low part is room to grow, never a verdict.
 
-const SEE: MessageAction = {
-  id: "open",
-  label: "See how it's made",
-  kind: "link",
-  href: "/jane#health",
-};
+const SEE: MessageAction = openLink("See how it's made", "/jane#health");
 
 // The part with the most room, and its next step.
 export const mostRoom = (parts: HealthPartScore[]) =>

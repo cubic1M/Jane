@@ -2,7 +2,7 @@ import type { RefundView } from "@/lib/tax-refund";
 import { formatCents } from "@/lib/money";
 import { roundDollars } from "@/planning/tax-estimate-copy";
 import { listOf } from "@/planning/tax-profile";
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 import { dayLabel } from "@/lib/day-label";
 
 // A tax refund in the chat (spec step 125): spotted, matched to the estimate and, in demo
@@ -26,9 +26,7 @@ export function refundMessage(view: RefundView): {
   if (!view.plan || view.plan.items.length === 0) {
     return {
       body: landed,
-      actions: [
-        { id: "open", label: "See your taxes", kind: "link", href: "/taxes?focus=estimate:refund" },
-      ],
+      actions: [openLink("See your taxes", "/taxes?focus=estimate:refund")],
       refs: { taxRefund: r.transactionId },
     };
   }

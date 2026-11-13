@@ -10,7 +10,7 @@ import {
   type StatePart,
 } from "@/planning/tax-states";
 import { snoozeButton } from "./sources/source";
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 import { dayLabel } from "@/lib/day-label";
 
 // State and local taxes in the chat (spec step 165): a move Jane spotted (at the levels
@@ -39,7 +39,7 @@ export function spottedMoveMessage(residency: ResidencyView): Message | null {
     actions: [
       { id: "tax.move_yes", label: "Yes, I moved", kind: "primary" },
       { id: "tax.move_no", label: "No, same state", kind: "secondary" },
-      { id: "open", label: "Change the date", kind: "link", href: STATES_HREF },
+      openLink("Change the date", STATES_HREF),
     ],
   };
 }
@@ -51,7 +51,7 @@ export function movingEventMessage(residency: ResidencyView, state: string | nul
     body: `You started a move on ${dayLabel(residency.movingEvent!)}. Did you move${here} to another state? A move splits your ${residency.year} state taxes, so I'd like the date and the new state.`,
     refs: { taxYear: residency.year },
     actions: [
-      { id: "open", label: "Tell me where", kind: "link", href: STATES_HREF },
+      openLink("Tell me where", STATES_HREF),
       { id: "tax.move_no", label: "Same state", kind: "secondary" },
     ],
   };
@@ -100,7 +100,7 @@ export function statesReply(view: TaxEstimateView): Message {
     return {
       body: "I don't know which state you file in yet. Tell me on your tax profile and I'll work out your state taxes.",
       refs: {},
-      actions: [{ id: "open", label: "Set my state", kind: "link", href: STATES_HREF }],
+      actions: [openLink("Set my state", STATES_HREF)],
     };
   }
   const lines = state.parts.map((p) => partLine(p, view.year));
@@ -118,7 +118,7 @@ export function statesReply(view: TaxEstimateView): Message {
   return {
     body: `Your ${view.year} state taxes come to about ${roundDollars(state.taxCents)}, estimated.\n${lines.map((l) => `• ${l}`).join("\n")}\nFigures from ${sources.join("; ")}, for review.${told}`,
     refs: {},
-    actions: [{ id: "open", label: "Where I lived", kind: "link", href: STATES_HREF }],
+    actions: [openLink("Where I lived", STATES_HREF)],
   };
 }
 
@@ -153,7 +153,7 @@ export function moveReply(
     refs: { taxMove: move, taxYear: year },
     actions: [
       { id: "tax.move_set", label: "Yes, save it", kind: "primary" },
-      { id: "open", label: "Change the date", kind: "link", href: STATES_HREF },
+      openLink("Change the date", STATES_HREF),
     ],
   };
 }
@@ -176,7 +176,7 @@ export function workStateReply(work: string, home: string | null): Message {
     refs: { taxWorkState: work },
     actions: [
       { id: "tax.work_set", label: "Yes, save it", kind: "primary" },
-      { id: "open", label: "Where I lived", kind: "link", href: STATES_HREF },
+      openLink("Where I lived", STATES_HREF),
     ],
   };
 }

@@ -3,6 +3,7 @@ import { formatCents } from "@/lib/money";
 import type { Ranked } from "@/planning/priorities";
 import { listWhy } from "./priorities";
 import type { Reply } from "./replies";
+import { openLink } from "./types";
 
 // "What should I do first?" (spec step 143): the one to three things that matter most, each
 // with why it's there.
@@ -28,14 +29,7 @@ export function prioritiesReply(ranked: Ranked[], explain = false, one = false):
         : "";
     return {
       body: `${first.title.replace(/[.!?]+$/, "")}. ${sentenceEnd(first.why.replace(/^(.)/, (c) => c.toUpperCase()))}${worth}`,
-      actions: [
-        {
-          id: "open" as const,
-          label: first.title.slice(0, 40),
-          kind: "link" as const,
-          href: first.href,
-        },
-      ],
+      actions: [openLink(first.title.slice(0, 40), first.href)],
       refs: {},
     };
   }
@@ -51,14 +45,7 @@ export function prioritiesReply(ranked: Ranked[], explain = false, one = false):
       ]
         .filter(Boolean)
         .join(" "),
-      actions: [
-        {
-          id: "open" as const,
-          label: first.title.slice(0, 40),
-          kind: "link" as const,
-          href: first.href,
-        },
-      ],
+      actions: [openLink(first.title.slice(0, 40), first.href)],
       refs: {},
     };
   }
@@ -69,12 +56,7 @@ export function prioritiesReply(ranked: Ranked[], explain = false, one = false):
         : `These ${top.length} matter most right now.`,
       ...top.map((r, i) => `${i + 1}. ${r.title}. ${listWhy(r)}`),
     ].join("\n"),
-    actions: top.map((r) => ({
-      id: "open" as const,
-      label: r.title.slice(0, 40),
-      kind: "link" as const,
-      href: r.href,
-    })),
+    actions: top.map((r) => openLink(r.title.slice(0, 40), r.href)),
     refs: {},
   };
 }

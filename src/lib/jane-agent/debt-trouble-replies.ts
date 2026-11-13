@@ -11,7 +11,7 @@ import {
 import type { DebtTrouble } from "@/lib/debt-trouble";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "./replies";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 import { formatPercent as pct } from "@/lib/percent";
 
 // Jane's answers when debt is too much (spec step 229), from src/lib/debt-trouble.ts. Pure.
@@ -19,12 +19,7 @@ import { formatPercent as pct } from "@/lib/percent";
 // or bankruptcy, and sends nothing. The fact sentences are the reviewed ones in
 // src/config/debt-trouble.ts, word for word.
 
-export const TROUBLE_PAGE: MessageAction = {
-  id: "open",
-  label: "Your options in full",
-  kind: "link",
-  href: "/loans/help",
-};
+export const TROUBLE_PAGE: MessageAction = openLink("Your options in full", "/loans/help");
 
 const SHOWN_DEBTS = 5;
 

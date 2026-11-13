@@ -3,19 +3,14 @@ import { formatCents } from "@/lib/money";
 import type { StudentLoans } from "@/lib/student-loans";
 import { PLAN_NAMES } from "@/planning/student-loans";
 import type { Reply } from "./replies";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 import { formatRate } from "@/lib/percent";
 
 // Jane's answers about student loans (spec step 114). Pure. Plan payments are the federal
 // plans' rules (src/config/student-loans.ts); the pick is demo advice, labelled. Every
 // studentaid.gov step links to its official page.
 
-export const STUDENT_PAGE: MessageAction = {
-  id: "open",
-  label: "See student loan plans",
-  kind: "link",
-  href: "/loans/student",
-};
+export const STUDENT_PAGE: MessageAction = openLink("See student loan plans", "/loans/student");
 
 // The guided step after `done` steps, as a message with its official link and "Done".
 export function stepMessage(done: number): Reply {
@@ -30,7 +25,7 @@ export function stepMessage(done: number): Reply {
   return {
     body: `Student loans, step ${done + 1} of ${STUDENT_STEPS.length}: ${step.title}.\n${step.does}`,
     actions: [
-      { id: "open", label: "Open it on studentaid.gov", kind: "link", href: step.url },
+      openLink("Open it on studentaid.gov", step.url),
       { id: "student.next", label: "Done, next step", kind: "primary" },
       STUDENT_PAGE,
     ],
@@ -42,7 +37,7 @@ export function studentReply(data: StudentLoans): Reply {
   if (!data.loan) {
     return {
       body: "I don't see a federal student loan with a balance and rate. If you have one, link the servicer's account or add its rate on the loans page.",
-      actions: [{ id: "open", label: "See every debt", kind: "link", href: "/loans" }],
+      actions: [openLink("See every debt", "/loans")],
       refs: {},
     };
   }
@@ -66,12 +61,7 @@ export function studentReply(data: StudentLoans): Reply {
   if (next) lines.push(`Next on studentaid.gov: ${next.title}.`);
   return {
     body: lines.join("\n"),
-    actions: [
-      ...(next
-        ? [{ id: "open" as const, label: next.title, kind: "link" as const, href: next.url }]
-        : []),
-      STUDENT_PAGE,
-    ],
+    actions: [...(next ? [openLink(next.title, next.url)] : []), STUDENT_PAGE],
     refs: comparison!.pick ? { advice: true } : {},
   };
 }

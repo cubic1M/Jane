@@ -3,7 +3,7 @@ import type { PaycheckPlanView, PlanMove } from "@/lib/money-movement/paycheck";
 import { whereItWent } from "@/planning/paycheck-plan";
 import type { Reply } from "./replies";
 import { dateAndDays } from "./sources/source";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 
 // A paycheck's plan in the chat (spec step 144): what Jane moved on its own, what it'd
 // like to move, and that the stand-in moves no real money.
@@ -85,7 +85,7 @@ export function paycheckReply(
     ...(auto.length > 0
       ? [{ id: "paycheck.undo" as const, label: "Undo", kind: "secondary" as const }]
       : []),
-    { id: "open", label: "See transfers", kind: "link", href: "/transfers" },
+    openLink("See transfers", "/transfers"),
   ];
   return { body: lines.join(" "), actions, refs: { paycheckPlanId: plan.id } };
 }

@@ -4,19 +4,14 @@ import { homeVsBorrow, mortgageOf, type HomeMeasure } from "@/planning/home-vs-b
 import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "./replies";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 import { formatRate } from "@/lib/percent";
 
 // Jane's answer to "what could I borrow, and at what rate?" (spec step 250), from
 // src/lib/borrowing-power.ts. Pure. Every figure says when it was checked; the quotes are soft
 // checks from the lender stand-in, not offers, and nothing is applied for.
 
-export const BORROW_PAGE: MessageAction = {
-  id: "open",
-  label: "What you could borrow",
-  kind: "link",
-  href: "/loans/borrow",
-};
+export const BORROW_PAGE: MessageAction = openLink("What you could borrow", "/loans/borrow");
 
 const years = (months: number) => `${Math.round(months / 12)} years`;
 

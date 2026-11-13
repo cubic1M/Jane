@@ -108,7 +108,7 @@ import { loadRecurring } from "./recurring";
 import { weeklyReview } from "./replies-review";
 import { findingCandidate } from "./sources/findings";
 import { TAX_TOOLS, isTaxTool, runTaxTool } from "./tax-tools";
-import { ACTION_IDS, type ActionId, type MessageAction } from "./types";
+import { ACTION_IDS, type ActionId, type MessageAction, openLink } from "./types";
 import { cryptoTotal } from "@/lib/crypto/crypto";
 import { RULE_REPLAY_STRATEGY_LABELS } from "@/config/backtest";
 import {
@@ -1785,7 +1785,7 @@ export async function proposeAction(
       ok: true,
       actions: [
         { id, label: "Approve all safe ones", kind: "primary" },
-        { id: "open", label: "Review the plan", kind: "link", href: "/plan" },
+        openLink("Review the plan", "/plan"),
       ],
       refs: {},
       line: null,

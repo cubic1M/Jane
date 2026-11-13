@@ -2,7 +2,7 @@ import type { TaxFound } from "@/planning/tax-scan";
 import type { DueEstimate, TaxCalendarView, YearEndView } from "@/lib/tax-calendar";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 // The tax year that runs itself, in the chat (spec step 223): an estimated payment that
 // needs the person's tap (over the cap, or they asked Jane to ask first), December's
@@ -24,7 +24,7 @@ export function estimateDueMessage(d: DueEstimate, year: number): Message {
     refs: { taxYear: year, estimateDue: d.dueOn },
     actions: [
       { id: "tax.estimate_pay", label: `Pay ${formatCents(d.cents)}`, kind: "primary" },
-      { id: "open", label: "See my tax calendar", kind: "link", href: CALENDAR_HREF },
+      openLink("See my tax calendar", CALENDAR_HREF),
     ],
   };
 }
@@ -48,7 +48,7 @@ export function yearEndMessage(y: YearEndView, acts: boolean): Message {
               kind: "primary" as const,
             },
           ]),
-      { id: "open", label: "See my tax calendar", kind: "link", href: CALENDAR_HREF },
+      openLink("See my tax calendar", CALENDAR_HREF),
     ],
   };
 }
@@ -72,6 +72,6 @@ export function calendarReply(v: TaxCalendarView, found: readonly TaxFound[] = [
         : "You asked me to ask first, so I check each one with you."
     }`,
     refs: mine.some((f) => f.advice) ? { advice: true } : {},
-    actions: [{ id: "open", label: "See the whole year", kind: "link", href: CALENDAR_HREF }],
+    actions: [openLink("See the whole year", CALENDAR_HREF)],
   };
 }

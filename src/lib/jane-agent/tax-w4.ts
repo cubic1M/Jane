@@ -4,7 +4,7 @@ import { formatCents } from "@/lib/money";
 import type { W4Change, WithholdingCheck } from "@/planning/withholding";
 import { balancePhrase, roundDollars } from "@/planning/tax-estimate-copy";
 import { snoozeButton } from "./sources/source";
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 // The withholding checkup in the chat (spec step 121). In demo advice mode: what to put on
 // a new W-4 and a three-step walk-through in one message; Jane never sends it, the person
@@ -12,12 +12,7 @@ import type { MessageAction, MessageRefs } from "./types";
 
 export type W4Message = { body: string; actions: MessageAction[]; refs: MessageRefs };
 
-const link = (label: string, href: string): MessageAction => ({
-  id: "open",
-  label,
-  kind: "link",
-  href,
-});
+const link = (label: string, href: string): MessageAction => openLink(label, href);
 
 const stepName = (c: W4Change) =>
   c.step === "4b" ? "Step 4(b), Deductions" : "Step 4(c), Extra withholding";

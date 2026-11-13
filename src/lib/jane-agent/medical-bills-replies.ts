@@ -2,17 +2,12 @@ import { dayLabel } from "@/lib/day-label";
 import type { MedicalBills } from "@/lib/medical-bills";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "./replies";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 
 // Jane's answers about medical bills (spec step 180), from src/lib/medical-bills.ts. Pure.
 // Amounts come from the bills themselves; nothing is sent without a tap.
 
-export const MEDICAL_PAGE: MessageAction = {
-  id: "open",
-  label: "See your medical bills",
-  kind: "link",
-  href: "/loans/medical",
-};
+export const MEDICAL_PAGE: MessageAction = openLink("See your medical bills", "/loans/medical");
 
 export const sendButton = (label: string): MessageAction => ({
   id: "medical.send",

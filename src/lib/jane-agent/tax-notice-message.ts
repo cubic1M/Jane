@@ -3,7 +3,7 @@ import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import type { NoticeView } from "@/lib/tax-notices";
 import { centsOf, type Check } from "@/planning/tax-notice";
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 // Letters from the IRS and the state in the chat (spec step 217): a notice Jane read, to
 // confirm; then what it says, what it found against the person's records, and the
@@ -32,12 +32,7 @@ export function noticeReadingMessage(n: NoticeView): Message {
             } as MessageAction,
           ]
         : []),
-      {
-        id: "open",
-        label: complete ? "Fix a field" : "Fill it in",
-        kind: "link",
-        href: LETTERS_HREF,
-      },
+      openLink(complete ? "Fix a field" : "Fill it in", LETTERS_HREF),
       { id: "tax.notice_no", label: "Not a tax notice", kind: "secondary" },
     ],
   };
@@ -84,7 +79,7 @@ export function noticeOpenMessage(
               kind: i === 0 ? "primary" : "secondary",
             }) as MessageAction,
         ),
-      { id: "open", label: "See the notice", kind: "link", href: LETTERS_HREF },
+      openLink("See the notice", LETTERS_HREF),
     ],
   };
 }
@@ -114,7 +109,7 @@ export function noticeDraftMessage(n: NoticeView, team: boolean): Message {
               kind: "primary" as const,
             },
           ]),
-      { id: "open", label: "See the notice", kind: "link", href: LETTERS_HREF },
+      openLink("See the notice", LETTERS_HREF),
     ],
   };
 }
@@ -132,7 +127,7 @@ export function noticesReply(notices: NoticeView[]): Message {
     return {
       body: "Photograph or upload a letter from the IRS or your state (Documents, kind \"Tax notice\"). I'll read it, explain it, put its date on your deadlines, check it against your records and draft a reply. A notice isn't always right, and it isn't always wrong.",
       refs: {},
-      actions: [{ id: "open", label: "My letters", kind: "link", href: LETTERS_HREF }],
+      actions: [openLink("My letters", LETTERS_HREF)],
     };
   }
   const lines = active.map(
@@ -142,6 +137,6 @@ export function noticesReply(notices: NoticeView[]): Message {
   return {
     body: `You have ${active.length} tax ${active.length === 1 ? "notice" : "notices"} on file.\n${lines.join("\n")}`,
     refs: {},
-    actions: [{ id: "open", label: "My letters", kind: "link", href: LETTERS_HREF }],
+    actions: [openLink("My letters", LETTERS_HREF)],
   };
 }

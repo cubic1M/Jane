@@ -5,6 +5,7 @@ import type { ChecklistRun } from "@/lib/life-guesses";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "./replies";
 import { dayLabel } from "@/lib/day-label";
+import { openLink } from "./types";
 
 // Life events in the chat (spec step 100): what Jane offers to do, what it did, and the
 // answer to "I'm moving".
@@ -43,9 +44,7 @@ export function checklistNote(kind: LifeEventKind, run: ChecklistRun): string {
   return lines.join(" ");
 }
 
-const links = [
-  { id: "open", label: "Open the checklist", kind: "link", href: "/life-events" } as const,
-];
+const links = [openLink("Open the checklist", "/life-events")];
 
 // "I'm moving", "I got a new job", "we're having a baby".
 export function lifeEventReply(kind: LifeEventKind, going: boolean): Reply {

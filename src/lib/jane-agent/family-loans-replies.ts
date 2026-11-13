@@ -2,18 +2,13 @@ import { dayLabel } from "@/lib/day-label";
 import type { FamilyLoans } from "@/lib/family-loans";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "./replies";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 
 // Jane's answers about money between family and friends (spec step 226), from
 // src/lib/family-loans.ts. Pure. Jane never messages the other person: a reminder is text
 // for the person to send themselves, and a transfer is a loan only after they say so.
 
-export const FAMILY_PAGE: MessageAction = {
-  id: "open",
-  label: "Who owes whom",
-  kind: "link",
-  href: "/loans/family",
-};
+export const FAMILY_PAGE: MessageAction = openLink("Who owes whom", "/loans/family");
 
 export const yesButton = (kind: "lent" | "borrowed", name: string): MessageAction => ({
   id: "famloan.yes",

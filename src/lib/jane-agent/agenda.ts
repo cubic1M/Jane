@@ -11,7 +11,7 @@ import { billsDueSoon, greeting, safeLine } from "./sources/brief";
 import { shortName } from "./sources/findings";
 import { lastWeekLine } from "./sources/last-week";
 import { inDays } from "./sources/source";
-import type { ActionId, Candidate, MessageAction } from "./types";
+import { type ActionId, type Candidate, type MessageAction, openLink } from "./types";
 
 // The day in one message (spec step 184). The morning brief becomes the day's agenda: what
 // Jane did overnight (step 142), what needs a yes (a Yes each, and "Approve all safe ones"),
@@ -174,7 +174,7 @@ export function agendaOf<T extends Planned>(
       : []),
     // The report's own button (its link), on the agenda that says it.
     ...report.flatMap((c) => c.actions.filter((a) => a.kind === "link")),
-    { id: "open", label: "See today", kind: "link", href: "/home" },
+    openLink("See today", "/home"),
   ];
   return {
     agenda: {

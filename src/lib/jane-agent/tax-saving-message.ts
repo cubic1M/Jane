@@ -1,7 +1,7 @@
 import type { TaxSaving } from "@/planning/tax-savings";
 import { roundDollars } from "@/planning/tax-estimate-copy";
 import { snoozeButton } from "./sources/source";
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 // A way to pay less (spec step 122), as Jane says it in the chat: what, why, about how much
 // (an estimate), and the one button that does it. Demo advice, labelled.
@@ -24,7 +24,7 @@ export function savingMessage(
       targetDate: action.targetDate,
     };
   } else {
-    buttons.push({ id: "open", label: action.label, kind: "link", href: action.href });
+    buttons.push(openLink(action.label, action.href));
   }
   buttons.push({ id: "tax.save_no", label: "Not for me", kind: "secondary" }, snoozeButton());
   return {

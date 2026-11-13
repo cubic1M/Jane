@@ -1,7 +1,7 @@
 import { CHAT_WEEK_DAYS, WHOLE_PICTURE_DUE, WHOLE_PICTURE_TOP } from "@/config/agent-chat";
 import { formatCents } from "@/lib/money";
 import type { Ranked } from "@/planning/priorities";
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 import type { Reply } from "./replies";
 import { mostRoom } from "./replies-health";
 import { listWhy } from "./priorities";
@@ -155,7 +155,7 @@ export function wholePictureReply(
   if (!snapshot) {
     return {
       body: "I can't see your money yet. Upload your bank statements or link a bank, and I'll tell you how you're doing across everything.",
-      actions: [{ id: "open", label: "Add your accounts", kind: "link", href: "/connect" }],
+      actions: [openLink("Add your accounts", "/connect")],
       refs: {},
     };
   }
@@ -204,10 +204,8 @@ export function wholePictureReply(
   }
   if (picture.safeItems > 1)
     actions.push({ id: "plan.approve_safe", label: "Approve all safe ones", kind: "secondary" });
-  for (const r of top)
-    actions.push({ id: "open", label: shortName(r.title), kind: "link", href: r.href });
-  if (top.length === 0)
-    actions.push({ id: "open", label: "See today", kind: "link", href: "/home" });
+  for (const r of top) actions.push(openLink(shortName(r.title), r.href));
+  if (top.length === 0) actions.push(openLink("See today", "/home"));
 
   return { body: lines.filter((l): l is string => Boolean(l)).join("\n"), actions, refs };
 }

@@ -1,6 +1,7 @@
 import { formatCents } from "@/lib/money";
 import type { GoalView } from "@/lib/goals";
 import type { Reply } from "./replies";
+import { openLink } from "./types";
 
 // "What if I save $200 more a month": the yearly total, and how soon it would cover the goal
 // that still needs the most. Only their own figures; nothing changes.
@@ -25,7 +26,7 @@ export function saveMoreReply(monthlyCents: number, goals: GoalView[]): Reply {
     body: lines.join("\n"),
     actions: [
       goals.length > 0
-        ? { id: "open", label: "See goals", kind: "link", href: "/goals" }
+        ? openLink("See goals", "/goals")
         : { id: "goal.start", label: "Start a goal", kind: "primary" },
     ],
     refs: {},

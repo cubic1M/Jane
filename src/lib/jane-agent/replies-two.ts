@@ -2,6 +2,7 @@ import { formatCents } from "@/lib/money";
 import type { MoneyForTwoView } from "@/lib/money-for-two";
 import { sharesWords } from "@/planning/money-for-two";
 import type { Reply } from "./replies";
+import { openLink } from "./types";
 
 // Money for two in the chat (spec step 242): how shared bills split, joint goals, big moves
 // waiting for a tap, and the monthly money date. Only what was shared, never the partner's
@@ -13,7 +14,7 @@ export function moneyForTwoReply(view: MoneyForTwoView | null): Reply {
   if (!view) {
     return {
       body: "Invite your partner on Household and you can run money together: bills split evenly or by income, joint goals, both taps for big moves, and a short money date each month. Your own accounts stay yours.",
-      actions: [{ id: "open", label: "Invite your partner", kind: "link", href: "/household" }],
+      actions: [openLink("Invite your partner", "/household")],
       refs: {},
     };
   }
@@ -47,7 +48,7 @@ export function moneyForTwoReply(view: MoneyForTwoView | null): Reply {
             { id: "two.split_even" as const, label: "Keep half each", kind: "secondary" as const },
           ]
         : []),
-      { id: "open", label: "See household", kind: "link", href: "/household" },
+      openLink("See household", "/household"),
     ],
     refs: {},
   };

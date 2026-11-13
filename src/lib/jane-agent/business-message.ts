@@ -2,7 +2,7 @@ import { shareWithAccountant } from "./accountant-message";
 import type { BusinessView } from "@/lib/business-structure";
 import { formatCents } from "@/lib/money";
 import { roundDollars } from "@/planning/tax-estimate-copy";
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 // Business owners' tax structure in the chat (spec step 267): whether an S corporation would
 // save more than it costs at this profit (demo advice), and the answer to "should I be an S
@@ -18,10 +18,7 @@ export function sCorpMessage(v: BusinessView): Message | null {
   return {
     body: `At your profit of ${roundDollars(v.structure!.profitCents)}, running your business as an S corporation could save about ${roundDollars(s.savesCents)} a year in tax after about ${roundDollars(s.costsCents)} of payroll and filing costs. You'd pay yourself a salary (a range to start from is ${roundDollars(s.salaryLowCents)} to ${roundDollars(s.salaryHighCents)}) and take the rest as profit, which skips the self-employment tax. A tax professional should confirm it and set up the election.`,
     refs: { advice: true, taxYear: v.year },
-    actions: [
-      { id: "open", label: "See the numbers", kind: "link", href: BUSINESS_HREF },
-      shareWithAccountant,
-    ],
+    actions: [openLink("See the numbers", BUSINESS_HREF), shareWithAccountant],
   };
 }
 
@@ -30,7 +27,7 @@ export function businessReply(v: BusinessView): Message {
     return {
       body: "I don't see profit from self-employment this year, so there's nothing to compare yet. When business income shows up in your accounts, I'll work out your qualified business income deduction and whether an S corporation would save you tax.",
       refs: {},
-      actions: [{ id: "open", label: "See business taxes", kind: "link", href: BUSINESS_HREF }],
+      actions: [openLink("See business taxes", BUSINESS_HREF)],
     };
   }
   const { sole, sCorp, profitCents } = v.structure;
@@ -61,6 +58,6 @@ export function businessReply(v: BusinessView): Message {
   return {
     body: `Here is where your business taxes stand.\n${lines.map((l) => `• ${l}`).join("\n")}`,
     refs: v.advice ? { advice: true } : {},
-    actions: [{ id: "open", label: "See business taxes", kind: "link", href: BUSINESS_HREF }],
+    actions: [openLink("See business taxes", BUSINESS_HREF)],
   };
 }

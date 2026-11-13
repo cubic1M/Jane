@@ -1,5 +1,6 @@
 import type { BooksView } from "@/lib/books";
 import type { Reply } from "./replies";
+import { openLink } from "./types";
 
 // "Are my numbers right?" (spec step 238): what Jane checks every day, and what doesn't add
 // up yet, in words.
@@ -14,7 +15,7 @@ export function booksReply(books: BooksView): Reply {
   }
   return {
     body: `Not everything adds up yet. ${open.map((o) => o.words).join(" ")} Figures that rely on these are marked until they're fixed.`,
-    actions: [{ id: "open", label: "Check my accounts", kind: "link", href: "/connect" }],
+    actions: [openLink("Check my accounts", "/connect")],
     refs: {},
   };
 }

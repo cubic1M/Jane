@@ -2,7 +2,7 @@ import type { MultiYearView } from "@/lib/multi-year";
 import { formatCents } from "@/lib/money";
 import type { Move } from "@/planning/multi-year";
 import { roundDollars } from "@/planning/tax-estimate-copy";
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 // Tax moves over several years in the chat (spec step 220): the move that saves the most
 // (demo advice), and the answer to "my taxes over the years", "Roth conversion".
@@ -17,7 +17,7 @@ export function yearsMoveMessage(view: MultiYearView, move: Move): Message {
     refs: { advice: true, taxYear: view.year, yearsMove: move.key },
     actions: [
       { id: "tax.years_plan", label: "Put it on my plan", kind: "primary" },
-      { id: "open", label: "See my tax years", kind: "link", href: YEARS_HREF },
+      openLink("See my tax years", YEARS_HREF),
     ],
   };
 }
@@ -28,7 +28,7 @@ export function yearsReply(view: MultiYearView): Message {
     return {
       body: "I can't see enough income yet to show your tax year by year. Upload your bank statements or link a bank, or add your income on the taxes page.",
       refs: {},
-      actions: [{ id: "open", label: "See my taxes", kind: "link", href: "/taxes" }],
+      actions: [openLink("See my taxes", "/taxes")],
     };
   }
   const first = view.rows[0];
@@ -58,7 +58,7 @@ export function yearsReply(view: MultiYearView): Message {
             },
           ]
         : []),
-      { id: "open", label: "See my tax years", kind: "link", href: YEARS_HREF },
+      openLink("See my tax years", YEARS_HREF),
     ],
   };
 }

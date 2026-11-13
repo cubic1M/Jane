@@ -2,6 +2,7 @@ import type { TradeoffView } from "@/lib/goal-tradeoffs";
 import { type GoalDate } from "@/planning/goal-tradeoffs";
 import type { Reply } from "./replies";
 import { monthLabel } from "@/lib/day-label";
+import { openLink } from "./types";
 
 // Goals that trade off openly in the chat (spec step 241): each goal's date under each order,
 // Jane's suggested order with the reason, and one tap to use it. Nothing re-plans without it.
@@ -28,7 +29,7 @@ export function tradeoffsReply(view: TradeoffView | null): Reply {
       body: view.current
         ? `Your goals don't compete: the plan has room for each on time. ${view.current.dates.map(when).join("; ")}.`
         : "You need at least two goals for them to trade off. Add them on Goals.",
-      actions: [{ id: "open", label: "See goals", kind: "link", href: "/goals" }],
+      actions: [openLink("See goals", "/goals")],
       refs: {},
     };
   }
@@ -64,7 +65,7 @@ export function tradeoffsReply(view: TradeoffView | null): Reply {
             },
           ]
         : []),
-      { id: "open", label: "Compare on Goals", kind: "link", href: "/goals#tradeoffs" },
+      openLink("Compare on Goals", "/goals#tradeoffs"),
     ],
     refs: showsPick ? { goalOrder: view.suggested.order.join(",") } : {},
   };

@@ -1,6 +1,7 @@
 import { CONTROLLER_STEP_LABELS } from "@/config/controller";
 import type { LastRun, StepLog } from "@/lib/controller-log";
 import type { Reply } from "./replies";
+import { openLink } from "./types";
 
 // "What I checked last night" (spec step 142): one line per sector from the nightly run.
 
@@ -23,7 +24,7 @@ export function checkedReply(run: LastRun | null): Reply {
         : "Here's what I checked last night.",
       ...run.steps.map((s) => `- ${checkedLine(s)}`),
     ].join("\n"),
-    actions: [{ id: "open", label: "What Jane is doing", kind: "link", href: "/jane" }],
+    actions: [openLink("What Jane is doing", "/jane")],
     refs: {},
   };
 }

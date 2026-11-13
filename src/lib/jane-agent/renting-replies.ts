@@ -3,17 +3,12 @@ import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import type { Renting } from "@/lib/renting";
 import type { Reply } from "./replies";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 
 // Jane's answers about renting (spec step 248), from src/lib/renting.ts. Pure. Rent reporting
 // starts only on the person's yes; the deposit dates are facts from the state's law, to confirm.
 
-export const RENTING_PAGE: MessageAction = {
-  id: "open",
-  label: "Your rent",
-  kind: "link",
-  href: "/loans/renting",
-};
+export const RENTING_PAGE: MessageAction = openLink("Your rent", "/loans/renting");
 
 export const reportOnButton = (): MessageAction => ({
   id: "rent.report_on",

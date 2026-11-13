@@ -4,7 +4,7 @@ import { formatCents } from "@/lib/money";
 import { COMPARED } from "@/planning/tax-document-check";
 import { listOf } from "@/planning/tax-profile";
 
-import type { MessageAction, MessageRefs } from "./types";
+import { type MessageAction, type MessageRefs, openLink } from "./types";
 import { dayLabel } from "@/lib/day-label";
 
 // Tax forms that collect themselves, in the chat (spec step 166): a form that doesn't match
@@ -31,7 +31,7 @@ export function flaggedMessage(f: CollectedForm, year: number): Message {
     actions: [
       { id: "tax.doc_right", label: "It's right, use it", kind: "primary" },
       { id: "tax.doc_ask", label: "Remind me to ask them", kind: "secondary" },
-      { id: "open", label: "See tax forms", kind: "link", href: FORMS_HREF },
+      openLink("See tax forms", FORMS_HREF),
     ],
   };
 }
@@ -51,7 +51,7 @@ export function collectedMessage(view: TaxDocumentsView, acts: boolean): Message
     return {
       body: `I collected ${n} tax ${n === 1 ? "form" : "forms"} for ${view.year}: ${list}. ${checked} I've ticked ${n === 1 ? "it" : "them"} off.`,
       refs: { taxYear: view.year },
-      actions: [{ id: "open", label: "See tax forms", kind: "link", href: FORMS_HREF }],
+      actions: [openLink("See tax forms", FORMS_HREF)],
     };
   }
   return {
@@ -59,7 +59,7 @@ export function collectedMessage(view: TaxDocumentsView, acts: boolean): Message
     refs: { taxYear: view.year },
     actions: [
       { id: "tax.docs_tick", label: "Tick them off", kind: "primary" },
-      { id: "open", label: "See tax forms", kind: "link", href: FORMS_HREF },
+      openLink("See tax forms", FORMS_HREF),
     ],
   };
 }
@@ -71,7 +71,7 @@ export function missingMessage(f: CollectedForm, year: number): Message {
     actions: [
       { id: "tax.doc_chase", label: "Remind me", kind: "primary" },
       { id: "tax.form_got", label: "I have it", kind: "secondary" },
-      { id: "open", label: "See tax forms", kind: "link", href: FORMS_HREF },
+      openLink("See tax forms", FORMS_HREF),
     ],
   };
 }
@@ -82,7 +82,7 @@ export function documentsReply(view: TaxDocumentsView): Message {
     return {
       body: `I don't expect any tax forms for ${view.year} from what's in your accounts. If you were paid somewhere I can't see, that payer sends its own.`,
       refs: {},
-      actions: [{ id: "open", label: "See your taxes", kind: "link", href: FORMS_HREF }],
+      actions: [openLink("See your taxes", FORMS_HREF)],
     };
   }
   const line = (f: CollectedForm) => {
@@ -102,6 +102,6 @@ export function documentsReply(view: TaxDocumentsView): Message {
   return {
     body: `You have ${view.forms.length} tax ${view.forms.length === 1 ? "form" : "forms"} to expect for ${view.year}.\n${view.forms.map(line).join("\n")}`,
     refs: {},
-    actions: [{ id: "open", label: "See tax forms", kind: "link", href: FORMS_HREF }],
+    actions: [openLink("See tax forms", FORMS_HREF)],
   };
 }

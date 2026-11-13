@@ -3,17 +3,12 @@ import type { CreditCards } from "@/lib/credit-cards";
 import { formatCents } from "@/lib/money";
 import type { BetterCard } from "@/planning/credit-cards";
 import type { Reply } from "./replies";
-import type { MessageAction } from "./types";
+import { type MessageAction, openLink } from "./types";
 
 // Jane's answers about credit card rewards (spec step 174), from src/lib/credit-cards.ts.
 // Pure. Only demo-bank people have a catalog, so every pick is demo advice and labelled.
 
-export const CARDS_PAGE: MessageAction = {
-  id: "open",
-  label: "See your cards",
-  kind: "link",
-  href: "/loans/cards",
-};
+export const CARDS_PAGE: MessageAction = openLink("See your cards", "/loans/cards");
 
 export const pct = (bps: number) => `${Math.round(bps) / 100}%`;
 const lower = (c: RewardCategory) => REWARD_CATEGORY_LABELS[c].toLowerCase();
