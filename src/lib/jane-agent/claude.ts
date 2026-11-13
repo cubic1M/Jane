@@ -260,7 +260,7 @@ const STATUS: Record<string, string> = {
   show_block: "Drawing it…",
   open_area: "Looking into it…",
 };
-export const statusFor = (tool: string) =>
+const statusFor = (tool: string) =>
   STATUS[tool] ?? INVESTMENT_TOOL_STATUS[tool] ?? "Looking that up…";
 
 // Shown when Claude can't answer (an error, a refusal, too many lookups).
@@ -339,12 +339,12 @@ function continueAfter(request: string, read: string): string {
 // What Jane says in place of the sentences a blocked answer loses.
 export const CANT_ADVISE_TAX =
   "I can't tell you what to file, deduct or claim; a tax professional can.";
-export const CANT_ADVISE_LEGAL = "I can't advise on the legal side; a lawyer can.";
-export const CANT_ADVISE_INVESTING = "I can't advise on investments here.";
+const CANT_ADVISE_LEGAL = "I can't advise on the legal side; a lawyer can.";
+const CANT_ADVISE_INVESTING = "I can't advise on investments here.";
 
 // (From the app, not the person.) What Claude is told after a safety classifier stopped its answer
 // (stop_reason "refusal"): the refused draft is dropped and it answers once more, in its own words.
-export const REFUSAL_RETRY =
+const REFUSAL_RETRY =
   "(From the app, not the person.) Your last answer was stopped by a safety check before it finished, so the person saw nothing. Answer their message again, briefly and in your own words. If you can help within your rules, do: their numbers and tools are here. If you can't, say in one plain sentence what you can't help with and why, then what you can do for them with their money. Don't mention this note or the check.";
 
 // (From the app, not the person.) What Claude is told after a turn that ended with no words at all

@@ -10,7 +10,7 @@ import type { MessageAction, MessageRefs } from "./types";
 // response to draft; then the draft, to send (the team or the person). Never paid or sent
 // without a tap.
 
-export const LETTERS_HREF = "/taxes/letters";
+const LETTERS_HREF = "/taxes/letters";
 
 type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 

@@ -8,7 +8,7 @@ import type { MessageAction } from "./types";
 // (src/lib/fit.ts): its pick first, with how sure Jane is, then the options to choose from. The
 // pick is demo advice; the choice is theirs, and choosing never applies for anything.
 
-export const LOAN_FIT_PAGE: MessageAction = {
+const LOAN_FIT_PAGE: MessageAction = {
   id: "open",
   label: "Compare your loan options",
   kind: "link",

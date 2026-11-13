@@ -173,7 +173,7 @@ export function batchOf(
     .filter((s) => !state?.done[s.id]);
 }
 
-export const liteOf = (r: CheckRun["results"][number]): LiteResult => ({
+const liteOf = (r: CheckRun["results"][number]): LiteResult => ({
   id: r.id,
   text: r.text,
   status: r.status,

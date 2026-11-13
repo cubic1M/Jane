@@ -20,7 +20,7 @@ export const BORROW_PAGE: MessageAction = {
 
 const years = (months: number) => `${Math.round(months / 12)} years`;
 
-export function figureLine(f: Figure): string {
+function figureLine(f: Figure): string {
   const label = BORROW_LABELS[f.product];
   if (!f.available) return `- ${label}: not yet. ${f.why ?? ""}`.trim();
   if (f.product === "card") {

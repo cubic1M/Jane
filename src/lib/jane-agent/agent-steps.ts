@@ -5,8 +5,7 @@ import { AGENT_CALL_TYPES } from "@/config/agent";
 // couldn't answer, an offer made on a call, a company that only cancels from the person's
 // own page, and a switch waiting for the person to sign up. Pure.
 
-export const AGENT_STEPS = ["question", "offer", "self_cancel", "switch"] as const;
-export type AgentStep = (typeof AGENT_STEPS)[number];
+export type AgentStep = "question" | "offer" | "self_cancel" | "switch";
 
 export function stepOf(action: {
   status: string;

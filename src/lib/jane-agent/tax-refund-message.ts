@@ -8,7 +8,7 @@ import { dayLabel } from "@/lib/day-label";
 // A tax refund in the chat (spec step 125): spotted, matched to the estimate and, in demo
 // advice mode, where it could go, set up with one tap.
 
-export function matchLine(view: RefundView): string {
+function matchLine(view: RefundView): string {
   const m = view.match;
   if (!m) return "";
   if (m.matches)

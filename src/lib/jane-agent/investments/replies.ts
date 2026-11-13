@@ -572,7 +572,7 @@ export function autopilotReply(
 }
 
 // Spec step 156: one line on how they've done over the longest period Jane can measure.
-export function returnsLine(returns: Returns): string | null {
+function returnsLine(returns: Returns): string | null {
   const p = returns.periods.at(-1);
   if (!p || p.timeWeighted === null) return null;
   const money =

@@ -10,7 +10,7 @@ import type { MessageAction } from "./types";
 // from src/lib/mortgage-money.ts. Pure. Demo advice: both sides shown, the choice left to the
 // person.
 
-export const MONEY_PAGE: MessageAction = {
+const MONEY_PAGE: MessageAction = {
   id: "open",
   label: "Compare for your mortgage",
   kind: "link",
@@ -19,7 +19,7 @@ export const MONEY_PAGE: MessageAction = {
 
 const months = (n: number) => `${n} ${n === 1 ? "month" : "months"}`;
 
-export function optionLine(o: MoneyOption): string {
+function optionLine(o: MoneyOption): string {
   if (!o.available) return `- ${o.label}: not an option here. ${o.why}`;
   const pays =
     o.breakEvenMonths !== null

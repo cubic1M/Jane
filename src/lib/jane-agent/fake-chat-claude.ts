@@ -19,7 +19,7 @@ const SCRIPTS: Record<string, Round[]> = {
   ],
 };
 
-export function fakeChatEnabled(): boolean {
+function fakeChatEnabled(): boolean {
   return process.env.CHAT_FAKE_CLAUDE === "1" && process.env.VERCEL_ENV !== "production";
 }
 

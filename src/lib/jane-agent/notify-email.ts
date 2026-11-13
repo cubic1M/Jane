@@ -29,7 +29,7 @@ function escapeHtml(value: string): string {
     .replaceAll('"', "&quot;");
 }
 
-export function chatEmailSubject(count: number): string {
+function chatEmailSubject(count: number): string {
   return count === 1 ? "Jane: 1 thing for you" : `Jane: ${count} things for you`;
 }
 

@@ -21,7 +21,7 @@ export const payoffButton = (name: string): MessageAction => ({
   kind: "primary",
 });
 
-export const installmentLines = (data: Bnpl, limit = 6) =>
+const installmentLines = (data: Bnpl, limit = 6) =>
   data.installments
     .slice(0, limit)
     .map((i) => `- ${dayLabel(i.date)}: ${formatCents(i.cents)} to ${i.name}`);

@@ -82,7 +82,7 @@ type Options = {
   personFor?: (lead: CheckQuestion) => { userId: string; facts: Facts };
 };
 
-export const NO_KEY = "Needs Claude, and there's no ANTHROPIC_API_KEY: skipped.";
+const NO_KEY = "Needs Claude, and there's no ANTHROPIC_API_KEY: skipped.";
 export const AT_CAP = "The run reached its spending cap before this one: skipped.";
 const LEAD_SKIPPED = "Its first question was skipped, so this follow-up was too.";
 

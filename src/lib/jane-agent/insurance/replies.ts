@@ -33,7 +33,7 @@ const addLink = (kind: PolicyKind | null) =>
   link("Add a policy", kind ? `/insurance?add=${kind}#add` : "/insurance#add");
 
 // "your GEICO car insurance".
-export const policyName = (p: Pick<Policy, "carrier" | "kind">) =>
+const policyName = (p: Pick<Policy, "carrier" | "kind">) =>
   `your ${p.carrier} ${kindWords(p.kind)}`;
 const capital = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 

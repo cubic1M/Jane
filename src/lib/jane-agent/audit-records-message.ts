@@ -8,7 +8,7 @@ import { dayLabel } from "@/lib/day-label";
 // Audit-ready records in the chat (spec step 171): a year's records that can go soon, the
 // audit pack and what it still needs, and "how long should I keep my tax records".
 
-export const RECORDS_HREF = "/taxes?focus=records:audit";
+const RECORDS_HREF = "/taxes?focus=records:audit";
 
 type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 

@@ -12,7 +12,7 @@ import { dayLabel } from "@/lib/day-label";
 // that let it act, one tap otherwise), a form still missing, and the answer to "my tax
 // forms".
 
-export const FORMS_HREF = "/taxes?focus=records:forms";
+const FORMS_HREF = "/taxes?focus=records:forms";
 
 type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 

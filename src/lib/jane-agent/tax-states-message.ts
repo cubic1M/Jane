@@ -17,8 +17,8 @@ import { dayLabel } from "@/lib/day-label";
 // that let it act, already counted), a move on the life-events checklist, the city income
 // tax question, and the answer to "what state taxes do I pay".
 
-export const STATES_HREF = "/taxes/profile#states";
-export const LOCAL_BUTTONS = ["tax.local_1", "tax.local_2"] as const;
+const STATES_HREF = "/taxes/profile#states";
+const LOCAL_BUTTONS = ["tax.local_1", "tax.local_2"] as const;
 
 type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 

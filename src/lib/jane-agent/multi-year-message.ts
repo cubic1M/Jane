@@ -7,7 +7,7 @@ import type { MessageAction, MessageRefs } from "./types";
 // Tax moves over several years in the chat (spec step 220): the move that saves the most
 // (demo advice), and the answer to "my taxes over the years", "Roth conversion".
 
-export const YEARS_HREF = "/taxes/years";
+const YEARS_HREF = "/taxes/years";
 
 type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 

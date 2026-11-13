@@ -6,7 +6,7 @@ import type { MessageAction, MessageRefs } from "./types";
 // A protected tax identity in the chat (spec step 218): the January IP PIN reminder, a sign
 // of theft Jane noticed, and a case's next step with the rest of the list.
 
-export const IDENTITY_HREF = "/taxes/identity";
+const IDENTITY_HREF = "/taxes/identity";
 
 type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 

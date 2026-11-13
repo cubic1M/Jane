@@ -67,7 +67,7 @@ import { initialsOf } from "@/lib/person-payees";
 
 const noInput = { type: "object" as const, properties: {}, additionalProperties: false };
 
-export const REFINANCE_TOOL: Anthropic.Tool = {
+const REFINANCE_TOOL: Anthropic.Tool = {
   name: "refinance_offers",
   description:
     "Refinance offers Jane checked for the person's loans and cards (sample offers from a stand-in lender catalog; only demo-bank people have any). For each debt: the balance, rate and months left, what keeping it costs over those months, each offer's rate, monthly payment, total over the same months with fees, saving, and break-even months for a fee; Jane's pick and why when one saves enough to switch. Nothing has been applied for.",

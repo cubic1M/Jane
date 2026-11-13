@@ -4,7 +4,7 @@ import { RISK_LEVELS, type RiskLevel } from "@/config/investing";
 // normalized text in (./../intents.ts normalize), the topic out, or null when it isn't
 // about investments. Each investment step adds its topics here.
 
-export type InvestmentTopic =
+type InvestmentTopic =
   | "holdings"
   | "profile"
   | "fees"

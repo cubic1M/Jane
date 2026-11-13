@@ -101,7 +101,7 @@ const SECTORS = {
 
 type SectorName = keyof typeof SECTORS;
 
-export const AREAS = Object.keys(SECTORS) as SectorName[];
+const AREAS = Object.keys(SECTORS) as SectorName[];
 export const isArea = (value: unknown): value is SectorName =>
   typeof value === "string" && (AREAS as string[]).includes(value);
 
@@ -137,7 +137,7 @@ export function sectorOf(name: string): SectorName | null {
 // The one or two lookups that almost every question in a sector starts with. They are run
 // while the person's numbers load and sent up front, so a sector question is one round of
 // writing instead of a round of lookups first.
-export const SECTOR_OVERVIEW: Readonly<Record<SectorName, readonly string[]>> = {
+const SECTOR_OVERVIEW: Readonly<Record<SectorName, readonly string[]>> = {
   debt: ["debts", "credit_score"],
   insurance: ["insurance_policies"],
   tax: ["tax_estimate"],

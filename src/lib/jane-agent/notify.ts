@@ -101,7 +101,7 @@ const urgent = (m: Notifiable) => alwaysSaid(sourceOf(m.dedupeKey ?? ":"));
 
 // Spec step 147: for someone who wants both, what isn't urgent goes only the way they
 // answer (learned from their answers); urgent things go both ways.
-export function channelFor(
+function channelFor(
   m: Notifiable,
   prefs: ChatNotifyPrefs,
   attention: Pick<Attention, "channel"> | null,

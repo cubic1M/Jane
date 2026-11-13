@@ -6,7 +6,7 @@ import type { MessageAction, MessageRefs } from "./types";
 // Pure. One message: what Jane did on its own, and each item that waits for the person with a
 // button to the page where they act (applying, cancelling and sending stay there, on a tap).
 
-export const MONTHLY_PAGE: MessageAction = {
+const MONTHLY_PAGE: MessageAction = {
   id: "open",
   label: "See the check-up",
   kind: "link",
@@ -15,7 +15,7 @@ export const MONTHLY_PAGE: MessageAction = {
 
 const MARK = { done: "Done", tap: "Needs you", ok: "Fine" } as const;
 
-export const monthlyLine = (i: MonthlyItem) => `- ${i.title} (${MARK[i.status]}): ${i.text}`;
+const monthlyLine = (i: MonthlyItem) => `- ${i.title} (${MARK[i.status]}): ${i.text}`;
 
 export function monthlyMessage(d: CreditMonthly): {
   body: string;

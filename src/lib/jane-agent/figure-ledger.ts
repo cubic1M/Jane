@@ -10,7 +10,7 @@ import { CALENDAR_DATES } from "@/config/figure-ledger";
 // though: a figure bound to nothing, or a name the facts have never heard of, isn't a contradiction.
 // A dollar amount with no fact at all is the guardrails' to catch (unsupported_dollar_figure).
 
-export type FigureKind = "money" | "percent" | "date" | "count";
+type FigureKind = "money" | "percent" | "date" | "count";
 type Cadence = "month" | "year";
 
 type Fact = {
@@ -32,7 +32,7 @@ type Fact = {
   listed?: boolean;
 };
 
-export type FigureProblemKind =
+type FigureProblemKind =
   | "wrong_name"
   | "wrong_period"
   | "wrong_cadence"

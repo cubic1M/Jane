@@ -24,7 +24,7 @@ const link = (label: string, href: string): MessageAction => ({
 export const SEE_DEBTS = link("See every debt", "/loans");
 
 // "at 6.90% fixed (from your bank)" or "with no rate yet".
-export function rateWords(debt: Debt): string {
+function rateWords(debt: Debt): string {
   if (debt.aprBps === null) return "with no rate yet";
   const type = debt.rateType ? ` ${debt.rateType}` : "";
   return `at ${formatRate(debt.aprBps)}${type} (${sourceLabel(debt.aprFrom, debt.typedOn)})`;
@@ -173,7 +173,7 @@ function outcome(plan: PayoffPlan, asOf: string): string {
 }
 
 // The buttons that start the plan, Jane's pick first in demo advice mode.
-export function planButtons(first: Strategy, label: (s: Strategy) => string): MessageAction[] {
+function planButtons(first: Strategy, label: (s: Strategy) => string): MessageAction[] {
   const other: Strategy = first === "avalanche" ? "snowball" : "avalanche";
   return [
     { id: `debt_plan.${first}`, label: label(first), kind: "primary" },

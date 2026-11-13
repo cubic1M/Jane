@@ -17,7 +17,7 @@ export const COSTLY_PAGE: MessageAction = {
   href: "/loans/costly",
 };
 
-export function foundLines(d: CostlyBorrowing): string[] {
+function foundLines(d: CostlyBorrowing): string[] {
   return d.kinds.map(
     (k) =>
       `- ${COSTLY_LABELS[k.kind]}: ${plural(k.count, "time", "times")}, ${formatCents(k.costCents)} in fees${k.aprBps !== null ? `, about ${formatRate(k.aprBps)} a year` : ""} (${k.basis}).`,

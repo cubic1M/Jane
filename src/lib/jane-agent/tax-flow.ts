@@ -69,7 +69,7 @@ export function nextQuestion(view: TaxProfileView): Question | null {
   return { ...question(view, field), refs: { taxField: field } };
 }
 
-export const FIELD_NAMES: Readonly<Record<ProfileField, string>> = {
+const FIELD_NAMES: Readonly<Record<ProfileField, string>> = {
   incomeKinds: "your kinds of income",
   filingStatus: "how you file",
   dependants: "your dependants",
@@ -114,7 +114,7 @@ export const PROFILE_INTRO =
   "Let's get your taxes ready. I've worked out what I can from your accounts; I need a few answers for the rest, and you can change any of them later.";
 
 // One line on the finished profile.
-export function profileSummary(view: TaxProfileView): string {
+function profileSummary(view: TaxProfileView): string {
   const parts: string[] = [];
   if (view.filingStatus.value) parts.push(FILING_STATUSES[view.filingStatus.value].toLowerCase());
   const kids = view.dependants.childrenUnder17 ?? 0;

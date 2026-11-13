@@ -97,7 +97,7 @@ async function decide(
 // Read-only mode (CONCIERGE_ACTIONS): a real account's Yes is theirs to do. The steps in the
 // chat, the drafts (email, script, Copy) on the finding's page, and "Mark done" for when it's
 // done, so what it saved is counted.
-export function diySteps(type: ActionType): string {
+function diySteps(type: ActionType): string {
   const steps = DIY_KITS[type]?.steps ?? [];
   return [
     "Here's how to do it yourself:",

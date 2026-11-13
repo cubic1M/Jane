@@ -6,7 +6,7 @@ import type { MessageAction, MessageRefs } from "./types";
 // an accountant to (facts only), what the accountant wrote back, and the answer to "share
 // this with my accountant".
 
-export const ACCOUNTANT_HREF = "/taxes/accountant";
+const ACCOUNTANT_HREF = "/taxes/accountant";
 
 // The page is hidden in the closed beta (src/config/hidden-pages.ts), and a link to it lands on
 // /taxes with nothing to make. Until it's back, what there is to hand over is the tax-time pack.

@@ -11,7 +11,7 @@ import type { ActionId, MessageAction, MessageRefs } from "../types";
 
 export type FlowId = "budget" | "goal" | "switch" | "dispute";
 
-export type FlowOption = { label: string; value: string };
+type FlowOption = { label: string; value: string };
 
 export type FlowQuestion = {
   question: string;

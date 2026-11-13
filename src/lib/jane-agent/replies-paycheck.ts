@@ -10,7 +10,7 @@ import type { MessageAction } from "./types";
 
 const and = (items: string[]) =>
   items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
-export const moveWords = (m: Pick<PlanMove, "cents" | "label" | "purpose">) =>
+const moveWords = (m: Pick<PlanMove, "cents" | "label" | "purpose">) =>
   m.purpose === "debt"
     ? `${formatCents(m.cents)} ${m.label}`
     : `${formatCents(m.cents)} to ${m.label}`;

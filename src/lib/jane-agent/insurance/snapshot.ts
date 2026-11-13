@@ -79,7 +79,7 @@ export type InsuranceSnapshot = {
   review?: ReviewInput | null;
 };
 
-export type Switch = Awaited<ReturnType<typeof switchesFor>>[number];
+type Switch = Awaited<ReturnType<typeof switchesFor>>[number];
 
 export async function loadInsuranceSnapshot(
   userId: string,

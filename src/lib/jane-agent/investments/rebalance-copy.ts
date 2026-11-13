@@ -20,7 +20,7 @@ export const mixLine = (rows: MixShare[]) =>
     .map((r) => `${Math.round(r.share * 100)}% ${classWords(r.label)}`)
     .join(", ");
 
-export function ordersLine(plan: RebalancePlan): string {
+function ordersLine(plan: RebalancePlan): string {
   const sells = plan.orders.filter((o) => o.side === "sell");
   const buys = plan.orders.filter((o) => o.side === "buy");
   const total = (side: typeof sells) => formatCents(side.reduce((s, o) => s + o.amountCents, 0));

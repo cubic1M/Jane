@@ -41,7 +41,7 @@ export function candidateQuestion(a: AddonView): string {
   return `You paid ${formatCents(a.paidCents)} to ${a.name} on ${dayLabel(a.startedOn, { year: true })}. That looks like ${a.label.toLowerCase() === "gap cover" ? "GAP cover" : `an ${a.label.toLowerCase()}`} added to your car loan. Was it? If so, cancelling the unused part could refund you.`;
 }
 
-export function refundLine(a: AddonView): string {
+function refundLine(a: AddonView): string {
   const r = a.refund;
   return `${a.label} (${a.name}, ${formatCents(a.paidCents)}): cancelling now could refund about ${formatCents(r.refundCents)}, ${r.monthsLeft} of ${a.termMonths} months unused${r.feeCents > 0 ? `, less about ${formatCents(r.feeCents)} in fees` : ""}.`;
 }

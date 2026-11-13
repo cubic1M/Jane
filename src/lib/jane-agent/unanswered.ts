@@ -8,7 +8,7 @@ import { systemDb } from "@/lib/system-db";
 // and how it was answered, never its words: so this is team data about the chat, not about
 // anyone.
 
-export const NOT_ANSWERED_SOURCES = ["fallback", "claude_unavailable", "claude_blocked"] as const;
+const NOT_ANSWERED_SOURCES = ["fallback", "claude_unavailable", "claude_blocked"] as const;
 
 export type Unanswered = {
   asked: number;

@@ -8,7 +8,7 @@ import type { PolicyKind } from "@/config/insurance";
 // deductible: its deductible. gaps: what looks missing. list: every policy on file.
 // quotes: compare prices from the insurance partner (spec step 103). switch: how a switch
 // Jane is doing is going (spec step 105). checkup: is the cover right, by rules (step 106).
-export type InsuranceAsk =
+type InsuranceAsk =
   | "cover"
   | "renew"
   | "cost"
@@ -125,7 +125,7 @@ const NOT_AN_INSURANCE_CLAIM =
 // "Am I covered if my car is stolen?" asks about cover; it isn't something that happened.
 const HYPOTHETICAL = /\b(?:if|would|could|in case|what happens|am i covered|does my|is my)\b/;
 
-export function parseClaim(text: string): InsuranceIntent | null {
+function parseClaim(text: string): InsuranceIntent | null {
   if (HYPOTHETICAL.test(text) && !CLAIM_ASK.test(text)) return null;
   const found = CLAIM_EVENTS.find(([, , words]) => words.test(text));
   if (found) return { kind: "insurance", ask: "claim", policyKind: found[0], event: found[1] };
@@ -225,7 +225,7 @@ const ASKS: readonly [InsuranceAsk, RegExp][] = [
   ["cover", /\b(?:cover|covers|covered|coverage|limits?|include|includes|what does)\b/],
 ];
 
-export function kindIn(text: string): PolicyKind | null {
+function kindIn(text: string): PolicyKind | null {
   return KIND_WORDS.find(([, words]) => words.test(text))?.[0] ?? null;
 }
 

@@ -20,7 +20,7 @@ export type Metrics = {
 };
 
 // The bar, as percentages.
-export const BAR = { understood: 95, figures: 100, followUps: 90 } as const;
+const BAR = { understood: 95, figures: 100, followUps: 90 } as const;
 
 export function metricsOf(results: CheckRun["results"]): Metrics {
   const graded = results.filter((r) => r.status === "graded");
@@ -81,7 +81,7 @@ export type NightEntry = {
 
 export const FAIL_BELOW = 80;
 // A score that falls by more than this since the last run in the same mode is a drop.
-export const DROP_THRESHOLD = 2;
+const DROP_THRESHOLD = 2;
 const KEEP_NIGHTS = 120;
 
 export function entryOf(run: CheckRun, date: string): NightEntry {
@@ -143,8 +143,8 @@ export function dropOf(history: readonly NightEntry[], entry: NightEntry): strin
   return `The ${modeLabel(entry.mode)} score fell from ${before.score} (${before.date}) to ${entry.score} (${entry.date}).`;
 }
 
-export const START = "<!-- nightly:start -->";
-export const END = "<!-- nightly:end -->";
+const START = "<!-- nightly:start -->";
+const END = "<!-- nightly:end -->";
 
 // The table of recent nights that goes between the markers in docs/chat-quality.md, and the
 // depth bar: the last nights with the three measures, the timings, and whether each met it.

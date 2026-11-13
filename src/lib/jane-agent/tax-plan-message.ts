@@ -7,7 +7,7 @@ import { dayLabel } from "@/lib/day-label";
 // deadline and what Jane prepared (at the levels that let it act, already on the
 // deadlines), and the answer to "my tax plan".
 
-export const PLAN_HREF = "/taxes?focus=soon";
+const PLAN_HREF = "/taxes?focus=soon";
 
 type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 

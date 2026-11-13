@@ -34,7 +34,7 @@ export function isPopup(m: MessageView): boolean {
 
 // The order they float in, after the day's suggestions: the day's brief first (the agenda, the
 // greeting), then the rest newest first.
-export function popupOrder(popups: readonly MessageView[]): MessageView[] {
+function popupOrder(popups: readonly MessageView[]): MessageView[] {
   return [...popups.filter((m) => m.kind === "brief"), ...popups.filter((m) => m.kind !== "brief")];
 }
 

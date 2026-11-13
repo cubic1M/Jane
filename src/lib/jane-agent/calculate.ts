@@ -4,7 +4,7 @@
 // computed and the guardrail accepts it as coming from the data. Pure; amounts in dollars in,
 // cents out.
 
-export const OPERATIONS = [
+const OPERATIONS = [
   "percent_of",
   "per_year",
   "per_month",
@@ -13,7 +13,7 @@ export const OPERATIONS = [
   "share",
   "payoff_months",
 ] as const;
-export type Operation = (typeof OPERATIONS)[number];
+type Operation = (typeof OPERATIONS)[number];
 
 export type CalcInput = {
   operation?: unknown;

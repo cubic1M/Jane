@@ -17,7 +17,7 @@ const NAMES = {
   intl_stocks: "international stocks",
 } as const;
 
-export const freeSwaps = (p: LocationPlan) => p.swaps.filter((s) => s.taxCents === 0);
+const freeSwaps = (p: LocationPlan) => p.swaps.filter((s) => s.taxCents === 0);
 
 export function locationLine(p: LocationPlan): string {
   const paid = p.swaps.filter((s) => s.taxCents > 0);

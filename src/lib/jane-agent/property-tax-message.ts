@@ -8,7 +8,7 @@ import { formatPercent as pct } from "@/lib/percent";
 // drafted appeal and who files it, an exemption not yet claimed, and the answer to "is my
 // property tax too high".
 
-export const PROPERTY_HREF = "/taxes/property";
+const PROPERTY_HREF = "/taxes/property";
 
 type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 

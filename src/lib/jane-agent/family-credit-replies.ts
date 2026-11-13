@@ -8,7 +8,7 @@ import type { MessageAction } from "./types";
 // src/lib/family-credit.ts. Pure. What reporting does with a co-signed loan is a fact; what to
 // do for a young person is demo advice; what a lender may do is for a lawyer.
 
-export const FAMILY_CREDIT_PAGE: MessageAction = {
+const FAMILY_CREDIT_PAGE: MessageAction = {
   id: "open",
   label: "Helping with credit",
   kind: "link",

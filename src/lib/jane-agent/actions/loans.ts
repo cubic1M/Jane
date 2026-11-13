@@ -28,7 +28,7 @@ const review = (id: string): MessageAction => ({
 });
 
 // The terms, as the person reviews them before submitting.
-export function termsText(app: LoanApplicationView): string {
+function termsText(app: LoanApplicationView): string {
   return [
     `Here's the application I prepared for ${app.lender}. Check the terms before you submit:`,
     `- Pays off: your ${app.oldName}, ${formatCents(app.amountCents)}`,

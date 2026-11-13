@@ -5,7 +5,7 @@ import type { Range, RetirementPlan } from "@/planning/retirement";
 // Jane's words about retirement (spec step 132), shared by its message, its rule answer
 // and its tool. Pure. Always a range, never a promise.
 
-export const range = (r: Range) => `${formatCents(r.lowCents)} to ${formatCents(r.highCents)}`;
+const range = (r: Range) => `${formatCents(r.lowCents)} to ${formatCents(r.highCents)}`;
 
 export function projectionLine(plan: RetirementPlan): string {
   // Past the age the projection runs to: nothing left to project, the money is there to draw.

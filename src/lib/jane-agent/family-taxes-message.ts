@@ -8,7 +8,7 @@ import type { MessageAction, MessageRefs } from "./types";
 // Family taxes in the chat (spec step 169, demo advice): a choice with both sides' tax, and
 // the answer to "should we file jointly or separately", "FSA or the credit" and the like.
 
-export const FAMILY_HREF = "/taxes?focus=life:family";
+const FAMILY_HREF = "/taxes?focus=life:family";
 
 type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 
@@ -19,7 +19,7 @@ const sideLine = (c: FamilyChoice, i: 0 | 1) => {
     : `• ${s.label}: not open to you (${s.why.join(" ")})`;
 };
 
-export function choiceLines(c: FamilyChoice): string {
+function choiceLines(c: FamilyChoice): string {
   return `${c.title}:\n${sideLine(c, 0)}\n${sideLine(c, 1)}`;
 }
 

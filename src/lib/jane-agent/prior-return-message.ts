@@ -9,7 +9,7 @@ import type { MessageAction, MessageRefs } from "./types";
 // confirm with a tap; then what the review found, with a button to prepare the amended
 // return. Signing is on the page only.
 
-export const RETURN_HREF = "/taxes/last-return";
+const RETURN_HREF = "/taxes/last-return";
 
 type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 

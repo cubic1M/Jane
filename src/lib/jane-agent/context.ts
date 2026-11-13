@@ -23,7 +23,7 @@ export type Topic = {
   year?: number;
 };
 
-export const isPronoun = (target: string) => PRONOUNS.includes(target.trim());
+const isPronoun = (target: string) => PRONOUNS.includes(target.trim());
 
 // The intent with the conversation filled in; "which" when it points back at something
 // there's nothing to point back to.
@@ -220,7 +220,7 @@ function taxWhy(topic: Topic): Intent | null {
 // How a sector's answer is named when the next message points back at it ("how do I improve
 // it", "is that good", "why is it low"): the topic is that kind of answer, and "it" becomes
 // these words before the question is read again. Add a kind here for its follow-ups to work.
-export const TOPIC_WORDS: Readonly<Record<string, string>> = {
+const TOPIC_WORDS: Readonly<Record<string, string>> = {
   credit_score: "my credit score",
   net_worth: "my net worth",
   priorities: "what matters most",

@@ -23,7 +23,7 @@ const policyName = (policy: PolicyLike | undefined) =>
   policy ? `${policy.carrier} ${POLICY_KINDS[policy.kind].toLowerCase()} policy` : "policy";
 
 // Pure: one change in words.
-export function changeLine(change: CoverChange, policy: PolicyLike | undefined): string {
+function changeLine(change: CoverChange, policy: PolicyLike | undefined): string {
   switch (change.change) {
     case "address":
       return `Update the address on your ${policyName(policy)} (the price stays the same)`;
