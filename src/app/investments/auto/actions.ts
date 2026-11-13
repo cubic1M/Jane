@@ -9,6 +9,7 @@ import {
 } from "@/lib/investments/auto-invest";
 import { parseMoneyToCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { ignoring } from "@/lib/ignoring";
 
 // Automatic investing from its page (spec step 134): set up or change, pause, resume.
 
@@ -38,10 +39,8 @@ export async function saveAutoInvest(
 
 export async function toggleAutoInvest(formData: FormData): Promise<void> {
   const user = await requireUser();
-  try {
-    await setAutoInvestStatus(user.id, formData.get("status") === "paused" ? "paused" : "active");
-  } catch (error) {
-    if (!(error instanceof AutoInvestError)) throw error;
-  }
+  await ignoring(AutoInvestError, () =>
+    setAutoInvestStatus(user.id, formData.get("status") === "paused" ? "paused" : "active"),
+  );
   redirect("/investments/auto");
 }

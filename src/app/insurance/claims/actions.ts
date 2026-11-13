@@ -11,6 +11,7 @@ import {
 } from "@/lib/insurance/claims";
 import { draftClaim, fileClaim } from "@/lib/insurance/claim-filing";
 import { requireUser } from "@/lib/session";
+import { ignoring } from "@/lib/ignoring";
 
 // The claims page (spec step 107). Each goes back to /insurance/claims at the claim.
 
@@ -52,11 +53,7 @@ async function onClaim(
 ) {
   const user = await requireUser();
   const claimId = text(formData, "claimId");
-  try {
-    await run(user.id, claimId);
-  } catch (error) {
-    if (!(error instanceof ClaimError)) throw error;
-  }
+  await ignoring(ClaimError, () => run(user.id, claimId));
   revalidatePath("/insurance/claims");
   redirect(`/insurance/claims#claim-${claimId}`);
 }

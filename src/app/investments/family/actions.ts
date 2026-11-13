@@ -11,6 +11,7 @@ import {
   revokeGiftLinks,
 } from "@/lib/investments/family";
 import { requireUser } from "@/lib/session";
+import { ignoring } from "@/lib/ignoring";
 
 // The family investing page's buttons (spec step 213). Money in is always the person's tap.
 
@@ -36,14 +37,9 @@ export async function saveChild(formData: FormData): Promise<void> {
 
 export async function openAccount(formData: FormData): Promise<void> {
   const user = await requireUser();
-  try {
-    await openChildAccount(
-      user.id,
-      formData.get("kind") === "child_roth" ? "child_roth" : "custodial",
-    );
-  } catch (error) {
-    if (!(error instanceof FamilyError)) throw error;
-  }
+  await ignoring(FamilyError, () =>
+    openChildAccount(user.id, formData.get("kind") === "child_roth" ? "child_roth" : "custodial"),
+  );
   revalidatePath("/investments");
   go("opened");
 }

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { markSuggestionDone, OutcomeError } from "@/lib/outcomes";
 import { revokeSavedShares, shareSavedTotal } from "@/lib/savings-proof";
 import { requireUser } from "@/lib/session";
+import { ignoring } from "@/lib/ignoring";
 
 // Sharing the confirmed total (spec step 139): a link to a page with only that number.
 
@@ -37,10 +38,6 @@ export async function markDone(formData: FormData): Promise<void> {
   const user = await requireUser();
   const key = String(formData.get("key") ?? "").slice(0, 200);
   if (!key) return;
-  try {
-    await markSuggestionDone(user.id, key);
-  } catch (error) {
-    if (!(error instanceof OutcomeError)) throw error;
-  }
+  await ignoring(OutcomeError, () => markSuggestionDone(user.id, key));
   revalidatePath("/saved");
 }

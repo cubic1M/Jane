@@ -9,6 +9,7 @@ import {
   startRollover,
 } from "@/lib/investments/old-accounts";
 import { requireUser } from "@/lib/session";
+import { ignoring } from "@/lib/ignoring";
 
 // The old accounts page's buttons (spec step 211). A rollover is always the person's tap.
 
@@ -16,11 +17,9 @@ const BASE = "/investments/old-accounts";
 
 export async function answer(formData: FormData): Promise<void> {
   const user = await requireUser();
-  try {
-    await answerOldPlan(user.id, String(formData.get("id") ?? ""), formData.get("had") === "yes");
-  } catch (error) {
-    if (!(error instanceof OldAccountsError)) throw error;
-  }
+  await ignoring(OldAccountsError, () =>
+    answerOldPlan(user.id, String(formData.get("id") ?? ""), formData.get("had") === "yes"),
+  );
   redirect(BASE);
 }
 
@@ -38,10 +37,8 @@ export async function rollOver(formData: FormData): Promise<void> {
 
 export async function addEmployer(formData: FormData): Promise<void> {
   const user = await requireUser();
-  try {
-    await addPastEmployer(user.id, String(formData.get("employer") ?? ""));
-  } catch (error) {
-    if (!(error instanceof OldAccountsError)) throw error;
-  }
+  await ignoring(OldAccountsError, () =>
+    addPastEmployer(user.id, String(formData.get("employer") ?? "")),
+  );
   redirect(BASE);
 }

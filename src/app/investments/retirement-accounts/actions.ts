@@ -9,6 +9,7 @@ import {
   RetirementAccountsError,
 } from "@/lib/investments/retirement-accounts";
 import { requireUser } from "@/lib/session";
+import { ignoring } from "@/lib/ignoring";
 
 // The retirement accounts page's buttons (spec step 210). Each is the person's tap.
 
@@ -39,11 +40,7 @@ export async function putInIra(formData: FormData): Promise<void> {
 
 export async function linkRothIra(): Promise<void> {
   const user = await requireUser();
-  try {
-    await linkDemoRothIra(user.id);
-  } catch (error) {
-    if (!(error instanceof RetirementAccountsError)) throw error;
-  }
+  await ignoring(RetirementAccountsError, () => linkDemoRothIra(user.id));
   revalidatePath("/investments");
   redirect(`${BASE}?done=linked`);
 }

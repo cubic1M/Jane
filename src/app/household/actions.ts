@@ -25,6 +25,7 @@ import {
 import { requireUser } from "@/lib/session";
 import { isTrialUser } from "@/lib/trial-ids";
 import { SharedBillError, settleUp, splitCharge, unsplitCharge } from "@/lib/shared-bills";
+import { ignoring } from "@/lib/ignoring";
 
 export type HouseholdState = { ok: boolean; message: string; link?: string } | null;
 
@@ -93,15 +94,9 @@ export async function join(_previous: HouseholdState, formData: FormData): Promi
 export async function split(formData: FormData): Promise<void> {
   const user = await requireUser();
   const percent = Number(formData.get("percent") ?? 50);
-  try {
-    await splitCharge(
-      user.id,
-      String(formData.get("transactionId") ?? ""),
-      Math.round(percent * 100),
-    );
-  } catch (error) {
-    if (!(error instanceof SharedBillError)) throw error;
-  }
+  await ignoring(SharedBillError, () =>
+    splitCharge(user.id, String(formData.get("transactionId") ?? ""), Math.round(percent * 100)),
+  );
   revalidatePath("/household");
 }
 
@@ -120,22 +115,14 @@ export async function settle(): Promise<void> {
 // Money for two (spec step 242): either partner's tap sets how bills split for both.
 export async function chooseSplit(formData: FormData): Promise<void> {
   const user = await requireUser();
-  try {
-    await setSplitRule(user.id, String(formData.get("rule") ?? ""));
-  } catch (error) {
-    if (!(error instanceof MoneyForTwoError)) throw error;
-  }
+  await ignoring(MoneyForTwoError, () => setSplitRule(user.id, String(formData.get("rule") ?? "")));
   revalidatePath("/household");
 }
 
 export async function chooseBigMove(formData: FormData): Promise<void> {
   const user = await requireUser();
   const dollars = Number(String(formData.get("amount") ?? "").replace(/[$,\s]/g, ""));
-  try {
-    await setBigMoveLimit(user.id, Math.round(dollars * 100));
-  } catch (error) {
-    if (!(error instanceof MoneyForTwoError)) throw error;
-  }
+  await ignoring(MoneyForTwoError, () => setBigMoveLimit(user.id, Math.round(dollars * 100)));
   revalidatePath("/household");
 }
 

@@ -9,6 +9,7 @@ import {
   sellPart,
 } from "@/lib/investments/company-stock";
 import { requireUser } from "@/lib/session";
+import { ignoring } from "@/lib/ignoring";
 
 // The company stock page's buttons and form (spec step 160).
 
@@ -36,11 +37,7 @@ export async function addGrant(_previous: GrantState, formData: FormData): Promi
 
 export async function linkStockPlan(): Promise<void> {
   const user = await requireUser();
-  try {
-    await linkDemoStockPlan(user.id);
-  } catch (error) {
-    if (!(error instanceof CompanyStockError)) throw error;
-  }
+  await ignoring(CompanyStockError, () => linkDemoStockPlan(user.id));
   revalidatePath("/investments");
   redirect("/investments/company-stock?done=linked");
 }
