@@ -14,6 +14,7 @@ import { brokerageAsks } from "@/lib/investing/brokerage-balance";
 import { loadInvestments } from "@/lib/investments/holdings";
 import { profileOf } from "@/lib/investments/profile";
 import { profileSummary } from "@/planning/investor-profile";
+import { SAID_YES } from "./tree";
 
 const PRACTICE_TOPICS: readonly string[] = Object.values(PRACTICE_TOPIC);
 
@@ -39,8 +40,9 @@ export async function loadInvestingArea(userId: string) {
       backtestsFor(userId),
       // Jane's open ideas on real money in this area (practice ideas are the practice branch's).
       db.suggestions.findMany({
-        where: { status: { in: ["waiting", "selected"] } },
+        where: { status: { in: [...SAID_YES] } },
         select: {
+          status: true,
           key: true,
           capability: true,
           topic: true,

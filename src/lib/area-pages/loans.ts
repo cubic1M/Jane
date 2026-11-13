@@ -1,7 +1,14 @@
 import type { TreeStatus } from "@/components/tree/interactive-tree";
 import { isHiddenPage } from "@/config/hidden-pages";
 import { shortMoney } from "@/lib/hub/view";
-import { buildAreaTree, firstSentences, worthFigure, type AreaItem, type AreaTree } from "./tree";
+import {
+  answeredYes,
+  type AreaItem,
+  type AreaTree,
+  buildAreaTree,
+  firstSentences,
+  worthFigure,
+} from "./tree";
 import { dayLabel } from "@/lib/day-label";
 import { formatRate } from "@/lib/percent";
 import { monthLabel } from "@/lib/day-label";
@@ -124,6 +131,8 @@ export type LoansTreeInput = {
     // Says whether the worth is yearly (worthFigure in ./tree).
     headline?: string;
     urgency: string;
+    // "yes": the person said yes to it (answeredYes in ./tree).
+    status?: string;
   }[];
   // Buy now, pay later installments due in the coming month.
   installments: number;
@@ -158,6 +167,7 @@ export function loansTree(input: LoansTreeInput): AreaTree {
       item(branch, s.topic, {
         label: TOPIC_LABELS[s.topic] ?? "Something to look at",
         status,
+        ...answeredYes(s),
         figure: worthFigure(s),
         cents: s.worthCents,
         summary: s.short,

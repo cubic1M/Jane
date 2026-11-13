@@ -25,6 +25,7 @@ import { listTransfers } from "@/lib/money-movement/transfers";
 import { assetPrompts, promptHref } from "@/lib/owned-assets";
 import { loansSeenWithoutBalance } from "@/lib/net-worth-history";
 import type { MoneyTreeInput } from "./money";
+import { SAID_YES } from "./tree";
 
 // What the Spending & bills tree reads (docs/design/area-pages.md), from the same code as each
 // page it gathers: the bills forecast (/bills), recurring charges (/subscriptions), budgets and
@@ -106,8 +107,9 @@ export async function loadMoneyArea(
       select: { id: true, key: true },
     }),
     db.suggestions.findMany({
-      where: { status: { in: ["waiting", "selected"] } },
+      where: { status: { in: [...SAID_YES] } },
       select: {
+        status: true,
         id: true,
         capability: true,
         topic: true,
@@ -173,6 +175,7 @@ export async function loadMoneyArea(
       worthKind: s.worthKind,
       headline: s.headline,
       urgency: s.urgency,
+      status: s.status,
     })),
     lows: forecastAccounts(input, FORECAST_DAYS).map((f) => ({
       accountId: f.accountId,

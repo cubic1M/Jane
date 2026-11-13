@@ -71,6 +71,16 @@ export function worthFigure(s: {
   return `${shortMoney(s.worthCents)}${yearly ? "/yr" : ""}`;
 }
 
+// A suggestion the person said yes to stays on its area's tree, marked as on their list, so
+// the step its Yes opens is there (debugger 11-13: Yes on "Drop your mortgage insurance" opened
+// /loans?focus=cheaper:pmi_removal, but an answered suggestion was no longer drawn, so nothing
+// opened). It's theirs to do now: "good", not one more thing to look at.
+export const ON_YOUR_LIST = "On your list";
+export const SAID_YES = ["waiting", "selected", "yes"] as const;
+export function answeredYes(s: { status?: string }): { status: TreeStatus; badge: string } | null {
+  return s.status === "yes" ? { status: "good", badge: ON_YOUR_LIST } : null;
+}
+
 // The worst status among items: one urgent item makes its branch urgent.
 export function worst(statuses: (TreeStatus | undefined)[]): TreeStatus | undefined {
   return statuses.reduce<TreeStatus | undefined>(

@@ -7,6 +7,7 @@ import { loadPayoff } from "@/lib/debt-plan";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadDebts } from "@/lib/debts";
 import { assetPrompts } from "@/lib/owned-assets";
+import { SAID_YES } from "./tree";
 
 // Everything the Loans & credit tree is built from (docs/design/area-pages.md), loaded once for
 // the Loans page and for the home tree, so both show the same statuses.
@@ -23,8 +24,9 @@ export async function loadLoansArea(userId: string, { now = new Date() }: { now?
     // Spec step 176: the plans' installments over the next month.
     loadBnpl(userId, { book }),
     db.suggestions.findMany({
-      where: { status: { in: ["waiting", "selected"] } },
+      where: { status: { in: [...SAID_YES] } },
       select: {
+        status: true,
         key: true,
         capability: true,
         topic: true,

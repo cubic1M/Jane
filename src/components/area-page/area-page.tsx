@@ -39,7 +39,11 @@ export function AreaPage({
 }) {
   const known = (id: string | undefined) =>
     !!id && tree.branches.some((b) => b.id === id || b.items.some((i) => i.id === id));
-  const start = known(focus) ? focus! : null;
+  // The node a ?focus= opens: itself, or its branch when the item isn't drawn now (one dealt
+  // with since the link was made), never nothing.
+  const landOn = (id: string | undefined) =>
+    known(id) ? id! : id && known(branchOf(id)) ? branchOf(id) : null;
+  const start = landOn(focus);
   const [open, setOpen] = useState<string | null>(start ? branchOf(start) : null);
   const [picked, setPicked] = useState<string | null>(start?.includes(":") ? start : null);
   const panel = useRef<HTMLDivElement>(null);
@@ -50,8 +54,8 @@ export function AreaPage({
   // 401(k) match" opened /investments?focus=ideas:…, which the page then wiped to the top).
   useEffect(() => {
     if (start) return;
-    const id = new URL(window.location.href).searchParams.get("focus") ?? undefined;
-    if (!known(id)) return;
+    const id = landOn(new URL(window.location.href).searchParams.get("focus") ?? undefined);
+    if (!id) return;
     // After the first paint, like a tap would; the effect below then writes it back.
     requestAnimationFrame(() => {
       setOpen(branchOf(id!));
