@@ -132,6 +132,13 @@ const INVESTMENT = [
   /\b(?:[Tt]sla|[Nn]vda|[Aa]apl|[Mm]sft|[Aa]mzn|[Gg]oogl?|[Pp]ltr)\b/,
   /\b(?!(?:ROLEX|FEDEX|TIMEX|LATEX|XEROX|PYREX|DUREX|CODEX|INDEX|RELAX|ANNEX|SPANX|UNISEX|DUPLEX|COMPLEX)\b)[A-Z]{4}X\b/,
   /\bhodl(?:ing)?\b/i,
+  // Round 14 (11-12): a bet or a lottery ticket is speculation too ("Bet the over on Sunday's
+  // game", "Use DraftKings' signup bonus", "Buy a few lottery tickets with the extra"). What was
+  // spent at a sportsbook is a fact.
+  /\b(?:place|make|put in|try|grab) (?:a |some |your |a few )?(?:bets?|wagers?|parlays?)\b|\b(?:bet|take) the (?:over|under|spread|points|moneyline)\b/i,
+  /\b(?:draftkings|fanduel|betmgm|sportsbook|prizepicks|underdog fantasy)(?:(?:'|’)s?)?\b[^.!?]{0,30}\b(?:bonus|promo|free (?:bets?|money)|odds boost)\b|\b(?:use|grab|claim|take) (?:the |their |a )?(?:sign[- ]?up|new user|deposit) (?:bonus|promo)\b/i,
+  /\b(?:buy|get|grab|play|try) (?:a |some |a few |more )?(?:lottery|scratch(?:-?off)?|scratchers?|powerball|mega millions) (?:tickets?|cards?)?\b|\bplay the (?:lottery|lotto|powerball|mega millions)\b/i,
+  /\b[Pp]ut \$[\d,.]+ on (?:the )?[A-Z]\w+(?=[^.!?]{0,30}\b(?:game|match|fight|race|to win|odds|spread)\b)/,
   /\b(?:take|get|grab|capture|claim|max(?:imi[sz]e)?|don(?:'|’)t (?:miss|leave|skip|lose))\b[^.!?]{0,25}\b(?:employer(?:'|’)?s?|company(?:'|’)?s?|full|401\(?k\)?) match\b|\bmatch\b[^.!?]{0,20}\bfree money\b|\bfree money\b[^.!?]{0,20}\bmatch\b/i,
   // A company by name and nothing after it (11-04): "You should buy Tesla now". "Buy Costco gas"
   // has a thing after the name, and it's the thing being bought.
@@ -297,6 +304,10 @@ const TAX_ADVICE = [
   /\b(?:don(?:'|’)?t|do not|no) (?:need to|have to)\s+(?:report|declare|include|list|file)\b[^.!?]{0,30}\b(?:1099|w-?2|k-?1)\b|\b(?:skip|leave out|leave off|ignore|never report)\b[^.!?]{0,20}\b(?:the |your |that |this )?(?:1099|w-?2|k-?1)\b|\b(?:leave|keep)\b[^.!?]{0,20}\b(?:1099|w-?2|k-?1)\w*(?:-[a-z]+)? off\b/i,
   // Round 13 (11-12): "File an extension". A phone extension has a number after it.
   /(?:^|[.!?:;]\s+|\byou should\s+|\bi(?:'|’)?d\s+|\bjust\s+)(?:file|request|get)\b (?:for )?(?:an? |the )?(?:tax )?extension\b(?! \d)/i,
+  // Round 14 (11-12): whether someone must file or owes tax is a tax call ("You don't need to file
+  // this year", "You won't owe taxes on that"). A tool's estimate of what they'd owe is a figure.
+  /\b(?:don(?:'|’)?t|do not|won(?:'|’)?t|will not|wouldn(?:'|’)?t) (?:need|have) to file\b|\bno need to file\b/i,
+  /\byou (?:won(?:'|’)?t|will not|wouldn(?:'|’)?t|don(?:'|’)?t|do not) (?:owe|pay) (?:any )?(?:income |federal |state )?tax(?:es)?\b/i,
 ];
 // In a sentence that talks about tax: telling them to do something, or what the rules say
 // their money counts as. "You'll owe about $X" is a figure; "you should set aside $X" is advice.
@@ -363,7 +374,7 @@ const LEGAL = [
   /\bsmall[- ]claims (?:court|case|lawsuit|suit|judge)\b|\b(?:in|to|into) small[- ]claims\b/i,
   /\b(?:break|end|terminate|get out of) (?:your |the |a )?lease\b[^.!?]{0,30}\bwithout (?:a |any )?(?:penalty|penalties|fee|fees|paying)\b/i,
   /\b(?:have|has) (?:the |a )?right to (?:break|end|terminate|get out of|withhold|your deposit)\b|\b(?:are|is) (?:allowed|entitled) to (?:break|end|terminate|get out of|withhold)\b/i,
-  /\bunder (?:the )?(?:fcra|fdcpa|fair credit reporting act|fair debt collection practices act|(?:state|federal|consumer protection|tenant|landlord[- ]tenant|your state(?:'|’)s) laws?|the law)\b[^.!?]{0,50}\b(?:have to|has to|must|can(?:'|’)?t|cannot|required|entitled|allowed|owe)\b/i,
+  /\bunder (?:the )?(?:fcra|fdcpa|fair credit reporting act|fair debt collection practices act|card act|credit card act|tila|truth in lending act|scra|servicemembers civil relief act|(?:state|federal|consumer protection|tenant|landlord[- ]tenant|your state(?:'|’)s) laws?|the law)\b[^.!?]{0,50}\b(?:have to|has to|must|can(?:'|’)?t|cannot|required|entitled|allowed|owe)\b/i,
   // The same in the person's language (round 11): suing and court in Spanish, French, German and
   // Chinese. A pointer to a lawyer in any language is not here.
   /\bdemand(?:a|ar|arl[oa]s?|arle)\b(?! (?:de |del )?(?:pago|empleo|trabajo))|\bcorte de reclamos menores\b|\ben justice\b|\bverklagen\b|起诉|告他们|上法庭/i,
@@ -397,7 +408,7 @@ const LEGAL = [
   /\bavoid(?:ing)? probate\b/i,
   /\bdisclaim(?:ing|er of)? (?:the |your |an |this |that )?(?:inheritance|bequest|inherited \w+|ira)\b/i,
   // Only a debt: "stop paying overdraft fees" is the opposite of legal trouble.
-  /\b(?:stop|quit) paying (?:on |off )?(?:my |your |the |their )?(?:cards?|credit cards?|loans?|debts?|creditors?|collectors?|minimums?|mortgage|bills)\b/i,
+  /\b(?:stop|quit) paying (?:on |off )?(?:my |your |the |their )?(?:(?:student|car|auto|personal|private|federal) )?(?:cards?|credit cards?|loans?|debts?|creditors?|collectors?|minimums?|mortgage|bills)\b/i,
   // Spec step 237: wills, trusts and what to do with an estate are legal advice. The facts
   // Jane gives are fixed sentences (src/config/family-file.ts) that pass below.
   /\b(?:last )?will and testament\b/i,
@@ -415,6 +426,13 @@ const LEGAL = [
   // desist letter", "Send a demand letter for your deposit", "they have to stop").
   /\bcease[- ](?:and|&)[- ]desist\b|\bdemand letter\b/i,
   /\b(?:have|has) to stop (?:contacting|calling|texting|emailing|writing to)\b/i,
+  // Round 14 (11-12): what someone else must do by law, and what someone doesn't owe ("Your landlord
+  // is required to fix it within 30 days", "they'll have to refund you", "That's a scam, so you don't
+  // owe it", "You're protected under the CARD Act").
+  /\b(?:landlord|lender|servicer|collector|creditor|employer|insurer|they|he|she) (?:is|are) (?:legally )?(?:required|obligated) to\b/i,
+  /\b(?:they|he|she|the (?:landlord|lender|collector|company|bank|store|seller|merchant))(?:(?:'|’)ll| will) have to (?:refund|pay|return|stop|remove|delete|fix|cover)\b/i,
+  /\byou (?:don(?:'|’)?t|do not) (?:legally )?owe (?:it|that|this|them|the debt|that debt|this debt)\b/i,
+  /\b(?:protected|covered) (?:under|by) (?:the )?(?:card act|credit card act|fdcpa|fcra|tila|truth in lending act|scra|servicemembers civil relief act|fair housing act|(?:state|federal) law|the law)\b/i,
 ];
 
 // Saying Jane can't help with something legal, or pointing to a lawyer for it, is not legal
