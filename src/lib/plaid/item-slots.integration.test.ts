@@ -4,6 +4,7 @@ import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { SHARE_INVITE_NOTE } from "@/config/share";
 import { PrismaClient } from "@/generated/prisma/client";
+import { takePlaidCounter } from "@/test-setup/plaid-counter-lock";
 
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
@@ -58,7 +59,10 @@ describe.runIf(url)("Plaid's Trial plan Items against a real database", () => {
   const link = (userId: string) =>
     exchangePublicToken(userId, "public-production-test", "Made-up Bank", { client, api });
 
-  beforeAll(() => {
+  // The counter is one row for everyone: bank-link-states' file waits its turn (the helper says why).
+  let release = async () => {};
+  beforeAll(async () => {
+    release = await takePlaidCounter(url!);
     vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });
@@ -76,6 +80,7 @@ describe.runIf(url)("Plaid's Trial plan Items against a real database", () => {
     await client.plaidItemCounter.deleteMany({});
     await client.$disconnect();
     vi.unstubAllEnvs();
+    await release();
   });
 
   beforeEach(async () => {
