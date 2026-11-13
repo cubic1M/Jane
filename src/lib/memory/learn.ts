@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { TOPIC_ACRONYMS } from "@/config/feature-map";
 import { log } from "@/lib/log";
 import { scrub } from "@/lib/scrub";
 import type { Profile, ProfileInput } from "@/profile/build";
@@ -82,10 +83,15 @@ export async function learnFromData(
   });
 }
 
+// A suggestion's kind as the pages name it, acronyms in capitals: "PMI removal", not "pmi
+// removal" (debugger 11-13, What Jane knows).
 const topicWords = (topic: string) =>
   topic
     .replace(/[_:-]+/g, " ")
     .trim()
+    .split(/\s+/)
+    .map((w) => (TOPIC_ACRONYMS.includes(w) ? w.toUpperCase() : w))
+    .join(" ")
     .slice(0, 40);
 
 // What the person did with a suggestion or a card: over time, which kinds they act on and which
