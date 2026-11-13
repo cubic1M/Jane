@@ -94,6 +94,16 @@ test("an older file added, then the newer removed: the older months stay as the 
   await expect(page.locator("li").filter({ hasText: month(first) })).toContainText(
     dollars(closing),
   );
-  const prior = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), 0));
+  // The opening balance sits on the day before the first row. When the first row is on a 1st
+  // (the window starts so about half of each month: main went red on 11-13, its file starting
+  // Aug 1), that day is the month before's end, which is then listed with the opening balance
+  // (src/lib/import/balances.test.ts: a file from Jul 1 opens on Jun 30). No month before it.
+  const opening = new Date(first.getTime() - 86_400_000);
+  if (month(opening) !== month(first)) {
+    await expect(page.locator("li").filter({ hasText: month(opening) })).toContainText(
+      dollars(all[0].bal - all[0].cents),
+    );
+  }
+  const prior = new Date(Date.UTC(opening.getUTCFullYear(), opening.getUTCMonth(), 0));
   await expect(page.locator("li").filter({ hasText: month(prior) })).toHaveCount(0);
 });
