@@ -58,6 +58,8 @@ export type SavingsInput = {
     grossPerPaycheckCents: number;
   };
   hasHsa: boolean;
+  // A health FSA this year already (src/lib/insurance/health-year.ts hasHealthFsa).
+  hasFsa?: boolean;
   // Out-of-pocket medical and childcare costs for the year, projected.
   medicalCents: number;
   childcareCents: number;
@@ -181,7 +183,8 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
 
   // A health FSA is paid from wages through an employer: none without a job (taxes QA: Ruth,
   // retired, was told to sign up at open enrollment).
-  if (s.medicalCents >= FSA_SUGGEST_FROM_CENTS && base.income.wagesCents > 0) {
+  // Nor for someone who has one: Insurance tracks what's left in it (debugger 11-13).
+  if (s.medicalCents >= FSA_SUGGEST_FROM_CENTS && base.income.wagesCents > 0 && !s.hasFsa) {
     const amount = Math.min(s.medicalCents, CONTRIBUTION_LIMITS.healthFsa);
     out.push({
       key: "health_fsa",

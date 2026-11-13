@@ -25,7 +25,7 @@ import {
   type Progress,
 } from "./health-year-rules";
 import { partnerFor } from "./partner";
-import { listPolicies } from "./policies";
+import { listPolicies, type Policy } from "./policies";
 
 // Health cover all year (spec step 200): the person's health plan's year so far, from the
 // plan's terms and their medical spending; the FSA and HSA money, the plan's network for the
@@ -45,6 +45,31 @@ export type HealthYear = {
   hsa: { name: string; balanceCents: number } | null;
   disputes: (Dispute & { network: Network })[];
 };
+
+// A health policy whose terms the year can be worked out from.
+const isPlanWithTerms = (p: Policy) =>
+  p.kind === "health" &&
+  p.status === "active" &&
+  p.deductibleCents !== null &&
+  typeof p.coverage.coinsurance === "number";
+
+// Whether the person has a health FSA this year, as their health year counts one: on their
+// benefits, or the demo bank's sample one for a sample person with an employer. The tax ideas ask
+// before suggesting they sign up for one (debugger 11-13: Taxes said "Sign up for an FSA by Nov
+// 30" while Insurance said "$1,670.64 is left in your FSA").
+export async function hasHealthFsa(
+  userId: string,
+  { client = defaultClient }: { client?: PrismaClient } = {},
+): Promise<boolean> {
+  const [policies, benefits, partner] = await Promise.all([
+    listPolicies(userId, { client }),
+    listBenefits(userId, { client }),
+    partnerFor(userId, { client }),
+  ]);
+  if (benefits.some((b) => b.kind === "fsa" && b.status !== "declined")) return true;
+  const sample = !policies.some(isPlanWithTerms) && partner !== null;
+  return sample && (await demoHasEmployer(userId, { client }));
+}
 
 export async function loadHealthYear(
   userId: string,
@@ -82,13 +107,7 @@ export async function loadHealthYear(
     }),
   ]);
 
-  const real = policies.find(
-    (p) =>
-      p.kind === "health" &&
-      p.status === "active" &&
-      p.deductibleCents !== null &&
-      typeof p.coverage.coinsurance === "number",
-  );
+  const real = policies.find(isPlanWithTerms);
   const sample = !real && partner !== null;
   const plan: Plan | null = real
     ? {
