@@ -1,6 +1,5 @@
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { budgetSummary, daysLeftWords } from "@/insights/budgets";
 import type { IrregularItem } from "@/insights/irregular";
@@ -16,6 +15,7 @@ import { BudgetForm } from "./budget-form";
 import { SubmitButton } from "@/components/submit-button";
 import { ProgressBar } from "@/components/progress-bar";
 import { dayLabel } from "@/lib/day-label";
+import { PageShell } from "@/components/page-shell";
 
 const HOW_OFTEN: Record<IrregularItem["frequency"], string> = {
   QUARTERLY: "Every 3 months",
@@ -140,10 +140,8 @@ async function Budgets() {
 
 export default function BudgetsPage() {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <Budgets />
-      </Suspense>
-    </main>
+    <PageShell>
+      <Budgets />
+    </PageShell>
   );
 }

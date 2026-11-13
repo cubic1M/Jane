@@ -3,8 +3,8 @@ import { doneSummary, savedSoFarLine } from "@/lib/saved-amount";
 import { isHiddenPage } from "@/config/hidden-pages";
 import Link from "next/link";
 import { after, connection } from "next/server";
-import { Suspense, type ReactNode } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { type ReactNode } from "react";
+import { AppHeader } from "@/components/app-header";
 import { scopedDb } from "@/lib/db-scoped";
 import { markAlertsRead } from "@/lib/alerts";
 import { lastControllerRun } from "@/lib/controller-log";
@@ -19,6 +19,7 @@ import { loadTimeline } from "@/lib/timeline";
 import { requireUser } from "@/lib/session";
 import { timezoneOf } from "@/lib/today";
 import { momentLabel } from "@/lib/day-label";
+import { PageShell } from "@/components/page-shell";
 
 // The Jane hub (spec step 80): everything Jane found and is doing, each list a short
 // summary of its full page.
@@ -436,10 +437,8 @@ export const unstable_dynamicStaleTime = 0;
 
 export default function JanePage() {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <JaneContent />
-      </Suspense>
-    </main>
+    <PageShell layout="roomy">
+      <JaneContent />
+    </PageShell>
   );
 }

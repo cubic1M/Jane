@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { READ_ONLY_TAX_CALENDAR } from "@/config/read-only-beta";
 import { conciergeMode } from "@/lib/concierge-mode";
@@ -9,6 +8,7 @@ import { loadTaxCalendar } from "@/lib/tax-calendar";
 import { calendarWords } from "@/planning/tax-calendar";
 import { loadTaxFound } from "@/lib/tax-scan";
 import { requireUser } from "@/lib/session";
+import { PageShell } from "@/components/page-shell";
 
 // The tax year that runs itself (spec step 223): what Jane does each month, and where this
 // month's items stand. Moving money above the cap, signing and filing are always a tap.
@@ -119,10 +119,8 @@ async function Content() {
 
 export default function CalendarPage() {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <Content />
-      </Suspense>
-    </main>
+    <PageShell>
+      <Content />
+    </PageShell>
   );
 }

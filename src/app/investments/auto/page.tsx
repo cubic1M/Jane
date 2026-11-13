@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { SimulatedBanner } from "@/components/simulated-banner";
 import { SAFE_TO_SPEND_FLOOR_CENTS } from "@/config/auto-invest";
@@ -12,6 +11,7 @@ import { toggleAutoInvest } from "./actions";
 import { AutoInvestForm } from "./auto-form";
 import { SubmitButton } from "@/components/submit-button";
 import { dayLabel } from "@/lib/day-label";
+import { PageShell } from "@/components/page-shell";
 
 // Automatic investing (spec step 134): set it up once, see every payday's contribution
 // (or why it was paused), pause and resume. Through the simulated brokerage, and said so.
@@ -128,10 +128,8 @@ async function AutoContent({
 
 export default function AutoInvestPage(props: PageProps<"/investments/auto">) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <AutoContent searchParams={props.searchParams} />
-      </Suspense>
-    </main>
+    <PageShell>
+      <AutoContent searchParams={props.searchParams} />
+    </PageShell>
   );
 }

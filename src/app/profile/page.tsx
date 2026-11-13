@@ -1,5 +1,4 @@
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { loadProfile, sayFact } from "@/lib/profile";
 import { requireUser } from "@/lib/session";
 import type { Fact } from "@/profile/build";
@@ -7,6 +6,7 @@ import { factSpec } from "@/profile/facts";
 import { forgetProfileCorrection } from "./actions";
 import { CorrectForm } from "./correct-form";
 import { SubmitButton } from "@/components/submit-button";
+import { PageShell } from "@/components/page-shell";
 
 // What Jane knows about you (spec step 253): every fact in the picture of you with where it
 // came from, how sure Jane is and why, and a way to correct it. A correction is used by
@@ -122,10 +122,8 @@ async function ProfileContent() {
 
 export default function ProfilePage() {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <ProfileContent />
-      </Suspense>
-    </main>
+    <PageShell>
+      <ProfileContent />
+    </PageShell>
   );
 }

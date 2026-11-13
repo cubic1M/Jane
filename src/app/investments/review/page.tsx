@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { adviceMode } from "@/lib/advice-mode";
 import { loadReview } from "@/lib/investments/review";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { formatPercent as pct } from "@/lib/percent";
+import { PageShell } from "@/components/page-shell";
 
 // Does it fit? (spec step 131). The mix of investments against the target for the
 // person's risk level, single companies that are too big a part of it, cash above the target mix, and what
@@ -144,10 +144,8 @@ async function ReviewContent() {
 
 export default function ReviewPage() {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <ReviewContent />
-      </Suspense>
-    </main>
+    <PageShell>
+      <ReviewContent />
+    </PageShell>
   );
 }

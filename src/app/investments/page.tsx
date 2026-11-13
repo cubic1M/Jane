@@ -4,7 +4,7 @@ import { isHiddenPage } from "@/config/hidden-pages";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { AreaPage } from "@/components/area-page/area-page";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { BacktestsSection } from "@/components/backtests";
@@ -51,6 +51,7 @@ import { loadInvestingArea } from "@/lib/area-pages/investing-load";
 import { LoadingBar } from "@/components/loading-bar";
 import { formatRate } from "@/lib/percent";
 import { monthLabel } from "@/lib/day-label";
+import { PageShell } from "@/components/page-shell";
 
 // What the person owns (spec step 128): every investment and retirement account, what's in
 // it and where each number came from, and the balances month by month. The page is a tree
@@ -602,10 +603,8 @@ async function InvestmentsContent({
 
 export default function InvestmentsPage({ searchParams }: PageProps<"/investments">) {
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8">
-      <Suspense fallback={<PageLoading />}>
-        <InvestmentsContent searchParams={searchParams} />
-      </Suspense>
-    </main>
+    <PageShell layout="widest">
+      <InvestmentsContent searchParams={searchParams} />
+    </PageShell>
   );
 }

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { DEPOSIT_STATES, RENTING_SOURCES } from "@/config/renting";
 import { dayLabel } from "@/lib/day-label";
 import { depositLines } from "@/lib/jane-agent/renting-replies";
@@ -10,6 +9,7 @@ import { loadRenting } from "@/lib/renting";
 import { requireUser } from "@/lib/session";
 import { depositAction, depositReturnedAction, reportingAction } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { PageShell } from "@/components/page-shell";
 
 // Renting, counted (spec step 248): rent reported to the credit bureaus only if you say so, a
 // rent increase beside what is usual, and a security deposit followed to its return date.
@@ -158,10 +158,8 @@ async function RentingContent({ searchParams }: Pick<PageProps<"/loans/renting">
 
 export default function RentingPage(props: PageProps<"/loans/renting">) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <RentingContent searchParams={props.searchParams} />
-      </Suspense>
-    </main>
+    <PageShell>
+      <RentingContent searchParams={props.searchParams} />
+    </PageShell>
   );
 }

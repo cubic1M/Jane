@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { ViewTracker } from "@/components/view-tracker";
 import { DEADLINE_HORIZON_DAYS } from "@/config/deadlines";
 import { isoDate } from "@/detection/units";
@@ -13,6 +12,7 @@ import { finishDeadline, removeDeadline } from "./actions";
 import { DeadlineForm } from "./deadline-form";
 import { SubmitButton } from "@/components/submit-button";
 import { dayLabel } from "@/lib/day-label";
+import { PageShell } from "@/components/page-shell";
 
 // Deadlines (spec step 71): return windows, trials, renewals, payments and the person's
 // own dates, soonest first.
@@ -159,10 +159,8 @@ async function DeadlinesContent() {
 
 export default function DeadlinesPage() {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <DeadlinesContent />
-      </Suspense>
-    </main>
+    <PageShell>
+      <DeadlinesContent />
+    </PageShell>
   );
 }

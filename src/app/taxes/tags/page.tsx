@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { TAX_TAG_ORDER, TAX_TAGS, TAX_TAG_SEARCH_LIMIT } from "@/config/tax";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
@@ -12,6 +11,7 @@ import type { TagSource } from "@/planning/tax-tags";
 import { CheckButtons, TagForm } from "./tag-form";
 import { dayLabel } from "@/lib/day-label";
 import { EmptyState } from "@/components/empty-state";
+import { PageShell } from "@/components/page-shell";
 
 // Tax tags (spec step 119): what Jane tagged for the year, the ones it's unsure about,
 // and a search to tag anything else (a work expense). Tags never change spending.
@@ -183,10 +183,8 @@ async function TagsContent({
 
 export default function TaxTagsPage({ searchParams }: PageProps<"/taxes/tags">) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <TagsContent searchParams={searchParams} />
-      </Suspense>
-    </main>
+    <PageShell>
+      <TagsContent searchParams={searchParams} />
+    </PageShell>
   );
 }

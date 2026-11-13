@@ -1,8 +1,7 @@
 import { dayLabel } from "@/lib/day-label";
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { REVIEW_REASON_TEXT, type ReviewItemKey } from "@/config/debt-review";
 import { DEBT_AUTOPILOT } from "@/config/debt";
@@ -11,6 +10,7 @@ import { computeCreditMonthly, loadCreditMonthly } from "@/lib/credit-monthly";
 import { ensureChecked } from "@/lib/refinance";
 import { loadDebtReview } from "@/lib/debt-review";
 import { requireUser } from "@/lib/session";
+import { PageShell } from "@/components/page-shell";
 
 // The yearly debt review (spec step 230): everything about debts and credit in one pass, what
 // Jane did on its own within the debt caps, and what waits for a tap (in the chat, where each
@@ -141,10 +141,8 @@ async function ReviewContent() {
 
 export default function ReviewPage() {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <ReviewContent />
-      </Suspense>
-    </main>
+    <PageShell>
+      <ReviewContent />
+    </PageShell>
   );
 }

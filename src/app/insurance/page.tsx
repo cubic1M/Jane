@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { ShownLink } from "@/components/shown-link";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import type { ReactNode } from "react";
 import { AreaPage } from "@/components/area-page/area-page";
@@ -67,6 +66,7 @@ import {
 import { HouseholdForm, PolicyForm } from "./forms";
 import { SubmitButton } from "@/components/submit-button";
 import { dayLabel } from "@/lib/day-label";
+import { PageShell } from "@/components/page-shell";
 
 // Insurance (spec step 102): every policy in one place, the household facts that matter
 // and the gaps, in plain words. Every figure comes from a policy record. Laid out as the area
@@ -688,10 +688,8 @@ async function InsuranceContent({
 
 export default function InsurancePage({ searchParams }: PageProps<"/insurance">) {
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8">
-      <Suspense fallback={<PageLoading />}>
-        <InsuranceContent searchParams={searchParams} />
-      </Suspense>
-    </main>
+    <PageShell layout="widest">
+      <InsuranceContent searchParams={searchParams} />
+    </PageShell>
   );
 }

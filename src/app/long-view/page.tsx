@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { formatCents } from "@/lib/money";
 import { cleanOverrides, loadLongView } from "@/lib/long-view";
 import { requireUser } from "@/lib/session";
+import { PageShell } from "@/components/page-shell";
 
 // The long view (spec step 209): net worth in 10, 20 and 30 years as a range, in today's
 // dollars, with every assumption shown and editable. A range, never a promise.
@@ -146,10 +146,8 @@ async function LongViewContent({
 
 export default function LongViewPage({ searchParams }: PageProps<"/long-view">) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <LongViewContent searchParams={searchParams} />
-      </Suspense>
-    </main>
+    <PageShell>
+      <LongViewContent searchParams={searchParams} />
+    </PageShell>
   );
 }

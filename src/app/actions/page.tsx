@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { ACTION_STATUS_LABELS } from "@/lib/action-status";
 import { scopedDb } from "@/lib/db-scoped";
 import { membershipPriceCents, stripeEnabled } from "@/lib/membership/offer";
@@ -16,6 +15,7 @@ import { OfferForm } from "./offer-form";
 import { AgentTimeline } from "@/components/agent-timeline";
 import { savingsLine } from "@/lib/savings-text";
 import type { FindingType } from "@/generated/prisma/client";
+import { PageShell } from "@/components/page-shell";
 
 // The card text saved with the decision: what the person agreed to.
 function agreedTo(snapshot: unknown) {
@@ -255,10 +255,8 @@ async function ActionsContent({
 
 export default function ActionsPage({ searchParams }: PageProps<"/actions">) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <ActionsContent searchParams={searchParams} />
-      </Suspense>
-    </main>
+    <PageShell layout="roomy">
+      <ActionsContent searchParams={searchParams} />
+    </PageShell>
   );
 }

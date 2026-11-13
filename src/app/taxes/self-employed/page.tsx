@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { IRS_DIRECT_PAY_URL } from "@/config/tax";
 import { HOME_OFFICE_SIMPLIFIED, MILEAGE_RATE_CENTS } from "@/config/tax-rates";
@@ -12,6 +11,7 @@ import { todayOf } from "@/lib/today";
 import { roundDollars } from "@/planning/tax-estimate-copy";
 import { HelperForm } from "./helper-form";
 import { dayLabel } from "@/lib/day-label";
+import { PageShell } from "@/components/page-shell";
 
 // Freelance taxes (spec step 123): business expenses, the home office and mileage helpers,
 // what to set aside from each payment and the estimated tax payments left (demo advice).
@@ -189,10 +189,8 @@ async function Content() {
 
 export default function SelfEmployedPage() {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <Content />
-      </Suspense>
-    </main>
+    <PageShell>
+      <Content />
+    </PageShell>
   );
 }

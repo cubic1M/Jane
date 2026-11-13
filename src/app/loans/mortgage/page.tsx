@@ -2,8 +2,7 @@ import Link from "next/link";
 import { ShownLink } from "@/components/shown-link";
 import { isHiddenPage } from "@/config/hidden-pages";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { PMI_SOURCE } from "@/config/debt";
 import { formatCents } from "@/lib/money";
 import { loadMortgage } from "@/lib/mortgage";
@@ -11,6 +10,7 @@ import { ensureChecked } from "@/lib/refinance";
 import { requireUser } from "@/lib/session";
 import { pmiTimelineLines } from "@/lib/jane-agent/home-equity-replies";
 import { formatRate } from "@/lib/percent";
+import { PageShell } from "@/components/page-shell";
 
 // The mortgage, watched (spec step 115): PMI by the one rule (the home's value when the loan
 // began, as on /loans/equity, where the request is drafted), escrow changes, extra principal
@@ -185,10 +185,8 @@ async function MortgageContent() {
 
 export default function MortgagePage() {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <MortgageContent />
-      </Suspense>
-    </main>
+    <PageShell>
+      <MortgageContent />
+    </PageShell>
   );
 }

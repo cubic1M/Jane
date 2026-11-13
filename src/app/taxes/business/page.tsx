@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { S_CORP } from "@/config/business-structure";
 import { loadBusinessStructure } from "@/lib/business-structure";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { PageShell } from "@/components/page-shell";
 
 // Business owners' tax structure (spec step 267): the qualified business income deduction,
 // whether an S corporation would save more than it costs (demo advice), and the home office
@@ -101,10 +101,8 @@ async function Content() {
 
 export default function BusinessPage() {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <Content />
-      </Suspense>
-    </main>
+    <PageShell>
+      <Content />
+    </PageShell>
   );
 }

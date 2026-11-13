@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { BORROW_LABELS, BORROW_SOURCES } from "@/config/borrowing-power";
 import { ensureBorrowingChecked, loadBorrowingPower } from "@/lib/borrowing-power";
@@ -14,6 +13,7 @@ import { requireUser } from "@/lib/session";
 import { checkAgainAction } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { formatRate } from "@/lib/percent";
+import { PageShell } from "@/components/page-shell";
 
 // What you could borrow (spec step 250): a mortgage, a car loan, a personal loan and a card, each
 // with the likely amount and rate from soft checks, the day it was checked, and what would
@@ -134,10 +134,8 @@ async function BorrowContent({ searchParams }: Pick<PageProps<"/loans/borrow">, 
 
 export default function BorrowPage(props: PageProps<"/loans/borrow">) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <BorrowContent searchParams={props.searchParams} />
-      </Suspense>
-    </main>
+    <PageShell>
+      <BorrowContent searchParams={props.searchParams} />
+    </PageShell>
   );
 }

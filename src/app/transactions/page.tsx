@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { cardPaymentNames } from "@/categorize/card-payments";
 import { normalizeMerchant } from "@/data-sources/merchant";
 import { CATEGORY_LABELS, categoryLabel } from "@/insights/labels";
@@ -13,6 +12,7 @@ import { requireUser } from "@/lib/session";
 import { deleteRule } from "./actions";
 import { CategoryForm } from "./category-form";
 import { SubmitButton } from "@/components/submit-button";
+import { PageShell } from "@/components/page-shell";
 
 const SHOWN = 100;
 
@@ -218,10 +218,8 @@ async function Transactions({
 
 export default function TransactionsPage({ searchParams }: PageProps<"/transactions">) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <Transactions searchParams={searchParams} />
-      </Suspense>
-    </main>
+    <PageShell>
+      <Transactions searchParams={searchParams} />
+    </PageShell>
   );
 }

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { ViewTracker } from "@/components/view-tracker";
 import { INSIGHT_MONTHS } from "@/config/insights";
 import { BudgetList } from "@/components/budget-list";
@@ -17,6 +16,7 @@ import { todayOf } from "@/lib/today";
 import { unseenCardPaymentsMonthly } from "@/lib/unseen-cards";
 import { CashIncomeNote } from "./cash-income";
 import { SpendingExplorer } from "./explorer";
+import { PageShell } from "@/components/page-shell";
 
 async function Insights() {
   const user = await requireUser();
@@ -94,10 +94,8 @@ async function Insights() {
 
 export default function InsightsPage() {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading label="Adding things up" />}>
-        <Insights />
-      </Suspense>
-    </main>
+    <PageShell layout="roomy" label="Adding things up">
+      <Insights />
+    </PageShell>
   );
 }

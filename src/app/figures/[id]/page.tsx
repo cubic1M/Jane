@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { FIGURE_IDS, FIGURE_LABELS, type FigureId } from "@/config/figures";
 import { explainFigure } from "@/lib/figures";
 import { incomeOverride, listPreferences } from "@/lib/jane-agent/preferences";
@@ -11,6 +10,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { CategoryForm } from "@/app/transactions/category-form";
 import { IncomeForm } from "../income-form";
+import { PageShell } from "@/components/page-shell";
 
 // How I got this (spec step 239): the working behind a headline figure, and "that's wrong".
 const MUTED = "text-zinc-600 dark:text-zinc-400";
@@ -111,10 +111,8 @@ async function Figure({ params }: { params: PageProps<"/figures/[id]">["params"]
 
 export default function FigurePage({ params }: PageProps<"/figures/[id]">) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <Figure params={params} />
-      </Suspense>
-    </main>
+    <PageShell>
+      <Figure params={params} />
+    </PageShell>
   );
 }

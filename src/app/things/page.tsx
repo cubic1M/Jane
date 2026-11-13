@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { ASSET_KINDS } from "@/config/net-worth";
 import { SYNCED_KINDS, syncedKindOf } from "@/data-sources/types";
 import { scopedDb } from "@/lib/db-scoped";
@@ -13,6 +12,7 @@ import { deleteAsset } from "./actions";
 import { AssetForm } from "./asset-form";
 import { SubmitButton } from "@/components/submit-button";
 import { dayLabel } from "@/lib/day-label";
+import { PageShell } from "@/components/page-shell";
 
 // Things you own (spec step 67): a home, a car, anything else of value, at the value the
 // person gives. Counted in net worth; with the loan against it, shown as equity.
@@ -198,10 +198,8 @@ async function ThingsContent({
 
 export default function ThingsPage({ searchParams }: PageProps<"/things">) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <ThingsContent searchParams={searchParams} />
-      </Suspense>
-    </main>
+    <PageShell>
+      <ThingsContent searchParams={searchParams} />
+    </PageShell>
   );
 }

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { SimulatedBanner } from "@/components/simulated-banner";
 import { HSA_LIMITS } from "@/config/hsa";
@@ -11,6 +10,7 @@ import { requireUser } from "@/lib/session";
 import { investHsa, linkHsa, reimburse } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { dayLabel } from "@/lib/day-label";
+import { PageShell } from "@/components/page-shell";
 
 // The HSA as an investment (spec step 159): cash and invested, the cash cushion, room under
 // the limit, and the receipts vault of medical charges to pay back tax-free later.
@@ -137,10 +137,8 @@ async function HsaContent({
 
 export default function HsaPage(props: PageProps<"/investments/hsa">) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <HsaContent searchParams={props.searchParams} />
-      </Suspense>
-    </main>
+    <PageShell>
+      <HsaContent searchParams={props.searchParams} />
+    </PageShell>
   );
 }

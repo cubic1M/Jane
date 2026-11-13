@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import {
   PLAN_TO_AGE,
@@ -16,6 +15,7 @@ import { loadRetirementIncome } from "@/lib/investments/retirement-income";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { IncomeForm } from "./income-form";
+import { PageShell } from "@/components/page-shell";
 
 // Income in retirement (spec step 212, demo advice): Social Security at 62, full age and
 // 70, required minimum distributions, the order to draw, and a monthly paycheck with how
@@ -187,10 +187,8 @@ async function Content({
 
 export default function RetirementIncomePage(props: PageProps<"/investments/retirement-income">) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<PageLoading />}>
-        <Content searchParams={props.searchParams} />
-      </Suspense>
-    </main>
+    <PageShell>
+      <Content searchParams={props.searchParams} />
+    </PageShell>
   );
 }
