@@ -201,7 +201,9 @@ export function settingsTree(input: SettingsTreeInput): AreaTree {
           }),
         ]),
     item("household", "state", {
-      label: "Where you live",
+      // The state, as its control says: "Where you live" is own or rent on What Jane knows, so
+      // "Where you live: Not set" here read as Jane forgetting the home it lists there (debugger 11-13).
+      label: "Your state",
       figure: input.state ?? "Not set",
       summary: "Some offers, like savings accounts from partners, are only in some states.",
     }),
