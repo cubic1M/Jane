@@ -17,7 +17,7 @@ export const outCents = (list: readonly ProfileTx[]) =>
 // Books QA: the person's one-off costs (a flood's repairs), found once per profile and left out
 // of the typical month (src/insights/typical-month.ts).
 const oneOffCache = new WeakMap<readonly ProfileTx[], Set<ProfileTx>>();
-export function oneOffsOf(data: ProfileInput): Set<ProfileTx> {
+function oneOffsOf(data: ProfileInput): Set<ProfileTx> {
   const cached = oneOffCache.get(data.transactions);
   if (cached) return cached;
   const rows = data.transactions.map((t) => ({

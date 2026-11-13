@@ -24,8 +24,7 @@ export type ParsedRow = {
 
 // `silent`: not a transaction at all (Bank of America's "Beginning balance" line), so it's left
 // out without a "skipped" message.
-export type RowResult =
-  { ok: true; row: ParsedRow } | { ok: false; reason: string; silent?: boolean };
+type RowResult = { ok: true; row: ParsedRow } | { ok: false; reason: string; silent?: boolean };
 
 export type CsvFormat = {
   id: string;
@@ -104,7 +103,7 @@ function balanceOf(text: string): { balanceCents?: number } {
 
 // Chase checking and savings: "Details,Posting Date,Description,Amount,Type,Balance,
 // Check or Slip #". Amounts are negative for money leaving the account.
-export const chaseChecking: CsvFormat = {
+const chaseChecking: CsvFormat = {
   id: "chase_checking",
   bank: "Chase",
   label: "Chase checking or savings",
@@ -183,7 +182,7 @@ function debitCreditRow(
 // Bank of America checking and savings: a few summary lines ("Description,,Summary Amt.",
 // "Beginning balance as of …") above "Date,Description,Amount,Running Bal.". The first row
 // under it is the beginning balance with no amount. Money out is negative.
-export const bankOfAmericaChecking: CsvFormat = {
+const bankOfAmericaChecking: CsvFormat = {
   id: "bofa_checking",
   bank: "Bank of America",
   label: "Bank of America checking or savings",
@@ -210,7 +209,7 @@ export const bankOfAmericaChecking: CsvFormat = {
 
 // Bank of America credit cards: "Posted Date,Reference Number,Payee,Address,Amount".
 // Purchases are negative and payments positive.
-export const bankOfAmericaCreditCard: CsvFormat = {
+const bankOfAmericaCreditCard: CsvFormat = {
   id: "bofa_credit_card",
   bank: "Bank of America",
   label: "Bank of America credit card",
@@ -233,7 +232,7 @@ export const bankOfAmericaCreditCard: CsvFormat = {
 
 // Wells Fargo: no header row, five quoted columns: date, amount, "*", a check number (often
 // empty) and the description. Money out is negative.
-export const wellsFargo: HeaderlessFormat = {
+const wellsFargo: HeaderlessFormat = {
   id: "wells_fargo",
   bank: "Wells Fargo",
   label: "Wells Fargo",
@@ -261,7 +260,7 @@ export const wellsFargo: HeaderlessFormat = {
 
 // Capital One credit cards: "Transaction Date,Posted Date,Card No.,Description,Category,
 // Debit,Credit", dates as YYYY-MM-DD. Purchases fill Debit and payments Credit.
-export const capitalOneCreditCard: CsvFormat = {
+const capitalOneCreditCard: CsvFormat = {
   id: "capital_one_credit_card",
   bank: "Capital One",
   label: "Capital One credit card",
@@ -289,7 +288,7 @@ export const capitalOneCreditCard: CsvFormat = {
 // Capital One 360 checking and savings: "Account Number,Transaction Description,Transaction
 // Date,Transaction Type,Transaction Amount,Balance", dates as MM/DD/YY. The amount has no
 // sign; the type says Debit (money out) or Credit (money in).
-export const capitalOne360: CsvFormat = {
+const capitalOne360: CsvFormat = {
   id: "capital_one_360",
   bank: "Capital One",
   label: "Capital One 360 checking or savings",
@@ -329,7 +328,7 @@ export const capitalOne360: CsvFormat = {
 // Citi credit cards: "Status,Date,Description,Debit,Credit", with "Member Name" on cards
 // with more than one card member. Purchases fill Debit; payments and refunds go under Credit
 // with a minus sign.
-export const citiCreditCard: CsvFormat = {
+const citiCreditCard: CsvFormat = {
   id: "citi_credit_card",
   bank: "Citi",
   label: "Citi credit card",
@@ -357,7 +356,7 @@ export const citiCreditCard: CsvFormat = {
 // American Express: "Date,Description,Card Member,Account #,Amount", and with "additional
 // details" ticked "Extended Details,Appears On Your Statement As,…,Category" after it.
 // Charges are positive and payments negative.
-export const amex: CsvFormat = {
+const amex: CsvFormat = {
   id: "amex",
   bank: "American Express",
   label: "American Express",
@@ -380,7 +379,7 @@ export const amex: CsvFormat = {
 
 // Discover cards: "Trans. Date,Post Date,Description,Amount,Category". Purchases are
 // positive and payments negative.
-export const discoverCreditCard: CsvFormat = {
+const discoverCreditCard: CsvFormat = {
   id: "discover_credit_card",
   bank: "Discover",
   label: "Discover card",
@@ -404,7 +403,7 @@ export const discoverCreditCard: CsvFormat = {
 // Apple Card (Wallet → Card Balance → a month's statement → Export Transactions → CSV):
 // "Transaction Date,Clearing Date,Description,Merchant,Category,Type,Amount (USD)", newer exports
 // with "Purchased By" after it. Purchases are positive; payments and returns negative.
-export const appleCard: CsvFormat = {
+const appleCard: CsvFormat = {
   id: "apple_card",
   bank: "Apple",
   label: "Apple Card",
@@ -451,7 +450,7 @@ function roundedCents(text: string): number | null {
 // current exports and M/D/YYYY in older ones, older amounts with four decimals. Money out is
 // negative; Memo is the same filler on every row ("Download from usbank.com."), so the name is
 // the description.
-export const usBank: CsvFormat = {
+const usBank: CsvFormat = {
   id: "us_bank",
   bank: "US Bank",
   label: "U.S. Bank",
@@ -478,7 +477,7 @@ export const usBank: CsvFormat = {
 
 // Ally Bank: "Date, Time, Amount, Type, Description", a space after every comma, dates as
 // YYYY-MM-DD and the clock time in a column of its own. Withdrawals are negative.
-export const ally: CsvFormat = {
+const ally: CsvFormat = {
   id: "ally",
   bank: "Ally",
   label: "Ally Bank",
@@ -507,7 +506,7 @@ export const ally: CsvFormat = {
 // Schwab Bank checking (History → Export): "Date,Status,Type,CheckNumber,Description,Withdrawal,
 // Deposit,RunningBalance" (older exports have no Status). A date can read "09/20/2026 as of
 // 09/18/2026": the first is the day it posted. Pending rows come again once posted.
-export const schwabBank: CsvFormat = {
+const schwabBank: CsvFormat = {
   id: "schwab_bank",
   bank: "Schwab",
   label: "Schwab Bank checking",
@@ -537,7 +536,7 @@ export const schwabBank: CsvFormat = {
 // Transaction Date,Amount,Credit Debit Indicator,type,Type Group,Reference,…,Description,
 // Category". Every amount is positive; the indicator says which way it went (night QA 10-30:
 // the column picker had no way to say so, so pay would have read as spending).
-export const navyFederal: CsvFormat = {
+const navyFederal: CsvFormat = {
   id: "navy_federal",
   bank: "Navy Federal",
   label: "Navy Federal Credit Union",
@@ -571,7 +570,7 @@ export const navyFederal: CsvFormat = {
 // veteran's pay matched no rule and wasn't income). A pending row is left out until it posts.
 // The rules read the bank's line and the name is USAA's (debugger 11-05: "Upstart", "Midland
 // Credit" and "IRS" matched nothing where "UPSTART LOAN PMT" would have).
-export const usaa: CsvFormat = {
+const usaa: CsvFormat = {
   id: "usaa",
   bank: "USAA",
   label: "USAA",
@@ -613,7 +612,7 @@ function spacedSignCents(text: string): number | null {
 // Time (UTC),…"). Money sent is "- $25.00", received "+ $40.00". Balance and disclaimer lines
 // have no ID. A payment paid from a bank or card stays: that statement shows it as a Venmo
 // transfer, not spending, so it counts once, here, with its note.
-export const venmo: CsvFormat = {
+const venmo: CsvFormat = {
   id: "venmo",
   bank: "Venmo",
   label: "Venmo",
@@ -664,7 +663,7 @@ export const venmo: CsvFormat = {
 // "Gross","Fee","Net",…. Net is what moved the PayPal balance; money out is negative. Only
 // completed US-dollar rows count.
 const PAYPAL_SALE = "PayPal sale";
-export const paypal: CsvFormat = {
+const paypal: CsvFormat = {
   id: "paypal",
   bank: "PayPal",
   label: "PayPal",
@@ -750,7 +749,7 @@ export const paypal: CsvFormat = {
 // matter are required: a file that differs goes to the column picker (debugger 11-02).
 const CASH_APP_NOT_DONE = /fail|cancel|declin|waiting|pending|reject/i;
 
-export const cashApp: CsvFormat = {
+const cashApp: CsvFormat = {
   id: "cash_app",
   bank: "Cash App",
   label: "Cash App",

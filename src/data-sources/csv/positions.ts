@@ -599,7 +599,7 @@ const READERS: Record<PositionsLayoutId, Reader> = {
 
 export const NOT_POSITIONS =
   "Jane doesn't know this layout. Upload the positions download from Fidelity, Schwab or Vanguard, or Robinhood's account activity report.";
-export const NO_POSITIONS = "There are no holdings in it. Download it again from your brokerage.";
+const NO_POSITIONS = "There are no holdings in it. Download it again from your brokerage.";
 
 // A positions file read whole, or why it can't be.
 export function readPositionsFile(text: string): PositionsFile | { error: string } {

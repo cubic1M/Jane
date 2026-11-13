@@ -37,7 +37,7 @@ export type CloseChange = {
   sure: string;
 };
 
-export type CloseChip = { label: string; figure: string; sure: string | null; href: string };
+type CloseChip = { label: string; figure: string; sure: string | null; href: string };
 
 export type CloseInput<E extends CloseEntry = CloseEntry> = {
   month: string;

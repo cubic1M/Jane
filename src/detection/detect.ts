@@ -15,7 +15,7 @@ import { trialConversion } from "./rules/trial-conversion";
 import { buildStreams } from "./streams";
 import type { Candidate, DetectionInput } from "./types";
 
-export const RULES: readonly Rule[] = [
+const RULES: readonly Rule[] = [
   subscriptionReview,
   duplicateSubscription,
   priceIncrease,

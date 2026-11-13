@@ -6,7 +6,7 @@ export const LIFE_EVENT_KINDS = ["moving", "new_job", "new_baby"] as const;
 
 export type LifeEventKind = (typeof LIFE_EVENT_KINDS)[number];
 
-export type LifeEventItem = {
+type LifeEventItem = {
   key: string;
   label: string;
   // A Jane page that helps with this item.

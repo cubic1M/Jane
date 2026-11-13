@@ -35,7 +35,7 @@ export type RiskLevel = keyof typeof RISK_LEVELS;
 
 export type ProfileQuestionKey = "age" | "horizon" | "drop" | "goal";
 
-export type ProfileChoice = { label: string; value: string };
+type ProfileChoice = { label: string; value: string };
 
 export type ProfileQuestion = {
   key: ProfileQuestionKey;
@@ -45,7 +45,7 @@ export type ProfileQuestion = {
 
 // Ages from the chat's buttons are the middle of each band; the profile page takes an
 // exact age.
-export const AGE_CHOICES: readonly ProfileChoice[] = [
+const AGE_CHOICES: readonly ProfileChoice[] = [
   { label: "Under 30", value: "25" },
   { label: "30s", value: "35" },
   { label: "40s", value: "45" },

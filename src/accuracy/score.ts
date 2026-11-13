@@ -27,7 +27,7 @@ export const DETECTOR_NAMES = [
 ] as const;
 export type DetectorName = (typeof DETECTOR_NAMES)[number];
 
-export type Counts = { tp: number; fp: number; fn: number; peopleWithFalseAlarm: number };
+type Counts = { tp: number; fp: number; fn: number; peopleWithFalseAlarm: number };
 export type Score = Counts & { precision: number; recall: number; falseAlarmRate: number };
 
 // --- The pipeline, as the CSV import and the engine run it --------------------------------
@@ -61,7 +61,7 @@ function categorized(h: History): Categorized[] {
   );
 }
 
-export function detectionInputOf(h: History): DetectionInput {
+function detectionInputOf(h: History): DetectionInput {
   return {
     asOf: h.asOf,
     accounts: h.accounts.map((a) => ({
@@ -87,7 +87,7 @@ export function detectionInputOf(h: History): DetectionInput {
   };
 }
 
-export function profileInputOf(h: History): ProfileInput {
+function profileInputOf(h: History): ProfileInput {
   return {
     today: h.asOf,
     transactions: categorized(h).map((t) => ({
@@ -118,9 +118,9 @@ const merchantIn = (key: string) => after("merchant:", key).split("@")[0];
 const keysOf = (findings: Candidate[], type: Candidate["type"], prefix: string) =>
   findings.filter((f) => f.type === type).map((f) => after(prefix, f.key));
 
-export type Predicted = Record<DetectorName, string[]>;
+type Predicted = Record<DetectorName, string[]>;
 
-export function predict(h: History): { predicted: Predicted; findings: Candidate[] } {
+function predict(h: History): { predicted: Predicted; findings: Candidate[] } {
   const input = detectionInputOf(h);
   const findings = detect(input);
   const insight = (t: DetectionInput["transactions"][number]): InsightTransaction => ({
@@ -154,7 +154,7 @@ export function predict(h: History): { predicted: Predicted; findings: Candidate
   };
 }
 
-export function truth(h: History): Record<DetectorName, string[]> {
+function truth(h: History): Record<DetectorName, string[]> {
   const l: Labels = h.labels;
   return {
     subscriptions: l.subscriptions,
@@ -173,7 +173,7 @@ export function truth(h: History): Record<DetectorName, string[]> {
 
 const ratio = (num: number, den: number) => (den === 0 ? 1 : num / den);
 
-export function scoreOf(c: Counts, people: number): Score {
+function scoreOf(c: Counts, people: number): Score {
   return {
     ...c,
     precision: ratio(c.tp, c.tp + c.fp),
@@ -236,8 +236,6 @@ const TOPIC_TRUTH: Record<string, (h: History) => boolean> = {
   idle_cash: (h) => h.labels.idleCash,
   emergency_fund: (h) => !h.labels.idleCash,
 };
-export const CALIBRATED_TOPICS = Object.keys(TOPIC_TRUTH);
-
 export type Judged = { person: string; topic: string; percent: number; right: boolean };
 
 export function judgedSuggestions(histories: readonly History[]): Judged[] {
@@ -252,7 +250,7 @@ export function judgedSuggestions(histories: readonly History[]): Judged[] {
   });
 }
 
-export const BUCKETS = [
+const BUCKETS = [
   [0, 49],
   [50, 59],
   [60, 69],

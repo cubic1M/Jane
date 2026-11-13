@@ -31,8 +31,8 @@ const dollars = formatWholeDollars;
 // What goes in the chat's message box: the person types the amount and sends it themselves. The
 // hint shows greyed after the cursor until they type, and is never sent (founder: "there should be
 // after 'I am aiming to spend' with a clue, like '[dollar amount]'").
-export const AIM_PROMPT = "I'm aiming to spend $";
-export const AIM_HINT = "[amount] on [what]";
+const AIM_PROMPT = "I'm aiming to spend $";
+const AIM_HINT = "[amount] on [what]";
 
 const KIND_WORDS: Record<SavedKind, string> = {
   refund: "refund",

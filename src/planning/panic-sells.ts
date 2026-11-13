@@ -8,7 +8,7 @@ import { formatCents } from "@/lib/money";
 export type Sale = { ticker: string; date: string; quantity: number; priceCents: number };
 export type Bar = { date: string; closeCents: number };
 
-export type PanicSale = {
+type PanicSale = {
   ticker: string;
   date: string;
   quantity: number;

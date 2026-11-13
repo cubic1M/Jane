@@ -7,7 +7,7 @@ import type { IntradayRuleId } from "@/config/intraday-strategies";
 // src/planning/intraday.test.ts checks the rules themselves. A replay of the past, not a
 // forecast. Fractions throughout.
 
-export type IntradayPeriod = {
+type IntradayPeriod = {
   from: string;
   to: string;
   sessions: number;

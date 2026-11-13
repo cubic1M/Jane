@@ -22,7 +22,7 @@ export const CSV_SETS: readonly CsvSet[] = [
   "held-out-2",
   "held-out-3",
 ];
-export const CSV_FIXTURES = "src/accuracy/csv/__fixtures__";
+const CSV_FIXTURES = "src/accuracy/csv/__fixtures__";
 export const CSV_BASELINE = "src/accuracy/csv/baseline.json";
 
 export async function scoreSet(
@@ -111,7 +111,7 @@ export function table(set: CsvSet, b: CsvScoreboard): string {
 }
 
 // What a person should see, for checking an upload by hand.
-export function truthOf(p: CsvPerson) {
+function truthOf(p: CsvPerson) {
   return {
     person: p.id,
     archetype: p.archetype,

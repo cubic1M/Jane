@@ -23,14 +23,14 @@ const INVESTING_TRANSFERS: readonly { descriptor: string }[] = [
   { descriptor: "ACORNS INVEST 8123" },
 ];
 
-export const CSV_SEED = 20_261_027;
-export const CSV_AS_OF = "2026-10-24";
-export const CSV_PEOPLE_COUNT = 20;
-export const CSV_HELD_OUT_SEED = 61_803_398;
+const CSV_SEED = 20_261_027;
+const CSV_AS_OF = "2026-10-24";
+const CSV_PEOPLE_COUNT = 20;
+const CSV_HELD_OUT_SEED = 61_803_398;
 export type CsvSet = "tuning" | "tuning-2" | "held-out" | "held-out-2" | "held-out-3";
-export const CSV_HELD_OUT_2_SEED = 14_142_135;
-export const CSV_HELD_OUT_3_SEED = 27_182_818;
-export const CSV_TUNING_2_SEED = 16_180_339;
+const CSV_HELD_OUT_2_SEED = 14_142_135;
+const CSV_HELD_OUT_3_SEED = 27_182_818;
+const CSV_TUNING_2_SEED = 16_180_339;
 
 export type Layout =
   | "chase_checking"
@@ -62,7 +62,7 @@ export type CsvAccount = {
 // How a row counts in the spending chart: spending, income, money moved between the person's own
 // accounts or to other people, or either (rent paid by Zelle: a transfer to Plaid, rent to the
 // person), which is left out of the totals.
-export type Kind = "spending" | "income" | "moving" | "either";
+type Kind = "spending" | "income" | "moving" | "either";
 
 export type TrueRow = {
   id: string;
@@ -85,7 +85,7 @@ export type TrueRow = {
   pendingCopy?: { date: string; amountCents: number };
 };
 
-export type Flow =
+type Flow =
   | "purchase"
   | "refund"
   | "payroll"
@@ -152,7 +152,7 @@ export type CsvPerson = {
   };
 };
 
-export type Archetype = "salaried" | "hourly" | "gig" | "retiree" | "struggling" | "saver";
+type Archetype = "salaried" | "hourly" | "gig" | "retiree" | "struggling" | "saver";
 
 // --- Randomness -------------------------------------------------------------------------------
 
@@ -173,11 +173,10 @@ export function rng(seed: number) {
     cents: (lo: number, hi: number) => Math.round((lo + next() * (hi - lo)) * 100),
   };
 }
-export type Rng = ReturnType<typeof rng>;
 
 const DAY = 86_400_000;
 const toDate = (iso: string) => new Date(`${iso}T00:00:00Z`);
-export const isoOf = (d: Date) => d.toISOString().slice(0, 10);
+const isoOf = (d: Date) => d.toISOString().slice(0, 10);
 export const addDays = (date: string, n: number) =>
   isoOf(new Date(toDate(date).getTime() + n * DAY));
 export function addMonths(date: string, n: number, day?: number): string {
@@ -189,7 +188,7 @@ export function addMonths(date: string, n: number, day?: number): string {
   target.setUTCDate(Math.min(day ?? d.getUTCDate(), last));
   return isoOf(target);
 }
-export const weekday = (date: string) => toDate(date).getUTCDay();
+const weekday = (date: string) => toDate(date).getUTCDay();
 
 // --- Merchants --------------------------------------------------------------------------------
 

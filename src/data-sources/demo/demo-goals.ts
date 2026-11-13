@@ -5,7 +5,7 @@ import type { PersonId } from "@/config/people";
 // want a trip to Japan and a kitchen remodel before retiring; together they need more each
 // month than their plan has room for, so one has to wait. Pure.
 
-export type DemoGoal = {
+type DemoGoal = {
   name: string;
   targetCents: number;
   savedCents: number;
@@ -13,7 +13,7 @@ export type DemoGoal = {
   inMonths: number;
 };
 
-export const DEMO_GOALS: Readonly<Partial<Record<PersonId, readonly DemoGoal[]>>> = {
+const DEMO_GOALS: Readonly<Partial<Record<PersonId, readonly DemoGoal[]>>> = {
   preretire: [
     { name: "Trip to Japan", targetCents: 1_500_000, savedCents: 300_000, inMonths: 7 },
     { name: "Kitchen remodel", targetCents: 9_000_000, savedCents: 1_000_000, inMonths: 12 },
@@ -21,7 +21,7 @@ export const DEMO_GOALS: Readonly<Partial<Record<PersonId, readonly DemoGoal[]>>
 };
 
 // The day `inMonths` from `today` (YYYY-MM-DD), on the same day of the month (the 28th at most).
-export function goalDate(today: string, inMonths: number): string {
+function goalDate(today: string, inMonths: number): string {
   const [y, m, d] = today.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1 + inMonths, Math.min(d, 28))).toISOString().slice(0, 10);
 }

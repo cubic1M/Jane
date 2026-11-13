@@ -28,7 +28,7 @@ import type { InvestmentAccountView } from "@/insights/investments";
 export type Prefs = { excludes: Exclusion[]; themes: Theme[] };
 export type ClassKey = ValuesFund["assetClass"];
 
-export const hasPrefs = (p: Prefs) => p.excludes.length > 0 || p.themes.length > 0;
+const hasPrefs = (p: Prefs) => p.excludes.length > 0 || p.themes.length > 0;
 
 export type FundChoice = {
   ticker: string;
@@ -109,8 +109,8 @@ export function tiltFund(prefs: Prefs): FundChoice | null {
   return null;
 }
 
-export type Leg = { ticker: string; name: string; amountCents: number };
-export type Switch = {
+type Leg = { ticker: string; name: string; amountCents: number };
+type Switch = {
   accountId: string;
   accountName: string;
   taxable: boolean;
@@ -123,7 +123,7 @@ export type Switch = {
   gainCents: number | null;
 };
 
-export type Skipped = { accountName: string; name: string; reason: string };
+type Skipped = { accountName: string; name: string; reason: string };
 
 export type ValuesPlan = {
   prefs: Prefs;

@@ -23,7 +23,7 @@ export type HonestInput = {
   taxDragBps: number;
 };
 
-export type Reason = {
+type Reason = {
   key: "fees" | "cash" | "taxes" | "timing" | "mix";
   label: string;
   points: number;

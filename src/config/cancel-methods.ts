@@ -13,7 +13,7 @@
 
 // card_stop_recurring (round 19, was card_lock): ask the card issuer to stop that one merchant's
 // recurring charges; a dispute comes after that, and locking the whole card last.
-export type CancelChannel =
+type CancelChannel =
   "guided" | "email" | "letter" | "phone" | "stop_payment_letter" | "card_stop_recurring";
 
 export type CancelMethod = {

@@ -11,8 +11,7 @@ export const SHORT_TERM_RATES_SOURCE =
 // Money needed within this many months is "short-term".
 export const SHORT_TERM_MONTHS = 36;
 
-export type ProductKey =
-  "hysa" | "tbill_3" | "tbill_6" | "tbill_12" | "cd_3" | "cd_6" | "cd_12" | "ibond";
+type ProductKey = "hysa" | "tbill_3" | "tbill_6" | "tbill_12" | "cd_3" | "cd_6" | "cd_12" | "ibond";
 
 export type Product = {
   key: ProductKey;

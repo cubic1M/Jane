@@ -5,8 +5,7 @@ import type { LoanProduct } from "@/config/debt";
 // the fit engine's (src/config/fit.ts), so the amount here is one the loan options card would
 // also call comfortable. What is only a guess lives here, with where it comes from.
 
-export const BORROW_PRODUCTS = ["mortgage", "auto", "personal", "card"] as const;
-export type BorrowProduct = (typeof BORROW_PRODUCTS)[number];
+export type BorrowProduct = "mortgage" | "auto" | "personal" | "card";
 
 export const BORROW_LABELS: Readonly<Record<BorrowProduct, string>> = {
   mortgage: "A mortgage",

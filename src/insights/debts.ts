@@ -340,7 +340,7 @@ const addMonths = (day: string, months: number) => {
   return new Date(Date.UTC(y, m - 1 + months, d)).toISOString().slice(0, 10);
 };
 
-export function newLoanDebt(loan: NewLoanInput, asOf: string): Debt {
+function newLoanDebt(loan: NewLoanInput, asOf: string): Debt {
   const [fy, fm] = loan.fundedOn.split("-").map(Number);
   const [ay, am] = asOf.split("-").map(Number);
   // A transfer's balance isn't guessed from payments Jane can't see: it's what was moved,

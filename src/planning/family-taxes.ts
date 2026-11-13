@@ -18,7 +18,7 @@ import { formatWholeDollars } from "@/lib/money";
 // married filing jointly or separately (head of household or single). Each side lists the
 // eligibility rules it depends on; a side the person isn't eligible for says why.
 
-export type Side = {
+type Side = {
   label: string;
   // Federal income tax, plus what differs between the sides (payroll tax for an FSA,
   // state tax for a 529).

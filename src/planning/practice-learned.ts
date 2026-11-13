@@ -9,7 +9,7 @@ import { historyFactor, type TopicHistory } from "./suggestion-rank";
 // sentence. Pure. Practice money only.
 
 type Kind = keyof typeof PRACTICE_TOPIC;
-export type LearnedEffect = "sooner" | "later" | "safety" | "same";
+type LearnedEffect = "sooner" | "later" | "safety" | "same";
 export type Learned = {
   kind: Kind;
   label: string;

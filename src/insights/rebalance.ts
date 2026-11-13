@@ -23,7 +23,7 @@ import type { HoldingView, InvestmentAccountView } from "./investments";
 // Buys go into the low-cost index fund for each kind (CORE_FUNDS); in an employer plan,
 // only if the plan offers it. Cash isn't bought: it's what's left in the account.
 
-export type PlannedOrder = {
+type PlannedOrder = {
   accountId: string;
   accountName: string;
   ticker: string;

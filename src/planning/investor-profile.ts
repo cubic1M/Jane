@@ -74,7 +74,7 @@ export function questionAfter(key: string): ProfileQuestion | null {
 }
 
 // How many of the four are answered, for "2 of 4".
-export const answeredCount = (a: ProfileAnswers) =>
+const answeredCount = (a: ProfileAnswers) =>
   PROFILE_QUESTIONS.filter((q) => answered(a, q.key)).length;
 
 // Age today, from the age given and when.

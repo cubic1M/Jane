@@ -8,7 +8,7 @@ import type { NormalizedTransaction } from "@/data-sources/types";
 import type { ScopedDb } from "@/lib/db-scoped";
 import { isTrialUser } from "@/lib/trial-ids";
 
-export type CategorySource = "rule" | "llm" | "plaid" | "user";
+type CategorySource = "rule" | "llm" | "plaid" | "user";
 
 // Money out that isn't buying something, so money in at the same name isn't a refund of it.
 const NOT_PURCHASES: readonly string[] = ["LOAN_PAYMENTS", "TRANSFER_OUT", "TRANSFER_IN", "INCOME"];

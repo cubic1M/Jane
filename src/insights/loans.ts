@@ -51,7 +51,7 @@ export const DEBT_ACCOUNT_SELECT = {
   },
 } as const;
 
-export type DebtLine = {
+type DebtLine = {
   id: string;
   name: string;
   kindLabel: string;

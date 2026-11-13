@@ -11,7 +11,7 @@ import { MIN_SWAP_CENTS, PLACEMENT, type AccountKind } from "@/config/location";
 export type Class = "bonds" | "us_stocks" | "intl_stocks";
 export const CLASSES: readonly Class[] = ["bonds", "us_stocks", "intl_stocks"];
 
-export type PlanHolding = {
+type PlanHolding = {
   ticker: string;
   name: string;
   valueCents: number;
@@ -29,7 +29,7 @@ export type PlanAccount = {
   holdings: PlanHolding[];
 };
 
-export type Swap = {
+type Swap = {
   key: string;
   // This account sells `sell` and buys `buy`, amount cents; the other account does the reverse.
   a: { accountId: string; accountName: string; sell: Class; buy: Class };
@@ -56,7 +56,7 @@ export type LocationPlan = {
 
 const zero = (): Record<Class, number> => ({ bonds: 0, us_stocks: 0, intl_stocks: 0 });
 
-export function movable(account: PlanAccount): Record<Class, number> {
+function movable(account: PlanAccount): Record<Class, number> {
   const out = zero();
   for (const h of account.holdings) if (h.moveClass) out[h.moveClass] += h.valueCents;
   return out;

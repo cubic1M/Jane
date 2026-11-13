@@ -106,7 +106,7 @@ export function joinSheets(
 
 // --- Scores -----------------------------------------------------------------------------------
 
-export type CategoryScore = {
+type CategoryScore = {
   category: string;
   // Rows truly in it, and what Jane said about them.
   support: number;
@@ -203,7 +203,7 @@ export function scoreLabels(
 }
 
 // A fall of this many points in any one category's precision or recall is a drop.
-export const DROP_POINTS = 3;
+const DROP_POINTS = 3;
 
 export function drops(before: LabelScores, now: LabelScores): string[] {
   const out: string[] = [];

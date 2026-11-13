@@ -81,7 +81,7 @@ const sortDesc = <T extends { cents: number }>(rows: T[]) =>
   rows.sort((a, b) => b.cents - a.cents || JSON.stringify(a).localeCompare(JSON.stringify(b)));
 
 // The clean merchant name a transaction is counted under.
-export function merchantOf(t: InsightTransaction): string {
+function merchantOf(t: InsightTransaction): string {
   return t.merchantName ?? normalizeMerchant(t.description)?.name ?? t.description;
 }
 

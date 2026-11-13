@@ -191,7 +191,7 @@ export type PersonId = (typeof PERSON_IDS)[number];
 
 // What a person's profile (step 253) should say about them, in words the profile builder
 // and its test share.
-export type PersonFacts = {
+type PersonFacts = {
   income: "salary" | "uneven" | "business" | "pension";
   lifeStage: "starting" | "raising" | "peak" | "approaching" | "retired";
   household: "single" | "family" | "couple";

@@ -14,7 +14,7 @@ import { DAY_MS, addDays } from "@/lib/dates";
 export type RentTx = { date: string; amountCents: number; description: string; pfc: string | null };
 export type RentPayment = { date: string; cents: number };
 
-export const isRent = (t: RentTx) =>
+const isRent = (t: RentTx) =>
   t.pfc === RENT_CATEGORY && RENT_NAME.test(t.description) && !RENT_NAME_NOT.test(t.description);
 
 // Rent payments, oldest first (bank amounts are positive for money out).
@@ -58,7 +58,7 @@ export function rentRise(payments: readonly RentPayment[]): RentRise | null {
 export const enoughRent = (payments: readonly RentPayment[]) =>
   payments.length >= RENT_MIN_PAYMENTS;
 
-export type DepositStatus = "waiting_for_move_out" | "due" | "overdue" | "returned";
+type DepositStatus = "waiting_for_move_out" | "due" | "overdue" | "returned";
 export type DepositView = {
   dueOn: string | null;
   daysLeft: number | null;

@@ -13,7 +13,7 @@ import { toCents } from "./plaid-source";
 // LoanLiability). Account numbers, addresses, guarantors and reference numbers are left
 // out on purpose. Pure.
 
-export type LiabilityKind = "credit" | "mortgage" | "student" | "loan";
+type LiabilityKind = "credit" | "mortgage" | "student" | "loan";
 
 export type NormalizedLiability = {
   accountRef: string;

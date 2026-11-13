@@ -44,7 +44,7 @@ const MONTHS = [
 ] as const;
 
 // A sample person's year moved whole to another date, so the same life is seen then.
-export function movedTo(data: ProfileInput, today: string): ProfileInput {
+function movedTo(data: ProfileInput, today: string): ProfileInput {
   const days = Math.round((Date.parse(today) - Date.parse(data.today)) / 86_400_000);
   const move = (day: string) =>
     new Date(Date.parse(day) + days * 86_400_000).toISOString().slice(0, 10);

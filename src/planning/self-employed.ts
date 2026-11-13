@@ -6,7 +6,7 @@ import { HOME_OFFICE_SIMPLIFIED, MILEAGE_RATE_CENTS } from "@/config/tax-rates";
 // estimate, is split over the dates left, so the payments, the withholding and what's been
 // paid add up to the estimate exactly.
 
-export type QuarterlyPayment = { date: string; cents: number };
+type QuarterlyPayment = { date: string; cents: number };
 
 export type QuarterlyPlan = {
   // Still to pay for the year, by the estimate: tax less withholding and payments so far.

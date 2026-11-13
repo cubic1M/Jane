@@ -33,7 +33,7 @@ export type EventMarket = "stocks" | "crypto";
 // One fund the overlay moves on an event. "buy" adds a slice; "trim" takes a slice off a fund
 // the strategy holds (to cash), never below zero. The first ticker with a price is used (a proxy
 // after it, for price sources that don't carry the first).
-export type EventLeg = { tickers: readonly string[]; side: "buy" | "trim" };
+type EventLeg = { tickers: readonly string[]; side: "buy" | "trim" };
 
 export type EventType = {
   label: string;

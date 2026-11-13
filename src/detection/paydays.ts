@@ -35,8 +35,8 @@ import {
 // before, the one after, or none (some banks post on weekends). Safe to spend, the
 // forecast, the calendar and the chat all plan around these. Pure.
 
-export type PayFrequency = "WEEKLY" | "BIWEEKLY" | "SEMI_MONTHLY" | "MONTHLY";
-export type PayShift = "before" | "after" | "none";
+type PayFrequency = "WEEKLY" | "BIWEEKLY" | "SEMI_MONTHLY" | "MONTHLY";
+type PayShift = "before" | "after" | "none";
 
 export type PaySchedule = {
   // Stable per employer, e.g. "employer:acme corp".
@@ -263,7 +263,7 @@ function candidates(deposits: number[]): Rule[] {
 }
 
 // The rule that explains an employer's paychecks best, or null when none does.
-export function payRule(deposits: Deposit[]): Rule | null {
+function payRule(deposits: Deposit[]): Rule | null {
   if (deposits.length < PAYDAY_MIN_PAYCHECKS) return null;
   const allowed = Math.floor(deposits.length * PAYDAY_OFF_SCHEDULE_SHARE);
   const days = deposits.map((d) => toDay(d.date));

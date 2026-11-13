@@ -66,7 +66,7 @@ export type ProfileTx = {
   // The cleaned merchant name, where one was read; messages name a charge by it.
   merchantName?: string | null;
 };
-export type ProfileAccount = {
+type ProfileAccount = {
   id: string;
   // What the bank calls it ("Inherited IRA"); read for a few tax signals (step 268).
   name?: string;
@@ -255,7 +255,7 @@ export type PracticeIdea = {
   trades: number;
 };
 
-export type FactValue = string | number | boolean | null;
+type FactValue = string | number | boolean | null;
 export type Fact = {
   key: FactKey;
   label: string;

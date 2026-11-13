@@ -20,7 +20,7 @@ export type MedicalBillInput = {
   billedOn: string;
 };
 
-export type MedicalKind = "itemized" | "insurance" | "assistance" | "plan";
+type MedicalKind = "itemized" | "insurance" | "assistance" | "plan";
 
 export type MedicalItem = {
   id: string;

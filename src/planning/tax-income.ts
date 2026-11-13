@@ -17,7 +17,7 @@ import { IRA_DISTRIBUTION, SOCIAL_SECURITY_PAYEE } from "@/config/retirement-tax
 // transactions and pay stubs, and projected to the end of the year at the same pace. Pure;
 // dates are YYYY-MM-DD and amounts follow Plaid (positive is money out).
 
-export type PaySoFar = {
+type PaySoFar = {
   grossCents: number;
   // Federal (box 1) wages: gross less pre-tax retirement and other pre-tax deductions.
   wagesCents: number;

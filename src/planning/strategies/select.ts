@@ -37,7 +37,7 @@ export const keyOf = (c: Candidate) =>
     .map(([k, v]) => `${k}=${v}`)
     .join(",")})`;
 
-export const insideBudget = (m: Metrics, limits: LevelLimits) =>
+const insideBudget = (m: Metrics, limits: LevelLimits) =>
   m.maxDrawdown <= limits.maxDrawdown + 1e-9 && m.vol <= limits.volCap + 1e-9;
 
 // Beats the baseline on the later years: inside the budget and a better Sortino by the margin
@@ -75,10 +75,7 @@ const pct = (n: number) => `${(Math.round(n * 1000) / 10).toFixed(1)}%`;
 const ratio = (n: number) => n.toFixed(2);
 
 // Training: the best Sortino inside the budget, else the shallowest worst drop.
-export function pickOnTraining(
-  results: readonly CandidateResult[],
-  limits: LevelLimits,
-): CandidateResult {
+function pickOnTraining(results: readonly CandidateResult[], limits: LevelLimits): CandidateResult {
   const inside = results.filter((r) => insideBudget(r.train, limits));
   const pool = inside.length > 0 ? inside : results;
   return pool.reduce((best, r) =>

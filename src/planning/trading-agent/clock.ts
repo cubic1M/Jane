@@ -19,14 +19,14 @@ const OFFSET = 1_000_000;
 export const intervalMs = (minutes: number) => minutes * 60_000;
 
 // Business day n of the made-up calendar, as YYYY-MM-DD.
-export function madeUpDate(n: number): string {
+function madeUpDate(n: number): string {
   const k = n + OFFSET;
   const days = Math.floor(k / 5) * 7 + (k % 5);
   return new Date(MONDAY_0 + days * DAY_MS).toISOString().slice(0, 10);
 }
 
 // A New York bar inside regular hours.
-export const inSession = (t: string) => {
+const inSession = (t: string) => {
   const { minute } = newYork(t);
   return minute >= SESSION_OPEN_MINUTE && minute < SESSION_CLOSE_MINUTE;
 };

@@ -20,8 +20,7 @@ export const REVIEW_REASON_TEXT: Readonly<Record<ReviewReason, string>> = {
 };
 
 // The items, in the order they're listed.
-export const REVIEW_ITEMS = ["statements", "promos", "rates", "home", "goals"] as const;
-export type ReviewItemKey = (typeof REVIEW_ITEMS)[number];
+export type ReviewItemKey = "statements" | "promos" | "rates" | "home" | "goals";
 export const REVIEW_ITEM_TITLES: Readonly<Record<ReviewItemKey, string>> = {
   statements: "Payments timed to statement dates",
   promos: "0% promotions on pace",

@@ -43,7 +43,7 @@ export function concentration(input: {
   };
 }
 
-export type Part = {
+type Part = {
   index: number;
   // YYYY-MM-DD: when this part is due (the first is now).
   on: string;

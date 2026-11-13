@@ -44,7 +44,7 @@ export type Metrics = {
   volatility: number;
 };
 
-export type TypeResult = {
+type TypeResult = {
   type: EventTypeId;
   // Events traded, and events followed only (skipped: under the bar, or one already open).
   events: number;
@@ -115,7 +115,7 @@ function rebalance(book: Book, targets: Weights, prices: Record<string, number>)
   return out;
 }
 
-export function metrics(
+function metrics(
   values: readonly number[],
   cash: readonly number[],
   periodsPerYear = 252,

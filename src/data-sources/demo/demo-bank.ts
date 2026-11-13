@@ -675,7 +675,7 @@ const SEASONAL: (Template & { dates: [month: number, day: number][] })[] = [
 ];
 
 // How far back the first sync goes, like Plaid's days_requested.
-export const DEMO_HISTORY_DAYS = 365;
+const DEMO_HISTORY_DAYS = 365;
 
 function amountOf(t: Template, day: string, { seed, anchor }: DemoSeed): number {
   if (typeof t.amount === "number") return t.amount;
@@ -974,7 +974,7 @@ export type DemoSwitch = {
   startDay: string;
 };
 
-export const DEMO_SWITCH_DELAY_DAYS = 2;
+const DEMO_SWITCH_DELAY_DAYS = 2;
 
 const SWITCH_CATEGORY: Record<string, PfcDetailed> = {
   phone: "RENT_AND_UTILITIES_TELEPHONE",

@@ -33,7 +33,7 @@ export type Drop = {
   recoveredOn: string | null;
 };
 
-export type YearResult = {
+type YearResult = {
   year: number;
   // The value it started the year with (the last close of the year before, or the first day).
   startCents: number;

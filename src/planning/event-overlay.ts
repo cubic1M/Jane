@@ -156,7 +156,7 @@ export function tiltedTargets(base: Weights, open: readonly EventSlice[]): Recor
 }
 
 // The fund a leg uses: the first of its tickers with a price.
-export const legTicker = (tickers: readonly string[], prices: Prices) =>
+const legTicker = (tickers: readonly string[], prices: Prices) =>
   tickers.find((t) => (prices[t] ?? 0) > 0) ?? null;
 
 export type StepInput = {

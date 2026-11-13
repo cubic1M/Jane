@@ -290,7 +290,7 @@ export const TAX_FORMS = {
 } as const;
 export type TaxFormKey = keyof typeof TAX_FORMS;
 // For review: 1099-NEC/MISC, by the year the money was paid.
-export const NEC_THRESHOLD_CENTS: Readonly<Record<number, number>> = {
+const NEC_THRESHOLD_CENTS: Readonly<Record<number, number>> = {
   2025: 60_000,
   2026: 200_000,
 };
@@ -509,7 +509,7 @@ export const TAX_MESSAGE_PRIORITY = {
 // (the safe stuff, everything allowed). The Taxes area's own level (spec step 141) decides it,
 // the same setting its payments go by (docs/feature-audit.md, cluster 1); by default it follows
 // the step 57 level. Nothing is ever filed or signed without a tap.
-export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: string }[] = [
+const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: string }[] = [
   {
     feature: "profile",
     ask: "I work out your tax profile from your accounts and ask you to check it; I only use what you've told me or said yes to.",

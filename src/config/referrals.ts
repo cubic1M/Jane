@@ -22,7 +22,7 @@ export const COUNSEL_INSURANCE_REFERRALS: {
 // How a referral partner pays Jane (round 14). Per sale ("per_policy") is barred for an
 // unlicensed referrer in NY, TX, FL, WA and IL and high risk in CA, so it's never allowed for
 // insurance. A flat fee or per-quote pay needs counsel's approval for that state.
-export const PAY_MODELS = ["none", "flat_click", "flat_lead", "per_quote", "per_policy"] as const;
+const PAY_MODELS = ["none", "flat_click", "flat_lead", "per_quote", "per_policy"] as const;
 export type PayModel = (typeof PAY_MODELS)[number];
 export const isPayModel = (value: unknown): value is PayModel =>
   typeof value === "string" && (PAY_MODELS as readonly string[]).includes(value);

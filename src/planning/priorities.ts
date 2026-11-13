@@ -11,7 +11,7 @@ import { daysBetween } from "@/lib/dates";
 // and the reason each sits where it does. Weights in src/config/priorities.ts.
 
 // "suggestion": the nightly scan's (spec step 255), which lead the list in the scan's own order.
-export type PriorityKind = "finding" | "offer" | "task" | "deadline" | "plan" | "suggestion";
+type PriorityKind = "finding" | "offer" | "task" | "deadline" | "plan" | "suggestion";
 
 export type PriorityItem = {
   key: string;
@@ -54,7 +54,7 @@ const perMinute = (item: PriorityItem) =>
     ? item.valueCents / 100 / Math.max(1, item.minutes)
     : 0;
 
-export function scoreOf(item: PriorityItem, asOf: string): { score: number; urgency: number } {
+function scoreOf(item: PriorityItem, asOf: string): { score: number; urgency: number } {
   const urgency = urgencyOf(item, asOf);
   const score =
     PRIORITY_WEIGHTS.value * Math.log10(1 + perMinute(item)) +

@@ -11,14 +11,14 @@ import type { Universe } from "./strategies";
 // STRATEGY_RESEARCH_CHOICE) on one month-end axis from CATALOG_WALK_FROM_YEAR, from 100. Written
 // by the strategy research workflow (kind: catalog) so the page never fetches prices. Pure.
 
-export type CurveStats = { cagr: number; maxDrawdown: number; sortino: number };
-export type DefaultCurve = { label: string; values: (number | null)[]; stats: CurveStats };
+type CurveStats = { cagr: number; maxDrawdown: number; sortino: number };
+type DefaultCurve = { label: string; values: (number | null)[]; stats: CurveStats };
 
 const r4 = (n: number) => (Number.isFinite(n) ? Math.round(n * 10_000) / 10_000 : 0);
 
 // Jane's pick for the level, replayed on the strategy library's engine from the axis' first day
 // and read at each axis date (the last close on or before it).
-export function defaultCurve(data: Aligned, level: RiskLevel, dates: readonly string[]) {
+function defaultCurve(data: Aligned, level: RiskLevel, dates: readonly string[]) {
   const choice = STRATEGY_RESEARCH_CHOICE[level];
   const from = data.dates.findIndex((d) => d >= dates[0]);
   if (from < 0) return null;
@@ -46,7 +46,7 @@ export function defaultCurve(data: Aligned, level: RiskLevel, dates: readonly st
   } satisfies DefaultCurve;
 }
 
-export function curvesModule(input: {
+function curvesModule(input: {
   results: readonly CatalogResult[];
   dates: readonly string[];
   mix: Readonly<Record<RiskLevel, { values: (number | null)[]; stats: CurveStats }>>;

@@ -62,7 +62,7 @@ export type DeadlineKind =
   | "bill";
 
 // Where a deadline came from.
-export type DeadlineOrigin = "transactions" | "loans" | "entered" | "documents" | "insurance";
+type DeadlineOrigin = "transactions" | "loans" | "entered" | "documents" | "insurance";
 
 export type Deadline = {
   // Stable across days and rescans (and names the date where it can move), so a reminder
@@ -456,7 +456,7 @@ export function dueIn(date: string, asOf: string): string {
   return `in ${days} days`;
 }
 
-export const reminderDays = (kind: DeadlineKind) =>
+const reminderDays = (kind: DeadlineKind) =>
   kind === "return" ? RETURN_REMINDER_DAYS : DEADLINE_REMINDER_DAYS;
 
 // A deadline_soon reminder for each deadline coming up within its reminder days, keyed by

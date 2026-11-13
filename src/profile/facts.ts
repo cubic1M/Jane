@@ -2,7 +2,7 @@
 // correction can be checked) and whether the person may correct it. Detectors (step 254)
 // ask for these by key.
 
-export type FactKind = "choice" | "boolean" | "number" | "text" | "cents";
+type FactKind = "choice" | "boolean" | "number" | "text" | "cents";
 
 export type FactSpec = {
   key: string;

@@ -9,7 +9,7 @@
 
 export type LeakInput = { topic: string; worthCents: number; worthKind: string };
 
-export type LeakPart = {
+type LeakPart = {
   key: "costs" | "cash" | "match" | "tax" | "annuity";
   label: string;
   cents: number;

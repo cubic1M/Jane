@@ -1,7 +1,7 @@
 // Every way data enters the app (CSV uploads now, Plaid from step 7) produces these
 // shapes, so storage, categorization and detection never care where data came from.
 
-export type DataSourceKind = "csv" | "plaid";
+type DataSourceKind = "csv" | "plaid";
 
 // Accounts that aren't from a bank link: an upload, or a Robinhood connection. Either next to the
 // demo bank is real data, so the demo bank's sample-only rules don't apply.
@@ -35,14 +35,14 @@ export function accountKindOf(type: string, subtype: string | null): AccountKind
 // Loans come from Plaid only (spec step 65): their balances count toward net worth and
 // their rates and payments come from Plaid Liabilities. Their transactions aren't kept,
 // since spending and detection read the checking and card side of each payment.
-export const LOAN_KINDS = {
+const LOAN_KINDS = {
   mortgage: { label: "Mortgage", type: "loan", subtype: "mortgage" },
   student_loan: { label: "Student loan", type: "loan", subtype: "student" },
   auto_loan: { label: "Car loan", type: "loan", subtype: "auto" },
   other_loan: { label: "Loan", type: "loan", subtype: "loan" },
 } as const;
 
-export type LoanKind = keyof typeof LOAN_KINDS;
+type LoanKind = keyof typeof LOAN_KINDS;
 
 // Investment and retirement accounts (spec step 66): their balances only, for net worth.
 // No holdings, no transactions, and nothing said about what's in them.
@@ -51,7 +51,7 @@ export const INVESTMENT_KINDS = {
   investment_account: { label: "Investment account", type: "investment", subtype: "brokerage" },
 } as const;
 
-export type InvestmentKind = keyof typeof INVESTMENT_KINDS;
+type InvestmentKind = keyof typeof INVESTMENT_KINDS;
 
 // Plaid investment subtypes that are retirement accounts (plaid SDK AccountSubtype).
 export const RETIREMENT_SUBTYPES = new Set([

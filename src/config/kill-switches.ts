@@ -39,7 +39,7 @@ export function killed(name: KillSwitch): boolean {
 export const isKillSwitch = (name: unknown): name is KillSwitch =>
   typeof name === "string" && Object.hasOwn(SWITCHES, name);
 
-export const OPS_PATH_PREFIX = "/api/ops/";
+const OPS_PATH_PREFIX = "/api/ops/";
 
 // Whether the emergency stop applies to this path. A stop set in the store spares the ops routes,
 // or nobody could turn it off without a deploy. KILL_SITE=1 spares nothing.

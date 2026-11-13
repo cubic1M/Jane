@@ -28,7 +28,7 @@ export type CheckAccount = {
 };
 export type LifeEventRow = { kind: BeneficiaryEvent; on: string };
 
-export type Problem = "missing" | "out_of_date" | "shares";
+type Problem = "missing" | "out_of_date" | "shares";
 export type AccountCheck = {
   accountId: string;
   accountName: string;

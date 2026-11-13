@@ -2,7 +2,7 @@
 // `t` (what was known that morning).
 
 // Daily simple returns over the last `window` days before t (fewer when the series is shorter).
-export function returns(series: readonly number[], t: number, window: number): number[] {
+function returns(series: readonly number[], t: number, window: number): number[] {
   const out: number[] = [];
   for (let i = Math.max(1, t - window); i < t; i += 1) out.push(series[i] / series[i - 1] - 1);
   return out;

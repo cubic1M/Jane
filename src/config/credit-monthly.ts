@@ -2,15 +2,7 @@
 // is called; the thresholds are the ones each feature already uses (src/config/fit.ts,
 // costly-borrowing.ts, car loan add-ons), so the check-up and the pages never disagree.
 
-export const MONTHLY_ITEMS = [
-  "soft_checks",
-  "rates",
-  "addons",
-  "costly",
-  "rent",
-  "card_rate",
-] as const;
-export type MonthlyItemKey = (typeof MONTHLY_ITEMS)[number];
+export type MonthlyItemKey = "soft_checks" | "rates" | "addons" | "costly" | "rent" | "card_rate";
 
 export const MONTHLY_ITEM_TITLES: Readonly<Record<MonthlyItemKey, string>> = {
   soft_checks: "Rates and what you could borrow",

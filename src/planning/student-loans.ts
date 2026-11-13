@@ -33,7 +33,7 @@ export type StudentInput = {
   paymentsCounted: number;
 };
 
-export type PlanResult = {
+type PlanResult = {
   plan: StudentPlan;
   monthlyNowCents: number;
   months: number;

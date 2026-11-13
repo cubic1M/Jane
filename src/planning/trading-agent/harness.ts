@@ -43,7 +43,7 @@ export type Replay = {
 };
 
 // One strategy at one setting over a whole timeline, from $10,000.
-export function replay(
+function replay(
   policy: Policy,
   param: number,
   tl: Timeline,

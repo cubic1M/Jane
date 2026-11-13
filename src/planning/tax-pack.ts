@@ -34,7 +34,7 @@ export type PackLoan = {
   ytdInterestPaidCents: number | null;
 };
 
-export type PackRow = {
+type PackRow = {
   id: string;
   date: string;
   payee: string;

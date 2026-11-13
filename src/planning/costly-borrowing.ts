@@ -148,7 +148,7 @@ export function assumedLoans(repaid: readonly Tx[]): Loan[] {
   });
 }
 
-export type KindSummary = {
+type KindSummary = {
   kind: CostlyKind;
   count: number;
   // Fees and interest over the period, in dollars.

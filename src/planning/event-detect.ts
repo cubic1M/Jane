@@ -16,7 +16,7 @@ import { dayNumber, fromDayNumber } from "@/detection/units";
 // it was known: the overlay and the backtest may act on it only at a close after that time, so
 // nothing is ever traded on before it was public.
 
-export type EventSource = "gdelt" | "fed" | "bls" | "eia" | "price" | "news";
+type EventSource = "gdelt" | "fed" | "bls" | "eia" | "price" | "news";
 
 export type MarketEvent = {
   // `${source}:${type}:${date}`: the same event is stored and acted on once.
@@ -41,7 +41,7 @@ export const nextDay = (iso: string) => fromDayNumber(dayNumber(iso) + 1);
 
 // A US market close, as a UTC time. 4pm New York is 20:00Z in summer and 21:00Z in winter: the
 // earlier is used, so an event from the last hour of a winter session waits for the next close.
-export const closeTime = (date: string) => `${date}T20:00:00.000Z`;
+const closeTime = (date: string) => `${date}T20:00:00.000Z`;
 
 // Whether an event may be acted on at the close of `date`.
 export const knownBy = (e: Pick<MarketEvent, "knownAt">, date: string) =>

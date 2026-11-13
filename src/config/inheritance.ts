@@ -38,7 +38,7 @@ export const GIFT_SPLIT_FACTOR = 2;
 
 // The federal estate tax basic exclusion amount, per person, 2026 (made permanent at this
 // level by the 2025 law). ESTIMATE TO VERIFY with the IRS.
-export const ESTATE_EXCLUSION_CENTS = 1_500_000_000;
+const ESTATE_EXCLUSION_CENTS = 1_500_000_000;
 // Source: IRS: Estate tax, the basic exclusion amount for 2026
 
 // The estate facts Jane says, word for word (planning/inheritance.ts estateFacts). The federal

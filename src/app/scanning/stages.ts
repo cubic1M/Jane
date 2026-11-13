@@ -65,7 +65,7 @@ export function slowLink(next: "/report" | "/home"): {
 }
 
 // The page's loading bar during the first scan (src/components/scan-bar.tsx).
-export { BAR_CELLS, scanBarText } from "@/components/bar-text";
+export { scanBarText } from "@/components/bar-text";
 
 // What's happening now: the first stage not yet finished.
 export function stageLabel(progress: ScanProgress | null): string {

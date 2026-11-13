@@ -26,7 +26,7 @@ import { daysBetween } from "@/lib/dates";
 // of spending (the Today card, the brief and Jane's answer all use this function). Not the
 // investing review's "cash above your target mix", which is a different thing. Pure.
 
-export type IdleAccount = {
+type IdleAccount = {
   id: string;
   type: string;
   subtype: string | null;

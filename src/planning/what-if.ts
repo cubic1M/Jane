@@ -26,7 +26,7 @@ export type WhatIfBaseline = {
   debt: { before: string | null; after: string | null; hasDebts: boolean };
 };
 
-export type MonthRow = {
+type MonthRow = {
   month: number;
   incomeCents: number;
   spendingCents: number;

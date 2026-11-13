@@ -628,8 +628,7 @@ export const DEBT_OFF_TRACK_MIN_CENTS = 10_000;
 
 // The kinds of loan a lender partner refinances (src/lib/lenders), and which of the
 // person's debts each takes: a card's balance moves to a personal loan.
-export const LOAN_PRODUCTS = ["student", "auto", "mortgage", "personal"] as const;
-export type LoanProduct = (typeof LOAN_PRODUCTS)[number];
+export type LoanProduct = "student" | "auto" | "mortgage" | "personal";
 export const PRODUCT_FOR_DEBT: Readonly<Record<string, LoanProduct>> = {
   student: "student",
   auto: "auto",

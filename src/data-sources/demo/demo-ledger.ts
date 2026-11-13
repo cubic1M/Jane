@@ -31,7 +31,7 @@ export type LedgerPlan = {
 };
 
 // Savings is never taken back below this share of today's balance a year ago.
-export const LEDGER_SAVINGS_KEEP = 0.2;
+const LEDGER_SAVINGS_KEEP = 0.2;
 const CARD_PAYMENT: PfcDetailed = "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT";
 
 // Everyday debit spending, one merchant per purchase so none of them looks like a bill.

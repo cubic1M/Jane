@@ -19,7 +19,7 @@ import { addDays } from "@/lib/dates";
 // sum as the estimate itself: federal and state income tax, plus payroll tax for pre-tax
 // payroll deductions. Demo advice: shown only in demo advice mode.
 
-export type SavingAction =
+type SavingAction =
   | { kind: "task"; title: string; dueOn: string; note: string }
   | { kind: "goal"; name: string; targetCents: number; targetDate: string }
   | { kind: "link"; label: string; href: string };

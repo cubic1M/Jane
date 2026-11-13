@@ -19,7 +19,7 @@ export const DEMO_HOME = { loanToValue: 0.6, overAssessedBy: 1.14, squareFeet: 1
 // How many comparable sales go in a drafted appeal.
 export const COMPARABLES_WANTED = 3;
 
-export type AppealWindow = {
+type AppealWindow = {
   // The board that hears it.
   board: string;
   // A fixed window each year ("MM-DD"), or days after the assessment notice is mailed.
@@ -168,7 +168,7 @@ export const STATE_PROPERTY: Readonly<Record<string, StateProperty>> = {
   },
 };
 
-export type ExemptionKind = "homestead" | "senior" | "veteran" | "disabled";
+type ExemptionKind = "homestead" | "senior" | "veteran" | "disabled";
 
 export type Exemption = {
   key: string;
