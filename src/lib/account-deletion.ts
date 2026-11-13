@@ -57,6 +57,11 @@ export async function deleteAllData(
       if (user?.email) {
         await tx.betaAccess.deleteMany({ where: { email: user.email } });
         await tx.waitlistEntry.deleteMany({ where: { email: user.email } });
+        // Sign-in links not yet used (one asked for twice, or a sign-up whose email didn't send) hold
+        // the address until they expire: gone now too (debugger 11-13).
+        await tx.verificationToken.deleteMany({
+          where: { identifier: { equals: user.email, mode: "insensitive" } },
+        });
         // A code locked to their address (/admin/invites) forgets it, and with no address on it
         // nobody else may use it.
         await tx.inviteCode.updateMany({
