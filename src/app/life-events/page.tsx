@@ -1,6 +1,7 @@
 import { AppHeader } from "@/components/app-header";
 import { listLifeEvents } from "@/lib/life-events";
 import { requireUser } from "@/lib/session";
+import { timezoneOf } from "@/lib/today";
 import { LifeEventsBoard } from "./board";
 import { PageShell } from "@/components/page-shell";
 
@@ -9,7 +10,7 @@ import { PageShell } from "@/components/page-shell";
 
 async function LifeEvents() {
   const user = await requireUser();
-  const events = await listLifeEvents(user.id);
+  const [events, timezone] = await Promise.all([listLifeEvents(user.id), timezoneOf(user.id)]);
 
   return (
     <>
@@ -26,6 +27,7 @@ async function LifeEvents() {
           ...e,
           completedAt: e.completedAt?.toISOString() ?? null,
         }))}
+        timezone={timezone}
       />
     </>
   );

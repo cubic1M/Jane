@@ -19,6 +19,7 @@ import { practiceIdeasView } from "@/lib/practice/ideas-view";
 import { loadPractice } from "@/lib/practice/portfolio";
 import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { requireUser } from "@/lib/session";
+import { timezoneOf } from "@/lib/today";
 import { pauseSwitch, runNow, startPracticePortfolio, undoLast } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
@@ -61,13 +62,15 @@ const fundName = (ticker: string) => {
   return fund ? `${fund.name} (${ticker})` : ticker;
 };
 
-const when = (d: Date) =>
+// In the person's own zone, said with it ("Nov 12, 6:30 PM PST"): in UTC a student read "UTC"
+// times a day ahead in the evening (debugger 11-13).
+const when = (d: Date, timezone: string) =>
   d.toLocaleString("en-US", {
     month: "short",
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
-    timeZone: "UTC",
+    timeZone: timezone,
     timeZoneName: "short",
   });
 
@@ -80,7 +83,7 @@ async function Content({
   await connection();
   const { done: rawDone } = await searchParams;
   const done = Array.isArray(rawDone) ? rawDone[0] : rawDone;
-  const advice = await adviceMode(user.id);
+  const [advice, timezone] = await Promise.all([adviceMode(user.id), timezoneOf(user.id)]);
   // Constant search (Phase AW): a cheap scan, after the page is sent; demo advice only.
   if (advice) after(() => scanOnOpenQuietly(user.id));
   const practice = advice ? await loadPractice(user.id) : null;
@@ -215,7 +218,7 @@ async function Content({
               <tbody>
                 {log.map((t) => (
                   <tr key={t.id} className={t.undone ? "text-zinc-400 line-through" : ""}>
-                    <td className="align-top">{when(t.placedAt)}</td>
+                    <td className="align-top">{when(t.placedAt, timezone)}</td>
                     <td>
                       {t.side === "deposit"
                         ? "Practice money in"
