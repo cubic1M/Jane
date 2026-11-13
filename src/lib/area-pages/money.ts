@@ -282,7 +282,9 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
     items.subscriptions.push(
       item("subscriptions", "all", {
         label: "All your regular charges",
-        line: plural(subs.length, "subscription"),
+        // What the figure adds up: every regular charge, not just the subscriptions (debugger 11-13:
+        // "$44k/yr · 9 subscriptions" read as nine subscriptions costing $44k, a mortgage among the rest).
+        line: plural(input.recurring.length, "regular charge"),
         status: "good",
         figure: perYear(input.recurring.reduce((t, r) => t + r.annualCostCents, 0)),
         summary: `${plural(subs.length, "subscription")} and ${plural(input.recurring.length - subs.length, "other regular bill")}, from your transactions.`,
