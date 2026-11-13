@@ -23,20 +23,24 @@ const pageData = (r: Request) =>
   !r.headers()["next-router-prefetch"] &&
   !r.headers()["next-router-segment-prefetch"];
 
-// The pages fetched from the server from now on, and those whose answer has fully arrived.
+// The pages fetched from the server from now on, in the order asked, and which of those requests
+// have fully arrived.
 function watch(page: Page) {
   const started: string[] = [];
-  const arrived: string[] = [];
+  const requests: Request[] = [];
+  const arrived = new Set<Request>();
   page.on("request", (r) => {
-    if (pageData(r)) started.push(new URL(r.url()).pathname);
+    if (!pageData(r)) return;
+    started.push(new URL(r.url()).pathname);
+    requests.push(r);
   });
   // The router cancels a preload's stream once it has read the end of it.
   const ended = (r: Request) => {
-    if (pageData(r)) arrived.push(new URL(r.url()).pathname);
+    if (pageData(r)) arrived.add(r);
   };
   page.on("requestfinished", ended);
   page.on("requestfailed", ended);
-  return { started, arrived };
+  return { started, requests, arrived };
 }
 
 async function settled(page: Page) {
@@ -46,10 +50,14 @@ async function settled(page: Page) {
   ).toHaveCount(0, { timeout: 60_000 });
 }
 
-// The tabs are back in memory: each was fetched, after `from`, and has arrived.
+// The tabs are back in memory: each was asked for again after request number `from`, and that
+// request has arrived. A preload asked for before (still arriving when a Yes emptied the memory)
+// doesn't count.
 async function tabsInMemory(net: ReturnType<typeof watch>, from: number, here: string) {
+  const back = (tab: string) =>
+    net.requests.slice(from).some((r) => new URL(r.url()).pathname === tab && net.arrived.has(r));
   for (const tab of TABS.filter((t) => t !== here)) {
-    await expect.poll(() => net.arrived.slice(from).includes(tab), { timeout: 60_000 }).toBe(true);
+    await expect.poll(() => back(tab), { timeout: 60_000 }).toBe(true);
   }
 }
 
@@ -129,6 +137,6 @@ test("after a Yes on a card, the tabs come back fresh and open from memory", asy
   await yes.click();
   await (await answered).finished();
   // Every page was made again after the Yes (no old numbers), then kept.
-  await tabsInMemory(net, 0, "/plan");
+  await tabsInMemory(net, net.requests.length, "/plan");
   await everyTabFromMemory(page, net);
 });
