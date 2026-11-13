@@ -5,12 +5,13 @@ import { type ReactNode } from "react";
 import { AppHeader } from "@/components/app-header";
 import { AreaPage } from "@/components/area-page/area-page";
 import { HorizontalBars } from "@/app/insights/bars";
-import { SUGGESTION_NODES, dayLabel, itemId, moneyTree } from "@/lib/area-pages/money";
+import { SUGGESTION_NODES, itemId, moneyTree } from "@/lib/area-pages/money";
 import { loadMoneyArea } from "@/lib/area-pages/money-load";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { ProgressBar } from "@/components/progress-bar";
 import { PageShell } from "@/components/page-shell";
+import { dayLabel } from "@/lib/day-label";
 
 // Spending & bills (spec step 80; docs/design/area-pages.md): what matters now, the area's
 // tree, and the detail of the one thing picked. Each detail links to the page that has the

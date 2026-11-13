@@ -2,7 +2,7 @@ import type { TreeStatus } from "@/components/tree/interactive-tree";
 import { shortMoney } from "@/lib/hub/view";
 import { notCounting, owedIsKnown, type Unbalanced } from "@/insights/net-worth";
 import { formatCents } from "@/lib/money";
-import { monthLabel } from "@/lib/day-label";
+import { monthLabel, dayLabel } from "@/lib/day-label";
 import { CATEGORY_UP_MIN_CENTS, CATEGORY_UP_MIN_SHARE } from "@/config/insights";
 import {
   answeredYes,
@@ -173,12 +173,6 @@ export type MoneyTreeInput = {
   rules: number;
 };
 
-export const dayLabel = (day: string) =>
-  new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
 const perYear = (cents: number) => `${shortMoney(cents)}/yr`;
 // A name as a label: its first six words (a merchant's or a category's name is rarely more).
 const asLabel = (name: string) => shortLabel(name);
