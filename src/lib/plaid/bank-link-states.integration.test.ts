@@ -2,6 +2,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
+import { takePlaidCounter } from "@/test-setup/plaid-counter-lock";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
@@ -58,7 +59,10 @@ describe.runIf(url)("a bank connection", () => {
       },
     });
 
-  beforeAll(() => {
+  // Its Items count on Plaid's one counter: item-slots' files wait their turn (the helper says why).
+  let release = async () => {};
+  beforeAll(async () => {
+    release = await takePlaidCounter(url!);
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });
   beforeEach(() => {
@@ -69,6 +73,7 @@ describe.runIf(url)("a bank connection", () => {
   afterAll(async () => {
     await client.user.deleteMany({ where: { id: { in: people } } });
     await client.$disconnect();
+    await release();
   });
 
   it("can try again after Plaid gave no clear answer", async () => {
