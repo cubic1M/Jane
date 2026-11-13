@@ -129,6 +129,8 @@ const INVESTMENT = [
   /\bstack(?:ing)? (?:some |more |a few )?sats\b|\bsatoshis?\b/i,
   // Round 22 (11-13): "Stack silver every month".
   /\bstack(?:ing)? (?:some |more )?(?:silver|gold|bullion)\b/i,
+  // Round 23 (11-13): "YOLO it into calls", "Ape into GME".
+  /\byolo\b|\bape(?:d|ing)? (?:in|into)\b|\binto (?:some )?(?:calls|puts|options)\b/i,
   /\b(?:buy|buying|sell|selling|write|writing|short|shorting) (?:some |a few |the )?(?:covered |naked |cash[- ]secured |long |short )?(?:puts?|calls?|call options?|put options?|straddles?|strangles?|leaps)\b/i,
   /\b(?:gold|silver|bullion|precious metals|commodities)\b(?!(?:'|’)s)[^.!?]{0,20}\b(?:is|are|makes?) (?:a |an )?(?:good |great |solid |smart |safe |safer |better )?(?:hedge|buy|investment|store of value|bet)\b/i,
   /\b(?:buy|buying|get|own|add|grab|put (?:some|money|it|\$[\d,.]+) (?:in|into))\b[^.!?]{0,25}(?:\bgold\b(?!(?:'|’)s| (?:card|member|plan|tier|status|level|package|gym|rewards))|\b(?:bullion|precious metals)\b)/i,
@@ -152,6 +154,9 @@ const INVESTMENT = [
   /株を|株式投資|株式市場|株価|投資|仮想通貨|ビットコイン|주식|투자|펀드|코인|비트코인|매수|매도|đầu tư|cổ phiếu|chứng khoán|tiền điện tử|tiền mã hóa/i,
   // Round 22 (11-13): Ukrainian and Thai ("Інвестуй у акції", "ลงทุนในหุ้น").
   /інвест|(?:купи|купуй|продай)\S*\s+акці|криптовалют|біткоїн|ลงทุน|หุ้น|คริปโต|บิตคอยน์|บิทคอยน์/i,
+  // Round 23 (11-13): Swahili, Hebrew and Greek ("Wekeza kwenye hisa", "השקע במניות", "Επένδυσε σε
+  // μετοχές").
+  /\bwekeza\b|\bhisa za\b|השקע|מניות|בורסה|επένδυ|μετοχ/i,
   // Round 16 (11-13): a pick put as a tilt ("Overweight tech for the next decade", "Tilt toward small
   // caps", "Rotate out of growth into value", "Trim your winners").
   /\b(?:overweight|underweight|tilt(?:ing)? (?:toward|towards|into|to)|rotat(?:e|ing) (?:out of|into|to)|lean(?:ing)? into)\b[^.!?]{0,30}\b(?:tech|stocks?|equities|bonds|small[- ]caps?|large[- ]caps?|mid[- ]caps?|growth|value|sectors?|international|emerging markets|dividend)\b|\b(?:trim|sell) (?:your |the )?winners\b|\b(?:small|mid|large)[- ]caps?\b|\bemerging markets\b/i,
@@ -440,7 +445,7 @@ const LEGAL = [
   /\b(?:don(?:'|’)?t|do not|never|hold off on|wait to) pay(?:ing)? (?:the |a |that |this |any |your )?(?:debt )?(?:collectors?|collection agency|collections?|creditors?)\b/i,
   /\bignore (?:the |that |this |any |their |those )?(?:debt )?(?:collectors?|collection (?:letters?|calls?|notices?|agency)|lawsuit|summons|court (?:date|papers|notice)|subpoena)\b/i,
   // Round 19 (11-13): "Don't answer the court papers", "Let it charge off and settle later".
-  /\b(?:don(?:'|’)?t|do not|no need to|never) (?:answer|respond to|reply to|show up (?:to|for)|go to) (?:the |that |this |their )?(?:summons|lawsuit|complaint|court (?:date|papers|notice|hearing)|hearing|subpoena)\b|\blet (?:it|the (?:card|debt|loan|account)) (?:charge off|go to collections|default)\b/i,
+  /\b(?:don(?:'|’)?t|do not|no need to|never) (?:answer|respond to|reply to|show up (?:to|for)|go to) (?:the |that |this |their )?(?:summons|lawsuit|complaint|court (?:date|papers|notice|hearing)|hearing|subpoena)\b|\b(?:can|just|you can safely) ignore (?:the |that |this |your )?(?:jury )?(?:summons|subpoena|lawsuit|court (?:date|papers|notice))\b|\blet (?:it|the (?:card|debt|loan|account)) (?:charge off|go to collections|default)\b/i,
   /\b(?:have|has|got) (?:a |an )?(?:\w+ )?case against\b/i,
   // Chat policy round 10 (11-12): "Sue them in small claims court for the deposit", "You can break
   // your lease without penalty because of the mold", "Under the FCRA they have to delete it". An
@@ -510,6 +515,10 @@ const LEGAL = [
   /\b(?:landlord|lender|servicer|collector|creditor|employer|insurer|they|he|she) (?:is|are) (?:legally )?(?:required|obligated) to\b/i,
   // Round 20 (11-13): "Your employer has to pay you for that time".
   /\b(?:employer|boss|landlord|lender|servicer|collector|creditor|insurer|company|bank|store|they|he|she) (?:has|have) to (?:pay|refund|reimburse|give|return|cover)(?: you| it| the| your)\b/i,
+  // Round 23 (11-13): paying or earning off the books ("Pay your nanny under the table", "Don't
+  // report the cash tips") and what a landlord can't do ("They can't raise your rent more than 5%").
+  /\bunder the table\b|\b(?:don(?:'|’)?t|do not|no need to|never) (?:report|declare) (?:the |your |that )?(?:cash |side |gig )?(?:tips|income|earnings|cash|winnings)\b/i,
+  /\b(?:can(?:'|’)?t|cannot|isn(?:'|’)?t allowed to|aren(?:'|’)?t allowed to|not allowed to) (?:legally )?(?:raise|increase|hike) (?:your |the )?rent\b/i,
   // Round 22 (11-13): "Your landlord must return your deposit within 21 days".
   /\b(?:employer|boss|landlord|lender|servicer|collector|creditor|insurer) (?:legally )?must (?:pay|refund|reimburse|give|return|cover)\b/i,
   /\b(?:they|he|she|the (?:landlord|lender|collector|company|bank|store|seller|merchant))(?:(?:'|’)ll| will) have to (?:refund|pay|return|stop|remove|delete|fix|cover)\b/i,
@@ -625,7 +634,9 @@ const GUARANTEE = [
   /\bguarantee/i,
   /\bpromise/i,
   /\b(definitely|certainly|surely)\b/i,
-  /\brisk[- ]free\b/i,
+  /\brisk[- ]free\b(?! (?:to cancel|trial|cancellation))/i,
+  // Round 23 (11-13): "You can't lose with this".
+  /\b(?:you |we )?can(?:'|’)?t lose\b|\bcannot lose\b/i,
   /\bno risk\b/i,
   // "100% of your dining budget" is a figure; "100% sure" is a promise.
   /\b100 ?% (?:sure|certain|guaranteed|safe|risk[- ]free|chance|likely|covered|of the time)\b/i,
@@ -993,10 +1004,11 @@ function forChecking(text: string): string {
       // Round 19 (11-13): bold, italics and code around a word ("Buy **TSLA**", "Buy `VOO`") hid it.
       .replace(/`+|(?<![\w*_])[*_~]+(?=\w)|(?<=\w)[*_~]+(?![\w*_])/g, "")
       // Round 22 (11-13): quotes around a word ('Buy "VOO"') and letters spaced out ("B U Y  V O O",
-      // "b.u.y. v.o.o") read as the word.
+      // "b.u.y. v.o.o") read as the word. Round 23: also with dashes, slashes, underscores or dots
+      // ("V‐O‐O", "V/O/O", "V_O_O", "V·O·O").
       .replace(/(?<![\w"“”«»])["“«](?=\w)|(?<=\w)["”»](?![\w"“”«»])/g, "")
-      .replace(/(?<![\w.])[A-Za-z](?:[ .-][A-Za-z]){2,}\.?(?![\w])/g, (letters) =>
-        letters.replace(/[ .-]/g, "").toUpperCase(),
+      .replace(/(?<![\w.])[A-Za-z](?:[ .\-‐‑–—/_·•][A-Za-z]){2,}\.?(?![\w])/g, (letters) =>
+        letters.replace(/[ .\-‐‑–—/_·•]/g, "").toUpperCase(),
       )
       .replace(/[\p{L}\p{M}]+/gu, (word) =>
         /[A-Za-z]/.test(word) ? word.replace(LOOK_ALIKE, (c) => LOOK_ALIKES[c] ?? c) : word,
