@@ -61,11 +61,15 @@ const STOCK_PICKS = [
   ),
   // A verdict after a dash or a colon, and a pick shouted (chat policy round 12, 11-12): "Tesla — sell",
   // "SELL TESLA NOW". "Buy now, pay later" is a kind of plan. Round 13 (11-12): "Tesla → sell",
-  // "Apple: strong buy", "Tesla's a hold for now", "NVDA is the move", "📈 TSLA 🚀".
+  // "Apple: strong buy", "Tesla's a hold for now", "NVDA is the move", "📈 TSLA 🚀". Round 16 (11-13): a
+  // table row ("| VOO | Buy |") and a line of code ("buy: TSLA").
   new RegExp(
-    `\\b(?:${NOT_TICKERS}[A-Z]{3,5}|${COMPANY})\\s*(?:[—–:-]+|→|=>|⇒|->)\\s*(?:(?:[Ss]trong|[Cc]lear|[Ee]asy|[Ss]olid) )?(?:[Bb]uy|[Ss]ell|[Hh]old|[Dd]ump|[Tt]rim|[Ss]hort)\\b`,
+    `\\b(?:${NOT_TICKERS}[A-Z]{3,5}|${COMPANY})\\s*(?:[—–:|-]+|→|=>|⇒|->)\\s*(?:(?:[Ss]trong|[Cc]lear|[Ee]asy|[Ss]olid) )?(?:[Bb]uy|[Ss]ell|[Hh]old|[Dd]ump|[Tt]rim|[Ss]hort)\\b`,
   ),
   /\b(?:BUY|SELL|SHORT|DUMP)\s+(?!(?:NOW|PAY|IT|THE|A|AN|ONE|MORE|LESS)\b)[A-Z]{3,}\b/,
+  new RegExp(
+    `\\b(?:[Bb]uy|[Ss]ell|BUY|SELL|[Ss]hort|SHORT)\\s*[:=]\\s*\\$?${NOT_TICKERS}[A-Z]{3,5}\\b`,
+  ),
   /\$?\b[A-Z]{3,5}\s*(?:🚀|📈|💎|🌕)|(?:🚀|📈|💎)\s*\$?[A-Z]{3,5}\b/u,
   // "Tesla is overvalued". Of a home or a car it says nothing about a share.
   new RegExp(
@@ -112,6 +116,9 @@ const INVESTMENT = [
   /\b(?:fondos? indexados?|fondos? de inversi[oó]n|bolsa de valores|criptomonedas?|fonds indiciels?|la bourse|en bourse|aktien|indexfonds|börse|a[cç][oõ]es|fundos? de [ií]ndice)\b/i,
   /\b(?:compra|compre|vende|venda|achète|achetez|vends|vendez|kauf|kaufe|verkauf|verkaufe)\b[^.!?]{0,20}\b(?:acciones|actions)\b|\b(?:acciones|actions) (?:de |d(?:'|’))[A-Z]/i,
   /股票|基金|投资|买入|卖出|加密货币|比特币|股市/,
+  // Round 16 (11-13): a pick put as a tilt ("Overweight tech for the next decade", "Tilt toward small
+  // caps", "Rotate out of growth into value", "Trim your winners").
+  /\b(?:overweight|underweight|tilt(?:ing)? (?:toward|towards|into|to)|rotat(?:e|ing) (?:out of|into|to)|lean(?:ing)? into)\b[^.!?]{0,30}\b(?:tech|stocks?|equities|bonds|small[- ]caps?|large[- ]caps?|mid[- ]caps?|growth|value|sectors?|international|emerging markets|dividend)\b|\b(?:trim|sell) (?:your |the )?winners\b|\b(?:small|mid|large)[- ]caps?\b|\bemerging markets\b/i,
   /\b(nyse|nasdaq|s&p ?500|dow jones|ticker)\b/i,
   // A call on where the market goes (round 11): "The market is due for a correction; stay in cash".
   /\b(?:stocks?|the (?:stock )?market|markets|the s&p(?: 500)?|the dow|equities)\b[^.!?]{0,20}\b(?:is|are|'s|’s) (?:due for|headed for|about to|going to|set to) (?:a |an )?(?:correction|crash|drop|dip|rally|fall|rise|go (?:up|down)|recover|bounce)\b|\bstay in cash\b/i,
@@ -322,6 +329,9 @@ const TAX_ADVICE = [
   // this year", "You won't owe taxes on that"). A tool's estimate of what they'd owe is a figure.
   /\b(?:don(?:'|’)?t|do not|won(?:'|’)?t|will not|wouldn(?:'|’)?t) (?:need|have) to file\b|\bno need to file\b/i,
   /\byou (?:won(?:'|’)?t|will not|wouldn(?:'|’)?t|don(?:'|’)?t|do not) (?:owe|pay) (?:any )?(?:income |federal |state )?tax(?:es)?\b/i,
+  // The same in the person's language (round 16, 11-13): "No declares esos ingresos", "Puedes
+  // deducir…", "Ne déclare pas ces revenus", "Tu peux déduire ces frais", "这些收入不用报税".
+  /\bno declares\b|\bno (?:tienes|necesitas|hace falta)(?: que)? declarar\b|\bn[aã]o (?:precisa|precisas|tem que|tens que) declarar\b|\bne (?:d[ée]clare|d[ée]clarez) pas\b|\b(?:puedes|podés|pueden|puede) deducir\b|\b(?:tu peux|vous pouvez|on peut) d[ée]duire\b|\b(?:pode|podes|você pode) deduzir\b|\bdeducci[oó]n(?:es)? (?:fiscal|de impuestos)\b|\bd[ée]duction fiscale\b|\b(?:steuerlich )?absetzen\b|不用报税|不需要报税|可以抵扣|可以抵税|不用交税/i,
 ];
 // In a sentence that talks about tax: telling them to do something, or what the rules say
 // their money counts as. "You'll owe about $X" is a figure; "you should set aside $X" is advice.
@@ -392,6 +402,9 @@ const LEGAL = [
   // The same in the person's language (round 11): suing and court in Spanish, French, German and
   // Chinese. A pointer to a lawyer in any language is not here.
   /\bdemand(?:a|ar|arl[oa]s?|arle)\b(?! (?:de |del )?(?:pago|empleo|trabajo))|\bcorte de reclamos menores\b|\ben justice\b|\bverklagen\b|起诉|告他们|上法庭/i,
+  // Not paying a collector or the rent, and not owing a debt, in the person's language (round 16):
+  // "No le pagues al cobrador", "No pagues la renta", "Zahl dem Inkassobüro nichts", "你不用还这笔债".
+  /\bno (?:le |les )?pagues (?:(?:al|a la|a los|el|la) )?(?:cobrador(?:es)?|agencia de cobranza|cobranzas?|renta|alquiler|arrendador|casero|deuda)\b|\bno (?:tienes que|debes|hace falta) pagar(?:la|lo)? (?:esa |la |esta )?deuda\b|\bne (?:paie|payez) pas (?:le |ton |votre |ta )?(?:loyer|recouvreur|agence de recouvrement|dette)\b|\bn[aã]o pague (?:o |a )?(?:aluguel|cobran[cç]a|cobrador|d[ií]vida)\b|\bzahl(?:e|en Sie)? (?:dem|der|den|Ihrem|deinem) (?:Inkasso\w*|Vermieter\w*)\b[^.!?]{0,15}\bnichts\b|不用还(?:这笔)?债|不用付房租|别付房租|不要还(?:这笔)?债/i,
   /\b(?:is |are |was |were )?(?:breaking|broke|violating|violated) the law\b/i,
   // Round 11: "That fee is illegal in California", "Your employer owes you overtime", "That's wage
   // theft", "The contract is void, so you don't owe it".
