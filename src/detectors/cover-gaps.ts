@@ -1,10 +1,9 @@
 import { LIABILITY_WORTH_CAP_CENTS } from "@/config/insurance";
-import { DETECTOR_RATES as R } from "@/config/detectors";
 import { SAVING_RATES } from "@/config/insurance";
 import { computeNeeds, needInputFromProfile } from "@/lib/insurance/need";
 import { formatCents } from "@/lib/money";
 import { personalPay } from "@/profile/pay";
-import { type Detector, suggestionId } from "./contract";
+import { type Detector, suggestion } from "./contract";
 import { evidence, factEvidence, headlineOf, outCents } from "./helpers";
 import { AUTO_HOME, CAPS, capped, combine, premiums } from "./insurance";
 
@@ -42,10 +41,7 @@ const disabilityGap: Detector = {
         ? `You earn about ${monthly} a month`
         : `Your business makes you about ${monthly} a month (${Math.round(share * 100)}% of sales, my estimate)`;
     const short = `${earn}, with no disability cover on file.`;
-    return {
-      id: suggestionId("insurance", "disability_insurance"),
-      capability: "insurance",
-      topic: "disability_insurance",
+    return suggestion("insurance", "disability_insurance", {
       title: "Cover your pay if you can't work",
       headline: headlineOf("Add disability cover for your pay", yearly, "risk"),
       short,
@@ -59,7 +55,7 @@ const disabilityGap: Detector = {
       urgency: "later",
       why: `${earn} and I see no disability policy. ${need.summary} A year without pay would cost ${formatCents(yearly)} of it.`,
       action: OPTIONS("disability"),
-    };
+    });
   },
 };
 
@@ -76,10 +72,7 @@ const liabilityLevels: Detector = {
     if (!need) return null;
     // A big gap (a rich person's umbrella-sized limit) must not outrank their core money moves.
     const worth = Math.min(need.gapCents, LIABILITY_WORTH_CAP_CENTS);
-    return {
-      id: suggestionId("insurance", "liability_levels"),
-      capability: "insurance",
-      topic: "liability_levels",
+    return suggestion("insurance", "liability_levels", {
       title: "Raise your car's injury liability",
       headline: headlineOf("Check your car's injury liability", worth, "risk"),
       short: `Your injury limits are ${formatCents(need.haveCents)} per accident, under the ${formatCents(need.needCents)} I'd size.`,
@@ -93,7 +86,7 @@ const liabilityLevels: Detector = {
       urgency: "soon",
       why: `${need.summary} If you cause an accident, the other people's medical bills above your limit come out of your own pocket.`,
       action: OPTIONS("auto_liability"),
-    };
+    });
   },
 };
 
@@ -112,10 +105,7 @@ const deductibleFit: Detector = {
       const yearly = outCents(premiums(data, AUTO_HOME));
       const saves = Math.round(yearly * SAVING_RATES.deductibleStepShare);
       if (saves <= 0) return null;
-      return {
-        id: suggestionId("insurance", "deductible_fit"),
-        capability: "insurance",
-        topic: "deductible_fit",
+      return suggestion("insurance", "deductible_fit", {
         title: "Your cash can carry a higher deductible",
         headline: headlineOf("Check a higher deductible", saves, "saves"),
         short: `Your cash carries a bigger deductible than your ${formatCents(need.haveCents)}.`,
@@ -129,12 +119,9 @@ const deductibleFit: Detector = {
         urgency: "later",
         why: `${need.summary} One step up${need.stepCents ? `, to ${formatCents(need.stepCents)},` : ""} usually takes about a tenth off the premium, up to ${formatCents(saves)} a year on what you pay now; you'd pay the difference if you claim.`,
         action: OPTIONS("deductible"),
-      };
+      });
     }
-    return {
-      id: suggestionId("insurance", "deductible_fit"),
-      capability: "insurance",
-      topic: "deductible_fit",
+    return suggestion("insurance", "deductible_fit", {
       title: "Your deductible is more than your cash carries",
       headline: headlineOf("Check your deductible", need.haveCents - need.needCents, "risk"),
       short: `A ${formatCents(need.haveCents)} deductible is more than you could pay from cash.`,
@@ -148,7 +135,7 @@ const deductibleFit: Detector = {
       urgency: "soon",
       why: `${need.summary} A claim today would leave you ${formatCents(need.haveCents - need.needCents)} short of what the deductible needs.`,
       action: OPTIONS("deductible"),
-    };
+    });
   },
 };
 

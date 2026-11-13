@@ -33,7 +33,7 @@ import { NO_INCOME, marginalRateOf, type EstimateInput } from "@/planning/tax-es
 import { careShare } from "@/planning/tax-savings";
 import { IP_PIN_TOOL_DOWN, ipPinToolOpen } from "@/planning/tax-identity";
 import type { Fact } from "@/profile/build";
-import { type Detector, type Urgency, suggestionId } from "./contract";
+import { type Detector, type Urgency, suggestion } from "./contract";
 import { evidence, factEvidence, tx, weakest, headlineOf } from "./helpers";
 
 // Detectors for taxes (spec step 261), over what a person's profile and rows show: the pay
@@ -149,10 +149,7 @@ const withholdingGap: Detector = {
     if (!given && rate <= T.rsuFlatWithholding + 0.005) return null;
     const short = given ? given.shortfallCents : Math.round(vested * (rate - T.rsuFlatWithholding));
     const assumed = !given || given.assumed;
-    return {
-      id: suggestionId("taxes", "withholding_gap"),
-      capability: "taxes",
-      topic: "withholding_gap",
+    return suggestion("taxes", "withholding_gap", {
       title: "Set aside the tax your stock vests won't have withheld",
       headline: headlineOf("Set aside tax on stock vests", short, "risk"),
       short:
@@ -175,7 +172,7 @@ const withholdingGap: Detector = {
       urgency: month(profile.today) >= 10 ? "soon" : "later",
       why: `Your company stock is withheld at ${Math.round(T.rsuFlatWithholding * 100)} cents on the dollar when it vests, but with your pay plus the vesting you're in the ${Math.round(rate * 100)}% bracket. On about ${formatCents(vested)} vesting, that leaves roughly ${formatCents(short)} to pay when you file. Setting it aside through the year, or paying an estimate, avoids a penalty of about ${formatCents(Math.round(short * DETECTOR_RATES.underpaymentPenaltyRate))} on top.`,
       action: { label: "See what to set aside", href: "/taxes/equity" },
-    };
+    });
   },
 };
 
@@ -221,10 +218,7 @@ const rothConversion: Detector = {
     }
     const saves = Math.round(convert * (T.rothLaterRate - nowRate));
     if (saves <= 0) return null;
-    return {
-      id: suggestionId("taxes", "roth_conversion"),
-      capability: "taxes",
-      topic: "roth_conversion",
+    return suggestion("taxes", "roth_conversion", {
       title: "Look at converting some of your pre-tax retirement money to a Roth",
       headline: headlineOf("Convert some pre-tax money to Roth", saves, "saves"),
       short: `Done well, it could save about ${formatCents(saves)} a year in tax.`,
@@ -241,7 +235,7 @@ const rothConversion: Detector = {
       urgency: month(profile.today) >= T.rothUrgentFromMonth ? "soon" : "later",
       why: how,
       action: { label: "See your tax years", href: "/taxes/years" },
-    };
+    });
   },
 };
 
@@ -270,10 +264,7 @@ const childcareTaxBreak: Detector = {
     );
     const saves = Math.round(fsa * (rate + payroll)) - credit;
     if (saves <= 0) return null;
-    return {
-      id: suggestionId("taxes", "childcare_tax_break"),
-      capability: "taxes",
-      topic: "childcare_tax_break",
+    return suggestion("taxes", "childcare_tax_break", {
       title: "Pay for childcare from a dependent care FSA",
       headline: headlineOf("Use a dependent care FSA", saves, "saves"),
       short: `You paid ${formatCents(spent)} for childcare in ${profile.months} months.`,
@@ -291,7 +282,7 @@ const childcareTaxBreak: Detector = {
       urgency: "later",
       why: `You paid ${formatCents(spent)} for childcare in ${profile.months} months. Paying ${formatCents(fsa)} of it from a dependent care FSA skips income and payroll tax, about ${formatCents(Math.round(fsa * (rate + payroll)))}, which beats the credit's ${formatCents(credit)} at your income. This is only open if your employer offers one, and you choose the amount when you enrol.`,
       action: { label: "See family tax choices", href: "/taxes?focus=life:family" },
-    };
+    });
   },
 };
 
@@ -310,10 +301,7 @@ const identityPin: Detector = {
   detect({ profile }) {
     const pattern = profile.facts.income_pattern;
     if (!inIpPinSeason(profile.today) || pattern.value === "unknown") return null;
-    return {
-      id: suggestionId("taxes", "identity_ip_pin"),
-      capability: "taxes",
-      topic: "identity_ip_pin",
+    return suggestion("taxes", "identity_ip_pin", {
       title: "Get an IRS Identity Protection PIN before you file",
       headline: headlineOf(
         "Get an IRS Identity Protection PIN",
@@ -331,7 +319,7 @@ const identityPin: Detector = {
       urgency: "soon",
       why: `Few people are ever targeted, but someone who files first with your Social Security number can take your refund (about ${formatCents(T.typicalRefundCents)} for the average filer) and it takes months to sort out. A free IP PIN from the IRS stops it, so the cost of asking is a few minutes.${ipPinToolOpen(profile.today) ? "" : ` ${IP_PIN_TOOL_DOWN}`}`,
       action: { label: "Get your IP PIN", href: "/taxes/identity" },
-    };
+    });
   },
 };
 
@@ -356,10 +344,7 @@ const yearEndMoves: Detector = {
     );
     const rate = bracketOf(profile, data);
     const saves = Math.round(room * rate);
-    return {
-      id: suggestionId("taxes", "year_end_moves"),
-      capability: "taxes",
-      topic: "year_end_moves",
+    return suggestion("taxes", "year_end_moves", {
       title: "Use your 401(k) room before your last paycheck of the year",
       headline: headlineOf("Add to your 401(k) before year end", saves, "saves"),
       short: `About ${formatCents(room)} more at your ${Math.round(rate * 100)}% bracket would save ${formatCents(saves)}.`,
@@ -376,7 +361,7 @@ const yearEndMoves: Detector = {
       urgency: profile.today.slice(5) >= "12-10" ? "now" : "soon",
       why: `Money you put into your 401(k) before December 31 is out of this year's income. About ${formatCents(room)} more, at your ${Math.round(rate * 100)}% bracket, would save roughly ${formatCents(saves)}. Payroll needs a few days, so ask HR before the last paycheck.`,
       action: { label: "See your tax plan", href: "/taxes?focus=soon" },
-    };
+    });
   },
 };
 
@@ -396,10 +381,7 @@ const charityReceipts: Detector = {
     if (gifts.length === 0) return null;
     const total = gifts.reduce((s, t) => s + t.amountCents, 0);
     const rate = bracketOf(profile, data);
-    return {
-      id: suggestionId("taxes", "charity_receipts"),
-      capability: "taxes",
-      topic: "charity_receipts",
+    return suggestion("taxes", "charity_receipts", {
       title: "Get the written receipt for your larger gifts",
       headline: headlineOf("Get receipts for your larger gifts", Math.round(total * rate), "risk"),
       short: `You gave ${formatCents(total)} in gifts of ${formatCents(GIVING.receiptFromCents)} or more.`,
@@ -421,7 +403,7 @@ const charityReceipts: Detector = {
       urgency: inFilingWindow(profile.today) ? "soon" : "later",
       why: `You gave ${formatCents(total)} in ${gifts.length === 1 ? "one gift" : `${gifts.length} gifts`} of ${formatCents(GIVING.receiptFromCents)} or more. If you itemize, a gift without the charity's written receipt can be disallowed, which would cost about ${formatCents(Math.round(total * rate))} at your ${Math.round(rate * 100)}% bracket.`,
       action: { label: "Check your gifts", href: "/taxes?focus=life:giving" },
-    };
+    });
   },
 };
 
@@ -445,10 +427,7 @@ const propertyTaxCheck: Detector = {
     const paid = bills.reduce((s, t) => s + t.amountCents, 0);
     if (paid < T.propertyTaxMinCents) return null;
     const worth = Math.round(paid * APPEAL_GAP_RATE);
-    return {
-      id: suggestionId("taxes", "property_tax_check"),
-      capability: "taxes",
-      topic: "property_tax_check",
+    return suggestion("taxes", "property_tax_check", {
       title: "Check whether your home is assessed for more than it's worth",
       headline: headlineOf("Check your home's tax assessment", worth, "saves"),
       short: `You paid ${formatCents(paid)} in property tax.`,
@@ -465,7 +444,7 @@ const propertyTaxCheck: Detector = {
       urgency: "later",
       why: `You paid ${formatCents(paid)} in property tax. If your assessment is ${Math.round(APPEAL_GAP_RATE * 100)}% or more over what the home would sell for, an appeal would save about ${formatCents(worth)} a year, and the county's window to appeal is short.`,
       action: { label: "Check your property tax", href: "/taxes/property" },
-    };
+    });
   },
 };
 
@@ -493,10 +472,7 @@ const lossHarvest: Detector = {
     const offset = Math.min(loss, T.harvestOrdinaryOffsetCents);
     const rate = bracketOf(profile, data);
     const saves = Math.round(offset * rate);
-    return {
-      id: suggestionId("taxes", "tax_loss_harvest"),
-      capability: "taxes",
-      topic: "tax_loss_harvest",
+    return suggestion("taxes", "tax_loss_harvest", {
       title: "Sell a holding at a loss to lower this year's tax",
       headline: headlineOf("Sell a holding at a loss", saves, "saves"),
       short: `A taxable account holds ${formatCents(loss)} less than you paid for it.`,
@@ -513,7 +489,7 @@ const lossHarvest: Detector = {
       urgency: month(profile.today) >= 11 ? "soon" : "later",
       why: `A taxable account holds ${formatCents(loss)} less than you paid for it. Selling at a loss offsets gains and up to ${formatCents(T.harvestOrdinaryOffsetCents)} of other income, about ${formatCents(saves)} off your tax. Don't buy the same thing back for 30 days (the wash-sale rule).`,
       action: { label: "See your investment taxes", href: "/taxes?focus=estimate:investments" },
-    };
+    });
   },
 };
 
@@ -543,10 +519,7 @@ const fileReturn: Detector = {
     const days = Math.round(
       (Date.parse(`${year}-${T.filingUntil}`) - Date.parse(profile.today)) / 86_400_000,
     );
-    return {
-      id: suggestionId("taxes", "file_return"),
-      capability: "taxes",
-      topic: "file_return",
+    return suggestion("taxes", "file_return", {
       title: "Get your tax forms in and your return ready",
       headline: headlineOf(
         "Get your tax forms in",
@@ -565,7 +538,7 @@ const fileReturn: Detector = {
       urgency: days <= T.filingNowDays ? "now" : "soon",
       why: `Your return is due April 15, ${days} ${days === 1 ? "day" : "days"} from now. If you owe tax, filing more than 60 days late costs at least ${formatCents(T.lateFilingPenaltyCents)} (or all of it, if less); if you're due a refund there's no penalty, but it waits until you file. I collect your forms and get the return ready for you to review and sign.`,
       action: { label: "See your forms", href: "/taxes?focus=records:forms" },
-    };
+    });
   },
 };
 
@@ -629,10 +602,7 @@ const sCorpElection: Detector = {
     if (!result.sCorp.worthIt) return null;
     const business = pattern.value === "business";
     const md = profile.today.slice(5);
-    return {
-      id: suggestionId("taxes", "s_corp_election"),
-      capability: "taxes",
-      topic: "s_corp_election",
+    return suggestion("taxes", "s_corp_election", {
       title: "Ask a tax professional whether an S corporation would save you tax",
       headline: headlineOf("Ask about an S corporation", result.sCorp.savesCents, "saves"),
       short: `At about ${formatCents(profit)} profit, a salary plus distributions could cut your tax.`,
@@ -652,7 +622,7 @@ const sCorpElection: Detector = {
       urgency: md >= T.sCorpElectionFrom && md <= T.sCorpElectionBy ? "soon" : "later",
       why: `At a profit of about ${formatCents(profit)}, an S corporation (a salary of about ${formatCents(result.sCorp.salaryCents)}, the rest as profit) could cost you about ${formatCents(result.sCorp.totalCents)} in tax and costs against ${formatCents(result.sole.taxCents)} as you are: roughly ${formatCents(result.sCorp.savesCents)} less. The election (Form 2553) is due March 15 to count for the year.`,
       action: { label: "See the numbers", href: "/taxes/business" },
-    };
+    });
   },
 };
 
@@ -677,10 +647,7 @@ const homeOffice: Detector = {
     const deduction = HOME_OFFICE_ASSUMED_SQFT * HOME_OFFICE_SIMPLIFIED.perSquareFoot;
     const profit = profitOf(profile);
     const saves = Math.round(deduction * deductionRate(profit, profile.facts.household.value));
-    return {
-      id: suggestionId("taxes", "home_office_deduction"),
-      capability: "taxes",
-      topic: "home_office_deduction",
+    return suggestion("taxes", "home_office_deduction", {
       title: "Claim a home office if you work from home",
       headline: headlineOf("Claim a home office", saves, "saves"),
       short: `${HOME_OFFICE_ASSUMED_SQFT} square feet used only for work is a ${formatCents(deduction)} deduction.`,
@@ -697,7 +664,7 @@ const homeOffice: Detector = {
       urgency: "later",
       why: `You work for yourself and pay no rent for an office or studio. A room used only for work, ${HOME_OFFICE_ASSUMED_SQFT} square feet at $5 a square foot, is a ${formatCents(deduction)} deduction, which saves about ${formatCents(saves)} in income tax and self-employment tax.`,
       action: { label: "Add your home office", href: "/taxes/profile" },
-    };
+    });
   },
 };
 
@@ -717,10 +684,7 @@ const vehicleDeduction: Detector = {
     const deduction = Math.round(VEHICLE_ASSUMED_MILES * MILEAGE_RATE_CENTS);
     const profit = profitOf(profile);
     const saves = Math.round(deduction * deductionRate(profit, profile.facts.household.value));
-    return {
-      id: suggestionId("taxes", "vehicle_deduction"),
-      capability: "taxes",
-      topic: "vehicle_deduction",
+    return suggestion("taxes", "vehicle_deduction", {
       title: "Keep a mileage log for the driving you do for your business",
       headline: headlineOf("Keep a mileage log", saves, "saves"),
       short: `You bought gas ${gas.length} times; ${VEHICLE_ASSUMED_MILES.toLocaleString("en-US")} business miles is a ${formatCents(deduction)} deduction.`,
@@ -735,7 +699,7 @@ const vehicleDeduction: Detector = {
       urgency: "later",
       why: `You buy gas regularly. Every business mile is a ${(MILEAGE_RATE_CENTS / 100).toFixed(3)} dollar deduction; ${VEHICLE_ASSUMED_MILES.toLocaleString("en-US")} miles, a modest year for a driver with clients, is ${formatCents(deduction)}, saving about ${formatCents(saves)}. It only counts with a log of dates, places and reasons.`,
       action: { label: "Log your miles", href: "/taxes/profile" },
-    };
+    });
   },
 };
 
@@ -795,10 +759,7 @@ const inheritedIra: Detector = {
     // the money not taken out by the deadline costs 25% of what is left.
     if (emptyBy !== null && yearsLeft <= 1) {
       const penalty = Math.round(balance * MISSED_WITHDRAWAL_PENALTY);
-      return {
-        id: suggestionId("taxes", "inherited_ira"),
-        capability: "taxes",
-        topic: "inherited_ira",
+      return suggestion("taxes", "inherited_ira", {
         title: "Your inherited IRA has to be empty by December 31",
         headline: headlineOf("Check your inherited IRA deadline", penalty, "risk"),
         short: `Your inherited IRA holds ${formatCents(balance)}; what's left after ${emptyBy} costs 25%.`,
@@ -815,7 +776,7 @@ const inheritedIra: Detector = {
         urgency: "now",
         why: `The rule for most heirs is that your inherited IRA (${formatCents(balance)}) is empty by December 31, ${emptyBy}. Money left after that costs a penalty of 25% of what's left, up to ${formatCents(penalty)}. All of it is taxed as income the year it comes out, so a tax professional can say how much to take and when. If you are a spouse or another kind of heir the rule may not apply.`,
         action: { label: "See what applies", href: "/profile" },
-      };
+      });
     }
     return null;
   },
@@ -833,10 +794,7 @@ const inheritedIraSpread: Detector = {
     // The last year is the deadline's (inheritedIra): nothing is left to spread.
     if (emptyBy !== null && yearsLeft <= 1) return null;
     if (!spread.worthRaising) return null;
-    return {
-      id: suggestionId("taxes", "inherited_ira_spread"),
-      capability: "taxes",
-      topic: "inherited_ira_spread",
+    return suggestion("taxes", "inherited_ira_spread", {
       title: "Plan how you take money out of your inherited IRA",
       headline: headlineOf("Spread your inherited IRA withdrawals", spread.savesCents, "saves"),
       short: `About ${formatCents(spread.perYearCents)} a year from your ${formatCents(balance)} inherited IRA keeps brackets low.`,
@@ -856,7 +814,7 @@ const inheritedIraSpread: Detector = {
         emptyBy === null ? "later" : yearsLeft <= 1 ? "now" : yearsLeft <= 3 ? "soon" : "later",
       why: `You have ${formatCents(balance)} in an inherited IRA. ${emptyBy !== null ? `Most heirs must empty it by December 31, ${emptyBy}.` : "Most heirs must empty it within 10 years of the owner's death."} Taking about ${formatCents(spread.perYearCents)} a year instead of all at the end would save roughly ${formatCents(spread.savesCents)} in tax. A tax professional should confirm the rules that apply to you.`,
       action: { label: "Tell Jane when they died", href: "/profile" },
-    };
+    });
   },
 };
 
@@ -875,10 +833,7 @@ const ptcRepayment: Detector = {
     const m = month(profile.today);
     const pct = Math.round(c.fplShare * 100);
     const size = h.householdSize;
-    return {
-      id: suggestionId("taxes", "ptc_repayment"),
-      capability: "taxes",
-      topic: "ptc_repayment",
+    return suggestion("taxes", "ptc_repayment", {
       title: "Tell the Marketplace your income has gone up, so the credit isn't a bill in April",
       headline: headlineOf("Tell the Marketplace your new income", c.repayCents, "risk"),
       short: `Your income is on pace for ${formatCents(h.pace.projectedCents)}, ${pct}% of the poverty line.`,
@@ -903,7 +858,7 @@ const ptcRepayment: Detector = {
       urgency: m >= T.ptcNowFromMonth ? "now" : m >= T.ptcSoonFromMonth ? "soon" : "later",
       why: `You pay a Marketplace premium, and your income has gone up: about ${formatCents(Math.round(h.pace.enrollmentCents / 12))} a month early in the year, about ${formatCents(h.pace.recentMonthlyCents)} a month lately. At about ${formatCents(h.pace.projectedCents)} for the year (${pct}% of the poverty line for ${size === 1 ? "one person" : `${size} people`})${c.overCliff ? ", over the 400% line where the credit stops," : ""} the credit you're allowed is ${formatCents(c.allowedCents)} against about ${formatCents(c.advanceCents)} paid in advance, so about ${formatCents(c.repayCents)} would come back with your return, with no cap from 2026. Updating your income on the Marketplace now lowers the advance for the rest of the year.`,
       action: { label: "See the numbers", href: "/taxes/health" },
-    };
+    });
   },
 };
 
@@ -921,10 +876,7 @@ const hsaOverLimit: Detector = {
     if (h.deposits === 0 || h.projectedExcessCents <= 0) return null;
     const over = h.excessCents > 0;
     const cover = h.family ? "family" : "self-only";
-    return {
-      id: suggestionId("taxes", "hsa_over_limit"),
-      capability: "taxes",
-      topic: "hsa_over_limit",
+    return suggestion("taxes", "hsa_over_limit", {
       title: over
         ? "Your HSA deposits are over this year's limit"
         : "Your HSA deposits are on pace to pass this year's limit",
@@ -947,7 +899,7 @@ const hsaOverLimit: Detector = {
       urgency: over ? "now" : "soon",
       why: `You've put ${formatCents(h.contributedCents)} into your HSA this year, and at this pace about ${formatCents(h.projectedCents)} by December, against a ${formatCents(h.limitCents)} limit for ${cover} cover. ${over ? `${formatCents(h.excessCents)} is over already.` : `That would be ${formatCents(h.projectedExcessCents)} over.`} Money over the limit isn't deductible and costs a 6% penalty (about ${formatCents(h.exciseCents)}) every year it stays in. Money returned with what it earned before the return is filed has no penalty; your HSA provider has a form for it.`,
       action: { label: "See the numbers", href: "/taxes/health" },
-    };
+    });
   },
 };
 
@@ -961,10 +913,7 @@ const medicalDeductionDetector: Detector = {
   detect({ profile, data }) {
     const h = readHealthTaxes(profile, data).medical;
     if (h.spentCents <= 0 || h.savesCents < MEDICAL_MIN_SAVING_CENTS) return null;
-    return {
-      id: suggestionId("taxes", "medical_deduction"),
-      capability: "taxes",
-      topic: "medical_deduction",
+    return suggestion("taxes", "medical_deduction", {
       title: "Keep your medical receipts: this year's may count on your return",
       headline: headlineOf("Keep your medical receipts", h.savesCents, "saves", true),
       short: `You paid ${formatCents(h.spentCents)} for care this year; ${formatCents(h.floorCents)} is the 7.5% floor.`,
@@ -982,7 +931,7 @@ const medicalDeductionDetector: Detector = {
       urgency: month(profile.today) >= 11 ? "soon" : "later",
       why: `You've paid ${formatCents(h.spentCents)} for care and health premiums this year. Only what's over 7.5% of your income (about ${formatCents(h.floorCents)}) counts, which is ${formatCents(h.deductibleCents)}; with your property tax and gifts that's more than your ${formatCents(h.standardCents)} standard deduction. Keep the bills and receipts for whoever does your return.`,
       action: { label: "See the numbers", href: "/taxes/health" },
-    };
+    });
   },
 };
 
@@ -1019,10 +968,7 @@ const disasterRelief: Detector = {
       (m) => m.from >= profile.today,
     );
     const to = longDate(r.postponedTo);
-    return {
-      id: suggestionId("taxes", "disaster_relief"),
-      capability: "taxes",
-      topic: "disaster_relief",
+    return suggestion("taxes", "disaster_relief", {
       title: `Use the IRS disaster postponement for ${county.value} County: your tax deadlines move to ${to}`,
       headline: headlineOf(
         `Check your ${county.value} County disaster relief`,
@@ -1060,7 +1006,7 @@ const disasterRelief: Detector = {
           : "If the disaster damaged your home or car, keep the repair bills and the insurance claim together."
       }${r.sample ? " (This is a sample declaration from Jane's stand-in feed.)" : ""}`,
       action: { label: "Move my tax deadlines", href: "/deadlines" },
-    };
+    });
   },
 };
 
@@ -1078,10 +1024,7 @@ const socialSecurityTaxDetector: Detector = {
     const tax = Math.round(r.ss.taxableCents * r.bracket);
     if (tax < SS_TAX_MIN_CENTS) return null;
     const pct = (x: number) => `${Math.round(x * 100)}%`;
-    return {
-      id: suggestionId("taxes", "social_security_tax"),
-      capability: "taxes",
-      topic: "social_security_tax",
+    return suggestion("taxes", "social_security_tax", {
       title: "Have tax withheld from your Social Security, so the part that's taxed isn't a bill",
       headline: headlineOf("Set up withholding on Social Security", tax, "risk"),
       short: `${formatCents(r.ss.taxableCents)} of your ${formatCents(r.ssBenefitsCents)} Social Security is taxable.`,
@@ -1098,7 +1041,7 @@ const socialSecurityTaxDetector: Detector = {
           : ""
       }`.trim(),
       action: { label: "See the numbers", href: "/taxes" },
-    };
+    });
   },
 };
 
@@ -1117,10 +1060,7 @@ const irmaaWatch: Detector = {
       return null;
     if (r.irmaa.tier === 0 && room > r.balances.preTaxCents * IRMAA_WATCH.roomShare) return null;
     const couple = r.people === 2;
-    return {
-      id: suggestionId("taxes", "irmaa_watch"),
-      capability: "taxes",
-      topic: "irmaa_watch",
+    return suggestion("taxes", "irmaa_watch", {
       title: `Keep this year's income under ${formatCents(r.irmaa.nextLineCents)}, Medicare's surcharge line for ${r.irmaa.premiumYear}`,
       headline: headlineOf(
         "Keep withdrawals under Medicare's line",
@@ -1143,7 +1083,7 @@ const irmaaWatch: Detector = {
       urgency: month(profile.today) >= 10 ? "soon" : "later",
       why: `Medicare premiums in ${r.irmaa.premiumYear} are set by this year's income. Yours is about ${formatCents(r.magiCents)}${couple ? " for the two of you" : ""}; ${formatCents(r.irmaa.nextLineCents)} is the next surcharge line${r.irmaa.estimated ? " (estimated)" : ""}, ${formatCents(room)} away. With ${formatCents(r.balances.preTaxCents)} in pre-tax accounts, a Roth conversion or a big withdrawal over that would add about ${formatCents(r.irmaa.nextYearlyCents)} a year to ${couple ? "your Part B and D premiums together" : "your Part B and D premiums"}. Taking the rest from taxable accounts, then Roth, stays under it.`,
       action: { label: "See my retirement paycheck", href: "/investments/retirement-income" },
-    };
+    });
   },
 };
 
@@ -1160,10 +1100,7 @@ const draftReturnCheck: Detector = {
     const total = d.findings.reduce((s, f) => s + f.dollarsCents, 0);
     const owes = d.findings.some((f) => f.effect === "owes");
     const top = d.findings[0];
-    return {
-      id: suggestionId("taxes", "draft_return_check"),
-      capability: "taxes",
-      topic: "draft_return_check",
+    return suggestion("taxes", "draft_return_check", {
       title: `${d.findings.length === 1 ? "One line" : `${d.findings.length} lines`} in your ${d.year} draft return ${d.findings.length === 1 ? "doesn't" : "don't"} match your records`,
       headline: headlineOf("Check your draft return", total, owes ? "risk" : "saves", true),
       short: `${top.title}, on ${top.line}: ${formatCents(top.dollarsCents)}.`,
@@ -1182,7 +1119,7 @@ const draftReturnCheck: Detector = {
         )
         .join(" ")} Your software or preparer is where it changes; I don't file it.`,
       action: { label: "See every line", href: "/taxes/draft" },
-    };
+    });
   },
 };
 

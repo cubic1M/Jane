@@ -1,7 +1,7 @@
 import { formatWholeDollars } from "@/lib/money";
 import { NOTHING_KEPT_APART } from "@/planning/tax-set-aside";
 import { DETECTOR_RATES as R } from "@/config/detectors";
-import { type Detector, type Suggestion, suggestionId } from "./contract";
+import { type Detector, type Suggestion, suggestion } from "./contract";
 import { urgencyForEstimated } from "./taxes";
 
 // The tax on the income so far that isn't withheld or paid, brought up unasked: for freelancers,
@@ -53,17 +53,14 @@ const taxNotYetPaid: Detector = {
         ? ` ${formatWholeDollars(figure.keptApartCents)} of it is kept apart.`
         : "";
     const { worked, tail, ...card } = shared(figure, profile.today);
-    return {
-      id: suggestionId("taxes", "tax_not_yet_paid"),
-      capability: "taxes",
-      topic: "tax_not_yet_paid",
+    return suggestion("taxes", "tax_not_yet_paid", {
       title: `About ${cents} of your ${figure.year} tax isn't withheld or paid yet (estimate)`,
       headline: `Check tax not yet paid: about ${cents}`,
       short: `An estimate from your ${figure.year} income so far. Safe to spend leaves it out.`,
       ...card,
       why: `${worked} That leaves about ${cents}, as an estimate, not tax advice.${kept} ${tail}`,
       action: { label: "See the calculation", href: HREF },
-    };
+    });
   },
 };
 
@@ -78,17 +75,14 @@ const taxSetAside: Detector = {
     if (!dueHere(figure, true)) return null;
     const cents = formatWholeDollars(figure.holdCents);
     const { worked, tail, ...card } = shared(figure, profile.today);
-    return {
-      id: suggestionId("taxes", "tax_set_aside"),
-      capability: "taxes",
-      topic: "tax_set_aside",
+    return suggestion("taxes", "tax_set_aside", {
       title: `Set aside about ${cents} for your ${figure.year} tax`,
       headline: `Set aside about ${cents} for tax`,
       short: `An estimate from your ${figure.year} income so far. Safe to spend leaves it out.`,
       ...card,
       why: `${worked} Setting aside about ${cents} covers the rest. ${tail}`,
       action: { label: "See the calculation", href: HREF },
-    };
+    });
   },
 };
 

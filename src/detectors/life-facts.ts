@@ -8,7 +8,7 @@ import {
 } from "@/config/life-facts";
 import { formatCents } from "@/lib/money";
 import { hitsOf } from "@/profile/life-facts";
-import { type Detector, suggestionId } from "./contract";
+import { type Detector, suggestion } from "./contract";
 import { evidence, factEvidence, headlineOf, tx } from "./helpers";
 import { CAPS, capped, combine } from "./insurance";
 
@@ -35,10 +35,7 @@ const petCover: Detector = {
     if (profile.facts.debt_trouble.value === true) return null;
     const seen = hitsOf(data.transactions, PET_SIGNAL);
     const spent = seen.txs.reduce((s, t) => s + t.amountCents, 0);
-    return {
-      id: suggestionId("insurance", "pet_insurance"),
-      capability: "insurance",
-      topic: "pet_insurance",
+    return suggestion("insurance", "pet_insurance", {
       title: "Cover your pet against a big vet bill",
       headline: headlineOf("Get pet insurance", PET_VET_BILL_CENTS, "risk"),
       short: `You've paid ${formatCents(spent)} in ${seen.matches} vet and pet payments and have no pet cover.`,
@@ -52,7 +49,7 @@ const petCover: Detector = {
       urgency: "later",
       why: `I see ${pet.evidence} and no pet-insurance charge. An emergency or surgery can cost ${formatCents(PET_VET_BILL_CENTS)} or more, and cover is much cheaper to start while your pet is healthy.`,
       action: { label: "See pet cover", href: "/insurance" },
-    };
+    });
   },
 };
 
@@ -102,10 +99,7 @@ const studentPlans: Detector = {
     const all = paying.map((p) => p.name);
     const names =
       all.length <= 1 ? all[0] : `${all.slice(0, -1).join(", ")} and ${all[all.length - 1]}`;
-    return {
-      id: suggestionId("subscriptions", "student_discounts"),
-      capability: "subscriptions",
-      topic: "student_discounts",
+    return suggestion("subscriptions", "student_discounts", {
       title: "Switch to student plans",
       headline: headlineOf("Switch to student plans", saves, "saves"),
       short: `You pay for ${names}; each has a cheaper student plan.`,
@@ -121,7 +115,7 @@ const studentPlans: Detector = {
       urgency: "later",
       why: `I see ${student.evidence}, and you pay for ${names}. Each has a student plan that usually costs about half, which comes to about ${formatCents(saves)} a year. You may need to verify you're a student.${checkedLine(paying)}`,
       action: { label: "See my subscriptions", href: "/subscriptions" },
-    };
+    });
   },
 };
 

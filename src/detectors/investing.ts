@@ -1,6 +1,6 @@
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { formatCents } from "@/lib/money";
-import { type Detector, suggestionId } from "./contract";
+import { type Detector, suggestion } from "./contract";
 import { evidence, factEvidence, weakest, headlineOf } from "./helpers";
 
 // Detectors for the investing capability (spec step 262; inventory in
@@ -33,10 +33,7 @@ const employerMatch: Detector = {
     if (known) {
       if (known.missedCents <= 0) return null;
       const rate = (n: number) => `${Math.round(n * 1000) / 10}%`;
-      return {
-        id: suggestionId("investing", "employer_match"),
-        capability: "investing",
-        topic: "employer_match",
+      return suggestion("investing", "employer_match", {
         title: "Make sure you get your employer's full 401(k) match",
         headline: headlineOf("Get your employer's full 401(k) match", known.missedCents, "earns"),
         short: `You put in ${rate(known.employeeRate)} of pay; ${rate(known.fullMatchRate)} gets all of it.`,
@@ -50,14 +47,11 @@ const employerMatch: Detector = {
         urgency: "soon",
         why: `Your employer matches ${Math.round(known.matchRate * 100)}% of what you put in, up to ${rate(known.fullMatchRate)} of your pay (about ${formatCents(known.payCents)} a year). You are putting in ${rate(known.employeeRate)} at this year's pace, so about ${formatCents(known.missedCents)} a year of match goes unclaimed.`,
         action: { label: "Check your match", href: "/investments/retirement-accounts" },
-      };
+      });
     }
     if (pay === 0 || saved >= pay * R.matchHealthyShare) return null;
     const match = Math.round(pay * R.matchTypicalShare);
-    return {
-      id: suggestionId("investing", "employer_match"),
-      capability: "investing",
-      topic: "employer_match",
+    return suggestion("investing", "employer_match", {
       title: "Make sure you get your employer's full 401(k) match",
       headline: headlineOf("Get your employer's full 401(k) match", match, "earns"),
       short: `Your 401(k) holds ${formatCents(saved)} against pay of about ${formatCents(pay)} a year.`,
@@ -72,7 +66,7 @@ const employerMatch: Detector = {
       urgency: "soon",
       why: `Your 401(k) holds ${formatCents(saved)} against pay of about ${formatCents(pay)} a year. A typical match is ${Math.round(R.matchTypicalShare * 100)}% of pay, about ${formatCents(match)} a year, and it is lost if you don't contribute enough to get it.`,
       action: { label: "Check your match", href: "/investments/retirement-accounts" },
-    };
+    });
   },
 };
 
@@ -85,10 +79,7 @@ const catchUp: Detector = {
     const stage = profile.facts.life_stage;
     const has = profile.facts.has_401k;
     if (stage.value !== "approaching" || has.value !== true) return null;
-    return {
-      id: suggestionId("investing", "catch_up"),
-      capability: "investing",
-      topic: "catch_up",
+    return suggestion("investing", "catch_up", {
       title: "Use the catch-up contribution for people over 50",
       headline: headlineOf(
         "Use the over-50 catch-up contribution",
@@ -105,7 +96,7 @@ const catchUp: Detector = {
       urgency: "soon",
       why: `You are close to retirement and have a 401(k). People over 50 can put in about ${formatCents(R.catchUpCents)} more a year, if you are not already using it, which at a ${Math.round(R.selfRetireTaxRate * 100)}% tax rate cuts the tax bill by about ${formatCents(Math.round(R.catchUpCents * R.selfRetireTaxRate))}.`,
       action: { label: "See your limits", href: "/investments/retirement-accounts" },
-    };
+    });
   },
 };
 
@@ -119,10 +110,7 @@ const hsaIdle: Detector = {
     if (has.value !== true) return null;
     const balance = sum(data.accounts.filter((a) => a.subtype === "hsa"));
     if (balance < R.hsaMinCents) return null;
-    return {
-      id: suggestionId("investing", "hsa"),
-      capability: "investing",
-      topic: "hsa",
+    return suggestion("investing", "hsa", {
       title: "Put your HSA money to work",
       headline: headlineOf(
         "Put your HSA money to work",
@@ -136,7 +124,7 @@ const hsaIdle: Detector = {
       urgency: "later",
       why: `Your HSA holds ${formatCents(balance)}. Money you won't spend on medical bills this year can earn more than a cash balance, and growth in an HSA is tax free for medical costs.`,
       action: { label: "See your HSA", href: "/investments/hsa" },
-    };
+    });
   },
 };
 
@@ -158,10 +146,7 @@ const backdoorRoth: Detector = {
     const growth = Math.round(
       R.iraLimitCents * ((1 + R.assumedGrowthBps / 10_000) ** R.growthYears - 1),
     );
-    return {
-      id: suggestionId("investing", "backdoor_roth"),
-      capability: "investing",
-      topic: "backdoor_roth",
+    return suggestion("investing", "backdoor_roth", {
       title: "Ask whether a backdoor Roth IRA fits you",
       headline: headlineOf(
         "Ask if a backdoor Roth fits",
@@ -178,7 +163,7 @@ const backdoorRoth: Detector = {
       urgency: "later",
       why: `Your pay of about ${formatCents(pay)} a year is above where a direct Roth IRA is usually allowed. A backdoor Roth lets ${formatCents(R.iraLimitCents)} a year grow tax free; at an assumed ${R.assumedGrowthBps / 100}% a year that is about ${formatCents(growth)} of growth over ${R.growthYears} years, saving about ${formatCents(Math.round(growth * R.growthTaxRate))} in tax. Check the rules for your situation with a tax professional.`,
       action: { label: "See Roth options", href: "/investments/retirement-accounts" },
-    };
+    });
   },
 };
 
@@ -190,10 +175,7 @@ const education529: Detector = {
   detect({ profile }) {
     const kids = profile.facts.has_children;
     if (kids.value !== true) return null;
-    return {
-      id: suggestionId("investing", "education_529"),
-      capability: "investing",
-      topic: "education_529",
+    return suggestion("investing", "education_529", {
       title: "Start a 529 college savings plan",
       headline: headlineOf(
         "Start a 529 college savings plan",
@@ -207,7 +189,7 @@ const education529: Detector = {
       urgency: "later",
       why: `You have children at home. Many states give a tax deduction on 529 contributions; on ${formatCents(R.college529Cents)} a year at an assumed ${Math.round(R.college529StateRate * 100)}% state rate that is about ${formatCents(Math.round(R.college529Cents * R.college529StateRate))}, and the growth is tax free for school costs.`,
       action: { label: "Plan for college", href: "/investments/college" },
-    };
+    });
   },
 };
 
@@ -223,10 +205,7 @@ const requiredWithdrawals: Detector = {
     const balance = sum(pre);
     if (balance === 0) return null;
     const rmd = Math.round(balance / R.rmdDivisor);
-    return {
-      id: suggestionId("investing", "rmd"),
-      capability: "investing",
-      topic: "rmd",
+    return suggestion("investing", "rmd", {
       title: "Plan your required withdrawals from your retirement accounts",
       headline: headlineOf(
         "Plan your required withdrawals",
@@ -243,7 +222,7 @@ const requiredWithdrawals: Detector = {
       urgency: "soon",
       why: `You are retired and hold ${formatCents(balance)} in pre-tax retirement accounts. Required withdrawals start in your early-to-mid 70s and would be roughly ${formatCents(rmd)} a year; missing one costs a ${Math.round(R.rmdPenaltyRate * 100)}% penalty, about ${formatCents(Math.round(rmd * R.rmdPenaltyRate))}.`,
       action: { label: "Plan your income", href: "/investments/retirement-income" },
-    };
+    });
   },
 };
 

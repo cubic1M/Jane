@@ -5,11 +5,10 @@ import { ADDON_RULES } from "@/config/car-loan";
 import { formatCents } from "@/lib/money";
 import type { Profile } from "@/profile/build";
 import { addonCandidates, refundFor } from "@/planning/car-loan";
-import { type Detector, suggestionId } from "./contract";
+import { type Detector, suggestion } from "./contract";
 import {
   evidence,
   factEvidence,
-  listOf,
   liquidCents,
   nice,
   monthlySpendCents,
@@ -47,10 +46,7 @@ const studentRepayment: Detector = {
     const idr = Math.round(income(profile) * D.studentIdrShare);
     const gap = Math.round(monthly - idr);
     if (income(profile) <= 0 || gap < D.studentMinGapCents) return null;
-    return {
-      id: suggestionId("debt", "student_repayment"),
-      capability: "debt",
-      topic: "student_repayment",
+    return suggestion("debt", "student_repayment", {
       title: "Compare an income-driven plan for your student loans",
       headline: headlineOf("Compare an income-driven loan plan", gap * 12, "saves"),
       short: `You pay about ${formatCents(Math.round(monthly))} a month on student loans.`,
@@ -70,7 +66,7 @@ const studentRepayment: Detector = {
       urgency: "later",
       why: `You pay about ${formatCents(Math.round(monthly))} a month on student loans. If they're federal, an income-driven plan on your ${formatCents(income(profile))} a month would ask roughly ${formatCents(idr)}.`,
       action: { label: "Compare repayment plans", href: "/loans/student" },
-    };
+    });
   },
 };
 
@@ -87,10 +83,7 @@ const autoRefinance: Detector = {
     const monthly = outCents(payments) / rateMonthsOf(profile);
     const share = monthly / income(profile);
     if (share < D.autoPaymentShare) return null;
-    return {
-      id: suggestionId("debt", "auto_refinance"),
-      capability: "debt",
-      topic: "auto_refinance",
+    return suggestion("debt", "auto_refinance", {
       title: "Check whether a cheaper car loan exists, and whether the dealer added extras",
       headline: headlineOf(
         "Check for a cheaper car loan",
@@ -107,7 +100,7 @@ const autoRefinance: Detector = {
       urgency: "later",
       why: `Your car payment is about ${formatCents(Math.round(monthly))} a month, ${Math.round(share * 100)}% of the ${formatCents(income(profile))} you bring in, on ${formatCents(balance)} owed. A lower rate or cancelling dealer add-ons can bring it down.`,
       action: { label: "Check my car loan", href: "/loans/auto" },
-    };
+    });
   },
 };
 
@@ -143,10 +136,7 @@ const carAddons: Detector = {
     }));
     const worth = refunds.reduce((s, r) => s + r.refund.refundCents, 0);
     if (worth <= 0) return null;
-    return {
-      id: suggestionId("debt", "car_addons"),
-      capability: "debt",
-      topic: "car_addons",
+    return suggestion("debt", "car_addons", {
       title: "Cancel the dealer add-on you may not need and ask for the refund",
       headline: headlineOf("Cancel a dealer add-on", worth, "earns", true),
       short: `The unused part of what you paid could refund about ${formatCents(worth)}.`,
@@ -162,7 +152,7 @@ const carAddons: Detector = {
       urgency: "soon",
       why: `You paid ${formatCents(refunds.reduce((s, r) => s + r.a.paidCents, 0))} for ${found.map((f) => ADDON_RULES[f.kind].label.replace(/^(?!GAP)\w/, (c) => c.toLowerCase())).join(" and ")}; the unused part could refund about ${formatCents(worth)}.`,
       action: { label: "See the refund", href: "/loans/auto" },
-    };
+    });
   },
 };
 
@@ -192,10 +182,7 @@ const cashAdvance: Detector = {
     );
     const cost = outCents(fees) + interest;
     if (cost <= 0) return null;
-    return {
-      id: suggestionId("debt", "cash_advance"),
-      capability: "debt",
-      topic: "cash_advance",
+    return suggestion("debt", "cash_advance", {
       title: "Stop taking cash advances on your card",
       headline: headlineOf("Stop taking card cash advances", cost, "saves"),
       short: `Your card cash advances cost about ${formatCents(cost)} in fees and interest.`,
@@ -205,7 +192,7 @@ const cashAdvance: Detector = {
       urgency: "soon",
       why: `Your card cash advances cost about ${formatCents(cost)} in fees and interest from day one. A credit union small loan or a pay advance from work costs far less.`,
       action: { label: "See cheaper ways", href: "/loans/costly" },
-    };
+    });
   },
 };
 
@@ -224,10 +211,7 @@ const mortgageExtra: Detector = {
     const spend = monthlySpendCents(data, profile.months);
     const excess = Math.min(balance, liquidCents(data) - spend * R.idleMonthsKept);
     if (spend === 0 || excess < D.mortgageExtraMinExcessCents) return null;
-    return {
-      id: suggestionId("debt", "mortgage_extra"),
-      capability: "debt",
-      topic: "mortgage_extra",
+    return suggestion("debt", "mortgage_extra", {
       title: "Compare paying extra on your mortgage with what the cash earns now",
       headline: headlineOf(
         "Weigh extra mortgage payments",
@@ -244,7 +228,7 @@ const mortgageExtra: Detector = {
       urgency: "later",
       why: `Your mortgage charges ${(rate.value / 100).toFixed(2)}% on ${formatCents(balance)}, and ${formatCents(excess)} of your cash is beyond ${R.idleMonthsKept} months of spending. Paying down earns the mortgage rate for certain; a high-yield account earns ${(R.highYieldBps / 100).toFixed(1)}%.`,
       action: { label: "Compare recast, refinance and extra", href: "/loans/recast" },
-    };
+    });
   },
 };
 
@@ -268,10 +252,7 @@ const balanceTransfer: Detector = {
     const saving = interest - Math.round(debt.value * D.transferFeeShare);
     if (saving <= 0) return null;
     const trouble = profile.facts.debt_trouble.value === true;
-    return {
-      id: suggestionId("debt", "balance_transfer"),
-      capability: "debt",
-      topic: "balance_transfer",
+    return suggestion("debt", "balance_transfer", {
       title: "See if a 0% transfer card would cut your interest",
       headline: headlineOf("Try a 0% balance transfer card", saving, "saves"),
       short: `You owe ${formatCents(debt.value)} on cards and paid ${formatCents(interest)} in interest.`,
@@ -296,7 +277,7 @@ const balanceTransfer: Detector = {
       ...(trouble ? { rankCents: Math.round(saving * D.troubleDiscount) } : {}),
       why: `You owe ${formatCents(debt.value)} on cards and paid ${formatCents(interest)} in interest over ${profile.months} months. A 0% transfer with a ${Math.round(D.transferFeeShare * 100)}% fee (${formatCents(Math.round(debt.value * D.transferFeeShare))}) could save about ${formatCents(saving)}.`,
       action: { label: "See transfer offers", href: "/loans/refinance" },
-    };
+    });
   },
 };
 
@@ -318,10 +299,7 @@ const creditUtilisation: Detector = {
     const trouble = profile.facts.debt_trouble.value === true;
     const cash = liquidCents(data);
     const share = Math.round((owed / limit) * 100);
-    return {
-      id: suggestionId("debt", "credit_building"),
-      capability: "debt",
-      topic: "credit_building",
+    return suggestion("debt", "credit_building", {
       title: "Pay your cards down before the statement closes, so a lower balance is reported",
       headline: headlineOf(
         "Pay cards down before the statement",
@@ -358,7 +336,7 @@ const creditUtilisation: Detector = {
           : `Under ${Math.round(D.utilisationHigh * 100)}% would take ${formatCents(toThirty)}, more than the ${formatCents(cash)} you have in cash, so pay what you can before each statement closes; every dollar off the balance reported helps`
       }, which helps your score and the rates you're offered.`,
       action: { label: "See your credit score", href: "/loans/credit" },
-    };
+    });
   },
 };
 
@@ -372,10 +350,7 @@ const bnplPlans: Detector = {
     const payments = tx(data, (t) => t.pfc === "LOAN_PAYMENTS_BNPL" && t.amountCents > 0);
     if (payments.length < D.bnplPaymentsMin) return null;
     const total = outCents(payments);
-    return {
-      id: suggestionId("debt", "bnpl"),
-      capability: "debt",
-      topic: "bnpl",
+    return suggestion("debt", "bnpl", {
       title: "Put your pay-later installments in your forecast so they never catch you short",
       headline: headlineOf("Plan for pay-later installments", total, "risk"),
       short: `You've paid ${formatCents(total)} in ${payments.length} pay-later installments.`,
@@ -385,7 +360,7 @@ const bnplPlans: Detector = {
       urgency: "soon",
       why: `You've paid ${formatCents(total)} in ${payments.length} pay-later installments over ${profile.months} months. Jane can count the next ones against what's safe to spend, and tell you before a new plan strains the month.`,
       action: { label: "See your installments", href: "/loans" },
-    };
+    });
   },
 };
 
@@ -407,10 +382,7 @@ const medicalBills: Detector = {
     );
     const total = outCents(care);
     if (total < D.medicalMinCents) return null;
-    return {
-      id: suggestionId("debt", "medical_bills"),
-      capability: "debt",
-      topic: "medical_bills",
+    return suggestion("debt", "medical_bills", {
       title:
         "Ask for an itemized bill, and for financial help or a no-interest plan, on your medical bills",
       headline: headlineOf(
@@ -427,7 +399,7 @@ const medicalBills: Detector = {
       urgency: "soon",
       why: `You paid ${formatCents(total)} for medical care in ${profile.months} months. Bills often have errors${care.some((t) => t.pfc !== "MEDICAL_DENTAL_CARE") ? ", and nonprofit hospitals must offer financial assistance" : ""}; people who ask usually get about ${Math.round(D.medicalAskShare * 100)}% off.`,
       action: { label: "Check your medical bills", href: "/loans/medical" },
-    };
+    });
   },
 };
 
@@ -441,10 +413,7 @@ const collections: Detector = {
     const paid = tx(data, (t) => t.amountCents > 0 && D.collectorPayee.test(t.description));
     if (paid.length === 0) return null;
     const total = outCents(paid);
-    return {
-      id: suggestionId("debt", "credit_report_errors"),
-      capability: "debt",
-      topic: "credit_report_errors",
+    return suggestion("debt", "credit_report_errors", {
       title:
         "Check the collection on your credit report before you pay more, and ask for it in writing",
       headline: headlineOf("Check a collection before paying", total, "risk"),
@@ -455,7 +424,7 @@ const collections: Detector = {
       urgency: "now",
       why: `You've paid ${formatCents(total)} to a collection agency in ${profile.months} months. Collections can be wrong or too old to collect, and a validation letter makes the collector prove the debt; Jane writes it.`,
       action: { label: "Check your report", href: "/loans/report" },
-    };
+    });
   },
 };
 
@@ -475,10 +444,7 @@ const studentForgiveness: Detector = {
     const monthly = outCents(payments) / rateMonthsOf(profile);
     const left = Math.round(balance - monthly * D.pslfPayments);
     if (left <= 0) return null;
-    return {
-      id: suggestionId("debt", "student_forgiveness"),
-      capability: "debt",
-      topic: "student_forgiveness",
+    return suggestion("debt", "student_forgiveness", {
       title: "Check Public Service Loan Forgiveness: you work for a public employer",
       headline: headlineOf("Check loan forgiveness (PSLF)", left, "earns", true),
       short: `You work for ${nice(employer.value)} and owe ${formatCents(balance)} on student loans.`,
@@ -498,7 +464,7 @@ const studentForgiveness: Detector = {
       urgency: "later",
       why: `You work for ${nice(employer.value)} and owe ${formatCents(balance)} on student loans at about ${formatCents(Math.round(monthly))} a month. After ${D.pslfPayments} qualifying payments the rest, about ${formatCents(left)} at these payments, can be forgiven if the loan and the plan qualify.`,
       action: { label: "Track your qualifying payments", href: "/loans/student" },
-    };
+    });
   },
 };
 
@@ -522,10 +488,7 @@ const familyLoans: Detector = {
     const back = tx(data, (t) => t.amountCents < 0 && D.paymentApp.test(t.description));
     if (sent.length === 0 || back.length > 0) return null;
     const total = outCents(sent);
-    return {
-      id: suggestionId("debt", "family_loans"),
-      capability: "debt",
-      topic: "family_loans",
+    return suggestion("debt", "family_loans", {
       title: "Note down money you lent, so it's remembered and a kind reminder is easy",
       headline: headlineOf("Note down money you lent", total, "risk"),
       short: `You sent ${formatCents(total)} through a payment app and nothing has come back.`,
@@ -536,7 +499,7 @@ const familyLoans: Detector = {
       urgency: "later",
       why: `You sent ${formatCents(total)} through a payment app and nothing has come back. If it was a loan, Jane can keep track of it and draft a kind reminder for you to send; it never messages the other person.`,
       action: { label: "Who owes whom", href: "/loans/family" },
-    };
+    });
   },
 };
 

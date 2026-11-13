@@ -2,7 +2,7 @@ import { DETECTOR_RATES as R } from "@/config/detectors";
 import { FUND_FACTS, FUND_NAMES, LOWER_COST_EQUIVALENTS } from "@/config/funds";
 import { formatCents, formatWholeDollars } from "@/lib/money";
 import { olderPlans } from "@/planning/rollover";
-import { type Detector, suggestionId } from "./contract";
+import { type Detector, suggestion } from "./contract";
 import {
   evidence,
   feeEvidence,
@@ -49,10 +49,7 @@ const feeDrag: Detector = {
     const total = rows.reduce((s, r) => s + r.saving, 0);
     if (total < R.feeMinCents) return null;
     const top = [...rows].sort((a, b) => b.saving - a.saving)[0];
-    return {
-      id: suggestionId("investing", "investment_fees"),
-      capability: "investing",
-      topic: "investment_fees",
+    return suggestion("investing", "investment_fees", {
       // A fact, so a real account sees it too: what the funds cost against similar ones, with no
       // instruction to buy, sell or switch (that belongs to demo advice).
       title: "Your funds cost more than similar funds that do the same job",
@@ -81,7 +78,7 @@ const feeDrag: Detector = {
           yearlyCents: r.saving,
         })),
       },
-    };
+    });
   },
 };
 
@@ -113,10 +110,7 @@ const drift: Detector = {
     const share = stocks / total;
     if (Math.abs(share - target) <= R.rebalanceBandShare) return null;
     const moved = Math.round(Math.abs(share - target) * total);
-    return {
-      id: suggestionId("investing", "rebalance"),
-      capability: "investing",
-      topic: "rebalance",
+    return suggestion("investing", "rebalance", {
       title:
         share > target
           ? "Bring your stocks back toward your target"
@@ -139,7 +133,7 @@ const drift: Detector = {
       urgency: "later",
       why: `${Math.round(share * 100)}% of what you invest is in stocks; people at your stage usually hold about ${Math.round(target * 100)}%. Moving about ${formatCents(moved)} would put you back near it. Four questions about your goals would let me check this against yours.`,
       action: { label: "Check your mix", href: "/investments/rebalance" },
-    };
+    });
   },
 };
 
@@ -163,10 +157,7 @@ const autoInvest: Detector = {
     const regular = tx(data, (t) => /AUTOMATIC INVEST|RECURRING INVEST/i.test(t.description));
     if (regular.length > 0) return null;
     const monthly = Math.round(income.value * R.autoInvestShare);
-    return {
-      id: suggestionId("investing", "auto_invest"),
-      capability: "investing",
-      topic: "auto_invest",
+    return suggestion("investing", "auto_invest", {
       title: "Invest a little of every paycheck automatically",
       headline: headlineOf(
         "Invest a little from each paycheck",
@@ -184,7 +175,7 @@ const autoInvest: Detector = {
       urgency: "later",
       why: `You are paid a steady salary, keep a cushion and have ${accounts.length === 1 ? "an investment account" : `${accounts.length} investment accounts`}, but I see no regular investing outside your workplace plan. ${Math.round(R.autoInvestShare * 100)}% of your pay is about ${formatCents(monthly)} a month, always moved after your bills are safe.`,
       action: { label: "Set up automatic investing", href: "/investments/auto" },
-    };
+    });
   },
 };
 
@@ -202,10 +193,7 @@ const oldAccounts: Detector = {
     );
     const old = older.totalCents;
     if (old === 0) return null;
-    return {
-      id: suggestionId("investing", "old_accounts"),
-      capability: "investing",
-      topic: "old_accounts",
+    return suggestion("investing", "old_accounts", {
       title: "Roll old employer plans into one account",
       headline: headlineOf(
         "Roll old employer plans into one",
@@ -230,7 +218,7 @@ const oldAccounts: Detector = {
           yearlyCents: Math.round((a.balanceCents * R.oldPlanFeeGapBps) / 10_000),
         })),
       },
-    };
+    });
   },
 };
 
@@ -255,10 +243,7 @@ const assetLocation: Detector = {
     const yieldBps = FUND_FACTS[interest[0].ticker!].yieldBps ?? 0;
     const saving = Math.round((moved * yieldBps * R.locationRateGap) / 10_000);
     if (saving < R.locationMinCents) return null;
-    return {
-      id: suggestionId("investing", "asset_location"),
-      capability: "investing",
-      topic: "asset_location",
+    return suggestion("investing", "asset_location", {
       title: "Hold your bonds in the account where their interest isn't taxed each year",
       headline: headlineOf("Move bonds to a tax-sheltered account", saving, "saves"),
       short: `${formatCents(inTaxable)} of bond funds sit in a taxable account.`,
@@ -271,7 +256,7 @@ const assetLocation: Detector = {
       urgency: "later",
       why: `${formatCents(inTaxable)} of bond funds sit in a taxable account, where the interest is taxed every year, while stock funds fill your retirement accounts. Swapping like for like (your mix doesn't change) would save about ${formatCents(saving)} a year in tax.`,
       action: { label: "See the swap", href: "/investments/location" },
-    };
+    });
   },
 };
 
@@ -285,10 +270,7 @@ const costlyAnnuity: Detector = {
     if (annuities.length === 0) return null;
     const balance = annuities.reduce((s, a) => s + a.balanceCents, 0);
     const saving = Math.round((balance * (R.annuityFeeBps - R.annuityIndexBps)) / 10_000);
-    return {
-      id: suggestionId("investing", "costly_products"),
-      capability: "investing",
-      topic: "costly_products",
+    return suggestion("investing", "costly_products", {
       title: "Check what your annuity really costs",
       headline: headlineOf("Check what your annuity costs", saving, "saves"),
       short: `You hold ${formatCents(balance)} in an annuity.`,
@@ -311,7 +293,7 @@ const costlyAnnuity: Detector = {
           ),
         })),
       },
-    };
+    });
   },
 };
 

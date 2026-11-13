@@ -8,7 +8,7 @@ import {
   povertyLine,
 } from "@/config/utility-assistance";
 import { formatCents } from "@/lib/money";
-import { type Detector, suggestionId } from "./contract";
+import { type Detector, suggestion } from "./contract";
 import { evidence, factEvidence, headlineOf, nice, outCents, tx, weakest } from "./helpers";
 
 // Utilities (connectors roadmap round 17). Read only, no vendor, no Claude call. Pure; see
@@ -52,10 +52,7 @@ const budgetBilling: Detector = {
     const top = swings[0];
     if (!top) return null;
     const name = nice(top.payee);
-    return {
-      id: suggestionId("cost", "budget_billing"),
-      capability: "cost",
-      topic: "budget_billing",
+    return suggestion("cost", "budget_billing", {
       title: `Even out your ${name} bill with budget billing`,
       headline: headlineOf(`Even out your ${name} bill`, top.jump, "risk"),
       short: `Your ${name} bill ran from ${formatCents(top.min)} to ${formatCents(top.max)} a month.`,
@@ -65,7 +62,7 @@ const budgetBilling: Detector = {
       urgency: "later",
       why: `Your ${name} bill ran from ${formatCents(top.min)} to ${formatCents(top.max)} a month over ${top.months} months, about ${formatCents(top.average)} on average. Many utilities offer budget (level) billing: about the same amount each month from your yearly average, settled up once a year. It doesn't lower the total; it takes the ${formatCents(top.jump)} jump out of the biggest month. Ask ${name}, or look for it in your account online.`,
       action: { label: "See your bills", href: "/bills" },
-    };
+    });
   },
 };
 
@@ -101,10 +98,7 @@ const careDiscount: Detector = {
     const rule = program === "CARE" ? CA_CARE_FERA.care : CA_CARE_FERA.fera;
     const limit = program === "CARE" ? care : fera;
     const worth = Math.round(yearlyEnergy * rule.lowestDiscount);
-    return {
-      id: suggestionId("cost", "utility_discount"),
-      capability: "cost",
-      topic: "utility_discount",
+    return suggestion("cost", "utility_discount", {
       title: `Your household may qualify for California's ${program} discount on energy bills`,
       headline: headlineOf(`Check the ${program} energy discount`, worth, "saves"),
       short: `Income near ${formatCents(gross)} for ${people} ${people === 1 ? "person" : "people"} is under ${program}'s ${formatCents(limit)} limit.`,
@@ -121,7 +115,7 @@ const careDiscount: Detector = {
       why: `For a household of ${people}, ${program} takes gross yearly income up to ${formatCents(limit)} (${CA_CARE_FERA.from} to ${CA_CARE_FERA.until}); yours looks to be near ${formatCents(gross)}. ${program === "CARE" ? "CARE takes 30-35% off electric and 20% off gas" : "FERA takes 18% off electric"}: on your ${formatCents(yearlyEnergy)} a year of gas and electric, at least ${formatCents(worth)}. Your utility decides; you apply with it${program === "CARE" ? ", and getting SNAP, Medi-Cal or similar help can also qualify you" : ""}.`,
       action: { label: "See your bills", href: "/bills" },
       more: [{ label: `About ${program}`, href: rule.url }],
-    };
+    });
   },
 };
 
@@ -159,10 +153,7 @@ const lifeline: Detector = {
     const limit = povertyLine(people, LIFELINE.incomeShare);
     if (gross > limit) return null;
     const yearly = LIFELINE.monthlyCents * 12;
-    return {
-      id: suggestionId("cost", "lifeline"),
-      capability: "cost",
-      topic: "lifeline",
+    return suggestion("cost", "lifeline", {
       title: "Your household may qualify for Lifeline: money off a phone or internet bill",
       headline: headlineOf("Check Lifeline for your phone bill", yearly, "saves"),
       short: `Income near ${formatCents(gross)} for ${people} is under Lifeline's ${formatCents(limit)} line.`,
@@ -179,7 +170,7 @@ const lifeline: Detector = {
         { label: "Apply: National Verifier", href: LIFELINE.apply },
         { label: "Who qualifies", href: LIFELINE.url },
       ],
-    };
+    });
   },
 };
 
@@ -207,10 +198,7 @@ const lowCostInternet: Detector = {
     );
     const off = "priceCents" in plan ? monthly - plan.priceCents : Math.min(plan.offCents, monthly);
     if (off <= 0) return null;
-    return {
-      id: suggestionId("cost", "low_cost_internet"),
-      capability: "cost",
-      topic: "low_cost_internet",
+    return suggestion("cost", "low_cost_internet", {
       title: `${plan.isp} has a low-income internet plan your household may qualify for`,
       headline: headlineOf(`Check ${plan.isp}'s low-cost internet`, off * 12, "saves"),
       short: `You pay ${plan.isp} about ${formatCents(monthly)} a month; ${plan.plan}.`,
@@ -225,7 +213,7 @@ const lowCostInternet: Detector = {
       why: `You pay ${plan.isp} about ${formatCents(monthly)} a month for internet. ${plan.isp} offers ${plan.plan}, for households at or under 200% of the poverty line (${formatCents(limit)} a year for ${people}) or getting help like SNAP; yours looks to be near ${formatCents(gross)}. ${plan.isp} decides who qualifies, and its terms are its own.`,
       action: { label: "See your bills", href: "/bills" },
       more: [{ label: `About ${plan.isp}'s plan`, href: plan.url }],
-    };
+    });
   },
 };
 

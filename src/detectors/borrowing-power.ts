@@ -15,7 +15,7 @@ import { formatCents } from "@/lib/money";
 import { bandOf, priced, targetAmount } from "@/planning/borrowing-power";
 import { fitPersonFrom } from "@/planning/fit-person";
 import { levelPaymentCents } from "@/planning/refinance";
-import { type Detector, suggestionId } from "./contract";
+import { type Detector, suggestion } from "./contract";
 import { evidence, factEvidence, headlineOf, liquidCents, weakest } from "./helpers";
 
 // What you could borrow (spec step 250), brought unasked: someone renting on a wage or uneven pay,
@@ -78,10 +78,7 @@ const borrowingPower: Detector = {
     const payment = (bps: number) => levelPaymentCents(figure.amountCents, bps, 360);
     const worth = (payment(Math.max(...rates)) - payment(Math.min(...rates))) * 12;
     if (worth <= 0) return null;
-    return {
-      id: suggestionId("debt", "borrowing_power"),
-      capability: "debt",
-      topic: "borrowing_power",
+    return suggestion("debt", "borrowing_power", {
       title: "See what you could borrow for a home, and compare lenders first",
       headline: headlineOf("Compare lenders before you borrow", worth, "saves"),
       short: `On your pay, a mortgage of about ${formatCents(figure.amountCents)} would fit.`,
@@ -97,7 +94,7 @@ const borrowingPower: Detector = {
       urgency: "later",
       why: `You rent, and lenders would count your pay. A mortgage of about ${formatCents(figure.amountCents)} would keep the payment (${formatCents(figure.paymentCents)} a month) inside what lenders allow and what stays comfortable, and your ${formatCents(cash)} in cash covers a ${Math.round(BORROW_DETECT_DOWN_SHARE * 1000) / 10}% down payment on ${covers >= figure.amountCents ? "that" : `up to about ${formatCents(covers)}`}. Quotes differ by lender: the dearest would cost about ${formatCents(worth)} more a year than the cheapest. Checking is a soft pull and doesn't touch your score.`,
       action: { label: "See what you could borrow", href: "/loans/borrow" },
-    };
+    });
   },
 };
 

@@ -1,6 +1,6 @@
 import { EFTPS_INDIVIDUALS } from "@/config/tax";
 import { formatCents } from "@/lib/money";
-import { type Detector, suggestionId } from "./contract";
+import { type Detector, suggestion } from "./contract";
 import { evidence, headlineOf, outCents, tx } from "./helpers";
 
 // EFTPS is closing to individuals (connectors roadmap round 16): someone whose bank shows EFTPS
@@ -22,10 +22,7 @@ const eftpsMove: Detector = {
     );
     if (payments.length === 0) return null;
     const paid = outCents(payments);
-    return {
-      id: suggestionId("taxes", "eftps_move"),
-      capability: "taxes",
-      topic: "eftps_move",
+    return suggestion("taxes", "eftps_move", {
       title: "Move your EFTPS tax payments to your IRS Online Account",
       headline: headlineOf("Move tax payments off EFTPS", paid, "risk"),
       short: `EFTPS is closing to individuals; you've paid ${formatCents(paid)} through it.`,
@@ -36,7 +33,7 @@ const eftpsMove: Detector = {
       why: `Your bank shows ${payments.length === 1 ? "a tax payment" : `${payments.length} tax payments`} through EFTPS, ${formatCents(paid)} in all. EFTPS stopped taking new individual accounts on October 17, 2025, and individuals are to move off it ${EFTPS_INDIVIDUALS.moveBy}. The IRS Online Account schedules the same payments, up to 365 days ahead. If these are a business's payments, EFTPS stays open for those.`,
       action: { label: "See your tax calendar", href: "/taxes" },
       more: [{ label: "Your IRS Online Account", href: EFTPS_INDIVIDUALS.onlineAccountUrl }],
-    };
+    });
   },
 };
 

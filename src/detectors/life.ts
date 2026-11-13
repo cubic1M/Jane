@@ -3,7 +3,7 @@ import { dayLabel } from "@/lib/day-label";
 import { employerName } from "@/profile/employer-name";
 import { stoppedEmployer } from "@/profile/stopped-employer";
 import { formatCents } from "@/lib/money";
-import { type Detector, suggestionId } from "./contract";
+import { type Detector, suggestion } from "./contract";
 import { evidence, factEvidence, headlineOf, tx, weakest } from "./helpers";
 
 // Detectors for life events and households (spec step 264). Pure; see ./contract.ts.
@@ -41,10 +41,7 @@ const lifeChecklist: Detector = {
         data,
         (x) => x.description.startsWith(newJob[0]) && x.pfc === "INCOME_SALARY",
       ).length;
-      return {
-        id: suggestionId("life_event", "life_checklist"),
-        capability: "life_event",
-        topic: "life_checklist",
+      return suggestion("life_event", "life_checklist", {
         title: "Go through the new-job checklist",
         headline: headlineOf("Open the new-job checklist", R.newJobTypicalCents, "saves", true),
         short: `Your pay now comes from ${nice(newJob[0])}; a checklist is worth about ${formatCents(R.newJobTypicalCents)}.`,
@@ -60,7 +57,7 @@ const lifeChecklist: Detector = {
         urgency: "soon",
         why: `Your pay now comes from ${nice(newJob[0])}, and your old paycheck stopped. A new job usually means enrolling in benefits, the 401(k) match, a new W-4 and an old 401(k) to move; the checklist is typically worth about ${formatCents(R.newJobTypicalCents)} in the first year.`,
         action: { label: "Open the checklist", href: "/life-events" },
-      };
+      });
     }
     // A new child: the first childcare payment is recent, and well after the data begins.
     const care = tx(data, (x) => x.pfc === "GENERAL_SERVICES_CHILDCARE")
@@ -76,10 +73,7 @@ const lifeChecklist: Detector = {
       care[0] >= addDays(dataFrom, R.lifeNewAfterDataDays)
     ) {
       const began = dayLabel(care[0], { year: true });
-      return {
-        id: suggestionId("life_event", "life_checklist"),
-        capability: "life_event",
-        topic: "life_checklist",
+      return suggestion("life_event", "life_checklist", {
         title: "Go through the new-baby checklist",
         headline: headlineOf("Open the new-baby checklist", R.newChildTypicalCents, "saves", true),
         short: `Childcare payments began on ${began}.`,
@@ -92,7 +86,7 @@ const lifeChecklist: Detector = {
         urgency: "soon",
         why: `Childcare payments began on ${began}. A new child usually means adding cover, claiming the credit and a care account; the checklist is typically worth about ${formatCents(R.newChildTypicalCents)} in the first year.`,
         action: { label: "Open the checklist", href: "/life-events" },
-      };
+      });
     }
     return null;
   },
@@ -107,10 +101,7 @@ const householdSetup: Detector = {
     const household = profile.facts.household;
     if (household.value !== "couple" && household.value !== "family") return null;
     if (!data.extras || data.extras.householdMembers > 0) return null;
-    return {
-      id: suggestionId("life_event", "household_setup"),
-      capability: "life_event",
-      topic: "household_setup",
+    return suggestion("life_event", "household_setup", {
       title: "Invite your partner so you plan the household together",
       headline: headlineOf("Set up your household", R.householdTypicalCents, "saves"),
       short: `Your pay looks like a household, worth about ${formatCents(R.householdTypicalCents)} a year in doubled-up bills.`,
@@ -123,7 +114,7 @@ const householdSetup: Detector = {
       urgency: "later",
       why: `Your pay and spending look like a household of more than one, and nobody else is in yours on Jane. Sharing only the accounts you choose lets you see shared goals and bills once, typically worth about ${formatCents(R.householdTypicalCents)} a year in doubled-up bills.`,
       action: { label: "Set up your household", href: "/household" },
-    };
+    });
   },
 };
 
@@ -151,10 +142,7 @@ const payStopped: Detector = {
     // The first to the last paycheck spans one gap fewer than there are paychecks.
     const before = Math.round((total * (paychecks.length - 1)) / paychecks.length / months);
     const less = Math.max(0, before - now);
-    return {
-      id: suggestionId("life_event", "pay_stopped"),
-      capability: "life_event",
-      topic: "pay_stopped",
+    return suggestion("life_event", "pay_stopped", {
       title: `I don't see a paycheck from ${nice(name)} since ${dayLabel(lastDay)}`,
       headline: headlineOf("Your pay looks like it stopped", less, "risk"),
       short: `About ${formatCents(now)} a month is coming in now, about ${formatCents(less)} less.`,
@@ -166,7 +154,7 @@ const payStopped: Detector = {
       rankCents: less * 12,
       why: `I don't see a paycheck from ${nice(name)} since ${dayLabel(lastDay)}, and about ${formatCents(now)} a month is coming in now. Your bills are all on Coming up, so you can see what can wait. If your pay moved to another bank, add that account and this goes away.`,
       action: { label: "See what's coming up", href: "/bills" },
-    };
+    });
   },
 };
 

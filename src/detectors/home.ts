@@ -1,7 +1,7 @@
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { RISK_ANNUAL_PROBABILITY as CHANCE } from "@/config/suggestions";
 import { formatCents } from "@/lib/money";
-import { type Detector, suggestionId } from "./contract";
+import { type Detector, suggestion } from "./contract";
 import { evidence, factEvidence, weakest, headlineOf } from "./helpers";
 
 // Detectors for the home and the people in it (spec step 254): PMI, a costly mortgage and
@@ -19,10 +19,7 @@ const pmiRemoval: Detector = {
     const pmi = profile.facts.has_pmi;
     const balance = mortgageBalance(data.accounts);
     if (pmi.value !== true || balance <= 0) return null;
-    return {
-      id: suggestionId("debt", "pmi_removal"),
-      capability: "debt",
-      topic: "pmi_removal",
+    return suggestion("debt", "pmi_removal", {
       title: "Ask your lender to drop mortgage insurance",
       headline: headlineOf(
         "Drop your mortgage insurance",
@@ -36,7 +33,7 @@ const pmiRemoval: Detector = {
       urgency: "soon",
       why: `Your mortgage of ${formatCents(balance)} carries PMI, which usually costs about ${R.pmiBps / 100}% of the loan a year. Once you own enough of the home, it can come off.`,
       action: { label: "See if PMI can go", href: "/loans/equity" },
-    };
+    });
   },
 };
 
@@ -51,10 +48,7 @@ const refinance: Detector = {
     if (typeof rate.value !== "number" || balance <= 0) return null;
     const gap = rate.value - R.marketMortgageBps;
     if (gap < R.refinanceMinGapBps) return null;
-    return {
-      id: suggestionId("debt", "refinance"),
-      capability: "debt",
-      topic: "refinance",
+    return suggestion("debt", "refinance", {
       title: "See what a cheaper mortgage would save",
       headline: headlineOf(
         "Check for a cheaper mortgage",
@@ -68,7 +62,7 @@ const refinance: Detector = {
       urgency: "soon",
       why: `Your rate is ${(rate.value / 100).toFixed(2)}% on ${formatCents(balance)}; rates today are about ${(R.marketMortgageBps / 100).toFixed(2)}%, before closing costs.`,
       action: { label: "Check refinance offers", href: "/loans/refinance" },
-    };
+    });
   },
 };
 
@@ -83,10 +77,7 @@ const lifeInsurance: Detector = {
     const income = profile.facts.monthly_income;
     if (kids.value !== true || life.value !== false || typeof income.value !== "number")
       return null;
-    return {
-      id: suggestionId("insurance", "life_insurance"),
-      capability: "insurance",
-      topic: "life_insurance",
+    return suggestion("insurance", "life_insurance", {
       title: "Look at life insurance for the people who depend on you",
       headline: headlineOf(
         "Get life cover for your family",
@@ -104,7 +95,7 @@ const lifeInsurance: Detector = {
       urgency: "soon",
       why: `You have children and I see no life-cover charge in ${profile.months} months. A common rule is ${R.lifeCoverYears} years of income, about ${formatCents(income.value * 12 * R.lifeCoverYears)} for you. The chance of needing it in a given year is small (about ${(CHANCE.life_insurance * 100).toFixed(1)}%), but the loss would be total.`,
       action: { label: "Check your cover", href: "/insurance/checkup" },
-    };
+    });
   },
 };
 

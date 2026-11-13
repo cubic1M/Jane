@@ -11,7 +11,7 @@ import { duplicatePairs } from "@/detection/rules/duplicate-charge";
 import type { DetectionInput } from "@/detection/types";
 import { formatCents } from "@/lib/money";
 import type { ProfileInput, ProfileTx } from "@/profile/build";
-import { type Confidence, type Detector, suggestionId } from "./contract";
+import { type Confidence, type Detector, suggestion } from "./contract";
 import {
   evidence,
   cashKnown,
@@ -72,10 +72,7 @@ const duplicateSubscription: Detector = {
     const worth = cheapest.reduce((s, c) => s + last(c) * 12, 0);
     const names = groups.flat().map((s) => s.description);
     const charges = groups.flat().reduce((n, s) => n + s.txs.length, 0);
-    return {
-      id: suggestionId("subscriptions", "duplicate_subscription"),
-      capability: "subscriptions",
-      topic: "duplicate_subscription",
+    return suggestion("subscriptions", "duplicate_subscription", {
       title: "You pay for more than one of the same kind of service: keep the one you use",
       headline: headlineOf("Drop an overlapping subscription", worth, "saves"),
       short: clip(
@@ -101,7 +98,7 @@ const duplicateSubscription: Detector = {
           perYear: 12,
         })),
       },
-    };
+    });
   },
 };
 
@@ -132,10 +129,7 @@ const priceIncrease: Detector = {
     if (rises.length === 0) return null;
     const worth = rises.reduce((n, r) => n + (r.now - r.before) * 12, 0);
     const top = rises.sort((a, b) => b.now - b.before - (a.now - a.before))[0];
-    return {
-      id: suggestionId("subscriptions", "price_increase"),
-      capability: "subscriptions",
-      topic: "price_increase",
+    return suggestion("subscriptions", "price_increase", {
       title: "A charge went up: check it, and ask for the old price or switch",
       headline: headlineOf("Push back on a price rise", worth, "saves"),
       short: clip(
@@ -161,7 +155,7 @@ const priceIncrease: Detector = {
           perYear: 12,
         })),
       },
-    };
+    });
   },
 };
 
@@ -183,10 +177,7 @@ const billNegotiation: Detector = {
       .map((s) => ({ s, yearly: last(s) * 12 }));
     if (bills.length === 0) return null;
     const yearly = bills.reduce((n, b) => n + b.yearly, 0);
-    return {
-      id: suggestionId("cost", "bill_negotiation"),
-      capability: "cost",
-      topic: "bill_negotiation",
+    return suggestion("cost", "bill_negotiation", {
       // Worth asking, never "too high": the checkup may call the same bill a typical price
       // (manager decision 10-30).
       title: "Worth asking for a lower rate on your internet or phone bill",
@@ -217,7 +208,7 @@ const billNegotiation: Detector = {
           perYear: 12,
         })),
       },
-    };
+    });
   },
 };
 
@@ -269,10 +260,7 @@ const duplicateCharge: Detector = {
       .map(({ second }) => data.transactions[Number(second.id)]);
     if (doubles.length === 0) return null;
     const total = outCents(doubles);
-    return {
-      id: suggestionId("cost", "duplicate_charge"),
-      capability: "cost",
-      topic: "duplicate_charge",
+    return suggestion("cost", "duplicate_charge", {
       title: "You may have been charged twice: ask for one back",
       headline: headlineOf("Claim back a double charge", total, "earns", true),
       short: clip(
@@ -291,7 +279,7 @@ const duplicateCharge: Detector = {
         kind: "refund",
         payees: doubles.map((d) => ({ description: d.description, amountCents: d.amountCents })),
       },
-    };
+    });
   },
 };
 
@@ -341,10 +329,7 @@ const trialConversion: Detector = {
     const worth = converted.reduce((s, c) => s + c.price * c.perYear, 0);
     const yearly = converted.every((c) => c.paced);
     const total = `${formatCents(worth)}${yearly ? " a year" : ""}`;
-    return {
-      id: suggestionId("subscriptions", "trial_conversion"),
-      capability: "subscriptions",
-      topic: "trial_conversion",
+    return suggestion("subscriptions", "trial_conversion", {
       title: "A free trial turned into a paid subscription: keep it or cancel it",
       headline: headlineOf("Cancel a trial now billing you", worth, "saves", !yearly),
       short: clip(
@@ -369,7 +354,7 @@ const trialConversion: Detector = {
           perYear: c.perYear,
         })),
       },
-    };
+    });
   },
 };
 
@@ -395,10 +380,7 @@ const lowBalance: Detector = {
         (t) => t.pfc === "BANK_FEES_OVERDRAFT_FEES" || t.pfc === "BANK_FEES_INSUFFICIENT_FUNDS",
       ),
     );
-    return {
-      id: suggestionId("safe_to_spend", "low_balance"),
-      capability: "safe_to_spend",
-      topic: "low_balance",
+    return suggestion("safe_to_spend", "low_balance", {
       title: "Your cash is below a month of bills: keep more in checking until payday",
       headline: headlineOf(
         "Keep more cash in checking",
@@ -417,7 +399,7 @@ const lowBalance: Detector = {
         : {}),
       why: `Your checking and savings ${checking < 0 ? `are ${formatCents(-checking)} overdrawn` : `hold ${formatCents(checking)}`} and your regular bills come to about ${formatCents(monthly)} a month${fees ? `; overdraft fees have cost you ${formatCents(fees)}` : ""}.`,
       action: { label: "Plan a tight month", href: "/loans/tight" },
-    };
+    });
   },
 };
 
@@ -486,10 +468,7 @@ const budgetOverrun: Detector = {
     if (over.length === 0) return null;
     const top = over[0];
     const label = top.group.replace(/_/g, " ").toLowerCase();
-    return {
-      id: suggestionId("spending", "budget_overrun"),
-      capability: "spending",
-      topic: "budget_overrun",
+    return suggestion("spending", "budget_overrun", {
       title: `Set a budget for ${label}: last month ran well over your usual`,
       headline: headlineOf(`Set a ${label} budget`, Math.round(top.extra), "saves"),
       short: `You spent ${formatCents(top.now)} on ${label} last month, usually about ${formatCents(Math.round(top.avg))}.`,
@@ -503,7 +482,7 @@ const budgetOverrun: Detector = {
       urgency: "later",
       why: `You spent ${formatCents(top.now)} on ${label} last month against about ${formatCents(Math.round(top.avg))} in the ${full.length === 1 ? "month" : `${full.length} months`} before.`,
       action: { label: "Set a budget", href: "/budgets" },
-    };
+    });
   },
 };
 

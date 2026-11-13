@@ -1,6 +1,6 @@
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { formatCents, formatWholeDollars } from "@/lib/money";
-import { type Detector, suggestionId } from "./contract";
+import { type Detector, suggestion } from "./contract";
 import { factEvidence } from "./helpers";
 
 // Every figure explained, and correctable (spec step 239), brought to the person unasked: a
@@ -21,10 +21,7 @@ const businessIncome: Detector = {
     if (typeof income.value !== "number" || income.value <= 0) return null;
     const deposits = income.value;
     const overstated = Math.round(deposits * (1 - R.tax.businessProfitShare));
-    return {
-      id: suggestionId("figures", "figure_check"),
-      capability: "figures",
-      topic: "figure_check",
+    return suggestion("figures", "figure_check", {
       title: "Tell me what you pay yourself, so your income figure is right",
       headline: `Check your pay: ${formatWholeDollars(overstated)}/mo may not be pay`,
       short: `I count ${formatCents(deposits)} a month of business deposits as your income.`,
@@ -34,7 +31,7 @@ const businessIncome: Detector = {
       urgency: "soon",
       why: `Your ${formatCents(deposits)} a month of deposits are the shop's sales, so your income, budget, safe to spend and health score all count them as pay. If about ${Math.round(R.tax.businessProfitShare * 100)}% is profit, about ${formatCents(overstated)} a month of it isn't yours to spend. Tell me what you take home and every figure will use it.`,
       action: { label: "Correct my income", href: "/figures/monthly_income" },
-    };
+    });
   },
 };
 

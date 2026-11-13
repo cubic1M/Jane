@@ -1,6 +1,6 @@
 import { ROLLOVER_CLOCK } from "@/config/retirement";
 import { formatCents } from "@/lib/money";
-import { type Detector, suggestionId } from "./contract";
+import { type Detector, suggestion } from "./contract";
 import { evidence, headlineOf, tx } from "./helpers";
 
 // A payout from a retirement plan or IRA landed in the bank (connectors roadmap round 17,
@@ -60,10 +60,7 @@ const rolloverClock: Detector = {
     const withheld = Math.round(
       (amount / (1 - ROLLOVER_CLOCK.planWithholdingShare)) * ROLLOVER_CLOCK.planWithholdingShare,
     );
-    return {
-      id: suggestionId("investing", "rollover_clock"),
-      capability: "investing",
-      topic: "rollover_clock",
+    return suggestion("investing", "rollover_clock", {
       title: `A ${formatCents(amount)} retirement payout can still be rolled over until ${longDate(by)}`,
       headline: headlineOf("Note the 60-day rollover date", amount, "risk"),
       short: `${formatCents(amount)} from a retirement plan or IRA arrived on ${longDate(payout.date)}; ${left} days left to roll it over.`,
@@ -74,7 +71,7 @@ const rolloverClock: Detector = {
       why: `${formatCents(amount)} arrived on ${longDate(payout.date)} from what looks like a retirement plan or IRA payout. A payout can still be rolled over if it goes into an IRA or plan within ${ROLLOVER_CLOCK.days} days of getting it, here by ${longDate(by)}; after that it counts as income for the year, and before 59½ it can cost 10% more. A plan usually withholds 20% from a payout like this (about ${formatCents(withheld)} if it did); rolling over the whole payout means adding that much from other money. If this was already a rollover, or isn't a payout, nothing to do.`,
       action: { label: "See your retirement accounts", href: "/investments" },
       more: [{ label: "The IRS's rollover rules", href: ROLLOVER_CLOCK.source }],
-    };
+    });
   },
 };
 

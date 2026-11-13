@@ -1,6 +1,6 @@
 import { formatCents, formatWholeDollars } from "@/lib/money";
 import { tradeoffs } from "@/planning/goal-tradeoffs";
-import { type Detector, suggestionId } from "./contract";
+import { type Detector, suggestion } from "./contract";
 import { evidence, factEvidence, monthlySpendCents, weakest } from "./helpers";
 
 // Goals that trade off openly (spec step 241), brought to the person unasked: savings goals
@@ -31,10 +31,7 @@ const goalTradeoffs: Detector = {
     const needed = goals.reduce((s, g) => s + g.monthlyCents, 0);
     const short = Math.max(0, needed - room);
     const late = view.suggested.dates.find((d) => (d.lateMonths ?? 0) > 0);
-    return {
-      id: suggestionId("tradeoffs", "goal_tradeoffs"),
-      capability: "tradeoffs",
-      topic: "goal_tradeoffs",
+    return suggestion("tradeoffs", "goal_tradeoffs", {
       title: "Choose which goal comes first, with each one's date in front of you",
       headline: `Plan your goals' order: ${formatWholeDollars(short * 12)} a year short`,
       short: `Your goals need ${formatCents(needed)} a month; there's room for ${formatCents(room)}.`,
@@ -49,7 +46,7 @@ const goalTradeoffs: Detector = {
       urgency: "soon",
       why: `${goals.map((g) => g.name).join(" and ")} need ${formatCents(needed)} a month together to be on time, and there's room for about ${formatCents(room)}. ${view.reason}${late ? ` Pick the order and I'll fund them that way.` : ""}`,
       action: { label: "Compare the orders", href: "/goals#tradeoffs" },
-    };
+    });
   },
 };
 
