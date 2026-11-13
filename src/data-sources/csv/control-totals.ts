@@ -69,7 +69,12 @@ export function closingBalances(rows: readonly Row[], way: BalanceWay = "down"):
   const withBalance = rows.filter((r) => r.balanceCents !== undefined);
   const [first, last] = [withBalance[0], withBalance[withBalance.length - 1]];
   if (!first || !last) return [];
-  const newestFirst = first.date > last.date;
+  // By the dates; a file all of one day says nothing that way, so its balances say it: each row
+  // leads to the next one listed when it's oldest first, the next one leads to it when it's newest
+  // first (main's property test, 11-13: a newest-first day of +$0.02, -$0.02, -$1,999.97,
+  // +$1,999.97 closed at $0.02, its first row, instead of $0.00).
+  const newestFirst =
+    first.date !== last.date ? first.date > last.date : listedNewestFirst(withBalance, way);
   const byDay = new Map<string, Row[]>();
   // Pushed, not copied: a file with every row on one day took half a minute.
   for (const row of withBalance) {
@@ -84,6 +89,14 @@ export function closingBalances(rows: readonly Row[], way: BalanceWay = "down"):
       return { date, balanceCents: row.balanceCents! };
     })
     .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// Whether each row listed leads from the one listed after it (newest first) and not to it.
+function listedNewestFirst(rows: readonly Row[], way: BalanceWay): boolean {
+  const leads = (from: Row, to: Row) =>
+    to.balanceCents! - moved(to.amountCents, way) === from.balanceCents!;
+  const pairs = rows.slice(1).map((row, i) => [rows[i]!, row] as const);
+  return pairs.every(([a, b]) => leads(b, a)) && !pairs.every(([a, b]) => leads(a, b));
 }
 
 function closingRows(day: readonly Row[], way: BalanceWay): readonly Row[] {
