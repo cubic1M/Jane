@@ -2,7 +2,7 @@ import type { Route } from "next";
 import { isHiddenPage } from "@/config/hidden-pages";
 import type { TreeStatus } from "@/components/tree/interactive-tree";
 import { shortMoney } from "@/lib/hub/view";
-import { buildAreaTree, worthFigure, type AreaItem, type AreaTree } from "./tree";
+import { answeredYes, type AreaItem, type AreaTree, buildAreaTree, worthFigure } from "./tree";
 
 // The Investing page as a tree (docs/design/area-pages.md): Investing → its branches (Jane's
 // ideas on real money, what's owned, how it's done, the practice portfolio, its strategies and
@@ -231,6 +231,8 @@ export type InvestingTreeInput = {
     // Says whether the worth is yearly (worthFigure in ./tree).
     headline?: string;
     urgency: string;
+    // "yes": the person said yes to it (answeredYes in ./tree).
+    status?: string;
   }[];
   accounts: { id: string; name: string; balanceCents: number | null; holdings: number }[];
   totalCents: number;
@@ -259,6 +261,7 @@ export function investingTree(input: InvestingTreeInput): AreaTree {
     item("ideas", s.key, {
       label: TOPIC_LABELS[s.topic] ?? shortLabel(s.short),
       status: s.urgency === "now" ? "act" : "look",
+      ...answeredYes(s),
       figure: worthFigure(s),
       cents: s.worthCents ?? 0,
       summary: s.short,

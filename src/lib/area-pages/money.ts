@@ -5,6 +5,7 @@ import { formatCents } from "@/lib/money";
 import { monthLabel } from "@/lib/day-label";
 import { CATEGORY_UP_MIN_CENTS, CATEGORY_UP_MIN_SHARE } from "@/config/insights";
 import {
+  answeredYes,
   type AreaItem,
   type AreaTree,
   buildAreaTree,
@@ -93,6 +94,8 @@ export type MoneyTreeInput = {
     worthKind?: string;
     // Says whether the worth is yearly (worthFigure in ./tree).
     headline?: string;
+    // "yes": the person said yes to it (answeredYes in ./tree).
+    status?: string;
   }[];
   // Each checking or savings account's lowest point over the forecast.
   // startCents: today's balance; estimated when walked forward from a statement's.
@@ -212,6 +215,7 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
       item(node.branch, s.topic, {
         label: node.label,
         status,
+        ...answeredYes(s),
         // A low balance's worth is how far cash falls short of a month's bills: "$941 short",
         // never a bare "$941" beside "Balance running low", which reads as the balance (night
         // QA 10-30: the balance was $798).

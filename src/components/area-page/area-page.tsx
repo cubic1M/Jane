@@ -39,10 +39,32 @@ export function AreaPage({
 }) {
   const known = (id: string | undefined) =>
     !!id && tree.branches.some((b) => b.id === id || b.items.some((i) => i.id === id));
-  const start = known(focus) ? focus! : null;
+  // The node a ?focus= opens: itself, or its branch when the item isn't drawn now (one dealt
+  // with since the link was made), never nothing.
+  const landOn = (id: string | undefined) =>
+    known(id) ? id! : id && known(branchOf(id)) ? branchOf(id) : null;
+  const start = landOn(focus);
   const [open, setOpen] = useState<string | null>(start ? branchOf(start) : null);
   const [picked, setPicked] = useState<string | null>(start?.includes(":") ? start : null);
   const panel = useRef<HTMLDivElement>(null);
+
+  // A page opened in the browser can come from its memory (src/lib/page-cache.ts), rendered
+  // without this address's ?focus=: the address says where to land, before the effect below
+  // writes the address from what's open (debugger 11-12: Yes on "Get your employer's full
+  // 401(k) match" opened /investments?focus=ideas:…, which the page then wiped to the top).
+  useEffect(() => {
+    if (start) return;
+    const id = landOn(new URL(window.location.href).searchParams.get("focus") ?? undefined);
+    if (!id) return;
+    // After the first paint, like a tap would; the effect below then writes it back.
+    requestAnimationFrame(() => {
+      setOpen(branchOf(id!));
+      setPicked(id!.includes(":") ? id! : null);
+      requestAnimationFrame(() => panel.current?.scrollIntoView({ block: "nearest" }));
+    });
+    // Only on arrival.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // An old #anchor link opens its node once the page is in the browser.
   useEffect(() => {
