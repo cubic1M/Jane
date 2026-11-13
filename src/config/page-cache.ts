@@ -6,6 +6,10 @@ export const PAGE_KEEP_SECONDS = 30 * 60;
 
 // A page older than this shows at once, then refreshes quietly.
 export const PAGE_OLD_MS = 5 * 60_000;
+// ...once it has stayed on screen this long. Left sooner, the refresh would still be running, and
+// the router turns an action cut short by a navigation into a full refresh, which empties every
+// page in memory (CI, 11-12). A page passed by on the way to another refreshes when it's looked at.
+export const REFRESH_IN_PLACE_AFTER_MS = 1_000;
 
 // Loaded quietly once the first signed-in page has finished: the tabs, then /plan and /report. When
 // a change of data has emptied the memory, only the tabs in the top bar come back (REFILL_PAGES).

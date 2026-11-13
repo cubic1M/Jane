@@ -5,6 +5,7 @@ import { isHiddenPage } from "@/config/hidden-pages";
 import { refreshInPlace } from "@/lib/refresh-in-place";
 import {
   PAGE_OLD_MS,
+  REFRESH_IN_PLACE_AFTER_MS,
   PRELOAD_MAX_PER_HOUR,
   PRELOAD_MIN_GAP_MS,
   REFILL_AFTER_MS,
@@ -337,11 +338,12 @@ describe("in the browser", () => {
 
       // Made after the message: shown as it is.
       pageShown("person_a", Date.now());
-      await flush();
+      await vi.advanceTimersByTimeAsync(REFRESH_IN_PLACE_AFTER_MS);
       expect(refreshInPlace).not.toHaveBeenCalled();
-      // Made before it: shown at once, then made again in place. The others stay in memory.
+      // Made before it: shown at once, then, once it has stayed a moment, made again in place.
+      // The others stay in memory.
       pageShown("person_a", madeBefore);
-      await flush();
+      await vi.advanceTimersByTimeAsync(REFRESH_IN_PLACE_AFTER_MS);
       expect(refreshInPlace).toHaveBeenCalledOnce();
       expect(b.router.refresh).not.toHaveBeenCalled();
       expect(isInMemory("/taxes")).toBe(true);
@@ -356,8 +358,7 @@ describe("in the browser", () => {
       b.receive({ type: "marked" });
       vi.advanceTimersByTime(1);
       pageShown("person_a", Date.now() - 10);
-      await flush();
-      await vi.advanceTimersByTimeAsync(300);
+      await vi.advanceTimersByTimeAsync(REFRESH_IN_PLACE_AFTER_MS + 300);
       expect(b.router.refresh).not.toHaveBeenCalled();
       expect(isInMemory("/taxes")).toBe(true);
       // Another action still is.
@@ -405,12 +406,26 @@ describe("in the browser", () => {
       pageShown("person_a", start);
       vi.setSystemTime(start + PAGE_OLD_MS);
       pageShown("person_a", start);
-      await flush();
+      await vi.advanceTimersByTimeAsync(REFRESH_IN_PLACE_AFTER_MS);
       expect(refreshInPlace).not.toHaveBeenCalled();
+      pageShown("person_a", start - 1);
+      await vi.advanceTimersByTimeAsync(REFRESH_IN_PLACE_AFTER_MS);
+      expect(refreshInPlace).toHaveBeenCalledOnce();
+      expect(b.router.refresh).not.toHaveBeenCalled();
+    });
+
+    it("isn't refreshed when it's left within a moment: the refresh, cut short, would empty every page", async () => {
+      const b = fakeBrowser();
+      startPageCache(b.router);
+      const start = Date.now();
+      pageShown("person_a", start);
       vi.setSystemTime(start + PAGE_OLD_MS + 1);
       pageShown("person_a", start);
-      await flush();
-      expect(refreshInPlace).toHaveBeenCalledOnce();
+      await vi.advanceTimersByTimeAsync(REFRESH_IN_PLACE_AFTER_MS / 2);
+      // On to the next tab, made just now.
+      pageShown("person_a", Date.now());
+      await vi.advanceTimersByTimeAsync(REFRESH_IN_PLACE_AFTER_MS * 2);
+      expect(refreshInPlace).not.toHaveBeenCalled();
       expect(b.router.refresh).not.toHaveBeenCalled();
     });
   });

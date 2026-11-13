@@ -13,6 +13,7 @@ import {
   PRELOAD_SLOW_CONNECTIONS,
   PRELOAD_START_MS,
   PRELOAD_STEP_MS,
+  REFRESH_IN_PLACE_AFTER_MS,
   REFILL_AFTER_MS,
   REFILL_PAGES,
   SIGNED_OUT_PAGES,
@@ -114,6 +115,7 @@ let steps: ReturnType<typeof setTimeout>[] = [];
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 // What came up while this tab was out of sight, for when it's back.
 let refreshOwed = false;
+let refreshOwedInPlace = false;
 let roundOwed = false;
 // The next round only brings the tabs back.
 let refilling = false;
@@ -171,6 +173,19 @@ function emptied() {
 // empty every page in memory. Its own post isn't a change of data; its id is learnt from the first.
 let ownAction: string | null = null;
 let learningOwnAction = false;
+let inPlaceTimer: ReturnType<typeof setTimeout> | null = null;
+function refreshInPlaceSoon() {
+  stopRefreshInPlace();
+  inPlaceTimer = setTimeout(() => {
+    inPlaceTimer = null;
+    if (document.hidden) refreshOwedInPlace = true;
+    else refreshInPlace();
+  }, REFRESH_IN_PLACE_AFTER_MS);
+}
+function stopRefreshInPlace() {
+  if (inPlaceTimer) clearTimeout(inPlaceTimer);
+  inPlaceTimer = null;
+}
 function refreshInPlace() {
   learningOwnAction = ownAction === null;
   void import("@/lib/refresh-in-place")
@@ -332,7 +347,9 @@ export function startPageCache(next: PageCacheRouter) {
     if (document.hidden) return;
     void askStillHere();
     if (refreshOwed) refreshNow();
+    else if (refreshOwedInPlace) refreshInPlaceSoon();
     else if (roundOwed || roundRunOut()) scheduleRound();
+    refreshOwedInPlace = false;
     roundOwed = false;
   });
   // A tab about to be opened that isn't in memory starts loading now, a beat before the click.
@@ -366,6 +383,8 @@ function preload(page: string) {
 
 // A signed-in page is on screen (src/components/page-cache.tsx).
 export function pageShown(userId: string, renderedAt: number, opened?: Opened) {
+  // The page before isn't on screen any more: its refresh waits for it to come up again.
+  stopRefreshInPlace();
   if (owner && owner !== userId) {
     reload();
     return;
@@ -398,7 +417,7 @@ export function pageShown(userId: string, renderedAt: number, opened?: Opened) {
   // A page from memory shows at once; one that's old, or made before the last chat message, then
   // refreshes in place, and a round brings the others back.
   const age = ageOf(renderedAt, Date.now());
-  if (age > PAGE_OLD_MS || Date.now() - age < markedAt) refreshInPlace();
+  if (age > PAGE_OLD_MS || Date.now() - age < markedAt) refreshInPlaceSoon();
   // The first time, and when what the last round loaded has run out.
   else if (roundRunOut()) scheduleRound();
 }
@@ -438,8 +457,10 @@ export function resetPageCacheForTests() {
   steps = [];
   refreshTimer = null;
   refreshOwed = false;
+  refreshOwedInPlace = false;
   roundOwed = false;
   markedAt = 0;
+  stopRefreshInPlace();
   refilling = false;
   ownAction = null;
   learningOwnAction = false;
