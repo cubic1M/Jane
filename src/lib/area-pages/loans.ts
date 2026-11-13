@@ -80,7 +80,9 @@ export const TOPIC_LABELS: Record<string, string> = {
   cash_advance: "Card cash advances",
   balance_transfer: "Move card debt to 0%",
   consolidation: "One cheaper loan for cards",
-  bnpl: "Buy now, pay later due",
+  // What's been paid on pay-later plans, not what's owed (debugger 11-13: "due $572" over "You've
+  // paid $572.00 in 7 pay-later installments").
+  bnpl: "Buy now, pay later used",
   medical_bills: "A medical bill to check",
   credit_report_errors: "Fix your credit report",
   refinance: "A cheaper loan",
@@ -116,6 +118,8 @@ export type LoansTreeInput = {
     balanceCents: number | null;
     aprBps: number | null;
     paymentCents: number | null;
+    // How often it's paid, where that isn't monthly (a pay-in-4 plan: every two weeks).
+    paymentEvery?: string | null;
     nextDue: string | null;
     overdue: boolean;
     pastDueCents: number | null;
@@ -178,7 +182,10 @@ export function loansTree(input: LoansTreeInput): AreaTree {
   for (const d of input.debts) {
     const status: TreeStatus = d.overdue ? "act" : "good";
     const parts = [
-      d.paymentCents !== null ? `${shortMoney(d.paymentCents)} a month` : null,
+      // Debugger 11-13: a pay-in-4 plan's $62.25 every two weeks read "$62 a month".
+      d.paymentCents !== null
+        ? `${shortMoney(d.paymentCents)} ${d.paymentEvery === "two_weeks" ? "every two weeks" : "a month"}`
+        : null,
       d.nextDue ? `next due ${dayLabel(d.nextDue)}` : null,
     ].filter(Boolean);
     by.debts.push(
@@ -205,7 +212,9 @@ export function loansTree(input: LoansTreeInput): AreaTree {
       item("debts", "installments", {
         label: "Installments coming",
         status: "good",
-        figure: `${input.installments} this month`,
+        // Due over the next month (loans-load), not the calendar month: "3 this month" listed Dec 8
+        // on Nov 13 (debugger 11-13).
+        figure: `${input.installments} in the next month`,
         summary: "From each buy now, pay later plan's own schedule.",
       }),
     );
