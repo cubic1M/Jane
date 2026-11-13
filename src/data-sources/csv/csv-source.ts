@@ -36,16 +36,16 @@ export type CsvFile = { name: string; text: string; mapping?: ColumnMapping };
 // readable as CSV, or not a statement at all (a web page, a PDF, a spreadsheet).
 export type CsvFailure = "unknown_format" | "unreadable" | "not_csv";
 
-const NO_TRANSACTIONS =
+export const NO_TRANSACTIONS =
   "There are no transactions in it. Check the dates you picked when you downloaded it.";
 
-const REVERSED_MAPPING =
+export const REVERSED_MAPPING =
   "These amounts run against the file's own balance: money going out raises it, so spending would read as money coming in. Change which sign is spending.";
 
 // The most rows a file is read for, and what to say past it. Everyone has this one: at the 4 MB an
 // upload may be, far past years of statements. Someone with no account has a smaller one.
 export type RowLimit = { rows: number; words: string };
-const NO_FILE_IS_THIS_LONG: RowLimit = {
+export const NO_FILE_IS_THIS_LONG: RowLimit = {
   rows: 50_000,
   words: "This file has too many rows to read. Download fewer months from your bank.",
 };
@@ -122,7 +122,7 @@ export function accountNameFromFile(fileName: string): string {
   return name || "Uploaded account";
 }
 
-const OFX_FORMAT = { id: "ofx", label: "OFX or QFX statement" } as const;
+export const OFX_FORMAT = { id: "ofx", label: "OFX or QFX statement" } as const;
 
 // An OFX file says what kind of account it's from: a card statement, or a bank account's type,
 // and its account number, whose last four tell two such accounts apart (round 3: a QFX file's
