@@ -5,9 +5,12 @@ const until = new Map<string, number>();
 
 // The tapped link's bar waits this long, so a page that is nearly here doesn't flash it. A page
 // that isn't in memory gets a short wait, to stay inside "every tap answers at once" (e2e/tap.spec.ts);
-// one that is gets a long one, in case something emptied the memory since.
+// one that is gets a little longer, still inside it. Not much longer: a preload counts as in memory
+// from when it starts, and a page a second away waited 600 ms with nothing on screen (main red 11-13,
+// e2e/tap-while-preloading.spec.ts). One really in memory is on screen in under 100 ms, even on a
+// CPU slowed 4 times.
 export const BAR_WAIT_MS = 80;
-export const BAR_WAIT_READY_MS = 600;
+export const BAR_WAIT_READY_MS = 110;
 
 export const isInMemory = (path: string) => (until.get(path) ?? 0) > Date.now();
 export const keepInMemory = (path: string, ms: number) => until.set(path, Date.now() + ms);
