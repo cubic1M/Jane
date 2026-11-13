@@ -5,6 +5,7 @@ import { dateAndDays, inDays, things, type MessageSource } from "./source";
 import { rankedFor } from "../priorities";
 import { lastWeekLine } from "./last-week";
 import type { Snapshot } from "../snapshot";
+import { openLink } from "../types";
 
 // The morning brief (spec step 82): once a day, from 7am in the person's timezone (or
 // whenever they first open the chat that day). Safe to spend until payday, bills due in
@@ -71,7 +72,7 @@ export const briefSource: MessageSource = {
         kind: "brief",
         body: lines.join("\n"),
         refs: {},
-        actions: [{ id: "open", label: "See today", kind: "link", href: "/home" }],
+        actions: [openLink("See today", "/home")],
         dedupeKey: local.date,
         priority: MESSAGE_PRIORITY.brief,
       },

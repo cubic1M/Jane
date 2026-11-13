@@ -1,17 +1,12 @@
 import { VALUES_EXCLUSIONS, VALUES_THEMES } from "@/config/values";
 import type { ValuesView } from "@/lib/investments/values";
 import { formatCents } from "@/lib/money";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 
 // Investing by your values in the chat (spec step 236): shared words and buttons. The cost
 // in dollars and what it does to diversification are always said.
 
-export const VALUES_LINK: MessageAction = {
-  id: "open",
-  label: "See my list",
-  kind: "link",
-  href: "/investments/values",
-};
+export const VALUES_LINK: MessageAction = openLink("See my list", "/investments/values");
 
 const signed = (cents: number) => `${cents >= 0 ? "+" : "-"}${formatCents(Math.abs(cents))}`;
 

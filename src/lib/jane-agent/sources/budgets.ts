@@ -1,6 +1,7 @@
 import { BUDGET_NEARLY_OVER_SHARE, MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { formatCents } from "@/lib/money";
 import { snoozeButton, type MessageSource } from "./source";
+import { openLink } from "../types";
 
 // Budgets nearly used up (spec step 83): once a budget's spending this month reaches
 // BUDGET_NEARLY_OVER_SHARE of it, with what's left, "Open" and "Snooze". One gone over is
@@ -19,10 +20,7 @@ export const budgetsSource: MessageSource = {
           kind: "heads_up" as const,
           body: `You've used ${percent}% of your ${b.category} budget this month: ${formatCents(b.spentCents)} of ${formatCents(b.budgetCents)}, with ${formatCents(b.budgetCents - b.spentCents)} left.`,
           refs: {},
-          actions: [
-            { id: "open", label: "Open", kind: "link", href: "/budgets" } as const,
-            snoozeButton("Snooze"),
-          ],
+          actions: [openLink("Open", "/budgets"), snoozeButton("Snooze")],
           dedupeKey: `near:${b.category}:${b.month}`,
           priority: MESSAGE_PRIORITY.budget_nearly_over,
         },

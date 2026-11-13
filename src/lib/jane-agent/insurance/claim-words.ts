@@ -2,7 +2,7 @@ import { CLAIM_CONTACT_FALLBACK } from "@/config/claims";
 import type { PolicyKind } from "@/config/insurance";
 import { eventLabel, guideFor, nextStep, type Claim } from "@/lib/insurance/claim-rules";
 import { kindWords } from "@/lib/insurance/gaps";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 import { dayLabel } from "@/lib/day-label";
 
 // The claims helper's words in Jane's chat (spec step 107). Pure. The guide comes first
@@ -49,12 +49,7 @@ export function trackerBody(claim: Claim): string {
 }
 
 export function trackerActions(claim: Claim): MessageAction[] {
-  const open: MessageAction = {
-    id: "open",
-    label: "See the claim",
-    kind: "link",
-    href: `/insurance/claims#claim-${claim.id}`,
-  };
+  const open: MessageAction = openLink("See the claim", `/insurance/claims#claim-${claim.id}`);
   if (claim.status === "closed") return [open];
   const next = nextStep(claim);
   return next

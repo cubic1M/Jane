@@ -2,17 +2,13 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { POLICY_KINDS } from "@/config/insurance";
 import { loadFamily } from "@/lib/insurance/family";
 import type { Reply } from "../replies";
+import { openLink } from "../types";
 
 // "Who's covered on my car insurance?" (spec step 198): everyone in the household and the
 // policies that cover them, the gaps for each person, and the health plans compared for the
 // whole household when there are two. A partner's policy shows only if they shared it.
 
-const INSURANCE = {
-  id: "open",
-  label: "Your household",
-  kind: "link",
-  href: "/insurance?focus=household",
-} as const;
+const INSURANCE = openLink("Your household", "/insurance?focus=household");
 
 export async function familyAnswer(
   userId: string,

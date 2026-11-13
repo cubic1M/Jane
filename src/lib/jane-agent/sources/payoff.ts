@@ -4,6 +4,7 @@ import { formatCents } from "@/lib/money";
 import { payoffReply } from "../debt-replies";
 import { type MessageSource } from "./source";
 import { monthLabel } from "@/lib/day-label";
+import { openLink } from "../types";
 
 // Payoff plans (spec step 110). Jane builds the plan on its own: once there are debts to
 // pay off and no plan yet, it brings it up with the buttons that start it (demo advice
@@ -11,12 +12,7 @@ import { monthLabel } from "@/lib/day-label";
 // (src/lib/debt-plan.ts refreshDebtPlan) and says how it went: behind, with what's owed
 // against what the plan expected and the new debt-free month, or on track.
 
-const planner = {
-  id: "open" as const,
-  label: "Open the payoff planner",
-  kind: "link" as const,
-  href: "/debt",
-};
+const planner = openLink("Open the payoff planner", "/debt");
 
 export const payoffSource: MessageSource = {
   key: "payoff",

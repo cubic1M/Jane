@@ -3,6 +3,7 @@ import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { STRATEGIST_CAPABILITY } from "@/config/strategist";
 import type { OfferedSuggestion } from "@/lib/suggestions";
 import { sentence, type MessageSource } from "./source";
+import { openLink } from "../types";
 
 // What Jane worked out for this person (spec step 255): the nightly scan's top suggestions, a
 // few a day. Each says what it is worth, why this person, and how sure Jane is with the
@@ -43,13 +44,8 @@ export const suggestionsSource: MessageSource = {
         { id: "snooze" as const, label: "Not now", kind: "secondary" as const },
         { id: "suggestion.no" as const, label: "Not for me", kind: "secondary" as const },
         { id: "suggestion.why" as const, label: "Why?", kind: "quick" as const },
-        { id: "open" as const, label: "Open", kind: "link" as const, href: s.actionHref },
-        ...s.more.map((m) => ({
-          id: "open" as const,
-          label: m.label,
-          kind: "link" as const,
-          href: m.href,
-        })),
+        openLink("Open", s.actionHref),
+        ...s.more.map((m) => openLink(m.label, m.href)),
       ],
       // The day it was chosen, not today: an unanswered pick stays offered, and isn't posted twice.
       dedupeKey: `${s.key}:${s.chosenOn}`,

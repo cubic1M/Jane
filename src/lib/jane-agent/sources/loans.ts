@@ -1,7 +1,7 @@
 import { LOAN_APPROVED_REMIND_DAYS, LOAN_PAYOFF_WAIT_DAYS } from "@/config/debt";
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { formatCents } from "@/lib/money";
-import type { Candidate, MessageAction } from "../types";
+import { type Candidate, type MessageAction, openLink } from "../types";
 import type { MessageSource } from "./source";
 import { DAY_MS } from "@/lib/dates";
 import { formatRate } from "@/lib/percent";
@@ -12,12 +12,7 @@ import { formatRate } from "@/lib/percent";
 // funding it, the old loan reaching zero, and an old loan that still shows a balance well
 // after funding. Each once.
 
-const open = (id: string): MessageAction => ({
-  id: "open",
-  label: "See the application",
-  kind: "link",
-  href: `/loans/apply/${id}`,
-});
+const open = (id: string): MessageAction => openLink("See the application", `/loans/apply/${id}`);
 
 export const loansSource: MessageSource = {
   key: "loans",
@@ -68,14 +63,7 @@ export const loansSource: MessageSource = {
             kind: "done" as const,
             body: `Your ${app.oldName} is paid off: your bank shows it at zero. Your new ${app.lender} loan is ${formatCents(app.monthlyCents)} a month at ${formatRate(app.aprBps)}, about ${formatCents(app.savingCents)} less than keeping the old one. I've added it to your debts.`,
             refs: { applicationId: app.id },
-            actions: [
-              {
-                id: "open" as const,
-                label: "See every debt",
-                kind: "link" as const,
-                href: "/loans",
-              },
-            ],
+            actions: [openLink("See every debt", "/loans")],
             dedupeKey: `paidoff:${app.id}`,
             priority: MESSAGE_PRIORITY.loan_paid_off,
           },

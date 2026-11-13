@@ -3,11 +3,12 @@ import { loadInsurance } from "@/lib/insurance/profile";
 import { listReadings } from "@/lib/insurance/readings";
 import type { Reply } from "../replies";
 import { readingBody, readingLink, readingTitle } from "./reading-words";
+import { openLink } from "../types";
 
 // "Did you read my policy?" (spec step 151): the policies Jane read from documents and
 // that wait for the person's confirm tap. One waiting is asked right here.
 
-const DOCUMENTS = { id: "open", label: "Documents", kind: "link", href: "/documents" } as const;
+const DOCUMENTS = openLink("Documents", "/documents");
 
 export async function readingsAnswer(
   userId: string,

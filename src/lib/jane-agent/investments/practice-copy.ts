@@ -13,7 +13,7 @@ import {
 import type { LoadedRuleReplays, RuleVerdict } from "@/lib/investments/rule-replay";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "../replies";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 import { dayLabel } from "@/lib/day-label";
 
 // Jane's rule answers about the practice portfolio (spec step 297, Phase AW, Stage A): what it
@@ -21,24 +21,12 @@ import { dayLabel } from "@/lib/day-label";
 // past year. Pure: the numbers in, the words out. Practice money and sample data only; every
 // answer is demo advice, and none of it is a forecast.
 
-const PRACTICE: MessageAction = {
-  id: "open",
-  label: "See the trade log",
-  kind: "link",
-  href: "/investments/practice",
-};
-export const PAUSE: MessageAction = {
-  id: "open",
-  label: "Pause switch",
-  kind: "link",
-  href: "/investments/practice#pause",
-};
-const BACKTESTS: MessageAction = {
-  id: "open",
-  label: "See every level",
-  kind: "link",
-  href: "/investments?focus=strategies:backtests",
-};
+const PRACTICE: MessageAction = openLink("See the trade log", "/investments/practice");
+export const PAUSE: MessageAction = openLink("Pause switch", "/investments/practice#pause");
+const BACKTESTS: MessageAction = openLink(
+  "See every level",
+  "/investments?focus=strategies:backtests",
+);
 
 export const PRACTICE_ONLY_NOTE =
   "The practice portfolio is demo advice, for the demo bank's sample people only, so I can't run one on your real accounts.";
@@ -180,12 +168,10 @@ export function backtestReply(
   };
 }
 
-const STRATEGIES: MessageAction = {
-  id: "open",
-  label: "See every level",
-  kind: "link",
-  href: "/investments?focus=strategies:levels",
-};
+const STRATEGIES: MessageAction = openLink(
+  "See every level",
+  "/investments?focus=strategies:levels",
+);
 
 // "Which strategy does my level use": the daily replay's choice for the level, and why.
 export function levelStrategyReply(
@@ -214,12 +200,10 @@ export function levelStrategyReply(
     refs: { advice: true },
   };
 }
-const RULE_REPLAY: MessageAction = {
-  id: "open",
-  label: "See every level",
-  kind: "link",
-  href: "/investments?focus=strategies:rules",
-};
+const RULE_REPLAY: MessageAction = openLink(
+  "See every level",
+  "/investments?focus=strategies:rules",
+);
 
 // "Did the extra rules help?": for one level (the person's own unless they named one), the
 // autopilot with its rules against plain rebalancing and buy and hold, then each rule's verdict.

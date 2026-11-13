@@ -2,7 +2,7 @@ import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { formatCents } from "@/lib/money";
 import { goalBasis, type BudgetProposal, type GoalProposal } from "@/planning/proposals";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 import type { MessageSource } from "./source";
 
 // Set-up suggestions (spec step 83): each budget and goal Jane proposes on the plan
@@ -50,7 +50,7 @@ export const setupSource: MessageSource = {
       }
       actions.push(
         { id: "setup.no", label: "No", kind: "secondary" },
-        { id: "open", label: "See the plan", kind: "link", href: "/plan" },
+        openLink("See the plan", "/plan"),
       );
       return {
         kind: "decision",

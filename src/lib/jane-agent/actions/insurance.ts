@@ -53,7 +53,7 @@ import { RiskError, answerRisk, gapQuotes } from "@/lib/insurance/risks";
 import { gapQuotesLines, riskAnswerNote } from "../insurance/risk-words";
 import { RISK_GAP_KINDS } from "@/lib/insurance/risks";
 import { chatToday } from "@/lib/today";
-import { parseActions } from "../types";
+import { parseActions, openLink } from "../types";
 import {
   askingStep,
   boughtNote,
@@ -294,10 +294,7 @@ const answer = (
           answeredWith: null,
           body: QUESTIONS[next].body,
           refs: { ...message.refs, benefitQuestion: next },
-          actions: [
-            ...QUESTIONS[next].actions,
-            { id: "open", label: "Your benefits", kind: "link", href: "/insurance/benefits" },
-          ],
+          actions: [...QUESTIONS[next].actions, openLink("Your benefits", "/insurance/benefits")],
         };
       }
       return {

@@ -1,7 +1,7 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { SAVED_MILESTONES_CENTS } from "@/config/saved";
 import { formatCents } from "@/lib/money";
-import type { Candidate } from "../types";
+import { type Candidate, openLink } from "../types";
 import type { MessageSource } from "./source";
 
 // What Jane saved you (spec step 139): when the confirmed total passes a milestone, Jane
@@ -19,7 +19,7 @@ export const savedSource: MessageSource = {
         refs: {},
         actions: [
           { id: "saved.share", label: "Share it", kind: "primary" },
-          { id: "open", label: "See the receipts", kind: "link", href: "/saved" },
+          openLink("See the receipts", "/saved"),
         ],
         dedupeKey: `milestone:${milestone}`,
         priority: MESSAGE_PRIORITY.saved_milestone,

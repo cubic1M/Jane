@@ -1,15 +1,10 @@
 import { formatCents } from "@/lib/money";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 
 // Fully automatic investing in the chat (spec step 164): one summary a month of what Jane
 // did within the person's caps and what it asked about instead. Every line is from the log.
 
-export const AUTO_LOG_LINK: MessageAction = {
-  id: "open",
-  label: "See the log",
-  kind: "link",
-  href: "/settings#autopilot",
-};
+export const AUTO_LOG_LINK: MessageAction = openLink("See the log", "/settings#autopilot");
 
 type Entry = { what: string; cents: number };
 

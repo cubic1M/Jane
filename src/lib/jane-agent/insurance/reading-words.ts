@@ -4,7 +4,7 @@ import { CoverageError, parseCoverage, valueWords } from "@/lib/insurance/covera
 import { SOURCE_WORDS, flatten, type Fields } from "@/lib/insurance/reading-rules";
 import type { Reading } from "@/lib/insurance/readings";
 import { formatCents, parseMoneyToCents } from "@/lib/money";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 import { dayLabel } from "@/lib/day-label";
 
 // A policy read from a document in Jane's chat (spec step 151): what it read, each field
@@ -111,9 +111,5 @@ export function readingHints(reading: Pick<Reading, "sources" | "notes">): Recor
   return hints;
 }
 
-export const readingLink = (id: string): MessageAction => ({
-  id: "open",
-  label: "Fix something",
-  kind: "link",
-  href: `/insurance/read/${id}`,
-});
+export const readingLink = (id: string): MessageAction =>
+  openLink("Fix something", `/insurance/read/${id}`);

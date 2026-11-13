@@ -6,17 +6,12 @@ import {
 } from "@/planning/yearly-review";
 import type { InvestmentSnapshot } from "./snapshot";
 import { planSummary } from "./rebalance-copy";
-import type { ActionId, MessageAction } from "../types";
+import { type ActionId, type MessageAction, openLink } from "../types";
 
 // The yearly investing review in the chat (spec step 216): one message, every item with its
 // own button. The words are from src/planning/yearly-review.ts.
 
-export const REVIEW_LINK: MessageAction = {
-  id: "open",
-  label: "See your investing",
-  kind: "link",
-  href: "/investments",
-};
+export const REVIEW_LINK: MessageAction = openLink("See your investing", "/investments");
 
 const reviewBody = (input: Pick<ReviewInput, "year" | "reason">, items: ReviewItem[]) =>
   [

@@ -1,17 +1,12 @@
 import { EMERGENCY_MAX_REACH_DAYS } from "@/config/cash";
 import type { CashView } from "@/lib/investments/cash";
 import { formatCents } from "@/lib/money";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 
 // Cash in the chat (spec step 162): the words and buttons Jane's message, reply and tool
 // share. Each move is the person's tap.
 
-export const CASH_LINK: MessageAction = {
-  id: "open",
-  label: "See your cash",
-  kind: "link",
-  href: "/investments/cash",
-};
+export const CASH_LINK: MessageAction = openLink("See your cash", "/investments/cash");
 
 type Plan = NonNullable<CashView["plan"]>;
 

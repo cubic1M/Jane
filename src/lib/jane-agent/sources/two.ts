@@ -3,6 +3,7 @@ import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { formatCents } from "@/lib/money";
 import { moneyDateBody } from "../replies-two";
 import type { MessageSource } from "./source";
+import { openLink } from "../types";
 
 // Money for two (spec step 242): each big move from the partner that waits for this person's
 // tap (Approve or Decline), and once a month the money date, for both partners.
@@ -32,14 +33,7 @@ export const twoSource: MessageSource = {
               kind: "heads_up" as const,
               body: moneyDateBody(view),
               refs: {},
-              actions: [
-                {
-                  id: "open" as const,
-                  label: "See household",
-                  kind: "link" as const,
-                  href: "/household",
-                },
-              ],
+              actions: [openLink("See household", "/household")],
               dedupeKey: `date:${view.month}`,
               priority: MESSAGE_PRIORITY.two_date,
             },

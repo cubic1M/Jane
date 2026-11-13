@@ -16,7 +16,7 @@ import {
   PROFILE_HREF,
   nextQuestion,
 } from "../tax-flow";
-import type { ActionId } from "../types";
+import { type ActionId, openLink } from "../types";
 import {
   ChatActionError,
   type ActionContext,
@@ -49,7 +49,7 @@ function moveOn(context: ActionContext, view: TaxProfileView, note: string): Act
   return {
     answeredWith: context.action.label,
     note: PROFILE_DONE(view),
-    actions: [{ id: "open", label: "See my tax profile", kind: "link", href: PROFILE_HREF }],
+    actions: [openLink("See my tax profile", PROFILE_HREF)],
   };
 }
 

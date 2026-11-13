@@ -3,7 +3,7 @@ import { POLICY_KINDS, type CoverEvent } from "@/config/insurance";
 import type { CoverChange } from "@/lib/insurance/cover-changes";
 import type { Policy } from "@/lib/insurance/policies";
 import { formatCents } from "@/lib/money";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 
 // Cover changes after a life event in Jane's chat (spec step 154): the event, the changes
 // Jane prepared, and one tap to make them (or Done, when the person makes them with their
@@ -72,12 +72,7 @@ export function coverBody(
   ].join("\n");
 }
 
-export const CHANGES_LINK: MessageAction = {
-  id: "open",
-  label: "Your insurance",
-  kind: "link",
-  href: "/insurance?focus=changes",
-};
+export const CHANGES_LINK: MessageAction = openLink("Your insurance", "/insurance?focus=changes");
 
 export function coverActions(changes: CoverChange[], withPartner: boolean): MessageAction[] {
   const carrierChanges = changes.some((c) =>

@@ -8,7 +8,7 @@ import { gapAdvice, kindWords } from "@/lib/insurance/gaps";
 import { yearlyPremium } from "@/lib/insurance/policies";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "../replies";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 import type { InsuranceIntent } from "./intents";
 import { decide } from "./decisions";
 import { needReply } from "./need";
@@ -21,12 +21,7 @@ import { dayLabel } from "@/lib/day-label";
 
 type Policy = InsuranceSnapshot["policies"][number];
 
-const link = (label: string, href: string): MessageAction => ({
-  id: "open",
-  label,
-  kind: "link",
-  href,
-});
+const link = (label: string, href: string): MessageAction => openLink(label, href);
 const SEE = link("See your insurance", "/insurance");
 const editLink = (p: Policy) => link("Add the details", `/insurance?edit=${p.id}#policy-${p.id}`);
 const addLink = (kind: PolicyKind | null) =>
@@ -147,7 +142,7 @@ export function insuranceReply(
     });
     return {
       body: `${policies.length === 1 ? "Here's how to reach your insurer." : "Here's how to reach each insurer."}\n${lines.join("\n")}\nIf something happened, tell me what, like "I had a car accident", and I'll walk you through the claim.`,
-      actions: [SEE, { id: "open", label: "Your documents", kind: "link", href: "/documents" }],
+      actions: [SEE, openLink("Your documents", "/documents")],
       refs: {},
     };
   }

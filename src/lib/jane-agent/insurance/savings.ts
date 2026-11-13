@@ -12,17 +12,13 @@ import {
   sameCoverActions,
   sameCoverBody,
 } from "./saving-words";
+import { openLink } from "../types";
 
 // "How can I pay less for my insurance?" (spec step 196): the cheaper ways to pay for the
 // same cover Jane found, each with its yearly figure and what changes, and a tap to make
 // them. A higher deductible, which lowers the cover, is said on its own.
 
-const INSURANCE = {
-  id: "open",
-  label: "Your insurance",
-  kind: "link",
-  href: "/insurance?focus=savings",
-} as const;
+const INSURANCE = openLink("Your insurance", "/insurance?focus=savings");
 
 export async function savingsAnswer(
   userId: string,

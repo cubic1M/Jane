@@ -1,7 +1,7 @@
 import { BENEFIT_LABELS, PAY_PERIODS } from "@/config/benefits";
 import type { Benefit, BenefitQuestion } from "@/lib/insurance/benefits";
 import { formatCents } from "@/lib/money";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 
 // Benefits through work in Jane's chat (spec step 150): what it found on the pay stub, and
 // the short guided questions for cover no pay stub shows. Pure.
@@ -47,9 +47,4 @@ export const QUESTIONS: Record<BenefitQuestion, { body: string; actions: Message
   },
 };
 
-export const BENEFITS_LINK: MessageAction = {
-  id: "open",
-  label: "Your benefits",
-  kind: "link",
-  href: "/insurance/benefits",
-};
+export const BENEFITS_LINK: MessageAction = openLink("Your benefits", "/insurance/benefits");

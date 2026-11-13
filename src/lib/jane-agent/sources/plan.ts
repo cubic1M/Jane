@@ -1,6 +1,6 @@
 import { yearlyAndOnce } from "@/lib/report-state";
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 import { things, type MessageSource } from "./source";
 
 // The week's plan (spec step 82), once a week when there's something on it: "N things,
@@ -36,7 +36,7 @@ export const planSource: MessageSource = {
             },
           ]
         : []),
-      { id: "open", label: "Review", kind: "link", href: "/plan" },
+      openLink("Review", "/plan"),
     ];
     return [
       {

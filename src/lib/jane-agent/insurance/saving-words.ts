@@ -3,7 +3,7 @@ import { lowersCover } from "@/lib/insurance/saving-rules";
 import type { Saving } from "@/lib/insurance/savings";
 import type { Policy } from "@/lib/insurance/policies";
 import { formatCents } from "@/lib/money";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 
 // Paying less for the same cover in Jane's chat (spec step 196): the savings that keep the
 // cover as it is, together in one message with one tap; a higher deductible, which lowers
@@ -59,7 +59,7 @@ export const sameCoverActions = (savings: Saving[]): MessageAction[] => [
     label: savings.length === 1 ? "Do it" : "Do all of these",
     kind: "primary",
   },
-  { id: "open", label: "Your insurance", kind: "link", href: "/insurance?focus=savings" },
+  openLink("Your insurance", "/insurance?focus=savings"),
   { id: "saving.no", label: "Not now", kind: "secondary" },
 ];
 

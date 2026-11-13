@@ -48,6 +48,7 @@ import { savedReply } from "../replies-saved";
 import { weeklyReview } from "../replies-review";
 import { CATEGORY_LIST } from "./shared";
 import { type CapabilityContext, spendingIn } from "./shared";
+import { openLink } from "../types";
 
 // Money, bills, spending and goals (spec step 190): the rules' answers for these kinds of question, one registered
 // capability each in ./index.ts. Moved out of ../answer.ts unchanged.
@@ -79,7 +80,7 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
       if (days) {
         return {
           body: paydayLine(days, asOf),
-          actions: [{ id: "open", label: "See today", kind: "link", href: "/home" }],
+          actions: [openLink("See today", "/home")],
           refs: {},
         };
       }

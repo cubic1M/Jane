@@ -9,7 +9,7 @@ import { claimContact } from "@/lib/insurance/claim-rules";
 import { PREMIUM_FREQUENCIES } from "@/config/documents";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "../replies";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 import type { Need } from "@/lib/insurance/need/types";
 import type { InsuranceSnapshot } from "./snapshot";
 
@@ -216,7 +216,7 @@ export function decisionKindOf(text: string): DecisionKind | null {
   return DECISION_PATTERNS.find(([, re]) => re.test(text))?.[0] ?? null;
 }
 
-const SEE = { id: "open", label: "Your insurance", kind: "link", href: "/insurance" } as const;
+const SEE = openLink("Your insurance", "/insurance");
 const QUOTES: MessageAction = { id: "insurance.quotes", label: "Get quotes", kind: "secondary" };
 
 type Out = {
@@ -331,15 +331,7 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, _asOf: string): Out {
           n.gapCents > 0
             ? `That's ${n.lines[0]?.label ?? "your income"} plus debts and schooling, less your savings${n.haveCents > 0 ? ` and the ${money(n.haveCents)} you have` : ""}, for ${n.termYears} years: ${money(n.gapCents)} short.`
             : n.summary,
-        actions: [
-          {
-            id: "open",
-            label: "See my options",
-            kind: "link",
-            href: "/insurance?need=life#options",
-          },
-          SEE,
-        ],
+        actions: [openLink("See my options", "/insurance?need=life#options"), SEE],
       };
     }
     case "disability_how_much": {
@@ -355,15 +347,7 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, _asOf: string): Out {
           n.gapCents > 0
             ? `That's about 60% of your pay, paid after a ${DISABILITY_NEED.waitingDays}-day wait until ${DISABILITY_NEED.benefitUntilAge}${n.haveCents > 0 ? `, and you have ${money(n.haveCents)} of it` : ", and you have none of it today"}.`
             : n.summary,
-        actions: [
-          {
-            id: "open",
-            label: "See my options",
-            kind: "link",
-            href: "/insurance?need=disability#options",
-          },
-          SEE,
-        ],
+        actions: [openLink("See my options", "/insurance?need=disability#options"), SEE],
       };
     }
     case "umbrella_how_much": {
@@ -376,15 +360,7 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, _asOf: string): Out {
       return {
         advice: n.gapCents > 0 ? `About ${money(n.needCents)}.` : "You have enough.",
         facts: n.summary,
-        actions: [
-          {
-            id: "open",
-            label: "See my options",
-            kind: "link",
-            href: "/insurance?need=umbrella#options",
-          },
-          SEE,
-        ],
+        actions: [openLink("See my options", "/insurance?need=umbrella#options"), SEE],
       };
     }
     case "liability_how_much": {
@@ -402,15 +378,7 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, _asOf: string): Out {
       return {
         advice: n.gapCents > 0 ? `More than you have.` : "You have enough.",
         facts: n.summary,
-        actions: [
-          {
-            id: "open",
-            label: "See my options",
-            kind: "link",
-            href: `/insurance?need=${n.kind}#options`,
-          },
-          SEE,
-        ],
+        actions: [openLink("See my options", `/insurance?need=${n.kind}#options`), SEE],
       };
     }
     case "umbrella": {
@@ -419,15 +387,7 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, _asOf: string): Out {
         return {
           advice: "Probably yes.",
           facts: `${un.summary} Your net worth is over the ${money(UMBRELLA_ASSETS_CENTS)} where a big claim against you starts to matter.`,
-          actions: [
-            {
-              id: "open",
-              label: "See my options",
-              kind: "link",
-              href: "/insurance?need=umbrella#options",
-            },
-            SEE,
-          ],
+          actions: [openLink("See my options", "/insurance?need=umbrella#options"), SEE],
         };
       }
       const has = active(ins, "umbrella");
@@ -467,24 +427,13 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, _asOf: string): Out {
           ? {
               advice: "No.",
               facts: `I see no life policy, and by your income and debts I'd size your cover at ${money(need)}.`,
-              actions: [
-                { id: "open", label: "Your life cover", kind: "link", href: "/insurance/life" },
-                SEE,
-              ],
+              actions: [openLink("Your life cover", "/insurance/life"), SEE],
             }
           : dep && dep > 0
             ? {
                 advice: "No.",
                 facts: `You told me ${dep} ${dep === 1 ? "person depends" : "people depend"} on your income and I see no life policy. I can size the cover from your income and debts.`,
-                actions: [
-                  {
-                    id: "open",
-                    label: "Size my life cover",
-                    kind: "link",
-                    href: "/insurance/life",
-                  },
-                  SEE,
-                ],
+                actions: [openLink("Size my life cover", "/insurance/life"), SEE],
               }
             : {
                 advice: "Not needed so far.",
@@ -498,10 +447,7 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, _asOf: string): Out {
         ? {
             advice: need && benefit < need ? "Probably not quite." : "It looks enough.",
             facts: `Your ${has.carrier} life policy pays ${money(benefit)}${need ? `, against the ${money(need)} I'd size for your income and debts` : ""}.`,
-            actions: [
-              { id: "open", label: "Your life cover", kind: "link", href: "/insurance/life" },
-              SEE,
-            ],
+            actions: [openLink("Your life cover", "/insurance/life"), SEE],
           }
         : {
             facts: `You have ${has.carrier} life insurance, but I don't have what it pays. Add that from your policy and I'll compare it with your income and debts.`,
@@ -560,15 +506,7 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, _asOf: string): Out {
       return {
         advice: `${open.length === 1 ? "One gap" : `${open.length} gaps`}.`,
         facts: `${first.join(" ")}${open.length > 2 ? ` And ${open.length - 2} more on your insurance page.` : ""}`,
-        actions: [
-          {
-            id: "open",
-            label: "See my options",
-            kind: "link",
-            href: `/insurance?need=${open[0].kind}#options`,
-          },
-          SEE,
-        ],
+        actions: [openLink("See my options", `/insurance?need=${open[0].kind}#options`), SEE],
       };
     }
     case "deductible_fit": {
@@ -587,15 +525,7 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, _asOf: string): Out {
               ? "You could go higher."
               : "It's higher than your cash carries.",
         facts: dn.summary,
-        actions: [
-          {
-            id: "open",
-            label: "See my options",
-            kind: "link",
-            href: "/insurance?need=deductible#options",
-          },
-          SEE,
-        ],
+        actions: [openLink("See my options", "/insurance?need=deductible#options"), SEE],
       };
     }
     case "deductible": {
@@ -612,10 +542,7 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, _asOf: string): Out {
       return {
         advice: "Only if you could pay the difference on a claim.",
         facts: `Raising your deductible from ${money(car.deductibleCents)} to ${money(to)} saves about ${money(saving.yearlySavingCents)} a year, and you'd pay ${money(to - car.deductibleCents)} more if you claim.`,
-        actions: [
-          { id: "open", label: "See the saving", kind: "link", href: "/insurance?focus=savings" },
-          SEE,
-        ],
+        actions: [openLink("See the saving", "/insurance?focus=savings"), SEE],
       };
     }
     case "enough_car": {
@@ -667,10 +594,7 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, _asOf: string): Out {
       const c = claimContact(car?.carrier ?? null);
       return {
         facts: `Check everyone is safe and call 911 if anyone is hurt, then photograph everything and don't admit fault. ${c.phone ? `Call ${car?.carrier ?? "your insurer"} on ${c.phone}` : "Call your insurer"} and tell me what happened, and I'll start your claim tracker.`,
-        actions: [
-          { id: "open", label: "Your claims", kind: "link", href: "/insurance/claims" },
-          SEE,
-        ],
+        actions: [openLink("Your claims", "/insurance/claims"), SEE],
       };
     }
     case "disability": {
@@ -681,15 +605,7 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, _asOf: string): Out {
         return {
           advice: "Probably yes.",
           facts: `You get a paycheck and I see no disability cover. Many jobs include it, so check your benefits first; I'd size it at ${money(dn.needCents)} a month, about 60% of your pay after a ${DISABILITY_NEED.waitingDays}-day wait.`,
-          actions: [
-            {
-              id: "open",
-              label: "See my options",
-              kind: "link",
-              href: "/insurance?need=disability#options",
-            },
-            SEE,
-          ],
+          actions: [openLink("See my options", "/insurance?need=disability#options"), SEE],
         };
       }
       return household.signals.paycheck
@@ -772,10 +688,7 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, _asOf: string): Out {
         ? {
             advice: "Probably keep it.",
             facts: `Your pay stub shows ${money(h.perPayCents * (h.payFrequency === "semimonthly" ? 24 : h.payFrequency === "biweekly" ? 26 : h.payFrequency === "weekly" ? 52 : 12))} a year for work health cover, and employers usually pay a good share. I compare it with marketplace plans at open enrollment.`,
-            actions: [
-              { id: "open", label: "Your benefits", kind: "link", href: "/insurance/benefits" },
-              SEE,
-            ],
+            actions: [openLink("Your benefits", "/insurance/benefits"), SEE],
           }
         : {
             facts:
@@ -795,14 +708,7 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, _asOf: string): Out {
         return hy.fsa
           ? {
               facts: `You have about ${money(hy.fsa.leftCents)} left in your FSA of ${money(hy.fsa.electionCents)}, and it's lost after Dec 31 (${hy.fsa.daysLeft} days), unless your employer allows a carryover.`,
-              actions: [
-                {
-                  id: "open",
-                  label: "Your health year",
-                  kind: "link",
-                  href: "/insurance?focus=health",
-                },
-              ],
+              actions: [openLink("Your health year", "/insurance?focus=health")],
             }
           : { facts: "I don't see an FSA in your pay stub." };
       }
@@ -810,14 +716,7 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, _asOf: string): Out {
         const p = hy.progress;
         return {
           facts: `You've met ${money(p.deductibleMetCents)} of your ${money(hy.plan.deductibleCents)} deductible${p.deductibleLeftCents > 0 ? `, ${money(p.deductibleLeftCents)} to go` : ", so your plan is paying its share now"}.`,
-          actions: [
-            {
-              id: "open",
-              label: "Your health year",
-              kind: "link",
-              href: "/insurance?focus=health",
-            },
-          ],
+          actions: [openLink("Your health year", "/insurance?focus=health")],
         };
       }
       const max = hy.plan.outOfPocketMaxCents;
@@ -825,14 +724,7 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, _asOf: string): Out {
         ? { facts: "Your plan has no out-of-pocket maximum on file." }
         : {
             facts: `You've paid about ${money(hy.progress.oopSoFarCents)} toward your ${money(max)} out-of-pocket maximum${hy.progress.maxMonth === "reached" ? ", which you've reached" : "; at this pace you won't reach it this year"}.`,
-            actions: [
-              {
-                id: "open",
-                label: "Your health year",
-                kind: "link",
-                href: "/insurance?focus=health",
-              },
-            ],
+            actions: [openLink("Your health year", "/insurance?focus=health")],
           };
     }
     case "why_up": {

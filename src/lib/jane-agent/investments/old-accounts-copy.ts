@@ -1,16 +1,11 @@
 import { ROLLOVER_NOTE } from "@/config/old-accounts";
 import type { OldAccountsView, OldPlanView } from "@/lib/investments/old-accounts";
 import { formatCents } from "@/lib/money";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 
 // Old accounts in the chat (spec step 211): shared words and buttons.
 
-export const OLD_LINK: MessageAction = {
-  id: "open",
-  label: "See old accounts",
-  kind: "link",
-  href: "/investments/old-accounts",
-};
+export const OLD_LINK: MessageAction = openLink("See old accounts", "/investments/old-accounts");
 
 export const questionLine = (p: Pick<OldPlanView, "employer">) =>
   `Did you have a 401(k) at ${p.employer}? A forgotten one often costs more in fees than it needs to, and I can help bring it home.`;

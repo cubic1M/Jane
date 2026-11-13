@@ -7,6 +7,7 @@ import { conciergeMode } from "@/lib/concierge-mode";
 import { autopilotFor, type SectorAutopilot } from "@/lib/sector-autopilot";
 import type { Reply } from "../replies";
 import { byHerself } from "../replies-autopilot";
+import { openLink } from "../types";
 
 // "What do you do with my insurance on your own?" (spec step 108): what Jane keeps up at the
 // person's autopilot level, then what the Insurance area's own setting lets it buy or switch
@@ -27,8 +28,8 @@ export function autopilotReply(
   return {
     body: `With insurance, here's what I do by myself${at}. ${INSURANCE_AUTOPILOT[key]} ${byHerself(insurance)}`,
     actions: [
-      { id: "open", label: "See your insurance", kind: "link", href: "/insurance" },
-      { id: "open", label: "Autopilot settings", kind: "link", href: "/settings#autopilot" },
+      openLink("See your insurance", "/insurance"),
+      openLink("Autopilot settings", "/settings#autopilot"),
     ],
     refs: {},
   };
@@ -41,7 +42,7 @@ export async function autopilotAnswer(
   if (!(await conciergeMode(userId, { client }))) {
     return {
       body: READ_ONLY_INSURANCE.body,
-      actions: [{ id: "open", label: "See your insurance", kind: "link", href: "/insurance" }],
+      actions: [openLink("See your insurance", "/insurance")],
       refs: {},
     };
   }

@@ -4,6 +4,7 @@ import { DECISION_CONFIDENCE } from "@/config/tax-decisions";
 import { decideTax } from "@/lib/tax-decisions";
 import { parseTaxIntent } from "../tax-intents";
 import { type Capability, type CapabilityContext } from "./shared";
+import { openLink } from "../types";
 
 // Taxes (spec step 190): the rules' answers for these kinds of question, one registered
 // capability each in ./index.ts. Moved out of ../answer.ts unchanged.
@@ -35,7 +36,7 @@ export const taxDecide: NonNullable<Capability["decide"]> = async ({
   const d = await decideTax(userId, intent.topic, { client, now });
   return {
     body: d.text,
-    actions: [{ id: "open", label: "See the numbers", kind: "link", href: d.href }],
+    actions: [openLink("See the numbers", d.href)],
     // A "how sure" line only when something was weighed.
     ...(d.nothingWeighed ? {} : { confidence: DECISION_CONFIDENCE }),
     refs: d.advice ? { advice: true } : undefined,

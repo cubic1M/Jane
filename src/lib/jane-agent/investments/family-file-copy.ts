@@ -1,17 +1,12 @@
 import { BENEFICIARY_EVENTS, ESTATE_FACTS, ESTATE_POINTER } from "@/config/family-file";
 import type { FamilyFileView } from "@/lib/investments/family-file";
 import type { AccountCheck } from "@/planning/family-file";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 
 // The family looked after in the chat (spec step 237): shared words and buttons. Facts about
 // beneficiaries; for wills and trusts only the reviewed sentences in src/config/family-file.ts.
 
-export const FILE_LINK: MessageAction = {
-  id: "open",
-  label: "Check my accounts",
-  kind: "link",
-  href: "/investments/family-file",
-};
+export const FILE_LINK: MessageAction = openLink("Check my accounts", "/investments/family-file");
 
 const problemWords = (c: AccountCheck) =>
   c.problems

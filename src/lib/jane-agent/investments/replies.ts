@@ -82,7 +82,7 @@ import {
 } from "@/planning/investor-profile";
 import type { Reply } from "../replies";
 import { byHerself } from "../replies-autopilot";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 import { ROTH_WORDS, type RetirementPlan } from "@/planning/retirement";
 import { equivalentLine, feeRange, switchSummary } from "./fees-copy";
 import { matchLine, projectionLine } from "./retirement-copy";
@@ -106,18 +106,8 @@ import { formatRate } from "@/lib/percent";
 // wording and buttons out. Facts only, the same for every account; advice is in the later
 // steps' answers, and only in demo advice mode.
 
-const SEE: MessageAction = {
-  id: "open",
-  label: "See what you own",
-  kind: "link",
-  href: "/investments",
-};
-const CONNECT: MessageAction = {
-  id: "open",
-  label: "Link an account",
-  kind: "link",
-  href: "/connect",
-};
+const SEE: MessageAction = openLink("See what you own", "/investments");
+const CONNECT: MessageAction = openLink("Link an account", "/connect");
 
 const holdingsWord = (n: number) => `${n} ${n === 1 ? "holding" : "holdings"}`;
 
@@ -208,19 +198,14 @@ export function profileReply(answers: ProfileAnswers, asOf: string): Reply {
   const goals = summary.goals.map((g) => GOALS[g]).join(", ");
   return {
     body: `Your investor profile: ${summary.why} ${summary.description} Age ${summary.age}; the money is for: ${goals}.${summary.stale ? " It's been a year: worth checking it still fits." : ""}`,
-    actions: [{ id: "open", label: "Change it", kind: "link", href: "/investments/profile" }],
+    actions: [openLink("Change it", "/investments/profile")],
     refs: {},
   };
 }
 
 // Spec step 130: what investing costs; in demo advice mode, the lower-cost equivalents.
 export function feesReply(fees: FeeSummary, advice: boolean): Reply {
-  const link: MessageAction = {
-    id: "open",
-    label: "See the fees",
-    kind: "link",
-    href: "/investments/fees",
-  };
+  const link: MessageAction = openLink("See the fees", "/investments/fees");
   if (fees.funds.length === 0 && fees.advisoryCents + fees.accountFeesCents === 0) {
     return {
       body: "I don't see any investment fees yet. When your accounts report what they hold, I'll show each fund's yearly cost.",
@@ -257,12 +242,7 @@ export function reviewReply(
   review: PortfolioReview | null,
   advice: boolean,
 ): Reply {
-  const link: MessageAction = {
-    id: "open",
-    label: "See the review",
-    kind: "link",
-    href: "/investments/review",
-  };
+  const link: MessageAction = openLink("See the review", "/investments/review");
   if (investments.holdingCount === 0) return holdingsReply(investments, null);
   const mix = investments.byAssetClass
     .map((c) => `${formatCents(c.valueCents)} in ${classWords(c.label)}`)
@@ -312,12 +292,7 @@ export function retirementReply(
   // which is the answer to "when can I stop working".
   income: RetirementIncomeView | null = null,
 ): Reply {
-  const link: MessageAction = {
-    id: "open",
-    label: "See your retirement plan",
-    kind: "link",
-    href: "/investments/retirement",
-  };
+  const link: MessageAction = openLink("See your retirement plan", "/investments/retirement");
   if (data.accounts.length === 0) {
     return {
       body: "I don't see a retirement account yet. Link your 401(k) or IRA and I'll show where you're headed.",
@@ -407,10 +382,7 @@ export function rebalanceReply(
 export function rebalanceOffer(plan: RebalancePlan): Reply {
   return {
     body: `I've got ${plan.orders.length} orders ready to move you to your ${RISK_LEVELS[plan.riskLevel].label.toLowerCase()} mix, ${SIMULATED_WORDS}.\n${planSummary(plan)}\nTap and I'll place them.`,
-    actions: [
-      rebalanceButton(),
-      { id: "open", label: "See the orders", kind: "link", href: "/investments/rebalance" },
-    ],
+    actions: [rebalanceButton(), openLink("See the orders", "/investments/rebalance")],
     refs: { advice: true, rebalanceKey: plan.key },
   };
 }
@@ -468,12 +440,7 @@ export function autoInvestReply(data: Awaited<ReturnType<typeof loadAutoInvest>>
 
 // Spec step 135: which account first, where to hold what, and gains not yet taxed.
 export function accountsReply(plan: AccountPlan): Reply {
-  const link: MessageAction = {
-    id: "open",
-    label: "See the order",
-    kind: "link",
-    href: "/investments/accounts",
-  };
+  const link: MessageAction = openLink("See the order", "/investments/accounts");
   const gains =
     plan.gains.gainsCents + plan.gains.lossesCents > 0
       ? `In your taxable accounts there's ${formatCents(plan.gains.gainsCents)} of gains and ${formatCents(plan.gains.lossesCents)} of losses not yet taxed.`
@@ -563,10 +530,7 @@ export function autopilotReply(
 ): Reply {
   return {
     body: `${level ? `On your autopilot setting, here's` : "Here's"} what I do with your investments by myself. ${investmentsByHerself(level, investing).join(" ")}`,
-    actions: [
-      SEE,
-      { id: "open", label: "Change autopilot", kind: "link", href: "/settings#sectors" },
-    ],
+    actions: [SEE, openLink("Change autopilot", "/settings#sectors")],
     refs: {},
   };
 }
@@ -611,12 +575,7 @@ export function goalBucketsReply(data: {
   byHerself: boolean;
   buckets: Bucket[] | null;
 }): Reply {
-  const link: MessageAction = {
-    id: "open",
-    label: "See each goal",
-    kind: "link",
-    href: "/investments/goals",
-  };
+  const link: MessageAction = openLink("See each goal", "/investments/goals");
   if (!data.advice) {
     return {
       body: "I don't give recommendations on investing by goal on real accounts yet.",
@@ -635,7 +594,7 @@ export function goalBucketsReply(data: {
   if (data.buckets.length === 0) {
     return {
       body: "You don't have a goal with a date yet. Add one and I'll invest for it, cash when it's close and safer as the date nears.",
-      actions: [{ id: "open", label: "Add a goal", kind: "link", href: "/goals" }],
+      actions: [openLink("Add a goal", "/goals")],
       refs: {},
     };
   }
@@ -652,12 +611,7 @@ export function collegeReply(
   estimate: CollegeEstimate | null,
   plans: number,
 ): Reply {
-  const link: MessageAction = {
-    id: "open",
-    label: "Plan for college",
-    kind: "link",
-    href: "/investments/college",
-  };
+  const link: MessageAction = openLink("Plan for college", "/investments/college");
   if (!advice) {
     return {
       body: "I don't give recommendations on college savings on real accounts yet.",
@@ -689,12 +643,7 @@ export function collegeReply(
 
 // Spec step 159: the HSA and its receipts vault.
 export function hsaReply(view: HsaView): Reply {
-  const link: MessageAction = {
-    id: "open",
-    label: "See your HSA",
-    kind: "link",
-    href: "/investments/hsa",
-  };
+  const link: MessageAction = openLink("See your HSA", "/investments/hsa");
   const vault =
     view.savedCents > 0
       ? ` Your receipts vault has ${formatCents(view.savedCents)} of medical costs you can pay back from it tax-free.`

@@ -48,7 +48,7 @@ import { HARVEST_FROM } from "@/config/tax";
 import { formatCents } from "@/lib/money";
 import { incomeLine, listOf } from "@/planning/tax-profile";
 import { PROFILE_HREF, PROFILE_INTRO, TAGS_HREF, nextQuestion } from "../tax-flow";
-import type { Candidate } from "../types";
+import { type Candidate, openLink } from "../types";
 import { snoozeButton, type MessageSource } from "./source";
 import { dayLabel, monthLabel } from "@/lib/day-label";
 
@@ -98,7 +98,7 @@ export const taxesSource: MessageSource = {
         actions: [
           { id: "tax.income_add", label: "Add it", kind: "primary" },
           { id: "tax.income_no", label: "Leave it off", kind: "secondary" },
-          { id: "open", label: "See my tax profile", kind: "link", href: PROFILE_HREF },
+          openLink("See my tax profile", PROFILE_HREF),
         ],
         dedupeKey: `income:${found.kind}`,
         priority: TAX_MESSAGE_PRIORITY.new_income,
@@ -113,7 +113,7 @@ export const taxesSource: MessageSource = {
         actions: [
           { id: "tax.tag_yes", label: "Yes, keep it", kind: "primary" },
           { id: "tax.tag_no", label: "No, not for taxes", kind: "secondary" },
-          { id: "open", label: "See tax tags", kind: "link", href: TAGS_HREF },
+          openLink("See tax tags", TAGS_HREF),
         ],
         dedupeKey: `check:${check.merchantKey}`,
         priority: TAX_MESSAGE_PRIORITY.tag_check,
@@ -127,7 +127,7 @@ export const taxesSource: MessageSource = {
         kind: "done",
         body: `In ${monthLabel(lastMonth.month, { long: true, year: false })} I tagged ${lastMonth.count} ${lastMonth.count === 1 ? "thing" : "things"} for your taxes: ${listOf(lastMonth.byTag.map((b) => tagPhrase(b.tag, b.count, b.totalCents)))}. They're in your tax-time pack.`,
         refs: {},
-        actions: [{ id: "open", label: "See tax tags", kind: "link", href: TAGS_HREF }],
+        actions: [openLink("See tax tags", TAGS_HREF)],
         dedupeKey: `month:${lastMonth.month}`,
         priority: TAX_MESSAGE_PRIORITY.tag_month,
       });
@@ -812,7 +812,7 @@ export const taxesSource: MessageSource = {
         actions: [
           { id: "tax.form_got", label: "I have it", kind: "primary" },
           snoozeButton("Not yet"),
-          { id: "open", label: "See tax forms", kind: "link", href: "/taxes?focus=records:forms" },
+          openLink("See tax forms", "/taxes?focus=records:forms"),
         ],
         dedupeKey: `form:${tax.formsDue!.year}:${form.key}`,
         priority: TAX_MESSAGE_PRIORITY.form_due,

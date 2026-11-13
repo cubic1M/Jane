@@ -13,6 +13,7 @@ import { hasDemoBank } from "@/lib/plaid/demo";
 import { practiceCardDetails } from "@/lib/practice/ideas";
 import { isTrialUser } from "@/lib/trial-ids";
 import { DAY_MS } from "@/lib/dates";
+import { openLink } from "../jane-agent/types";
 
 // A news theme's idea as an alert (Phase AW, Stage A): when the practice scan finds one, Jane
 // posts it in the chat as a suggestion, so it comes up as a floating card to decide (why now, the past record and how sure Jane is, the
@@ -89,7 +90,7 @@ export async function postThemeAlerts(
         { id: "suggestion.yes" as const, label: "Yes, in practice", kind: "primary" as const },
         { id: "snooze" as const, label: "Not now", kind: "secondary" as const },
         { id: "suggestion.no" as const, label: "No", kind: "secondary" as const },
-        { id: "open" as const, label: "See it", kind: "link" as const, href: PRACTICE_HREF },
+        openLink("See it", PRACTICE_HREF),
       ],
       dedupeKey: `${THEME_ALERT_SOURCE}:${row.key}`,
       priority: THEME_ALERT_PRIORITY,

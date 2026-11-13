@@ -1,18 +1,13 @@
 import { CRYPTO_SHARE_FLAG } from "@/config/crypto";
 import type { CryptoFees, CryptoSize } from "@/insights/crypto";
 import { formatCents } from "@/lib/money";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 import { formatPercentTenths } from "@/lib/percent";
 
 // Crypto in the chat (spec step 161): the words Jane's messages, reply and tool share.
 // Facts for everyone; the two flags only in demo advice mode. Never a trade.
 
-export const CRYPTO_LINK: MessageAction = {
-  id: "open",
-  label: "See your crypto",
-  kind: "link",
-  href: "/investments/crypto",
-};
+export const CRYPTO_LINK: MessageAction = openLink("See your crypto", "/investments/crypto");
 
 export const NEVER_TRADES = "I only read it: I never buy, sell or move crypto.";
 

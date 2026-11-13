@@ -1,18 +1,13 @@
 import { CUSTODIAL_NOTE } from "@/config/family";
 import type { FamilyView } from "@/lib/investments/family";
 import { formatCents } from "@/lib/money";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 
 // Investing for the family in the chat (spec step 213): shared words and buttons. The
 // gift link itself appears only in the reply to the person who made it, never in a message
 // for anyone else.
 
-export const FAMILY_LINK: MessageAction = {
-  id: "open",
-  label: "See family investing",
-  kind: "link",
-  href: "/investments/family",
-};
+export const FAMILY_LINK: MessageAction = openLink("See family investing", "/investments/family");
 
 type Child = FamilyView["children"][number];
 

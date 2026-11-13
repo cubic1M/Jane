@@ -1,17 +1,15 @@
 import { PLAN_TO_AGE } from "@/config/retirement-income";
 import type { RetirementIncomeView } from "@/lib/investments/retirement-income";
 import { formatCents } from "@/lib/money";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 
 // Income in retirement in the chat (spec step 212): shared words. Past-tense math and the
 // person's own plan, always a range, never a promise.
 
-export const RI_LINK: MessageAction = {
-  id: "open",
-  label: "See your retirement income",
-  kind: "link",
-  href: "/investments/retirement-income",
-};
+export const RI_LINK: MessageAction = openLink(
+  "See your retirement income",
+  "/investments/retirement-income",
+);
 
 type View = Pick<
   RetirementIncomeView,

@@ -1,7 +1,7 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { dueMoveLine } from "@/planning/due-dates";
 import { rateChangeLine } from "../debt-autopilot-replies";
-import type { Candidate } from "../types";
+import { type Candidate, openLink } from "../types";
 import { snoozeButton, type MessageSource } from "./source";
 
 // Debt on autopilot (spec step 117): what Jane did or found on its own. A rate the bank
@@ -9,18 +9,8 @@ import { snoozeButton, type MessageSource } from "./source";
 // before payday with the request to move it drafted (once per debt), and the payoff plan
 // it started itself (once).
 
-const LOANS = {
-  id: "open" as const,
-  label: "See every debt",
-  kind: "link" as const,
-  href: "/loans",
-};
-const PLAN = {
-  id: "open" as const,
-  label: "Open the payoff planner",
-  kind: "link" as const,
-  href: "/debt",
-};
+const LOANS = openLink("See every debt", "/loans");
+const PLAN = openLink("Open the payoff planner", "/debt");
 
 export const debtAutopilotSource: MessageSource = {
   key: "debt_autopilot",

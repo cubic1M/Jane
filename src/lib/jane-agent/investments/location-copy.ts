@@ -1,15 +1,10 @@
 import type { LocationPlan } from "@/planning/location";
 import { formatCents } from "@/lib/money";
-import type { MessageAction } from "../types";
+import { type MessageAction, openLink } from "../types";
 
 // The right investment in the right account in the chat (spec step 231): shared words.
 
-export const LOCATION_LINK: MessageAction = {
-  id: "open",
-  label: "See the swaps",
-  kind: "link",
-  href: "/investments/location",
-};
+export const LOCATION_LINK: MessageAction = openLink("See the swaps", "/investments/location");
 
 const NAMES = {
   bonds: "bonds",
