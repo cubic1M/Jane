@@ -95,6 +95,20 @@ function optional(value: string): string | undefined {
   return value.trim() || undefined;
 }
 
+// A row from parseCommon's fields: its amount in Plaid's sign (positive is money out), the bank's
+// hints and, where the export has one, the running balance.
+function rowOf(
+  common: { date: string; description: string },
+  amountCents: number,
+  hints: ParsedRow["hints"] = {},
+  extra: Partial<ParsedRow> = {},
+): RowResult {
+  return {
+    ok: true,
+    row: { date: common.date, amountCents, description: common.description, hints, ...extra },
+  };
+}
+
 // A running-balance column's value, or nothing when it's empty or unreadable.
 function balanceOf(text: string): { balanceCents?: number } {
   const cents = text.trim() ? parseMoneyToCents(text) : null;
@@ -112,16 +126,12 @@ const chaseChecking: CsvFormat = {
   parseRow(get) {
     const common = parseCommon(get("posting date"), get("amount"), get("description"));
     if (!common.ok) return common;
-    return {
-      ok: true,
-      row: {
-        date: common.date,
-        amountCents: -common.cents,
-        description: common.description,
-        hints: { bankType: optional(get("type")) },
-        ...balanceOf(get("balance")),
-      },
-    };
+    return rowOf(
+      common,
+      -common.cents,
+      { bankType: optional(get("type")) },
+      balanceOf(get("balance")),
+    );
   },
 };
 
@@ -136,15 +146,10 @@ export const chaseCreditCard: CsvFormat = {
   parseRow(get) {
     const common = parseCommon(get("post date"), get("amount"), get("description"));
     if (!common.ok) return common;
-    return {
-      ok: true,
-      row: {
-        date: common.date,
-        amountCents: -common.cents,
-        description: common.description,
-        hints: { bankCategory: optional(get("category")), bankType: optional(get("type")) },
-      },
-    };
+    return rowOf(common, -common.cents, {
+      bankCategory: optional(get("category")),
+      bankType: optional(get("type")),
+    });
   },
 };
 
@@ -176,7 +181,7 @@ function debitCreditRow(
   if (!description.trim()) return { ok: false, reason: "Missing description" };
   const cents = debitCreditCents(debitText, creditText);
   if (typeof cents === "string") return { ok: false, reason: cents };
-  return { ok: true, row: { date, amountCents: cents, description: description.trim(), hints } };
+  return rowOf({ date, description: description.trim() }, cents, hints);
 }
 
 // Bank of America checking and savings: a few summary lines ("Description,,Summary Amt.",
@@ -194,16 +199,7 @@ const bankOfAmericaChecking: CsvFormat = {
     }
     const common = parseCommon(get("date"), get("amount"), get("description"));
     if (!common.ok) return common;
-    return {
-      ok: true,
-      row: {
-        date: common.date,
-        amountCents: -common.cents,
-        description: common.description,
-        hints: {},
-        ...balanceOf(get("running bal.")),
-      },
-    };
+    return rowOf(common, -common.cents, {}, balanceOf(get("running bal.")));
   },
 };
 
@@ -218,15 +214,7 @@ const bankOfAmericaCreditCard: CsvFormat = {
   parseRow(get) {
     const common = parseCommon(get("posted date"), get("amount"), get("payee"));
     if (!common.ok) return common;
-    return {
-      ok: true,
-      row: {
-        date: common.date,
-        amountCents: -common.cents,
-        description: common.description,
-        hints: {},
-      },
-    };
+    return rowOf(common, -common.cents);
   },
 };
 
@@ -246,15 +234,7 @@ const wellsFargo: HeaderlessFormat = {
   parseRow(get) {
     const common = parseCommon(get("date"), get("amount"), get("description"));
     if (!common.ok) return common;
-    return {
-      ok: true,
-      row: {
-        date: common.date,
-        amountCents: -common.cents,
-        description: common.description,
-        hints: {},
-      },
-    };
+    return rowOf(common, -common.cents);
   },
 };
 
@@ -312,16 +292,12 @@ const capitalOne360: CsvFormat = {
       return { ok: false, reason: `Unknown transaction type "${type}"` };
     }
     const cents = Math.abs(common.cents);
-    return {
-      ok: true,
-      row: {
-        date: common.date,
-        amountCents: /^debit$/i.test(type) ? cents : -cents || 0,
-        description: common.description,
-        hints: { bankType: type },
-        ...balanceOf(get("balance")),
-      },
-    };
+    return rowOf(
+      common,
+      /^debit$/i.test(type) ? cents : -cents || 0,
+      { bankType: type },
+      balanceOf(get("balance")),
+    );
   },
 };
 
@@ -365,15 +341,7 @@ const amex: CsvFormat = {
   parseRow(get) {
     const common = parseCommon(get("date"), get("amount"), get("description"));
     if (!common.ok) return common;
-    return {
-      ok: true,
-      row: {
-        date: common.date,
-        amountCents: common.cents,
-        description: common.description,
-        hints: { bankCategory: optional(get("category")) },
-      },
-    };
+    return rowOf(common, common.cents, { bankCategory: optional(get("category")) });
   },
 };
 
@@ -388,15 +356,7 @@ const discoverCreditCard: CsvFormat = {
   parseRow(get) {
     const common = parseCommon(get("post date"), get("amount"), get("description"));
     if (!common.ok) return common;
-    return {
-      ok: true,
-      row: {
-        date: common.date,
-        amountCents: common.cents,
-        description: common.description,
-        hints: { bankCategory: optional(get("category")) },
-      },
-    };
+    return rowOf(common, common.cents, { bankCategory: optional(get("category")) });
   },
 };
 
@@ -463,15 +423,7 @@ const usBank: CsvFormat = {
     if (cents === null) return { ok: false, reason: `Unreadable amount "${get("amount")}"` };
     const description = get("name").trim();
     if (!description) return { ok: false, reason: "Missing description" };
-    return {
-      ok: true,
-      row: {
-        date,
-        amountCents: -cents || 0,
-        description,
-        hints: { bankType: optional(get("transaction")) },
-      },
-    };
+    return rowOf({ date, description }, -cents || 0, { bankType: optional(get("transaction")) });
   },
 };
 
@@ -491,15 +443,7 @@ const ally: CsvFormat = {
       (value) => parseIsoDate(value) ?? parseUsDate(value),
     );
     if (!common.ok) return common;
-    return {
-      ok: true,
-      row: {
-        date: common.date,
-        amountCents: -common.cents || 0,
-        description: common.description,
-        hints: { bankType: optional(get("type")) },
-      },
-    };
+    return rowOf(common, -common.cents || 0, { bankType: optional(get("type")) });
   },
 };
 
@@ -550,16 +494,10 @@ const navyFederal: CsvFormat = {
       return { ok: false, reason: `Unreadable credit or debit "${get("credit debit indicator")}"` };
     }
     const cents = Math.abs(common.cents);
-    return {
-      ok: true,
-      row: {
-        date: common.date,
-        // Plaid's sign: money out is positive.
-        amountCents: way === "debit" ? cents : -cents,
-        description: common.description,
-        hints: { bankType: optional(get("type")), bankCategory: optional(get("category")) },
-      },
-    };
+    return rowOf(common, way === "debit" ? cents : -cents, {
+      bankType: optional(get("type")),
+      bankCategory: optional(get("category")),
+    });
   },
 };
 
@@ -647,15 +585,7 @@ const venmo: CsvFormat = {
     // (paying a card): passing them on made a roommate's rent share a card payment (debugger
     // 10-30). Other types (transfers) still go through.
     const p2p = /^(?:payment|charge)$/i.test(type);
-    return {
-      ok: true,
-      row: {
-        date,
-        amountCents: -cents || 0,
-        description,
-        hints: p2p ? {} : { bankType: optional(type) },
-      },
-    };
+    return rowOf({ date, description }, -cents || 0, p2p ? {} : { bankType: optional(type) });
   },
 };
 
@@ -700,22 +630,18 @@ const paypal: CsvFormat = {
         : type;
     const common = parseCommon(get("date"), get("net") || get("gross"), get("name") || moved);
     if (!common.ok) return common;
-    return {
-      ok: true,
-      row: {
-        date: common.date,
-        amountCents: -common.cents || 0,
-        description: common.description,
-        hints: {
-          bankType: optional(type),
-          // Only goods and services carry a fee, so a fee on money in says it's a sale.
-          ...(Number(get("fee")) < 0 && common.cents > 0 && !/refund/i.test(type)
-            ? { bankCategory: PAYPAL_SALE }
-            : {}),
-        },
-        ...balanceOf(get("balance")),
+    return rowOf(
+      common,
+      -common.cents || 0,
+      {
+        bankType: optional(type),
+        // Only goods and services carry a fee, so a fee on money in says it's a sale.
+        ...(Number(get("fee")) < 0 && common.cents > 0 && !/refund/i.test(type)
+          ? { bankCategory: PAYPAL_SALE }
+          : {}),
       },
-    };
+      balanceOf(get("balance")),
+    );
   },
   // A purchase paid by card comes as two rows: the card's deposit into PayPal and the payment, same
   // day, same amount. The card's statement already has that charge, so both are left out. Paid from
