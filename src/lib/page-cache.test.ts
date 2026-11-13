@@ -2,10 +2,14 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { isHiddenPage } from "@/config/hidden-pages";
+import { refreshInPlace } from "@/lib/refresh-in-place";
 import {
   PAGE_OLD_MS,
+  REFRESH_IN_PLACE_AFTER_MS,
   PRELOAD_MAX_PER_HOUR,
   PRELOAD_MIN_GAP_MS,
+  REFILL_AFTER_MS,
+  REFILL_PAGES,
   PRELOAD_PAGES,
   SIGNED_OUT_PAGES,
 } from "@/config/page-cache";
@@ -13,7 +17,7 @@ import { isInMemory } from "./page-memory";
 import {
   actionEmptiedCache,
   ageOf,
-  changesData,
+  changeFrom,
   connectionAllowsPreload,
   leaving,
   nextRoundAt,
@@ -25,22 +29,29 @@ import {
   type PageCacheRouter,
 } from "./page-cache";
 
+vi.mock("@/lib/refresh-in-place", () => ({ refreshInPlace: vi.fn(async () => undefined) }));
+
 const HERE = "https://jane.test/home";
 
 describe("which requests empty the memory", () => {
   it("is every post from this site", () => {
-    expect(changesData("/api/chat/send", "POST", HERE)).toBe(true);
-    expect(changesData("/plan", "POST", HERE)).toBe(true);
-    expect(changesData("/api/push", "delete", HERE)).toBe(true);
+    expect(changeFrom("/plan", "POST", HERE)).toBe("anything");
+    expect(changeFrom("/api/push", "delete", HERE)).toBe("anything");
+    // A Yes on a card in the chat is a server action on /chat: everything goes.
+    expect(changeFrom("/chat?embed=1", "POST", HERE)).toBe("anything");
     // A route nobody has thought about yet is safe by default.
-    expect(changesData("/api/something-new", "POST", HERE)).toBe(true);
+    expect(changeFrom("/api/something-new", "POST", HERE)).toBe("anything");
+  });
+
+  it("but a chat message only marks the pages, to refresh as they come up", () => {
+    expect(changeFrom("/api/chat/send", "POST", HERE)).toBe("little");
   });
 
   it("isn't a read, another site, or a report that changes nothing a page shows", () => {
-    expect(changesData("/api/chat/unread", "GET", HERE)).toBe(false);
-    expect(changesData("https://other.test/api", "POST", HERE)).toBe(false);
+    expect(changeFrom("/api/chat/unread", "GET", HERE)).toBe("nothing");
+    expect(changeFrom("https://other.test/api", "POST", HERE)).toBe("nothing");
     for (const post of ["/api/events", "/api/activity", "/api/opened", "/api/client-error"]) {
-      expect(changesData(post, "POST", HERE)).toBe(false);
+      expect(changeFrom(post, "POST", HERE)).toBe("nothing");
     }
   });
 
@@ -160,6 +171,7 @@ describe("in the browser", () => {
     vi.useFakeTimers();
     vi.setSystemTime(10_000_000);
     resetPageCacheForTests();
+    vi.mocked(refreshInPlace).mockClear();
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -241,7 +253,8 @@ describe("in the browser", () => {
       expect(isInMemory("/home")).toBe(true);
       b.win.location.pathname = "/money";
       b.receive({ type: "changed" });
-      await vi.advanceTimersByTimeAsync(300);
+      // The refresh, before the round that brings the pages back.
+      await vi.advanceTimersByTimeAsync(201);
       expect(isInMemory("/home")).toBe(false);
       expect(isInMemory("/money")).toBe(true);
     });
@@ -291,11 +304,68 @@ describe("in the browser", () => {
     it("the chat's frame only tells: the window around it refreshes", async () => {
       const b = fakeBrowser({ framed: true });
       startPageCache(b.router);
+      await window.fetch("/chat?embed=1", { method: "POST", headers: { "next-action": "yes" } });
       await window.fetch("/api/chat/send", { method: "POST" });
       await flush();
       await vi.advanceTimersByTimeAsync(300);
       expect(b.channels[0]!.sent).toContainEqual({ type: "changed" });
+      expect(b.channels[0]!.sent).toContainEqual({ type: "marked" });
       expect(b.router.refresh).not.toHaveBeenCalled();
+    });
+
+    it("the tabs come back in a round soon after, not minutes later", async () => {
+      const b = signedIn();
+      await vi.advanceTimersByTimeAsync(20_000);
+      vi.mocked(b.router.prefetch).mockClear();
+      await window.fetch("/plan", { method: "POST" });
+      await flush();
+      await vi.advanceTimersByTimeAsync(300);
+      expect(isInMemory("/taxes")).toBe(false);
+      await vi.advanceTimersByTimeAsync(REFILL_AFTER_MS + 5_000);
+      const asked = vi.mocked(b.router.prefetch).mock.calls.map(([page]) => page);
+      expect(asked).toEqual(REFILL_PAGES.filter((page) => page !== "/home"));
+      expect(isInMemory("/taxes")).toBe(true);
+    });
+
+    it("a chat message keeps the pages; one made before it refreshes in place when it comes up", async () => {
+      const b = signedIn();
+      await vi.advanceTimersByTimeAsync(20_000);
+      const madeBefore = Date.now() - 1;
+      b.receive({ type: "marked" });
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(b.router.refresh).not.toHaveBeenCalled();
+      expect(isInMemory("/taxes")).toBe(true);
+
+      // Made after the message: shown as it is.
+      pageShown("person_a", Date.now());
+      await vi.advanceTimersByTimeAsync(REFRESH_IN_PLACE_AFTER_MS);
+      expect(refreshInPlace).not.toHaveBeenCalled();
+      // Made before it: shown at once, then, once it has stayed a moment, made again in place.
+      // The others stay in memory.
+      pageShown("person_a", madeBefore);
+      await vi.advanceTimersByTimeAsync(REFRESH_IN_PLACE_AFTER_MS);
+      expect(refreshInPlace).toHaveBeenCalledOnce();
+      expect(b.router.refresh).not.toHaveBeenCalled();
+      expect(isInMemory("/taxes")).toBe(true);
+    });
+
+    it("refreshing in place isn't itself a change of data", async () => {
+      const b = signedIn();
+      await vi.advanceTimersByTimeAsync(20_000);
+      vi.mocked(refreshInPlace).mockImplementationOnce(async () => {
+        await window.fetch("/home", { method: "POST", headers: { "next-action": "own" } });
+      });
+      b.receive({ type: "marked" });
+      vi.advanceTimersByTime(1);
+      pageShown("person_a", Date.now() - 10);
+      await vi.advanceTimersByTimeAsync(REFRESH_IN_PLACE_AFTER_MS + 300);
+      expect(b.router.refresh).not.toHaveBeenCalled();
+      expect(isInMemory("/taxes")).toBe(true);
+      // Another action still is.
+      await window.fetch("/home", { method: "POST", headers: { "next-action": "other" } });
+      await flush();
+      await vi.advanceTimersByTimeAsync(300);
+      expect(b.router.refresh).toHaveBeenCalledOnce();
     });
 
     it("a tab out of sight refreshes when it's back", async () => {
@@ -329,17 +399,34 @@ describe("in the browser", () => {
   });
 
   describe("an old page", () => {
-    it("refreshes quietly when it comes up older than the limit, and not before", () => {
+    it("refreshes quietly, in place, when it comes up older than the limit, and not before", async () => {
       const b = fakeBrowser();
       startPageCache(b.router);
       const start = Date.now();
       pageShown("person_a", start);
       vi.setSystemTime(start + PAGE_OLD_MS);
       pageShown("person_a", start);
+      await vi.advanceTimersByTimeAsync(REFRESH_IN_PLACE_AFTER_MS);
+      expect(refreshInPlace).not.toHaveBeenCalled();
+      pageShown("person_a", start - 1);
+      await vi.advanceTimersByTimeAsync(REFRESH_IN_PLACE_AFTER_MS);
+      expect(refreshInPlace).toHaveBeenCalledOnce();
       expect(b.router.refresh).not.toHaveBeenCalled();
+    });
+
+    it("isn't refreshed when it's left within a moment: the refresh, cut short, would empty every page", async () => {
+      const b = fakeBrowser();
+      startPageCache(b.router);
+      const start = Date.now();
+      pageShown("person_a", start);
       vi.setSystemTime(start + PAGE_OLD_MS + 1);
       pageShown("person_a", start);
-      expect(b.router.refresh).toHaveBeenCalledOnce();
+      await vi.advanceTimersByTimeAsync(REFRESH_IN_PLACE_AFTER_MS / 2);
+      // On to the next tab, made just now.
+      pageShown("person_a", Date.now());
+      await vi.advanceTimersByTimeAsync(REFRESH_IN_PLACE_AFTER_MS * 2);
+      expect(refreshInPlace).not.toHaveBeenCalled();
+      expect(b.router.refresh).not.toHaveBeenCalled();
     });
   });
 
@@ -378,6 +465,53 @@ describe("in the browser", () => {
       startPageCache(nobody.router);
       await vi.advanceTimersByTimeAsync(30_000);
       expect(nobody.router.prefetch).not.toHaveBeenCalled();
+    });
+
+    it("load the page you came in on as you leave it, once", async () => {
+      const b = fakeBrowser();
+      startPageCache(b.router);
+      pageShown("person_a", Date.now());
+      await vi.advanceTimersByTimeAsync(20_000);
+      vi.mocked(b.router.prefetch).mockClear();
+      b.win.location.pathname = "/money";
+      pageShown("person_a", Date.now());
+      expect(vi.mocked(b.router.prefetch).mock.calls.map(([page]) => page)).toEqual(["/home"]);
+      b.win.location.pathname = "/home";
+      pageShown("person_a", Date.now());
+      b.win.location.pathname = "/taxes";
+      pageShown("person_a", Date.now());
+      expect(b.router.prefetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("start a tab loading when the pointer is over it or a finger on it", async () => {
+      const b = fakeBrowser();
+      startPageCache(b.router);
+      pageShown("person_a", Date.now());
+      const tab = (href: string) => ({
+        closest: (selector: string) =>
+          selector.includes("#main-nav") ? { href: `https://jane.test${href}` } : null,
+      });
+      b.fire("pointerover", { target: tab("/loans") });
+      expect(b.router.prefetch).toHaveBeenCalledWith(
+        "/loans",
+        expect.objectContaining({ kind: "full" }),
+      );
+      vi.mocked(b.router.prefetch).mockClear();
+      // Already in memory, the page you're on, or not a tab: nothing.
+      b.fire("touchstart", { target: tab("/loans") });
+      b.fire("touchstart", { target: tab("/home") });
+      b.fire("pointerover", { target: { closest: () => null } });
+      expect(b.router.prefetch).not.toHaveBeenCalled();
+    });
+
+    it("never start a tab loading for someone trying Jane", () => {
+      const b = fakeBrowser();
+      startPageCache(b.router);
+      pageShown("trial_abc", Date.now());
+      b.fire("pointerover", {
+        target: { closest: () => ({ href: "https://jane.test/loans" }) },
+      });
+      expect(b.router.prefetch).not.toHaveBeenCalled();
     });
 
     it("wait for a tab out of sight to come back", async () => {
