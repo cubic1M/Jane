@@ -15,6 +15,7 @@ import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { cachedCopy } from "@/lib/read-cache";
+import { monthStartUtc } from "@/lib/dates";
 
 // The person's step 57 level. Read here rather than through src/lib/autopilot.ts, which
 // applies the standing rules, which read this module.
@@ -47,8 +48,6 @@ const isSector = (v: unknown): v is Sector =>
 const isLevel = (v: unknown): v is SectorLevel =>
   typeof v === "string" && (SECTOR_LEVELS as readonly string[]).includes(v);
 
-const monthStart = (now: Date) => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-
 // The step 57 level the defaults come from: custom rules count as "Handle the safe stuff",
 // and no choice yet as "Ask me first".
 function baseLevel(global: string | null): AutopilotChoice {
@@ -61,9 +60,9 @@ export async function sectorAutopilots(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<SectorAutopilot[]> {
   return client === defaultClient
-    ? sectorAutopilotsOnce(userId, monthStart(now).toISOString())
-    : cachedCopy(`sectorAutopilots:${userId}:${monthStart(now).toISOString()}`, client, () =>
-        sectorAutopilotsFrom(userId, client, monthStart(now)),
+    ? sectorAutopilotsOnce(userId, monthStartUtc(now).toISOString())
+    : cachedCopy(`sectorAutopilots:${userId}:${monthStartUtc(now).toISOString()}`, client, () =>
+        sectorAutopilotsFrom(userId, client, monthStartUtc(now)),
       );
 }
 

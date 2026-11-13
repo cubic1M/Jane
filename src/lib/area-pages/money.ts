@@ -13,6 +13,7 @@ import {
   shortLabel,
   worthFigure,
 } from "./tree";
+import { plural } from "@/lib/plural";
 
 // Spending & bills as a tree (docs/design/area-pages.md): Spending & bills → its branches
 // (charges to look at, what's coming up, subscriptions, budgets, yearly bills, where it goes,
@@ -179,7 +180,6 @@ export const dayLabel = (day: string) =>
     timeZone: "UTC",
   });
 const perYear = (cents: number) => `${shortMoney(cents)}/yr`;
-const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 // A name as a label: its first six words (a merchant's or a category's name is rarely more).
 const asLabel = (name: string) => shortLabel(name);
 

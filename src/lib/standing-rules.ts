@@ -19,6 +19,7 @@ import { log } from "@/lib/log";
 import { sendPush } from "@/lib/push";
 import { partnerForUser } from "@/lib/referrals";
 import { autopilotFor, recordAct } from "@/lib/sector-autopilot";
+import { monthStartUtc } from "@/lib/dates";
 
 type Options = { client?: PrismaClient; now?: Date };
 
@@ -119,8 +120,6 @@ export function matchingRule(
   return null;
 }
 
-const monthStart = (now: Date) => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-
 export type RuleApproval = { findingId: string; decisionId: string; ruleKey: string };
 
 // Approves open findings that match the person's enabled rules, within each rule's monthly
@@ -152,7 +151,7 @@ export async function applyStandingRules(
     }),
     db.decisions.groupBy({
       by: ["ruleKey"],
-      where: { source: "rule", undoneAt: null, createdAt: { gte: monthStart(now) } },
+      where: { source: "rule", undoneAt: null, createdAt: { gte: monthStartUtc(now) } },
       _count: true,
     }),
   ]);

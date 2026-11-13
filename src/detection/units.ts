@@ -1,3 +1,5 @@
+import { addDays, isoDay as isoDate } from "@/lib/dates";
+
 // Unit conversions and date math. These are facts about calendars, not tunable
 // thresholds, so they live here rather than in src/config/detection.ts.
 
@@ -11,13 +13,8 @@ function toUtc(date: string): number {
   return Date.parse(`${date}T00:00:00Z`);
 }
 
-export function isoDate(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-export function daysBetween(from: string, to: string): number {
-  return Math.round((toUtc(to) - toUtc(from)) / MS_PER_DAY);
-}
+// The same day math as src/lib/dates.ts, under the names the detectors use.
+export { addDays, daysBetween, isoDay as isoDate } from "@/lib/dates";
 
 export function monthsBefore(date: string, months: number): string {
   const d = new Date(toUtc(date));
@@ -33,10 +30,6 @@ export function median(values: number[]): number {
 
 export function average(values: number[]): number {
   return values.reduce((sum, v) => sum + v, 0) / values.length;
-}
-
-export function addDays(date: string, days: number): string {
-  return isoDate(new Date(toUtc(date) + days * MS_PER_DAY));
 }
 
 // The next date of a recurring charge. Monthly, quarterly and yearly charges keep their

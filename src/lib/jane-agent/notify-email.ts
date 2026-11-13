@@ -1,3 +1,4 @@
+import { escapeHtml } from "@/lib/escape-html";
 // Jane's email of what's waiting in the chat (spec step 85): one email for a batch of
 // messages, each with its buttons as one-tap links and a link to it in the chat. Plain
 // text first; the HTML keeps Jane's ASCII look (monospace, "jane>", [ buttons ]) where
@@ -20,14 +21,6 @@ const TAGS: Record<string, string> = {
   done: "done",
   heads_up: "heads-up",
 };
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
-}
 
 function chatEmailSubject(count: number): string {
   return count === 1 ? "Jane: 1 thing for you" : `Jane: ${count} things for you`;

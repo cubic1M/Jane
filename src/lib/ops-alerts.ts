@@ -8,7 +8,8 @@ import {
 } from "@/config/ops-alerts";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
-import { escapeHtml, sendEmail } from "@/lib/email";
+import { escapeHtml } from "@/lib/escape-html";
+import { sendEmail } from "@/lib/email";
 import { teamEmails } from "@/lib/health";
 import { log } from "@/lib/log";
 import { siteOrigin } from "@/lib/site-origin";

@@ -13,7 +13,7 @@ import {
 } from "@/config/areas";
 import type { HealthPart } from "@/config/health-score";
 import { AREA_TABS } from "@/config/navigation";
-import { formatCents } from "@/lib/money";
+import { formatWholeDollars } from "@/lib/money";
 import { daysBetween } from "@/lib/dates";
 import { dayLabel, monthLabel } from "@/lib/day-label";
 import { plural } from "@/lib/plural";
@@ -267,9 +267,6 @@ export function shortMoney(cents: number): string {
   return `${sign}$${abs}`;
 }
 
-const wholeDollars = (cents: number) =>
-  formatCents(Math.round(cents / 100) * 100).replace(/\.00$/, "");
-
 // --- The hero row ---
 
 export function heroView(input: HeroInput): HeroView {
@@ -344,7 +341,7 @@ function taxNote(safe: SafeInput): string {
   const all = safe.taxSoFarCents ?? 0;
   return [
     "estimate",
-    ...(all > (safe.taxHeldCents ?? 0) ? [`${wholeDollars(all)} in all`] : []),
+    ...(all > (safe.taxHeldCents ?? 0) ? [`${formatWholeDollars(all)} in all`] : []),
     ...(safe.taxKeptApartCents ? [] : ["none kept apart that Jane can see"]),
   ].join(", ");
 }
@@ -783,7 +780,7 @@ export function tilesView(input: AreasInput): AreaTile[] {
 export function chartText(chart: TileChart): string {
   switch (chart.kind) {
     case "bars":
-      return chart.values.map((v, i) => `${chart.labels[i]} ${wholeDollars(v)}`).join(", ");
+      return chart.values.map((v, i) => `${chart.labels[i]} ${formatWholeDollars(v)}`).join(", ");
     case "squares":
       return `${plural(chart.filled, "policy", "policies")}, ${plural(chart.hollow, "gap")}`;
     case "split":

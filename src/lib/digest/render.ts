@@ -4,6 +4,7 @@ import { SUGGESTION_CONFIDENCE_FROM } from "@/config/priorities";
 import type { Confidence } from "@/generated/prisma/client";
 import { formatCents } from "@/lib/money";
 import type { DigestCheckup, DigestPayload } from "./build";
+import { escapeHtml } from "@/lib/escape-html";
 
 // The digest email, as HTML and plain text. Links are passed in already wrapped for
 // click tracking.
@@ -23,14 +24,6 @@ export type DigestLinks = {
   // A one-tap link for this week's no-risk items (spec step 60), when there are any.
   goAhead?: { url: string; count: number };
 };
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
-}
 
 const yearly = (cents: number | null) =>
   cents === null ? "" : ` (about ${formatCents(cents)} a year)`;

@@ -1,17 +1,10 @@
 import { ALERT_LABELS } from "@/config/alerts";
 import type { AlertType } from "@/generated/prisma/client";
+import { escapeHtml } from "@/lib/escape-html";
 
 // One urgent alert as an email, HTML and plain text.
 
 export type AlertEmailLinks = { alerts: string; settings: string; unsubscribe: string };
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
-}
 
 export function renderAlertEmail(
   alert: { type: AlertType; title: string; body: string },

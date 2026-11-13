@@ -11,6 +11,7 @@ import { dayLabel } from "@/lib/day-label";
 import { formatCents, parseMoneyToCents } from "@/lib/money";
 import type { CsvRecord } from "./parse-csv";
 import type { ParsedRow } from "./formats";
+import { plural } from "@/lib/plural";
 
 // Whether a statement adds up, before anything is worked out from it: the rows against its running
 // balance, against the totals it states, and which way its signs run. What doesn't add up becomes
@@ -48,7 +49,6 @@ export type ControlReport = {
   signsReversed: boolean;
 };
 
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const near = (a: number, b: number) => Math.abs(a - b) <= CONTROL_TOLERANCE_CENTS;
 const sumOf = (rows: readonly { amountCents: number }[]) =>
   rows.reduce((sum, r) => sum + r.amountCents, 0);

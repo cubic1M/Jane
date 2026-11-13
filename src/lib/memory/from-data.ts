@@ -13,6 +13,7 @@ import { normalizeMerchant } from "@/data-sources/merchant";
 import { addDays } from "@/lib/dates";
 import type { Profile, ProfileInput } from "@/profile/build";
 import type { FactDraft } from "./facts";
+import { ordinal } from "@/planning/due-dates";
 
 // What an upload or the nightly scan teaches Jane about the person (source "upload" for
 // statements they uploaded, "detector" for a linked bank). Pure: the profile (src/profile/
@@ -20,12 +21,6 @@ import type { FactDraft } from "./facts";
 // profile's own confidence, and adds what memory keeps beyond it: payday, where the rent goes,
 // the main bank and how the cards are used. Only what was seen: what the person told Jane is
 // already remembered from where they said it.
-
-const ordinal = (n: number) => {
-  const tens = n % 100;
-  const suffix = tens >= 11 && tens <= 13 ? "th" : (["th", "st", "nd", "rd"][n % 10] ?? "th");
-  return `${n}${suffix}`;
-};
 
 // Paydays: the days of the month most paychecks land on (one or two), when they're regular.
 export function paydayFrom(input: ProfileInput): { days: number[]; matches: number } | null {

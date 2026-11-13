@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { appBase } from "@/lib/digest/links";
-import { escapeHtml, sendEmail } from "@/lib/email";
+import { escapeHtml } from "@/lib/escape-html";
+import { sendEmail } from "@/lib/email";
 import { hit } from "@/lib/rate-limit";
 import {
   HouseholdError,

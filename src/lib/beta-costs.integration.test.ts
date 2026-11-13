@@ -5,7 +5,8 @@ import { PrismaClient } from "@/generated/prisma/client";
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import { monthlyCapCents } from "@/lib/jane-agent/claude-limits";
-import { betaCosts, type BetaCosts, monthStartUtc } from "./beta-costs";
+import { monthStartUtc } from "@/lib/dates";
+import { betaCosts, type BetaCosts } from "./beta-costs";
 
 // /admin/costs against a real database. Other tests share it, so this counts its own people only:
 // a real bank counts (and one removed this month), the demo bank and a try never do.

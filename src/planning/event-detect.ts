@@ -10,6 +10,7 @@ import {
   type EventTypeId,
 } from "@/config/events";
 import type { Bar } from "@/lib/market/types";
+import { dayNumber, fromDayNumber } from "@/detection/units";
 
 // Spotting events (the events overlay, src/config/events.ts), pure. Every event carries the time
 // it was known: the overlay and the backtest may act on it only at a close after that time, so
@@ -36,10 +37,7 @@ export type MarketEvent = {
 // One day of GDELT coverage for a query: its articles and all articles that day.
 export type Coverage = { date: string; count: number; total: number };
 
-const DAY_MS = 86_400_000;
-const dayNumber = (iso: string) => Math.round(Date.parse(`${iso}T00:00:00Z`) / DAY_MS);
-const isoOf = (n: number) => new Date(n * DAY_MS).toISOString().slice(0, 10);
-export const nextDay = (iso: string) => isoOf(dayNumber(iso) + 1);
+export const nextDay = (iso: string) => fromDayNumber(dayNumber(iso) + 1);
 
 // A US market close, as a UTC time. 4pm New York is 20:00Z in summer and 21:00Z in winter: the
 // earlier is used, so an event from the last hour of a winter session waits for the next close.

@@ -27,7 +27,7 @@ import {
   summaryOk,
   type Summarizer,
 } from "./summarize";
-import { DAY_MS, isoDay as day } from "@/lib/dates";
+import { DAY_MS, isoDay as day, monthStartUtc, dayStartUtc } from "@/lib/dates";
 import { systemDb } from "@/lib/system-db";
 
 const WHY = "Market data is shared, no one's own";
@@ -46,8 +46,6 @@ type Options = {
 };
 
 const daysBefore = (now: Date, days: number) => day(new Date(now.getTime() - days * DAY_MS));
-const dayStart = (now: Date) => new Date(Math.floor(now.getTime() / DAY_MS) * DAY_MS);
-const monthStart = (now: Date) => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 
 // The practice portfolios' ETFs and the large companies the market data watches.
 export const NEWS_WATCHLIST: readonly string[] = [
@@ -80,11 +78,11 @@ export function worstCaseHundredths(model: string, headlines: number): number {
 export async function newsSpend({ client = defaultClient, now = new Date() }: Options = {}) {
   const [month, today] = await Promise.all([
     systemDb(WHY, client).newsSummaryCall.aggregate({
-      where: { calledAt: { gte: monthStart(now) } },
+      where: { calledAt: { gte: monthStartUtc(now) } },
       _sum: { costHundredths: true },
     }),
     systemDb(WHY, client).newsSummaryCall.count({
-      where: { calledAt: { gte: dayStart(now) } },
+      where: { calledAt: { gte: dayStartUtc(now) } },
     }),
   ]);
   return { monthHundredths: month._sum.costHundredths ?? 0, callsToday: today };

@@ -13,7 +13,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { loadDetectionInput } from "@/detection/engine";
 import type { DetectionInput } from "@/detection/types";
 import { netWorth } from "@/insights/net-worth";
-import { formatCents } from "@/lib/money";
+import { formatWholeDollars } from "@/lib/money";
 import { adviceMode } from "@/lib/advice-mode";
 import { cryptoTotal } from "@/lib/crypto/crypto";
 import { loadPayoff } from "@/lib/debt-plan";
@@ -40,9 +40,6 @@ import { formatPercentTenths } from "@/lib/percent";
 // real accounts get the projection and its assumptions, with no advice.
 
 type Options = { client?: PrismaClient; now?: Date; input?: DetectionInput };
-
-// Whole dollars: "$2,619".
-const dollars = (cents: number) => formatCents(Math.round(cents / 100) * 100).replace(/\.00$/, "");
 
 export type Overrides = { investedLow?: number; investedHigh?: number; extraMonthlyCents?: number };
 
@@ -182,13 +179,13 @@ export async function loadLongView(
     {
       label: "Extra invested each month",
       // Dollars as dollars (area plan walk: "Saved each month : 2619").
-      value: `${dollars(extra)} a month`,
+      value: `${formatWholeDollars(extra)} a month`,
       source: "Yours to set",
       editable: "extra",
     },
     {
       label: "Saved each month",
-      value: `${dollars(margin)} a month (income less spending); ${dollars(investMonthly)} of it invested`,
+      value: `${formatWholeDollars(margin)} a month (income less spending); ${formatWholeDollars(investMonthly)} of it invested`,
       source: "Your last three full months",
     },
   ];
@@ -199,8 +196,8 @@ export async function loadLongView(
         href: l.key === "invest" ? "/investments/auto" : "/debt",
         words:
           l.key === "invest"
-            ? `Investing ${dollars(LEVER_MONTHLY_CENTS)} more a month`
-            : `Paying ${dollars(LEVER_MONTHLY_CENTS)} more a month toward ${l.label}`,
+            ? `Investing ${formatWholeDollars(LEVER_MONTHLY_CENTS)} more a month`
+            : `Paying ${formatWholeDollars(LEVER_MONTHLY_CENTS)} more a month toward ${l.label}`,
       }))
     : [];
   const retirement = advice

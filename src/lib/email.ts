@@ -4,6 +4,7 @@ import { killed } from "@/config/kill-switches";
 import { log } from "@/lib/log";
 import { freshSwitches } from "@/lib/ops-switches";
 import { isTrialEmail } from "@/lib/trial-ids";
+import { escapeHtml } from "@/lib/escape-html";
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
@@ -81,14 +82,6 @@ export async function sendEmail({
   }
   const body = (await response.json().catch(() => null)) as { id?: unknown } | null;
   return { id: typeof body?.id === "string" ? body.id : null };
-}
-
-export function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
 }
 
 export async function sendMagicLink({

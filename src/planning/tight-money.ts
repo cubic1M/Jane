@@ -1,6 +1,7 @@
 import { ESSENTIAL_WORDS, type EssentialGroup } from "@/config/tight-money";
 import { LOW_BALANCE_CUSHION_CENTS } from "@/config/detection";
 import { formatCents } from "@/lib/money";
+import { ordinal } from "@/planning/due-dates";
 
 // When money is tight (spec step 177). Pure: the first day the checking forecast dips under
 // its cushion, the bills before then with essentials first, and the requests Jane would
@@ -68,12 +69,6 @@ export type TightItem = {
   body: string;
   // What it could free up before the shortfall, in cents; null when it isn't a payment.
   freesCents: number | null;
-};
-
-const ordinal = (n: number) => {
-  const s = ["th", "st", "nd", "rd"];
-  const v = n % 100;
-  return `${n}${s[(v - 20) % 10] ?? s[v] ?? s[0]}`;
 };
 
 // Items Jane prepares for this shortfall. Never an essential, and a mortgage is housing:

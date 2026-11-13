@@ -18,7 +18,7 @@ import {
 } from "@/lib/jane-agent/claude-limits";
 import { costInHundredthsOfCents } from "@/lib/jane-agent/spend";
 import { isTrialUser } from "@/lib/trial-ids";
-import { DAY_MS } from "@/lib/dates";
+import { dayStartUtc, monthStartUtc } from "@/lib/dates";
 import { systemDb } from "@/lib/system-db";
 import { scopedFor } from "@/lib/db-scoped";
 
@@ -39,8 +39,6 @@ const WEB_SEARCH_HUNDREDTHS = 100;
 
 const dayKey = (userId: string) => `claudebg:${userId}`;
 const monthKey = (userId: string) => `claudebgmonth:${userId}`;
-const dayStart = (now: Date) => new Date(Math.floor(now.getTime() / DAY_MS) * DAY_MS);
-const monthStart = (now: Date) => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 
 async function counted(client: PrismaClient, key: string, windowStart: Date): Promise<number> {
   const row = await systemDb(
@@ -58,8 +56,8 @@ export async function backgroundSpentCents(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<{ today: number; month: number }> {
   const [today, month] = await Promise.all([
-    counted(client, dayKey(userId), dayStart(now)),
-    counted(client, monthKey(userId), monthStart(now)),
+    counted(client, dayKey(userId), dayStartUtc(now)),
+    counted(client, monthKey(userId), monthStartUtc(now)),
   ]);
   return { today, month };
 }
@@ -107,8 +105,8 @@ export async function chargeBackground(
     (usage?.server_tool_use?.web_search_requests ?? 0) * WEB_SEARCH_HUNDREDTHS;
   if (amount <= 0) return;
   for (const [key, windowStart] of [
-    [dayKey(userId), dayStart(now)],
-    [monthKey(userId), monthStart(now)],
+    [dayKey(userId), dayStartUtc(now)],
+    [monthKey(userId), monthStartUtc(now)],
   ] as const) {
     await systemDb("Rate limits are the system's own counters", client).$executeRaw`
       INSERT INTO rate_limits (key, window_start, count) VALUES (${key}, ${windowStart}, ${amount})
@@ -181,12 +179,12 @@ async function countersFor(userId: string, client: PrismaClient, now: Date): Pro
     month,
     {
       key: dayKey(userId),
-      windowStart: dayStart(now),
+      windowStart: dayStartUtc(now),
       capCents: CLAUDE_BACKGROUND_DAILY_CAP_CENTS,
     },
     {
       key: monthKey(userId),
-      windowStart: monthStart(now),
+      windowStart: monthStartUtc(now),
       capCents: CLAUDE_BACKGROUND_MONTHLY_CAP_CENTS,
     },
   ];

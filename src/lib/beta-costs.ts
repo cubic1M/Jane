@@ -6,6 +6,7 @@ import { monthlyCapCents, monthlySpentCents } from "@/lib/jane-agent/claude-limi
 import { isDemoItemId } from "@/lib/plaid/demo";
 import { ITEM_STATUS } from "@/lib/plaid/sync";
 import { systemDb } from "@/lib/system-db";
+import { monthStartUtc } from "@/lib/dates";
 
 const WHY = "Founder costs count across people: numbers only";
 
@@ -34,9 +35,6 @@ export type BetaCosts = {
   claude: { spentCents: number; capCents: number; share: number };
   people: { signedUp: number; activeThisMonth: number; activeThisWeek: number; invited: number };
 };
-
-export const monthStartUtc = (now: Date) =>
-  new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 
 export async function betaCosts({
   client = defaultClient,
