@@ -70,7 +70,16 @@ const STOCK_PICKS = [
   // "Tesla is overvalued". Of a home or a car it says nothing about a share.
   new RegExp(
     `\\b(?:${NOT_TICKERS}[A-Z]{3,5}|${COMPANY})\\s+(?:is|looks|seems)\\s+(?:\\w+\\s+)?(?:over|under)valued\\b`,
+  ), // Round 15 (11-13): a pick in hindsight, what "most people" own, and Jane as someone's adviser
+  // ("You should have sold Tesla in March", "VOO is what most people pick", "As your advisor, I'd
+  // say sell"). Jane is a controller, not an adviser.
+  new RegExp(
+    `\\bshould(?:(?:'|’)ve| have) (?:sold|bought|held|kept|dumped|invested in|gotten into|got into)\\s+(?:(?:your|the|some|more) )?(?:${NOT_TICKERS}[A-Z]{3,5}\\b|${COMPANY}\\b)`,
   ),
+  new RegExp(
+    `\\b(?:${NOT_TICKERS}[A-Z]{3,5}|${COMPANY}) is what (?:most|many|a lot of) (?:people|investors|folks)\\b`,
+  ),
+  /\bas your (?:financial |investment )?(?:advisor|adviser|planner|broker|wealth manager)\b/i,
 ];
 
 const INVESTMENT = [
@@ -132,6 +141,11 @@ const INVESTMENT = [
   /\b(?:[Tt]sla|[Nn]vda|[Aa]apl|[Mm]sft|[Aa]mzn|[Gg]oogl?|[Pp]ltr)\b/,
   /\b(?!(?:ROLEX|FEDEX|TIMEX|LATEX|XEROX|PYREX|DUREX|CODEX|INDEX|RELAX|ANNEX|SPANX|UNISEX|DUPLEX|COMPLEX)\b)[A-Z]{4}X\b/,
   /\bhodl(?:ing)?\b/i,
+  // Round 15 (11-13): newer kinds of speculation ("Memecoins could 10x that", "Try a few altcoins",
+  // "Day trade with the extra", "Buy a rental property with your savings", "Lend it out on a
+  // peer-to-peer platform"). A rental someone already owns is a fact.
+  /\b(?:meme ?coins?|alt ?coins?|nfts?|defi|yield farming|liquidity pools?|day[- ]?trad\w*|swing[- ]trad\w*|forex|fx trading|reits?|angel invest\w*|peer[- ]to[- ]peer (?:lending|loans?|platform)|p2p lending)\b/i,
+  /\b(?:buy|get|purchase|invest in|pick up)\b[^.!?]{0,20}\b(?:rental|investment) propert(?:y|ies)\b/i,
   // Round 14 (11-12): a bet or a lottery ticket is speculation too ("Bet the over on Sunday's
   // game", "Use DraftKings' signup bonus", "Buy a few lottery tickets with the extra"). What was
   // spent at a sportsbook is a fact.
@@ -433,6 +447,13 @@ const LEGAL = [
   /\b(?:they|he|she|the (?:landlord|lender|collector|company|bank|store|seller|merchant))(?:(?:'|’)ll| will) have to (?:refund|pay|return|stop|remove|delete|fix|cover)\b/i,
   /\byou (?:don(?:'|’)?t|do not) (?:legally )?owe (?:it|that|this|them|the debt|that debt|this debt)\b/i,
   /\b(?:protected|covered) (?:under|by) (?:the )?(?:card act|credit card act|fdcpa|fcra|tila|truth in lending act|scra|servicemembers civil relief act|fair housing act|(?:state|federal) law|the law)\b/i,
+  // Round 15 (11-13): help getting around the law ("Keep it under $10,000 so the bank doesn't
+  // report it", "Pay your nanny in cash so there's no record", "Move the money to your mom's account
+  // before you fill out the FAFSA") and a deal with a collector ("Ask for a pay-for-delete").
+  /\bso (?:the bank|the irs|they|it|nobody|no one) (?:doesn(?:'|’)t|won(?:'|’)t|does not|will not|can(?:'|’)t|never) (?:report|flag|notice|see|find out|know)\b|\bunder \$?10,?000(?:\.00)?\b[^.!?]{0,30}\b(?:report|flag)\w*\b|\b(?:report|flag)\w*\b[^.!?]{0,30}\bunder \$?10,?000(?:\.00)?\b/i,
+  /\b(?:so|and) (?:there(?:'|’)s|there is|you leave|it leaves) no (?:record|paper trail|trace)\b|\bno paper trail\b|\boff the books\b/i,
+  /\b(?:move|transfer|put|hide|park|shift)\b[^.!?]{0,40}\b(?:before|so)\b[^.!?]{0,30}\b(?:fafsa|financial aid|medicaid|snap|ssi|food stamps|the bankruptcy|filing for bankruptcy)\b|\bhide (?:your |the |some )?(?:income|money|assets|cash|savings)\b/i,
+  /\bpay[- ]for[- ]delete\b/i,
 ];
 
 // Saying Jane can't help with something legal, or pointing to a lawyer for it, is not legal
