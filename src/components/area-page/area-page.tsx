@@ -44,6 +44,24 @@ export function AreaPage({
   const [picked, setPicked] = useState<string | null>(start?.includes(":") ? start : null);
   const panel = useRef<HTMLDivElement>(null);
 
+  // A page opened in the browser can come from its memory (src/lib/page-cache.ts), rendered
+  // without this address's ?focus=: the address says where to land, before the effect below
+  // writes the address from what's open (debugger 11-12: Yes on "Get your employer's full
+  // 401(k) match" opened /investments?focus=ideas:…, which the page then wiped to the top).
+  useEffect(() => {
+    if (start) return;
+    const id = new URL(window.location.href).searchParams.get("focus") ?? undefined;
+    if (!known(id)) return;
+    // After the first paint, like a tap would; the effect below then writes it back.
+    requestAnimationFrame(() => {
+      setOpen(branchOf(id!));
+      setPicked(id!.includes(":") ? id! : null);
+      requestAnimationFrame(() => panel.current?.scrollIntoView({ block: "nearest" }));
+    });
+    // Only on arrival.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // An old #anchor link opens its node once the page is in the browser.
   useEffect(() => {
     const id = anchors?.[window.location.hash.slice(1)];
