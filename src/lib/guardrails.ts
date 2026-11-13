@@ -79,6 +79,9 @@ const STOCK_PICKS = [
   new RegExp(
     `\\b(?:[Pp]ut|[Pp]utting|[Mm]ove|[Mm]oving|[Pp]ark|[Pp]arking|[Ii]nvest|[Ii]nvesting|[Dd]ump|[Dd]umping)\\b[^.!?\\n]{0,20}\\b(?:in|into)\\s+\\$?${NOT_TICKERS}[A-Z]{3,5}\\b`,
   ),
+  // Round 20 (11-13): an app that invests for you ("Put it in Wealthfront", "Try a robo-advisor like
+  // Betterment"). Acorns or Betterment is also a charge on a statement, so only putting money in.
+  /\brobo[- ]?advis[oe]rs?\b|\b(?:put|move|park|invest|try|use|open|start|sign up for|go with|switch to)\b[^.!?\n]{0,25}\b(?:wealthfront|betterment|acorns|stash|webull|m1 finance|e\*?trade|ally invest|merrill edge|sofi invest)\b/i,
   // Round 17 (11-13): a ticker spelled out ("Buy T S L A", "Grab some v-o-o"); "Get a T-shirt" is shopping.
   /\b(?:buy|buying|grab|get|add|pick up|own|load up on)\s+(?:some |more )?(?![Aa][\s-])(?:[A-Za-z][ -]){2,4}[A-Za-z]\b(?![\w'’-])/i,
   // table row ("| VOO | Buy |") and a line of code ("buy: TSLA").
@@ -87,7 +90,7 @@ const STOCK_PICKS = [
   ),
   /\b(?:BUY|SELL|SHORT|DUMP)\s+(?!(?:NOW|PAY|IT|THE|A|AN|ONE|MORE|LESS)\b)[A-Z]{3,}\b/,
   new RegExp(
-    `\\b(?:[Bb]uy|[Ss]ell|BUY|SELL|[Ss]hort|SHORT)\\s*[:=]\\s*\\$?${NOT_TICKERS}[A-Z]{3,5}\\b`,
+    `\\b(?:[Bb]uy|[Ss]ell|BUY|SELL|[Ss]hort|SHORT)\\s*(?:[:=]|\\.{2,}|…|[—–]|-{1,2}>?|→|=>)\\s*\\$?${NOT_TICKERS}[A-Z]{3,5}\\b`,
   ),
   /\$?\b[A-Z]{3,5}\s*(?:🚀|📈|💎|🌕)|(?:🚀|📈|💎)\s*\$?[A-Z]{3,5}\b/u,
   // "Tesla is overvalued". Of a home or a car it says nothing about a share.
@@ -330,6 +333,9 @@ const TAX_ADVICE = [
   // your W-4", "Set your W-4 to single", "You qualify for the EITC, so claim it". Where the IRS's
   // estimator says what to put stays a pointer.
   /(?:^|[.!?:;]\s+|\byou should\s+|\bi(?:'|’)?d\s+)(?:put|enter|write|set|mark|claim|list|choose|select|pick|add|leave)\b[^.!?]{0,60}\bw-?4\b/i,
+  // Round 20 (11-13): "Change your W-4 to get a bigger paycheck". "I never move money or change your
+  // withholding" says what Jane doesn't do.
+  /(?<!\b(?:never|not|cannot|can(?:'|’)?t|won(?:'|’)?t|don(?:'|’)?t|doesn(?:'|’)?t)\b[^.!?]{0,25})\b(?:change|update|adjust|redo|fix|tweak|lower|raise) (?:your |the )?(?:w-?4|withholding)\b/i,
   /\b(?:credits?|deductions?|exemptions?)\b[^.!?]{0,40}\bclaim (?:it|them|that|this|one|both)\b/i,
   // Said another way (security round 48): "Withhold more from your paycheck", "Have your employer
   // withhold an extra $100", "Claim fewer allowances". "Your employer withholds $300" is a fact.
@@ -492,6 +498,8 @@ const LEGAL = [
   // is required to fix it within 30 days", "they'll have to refund you", "That's a scam, so you don't
   // owe it", "You're protected under the CARD Act").
   /\b(?:landlord|lender|servicer|collector|creditor|employer|insurer|they|he|she) (?:is|are) (?:legally )?(?:required|obligated) to\b/i,
+  // Round 20 (11-13): "Your employer has to pay you for that time".
+  /\b(?:employer|boss|landlord|lender|servicer|collector|creditor|insurer|company|bank|store|they|he|she) (?:has|have) to (?:pay|refund|reimburse|give|return|cover)(?: you| it| the| your)\b/i,
   /\b(?:they|he|she|the (?:landlord|lender|collector|company|bank|store|seller|merchant))(?:(?:'|’)ll| will) have to (?:refund|pay|return|stop|remove|delete|fix|cover)\b/i,
   /\byou (?:don(?:'|’)?t|do not) (?:legally )?owe (?:it|that|this|them|the debt|that debt|this debt)\b/i,
   /\b(?:protected|covered) (?:under|by) (?:the )?(?:card act|credit card act|fdcpa|fcra|tila|truth in lending act|scra|servicemembers civil relief act|fair housing act|(?:state|federal) law|the law)\b/i,
@@ -948,6 +956,19 @@ function forChecking(text: string): string {
       .replace(/[\uFF01-\uFF5E]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
       .replace(/[\u00a0\u2000-\u200a\u202f\u205f\u3000]/g, " ")
       .replace(/[\u00ad\u200b-\u200d\u2060\ufeff]/g, "")
+      // Round 20 (11-13): "𝐁𝐮𝐲 𝐓𝐒𝐋𝐀", "ⓉⓈⓁⒶ", an underline mark on each letter, direction marks, HTML
+      // tags, and an emoji between two words ("Buy 👉 TSLA"). A letter or digit in another form
+      // reads as itself; "TSLA 🚀" keeps its rocket.
+      .replace(/[^\x00-\x7F]/gu, (c) => {
+        const plain = c.normalize("NFKC");
+        return /^[A-Za-z0-9]+$/.test(plain) ? plain : c;
+      })
+      .replace(
+        /[\u0305\u0332\u0333\u0335-\u0338\u20d0-\u20ff\u200e\u200f\u202a-\u202e\u2066-\u2069]/g,
+        "",
+      )
+      .replace(/<\/?[a-z][^<>]{0,40}>/gi, "")
+      .replace(/(?<=\w)\s*(?:\p{Extended_Pictographic}\uFE0F?\s*)+(?=\w)/gu, " ")
       // Round 19 (11-13): bold, italics and code around a word ("Buy **TSLA**", "Buy `VOO`") hid it.
       .replace(/`+|(?<![\w*_])[*_~]+(?=\w)|(?<=\w)[*_~]+(?![\w*_])/g, "")
       .replace(/[\p{L}\p{M}]+/gu, (word) =>
