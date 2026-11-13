@@ -140,5 +140,10 @@ export type Detector = {
   detect: (ctx: DetectorContext) => Suggestion | null;
 };
 
-export const suggestionId = (capability: string, topic: SuggestionTopic) =>
-  `${capability}:${topic}`;
+// A detector's suggestion: its id ("<capability>:<topic>"), capability and topic first, then
+// the rest.
+export const suggestion = (
+  capability: string,
+  topic: SuggestionTopic,
+  rest: Omit<Suggestion, "id" | "capability" | "topic">,
+): Suggestion => ({ id: `${capability}:${topic}`, capability, topic, ...rest });

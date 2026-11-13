@@ -3,7 +3,7 @@ import { formatCents } from "@/lib/money";
 import { levelPaymentCents } from "@/planning/refinance";
 import { confidenceOf } from "@/profile/confidence";
 import type { ProfileLiability } from "@/profile/build";
-import { type Detector, suggestionId } from "./contract";
+import { type Detector, suggestion } from "./contract";
 import { headlineOf } from "./helpers";
 
 // Federal student loans (connectors roadmap round 15, the student_aid connector's cards). Facts
@@ -66,10 +66,7 @@ const studentAutopay: Detector = {
     const maybeRap = loans.some(
       (l) => l.repaymentPlan === "unknown" || l.repaymentPlan === "other",
     );
-    return {
-      id: suggestionId("debt", "student_autopay"),
-      capability: "debt",
-      topic: "student_autopay",
+    return suggestion("debt", "student_autopay", {
       title: `Make sure autopay is on for your federal student loans by ${deadline}`,
       // Without a date Jane can't say the loan gets the cut, so no figure in the headline.
       headline: undated
@@ -86,7 +83,7 @@ const studentAutopay: Detector = {
       why: `Federal Direct Loans get 1% off their rate through June 30, 2028 for anyone signed up for autopay with their servicer by 11:59 p.m. Eastern on ${deadline}. On your ${formatCents(owed)} that's about ${formatCents(yearly)} a year${undated ? ", if your loans were first paid out after July 1, 2012" : ""}. Deferment or forbearance pauses it, and three payments returned in a row end it.${maybeRap ? " On RAP it can save less, since unpaid interest is waived there." : ""} If autopay is already on, nothing to do.`,
       action: { label: "See your loans and servicer", href: "/loans/student" },
       more: [{ label: see.title, href: see.url }],
-    };
+    });
   },
 };
 
@@ -123,10 +120,7 @@ const saveEnding: Detector = {
     const rise = standard - now;
     if (owed <= 0 || rise <= 0) return null;
     const simulate = STUDENT_STEPS.find((s) => s.key === "simulate")!;
-    return {
-      id: suggestionId("debt", "student_save_ending"),
-      capability: "debt",
-      topic: "student_save_ending",
+    return suggestion("debt", "student_save_ending", {
       title: "Pick a new repayment plan now that SAVE has ended",
       headline: "Pick a new student loan plan",
       short: `SAVE has ended: without a choice, Standard could be about ${formatCents(standard)} a month.`,
@@ -140,7 +134,7 @@ const saveEnding: Detector = {
       why: `Your bank still shows ${formatCents(owed)} on SAVE, which has ended. You have ${SAVE_ENDING.chooseDays} days from your notice to pick a plan, or you're put on Standard or Tiered Standard. Standard would be about ${formatCents(standard)} a month, ${formatCents(rise)} more than now. Compare RAP, IBR and Standard first. Consolidating now leaves only RAP and Tiered Standard.`,
       action: { label: "Compare repayment plans", href: "/loans/student" },
       more: [{ label: simulate.title, href: simulate.url }],
-    };
+    });
   },
 };
 

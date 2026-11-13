@@ -17,7 +17,7 @@ import type { InvestmentAccountView } from "@/insights/investments";
 import { valuesPlan } from "@/planning/values";
 import type { DetectorContext } from "./contract";
 import { formatCents, formatWholeDollars } from "@/lib/money";
-import { type Detector, suggestionId } from "./contract";
+import { type Detector, suggestion } from "./contract";
 import { clip, evidence, headlineOf, liquidCents, monthlySpendCents, weakest } from "./helpers";
 
 // Detectors for the second batch of investing tools (spec steps 232, 234 and 235): the
@@ -47,10 +47,7 @@ const planMenu: Detector = {
     const total = rows.reduce((s, r) => s + r.saving, 0);
     if (total < R.feeMinCents) return null;
     const top = [...rows].sort((a, b) => b.saving - a.saving)[0];
-    return {
-      id: suggestionId("investing", "plan_menu"),
-      capability: "investing",
-      topic: "plan_menu",
+    return suggestion("investing", "plan_menu", {
       title: "Use a cheaper fund from your own 401(k) menu",
       headline: headlineOf("Use a cheaper 401(k) fund", total, "saves"),
       short: clip(
@@ -70,7 +67,7 @@ const planMenu: Detector = {
       urgency: "later",
       why: `Your 401(k) holds ${FUND_NAMES[top.h.ticker!] ?? top.h.ticker} (${formatCents(top.h.valueCents)}). Your plan's menu also offers ${FUND_NAMES[top.to] ?? top.to} for less; switching saves about ${formatCents(total)} a year in fees, inside the plan, with no tax.`,
       action: { label: "Read your plan's menu", href: "/investments/plan-menu" },
-    };
+    });
   },
 };
 
@@ -83,10 +80,7 @@ const shortTermCash: Detector = {
     const spend = monthlySpendCents(data, profile.months);
     const excess = liquidCents(data) - spend * R.idleMonthsKept;
     if (spend === 0 || excess < R.idleMinExcessCents) return null;
-    return {
-      id: suggestionId("investing", "short_term_cash"),
-      capability: "investing",
-      topic: "short_term_cash",
+    return suggestion("investing", "short_term_cash", {
       title: "Put cash you need within a few years where it earns more, and is still safe",
       headline: headlineOf(
         "Put short-term cash in T-bills",
@@ -103,7 +97,7 @@ const shortTermCash: Detector = {
       urgency: "later",
       why: `About ${formatCents(excess)} of your cash is more than ${R.idleMonthsKept} months of spending. If you will need it within a few years, Treasury bills or CDs that mature when you need it pay about ${R.shortTermGapBps / 100} points more than savings, and a ladder never runs past the date.`,
       action: { label: "Compare safe places", href: "/investments/short-term" },
-    };
+    });
   },
 };
 
@@ -138,10 +132,7 @@ const suddenMoney: Detector = {
     const biggest = [...deposits].sort((a, b) => a.amountCents - b.amountCents)[0];
     const amount = -biggest.amountCents;
     const hold = Math.round(amount * R.suddenHoldShare);
-    return {
-      id: suggestionId("investing", "sudden_money"),
-      capability: "investing",
-      topic: "sudden_money",
+    return suggestion("investing", "sudden_money", {
       title: "Plan your big deposit: tax first, then the rest in order",
       headline: `Set aside ${formatWholeDollars(hold)} tax from your deposit`,
       short: clip(
@@ -156,7 +147,7 @@ const suddenMoney: Detector = {
       urgency: "now",
       why: `${formatCents(amount)} arrived on ${biggest.date} and it doesn't look like pay. What it was decides the tax; until you say, about ${formatCents(hold)} (${Math.round(R.suddenHoldShare * 100)}%) is worth keeping aside. Then debt, your emergency fund, retirement limits, goals and investing, in that order.`,
       action: { label: "Plan it", href: "/investments/sudden-money" },
-    };
+    });
   },
 };
 
@@ -174,10 +165,7 @@ const beneficiaries: Detector = {
     );
     if (open.length === 0) return null;
     const total = open.reduce((s, a) => s + a.balanceCents, 0);
-    return {
-      id: suggestionId("investing", "beneficiaries"),
-      capability: "investing",
-      topic: "beneficiaries",
+    return suggestion("investing", "beneficiaries", {
       title: "Name who gets your retirement accounts",
       headline: headlineOf(
         "Add beneficiaries to your accounts",
@@ -194,7 +182,7 @@ const beneficiaries: Detector = {
       urgency: "later",
       why: `${open.length === 1 ? "One account" : `${open.length} accounts`} holding ${formatCents(total)} ${open.length === 1 ? "has" : "have"} nobody named that I know of. An account with a named beneficiary passes to that person whatever a will says, and one with none can end up in a court process that often costs a few percent of the balance (about ${formatCents(Math.round(total * R.beneficiaryRiskShare))} here). Tell me who is named, or confirm it with the company.`,
       action: { label: "Check my accounts", href: "/investments/family-file" },
-    };
+    });
   },
 };
 
@@ -255,10 +243,7 @@ const valuesFunds: Detector = {
     const offending = plan.switches;
     const total = plan.movedCents;
     if (total === 0) return null;
-    return {
-      id: suggestionId("investing", "values_funds"),
-      capability: "investing",
-      topic: "values_funds",
+    return suggestion("investing", "values_funds", {
       title: "Move your funds in line with the list you gave me",
       headline: `Move ${formatWholeDollars(total)} to funds that match your values`,
       short: clip(
@@ -273,7 +258,7 @@ const valuesFunds: Detector = {
       urgency: "later",
       why: `You asked me to leave out ${list.map((k) => VALUES_EXCLUSIONS[k].toLowerCase()).join(", ")}. ${formatCents(total)} sits in ${offending.length} ${offending.length === 1 ? "fund" : "funds"} that may hold them. Switching stays inside the same kind of investment, so your stocks-and-bonds mix doesn't change; I show the fee difference in dollars and the effect on diversification first.`,
       action: { label: "See what would change", href: "/investments/values" },
-    };
+    });
   },
 };
 

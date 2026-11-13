@@ -15,7 +15,7 @@ import { formatCents } from "@/lib/money";
 import { creditBandOf } from "@/planning/credit";
 import { fit } from "@/planning/fit";
 import { fitPersonFrom } from "@/planning/fit-person";
-import { type Detector, suggestionId } from "./contract";
+import { type Detector, suggestion } from "./contract";
 import { evidence, headlineOf, outCents, tx, weakest } from "./helpers";
 
 // The perfect fit for borrowing (spec step 283): cards that could be one cheaper loan. The same
@@ -97,10 +97,7 @@ const consolidation: Detector = {
       owed >= D.transferMinBalanceCents && yearlyInterest >= D.transferMinInterestCents
         ? Math.max(0, yearlyInterest - Math.round(owed * D.transferFeeShare))
         : 0;
-    return {
-      id: suggestionId("debt", "consolidation"),
-      capability: "debt",
-      topic: "consolidation",
+    return suggestion("debt", "consolidation", {
       title: "Move your card debt to one cheaper loan",
       headline: headlineOf("Move card debt into one loan", saves, "saves", true),
       short: `${formatCents(owed)} on cards at ${(apr / 100).toFixed(1)}% could be one loan at ${(pick.aprBps / 100).toFixed(2)}%.`,
@@ -123,7 +120,7 @@ const consolidation: Detector = {
       urgency: "later",
       why: `You owe ${formatCents(owed)} on ${rated.length === 1 ? `a card at ${(apr / 100).toFixed(1)}%` : `${rated.length} cards at ${(apr / 100).toFixed(1)}% on average`}. ${pick.lender} at ${(pick.aprBps / 100).toFixed(2)}% over ${pick.termMonths / 12} years would cost about ${formatCents(saves)} less in all, fees counted, at ${formatCents(pick.paymentCents)} a month.`,
       action: { label: "Compare your options", href: "/loans/refinance" },
-    };
+    });
   },
 };
 

@@ -1,10 +1,6 @@
 import { DEBT_DETECTOR_RATES as D } from "@/config/detectors-debt";
 import { rateMonthsOf } from "@/profile/build";
-import {
-  BANK_FEE_CATEGORIES,
-  IDLE_CASH_MONTHS_OF_SPENDING,
-  PROCESSOR_FEE_PAYEE,
-} from "@/config/detection";
+import { BANK_FEE_CATEGORIES, IDLE_CASH_MONTHS_OF_SPENDING } from "@/config/detection";
 import { bankFeesYear } from "@/planning/bank-fees";
 import { LOOKBACK_MONTHS } from "@/config/detection";
 import { paceMonths } from "@/detection/rules/fee-totals";
@@ -14,7 +10,7 @@ import { DETECTOR_RATES as R } from "@/config/detectors";
 import { emergencyTarget } from "@/planning/emergency-fund";
 import { summarize, TITLE_LOAN_NAMES } from "@/planning/costly-borrowing";
 import { formatCents } from "@/lib/money";
-import { type Detector, suggestionId } from "./contract";
+import { type Detector, suggestion } from "./contract";
 import {
   cashLine,
   cushionSpendCents,
@@ -98,10 +94,7 @@ const subscriptions: Detector = {
       count = regular.length;
       n = regular.reduce((s, list) => s + list.length, 0);
     }
-    return {
-      id: suggestionId("subscriptions", "subscriptions"),
-      capability: "subscriptions",
-      topic: "subscriptions",
+    return suggestion("subscriptions", "subscriptions", {
       title: "Go through your subscriptions and cancel the ones you don't use",
       headline: headlineOf(
         "Cancel subscriptions you don't use",
@@ -116,7 +109,7 @@ const subscriptions: Detector = {
       why: `You pay about ${formatCents(Math.round(yearly))} a year across ${count} subscriptions; people who look at the list usually drop about a quarter.`,
       action: { label: "Review subscriptions", href: "/subscriptions" },
       ...(payees.length > 0 ? { watch: { kind: "charge_stops" as const, payees } } : {}),
-    };
+    });
   },
 };
 
@@ -143,10 +136,7 @@ const bankFees: Detector = {
     const span = fees.estimated
       ? `${fees.count} bank fees in ${fees.monthsOfData} months, about ${formatCents(total)} over a year (an estimate)`
       : `${formatCents(total)} in ${fees.count} bank fees in the last 12 months`;
-    return {
-      id: suggestionId("cost", "bank_fees"),
-      capability: "cost",
-      topic: "bank_fees",
+    return suggestion("cost", "bank_fees", {
       title: phrase,
       headline: headlineOf(phrase, total, "saves"),
       short: fees.estimated
@@ -163,7 +153,7 @@ const bankFees: Detector = {
         pfcs: [...BANK_FEE_CATEGORIES],
         monthlyCents: Math.round(total / 12),
       },
-    };
+    });
   },
 };
 
@@ -176,10 +166,7 @@ const lateFees: Detector = {
     const fees = tx(data, (t) => t.pfc === "BANK_FEES_LATE_FEES");
     if (fees.length < R.lateFeesMin) return null;
     const total = outCents(fees);
-    return {
-      id: suggestionId("cost", "late_fees"),
-      capability: "cost",
-      topic: "late_fees",
+    return suggestion("cost", "late_fees", {
       title: "Set up automatic minimum payments so nothing is late",
       headline: headlineOf("Pay at least the minimum automatically", total, "saves"),
       short: `You paid ${formatCents(total)} in ${fees.length} late fees.`,
@@ -194,7 +181,7 @@ const lateFees: Detector = {
         pfcs: ["BANK_FEES_LATE_FEES"],
         monthlyCents: Math.round(total / rateMonthsOf(profile)),
       },
-    };
+    });
   },
 };
 
@@ -228,10 +215,7 @@ const cardInterest: Detector = {
     const seen = outCents(charges);
     const total = yearly ?? pace(seen);
     if (total < R.interestMinCents) return null;
-    return {
-      id: suggestionId("debt", "card_interest"),
-      capability: "debt",
-      topic: "card_interest",
+    return suggestion("debt", "card_interest", {
       title: "Pay down the card that is charging you interest",
       headline: headlineOf("Pay down the card charging interest", total, "saves"),
       short:
@@ -260,7 +244,7 @@ const cardInterest: Detector = {
         pfcs: ["BANK_FEES_INTEREST_CHARGE"],
         monthlyCents: Math.round(total / 12),
       },
-    };
+    });
   },
 };
 
@@ -281,10 +265,7 @@ const idleCash: Detector = {
     if (payingCardInterest({ asOf: data.today, transactions: data.transactions })) return null;
     // Nor is any of it "more than you need" just after a paycheck stopped (debugger 11-04).
     if (stoppedEmployer(data)) return null;
-    return {
-      id: suggestionId("investing", "idle_cash"),
-      capability: "investing",
-      topic: "idle_cash",
+    return suggestion("investing", "idle_cash", {
       title: "Put the cash you don't need to work",
       headline: headlineOf("Move idle cash to higher interest", idle.earnsCents, "earns"),
       short: `You keep ${formatCents(idle.balanceCents)} in cash; about ${formatCents(idle.excessCents)} is more than you need.`,
@@ -294,7 +275,7 @@ const idleCash: Detector = {
       urgency: "later",
       why: `You keep ${formatCents(idle.balanceCents)} in cash and spend about ${formatCents(idle.monthlyCents)} a month, so about ${formatCents(idle.excessCents)} is more than ${IDLE_CASH_MONTHS_OF_SPENDING} months of spending.`,
       action: { label: "See where it could work", href: "/investments" },
-    };
+    });
   },
 };
 
@@ -321,10 +302,7 @@ const emergencyFund: Detector = {
     if (short <= 0) return null;
     const starter = target.kind === "starter";
     const gap = target.kind === "gap";
-    return {
-      id: suggestionId("safe_to_spend", "emergency_fund"),
-      capability: "safe_to_spend",
-      topic: "emergency_fund",
+    return suggestion("safe_to_spend", "emergency_fund", {
       title: starter
         ? "Put a small starter buffer aside before you tackle the debt"
         : gap
@@ -357,7 +335,7 @@ const emergencyFund: Detector = {
           ? `You spend about ${formatCents(spend)} a month against ${formatCents(Number(incomeFact.value))} coming in, a gap of ${formatCents(spend - Number(incomeFact.value))}; ${target.months} months of it is ${formatCents(target.targetCents)}. ${cashLine(liquidCents(data))}.`
           : `You spend about ${formatCents(spend)} a month. ${cashLine(liquidCents(data))}; ${target.months} months is ${formatCents(target.targetCents)}.`,
       action: { label: "Set a savings goal", href: "/goals" },
-    };
+    });
   },
 };
 
@@ -391,10 +369,7 @@ const highCostLoans: Detector = {
     );
     const what = titleLoan ? "costly loans" : payday ? "payday loans" : "pay advances";
     const loan = titleLoan ? "title loan" : "payday loan";
-    return {
-      id: suggestionId("debt", "high_cost_loans"),
-      capability: "debt",
-      topic: "high_cost_loans",
+    return suggestion("debt", "high_cost_loans", {
       title: payday
         ? `Replace the ${loan} with something cheaper`
         : "Replace the pay advance app with something cheaper",
@@ -416,7 +391,7 @@ const highCostLoans: Detector = {
       urgency: "now",
       why: `Your ${what} cost about ${formatCents(cost)} in fees in ${profile.months} months${costly.cycle ? ", taken again and again" : ""}. A credit union small loan or a pay advance from work costs far less.`,
       action: { label: "See cheaper options", href: "/loans/costly" },
-    };
+    });
   },
 };
 
@@ -437,10 +412,7 @@ const debtPlan: Detector = {
     const card = profile.facts.card_debt_cents;
     const cards = typeof card.value === "number" ? card.value : null;
     const held = cards === null ? "Your debts" : `Your cards hold ${formatCents(cards)} and`;
-    return {
-      id: suggestionId("debt", "debt_plan"),
-      capability: "debt",
-      topic: "debt_plan",
+    return suggestion("debt", "debt_plan", {
       title: "Make a plan to pay your debts off, biggest interest first",
       headline: headlineOf("Pay off debt, highest interest first", interest, "saves"),
       short: `${held} cost you ${formatCents(interest)} a year.`,
@@ -456,7 +428,7 @@ const debtPlan: Detector = {
       rankCents: Math.round(interest * D.troublePlanRank),
       why: `${held} cost you ${formatCents(interest)} in interest a year.`,
       action: { label: "Plan the payoff", href: "/debt" },
-    };
+    });
   },
 };
 
@@ -474,10 +446,7 @@ const hardshipPlan: Detector = {
       costs > 0
         ? `Fees and interest cost you ${formatCents(costs)} in ${profile.months} months.`
         : "Your debt payments take more of your income than lenders like to see.";
-    return {
-      id: suggestionId("debt", "hardship_plan"),
-      capability: "debt",
-      topic: "hardship_plan",
+    return suggestion("debt", "hardship_plan", {
       title: "Ask your lenders for a hardship plan",
       headline: headlineOf("Ask lenders for a hardship plan", costs, "risk"),
       short: said,
@@ -488,7 +457,7 @@ const hardshipPlan: Detector = {
       rankCents: Math.round(costs * D.troubleHardshipRank),
       why: `${said} Lenders often lower rates or waive fees for people who ask.`,
       action: { label: "See your options", href: "/loans/help" },
-    };
+    });
   },
 };
 

@@ -4,7 +4,7 @@ import { formatCents, formatWholeDollars } from "@/lib/money";
 import { uncertainOf } from "@/planning/month-close";
 
 import { isHiddenPage } from "@/config/hidden-pages";
-import { SHORT_MAX, type Detector, suggestionId } from "./contract";
+import { SHORT_MAX, type Detector, suggestion } from "./contract";
 import { evidence, nice } from "./helpers";
 import { monthLabel } from "@/lib/day-label";
 
@@ -30,10 +30,7 @@ const books: Detector = {
       .reduce((s, a) => s + Math.abs(a.balanceCents), 0);
     const first = issues[0];
     const n = issues.length;
-    return {
-      id: suggestionId("books", "data_problems"),
-      capability: "books",
-      topic: "data_problems",
+    return suggestion("books", "data_problems", {
       title:
         n === 1
           ? "Fix the one thing in your accounts that doesn't add up"
@@ -56,7 +53,7 @@ const books: Detector = {
           : ""
       }`,
       action: { label: "See what doesn't add up", href: "/net-worth" },
-    };
+    });
   },
 };
 
@@ -89,10 +86,7 @@ const monthClose: Detector = {
       (t) =>
         `${data.transactions[Number(t.id)].merchantName ?? nice(t.description)} ${formatCents(t.amountCents)}`,
     );
-    return {
-      id: suggestionId("close", "month_close"),
-      capability: "close",
-      topic: "month_close",
+    return suggestion("close", "month_close", {
       title: `Confirm ${unsure.length === 1 ? "one charge" : `${unsure.length} charges`} so ${monthLabel(month, { long: true })} can close`,
       headline: `Confirm ${unsure.length} charge${unsure.length === 1 ? "" : "s"} to close ${monthLabel(month, { long: true }).split(" ")[0]}: ${formatWholeDollars(total)}`,
       short: unsureLine(names, unsure.length === 1 ? "it was" : "they were"),
@@ -102,7 +96,7 @@ const monthClose: Detector = {
       urgency: "soon",
       why: `I close each month on the first of the next. In ${monthLabel(month, { long: true })}, ${names.join(" and ")} sit in a catch-all category, so I can't tell if ${unsure.length === 1 ? "it's" : "they're"} personal or a business cost. Confirm or fix ${unsure.length === 1 ? "it" : "them"} and the month closes, its figures kept.`,
       action: { label: "Confirm the charges", href: closeHref(month, unsure) },
-    };
+    });
   },
 };
 

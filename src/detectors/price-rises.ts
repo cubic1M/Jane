@@ -1,7 +1,7 @@
 import { CALL_SCRIPTS } from "@/config/price-rises";
 import { formatCents, formatWholeDollars } from "@/lib/money";
 import { priceRises } from "@/planning/price-rises";
-import { type Detector, suggestionId } from "./contract";
+import { type Detector, suggestion } from "./contract";
 
 // Price rises seen before they land (spec step 243), brought to the person unasked: an intro
 // price about to end, or a yearly plan about to renew, a month or more ahead. Pure; see
@@ -27,10 +27,7 @@ const promoEnding: Detector = {
     // A promo's rise is a year of the higher price; a renewal is what it costs again.
     const worth = rises.reduce((s, r) => s + r.atStakeCents, 0);
     const weakest = rises.reduce((a, b) => (b.confidence.percent < a.confidence.percent ? b : a));
-    return {
-      id: suggestionId("price_rises", "promo_ending"),
-      capability: "price_rises",
-      topic: "promo_ending",
+    return suggestion("price_rises", "promo_ending", {
       title:
         rises.length === 1
           ? `Call ${first.name} before ${first.date}, when the price goes up`
@@ -50,7 +47,7 @@ const promoEnding: Detector = {
       urgency: first.daysLeft <= 30 ? "now" : "soon",
       why: `${rises.map((r) => (r.kind === "promo_end" ? `${r.name} has charged ${formatCents(r.nowCents)} a month since it started, likely an intro price ending around ${r.date}; after that it's usually about ${formatCents(r.thenCents)}.` : `${r.name} charged ${formatCents(r.nowCents)} once, about a year ago, so it likely renews around ${r.date}.`)).join(" ")} Calling first usually keeps the price: "${first.kind === "promo_end" ? CALL_SCRIPTS.promo_end : CALL_SCRIPTS.annual_renewal}"`,
       action: { label: "See what's going up", href: "/deadlines" },
-    };
+    });
   },
 };
 

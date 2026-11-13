@@ -6,7 +6,7 @@ import { rateMonthsOf } from "@/profile/build";
 import { computeNeeds } from "@/lib/insurance/need/calculators";
 import { needInputFromProfile } from "@/lib/insurance/need/from-profile";
 import { HEALTH_YEAR_DETECTORS } from "./health-year";
-import { type Detector, suggestionId } from "./contract";
+import { type Detector, suggestion } from "./contract";
 import type { Confidence } from "./contract";
 import { evidence, factEvidence, nice, outCents, tx, headlineOf } from "./helpers";
 
@@ -71,10 +71,7 @@ const rentersInsurance: Detector = {
     // A new monthly cost isn't what someone struggling with debt needs from Jane first: the
     // debt plan and relief come before it (and it waits until they're out of trouble).
     if (profile.facts.debt_trouble.value === true) return null;
-    return {
-      id: suggestionId("insurance", "renters_insurance"),
-      capability: "insurance",
-      topic: "renters_insurance",
+    return suggestion("insurance", "renters_insurance", {
       title: "Cover your belongings with renters insurance",
       headline: headlineOf("Get renters insurance", R.rentersContentsCents, "risk"),
       short: `You rent and I see no renters cover in ${profile.months} months.`,
@@ -87,7 +84,7 @@ const rentersInsurance: Detector = {
       urgency: "later",
       why: `You rent and I see no renters-cover charge in ${profile.months} months. Your landlord's policy covers the building, not the ${formatCents(R.rentersContentsCents)} or so of belongings inside it. A fire or a break-in in a given year is unlikely (about ${Math.round(CHANCE.renters_insurance * 100)}%), and renters cover usually costs under $20 a month.`,
       action: { label: "Get quotes", href: "/insurance" },
-    };
+    });
   },
 };
 
@@ -106,10 +103,7 @@ const autoInsurance: Detector = {
     if (data.transactions.some((t) => t.amountCents > 0 && t.pfc === "LOAN_PAYMENTS_CAR_PAYMENT")) {
       return null;
     }
-    return {
-      id: suggestionId("insurance", "auto_insurance"),
-      capability: "insurance",
-      topic: "auto_insurance",
+    return suggestion("insurance", "auto_insurance", {
       title: "Check your car is insured",
       headline: headlineOf("Check your car is insured", R.autoLiabilityCents, "risk"),
       short: `I see car costs but no car-insurance charge in ${profile.months} months.`,
@@ -124,7 +118,7 @@ const autoInsurance: Detector = {
       urgency: "now",
       why: `I see car costs but no car-insurance charge in ${profile.months} months. If it's paid some other way, tell me and I'll stop asking. Without it, an accident you cause (about ${Math.round(CHANCE.auto_insurance * 100)}% of drivers have one in a year) could cost you ${formatCents(R.autoLiabilityCents)} or more.`,
       action: { label: "Add or compare car cover", href: "/insurance" },
-    };
+    });
   },
 };
 
@@ -141,10 +135,7 @@ const umbrella: Detector = {
     if (input && (!need || need.gapCents <= 0)) return null;
     const total = input ? (input.netWorthCents ?? 0) : assets(data);
     if (total < R.umbrellaAssetsCents) return null;
-    return {
-      id: suggestionId("insurance", "umbrella"),
-      capability: "insurance",
-      topic: "umbrella",
+    return suggestion("insurance", "umbrella", {
       title: "Look at an umbrella policy",
       headline: headlineOf("Look at an umbrella policy", total, "risk"),
       short: `You have about ${formatCents(total)} that a big liability claim could reach.`,
@@ -157,7 +148,7 @@ const umbrella: Detector = {
       urgency: "later",
       why: `You have about ${formatCents(total)} counting what you own less what you owe. A big liability claim above your car and home limits could reach it. An umbrella policy pays above those limits and usually costs a few hundred dollars a year.`,
       action: { label: "See umbrella cover", href: "/insurance" },
-    };
+    });
   },
 };
 
@@ -175,10 +166,7 @@ const insuranceShopping: Detector = {
     const quoted = data.extras?.insuranceShopSavingCents ?? 0;
     const estimate = Math.round(yearly * R.insuranceShopShare);
     const saves = quoted > 0 ? quoted : estimate;
-    return {
-      id: suggestionId("insurance", "insurance_shopping"),
-      capability: "insurance",
-      topic: "insurance_shopping",
+    return suggestion("insurance", "insurance_shopping", {
       title: "Compare your car and home cover before it renews",
       headline: headlineOf("Compare car and home cover", saves, "saves"),
       short:
@@ -203,7 +191,7 @@ const insuranceShopping: Detector = {
           ? `You pay about ${formatCents(yearly)} a year for car and home cover, and a quote Jane already got would save you ${formatCents(quoted)} a year for the same cover.`
           : `You pay about ${formatCents(yearly)} a year for car and home cover. Comparing the same cover could save about ${formatCents(estimate)} a year (an estimate, not a quote), and I do it for free before each renewal.`,
       action: { label: "Compare my cover", href: "/insurance" },
-    };
+    });
   },
 };
 
@@ -221,10 +209,7 @@ const healthInsurance: Detector = {
     const timely = enrollmentSoon(profile.today);
     if (cover.value === true && paid.length > 0) {
       const saves = Math.round(yearly * R.healthCompareShare);
-      return {
-        id: suggestionId("insurance", "health_insurance"),
-        capability: "insurance",
-        topic: "health_insurance",
+      return suggestion("insurance", "health_insurance", {
         title: "Compare health plans at open enrollment",
         headline: headlineOf("Compare health plans", saves, "saves"),
         short: `You paid ${formatCents(yearly)} for your own health plan in ${profile.months} months.`,
@@ -241,13 +226,10 @@ const healthInsurance: Detector = {
         urgency: timely ? "soon" : "later",
         why: `You buy your own health plan and paid ${formatCents(yearly)} in ${profile.months} months. Comparing plans on what you'd really pay in a year, premium plus likely costs, can find up to ${formatCents(saves)} a year. Open enrollment runs Nov 1 to Jan 15.`,
         action: { label: "Compare plans", href: "/insurance" },
-      };
+      });
     }
     if (cover.value === false) {
-      return {
-        id: suggestionId("insurance", "health_insurance"),
-        capability: "insurance",
-        topic: "health_insurance",
+      return suggestion("insurance", "health_insurance", {
         title: "Get a health plan",
         headline: headlineOf("Get a health plan", R.uninsuredStayCents, "risk"),
         short: `A hospital stay without cover can cost about ${formatCents(R.uninsuredStayCents)}.`,
@@ -264,7 +246,7 @@ const healthInsurance: Detector = {
         urgency: timely ? "soon" : "later",
         why: `You work for yourself, so no employer plan covers you, and I see no health-plan charge in ${profile.months} months. A hospital stay can cost tens of thousands of dollars. If a partner's plan covers you, tell me and I'll stop asking.`,
         action: { label: "Compare plans", href: "/insurance" },
-      };
+      });
     }
     return null;
   },
@@ -283,10 +265,7 @@ const medigap: Detector = {
     const yearly = outCents(paid);
     if (yearly <= 0) return null;
     const saves = Math.round(yearly * R.medigapCompareShare);
-    return {
-      id: suggestionId("insurance", "medigap"),
-      capability: "insurance",
-      topic: "medigap",
+    return suggestion("insurance", "medigap", {
       title: "Compare your Medicare supplement",
       headline: headlineOf("Compare your Medicare supplement", saves, "saves"),
       short: `You paid ${formatCents(yearly)} for a Medicare supplement in ${profile.months} months.`,
@@ -303,7 +282,7 @@ const medigap: Detector = {
       urgency: "later",
       why: `You paid ${formatCents(yearly)} for a Medicare supplement over ${profile.months} months. The same standard plan costs different amounts at different insurers, and prices rise with age, so comparing can find up to ${formatCents(saves)} a year.`,
       action: { label: "Compare supplements", href: "/insurance" },
-    };
+    });
   },
 };
 
@@ -318,10 +297,7 @@ const longTermCare: Detector = {
     const total = assets(data);
     if (total < R.longTermCareMinAssetsCents) return null;
     const cost = R.longTermCareYearCents * R.longTermCareYears;
-    return {
-      id: suggestionId("insurance", "long_term_care"),
-      capability: "insurance",
-      topic: "long_term_care",
+    return suggestion("insurance", "long_term_care", {
       title: "Think about long-term care before you retire",
       headline: headlineOf("Plan for long-term care", cost, "risk"),
       short: `You're close to retiring with about ${formatCents(total)} saved.`,
@@ -334,7 +310,7 @@ const longTermCare: Detector = {
       urgency: "later",
       why: `You're close to retiring with about ${formatCents(total)} saved. Care at home or in a facility can cost about ${formatCents(R.longTermCareYearCents)} a year, and it's cheaper to plan for it before 65.`,
       action: { label: "Read about long-term care", href: "/insurance" },
-    };
+    });
   },
 };
 
@@ -367,10 +343,7 @@ const insuranceNegotiation: Detector = {
       const before = median(sorted.slice(0, -1).map((c) => c.cents));
       if (before <= 0 || last.cents < before * (1 + R.negotiationMinRise)) continue;
       const yearly = (last.cents - before) * 12;
-      return {
-        id: suggestionId("insurance", "insurance_negotiation"),
-        capability: "insurance",
-        topic: "insurance_negotiation",
+      return suggestion("insurance", "insurance_negotiation", {
         title: "Ask your insurer for a discount",
         headline: headlineOf("Ask your insurer for a discount", yearly, "saves"),
         short: `Your premium went from ${formatCents(before)} to ${formatCents(last.cents)} a month.`,
@@ -384,7 +357,7 @@ const insuranceNegotiation: Detector = {
         urgency: "soon",
         why: `${name.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())} went from ${formatCents(before)} to ${formatCents(last.cents)} a month, ${formatCents(yearly)} more a year. A call, with a same-cover quote from another insurer in hand, often brings it back down.`,
         action: { label: "Call them for me", href: "/insurance" },
-      };
+      });
     }
     return null;
   },
@@ -411,10 +384,7 @@ const insuranceClaim: Detector = {
     if (repairs.length === 0) return null;
     const top = repairs.reduce((a, b) => (b.amountCents > a.amountCents ? b : a));
     const recover = top.amountCents - R.claimDeductibleCents;
-    return {
-      id: suggestionId("insurance", "insurance_claim"),
-      capability: "insurance",
-      topic: "insurance_claim",
+    return suggestion("insurance", "insurance_claim", {
       title: "Check whether this repair was a claim",
       headline: headlineOf("Check if insurance covers this repair", recover, "saves", true),
       short: `You paid ${formatCents(top.amountCents)} for a repair and I see no payout.`,
@@ -431,7 +401,7 @@ const insuranceClaim: Detector = {
       urgency: "now",
       why: `You paid ${formatCents(top.amountCents)} to ${top.description.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())} on ${top.date} and I see no insurance payout. After a typical ${formatCents(R.claimDeductibleCents)} deductible a claim could return about ${formatCents(recover)}; claims have notice deadlines.`,
       action: { label: "Start a claim", href: "/insurance/claims" },
-    };
+    });
   },
 };
 
@@ -451,10 +421,7 @@ const coverChange: Detector = {
     );
     if (events.length === 0) return null;
     const event = events[0];
-    return {
-      id: suggestionId("insurance", "cover_change"),
-      capability: "insurance",
-      topic: "cover_change",
+    return suggestion("insurance", "cover_change", {
       title: "Tell your insurer about your move",
       headline: headlineOf("Tell your insurer about your move", R.rentersContentsCents, "risk"),
       short: `You paid ${formatCents(event.amountCents)} on ${event.date}; your policy may not know.`,
@@ -467,7 +434,7 @@ const coverChange: Detector = {
       urgency: "soon",
       why: `You paid ${event.description.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())} ${formatCents(event.amountCents)} on ${event.date}. A policy with your old address or without your new car can leave a claim in doubt, and the change is usually free.`,
       action: { label: "See the changes", href: "/insurance" },
-    };
+    });
   },
 };
 
@@ -485,10 +452,7 @@ const cardCover: Detector = {
     const fee = charges(data, PREMIUM_CARD);
     if (plans.length === 0 || fee.length === 0) return null;
     const yearly = outCents(plans);
-    return {
-      id: suggestionId("insurance", "card_cover"),
-      capability: "insurance",
-      topic: "card_cover",
+    return suggestion("insurance", "card_cover", {
       title: "Check your card already covers this",
       headline: headlineOf("Cancel a plan your card covers", yearly, "saves"),
       short: `You paid ${formatCents(yearly)} for a protection plan over ${profile.months} months.`,
@@ -505,7 +469,7 @@ const cardCover: Detector = {
       urgency: "later",
       why: `You paid ${formatCents(yearly)} for a protection plan over ${profile.months} months, and you hold a premium card whose benefits often cover phones and trips bought with it. If yours does, the plan can be cancelled.`,
       action: { label: "See what your card covers", href: "/insurance" },
-    };
+    });
   },
 };
 
@@ -526,10 +490,7 @@ const employerBenefits: Detector = {
     const yearly = outCents(paid);
     if (paid.length === 0 || yearly <= 0) return null;
     const saves = Math.round(yearly * R.employerPlanShare);
-    return {
-      id: suggestionId("insurance", "employer_benefits"),
-      capability: "insurance",
-      topic: "employer_benefits",
+    return suggestion("insurance", "employer_benefits", {
       title: "Compare your private cover with your employer's",
       headline: headlineOf("Compare your cover with work's", saves, "saves"),
       short: `You pay ${formatCents(yearly)} a year for private cover.`,
@@ -547,7 +508,7 @@ const employerBenefits: Detector = {
       urgency: "later",
       why: `You pay ${formatCents(yearly)} a year for private cover and work for ${nice(String(employer.value))}. Employers usually pay about ${Math.round(R.employerPlanShare * 100)}% of a plan's cost, so the same cover through work can cost up to ${formatCents(saves)} a year less. Their open enrollment is the time to move.`,
       action: { label: "Review my work benefits", href: "/insurance/benefits" },
-    };
+    });
   },
 };
 
@@ -563,10 +524,7 @@ const policyDocuments: Detector = {
     const paid = charges(data, /./).filter((t) => t.pfc === "GENERAL_SERVICES_INSURANCE");
     const yearly = outCents(paid);
     if (yearly <= 0) return null;
-    return {
-      id: suggestionId("insurance", "policy_documents"),
-      capability: "insurance",
-      topic: "policy_documents",
+    return suggestion("insurance", "policy_documents", {
       title: "Confirm the policy I read from your document",
       headline: headlineOf(
         "Confirm the policy I read",
@@ -587,7 +545,7 @@ const policyDocuments: Detector = {
       urgency: "soon",
       why: `You uploaded ${waiting} policy document${waiting === 1 ? "" : "s"} and I haven't added ${waiting === 1 ? "it" : "them"} to your insurance yet. Once confirmed, I can check the price against others: you paid ${formatCents(yearly)} for insurance in ${profile.months} months, and a comparison can find up to a tenth of that.`,
       action: { label: "Check what I read", href: "/insurance" },
-    };
+    });
   },
 };
 

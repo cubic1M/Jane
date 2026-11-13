@@ -6,7 +6,7 @@ import { SALES_TAX_PAYEE } from "@/config/tax";
 import { BUSINESS_SALES_DEPOSIT } from "@/config/insurance";
 import { computeNeeds, needInputFromProfile } from "@/lib/insurance/need";
 import { formatCents } from "@/lib/money";
-import { type Detector, suggestionId } from "./contract";
+import { type Detector, suggestion } from "./contract";
 import { evidence, factEvidence, outCents, tx, weakest, headlineOf } from "./helpers";
 import { daysToEstimatedDate, estimatedDatesBetween, urgencyForEstimated } from "./taxes";
 
@@ -50,10 +50,7 @@ const estimatedTaxes: Detector = {
     const risk = Math.round(
       (paid.length > 0 ? dueCents - paidCents : owed) * R.underpaymentPenaltyRate,
     );
-    return {
-      id: suggestionId("taxes", "estimated_taxes"),
-      capability: "taxes",
-      topic: "estimated_taxes",
+    return suggestion("taxes", "estimated_taxes", {
       title: "Pay estimated taxes each quarter",
       headline: headlineOf("Pay estimated taxes each quarter", risk, "risk"),
       short:
@@ -86,7 +83,7 @@ const estimatedTaxes: Detector = {
           : `Nobody withholds tax from your pay and I see no tax payments in ${profile.months} months. On about ${formatCents(owed)} of tax a year, late payment penalties could reach ${formatCents(risk)}.`
       } The next payment is due in ${daysToEstimatedDate(profile.today)} days.`,
       action: { label: "Set aside tax", href: "/taxes" },
-    };
+    });
   },
 };
 
@@ -107,10 +104,7 @@ const selfRetirement: Detector = {
       annualIncome(income.value) * (business ? R.tax.businessProfitShare : 1),
     );
     const put = Math.round(profit * R.selfRetireShare);
-    return {
-      id: suggestionId("investing", "retirement_self_employed"),
-      capability: "investing",
-      topic: "retirement_self_employed",
+    return suggestion("investing", "retirement_self_employed", {
       title: "Open a retirement account for the self-employed",
       headline: headlineOf(
         "Open a self-employed retirement account",
@@ -136,7 +130,7 @@ const selfRetirement: Detector = {
       urgency: "later",
       why: `You work for yourself and I see no retirement account. Putting in ${formatCents(put)} a year (a tenth of ${business ? "what the business earns, about " + formatCents(profit) : "your income"}) would cut your tax by about ${formatCents(Math.round(put * R.selfRetireTaxRate))}.`,
       action: { label: "See account options", href: "/investments" },
-    };
+    });
   },
 };
 
@@ -158,10 +152,7 @@ const incomeSmoothing: Detector = {
     const average = totals.reduce((a, b) => a + b, 0) / totals.length;
     const lowest = Math.min(...totals);
     if ((average - lowest) / average < R.smoothingMinMonthlySwingShare) return null;
-    return {
-      id: suggestionId("steady_pay", "income_smoothing"),
-      capability: "steady_pay",
-      topic: "income_smoothing",
+    return suggestion("steady_pay", "income_smoothing", {
       title: "Pay yourself a steady amount from your uneven income",
       headline: headlineOf("Pay yourself a steady amount", Math.round(average - lowest), "risk"),
       short: `Your income averages ${formatCents(Math.round(average))} a month; your lowest was ${formatCents(Math.round(lowest))}.`,
@@ -174,7 +165,7 @@ const incomeSmoothing: Detector = {
       urgency: "later",
       why: `Your income averages ${formatCents(Math.round(average))} a month but your lowest month was ${formatCents(Math.round(lowest))}. A steady monthly pay from a buffer evens that out.`,
       action: { label: "Set up steady pay", href: "/transfers" },
-    };
+    });
   },
 };
 
@@ -194,10 +185,7 @@ const businessSeparation: Detector = {
     );
     if (personal.length === 0) return null;
     const total = personal.reduce((s, t) => s + t.amountCents, 0);
-    return {
-      id: suggestionId("taxes", "business_separation"),
-      capability: "taxes",
-      topic: "business_separation",
+    return suggestion("taxes", "business_separation", {
       title: "Keep business and personal money in separate accounts",
       headline: headlineOf(
         "Separate business and personal money",
@@ -219,7 +207,7 @@ const businessSeparation: Detector = {
       urgency: "later",
       why: `${personal.length} personal payments (${formatCents(total)}) came out alongside your shop's money. Mixing them blurs your taxes and your liability.`,
       action: { label: "See your accounts", href: "/connect" },
-    };
+    });
   },
 };
 
@@ -269,10 +257,7 @@ const businessInsurance: Detector = {
         ...(liability.length > 0 ? [`${liability.join(" or ")} liability`] : []),
         ...(missing.includes("equipment") ? ["equipment"] : []),
       ].join(" or ");
-      return {
-        id: suggestionId("insurance", "business_insurance"),
-        capability: "insurance",
-        topic: "business_insurance",
+      return suggestion("insurance", "business_insurance", {
         title: shop
           ? "Check your business has liability and property cover"
           : "Get cover for the work you do for clients",
@@ -289,7 +274,7 @@ const businessInsurance: Detector = {
         urgency: "soon",
         why: `${short[0].summary} ${shop ? "A customer hurt at your business, or by what you sell," : "A client who says your work cost them money, or who is hurt while you work,"} is a claim your home, renters and car policies don't pay. One in a given year is unlikely (about ${Math.round(CHANCE.business_insurance * 100)}%), but it can cost ${formatCents(R.businessClaimCents)} or more.`,
         action: { label: "See options", href: `/insurance?need=${short[0].kind}#options` },
-      };
+      });
     }
     if (pattern.value !== "business") return null;
     const cover = tx(
@@ -299,10 +284,7 @@ const businessInsurance: Detector = {
         /BUSINESS|LIABILITY|COMMERCIAL|PROPERTY/i.test(t.description),
     );
     if (cover.length > 0) return null;
-    return {
-      id: suggestionId("insurance", "business_insurance"),
-      capability: "insurance",
-      topic: "business_insurance",
+    return suggestion("insurance", "business_insurance", {
       title: "Check your business has liability and property cover",
       headline: headlineOf("Check your business cover", R.businessClaimCents, "risk"),
       short: `Your business takes in about ${formatCents(annualIncome(income.value))} a year and I see no insurance charge.`,
@@ -316,7 +298,7 @@ const businessInsurance: Detector = {
       urgency: "soon",
       why: `Your business takes in about ${formatCents(annualIncome(income.value))} a year and I see no business insurance charge in ${profile.months} months. A liability claim in a given year is unlikely (about ${Math.round(CHANCE.business_insurance * 100)}%), but one can cost ${formatCents(R.businessClaimCents)} or more.`,
       action: { label: "Check your cover", href: "/insurance/checkup" },
-    };
+    });
   },
 };
 
@@ -335,10 +317,7 @@ const concentration: Detector = {
       .filter((a) => a.subtype === "stock plan")
       .reduce((s, a) => s + a.balanceCents, 0);
     if (invested === 0 || stock / invested < R.concentrationShare) return null;
-    return {
-      id: suggestionId("investing", "concentration"),
-      capability: "investing",
-      topic: "concentration",
+    return suggestion("investing", "concentration", {
       title: "Spread out your company stock",
       headline: headlineOf(
         "Spread out your company stock",
@@ -352,7 +331,7 @@ const concentration: Detector = {
       urgency: "soon",
       why: `Your company stock is ${formatCents(stock)}, ${Math.round((stock / invested) * 100)}% of everything you invest. If it fell by ${Math.round(R.concentrationDropShare * 100)}% you would lose ${formatCents(Math.round(stock * R.concentrationDropShare))}, and your job rides on the same company.`,
       action: { label: "See your holdings", href: "/investments" },
-    };
+    });
   },
 };
 
@@ -391,10 +370,7 @@ const cashFlow: Detector = {
       day: "numeric",
       timeZone: "UTC",
     });
-    return {
-      id: suggestionId("taxes", "cash_flow"),
-      capability: "taxes",
-      topic: "cash_flow",
+    return suggestion("taxes", "cash_flow", {
       title: `Set aside about ${formatCents(weekly)} from each week's sales for the tax bill due every ${months === 1 ? "month" : `${months} months`}`,
       headline: headlineOf("Set aside tax from weekly sales", average, "risk"),
       short: `About ${formatCents(average)} of tax goes out every ${months} months; ${formatCents(weekly)} a week covers it.`,
@@ -407,7 +383,7 @@ const cashFlow: Detector = {
       urgency: daysLeft <= BUSINESS_LUMPS.soonDays ? "soon" : "later",
       why: `Your business pays about ${formatCents(average)} of tax every ${months === 1 ? "month" : `${months} months`} (${lumps.length} payments in ${profile.months} months), the next about ${nextWords}, from the same account your weekly sales go into. Setting aside about ${formatCents(weekly)} from each week's sales keeps it from landing on a short week, and keeps it apart from your own money.`,
       action: { label: "See business taxes", href: "/taxes/business" },
-    };
+    });
   },
 };
 

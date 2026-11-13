@@ -2,7 +2,7 @@ import { MEDICARE, SOCIAL_SECURITY } from "@/config/retirement-taxes";
 import { ROLLOVER_DETECTORS } from "./rollover";
 import { formatCents } from "@/lib/money";
 import { readRetirementTaxes } from "@/planning/retirement-taxes-read";
-import { type Detector, suggestionId } from "./contract";
+import { type Detector, suggestion } from "./contract";
 import { factEvidence, headlineOf, weakest } from "./helpers";
 
 // Detectors for the run-up to retirement (detector coverage, spec step 254): signing up for
@@ -39,10 +39,7 @@ const medicare: Detector = {
     // A year late, for each of them on Medicare: 10% of the premium, every month, for life.
     const perYearLate = Math.round(premium * MEDICARE.latePenaltyPerYear * 12 * r.people);
     const couple = r.people === 2;
-    return {
-      id: suggestionId("insurance", "medicare"),
-      capability: "insurance",
-      topic: "medicare",
+    return suggestion("insurance", "medicare", {
       title: `Plan your Medicare sign-up for ${MEDICARE.startAge}, so Part B never costs more for life`,
       headline: headlineOf("Plan your Medicare sign-up", perYearLate, "risk"),
       short: `Part B taken a year late costs ${couple ? "the two of you " : ""}about ${formatCents(perYearLate)} more a year, for life.`,
@@ -52,7 +49,7 @@ const medicare: Detector = {
       urgency: age !== null && age >= MEDICARE.soonFromAge ? "soon" : "later",
       why: `Medicare starts at ${MEDICARE.startAge}, with a ${MEDICARE.windowMonths}-month window to sign up around the birthday. Part B taken later costs ${Math.round(MEDICARE.latePenaltyPerYear * 100)}% more for every year late, for as long as you have it: on the ${formatCents(premium)} monthly premium, about ${formatCents(perYearLate)} a year${couple ? " for the two of you" : ""} for each year. You're still working: if your health plan comes from an employer with ${MEDICARE.employerSizeToWait} or more people, Part B can wait until that cover ends without the penalty.`,
       action: { label: "Plan for Medicare", href: "/taxes/retirement" },
-    };
+    });
   },
 };
 
@@ -92,10 +89,7 @@ const socialSecurityTiming: Detector = {
     const years = SOCIAL_SECURITY.latestAge - SOCIAL_SECURITY.fullAge;
     const gain = Math.round(atFull * SOCIAL_SECURITY.delayCreditPerYear * years);
     const couple = r.people === 2;
-    return {
-      id: suggestionId("investing", "social_security_timing"),
-      capability: "investing",
-      topic: "social_security_timing",
+    return suggestion("investing", "social_security_timing", {
       title: `Weigh claiming Social Security at ${SOCIAL_SECURITY.latestAge} instead of ${SOCIAL_SECURITY.fullAge}: about ${formatCents(gain)} more a year, for life`,
       headline: headlineOf("Weigh when to claim Social Security", gain, "earns"),
       short: `From your pay, about ${formatCents(atFull)} a year at ${SOCIAL_SECURITY.fullAge}${couple ? " for the two of you" : ""}; waiting to ${SOCIAL_SECURITY.latestAge} adds ${Math.round(SOCIAL_SECURITY.delayCreditPerYear * years * 100)}%.`,
@@ -112,7 +106,7 @@ const socialSecurityTiming: Detector = {
       urgency: age !== null && age >= SOCIAL_SECURITY.soonFromAge ? "soon" : "later",
       why: `From your pay today, Social Security would be about ${formatCents(atFull)} a year${couple ? " for the two of you" : ""} at full retirement age (${SOCIAL_SECURITY.fullAge}). Each year you wait after that adds ${Math.round(SOCIAL_SECURITY.delayCreditPerYear * 100)}%, for life: at ${SOCIAL_SECURITY.latestAge}, about ${formatCents(gain)} more a year. Claiming early, at 62, takes about 30% off. It's an estimate: your Social Security statement (ssa.gov/myaccount) has your real record, and the right age depends on your health, your savings and when you stop working.`,
       action: { label: "See my retirement paycheck", href: "/investments/retirement-income" },
-    };
+    });
   },
 };
 

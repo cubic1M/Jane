@@ -1,7 +1,7 @@
 import { RENT_REPORTING, RENT_REPORTING_RATE_BENEFIT_BPS } from "@/config/renting";
 import { formatCents } from "@/lib/money";
 import { enoughRent, rentPayments, rentRise } from "@/planning/renting";
-import { type Detector, suggestionId } from "./contract";
+import { type Detector, suggestion } from "./contract";
 import { evidence, factEvidence, headlineOf, weakest } from "./helpers";
 
 // Detectors for renting (spec step 248): rent that could build credit, and a rent increase set
@@ -35,10 +35,7 @@ const rentReporting: Detector = {
     const worth = Math.round((owed * RENT_REPORTING_RATE_BENEFIT_BPS) / 10_000);
     if (worth <= 0) return null;
     const rent = payments[payments.length - 1].cents;
-    return {
-      id: suggestionId("debt", "rent_reporting"),
-      capability: "debt",
-      topic: "rent_reporting",
+    return suggestion("debt", "rent_reporting", {
       title: "Have your rent reported to the credit bureaus",
       headline: headlineOf("Get your rent reported", worth, "saves"),
       short: `Your ${formatCents(rent)} rent isn't on your credit file, and you owe ${formatCents(owed)}.`,
@@ -52,7 +49,7 @@ const rentReporting: Detector = {
       urgency: "later",
       why: `You pay ${formatCents(rent)} in rent every month and it isn't on your credit file. Reporting it can help your score, and on the ${formatCents(owed)} you owe a slightly better rate is worth about ${formatCents(worth)} a year. It costs about ${formatCents(RENT_REPORTING.monthlyFeeCents)} a month and only starts when you say yes.`,
       action: { label: "See rent reporting", href: "/loans/renting" },
-    };
+    });
   },
 };
 
@@ -68,10 +65,7 @@ const rentIncrease: Detector = {
     const payments = paymentsOf(data);
     const rise = rentRise(payments);
     if (!rise?.askAbout) return null;
-    return {
-      id: suggestionId("debt", "rent_increase"),
-      capability: "debt",
-      topic: "rent_increase",
+    return suggestion("debt", "rent_increase", {
       title: "Your rent went up more than is usual",
       headline: headlineOf("Ask about your rent rise", rise.yearlyExtraCents, "risk"),
       short: `Your rent rose ${(rise.risePercentBps / 100).toFixed(1)}%, against a usual ${(rise.usualBps / 100).toFixed(0)}%.`,
@@ -85,7 +79,7 @@ const rentIncrease: Detector = {
       urgency: "soon",
       why: `Your rent went from ${formatCents(rise.beforeCents)} to ${formatCents(rise.nowCents)} a month, ${formatCents(rise.yearlyExtraCents)} more a year and ${(rise.risePercentBps / 100).toFixed(1)}% against a usual ${(rise.usualBps / 100).toFixed(0)}%. It's worth asking your landlord whether it can be less.`,
       action: { label: "See your rent", href: "/loans/renting" },
-    };
+    });
   },
 };
 

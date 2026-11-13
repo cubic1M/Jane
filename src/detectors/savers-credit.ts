@@ -9,7 +9,7 @@ import {
 } from "@/config/tax-rates";
 import { formatCents } from "@/lib/money";
 import { bracketTax } from "@/planning/tax-brackets";
-import { type Detector, suggestionId } from "./contract";
+import { type Detector, suggestion } from "./contract";
 import { factEvidence, headlineOf, weakest } from "./helpers";
 
 // The Saver's Credit in its last year (connectors roadmap round 17, savers_credit_2026): someone
@@ -69,10 +69,7 @@ const saversCredit: Detector = {
       owed < tenPercent
         ? ` It can't be more than the federal income tax you owe, about ${formatCents(owed)} on this income.`
         : "";
-    return {
-      id: suggestionId("taxes", "savers_credit"),
-      capability: "taxes",
-      topic: "savers_credit",
+    return suggestion("taxes", "savers_credit", {
       title: `You may qualify for the Saver's Credit on retirement money you put in for ${SAVERS_CREDIT.taxYear}`,
       // Its last year, so worth this once, not every year (debugger 11-09).
       headline: headlineOf("Check the Saver's Credit", least, "earns", true),
@@ -89,7 +86,7 @@ const saversCredit: Detector = {
       urgency: "later",
       why: `With ${SAVERS_CREDIT.taxYear} income near ${formatCents(agi)}, under the ${formatCents(limit)} limit for your filing status, you may qualify for the Saver's Credit (Form 8880): at least ${Math.round(SAVERS_CREDIT.lowestRate * 100)}% back on up to ${formatCents(SAVERS_CREDIT.maxContribution)}${people === 2 ? " each" : ""} of IRA or 401(k) money put in for ${SAVERS_CREDIT.taxYear}, and more at lower incomes.${cap} Workplace-plan money counts by December 31; IRA money until ${longDate(SAVERS_CREDIT.iraDeadline)}. Not for full-time students or anyone claimed as a dependent. It's the credit's last year: from 2027 the Saver's Match replaces it.`,
       action: { label: "See your tax plan", href: "/taxes" },
-    };
+    });
   },
 };
 
@@ -124,10 +121,7 @@ const saversMatch: Detector = {
         : null,
       has(WORKPLACE_SUBTYPES) ? "a workplace plan (if the plan opts in)" : null,
     ].filter((l): l is string => l !== null);
-    return {
-      id: suggestionId("taxes", "savers_match"),
-      capability: "taxes",
-      topic: "savers_match",
+    return suggestion("taxes", "savers_match", {
       title: `From ${SAVERS_MATCH.firstYear}, a federal match on retirement saving may apply to you (proposed rules)`,
       headline: headlineOf("Check the 2027 Saver's Match", match, "earns"),
       short: `Proposed: up to ${formatCents(match)} a year, paid only into a traditional IRA or a plan, not a Roth IRA.`,
@@ -143,7 +137,7 @@ const saversMatch: Detector = {
       urgency: "later",
       why: `Under proposed rules (${SAVERS_MATCH.rule}), from ${SAVERS_MATCH.firstYear} the federal government matches ${Math.round(SAVERS_MATCH.rate * 100)}% of up to ${formatCents(SAVERS_MATCH.maxContribution)}${people === 2 ? " each" : ""} of retirement saving, less as income rises from ${formatCents(from)} to ${formatCents(to)}. With income near ${formatCents(agi)}, that's up to ${formatCents(match)} a year. The match is paid only into a traditional IRA or a workplace plan that accepts it, never into a Roth IRA. ${lines.length ? `Your linked retirement accounts: ${lines.join("; ")}.` : "No retirement account is linked."} The IRS sends a CP321J letter to people who may qualify; it's real, not a bill.`,
       action: { label: "See your tax plan", href: "/taxes" },
-    };
+    });
   },
 };
 

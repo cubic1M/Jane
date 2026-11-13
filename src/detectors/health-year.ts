@@ -11,7 +11,7 @@ import {
 } from "@/lib/insurance/health-year-rules";
 import { DEMO_NETWORK_DIRECTORY } from "@/config/insurance";
 import type { ProfileInput } from "@/profile/build";
-import { type Confidence, type Detector, suggestionId } from "./contract";
+import { type Confidence, type Detector, suggestion } from "./contract";
 import { evidence, headlineOf } from "./helpers";
 
 // Detectors for the health plan's year (spec step 259): the FSA money that will be lost, a
@@ -68,10 +68,7 @@ const fsaDeadline: Detector = {
     if (!status.warn) return null;
     const urgency =
       status.daysLeft <= R.fsaNowDays ? "now" : status.daysLeft <= R.fsaSoonDays ? "soon" : "later";
-    return {
-      id: suggestionId("insurance", "fsa_deadline"),
-      capability: "insurance",
-      topic: "fsa_deadline",
+    return suggestion("insurance", "fsa_deadline", {
       title: "Use your FSA money before it expires",
       headline: headlineOf("Use your FSA money", status.leftCents, "saves", true),
       short: `About ${formatCents(status.leftCents)} of your FSA is left, lost in ${status.daysLeft} days.`,
@@ -85,7 +82,7 @@ const fsaDeadline: Detector = {
       urgency,
       why: `You set aside ${formatCents(election)} for your FSA this year and your medical costs come to about ${formatCents(status.usedCents)}, so around ${formatCents(status.leftCents)} is left. It's lost after Dec ${FSA_DEADLINE.day} (${status.daysLeft} days), unless your employer allows a carryover. Eligible care, prescriptions, glasses and dental work count.`,
       action: { label: "Your health year", href: "/insurance?focus=health" },
-    };
+    });
   },
 };
 
@@ -103,10 +100,7 @@ const deductibleMet: Detector = {
     const p = progress(plan, plans, profile.today);
     if (p.deductibleLeftCents > 0) return null;
     const saves = Math.round((R.plannedCareCents * (100 - plan.coinsurance)) / 100);
-    return {
-      id: suggestionId("insurance", "deductible_met"),
-      capability: "insurance",
-      topic: "deductible_met",
+    return suggestion("insurance", "deductible_met", {
       title: "Book planned care before the year resets",
       headline: headlineOf("Get planned care before January", saves, "saves", true),
       short: `You've met your ${formatCents(plan.deductibleCents)} deductible; your plan pays ${100 - plan.coinsurance}% until Dec 31.`,
@@ -120,7 +114,7 @@ const deductibleMet: Detector = {
       urgency: "soon",
       why: `You've paid your whole ${formatCents(plan.deductibleCents)} deductible this year. Until Dec 31 your plan pays ${100 - plan.coinsurance}% of covered care; in January you'd pay the deductible again. A planned visit or procedure now costs about ${formatCents(saves)} less on a ${formatCents(R.plannedCareCents)} bill.`,
       action: { label: "Your health year", href: "/insurance?focus=health" },
-    };
+    });
   },
 };
 
@@ -140,10 +134,7 @@ const medicalBillDispute: Detector = {
     );
     if (found.length === 0) return null;
     const top = found.reduce((a, b) => (b.overCents > a.overCents ? b : a));
-    return {
-      id: suggestionId("insurance", "medical_bill_dispute"),
-      capability: "insurance",
-      topic: "medical_bill_dispute",
+    return suggestion("insurance", "medical_bill_dispute", {
       title: "Ask the team to check this medical bill",
       headline: headlineOf("Check a medical bill with us", top.overCents, "saves", true),
       short: `${plain(top.bill.provider)} billed ${formatCents(top.paidCents)}; your share looks like ${formatCents(top.shouldPayCents)}.`,
@@ -157,7 +148,7 @@ const medicalBillDispute: Detector = {
       urgency: "soon",
       why: `${plain(top.bill.provider)} billed ${formatCents(top.paidCents)} on ${top.bill.date}. By your plan's terms your share looks like about ${formatCents(top.shouldPayCents)}, which is ${formatCents(top.overCents)} less. My team can ask the provider and your plan to check it.`,
       action: { label: "Your health year", href: "/insurance?focus=health" },
-    };
+    });
   },
 };
 
