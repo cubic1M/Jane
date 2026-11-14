@@ -1,6 +1,6 @@
 import type { Transaction } from "plaid";
 import type { PfcDetailed } from "@/categorize/taxonomy";
-import { primaryOf, random } from "./demo-bank";
+import { primaryOf, random } from "./basics";
 import { addDays } from "@/lib/dates";
 
 // A sample person's year as a ledger (founder, 2026-10-23): every balance rolls back through

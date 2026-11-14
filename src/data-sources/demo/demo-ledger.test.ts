@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DEMO_HISTORY_LOWEST_BANK_CENTS } from "@/config/net-worth";
 import { PEOPLE } from "@/config/people";
 import { personAccounts, personTransactions } from "./demo-people";
-import type { DemoSeed } from "./demo-bank";
+import type { DemoSeed } from "./basics";
 
 // The sample people's banks as a ledger (founder, 2026-10-23): every card payment is on both
 // sides, and every balance rolls back through its own transactions to a believable one, so the
