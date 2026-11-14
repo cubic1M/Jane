@@ -398,7 +398,9 @@ const TAX_ADVICE = [
   // Money a company took from an account or paycheck ("Netflix deducted $15.49 from your
   // checking", "it was deducted on Oct 3") is a charge, not a tax deduction.
   /(?<!\b(?:was|were|been|be|being|is|are|get|gets|got|automatically|auto)[- ])\bdeduct(?:s|ed|ing)?\b(?! (?:\$[\d,.]+ )?(?:automatically )?(?:from|out of) (?:your|my|the|their|each|this|that) (?:\w+ )?(?:pay|paycheck|paychecks|wages|account|checking|savings|balance|card)\b)/i,
-  /\bitemi[sz]\w*/i,
+  // Round 36 (11-14): an itemized bill or invoice is what the medical bills page asks a hospital for
+  // (src/config/medical-bills.ts), not itemized deductions.
+  /\bitemi[sz]\w*\b(?! (?:bills?|invoices?|receipts?|statements?|charges|list of charges)\b)/i,
   /\bclaim(?:s|ed|ing)?\b[^.!?]{0,40}\b(?:deductions?|credits?|expenses?|dependents?|exemptions?|losses|home office|as a (?:business|loss|dependent))\b/i,
   /\btax[- ](?:free|break|breaks|loophole|shelter|strateg\w+|advantaged?|planning)\b/i,
   /\b(?:lower|reduce|cut|shrink|minimi[sz]e|avoid|save on|pay less)\b[^.!?]{0,40}\btax/i,
@@ -470,6 +472,9 @@ const TAX_ADVICE = [
   /\b(?:(?:cash )?tips|overtime|social security(?: benefits)?|unemployment(?: benefits)?|side (?:gig |hustle )?income|gig income|crypto gains|venmo payments|cash app payments|zelle payments)\b(?:[^.!?]|\.\d){0,20}\b(?:isn(?:'|’)?t|aren(?:'|’)?t|is not|are not|won(?:'|’)?t be|is no longer|are no longer) (?:taxable|taxed)\b|\b(?:taxable|taxed) (?:anymore|any more)\b/i,
   // Round 35 (11-14): "Your bonus is taxed at 22%".
   /\btaxed at (?:a |the |about |around |roughly |only |just )?(?:\d|flat|higher|lower|your|ordinary|capital|long[- ]term|short[- ]term)/i,
+  // Round 36 (11-14): "Medical bills over 7.5% of your income are deductible". "None of it is
+  // deductible" says what isn't, as the casualty-loss line does, and passes.
+  /(?<!\b(?:none of (?:it|them|this|that|these|those)|nothing|neither (?:one|of them)?)\s)\b(?:are|is) (?:fully |partly |partially |also |only )?deductible\b/i,
   // Round 17 (11-13): Italian, Japanese, Korean, Vietnamese ("税金を払わなくていいです").
   /\bnon (?:dichiarare|dichiarate|devi dichiarare)\b|\b(?:puoi|potete) (?:detrarre|dedurre|scaricare)\b|\bdetrazione fiscale\b|税金を払わなくて|申告しなくて(?:いい|よい|大丈夫)|確定申告は(?:不要|いらない)|控除できます|経費にできます|세금(?:을)? 안 내도|신고(?:하지)? 않아도|신고 안 해도|공제받을 수 있|không cần (?:nộp|khai|đóng) thuế|được khấu trừ/i,
 ];
@@ -670,6 +675,13 @@ const LEGAL = [
   /\b(?:visa|[Gg]reen card|[Ww]ork permit|EAD|DACA|F-1|H-1B|OPT)\b(?:[^.!?]|\.\d){0,20}\b(?:lets|allows|permits|doesn(?:'|’)?t (?:let|allow|permit)|does not (?:let|allow|permit)|won(?:'|’)?t let)\b/,
   /\b(?:they(?:(?:'|’)re| are)|(?:your |the )?(?:employer|boss|company|landlord|lender|bank|hospital|insurer|collector)(?: is|(?:'|’)s)) (?:legally )?(?:required|obligated) to\b/i,
   /\b(?:sign|accept|take|reject|turn down|don(?:'|’)?t sign) (?:the |their |that |this )?(?:settlement|plea(?: deal)?|severance agreement|release|waiver|nda|non-?compete|arbitration agreement)\b/i,
+  // Round 36 (11-14): "The No Surprises Act protects you here", "You can't be billed for that",
+  // "You're entitled to a refund", "You can stop paying your timeshare", "Small claims is your best bet".
+  /\b(?:under|per) (?:the )?(?:no surprises act|affordable care act|aca|cobra|fmla|family and medical leave act|americans with disabilities act|hipaa|flsa|fair labor standards act)\b|\b(?:the )?(?:no surprises act|affordable care act|aca|fmla|family and medical leave act|americans with disabilities act|hipaa|flsa|fair labor standards act)\b[^.!?]{0,15}\b(?:protects|covers|gives|lets|requires|says|limits|caps|entitles|bans|prohibits|means)\b/i,
+  /\byou (?:can(?:'|’)?t|cannot|shouldn(?:'|’)?t) (?:legally )?be (?:billed|sued|evicted|fired|garnished|sent to collections|held liable)\b/i,
+  /\byou(?:(?:'|’)re| are) (?:legally )?entitled to\b/i,
+  /\byou can (?:just |legally )?stop paying (?:your |the |that )?(?:timeshare|mortgage|loan|student loans?|car loan|debt|hoa|rent|taxes|child support|alimony|medical bills?)\b/i,
+  /\bsmall claims(?: court)?\b[^.!?]{0,20}\b(?:best bet|best option|way to go|next step|your move|your best)\b|\b(?:take (?:them|it|him|her)|go) to small claims\b/i,
   // Round 31 (11-14): "Don't show up to court", "You don't have to pay that debt", "The judge will
   // side with you", "They're violating your rights".
   /\b(?:don(?:'|’)?t|do not|no need to|you don(?:'|’)?t (?:have|need) to) (?:bother )?(?:show(?:ing)? up|appear(?:ing)?|go(?:ing)?) (?:to|in|at|for) (?:court|the hearing|your hearing|the trial|your court date)\b/i,
@@ -806,6 +818,12 @@ const GUARANTEE = [
   /\b(?:interest |mortgage )?rates (?:will|are going to) (?:drop|fall|go down|come down|rise|go up|climb|increase|keep (?:rising|falling))\b/i,
   /\b(?:housing|the housing market|real estate|the economy|the job market) (?:will|is going to|(?:'|’)ll) (?:crash|collapse|tank|boom|recover|rebound)\b|\ba recession is (?:coming|going to happen|on the way)\b/i,
   /\b(?:medical |hospital )?bills? (?:will|is going to|are going to) be (?:forgiven|wiped out|erased|written off|discharged)\b/i,
+  // Round 36 (11-14): "Insurance will cover it", "Your claim will be paid", "The hospital will lower
+  // the bill", "Your premium won't go up", "The CFPB will make them refund you".
+  /\b(?:insurance|your (?:insurer|policy|coverage|warranty)|the (?:insurer|policy|warranty)|medicaid|medicare)\b (?:will|is going to|(?:'|’)ll) (?:definitely |surely |fully )?(?:cover|pay for|reimburse)\b/i,
+  /\b(?:claim|reimbursement) (?:will|is going to) (?:definitely |surely )?be (?:paid|approved|covered|accepted|honored)\b/i,
+  /\b(?:they|the (?:hospital|doctor|provider|clinic|lender|bank|landlord|insurer|company|collector))(?:(?:'|’)ll| will| is going to| are going to) (?:definitely |surely )?(?:lower|reduce|cut|forgive|waive|drop|write off) (?:the |your |that |this )?(?:bill|balance|debt|fee|rate|charges?|rent)\b/i,
+  /\bpremiums? (?:won(?:'|’)?t|will not|isn(?:'|’)?t going to|aren(?:'|’)?t going to) (?:go up|rise|increase)\b|\b(?:the )?(?:cfpb|ftc|attorney general|bbb|regulators?)\b (?:will|(?:'|’)ll|is going to) (?:make|force|get)\b/i,
   /\b(?:loans?|debt|balance) (?:will|is going to) be (?:forgiven|discharged|cancell?ed|wiped out|erased)\b/i,
   /\b(?:you(?:'|’)re|you are|it(?:'|’)s|it is) bound to (?:get|be|save|win|work|go up|pay off|qualify)\b/i,
   // Round 29 (11-14): "This will pay for itself", "You'll make your money back", "No way you'll lose".
