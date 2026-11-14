@@ -2,16 +2,15 @@ import { formatWholeDollars } from "@/lib/money";
 import { ShownLink } from "@/components/shown-link";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import type { FamilyView } from "@/lib/family-taxes";
+import { CARD_ROOMY } from "@/components/card";
 
 // Family taxes on /taxes (spec step 169, demo advice): each choice with both sides'
 // federal tax, which sides are open (with the rules), and what Jane assumed.
 
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
-
 export function FamilySection({ view }: { view: FamilyView }) {
   if (!view.advice) return null;
   return (
-    <section aria-labelledby="family-heading" id="family" className={CARD}>
+    <section aria-labelledby="family-heading" id="family" className={CARD_ROOMY}>
       <h2 id="family-heading" className="text-xl font-semibold">
         Family tax choices
       </h2>

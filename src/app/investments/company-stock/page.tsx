@@ -20,6 +20,7 @@ import { dayLabel } from "@/lib/day-label";
 import { PageShell } from "@/components/page-shell";
 import { DoneBanner } from "@/components/done-banner";
 import { BackLink } from "@/components/back-link";
+import { CARD } from "@/components/card";
 
 // Company stock (spec step 160, demo advice): how much of what's invested is in the
 // employer's stock, what's still to vest, and a plan to sell down in parts with the tax
@@ -65,7 +66,7 @@ async function CompanyContent({
       )}
 
       {view.company ? (
-        <section className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+        <section className={CARD}>
           <h2 className="text-xl font-semibold">{view.company}</h2>
           <p className="text-sm">
             {formatCents(c.heldCents)} held: {pct(c.share)} of what you&apos;ve invested

@@ -12,6 +12,7 @@ import { dayLabel } from "@/lib/day-label";
 import { PageShell } from "@/components/page-shell";
 import { DoneBanner } from "@/components/done-banner";
 import { BackLink } from "@/components/back-link";
+import { CARD } from "@/components/card";
 
 // What costly products really cost (spec step 215, demo advice): annuities, whole life and
 // advisory fees in dollars, with the surrender charge by year, what the same money would do
@@ -25,7 +26,7 @@ const SECONDARY =
 
 function Product({ p, advice }: { p: ProductView; advice: boolean }) {
   return (
-    <section className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+    <section className={CARD}>
       <h2 className="text-xl font-semibold">
         {p.name} <span className="text-sm font-normal text-zinc-500">({p.provider})</span>
       </h2>
@@ -139,7 +140,7 @@ async function Content({
         </form>
       ))}
       {v.advisory && (
-        <section className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+        <section className={CARD}>
           <h2 className="text-xl font-semibold">Advisory fees</h2>
           <p className="text-sm">
             You paid {formatCents(v.advisory.yearlyCents)} in advisory fees in the last 12 months on

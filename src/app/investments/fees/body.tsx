@@ -9,12 +9,12 @@ import { loadFees } from "@/lib/investments/fees";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { formatRate } from "@/lib/percent";
+import { CARD_TIGHT } from "@/components/card";
 
 // What investing costs the person (spec step 130): each fund's yearly cost, advisory and
 // account fees, what it all costs over 30 years as a range, and, in demo advice mode, a
 // lower-cost equivalent for each costly fund.
 
-const CARD = "flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 const span = (r: Range) => `${formatCents(r.lowCents)} to ${formatCents(r.highCents)}`;
 
 export async function FeesBody({ embed }: { embed?: boolean }) {
@@ -52,11 +52,11 @@ export async function FeesBody({ embed }: { embed?: boolean }) {
       ) : (
         <>
           <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className={CARD}>
+            <div className={CARD_TIGHT}>
               <span className="text-sm text-zinc-600 dark:text-zinc-400">About a year</span>
               <span className="text-2xl font-semibold">{formatCents(fees.totalYearlyCents)}</span>
             </div>
-            <div className={CARD}>
+            <div className={CARD_TIGHT}>
               <span className="text-sm text-zinc-600 dark:text-zinc-400">
                 Over {fees.years} years, with growth
               </span>

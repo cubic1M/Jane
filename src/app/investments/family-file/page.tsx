@@ -8,6 +8,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
 import { DoneBanner } from "@/components/done-banner";
 import { BackLink } from "@/components/back-link";
+import { CARD } from "@/components/card";
 
 // The family looked after (spec step 237): who is named on each account, what a life event makes
 // out of date, and a file the person shares in part. Facts only about wills and trusts, with a
@@ -57,10 +58,7 @@ async function Content({
           <p className="text-sm text-zinc-600 dark:text-zinc-400">No accounts to check yet.</p>
         )}
         {v.checks.map((c) => (
-          <div
-            key={c.accountId}
-            className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-          >
+          <div key={c.accountId} className={CARD}>
             <h3 className="font-semibold">{c.accountName}</h3>
             <p className="text-sm">
               {c.names.length > 0 ? `Named: ${c.names.join(", ")}.` : "Nobody named."}{" "}

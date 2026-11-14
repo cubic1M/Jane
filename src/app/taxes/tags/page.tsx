@@ -12,11 +12,11 @@ import { CheckButtons, TagForm } from "./tag-form";
 import { dayLabel } from "@/lib/day-label";
 import { EmptyState } from "@/components/empty-state";
 import { PageShell } from "@/components/page-shell";
+import { CARD_ROOMY } from "@/components/card";
 
 // Tax tags (spec step 119): what Jane tagged for the year, the ones it's unsure about,
 // and a search to tag anything else (a work expense). Tags never change spending.
 
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 const LINK = "font-medium text-emerald-700 hover:underline";
 const SOURCE: Readonly<Record<TagSource, string>> = {
   yours: "Tagged by you",
@@ -56,7 +56,7 @@ async function TagsContent({
         </p>
       </div>
 
-      <section aria-labelledby="totals" className={CARD}>
+      <section aria-labelledby="totals" className={CARD_ROOMY}>
         <h2 id="totals" className="text-xl font-semibold">
           This year so far
         </h2>
@@ -81,7 +81,7 @@ async function TagsContent({
       </section>
 
       {view.checks.length > 0 && (
-        <section aria-labelledby="checks" className={CARD}>
+        <section aria-labelledby="checks" className={CARD_ROOMY}>
           <h2 id="checks" className="text-xl font-semibold">
             Is Jane right about these?
           </h2>
@@ -103,7 +103,7 @@ async function TagsContent({
         const rows = view.tagged.filter((t) => t.tag === tag);
         if (rows.length === 0) return null;
         return (
-          <section key={tag} aria-labelledby={`tag-${tag}`} className={CARD}>
+          <section key={tag} aria-labelledby={`tag-${tag}`} className={CARD_ROOMY}>
             <h2 id={`tag-${tag}`} className="text-xl font-semibold">
               {TAX_TAGS[tag].label}
             </h2>
@@ -132,7 +132,7 @@ async function TagsContent({
         );
       })}
 
-      <section aria-labelledby="search" className={CARD}>
+      <section aria-labelledby="search" className={CARD_ROOMY}>
         <h2 id="search" className="text-xl font-semibold">
           Tag something else
         </h2>

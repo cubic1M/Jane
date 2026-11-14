@@ -7,13 +7,13 @@ import { requireUser } from "@/lib/session";
 import { AnswersForm, IntentButton } from "./forms";
 import { PageShell } from "@/components/page-shell";
 import { BackLink } from "@/components/back-link";
+import { CARD_ROOMY } from "@/components/card";
 
 // Property tax that's too high (spec step 221): the assessment against the market value,
 // the appeal window, the drafted appeal, and exemptions (demo advice). Nothing is filed
 // without a tap.
 
 const LINK = "font-medium text-emerald-700 underline";
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 
 async function Content() {
   const user = await requireUser();
@@ -32,7 +32,7 @@ async function Content() {
           sources, and the county&apos;s own notice always has the real date.
         </p>
       </div>
-      <section aria-labelledby="gap" className={CARD}>
+      <section aria-labelledby="gap" className={CARD_ROOMY}>
         <h2 id="gap" className="text-xl font-semibold">
           The assessment
         </h2>
@@ -66,7 +66,7 @@ async function Content() {
         )}
       </section>
       {v.advice && v.comps.length > 0 && (
-        <section aria-labelledby="comps" className={CARD}>
+        <section aria-labelledby="comps" className={CARD_ROOMY}>
           <h2 id="comps" className="text-xl font-semibold">
             Comparable sales
           </h2>
@@ -83,7 +83,7 @@ async function Content() {
         </section>
       )}
       {v.appeal && v.appeal.status !== "dropped" && (
-        <section aria-labelledby="appeal" className={CARD}>
+        <section aria-labelledby="appeal" className={CARD_ROOMY}>
           <h2 id="appeal" className="text-xl font-semibold">
             Your appeal
           </h2>
@@ -106,7 +106,7 @@ async function Content() {
         </section>
       )}
       {v.advice && v.homeowner && (
-        <section aria-labelledby="exemptions" className={CARD}>
+        <section aria-labelledby="exemptions" className={CARD_ROOMY}>
           <h2 id="exemptions" className="text-xl font-semibold">
             Exemptions you may not have claimed
           </h2>
@@ -149,7 +149,7 @@ async function Content() {
           <DemoAdviceLabel />
         </section>
       )}
-      <section aria-labelledby="facts" className={CARD}>
+      <section aria-labelledby="facts" className={CARD_ROOMY}>
         <h2 id="facts" className="text-xl font-semibold">
           About your home
         </h2>

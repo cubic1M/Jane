@@ -20,12 +20,12 @@ import { requireUser } from "@/lib/session";
 import { timezoneOf } from "@/lib/today";
 import { momentLabel } from "@/lib/day-label";
 import { PageShell } from "@/components/page-shell";
+import { CARD_TIGHT } from "@/components/card";
 
 // The Jane hub (spec step 80): everything Jane found and is doing, each list a short
 // summary of its full page.
 
 const LINK = "font-medium text-emerald-700 hover:underline";
-const ROW = "flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 const MUTED = "text-zinc-600 dark:text-zinc-400";
 
 function Section({
@@ -151,7 +151,7 @@ async function JaneContent() {
         <Section title="What matters now" links={[]}>
           <ol className="flex flex-col gap-2">
             {top.map((r) => (
-              <li key={r.key} className={ROW}>
+              <li key={r.key} className={CARD_TIGHT}>
                 <Link href={r.href} className={LINK}>
                   {r.title}
                 </Link>
@@ -178,7 +178,7 @@ async function JaneContent() {
           </p>
           <ul className="flex flex-col gap-2">
             {snapshot.health.parts.map((p) => (
-              <li key={p.part} className={ROW}>
+              <li key={p.part} className={CARD_TIGHT}>
                 <span className="flex flex-wrap items-baseline justify-between gap-x-4">
                   <span className="font-semibold">{p.label}</span>
                   <span className={`text-sm ${MUTED}`}>
@@ -218,7 +218,7 @@ async function JaneContent() {
         ) : (
           <ol aria-label="Activity" className="flex flex-col gap-2">
             {timeline.map((e) => (
-              <li key={e.id} className={ROW}>
+              <li key={e.id} className={CARD_TIGHT}>
                 <span className="font-semibold [overflow-wrap:anywhere]">{e.what}</span>
                 <span className={`text-sm ${MUTED}`}>
                   <time dateTime={e.at.toISOString()}>{momentLabel(e.at, timezone)}</time>
@@ -317,7 +317,7 @@ async function JaneContent() {
         ) : (
           <ul className="flex flex-col gap-3">
             {inProgress.items.map((a) => (
-              <li key={a.id} className={`${ROW} [overflow-wrap:anywhere]`}>
+              <li key={a.id} className={`${CARD_TIGHT} [overflow-wrap:anywhere]`}>
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <span className="font-semibold">{a.title}</span>
                   <span
@@ -365,7 +365,7 @@ async function JaneContent() {
         ) : (
           <ul className="flex flex-col gap-3">
             {done.items.map((a) => (
-              <li key={a.id} className={`${ROW} [overflow-wrap:anywhere]`}>
+              <li key={a.id} className={`${CARD_TIGHT} [overflow-wrap:anywhere]`}>
                 <span className="font-semibold">{a.title}</span>
                 {a.saving && <span className={`text-sm ${MUTED}`}>{a.saving}</span>}
               </li>
@@ -413,7 +413,7 @@ async function JaneContent() {
             )}
             <ul className="flex flex-col gap-3">
               {alerts.items.map((a) => (
-                <li key={a.id} className={`${ROW} [overflow-wrap:anywhere]`}>
+                <li key={a.id} className={`${CARD_TIGHT} [overflow-wrap:anywhere]`}>
                   <span className="font-semibold">{a.title}</span>
                   <span className={`text-sm ${MUTED}`}>{a.body}</span>
                   {a.confidence && (

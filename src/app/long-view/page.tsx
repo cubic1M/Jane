@@ -5,6 +5,7 @@ import { formatCents } from "@/lib/money";
 import { cleanOverrides, loadLongView } from "@/lib/long-view";
 import { requireUser } from "@/lib/session";
 import { PageShell } from "@/components/page-shell";
+import { CARD_TIGHT } from "@/components/card";
 
 // The long view (spec step 209): net worth in 10, 20 and 30 years as a range, in today's
 // dollars, with every assumption shown and editable. A range, never a promise.
@@ -41,10 +42,7 @@ async function LongViewContent({
         <>
           <ul className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {view.horizons.map((h) => (
-              <li
-                key={h.years}
-                className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-              >
+              <li key={h.years} className={CARD_TIGHT}>
                 <span className={`text-sm ${MUTED}`}>In {h.years} years</span>
                 <span className="text-xl font-semibold">
                   {formatCents(h.lowCents)} to {formatCents(h.highCents)}

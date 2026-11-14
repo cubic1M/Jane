@@ -11,11 +11,11 @@ import { balancePhrase } from "@/planning/tax-estimate-copy";
 import { stateName } from "@/planning/tax-profile";
 import { SignForm, StartForm } from "./file-forms";
 import { PageShell } from "@/components/page-shell";
+import { CARD_ROOMY } from "@/components/card";
 
 // Filing (spec step 126): start the return with the filing partner, review what Jane handed
 // over, and sign it. Nothing is filed until the person signs.
 
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 const LABELS: Record<string, string> = {
   wagesCents: "Wages",
   selfEmploymentCents: "Freelance income, less costs",
@@ -59,7 +59,7 @@ async function Content() {
           is ready for whoever does your taxes.
         </p>
       ) : !ret ? (
-        <section aria-labelledby="start" className={CARD}>
+        <section aria-labelledby="start" className={CARD_ROOMY}>
           <h2 id="start" className="text-xl font-semibold">
             Start
           </h2>
@@ -76,7 +76,7 @@ async function Content() {
         </section>
       ) : (
         <>
-          <section aria-labelledby="status" className={CARD}>
+          <section aria-labelledby="status" className={CARD_ROOMY}>
             <h2 id="status" className="text-xl font-semibold">
               Status
             </h2>
@@ -96,7 +96,7 @@ async function Content() {
                 : ""}
             </p>
           </section>
-          <section aria-labelledby="review" className={CARD}>
+          <section aria-labelledby="review" className={CARD_ROOMY}>
             <h2 id="review" className="text-xl font-semibold">
               What Jane handed over
             </h2>
@@ -145,7 +145,7 @@ async function Content() {
             </ul>
           </section>
           {ret.status === "ready_for_review" && (
-            <section aria-labelledby="sign" className={CARD}>
+            <section aria-labelledby="sign" className={CARD_ROOMY}>
               <h2 id="sign" className="text-xl font-semibold">
                 Review and sign
               </h2>

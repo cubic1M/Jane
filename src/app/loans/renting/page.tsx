@@ -10,6 +10,7 @@ import { requireUser } from "@/lib/session";
 import { depositAction, depositReturnedAction, reportingAction } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
+import { CARD_ROOMY } from "@/components/card";
 
 // Renting, counted (spec step 248): rent reported to the credit bureaus only if you say so, a
 // rent increase beside what is usual, and a security deposit followed to its return date.
@@ -18,7 +19,6 @@ const LINK = "font-medium text-emerald-700 hover:underline";
 const INPUT =
   "h-11 w-full rounded-lg border border-zinc-300 bg-transparent px-3 dark:border-zinc-700";
 const BUTTON = "h-11 rounded-full bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800";
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 
 async function RentingContent({ searchParams }: Pick<PageProps<"/loans/renting">, "searchParams">) {
   const user = await requireUser();
@@ -58,7 +58,7 @@ async function RentingContent({ searchParams }: Pick<PageProps<"/loans/renting">
       )}
       {d.renter ? (
         <>
-          <section aria-label="Rent reporting" className={CARD}>
+          <section aria-label="Rent reporting" className={CARD_ROOMY}>
             <h2 className="text-xl font-semibold">
               {formatCents(d.monthlyCents!)} a month, {d.payments.length} payments found
             </h2>
@@ -79,7 +79,7 @@ async function RentingContent({ searchParams }: Pick<PageProps<"/loans/renting">
             </form>
           </section>
           {d.rise && (
-            <section aria-label="Rent increase" className={CARD}>
+            <section aria-label="Rent increase" className={CARD_ROOMY}>
               <h2 className="text-xl font-semibold">Your rent went up</h2>
               <p>
                 From {formatCents(d.rise.beforeCents)} to {formatCents(d.rise.nowCents)} a month:{" "}
@@ -100,7 +100,7 @@ async function RentingContent({ searchParams }: Pick<PageProps<"/loans/renting">
           </Link>
         </p>
       )}
-      <section aria-label="Security deposits" className={CARD}>
+      <section aria-label="Security deposits" className={CARD_ROOMY}>
         <h2 className="text-xl font-semibold">Security deposits</h2>
         {lines.length > 0 && (
           <ul className="flex flex-col gap-2">

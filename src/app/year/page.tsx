@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/session";
 import { yearInReview } from "@/lib/year";
 import { PrintButton } from "./print-button";
 import { monthLabel } from "@/lib/day-label";
+import { CARD_TIGHT } from "@/components/card";
 
 async function Year({ searchParams }: { searchParams: PageProps<"/year">["searchParams"] }) {
   const user = await requireUser();
@@ -60,10 +61,7 @@ async function Year({ searchParams }: { searchParams: PageProps<"/year">["search
             ["Saved", `${formatCents(review.savedCents)} a year`],
           ] as const
         ).map(([label, value]) => (
-          <div
-            key={label}
-            className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-          >
+          <div key={label} className={CARD_TIGHT}>
             <span className="text-sm text-zinc-600 dark:text-zinc-400">{label}</span>
             <span className="text-xl font-semibold">{value}</span>
           </div>

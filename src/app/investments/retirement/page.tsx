@@ -21,13 +21,13 @@ import { requireUser } from "@/lib/session";
 import { ROTH_WORDS, type Range } from "@/planning/retirement";
 import { PageShell } from "@/components/page-shell";
 import { BackLink } from "@/components/back-link";
+import { CARD_TIGHT } from "@/components/card";
 
 // On track for retirement? (spec step 132, demo advice). What the retirement accounts
 // could grow to by 67 as a range in today's dollars, against a target; the match, Roth or
 // traditional, catch-up, and what to change. Every assumption is listed with its source.
 
 const LINK = "font-medium text-emerald-700 hover:underline";
-const CARD = "flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 const span = (r: Range) =>
   r.lowCents === r.highCents
     ? formatCents(r.lowCents)
@@ -79,7 +79,7 @@ async function RetirementContent() {
       ) : (
         <>
           <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className={CARD}>
+            <div className={CARD_TIGHT}>
               <span className="text-sm text-zinc-600 dark:text-zinc-400">
                 {retirement.years === 0
                   ? "In your retirement accounts now"
@@ -90,7 +90,7 @@ async function RetirementContent() {
                 From {formatCents(balanceCents)} now and what goes in each year
               </span>
             </div>
-            <div className={CARD}>
+            <div className={CARD_TIGHT}>
               <span className="text-sm text-zinc-600 dark:text-zinc-400">Could pay out a year</span>
               <span className="text-2xl font-semibold">{span(retirement.yearlyIncome)}</span>
               <span className="text-xs text-zinc-500">At {WITHDRAWAL_RATE * 100}% a year</span>

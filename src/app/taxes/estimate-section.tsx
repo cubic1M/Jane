@@ -6,11 +6,10 @@ import { ESTIMATE_NOTE, federalLine, stateLine, stateSource } from "@/planning/t
 import { dayLabel } from "@/lib/day-label";
 import { STATE_SOURCES } from "@/config/tax-states";
 import { stateName } from "@/planning/tax-profile";
+import { CARD_ROOMY } from "@/components/card";
 
 // The tax estimate on /taxes (spec step 120): the refund or bill, federal and state, the
 // working behind it, and everything Jane assumed. Every figure is an estimate.
-
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 
 function Row({ label, cents, strong }: { label: string; cents: number; strong?: boolean }) {
   return (
@@ -36,7 +35,7 @@ export function EstimateSection({ view }: { view: TaxEstimateView }) {
   const otherTaxes =
     e.selfEmploymentTaxCents + e.additionalMedicareCents + e.netInvestmentIncomeTaxCents;
   return (
-    <section aria-labelledby="estimate-heading" id="estimate" className={CARD}>
+    <section aria-labelledby="estimate-heading" id="estimate" className={CARD_ROOMY}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 id="estimate-heading" className="text-xl font-semibold">
           Your {view.year} estimate

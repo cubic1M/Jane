@@ -7,6 +7,7 @@ import { forgetProfileCorrection } from "./actions";
 import { CorrectForm } from "./correct-form";
 import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
+import { CARD } from "@/components/card";
 
 // What Jane knows about you (spec step 253): every fact in the picture of you with where it
 // came from, how sure Jane is and why, and a way to correct it. A correction is used by
@@ -20,10 +21,7 @@ const SOURCE_WORDS = { seen: "I saw this", told: "You told me", guessed: "My gue
 function factItem(f: Fact, known: boolean) {
   const spec = factSpec(f.key)!;
   return (
-    <li
-      key={f.key}
-      className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-    >
+    <li key={f.key} className={CARD}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <span className="font-medium">{f.label}</span>
         {known && <span className="text-lg font-semibold">{sayFact(f.key, f.value)}</span>}

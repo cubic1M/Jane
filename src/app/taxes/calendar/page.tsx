@@ -10,12 +10,12 @@ import { loadTaxFound } from "@/lib/tax-scan";
 import { requireUser } from "@/lib/session";
 import { PageShell } from "@/components/page-shell";
 import { BackLink } from "@/components/back-link";
+import { CARD_ROOMY } from "@/components/card";
 
 // The tax year that runs itself (spec step 223): what Jane does each month, and where this
 // month's items stand. Moving money above the cap, signing and filing are always a tap.
 
 const LINK = "font-medium text-emerald-700 underline";
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 
 const STATUS = {
   done: "Done",
@@ -47,7 +47,7 @@ async function Content() {
               : "You asked Jane to ask first, so it tells you what is due each month and waits for your tap."}
         </p>
       </div>
-      <section aria-labelledby="now" className={CARD}>
+      <section aria-labelledby="now" className={CARD_ROOMY}>
         <h2 id="now" className="text-xl font-semibold">
           {v.label}
         </h2>
@@ -90,7 +90,7 @@ async function Content() {
           </>
         )}
       </section>
-      <section aria-labelledby="year" className={CARD}>
+      <section aria-labelledby="year" className={CARD_ROOMY}>
         <h2 id="year" className="text-xl font-semibold">
           The whole year
         </h2>

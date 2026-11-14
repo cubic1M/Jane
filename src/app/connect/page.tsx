@@ -15,6 +15,7 @@ import { LinkChoice, Promises, SECONDARY_BUTTON } from "./link-choice";
 import { SubmitButton } from "@/components/submit-button";
 import { SUGGESTED_UPLOAD_MONTHS, UPLOAD_REASSURANCE } from "@/config/import";
 import { PageShell } from "@/components/page-shell";
+import { CARD } from "@/components/card";
 
 const PRIMARY_BUTTON =
   "inline-flex h-12 w-full items-center justify-center rounded-full bg-emerald-700 px-6 font-semibold text-white hover:bg-emerald-800 disabled:opacity-50 sm:w-auto";
@@ -99,10 +100,7 @@ async function ConnectContent() {
           <h2 className="text-xl font-semibold">Linked banks</h2>
           <ul className="flex flex-col gap-3">
             {items.map((item) => (
-              <li
-                key={item.id}
-                className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-              >
+              <li key={item.id} className={CARD}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="font-semibold">{item.institutionName ?? "Your bank"}</p>
                   <p className="text-xs text-zinc-500">

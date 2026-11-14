@@ -10,6 +10,7 @@ import { requireUser } from "@/lib/session";
 import { endGoalAction, startGoalAction, tickItemAction } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
+import { CARD_ROOMY } from "@/components/card";
 
 // A credit score for a goal (spec step 227): the score and date needed, a month-by-month plan
 // from the score simulator, and each month's checklist. A stand-in score; every figure is an
@@ -109,11 +110,7 @@ async function GoalContent({ searchParams }: Pick<PageProps<"/loans/goal">, "sea
           )}
           <p className="text-sm">Your score now: {data.scoreNow ?? "not pulled yet"}.</p>
           {data.goals.map((g) => (
-            <section
-              key={g.id}
-              aria-label={g.title}
-              className="flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-            >
+            <section key={g.id} aria-label={g.title} className={CARD_ROOMY}>
               <h2 className="text-xl font-semibold">{g.title}</h2>
               <p
                 className={

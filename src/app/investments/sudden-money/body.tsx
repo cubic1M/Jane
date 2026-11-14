@@ -10,6 +10,7 @@ import { answerKind, demoDeposit, stage } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { DoneBanner } from "@/components/done-banner";
 import { BackLink } from "@/components/back-link";
+import { CARD_ROOMY } from "@/components/card";
 
 // Sudden money (spec step 235, demo advice): a bonus, an inheritance or a sale, with a staged
 // plan. Tax set aside first; every part is your tap.
@@ -52,10 +53,7 @@ export async function SuddenMoneyBody({
         <p className="text-zinc-600 dark:text-zinc-400">No large deposit to plan.</p>
       )}
       {v.items.map((i) => (
-        <section
-          key={i.id}
-          className="flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-        >
+        <section key={i.id} className={CARD_ROOMY}>
           <h2 className="text-xl font-semibold">
             {formatCents(i.amountCents)} deposited {i.depositedOn}
           </h2>

@@ -10,10 +10,10 @@ import {
   MIN_AGE,
 } from "@/config/investing";
 import { saveProfile, type ProfileFormInput, type ProfileState } from "./actions";
+import { CARD } from "@/components/card";
 
 const INPUT =
   "h-11 w-28 rounded-lg border border-zinc-300 bg-transparent px-3 text-base dark:border-zinc-700";
-const FIELDSET = "flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 const OPTION = "flex items-center gap-2 text-sm";
 
 export function ProfileForm({ values }: { values: ProfileFormInput }) {
@@ -34,7 +34,7 @@ export function ProfileForm({ values }: { values: ProfileFormInput }) {
           className={INPUT}
         />
       </label>
-      <fieldset className={FIELDSET}>
+      <fieldset className={CARD}>
         <legend className="px-1 text-sm font-medium">When will you need most of this money?</legend>
         {Object.entries(HORIZONS).map(([value, h]) => (
           <label key={value} className={OPTION}>
@@ -48,7 +48,7 @@ export function ProfileForm({ values }: { values: ProfileFormInput }) {
           </label>
         ))}
       </fieldset>
-      <fieldset className={FIELDSET}>
+      <fieldset className={CARD}>
         <legend className="px-1 text-sm font-medium">
           If your investments fell {DROP_QUESTION_PERCENT}% in a month, what would you do?
         </legend>
@@ -64,7 +64,7 @@ export function ProfileForm({ values }: { values: ProfileFormInput }) {
           </label>
         ))}
       </fieldset>
-      <fieldset className={FIELDSET}>
+      <fieldset className={CARD}>
         <legend className="px-1 text-sm font-medium">What&apos;s the money for? Pick any.</legend>
         {Object.entries(GOALS).map(([value, label]) => (
           <label key={value} className={OPTION}>

@@ -12,6 +12,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { dayLabel } from "@/lib/day-label";
 import { PageShell } from "@/components/page-shell";
 import { BackLink } from "@/components/back-link";
+import { CARD_ROOMY } from "@/components/card";
 
 // The HSA as an investment (spec step 159): cash and invested, the cash cushion, room under
 // the limit, and the receipts vault of medical charges to pay back tax-free later.
@@ -53,7 +54,7 @@ async function HsaContent({
           <p className="text-zinc-600 dark:text-zinc-400">No HSA linked yet.</p>
         )
       ) : (
-        <section className="flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+        <section className={CARD_ROOMY}>
           <h2 className="text-xl font-semibold">
             {hsa.account.name}: {formatCents(hsa.account.balanceCents)}
           </h2>

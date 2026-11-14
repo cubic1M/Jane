@@ -8,12 +8,12 @@ import { requireUser } from "@/lib/session";
 import { EventForm, PlanButton, RemoveButton, RetireForm } from "./forms";
 import { PageShell } from "@/components/page-shell";
 import { BackLink } from "@/components/back-link";
+import { CARD_ROOMY } from "@/components/card";
 
 // Tax moves over several years (spec step 220): the projection, the moves with their effect
 // over the years (demo advice), and what the person has told Jane about their plans.
 
 const LINK = "font-medium text-emerald-700 underline";
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 
 async function Content() {
   const user = await requireUser();
@@ -36,7 +36,7 @@ async function Content() {
         </ul>
       </div>
       {v.advice && v.moves.length > 0 && (
-        <section aria-labelledby="moves" className={CARD}>
+        <section aria-labelledby="moves" className={CARD_ROOMY}>
           <h2 id="moves" className="text-xl font-semibold">
             Moves that save tax
           </h2>
@@ -56,7 +56,7 @@ async function Content() {
       {v.advice && v.moves.length === 0 && (
         <p className="text-sm">I don&apos;t see a move worth making right now.</p>
       )}
-      <section aria-labelledby="table" className={CARD}>
+      <section aria-labelledby="table" className={CARD_ROOMY}>
         <h2 id="table" className="text-xl font-semibold">
           Year by year
         </h2>
@@ -89,7 +89,7 @@ async function Content() {
           About {formatCents(v.lifetimeTaxCents)} of federal tax across these years.
         </p>
       </section>
-      <section aria-labelledby="plans" className={CARD}>
+      <section aria-labelledby="plans" className={CARD_ROOMY}>
         <h2 id="plans" className="text-xl font-semibold">
           Your plans
         </h2>

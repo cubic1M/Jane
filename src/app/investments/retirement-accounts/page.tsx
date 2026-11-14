@@ -13,6 +13,7 @@ import { formatPercentTenths } from "@/lib/percent";
 import { PageShell } from "@/components/page-shell";
 import { DoneBanner } from "@/components/done-banner";
 import { BackLink } from "@/components/back-link";
+import { CARD } from "@/components/card";
 
 // Retirement accounts used fully (spec step 210, demo advice): every limit with what's
 // used, the match left on the table, Roth or traditional, and the backdoor Roth.
@@ -123,7 +124,7 @@ async function Content({
       )}
 
       {v.advice && (
-        <section className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+        <section className={CARD}>
           <h2 className="text-xl font-semibold">Roth or traditional</h2>
           {v.roth.choice ? (
             <p className="text-sm">

@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { saveResidencyAction, type TaxProfileState } from "./actions";
+import { CARD_ROOMY } from "@/components/card";
 
 // Where the person lived and worked (spec step 165): a move this year, an employer in
 // another state, and the city income tax they live under.
@@ -57,11 +58,7 @@ export function ResidencyForm({ values }: { values: ResidencyValues }) {
     null,
   );
   return (
-    <form
-      action={action}
-      id="states"
-      className="flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-    >
+    <form action={action} id="states" className={CARD_ROOMY}>
       <h2 className="font-semibold">Where you lived and worked</h2>
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
         A move in {values.year} splits your state taxes between the two states: wages by where you

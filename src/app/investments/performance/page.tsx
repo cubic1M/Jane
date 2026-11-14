@@ -7,6 +7,7 @@ import { requireUser } from "@/lib/session";
 import { annualized } from "@/planning/honest";
 import { PageShell } from "@/components/page-shell";
 import { BackLink } from "@/components/back-link";
+import { CARD } from "@/components/card";
 
 // Honest performance (spec step 233): how the money really did over 1, 3 and 5 years, after
 // fees and taxes, against a simple benchmark mix with the same risk, and why they differ.
@@ -34,10 +35,7 @@ async function Content() {
         </p>
       )}
       {v.rows.map((r) => (
-        <section
-          key={r.key}
-          className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-        >
+        <section key={r.key} className={CARD}>
           <h2 className="text-xl font-semibold">
             {r.label}
             {r.shorter ? ` (${r.from} on: the history is shorter)` : ""}

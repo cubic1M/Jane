@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { LIFE_EVENTS, LIFE_EVENT_KINDS, type LifeEventKind } from "@/config/life-events";
 import { momentLabel } from "@/lib/day-label";
 import { updateLifeEvents, type LifeEventState } from "./actions";
+import { CARD_ROOMY } from "@/components/card";
 
 export type BoardEvent = {
   id: string;
@@ -65,11 +66,7 @@ export function LifeEventsBoard({ events, timezone }: { events: BoardEvent[]; ti
         const checklist = LIFE_EVENTS[event.kind];
         const done = checklist.items.filter((i) => event.checkedItems.includes(i.key)).length;
         return (
-          <section
-            key={event.id}
-            aria-labelledby={`event-${event.id}`}
-            className="flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-          >
+          <section key={event.id} aria-labelledby={`event-${event.id}`} className={CARD_ROOMY}>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 id={`event-${event.id}`} className="text-xl font-semibold">
                 {checklist.title}
@@ -153,10 +150,7 @@ export function LifeEventsBoard({ events, timezone }: { events: BoardEvent[]; ti
           </h2>
           <ul className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {notStarted.map((kind) => (
-              <li
-                key={kind}
-                className="flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-              >
+              <li key={kind} className={CARD_ROOMY}>
                 <h3 className="font-semibold">{LIFE_EVENTS[kind].title}</h3>
                 <p className="flex-1 text-sm text-zinc-600 dark:text-zinc-400">
                   {LIFE_EVENTS[kind].intro}

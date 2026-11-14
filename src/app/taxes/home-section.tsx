@@ -5,11 +5,11 @@ import type { HomeTaxesView } from "@/lib/home-taxes";
 import { formatCents } from "@/lib/money";
 import { figuresOf, type Source } from "@/planning/home-taxes";
 import { formPayer } from "@/planning/tax-documents";
+import { CARD_ROOMY } from "@/components/card";
 
 // Homeowner taxes on /taxes (spec step 170): each figure with links to where it came from,
 // and the state and local tax cap applied.
 
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 const LINK = "underline underline-offset-2";
 
 function SourceLink({ s }: { s: Source }) {
@@ -45,7 +45,7 @@ export function HomeSection({ view }: { view: HomeTaxesView }) {
   if (!view.homeowner) return null;
   const salt = view.salt;
   return (
-    <section aria-labelledby="home-heading" id="home" className={CARD}>
+    <section aria-labelledby="home-heading" id="home" className={CARD_ROOMY}>
       <h2 id="home-heading" className="text-xl font-semibold">
         Your home
       </h2>

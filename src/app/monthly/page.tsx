@@ -11,6 +11,7 @@ import { categoryWords } from "@/planning/month-close";
 import { reportLines } from "@/planning/monthly-report";
 import { momentLabel, monthLabel } from "@/lib/day-label";
 import { PageShell } from "@/components/page-shell";
+import { CARD, CARD_TIGHT } from "@/components/card";
 
 // The month's one report (spec step 148), with the monthly check-in folded in (spec step 45;
 // docs/feature-audit.md, cluster 2). For any month: Jane's short summary, what was spent and
@@ -98,10 +99,7 @@ async function MonthlyContent({
             ],
           ] as const
         ).map(([label, value, note]) => (
-          <div
-            key={label}
-            className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-          >
+          <div key={label} className={CARD_TIGHT}>
             <span className="text-sm text-zinc-600 dark:text-zinc-400">{label}</span>
             <span className="text-2xl font-semibold">{value}</span>
             {note && <span className="text-xs text-zinc-500">{note}</span>}
@@ -116,10 +114,7 @@ async function MonthlyContent({
           {reportLines(report)
             .filter((line) => !SHOWN_ABOVE.has(line.label))
             .map((line) => (
-              <li
-                key={line.label}
-                className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-              >
+              <li key={line.label} className={CARD_TIGHT}>
                 <span className="flex flex-wrap items-baseline justify-between gap-x-4">
                   <span className="font-semibold">{line.label}</span>
                   {!line.href.startsWith("/monthly") && (
@@ -207,10 +202,7 @@ async function MonthlyContent({
 function MonthClose({ view, timezone }: { view: CloseView; timezone: string }) {
   const f = view.figures;
   return (
-    <section
-      id="close"
-      className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-    >
+    <section id="close" className={CARD}>
       <h2 className="text-xl font-semibold">
         {monthLabel(view.month, { long: true })}: {view.status === "closed" ? "closed" : "closing"}
       </h2>

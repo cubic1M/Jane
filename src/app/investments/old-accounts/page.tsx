@@ -13,6 +13,7 @@ import { dayLabel } from "@/lib/day-label";
 import { PageShell } from "@/components/page-shell";
 import { DoneBanner } from "@/components/done-banner";
 import { BackLink } from "@/components/back-link";
+import { CARD } from "@/components/card";
 
 // Old accounts brought home (spec step 211, demo advice): past employers, each asked about
 // once; found plans with fees compared; a direct rollover tracked step by step.
@@ -53,10 +54,7 @@ async function Content({
       )}
 
       {v.linked && v.linked.plans.length > 0 && (
-        <section
-          aria-labelledby="linked-old-plans"
-          className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-        >
+        <section aria-labelledby="linked-old-plans" className={CARD}>
           <h2 id="linked-old-plans" className="text-xl font-semibold">
             Already linked from past jobs
           </h2>
@@ -76,10 +74,7 @@ async function Content({
         <p className="text-zinc-600 dark:text-zinc-400">No past employers yet. Add one below.</p>
       )}
       {v.plans.map((p) => (
-        <section
-          key={p.id}
-          className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-        >
+        <section key={p.id} className={CARD}>
           <h2 className="text-xl font-semibold">{p.employer}</h2>
           {p.status === "asked" && (
             <form action={answer} className="flex flex-wrap items-center gap-3">

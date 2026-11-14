@@ -5,6 +5,7 @@ import type { TaxEstimateView } from "@/lib/tax-estimate";
 import { harvestSaving } from "@/lib/jane-agent/tax-investments";
 import { formatCents, formatWholeDollars } from "@/lib/money";
 import { dayLabel } from "@/lib/day-label";
+import { CARD_ROOMY } from "@/components/card";
 
 // Investment taxes on /taxes (spec step 124): gains and losses from the cost basis the
 // broker reports, wash sales, and (demo advice) losses worth harvesting and where to hold
@@ -22,11 +23,7 @@ export function InvestmentsSection({
   if (view.taxableAccounts === 0) return null;
   const r = view.realisedCents;
   return (
-    <section
-      aria-labelledby="investments-heading"
-      id="investments"
-      className="flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-    >
+    <section aria-labelledby="investments-heading" id="investments" className={CARD_ROOMY}>
       <h2 id="investments-heading" className="text-xl font-semibold">
         Investments
       </h2>

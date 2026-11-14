@@ -16,6 +16,7 @@ import {
 import { SubmitButton } from "@/components/submit-button";
 import { formatRate } from "@/lib/percent";
 import { PageShell } from "@/components/page-shell";
+import { CARD_ROOMY } from "@/components/card";
 
 // The car loan you already have (spec step 245): the best refinance by total cost, dealer
 // add-ons found in the loan with the refund each would give, and the cancellation drafted for
@@ -27,7 +28,6 @@ const INPUT =
 const BUTTON = "h-11 rounded-full bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800";
 const OUTLINE =
   "h-11 rounded-full border border-zinc-300 px-5 font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900";
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 
 async function AutoContent({ searchParams }: Pick<PageProps<"/loans/auto">, "searchParams">) {
   const user = await requireUser();
@@ -67,7 +67,7 @@ async function AutoContent({ searchParams }: Pick<PageProps<"/loans/auto">, "sea
               {p("error")}
             </p>
           )}
-          <section aria-label="The loan" className={CARD}>
+          <section aria-label="The loan" className={CARD_ROOMY}>
             <h2 className="text-xl font-semibold">{data.loan.name}</h2>
             <p>
               {formatCents(data.loan.balanceCents)} left
@@ -104,7 +104,7 @@ async function AutoContent({ searchParams }: Pick<PageProps<"/loans/auto">, "sea
             ) : null}
           </section>
 
-          <section aria-label="Dealer add-ons" className={CARD}>
+          <section aria-label="Dealer add-ons" className={CARD_ROOMY}>
             <h2 className="text-xl font-semibold">Dealer add-ons</h2>
             {data.candidates.map((c) => (
               <div

@@ -8,13 +8,13 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { PageShell } from "@/components/page-shell";
 import { BackLink } from "@/components/back-link";
+import { CARD_ROOMY } from "@/components/card";
 
 // Business owners' tax structure (spec step 267): the qualified business income deduction,
 // whether an S corporation would save more than it costs (demo advice), and the home office
 // and miles on file.
 
 const LINK = "font-medium text-emerald-700 underline";
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 
 async function Content() {
   const user = await requireUser();
@@ -37,7 +37,7 @@ async function Content() {
         <p className="text-sm">I don&apos;t see profit from self-employment this year.</p>
       ) : (
         <>
-          <section aria-labelledby="sole" className={CARD}>
+          <section aria-labelledby="sole" className={CARD_ROOMY}>
             <h2 id="sole" className="text-xl font-semibold">
               As you are
             </h2>
@@ -49,7 +49,7 @@ async function Content() {
             </p>
           </section>
           {v.advice && (
-            <section aria-labelledby="scorp" className={CARD}>
+            <section aria-labelledby="scorp" className={CARD_ROOMY}>
               <h2 id="scorp" className="text-xl font-semibold">
                 As an S corporation
               </h2>
@@ -78,7 +78,7 @@ async function Content() {
           )}
         </>
       )}
-      <section aria-labelledby="deductions" className={CARD}>
+      <section aria-labelledby="deductions" className={CARD_ROOMY}>
         <h2 id="deductions" className="text-xl font-semibold">
           Home office and miles
         </h2>

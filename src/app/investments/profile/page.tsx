@@ -8,6 +8,7 @@ import { currentAge, profileSummary } from "@/planning/investor-profile";
 import { ProfileForm } from "./profile-form";
 import { PageShell } from "@/components/page-shell";
 import { DoneBanner } from "@/components/done-banner";
+import { CARD_TIGHT } from "@/components/card";
 
 // What the investments are for (spec step 129): the four answers, the risk level that
 // follows and why, changeable any time. Jane asks the same questions in the chat.
@@ -41,7 +42,7 @@ async function ProfileContent({
 
       {saved && <DoneBanner>Saved.</DoneBanner>}
 
-      <section className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+      <section className={CARD_TIGHT}>
         {summary.complete ? (
           <>
             <span className="text-sm text-zinc-600 dark:text-zinc-400">Your risk level</span>

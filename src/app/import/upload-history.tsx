@@ -16,6 +16,7 @@ import { ControlWarnings } from "@/components/control-warnings";
 import { formatCents } from "@/lib/money";
 import type { EarlierRows, UploadView } from "@/lib/import/remove";
 import { plural } from "@/lib/plural";
+import { CARD } from "@/components/card";
 
 // What's been uploaded, and taking it back (src/lib/import/remove.ts): one upload's rows, an
 // uploaded account with everything in it, or everything uploaded ("Start over"). Each asks
@@ -147,11 +148,7 @@ export function UploadHistory({
       <h2 className="text-xl font-semibold">Your uploads</h2>
       <ul className="flex flex-col gap-3">
         {uploads.map((u) => (
-          <li
-            key={u.id}
-            data-upload={u.id}
-            className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-          >
+          <li key={u.id} data-upload={u.id} className={CARD}>
             <p className="font-medium">{u.fileNames.join(", ") || "Statement"}</p>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
               {u.accountName} · {range(u.from, u.to)} · {plural(u.rows, "transaction")} added{" "}
@@ -168,10 +165,7 @@ export function UploadHistory({
           </li>
         ))}
         {earlier.map((e) => (
-          <li
-            key={`earlier-${e.accountId}`}
-            className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-          >
+          <li key={`earlier-${e.accountId}`} className={CARD}>
             <p className="font-medium">Earlier uploads</p>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
               {e.accountName} · {range(e.from, e.to)} · {plural(e.rows, "row")}

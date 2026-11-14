@@ -6,11 +6,11 @@ import { requireUser } from "@/lib/session";
 import { CreateForm, RevokeButton, SeenButton } from "./forms";
 import { PageShell } from "@/components/page-shell";
 import { BackLink } from "@/components/back-link";
+import { CARD_ROOMY } from "@/components/card";
 
 // Working with an accountant (spec step 222): a read-only link, and what comes back.
 
 const LINK = "font-medium text-emerald-700 underline";
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 
 const STATE_WORDS = {
   active: "Works until",
@@ -41,14 +41,14 @@ async function Content() {
           {v.complexity.text}
         </p>
       )}
-      <section aria-labelledby="make" className={CARD}>
+      <section aria-labelledby="make" className={CARD_ROOMY}>
         <h2 id="make" className="text-xl font-semibold">
           Make a link
         </h2>
         <CreateForm />
       </section>
       {v.links.length > 0 && (
-        <section aria-labelledby="links" className={CARD}>
+        <section aria-labelledby="links" className={CARD_ROOMY}>
           <h2 id="links" className="text-xl font-semibold">
             Your links
           </h2>
@@ -68,7 +68,7 @@ async function Content() {
           </ul>
         </section>
       )}
-      <section aria-labelledby="questions" className={CARD}>
+      <section aria-labelledby="questions" className={CARD_ROOMY}>
         <h2 id="questions" className="text-xl font-semibold">
           Questions Jane has for them
         </h2>
@@ -82,7 +82,7 @@ async function Content() {
           </ul>
         )}
       </section>
-      <section aria-labelledby="answers" className={CARD}>
+      <section aria-labelledby="answers" className={CARD_ROOMY}>
         <h2 id="answers" className="text-xl font-semibold">
           What they wrote back
         </h2>
