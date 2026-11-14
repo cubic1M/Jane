@@ -1,4 +1,5 @@
 import { HIGH_YIELD_SAVINGS_BPS } from "../cash";
+import { DATA_ENDED_DAYS } from "../import";
 import type { PfcDetailed, PfcPrimary } from "@/categorize/taxonomy";
 
 // --- Idle cash ---------------------------------------------------------------------
@@ -7,10 +8,9 @@ import type { PfcDetailed, PfcPrimary } from "@/categorize/taxonomy";
 export const IDLE_CASH_SUBTYPES: readonly string[] = ["checking", "savings"];
 // Keep this many months of average spending as a cushion; only cash above it is idle.
 export const IDLE_CASH_MONTHS_OF_SPENDING = 3;
-// An account whose last row is more than this many days old has data that ended there (an
-// uploaded statement, a bank that stopped syncing): its spending is a month of what that data
-// shows, not spread over the days since. Under it, a quiet stretch on a linked account is real.
-export const IDLE_CASH_DATA_ENDED_DAYS = 14;
+// An account whose last row is more than this many days old has data that ended there: its
+// spending is a month of what that data shows (DATA_ENDED_DAYS, the tax estimate's too).
+export const IDLE_CASH_DATA_ENDED_DAYS = DATA_ENDED_DAYS;
 // Ignore excess cash below this (in cents): the yearly difference would be pocket change.
 export const IDLE_CASH_MIN_EXCESS_CENTS = 100_000;
 // Yearly rates in basis points (100 = 1%): the high-yield savings rate the cash page shows

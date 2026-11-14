@@ -213,6 +213,10 @@ export const KNOWN_BANKS_LINE =
 // The report says the statements are old when their newest line is over this many days back
 // (debugger 10-30: January-April statements uploaded in October, with no word of it).
 export const STALE_UPLOAD_DAYS = 45;
+// Data whose last row is more than this many days old ended there (an uploaded statement, a bank
+// that stopped syncing): a pace is worked out to that day, not spread over the days since. Under
+// it, quiet days on a linked account are real. Idle cash's spending and the tax estimate's year.
+export const DATA_ENDED_DAYS = 14;
 
 // How far back to look for payments to cards with no statement on file.
 export const UNSEEN_CARD_MONTHS = 3;

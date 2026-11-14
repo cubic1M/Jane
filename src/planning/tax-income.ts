@@ -9,7 +9,8 @@ import {
 } from "@/config/tax";
 import type { PayStub } from "@/lib/payroll/types";
 import type { EstimateIncome } from "./tax-estimate";
-import { DAY_MS } from "@/lib/dates";
+import { DAY_MS, daysBetween } from "@/lib/dates";
+import { DATA_ENDED_DAYS } from "@/config/import";
 import { ONE_OFF_PAY } from "@/config/profile";
 import { IRA_DISTRIBUTION, SOCIAL_SECURITY_PAYEE } from "@/config/retirement-taxes";
 
@@ -67,10 +68,21 @@ export function yearElapsed(year: number, today: string): number {
 // it's this year (3 months of uploaded statements), else from Jan 1, as yearElapsed. Income seen
 // over Jul 28 to Oct 27 is a quarter year's pay, not ten months' (overnight upload QA: a $69k
 // salary estimated at $321 of tax).
-export function yearCovered(year: number, today: string, firstSeen: string | null): number {
-  const elapsed = yearElapsed(year, today);
+// To where the data ends when it ended a while ago (debugger 11-14: one statement to Oct 24, read on
+// Nov 14, spread its 26 days of pay over 46, and a $62,000 pace was taxed as $35,000).
+export function yearCovered(
+  year: number,
+  today: string,
+  firstSeen: string | null,
+  dataEnds: string | null = null,
+): number {
+  const until =
+    dataEnds && dataEnds < today && daysBetween(dataEnds, today) > DATA_ENDED_DAYS
+      ? dataEnds
+      : today;
+  const elapsed = yearElapsed(year, until);
   if (!firstSeen || elapsed <= 0 || elapsed >= 1 || firstSeen <= `${year}-01-01`) return elapsed;
-  const now = Date.parse(`${today}T00:00:00Z`);
+  const now = Date.parse(`${until}T00:00:00Z`);
   const from = Date.parse(`${firstSeen}T00:00:00Z`);
   if (from >= now) return elapsed;
   return (now - from) / DAY_MS / daysInYear(year);
