@@ -45,7 +45,8 @@ import { AttentionList } from "./attention-list";
 import { SECTOR_ALL_MEANS, SECTOR_LABELS } from "@/config/autopilot-sectors";
 import { sectorAutopilots } from "@/lib/sector-autopilot";
 import { SectorsForm } from "./sectors-form";
-import { dayLabel } from "@/lib/day-label";
+import { momentLabel } from "@/lib/day-label";
+import { validTimezone } from "@/lib/digest/week";
 import { openBooks } from "@/lib/books";
 import { importEnded } from "@/lib/books-fix";
 import { SETTINGS_ANCHORS, anchorFocus, itemId, settingsTree } from "@/lib/area-pages/settings";
@@ -161,7 +162,11 @@ async function SettingsContent({
   const csvUpdated = new Map(lastCsv.map((row) => [row.accountId, row.createdAt]));
   const alerts = alertPrefs(prefs.alertPrefs);
   const chatNotify = chatNotifyPrefs(prefs.chatNotifyPrefs);
-  const day = (d: Date | null | undefined) => (d ? dayLabel(d, { year: true }) : "not yet");
+  // A last sync, a last import, two-factor turned on: moments, so the person's own day (debugger
+  // 11-14: a file imported at 10:40pm in Los Angeles read "Last import Nov 14").
+  const timezone = validTimezone(prefs.timezone);
+  const day = (d: Date | null | undefined) =>
+    d ? momentLabel(d, timezone, { year: true }) : "not yet";
   const ended = new Map(
     books.open
       .filter((o) => importEnded(o) && o.accountId)

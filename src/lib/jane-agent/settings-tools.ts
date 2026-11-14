@@ -12,6 +12,7 @@ import type { ToolOutput } from "@/lib/ask/tools";
 import { scopedFor } from "@/lib/db-scoped";
 import { twoFactorStatus } from "@/lib/mfa";
 import { isDemoItemId } from "@/lib/plaid/demo";
+import { localDate, timezoneOf } from "@/lib/today";
 import { isSampleTrialUser, isStatementTrialUser } from "@/lib/trial-ids";
 import { chatNotifyPrefs } from "./notify-prefs";
 
@@ -61,8 +62,6 @@ export const SETTINGS_CHAT_PAGES: Readonly<Record<string, { label: string; href:
 
 type Options = { client: PrismaClient; now: Date };
 
-const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
-
 export async function runSettingsTool(
   userId: string,
   name: string,
@@ -73,6 +72,9 @@ export async function runSettingsTool(
   const db = scopedFor(userId, client);
 
   if (name === "connections") {
+    // A last update or import is a moment: the person's own day, as the settings page says it.
+    const timezone = await timezoneOf(userId, { client });
+    const day = (d: Date | null) => (d ? localDate(d, timezone) : null);
     const [items, csv] = await Promise.all([
       db.plaidItems.findMany({
         select: {
