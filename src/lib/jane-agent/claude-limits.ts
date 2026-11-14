@@ -69,6 +69,7 @@ export function crossesMonthAlert(before: number, after: number, capCents = mont
 // Never stops the answer that crossed it; the daily jobs check again.
 async function tellTeam(options: Options) {
   try {
+    // Loaded late: the health report reads this file's month counter.
     const { reportClaudeMonth } = await import("@/lib/health");
     await reportClaudeMonth(options);
   } catch (error) {

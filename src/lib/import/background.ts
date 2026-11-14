@@ -106,6 +106,7 @@ async function refreshChatNumbers(
   await keepFullSnapshot(userId, { client, now }).catch((error) =>
     log.error("Keeping the snapshot after an upload failed", { error: String(error) }),
   );
+  // Loaded late: the chat tools reach this file again through the jobs.
   await import("@/lib/jane-agent/claude-tools")
     .then((m) => m.refreshPrimer(userId, { client, now }))
     .catch((error) =>

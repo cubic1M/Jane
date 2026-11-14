@@ -337,6 +337,7 @@ export async function linkDemoBank(
   // Spec step 139: a sample person comes with what Jane already did for them, so "What Jane
   // saved you" has their own confirmed wins (src/lib/sample-wins.ts). Never a real account.
   if (person) {
+    // Loaded late: the sample wins reach this file again (through the decisions).
     const { seedSampleWins } = await import("@/lib/sample-wins");
     await seedSampleWins(userId, person, { client, now });
   }
