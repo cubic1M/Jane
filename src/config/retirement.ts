@@ -1,18 +1,21 @@
+import { CONTRIBUTION_LIMITS, TAX_RATES_YEAR } from "@/config/tax-rates";
+
 // The retirement planner (spec step 132): contribution limits, the target and the rules
 // of thumb behind it, each with its source. Projections use the returns and inflation in
 // src/config/market-assumptions.ts and are always shown as a range.
 
 // 2026 limits (IRS Notice 2025-67): what a person may put into a 401(k), 403(b) or 457(b)
 // plan from their pay, the extra from 50 (catch-up) and the larger extra at 60 to 63, and
-// IRA limits.
-export const LIMITS_YEAR = 2026;
-export const EMPLOYEE_DEFERRAL_LIMIT_CENTS = 2_450_000;
+// IRA limits. The figures are the tax lane's table (CONTRIBUTION_LIMITS), so a new year's
+// limits change in one place.
+export const LIMITS_YEAR = TAX_RATES_YEAR;
+export const EMPLOYEE_DEFERRAL_LIMIT_CENTS = CONTRIBUTION_LIMITS.workplace;
 export const CATCH_UP_AGE = 50;
-export const CATCH_UP_CENTS = 800_000;
+export const CATCH_UP_CENTS = CONTRIBUTION_LIMITS.workplaceCatchUp50;
 export const SUPER_CATCH_UP_AGES = [60, 63] as const;
-export const SUPER_CATCH_UP_CENTS = 1_125_000;
-export const IRA_LIMIT_CENTS = 750_000;
-export const IRA_CATCH_UP_CENTS = 110_000;
+export const SUPER_CATCH_UP_CENTS = CONTRIBUTION_LIMITS.workplaceCatchUp60to63;
+export const IRA_LIMIT_CENTS = CONTRIBUTION_LIMITS.ira;
+export const IRA_CATCH_UP_CENTS = CONTRIBUTION_LIMITS.iraCatchUp50;
 export const LIMITS_SOURCE = "IRS Notice 2025-67 (2026 limits)";
 
 // When the projection stops: the full Social Security retirement age for anyone born in
