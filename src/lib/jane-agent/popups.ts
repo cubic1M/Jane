@@ -143,11 +143,13 @@ export type PopupCard = FloatingCardData & {
   choices: { id: string; label: string }[];
 };
 
-// The first sentence of the first line, whole.
+// The first sentence of the first line, whole. A question of three words or fewer names nothing
+// on its own ("Charged twice?"), so the sentence after it, which says what it's about, comes too
+// (debugger 11-14: the card said only "Charged twice?", with "$64.20 at Target" behind More
+// details). One regex, not a loop: this ships in Home's first load, which is at its budget.
 export function firstSentence(text: string): string {
   const first = text.trim().split("\n")[0].trim();
-  const end = /[.!?](?=\s+\S)/.exec(first);
-  return end ? first.slice(0, end.index + 1) : first;
+  return /^(?:(?:\S+\s+){0,2}\S+\?\s+)?.*?[.!?](?=\s+\S)/.exec(first)?.[0] ?? first;
 }
 
 export function popupCard(m: MessageView): PopupCard {
