@@ -24,6 +24,7 @@ import { pauseSwitch, runNow, startPracticePortfolio, undoLast } from "./actions
 import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
 import { DoneBanner } from "@/components/done-banner";
+import { BackLink } from "@/components/back-link";
 
 // The practice portfolio (spec steps 288 to 294, Phase AW, Stage A): a paper portfolio run by
 // Jane on practice money, with its trade log and a pause switch. Nothing here is a real account
@@ -96,9 +97,7 @@ async function Content({
     <>
       <AppHeader user={user} />
       <div className="flex flex-col gap-2">
-        <Link href="/investments" className={`text-sm ${LINK}`}>
-          ← Investments
-        </Link>
+        <BackLink href="/investments" label="Investments" className={LINK} />
         <h1 className="text-3xl font-semibold tracking-tight">Practice portfolio</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           Jane runs a portfolio on practice money: it buys a model for your risk level, keeps it on

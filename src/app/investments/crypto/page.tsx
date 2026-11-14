@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
@@ -16,6 +15,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { formatPercentTenths } from "@/lib/percent";
 import { PageShell } from "@/components/page-shell";
 import { DoneBanner } from "@/components/done-banner";
+import { BackLink } from "@/components/back-link";
 
 // Crypto (spec step 161): seen and sized, never traded. Each balance says where it came
 // from and when; in demo advice mode, flags for too big a share and costly fees.
@@ -53,9 +53,7 @@ async function CryptoContent({
     <>
       <AppHeader user={user} />
       <div className="flex flex-col gap-2">
-        <Link href="/investments" className={`text-sm ${LINK}`}>
-          ← Investments
-        </Link>
+        <BackLink href="/investments" label="Investments" className={LINK} />
         <h1 className="text-3xl font-semibold tracking-tight">Crypto</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           Jane reads what your exchanges and wallets hold and counts it in your net worth. Jane

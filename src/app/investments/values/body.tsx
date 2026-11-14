@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
@@ -10,6 +9,7 @@ import { requireUser } from "@/lib/session";
 import { saveValues, switchFunds } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { DoneBanner } from "@/components/done-banner";
+import { BackLink } from "@/components/back-link";
 
 // Investing by your values (spec step 236, demo advice): leave out fossil fuels, weapons or
 // tobacco, or lean towards a theme, inside each kind of investment so the risk target holds.
@@ -27,11 +27,7 @@ export async function ValuesBody({ done, embed }: { done?: string | string[]; em
     <>
       {!embed && <AppHeader user={user} />}
       <div className="flex flex-col gap-2">
-        {!embed && (
-          <Link href="/investments" className={`text-sm ${LINK}`}>
-            ← Investments
-          </Link>
-        )}
+        {!embed && <BackLink href="/investments" label="Investments" className={LINK} />}
         {!embed && (
           <h1 className="text-3xl font-semibold tracking-tight">Investing by your values</h1>
         )}

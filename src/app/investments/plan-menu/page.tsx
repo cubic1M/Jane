@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
@@ -12,6 +11,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { formatPercent as pct, formatRate } from "@/lib/percent";
 import { PageShell } from "@/components/page-shell";
 import { DoneBanner } from "@/components/done-banner";
+import { BackLink } from "@/components/back-link";
 
 // The workplace plan's menu, used well (spec step 232, demo advice): the funds the plan
 // offers, read from a disclosure and confirmed, and the cheapest mix of them for the
@@ -68,9 +68,7 @@ async function Content({
     <>
       <AppHeader user={user} />
       <div className="flex flex-col gap-2">
-        <Link href="/investments" className={`text-sm ${LINK}`}>
-          ← Investments
-        </Link>
+        <BackLink href="/investments" label="Investments" className={LINK} />
         <h1 className="text-3xl font-semibold tracking-tight">Your workplace plan&apos;s funds</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           Your 401(k) only offers certain funds. Paste its fee disclosure and I&apos;ll find the

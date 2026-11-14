@@ -10,6 +10,7 @@ import { requireUser } from "@/lib/session";
 import { checkNoticeFor, listTaxNotices, noticeAmountCents } from "@/lib/tax-notices";
 import { ReadingForm, ResponseButtons, SendButtons } from "./forms";
 import { PageShell } from "@/components/page-shell";
+import { BackLink } from "@/components/back-link";
 
 // Letters from the IRS and the state (spec step 217): the notice explained, its date on the
 // deadlines, a check against what Jane knows, and a drafted response. Nothing is paid or
@@ -31,9 +32,7 @@ async function Content() {
   return (
     <>
       <AppHeader user={user} />
-      <Link href="/taxes" className={`text-sm ${LINK}`}>
-        ← Taxes
-      </Link>
+      <BackLink href="/taxes" label="Taxes" className={LINK} />
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">
           Letters from the IRS or your state

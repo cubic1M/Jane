@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
@@ -6,6 +5,7 @@ import { loadHealthTaxes } from "@/lib/health-taxes";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { PageShell } from "@/components/page-shell";
+import { BackLink } from "@/components/back-link";
 
 // The tax side of health insurance (spec step 269): a Marketplace credit against real income
 // (a mid-year rise caught before it becomes a bill), HSA deposits against the limit, and medical
@@ -24,9 +24,7 @@ async function Content() {
   return (
     <>
       <AppHeader user={user} />
-      <Link href="/taxes" className={`text-sm ${LINK}`}>
-        ← Taxes
-      </Link>
+      <BackLink href="/taxes" label="Taxes" className={LINK} />
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Health insurance and taxes</h1>
         <p className="text-zinc-600 dark:text-zinc-400">

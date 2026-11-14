@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
@@ -12,6 +11,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { dayLabel } from "@/lib/day-label";
 import { formatRate } from "@/lib/percent";
 import { DoneBanner } from "@/components/done-banner";
+import { BackLink } from "@/components/back-link";
 
 // Short-term money, placed safely (spec step 234, demo advice): money needed within three
 // years, compared after tax in the person's own state, with a Treasury bill ladder that
@@ -34,11 +34,7 @@ export async function ShortTermBody({
     <>
       {!embed && <AppHeader user={user} />}
       <div className="flex flex-col gap-2">
-        {!embed && (
-          <Link href="/investments" className={`text-sm ${LINK}`}>
-            ← Investments
-          </Link>
-        )}
+        {!embed && <BackLink href="/investments" label="Investments" className={LINK} />}
         {!embed && (
           <h1 className="text-3xl font-semibold tracking-tight">Short-term money, placed safely</h1>
         )}

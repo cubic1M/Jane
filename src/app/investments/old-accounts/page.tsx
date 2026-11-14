@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
@@ -13,6 +12,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { dayLabel } from "@/lib/day-label";
 import { PageShell } from "@/components/page-shell";
 import { DoneBanner } from "@/components/done-banner";
+import { BackLink } from "@/components/back-link";
 
 // Old accounts brought home (spec step 211, demo advice): past employers, each asked about
 // once; found plans with fees compared; a direct rollover tracked step by step.
@@ -41,9 +41,7 @@ async function Content({
     <>
       <AppHeader user={user} />
       <div className="flex flex-col gap-2">
-        <Link href="/investments" className={`text-sm ${LINK}`}>
-          ← Investments
-        </Link>
+        <BackLink href="/investments" label="Investments" className={LINK} />
         <h1 className="text-3xl font-semibold tracking-tight">Old accounts</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           A 401(k) left at an old employer is easy to forget and often costs more. Tell me where

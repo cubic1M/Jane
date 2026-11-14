@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
@@ -12,6 +11,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { dayLabel } from "@/lib/day-label";
 import { PageShell } from "@/components/page-shell";
 import { DoneBanner } from "@/components/done-banner";
+import { BackLink } from "@/components/back-link";
 
 // What costly products really cost (spec step 215, demo advice): annuities, whole life and
 // advisory fees in dollars, with the surrender charge by year, what the same money would do
@@ -109,9 +109,7 @@ async function Content({
     <>
       <AppHeader user={user} />
       <div className="flex flex-col gap-2">
-        <Link href="/investments" className={`text-sm ${LINK}`}>
-          ← Investments
-        </Link>
+        <BackLink href="/investments" label="Investments" className={LINK} />
         <h1 className="text-3xl font-semibold tracking-tight">What costly products really cost</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           Variable annuities, whole life insurance and advisory fees, in dollars a year, with the

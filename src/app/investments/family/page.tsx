@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
@@ -16,6 +15,7 @@ import { makeLink, openAccount, putIn, saveChild, takeDown } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
 import { DoneBanner } from "@/components/done-banner";
+import { BackLink } from "@/components/back-link";
 
 // Investing for the family (spec step 213, demo advice): a child's custodial account, a Roth
 // IRA for a child with earned income, and a gift link for their college fund.
@@ -50,9 +50,7 @@ async function Content({
     <>
       <AppHeader user={user} />
       <div className="flex flex-col gap-2">
-        <Link href="/investments" className={`text-sm ${LINK}`}>
-          ← Investments
-        </Link>
+        <BackLink href="/investments" label="Investments" className={LINK} />
         <h1 className="text-3xl font-semibold tracking-tight">Investing for the family</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           A custodial account, a Roth IRA for a child who earns, and a link for relatives to give to

@@ -6,6 +6,7 @@ import { DISASTER_HREF, disasterReply, reliefLines } from "@/lib/jane-agent/disa
 import { requireUser } from "@/lib/session";
 import { ReliefButtons } from "./forms";
 import { PageShell } from "@/components/page-shell";
+import { BackLink } from "@/components/back-link";
 
 // Disasters and losses (spec step 270): an IRS postponement for the person's county moving their
 // tax deadlines, and the casualty loss after insurance kept with the claim, once. The same lines
@@ -21,9 +22,7 @@ async function Content() {
   return (
     <>
       <AppHeader user={user} />
-      <Link href="/taxes" className={`text-sm ${LINK}`}>
-        ← Taxes
-      </Link>
+      <BackLink href="/taxes" label="Taxes" className={LINK} />
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Disasters and losses</h1>
         <p className="text-zinc-600 dark:text-zinc-400">

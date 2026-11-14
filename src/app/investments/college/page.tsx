@@ -18,6 +18,7 @@ import { CollegeForm } from "./college-form";
 import { formatPercent as pct } from "@/lib/percent";
 import { PageShell } from "@/components/page-shell";
 import { DoneBanner } from "@/components/done-banner";
+import { BackLink } from "@/components/back-link";
 
 // College savings (spec step 158, demo advice): what college could cost, what to put aside
 // a month, which 529 plan comes out ahead with the state's tax break, set up as a goal.
@@ -39,9 +40,7 @@ async function CollegeContent({
     <>
       <AppHeader user={user} />
       <div className="flex flex-col gap-2">
-        <Link href="/investments" className={`text-sm ${LINK}`}>
-          ← Investments
-        </Link>
+        <BackLink href="/investments" label="Investments" className={LINK} />
         <h1 className="text-3xl font-semibold tracking-tight">College savings</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           What college could cost when they start, what to put aside a month, and the 529 plan that

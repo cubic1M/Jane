@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
@@ -19,6 +18,7 @@ import { timezoneOf } from "@/lib/today";
 import { answer, apply, buy, notNow, setDependants, submit } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
+import { BackLink } from "@/components/back-link";
 
 // Life cover (spec step 153), demo advice only: how much and for how long, with the method;
 // term quotes; the application's health questions one at a time; the carrier's decision.
@@ -44,9 +44,7 @@ async function LifeContent({ searchParams }: { searchParams: Promise<{ error?: s
   return (
     <>
       <AppHeader user={user} />
-      <Link href="/insurance" className={`text-sm ${LINK}`}>
-        ← Insurance
-      </Link>
+      <BackLink href="/insurance" label="Insurance" className={LINK} />
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Life cover</h1>
         <p className="text-zinc-600 dark:text-zinc-400">

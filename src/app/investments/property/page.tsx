@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
@@ -11,6 +10,7 @@ import { RentalForm } from "./rental-form";
 import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
 import { DoneBanner } from "@/components/done-banner";
+import { BackLink } from "@/components/back-link";
 
 // Property as an investment (spec step 214, demo advice): home equity, each rental's
 // figures from its own transactions, depreciation for the taxes side, and paying the
@@ -34,9 +34,7 @@ async function Content({
     <>
       <AppHeader user={user} />
       <div className="flex flex-col gap-2">
-        <Link href="/investments" className={`text-sm ${LINK}`}>
-          ← Investments
-        </Link>
+        <BackLink href="/investments" label="Investments" className={LINK} />
         <h1 className="text-3xl font-semibold tracking-tight">Property</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           Your home&apos;s equity, each rental&apos;s real numbers from its own transactions, and

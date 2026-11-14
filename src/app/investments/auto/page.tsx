@@ -13,6 +13,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { dayLabel } from "@/lib/day-label";
 import { PageShell } from "@/components/page-shell";
 import { DoneBanner } from "@/components/done-banner";
+import { BackLink } from "@/components/back-link";
 
 // Automatic investing (spec step 134): set it up once, see every payday's contribution
 // (or why it was paused), pause and resume. Through the simulated brokerage, and said so.
@@ -34,9 +35,7 @@ async function AutoContent({
     <>
       <AppHeader user={user} />
       <div className="flex flex-col gap-2">
-        <Link href="/investments" className={`text-sm ${LINK}`}>
-          ← Investments
-        </Link>
+        <BackLink href="/investments" label="Investments" className={LINK} />
         <h1 className="text-3xl font-semibold tracking-tight">Automatic investing</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           Every payday, Jane invests for you, but only what safe to spend doesn&apos;t need: Jane

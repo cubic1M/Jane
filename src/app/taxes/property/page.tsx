@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
@@ -7,6 +6,7 @@ import { loadPropertyTax } from "@/lib/property-tax";
 import { requireUser } from "@/lib/session";
 import { AnswersForm, IntentButton } from "./forms";
 import { PageShell } from "@/components/page-shell";
+import { BackLink } from "@/components/back-link";
 
 // Property tax that's too high (spec step 221): the assessment against the market value,
 // the appeal window, the drafted appeal, and exemptions (demo advice). Nothing is filed
@@ -23,9 +23,7 @@ async function Content() {
   return (
     <>
       <AppHeader user={user} />
-      <Link href="/taxes" className={`text-sm ${LINK}`}>
-        ← Taxes
-      </Link>
+      <BackLink href="/taxes" label="Taxes" className={LINK} />
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Property tax</h1>
         <p className="text-zinc-600 dark:text-zinc-400">

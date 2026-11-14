@@ -11,6 +11,7 @@ import { investHsa, linkHsa, reimburse } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { dayLabel } from "@/lib/day-label";
 import { PageShell } from "@/components/page-shell";
+import { BackLink } from "@/components/back-link";
 
 // The HSA as an investment (spec step 159): cash and invested, the cash cushion, room under
 // the limit, and the receipts vault of medical charges to pay back tax-free later.
@@ -32,9 +33,7 @@ async function HsaContent({
     <>
       <AppHeader user={user} />
       <div className="flex flex-col gap-2">
-        <Link href="/investments" className={`text-sm ${LINK}`}>
-          ← Investments
-        </Link>
+        <BackLink href="/investments" label="Investments" className={LINK} />
         <h1 className="text-3xl font-semibold tracking-tight">HSA</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           The account with three tax breaks: money goes in before tax, grows untaxed and comes out

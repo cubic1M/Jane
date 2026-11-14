@@ -11,6 +11,7 @@ import { momentLabel } from "@/lib/day-label";
 import { checkAgain } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
+import { BackLink } from "@/components/back-link";
 
 // The coverage checkup (spec step 106): Jane's recommendations on the person's cover, each
 // with what it costs or saves and the risk it changes. Demo advice only, labelled.
@@ -33,9 +34,7 @@ async function CheckupContent() {
   return (
     <>
       <AppHeader user={user} />
-      <Link href="/insurance" className={`text-sm ${LINK}`}>
-        ← Insurance
-      </Link>
+      <BackLink href="/insurance" label="Insurance" className={LINK} />
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Coverage checkup</h1>
         <p className="text-zinc-600 dark:text-zinc-400">

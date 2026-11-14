@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
@@ -10,6 +9,7 @@ import { requireUser } from "@/lib/session";
 import { answerKind, demoDeposit, stage } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { DoneBanner } from "@/components/done-banner";
+import { BackLink } from "@/components/back-link";
 
 // Sudden money (spec step 235, demo advice): a bonus, an inheritance or a sale, with a staged
 // plan. Tax set aside first; every part is your tap.
@@ -33,11 +33,7 @@ export async function SuddenMoneyBody({
     <>
       {!embed && <AppHeader user={user} />}
       <div className="flex flex-col gap-2">
-        {!embed && (
-          <Link href="/investments" className={`text-sm ${LINK}`}>
-            ← Investments
-          </Link>
-        )}
+        {!embed && <BackLink href="/investments" label="Investments" className={LINK} />}
         {!embed && <h1 className="text-3xl font-semibold tracking-tight">Sudden money</h1>}
         <p className="text-zinc-600 dark:text-zinc-400">
           When a lot of money arrives that isn&apos;t pay, there&apos;s a good order to use it in:

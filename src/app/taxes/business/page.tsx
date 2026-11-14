@@ -7,6 +7,7 @@ import { loadBusinessStructure } from "@/lib/business-structure";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { PageShell } from "@/components/page-shell";
+import { BackLink } from "@/components/back-link";
 
 // Business owners' tax structure (spec step 267): the qualified business income deduction,
 // whether an S corporation would save more than it costs (demo advice), and the home office
@@ -23,9 +24,7 @@ async function Content() {
   return (
     <>
       <AppHeader user={user} />
-      <Link href="/taxes" className={`text-sm ${LINK}`}>
-        ← Taxes
-      </Link>
+      <BackLink href="/taxes" label="Taxes" className={LINK} />
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Business taxes</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
