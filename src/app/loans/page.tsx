@@ -9,7 +9,13 @@ import { ViewTracker } from "@/components/view-tracker";
 import { sourceLabel, type Debt } from "@/insights/debts";
 import { ComparisonCards } from "@/components/comparison-cards";
 import { adviceMode } from "@/lib/advice-mode";
-import { COMPARE_TOPICS, compareWant, itemId, type LoansBranch } from "@/lib/area-pages/loans";
+import {
+  COMPARE_TOPICS,
+  compareWant,
+  itemId,
+  loansIntro,
+  type LoansBranch,
+} from "@/lib/area-pages/loans";
 import { loadLoansArea } from "@/lib/area-pages/loans-load";
 import { toComparison } from "@/lib/comparison";
 import { loadFit } from "@/lib/fit";
@@ -424,14 +430,7 @@ async function LoansContent({
       <ViewTracker event="loans_viewed" />
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Every debt</h1>
-        <p className="text-zinc-600 dark:text-zinc-400">
-          {book.debts.length === 0
-            ? "No loans, cards or plans yet."
-            : book.debts.every((d) => d.balanceCents === null)
-              ? "Your files don't say what you owe yet. Add a balance on the import page. Open a branch to see more."
-              : // No "$0.00 due each month" when no payment is known (uploaded cards: round-2 pass).
-                `You owe ${formatCents(book.totalOwedCents)}${book.monthlyCents > 0 ? `, ${formatCents(book.monthlyCents)} due each month` : ""}. Open a branch to see more.`}
-        </p>
+        <p className="text-zinc-600 dark:text-zinc-400">{loansIntro(book)}</p>
         <nav aria-label="Loans pages" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
           <Link prefetch={false} href="/debt" className={LINK}>
             Payoff plan
