@@ -86,6 +86,11 @@ const STOCK_PICKS = [
   new RegExp(
     `\\b${NOT_TICKERS}[A-Z]{3,5} (?:is|(?:'|’)s) (?:a |an )?(?:no-brainer|steal|bargain|must-own|must-have|(?:strong )?buy|safe bet|solid pick|great pick|keeper)\\b`,
   ),
+  // Round 32 (11-14): "Have you considered VOO?", "VOO, maybe?", "Apple will beat earnings".
+  new RegExp(
+    `\\b(?:[Hh]ave you (?:considered|thought about|looked (?:at|into)|tried)|[Cc]onsider|[Hh]ow about|[Mm]aybe) \\$?${NOT_TICKERS}[A-Z]{3,5}\\b|\\b${NOT_TICKERS}[A-Z]{3,5},? (?:maybe|perhaps)\\?`,
+  ),
+  /\b(?:will|is going to|(?:'|’)ll|should) (?:beat|miss|crush) (?:its |their )?(?:earnings|estimates)\b|\bearnings (?:will|are going to) (?:beat|miss|surprise)\b/i,
   // Round 31 (11-14): "The market will go up", "VOO or VTI, either works", "Pick a 2060 fund".
   /\b(?:the (?:stock )?market|stocks|equities|the s&p(?: 500)?|the dow|the nasdaq) (?:will|is going to|are going to|(?:'|’)ll) (?:go up|rise|climb|rally|recover|rebound|bounce back|crash|drop|fall|tank|go down|keep (?:going up|rising|climbing))\b/i,
   new RegExp(
@@ -373,6 +378,8 @@ const TAX_ADVICE = [
   // Round 27 (11-14): "You owe no tax on that".
   /\byou (?:owe|(?:'|’)ll owe|will owe|pay|(?:'|’)ll pay|will pay) no (?:\w+ )?tax(?:es)?\b|\byou (?:won(?:'|’)?t|don(?:'|’)?t|will not|do not) (?:owe|pay) (?:any )?(?:\w+ )?tax(?:es)? on\b/i,
   /\bwrit(?:e|es|ing|ten)[- ](?:[\w$.,']+ ){0,3}?offs?\b/i,
+  // Round 32 (11-14): "Cash tips don't need to be reported".
+  /\b(?:don(?:'|’)?t|doesn(?:'|’)?t|do not|does not|won(?:'|’)?t) (?:even )?(?:need to|have to) be (?:reported|declared)\b/i,
   // Round 31 (11-14): "Mileage is deductible", "Report it as a gift".
   /\b(?:mileage|miles|tolls|commuting|tuition|donations?|medical (?:bills|expenses)|interest|supplies|equipment|meals|travel|home office|phone bill|internet bill|union dues|uniforms) (?:is|are) (?:fully |partly |partially |100% |also )?(?:tax[- ])?deductible\b/i,
   /\breport (?:it|that|this|them|the money) as (?:a )?(?:gift|loan|hobby income|business income|capital gains?)\b/i,
@@ -627,6 +634,10 @@ const LEGAL = [
   /\bbreach(?:ed|ing)? (?:of )?(?:the |your |their |a )?(?:contract|lease|warranty|agreement|fiduciary duty)\b|\b(?:committed|is committing|are committing) (?:fraud|a crime|theft|identity theft|wage theft)\b/i,
   /\b(?:restraining|protective|protection) order\b|\b(?:landlord|employer|boss|lender|servicer|insurer) (?:legally )?owes? you\b/i,
   // Round 30 (11-14): "You're within your rights to stop paying", "Stop paying; they can't do anything".
+  // Round 32 (11-14): "Break the lease; they can't stop you", "Change the locks on your tenant",
+  // "Lie on the application".
+  /\b(?:they|the landlord|your landlord|your employer|the bank|the lender|nobody|no one) (?:can(?:'|’)?t|cannot|can not) (?:legally )?stop you\b|\bchange the locks on (?:your |the |a )?(?:tenant|roommate|ex|spouse|partner|subletter|boyfriend|girlfriend|husband|wife)\b|\block (?:them|your tenant|the tenant|your roommate) out\b/i,
+  /\blie (?:on|about) (?:the |your |an? )?(?:application|form|return|claim|resume|income|taxes|address)\b|\b(?:lie|lying) to (?:the |your )?(?:irs|bank|insurer|insurance company|landlord|lender|court|judge|police)\b|\bpretend (?:that )?you (?:never|didn(?:'|’)?t)\b/i,
   // Round 31 (11-14): "Don't show up to court", "You don't have to pay that debt", "The judge will
   // side with you", "They're violating your rights".
   /\b(?:don(?:'|’)?t|do not|no need to|you don(?:'|’)?t (?:have|need) to) (?:bother )?(?:show(?:ing)? up|appear(?:ing)?|go(?:ing)?) (?:to|in|at|for) (?:court|the hearing|your hearing|the trial|your court date)\b/i,
@@ -763,6 +774,10 @@ const GUARANTEE = [
   // Round 29 (11-14): "This will pay for itself", "You'll make your money back", "No way you'll lose".
   /\b(?:will|(?:'|’)ll|is going to) pay for itself\b|\b(?:you(?:'|’)ll|you will) (?:make (?:all )?(?:your |the )?money back|come out ahead|break even)\b|\bno way (?:you(?:'|’)ll|you will|you can|it(?:'|’)ll|it will|this) (?:lose|fail|go wrong|go down)\b|\b(?:odds|chances?) (?:are|is) 100 ?%/i,
   // Round 30 (11-14): "Approval is certain", "You will qualify".
+  // Round 32 (11-14): "Your rent won't go up", "Prices will drop next month", "The Fed will cut rates",
+  // "You're set for life", "This plan can't fail".
+  /\brent (?:won(?:'|’)?t|will not|isn(?:'|’)?t going to) (?:go up|rise|increase)\b|\bprices (?:will|are going to) (?:drop|fall|go down|come down)\b|\binflation (?:will|is going to) (?:drop|fall|ease|cool|come down|rise|spike)\b|\b(?:the )?fed(?:eral reserve)? (?:will|is going to|(?:'|’)ll) (?:cut|raise|hike|lower)\b/i,
+  /\bset for life\b|\b(?:you(?:'|’)ll|you will) never (?:need|have) to work again\b|\b(?:this|the|your) plan (?:can(?:'|’)?t|cannot|won(?:'|’)?t) fail\b/i,
   // Round 31 (11-14): "Your dispute will win", "The charge will be reversed", "They will refund you".
   /\b(?:dispute|claim|chargeback|appeal|case|complaint)s? (?:will|is going to|(?:'|’)ll) (?:definitely |surely )?(?:win|succeed|go through|be approved|be granted|work)\b/i,
   /\b(?:charge|fee|payment|transaction)s? (?:will|is going to|are going to) (?:definitely |surely )?be (?:reversed|refunded|removed|waived|credited back)\b/i,
