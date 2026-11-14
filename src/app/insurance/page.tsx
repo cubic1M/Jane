@@ -22,6 +22,7 @@ import {
 } from "@/config/insurance";
 import { daysBetween } from "@/detection/units";
 import { checkGuardrails } from "@/lib/guardrails";
+import { addFormOpen } from "@/lib/insurance/add-link";
 import { coverageLines } from "@/lib/insurance/coverage";
 import { gapAdvice, kindWords } from "@/lib/insurance/gaps";
 import type { Household } from "@/lib/insurance/household";
@@ -667,7 +668,7 @@ async function InsuranceContent({
         </details>
         <details
           id="add"
-          open={add !== "" || policies.length === 0}
+          open={addFormOpen(add)}
           className="border-t border-zinc-200 pt-2 dark:border-zinc-800"
         >
           <summary className={`cursor-pointer text-sm ${LINK}`}>

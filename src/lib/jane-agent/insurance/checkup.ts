@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
+import { addPolicyHref } from "@/lib/insurance/add-link";
 import { runCheckup } from "@/lib/insurance/checkups";
 import type { Reply } from "../replies";
 import { checkupBody } from "./checkup-words";
@@ -26,7 +27,7 @@ export async function checkupAnswer(
   if (!checkup) {
     return {
       body: "I don't have any of your policies yet, so there's nothing to check. Add them and I'll check your cover.",
-      actions: [openLink("Add a policy", "/insurance#add")],
+      actions: [openLink("Add a policy", addPolicyHref())],
       refs: {},
     };
   }
