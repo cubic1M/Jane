@@ -1,3 +1,4 @@
+import { PAY_APP_NAMES } from "@/config/costly-borrowing";
 import { BANK_FEE_CATEGORIES } from "@/config/detection";
 import { FEE_PACE_MIN_CHARGES } from "@/config/found-policies";
 import { formatCents } from "@/lib/money";
@@ -10,7 +11,11 @@ export const bankFees: Rule = (input) =>
   totalsByAccount(
     input,
     inLookback(input).filter(
-      (t) => inList(t.pfcDetailed, BANK_FEE_CATEGORIES) && !isProcessorFee(t.description),
+      (t) =>
+        inList(t.pfcDetailed, BANK_FEE_CATEGORIES) &&
+        !isProcessorFee(t.description) &&
+        // A pay advance app's tip is the advance's cost (costly borrowing), not a bank fee.
+        !PAY_APP_NAMES.test(t.description),
     ),
     (account, total, months) => ({
       type: "bank_fees",

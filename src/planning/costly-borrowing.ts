@@ -1,4 +1,9 @@
-import { ASSUMED, COSTLY_CYCLE_DAYS, type CostlyKind } from "@/config/costly-borrowing";
+import {
+  ASSUMED,
+  COSTLY_CYCLE_DAYS,
+  PAY_APP_NAMES,
+  type CostlyKind,
+} from "@/config/costly-borrowing";
 import { addDays as addDaysIso } from "@/lib/dates";
 
 // Out of costly short-term borrowing (spec step 247). Pure: which payments are a payday loan, a
@@ -19,8 +24,6 @@ export type Tx = {
 export const TITLE_LOAN_NAMES = /titlemax|titlebucks|loanmax|title ?loan/i;
 const PAYDAY_NAMES =
   /payday|advance america|check into cash|check ?n ?go|speedy cash|ace cash|cash store|lendnation|moneytree|cashnet|net ?credit|loan by phone|rapid cash/i;
-const PAY_APP_NAMES =
-  /earnin|dave\b|brigit|empower|moneylion|klover|albert|chime.*(?:instant|mypay)|payactiv|branch.*advance|cash ?app.*borrow/i;
 
 export function kindOf(t: Tx): CostlyKind | null {
   const d = t.pfcDetailed ?? "";

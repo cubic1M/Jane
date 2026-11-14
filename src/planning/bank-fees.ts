@@ -1,3 +1,4 @@
+import { PAY_APP_NAMES } from "@/config/costly-borrowing";
 import { BANK_FEE_CATEGORIES, FEE_REVERSAL_DAYS, PROCESSOR_FEE_PAYEE } from "@/config/detection";
 import { ANNUAL_FEE_WORDS, FEE_PACE_MIN_CHARGES } from "@/config/found-policies";
 
@@ -29,7 +30,11 @@ export function bankFeesYear(
   monthsOfData: number,
 ): BankFees | null {
   const inFees = transactions.filter(
-    (t) => BANK_FEE_CATEGORIES.includes(t.pfc as never) && !PROCESSOR_FEE_PAYEE.test(t.description),
+    (t) =>
+      BANK_FEE_CATEGORIES.includes(t.pfc as never) &&
+      !PROCESSOR_FEE_PAYEE.test(t.description) &&
+      // A pay advance app's tip is the advance's cost (costly borrowing), not a bank fee.
+      !PAY_APP_NAMES.test(t.description),
   );
   const refunds = inFees.filter((t) => t.amountCents < 0);
   const used = new Set<FeeTx>();

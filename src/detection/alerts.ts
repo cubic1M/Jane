@@ -17,6 +17,7 @@ import {
   NON_RENEWING_PRIMARIES,
   PAYMENT_CATEGORY_BY_ACCOUNT,
 } from "@/config/detection";
+import { PAY_APP_NAMES } from "@/config/costly-borrowing";
 import { ESTIMATED_TAX_ALERT_DAYS, SELF_EMPLOYED_INCOME_CATEGORIES } from "@/config/tax-pack";
 import { formatCents } from "@/lib/money";
 import { nextEstimatedTaxDate } from "@/planning/tax-pack";
@@ -148,7 +149,9 @@ export function feeAlerts(input: DetectionInput): AlertCandidate[] {
   const fees = input.transactions
     .filter((t) => t.amountCents > 0)
     .filter((t) => inList(t.pfcDetailed, [...BANK_FEE_CATEGORIES, ...CARD_INTEREST_CATEGORIES]))
-    .filter((t) => !isProcessorFee(t.description));
+    .filter((t) => !isProcessorFee(t.description))
+    // A pay advance app's tip is the advance's cost (costly borrowing), not the bank's to give back.
+    .filter((t) => !PAY_APP_NAMES.test(t.description));
   const confidence = seenConfidence(input, fees.length, "fee charges");
   return fees
     .filter((t) => isRecent(t.date, input.asOf))
