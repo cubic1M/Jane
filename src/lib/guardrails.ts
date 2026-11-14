@@ -72,6 +72,10 @@ const STOCK_PICKS = [
   ),
   // Round 24 (11-13): "Something like VOO would do", "1. VOO 2. VTI 3. QQQ".
   new RegExp(`\\b(?:[Ss]omething|[Aa]nything|[Aa] fund) like \\$?${NOT_TICKERS}[A-Z]{3,5}\\b`),
+  // Round 25 (11-14): "Why not VOO?", "What about QQQ for the rest?", "e.g. VTI or VXUS".
+  new RegExp(
+    `(?:\\b[Ww]hy not|\\b[Ww]hat about|\\b[Hh]ow about|\\be\\.g\\.,?)\\s+\\$?${NOT_TICKERS}[A-Z]{3,5}\\b`,
+  ),
   new RegExp(
     `(?:^|\\s)1[.)]\\s*\\$?${NOT_TICKERS}[A-Z]{3,5}\\b[^.!?\\n]{0,20}?\\s2[.)]\\s*\\$?${NOT_TICKERS}[A-Z]{3,5}\\b`,
   ),
@@ -136,6 +140,8 @@ const INVESTMENT = [
   /\bstack(?:ing)? (?:some |more )?(?:silver|gold|bullion)\b/i,
   // Round 23 (11-13): "YOLO it into calls", "Ape into GME".
   /\byolo\b|\bape(?:d|ing)? (?:in|into)\b|\binto (?:some )?(?:calls|puts|options)\b/i,
+  // Round 25 (11-14): "Stake your SOL for 7%".
+  /\bstaking\b|\b[Ss]take (?:your |some |the )?[A-Z]{3,5}\b/,
   /\b(?:buy|buying|sell|selling|write|writing|short|shorting) (?:some |a few |the )?(?:covered |naked |cash[- ]secured |long |short )?(?:puts?|calls?|call options?|put options?|straddles?|strangles?|leaps)\b/i,
   /\b(?:gold|silver|bullion|precious metals|commodities)\b(?!(?:'|’)s)[^.!?]{0,20}\b(?:is|are|makes?) (?:a |an )?(?:good |great |solid |smart |safe |safer |better )?(?:hedge|buy|investment|store of value|bet)\b/i,
   /\b(?:buy|buying|get|own|add|grab|put (?:some|money|it|\$[\d,.]+) (?:in|into))\b[^.!?]{0,25}(?:\bgold\b(?!(?:'|’)s| (?:card|member|plan|tier|status|level|package|gym|rewards))|\b(?:bullion|precious metals)\b)/i,
@@ -314,6 +320,8 @@ const TAX_ADVICE = [
   // EITC this year").
   /\b(?:you |you(?:'|’)d |you would |you(?:'|’)ll |you will |you probably )?(?:qualify|are eligible|(?:'|’)re eligible|be eligible) for (?:the |a )?(?:eitc|earned income (?:tax )?credit|child tax credit|ctc|saver(?:'|’)?s credit|american opportunity|aotc|lifetime learning|premium tax credit|education credit|[^.!?]{0,20}\btax (?:credit|break|deduction))\b/i,
   DEDUCTIONS,
+  // Round 25 (11-14): "You're exempt from the penalty".
+  /\b(?:you(?:'|’)re|you are) exempt from\b/i,
   /\bwrit(?:e|es|ing|ten)[- ](?:[\w$.,']+ ){0,3}?offs?\b/i,
   ...IRS_ADVICE,
   LIABLE,
@@ -552,6 +560,10 @@ const LEGAL = [
   // Round 24 (11-13): what a contract does by law, and signing it ("That clause isn't enforceable",
   // "Sign it; it's a standard contract").
   /\b(?:isn(?:'|’)?t|is not|aren(?:'|’)?t|are not|not) (?:legally )?(?:enforceable|binding)\b|\bunenforceable\b|\b(?:it|this|that)(?:'|’)?s a standard (?:contract|lease|agreement|clause|waiver)\b|\bsafe to sign\b/i,
+  // Round 25 (11-14): hiding money or property from a creditor ("Hide the car so they can't repo it",
+  // "Put the house in your spouse's name before the lawsuit", "so it's safe from creditors").
+  /\bhide (?:the |your |some )?(?:car|truck|money|cash|assets?|income|accounts?|property)\b|\bso (?:they|the (?:bank|lender|collector|creditor|irs|court))(?: can(?:'|’)?t| cannot| won(?:'|’)?t be able to) (?:repo|repossess|levy|garnish|seize|find|freeze|take)\b|\b(?:safe|protected|shielded|hidden) from (?:the |your )?(?:creditors?|collectors?|lawsuit|judgment|garnishment|levy|irs)\b/i,
+  /\b(?:put|transfer|move|title|sign over|give)\b[^.!?]{0,40}\b(?:in|into|to) (?:your |a |his |her |their )?(?:spouse|wife|husband|partner|mom|dad|mother|father|brother|sister|parents?|friend|relative|kid|child)(?:(?:'|’)s)?\b[^.!?]{0,40}\b(?:lawsuit|creditors?|collectors?|judgment|bankruptcy|levy|garnish\w*|repo\w*)\b/i,
   /\b(?:call|report|list|label|treat|record|count|write)\b[^.!?]{0,20}\b(?:as )?a gift\b[^.!?]{0,30}\b(?:so|instead of|to avoid|to dodge|rather than|and (?:skip|avoid))\b/i,
   // Round 17 (11-13): signing someone else's name, a made-up figure or address on an application,
   // and a dispute that isn't true ("Just sign your roommate's name on the lease", "Put a lower
@@ -657,6 +669,8 @@ const GUARANTEE = [
   /\b(?:will|you(?:'|’)ll|it(?:'|’)ll|this(?:'|’)ll|that(?:'|’)ll)\s+(?:\w+\s+)?(?:raise|boost|improve|increase|lift|bump|fix|repair|jump|add)\b[^.!?]{0,15}\b(?:credit )?score\b|\bscore (?:will|is going to) (?:go up|jump|rise|climb|increase|improve|hit|reach|top|pass|cross)\b/i,
   // Round 24 (11-13): "This always works".
   /\b(?:this|it|that) always works\b|\bworks every time\b|\bnever fails\b/i,
+  // Round 25 (11-14): "You'll retire a millionaire", "Your money will double in 7 years".
+  /\b(?:you(?:'|’)ll|you will) (?:retire|be|end up|die) (?:a )?(?:millionaire|rich|wealthy)\b|\b(?:money|savings|investments?|portfolio|it) will (?:double|triple|grow to)\b/i,
 ];
 
 // (g) Deposit insurance (12 CFR 328.102; connectors roadmap round 13): no false or misleading word
@@ -1015,8 +1029,11 @@ function forChecking(text: string): string {
       .replace(/`+|(?<![\w*_])[*_~]+(?=\w)|(?<=\w)[*_~]+(?![\w*_])/g, "")
       // Round 22 (11-13): quotes around a word ('Buy "VOO"') and letters spaced out ("B U Y  V O O",
       // "b.u.y. v.o.o") read as the word. Round 23: also with dashes, slashes, underscores or dots
-      // ("V‐O‐O", "V/O/O", "V_O_O", "V·O·O").
+      // ("V‐O‐O", "V/O/O", "V_O_O", "V·O·O"). Round 25 (11-14): "V. O. O.".
       .replace(/(?<![\w"“”«»])["“«](?=\w)|(?<=\w)["”»](?![\w"“”«»])/g, "")
+      .replace(/(?<![\w.])[A-Z](?:\. [A-Z]){2,}\.?(?![\w])/g, (letters) =>
+        letters.replace(/[. ]/g, ""),
+      )
       .replace(/(?<![\w.])[A-Za-z](?:[ .\-‐‑–—/_·•][A-Za-z]){2,}\.?(?![\w])/g, (letters) =>
         letters.replace(/[ .\-‐‑–—/_·•]/g, "").toUpperCase(),
       )
