@@ -91,6 +91,6 @@ export const DRAFT_TOLERANCE = { cents: 100, share: 0.01 } as const;
 // A finding worth a card: at least this much tax either way.
 export const DRAFT_MIN_FINDING_CENTS = 2_500;
 
-// The demo draft (the stand-in reader for demo-bank people, src/lib/draft-return/demo.ts): what
+// The demo draft (the stand-in reader for demo-bank people, src/planning/draft-return.ts): what
 // its planted withholding mistake is off by, two digits swapped in the thousands.
 export const DEMO_WITHHOLDING_SLIP_CENTS = 100_000;

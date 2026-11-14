@@ -9,7 +9,7 @@ import { things, type MessageSource } from "./source";
 // link covers: never calls, cancellations, moving money or insurance) and Review.
 
 // The card's words for the plan as given: the source says them once a week, and the cards say
-// them again from the plan as it is now (./still-true.ts).
+// them again from the plan as it is now (../still-true.ts).
 export function planWords(plan: Snapshot["plan"], concierge: boolean | undefined): string {
   const { items, annualSavingsCents, onceCents = 0, safeItems } = plan;
   const headline =

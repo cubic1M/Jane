@@ -1,7 +1,7 @@
 import type { CatalogId } from "@/config/strategy-catalog";
 
 // Each catalog strategy's idea in one short line, for the investments page's list
-// (src/components/strategy-board.tsx). The full rules stay in CATALOG[id].rules, behind "More".
+// (src/lib/investments/strategy-board.ts, drawn by src/components/strategy-tree.tsx). The full rules stay in CATALOG[id].rules, behind "More".
 
 export const STRATEGY_LINES: Readonly<Record<CatalogId, string>> = {
   sixty_forty: "60% US stocks, 40% US bonds.",

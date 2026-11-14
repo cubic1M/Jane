@@ -3,7 +3,7 @@ import { copiesToLeaveOut } from "@/planning/books";
 
 // An account linked twice (two bank logins, or the same bank linked again through Link instead of
 // reconnected) is in the database twice, with new Plaid ids for it and every transaction. Detection
-// counts it once (src/detection/engine.ts); so must every page that reads accounts or transactions
+// counts it once (src/detection/input.ts); so must every page that reads accounts or transactions
 // itself (beta accuracy: net worth and the Money page counted a card linked twice twice, and a card
 // with Plaid Liabilities is never merged by the books check). The ids of the copies to leave out.
 export async function accountCopies(db: Pick<ScopedDb, "accounts">): Promise<Set<string>> {

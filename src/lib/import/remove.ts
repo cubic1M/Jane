@@ -139,7 +139,7 @@ async function record(
 }
 
 type RemoveDb = ScopedDb;
-// The database the person's own row is on, when nothing is left (./fresh-start.ts).
+// The database the person's own row is on, when nothing is left (src/lib/jane-agent/fresh-start.ts).
 type FreshStartOptions = { client?: PrismaClient };
 
 // Exactly the rows one upload added (rows it found already there stay with the upload that

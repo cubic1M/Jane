@@ -5,7 +5,7 @@ import { normalizeDescription } from "@/data-sources/merchant";
 // Pure: what the file's rows change in the rows already stored.
 //
 // The same row (same key): its category and name follow the new reading, unless the person chose
-// the category, or it's a card payment found by its timing (./reapply.ts keeps those too).
+// the category, or it's a card payment found by its timing (src/categorize/reapply.ts keeps those too).
 //
 // A row read differently (a sign or a description wrong before, so another key): saving it would
 // count it twice, so the stored row is corrected in place, keeping its id and everything tied to
