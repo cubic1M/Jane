@@ -1,6 +1,6 @@
 import { dependantsWords } from "@/planning/tax-profile";
 import { DETECTOR_RATES } from "@/config/detectors";
-import { EARNER_ACTIVE_DAYS, ONE_OFF_PAY, RETIREMENT_LUMP_SUM } from "@/config/profile";
+import { ONE_OFF_PAY, RETIREMENT_LUMP_SUM } from "@/config/profile";
 import {
   IRA_DISTRIBUTION,
   RETIREMENT_DEPOSIT_WORDS,
@@ -64,8 +64,9 @@ import {
   stateName,
   type ProfileField,
 } from "@/planning/tax-profile";
-import { addDays, DAY_MS, isoDay as iso } from "@/lib/dates";
+import { DAY_MS, isoDay as iso } from "@/lib/dates";
 import { todayOf } from "@/lib/today";
+import { latestByPayer, stoppedPayers } from "@/profile/stopped-payers";
 
 // The tax estimate (spec step 120), loaded from the person's own accounts, pay stubs and
 // tax profile: what they'll owe or get back for the year, federal and state. Worked out
@@ -386,16 +387,17 @@ async function loadTaxEstimateFrom(
   );
   // Regular pay that has stopped, by where the data ends: an old statement isn't a lost job.
   const dataEnds = rows.reduce((latest, t) => (t.date > latest ? t.date : latest), "");
-  const lastPayFrom = new Map<string, { date: string; label: string }>();
-  for (const t of paychecks) {
-    const key = payerKeyOf(t.description);
-    if ((lastPayFrom.get(key)?.date ?? "") < t.date) {
-      lastPayFrom.set(key, { date: t.date, label: formPayer(t.merchantName ?? t.description) });
-    }
-  }
-  // Nothing in the data, nothing stopped (and no date to count back from).
-  const stillPaidSince = dataEnds ? addDays(dataEnds, -EARNER_ACTIVE_DAYS) : "";
-  const stoppedPay = new Map([...lastPayFrom].filter(([, last]) => last.date <= stillPaidSince));
+  // The same answer the profile gives (src/profile/stopped-payers.ts); nothing in the data, nothing
+  // stopped.
+  const stopped = stoppedPayers(paychecks, dataEnds);
+  const stoppedPay = new Map(
+    [...latestByPayer(paychecks)]
+      .filter(([key]) => stopped.has(key))
+      .map(([key, t]) => [
+        key,
+        { date: t.date, label: formPayer(t.merchantName ?? t.description) },
+      ]),
+  );
   const { soFarCents: takeHome, projectedCents: takeHomeProjected } = takeHomePay(
     [...paychecks, ...bonuses],
     elapsed,

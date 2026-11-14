@@ -32,6 +32,7 @@ import { confidenceOf, evidenceText, type Source } from "./confidence";
 import { FACT_SPECS, type FactKey, factSpec } from "./facts";
 import { addDays } from "@/lib/dates";
 import { employerName } from "./employer-name";
+import { latestByPayer, payKeyOf, stoppedPayers } from "./stopped-payers";
 import { normalizeMerchant } from "@/data-sources/merchant";
 import type { PolicyKind } from "@/config/insurance";
 import { insurerKind } from "@/insights/found-policies";
@@ -446,15 +447,9 @@ function incomeFacts(b: Builder) {
   // Whether a paycheck has stopped goes by where the data ends: an old statement isn't a lost job.
   const dataEnds = txs.reduce((latest, t) => (t.date > latest ? t.date : latest), "");
   const stillPaidSince = addDays(dataEnds || today, -EARNER_ACTIVE_DAYS);
-  const lastPaidOn = new Map<string, string>();
-  for (const t of salary) {
-    const name = employerName(t.description);
-    if ((lastPaidOn.get(name) ?? "") < t.date) lastPaidOn.set(name, t.date);
-  }
-  const stoppedPaying = new Set(
-    [...lastPaidOn].filter(([, last]) => last <= stillPaidSince).map(([name]) => name),
-  );
-  const paying = salary.filter((t) => !stoppedPaying.has(employerName(t.description)));
+  // The same answer the tax estimate gives (./stopped-payers.ts).
+  const stoppedPaying = stoppedPayers(salary, dataEnds || today);
+  const paying = salary.filter((t) => !stoppedPaying.has(payKeyOf(t.description)));
   const contractor = income.filter(
     (t) => t.pfc === "INCOME_CONTRACTOR" || t.pfc === "INCOME_GIG_ECONOMY",
   );
@@ -487,16 +482,14 @@ function incomeFacts(b: Builder) {
   else set("income_pattern", pattern, "seen", "deposits", patternMatches);
 
   // Employers still paying: an old one that stopped is a job change, not another earner.
+  // One payer per key (./stopped-payers.ts), named from its latest paycheck.
   const employers = new Map<string, number>();
   const activeSince = addDays(today, -EARNER_ACTIVE_DAYS);
-  const lastPaid = new Map<string, string>();
+  const latestPaid = latestByPayer(salary);
   for (const t of salary) {
-    const name = employerName(t.description);
-    if (!lastPaid.has(name) || t.date > lastPaid.get(name)!) lastPaid.set(name, t.date);
-  }
-  for (const t of salary) {
-    const name = employerName(t.description);
-    if (lastPaid.get(name)! >= activeSince) employers.set(name, (employers.get(name) ?? 0) + 1);
+    const latest = latestPaid.get(payKeyOf(t.description))!;
+    const name = employerName(latest.description);
+    if (latest.date >= activeSince) employers.set(name, (employers.get(name) ?? 0) + 1);
   }
   // A payroll service still counts as a job below, but it isn't who they work for.
   const topEmployer = [...employers.entries()]
