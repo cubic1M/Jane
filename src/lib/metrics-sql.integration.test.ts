@@ -4,8 +4,8 @@ import { PrismaClient } from "@/generated/prisma/client";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
-import { automateNext, computeMetrics, loadMetricRows, loadMetrics } from "./metrics";
-import { automateNextSql, computeMetricsSql } from "./metrics-sql";
+import { automateNext, computeMetrics, loadMetricRows } from "./metrics";
+import { automateNextSql, computeMetricsSql, loadMetrics } from "./metrics-sql";
 import { systemDb } from "./system-db";
 
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).

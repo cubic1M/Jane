@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { loadBetaMetrics, type BetaMetrics } from "@/lib/beta-metrics";
-import { loadMetrics, type Metrics } from "@/lib/metrics";
+import type { Metrics } from "@/lib/metrics";
+import { loadMetrics } from "@/lib/metrics-sql";
 import { formatCents } from "@/lib/money";
 import { requireAdmin } from "@/lib/session";
 import { inviteFunnel, type InviteFunnel } from "@/lib/share-invites";

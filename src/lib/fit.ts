@@ -8,7 +8,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { loadDebts } from "@/lib/debts";
 import type { LoanOffer } from "@/lib/lenders/partner";
 import { loadProfileInput } from "@/lib/profile";
-import { lenderPartnerFor } from "@/lib/refinance";
+import { lenderPartnerFor } from "@/lib/lender-partner";
 import { fit, type FitBaseline, type FitResult } from "@/planning/fit";
 import { refinanceable } from "@/planning/refinance";
 import { fitPersonFrom } from "@/planning/fit-person";

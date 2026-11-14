@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { matchCategory, normalize, parseAmount, parseIntent, parseMonth } from "./intents";
+import { parseAmount } from "./amount";
+import { matchCategory, normalize, parseIntent, parseMonth } from "./intents";
 
 // Spec step 84: the rules that understand what the person typed, with no Claude key. Many
 // phrasings of each command, amounts like "$900", "900" and "1.2k", and months.

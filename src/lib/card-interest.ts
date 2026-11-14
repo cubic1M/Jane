@@ -16,7 +16,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { addDeadline, markDeadlineDone } from "@/lib/deadlines";
 import { debtsOr } from "@/lib/debts";
 import { formatCents, parseMoneyToCents } from "@/lib/money";
-import { lenderPartnerFor } from "@/lib/refinance";
+import { lenderPartnerFor } from "@/lib/lender-partner";
 import { mayAct, recordAct } from "@/lib/sector-autopilot";
 import { nextStatementClose } from "@/planning/credit-building";
 import {

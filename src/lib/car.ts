@@ -20,7 +20,7 @@ import { creditBandFor } from "@/lib/credit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { listPolicies, yearlyPremium } from "@/lib/insurance/policies";
-import { lenderPartnerFor } from "@/lib/refinance";
+import { lenderPartnerFor } from "@/lib/lender-partner";
 import { formatCents } from "@/lib/money";
 import {
   carCosts,
