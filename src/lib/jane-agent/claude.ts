@@ -76,7 +76,7 @@ import { dataEndedOn } from "@/lib/data-ended";
 
 // Free questions in Jane's chat, with an Anthropic key (spec step 84): Claude, the
 // person's recent typed messages and Jane's answers to them, and read-only tools over their
-// own data, like Ask (src/lib/ask/answer.ts). Claude's text is only shown once it passes the
+// own data (./claude-tools.ts). Claude's text is only shown once it passes the
 // guardrails, which allow only dollar figures from a tool, the numbers sent with it or the
 // person's messages (never an earlier answer or card). Claude can offer one button from the action registry (propose_action), never
 // press it: the person taps.
@@ -837,6 +837,282 @@ async function upFront(
   };
 }
 
+// Still blocked after the rewrite: its facts, without the sentences that can't be shown, rather
+// than the rules answering something else (founder 10-30). What the person has read stays as they
+// read it (founder 11-11): the facts only when they go on from it, else what was read when it's
+// an answer at all. With neither, a safe fallback with no buttons.
+function blockedAnswer({
+  spoken,
+  issues,
+  wrongFigures,
+  allowedCents,
+  profile,
+  figuresPass,
+  shownText,
+  advice,
+  timing,
+}: {
+  spoken: string;
+  issues: GuardrailIssue[];
+  wrongFigures: { kind: string }[];
+  allowedCents: number[];
+  profile: GuardrailProfile;
+  figuresPass: (text: string) => boolean;
+  shownText: string;
+  advice: boolean;
+  timing: ChatTiming;
+}): ClaudeAnswer {
+  // The issues only, never the text: it's about the person's money.
+  log.warn("Jane's chat answer was blocked by the guardrails", {
+    issues,
+    ...(wrongFigures.length > 0 ? { figures: wrongFigures.map((p) => p.kind) } : {}),
+  });
+  const facts = factsOnly(spoken, allowedCents, profile, figuresPass);
+  const read = plainText(withoutButtonTalk(shownText).trim());
+  const kept =
+    facts && plainText(facts).startsWith(read) ? facts : read.length >= 20 ? read : facts;
+  if (kept) {
+    timing.reason = kept === facts ? "facts_only" : "shown_kept";
+    return {
+      kind: "answer",
+      reply: { body: plainText(kept), actions: [], refs: advice ? { advice: true } : {} },
+    };
+  }
+  return {
+    kind: "blocked",
+    reply: { body: ASK_BLOCKED_REPLY, actions: [], refs: {} },
+    issues,
+  };
+}
+
+// The answer as the person gets it: what they read, the button's line under it, and its refs.
+function finalAnswer({
+  said,
+  question,
+  proposal,
+  decisionUsed,
+  shown,
+  offered,
+  allowedCents,
+  profile,
+  advice,
+}: {
+  said: string;
+  question: string;
+  proposal: Extract<Proposal, { ok: true }> | null;
+  decisionUsed: boolean;
+  shown: AnswerBlock | null;
+  offered: OfferedOptions | null;
+  allowedCents: number[];
+  profile: GuardrailProfile;
+  advice: boolean;
+}): ClaudeAnswer {
+  const refs: Reply["refs"] = { ...(proposal?.refs ?? {}) };
+  // Spec step 193: a finding it offered a button for is what the next message is about.
+  if (proposal?.refs.findingId) {
+    refs.topic = { kind: "about", findingId: proposal.refs.findingId };
+  }
+  // A decision answered through the decision tool is what a following \"why?\" is about.
+  if (decisionUsed && !refs.topic) {
+    const asked = parseDecision(question.toLowerCase());
+    refs.topic = {
+      kind: "decision",
+      category: asked?.item ?? "other",
+      target: asked?.label ?? "that",
+    };
+  }
+  // Its words pass the same guardrails as the answer, or it isn't shown.
+  if (shown && checkGuardrails(drawBlock(shown).alt, allowedCents, undefined, profile).ok) {
+    refs.block = shown;
+  }
+  // The options a tool found float over the chat as the pick-one card; its two buttons are
+  // the card's (src/lib/jane-agent/actions/options.ts).
+  if (offered) refs.options = offered;
+  return {
+    kind: "answer",
+    reply: {
+      body: proposal?.line ? `${plainText(said)}\n\n${proposal.line}` : plainText(said),
+      actions: [...(proposal?.actions ?? []), ...(offered ? OPTION_ACTIONS : [])],
+      // Demo advice is always labelled (the chat shows DEMO_ADVICE_LABEL under it). A pick
+      // card is only ever offered in demo advice mode, so it is labelled too.
+      refs: advice || offered ? { ...refs, advice: true } : refs,
+    },
+  };
+}
+
+// Every attempt counts, a declined one and the fallback model's too (./refusal-fallback.ts): its
+// tokens and cost on the timing line, and the spend against the person's caps.
+async function recordUsage(
+  response: Anthropic.Message,
+  userId: string,
+  timing: ChatTiming,
+  { client, now }: Pick<Options, "client" | "now">,
+) {
+  for (const used of usageOf(response.usage, chatModel())) {
+    timing.inputTokens += used.inputTokens;
+    timing.cachedInputTokens += used.cacheReadTokens;
+    timing.cacheWriteTokens += used.cacheWriteTokens;
+    timing.outputTokens += used.outputTokens;
+    timing.costHundredths += costInHundredthsOfCents(used);
+    await addSpend(userId, used, { client, now });
+  }
+  if (servedByFallback(response.usage)) timing.fallbackModel = response.model ?? "fallback";
+}
+
+// One round's tool calls, answered in order: a picture, a practice change or a button for the
+// answer (one each), an area's tools, a guarded sum, or a lookup. What they change about the
+// answer (its button, picture, options card and tools) is kept on the round.
+type ToolRound = {
+  userId: string;
+  client: PrismaClient;
+  now: Date;
+  question: string;
+  writtenText: string;
+  mask: PayeeMask;
+  theirWords: string[];
+  memory: string | null;
+  allowedCents: number[];
+  ledger: FigureLedger;
+  timing: ChatTiming;
+  proposal: Extract<Proposal, { ok: true }> | null;
+  shown: AnswerBlock | null;
+  offered: OfferedOptions | null;
+  tools: ReturnType<typeof toolsFor>;
+  areaOpened: boolean;
+  turnLimit: number;
+  decisionUsed: boolean;
+};
+
+async function answerToolCalls(
+  content: Anthropic.ContentBlock[],
+  r: ToolRound,
+): Promise<Anthropic.ToolResultBlockParam[]> {
+  const { userId, client, now, question, writtenText, mask, theirWords, memory } = r;
+  const { allowedCents, ledger, timing } = r;
+  const results: Anthropic.ToolResultBlockParam[] = [];
+  for (const block of content) {
+    if (block.type !== "tool_use") continue;
+    // Spec step 94: one block, built from the person's numbers, not Claude's.
+    if (block.name === "show_block") {
+      const built: AnswerBlock | null = r.shown
+        ? null
+        : await blockFor(userId, block.input, { client, now });
+      if (built) {
+        r.shown = built;
+        allowedCents.push(...blockCents(built));
+      }
+      results.push(
+        toolResult(
+          block.id,
+          built
+            ? `It will be shown under your answer: ${drawBlock(built).alt}`
+            : "There's nothing to show for that.",
+          Boolean(built),
+        ),
+      );
+      continue;
+    }
+    // Phase AW: a practice-settings change, as a card the person confirms (./practice-tools.ts).
+    if (block.name === CHANGE_PRACTICE_TOOL) {
+      const result = r.proposal
+        ? ({ ok: false, error: "You already offered a button for this answer." } as const)
+        : await proposePracticeChange(userId, block.input, { client, now });
+      if (result.ok) {
+        r.proposal = { ok: true, actions: result.actions, refs: result.refs, line: result.line };
+        allowedCents.push(...result.cents);
+        ledger.addText(result.line ?? "");
+      }
+      results.push(
+        toolResult(
+          block.id,
+          result.ok
+            ? `The change is ready as a card under your answer, for them to confirm:\n${result.line}\nNow write one sentence saying what will change once they tap to confirm. Never say it's done, and don't repeat the card's figures.`
+            : `${result.error}\n(Say this to the person in your own words; nothing was changed.)`,
+          result.ok,
+        ),
+      );
+      continue;
+    }
+    if (block.name === "propose_action") {
+      const result: Proposal = r.proposal
+        ? { ok: false, error: "You already offered a button for this answer." }
+        : await proposeAction(userId, block.input, { client, now });
+      if (result.ok) r.proposal = linksUnlessAsked(result, question);
+      results.push(
+        toolResult(
+          block.id,
+          result.ok
+            ? writtenText
+              ? "Noted."
+              : "The button is ready. Now write your answer in words, with the figures from the results, and don't mention the button."
+            : `${result.error}\n(This is for you. Never tell the person a button could not be set up; answer their question in words.)`,
+          result.ok,
+        ),
+      );
+      continue;
+    }
+    // An area the words didn't pick: its tools, by name (every request has them all).
+    if (block.name === "open_area") {
+      const area = (block.input as { area?: unknown } | null)?.area;
+      const listed = isArea(area) && !timing.areasOpened.includes(area);
+      if (listed) {
+        timing.areasOpened.push(area);
+        // Its tools from the next step on, if the question's words didn't already bring them.
+        const sent = new Set(r.tools.map((t) => t.name));
+        r.tools = [...r.tools, ...areaTools(CHAT_TOOLS, area).filter((t) => !sent.has(t.name))];
+        timing.toolsSent = r.tools.length;
+        if (!r.areaOpened) {
+          r.areaOpened = true;
+          r.turnLimit += 1;
+        }
+      }
+      results.push(
+        toolResult(
+          block.id,
+          !isArea(area)
+            ? "Pick one area: debt, insurance, tax or investing."
+            : listed
+              ? `The ${area} tools, for your next step: ${areaTools(CHAT_TOOLS, area)
+                  .map((t) => t.name)
+                  .join(", ")}.`
+              : `You already have the ${area} tools.`,
+          isArea(area),
+        ),
+      );
+      continue;
+    }
+    if (block.name === "decision") r.decisionUsed = true;
+    // A sum is only as good as what went in, or a made-up amount comes back as a supported one.
+    if (block.name === "calculate") {
+      const notOnFile = calculatorInputsNotOnFile(block.input, [
+        ...allowedCents,
+        ...typedAmountsCents(`${theirWords.join(" ")} ${memory ?? ""}`),
+      ]);
+      if (notOnFile.length > 0) {
+        results.push(
+          toolResult(
+            block.id,
+            `These amounts aren't in their numbers or a tool's result: ${notOnFile.join(", ")}. Look them up first, and calculate with them as given.`,
+            false,
+          ),
+        );
+        continue;
+      }
+    }
+    const toolStarted = Date.now();
+    const output = await runChatTool(userId, block.name, showIn(block.input, mask), {
+      client,
+      now,
+    });
+    timing.tools.push({ name: block.name, ms: Date.now() - toolStarted });
+    allowedCents.push(...output.cents, ...dollarFigures(output.content).map((f) => f.cents));
+    ledger.addToolResult(output.content);
+    if (output.options) r.offered = output.options;
+    results.push(toolResult(block.id, output.content));
+  }
+  return results;
+}
+
 async function askClaude(
   userId: string,
   history: ChatTurn[],
@@ -1147,16 +1423,7 @@ async function askClaude(
     }
 
     fallbackRetried = false;
-    // Every attempt counts, a declined one and the fallback model's too (./refusal-fallback.ts).
-    for (const used of usageOf(response.usage, chatModel())) {
-      timing.inputTokens += used.inputTokens;
-      timing.cachedInputTokens += used.cacheReadTokens;
-      timing.cacheWriteTokens += used.cacheWriteTokens;
-      timing.outputTokens += used.outputTokens;
-      timing.costHundredths += costInHundredthsOfCents(used);
-      await addSpend(userId, used, { client, now });
-    }
-    if (servedByFallback(response.usage)) timing.fallbackModel = response.model ?? "fallback";
+    await recordUsage(response, userId, timing, { client, now });
     // Past a switch to the fallback model, the declined model's thinking and tool calls are
     // neither run nor sent back.
     const content = afterFallback(response.content);
@@ -1176,127 +1443,28 @@ async function askClaude(
         onEvent({ type: "reset" });
         messages.push({ role: "assistant", content });
       }
-      const results: Anthropic.ToolResultBlockParam[] = [];
-      for (const block of content) {
-        if (block.type !== "tool_use") continue;
-        // Spec step 94: one block, built from the person's numbers, not Claude's.
-        if (block.name === "show_block") {
-          const built: AnswerBlock | null = shown
-            ? null
-            : await blockFor(userId, block.input, { client, now });
-          if (built) {
-            shown = built;
-            allowedCents.push(...blockCents(built));
-          }
-          results.push(
-            toolResult(
-              block.id,
-              built
-                ? `It will be shown under your answer: ${drawBlock(built).alt}`
-                : "There's nothing to show for that.",
-              Boolean(built),
-            ),
-          );
-          continue;
-        }
-        // Phase AW: a practice-settings change, as a card the person confirms (./practice-tools.ts).
-        if (block.name === CHANGE_PRACTICE_TOOL) {
-          const result = proposal
-            ? ({ ok: false, error: "You already offered a button for this answer." } as const)
-            : await proposePracticeChange(userId, block.input, { client, now });
-          if (result.ok) {
-            proposal = { ok: true, actions: result.actions, refs: result.refs, line: result.line };
-            allowedCents.push(...result.cents);
-            ledger.addText(result.line ?? "");
-          }
-          results.push(
-            toolResult(
-              block.id,
-              result.ok
-                ? `The change is ready as a card under your answer, for them to confirm:\n${result.line}\nNow write one sentence saying what will change once they tap to confirm. Never say it's done, and don't repeat the card's figures.`
-                : `${result.error}\n(Say this to the person in your own words; nothing was changed.)`,
-              result.ok,
-            ),
-          );
-          continue;
-        }
-        if (block.name === "propose_action") {
-          const result: Proposal = proposal
-            ? { ok: false, error: "You already offered a button for this answer." }
-            : await proposeAction(userId, block.input, { client, now });
-          if (result.ok) proposal = linksUnlessAsked(result, question);
-          results.push(
-            toolResult(
-              block.id,
-              result.ok
-                ? writtenText
-                  ? "Noted."
-                  : "The button is ready. Now write your answer in words, with the figures from the results, and don't mention the button."
-                : `${result.error}\n(This is for you. Never tell the person a button could not be set up; answer their question in words.)`,
-              result.ok,
-            ),
-          );
-          continue;
-        }
-        // An area the words didn't pick: its tools, by name (every request has them all).
-        if (block.name === "open_area") {
-          const area = (block.input as { area?: unknown } | null)?.area;
-          const listed = isArea(area) && !timing.areasOpened.includes(area);
-          if (listed) {
-            timing.areasOpened.push(area);
-            // Its tools from the next step on, if the question's words didn't already bring them.
-            const sent = new Set(tools.map((t) => t.name));
-            tools = [...tools, ...areaTools(CHAT_TOOLS, area).filter((t) => !sent.has(t.name))];
-            timing.toolsSent = tools.length;
-            if (!areaOpened) {
-              areaOpened = true;
-              turnLimit += 1;
-            }
-          }
-          results.push(
-            toolResult(
-              block.id,
-              !isArea(area)
-                ? "Pick one area: debt, insurance, tax or investing."
-                : listed
-                  ? `The ${area} tools, for your next step: ${areaTools(CHAT_TOOLS, area)
-                      .map((t) => t.name)
-                      .join(", ")}.`
-                  : `You already have the ${area} tools.`,
-              isArea(area),
-            ),
-          );
-          continue;
-        }
-        if (block.name === "decision") decisionUsed = true;
-        // A sum is only as good as what went in, or a made-up amount comes back as a supported one.
-        if (block.name === "calculate") {
-          const notOnFile = calculatorInputsNotOnFile(block.input, [
-            ...allowedCents,
-            ...typedAmountsCents(`${theirWords.join(" ")} ${memory ?? ""}`),
-          ]);
-          if (notOnFile.length > 0) {
-            results.push(
-              toolResult(
-                block.id,
-                `These amounts aren't in their numbers or a tool's result: ${notOnFile.join(", ")}. Look them up first, and calculate with them as given.`,
-                false,
-              ),
-            );
-            continue;
-          }
-        }
-        const toolStarted = Date.now();
-        const output = await runChatTool(userId, block.name, showIn(block.input, mask), {
-          client,
-          now,
-        });
-        timing.tools.push({ name: block.name, ms: Date.now() - toolStarted });
-        allowedCents.push(...output.cents, ...dollarFigures(output.content).map((f) => f.cents));
-        ledger.addToolResult(output.content);
-        if (output.options) offered = output.options;
-        results.push(toolResult(block.id, output.content));
-      }
+      const round: ToolRound = {
+        userId,
+        client,
+        now,
+        question,
+        writtenText,
+        mask,
+        theirWords,
+        memory,
+        allowedCents,
+        ledger,
+        timing,
+        proposal,
+        shown,
+        offered,
+        tools,
+        areaOpened,
+        turnLimit,
+        decisionUsed,
+      };
+      const results = await answerToolCalls(content, round);
+      ({ proposal, shown, offered, tools, areaOpened, turnLimit, decisionUsed } = round);
       if (!decorationOnly) {
         messages.push({ role: "user", content: results });
         continue;
@@ -1401,67 +1569,32 @@ async function askClaude(
       continue;
     }
     if (!passed) {
-      // The issues only, never the text: it's about the person's money.
-      log.warn("Jane's chat answer was blocked by the guardrails", {
+      return blockedAnswer({
+        spoken,
         issues,
-        ...(wrongFigures.length > 0 ? { figures: wrongFigures.map((p) => p.kind) } : {}),
+        wrongFigures,
+        allowedCents,
+        profile,
+        figuresPass,
+        shownText: draft.shownText(),
+        advice,
+        timing,
       });
-      // Still blocked after the rewrite: its facts, without the sentences that can't be shown,
-      // rather than the rules answering something else (founder 10-30).
-      const facts = factsOnly(spoken, allowedCents, profile, figuresPass);
-      // What the person has read stays as they read it (founder 11-11): the facts only when they
-      // go on from it, else what was read when it's an answer at all.
-      const read = plainText(withoutButtonTalk(draft.shownText()).trim());
-      const kept =
-        facts && plainText(facts).startsWith(read) ? facts : read.length >= 20 ? read : facts;
-      if (kept) {
-        timing.reason = kept === facts ? "facts_only" : "shown_kept";
-        return {
-          kind: "answer",
-          reply: { body: plainText(kept), actions: [], refs: advice ? { advice: true } : {} },
-        };
-      }
-      // A safe fallback, with no buttons.
-      return {
-        kind: "blocked",
-        reply: { body: ASK_BLOCKED_REPLY, actions: [], refs: {} },
-        issues,
-      };
-    }
-    const refs: Reply["refs"] = { ...(proposal?.refs ?? {}) };
-    // Spec step 193: a finding it offered a button for is what the next message is about.
-    if (proposal?.refs.findingId) {
-      refs.topic = { kind: "about", findingId: proposal.refs.findingId };
-    }
-    // A decision answered through the decision tool is what a following \"why?\" is about.
-    if (decisionUsed && !refs.topic) {
-      const asked = parseDecision(question.toLowerCase());
-      refs.topic = {
-        kind: "decision",
-        category: asked?.item ?? "other",
-        target: asked?.label ?? "that",
-      };
     }
     // Ended where it stopped streaming (its length, answerLimit): the answer is what they read.
     const read = withoutButtonTalk(draft.shownText()).trim();
     const said = draft.stoppedEarly() && read ? (hasButtons ? read : withoutTapYes(read)) : spoken;
-    // Its words pass the same guardrails as the answer, or it isn't shown.
-    if (shown && checkGuardrails(drawBlock(shown).alt, allowedCents, undefined, profile).ok) {
-      refs.block = shown;
-    }
-    // The options a tool found float over the chat as the pick-one card; its two buttons are
-    // the card's (src/lib/jane-agent/actions/options.ts).
-    if (offered) refs.options = offered;
-    return {
-      kind: "answer",
-      reply: {
-        body: proposal?.line ? `${plainText(said)}\n\n${proposal.line}` : plainText(said),
-        actions: [...(proposal?.actions ?? []), ...(offered ? OPTION_ACTIONS : [])],
-        // Demo advice is always labelled (the chat shows DEMO_ADVICE_LABEL under it). A pick
-        // card is only ever offered in demo advice mode, so it is labelled too.
-        refs: advice || offered ? { ...refs, advice: true } : refs,
-      },
-    };
+    return finalAnswer({
+      said,
+      question,
+      proposal,
+      decisionUsed,
+      shown,
+      offered,
+      allowedCents,
+      profile,
+      advice,
+    });
   }
   // Too many rounds of lookups for one message.
   return fail("turn_cap");
