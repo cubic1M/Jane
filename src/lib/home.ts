@@ -11,6 +11,7 @@ import { irregularCosts } from "@/insights/irregular";
 import { loadInsightTransactions } from "@/insights/load";
 import { moneyFoundParts } from "@/detection/engine";
 import { loadDetectionInput } from "@/detection/input";
+import { daysBetween } from "@/lib/dates";
 import { loadInvestingLeak } from "@/lib/investments/leak";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { unreadAlertCount } from "@/lib/alerts";
@@ -186,7 +187,13 @@ export async function homeSummary(
     comingUp: comingUp(bills, deadlines, asOf, { days: COMING_UP_DAYS, limit: COMING_UP_LIMIT }),
     // The hub's cash-flow strip (docs/design/home-hub.md): the same bills and deadlines, and the
     // deposits expected, all of them.
-    cashFlow: { bills, deposits, deadlines },
+    cashFlow: {
+      bills,
+      deposits,
+      deadlines,
+      // How much history there is to see bills in (src/lib/hub/view.ts cashFlowView).
+      historyDays: historyDaysOf(input),
+    },
     lastUpdated: updated ?? null,
     // For Jane's heads-ups in the chat (spec step 82): the deadlines page's list, budgets
     // gone over this month and goals whose date passed short of the target.
@@ -220,6 +227,15 @@ function planTop<
     .sort((a, b) => (b.annualSavingsCents ?? 0) - (a.annualSavingsCents ?? 0))
     .slice(0, PLAN_SHOWN)
     .map((f) => ({ title: f.title, cents: f.annualSavingsCents ?? 0 }));
+}
+
+// Days from the first transaction to the last (an old statement's span, not up to today).
+function historyDaysOf(input: { historyFrom?: string; transactions: { date: string }[] }): number {
+  const dates = input.transactions.map((t) => t.date);
+  if (dates.length === 0) return 0;
+  const first = input.historyFrom ?? dates.reduce((a, b) => (b < a ? b : a));
+  const last = dates.reduce((a, b) => (b > a ? b : a));
+  return daysBetween(first, last);
 }
 
 export type HomeSummary = NonNullable<Awaited<ReturnType<typeof homeSummary>>>;
