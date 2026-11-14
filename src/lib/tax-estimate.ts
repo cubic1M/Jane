@@ -378,7 +378,9 @@ async function loadTaxEstimateFrom(
     select: { date: true },
   });
   const firstSeen = first ? iso(first.date) : null;
-  const elapsed = yearCovered(year, today, firstSeen);
+  // Where the data ends: an old statement's pace is to its end, and it isn't a lost job either.
+  const dataEnds = rows.reduce((latest, t) => (t.date > latest ? t.date : latest), "");
+  const elapsed = yearCovered(year, today, firstSeen, dataEnds || null);
   // With paychecks but no pay stub: take-home pay stands in for wages, and withholding is
   // unknown.
   // A bonus marked as other income (src/categorize/regular-payers.ts) is still wages.
@@ -386,7 +388,6 @@ async function loadTaxEstimateFrom(
     (t) => t.amountCents < 0 && t.pfcDetailed === "INCOME_OTHER" && ONE_OFF_PAY.test(t.description),
   );
   // Regular pay that has stopped, by where the data ends: an old statement isn't a lost job.
-  const dataEnds = rows.reduce((latest, t) => (t.date > latest ? t.date : latest), "");
   // The same answer the profile gives (src/profile/stopped-payers.ts); nothing in the data, nothing
   // stopped.
   const stopped = stoppedPayers(paychecks, dataEnds);
