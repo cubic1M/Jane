@@ -16,6 +16,10 @@ export const PAYMENT_APPS = [
 export const CANDIDATE_MIN_CENTS = 10_000;
 // How far back Jane looks for transfers.
 export const CANDIDATE_LOOKBACK_DAYS = 120;
+// The same amount, give or take this share, with the same person in this many different months:
+// a regular payment (a share of the rent, a bill), not a loan.
+export const REGULAR_PAYMENT_MONTHS = 3;
+export const REGULAR_AMOUNT_SHARE = 0.05;
 // Words in a note that make a transfer look like a loan or a repayment.
 export const LOAN_WORDS = [
   "loan",

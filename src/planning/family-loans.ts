@@ -5,6 +5,8 @@ import {
   NOT_LOAN_WORDS,
   PAYMENT_APPS,
   CANDIDATE_MIN_CENTS,
+  REGULAR_AMOUNT_SHARE,
+  REGULAR_PAYMENT_MONTHS,
 } from "@/config/family-loans";
 
 // Money between family and friends (spec step 226). Pure: a payment-app transfer read for who
@@ -76,14 +78,44 @@ export type Candidate = {
 
 const has = (text: string, words: readonly string[]) => words.some((w) => text.includes(w));
 
+// Transfers of about the same amount with the same person, the same way, in enough different
+// months to be a regular payment (debugger 11-14: a student's "ZELLE TO ROOMMATE RENT", $650 on
+// the 3rd of every month, was asked about as money lent).
+function regularIds(transfers: readonly Transfer[]): Set<string> {
+  const byPerson = new Map<string, { id: string; month: string; cents: number }[]>();
+  for (const t of transfers) {
+    const parsed = parseTransfer(t);
+    if (!parsed) continue;
+    const key = `${parsed.direction}:${nameKey(parsed.counterparty)}`;
+    const list = byPerson.get(key) ?? [];
+    list.push({ id: t.id, month: t.date.slice(0, 7), cents: Math.abs(t.amountCents) });
+    byPerson.set(key, list);
+  }
+  const out = new Set<string>();
+  for (const list of byPerson.values()) {
+    for (const a of list) {
+      const months = new Set(
+        list
+          .filter((b) => Math.abs(b.cents - a.cents) <= a.cents * REGULAR_AMOUNT_SHARE)
+          .map((b) => b.month),
+      );
+      if (months.size >= REGULAR_PAYMENT_MONTHS) out.add(a.id);
+    }
+  }
+  return out;
+}
+
 // Transfers that might be a loan: with a name, big enough or noted like one, not noted like
-// a split bill. A transfer back from someone the person lent to is a repayment, not a loan.
+// a split bill, not a regular payment. A transfer back from someone the person lent to is a
+// repayment, not a loan.
 export function candidatesFrom(
   transfers: readonly Transfer[],
   known: readonly { counterpartyKey: string; kind: string }[],
 ): Candidate[] {
   const out: Candidate[] = [];
+  const regular = regularIds(transfers);
   for (const t of transfers) {
+    if (regular.has(t.id)) continue;
     const parsed = parseTransfer(t);
     if (!parsed) continue;
     const key = nameKey(parsed.counterparty);
