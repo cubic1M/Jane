@@ -3,6 +3,7 @@ import {
   CARD_INTEREST_CATEGORIES,
   IDLE_CASH_CARD_INTEREST_DAYS,
   IDLE_CASH_CARD_INTEREST_MIN_CENTS,
+  IDLE_CASH_DATA_ENDED_DAYS,
   IDLE_CASH_MIN_EXCESS_CENTS,
   LOOKBACK_MONTHS,
   IDLE_CASH_MONTHS_OF_SPENDING,
@@ -110,7 +111,15 @@ export function cashCushionOf(input: IdleInput): Omit<IdleCash, "earnsCents"> | 
     const bought = rows.filter((t) => t.amountCents > 0);
     if (bought.length === 0) continue;
     const earliest = bought.reduce((min, t) => (t.date < min ? t.date : min), input.asOf);
-    const months = Math.max(1, daysBetween(earliest, input.asOf) / DAYS_PER_MONTH);
+    // To where this account's data ended, when it ended a while ago: an upload that ended three
+    // weeks ago spread its 26 days of spending over 46, so cash looked idle that the next rent
+    // check would take (debugger 11-14: "spend about $1,826.14 a month" for $2,759.83 in 26 days).
+    // A linked account's quiet days are real, so to today otherwise.
+    const last = input.transactions
+      .filter((t) => t.accountId === accountId && t.date <= input.asOf)
+      .reduce((max, t) => (t.date > max ? t.date : max), earliest);
+    const ends = daysBetween(last, input.asOf) > IDLE_CASH_DATA_ENDED_DAYS ? last : input.asOf;
+    const months = Math.max(1, daysBetween(earliest, ends) / DAYS_PER_MONTH);
     monthly +=
       Math.max(
         0,
