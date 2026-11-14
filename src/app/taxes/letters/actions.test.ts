@@ -19,14 +19,9 @@ import {
 } from "@/lib/tax-notices";
 import { letterAction } from "./actions";
 import { fieldsFrom } from "./fields";
+import { form } from "@/lib/__fixtures__/form";
 
 // Spec step 217: confirming a notice, choosing a reply and handing it over, each a tap.
-
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
 
 describe("letters actions", () => {
   beforeEach(() => vi.clearAllMocks());

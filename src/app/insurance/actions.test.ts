@@ -28,14 +28,10 @@ import { HouseholdFactsError, dismissGap, saveHousehold } from "@/lib/insurance/
 import { negotiationsDue } from "@/lib/insurance/negotiate";
 import { PolicyError, addPolicy, removePolicy, updatePolicy } from "@/lib/insurance/policies";
 import { deletePolicy, notNeeded, saveHouseholdFacts, savePolicy } from "./actions";
+import { form } from "@/lib/__fixtures__/form";
 
 // The insurance page's actions (spec step 102).
 
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
 const fields = {
   kind: "renters",
   carrier: "Lemonade",

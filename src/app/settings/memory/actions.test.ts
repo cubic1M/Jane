@@ -17,15 +17,10 @@ vi.mock("@/lib/memory/facts", async (original) => ({
 import { revalidatePath } from "next/cache";
 import { correctFact, forgetEverything, forgetFact, MemoryError } from "@/lib/memory/facts";
 import { correctMemoryFact, forgetAllMemory, forgetMemoryFact } from "./actions";
+import { form } from "@/lib/__fixtures__/form";
 
 // /settings/memory: correcting and forgetting what Jane knows, only ever the signed-in
 // person's own.
-
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
 
 describe("what Jane knows, in Settings", () => {
   beforeEach(() => vi.clearAllMocks());

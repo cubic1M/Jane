@@ -12,12 +12,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/session";
 import { TaxCorrectionError, addTaxCorrection, removeTaxCorrection } from "@/lib/tax-corrections";
 import { pointOutAction, undoPointOutAction } from "./set-aside-actions";
-
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
+import { form } from "@/lib/__fixtures__/form";
 
 describe("pointing something out on the tax calculation", () => {
   beforeEach(() => vi.clearAllMocks());

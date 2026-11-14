@@ -12,14 +12,9 @@ vi.mock("@/lib/tax-identity", async (importOriginal) => ({
 
 import { IdentityError, markHavePin, markStep, openCase, remindIpPin } from "@/lib/tax-identity";
 import { identityAction } from "./actions";
+import { form } from "@/lib/__fixtures__/form";
 
 // Spec step 218: the IP PIN reminder, reporting a sign, and ticking off a step.
-
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
 
 describe("tax identity actions", () => {
   beforeEach(() => vi.clearAllMocks());

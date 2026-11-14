@@ -18,14 +18,9 @@ import {
   saveMiles,
 } from "@/lib/self-employed";
 import { saveHelper } from "./actions";
+import { form } from "@/lib/__fixtures__/form";
 
 // Spec step 123: the freelance taxes page's helpers.
-
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
 
 describe("saveHelper", () => {
   beforeEach(() => vi.clearAllMocks());

@@ -18,14 +18,9 @@ import {
   setRetireYear,
 } from "@/lib/multi-year";
 import { yearsAction } from "./actions";
+import { form } from "@/lib/__fixtures__/form";
 
 // Spec step 220: the retirement year, planned events and putting a move on the plan.
-
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
 
 describe("tax years actions", () => {
   beforeEach(() => vi.clearAllMocks());

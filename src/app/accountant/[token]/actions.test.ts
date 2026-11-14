@@ -9,14 +9,9 @@ vi.mock("@/lib/accountant", async (importOriginal) => ({
 
 import { AccountantError, answerByToken } from "@/lib/accountant";
 import { answerAction } from "./actions";
+import { form } from "@/lib/__fixtures__/form";
 
 // Spec step 222: the accountant answers from the page; the token is the only credential.
-
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
 
 describe("accountant answer action", () => {
   beforeEach(() => vi.clearAllMocks());

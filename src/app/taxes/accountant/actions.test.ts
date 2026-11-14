@@ -19,14 +19,9 @@ import {
   revokeAccountantLink,
 } from "@/lib/accountant";
 import { accountantAction } from "./actions";
+import { form } from "@/lib/__fixtures__/form";
 
 // Spec step 222: making a link (the URL comes back once), revoking it, marking answers read.
-
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
 
 describe("accountant actions", () => {
   beforeEach(() => vi.clearAllMocks());

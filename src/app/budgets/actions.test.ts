@@ -10,12 +10,7 @@ vi.mock("@/lib/budgets", async (importOriginal) => ({
 
 import { BudgetError, removeBudget, setBudget } from "@/lib/budgets";
 import { deleteBudget, saveBudget } from "./actions";
-
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
+import { form } from "@/lib/__fixtures__/form";
 
 describe("budget actions", () => {
   it("sets and removes the signed-in person's budgets", async () => {

@@ -82,14 +82,9 @@ import {
   savingAction,
   w4Action,
 } from "./actions";
+import { form } from "@/lib/__fixtures__/form";
 
 // Spec step 119: "I have it" and "Not yet" on /taxes.
-
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
 
 describe("markForm", () => {
   beforeEach(() => vi.clearAllMocks());

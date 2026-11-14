@@ -12,12 +12,8 @@ vi.mock("@/lib/deadlines", async (importOriginal) => ({
 import { revalidatePath } from "next/cache";
 import { DeadlineError, addDeadline, deleteDeadline, markDeadlineDone } from "@/lib/deadlines";
 import { finishDeadline, removeDeadline, saveDeadline } from "./actions";
+import { form } from "@/lib/__fixtures__/form";
 
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
 const fields = { title: "FSA deadline", dueOn: "2026-12-31", kind: "fsa", note: "" };
 
 describe("deadline actions", () => {

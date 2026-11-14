@@ -17,12 +17,7 @@ import { resumeForMerchant } from "@/lib/agent/run";
 import { logAudit } from "@/lib/audit";
 import { requireAdmin } from "@/lib/session";
 import { confirmSuggestion, saveMerchant } from "./actions";
-
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
+import { form } from "@/lib/__fixtures__/form";
 
 describe("saveMerchant", () => {
   beforeEach(() => {

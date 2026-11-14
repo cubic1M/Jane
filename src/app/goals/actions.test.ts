@@ -11,12 +11,8 @@ vi.mock("@/lib/goals", async (importOriginal) => ({
 
 import { GoalError, addGoal, deleteGoal, updateGoal } from "@/lib/goals";
 import { removeGoal, saveGoal } from "./actions";
+import { form } from "@/lib/__fixtures__/form";
 
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
 const fields = { name: "Trip", target: "2000", targetDate: "2027-06-01", accountId: "", saved: "" };
 
 describe("goal actions", () => {

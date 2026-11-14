@@ -15,15 +15,10 @@ vi.mock("@/lib/drafts", () => ({ draftMessage: vi.fn() }));
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/session";
 import { recordConversion } from "./actions";
+import { form } from "@/lib/__fixtures__/form";
 
 // Revenue can't be recorded from an insurance partner whose card told the person Jane isn't paid
 // for it (PAY_DISCLOSURES.none), nor from one paid per policy sold (connectors roadmap round 14).
-
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
 
 describe("recording a referral's revenue", () => {
   beforeEach(() => {

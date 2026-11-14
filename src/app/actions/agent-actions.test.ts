@@ -12,12 +12,7 @@ vi.mock("@/lib/agent/run", async () => {
 
 import { AnswerError, answerCompany } from "@/lib/agent/run";
 import { answer } from "./agent-actions";
-
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
+import { form } from "@/lib/__fixtures__/form";
 
 describe("answering a company's question", () => {
   it("sends the signed-in person's answer for their action", async () => {

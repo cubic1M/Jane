@@ -14,12 +14,7 @@ vi.mock("@/lib/credit-building", async (importOriginal) => ({
 
 import { CreditBuildingError, applyForBuilder, payBeforeStatement } from "@/lib/credit-building";
 import { openBuilderAction, payStatementAction } from "./actions";
-
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
+import { form } from "@/lib/__fixtures__/form";
 
 describe("pay before the statement", () => {
   const pay = () => form({ accountId: "a1", closesOn: "2026-11-01" });

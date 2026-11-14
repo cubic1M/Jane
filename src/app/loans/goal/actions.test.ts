@@ -20,12 +20,7 @@ import {
   startCreditGoal,
 } from "@/lib/credit-goals";
 import { endGoalAction, startGoalAction, tickItemAction } from "./actions";
-
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
+import { form } from "@/lib/__fixtures__/form";
 
 describe("a credit score plan", () => {
   it("is started for the signed-in person only on the tap", async () => {

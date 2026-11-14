@@ -14,12 +14,7 @@ vi.mock("@/lib/medical-bills", async (importOriginal) => ({
 
 import { MedicalBillError, addMedicalBill, sendMedicalItem } from "@/lib/medical-bills";
 import { addBillAction, sendRequestAction } from "./actions";
-
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
+import { form } from "@/lib/__fixtures__/form";
 
 describe("add a bill", () => {
   it("adds it for the signed-in person", async () => {

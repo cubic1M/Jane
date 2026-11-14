@@ -10,14 +10,9 @@ vi.mock("@/lib/tax-organizer", async (importOriginal) => ({
 import { revalidatePath } from "next/cache";
 import { TaxOrganizerError, setTaxTag } from "@/lib/tax-organizer";
 import { changeTag } from "./actions";
+import { form } from "@/lib/__fixtures__/form";
 
 // Spec step 119: changing a tax tag on /taxes/tags.
-
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
 
 describe("changeTag", () => {
   beforeEach(() => vi.clearAllMocks());
