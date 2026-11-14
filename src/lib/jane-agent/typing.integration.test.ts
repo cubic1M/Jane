@@ -393,7 +393,11 @@ describe.runIf(url)("typing to Jane against a real database", () => {
       await client.account.create({
         data: { userId: capped, source: "csv", name: "Checking", type: "depository" },
       });
-      const when = later();
+      // Today by the real clock, not this file's October: the rate-limit cleanup (src/lib/rate-
+      // limit.ts, 1% of any hit in any test file at once) deletes windows older than a day by the
+      // real clock, and took this spend before sendToJane read it (main 11-14, 065a2e0e: Claude
+      // was asked though overDailyCap had just said yes).
+      const when = new Date();
       expect(await spentTodayCents(capped, { client, now: when })).toBe(0);
       // One call that costs more than the whole cap.
       await addSpend(
