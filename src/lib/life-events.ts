@@ -2,6 +2,7 @@ import { LIFE_EVENTS, isLifeEventKind, type LifeEventKind } from "@/config/life-
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { todayOf } from "@/lib/today";
 
 // Life-event checklists (spec step 72): starting one, ticking its items, finishing and
 // deleting it. Always for the signed-in person: every query goes through scopedFor.
@@ -44,8 +45,11 @@ export async function startLifeEvent(
       `You already have a ${LIFE_EVENTS[kind].title.toLowerCase()} checklist going.`,
     );
   }
+  // The person's own day: started at 7pm in Los Angeles, it was started that day, not on the next
+  // UTC day (debugger 11-13).
+  const today = await todayOf(userId, { client, now });
   const created = await db.lifeEvents.create({
-    data: { userId, kind, startedOn: new Date(`${now.toISOString().slice(0, 10)}T00:00:00Z`) },
+    data: { userId, kind, startedOn: new Date(`${today}T00:00:00Z`) },
     select: { id: true },
   });
   return created.id;
