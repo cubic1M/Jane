@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { waitForImport } from "./import-wait";
+import { signInWith } from "./session";
 
 // After an upload finishes in the background, the numbers everywhere come from the file
 // (founder: "all the other numbers are not updated when I import the CSV", "the graphs are
@@ -98,9 +99,7 @@ test("an upload's numbers reach net worth, Home and the money page; a second fil
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
 
   const checking = checkingFile();
   await upload(page, "checking.csv", checking.text, { "new.name": "Everyday checking" });

@@ -7,6 +7,7 @@ import {
   signedInUser,
   treatAsDemoBank,
 } from "./db";
+import { signInWith } from "./session";
 
 // The events overlay (founder, 2026-10-26): its own Events box on the investments page, apart
 // from the suggestion dock, shows what's happening now, what the overlay does and how sure it is.
@@ -28,9 +29,7 @@ async function signIn(page: Page, baseURL: string | undefined) {
   const user = await signedInUser("user");
   userId = user.userId;
   await treatAsDemoBank(user.userId);
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
 }
 
 test("the Events box is on by default, takes the event's trade by itself, and the switch turns it off and on", async ({

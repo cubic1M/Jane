@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, enableTwoFactor, signedInUser } from "./db";
+import { signInWith } from "./session";
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 test.setTimeout(120_000);
@@ -16,9 +17,7 @@ test("an admin without a two-factor code is sent to set one up", async ({
 }) => {
   const user = await signedInUser("admin", { mfa: false });
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
 
   await page.goto("/admin/queue");
 
@@ -39,9 +38,7 @@ test("someone with two-factor on enters a code before anything opens @critical",
   const user = await signedInUser("user");
   userId = user.userId;
   await enableTwoFactor(user.userId);
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
 
   await page.goto("/home");
   await expect(page).toHaveURL(/\/mfa$/);
@@ -58,9 +55,7 @@ test("the session lookup never returns the session token @critical", async ({
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
 
   const body = await (await page.request.get("/api/auth/session")).text();
   expect(body).toContain(user.userId);

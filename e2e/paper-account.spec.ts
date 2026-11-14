@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { E2E_DATABASE_URL, addPaperSignal, deleteUser, signedInUser, treatAsDemoBank } from "./db";
 import { holds } from "./waits";
+import { signInWith } from "./session";
 
 // The paper account (founder: "start a paper trading account that users can now run … and jane
 // should be recommending trades when opportunities arise … a separate pop up"): started from the
@@ -20,9 +21,7 @@ async function signIn(page: Page, baseURL: string | undefined) {
   const user = await signedInUser("user");
   userId = user.userId;
   await treatAsDemoBank(user.userId);
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
   return user.userId;
 }
 

@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { areaTree, pickItem } from "./area-tree";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { landInChat } from "./chat-page";
+import { signInWith } from "./session";
 
 // The Jane, Spending & bills and Ahead hubs (spec step 80), filled by the demo bank: each shows its
 // sections and live numbers, and its tiles open the full pages.
@@ -23,9 +24,7 @@ test("the hubs gather every page, with live numbers from the demo bank", async (
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
 
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();

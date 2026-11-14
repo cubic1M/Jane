@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { waitForImport } from "./import-wait";
+import { signInWith } from "./session";
 
 // A card's statement has no balance (CSV bench: card debt missing from most upload-only
 // people's net worth). Right after the upload Jane asks what's owed; skipped, net worth says on
@@ -46,9 +47,7 @@ test("a card without a balance is asked for, and net worth says it isn't counted
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
 
   // First a checking account, whose file says its balance: nothing is asked.
   await page.goto("/import");
@@ -142,9 +141,7 @@ test("with no balance known at all, /net-worth says so instead of $0.00", async 
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
   await page.goto("/import");
   await page.locator('input[type="file"]').setInputFiles({
     name: "card.csv",

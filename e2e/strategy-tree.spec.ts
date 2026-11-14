@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser, treatAsDemoBank } from "./db";
+import { signInWith } from "./session";
 
 // The investments page laid out like Home (founder: "you can click through the tree graphs
 // showcasing the different strategies and choose which one you like"): the hero graph, the
@@ -22,9 +23,7 @@ async function signIn(page: Page, baseURL: string | undefined) {
   userId = user.userId;
   // A demo bank only: demo advice is on.
   await treatAsDemoBank(user.userId);
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
 }
 
 for (const size of [

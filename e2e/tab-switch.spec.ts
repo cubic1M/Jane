@@ -1,6 +1,7 @@
 import { expect, test, type Page, type Request } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { demoPerson } from "./demo-person";
+import { signInWith } from "./session";
 
 // Switching tabs is seamless (founder 11-12: "preload the unused pages in the back so users can
 // seamlessly switch tabs"): every top-bar tab opens from the browser's memory, with no trip to the
@@ -81,9 +82,7 @@ test("after the first page, a chat message, and the tab coming back, every tab i
 }) => {
   const user = await signedInUser("user");
   created.push(user.userId);
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.clock.install();
   const net = watch(page);
   await page.goto("/insurance");

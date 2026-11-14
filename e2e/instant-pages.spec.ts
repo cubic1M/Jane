@@ -3,6 +3,7 @@ import { Client } from "pg";
 import { E2E_DATABASE_URL, deleteUser, setCheckingBalance, signedInUser } from "./db";
 import { demoPerson } from "./demo-person";
 import { holds } from "./waits";
+import { signInWith } from "./session";
 
 // Moving between pages (src/lib/page-cache.ts; founder: "cache the pages so you go to a page you
 // returned it's already done loading ... the other background pages are loading secretly ... Only
@@ -20,9 +21,7 @@ test.afterEach(async () => {
 async function person(context: BrowserContext, baseURL: string | undefined) {
   const user = await signedInUser("user");
   created.push(user.userId);
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   return user;
 }
 
@@ -345,9 +344,7 @@ test.describe("one person's pages never show to another", () => {
 
     const next = await signedInUser("user");
     created.push(next.userId);
-    await context.addCookies([
-      { name: "authjs.session-token", value: next.sessionToken, url: baseURL ?? "" },
-    ]);
+    await signInWith(context, next.sessionToken, baseURL);
     const other = await context.newPage();
     await open(other, "/insurance");
 

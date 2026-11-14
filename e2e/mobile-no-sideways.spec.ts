@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { signInWith } from "./session";
 
 // An upload from a phone with long names, as phones save them: the page stays the screen's width
 // and the import goes through. (Round 14 of the new-user passes: the chat's waiting sheet made
@@ -24,9 +25,7 @@ test("a phone uploads with long names: no sideways scroll, and the import goes t
   test.skip(!isMobile, "a phone's layout");
   const user = await signedInUser("user");
   userId = user.userId;
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
 
   await page.goto("/import");
   await page.locator('input[type="file"]').setInputFiles({

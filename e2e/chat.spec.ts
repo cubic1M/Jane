@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser, waitForFullScan } from "./db";
 import { CHAT, answerTo, landInChat, popupCard } from "./chat-page";
 import { holdSaves } from "./waits";
+import { signInWith } from "./session";
 
 // Spec steps 81–82: link the demo bank, land in Jane's chat, see the morning brief, tap
 // Yes on a finding and see it answered. On a phone, with nothing sideways and the tab bar
@@ -27,9 +28,7 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding @critical", 
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
 
   await page.goto("/connect");
   // A click that lands before the page has hydrated can be lost, so click until it takes

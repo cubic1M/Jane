@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { Client } from "pg";
 import { E2E_DATABASE_URL, addJaneMessage, deleteUser, signedInUser } from "./db";
 import { CHAT } from "./chat-page";
+import { signInWith } from "./session";
 
 // The chat opens at its newest message, as the side panel and the phone's sheet show it (night
 // QA 10-30: with a conversation longer than the panel, it opened at the oldest, because the
@@ -29,9 +30,7 @@ test("a long chat opens at its newest message", async ({ context, page, baseURL 
   } finally {
     await client.end();
   }
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   for (let i = 1; i <= 8; i++) {
     await addJaneMessage(userId, {
       kind: "user",

@@ -4,6 +4,7 @@ import { isHiddenPage } from "../src/config/hidden-pages";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { expectFinding } from "./report-page";
 import { waitForImport } from "./import-wait";
+import { signInWith } from "./session";
 
 // Every page, signed out and in, light and dark: no serious or critical WCAG 2.1 A/AA
 // problems found by axe (step 33). Desktop only; the pages are the same on phones.
@@ -145,9 +146,7 @@ for (const colorScheme of ["light", "dark"] as const) {
       test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
       const user = await signedInUser("admin");
       try {
-        await context.addCookies([
-          { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-        ]);
+        await signInWith(context, user.sessionToken, baseURL);
         await page.goto("/import");
         // Adding an account by hand is folded away: a first upload can make its own.
         const addAccount = page.locator("[data-add-account]");

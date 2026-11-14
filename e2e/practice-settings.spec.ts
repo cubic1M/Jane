@@ -2,6 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { landInChat } from "./chat-page";
+import { signInWith } from "./session";
 
 // The practice portfolio's settings (Phase AW, Stage A) on the demo bank: plain-language controls
 // that change what the autopilot does, shown back as the rules it now follows. Practice money and
@@ -18,9 +19,7 @@ test.afterEach(async () => {
 test("practice settings save and change what Jane does", async ({ context, page, baseURL }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);

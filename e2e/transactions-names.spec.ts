@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { Client } from "pg";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { signInWith } from "./session";
 
 // QA round 32: card payments read as the card they paid, days read as people write them, and an
 // upload-only person is pointed at an upload, not at linking.
@@ -48,9 +49,7 @@ test("transactions name card payments for their card, with readable days", async
 }) => {
   const user = await signedInUser("admin");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
 
   // Nothing yet: the page says how to fill it.
   await page.goto("/transactions");
@@ -77,9 +76,7 @@ test("investments with nothing uploaded point at the positions upload", async ({
 }) => {
   const user = await signedInUser("admin");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
 
   await page.goto("/investments");
   const empty = page.locator("[data-investments-empty]");

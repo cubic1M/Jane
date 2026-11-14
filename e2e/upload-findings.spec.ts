@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { waitForImport } from "./import-wait";
+import { signInWith } from "./session";
 
 // What an uploaded statement's findings say. A card's interest from an upload is the charges seen,
 // a year's worth: never "at today's balance", which Jane doesn't know (new-user pass, round 5).
@@ -38,9 +39,7 @@ test("a card's interest from an upload reads as a year of it, not at today's bal
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
 
   await page.goto("/import");
   await page.locator('input[type="file"]').setInputFiles({

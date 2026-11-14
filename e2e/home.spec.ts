@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { areaTree } from "./area-tree";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { waitForImport } from "./import-wait";
+import { signInWith } from "./session";
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 test.setTimeout(120_000);
@@ -19,9 +20,7 @@ test("new people land on Connect; once data is in, the hub matches the report @c
 }) => {
   const user = await signedInUser("admin");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
 
   await page.goto("/home");
   await expect(page).toHaveURL("/connect");

@@ -3,6 +3,7 @@ import { isHiddenPage } from "../src/config/hidden-pages";
 import { pickItem } from "./area-tree";
 import { E2E_DATABASE_URL, addFoundPolicy, deleteUser, signedInUser, waitForFullScan } from "./db";
 import { landInChat } from "./chat-page";
+import { signInWith } from "./session";
 
 // Insurance (spec step 102): a person says they rent, sees the missing renters cover, adds
 // their policy and the gap goes. The page is the area tree (docs/design/area-pages.md): each
@@ -20,9 +21,7 @@ test.afterEach(async () => {
 test("a renter adds their renters policy and the gap goes", async ({ context, page, baseURL }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
 
   await page.goto("/insurance");
   await expect(page.getByRole("heading", { name: "Insurance", level: 1 })).toBeVisible();
@@ -71,9 +70,7 @@ test("a policy found in the payments is confirmed from its gap", async ({
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await addFoundPolicy(user.userId, "renters", "Lemonade");
 
   await page.goto("/insurance");
@@ -101,9 +98,7 @@ test("a demo-bank person sees the sample policy, like-for-like quotes and Jane's
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -176,9 +171,7 @@ test("a demo-bank person says yes to Jane's pick (step 104)", async ({
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -210,9 +203,7 @@ test("a person starts a claim tracker and ticks off a step (step 107)", async ({
   test.skip(isHiddenPage("/insurance/claims"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/insurance/claims");
   await expect(page.getByRole("heading", { name: "Claims", level: 1 })).toBeVisible();
   await page.getByLabel("It's on").selectOption("kind:auto");
@@ -235,9 +226,7 @@ test("a policy document is read for the person to check and confirm (step 151)",
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
 
   // No Claude key here: the person types the facts Claude would have read.
   await page.goto("/documents");
@@ -279,9 +268,7 @@ test("a demo-bank person sizes, applies for and buys life cover, a tap at a time
   test.skip(isHiddenPage("/insurance/life"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -315,9 +302,7 @@ test("a move gets its insurance changes ready, made on one tap (step 154)", asyn
   test.skip(isHiddenPage("/life-events"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -354,9 +339,7 @@ test("Jane files a small claim only after the person checks it (step 155)", asyn
   test.skip(isHiddenPage("/insurance/claims"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -390,9 +373,7 @@ test("a demo-bank person pays less for the same cover with one tap (step 196)", 
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -433,9 +414,7 @@ test("a demo-bank person answers a question about how they live, and a yes opens
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -475,9 +454,7 @@ test("a person lists their household and sees who is covered by what (step 198)"
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/insurance");
   const you = await pickItem(page, "Insurance", "Your household's cover", "You");
   await expect(you.getByText("You: no policy on file")).toBeVisible();
@@ -506,9 +483,7 @@ test("a demo-bank person sees their health plan's year and a dispute card (step 
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -532,9 +507,7 @@ test("a demo-bank person goes from a gap to a picked option, and it reaches the 
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);

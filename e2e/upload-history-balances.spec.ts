@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { waitForImport } from "./import-wait";
+import { signInWith } from "./session";
 
 // Net worth's months come from the statement's own balances: an older file added to the account,
 // then the newer one removed, leaves the older months as the file said them, not worked back from
@@ -51,9 +52,7 @@ test("an older file added, then the newer removed: the older months stay as the 
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
   const input = page.locator('input[type="file"]');
   const upload = async (name: string, text: string) => {
     await input.setInputFiles({ name, mimeType: "text/csv", buffer: Buffer.from(text) });

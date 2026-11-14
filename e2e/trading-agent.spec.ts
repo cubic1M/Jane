@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser, treatAsDemoBank } from "./db";
+import { signInWith } from "./session";
 
 // The 24-hour agent (founder, 2026-10-26): start a paper account, pick a market, how often and a
 // strategy (each with its replay's result), and the agent catches up on the last day at once:
@@ -18,9 +19,7 @@ async function signIn(page: Page, baseURL: string | undefined) {
   const user = await signedInUser("user");
   userId = user.userId;
   await treatAsDemoBank(user.userId);
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
 }
 
 for (const size of [

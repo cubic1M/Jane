@@ -10,6 +10,7 @@ import {
   signedInUser,
 } from "./db";
 import { CHAT, landInChat } from "./chat-page";
+import { signInWith } from "./session";
 
 // Page text is looked for in <main>: on a computer Jane's pop-up cards sit beside the page
 // (the side chat's dock) and can carry the same words.
@@ -43,9 +44,7 @@ test("every debt shows with its source, and missing terms can be typed in", asyn
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -99,9 +98,7 @@ test("the payoff plan picks an order for the demo bank and starts with one tap",
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -141,9 +138,7 @@ test("refinance offers compare total cost and pick one, labelled", async ({
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -184,9 +179,7 @@ test("apply prepares the application, and it's sent only once the terms are revi
   test.skip(isHiddenPage("/loans/apply/:id"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -222,9 +215,7 @@ test("a 0% transfer counts its fee and is tracked once moved", async ({
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -249,9 +240,7 @@ test("student loan plans are compared, and every step links to studentaid.gov", 
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -286,9 +275,7 @@ test("the mortgage page shows PMI, the escrow change and extra principal", async
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -322,9 +309,7 @@ test("the credit score is a labelled stand-in, with its factors and card use", a
   test.skip(isHiddenPage("/loans/credit"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -347,9 +332,7 @@ test("card rewards count the fee, and a better card is applied for with one tap"
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -383,9 +366,7 @@ test("building credit shows the simulator as an estimate and the statement payme
   test.skip(isHiddenPage("/loans/credit"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -408,9 +389,7 @@ test("buy now, pay later installments are listed from the plans' schedules", asy
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -433,9 +412,7 @@ test("a tight month shows the plan, and a request is sent only on the tap", asyn
   test.skip(isHiddenPage("/loans/tight"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -469,9 +446,7 @@ test("buying a car shows the all-in cost, preapprovals and a dealer check", asyn
   test.skip(isHiddenPage("/loans/car"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -502,9 +477,7 @@ test("buying a home shows the plan, its assumptions, and starts the goal on the 
   test.skip(isHiddenPage("/loans/home"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -540,9 +513,7 @@ test("medical bills are found, letters are written, and a request is sent only o
   test.skip(isHiddenPage("/loans/medical"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -580,9 +551,7 @@ test("report fixes show the letters with their rules, and a letter is sent only 
   test.skip(isHiddenPage("/loans/report"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -621,9 +590,7 @@ test("card interest shows the cost, a promotion off pace, and a request sent on 
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -661,9 +628,7 @@ test("student loans show PSLF month by month, save dates as deadlines, and warn 
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -710,9 +675,7 @@ test("a payment-app transfer is a loan only after the tap, and the reminder is o
   test.skip(isHiddenPage("/loans/family"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -757,9 +720,7 @@ test("a credit score goal is previewed, started on the tap, and ticked off month
   );
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -802,9 +763,7 @@ test("a home loan's PMI, escrow and project are worked out from what the person 
   test.skip(isHiddenPage("/loans/equity"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -863,9 +822,7 @@ test("the options when debt is too much are laid out as facts, with the pointer 
   test.skip(isHiddenPage("/loans/help"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -904,9 +861,7 @@ test("the debt review lists every item, and the chat message keeps each button u
   test.skip(isHiddenPage("/loans/review"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -960,9 +915,7 @@ test("a dealer add-on is confirmed, with its refund and a cancellation the team 
   test.skip(isHiddenPage("/loans/auto"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -1003,9 +956,7 @@ test("a lump sum is compared on the mortgage: extra principal, recast, refinance
   test.skip(isHiddenPage("/loans/recast"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -1041,9 +992,7 @@ test("costly short-term borrowing is found, costed, and the way out is laid out"
   test.skip(isHiddenPage("/loans/costly"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -1076,9 +1025,7 @@ test("a deposit is followed to its due date and marked returned", async ({
   test.skip(isHiddenPage("/loans/renting"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
 
   await page.goto("/loans/renting");
   await expect(page.getByRole("heading", { level: 1, name: "Your rent" })).toBeVisible();
@@ -1117,9 +1064,7 @@ test("a co-signed loan is counted in full and a missed payment lands on the pers
   test.skip(isHiddenPage("/loans/helping"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -1160,9 +1105,7 @@ test("what you could borrow is shown with the day it was checked", async ({
   test.skip(isHiddenPage("/loans/borrow"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);

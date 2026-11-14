@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { signInWith } from "./session";
 
 // Someone with a linked bank (the demo bank stands in) who uploads a statement: /import offers
 // only uploaded accounts to put it in, and opens on a new one (new-user pass, round 9: it opened
@@ -20,9 +21,7 @@ test("with a linked bank, an upload goes to a new account, never a linked one", 
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
 
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();

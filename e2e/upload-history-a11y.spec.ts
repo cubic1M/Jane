@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { waitForImport } from "./import-wait";
+import { signInWith } from "./session";
 
 // /import's upload history for a screen reader and a keyboard: each row's Remove button says what
 // it removes, and asking moves the focus to the answer.
@@ -22,9 +23,7 @@ test("each Remove button names what it removes, and the answer gets the focus", 
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
 
   for (const file of ["chase-credit-card.csv", "wells-fargo.csv"]) {
     await page.goto("/import");

@@ -4,6 +4,7 @@ import { isHiddenPage } from "../src/config/hidden-pages";
 import { areaTree, pickItem } from "./area-tree";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { landInChat } from "./chat-page";
+import { signInWith } from "./session";
 
 // Taxes (spec steps 118–127): what Jane found in the demo bank is shown as found, and the
 // person's answers are saved from the profile page. No serious accessibility problems.
@@ -37,9 +38,7 @@ test("the tax profile shows what Jane found and saves the person's answers", asy
   test.skip(isHiddenPage("/taxes/profile"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -121,9 +120,7 @@ test("tax tags: Jane's tags, its questions, and tagging a work expense", async (
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -166,9 +163,7 @@ test("state taxes: a mid-year move splits the estimate, each state with its sour
   test.skip(isHiddenPage("/taxes/profile"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -214,9 +209,7 @@ test("the tax plan: moves by deadline, and one on the deadlines with a tap", asy
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -244,9 +237,7 @@ test("family details: saved on the profile, and the choices on /taxes", async ({
   test.skip(isHiddenPage("/taxes/profile"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -283,9 +274,7 @@ test("a sample draft return to check, for someone with no draft of their own", a
   test.skip(isHiddenPage("/taxes/draft"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -313,9 +302,7 @@ test("retirement income, inherited money and disasters each have a page from /ta
   );
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);

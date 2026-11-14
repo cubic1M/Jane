@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { answerTo, landInChat } from "./chat-page";
+import { signInWith } from "./session";
 
 // Founder (11-01): a message whose first answer trips a safety check still gets Claude's own
 // answer, never a canned line. The model is the scripted fake (src/lib/jane-agent/fake-chat-claude.ts,
@@ -25,9 +26,7 @@ test("a blocked answer is rewritten by Claude, not replaced by a canned line", a
 }) => {
   const user = await signedInUser("user");
   users.push(user.userId);
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await expect(async () => {
     if (page.url().endsWith("/connect")) {

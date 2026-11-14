@@ -9,6 +9,7 @@ import {
 } from "../src/config/read-only-beta";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { waitForImport } from "./import-wait";
+import { signInWith } from "./session";
 
 // Upload first (closed beta, founder: linking feels scary): a new person starts on /connect
 // with "Upload your statements", downloads from their bank with the steps on /import, uploads a
@@ -32,9 +33,7 @@ test.afterEach(async () => {
 async function signIn(page: Page, baseURL: string | undefined, role: "user" | "admin" = "user") {
   const user = await signedInUser(role);
   userId = user.userId;
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
 }
 
 async function uploadFile(page: Page, file: string) {

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { Client } from "pg";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { signInWith } from "./session";
 
 // A statement from an account Jane already gets from a linked bank (same bank, same last four):
 // /import says so, the import waits, and skipping it leaves the account counted once.
@@ -41,9 +42,7 @@ test("the same account as a linked bank's waits, and skipping it counts it once"
   const user = await signedInUser("user");
   userId = user.userId;
   await linkChase(user.userId);
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
 
   await page.goto("/import");
   await page.locator('input[type="file"]').setInputFiles({

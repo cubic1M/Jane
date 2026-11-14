@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { signInWith } from "./session";
 
 // Sign-in, analytics and phone alerts before their keys are set (as on the live site now;
 // docs/setup/): no Google button on /login or /signup, no "turn on alerts" in Settings, and
@@ -26,9 +27,7 @@ test("without Google's or the push keys: no Google button, no alerts toggle", as
 
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/settings");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 60_000 });
   await expect(page.getByText("Get urgent alerts on this device instead of by email.")).toHaveCount(

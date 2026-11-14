@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { Client } from "pg";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { answerTo, landInChat } from "./chat-page";
+import { signInWith } from "./session";
 
 // Founder (2026-10-26): one person can't use up the month's chat budget. Past their daily
 // allowance of written answers, a typed question gets a short, honest note and whatever the
@@ -48,9 +49,7 @@ test("past the day's limit, Jane says so briefly and still answers from the data
 }) => {
   const user = await signedInUser("user");
   users.push(user.userId);
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await expect(async () => {
     if (page.url().endsWith("/connect")) {
@@ -87,9 +86,7 @@ test("past the day's limit, Jane says so briefly and still answers from the data
   const admin = await signedInUser("admin");
   users.push(admin.userId);
   await context.clearCookies();
-  await context.addCookies([
-    { name: "authjs.session-token", value: admin.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, admin.sessionToken, baseURL);
   await page.goto("/admin/chat");
   await expect(page.getByRole("heading", { level: 1, name: "Today's chat spend" })).toBeVisible();
   const atLimit = page.getByRole("definition").filter({ hasText: /answered from the data/ });

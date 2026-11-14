@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { hydrated } from "./waits";
+import { signInWith } from "./session";
 
 // Every tap answers at once (the founder's "every button is an instant response"; the audit is
 // tap-audit.md in the side-session notes). One control of each kind the audit found: a link to
@@ -76,9 +77,7 @@ async function tapTime(page: Page, target: Locator, changed: string): Promise<nu
 test("every kind of tap shows its change within 150 ms", async ({ context, page, baseURL }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.exposeFunction("reportTap", (ms: number) => reported?.(ms));
   const times: Record<string, number> = {};
 

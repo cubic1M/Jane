@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { waitForImport } from "./import-wait";
+import { signInWith } from "./session";
 
 // A server who lives on tips (founder, 10-30): cash paid in twice a week counts as income, said
 // with how sure Jane is; a one-off cash deposit doesn't; and "Not income" is the person's call.
@@ -45,9 +46,7 @@ test("tips deposited in cash count as income, and the person can say they aren't
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
   await page.goto("/import");
   await page.locator('input[type="file"]').setInputFiles({
     name: "chase-checking.csv",

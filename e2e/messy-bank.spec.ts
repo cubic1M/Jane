@@ -3,6 +3,7 @@ import { Client } from "pg";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { expectFinding } from "./report-page";
 import { waitForImport } from "./import-wait";
+import { signInWith } from "./session";
 
 // A messy real bank (founder, 2026-10-26), through the CSV import: Chase checking and savings
 // exports and two card exports that overlap by a month (e2e/fixtures/messy). Card payments,
@@ -21,9 +22,7 @@ test.afterEach(async () => {
 async function signIn(page: Page, baseURL: string | undefined) {
   const user = await signedInUser();
   userId = user.userId;
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
   return user.userId;
 }
 

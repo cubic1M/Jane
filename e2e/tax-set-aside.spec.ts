@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { walkToCard } from "./card-walk";
 import { CHAT } from "./chat-page";
 import { E2E_DATABASE_URL, addFreelancer, deleteUser, signedInUser, treatAsDemoBank } from "./db";
+import { signInWith } from "./session";
 
 // The tax left to cover, on a real account: a fact, not advice; the calculation line by line; and a
 // correction that moves it, on Home's Safe to spend too, and can be undone.
@@ -24,9 +25,7 @@ test("the calculation is shown, says no advice, and takes a correction", async (
   const user = await signedInUser("user");
   userId = user.userId;
   await addFreelancer(user.userId);
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
 
   await page.goto("/taxes?focus=estimate:set-aside");
   const section = page.locator("#set-aside");
@@ -91,9 +90,7 @@ test("it comes up unasked: the card has the figure and how sure Jane is", async 
   const user = await signedInUser("user");
   userId = user.userId;
   await addFreelancer(user.userId);
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   // The figure the calculation shows is the figure the card must say.
   await page.goto("/taxes?focus=estimate:set-aside");
   const line = await page
@@ -128,9 +125,7 @@ test("demo advice says set aside, with its label", async ({ context, page, baseU
   userId = user.userId;
   await addFreelancer(user.userId);
   await treatAsDemoBank(user.userId);
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/taxes?focus=estimate:set-aside");
   const section = page.locator("#set-aside");
   await expect(section.getByRole("heading", { name: "Tax to set aside" })).toBeVisible();

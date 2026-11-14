@@ -3,6 +3,7 @@ import { pickItem } from "./area-tree";
 import { E2E_DATABASE_URL, addJaneMessage, deleteUser, signedInUser, waitForFullScan } from "./db";
 import { CHAT, landInChat } from "./chat-page";
 import { holdSaves } from "./waits";
+import { signInWith } from "./session";
 
 // Options of one choice in the chat (insurance cover, loan offers): Jane's answer carries the
 // lane's pick-one card (refs.options), which floats over the chat as the pick card. A pick is
@@ -31,9 +32,7 @@ test("a pick on the options card is instant, and the next card follows within 10
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await expect(async () => {
     if (page.url().endsWith("/connect")) {
@@ -151,9 +150,7 @@ test("cheaper car insurance comes as comparison cards, and a pick starts the swi
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await expect(async () => {
     if (page.url().endsWith("/connect")) {

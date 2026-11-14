@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, addJaneMessage, deleteUser, signedInUser } from "./db";
 import { uploadSampleCard } from "./demo-upload";
 import { holds } from "./waits";
+import { signInWith } from "./session";
 
 // Founder: "for the suggestion cards, you can't scroll down with mouse wheel, make that a
 // feature." The dock above the chat is one scroller for a card and its details: the wheel moves
@@ -36,9 +37,7 @@ test("the wheel scrolls a long card in the dock to its end, and nothing behind i
   await page.setViewportSize({ width: 1280, height: 800 });
   const user = await signedInUser("user");
   userId = user.userId;
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
   await addJaneMessage(userId, {
     kind: "decision",
     body: LONG,
@@ -98,9 +97,7 @@ test("on a phone, the import chip keeps clear of the folded card bar", async ({
   test.skip(!isMobile, "the phone's folded bar");
   const user = await signedInUser("user");
   userId = user.userId;
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
   await uploadSampleCard(page);
   // Jane's cards are posted once the chat has opened: open it once, then Home has them.
   await page.goto("/home");

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { hydrated } from "./waits";
+import { signInWith } from "./session";
 
 // A tab tapped while its page is still preloading answers at once (main red 11-13, e2e/tap.spec.ts
 // 3 of 3 tries: "link to another page took 339 ms"). A preload marks its page as in memory when
@@ -25,9 +26,7 @@ test("a tab whose page is still on its way in shows the bar at once", async ({
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   // Insurance's page data takes its time, whether preloaded or tapped.
   let preloading!: () => void;
   const started = new Promise<void>((resolve) => (preloading = resolve));
