@@ -27,6 +27,32 @@ import {
 
 export type FormState = { ok: boolean; message: string } | null;
 
+// The tax papers read on upload: the reader, what it's called in the log, and where to confirm it.
+const TAX_READERS = {
+  tax_notice: {
+    read: (userId: string, id: string, options: { file: ReaderFile }) =>
+      readTaxNotice(userId, id, options),
+    what: "a tax notice",
+    saved:
+      "Saved. Check what Jane read on Letters from the IRS (Taxes) or in the chat, and confirm it.",
+  },
+  draft_return: {
+    read: (userId: string, id: string, options: { file: ReaderFile }) =>
+      readDraftReturn(userId, id, options),
+    what: "a draft return",
+    saved:
+      "Saved. Check what Jane read on Your draft return (Taxes) or in the chat, and confirm it: then Jane checks it before you file.",
+  },
+  tax_return: {
+    read: (userId: string, id: string, options: { file: ReaderFile }) =>
+      readPriorReturn(userId, id, options),
+    what: "a tax return",
+    saved:
+      "Saved. Check what Jane read on Last year's return (Taxes) or in the chat, and confirm it.",
+  },
+} as const;
+type ReaderFile = { bytes: Uint8Array; contentType: DocumentContentType };
+
 export async function uploadDocument(_previous: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
   // Each document may go to Claude, and is stored: neither is for a temporary try.
@@ -58,54 +84,18 @@ export async function uploadDocument(_previous: FormState, formData: FormData): 
   if (!result.ok) return { ok: false, message: result.error };
   await track(user.id, "document_uploaded", { kind, read: result.read });
   const toRead = { bytes, contentType: file.type as DocumentContentType };
-  // A policy is read into one for the person to confirm (spec step 151). The upload's
-  // stated type matched its bytes, or it wasn't saved.
-  if (kind === "tax_notice") {
-    const reading = await readTaxNotice(user.id, result.id, {
-      file: toRead,
-    }).catch((error) => {
-      log.error("Reading a tax notice failed", { error: String(error) });
+  // A tax paper is read for the person to confirm (a notice, step 217; a draft return, step
+  // 272, then checked before filing; last year's return). The upload's stated type matched its
+  // bytes, or it wasn't saved.
+  const taxReader = TAX_READERS[kind as keyof typeof TAX_READERS];
+  if (taxReader) {
+    const reading = await taxReader.read(user.id, result.id, { file: toRead }).catch((error) => {
+      log.error(`Reading ${taxReader.what} failed`, { error: String(error) });
       return null;
     });
-    if (reading) {
-      return {
-        ok: true,
-        message:
-          "Saved. Check what Jane read on Letters from the IRS (Taxes) or in the chat, and confirm it.",
-      };
-    }
+    if (reading) return { ok: true, message: taxReader.saved };
   }
-  // Spec step 272: a draft return, read for the person to confirm, then checked before filing.
-  if (kind === "draft_return") {
-    const reading = await readDraftReturn(user.id, result.id, {
-      file: toRead,
-    }).catch((error) => {
-      log.error("Reading a draft return failed", { error: String(error) });
-      return null;
-    });
-    if (reading) {
-      return {
-        ok: true,
-        message:
-          "Saved. Check what Jane read on Your draft return (Taxes) or in the chat, and confirm it: then Jane checks it before you file.",
-      };
-    }
-  }
-  if (kind === "tax_return") {
-    const reading = await readPriorReturn(user.id, result.id, {
-      file: toRead,
-    }).catch((error) => {
-      log.error("Reading a tax return failed", { error: String(error) });
-      return null;
-    });
-    if (reading) {
-      return {
-        ok: true,
-        message:
-          "Saved. Check what Jane read on Last year's return (Taxes) or in the chat, and confirm it.",
-      };
-    }
-  }
+  // A policy is read into one for the person to confirm (spec step 151).
   if (kind === "insurance_policy") {
     const reading = await readPolicyDocument(user.id, result.id, {
       file: toRead,
