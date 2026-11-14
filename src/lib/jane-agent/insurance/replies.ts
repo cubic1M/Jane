@@ -3,6 +3,7 @@ import { POLICY_KINDS, QUOTABLE_KINDS, type PolicyKind } from "@/config/insuranc
 import { daysBetween } from "@/detection/units";
 import { checkGuardrails } from "@/lib/guardrails";
 import { coverageLines } from "@/lib/insurance/coverage";
+import { addPolicyHref } from "@/lib/insurance/add-link";
 import { claimContact } from "@/lib/insurance/claim-rules";
 import { gapAdvice, kindWords } from "@/lib/insurance/gaps";
 import { yearlyPremium } from "@/lib/insurance/policies";
@@ -24,8 +25,7 @@ type Policy = InsuranceSnapshot["policies"][number];
 const link = (label: string, href: string): MessageAction => openLink(label, href);
 const SEE = link("See your insurance", "/insurance");
 const editLink = (p: Policy) => link("Add the details", `/insurance?edit=${p.id}#policy-${p.id}`);
-const addLink = (kind: PolicyKind | null) =>
-  link("Add a policy", kind ? `/insurance?add=${kind}#add` : "/insurance#add");
+const addLink = (kind: PolicyKind | null) => link("Add a policy", addPolicyHref(kind));
 
 // "your GEICO car insurance".
 const policyName = (p: Pick<Policy, "carrier" | "kind">) =>
