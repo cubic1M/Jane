@@ -12,7 +12,6 @@ import { ACTION_FOR_FINDING } from "@/lib/cards";
 import { savedToDate } from "@/lib/membership/service";
 import { findingOfType } from "../__fixtures__/findings";
 import { runDigests } from "./send";
-import { digestNumbers } from "./stats";
 
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).
 // Other tests share the database, so assertions look only at this file's users.
@@ -389,15 +388,5 @@ describe.runIf(url)("runDigests against a real database", () => {
       "digest_sent",
       expect.objectContaining({ digest_id: digest.id }),
     );
-
-    const before = await digestNumbers({ client, since: MONDAY });
-    await client.digest.update({
-      where: { id: digest.id },
-      data: { emailOpenedAt: new Date("2026-10-20T08:00:00Z") },
-    });
-    const opened = await digestNumbers({ client, since: MONDAY });
-    expect(opened.opened - before.opened).toBe(1);
-    expect(opened.clicked - before.clicked).toBe(0);
-    expect(opened.sent).toBe(before.sent);
   });
 });

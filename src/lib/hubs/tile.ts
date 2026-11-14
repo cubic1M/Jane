@@ -1,6 +1,6 @@
 // One tile on the Money and Ahead hubs (spec step 80): a label, one live number when
 // there is one, a one-line status and the page it opens. Plain data, built by the pure
-// tile builders and drawn by src/components/hub-tile.tsx.
+// tile builders.
 
 export type HubTileData = {
   label: string;
