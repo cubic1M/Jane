@@ -15,6 +15,7 @@ import { type HubGroup, type HubTileData } from "./tile";
 import { DAY_MS } from "@/lib/dates";
 import { monthLabel } from "@/lib/day-label";
 import { plural } from "@/lib/plural";
+import { todayOf } from "@/lib/today";
 
 // The Ahead hub (spec step 80): the planning pages, each tile with a live line where
 // there's data.
@@ -156,7 +157,8 @@ export async function loadAheadHub(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<AheadData> {
   const db = scopedFor(userId, client);
-  const asOf = now.toISOString().slice(0, 10);
+  // The person's own day, as the coming-up list it reads (debugger 11-13).
+  const asOf = await todayOf(userId, { client, now });
   const [{ input, deadlines }, debts, events] = await Promise.all([
     // Bills and deadlines from the one coming-up source (src/lib/coming-up.ts).
     loadComingUp(userId, { client, now, days: HUB_DEADLINE_DAYS }),

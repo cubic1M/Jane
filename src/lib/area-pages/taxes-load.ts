@@ -20,6 +20,7 @@ import { loadTaxPlan } from "@/lib/tax-plan";
 import { loadTaxDocuments } from "@/lib/tax-documents";
 
 import type { FieldStatus } from "@/planning/tax-profile";
+import { todayOf } from "@/lib/today";
 
 // A line of the "what Jane knows" profile on the page.
 export type ProfileField = {
@@ -34,7 +35,9 @@ export type ProfileField = {
 // Everything the Taxes tree is built from (docs/design/area-pages.md), loaded once for the Taxes
 // page and for the home tree, so both show the same statuses.
 export async function loadTaxesArea(userId: string, { now = new Date() }: { now?: Date } = {}) {
-  const today = now.toISOString().slice(0, 10);
+  // The person's own day: deadlines "soon" and the tax year gathered (last year until the end of
+  // April) turn on their today, not UTC's (debugger 11-13).
+  const today = await todayOf(userId, { now });
   // The year being gathered: last year until the end of April, then this one.
   const year = defaultTaxYear(today);
   const [{ view, taxes }, tags, forms, estimate, advice, setAside] = await Promise.all([
