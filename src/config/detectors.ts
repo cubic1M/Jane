@@ -1,4 +1,5 @@
 import { HIGH_YIELD_SAVINGS_BPS } from "./cash";
+import { CONTRIBUTION_LIMITS } from "./tax-rates";
 
 // Numbers the detectors (spec step 254) use: what counts as enough to suggest, and the rates
 // that turn what Jane sees into dollars a year. Never inline in src/detectors.
@@ -46,8 +47,9 @@ export const DETECTOR_RATES = {
   // typical match is this share of pay.
   matchHealthyShare: 0.08,
   matchTypicalShare: 0.03,
-  // Catch-up contributions for people close to retirement, and the tax rate they save at.
-  catchUpCents: 750_000,
+  // Catch-up contributions for people close to retirement (50 and over, this tax year's, from the
+  // IRS table; it was 2025's $7,500 here, debugger 11-14), and the tax rate they save at.
+  catchUpCents: CONTRIBUTION_LIMITS.workplaceCatchUp50,
   // An HSA holding more than this is worth putting to work.
   hsaMinCents: 100_000,
   // Backdoor Roth: pay (a year) from here up, with a bonus or stock pay on top, usually reaches
