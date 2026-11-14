@@ -155,6 +155,8 @@ const INVESTMENT = [
   // A call on where the market goes (round 11): "The market is due for a correction; stay in cash".
   /\b(?:stocks?|the (?:stock )?market|markets|the s&p(?: 500)?|the dow|equities)\b[^.!?]{0,20}\b(?:is|are|'s|’s) (?:due for|headed for|about to|going to|set to) (?:a |an )?(?:correction|crash|drop|dip|rally|fall|rise|go (?:up|down)|recover|bounce)\b|\bstay in cash\b/i,
   /\b401\(?k\)?/i,
+  // Round 21 (11-13): "Withdraw from your 403(b) early".
+  /\b(?:403|457)\(?b\)?|\bthrift savings plan\b/i,
   // An IRA is written in capitals; "Ira" is a person.
   /\broth\b/i,
   /\bIRAs?\b/,
@@ -369,6 +371,10 @@ const TAX_ADVICE = [
   // The same in the person's language (round 16, 11-13): "No declares esos ingresos", "Puedes
   // deducir…", "Ne déclare pas ces revenus", "Tu peux déduire ces frais", "这些收入不用报税".
   /\bno declares\b|\bno (?:tienes|necesitas|hace falta)(?: que)? declarar\b|\bn[aã]o (?:precisa|precisas|tem que|tens que) declarar\b|\bne (?:d[ée]clare|d[ée]clarez) pas\b|\b(?:puedes|podés|pueden|puede) deducir\b|\b(?:tu peux|vous pouvez|on peut) d[ée]duire\b|\b(?:pode|podes|você pode) deduzir\b|\bdeducci[oó]n(?:es)? (?:fiscal|de impuestos)\b|\bd[ée]duction fiscale\b|\b(?:steuerlich )?absetzen\b|不用报税|不需要报税|可以抵扣|可以抵税|不用交税/i,
+  // Round 21 (11-13): what isn't taxed for this person ("Your scholarship isn't taxable", "Venmo
+  // payments under $600 aren't taxable", "Gifts under $19,000 aren't taxed"). The tax lines written
+  // for counsel ("A direct rollover isn't taxed") say how a kind of money works and pass.
+  /\byour [^.!?]{0,30}\b(?:isn(?:'|’)?t|aren(?:'|’)?t|is not|are not|won(?:'|’)?t be)(?: (?:generally|usually|probably))? (?:taxable|taxed)\b|\bunder \$[\d,.]+k?\b[^.!?]{0,15}\b(?:isn(?:'|’)?t|aren(?:'|’)?t|is not|are not|won(?:'|’)?t be|doesn(?:'|’)?t|don(?:'|’)?t)(?: (?:need to be|have to be|get))? (?:taxable|taxed|reported)\b/i,
   // Round 17 (11-13): Italian, Japanese, Korean, Vietnamese ("税金を払わなくていいです").
   /\bnon (?:dichiarare|dichiarate|devi dichiarare)\b|\b(?:puoi|potete) (?:detrarre|dedurre|scaricare)\b|\bdetrazione fiscale\b|税金を払わなくて|申告しなくて(?:いい|よい|大丈夫)|確定申告は(?:不要|いらない)|控除できます|経費にできます|세금(?:을)? 안 내도|신고(?:하지)? 않아도|신고 안 해도|공제받을 수 있|không cần (?:nộp|khai|đóng) thuế|được khấu trừ/i,
 ];
@@ -510,6 +516,15 @@ const LEGAL = [
   /\b(?:so|and) (?:there(?:'|’)s|there is|you leave|it leaves) no (?:record|paper trail|trace)\b|\bno paper trail\b|\boff the books\b/i,
   /\b(?:move|transfer|put|hide|park|shift)\b[^.!?]{0,40}\b(?:before|so)\b[^.!?]{0,30}\b(?:fafsa|financial aid|medicaid|snap|ssi|food stamps|the bankruptcy|filing for bankruptcy)\b|\bhide (?:your |the |some )?(?:income|money|assets|cash|savings)\b/i,
   /\bpay[- ]for[- ]delete\b/i,
+  // Round 21 (11-13): dispute rights under laws the list above didn't name, a legal deadline, and a
+  // benefit someone definitely gets ("Under the FCBA you have 60 days to dispute it", "The EFTA
+  // protects you here", "Federal law limits your liability to $50", "By law they must investigate
+  // within 30 days", "You have 30 days to dispute the debt", "You qualify for SNAP"). "You may
+  // qualify" is the hint's own wording (src/config/utility-assistance.ts) and passes.
+  /\b(?:under|per|according to) (?:the )?(?:fcba|fair credit billing act|efta|electronic fund transfer act|reg(?:ulation)? [ez]|ecoa|equal credit opportunity act|fdcpa|fcra|card act|tila)\b|\b(?:the )?(?:fcba|fair credit billing act|efta|electronic fund transfer act|reg(?:ulation)? [ez]|fdcpa|fcra|card act|tila)\b[^.!?]{0,15}\b(?:protects|covers|gives|lets|requires|says|limits|caps|entitles)\b/i,
+  /\b(?:federal|state) law (?:limits|caps|protects|requires|says|gives|lets|entitles|makes)\b|\bby law,? (?:they|you|the (?:bank|lender|collector|landlord|company|card company|issuer)|it) (?:must|have to|has to|can(?:'|’)?t|cannot|are required to|is required to)\b/i,
+  /\byou have \d+ (?:business )?days to (?:dispute|contest|challenge|request (?:validation|verification)|cancel|rescind|send)\b/i,
+  /\byou(?:(?:'|’)re| are) (?:definitely )?eligible for (?:snap|food stamps|medicaid|medicare|wic|liheap|ssi|ssdi|unemployment|section 8|housing assistance|chip|tanf|disability|lifeline)\b|\byou (?:definitely )?qualify for (?:snap|food stamps|medicaid|medicare|wic|liheap|ssi|ssdi|unemployment|section 8|housing assistance|chip|tanf|disability|lifeline)\b/i,
   // Round 18 (11-13): what someone can't do to you by law ("They can't garnish your wages", "Your
   // landlord can't evict you for that", "They can't take your car"), and money called a gift to
   // dodge tax ("Call it a gift so it isn't taxed").
