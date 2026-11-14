@@ -222,6 +222,8 @@ const INVESTMENT = [
   // Round 31 (11-14): Malayalam, Kannada, Odia, Sinhala, Burmese, Khmer, Lao, Georgian, Armenian,
   // Kazakh, Mongolian, Amharic, Hausa, Zulu, Somali, Welsh, Irish, Basque, Galician and Belarusian.
   /നിക്ഷേപ|ಹೂಡಿಕೆ|ନିବେଶ|ආයෝජන|ရင်းနှီးမြှုပ်နှံ|វិនិយោគ|ລົງທຶນ|ინვესტიცი|Ներդր|բաժնետոմս|инвестиц|хөрөнгө оруул|ኢንቨስት|አክሲዮን|\bzuba jari\b|\bhannun jari\b|\btshala imali\b|\b(?:ku)?masheya\b|\bmaalgeli\w*|\bsaamiyada\b|\bbuddsodd\w*|\bcyfranddaliad\w*|\binfheisti\w*|\bscaireanna\b|\binbertitu\b|\bakzioetan\b|\binviste en acci|інвесц/i,
+  // Round 35 (11-14): "Gold is a safe haven; buy some".
+  /\bsafe[- ]havens?\b/i,
   // Round 16 (11-13): a pick put as a tilt ("Overweight tech for the next decade", "Tilt toward small
   // caps", "Rotate out of growth into value", "Trim your winners").
   /\b(?:overweight|underweight|tilt(?:ing)? (?:toward|towards|into|to)|rotat(?:e|ing) (?:out of|into|to)|lean(?:ing)? into)\b[^.!?]{0,30}\b(?:tech|stocks?|equities|bonds|small[- ]caps?|large[- ]caps?|mid[- ]caps?|growth|value|sectors?|international|emerging markets|dividend)\b|\b(?:trim|sell) (?:your |the )?winners\b|\b(?:small|mid|large)[- ]caps?\b|\bemerging markets\b/i,
@@ -466,6 +468,8 @@ const TAX_ADVICE = [
   /\byour [^.!?]{0,30}\b(?:isn(?:'|’)?t|aren(?:'|’)?t|is not|are not|won(?:'|’)?t be)(?: (?:generally|usually|probably))? (?:taxable|taxed)\b|\bunder \$[\d,.]+k?\b[^.!?]{0,15}\b(?:isn(?:'|’)?t|aren(?:'|’)?t|is not|are not|won(?:'|’)?t be|doesn(?:'|’)?t|don(?:'|’)?t)(?: (?:need to be|have to be|get))? (?:taxable|taxed|reported)\b/i,
   // Round 34 (11-14): "Tips aren't taxed anymore", "Overtime isn't taxable now".
   /\b(?:(?:cash )?tips|overtime|social security(?: benefits)?|unemployment(?: benefits)?|side (?:gig |hustle )?income|gig income|crypto gains|venmo payments|cash app payments|zelle payments)\b(?:[^.!?]|\.\d){0,20}\b(?:isn(?:'|’)?t|aren(?:'|’)?t|is not|are not|won(?:'|’)?t be|is no longer|are no longer) (?:taxable|taxed)\b|\b(?:taxable|taxed) (?:anymore|any more)\b/i,
+  // Round 35 (11-14): "Your bonus is taxed at 22%".
+  /\btaxed at (?:a |the |about |around |roughly |only |just )?(?:\d|flat|higher|lower|your|ordinary|capital|long[- ]term|short[- ]term)/i,
   // Round 17 (11-13): Italian, Japanese, Korean, Vietnamese ("税金を払わなくていいです").
   /\bnon (?:dichiarare|dichiarate|devi dichiarare)\b|\b(?:puoi|potete) (?:detrarre|dedurre|scaricare)\b|\bdetrazione fiscale\b|税金を払わなくて|申告しなくて(?:いい|よい|大丈夫)|確定申告は(?:不要|いらない)|控除できます|経費にできます|세금(?:을)? 안 내도|신고(?:하지)? 않아도|신고 안 해도|공제받을 수 있|không cần (?:nộp|khai|đóng) thuế|được khấu trừ/i,
 ];
@@ -656,6 +660,16 @@ const LEGAL = [
   /\b(?:they|he|she|the (?:store|seller|merchant|company|dealer|retailer|airline|hotel|bank|lender|landlord)|stores|retailers)\s+(?:legally )?(?:have to|has to|must|are required to|is required to|are obligated to|is obligated to) honor\b/i,
   /\b(?:don(?:'|’)?t|do not|never) (?:tell|mention (?:it |this |that )?to|report (?:it |this |that )?to) (?:the |your )?(?:insurance(?: company)?|insurer|mortgage (?:company|lender)|lender|landlord|irs|court|judge|trustee|unemployment office|benefits office|caseworker|dmv)\b|\b(?:hide|keep) (?:it|this|that|the \w+) from (?:the |your )?(?:insurance(?: company)?|insurer|lender|landlord|court|judge|trustee|caseworker)\b/i,
   /\b(?:you|they|he|she) (?:won(?:'|’)?t|will not|will never|(?:'|’)ll never|wouldn(?:'|’)?t|would never) (?:get caught|be caught)\b|\bthey(?:(?:'|’)ll| will) never (?:find out|know|notice)\b|\bno ?(?:one|body) (?:will|would|is going to|(?:'|’)ll) (?:ever )?(?:find out|know|catch on|catch you)\b/i,
+  // Round 35 (11-14): "You don't have to pay that medical bill", "The hospital can't send it to
+  // collections", "You don't need a will", "Your visa lets you work part time", "They're required to
+  // give you a final paycheck", "Sign the settlement". A due date ("You don't need to pay the bill
+  // until Nov 20") passes, and a Visa card is written with a capital.
+  /\byou (?:don(?:'|’)?t|do not) (?:legally )?(?:have to|need to) pay (?:that|this|the|your|those|these) (?:medical|hospital|er|ambulance|collections?|old)\b(?:[^.!?]|\.\d){0,15}\b(?:bills?|debts?|balances?)\b(?! (?:until|before|by|yet|in full|today|now)\b)/i,
+  /\b(?:they|the (?:hospital|doctor|clinic|provider|dentist|lender|bank|landlord|company|card company|collector)|hospitals|providers)\s+(?:legally )?(?:can(?:'|’)?t|cannot|aren(?:'|’)?t allowed to|isn(?:'|’)?t allowed to)\s+(?:send (?:it|this|that|you|the bill|your bill) to collections|report (?:it|this|that|you)(?: to the (?:credit )?bureaus)?|put (?:it|this|that) on your credit)\b/i,
+  /\byou (?:don(?:'|’)?t|do not) (?:really )?need (?:a |an )?(?:will|trust|lawyer|attorney|prenup|power of attorney|estate plan)\b/i,
+  /\b(?:visa|[Gg]reen card|[Ww]ork permit|EAD|DACA|F-1|H-1B|OPT)\b(?:[^.!?]|\.\d){0,20}\b(?:lets|allows|permits|doesn(?:'|’)?t (?:let|allow|permit)|does not (?:let|allow|permit)|won(?:'|’)?t let)\b/,
+  /\b(?:they(?:(?:'|’)re| are)|(?:your |the )?(?:employer|boss|company|landlord|lender|bank|hospital|insurer|collector)(?: is|(?:'|’)s)) (?:legally )?(?:required|obligated) to\b/i,
+  /\b(?:sign|accept|take|reject|turn down|don(?:'|’)?t sign) (?:the |their |that |this )?(?:settlement|plea(?: deal)?|severance agreement|release|waiver|nda|non-?compete|arbitration agreement)\b/i,
   // Round 31 (11-14): "Don't show up to court", "You don't have to pay that debt", "The judge will
   // side with you", "They're violating your rights".
   /\b(?:don(?:'|’)?t|do not|no need to|you don(?:'|’)?t (?:have|need) to) (?:bother )?(?:show(?:ing)? up|appear(?:ing)?|go(?:ing)?) (?:to|in|at|for) (?:court|the hearing|your hearing|the trial|your court date)\b/i,
@@ -781,12 +795,17 @@ const GUARANTEE = [
   // Round 25 (11-14): "You'll retire a millionaire", "Your money will double in 7 years".
   /\b(?:you(?:'|’)ll|you will) (?:retire|be|end up|die) (?:a )?(?:millionaire|rich|wealthy)\b|\b(?:money|savings|investments?|portfolio|it) will (?:double|triple|grow to)\b/i,
   // Round 26 (11-14): "You'll never be in debt again".
-  /\b(?:you(?:'|’)ll|you will) never (?:be in debt|be broke|owe (?:a dime|anything)|run out of money|have to worry about money)\b/i,
+  /\b(?:you(?:'|’)ll|you will) never (?:be in debt|be broke|owe (?:a dime|anything)|run out of money|have to worry about money|pay (?:a |another |any )?(?:fee|overdraft fee|late fee|interest)s?)\b/i,
   // Round 27 (11-14): "Your score will be 750 by spring", "a sure thing", "zero risk", "can't go wrong".
   /\bscore (?:will|is going to|(?:'|’)ll) be (?:at |over |above |around )?\d{3}\b/i,
   /(?<!\b(?:no|not|never|isn(?:'|’)?t|nothing(?:'|’)?s|nothing is)\s+(?:\w+\s+){0,4})\bsure (?:thing|bet|win)\b|\bzero[- ]risk\b|\b(?:can(?:'|’)?t|cannot) go wrong\b/i,
   // Round 28 (11-14): "Your rate will drop to 5%", "The loan will be forgiven", "You're bound to get it".
   /\b(?:rate|apr|interest(?: rate)?) (?:will|is going to) (?:drop|fall|go down|be cut|decrease|come down)\b/i,
+  // Round 35 (11-14): "Interest rates will go down next year", "Housing will crash", "Your medical bill
+  // will be forgiven". A card's own rate after a promo ("Your rate will go up to 29.99%") passes.
+  /\b(?:interest |mortgage )?rates (?:will|are going to) (?:drop|fall|go down|come down|rise|go up|climb|increase|keep (?:rising|falling))\b/i,
+  /\b(?:housing|the housing market|real estate|the economy|the job market) (?:will|is going to|(?:'|’)ll) (?:crash|collapse|tank|boom|recover|rebound)\b|\ba recession is (?:coming|going to happen|on the way)\b/i,
+  /\b(?:medical |hospital )?bills? (?:will|is going to|are going to) be (?:forgiven|wiped out|erased|written off|discharged)\b/i,
   /\b(?:loans?|debt|balance) (?:will|is going to) be (?:forgiven|discharged|cancell?ed|wiped out|erased)\b/i,
   /\b(?:you(?:'|’)re|you are|it(?:'|’)s|it is) bound to (?:get|be|save|win|work|go up|pay off|qualify)\b/i,
   // Round 29 (11-14): "This will pay for itself", "You'll make your money back", "No way you'll lose".
@@ -794,7 +813,7 @@ const GUARANTEE = [
   // Round 30 (11-14): "Approval is certain", "You will qualify".
   // Round 33 (11-14): "Your house will be worth more next year", "Home prices will rise", "Bitcoin will
   // hit 200k", "You're going to be rich", "The raise is coming for sure".
-  /\b(?:house|home|condo|property|car|place)(?:(?:'|’)s value)? (?:will|is going to) (?:be worth (?:more|less)|appreciate|go up in value|gain value|lose value|keep its value)\b|\bhome (?:prices|values) (?:will|are going to) (?:rise|go up|climb|fall|drop|keep (?:rising|climbing))\b/i,
+  /\b(?:house|home|condo|property|car|place)(?:(?:'|’)s value)? (?:will|is going to) (?:be worth (?:more|less)|appreciate|go up in value|gain value|lose value|(?:keep|hold) (?:its|their) value)\b|\bhome (?:prices|values) (?:will|are going to) (?:rise|go up|climb|fall|drop|keep (?:rising|climbing))\b/i,
   /\b(?:bitcoin|btc|ether(?:eum)?|eth|crypto|dogecoin|the stock|shares|it) (?:will|is going to|(?:'|’)ll) (?:hit|reach|go to|top|break) \$?\d/i,
   /\b(?:you(?:'|’)re|you are) going to be (?:rich|wealthy|a millionaire|loaded)\b|\b(?:raise|promotion|bonus|offer|refund|payout|settlement) is (?:coming|happening|yours) (?:for sure|no matter what|guaranteed)\b/i,
   // Round 32 (11-14): "Your rent won't go up", "Prices will drop next month", "The Fed will cut rates",
