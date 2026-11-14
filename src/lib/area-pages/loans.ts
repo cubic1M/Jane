@@ -12,6 +12,7 @@ import {
 import { dayLabel } from "@/lib/day-label";
 import { formatRate } from "@/lib/percent";
 import { monthLabel } from "@/lib/day-label";
+import { formatCents } from "@/lib/money";
 
 // The Loans & credit page as a tree (docs/design/area-pages.md): Loans & credit → what's
 // costing you now, your debts, cheaper loans, paying it off, your credit, before you borrow,
@@ -345,4 +346,29 @@ export function compareWant(
     return car ? { need: "refinance", debtKey: car.key } : { need: "refinance" };
   }
   return null;
+}
+
+// The line under the Loans page's title. What's owed counts pay-later plans, which net worth leaves
+// out (worked out from their payments, not reported by a bank), so their part is said: "You owe
+// $351,300.00" here and "owe $351,175.50" in the chat's net worth read as Jane disagreeing with
+// itself (debugger 11-13, a $124.50 pay-in-4 plan). No "$0.00 due each month" when no payment is
+// known (uploaded cards: round-2 pass).
+export function loansIntro(book: {
+  debts: readonly { balanceCents: number | null; inNetWorth: boolean }[];
+  totalOwedCents: number;
+  monthlyCents: number;
+}): string {
+  if (book.debts.length === 0) return "No loans, cards or plans yet.";
+  if (book.debts.every((d) => d.balanceCents === null)) {
+    return "Your files don't say what you owe yet. Add a balance on the import page. Open a branch to see more.";
+  }
+  const plans = book.debts
+    .filter((d) => !d.inNetWorth)
+    .reduce((sum, d) => sum + (d.balanceCents ?? 0), 0);
+  const ofIt =
+    plans > 0 && plans < book.totalOwedCents
+      ? `, ${formatCents(plans)} of it on pay-later plans`
+      : "";
+  const monthly = book.monthlyCents > 0 ? `, ${formatCents(book.monthlyCents)} due each month` : "";
+  return `You owe ${formatCents(book.totalOwedCents)}${ofIt}${monthly}. Open a branch to see more.`;
 }
