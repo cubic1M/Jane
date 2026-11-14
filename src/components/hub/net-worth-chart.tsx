@@ -32,6 +32,7 @@ import {
 import { formatWholeDollars } from "@/lib/money";
 import { Blinded, ShowValue } from "./blinded";
 import { MarchingPath } from "@/components/marching-path";
+import { chartScale, linePath } from "./net-worth-geometry";
 import { dayLabel } from "@/lib/day-label";
 
 // The home hub's net worth chart (founder request; docs/design/home-hub.md): the person's net
@@ -49,7 +50,6 @@ const H_WIDE = 260;
 const H_NARROW = 190;
 const H_EXPANDED_WIDE = 400;
 const H_EXPANDED_NARROW = 300;
-const PAD_Y = 14;
 // A marker's hit area, in px: bigger than its dot.
 const MARK = 24;
 // A day's boxes (founder: "each dot should have an expandable box that shows exactly where that
@@ -301,24 +301,15 @@ export function NetWorthChart({
   const narrow = width < 480;
   const H = expanded ? (narrow ? H_EXPANDED_NARROW : H_EXPANDED_WIDE) : narrow ? H_NARROW : H_WIDE;
   const values = shown.map((p) => p.cents);
-  const hi0 = values.length ? Math.max(...values) : 0;
-  const lo0 = values.length ? Math.min(...values) : 0;
-  // A tiny move stays visible but isn't blown up into a cliff.
-  const span = Math.max(hi0 - lo0, Math.abs(hi0) * 0.01, 100);
-  const mid = (hi0 + lo0) / 2;
-  const lo = mid - span / 2;
-  const hi = mid + span / 2;
-  const x = (i: number) => (shown.length < 2 ? width : (i / (shown.length - 1)) * width);
-  const y = (v: number) => PAD_Y + (1 - (v - lo) / (hi - lo)) * (H - PAD_Y * 2);
+  const scale = chartScale(values, width, H);
+  const { top, bottom, lo, hi, x, y } = scale;
 
   // A dot for every movement in view, overlapping ones as one until zoomed apart.
   const layout = useMemo(() => {
     if (!moves || shown.length === 0) return null;
-    const xs = (i: number) => (shown.length < 2 ? width : (i / (shown.length - 1)) * width);
-    const ys = (v: number) => PAD_Y + (1 - (v - lo) / (hi - lo)) * (H - PAD_Y * 2);
     // A phone's narrow chart groups more: a dot and its ×N label need the room (QA round 9).
     const gap = narrow ? DOT_GAP_NARROW : DOT_GAP;
-    const dots = layoutDots({ events: moves, days: shown, x: xs, y: ys, gap });
+    const dots = layoutDots({ events: moves, days: shown, x, y, gap });
     const inView = new Set(shown.map((p) => p.date));
     return {
       dots,
@@ -382,13 +373,7 @@ export function NetWorthChart({
     return d ? { group: groupOf(d), at: { x: d.x, y: d.y }, title: datesOf(d) } : null;
   })();
 
-  // At most one vertex per pixel; the last point is always kept.
-  const step = Math.max(1, Math.floor(shown.length / Math.max(1, width)));
-  const path = shown
-    .map((p, i) => ({ p, i }))
-    .filter(({ i }) => i % step === 0 || i === shown.length - 1)
-    .map(({ p, i }, k) => `${k === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(p.cents).toFixed(1)}`)
-    .join(" ");
+  const path = linePath(values, scale, width);
 
   const place = open
     ? placeBoxes({
@@ -682,8 +667,8 @@ export function NetWorthChart({
               )}
               <Scale
                 width={width}
-                high={hi0}
-                low={lo0}
+                high={top}
+                low={bottom}
                 start={shown[0].cents}
                 y={y}
                 zero={lo < 0 && hi > 0 ? y(0) : null}
