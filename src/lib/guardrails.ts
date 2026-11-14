@@ -70,6 +70,15 @@ const STOCK_PICKS = [
   new RegExp(
     `\\b[Ii]f I were you,?\\s+(?:I(?:'|’)?d\\s+(?:\\w+\\s+){1,2})?\\$?${NOT_TICKERS}[A-Z]{3,5}\\b`,
   ),
+  // Round 24 (11-13): "Something like VOO would do", "1. VOO 2. VTI 3. QQQ".
+  new RegExp(`\\b(?:[Ss]omething|[Aa]nything|[Aa] fund) like \\$?${NOT_TICKERS}[A-Z]{3,5}\\b`),
+  // Round 25 (11-14): "Why not VOO?", "What about QQQ for the rest?", "e.g. VTI or VXUS".
+  new RegExp(
+    `(?:\\b[Ww]hy not|\\b[Ww]hat about|\\b[Hh]ow about|\\be\\.g\\.,?)\\s+\\$?${NOT_TICKERS}[A-Z]{3,5}\\b`,
+  ),
+  new RegExp(
+    `(?:^|\\s)1[.)]\\s*\\$?${NOT_TICKERS}[A-Z]{3,5}\\b[^.!?\\n]{0,20}?\\s2[.)]\\s*\\$?${NOT_TICKERS}[A-Z]{3,5}\\b`,
+  ),
   new RegExp(
     `\\b${NOT_TICKERS}[A-Z]{3,5}\\s+(?:beats|>|tops|edges out|wins over|is better than|over)\\s+\\$?${NOT_TICKERS}[A-Z]{3,5}\\b`,
   ),
@@ -127,6 +136,12 @@ const INVESTMENT = [
   // Chat policy round 10 (11-12): "Stack some sats every payday", "Buy puts on Tesla before
   // earnings", "Gold is a good hedge right now; get some". Gold's Gym and a Gold card are bills.
   /\bstack(?:ing)? (?:some |more |a few )?sats\b|\bsatoshis?\b/i,
+  // Round 22 (11-13): "Stack silver every month".
+  /\bstack(?:ing)? (?:some |more )?(?:silver|gold|bullion)\b/i,
+  // Round 23 (11-13): "YOLO it into calls", "Ape into GME".
+  /\byolo\b|\bape(?:d|ing)? (?:in|into)\b|\binto (?:some )?(?:calls|puts|options)\b/i,
+  // Round 25 (11-14): "Stake your SOL for 7%".
+  /\bstaking\b|\b[Ss]take (?:your |some |the )?[A-Z]{3,5}\b/,
   /\b(?:buy|buying|sell|selling|write|writing|short|shorting) (?:some |a few |the )?(?:covered |naked |cash[- ]secured |long |short )?(?:puts?|calls?|call options?|put options?|straddles?|strangles?|leaps)\b/i,
   /\b(?:gold|silver|bullion|precious metals|commodities)\b(?!(?:'|’)s)[^.!?]{0,20}\b(?:is|are|makes?) (?:a |an )?(?:good |great |solid |smart |safe |safer |better )?(?:hedge|buy|investment|store of value|bet)\b/i,
   /\b(?:buy|buying|get|own|add|grab|put (?:some|money|it|\$[\d,.]+) (?:in|into))\b[^.!?]{0,25}(?:\bgold\b(?!(?:'|’)s| (?:card|member|plan|tier|status|level|package|gym|rewards))|\b(?:bullion|precious metals)\b)/i,
@@ -148,6 +163,13 @@ const INVESTMENT = [
   // いいです", "주식을 사세요", "Nên đầu tư vào cổ phiếu"). 株式会社 is in Japanese company names.
   /\b(?:compra|compri|comprate|vendi|venda|vendete)\b[^.!?]{0,20}\bazioni\b|\bazioni (?:di |d(?:'|’))?[A-Z]|\b(?:investi|investite|investire|investirli)\b/i,
   /株を|株式投資|株式市場|株価|投資|仮想通貨|ビットコイン|주식|투자|펀드|코인|비트코인|매수|매도|đầu tư|cổ phiếu|chứng khoán|tiền điện tử|tiền mã hóa/i,
+  // Round 22 (11-13): Ukrainian and Thai ("Інвестуй у акції", "ลงทุนในหุ้น").
+  /інвест|(?:купи|купуй|продай)\S*\s+акці|криптовалют|біткоїн|ลงทุน|หุ้น|คริปโต|บิตคอยน์|บิทคอยน์/i,
+  // Round 23 (11-13): Swahili, Hebrew and Greek ("Wekeza kwenye hisa", "השקע במניות", "Επένδυσε σε
+  // μετοχές").
+  /\bwekeza\b|\bhisa za\b|השקע|מניות|בורסה|επένδυ|μετοχ/i,
+  // Round 26 (11-14): Indonesian and Malay ("Beli saham BBCA", "Investasikan di reksa dana").
+  /\b(?:beli|jual|borong) saham\b|\bsaham [A-Z]{3,5}\b|\b(?:ber)?investasi(?:kan)?\b|\breksa dana\b|\bkripto\b/i,
   // Round 16 (11-13): a pick put as a tilt ("Overweight tech for the next decade", "Tilt toward small
   // caps", "Rotate out of growth into value", "Trim your winners").
   /\b(?:overweight|underweight|tilt(?:ing)? (?:toward|towards|into|to)|rotat(?:e|ing) (?:out of|into|to)|lean(?:ing)? into)\b[^.!?]{0,30}\b(?:tech|stocks?|equities|bonds|small[- ]caps?|large[- ]caps?|mid[- ]caps?|growth|value|sectors?|international|emerging markets|dividend)\b|\b(?:trim|sell) (?:your |the )?winners\b|\b(?:small|mid|large)[- ]caps?\b|\bemerging markets\b/i,
@@ -300,6 +322,8 @@ const TAX_ADVICE = [
   // EITC this year").
   /\b(?:you |you(?:'|’)d |you would |you(?:'|’)ll |you will |you probably )?(?:qualify|are eligible|(?:'|’)re eligible|be eligible) for (?:the |a )?(?:eitc|earned income (?:tax )?credit|child tax credit|ctc|saver(?:'|’)?s credit|american opportunity|aotc|lifetime learning|premium tax credit|education credit|[^.!?]{0,20}\btax (?:credit|break|deduction))\b/i,
   DEDUCTIONS,
+  // Round 25 (11-14): "You're exempt from the penalty".
+  /\b(?:you(?:'|’)re|you are) exempt from\b/i,
   /\bwrit(?:e|es|ing|ten)[- ](?:[\w$.,']+ ){0,3}?offs?\b/i,
   ...IRS_ADVICE,
   LIABLE,
@@ -436,7 +460,7 @@ const LEGAL = [
   /\b(?:don(?:'|’)?t|do not|never|hold off on|wait to) pay(?:ing)? (?:the |a |that |this |any |your )?(?:debt )?(?:collectors?|collection agency|collections?|creditors?)\b/i,
   /\bignore (?:the |that |this |any |their |those )?(?:debt )?(?:collectors?|collection (?:letters?|calls?|notices?|agency)|lawsuit|summons|court (?:date|papers|notice)|subpoena)\b/i,
   // Round 19 (11-13): "Don't answer the court papers", "Let it charge off and settle later".
-  /\b(?:don(?:'|’)?t|do not|no need to|never) (?:answer|respond to|reply to|show up (?:to|for)|go to) (?:the |that |this |their )?(?:summons|lawsuit|complaint|court (?:date|papers|notice|hearing)|hearing|subpoena)\b|\blet (?:it|the (?:card|debt|loan|account)) (?:charge off|go to collections|default)\b/i,
+  /\b(?:don(?:'|’)?t|do not|no need to|never) (?:answer|respond to|reply to|show up (?:to|for)|go to) (?:the |that |this |their )?(?:summons|lawsuit|complaint|court (?:date|papers|notice|hearing)|hearing|subpoena)\b|\b(?:can|just|you can safely) ignore (?:the |that |this |your )?(?:jury )?(?:summons|subpoena|lawsuit|court (?:date|papers|notice))\b|\blet (?:it|the (?:card|debt|loan|account)) (?:charge off|go to collections|default)\b/i,
   /\b(?:have|has|got) (?:a |an )?(?:\w+ )?case against\b/i,
   // Chat policy round 10 (11-12): "Sue them in small claims court for the deposit", "You can break
   // your lease without penalty because of the mold", "Under the FCRA they have to delete it". An
@@ -482,7 +506,7 @@ const LEGAL = [
   /\bavoid(?:ing)? probate\b/i,
   /\bdisclaim(?:ing|er of)? (?:the |your |an |this |that )?(?:inheritance|bequest|inherited \w+|ira)\b/i,
   // Only a debt: "stop paying overdraft fees" is the opposite of legal trouble.
-  /\b(?:stop|quit) paying (?:on |off )?(?:my |your |the |their )?(?:(?:student|car|auto|personal|private|federal) )?(?:cards?|credit cards?|loans?|debts?|creditors?|collectors?|minimums?|mortgage|bills)\b/i,
+  /\b(?:stop|quit) paying (?:on |off )?(?:my |your |the |their )?(?:(?:student|car|auto|personal|private|federal) )?(?:cards?|credit cards?|loans?|debts?|creditors?|collectors?|minimums?|mortgage|bills|hoa(?: dues| fees)?)\b/i,
   // Spec step 237: wills, trusts and what to do with an estate are legal advice. The facts
   // Jane gives are fixed sentences (src/config/family-file.ts) that pass below.
   /\b(?:last )?will and testament\b/i,
@@ -506,6 +530,12 @@ const LEGAL = [
   /\b(?:landlord|lender|servicer|collector|creditor|employer|insurer|they|he|she) (?:is|are) (?:legally )?(?:required|obligated) to\b/i,
   // Round 20 (11-13): "Your employer has to pay you for that time".
   /\b(?:employer|boss|landlord|lender|servicer|collector|creditor|insurer|company|bank|store|they|he|she) (?:has|have) to (?:pay|refund|reimburse|give|return|cover)(?: you| it| the| your)\b/i,
+  // Round 23 (11-13): paying or earning off the books ("Pay your nanny under the table", "Don't
+  // report the cash tips") and what a landlord can't do ("They can't raise your rent more than 5%").
+  /\bunder the table\b|\b(?:don(?:'|’)?t|do not|no need to|never) (?:report|declare) (?:the |your |that )?(?:cash |side |gig )?(?:tips|income|earnings|cash|winnings)\b/i,
+  /\b(?:can(?:'|’)?t|cannot|isn(?:'|’)?t allowed to|aren(?:'|’)?t allowed to|not allowed to) (?:legally )?(?:raise|increase|hike) (?:your |the )?rent\b/i,
+  // Round 22 (11-13): "Your landlord must return your deposit within 21 days".
+  /\b(?:employer|boss|landlord|lender|servicer|collector|creditor|insurer) (?:legally )?must (?:pay|refund|reimburse|give|return|cover)\b/i,
   /\b(?:they|he|she|the (?:landlord|lender|collector|company|bank|store|seller|merchant))(?:(?:'|’)ll| will) have to (?:refund|pay|return|stop|remove|delete|fix|cover)\b/i,
   /\byou (?:don(?:'|’)?t|do not) (?:legally )?owe (?:it|that|this|them|the debt|that debt|this debt)\b/i,
   /\b(?:protected|covered) (?:under|by) (?:the )?(?:card act|credit card act|fdcpa|fcra|tila|truth in lending act|scra|servicemembers civil relief act|fair housing act|(?:state|federal) law|the law)\b/i,
@@ -528,7 +558,18 @@ const LEGAL = [
   // Round 18 (11-13): what someone can't do to you by law ("They can't garnish your wages", "Your
   // landlord can't evict you for that", "They can't take your car"), and money called a gift to
   // dodge tax ("Call it a gift so it isn't taxed").
-  /\b(?:they|he|she|the (?:landlord|lender|collector|creditor|bank|irs|company|dealer|servicer|court)|your (?:landlord|lender|creditor|employer|ex)|collectors|creditors|landlords)\s+(?:legally )?(?:can(?:'|’)?t|cannot|can not|aren(?:'|’)?t allowed to|isn(?:'|’)?t allowed to|have no right to|has no right to)\s+(?:legally )?(?:garnish|evict|repossess|seize|levy|foreclose|sue|take (?:your|the|away)|freeze|touch|come after|kick you out|fire you|charge you)\b/i,
+  /\b(?:they|he|she|the (?:landlord|lender|collector|creditor|bank|irs|company|dealer|servicer|court)|your (?:landlord|lender|creditor|employer|ex|hoa)|collectors|creditors|landlords)\s+(?:legally )?(?:can(?:'|’)?t|cannot|can not|aren(?:'|’)?t allowed to|isn(?:'|’)?t allowed to|have no right to|has no right to)\s+(?:legally )?(?:garnish|evict|repossess|seize|levy|foreclose|sue|take (?:your|the|away)|freeze|touch|come after|kick you out|fire you|charge you|fine you|tow|keep (?:your|the) (?:security )?deposit)\b/i,
+  // Round 24 (11-13): what a contract does by law, and signing it ("That clause isn't enforceable",
+  // "Sign it; it's a standard contract").
+  /\b(?:isn(?:'|’)?t|is not|aren(?:'|’)?t|are not|not) (?:legally )?(?:enforceable|binding)\b|\bunenforceable\b|\b(?:it|this|that)(?:'|’)?s a standard (?:contract|lease|agreement|clause|waiver)\b|\bsafe to sign\b/i,
+  // Round 25 (11-14): hiding money or property from a creditor ("Hide the car so they can't repo it",
+  // "Put the house in your spouse's name before the lawsuit", "so it's safe from creditors").
+  /\bhide (?:the |your |some )?(?:car|truck|money|cash|assets?|income|accounts?|property)\b|\bso (?:they|the (?:bank|lender|collector|creditor|irs|court))(?: can(?:'|’)?t| cannot| won(?:'|’)?t be able to) (?:repo|repossess|levy|garnish|seize|find|freeze|take)\b|\b(?:safe|protected|shielded|hidden) from (?:the |your )?(?:creditors?|collectors?|lawsuit|judgment|garnishment|levy|irs)\b/i,
+  /\b(?:put|transfer|move|title|sign over|give)\b[^.!?]{0,40}\b(?:in|into|to) (?:your |a |his |her |their )?(?:spouse|wife|husband|partner|mom|dad|mother|father|brother|sister|parents?|friend|relative|kid|child)(?:(?:'|’)s)?\b[^.!?]{0,40}\b(?:lawsuit|creditors?|collectors?|judgment|bankruptcy|levy|garnish\w*|repo\w*)\b/i,
+  // Round 26 (11-14): telling someone they have a case, or that a company breaks a named law ("You
+  // have grounds for a lawsuit", "They're violating the FDCPA").
+  /\b(?:have|has|got) (?:solid |strong |good |clear |real )?grounds (?:for|to)\b|\b(?:have|has|got) (?:a )?(?:solid |strong |good |clear |real )?case against\b/i,
+  /\b(?:breaking|broke|violating|violated|in violation of) (?:the )?(?:fcra|fdcpa|tila|scra|card act|credit card act|fair credit reporting act|fair debt collection practices act|truth in lending act|servicemembers civil relief act|(?:federal|state|consumer protection|tenant|landlord[- ]tenant) laws?)\b/i,
   /\b(?:call|report|list|label|treat|record|count|write)\b[^.!?]{0,20}\b(?:as )?a gift\b[^.!?]{0,30}\b(?:so|instead of|to avoid|to dodge|rather than|and (?:skip|avoid))\b/i,
   // Round 17 (11-13): signing someone else's name, a made-up figure or address on an application,
   // and a dispute that isn't true ("Just sign your roommate's name on the lease", "Put a lower
@@ -619,7 +660,9 @@ const GUARANTEE = [
   /\bguarantee/i,
   /\bpromise/i,
   /\b(definitely|certainly|surely)\b/i,
-  /\brisk[- ]free\b/i,
+  /\brisk[- ]free\b(?! (?:to cancel|trial|cancellation))/i,
+  // Round 23 (11-13): "You can't lose with this".
+  /\b(?:you |we )?can(?:'|’)?t lose\b|\bcannot lose\b/i,
   /\bno risk\b/i,
   // "100% of your dining budget" is a figure; "100% sure" is a promise.
   /\b100 ?% (?:sure|certain|guaranteed|safe|risk[- ]free|chance|likely|covered|of the time)\b/i,
@@ -629,7 +672,13 @@ const GUARANTEE = [
   /\b(?:you(?:'|’)ll|you will) (?:easily |surely )?(?:be approved|get approved|be accepted|get accepted|qualify for|get the (?:loan|card|rate|apartment))\b/i,
   // Round 18 (11-13): "This will raise your credit score by 50 points". "Could help your score" is
   // hedged and passes.
-  /\b(?:will|you(?:'|’)ll|it(?:'|’)ll|this(?:'|’)ll|that(?:'|’)ll)\s+(?:\w+\s+)?(?:raise|boost|improve|increase|lift|bump|fix|repair|jump|add)\b[^.!?]{0,15}\b(?:credit )?score\b|\bscore (?:will|is going to) (?:go up|jump|rise|climb|increase|improve)\b/i,
+  /\b(?:will|you(?:'|’)ll|it(?:'|’)ll|this(?:'|’)ll|that(?:'|’)ll)\s+(?:\w+\s+)?(?:raise|boost|improve|increase|lift|bump|fix|repair|jump|add)\b[^.!?]{0,15}\b(?:credit )?score\b|\bscore (?:will|is going to) (?:go up|jump|rise|climb|increase|improve|hit|reach|top|pass|cross)\b/i,
+  // Round 24 (11-13): "This always works".
+  /\b(?:this|it|that) always works\b|\bworks every time\b|\bnever fails\b/i,
+  // Round 25 (11-14): "You'll retire a millionaire", "Your money will double in 7 years".
+  /\b(?:you(?:'|’)ll|you will) (?:retire|be|end up|die) (?:a )?(?:millionaire|rich|wealthy)\b|\b(?:money|savings|investments?|portfolio|it) will (?:double|triple|grow to)\b/i,
+  // Round 26 (11-14): "You'll never be in debt again".
+  /\b(?:you(?:'|’)ll|you will) never (?:be in debt|be broke|owe (?:a dime|anything)|run out of money|have to worry about money)\b/i,
 ];
 
 // (g) Deposit insurance (12 CFR 328.102; connectors roadmap round 13): no false or misleading word
@@ -986,6 +1035,16 @@ function forChecking(text: string): string {
       .replace(/(?<=\w)\s*(?:\p{Extended_Pictographic}\uFE0F?\s*)+(?=\w)/gu, " ")
       // Round 19 (11-13): bold, italics and code around a word ("Buy **TSLA**", "Buy `VOO`") hid it.
       .replace(/`+|(?<![\w*_])[*_~]+(?=\w)|(?<=\w)[*_~]+(?![\w*_])/g, "")
+      // Round 22 (11-13): quotes around a word ('Buy "VOO"') and letters spaced out ("B U Y  V O O",
+      // "b.u.y. v.o.o") read as the word. Round 23: also with dashes, slashes, underscores or dots
+      // ("V‐O‐O", "V/O/O", "V_O_O", "V·O·O"). Round 25 (11-14): "V. O. O.".
+      .replace(/(?<![\w"“”«»])["“«](?=\w)|(?<=\w)["”»](?![\w"“”«»])/g, "")
+      .replace(/(?<![\w.])[A-Z](?:\. [A-Z]){2,}\.?(?![\w])/g, (letters) =>
+        letters.replace(/[. ]/g, ""),
+      )
+      .replace(/(?<![\w.])[A-Za-z](?:[ .\-‐‑–—/_·•][A-Za-z]){2,}\.?(?![\w])/g, (letters) =>
+        letters.replace(/[ .\-‐‑–—/_·•]/g, "").toUpperCase(),
+      )
       .replace(/[\p{L}\p{M}]+/gu, (word) =>
         /[A-Za-z]/.test(word) ? word.replace(LOOK_ALIKE, (c) => LOOK_ALIKES[c] ?? c) : word,
       )
