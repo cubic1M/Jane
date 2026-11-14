@@ -7,7 +7,8 @@ import { debtsOr, loadDebts } from "@/lib/debts";
 import type { DebtBook } from "@/insights/debts";
 import { addDeadline, markDeadlineDone } from "@/lib/deadlines";
 import { formatCents } from "@/lib/money";
-import { lenderPartnerFor, type TransferQuote } from "@/lib/refinance";
+import { lenderPartnerFor } from "@/lib/lender-partner";
+import type { TransferQuote } from "@/lib/refinance";
 import {
   compareTransfers,
   scoreTransfer,

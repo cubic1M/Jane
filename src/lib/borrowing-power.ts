@@ -19,7 +19,7 @@ import { loadDebts } from "@/lib/debts";
 import { formatCents } from "@/lib/money";
 import type { LenderPartner, LoanOffer } from "@/lib/lenders/partner";
 import { loadProfileInput } from "@/lib/profile";
-import { lenderPartnerFor } from "@/lib/refinance";
+import { lenderPartnerFor } from "@/lib/lender-partner";
 import { upsertOnce } from "@/lib/unique-race";
 import {
   bandOf,

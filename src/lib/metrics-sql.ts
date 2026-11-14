@@ -7,6 +7,9 @@ import {
   type FindingType,
   type PrismaClient,
 } from "@/generated/prisma/client";
+import { logAudit } from "@/lib/audit";
+import type { Admin } from "@/lib/concierge";
+import { db as defaultClient } from "@/lib/db";
 import { type SystemDb, systemDb } from "@/lib/system-db";
 import { notBetaPeople } from "./beta-metrics";
 import { median, referralRevenue, type AutomateRow, type Metrics, type Window } from "./metrics";
@@ -237,4 +240,17 @@ export async function automateNextSql(
         b.approvals - a.approvals ||
         a.type.localeCompare(b.type),
     );
+}
+
+// The metrics page: worked out by Postgres (metricsSql below), which matches computeMetrics
+// on the same data but doesn't load every row.
+export async function loadMetrics(
+  admin: Admin,
+  days: number[],
+  { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
+): Promise<{ windows: { days: number; metrics: Metrics }[]; automateNext: AutomateRow[] }> {
+  await logAudit({ type: "admin", id: admin.id }, "admin_viewed_metrics", null, {
+    windows: days.join(","),
+  });
+  return metricsSql(client, days, now);
 }

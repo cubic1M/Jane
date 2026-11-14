@@ -1,5 +1,5 @@
 import { SECTORS, SECTOR_WORDS, type Sector, type SectorLevel } from "@/config/autopilot-sectors";
-import { parseAmount } from "./intents";
+import { parseAmount } from "./amount";
 
 // One autopilot, every sector (spec step 141), typed: "let Jane handle insurance up to $50
 // a month", "always ask me about taxes", "what can you do by yourself?". Pure.

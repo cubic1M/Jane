@@ -18,7 +18,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { debtsOr } from "@/lib/debts";
 import { GoalError, addGoal } from "@/lib/goals";
-import { lenderPartnerFor } from "@/lib/refinance";
+import { lenderPartnerFor } from "@/lib/lender-partner";
 import {
   affordability,
   homeCosts,

@@ -1,25 +1,17 @@
-import {
-  LENDER_PARTNER,
-  REFI_CHECK_DAYS,
-  REFI_MIN_SAVING_CENTS,
-  type LoanProduct,
-} from "@/config/debt";
+import { REFI_CHECK_DAYS, REFI_MIN_SAVING_CENTS, type LoanProduct } from "@/config/debt";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
-import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { creditBandFor } from "@/lib/credit";
 import { debtsOr, loadDebts } from "@/lib/debts";
 import type { DebtBook } from "@/insights/debts";
-import { demoLender } from "@/lib/lenders/demo";
 import { upsertOnce } from "@/lib/unique-race";
-import type {
-  LenderPartner,
-  LoanOffer,
-  PrequalifyRequest,
-  TransferOffer,
-} from "@/lib/lenders/partner";
+import { loadFit } from "@/lib/fit";
+import { lenderPartnerFor } from "@/lib/lender-partner";
+// Kept for src/lib/loan-applications.ts, which the controller drafts change.
+export { lenderPartnerFor };
+import type { LoanOffer, PrequalifyRequest, TransferOffer } from "@/lib/lenders/partner";
 import { compareRefinance, refinanceable, type RefinanceComparison } from "@/planning/refinance";
 import { DAY_MS, isoDay } from "@/lib/dates";
 
@@ -57,16 +49,6 @@ export type Quote = {
   verdict?: FitVerdict;
 };
 
-// The partner for this person, or null: the stand-in only for demo-bank people in demo
-// advice mode. A real account gets nothing until a loan marketplace partner is connected.
-export async function lenderPartnerFor(
-  userId: string,
-  { client = defaultClient }: Options = {},
-): Promise<{ key: string; partner: LenderPartner } | null> {
-  if (LENDER_PARTNER !== "demo") return null;
-  return (await adviceMode(userId, { client })) ? { key: "demo", partner: demoLender } : null;
-}
-
 // Asks the partner now for every debt that can be refinanced, and keeps the offers.
 export async function checkRates(
   userId: string,
@@ -93,8 +75,7 @@ export async function checkRates(
     };
     quotes.push({ debtKey: debt.key, ...request, offers: await found.partner.prequalify(request) });
   }
-  // The fit engine's verdict on each (imported here: src/lib/fit.ts reads this file's partner).
-  const { loadFit } = await import("@/lib/fit");
+  // The fit engine's verdict on each.
   for (const q of quotes) {
     const fit = await loadFit(userId, { need: "refinance", debtKey: q.debtKey }, { client, now });
     const payoff = fit.pick === "payoff" ? fit.options.find((o) => o.id === "payoff") : null;

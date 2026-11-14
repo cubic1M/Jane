@@ -8,8 +8,6 @@ import type {
   FindingType,
   PrismaClient,
 } from "@/generated/prisma/client";
-import { logAudit } from "@/lib/audit";
-import type { Admin } from "@/lib/concierge";
 import { db as defaultClient } from "@/lib/db";
 import { TRIAL_ID_PREFIX } from "@/config/trial";
 import { DAY_MS } from "@/lib/dates";
@@ -341,19 +339,4 @@ export async function loadMetricRows({
       at: c.createdAt,
     })),
   };
-}
-
-// The metrics page: worked out by Postgres (metrics-sql.ts), which matches computeMetrics
-// on the same data but doesn't load every row.
-export async function loadMetrics(
-  admin: Admin,
-  days: number[],
-  { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
-): Promise<{ windows: { days: number; metrics: Metrics }[]; automateNext: AutomateRow[] }> {
-  await logAudit({ type: "admin", id: admin.id }, "admin_viewed_metrics", null, {
-    windows: days.join(","),
-  });
-  // Imported here because metrics-sql.ts imports this file.
-  const { metricsSql } = await import("./metrics-sql");
-  return metricsSql(client, days, now);
 }
