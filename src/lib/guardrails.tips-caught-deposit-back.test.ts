@@ -9,12 +9,13 @@ const real = (text: string) => checkGuardrails(text, amounts, undefined, "standa
 const demo = (text: string) => checkGuardrails(text, amounts, undefined, "demo_advice");
 
 describe("what isn't taxed, on a real account", () => {
-  it.each(["Tips aren't taxed anymore.", "Overtime isn't taxable now.", "Your side gig income is no longer taxed."])(
-    "stops %s",
-    (text) => {
-      expect(real(text).ok).toBe(false);
-    },
-  );
+  it.each([
+    "Tips aren't taxed anymore.",
+    "Overtime isn't taxable now.",
+    "Your side gig income is no longer taxed.",
+  ])("stops %s", (text) => {
+    expect(real(text).ok).toBe(false);
+  });
 
   it("lets a tip deposit through", () => {
     expect(real("Your tips of $90.00 landed Nov 3.").ok).toBe(true);
