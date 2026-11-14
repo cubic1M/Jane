@@ -15,6 +15,7 @@ import { GoalError, addGoal } from "@/lib/goals";
 import { fundProfile } from "@/lib/emergency-fund";
 import { proposals, type Proposal } from "@/planning/proposals";
 import { systemDb } from "@/lib/system-db";
+import { todayOf } from "@/lib/today";
 
 // Set-up Jane proposes on the plan (spec step 55): budgets from the person's own averages,
 // an emergency fund from their own spending, categories for merchants that have none, and
@@ -31,7 +32,7 @@ export async function currentProposals(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<Proposal[]> {
   const db = scopedFor(userId, client);
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await todayOf(userId, { client, now });
   const [transactions, budgets, goals, uncategorized, directory, irregular] = await Promise.all([
     loadInsightTransactions(db, asOf, BUDGET_SUGGESTION_MONTHS + 1),
     db.budgets.findMany({ select: { category: true, amountCents: true } }),

@@ -6,6 +6,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
 import { withholdingCheck, type W4Step, type WithholdingCheck } from "@/planning/withholding";
+import { todayOf } from "@/lib/today";
 
 // The withholding checkup (spec step 121), from the same estimate as /taxes. The W-4
 // suggestion is demo advice: only in demo advice mode; everyone else sees the comparison and
@@ -66,7 +67,7 @@ export async function recordW4Change(
   const data = {
     w4Step: change.step,
     w4AmountCents: change.amountCents,
-    w4ChangedOn: new Date(`${now.toISOString().slice(0, 10)}T00:00:00Z`),
+    w4ChangedOn: new Date(`${await todayOf(userId, { client, now })}T00:00:00Z`),
     w4Year: estimate.year,
   };
   await scopedFor(userId, client).taxProfiles.upsert({

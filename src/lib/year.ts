@@ -4,6 +4,7 @@ import { yearReview } from "@/insights/year";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { savedToDate } from "@/lib/membership/service";
+import { todayOf } from "@/lib/today";
 
 // Everything /year shows for one person and year: spending (from the insights totals),
 // what Jane found, and what was saved (from saved-to-date, limited to that year).
@@ -13,7 +14,7 @@ export async function yearInReview(
   { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
 ) {
   const db = scopedFor(userId, client);
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await todayOf(userId, { client, now });
   const end = `${year}-12-31` < asOf ? `${year}-12-31` : asOf;
   // This year's months and all of last year's, for the comparison.
   const transactions = await loadInsightTransactions(db, end, 12 + Number(end.slice(5, 7)));

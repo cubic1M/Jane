@@ -26,6 +26,7 @@ import {
   type YearTax,
 } from "@/planning/multi-year";
 import { isoDay as iso } from "@/lib/dates";
+import { todayOf } from "@/lib/today";
 
 // Tax moves over several years (spec step 220), loaded from the person's own plan: the
 // year's estimate (step 120), the pay and the retirement accounts Jane sees, what they told
@@ -93,7 +94,7 @@ export async function loadMultiYear(
   ]);
   // Not told when they'll retire: at RETIREMENT_AGE from the age on their investor profile, as
   // the long view assumes (docs/feature-audit.md, cluster 12); without an age, the default.
-  const age = currentAge(answers, now.toISOString().slice(0, 10));
+  const age = currentAge(answers, await todayOf(userId, { client, now }));
   const assumedRetireYear = age === null ? null : year + Math.max(0, RETIREMENT_AGE - age);
   const traditionalCents = accounts
     .filter((a) => TRADITIONAL_SUBTYPES.includes(a.subtype ?? ""))

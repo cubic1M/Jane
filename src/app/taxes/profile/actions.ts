@@ -18,6 +18,7 @@ import {
   sideIncomeFrom,
 } from "./answers";
 import { ignoring } from "@/lib/ignoring";
+import { todayOf } from "@/lib/today";
 
 // The tax profile page (spec step 118): saves every field the person filled in. A field
 // left empty stays unanswered, so nothing is assumed.
@@ -80,7 +81,7 @@ export async function saveResidencyAction(
         via: "page",
       });
     } else if (entry.oneState) {
-      await saveMoves(user.id, defaultTaxYear(now.toISOString().slice(0, 10)), [], {
+      await saveMoves(user.id, defaultTaxYear(await todayOf(user.id, { now })), [], {
         now,
         via: "page",
       });
@@ -126,7 +127,7 @@ export async function saveHomeAction(
   const user = await requireUser();
   const now = new Date();
   try {
-    const answers = homeFrom(formData, defaultTaxYear(now.toISOString().slice(0, 10)));
+    const answers = homeFrom(formData, defaultTaxYear(await todayOf(user.id, { now })));
     await saveHomeAnswers(user.id, answers, { now, via: "page" });
     revalidatePath("/taxes");
     revalidatePath("/taxes/profile");

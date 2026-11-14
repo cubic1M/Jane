@@ -5,6 +5,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { correctFact, loadProfileInput } from "@/lib/profile";
 import { buildProfile } from "@/profile/build";
 import { bestQuestion } from "@/profile/questions";
+import { todayOf } from "@/lib/today";
 
 // The one question worth asking (spec step 257): when a detector could fire but needs a fact
 // the profile doesn't have, Jane asks the question whose answer unlocks the most, one at a
@@ -98,7 +99,7 @@ async function markAsked(userId: string, fact: string, client: PrismaClient, now
       userId,
       kind: "system",
       key: `${ASKED}${fact}`,
-      value: { on: now.toISOString().slice(0, 10) },
+      value: { on: await todayOf(userId, { client, now }) },
       label: "Asked",
     },
     update: {},

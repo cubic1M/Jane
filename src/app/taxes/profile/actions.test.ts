@@ -2,6 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn(async () => ({ id: "u1" })) }));
+// The person's day, which the actions read from their timezone (debugger 11-13).
+vi.mock("@/lib/today", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/today")>()),
+  todayOf: vi.fn(async () => "2026-11-13"),
+}));
 vi.mock("@/lib/tax-profile", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tax-profile")>()),
   saveTaxAnswers: vi.fn(),
