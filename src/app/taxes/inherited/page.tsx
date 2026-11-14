@@ -7,6 +7,7 @@ import { loadInheritance } from "@/lib/inheritance";
 import { requireUser } from "@/lib/session";
 import { PageShell } from "@/components/page-shell";
 import { BackLink } from "@/components/back-link";
+import { CARD_ROOMY } from "@/components/card";
 
 // Inherited money and gifts (spec step 268): an inherited IRA's deadline under the 10-year rule
 // and (demo advice) spreading it, gifts over the annual exclusion that need Form 709, the
@@ -14,7 +15,6 @@ import { BackLink } from "@/components/back-link";
 // (inheritanceLines). Facts with a pointer to counsel: no legal advice.
 
 const LINK = "font-medium text-emerald-700 underline";
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 
 async function Content() {
   const user = await requireUser();
@@ -32,7 +32,7 @@ async function Content() {
           facts, from your accounts. Facts for you and a tax professional or estate lawyer to check.
         </p>
       </div>
-      <section aria-labelledby="inherited-heading" className={CARD}>
+      <section aria-labelledby="inherited-heading" className={CARD_ROOMY}>
         <h2 id="inherited-heading" className="text-xl font-semibold">
           What applies to you
         </h2>

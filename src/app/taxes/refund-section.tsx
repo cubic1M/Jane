@@ -2,6 +2,7 @@ import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { refundMessage } from "@/lib/jane-agent/tax-refund-message";
 import type { RefundView } from "@/lib/tax-refund";
 import { RefundButtons } from "./refund-buttons";
+import { CARD_ROOMY } from "@/components/card";
 
 // Tax refunds on /taxes (spec step 125): each refund seen, matched to the estimate, and in
 // demo advice mode where it could go.
@@ -9,11 +10,7 @@ import { RefundButtons } from "./refund-buttons";
 export function RefundSection({ refunds }: { refunds: RefundView[] }) {
   if (refunds.length === 0) return null;
   return (
-    <section
-      aria-labelledby="refund-heading"
-      id="refund"
-      className="flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-    >
+    <section aria-labelledby="refund-heading" id="refund" className={CARD_ROOMY}>
       <h2 id="refund-heading" className="text-xl font-semibold">
         Refunds
       </h2>

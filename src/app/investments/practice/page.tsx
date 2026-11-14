@@ -25,6 +25,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
 import { DoneBanner } from "@/components/done-banner";
 import { BackLink } from "@/components/back-link";
+import { CARD } from "@/components/card";
 
 // The practice portfolio (spec steps 288 to 294, Phase AW, Stage A): a paper portfolio run by
 // Jane on practice money, with its trade log and a pause switch. Nothing here is a real account
@@ -145,7 +146,7 @@ async function Content({
       )}
       {advice && practice && (
         <>
-          <section className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+          <section className={CARD}>
             <h2 className="text-xl font-semibold">
               {RISK_LEVELS[practice.level].label}: {formatCents(practice.totalCents)}
             </h2>

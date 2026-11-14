@@ -11,13 +11,13 @@ import { ensureChecked } from "@/lib/refinance";
 import { loadDebtReview } from "@/lib/debt-review";
 import { requireUser } from "@/lib/session";
 import { PageShell } from "@/components/page-shell";
+import { CARD } from "@/components/card";
 
 // The yearly debt review (spec step 230): everything about debts and credit in one pass, what
 // Jane did on its own within the debt caps, and what waits for a tap (in the chat, where each
 // has its button, or on the page it belongs to).
 
 const LINK = "font-medium text-emerald-700 hover:underline";
-const CARD = "flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 const PAGE: Record<ReviewItemKey, { href: string; label: string }> = {
   statements: { href: "/loans/credit", label: "Your credit score" },
   promos: { href: "/loans/interest", label: "Card interest and promotions" },

@@ -9,6 +9,7 @@ import { requireUser } from "@/lib/session";
 import { addAction, missedAction, removeAction } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
+import { CARD_ROOMY } from "@/components/card";
 
 // Helping family with credit (spec step 249): an authorized user, a first card for a student
 // and co-signing, with the risks shown and a co-signed loan counted in full in your own debt
@@ -18,7 +19,6 @@ const LINK = "font-medium text-emerald-700 hover:underline";
 const INPUT =
   "h-11 w-full rounded-lg border border-zinc-300 bg-transparent px-3 dark:border-zinc-700";
 const BUTTON = "h-11 rounded-full bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800";
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 
 async function HelpingContent({ searchParams }: Pick<PageProps<"/loans/helping">, "searchParams">) {
   const user = await requireUser();
@@ -53,7 +53,7 @@ async function HelpingContent({ searchParams }: Pick<PageProps<"/loans/helping">
           {p("error")}
         </p>
       )}
-      <section aria-label="Co-signing" className={CARD}>
+      <section aria-label="Co-signing" className={CARD_ROOMY}>
         <h2 className="text-xl font-semibold">Co-signing</h2>
         <ul className="flex flex-col gap-2">
           {cosignLines(d).map((l) => (
@@ -65,7 +65,7 @@ async function HelpingContent({ searchParams }: Pick<PageProps<"/loans/helping">
         </a>
       </section>
       {d.advice ? (
-        <section aria-label="Safer ways to help" className={CARD}>
+        <section aria-label="Safer ways to help" className={CARD_ROOMY}>
           <DemoAdviceLabel />
           <h2 className="text-xl font-semibold">Safer ways to help</h2>
           <ul className="flex flex-col gap-2">
@@ -83,7 +83,7 @@ async function HelpingContent({ searchParams }: Pick<PageProps<"/loans/helping">
           </a>
         </section>
       ) : null}
-      <section aria-label="What you told me" className={CARD}>
+      <section aria-label="What you told me" className={CARD_ROOMY}>
         <h2 className="text-xl font-semibold">What you told me</h2>
         {d.entries.length === 0 ? (
           <p className="text-zinc-600 dark:text-zinc-400">Nothing yet.</p>

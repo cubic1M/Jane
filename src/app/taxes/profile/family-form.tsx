@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { saveFamilyAction, type TaxProfileState } from "./actions";
+import { CARD_ROOMY } from "@/components/card";
 
 // Family details (spec step 169): what the family tax choices need that Jane can't see.
 // Each child's age at the end of the year, Social Security number and months at home; a
@@ -25,11 +26,7 @@ export function FamilyForm({ values }: { values: FamilyValues }) {
     null,
   );
   return (
-    <form
-      action={action}
-      id="family"
-      className="flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-    >
+    <form action={action} id="family" className={CARD_ROOMY}>
       <h2 className="font-semibold">Family details</h2>
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
         For comparing your family&apos;s tax choices for {values.year}. Leave a child&apos;s age

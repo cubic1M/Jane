@@ -3,6 +3,7 @@ import { type GoalDate, type TradeOrder } from "@/planning/goal-tradeoffs";
 import { pickGoalOrder } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { monthLabel } from "@/lib/day-label";
+import { CARD } from "@/components/card";
 
 // Goals that trade off openly (spec step 241): each order's dates from the year plan, Jane's
 // suggested order and why, and the person's pick. Nothing re-plans without the tap.
@@ -34,10 +35,7 @@ export function GoalTradeoffs({ view }: { view: TradeoffView }) {
           const picked = same(view.chosen, o);
           const suggested = o.order.join() === view.suggested?.order.join();
           return (
-            <li
-              key={o.order.join()}
-              className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-            >
+            <li key={o.order.join()} className={CARD}>
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h3 className="font-semibold">
                   {label}

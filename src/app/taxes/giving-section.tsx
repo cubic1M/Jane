@@ -3,16 +3,15 @@ import type { GivingView } from "@/lib/giving";
 import { formatCents, formatWholeDollars } from "@/lib/money";
 import { GivingButton } from "./giving-buttons";
 import { dayLabel } from "@/lib/day-label";
+import { CARD_ROOMY } from "@/components/card";
 
 // Giving on /taxes (spec step 168): the year's gifts and their receipts, and in demo advice
 // mode the options that do more good for the same money, each as the tax with and without
 // it, with a donor-advised fund through the stand-in.
 
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
-
 export function GivingSection({ view }: { view: GivingView }) {
   return (
-    <section aria-labelledby="giving-heading" id="giving" className={CARD}>
+    <section aria-labelledby="giving-heading" id="giving" className={CARD_ROOMY}>
       <h2 id="giving-heading" className="text-xl font-semibold">
         Giving
       </h2>

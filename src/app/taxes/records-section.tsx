@@ -5,11 +5,11 @@ import type { Evidence } from "@/planning/audit-records";
 import { RecordsButton } from "./records-button";
 import { dayLabel } from "@/lib/day-label";
 import { formPayer } from "@/planning/tax-documents";
+import { CARD_ROOMY } from "@/components/card";
 
 // Audit-ready records on /taxes (spec step 171): every deduction and credit with its
 // sources, what's still needed, and how long to keep each year's records.
 
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 const LINK = "underline underline-offset-2";
 
 function EvidenceLine({ e }: { e: Evidence }) {
@@ -42,7 +42,7 @@ function EvidenceLine({ e }: { e: Evidence }) {
 
 export function RecordsSection({ view }: { view: AuditRecordsView }) {
   return (
-    <section aria-labelledby="records-heading" id="records" className={CARD}>
+    <section aria-labelledby="records-heading" id="records" className={CARD_ROOMY}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 id="records-heading" className="text-xl font-semibold">
           Audit-ready records

@@ -28,6 +28,7 @@ import { conciergeMode } from "@/lib/concierge-mode";
 import { savingsLine } from "@/lib/savings-text";
 import { policyForMerchant, policyLines } from "@/lib/documents/dates";
 import { CHOICE_WORDS, messageAboutFinding } from "@/lib/jane-agent/messages";
+import { CARD_TIGHT } from "@/components/card";
 
 async function Card({ params }: { params: PageProps<"/report/[findingId]">["params"] }) {
   const user = await requireUser();
@@ -161,7 +162,7 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
         </section>
 
         {fromPolicy.length > 0 && (
-          <section className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+          <section className={CARD_TIGHT}>
             <h2 className="text-sm font-semibold">From your policy</h2>
             {fromPolicy.map((line) => (
               <p key={line}>{line}</p>

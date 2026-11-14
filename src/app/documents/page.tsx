@@ -25,6 +25,7 @@ import { deleteDocument } from "./actions";
 import { FactsSection, UploadForm } from "./forms";
 import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
+import { CARD_ROOMY } from "@/components/card";
 
 // Insurance policies, warranties and receipts (spec step 68).
 
@@ -67,7 +68,7 @@ async function DocumentsContent() {
         </p>
       </div>
 
-      <section className="flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+      <section className={CARD_ROOMY}>
         <h2 className="text-xl font-semibold">Add a document</h2>
         <UploadForm />
         <p className="text-xs text-zinc-500">

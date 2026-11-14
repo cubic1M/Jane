@@ -6,13 +6,13 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { PageShell } from "@/components/page-shell";
 import { BackLink } from "@/components/back-link";
+import { CARD_ROOMY } from "@/components/card";
 
 // The tax side of health insurance (spec step 269): a Marketplace credit against real income
 // (a mid-year rise caught before it becomes a bill), HSA deposits against the limit, and medical
 // costs against the 7.5% floor. Limits and thresholds are in src/config with their sources.
 
 const LINK = "font-medium text-emerald-700 underline";
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 
 async function Content() {
   const user = await requireUser();
@@ -33,7 +33,7 @@ async function Content() {
         </p>
       </div>
 
-      <section aria-labelledby="marketplace" className={CARD}>
+      <section aria-labelledby="marketplace" className={CARD_ROOMY}>
         <h2 id="marketplace" className="text-xl font-semibold">
           Marketplace credit
         </h2>
@@ -68,7 +68,7 @@ async function Content() {
         )}
       </section>
 
-      <section aria-labelledby="hsa" className={CARD}>
+      <section aria-labelledby="hsa" className={CARD_ROOMY}>
         <h2 id="hsa" className="text-xl font-semibold">
           HSA
         </h2>
@@ -81,7 +81,7 @@ async function Content() {
         </p>
       </section>
 
-      <section aria-labelledby="medical" className={CARD}>
+      <section aria-labelledby="medical" className={CARD_ROOMY}>
         <h2 id="medical" className="text-xl font-semibold">
           Medical costs
         </h2>

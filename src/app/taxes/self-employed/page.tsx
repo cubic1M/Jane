@@ -11,11 +11,11 @@ import { todayOf } from "@/lib/today";
 import { HelperForm } from "./helper-form";
 import { dayLabel } from "@/lib/day-label";
 import { PageShell } from "@/components/page-shell";
+import { CARD_ROOMY } from "@/components/card";
 
 // Freelance taxes (spec step 123): business expenses, the home office and mileage helpers,
 // what to set aside from each payment and the estimated tax payments left (demo advice).
 
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 const LINK = "font-medium text-emerald-700 hover:underline";
 
 async function Content() {
@@ -36,7 +36,7 @@ async function Content() {
         </p>
       </div>
 
-      <section aria-labelledby="business" className={CARD}>
+      <section aria-labelledby="business" className={CARD_ROOMY}>
         <h2 id="business" className="text-xl font-semibold">
           Business expenses
         </h2>
@@ -48,7 +48,7 @@ async function Content() {
         </p>
       </section>
 
-      <section aria-labelledby="office" className={CARD}>
+      <section aria-labelledby="office" className={CARD_ROOMY}>
         <h2 id="office" className="text-xl font-semibold">
           Home office
         </h2>
@@ -73,7 +73,7 @@ async function Content() {
         />
       </section>
 
-      <section aria-labelledby="miles" className={CARD}>
+      <section aria-labelledby="miles" className={CARD_ROOMY}>
         <h2 id="miles" className="text-xl font-semibold">
           Business miles
         </h2>
@@ -92,7 +92,7 @@ async function Content() {
       </section>
 
       {v.active && (
-        <section aria-labelledby="quarterly" className={CARD}>
+        <section aria-labelledby="quarterly" className={CARD_ROOMY}>
           <h2 id="quarterly" className="text-xl font-semibold">
             Estimated tax
           </h2>

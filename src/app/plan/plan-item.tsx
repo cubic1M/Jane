@@ -5,6 +5,7 @@ import { isHiddenPage } from "@/config/hidden-pages";
 import { useRef, useState } from "react";
 import type { PlanOption } from "@/config/plan";
 import { answerItem, revertItem, type ItemState } from "./actions";
+import { CARD_ROOMY } from "@/components/card";
 
 const PRIMARY =
   "inline-flex h-11 items-center justify-center rounded-full bg-emerald-700 px-5 font-semibold text-white hover:bg-emerald-800 disabled:opacity-50";
@@ -109,10 +110,7 @@ export function PlanItem({ item, readOnly = false }: { item: PlanItemView; readO
     );
 
   return (
-    <li
-      data-plan-item={item.findingId}
-      className="flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-    >
+    <li data-plan-item={item.findingId} className={CARD_ROOMY}>
       <div className="flex flex-col gap-1">
         {item.urgent && (
           <span className="w-fit rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-950">

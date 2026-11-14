@@ -28,6 +28,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
 import { DoneBanner } from "@/components/done-banner";
 import { BackLink } from "@/components/back-link";
+import { CARD } from "@/components/card";
 
 // What the person wants from the practice portfolio (Phase AW, Stage A), in plain words: how much
 // risk, a goal and its date, the monthly practice money, extra moves, what never to buy, loss
@@ -39,7 +40,6 @@ const LINK = "font-medium text-emerald-700 hover:underline";
 const BUTTON = "h-11 rounded-lg bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800";
 const FIELD =
   "h-10 w-full max-w-full rounded-lg border border-zinc-300 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900";
-const SECTION = "flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 const HINT = "text-sm text-zinc-600 dark:text-zinc-400";
 
 const dollars = (cents: number) => (cents / 100).toFixed(2).replace(/\.00$/, "");
@@ -103,7 +103,7 @@ async function Content({
           Check &ldquo;{PREFERENCE_LABELS[errorField]}&rdquo; and save again. Nothing was changed.
         </p>
       )}
-      <section className={SECTION} aria-labelledby="what-jane-does">
+      <section className={CARD} aria-labelledby="what-jane-does">
         <h2 id="what-jane-does" className="text-xl font-semibold">
           What Jane does now
         </h2>
@@ -121,7 +121,7 @@ async function Content({
         <DemoAdviceLabel />
       </section>
       <form action={savePracticeSettings} className="flex flex-col gap-4">
-        <fieldset className={SECTION}>
+        <fieldset className={CARD}>
           <legend className="px-1 font-semibold">How much risk</legend>
           <label className="flex flex-col gap-1 text-sm">
             {PREFERENCE_LABELS.riskLevel}
@@ -165,7 +165,7 @@ async function Content({
           </p>
         </fieldset>
 
-        <fieldset className={SECTION}>
+        <fieldset className={CARD}>
           <legend className="px-1 font-semibold">Your goal</legend>
           <label className="flex flex-col gap-1 text-sm">
             {PREFERENCE_LABELS.goal}
@@ -193,7 +193,7 @@ async function Content({
           </p>
         </fieldset>
 
-        <fieldset className={SECTION}>
+        <fieldset className={CARD}>
           <legend className="px-1 font-semibold">Monthly practice money</legend>
           <div className="flex flex-wrap gap-3">
             <label className="flex flex-col gap-1 text-sm">
@@ -232,7 +232,7 @@ async function Content({
           </div>
         </fieldset>
 
-        <fieldset className={SECTION}>
+        <fieldset className={CARD}>
           <legend className="px-1 font-semibold">How Jane invests</legend>
           <p className={HINT}>
             {PREFERENCE_LABELS.strategy}
@@ -292,7 +292,7 @@ async function Content({
           </p>
         </fieldset>
 
-        <fieldset className={SECTION}>
+        <fieldset className={CARD}>
           <legend className="px-1 font-semibold">{PREFERENCE_LABELS.appetite}</legend>
           <p className={HINT}>
             Small moves beyond the model, like buying a dip with cash waiting, or a news idea at
@@ -314,7 +314,7 @@ async function Content({
           ))}
         </fieldset>
 
-        <fieldset className={SECTION}>
+        <fieldset className={CARD}>
           <legend className="px-1 font-semibold">{PREFERENCE_LABELS.avoid}</legend>
           <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
             {Object.entries(EXCLUSIONS).map(([key, { label }]) => (
@@ -343,7 +343,7 @@ async function Content({
           <p className={HINT}>{BROAD_FUND_NOTE}</p>
         </fieldset>
 
-        <fieldset className={SECTION}>
+        <fieldset className={CARD}>
           <legend className="px-1 font-semibold">Taxes and the autopilot</legend>
           <label className="flex items-center gap-2 text-sm">
             <input

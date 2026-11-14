@@ -26,6 +26,7 @@ import { BooksNotice } from "@/components/books-notice";
 import { openBooks } from "@/lib/books";
 import { monthLabel } from "@/lib/day-label";
 import { PageShell } from "@/components/page-shell";
+import { CARD, CARD_TIGHT } from "@/components/card";
 
 async function NetWorthContent() {
   const user = await requireUser();
@@ -95,10 +96,7 @@ async function NetWorthContent() {
       {/* No balance known at all (statements without a balance column): not "$0.00", as on Home
           (QA: /net-worth said $0.00 three times and $0.00 for October). */}
       {!today.known ? (
-        <section
-          data-net-worth-unknown=""
-          className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-        >
+        <section data-net-worth-unknown="" className={CARD}>
           <span className="text-sm text-zinc-600 dark:text-zinc-400">Net worth</span>
           <span className="text-2xl font-semibold">Not known yet</span>
           {/* No accounts at all (after "Start over"): there are no files to blame. */}
@@ -127,10 +125,7 @@ async function NetWorthContent() {
             ["You owe", today.debtsCents],
             ["Net worth", today.netCents],
           ].map(([label, cents]) => (
-            <div
-              key={label}
-              className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-            >
+            <div key={label} className={CARD_TIGHT}>
               <span className="text-sm text-zinc-600 dark:text-zinc-400">{label}</span>
               <span className="text-2xl font-semibold">
                 {(label === "You owe" && !owedIsKnown(today, loansSeen)) ||

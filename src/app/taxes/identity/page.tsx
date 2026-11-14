@@ -7,12 +7,12 @@ import { loadIdentity } from "@/lib/tax-identity";
 import { PinButtons, SignButtons, StepButton } from "./forms";
 import { PageShell } from "@/components/page-shell";
 import { BackLink } from "@/components/back-link";
+import { CARD_ROOMY } from "@/components/card";
 
 // A protected tax identity (spec step 218): the IP PIN, and, on a sign of theft, the steps
 // in order, each tracked to done. The steps are the person's own.
 
 const LINK = "font-medium text-emerald-700 underline";
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 
 async function Content() {
   const user = await requireUser();
@@ -29,7 +29,7 @@ async function Content() {
           Identity Protection PIN stops it. If it has happened, the steps below are in order.
         </p>
       </div>
-      <section aria-labelledby="ip-pin" className={CARD}>
+      <section aria-labelledby="ip-pin" className={CARD_ROOMY}>
         <h2 id="ip-pin" className="text-xl font-semibold">
           IRS Identity Protection PIN
         </h2>
@@ -46,7 +46,7 @@ async function Content() {
         {!v.havePin && <PinButtons canRemind={v.season && !v.reminded} />}
       </section>
       {v.case ? (
-        <section aria-labelledby="case" className={CARD}>
+        <section aria-labelledby="case" className={CARD_ROOMY}>
           <h2 id="case" className="text-xl font-semibold">
             {SIGNS[v.case.sign].title}
           </h2>
@@ -80,7 +80,7 @@ async function Content() {
           </ol>
         </section>
       ) : (
-        <section aria-labelledby="report" className={CARD}>
+        <section aria-labelledby="report" className={CARD_ROOMY}>
           <h2 id="report" className="text-xl font-semibold">
             Think someone used your number?
           </h2>

@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { saveHomeAction, type TaxProfileState } from "./actions";
+import { CARD_ROOMY } from "@/components/card";
 
 // Points and a home sale (spec step 170): what Jane can't see in the accounts. Leave a
 // part empty to clear it.
@@ -50,11 +51,7 @@ function Field({
 export function HomeForm({ values }: { values: HomeValues }) {
   const [state, action, pending] = useActionState<TaxProfileState, FormData>(saveHomeAction, null);
   return (
-    <form
-      action={action}
-      id="home"
-      className="flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-    >
+    <form action={action} id="home" className={CARD_ROOMY}>
       <h2 className="font-semibold">Your home</h2>
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
         Jane finds your mortgage interest and property tax itself. Add points you paid in{" "}

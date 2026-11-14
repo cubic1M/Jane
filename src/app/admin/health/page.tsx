@@ -5,6 +5,7 @@ import { opsCounts } from "@/lib/ops-alerts";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
 import { LoadingBar } from "@/components/loading-bar";
+import { CARD_TIGHT } from "@/components/card";
 
 const when = (date: Date | null) =>
   date ? `${date.toISOString().slice(0, 16).replace("T", " ")} UTC` : "never";
@@ -99,7 +100,7 @@ async function Health() {
       </section>
 
       <section className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
-        <div className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+        <div className={CARD_TIGHT}>
           <h2 className="font-semibold">Linked banks</h2>
           <p>
             {count(report.plaid.items, "active")} working ·{" "}
@@ -110,14 +111,14 @@ async function Health() {
             Last sync {when(report.plaid.lastSyncedAt)}
           </p>
         </div>
-        <div className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+        <div className={CARD_TIGHT}>
           <h2 className="font-semibold">Background jobs</h2>
           <p>
             {count(report.backgroundJobs, "queued")} waiting ·{" "}
             {count(report.backgroundJobs, "failed")} failed
           </p>
         </div>
-        <div className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+        <div className={CARD_TIGHT}>
           <h2 className="font-semibold">Errors</h2>
           <p>{report.errorsLastDay} in the last day</p>
         </div>

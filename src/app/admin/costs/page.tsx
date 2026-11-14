@@ -5,8 +5,8 @@ import { formatCents } from "@/lib/money";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
 import { LoadingBar } from "@/components/loading-bar";
+import { CARD_TIGHT } from "@/components/card";
 
-const BOX = "flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 const MUTED = "text-sm text-zinc-600 dark:text-zinc-400";
 
 // What the closed beta costs this month, on one page (src/lib/beta-costs.ts): Plaid's connected
@@ -22,7 +22,7 @@ async function Costs() {
       <AdminNav email={admin.email} />
       <h1 className="text-3xl font-semibold tracking-tight">Costs, {costs.month}</h1>
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-3" data-costs="">
-        <div className={BOX} data-cost="plaid">
+        <div className={CARD_TIGHT} data-cost="plaid">
           <h2 className="font-semibold">Plaid</h2>
           <p className="text-2xl font-semibold tabular-nums">{plaid.billedThisMonth}</p>
           <p className={MUTED}>
@@ -38,7 +38,7 @@ async function Costs() {
             dashboard, under Billing.
           </p>
         </div>
-        <div className={BOX} data-cost="claude">
+        <div className={CARD_TIGHT} data-cost="claude">
           <h2 className="font-semibold">Claude</h2>
           <p className="text-2xl font-semibold tabular-nums">
             {formatCents(Math.round(claude.spentCents))}
@@ -64,7 +64,7 @@ async function Costs() {
             alone until the 1st.
           </p>
         </div>
-        <div className={BOX} data-cost="people">
+        <div className={CARD_TIGHT} data-cost="people">
           <h2 className="font-semibold">Beta people</h2>
           <p className="text-2xl font-semibold tabular-nums">{people.activeThisMonth}</p>
           <p className={MUTED}>active this month · {people.activeThisWeek} in the last 7 days</p>

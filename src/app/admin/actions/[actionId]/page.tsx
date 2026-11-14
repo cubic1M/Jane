@@ -19,6 +19,7 @@ import { describePlanOptions } from "@/lib/plan-options";
 import { AgentTimeline } from "@/components/agent-timeline";
 import { LoadingBar } from "@/components/loading-bar";
 import { systemDb } from "@/lib/system-db";
+import { CARD } from "@/components/card";
 
 async function ActionDetail({
   params,
@@ -73,7 +74,7 @@ async function ActionDetail({
         <p className="font-medium">Status: {TEAM_STATUS_LABELS[action.status]}</p>
       </div>
 
-      <section className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+      <section className={CARD}>
         <h2 className="font-semibold">What they approved</h2>
         <p>{card.explanation}</p>
         <p>
@@ -207,7 +208,7 @@ async function ActionDetail({
       {!closed && DRAFTABLE[action.type] && <DraftPanel actionId={action.id} />}
 
       {(action.agentState || action.agentMessages.length > 0) && (
-        <section className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+        <section className={CARD}>
           <h2 className="font-semibold">The agent</h2>
           <p className="text-sm">
             {action.agentState === "handed_off"

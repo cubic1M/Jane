@@ -10,13 +10,13 @@ import { requireUser } from "@/lib/session";
 import { PrepareForm, ReadingForm, SignAmendmentForm } from "./forms";
 import { PageShell } from "@/components/page-shell";
 import { BackLink } from "@/components/back-link";
+import { CARD_ROOMY } from "@/components/card";
 
 // Last year's return, reviewed (spec step 172): what Jane read from an uploaded return, for
 // the person to confirm; then what it found against their accounts (demo advice); and an
 // amended return the person reviews and signs. Nothing is amended without that signature.
 
 const LINK = "font-medium text-emerald-700 underline";
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 
 async function Content() {
   const user = await requireUser();
@@ -42,13 +42,13 @@ async function Content() {
         </p>
       </div>
       {waiting.map((r) => (
-        <section key={r.id} aria-label={`Check ${r.fileName}`} className={CARD}>
+        <section key={r.id} aria-label={`Check ${r.fileName}`} className={CARD_ROOMY}>
           <h2 className="text-xl font-semibold">Check what Jane read from {r.fileName}</h2>
           <ReadingForm id={r.id} fields={r.fields} sources={r.sources} notes={r.notes} />
         </section>
       ))}
       {reviews.map((r) => (
-        <section key={r.returnId} aria-label={`Your ${r.year} return`} className={CARD}>
+        <section key={r.returnId} aria-label={`Your ${r.year} return`} className={CARD_ROOMY}>
           <h2 className="text-xl font-semibold">Your {r.year} return</h2>
           {r.findings.length === 0 ? (
             <p className="text-sm">

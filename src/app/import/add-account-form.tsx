@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { createCsvAccount } from "./actions";
+import { CARD_ROOMY } from "@/components/card";
 
 const FIELD =
   "h-11 rounded-lg border border-zinc-300 bg-transparent px-3 text-base focus-visible:outline-2 focus-visible:outline-emerald-700 dark:border-zinc-700";
@@ -10,10 +11,7 @@ export function AddAccountForm() {
   const [state, action, pending] = useActionState(createCsvAccount, null);
 
   return (
-    <form
-      action={action}
-      className="flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-    >
+    <form action={action} className={CARD_ROOMY}>
       <h3 className="font-semibold">Add an account</h3>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <label className="flex flex-col gap-1 text-sm font-medium">

@@ -13,11 +13,11 @@ import { dayLabel } from "@/lib/day-label";
 import { EmptyState } from "@/components/empty-state";
 import { formPayer } from "@/planning/tax-documents";
 import { PageShell } from "@/components/page-shell";
+import { CARD_ROOMY } from "@/components/card";
 
 // The tax-time pack (spec step 72): organizing only, no tax advice and no Claude text.
 
 const LINK = "font-medium text-emerald-700 hover:underline";
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 
 function Rows({ group, empty, label }: { group: PackGroup; empty: string; label: string }) {
   if (group.rows.length === 0) {
@@ -120,7 +120,7 @@ async function TaxPackContent({
         </a>
       </div>
 
-      <section aria-labelledby="summary" className={CARD}>
+      <section aria-labelledby="summary" className={CARD_ROOMY}>
         <h2 id="summary" className="text-xl font-semibold">
           {COPY.summaryHeading}
         </h2>
@@ -150,7 +150,7 @@ async function TaxPackContent({
         )}
       </section>
 
-      <section aria-labelledby="forms" className={CARD}>
+      <section aria-labelledby="forms" className={CARD_ROOMY}>
         <h2 id="forms" className="text-xl font-semibold">
           {COPY.formsHeading}
         </h2>
@@ -178,7 +178,7 @@ async function TaxPackContent({
       </section>
 
       {pack.rental && (
-        <section aria-labelledby="rental" className={CARD}>
+        <section aria-labelledby="rental" className={CARD_ROOMY}>
           <h2 id="rental" className="text-xl font-semibold">
             {COPY.rentalHeading}
           </h2>
@@ -204,7 +204,7 @@ async function TaxPackContent({
         </section>
       )}
 
-      <section aria-labelledby="states" className={CARD}>
+      <section aria-labelledby="states" className={CARD_ROOMY}>
         <h2 id="states" className="text-xl font-semibold">
           {COPY.statesHeading}
         </h2>
@@ -233,14 +233,14 @@ async function TaxPackContent({
         <p className="text-xs text-zinc-500">{COPY.statesNote}</p>
       </section>
 
-      <section aria-labelledby="charity" className={CARD}>
+      <section aria-labelledby="charity" className={CARD_ROOMY}>
         <h2 id="charity" className="text-xl font-semibold">
           {COPY.charityHeading}
         </h2>
         <Rows group={pack.charity} empty={COPY.charityEmpty} label={COPY.charityHeading} />
       </section>
 
-      <section aria-labelledby="preparer" className={CARD}>
+      <section aria-labelledby="preparer" className={CARD_ROOMY}>
         <h2 id="preparer" className="text-xl font-semibold">
           {COPY.preparerHeading}
         </h2>
@@ -273,7 +273,7 @@ async function TaxPackContent({
         </div>
       </section>
 
-      <section aria-labelledby="income" className={CARD}>
+      <section aria-labelledby="income" className={CARD_ROOMY}>
         <h2 id="income" className="text-xl font-semibold">
           {COPY.incomeHeading}
         </h2>

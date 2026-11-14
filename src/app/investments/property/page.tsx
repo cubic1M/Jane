@@ -11,6 +11,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
 import { DoneBanner } from "@/components/done-banner";
 import { BackLink } from "@/components/back-link";
+import { CARD, CARD_TIGHT } from "@/components/card";
 
 // Property as an investment (spec step 214, demo advice): home equity, each rental's
 // figures from its own transactions, depreciation for the taxes side, and paying the
@@ -46,10 +47,7 @@ async function Content({
       )}
 
       {v.homes.map((h) => (
-        <section
-          key={h.id}
-          className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-        >
+        <section key={h.id} className={CARD_TIGHT}>
           <h2 className="text-xl font-semibold">{h.name}</h2>
           <p className="text-sm">
             Worth {formatCents(h.valueCents)} (your value, as of {h.valuedOn})
@@ -89,10 +87,7 @@ async function Content({
       )}
 
       {v.rentals.map((r) => (
-        <section
-          key={r.id}
-          className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-        >
+        <section key={r.id} className={CARD}>
           <h2 className="text-xl font-semibold">{r.name}</h2>
           <table className="w-full text-sm">
             <tbody>

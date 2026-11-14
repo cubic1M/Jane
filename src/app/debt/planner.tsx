@@ -11,6 +11,7 @@ import {
   type PayoffPlan,
   type Strategy,
 } from "@/planning/debt";
+import { CARD } from "@/components/card";
 
 type Row = {
   id: string;
@@ -211,10 +212,7 @@ function PlanSummary({
 }) {
   const copy = PLANNER_COPY.strategies[plan.strategy];
   return (
-    <section
-      aria-label={copy.name}
-      className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-    >
+    <section aria-label={copy.name} className={CARD}>
       <h2 className="text-lg font-semibold">{copy.name}</h2>
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
         {copy.how} {copy.also}

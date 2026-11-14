@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { FILING_STATUSES, INCOME_KINDS, MAX_DEPENDANTS, type IncomeKind } from "@/config/tax";
 import { saveTaxProfile, type TaxProfileState } from "./actions";
+import { CARD } from "@/components/card";
 
 // The tax profile form (spec step 118). Prefilled with the person's answers, and with what
 // Jane found (marked so) where they haven't answered yet.
@@ -19,13 +20,12 @@ export type ProfileFormValues = {
 
 const INPUT =
   "h-11 rounded-lg border border-zinc-300 bg-white px-3 text-base dark:border-zinc-700 dark:bg-zinc-950";
-const FIELDSET = "flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 
 export function TaxProfileForm({ values }: { values: ProfileFormValues }) {
   const [state, action, pending] = useActionState<TaxProfileState, FormData>(saveTaxProfile, null);
   return (
     <form action={action} className="flex flex-col gap-4">
-      <fieldset className={FIELDSET} id="income">
+      <fieldset className={CARD} id="income">
         <legend className="px-1 font-semibold">Your kinds of income</legend>
         {values.incomeKinds.map(({ kind, checked, seen }) => (
           <label key={kind} className="flex min-h-11 items-start gap-3">
@@ -55,7 +55,7 @@ export function TaxProfileForm({ values }: { values: ProfileFormValues }) {
         </label>
       </fieldset>
 
-      <fieldset className={FIELDSET}>
+      <fieldset className={CARD}>
         <legend className="px-1 font-semibold">How you file</legend>
         {Object.entries(FILING_STATUSES).map(([value, label]) => (
           <label key={value} className="flex min-h-11 items-center gap-3">
@@ -74,7 +74,7 @@ export function TaxProfileForm({ values }: { values: ProfileFormValues }) {
         </p>
       </fieldset>
 
-      <fieldset className={FIELDSET}>
+      <fieldset className={CARD}>
         <legend className="px-1 font-semibold">Dependants</legend>
         <label className="flex flex-col gap-1">
           <span>Children under 17 you claim</span>
@@ -102,7 +102,7 @@ export function TaxProfileForm({ values }: { values: ProfileFormValues }) {
         </label>
       </fieldset>
 
-      <fieldset className={FIELDSET}>
+      <fieldset className={CARD}>
         <legend className="px-1 font-semibold">The state you file in</legend>
         <select
           name="state"

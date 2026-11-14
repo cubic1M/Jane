@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { answerSetup, type ProposalState } from "./actions";
+import { CARD_ROOMY } from "@/components/card";
 
 const PRIMARY =
   "inline-flex h-11 items-center justify-center rounded-full bg-emerald-700 px-5 font-semibold text-white hover:bg-emerald-800 disabled:opacity-50";
@@ -41,7 +42,7 @@ export function SetupItem({ item }: { item: SetupView }) {
     );
   }
   return (
-    <li className="flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+    <li className={CARD_ROOMY}>
       <div className="flex flex-col gap-1">
         <h3 className="font-semibold [overflow-wrap:anywhere]">{item.title}</h3>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">{item.basis}</p>

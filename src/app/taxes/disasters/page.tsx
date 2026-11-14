@@ -7,13 +7,13 @@ import { requireUser } from "@/lib/session";
 import { ReliefButtons } from "./forms";
 import { PageShell } from "@/components/page-shell";
 import { BackLink } from "@/components/back-link";
+import { CARD_ROOMY } from "@/components/card";
 
 // Disasters and losses (spec step 270): an IRS postponement for the person's county moving their
 // tax deadlines, and the casualty loss after insurance kept with the claim, once. The same lines
 // as the chat's answer (reliefLines); the buttons do what the chat's do. Nothing is filed.
 
 const LINK = "font-medium text-emerald-700 underline";
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 
 async function Content() {
   const user = await requireUser();
@@ -34,7 +34,7 @@ async function Content() {
         <p className="text-sm">{disasterReply(v).body}</p>
       ) : (
         v.relief.map((r) => (
-          <section key={r.relief.id} aria-label={r.relief.title} className={CARD}>
+          <section key={r.relief.id} aria-label={r.relief.title} className={CARD_ROOMY}>
             <h2 className="text-xl font-semibold">
               {r.relief.title}, {v.county} County
             </h2>

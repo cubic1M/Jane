@@ -13,12 +13,12 @@ import { dmpLines, headline } from "@/lib/jane-agent/debt-trouble-replies";
 import { requireUser } from "@/lib/session";
 import { formatCents } from "@/lib/money";
 import { PageShell } from "@/components/page-shell";
+import { CARD_ROOMY } from "@/components/card";
 
 // When debt is too much (spec step 229): the options laid out as facts, from the person's own
 // debts. Jane doesn't advise settling or filing, gives no legal advice and contacts no one.
 
 const LINK = "font-medium text-emerald-700 hover:underline";
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 
 function Facts({ label, facts }: { label: string; facts: (typeof DEBT_FACTS)["settlement"] }) {
   return (
@@ -61,7 +61,7 @@ async function HelpContent() {
           <p role="status" className="text-lg">
             {headline(data)}
           </p>
-          <section aria-label="Hardship programs" className={CARD}>
+          <section aria-label="Hardship programs" className={CARD_ROOMY}>
             <h2 className="text-xl font-semibold">Ask each lender first</h2>
             <ul className="flex flex-col gap-2">
               {data.debts.map((d) => (
@@ -77,7 +77,7 @@ async function HelpContent() {
               {HARDSHIP_FINDER.label}
             </a>
           </section>
-          <section aria-label="Debt management plan" className={CARD}>
+          <section aria-label="Debt management plan" className={CARD_ROOMY}>
             <h2 className="text-xl font-semibold">A debt management plan</h2>
             {dmpLines(data)
               .slice(0, -1)
@@ -95,7 +95,7 @@ async function HelpContent() {
               ))}
             </ul>
           </section>
-          <section aria-label="Settlement and bankruptcy" className={CARD}>
+          <section aria-label="Settlement and bankruptcy" className={CARD_ROOMY}>
             <h2 className="text-xl font-semibold">Settlement and bankruptcy</h2>
             <Facts label="Debt settlement" facts={DEBT_FACTS.settlement} />
             <Facts label="Bankruptcy" facts={DEBT_FACTS.bankruptcy} />

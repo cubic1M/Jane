@@ -9,13 +9,13 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { formatRate } from "@/lib/percent";
 import { PageShell } from "@/components/page-shell";
+import { CARD_ROOMY } from "@/components/card";
 
 // Out of costly short-term borrowing (spec step 247): what payday loans, cash advances,
 // overdrafts and pay advance apps cost over the last year, in dollars and as a yearly rate, and
 // the cheaper ways out (demo advice). Nothing is borrowed, applied for or sent from here.
 
 const LINK = "font-medium text-emerald-700 hover:underline";
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 
 async function CostlyContent() {
   const user = await requireUser();
@@ -46,7 +46,7 @@ async function CostlyContent() {
           </p>
           <ul aria-label="What you paid" className="flex flex-col gap-3">
             {d.kinds.map((k) => (
-              <li key={k.kind} className={CARD}>
+              <li key={k.kind} className={CARD_ROOMY}>
                 <h2 className="text-lg font-semibold">{COSTLY_LABELS[k.kind]}</h2>
                 <p>
                   {k.count} {k.count === 1 ? "time" : "times"}, {formatCents(k.costCents)} in fees
@@ -59,7 +59,7 @@ async function CostlyContent() {
             ))}
           </ul>
           {d.advice ? (
-            <section aria-label="Ways out" className={CARD}>
+            <section aria-label="Ways out" className={CARD_ROOMY}>
               <DemoAdviceLabel />
               <h2 className="text-xl font-semibold">Cheaper ways out</h2>
               <ul className="flex flex-col gap-2">

@@ -16,6 +16,7 @@ import { formatPercentTenths } from "@/lib/percent";
 import { PageShell } from "@/components/page-shell";
 import { DoneBanner } from "@/components/done-banner";
 import { BackLink } from "@/components/back-link";
+import { CARD } from "@/components/card";
 
 // Crypto (spec step 161): seen and sized, never traded. Each balance says where it came
 // from and when; in demo advice mode, flags for too big a share and costly fees.
@@ -85,10 +86,7 @@ async function CryptoContent({
       )}
 
       {view.connections.map((c) => (
-        <section
-          key={c.id}
-          className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-        >
+        <section key={c.id} className={CARD}>
           <h2 className="text-xl font-semibold">
             {c.name}: {formatCents(c.totalCents)}
           </h2>

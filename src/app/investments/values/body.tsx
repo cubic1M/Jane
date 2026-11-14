@@ -10,6 +10,7 @@ import { saveValues, switchFunds } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { DoneBanner } from "@/components/done-banner";
 import { BackLink } from "@/components/back-link";
+import { CARD_ROOMY } from "@/components/card";
 
 // Investing by your values (spec step 236, demo advice): leave out fossil fuels, weapons or
 // tobacco, or lean towards a theme, inside each kind of investment so the risk target holds.
@@ -74,7 +75,7 @@ export async function ValuesBody({ done, embed }: { done?: string | string[]; em
         <SubmitButton className={`${BUTTON} self-start`}>Save my list</SubmitButton>
       </form>
       {v.advice && v.plan && (
-        <section className="flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+        <section className={CARD_ROOMY}>
           <h2 className="text-xl font-semibold">What it would change</h2>
           {v.plan.switches.length === 0 ? (
             <p className="text-sm text-zinc-600 dark:text-zinc-400">

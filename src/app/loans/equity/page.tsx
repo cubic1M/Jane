@@ -16,6 +16,7 @@ import { requireUser } from "@/lib/session";
 import { requestSentAction, saveFactsAction } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
+import { CARD_ROOMY } from "@/components/card";
 
 // A home's equity, used well (spec step 228): PMI against the home's original value, escrow
 // against the real bills, and ways to borrow for a project with each one's total cost (demo
@@ -25,7 +26,6 @@ const LINK = "font-medium text-emerald-700 hover:underline";
 const INPUT =
   "h-11 w-full rounded-lg border border-zinc-300 bg-transparent px-3 dark:border-zinc-700";
 const BUTTON = "h-11 rounded-full bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800";
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 const dollars = (cents: number | null) => (cents === null ? "" : String(cents / 100));
 
 async function EquityContent({ searchParams }: Pick<PageProps<"/loans/equity">, "searchParams">) {
@@ -90,7 +90,7 @@ async function EquityContent({ searchParams }: Pick<PageProps<"/loans/equity">, 
               {p("error") ?? projectError}
             </p>
           )}
-          <section aria-label="What you know" className={CARD}>
+          <section aria-label="What you know" className={CARD_ROOMY}>
             <h2 className="text-xl font-semibold">What you know about the loan</h2>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
               {data.loanName}: {formatCents(data.balanceCents)} left. I don&apos;t guess these; they
@@ -130,7 +130,7 @@ async function EquityContent({ searchParams }: Pick<PageProps<"/loans/equity">, 
             </form>
           </section>
 
-          <section aria-label="PMI" className={CARD}>
+          <section aria-label="PMI" className={CARD_ROOMY}>
             <h2 className="text-xl font-semibold">PMI</h2>
             {data.hasPmi === false ? (
               <p>Your bank says your loan has no PMI.</p>
@@ -166,7 +166,7 @@ async function EquityContent({ searchParams }: Pick<PageProps<"/loans/equity">, 
             </a>
           </section>
 
-          <section aria-label="Escrow" className={CARD}>
+          <section aria-label="Escrow" className={CARD_ROOMY}>
             <h2 className="text-xl font-semibold">Escrow</h2>
             {escrowLines(data).length === 0 ? (
               <p>Give me your yearly property tax and insurance and I&apos;ll check your escrow.</p>
@@ -198,7 +198,7 @@ async function EquityContent({ searchParams }: Pick<PageProps<"/loans/equity">, 
             </div>
           </section>
 
-          <section aria-label="A home project" className={CARD}>
+          <section aria-label="A home project" className={CARD_ROOMY}>
             <h2 className="text-xl font-semibold">Paying for a home project</h2>
             {!data.advice ? (
               <p className="text-zinc-600 dark:text-zinc-400">

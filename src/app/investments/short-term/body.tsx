@@ -12,6 +12,7 @@ import { dayLabel } from "@/lib/day-label";
 import { formatRate } from "@/lib/percent";
 import { DoneBanner } from "@/components/done-banner";
 import { BackLink } from "@/components/back-link";
+import { CARD } from "@/components/card";
 
 // Short-term money, placed safely (spec step 234, demo advice): money needed within three
 // years, compared after tax in the person's own state, with a Treasury bill ladder that
@@ -59,10 +60,7 @@ export async function ShortTermBody({
         </p>
       )}
       {v.candidates.map((c) => (
-        <section
-          key={c.key}
-          className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-        >
+        <section key={c.key} className={CARD}>
           <h2 className="text-xl font-semibold">
             {c.name}: {formatCents(c.amountCents)}, needed by {dayLabel(c.endsOn, { year: true })}
           </h2>

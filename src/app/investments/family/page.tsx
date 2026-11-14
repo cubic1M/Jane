@@ -16,6 +16,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
 import { DoneBanner } from "@/components/done-banner";
 import { BackLink } from "@/components/back-link";
+import { CARD_ROOMY } from "@/components/card";
 
 // Investing for the family (spec step 213, demo advice): a child's custodial account, a Roth
 // IRA for a child with earned income, and a gift link for their college fund.
@@ -62,10 +63,7 @@ async function Content({
       )}
 
       {v.children.map((c, i) => (
-        <section
-          key={c.id}
-          className="flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-        >
+        <section key={c.id} className={CARD_ROOMY}>
           <h2 className="text-xl font-semibold">
             {c.name}, {c.age}
           </h2>

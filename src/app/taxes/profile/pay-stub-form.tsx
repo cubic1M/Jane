@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { savePayStubAction, type TaxProfileState } from "./actions";
+import { CARD_ROOMY } from "@/components/card";
 
 // From the latest pay stub (spec step 120): year-to-date figures, for a refund-or-owe
 // estimate when there's no payroll connection. Leave gross pay empty to clear it.
@@ -49,11 +50,7 @@ export function PayStubForm({ values, demo }: { values: PayStubValues; demo: boo
     null,
   );
   return (
-    <form
-      action={action}
-      id="pay-stub"
-      className="flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-    >
+    <form action={action} id="pay-stub" className={CARD_ROOMY}>
       <h2 className="font-semibold">From your latest pay stub</h2>
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
         {demo

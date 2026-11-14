@@ -3,12 +3,12 @@ import { formatCents, formatWholeDollars } from "@/lib/money";
 import type { TaxSetAsideView } from "@/lib/tax-set-aside";
 import { NOTHING_KEPT_APART, SOURCE_WORDS, type TaxLine } from "@/planning/tax-set-aside";
 import { NotIncomeButton, PointOutForm, UndoButton } from "./set-aside-forms";
+import { CARD_ROOMY } from "@/components/card";
 
 // The tax left to cover on /taxes, line by line: each line says whether it's seen, estimated or
 // assumed, and where it came from on a tap. Arithmetic on the person's own numbers, for real
 // accounts; "set aside" only in demo advice, with its label.
 
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 const SUMMARY = "cursor-pointer font-medium underline underline-offset-2";
 const PAYERS_SHOWN = 12;
 
@@ -59,7 +59,7 @@ const headline = (view: TaxSetAsideView) => {
 export function SetAsideSection({ view }: { view: TaxSetAsideView }) {
   const { corrections, soFar } = view.estimateView;
   return (
-    <section aria-labelledby="set-aside-heading" id="set-aside" className={CARD}>
+    <section aria-labelledby="set-aside-heading" id="set-aside" className={CARD_ROOMY}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 id="set-aside-heading" className="text-xl font-semibold">
           {view.advice ? "Tax to set aside" : "Tax not yet paid"}

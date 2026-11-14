@@ -4,11 +4,11 @@ import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents, formatWholeDollars } from "@/lib/money";
 import type { SideIncomeView } from "@/lib/side-income";
+import { CARD_ROOMY } from "@/components/card";
 
 // Side income and rentals on /taxes (spec step 173): a rental's rent, tagged expenses and
 // depreciation; each gig platform's payouts matched to its 1099; hobby or business.
 
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 const LINK = "underline underline-offset-2";
 const STATUS = {
   matched: "Matches its 1099",
@@ -21,7 +21,7 @@ export function SideIncomeSection({ view, advice }: { view: SideIncomeView; advi
   if (!view.rental && view.platforms.length === 0) return null;
   const r = view.rental;
   return (
-    <section aria-labelledby="side-income-heading" id="side-income" className={CARD}>
+    <section aria-labelledby="side-income-heading" id="side-income" className={CARD_ROOMY}>
       <h2 id="side-income-heading" className="text-xl font-semibold">
         Side income and rentals
       </h2>

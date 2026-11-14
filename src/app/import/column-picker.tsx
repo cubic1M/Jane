@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { MappingChoices } from "@/data-sources/csv/column-mapping";
+import { CARD_ROOMY } from "@/components/card";
 
 // For a CSV in no layout Jane knows: which column is the date, the description and the
 // amount (or money out and money in). Jane's guesses for how dates are written and which sign
@@ -57,10 +58,7 @@ export function ColumnPicker({ index, file, choices, children }: Props) {
   );
 
   return (
-    <fieldset
-      data-column-picker=""
-      className="flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-    >
+    <fieldset data-column-picker="" className={CARD_ROOMY}>
       <legend className="px-1 font-semibold">Which column is which in {file}?</legend>
       {children}
       <label className="flex items-center gap-2 text-sm">

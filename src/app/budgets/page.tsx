@@ -16,6 +16,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { ProgressBar } from "@/components/progress-bar";
 import { dayLabel } from "@/lib/day-label";
 import { PageShell } from "@/components/page-shell";
+import { CARD, CARD_TIGHT } from "@/components/card";
 
 const HOW_OFTEN: Record<IrregularItem["frequency"], string> = {
   QUARTERLY: "Every 3 months",
@@ -52,10 +53,7 @@ async function Budgets() {
           {summary.progress.map((p) => {
             const share = Math.min(100, Math.round((p.spentCents / p.budgetCents) * 100));
             return (
-              <li
-                key={p.category}
-                className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-              >
+              <li key={p.category} className={CARD}>
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <h2 className="font-semibold">{p.category}</h2>
                   <span
@@ -99,10 +97,7 @@ async function Budgets() {
           </p>
           <ul className="flex flex-col gap-3">
             {irregular.items.map((item) => (
-              <li
-                key={item.key}
-                className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-              >
+              <li key={item.key} className={CARD_TIGHT}>
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <h3 className="font-semibold">{item.name}</h3>
                   <span className="text-sm">{formatCents(item.monthlyCents)} a month</span>

@@ -6,11 +6,11 @@ import { balancePhrase } from "@/planning/tax-estimate-copy";
 import type { W4Change } from "@/planning/withholding";
 import { W4Buttons } from "./w4-buttons";
 import { dayLabel } from "@/lib/day-label";
+import { CARD_ROOMY } from "@/components/card";
 
 // The withholding checkup on /taxes (spec step 121). The W-4 suggestion is demo advice,
 // labelled; real accounts get the comparison and the IRS's estimator.
 
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 const LINK = "font-medium underline underline-offset-2 hover:no-underline";
 
 const where = (c: W4Change) =>
@@ -21,7 +21,7 @@ const where = (c: W4Change) =>
 export function WithholdingSection({ view }: { view: WithholdingView }) {
   const { check, estimate, advice } = view;
   return (
-    <section aria-labelledby="withholding-heading" id="withholding" className={CARD}>
+    <section aria-labelledby="withholding-heading" id="withholding" className={CARD_ROOMY}>
       <h2 id="withholding-heading" className="text-xl font-semibold">
         Withholding
       </h2>

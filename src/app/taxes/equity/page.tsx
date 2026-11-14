@@ -10,11 +10,11 @@ import { requireUser } from "@/lib/session";
 import { AsideButton, EventForm, RemoveButton } from "./forms";
 import { PageShell } from "@/components/page-shell";
 import { BackLink } from "@/components/back-link";
+import { CARD_ROOMY } from "@/components/card";
 
 // Crypto and equity pay (spec step 219): the tax on each, what to set aside (demo advice).
 
 const LINK = "font-medium text-emerald-700 underline";
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 
 async function Content() {
   const user = await requireUser();
@@ -32,7 +32,7 @@ async function Content() {
           alternative minimum tax rules are in Jane&apos;s config with their sources.
         </p>
       </div>
-      <section aria-labelledby="crypto" className={CARD}>
+      <section aria-labelledby="crypto" className={CARD_ROOMY}>
         <h2 id="crypto" className="text-xl font-semibold">
           Crypto
         </h2>
@@ -82,7 +82,7 @@ async function Content() {
           </>
         )}
       </section>
-      <section aria-labelledby="events" className={CARD}>
+      <section aria-labelledby="events" className={CARD_ROOMY}>
         <h2 id="events" className="text-xl font-semibold">
           RSUs, ESPP and options
         </h2>
@@ -128,7 +128,7 @@ async function Content() {
         <EventForm />
       </section>
       {v.advice && v.setAside.cents > 0 && (
-        <section aria-labelledby="aside" className={CARD}>
+        <section aria-labelledby="aside" className={CARD_ROOMY}>
           <h2 id="aside" className="text-xl font-semibold">
             What to set aside
           </h2>

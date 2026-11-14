@@ -8,13 +8,13 @@ import { requireUser } from "@/lib/session";
 import { DraftForm, SampleDraftButton } from "./forms";
 import { PageShell } from "@/components/page-shell";
 import { BackLink } from "@/components/back-link";
+import { CARD_ROOMY } from "@/components/card";
 
 // Your draft return (spec step 272): a draft uploaded to Documents, read for you to confirm, then
 // checked line by line against what Jane knows for the year. Each thing to fix has its dollars.
 // Jane never files: fixing the draft and filing are yours (or your preparer's).
 
 const LINK = "font-medium text-emerald-700 underline";
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 
 async function Content() {
   const user = await requireUser();
@@ -38,7 +38,7 @@ async function Content() {
       </div>
       {drafts.length === 0 && <p className="text-sm">No draft yet.</p>}
       {sample && !drafts.some((d) => d.status === "waiting") && (
-        <section aria-labelledby="sample" className={CARD}>
+        <section aria-labelledby="sample" className={CARD_ROOMY}>
           <h2 id="sample" className="text-xl font-semibold">
             Try it on a sample
           </h2>
@@ -51,14 +51,14 @@ async function Content() {
       )}
       {drafts.map((d) =>
         d.status === "waiting" ? (
-          <section key={d.id} aria-labelledby={`draft-${d.id}`} className={CARD}>
+          <section key={d.id} aria-labelledby={`draft-${d.id}`} className={CARD_ROOMY}>
             <h2 id={`draft-${d.id}`} className="text-xl font-semibold">
               {d.fileName}: check what Jane read
             </h2>
             <DraftForm id={d.id} fields={d.fields} sources={d.sources} notes={d.notes} />
           </section>
         ) : (
-          <section key={d.id} aria-labelledby={`draft-${d.id}`} className={CARD}>
+          <section key={d.id} aria-labelledby={`draft-${d.id}`} className={CARD_ROOMY}>
             <h2 id={`draft-${d.id}`} className="text-xl font-semibold">
               {d.year} draft:{" "}
               {d.findings.length === 0

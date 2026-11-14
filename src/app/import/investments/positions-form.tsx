@@ -8,6 +8,7 @@ import { POSITIONS_SUBTYPES } from "@/config/positions-import";
 import { dayLabel } from "@/lib/day-label";
 import type { PositionsImportResult } from "@/lib/import/positions";
 import { formatCents } from "@/lib/money";
+import { CARD_ROOMY } from "@/components/card";
 
 const PRIMARY_BUTTON =
   "inline-flex h-11 items-center justify-center rounded-full bg-zinc-900 px-6 text-sm font-semibold text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300";
@@ -117,11 +118,7 @@ export function PositionsForm() {
 
       {files.map((file) =>
         file.ok ? (
-          <div
-            key={file.file}
-            data-positions-preview=""
-            className="flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-          >
+          <div key={file.file} data-positions-preview="" className={CARD_ROOMY}>
             <p className="text-sm">
               <span className="font-semibold">{file.file}</span>: {file.layout}
               {file.asOf ? `, as of ${dayLabel(file.asOf, { year: true })}` : ""}

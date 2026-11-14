@@ -7,13 +7,13 @@ import { loadRetirementTaxes } from "@/lib/retirement-taxes";
 import { requireUser } from "@/lib/session";
 import { PageShell } from "@/components/page-shell";
 import { BackLink } from "@/components/back-link";
+import { CARD_ROOMY } from "@/components/card";
 
 // Taxes on retirement income (spec step 271): how much of Social Security is taxable and what
 // nothing withholds, Medicare's surcharge line two years ahead, and (demo advice) the order to
 // draw tuned to stay under it. The same lines as the chat's answer (retirementLines).
 
 const LINK = "font-medium text-emerald-700 underline";
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 
 async function Content() {
   const user = await requireUser();
@@ -31,7 +31,7 @@ async function Content() {
           moves no money and changes no withholding.
         </p>
       </div>
-      <section aria-labelledby="retirement-heading" className={CARD}>
+      <section aria-labelledby="retirement-heading" className={CARD_ROOMY}>
         <h2 id="retirement-heading" className="text-xl font-semibold">
           How your retirement income is taxed
         </h2>

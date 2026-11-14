@@ -14,6 +14,7 @@ import { checkAgainAction } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { formatRate } from "@/lib/percent";
 import { PageShell } from "@/components/page-shell";
+import { CARD } from "@/components/card";
 
 // What you could borrow (spec step 250): a mortgage, a car loan, a personal loan and a card, each
 // with the likely amount and rate from soft checks, the day it was checked, and what would
@@ -22,7 +23,6 @@ import { PageShell } from "@/components/page-shell";
 const LINK = "font-medium text-emerald-700 hover:underline";
 const BUTTON =
   "h-11 rounded-full border border-zinc-300 px-5 font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900";
-const CARD = "flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 
 async function BorrowContent({ searchParams }: Pick<PageProps<"/loans/borrow">, "searchParams">) {
   const user = await requireUser();

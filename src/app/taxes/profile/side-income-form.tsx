@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { saveSideIncomeAction, type TaxProfileState } from "./actions";
+import { CARD_ROOMY } from "@/components/card";
 
 // A rental's property and hobby or business (spec step 173).
 
@@ -16,11 +17,7 @@ export function SideIncomeForm({ values }: { values: SideIncomeValues }) {
     null,
   );
   return (
-    <form
-      action={action}
-      id="side-income"
-      className="flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-    >
+    <form action={action} id="side-income" className={CARD_ROOMY}>
       <h2 className="font-semibold">Side income and rentals</h2>
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
         For a rental: the price you paid and when it was ready to rent, so Jane can work out

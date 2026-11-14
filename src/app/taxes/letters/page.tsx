@@ -11,13 +11,13 @@ import { checkNoticeFor, listTaxNotices, noticeAmountCents } from "@/lib/tax-not
 import { ReadingForm, ResponseButtons, SendButtons } from "./forms";
 import { PageShell } from "@/components/page-shell";
 import { BackLink } from "@/components/back-link";
+import { CARD_ROOMY } from "@/components/card";
 
 // Letters from the IRS and the state (spec step 217): the notice explained, its date on the
 // deadlines, a check against what Jane knows, and a drafted response. Nothing is paid or
 // sent without the person's tap.
 
 const LINK = "font-medium text-emerald-700 underline";
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 
 async function Content() {
   const user = await requireUser();
@@ -54,12 +54,12 @@ async function Content() {
         const rule = NOTICE_KINDS[n.kind];
         const check = checkOf.get(n.id);
         return n.status === "waiting" ? (
-          <section key={n.id} aria-label={`Check ${n.fileName}`} className={CARD}>
+          <section key={n.id} aria-label={`Check ${n.fileName}`} className={CARD_ROOMY}>
             <h2 className="text-xl font-semibold">Check what Jane read from {n.fileName}</h2>
             <ReadingForm id={n.id} fields={n.fields} sources={n.sources} notes={n.notes} />
           </section>
         ) : (
-          <section key={n.id} aria-label={rule.title} className={CARD}>
+          <section key={n.id} aria-label={rule.title} className={CARD_ROOMY}>
             <h2 className="text-xl font-semibold">{rule.title}</h2>
             <p className="text-sm">{rule.what}</p>
             <p className="text-sm">

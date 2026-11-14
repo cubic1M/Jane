@@ -6,6 +6,7 @@ import { accountantSummaryRows, viewByToken, type AccountantView } from "@/lib/a
 import { formatCents } from "@/lib/money";
 import { AnswerForm } from "./answer-form";
 import { LoadingBar } from "@/components/loading-bar";
+import { CARD_ROOMY } from "@/components/card";
 
 // A read-only link for a person's accountant (spec step 222): tax information only, shown
 // from a token, until the date on the link or until it is revoked. Not indexed.
@@ -14,8 +15,6 @@ export const metadata: Metadata = {
   title: "Tax information for your client",
   robots: { index: false, follow: false },
 };
-
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 
 const GROUP_LABELS: Record<string, string> = {
   medical: "Medical",
@@ -74,7 +73,7 @@ async function Shared({ params }: { params: Promise<{ token: string }> }) {
       {v.complexity && (
         <p className="rounded-xl bg-zinc-100 p-4 text-sm dark:bg-zinc-900">{v.complexity}</p>
       )}
-      <section aria-labelledby="summary" className={CARD}>
+      <section aria-labelledby="summary" className={CARD_ROOMY}>
         <h2 id="summary" className="text-xl font-semibold">
           The federal estimate
         </h2>
@@ -93,7 +92,7 @@ async function Shared({ params }: { params: Promise<{ token: string }> }) {
           </p>
         )}
       </section>
-      <section aria-labelledby="pack" className={CARD}>
+      <section aria-labelledby="pack" className={CARD_ROOMY}>
         <h2 id="pack" className="text-xl font-semibold">
           The tax pack
         </h2>
@@ -123,7 +122,7 @@ async function Shared({ params }: { params: Promise<{ token: string }> }) {
           <p className="text-sm">States: {v.pack.states.map((st) => st.code).join(", ")}.</p>
         )}
       </section>
-      <section aria-labelledby="forms" className={CARD}>
+      <section aria-labelledby="forms" className={CARD_ROOMY}>
         <h2 id="forms" className="text-xl font-semibold">
           Forms
         </h2>
@@ -154,7 +153,7 @@ async function Shared({ params }: { params: Promise<{ token: string }> }) {
           </>
         )}
       </section>
-      <section aria-labelledby="deductions" className={CARD}>
+      <section aria-labelledby="deductions" className={CARD_ROOMY}>
         <h2 id="deductions" className="text-xl font-semibold">
           Deductions and credits, with their proof
         </h2>
@@ -174,7 +173,7 @@ async function Shared({ params }: { params: Promise<{ token: string }> }) {
           ))}
         </ul>
       </section>
-      <section aria-labelledby="questions" className={CARD}>
+      <section aria-labelledby="questions" className={CARD_ROOMY}>
         <h2 id="questions" className="text-xl font-semibold">
           Questions for you
         </h2>
