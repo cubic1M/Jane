@@ -41,7 +41,7 @@ async function loadDebtsFrom(
   const asOf = isoDay(now);
   const since = new Date(Date.parse(`${asOf}T00:00:00Z`) - BNPL_LOOKBACK_DAYS * DAY_MS);
   const words = BNPL_PROVIDERS.flatMap((p) => p.words);
-  const [listedAccounts, payments, typed, newLoans, transfers, loanPayments, copies] =
+  const [listedAccounts, payments, typed, newLoans, transfers, loanPayments, copies, cardPayments] =
     await Promise.all([
       db.accounts.findMany({
         where: { type: { in: ["credit", "loan"] } },
@@ -142,10 +142,20 @@ async function loadDebtsFrom(
         },
       }),
       accountCopies(db),
+      // A card paid from checking: with no card on file, it's a card Jane can't see yet.
+      db.transactions.count({
+        where: {
+          date: { gte: since },
+          amountCents: { gt: 0 },
+          pfcDetailed: "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
+          account: { type: "depository" },
+        },
+      }),
     ]);
   // An account linked twice counts once (src/lib/account-copies.ts).
   const accounts = withoutCopies(listedAccounts, copies, (a) => a.id);
-  return debtBook(
+  const cardPaidNotOnFile = cardPayments > 0 && !accounts.some((a) => a.type === "credit");
+  const book = debtBook(
     {
       accounts,
       plans: bnplPlans(
@@ -192,6 +202,7 @@ async function loadDebtsFrom(
     },
     asOf,
   );
+  return { ...book, cardPaidNotOnFile };
 }
 
 // The debt book already loaded for this person (Jane's snapshot loads it once and hands it

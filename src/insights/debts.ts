@@ -109,6 +109,9 @@ export type DebtBook = {
   missingMonthly: number;
   // Debts with money owed but no rate from anywhere: Jane asks for these.
   missingRate: Debt[];
+  // A credit card paid from checking lately, with no card on file (src/lib/debts.ts): the Loans page
+  // asks for its statement rather than say there are no cards.
+  cardPaidNotOnFile?: boolean;
 };
 
 const iso = (date: Date | null | undefined) => date?.toISOString().slice(0, 10) ?? null;
