@@ -265,6 +265,13 @@ export const BANK_LOANS_INCOME: readonly Rule[] = [
     keywords: ["VA BENEFITS", "VA BENEF", "VA TREAS", "SSI TREAS"],
     direction: "in",
   },
+  // Military retired pay is a pension, on a 1099-R, not pay from an employer (debugger 11-14:
+  // "DFAS-CLEVELAND RET NET PAY" read as military pay, so the profile counted it as a salary).
+  {
+    category: "INCOME_RETIREMENT_PENSION",
+    pattern: /(?<![A-Z0-9])DFAS(?![A-Z0-9]).*(?<![A-Z0-9])RET(?:IRED)?(?![A-Z0-9])/,
+    direction: "in",
+  },
   {
     category: "INCOME_MILITARY",
     keywords: ["DFAS", "MIL PAY", "DEFENSE FINANCE"],
@@ -295,6 +302,26 @@ export const BANK_LOANS_INCOME: readonly Rule[] = [
     direction: "out",
   },
   { category: "INCOME_OTHER", keywords: ["SEVERANCE"], direction: "in" },
+  // Social Security and pensions: income, not a refund (accuracy bench: a retiree's whole
+  // income went uncategorised, so Jane couldn't tell how they're paid). Above the salary rule:
+  // banks add "DIR DEP" to them too, and "SSA TREAS 310 XXSOC SEC DIR DEP" or "CALPERS RETIREMENT
+  // DIR DEP" read as a salary (debugger 11-14, from the simplify pass).
+  {
+    category: "INCOME_RETIREMENT_PENSION",
+    keywords: [
+      "SSA TREAS",
+      "SOC SEC",
+      "XXSOC SEC",
+      "SOCIAL SECURITY",
+      "PENSION",
+      "RETIREMENT SYS",
+      "CALPERS",
+      "CALSTRS",
+      "OPM RETIRE",
+      "CSA ANNUITY",
+    ],
+    direction: "in",
+  },
   {
     category: "INCOME_SALARY",
     keywords: [
@@ -329,13 +356,6 @@ export const BANK_LOANS_INCOME: readonly Rule[] = [
       "CHECK DEPOSIT",
       "BRANCH DEPOSIT",
     ],
-    direction: "in",
-  },
-  // Social Security and pensions: income, not a refund (accuracy bench: a retiree's whole
-  // income went uncategorised, so Jane couldn't tell how they're paid).
-  {
-    category: "INCOME_RETIREMENT_PENSION",
-    keywords: ["SSA TREAS", "SOC SEC", "SOCIAL SECURITY", "PENSION", "RETIREMENT SYS"],
     direction: "in",
   },
   {
