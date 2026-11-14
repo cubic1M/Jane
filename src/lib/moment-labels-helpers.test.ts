@@ -22,11 +22,22 @@ function files(dir: string): string[] {
 
 // A moment's name, as the guard has it: createdAt, placedAt, offerExpiresAt, a row's .at.
 const MOMENT = String.raw`[\w.]*(?:[a-z]At|\.at)\b`;
-// A helper whose body formats a date in UTC: an arrow `const x = (…) => …` or a `function x(…)`.
+// Reading a date in UTC: a toLocale…String that says so, dayLabel (a calendar day's label), or
+// a cut to "YYYY-MM-DD" (debugger 11-14: settings' `day = (d) => dayLabel(d, …)` said a file
+// imported at 10:40pm in Los Angeles was imported the next day, and the chat's settings tool cut
+// the same moments with toISOString().slice(0, 10)).
+const UTC_READ = String.raw`(?:toLocale(?:Date)?String\([^)]*timeZone:\s*"UTC"|\bdayLabel\(|toISOString\(\)\.slice\(0, 10\)|\bisoDay\()`;
+// A helper whose body reads a date in UTC: an arrow `const x = (…) => …` or a `function x(…)`.
 const UTC_HELPERS = [
-  /const\s+(\w+)\s*=\s*\([^)]*\)\s*(?::[^=]+)?=>[^;]{0,300}?toLocale(?:Date)?String\([^)]*timeZone:\s*"UTC"/g,
-  /function\s+(\w+)\s*\([^)]*\)[^{]*\{[^}]{0,300}?toLocale(?:Date)?String\([^)]*timeZone:\s*"UTC"/g,
+  new RegExp(String.raw`const\s+(\w+)\s*=\s*\([^)]*\)\s*(?::[^=]+)?=>[^;]{0,300}?${UTC_READ}`, "g"),
+  new RegExp(String.raw`function\s+(\w+)\s*\([^)]*\)[^{]*\{[^}]{0,300}?${UTC_READ}`, "g"),
 ];
+// Moments that are rightly read as UTC days, with why.
+const UTC_DAYS = new Set([
+  // The events overlay's own calendar: when its switch was turned on, against price days, which
+  // are UTC calendar days (docs/backtests/events.md). Never shown as the person's day.
+  "lib/events/run.ts: dayOf(overlay.switchedAt",
+]);
 
 describe("a file's own UTC date helper", () => {
   it("is never given a moment", () => {
@@ -38,7 +49,10 @@ describe("a file's own UTC date helper", () => {
       );
       for (const name of helpers) {
         const call = new RegExp(String.raw`\b${name}\((?:new Date\()?${MOMENT}`, "g");
-        for (const [match] of text.matchAll(call)) bad.push(`${relative(SRC, file)}: ${match}`);
+        for (const [match] of text.matchAll(call)) {
+          const where = `${relative(SRC, file)}: ${match}`;
+          if (!UTC_DAYS.has(where)) bad.push(where);
+        }
       }
     }
     expect(bad).toEqual([]);
