@@ -4,6 +4,8 @@ import { parseKey } from "@/detection/unusual";
 import { daysBetween } from "@/detection/units";
 import type { Deadline } from "@/insights/deadlines";
 import type { BudgetProposal, GoalProposal } from "@/planning/proposals";
+import { RESELECT_AFTER_DAYS } from "@/config/suggestions";
+import { DAY_MS } from "@/lib/dates";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { openGaps } from "@/lib/insurance/gaps";
@@ -62,7 +64,13 @@ type Facts = {
   // The coverage gaps still open, by key; null when no card here is about one.
   gaps: Set<string> | null;
   // The open findings behind finding cards, by id, as they are now.
-  findings: Map<string, { title: string; savings: string; fingerprint: string }> | null;
+  findings: Map<
+    string,
+    { type: string; title: string; savings: string; fingerprint: string }
+  > | null;
+  // The topics of the suggestions the last scans offered (answered or not), when a card here is
+  // about a finding: a suggestion on a finding's type already brings that finding up.
+  suggestionTopics: Set<string> | null;
   // The plan as /plan has it now, for the week's plan card; null when no card here is one.
   plan: { now: Snapshot["plan"]; concierge: boolean } | null;
 };
@@ -163,41 +171,51 @@ async function factsFor(
   ) {
     return null;
   }
-  const [coming, changes, suggestions, proposals, insurance, findings, plan] = await Promise.all([
-    withDeadlines ? comingUp(userId, client, now) : null,
-    withChanges
-      ? import("@/lib/changes").then((m) => m.loadChanges(userId, { client, now }))
-      : null,
-    suggestionKeys.length > 0
-      ? scopedFor(userId, client).suggestions.findMany({
-          where: { key: { in: suggestionKeys } },
-          select: {
-            key: true,
-            headline: true,
-            short: true,
-            why: true,
-            confidencePercent: true,
-            confidenceReason: true,
-          },
-        })
-      : [],
-    proposalKeys.length > 0
-      ? scopedFor(userId, client).planProposals.findMany({
-          where: { key: { in: proposalKeys }, status: "open" },
-          select: { key: true, payload: true },
-        })
-      : null,
-    withGaps
-      ? import("@/lib/insurance/profile").then((m) => m.loadInsurance(userId, { client, now }))
-      : null,
-    findingIds.length > 0
-      ? scopedFor(userId, client).findings.findMany({
-          where: { id: { in: findingIds }, status: { in: ["new", "shown"] } },
-          select: { id: true, type: true, title: true, annualSavingsCents: true, evidence: true },
-        })
-      : null,
-    withPlan ? planNow(userId, client) : null,
-  ]);
+  const [coming, changes, suggestions, proposals, insurance, findings, plan, offered] =
+    await Promise.all([
+      withDeadlines ? comingUp(userId, client, now) : null,
+      withChanges
+        ? import("@/lib/changes").then((m) => m.loadChanges(userId, { client, now }))
+        : null,
+      suggestionKeys.length > 0
+        ? scopedFor(userId, client).suggestions.findMany({
+            where: { key: { in: suggestionKeys } },
+            select: {
+              key: true,
+              headline: true,
+              short: true,
+              why: true,
+              confidencePercent: true,
+              confidenceReason: true,
+            },
+          })
+        : [],
+      proposalKeys.length > 0
+        ? scopedFor(userId, client).planProposals.findMany({
+            where: { key: { in: proposalKeys }, status: "open" },
+            select: { key: true, payload: true },
+          })
+        : null,
+      withGaps
+        ? import("@/lib/insurance/profile").then((m) => m.loadInsurance(userId, { client, now }))
+        : null,
+      findingIds.length > 0
+        ? scopedFor(userId, client).findings.findMany({
+            where: { id: { in: findingIds }, status: { in: ["new", "shown"] } },
+            select: { id: true, type: true, title: true, annualSavingsCents: true, evidence: true },
+          })
+        : null,
+      withPlan ? planNow(userId, client) : null,
+      findingIds.length > 0
+        ? scopedFor(userId, client).suggestions.findMany({
+            where: {
+              status: { in: ["selected", "yes", "no"] },
+              selectedOn: { gt: new Date(now.getTime() - RESELECT_AFTER_DAYS * DAY_MS) },
+            },
+            select: { topic: true },
+          })
+        : null,
+    ]);
   // Loaded here, not imported at the top: the snapshot reaches most of the app.
   const fingerprintOf = findings && (await import("./snapshot")).findingFingerprint;
   const deadlines = new Map((coming?.deadlines ?? []).map((d) => [d.key, d]));
@@ -222,12 +240,14 @@ async function factsFor(
         findings.map((f) => [
           f.id,
           {
+            type: f.type,
             title: f.title,
             savings: savingsLine(f.type, f.annualSavingsCents),
             fingerprint: fingerprintOf!(f),
           },
         ]),
       ),
+    suggestionTopics: offered && new Set(offered.map((s) => s.topic)),
     plan,
   };
 }
@@ -269,6 +289,12 @@ function asNow(m: ChatMessage, facts: Facts): ChatMessage | null {
   }
   if (insuranceGap && facts.gaps && !facts.gaps.has(insuranceGap)) return null;
   const finding = m.refs.findingId ? facts.findings?.get(m.refs.findingId) : undefined;
+  // A finding one of the person's suggestions already brings up (the scan's topic is the finding's
+  // type: bank_fees, idle_cash and the like) isn't asked about beside it, or again once it's
+  // answered (debugger 11-14: a student's dock had "Stop paying bank and card fees, save $144/yr"
+  // and, ten cards on, "$36.00 in fees on Chase checking", the same $12 a month; idle cash twice
+  // too).
+  if (finding && facts.suggestionTopics?.has(finding.type)) return null;
   if (finding && m.refs.fingerprint && finding.fingerprint !== m.refs.fingerprint) {
     // Its pick and its question stay as they were.
     const rest = /(?:My pick: .*)?Want [^?]*\?$/.exec(m.body)?.[0];
