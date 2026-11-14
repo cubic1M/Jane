@@ -76,6 +76,10 @@ export const HEALTH_LOOK_BELOW = 0.5;
 
 // The cash-flow strip on the hub covers this many days from today.
 export const CASH_FLOW_DAYS = 30;
+// With less history than this, a monthly bill can't have shown twice, so an empty strip says
+// there's too little to tell, not that nothing is due (debugger 11-14: a student with 26 days of one
+// statement read "Nothing due in the next month", rent and all).
+export const CASH_FLOW_MIN_HISTORY_DAYS = 45;
 // The spending tile's bars: this many months, this one last.
 export const SPENDING_MONTHS = 6;
 // The goals tile draws at most this many goals.

@@ -58,6 +58,7 @@ export async function loadHubTop(
       bills: home.cashFlow.bills,
       deposits: home.cashFlow.deposits,
       deadlines: home.cashFlow.deadlines,
+      historyDays: home.cashFlow.historyDays,
     },
   };
 }

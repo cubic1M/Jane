@@ -3,6 +3,7 @@ import {
   AREA_HEALTH_PARTS,
   AREA_KEYS,
   CASH_FLOW_DAYS,
+  CASH_FLOW_MIN_HISTORY_DAYS,
   GOALS_SHOWN,
   HEALTH_LOOK_BELOW,
   PLAN_SHOWN,
@@ -81,6 +82,9 @@ export type CashFlowInput = {
   bills: { merchant: string; date: string; amountCents: number }[];
   deposits: { merchant: string; date: string; amountCents: number }[];
   deadlines: { key: string; title: string; date: string; href: string | null }[];
+  // Days from the person's first transaction to their last: how much history there is to see
+  // bills in (an old statement's 26 days stay 26, however long ago it ended).
+  historyDays?: number;
 };
 
 export type AreasInput = {
@@ -197,7 +201,8 @@ export type CashEvent = {
   href: string | null;
 };
 
-export type CashFlowView = { days: number; events: CashEvent[] };
+// `empty`: what the strip says when there's nothing on it.
+export type CashFlowView = { days: number; events: CashEvent[]; empty: string };
 
 // The strip's markers: a day's events of one kind are one marker (tap audit: two bills on Nov 1
 // drew on top of each other and only one could be tapped), its card listing them all, sized
@@ -550,7 +555,15 @@ export function cashFlowView(input: CashFlowInput, days = CASH_FLOW_DAYS): CashF
       })),
   ];
   events.sort((a, b) => a.day - b.day || a.kind.localeCompare(b.kind));
-  return { days, events };
+  const shortHistory =
+    input.historyDays !== undefined && input.historyDays < CASH_FLOW_MIN_HISTORY_DAYS;
+  return {
+    days,
+    events,
+    empty: shortHistory
+      ? "Too little history to see your bills yet: about two months of statements shows them."
+      : "Nothing due in the next month.",
+  };
 }
 
 // --- The area tiles ---

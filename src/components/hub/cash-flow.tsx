@@ -77,7 +77,7 @@ export function CashFlowStrip({ view, endDate }: { view: CashFlowView; endDate: 
         </p>
       </div>
       {events.length === 0 ? (
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">Nothing due in the next month.</p>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">{view.empty}</p>
       ) : (
         <div
           role="group"
