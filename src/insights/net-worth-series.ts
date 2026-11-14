@@ -1,11 +1,10 @@
 import {
-  DEBT_ACCOUNT_TYPES,
   NET_WORTH_PERCENT_MAX_SHARE,
   NET_WORTH_PERCENT_MIN_START_CENTS,
   NET_WORTH_RANGES,
 } from "@/config/net-worth";
 import { addDays } from "@/detection/units";
-import type { OwnedValue, Snapshot } from "./net-worth";
+import { isDebt, type OwnedValue, type Snapshot } from "./net-worth";
 
 // The home hub's net worth chart (docs/design/home-hub.md): net worth for every day from the
 // person's first day with Jane to today. Pure.
@@ -19,8 +18,6 @@ import type { OwnedValue, Snapshot } from "./net-worth";
 
 export type SeriesAccount = { id: string; type: string; currentBalanceCents: number | null };
 export type SeriesPoint = { date: string; cents: number };
-
-const isDebt = (type: string) => DEBT_ACCOUNT_TYPES.includes(type);
 
 export function dailyNetWorth({
   accounts,

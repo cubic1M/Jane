@@ -9,7 +9,7 @@ import { gapAdvice, kindWords } from "@/lib/insurance/gaps";
 import { yearlyPremium } from "@/lib/insurance/policies";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "../replies";
-import { type MessageAction, openLink } from "../types";
+import { openLink } from "../types";
 import type { InsuranceIntent } from "./intents";
 import { decide } from "./decisions";
 import { needReply } from "./need";
@@ -22,10 +22,10 @@ import { dayLabel } from "@/lib/day-label";
 
 type Policy = InsuranceSnapshot["policies"][number];
 
-const link = (label: string, href: string): MessageAction => openLink(label, href);
-const SEE = link("See your insurance", "/insurance");
-const editLink = (p: Policy) => link("Add the details", `/insurance?edit=${p.id}#policy-${p.id}`);
-const addLink = (kind: PolicyKind | null) => link("Add a policy", addPolicyHref(kind));
+const SEE = openLink("See your insurance", "/insurance");
+const editLink = (p: Policy) =>
+  openLink("Add the details", `/insurance?edit=${p.id}#policy-${p.id}`);
+const addLink = (kind: PolicyKind | null) => openLink("Add a policy", addPolicyHref(kind));
 
 // "your GEICO car insurance".
 const policyName = (p: Pick<Policy, "carrier" | "kind">) =>
@@ -74,7 +74,7 @@ function noPolicy(kind: PolicyKind | null, insurance: Pick<InsuranceSnapshot, "g
     : "any insurance policies";
   return {
     body: `I don't have ${what} on file.${gap ? ` ${gap.why}` : ""} Add it, or upload the policy document and I'll read it, and I'll keep track of it for you.`,
-    actions: [addLink(kind), link("Upload a document", "/documents")],
+    actions: [addLink(kind), openLink("Upload a document", "/documents")],
     refs: {},
   };
 }

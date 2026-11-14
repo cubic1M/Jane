@@ -15,8 +15,7 @@ import { plural } from "@/lib/plural";
 // Jane's answers about debts (spec Phase Y), from the same debt book as the loans page
 // (src/lib/debts.ts). Pure: fixed wording, every rate with where it came from.
 
-const link = (label: string, href: string): MessageAction => openLink(label, href);
-export const SEE_DEBTS = link("See every debt", "/loans");
+export const SEE_DEBTS = openLink("See every debt", "/loans");
 
 // "at 6.90% fixed (from your bank)" or "with no rate yet".
 function rateWords(debt: Debt): string {
@@ -56,7 +55,7 @@ export function debtsReply(book: DebtBook): Reply {
   if (book.debts.length === 0) {
     return {
       body: "I don't see any loans, cards or buy now, pay later plans. When you upload a card or loan statement, or link a bank that reports them, I'll keep track of every one.",
-      actions: [link("Add your accounts", "/connect")],
+      actions: [openLink("Add your accounts", "/connect")],
       refs: {},
     };
   }
@@ -181,7 +180,7 @@ function planButtons(first: Strategy, label: (s: Strategy) => string): MessageAc
 // (labelled); otherwise both orders side by side, as math, not a recommendation.
 export function payoffReply(payoff: Payoff, asOf: string): Reply {
   const { summary, stored } = payoff;
-  const planner = link("Open the payoff planner", "/debt");
+  const planner = openLink("Open the payoff planner", "/debt");
   if (summary.cards.length === 0) {
     return {
       body:

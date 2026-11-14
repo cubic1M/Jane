@@ -9,15 +9,13 @@ import { OPTION_ACTIONS } from "../actions/options";
 import { shopBody } from "../sources/insurance";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "../replies";
-import { type MessageAction, openLink } from "../types";
+import { openLink } from "../types";
 import type { InsuranceIntent } from "./intents";
 import { loadInsuranceSnapshot } from "./snapshot";
 
 // Quotes in Jane's chat (spec step 103): "find me cheaper car insurance" asks the insurance
 // partner for quotes with the same cover and deductible, and says what came back, like for
 // like. Asking commits to nothing; buying is a tap later (spec step 105).
-
-const link = (label: string, href: string): MessageAction => openLink(label, href);
 
 // Shown up to this many quotes in the chat; the rest are on the quotes page.
 const SHOWN = 3;
@@ -31,7 +29,7 @@ export function quotesReply(result: QuotesResult): Reply {
         : result.reason === "not_quotable"
           ? "I can only get quotes for car, home, renters, life and pet insurance for now."
           : "I couldn't find that policy on your insurance.";
-    return { body, actions: [link("See your insurance", "/insurance")], refs: {} };
+    return { body, actions: [openLink("See your insurance", "/insurance")], refs: {} };
   }
   const { policy, quotes, currentAnnualCents } = result;
   const href = `/insurance/quotes?policy=${policy.id}`;
@@ -39,7 +37,7 @@ export function quotesReply(result: QuotesResult): Reply {
   if (quotes.length === 0) {
     return {
       body: `No carrier quoted ${name} this time.`,
-      actions: [link("See your insurance", "/insurance")],
+      actions: [openLink("See your insurance", "/insurance")],
       refs: { policyId: policy.id },
     };
   }
@@ -73,7 +71,7 @@ export function quotesReply(result: QuotesResult): Reply {
       ...(demo ? ["These are sample quotes from my demo carrier catalog, not real offers."] : []),
       "Nothing changes unless you say so.",
     ].join("\n"),
-    actions: [link("See the quotes", href)],
+    actions: [openLink("See the quotes", href)],
     refs: { policyId: policy.id },
   };
 }
@@ -137,7 +135,7 @@ export async function quotesAnswer(
             ? `I don't have ${kindWords(intent.policyKind)} on file to get quotes for. Add it and I'll compare it.`
             : "I don't have a policy on file I can get quotes for. Add your car, home, renters, life or pet policy first."
           : `Which one? You have ${candidates.map((p) => `${p.carrier} ${kindWords(p.kind)}`).join(" and ")}. Ask about one, like "find me cheaper ${kindWords(candidates[0].kind)}".`,
-      actions: [link("See your insurance", "/insurance")],
+      actions: [openLink("See your insurance", "/insurance")],
       refs: {},
     };
   }
@@ -155,7 +153,7 @@ export async function quotesAnswer(
           body,
           actions: [
             ...OPTION_ACTIONS,
-            link("Show options", `/insurance/quotes?policy=${policy.id}`),
+            openLink("Show options", `/insurance/quotes?policy=${policy.id}`),
           ],
           refs: { insuranceShopId: shop.id, policyId: policy.id, advice: true, options: card },
         };

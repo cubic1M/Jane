@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
-import { type Candidate, type MessageAction, openLink } from "../types";
+import { type Candidate, openLink } from "../types";
 import type { SnapshotAgentStep } from "../snapshot-more";
 import { snoozeButton, type MessageSource } from "./source";
 
@@ -15,7 +15,6 @@ import { snoozeButton, type MessageSource } from "./source";
 const PRIORITY = MESSAGE_PRIORITY.agent_step;
 
 const detailsHref = (s: SnapshotAgentStep) => `/actions#action-${s.actionId}`;
-const link = (label: string, href: string): MessageAction => openLink(label, href);
 
 // The actions page's own instruction, said for the chat instead.
 const withoutPageHint = (todo: string | null) =>
@@ -33,7 +32,7 @@ function candidate(s: SnapshotAgentStep): Candidate {
         kind: "heads_up",
         body: `I need your answer on "${s.title}". ${withoutPageHint(s.todo) || `${s.company} asked something I can't answer for you.`} Tap Answer and I'll send it on.`,
         refs: { actionId: s.actionId, step: s.step },
-        actions: [link("Answer", detailsHref(s)), snoozeButton()],
+        actions: [openLink("Answer", detailsHref(s)), snoozeButton()],
         dedupeKey: `question:${s.actionId}:${shortHash(s.todo ?? "")}`,
         priority: PRIORITY,
       };
@@ -45,7 +44,7 @@ function candidate(s: SnapshotAgentStep): Candidate {
         actions: [
           { id: "offer.accept", label: "Accept", kind: "primary" },
           { id: "offer.decline", label: "Decline", kind: "secondary" },
-          link("Details", detailsHref(s)),
+          openLink("Details", detailsHref(s)),
         ],
         dedupeKey: `offer:${s.actionId}`,
         priority: PRIORITY,
@@ -57,7 +56,7 @@ function candidate(s: SnapshotAgentStep): Candidate {
         refs: { actionId: s.actionId, step: s.step },
         actions: [
           { id: "cancel.done", label: "I've cancelled", kind: "primary" },
-          link("Open cancel page", s.url ?? detailsHref(s)),
+          openLink("Open cancel page", s.url ?? detailsHref(s)),
           snoozeButton(),
         ],
         dedupeKey: `cancel:${s.actionId}`,
@@ -68,7 +67,7 @@ function candidate(s: SnapshotAgentStep): Candidate {
         kind: "heads_up",
         body: `Your switch${s.switchName ? ` to ${s.switchName}` : ""} is ready for you. ${s.todo ?? "Sign up with the link; I'll watch your account for it."}`,
         refs: { actionId: s.actionId, step: s.step },
-        actions: [link("Sign up", s.url ?? detailsHref(s)), snoozeButton()],
+        actions: [openLink("Sign up", s.url ?? detailsHref(s)), snoozeButton()],
         dedupeKey: `switch:${s.actionId}`,
         priority: PRIORITY,
       };

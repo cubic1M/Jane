@@ -71,8 +71,6 @@ export async function loadDecisionFacts(
   };
 }
 
-const link = (label: string, href: string): MessageAction => openLink(label, href);
-
 const THING: Record<CoreSubject, string> = {
   crypto: "crypto",
   stocks: "stocks",
@@ -122,12 +120,12 @@ function first(f: DecisionFacts): { say: string; link: MessageAction } | null {
     if (f.cashCents !== null && left >= (f.cushionTargetCents ?? 0)) {
       return {
         say: `I'd clear the cards first: your cash covers the ${formatCents(f.cardDebtCents)} and still leaves ${formatCents(left)}, and they cost you up to ${rate(f.topRateBps as number)} a year, which no investment reliably beats.`,
-        link: link("See my card payoff options", "/debt"),
+        link: openLink("See my card payoff options", "/debt"),
       };
     }
     return {
       say: `I'd pay the cards down first: every dollar on them saves you their ${rate(f.topRateBps as number)} a year, which no investment reliably beats.`,
-      link: link("See my card payoff options", "/debt"),
+      link: openLink("See my card payoff options", "/debt"),
     };
   }
   if (
@@ -138,7 +136,7 @@ function first(f: DecisionFacts): { say: string; link: MessageAction } | null {
   ) {
     return {
       say: `I'd build your cushion to ${formatCents(f.cushionTargetCents)} first, so a surprise doesn't land on a card.`,
-      link: link("See my goals", "/goals"),
+      link: openLink("See my goals", "/goals"),
     };
   }
   return null;
@@ -182,7 +180,7 @@ function cushionReply(f: DecisionFacts, advice: boolean): Reply {
           .join(" ");
   return {
     body,
-    actions: [link("See my goals", "/goals")],
+    actions: [openLink("See my goals", "/goals")],
     refs: {
       topic: { kind: "decision", category: "cushion", target: "an emergency fund" },
       ...(advice ? { advice: true as const } : {}),
@@ -258,10 +256,10 @@ export function decisionReply(
       ].join(" ");
   const actions: MessageAction[] = [];
   if (advice && lead) actions.push(lead.link);
-  if (item === "crypto") actions.push(link("See crypto", "/investments/crypto"));
+  if (item === "crypto") actions.push(openLink("See crypto", "/investments/crypto"));
   if (item === "home" || item === "car" || item === "other")
-    actions.push(link("Can I afford it?", "/afford"));
-  if (actions.length === 0) actions.push(link("See my goals", "/goals"));
+    actions.push(openLink("Can I afford it?", "/afford"));
+  if (actions.length === 0) actions.push(openLink("See my goals", "/goals"));
   return {
     body,
     actions,

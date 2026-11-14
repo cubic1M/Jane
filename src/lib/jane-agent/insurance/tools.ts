@@ -737,7 +737,6 @@ async function quotesTool(
       quotes: await quotesFor(userId, p.id, { client, now }),
     })),
   );
-  const current = (p: (typeof active)[number]) => yearlyPremium(p);
   // The open reshop that saves the most, as the pick-one card under the answer (step 104).
   const best = shops
     .filter((s) => s.status === "open" && s.pick)
@@ -755,7 +754,7 @@ async function quotesTool(
         .filter((w) => w.quotes.length > 0 || shops.some((s) => s.policyId === w.policy.id))
         .map(({ policy, quotes }) => ({
           policy: `${policy.carrier} ${kindWords(policy.kind)}`,
-          paysNowAYear: money(current(policy)),
+          paysNowAYear: money(yearlyPremium(policy)),
           // Spec step 104: Jane's own pick, only in demo advice mode (shops exist only then).
           janesPick: (() => {
             const shop = shops.find((s) => s.policyId === policy.id && s.pick);
@@ -769,7 +768,7 @@ async function quotesTool(
             };
           })(),
           quotes: quotes.map((q) => {
-            const pays = current(policy);
+            const pays = yearlyPremium(policy);
             return {
               carrier: q.carrier.name,
               // Spec step 149: health plans, by name and a year's cost with the usual care.

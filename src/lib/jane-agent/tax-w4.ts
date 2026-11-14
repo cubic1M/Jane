@@ -12,8 +12,6 @@ import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 export type W4Message = { body: string; actions: MessageAction[]; refs: MessageRefs };
 
-const link = (label: string, href: string): MessageAction => openLink(label, href);
-
 const stepName = (c: W4Change) =>
   c.step === "4b" ? "Step 4(b), Deductions" : "Step 4(c), Extra withholding";
 const amount = (c: W4Change) =>
@@ -78,7 +76,7 @@ export function w4Step(n: 1 | 2 | 3, refs: MessageRefs): W4Message {
     case 1:
       return {
         body: "Step 1 of 3: get a new Form W-4 from your employer's payroll site or HR. It's the IRS's form, the same everywhere.",
-        actions: [...next("Got it, next"), link("The W-4 on irs.gov", IRS_W4_URL)],
+        actions: [...next("Got it, next"), openLink("The W-4 on irs.gov", IRS_W4_URL)],
         refs: { ...refs, w4Flow: 1 },
       };
     case 2:
@@ -107,8 +105,8 @@ export function withholdingFacts(view: TaxEstimateView, check: Actionable): W4Me
         ? `Your withholding is ahead of your tax: I estimate ${balancePhrase(check.refundCents)} for ${view.year}. The IRS's Tax Withholding Estimator shows what to put on a new W-4 if you'd rather have it in your paychecks.`
         : `Your withholding is behind your tax: I estimate ${balancePhrase(check.refundCents)} for ${view.year}. The IRS's Tax Withholding Estimator shows what to put on a new W-4 to catch up.`,
     actions: [
-      link("Tax Withholding Estimator", IRS_WITHHOLDING_ESTIMATOR_URL),
-      link("See the estimate", "/taxes?focus=estimate:withholding"),
+      openLink("Tax Withholding Estimator", IRS_WITHHOLDING_ESTIMATOR_URL),
+      openLink("See the estimate", "/taxes?focus=estimate:withholding"),
     ],
     refs: {},
   };

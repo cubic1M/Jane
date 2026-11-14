@@ -78,10 +78,6 @@ export type ShortTermView = {
   ladders: LadderView[];
 };
 
-function onDate(startOn: string, endMonth: number) {
-  return addMonths(startOn, endMonth);
-}
-
 export async function loadShortTerm(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
@@ -182,12 +178,12 @@ export async function loadShortTerm(
             r.bills.find(
               (b) =>
                 b.endMonth > elapsed ||
-                (b.endMonth === elapsed && onDate(start, b.endMonth) > today),
+                (b.endMonth === elapsed && addMonths(start, b.endMonth) > today),
             ) ?? r.bills.at(-1);
           return {
             rung: i,
             term: bill?.term ?? 0,
-            maturesOn: bill ? onDate(start, bill.endMonth) : iso(l.endsOn),
+            maturesOn: bill ? addMonths(start, bill.endMonth) : iso(l.endsOn),
           };
         }),
       };
@@ -249,7 +245,7 @@ export async function settleLadders(
     const add: LadderView["events"] = [];
     rungs.forEach((r, i) =>
       r.bills.slice(0, -1).forEach((b, j) => {
-        const on = onDate(start, b.endMonth);
+        const on = addMonths(start, b.endMonth);
         const next = r.bills[j + 1];
         if (on <= today && !seen.has(`${i}:${on}`)) {
           add.push({ on, rung: i, term: next.term, amountCents: r.amountCents });

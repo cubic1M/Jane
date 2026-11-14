@@ -65,7 +65,6 @@ const reply = (body: string, actions: MessageAction[] = [], refs: MessageRefs = 
   actions,
   refs,
 });
-const link = (label: string, href: string): MessageAction => openLink(label, href);
 const fmt = (cents: number) => (cents < 0 ? `−${formatCents(-cents)}` : formatCents(cents));
 
 const utc = (iso: string, options: Intl.DateTimeFormatOptions) =>
@@ -390,7 +389,9 @@ export function affordReply(
   } else {
     lines.push("This is math, not a recommendation.");
   }
-  actions.push(link("See the full check", `/afford?kind=purchase&amount=${amount}&date=${date}`));
+  actions.push(
+    openLink("See the full check", `/afford?kind=purchase&amount=${amount}&date=${date}`),
+  );
   return reply(lines.join("\n"), actions, refs);
 }
 
@@ -444,7 +445,7 @@ function monthlyAffordReply(
     const kind = extraCents > 0 ? "more" : "less";
     const amount = (Math.abs(extraCents) / 100).toFixed(2);
     actions.push(
-      link("See the full check", `/afford?kind=${kind}&amount=${amount}&month=${month}`),
+      openLink("See the full check", `/afford?kind=${kind}&amount=${amount}&month=${month}`),
     );
   }
   lines.push("This is math, not a recommendation.");
@@ -463,12 +464,12 @@ export function spendingReply(
   // Spec step 90: given, a category with no budget gets "Set a budget".
   budgets: readonly Budget[] | null = null,
 ): Reply {
-  const open = [link("See insights", "/insights")];
+  const open = [openLink("See insights", "/insights")];
   // Nothing to read isn't nothing spent.
   if (transactions.length === 0) {
     return reply(
       "I can't see your spending yet. Upload your bank statements or link a bank, and I'll show you where it goes.",
-      [link("Add your accounts", "/connect")],
+      [openLink("Add your accounts", "/connect")],
     );
   }
   const months = monthsEnding(asOf, INSIGHT_MONTHS);
@@ -594,7 +595,7 @@ export function comingUpReply(
   rows: ComingUpRow[],
 ): Reply {
   const shown = intent.days === null ? rows : rows.filter((r) => r.daysLeft <= intent.days!);
-  const open = [link("See bills", "/bills")];
+  const open = [openLink("See bills", "/bills")];
   const span = intent.days === null ? "coming up" : "due this week";
   if (shown.length === 0) return reply(`Nothing is ${span} that I can see.`, open);
   // Spec step 89: how many and how much first, then the list.
@@ -622,7 +623,7 @@ export function greetingReply(
     : "";
   return reply(
     `Hi!${money} Ask me anything about your money, like "${EXAMPLES[0]}".`,
-    safe ? [link("See today", "/home")] : [],
+    safe ? [openLink("See today", "/home")] : [],
   );
 }
 
@@ -636,7 +637,7 @@ export function safeReply(
   asOf: string | null = null,
 ): Reply {
   if (!safe) {
-    return reply(AFFORD_COPY.noChecking, [link("Add your accounts", "/connect")]);
+    return reply(AFFORD_COPY.noChecking, [openLink("Add your accounts", "/connect")]);
   }
   const payday = safe.payday && (asOf ? dateAndDays(safe.payday, asOf) : dayLabel(safe.payday));
   const leftOut = safe.leftOut?.length
@@ -644,7 +645,7 @@ export function safeReply(
     : "";
   return reply(
     `You have ${fmt(safe.safeCents)} safe to spend${payday ? ` until your next payday, ${payday}` : ""}. That's after upcoming bills, what's left in your budgets and what goes to your goals${safe.taxHeldCents ? `, with ${fmt(safe.taxHeldCents)} held back for tax not yet withheld or paid (an estimate)` : ""}.${leftOut}`,
-    [link("See today", "/home")],
+    [openLink("See today", "/home")],
   );
 }
 
@@ -766,7 +767,7 @@ export function actReply(
   intent: Extract<Intent, { kind: "act" }>,
   snapshot: Snapshot | null,
 ): Reply {
-  const subscriptions = link("Open subscriptions", "/subscriptions");
+  const subscriptions = openLink("Open subscriptions", "/subscriptions");
   const exact = intent.findingId
     ? snapshot?.findings.find((f) => f.findingId === intent.findingId)
     : undefined;
@@ -818,7 +819,7 @@ const ACT_LEAD: Record<ActVerb, string> = {
 
 // "What did you do?": what the action agent did this week (src/lib/what-jane-did.ts).
 export function whatDidReply(did: JaneDid): Reply {
-  const open = [link("See every step", "/actions")];
+  const open = [openLink("See every step", "/actions")];
   const lines: string[] = [];
   if (did.finished.length > 0) {
     lines.push(
@@ -845,7 +846,7 @@ export function whatDidReply(did: JaneDid): Reply {
 
 // "Yes to all": offers the plan's "Approve all safe ones", never approves by itself.
 export function approveAllReply(snapshot: Snapshot | null): Reply {
-  const plan = link("Review the plan", "/plan");
+  const plan = openLink("Review the plan", "/plan");
   const safe = snapshot?.plan.safeItems ?? 0;
   if (safe === 0) {
     return reply(
@@ -871,19 +872,19 @@ export function undoReply(snapshot: Snapshot | null, now: Date): Reply {
   if (!latest) {
     return reply(
       "There's nothing I can undo from here right now. To take back a No, tap Undo on its message; anything else you said yes to is on your plan.",
-      [link("Open the plan", "/plan")],
+      [openLink("Open the plan", "/plan")],
     );
   }
   return reply(
     `Undo my yes to "${latest.title}"? It goes back on your plan.`,
-    [{ id: "undo.rule", label: "Undo it", kind: "primary" }, link("Open the plan", "/plan")],
+    [{ id: "undo.rule", label: "Undo it", kind: "primary" }, openLink("Open the plan", "/plan")],
     { decisionId: latest.decisionId, undoUntil: latest.undoUntil.toISOString() },
   );
 }
 
 // "Pause autopilot": offers the switch to "Ask me first".
 export function pauseReply(level: string | null): Reply {
-  const settings = link("Autopilot settings", "/settings#autopilot");
+  const settings = openLink("Autopilot settings", "/settings#autopilot");
   if (!level || level === "ask") {
     return reply("Autopilot is already off: I ask you before doing anything.", [settings]);
   }
