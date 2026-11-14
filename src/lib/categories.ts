@@ -75,6 +75,7 @@ async function correctionsReachClosedMonths(
 ) {
   if (dates.length === 0) return;
   const months = dates.map((d) => d.toISOString().slice(0, 7));
+  // Loaded late: the month close reaches this file again.
   const { correctClosedMonths } = await import("@/lib/month-close");
   await correctClosedMonths(userId, months, { client });
 }

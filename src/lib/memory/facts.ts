@@ -442,6 +442,7 @@ export async function correctFact(
   const spec = factSpec(fact.key);
   if (spec && !spec.correctable) throw new MemoryError("That one comes from your bank.");
   if (spec) {
+    // Loaded late: the profile reads this file (its told facts).
     const profile = await import("@/lib/profile");
     let value: FactValue;
     try {
