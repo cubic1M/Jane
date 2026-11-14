@@ -1,5 +1,6 @@
 import type { Holding, InvestmentTransaction, Security } from "plaid";
-import { accountId, demoAccounts, type DemoExtra, type DemoSeed } from "./demo-bank";
+import { demoAccounts, type DemoExtra } from "./demo-bank";
+import { accountId, type DemoSeed } from "./basics";
 import { isPersonSeed, personPositions } from "./demo-people";
 import { demoPrice } from "./demo-prices";
 import { addDays } from "@/lib/dates";

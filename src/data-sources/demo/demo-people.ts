@@ -11,7 +11,7 @@ import {
   nextDayOfMonth,
   primaryOf,
   random,
-} from "./demo-bank";
+} from "./basics";
 import { monthsAfter, monthsToPayOff, mortgagePiDollars } from "./demo-loans";
 import { addDays } from "@/lib/dates";
 

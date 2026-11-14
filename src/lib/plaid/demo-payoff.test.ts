@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
-import { accountId } from "@/data-sources/demo/demo-bank";
+import { accountId } from "@/data-sources/demo/basics";
 import { demoPlaidApi } from "./demo";
 
 // Spec step 112: a loan a new lender paid off shows at zero in the demo bank from that day,

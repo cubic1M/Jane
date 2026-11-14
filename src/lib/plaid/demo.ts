@@ -14,9 +14,9 @@ import {
   demoLiabilities,
   demoSwitchTransactions,
   demoTransactions,
-  type DemoSeed,
   type DemoSwitch,
 } from "@/data-sources/demo/demo-bank";
+import { type DemoSeed } from "@/data-sources/demo/basics";
 import { isPersonId, personById, type PersonId } from "@/config/people";
 import { isStatementTrialUser } from "@/lib/trial-ids";
 import { demoGoalsFor } from "@/data-sources/demo/demo-goals";
