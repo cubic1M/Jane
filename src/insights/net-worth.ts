@@ -40,7 +40,8 @@ export type NetWorth = {
 
 export type Unbalanced = { name: string; card: boolean };
 
-const isDebt = (type: string) => DEBT_ACCOUNT_TYPES.includes(type);
+// A card or loan: what it holds is owed.
+export const isDebt = (type: string) => DEBT_ACCOUNT_TYPES.includes(type);
 
 export function netWorth(
   accounts: NetWorthAccount[],

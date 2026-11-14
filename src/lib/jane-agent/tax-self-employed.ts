@@ -11,8 +11,6 @@ import { dayLabel } from "@/lib/day-label";
 
 export type Said = { body: string; actions: MessageAction[]; refs: MessageRefs };
 
-const link = (label: string, href: string): MessageAction => openLink(label, href);
-
 // The next payment within QUARTERLY.remindDays of today, if any.
 export function nextQuarter(view: SelfEmployedView, today: string) {
   if (!view.active || !view.federal.needed) return null;
@@ -37,7 +35,7 @@ export function quarterMessage(
     body: `Estimated tax is due ${dayLabel(q.date)}: about ${formatWholeDollars(q.cents)} federal${statePart} for ${view.year}, by my estimate from your freelance income. It adds up to what I estimate you'll still owe. Pay it with IRS Direct Pay and tell me when it's done.`,
     actions: [
       { id: "tax.quarter_paid", label: "I've paid it", kind: "primary" },
-      link("IRS Direct Pay", IRS_DIRECT_PAY_URL),
+      openLink("IRS Direct Pay", IRS_DIRECT_PAY_URL),
     ],
     refs: { advice: true, taxQuarter: q, taxYear: view.year },
   };
@@ -51,7 +49,7 @@ export function setAsideMessage(
   if (view.setAsideGoal) {
     return {
       body: `${body} Your "Taxes set aside for ${view.year}" goal is ready for it.`,
-      actions: [link("See goals", "/goals")],
+      actions: [openLink("See goals", "/goals")],
       refs: { advice: true },
     };
   }
@@ -62,7 +60,7 @@ export function setAsideMessage(
     actions:
       target > 0
         ? [{ id: "goal.start", label: "Start a tax set-aside goal", kind: "primary" }]
-        : [link("See goals", "/goals")],
+        : [openLink("See goals", "/goals")],
     refs: {
       advice: true,
       ...(target > 0

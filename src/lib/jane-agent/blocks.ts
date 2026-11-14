@@ -29,7 +29,6 @@ const W = CHAT_BLOCK_WIDTH;
 const fit = (text: string, n: number) =>
   text.length <= n ? text : `${text.slice(0, Math.max(0, n - 1)).trimEnd()}…`;
 const padEnd = (text: string, n: number) => fit(text, n).padEnd(n);
-const money = (cents: number) => formatCents(cents);
 
 // "Oct 20", from YYYY-MM-DD.
 const day = (iso: string) =>
@@ -43,7 +42,7 @@ const day = (iso: string) =>
 
 function bars(block: Extract<AnswerBlock, { type: "bars" }>): DrawnBlock {
   const rows = block.rows.slice(0, CHAT_BLOCK_ROWS);
-  const amounts = rows.map((r) => money(r.cents));
+  const amounts = rows.map((r) => formatCents(r.cents));
   const amountWidth = Math.max(0, ...amounts.map((a) => a.length));
   const labelWidth = Math.min(10, Math.max(0, ...rows.map((r) => r.label.length)));
   const barWidth = Math.max(1, W - labelWidth - amountWidth - 2);
@@ -88,7 +87,7 @@ function table(block: Extract<AnswerBlock, { type: "table" }>): DrawnBlock {
 
 function timeline(block: Extract<AnswerBlock, { type: "timeline" }>): DrawnBlock {
   const rows = block.rows.slice(0, CHAT_BLOCK_ROWS);
-  const amounts = rows.map((r) => (r.cents === null ? "" : money(r.cents)));
+  const amounts = rows.map((r) => (r.cents === null ? "" : formatCents(r.cents)));
   const amountWidth = Math.max(0, ...amounts.map((a) => a.length));
   const labelWidth = Math.max(1, W - 6 - 3 - amountWidth - 1);
   return {
@@ -115,9 +114,11 @@ function progress(block: Extract<AnswerBlock, { type: "progress" }>): DrawnBlock
     lines.push(
       fit(r.label, W),
       `[${"#".repeat(filled)}${"-".repeat(barWidth - filled)}] ${percent.padStart(4)}`,
-      fit(`${money(r.doneCents)} of ${money(r.totalCents)}`, W),
+      fit(`${formatCents(r.doneCents)} of ${formatCents(r.totalCents)}`, W),
     );
-    alts.push(`${r.label}: ${money(r.doneCents)} of ${money(r.totalCents)}, ${percent}`);
+    alts.push(
+      `${r.label}: ${formatCents(r.doneCents)} of ${formatCents(r.totalCents)}, ${percent}`,
+    );
   }
   return { title: block.title, lines, alt: `${block.title}: ${alts.join("; ")}.` };
 }

@@ -1,10 +1,10 @@
 import {
-  DEBT_ACCOUNT_TYPES,
   NET_WORTH_EVENT_MIN_CENTS,
   NET_WORTH_EVENT_MIN_SHARE,
   NET_WORTH_EVENTS_MAX,
   NET_WORTH_INVESTMENT_MOVE_CENTS,
 } from "@/config/net-worth";
+import { isDebt } from "./net-worth";
 
 // The net worth chart's events (founder: "expand to see points on the graph how the money moved
 // based on what event"): paydays, big purchases, bills, card payments, loans paid off,
@@ -66,7 +66,6 @@ export type EventTransaction = {
   account?: string;
 };
 
-const isDebt = (type: string) => DEBT_ACCOUNT_TYPES.includes(type);
 const search = (name: string) => `/transactions?q=${encodeURIComponent(name)}`;
 
 const BILLS = ["RENT_AND_UTILITIES", "LOAN_PAYMENTS"];
