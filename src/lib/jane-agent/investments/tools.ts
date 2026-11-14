@@ -87,6 +87,7 @@ import { formatRate } from "@/lib/percent";
 import { scopedFor } from "@/lib/db-scoped";
 import { chatToday } from "@/lib/today";
 import { toolAnswer, noInput } from "@/lib/ask/tools";
+import { loadProfile } from "@/lib/profile";
 
 // Claude's tools for investment questions in Jane's chat (spec step 128 on): read-only,
 // scoped to the person, and every dollar figure recorded for the guardrails. Each later
@@ -520,7 +521,6 @@ export async function runInvestmentTool(
       // life Jane works out from their data, said as a guess.
       let data = first;
       if (!first.retirement && first.accounts.length > 0) {
-        const { loadProfile } = await import("@/lib/profile");
         const stage = (await loadProfile(userId, { client, now })).facts.life_stage.value;
         const guessedAge = typeof stage === "string" ? (STAGE_AGES[stage] ?? null) : null;
         if (guessedAge !== null) data = await loadRetirement(userId, { client, now, guessedAge });

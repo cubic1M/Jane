@@ -34,6 +34,7 @@ import { isoDate } from "./units";
 import type { anthropic } from "@/lib/anthropic";
 import { meteredClaude } from "@/lib/claude-budget";
 import { systemDb } from "@/lib/system-db";
+import { loadCardInterest } from "@/lib/card-interest";
 
 // Findings the person can still act on, and the ones where they've said yes.
 const OPEN_STATUSES: FindingStatus[] = ["new", "shown", "approved", "in_progress"];
@@ -250,7 +251,6 @@ export async function runDetection(
   // figure as the brief and the chat (the card interest page); the charges seen stay as the
   // finding's amount. Without that figure (real accounts, no lender partner) the charges seen stand.
   if (candidates.some((c) => c.type === "card_interest")) {
-    const { loadCardInterest } = await import("@/lib/card-interest");
     const view = await loadCardInterest(userId, { client, now }).catch(() => null);
     if (view?.available) {
       for (const c of candidates) {

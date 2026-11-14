@@ -86,6 +86,7 @@ function toApplication(
 // nightly detectors read, so the chat's life answer agrees with the page and does not ask who
 // depends on them when the page knows.
 async function profileFacts(userId: string, options: Options) {
+  // Loaded late: the profile reaches this file again (through the deadlines' insurance cover).
   const { loadProfile } = await import("@/lib/profile");
   const profile = await loadProfile(userId, options);
   // What they take home: a business owner's sales aren't pay, as in the need calculators.

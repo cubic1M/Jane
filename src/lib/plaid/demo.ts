@@ -35,6 +35,7 @@ import { cachedRead } from "@/lib/read-cache";
 import { plaidEnabled } from "./client";
 import { addDays } from "@/lib/dates";
 import { DEMO_ITEM_PREFIX, isDemoItemId } from "./demo-ids";
+import { seedSampleTaxAnswers } from "@/lib/sample-tax-answers";
 // Kept for src/lib/money-movement/partner.ts, which the controller drafts change.
 export { isDemoItemId };
 
@@ -302,7 +303,6 @@ export async function linkDemoBank(
   // A sample person comes with their tax profile answered: how they file and who they claim
   // (src/lib/sample-tax-answers.ts).
   if (person) {
-    const { seedSampleTaxAnswers } = await import("@/lib/sample-tax-answers");
     await seedSampleTaxAnswers(userId, person, { client });
   }
   // Spec step 241: a sample person comes with their goals (tracked by hand: no account yet).
