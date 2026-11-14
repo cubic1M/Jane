@@ -68,10 +68,17 @@ const STOCK_PICKS = [
     `\\b(?:[Tt]op |[Mm]y |[Bb]est |[Ff]avou?rite )?[Pp]icks?:\\s*\\$?${NOT_TICKERS}[A-Z]{3,5}\\b`,
   ),
   new RegExp(
-    `\\b[Ii]f I were you,?\\s+(?:I(?:'|’)?d\\s+(?:\\w+\\s+){1,2})?\\$?${NOT_TICKERS}[A-Z]{3,5}\\b`,
+    `\\b[Ii]f (?:I were you|I was you|it were me|it was me),?\\s+(?:I(?:'|’)?d\\s+(?:\\w+\\s+){1,2})?\\$?${NOT_TICKERS}[A-Z]{3,5}\\b`,
   ),
   // Round 24 (11-13): "Something like VOO would do", "1. VOO 2. VTI 3. QQQ".
   new RegExp(`\\b(?:[Ss]omething|[Aa]nything|[Aa] fund) like \\$?${NOT_TICKERS}[A-Z]{3,5}\\b`),
+  // Round 29 (11-14): "VOO would beat your savings", "Experts recommend VOO", "Reddit loves VTI".
+  new RegExp(
+    `\\b${NOT_TICKERS}[A-Z]{3,5} (?:would|will|could|should) (?:beat|outperform|outpace|grow|double|return)\\b`,
+  ),
+  new RegExp(
+    `\\b(?:[Ee]xperts?|[Aa]nalysts?|[Aa]dvisors?|[Pp]ros|[Rr]eddit|[Ii]nvestors|[Mm]ost people|[Ee]veryone|[Bb]uffett|[Bb]ogleheads)\\b[^.!?]{0,20}\\b(?:recommends?|loves?|likes?|swears? by|picks?|suggests?|buys?|prefers?|(?:is|are) buying)\\s+\\$?${NOT_TICKERS}[A-Z]{3,5}\\b`,
+  ),
   // Round 28 (11-14): "Top choice: VTI", "VOO beats a savings account", "SPY calls are cheap".
   new RegExp(
     `\\b(?:[Tt]op|[Bb]est|[Ff]irst|[Mm]y) (?:choice|option|bet)s?:?\\s+\\$?${NOT_TICKERS}[A-Z]{3,5}\\b`,
@@ -184,6 +191,8 @@ const INVESTMENT = [
   // Round 27 (11-14): Bengali, Urdu, Persian and Hungarian ("শেয়ার কিনুন", "سرمایہ کاری کریں",
   // "سرمایه گذاری کنید", "Fektess be részvényekbe").
   /বিনিয়োগ|বিনিয়োগ|শে(?:য়|য়)ার (?:কিন|বিক্রি)|سرمای[ہه]\s*\u200c?\s*(?:کاری|گذاری)|سهام|\bfektess\w*|\bbefektet\w*|\brészvény\w*/i,
+  // Round 29 (11-14): Tamil, Telugu, Marathi, Punjabi, Gujarati, Croatian and Finnish.
+  /முதலீடு|పెట్టుబడి|गुंतवणूक|ਨਿਵੇਸ਼|રોકાણ|\b(?:kupi|kupite|prodaj|prodajte)\s+dionic|\bdionice [A-Z]|\bsijoit\w*|\bosakke\w*/i,
   // Round 16 (11-13): a pick put as a tilt ("Overweight tech for the next decade", "Tilt toward small
   // caps", "Rotate out of growth into value", "Trim your winners").
   /\b(?:overweight|underweight|tilt(?:ing)? (?:toward|towards|into|to)|rotat(?:e|ing) (?:out of|into|to)|lean(?:ing)? into)\b[^.!?]{0,30}\b(?:tech|stocks?|equities|bonds|small[- ]caps?|large[- ]caps?|mid[- ]caps?|growth|value|sectors?|international|emerging markets|dividend)\b|\b(?:trim|sell) (?:your |the )?winners\b|\b(?:small|mid|large)[- ]caps?\b|\bemerging markets\b/i,
@@ -338,6 +347,9 @@ const TAX_ADVICE = [
   DEDUCTIONS,
   // Round 25 (11-14): "You're exempt from the penalty".
   /\b(?:you(?:'|’)re|you are) exempt from\b/i,
+  // Round 29 (11-14): "That's deductible", "That counts as a business expense". An insurance
+  // deductible is a noun ("That's your deductible"), so it still passes.
+  /(?<!\b(?:none|any|some|part|most|all|much) of )\b(?:that(?:'|’)s|that is|it(?:'|’)s|it is|this is|they(?:'|’)re|those are|these are) (?:fully |partly |partially |100% |all |also )?deductible\b|\bcounts? as (?:a )?(?:business expense|deduction)\b/i,
   // Round 27 (11-14): "You owe no tax on that".
   /\byou (?:owe|(?:'|’)ll owe|will owe|pay|(?:'|’)ll pay|will pay) no (?:\w+ )?tax(?:es)?\b|\byou (?:won(?:'|’)?t|don(?:'|’)?t|will not|do not) (?:owe|pay) (?:any )?(?:\w+ )?tax(?:es)? on\b/i,
   /\bwrit(?:e|es|ing|ten)[- ](?:[\w$.,']+ ){0,3}?offs?\b/i,
@@ -587,6 +599,10 @@ const LEGAL = [
   /\b(?:it(?:'|’)s|it is|that(?:'|’)s|that is) (?:perfectly |totally |completely |fully )?legal (?:to|for you to|in your state|in (?:all|most) states)\b/i,
   /\b(?:you |they )?(?:can(?:'|’)?t|cannot|can not) (?:legally )?be (?:fired|evicted|sued|garnished|arrested|jailed|deported|foreclosed on|held liable|held responsible)\b/i,
   /\bliable\b/i,
+  // Round 29 (11-14): breach and fraud, a restraining order, what a landlord owes ("That's a breach of
+  // contract", "They committed fraud", "Your landlord owes you interest on the deposit").
+  /\bbreach(?:ed|ing)? (?:of )?(?:the |your |their |a )?(?:contract|lease|warranty|agreement|fiduciary duty)\b|\b(?:committed|is committing|are committing) (?:fraud|a crime|theft|identity theft|wage theft)\b/i,
+  /\b(?:restraining|protective|protection) order\b|\b(?:landlord|employer|boss|lender|servicer|insurer) (?:legally )?owes? you\b/i,
   // Round 28 (11-14): squatters, support and what someone is entitled or owed, pleading, a
   // reaffirmation, countersuing ("Your ex has to pay child support", "You're entitled to half the
   // house", "Plead guilty to make it go away").
@@ -714,6 +730,8 @@ const GUARANTEE = [
   /\b(?:rate|apr|interest(?: rate)?) (?:will|is going to) (?:drop|fall|go down|be cut|decrease|come down)\b/i,
   /\b(?:loans?|debt|balance) (?:will|is going to) be (?:forgiven|discharged|cancell?ed|wiped out|erased)\b/i,
   /\b(?:you(?:'|’)re|you are|it(?:'|’)s|it is) bound to (?:get|be|save|win|work|go up|pay off|qualify)\b/i,
+  // Round 29 (11-14): "This will pay for itself", "You'll make your money back", "No way you'll lose".
+  /\b(?:will|(?:'|’)ll|is going to) pay for itself\b|\b(?:you(?:'|’)ll|you will) (?:make (?:all )?(?:your |the )?money back|come out ahead|break even)\b|\bno way (?:you(?:'|’)ll|you will|you can|it(?:'|’)ll|it will|this) (?:lose|fail|go wrong|go down)\b|\b(?:odds|chances?) (?:are|is) 100 ?%/i,
 ];
 
 // (g) Deposit insurance (12 CFR 328.102; connectors roadmap round 13): no false or misleading word
