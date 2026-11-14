@@ -1,5 +1,7 @@
 import { robinhoodOffered } from "@/config/robinhood";
+import { momentTimeLabel } from "@/lib/moment-time";
 import { connectionView, whyCantConnect } from "@/lib/robinhood/connection";
+import { timezoneOf } from "@/lib/today";
 
 // The Robinhood box on the Investing page: off, nothing at all, not even a query. Before connecting,
 // it says in plain words what connecting does. Robinhood has one permission, which also lets a
@@ -20,13 +22,6 @@ const trueNow = (notice: string, connected: boolean) =>
 
 const BUTTON =
   "w-fit cursor-pointer border border-zinc-300 px-3 py-1.5 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900";
-
-const stamp = (date: Date) =>
-  date.toLocaleString("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "UTC",
-  });
 
 // A plain link, so nothing runs until they choose it. The route answers with Robinhood's page.
 function ConnectLink({ label }: { label: string }) {
@@ -59,7 +54,9 @@ export async function RobinhoodPanel({
   notice: string | undefined;
 }) {
   if (!robinhoodOffered()) return null;
-  const view = await connectionView(userId);
+  const [view, timezone] = await Promise.all([connectionView(userId), timezoneOf(userId)]);
+  // When Jane last read it, in the person's own time (momentTimeLabel), not UTC.
+  const stamp = (date: Date) => momentTimeLabel(date, timezone);
   // Someone refused a new connection who already has one can still end it.
   if (view === null && (await whyCantConnect(userId))) return null;
   const said =
@@ -95,7 +92,7 @@ export async function RobinhoodPanel({
         <>
           <p className="text-sm">
             <span className="font-medium">Connected.</span>{" "}
-            {view.lastUpdated ? `Last updated ${stamp(view.lastUpdated)} UTC.` : "Not read yet."}{" "}
+            {view.lastUpdated ? `Last updated ${stamp(view.lastUpdated)}.` : "Not read yet."}{" "}
             {view.failing && "The last read didn't work; Jane will try again."}
           </p>
           <DisconnectForm />
@@ -105,8 +102,8 @@ export async function RobinhoodPanel({
         <>
           <p className="text-sm">
             <span className="font-medium">Robinhood stopped accepting this connection.</span> The
-            numbers here are from{" "}
-            {view.lastUpdated ? `${stamp(view.lastUpdated)} UTC` : "before it stopped"}.
+            numbers here are from {view.lastUpdated ? stamp(view.lastUpdated) : "before it stopped"}
+            .
           </p>
           <ConnectLink label="Reconnect Robinhood" />
           <DisconnectForm />

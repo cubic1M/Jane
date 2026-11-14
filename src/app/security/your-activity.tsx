@@ -1,13 +1,16 @@
 import Link from "next/link";
 import { recentActivity } from "@/lib/access-log";
+import { momentTimeLabel } from "@/lib/moment-time";
 import { getCurrentUser } from "@/lib/session";
+import { timezoneOf } from "@/lib/today";
 
 // The signed-in person's own recent sign-ins and account changes (src/lib/access-log.ts), so
 // they can spot one that wasn't them. Nothing for someone signed out.
 export async function YourActivity() {
   const user = await getCurrentUser();
   if (!user) return null;
-  const activity = await recentActivity(user.id);
+  // Each sign-in at the person's own time (momentTimeLabel), so one that wasn't them stands out.
+  const [activity, timezone] = await Promise.all([recentActivity(user.id), timezoneOf(user.id)]);
   return (
     <section aria-labelledby="your-activity" className="flex flex-col gap-3">
       <h2 id="your-activity">Your recent activity</h2>
@@ -21,9 +24,7 @@ export async function YourActivity() {
                 {a.what}
               </span>
               <span className="text-zinc-500">
-                {[a.device, a.place, `${a.at.toISOString().slice(0, 16).replace("T", " ")} UTC`]
-                  .filter(Boolean)
-                  .join(" · ")}
+                {[a.device, a.place, momentTimeLabel(a.at, timezone)].filter(Boolean).join(" · ")}
               </span>
             </li>
           ))}

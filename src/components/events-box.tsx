@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { setEventsAction } from "@/app/investments/events-actions";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
+import { momentTimeLabel } from "@/lib/moment-time";
 import type { EventsView } from "@/lib/events/view";
 
 // The Events box on the investments page (founder, 2026-10-26), its own box apart from the
@@ -17,16 +18,6 @@ const BUTTON =
   "inline-flex min-h-10 items-center justify-center border-2 border-zinc-950 px-3 text-xs font-semibold tracking-wide uppercase disabled:opacity-60 dark:border-zinc-50";
 const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
 
-// "Oct 26, 3:05 PM UTC": the same on the server and in the browser.
-const checkedAt = (iso: string) =>
-  `${new Date(iso).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "UTC",
-  })} UTC`;
-
 const KIND_WORDS: Record<string, string> = {
   enter: "[+] IN",
   exit: "[-] OUT",
@@ -34,7 +25,8 @@ const KIND_WORDS: Record<string, string> = {
   skip: "[ ] SKIP",
 };
 
-export function EventsBox({ view }: { view: EventsView }) {
+// `timezone`: the person's, so "last checked" is their own time (momentTimeLabel).
+export function EventsBox({ view, timezone }: { view: EventsView; timezone: string }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [note, setNote] = useState<string | null>(null);
@@ -86,7 +78,7 @@ export function EventsBox({ view }: { view: EventsView }) {
       <p className="text-[11px] tabular-nums" data-events-watching="">
         Watching {view.watching.sources.length} sources ·{" "}
         {view.watching.lastChecked
-          ? `last checked ${checkedAt(view.watching.lastChecked)}`
+          ? `last checked ${momentTimeLabel(view.watching.lastChecked, timezone)}`
           : "first check under way"}
         {view.watching.sources.some((s) => !s.ok) &&
           ` · no answer from ${view.watching.sources

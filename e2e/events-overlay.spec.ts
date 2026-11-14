@@ -127,7 +127,8 @@ test("the Events box is never empty: what it watches, and what happened or that 
   });
   const box = page.locator("#events");
   await expect(box.locator("[data-events-watching]")).toHaveText(
-    /^Watching 6 sources · (last checked .* UTC|first check under way)/,
+    // The person's own time, never UTC (debugger 11-14).
+    /^Watching 6 sources · (last checked [A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d{2} [AP]M(?! UTC)|first check under way)/,
   );
   // Either the events of the last five days, or a plain line that nothing big happened.
   await expect(box.locator("[data-events-now]")).toBeVisible();
