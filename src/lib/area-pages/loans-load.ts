@@ -8,6 +8,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { loadDebts } from "@/lib/debts";
 import { assetPrompts } from "@/lib/owned-assets";
 import { SAID_YES } from "./tree";
+import { todayOf } from "@/lib/today";
 
 // Everything the Loans & credit tree is built from (docs/design/area-pages.md), loaded once for
 // the Loans page and for the home tree, so both show the same statuses.
@@ -55,7 +56,8 @@ export async function loadLoansArea(userId: string, { now = new Date() }: { now?
   const latest = credit.available ? credit.latest : null;
 
   const area = loansTree({
-    asOf: now.toISOString().slice(0, 10),
+    // The person's own day, not UTC's (debugger 11-13: evening in Los Angeles is tomorrow in UTC).
+    asOf: await todayOf(userId, { now }),
     debts: [...accounts, ...plans],
     suggestions: mine,
     installments: bnpl.installments.length,

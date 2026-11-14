@@ -16,6 +16,7 @@ import { askCallBody, callResultBody } from "@/lib/jane-agent/insurance/done-by-
 import { coverBody, coverEventRef } from "@/lib/jane-agent/insurance/cover-words";
 import { loadCoverage, needKey } from "@/lib/area-pages/insurance-coverage";
 import { insuranceTree } from "@/lib/area-pages/insurance";
+import { todayOf } from "@/lib/today";
 
 // Everything the Insurance tree is built from (docs/design/area-pages.md), loaded once for the
 // Insurance page and for the home tree, so both show the same statuses. The page also asks it
@@ -30,7 +31,8 @@ export async function loadInsuranceArea(
     policyId = "",
   }: { now?: Date; refresh?: boolean; need?: string; policyId?: string } = {},
 ) {
-  const asOf = now.toISOString().slice(0, 10);
+  // The person's own day: a renewal "soon" counts from their today, not UTC's (debugger 11-13).
+  const asOf = await todayOf(userId, { now });
   const { policies, household, gaps, advice } = await loadInsurance(userId, { now });
   // Read after loadInsurance, which reads any policy document not read yet.
   // Everything else at once: none of it needs another part (each step waits on the database).
