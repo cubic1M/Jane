@@ -1,7 +1,6 @@
 import { shareWithAccountant } from "./accountant-message";
 import type { BusinessView } from "@/lib/business-structure";
-import { formatCents } from "@/lib/money";
-import { roundDollars } from "@/planning/tax-estimate-copy";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 // Business owners' tax structure in the chat (spec step 267): whether an S corporation would
@@ -16,7 +15,7 @@ export function sCorpMessage(v: BusinessView): Message | null {
   const s = v.structure?.sCorp;
   if (!v.advice || !s?.worthIt) return null;
   return {
-    body: `At your profit of ${roundDollars(v.structure!.profitCents)}, running your business as an S corporation could save about ${roundDollars(s.savesCents)} a year in tax after about ${roundDollars(s.costsCents)} of payroll and filing costs. You'd pay yourself a salary (a range to start from is ${roundDollars(s.salaryLowCents)} to ${roundDollars(s.salaryHighCents)}) and take the rest as profit, which skips the self-employment tax. A tax professional should confirm it and set up the election.`,
+    body: `At your profit of ${formatWholeDollars(v.structure!.profitCents)}, running your business as an S corporation could save about ${formatWholeDollars(s.savesCents)} a year in tax after about ${formatWholeDollars(s.costsCents)} of payroll and filing costs. You'd pay yourself a salary (a range to start from is ${formatWholeDollars(s.salaryLowCents)} to ${formatWholeDollars(s.salaryHighCents)}) and take the rest as profit, which skips the self-employment tax. A tax professional should confirm it and set up the election.`,
     refs: { advice: true, taxYear: v.year },
     actions: [openLink("See the numbers", BUSINESS_HREF), shareWithAccountant],
   };

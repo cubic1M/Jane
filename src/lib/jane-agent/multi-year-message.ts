@@ -1,7 +1,6 @@
 import type { MultiYearView } from "@/lib/multi-year";
-import { formatCents } from "@/lib/money";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 import type { Move } from "@/planning/multi-year";
-import { roundDollars } from "@/planning/tax-estimate-copy";
 import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 // Tax moves over several years in the chat (spec step 220): the move that saves the most
@@ -13,7 +12,7 @@ type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 
 export function yearsMoveMessage(view: MultiYearView, move: Move): Message {
   return {
-    body: `${move.title} could save you about ${roundDollars(move.effectCents)} of tax over the years. ${move.why} Want it on your deadlines? Carrying it out is yours.`,
+    body: `${move.title} could save you about ${formatWholeDollars(move.effectCents)} of tax over the years. ${move.why} Want it on your deadlines? Carrying it out is yours.`,
     refs: { advice: true, taxYear: view.year, yearsMove: move.key },
     actions: [
       { id: "tax.years_plan", label: "Put it on my plan", kind: "primary" },

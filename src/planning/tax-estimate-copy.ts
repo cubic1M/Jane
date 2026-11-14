@@ -1,4 +1,4 @@
-import { formatCents } from "@/lib/money";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 import { STATE_TAX } from "@/config/tax-rates";
 import { stateName } from "@/planning/tax-profile";
 import type { StateEstimate, TaxEstimate } from "./tax-estimate";
@@ -25,9 +25,9 @@ export function federalLine(
     // What was withheld can't be seen; estimated payments from the person's accounts can.
     const seen =
       estimatedPaidCents > 0
-        ? ` You've paid ${roundDollars(estimatedPaidCents)} in estimated tax this year.`
+        ? ` You've paid ${formatWholeDollars(estimatedPaidCents)} in estimated tax this year.`
         : "";
-    return `Federal: about ${roundDollars(estimate.totalTaxCents)} of tax for ${estimate.year}.${seen} I need your pay stub figures to say whether that's a refund or a bill.`;
+    return `Federal: about ${formatWholeDollars(estimate.totalTaxCents)} of tax for ${estimate.year}.${seen} I need your pay stub figures to say whether that's a refund or a bill.`;
   }
   return `Federal: ${balancePhrase(estimate.refundCents)}.`;
 }
@@ -43,12 +43,10 @@ export function stateLine(state: StateEstimate | null, withholdingKnown: boolean
     return `${name}: no state income tax.`;
   }
   const rough = state.rough ? " (rough: this state's figures aren't confirmed for 2026)" : "";
-  if (!withholdingKnown) return `${name}: about ${roundDollars(state.taxCents)} of tax${rough}.`;
+  if (!withholdingKnown)
+    return `${name}: about ${formatWholeDollars(state.taxCents)} of tax${rough}.`;
   return `${name}: ${balancePhrase(state.refundCents)}${rough}.`;
 }
-
-export const roundDollars = (cents: number) =>
-  formatCents(Math.round(cents / 100) * 100).replace(/\.00$/, "");
 
 export const stateSource = (code: string) => STATE_TAX[code]?.source ?? null;
 
@@ -64,16 +62,16 @@ export function taxPaidText(p: {
 }): { text: string; figures: number[] } {
   const estimated =
     p.estimatedPaidCents > 0
-      ? ` You've paid ${roundDollars(p.estimatedPaidCents)} in estimated tax this year.`
+      ? ` You've paid ${formatWholeDollars(p.estimatedPaidCents)} in estimated tax this year.`
       : "";
   if (!p.withholdingKnown) {
     return {
-      text: `Jane sees your take-home pay, not what's withheld from it: your pay stub shows that.${estimated} Your federal tax this year comes to about ${roundDollars(p.totalTaxCents)}.`,
+      text: `Jane sees your take-home pay, not what's withheld from it: your pay stub shows that.${estimated} Your federal tax this year comes to about ${formatWholeDollars(p.totalTaxCents)}.`,
       figures: [p.estimatedPaidCents, p.totalTaxCents],
     };
   }
   return {
-    text: `Your employer has withheld about ${roundDollars(p.withheldSoFarCents)} of federal tax from your pay so far this year, about ${roundDollars(p.withheldProjectedCents)} by the end at this pace.${estimated} That's against ${roundDollars(p.totalTaxCents)} of tax.`,
+    text: `Your employer has withheld about ${formatWholeDollars(p.withheldSoFarCents)} of federal tax from your pay so far this year, about ${formatWholeDollars(p.withheldProjectedCents)} by the end at this pace.${estimated} That's against ${formatWholeDollars(p.totalTaxCents)} of tax.`,
     figures: [
       p.withheldSoFarCents,
       p.withheldProjectedCents,

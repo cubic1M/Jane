@@ -1,6 +1,5 @@
 import type { Gift, GivingView } from "@/lib/giving";
-import { formatCents } from "@/lib/money";
-import { roundDollars } from "@/planning/tax-estimate-copy";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 
 import { type MessageAction, type MessageRefs, openLink } from "./types";
 import { dayLabel } from "@/lib/day-label";
@@ -26,7 +25,7 @@ export function receiptMessage(g: Gift): Message {
 const optionLines = (view: GivingView) =>
   view.options.map(
     (o) =>
-      `• ${o.title}: tax about ${roundDollars(o.withCents)} with it, ${roundDollars(o.withoutCents)} without (saves about ${roundDollars(o.savesCents)}).`,
+      `• ${o.title}: tax about ${formatWholeDollars(o.withCents)} with it, ${formatWholeDollars(o.withoutCents)} without (saves about ${formatWholeDollars(o.savesCents)}).`,
   );
 
 export function givingOptionsMessage(view: GivingView): Message | null {

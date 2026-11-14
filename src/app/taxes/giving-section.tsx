@@ -1,7 +1,6 @@
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import type { GivingView } from "@/lib/giving";
-import { formatCents } from "@/lib/money";
-import { roundDollars } from "@/planning/tax-estimate-copy";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 import { GivingButton } from "./giving-buttons";
 import { dayLabel } from "@/lib/day-label";
 
@@ -89,13 +88,13 @@ export function GivingSection({ view }: { view: GivingView }) {
                     <span className="block text-xs text-zinc-600 dark:text-zinc-400">{o.why}</span>
                   </th>
                   <td className="py-1 pr-2 text-right whitespace-nowrap">
-                    {roundDollars(o.withCents)}
+                    {formatWholeDollars(o.withCents)}
                   </td>
                   <td className="py-1 pr-2 text-right whitespace-nowrap">
-                    {roundDollars(o.withoutCents)}
+                    {formatWholeDollars(o.withoutCents)}
                   </td>
                   <td className="py-1 text-right whitespace-nowrap">
-                    {roundDollars(o.savesCents)}
+                    {formatWholeDollars(o.savesCents)}
                   </td>
                 </tr>
               ))}

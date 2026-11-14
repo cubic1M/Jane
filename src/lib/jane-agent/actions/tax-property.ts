@@ -1,3 +1,4 @@
+import { formatWholeDollars } from "@/lib/money";
 import { conciergeMode } from "@/lib/concierge-mode";
 import {
   PropertyTaxError,
@@ -7,7 +8,6 @@ import {
   remindAppealWindow,
   remindExemption,
 } from "@/lib/property-tax";
-import { roundDollars } from "@/planning/tax-estimate-copy";
 import { ChatActionError, type ActionContext, type ActionHandler } from "./handler";
 
 // Property tax from the chat (spec step 221): draft an appeal, say who files it, set the
@@ -31,7 +31,7 @@ export const taxPropertyDraft: ActionHandler = {
     const a = await draftPropertyAppeal(userId, { client, now, via: "chat" }).catch(failed);
     return {
       answeredWith: action.label,
-      note: `Done: your appeal is drafted (about ${roundDollars(a.savingCents)} a year if it works) and the deadline is on your plan. Tell me who files it.`,
+      note: `Done: your appeal is drafted (about ${formatWholeDollars(a.savingCents)} a year if it works) and the deadline is on your plan. Tell me who files it.`,
     };
   },
 };

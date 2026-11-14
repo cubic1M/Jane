@@ -1,7 +1,7 @@
+import { formatWholeDollars } from "@/lib/money";
 import { LOCAL_TAXES, STATE_SOURCES } from "@/config/tax-states";
 import type { TaxEstimateView } from "@/lib/tax-estimate";
 import type { ResidencyView } from "@/lib/tax-states";
-import { roundDollars } from "@/planning/tax-estimate-copy";
 import { stateName } from "@/planning/tax-profile";
 import {
   localitiesIn,
@@ -89,9 +89,9 @@ function partLine(p: StatePart, year: number): string {
   if (p.kind === "none") return `${name(p.code)} (${where}): no income tax.`;
   const credit =
     p.creditCents > 0
-      ? `, after a credit of about ${roundDollars(p.creditCents)} for tax paid to another state`
+      ? `, after a credit of about ${formatWholeDollars(p.creditCents)} for tax paid to another state`
       : "";
-  return `${name(p.code)} (${where}): about ${roundDollars(p.taxCents)} on about ${roundDollars(p.incomeCents)} of income${credit}.${p.rough ? " A rough rate: its own brackets aren't in Jane yet." : ""}`;
+  return `${name(p.code)} (${where}): about ${formatWholeDollars(p.taxCents)} on about ${formatWholeDollars(p.incomeCents)} of income${credit}.${p.rough ? " A rough rate: its own brackets aren't in Jane yet." : ""}`;
 }
 
 export function statesReply(view: TaxEstimateView): Message {
@@ -105,7 +105,9 @@ export function statesReply(view: TaxEstimateView): Message {
   }
   const lines = state.parts.map((p) => partLine(p, view.year));
   if (state.local) {
-    lines.push(`${state.local.label}: about ${roundDollars(state.local.taxCents)} of city tax.`);
+    lines.push(
+      `${state.local.label}: about ${formatWholeDollars(state.local.taxCents)} of city tax.`,
+    );
   }
   const sources = [
     ...state.parts.map((p) => STATE_SOURCES[p.code]?.agency).filter(Boolean),
@@ -116,7 +118,7 @@ export function statesReply(view: TaxEstimateView): Message {
       ? " Moved or work for an employer in another state? Tell me and I'll split it."
       : "";
   return {
-    body: `Your ${view.year} state taxes come to about ${roundDollars(state.taxCents)}, estimated.\n${lines.map((l) => `• ${l}`).join("\n")}\nFigures from ${sources.join("; ")}, for review.${told}`,
+    body: `Your ${view.year} state taxes come to about ${formatWholeDollars(state.taxCents)}, estimated.\n${lines.map((l) => `• ${l}`).join("\n")}\nFigures from ${sources.join("; ")}, for review.${told}`,
     refs: {},
     actions: [openLink("Where I lived", STATES_HREF)],
   };

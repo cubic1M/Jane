@@ -1,7 +1,8 @@
+import { formatWholeDollars } from "@/lib/money";
 import { TAX_TAGS } from "@/config/tax";
 import type { TaxEstimateView } from "@/lib/tax-estimate";
 import type { TaxPack } from "@/planning/tax-pack";
-import { federalLine, roundDollars } from "@/planning/tax-estimate-copy";
+import { federalLine } from "@/planning/tax-estimate-copy";
 import { listOf } from "@/planning/tax-profile";
 import { type MessageAction, type MessageRefs, openLink } from "./types";
 
@@ -19,7 +20,9 @@ export function januaryMessage(
       pack.preparer[g].totalCents,
     ]),
   ];
-  const tagged = groups.filter(([, c]) => c > 0).map(([label, c]) => `${label} ${roundDollars(c)}`);
+  const tagged = groups
+    .filter(([, c]) => c > 0)
+    .map(([label, c]) => `${label} ${formatWholeDollars(c)}`);
   const expected = pack.forms.filter((f) => !f.mayNotSend);
   const received = expected.filter((f) => f.received).length;
   const estimateLine =

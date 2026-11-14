@@ -2,7 +2,7 @@ import type { SectorLevel } from "@/config/autopilot-sectors";
 import { FILING_STATUSES, INCOME_KINDS, whatJaneDoes, type FilingStatus } from "@/config/tax";
 import { stateName, type FieldStatus, type TaxProfileView } from "@/planning/tax-profile";
 import { TAX_TAG_ORDER, TAX_TAGS, UNTAGGED, type TaxTagKind } from "@/config/tax";
-import { formatCents } from "@/lib/money";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 import { STANDARD_DEDUCTION } from "@/config/tax-rates";
 import type { TaxFormsView, TaxTagsView } from "@/lib/tax-organizer";
 import type { TaxEstimateView } from "@/lib/tax-estimate";
@@ -21,7 +21,6 @@ import { onTrackLine, w4Suggestion, withholdingFacts } from "./tax-w4";
 import {
   balancePhrase as balancePhraseOf,
   federalLine,
-  roundDollars,
   stateLine,
 } from "@/planning/tax-estimate-copy";
 import type { TaxPack } from "@/planning/tax-pack";
@@ -263,7 +262,7 @@ export function estimateMessage(view: TaxEstimateView): Reply {
   const state = stateLine(e.state, view.withholdingKnown);
   const sofar =
     view.elapsed < 1
-      ? ` It's from your income so far (${roundDollars(view.incomeSoFarCents)}), projected to the end of the year.`
+      ? ` It's from your income so far (${formatWholeDollars(view.incomeSoFarCents)}), projected to the end of the year.`
       : "";
   const assumed = view.assumptions.find((a) => a.startsWith("You haven't told me how you file"));
   return {
@@ -341,7 +340,9 @@ export function savingsReply(view: TaxSavingsView): Reply {
     rest.length > 0
       ? `\n\nAlso: ${rest
           .slice(0, 3)
-          .map((s) => `${s.title.replace(/\.$/, "")} (about ${roundDollars(s.estimateCents)})`)
+          .map(
+            (s) => `${s.title.replace(/\.$/, "")} (about ${formatWholeDollars(s.estimateCents)})`,
+          )
           .join("; ")}.`
       : "";
   return {
@@ -357,13 +358,13 @@ export function selfEmployedReply(intent: TaxIntent, view: SelfEmployedView, tod
   if (intent.ask === "miles") {
     if (intent.miles !== null && intent.miles > 0) {
       return {
-        body: `Want me to add ${intent.miles.toLocaleString("en-US")} business miles to this year's? At the 2026 rate that's about ${roundDollars(mileageDeduction(intent.miles))} off your freelance income.`,
+        body: `Want me to add ${intent.miles.toLocaleString("en-US")} business miles to this year's? At the 2026 rate that's about ${formatWholeDollars(mileageDeduction(intent.miles))} off your freelance income.`,
         actions: [{ id: "tax.miles_add", label: "Add them", kind: "primary" }, page],
         refs: { taxMiles: intent.miles },
       };
     }
     return {
-      body: `You've logged ${view.mileage.miles.toLocaleString("en-US")} business miles this year, worth about ${roundDollars(view.mileage.deductionCents)} off your freelance income. Tell me "I drove 40 business miles" to add more.`,
+      body: `You've logged ${view.mileage.miles.toLocaleString("en-US")} business miles this year, worth about ${formatWholeDollars(view.mileage.deductionCents)} off your freelance income. Tell me "I drove 40 business miles" to add more.`,
       actions: [page],
       refs: {},
     };
@@ -371,7 +372,7 @@ export function selfEmployedReply(intent: TaxIntent, view: SelfEmployedView, tod
   if (intent.ask === "home_office") {
     return {
       body: view.homeOffice.sqft
-        ? `Your home office is ${view.homeOffice.sqft} square feet: about ${roundDollars(view.homeOffice.deductionCents)} off your freelance income (the simplified method, $5 a square foot up to 300).`
+        ? `Your home office is ${view.homeOffice.sqft} square feet: about ${formatWholeDollars(view.homeOffice.deductionCents)} off your freelance income (the simplified method, $5 a square foot up to 300).`
         : "If you use part of your home only for your freelance work, the simplified method takes $5 a square foot off your freelance income, up to 300 square feet. Tell me its size on your freelance taxes page.",
       actions: [page],
       refs: {},
@@ -410,7 +411,7 @@ export function selfEmployedReply(intent: TaxIntent, view: SelfEmployedView, tod
   if (!next) {
     return {
       body: view.federal.needed
-        ? `No estimated payment dates are left for ${view.year}; I estimate about ${roundDollars(view.federal.owedCents)} still to pay with your return.`
+        ? `No estimated payment dates are left for ${view.year}; I estimate about ${formatWholeDollars(view.federal.owedCents)} still to pay with your return.`
         : `By my estimate you won't owe enough for ${view.year} to need estimated payments (under $1,000).`,
       actions: [page],
       refs: { advice: true },
@@ -477,7 +478,7 @@ export function standardDeductionReply(view: TaxEstimateView): Reply {
   const status = FILING_STATUSES[view.estimate.filingStatus].toLowerCase();
   const yours =
     d.kind === "itemized"
-      ? ` Filing as ${status}, yours is ${formatCents(d.standardCents)}, but I estimate itemizing gives you more (about ${roundDollars(d.itemizedCents)}).`
+      ? ` Filing as ${status}, yours is ${formatCents(d.standardCents)}, but I estimate itemizing gives you more (about ${formatWholeDollars(d.itemizedCents)}).`
       : ` Filing as ${status}, yours is ${formatCents(d.standardCents)}, and it's more than itemizing would give you.`;
   return {
     body: `The ${view.year} standard deduction is ${formatCents(STANDARD_DEDUCTION.single)} for single filers, ${formatCents(STANDARD_DEDUCTION.married_joint)} married filing jointly and ${formatCents(STANDARD_DEDUCTION.head_of_household)} head of household.${yours}`,

@@ -1,8 +1,8 @@
 import { IRS_W4_URL, IRS_WITHHOLDING_ESTIMATOR_URL } from "@/config/tax";
 import type { TaxEstimateView } from "@/lib/tax-estimate";
-import { formatCents } from "@/lib/money";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 import type { W4Change, WithholdingCheck } from "@/planning/withholding";
-import { balancePhrase, roundDollars } from "@/planning/tax-estimate-copy";
+import { balancePhrase } from "@/planning/tax-estimate-copy";
 import { snoozeButton } from "./sources/source";
 import { type MessageAction, type MessageRefs, openLink } from "./types";
 
@@ -22,8 +22,8 @@ const amount = (c: W4Change) =>
     : `${formatCents(c.amountCents)} a paycheck`;
 const perPaycheck = (c: W4Change) =>
   c.perPaycheckCents < 0
-    ? `about ${roundDollars(-c.perPaycheckCents)} more in each paycheck`
-    : `about ${roundDollars(c.perPaycheckCents)} less in each paycheck`;
+    ? `about ${formatWholeDollars(-c.perPaycheckCents)} more in each paycheck`
+    : `about ${formatWholeDollars(c.perPaycheckCents)} less in each paycheck`;
 
 type Actionable = Extract<WithholdingCheck, { status: "big_refund" | "bill_coming" }>;
 
@@ -32,7 +32,7 @@ export function w4Suggestion(view: TaxEstimateView, check: Actionable): W4Messag
   const now = check.thisYear;
   const lastYear =
     check.status === "big_refund" && check.lastYearRefundCents
-      ? `, and you got ${roundDollars(check.lastYearRefundCents)} back last year`
+      ? `, and you got ${formatWholeDollars(check.lastYearRefundCents)} back last year`
       : "";
   const opening =
     check.status === "big_refund"

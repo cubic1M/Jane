@@ -2,9 +2,8 @@ import Link from "next/link";
 import { ShownLink } from "@/components/shown-link";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { dayLabel } from "@/lib/day-label";
-import { formatCents } from "@/lib/money";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 import type { SideIncomeView } from "@/lib/side-income";
-import { roundDollars } from "@/planning/tax-estimate-copy";
 
 // Side income and rentals on /taxes (spec step 173): a rental's rent, tagged expenses and
 // depreciation; each gig platform's payouts matched to its 1099; hobby or business.
@@ -103,8 +102,8 @@ export function SideIncomeSection({ view, advice }: { view: SideIncomeView; advi
         <div className="flex flex-col gap-1 text-sm">
           <h3 className="font-semibold">Hobby or business?</h3>
           <p>
-            Federal tax about {roundDollars(view.bothWays.business)} as a business, about{" "}
-            {roundDollars(view.bothWays.hobby)} as a hobby.{" "}
+            Federal tax about {formatWholeDollars(view.bothWays.business)} as a business, about{" "}
+            {formatWholeDollars(view.bothWays.hobby)} as a hobby.{" "}
             {view.kind
               ? `You treat it as a ${view.kind}.`
               : "Which it is depends on how you run it: tell Jane on your tax profile."}

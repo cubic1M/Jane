@@ -1,6 +1,5 @@
 import type { EquityTaxView } from "@/lib/equity-tax";
-import { formatCents } from "@/lib/money";
-import { roundDollars } from "@/planning/tax-estimate-copy";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 // Crypto and equity pay in the chat (spec step 219): what these add to the tax and what to
@@ -13,15 +12,15 @@ type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 
 export function equitySetAsideMessage(view: EquityTaxView): Message {
   const lines = view.setAside.parts
-    .map((p) => `• ${p.label}: about ${roundDollars(p.cents)}`)
+    .map((p) => `• ${p.label}: about ${formatWholeDollars(p.cents)}`)
     .join("\n");
   return {
-    body: `Your crypto and equity pay will add to your ${view.year} tax, and none of it comes out of your paycheck by itself. Estimated:\n${lines}\nAbout ${roundDollars(view.setAside.cents)} to set aside. Want a goal for it? Putting the money in is yours.`,
+    body: `Your crypto and equity pay will add to your ${view.year} tax, and none of it comes out of your paycheck by itself. Estimated:\n${lines}\nAbout ${formatWholeDollars(view.setAside.cents)} to set aside. Want a goal for it? Putting the money in is yours.`,
     refs: { advice: true, taxYear: view.year },
     actions: [
       {
         id: "tax.equity_aside",
-        label: `Start a goal for ${roundDollars(view.setAside.cents)}`,
+        label: `Start a goal for ${formatWholeDollars(view.setAside.cents)}`,
         kind: "primary",
       },
       openLink("See the details", EQUITY_HREF),
@@ -69,7 +68,7 @@ export function equityReply(view: EquityTaxView): Message {
   return {
     body:
       lines.length > 0
-        ? `Here's how your crypto and equity pay is taxed for ${view.year}.\n${lines.map((l) => `• ${l}`).join("\n")}${advice ? `\nAbout ${roundDollars(view.setAside.cents)} to set aside for the tax these add.` : ""}`
+        ? `Here's how your crypto and equity pay is taxed for ${view.year}.\n${lines.map((l) => `• ${l}`).join("\n")}${advice ? `\nAbout ${formatWholeDollars(view.setAside.cents)} to set aside for the tax these add.` : ""}`
         : "I don't see crypto sales or equity pay for this year. Add RSUs vested, ESPP shares sold or ISOs exercised and I'll work out the tax; connect an exchange and I'll work out the gains by lot.",
     refs: advice ? { advice: true } : {},
     actions: [
@@ -77,7 +76,7 @@ export function equityReply(view: EquityTaxView): Message {
         ? [
             {
               id: "tax.equity_aside",
-              label: `Start a goal for ${roundDollars(view.setAside.cents)}`,
+              label: `Start a goal for ${formatWholeDollars(view.setAside.cents)}`,
               kind: "primary",
             } as MessageAction,
           ]

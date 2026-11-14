@@ -1,5 +1,5 @@
+import { formatWholeDollars } from "@/lib/money";
 import { EquityTaxError, startSetAside } from "@/lib/equity-tax";
-import { roundDollars } from "@/planning/tax-estimate-copy";
 import { ChatActionError, type ActionHandler } from "./handler";
 
 // A goal for the tax crypto and equity pay will bring (spec step 219): demo advice, and a
@@ -12,7 +12,7 @@ export const taxEquityAside: ActionHandler = {
       const aside = await startSetAside(userId, { client, now, via: "chat" });
       return {
         answeredWith: action.label,
-        note: `Done: "${aside.goalName}" is a goal for ${roundDollars(aside.cents)}. Putting money in is yours.`,
+        note: `Done: "${aside.goalName}" is a goal for ${formatWholeDollars(aside.cents)}. Putting money in is yours.`,
       };
     } catch (error) {
       if (error instanceof EquityTaxError) throw new ChatActionError("failed", error.message);

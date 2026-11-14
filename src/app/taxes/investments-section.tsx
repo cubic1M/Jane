@@ -3,8 +3,7 @@ import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import type { InvestmentTaxesView } from "@/lib/investment-taxes";
 import type { TaxEstimateView } from "@/lib/tax-estimate";
 import { harvestSaving } from "@/lib/jane-agent/tax-investments";
-import { formatCents } from "@/lib/money";
-import { roundDollars } from "@/planning/tax-estimate-copy";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 import { dayLabel } from "@/lib/day-label";
 
 // Investment taxes on /taxes (spec step 124): gains and losses from the cost basis the
@@ -60,7 +59,7 @@ export function InvestmentsSection({
           {view.harvest.map((h) => (
             <p key={h.holding.securityId}>
               {h.holding.name} is down {formatCents(h.lossCents)}: selling it before Dec 31 would
-              mean about {roundDollars(harvestSaving(h, estimate))} less tax, by my estimate
+              mean about {formatWholeDollars(harvestSaving(h, estimate))} less tax, by my estimate
               {h.washRisk.reinvests ? " (turn off dividend reinvestment first)" : ""}.
             </p>
           ))}

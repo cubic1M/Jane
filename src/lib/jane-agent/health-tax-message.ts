@@ -1,7 +1,6 @@
 import { PTC_MIN_REPAY_CENTS, MEDICAL_MIN_SAVING_CENTS } from "@/config/health-taxes";
 import type { HealthTaxView } from "@/lib/health-taxes";
-import { formatCents } from "@/lib/money";
-import { roundDollars } from "@/planning/tax-estimate-copy";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 // The tax side of health insurance in the chat (spec step 269): a Marketplace credit that may
@@ -21,11 +20,11 @@ export function repaymentMessage(v: HealthTaxView): Message | null {
   const c = v.marketplace.check;
   if (!c || c.repayCents < PTC_MIN_REPAY_CENTS) return null;
   const share = Math.round(c.fplShare * 100);
-  const facts = `Your income has gone up since the start of the year: it's on pace for about ${roundDollars(v.pace.projectedCents)}, ${share}% of the poverty line for ${people(v.householdSize)}. ${
+  const facts = `Your income has gone up since the start of the year: it's on pace for about ${formatWholeDollars(v.pace.projectedCents)}, ${share}% of the poverty line for ${people(v.householdSize)}. ${
     c.overCliff
       ? "Over 400% the Marketplace credit stops, so every advance dollar is repaid with your return"
-      : `At that income the credit is about ${roundDollars(c.allowedCents)}`
-  }: about ${roundDollars(c.repayCents)} against ${roundDollars(c.advanceCents)} paid in advance${v.marketplace.told ? "" : " (I worked the advance out from your income early in the year; tell me yours and I'll be exact)"}. From 2026 there is no cap on paying it back.`;
+      : `At that income the credit is about ${formatWholeDollars(c.allowedCents)}`
+  }: about ${formatWholeDollars(c.repayCents)} against ${formatWholeDollars(c.advanceCents)} paid in advance${v.marketplace.told ? "" : " (I worked the advance out from your income early in the year; tell me yours and I'll be exact)"}. From 2026 there is no cap on paying it back.`;
   return {
     body: v.advice
       ? `${facts} Updating your income on the Marketplace now lowers the advance for the rest of the year, and a pre-tax retirement contribution lowers the income it's judged on.`
