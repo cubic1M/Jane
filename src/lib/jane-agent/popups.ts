@@ -143,11 +143,19 @@ export type PopupCard = FloatingCardData & {
   choices: { id: string; label: string }[];
 };
 
-// The first sentence of the first line, whole.
+// The first sentence of the first line, whole. A question this short names nothing on its own
+// ("Charged twice?"), so the sentence after it, which says what it's about, comes too (debugger
+// 11-14: the card said only "Charged twice?", with "$64.20 at Target" behind More details).
+const SHORT_QUESTION_WORDS = 3;
+
 export function firstSentence(text: string): string {
   const first = text.trim().split("\n")[0].trim();
-  const end = /[.!?](?=\s+\S)/.exec(first);
-  return end ? first.slice(0, end.index + 1) : first;
+  for (const end of first.matchAll(/[.!?](?=\s+\S)/g)) {
+    const sentence = first.slice(0, end.index + 1);
+    if (end[0] === "?" && sentence.split(/\s+/).length <= SHORT_QUESTION_WORDS) continue;
+    return sentence;
+  }
+  return first;
 }
 
 export function popupCard(m: MessageView): PopupCard {
