@@ -15,6 +15,16 @@ import { isoDay as dayOf } from "@/lib/dates";
 import { cachedCopy } from "@/lib/read-cache";
 import { formatWholeDollars as dollars } from "@/lib/money";
 import { systemDb } from "@/lib/system-db";
+import { openBooks } from "@/lib/books";
+import { loadCardInterest } from "@/lib/card-interest";
+import { disasterFeedFor } from "@/lib/disaster-feed";
+import { latestDraftCheck } from "@/lib/draft-return";
+import { loadEquityTax } from "@/lib/equity-tax";
+import { listGoals } from "@/lib/goals";
+import { listPolicies } from "@/lib/insurance/policies";
+import { loadMatchPace } from "@/lib/investments/match-pace";
+import { subscriptionYear } from "@/lib/jane-agent/recurring";
+import { taxSetAsideForDetector } from "@/lib/tax-set-aside";
 
 // The picture of you (spec step 253), loaded for one person: what the bank shows, what they
 // told Jane here and what they answered elsewhere (their tax, insurance and investor
@@ -307,10 +317,10 @@ async function loadProfileInputFrom(
 
 // The figures the brief shares with the chat's answers, computed by the same code the chat's
 // tools use (so the two cannot differ): the employer match left on the table, and the RSU
-// withholding that falls short. Loaded dynamically: those reach this file again.
+// withholding that falls short. The insurance shop's saving and the practice ideas are loaded
+// late: they reach this file again.
 async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
   const db = scopedFor(userId, client);
-  const { loadMatchPace } = await import("@/lib/investments/match-pace");
   const hasStock =
     (await db.accounts.count({ where: { subtype: "stock plan" } })) > 0 ||
     (await db.equityEvents.count()) > 0;
@@ -334,25 +344,23 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     taxAside,
   ] = await Promise.all([
     loadMatchPace(userId, { client, now }),
-    hasStock
-      ? import("@/lib/equity-tax").then((m) => m.loadEquityTax(userId, { client, now }))
-      : null,
-    import("@/lib/jane-agent/recurring").then((m) => m.subscriptionYear(userId, { client, now })),
-    import("@/lib/card-interest").then((m) => m.loadCardInterest(userId, { client, now })),
+    hasStock ? loadEquityTax(userId, { client, now }) : null,
+    subscriptionYear(userId, { client, now }),
+    loadCardInterest(userId, { client, now }),
     import("@/lib/insurance/shop").then((m) => m.openShopSavingCents(userId, { client, now })),
-    import("@/lib/insurance/policies").then((m) => m.listPolicies(userId, { client })),
+    listPolicies(userId, { client }),
     db.ownedAssets.findMany({ select: { valueCents: true } }),
-    import("@/lib/disaster-feed").then((m) => m.disasterFeedFor(userId, { client })),
+    disasterFeedFor(userId, { client }),
     // Spec step 238: what the daily books check left open.
-    import("@/lib/books").then((m) => m.openBooks(userId, { client })),
+    openBooks(userId, { client }),
     // Spec step 242: whether the household chose how bills split.
     scopedFor(userId, client).householdMembers.findUnique({
       where: { userId },
       select: { household: { select: { splitSetAt: true } } },
     }),
-    import("@/lib/draft-return").then((m) => m.latestDraftCheck(userId, { client })),
+    latestDraftCheck(userId, { client }),
     // Spec step 241: the goals, and the year plan as last kept (not worked out again here).
-    import("@/lib/goals").then((m) => m.listGoals(userId, { client, now })),
+    listGoals(userId, { client, now }),
     db.yearPlans.findFirst({ orderBy: { startMonth: "desc" }, select: { months: true } }),
     // Spec step 244: last month's close, if it's begun.
     db.monthCloses.findFirst({
@@ -360,7 +368,7 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
       select: { status: true },
     }),
     // The tax left to cover, as Safe to spend holds it back.
-    import("@/lib/tax-set-aside").then((m) => m.taxSetAsideForDetector(userId, { client, now })),
+    taxSetAsideForDetector(userId, { client, now }),
   ]);
   const month = now.toISOString().slice(0, 7);
   const planMonths = Array.isArray(plan?.months)
