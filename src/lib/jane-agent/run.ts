@@ -11,7 +11,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { refreshDebts } from "@/lib/debt-refresh";
 import { scopedFor } from "@/lib/db-scoped";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { policiesFromPayments } from "@/lib/found-policies";
 import { log } from "@/lib/log";
 import { runPaycheckPlan } from "@/lib/money-movement/paycheck";

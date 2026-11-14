@@ -1,6 +1,6 @@
 import { PAYOFF_CUSHION_CENTS } from "@/config/bnpl";
 import { FORECAST_DAYS } from "@/config/detection";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { forecastAccounts, upcomingBills } from "@/detection/forecast";
 import type { DetectionInput } from "@/detection/types";
 import type { PrismaClient } from "@/generated/prisma/client";

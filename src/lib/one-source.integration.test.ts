@@ -11,7 +11,7 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 import { planFor } from "@/lib/plan";
 import { loadBankFees } from "@/lib/bank-fees";
 import { idleCash } from "@/detection/rules/idle-cash";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { openShopSavingCents } from "@/lib/insurance/shop";
 import { formatCents } from "@/lib/money";
 import { loadCardInterest } from "@/lib/card-interest";

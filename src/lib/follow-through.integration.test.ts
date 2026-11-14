@@ -9,7 +9,7 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 
 import { BANK_BALANCE_STALE_DAYS } from "@/config/detection/forecast";
 import { confirmCancellations } from "@/lib/agent/run";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { staleBalanceFrom } from "@/detection/forecast";
 
 // Two reads of what a real person is told against what happens. "No charge since you cancelled:

@@ -11,7 +11,7 @@ import { alertPrefs } from "@/lib/alerts";
 import type { ToolOutput } from "@/lib/ask/tools";
 import { scopedFor } from "@/lib/db-scoped";
 import { twoFactorStatus } from "@/lib/mfa";
-import { isDemoItemId } from "@/lib/plaid/demo";
+import { isDemoItemId } from "@/lib/plaid/demo-ids";
 import { localDate, timezoneOf } from "@/lib/today";
 import { isSampleTrialUser, isStatementTrialUser } from "@/lib/trial-ids";
 import { chatNotifyPrefs } from "./notify-prefs";

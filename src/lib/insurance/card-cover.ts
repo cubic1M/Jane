@@ -2,7 +2,7 @@ import type { CardBenefit } from "@/config/card-benefits";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { isDemoItemId } from "@/lib/plaid/demo";
+import { isDemoItemId } from "@/lib/plaid/demo-ids";
 import { cardCatalog } from "./card-benefits";
 
 export { conditionWords, limitWords } from "./card-benefits";

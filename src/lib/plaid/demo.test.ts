@@ -4,7 +4,8 @@ vi.mock("@/lib/db", () => ({ db: {} }));
 vi.mock("@/lib/db-scoped", () => ({ scopedFor: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
-import { demoBankEnabled, demoPlaidApi, isDemoItemId, isDemoToken } from "./demo";
+import { demoBankEnabled, demoPlaidApi, isDemoToken } from "./demo";
+import { isDemoItemId } from "@/lib/plaid/demo-ids";
 
 describe("demo bank switches", () => {
   afterEach(() => vi.unstubAllEnvs());

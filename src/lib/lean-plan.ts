@@ -1,7 +1,7 @@
 import { LEAN_BILL_DAYS, LEAN_WAITABLE_PRIMARIES } from "@/config/lean-plan";
 import { US_STATES } from "@/config/referrals";
 import type { PrismaClient } from "@/generated/prisma/client";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { upcomingBills } from "@/detection/forecast";
 import { buildStreams } from "@/detection/streams";
 import type { DetectionInput } from "@/detection/types";

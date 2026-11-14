@@ -6,7 +6,7 @@ import {
   DEADLINE_TITLE_MAX,
 } from "@/config/deadlines";
 import { POLICY_KINDS } from "@/config/insurance";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { buildStreams } from "@/detection/streams";
 import type { DetectionInput } from "@/detection/types";
 import { addDays, isoDate } from "@/detection/units";

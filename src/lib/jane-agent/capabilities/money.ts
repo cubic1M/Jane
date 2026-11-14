@@ -1,7 +1,7 @@
 import { accountCopies, withoutCopies } from "@/lib/account-copies";
 import { FORECAST_DAYS } from "@/config/detection";
 import { loadSnapshotFast } from "../snapshot-store";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { forecastAccounts } from "@/detection/forecast";
 import { forecastReply } from "../replies-forecast";
 import { saveMoreReply } from "../replies-savemore";

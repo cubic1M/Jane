@@ -9,7 +9,7 @@ vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
 import { FIGURE_IDS } from "@/config/figures";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { correctCategory } from "@/lib/categories";
 import { healthFor, healthInput } from "@/lib/health-score";
 import { homeSummary } from "@/lib/home";

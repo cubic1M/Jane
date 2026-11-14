@@ -5,7 +5,7 @@ import { logAudit } from "@/lib/audit";
 import type { Admin } from "@/lib/concierge";
 import { db as defaultClient } from "@/lib/db";
 import { DAY_MS } from "@/lib/dates";
-import { isDemoItemId } from "@/lib/plaid/demo";
+import { isDemoItemId } from "@/lib/plaid/demo-ids";
 import { groupVisits, type Visit } from "./describe";
 import { computeFunnel, furthestStep, type FunnelStep } from "./funnel";
 import { systemDb } from "@/lib/system-db";

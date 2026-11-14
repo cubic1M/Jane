@@ -1,5 +1,5 @@
 import { checkup, type CheckLine } from "@/detection/checkup";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import type { DetectionInput } from "@/detection/types";
 import type { FindingType, PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";

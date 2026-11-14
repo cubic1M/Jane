@@ -6,7 +6,8 @@ import {
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { demoPersonFor, isDemoItemId } from "@/lib/plaid/demo";
+import { demoPersonFor } from "@/lib/plaid/demo";
+import { isDemoItemId } from "@/lib/plaid/demo-ids";
 import type { EmployerPlan } from "@/planning/retirement";
 
 // The person's pay and their employer plan's match (spec step 132). Plaid reports neither:

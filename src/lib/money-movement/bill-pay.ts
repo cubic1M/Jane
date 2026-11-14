@@ -1,6 +1,6 @@
 import { BILL_PAY_HORIZON_DAYS, BILL_PAYMENT_CATEGORIES } from "@/config/money-movement";
 import type { PrismaClient } from "@/generated/prisma/client";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { expectedDates, forecastAccounts, incomeStreams } from "@/detection/forecast";
 import { buildStreams } from "@/detection/streams";
 import type { DetectionInput } from "@/detection/types";

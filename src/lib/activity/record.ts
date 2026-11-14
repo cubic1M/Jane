@@ -3,7 +3,7 @@ import { NOT_FROM_A_BANK } from "@/data-sources/types";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { isDemoItemId } from "@/lib/plaid/demo";
+import { isDemoItemId } from "@/lib/plaid/demo-ids";
 import { isTrialUser } from "@/lib/trial-ids";
 import { anonymousOnly, sanitizeBatch, type ActivityRow } from "./sanitize";
 import { systemDb } from "@/lib/system-db";

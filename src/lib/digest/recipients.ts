@@ -1,4 +1,4 @@
-import { isDemoItemId } from "@/lib/plaid/demo";
+import { isDemoItemId } from "@/lib/plaid/demo-ids";
 import { isTrialEmail, isTrialUser } from "@/lib/trial-ids";
 
 // Who gets the weekly email. Pure, so each rule is tested directly: real people with real

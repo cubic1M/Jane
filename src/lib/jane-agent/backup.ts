@@ -1,5 +1,5 @@
 import { normalizeMerchant } from "@/data-sources/merchant";
-import { loadTransactionsBetween } from "@/detection/engine";
+import { loadTransactionsBetween } from "@/detection/input";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { formatCents } from "@/lib/money";
 import { chatToday } from "@/lib/today";

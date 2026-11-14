@@ -1,5 +1,5 @@
 import { TROUBLE_INCOME_MONTHS, TROUBLE_MONEY_LEFT_DAYS } from "@/config/debt-trouble";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { scopedFor } from "@/lib/db-scoped";
 import type { DetectionInput } from "@/detection/types";
 import { addDays } from "@/detection/units";

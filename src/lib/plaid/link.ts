@@ -9,7 +9,7 @@ import { hit } from "@/lib/rate-limit";
 import { scopedFor } from "@/lib/db-scoped";
 import { log } from "@/lib/log";
 import { PlaidRequestError, plaid, plaidCall, plaidInvestmentsEnabled, webhookUrl } from "./client";
-import { isDemoItemId } from "./demo";
+import { isDemoItemId } from "@/lib/plaid/demo-ids";
 import {
   type ItemSlot,
   LinkingClosedError,

@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma/client";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { rentReceived, rentTransfers, type RentTransfer } from "@/detection/rent-transfers";
 import type { DetectionInput } from "@/detection/types";
 import { setMerchantCategory } from "@/lib/categories";

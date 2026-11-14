@@ -11,7 +11,7 @@ import {
   CAR_REGISTRATION_YEARLY_SHARE,
 } from "@/config/car";
 import { BORROW_ROUND_CENTS, BORROW_STEP_DOWN, BORROW_STEP_TRIES } from "@/config/borrowing-power";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { addDays } from "@/detection/units";
 import type { DetectionInput } from "@/detection/types";
 import type { PrismaClient } from "@/generated/prisma/client";

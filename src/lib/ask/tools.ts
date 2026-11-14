@@ -8,7 +8,7 @@ import {
 import { INSIGHT_MONTHS } from "@/config/insights";
 import { CARD_PAYMENT_NAME, NON_SPENDING_PRIMARIES } from "@/config/detection";
 import { normalizeMerchant } from "@/data-sources/merchant";
-import { loadDetectionInput, loadTransactionsBetween } from "@/detection/engine";
+import { loadDetectionInput, loadTransactionsBetween } from "@/detection/input";
 import { comingUpBills } from "@/detection/forecast";
 import { addDays, isoDate } from "@/detection/units";
 import type { PrismaClient } from "@/generated/prisma/client";

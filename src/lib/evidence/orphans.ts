@@ -7,6 +7,7 @@ import { evidenceRefs, type EvidenceRefs } from "@/lib/finding-accounts";
 import { CLEARED_WITHOUT_DATA, DEMO_SEEDED } from "@/config/lineage";
 import { PERSON_ASSETS } from "@/data-sources/demo/demo-people";
 import { merchantOf } from "@/detection/streams";
+import { loadTransactionsBetween } from "@/detection/input";
 import { log } from "@/lib/log";
 import { DEMO_ASSETS } from "@/lib/plaid/demo-assets";
 import { stayingPeople, type OnlyPeople } from "@/lib/only-people";
@@ -196,8 +197,6 @@ async function removeDemoLeftovers(userId: string, client: PrismaClient): Promis
     select: { id: true, merchantKey: true },
   });
   if (found.length > 0) {
-    // Loaded here: detection runs this, so a static import would go round in a circle.
-    const { loadTransactionsBetween } = await import("@/detection/engine");
     const rows = await loadTransactionsBetween(userId, {
       client,
       from: "2000-01-01",

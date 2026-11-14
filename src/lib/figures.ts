@@ -22,7 +22,7 @@ import {
   HEALTH_WEIGHTS,
 } from "@/config/health-score";
 import type { PrismaClient } from "@/generated/prisma/client";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { categoryLabel } from "@/insights/labels";
 import { categoryOf } from "@/categorize/taxonomy";
 import { detailedLabel } from "@/lib/categories";

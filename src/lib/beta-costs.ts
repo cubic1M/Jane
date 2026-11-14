@@ -3,7 +3,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { betaPeople, computeBetaMetrics, loadBetaRows } from "@/lib/beta-metrics";
 import { db as defaultClient } from "@/lib/db";
 import { monthlyCapCents, monthlySpentCents } from "@/lib/jane-agent/claude-limits";
-import { isDemoItemId } from "@/lib/plaid/demo";
+import { isDemoItemId } from "@/lib/plaid/demo-ids";
 import { ITEM_STATUS } from "@/lib/plaid/sync";
 import { systemDb } from "@/lib/system-db";
 import { monthStartUtc } from "@/lib/dates";

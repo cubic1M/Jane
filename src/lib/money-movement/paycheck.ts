@@ -6,7 +6,7 @@ import {
   PAYCHECK_PLAN_DAYS,
 } from "@/config/money-movement";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import type { DetectionInput } from "@/detection/types";
 import { addDays, daysBetween, median } from "@/detection/units";
 import { PAYCHECKS_PER_MONTH } from "@/config/detection";

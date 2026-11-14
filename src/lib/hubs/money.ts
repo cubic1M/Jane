@@ -1,6 +1,6 @@
 import { accountCopies, withoutCopies } from "@/lib/account-copies";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { recurringCharges } from "@/detection/subscriptions";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { budgetSummary } from "@/insights/budgets";

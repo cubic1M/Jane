@@ -6,7 +6,7 @@ import {
   type ScenarioParams,
 } from "@/config/what-if";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import type { DetectionInput } from "@/detection/types";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";

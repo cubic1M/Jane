@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { recurringCharges, type RecurringCharge } from "@/detection/subscriptions";
 import { frequencyWords } from "@/lib/explain-input";
 import { scopedDb } from "@/lib/db-scoped";

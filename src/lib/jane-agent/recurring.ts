@@ -1,5 +1,5 @@
 import { FORECAST_DAYS } from "@/config/detection";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { nextPayday } from "@/detection/paydays";
 import { recurringCharges, type RecurringCharge } from "@/detection/subscriptions";
 import type { PrismaClient } from "@/generated/prisma/client";

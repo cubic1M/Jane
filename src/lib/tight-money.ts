@@ -5,7 +5,7 @@ import {
   TIGHT_PARTNER,
 } from "@/config/tight-money";
 import { FORECAST_DAYS } from "@/config/detection";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { forecastAccounts, comingUpBills } from "@/detection/forecast";
 import { nextPayday } from "@/detection/paydays";
 import type { DetectionInput } from "@/detection/types";

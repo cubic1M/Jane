@@ -34,13 +34,15 @@ import { scopedFor } from "@/lib/db-scoped";
 import { cachedRead } from "@/lib/read-cache";
 import { plaidEnabled } from "./client";
 import { addDays } from "@/lib/dates";
+import { DEMO_ITEM_PREFIX, isDemoItemId } from "./demo-ids";
+// Kept for src/lib/money-movement/partner.ts, which the controller drafts change.
+export { isDemoItemId };
 
 // The demo bank (spec step 75): a stand-in for Plaid's API while there are no keys. A demo
 // item is an ordinary plaid_items row whose ids start with "demo-" and whose (encrypted)
 // access token names the demo seed and the day it was linked, so the normal sync, removal
 // and daily refresh all work on it. It never talks to Plaid.
 
-const DEMO_ITEM_PREFIX = "demo-";
 // Books QA: a sample person's second bank login (DEMO_SECOND_LOGINS) is a demo item of its own,
 // "demo-<seed>-<login>". The person's demo bank is always the other one.
 const MAIN_DEMO_ITEM = {
@@ -51,7 +53,6 @@ const MAIN_DEMO_ITEM = {
 };
 export const DEMO_TOKEN_PREFIX = "demo:";
 
-export const isDemoItemId = (plaidItemId: string) => plaidItemId.startsWith(DEMO_ITEM_PREFIX);
 export const isDemoToken = (accessToken: string) => accessToken.startsWith(DEMO_TOKEN_PREFIX);
 
 // Offered when Plaid isn't set up and this isn't production; DEMO_BANK=1 turns it on
