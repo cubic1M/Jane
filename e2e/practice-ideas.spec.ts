@@ -55,7 +55,7 @@ test("an idea shows how sure Jane is, and a No changes what it brings", async ({
   await expect(idea).toHaveCount(0);
   await expect(ideas.getByText(/You said no once, but it's a safety check/)).toBeVisible();
 
-  // The investments page (its strategy board has its own spec, e2e/strategy-board.spec.ts).
+  // The investments page (its strategy board has its own spec, e2e/strategy-tree.spec.ts).
   await page.goto("/investments");
   // The news themes, each with its past record; only the ones that held up are offered.
   await pickItem(page, "Investing", "News alerts", "News themes");

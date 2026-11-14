@@ -6,7 +6,7 @@ export type TreeShape = { key: string; branches: { id: string; features: { id: s
 // Where the feature map's nodes sit (docs/design/home-hub.md): a left-to-right tree, the area
 // on the left, its branches in a column, and the open branch's features in a column beside it,
 // centred on the branch. And the camera: how far to zoom and pan so the open branch fills the
-// view. Pure, so it is tested; src/components/feature-tree.tsx draws it.
+// view. Pure, so it is tested; src/components/tree/interactive-tree.tsx draws it.
 
 export type Box = { x: number; y: number; w: number; h: number };
 type PlacedNode = Box & { id: string; level: 1 | 2 | 3 };

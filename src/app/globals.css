@@ -512,7 +512,7 @@ body {
   }
 }
 
-/* The feature map (src/components/feature-tree.tsx): the view zooms and pans with a spring,
+/* The feature map (src/components/tree/interactive-tree.tsx): the view zooms and pans with a spring,
    edges draw themselves, and nodes pop in as a branch opens. Still for reduced motion. */
 .map-view {
   transition: height var(--motion-slow) var(--ease-spring);

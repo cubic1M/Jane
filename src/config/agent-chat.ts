@@ -440,7 +440,7 @@ export const CHAT_ALL_TRIALS_DAILY_CAP_CENTS = 100;
 export const CHAT_TRIAL_RESERVE_CENTS = 5;
 export const CHAT_TRIAL_MONTH_SHARE = 0.5;
 // The team hears when the month's Claude spend reaches this share of CHAT_MONTHLY_CAP_CENTS
-// (src/lib/claude-month-alert.ts), with time to raise it before everyone loses written answers.
+// (src/lib/health.ts reportClaudeMonth), with time to raise it before everyone loses written answers.
 export const CLAUDE_MONTH_WARN_SHARE = 0.7;
 
 // Claude outside the chat, per person (plan item 13, src/lib/claude-budget.ts): reading uploads,
