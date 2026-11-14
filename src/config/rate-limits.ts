@@ -177,4 +177,8 @@ export const KEEP_RATE_LIMIT_PREFIXES = [
   "statementRows:",
   "chatmonth:",
   "claudebgmonth:",
+  // A person's month of chat (src/lib/jane-agent/spend.ts): its window starts on the 1st, so from
+  // the 2nd any cleanup took it and the person's month cap started again from nothing (debugger
+  // 11-14, while tracing a flaky cap test).
+  "chatspendmonth:",
 ] as const;
