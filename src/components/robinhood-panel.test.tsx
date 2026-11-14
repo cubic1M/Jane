@@ -6,6 +6,8 @@ const mocks = vi.hoisted(() => ({
   connectionView: vi.fn(),
 }));
 vi.mock("@/lib/robinhood/connection", () => mocks);
+// The person is in Los Angeles: times are said in their own zone.
+vi.mock("@/lib/today", () => ({ timezoneOf: async () => "America/Los_Angeles" }));
 
 import { RobinhoodPanel } from "./robinhood-panel";
 
@@ -61,7 +63,7 @@ describe("the Robinhood box on the Investing page", () => {
     const said = text(html);
     expect(html).toContain('action="/api/robinhood/disconnect"');
     expect(said).toContain("Connected.");
-    expect(said).toContain("Last updated Nov 5, 2026");
+    expect(said).toContain("Last updated Nov 5, 2:00 AM.");
     expect(said).toContain("Disconnect");
     expect(said).not.toContain("Connect Robinhood");
   });

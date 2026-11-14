@@ -6,6 +6,8 @@ const mocks = vi.hoisted(() => ({
   connectionView: vi.fn(),
 }));
 vi.mock("@/lib/robinhood/connection", () => mocks);
+// The person is in Los Angeles: times are said in their own zone.
+vi.mock("@/lib/today", () => ({ timezoneOf: async () => "America/Los_Angeles" }));
 
 import { RobinhoodPanel } from "./robinhood-panel";
 

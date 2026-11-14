@@ -51,6 +51,7 @@ import { loadInvestingArea } from "@/lib/area-pages/investing-load";
 import { LoadingBar } from "@/components/loading-bar";
 import { formatRate } from "@/lib/percent";
 import { monthLabel } from "@/lib/day-label";
+import { timezoneOf } from "@/lib/today";
 import { PageShell } from "@/components/page-shell";
 
 // What the person owns (spec step 128): every investment and retirement account, what's in
@@ -127,12 +128,13 @@ async function LevelStrategies({ userId }: { userId: string }) {
 // The page's top, like Home: the practice portfolio's hero graph, three tiles and the strategy
 // tree, from the stored research (src/lib/investments/strategy-tree.ts).
 async function Strategies({ userId, ideas }: { userId: string; ideas: number }) {
-  const [{ tiles, board }, paper, chosen, agent, events] = await Promise.all([
+  const [{ tiles, board }, paper, chosen, agent, events, timezone] = await Promise.all([
     strategyTreeFor(userId),
     loadPaperView(userId),
     strategyOf(userId),
     loadAgentView(userId),
     loadEventsView(userId),
+    timezoneOf(userId),
   ]);
   // The 24-hour agent's choices: every strategy the intraday replay ran, by market and interval.
   const choices = Object.fromEntries(
@@ -147,7 +149,7 @@ async function Strategies({ userId, ideas }: { userId: string; ideas: number }) 
         <TradingAgent view={agent} choices={choices} honest={honestLine(INTRADAY_AGENT_EVIDENCE)} />
       )}
       {/* The events overlay: its own box, apart from the suggestion dock (advice mode only). */}
-      {events && <EventsBox view={events} />}
+      {events && <EventsBox view={events} timezone={timezone} />}
       <StrategyTree tiles={tiles} board={board} ideas={ideas} />
     </>
   );
