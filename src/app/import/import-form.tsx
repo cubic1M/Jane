@@ -196,7 +196,9 @@ export function ImportForm({
   const days = coveredDays(files);
   const oldNewest = oldUploadNewest(
     files.flatMap((f) => (f.ok ? [f] : [])),
-    new Date().toISOString().slice(0, 10),
+    // The browser's own day ("en-CA" reads as YYYY-MM-DD): the UTC date is tomorrow in a US
+    // evening (debugger 11-13).
+    new Date().toLocaleDateString("en-CA"),
   );
 
   return (

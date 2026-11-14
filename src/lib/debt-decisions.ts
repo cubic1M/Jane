@@ -23,6 +23,7 @@ import {
   type DecisionInput,
 } from "@/planning/debt-decisions";
 import { DAY_MS } from "@/lib/dates";
+import { todayOf } from "@/lib/today";
 
 // The numbers behind the straight answers to debt and credit decisions (the chat's "should I
 // pay off my card or invest?", "should I consolidate?" ...): the person's debts, cash and
@@ -140,7 +141,7 @@ export async function loadDecisionInput(
     )
     .sort((a, b) => a.date.localeCompare(b.date));
   const home = await loadHomeBuying(userId, {}, { client, now, input });
-  const today = now.toISOString().slice(0, 10);
+  const today = await todayOf(userId, { client, now });
   const singleLimit = owingCards.length === 1 ? (report?.cardLimitCents ?? null) : null;
   return {
     advice,

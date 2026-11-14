@@ -13,6 +13,7 @@ import {
 } from "@/planning/mortgage";
 import { pmiTimeline, type PmiTimeline } from "@/planning/home-equity";
 import { DAY_MS } from "@/lib/dates";
+import { todayOf } from "@/lib/today";
 
 // The mortgage, watched (spec step 115), for one person: the loan from the bank (with its
 // PMI and escrow as Plaid reports them), the home's value they gave (spec step 67), PMI by
@@ -93,7 +94,7 @@ export async function loadMortgage(
           balanceCents,
           aprBps: loan.aprBps,
           paymentPiCents: loan.principalAndInterestCents ?? null,
-          today: now.toISOString().slice(0, 10),
+          today: await todayOf(userId, { client, now }),
         })
       : null;
   const comparison = refinance.comparisons.find((c) => c.debtKey === loan.key);
