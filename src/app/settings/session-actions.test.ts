@@ -14,12 +14,7 @@ vi.mock("@/lib/user-sessions", () => ({
 import { requireUser } from "@/lib/session";
 import { signOutOtherSessions, signOutSession } from "@/lib/user-sessions";
 import { signOutDevice, signOutOthers } from "./session-actions";
-
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
+import { form } from "@/lib/__fixtures__/form";
 
 describe("session sign-out actions (spec step 73)", () => {
   beforeEach(() => {

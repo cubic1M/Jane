@@ -20,12 +20,7 @@ import {
   withdrawApplication,
 } from "@/lib/loan-applications";
 import { acceptAction, submitAction, withdrawAction } from "./actions";
-
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
+import { form } from "@/lib/__fixtures__/form";
 
 describe("the application review screen", () => {
   it("submits only with the terms reviewed, for the signed-in person", async () => {

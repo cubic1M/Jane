@@ -10,14 +10,9 @@ vi.mock("@/lib/tax-filing", async (importOriginal) => ({
 
 import { FilingError, signReturn, startReturn } from "@/lib/tax-filing";
 import { fileAction } from "./actions";
+import { form } from "@/lib/__fixtures__/form";
 
 // Spec step 126: the filing page's start and sign.
-
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
 
 describe("fileAction", () => {
   beforeEach(() => vi.clearAllMocks());

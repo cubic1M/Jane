@@ -17,12 +17,8 @@ vi.mock("@/lib/mfa", () => ({ verifySessionCode: vi.fn() }));
 import { verifySessionCode } from "@/lib/mfa";
 import { getSessionState } from "@/lib/session";
 import { submitCode } from "./actions";
+import { form } from "@/lib/__fixtures__/form";
 
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
 const person = { user: { id: "u1", role: "user" as const }, mfaPending: true };
 
 describe("submitCode", () => {

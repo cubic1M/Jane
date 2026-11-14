@@ -17,15 +17,10 @@ import { PriorReturnError, confirmPriorReturn, dismissPriorReturn } from "@/lib/
 import { AmendmentError, prepareAmendment, signAmendment } from "@/lib/tax-amendment";
 import { returnAction } from "./actions";
 import { fieldsFrom } from "./fields";
+import { form } from "@/lib/__fixtures__/form";
 
 // Spec step 172: confirming a reading, preparing an amended return, and the review and
 // signature the person must give.
-
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
 
 describe("last year's return actions", () => {
   beforeEach(() => vi.clearAllMocks());

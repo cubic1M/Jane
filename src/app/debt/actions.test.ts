@@ -15,12 +15,7 @@ vi.mock("@/lib/debt-plan", async (importOriginal) => ({
 
 import { DebtPlanError, startDebtPlan, stopDebtPlan } from "@/lib/debt-plan";
 import { startPlan, stopPlan } from "./actions";
-
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
+import { form } from "@/lib/__fixtures__/form";
 
 describe("payoff plan actions", () => {
   it("starts the plan for the signed-in person with the extra in cents", async () => {

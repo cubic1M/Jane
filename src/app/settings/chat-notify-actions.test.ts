@@ -8,14 +8,9 @@ vi.mock("@/lib/db", () => ({ db: { user: { update: vi.fn() } } }));
 import { track } from "@/lib/analytics";
 import { db } from "@/lib/db";
 import { saveChatNotifyPreferences } from "./chat-notify-actions";
+import { form } from "@/lib/__fixtures__/form";
 
 // Spec step 85: "Messages from Jane" in Settings.
-
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
 
 describe("saveChatNotifyPreferences", () => {
   beforeEach(() => vi.mocked(db.user.update).mockReset());

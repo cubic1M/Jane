@@ -22,15 +22,10 @@ import {
   savePropertyAnswers,
 } from "@/lib/property-tax";
 import { propertyAction } from "./actions";
+import { form } from "@/lib/__fixtures__/form";
 
 // Spec step 221: what's told about the home, the drafted appeal and who files it, the
 // deadline and the exemptions.
-
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
 
 describe("property tax actions", () => {
   beforeEach(() => vi.clearAllMocks());

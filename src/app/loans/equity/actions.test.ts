@@ -14,12 +14,7 @@ vi.mock("@/lib/home-equity", async (importOriginal) => ({
 
 import { HomeEquityError, markHomeRequestSent, saveHomeFacts } from "@/lib/home-equity";
 import { requestSentAction, saveFactsAction } from "./actions";
-
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
+import { form } from "@/lib/__fixtures__/form";
 
 describe("a home loan's facts", () => {
   it("are saved for the signed-in person, blank meaning not given", async () => {

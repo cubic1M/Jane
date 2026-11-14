@@ -13,12 +13,7 @@ vi.mock("@/lib/student-long-game", async (importOriginal) => ({
 
 import { StudentDatesError, saveStudentDates } from "@/lib/student-long-game";
 import { saveDates } from "./actions";
-
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
+import { form } from "@/lib/__fixtures__/form";
 
 describe("save the student loan dates", () => {
   it("saves them for the signed-in person", async () => {

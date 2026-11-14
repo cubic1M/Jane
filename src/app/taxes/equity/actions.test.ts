@@ -11,14 +11,9 @@ vi.mock("@/lib/equity-tax", async (importOriginal) => ({
 
 import { EquityTaxError, addEquityEvent, removeEquityEvent, startSetAside } from "@/lib/equity-tax";
 import { equityAction } from "./actions";
+import { form } from "@/lib/__fixtures__/form";
 
 // Spec step 219: adding and removing an equity event, and the set-aside goal.
-
-const form = (fields: Record<string, string>) => {
-  const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.set(k, v);
-  return data;
-};
 
 describe("equity actions", () => {
   beforeEach(() => vi.clearAllMocks());
