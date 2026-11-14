@@ -429,7 +429,7 @@ async function LoansContent({
       <AppHeader user={user} />
       <ViewTracker event="loans_viewed" />
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold tracking-tight">Every debt</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Loans &amp; credit</h1>
         <p className="text-zinc-600 dark:text-zinc-400">{loansIntro(book)}</p>
         <nav aria-label="Loans pages" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
           <Link prefetch={false} href="/debt" className={LINK}>
