@@ -2,12 +2,11 @@ import { CLAUDE_CALL_RETRIES, CLAUDE_CALL_TIMEOUT_MS } from "@/config/outside-ca
 import Anthropic from "@anthropic-ai/sdk";
 import { killed } from "@/config/kill-switches";
 import { ALL_DETAILED, type PfcDetailed } from "./taxonomy";
-import { claudeFetch } from "@/lib/anthropic";
+import { claudeFetch, llmModel } from "@/lib/anthropic";
 import { UNTRUSTED_TEXT_RULE } from "@/lib/untrusted-text";
 import { log } from "@/lib/log";
 import { looksLikePersonPayee } from "@/lib/person-payees";
 
-const DEFAULT_MODEL = "claude-opus-5-5";
 const BATCH_SIZE = 50;
 const UNKNOWN = "UNKNOWN";
 
@@ -56,7 +55,7 @@ async function classifyBatch(
   claude: { messages: Pick<Anthropic["messages"], "create"> },
 ): Promise<Map<string, PfcDetailed>> {
   const response = await claude.messages.create({
-    model: process.env.ANTHROPIC_MODEL || DEFAULT_MODEL,
+    model: llmModel(),
     max_tokens: 16000,
     system: SYSTEM,
     messages: [{ role: "user", content: JSON.stringify({ merchants }) }],
