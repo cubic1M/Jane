@@ -75,287 +75,279 @@ function detailedWords(detailed: string): string {
   return (category ? detailedLabel(category.primary, detailed) : detailed).toLowerCase();
 }
 
-export async function explainFigure(
-  userId: string,
-  id: FigureId,
-  { client = defaultClient, now = new Date() }: Options = {},
-): Promise<Working | null> {
-  const input = await loadDetectionInput(userId, { client, now });
-  if (input.accounts.length === 0) return null;
-  const db = scopedFor(userId, client);
-  const base = {
-    id,
-    title: FIGURE_LABELS[id],
-    // The person's own day, as the figure was worked out (src/lib/today.ts).
-    asOf: input.asOf,
-    corrections: FIGURE_CORRECTIONS[id],
+// What each figure's working is worked out from: the person's loaded data and their scoped client.
+type Ctx = {
+  userId: string;
+  id: FigureId;
+  input: Awaited<ReturnType<typeof loadDetectionInput>>;
+  db: ReturnType<typeof scopedFor>;
+  client: PrismaClient;
+  now: Date;
+};
+// A working without the parts every figure has (its id, title, date and corrections).
+type Part = Omit<Working, "id" | "title" | "asOf" | "corrections">;
+
+const txs = (
+  rows: {
+    id: string;
+    date: string;
+    description: string;
+    amountCents: number;
+    pfcPrimary: string | null;
+    pfcDetailed: string | null;
+  }[],
+) =>
+  rows.slice(0, WORKING_TRANSACTIONS).map((t) => ({
+    id: t.id,
+    date: t.date,
+    description: t.description,
+    amountCents: t.amountCents,
+    category: t.pfcPrimary,
+    detailed: t.pfcDetailed,
+    category_label: categoryLabel(t.pfcPrimary),
+  }));
+const noLists = () => ({
+  transactions: [] as Working["transactions"],
+  rules: [] as Working["rules"],
+});
+
+async function safeToSpend({ userId, client, now }: Ctx): Promise<Part | null> {
+  const safe = (await homeSummary(userId, { client, now }))?.safeToSpend;
+  if (!safe) return null;
+  return {
+    ...noLists(),
+    value: formatCents(safe.safeCents),
+    summary: `What's in checking, less the bills and regular transfers due before ${safe.payday ? dayLabel(safe.payday) : "your next paycheck"}, what's left in this month's budgets, this month's goal amounts, the set-aside for yearly bills and any tax not yet withheld or paid.`,
+    rows: [
+      { label: "In checking today", value: formatCents(safe.balanceCents) },
+      ...safe.bills.map((b) => ({
+        label: b.transfer ? `Regular transfer: ${b.merchant}` : `Bill: ${b.merchant}`,
+        value: `−${formatCents(b.amountCents)}`,
+        note: `due ${dayLabel(b.date)}`,
+      })),
+      { label: "Budgets still to spend", value: `−${formatCents(safe.budgetsLeftCents)}` },
+      { label: "Toward goals this month", value: `−${formatCents(safe.goalsCents)}` },
+      ...(safe.setAsideCents > 0
+        ? [{ label: "Set aside for yearly bills", value: `−${formatCents(safe.setAsideCents)}` }]
+        : []),
+      ...(safe.taxHeldCents > 0
+        ? [
+            {
+              label: "Tax not yet withheld or paid",
+              value: `−${formatCents(safe.taxHeldCents)}`,
+              note: `An estimate, ${safe.taxConfidencePercent}% sure: ${formatCents(safe.taxSoFarCents)} in all, line by line on your Taxes page.${safe.taxKeptApartCents > 0 ? "" : " Jane can't see any money kept apart for it."}`,
+            },
+          ]
+        : []),
+      ...(safe.taxStatus === "unknown"
+        ? [
+            {
+              label: "Not counted: tax",
+              value: "Not known",
+              note: "Jane can see your pay but not all that's withheld from it, so it holds nothing back. Your own figure on your Taxes page would settle it.",
+            },
+          ]
+        : []),
+      { label: "Safe to spend", value: formatCents(safe.safeCents) },
+    ],
+    rules: [
+      { label: "Bills and paydays are looked for in the next", value: `${FORECAST_DAYS} days` },
+    ],
   };
-  const txs = (
-    rows: {
-      id: string;
-      date: string;
-      description: string;
-      amountCents: number;
-      pfcPrimary: string | null;
-      pfcDetailed: string | null;
-    }[],
-  ) =>
-    rows.slice(0, WORKING_TRANSACTIONS).map((t) => ({
-      id: t.id,
-      date: t.date,
-      description: t.description,
-      amountCents: t.amountCents,
-      category: t.pfcPrimary,
-      detailed: t.pfcDetailed,
-      category_label: categoryLabel(t.pfcPrimary),
-    }));
-  const empty = { transactions: [] as Working["transactions"], rules: [] as Working["rules"] };
+}
 
-  if (id === "safe_to_spend") {
-    const safe = (await homeSummary(userId, { client, now }))?.safeToSpend;
-    if (!safe) return null;
-    return {
-      ...base,
-      ...empty,
-      value: formatCents(safe.safeCents),
-      summary: `What's in checking, less the bills and regular transfers due before ${safe.payday ? dayLabel(safe.payday) : "your next paycheck"}, what's left in this month's budgets, this month's goal amounts, the set-aside for yearly bills and any tax not yet withheld or paid.`,
-      rows: [
-        { label: "In checking today", value: formatCents(safe.balanceCents) },
-        ...safe.bills.map((b) => ({
-          label: b.transfer ? `Regular transfer: ${b.merchant}` : `Bill: ${b.merchant}`,
-          value: `−${formatCents(b.amountCents)}`,
-          note: `due ${dayLabel(b.date)}`,
-        })),
-        { label: "Budgets still to spend", value: `−${formatCents(safe.budgetsLeftCents)}` },
-        { label: "Toward goals this month", value: `−${formatCents(safe.goalsCents)}` },
-        ...(safe.setAsideCents > 0
-          ? [{ label: "Set aside for yearly bills", value: `−${formatCents(safe.setAsideCents)}` }]
-          : []),
-        ...(safe.taxHeldCents > 0
-          ? [
-              {
-                label: "Tax not yet withheld or paid",
-                value: `−${formatCents(safe.taxHeldCents)}`,
-                note: `An estimate, ${safe.taxConfidencePercent}% sure: ${formatCents(safe.taxSoFarCents)} in all, line by line on your Taxes page.${safe.taxKeptApartCents > 0 ? "" : " Jane can't see any money kept apart for it."}`,
-              },
-            ]
-          : []),
-        ...(safe.taxStatus === "unknown"
-          ? [
-              {
-                label: "Not counted: tax",
-                value: "Not known",
-                note: "Jane can see your pay but not all that's withheld from it, so it holds nothing back. Your own figure on your Taxes page would settle it.",
-              },
-            ]
-          : []),
-        { label: "Safe to spend", value: formatCents(safe.safeCents) },
-      ],
-      rules: [
-        { label: "Bills and paydays are looked for in the next", value: `${FORECAST_DAYS} days` },
-      ],
-    };
-  }
-
-  if (id === "monthly_spending" || id === "monthly_income") {
-    const health = await healthInput(userId, input, { client, now });
-    const month = iso(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1))).slice(
-      0,
-      7,
-    );
-    const rows = await db.transactions.findMany({
-      where: {
-        date: {
-          gte: new Date(`${month}-01T00:00:00Z`),
-          lt: new Date(`${iso(now).slice(0, 7)}-01T00:00:00Z`),
-        },
-        pending: false,
+async function monthly({ userId, id, input, db, client, now }: Ctx): Promise<Part> {
+  const health = await healthInput(userId, input, { client, now });
+  const month = iso(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1))).slice(0, 7);
+  const rows = await db.transactions.findMany({
+    where: {
+      date: {
+        gte: new Date(`${month}-01T00:00:00Z`),
+        lt: new Date(`${iso(now).slice(0, 7)}-01T00:00:00Z`),
       },
-      select: {
-        id: true,
-        date: true,
-        description: true,
-        amountCents: true,
-        pfcPrimary: true,
-        pfcDetailed: true,
-        merchantName: true,
+      pending: false,
+    },
+    select: {
+      id: true,
+      date: true,
+      description: true,
+      amountCents: true,
+      pfcPrimary: true,
+      pfcDetailed: true,
+      merchantName: true,
+    },
+  });
+  const dated = rows.map((r) => ({ ...r, date: iso(r.date), pending: false }));
+  const wanted = dated
+    .filter((t) => kindOf(t) === (id === "monthly_spending" ? "spending" : "income"))
+    .sort((a, b) => Math.abs(b.amountCents) - Math.abs(a.amountCents));
+  const prefs = await listPreferences(userId, { client });
+  const said = incomeOverride(prefs);
+  const value = id === "monthly_spending" ? health.monthlySpendingCents : health.monthlyIncomeCents;
+  return {
+    value: value === null ? "unknown" : formatCents(value),
+    summary:
+      id === "monthly_spending"
+        ? `The average of your last full months' spending. ${oneOffNote(health.oneOffs ?? []) ? `${oneOffNote(health.oneOffs ?? [])} ` : ""}${monthLabel(month, { long: true })}'s biggest items are below; money moved between your own accounts and card payments aren't spending.`
+        : said !== null
+          ? `You told me you earn ${formatCents(said)} a month, so I use that instead of the average of your deposits.`
+          : `The average of the paychecks and other deposits in your last full months. ${monthLabel(month, { long: true })}'s biggest are below.`,
+    rows: [
+      {
+        label: id === "monthly_spending" ? "Average monthly spending" : "Average monthly income",
+        value: value === null ? "unknown" : formatCents(value),
       },
-    });
-    const dated = rows.map((r) => ({ ...r, date: iso(r.date), pending: false }));
-    const wanted = dated
-      .filter((t) => kindOf(t) === (id === "monthly_spending" ? "spending" : "income"))
-      .sort((a, b) => Math.abs(b.amountCents) - Math.abs(a.amountCents));
-    const prefs = await listPreferences(userId, { client });
-    const said = incomeOverride(prefs);
-    const value =
-      id === "monthly_spending" ? health.monthlySpendingCents : health.monthlyIncomeCents;
-    return {
-      ...base,
-      value: value === null ? "unknown" : formatCents(value),
-      summary:
-        id === "monthly_spending"
-          ? `The average of your last full months' spending. ${oneOffNote(health.oneOffs ?? []) ? `${oneOffNote(health.oneOffs ?? [])} ` : ""}${monthLabel(month, { long: true })}'s biggest items are below; money moved between your own accounts and card payments aren't spending.`
-          : said !== null
-            ? `You told me you earn ${formatCents(said)} a month, so I use that instead of the average of your deposits.`
-            : `The average of the paychecks and other deposits in your last full months. ${monthLabel(month, { long: true })}'s biggest are below.`,
-      rows: [
-        {
-          label: id === "monthly_spending" ? "Average monthly spending" : "Average monthly income",
-          value: value === null ? "unknown" : formatCents(value),
-        },
-        ...(id === "monthly_spending" && (health.unseenCardPaymentsCents ?? 0) > 0
-          ? [
-              {
-                label: "Counted: paid to cards with no statement here, a month",
-                value: formatCents(health.unseenCardPaymentsCents ?? 0),
-                note: "Jane can't see what they bought. Upload those statements to see it, and to look through it for money you're losing.",
-              },
-            ]
-          : []),
-        ...(id === "monthly_spending"
-          ? (health.oneOffs ?? []).map((o) => ({
-              label: `Left out: ${o.merchant}, ${dayLabel(o.date)} (a one-off)`,
-              value: formatCents(o.amountCents),
-            }))
-          : []),
-        ...(id === "monthly_spending"
-          ? (health.spreadBills ?? []).map((b) => ({
-              label: `Counted across ${b.overMonths} months: ${b.merchant}, ${dayLabel(b.date)}`,
-              value: formatCents(b.amountCents),
-            }))
-          : []),
-        {
-          label: `${monthLabel(month, { long: true })}'s ${id === "monthly_spending" ? "spending" : "income"}, in the items below and the rest`,
-          value: formatCents(Math.abs(wanted.reduce((s, t) => s + t.amountCents, 0))),
-        },
-      ],
-      transactions: txs(wanted),
-      // In the words the rest of the app uses for categories, never their codes (debugger 11-02:
-      // "TRANSFER_OUT, TRANSFER_IN, LOAN_DISBURSEMENTS" on the page), and only the rules this figure
-      // uses: the income page showed the spending rules.
-      rules:
-        id === "monthly_spending"
-          ? [
-              {
-                label: "Not counted as spending",
-                value: [
-                  ...NON_SPENDING_PRIMARIES.map((p) => categoryLabel(p).toLowerCase()),
-                  ...NON_SPENDING_CATEGORIES.map((d) => detailedWords(d)),
-                ].join(", "),
-              },
-              {
-                label: "Big bills that come a few times a year",
-                value:
-                  "tuition, property tax and yearly premiums count across the months, not all in the one they landed in",
-              },
-              {
-                label: "One-off costs left out",
-                value: `from ${formatCents(ONE_OFF_MIN_CENTS)} and ${ONE_OFF_SHARE * 100}% of a usual month, in ${ONE_OFF_PRIMARIES.map((p) => categoryLabel(p).toLowerCase()).join(", ")}, from a merchant not charged that much again`,
-              },
-            ]
-          : [
-              {
-                label: "Counted as income",
-                value: "money in that's in the Income category, like pay and benefits",
-              },
-              {
-                label: "Not counted as income",
-                value: `${(["TRANSFER_IN", "LOAN_DISBURSEMENTS"] as const).map((p) => categoryLabel(p).toLowerCase()).join(", ")}, refunds and money in with no category`,
-              },
-            ],
-    };
-  }
+      ...(id === "monthly_spending" && (health.unseenCardPaymentsCents ?? 0) > 0
+        ? [
+            {
+              label: "Counted: paid to cards with no statement here, a month",
+              value: formatCents(health.unseenCardPaymentsCents ?? 0),
+              note: "Jane can't see what they bought. Upload those statements to see it, and to look through it for money you're losing.",
+            },
+          ]
+        : []),
+      ...(id === "monthly_spending"
+        ? (health.oneOffs ?? []).map((o) => ({
+            label: `Left out: ${o.merchant}, ${dayLabel(o.date)} (a one-off)`,
+            value: formatCents(o.amountCents),
+          }))
+        : []),
+      ...(id === "monthly_spending"
+        ? (health.spreadBills ?? []).map((b) => ({
+            label: `Counted across ${b.overMonths} months: ${b.merchant}, ${dayLabel(b.date)}`,
+            value: formatCents(b.amountCents),
+          }))
+        : []),
+      {
+        label: `${monthLabel(month, { long: true })}'s ${id === "monthly_spending" ? "spending" : "income"}, in the items below and the rest`,
+        value: formatCents(Math.abs(wanted.reduce((s, t) => s + t.amountCents, 0))),
+      },
+    ],
+    transactions: txs(wanted),
+    // In the words the rest of the app uses for categories, never their codes (debugger 11-02:
+    // "TRANSFER_OUT, TRANSFER_IN, LOAN_DISBURSEMENTS" on the page), and only the rules this figure
+    // uses: the income page showed the spending rules.
+    rules:
+      id === "monthly_spending"
+        ? [
+            {
+              label: "Not counted as spending",
+              value: [
+                ...NON_SPENDING_PRIMARIES.map((p) => categoryLabel(p).toLowerCase()),
+                ...NON_SPENDING_CATEGORIES.map((d) => detailedWords(d)),
+              ].join(", "),
+            },
+            {
+              label: "Big bills that come a few times a year",
+              value:
+                "tuition, property tax and yearly premiums count across the months, not all in the one they landed in",
+            },
+            {
+              label: "One-off costs left out",
+              value: `from ${formatCents(ONE_OFF_MIN_CENTS)} and ${ONE_OFF_SHARE * 100}% of a usual month, in ${ONE_OFF_PRIMARIES.map((p) => categoryLabel(p).toLowerCase()).join(", ")}, from a merchant not charged that much again`,
+            },
+          ]
+        : [
+            {
+              label: "Counted as income",
+              value: "money in that's in the Income category, like pay and benefits",
+            },
+            {
+              label: "Not counted as income",
+              value: `${(["TRANSFER_IN", "LOAN_DISBURSEMENTS"] as const).map((p) => categoryLabel(p).toLowerCase()).join(", ")}, refunds and money in with no category`,
+            },
+          ],
+  };
+}
 
-  if (id === "net_worth") {
-    const [listedAccounts, owned, copies] = await Promise.all([
-      db.accounts.findMany({
-        select: { id: true, name: true, type: true, currentBalanceCents: true },
-      }),
-      db.ownedAssets.findMany({
-        select: { id: true, name: true, valueCents: true, valuedOn: true },
-      }),
-      accountCopies(db),
-    ]);
-    // An account linked twice counts once (src/lib/account-copies.ts).
-    const accounts = withoutCopies(listedAccounts, copies, (a) => a.id);
-    const worth = netWorth(
-      accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })),
-      owned.map((o) => ({ id: o.id, valueCents: o.valueCents, valuedOn: iso(o.valuedOn) })),
-    );
-    return {
-      ...base,
-      ...empty,
-      // Never a silent $0: "Not known yet" when no balance is known, and what's left out said.
-      value: worth.known ? formatCents(worth.netCents) : "Not known yet",
-      summary: [
-        "What your accounts hold and what you own, at the values you gave, less what you owe on cards and loans.",
-        notCounting(worth.unbalanced)?.sentence,
-        loansNotCounted(await loansSeenWithoutBalance(userId, { client, now })),
-      ]
-        .filter(Boolean)
-        .join(" "),
-      rows: [
-        ...accounts.map((a) => ({
-          label: a.name,
-          value:
-            a.currentBalanceCents === null
-              ? "no balance"
-              : formatCents(
-                  a.type === "credit" || a.type === "loan"
-                    ? -a.currentBalanceCents
-                    : a.currentBalanceCents,
-                ),
-        })),
-        ...owned.map((o) => ({
-          label: `${o.name} (your value)`,
-          value: formatCents(o.valueCents),
-          note: `valued ${dayLabel(o.valuedOn, { year: true })}`,
-        })),
-        { label: "Net worth", value: formatCents(worth.netCents) },
-      ],
-    };
-  }
+async function netWorthWorking({ userId, db, client, now }: Ctx): Promise<Part> {
+  const [listedAccounts, owned, copies] = await Promise.all([
+    db.accounts.findMany({
+      select: { id: true, name: true, type: true, currentBalanceCents: true },
+    }),
+    db.ownedAssets.findMany({
+      select: { id: true, name: true, valueCents: true, valuedOn: true },
+    }),
+    accountCopies(db),
+  ]);
+  // An account linked twice counts once (src/lib/account-copies.ts).
+  const accounts = withoutCopies(listedAccounts, copies, (a) => a.id);
+  const worth = netWorth(
+    accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })),
+    owned.map((o) => ({ id: o.id, valueCents: o.valueCents, valuedOn: iso(o.valuedOn) })),
+  );
+  return {
+    ...noLists(),
+    // Never a silent $0: "Not known yet" when no balance is known, and what's left out said.
+    value: worth.known ? formatCents(worth.netCents) : "Not known yet",
+    summary: [
+      "What your accounts hold and what you own, at the values you gave, less what you owe on cards and loans.",
+      notCounting(worth.unbalanced)?.sentence,
+      loansNotCounted(await loansSeenWithoutBalance(userId, { client, now })),
+    ]
+      .filter(Boolean)
+      .join(" "),
+    rows: [
+      ...accounts.map((a) => ({
+        label: a.name,
+        value:
+          a.currentBalanceCents === null
+            ? "no balance"
+            : formatCents(
+                a.type === "credit" || a.type === "loan"
+                  ? -a.currentBalanceCents
+                  : a.currentBalanceCents,
+              ),
+      })),
+      ...owned.map((o) => ({
+        label: `${o.name} (your value)`,
+        value: formatCents(o.valueCents),
+        note: `valued ${dayLabel(o.valuedOn, { year: true })}`,
+      })),
+      { label: "Net worth", value: formatCents(worth.netCents) },
+    ],
+  };
+}
 
-  if (id === "health_score") {
-    const health = await healthFor(userId, { client, now, input });
-    if (!health) return null;
-    return {
-      ...base,
-      ...empty,
-      value: `${health.score} out of 100`,
-      summary:
-        health.counted.max === 100
-          ? `Each part scores out of its weight, and the parts add up to ${health.score}.`
-          : `Each part scores out of its weight. The parts I can count add up to ${health.counted.points} of ${health.counted.max}, which is ${health.score} out of 100; parts I can't see yet are left out, not counted against you.`,
-      rows: [
-        ...health.parts.map((p) => ({
-          label: `${p.label} (out of ${p.max})`,
-          value: String(p.points),
-          note: p.why,
-        })),
-        ...health.left.map((l) => ({ label: `${l.label}: left out`, value: "–", note: l.why })),
-        { label: `Total (out of ${health.counted.max})`, value: String(health.counted.points) },
-      ],
-      rules: [
-        ...Object.entries(HEALTH_WEIGHTS).map(([part, weight]) => ({
-          label: `Weight: ${part}`,
-          value: String(weight),
-        })),
-        { label: "Full cushion at", value: `${HEALTH_CUSHION_FULL_MONTHS} months of spending` },
-        {
-          label: "Room each month",
-          value: `full at ${HEALTH_MARGIN_FULL_RATE * 100}% left, none at ${-HEALTH_MARGIN_ZERO_RATE * 100}% over`,
-        },
-        { label: "Each late or overdraft fee", value: `${HEALTH_POINTS_PER_SLIP} points` },
-        { label: "No card points at", value: `${HEALTH_CARDS_ZERO_MONTHS} months of income` },
-      ],
-    };
-  }
+async function healthScore({ userId, input, client, now }: Ctx): Promise<Part | null> {
+  const health = await healthFor(userId, { client, now, input });
+  if (!health) return null;
+  return {
+    ...noLists(),
+    value: `${health.score} out of 100`,
+    summary:
+      health.counted.max === 100
+        ? `Each part scores out of its weight, and the parts add up to ${health.score}.`
+        : `Each part scores out of its weight. The parts I can count add up to ${health.counted.points} of ${health.counted.max}, which is ${health.score} out of 100; parts I can't see yet are left out, not counted against you.`,
+    rows: [
+      ...health.parts.map((p) => ({
+        label: `${p.label} (out of ${p.max})`,
+        value: String(p.points),
+        note: p.why,
+      })),
+      ...health.left.map((l) => ({ label: `${l.label}: left out`, value: "–", note: l.why })),
+      { label: `Total (out of ${health.counted.max})`, value: String(health.counted.points) },
+    ],
+    rules: [
+      ...Object.entries(HEALTH_WEIGHTS).map(([part, weight]) => ({
+        label: `Weight: ${part}`,
+        value: String(weight),
+      })),
+      { label: "Full cushion at", value: `${HEALTH_CUSHION_FULL_MONTHS} months of spending` },
+      {
+        label: "Room each month",
+        value: `full at ${HEALTH_MARGIN_FULL_RATE * 100}% left, none at ${-HEALTH_MARGIN_ZERO_RATE * 100}% over`,
+      },
+      { label: "Each late or overdraft fee", value: `${HEALTH_POINTS_PER_SLIP} points` },
+      { label: "No card points at", value: `${HEALTH_CARDS_ZERO_MONTHS} months of income` },
+    ],
+  };
+}
 
+async function debtFree({ userId, client, now }: Ctx): Promise<Part> {
   const payoff = await loadPayoff(userId, { client, now });
   return {
-    ...base,
-    ...empty,
+    ...noLists(),
     value: payoff.debtFreeMonth ?? "no set month",
     summary:
       "When the last debt is paid at the payments in your plan (the minimums with nothing extra if you haven't started one), interest included.",
@@ -369,5 +361,34 @@ export async function explainFigure(
         .filter(Boolean)
         .join(", "),
     })),
+  };
+}
+
+const EXPLAIN: Record<FigureId, (ctx: Ctx) => Promise<Part | null>> = {
+  safe_to_spend: safeToSpend,
+  monthly_spending: monthly,
+  monthly_income: monthly,
+  net_worth: netWorthWorking,
+  health_score: healthScore,
+  debt_free: debtFree,
+};
+
+export async function explainFigure(
+  userId: string,
+  id: FigureId,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<Working | null> {
+  const input = await loadDetectionInput(userId, { client, now });
+  if (input.accounts.length === 0) return null;
+  const db = scopedFor(userId, client);
+  const part = await EXPLAIN[id]({ userId, id, input, db, client, now });
+  if (!part) return null;
+  return {
+    id,
+    title: FIGURE_LABELS[id],
+    // The person's own day, as the figure was worked out (src/lib/today.ts).
+    asOf: input.asOf,
+    corrections: FIGURE_CORRECTIONS[id],
+    ...part,
   };
 }
