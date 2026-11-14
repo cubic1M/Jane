@@ -464,6 +464,8 @@ const TAX_ADVICE = [
   // payments under $600 aren't taxable", "Gifts under $19,000 aren't taxed"). The tax lines written
   // for counsel ("A direct rollover isn't taxed") say how a kind of money works and pass.
   /\byour [^.!?]{0,30}\b(?:isn(?:'|’)?t|aren(?:'|’)?t|is not|are not|won(?:'|’)?t be)(?: (?:generally|usually|probably))? (?:taxable|taxed)\b|\bunder \$[\d,.]+k?\b[^.!?]{0,15}\b(?:isn(?:'|’)?t|aren(?:'|’)?t|is not|are not|won(?:'|’)?t be|doesn(?:'|’)?t|don(?:'|’)?t)(?: (?:need to be|have to be|get))? (?:taxable|taxed|reported)\b/i,
+  // Round 34 (11-14): "Tips aren't taxed anymore", "Overtime isn't taxable now".
+  /\b(?:(?:cash )?tips|overtime|social security(?: benefits)?|unemployment(?: benefits)?|side (?:gig |hustle )?income|gig income|crypto gains|venmo payments|cash app payments|zelle payments)\b(?:[^.!?]|\.\d){0,20}\b(?:isn(?:'|’)?t|aren(?:'|’)?t|is not|are not|won(?:'|’)?t be|is no longer|are no longer) (?:taxable|taxed)\b|\b(?:taxable|taxed) (?:anymore|any more)\b/i,
   // Round 17 (11-13): Italian, Japanese, Korean, Vietnamese ("税金を払わなくていいです").
   /\bnon (?:dichiarare|dichiarate|devi dichiarare)\b|\b(?:puoi|potete) (?:detrarre|dedurre|scaricare)\b|\bdetrazione fiscale\b|税金を払わなくて|申告しなくて(?:いい|よい|大丈夫)|確定申告は(?:不要|いらない)|控除できます|経費にできます|세금(?:을)? 안 내도|신고(?:하지)? 않아도|신고 안 해도|공제받을 수 있|không cần (?:nộp|khai|đóng) thuế|được khấu trừ/i,
 ];
@@ -649,6 +651,11 @@ const LEGAL = [
   // "Lie on the application".
   /\b(?:they|the landlord|your landlord|your employer|the bank|the lender|nobody|no one) (?:can(?:'|’)?t|cannot|can not) (?:legally )?stop you\b|\bchange the locks on (?:your |the |a )?(?:tenant|roommate|ex|spouse|partner|subletter|boyfriend|girlfriend|husband|wife)\b|\block (?:them|your tenant|the tenant|your roommate) out\b/i,
   /\blie (?:on|about) (?:the |your |an? )?(?:application|form|return|claim|resume|income|taxes|address)\b|\b(?:lie|lying) to (?:the |your )?(?:irs|bank|insurer|insurance company|landlord|lender|court|judge|police)\b|\bpretend (?:that )?you (?:never|didn(?:'|’)?t)\b/i,
+  // Round 34 (11-14): "They have to honor the advertised price", "Just don't tell the insurance
+  // company", "You won't get caught", "Nobody will ever find out".
+  /\b(?:they|he|she|the (?:store|seller|merchant|company|dealer|retailer|airline|hotel|bank|lender|landlord)|stores|retailers)\s+(?:legally )?(?:have to|has to|must|are required to|is required to|are obligated to|is obligated to) honor\b/i,
+  /\b(?:don(?:'|’)?t|do not|never) (?:tell|mention (?:it |this |that )?to|report (?:it |this |that )?to) (?:the |your )?(?:insurance(?: company)?|insurer|mortgage (?:company|lender)|lender|landlord|irs|court|judge|trustee|unemployment office|benefits office|caseworker|dmv)\b|\b(?:hide|keep) (?:it|this|that|the \w+) from (?:the |your )?(?:insurance(?: company)?|insurer|lender|landlord|court|judge|trustee|caseworker)\b/i,
+  /\b(?:you|they|he|she) (?:won(?:'|’)?t|will not|will never|(?:'|’)ll never|wouldn(?:'|’)?t|would never) (?:get caught|be caught)\b|\bthey(?:(?:'|’)ll| will) never (?:find out|know|notice)\b|\bno ?(?:one|body) (?:will|would|is going to|(?:'|’)ll) (?:ever )?(?:find out|know|catch on|catch you)\b/i,
   // Round 31 (11-14): "Don't show up to court", "You don't have to pay that debt", "The judge will
   // side with you", "They're violating your rights".
   /\b(?:don(?:'|’)?t|do not|no need to|you don(?:'|’)?t (?:have|need) to) (?:bother )?(?:show(?:ing)? up|appear(?:ing)?|go(?:ing)?) (?:to|in|at|for) (?:court|the hearing|your hearing|the trial|your court date)\b/i,
@@ -799,6 +806,13 @@ const GUARANTEE = [
   /\b(?:charge|fee|payment|transaction)s? (?:will|is going to|are going to) (?:definitely |surely )?be (?:reversed|refunded|removed|waived|credited back)\b/i,
   /\b(?:they|the (?:bank|merchant|store|company|airline|lender|landlord|seller))(?:(?:'|’)ll| will| are going to| is going to) (?:definitely |surely |have to )?(?:refund|reimburse|credit|pay) you\b/i,
   /\b(?:approval|acceptance) is (?:certain|assured|guaranteed|a given|a lock|locked in)\b|(?<!\b(?:if|once|when|as long as|may|might|could|whether)\b(?:[^.!?]|\.\d){0,60})\b(?:you(?:'|’)ll|you will) (?:definitely |certainly |surely |easily )?(?:qualify|be approved|get approved)\b/i,
+  // Round 34 (11-14): "You'll be debt-free by June for sure", "Your landlord will give the deposit
+  // back", "The IRS won't audit you", "The stock will bounce back". "You'll know for sure when it
+  // posts" is a date and passes.
+  /(?<!\b(?:can(?:'|’)?t|cannot|don(?:'|’)?t|not|no way to|hard to|whether|if)\b(?:[^.!?]|\.\d){0,60})\b(?:you(?:'|’)ll|you will|it(?:'|’)ll|it will|this will|that will|they(?:'|’)ll|they will)\s+(?!(?:know|see|find out|hear|tell|confirm|learn)\b)(?:[^.!?]|\.\d){0,40}\bfor sure\b/i,
+  /\b(?:they|the landlord|your landlord|landlord)(?:(?:'|’)ll| will| is going to| are going to) (?:definitely |surely )?(?:give (?:you )?(?:back )?(?:the |your )?(?:full )?(?:security )?deposit|return (?:the |your )?(?:full )?(?:security )?deposit|give (?:you )?(?:the |your )?money back)\b|\bsecurity deposit (?:will|is going to) (?:definitely |surely )?(?:be returned|be refunded|come back)\b/i,
+  /\b(?:the )?irs (?:won(?:'|’)?t|will not|will never|isn(?:'|’)?t going to|is not going to) (?:audit|flag|come after|go after|catch|notice)\b|\byou (?:won(?:'|’)?t|will not|will never|(?:'|’)ll never) (?:get |be )audited\b/i,
+  /\b(?:the stock|stocks|shares|the shares|the market|markets|bitcoin|btc|crypto|ether(?:eum)?|eth|(?:the|your) (?:fund|portfolio|position)|prices?) (?:will|is going to|are going to|(?:'|’)ll) (?:definitely |surely |eventually |always )?(?:bounce back|recover|rebound|come back|go back up)\b/i,
 ];
 
 // (g) Deposit insurance (12 CFR 328.102; connectors roadmap round 13): no false or misleading word
