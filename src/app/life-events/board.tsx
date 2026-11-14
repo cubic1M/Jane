@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { LIFE_EVENTS, LIFE_EVENT_KINDS, type LifeEventKind } from "@/config/life-events";
+import { momentLabel } from "@/lib/day-label";
 import { updateLifeEvents, type LifeEventState } from "./actions";
 
 export type BoardEvent = {
@@ -17,8 +18,10 @@ const LINK = "font-medium text-emerald-700 hover:underline";
 const BUTTON =
   "inline-flex h-11 items-center justify-center rounded-full px-5 text-sm font-medium disabled:opacity-60";
 
+// A calendar day ("2026-11-12", when a checklist was started). The moment one was finished is the
+// person's own day (momentLabel): in UTC an evening in Los Angeles read as tomorrow (debugger 11-13).
 const day = (iso: string) =>
-  new Date(iso.length === 10 ? `${iso}T00:00:00Z` : iso).toLocaleDateString("en-US", {
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -35,7 +38,7 @@ function Hidden({ values }: { values: Record<string, string> }) {
   );
 }
 
-export function LifeEventsBoard({ events }: { events: BoardEvent[] }) {
+export function LifeEventsBoard({ events, timezone }: { events: BoardEvent[]; timezone: string }) {
   const [state, action, pending] = useActionState<LifeEventState, FormData>(updateLifeEvents, null);
   const open = events.filter((e) => e.completedAt === null);
   const finished = events.filter((e) => e.completedAt !== null);
@@ -191,7 +194,8 @@ export function LifeEventsBoard({ events }: { events: BoardEvent[] }) {
                 >
                   <span>
                     <span className="font-medium">{checklist.title}</span> · {done} of{" "}
-                    {checklist.items.length} done · finished {day(event.completedAt!)}
+                    {checklist.items.length} done · finished{" "}
+                    {momentLabel(event.completedAt!, timezone, { year: true })}
                   </span>
                   <form action={action}>
                     <Hidden values={{ intent: "delete", eventId: event.id }} />

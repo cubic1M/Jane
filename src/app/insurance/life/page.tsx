@@ -15,6 +15,7 @@ import {
 } from "@/lib/jane-agent/insurance/life-words";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { timezoneOf } from "@/lib/today";
 import { answer, apply, buy, notNow, setDependants, submit } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
@@ -36,7 +37,7 @@ async function LifeContent({ searchParams }: { searchParams: Promise<{ error?: s
   await connection();
   const { error } = await searchParams;
   const now = new Date();
-  const sized = await sizeLife(user.id, { now });
+  const [sized, timezone] = await Promise.all([sizeLife(user.id, { now }), timezoneOf(user.id)]);
   const application =
     sized.kind === "sized" || sized.kind === "in_progress" ? sized.application : null;
 
@@ -190,7 +191,7 @@ async function LifeContent({ searchParams }: { searchParams: Promise<{ error?: s
           <h2 id="decision" className="text-xl font-semibold">
             The carrier&apos;s answer
           </h2>
-          {decisionStep(application)
+          {decisionStep(application, timezone)
             .body.split("\n")
             .map((line) => (
               <p key={line}>{line}</p>

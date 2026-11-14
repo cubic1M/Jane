@@ -5,20 +5,14 @@ import { methodLines } from "@/lib/insurance/life-need";
 import { nextLifeQuestion } from "@/lib/insurance/life-underwriting";
 import { formatCents } from "@/lib/money";
 import { type MessageAction, openLink } from "../types";
+import { momentLabel } from "@/lib/day-label";
+import { validTimezone } from "@/lib/digest/week";
 
 // Life insurance in Jane's chat (spec step 153): how much and for how long with the method,
 // the best quote, the health questions one at a time, and the carrier's decision. Each
 // step that commits the person (applying, buying) is its own tap. Pure.
 
 export const LIFE_LINK: MessageAction = openLink("Life cover", "/insurance/life");
-
-const dateWords = (iso: string) =>
-  new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 const per = (q: Pick<LifeQuote, "premiumFrequency">) =>
   PREMIUM_FREQUENCIES[q.premiumFrequency].label;
@@ -100,7 +94,12 @@ const RATE_WORDS = {
 } as const;
 
 // Pure: the carrier's decision.
-export function decisionStep(application: LifeApplication): {
+export function decisionStep(
+  application: LifeApplication,
+  // The person's own day: an offer open for N days from 6pm in Los Angeles ends that day, not the
+  // next UTC day (debugger 11-13). US Pacific when unknown, as timezoneOf says.
+  timezone = validTimezone(null),
+): {
   body: string;
   actions: MessageAction[];
 } {
@@ -112,7 +111,9 @@ export function decisionStep(application: LifeApplication): {
       body: [
         `${carrier} offers you ${formatCents(application.amountCents)} of cover for ${application.termYears} years at ${formatCents(decision.premiumCents)} ${quote ? per(quote) : "a month"}, ${RATE_WORDS[decision.rateClass]}. Buy it?`,
         ...(decision.offerExpiresAt
-          ? [`The offer is open until ${dateWords(decision.offerExpiresAt)}.`]
+          ? [
+              `The offer is open until ${momentLabel(decision.offerExpiresAt, timezone, { year: true })}.`,
+            ]
           : []),
       ].join("\n"),
       actions: [

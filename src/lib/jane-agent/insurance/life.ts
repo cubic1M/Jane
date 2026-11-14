@@ -1,6 +1,6 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { sizeLife } from "@/lib/insurance/life";
-import { chatToday } from "@/lib/today";
+import { chatToday, timezoneOf } from "@/lib/today";
 import type { Reply } from "../replies";
 import {
   DEPENDANTS_QUESTION,
@@ -53,7 +53,9 @@ export async function lifeAnswer(
     case "in_progress": {
       const application = sized.application;
       const step =
-        application.status === "asking" ? askingStep(application) : decisionStep(application);
+        application.status === "asking"
+          ? askingStep(application)
+          : decisionStep(application, await timezoneOf(userId, { client }));
       return { ...step, refs: { lifeApplicationId: application.id, advice: true } };
     }
   }

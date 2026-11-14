@@ -52,7 +52,7 @@ import { appliedNote, sameCover } from "../insurance/saving-words";
 import { RiskError, answerRisk, gapQuotes } from "@/lib/insurance/risks";
 import { gapQuotesLines, riskAnswerNote } from "../insurance/risk-words";
 import { RISK_GAP_KINDS } from "@/lib/insurance/risks";
-import { chatToday } from "@/lib/today";
+import { chatToday, timezoneOf } from "@/lib/today";
 import { parseActions, openLink } from "../types";
 import {
   askingStep,
@@ -440,7 +440,7 @@ export const lifeCoverSubmit: ActionHandler = {
     const application = await lifeStep(() =>
       submitLifeApplication(userId, lifeId(message), { client, now }),
     );
-    const step = decisionStep(application);
+    const step = decisionStep(application, await timezoneOf(userId, { client }));
     if (application.status === "offered") {
       return { status: "open", answeredWith: null, ...step, refs: message.refs };
     }
