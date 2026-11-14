@@ -1,7 +1,7 @@
 import { shareWithAccountant } from "./accountant-message";
 import type { BusinessView } from "@/lib/business-structure";
 import { formatCents, formatWholeDollars } from "@/lib/money";
-import { type MessageAction, type MessageRefs, openLink } from "./types";
+import { openLink, type MessageParts } from "./types";
 
 // Business owners' tax structure in the chat (spec step 267): whether an S corporation would
 // save more than it costs at this profit (demo advice), and the answer to "should I be an S
@@ -9,9 +9,7 @@ import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 const BUSINESS_HREF = "/taxes/business";
 
-type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
-
-export function sCorpMessage(v: BusinessView): Message | null {
+export function sCorpMessage(v: BusinessView): MessageParts | null {
   const s = v.structure?.sCorp;
   if (!v.advice || !s?.worthIt) return null;
   return {
@@ -21,7 +19,7 @@ export function sCorpMessage(v: BusinessView): Message | null {
   };
 }
 
-export function businessReply(v: BusinessView): Message {
+export function businessReply(v: BusinessView): MessageParts {
   if (!v.structure) {
     return {
       body: "I don't see profit from self-employment this year, so there's nothing to compare yet. When business income shows up in your accounts, I'll work out your qualified business income deduction and whether an S corporation would save you tax.",

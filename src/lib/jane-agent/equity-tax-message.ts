@@ -1,6 +1,6 @@
 import type { EquityTaxView } from "@/lib/equity-tax";
 import { formatCents, formatWholeDollars } from "@/lib/money";
-import { type MessageAction, type MessageRefs, openLink } from "./types";
+import { type MessageAction, openLink, type MessageParts } from "./types";
 
 // Crypto and equity pay in the chat (spec step 219): what these add to the tax and what to
 // set aside, with its button (demo advice), and the answer to "my crypto taxes", "ESPP",
@@ -8,9 +8,7 @@ import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 const EQUITY_HREF = "/taxes/equity";
 
-type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
-
-export function equitySetAsideMessage(view: EquityTaxView): Message {
+export function equitySetAsideMessage(view: EquityTaxView): MessageParts {
   const lines = view.setAside.parts
     .map((p) => `• ${p.label}: about ${formatWholeDollars(p.cents)}`)
     .join("\n");
@@ -28,7 +26,7 @@ export function equitySetAsideMessage(view: EquityTaxView): Message {
   };
 }
 
-export function equityReply(view: EquityTaxView): Message {
+export function equityReply(view: EquityTaxView): MessageParts {
   const lines: string[] = [];
   const c = view.cryptoYear;
   if (view.income.crypto.yearSales.length > 0) {

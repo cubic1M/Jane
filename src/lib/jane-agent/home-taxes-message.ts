@@ -1,15 +1,13 @@
 import type { HomeTaxesView } from "@/lib/home-taxes";
 import { formatCents } from "@/lib/money";
 import { figuresOf, type Figure, type Source } from "@/planning/home-taxes";
-import { type MessageAction, type MessageRefs, openLink } from "./types";
+import { openLink, type MessageParts } from "./types";
 
 // Homeowner taxes in the chat (spec step 170): the state and local tax cap when it bites,
 // a home sale against the exclusion, and "my mortgage interest / property tax". Facts from
 // the person's own accounts, each with where it came from.
 
 const HOME_HREF = "/taxes?focus=life:home";
-
-type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 
 export function sourceText(s: Source): string {
   switch (s.kind) {
@@ -27,7 +25,7 @@ export function sourceText(s: Source): string {
 const figureLine = (f: Figure) =>
   `• ${f.label}: ${formatCents(f.cents)} (from ${f.sources.map(sourceText).join("; ")})${f.note ? `. ${f.note}` : ""}`;
 
-export function saltCapMessage(view: HomeTaxesView): Message | null {
+export function saltCapMessage(view: HomeTaxesView): MessageParts | null {
   const salt = view.salt;
   if (salt.overCents <= 0 || !salt.property) return null;
   return {
@@ -37,7 +35,7 @@ export function saltCapMessage(view: HomeTaxesView): Message | null {
   };
 }
 
-export function homeSaleMessage(view: HomeTaxesView): Message | null {
+export function homeSaleMessage(view: HomeTaxesView): MessageParts | null {
   const s = view.sale;
   if (!s) return null;
   const outcome = s.qualifies
@@ -52,7 +50,7 @@ export function homeSaleMessage(view: HomeTaxesView): Message | null {
   };
 }
 
-export function homeReply(view: HomeTaxesView): Message {
+export function homeReply(view: HomeTaxesView): MessageParts {
   const figures = figuresOf(view);
   if (!view.homeowner && figures.length <= 1) {
     return {

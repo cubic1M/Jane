@@ -1,7 +1,7 @@
 import type { Gift, GivingView } from "@/lib/giving";
 import { formatCents, formatWholeDollars } from "@/lib/money";
 
-import { type MessageAction, type MessageRefs, openLink } from "./types";
+import { openLink, type MessageParts } from "./types";
 import { dayLabel } from "@/lib/day-label";
 
 // Giving in the chat (spec step 168): a gift's missing receipt, the giving options before
@@ -9,9 +9,7 @@ import { dayLabel } from "@/lib/day-label";
 
 const GIVING_HREF = "/taxes?focus=life:giving";
 
-type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
-
-export function receiptMessage(g: Gift): Message {
+export function receiptMessage(g: Gift): MessageParts {
   return {
     body: `Your ${formatCents(g.cents)} gift to ${g.payee} on ${dayLabel(g.date)} needs a written receipt from them to count on your taxes. Have you got it?`,
     refs: { taxGift: g.transactionId },
@@ -28,7 +26,7 @@ const optionLines = (view: GivingView) =>
       `• ${o.title}: tax about ${formatWholeDollars(o.withCents)} with it, ${formatWholeDollars(o.withoutCents)} without (saves about ${formatWholeDollars(o.savesCents)}).`,
   );
 
-export function givingOptionsMessage(view: GivingView): Message | null {
+export function givingOptionsMessage(view: GivingView): MessageParts | null {
   if (view.options.length === 0) return null;
   const fund = view.options.some((o) => o.key === "fund") && !view.fund;
   return {
@@ -44,7 +42,7 @@ export function givingOptionsMessage(view: GivingView): Message | null {
   };
 }
 
-export function givingReply(view: GivingView): Message {
+export function givingReply(view: GivingView): MessageParts {
   const missing = view.receiptsMissing.length;
   const receipts =
     missing > 0

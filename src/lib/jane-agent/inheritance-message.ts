@@ -2,7 +2,7 @@ import { shareWithAccountant } from "./accountant-message";
 import { ELIGIBLE_BENEFICIARIES } from "@/config/inheritance";
 import type { InheritanceView, InheritedIra } from "@/lib/inheritance";
 import { formatCents, formatWholeDollars } from "@/lib/money";
-import { type MessageAction, type MessageRefs, openLink } from "./types";
+import { openLink, type MessageParts } from "./types";
 
 // Inherited money and gifts in the chat (spec step 268): an inherited IRA's deadline and how to
 // spread it (demo advice), gifts over the annual exclusion, and the answer to "I inherited
@@ -14,9 +14,7 @@ export const INHERITED_HREF = "/profile";
 const RULE_EXCEPTIONS =
   "A spouse, a minor child, a disabled or chronically ill heir, or one close to the owner's age has other rules.";
 
-type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
-
-export function inheritedIraMessage(v: InheritanceView, ira: InheritedIra): Message | null {
+export function inheritedIraMessage(v: InheritanceView, ira: InheritedIra): MessageParts | null {
   if (!v.advice || !ira.spread?.worthRaising || (ira.emptyBy === null && ira.fromSpouse === true))
     return null;
   const s = ira.spread;
@@ -31,7 +29,7 @@ export function inheritedIraMessage(v: InheritanceView, ira: InheritedIra): Mess
   };
 }
 
-export function giftsMessage(v: InheritanceView): Message | null {
+export function giftsMessage(v: InheritanceView): MessageParts | null {
   const g = v.gifts[0];
   if (!g) return null;
   return {
@@ -70,7 +68,7 @@ export function inheritanceLines(v: InheritanceView): string[] {
   return lines;
 }
 
-export function inheritanceReply(v: InheritanceView): Message {
+export function inheritanceReply(v: InheritanceView): MessageParts {
   const lines = inheritanceLines(v);
   return {
     body: `Here is what I can say about inherited money and gifts.\n${lines.map((l) => `• ${l}`).join("\n")}`,

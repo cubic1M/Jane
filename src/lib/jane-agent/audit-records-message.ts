@@ -2,7 +2,7 @@ import type { AuditRecordsView } from "@/lib/audit-records";
 import { formatCents } from "@/lib/money";
 import type { Retention } from "@/planning/audit-records";
 
-import { type MessageAction, type MessageRefs, openLink } from "./types";
+import { openLink, type MessageParts } from "./types";
 import { dayLabel } from "@/lib/day-label";
 
 // Audit-ready records in the chat (spec step 171): a year's records that can go soon, the
@@ -10,9 +10,7 @@ import { dayLabel } from "@/lib/day-label";
 
 const RECORDS_HREF = "/taxes?focus=records:audit";
 
-type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
-
-export function retentionMessage(r: Retention): Message {
+export function retentionMessage(r: Retention): MessageParts {
   const can = r.status === "can_go";
   return {
     body: can
@@ -26,7 +24,7 @@ export function retentionMessage(r: Retention): Message {
   };
 }
 
-export function recordsReply(view: AuditRecordsView): Message {
+export function recordsReply(view: AuditRecordsView): MessageParts {
   const total = view.items.reduce((s, i) => s + i.claimedCents, 0);
   const lines = view.items.map(
     (i) =>

@@ -1,7 +1,7 @@
 import { PTC_MIN_REPAY_CENTS, MEDICAL_MIN_SAVING_CENTS } from "@/config/health-taxes";
 import type { HealthTaxView } from "@/lib/health-taxes";
 import { formatCents, formatWholeDollars } from "@/lib/money";
-import { type MessageAction, type MessageRefs, openLink } from "./types";
+import { type MessageAction, openLink, type MessageParts } from "./types";
 
 // The tax side of health insurance in the chat (spec step 269): a Marketplace credit that may
 // come back as a bill, an HSA over its limit, a year of care worth itemizing, and the answer to
@@ -10,13 +10,11 @@ import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 const HEALTH_HREF = "/taxes/health";
 
-type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
-
 const see: MessageAction = openLink("See the numbers", HEALTH_HREF);
 
 const people = (n: number) => (n === 1 ? "one person" : `${n} people`);
 
-export function repaymentMessage(v: HealthTaxView): Message | null {
+export function repaymentMessage(v: HealthTaxView): MessageParts | null {
   const c = v.marketplace.check;
   if (!c || c.repayCents < PTC_MIN_REPAY_CENTS) return null;
   const share = Math.round(c.fplShare * 100);
@@ -34,7 +32,7 @@ export function repaymentMessage(v: HealthTaxView): Message | null {
   };
 }
 
-export function hsaMessage(v: HealthTaxView): Message | null {
+export function hsaMessage(v: HealthTaxView): MessageParts | null {
   const h = v.hsa;
   if (h.deposits === 0 || h.projectedExcessCents <= 0) return null;
   const over = h.excessCents > 0;
@@ -45,7 +43,7 @@ export function hsaMessage(v: HealthTaxView): Message | null {
   };
 }
 
-export function medicalMessage(v: HealthTaxView): Message | null {
+export function medicalMessage(v: HealthTaxView): MessageParts | null {
   const m = v.medical;
   if (m.savesCents < MEDICAL_MIN_SAVING_CENTS) return null;
   return {
@@ -55,7 +53,7 @@ export function medicalMessage(v: HealthTaxView): Message | null {
   };
 }
 
-export function healthReply(v: HealthTaxView): Message {
+export function healthReply(v: HealthTaxView): MessageParts {
   const lines: string[] = [];
   const mk = v.marketplace;
   if (mk.check) {

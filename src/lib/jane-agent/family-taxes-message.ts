@@ -3,14 +3,12 @@ import { FILING_STATUSES, type FilingStatus } from "@/config/tax";
 import type { FamilyView } from "@/lib/family-taxes";
 import type { FamilyChoice } from "@/planning/family-taxes";
 import { FILING_BUTTONS } from "./tax-flow";
-import { type MessageAction, type MessageRefs, openLink } from "./types";
+import { type MessageAction, openLink, type MessageParts } from "./types";
 
 // Family taxes in the chat (spec step 169, demo advice): a choice with both sides' tax, and
 // the answer to "should we file jointly or separately", "FSA or the credit" and the like.
 
 const FAMILY_HREF = "/taxes?focus=life:family";
-
-type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 
 const sideLine = (c: FamilyChoice, i: 0 | 1) => {
   const s = c.sides[i];
@@ -31,7 +29,7 @@ export function statusOf(label: string): FilingStatus {
   return "single";
 }
 
-export function familyChoiceMessage(c: FamilyChoice, year: number): Message {
+export function familyChoiceMessage(c: FamilyChoice, year: number): MessageParts {
   const better = c.sides[c.better!];
   // Filing status can be set from here; the rest are chosen elsewhere (open enrollment,
   // the return).
@@ -54,7 +52,7 @@ export function familyChoiceMessage(c: FamilyChoice, year: number): Message {
   };
 }
 
-export function familyReply(view: FamilyView): Message {
+export function familyReply(view: FamilyView): MessageParts {
   if (!view.advice) {
     return {
       body: "Comparing family tax choices will come once Jane works with a tax professional. Your estimate counts your children already.",
