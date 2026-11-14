@@ -4,11 +4,10 @@ import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { IRS_DIRECT_PAY_URL } from "@/config/tax";
 import { HOME_OFFICE_SIMPLIFIED, MILEAGE_RATE_CENTS } from "@/config/tax-rates";
-import { formatCents } from "@/lib/money";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 import { loadSelfEmployed } from "@/lib/self-employed";
 import { requireUser } from "@/lib/session";
 import { todayOf } from "@/lib/today";
-import { roundDollars } from "@/planning/tax-estimate-copy";
 import { HelperForm } from "./helper-form";
 import { dayLabel } from "@/lib/day-label";
 import { PageShell } from "@/components/page-shell";
@@ -58,7 +57,7 @@ async function Content() {
           {formatCents(HOME_OFFICE_SIMPLIFIED.perSquareFoot)} a square foot, up to{" "}
           {HOME_OFFICE_SIMPLIFIED.maxSquareFeet} square feet (the simplified method).
           {v.homeOffice.sqft
-            ? ` Now about ${roundDollars(v.homeOffice.deductionCents)} a year.`
+            ? ` Now about ${formatWholeDollars(v.homeOffice.deductionCents)} a year.`
             : ""}
         </p>
         <HelperForm
@@ -80,7 +79,7 @@ async function Content() {
         </h2>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Miles driven for this work in {v.year}, at {MILEAGE_RATE_CENTS} cents a mile: about{" "}
-          {roundDollars(v.mileage.deductionCents)} so far. You can also tell Jane in the chat
+          {formatWholeDollars(v.mileage.deductionCents)} so far. You can also tell Jane in the chat
           (&ldquo;I drove 40 business miles&rdquo;).
         </p>
         <HelperForm
@@ -102,7 +101,7 @@ async function Content() {
               <p>
                 Set aside about {Math.round(v.setAsideRate * 100)}% of each freelance payment.{" "}
                 {v.federal.needed
-                  ? `By my estimate you still owe about ${roundDollars(v.federal.owedCents)} federal for ${v.year}.`
+                  ? `By my estimate you still owe about ${formatWholeDollars(v.federal.owedCents)} federal for ${v.year}.`
                   : `By my estimate you'll owe under $1,000 for ${v.year}, so estimated payments aren't needed.`}
               </p>
               {v.federal.payments.length > 0 && (

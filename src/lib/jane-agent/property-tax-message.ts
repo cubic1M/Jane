@@ -1,6 +1,5 @@
 import type { PropertyTaxView } from "@/lib/property-tax";
-import { formatCents } from "@/lib/money";
-import { roundDollars } from "@/planning/tax-estimate-copy";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 import { type MessageAction, type MessageRefs, openLink } from "./types";
 import { formatPercent as pct } from "@/lib/percent";
 
@@ -15,7 +14,7 @@ type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 export function appealSuggestedMessage(v: PropertyTaxView): Message {
   const g = v.gap!;
   return {
-    body: `Your home is assessed at ${roundDollars(g.assessedCents)}, about ${pct(g.gapRate)} above the ${roundDollars(g.marketCents)} that recent sales of comparable homes point to. That could cost you about ${roundDollars(g.savingCents)} a year in extra property tax. ${v.window.text} Want me to draft the appeal? Nothing is filed until you say who files it.`,
+    body: `Your home is assessed at ${formatWholeDollars(g.assessedCents)}, about ${pct(g.gapRate)} above the ${formatWholeDollars(g.marketCents)} that recent sales of comparable homes point to. That could cost you about ${formatWholeDollars(g.savingCents)} a year in extra property tax. ${v.window.text} Want me to draft the appeal? Nothing is filed until you say who files it.`,
     refs: { advice: true, taxYear: v.year },
     actions: [
       { id: "tax.property_draft", label: "Draft the appeal", kind: "primary" },
@@ -28,7 +27,7 @@ export function appealSuggestedMessage(v: PropertyTaxView): Message {
 export function appealDraftedMessage(v: PropertyTaxView): Message {
   const a = v.appeal!;
   return {
-    body: `Your ${a.year} property tax appeal to ${a.board} is drafted, with ${v.comps.length} comparable sales. It could save about ${roundDollars(a.savingCents)} a year. Who should file it? I file nothing myself.`,
+    body: `Your ${a.year} property tax appeal to ${a.board} is drafted, with ${v.comps.length} comparable sales. It could save about ${formatWholeDollars(a.savingCents)} a year. Who should file it? I file nothing myself.`,
     refs: { advice: true, taxYear: a.year },
     actions: [
       { id: "tax.property_team", label: "My team files it", kind: "primary" },

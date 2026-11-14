@@ -1,7 +1,6 @@
 import { IRS_DIRECT_PAY_URL, QUARTERLY } from "@/config/tax";
-import { formatCents } from "@/lib/money";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 import type { SelfEmployedView } from "@/lib/self-employed";
-import { roundDollars } from "@/planning/tax-estimate-copy";
 import { stateName } from "@/planning/tax-profile";
 import { type MessageAction, type MessageRefs, openLink } from "./types";
 import { DAY_MS } from "@/lib/dates";
@@ -32,10 +31,10 @@ export function quarterMessage(
   const state = view.estimate.estimate.state;
   const statePart =
     q.stateCents > 0 && state
-      ? `, and about ${roundDollars(q.stateCents)} to ${stateName(state.code)}`
+      ? `, and about ${formatWholeDollars(q.stateCents)} to ${stateName(state.code)}`
       : "";
   return {
-    body: `Estimated tax is due ${dayLabel(q.date)}: about ${roundDollars(q.cents)} federal${statePart} for ${view.year}, by my estimate from your freelance income. It adds up to what I estimate you'll still owe. Pay it with IRS Direct Pay and tell me when it's done.`,
+    body: `Estimated tax is due ${dayLabel(q.date)}: about ${formatWholeDollars(q.cents)} federal${statePart} for ${view.year}, by my estimate from your freelance income. It adds up to what I estimate you'll still owe. Pay it with IRS Direct Pay and tell me when it's done.`,
     actions: [
       { id: "tax.quarter_paid", label: "I've paid it", kind: "primary" },
       link("IRS Direct Pay", IRS_DIRECT_PAY_URL),
@@ -48,7 +47,7 @@ export function setAsideMessage(
   view: SelfEmployedView,
   payment: { payer: string; cents: number; setAsideCents: number },
 ): Said {
-  const body = `${payment.payer} paid you ${formatCents(payment.cents)}. Set aside about ${roundDollars(payment.setAsideCents)} (${Math.round(view.setAsideRate * 100)}%) for its taxes, by my estimate.`;
+  const body = `${payment.payer} paid you ${formatCents(payment.cents)}. Set aside about ${formatWholeDollars(payment.setAsideCents)} (${Math.round(view.setAsideRate * 100)}%) for its taxes, by my estimate.`;
   if (view.setAsideGoal) {
     return {
       body: `${body} Your "Taxes set aside for ${view.year}" goal is ready for it.`,

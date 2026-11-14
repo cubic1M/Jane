@@ -26,9 +26,9 @@ import { loadTaxSetAside } from "@/lib/tax-set-aside";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
 import { loadTaxSavings } from "@/lib/tax-savings";
 import { checkFrom } from "@/lib/tax-withholding";
-import { formatCents } from "@/lib/money";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 import { dayLabel } from "@/lib/day-label";
-import { roundDollars, taxPaidText } from "@/planning/tax-estimate-copy";
+import { taxPaidText } from "@/planning/tax-estimate-copy";
 import { formatPercent as pct } from "@/lib/percent";
 
 // Direct answers to tax questions (taxes in the chat): three sentences or fewer, from the
@@ -119,12 +119,12 @@ export async function decideTax(
       if (gate) return gate;
       return itemized > standard
         ? made(
-            `Itemize. ${fact} Itemizing lowers your federal tax by about ${roundDollars(worth)}.`,
+            `Itemize. ${fact} Itemizing lowers your federal tax by about ${formatWholeDollars(worth)}.`,
             [itemized, standard, worth],
             "/taxes?focus=life:home",
           )
         : made(
-            `Take the standard deduction. ${fact} Itemizing would cost you about ${roundDollars(worth)} more.`,
+            `Take the standard deduction. ${fact} Itemizing would cost you about ${formatWholeDollars(worth)} more.`,
             [itemized, standard, worth],
           );
     }
@@ -136,7 +136,7 @@ export async function decideTax(
       if (gate) return gate;
       return move
         ? made(
-            `Yes, consider it: ${move.title.toLowerCase()}. It would save about ${roundDollars(move.effectCents)} in tax over the years. A tax professional should confirm it.`,
+            `Yes, consider it: ${move.title.toLowerCase()}. It would save about ${formatWholeDollars(move.effectCents)} in tax over the years. A tax professional should confirm it.`,
             [move.effectCents],
             "/taxes/years",
           )
@@ -151,7 +151,7 @@ export async function decideTax(
       const gate = recommend(
         check.status === "unknown"
           ? "I can't see enough of your pay to check."
-          : `You're on course for ${e.refundCents >= 0 ? `a refund of ${roundDollars(e.refundCents)}` : `owing ${roundDollars(-e.refundCents)}`}.`,
+          : `You're on course for ${e.refundCents >= 0 ? `a refund of ${formatWholeDollars(e.refundCents)}` : `owing ${formatWholeDollars(-e.refundCents)}`}.`,
         [e.refundCents],
       );
       if (gate) return gate;
@@ -163,7 +163,7 @@ export async function decideTax(
         );
       if (check.status === "on_track")
         return made(
-          `No, it's about right. You're on course for ${e.refundCents >= 0 ? `a refund of ${roundDollars(e.refundCents)}` : `owing ${roundDollars(-e.refundCents)}`}.`,
+          `No, it's about right. You're on course for ${e.refundCents >= 0 ? `a refund of ${formatWholeDollars(e.refundCents)}` : `owing ${formatWholeDollars(-e.refundCents)}`}.`,
           [e.refundCents],
           "/taxes?focus=estimate:withholding",
         );
@@ -171,12 +171,12 @@ export async function decideTax(
       const per = Math.abs(change.perPaycheckCents);
       return check.status === "big_refund"
         ? made(
-            `Yes, lower it. You're on course for a refund of ${roundDollars(e.refundCents)}, your own money held until spring. A new W-4 would put about ${roundDollars(per)} more in each paycheck.`,
+            `Yes, lower it. You're on course for a refund of ${formatWholeDollars(e.refundCents)}, your own money held until spring. A new W-4 would put about ${formatWholeDollars(per)} more in each paycheck.`,
             [e.refundCents, per],
             "/taxes?focus=estimate:withholding",
           )
         : made(
-            `Yes, raise it. You're on course to owe about ${roundDollars(-e.refundCents)} in April. A new W-4 would take about ${roundDollars(per)} more from each paycheck to cover it.`,
+            `Yes, raise it. You're on course to owe about ${formatWholeDollars(-e.refundCents)} in April. A new W-4 would take about ${formatWholeDollars(per)} more from each paycheck to cover it.`,
             [-e.refundCents, per],
             "/taxes?focus=estimate:withholding",
           );
@@ -186,7 +186,7 @@ export async function decideTax(
       const next = se.federal.payments[0];
       if (se.federal.needed && next) {
         return made(
-          `Yes. After withholding you'd owe about ${roundDollars(se.federal.owedCents)}, so pay about ${roundDollars(next.cents)} by ${dayLabel(next.date, { year: true })} and the rest on the later dates.`,
+          `Yes. After withholding you'd owe about ${formatWholeDollars(se.federal.owedCents)}, so pay about ${formatWholeDollars(next.cents)} by ${dayLabel(next.date, { year: true })} and the rest on the later dates.`,
           [se.federal.owedCents, next.cents],
           "/taxes/self-employed",
         );
@@ -194,7 +194,7 @@ export async function decideTax(
       return made(
         se.active
           ? `No. What you'd owe after withholding is under $1,000, so there's no penalty for skipping the quarterly payments.`
-          : `No. Your employer's withholding covers your tax, and you're on course for ${e.refundCents >= 0 ? `a refund of ${roundDollars(e.refundCents)}` : `owing ${roundDollars(-e.refundCents)}`}.`,
+          : `No. Your employer's withholding covers your tax, and you're on course for ${e.refundCents >= 0 ? `a refund of ${formatWholeDollars(e.refundCents)}` : `owing ${formatWholeDollars(-e.refundCents)}`}.`,
         [e.refundCents],
         "/taxes/self-employed",
       );
@@ -208,7 +208,7 @@ export async function decideTax(
       if (gate) return gate;
       return s
         ? made(
-            `Yes, if you can spare it. ${s.title}. By my estimate that is about ${roundDollars(s.estimateCents)} less tax this year.`,
+            `Yes, if you can spare it. ${s.title}. By my estimate that is about ${formatWholeDollars(s.estimateCents)} less tax this year.`,
             [s.estimateCents, limit],
           )
         : made(
@@ -226,7 +226,7 @@ export async function decideTax(
       if (gate) return gate;
       const pick =
         rate >= TRADITIONAL_FROM_RATE
-          ? `A traditional IRA: at ${pct(rate)}, the deduction now (about ${roundDollars(Math.round(limit * rate))} on a full ${formatCents(limit)}) is worth more than tax-free growth later.`
+          ? `A traditional IRA: at ${pct(rate)}, the deduction now (about ${formatWholeDollars(Math.round(limit * rate))} on a full ${formatCents(limit)}) is worth more than tax-free growth later.`
           : rate <= ROTH_UNTIL_RATE
             ? `A Roth IRA: at ${pct(rate)}, paying tax now is cheap and the growth comes out tax-free.`
             : `Either works at ${pct(rate)}: a Roth if you expect a similar or higher bracket later, a traditional IRA if you expect a lower one.`;
@@ -239,7 +239,7 @@ export async function decideTax(
       ]);
       if (gate) return gate;
       return made(
-        `Only if your health plan is high-deductible, which I can't see from your accounts. If it is, up to ${formatCents(limit)} a year goes in tax-free and saves about ${roundDollars(Math.round(limit * e.marginalRate))} at your ${pct(e.marginalRate)} bracket.`,
+        `Only if your health plan is high-deductible, which I can't see from your accounts. If it is, up to ${formatCents(limit)} a year goes in tax-free and saves about ${formatWholeDollars(Math.round(limit * e.marginalRate))} at your ${pct(e.marginalRate)} bracket.`,
         [limit],
       );
     }
@@ -259,7 +259,7 @@ export async function decideTax(
       if (gate) return gate;
       return p.suggested
         ? made(
-            `Yes. You're assessed at ${roundDollars(p.gap.assessedCents)} against a market value of ${roundDollars(p.gap.marketCents)}, and an appeal could save about ${roundDollars(p.gap.savingCents)} a year. ${p.window.text}`,
+            `Yes. You're assessed at ${formatWholeDollars(p.gap.assessedCents)} against a market value of ${formatWholeDollars(p.gap.marketCents)}, and an appeal could save about ${formatWholeDollars(p.gap.savingCents)} a year. ${p.window.text}`,
             [p.gap.assessedCents, p.gap.marketCents, p.gap.savingCents],
             "/taxes/property",
           )
@@ -280,7 +280,7 @@ export async function decideTax(
       const top = inv.harvest[0];
       return top
         ? made(
-            `Yes, ${inv.harvest.length === 1 ? "one holding is" : `${inv.harvest.length} holdings are`} below cost. Selling ${top.holding.name} would realise a loss of ${roundDollars(top.lossCents)}, which lowers your tax by about ${roundDollars(Math.round(Math.min(top.lossCents, 300_000) * e.marginalRate))}. Don't buy the same thing back for 30 days.`,
+            `Yes, ${inv.harvest.length === 1 ? "one holding is" : `${inv.harvest.length} holdings are`} below cost. Selling ${top.holding.name} would realise a loss of ${formatWholeDollars(top.lossCents)}, which lowers your tax by about ${formatWholeDollars(Math.round(Math.min(top.lossCents, 300_000) * e.marginalRate))}. Don't buy the same thing back for 30 days.`,
             [top.lossCents],
             "/taxes?focus=estimate:investments",
           )
@@ -301,7 +301,7 @@ export async function decideTax(
       const shares = g.options.find((o) => o.key === "shares");
       return shares
         ? made(
-            `Yes. Giving shares you've held over a year, instead of cash, saves about ${roundDollars(shares.savesCents)} because you skip the tax on their gain.`,
+            `Yes. Giving shares you've held over a year, instead of cash, saves about ${formatWholeDollars(shares.savesCents)} because you skip the tax on their gain.`,
             [shares.savesCents],
             "/taxes?focus=life:giving",
           )
@@ -339,10 +339,10 @@ export async function decideTax(
       const state = e.state;
       const stateLine =
         state && state.kind !== "none"
-          ? ` ${state.code}: ${state.refundCents >= 0 ? `a refund of ${roundDollars(state.refundCents)}` : `owing ${roundDollars(-state.refundCents)}`}.`
+          ? ` ${state.code}: ${state.refundCents >= 0 ? `a refund of ${formatWholeDollars(state.refundCents)}` : `owing ${formatWholeDollars(-state.refundCents)}`}.`
           : "";
       return made(
-        `Federal: ${fed >= 0 ? `you're on course for a refund of ${roundDollars(fed)}` : `you're on course to owe ${roundDollars(-fed)}`}.${stateLine} That's an estimate from your income so far, projected to the end of the year.`,
+        `Federal: ${fed >= 0 ? `you're on course for a refund of ${formatWholeDollars(fed)}` : `you're on course to owe ${formatWholeDollars(-fed)}`}.${stateLine} That's an estimate from your income so far, projected to the end of the year.`,
         [fed, state?.refundCents ?? 0],
       );
     }
@@ -350,7 +350,7 @@ export async function decideTax(
       const tax = e.totalTaxCents;
       const paid = e.paidCents;
       return made(
-        `Your federal tax comes to ${roundDollars(tax)} and about ${roundDollars(paid)} is being withheld, so the ${e.refundCents >= 0 ? "refund" : "bill"} is ${roundDollars(Math.abs(e.refundCents))}. The more that comes out of each paycheck beyond your tax, the bigger the refund; deductions and credits you can claim shrink the tax itself.`,
+        `Your federal tax comes to ${formatWholeDollars(tax)} and about ${formatWholeDollars(paid)} is being withheld, so the ${e.refundCents >= 0 ? "refund" : "bill"} is ${formatWholeDollars(Math.abs(e.refundCents))}. The more that comes out of each paycheck beyond your tax, the bigger the refund; deductions and credits you can claim shrink the tax itself.`,
         [tax, paid, e.refundCents],
         "/taxes?focus=estimate:withholding",
       );
@@ -358,7 +358,7 @@ export async function decideTax(
     case "effective_rate": {
       const rate = e.totalIncomeCents > 0 ? e.totalTaxCents / e.totalIncomeCents : 0;
       return made(
-        `Your effective federal rate is about ${(rate * 100).toFixed(1)}%: ${roundDollars(e.totalTaxCents)} of tax on ${roundDollars(e.totalIncomeCents)} of income. Your top rate is ${pct(e.marginalRate)}, which applies only to your last dollars.`,
+        `Your effective federal rate is about ${(rate * 100).toFixed(1)}%: ${formatWholeDollars(e.totalTaxCents)} of tax on ${formatWholeDollars(e.totalIncomeCents)} of income. Your top rate is ${pct(e.marginalRate)}, which applies only to your last dollars.`,
         [e.totalTaxCents, e.totalIncomeCents],
       );
     }
@@ -380,9 +380,9 @@ export async function decideTax(
         ["charity", d.itemized.charityCents],
         ["medical costs over the floor", d.itemized.medicalCents],
       ].filter(([, c]) => (c as number) > 0) as [string, number][];
-      const list = parts.map(([n, c]) => `${n} ${roundDollars(c)}`).join(", ");
+      const list = parts.map(([n, c]) => `${n} ${formatWholeDollars(c)}`).join(", ");
       return made(
-        `You can deduct the standard ${roundDollars(d.standardCents)}, or itemize${list ? ` (${list}, ${roundDollars(d.itemizedCents)} in all)` : " if your costs add up to more"}. ${d.kind === "itemized" ? "Itemizing is the bigger one for you." : "The standard deduction is the bigger one for you."}`,
+        `You can deduct the standard ${formatWholeDollars(d.standardCents)}, or itemize${list ? ` (${list}, ${formatWholeDollars(d.itemizedCents)} in all)` : " if your costs add up to more"}. ${d.kind === "itemized" ? "Itemizing is the bigger one for you." : "The standard deduction is the bigger one for you."}`,
         [d.standardCents, d.itemizedCents],
       );
     }
@@ -391,12 +391,12 @@ export async function decideTax(
       // The same figure Safe to spend holds back and the card brings up.
       const aside = await loadTaxSetAside(userId, { client, now });
       if (aside.status === "needed") {
-        const left = roundDollars(aside.holdCents);
+        const left = formatWholeDollars(aside.holdCents);
         const unpaid = aside.notYetPaidCents ?? aside.holdCents;
         return made(
           advice
             ? `About ${left} so far: that's the tax on your income so far, less what's withheld and paid. It's an estimate, and Safe to spend leaves it out.`
-            : `About ${roundDollars(unpaid)} of your ${aside.year} tax so far isn't withheld or paid yet. That's an estimate, and Safe to spend leaves out what isn't kept apart.`,
+            : `About ${formatWholeDollars(unpaid)} of your ${aside.year} tax so far isn't withheld or paid yet. That's an estimate, and Safe to spend leaves out what isn't kept apart.`,
           [aside.holdCents, unpaid],
           "/taxes?focus=estimate:set-aside",
         );
@@ -411,7 +411,7 @@ export async function decideTax(
       if (aside.status === "covered" && aside.keptApartCents > 0) {
         const unpaid = aside.notYetPaidCents ?? aside.keptApartCents;
         return made(
-          `About ${roundDollars(unpaid)} of your ${aside.year} tax so far isn't withheld or paid yet. What you keep apart covers it, and it's an estimate.`,
+          `About ${formatWholeDollars(unpaid)} of your ${aside.year} tax so far isn't withheld or paid yet. What you keep apart covers it, and it's an estimate.`,
           [unpaid, aside.keptApartCents],
           "/taxes?focus=estimate:set-aside",
         );
@@ -419,7 +419,7 @@ export async function decideTax(
       if (!se.active) {
         const per = est.paychecks.withheldPerPaycheckCents ?? 0;
         return made(
-          `Nothing: your employer already sets it aside${per > 0 ? ` (about ${roundDollars(per)} a paycheck)` : ""}. Only income with no tax withheld, like freelance pay, needs a share put aside.`,
+          `Nothing: your employer already sets it aside${per > 0 ? ` (about ${formatWholeDollars(per)} a paycheck)` : ""}. Only income with no tax withheld, like freelance pay, needs a share put aside.`,
           [per],
         );
       }
@@ -434,7 +434,7 @@ export async function decideTax(
       const next = se.federal.payments[0];
       return next && se.federal.needed
         ? made(
-            `Your next estimated payment, about ${roundDollars(next.cents)}, is due ${dayLabel(next.date, { year: true })}.`,
+            `Your next estimated payment, about ${formatWholeDollars(next.cents)}, is due ${dayLabel(next.date, { year: true })}.`,
             [next.cents],
             "/taxes/self-employed",
           )
@@ -449,8 +449,8 @@ export async function decideTax(
       const income = e.totalIncomeCents;
       return made(
         income > std
-          ? `Yes. Your income of ${roundDollars(income)} is over the ${formatCents(std)} standard deduction. Even under it you'd file to get back what was withheld.`
-          : `Probably not: your income of ${roundDollars(income)} is under the ${formatCents(std)} standard deduction. File anyway if tax was withheld, to get it back.`,
+          ? `Yes. Your income of ${formatWholeDollars(income)} is over the ${formatCents(std)} standard deduction. Even under it you'd file to get back what was withheld.`
+          : `Probably not: your income of ${formatWholeDollars(income)} is under the ${formatCents(std)} standard deduction. File anyway if tax was withheld, to get it back.`,
         [income, std],
       );
     }
@@ -458,7 +458,7 @@ export async function decideTax(
       const limit = CONTRIBUTION_LIMITS.workplace;
       const put = est.pay.projected.retirementCents;
       return made(
-        `The 2026 limit for a 401(k) is ${formatCents(limit)} (more from age 50). ${put > 0 ? `Your pay stubs show a 401(k) deferral that comes to about ${roundDollars(put)} this year (no retirement account is linked, so I can't see the balance), which leaves ${roundDollars(Math.max(0, limit - put))} of room.` : "I don't see a 401(k) deferral on your pay stubs, so all of it is room."}`,
+        `The 2026 limit for a 401(k) is ${formatCents(limit)} (more from age 50). ${put > 0 ? `Your pay stubs show a 401(k) deferral that comes to about ${formatWholeDollars(put)} this year (no retirement account is linked, so I can't see the balance), which leaves ${formatWholeDollars(Math.max(0, limit - put))} of room.` : "I don't see a 401(k) deferral on your pay stubs, so all of it is room."}`,
         [limit, put],
       );
     }
@@ -467,7 +467,7 @@ export async function decideTax(
       const m = h.mortgageInterest;
       return m
         ? made(
-            `All ${roundDollars(m.cents)} of your mortgage interest can be deducted, but only if you itemize; the limit applies to loans over $750,000. ${e.deduction.kind === "itemized" ? "You're itemizing, so it counts." : "You're taking the standard deduction, so it doesn't change your tax."}`,
+            `All ${formatWholeDollars(m.cents)} of your mortgage interest can be deducted, but only if you itemize; the limit applies to loans over $750,000. ${e.deduction.kind === "itemized" ? "You're itemizing, so it counts." : "You're taking the standard deduction, so it doesn't change your tax."}`,
             [m.cents],
             "/taxes?focus=life:home",
           )

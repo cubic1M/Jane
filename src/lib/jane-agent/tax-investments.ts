@@ -1,10 +1,9 @@
 import { WASH_SALE_DAYS } from "@/config/tax-rates";
 import type { InvestmentTaxesView } from "@/lib/investment-taxes";
 import type { TaxEstimateView } from "@/lib/tax-estimate";
-import { formatCents } from "@/lib/money";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 import type { HarvestChance, Realised } from "@/planning/investment-taxes";
 import { estimateTaxes } from "@/planning/tax-estimate";
-import { roundDollars } from "@/planning/tax-estimate-copy";
 import { snoozeButton } from "./sources/source";
 import { type MessageAction, type MessageRefs, openLink } from "./types";
 import { dayLabel } from "@/lib/day-label";
@@ -46,7 +45,7 @@ export function harvestMessage(chance: HarvestChance, estimate: TaxEstimateView)
     estimate.input.income.shortTermGainsCents + estimate.input.income.longTermGainsCents;
   const offset =
     gains > 0
-      ? `offset ${roundDollars(gains)} of gains you've had this year`
+      ? `offset ${formatWholeDollars(gains)} of gains you've had this year`
       : "come off up to $3,000 of your other income";
   const wash = chance.washRisk.reinvests
     ? ` It reinvests its dividends, so turn that off first: buying it again within ${WASH_SALE_DAYS} days either side would make it a wash sale.`
@@ -54,7 +53,7 @@ export function harvestMessage(chance: HarvestChance, estimate: TaxEstimateView)
       ? ` You bought some in the last ${WASH_SALE_DAYS} days, so wait until that's ${WASH_SALE_DAYS} days past or it'd be a wash sale.`
       : ` Don't buy it back for ${WASH_SALE_DAYS} days, or it's a wash sale; a similar, not identical, fund keeps you invested.`;
   return {
-    body: `${chance.holding.name} is down ${formatCents(chance.lossCents)}. Selling it before Dec 31 would let the loss ${offset}: about ${roundDollars(saving)} less tax, by my estimate.${wash}`,
+    body: `${chance.holding.name} is down ${formatCents(chance.lossCents)}. Selling it before Dec 31 would let the loss ${offset}: about ${formatWholeDollars(saving)} less tax, by my estimate.${wash}`,
     actions: [{ id: "tax.save_task", label: "Remind me", kind: "primary" }, snoozeButton()],
     refs: {
       advice: true,
@@ -91,7 +90,7 @@ export function investmentsReply(
       : "";
   const harvest =
     advice && view.harvest[0]
-      ? ` ${view.harvest[0].holding.name} is down ${formatCents(view.harvest[0].lossCents)}: selling it this year would mean about ${roundDollars(harvestSaving(view.harvest[0], estimate))} less tax, by my estimate.`
+      ? ` ${view.harvest[0].holding.name} is down ${formatCents(view.harvest[0].lossCents)}: selling it this year would mean about ${formatWholeDollars(harvestSaving(view.harvest[0], estimate))} less tax, by my estimate.`
       : "";
   return {
     body: `${realisedLine}${open}${wash}${harvest}`,

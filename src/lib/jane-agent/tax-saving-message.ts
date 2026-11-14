@@ -1,5 +1,5 @@
+import { formatWholeDollars } from "@/lib/money";
 import type { TaxSaving } from "@/planning/tax-savings";
-import { roundDollars } from "@/planning/tax-estimate-copy";
 import { snoozeButton } from "./sources/source";
 import { type MessageAction, type MessageRefs, openLink } from "./types";
 
@@ -28,7 +28,7 @@ export function savingMessage(
   }
   buttons.push({ id: "tax.save_no", label: "Not for me", kind: "secondary" }, snoozeButton());
   return {
-    body: `${saving.title}. ${saving.why} By my estimate that's about ${roundDollars(saving.estimateCents)} less tax for ${year}.`,
+    body: `${saving.title}. ${saving.why} By my estimate that's about ${formatWholeDollars(saving.estimateCents)} less tax for ${year}.`,
     actions: buttons,
     refs,
   };

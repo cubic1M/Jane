@@ -1,8 +1,7 @@
 import { shareWithAccountant } from "./accountant-message";
 import { ELIGIBLE_BENEFICIARIES } from "@/config/inheritance";
 import type { InheritanceView, InheritedIra } from "@/lib/inheritance";
-import { formatCents } from "@/lib/money";
-import { roundDollars } from "@/planning/tax-estimate-copy";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 // Inherited money and gifts in the chat (spec step 268): an inherited IRA's deadline and how to
@@ -26,7 +25,7 @@ export function inheritedIraMessage(v: InheritanceView, ira: InheritedIra): Mess
       ? `By the rule for most heirs, it has to be empty by December 31, ${ira.emptyBy}.`
       : "Most heirs have to empty it within 10 years of the owner's death; tell me the year and I'll give the date.";
   return {
-    body: `You have ${roundDollars(ira.balanceCents)} in ${ira.name}. ${deadline} Taking it out evenly, about ${roundDollars(s.perYearCents)} a year, instead of all at the end would save about ${roundDollars(s.savesCents)} in tax, because it keeps each year in a lower bracket. If the original owner had already started required withdrawals, there are yearly ones too, and a few heirs (${ELIGIBLE_BENEFICIARIES.join("; ")}) follow other rules. A tax professional should confirm which applies to you.`,
+    body: `You have ${formatWholeDollars(ira.balanceCents)} in ${ira.name}. ${deadline} Taking it out evenly, about ${formatWholeDollars(s.perYearCents)} a year, instead of all at the end would save about ${formatWholeDollars(s.savesCents)} in tax, because it keeps each year in a lower bracket. If the original owner had already started required withdrawals, there are yearly ones too, and a few heirs (${ELIGIBLE_BENEFICIARIES.join("; ")}) follow other rules. A tax professional should confirm which applies to you.`,
     refs: { advice: true, taxYear: v.year },
     actions: [openLink("Tell Jane when they died", INHERITED_HREF), shareWithAccountant],
   };
@@ -36,7 +35,7 @@ export function giftsMessage(v: InheritanceView): Message | null {
   const g = v.gifts[0];
   if (!g) return null;
   return {
-    body: `You sent ${g.recipient} ${formatCents(g.cents)} this year, ${formatCents(g.overCents)} over the ${formatCents(v.exclusionCents)} a person can give another without telling the IRS. ${g.splitCovers ? "As a married couple you can split it, which covers it, but that still takes a gift tax return (Form 709)." : "That takes a gift tax return (Form 709) due April 15."} No tax is usually owed: the extra counts against a lifetime allowance of ${roundDollars(1_500_000_000)} per person. A tax professional can prepare the form.`,
+    body: `You sent ${g.recipient} ${formatCents(g.cents)} this year, ${formatCents(g.overCents)} over the ${formatCents(v.exclusionCents)} a person can give another without telling the IRS. ${g.splitCovers ? "As a married couple you can split it, which covers it, but that still takes a gift tax return (Form 709)." : "That takes a gift tax return (Form 709) due April 15."} No tax is usually owed: the extra counts against a lifetime allowance of ${formatWholeDollars(1_500_000_000)} per person. A tax professional can prepare the form.`,
     refs: { taxYear: v.year },
     actions: [shareWithAccountant],
   };

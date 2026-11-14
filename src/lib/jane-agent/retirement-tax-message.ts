@@ -1,7 +1,6 @@
 import { IRMAA_WATCH, SS_TAX_MIN_CENTS } from "@/config/retirement-taxes";
-import { formatCents } from "@/lib/money";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 import type { RetirementTaxView } from "@/lib/retirement-taxes";
-import { roundDollars } from "@/planning/tax-estimate-copy";
 import { type MessageAction, type MessageRefs, openLink } from "./types";
 import { formatPercent as pct } from "@/lib/percent";
 
@@ -20,7 +19,7 @@ export function ssWithholdingMessage(v: RetirementTaxView): Message | null {
   const tax = Math.round(v.ss.taxableCents * v.bracket);
   if (v.ssDeposits < 3 || tax < SS_TAX_MIN_CENTS) return null;
   return {
-    body: `${roundDollars(v.ss.taxableCents)} of your ${roundDollars(v.ssBenefitsCents)} a year of Social Security is taxable at your income: about ${roundDollars(tax)} of tax, which Social Security doesn't withhold unless you ask on Form W-4V (7%, 10%, 12% or 22%).${
+    body: `${formatWholeDollars(v.ss.taxableCents)} of your ${formatWholeDollars(v.ssBenefitsCents)} a year of Social Security is taxable at your income: about ${formatWholeDollars(tax)} of tax, which Social Security doesn't withhold unless you ask on Form W-4V (7%, 10%, 12% or 22%).${
       v.ss.extraTaxablePerDollar > 0
         ? ` Each extra dollar from your IRA makes ${Math.round(v.ss.extraTaxablePerDollar * 100)} cents more of it taxable, so that dollar is taxed at about ${pct(v.nextDollarRate)}, not ${pct(v.bracket)}.`
         : ""
@@ -37,10 +36,10 @@ export function irmaaMessage(v: RetirementTaxView): Message | null {
   const t = v.tuned;
   const advice =
     v.advice && t.preTaxCapCents !== null
-      ? ` To stay under it, keep pre-tax withdrawals and conversions this year under about ${roundDollars(t.preTaxCapCents)}, and take the rest from taxable accounts, then Roth.`
+      ? ` To stay under it, keep pre-tax withdrawals and conversions this year under about ${formatWholeDollars(t.preTaxCapCents)}, and take the rest from taxable accounts, then Roth.`
       : "";
   return {
-    body: `Your income this year sets your Medicare premiums in ${i.premiumYear}. At about ${roundDollars(v.magiCents)}, you're ${roundDollars(i.roomCents)} under the line at ${roundDollars(i.nextLineCents)}${i.estimated ? " (estimated from this year's)" : ""}; over it, Part B and D cost about ${roundDollars(i.nextYearlyCents)} a year more${v.people === 2 ? " for the two of you" : ""}.${advice}`,
+    body: `Your income this year sets your Medicare premiums in ${i.premiumYear}. At about ${formatWholeDollars(v.magiCents)}, you're ${formatWholeDollars(i.roomCents)} under the line at ${formatWholeDollars(i.nextLineCents)}${i.estimated ? " (estimated from this year's)" : ""}; over it, Part B and D cost about ${formatWholeDollars(i.nextYearlyCents)} a year more${v.people === 2 ? " for the two of you" : ""}.${advice}`,
     refs: v.advice && advice ? { advice: true, taxYear: v.year } : { taxYear: v.year },
     actions: [paycheck],
   };

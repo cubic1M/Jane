@@ -1,7 +1,7 @@
+import { formatWholeDollars } from "@/lib/money";
 import { FILING_STATUSES, type FilingStatus } from "@/config/tax";
 import type { FamilyView } from "@/lib/family-taxes";
 import type { FamilyChoice } from "@/planning/family-taxes";
-import { roundDollars } from "@/planning/tax-estimate-copy";
 import { FILING_BUTTONS } from "./tax-flow";
 import { type MessageAction, type MessageRefs, openLink } from "./types";
 
@@ -15,7 +15,7 @@ type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 const sideLine = (c: FamilyChoice, i: 0 | 1) => {
   const s = c.sides[i];
   return s.eligible
-    ? `• ${s.label}: tax about ${roundDollars(s.taxCents)}${c.better === i ? " (less)" : ""}`
+    ? `• ${s.label}: tax about ${formatWholeDollars(s.taxCents)}${c.better === i ? " (less)" : ""}`
     : `• ${s.label}: not open to you (${s.why.join(" ")})`;
 };
 
@@ -37,7 +37,7 @@ export function familyChoiceMessage(c: FamilyChoice, year: number): Message {
   // the return).
   const status = c.key === "filing" ? statusOf(better.label) : null;
   return {
-    body: `${choiceLines(c)}\n${better.label.replace(/ \(both returns\)$/, "")} saves about ${roundDollars(c.savesCents)} for ${year}. Federal tax, estimated.`,
+    body: `${choiceLines(c)}\n${better.label.replace(/ \(both returns\)$/, "")} saves about ${formatWholeDollars(c.savesCents)} for ${year}. Federal tax, estimated.`,
     refs: { advice: true, taxYear: year, ...(status ? { taxField: "filingStatus" } : {}) },
     actions: [
       ...(status

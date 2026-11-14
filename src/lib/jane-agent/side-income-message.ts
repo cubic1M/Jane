@@ -1,6 +1,5 @@
-import { formatCents } from "@/lib/money";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 import type { SideIncomeView } from "@/lib/side-income";
-import { roundDollars } from "@/planning/tax-estimate-copy";
 import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 // Side income and rentals in the chat (spec step 173): a rental that needs its property
@@ -34,7 +33,7 @@ export function hobbyMessage(view: SideIncomeView): Message | null {
   const { business, hobby } = view.bothWays;
   const less = business <= hobby ? "a business" : "a hobby";
   return {
-    body: `Your gig and freelance income of ${formatCents(view.gigCents)} is taxed differently as a business (profit after expenses, plus self-employment tax) or a hobby (all of it, no expenses, no self-employment tax): federal tax about ${roundDollars(business)} as a business, ${roundDollars(hobby)} as a hobby. It's ${less} that costs less, but what it is depends on how you run it: regular time, a plan to make money, records, and profit in 3 of 5 years point to a business. Which is it?`,
+    body: `Your gig and freelance income of ${formatCents(view.gigCents)} is taxed differently as a business (profit after expenses, plus self-employment tax) or a hobby (all of it, no expenses, no self-employment tax): federal tax about ${formatWholeDollars(business)} as a business, ${formatWholeDollars(hobby)} as a hobby. It's ${less} that costs less, but what it is depends on how you run it: regular time, a plan to make money, records, and profit in 3 of 5 years point to a business. Which is it?`,
     refs: { advice: true, taxYear: view.year },
     actions: [
       { id: "tax.side_business", label: "It's a business", kind: "primary" },

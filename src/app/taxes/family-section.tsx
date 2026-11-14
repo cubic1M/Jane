@@ -1,7 +1,7 @@
+import { formatWholeDollars } from "@/lib/money";
 import { ShownLink } from "@/components/shown-link";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import type { FamilyView } from "@/lib/family-taxes";
-import { roundDollars } from "@/planning/tax-estimate-copy";
 
 // Family taxes on /taxes (spec step 169, demo advice): each choice with both sides'
 // federal tax, which sides are open (with the rules), and what Jane assumed.
@@ -43,7 +43,7 @@ export function FamilySection({ view }: { view: FamilyView }) {
                         </span>
                       </th>
                       <td className="py-1 text-right whitespace-nowrap">
-                        {s.eligible ? roundDollars(s.taxCents) : "n/a"}
+                        {s.eligible ? formatWholeDollars(s.taxCents) : "n/a"}
                       </td>
                     </tr>
                   ))}
