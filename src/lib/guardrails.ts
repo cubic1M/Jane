@@ -86,6 +86,12 @@ const STOCK_PICKS = [
   new RegExp(
     `\\b${NOT_TICKERS}[A-Z]{3,5} (?:is|(?:'|’)s) (?:a |an )?(?:no-brainer|steal|bargain|must-own|must-have|(?:strong )?buy|safe bet|solid pick|great pick|keeper)\\b`,
   ),
+  // Round 31 (11-14): "The market will go up", "VOO or VTI, either works", "Pick a 2060 fund".
+  /\b(?:the (?:stock )?market|stocks|equities|the s&p(?: 500)?|the dow|the nasdaq) (?:will|is going to|are going to|(?:'|’)ll) (?:go up|rise|climb|rally|recover|rebound|bounce back|crash|drop|fall|tank|go down|keep (?:going up|rising|climbing))\b/i,
+  new RegExp(
+    `\\b${NOT_TICKERS}[A-Z]{3,5} (?:or|and|vs\\.?) \\$?${NOT_TICKERS}[A-Z]{3,5}[,;:—–-]?\\s+(?:either|both|whichever|any of them)\\b`,
+  ),
+  /\b(?:pick|choose|go with|buy|get|use|switch to|move (?:it |them |everything )?(?:in)?to) (?:a |an |the )?(?:target[- ](?:date|retirement) )?20[2-7][05] (?:target[- ](?:date|retirement) )?fund\b/i,
   // Round 28 (11-14): "Top choice: VTI", "VOO beats a savings account", "SPY calls are cheap".
   new RegExp(
     `\\b(?:[Tt]op|[Bb]est|[Ff]irst|[Mm]y) (?:choice|option|bet)s?:?\\s+\\$?${NOT_TICKERS}[A-Z]{3,5}\\b`,
@@ -204,6 +210,9 @@ const INVESTMENT = [
   // गर्नुहोस्", "Ieguldiet akcijās", "Fjárfestu í hlutabréfum", "Inverteix en accions", "Belê in
   // aandele", "Aksiyalarga sarmoya kiriting").
   /लगानी|\bieguld\w*|\bfjárfest\w*|\bhlutabréf\w*|\binvert(?:eix|iu)\b|\binvertir en (?:accions|fons)\b|\bbelê(?=[\s.,!?]|$)|\baandele\b|\bsarmoya\w*/i,
+  // Round 31 (11-14): Malayalam, Kannada, Odia, Sinhala, Burmese, Khmer, Lao, Georgian, Armenian,
+  // Kazakh, Mongolian, Amharic, Hausa, Zulu, Somali, Welsh, Irish, Basque, Galician and Belarusian.
+  /നിക്ഷേപ|ಹೂಡಿಕೆ|ନିବେଶ|ආයෝජන|ရင်းနှီးမြှုပ်နှံ|វិនិយោគ|ລົງທຶນ|ინვესტიცი|Ներդր|բաժնետոմս|инвестиц|хөрөнгө оруул|ኢንቨስት|አክሲዮን|\bzuba jari\b|\bhannun jari\b|\btshala imali\b|\b(?:ku)?masheya\b|\bmaalgeli\w*|\bsaamiyada\b|\bbuddsodd\w*|\bcyfranddaliad\w*|\binfheisti\w*|\bscaireanna\b|\binbertitu\b|\bakzioetan\b|\binviste en acci|інвесц/i,
   // Round 16 (11-13): a pick put as a tilt ("Overweight tech for the next decade", "Tilt toward small
   // caps", "Rotate out of growth into value", "Trim your winners").
   /\b(?:overweight|underweight|tilt(?:ing)? (?:toward|towards|into|to)|rotat(?:e|ing) (?:out of|into|to)|lean(?:ing)? into)\b[^.!?]{0,30}\b(?:tech|stocks?|equities|bonds|small[- ]caps?|large[- ]caps?|mid[- ]caps?|growth|value|sectors?|international|emerging markets|dividend)\b|\b(?:trim|sell) (?:your |the )?winners\b|\b(?:small|mid|large)[- ]caps?\b|\bemerging markets\b/i,
@@ -364,6 +373,9 @@ const TAX_ADVICE = [
   // Round 27 (11-14): "You owe no tax on that".
   /\byou (?:owe|(?:'|’)ll owe|will owe|pay|(?:'|’)ll pay|will pay) no (?:\w+ )?tax(?:es)?\b|\byou (?:won(?:'|’)?t|don(?:'|’)?t|will not|do not) (?:owe|pay) (?:any )?(?:\w+ )?tax(?:es)? on\b/i,
   /\bwrit(?:e|es|ing|ten)[- ](?:[\w$.,']+ ){0,3}?offs?\b/i,
+  // Round 31 (11-14): "Mileage is deductible", "Report it as a gift".
+  /\b(?:mileage|miles|tolls|commuting|tuition|donations?|medical (?:bills|expenses)|interest|supplies|equipment|meals|travel|home office|phone bill|internet bill|union dues|uniforms) (?:is|are) (?:fully |partly |partially |100% |also )?(?:tax[- ])?deductible\b/i,
+  /\breport (?:it|that|this|them|the money) as (?:a )?(?:gift|loan|hobby income|business income|capital gains?)\b/i,
   ...IRS_ADVICE,
   LIABLE,
   /\btax[- ]deductible\b/i,
@@ -615,6 +627,11 @@ const LEGAL = [
   /\bbreach(?:ed|ing)? (?:of )?(?:the |your |their |a )?(?:contract|lease|warranty|agreement|fiduciary duty)\b|\b(?:committed|is committing|are committing) (?:fraud|a crime|theft|identity theft|wage theft)\b/i,
   /\b(?:restraining|protective|protection) order\b|\b(?:landlord|employer|boss|lender|servicer|insurer) (?:legally )?owes? you\b/i,
   // Round 30 (11-14): "You're within your rights to stop paying", "Stop paying; they can't do anything".
+  // Round 31 (11-14): "Don't show up to court", "You don't have to pay that debt", "The judge will
+  // side with you", "They're violating your rights".
+  /\b(?:don(?:'|’)?t|do not|no need to|you don(?:'|’)?t (?:have|need) to) (?:bother )?(?:show(?:ing)? up|appear(?:ing)?|go(?:ing)?) (?:to|in|at|for) (?:court|the hearing|your hearing|the trial|your court date)\b/i,
+  /\byou (?:don(?:'|’)?t|do not) (?:legally )?(?:have to|need to) pay (?:that |this |the |a |an )?(?:old |zombie |time-barred )?(?:debts?|collectors?|collections?|judgments?|deficiency|deficiencies)\b/i,
+  /\b(?:judge|court|jury|arbitrator|magistrate) (?:will|would|is going to|(?:'|’)ll) (?:side with|rule (?:for|with)|find for|agree with) you\b|\bviolat(?:e|es|ed|ing) your (?:legal |consumer |tenant(?:(?:'|’)s)? |civil )?rights\b/i,
   /\bwithin your (?:legal )?rights\b|\b(?:they|collectors?|creditors?|lenders?|the (?:lender|bank|collector|creditor|landlord|servicer)) (?:legally )?(?:can(?:'|’)?t|cannot|can not) (?:legally )?(?:do (?:anything|a thing)(?: to you| about it)?(?=\s*(?:[.!]|$))|touch you|come after you|garnish|repossess|take your|sue you)/i,
   // Round 28 (11-14): squatters, support and what someone is entitled or owed, pleading, a
   // reaffirmation, countersuing ("Your ex has to pay child support", "You're entitled to half the
@@ -746,6 +763,10 @@ const GUARANTEE = [
   // Round 29 (11-14): "This will pay for itself", "You'll make your money back", "No way you'll lose".
   /\b(?:will|(?:'|’)ll|is going to) pay for itself\b|\b(?:you(?:'|’)ll|you will) (?:make (?:all )?(?:your |the )?money back|come out ahead|break even)\b|\bno way (?:you(?:'|’)ll|you will|you can|it(?:'|’)ll|it will|this) (?:lose|fail|go wrong|go down)\b|\b(?:odds|chances?) (?:are|is) 100 ?%/i,
   // Round 30 (11-14): "Approval is certain", "You will qualify".
+  // Round 31 (11-14): "Your dispute will win", "The charge will be reversed", "They will refund you".
+  /\b(?:dispute|claim|chargeback|appeal|case|complaint)s? (?:will|is going to|(?:'|’)ll) (?:definitely |surely )?(?:win|succeed|go through|be approved|be granted|work)\b/i,
+  /\b(?:charge|fee|payment|transaction)s? (?:will|is going to|are going to) (?:definitely |surely )?be (?:reversed|refunded|removed|waived|credited back)\b/i,
+  /\b(?:they|the (?:bank|merchant|store|company|airline|lender|landlord|seller))(?:(?:'|’)ll| will| are going to| is going to) (?:definitely |surely |have to )?(?:refund|reimburse|credit|pay) you\b/i,
   /\b(?:approval|acceptance) is (?:certain|assured|guaranteed|a given|a lock|locked in)\b|(?<!\b(?:if|once|when|as long as|may|might|could|whether)\b(?:[^.!?]|\.\d){0,60})\b(?:you(?:'|’)ll|you will) (?:definitely |certainly |surely |easily )?(?:qualify|be approved|get approved)\b/i,
 ];
 
