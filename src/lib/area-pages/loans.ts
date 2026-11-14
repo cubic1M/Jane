@@ -357,8 +357,15 @@ export function loansIntro(book: {
   debts: readonly { balanceCents: number | null; inNetWorth: boolean }[];
   totalOwedCents: number;
   monthlyCents: number;
+  cardPaidNotOnFile?: boolean;
 }): string {
-  if (book.debts.length === 0) return "No loans, cards or plans yet.";
+  // A card paid from checking isn't "no cards" (debugger 11-14: a student paying a Chase card $1,304.41
+  // from checking read "No loans, cards or plans yet").
+  if (book.debts.length === 0) {
+    return book.cardPaidNotOnFile
+      ? "No loans yet. You pay a credit card from checking: add its statement to see its balance and what it charges."
+      : "No loans, cards or plans yet.";
+  }
   if (book.debts.every((d) => d.balanceCents === null)) {
     return "Your files don't say what you owe yet. Add a balance on the import page. Open a branch to see more.";
   }
