@@ -81,7 +81,7 @@ function row(r: StrategyResult): string {
 
 export function intradayMarkdown(
   groups: readonly { group: GroupResult; source: string }[],
-  { generatedOn, notes = [] }: { generatedOn: string; notes?: readonly string[] },
+  { generatedOn }: { generatedOn: string },
 ): string {
   const lines: string[] = [];
   const all = groups.flatMap((g) => g.group.results);
@@ -95,8 +95,6 @@ export function intradayMarkdown(
     "",
     `${all.length} strategy runs (each strategy, market and interval). **${count("beats_hold")} beat just holding after the haircut; ${count("behind_hold")} made money but less than holding (or not clearly more); ${count("loses_money")} lost money.**`,
     "",
-    ...notes,
-    ...(notes.length > 0 ? [""] : []),
     "## How it was run",
     "",
     "- **The same loop as the live agent** (`src/planning/trading-agent/engine.ts`): each rule decides at a bar's close from that bar and the ones before it, and the trade fills at the **next bar's open**. Nothing reads a later bar (tested: a run cut short trades exactly like the full run up to the cut).",

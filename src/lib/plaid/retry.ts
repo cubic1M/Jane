@@ -17,7 +17,6 @@ export const backoffMs = (attempt: number, base = SYNC_RETRY_BASE_MS, random = M
   Math.round(base * 2 ** attempt * (1 + random() / 4));
 
 type RetryOptions = {
-  attempts?: number;
   base?: number;
   sleep?: (ms: number) => Promise<void>;
   random?: () => number;
@@ -27,13 +26,13 @@ const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, 
 
 export async function withPlaidRetry<T>(
   call: () => Promise<T>,
-  { attempts = SYNC_RETRY_ATTEMPTS, base, sleep = wait, random }: RetryOptions = {},
+  { base, sleep = wait, random }: RetryOptions = {},
 ): Promise<T> {
   for (let attempt = 0; ; attempt += 1) {
     try {
       return await call();
     } catch (error) {
-      if (attempt + 1 >= attempts || !retryablePlaidError(error)) throw error;
+      if (attempt + 1 >= SYNC_RETRY_ATTEMPTS || !retryablePlaidError(error)) throw error;
       await sleep(backoffMs(attempt, base, random));
     }
   }

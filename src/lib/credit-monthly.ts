@@ -35,14 +35,7 @@ import { formatRate } from "@/lib/percent";
 // the rest is one message with a button per item. Nothing that runs a hard pull, opens an
 // account, applies for credit or cancels cover happens here without a tap.
 
-type Parts = {
-  carLoan?: CarLoan;
-  costly?: CostlyBorrowing;
-  renting?: Renting;
-  borrowing?: BorrowingPower;
-  cardInterest?: CardInterest;
-};
-type Options = { client?: PrismaClient; now?: Date; book?: DebtBook; parts?: Parts };
+type Options = { client?: PrismaClient; now?: Date; book?: DebtBook };
 
 export type MonthlyItem = {
   key: MonthlyItemKey;
@@ -227,7 +220,7 @@ function cardRateItem(
 // monthly pass and for a question, not for every snapshot (those read the stored one).
 export async function computeCreditMonthly(
   userId: string,
-  { client = defaultClient, now = new Date(), book: given, parts = {} }: Options = {},
+  { client = defaultClient, now = new Date(), book: given }: Options = {},
 ): Promise<CreditMonthly> {
   const book = await debtsOr(given, userId, { client, now });
   const asOf = isoDay(now);
@@ -235,11 +228,11 @@ export async function computeCreditMonthly(
     autopilotFor(userId, "debt", { client, now }),
     adviceMode(userId, { client }),
     loadRefinance(userId, { client, now, book }),
-    parts.borrowing ?? loadBorrowingPower(userId, { client }),
-    parts.carLoan ?? loadCarLoan(userId, { client, now, book }),
-    parts.costly ?? loadCostlyBorrowing(userId, { client, now }),
-    parts.renting ?? loadRenting(userId, { client, now }),
-    parts.cardInterest ?? loadCardInterest(userId, { client, now, book }),
+    loadBorrowingPower(userId, { client }),
+    loadCarLoan(userId, { client, now, book }),
+    loadCostlyBorrowing(userId, { client, now }),
+    loadRenting(userId, { client, now }),
+    loadCardInterest(userId, { client, now, book }),
   ]);
   const items = [
     softChecksItem(refi.checkedOn, borrowing),

@@ -129,13 +129,13 @@ export async function refreshProposals(
 // /transactions).
 export async function recentAutoCategories(
   userId: string,
-  { client = defaultClient, now = new Date(), days = 7 }: Options & { days?: number } = {},
+  { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<{ merchantName: string; detailed: string }[]> {
   const rows = await scopedFor(userId, client).planProposals.findMany({
     where: {
       kind: "category",
       status: "accepted",
-      answeredAt: { gte: new Date(now.getTime() - days * 24 * 60 * 60 * 1000) },
+      answeredAt: { gte: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) },
     },
     select: { payload: true },
   });
