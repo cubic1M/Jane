@@ -11,6 +11,12 @@ export const COSTLY_LABELS: Readonly<Record<CostlyKind, string>> = {
   pay_app: "Pay advance apps",
 };
 
+// The pay advance apps, by name (their category isn't always "_EWA"). A tip or fee to one is the
+// cost of an advance, never a bank fee to ask the bank back (debugger 11-14: "$3.00 fee on Demo
+// Checking, EARNIN TIP… Banks often take a fee back when asked").
+export const PAY_APP_NAMES =
+  /earnin|dave\b|brigit|empower|moneylion|klover|albert|chime.*(?:instant|mypay)|payactiv|branch.*advance|cash ?app.*borrow/i;
+
 // Looked at: the last year.
 export const COSTLY_LOOKBACK_DAYS = 365;
 // What the person's own payments don't say, assumed to turn a fee into a yearly rate. Stated
