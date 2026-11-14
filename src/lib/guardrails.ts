@@ -168,6 +168,8 @@ const INVESTMENT = [
   // Round 23 (11-13): Swahili, Hebrew and Greek ("Wekeza kwenye hisa", "השקע במניות", "Επένδυσε σε
   // μετοχές").
   /\bwekeza\b|\bhisa za\b|השקע|מניות|בורסה|επένδυ|μετοχ/i,
+  // Round 26 (11-14): Indonesian and Malay ("Beli saham BBCA", "Investasikan di reksa dana").
+  /\b(?:beli|jual|borong) saham\b|\bsaham [A-Z]{3,5}\b|\b(?:ber)?investasi(?:kan)?\b|\breksa dana\b|\bkripto\b/i,
   // Round 16 (11-13): a pick put as a tilt ("Overweight tech for the next decade", "Tilt toward small
   // caps", "Rotate out of growth into value", "Trim your winners").
   /\b(?:overweight|underweight|tilt(?:ing)? (?:toward|towards|into|to)|rotat(?:e|ing) (?:out of|into|to)|lean(?:ing)? into)\b[^.!?]{0,30}\b(?:tech|stocks?|equities|bonds|small[- ]caps?|large[- ]caps?|mid[- ]caps?|growth|value|sectors?|international|emerging markets|dividend)\b|\b(?:trim|sell) (?:your |the )?winners\b|\b(?:small|mid|large)[- ]caps?\b|\bemerging markets\b/i,
@@ -556,7 +558,7 @@ const LEGAL = [
   // Round 18 (11-13): what someone can't do to you by law ("They can't garnish your wages", "Your
   // landlord can't evict you for that", "They can't take your car"), and money called a gift to
   // dodge tax ("Call it a gift so it isn't taxed").
-  /\b(?:they|he|she|the (?:landlord|lender|collector|creditor|bank|irs|company|dealer|servicer|court)|your (?:landlord|lender|creditor|employer|ex|hoa)|collectors|creditors|landlords)\s+(?:legally )?(?:can(?:'|’)?t|cannot|can not|aren(?:'|’)?t allowed to|isn(?:'|’)?t allowed to|have no right to|has no right to)\s+(?:legally )?(?:garnish|evict|repossess|seize|levy|foreclose|sue|take (?:your|the|away)|freeze|touch|come after|kick you out|fire you|charge you|fine you|tow)\b/i,
+  /\b(?:they|he|she|the (?:landlord|lender|collector|creditor|bank|irs|company|dealer|servicer|court)|your (?:landlord|lender|creditor|employer|ex|hoa)|collectors|creditors|landlords)\s+(?:legally )?(?:can(?:'|’)?t|cannot|can not|aren(?:'|’)?t allowed to|isn(?:'|’)?t allowed to|have no right to|has no right to)\s+(?:legally )?(?:garnish|evict|repossess|seize|levy|foreclose|sue|take (?:your|the|away)|freeze|touch|come after|kick you out|fire you|charge you|fine you|tow|keep (?:your|the) (?:security )?deposit)\b/i,
   // Round 24 (11-13): what a contract does by law, and signing it ("That clause isn't enforceable",
   // "Sign it; it's a standard contract").
   /\b(?:isn(?:'|’)?t|is not|aren(?:'|’)?t|are not|not) (?:legally )?(?:enforceable|binding)\b|\bunenforceable\b|\b(?:it|this|that)(?:'|’)?s a standard (?:contract|lease|agreement|clause|waiver)\b|\bsafe to sign\b/i,
@@ -564,6 +566,10 @@ const LEGAL = [
   // "Put the house in your spouse's name before the lawsuit", "so it's safe from creditors").
   /\bhide (?:the |your |some )?(?:car|truck|money|cash|assets?|income|accounts?|property)\b|\bso (?:they|the (?:bank|lender|collector|creditor|irs|court))(?: can(?:'|’)?t| cannot| won(?:'|’)?t be able to) (?:repo|repossess|levy|garnish|seize|find|freeze|take)\b|\b(?:safe|protected|shielded|hidden) from (?:the |your )?(?:creditors?|collectors?|lawsuit|judgment|garnishment|levy|irs)\b/i,
   /\b(?:put|transfer|move|title|sign over|give)\b[^.!?]{0,40}\b(?:in|into|to) (?:your |a |his |her |their )?(?:spouse|wife|husband|partner|mom|dad|mother|father|brother|sister|parents?|friend|relative|kid|child)(?:(?:'|’)s)?\b[^.!?]{0,40}\b(?:lawsuit|creditors?|collectors?|judgment|bankruptcy|levy|garnish\w*|repo\w*)\b/i,
+  // Round 26 (11-14): telling someone they have a case, or that a company breaks a named law ("You
+  // have grounds for a lawsuit", "They're violating the FDCPA").
+  /\b(?:have|has|got) (?:solid |strong |good |clear |real )?grounds (?:for|to)\b|\b(?:have|has|got) (?:a )?(?:solid |strong |good |clear |real )?case against\b/i,
+  /\b(?:breaking|broke|violating|violated|in violation of) (?:the )?(?:fcra|fdcpa|tila|scra|card act|credit card act|fair credit reporting act|fair debt collection practices act|truth in lending act|servicemembers civil relief act|(?:federal|state|consumer protection|tenant|landlord[- ]tenant) laws?)\b/i,
   /\b(?:call|report|list|label|treat|record|count|write)\b[^.!?]{0,20}\b(?:as )?a gift\b[^.!?]{0,30}\b(?:so|instead of|to avoid|to dodge|rather than|and (?:skip|avoid))\b/i,
   // Round 17 (11-13): signing someone else's name, a made-up figure or address on an application,
   // and a dispute that isn't true ("Just sign your roommate's name on the lease", "Put a lower
@@ -671,6 +677,8 @@ const GUARANTEE = [
   /\b(?:this|it|that) always works\b|\bworks every time\b|\bnever fails\b/i,
   // Round 25 (11-14): "You'll retire a millionaire", "Your money will double in 7 years".
   /\b(?:you(?:'|’)ll|you will) (?:retire|be|end up|die) (?:a )?(?:millionaire|rich|wealthy)\b|\b(?:money|savings|investments?|portfolio|it) will (?:double|triple|grow to)\b/i,
+  // Round 26 (11-14): "You'll never be in debt again".
+  /\b(?:you(?:'|’)ll|you will) never (?:be in debt|be broke|owe (?:a dime|anything)|run out of money|have to worry about money)\b/i,
 ];
 
 // (g) Deposit insurance (12 CFR 328.102; connectors roadmap round 13): no false or misleading word
