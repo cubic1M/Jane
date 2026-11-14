@@ -23,6 +23,7 @@ import {
   leafFigure,
   type LevelTile,
 } from "@/lib/investments/strategy-tree";
+import { GRAPH_PAD, gappedPath, graphScale } from "./strategy-graph";
 
 // The investments page, laid out like Home (founder: "similar to the homepage … interactive, and
 // you can click through the tree graphs showcasing the different strategies and choose which one
@@ -96,24 +97,10 @@ function Graph({
   const view = boardInRange({ dates: board.dates, mix: board.mix, rows: [row] }, range);
   const line = view.lines[row.key];
   const all = [...view.mix, ...line].filter((v): v is number => v !== null);
-  const lo = Math.min(...all);
-  const hi = Math.max(...all);
-  const span = Math.max(1, hi - lo);
-  const pad = { left: 38, right: 6, top: 8, bottom: 20 };
-  const n = view.dates.length;
-  const x = (i: number) => pad.left + (i / Math.max(1, n - 1)) * (width - pad.left - pad.right);
-  const y = (v: number) =>
-    pad.top + (1 - (v - (lo - span * 0.05)) / (span * 1.1)) * (height - pad.top - pad.bottom);
-  const path = (vs: readonly (number | null)[]) => {
-    let d = "";
-    let pen = false;
-    vs.forEach((v, i) => {
-      if (v === null) return void (pen = false);
-      d += `${pen ? "L" : "M"}${x(i).toFixed(1)} ${y(v).toFixed(1)}`;
-      pen = true;
-    });
-    return d;
-  };
+  const scale = graphScale(all, view.dates.length, width, height);
+  const { lo, hi, x, y } = scale;
+  const pad = GRAPH_PAD;
+  const path = (vs: readonly (number | null)[]) => gappedPath(vs, scale);
   const years = view.dates.flatMap((d, i) =>
     d.slice(5, 7) === "01" && i > 0 ? [{ i, label: d.slice(0, 4) }] : [],
   );
