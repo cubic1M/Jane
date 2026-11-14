@@ -151,6 +151,7 @@ describe.runIf(url)("freelancers' taxes against a real database", () => {
     expect(q.body).toMatch(/^Estimated tax is due Jan 15: about \$[\d,]+ federal/);
     const message = await post(q);
     const before = (await loadTaxEstimate(userId, { client, now: january })).estimate.paidCents;
+    const saved = (await client.taxProfile.findUnique({ where: { userId } }))?.taxPayments ?? [];
     const after = (
       await takeChatAction(userId, message.id, "tax.quarter_paid", { client, now: january })
     ).message;
@@ -158,6 +159,10 @@ describe.runIf(url)("freelancers' taxes against a real database", () => {
     expect(
       (await loadTaxEstimate(userId, { client, now: january })).estimate.paidCents,
     ).toBeGreaterThan(before);
+    // January's payment is undone: the tests after this go back to October, where it hasn't been
+    // paid yet (since the data's end paces the year, January's estimate is October's, and its
+    // payment left nothing for October to set aside).
+    await client.taxProfile.update({ where: { userId }, data: { taxPayments: saved } });
   });
 
   it("starts the set-aside goal by itself at Handle the safe stuff, never at Ask me first", async () => {
