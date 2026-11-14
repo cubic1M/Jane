@@ -147,6 +147,77 @@ export async function loadTaxEstimate(
   );
 }
 
+// What the estimate assumed about the person: how they file, where, a move, a city's tax,
+// dependants, and the pace a part year is projected at.
+function profileAssumptions({
+  profile,
+  view,
+  guessed,
+  state,
+  residency,
+  elapsed,
+  firstSeen,
+  year,
+}: {
+  profile: Awaited<ReturnType<typeof loadWorkingProfile>>["profile"];
+  view: Awaited<ReturnType<typeof loadWorkingProfile>>["view"];
+  guessed: ReturnType<typeof guessFilingStatus> | null;
+  state: string | null;
+  residency: ResidencyView;
+  elapsed: number;
+  firstSeen: string | null;
+  year: number;
+}): string[] {
+  const out: string[] = [];
+  if (!profile.filingStatus) {
+    out.push(
+      guessed
+        ? `You haven't told me how you file. I see ${guessed.why}, so I've estimated as married filing jointly; tell me if that's wrong.`
+        : "You haven't told me how you file, so I've estimated as single.",
+    );
+  }
+  if (state && view.state.status !== "yours") {
+    out.push(`I've assumed you file in ${stateName(state)}; check your tax profile.`);
+  }
+  for (const m of residency.inUse) {
+    out.push(
+      `${residency.usingSpotted ? "I've assumed you moved" : "You moved"} from ${stateName(m.from)} to ${stateName(m.to)} on ${dayLabel(m.date, { year: true })}: wages count where you lived on each payday, other income by the days you lived in each state.`,
+    );
+  }
+  if (residency.workState && residency.workState !== state) {
+    out.push(`You work for an employer in ${stateName(residency.workState)}.`);
+  }
+  const local = residency.locality ? LOCAL_TAXES[residency.locality] : undefined;
+  if (local) out.push(`You live in ${local.label}, which has its own income tax.`);
+  if (view.dependants.status === "found") {
+    const counted = profile.childrenUnder17 + profile.otherDependants > 0;
+    const found = `the ${dependantsWords(view.dependants.childrenUnder17 ?? 0, view.dependants.otherDependants ?? 0)} in your household`;
+    out.push(
+      counted
+        ? `I've counted ${found}; check them on your tax profile.`
+        : `I've counted no dependants yet: say yes to ${found} on your tax profile to count them.`,
+    );
+  } else if (view.dependants.status !== "yours") {
+    out.push(
+      view.dependants.hint
+        ? `It looks like you have a child, from your payments or a new baby you told me about. I've counted none until you add them on your tax profile: each child under 17 can take up to ${formatCents(CHILD_TAX_CREDIT.perChild)} off your tax.`
+        : "You haven't told me about dependants, so I've counted none.",
+    );
+  }
+  if (elapsed > 0 && elapsed < 1) {
+    out.push(
+      firstSeen && firstSeen > `${year}-01-01`
+        ? `Your accounts start on ${dayLabel(firstSeen, { year: true })}, so I've counted the whole of ${year} at the pace since then.`
+        : `Income so far is projected to the end of ${year} at the same pace.`,
+    );
+  }
+  return out;
+}
+
+// An age told on a day, at the tax year's last day.
+const ageAtYearEnd = (age: number, on: Date, year: number) =>
+  age + Math.max(0, Math.floor((Date.UTC(year, 11, 31) - on.getTime()) / (365.25 * DAY_MS)));
+
 async function loadTaxEstimateFrom(
   userId: string,
   { client, now, year: asked }: { client: PrismaClient; now: Date; year?: number },
@@ -437,10 +508,7 @@ async function loadTaxEstimateFrom(
   // Spec step 173: a rental's net (rent less tagged expenses less depreciation, with the
   // passive loss allowance), and a hobby's income without its expenses.
   const sideStored = stored;
-  const rentalExpenses =
-    elapsed > 0 && elapsed < 1
-      ? Math.round(tags.totals.rental.totalCents / elapsed)
-      : tags.totals.rental.totalCents;
+  const rentalExpenses = paceOf(tags.totals.rental.totalCents);
   const depreciation =
     sideStored?.rentalPriceCents && sideStored.rentalPlacedOn
       ? rentalDepreciation({
@@ -496,14 +564,12 @@ async function loadTaxEstimateFrom(
     },
     select: { amountCents: true, description: true },
   });
-  const paceYear = (cents: number) =>
-    elapsed > 0 && elapsed < 1 ? Math.round(cents / elapsed) : cents;
-  const benefits = paceYear(
+  const benefits = paceOf(
     retirementRows
       .filter((t) => !isNotIncome(t) && SOCIAL_SECURITY_PAYEE.test(t.description))
       .reduce((s, t) => s - t.amountCents, 0),
   );
-  const iraDraws = paceYear(
+  const iraDraws = paceOf(
     retirementRows
       .filter((t) => !isNotIncome(t) && IRA_DISTRIBUTION.test(t.description))
       .reduce((s, t) => s - t.amountCents, 0),
@@ -530,7 +596,7 @@ async function loadTaxEstimateFrom(
     const ytd = loans
       .filter((l) => l.kind === kind)
       .reduce((s, l) => s + (l.ytdInterestPaidCents ?? 0), 0);
-    return elapsed > 0 && elapsed < 1 ? Math.round(ytd / elapsed) : ytd;
+    return paceOf(ytd);
   };
 
   // Taxes QA: a couple's signs (a joint account, two employers) mean married filing jointly.
@@ -541,60 +607,14 @@ async function loadTaxEstimateFrom(
         payrollNames: payingTogether(paychecks),
       });
   const filingStatus: FilingStatus = profile.filingStatus ?? guessed?.status ?? "single";
-  if (!profile.filingStatus) {
-    assumptions.push(
-      guessed
-        ? `You haven't told me how you file. I see ${guessed.why}, so I've estimated as married filing jointly; tell me if that's wrong.`
-        : "You haven't told me how you file, so I've estimated as single.",
-    );
-  }
   const state = profile.state ?? view.state.value;
-  if (state && view.state.status !== "yours") {
-    assumptions.push(`I've assumed you file in ${stateName(state)}; check your tax profile.`);
-  }
-  for (const m of residency.inUse) {
-    assumptions.push(
-      `${residency.usingSpotted ? "I've assumed you moved" : "You moved"} from ${stateName(m.from)} to ${stateName(m.to)} on ${dayLabel(m.date, { year: true })}: wages count where you lived on each payday, other income by the days you lived in each state.`,
-    );
-  }
-  if (residency.workState && residency.workState !== state) {
-    assumptions.push(`You work for an employer in ${stateName(residency.workState)}.`);
-  }
-  const local = residency.locality ? LOCAL_TAXES[residency.locality] : undefined;
-  if (local) assumptions.push(`You live in ${local.label}, which has its own income tax.`);
-  if (view.dependants.status === "found") {
-    const counted = profile.childrenUnder17 + profile.otherDependants > 0;
-    const found = `the ${dependantsWords(view.dependants.childrenUnder17 ?? 0, view.dependants.otherDependants ?? 0)} in your household`;
-    assumptions.push(
-      counted
-        ? `I've counted ${found}; check them on your tax profile.`
-        : `I've counted no dependants yet: say yes to ${found} on your tax profile to count them.`,
-    );
-  } else if (view.dependants.status !== "yours") {
-    assumptions.push(
-      view.dependants.hint
-        ? `It looks like you have a child, from your payments or a new baby you told me about. I've counted none until you add them on your tax profile: each child under 17 can take up to ${formatCents(CHILD_TAX_CREDIT.perChild)} off your tax.`
-        : "You haven't told me about dependants, so I've counted none.",
-    );
-  }
-  if (elapsed > 0 && elapsed < 1) {
-    assumptions.push(
-      firstSeen && firstSeen > `${year}-01-01`
-        ? `Your accounts start on ${dayLabel(firstSeen, { year: true })}, so I've counted the whole of ${year} at the pace since then.`
-        : `Income so far is projected to the end of ${year} at the same pace.`,
-    );
-  }
+  assumptions.push(
+    ...profileAssumptions({ profile, view, guessed, state, residency, elapsed, firstSeen, year }),
+  );
 
   // The age they told Jane (on the investor profile), at the year's end.
   const told = await db.investorProfiles.findFirst({ select: { age: true, ageOn: true } });
-  const age =
-    told?.age != null
-      ? told.age +
-        Math.max(
-          0,
-          Math.floor((Date.UTC(year, 11, 31) - (told.ageOn ?? now).getTime()) / (365.25 * DAY_MS)),
-        )
-      : null;
+  const age = told?.age != null ? ageAtYearEnd(told.age, told.ageOn ?? now, year) : null;
   const input: EstimateInput = {
     year,
     filingStatus,
