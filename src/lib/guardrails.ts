@@ -79,6 +79,13 @@ const STOCK_PICKS = [
   new RegExp(
     `\\b(?:[Ee]xperts?|[Aa]nalysts?|[Aa]dvisors?|[Pp]ros|[Rr]eddit|[Ii]nvestors|[Mm]ost people|[Ee]veryone|[Bb]uffett|[Bb]ogleheads)\\b[^.!?]{0,20}\\b(?:recommends?|loves?|likes?|swears? by|picks?|suggests?|buys?|prefers?|(?:is|are) buying)\\s+\\$?${NOT_TICKERS}[A-Z]{3,5}\\b`,
   ),
+  // Round 30 (11-14): "Throw $90.00 at VOO each month", "VOO is a no-brainer".
+  new RegExp(
+    `\\b(?:[Tt]hrow|[Tt]oss)\\b(?:[^.!?]|\\.\\d){0,30}\\bat \\$?${NOT_TICKERS}[A-Z]{3,5}\\b`,
+  ),
+  new RegExp(
+    `\\b${NOT_TICKERS}[A-Z]{3,5} (?:is|(?:'|’)s) (?:a |an )?(?:no-brainer|steal|bargain|must-own|must-have|(?:strong )?buy|safe bet|solid pick|great pick|keeper)\\b`,
+  ),
   // Round 28 (11-14): "Top choice: VTI", "VOO beats a savings account", "SPY calls are cheap".
   new RegExp(
     `\\b(?:[Tt]op|[Bb]est|[Ff]irst|[Mm]y) (?:choice|option|bet)s?:?\\s+\\$?${NOT_TICKERS}[A-Z]{3,5}\\b`,
@@ -193,6 +200,10 @@ const INVESTMENT = [
   /বিনিয়োগ|বিনিয়োগ|শে(?:য়|য়)ার (?:কিন|বিক্রি)|سرمای[ہه]\s*\u200c?\s*(?:کاری|گذاری)|سهام|\bfektess\w*|\bbefektet\w*|\brészvény\w*/i,
   // Round 29 (11-14): Tamil, Telugu, Marathi, Punjabi, Gujarati, Croatian and Finnish.
   /முதலீடு|పెట్టుబడి|गुंतवणूक|ਨਿਵੇਸ਼|રોકાણ|\b(?:kupi|kupite|prodaj|prodajte)\s+dionic|\bdionice [A-Z]|\bsijoit\w*|\bosakke\w*/i,
+  // Round 30 (11-14): Nepali, Latvian, Icelandic, Catalan, Afrikaans and Uzbek ("शेयरमा लगानी
+  // गर्नुहोस्", "Ieguldiet akcijās", "Fjárfestu í hlutabréfum", "Inverteix en accions", "Belê in
+  // aandele", "Aksiyalarga sarmoya kiriting").
+  /लगानी|\bieguld\w*|\bfjárfest\w*|\bhlutabréf\w*|\binvert(?:eix|iu)\b|\binvertir en (?:accions|fons)\b|\bbelê(?=[\s.,!?]|$)|\baandele\b|\bsarmoya\w*/i,
   // Round 16 (11-13): a pick put as a tilt ("Overweight tech for the next decade", "Tilt toward small
   // caps", "Rotate out of growth into value", "Trim your winners").
   /\b(?:overweight|underweight|tilt(?:ing)? (?:toward|towards|into|to)|rotat(?:e|ing) (?:out of|into|to)|lean(?:ing)? into)\b[^.!?]{0,30}\b(?:tech|stocks?|equities|bonds|small[- ]caps?|large[- ]caps?|mid[- ]caps?|growth|value|sectors?|international|emerging markets|dividend)\b|\b(?:trim|sell) (?:your |the )?winners\b|\b(?:small|mid|large)[- ]caps?\b|\bemerging markets\b/i,
@@ -293,7 +304,7 @@ const INVESTMENT = [
   // sell", "An 80/20 split would suit you", "You're too conservative; take on more risk", "Keep
   // buying no matter what the market does".
   /\b(?:move|put|get|stay|go|jump|pull|take)\w*\b[^.!?]{0,30}\b(?:in(?:to)?|out of) the (?:stock )?market\b/i,
-  /\bs&p\b|\ball[- ]in on\b/i,
+  /\bs&p\b|\ball[- ]in on\b(?! (?:paying|pay(?:ing)? (?:off|down)|(?:the |your |that )?(?:card|debt|loan|balance|emergency fund|savings)))/i,
   /\b(?:hold|sell|buy),? (?:not|rather than|instead of) (?:sell|hold|buy)\b/i,
   /\b[1-9]0\/[1-9]0 (?:split|mix|portfolio|allocation)\b(?!\s+(?:of|between)\b)/i,
   /\byou(?:'|’)?re too (?:conservative|aggressive)\b|\btake on (?:more|less) risk\b/i,
@@ -603,6 +614,8 @@ const LEGAL = [
   // contract", "They committed fraud", "Your landlord owes you interest on the deposit").
   /\bbreach(?:ed|ing)? (?:of )?(?:the |your |their |a )?(?:contract|lease|warranty|agreement|fiduciary duty)\b|\b(?:committed|is committing|are committing) (?:fraud|a crime|theft|identity theft|wage theft)\b/i,
   /\b(?:restraining|protective|protection) order\b|\b(?:landlord|employer|boss|lender|servicer|insurer) (?:legally )?owes? you\b/i,
+  // Round 30 (11-14): "You're within your rights to stop paying", "Stop paying; they can't do anything".
+  /\bwithin your (?:legal )?rights\b|\b(?:they|collectors?|creditors?|lenders?|the (?:lender|bank|collector|creditor|landlord|servicer)) (?:legally )?(?:can(?:'|’)?t|cannot|can not) (?:legally )?(?:do (?:anything|a thing)(?: to you| about it)?(?=\s*(?:[.!]|$))|touch you|come after you|garnish|repossess|take your|sue you)/i,
   // Round 28 (11-14): squatters, support and what someone is entitled or owed, pleading, a
   // reaffirmation, countersuing ("Your ex has to pay child support", "You're entitled to half the
   // house", "Plead guilty to make it go away").
@@ -732,6 +745,8 @@ const GUARANTEE = [
   /\b(?:you(?:'|’)re|you are|it(?:'|’)s|it is) bound to (?:get|be|save|win|work|go up|pay off|qualify)\b/i,
   // Round 29 (11-14): "This will pay for itself", "You'll make your money back", "No way you'll lose".
   /\b(?:will|(?:'|’)ll|is going to) pay for itself\b|\b(?:you(?:'|’)ll|you will) (?:make (?:all )?(?:your |the )?money back|come out ahead|break even)\b|\bno way (?:you(?:'|’)ll|you will|you can|it(?:'|’)ll|it will|this) (?:lose|fail|go wrong|go down)\b|\b(?:odds|chances?) (?:are|is) 100 ?%/i,
+  // Round 30 (11-14): "Approval is certain", "You will qualify".
+  /\b(?:approval|acceptance) is (?:certain|assured|guaranteed|a given|a lock|locked in)\b|(?<!\b(?:if|once|when|as long as|may|might|could|whether)\b(?:[^.!?]|\.\d){0,60})\b(?:you(?:'|’)ll|you will) (?:definitely |certainly |surely |easily )?(?:qualify|be approved|get approved)\b/i,
 ];
 
 // (g) Deposit insurance (12 CFR 328.102; connectors roadmap round 13): no false or misleading word
