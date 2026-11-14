@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { signInWith } from "./session";
 
 // A statement from a year ago, uploaded by mistake (night QA 10-30): it read as today's balance
 // and "Nothing to fix right now". The preview says the files are old before they're imported.
@@ -30,9 +31,7 @@ test("an old statement is called old in the preview; a recent one isn't", async 
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
 
   await page.goto("/import");
   const file = page.locator('input[type="file"]');

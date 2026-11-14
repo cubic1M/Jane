@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { answerTo, landInChat } from "./chat-page";
 import { holds } from "./waits";
+import { signInWith } from "./session";
 
 // Founder (11-11): "the chat often reloads the response for some reason after producing a
 // response. I don't want to see that happen." What the person reads of Jane's answer only ever
@@ -26,9 +27,7 @@ test("a reply stays as it streamed: never cleared, replaced or drawn again", asy
 }) => {
   const user = await signedInUser("user");
   users.push(user.userId);
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await expect(async () => {
     if (page.url().endsWith("/connect")) {
@@ -91,9 +90,7 @@ test("the message box grows with the text, keeps its width, and shrinks once sen
   await page.setViewportSize({ width: 375, height: 812 });
   const user = await signedInUser("user");
   users.push(user.userId);
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await expect(async () => {
     if (page.url().endsWith("/connect")) {

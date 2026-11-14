@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { waitForImport } from "./import-wait";
 import { hydrated } from "./waits";
+import { signInWith } from "./session";
 
 // Reviewer polish: nothing jumps in the first minutes. A page that's loading already has the top
 // bar (so it doesn't draw full width and then shift under it and beside the docked chat), a tap
@@ -19,9 +20,7 @@ test.afterEach(async () => {
 test("the top bar holds still while pages load", async ({ context, page, baseURL, isMobile }) => {
   const user = await signedInUser("admin");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
 
   await page.goto("/import");
   await page.locator('input[type="file"]').setInputFiles("e2e/fixtures/sample-card.csv");

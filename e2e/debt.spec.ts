@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { signInWith } from "./session";
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 test.setTimeout(120_000);
@@ -17,9 +18,7 @@ test("the debt planner shows both orders side by side, without recommending one"
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
 
   await page.goto("/debt");
   await expect(page.getByText("This is math, not a recommendation.")).toBeVisible();

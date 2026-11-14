@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { waitForImport } from "./import-wait";
+import { signInWith } from "./session";
 
 // Someone who already manages well (founder: what if there's little to save?): the report says
 // so with a checkup, one line per check Jane ran with its number, the detail behind a tap, and
@@ -56,9 +57,7 @@ function doingWellCsv(): string {
 test("someone doing well gets a checkup, not just 'nothing to fix'", async ({ page, baseURL }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
   await page.goto("/import");
   await page.locator('input[type="file"]').setInputFiles({
     name: "chase-checking.csv",

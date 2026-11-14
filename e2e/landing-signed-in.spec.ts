@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { signInWith } from "./session";
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 
@@ -24,9 +25,7 @@ test("a signed-in student on the landing page is offered the way in", async ({
   ).toBeVisible();
   await expect(page.getByText("You're signed in.")).toHaveCount(0);
 
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.reload();
   await page.getByRole("link", { name: "Open Jane" }).click();
   // No bank yet, so Home sends them on to add one.

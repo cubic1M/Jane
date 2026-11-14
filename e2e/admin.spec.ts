@@ -3,6 +3,7 @@ import { isHiddenPage, shownHref } from "../src/config/hidden-pages";
 import { E2E_DATABASE_URL, deleteUser, signedInUser, treatAsDemoBank } from "./db";
 import { openFinding } from "./report-page";
 import { waitForImport } from "./import-wait";
+import { signInWith } from "./session";
 
 // The team's queue: non-admins get a 404 everywhere under /admin; an admin can move an
 // approved action and the person sees the new status on /actions.
@@ -39,9 +40,7 @@ test.describe("signed in", () => {
   }) => {
     const user = await signedInUser("user");
     userId = user.userId;
-    await context.addCookies([
-      { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-    ]);
+    await signInWith(context, user.sessionToken, baseURL);
 
     for (const path of ADMIN_PATHS) {
       const response = await page.goto(path);
@@ -52,9 +51,7 @@ test.describe("signed in", () => {
   test("an admin sees the learning loop, kind by kind", async ({ context, page, baseURL }) => {
     const user = await signedInUser("admin");
     userId = user.userId;
-    await context.addCookies([
-      { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-    ]);
+    await signInWith(context, user.sessionToken, baseURL);
     const response = await page.goto("/admin/learning");
     expect(response?.status()).toBe(200);
     await expect(page.getByRole("heading", { name: "Learning", level: 1 })).toBeVisible();
@@ -66,9 +63,7 @@ test.describe("signed in", () => {
     test.skip(isHiddenPage("/actions"), "/actions is hidden in the read-only beta");
     const user = await signedInUser("admin");
     userId = user.userId;
-    await context.addCookies([
-      { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-    ]);
+    await signInWith(context, user.sessionToken, baseURL);
 
     // Approve a card as this (admin) user, so there's an action in the queue. Insurance is
     // the team's, never the agent's, so it stays in the queue however fast the agent is.

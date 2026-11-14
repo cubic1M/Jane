@@ -3,6 +3,7 @@ import { Client } from "pg";
 import { madeUpChaseCsv } from "../src/lib/__fixtures__/made-up-statement";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { demoPerson } from "./demo-person";
+import { signInWith } from "./session";
 
 // During a try, Home asks what Jane got wrong (founder 11-04): a plain form, tied to no one.
 
@@ -84,9 +85,7 @@ test("a real upload moves the counts, and what's said outlives the try", async (
   const admin = await signedInUser("admin");
   userId = admin.userId;
   const context = await browser.newContext();
-  await context.addCookies([
-    { name: "authjs.session-token", value: admin.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, admin.sessionToken, baseURL);
   const adminPage = await context.newPage();
   await adminPage.goto("/admin/reports");
   const row = adminPage.locator("[data-try-feedback-row]").filter({ hasText: words });

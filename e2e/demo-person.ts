@@ -1,5 +1,6 @@
 import { expect, type BrowserContext, type Page } from "@playwright/test";
 import { signedInUser, waitForFullScan } from "./db";
+import { signInWith } from "./session";
 
 // A signed-in person with the demo bank linked and the first scan finished: the starting point
 // of the home hub's specs (hub, side chat, feature map).
@@ -9,9 +10,7 @@ export async function demoPerson(
   baseURL: string | undefined,
 ): Promise<string> {
   const user = await signedInUser("user");
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await expect(async () => {
     if (page.url().endsWith("/connect")) {

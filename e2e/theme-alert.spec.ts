@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { CHAT, landInChat } from "./chat-page";
 import { E2E_DATABASE_URL, addThemeIdea, deleteUser, signedInUser } from "./db";
+import { signInWith } from "./session";
 
 // A news theme's alert (Phase AW, Stage A): when the practice scan finds a theme idea, Jane puts
 // it in the chat as a floating card: the headline, Yes and Not now, and behind More details why
@@ -18,9 +19,7 @@ test.afterEach(async () => {
 test("a theme idea comes to the chat as a card to decide", async ({ context, page, baseURL }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);

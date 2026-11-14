@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { waitForImport } from "./import-wait";
+import { signInWith } from "./session";
 
 // One account's statement as a CSV, then as the bank's QFX: only what's new is added, not every
 // transaction twice (new-user pass, round 6).
@@ -22,9 +23,7 @@ const ofx = (d: Date) => `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(
 test("a QFX after the CSV of the same account adds only what's new", async ({ page, baseURL }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
 
   const csv = [
     "Details,Posting Date,Description,Amount,Type,Balance,Check or Slip #",

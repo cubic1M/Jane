@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { Client } from "pg";
 import { E2E_DATABASE_URL, addJaneMessage, deleteUser, signedInUser } from "./db";
 import { CHAT } from "./chat-page";
+import { signInWith } from "./session";
 
 // Each sign-in starts the chat empty (src/lib/chat-start.ts): yesterday's conversation is still
 // stored, but this session's chat doesn't show it; what's said from now on does.
@@ -47,9 +48,7 @@ test("a new sign-in starts the chat empty; older messages stay stored, unseen", 
   const user = await signedInUser("user");
   userId = user.userId;
   await withYesterday(userId);
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
 
   await page.goto(CHAT);
   await expect(page.getByRole("heading", { level: 1, name: "Chat with Jane" })).toBeAttached({

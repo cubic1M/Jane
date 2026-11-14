@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { signInWith } from "./session";
 
 // "Send feedback" (closed beta): from the profile menu on any signed-in page (two taps), the
 // person's own words, the page and an optional screenshot go to the founders, who read them at
@@ -26,9 +27,7 @@ test("a person sends feedback from any page, and the founders read it", async ({
   const person = await signedInUser("user");
   users.push(person.userId);
   const context = await browser.newContext();
-  await context.addCookies([
-    { name: "authjs.session-token", value: person.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, person.sessionToken, baseURL);
   const page = await context.newPage();
   await page.goto("/net-worth");
   await page.getByRole("button", { name: "Your account and settings" }).click();
@@ -54,9 +53,7 @@ test("a person sends feedback from any page, and the founders read it", async ({
   const admin = await signedInUser("admin");
   users.push(admin.userId);
   const adminContext = await browser.newContext();
-  await adminContext.addCookies([
-    { name: "authjs.session-token", value: admin.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(adminContext, admin.sessionToken, baseURL);
   const adminPage = await adminContext.newPage();
   await adminPage.goto("/admin/reports");
   const report = adminPage.locator("[data-problem-report]").filter({ hasText: words });

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { signInWith } from "./session";
 
 test("every page links to the legal pages", async ({ page }) => {
   await page.goto("/");
@@ -93,9 +94,7 @@ test.describe("existing users on an older Terms version", () => {
   test("accept the new version once, then carry on", async ({ context, page, baseURL }) => {
     const user = await signedInUser("user", { termsVersion: "2020-01-01" });
     userId = user.userId;
-    await context.addCookies([
-      { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-    ]);
+    await signInWith(context, user.sessionToken, baseURL);
 
     await page.goto("/report");
     await expect(page).toHaveURL("/terms/accept");

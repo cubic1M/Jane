@@ -3,6 +3,7 @@ import { pickItem } from "./area-tree";
 import { E2E_DATABASE_URL, deleteUser, signedInUser, waitForFullScan } from "./db";
 import { landInChat } from "./chat-page";
 import { holdSaves } from "./waits";
+import { signInWith } from "./session";
 
 // Comparison cards (founder, 2026-10-24): where Jane recommends insurance or a loan, the options
 // side by side on a wide screen, each with its tags and rows; "Sort by" re-ranks them on the
@@ -28,9 +29,7 @@ test("insurance options side by side, re-ranked by preference, chosen in one tap
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await expect(async () => {
     if (page.url().endsWith("/connect")) {

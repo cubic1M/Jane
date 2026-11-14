@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser, waitForFullScan } from "./db";
 import { landInChat } from "./chat-page";
 import { holdSaves, nextSave } from "./waits";
+import { signInWith } from "./session";
 
 // The day's suggestions as floating cards over the chat (founder request): one at a time, a
 // card above the page and not in it, a short card with Yes and Not now, More details already
@@ -25,9 +26,7 @@ test("suggestions float over the chat one at a time, and every tap answers at on
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await expect(async () => {
     if (page.url().endsWith("/connect")) {

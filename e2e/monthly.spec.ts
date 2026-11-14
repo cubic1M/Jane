@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { isHiddenPage } from "../src/config/hidden-pages";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { signInWith } from "./session";
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 test.setTimeout(120_000);
@@ -17,9 +18,7 @@ test("an old check-in link opens the month's report", async ({ context, page, ba
   test.skip(isHiddenPage("/check-in"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
 
   await page.goto("/check-in?m=2026-08");
   await expect(page).toHaveURL(/\/monthly\?m=2026-08$/);

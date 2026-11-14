@@ -4,6 +4,7 @@ import { isHiddenPage } from "../src/config/hidden-pages";
 import { pickItem } from "./area-tree";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { CHAT, landInChat } from "./chat-page";
+import { signInWith } from "./session";
 
 // Page text is looked for in <main>: on a computer Jane's pop-up cards sit beside the page
 // (the side chat's dock) and can carry the same words.
@@ -27,9 +28,7 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);
@@ -239,9 +238,7 @@ test("prices, goals, college, HSA, company stock, crypto and cash, each with its
   );
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);

@@ -6,6 +6,7 @@ import {
   setCheckingBalance,
   signedInUser,
 } from "./db";
+import { signInWith } from "./session";
 
 // Pages come back from the browser's memory (src/lib/page-cache.ts), so a correction on the tax
 // calculation has to reach a Home that was kept: coming back by a link, or by Back, shows Safe to
@@ -70,9 +71,7 @@ test("a correction reaches a Home kept in memory, and so does its undo", async (
   const user = await signedInUser("user");
   userId = user.userId;
   await addFreelancer(user.userId);
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/home");
   await settled(page);
   const first = await safeDollars(page);

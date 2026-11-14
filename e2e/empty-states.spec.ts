@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { waitForImport } from "./import-wait";
+import { signInWith } from "./session";
 
 // A brand-new upload-only person (one card statement, no checking): every page in the menu says
 // what's there or, when nothing is yet, a line and the one next step. No "–" rows, no $0.00 lists.
@@ -43,9 +44,7 @@ test("an upload-only person's pages each say what's there or the next step", asy
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
   await page.goto("/import");
   await page
     .locator('input[type="file"]')

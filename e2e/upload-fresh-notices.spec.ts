@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { waitForImport } from "./import-wait";
+import { signInWith } from "./session";
 
 // Right after an upload, a statement ending a few days back isn't "data I'm still checking": a
 // bank's export always does, and the person just gave what they had (new-user pass, round 15).
@@ -23,9 +24,7 @@ test("a fresh upload ending ten days back gets no 'import a newer one' notice", 
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
 
   const day = (n: number) => us(new Date(Date.now() - n * 86_400_000));
   await page.goto("/import");

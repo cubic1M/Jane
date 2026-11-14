@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { Client } from "pg";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { CHAT } from "./chat-page";
+import { signInWith } from "./session";
 
 // What Jane knows about you (src/lib/memory/): signed in, the chat starts empty and says Jane
 // remembers; "See what it knows" opens the page, which lists each fact with where it came from
@@ -54,9 +55,7 @@ test("the chat starts empty, and a fact Jane knows can be forgotten", async ({
   const user = await signedInUser("user");
   userId = user.userId;
   await withMemory(userId);
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
 
   await page.goto(CHAT);
   await expect(page.getByRole("heading", { level: 1, name: "Chat with Jane" })).toBeAttached({

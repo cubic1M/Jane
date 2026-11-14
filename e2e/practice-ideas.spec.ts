@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { pickItem } from "./area-tree";
 import { E2E_DATABASE_URL, addPracticeIdea, deleteUser, signedInUser } from "./db";
 import { landInChat } from "./chat-page";
+import { signInWith } from "./session";
 
 // Jane's practice ideas on the practice portfolio page (Phase AW, Stage A): each idea with how
 // sure Jane is and Yes or No, the strategy followed today, and what the person's answers
@@ -22,9 +23,7 @@ test("an idea shows how sure Jane is, and a No changes what it brings", async ({
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await landInChat(page, 60_000);

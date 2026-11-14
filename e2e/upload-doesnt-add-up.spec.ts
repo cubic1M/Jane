@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { waitForImport } from "./import-wait";
+import { signInWith } from "./session";
 
 // A statement whose rows don't lead to its own balance: the person is told before saving, when it
 // saves, and on the upload's line afterwards (src/data-sources/csv/control-totals.ts).
@@ -28,9 +29,7 @@ test("a statement that doesn't add up says so before and after it's saved", asyn
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
   await page.goto("/import");
   await page.locator('input[type="file"]').setInputFiles({
     name: "chase.csv",

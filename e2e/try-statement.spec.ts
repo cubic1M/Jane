@@ -2,6 +2,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import { Client } from "pg";
 import { madeUpChaseCsv } from "../src/lib/__fixtures__/made-up-statement";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { signInWith } from "./session";
 
 // "Try it with your own statement" from the landing page, with a made-up statement: no email, a
 // new temporary person each start, their own numbers under real-account rules, a Yes that gives
@@ -240,9 +241,7 @@ test("someone signed in with a real account isn't signed out by trying this", as
   baseURL,
 }) => {
   const user = await signedInUser("user");
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
   await page.goto("/?try=upload");
   const box = page.locator("#try-upload");
   await box.locator('input[type="file"]').setInputFiles({

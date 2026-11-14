@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { signInWith } from "./session";
 
 // The founders' beta numbers (/admin/numbers): a 404 for everyone but an admin, and for an
 // admin the copy-ready line, every number with its week, and what was left out. Other test
@@ -22,9 +23,7 @@ test.describe("signed in", () => {
   test("a non-admin gets a 404", async ({ context, page, baseURL }) => {
     const user = await signedInUser("user");
     userId = user.userId;
-    await context.addCookies([
-      { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-    ]);
+    await signInWith(context, user.sessionToken, baseURL);
     const response = await page.goto("/admin/numbers");
     expect(response?.status()).toBe(404);
   });
@@ -36,9 +35,7 @@ test.describe("signed in", () => {
   }) => {
     const user = await signedInUser("admin");
     userId = user.userId;
-    await context.addCookies([
-      { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-    ]);
+    await signInWith(context, user.sessionToken, baseURL);
     const response = await page.goto("/admin/numbers");
     expect(response?.status()).toBe(200);
     await expect(page.getByRole("heading", { name: "Beta numbers", level: 1 })).toBeVisible();

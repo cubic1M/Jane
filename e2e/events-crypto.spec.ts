@@ -8,6 +8,7 @@ import {
   signedInUser,
   treatAsDemoBank,
 } from "./db";
+import { signInWith } from "./session";
 
 // The events layer on the 24-hour agent's crypto strategies (founder, 2026-10-26): crypto events
 // (here a liquidation cascade and a stablecoin losing its peg, public a few hours ago) reach a crypto
@@ -30,9 +31,7 @@ async function signIn(page: Page, baseURL: string | undefined) {
   const user = await signedInUser("user");
   userId = user.userId;
   await treatAsDemoBank(user.userId);
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
 }
 
 test("a crypto day-trading account takes a crypto event's trade on its catch-up", async ({

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { landInChat } from "./chat-page";
+import { signInWith } from "./session";
 
 // Spec step 186: talk to Jane. The browser's speech recognition and speech are stand-ins
 // here (a real one needs a microphone): the microphone works from the keyboard, what was
@@ -70,9 +71,7 @@ test("speak a question with the keyboard, send it, and hear the answer", async (
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.addInitScript(STANDINS);
   const sent: string[] = [];
   page.on("request", (r) => {
@@ -124,9 +123,7 @@ test("no microphone or Read aloud where the browser can't do them", async ({
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.addInitScript(() => {
     for (const name of ["webkitSpeechRecognition", "SpeechRecognition", "speechSynthesis"])
       Object.defineProperty(window, name, { value: undefined, configurable: true });

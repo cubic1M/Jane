@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { isHiddenPage } from "../src/config/hidden-pages";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { signInWith } from "./session";
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 test.setTimeout(120_000);
@@ -22,9 +23,7 @@ test("a partner joins with the invite link, and leaving ends the sharing", async
   ids.push(alex.userId, blair.userId);
   const as = async (sessionToken: string) => {
     const context = await browser.newContext({ viewport: { width: 375, height: 812 } });
-    await context.addCookies([
-      { name: "authjs.session-token", value: sessionToken, url: baseURL ?? "" },
-    ]);
+    await signInWith(context, sessionToken, baseURL);
     return context.newPage();
   };
 

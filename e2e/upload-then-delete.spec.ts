@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { waitForImport } from "./import-wait";
+import { signInWith } from "./session";
 
 // An upload's "Done" chip is gone once the person's data is: "Delete all my data" leads to
 // /goodbye in the page, and the chip there asks again and finds nothing (import-debugger: it
@@ -18,9 +19,7 @@ test.afterEach(async () => {
 test("after Delete all my data, /goodbye shows no import chip", async ({ page, baseURL }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
 
   await page.goto("/import");
   await page

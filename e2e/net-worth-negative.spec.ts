@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { waitForImport } from "./import-wait";
+import { signInWith } from "./session";
 
 // Net worth below zero, read off the chart (QA round 31: a card-only person's line, all below
 // zero, read as dipping under $0 and spiking above it against the dashed start line). The chart
@@ -23,9 +24,7 @@ const us = (d: Date) => `${pad(d.getUTCMonth() + 1)}/${pad(d.getUTCDate())}/${d.
 async function signIn(page: Page, baseURL: string | undefined) {
   const user = await signedInUser("user");
   userId = user.userId;
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
 }
 
 async function upload(page: Page, file: string | { name: string; text: string }) {

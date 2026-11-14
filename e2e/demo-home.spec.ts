@@ -1,6 +1,7 @@
 import { expect, test, type Locator } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { uploadSampleCard } from "./demo-upload";
+import { signInWith } from "./session";
 
 // What looked rough on camera on Home and /jane (demo-video list): beside the docked chat at
 // 1280 the area tiles broke words ("Spendin g & bills"), the net worth chart had "×N" on nearly
@@ -42,9 +43,7 @@ test("beside the docked chat, Home and /jane keep their words and marks in place
   await page.setViewportSize({ width: 1280, height: 800 });
   const user = await signedInUser("user");
   userId = user.userId;
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
   // A checking file: it has balances, so Home draws the net worth chart.
   await uploadSampleCard(page, "e2e/fixtures/messy/checking.csv");
 

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { signInWith } from "./session";
 
 // The access log (docs/security/edge.md): every admin page view is recorded by the proxy, the
 // team can filter the log, and a signed-in person sees their own activity on /security.
@@ -18,9 +19,7 @@ test("admin page views land on the access log, which the team can filter", async
 }) => {
   const admin = await signedInUser("admin");
   userId = admin.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: admin.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, admin.sessionToken, baseURL);
 
   await page.goto("/admin/errors?token=not-kept");
   await expect(page.getByRole("heading", { name: "Server errors" })).toBeVisible();
@@ -54,9 +53,7 @@ test("/security shows a signed-in person their recent activity, and nothing to o
 
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/security");
   await expect(page.getByRole("heading", { name: "Your recent activity" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Sign out other devices" })).toHaveAttribute(

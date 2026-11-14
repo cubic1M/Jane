@@ -5,6 +5,7 @@ import { demoPerson } from "./demo-person";
 import { openFinding } from "./report-page";
 import { waitForImport } from "./import-wait";
 import { holdSaves } from "./waits";
+import { signInWith } from "./session";
 
 // Read-only mode, on a 375px-wide screen. A real account (a CSV import): import -> report ->
 // "Show me how" -> the steps and drafts to do it themselves, Copy and Mark done, and nothing
@@ -50,9 +51,7 @@ test.describe("a real account", () => {
   test.beforeEach(async ({ context, baseURL }) => {
     const user = await signedInUser();
     userId = user.userId;
-    await context.addCookies([
-      { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-    ]);
+    await signInWith(context, user.sessionToken, baseURL);
   });
 
   test("Show me how gives the steps and drafts, and nothing is queued @critical", async ({

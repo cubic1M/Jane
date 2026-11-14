@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { signInWith } from "./session";
 
 // What Jane knows about you, for a new student (debugger 11-13): what Jane can't tell yet folds
 // away under "Not known yet", closed, instead of a long run of boxes reading "My guess · not known
@@ -17,9 +18,7 @@ test.afterEach(async () => {
 test("what Jane doesn't know yet is folded away, and says no guess", async ({ page, baseURL }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
   await page.goto("/profile");
   await expect(page.getByRole("heading", { name: "What Jane knows about you" })).toBeVisible();
 

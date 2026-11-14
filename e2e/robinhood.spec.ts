@@ -6,6 +6,7 @@ import {
   FakeRobinhood,
 } from "../src/lib/robinhood/__fixtures__/fake-robinhood";
 import { E2E_AUTH_SECRET, E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { signInWith } from "./session";
 
 // Connect and disconnect through a real browser, against a fake Robinhood. The switch is off for the
 // suite's own server, and nothing turns it on anywhere, so this starts a second server of the same
@@ -88,9 +89,7 @@ test.describe("the Robinhood connection", () => {
   }) => {
     const user = await signedInUser("admin");
     userId = user.userId;
-    await context.addCookies([
-      { name: "authjs.session-token", value: user.sessionToken, url: BASE },
-    ]);
+    await signInWith(context, user.sessionToken, BASE);
 
     await page.goto(`${BASE}/investments`);
     const box = page.locator("[data-robinhood]");
@@ -145,9 +144,7 @@ test.describe("the Robinhood connection", () => {
   test("saying no on Robinhood's page saves nothing", async ({ context, page }) => {
     const user = await signedInUser("admin");
     userId = user.userId;
-    await context.addCookies([
-      { name: "authjs.session-token", value: user.sessionToken, url: BASE },
-    ]);
+    await signInWith(context, user.sessionToken, BASE);
     await page.goto(`${BASE}/investments`);
     const box = page.locator("[data-robinhood]");
     await box.getByRole("link", { name: "Connect Robinhood" }).click();
@@ -166,9 +163,7 @@ test.describe("the Robinhood connection", () => {
   }) => {
     const user = await signedInUser("admin");
     userId = user.userId;
-    await context.addCookies([
-      { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-    ]);
+    await signInWith(context, user.sessionToken, baseURL);
     await page.goto("/investments");
     await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
     await expect(page.locator("[data-robinhood]")).toHaveCount(0);

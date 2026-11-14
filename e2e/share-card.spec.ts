@@ -7,6 +7,7 @@ import {
   shareInvite,
   signedInUser,
 } from "./db";
+import { signInWith } from "./session";
 
 // The shareable result card: after the report's findings, Share shows the card as friends will
 // see it (the rounded total, nothing else), then the share sheet on a phone or the link copied
@@ -39,9 +40,7 @@ test("share the result card, open the invite, land on sign-up with the code", as
   const user = await signedInUser("user");
   userId = user.userId;
   await addFoundMoney(user.userId);
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
   // Stand-ins for the share sheet and the clipboard, which record what they were given.
   await page.addInitScript(() => {
     const w = window as unknown as { sent: unknown[] };

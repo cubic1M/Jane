@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { Client } from "pg";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { holds } from "./waits";
+import { signInWith } from "./session";
 
 // The beta's activity log (src/lib/activity/): typing in a field records that something was
 // typed and how long it is, never the words, in what the browser sends or what we store. An
@@ -41,9 +42,7 @@ for (const role of ["user", "admin"] as const) {
   test(`typing in a field records no value (${role})`, async ({ context, page, baseURL }) => {
     const user = await signedInUser(role);
     userId = user.userId;
-    await context.addCookies([
-      { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-    ]);
+    await signInWith(context, user.sessionToken, baseURL);
     const sent: string[] = [];
     page.on("request", (request) => {
       if (request.url().endsWith("/api/activity")) sent.push(request.postData() ?? "");

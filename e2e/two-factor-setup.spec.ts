@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { totp } from "../src/lib/totp";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { signInWith } from "./session";
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 test.setTimeout(120_000);
@@ -15,9 +16,7 @@ test.afterEach(async () => {
 test("turning on two-factor shows the backup codes once", async ({ context, page, baseURL }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
 
   await page.goto("/settings/two-factor");
   await expect(page.getByRole("heading", { name: "Turn on two-factor" })).toBeVisible({

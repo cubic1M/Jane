@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { landInChat } from "./chat-page";
 import { holds } from "./waits";
+import { signInWith } from "./session";
 
 // Founder bug: "every time I type a question, it duplicates, then disappears." From the
 // moment a typed question shows, it is on the page exactly once until the answer is in, and
@@ -19,9 +20,7 @@ test.afterEach(async () => {
 test("a typed question shows once and stays", async ({ context, page, baseURL }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/connect");
   await expect(async () => {
     if (page.url().endsWith("/connect")) {

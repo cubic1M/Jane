@@ -1,6 +1,7 @@
 import { expect, test, type Page, type Response } from "@playwright/test";
 import { landInChat } from "./chat-page";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { signInWith } from "./session";
 
 // The security headers (docs/security/edge.md): every page's Content-Security-Policy carries a
 // fresh nonce, every script on the page carries it (so nothing Jane runs is blocked, and an
@@ -103,9 +104,7 @@ test.describe("signed in", () => {
   }) => {
     const user = await signedInUser("user");
     userId = user.userId;
-    await context.addCookies([
-      { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-    ]);
+    await signInWith(context, user.sessionToken, baseURL);
     const violations = await watchViolations(page);
 
     await page.goto("/connect");
@@ -142,9 +141,7 @@ test.describe("signed in", () => {
   test("the admin pages work under the policy", async ({ context, page, baseURL }) => {
     const admin = await signedInUser("admin");
     userId = admin.userId;
-    await context.addCookies([
-      { name: "authjs.session-token", value: admin.sessionToken, url: baseURL ?? "" },
-    ]);
+    await signInWith(context, admin.sessionToken, baseURL);
     const violations = await watchViolations(page);
     const response = await page.goto("/admin/errors");
     expect(response?.status()).toBe(200);

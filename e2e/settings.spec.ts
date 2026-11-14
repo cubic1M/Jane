@@ -9,6 +9,7 @@ import {
   signedInUser,
   userExists,
 } from "./db";
+import { signInWith } from "./session";
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 test.setTimeout(120_000);
@@ -26,9 +27,7 @@ test("delete all my data needs DELETE typed, then removes the account @critical"
 }) => {
   const user = await signedInUser("admin");
   userId = user.userId;
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/import");
   // Adding an account by hand is folded away: a first upload can make its own.
   const addAccount = page.locator("[data-add-account]");
@@ -68,9 +67,7 @@ test("lists this device and signs another one out at once", async ({
     userId,
     "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
   );
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
 
   await page.goto("/settings#sessions");
   const section = page.locator("#sessions");
@@ -89,9 +86,7 @@ test("lists this device and signs another one out at once", async ({
 
   // The phone's cookie stops working on its next request.
   const phoneContext = await browser.newContext();
-  await phoneContext.addCookies([
-    { name: "authjs.session-token", value: phone.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(phoneContext, phone.sessionToken, baseURL);
   const phonePage = await phoneContext.newPage();
   await phonePage.goto("/settings");
   await expect(phonePage).toHaveURL(/\/login/);
@@ -111,9 +106,7 @@ test("offers Reconnect for a bank that needs you to sign in again", async ({
   const user = await signedInUser("user");
   userId = user.userId;
   await addBankNeedingSignIn(userId, "Lapsed Bank");
-  await context.addCookies([
-    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
-  ]);
+  await signInWith(context, user.sessionToken, baseURL);
   await page.goto("/settings");
   // Up front: a bank that needs you is the page's one urgent thing.
   await expect(

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { waitForImport } from "./import-wait";
+import { signInWith } from "./session";
 
 // Taking an upload back (founder: old and new statements shouldn't mix): the upload is listed on
 // /import, "Remove this upload" asks first, and once the numbers are worked out again its
@@ -47,9 +48,7 @@ function feesFile(): string {
 test("an upload can be removed, and its findings go with it", async ({ page, baseURL }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
 
   await page.goto("/import");
   await expect(page.locator("[data-reupload-safe]")).toContainText(
@@ -103,9 +102,7 @@ test("start over deletes every upload, and net worth says there's nothing yet", 
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
 
   await page.goto("/import");
   await page.locator('input[type="file"]').setInputFiles({

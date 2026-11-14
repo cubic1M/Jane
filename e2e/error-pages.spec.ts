@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { signInWith } from "./session";
 
 // A broken or missing page is never blank: it says what happened, with Home and Report a problem.
 // A page that broke in the browser reaches /admin/errors without anything typed in it.
@@ -15,9 +16,7 @@ test.afterEach(async () => {
 test("a missing page says so, with the way home and a report", async ({ page, baseURL }) => {
   const user = await signedInUser("user");
   users.push(user.userId);
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
   const response = await page.goto("/no-such-page");
   expect(response?.status()).toBe(404);
   const screen = page.locator("[data-error-screen]");
@@ -35,9 +34,7 @@ test("a page that broke in the browser reaches /admin/errors, typed values gone"
 }) => {
   const admin = await signedInUser("admin");
   users.push(admin.userId);
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: admin.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), admin.sessionToken, baseURL);
   // Each report gets its own tag, and it can be lost: the page lists the newest 100 of a run's errors
   // and the route never fails over logging, so a busy database can cost a row. Report again.
   await expect(async () => {

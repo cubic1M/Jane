@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { uploadSampleCard } from "./demo-upload";
+import { signInWith } from "./session";
 
 // What looked rough on camera around the chat (demo-video list): after an upload the side chat
 // catches up without a reload and brings Jane's cards, each saying how sure Jane is in view; the
@@ -18,9 +19,7 @@ test.afterEach(async () => {
 async function signIn(page: Page, baseURL: string | undefined) {
   const user = await signedInUser("user");
   userId = user.userId;
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
 }
 
 const apart = (

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { waitForImport } from "./import-wait";
+import { signInWith } from "./session";
 
 // Home's net worth after real-looking uploads (founder: "the main networth is still broken… the
 // graph doesn't correspond… doesn't show every single movement of the money, and can't click on
@@ -64,9 +65,7 @@ test("the headline is the newest balances' sum, the line ends there, and a day's
 }) => {
   const user = await signedInUser("user");
   userId = user.userId;
-  await page
-    .context()
-    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await signInWith(page.context(), user.sessionToken, baseURL);
   const select = page.locator('select[name="accountId"]');
   const upload = async (name: string, text: string, account?: "new") => {
     if (account) await select.selectOption(account);
