@@ -1,16 +1,14 @@
 import { IP_PIN, SIGNS } from "@/config/tax-identity";
 import { IP_PIN_TOOL_DOWN } from "@/planning/tax-identity";
 import type { IdentityView } from "@/lib/tax-identity";
-import { type MessageAction, type MessageRefs, openLink } from "./types";
+import { type MessageAction, openLink, type MessageParts } from "./types";
 
 // A protected tax identity in the chat (spec step 218): the January IP PIN reminder, a sign
 // of theft Jane noticed, and a case's next step with the rest of the list.
 
 const IDENTITY_HREF = "/taxes/identity";
 
-type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
-
-export function ipPinMessage(view: IdentityView, setByJane: boolean): Message {
+export function ipPinMessage(view: IdentityView, setByJane: boolean): MessageParts {
   const guide = `Get an Identity Protection PIN from the IRS: a six-digit number only you have, so no one else can file a return with your Social Security number. ${IP_PIN.who} Get a new one each January.${view.toolOpen === false ? ` ${IP_PIN_TOOL_DOWN}` : ""}`;
   if (setByJane) {
     return {
@@ -33,7 +31,7 @@ export function ipPinMessage(view: IdentityView, setByJane: boolean): Message {
   };
 }
 
-export function signMessage(c: IdentityView["candidates"][number]): Message {
+export function signMessage(c: IdentityView["candidates"][number]): MessageParts {
   const sign = SIGNS[c.sign];
   return {
     body: `${c.detail} ${sign.what} Was this because someone else used your Social Security number? If so I'll give you the steps in order and keep track of each.`,
@@ -48,7 +46,7 @@ export function signMessage(c: IdentityView["candidates"][number]): Message {
   };
 }
 
-export function caseMessage(view: IdentityView): Message | null {
+export function caseMessage(view: IdentityView): MessageParts | null {
   const c = view.case;
   if (!c || !c.next) return null;
   const next = c.steps.find((s) => s.key === c.next)!;
@@ -72,7 +70,7 @@ export function caseMessage(view: IdentityView): Message | null {
   };
 }
 
-export function identityReply(view: IdentityView, sign: string | null): Message {
+export function identityReply(view: IdentityView, sign: string | null): MessageParts {
   const c = caseMessage(view);
   if (c) return c;
   if (sign && Object.hasOwn(SIGNS, sign)) {

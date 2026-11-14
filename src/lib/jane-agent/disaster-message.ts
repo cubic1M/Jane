@@ -1,7 +1,7 @@
 import type { DisasterView, ReliefView } from "@/lib/disasters";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
-import { type MessageAction, type MessageRefs, openLink } from "./types";
+import { type MessageAction, openLink, type MessageParts } from "./types";
 
 // Disasters and losses in the chat (spec step 270): a postponement declared for the person's
 // county (Jane moves their tax deadlines on its own at the levels that let it act, on a tap at
@@ -10,8 +10,6 @@ import { type MessageAction, type MessageRefs, openLink } from "./types";
 // postponed and the loss rules; nothing is filed.
 
 export const DISASTER_HREF = "/deadlines";
-
-type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 
 const day = (d: string) => dayLabel(d, { year: true });
 const sample = (r: ReliefView) =>
@@ -27,7 +25,7 @@ function lossLine(r: ReliefView): string {
     : `You've paid ${formatCents(l.repairsCents)} for repairs since${back}: after the $${l.floorCents / 100} floor and 10% of your income (${formatCents(l.incomeFloorCents)}), none of it is deductible. What insurance pays changes that, so keep the bills with the claim.`;
 }
 
-export function reliefMessage(v: DisasterView, r: ReliefView): Message {
+export function reliefMessage(v: DisasterView, r: ReliefView): MessageParts {
   const to = day(r.relief.postponedTo);
   const dates = r.computed.map((m) => `${m.title} (${day(m.from)})`).join("; ");
   const what = r.relief.title.replace(/ \(sample declaration\)$/, "").toLowerCase();
@@ -66,7 +64,7 @@ export function reliefLines(r: ReliefView): string[] {
 
 const disasterLines = (v: DisasterView) => v.relief.flatMap(reliefLines);
 
-export function disasterReply(v: DisasterView): Message {
+export function disasterReply(v: DisasterView): MessageParts {
   if (!v.feed)
     return {
       body: "I can't check disaster relief for you yet: I only have a sample disaster feed, for the demo bank. The IRS lists every postponement on its \"Tax relief in disaster situations\" page; if your county is on it, your federal tax deadlines move to the date it gives, and a loss insurance doesn't cover may be deductible (Publication 547).",

@@ -3,7 +3,7 @@ import type { PriorReturnView } from "@/lib/prior-return";
 import type { ReturnReview } from "@/lib/prior-return/review";
 import { formatCents } from "@/lib/money";
 import { dayLabel } from "@/lib/day-label";
-import { type MessageAction, type MessageRefs, openLink } from "./types";
+import { type MessageAction, openLink, type MessageParts } from "./types";
 
 // Last year's return in the chat (spec step 172): a return Jane read from an upload, to
 // confirm with a tap; then what the review found, with a button to prepare the amended
@@ -11,9 +11,7 @@ import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 const RETURN_HREF = "/taxes/last-return";
 
-type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
-
-export function readingMessage(r: PriorReturnView): Message {
+export function readingMessage(r: PriorReturnView): MessageParts {
   const f = r.fields;
   const bits = [
     f.taxYear ? `tax year ${f.taxYear}` : null,
@@ -47,7 +45,7 @@ export function readingMessage(r: PriorReturnView): Message {
   };
 }
 
-export function reviewMessage(r: ReturnReview): Message {
+export function reviewMessage(r: ReturnReview): MessageParts {
   const list = r.findings.map((f) => `• ${f.title}: about ${formatCents(f.savesCents)}`).join("\n");
   const body = `Looking at your ${r.year} return against your accounts, ${r.findings.length === 1 ? "I found one thing" : `I found ${r.findings.length} things`} left behind, about ${formatCents(r.totalCents)} of refund in all (federal, estimated):\n${list}\nYou can amend until ${dayLabel(r.amendBy, { year: true })}.`;
   if (r.amendment) {
@@ -71,7 +69,7 @@ export function lastReturnReply(
   reviews: ReturnReview[],
   waiting: PriorReturnView[],
   advice: boolean,
-): Message {
+): MessageParts {
   if (!advice) {
     return {
       body: "Checking last year's return for money left behind will come once Jane works with a tax professional.",

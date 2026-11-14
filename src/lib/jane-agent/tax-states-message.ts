@@ -10,7 +10,7 @@ import {
   type StatePart,
 } from "@/planning/tax-states";
 import { snoozeButton } from "./sources/source";
-import { type MessageAction, type MessageRefs, openLink } from "./types";
+import { type MessageAction, openLink, type MessageParts } from "./types";
 import { dayLabel } from "@/lib/day-label";
 
 // State and local taxes in the chat (spec step 165): a move Jane spotted (at the levels
@@ -20,13 +20,11 @@ import { dayLabel } from "@/lib/day-label";
 const STATES_HREF = "/taxes/profile#states";
 const LOCAL_BUTTONS = ["tax.local_1", "tax.local_2"] as const;
 
-type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
-
 const name = (code: string) => stateName(code) ?? code;
 
 export const moveLine = (m: Move) => `from ${name(m.from)} to ${name(m.to)} on ${dayLabel(m.date)}`;
 
-export function spottedMoveMessage(residency: ResidencyView): Message | null {
+export function spottedMoveMessage(residency: ResidencyView): MessageParts | null {
   const m = residency.spotted;
   if (!m) return null;
   const why = `your payments to state agencies switched from ${name(m.from)} to ${name(m.to)} then`;
@@ -45,7 +43,7 @@ export function spottedMoveMessage(residency: ResidencyView): Message | null {
 }
 
 // A move started on the checklist, when Jane can't see where to.
-export function movingEventMessage(residency: ResidencyView, state: string | null): Message {
+export function movingEventMessage(residency: ResidencyView, state: string | null): MessageParts {
   const here = state ? ` from ${name(state)}` : "";
   return {
     body: `You started a move on ${dayLabel(residency.movingEvent!)}. Did you move${here} to another state? A move splits your ${residency.year} state taxes, so I'd like the date and the new state.`,
@@ -58,7 +56,7 @@ export function movingEventMessage(residency: ResidencyView, state: string | nul
 }
 
 // "Do you live in New York City or Yonkers?", one button each, and "Neither".
-export function localityMessage(state: string): Message | null {
+export function localityMessage(state: string): MessageParts | null {
   // At most two a state (LOCAL_TAXES), one button each by position.
   const places = localitiesIn(state).slice(0, LOCAL_BUTTONS.length);
   if (places.length === 0) return null;
@@ -94,7 +92,7 @@ function partLine(p: StatePart, year: number): string {
   return `${name(p.code)} (${where}): about ${formatWholeDollars(p.taxCents)} on about ${formatWholeDollars(p.incomeCents)} of income${credit}.${p.rough ? " A rough rate: its own brackets aren't in Jane yet." : ""}`;
 }
 
-export function statesReply(view: TaxEstimateView): Message {
+export function statesReply(view: TaxEstimateView): MessageParts {
   const state = view.estimate.state;
   if (!state) {
     return {
@@ -130,7 +128,7 @@ export function moveReply(
   intent: { from: string | null; to: string; month: number | null; day: number | null },
   profileState: string | null,
   now: Date,
-): Message {
+): MessageParts {
   const from = intent.from ?? profileState;
   const example = `"I moved from ${from ? name(from) : "California"} to ${name(intent.to)} on June 15"`;
   if (!from || from === intent.to) {
@@ -161,7 +159,7 @@ export function moveReply(
 }
 
 // "I work remotely for a company in New York".
-export function workStateReply(work: string, home: string | null): Message {
+export function workStateReply(work: string, home: string | null): MessageParts {
   if (work === home) {
     return {
       body: `Your employer's in ${name(work)}, the same state you live in, so there's nothing to split.`,

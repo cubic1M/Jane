@@ -1,16 +1,14 @@
 import type { MultiYearView } from "@/lib/multi-year";
 import { formatCents, formatWholeDollars } from "@/lib/money";
 import type { Move } from "@/planning/multi-year";
-import { type MessageAction, type MessageRefs, openLink } from "./types";
+import { openLink, type MessageParts } from "./types";
 
 // Tax moves over several years in the chat (spec step 220): the move that saves the most
 // (demo advice), and the answer to "my taxes over the years", "Roth conversion".
 
 const YEARS_HREF = "/taxes/years";
 
-type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
-
-export function yearsMoveMessage(view: MultiYearView, move: Move): Message {
+export function yearsMoveMessage(view: MultiYearView, move: Move): MessageParts {
   return {
     body: `${move.title} could save you about ${formatWholeDollars(move.effectCents)} of tax over the years. ${move.why} Want it on your deadlines? Carrying it out is yours.`,
     refs: { advice: true, taxYear: view.year, yearsMove: move.key },
@@ -21,7 +19,7 @@ export function yearsMoveMessage(view: MultiYearView, move: Move): Message {
   };
 }
 
-export function yearsReply(view: MultiYearView): Message {
+export function yearsReply(view: MultiYearView): MessageParts {
   // No tax in any year: there's no income to work it out from, not 35 years of no tax.
   if (view.rows.every((r) => r.totalTaxCents === 0)) {
     return {

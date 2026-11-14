@@ -1,6 +1,6 @@
 import type { PlanMoveView, TaxPlanView } from "@/lib/tax-plan";
 
-import { type MessageAction, type MessageRefs, openLink } from "./types";
+import { type MessageRefs, openLink, type MessageParts } from "./types";
 import { dayLabel } from "@/lib/day-label";
 
 // The year-round tax plan in the chat (spec step 167): a move that's open now, with its
@@ -9,14 +9,12 @@ import { dayLabel } from "@/lib/day-label";
 
 const PLAN_HREF = "/taxes?focus=soon";
 
-type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
-
 const refsOf = (m: PlanMoveView): MessageRefs => ({
   taxPlanMove: m.id,
   ...(m.advice ? { advice: true as const } : {}),
 });
 
-export function planMoveMessage(m: PlanMoveView): Message {
+export function planMoveMessage(m: PlanMoveView): MessageParts {
   if (m.handled === "added") {
     return {
       body: `Tax move: ${m.title}, by ${dayLabel(m.deadline)}. ${m.detail} I've put it on your deadlines.`,
@@ -44,7 +42,7 @@ const status = (m: PlanMoveView, today: string) =>
         ? `I'll bring it up ${dayLabel(m.opensOn)}`
         : "open now";
 
-export function planReply(plan: TaxPlanView, today: string): Message {
+export function planReply(plan: TaxPlanView, today: string): MessageParts {
   if (plan.moves.length === 0) {
     return {
       body: `There's nothing left on your ${plan.year} tax plan: every move's deadline has passed or doesn't apply to you.`,

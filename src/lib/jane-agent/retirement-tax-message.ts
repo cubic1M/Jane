@@ -1,7 +1,7 @@
 import { IRMAA_WATCH, SS_TAX_MIN_CENTS } from "@/config/retirement-taxes";
 import { formatCents, formatWholeDollars } from "@/lib/money";
 import type { RetirementTaxView } from "@/lib/retirement-taxes";
-import { type MessageAction, type MessageRefs, openLink } from "./types";
+import { type MessageAction, openLink, type MessageParts } from "./types";
 import { formatPercent as pct } from "@/lib/percent";
 
 // Taxes on retirement income in the chat (spec step 271): Social Security's taxable part that
@@ -11,11 +11,9 @@ import { formatPercent as pct } from "@/lib/percent";
 
 export const RETIREMENT_PAYCHECK_HREF = "/investments/retirement-income";
 
-type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
-
 const paycheck: MessageAction = openLink("See my retirement paycheck", RETIREMENT_PAYCHECK_HREF);
 
-export function ssWithholdingMessage(v: RetirementTaxView): Message | null {
+export function ssWithholdingMessage(v: RetirementTaxView): MessageParts | null {
   const tax = Math.round(v.ss.taxableCents * v.bracket);
   if (v.ssDeposits < 3 || tax < SS_TAX_MIN_CENTS) return null;
   return {
@@ -29,7 +27,7 @@ export function ssWithholdingMessage(v: RetirementTaxView): Message | null {
   };
 }
 
-export function irmaaMessage(v: RetirementTaxView): Message | null {
+export function irmaaMessage(v: RetirementTaxView): MessageParts | null {
   const i = v.irmaa;
   if (!v.nearMedicare || i.nextLineCents === null || i.roomCents === null) return null;
   if (i.nextYearlyCents === null) return null;
@@ -85,7 +83,10 @@ export function retirementLines(
   return { lines, tuned };
 }
 
-export function retirementReply(v: RetirementTaxView, asked: { medicare?: boolean } = {}): Message {
+export function retirementReply(
+  v: RetirementTaxView,
+  asked: { medicare?: boolean } = {},
+): MessageParts {
   const { lines, tuned } = retirementLines(v, asked);
   return {
     body: `Here is how your retirement income is taxed.\n${lines.map((l) => `• ${l}`).join("\n")}`,

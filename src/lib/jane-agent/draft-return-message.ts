@@ -1,7 +1,7 @@
 import type { DraftReturnView } from "@/lib/draft-return";
 import { formatCents } from "@/lib/money";
 import { draftCents, type DraftFinding } from "@/planning/draft-return";
-import { type MessageAction, type MessageRefs, openLink } from "./types";
+import { openLink, type MessageParts } from "./types";
 
 // The return, checked before you file, in the chat (spec step 272): a draft Jane read and wants
 // confirmed, each thing its check found as a card with its dollars, and the answer to "check my
@@ -9,14 +9,12 @@ import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 const DRAFT_HREF = "/taxes/draft";
 
-type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
-
 const amount = (f: DraftFinding) =>
   f.effect === "saves"
     ? `about ${formatCents(f.dollarsCents)} back`
     : `about ${formatCents(f.dollarsCents)} more tax`;
 
-export function draftReadingMessage(d: DraftReturnView): Message {
+export function draftReadingMessage(d: DraftReturnView): MessageParts {
   const read = d.fields.taxYear
     ? `your ${d.fields.taxYear} draft return: wages ${formatCents(draftCents(d.fields, "wages"))}, total tax ${formatCents(draftCents(d.fields, "totalTax"))}, ${draftCents(d.fields, "refund") >= 0 ? `a refund of ${formatCents(draftCents(d.fields, "refund"))}` : `${formatCents(-draftCents(d.fields, "refund"))} to pay`}`
     : `${d.fileName}, but not its tax year`;
@@ -31,7 +29,7 @@ export function draftReadingMessage(d: DraftReturnView): Message {
   };
 }
 
-export function draftFindingMessage(d: DraftReturnView, f: DraftFinding): Message {
+export function draftFindingMessage(d: DraftReturnView, f: DraftFinding): MessageParts {
   return {
     body: `${f.title} (${f.line}): ${amount(f)}. ${f.why} Your software, or whoever prepares your return, is where it changes. I don't file it.`,
     refs: { draftReturn: d.id, taxYear: d.year ?? undefined },
@@ -42,7 +40,7 @@ export function draftFindingMessage(d: DraftReturnView, f: DraftFinding): Messag
   };
 }
 
-export function draftReply(drafts: readonly DraftReturnView[]): Message {
+export function draftReply(drafts: readonly DraftReturnView[]): MessageParts {
   const waiting = drafts.find((d) => d.status === "waiting");
   if (waiting) return draftReadingMessage(waiting);
   const checked = drafts.filter((d) => d.status === "confirmed").at(-1);

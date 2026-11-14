@@ -686,6 +686,10 @@ export type MessageRefs = {
   };
 };
 
+// What a message says: its words, its buttons and its refs (a Candidate adds its kind, key and
+// priority).
+export type MessageParts = { body: string; refs: MessageRefs; actions: MessageAction[] };
+
 // A message the brain wants to post.
 // Spec step 185: one step of a plan. "chat" is what a feature's own answer offered (its
 // Yes, run on its own message); "transfer" is money into a goal through the partner.

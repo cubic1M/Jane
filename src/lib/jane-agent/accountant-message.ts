@@ -1,6 +1,6 @@
 import { HIDDEN_PAGES } from "@/config/hidden-pages";
 import type { AccountantPageView } from "@/lib/accountant";
-import { type MessageAction, type MessageRefs, openLink } from "./types";
+import { type MessageAction, openLink, type MessageParts } from "./types";
 
 // Working with an accountant in the chat (spec step 222): a situation people usually bring
 // an accountant to (facts only), what the accountant wrote back, and the answer to "share
@@ -15,9 +15,7 @@ export const shareWithAccountant: MessageAction = LINK_IS_HIDDEN
   ? openLink("Open your tax-time pack", "/tax-pack")
   : openLink("Share with my accountant", ACCOUNTANT_HREF);
 
-type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
-
-export function complexMessage(v: AccountantPageView): Message | null {
+export function complexMessage(v: AccountantPageView): MessageParts | null {
   if (!v.complexity.text) return null;
   return {
     body: LINK_IS_HIDDEN
@@ -32,7 +30,7 @@ export function complexMessage(v: AccountantPageView): Message | null {
   };
 }
 
-export function answersMessage(v: AccountantPageView): Message | null {
+export function answersMessage(v: AccountantPageView): MessageParts | null {
   const fresh = v.notes.filter((n) => !n.seen);
   if (fresh.length === 0) return null;
   const first = fresh[0];
@@ -47,7 +45,7 @@ export function answersMessage(v: AccountantPageView): Message | null {
   };
 }
 
-export function accountantReply(v: AccountantPageView): Message {
+export function accountantReply(v: AccountantPageView): MessageParts {
   const lines: string[] = [];
   if (v.complexity.text) lines.push(v.complexity.text);
   // Someone with a live link from before the page was hidden still hears about it.

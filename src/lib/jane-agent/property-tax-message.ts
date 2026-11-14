@@ -1,6 +1,6 @@
 import type { PropertyTaxView } from "@/lib/property-tax";
 import { formatCents, formatWholeDollars } from "@/lib/money";
-import { type MessageAction, type MessageRefs, openLink } from "./types";
+import { openLink, type MessageParts } from "./types";
 import { formatPercent as pct } from "@/lib/percent";
 
 // Property tax in the chat (spec step 221): an assessment worth appealing (demo advice), the
@@ -9,9 +9,7 @@ import { formatPercent as pct } from "@/lib/percent";
 
 const PROPERTY_HREF = "/taxes/property";
 
-type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
-
-export function appealSuggestedMessage(v: PropertyTaxView): Message {
+export function appealSuggestedMessage(v: PropertyTaxView): MessageParts {
   const g = v.gap!;
   return {
     body: `Your home is assessed at ${formatWholeDollars(g.assessedCents)}, about ${pct(g.gapRate)} above the ${formatWholeDollars(g.marketCents)} that recent sales of comparable homes point to. That could cost you about ${formatWholeDollars(g.savingCents)} a year in extra property tax. ${v.window.text} Want me to draft the appeal? Nothing is filed until you say who files it.`,
@@ -24,7 +22,7 @@ export function appealSuggestedMessage(v: PropertyTaxView): Message {
   };
 }
 
-export function appealDraftedMessage(v: PropertyTaxView): Message {
+export function appealDraftedMessage(v: PropertyTaxView): MessageParts {
   const a = v.appeal!;
   return {
     body: `Your ${a.year} property tax appeal to ${a.board} is drafted, with ${v.comps.length} comparable sales. It could save about ${formatWholeDollars(a.savingCents)} a year. Who should file it? I file nothing myself.`,
@@ -38,7 +36,7 @@ export function appealDraftedMessage(v: PropertyTaxView): Message {
   };
 }
 
-export function exemptionMessage(v: PropertyTaxView): Message | null {
+export function exemptionMessage(v: PropertyTaxView): MessageParts | null {
   const e = v.exemptions.eligible[0];
   if (!e || !v.advice) return null;
   return {
@@ -52,7 +50,7 @@ export function exemptionMessage(v: PropertyTaxView): Message | null {
   };
 }
 
-export function propertyReply(v: PropertyTaxView): Message {
+export function propertyReply(v: PropertyTaxView): MessageParts {
   if (!v.homeowner) {
     return {
       body: "I don't see a home in your accounts. If you own one, tell me what it's worth and what the county assessed it at, and I'll check whether your property tax is too high.",

@@ -1,6 +1,6 @@
 import { formatCents, formatWholeDollars } from "@/lib/money";
 import type { SideIncomeView } from "@/lib/side-income";
-import { type MessageAction, type MessageRefs, openLink } from "./types";
+import { openLink, type MessageParts } from "./types";
 
 // Side income and rentals in the chat (spec step 173): a rental that needs its property
 // for depreciation, hobby or business (both taxes shown, demo advice), and the answer to
@@ -9,8 +9,6 @@ import { type MessageAction, type MessageRefs, openLink } from "./types";
 const SIDE_HREF = "/taxes?focus=life:side-income";
 const SIDE_FORM_HREF = "/taxes/profile#side-income";
 
-type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
-
 const STATUS: Record<string, string> = {
   matched: "matches its 1099",
   differs: "doesn't match its 1099 (I haven't used the form)",
@@ -18,7 +16,7 @@ const STATUS: Record<string, string> = {
   unneeded: "under the amount that gets a 1099",
 };
 
-export function rentalSetupMessage(view: SideIncomeView): Message | null {
+export function rentalSetupMessage(view: SideIncomeView): MessageParts | null {
   const r = view.rental;
   if (!r || r.rentCents <= 0 || r.priceCents) return null;
   return {
@@ -28,7 +26,7 @@ export function rentalSetupMessage(view: SideIncomeView): Message | null {
   };
 }
 
-export function hobbyMessage(view: SideIncomeView): Message | null {
+export function hobbyMessage(view: SideIncomeView): MessageParts | null {
   if (view.kind || !view.bothWays || view.gigCents <= 0) return null;
   const { business, hobby } = view.bothWays;
   const less = business <= hobby ? "a business" : "a hobby";
@@ -43,7 +41,7 @@ export function hobbyMessage(view: SideIncomeView): Message | null {
   };
 }
 
-export function sideIncomeReply(view: SideIncomeView): Message {
+export function sideIncomeReply(view: SideIncomeView): MessageParts {
   const lines: string[] = [];
   const r = view.rental;
   if (r) {

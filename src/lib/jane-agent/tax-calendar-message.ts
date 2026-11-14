@@ -2,7 +2,7 @@ import type { TaxFound } from "@/planning/tax-scan";
 import type { DueEstimate, TaxCalendarView, YearEndView } from "@/lib/tax-calendar";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
-import { type MessageAction, type MessageRefs, openLink } from "./types";
+import { openLink, type MessageParts } from "./types";
 
 // The tax year that runs itself, in the chat (spec step 223): an estimated payment that
 // needs the person's tap (over the cap, or they asked Jane to ask first), December's
@@ -10,9 +10,7 @@ import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 const CALENDAR_HREF = "/taxes/calendar";
 
-type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
-
-export function estimateDueMessage(d: DueEstimate, year: number): Message {
+export function estimateDueMessage(d: DueEstimate, year: number): MessageParts {
   const why =
     d.needsTap === "level"
       ? "You asked me to ask first, so"
@@ -29,7 +27,7 @@ export function estimateDueMessage(d: DueEstimate, year: number): Message {
   };
 }
 
-export function yearEndMessage(y: YearEndView, acts: boolean): Message {
+export function yearEndMessage(y: YearEndView, acts: boolean): MessageParts {
   const list = y.lines.map((l) => `• ${l}`).join("\n");
   return {
     body: `Here are the tax moves still open before December 31.\n${list}\n${
@@ -60,7 +58,7 @@ const MARK = {
   nothing: "nothing to do",
 } as const;
 
-export function calendarReply(v: TaxCalendarView, found: readonly TaxFound[] = []): Message {
+export function calendarReply(v: TaxCalendarView, found: readonly TaxFound[] = []): MessageParts {
   const lines = v.items.map((i) => `${i.title} (${MARK[i.status]}): ${i.detail}`);
   // Spec step 273: what every tax detector found for them, in this month.
   const mine = found.filter((x) => x.month === v.month);

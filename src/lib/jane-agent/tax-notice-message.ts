@@ -3,7 +3,7 @@ import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import type { NoticeView } from "@/lib/tax-notices";
 import { centsOf, type Check } from "@/planning/tax-notice";
-import { type MessageAction, type MessageRefs, openLink } from "./types";
+import { type MessageAction, openLink, type MessageParts } from "./types";
 
 // Letters from the IRS and the state in the chat (spec step 217): a notice Jane read, to
 // confirm; then what it says, what it found against the person's records, and the
@@ -12,9 +12,7 @@ import { type MessageAction, type MessageRefs, openLink } from "./types";
 
 const LETTERS_HREF = "/taxes/letters";
 
-type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
-
-export function noticeReadingMessage(n: NoticeView): Message {
+export function noticeReadingMessage(n: NoticeView): MessageParts {
   const f = n.fields;
   const complete = Boolean(f.kind && f.noticeDate);
   return {
@@ -53,7 +51,7 @@ export function noticeOpenMessage(
   n: NoticeView,
   check: Check & { advice: boolean },
   today: string,
-): Message {
+): MessageParts {
   const rule = NOTICE_KINDS[n.kind];
   const amount = centsOf(n.fields, "amount");
   const days = n.dueOn ? Math.round((Date.parse(n.dueOn) - Date.parse(today)) / 86_400_000) : null;
@@ -84,7 +82,7 @@ export function noticeOpenMessage(
   };
 }
 
-export function noticeDraftMessage(n: NoticeView, team: boolean): Message {
+export function noticeDraftMessage(n: NoticeView, team: boolean): MessageParts {
   return {
     body: `Here's the draft reply to your ${n.kind === "OTHER" ? "notice" : n.kind}. Add your details where it's in [brackets]:\n\n${n.draft}\n\n${team ? "Have Jane's team send it, or send it yourself?" : "Send it yourself, before the date on the notice, and keep a copy."}`,
     refs: { taxNotice: n.id },
@@ -121,7 +119,7 @@ export const remindDays = (n: NoticeView, today: string): number | null => {
   return NOTICE_REMIND_DAYS.filter((d) => left <= d).at(-1) ?? null;
 };
 
-export function noticesReply(notices: NoticeView[]): Message {
+export function noticesReply(notices: NoticeView[]): MessageParts {
   const active = notices.filter((n) => n.status === "confirmed");
   if (active.length === 0) {
     return {

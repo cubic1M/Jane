@@ -4,7 +4,7 @@ import { formatCents } from "@/lib/money";
 import { COMPARED } from "@/planning/tax-document-check";
 import { listOf } from "@/planning/tax-profile";
 
-import { type MessageAction, type MessageRefs, openLink } from "./types";
+import { openLink, type MessageParts } from "./types";
 import { dayLabel } from "@/lib/day-label";
 
 // Tax forms that collect themselves, in the chat (spec step 166): a form that doesn't match
@@ -14,11 +14,9 @@ import { dayLabel } from "@/lib/day-label";
 
 const FORMS_HREF = "/taxes?focus=records:forms";
 
-type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
-
 const formName = (f: CollectedForm) => `${f.form} from ${f.from}`;
 
-export function flaggedMessage(f: CollectedForm, year: number): Message {
+export function flaggedMessage(f: CollectedForm, year: number): MessageParts {
   const check = f.check!;
   const what = COMPARED[f.formKey as TaxFormKey];
   const why =
@@ -38,7 +36,7 @@ export function flaggedMessage(f: CollectedForm, year: number): Message {
 
 // The forms collected that check out. At the levels that let Jane act they're already
 // ticked off; otherwise one tap does it.
-export function collectedMessage(view: TaxDocumentsView, acts: boolean): Message | null {
+export function collectedMessage(view: TaxDocumentsView, acts: boolean): MessageParts | null {
   const good = view.forms.filter((f) => f.document && f.usable);
   if (good.length === 0) return null;
   const waiting = good.filter((f) => !f.received);
@@ -64,7 +62,7 @@ export function collectedMessage(view: TaxDocumentsView, acts: boolean): Message
   };
 }
 
-export function missingMessage(f: CollectedForm, year: number): Message {
+export function missingMessage(f: CollectedForm, year: number): MessageParts {
   return {
     body: `Your ${formName(f)} for ${year} hasn't come through yet: it was due by ${dayLabel(f.by)}. I'll keep looking every day. Want a reminder to ask them?`,
     refs: { taxForm: f.key, taxYear: year },
@@ -77,7 +75,7 @@ export function missingMessage(f: CollectedForm, year: number): Message {
 }
 
 // "My tax forms": each expected form, collected (and how it checked), ticked off, or due.
-export function documentsReply(view: TaxDocumentsView): Message {
+export function documentsReply(view: TaxDocumentsView): MessageParts {
   if (view.forms.length === 0) {
     return {
       body: `I don't expect any tax forms for ${view.year} from what's in your accounts. If you were paid somewhere I can't see, that payer sends its own.`,
