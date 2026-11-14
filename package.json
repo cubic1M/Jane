@@ -34,7 +34,7 @@
     "labels:score": "LABELS_STEP=score vitest run src/accuracy/labels/labels.cli.test.ts --silent=false"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.135.0",
+    "@anthropic-ai/sdk": "^1.3.0",
     "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "7.10.1",
     "next": "16.4.3",
