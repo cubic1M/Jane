@@ -59,7 +59,7 @@ test("every debt shows with its source, and missing terms can be typed in", asyn
   await messages.last().getByRole("link", { name: "See every debt" }).click();
 
   await expect(page).toHaveURL(/\/loans/);
-  await expect(page.getByRole("heading", { level: 1, name: "Every debt" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Loans & credit" })).toBeVisible();
   // Each debt is an item of the tree's "Your debts" branch, its card in the detail.
   const debts = "Your debts";
   const car = (await pickItem(page, "Loans & credit", debts, "Demo Car Loan ····0006"))
