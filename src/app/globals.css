@@ -1171,10 +1171,12 @@ textarea {
   }
 }
 /* Folded on a small phone: one line at the very bottom, level with the Jane button and left of
-   it, so the first screen stays clear. */
+   it, so the first screen stays clear. Not in the chat, where the line sits above the message box
+   (below): the build joins these two into one :is(), which takes #jane-fab's weight for both, so
+   in the chat it won and the line sat on the box (debugger 11-13). */
 @media (width < 640px) {
-  body .floating-cards.floating-cards-folded,
-  body:has(#jane-fab) .floating-cards.floating-cards-folded {
+  body:not(:has([data-chat-composer])) .floating-cards.floating-cards-folded,
+  body:has(#jane-fab):not(:has([data-chat-composer])) .floating-cards.floating-cards-folded {
     bottom: calc(1rem + 6px + env(safe-area-inset-bottom));
     right: 5.5rem;
   }
