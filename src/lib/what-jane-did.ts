@@ -32,14 +32,10 @@ const titleOf = (snapshot: unknown) => {
 
 export async function whatJaneDid(
   userId: string,
-  {
-    client = defaultClient,
-    now = new Date(),
-    days = WEEK_DAYS,
-  }: { client?: PrismaClient; now?: Date; days?: number } = {},
+  { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
 ): Promise<JaneDid> {
   const db = scopedFor(userId, client);
-  const since = new Date(now.getTime() - days * DAY_MS);
+  const since = new Date(now.getTime() - WEEK_DAYS * DAY_MS);
   const [finished, open, contacts] = await Promise.all([
     db.actions.findMany({
       where: { agentState: "finished", status: "done", completedAt: { gte: since } },

@@ -21,13 +21,10 @@ export type ReceivedEmail = {
 const strings = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
 
-export async function readReceivedEmail(
-  emailId: string,
-  { fetcher = fetch }: { fetcher?: typeof fetch } = {},
-): Promise<ReceivedEmail | null> {
+export async function readReceivedEmail(emailId: string): Promise<ReceivedEmail | null> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey || !/^[A-Za-z0-9_-]{1,100}$/.test(emailId)) return null;
-  const response = await fetcher(`${RECEIVED_ENDPOINT}/${emailId}`, {
+  const response = await fetch(`${RECEIVED_ENDPOINT}/${emailId}`, {
     headers: { Authorization: `Bearer ${apiKey}` },
     signal: AbortSignal.timeout(OUTSIDE_CALL_TIMEOUT_MS),
   });

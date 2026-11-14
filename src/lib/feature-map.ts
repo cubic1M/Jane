@@ -124,12 +124,10 @@ const ADVICE = new Set<string>(ADVICE_TOPICS);
 const AREA_TAB = Object.fromEntries(AREA_TABS.map((t) => [t.key, t]));
 
 export function buildFeatureMap({
-  families = DETECTOR_FAMILIES,
   examples,
   reached,
   advice,
 }: {
-  families?: readonly { key: FamilyKey; detectors: readonly Detector[] }[];
   examples: ReadonlyMap<string, Example>;
   // The suggestion keys that have reached this person.
   reached: ReadonlySet<string>;
@@ -140,7 +138,7 @@ export function buildFeatureMap({
     const branches: BranchNode[] = [];
     // A feature is on the map once, in the first family that has it.
     const seen = new Set<string>();
-    for (const family of families) {
+    for (const family of DETECTOR_FAMILIES) {
       const features = family.detectors
         .filter((d) => areaOfCapability(d.capability) === area)
         .flatMap((d): FeatureNode[] => {

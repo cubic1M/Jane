@@ -369,11 +369,11 @@ export type LogRow = {
 
 export async function tradeLog(
   userId: string,
-  { client = defaultClient, limit = 50 }: { client?: PrismaClient; limit?: number } = {},
+  { client = defaultClient }: { client?: PrismaClient } = {},
 ): Promise<LogRow[]> {
   return scopedFor(userId, client).practiceTrades.findMany({
     orderBy: [{ placedAt: "desc" }, { id: "desc" }],
-    take: limit,
+    take: 50,
     select: {
       id: true,
       placedAt: true,
