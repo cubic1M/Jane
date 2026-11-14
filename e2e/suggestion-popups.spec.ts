@@ -63,12 +63,34 @@ test("suggestions pop up small at the bottom of the hub and open in place", asyn
   await expect(showing.getByRole("button", { name: "Not now", exact: true })).toBeVisible();
   const counter = overlay.locator("p[aria-live]");
   const total = Number(((await counter.textContent()) ?? "").split(" ")[0]);
+  // The dock's own list as the count was read (it keeps a copy for the tab): the count has been
+  // one short of what it became a moment later ("expected 11 left, received 12 left", 13 of 18 main
+  // runs on 11-13) and nothing reproduces it locally, so a failure below names the cards on each
+  // side. Read in the page, at once: a round trip to the server here widened the gap.
+  const dockCards = () =>
+    page.evaluate(() => {
+      const key = Object.keys(sessionStorage).find((k) => k.startsWith("jane:dock-cards:"));
+      const cards = JSON.parse((key && sessionStorage.getItem(key)) || "[]") as {
+        kind: string;
+        body: string;
+      }[];
+      return cards.map((c) => `${c.kind}: ${c.body.split("\n")[0].slice(0, 60)}`);
+    });
+  const counted = await dockCards();
+  const named = async (error: Error) => {
+    const now = await dockCards();
+    return new Error(
+      `${error.message}\nCounted ${total}; the dock's cards then (${counted.length}):\n  ${counted.join("\n  ")}\nand now (${now.length}):\n  ${now.join("\n  ")}`,
+    );
+  };
   // How many: "+N" on the stack on a phone; the dock's header line on a computer.
   if (isMobile && total > 1) await expect(showing).toContainText(`+${total - 1}`);
   if (!isMobile) {
-    await expect(overlay.locator("[data-dock-header]")).toContainText(
-      `1 of ${total} ${total === 1 ? "suggestion" : "suggestions"}`,
-    );
+    await expect(overlay.locator("[data-dock-header]"))
+      .toContainText(`1 of ${total} ${total === 1 ? "suggestion" : "suggestions"}`)
+      .catch(async (error: Error) => {
+        throw await named(error);
+      });
   }
 
   // Clear of the Jane button on a phone, and of the docked chat on a computer.
@@ -153,7 +175,11 @@ test("suggestions pop up small at the bottom of the hub and open in place", asyn
   await showing.getByRole("button", { name: "Not now", exact: true }).click();
   if (total > 1) {
     await expect(headline).not.toHaveText(first);
-    await expect(counter).toHaveText(`${total - 1} left`);
+    await expect(counter)
+      .toHaveText(`${total - 1} left`)
+      .catch(async (error: Error) => {
+        throw await named(error);
+      });
   } else {
     await expect(overlay).toBeHidden();
   }
