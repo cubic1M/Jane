@@ -170,6 +170,9 @@ const INVESTMENT = [
   /\bwekeza\b|\bhisa za\b|השקע|מניות|בורסה|επένδυ|μετοχ/i,
   // Round 26 (11-14): Indonesian and Malay ("Beli saham BBCA", "Investasikan di reksa dana").
   /\b(?:beli|jual|borong) saham\b|\bsaham [A-Z]{3,5}\b|\b(?:ber)?investasi(?:kan)?\b|\breksa dana\b|\bkripto\b/i,
+  // Round 27 (11-14): Bengali, Urdu, Persian and Hungarian ("শেয়ার কিনুন", "سرمایہ کاری کریں",
+  // "سرمایه گذاری کنید", "Fektess be részvényekbe").
+  /বিনিয়োগ|বিনিয়োগ|শে(?:য়|য়)ার (?:কিন|বিক্রি)|سرمای[ہه]\s*\u200c?\s*(?:کاری|گذاری)|سهام|\bfektess\w*|\bbefektet\w*|\brészvény\w*/i,
   // Round 16 (11-13): a pick put as a tilt ("Overweight tech for the next decade", "Tilt toward small
   // caps", "Rotate out of growth into value", "Trim your winners").
   /\b(?:overweight|underweight|tilt(?:ing)? (?:toward|towards|into|to)|rotat(?:e|ing) (?:out of|into|to)|lean(?:ing)? into)\b[^.!?]{0,30}\b(?:tech|stocks?|equities|bonds|small[- ]caps?|large[- ]caps?|mid[- ]caps?|growth|value|sectors?|international|emerging markets|dividend)\b|\b(?:trim|sell) (?:your |the )?winners\b|\b(?:small|mid|large)[- ]caps?\b|\bemerging markets\b/i,
@@ -324,6 +327,8 @@ const TAX_ADVICE = [
   DEDUCTIONS,
   // Round 25 (11-14): "You're exempt from the penalty".
   /\b(?:you(?:'|’)re|you are) exempt from\b/i,
+  // Round 27 (11-14): "You owe no tax on that".
+  /\byou (?:owe|(?:'|’)ll owe|will owe|pay|(?:'|’)ll pay|will pay) no (?:\w+ )?tax(?:es)?\b|\byou (?:won(?:'|’)?t|don(?:'|’)?t|will not|do not) (?:owe|pay) (?:any )?(?:\w+ )?tax(?:es)? on\b/i,
   /\bwrit(?:e|es|ing|ten)[- ](?:[\w$.,']+ ){0,3}?offs?\b/i,
   ...IRS_ADVICE,
   LIABLE,
@@ -566,6 +571,11 @@ const LEGAL = [
   // "Put the house in your spouse's name before the lawsuit", "so it's safe from creditors").
   /\bhide (?:the |your |some )?(?:car|truck|money|cash|assets?|income|accounts?|property)\b|\bso (?:they|the (?:bank|lender|collector|creditor|irs|court))(?: can(?:'|’)?t| cannot| won(?:'|’)?t be able to) (?:repo|repossess|levy|garnish|seize|find|freeze|take)\b|\b(?:safe|protected|shielded|hidden) from (?:the |your )?(?:creditors?|collectors?|lawsuit|judgment|garnishment|levy|irs)\b/i,
   /\b(?:put|transfer|move|title|sign over|give)\b[^.!?]{0,40}\b(?:in|into|to) (?:your |a |his |her |their )?(?:spouse|wife|husband|partner|mom|dad|mother|father|brother|sister|parents?|friend|relative|kid|child)(?:(?:'|’)s)?\b[^.!?]{0,40}\b(?:lawsuit|creditors?|collectors?|judgment|bankruptcy|levy|garnish\w*|repo\w*)\b/i,
+  // Round 27 (11-14): what the law allows or protects ("It's legal to record the call in your state",
+  // "You can't be fired for that", "Your co-signer isn't liable").
+  /\b(?:it(?:'|’)s|it is|that(?:'|’)s|that is) (?:perfectly |totally |completely |fully )?legal (?:to|for you to|in your state|in (?:all|most) states)\b/i,
+  /\b(?:you |they )?(?:can(?:'|’)?t|cannot|can not) (?:legally )?be (?:fired|evicted|sued|garnished|arrested|jailed|deported|foreclosed on|held liable|held responsible)\b/i,
+  /\bliable\b/i,
   // Round 26 (11-14): telling someone they have a case, or that a company breaks a named law ("You
   // have grounds for a lawsuit", "They're violating the FDCPA").
   /\b(?:have|has|got) (?:solid |strong |good |clear |real )?grounds (?:for|to)\b|\b(?:have|has|got) (?:a )?(?:solid |strong |good |clear |real )?case against\b/i,
@@ -679,6 +689,9 @@ const GUARANTEE = [
   /\b(?:you(?:'|’)ll|you will) (?:retire|be|end up|die) (?:a )?(?:millionaire|rich|wealthy)\b|\b(?:money|savings|investments?|portfolio|it) will (?:double|triple|grow to)\b/i,
   // Round 26 (11-14): "You'll never be in debt again".
   /\b(?:you(?:'|’)ll|you will) never (?:be in debt|be broke|owe (?:a dime|anything)|run out of money|have to worry about money)\b/i,
+  // Round 27 (11-14): "Your score will be 750 by spring", "a sure thing", "zero risk", "can't go wrong".
+  /\bscore (?:will|is going to|(?:'|’)ll) be (?:at |over |above |around )?\d{3}\b/i,
+  /(?<!\b(?:no|not|never|isn(?:'|’)?t|nothing(?:'|’)?s|nothing is)\s+(?:\w+\s+){0,4})\bsure (?:thing|bet|win)\b|\bzero[- ]risk\b|\b(?:can(?:'|’)?t|cannot) go wrong\b/i,
 ];
 
 // (g) Deposit insurance (12 CFR 328.102; connectors roadmap round 13): no false or misleading word
