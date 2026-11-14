@@ -1,7 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { Deadline } from "@/insights/deadlines";
 import { normalizeMerchant } from "@/data-sources/merchant";
-import { loadTransactionsBetween } from "@/detection/engine";
+import { loadTransactionsBetween } from "@/detection/input";
 import { dayLabel } from "@/lib/day-label";
 import { db as defaultClient } from "@/lib/db";
 import { todayOf } from "@/lib/today";

@@ -1,4 +1,4 @@
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { forecastAccounts } from "@/detection/forecast";
 import { daysBetween } from "@/detection/units";
 import type { PrismaClient } from "@/generated/prisma/client";

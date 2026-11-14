@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@/detection/engine", () => ({ loadTransactionsBetween: vi.fn() }));
+vi.mock("@/detection/input", () => ({ loadTransactionsBetween: vi.fn() }));
 import {
   namedPayees,
   payeeFactsReply,

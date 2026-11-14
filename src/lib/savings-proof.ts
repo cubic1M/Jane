@@ -5,7 +5,7 @@ import { HELD_DAYS, STOP_GRACE_DAYS } from "@/config/outcomes";
 import { CANCEL_GRACE_DAYS, LOWER_BILL_LOOK_DAYS, SHARE_TOKEN_BYTES } from "@/config/saved";
 import { normalizeMerchant } from "@/data-sources/merchant";
 import type { PrismaClient } from "@/generated/prisma/client";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { merchantOf } from "@/detection/streams";
 import type { DetectionInput, DetectionTransaction } from "@/detection/types";
 import { addDays, isoDate } from "@/detection/units";

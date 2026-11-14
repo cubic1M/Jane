@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma/client";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { buildStreams } from "@/detection/streams";
 import type { DetectionInput } from "@/detection/types";
 import { policiesFromStreams } from "@/insights/found-policies";

@@ -9,7 +9,7 @@ vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
 import { PAYCHECK_BUFFER_MARGIN_CENTS, PAYCHECK_CUSHION_CENTS } from "@/config/money-movement";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { forecastAccounts } from "@/detection/forecast";
 import { logAudit } from "@/lib/audit";
 import { setAutopilot } from "@/lib/autopilot";

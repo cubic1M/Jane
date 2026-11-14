@@ -15,7 +15,7 @@ import { whatIfReply } from "@/lib/jane-agent/replies-whatif";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
 import { loadPayoff } from "@/lib/debt-plan";
 import { healthInput } from "@/lib/health-score";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { adoptedPlans, loadBaseline, whatIf } from "./what-if";

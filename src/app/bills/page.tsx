@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
 import { FORECAST_DAYS, LOW_BALANCE_CUSHION_CENTS } from "@/config/detection";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { comingUpBills, forecastAccounts, otherMoneyIn, unevenPay } from "@/detection/forecast";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";

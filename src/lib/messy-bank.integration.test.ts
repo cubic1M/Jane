@@ -16,7 +16,8 @@ import {
   plaidTransaction,
   syncPage,
 } from "@/data-sources/plaid/__fixtures__/plaid";
-import { isFirstDetectionComplete, loadDetectionInput, runDetection } from "@/detection/engine";
+import { isFirstDetectionComplete, runDetection } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { forecastAccounts, upcomingBills } from "@/detection/forecast";
 import { recurringCharges } from "@/detection/subscriptions";
 import { loadInsightTransactions } from "@/insights/load";

@@ -1,6 +1,6 @@
 import { WORKED_GRACE_DAYS } from "@/config/worked";
 import type { FindingType, PrismaClient } from "@/generated/prisma/client";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import type { DetectionInput } from "@/detection/types";
 import { addDays } from "@/detection/units";
 import { logAudit, SYSTEM_ACTOR } from "@/lib/audit";

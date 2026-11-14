@@ -16,7 +16,7 @@ import { loadSnapshot } from "@/lib/jane-agent/snapshot";
 import { booksSource } from "@/lib/jane-agent/sources/books";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { loadProfileInput } from "@/lib/profile";
 import { openBooks, runBooksCheck } from "./books";
 

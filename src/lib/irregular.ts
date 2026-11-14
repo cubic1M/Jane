@@ -1,4 +1,4 @@
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { irregularCosts as fromInput, type IrregularCosts } from "@/insights/irregular";
 import { db as defaultClient } from "@/lib/db";

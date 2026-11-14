@@ -10,7 +10,7 @@ import {
 } from "@/config/long-view";
 import { INFLATION, RETURN_HIGH, RETURN_LOW } from "@/config/market-assumptions";
 import type { PrismaClient } from "@/generated/prisma/client";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import type { DetectionInput } from "@/detection/types";
 import { netWorth } from "@/insights/net-worth";
 import { formatWholeDollars } from "@/lib/money";

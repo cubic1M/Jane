@@ -2,7 +2,7 @@ import { paymentsToUnseenCards } from "@/categorize/card-payments";
 import { ONE_OFF_PAY } from "@/config/profile";
 import { HEALTH_MONTHS, HEALTH_SLIP_CATEGORIES, HEALTH_SLIP_DAYS } from "@/config/health-score";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import type { DetectionInput } from "@/detection/types";
 import { addDays } from "@/detection/units";
 import { spendingInsights } from "@/insights/spending";

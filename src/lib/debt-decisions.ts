@@ -1,5 +1,5 @@
 import { FORECAST_DAYS } from "@/config/detection";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { forecastAccounts } from "@/detection/forecast";
 import { nextPayday } from "@/detection/paydays";
 import type { PrismaClient } from "@/generated/prisma/client";

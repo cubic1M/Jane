@@ -50,7 +50,7 @@ import { sectorAutopilots } from "@/lib/sector-autopilot";
 import { lastControllerRun } from "@/lib/controller-log";
 import { CONTROLLER_STEP_LABELS } from "@/config/controller";
 import { rankedFor } from "./priorities";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { forecastAccounts } from "@/detection/forecast";
 import { FORECAST_DAYS } from "@/config/detection";
 import { newestUnreadAlerts } from "@/lib/alerts";

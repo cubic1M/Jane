@@ -5,7 +5,7 @@ import {
   HOME_GOAL_NAME,
   HOME_TERM_MONTHS,
 } from "@/config/home-buying";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { addDays } from "@/detection/units";
 import type { DetectionInput } from "@/detection/types";
 import type { PrismaClient } from "@/generated/prisma/client";

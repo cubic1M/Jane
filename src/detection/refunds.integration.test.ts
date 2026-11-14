@@ -6,7 +6,8 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/alerts", () => ({ raiseAlerts: vi.fn() }));
 
-import { loadDetectionInput, runDetection } from "./engine";
+import { runDetection } from "./engine";
+import { loadDetectionInput } from "./input";
 
 // Runs against a real, migrated Postgres (see engine.integration.test.ts).
 const url = process.env.TEST_DATABASE_URL;

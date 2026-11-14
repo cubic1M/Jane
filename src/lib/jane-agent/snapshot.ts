@@ -1,7 +1,7 @@
 import { conciergeMode } from "@/lib/concierge-mode";
 import { createHash } from "node:crypto";
 import { PLAN_URGENT_FINDING_TYPES } from "@/config/plan";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import type { DetectionInput } from "@/detection/types";
 import type { AlertType, FindingType, PrismaClient } from "@/generated/prisma/client";
 import type { ComingUpRow } from "@/insights/coming-up";

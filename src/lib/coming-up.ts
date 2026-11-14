@@ -1,4 +1,4 @@
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { expectedIncome, comingUpBills } from "@/detection/forecast";
 import type { DetectionInput } from "@/detection/types";
 import { addDays } from "@/detection/units";

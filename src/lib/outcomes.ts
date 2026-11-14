@@ -1,5 +1,5 @@
 import { CHECK_LOOKBACK_DAYS, HELD_DAYS, WATCH_DAYS } from "@/config/outcomes";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import type { DetectionInput } from "@/detection/types";
 import type { Watch } from "@/detectors/contract";
 import { Prisma, type FindingStatus, type PrismaClient } from "@/generated/prisma/client";

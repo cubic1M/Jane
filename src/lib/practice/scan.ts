@@ -8,7 +8,7 @@ import {
 import { ON_OPEN_SCAN_MINUTES } from "@/config/practice-opportunities";
 import { ideaSlot, PRACTICE_IDEA_DAYS } from "@/config/practice-suggestions";
 import { NEWS_LOOKBACK_DAYS, SCAN_HISTORY_DAYS, type ScanKind } from "@/config/practice-scan";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { paySchedules } from "@/detection/paydays";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";

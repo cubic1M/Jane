@@ -2,7 +2,7 @@ import { BUDGET_SUGGESTION_MONTHS, BUDGET_SUGGESTION_ROUNDING_CENTS } from "@/co
 import { LIFE_EVENTS, type LifeEventKind } from "@/config/life-events";
 import { LIFE_AUTOMATION } from "@/config/life-signals";
 import type { PrismaClient } from "@/generated/prisma/client";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import type { DetectionInput } from "@/detection/types";
 import { addDays } from "@/detection/units";
 import { budgetSummary } from "@/insights/budgets";

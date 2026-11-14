@@ -1,7 +1,7 @@
 import { findingSure } from "@/lib/report-state";
 import { CLOSE_CHANGE_DAYS } from "@/config/close";
 import { SUGGESTION_CONFIDENCE_FROM } from "@/config/priorities";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { buildStreams } from "@/detection/streams";
 import type { DetectionInput } from "@/detection/types";
 import type { Confidence, FindingType, PrismaClient } from "@/generated/prisma/client";

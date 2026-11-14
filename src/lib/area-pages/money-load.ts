@@ -3,7 +3,7 @@ import { areaOfCapability } from "@/config/areas";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { FORECAST_DAYS, LOW_BALANCE_CUSHION_CENTS } from "@/config/detection";
 import { addDays, forecastAccounts, comingUpBills } from "@/detection/forecast";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { recurringCharges } from "@/detection/subscriptions";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { budgetSummary } from "@/insights/budgets";

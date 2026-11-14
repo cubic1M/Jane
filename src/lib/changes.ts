@@ -1,6 +1,6 @@
 import { BILL_CHANGE_FINDINGS, NEW_SUBSCRIPTION_FINDINGS } from "@/config/changes";
 import type { FindingStatus, FindingType, PrismaClient } from "@/generated/prisma/client";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput } from "@/detection/input";
 import { buildStreams } from "@/detection/streams";
 import type { DetectionInput } from "@/detection/types";
 import { detectChanges, type Change, type ChangeKind, type SureChange } from "@/insights/changes";
