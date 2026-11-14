@@ -325,7 +325,7 @@ async function TaxesContent({
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Taxes: {TAX_YEAR}</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
-          Kept organised all year from your accounts. Open a branch to see more.
+          Kept organized all year from your accounts. Open a branch to see more.
         </p>
         <nav aria-label="Tax pages" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
           <Link prefetch={false} href="/taxes/tags" className={LINK}>

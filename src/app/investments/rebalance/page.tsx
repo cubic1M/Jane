@@ -120,7 +120,7 @@ async function RebalanceContent({
           </div>
           {plan.realisedGainCents !== 0 && (
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              In your taxable account the sales realise about {signed(plan.realisedGainCents)} in
+              In your taxable account the sales realize about {signed(plan.realisedGainCents)} in
               all, an estimate from your cost basis. Losses are sold first.
             </p>
           )}
