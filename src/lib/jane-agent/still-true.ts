@@ -18,6 +18,11 @@ import { setupBody } from "./sources/setup";
 import { suggestionCard } from "./sources/suggestions";
 import type { Snapshot } from "./snapshot";
 import { MESSAGE_SELECT, toChatMessage, type ChatMessage } from "./types";
+import { loadChanges } from "@/lib/changes";
+import { loadComingUp } from "@/lib/coming-up";
+import { conciergeMode } from "@/lib/concierge-mode";
+import { loadInsurance } from "@/lib/insurance/profile";
+import { findingFingerprint } from "./fingerprint";
 
 // Jane's cards say what was true when they were posted, and stay open for days. Before one
 // shows again (the dock, Home, the chat's cards) it is checked against the person's data now
@@ -81,9 +86,8 @@ const needsDeadlines = (m: ChatMessage, deadlineAlerts: ReadonlySet<string>) =>
   m.refs.deadlineKey !== undefined ||
   (m.refs.alertId !== undefined && deadlineAlerts.has(m.refs.alertId));
 
-// Loaded here, not imported at the top: the deadlines reach most of the app.
 const comingUp = (userId: string, client: PrismaClient, now: Date) =>
-  import("@/lib/coming-up").then((m) => m.loadComingUp(userId, { client, now, days: 0 }));
+  loadComingUp(userId, { client, now, days: 0 });
 
 // Whether each alert still holds: one about a charge (src/detection/unusual.ts keyOf names its
 // transaction) while the charge is in the accounts, a deadline reminder while its deadline is,
@@ -174,9 +178,7 @@ async function factsFor(
   const [coming, changes, suggestions, proposals, insurance, findings, plan, offered] =
     await Promise.all([
       withDeadlines ? comingUp(userId, client, now) : null,
-      withChanges
-        ? import("@/lib/changes").then((m) => m.loadChanges(userId, { client, now }))
-        : null,
+      withChanges ? loadChanges(userId, { client, now }) : null,
       suggestionKeys.length > 0
         ? scopedFor(userId, client).suggestions.findMany({
             where: { key: { in: suggestionKeys } },
@@ -196,9 +198,7 @@ async function factsFor(
             select: { key: true, payload: true },
           })
         : null,
-      withGaps
-        ? import("@/lib/insurance/profile").then((m) => m.loadInsurance(userId, { client, now }))
-        : null,
+      withGaps ? loadInsurance(userId, { client, now }) : null,
       findingIds.length > 0
         ? scopedFor(userId, client).findings.findMany({
             where: { id: { in: findingIds }, status: { in: ["new", "shown"] } },
@@ -216,8 +216,6 @@ async function factsFor(
           })
         : null,
     ]);
-  // Loaded here, not imported at the top: the snapshot reaches most of the app.
-  const fingerprintOf = findings && (await import("./snapshot")).findingFingerprint;
   const deadlines = new Map((coming?.deadlines ?? []).map((d) => [d.key, d]));
   return {
     asOf: coming?.asOf ?? (await chatToday(userId, { client, now })),
@@ -243,7 +241,7 @@ async function factsFor(
             type: f.type,
             title: f.title,
             savings: savingsLine(f.type, f.annualSavingsCents),
-            fingerprint: fingerprintOf!(f),
+            fingerprint: findingFingerprint(f),
           },
         ]),
       ),
@@ -258,12 +256,11 @@ async function planNow(
   userId: string,
   client: PrismaClient,
 ): Promise<{ now: Snapshot["plan"]; concierge: boolean }> {
-  const [{ planFor, planTotalCents, planOnceCents }, { isNoRisk }, { conciergeMode }] =
-    await Promise.all([
-      import("@/lib/plan"),
-      import("@/lib/plan-links"),
-      import("@/lib/concierge-mode"),
-    ]);
+  // Loaded late: the plan reaches this file again.
+  const [{ planFor, planTotalCents, planOnceCents }, { isNoRisk }] = await Promise.all([
+    import("@/lib/plan"),
+    import("@/lib/plan-links"),
+  ]);
   const [items, concierge] = await Promise.all([
     planFor(userId, { client }),
     conciergeMode(userId, { client }),
