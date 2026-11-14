@@ -179,36 +179,325 @@ class Cursor {
   }
 }
 
+// What a replay reads every day: the input, its days, a cursor per ticker, the headlines it may
+// see and the scan kinds that may flag (undefined: the live scan's own for the day's level).
+type Setup = {
+  input: ReplayInput;
+  days: string[];
+  cursors: Map<string, Cursor>;
+  headlines: Headline[];
+  rules: ReadonlySet<ScanKind> | undefined;
+};
+
+// The day being replayed: its prices, the profile and scan preferences in force, the monthly
+// money's settings, and the portfolio's value that morning (after the monthly money).
+type Day = {
+  i: number;
+  today: string;
+  profile: ReturnType<typeof profileFor>;
+  prefs: ReturnType<typeof scanPreferencesFor>;
+  monthlyAddCents: number;
+  addDay: number;
+  morning: number;
+};
+
+// One replay's running record: the ledger, every trade and flag, and the counts the result
+// reports, kept as the days go by.
+class Run {
+  state: LedgerState;
+  putIn: number;
+  costCents = 0;
+  harvested = 0;
+  maxOpportunityShare = 0;
+  maxTradesInADay = 0;
+  lastAddMonth = "";
+  // The day practice money last went in: the start, then each month's add.
+  lastDepositOn: string;
+  readonly pastTrades: PastTrade[] = [];
+  readonly pastFlags: PastFlag[] = [];
+  readonly trades: ReplayTrade[] = [];
+  readonly byRule: Record<string, number> = {};
+  readonly acted: Partial<Record<ScanKind, number>> = {};
+  readonly held: Partial<Record<ScanKind, number>> = {};
+  readonly suggested: Partial<Record<ScanKind, number>> = {};
+  readonly suggestions: { date: string; flag: ScanFlag }[] = [];
+  // Each idea slot's last suggestion day: one about the same thing waits PRACTICE_IDEA_DAYS.
+  readonly asked = new Map<string, string>();
+  readonly index: PathPoint[] = [];
+  indexValue: number;
+  lastValue = 0;
+  // The day's closes and trades so far.
+  today = "";
+  prices: Record<string, number> = {};
+  tradesToday = 0;
+  boughtStock = false;
+
+  constructor(
+    startCents: number,
+    firstDay: string,
+    private readonly cost: number,
+  ) {
+    this.state = { cashCents: startCents, positions: {} };
+    this.putIn = startCents;
+    this.lastDepositOn = firstDay;
+    this.indexValue = startCents;
+  }
+
+  // A new day: each ticker's last close on or before it.
+  begin(today: string, cursors: Map<string, Cursor>) {
+    this.today = today;
+    this.prices = {};
+    for (const [t, c] of cursors) {
+      const close = c.at(today);
+      if (close) this.prices[t] = close;
+    }
+    this.tradesToday = 0;
+    this.boughtStock = false;
+  }
+
+  place(
+    t: { ticker: string; side: "buy" | "sell"; amountCents: number; reason?: string },
+    rule: string,
+  ) {
+    const { today, prices } = this;
+    const priceCents = prices[t.ticker];
+    const portfolioCents = portfolioValue(this.state, prices);
+    const { ticker, side, amountCents } = t;
+    const applied = apply(this.state, { side, ticker, amountCents, priceCents }, LEDGER_UNIVERSE);
+    this.state = applied.state;
+    this.tradesToday += 1;
+    if (t.side === "buy" && STOCKS.includes(t.ticker)) this.boughtStock = true;
+    this.costCents += t.amountCents * this.cost;
+    this.byRule[rule] = (this.byRule[rule] ?? 0) + 1;
+    if (rule === "tax_loss_harvest" && t.side === "sell" && (applied.gainCents ?? 0) < 0)
+      this.harvested -= applied.gainCents!;
+    const quantity = applied.quantity ?? 0;
+    this.trades.push({
+      date: today,
+      ticker,
+      side,
+      amountCents,
+      priceCents,
+      quantity,
+      gainCents: applied.gainCents,
+      rule,
+      reason: t.reason ?? null,
+      portfolioCents,
+      positionAfterCents: positionValue(this.state, prices, ticker),
+    });
+    this.pastTrades.push({
+      placedAt: stamp(today),
+      side: t.side,
+      ticker: t.ticker,
+      quantity,
+      amountCents: t.amountCents,
+      gainCents: applied.gainCents,
+      rule,
+    });
+  }
+
+  // The monthly money, when due: what went in today (the flow the index leaves out).
+  addMonthly(monthlyAddCents: number, addDay: number): number {
+    const { today } = this;
+    const month = today.slice(0, 7);
+    const due = monthlyDue({
+      monthlyAddCents,
+      addDay,
+      today,
+      addedThisMonth: this.lastAddMonth === month,
+    });
+    if (!due) return 0;
+    this.state = apply(
+      this.state,
+      { side: "deposit", amountCents: monthlyAddCents },
+      PRACTICE_UNIVERSE,
+    ).state;
+    this.putIn += monthlyAddCents;
+    this.lastAddMonth = month;
+    this.lastDepositOn = today;
+    return monthlyAddCents;
+  }
+
+  // The day's close: the most trades in a day, the opportunity share after a stock buy, and
+  // the time-weighted index (the money put in today doesn't count as gain).
+  end(i: number, morning: number, flow: number) {
+    const { state, prices } = this;
+    this.maxTradesInADay = Math.max(this.maxTradesInADay, this.tradesToday);
+    const value = portfolioValue(state, prices) - this.costCents;
+    if (this.boughtStock) {
+      const stocks = STOCKS.reduce((s, t) => s + positionValue(state, prices, t), 0);
+      this.maxOpportunityShare = Math.max(this.maxOpportunityShare, stocks / morning);
+    }
+    if (i > 0 && this.lastValue > 0) this.indexValue *= (value - flow) / this.lastValue;
+    this.index.push({ date: this.today, valueCents: Math.round(this.indexValue) });
+    this.lastValue = value;
+  }
+}
+
+// Buy and hold: the targets with whatever cash is waiting, never a sale.
+function holdDay(run: Run, { profile, morning }: Day) {
+  const weights = profile.weights;
+  const cash = run.state.cashCents;
+  for (const c of CLASSES) {
+    const amountCents = Math.floor(cash * weights[c]);
+    const t = { ticker: PRACTICE_ETFS[c].ticker, side: "buy" as const, amountCents };
+    if (amountCents < AUTOPILOT_LIMITS.minTradeCents) continue;
+    if (violates(t, run.state, run.prices, run.tradesToday, morning, 0, profile.limits)) continue;
+    run.place(t, "hold");
+  }
+}
+
+// The live scan, as it runs that day: each flag acted on within its caps and the hard limits,
+// held by a limit, or kept as a suggestion.
+function scanDay(run: Run, { cursors, headlines, rules, input }: Setup, day: Day) {
+  const { today, profile, prefs } = day;
+  const history: Record<string, readonly Bar[]> = {};
+  const from = daysBefore(today, SCAN_HISTORY_DAYS);
+  for (const t of MODEL_TICKERS) history[t] = cursors.get(t)!.window(from);
+  const newsFrom = daysBefore(today, NEWS_LOOKBACK_DAYS);
+  const { usedThisMonth, seen } = monthUse(run.pastFlags, today);
+  // Every ticker held beyond the model funds (the opportunity stocks), as the live scan reads.
+  const heldHistory: Record<string, readonly Bar[]> = {};
+  for (const t of Object.keys(run.state.positions))
+    if (!history[t]) heldHistory[t] = cursors.get(t)?.window(from) ?? [];
+  const unpriced = [...PRACTICE_UNIVERSE].filter((t) => !run.prices[t]);
+  const flags = scanOpportunities({
+    level: profile.level,
+    state: run.state,
+    weights: profile.weights,
+    caps: profile.caps,
+    opportunityMaxShare: profile.opportunityMaxShare,
+    avoid: profile.avoid,
+    cashBufferCents: profile.cashBufferCents,
+    limits: profile.limits,
+    funds: profile.funds,
+    prices: run.prices,
+    history,
+    trades: run.pastTrades,
+    headlines: headlines.filter((h) => h.date >= newsFrom && h.date <= today),
+    today,
+    opportunitiesPaused: false,
+    usedThisMonth,
+    seen,
+    rules,
+    // A fund the history has no price for yet is one the scan can't buy (live, every
+    // fund has one): treated like a ticker the person never buys.
+    prefs:
+      unpriced.length > 0
+        ? { ...prefs, excludedTickers: [...prefs.excludedTickers, ...unpriced] }
+        : prefs,
+    monthlyAddCents: day.monthlyAddCents,
+    addDay: day.addDay,
+    // A payday only when the caller knows one (it comes from a person's bank deposits);
+    // the payday kind only ever suggests.
+    paydayDay: input.paydayDay ?? null,
+    heldHistory,
+    lastDepositOn: run.lastDepositOn,
+  });
+  const waitingSince = daysBefore(today, PRACTICE_IDEA_DAYS);
+  const waiting = new Set([...run.asked].filter(([, d]) => d >= waitingSince).map(([k]) => k));
+  for (const flag of flags) {
+    const { status } = flagStatus(
+      flag,
+      run.state,
+      run.prices,
+      run.tradesToday,
+      prefs.mode,
+      firstRefusal(profile, flag),
+      profile.limits,
+    );
+    // As the live scan: not kept while one about the same thing waits, or for pocket change.
+    if (status === "suggested" && notAskedYet(flag, waiting)) continue;
+    if (status === "suggested") run.asked.set(ideaSlot(flag.kind, flag.ticker), today);
+    run.pastFlags.push({
+      key: status === "held" ? `${flag.key}:held:${today}` : flag.key,
+      kind: flag.kind,
+      scannedAt: stamp(today),
+      status,
+    });
+    if (status === "held") run.held[flag.kind] = (run.held[flag.kind] ?? 0) + 1;
+    if (status === "suggested") {
+      run.suggested[flag.kind] = (run.suggested[flag.kind] ?? 0) + 1;
+      run.suggestions.push({ date: today, flag });
+    }
+    if (status !== "acted") continue;
+    run.acted[flag.kind] = (run.acted[flag.kind] ?? 0) + 1;
+    for (const t of flag.trades) if (!refusedByPreferences(profile, t)) run.place(t, t.rule);
+  }
+}
+
+// The autopilot: funds sold at a loss lately aren't bought back (no wash sale), and a fund
+// the history has no price for yet can't be bought (live, every fund has one).
+function autopilotDay(run: Run, { cursors, rules, days }: Setup, { i, today, profile }: Day) {
+  const { prices, pastTrades } = run;
+  const since = daysBefore(today, WASH_SALE_DAYS + 1);
+  const recent = pastTrades.filter((t) => t.side === "sell" && t.placedAt >= since);
+  const blocked = washBlocked(recent, today);
+  for (const t of MODEL_TICKERS) if (!prices[t]) blocked.add(t);
+  const exits = themeExits(run.state, prices, pastTrades, today);
+  // The crypto sleeve (Very high only): the live run's planner, on the closes before the day.
+  const cryptoFrom = daysBefore(today, CRYPTO_SLEEVE_HISTORY_DAYS);
+  const sleeve = cryptoSleeveTrades({
+    sleeve: profile.crypto,
+    level: profile.level,
+    state: run.state,
+    prices,
+    history: Object.fromEntries(
+      CRYPTO_TICKERS.map((t) => [
+        t,
+        cursors
+          .get(t)!
+          .window(cryptoFrom)
+          .filter((b) => b.date < today)
+          .map((b) => b.closeCents),
+      ]),
+    ),
+    today,
+    previous: i > 0 ? days[i - 1] : null,
+    cashCents: run.state.cashCents - profile.cashBufferCents,
+    traded: pastTrades.some((t) => t.rule === "crypto_sleeve"),
+  });
+  const plan = [
+    ...exits,
+    ...sleeve,
+    ...planTrades({
+      level: profile.level,
+      state: { ...run.state, cashCents: run.state.cashCents + sleeveCash(sleeve) },
+      prices,
+      paused: false,
+      tradesToday: run.tradesToday + exits.length + sleeve.length,
+      blocked,
+      weights: profile.weights,
+      avoid: new Set(profile.avoid),
+      cashBufferCents: profile.cashBufferCents,
+      limits: profile.limits,
+      harvesting:
+        profile.harvestLosses && (rules ?? rulesOnAt(profile.level)).has("tax_loss_harvest"),
+      funds: profile.funds,
+    }),
+  ];
+  // Suggest only: the plan is shown, never placed.
+  if (profile.trades)
+    for (const t of sellsFirst(plan)) if (!refusedByPreferences(profile, t)) run.place(t, t.rule);
+}
+
 export function replayRules(input: ReplayInput): ReplayResult | null {
   const days = replayDays(input.bars).filter((d) => !input.from || d >= input.from);
   if (days.length < 2) return null;
   const { level, strategy } = input;
-  // "live": the scan's own rules for the day's level (rulesOnAt), as the live scan runs.
-  const rules = input.rules === "live" ? undefined : (input.rules ?? new Set(SCAN_KINDS));
-  const cost = input.tradeCostBps / 10_000;
-  const cursors = new Map(
-    [...LEDGER_UNIVERSE].map((t) => [t, new Cursor(input.bars[t] ?? [])] as const),
-  );
-  const headlines = [...input.headlines]
-    .filter((h) => h.ticker === null || STOCKS.includes(h.ticker))
-    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-
-  let state: LedgerState = { cashCents: input.startCents, positions: {} };
-  let putIn = input.startCents;
-  let costCents = 0;
-  let harvested = 0;
-  let maxOpportunityShare = 0;
-  let maxTradesInADay = 0;
-  let lastAddMonth = "";
-  // The day practice money last went in: the start, then each month's add.
-  let lastDepositOn = days[0];
-  const pastTrades: PastTrade[] = [];
-  const pastFlags: PastFlag[] = [];
-  const trades: ReplayTrade[] = [];
-  const byRule: Record<string, number> = {};
-  const acted: Partial<Record<ScanKind, number>> = {};
-  const held: Partial<Record<ScanKind, number>> = {};
-  const suggested: Partial<Record<ScanKind, number>> = {};
+  const setup: Setup = {
+    input,
+    days,
+    cursors: new Map(
+      [...LEDGER_UNIVERSE].map((t) => [t, new Cursor(input.bars[t] ?? [])] as const),
+    ),
+    headlines: [...input.headlines]
+      .filter((h) => h.ticker === null || STOCKS.includes(h.ticker))
+      .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)),
+    // "live": the scan's own rules for the day's level (rulesOnAt), as the live scan runs.
+    rules: input.rules === "live" ? undefined : (input.rules ?? new Set(SCAN_KINDS)),
+  };
+  const run = new Run(input.startCents, days[0], input.tradeCostBps / 10_000);
   const base = input.preferences ?? DEFAULT_PREFERENCES;
   const changes = [...(input.changes ?? [])].sort((a, b) => (a.from < b.from ? -1 : 1));
   const preferencesOn = (day: string) =>
@@ -217,61 +506,9 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
   // every day.
   const fixed =
     base.goalDate || changes.length > 0 ? null : profileFor(base, { level, today: days[0] });
-  const suggestions: { date: string; flag: ScanFlag }[] = [];
-  // Each idea slot's last suggestion day: one about the same thing waits PRACTICE_IDEA_DAYS.
-  const asked = new Map<string, string>();
-  const index: PathPoint[] = [];
-  let indexValue = input.startCents;
-  let lastValue = 0;
 
   for (const [i, today] of days.entries()) {
-    const prices: Record<string, number> = {};
-    for (const [t, c] of cursors) {
-      const close = c.at(today);
-      if (close) prices[t] = close;
-    }
-    let tradesToday = 0;
-    let boughtStock = false;
-    const place = (
-      t: { ticker: string; side: "buy" | "sell"; amountCents: number; reason?: string },
-      rule: string,
-    ) => {
-      const priceCents = prices[t.ticker];
-      const portfolioCents = portfolioValue(state, prices);
-      const { ticker, side, amountCents } = t;
-      const applied = apply(state, { side, ticker, amountCents, priceCents }, LEDGER_UNIVERSE);
-      state = applied.state;
-      tradesToday += 1;
-      if (t.side === "buy" && STOCKS.includes(t.ticker)) boughtStock = true;
-      costCents += t.amountCents * cost;
-      byRule[rule] = (byRule[rule] ?? 0) + 1;
-      if (rule === "tax_loss_harvest" && t.side === "sell" && (applied.gainCents ?? 0) < 0)
-        harvested -= applied.gainCents!;
-      const quantity = applied.quantity ?? 0;
-      trades.push({
-        date: today,
-        ticker,
-        side,
-        amountCents,
-        priceCents,
-        quantity,
-        gainCents: applied.gainCents,
-        rule,
-        reason: t.reason ?? null,
-        portfolioCents,
-        positionAfterCents: positionValue(state, prices, ticker),
-      });
-      pastTrades.push({
-        placedAt: stamp(today),
-        side: t.side,
-        ticker: t.ticker,
-        quantity,
-        amountCents: t.amountCents,
-        gainCents: applied.gainCents,
-        rule,
-      });
-    };
-
+    run.begin(today, setup.cursors);
     // The day's preferences: a change from its day on, as saved settings are read.
     const preferences = preferencesOn(today);
     // The monthly money and its day: the input's, or a change's (the portfolio keeps its own
@@ -279,202 +516,47 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
     const changed = preferences !== base;
     const monthlyAddCents = changed ? preferences.monthlyAddCents : input.monthlyAddCents;
     const addDay = changed ? preferences.addDay : input.addDay;
-    // The monthly money, before the scan, so a dip can use it first (addMonthlyIfDue).
-    const month = today.slice(0, 7);
-    const due = monthlyDue({
+    // The monthly money, before the scan, so a dip can use it first (addMonthlyIfDue). The
+    // first day is the start (startPractice), and the live first run adds the month too.
+    const flow = run.addMonthly(monthlyAddCents, addDay);
+    const day: Day = {
+      i,
+      today,
+      profile: fixed ?? profileFor(preferences, { level, today }),
+      prefs: scanPreferencesFor(preferences, input.fallbackDropShare ?? null),
       monthlyAddCents,
       addDay,
-      today,
-      addedThisMonth: lastAddMonth === month,
-    });
-    // The first day is the start (startPractice), and the live first run adds the month too.
-    let flow = 0;
-    if (due) {
-      state = apply(
-        state,
-        { side: "deposit", amountCents: monthlyAddCents },
-        PRACTICE_UNIVERSE,
-      ).state;
-      putIn += monthlyAddCents;
-      flow = monthlyAddCents;
-      lastAddMonth = month;
-      lastDepositOn = today;
-    }
-
-    const morning = portfolioValue(state, prices);
-    const prefs = scanPreferencesFor(preferences, input.fallbackDropShare ?? null);
-    const profile = fixed ?? profileFor(preferences, { level, today });
+      morning: portfolioValue(run.state, run.prices),
+    };
     if (strategy === "hold") {
-      // The targets with whatever cash is waiting, never a sale.
-      const weights = profile.weights;
-      const cash = state.cashCents;
-      for (const c of CLASSES) {
-        const amountCents = Math.floor(cash * weights[c]);
-        const t = { ticker: PRACTICE_ETFS[c].ticker, side: "buy" as const, amountCents };
-        if (amountCents < AUTOPILOT_LIMITS.minTradeCents) continue;
-        if (violates(t, state, prices, tradesToday, morning, 0, profile.limits)) continue;
-        place(t, "hold");
-      }
+      holdDay(run, day);
     } else {
-      if (strategy === "rules") {
-        const history: Record<string, readonly Bar[]> = {};
-        const from = daysBefore(today, SCAN_HISTORY_DAYS);
-        for (const t of MODEL_TICKERS) history[t] = cursors.get(t)!.window(from);
-        const newsFrom = daysBefore(today, NEWS_LOOKBACK_DAYS);
-        const { usedThisMonth, seen } = monthUse(pastFlags, today);
-        // Every ticker held beyond the model funds (the opportunity stocks), as the live scan reads.
-        const heldHistory: Record<string, readonly Bar[]> = {};
-        for (const t of Object.keys(state.positions))
-          if (!history[t]) heldHistory[t] = cursors.get(t)?.window(from) ?? [];
-        const unpriced = [...PRACTICE_UNIVERSE].filter((t) => !prices[t]);
-        const flags = scanOpportunities({
-          level: profile.level,
-          state,
-          weights: profile.weights,
-          caps: profile.caps,
-          opportunityMaxShare: profile.opportunityMaxShare,
-          avoid: profile.avoid,
-          cashBufferCents: profile.cashBufferCents,
-          limits: profile.limits,
-          funds: profile.funds,
-          prices,
-          history,
-          trades: pastTrades,
-          headlines: headlines.filter((h) => h.date >= newsFrom && h.date <= today),
-          today,
-          opportunitiesPaused: false,
-          usedThisMonth,
-          seen,
-          rules,
-          // A fund the history has no price for yet is one the scan can't buy (live, every
-          // fund has one): treated like a ticker the person never buys.
-          prefs:
-            unpriced.length > 0
-              ? { ...prefs, excludedTickers: [...prefs.excludedTickers, ...unpriced] }
-              : prefs,
-          monthlyAddCents,
-          addDay,
-          // A payday only when the caller knows one (it comes from a person's bank deposits);
-          // the payday kind only ever suggests.
-          paydayDay: input.paydayDay ?? null,
-          heldHistory,
-          lastDepositOn,
-        });
-        const waitingSince = daysBefore(today, PRACTICE_IDEA_DAYS);
-        const waiting = new Set([...asked].filter(([, d]) => d >= waitingSince).map(([k]) => k));
-        for (const flag of flags) {
-          const { status } = flagStatus(
-            flag,
-            state,
-            prices,
-            tradesToday,
-            prefs.mode,
-            firstRefusal(profile, flag),
-            profile.limits,
-          );
-          // As the live scan: not kept while one about the same thing waits, or for pocket change.
-          if (status === "suggested" && notAskedYet(flag, waiting)) continue;
-          if (status === "suggested") asked.set(ideaSlot(flag.kind, flag.ticker), today);
-          pastFlags.push({
-            key: status === "held" ? `${flag.key}:held:${today}` : flag.key,
-            kind: flag.kind,
-            scannedAt: stamp(today),
-            status,
-          });
-          if (status === "held") held[flag.kind] = (held[flag.kind] ?? 0) + 1;
-          if (status === "suggested") {
-            suggested[flag.kind] = (suggested[flag.kind] ?? 0) + 1;
-            suggestions.push({ date: today, flag });
-          }
-          if (status !== "acted") continue;
-          acted[flag.kind] = (acted[flag.kind] ?? 0) + 1;
-          for (const t of flag.trades) if (!refusedByPreferences(profile, t)) place(t, t.rule);
-        }
-      }
-      // The autopilot: funds sold at a loss lately aren't bought back (no wash sale), and a fund
-      // the history has no price for yet can't be bought (live, every fund has one).
-      const since = daysBefore(today, WASH_SALE_DAYS + 1);
-      const recent = pastTrades.filter((t) => t.side === "sell" && t.placedAt >= since);
-      const blocked = washBlocked(recent, today);
-      for (const t of MODEL_TICKERS) if (!prices[t]) blocked.add(t);
-      const exits = themeExits(state, prices, pastTrades, today);
-      // The crypto sleeve (Very high only): the live run's planner, on the closes before the day.
-      const cryptoFrom = daysBefore(today, CRYPTO_SLEEVE_HISTORY_DAYS);
-      const sleeve = cryptoSleeveTrades({
-        sleeve: profile.crypto,
-        level: profile.level,
-        state,
-        prices,
-        history: Object.fromEntries(
-          CRYPTO_TICKERS.map((t) => [
-            t,
-            cursors
-              .get(t)!
-              .window(cryptoFrom)
-              .filter((b) => b.date < today)
-              .map((b) => b.closeCents),
-          ]),
-        ),
-        today,
-        previous: i > 0 ? days[i - 1] : null,
-        cashCents: state.cashCents - profile.cashBufferCents,
-        traded: pastTrades.some((t) => t.rule === "crypto_sleeve"),
-      });
-      const plan = [
-        ...exits,
-        ...sleeve,
-        ...planTrades({
-          level: profile.level,
-          state: { ...state, cashCents: state.cashCents + sleeveCash(sleeve) },
-          prices,
-          paused: false,
-          tradesToday: tradesToday + exits.length + sleeve.length,
-          blocked,
-          weights: profile.weights,
-          avoid: new Set(profile.avoid),
-          cashBufferCents: profile.cashBufferCents,
-          limits: profile.limits,
-          harvesting:
-            profile.harvestLosses && (rules ?? rulesOnAt(profile.level)).has("tax_loss_harvest"),
-          funds: profile.funds,
-        }),
-      ];
-      // Suggest only: the plan is shown, never placed.
-      if (profile.trades)
-        for (const t of sellsFirst(plan)) if (!refusedByPreferences(profile, t)) place(t, t.rule);
+      if (strategy === "rules") scanDay(run, setup, day);
+      autopilotDay(run, setup, day);
     }
-
-    maxTradesInADay = Math.max(maxTradesInADay, tradesToday);
-    const value = portfolioValue(state, prices) - costCents;
-    if (boughtStock) {
-      const stocks = STOCKS.reduce((s, t) => s + positionValue(state, prices, t), 0);
-      maxOpportunityShare = Math.max(maxOpportunityShare, stocks / morning);
-    }
-    if (i > 0 && lastValue > 0) indexValue *= (value - flow) / lastValue;
-    index.push({ date: today, valueCents: Math.round(indexValue) });
-    lastValue = value;
+    run.end(i, day.morning, flow);
   }
 
-  const endIndex = index[index.length - 1].valueCents;
+  const endIndex = run.index[run.index.length - 1].valueCents;
   return {
     strategy,
     from: days[0],
     to: days[days.length - 1],
-    putInCents: putIn,
-    endCents: Math.round(lastValue),
-    index,
+    putInCents: run.putIn,
+    endCents: Math.round(run.lastValue),
+    index: run.index,
     totalReturn: endIndex / input.startCents - 1,
-    worstDrop: worstDropOf(index),
-    trades,
-    byRule,
-    acted,
-    held,
-    suggested,
-    costCents: Math.round(costCents),
-    harvestedLossCents: harvested,
-    maxOpportunityShare,
-    suggestions,
-    maxTradesInADay,
+    worstDrop: worstDropOf(run.index),
+    trades: run.trades,
+    byRule: run.byRule,
+    acted: run.acted,
+    held: run.held,
+    suggested: run.suggested,
+    costCents: Math.round(run.costCents),
+    harvestedLossCents: run.harvested,
+    maxOpportunityShare: run.maxOpportunityShare,
+    suggestions: run.suggestions,
+    maxTradesInADay: run.maxTradesInADay,
   };
 }
 
