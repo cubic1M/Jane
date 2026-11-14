@@ -23,8 +23,10 @@ const BOILERPLATE = [
   /^(?:RECEIVED MONEY FROM|SENT MONEY TO)\s+/,
   /\s+WITH REFERENCE\b.*$/,
   /^CARD TRANSACTION OF [\d.,]+ [A-Z]{3} ISSUED BY\s+/,
-  // How a deposit came, after the payer (debugger 11-04: "W-2 from Acme Logistics Inc Ach Credit").
-  /(?<=\S)\s+ACH (?:CREDIT|DEPOSIT)$/,
+  // How a deposit came, after the payer (debugger 11-04: "W-2 from Acme Logistics Inc Ach Credit"),
+  // and how a payment went (debugger 11-14: "Verizon Wireless Payments Ach Debit"). Saved keys
+  // moved in prisma/migrations/20270517000000_merchant_without_pos_debit: keep them in step.
+  /(?<=\S)\s+ACH (?:CREDIT|DEPOSIT|DEBIT)$/,
   // An ACH line's entry words (debugger 11-05: "Uber Technologies Inc Edi Paymnt").
   /(?<=\S)\s+EDI (?:PAYMNTS?|PYMNTS?|PMTS?|PAYMENTS?)$/,
   // A brokerage cash account's "DIRECT DEBIT ALTA APARTMENTS RENT (Cash)" (debugger 11-04).
@@ -40,6 +42,11 @@ const BOILERPLATE = [
   // Capital One 360 writes "Debit Card Purchase - PAYPAL *HULU": the dash goes too, or the
   // processor prefix after it isn't seen (CSV bench: Hulu read as "Paypal").
   // Bank of America's "CHECKCARD 0818 PAYPAL *HULU": the date goes too, for the same reason.
+  // A card purchase as Truist and KeyBank write it, "POS DEBIT NETFLIX.COM", and Navy Federal's
+  // "POS DEBIT- DEBIT CARD 1234 03-15-26 NETFLIX.COM", before "POS" alone below (debugger 11-14:
+  // "Debit Netflix" from a per-bank table). Saved keys moved in prisma/migrations/
+  // 20270517000000_merchant_without_pos_debit: keep them in step.
+  /^POS DEBIT-?\s+(?:DEBIT CARD\s+\d{4}\s+)?(?=\S)/,
   /^(?:POS|DEBIT CARD|CHECKCARD|CHECK CARD|RECURRING)\s+(?:PURCHASE\s+)?(?:-\s+)?(?:\d{4}\s+)?/,
   /^PURCHASE AUTHORIZED ON \d{1,2}\/\d{1,2}\s+/,
   /^ORIG CO NAME:\s*/,
