@@ -110,7 +110,13 @@ export function cashCushionOf(input: IdleInput): Omit<IdleCash, "earnsCents"> | 
     const bought = rows.filter((t) => t.amountCents > 0);
     if (bought.length === 0) continue;
     const earliest = bought.reduce((min, t) => (t.date < min ? t.date : min), input.asOf);
-    const months = Math.max(1, daysBetween(earliest, input.asOf) / DAYS_PER_MONTH);
+    // To where this account's data ends, not today: an upload that ended three weeks ago spread its
+    // 26 days of spending over 46, so cash looked idle that the next rent check would take
+    // (debugger 11-14: "spend about $1,826.14 a month" for $2,759.83 in 26 days).
+    const ends = input.transactions
+      .filter((t) => t.accountId === accountId && t.date <= input.asOf)
+      .reduce((max, t) => (t.date > max ? t.date : max), earliest);
+    const months = Math.max(1, daysBetween(earliest, ends) / DAYS_PER_MONTH);
     monthly +=
       Math.max(
         0,

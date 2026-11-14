@@ -374,7 +374,7 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
 | 50–59% | 4 | 59% | 100% |
-| 60–69% | 31 | 63% | 100% |
+| 60–69% | 30 | 63% | 100% |
 | 70–79% | 9 | 73% | 100% |
 | 80–89% | 8 | 82% | 100% |
 | 90–100% | 0 | – | – |
@@ -503,8 +503,8 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
 | 50–59% | 4 | 59% | 100% |
-| 60–69% | 38 | 63% | 100% |
-| 70–79% | 7 | 74% | 100% |
+| 60–69% | 37 | 63% | 100% |
+| 70–79% | 6 | 75% | 100% |
 | 80–89% | 10 | 82% | 100% |
 | 90–100% | 0 | – | – |
 
@@ -516,7 +516,7 @@ Third held-out set (20 people, 148 files, 5695 transactions):
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
 | Category right (rules only) | 83.9% (883 left for Claude) |
 | False "Charged twice?" | 3 (3 people) |
-| Findings, $/yr | Jane $20,181, truth $33,026; error on the ones found 0.3% |
+| Findings, $/yr | Jane $20,180, truth $33,026; error on the ones found 0.3% |
 | Asked "a subscription to cancel?", no dollars on it | 42 are, $12,845; 32 aren't, $16,560 |
 | Monthly spending, error | 0.0% |
 | Monthly income, error | 0.0% |
@@ -547,7 +547,7 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | 0–49% | 0 | – | – |
 | 50–59% | 7 | 59% | 57% |
 | 60–69% | 36 | 63% | 100% |
-| 70–79% | 11 | 74% | 100% |
+| 70–79% | 10 | 74% | 100% |
 | 80–89% | 11 | 84% | 100% |
 | 90–100% | 0 | – | – |
 <!-- csv-scoreboard:end -->
