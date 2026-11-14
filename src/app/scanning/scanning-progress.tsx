@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { ScanProgress } from "@/lib/scan";
 import { monthsLabel, percentFor, SLOW_WORDS, slowLink, STAGES, stagesDone } from "./stages";
@@ -24,7 +23,6 @@ const HAND_OFF_MS = 0;
 const SLOW_MS = 25_000;
 
 export function ScanningProgress({ next = "/report" }: { next?: "/report" | "/home" }) {
-  const router = useRouter();
   const [progress, setProgress] = useState<ScanProgress | null>(null);
   const [percent, setPercent] = useState(0);
   const [slow, setSlow] = useState(false);
@@ -33,11 +31,15 @@ export function ScanningProgress({ next = "/report" }: { next?: "/report" | "/ho
   // Where this screen hands off: the chat once transactions are in, the report once found.
   const opens = next === "/home" ? done >= 2 : done >= 3;
 
+  // A full page load, not the router: a preload of Home that left /connect before the bank was linked
+  // can land after the link's post emptied the router's memory, and Home's answer then was a
+  // redirect to /connect, which the router would hand back (main 11-14: e2e/hubs.spec.ts went
+  // /connect, /scanning, /connect on all three tries). The first scan hands off once.
   useEffect(() => {
     if (!opens) return;
-    const timer = setTimeout(() => router.replace(next), HAND_OFF_MS);
+    const timer = setTimeout(() => window.location.replace(next), HAND_OFF_MS);
     return () => clearTimeout(timer);
-  }, [opens, router, next]);
+  }, [opens, next]);
 
   useEffect(() => {
     if (opens) return;
