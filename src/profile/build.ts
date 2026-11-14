@@ -413,48 +413,24 @@ function babyReading(input: ProfileInput, txs: readonly ProfileTx[], today: stri
   };
 }
 
-export function buildProfile(input: ProfileInput): Profile {
-  const { today, accounts, liabilities, told } = input;
-  const txs = inYear(input.transactions, today);
-  const months = monthsOfData(txs, today);
-  const count = (f: (t: ProfileTx) => boolean) => txs.filter(f).length;
-  const facts = {} as Record<FactKey, Fact>;
-  const set = (key: FactKey, value: FactValue, source: Source, what: string, matches: number) => {
-    const text = told[key];
-    if (text !== undefined) {
-      facts[key] = {
-        key,
-        label: factSpec(key)!.label,
-        value: text,
-        source: "told",
-        confidence: confidenceOf("told", { months, matches: 0 }),
-        evidence: evidenceText("told", { months, matches: 0 }, what),
-      };
-      return;
-    }
-    facts[key] = {
-      key,
-      label: factSpec(key)!.label,
-      value,
-      source,
-      confidence: confidenceOf(source, { months, matches }),
-      evidence: evidenceText(source, { months, matches }, what),
-    };
-  };
-  // A fact the data can't show and the person hasn't told: not in the profile.
-  const unknown = (key: FactKey) => {
-    const text = told[key];
-    facts[key] = {
-      key,
-      label: factSpec(key)!.label,
-      value: text ?? null,
-      source: text === undefined ? "guessed" : "told",
-      confidence: text === undefined ? 0 : confidenceOf("told", { months, matches: 0 }),
-      evidence: text === undefined ? "not known yet" : "you told me",
-    };
-  };
+type IncomePattern = "salary" | "uneven" | "business" | "pension" | "unknown";
 
-  // --- Income -----------------------------------------------------------------------
+// What every part of the profile reads, and how it records a fact: set() from the data (or what
+// the person told, which wins), unknown() for one neither shows.
+type Builder = {
+  input: ProfileInput;
+  txs: ProfileTx[];
+  months: number;
+  facts: Record<FactKey, Fact>;
+  count: (f: (t: ProfileTx) => boolean) => number;
+  set: (key: FactKey, value: FactValue, source: Source, what: string, matches: number) => void;
+  unknown: (key: FactKey) => void;
+};
+
+// Income.
+function incomeFacts(b: Builder) {
+  const { txs, months, set, unknown } = b;
+  const { today } = b.input;
   const income = txs.filter((t) => t.amountCents < 0 && t.pfc?.startsWith("INCOME_"));
   const pension = income.filter(
     (t) =>
@@ -490,7 +466,7 @@ export function buildProfile(input: ProfileInput): Profile {
   // made $128,000 of card sales read as take-home pay (debugger 11-05).
   const mostlySales =
     otherIncome.length >= BUSINESS_DEPOSITS_MIN && moneyIn(otherIncome) > moneyIn(contractor);
-  let pattern: "salary" | "uneven" | "business" | "pension" | "unknown" = "unknown";
+  let pattern: IncomePattern = "unknown";
   let patternMatches = 0;
   // Salaried while a job still pays; a new job counts its old one's paychecks as the same pattern.
   const stillSalaried = paying.length > 0 && salary.length >= SALARY_DEPOSITS_MIN;
@@ -552,8 +528,13 @@ export function buildProfile(input: ProfileInput): Profile {
         : Math.round(incomeTotal / monthsForRate(txs, today));
   if (income.length > 0) set("monthly_income", monthlyIncome, "seen", "deposits", income.length);
   else unknown("monthly_income");
+  return { income, earners, pattern, monthlyIncome };
+}
 
-  // --- Household and home -----------------------------------------------------------
+// Household and home.
+function householdFacts(b: Builder, { income, earners }: { income: ProfileTx[]; earners: number }) {
+  const { txs, facts, count, set, unknown } = b;
+  const { accounts, liabilities } = b.input;
   const kids = kidsReading(txs);
   set("has_children", kids.value, kids.source, kids.what, kids.matches);
   const hasChildren = facts.has_children.value === true;
@@ -629,7 +610,13 @@ export function buildProfile(input: ProfileInput): Profile {
   set("has_car", carSigns > 0, "guessed", "car payments, gas, tolls or auto cover", carSigns);
   const pet = petReading(txs);
   set("has_pet", pet.value, pet.source, pet.what, pet.matches);
-  // --- The rest of the picture of their life, from their payments ---------------------
+  return { hasChildren, mortgageLiab };
+}
+
+// The rest of the picture of their life, from their payments.
+function lifeFacts(b: Builder) {
+  const { input, txs, months, facts, set, unknown } = b;
+  const { today } = b.input;
   const baby = txs.length > 0 ? babyReading(input, txs, today) : null;
   set(
     "new_baby",
@@ -663,8 +650,12 @@ export function buildProfile(input: ProfileInput): Profile {
     "moving signs",
     moved?.signals.length ?? 0,
   );
+}
 
-  // --- Debts ------------------------------------------------------------------------
+// Debts.
+function debtFacts(b: Builder, { monthlyIncome }: { monthlyIncome: number }) {
+  const { txs, count, set, unknown } = b;
+  const { today, accounts } = b.input;
   const cardIds = new Set(accounts.filter((a) => a.type === "credit").map((a) => a.id));
   const cardDebt = accounts
     .filter((a) => cardIds.has(a.id))
@@ -732,8 +723,12 @@ export function buildProfile(input: ProfileInput): Profile {
             }
           : { what: "debt signals", n: 0 };
   set("debt_trouble", reason !== null, "seen", troubleSignal.what, troubleSignal.n);
+}
 
-  // --- Accounts and cover -----------------------------------------------------------
+// Accounts and cover.
+function accountFacts(b: Builder) {
+  const { txs, count, set, unknown } = b;
+  const { accounts } = b.input;
   const has = (subtype: string) => accounts.some((a) => a.subtype === subtype);
   set(
     "has_401k",
@@ -807,8 +802,12 @@ export function buildProfile(input: ProfileInput): Profile {
     if (n === 0 && noBank) unknown(key);
     else set(key, n > 0, "seen", what, n);
   }
+}
 
-  // --- Told: age and risk -----------------------------------------------------------
+// Told: age and risk.
+function toldFacts(b: Builder) {
+  const { set, unknown } = b;
+  const { told } = b.input;
   // Told-only facts: not in the data, so unknown until the person says (steps 253 and 257).
   for (const key of [
     "age",
@@ -826,8 +825,25 @@ export function buildProfile(input: ProfileInput): Profile {
     if (told[key] === undefined) unknown(key);
     else set(key, told[key], "told", "answers", 0);
   }
+}
 
-  // --- Life stage -------------------------------------------------------------------
+// Life stage.
+function lifeStageFact(
+  b: Builder,
+  {
+    pattern,
+    hasChildren,
+    monthlyIncome,
+    mortgageLiab,
+  }: {
+    pattern: IncomePattern;
+    hasChildren: boolean;
+    monthlyIncome: number;
+    mortgageLiab: ProfileInput["liabilities"][number] | undefined;
+  },
+) {
+  const { facts, set } = b;
+  const { today, accounts, told } = b.input;
   const invested = accounts
     .filter((a) => a.type === "investment")
     .reduce((s, a) => s + a.balanceCents, 0);
@@ -869,6 +885,57 @@ export function buildProfile(input: ProfileInput): Profile {
     Math.min(3, [pattern !== "unknown", hasChildren, invested > 0].filter(Boolean).length),
   );
   set("life_stage", stage, age !== null ? "seen" : "guessed", "signals", stageMatches);
+}
+
+export function buildProfile(input: ProfileInput): Profile {
+  const { today, told } = input;
+  const txs = inYear(input.transactions, today);
+  const months = monthsOfData(txs, today);
+  const count = (f: (t: ProfileTx) => boolean) => txs.filter(f).length;
+  const facts = {} as Record<FactKey, Fact>;
+  const set = (key: FactKey, value: FactValue, source: Source, what: string, matches: number) => {
+    const text = told[key];
+    if (text !== undefined) {
+      facts[key] = {
+        key,
+        label: factSpec(key)!.label,
+        value: text,
+        source: "told",
+        confidence: confidenceOf("told", { months, matches: 0 }),
+        evidence: evidenceText("told", { months, matches: 0 }, what),
+      };
+      return;
+    }
+    facts[key] = {
+      key,
+      label: factSpec(key)!.label,
+      value,
+      source,
+      confidence: confidenceOf(source, { months, matches }),
+      evidence: evidenceText(source, { months, matches }, what),
+    };
+  };
+  // A fact the data can't show and the person hasn't told: not in the profile.
+  const unknown = (key: FactKey) => {
+    const text = told[key];
+    facts[key] = {
+      key,
+      label: factSpec(key)!.label,
+      value: text ?? null,
+      source: text === undefined ? "guessed" : "told",
+      confidence: text === undefined ? 0 : confidenceOf("told", { months, matches: 0 }),
+      evidence: text === undefined ? "not known yet" : "you told me",
+    };
+  };
+
+  const b: Builder = { input, txs, months, facts, count, set, unknown };
+  const { income, earners, pattern, monthlyIncome } = incomeFacts(b);
+  const { hasChildren, mortgageLiab } = householdFacts(b, { income, earners });
+  lifeFacts(b);
+  debtFacts(b, { monthlyIncome });
+  accountFacts(b);
+  toldFacts(b);
+  lifeStageFact(b, { pattern, hasChildren, monthlyIncome, mortgageLiab });
 
   // Keep every key present, in the declared order.
   const ordered = {} as Record<FactKey, Fact>;
