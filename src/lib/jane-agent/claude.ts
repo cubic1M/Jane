@@ -635,42 +635,68 @@ export async function askClaudeInChat(
   }
 }
 
-async function askClaude(
+// Spec step 94: the block Claude asked to show, built from the person's numbers, not Claude's;
+// null for a kind there's no such block of.
+async function blockFor(
+  userId: string,
+  input: unknown,
+  { client, now }: Pick<Options, "client" | "now">,
+): Promise<AnswerBlock | null> {
+  const args = (input ?? {}) as { kind?: string; month?: string; finding_id?: string };
+  const kind = (BLOCK_KINDS as readonly string[]).includes(args.kind ?? "")
+    ? (args.kind as BlockKind)
+    : null;
+  if (!kind) return null;
+  return buildBlock(userId, kind, { client, now, month: args.month, findingId: args.finding_id });
+}
+
+// Only a request to act gets an action button; the rest keeps its links.
+function linksUnlessAsked(
+  result: Extract<Proposal, { ok: true }>,
+  question: string,
+): Extract<Proposal, { ok: true }> {
+  const acts = result.actions.filter((a) => a.kind !== "link");
+  if (acts.length === 0 || ACTION_REQUEST.test(question)) return result;
+  return {
+    ...result,
+    actions: result.actions.filter((a) => a.kind === "link"),
+    refs: {},
+    line: null,
+  };
+}
+
+// A tool's result for Claude; one that didn't work is marked an error.
+const toolResult = (id: string, content: string, ok = true): Anthropic.ToolResultBlockParam => ({
+  type: "tool_result",
+  tool_use_id: id,
+  content,
+  ...(ok ? {} : { is_error: true }),
+});
+
+// What goes to Claude with the question, looked up before it starts. The person's main numbers,
+// for at most primerMs: a slow lookup finishes in the background (and is kept for the next
+// question) while Claude starts without it. Also the lookups a sector question needs, a shop
+// request's quotes card and the finding just talked about. Every figure in them is allowed, and
+// on the figure ledger.
+async function upFront(
   userId: string,
   history: ChatTurn[],
   question: string,
   {
     client,
     now,
-    claude = anthropic,
-    maxTurns = CHAT_CLAUDE_MAX_TURNS,
-    onEvent = () => {},
-    advice = false,
-    concierge = true,
-    style = null,
-    memory = null,
-    topic = null,
-    firstWordsMs = CHAT_CLAUDE_FIRST_WORDS_MS,
-    deadlineMs = CHAT_CLAUDE_DEADLINE_MS,
-    primerMs = CHAT_PRIMER_BUDGET_MS,
-    mask = NO_MASK,
-  }: Options,
+    advice,
+    memory,
+    topic,
+    primerMs,
+  }: Pick<Options, "client" | "now"> & {
+    advice: boolean;
+    memory: string | null;
+    topic: Topic | null;
+    primerMs: number;
+  },
   timing: ChatTiming,
-): Promise<ClaudeAnswer> {
-  // Why Claude's answer isn't used goes in the timing line (a code, never text).
-  const fail = (reason: string) => {
-    timing.reason ??= reason;
-    return unavailable();
-  };
-  // Spec step 93: Claude failed a moment ago: answer from the rules now, never a spinner.
-  if (Date.now() < claudeDownUntil) return fail("cooldown");
-  // Spec step 191: today's cost cap for this person.
-  if (await overDailyCap(userId, { client, now })) return fail("daily_cap");
-  if (await overMonthlyPersonCap(userId, { client, now })) return fail("month_cap");
-  const profile = advice ? "demo_advice" : "standard";
-  onEvent({ type: "status", text: "Looking at your numbers…" });
-  // The person's main numbers, for at most primerMs: a slow lookup finishes in the
-  // background (and is kept for the next question) while Claude starts without it.
+) {
   const primerStarted = Date.now();
   const today = await chatToday(userId, { client, now });
   // "This month" in an answer is their month, however late it is in UTC.
@@ -741,7 +767,6 @@ async function askClaude(
   theirWords.forEach((text) => ledger.addText(text));
   ledger.addLines(memory ?? "");
   ledger.addLines(primer.text);
-  const figuresPass = (text: string) => ledger.problems(text, onToday).length === 0;
   // Someone who uploaded a statement and came back: what's later isn't known, and isn't $0.
   const ended = await dataEndedOn(userId, { client, today }).catch(() => null);
   const endedLine = ended
@@ -796,6 +821,77 @@ async function askClaude(
       // Without it Claude can still look the finding up itself.
     }
   }
+  return {
+    today,
+    onToday,
+    primer,
+    started,
+    recent,
+    theirWords,
+    allowedCents,
+    ledger,
+    endedLine,
+    prepared,
+    overviewBlock,
+    findingBlock,
+  };
+}
+
+async function askClaude(
+  userId: string,
+  history: ChatTurn[],
+  question: string,
+  {
+    client,
+    now,
+    claude = anthropic,
+    maxTurns = CHAT_CLAUDE_MAX_TURNS,
+    onEvent = () => {},
+    advice = false,
+    concierge = true,
+    style = null,
+    memory = null,
+    topic = null,
+    firstWordsMs = CHAT_CLAUDE_FIRST_WORDS_MS,
+    deadlineMs = CHAT_CLAUDE_DEADLINE_MS,
+    primerMs = CHAT_PRIMER_BUDGET_MS,
+    mask = NO_MASK,
+  }: Options,
+  timing: ChatTiming,
+): Promise<ClaudeAnswer> {
+  // Why Claude's answer isn't used goes in the timing line (a code, never text).
+  const fail = (reason: string) => {
+    timing.reason ??= reason;
+    return unavailable();
+  };
+  // Spec step 93: Claude failed a moment ago: answer from the rules now, never a spinner.
+  if (Date.now() < claudeDownUntil) return fail("cooldown");
+  // Spec step 191: today's cost cap for this person.
+  if (await overDailyCap(userId, { client, now })) return fail("daily_cap");
+  if (await overMonthlyPersonCap(userId, { client, now })) return fail("month_cap");
+  const profile = advice ? "demo_advice" : "standard";
+  onEvent({ type: "status", text: "Looking at your numbers…" });
+  const {
+    today,
+    onToday,
+    primer,
+    started,
+    recent,
+    theirWords,
+    allowedCents,
+    ledger,
+    endedLine,
+    prepared,
+    overviewBlock,
+    findingBlock,
+  } = await upFront(
+    userId,
+    history,
+    question,
+    { client, now, advice, memory, topic, primerMs },
+    timing,
+  );
+  const figuresPass = (text: string) => ledger.problems(text, onToday).length === 0;
   let rewrites = 0;
   let decisionUsed = false;
   let retriesLeft = 1;
@@ -1085,35 +1181,22 @@ async function askClaude(
         if (block.type !== "tool_use") continue;
         // Spec step 94: one block, built from the person's numbers, not Claude's.
         if (block.name === "show_block") {
-          const args = (block.input ?? {}) as {
-            kind?: string;
-            month?: string;
-            finding_id?: string;
-          };
-          const kind = (BLOCK_KINDS as readonly string[]).includes(args.kind ?? "")
-            ? (args.kind as BlockKind)
-            : null;
-          const built: AnswerBlock | null =
-            shown || !kind
-              ? null
-              : await buildBlock(userId, kind, {
-                  client,
-                  now,
-                  month: args.month,
-                  findingId: args.finding_id,
-                });
+          const built: AnswerBlock | null = shown
+            ? null
+            : await blockFor(userId, block.input, { client, now });
           if (built) {
             shown = built;
             allowedCents.push(...blockCents(built));
           }
-          results.push({
-            type: "tool_result",
-            tool_use_id: block.id,
-            content: built
-              ? `It will be shown under your answer: ${drawBlock(built).alt}`
-              : "There's nothing to show for that.",
-            ...(built ? {} : { is_error: true }),
-          });
+          results.push(
+            toolResult(
+              block.id,
+              built
+                ? `It will be shown under your answer: ${drawBlock(built).alt}`
+                : "There's nothing to show for that.",
+              Boolean(built),
+            ),
+          );
           continue;
         }
         // Phase AW: a practice-settings change, as a card the person confirms (./practice-tools.ts).
@@ -1126,45 +1209,33 @@ async function askClaude(
             allowedCents.push(...result.cents);
             ledger.addText(result.line ?? "");
           }
-          results.push({
-            type: "tool_result",
-            tool_use_id: block.id,
-            content: result.ok
-              ? `The change is ready as a card under your answer, for them to confirm:\n${result.line}\nNow write one sentence saying what will change once they tap to confirm. Never say it's done, and don't repeat the card's figures.`
-              : `${result.error}\n(Say this to the person in your own words; nothing was changed.)`,
-            ...(result.ok ? {} : { is_error: true }),
-          });
+          results.push(
+            toolResult(
+              block.id,
+              result.ok
+                ? `The change is ready as a card under your answer, for them to confirm:\n${result.line}\nNow write one sentence saying what will change once they tap to confirm. Never say it's done, and don't repeat the card's figures.`
+                : `${result.error}\n(Say this to the person in your own words; nothing was changed.)`,
+              result.ok,
+            ),
+          );
           continue;
         }
         if (block.name === "propose_action") {
           const result: Proposal = proposal
             ? { ok: false, error: "You already offered a button for this answer." }
             : await proposeAction(userId, block.input, { client, now });
-          if (result.ok) {
-            // Only a request to act gets an action button; the rest keeps its links.
-            const acts: Extract<Proposal, { ok: true }>["actions"] = result.actions.filter(
-              (a) => a.kind !== "link",
-            );
-            proposal =
-              acts.length === 0 || ACTION_REQUEST.test(question)
-                ? result
-                : {
-                    ...result,
-                    actions: result.actions.filter((a) => a.kind === "link"),
-                    refs: {},
-                    line: null,
-                  };
-          }
-          results.push({
-            type: "tool_result",
-            tool_use_id: block.id,
-            content: result.ok
-              ? writtenText
-                ? "Noted."
-                : "The button is ready. Now write your answer in words, with the figures from the results, and don't mention the button."
-              : `${result.error}\n(This is for you. Never tell the person a button could not be set up; answer their question in words.)`,
-            ...(result.ok ? {} : { is_error: true }),
-          });
+          if (result.ok) proposal = linksUnlessAsked(result, question);
+          results.push(
+            toolResult(
+              block.id,
+              result.ok
+                ? writtenText
+                  ? "Noted."
+                  : "The button is ready. Now write your answer in words, with the figures from the results, and don't mention the button."
+                : `${result.error}\n(This is for you. Never tell the person a button could not be set up; answer their question in words.)`,
+              result.ok,
+            ),
+          );
           continue;
         }
         // An area the words didn't pick: its tools, by name (every request has them all).
@@ -1182,18 +1253,19 @@ async function askClaude(
               turnLimit += 1;
             }
           }
-          results.push({
-            type: "tool_result",
-            tool_use_id: block.id,
-            content: !isArea(area)
-              ? "Pick one area: debt, insurance, tax or investing."
-              : listed
-                ? `The ${area} tools, for your next step: ${areaTools(CHAT_TOOLS, area)
-                    .map((t) => t.name)
-                    .join(", ")}.`
-                : `You already have the ${area} tools.`,
-            ...(isArea(area) ? {} : { is_error: true }),
-          });
+          results.push(
+            toolResult(
+              block.id,
+              !isArea(area)
+                ? "Pick one area: debt, insurance, tax or investing."
+                : listed
+                  ? `The ${area} tools, for your next step: ${areaTools(CHAT_TOOLS, area)
+                      .map((t) => t.name)
+                      .join(", ")}.`
+                  : `You already have the ${area} tools.`,
+              isArea(area),
+            ),
+          );
           continue;
         }
         if (block.name === "decision") decisionUsed = true;
@@ -1204,12 +1276,13 @@ async function askClaude(
             ...typedAmountsCents(`${theirWords.join(" ")} ${memory ?? ""}`),
           ]);
           if (notOnFile.length > 0) {
-            results.push({
-              type: "tool_result",
-              tool_use_id: block.id,
-              content: `These amounts aren't in their numbers or a tool's result: ${notOnFile.join(", ")}. Look them up first, and calculate with them as given.`,
-              is_error: true,
-            });
+            results.push(
+              toolResult(
+                block.id,
+                `These amounts aren't in their numbers or a tool's result: ${notOnFile.join(", ")}. Look them up first, and calculate with them as given.`,
+                false,
+              ),
+            );
             continue;
           }
         }
@@ -1222,7 +1295,7 @@ async function askClaude(
         allowedCents.push(...output.cents, ...dollarFigures(output.content).map((f) => f.cents));
         ledger.addToolResult(output.content);
         if (output.options) offered = output.options;
-        results.push({ type: "tool_result", tool_use_id: block.id, content: output.content });
+        results.push(toolResult(block.id, output.content));
       }
       if (!decorationOnly) {
         messages.push({ role: "user", content: results });
