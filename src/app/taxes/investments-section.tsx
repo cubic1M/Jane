@@ -29,11 +29,11 @@ export function InvestmentsSection({
       </h2>
       <dl className="grid grid-cols-1 gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
         <div className="flex justify-between gap-2">
-          <dt className="text-zinc-600 dark:text-zinc-400">Realised in {view.year}, long-term</dt>
+          <dt className="text-zinc-600 dark:text-zinc-400">Realized in {view.year}, long-term</dt>
           <dd>{formatCents(r.longTerm)}</dd>
         </div>
         <div className="flex justify-between gap-2">
-          <dt className="text-zinc-600 dark:text-zinc-400">Realised in {view.year}, short-term</dt>
+          <dt className="text-zinc-600 dark:text-zinc-400">Realized in {view.year}, short-term</dt>
           <dd>{formatCents(r.shortTerm)}</dd>
         </div>
         <div className="flex justify-between gap-2">
