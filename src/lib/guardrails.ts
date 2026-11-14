@@ -72,6 +72,17 @@ const STOCK_PICKS = [
   ),
   // Round 24 (11-13): "Something like VOO would do", "1. VOO 2. VTI 3. QQQ".
   new RegExp(`\\b(?:[Ss]omething|[Aa]nything|[Aa] fund) like \\$?${NOT_TICKERS}[A-Z]{3,5}\\b`),
+  // Round 28 (11-14): "Top choice: VTI", "VOO beats a savings account", "SPY calls are cheap".
+  new RegExp(
+    `\\b(?:[Tt]op|[Bb]est|[Ff]irst|[Mm]y) (?:choice|option|bet)s?:?\\s+\\$?${NOT_TICKERS}[A-Z]{3,5}\\b`,
+  ),
+  new RegExp(
+    `\\b${NOT_TICKERS}[A-Z]{3,5} (?:beats|outperforms|outpaces|crushes|is better than) (?:a |an |your |the )?(?:savings|hysa|high-yield|cd|bonds?|cash|the market|inflation|s&p|index)`,
+    "i",
+  ),
+  new RegExp(
+    `\\b${NOT_TICKERS}[A-Z]{2,5} (?:calls|puts|leaps|options|call options|put options)\\b`,
+  ),
   // Round 25 (11-14): "Why not VOO?", "What about QQQ for the rest?", "e.g. VTI or VXUS".
   new RegExp(
     `(?:\\b[Ww]hy not|\\b[Ww]hat about|\\b[Hh]ow about|\\be\\.g\\.,?)\\s+\\$?${NOT_TICKERS}[A-Z]{3,5}\\b`,
@@ -576,6 +587,13 @@ const LEGAL = [
   /\b(?:it(?:'|’)s|it is|that(?:'|’)s|that is) (?:perfectly |totally |completely |fully )?legal (?:to|for you to|in your state|in (?:all|most) states)\b/i,
   /\b(?:you |they )?(?:can(?:'|’)?t|cannot|can not) (?:legally )?be (?:fired|evicted|sued|garnished|arrested|jailed|deported|foreclosed on|held liable|held responsible)\b/i,
   /\bliable\b/i,
+  // Round 28 (11-14): squatters, support and what someone is entitled or owed, pleading, a
+  // reaffirmation, countersuing ("Your ex has to pay child support", "You're entitled to half the
+  // house", "Plead guilty to make it go away").
+  /\bsquatter(?:s|(?:'|’)s|s(?:'|’))? rights\b|\badverse possession\b|\bplead (?:guilty|not guilty|no contest)\b|\breaffirmation agreement\b|\bcounter-?su(?:e|ing|ed)\b|\bcounterclaim\b/i,
+  /\b(?:has to|have to|must|is required to|(?:is|are) obligated to) pay (?:you )?(?:child support|alimony|spousal support|maintenance)\b/i,
+  /\b(?:you(?:'|’)re|you are) (?:legally )?(?:entitled to|owed) (?:half|a share|part|alimony|child support|spousal support|overtime|back pay|wages|severance|damages|compensation|the (?:house|car|deposit))\b/i,
+  /\b(?:don(?:'|’)?t|do not|never) sign (?:the |that |this |a |any )?(?:lease|contract|settlement|waiver|release|reaffirmation)\b/i,
   // Round 26 (11-14): telling someone they have a case, or that a company breaks a named law ("You
   // have grounds for a lawsuit", "They're violating the FDCPA").
   /\b(?:have|has|got) (?:solid |strong |good |clear |real )?grounds (?:for|to)\b|\b(?:have|has|got) (?:a )?(?:solid |strong |good |clear |real )?case against\b/i,
@@ -692,6 +710,10 @@ const GUARANTEE = [
   // Round 27 (11-14): "Your score will be 750 by spring", "a sure thing", "zero risk", "can't go wrong".
   /\bscore (?:will|is going to|(?:'|’)ll) be (?:at |over |above |around )?\d{3}\b/i,
   /(?<!\b(?:no|not|never|isn(?:'|’)?t|nothing(?:'|’)?s|nothing is)\s+(?:\w+\s+){0,4})\bsure (?:thing|bet|win)\b|\bzero[- ]risk\b|\b(?:can(?:'|’)?t|cannot) go wrong\b/i,
+  // Round 28 (11-14): "Your rate will drop to 5%", "The loan will be forgiven", "You're bound to get it".
+  /\b(?:rate|apr|interest(?: rate)?) (?:will|is going to) (?:drop|fall|go down|be cut|decrease|come down)\b/i,
+  /\b(?:loans?|debt|balance) (?:will|is going to) be (?:forgiven|discharged|cancell?ed|wiped out|erased)\b/i,
+  /\b(?:you(?:'|’)re|you are|it(?:'|’)s|it is) bound to (?:get|be|save|win|work|go up|pay off|qualify)\b/i,
 ];
 
 // (g) Deposit insurance (12 CFR 328.102; connectors roadmap round 13): no false or misleading word
