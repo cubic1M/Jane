@@ -7,6 +7,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { DraftForm, SampleDraftButton } from "./forms";
 import { PageShell } from "@/components/page-shell";
+import { BackLink } from "@/components/back-link";
 
 // Your draft return (spec step 272): a draft uploaded to Documents, read for you to confirm, then
 // checked line by line against what Jane knows for the year. Each thing to fix has its dollars.
@@ -23,9 +24,7 @@ async function Content() {
   return (
     <>
       <AppHeader user={user} />
-      <Link href="/taxes" className={`text-sm ${LINK}`}>
-        ← Taxes
-      </Link>
+      <BackLink href="/taxes" label="Taxes" className={LINK} />
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Your draft return</h1>
         <p className="text-zinc-600 dark:text-zinc-400">

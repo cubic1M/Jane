@@ -20,6 +20,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { ROTH_WORDS, type Range } from "@/planning/retirement";
 import { PageShell } from "@/components/page-shell";
+import { BackLink } from "@/components/back-link";
 
 // On track for retirement? (spec step 132, demo advice). What the retirement accounts
 // could grow to by 67 as a range in today's dollars, against a target; the match, Roth or
@@ -50,9 +51,7 @@ async function RetirementContent() {
     <>
       <AppHeader user={user} />
       <div className="flex flex-col gap-2">
-        <Link href="/investments" className={`text-sm ${LINK}`}>
-          ← Investments
-        </Link>
+        <BackLink href="/investments" label="Investments" className={LINK} />
         <h1 className="text-3xl font-semibold tracking-tight">Retirement</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           What your retirement accounts could grow to, as a range in today&apos;s dollars. A range,

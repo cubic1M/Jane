@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
@@ -12,6 +11,7 @@ import { answer, compareNow, confirm, notThis } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { dayLabel } from "@/lib/day-label";
 import { PageShell } from "@/components/page-shell";
+import { BackLink } from "@/components/back-link";
 
 // Benefits through work (spec step 150): what Jane found on the pay stub (confirmed with a
 // tap), the cover the employer pays for (a few questions), the comparison with buying the
@@ -41,9 +41,7 @@ async function BenefitsContent() {
   return (
     <>
       <AppHeader user={user} />
-      <Link href="/insurance" className={`text-sm ${LINK}`}>
-        ← Insurance
-      </Link>
+      <BackLink href="/insurance" label="Insurance" className={LINK} />
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Benefits through work</h1>
         <p className="text-zinc-600 dark:text-zinc-400">

@@ -6,6 +6,7 @@ import { INHERITED_HREF, inheritanceLines } from "@/lib/jane-agent/inheritance-m
 import { loadInheritance } from "@/lib/inheritance";
 import { requireUser } from "@/lib/session";
 import { PageShell } from "@/components/page-shell";
+import { BackLink } from "@/components/back-link";
 
 // Inherited money and gifts (spec step 268): an inherited IRA's deadline under the 10-year rule
 // and (demo advice) spreading it, gifts over the annual exclusion that need Form 709, the
@@ -23,9 +24,7 @@ async function Content() {
   return (
     <>
       <AppHeader user={user} />
-      <Link href="/taxes" className={`text-sm ${LINK}`}>
-        ← Taxes
-      </Link>
+      <BackLink href="/taxes" label="Taxes" className={LINK} />
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Inherited money and gifts</h1>
         <p className="text-zinc-600 dark:text-zinc-400">

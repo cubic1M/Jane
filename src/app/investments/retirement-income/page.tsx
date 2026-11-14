@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
@@ -17,6 +16,7 @@ import { requireUser } from "@/lib/session";
 import { IncomeForm } from "./income-form";
 import { PageShell } from "@/components/page-shell";
 import { DoneBanner } from "@/components/done-banner";
+import { BackLink } from "@/components/back-link";
 
 // Income in retirement (spec step 212, demo advice): Social Security at 62, full age and
 // 70, required minimum distributions, the order to draw, and a monthly paycheck with how
@@ -40,9 +40,7 @@ async function Content({
     <>
       <AppHeader user={user} />
       <div className="flex flex-col gap-2">
-        <Link href="/investments" className={`text-sm ${LINK}`}>
-          ← Investments
-        </Link>
+        <BackLink href="/investments" label="Investments" className={LINK} />
         <h1 className="text-3xl font-semibold tracking-tight">Income in retirement</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           Turning savings into a paycheck: when to claim Social Security, which accounts to draw

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { CLAIM_CONTACT_FALLBACK } from "@/config/claims";
@@ -26,6 +25,7 @@ import { StartClaimForm } from "./start-form";
 import { SubmitButton } from "@/components/submit-button";
 import { dayLabel } from "@/lib/day-label";
 import { PageShell } from "@/components/page-shell";
+import { BackLink } from "@/components/back-link";
 
 // Claims (spec step 107): when something happens, what to do now, what to collect, who to
 // call, and a tracker of the claim's steps. Every step stays on the claim until it's closed.
@@ -254,9 +254,7 @@ async function ClaimsContent({
   return (
     <>
       <AppHeader user={user} />
-      <Link href="/insurance" className={`text-sm ${LINK}`}>
-        ← Insurance
-      </Link>
+      <BackLink href="/insurance" label="Insurance" className={LINK} />
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Claims</h1>
         <p className="text-zinc-600 dark:text-zinc-400">

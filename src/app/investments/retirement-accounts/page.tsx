@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
@@ -13,6 +12,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { formatPercentTenths } from "@/lib/percent";
 import { PageShell } from "@/components/page-shell";
 import { DoneBanner } from "@/components/done-banner";
+import { BackLink } from "@/components/back-link";
 
 // Retirement accounts used fully (spec step 210, demo advice): every limit with what's
 // used, the match left on the table, Roth or traditional, and the backdoor Roth.
@@ -46,9 +46,7 @@ async function Content({
     <>
       <AppHeader user={user} />
       <div className="flex flex-col gap-2">
-        <Link href="/investments" className={`text-sm ${LINK}`}>
-          ← Investments
-        </Link>
+        <BackLink href="/investments" label="Investments" className={LINK} />
         <h1 className="text-3xl font-semibold tracking-tight">Retirement accounts, used fully</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           Every limit and every dollar of match, across your accounts. {LIMITS_YEAR} limits:{" "}

@@ -9,6 +9,7 @@ import { loadReturnReviews } from "@/lib/prior-return/review";
 import { requireUser } from "@/lib/session";
 import { PrepareForm, ReadingForm, SignAmendmentForm } from "./forms";
 import { PageShell } from "@/components/page-shell";
+import { BackLink } from "@/components/back-link";
 
 // Last year's return, reviewed (spec step 172): what Jane read from an uploaded return, for
 // the person to confirm; then what it found against their accounts (demo advice); and an
@@ -27,9 +28,7 @@ async function Content() {
   return (
     <>
       <AppHeader user={user} />
-      <Link href="/taxes" className={`text-sm ${LINK}`}>
-        ← Taxes
-      </Link>
+      <BackLink href="/taxes" label="Taxes" className={LINK} />
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Last year&apos;s return</h1>
         <p className="text-zinc-600 dark:text-zinc-400">

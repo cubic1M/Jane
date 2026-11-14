@@ -9,6 +9,7 @@ import { calendarWords } from "@/planning/tax-calendar";
 import { loadTaxFound } from "@/lib/tax-scan";
 import { requireUser } from "@/lib/session";
 import { PageShell } from "@/components/page-shell";
+import { BackLink } from "@/components/back-link";
 
 // The tax year that runs itself (spec step 223): what Jane does each month, and where this
 // month's items stand. Moving money above the cap, signing and filing are always a tap.
@@ -35,9 +36,7 @@ async function Content() {
   return (
     <>
       <AppHeader user={user} />
-      <Link href="/taxes" className={`text-sm ${LINK}`}>
-        ← Taxes
-      </Link>
+      <BackLink href="/taxes" label="Taxes" className={LINK} />
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Your tax calendar</h1>
         <p className="text-zinc-600 dark:text-zinc-400">

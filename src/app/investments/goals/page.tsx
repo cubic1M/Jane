@@ -8,6 +8,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { formatPercent as pct } from "@/lib/percent";
 import { PageShell } from "@/components/page-shell";
+import { BackLink } from "@/components/back-link";
 
 // Every goal invested for its timeline (spec step 157, demo advice): each goal's bucket and
 // mix, the glide path behind it, and what Jane does with new money.
@@ -23,9 +24,7 @@ async function GoalsContent() {
     <>
       <AppHeader user={user} />
       <div className="flex flex-col gap-2">
-        <Link href="/investments" className={`text-sm ${LINK}`}>
-          ← Investments
-        </Link>
+        <BackLink href="/investments" label="Investments" className={LINK} />
         <h1 className="text-3xl font-semibold tracking-tight">Invested for each goal</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           Money for each goal is invested to match when you need it: cash when it&apos;s close, more

@@ -6,6 +6,7 @@ import { RETIREMENT_PAYCHECK_HREF, retirementLines } from "@/lib/jane-agent/reti
 import { loadRetirementTaxes } from "@/lib/retirement-taxes";
 import { requireUser } from "@/lib/session";
 import { PageShell } from "@/components/page-shell";
+import { BackLink } from "@/components/back-link";
 
 // Taxes on retirement income (spec step 271): how much of Social Security is taxable and what
 // nothing withholds, Medicare's surcharge line two years ahead, and (demo advice) the order to
@@ -21,9 +22,7 @@ async function Content() {
   return (
     <>
       <AppHeader user={user} />
-      <Link href="/taxes" className={`text-sm ${LINK}`}>
-        ← Taxes
-      </Link>
+      <BackLink href="/taxes" label="Taxes" className={LINK} />
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Taxes on retirement income</h1>
         <p className="text-zinc-600 dark:text-zinc-400">

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { BENEFICIARY_EVENTS, FILE_SECTIONS, RELATIONSHIPS } from "@/config/family-file";
@@ -8,6 +7,7 @@ import { addEvent, saveFileContacts, saveNames, saveSharing, stillRight } from "
 import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
 import { DoneBanner } from "@/components/done-banner";
+import { BackLink } from "@/components/back-link";
 
 // The family looked after (spec step 237): who is named on each account, what a life event makes
 // out of date, and a file the person shares in part. Facts only about wills and trusts, with a
@@ -35,9 +35,7 @@ async function Content({
     <>
       <AppHeader user={user} />
       <div className="flex flex-col gap-2">
-        <Link href="/investments" className={`text-sm ${LINK}`}>
-          ← Investments
-        </Link>
+        <BackLink href="/investments" label="Investments" className={LINK} />
         <h1 className="text-3xl font-semibold tracking-tight">The family looked after</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           Who is named on each account, and a file of what your family would need. Jane records what

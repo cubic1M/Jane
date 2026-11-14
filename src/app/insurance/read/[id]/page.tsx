@@ -9,6 +9,7 @@ import { dismissReadingForm } from "../../actions";
 import { PolicyForm } from "../../forms";
 import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
+import { BackLink } from "@/components/back-link";
 
 // A policy read from a document (spec step 151): every field Jane read, with where it came
 // from, for the person to fix and confirm. Nothing is saved until they do.
@@ -26,9 +27,7 @@ async function ReadingContent({ params }: { params: Promise<{ id: string }> }) {
   return (
     <>
       <AppHeader user={user} />
-      <Link href="/insurance" className={`text-sm ${LINK}`}>
-        ← Insurance
-      </Link>
+      <BackLink href="/insurance" label="Insurance" className={LINK} />
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">
           {reading.status === "waiting" ? "Check what Jane read" : "What Jane read"}

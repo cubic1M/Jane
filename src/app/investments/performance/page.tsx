@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { BENCHMARK_SOURCE, HONEST_NOTE } from "@/config/returns";
@@ -7,6 +6,7 @@ import { loadHonest } from "@/lib/investments/honest";
 import { requireUser } from "@/lib/session";
 import { annualized } from "@/planning/honest";
 import { PageShell } from "@/components/page-shell";
+import { BackLink } from "@/components/back-link";
 
 // Honest performance (spec step 233): how the money really did over 1, 3 and 5 years, after
 // fees and taxes, against a simple benchmark mix with the same risk, and why they differ.
@@ -23,9 +23,7 @@ async function Content() {
     <>
       <AppHeader user={user} />
       <div className="flex flex-col gap-2">
-        <Link href="/investments" className={`text-sm ${LINK}`}>
-          ← Investments
-        </Link>
+        <BackLink href="/investments" label="Investments" className={LINK} />
         <h1 className="text-3xl font-semibold tracking-tight">How your money really did</h1>
         <p className="text-zinc-600 dark:text-zinc-400">{HONEST_NOTE}</p>
       </div>

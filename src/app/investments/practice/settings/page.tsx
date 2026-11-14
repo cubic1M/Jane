@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
@@ -28,6 +27,7 @@ import { savePracticeSettings } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
 import { DoneBanner } from "@/components/done-banner";
+import { BackLink } from "@/components/back-link";
 
 // What the person wants from the practice portfolio (Phase AW, Stage A), in plain words: how much
 // risk, a goal and its date, the monthly practice money, extra moves, what never to buy, loss
@@ -59,9 +59,7 @@ async function Content({
     <>
       <AppHeader user={user} />
       <div className="flex flex-col gap-2">
-        <Link href="/investments/practice" className={`text-sm ${LINK}`}>
-          ← Practice portfolio
-        </Link>
+        <BackLink href="/investments/practice" label="Practice portfolio" className={LINK} />
         <h1 className="text-3xl font-semibold tracking-tight">Practice settings</h1>
         <p className={HINT}>
           Tell Jane how to run your practice portfolio. You can also just say it in the chat, like

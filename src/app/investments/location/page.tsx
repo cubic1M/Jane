@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader, PageLoading } from "@/components/app-header";
@@ -12,6 +11,7 @@ import { CLASSES } from "@/planning/location";
 import { swapNow } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { DoneBanner } from "@/components/done-banner";
+import { BackLink } from "@/components/back-link";
 
 // The right investment in the right account (spec step 231, demo advice): one allocation
 // across every account, with the swaps that put the tax-heavy holdings in tax-advantaged
@@ -42,9 +42,7 @@ async function Content({
     <>
       <AppHeader user={user} />
       <div className="flex flex-col gap-2">
-        <Link href="/investments" className={`text-sm ${LINK}`}>
-          ← Investments
-        </Link>
+        <BackLink href="/investments" label="Investments" className={LINK} />
         <h1 className="text-3xl font-semibold tracking-tight">
           The right investment in the right account
         </h1>

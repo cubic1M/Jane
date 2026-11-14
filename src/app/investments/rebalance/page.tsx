@@ -11,6 +11,7 @@ import { RebalanceButton } from "./rebalance-button";
 import { formatPercent as pct } from "@/lib/percent";
 import { PageShell } from "@/components/page-shell";
 import { DoneBanner } from "@/components/done-banner";
+import { BackLink } from "@/components/back-link";
 
 // Rebalance with one tap (spec step 133): the orders that move each account to the target
 // mix, the mix before and after, and the confirmations. Orders go to the simulated
@@ -61,9 +62,7 @@ async function RebalanceContent({
     <>
       <AppHeader user={user} />
       <div className="flex flex-col gap-2">
-        <Link href="/investments" className={`text-sm ${LINK}`}>
-          ← Investments
-        </Link>
+        <BackLink href="/investments" label="Investments" className={LINK} />
         <h1 className="text-3xl font-semibold tracking-tight">Rebalance</h1>
       </div>
       <SimulatedBanner />

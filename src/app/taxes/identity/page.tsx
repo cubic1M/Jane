@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { CREDIT_FREEZE_URLS, IP_PIN, SIGNS } from "@/config/tax-identity";
@@ -7,6 +6,7 @@ import { requireUser } from "@/lib/session";
 import { loadIdentity } from "@/lib/tax-identity";
 import { PinButtons, SignButtons, StepButton } from "./forms";
 import { PageShell } from "@/components/page-shell";
+import { BackLink } from "@/components/back-link";
 
 // A protected tax identity (spec step 218): the IP PIN, and, on a sign of theft, the steps
 // in order, each tracked to done. The steps are the person's own.
@@ -21,9 +21,7 @@ async function Content() {
   return (
     <>
       <AppHeader user={user} />
-      <Link href="/taxes" className={`text-sm ${LINK}`}>
-        ← Taxes
-      </Link>
+      <BackLink href="/taxes" label="Taxes" className={LINK} />
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Your tax identity</h1>
         <p className="text-zinc-600 dark:text-zinc-400">

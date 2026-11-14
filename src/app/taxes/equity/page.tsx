@@ -9,6 +9,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { AsideButton, EventForm, RemoveButton } from "./forms";
 import { PageShell } from "@/components/page-shell";
+import { BackLink } from "@/components/back-link";
 
 // Crypto and equity pay (spec step 219): the tax on each, what to set aside (demo advice).
 
@@ -23,9 +24,7 @@ async function Content() {
   return (
     <>
       <AppHeader user={user} />
-      <Link href="/taxes" className={`text-sm ${LINK}`}>
-        ← Taxes
-      </Link>
+      <BackLink href="/taxes" label="Taxes" className={LINK} />
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Crypto and equity pay</h1>
         <p className="text-zinc-600 dark:text-zinc-400">

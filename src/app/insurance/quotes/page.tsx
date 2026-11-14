@@ -22,6 +22,7 @@ import { shopCard } from "@/lib/insurance/shop-card";
 import { getQuotes, keepPolicy } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
+import { BackLink } from "@/components/back-link";
 
 // Quotes for one policy (spec step 103), like for like: same cover and deductible, or each
 // difference spelled out. From the stand-in carrier catalog until a licensed partner is
@@ -154,9 +155,7 @@ async function QuotesContent({
   return (
     <>
       <AppHeader user={user} />
-      <Link href="/insurance" className={`text-sm ${LINK}`}>
-        ← Insurance
-      </Link>
+      <BackLink href="/insurance" label="Insurance" className={LINK} />
       {!policy ? (
         <p>That policy isn&apos;t on your insurance anymore.</p>
       ) : (

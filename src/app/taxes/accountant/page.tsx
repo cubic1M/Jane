@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { dayLabel } from "@/lib/day-label";
@@ -6,6 +5,7 @@ import { loadAccountantPage } from "@/lib/accountant";
 import { requireUser } from "@/lib/session";
 import { CreateForm, RevokeButton, SeenButton } from "./forms";
 import { PageShell } from "@/components/page-shell";
+import { BackLink } from "@/components/back-link";
 
 // Working with an accountant (spec step 222): a read-only link, and what comes back.
 
@@ -25,9 +25,7 @@ async function Content() {
   return (
     <>
       <AppHeader user={user} />
-      <Link href="/taxes" className={`text-sm ${LINK}`}>
-        ← Taxes
-      </Link>
+      <BackLink href="/taxes" label="Taxes" className={LINK} />
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Working with an accountant</h1>
         <p className="text-zinc-600 dark:text-zinc-400">

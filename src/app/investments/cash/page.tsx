@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
@@ -20,6 +19,7 @@ import { dayLabel } from "@/lib/day-label";
 import { formatRate } from "@/lib/percent";
 import { PageShell } from "@/components/page-shell";
 import { DoneBanner } from "@/components/done-banner";
+import { BackLink } from "@/components/back-link";
 
 // Cash done right (spec step 162, demo advice): where each dollar of cash sits and what it
 // earns, the plan for it, and its moves, each a tap. The emergency fund stays in reach.
@@ -46,9 +46,7 @@ async function CashContent({
     <>
       <AppHeader user={user} />
       <div className="flex flex-col gap-2">
-        <Link href="/investments" className={`text-sm ${LINK}`}>
-          ← Investments
-        </Link>
+        <BackLink href="/investments" label="Investments" className={LINK} />
         <h1 className="text-3xl font-semibold tracking-tight">Cash</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           Every dollar of cash with a job: a month of spending in checking, the emergency fund where

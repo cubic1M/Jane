@@ -8,6 +8,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { formatPercent as pct } from "@/lib/percent";
 import { PageShell } from "@/components/page-shell";
+import { BackLink } from "@/components/back-link";
 
 // Does it fit? (spec step 131). The mix of investments against the target for the
 // person's risk level, single companies that are too big a part of it, cash above the target mix, and what
@@ -27,9 +28,7 @@ async function ReviewContent() {
     <>
       <AppHeader user={user} />
       <div className="flex flex-col gap-2">
-        <Link href="/investments" className={`text-sm ${LINK}`}>
-          ← Investments
-        </Link>
+        <BackLink href="/investments" label="Investments" className={LINK} />
         <h1 className="text-3xl font-semibold tracking-tight">Portfolio review</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           Your mix of investments against the target for your risk level. It says how your mix

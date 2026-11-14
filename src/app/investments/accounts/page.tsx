@@ -6,6 +6,7 @@ import { loadAccountPlan } from "@/lib/investments/accounts";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { PageShell } from "@/components/page-shell";
+import { BackLink } from "@/components/back-link";
 
 // The right account for each dollar (spec step 135): which account to fill first and why,
 // where each holding is best kept, and gains and losses not yet realised in taxable
@@ -22,9 +23,7 @@ async function AccountsContent() {
     <>
       <AppHeader user={user} />
       <div className="flex flex-col gap-2">
-        <Link href="/investments" className={`text-sm ${LINK}`}>
-          ← Investments
-        </Link>
+        <BackLink href="/investments" label="Investments" className={LINK} />
         <h1 className="text-3xl font-semibold tracking-tight">Which account first</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           The order to put money into your accounts, where each investment is best kept for tax, and
