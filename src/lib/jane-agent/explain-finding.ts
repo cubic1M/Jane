@@ -5,7 +5,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { selfServe } from "@/lib/diy";
 import { whyReply } from "./explain-replies";
 import type { Reply } from "./replies";
-import { findingFingerprint } from "./snapshot";
+import { findingFingerprint } from "./fingerprint";
 import { shortName } from "./sources/findings";
 
 // "Why?" and "tell me more" right after a finding was talked about, typed instead of tapped:

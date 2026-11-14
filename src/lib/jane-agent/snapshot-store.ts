@@ -81,6 +81,7 @@ export async function saveSnapshot(
 
 // Builds a fresh snapshot and saves it. After a sync, a scan or a correction.
 export async function refreshSnapshot(userId: string, options: Options): Promise<Snapshot | null> {
+  // Loaded late: building a snapshot reaches this file again (through the profile's primer).
   const { loadSnapshot } = await import("./snapshot");
   // The stamp from before the build: a change during it makes the saved copy old at once.
   const stamp = await dataStamp(userId, options.client);

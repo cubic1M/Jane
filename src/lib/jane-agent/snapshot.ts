@@ -1,5 +1,4 @@
 import { conciergeMode } from "@/lib/concierge-mode";
-import { createHash } from "node:crypto";
 import { PLAN_URGENT_FINDING_TYPES } from "@/config/plan";
 import { loadDetectionInput } from "@/detection/input";
 import type { DetectionInput } from "@/detection/types";
@@ -49,6 +48,7 @@ import { loadMore, type MoreSnapshot } from "./snapshot-more";
 import { loadTaxSnapshot, type TaxSnapshot } from "./snapshot-tax";
 import { nameMatches } from "./names";
 import { keeps, listPreferences, neverKeys } from "./preferences";
+import { findingFingerprint } from "./fingerprint";
 
 // Everything Jane's brain looks at for one person (spec step 82), loaded with the same
 // code as the pages that show it: Today (src/lib/home.ts), the plan, the comparisons, the
@@ -186,32 +186,12 @@ export type Snapshot = {
 } & MoreSnapshot &
   TaxSnapshot;
 
-// A finding as Jane describes it in the chat: its type, title, saving and evidence. A
-// button only acts while this is unchanged; newer card wording (Claude's explanation)
-// doesn't change it.
-export function findingFingerprint(finding: {
-  id: string;
-  type: string;
-  title: string;
-  annualSavingsCents: number | null;
-  evidence: unknown;
-}): string {
-  return createHash("sha256")
-    .update(
-      JSON.stringify([
-        finding.id,
-        finding.type,
-        finding.title,
-        finding.annualSavingsCents,
-        finding.evidence,
-      ]),
-    )
-    .digest("hex");
-}
+// src/lib/live/arrivals.ts (the live lane's) reads it from here.
+export { findingFingerprint };
 
 // Spec step 96: the chat's week before `start` (the person's Monday): what they asked, said
 // yes or no to, and what Jane finished.
-export type ChatWeek = { start: string; asked: number; yes: number; no: number; done: number };
+type ChatWeek = { start: string; asked: number; yes: number; no: number; done: number };
 
 async function chatWeek(userId: string, client: PrismaClient, start: Date): Promise<ChatWeek> {
   const rows = await scopedFor(userId, client).janeMessages.findMany({
