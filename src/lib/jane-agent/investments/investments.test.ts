@@ -88,7 +88,8 @@ import { compare as compareShort, ladder as shortLadder } from "@/planning/short
 import { PREDICTION_WORDS } from "@/config/steady-hand";
 import { locationPlan, type PlanAccount } from "@/planning/location";
 import { holdingsReply, matchAccounts } from "./replies";
-import { INVESTMENT_TOOLS, runInvestmentTool } from "./tools";
+import { INVESTMENT_TOOLS } from "./tools";
+import { runInvestmentTool } from "./tools-run";
 import { CHAT_PAGES, CHAT_TOOLS, proposeAction } from "../claude-tools";
 import { learnReply } from "../learn";
 import { goalBuckets } from "@/planning/goal-buckets";
