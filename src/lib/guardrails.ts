@@ -603,8 +603,9 @@ const LEGAL = [
   /\b(?:win|lose) (?:the |a |your )?(?:case|lawsuit|suit)\b/i,
   // Spec step 229: what to do about bankruptcy or settlement is legal advice. The facts
   // Jane gives about them are fixed sentences (src/config/debt-trouble.ts) that pass below.
-  /\bbankruptcy\b/i,
-  /\bchapter (?:7|11|13)\b/i,
+  // A court fee or trustee payment on a statement is what was paid (round 44).
+  /\bbankruptcy\b(?! court (?:filing )?(?:fees?|payments?)\b)/i,
+  /\bchapter (?:7|11|13)\b(?! (?:trustee|plan) (?:payments?|fees?)\b)/i,
   /\bdebt settlement\b/i,
   // Spec step 268: what to do about an estate is legal advice: a trust, a will, a power of
   // attorney, avoiding probate, disclaiming an inheritance. Jane gives the tax facts and points
@@ -637,6 +638,10 @@ const LEGAL = [
   /\b(?:landlord|lender|servicer|collector|creditor|employer|insurer|they|he|she) (?:is|are) (?:legally )?(?:required|obligated) to\b/i,
   // Round 20 (11-13): "Your employer has to pay you for that time".
   /\b(?:employer|boss|landlord|lender|servicer|collector|creditor|insurer|company|bank|store|they|he|she) (?:has|have) to (?:pay|refund|reimburse|give|return|cover)(?: you| it| the| your)\b/i,
+  // Round 44 (11-15): "The hospital has to give you charity care", "The dealer has to honor the
+  // advertised price", "Your student loans can't be discharged", "Paying it will restart the clock",
+  // "You can return the car within 3 days", "You don't have to pay a bill you never agreed to".
+  /\b(?:hospital|provider|doctor|clinic|dentist|dealer|dealership|seller|merchant|school|college|gym|insurance company)s? (?:legally )?(?:has|have|is required|are required) to (?:pay|refund|reimburse|give|return|cover|offer|forgive|honor|cancel)\b|\b(?:can(?:'|’)?t|cannot|can not|can|could|won(?:'|’)?t) be discharged\b|\b(?:pay\w*|payments?|debts?|collections?)\b[^.!?]{0,30}\b(?:restarts?|resets?|revives?) (?:the )?(?:clock|statute)\b|\b(?:restarts?|resets?|revives?) the statute of limitations\b|\bre-?ages? (?:the |your |that )?(?:debt|account)\b|\breturn (?:the|your|a) (?:car|vehicle|truck)\b[^.!?]{0,25}\bwithin \d+ days\b|\bcooling[- ]off (?:period|rule|law)\b|\byou (?:don(?:'|’)?t|do not) (?:legally )?(?:have to|need to) pay (?:for )?(?:a|any) (?:bill|debt|charge|fee|balance)s? (?:you|that|which)\b/i,
   // Round 23 (11-13): paying or earning off the books ("Pay your nanny under the table", "Don't
   // report the cash tips") and what a landlord can't do ("They can't raise your rent more than 5%").
   /\bunder the table\b|\b(?:don(?:'|’)?t|do not|no need to|never) (?:report|declare) (?:the |your |that )?(?:cash |side |gig )?(?:tips|income|earnings|cash|winnings)\b/i,
@@ -858,6 +863,10 @@ const GUARANTEE = [
   // Round 18 (11-13): "This will raise your credit score by 50 points". "Could help your score" is
   // hedged and passes.
   /\b(?:will|you(?:'|’)ll|it(?:'|’)ll|this(?:'|’)ll|that(?:'|’)ll)\s+(?:\w+\s+)?(?:raise|boost|improve|increase|lift|bump|fix|repair|jump|add)\b[^.!?]{0,15}\b(?:credit )?score\b|\bscore (?:will|is going to) (?:go up|jump|rise|climb|increase|improve|hit|reach|top|pass|cross)\b/i,
+  // Round 44 (11-15): the score falling by a number ("Your score will drop 100 points if you close
+  // it"), what a collector will settle for ("The collector will accept 30%") and a mark promised
+  // gone ("Send a goodwill letter and they'll remove the late payment").
+  /\bscore\b[^.!?]{0,10}\b(?:will|is going to|would) (?:\w+ )?(?:go down|drop|fall|tank|sink|plummet|dip|lose)\b[^.!?]{0,15}\b\d+ points\b|\b(?:will|would|(?:it|this|that)(?:'|’)ll) (?:drop|lower|hurt|tank|ding|cut) your (?:credit )?score (?:by )?\d+ points\b|\b(?:collectors?|creditors?|lenders?|they|banks?|hospitals?|card company|issuers?)\s*(?:will|(?:'|’)ll|would|are going to|is going to) (?:\w+ )?(?:accept|take|settle for|agree to)\b[^.!?]{0,15}\d+ ?%|\b(?:they(?:'|’)ll|they will|(?:it|that)(?:'|’)ll|(?:it|that) will|the (?:bureaus?|creditor|lender|collector|bank|issuer) will) (?:remove|delete|erase|take off|wipe)\b[^.!?]{0,30}\b(?:late payments?|collections?|negative marks?|marks?|inquir(?:y|ies)|credit report|your report)\b/i,
   // Round 24 (11-13): "This always works".
   /\b(?:this|it|that) always works\b|\bworks every time\b|\bnever fails\b/i,
   // Round 25 (11-14): "You'll retire a millionaire", "Your money will double in 7 years".
