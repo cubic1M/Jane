@@ -200,7 +200,7 @@ const INVESTMENT = [
   // Round 41 (11-15): a charge on the Crypto.com Visa card is a card line.
   /(?<!\b(?:venmo|paypal|cash app|robinhood) )\bcrypto(?!\.com (?:visa )?(?:debit )?card\b)|\b(?:venmo|paypal|cash app|robinhood) crypto\b(?! (?:purchases?|sales?|transfers?|charges?|fees?|debits?|credits?|deposits?|withdrawals?|charged|took|pulled|sent|deposited|withdrew|debited|credited|refunded)\b)/i,
   // Round 39 (11-15): "Your Bitcoin Depot ATM fee was $15.49" is a fee on a statement.
-  /\b(bitcoin(?! depot (?:atm )?(?:fees?|charges?|charged|took|withdrawals?)\b)|ethereum|btc|eth|solana|dogecoin|stablecoins?)\b/i,
+  /\b(bitcoin(?! depot (?:atm )?(?:fees?|charges?|charged|took|withdrawals?)\b)|ethereum|btc|eth|solana|dogecoin|stablecoins?|cardano|shiba inu|usdc|usdt|xrp|memecoins?|altcoins?)\b/i,
   // Chat policy round 10 (11-12): "Stack some sats every payday", "Buy puts on Tesla before
   // earnings", "Gold is a good hedge right now; get some". Gold's Gym and a Gold card are bills.
   /\bstack(?:ing)? (?:some |more |a few )?sats\b|\bsatoshis?\b/i,
@@ -259,6 +259,8 @@ const INVESTMENT = [
   // A call on where the market goes (round 11): "The market is due for a correction; stay in cash".
   /\b(?:stocks?|the (?:stock )?market|markets|the s&p(?: 500)?|the dow|equities)\b[^.!?]{0,20}\b(?:is|are|'s|’s) (?:due for|headed for|about to|going to|set to) (?:a |an )?(?:correction|crash|drop|dip|rally|fall|rise|go (?:up|down)|recover|bounce)\b|\bstay in cash\b/i,
   /\b401\(?k\)?/i,
+  // Round 47 (11-15): "Take a hardship withdrawal". One on a statement is what arrived.
+  /\b(?:take|do|make|request|ask for|get|consider|apply for|file for)\b[^.!?]{0,10}\bhardship (?:withdrawal|distribution)s?\b/i,
   // Round 21 (11-13): "Withdraw from your 403(b) early".
   /\b(?:403|457)(?:\(b\)|b\b)|\bthrift savings plan\b/i,
   // An IRA is written in capitals; "Ira" is a person.
@@ -646,6 +648,11 @@ const LEGAL = [
   /\b(?:landlord|lender|servicer|collector|creditor|employer|insurer|they|he|she) (?:is|are) (?:legally )?(?:required|obligated) to\b/i,
   // Round 20 (11-13): "Your employer has to pay you for that time".
   /\b(?:employer|boss|landlord|lender|servicer|collector|creditor|insurer|company|bank|store|they|he|she) (?:has|have) to (?:pay|refund|reimburse|give|return|cover)(?: you| it| the| your)\b/i,
+  // Round 47 (11-15): what an insurer can't do ("Your insurer can't drop you for one claim", "They
+  // can't deny the claim").
+  /\b(?:insurers?|insurance compan(?:y|ies)|carriers?|they|your insurance)\s+(?:legally )?(?:can(?:'|’)?t|cannot|can not|aren(?:'|’)?t allowed to|isn(?:'|’)?t allowed to|have no right to|has no right to)\s+(?:legally )?(?:drop|cancel|deny|non-?renew|refuse|raise your (?:rate|premium))\b/i,
+  // And money said to be out of creditors' reach ("Your 401(k) can't be touched by creditors").
+  /\bcan(?:'|’)?t be (?:touched|taken|seized|garnished|levied|frozen) by (?:creditors|collectors|the (?:bank|court|irs|collector|creditor|lender))\b|\b(?:protected|safe|shielded|exempt) from (?:creditors|collectors|garnishment|lawsuits|judgments?|seizure)\b/i,
   // Round 46 (11-15): a lease read ("You can sublet without telling your landlord", "Your lease
   // probably lets you sublet", "Legally they probably can't do that"), and leaving things off an
   // application ("Your landlord doesn't need to know", "Leave the side income off the loan
@@ -880,6 +887,10 @@ const GUARANTEE = [
   // Round 18 (11-13): "This will raise your credit score by 50 points". "Could help your score" is
   // hedged and passes.
   /\b(?:will|you(?:'|’)ll|it(?:'|’)ll|this(?:'|’)ll|that(?:'|’)ll)\s+(?:\w+\s+)?(?:raise|boost|improve|increase|lift|bump|fix|repair|jump|add)\b[^.!?]{0,15}\b(?:credit )?score\b|\bscore (?:will|is going to) (?:go up|jump|rise|climb|increase|improve|hit|reach|top|pass|cross)\b/i,
+  // Round 47 (11-15): an insurance premium predicted ("Your premium will go down after 3 years",
+  // "Filing a claim won't raise your rate"). A change the insurer announced ("Your premium will go up
+  // $15.49 on Dec 1") passes.
+  /\bpremiums? (?:will|is going to|won(?:'|’)?t|should) (?:\w+ )?(?:go (?:up|down)|drop|rise|increase|decrease|fall)\b(?! (?:to |by )?\$)|\b(?:filing|file|a claim|the claim|one claim|claims)\b[^.!?]{0,20}\b(?:will|won(?:'|’)?t|is going to|isn(?:'|’)?t going to|would(?:n(?:'|’)?t)?|shouldn(?:'|’)?t) (?:raise|increase|affect|hurt|change|spike) your (?:rate|premium|insurance)\b|\b(?:rate|premium)s? (?:will|would|is going to) (?:go up|rise|increase|spike|jump)\b[^.!?]{0,15}\bif you (?:file|make|submit|put in) (?:a |the |one )?claim\b|\b(?:your )?(?:insurance|car insurance|auto insurance|home insurance|renters insurance) (?:rate|premium)s? (?:will|is going to) (?:go (?:up|down)|drop|rise|increase|decrease|fall)\b(?! (?:to |by )?\$)/i,
   // Round 44 (11-15): the score falling by a number ("Your score will drop 100 points if you close
   // it"), what a collector will settle for ("The collector will accept 30%") and a mark promised
   // gone ("Send a goodwill letter and they'll remove the late payment").
