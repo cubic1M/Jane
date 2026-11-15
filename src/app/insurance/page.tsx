@@ -9,6 +9,7 @@ import { itemId } from "@/lib/area-pages/insurance";
 import { NeedDetail, NeedWorking } from "./perfect-coverage";
 import { needKey } from "@/lib/area-pages/insurance-coverage";
 import { loadInsuranceArea } from "@/lib/area-pages/insurance-load";
+import { laterSentences } from "@/lib/area-pages/tree";
 import { ViewTracker } from "@/components/view-tracker";
 import { PREMIUM_FREQUENCIES } from "@/config/documents";
 import { coverKindOf } from "@/config/found-policies";
@@ -306,7 +307,9 @@ async function InsuranceContent({
         </div>
       </div>
     );
-    more[id] = <p>{gap.why}</p>;
+    // A gap's summary is its why, unless the cover was found in the payments.
+    const why = gap.found ? gap.why : laterSentences(gap.why);
+    if (why) more[id] = <p>{why}</p>;
   }
   for (const s of savings) {
     const id = itemId("savings", s.id);
@@ -440,7 +443,8 @@ async function InsuranceContent({
         </SubmitButton>
       </form>
     );
-    more[id] = <p>{riskQuestion(r)}</p>;
+    const rest = laterSentences(riskQuestion(r));
+    if (rest) more[id] = <p>{rest}</p>;
   }
   for (const row of family.rows) {
     details[itemId("household", row.name)] = (

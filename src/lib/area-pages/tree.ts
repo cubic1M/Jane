@@ -57,6 +57,13 @@ export function firstSentences(text: string, n = SUMMARY_MAX_SENTENCES): string 
   return parts.slice(0, n).join(" ");
 }
 
+// What that summary leaves out, for "More": the summary isn't said twice (debugger 11-15: a
+// renters gap's More was its summary again, word for word).
+export function laterSentences(text: string, n = SUMMARY_MAX_SENTENCES): string {
+  const parts = text.trim().split(/(?<=[.!?])\s+(?=[A-Z0-9$"“])/);
+  return parts.slice(n).join(" ");
+}
+
 // A suggestion's worth on a tree: a risk, or a worth that comes once, is a bare figure; a yearly
 // one has "/yr". Its headline says which (headlineOf in src/detectors/helpers.ts: "save $216 a
 // year", "get $27,716 back"); rows scanned before headlines existed have none and stay yearly
