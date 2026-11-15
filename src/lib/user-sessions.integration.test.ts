@@ -88,14 +88,14 @@ describe.runIf(url)("devices and sessions against a real database", () => {
       {
         id: here.id,
         device: "Mac · Chrome",
-        signedIn: "2026-10-18",
+        signedIn: "Oct 18, 2026",
         lastActive: "Active now",
         current: true,
       },
       {
         id: phone.id,
         device: "iPhone · Safari",
-        signedIn: "2026-10-18",
+        signedIn: "Oct 18, 2026",
         lastActive: "3 hours ago",
         current: false,
       },

@@ -72,6 +72,6 @@ describe("lastActiveLabel", () => {
     expect(lastActiveLabel(ago(5 * 60), now)).toBe("5 hours ago");
     expect(lastActiveLabel(ago(30 * 60), now)).toBe("Yesterday");
     expect(lastActiveLabel(ago(3 * 24 * 60), now)).toBe("3 days ago");
-    expect(lastActiveLabel(ago(10 * 24 * 60), now)).toBe("2026-10-08");
+    expect(lastActiveLabel(ago(10 * 24 * 60), now)).toBe("Oct 8, 2026");
   });
 });
