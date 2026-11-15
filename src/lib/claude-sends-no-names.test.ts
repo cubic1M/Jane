@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { classifyMerchants } from "@/categorize/llm";
 import { claudeFetch } from "@/lib/anthropic";
-import { familyLoansToolOutput } from "@/lib/jane-agent/debt-tools";
+import { familyLoansToolOutput } from "@/lib/jane-agent/debt-tool-outputs";
 import { checkSubscriptions } from "@/lib/subscription-check";
 
 // What Claude is sent, through the paths that exist with or without src/lib/person-payees.ts: no
