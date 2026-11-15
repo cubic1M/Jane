@@ -9,7 +9,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { log } from "@/lib/log";
 import { formatCents } from "@/lib/money";
-import { note } from "./run";
+import { note } from "./action";
 import { isoDay as dayOf } from "@/lib/dates";
 
 // Confirms refunds from the person's own transactions: after each scan, every open or

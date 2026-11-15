@@ -18,14 +18,8 @@ import { recordDecision } from "@/lib/decisions";
 import { findingOfType } from "@/lib/__fixtures__/findings";
 import { runJob } from "@/lib/jobs";
 import { readReplyByRules } from "./read-reply";
-import {
-  AnswerError,
-  agentStep,
-  answerCompany,
-  canAgentWork,
-  handleReply,
-  runAgentFollowUps,
-} from "./run";
+import { AnswerError, canAgentWork } from "./action";
+import { agentStep, answerCompany, handleReply, runAgentFollowUps } from "./run";
 import { simulatedBody, simulatedReply } from "./simulated-company";
 
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).

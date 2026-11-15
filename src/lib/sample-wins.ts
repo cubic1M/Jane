@@ -1,7 +1,7 @@
 import type { PersonId } from "@/config/people";
 import { SAMPLE_WINS, type SampleWin } from "@/data-sources/demo/people-extras/wins";
 import type { FindingType, Prisma, PrismaClient } from "@/generated/prisma/client";
-import { loadAction, setStatus } from "@/lib/agent/run";
+import { loadAction, setStatus } from "@/lib/agent/action";
 import { ACTION_FOR_FINDING, CARD_SELECT, buildCard, cardHash } from "@/lib/cards";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";

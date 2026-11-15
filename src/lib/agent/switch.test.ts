@@ -4,7 +4,7 @@ vi.mock("@/lib/db", () => ({ db: {} }));
 vi.mock("@/lib/db-scoped", () => ({ scopedFor: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/action-emails", () => ({ sendStatusEmail: vi.fn() }));
-vi.mock("./run", () => ({}));
+vi.mock("./action", () => ({}));
 
 import { switchOf, switchTodo } from "./switch";
 

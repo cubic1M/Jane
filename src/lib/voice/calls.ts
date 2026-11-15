@@ -12,7 +12,7 @@ import {
   record,
   setStatus,
   type LoadedAction,
-} from "@/lib/agent/run";
+} from "@/lib/agent/action";
 import { track } from "@/lib/analytics";
 import { logAudit, SYSTEM_ACTOR } from "@/lib/audit";
 import { onSampleDataOnly } from "@/lib/concierge-mode";

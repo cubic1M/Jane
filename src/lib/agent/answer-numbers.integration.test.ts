@@ -14,7 +14,8 @@ import { CARD_SELECT, buildCard, cardHash } from "@/lib/cards";
 import { recordDecision } from "@/lib/decisions";
 import { findingOfType } from "@/lib/__fixtures__/findings";
 import { readReplyByRules } from "./read-reply";
-import { AnswerError, agentStep, answerCompany, handleReply } from "./run";
+import { AnswerError } from "./action";
+import { agentStep, answerCompany, handleReply } from "./run";
 import { simulatedBody } from "./simulated-company";
 
 // The numbers in a person's answer to a company. A shorter one a company asks for goes out; a

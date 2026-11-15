@@ -10,7 +10,7 @@ import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
-import { handOff, loadAction, merchantOf, note, setStatus, type LoadedAction } from "./run";
+import { handOff, loadAction, merchantOf, note, setStatus, type LoadedAction } from "./action";
 import { isoDay } from "@/lib/dates";
 import { ownedBy, type OnlyPeople } from "@/lib/only-people";
 import { systemDb } from "@/lib/system-db";

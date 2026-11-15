@@ -5,12 +5,11 @@ vi.mock("next/server", () => ({ after: vi.fn() }));
 vi.mock("@/lib/session", () => ({
   requireUser: vi.fn(async () => ({ id: "u1", email: "alex@example.com" })),
 }));
-vi.mock("@/lib/agent/run", async () => {
-  class AnswerError extends Error {}
-  return { AnswerError, answerCompany: vi.fn(), runQueuedFor: vi.fn() };
-});
+vi.mock("@/lib/agent/action", () => ({ AnswerError: class AnswerError extends Error {} }));
+vi.mock("@/lib/agent/run", () => ({ answerCompany: vi.fn(), runQueuedFor: vi.fn() }));
 
-import { AnswerError, answerCompany } from "@/lib/agent/run";
+import { AnswerError } from "@/lib/agent/action";
+import { answerCompany } from "@/lib/agent/run";
 import { answer } from "./agent-actions";
 import { form } from "@/lib/__fixtures__/form";
 

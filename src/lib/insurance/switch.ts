@@ -3,7 +3,7 @@ import { SWITCH_PAYMENT_DAYS } from "@/config/insurance";
 import { normalizeMerchant } from "@/data-sources/merchant";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { sendStatusEmail } from "@/lib/action-emails";
-import { handOff, loadAction, note, setStatus, type LoadedAction } from "@/lib/agent/run";
+import { handOff, loadAction, note, setStatus, type LoadedAction } from "@/lib/agent/action";
 import { track } from "@/lib/analytics";
 import { SYSTEM_ACTOR, logAudit } from "@/lib/audit";
 import { encryptBytes } from "@/lib/crypto";

@@ -1,4 +1,5 @@
-import { AnswerError, markSelfCancelled } from "@/lib/agent/run";
+import { AnswerError } from "@/lib/agent/action";
+import { markSelfCancelled } from "@/lib/agent/run";
 import { answerOffer } from "@/lib/voice/calls";
 import {
   ChatActionError,
