@@ -11,6 +11,7 @@ import { formatCents } from "@/lib/money";
 import { bracketTax } from "@/planning/tax-brackets";
 import { type Detector, suggestion } from "./contract";
 import { factEvidence, headlineOf, weakest } from "./helpers";
+import { dayLabel } from "@/lib/day-label";
 
 // The Saver's Credit in its last year (connectors roadmap round 17, savers_credit_2026): someone
 // whose income looks to be under the limit may get at least 10% back on up to $2,000 each of IRA or
@@ -27,14 +28,6 @@ const statusOf = (filing: unknown, household: unknown, earners: unknown): Filing
     return typeof earners === "number" && earners >= 2 ? "married_joint" : "head_of_household";
   return "single";
 };
-
-const longDate = (day: string) =>
-  new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 const saversCredit: Detector = {
   capability: "taxes",
@@ -84,7 +77,7 @@ const saversCredit: Detector = {
         },
       ]),
       urgency: "later",
-      why: `With ${SAVERS_CREDIT.taxYear} income near ${formatCents(agi)}, under the ${formatCents(limit)} limit for your filing status, you may qualify for the Saver's Credit (Form 8880): at least ${Math.round(SAVERS_CREDIT.lowestRate * 100)}% back on up to ${formatCents(SAVERS_CREDIT.maxContribution)}${people === 2 ? " each" : ""} of IRA or 401(k) money put in for ${SAVERS_CREDIT.taxYear}, and more at lower incomes.${cap} Workplace-plan money counts by December 31; IRA money until ${longDate(SAVERS_CREDIT.iraDeadline)}. Not for full-time students or anyone claimed as a dependent. It's the credit's last year: from 2027 the Saver's Match replaces it.`,
+      why: `With ${SAVERS_CREDIT.taxYear} income near ${formatCents(agi)}, under the ${formatCents(limit)} limit for your filing status, you may qualify for the Saver's Credit (Form 8880): at least ${Math.round(SAVERS_CREDIT.lowestRate * 100)}% back on up to ${formatCents(SAVERS_CREDIT.maxContribution)}${people === 2 ? " each" : ""} of IRA or 401(k) money put in for ${SAVERS_CREDIT.taxYear}, and more at lower incomes.${cap} Workplace-plan money counts by December 31; IRA money until ${dayLabel(SAVERS_CREDIT.iraDeadline, { long: true, year: true })}. Not for full-time students or anyone claimed as a dependent. It's the credit's last year: from 2027 the Saver's Match replaces it.`,
       action: { label: "See your tax plan", href: "/taxes" },
     });
   },

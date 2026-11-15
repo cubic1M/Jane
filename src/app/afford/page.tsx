@@ -16,6 +16,7 @@ import {
 } from "@/planning/afford-copy";
 import { AFFORD_KINDS, parseAffordQuery } from "@/planning/afford-query";
 import { PageShell } from "@/components/page-shell";
+import { dayLabel, monthLabel } from "@/lib/day-label";
 
 // "Can I afford this?" (spec step 69). The form is a plain GET form, so the answer lives
 // in the URL: it can be shared, and nothing is saved.
@@ -25,12 +26,6 @@ const INPUT =
 const LINK = "font-medium text-emerald-700 hover:underline";
 
 const fmt = (cents: number) => (cents < 0 ? `−${formatCents(-cents)}` : formatCents(cents));
-const utc = (iso: string, options: Intl.DateTimeFormatOptions) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", { ...options, timeZone: "UTC" });
-const shortDate = (iso: string) => utc(iso, { month: "short", day: "numeric" });
-const longDate = (iso: string) => utc(iso, { month: "short", day: "numeric", year: "numeric" });
-const monthName = (month: string, style: "short" | "long" = "short") =>
-  utc(`${month}-01`, { month: style, year: "numeric" });
 
 function Bar({ cents, max }: { cents: number; max: number }) {
   const width = max === 0 ? 0 : Math.round((Math.abs(cents) / max) * 100);
@@ -51,7 +46,7 @@ function MonthList({ months, firstShort }: { months: MonthEnd[]; firstShort: str
       {months.map((m) => (
         <li key={m.month} className="flex flex-col gap-1">
           <div className="flex flex-wrap justify-between gap-2 text-sm">
-            <span className="font-medium">{monthName(m.month)}</span>
+            <span className="font-medium">{monthLabel(m.month)}</span>
             {m.month === firstShort && (
               <span className="font-medium text-red-700 dark:text-red-400">
                 First month below zero
@@ -89,7 +84,7 @@ function Results({ result }: { result: AffordResult }) {
       {result.safe ? (
         <p className="rounded-xl border border-zinc-200 p-4 text-lg font-semibold dark:border-zinc-800">
           {safeLine(
-            result.safe.payday ? shortDate(result.safe.payday) : null,
+            result.safe.payday ? dayLabel(result.safe.payday) : null,
             fmt(result.safe.beforeCents),
             fmt(result.safe.afterCents),
           )}
@@ -119,13 +114,13 @@ function Results({ result }: { result: AffordResult }) {
                         g.name,
                         fmt(g.beforeCents),
                         fmt(g.afterCents),
-                        longDate(g.targetDate),
+                        dayLabel(g.targetDate, { year: true }),
                       )
                     : reachedByLine(
                         g.name,
                         { before: fmt(g.beforeMonthlyCents), after: fmt(g.afterMonthlyCents) },
-                        g.before && monthName(g.before.slice(0, 7)),
-                        g.after && monthName(g.after.slice(0, 7)),
+                        g.before && monthLabel(g.before.slice(0, 7)),
+                        g.after && monthLabel(g.after.slice(0, 7)),
                       )}
                 </li>
               ))}
@@ -142,8 +137,8 @@ function Results({ result }: { result: AffordResult }) {
           </h3>
           <p className="text-sm">
             {shortLine(
-              result.firstShort.before && monthName(result.firstShort.before, "long"),
-              result.firstShort.after && monthName(result.firstShort.after, "long"),
+              result.firstShort.before && monthLabel(result.firstShort.before, { long: true }),
+              result.firstShort.after && monthLabel(result.firstShort.after, { long: true }),
             )}
           </p>
           <MonthList months={result.months} firstShort={result.firstShort.after} />
@@ -219,7 +214,7 @@ async function AffordContent({
           <select id="afford-month" name="month" defaultValue={query.form.month} className={INPUT}>
             {months.map((m) => (
               <option key={m} value={m}>
-                {monthName(m, "long")}
+                {monthLabel(m, { long: true })}
               </option>
             ))}
           </select>

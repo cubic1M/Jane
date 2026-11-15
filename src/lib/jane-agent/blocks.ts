@@ -1,5 +1,6 @@
 import { CHAT_BLOCK_ROWS, CHAT_BLOCK_WIDTH } from "@/config/agent-chat";
 import { formatCents } from "@/lib/money";
+import { dayLabel } from "@/lib/day-label";
 
 // Answer blocks (spec step 94): what an answer can show besides its words, drawn in
 // monospace text in the ASCII style: a bar chart, a table of options, a timeline of what's
@@ -31,14 +32,7 @@ const fit = (text: string, n: number) =>
 const padEnd = (text: string, n: number) => fit(text, n).padEnd(n);
 
 // "Oct 20", from YYYY-MM-DD.
-const day = (iso: string) =>
-  /^\d{4}-\d{2}-\d{2}$/.test(iso)
-    ? new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        timeZone: "UTC",
-      })
-    : iso;
+const day = (iso: string) => (/^\d{4}-\d{2}-\d{2}$/.test(iso) ? dayLabel(iso) : iso);
 
 function bars(block: Extract<AnswerBlock, { type: "bars" }>): DrawnBlock {
   const rows = block.rows.slice(0, CHAT_BLOCK_ROWS);

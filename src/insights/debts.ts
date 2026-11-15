@@ -7,6 +7,7 @@ import { monthlyInterest } from "@/planning/debt";
 import { mortgagePi, mortgageTermYears } from "@/planning/home-equity";
 import { netWorth } from "./net-worth";
 import { DAY_MS } from "@/lib/dates";
+import { dayLabel } from "@/lib/day-label";
 
 // Every debt in one place (spec step 109): loans and cards from the bank (Plaid
 // Liabilities, or the demo bank's Plaid-shaped details), buy now, pay later plans found
@@ -461,14 +462,7 @@ export function sourceLabel(from: DebtSource | null, typedOn: string | null = nu
     case "bank":
       return "from your bank";
     case "typed":
-      return typedOn
-        ? `you typed it on ${new Date(`${typedOn}T00:00:00Z`).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-            timeZone: "UTC",
-          })}`
-        : "you typed it";
+      return typedOn ? `you typed it on ${dayLabel(typedOn, { year: true })}` : "you typed it";
     case "terms":
       return BNPL_PAY_IN_4_RATE_SOURCE.charAt(0).toLowerCase() + BNPL_PAY_IN_4_RATE_SOURCE.slice(1);
     case "payments":

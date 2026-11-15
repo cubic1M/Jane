@@ -10,6 +10,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
 import { isoDay as day } from "@/lib/dates";
+import { dayLabel } from "@/lib/day-label";
 
 // What the person's documents mean for the rest of Jane (spec step 68): the dates for the
 // deadlines list (spec step 71) and the policy behind an insurance card.
@@ -159,12 +160,7 @@ export async function policyForMerchant(
 export function policyLines(policy: PolicyFacts): string[] {
   const lines: string[] = [];
   if (policy.renewalDate) {
-    const date = new Date(`${policy.renewalDate}T00:00:00Z`).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      timeZone: "UTC",
-    });
+    const date = dayLabel(policy.renewalDate, { year: true });
     lines.push(`Renews on ${date}`);
   }
   const frequency = PREMIUM_FREQUENCIES[policy.premiumFrequency as PremiumFrequency];

@@ -12,15 +12,9 @@ import { GoalTradeoffs } from "./tradeoffs";
 import { SubmitButton } from "@/components/submit-button";
 import { ProgressBar } from "@/components/progress-bar";
 import { PageShell } from "@/components/page-shell";
+import { dayLabel } from "@/lib/day-label";
 
 const EMPTY = { goalId: "", name: "", target: "", targetDate: "", accountId: "", saved: "" };
-const day = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 async function Goals() {
   const user = await requireUser();
@@ -61,7 +55,7 @@ async function Goals() {
                 <h2 className="font-semibold">{g.name}</h2>
                 <span className="text-sm text-zinc-600 dark:text-zinc-400">
                   {formatCents(g.progress.savedCents)} of {formatCents(g.targetCents)} by{" "}
-                  {day(g.targetDate)}
+                  {dayLabel(g.targetDate, { long: true, year: true })}
                 </span>
               </div>
               <ProgressBar label={`${g.name} progress`} percent={g.progress.percent} />

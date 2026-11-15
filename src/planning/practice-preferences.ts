@@ -27,6 +27,7 @@ import {
   type Appetite,
   type AutopilotMode,
 } from "@/config/practice-preferences";
+import { dayLabel } from "@/lib/day-label";
 
 // What the person wants from the practice portfolio (Phase AW, Stage A), and the one check every
 // change goes through, from the settings page and from the chat alike. Pure. Practice money only.
@@ -307,14 +308,6 @@ export function avoidLabel(key: string): string {
   return Object.hasOwn(EXCLUSIONS, key) ? EXCLUSIONS[key as keyof typeof EXCLUSIONS].label : key;
 }
 
-const longDay = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-
 // One field in plain words, for the page, the confirmation card and the chat.
 export function sayPreference(p: PracticePreferences, field: PreferenceField): string {
   switch (field) {
@@ -325,7 +318,7 @@ export function sayPreference(p: PracticePreferences, field: PreferenceField): s
     case "goal":
       return p.goal ? GOALS[p.goal] : "None";
     case "goalDate":
-      return p.goalDate ? longDay(p.goalDate) : "None";
+      return p.goalDate ? dayLabel(p.goalDate, { long: true, year: true }) : "None";
     case "monthlyAddCents":
       return dollars(p.monthlyAddCents);
     case "addDay":

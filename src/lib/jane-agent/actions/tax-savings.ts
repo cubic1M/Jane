@@ -2,6 +2,7 @@ import { DeadlineError, addDeadline } from "@/lib/deadlines";
 import { dismissSaving } from "@/lib/tax-savings";
 import type { SavingKey } from "@/planning/tax-savings";
 import { ChatActionError, type ActionHandler } from "./handler";
+import { dayLabel } from "@/lib/day-label";
 
 // A way to pay less from the chat (spec step 122): "Remind me" sets the reminder through
 // the deadlines' own code (src/lib/deadlines.ts); "Not for me" stops it for the tax year.
@@ -23,11 +24,7 @@ export const taxSaveTask: ActionHandler = {
       if (error instanceof DeadlineError) throw new ChatActionError("failed", error.message);
       throw error;
     }
-    const due = new Date(`${task.dueOn}T00:00:00Z`).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      timeZone: "UTC",
-    });
+    const due = dayLabel(task.dueOn);
     return {
       answeredWith: action.label,
       note: `Done: "${task.title}" is on your deadlines for ${due}. I'll remind you.`,
