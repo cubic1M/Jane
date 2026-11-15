@@ -7,7 +7,7 @@ import { ImportChip } from "@/components/import-chip";
 import { ServiceWorker } from "@/components/service-worker";
 import { SiteFooter } from "@/components/site-footer";
 import { SideChat } from "@/components/side-chat/side-chat";
-import { TradePopup } from "@/components/trade-popup";
+import { TradePopupGate } from "@/components/trade-popup-gate";
 import { NavPending } from "@/components/nav-pending";
 import { PageCacheRoot } from "@/components/page-cache";
 import "./globals.css";
@@ -54,7 +54,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         </Suspense>
         {/* The paper account's trade alerts: their own pop-up, apart from the suggestion dock. */}
         <Suspense>
-          <TradePopup />
+          <TradePopupGate />
         </Suspense>
         {/* An upload finishing in the background, on every page (src/lib/import/background.ts). */}
         <ImportChip />

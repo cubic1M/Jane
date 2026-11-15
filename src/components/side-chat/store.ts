@@ -21,6 +21,9 @@ export type SideChatSnapshot = {
   unread: number;
   // What the framed chat shows: its newest messages, or what a /chat link asked for.
   src: string;
+  // The person whose pages said they're in demo advice mode, so the paper account's trade pop-up
+  // runs for them (src/components/trade-popup-gate.tsx). Nobody else's pages load or ask for it.
+  paperFor: string | null;
 };
 
 const SERVER: SideChatSnapshot = {
@@ -29,6 +32,7 @@ const SERVER: SideChatSnapshot = {
   sheet: "closed",
   unread: 0,
   src: EMBED_PATH,
+  paperFor: null,
 };
 // A /chat link opened the chat before the page said who is signed in: open it then too.
 let openOnRegister = false;
@@ -93,6 +97,10 @@ export const sideChatStore = {
   },
   setSheet(sheet: SheetState) {
     set({ sheet });
+  },
+  // A page of this person's said they're in demo advice mode (src/components/paper-mark.tsx).
+  setPaperFor(userId: string) {
+    if (snapshot.paperFor !== userId) set({ paperFor: userId });
   },
   setUnread(unread: number) {
     if (unread !== snapshot.unread) set({ unread });
