@@ -703,7 +703,7 @@ async function syncItemWork(
   itemId: string,
   {
     client = defaultClient,
-    api = plaid(),
+    api: given,
     now = new Date(),
     progressive = false,
     onReady,
@@ -756,11 +756,11 @@ async function syncItemWork(
         ])
       : null,
   ]);
-  if (demo) {
-    // The demo bank (spec step 75) answers in Plaid's place; everything after is the same.
-    // Spec step 159: extra stand-in accounts the person linked.
-    api = demoPlaidApi(accessToken, now, demo[0], demo[1], demo[2], demoExtrasOf(item.demoExtras));
-  }
+  // The demo bank (spec step 75) answers in Plaid's place; everything after is the same.
+  // Spec step 159: extra stand-in accounts the person linked. Plaid's SDK loads only for a real bank.
+  const api = demo
+    ? demoPlaidApi(accessToken, now, demo[0], demo[1], demo[2], demoExtrasOf(item.demoExtras))
+    : (given ?? (await plaid()));
   timing.mark("demo_setup");
   let sync: PlaidSync;
   try {

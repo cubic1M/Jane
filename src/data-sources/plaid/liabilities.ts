@@ -1,9 +1,4 @@
-import {
-  StudentLoanStatusTypeEnum,
-  StudentRepaymentPlanTypeEnum,
-  type APR,
-  type LiabilitiesObject,
-} from "plaid";
+import type { APR, LiabilitiesObject } from "plaid";
 import { MAX_APR_BPS } from "@/config/plaid";
 import { toCents } from "./plaid-source";
 
@@ -68,8 +63,47 @@ const day = (value: string | null | undefined): string | null =>
 
 const text = (value: string | null | undefined): string | null => value?.trim() || null;
 
-const REPAYMENT_PLANS = new Set<string>(Object.values(StudentRepaymentPlanTypeEnum));
-const LOAN_STATUSES = new Set<string>(Object.values(StudentLoanStatusTypeEnum));
+// Plaid's own names (StudentRepaymentPlanTypeEnum and StudentLoanStatusTypeEnum), written out so a
+// page that reaches this file doesn't load Plaid's SDK (speed round, 11-15). plaid-names.test.ts
+// fails if the SDK's lists change.
+export const REPAYMENT_PLAN_NAMES = [
+  "extended graduated",
+  "extended standard",
+  "graduated",
+  "income-contingent repayment",
+  "income-based repayment",
+  "income-sensitive repayment",
+  "interest only",
+  "other",
+  "pay as you earn",
+  "revised pay as you earn",
+  "standard",
+  "saving on a valuable education",
+  "null",
+] as const;
+export const LOAN_STATUS_NAMES = [
+  "cancelled",
+  "charged off",
+  "claim",
+  "consolidated",
+  "deferment",
+  "delinquent",
+  "discharged",
+  "extension",
+  "forbearance",
+  "in grace",
+  "in military",
+  "in school",
+  "not fully disbursed",
+  "other",
+  "paid in full",
+  "refunded",
+  "repayment",
+  "transferred",
+  "pending idr",
+] as const;
+const REPAYMENT_PLANS = new Set<string>(REPAYMENT_PLAN_NAMES);
+const LOAN_STATUSES = new Set<string>(LOAN_STATUS_NAMES);
 
 // One of Plaid's own names, "unknown" for anything else it sends, null for nothing.
 function known(value: unknown, names: ReadonlySet<string>): string | null {

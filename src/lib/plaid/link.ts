@@ -40,8 +40,9 @@ export class ItemNotFoundError extends Error {
 export async function createLinkToken(
   userId: string,
   itemId: string | null,
-  { client = defaultClient, api = plaid() }: Options = {},
+  { client = defaultClient, api: given }: Options = {},
 ): Promise<string> {
+  const api = given ?? (await plaid());
   let accessToken: string | undefined;
   let chooseAccounts = false;
   // A new Item needs a free slot. This is a guard: the count happens at the exchange, so a Link
@@ -147,8 +148,9 @@ export async function exchangePublicToken(
   userId: string,
   publicToken: string,
   institutionName: string | null,
-  { client = defaultClient, api = plaid() }: Options = {},
+  { client = defaultClient, api: given }: Options = {},
 ): Promise<string> {
+  const api = given ?? (await plaid());
   // A key that can't encrypt fails here, not after Plaid has made an Item and used up one of a
   // lifetime's count. Every try would, and it would look like nothing but a failed link.
   encrypt("key check");

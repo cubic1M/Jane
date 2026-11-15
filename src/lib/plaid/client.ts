@@ -1,12 +1,14 @@
 import { killed } from "@/config/kill-switches";
 import { siteOrigin } from "@/lib/site-origin";
 import { PLAID_TIMEOUT_MS } from "@/config/plaid";
-import { Configuration, PlaidApi, PlaidEnvironments } from "plaid";
+import type { PlaidApi } from "plaid";
 
 // The Plaid API client, configured from env. PLAID_ENV defaults to sandbox, so nothing
 // talks to real banks unless production is chosen explicitly.
+// Plaid's SDK (about 10 MB of code with axios) loads on the first call, not with every page that
+// reaches this file: a cold page render spent ~30 ms of its start loading it (speed round, 11-15).
 
-let client: PlaidApi | undefined;
+let client: Promise<PlaidApi> | undefined;
 
 export function plaidEnabled(): boolean {
   return Boolean(process.env.PLAID_CLIENT_ID && process.env.PLAID_SECRET) && !killed("banks");
@@ -23,19 +25,26 @@ export function plaidEnvironment(): "sandbox" | "production" {
   return process.env.PLAID_ENV === "production" ? "production" : "sandbox";
 }
 
-export function plaid(): PlaidApi {
-  client ??= new PlaidApi(
-    new Configuration({
-      basePath: PlaidEnvironments[plaidEnvironment()],
-      baseOptions: {
-        timeout: PLAID_TIMEOUT_MS,
-        headers: {
-          "PLAID-CLIENT-ID": process.env.PLAID_CLIENT_ID ?? "",
-          "PLAID-SECRET": process.env.PLAID_SECRET ?? "",
-        },
-      },
-    }),
+export function plaid(): Promise<PlaidApi> {
+  client ??= import("plaid").then(
+    ({ Configuration, PlaidApi, PlaidEnvironments }) =>
+      new PlaidApi(
+        new Configuration({
+          basePath: PlaidEnvironments[plaidEnvironment()],
+          baseOptions: {
+            timeout: PLAID_TIMEOUT_MS,
+            headers: {
+              "PLAID-CLIENT-ID": process.env.PLAID_CLIENT_ID ?? "",
+              "PLAID-SECRET": process.env.PLAID_SECRET ?? "",
+            },
+          },
+        }),
+      ),
   );
+  // A failed load is tried again on the next call.
+  client.catch(() => {
+    client = undefined;
+  });
   return client;
 }
 
