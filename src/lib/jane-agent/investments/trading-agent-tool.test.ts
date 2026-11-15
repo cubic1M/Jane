@@ -7,7 +7,8 @@ vi.mock("@/lib/trading-agent/agent", () => ({ loadAgentView: vi.fn() }));
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { loadAgentView } from "@/lib/trading-agent/agent";
-import { INVESTMENT_TOOL_STATUS, INVESTMENT_TOOLS, runInvestmentTool } from "./tools";
+import { INVESTMENT_TOOL_STATUS, INVESTMENT_TOOLS } from "./tools";
+import { runInvestmentTool } from "./tools-run";
 
 // The chat's view of the 24-hour agent: what it runs and its latest trades with fees and reasons,
 // every replayed strategy's verdict, and nothing for a real account.
