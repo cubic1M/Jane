@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -12,6 +11,7 @@ import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { ChatActionError, takeChatAction } from "./actions";
 import { sendToJane } from "./typing";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Spec step 185 against a real, migrated Postgres with the demo bank (and its stand-in
 // money-movement partner): "cancel Hulu and put the savings in my emergency fund" is one
@@ -31,14 +31,6 @@ describe.runIf(url)(
   () => {
     let client: PrismaClient;
     const created: string[] = [];
-    const plaid = new Proxy(
-      {},
-      {
-        get: () => () => {
-          throw new Error("The demo bank must never call Plaid");
-        },
-      },
-    ) as PlaidApi;
     let tick = 0;
     const later = () => new Date(LINKED.getTime() + ++tick * MINUTE);
 

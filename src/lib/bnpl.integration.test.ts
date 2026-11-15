@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -16,6 +15,7 @@ import { sendToJane } from "@/lib/jane-agent/typing";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { BnplError, loadBnpl, payOffPlan, warnNewPlan } from "./bnpl";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Spec step 176 against a real, migrated Postgres, on the demo bank (Klarna Pay in 4 and an
 // Affirm monthly plan): every installment from the plans' own schedules, the ones the
@@ -33,14 +33,6 @@ describe.runIf(url)(
   () => {
     let client: PrismaClient;
     const created: string[] = [];
-    const plaid = new Proxy(
-      {},
-      {
-        get: () => () => {
-          throw new Error("The demo bank must never call Plaid");
-        },
-      },
-    ) as PlaidApi;
     let tick = 0;
     const later = () => new Date(LINKED.getTime() + ++tick * MINUTE);
     const opts = () => ({ client, now: LINKED });

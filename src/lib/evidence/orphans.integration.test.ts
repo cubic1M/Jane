@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -28,6 +27,7 @@ import { syncItem } from "@/lib/plaid/sync";
 import { SAMPLE_WIN_KEY } from "@/lib/sample-wins";
 import { verifiedSavings } from "@/lib/savings-proof";
 import { forgetSince, removeAllOrphans } from "./orphans";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Derived data never outlives its evidence, against a real, migrated Postgres. The founder asked
 // "how much money did Jane save me" and the chat listed the demo bank's Comcast, Verizon and
@@ -45,14 +45,6 @@ const LOOKUPS = ["proven_savings", "open_findings", "priorities", "monthly_repor
 describe.runIf(url)("derived data never outlives its evidence", { timeout: 240_000 }, () => {
   let client: PrismaClient;
   const made: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
 
   async function person() {
     const user = await client.user.create({

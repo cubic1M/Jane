@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -18,6 +17,7 @@ import { loadHomeEquity } from "./home-equity";
 import { loadMortgage } from "./mortgage";
 import { ensureChecked, loadRefinance } from "./refinance";
 import { loadStudentLoans } from "./student-loans";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Loans QA against a real database, for the eight sample people and the default demo person:
 // "your payment" on a loan is one figure. The sample loans agree with themselves (the payoff
@@ -35,14 +35,6 @@ const monthsTo = (day: string) =>
 describe.runIf(url)("one payment for each loan, everywhere", () => {
   let client: PrismaClient;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
 
   beforeAll(() => {
     vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));

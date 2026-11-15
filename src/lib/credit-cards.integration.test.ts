@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -27,6 +26,7 @@ import {
   creditCardPartnerFor,
   loadCreditCards,
 } from "./credit-cards";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Spec step 174 against a real, migrated Postgres, on the demo bank: what each card earns
 // on the person's own year of spending with its fee counted, which card to use for what,
@@ -42,14 +42,6 @@ describe.runIf(url)("credit card rewards against a real database", { timeout: 12
   let client: PrismaClient;
   let userId: string;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
   let tick = 0;
   const later = () => new Date(LINKED.getTime() + ++tick * MINUTE);
   const opts = () => ({ client, now: LINKED });

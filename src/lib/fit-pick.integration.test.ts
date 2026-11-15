@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -19,6 +18,7 @@ import { describePlanOptions } from "@/lib/plan-options";
 import { loadFit } from "./fit";
 import { fitCard, fitCardProblems } from "./fit-card";
 import { FitPickError, pickFitOption } from "./fit-pick";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Spec step 282 against a real, migrated Postgres, on the Reyes' demo bank: the loan options card
 // from Claude's tool, and a pick queued for the concierge team through the usual finding,
@@ -33,14 +33,6 @@ describe.runIf(url)("picking a loan option", { timeout: 120_000 }, () => {
   let reyes: string;
   let real: string;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
 
   beforeAll(async () => {
     vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));

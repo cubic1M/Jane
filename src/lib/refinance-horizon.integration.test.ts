@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -13,6 +12,7 @@ import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { loadFit } from "./fit";
 import { ensureChecked, loadRefinance } from "./refinance";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Loans QA against a real database, for the eight sample people and the default demo person:
 // the offers page (step 111) and the loan options card (the fit engine) compare a refinance over
@@ -25,14 +25,6 @@ const NOW = new Date("2026-10-18T15:00:00Z");
 describe.runIf(url)("one refinance horizon on the offers page and the options card", () => {
   let client: PrismaClient;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
 
   beforeAll(() => {
     vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));

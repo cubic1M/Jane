@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -25,6 +24,7 @@ import {
   loadBorrowingPower,
   refreshBorrowing,
 } from "./borrowing-power";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Spec step 250 against a real, migrated Postgres, on Sam's demo bank (a freelancer who rents):
 // what a mortgage, a car loan, a personal loan and a card would likely be, from soft checks
@@ -39,14 +39,6 @@ describe.runIf(url)("what you could borrow against a real database", { timeout: 
   let client: PrismaClient;
   let userId: string;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
   const opts = (now = NOW) => ({ client, now });
   // Spies made in each test: the config restores mocks after every test.
   const spies = () => ({

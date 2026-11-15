@@ -7,7 +7,6 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
-import type { PlaidApi } from "plaid";
 import { addDays } from "@/detection/units";
 import { loadMonthClose } from "@/lib/close";
 import { refreshAfterRemoval } from "@/lib/import/background";
@@ -18,6 +17,7 @@ import { removePlaidItem } from "@/lib/plaid/remove";
 import { syncItem } from "@/lib/plaid/sync";
 import { scanSuggestions } from "@/lib/suggestions";
 import { startTrial } from "@/lib/trial";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // The monthly close against a real Postgres: a sample person's month (Maya, the renter, on the
 // demo bank) has its parts from the ledger and the month's changes, each change with how sure
@@ -132,14 +132,6 @@ describe.runIf(url)("the monthly close", { timeout: 240_000 }, () => {
   });
 
   it("shows nothing from a bank once it is removed (lineage)", async () => {
-    const plaid = new Proxy(
-      {},
-      {
-        get: () => () => {
-          throw new Error("The demo bank must never call Plaid");
-        },
-      },
-    ) as PlaidApi;
     const user = await client.user.create({
       data: { email: `close-lineage-${crypto.randomUUID()}@example.com` },
     });

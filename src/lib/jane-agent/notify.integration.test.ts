@@ -1,7 +1,6 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient, type Prisma } from "@/generated/prisma/client";
 
@@ -24,6 +23,7 @@ import { headsUpsSource } from "./sources/heads-ups";
 import { AS_THEY_COME } from "./preferences";
 import { deliverChatNotifications, queueChatNotifications } from "./notify";
 import { runJaneAgent } from "./run";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Spec step 85 against a real, migrated Postgres (see
 // src/lib/jane-agent/agent.integration.test.ts): Jane's brain posts, a notification job is
@@ -42,14 +42,6 @@ type Email = Parameters<typeof sendEmail>[0];
 describe.runIf(url)("Jane's messages as notifications, against a real database", () => {
   let client: PrismaClient;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
 
   // Each message on its own (spec step 184's "as they come"): these tests are about how
   // single messages go out. The day's agenda has its own test below.

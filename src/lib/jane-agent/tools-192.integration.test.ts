@@ -1,7 +1,6 @@
 import { invitePartner, leaveHousehold } from "@/lib/household";
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -12,6 +11,7 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { runChatTool } from "./claude-tools";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Spec step 192 against a real Postgres with the demo bank: the tools added so anything on a
 // page can be asked in the chat answer from the page's own loaders.
@@ -22,14 +22,6 @@ const LINKED = new Date("2026-10-18T15:00:00Z");
 describe.runIf(url)("a tool for everything, against a real database", () => {
   let client: PrismaClient;
   let userId: string;
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
   const run = async (name: string) =>
     JSON.parse((await runChatTool(userId, name, {}, { client, now: LINKED })).content);
 

@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -25,6 +24,7 @@ import {
   saveDeposit,
   setRentReporting,
 } from "./renting";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Spec step 248 against a real, migrated Postgres, on Maya's demo bank: her rent is found, it
 // is reported only after her opt-in, and a security deposit is followed to its due date.
@@ -38,14 +38,6 @@ describe.runIf(url)("renting against a real database", { timeout: 120_000 }, () 
   let client: PrismaClient;
   let userId: string;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
   let tick = 0;
   const later = () => new Date(NOW.getTime() + ++tick * MINUTE);
   const opts = (now = NOW) => ({ client, now });

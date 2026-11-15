@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -21,6 +20,7 @@ import { loadSnapshot } from "./snapshot";
 import { taxesSource } from "./sources/taxes";
 import { parseActions } from "./types";
 import { sendToJane } from "./typing";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Spec step 123 against a real, migrated Postgres: a demo-bank person who also freelances
 // (Upwork payments added to the demo checking account). The quarterly amounts add up to the
@@ -36,14 +36,6 @@ describe.runIf(url)("freelancers' taxes against a real database", () => {
   let client: PrismaClient;
   let userId: string;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
   let tick = 0;
   const later = () => new Date(LINKED.getTime() + ++tick * MINUTE);
   const gather = async (now: Date, date: string) =>

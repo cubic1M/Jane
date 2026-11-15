@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -13,6 +12,7 @@ import { createCsvAccountRow } from "@/lib/import/upload";
 import { sendToJane } from "@/lib/jane-agent/typing";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Paying a buy now, pay later plan off early, and waiting for payday before a new one, are
 // suggestions on a loan: demo advice only (CLAUDE.md, step 98). The chat's real-account round
@@ -25,14 +25,6 @@ const MINUTE = 60 * 1000;
 describe.runIf(url)("buy now, pay later answers on a real account", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
   let tick = 0;
   const later = () => new Date(LINKED.getTime() + ++tick * MINUTE);
   async function person(real: boolean) {

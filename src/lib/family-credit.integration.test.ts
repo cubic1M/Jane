@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -22,6 +21,7 @@ import {
   removeFamilyCredit,
   setMissed,
 } from "./family-credit";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Spec step 249 against a real, migrated Postgres, on the demo banks of Chris (debts, so a
 // debt load to count against) and the Reyes (a card to add a child to): a co-signed loan is
@@ -39,14 +39,6 @@ describe.runIf(url)(
     let chris: string;
     let reyes: string;
     const created: string[] = [];
-    const plaid = new Proxy(
-      {},
-      {
-        get: () => () => {
-          throw new Error("The demo bank must never call Plaid");
-        },
-      },
-    ) as PlaidApi;
     let tick = 0;
     const later = () => new Date(NOW.getTime() + ++tick * MINUTE);
     const opts = (now = NOW) => ({ client, now });

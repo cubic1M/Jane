@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -21,6 +20,7 @@ import { loadSnapshot } from "./snapshot";
 import { taxesSource } from "./sources/taxes";
 import { parseActions } from "./types";
 import { sendToJane } from "./typing";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Spec step 168 against a real, migrated Postgres: the demo person gave $3,000 to the Red
 // Cross in September. Jane asks for its receipt, and in November shows bunching, a
@@ -33,14 +33,6 @@ const NOVEMBER = new Date("2026-11-10T16:00:00Z");
 describe.runIf(url)("giving, done smart, against a real database", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
 
   async function generousPerson(prefix: string) {
     const user = await client.user.create({

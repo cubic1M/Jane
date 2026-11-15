@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -25,6 +24,7 @@ import { runChatTool } from "./claude-tools";
 import { runJaneAgent } from "./run";
 import { parseActions, parseRefs } from "./types";
 import { sendToJane } from "./typing";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Spec step 118 against a real, migrated Postgres: the demo bank's income and state are
 // found and shown as found; the chat asks the rest one question at a time in one message;
@@ -39,14 +39,6 @@ const MINUTE = 60 * 1000;
 describe.runIf(url)("the tax profile against a real database", () => {
   let client: PrismaClient;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
   let tick = 0;
   const later = () => new Date(LINKED.getTime() + ++tick * MINUTE);
 

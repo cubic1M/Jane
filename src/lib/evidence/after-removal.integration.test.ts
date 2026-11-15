@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -16,6 +15,7 @@ import { linkDemoBank } from "@/lib/plaid/demo";
 import { removePlaidItem } from "@/lib/plaid/remove";
 import { syncItem } from "@/lib/plaid/sync";
 import { scanSuggestions } from "@/lib/suggestions";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // The night debugger's repro (10-30), against a real, migrated Postgres: someone with their own
 // checking account also links the demo bank, Jane brings up suggestions, then the demo bank is
@@ -32,14 +32,6 @@ const DEMO = /Comcast|Verizon|Xfinity|Demo car|Demo home|GEICO|Asurion|West Mari
 describe.runIf(url)("after a bank is disconnected, Jane's cards are worked out again", () => {
   let client: PrismaClient;
   let userId: string;
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
 
   beforeAll(async () => {
     vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));

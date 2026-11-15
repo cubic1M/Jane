@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -20,6 +19,7 @@ import { loadJaneHub } from "./jane";
 import { loadMoneyHub, moneyTiles } from "./money";
 import { moneyTree } from "@/lib/area-pages/money";
 import { loadMoneyArea } from "@/lib/area-pages/money-load";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // The three hubs (spec step 80) against a real, migrated Postgres (see
 // src/detection/engine.integration.test.ts): a person with the demo bank gets the same
@@ -33,14 +33,6 @@ describe.runIf(url)("the hubs against a real database", () => {
   let emptyId: string;
   let otherId: string;
   // Any call to real Plaid fails the test.
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
 
   beforeAll(async () => {
     vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));

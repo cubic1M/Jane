@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -16,6 +15,7 @@ import { parseActions, parseRefs } from "@/lib/jane-agent/types";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { cardCover } from "./card-cover";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Cover you already have, against a real, migrated Postgres (spec step 152): the demo
 // bank pays its phone bill with its card, whose phone protection makes the Asurion plan a
@@ -28,14 +28,6 @@ const LINKED = new Date("2026-10-18T15:00:00Z");
 describe.runIf(url)("cover you already have, against a real database", () => {
   let client: PrismaClient;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
 
   async function person() {
     const user = await client.user.create({

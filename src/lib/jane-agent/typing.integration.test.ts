@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -37,6 +36,7 @@ import {
   sendToJane,
 } from "./typing";
 import { toView } from "./view";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Spec step 84 against a real, migrated Postgres: link the demo bank, type "cancel Hulu",
 // get Jane's answer with Yes and No, tap Yes, and a decision is recorded. Typing never acts
@@ -53,14 +53,6 @@ describe.runIf(url)("typing to Jane against a real database", () => {
   let userId: string;
   let otherId: string;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
   // A clock that moves a minute per message, so each one has its own place in the chat.
   let tick = 0;
   const later = () => new Date(LINKED.getTime() + ++tick * MINUTE);

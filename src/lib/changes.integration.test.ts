@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -24,6 +23,7 @@ import { parseActions, parseRefs } from "@/lib/jane-agent/types";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { loadChanges, markChangeExpected } from "./changes";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Spec step 97 against a real, migrated Postgres, with the demo bank: Jane notices the
 // Netflix price rise, the new overdraft fee and the big Apple purchase; at "Handle the safe
@@ -40,14 +40,6 @@ const NEXT_DAY = new Date("2026-10-19T15:00:00Z");
 describe.runIf(url)("Jane notices changes, with the demo bank", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
 
   async function demoPerson(prefix: string) {
     const user = await client.user.create({

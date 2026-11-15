@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -17,6 +16,7 @@ import { sendToJane } from "@/lib/jane-agent/typing";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { StudentProfileError, loadStudentLoans, saveStudentProfile } from "./student-loans";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Spec step 114 against a real, migrated Postgres, on the demo bank: the student loan's
 // plans compared at an income from the paychecks (or the one the person gives), Jane's pick
@@ -30,14 +30,6 @@ describe.runIf(url)("student loans against a real database", () => {
   let client: PrismaClient;
   let userId: string;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
   const opts = (now = LINKED) => ({ client, now });
 
   beforeAll(async () => {

@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -14,6 +13,7 @@ import { parseRefs } from "@/lib/jane-agent/types";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { loadDecisionInput } from "./debt-decisions";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Straight answers to debt and credit decisions against a real, migrated Postgres, on Chris's
 // demo bank (cards at high rates, a car loan, little cash): each answer is three sentences or
@@ -35,14 +35,6 @@ describe.runIf(url)("debt decisions against a real database", { timeout: 120_000
   let client: PrismaClient;
   let chris: string;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
   let tick = 0;
   const later = () => new Date(NOW.getTime() + ++tick * MINUTE);
   const ask = async (userId: string, text: string) =>

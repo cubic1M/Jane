@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -27,6 +26,7 @@ import {
   runCreditBuilding,
 } from "./credit-building";
 import { pullCredit } from "./credit";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Spec step 175 against a real, migrated Postgres, on the demo bank: paying before a card's
 // statement closes (one tap, or by Jane at Handle the safe stuff within the debt caps),
@@ -43,14 +43,6 @@ const context = { now: NEAR, local: { date: "2026-10-27", hour: 8 }, trigger: "o
 describe.runIf(url)("building credit against a real database", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
   let tick = 0;
   const later = () => new Date(NEAR.getTime() + ++tick * MINUTE);
   const opts = (now = NEAR) => ({ client, now });

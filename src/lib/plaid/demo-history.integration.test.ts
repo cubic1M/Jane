@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -14,6 +13,7 @@ import { heroView } from "@/lib/hub/view";
 import { linkDemoBank } from "./demo";
 import { ensureDemoBalanceHistory } from "./demo-history";
 import { syncItem } from "./sync";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // A sample person's net worth line against a real, migrated Postgres: the demo bank's first
 // scan writes a year of month-end balances, so the home hub draws the line on day one.
@@ -24,14 +24,6 @@ const NOW = new Date("2026-10-19T15:00:00Z");
 describe.runIf(url)("the demo bank's balance history", () => {
   let client: PrismaClient;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
 
   beforeAll(() => {
     vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
