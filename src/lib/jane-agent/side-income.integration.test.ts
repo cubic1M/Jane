@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -21,6 +20,7 @@ import { loadSnapshot } from "./snapshot";
 import { taxesSource } from "./sources/taxes";
 import { sendToJane } from "./typing";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 173 against a real, migrated Postgres: a rental (rent, tagged expenses,
 // depreciation) and a gig platform's payouts matched to its 1099, in the estimate, the
@@ -75,10 +75,7 @@ describe.runIf(url)("side income and rentals against a real database", { timeout
   }
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });

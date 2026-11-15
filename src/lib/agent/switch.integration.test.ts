@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -19,6 +18,7 @@ import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { agentStep } from "./run";
 import { confirmSwitches } from "./switch";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts),
 // on the demo bank, from the comparison to the switch showing up on the account.
@@ -34,11 +34,8 @@ describe.runIf(url)("switching to the best option, on the demo bank", () => {
   const plaid = {} as PlaidApi;
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    stubTestKeys();
     vi.stubEnv("AUTH_SECRET", "test-only-secret-for-switch-tests-0123456789");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     userId = (
       await client.user.create({ data: { email: `switch-${crypto.randomUUID()}@example.com` } })

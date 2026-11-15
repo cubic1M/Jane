@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -21,6 +20,7 @@ import { payoffPlan } from "@/planning/debt";
 import { checkPlan, loadPayoff, refreshDebtPlan, startDebtPlan, stopDebtPlan } from "./debt-plan";
 import { saveDebtTerms } from "./debts";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 110 against a real, migrated Postgres, on the demo bank: the plan across every
 // debt with the planner's math, Jane's pick (demo advice, labelled), "Start this plan" from
@@ -50,10 +50,7 @@ describe.runIf(url)("payoff plans against a real database", () => {
   }
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     userId = await person("payoff-demo");
     const { itemId } = await linkDemoBank(userId, { client, now: LINKED });

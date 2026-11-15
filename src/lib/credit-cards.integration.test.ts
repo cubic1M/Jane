@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -27,6 +26,7 @@ import {
   loadCreditCards,
 } from "./credit-cards";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 174 against a real, migrated Postgres, on the demo bank: what each card earns
 // on the person's own year of spending with its fee counted, which card to use for what,
@@ -60,10 +60,7 @@ describe.runIf(url)("credit card rewards against a real database", { timeout: 12
   }
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     userId = await demoPerson("cards-demo");
   }, 120_000);

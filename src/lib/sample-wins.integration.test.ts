@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PEOPLE } from "@/config/people";
@@ -16,6 +15,7 @@ import { syncItem } from "@/lib/plaid/sync";
 import { provenSavings, verifiedSavings } from "@/lib/savings-proof";
 import { startTrial } from "@/lib/trial";
 import { SAMPLE_WIN_KEY, seedSampleWins } from "./sample-wins";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 139 (gap audit): "What Jane saved you" was $0.00 for every sample person. Each now
 // comes with past wins Jane finished through the real path, confirmed by their own transactions,
@@ -38,10 +38,7 @@ describe.runIf(url)("sample people's past wins", { timeout: 240_000 }, () => {
   const made = new Map<string, string>();
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     for (const p of PEOPLE) {
       const trial = await startTrial({ client, now: NOW, defer: true, person: p.id });

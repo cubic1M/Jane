@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -25,6 +24,7 @@ import { syncItem } from "@/lib/plaid/sync";
 import { setSectorAutopilot } from "@/lib/sector-autopilot";
 import { BillPayError, loadBillPay, payBill, runBillPay } from "./bill-pay";
 import { listTransfers } from "./transfers";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 145 against a real, migrated Postgres, with the demo bank: Jane leaves bills the
 // person's own autopay covers alone; pays a card nothing covers a couple of days early,
@@ -84,10 +84,7 @@ describe.runIf(url)("bills paid on time", { timeout: 120_000 }, () => {
     )!;
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });

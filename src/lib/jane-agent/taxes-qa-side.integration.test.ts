@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -14,6 +13,7 @@ import { loadSideIncome } from "@/lib/side-income";
 import { loadHealthTaxes } from "@/lib/health-taxes";
 import { loadSnapshot } from "./snapshot";
 import { taxesSource } from "./sources/taxes";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Taxes QA (2026-10-22): Sam, who lives on his freelance income, was asked whether it's a hobby
 // ("it's a hobby that costs less"); and in the app Priya's HSA deposits were never seen (a bank's
@@ -55,10 +55,7 @@ describe.runIf(url)(
         .map((c) => c.dedupeKey);
 
     beforeAll(() => {
-      vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-      vi.stubEnv("ANTHROPIC_API_KEY", "");
-      vi.stubEnv("PLAID_CLIENT_ID", "");
-      vi.stubEnv("PLAID_SECRET", "");
+      stubTestKeys();
       vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
       client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     });

@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -12,6 +11,7 @@ import { removePlaidItem } from "@/lib/plaid/remove";
 import { syncItem } from "@/lib/plaid/sync";
 import { chatPrimer, runChatTool } from "./claude-tools";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // The founder's bug (card-chat mismatch), the chat's half, against a real, migrated Postgres.
 // The demo bank has a $1,349.00 Apple Store purchase two days before it was linked. The card
@@ -33,10 +33,7 @@ describe.runIf(url)("the chat answers from the data as it is now", () => {
     runChatTool(userId, name, input, { client, now: day(10) });
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     vi.stubEnv("DEMO_BANK", "1");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     const user = await client.user.create({

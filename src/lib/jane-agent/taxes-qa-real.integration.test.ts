@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -17,6 +16,7 @@ import { decideTax } from "@/lib/tax-decisions";
 import { loadTaxCalendar } from "@/lib/tax-calendar";
 import { loadTaxFound } from "@/lib/tax-scan";
 import { calendarReply } from "./tax-calendar-message";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Taxes QA (2026-10-22): with a real account next to the demo bank, the chat held back its tax
 // recommendations but the suggestion cards still said "Convert some pre-tax money to Roth",
@@ -70,10 +70,7 @@ describe.runIf(url)("tax recommendations and real accounts", { timeout: 300_000 
   }
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });
   afterAll(async () => {

@@ -1,5 +1,4 @@
 import { SAMPLE_DRAFT_NAME } from "@/config/documents";
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -25,6 +24,7 @@ import { taxesSource } from "./sources/taxes";
 import { parseActions } from "./types";
 import { sendToJane } from "./typing";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 217 against a real, migrated Postgres: an uploaded IRS notice is read for the
 // person to confirm, its date goes on their deadlines, it's checked against their records,
@@ -89,10 +89,7 @@ describe.runIf(url)("tax notices against a real database", { timeout: 120_000 },
     taxesSource.gather((await loadSnapshot(userId, { client, now: LINKED }))!, context);
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });

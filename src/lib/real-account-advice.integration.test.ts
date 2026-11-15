@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -13,6 +12,7 @@ import { ADVICE_TOPICS } from "@/config/suggestions";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { detectFor } from "@/lib/suggestions";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Real-user QA (2026-10-23): a real account (a CSV import) was told "Add disability cover for
 // your pay" and "Try practice money first". Cover to buy, raise or switch, and the practice
@@ -63,10 +63,7 @@ describe.runIf(url)("insurance recommendations and real accounts", { timeout: 60
   }
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url! }) });
   });
   afterAll(async () => {

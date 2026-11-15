@@ -21,6 +21,7 @@ import { suggestionCard } from "./sources/suggestions";
 import { stillTrue } from "./still-true";
 import { MESSAGE_SELECT, toChatMessage } from "./types";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // The founder's bug (card-chat mismatch), the dock's half, against a real, migrated Postgres.
 // The demo bank has a $1,349.00 Apple Store purchase two days before it was linked; nine days
@@ -50,10 +51,7 @@ describe.runIf(url)("Jane's cards are checked against the data before they show"
     ).map(toChatMessage);
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     vi.stubEnv("DEMO_BANK", "1");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     const user = await client.user.create({

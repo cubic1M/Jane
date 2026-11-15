@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -19,6 +18,7 @@ import { syncItem } from "@/lib/plaid/sync";
 import { loadDetectionInput } from "@/detection/input";
 import { loadProfileInput } from "@/lib/profile";
 import { openBooks, runBooksCheck } from "./books";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 238 against a real, migrated Postgres, with the demo bank plus one of each
 // problem: a balance that's off, transactions that stopped, a stale link, a link that needs a
@@ -94,11 +94,8 @@ describe.runIf(url)("books that balance", { timeout: 120_000 }, () => {
     });
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
+    stubTestKeys();
     vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     const user = await client.user.create({
       data: { email: `books-${crypto.randomUUID()}@example.com` },

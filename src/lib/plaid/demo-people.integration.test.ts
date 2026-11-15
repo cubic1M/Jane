@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PEOPLE } from "@/config/people";
@@ -17,6 +16,7 @@ import { inputFor } from "@/profile/sample";
 import { samplePracticeIdeas } from "@/profile/sample-practice";
 import { isTrialUser, startTrial } from "@/lib/trial";
 import { syncItem } from "./sync";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).
 const url = process.env.TEST_DATABASE_URL;
@@ -30,10 +30,7 @@ describe.runIf(url)(
     const made: string[] = [];
 
     beforeAll(() => {
-      vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-      vi.stubEnv("ANTHROPIC_API_KEY", "");
-      vi.stubEnv("PLAID_CLIENT_ID", "");
-      vi.stubEnv("PLAID_SECRET", "");
+      stubTestKeys();
       client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     });
     afterAll(async () => {

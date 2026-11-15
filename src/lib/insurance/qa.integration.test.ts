@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -10,6 +9,7 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 import { sendToJane } from "@/lib/jane-agent/typing";
 import { syncItem } from "@/lib/plaid/sync";
 import { startTrial } from "@/lib/trial";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // The insurance QA pass: the chat's answers agree with the page's numbers for a demo-bank
 // person (family: children, a mortgage, a paycheck).
@@ -20,10 +20,7 @@ describe.runIf(url)("insurance answers agree with the coverage page", { timeout:
   let client: PrismaClient;
   let userId: string;
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     const trial = await startTrial({ client, now: NOW, defer: true, person: "family" });
     await syncItem(trial.itemId, { client, now: NOW });

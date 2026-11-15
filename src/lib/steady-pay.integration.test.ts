@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -22,6 +21,7 @@ import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { setSectorAutopilot } from "@/lib/sector-autopilot";
 import { loadSteady, payNow, runSteadyPay, SteadyError } from "./steady-pay";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 240 against a real, migrated Postgres, with the demo bank and a year of uneven
 // freelance deposits: each deposit's tax share and the rest to the buffer, one steady
@@ -96,11 +96,8 @@ describe.runIf(url)("a steady paycheck from uneven income", { timeout: 120_000 }
   }
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
+    stubTestKeys();
     vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });
   afterAll(async () => {

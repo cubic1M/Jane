@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -26,6 +25,7 @@ import {
   settleFamilyLoan,
 } from "./family-loans";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 226 against a real, migrated Postgres, on the demo bank with payment-app transfers
 // added: a transfer is a loan only after the person says so, repayments are matched from the
@@ -76,10 +76,7 @@ describe.runIf(url)("family and friends against a real database", { timeout: 120
   }
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   }, 120_000);
   afterAll(async () => {

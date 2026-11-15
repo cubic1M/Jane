@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -19,6 +18,7 @@ import { loadDetectionInput } from "@/detection/input";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { adoptedPlans, loadBaseline, whatIf } from "./what-if";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 203 against a real, migrated Postgres, with the demo bank: a scenario's figures
 // are the other sectors' own (cash from the health score's averages, the debt-free month
@@ -42,11 +42,8 @@ describe.runIf(url)("what if", { timeout: 120_000 }, () => {
   ) as PlaidApi;
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
+    stubTestKeys();
     vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     const user = await client.user.create({
       data: { email: `whatif-${crypto.randomUUID()}@example.com` },

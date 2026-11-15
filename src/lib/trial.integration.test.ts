@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -19,6 +18,7 @@ import { PEOPLE } from "@/config/people";
 import { profileOf } from "@/lib/investments/profile";
 import { riskLevelOf } from "@/planning/investor-profile";
 import { TrialError, cleanUpTrials, startTrial, trialEnabled } from "./trial";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 138 against a real, migrated Postgres: a visitor gets their own sample person
 // with the demo bank and demo advice, signed in for a day; two visitors never see each
@@ -34,10 +34,7 @@ describe.runIf(url)("trying Jane with sample data", { timeout: 120_000 }, () => 
   const created: string[] = [];
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });

@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -105,6 +104,7 @@ import { loadAutoInvest, runAutoInvest, setAutoInvestStatus, startAutoInvest } f
 import { homeSummary } from "@/lib/home";
 import { decideContribution } from "@/planning/auto-invest";
 import { profileOf, saveProfileForm } from "./profile";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Investments (spec steps 128–137) against a real, migrated Postgres (see
 // src/detection/engine.integration.test.ts), on the demo bank.
@@ -137,10 +137,7 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
   }
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });
   afterAll(async () => {

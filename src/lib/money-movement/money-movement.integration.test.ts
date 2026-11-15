@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -33,6 +32,7 @@ import {
   scheduleTransfer,
   settleTransfers,
 } from "./transfers";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 144 against a real, migrated Postgres, with the demo bank: the day after the
 // 15th's payroll, Jane plans the paycheck, moves the goals' shares on its own within Goals'
@@ -77,10 +77,7 @@ describe.runIf(url)("money that moves itself", { timeout: 120_000 }, () => {
   }
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });

@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -16,6 +15,7 @@ import { runChatTool } from "./claude-tools";
 import { loadSnapshot } from "./snapshot";
 import { taxesSource } from "./sources/taxes";
 import { sendToJane } from "./typing";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 268 against a real, migrated Postgres: an inherited IRA found by its name, the date
 // it must be empty by once the person says when the owner died, gifts over the annual
@@ -80,10 +80,7 @@ describe.runIf(url)(
       taxesSource.gather((await loadSnapshot(userId, { client, now: LINKED }))!, context);
 
     beforeAll(() => {
-      vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-      vi.stubEnv("ANTHROPIC_API_KEY", "");
-      vi.stubEnv("PLAID_CLIENT_ID", "");
-      vi.stubEnv("PLAID_SECRET", "");
+      stubTestKeys();
       vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
       client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     });

@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { CALENDAR_DAYS } from "@/config/calendar";
@@ -27,6 +26,7 @@ import { syncItem } from "@/lib/plaid/sync";
 import { autopilotFor } from "@/lib/sector-autopilot";
 import { offeredToday, scanSuggestions } from "@/lib/suggestions";
 import { startTrial } from "@/lib/trial";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // The consolidation merges (docs/feature-audit.md) on the eight sample people: the first
 // Monday of a month, when the brief, the week's line and last month's report all arrive.
@@ -46,10 +46,7 @@ describe.runIf(url)("the merges, on the eight sample people", { timeout: 240_000
   const made = new Map<string, string>();
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     vi.stubEnv("AUTH_SECRET", "qa-secret");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });

@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -25,6 +24,7 @@ import {
   refreshBorrowing,
 } from "./borrowing-power";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 250 against a real, migrated Postgres, on Sam's demo bank (a freelancer who rents):
 // what a mortgage, a car loan, a personal loan and a card would likely be, from soft checks
@@ -47,10 +47,7 @@ describe.runIf(url)("what you could borrow against a real database", { timeout: 
   });
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     const user = await client.user.create({
       data: { email: `borrow-${crypto.randomUUID()}@example.com` },

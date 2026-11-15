@@ -37,6 +37,7 @@ import {
 } from "./typing";
 import { toView } from "./view";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 84 against a real, migrated Postgres: link the demo bank, type "cancel Hulu",
 // get Jane's answer with Yes and No, tap Yes, and a decision is recorded. Typing never acts
@@ -69,10 +70,7 @@ describe.runIf(url)("typing to Jane against a real database", () => {
     sendToJane(userId, text, { client, now: later(), ...options });
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     userId = await person("typing-demo");
     otherId = await person("typing-other");

@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -24,6 +23,7 @@ import { runChatTool } from "./claude-tools";
 import { loadSnapshot } from "./snapshot";
 import { taxesSource } from "./sources/taxes";
 import { sendToJane } from "./typing";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 223 against a real, migrated Postgres: a demo-bank person who freelances (so a
 // quarterly plan is needed), and the tax calendar for every month. Estimated payments are
@@ -91,10 +91,7 @@ describe.runIf(url)("the tax calendar against a real database", { timeout: 120_0
   };
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });

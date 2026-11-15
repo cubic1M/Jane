@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { cardHeadline } from "@/detectors/contract";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -19,6 +18,7 @@ import { syncItem } from "@/lib/plaid/sync";
 import { startTrial } from "@/lib/trial";
 import { loadProfileInput } from "@/lib/profile";
 import { answerSuggestion, explainSuggestion, offeredToday, scanSuggestions } from "./suggestions";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).
 const url = process.env.TEST_DATABASE_URL;
@@ -31,10 +31,7 @@ describe.runIf(url)("the nightly scan of suggestions", { timeout: 120_000 }, () 
   const made = new Map<string, string>();
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     for (const p of PEOPLE) {
       const trial = await startTrial({ client, now: NOW, defer: true, person: p.id });

@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -29,6 +28,7 @@ import { taxesSource } from "./sources/taxes";
 import { parseTaxIntent } from "./tax-intents";
 import { parseActions } from "./types";
 import { sendToJane } from "./typing";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 272 against a real, migrated Postgres: a draft return uploaded before filing, read by
 // the stand-in (the demo draft, three mistakes planted), confirmed in the chat, and checked line
@@ -90,10 +90,7 @@ describe.runIf(url)("a draft return checked before filing", { timeout: 120_000 }
     taxesSource.gather((await loadSnapshot(userId, { client, now: MAR }))!, context);
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });

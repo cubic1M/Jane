@@ -74,6 +74,7 @@ import {
   statementUploadRefusal,
 } from "./statement-trial";
 import { rescueStuckTry } from "./statement-trial-rescue";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Trying Jane with your own statement against a real, migrated Postgres: each start is a new
 // empty person; two people at once never see each other's rows, through a page's loaders, the
@@ -194,10 +195,7 @@ describe.runIf(url)("trying Jane with your own statement", { timeout: 180_000 },
   const created: string[] = [];
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     vi.stubEnv("RESEND_API_KEY", "");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     jobsDb.client = client;

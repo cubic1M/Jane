@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -25,6 +24,7 @@ import { provenSavings } from "@/lib/savings-proof";
 import { isHiddenPage } from "@/config/hidden-pages";
 import { buildMonthlyReport, monthlyReportFor, runMonthlyReports } from "./monthly-report";
 import { yearInReview } from "./year";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 148 against a real, migrated Postgres, with the demo bank: in the first days
 // of October, September's report is made once, every figure the same as on the page it
@@ -51,11 +51,8 @@ describe.runIf(url)("the monthly money report", { timeout: 120_000 }, () => {
   ) as PlaidApi;
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
+    stubTestKeys();
     vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     email = `report-${crypto.randomUUID()}@example.com`;
     const user = await client.user.create({ data: { email } });

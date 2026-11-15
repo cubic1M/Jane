@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -18,6 +17,7 @@ import { syncItem } from "@/lib/plaid/sync";
 import { scanSuggestions } from "@/lib/suggestions";
 import { startTrial } from "@/lib/trial";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // The monthly close against a real Postgres: a sample person's month (Maya, the renter, on the
 // demo bank) has its parts from the ledger and the month's changes, each change with how sure
@@ -33,10 +33,7 @@ describe.runIf(url)("the monthly close", { timeout: 240_000 }, () => {
   const made: string[] = [];
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     vi.stubEnv("DEMO_BANK", "1");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });

@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -13,6 +12,7 @@ import { syncItem } from "@/lib/plaid/sync";
 import { loadMultiYear } from "@/lib/multi-year";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
 import { loadTaxSavings } from "@/lib/tax-savings";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Taxes QA (2026-10-22): Ruth's estimate left out her Social Security and her IRA withdrawals
 // ("about even", while her Social Security suggestion said about $1,576 was due); she was told
@@ -35,10 +35,7 @@ describe.runIf(url)("a retiree's taxes against a real database", { timeout: 180_
   ) as PlaidApi;
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     const user = await client.user.create({

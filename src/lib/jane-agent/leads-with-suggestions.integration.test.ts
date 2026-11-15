@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { cardHeadline } from "@/detectors/contract";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -16,6 +15,7 @@ import { takeChatAction } from "./actions";
 import { cardsLine } from "./agenda";
 import { chatFeed, stackedSuggestions } from "./messages";
 import { runJaneAgent } from "./run";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 265 against a real, migrated Postgres: the chat opens on the scan's top suggestions
 // for each of the eight sample people, each with its dollars, why this person, the confidence
@@ -32,10 +32,7 @@ describe.runIf(url)("Jane leads with suggestions", { timeout: 120_000 }, () => {
   const made = new Map<string, string>();
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     for (const p of PEOPLE) {
       const trial = await startTrial({ client, now: NOW, defer: true, person: p.id });

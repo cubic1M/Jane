@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { HELD_DAYS, STOP_GRACE_DAYS } from "@/config/outcomes";
@@ -19,6 +18,7 @@ import { verifiedSavings } from "@/lib/savings-proof";
 import { answerSuggestion } from "@/lib/suggestions";
 import { startTrial } from "@/lib/trial";
 import { checkResults } from "@/lib/worked";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // The savings ledger on a sample person's demo bank (Maya, the renter), against a real Postgres:
 // her dated transactions walk a fix of her own from Estimated to Done, Verified and Held, each
@@ -35,10 +35,7 @@ describe.runIf(url)("the savings ledger, on a sample person", { timeout: 240_000
   let userId = "";
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     const trial = await startTrial({ client, now: NOW, defer: true, person: "renter" });
     await syncItem(trial.itemId, { client, now: NOW });

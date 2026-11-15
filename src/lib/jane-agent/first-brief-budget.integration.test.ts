@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -24,6 +23,7 @@ import { syncItem } from "@/lib/plaid/sync";
 import { scanSuggestions } from "@/lib/suggestions";
 import { startTrial } from "@/lib/trial";
 import { runJaneAgent } from "./run";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // The first brief has to reach a new person inside the host's 60 seconds, so the first run of
 // a first scan leaves the upkeep to the scan's last run.
@@ -36,10 +36,7 @@ describe.runIf(url)("the first brief's budget", { timeout: 120_000 }, () => {
   let userId: string;
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     const trial = await startTrial({ client, now: NOW, defer: true, person: "retiree" });
     userId = trial.userId;

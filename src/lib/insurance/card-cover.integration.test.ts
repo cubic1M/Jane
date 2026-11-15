@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -16,6 +15,7 @@ import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { cardCover } from "./card-cover";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Cover you already have, against a real, migrated Postgres (spec step 152): the demo
 // bank pays its phone bill with its card, whose phone protection makes the Asurion plan a
@@ -38,10 +38,7 @@ describe.runIf(url)("cover you already have, against a real database", () => {
   }
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    stubTestKeys();
     vi.stubEnv("RESEND_API_KEY", "");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });

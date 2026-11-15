@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -13,6 +12,7 @@ import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { correctFact } from "@/lib/profile";
 import { detectFor } from "@/lib/suggestions";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Taxes QA (2026-10-22): one inherited_ira topic covered both the 10-year deadline (a fact) and
 // "Spread your inherited IRA withdrawals" (a recommendation), so a real account got the
@@ -59,10 +59,7 @@ describe.runIf(url)("an inherited IRA, demo and real", { timeout: 300_000 }, () 
     (await detectFor(userId, { client, now: NOW })).suggestions.map((s) => s.topic);
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });
   afterAll(async () => {

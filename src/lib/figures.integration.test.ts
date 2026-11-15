@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -22,6 +21,7 @@ import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { loadBaseline } from "@/lib/what-if";
 import { explainFigure } from "./figures";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 239 against a real, migrated Postgres, with the demo bank: each headline figure
 // has its working, from the same loaders as the page that shows it; a category the person
@@ -45,11 +45,8 @@ describe.runIf(url)("every figure explained and correctable", { timeout: 120_000
   ) as PlaidApi;
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
+    stubTestKeys();
     vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     const user = await client.user.create({
       data: { email: `figures-${crypto.randomUUID()}@example.com` },

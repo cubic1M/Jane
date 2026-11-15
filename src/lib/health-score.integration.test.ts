@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -15,6 +14,7 @@ import { runChatTool } from "@/lib/jane-agent/claude-tools";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { healthFor, healthInput, healthOfMonth } from "./health-score";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 146 against a real, migrated Postgres, with the demo bank: a score out of 100
 // from the person's own numbers, each part explained, kept for the month by Jane's run
@@ -36,10 +36,7 @@ describe.runIf(url)("money health score", { timeout: 120_000 }, () => {
   ) as PlaidApi;
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });

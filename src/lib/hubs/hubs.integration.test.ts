@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -20,6 +19,7 @@ import { loadMoneyHub, moneyTiles } from "./money";
 import { moneyTree } from "@/lib/area-pages/money";
 import { loadMoneyArea } from "@/lib/area-pages/money-load";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // The three hubs (spec step 80) against a real, migrated Postgres (see
 // src/detection/engine.integration.test.ts): a person with the demo bank gets the same
@@ -35,10 +35,7 @@ describe.runIf(url)("the hubs against a real database", () => {
   // Any call to real Plaid fails the test.
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     const suffix = crypto.randomUUID();
     const make = async (name: string) =>

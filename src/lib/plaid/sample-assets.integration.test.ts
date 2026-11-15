@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PEOPLE } from "@/config/people";
@@ -11,6 +10,7 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 import { netWorth } from "@/insights/net-worth";
 import { startTrial } from "@/lib/trial";
 import { syncItem } from "./sync";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // QA: every sample person owned the same $404,500 home and car, so Chris (renting, in debt)
 // had a net worth of $381,648. They now own what their written life says.
@@ -22,10 +22,7 @@ describe.runIf(url)("what the sample people own", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const made: string[] = [];
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });
   afterAll(async () => {

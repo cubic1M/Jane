@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -25,6 +24,7 @@ import { runJaneAgent } from "./run";
 import { parseActions, parseRefs } from "./types";
 import { sendToJane } from "./typing";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 118 against a real, migrated Postgres: the demo bank's income and state are
 // found and shown as found; the chat asks the rest one question at a time in one message;
@@ -74,10 +74,7 @@ describe.runIf(url)("the tax profile against a real database", () => {
     (await takeChatAction(userId, messageId, id, { client, now: later() })).message;
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });

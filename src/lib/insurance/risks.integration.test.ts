@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -19,6 +18,7 @@ import { syncItem } from "@/lib/plaid/sync";
 import { loadInsurance } from "./profile";
 import { RiskError, answerRisk, gapQuotes, listRisks, refreshRisks } from "./risks";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Risks seen in how they live against a real, migrated Postgres (spec step 197): the demo
 // bank has one signal of each kind; each is asked once; a yes opens a gap with sample
@@ -43,10 +43,7 @@ describe.runIf(url)("risks seen in how they live, against a real database", () =
   }
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });
   afterAll(async () => {

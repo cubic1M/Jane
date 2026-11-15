@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -15,6 +14,7 @@ import { loadDecisionInput } from "./debt-decisions";
 import { loadFit } from "./fit";
 import { detectFor } from "./suggestions";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 283 against a real, migrated Postgres, on Chris's and the Reyes' demo banks: the
 // fit engine's options for each need, and the same pick in the chat, Claude's tool and the
@@ -33,10 +33,7 @@ describe.runIf(url)("the fit engine against a real database", { timeout: 120_000
   const later = () => new Date(NOW.getTime() + ++tick * MINUTE);
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     const make = async (person: "debt" | "family") => {
       const user = await client.user.create({

@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -12,6 +11,7 @@ import { hasHealthFsa, loadHealthYear } from "@/lib/insurance/health-year";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { loadTaxSavings } from "@/lib/tax-savings";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Debugger 11-13: the demo bank's Taxes said "Sign up for an FSA by Nov 30" while its Insurance
 // said "$1,670.64 is left in your FSA". Through the loaders the pages use: the person whose health
@@ -33,10 +33,7 @@ describe.runIf(url)("a health FSA said once", { timeout: 180_000 }, () => {
   ) as PlaidApi;
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     vi.stubEnv("DEMO_BANK", "1");
     vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });

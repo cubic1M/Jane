@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -14,6 +13,7 @@ import { linkDemoBank } from "./demo";
 import { ensureDemoBalanceHistory } from "./demo-history";
 import { syncItem } from "./sync";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // A sample person's net worth line against a real, migrated Postgres: the demo bank's first
 // scan writes a year of month-end balances, so the home hub draws the line on day one.
@@ -26,10 +26,7 @@ describe.runIf(url)("the demo bank's balance history", () => {
   const created: string[] = [];
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });
   afterAll(async () => {
