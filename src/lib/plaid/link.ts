@@ -1,4 +1,4 @@
-import type { CountryCode, PlaidApi, Products } from "plaid";
+import { CountryCode, Products, type PlaidApi } from "plaid";
 import { TRANSACTION_DAYS_REQUESTED } from "@/config/plaid";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
@@ -69,7 +69,7 @@ export async function createLinkToken(
     api.linkTokenCreate({
       client_name: CLIENT_NAME,
       language: "en",
-      country_codes: ["US" as CountryCode],
+      country_codes: [CountryCode.Us],
       user: { client_user_id: userId },
       webhook: webhookUrl(),
       ...(accessToken
@@ -78,13 +78,13 @@ export async function createLinkToken(
             ...(chooseAccounts ? { update: { account_selection_enabled: true } } : {}),
           }
         : {
-            products: ["transactions" as Products],
+            products: [Products.Transactions],
             // Loans and card rates (spec step 65) and investment balances (step 66) where
             // the bank supports them; billed only then, and it doesn't limit which banks
             // can be picked. Investments only once it's on our Plaid plan (PLAID_INVESTMENTS).
             optional_products: [
-              "liabilities" as Products,
-              ...(plaidInvestmentsEnabled() ? ["investments" as Products] : []),
+              Products.Liabilities,
+              ...(plaidInvestmentsEnabled() ? [Products.Investments] : []),
             ],
             transactions: { days_requested: TRANSACTION_DAYS_REQUESTED },
           }),
