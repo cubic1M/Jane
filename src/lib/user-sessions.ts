@@ -4,9 +4,11 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
+import { momentLabel } from "@/lib/day-label";
 import { describeDevice, lastActiveLabel } from "@/lib/devices";
 import { scopedFor } from "@/lib/db-scoped";
 import { systemDb } from "@/lib/system-db";
+import { timezoneOf } from "@/lib/today";
 
 // Devices and sessions (spec step 73): where someone is signed in, and signing out
 // elsewhere. Sessions are named by their row id; the session token works as a password,
@@ -77,13 +79,14 @@ export async function listSessions(
   token: string | undefined,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<DeviceSession[]> {
-  const [currentId, rows] = await Promise.all([
+  const [currentId, rows, timezone] = await Promise.all([
     currentSessionId(client, userId, token),
     scopedFor(userId, client).sessions.findMany({
       where: { userId, expires: { gt: now } },
       // Never the session token.
       select: { id: true, userAgent: true, createdAt: true, lastSeenAt: true },
     }),
+    timezoneOf(userId, { client }),
   ]);
   // This session is in use right now, whatever its last noted time says.
   const lastUsed = (row: (typeof rows)[number]) =>
@@ -93,8 +96,10 @@ export async function listSessions(
     .map((row) => ({
       id: row.id,
       device: describeDevice(row.userAgent),
-      signedIn: row.createdAt.toISOString().slice(0, 10),
-      lastActive: lastActiveLabel(lastUsed(row), now),
+      // The person's own day (debugger 11-15: "Signed in 2026-11-15", UTC's, at 7pm on the 14th
+      // in Los Angeles).
+      signedIn: momentLabel(row.createdAt, timezone, { year: true }),
+      lastActive: lastActiveLabel(lastUsed(row), now, timezone),
       current: row.id === currentId,
     }));
 }

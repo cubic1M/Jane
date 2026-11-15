@@ -1,4 +1,6 @@
+import { DEFAULT_TIMEZONE } from "@/config/digest";
 import { ACTIVE_NOW_MINUTES } from "@/config/sessions";
+import { momentLabel } from "@/lib/day-label";
 
 // Devices and sessions (spec step 73): a plain name for the device behind a session, from
 // its browser's user agent. Pure, and deliberately rough: "iPhone · Safari" is enough for
@@ -38,8 +40,9 @@ export function describeDevice(userAgent: string | null | undefined): string {
 
 const MINUTE = 60_000;
 
-// Roughly when a session was last used: "Active now", "3 hours ago", "Yesterday", or a date.
-export function lastActiveLabel(at: Date, now: Date): string {
+// Roughly when a session was last used: "Active now", "3 hours ago", "Yesterday", or a date, the
+// person's own day as every other date in Settings reads ("Oct 8, 2026", not UTC's "2026-10-08").
+export function lastActiveLabel(at: Date, now: Date, timezone = DEFAULT_TIMEZONE): string {
   const minutes = Math.floor((now.getTime() - at.getTime()) / MINUTE);
   if (minutes < ACTIVE_NOW_MINUTES) return "Active now";
   if (minutes < 60) return `${minutes} minutes ago`;
@@ -48,5 +51,5 @@ export function lastActiveLabel(at: Date, now: Date): string {
   const days = Math.floor(hours / 24);
   if (days === 1) return "Yesterday";
   if (days < 7) return `${days} days ago`;
-  return at.toISOString().slice(0, 10);
+  return momentLabel(at, timezone, { year: true });
 }
