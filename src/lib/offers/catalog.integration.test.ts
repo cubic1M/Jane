@@ -1,5 +1,6 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { takeOffersCatalog } from "@/test-setup/offers-catalog-lock";
 import { PrismaClient } from "@/generated/prisma/client";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
@@ -26,7 +27,7 @@ import {
 import type { Fetcher } from "./fetch";
 
 // The offers catalog against a real, migrated Postgres. The catalog's tables are shared, so each run
-// clears them first; nothing else uses them in this file's database.
+// clears them first, and holds them while it runs (bad-readings.integration seeds them too).
 
 const url = process.env.TEST_DATABASE_URL;
 const NOW = new Date("2026-11-12T18:00:00Z");
@@ -57,6 +58,13 @@ const ours = (offers: { key: string }[]) =>
 const barclaysPage = (apy: string) => ({
   "https://banking.barclaysus.com/online-savings.html": `<h1>Online Savings</h1><p>${apy}% APY</p>`,
 });
+
+// The catalog's tables are shared: one file at a time (src/test-setup/offers-catalog-lock.ts).
+let releaseCatalog = async () => {};
+beforeAll(async () => {
+  if (url) releaseCatalog = await takeOffersCatalog(url);
+});
+afterAll(() => releaseCatalog());
 
 describe.runIf(url)("the offers catalog", () => {
   let client: PrismaClient;

@@ -1,5 +1,6 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { takeOffersCatalog } from "@/test-setup/offers-catalog-lock";
 import { PrismaClient } from "@/generated/prisma/client";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
@@ -53,6 +54,13 @@ function web(page: { status?: number; body?: string }, robots = ""): Fetcher {
       : new Response(page.body ?? "", { status: page.status ?? 200 });
 }
 const apy = (value: string) => web({ body: `<h1>Savings</h1><p>${value}% APY</p>` });
+
+// The catalog's tables are shared: one file at a time (src/test-setup/offers-catalog-lock.ts).
+let releaseCatalog = async () => {};
+beforeAll(async () => {
+  if (url) releaseCatalog = await takeOffersCatalog(url);
+});
+afterAll(() => releaseCatalog());
 
 describe.runIf(url)("the offers catalog, given bad readings", () => {
   let client: PrismaClient;
@@ -157,7 +165,11 @@ describe.runIf(url)("the hand-kept seeds' cut-off", () => {
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     await seedOffers({ client });
   });
-  afterAll(() => client.$disconnect());
+  // The seeds go again: left behind, every later file's catalog had them.
+  afterAll(async () => {
+    await client.marketOffer.deleteMany({ where: { key: { in: OFFER_SEEDS.map((s) => s.key) } } });
+    await client.$disconnect();
+  });
 
   it("shows the seeds up to the end of 11-14 UTC and none from 11-15", async () => {
     const seeds = OFFER_SEEDS.map((s) => s.key);
