@@ -212,7 +212,8 @@ describe("plain words", () => {
       "Netflix and Hulu",
     );
     expect(run("family").find((s) => s.topic === "duplicate_subscription")!.why).toContain(
-      "Disney Plus, Netflix and Hulu",
+      // As the subscriptions list names them (debugger 11-15: "Spotify Usa").
+      "Disney, Netflix and Hulu",
     );
   });
 

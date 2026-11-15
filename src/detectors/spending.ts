@@ -8,6 +8,7 @@ import {
   REFUND_MAX_AGE_DAYS,
 } from "@/config/detection";
 import { duplicatePairs } from "@/detection/rules/duplicate-charge";
+import { merchantOf } from "@/detection/streams";
 import type { DetectionInput } from "@/detection/types";
 import { formatCents } from "@/lib/money";
 import type { ProfileInput, ProfileTx } from "@/profile/build";
@@ -70,7 +71,14 @@ const duplicateSubscription: Detector = {
     // Drop the cheapest of each group: the one you'd least miss, a conservative saving.
     const cheapest = groups.map((g) => g.sort((a, b) => last(a) - last(b))[0]);
     const worth = cheapest.reduce((s, c) => s + last(c) * 12, 0);
-    const names = groups.flat().map((s) => s.description);
+    // Named as the subscriptions list names them ("Spotify", not the statement's "Spotify Usa").
+    const names = groups.flat().map((s) => {
+      const t = s.txs[s.txs.length - 1]!;
+      return (
+        merchantOf({ merchantName: t.merchantName ?? null, description: t.description })?.name ??
+        s.description
+      );
+    });
     const charges = groups.flat().reduce((n, s) => n + s.txs.length, 0);
     return suggestion("subscriptions", "duplicate_subscription", {
       title: "You pay for more than one of the same kind of service: keep the one you use",
