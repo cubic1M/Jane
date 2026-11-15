@@ -4,7 +4,8 @@ import type { ActionStatus, ActionType, PrismaClient } from "@/generated/prisma/
 import { ACTION_STATUS_LABELS } from "@/lib/action-status";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { doneSaving, snapshotTitle } from "@/lib/hubs/jane";
+import { doneSaving } from "@/lib/hubs/jane";
+import { snapshotTitle } from "@/lib/snapshot-title";
 import { formatCents } from "@/lib/money";
 
 // Everything Jane did (spec step 187): one honest record across sectors. Every action

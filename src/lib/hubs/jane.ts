@@ -15,6 +15,7 @@ import { formatCents } from "@/lib/money";
 import { planFor, planOnceCents, planTotalCents } from "@/lib/plan";
 import { verifiedSavings } from "@/lib/savings-proof";
 import { savingsLine } from "@/lib/savings-text";
+import { snapshotTitle } from "@/lib/snapshot-title";
 import type { Comparison } from "@/planning/compare";
 
 // The Jane hub (spec step 80): what Jane found and is doing, in four short lists, each with
@@ -49,12 +50,6 @@ export function pickLine(comparison: Comparison | null): string | null {
   return comparison.current.kind === "savings"
     ? `Jane's pick: ${pick.option.name}, earns about ${formatCents(pick.savingCents)} more a year`
     : `Jane's pick: ${pick.option.name}, saves about ${formatCents(pick.savingCents)} in the first year`;
-}
-
-// The card's title as the person agreed to it.
-export function snapshotTitle(snapshot: unknown): string {
-  const title = (snapshot as { title?: unknown } | null)?.title;
-  return typeof title === "string" && title !== "" ? title : "Your request";
 }
 
 // What a finished action saved: a refund seen in the transactions, a lower price confirmed

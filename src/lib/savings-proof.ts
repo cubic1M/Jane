@@ -13,7 +13,7 @@ import { switchOf } from "@/lib/agent/switch";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { snapshotTitle } from "@/lib/hubs/jane";
+import { snapshotTitle } from "@/lib/snapshot-title";
 import { formatCents } from "@/lib/money";
 import { isRefund } from "@/lib/savings-text";
 import { savingsRecord, statementCoverage, type SavingsRecord } from "@/lib/outcomes";

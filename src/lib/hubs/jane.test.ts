@@ -4,7 +4,8 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 
 import type { Comparison, CompareOption, Scored } from "@/planning/compare";
-import { doneSaving, orderInProgress, pickLine, snapshotTitle } from "./jane";
+import { doneSaving, orderInProgress, pickLine } from "./jane";
+import { snapshotTitle } from "@/lib/snapshot-title";
 
 // The Jane hub's pure helpers (spec step 80).
 
