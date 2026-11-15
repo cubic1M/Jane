@@ -28,7 +28,7 @@ import {
   type SavingPlan,
 } from "@/planning/home-buying";
 import { compareCarOffers, type ScoredCarOffer } from "@/planning/car";
-import { formatCents } from "@/lib/money";
+import { centsToInput, formatCents } from "@/lib/money";
 import { formatRate } from "@/lib/percent";
 import { todayOf } from "@/lib/today";
 
@@ -222,7 +222,7 @@ export async function startHomeGoal(
       userId,
       {
         name: HOME_GOAL_NAME,
-        target: (home.costs.cashNeededCents / 100).toFixed(2),
+        target: centsToInput(home.costs.cashNeededCents),
         targetDate: home.targetDate,
         accountId: savings?.id ?? "",
         saved: "",

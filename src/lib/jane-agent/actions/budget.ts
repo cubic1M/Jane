@@ -1,5 +1,5 @@
 import { BudgetError, setBudget } from "@/lib/budgets";
-import { formatCents } from "@/lib/money";
+import { centsToInput, formatCents } from "@/lib/money";
 import { ChatActionError, type ActionHandler } from "./handler";
 
 // "Set a budget" (spec step 90), on Jane's answers about a category with no budget yet,
@@ -13,7 +13,7 @@ export const budgetSet: ActionHandler = {
     const budget = message.refs.budget;
     if (!budget) throw new ChatActionError("failed", "Something went wrong. Open Budgets instead.");
     try {
-      await setBudget(userId, budget.category, (budget.amountCents / 100).toFixed(2), { client });
+      await setBudget(userId, budget.category, centsToInput(budget.amountCents), { client });
     } catch (error) {
       if (error instanceof BudgetError) throw new ChatActionError("failed", error.message);
       throw error;
