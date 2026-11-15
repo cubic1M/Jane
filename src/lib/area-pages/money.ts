@@ -306,7 +306,10 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
     );
   }
 
-  for (const y of input.yearly) {
+  // A charge already under Subscriptions to review is there once, with its action, not also a
+  // "Good" yearly bill (debugger 11-15: Duolingo, "Needs a look $120/yr" and "Good $10/mo").
+  const reviewed = new Set(input.recurring.filter((r) => r.findingId).map((r) => r.key));
+  for (const y of input.yearly.filter((y) => !reviewed.has(y.key))) {
     items.yearly.push(
       item("yearly", y.key, {
         label: y.name,
