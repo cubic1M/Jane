@@ -131,7 +131,13 @@ export type InsuranceTreeInput = {
     limit?: "unknown" | "low";
     likelyElsewhere?: true;
   }[];
-  savings: { id: string; kind: SavingKind; yearlySavingCents: number; line: string }[];
+  savings: {
+    id: string;
+    kind: SavingKind;
+    yearlySavingCents: number;
+    line: string;
+    policyId?: string;
+  }[];
   renewals: {
     id: string;
     carrier: string;
@@ -181,7 +187,18 @@ export function insuranceTree(input: InsuranceTreeInput): AreaTree {
   );
   const urgentFolded = new Set<string>(folded.filter((g) => !guessedGap(g)).map((g) => g.key));
 
-  const needs = input.needs.map((n) => {
+  // A deductible Jane could raise is one thing, said once: as the saving, with its price and its
+  // "Raise it" (debugger 11-15: "Deductible, Could be $2k" beside "Raise the deductible,
+  // $170/yr" for the same car policy).
+  const raiseOffered = new Set(
+    input.savings.filter((s) => s.kind === "higher_deductible").map((s) => s.policyId),
+  );
+  const shownNeeds = input.needs.filter(
+    (n) =>
+      !(n.kind === "deductible" && n.direction === "raise" && raiseOffered.has(n.policyId ?? "")),
+  );
+
+  const needs = shownNeeds.map((n) => {
     const short = isShort(n);
     const seen = short ? foundFor(n.kind) : undefined;
     const limitUnknown = short && n.limitUnknown === true;
