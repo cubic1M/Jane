@@ -14,13 +14,8 @@ vi.mock("@/lib/concierge-mode", () => ({
 
 import { CARD_SELECT, buildCard, cardHash } from "@/lib/cards";
 import { recordDecision } from "@/lib/decisions";
-import {
-  agentStep,
-  confirmCancellations,
-  confirmDate,
-  markSelfCancelled,
-  refundChargesAfterCancel,
-} from "./run";
+import { agentStep, confirmCancellations, confirmDate, markSelfCancelled } from "./run";
+import { refundChargesAfterCancel } from "./refund-after-cancel";
 
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).
 const url = process.env.TEST_DATABASE_URL;

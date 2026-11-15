@@ -11,7 +11,6 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { log } from "@/lib/log";
 import { formatCents } from "@/lib/money";
-import { insuranceSwitchOf } from "./accept";
 import { kindWords } from "./gaps";
 import { partnerFor, type InsurancePartner } from "./partner";
 import { textPdf } from "./pdf";
@@ -32,6 +31,23 @@ import { systemDb } from "@/lib/system-db";
 // 3. Only then cancels the old policy, from the new one's start day, so there's never a gap
 //    in cover; the saving is counted from the two prices.
 // A failed or missing payment goes to the team, with the old policy still in place.
+
+// What the decision keeps about the switch: enough for the agent (spec step 105) to bind
+// the pick without the quote, which the next reshop replaces.
+export type InsuranceSwitchOptions = {
+  insuranceShopId: string;
+  insurancePolicyId: string;
+  insuranceCarrier: string;
+  insuranceAnnualCents: number;
+  insuranceSavingCents: number;
+};
+
+export function insuranceSwitchOf(options: unknown): InsuranceSwitchOptions | null {
+  const o = (options ?? {}) as Record<string, unknown>;
+  return typeof o.insuranceShopId === "string" && typeof o.insurancePolicyId === "string"
+    ? (o as InsuranceSwitchOptions)
+    : null;
+}
 
 type Options = {
   client?: PrismaClient;
