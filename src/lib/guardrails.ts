@@ -362,6 +362,9 @@ const INVESTMENT = [
   // "Your budget allocation" is a budget.
   /\b(?:asset|portfolio|investment|fund) allocation\b/i,
   /\b(outperform\w*|underperform\w*|beat the market|market timing|capital gains?)\b/i,
+  // Round 45 (11-15): "Diversify into gold", "Get into real estate". "Diversified Services" on a
+  // statement is a name.
+  /\bdiversif(?:y|ying)\b[^.!?]{0,20}\b(?:into|with|by buying)\b|\bdiversif(?:y|ying) (?:your )?(?:portfolio|investments|holdings|savings|money|assets)\b|\b(?:get|getting|break|breaking|go|going) into (?:real estate|investing|the (?:stock )?market|stocks|crypto|bitcoin|gold|silver|rental propert(?:y|ies)|rentals)\b/i,
 ];
 
 // (b) Tax or legal advice. Demo advice (below) allows the tax part, never the legal part.
@@ -638,6 +641,10 @@ const LEGAL = [
   /\b(?:landlord|lender|servicer|collector|creditor|employer|insurer|they|he|she) (?:is|are) (?:legally )?(?:required|obligated) to\b/i,
   // Round 20 (11-13): "Your employer has to pay you for that time".
   /\b(?:employer|boss|landlord|lender|servicer|collector|creditor|insurer|company|bank|store|they|he|she) (?:has|have) to (?:pay|refund|reimburse|give|return|cover)(?: you| it| the| your)\b/i,
+  // Round 45 (11-15): a relative's debts ("You don't have to pay your dad's debts"), benefits kept by
+  // not reporting ("You'll keep your SNAP if you don't report it", "Social Security won't count that
+  // income") and immigration ("You can get your green card faster if you pay it off").
+  /\byou (?:don(?:'|’)?t|do not) (?:legally )?(?:have to|need to) pay (?:off )?(?:your |his |her |their |a |the )?(?:(?:dad|mom|father|mother|parent|husband|wife|spouse|ex|brother|sister|son|daughter|kid|child|grandma|grandpa|grandmother|grandfather|relative|partner|deceased)(?:(?:'|’)s|s(?:'|’))?|estate(?:(?:'|’)s)?) (?:debts?|bills?|loans?|(?:credit )?cards?|balances?|medical bills?)\b|\b(?:don(?:'|’)?t|do not|never|without) report(?:ing)? (?:it|that|this|the (?:income|money|job|gig|raise|cash|tips))\b[^.!?]{0,30}\b(?:snap|food stamps|medicaid|ssi|ssdi|benefits|wic|unemployment|section 8)\b|\b(?:snap|food stamps|medicaid|ssi|ssdi|benefits|wic|unemployment|section 8)\b[^.!?]{0,30}\bif you (?:don(?:'|’)?t|do not|never) report\b|\b(?:social security|the ssa|ssi|ssdi|snap|medicaid|unemployment|the state)\s+(?:won(?:'|’)?t|doesn(?:'|’)?t|will not|does not|would(?:n(?:'|’)?t| not)) (?:count|see|know about|find out about|notice|care about)\b|\b(?:green card|citizenship|(?:work|student|travel|tourist|spousal|h-?1b|f-?1|j-?1) visa|visa (?:application|status|interview|renewal)|immigration (?:case|status|application)|naturali[sz]ation|asylum (?:case|application))\b[^.!?]{0,30}\b(?:faster|sooner|approved|denied|at risk|depends? on)\b|\b(?:help|hurt|affect|speed up|delay|risk|jeopardi[sz]e)\b[^.!?]{0,20}\b(?:your |the )?(?:green card|citizenship|(?:work|student|spousal|h-?1b|f-?1|j-?1) visa|visa (?:application|status)|immigration (?:case|status|application)|naturali[sz]ation)\b/i,
   // Round 44 (11-15): "The hospital has to give you charity care", "The dealer has to honor the
   // advertised price", "Your student loans can't be discharged", "Paying it will restart the clock",
   // "You can return the car within 3 days", "You don't have to pay a bill you never agreed to".
