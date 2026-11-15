@@ -35,6 +35,7 @@ function Start({ strategy }: { strategy: string }) {
   const [pending, start] = useTransition();
   return (
     <form
+      method="post"
       className="flex flex-col gap-2"
       onSubmit={(e) => {
         e.preventDefault();

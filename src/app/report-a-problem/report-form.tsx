@@ -32,6 +32,7 @@ export function ReportForm({ from }: { from: string }) {
         your balances or transactions.
       </p>
       <form
+        method="post"
         className="flex flex-col gap-3"
         onSubmit={(event) => {
           event.preventDefault();
