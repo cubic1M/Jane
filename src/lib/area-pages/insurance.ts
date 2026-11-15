@@ -166,14 +166,29 @@ export function insuranceTree(input: InsuranceTreeInput): AreaTree {
   const foundFor = (key: string) =>
     input.policies.find((p) => p.status === "found" && p.kind === coverKindOf(key));
 
+  const isShort = (n: InsuranceTreeInput["needs"][number]) =>
+    n.direction ? n.direction !== "ok" : n.gapCents > 0;
+  // Gaps guessed from what the bank data doesn't show (see `missing` below).
+  const guessedGap = (g: InsuranceTreeInput["gaps"][number]) =>
+    NOT_URGENT_GAPS.includes(g.key) || g.likelyElsewhere === true || input.noBankSeen === true;
+  // A cover already shown short under the person's perfect coverage isn't also "Not on file"
+  // in the missing branch (debugger 11-15: "Disability cover, $3k/mo short" and "Disability
+  // cover, Not on file" side by side). Its need keeps the gap's urgency. A gap about a policy,
+  // its limit or cover seen in payments stays where it is.
+  const shortKinds = new Set(input.needs.filter(isShort).map((n) => n.kind));
+  const folded = input.gaps.filter(
+    (g) => shortKinds.has(g.key) && !g.policyId && !g.limit && !foundFor(g.key),
+  );
+  const urgentFolded = new Set<string>(folded.filter((g) => !guessedGap(g)).map((g) => g.key));
+
   const needs = input.needs.map((n) => {
-    const short = n.direction ? n.direction !== "ok" : n.gapCents > 0;
+    const short = isShort(n);
     const seen = short ? foundFor(n.kind) : undefined;
     const limitUnknown = short && n.limitUnknown === true;
     // Raising a deductible the person's cash can carry is a saving, never urgent.
     const status: TreeStatus = !short
       ? "good"
-      : n.opened && n.direction !== "raise" && !seen && !limitUnknown
+      : (n.opened || urgentFolded.has(n.kind)) && n.direction !== "raise" && !seen && !limitUnknown
         ? "act"
         : "look";
     const money = (c: number) => (n.unit === "per_month" ? `${shortMoney(c)}/mo` : shortMoney(c));
@@ -240,25 +255,26 @@ export function insuranceTree(input: InsuranceTreeInput): AreaTree {
   // Found cover: "Urgent: Renters insurance, Missing" sat beside "Lemonade renters" (foundFor).
   // Home cover on a mortgage is likely paid from escrow (debugger 11-06: a homeowner with escrow
   // read "Urgent: Home insurance, Missing").
-  const missing = input.gaps.map((g) => {
-    const guessed =
-      NOT_URGENT_GAPS.includes(g.key) || g.likelyElsewhere === true || input.noBankSeen === true;
-    const seen = foundFor(g.key);
-    return item("missing", g.key + (g.policyId ? `-${g.policyId}` : ""), {
-      label: GAP_LABELS[g.key],
-      status: guessed || seen || g.limit ? "look" : "act",
-      figure: seen
-        ? "Confirm it"
-        : g.limit
-          ? g.limit === "low"
-            ? "Limit is low"
-            : "Add its limit"
-          : guessed
-            ? "Not on file"
-            : "Missing",
-      summary: seen ? `${seen.carrier} is in your payments. Confirm it so it counts.` : g.why,
+  const missing = input.gaps
+    .filter((g) => !folded.includes(g))
+    .map((g) => {
+      const guessed = guessedGap(g);
+      const seen = foundFor(g.key);
+      return item("missing", g.key + (g.policyId ? `-${g.policyId}` : ""), {
+        label: GAP_LABELS[g.key],
+        status: guessed || seen || g.limit ? "look" : "act",
+        figure: seen
+          ? "Confirm it"
+          : g.limit
+            ? g.limit === "low"
+              ? "Limit is low"
+              : "Add its limit"
+            : guessed
+              ? "Not on file"
+              : "Missing",
+        summary: seen ? `${seen.carrier} is in your payments. Confirm it so it counts.` : g.why,
+      });
     });
-  });
 
   const savings = input.savings.map((s) =>
     item("savings", s.id, {
