@@ -36,6 +36,7 @@ import { verifiedSavings } from "@/lib/savings-proof";
 import { comparisonsFor } from "@/lib/compare";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { withReadCache } from "@/lib/read-cache";
 import { weekStart } from "@/lib/digest/week";
 import { homeSummary, type HomeSummary } from "@/lib/home";
 import { planFor } from "@/lib/plan";
@@ -260,23 +261,31 @@ const NO_MORE: MoreSnapshot = {
   assetPrompts: [],
 };
 
+type SnapshotOptions = {
+  client?: PrismaClient;
+  now?: Date;
+  // The bank data, when the caller already loaded it (Jane's run does).
+  input?: DetectionInput;
+  // Only what the first brief says (the suggestions, the question, the plan and the alerts):
+  // none of the sectors' parts. Nearly a thousand queries on a first scan otherwise, which a
+  // far-away database turned into most of the half minute before the brief. Never stored.
+  light?: boolean;
+};
+
+// Its parts read the same facts again and again (the person's timezone 126 times): read once
+// (src/lib/read-cache.ts), or in the caller's own read cache when there is one.
 export async function loadSnapshot(
   userId: string,
-  {
-    client = defaultClient,
-    now = new Date(),
-    input,
-    light = false,
-  }: {
-    client?: PrismaClient;
-    now?: Date;
-    // The bank data, when the caller already loaded it (Jane's run does).
-    input?: DetectionInput;
-    // Only what the first brief says (the suggestions, the question, the plan and the alerts):
-    // none of the sectors' parts. Nearly a thousand queries on a first scan otherwise, which a
-    // far-away database turned into most of the half minute before the brief. Never stored.
-    light?: boolean;
-  } = {},
+  options: SnapshotOptions = {},
+): Promise<Snapshot | null> {
+  return withReadCache(options.client ?? defaultClient, (client) =>
+    loadSnapshotWork(userId, { ...options, client }),
+  );
+}
+
+async function loadSnapshotWork(
+  userId: string,
+  { client = defaultClient, now = new Date(), input, light = false }: SnapshotOptions,
 ): Promise<Snapshot | null> {
   const home = await homeSummary(userId, { client, now });
   if (!home) return null;
