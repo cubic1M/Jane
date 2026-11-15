@@ -225,8 +225,26 @@ const ACH_DETAILS = /\s(?:ORIG ID:.*|\d{6}\s+(?:\d{6,}|X{3,}\d{2,})(?:\s.*)?)$/;
 const ACH_ENTRY =
   /(?<!^CHASE)\s+(?:BILL ?(?:PAY|PAYMT|PYMT|PMT)|AUTO ?PAY|(?:WEB|ONLINE|MOBILE) (?:PMTS?|PYMTS?)|PCS SVC)$/;
 
+// The answer depends only on the text, and a page reads the same few hundred descriptions many
+// times: Home spent about 300 ms of each render here (speed round, 11-15). So each answer is kept,
+// by the part of the text the patterns read, and the whole memo is dropped when it fills.
+const MERCHANT_MEMO_MAX = 10_000;
+const merchantMemo = new Map<string, Merchant | null>();
+
 export function normalizeMerchant(description: string): Merchant | null {
-  let text = normalizeDescription(beforePadding(description.slice(0, MERCHANT_TEXT_MAX_CHARS)));
+  const text = description.slice(0, MERCHANT_TEXT_MAX_CHARS);
+  let merchant = merchantMemo.get(text);
+  if (merchant === undefined) {
+    merchant = merchantOf(text);
+    if (merchantMemo.size >= MERCHANT_MEMO_MAX) merchantMemo.clear();
+    merchantMemo.set(text, merchant);
+  }
+  // A copy, so a caller that changes its answer never changes the next one.
+  return merchant && { ...merchant };
+}
+
+function merchantOf(description: string): Merchant | null {
+  let text = normalizeDescription(beforePadding(description));
   for (const pattern of BOILERPLATE) text = text.replace(pattern, "");
   for (const pattern of PROCESSOR_PREFIXES) text = text.replace(pattern, "");
 
