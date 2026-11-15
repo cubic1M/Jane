@@ -5,7 +5,7 @@ import { useEffect, useLayoutEffect, useRef, type ReactNode, type RefObject } fr
 import { createPortal } from "react-dom";
 import type { Route } from "next";
 import type { CalcLine } from "@/lib/hub/view";
-import { formatCents } from "@/lib/money";
+import { formatWholeDollars } from "@/lib/money";
 import { placePopup, popupLine, type Box } from "./place-popup";
 import { MarchingPath } from "@/components/marching-path";
 
@@ -16,10 +16,10 @@ import { MarchingPath } from "@/components/marching-path";
 // closes on Esc or a click outside. It arrives with the hub's motion (.nw-box-in, a marching
 // <MarchingPath>; neither with reduced motion), and has the full page as a link inside.
 
+// Rounded, as the tile above it is (formatWholeDollars): cut off, $2,519.62 read "$2,519" in the
+// sum and "$2,520" on the tile (debugger 11-15, main's hero-tiles.spec).
 const dollars = (cents: number) =>
-  cents < 0
-    ? `−${formatCents(-cents).replace(/\.\d\d$/, "")}`
-    : formatCents(cents).replace(/\.\d\d$/, "");
+  cents < 0 ? `−${formatWholeDollars(-cents)}` : formatWholeDollars(cents);
 
 const rectOf = (el: Element): Box => {
   const r = el.getBoundingClientRect();
