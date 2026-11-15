@@ -12,7 +12,7 @@ import { lenderPartnerFor } from "@/lib/lender-partner";
 import { fit, type FitBaseline, type FitResult } from "@/planning/fit";
 import { refinanceable } from "@/planning/refinance";
 import { fitPersonFrom } from "@/planning/fit-person";
-import { isoDay } from "@/lib/dates";
+import { todayOf } from "@/lib/today";
 
 // The perfect fit for borrowing (spec step 281), for one person: the need, what they have now,
 // the lender's offers at each usual term, and the fit engine's options (src/planning/fit.ts).
@@ -58,7 +58,8 @@ export async function loadFit(
   want: FitNeedInput,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<FitView> {
-  const asOf = isoDay(now);
+  // The person's own day, as "Checked" shows it (todayOf; debugger 11-15).
+  const asOf = await todayOf(userId, { client, now });
   const db = scopedFor(userId, client);
   const [found, book, band, input, report] = await Promise.all([
     lenderPartnerFor(userId, { client }),
