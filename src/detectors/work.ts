@@ -9,6 +9,7 @@ import { formatCents } from "@/lib/money";
 import { type Detector, suggestion } from "./contract";
 import { evidence, factEvidence, outCents, tx, weakest, headlineOf } from "./helpers";
 import { daysToEstimatedDate, estimatedDatesBetween, urgencyForEstimated } from "./taxes";
+import { dayLabel } from "@/lib/day-label";
 
 // Detectors for how a person earns (spec step 254): taxes with no employer, saving for
 // retirement alone, uneven pay, a business mixed with home, company stock. Pure; see
@@ -365,11 +366,7 @@ const cashFlow: Detector = {
     const next = new Date(Date.parse(last.date) + every * DAY).toISOString().slice(0, 10);
     const daysLeft = Math.round((Date.parse(next) - Date.parse(profile.today)) / DAY);
     const months = Math.max(1, Math.round(every / 30));
-    const nextWords = new Date(`${next}T00:00:00Z`).toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      timeZone: "UTC",
-    });
+    const nextWords = dayLabel(next, { long: true });
     return suggestion("taxes", "cash_flow", {
       title: `Set aside about ${formatCents(weekly)} from each week's sales for the tax bill due every ${months === 1 ? "month" : `${months} months`}`,
       headline: headlineOf("Set aside tax from weekly sales", average, "risk"),

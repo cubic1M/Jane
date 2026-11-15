@@ -3,6 +3,7 @@ import { formatCents } from "@/lib/money";
 import { type Detector, suggestion } from "./contract";
 import { evidence, headlineOf, tx } from "./helpers";
 import { addDays } from "@/lib/dates";
+import { dayLabel } from "@/lib/day-label";
 
 // A payout from a retirement plan or IRA landed in the bank (connectors roadmap round 17,
 // rollover_60_day_clock): it can still be rolled over if it goes into an IRA or plan within 60
@@ -12,13 +13,7 @@ import { addDays } from "@/lib/dates";
 const DAY = 86_400_000;
 const daysBetween = (from: string, to: string) =>
   Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / DAY);
-const longDate = (day: string) =>
-  new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+const longDate = (day: string) => dayLabel(day, { long: true, year: true });
 
 const rolloverClock: Detector = {
   capability: "investing",

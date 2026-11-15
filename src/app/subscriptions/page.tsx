@@ -9,16 +9,9 @@ import { scopedDb } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { PageShell } from "@/components/page-shell";
+import { dayLabel } from "@/lib/day-label";
 
-const day = (iso: string | null) =>
-  iso
-    ? new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-        timeZone: "UTC",
-      })
-    : "–";
+const day = (iso: string | null) => (iso ? dayLabel(iso, { year: true }) : "–");
 
 function Rows({ rows, cards }: { rows: RecurringCharge[]; cards: Map<string, string> }) {
   return (

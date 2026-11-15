@@ -1,6 +1,7 @@
 import { SAFE_TO_SPEND_FLOOR_CENTS } from "@/config/auto-invest";
 import { formatCents } from "@/lib/money";
 import { type MessageAction, openLink } from "../types";
+import { dayLabel } from "@/lib/day-label";
 
 // Jane's words and buttons for automatic investing (spec step 134). Pure.
 
@@ -33,11 +34,7 @@ export function runLine(run: {
   paydayOn: string;
   reason: string | null;
 }): string {
-  const day = new Date(`${run.paydayOn}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
+  const day = dayLabel(run.paydayOn);
   return run.status === "invested"
     ? `I invested ${formatCents(run.amountCents)} from your ${day} paycheck, in the simulated brokerage (no real money moved).`
     : `I paused investing for your ${day} paycheck. ${run.reason ?? ""}`.trim();

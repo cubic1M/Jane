@@ -36,6 +36,7 @@ import { type TaxDocumentsView } from "@/lib/tax-documents";
 import { COMPARED } from "@/planning/tax-document-check";
 import { formPayer } from "@/planning/tax-documents";
 import { PageShell } from "@/components/page-shell";
+import { dayLabel } from "@/lib/day-label";
 
 // Taxes (spec steps 118–127): Jane keeps the person's taxes organised all year. The page is a
 // tree (docs/design/area-pages.md): what's due soon, ways to pay less, this year's numbers,
@@ -185,7 +186,7 @@ function FormsCard({ forms, year }: { forms: TaxDocumentsView; year: number }) {
                   ? "Received"
                   : f.mayNotSend
                     ? "May not send one: below the reporting threshold. Your own records count."
-                    : `Usually sent by ${new Date(`${f.by}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}`}
+                    : `Usually sent by ${dayLabel(f.by, { year: true })}`}
               </span>
               <FormToggle
                 year={year}

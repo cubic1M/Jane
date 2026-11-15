@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { LIFE_EVENTS, LIFE_EVENT_KINDS, type LifeEventKind } from "@/config/life-events";
-import { momentLabel } from "@/lib/day-label";
+import { momentLabel, dayLabel } from "@/lib/day-label";
 import { updateLifeEvents, type LifeEventState } from "./actions";
 import { CARD_ROOMY } from "@/components/card";
 
@@ -21,13 +21,7 @@ const BUTTON =
 
 // A calendar day ("2026-11-12", when a checklist was started). The moment one was finished is the
 // person's own day (momentLabel): in UTC an evening in Los Angeles read as tomorrow (debugger 11-13).
-const day = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+const day = (iso: string) => dayLabel(iso, { year: true });
 
 function Hidden({ values }: { values: Record<string, string> }) {
   return (

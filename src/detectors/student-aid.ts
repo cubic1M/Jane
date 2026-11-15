@@ -5,6 +5,7 @@ import { confidenceOf } from "@/profile/confidence";
 import type { ProfileLiability } from "@/profile/build";
 import { type Detector, suggestion } from "./contract";
 import { headlineOf } from "./helpers";
+import { dayLabel } from "@/lib/day-label";
 
 // Federal student loans (connectors roadmap round 15, the student_aid connector's cards). Facts
 // and a studentaid.gov link, no partner and no advice, so they show on real accounts with the
@@ -53,12 +54,7 @@ const studentAutopay: Detector = {
       .reduce((sum, cents) => sum + Math.abs(cents), 0);
     if (owed <= 0) return null;
     const yearly = Math.round((owed * FED_AUTOPAY.cutBps) / 10_000);
-    const deadline = new Date(`${FED_AUTOPAY.lastDay}T00:00:00Z`).toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-      timeZone: "UTC",
-    });
+    const deadline = dayLabel(FED_AUTOPAY.lastDay, { long: true, year: true });
     const see = STUDENT_STEPS.find((s) => s.key === "see_loans")!;
     // What Jane can't tell from the bank: when a loan was first paid out, and whether it's on RAP
     // (no Plaid name yet: "unknown" or "other"), where unpaid interest is waived anyway.
