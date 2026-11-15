@@ -570,9 +570,10 @@ const LEGAL = [
   /\b(?:have|has|got) (?:a |an )?(?:\w+ )?case against\b/i,
   // Chat policy round 10 (11-12): "Sue them in small claims court for the deposit", "You can break
   // your lease without penalty because of the mold", "Under the FCRA they have to delete it". An
-  // insurance claim that is small ("I file small claims for you") is not a court.
+  // insurance claim that is small ("I file small claims for you") is not a court, and a court fee on
+  // a statement is what was paid (round 43).
   /(?:^|[.!?:;]\s+)Sue (?:them|him|her|the|your|their|in)\b/,
-  /\bsmall[- ]claims (?:court|case|lawsuit|suit|judge)\b|\b(?:in|to|into) small[- ]claims\b/i,
+  /\bsmall[- ]claims (?:court|case|lawsuit|suit|judge)\b(?! (?:filing |service )?(?:fees?|charges?|payments?)\b)|\b(?:in|to|into) small[- ]claims\b/i,
   /\b(?:break|end|terminate|get out of) (?:your |the |a )?lease\b[^.!?]{0,30}\bwithout (?:a |any )?(?:penalty|penalties|fee|fees|paying)\b/i,
   /\b(?:have|has) (?:the |a )?right to (?:break|end|terminate|get out of|withhold|your deposit)\b|\b(?:are|is) (?:allowed|entitled) to (?:break|end|terminate|get out of|withhold)\b/i,
   /\bunder (?:the )?(?:fcra|fdcpa|fair credit reporting act|fair debt collection practices act|card act|credit card act|tila|truth in lending act|scra|servicemembers civil relief act|(?:state|federal|consumer protection|tenant|landlord[- ]tenant|your state(?:'|’)s) laws?|the law)\b[^.!?]{0,50}\b(?:have to|has to|must|can(?:'|’)?t|cannot|required|entitled|allowed|owe)\b/i,
@@ -666,6 +667,12 @@ const LEGAL = [
   // landlord can't evict you for that", "They can't take your car"), and money called a gift to
   // dodge tax ("Call it a gift so it isn't taxed").
   /\b(?:they|he|she|the (?:landlord|lender|collector|creditor|bank|irs|company|dealer|servicer|court)|your (?:landlord|lender|creditor|employer|ex|hoa)|collectors|creditors|landlords)\s+(?:legally )?(?:can(?:'|’)?t|cannot|can not|aren(?:'|’)?t allowed to|isn(?:'|’)?t allowed to|have no right to|has no right to)\s+(?:legally )?(?:garnish|evict|repossess|seize|levy|foreclose|sue|take (?:your|the|away)|freeze|touch|come after|kick you out|fire you|charge you|fine you|tow|keep (?:your|the) (?:security )?deposit)\b/i,
+  // Round 43 (11-15): what someone can't do with your pay ("Your employer can't make you pay that
+  // back", "Your boss can't withhold your last paycheck", "Netflix can't make you pay for that").
+  /\bcan(?:'|’)?t (?:legally )?make you (?:pay|repay|reimburse)\b|\b(?:they|he|she|the (?:employer|company)|your (?:employer|boss|manager|company)|employers)\s+(?:legally )?(?:can(?:'|’)?t|cannot|can not|aren(?:'|’)?t allowed to|isn(?:'|’)?t allowed to|have no right to|has no right to)\s+(?:legally )?(?:dock (?:your|you)|withhold (?:your|you)|deduct\b|hold (?:your|back your) (?:last |final )?(?:paycheck|pay|wages|check)|keep your (?:last |final )?(?:paycheck|pay|wages|tips))/i,
+  // And labor law read as fact: "Your final paycheck has to come within 72 hours", "Your tips belong
+  // to you by law", "You should get overtime for that", "You're misclassified as a contractor".
+  /\b(?:final|last) (?:paycheck|check|pay|wages) (?:legally )?(?:has to|must|is required to|needs to) (?:come|arrive|be paid|be issued|be given|be sent)\b|\b(?:belongs? to you|(?:are|is) (?:yours|protected|required|illegal|guaranteed)) by law\b|\byou (?:should|would|will|ought to) (?:get|be paid|receive|earn) overtime\b|\b(?:you(?:'|’)re|you are|you were|you(?:'|’)ve been|you have been) (?:being |probably |likely )?misclassified\b|\b(?:file|open|submit|make) a wage (?:claim|complaint)\b|\bowes? you (?:benefits|severance|pto|vacation pay|your pto)\b/i,
   // Round 24 (11-13): what a contract does by law, and signing it ("That clause isn't enforceable",
   // "Sign it; it's a standard contract").
   /\b(?:isn(?:'|’)?t|is not|aren(?:'|’)?t|are not|not) (?:legally )?(?:enforceable|binding)\b|\bunenforceable\b|\b(?:it|this|that)(?:'|’)?s a standard (?:contract|lease|agreement|clause|waiver)\b|\bsafe to sign\b/i,
