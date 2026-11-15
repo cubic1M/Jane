@@ -457,7 +457,13 @@ async function SettingsContent({
   );
   details[itemId("security", "calendar")] = (
     <div id="calendar" className={BOX}>
-      <CalendarForm since={prefs.calendarCreatedAt?.toISOString().slice(0, 10) ?? null} />
+      <CalendarForm
+        since={
+          prefs.calendarCreatedAt
+            ? momentLabel(prefs.calendarCreatedAt, timezone, { year: true })
+            : null
+        }
+      />
       <AccountantLinksForm live={accountantLinks} />
     </div>
   );
