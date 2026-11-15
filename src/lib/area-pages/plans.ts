@@ -2,6 +2,7 @@ import type { Route } from "next";
 import { isHiddenPage } from "@/config/hidden-pages";
 import { AHEAD_DATES_DAYS, AHEAD_URGENT_DAYS, HUB_DEADLINE_DAYS } from "@/config/hubs";
 import type { TreeStatus } from "@/components/tree/interactive-tree";
+import type { DeadlineKind } from "@/insights/deadlines";
 import { notCounting, type Unbalanced } from "@/insights/net-worth";
 import { shortMoney } from "@/lib/hub/view";
 import { type AreaItem, type AreaTree, buildAreaTree, shortLabel } from "./tree";
@@ -67,7 +68,13 @@ const monthLabel = (day: string) =>
 export type PlansTreeInput = {
   asOf: string;
   // Dates in the next HUB_DEADLINE_DAYS, soonest first.
-  deadlines: { key: string; title: string; date: string; amountCents: number | null }[];
+  deadlines: {
+    key: string;
+    title: string;
+    date: string;
+    kind?: DeadlineKind;
+    amountCents: number | null;
+  }[];
   goals: {
     id: string;
     name: string;
@@ -96,6 +103,21 @@ export type PlansTreeInput = {
   debt: { accounts: number; owedCents: number; known?: number };
 };
 
+// When a date comes, in the words for what it is: a bill is due, a return window or a trial
+// ends, a renewal is just a day (debugger 11-15: "Return window for West Marine: Due today.",
+// with nothing to pay).
+function whenLine(kind: DeadlineKind | undefined, left: number): string {
+  if (kind === "return")
+    return left === 0
+      ? "Last day to return it."
+      : left === 1
+        ? "Last day to return it is tomorrow."
+        : `${left} days left to return it.`;
+  if (kind === "payment" || kind === "bill" || kind === undefined)
+    return left === 0 ? "Due today." : left === 1 ? "Due tomorrow." : `Due in ${left} days.`;
+  return left === 0 ? "Today." : left === 1 ? "Tomorrow." : `In ${left} days.`;
+}
+
 export function plansTree(input: PlansTreeInput): AreaTree {
   const item = (branch: PlansBranch, key: string, rest: Omit<AreaItem, "id">): AreaItem => ({
     id: itemId(branch, key),
@@ -113,7 +135,7 @@ export function plansTree(input: PlansTreeInput): AreaTree {
           ? `${shortMoney(d.amountCents)} · ${dayLabel(d.date)}`
           : dayLabel(d.date),
       cents: d.amountCents ?? 0,
-      summary: left === 0 ? "Due today." : left === 1 ? "Due tomorrow." : `In ${left} days.`,
+      summary: whenLine(d.kind, left),
     });
   });
   coming.push(
