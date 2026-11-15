@@ -362,6 +362,9 @@ const INVESTMENT = [
   // "Your budget allocation" is a budget.
   /\b(?:asset|portfolio|investment|fund) allocation\b/i,
   /\b(outperform\w*|underperform\w*|beat the market|market timing|capital gains?)\b/i,
+  // Round 46 (11-15): a pick behind a disclaimer ("Not financial advice, but I'd sell", "This isn't
+  // advice, but...").
+  /\b(?:not|isn(?:'|’)t|no|this is not|this isn(?:'|’)t) (?:financial |investment |investing )?advice,? but\b/i,
   // Round 45 (11-15): "Diversify into gold", "Get into real estate". "Diversified Services" on a
   // statement is a name.
   /\bdiversif(?:y|ying)\b[^.!?]{0,20}\b(?:into|with|by buying)\b|\bdiversif(?:y|ying) (?:your )?(?:portfolio|investments|holdings|savings|money|assets)\b|\b(?:get|getting|break|breaking|go|going) into (?:real estate|investing|the (?:stock )?market|stocks|crypto|bitcoin|gold|silver|rental propert(?:y|ies)|rentals)\b/i,
@@ -407,6 +410,8 @@ const TAX_ADVICE = [
   // EITC this year").
   /\b(?:you |you(?:'|’)d |you would |you(?:'|’)ll |you will |you probably )?(?:qualify|are eligible|(?:'|’)re eligible|be eligible) for (?:the |a )?(?:eitc|earned income (?:tax )?credit|child tax credit|ctc|saver(?:'|’)?s credit|american opportunity|aotc|lifetime learning|premium tax credit|education credit|[^.!?]{0,20}\btax (?:credit|break|deduction))\b/i,
   DEDUCTIONS,
+  // Round 46 (11-15): "You could probably skip filing this year".
+  /\bskip(?:ping)? (?:filing|your (?:tax )?return|the (?:tax )?return)\b/i,
   // Round 25 (11-14): "You're exempt from the penalty".
   /\b(?:you(?:'|’)re|you are) exempt from\b/i,
   // Round 29 (11-14): "That's deductible", "That counts as a business expense". An insurance
@@ -641,6 +646,11 @@ const LEGAL = [
   /\b(?:landlord|lender|servicer|collector|creditor|employer|insurer|they|he|she) (?:is|are) (?:legally )?(?:required|obligated) to\b/i,
   // Round 20 (11-13): "Your employer has to pay you for that time".
   /\b(?:employer|boss|landlord|lender|servicer|collector|creditor|insurer|company|bank|store|they|he|she) (?:has|have) to (?:pay|refund|reimburse|give|return|cover)(?: you| it| the| your)\b/i,
+  // Round 46 (11-15): a lease read ("You can sublet without telling your landlord", "Your lease
+  // probably lets you sublet", "Legally they probably can't do that"), and leaving things off an
+  // application ("Your landlord doesn't need to know", "Leave the side income off the loan
+  // application", "Round up your income on the application"). Sublet rent on a statement passes.
+  /\bsub-?le(?:t|ase)\w*\b[^.!?]{0,30}\b(?:without (?:telling|asking|permission|notice|notifying)|breaks?|violates?|is (?:allowed|legal|illegal|fine))\b|\b(?:lets?|allows?|permits?) you (?:to )?sub-?le(?:t|ase)\b|\bwithout (?:telling|asking|permission from|notifying) (?:your |the )?landlord\b|\blegally,? (?:they|he|she|you|it|your \w+|the \w+) (?:probably |likely |definitely |almost certainly )?(?:can(?:'|’)?t|cannot|can|must|have to|has to|don(?:'|’)?t have to|doesn(?:'|’)?t have to|aren(?:'|’)?t allowed|isn(?:'|’)?t allowed|are fine|(?:'|’)re fine|(?:'|’)re covered|are covered)\b|\b(?:landlord|insurer|insurance company|lender|bank|irs|employer|school|they|he|she|nobody|no one)\s+(?:doesn(?:'|’)?t|don(?:'|’)?t|does not|do not|won(?:'|’)?t) (?:need|have) to know\b|\b(?:don(?:'|’)?t|do not|never) (?:mention|list|include|disclose|put down)\b[^.!?]{0,30}\b(?:on|in) (?:the |your |an? )?(?:\w+ )?(?:application|fafsa)\b|\bleave\b[^.!?]{0,30}\boff (?:the |your |an? )?(?:\w+ )?(?:application|fafsa)\b|\b(?:round|bump|pad|inflate|fudge|stretch) (?:up )?(?:your )?(?:income|salary|pay|earnings)\b[^.!?]{0,20}\b(?:on|for|in) (?:the |your |an? )?(?:\w+ )?(?:application|fafsa)\b/i,
   // Round 45 (11-15): a relative's debts ("You don't have to pay your dad's debts"), benefits kept by
   // not reporting ("You'll keep your SNAP if you don't report it", "Social Security won't count that
   // income") and immigration ("You can get your green card faster if you pay it off").
