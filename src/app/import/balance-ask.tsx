@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { setBalanceAction } from "./actions";
 import { IMPORT_STARTED_EVENT } from "@/config/import";
 import { balanceQuestion, type BalanceAsk } from "@/lib/import/balance-question";
@@ -27,6 +27,7 @@ export function BalanceAskForm({
   const [state, setState] = useState<"asking" | "saved" | "skipped">("asking");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const field = useRef<HTMLInputElement>(null);
   if (state === "skipped") return null;
   if (state === "saved") {
     return (
@@ -36,22 +37,26 @@ export function BalanceAskForm({
     );
   }
   const question = balanceQuestion(ask);
+  function save() {
+    const text = field.current?.value ?? "";
+    setError(null);
+    startTransition(async () => {
+      const result = await setBalanceAction(ask.accountId, text);
+      if (!result.ok) return setError(result.error);
+      setState("saved");
+      // The chip follows the numbers being worked out again.
+      window.dispatchEvent(new CustomEvent(IMPORT_STARTED_EVENT));
+    });
+  }
+  // Not a form of its own: right after an upload it sits inside the upload's form, and a form in a
+  // form is no form at all, so Save sent the page to /import?balance=… and saved nothing
+  // (debugger 11-15). Enter saves, as it would in a form.
   return (
-    <form
+    <div
+      role="group"
+      aria-label={question}
       data-balance-ask={ask.accountId}
       className="flex flex-col gap-2"
-      onSubmit={(event) => {
-        event.preventDefault();
-        const text = String(new FormData(event.currentTarget).get("balance") ?? "");
-        setError(null);
-        startTransition(async () => {
-          const result = await setBalanceAction(ask.accountId, text);
-          if (!result.ok) return setError(result.error);
-          setState("saved");
-          // The chip follows the numbers being worked out again.
-          window.dispatchEvent(new CustomEvent(IMPORT_STARTED_EVENT));
-        });
-      }}
     >
       <label className="flex flex-col gap-1 text-sm font-semibold">
         {question}
@@ -65,14 +70,18 @@ export function BalanceAskForm({
       </label>
       <div className="flex flex-wrap items-center gap-2">
         <input
-          name="balance"
+          ref={field}
           inputMode="decimal"
-          required
           placeholder="1,234.56"
           aria-label={question}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            save();
+          }}
           className={FIELD}
         />
-        <button type="submit" disabled={pending} className={BUTTON}>
+        <button type="button" disabled={pending} onClick={save} className={BUTTON}>
           {pending ? "Saving…" : "Save"}
         </button>
         {skippable && (
@@ -91,6 +100,6 @@ export function BalanceAskForm({
           {error}
         </p>
       )}
-    </form>
+    </div>
   );
 }
