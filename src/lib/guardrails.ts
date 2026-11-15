@@ -131,6 +131,10 @@ const STOCK_PICKS = [
   // Round 39 (11-15): "Let Betterment manage it", and an amount with cents ("Put the $400.00 in
   // Wealthfront").
   /\brobo[- ]?advis[oe]rs?\b|\b(?:put|move|park|invest|try|use|open|start|sign up for|go with|switch to|let)\b(?:[^.!?\n]|\.\d){0,25}\b(?:wealthfront|betterment|acorns|stash|webull|m1 finance|e\*?trade|ally invest|merrill edge|sofi invest)\b/i,
+  // Round 40 (11-15): "VTI and chill", and selling or buying around an event ("Sell everything before
+  // the election").
+  /\b(?:vti|voo|vt|vtsax|vfiax|spy|qqq|fxaix|swppx|schd|vxus|index funds?|etfs?)\b(?:[^.!?]|\.\d){0,10}\band chill\b/i,
+  /\b(?:sell|buy|get out|cash out|pull out)\b(?:[^.!?]|\.\d){0,25}\bbefore (?:the )?(?:election|crash|recession|fed (?:meeting|decision)|rate (?:cuts?|hikes?)|earnings|market (?:drops|crashes))\b/i,
   // Round 17 (11-13): a ticker spelled out ("Buy T S L A", "Grab some v-o-o"); "Get a T-shirt" is shopping.
   /\b(?:buy|buying|grab|get|add|pick up|own|load up on)\s+(?:some |more )?(?![Aa][\s-])(?:[A-Za-z][ -]){2,4}[A-Za-z]\b(?![\w'’-])/i,
   // table row ("| VOO | Buy |") and a line of code ("buy: TSLA").
@@ -487,7 +491,9 @@ const TAX_ADVICE = [
   // for counsel ("A direct rollover isn't taxed") say how a kind of money works and pass.
   /\byour [^.!?]{0,30}\b(?:isn(?:'|’)?t|aren(?:'|’)?t|is not|are not|won(?:'|’)?t be)(?: (?:generally|usually|probably))? (?:taxable|taxed)\b|\bunder \$[\d,.]+k?\b[^.!?]{0,15}\b(?:isn(?:'|’)?t|aren(?:'|’)?t|is not|are not|won(?:'|’)?t be|doesn(?:'|’)?t|don(?:'|’)?t)(?: (?:need to be|have to be|get))? (?:taxable|taxed|reported)\b/i,
   // Round 34 (11-14): "Tips aren't taxed anymore", "Overtime isn't taxable now".
-  /\b(?:(?:cash )?tips|overtime|social security(?: benefits)?|unemployment(?: benefits)?|side (?:gig |hustle )?income|gig income|crypto gains|venmo payments|cash app payments|zelle payments)\b(?:[^.!?]|\.\d){0,20}\b(?:isn(?:'|’)?t|aren(?:'|’)?t|is not|are not|won(?:'|’)?t be|is no longer|are no longer) (?:taxable|taxed)\b|\b(?:taxable|taxed) (?:anymore|any more)\b/i,
+  /\b(?:(?:cash )?tips|overtime|inheritances?|(?:an |the )?inheritance money|life insurance (?:payouts?|proceeds)|scholarships?|social security(?: benefits)?|unemployment(?: benefits)?|side (?:gig |hustle )?income|gig income|crypto gains|venmo payments|cash app payments|zelle payments)\b(?:[^.!?]|\.\d){0,20}\b(?:isn(?:'|’)?t|aren(?:'|’)?t|is not|are not|won(?:'|’)?t be|is no longer|are no longer) (?:taxable|taxed)\b|\b(?:taxable|taxed) (?:anymore|any more)\b/i,
+  // Round 40 (11-15): "You don't need to report Venmo payments", "Inheritance isn't taxable" (above).
+  /\b(?:don(?:'|’)?t|do not|no need to|never|you (?:don(?:'|’)?t|do not) (?:have|need) to) (?:bother )?(?:report(?:ing)?|declar(?:e|ing))\b(?:[^.!?]|\.\d){0,25}\b(?:income|tips|earnings|winnings|side (?:gig|hustle|income)|gig (?:income|pay)|venmo|paypal|cash app|zelle|crypto|1099s?)\b(?!(?:[^.!?]|\.\d){0,20}\b(?:as (?:fraud|a scam|stolen|unauthori[sz]ed)|to (?:the bank|venmo|paypal|cash app|zelle|support))\b)/i,
   // Round 35 (11-14): "Your bonus is taxed at 22%".
   /\btaxed at (?:a |the |about |around |roughly |only |just )?(?:\d|flat|higher|lower|your|ordinary|capital|long[- ]term|short[- ]term)/i,
   // Round 36 (11-14): "Medical bills over 7.5% of your income are deductible". "None of it is
@@ -692,6 +698,11 @@ const LEGAL = [
   /\byou (?:don(?:'|’)?t|do not) (?:really )?need (?:a |an )?(?:will|trust|lawyer|attorney|prenup|power of attorney|estate plan)\b/i,
   /\b(?:visa|[Gg]reen card|[Ww]ork permit|EAD|DACA|F-1|H-1B|OPT)\b(?:[^.!?]|\.\d){0,20}\b(?:lets|allows|permits|doesn(?:'|’)?t (?:let|allow|permit)|does not (?:let|allow|permit)|won(?:'|’)?t let)\b/,
   /\b(?:they(?:(?:'|’)re| are)|(?:your |the )?(?:employer|boss|company|landlord|lender|bank|hospital|insurer|collector)(?: is|(?:'|’)s)) (?:legally )?(?:required|obligated) to\b/i,
+  // Round 40 (11-15): "You don't have to pay the parking ticket", "Ignore the jury summons", "Venmo
+  // can't freeze your account". A due date ("You don't need to pay the ticket until Dec 1") passes.
+  /\byou (?:don(?:'|’)?t|do not) (?:legally )?(?:have to|need to) pay (?:that |this |the |your |those |these )?(?:parking |speeding |traffic |toll |red[- ]light |camera )?(?:tickets?|fines?|citations?|tolls?)\b(?! (?:until|before|by|yet|in full|today|now|online|in person)\b)/i,
+  /\b(?:ignore|skip|throw (?:out|away)) (?:the |that |this |your |a )?(?:jury summons|summons|subpoena|court (?:date|notice|order|papers)|lawsuit|judgment|warrant|eviction notice)\b/i,
+  /\b(?:venmo|paypal|cash app|zelle|chime|they|(?:the|your) (?:bank|lender|landlord|app|card company))\s+(?:legally )?(?:can(?:'|’)?t|cannot|aren(?:'|’)?t allowed to|isn(?:'|’)?t allowed to)\s+(?:freeze|close|lock|seize|keep) (?:your|the) (?:account|money|funds|deposit|car)\b/i,
   /\b(?:sign|accept|take|reject|turn down|don(?:'|’)?t sign) (?:the |their |that |this )?(?:settlement|plea(?: deal)?|severance agreement|release|waiver|nda|non-?compete|arbitration agreement)\b/i,
   // Round 36 (11-14): "The No Surprises Act protects you here", "You can't be billed for that",
   // "You're entitled to a refund", "You can stop paying your timeshare", "Small claims is your best bet".
@@ -862,6 +873,9 @@ const GUARANTEE = [
   // Round 31 (11-14): "Your dispute will win", "The charge will be reversed", "They will refund you".
   /\b(?:dispute|claim|chargeback|appeal|case|complaint)s? (?:will|is going to|(?:'|’)ll) (?:definitely |surely )?(?:win|succeed|go through|be approved|be granted|work)\b/i,
   /\b(?:charge|fee|payment|transaction)s? (?:will|is going to|are going to) (?:definitely |surely )?be (?:reversed|refunded|removed|waived|credited back)\b/i,
+  // Round 40 (11-15): "You'll win the dispute", "The bank will reverse it".
+  /\b(?:you(?:'|’)ll|you will|you(?:'|’)re going to|you are going to) (?:definitely |surely |easily )?win (?:the |this |that |your )?(?:dispute|chargeback|appeal|case|claim|lawsuit|small claims)\b|\b(?:dispute|chargeback|appeal|claim) (?:will|is going to) (?:definitely |surely )?(?:go your way|succeed|work|be approved)\b/i,
+  /\b(?:they|the (?:bank|merchant|card issuer|issuer|company|store|airline|hotel|seller)|your bank)(?:(?:'|’)ll| will| is going to| are going to) (?:definitely |surely )?(?:reverse|refund) (?:it|this|that|the (?:charge|fee|payment|transaction)|your money)\b/i,
   /\b(?:they|the (?:bank|merchant|store|company|airline|lender|landlord|seller))(?:(?:'|’)ll| will| are going to| is going to) (?:definitely |surely |have to )?(?:refund|reimburse|credit|pay) you\b/i,
   /\b(?:approval|acceptance) is (?:certain|assured|guaranteed|a given|a lock|locked in)\b|(?<!\b(?:if|once|when|as long as|may|might|could|whether)\b(?:[^.!?]|\.\d){0,60})\b(?:you(?:'|’)ll|you will) (?:definitely |certainly |surely |easily )?(?:qualify|be approved|get approved)\b/i,
   // Round 34 (11-14): "You'll be debt-free by June for sure", "Your landlord will give the deposit
