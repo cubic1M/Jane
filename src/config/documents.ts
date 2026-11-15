@@ -59,10 +59,6 @@ export const MAX_DOCUMENT_TOTAL_BYTES = 50 * 1024 * 1024;
 export const MAX_FILE_NAME_LENGTH = 120;
 export const MAX_FACT_LENGTH = 160;
 
-// A receipt's usual return window, for the deadlines list (spec step 71): most US stores
-// take returns for about 30 days.
-export const RETURN_WINDOW_DAYS = 30;
-
 // Dates outside these years are treated as misread.
 export const DOCUMENT_YEARS = { min: 1990, max: 2100 } as const;
 
