@@ -135,6 +135,9 @@ export function nice(description: string): string {
       // A customer-service number and the state after it ("COMCAST XFINITY 800-266-2278",
       // "DISNEY PLUS 888-905-7888 CA"; night QA 10-30).
       .replace(/\s+\(?\d{3}\)?[-. ]?\d{3}[-. ]?\d{4}(?:\s+[A-Z]{2})?\s*$/, "")
+      // Or a toll-free one spelled in letters, and the state after it ("COMCAST CABLE COMM
+      // 800-COMCAST PA": a student's bill read "Comcast Cable Comm 800-Comcast Pa", 11-15).
+      .replace(/\s+8(?:00|33|44|55|66|77|88)-[A-Z]{4,}[A-Z0-9]*(?:\s+[A-Z]{2})?\s*$/, "")
       .replace(/\.com$/i, "")
       .replace(/\*.*$/, "")
       .trim()
