@@ -9,7 +9,6 @@ vi.mock("@/lib/insurance/need/pick", async (original) => ({
 vi.mock("@/lib/insurance/accept", () => ({
   AcceptShopError: class AcceptShopError extends Error {},
   acceptShop: vi.fn(),
-  insuranceSwitchOf: vi.fn(() => null),
 }));
 vi.mock("@/lib/fit-pick", async (original) => ({
   ...(await original<typeof import("@/lib/fit-pick")>()),

@@ -10,7 +10,7 @@ import type { Finding, FindingStatus, FindingType, PrismaClient } from "@/genera
 import { track } from "@/lib/analytics";
 import { raiseAlerts } from "@/lib/alerts";
 import { confirmRefunds } from "@/lib/agent/refund-check";
-import { refundChargesAfterCancel } from "@/lib/agent/run";
+import { refundChargesAfterCancel } from "@/lib/agent/refund-after-cancel";
 import { refreshProposals } from "@/lib/proposals";
 import { applyStandingRules } from "@/lib/standing-rules";
 import { db as defaultClient } from "@/lib/db";

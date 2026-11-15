@@ -10,6 +10,7 @@ import { sameCompany } from "@/lib/documents/dates";
 import { kindWords } from "./gaps";
 import { POLICY_SELECT, toPolicy } from "./policies";
 import type { StoredQuote } from "./quotes";
+import type { InsuranceSwitchOptions } from "./switch";
 import { shopById } from "./shop";
 
 // Yes to Jane's pick (spec step 104): the person's one tap. Recorded like every other yes:
@@ -24,23 +25,6 @@ export class AcceptShopError extends Error {}
 const DECIDABLE = ["new", "shown"] as const;
 
 const asJson = (q: StoredQuote) => JSON.parse(JSON.stringify(q)) as Prisma.InputJsonObject;
-
-// What the decision keeps about the switch: enough for the agent (spec step 105) to bind
-// the pick without the quote, which the next reshop replaces.
-export type InsuranceSwitchOptions = {
-  insuranceShopId: string;
-  insurancePolicyId: string;
-  insuranceCarrier: string;
-  insuranceAnnualCents: number;
-  insuranceSavingCents: number;
-};
-
-export function insuranceSwitchOf(options: unknown): InsuranceSwitchOptions | null {
-  const o = (options ?? {}) as Record<string, unknown>;
-  return typeof o.insuranceShopId === "string" && typeof o.insurancePolicyId === "string"
-    ? (o as InsuranceSwitchOptions)
-    : null;
-}
 
 export async function acceptShop(
   userId: string,
