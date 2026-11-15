@@ -232,7 +232,7 @@ const INVESTMENT = [
   /\b(?:stocks?|the (?:stock )?market|markets|the s&p(?: 500)?|the dow|equities)\b[^.!?]{0,20}\b(?:is|are|'s|’s) (?:due for|headed for|about to|going to|set to) (?:a |an )?(?:correction|crash|drop|dip|rally|fall|rise|go (?:up|down)|recover|bounce)\b|\bstay in cash\b/i,
   /\b401\(?k\)?/i,
   // Round 21 (11-13): "Withdraw from your 403(b) early".
-  /\b(?:403|457)\(?b\)?|\bthrift savings plan\b/i,
+  /\b(?:403|457)(?:\(b\)|b\b)|\bthrift savings plan\b/i,
   // An IRA is written in capitals; "Ira" is a person.
   /\broth\b/i,
   /\bIRAs?\b/,
@@ -1188,6 +1188,9 @@ const LOOK_ALIKE = new RegExp(`[${Object.keys(LOOK_ALIKES).join("")}]`, "g");
 function forChecking(text: string): string {
   return (
     text
+      // An id is never advice: a random UUID in an email address ("safety-…-403b-…@example.com")
+      // read as a 403(b) and held the agent's first email about 1 time in 2,500 (main, 11-14).
+      .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, "id")
       .replace(/[\uFF01-\uFF5E]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
       .replace(/[\u00a0\u2000-\u200a\u202f\u205f\u3000]/g, " ")
       .replace(/[\u00ad\u200b-\u200d\u2060\ufeff]/g, "")
