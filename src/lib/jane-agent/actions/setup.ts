@@ -1,4 +1,5 @@
 import { ProposalError, acceptAllProposals, answerProposal, openProposals } from "@/lib/proposals";
+import { coveredGoal, offeredTopics } from "../still-true";
 import {
   ChatActionError,
   answeredElsewhere,
@@ -55,7 +56,13 @@ export const setupAll: ActionHandler = {
     if (!(await openProposals(userId, { client })).some((p) => p.key === key)) {
       throw answeredElsewhere("That suggestion isn't open anymore.");
     }
-    const n = await acceptAllProposals(userId, { client, now });
+    // The cards the person was shown: not a set-up goal a suggestion covers (../still-true.ts).
+    const topics = await offeredTopics(userId, { client, now });
+    const n = await acceptAllProposals(userId, {
+      client,
+      now,
+      skip: (k) => coveredGoal(k, topics),
+    });
     return {
       answeredWith: context.action.label,
       note: `Done. I set up ${n} ${n === 1 ? "suggestion" : "suggestions"}.`,
