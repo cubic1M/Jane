@@ -158,11 +158,13 @@ const STOCK_PICKS = [
 const INVESTMENT = [
   // Round 37 (11-14): a brand with "Invest" in its name, as a line on a statement ("Your SoFi Invest
   // transfer of $90.00 posted Nov 2"), is a fact, as "a transfer to Fidelity" already was. The brand
-  // with anything else after it ("Open a SoFi Invest account") is still stopped.
-  /(?<!\b(?:sofi|ally|cash app|merrill|stash|m1|firstrade|public\.com) )\binvest(?!igat)|\b(?:sofi|ally|cash app|merrill|stash|m1|firstrade|public\.com) invest(?:ing)?\b(?! (?:transfers?|deposits?|withdrawals?|charges?|fees?|payments?|debits?|credits?|pulls?|round[- ]ups?|charged|took|pulled|sent|deposited|withdrew|debited|credited|refunded)\b)/i,
-  /(?<!\b(?:in|of) )\bstocks?\b(?! up\b)/i,
+  // with anything else after it ("Open a SoFi Invest account") is still stopped. Round 38 (11-15): also
+  // "Fidelity Investments" and "Edward Jones Investments" ("A transfer of $90.00 to Fidelity
+  // Investments posted Nov 2").
+  /(?<!\b(?:sofi|ally|cash app|merrill|stash|m1|firstrade|public\.com|fidelity|edward jones|vanguard|ameriprise|raymond james|t\. rowe price) )\binvest(?!igat)|\b(?:sofi|ally|cash app|merrill|stash|m1|firstrade|public\.com|fidelity|edward jones|vanguard|ameriprise|raymond james|t\. rowe price) invest(?:ing|ments)?\b(?! (?:transfers?|deposits?|withdrawals?|charges?|fees?|payments?|debits?|credits?|pulls?|round[- ]ups?|charged|took|pulled|sent|deposited|withdrew|debited|credited|refunded|posted|landed)\b)/i,
+  /(?<!\b(?:in|of) )\bstocks?\b(?! up\b)(?! yards\b)/i,
   /\bshares\b(?!\s+(?:the|your|my|a|an|this|that|their|his|her|its|it|with)\b)/i,
-  /(?<!\bhome )\bequit(y|ies)\b(?! (?:line|loan)s?\b)(?! in (?:your|the|my|their) (?:home|house|condo|car)\b)/i,
+  /(?<!\bhome )\bequit(y|ies)\b(?! (?:line|loan)s?\b)(?! (?:residential|lifestyle)\b)(?! in (?:your|the|my|their) (?:home|house|condo|car)\b)/i,
   /(?<!\b(?:bail|surety|security|performance|fidelity) )\bbonds?\b(?! (?:street|st)\b)/i,
   /\bsecurities\b/i,
   /\betfs?\b/i,
@@ -172,8 +174,16 @@ const INVESTMENT = [
   /(?<!\b(?:from|by) (?:the )?(?:u\.?s\.? )?)\btreasur(y|ies)\b(?! (?:offset|refund|check|department|tax|direct|payment|deposit)s?\b)(?! (?:sent|paid|deposited|issued|mailed)\b)/i,
   /\bt-bills?\b/i,
   /\bbrokerage\b/i,
-  /\bportfolio/i,
-  /\bdividends?\b/i,
+  // Round 38 (11-15): money sent to a brokerage as an instruction ("Put it in Fidelity", "Move your
+  // bonus to Vanguard"). "You moved $90.00 to Fidelity on Nov 2" is a fact and passes.
+  /(?:^|[.!?:;]\s+|\n\s*)(?:(?:just|maybe|so|then|now)\s+)?(?:put|move|transfer|send|park|deposit|stash)\s+(?:it|this|that|them|the (?:money|rest|cash|extra|difference)|your (?:savings|bonus|refund|cash|paycheck|raise)|\$[\d,.]+k?)\b(?:[^.!?]|\.\d){0,20}\b(?:in|into|to|at|with)\s+(?:your\s+|an?\s+)?(?:fidelity|vanguard|schwab|robinhood|e\*?trade|webull|betterment|wealthfront|acorns|stash|m1|sofi invest|ally invest|public\.com|merrill(?: edge)?|coinbase)\b/i,
+  // Round 38 (11-15): Portfolio Recovery Associates is a debt collector.
+  /\bportfolio(?! recovery\b)/i,
+  // Round 38 (11-15): a credit union pays its savings interest as a dividend ("A dividend of $5.00
+  // posted to Share Savings on Nov 1"). Said with a savings, share, checking or certificate account it's
+  // that interest when it's said as an amount paid; "Dividends grow your savings", "high-dividend" and
+  // "dividend stocks" are still picks.
+  /\bdividends?\b(?!(?:[^.!?]|\.\d){0,60}\b(?:savings|share|checking|certificate|credit union|money market account)\b)(?<!\b(?:savings|share|checking|certificate|credit union|money market account)\b(?:[^.!?]|\.\d){0,60}\bdividends?)|(?<!\$[\d,.]+ |\b(?:paid|posted|earned|credited|got) (?:an? |the |your |\$[\d,.]+ )?)\bdividends?\b(?! of \$)(?! (?:paid|posted|earned|credited)\b)|\b(?:dividend stocks?|high[- ]dividend|dividend (?:yield|funds?|etfs?|investing|growth|aristocrats?|payers?|portfolio|reinvest\w*))\b/i,
   // Round 37 (11-14): "Venmo crypto purchase of $5.00 on Nov 2" is a line on a statement.
   /(?<!\b(?:venmo|paypal|cash app|robinhood) )\bcrypto|\b(?:venmo|paypal|cash app|robinhood) crypto\b(?! (?:purchases?|sales?|transfers?|charges?|fees?|debits?|credits?|deposits?|withdrawals?|charged|took|pulled|sent|deposited|withdrew|debited|credited|refunded)\b)/i,
   /\b(bitcoin|ethereum|btc|eth|solana|dogecoin|stablecoins?)\b/i,
