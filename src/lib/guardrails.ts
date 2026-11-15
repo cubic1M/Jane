@@ -130,7 +130,11 @@ const STOCK_PICKS = [
   // Betterment"). Acorns or Betterment is also a charge on a statement, so only putting money in.
   // Round 39 (11-15): "Let Betterment manage it", and an amount with cents ("Put the $400.00 in
   // Wealthfront").
-  /\brobo[- ]?advis[oe]rs?\b|\b(?:put|move|park|invest|try|use|open|start|sign up for|go with|switch to|let)\b(?:[^.!?\n]|\.\d){0,25}\b(?:wealthfront|betterment|acorns|stash|webull|m1 finance|e\*?trade|ally invest|merrill edge|sofi invest)\b/i,
+  /\brobo[- ]?advis[oe]rs?\b|\b(?:put|move|park|invest|try|use|open|start|sign up for|go with|switch to|let)\b(?:[^.!?\n]|\.\d){0,25}\b(?:wealthfront|betterment|acorns|stash|webull|m1 finance|e\*?trade|ally invest|merrill edge|sofi invest|fundrise|yieldstreet|masterworks|roofstock|groundfloor|wefunder|mainvest)\b/i,
+  // Round 41 (11-15): "Flip a house with that money", "Buy a franchise", "Lend money on Prosper for
+  // better returns". A Prosper or LendingClub loan payment is a bill.
+  /\bflip(?:ping)? (?:a |the |your )?(?:house|home|condo|property|properties|houses|homes)\b|\bbuy(?:ing)? (?:a |into a |your own )?franchise\b/i,
+  /\blend(?:ing)? (?:out )?(?:money|it|cash|the (?:money|rest|cash)|\$[\d,.]+k?) (?:on|through|via|with|at) (?:prosper|lending ?club|kiva|funding circle)\b|\b(?:peer[- ]to[- ]peer|p2p) lending\b/i,
   // Round 40 (11-15): "VTI and chill", and selling or buying around an event ("Sell everything before
   // the election").
   /\b(?:vti|voo|vt|vtsax|vfiax|spy|qqq|fxaix|swppx|schd|vxus|index funds?|etfs?)\b(?:[^.!?]|\.\d){0,10}\band chill\b/i,
@@ -192,7 +196,8 @@ const INVESTMENT = [
   // "dividend stocks" are still picks.
   /\bdividends?\b(?!(?:[^.!?]|\.\d){0,60}\b(?:savings|share|checking|certificate|credit union|money market account)\b)(?<!\b(?:savings|share|checking|certificate|credit union|money market account)\b(?:[^.!?]|\.\d){0,60}\bdividends?)|(?<!\$[\d,.]+ |\b(?:paid|posted|earned|credited|got) (?:an? |the |your |\$[\d,.]+ )?)\bdividends?\b(?! of \$)(?! (?:paid|posted|earned|credited)\b)|\b(?:dividend stocks?|high[- ]dividend|dividend (?:yield|funds?|etfs?|investing|growth|aristocrats?|payers?|portfolio|reinvest\w*))\b/i,
   // Round 37 (11-14): "Venmo crypto purchase of $5.00 on Nov 2" is a line on a statement.
-  /(?<!\b(?:venmo|paypal|cash app|robinhood) )\bcrypto|\b(?:venmo|paypal|cash app|robinhood) crypto\b(?! (?:purchases?|sales?|transfers?|charges?|fees?|debits?|credits?|deposits?|withdrawals?|charged|took|pulled|sent|deposited|withdrew|debited|credited|refunded)\b)/i,
+  // Round 41 (11-15): a charge on the Crypto.com Visa card is a card line.
+  /(?<!\b(?:venmo|paypal|cash app|robinhood) )\bcrypto(?!\.com (?:visa )?(?:debit )?card\b)|\b(?:venmo|paypal|cash app|robinhood) crypto\b(?! (?:purchases?|sales?|transfers?|charges?|fees?|debits?|credits?|deposits?|withdrawals?|charged|took|pulled|sent|deposited|withdrew|debited|credited|refunded)\b)/i,
   // Round 39 (11-15): "Your Bitcoin Depot ATM fee was $15.49" is a fee on a statement.
   /\b(bitcoin(?! depot (?:atm )?(?:fees?|charges?|charged|took|withdrawals?)\b)|ethereum|btc|eth|solana|dogecoin|stablecoins?)\b/i,
   // Chat policy round 10 (11-12): "Stack some sats every payday", "Buy puts on Tesla before
@@ -711,6 +716,10 @@ const LEGAL = [
   /\byou(?:(?:'|’)re| are) (?:legally )?entitled to\b/i,
   /\byou can (?:just |legally )?stop paying (?:your |the |that )?(?:timeshare|mortgage|loan|student loans?|car loan|debt|hoa|rent|taxes|child support|alimony|medical bills?)\b/i,
   /\bsmall claims(?: court)?\b[^.!?]{0,20}\b(?:best bet|best option|way to go|next step|your move|your best)\b|\b(?:take (?:them|it|him|her)|go) to small claims\b/i,
+  // Round 41 (11-15): telling someone to lie in a dispute ("Just say you didn't authorize it", "Claim
+  // the package never arrived", "Say it was fraud even though you got it"). Saying what happened
+  // when it's true ("If you didn't make the charge, say so when you call") passes.
+  /\b(?:(?:just|simply) (?:say|tell (?:them|the bank|the merchant|the card company|your bank|support))|pretend|act like|claim)\b(?:\s+that)?\s+(?:you (?:didn(?:'|’)?t|did not|never) (?:authori[sz]e|make|order|receive|get|buy)|(?:it|the (?:package|order|item|card|charge|purchase)) (?:never (?:arrived|came|showed up)|didn(?:'|’)?t (?:arrive|come|show up)|was (?:stolen|lost|fraud|unauthori[sz]ed))|it was fraud)\b|\b(?:say|claim|report|dispute)\b(?:[^.!?]|\.\d){0,40}\beven (?:though|if) you (?:got|received|made|authori[sz]ed|ordered|used|have)\b/i,
   // Round 31 (11-14): "Don't show up to court", "You don't have to pay that debt", "The judge will
   // side with you", "They're violating your rights".
   /\b(?:don(?:'|’)?t|do not|no need to|you don(?:'|’)?t (?:have|need) to) (?:bother )?(?:show(?:ing)? up|appear(?:ing)?|go(?:ing)?) (?:to|in|at|for) (?:court|the hearing|your hearing|the trial|your court date)\b/i,
@@ -817,7 +826,8 @@ const NEGATED_PROMISE =
 const GUARANTEE = [
   // Round 39 (11-15): Guaranteed Rate is a mortgage lender, written with capitals.
   /\b[Gg]uarantee(?!d Rate\b(?! of\b))|\bGUARANTEE/,
-  /\bpromise/i,
+  // Round 41 (11-15): Promise Pay is the platform many utilities bill through.
+  /\bpromise(?! ?pay\b)/i,
   // "Gold always goes up in a recession", "Real estate never loses value".
   /\b(?:gold|silver|bitcoin|btc|crypto|stocks?|the (?:stock )?market|real estate|housing|home (?:prices|values)|land|index funds?)\b[^.!?]{0,15}\b(?:always (?:goes|go|went|rises?|climbs?|grows?|recovers?|bounces? back|comes? back)\b|never (?:goes|go) down\b|never (?:loses?|lost) (?:its |their )?value\b)/i,
   /\b(definitely|certainly|surely)\b/i,
@@ -842,7 +852,11 @@ const GUARANTEE = [
   /\b(?:you(?:'|’)ll|you will) never (?:be in debt|be broke|owe (?:a dime|anything)|run out of money|have to worry about money|pay (?:a |another |any )?(?:fee|overdraft fee|late fee|interest)s?)\b/i,
   // Round 27 (11-14): "Your score will be 750 by spring", "a sure thing", "zero risk", "can't go wrong".
   /\bscore (?:will|is going to|(?:'|’)ll) be (?:at |over |above |around )?\d{3}\b/i,
-  /(?<!\b(?:no|not|never|isn(?:'|’)?t|nothing(?:'|’)?s|nothing is)\s+(?:\w+\s+){0,4})\bsure (?:thing|bet|win)\b|\bzero[- ]risk\b|\b(?:can(?:'|’)?t|cannot) go wrong\b/i,
+  /(?<!\b(?:no|not|never|isn(?:'|’)?t|nothing(?:'|’)?s|nothing is)\s+(?:\w+\s+){0,4})\bsure (?:bet|win)\b|\bzero[- ]risk\b|\b(?:can(?:'|’)?t|cannot) go wrong\b/i,
+  // Round 41 (11-15): "a sure thing", but not Sure Thing Plumbing, a name written in capitals.
+  /(?<!\b(?:[Nn]o|[Nn]ot|[Nn]ever|isn(?:'|’)?t|[Nn]othing(?:'|’)?s|[Nn]othing is)\s+(?:\w+\s+){0,4})\b(?:[Ss]ure [Tt]hing|SURE THING)\b(?! [A-Z][a-z])/,
+  // Round 41 (11-15): "You'll retire early on this plan", "You'll be a homeowner by 30".
+  /\b(?:you(?:'|’)ll|you will|you(?:'|’)re going to|you are going to) (?:definitely |surely |easily )?(?:retire (?:early|rich|comfortably|by \d|at \d|a millionaire)|be (?:a homeowner|a millionaire|rich|wealthy|financially (?:free|independent)|able to retire)|own (?:a|your) (?:own )?home)\b/i,
   // Round 28 (11-14): "Your rate will drop to 5%", "The loan will be forgiven", "You're bound to get it".
   /\b(?:rate|apr|interest(?: rate)?) (?:will|is going to) (?:drop|fall|go down|be cut|decrease|come down)\b/i,
   // Round 35 (11-14): "Interest rates will go down next year", "Housing will crash", "Your medical bill
