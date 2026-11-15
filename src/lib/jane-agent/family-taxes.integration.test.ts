@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -18,6 +17,7 @@ import { loadSnapshot } from "./snapshot";
 import { taxesSource } from "./sources/taxes";
 import { parseActions } from "./types";
 import { sendToJane } from "./typing";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Spec step 169 against a real, migrated Postgres: the demo person, married with two
 // children, pays for daycare. In demo advice mode Jane shows each family choice with both
@@ -30,14 +30,6 @@ const context = { now: LINKED, local: { date: "2026-10-18", hour: 8 }, trigger: 
 describe.runIf(url)("family taxes against a real database", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
 
   async function family(prefix: string, spouseWagesCents: number) {
     const user = await client.user.create({

@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -14,6 +13,7 @@ import { parseRefs } from "@/lib/jane-agent/types";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { MortgageMoneyError, loadMortgageMoney } from "./mortgage-money";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Spec step 246 against a real, migrated Postgres, on the demo bank (a $312,400 mortgage at
 // 3.99%): a lump sum or extra money compared as extra principal, a recast and a refinance,
@@ -30,14 +30,6 @@ describe.runIf(url)(
     let client: PrismaClient;
     let userId: string;
     const created: string[] = [];
-    const plaid = new Proxy(
-      {},
-      {
-        get: () => () => {
-          throw new Error("The demo bank must never call Plaid");
-        },
-      },
-    ) as PlaidApi;
     let tick = 0;
     const later = () => new Date(LINKED.getTime() + ++tick * MINUTE);
     const opts = (now = LINKED) => ({ client, now });

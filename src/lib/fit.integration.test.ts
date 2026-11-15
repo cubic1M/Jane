@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -15,6 +14,7 @@ import { syncItem } from "@/lib/plaid/sync";
 import { loadDecisionInput } from "./debt-decisions";
 import { loadFit } from "./fit";
 import { detectFor } from "./suggestions";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Spec step 283 against a real, migrated Postgres, on Chris's and the Reyes' demo banks: the
 // fit engine's options for each need, and the same pick in the chat, Claude's tool and the
@@ -29,14 +29,6 @@ describe.runIf(url)("the fit engine against a real database", { timeout: 120_000
   let chris: string;
   let reyes: string;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
   let tick = 0;
   const later = () => new Date(NOW.getTime() + ++tick * MINUTE);
 

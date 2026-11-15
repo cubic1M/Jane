@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -18,6 +17,7 @@ import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { detectFor } from "@/lib/suggestions";
 import { loadDebtTrouble } from "./debt-trouble";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Spec step 229 against a real, migrated Postgres, on the demo bank (a mortgage, car, student
 // loan and cards against about $4,900 a month of pay): the share of income going to debt, the
@@ -33,14 +33,6 @@ describe.runIf(url)("when debt is too much against a real database", { timeout: 
   let client: PrismaClient;
   let userId: string;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
   let tick = 0;
   const later = () => new Date(LINKED.getTime() + ++tick * MINUTE);
   const opts = (now = LINKED) => ({ client, now });

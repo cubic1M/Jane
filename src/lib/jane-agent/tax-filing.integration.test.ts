@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -29,6 +28,7 @@ import { runChatTool } from "./claude-tools";
 import { loadSnapshot } from "./snapshot";
 import { taxesSource } from "./sources/taxes";
 import { sendToJane } from "./typing";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Spec step 126 against a real, migrated Postgres: in February, Jane hands the demo bank's
 // 2026 over to the stand-in filing partner; the return is only submitted once the person
@@ -44,14 +44,6 @@ vi.setConfig({ testTimeout: 60_000 });
 describe.runIf(url)("filing through the partner against a real database", () => {
   let client: PrismaClient;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
 
   async function demoPerson(prefix: string) {
     const user = await client.user.create({

@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -16,6 +15,7 @@ import { AS_THEY_COME } from "./preferences";
 import { runJaneAgent } from "./run";
 import { stillTrue } from "./still-true";
 import { MESSAGE_SELECT, toChatMessage } from "./types";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Debugger 11-13, a new student's first minutes: the week's plan card, posted by the first scan's
 // early run, said "22 things, worth up to $3,560.81 a year" while Home and /plan said 23 and
@@ -28,14 +28,6 @@ const LINKED = new Date("2026-10-18T15:00:00Z");
 describe.runIf(url)("the week's plan card", () => {
   let client: PrismaClient;
   let userId: string;
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
 
   const planCard = async () => {
     const rows = await client.janeMessage.findMany({

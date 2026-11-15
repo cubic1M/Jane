@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -15,6 +14,7 @@ import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { takeChatAction } from "@/lib/jane-agent/actions";
 import { HomeBuyingError, loadHomeBuying, startHomeGoal } from "./home-buying";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Spec step 179 against a real, migrated Postgres, on the demo bank: what home the person
 // can afford from their real income, debts and savings, the cash needed and how long saving
@@ -28,14 +28,6 @@ const MINUTE = 60 * 1000;
 describe.runIf(url)("buying a home against a real database", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
   let tick = 0;
   const later = () => new Date(LINKED.getTime() + ++tick * MINUTE);
   const opts = () => ({ client, now: LINKED });

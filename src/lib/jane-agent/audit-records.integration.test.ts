@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -18,6 +17,7 @@ import { runChatTool } from "./claude-tools";
 import { loadSnapshot } from "./snapshot";
 import { taxesSource } from "./sources/taxes";
 import { sendToJane } from "./typing";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Spec step 171 against a real, migrated Postgres: the demo person's deductions, each with
 // its sources; a big gift whose receipt isn't there is "still needed", and a receipt in the
@@ -31,14 +31,6 @@ const SOON = new Date("2026-04-01T15:00:00Z");
 describe.runIf(url)("audit-ready records against a real database", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
 
   async function person(prefix: string) {
     const user = await client.user.create({

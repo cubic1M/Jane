@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient, type Prisma } from "@/generated/prisma/client";
 
@@ -23,6 +22,7 @@ import { BUNDLED_UNTIL, closeSettled, messageAboutFinding } from "./messages";
 import { openChat } from "./open";
 import { runJaneAgent } from "./run";
 import { parseActions, parseRefs } from "./types";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Spec steps 81–82 against a real, migrated Postgres (see
 // src/detection/engine.integration.test.ts): the demo bank's first sync posts Jane's
@@ -39,14 +39,6 @@ describe.runIf(url)("Jane's chat against a real database", () => {
   let client: PrismaClient;
   const created: string[] = [];
   // Any call to real Plaid fails the test.
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
 
   async function person(prefix: string) {
     const user = await client.user.create({

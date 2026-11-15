@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -20,6 +19,7 @@ import { removePlaidItem } from "@/lib/plaid/remove";
 import { syncItem } from "@/lib/plaid/sync";
 import { scanSuggestions } from "@/lib/suggestions";
 import { freshStartAfter } from "./fresh-start";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // The night debugger's round 217 (11-12), against a real, migrated Postgres: /connect says "try
 // the demo bank, remove it anytime". Someone links it, removes it in Settings and links a bank
@@ -35,14 +35,6 @@ const LATER = new Date(NOW.getTime() + HOUR_MS);
 describe.runIf(url)("a bank linked again after the last one was removed", () => {
   let client: PrismaClient;
   let userId: string;
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
 
   // Linking runs Jane (the sync's own run, then the scan's); the person then opens the chat.
   async function linkAndRun(now: Date) {

@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -15,6 +14,7 @@ import { runJaneAgent } from "./run";
 import { loadSnapshot } from "./snapshot";
 import { taxesSource } from "./sources/taxes";
 import { sendToJane } from "./typing";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Spec step 127 against a real, migrated Postgres: taxes run themselves. In January, one
 // message says last year's taxes are ready (the estimate, the pack, which forms are in),
@@ -27,14 +27,6 @@ const JAN = new Date("2027-01-05T16:00:00Z");
 describe.runIf(url)("taxes on autopilot against a real database", () => {
   let client: PrismaClient;
   let userId: string;
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
   const gather = async (now: Date) =>
     taxesSource.gather((await loadSnapshot(userId, { client, now }))!, {
       now,

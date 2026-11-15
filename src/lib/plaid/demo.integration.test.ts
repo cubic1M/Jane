@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -14,6 +13,7 @@ import { loadInvestments } from "@/lib/investments/holdings";
 import { hasDemoBank, linkDemoBank } from "./demo";
 import { removePlaidItem } from "./remove";
 import { syncItem } from "./sync";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).
 const url = process.env.TEST_DATABASE_URL;
@@ -23,14 +23,6 @@ describe.runIf(url)("the demo bank, end to end", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   let userId: string;
   // Any call to real Plaid fails the test.
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
 
   beforeAll(async () => {
     vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));

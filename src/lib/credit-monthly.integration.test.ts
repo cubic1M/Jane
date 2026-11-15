@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -19,6 +18,7 @@ import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { setSectorAutopilot } from "@/lib/sector-autopilot";
 import { loadCreditMonthly, runCreditMonthly } from "./credit-monthly";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Spec step 251 against a real, migrated Postgres, on the demo bank: the monthly credit
 // check-up after Jane's soft checks, kept so the chat posts it once as one message with a
@@ -36,14 +36,6 @@ describe.runIf(url)(
   () => {
     let client: PrismaClient;
     const created: string[] = [];
-    const plaid = new Proxy(
-      {},
-      {
-        get: () => () => {
-          throw new Error("The demo bank must never call Plaid");
-        },
-      },
-    ) as PlaidApi;
     const opts = (now = LINKED) => ({ client, now });
     async function demoPerson(prefix: string) {
       const user = await client.user.create({

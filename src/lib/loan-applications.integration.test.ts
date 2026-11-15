@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -26,6 +25,7 @@ import {
   submitApplication,
   withdrawApplication,
 } from "./loan-applications";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Spec step 112 against a real, migrated Postgres, on the demo bank: "Apply" on Jane's
 // refinance pick prepares the application from what it knows, the terms are reviewed
@@ -45,14 +45,6 @@ describe.runIf(url)("one-tap apply against a real database", () => {
   let itemId: string;
   let carKey: string;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
   const opts = (now = LINKED) => ({ client, now });
 
   async function person(prefix: string) {

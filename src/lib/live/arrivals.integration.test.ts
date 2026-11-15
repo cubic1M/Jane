@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient, type FindingType } from "@/generated/prisma/client";
 
@@ -13,6 +12,7 @@ import { linkDemoBank } from "@/lib/plaid/demo";
 import { firstDelivery, syncFromWebhook } from "@/lib/plaid/webhooks";
 import { syncItem } from "@/lib/plaid/sync";
 import { recordArrivals, whatSetOffSync } from "./arrivals";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Jane's 24/7 engine, step one, against a real, migrated Postgres: findings a change created are
 // recorded once with what set them off and how long it took, and the best one that clears the bar
@@ -27,14 +27,6 @@ const HOUR = 60 * 60 * 1000;
 describe.runIf(url)("new findings told the moment they're found", () => {
   let client: PrismaClient;
   const made: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
 
   beforeAll(() => {
     vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));

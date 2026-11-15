@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -41,14 +40,6 @@ describe.runIf(url)(
   () => {
     let client: PrismaClient;
     const created: string[] = [];
-    const plaid = new Proxy(
-      {},
-      {
-        get: () => () => {
-          throw new Error("The demo bank must never call Plaid");
-        },
-      },
-    ) as PlaidApi;
     let tick = 0;
     const later = () => new Date(LINKED.getTime() + ++tick * MINUTE);
     const opts = (now = LINKED) => ({ client, now });
@@ -271,6 +262,7 @@ describe.runIf(url)(
 );
 
 import { vi as viMock } from "vitest";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 function logAuditCalled(event: string) {
   return viMock.mocked(logAudit).mock.calls.some((c) => c[1] === event);
 }

@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -11,6 +10,7 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { loadCardInterest } from "./card-interest";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Night round 11-06, the same sample person at 3pm and 7pm in Los Angeles: "paying the $41.00
 // now, not on the due date, saves $0.90" became "$0.86" at 7pm, when UTC is already tomorrow.
@@ -24,14 +24,6 @@ const EVENING = new Date("2026-11-06T03:00:00Z");
 describe.runIf(url)("paying a card early", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
   async function demoPerson(timezone: string | null) {
     const user = await client.user.create({
       data: { email: `card-day-${crypto.randomUUID()}@example.com`, timezone },

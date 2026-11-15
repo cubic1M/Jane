@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -12,6 +11,7 @@ import { netWorth } from "@/insights/net-worth";
 import { linkDemoBank } from "./demo";
 import { ensureDemoAssets } from "./demo-assets";
 import { syncItem } from "./sync";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // The demo bank's home and car against a real, migrated Postgres: its sample person's net
 // worth counts what the mortgage and the car loan are against, instead of showing only debts.
@@ -22,14 +22,6 @@ const NOW = new Date("2026-10-19T15:00:00Z");
 describe.runIf(url)("the demo bank's home and car", () => {
   let client: PrismaClient;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
 
   beforeAll(() => {
     vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));

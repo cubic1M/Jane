@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -11,6 +10,7 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { CHAT_PAGES, proposeAction, runChatTool } from "./claude-tools";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Gap audit (settings, connected banks, notifications) against a real, migrated Postgres: the
 // chat can say which banks are linked and whether one needs signing in again, what Jane sends
@@ -23,14 +23,6 @@ const NOW = new Date("2026-10-18T15:00:00Z");
 describe.runIf(url)("settings in the chat against a real database", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   let userId: string;
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
 
   beforeAll(async () => {
     vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));

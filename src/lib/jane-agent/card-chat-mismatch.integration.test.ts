@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -12,6 +11,7 @@ import { linkDemoBank } from "@/lib/plaid/demo";
 import { removePlaidItem } from "@/lib/plaid/remove";
 import { syncItem } from "@/lib/plaid/sync";
 import { chatPrimer, runChatTool } from "./claude-tools";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // The founder's bug (card-chat mismatch), the chat's half, against a real, migrated Postgres.
 // The demo bank has a $1,349.00 Apple Store purchase two days before it was linked. The card
@@ -29,14 +29,6 @@ describe.runIf(url)("the chat answers from the data as it is now", () => {
   let client: PrismaClient;
   let userId: string;
   let itemId: string;
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
   const tool = (name: string, input: object = {}) =>
     runChatTool(userId, name, input, { client, now: day(10) });
 

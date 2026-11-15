@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -22,6 +21,7 @@ import { syncItem } from "@/lib/plaid/sync";
 import { runCreditMonthly } from "@/lib/credit-monthly";
 import { setSectorAutopilot } from "@/lib/sector-autopilot";
 import { loadDebtReview, runDebtReview } from "./debt-review";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Spec step 230 against a real, migrated Postgres, on the demo bank (six days before a card's
 // statement closes): the first debt review, what Jane does at each level within the debt caps,
@@ -39,14 +39,6 @@ const context = { now: NEAR, local: { date: "2026-10-27", hour: 8 }, trigger: "o
 describe.runIf(url)("the yearly debt review against a real database", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
   let tick = 0;
   const later = () => new Date(NEAR.getTime() + ++tick * MINUTE);
   const opts = (now = NEAR) => ({ client, now });

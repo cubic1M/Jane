@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -18,6 +17,7 @@ import { syncItem } from "@/lib/plaid/sync";
 import type { PersonId } from "@/config/people";
 import { loadFit } from "./fit";
 import { checkRates, ensureChecked, loadRefinance, refreshRefinance } from "./refinance";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Loans QA against a real database: refinance picks agree with the fit engine (the options card
 // and "should I consolidate?"). The demo person's spare cash clears their card for less than
@@ -33,14 +33,6 @@ describe.runIf(url)("refinance picks the fit engine agrees with", { timeout: 120
   let demo: string;
   let chris: string;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
   const opts = () => ({ client, now: NOW });
   const make = async (person?: PersonId) => {
     const user = await client.user.create({

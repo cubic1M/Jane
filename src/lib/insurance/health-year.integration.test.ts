@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -12,6 +11,7 @@ import { healthYearAnswer } from "@/lib/jane-agent/insurance/health-year";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { loadHealthYear, openDisputeCards } from "./health-year";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Health cover all year against a real, migrated Postgres (spec step 200): the demo year
 // shows deductible progress and an FSA deadline, and a bill above the plan's share opens a
@@ -23,14 +23,6 @@ const NOW = new Date("2026-10-18T15:00:00Z");
 describe.runIf(url)("health cover all year, against a real database", () => {
   let client: PrismaClient;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
   const o = () => ({ client, now: NOW });
 
   async function demoPerson() {

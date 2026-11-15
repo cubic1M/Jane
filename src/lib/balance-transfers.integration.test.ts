@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -25,6 +24,7 @@ import {
 } from "./card-interest";
 import { cardInterestSource } from "./jane-agent/sources/card-interest";
 import { loadDebts } from "./debts";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Spec step 113 against a real, migrated Postgres, on the demo bank: 0% transfer offers for
 // the card from Jane's monthly check, compared with the fee counted; "I've moved it" puts
@@ -41,14 +41,6 @@ describe.runIf(url)("balance transfers against a real database", () => {
   let userId: string;
   let itemId: string;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
   const opts = (now = LINKED) => ({ client, now });
   const fromSource = async (now: Date) => {
     const snapshot = await loadSnapshot(userId, opts(now));

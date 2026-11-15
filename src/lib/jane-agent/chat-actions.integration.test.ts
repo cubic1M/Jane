@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient, type Prisma } from "@/generated/prisma/client";
 
@@ -36,6 +35,7 @@ import { AS_THEY_COME } from "./preferences";
 import { runJaneAgent } from "./run";
 import { startOfTomorrow } from "./snooze";
 import { parseActions, parseRefs, type ActionId } from "./types";
+import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
 
 // Spec step 83 against a real, migrated Postgres (see
 // src/detection/engine.integration.test.ts): the rest of Jane from the chat. The demo
@@ -54,14 +54,6 @@ const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 describe.runIf(url)("everything from Jane's chat, against a real database", () => {
   let client: PrismaClient;
   const created: string[] = [];
-  const plaid = new Proxy(
-    {},
-    {
-      get: () => () => {
-        throw new Error("The demo bank must never call Plaid");
-      },
-    },
-  ) as PlaidApi;
 
   // Each message on its own (spec step 184's "as they come"): these tests are about each
   // kind of message's buttons. The day's agenda is in ./agent.integration.test.ts.
