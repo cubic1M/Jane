@@ -2,7 +2,7 @@ import { MONTHLY_REPORT_DAYS } from "@/config/monthly-report";
 import { TRIAL_ID_PREFIX } from "@/config/trial";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { previousMonth } from "@/insights/check-in";
-import { onlyDemoBank } from "@/lib/advice-mode";
+import { onlyDemoBank } from "@/lib/only-demo-bank";
 import { track } from "@/lib/analytics";
 import { loadCheckIn, summaryFor } from "@/lib/check-in";
 import { db as defaultClient } from "@/lib/db";

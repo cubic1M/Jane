@@ -1,12 +1,10 @@
 import { ACTIVITY } from "@/config/activity";
-import { NOT_FROM_A_BANK } from "@/data-sources/types";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
-import { scopedFor } from "@/lib/db-scoped";
-import { isDemoItemId } from "@/lib/plaid/demo-ids";
 import { isTrialUser } from "@/lib/trial-ids";
 import { anonymousOnly, sanitizeBatch, type ActivityRow } from "./sanitize";
 import { systemDb } from "@/lib/system-db";
+import { onlyDemoBank } from "@/lib/only-demo-bank";
 
 // Who the beta's activity log records: real signed-in beta users. Never a trial person
 // (sample data), an admin, or someone whose only bank is the demo bank; before sign-in, only
@@ -23,17 +21,7 @@ export async function recordingFor(
 ): Promise<Recording> {
   if (!person) return "anonymous";
   if (isTrialUser(person.id) || person.role === "admin") return "none";
-  return (await isDemoBankOnly(person.id, client)) ? "none" : "user";
-}
-
-// Someone trying the demo bank: every account they have is the demo bank's.
-async function isDemoBankOnly(userId: string, client: PrismaClient): Promise<boolean> {
-  const db = scopedFor(userId, client);
-  const [items, ownAccounts] = await Promise.all([
-    db.plaidItems.findMany({ select: { plaidItemId: true } }),
-    db.accounts.count({ where: { source: { in: [...NOT_FROM_A_BANK] } } }),
-  ]);
-  return items.length > 0 && ownAccounts === 0 && items.every((i) => isDemoItemId(i.plaidItemId));
+  return (await onlyDemoBank(person.id, client)) ? "none" : "user";
 }
 
 // Stores what the browser sent, if this person is recorded. `recording` tells the browser

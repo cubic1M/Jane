@@ -13,7 +13,7 @@ import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadInvestments } from "@/lib/investments/holdings";
-import { onlyDemoBank } from "@/lib/advice-mode";
+import { onlyDemoBank } from "@/lib/only-demo-bank";
 import { demoAnchorFor } from "@/lib/plaid/demo";
 import {
   DEMO_CRYPTO_PARTNER,

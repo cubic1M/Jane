@@ -1,6 +1,6 @@
 import { robinhoodOffered } from "@/config/robinhood";
 import type { PrismaClient } from "@/generated/prisma/client";
-import { onlyDemoBank } from "@/lib/advice-mode";
+import { onlyDemoBank } from "@/lib/only-demo-bank";
 import { track } from "@/lib/analytics";
 import { logAudit, type AuditActor } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
