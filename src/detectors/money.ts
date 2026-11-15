@@ -3,7 +3,7 @@ import { rateMonthsOf } from "@/profile/build";
 import { BANK_FEE_CATEGORIES, IDLE_CASH_MONTHS_OF_SPENDING } from "@/config/detection";
 import { bankFeesYear } from "@/planning/bank-fees";
 import { LOOKBACK_MONTHS } from "@/config/detection";
-import { paceMonths } from "@/detection/rules/fee-totals";
+import { dataEnd, paceMonths } from "@/detection/rules/fee-totals";
 import { daysBetween, monthsBefore } from "@/detection/units";
 import { idleCashOf, payingCardInterest } from "@/planning/idle-cash";
 import { DETECTOR_RATES as R } from "@/config/detectors";
@@ -197,7 +197,9 @@ const cardInterest: Detector = {
     // $141 in four months is the report's "$423 a year", but compared as $141 against a yearly
     // minimum it was no suggestion at all).
     const first = data.transactions.reduce((min, t) => (t.date < min ? t.date : min), data.today);
-    const { short, months } = paceMonths(daysBetween(first, data.today));
+    const { short, months } = paceMonths(
+      daysBetween(first, dataEnd(data.transactions, data.today)),
+    );
     const cutoff = monthsBefore(data.today, LOOKBACK_MONTHS);
     const charges = tx(
       data,
