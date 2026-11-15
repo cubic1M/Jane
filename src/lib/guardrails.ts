@@ -128,7 +128,9 @@ const STOCK_PICKS = [
   ),
   // Round 20 (11-13): an app that invests for you ("Put it in Wealthfront", "Try a robo-advisor like
   // Betterment"). Acorns or Betterment is also a charge on a statement, so only putting money in.
-  /\brobo[- ]?advis[oe]rs?\b|\b(?:put|move|park|invest|try|use|open|start|sign up for|go with|switch to)\b[^.!?\n]{0,25}\b(?:wealthfront|betterment|acorns|stash|webull|m1 finance|e\*?trade|ally invest|merrill edge|sofi invest)\b/i,
+  // Round 39 (11-15): "Let Betterment manage it", and an amount with cents ("Put the $400.00 in
+  // Wealthfront").
+  /\brobo[- ]?advis[oe]rs?\b|\b(?:put|move|park|invest|try|use|open|start|sign up for|go with|switch to|let)\b(?:[^.!?\n]|\.\d){0,25}\b(?:wealthfront|betterment|acorns|stash|webull|m1 finance|e\*?trade|ally invest|merrill edge|sofi invest)\b/i,
   // Round 17 (11-13): a ticker spelled out ("Buy T S L A", "Grab some v-o-o"); "Get a T-shirt" is shopping.
   /\b(?:buy|buying|grab|get|add|pick up|own|load up on)\s+(?:some |more )?(?![Aa][\s-])(?:[A-Za-z][ -]){2,4}[A-Za-z]\b(?![\w'’-])/i,
   // table row ("| VOO | Buy |") and a line of code ("buy: TSLA").
@@ -162,10 +164,11 @@ const INVESTMENT = [
   // "Fidelity Investments" and "Edward Jones Investments" ("A transfer of $90.00 to Fidelity
   // Investments posted Nov 2").
   /(?<!\b(?:sofi|ally|cash app|merrill|stash|m1|firstrade|public\.com|fidelity|edward jones|vanguard|ameriprise|raymond james|t\. rowe price) )\binvest(?!igat)|\b(?:sofi|ally|cash app|merrill|stash|m1|firstrade|public\.com|fidelity|edward jones|vanguard|ameriprise|raymond james|t\. rowe price) invest(?:ing|ments)?\b(?! (?:transfers?|deposits?|withdrawals?|charges?|fees?|payments?|debits?|credits?|pulls?|round[- ]ups?|charged|took|pulled|sent|deposited|withdrew|debited|credited|refunded|posted|landed)\b)/i,
-  /(?<!\b(?:in|of) )\bstocks?\b(?! up\b)(?! yards\b)/i,
+  // Round 39 (11-15): a Motley Fool Stock Advisor subscription is a charge to cancel or keep.
+  /(?<!\b(?:in|of) )(?<!\bmotley fool )\bstocks?\b(?! up\b)(?! yards\b)/i,
   /\bshares\b(?!\s+(?:the|your|my|a|an|this|that|their|his|her|its|it|with)\b)/i,
   /(?<!\bhome )\bequit(y|ies)\b(?! (?:line|loan)s?\b)(?! (?:residential|lifestyle)\b)(?! in (?:your|the|my|their) (?:home|house|condo|car)\b)/i,
-  /(?<!\b(?:bail|surety|security|performance|fidelity) )\bbonds?\b(?! (?:street|st)\b)/i,
+  /(?<!\b(?:bail|surety|security|performance|fidelity) )\bbonds?\b(?! (?:street|st|vet)\b)/i,
   /\bsecurities\b/i,
   /\betfs?\b/i,
   /\b(index|mutual|money[- ]market|hedge) funds?\b/i,
@@ -186,7 +189,8 @@ const INVESTMENT = [
   /\bdividends?\b(?!(?:[^.!?]|\.\d){0,60}\b(?:savings|share|checking|certificate|credit union|money market account)\b)(?<!\b(?:savings|share|checking|certificate|credit union|money market account)\b(?:[^.!?]|\.\d){0,60}\bdividends?)|(?<!\$[\d,.]+ |\b(?:paid|posted|earned|credited|got) (?:an? |the |your |\$[\d,.]+ )?)\bdividends?\b(?! of \$)(?! (?:paid|posted|earned|credited)\b)|\b(?:dividend stocks?|high[- ]dividend|dividend (?:yield|funds?|etfs?|investing|growth|aristocrats?|payers?|portfolio|reinvest\w*))\b/i,
   // Round 37 (11-14): "Venmo crypto purchase of $5.00 on Nov 2" is a line on a statement.
   /(?<!\b(?:venmo|paypal|cash app|robinhood) )\bcrypto|\b(?:venmo|paypal|cash app|robinhood) crypto\b(?! (?:purchases?|sales?|transfers?|charges?|fees?|debits?|credits?|deposits?|withdrawals?|charged|took|pulled|sent|deposited|withdrew|debited|credited|refunded)\b)/i,
-  /\b(bitcoin|ethereum|btc|eth|solana|dogecoin|stablecoins?)\b/i,
+  // Round 39 (11-15): "Your Bitcoin Depot ATM fee was $15.49" is a fee on a statement.
+  /\b(bitcoin(?! depot (?:atm )?(?:fees?|charges?|charged|took|withdrawals?)\b)|ethereum|btc|eth|solana|dogecoin|stablecoins?)\b/i,
   // Chat policy round 10 (11-12): "Stack some sats every payday", "Buy puts on Tesla before
   // earnings", "Gold is a good hedge right now; get some". Gold's Gym and a Gold card are bills.
   /\bstack(?:ing)? (?:some |more |a few )?sats\b|\bsatoshis?\b/i,
@@ -800,8 +804,11 @@ const NEGATED_PROMISE =
 
 // (d) Promised outcomes. Savings are estimates: "could save about", never "will save".
 const GUARANTEE = [
-  /\bguarantee/i,
+  // Round 39 (11-15): Guaranteed Rate is a mortgage lender, written with capitals.
+  /\b[Gg]uarantee(?!d Rate\b(?! of\b))|\bGUARANTEE/,
   /\bpromise/i,
+  // "Gold always goes up in a recession", "Real estate never loses value".
+  /\b(?:gold|silver|bitcoin|btc|crypto|stocks?|the (?:stock )?market|real estate|housing|home (?:prices|values)|land|index funds?)\b[^.!?]{0,15}\b(?:always (?:goes|go|went|rises?|climbs?|grows?|recovers?|bounces? back|comes? back)\b|never (?:goes|go) down\b|never (?:loses?|lost) (?:its |their )?value\b)/i,
   /\b(definitely|certainly|surely)\b/i,
   /\brisk[- ]free\b(?! (?:to cancel|trial|cancellation))/i,
   // Round 23 (11-13): "You can't lose with this".
