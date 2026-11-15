@@ -1,4 +1,4 @@
-import { CountryCode, Products, type PlaidApi } from "plaid";
+import type { CountryCode, PlaidApi, Products } from "plaid";
 import { TRANSACTION_DAYS_REQUESTED } from "@/config/plaid";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
@@ -40,8 +40,9 @@ export class ItemNotFoundError extends Error {
 export async function createLinkToken(
   userId: string,
   itemId: string | null,
-  { client = defaultClient, api = plaid() }: Options = {},
+  { client = defaultClient, api: given }: Options = {},
 ): Promise<string> {
+  const api = given ?? (await plaid());
   let accessToken: string | undefined;
   let chooseAccounts = false;
   // A new Item needs a free slot. This is a guard: the count happens at the exchange, so a Link
@@ -68,7 +69,7 @@ export async function createLinkToken(
     api.linkTokenCreate({
       client_name: CLIENT_NAME,
       language: "en",
-      country_codes: [CountryCode.Us],
+      country_codes: ["US" as CountryCode],
       user: { client_user_id: userId },
       webhook: webhookUrl(),
       ...(accessToken
@@ -77,13 +78,13 @@ export async function createLinkToken(
             ...(chooseAccounts ? { update: { account_selection_enabled: true } } : {}),
           }
         : {
-            products: [Products.Transactions],
+            products: ["transactions" as Products],
             // Loans and card rates (spec step 65) and investment balances (step 66) where
             // the bank supports them; billed only then, and it doesn't limit which banks
             // can be picked. Investments only once it's on our Plaid plan (PLAID_INVESTMENTS).
             optional_products: [
-              Products.Liabilities,
-              ...(plaidInvestmentsEnabled() ? [Products.Investments] : []),
+              "liabilities" as Products,
+              ...(plaidInvestmentsEnabled() ? ["investments" as Products] : []),
             ],
             transactions: { days_requested: TRANSACTION_DAYS_REQUESTED },
           }),
@@ -147,8 +148,9 @@ export async function exchangePublicToken(
   userId: string,
   publicToken: string,
   institutionName: string | null,
-  { client = defaultClient, api = plaid() }: Options = {},
+  { client = defaultClient, api: given }: Options = {},
 ): Promise<string> {
+  const api = given ?? (await plaid());
   // A key that can't encrypt fails here, not after Plaid has made an Item and used up one of a
   // lifetime's count. Every try would, and it would look like nothing but a failed link.
   encrypt("key check");

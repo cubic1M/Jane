@@ -1,5 +1,5 @@
 import type { AccountBase, PlaidApi, Transaction } from "plaid";
-import { PersonalFinanceCategoryVersion, TransactionsUpdateStatus } from "plaid";
+import type { PersonalFinanceCategoryVersion, TransactionsUpdateStatus } from "plaid";
 import { SYNC_MAX_RESTARTS, SYNC_PAGE_SIZE, SYNC_RETRY_ATTEMPTS } from "@/config/plaid";
 import { plaidCall, plaidErrorCode } from "@/lib/plaid/client";
 import { backoffMs, retryablePlaidError } from "@/lib/plaid/retry";
@@ -127,7 +127,7 @@ export class PlaidDataSource implements DataSource {
           access_token: this.accessToken,
           cursor,
           count: SYNC_PAGE_SIZE,
-          options: { personal_finance_category_version: PersonalFinanceCategoryVersion.V2 },
+          options: { personal_finance_category_version: "v2" as PersonalFinanceCategoryVersion },
         }),
       );
       for (const account of data.accounts) accounts.set(account.account_id, account);
@@ -142,7 +142,7 @@ export class PlaidDataSource implements DataSource {
         }
       }
       cursor = data.next_cursor;
-      notReady = data.transactions_update_status === TransactionsUpdateStatus.NotReady;
+      notReady = data.transactions_update_status === ("NOT_READY" as TransactionsUpdateStatus);
       if (!data.has_more) break;
     }
 

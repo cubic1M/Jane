@@ -64,9 +64,10 @@ async function keyFor(kid: string, api: PlaidApi, now: Date): Promise<JsonWebKey
 export async function verifyPlaidWebhook(
   rawBody: string,
   jwt: string | null,
-  { api = plaid(), now = new Date() }: { api?: PlaidApi; now?: Date } = {},
+  { api: given, now = new Date() }: { api?: PlaidApi; now?: Date } = {},
 ): Promise<boolean> {
   if (!jwt) return false;
+  const api = given ?? (await plaid());
   const parts = jwt.split(".");
   if (parts.length !== 3) return false;
   const [headerPart, payloadPart, signaturePart] = parts;

@@ -4,7 +4,6 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { plaid } from "@/lib/plaid/client";
 import { removePlaidItem } from "@/lib/plaid/remove";
 import { removeConnection } from "@/lib/robinhood/connection";
 import { deleteTrialPerson } from "@/lib/trial-delete";
@@ -18,7 +17,7 @@ import { systemTransaction } from "@/lib/system-db";
 // a record (with the time, IP address and browser, like every access-log entry).
 export async function deleteAllData(
   userId: string,
-  { client = defaultClient, api = plaid() }: { client?: PrismaClient; api?: PlaidApi } = {},
+  { client = defaultClient, api: given }: { client?: PrismaClient; api?: PlaidApi } = {},
 ): Promise<void> {
   // A temporary try has no bank, and goes the one way that leaves only its start and delete record.
   if (isStatementTrialUser(userId)) {
@@ -27,7 +26,7 @@ export async function deleteAllData(
   }
   const items = await scopedFor(userId, client).plaidItems.findMany({ select: { id: true } });
   for (const item of items) {
-    await removePlaidItem(userId, item.id, "user_deleted_data", { client, api });
+    await removePlaidItem(userId, item.id, "user_deleted_data", { client, api: given });
   }
   await removeConnection(userId, "user_deleted_data", { client });
   // Shared bills belong to the household, not the user row, so they're ended here, as when

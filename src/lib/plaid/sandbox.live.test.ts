@@ -43,7 +43,7 @@ describe.runIf(enabled)("Plaid Sandbox, end to end", () => {
   it("links a test institution, syncs it twice without duplicates and finds savings", async () => {
     // Plaid's Sandbox user with recurring subscriptions and a year of history.
     const { public_token } = await plaidCall(
-      plaid().sandboxPublicTokenCreate({
+      (await plaid()).sandboxPublicTokenCreate({
         institution_id: "ins_109508",
         initial_products: [Products.Transactions],
         options: {
@@ -90,9 +90,9 @@ describe.runIf(enabled)("Plaid Sandbox, end to end", () => {
     await deleteAllData(userId, { client });
     expect(await client.user.count({ where: { id: userId } })).toBe(0);
     expect(await client.transaction.count({ where: { userId } })).toBe(0);
-    const after = await plaidCall(plaid().transactionsSync({ access_token: accessToken })).catch(
-      (e: unknown) => e,
-    );
+    const after = await plaidCall(
+      (await plaid()).transactionsSync({ access_token: accessToken }),
+    ).catch((e: unknown) => e);
     expect(after).toBeInstanceOf(PlaidRequestError);
     console.log("Plaid after removal", { code: (after as PlaidRequestError).code });
   }, 120_000);

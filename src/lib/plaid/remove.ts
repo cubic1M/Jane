@@ -30,8 +30,9 @@ export async function removePlaidItem(
   userId: string,
   itemId: string,
   reason: RemovalReason,
-  { client = defaultClient, api = plaid(), actor = { type: "user", id: userId } }: Options = {},
+  { client = defaultClient, api: given, actor = { type: "user", id: userId } }: Options = {},
 ): Promise<void> {
+  const api = given ?? (await plaid());
   const db = scopedFor(userId, client);
   const item = await db.plaidItems.findFirst({
     where: { id: itemId },
