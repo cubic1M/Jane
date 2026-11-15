@@ -16,6 +16,7 @@ import {
   loansIntro,
   type LoansBranch,
 } from "@/lib/area-pages/loans";
+import { linksHere } from "@/lib/area-pages/landing";
 import { loadLoansArea } from "@/lib/area-pages/loans-load";
 import { toComparison } from "@/lib/comparison";
 import { loadFit } from "@/lib/fit";
@@ -328,12 +329,15 @@ async function LoansContent({
     const id = itemId(branch.id as LoansBranch, sug.topic);
     const page = TOPIC_PAGE[sug.topic];
     const comparable = advice && (COMPARE_TOPICS as readonly string[]).includes(sug.topic);
+    const here = linksHere(sug.actionHref, "/loans", id);
     details[id] = (
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap gap-x-4 gap-y-1">
-          <Link href={sug.actionHref} className={`text-sm ${LINK}`}>
-            {sug.actionLabel} ›
-          </Link>
+          {!here && (
+            <Link href={sug.actionHref} className={`text-sm ${LINK}`}>
+              {sug.actionLabel} ›
+            </Link>
+          )}
           {page && page !== sug.actionHref && <PageLink href={page} />}
           {comparable && compareTopic !== sug.topic && (
             <Link

@@ -87,3 +87,12 @@ export function landing(link: string, suggestion?: Suggested): string {
   }
   return href;
 }
+
+// Whether a link opens the very node it's shown on: a suggestion whose page is hidden lands on its
+// own item (above), so its button there went nowhere (debugger 11-15: "See if PMI can go ›" on
+// "Drop your mortgage insurance" reopened that item). Such a link isn't drawn.
+export const linksHere = (href: string, path: AreaRoot, node: string): boolean => {
+  const [beforeHash] = href.split("#", 1);
+  const [at, query = ""] = beforeHash.split("?", 2);
+  return at === path && new URLSearchParams(query).get("focus") === node;
+};
