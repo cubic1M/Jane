@@ -21,7 +21,7 @@ import {
   planMonths,
   type GoalPlan,
 } from "@/planning/credit-goal";
-import { isoDay } from "@/lib/dates";
+import { dayStartUtc, isoDay } from "@/lib/dates";
 
 // A credit score for a goal (spec step 227). A target score and date for a mortgage, a car or
 // another loan, and a monthly plan from the credit partner's score simulator (step 175): what
@@ -248,7 +248,7 @@ export async function endCreditGoal(
 ): Promise<void> {
   const { count } = await scopedFor(userId, client).creditGoals.updateMany({
     where: { id: goalId, endedOn: null },
-    data: { endedOn: new Date(`${isoDay(now)}T00:00:00Z`) },
+    data: { endedOn: dayStartUtc(now) },
   });
   if (count === 0) throw new CreditGoalError("That plan isn't on your list.");
 }

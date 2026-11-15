@@ -26,7 +26,7 @@ import {
   type RateChange,
   type Refund,
 } from "@/planning/car-loan";
-import { DAY_MS, isoDay } from "@/lib/dates";
+import { DAY_MS, dayStartUtc, isoDay } from "@/lib/dates";
 
 // The car loan you already have (spec step 245). Dealer add-ons financed into the loan (GAP, an
 // extended warranty, a service contract) are found in the payments and asked about once; for
@@ -399,7 +399,7 @@ export async function refreshCarLoan(
     bandOrder: BAND_ORDER,
     fallBps: AUTO_RATE_FALL_BPS,
   });
-  const today = new Date(`${isoDay(now)}T00:00:00Z`);
+  const today = dayStartUtc(now);
   const data = {
     bestAprBps,
     band,

@@ -47,7 +47,7 @@ import {
   startInsuranceSwitch,
 } from "@/lib/insurance/switch";
 import { isCallAction, startCall } from "@/lib/voice/calls";
-import { DAY_MS, isoDay } from "@/lib/dates";
+import { DAY_MS, dayStartUtc, isoDay } from "@/lib/dates";
 import { ownedBy, type OnlyPeople } from "@/lib/only-people";
 import { meteredClaude } from "@/lib/claude-budget";
 import { systemDb } from "@/lib/system-db";
@@ -258,10 +258,7 @@ export async function agentStep(
           selfServiceUrl: row.cancelUrl,
           // Jane watches for the next charge from now, whether or not the person says
           // they've cancelled (spec step 61).
-          confirmAfter: confirmDate(
-            action.decision.finding.evidence,
-            new Date(`${isoDay(now)}T00:00:00Z`),
-          ),
+          confirmAfter: confirmDate(action.decision.finding.evidence, dayStartUtc(now)),
           userTodo: `${action.company} only cancels from your own account. Open their cancel page and cancel. Jane watches for the next charge, so you don't need to tell Jane (you can tap "I've cancelled" if you like).`,
         },
         options,
@@ -913,7 +910,7 @@ export async function markSelfCancelled(
   ) {
     throw new AnswerError("Jane isn't waiting on a cancellation for this one.");
   }
-  const cancelledOn = new Date(`${isoDay(now)}T00:00:00Z`);
+  const cancelledOn = dayStartUtc(now);
   await setStatus(
     userId,
     action,
@@ -960,7 +957,7 @@ export async function confirmCancellations({
       type: "cancel_subscription",
       agentState: "confirming",
       status: { in: ["in_progress", "waiting_on_user"] },
-      confirmAfter: { lte: new Date(`${isoDay(now)}T00:00:00Z`) },
+      confirmAfter: { lte: dayStartUtc(now) },
       ...ownedBy(userIds),
     },
     select: { id: true, userId: true },
@@ -975,7 +972,7 @@ export async function confirmCancellations({
     if (!action || !since || !action.company) continue;
     const want = normalizeMerchant(action.company)?.key;
     const charges = await scopedFor(userId, client).transactions.findMany({
-      where: { amountCents: { gt: 0 }, date: { gt: new Date(`${isoDay(since)}T00:00:00Z`) } },
+      where: { amountCents: { gt: 0 }, date: { gt: dayStartUtc(since) } },
       select: { date: true, amountCents: true, description: true, merchantName: true },
       orderBy: { date: "desc" },
     });
@@ -1042,7 +1039,7 @@ export async function confirmCancellations({
         {
           confirmAfter: confirmDate(
             { frequency: evidence.frequency, charges: [{ date: isoDay(after.date) }] },
-            new Date(`${isoDay(now)}T00:00:00Z`),
+            dayStartUtc(now),
           ),
           userTodo: `${action.company} charged you on ${isoDay(after.date)}, so the subscription looks active. Cancel on their page to stop the next charge; Jane keeps watching.`,
         },

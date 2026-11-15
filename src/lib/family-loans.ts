@@ -24,7 +24,7 @@ import {
   type Candidate,
   type Transfer,
 } from "@/planning/family-loans";
-import { DAY_MS, isoDay, daysBetween } from "@/lib/dates";
+import { DAY_MS, daysBetween, dayStartUtc, isoDay } from "@/lib/dates";
 
 // Money between family and friends (spec step 226). Jane spots payment-app transfers (Venmo,
 // Zelle, Cash App) that might be a loan and asks once; a transfer is a loan only after the
@@ -297,7 +297,7 @@ export async function settleFamilyLoan(
 ): Promise<void> {
   const { count } = await scopedFor(userId, client).personalLoans.updateMany({
     where: { id: loanId, status: "open" },
-    data: { status: "settled", settledOn: new Date(`${isoDay(now)}T00:00:00Z`) },
+    data: { status: "settled", settledOn: dayStartUtc(now) },
   });
   if (count === 0) throw new FamilyLoanError("That loan isn't open.");
 }
@@ -319,7 +319,7 @@ export async function addCosignedLoan(
       kind: "cosigned",
       counterparty,
       principalCents: 0,
-      openedOn: new Date(`${isoDay(now)}T00:00:00Z`),
+      openedOn: dayStartUtc(now),
       sourceKey: debt.debtKey,
     },
   });

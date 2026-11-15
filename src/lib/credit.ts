@@ -11,7 +11,7 @@ import type { DebtBook } from "@/insights/debts";
 import { formatCents } from "@/lib/money";
 import { creditBandOf, creditFactors, utilisation, type Utilisation } from "@/planning/credit";
 import { dayLabel } from "@/lib/day-label";
-import { DAY_MS, isoDay } from "@/lib/dates";
+import { DAY_MS, dayStartUtc, isoDay } from "@/lib/dates";
 
 // The credit score (spec step 116). Once a month Jane asks the credit partner for the
 // person's score with a soft pull (it never affects the score), and explains what's
@@ -81,7 +81,7 @@ export async function pullCredit(
       hardInquiries: report.hardInquiries,
       inputs: request as unknown as Prisma.InputJsonObject,
       demo: report.demo,
-      pulledOn: new Date(`${isoDay(now)}T00:00:00Z`),
+      pulledOn: dayStartUtc(now),
     },
     select: { id: true, score: true },
   });
