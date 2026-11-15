@@ -14,6 +14,7 @@ export { lenderPartnerFor };
 import type { LoanOffer, PrequalifyRequest, TransferOffer } from "@/lib/lenders/partner";
 import { compareRefinance, refinanceable, type RefinanceComparison } from "@/planning/refinance";
 import { DAY_MS, isoDay } from "@/lib/dates";
+import { todayOf } from "@/lib/today";
 
 // Refinance offers (spec step 111). Once a month Jane asks the lender partner, by
 // itself, what the person prequalifies for on each loan and card (a soft check), and
@@ -56,7 +57,9 @@ export async function checkRates(
 ): Promise<Quote[] | null> {
   const found = await lenderPartnerFor(userId, { client });
   if (!found) return null;
-  const asOf = isoDay(now);
+  // The person's own day (todayOf), as "Last checked" shows it: UTC's read a day ahead in the
+  // evening in the US (debugger 11-15).
+  const asOf = await todayOf(userId, { client, now });
   const [book, creditBand] = await Promise.all([
     loadDebts(userId, { client, now }),
     // Spec step 116: priced by the latest score's band.
@@ -169,7 +172,9 @@ export async function loadRefinance(
   ]);
   if (!found) return { available: false, checkedOn: null, comparisons: [] };
   const quotes = (Array.isArray(row?.quotes) ? row.quotes : []) as unknown as Quote[];
-  const asOf = isoDay(now);
+  // The person's own day (todayOf), as "Last checked" shows it: UTC's read a day ahead in the
+  // evening in the US (debugger 11-15).
+  const asOf = await todayOf(userId, { client, now });
   const comparisons = quotes.flatMap((q) => {
     const debt = book.debts.find((d) => d.key === q.debtKey);
     // The fit engine's pick when it was asked; offers kept before that pick here.

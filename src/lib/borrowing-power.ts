@@ -36,6 +36,7 @@ import {
 import type { FitPerson } from "@/planning/fit";
 import { fitPersonFrom } from "@/planning/fit-person";
 import { DAY_MS, isoDay } from "@/lib/dates";
+import { todayOf } from "@/lib/today";
 import { formatRate } from "@/lib/percent";
 
 // What you could borrow (spec step 250), for one person: a mortgage, a car loan, a personal
@@ -114,7 +115,8 @@ export async function checkBorrowing(
   const found = await lenderPartnerFor(userId, { client });
   if (!found) return null;
   const db = scopedFor(userId, client);
-  const asOf = isoDay(now);
+  // The person's own day, as "Checked" shows it (todayOf; debugger 11-15).
+  const asOf = await todayOf(userId, { client, now });
   const month = asOf.slice(0, 7);
   const [input, report, book, last] = await Promise.all([
     loadProfileInput(userId, { client, now }),
