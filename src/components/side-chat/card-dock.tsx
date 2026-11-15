@@ -2,8 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { SuggestionCards } from "@/app/chat/suggestion-cards";
-import { CARDS_CHANGED_EVENT, UNREAD_POLL_MS } from "@/config/side-chat";
+import { CARDS_CHANGED_EVENT, SIDE_CHAT_MIN_WIDTH_PX, UNREAD_POLL_MS } from "@/config/side-chat";
 import { keepWheel } from "@/lib/contain-scroll";
 import {
   goneIds,
@@ -49,6 +48,28 @@ function keepCards(cards: readonly MessageView[], userId: string) {
   }
 }
 
+// The cards' own code (about 19 kB) in a chunk of its own: the dock only draws on a computer, so a
+// phone never loads it (speed round, 11-15). A computer starts loading it as the page starts, well
+// before the dock first draws, so kept cards still paint at once and nothing moves.
+type Cards = typeof import("@/app/chat/suggestion-cards");
+let cardsCode: Cards | null = null;
+let cardsLoading: Promise<Cards> | null = null;
+const loadCards = () =>
+  (cardsLoading ??= import("@/app/chat/suggestion-cards").then((code) => (cardsCode = code)));
+if (
+  typeof window !== "undefined" &&
+  window.matchMedia?.(`(min-width: ${SIDE_CHAT_MIN_WIDTH_PX}px)`).matches
+) {
+  void loadCards().catch(() => undefined);
+}
+function useCardsCode(): Cards | null {
+  const [code, setCode] = useState(cardsCode);
+  useEffect(() => {
+    if (!code) void loadCards().then(setCode, () => undefined);
+  }, [code]);
+  return code;
+}
+
 const sessionStore = () => {
   try {
     return window.sessionStorage;
@@ -59,6 +80,7 @@ const sessionStore = () => {
 
 export function CardDock({ userId }: { userId: string }) {
   const pathname = usePathname();
+  const code = useCardsCode();
   // The cards the tab last showed, at once, so nothing moves when they load. The docked panel
   // only renders in the browser (useWide is false on the server), so this never mismatches.
   const [kept] = useState(() => keptCards(sessionStore(), userId, goneIds()));
@@ -135,7 +157,8 @@ export function CardDock({ userId }: { userId: string }) {
     return keepWheel(box);
   }, [hasCards]);
 
-  if (shown.length === 0) return null;
+  if (shown.length === 0 || !code) return null;
+  const { SuggestionCards } = code;
   return (
     <FollowHeight
       className="shrink-0 border-b border-zinc-300 dark:border-zinc-700"
