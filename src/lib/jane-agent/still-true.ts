@@ -207,13 +207,7 @@ async function factsFor(
         : null,
       withPlan ? planNow(userId, client) : null,
       findingIds.length > 0 || proposalKeys.some((k) => k.startsWith("goal:"))
-        ? scopedFor(userId, client).suggestions.findMany({
-            where: {
-              status: { in: ["selected", "yes", "no"] },
-              selectedOn: { gt: new Date(now.getTime() - RESELECT_AFTER_DAYS * DAY_MS) },
-            },
-            select: { topic: true },
-          })
+        ? offeredTopics(userId, { client, now })
         : null,
     ]);
   const deadlines = new Map((coming?.deadlines ?? []).map((d) => [d.key, d]));
@@ -245,7 +239,7 @@ async function factsFor(
           },
         ]),
       ),
-    suggestionTopics: offered && new Set(offered.map((s) => s.topic)),
+    suggestionTopics: offered,
     plan,
   };
 }
@@ -276,6 +270,26 @@ async function planNow(
   };
 }
 
+// The topics of the suggestions the scan offered lately, answered or not: a finding or set-up goal
+// card about one of them isn't asked beside it.
+export async function offeredTopics(
+  userId: string,
+  { client, now }: { client: PrismaClient; now: Date },
+): Promise<Set<string>> {
+  const rows = await scopedFor(userId, client).suggestions.findMany({
+    where: {
+      status: { in: ["selected", "yes", "no"] },
+      selectedOn: { gt: new Date(now.getTime() - RESELECT_AFTER_DAYS * DAY_MS) },
+    },
+    select: { topic: true },
+  });
+  return new Set(rows.map((r) => r.topic));
+}
+
+// A set-up goal a suggestion already brings up: its card isn't shown, and "Use all" leaves it.
+export const coveredGoal = (key: string, topics: ReadonlySet<string> | null) =>
+  key.startsWith("goal:") && !!topics?.has(key.slice(5));
+
 // The card as it should show now, or null when it no longer holds.
 function asNow(m: ChatMessage, facts: Facts): ChatMessage | null {
   const { deadlineKey, deadlineEntryId, alertId, change, suggestion, proposalKey, insuranceGap } =
@@ -303,15 +317,26 @@ function asNow(m: ChatMessage, facts: Facts): ChatMessage | null {
   }
   // Nor a set-up goal one of them already brings up (debugger 11-15: "Build an emergency cushion,
   // protect $1,674" and, three cards on, "I could start an 'Emergency fund' goal: $5,700.00").
-  if (proposalKey?.startsWith("goal:") && facts.suggestionTopics?.has(proposalKey.slice(5))) {
-    return null;
-  }
+  if (proposalKey && coveredGoal(proposalKey, facts.suggestionTopics)) return null;
   // A set-up card is said from its proposal as it is now (night debugger, 10-30: after a second
   // file the dock kept the first file's "$1,180 budget for Food and drink"); one no longer open
   // goes.
   if (proposalKey && facts.proposals) {
     const proposal = facts.proposals.get(proposalKey);
-    return proposal ? { ...m, body: setupBody(proposal) } : null;
+    if (!proposal) return null;
+    // "Use all" counts the set-up cards shown, not one put away above (debugger 11-15: "Use all 3
+    // suggestions" under two cards, and the third, the emergency fund, set up unseen).
+    const shown = [...facts.proposals.keys()].filter(
+      (k) => !coveredGoal(k, facts.suggestionTopics),
+    ).length;
+    const actions = m.actions.flatMap((a) =>
+      a.id !== "setup.all"
+        ? [a]
+        : shown > 1
+          ? [{ ...a, label: `Use all ${shown} suggestions` }]
+          : [],
+    );
+    return { ...m, body: setupBody(proposal), actions };
   }
   // A suggestion card is said as the last scan left its suggestion: after a bank was
   // disconnected, "You keep $47,597.63 in cash" stayed while the scan said $19,447.51 (night

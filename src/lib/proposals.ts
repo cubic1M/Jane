@@ -152,11 +152,20 @@ export async function recentAutoCategories(
 // many were set up.
 export async function acceptAllProposals(
   userId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  {
+    client = defaultClient,
+    now = new Date(),
+    skip = () => false,
+  }: Options & {
+    // One the person wasn't shown (the chat puts away a set-up goal a suggestion covers).
+    skip?: (key: string) => boolean;
+  } = {},
 ): Promise<number> {
   const open = await openProposals(userId, { client });
   let accepted = 0;
-  for (const proposal of open.filter((p) => p.kind === "budget" || p.kind === "goal")) {
+  for (const proposal of open.filter(
+    (p) => (p.kind === "budget" || p.kind === "goal") && !skip(p.key),
+  )) {
     try {
       await answerProposal(userId, proposal.key, true, {}, { client, now });
       accepted += 1;
