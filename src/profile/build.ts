@@ -337,8 +337,13 @@ export function monthsForRate(txs: readonly ProfileTx[], today: string): number 
   return Math.max(1, (days + 1) / (365.25 / 12));
 }
 
+// The year that ends at the newest line, never after today. Ending it at today lost a day: data
+// that runs to yesterday (a bank's usual) left out last year's payday on the day this year's is
+// due and not in yet, so pay read 23 paychecks a year, not 24 (debugger 11-15: the demo person's
+// income fell 4% at midnight and the car refinance was turned down, over the debt limit).
 const inYear = (txs: readonly ProfileTx[], today: string) => {
-  const cutoff = `${Number(today.slice(0, 4)) - 1}${today.slice(4)}`;
+  const end = txs.reduce((a, t) => (t.date > a && t.date <= today ? t.date : a), "") || today;
+  const cutoff = `${Number(end.slice(0, 4)) - 1}${end.slice(4)}`;
   return txs.filter((t) => t.date > cutoff && t.date <= today);
 };
 
