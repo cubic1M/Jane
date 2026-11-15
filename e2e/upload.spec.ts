@@ -297,6 +297,12 @@ test("a file that plainly isn't the chosen account's gets one line saying so", a
     "Chase checking",
   );
   const note = page.locator("[data-wrong-account]");
+  // Chosen by the person: Jane says when a file doesn't fit it. (Left on the page's default, a
+  // file that plainly doesn't fit goes where it does: import-card-own-account.spec.ts.)
+  const select = page.locator('select[name="accountId"]');
+  const checking = await select.inputValue();
+  await select.selectOption("new");
+  await select.selectOption(checking);
   // A card statement, though Chase's too.
   await uploadFile(page, "chase-credit-card.csv");
   await expect(note).toContainText(
