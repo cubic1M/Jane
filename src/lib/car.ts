@@ -32,6 +32,7 @@ import {
   type DealerCheck,
   type ScoredCarOffer,
 } from "@/planning/car";
+import { formatRate } from "@/lib/percent";
 
 // Buying a car (spec step 178), before the dealer. From the person's own income, current
 // auto insurance and gas spending, what they can afford with insurance and running costs
@@ -236,7 +237,7 @@ export async function loadCar(
     assumptions: [
       `Income: ${formatCents(monthlyIncomeCents)} a month, your average over the last ${months.length} full ${months.length === 1 ? "month" : "months"}.`,
       `All-in cost at most ${Math.round(CAR_COST_MAX_SHARE * 100)}% of income (${formatCents(allowanceCents)} a month): payment, insurance, fuel, upkeep and registration.`,
-      `A ${formatCents(downCents)} down payment, a ${termMonths}-month loan at ${((offers[0]?.offer.aprBps ?? aprBps) / 100).toFixed(2)}%, the best preapproval offer for your credit.`,
+      `A ${formatCents(downCents)} down payment, a ${termMonths}-month loan at ${formatRate(offers[0]?.offer.aprBps ?? aprBps)}, the best preapproval offer for your credit.`,
       ...(lenderLimitCents !== null && !asked
         ? [
             `A ${formatCents(lenderLimitCents)} loan, the most the lenders I check would quote for a car; the comfortable car on your income costs more.`,

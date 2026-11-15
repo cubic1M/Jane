@@ -1,5 +1,6 @@
 import { PLAN_OPTIONS, type PlanOption } from "@/config/plan";
 import type { ActionType } from "@/generated/prisma/client";
+import { formatRate } from "@/lib/percent";
 
 // The options a person picked on a plan item, checked against src/config/plan.ts. Amounts
 // are stored in cents.
@@ -60,7 +61,7 @@ export function describePlanOptions(actionType: ActionType, options: unknown): s
   const loanPick =
     pick && typeof pick === "object" && typeof pick.lender === "string"
       ? [
-          `Loan picked: ${pick.lender}${typeof pick.aprBps === "number" && typeof pick.termMonths === "number" && pick.termMonths > 0 ? ` at ${(pick.aprBps / 100).toFixed(2)}% for ${pick.termMonths} months` : ""}${typeof pick.paymentCents === "number" && pick.paymentCents > 0 ? `, $${(pick.paymentCents / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })} a month` : ""}${pick.wasPick === true ? " (Jane's pick)" : ""}`,
+          `Loan picked: ${pick.lender}${typeof pick.aprBps === "number" && typeof pick.termMonths === "number" && pick.termMonths > 0 ? ` at ${formatRate(pick.aprBps)} for ${pick.termMonths} months` : ""}${typeof pick.paymentCents === "number" && pick.paymentCents > 0 ? `, $${(pick.paymentCents / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })} a month` : ""}${pick.wasPick === true ? " (Jane's pick)" : ""}`,
           "Send the person the steps to do it themselves; never apply or move money for them.",
         ]
       : [];

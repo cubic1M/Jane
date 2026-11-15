@@ -2,6 +2,7 @@ import { ESSENTIAL_WORDS, type EssentialGroup } from "@/config/tight-money";
 import { LOW_BALANCE_CUSHION_CENTS } from "@/config/detection";
 import { formatCents } from "@/lib/money";
 import { ordinal } from "@/planning/due-dates";
+import { formatRate } from "@/lib/percent";
 
 // When money is tight (spec step 177). Pure: the first day the checking forecast dips under
 // its cushion, the bills before then with essentials first, and the requests Jane would
@@ -115,7 +116,7 @@ export function tightItems(input: {
         debtKey: d.key,
         debtName: d.name,
         label: `Ask ${d.name} for a lower rate`,
-        body: `Hello, I've been a customer for a while and my account (${d.name}) is charged ${((d.aprBps ?? 0) / 100).toFixed(2)}% interest. I'd like to ask for a lower rate. Please tell me what you can offer. Thank you.`,
+        body: `Hello, I've been a customer for a while and my account (${d.name}) is charged ${formatRate(d.aprBps ?? 0)} interest. I'd like to ask for a lower rate. Please tell me what you can offer. Thank you.`,
         freesCents: null,
       });
     }

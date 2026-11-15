@@ -925,7 +925,7 @@ export function carToolOutput(car: Car, money: (cents: number) => string) {
     },
     preapprovals: car.offers.map((o) => ({
       lender: o.offer.lender,
-      rate: `${(o.offer.aprBps / 100).toFixed(2)}%`,
+      rate: `${formatRate(o.offer.aprBps)}`,
       monthly: money(o.monthlyCents),
       totalCost: money(o.totalCents),
       fees: o.offer.feeLabel,
@@ -953,7 +953,7 @@ export function homeToolOutput(
   const c = home.costs;
   return {
     demoAdvice: home.advice,
-    rate: `${((home.aprBps ?? 0) / 100).toFixed(2)}%${home.rateIsOffer ? " (a lender's offer)" : " (a typical rate, not an offer)"}`,
+    rate: `${formatRate(home.aprBps ?? 0)}${home.rateIsOffer ? " (a lender's offer)" : " (a typical rate, not an offer)"}`,
     maxPrice: money(home.affordability.maxPriceCents),
     allowedHousingPerMonth: money(home.affordability.allowedHousingCents),
     atPrice: money(c.priceCents),
@@ -981,7 +981,7 @@ export function homeToolOutput(
     },
     mortgageOffers: home.offers.map((o) => ({
       lender: o.offer.lender,
-      rate: `${(o.offer.aprBps / 100).toFixed(2)}%`,
+      rate: `${formatRate(o.offer.aprBps)}`,
       monthlyForLoan: money(o.monthlyCents),
       totalCostWithClosing: money(o.totalCents),
       closing: o.offer.feeLabel,
@@ -1058,7 +1058,7 @@ export function cardInterestToolOutput(data: CardInterest, money: (cents: number
     cards: data.cards.map((c) => ({
       card: c.name,
       balance: money(c.balanceCents),
-      rate: `${(c.aprBps / 100).toFixed(2)}%`,
+      rate: `${formatRate(c.aprBps)}`,
       interestPerYear: money(c.interestYearCents),
       payNowInsteadOfOnDueDate: c.payEarly && {
         amount: money(c.payEarly.amountCents),
@@ -1635,7 +1635,7 @@ export function loanFitToolOutput(
       id: o.id,
       label: FIT_LABEL_TEXT[o.label],
       headline: o.headline,
-      rate: `${(o.aprBps / 100).toFixed(2)}%`,
+      rate: `${formatRate(o.aprBps)}`,
       months: o.termMonths,
       monthlyPayment: money(o.paymentCents),
       totalCost: money(o.totalCostCents),
@@ -1698,7 +1698,7 @@ function otherTerms(terms: FitTerms, money: (cents: number) => string) {
     longerMonths: terms.options.find((t) => t.termMonths > best.termMonths)?.termMonths ?? null,
     terms: terms.options.map((t) => ({
       months: t.termMonths,
-      rate: `${(t.aprBps / 100).toFixed(2)}%`,
+      rate: `${formatRate(t.aprBps)}`,
       monthlyPayment: money(t.paymentCents),
       totalInterest: money(t.interestCents),
       fees: money(t.feeCents),

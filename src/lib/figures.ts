@@ -40,6 +40,7 @@ import { incomeOverride, listPreferences } from "@/lib/jane-agent/preferences";
 import { formatCents } from "@/lib/money";
 import { isoDay as iso } from "@/lib/dates";
 import { monthLabel } from "@/lib/day-label";
+import { formatRate } from "@/lib/percent";
 
 // Every figure explained (spec step 239): "how did you get that?" for a headline figure, from
 // the same loaders as the pages that show it: the rows it adds up, the transactions behind it,
@@ -355,7 +356,7 @@ async function debtFree({ userId, client, now }: Ctx): Promise<Part> {
       label: d.name,
       value: d.balanceCents === null ? "unknown" : formatCents(d.balanceCents),
       note: [
-        d.aprBps !== null ? `${(d.aprBps / 100).toFixed(2)}% a year` : null,
+        d.aprBps !== null ? `${formatRate(d.aprBps)} a year` : null,
         d.paymentCents !== null ? `${formatCents(d.paymentCents)} a payment` : null,
       ]
         .filter(Boolean)

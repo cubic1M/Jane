@@ -3,6 +3,7 @@ import { formatCents } from "@/lib/money";
 import { INTEREST_PAGE, askButton, firstAsk } from "../card-interest-replies";
 import type { Candidate } from "../types";
 import { snoozeButton, type MessageSource } from "./source";
+import { formatRate } from "@/lib/percent";
 
 // Less interest on every card (spec step 224). A promotion off pace (its deadline is on the
 // deadlines list), a request for a lower rate ready to send on a tap, and the lender's
@@ -19,7 +20,7 @@ export const cardInterestSource: MessageSource = {
       if (p.plan.ended || p.plan.onPace || p.fromTransfer) continue;
       out.push({
         kind: "heads_up",
-        body: `${p.cardName}'s 0% ends in ${p.plan.daysLeft} days and you're ${formatCents(p.plan.shortCents)} a month short of clearing it: ${formatCents(p.plan.monthlyNeededCents)} a month would. ${p.deferred ? `Interest from the start at ${(p.goToAprBps / 100).toFixed(2)}% is charged on what's left, about ${formatCents(p.plan.costIfMissedCents)} at your current pace. ` : ""}It's on your deadlines.`,
+        body: `${p.cardName}'s 0% ends in ${p.plan.daysLeft} days and you're ${formatCents(p.plan.shortCents)} a month short of clearing it: ${formatCents(p.plan.monthlyNeededCents)} a month would. ${p.deferred ? `Interest from the start at ${formatRate(p.goToAprBps)} is charged on what's left, about ${formatCents(p.plan.costIfMissedCents)} at your current pace. ` : ""}It's on your deadlines.`,
         refs: { advice: true },
         actions: [INTEREST_PAGE, snoozeButton()],
         dedupeKey: `promo:${p.id}:${p.endsOn}`,
@@ -30,7 +31,7 @@ export const cardInterestSource: MessageSource = {
     if (next?.rate) {
       out.push({
         kind: "decision",
-        body: `${next.name} charges ${(next.aprBps / 100).toFixed(2)}% on ${formatCents(next.balanceCents)}. Asking for ${(next.rate.newAprBps / 100).toFixed(2)}% would save about ${formatCents(next.rate.savingYearlyCents)} a year. I've written the request and a call script; nothing is sent until you tap.`,
+        body: `${next.name} charges ${formatRate(next.aprBps)} on ${formatCents(next.balanceCents)}. Asking for ${formatRate(next.rate.newAprBps)} would save about ${formatCents(next.rate.savingYearlyCents)} a year. I've written the request and a call script; nothing is sent until you tap.`,
         refs: { advice: true, cardRate: { id: next.rate.id } },
         actions: [askButton(next.name), INTEREST_PAGE, snoozeButton()],
         dedupeKey: `cardrate:${next.rate.id}`,

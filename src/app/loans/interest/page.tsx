@@ -11,6 +11,7 @@ import { promoLine } from "@/planning/card-interest";
 import { addPromoAction, removePromoAction, sendRateAction } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { PageShell } from "@/components/page-shell";
+import { formatRate } from "@/lib/percent";
 
 // Less interest on every card (spec step 224): each card's interest, what paying earlier
 // saves, 0% promotions with their pace, and a request for a lower rate sent only on a tap.
@@ -88,7 +89,7 @@ async function InterestContent({
                       className="rounded-xl border border-zinc-200 p-4 text-sm dark:border-zinc-800"
                     >
                       <p className="font-medium">
-                        {c.name}: {formatCents(c.balanceCents)} at {(c.aprBps / 100).toFixed(2)}%
+                        {c.name}: {formatCents(c.balanceCents)} at {formatRate(c.aprBps)}
                       </p>
                       <p>About {formatCents(c.interestYearCents)} a year in interest.</p>
                       {c.payEarly && (
@@ -109,8 +110,8 @@ async function InterestContent({
                         ) : (
                           <div className="mt-2 flex flex-col gap-2">
                             <p>
-                              A lower rate of {(c.rate.newAprBps / 100).toFixed(2)}% would save
-                              about {formatCents(c.rate.savingYearlyCents)} a year.
+                              A lower rate of {formatRate(c.rate.newAprBps)} would save about{" "}
+                              {formatCents(c.rate.savingYearlyCents)} a year.
                             </p>
                             <p className="whitespace-pre-line text-zinc-600 dark:text-zinc-400">
                               {c.rate.script}

@@ -988,7 +988,7 @@ export function planMenuReply(view: PlanMenuView): Reply {
   }
   if (!view.advice || !view.plan) {
     return {
-      body: `Your plan offers ${view.menu.funds.length} funds: ${view.menu.funds.map((f) => `${f.ticker} (${(f.expenseBps / 100).toFixed(2)}%)`).join(", ")}.${view.advice ? " Finish your investor profile and I'll find the cheapest mix." : " I don't give recommendations on real accounts yet."}`,
+      body: `Your plan offers ${view.menu.funds.length} funds: ${view.menu.funds.map((f) => `${f.ticker} (${formatRate(f.expenseBps)})`).join(", ")}.${view.advice ? " Finish your investor profile and I'll find the cheapest mix." : " I don't give recommendations on real accounts yet."}`,
       actions: [MENU_LINK],
       refs: {},
     };

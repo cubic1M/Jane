@@ -3,6 +3,7 @@ import { RISK_ANNUAL_PROBABILITY as CHANCE } from "@/config/suggestions";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestion } from "./contract";
 import { evidence, factEvidence, weakest, headlineOf } from "./helpers";
+import { formatRate } from "@/lib/percent";
 
 // Detectors for the home and the people in it (spec step 254): PMI, a costly mortgage and
 // life cover. Pure; see ./contract.ts.
@@ -55,12 +56,12 @@ const refinance: Detector = {
         Math.round((balance * gap) / 10_000),
         "saves",
       ),
-      short: `Your rate is ${(rate.value / 100).toFixed(2)}% on ${formatCents(balance)}.`,
+      short: `Your rate is ${formatRate(rate.value)} on ${formatCents(balance)}.`,
       worthCents: Math.round((balance * gap) / 10_000),
       worthKind: "saves",
       confidence: factEvidence(rate),
       urgency: "soon",
-      why: `Your rate is ${(rate.value / 100).toFixed(2)}% on ${formatCents(balance)}; rates today are about ${(R.marketMortgageBps / 100).toFixed(2)}%, before closing costs.`,
+      why: `Your rate is ${formatRate(rate.value)} on ${formatCents(balance)}; rates today are about ${formatRate(R.marketMortgageBps)}, before closing costs.`,
       action: { label: "Check refinance offers", href: "/loans/refinance" },
     });
   },

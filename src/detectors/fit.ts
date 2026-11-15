@@ -17,6 +17,7 @@ import { fit } from "@/planning/fit";
 import { fitPersonFrom } from "@/planning/fit-person";
 import { type Detector, suggestion } from "./contract";
 import { evidence, headlineOf, outCents, tx, weakest } from "./helpers";
+import { formatRate } from "@/lib/percent";
 
 // The perfect fit for borrowing (spec step 283): cards that could be one cheaper loan. The same
 // fit engine as the chat's options card and Claude's tool (src/planning/fit.ts), priced from
@@ -100,7 +101,7 @@ const consolidation: Detector = {
     return suggestion("debt", "consolidation", {
       title: "Move your card debt to one cheaper loan",
       headline: headlineOf("Move card debt into one loan", saves, "saves", true),
-      short: `${formatCents(owed)} on cards at ${(apr / 100).toFixed(1)}% could be one loan at ${(pick.aprBps / 100).toFixed(2)}%.`,
+      short: `${formatCents(owed)} on cards at ${(apr / 100).toFixed(1)}% could be one loan at ${formatRate(pick.aprBps)}.`,
       worthCents: saves,
       worthKind: "saves",
       ...(transferSaves > 0 ? { rankCents: Math.max(0, saves - transferSaves) } : {}),
@@ -118,7 +119,7 @@ const consolidation: Detector = {
         result.confidence ?? { percent: 65, reason: "the offers are typical rates" },
       ]),
       urgency: "later",
-      why: `You owe ${formatCents(owed)} on ${rated.length === 1 ? `a card at ${(apr / 100).toFixed(1)}%` : `${rated.length} cards at ${(apr / 100).toFixed(1)}% on average`}. ${pick.lender} at ${(pick.aprBps / 100).toFixed(2)}% over ${pick.termMonths / 12} years would cost about ${formatCents(saves)} less in all, fees counted, at ${formatCents(pick.paymentCents)} a month.`,
+      why: `You owe ${formatCents(owed)} on ${rated.length === 1 ? `a card at ${(apr / 100).toFixed(1)}%` : `${rated.length} cards at ${(apr / 100).toFixed(1)}% on average`}. ${pick.lender} at ${formatRate(pick.aprBps)} over ${pick.termMonths / 12} years would cost about ${formatCents(saves)} less in all, fees counted, at ${formatCents(pick.paymentCents)} a month.`,
       action: { label: "Compare your options", href: "/loans/refinance" },
     });
   },
