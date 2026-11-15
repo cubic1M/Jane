@@ -2,6 +2,8 @@
 // correction can be checked) and whether the person may correct it. Detectors (step 254)
 // ask for these by key.
 
+import { formatRate } from "@/lib/percent";
+
 type FactKind = "choice" | "boolean" | "number" | "text" | "cents";
 
 export type FactSpec = {
@@ -139,7 +141,7 @@ export const choiceWords = (choice: string, key?: string) =>
 // A fact's value in words, where the stored value isn't how anyone says it. Money and yes or no are
 // said where they're shown.
 export function factWords(key: string, value: string | number): string {
-  if (key === "mortgage_rate_bps") return `${(Number(value) / 100).toFixed(2)}%`;
+  if (key === "mortgage_rate_bps") return formatRate(Number(value));
   return factSpec(key)?.kind === "choice" ? choiceWords(String(value), key) : String(value);
 }
 

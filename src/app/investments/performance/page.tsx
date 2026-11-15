@@ -8,6 +8,7 @@ import { annualized } from "@/planning/honest";
 import { PageShell } from "@/components/page-shell";
 import { BackLink } from "@/components/back-link";
 import { CARD } from "@/components/card";
+import { formatRate } from "@/lib/percent";
 
 // Honest performance (spec step 233): how the money really did over 1, 3 and 5 years, after
 // fees and taxes, against a simple benchmark mix with the same risk, and why they differ.
@@ -85,8 +86,8 @@ async function Content() {
       ))}
       {v.rows.length > 0 && (
         <p className="text-xs text-zinc-500">
-          Benchmark: {BENCHMARK_SOURCE}. Your funds cost about {(v.ownFeeBps / 100).toFixed(2)}% a
-          year and tax on payouts about {(v.taxDragBps / 100).toFixed(2)}% a year.
+          Benchmark: {BENCHMARK_SOURCE}. Your funds cost about {formatRate(v.ownFeeBps)} a year and
+          tax on payouts about {formatRate(v.taxDragBps)} a year.
           {v.simulatedPrices ? " Prices are the demo feed's (made up)." : ""}
         </p>
       )}

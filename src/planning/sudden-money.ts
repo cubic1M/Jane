@@ -7,6 +7,7 @@ import {
   TAX_SOURCES,
   type SuddenKind,
 } from "@/config/sudden-money";
+import { formatRate } from "@/lib/percent";
 
 // Sudden money (spec step 235, demo advice). Pure. A large deposit that isn't pay becomes a
 // staged plan, in this order: the tax to set aside (figured by kind, always first), then
@@ -101,7 +102,7 @@ export function suddenPlan(input: PlanInput): Stage[] {
     "debt",
     "Pay off high-interest debt",
     high.reduce((s, c) => s + c.balanceCents, 0),
-    high.map((c) => `${c.name} at ${(c.aprBps / 100).toFixed(2)}%`).join(", "),
+    high.map((c) => `${c.name} at ${formatRate(c.aprBps)}`).join(", "),
   );
   take(
     "emergency",

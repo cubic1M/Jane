@@ -10,6 +10,7 @@ import { OptionForm } from "./option-form";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
 import { systemDb } from "@/lib/system-db";
+import { formatRate } from "@/lib/percent";
 
 const KIND_LABEL: Record<string, string> = {
   plan: "Plans from other providers",
@@ -78,7 +79,7 @@ async function Options() {
                         </span>
                         <span className="text-xs text-zinc-600 dark:text-zinc-400">
                           {o.apyBps !== null
-                            ? `${(o.apyBps / 100).toFixed(2)}% APY`
+                            ? `${formatRate(o.apyBps)} APY`
                             : o.monthlyCents !== null
                               ? `${formatCents(o.monthlyCents)} a month`
                               : ""}

@@ -10,6 +10,7 @@ import type {
   StrategySummary,
 } from "@/lib/investments/rule-replay";
 import { formatCents } from "@/lib/money";
+import { formatRate } from "@/lib/percent";
 
 // "Did the extra rules help?" on the investments page: for each level, the practice autopilot
 // with the daily scan's opportunity rules against plain rebalancing and buy and hold, replayed
@@ -126,9 +127,7 @@ export function RuleReplaySection({ data, level }: { data: LoadedRuleReplays; le
             Every cap the live autopilot keeps: per trade, per holding, trades a day and the share
             in opportunity stocks.
           </li>
-          <li>
-            Each trade costs {(a.tradeCostBps / 100).toFixed(2)}% of what changes hands. No taxes.
-          </li>
+          <li>Each trade costs {formatRate(a.tradeCostBps)} of what changes hands. No taxes.</li>
           <li>
             A rule &ldquo;made it worse&rdquo; when the return was lower, or the worst drop deeper,
             by more than {a.worsePoints} points than the same replay without it; Jane turns those

@@ -1,4 +1,5 @@
 import { REFUND } from "@/config/tax";
+import { formatRate } from "@/lib/percent";
 
 // Tax refunds (spec step 125). Pure: spotting a refund in the deposits, matching it to the
 // estimate for its year, and a plan for where it could go (demo advice): the emergency fund
@@ -83,7 +84,7 @@ export function refundPlan(input: {
     items.push({
       kind: "debt",
       cents,
-      label: `the ${debt.accountName} (${(debt.aprBps / 100).toFixed(2)}%)`,
+      label: `the ${debt.accountName} (${formatRate(debt.aprBps)})`,
       accountName: debt.accountName,
       aprBps: debt.aprBps,
     });

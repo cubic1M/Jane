@@ -4,6 +4,7 @@ import { formatCents } from "@/lib/money";
 import { promoLine } from "@/planning/card-interest";
 import type { Reply } from "./replies";
 import { type MessageAction, openLink } from "./types";
+import { formatRate } from "@/lib/percent";
 
 // Jane's answers about card interest (spec step 224), from src/lib/card-interest.ts. Pure.
 // Demo advice, labelled; a request for a lower rate is sent only on a tap.
@@ -41,7 +42,7 @@ export function cardInterestReply(data: CardInterest): Reply {
       `Your cards cost about ${formatCents(data.interestYearCents)} a year in interest at today's balances.`,
     );
     for (const c of data.cards) {
-      const bits = [`${formatCents(c.balanceCents)} at ${(c.aprBps / 100).toFixed(2)}%`];
+      const bits = [`${formatCents(c.balanceCents)} at ${formatRate(c.aprBps)}`];
       if (c.payEarly) {
         bits.push(
           `paying the ${formatCents(c.payEarly.amountCents)} now, not on the due date, saves ${formatCents(c.payEarly.savedCents)}`,
