@@ -61,6 +61,9 @@ const NAME_KEYS = [
   "ticker",
   "issuer",
   "employer",
+  // Who a deposit is from: a paycheck in the forecast is the employer's, not the account's it lands
+  // in (debugger 11-15: "$2,450.00 from Acme Corp" read as the checking account's on a payday).
+  "from",
   "benefit",
   "category",
   "account",
@@ -178,6 +181,8 @@ const significant = (name: string) =>
 const BANK_WORDING = /\bthank you\b|^(?:(?:online|mobile|internet|autopay|card)\s+)*payment\b/i;
 
 const isAName = (text: string) =>
+  !ISO_DATE.test(text) &&
+  !ISO_MONTH.test(text) &&
   text.length <= 40 &&
   wordsOf(text).length <= 5 &&
   !BANK_WORDING.test(text) &&
