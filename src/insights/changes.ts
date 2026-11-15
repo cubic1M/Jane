@@ -6,6 +6,7 @@ import {
   BILL_CHANGE_USUAL_CHARGES,
   CHANGE_RECENT_DAYS,
   NEW_FEE_HISTORY_DAYS,
+  NEW_SUBSCRIPTION_CYCLE_SLACK_DAYS,
   NEW_SUBSCRIPTION_DAYS,
   PACE_EXCLUDED_CATEGORIES,
   PACE_MIN_DAY,
@@ -19,6 +20,7 @@ import {
 } from "@/config/changes";
 import {
   BANK_FEE_CATEGORIES,
+  CHARGES_PER_YEAR,
   INSURANCE_CATEGORIES,
   PREMIUM_RENEWAL_MAX_GAP_DAYS,
   PREMIUM_RENEWAL_MIN_CENTS,
@@ -160,6 +162,9 @@ export function newSubscriptions(input: DetectionInput, streams: Stream[]): Chan
     const last = stream.charges.at(-1);
     if (!stream.active || !stream.frequency || !start || !last || excluded(stream)) return [];
     if (stream.charges.length < 2 || start.date <= since) return [];
+    // The charge before the first one would be in the data, were there one.
+    const cycle = Math.round(365.25 / CHARGES_PER_YEAR[stream.frequency]);
+    if (daysBetween(first, start.date) < cycle + NEW_SUBSCRIPTION_CYCLE_SLACK_DAYS) return [];
     return [
       {
         ...base,

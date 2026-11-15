@@ -25,6 +25,10 @@ export const BILL_CHANGE_USUAL_CHARGES = 3;
 // A new subscription: a regular charge whose first payment is this recent, from someone
 // whose history goes back further than that (a fresh import makes everything look new).
 export const NEW_SUBSCRIPTION_DAYS = 75;
+// ...and only when the data reaches back a full cycle, plus this many days, before its first
+// charge: a statement starting Aug 19 can't show Netflix's Aug 3 charge, so Netflix's Sep 3 isn't
+// new (debugger 11-15).
+export const NEW_SUBSCRIPTION_CYCLE_SLACK_DAYS = 5;
 
 // Paychecks (what counts as one, and whose: src/detection/paydays.ts). Needs this many paychecks
 // to know the pattern. Late: no paycheck this many days after the usual gap. Smaller: this
