@@ -71,7 +71,12 @@ test("a real upload moves the counts, and what's said outlives the try", async (
   await expect.poll(() => countOf("scan_finished"), { timeout: 60_000 }).toBe(finished + 1);
 
   // The box is on the first findings someone sees. An email in it doesn't get kept.
-  const words = `Rent is not a bill ${crypto.randomUUID().slice(0, 8)}`;
+  // Letters only: eight random hex characters were sometimes all digits ("23797845"), which the
+  // feedback rightly keeps as "[number]", so the row was never found (main, 11-15).
+  const tag = Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) =>
+    String.fromCharCode(97 + (b % 26)),
+  ).join("");
+  const words = `Rent is not a bill ${tag}`;
   const box = page.locator("[data-try-feedback]");
   await box.getByLabel("What did Jane get wrong?").fill(`${words} sam@example.com`);
   await box.getByRole("button", { name: "[SEND]" }).click();
