@@ -60,8 +60,9 @@ test("the tax profile shows what Jane found and saves the person's answers", asy
     "Demo advice: sample data, not financial advice",
   );
   // Spec step 122: ways to pay less, each an estimate with its button.
-  const savings = await pickItem(page, "Taxes", "Pay less tax", "Save more for retirement");
-  await expect(savings.getByText(/401\(k\)/).first()).toBeVisible();
+  // (The 401(k) saving is said under Due soon while its year-end move is open.)
+  const savings = await pickItem(page, "Taxes", "Pay less tax", "Deduct student loan interest");
+  await expect(savings.getByText(/student loan interest/i).first()).toBeVisible();
   await expect(savings.getByRole("button", { name: "Remind me" })).toBeVisible();
   await expect(savings.getByRole("note")).toHaveText(
     "Demo advice: sample data, not financial advice",

@@ -38,10 +38,12 @@ const input = (over: Partial<TaxesTreeInput> = {}): TaxesTreeInput => ({
       amountCents: null,
     },
   ],
+  // Not the 401(k) move's own saving, which is said once under Due soon
+  // (taxes-saving-once.test.ts).
   savings: [
     {
-      key: "retirement",
-      title: "Put about $150 more a paycheck into your 401(k)",
+      key: "itemize",
+      title: "Itemize your mortgage interest and gifts",
       estimateCents: 132_000,
     },
   ],
@@ -79,9 +81,7 @@ describe("the taxes tree", () => {
     for (const l of labels) expect(words(l), l).toBeLessThanOrEqual(LABEL_MAX_WORDS);
     for (const [id, s] of Object.entries(summaries))
       expect(sentences(s), id).toBeLessThanOrEqual(SUMMARY_MAX_SENTENCES);
-    expect(summaries["savings:retirement"]).toBe(
-      "Put about $150 more a paycheck into your 401(k).",
-    );
+    expect(summaries["savings:itemize"]).toBe("Itemize your mortgage interest and gifts.");
     // A long move is cut to its first two sentences; the rest goes behind More.
     expect(summaries["soon:2026:workplace_retirement"]).toBe(
       "Raise what goes into your 401(k) before the year ends. Each dollar lowers this year's tax.",
