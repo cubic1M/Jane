@@ -452,14 +452,22 @@ async function LoansContent({
       )}
 
       {book.debts.length === 0 ? (
-        <p className="text-zinc-600 dark:text-zinc-400">
-          When you{" "}
-          <Link href="/connect" className={LINK}>
-            add your accounts
-          </Link>{" "}
-          (a card statement, or a bank that reports loans), they show here with their rates and due
-          dates.
-        </p>
+        book.cardPaidNotOnFile ? (
+          // The line above already asks for the card's statement: here, only the way to add it
+          // (debugger 11-15: it was asked for twice, once more as "When you add your accounts").
+          <Link href="/import" className={`self-start ${LINK}`}>
+            Add the card&apos;s statement ›
+          </Link>
+        ) : (
+          <p className="text-zinc-600 dark:text-zinc-400">
+            When you{" "}
+            <Link href="/connect" className={LINK}>
+              add your accounts
+            </Link>{" "}
+            (a card statement, or a bank that reports loans), they show here with their rates and
+            due dates.
+          </p>
+        )
       ) : (
         <AreaPage
           tree={area.tree}
