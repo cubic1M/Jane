@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
-import { AnswerError, answerCompany, markSelfCancelled, runQueuedFor } from "@/lib/agent/run";
+import { AnswerError } from "@/lib/agent/action";
+import { answerCompany, markSelfCancelled, runQueuedFor } from "@/lib/agent/run";
 import { requireUser } from "@/lib/session";
 import { answerOffer } from "@/lib/voice/calls";
 

@@ -63,7 +63,7 @@ describe.runIf(url)("the insurance switch, against a real database", () => {
       await agentStep(user.id, actionId, { client, now: NOW, notify });
     } else {
       const { startInsuranceSwitch } = await import("./switch");
-      const { loadAction } = await import("@/lib/agent/run");
+      const { loadAction } = await import("@/lib/agent/action");
       await startInsuranceSwitch(user.id, (await loadAction(user.id, actionId, client))!, {
         client,
         now: NOW,

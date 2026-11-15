@@ -18,7 +18,8 @@ import { findingOfType } from "@/lib/__fixtures__/findings";
 import { handleCallResult } from "@/lib/voice/calls";
 import type { CallResult } from "@/lib/voice/provider";
 import { readReplyByRules } from "./read-reply";
-import { AnswerError, agentStep, answerCompany, handleReply } from "./run";
+import { AnswerError } from "./action";
+import { agentStep, answerCompany, handleReply } from "./run";
 import { simulatedBody } from "./simulated-company";
 
 // What the agent does for someone when what it hears is repeated, sent at once, or comes from
