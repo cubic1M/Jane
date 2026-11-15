@@ -34,6 +34,14 @@ export function formatCents(cents: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
 }
 
+// A price as a person reads it: "$1,272" for whole dollars, "$1,272.50" otherwise.
+export const formatPrice = (cents: number): string =>
+  (cents / 100).toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
+  });
+
 // Whole dollars, rounded, with thousands separators: "$1,235" for 123,456 cents.
 export const formatWholeDollars = (cents: number): string =>
   formatCents(Math.round(cents / 100) * 100).replace(/\.00$/, "");

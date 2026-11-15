@@ -5,21 +5,15 @@ import type { Comparison, Scored } from "@/planning/compare";
 import { DecisionButtons } from "./decision-buttons";
 import { apyDisclosures, apyHeadline } from "@/lib/apy-disclosure";
 import { dayLabel } from "@/lib/day-label";
+import { formatPrice } from "@/lib/money";
 
 // The best option for this person, picked by Jane and already selected, with the runners
 // up and the choice not to switch (spec step 76). One yes switches to whichever is picked.
 
-const money = (cents: number) =>
-  (cents / 100).toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
-  });
-
 function priceOf(s: Scored): string {
   // A savings rate is always an annual percentage yield, with the day it was checked (Reg DD).
   if (s.option.apyBps !== null) return apyHeadline(s.option.apyBps, s.option.checkedAt);
-  return s.option.monthlyCents === null ? "" : `${money(s.option.monthlyCents)} a month`;
+  return s.option.monthlyCents === null ? "" : `${formatPrice(s.option.monthlyCents)} a month`;
 }
 
 // "Checked 2:05 PM from barclaysus.com" for an option the offers catalog read today (src/lib/offers/),
@@ -43,8 +37,8 @@ const hostOf = (url: string) => {
 
 function gainOf(s: Scored, savings: boolean): string {
   return savings
-    ? `Earns about ${money(s.savingCents)} more a year`
-    : `Saves about ${money(s.savingCents)} in the first year`;
+    ? `Earns about ${formatPrice(s.savingCents)} more a year`
+    : `Saves about ${formatPrice(s.savingCents)} in the first year`;
 }
 
 function OptionRow({

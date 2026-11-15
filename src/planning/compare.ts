@@ -1,4 +1,5 @@
 import { COMPARE_RUNNERS_UP, OPTION_MIN_SAVING_CENTS, type OptionKind } from "@/config/compare";
+import { formatPrice } from "@/lib/money";
 
 // The best option for this person (spec step 76). Given what they pay now and the options
 // Jane knows, works out what each would cost (or earn) them in a year and picks the best:
@@ -57,19 +58,13 @@ export type Comparison = {
 };
 
 const BASIS_POINTS = 10_000;
-const dollars = (cents: number) =>
-  (cents / 100).toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
-  });
 
 function notesFor(option: CompareOption): string[] {
   const notes: string[] = [];
   if (option.contractMonths > 0) notes.push(`${option.contractMonths}-month contract`);
-  if (option.oneTimeFeeCents > 0) notes.push(`${dollars(option.oneTimeFeeCents)} one-time fee`);
+  if (option.oneTimeFeeCents > 0) notes.push(`${formatPrice(option.oneTimeFeeCents)} one-time fee`);
   if (option.minimumBalanceCents > 0) {
-    notes.push(`Needs at least ${dollars(option.minimumBalanceCents)}`);
+    notes.push(`Needs at least ${formatPrice(option.minimumBalanceCents)}`);
   }
   if (option.givesUp) notes.push(option.givesUp);
   return notes;
@@ -159,7 +154,7 @@ export function compareOptions(current: Current, options: CompareOption[]): Comp
         ? "It's the one option we compared for the same kind of service that costs less in the first year, fees included."
         : `Of the ${scored.length} options we compared for the same kind of service, it costs the least in the first year, fees included.`
       : scored.length === 1
-        ? `It's the one account we compared that you qualify for that earns more on ${dollars(current.amountCents)}.`
-        : `Of the ${scored.length} accounts we compared that you qualify for, it earns the most on ${dollars(current.amountCents)}.`;
+        ? `It's the one account we compared that you qualify for that earns more on ${formatPrice(current.amountCents)}.`
+        : `Of the ${scored.length} accounts we compared that you qualify for, it earns the most on ${formatPrice(current.amountCents)}.`;
   return { current, currentYearCents, pick, runnersUp: rest.slice(0, COMPARE_RUNNERS_UP), why };
 }
