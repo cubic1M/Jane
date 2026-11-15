@@ -39,6 +39,22 @@ const FIELD =
 const SECONDARY_BUTTON =
   "inline-flex h-11 items-center justify-center rounded-full border border-zinc-300 px-6 text-sm font-semibold hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900";
 
+// What each previewed file says about its account; a layout the person mapped has no kind to go by.
+function factsOf(files: Extract<PreviewResult, { ok: true }>["files"]) {
+  return files.flatMap((f) =>
+    f.ok
+      ? [
+          {
+            file: f.file,
+            bank: f.bank,
+            kind: f.formatId === "custom" ? undefined : f.account.kind,
+            mask: f.mask,
+          },
+        ]
+      : [],
+  );
+}
+
 export function ImportForm({
   accounts,
   linked = [],
@@ -66,6 +82,8 @@ export function ImportForm({
   // A first upload makes its account from the file: its name and type come from the preview
   // until the person changes them.
   const [account, setAccount] = useState(accounts[0]?.id ?? NEW_ACCOUNT_ID);
+  // Whether the person chose the account; until then a preview may choose a better one.
+  const [picked, setPicked] = useState(false);
   const [newName, setNewName] = useState<string | null>(null);
   const [newKind, setNewKind] = useState<AccountKind | null>(null);
   // An account just added by hand is the one to upload into.
@@ -119,6 +137,15 @@ export function ImportForm({
       if (!result) return setError(FAILED);
       setPreview(result);
       if (!result.ok) return;
+      // The first account was only the page's default: files that plainly don't fit it (a card
+      // statement into checking) go where they do, an account of theirs or a new one named from
+      // the file, rather than only being warned about (debugger 11-15: a Chase card statement
+      // after a checking file sat on "Chase checking" with "If that's wrong, pick its account").
+      const facts = factsOf(result.files);
+      const current = accounts.find((a) => a.id === account);
+      if (!picked && current && !mixedFilesNote(facts) && wrongAccountNote(current, facts)) {
+        setAccount(accounts.find((a) => !wrongAccountNote(a, facts))?.id ?? NEW_ACCOUNT_ID);
+      }
       setPickers((shown) => {
         const next = { ...shown };
         result.files.forEach((f, i) => {
@@ -160,19 +187,7 @@ export function ImportForm({
 
   const files = preview?.ok ? preview.files : [];
   const chosen = accounts.find((a) => a.id === account);
-  // What each file says about its account; a layout the person mapped has no kind to go by.
-  const facts = files.flatMap((f) =>
-    f.ok
-      ? [
-          {
-            file: f.file,
-            bank: f.bank,
-            kind: f.formatId === "custom" ? undefined : f.account.kind,
-            mask: f.mask,
-          },
-        ]
-      : [],
-  );
+  const facts = factsOf(files);
   // Two accounts' files at once wait (they'd land in one account); else one line when the files
   // don't fit the chosen account, or are from one Jane already has.
   const mixed = mixedFilesNote(facts);
@@ -209,7 +224,10 @@ export function ImportForm({
           name="accountId"
           required
           value={account}
-          onChange={(event) => setAccount(event.target.value)}
+          onChange={(event) => {
+            setAccount(event.target.value);
+            setPicked(true);
+          }}
           className={FIELD}
         >
           {accounts.map((a) => (
