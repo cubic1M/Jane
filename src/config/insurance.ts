@@ -158,7 +158,6 @@ export const TERM_MONTHS = [6, 12] as const;
 export const HOUSING = { own: "Own", rent: "Rent", other: "Neither" };
 export type Housing = keyof typeof HOUSING;
 export const RENT_LOOKBACK_DAYS = 90;
-export const RENT_CATEGORY = "RENT_AND_UTILITIES_RENT";
 export const MAX_HOUSEHOLD_COUNT = 20;
 
 // Coverage gaps (spec step 102), each found by a rule in src/lib/insurance/gaps.ts.

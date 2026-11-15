@@ -1,9 +1,9 @@
 import { DEADLINE_HORIZON_DAYS } from "@/config/deadlines";
+import { INSURANCE_CATEGORIES } from "@/config/detection";
 import {
   ANNUAL_FEE_WORDS,
   FOUND_START_SEEN_DAYS,
   FOUND_TERM_MONTHS,
-  INSURANCE_CATEGORIES,
   INSURER_KINDS,
   INSURER_NAMES,
   PREMIUM_FREQUENCY_OF,

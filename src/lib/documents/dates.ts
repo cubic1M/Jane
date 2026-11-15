@@ -2,10 +2,10 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import {
   POLICY_TYPES,
   PREMIUM_FREQUENCIES,
-  RETURN_WINDOW_DAYS,
   type PolicyType,
   type PremiumFrequency,
 } from "@/config/documents";
+import { RETURN_WINDOW_DAYS } from "@/config/deadlines";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";

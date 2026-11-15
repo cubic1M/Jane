@@ -1,3 +1,4 @@
+import { RENT_CATEGORY } from "@/config/renting";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { loadDetectionInput } from "@/detection/input";
 import { rentReceived, rentTransfers, type RentTransfer } from "@/detection/rent-transfers";
@@ -15,7 +16,6 @@ import { scopedFor } from "@/lib/db-scoped";
 
 type Options = { client?: PrismaClient; now?: Date; input?: DetectionInput };
 
-const RENT_CATEGORY = "RENT_AND_UTILITIES_RENT";
 const NOT_RENT_CATEGORY = "TRANSFER_OUT_ACCOUNT_TRANSFER";
 
 // The payees and payers the person has answered for (their own rules).

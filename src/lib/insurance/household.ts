@@ -4,7 +4,6 @@ import {
   GAP_KEYS,
   HOUSING,
   MAX_HOUSEHOLD_COUNT,
-  RENT_CATEGORY,
   RENT_LOOKBACK_DAYS,
   INCOME_CATEGORY,
   INCOME_LOOKBACK_DAYS,
@@ -14,6 +13,7 @@ import {
   type RiskKind,
   type Housing,
 } from "@/config/insurance";
+import { RENT_CATEGORY } from "@/config/renting";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";

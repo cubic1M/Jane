@@ -6,9 +6,6 @@ import type { PremiumFrequency } from "@/config/documents";
 // works out on its own. Every policy found this way is "found" until the person confirms
 // it, and every date is an estimate.
 
-// Regular payments in this category are insurance.
-export const INSURANCE_CATEGORIES: readonly string[] = ["GENERAL_SERVICES_INSURANCE"];
-
 // Insurers by the words in their (normalized) merchant name, and the cover they most
 // likely are. One not listed but in the insurance category is "other".
 // How an insurer's name is written when it isn't just capitalised (the policy found from
