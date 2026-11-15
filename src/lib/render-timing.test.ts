@@ -86,6 +86,7 @@ describe("a render's timing", () => {
         "connects",
         "connectMs",
         "cold",
+        "bootMs",
         "uptimeS",
         "region",
       ].sort(),

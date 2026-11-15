@@ -99,6 +99,7 @@ export function renderLine(
   now = performance.now(),
 ): Record<string, unknown> {
   rendersServed += 1;
+  const cold = rendersServed === 1;
   return {
     page,
     kind,
@@ -108,7 +109,10 @@ export function renderLine(
     sqlCount: timing.sqlCount,
     connects: timing.connects,
     connectMs: Math.round(timing.connectMs),
-    cold: rendersServed === 1,
+    cold,
+    // On a cold render, how long after the instance started this render began: its start-up and the
+    // route's code loading (speed round, 11-15). Null on a warm one.
+    bootMs: cold ? Math.round(timing.startedAt) : null,
     uptimeS: Math.round(process.uptime()),
     region: process.env.VERCEL_REGION ?? "local",
   };

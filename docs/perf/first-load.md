@@ -12,6 +12,7 @@ one line, `render timing`, after it has finished streaming (src/lib/render-timin
 | roundTrips, sqlCount | trips to the database, and the statements they carried |
 | connects, connectMs | new database connections the render waited for |
 | cold | the first render this function instance served |
+| bootMs | on a cold render, ms from the instance's start to this render's start (start-up and loading the route's code); null when warm |
 | uptimeS, region | the instance's age, and where it runs |
 
 Nothing about the person. A streamed page sends its headers before the render ends, so these numbers
