@@ -14,7 +14,7 @@ import { requireUser } from "@/lib/session";
 import { momentLabel } from "@/lib/day-label";
 import { timezoneOf } from "@/lib/today";
 import { RESHOP_DAYS_BEFORE_RENEWAL } from "@/config/insurance";
-import { openShops, type Shop } from "@/lib/insurance/shop";
+import { acceptedShop, openShops, SWITCH_STARTED_NOTE, type Shop } from "@/lib/insurance/shop";
 import { ComparisonCards } from "@/components/comparison-cards";
 import type { PolicyKind } from "@/config/insurance";
 import { toComparison } from "@/lib/comparison";
@@ -141,13 +141,14 @@ async function QuotesContent({
       })
     : null;
   const policy = row ? toPolicy(row) : null;
-  const [partner, quotes, shops] = policy
+  const [partner, quotes, shops, accepted] = policy
     ? await Promise.all([
         partnerFor(user.id),
         quotesFor(user.id, policy.id, { now }),
         openShops(user.id, { now }),
+        acceptedShop(user.id, policy.id),
       ])
-    : [null, [], []];
+    : [null, [], [], null];
   const shop = shops.find((s) => policy && s.policyId === policy.id) ?? null;
   const current = policy ? yearlyPremium(policy) : null;
   const unknown = policy && quotes[0] ? compareCover(policy.kind, policy, quotes[0]).unknown : [];
@@ -205,7 +206,15 @@ async function QuotesContent({
                   That pick was already answered, or its quotes expired.
                 </p>
               )}
-              {shop && <PickCard shop={shop} policy={policy} />}
+              {shop ? (
+                <PickCard shop={shop} policy={policy} />
+              ) : (
+                accepted?.pick && (
+                  <p role="status" className="border border-current p-2">
+                    ✓ Chosen: {accepted.pick.carrier.name}. {SWITCH_STARTED_NOTE}
+                  </p>
+                )
+              )}
               {quotes.length > 0 && (
                 <ul className="flex flex-col gap-3">
                   {quotes.map((q) => (

@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma/client";
+import { SWITCH_STARTED_NOTE } from "@/lib/insurance/shop";
 import { FitPickError, pickFitOption } from "@/lib/fit-pick";
 import { AcceptShopError, acceptShop } from "@/lib/insurance/accept";
 import { PickError, pickOption } from "@/lib/insurance/need/pick";
@@ -49,7 +50,7 @@ export async function pickOffered(
     return {
       decisionId,
       final: true,
-      note: "Done. I'm switching you now: your current policy stays in place until the new one's first payment goes through, then I cancel it from the same day.",
+      note: SWITCH_STARTED_NOTE,
       agentJobId,
     };
   }
