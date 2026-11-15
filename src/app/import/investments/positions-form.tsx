@@ -77,7 +77,13 @@ export function PositionsForm() {
   const readable = files.length > 0 && files.every((f) => f.ok);
 
   return (
-    <form ref={formRef} onSubmit={onPreview} data-positions-form="" className="flex flex-col gap-4">
+    <form
+      method="post"
+      ref={formRef}
+      onSubmit={onPreview}
+      data-positions-form=""
+      className="flex flex-col gap-4"
+    >
       <label className="flex flex-col gap-1 text-sm font-medium">
         Positions files
         <input

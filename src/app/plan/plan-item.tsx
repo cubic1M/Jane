@@ -134,7 +134,7 @@ export function PlanItem({ item, readOnly = false }: { item: PlanItemView; readO
           </Link>
         </div>
       ) : (
-        <form onSubmit={(e) => e.preventDefault()} className="flex flex-col gap-3">
+        <form method="post" onSubmit={(e) => e.preventDefault()} className="flex flex-col gap-3">
           <input type="hidden" name="findingId" value={item.findingId} />
           <input type="hidden" name="cardHash" value={item.cardHash} />
           <input type="hidden" name="actionType" value={item.actionType} />

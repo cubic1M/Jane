@@ -28,6 +28,7 @@ export function BrokerageAskForm({ app, sentText }: { app: string; sentText: str
   const question = askQuestion(app);
   return (
     <form
+      method="post"
       data-brokerage-ask={app}
       className="flex flex-col gap-2"
       onSubmit={(event) => {

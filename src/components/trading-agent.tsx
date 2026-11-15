@@ -61,6 +61,7 @@ function Picker({ choices }: { choices: AgentChoices }) {
   };
   return (
     <form
+      method="post"
       className="flex flex-col gap-3"
       onSubmit={(e) => {
         e.preventDefault();
