@@ -4,6 +4,7 @@ import { BackToChat } from "@/components/back-to-chat";
 import { DemoBanner } from "@/components/demo-banner";
 import { LoadingBar } from "@/components/loading-bar";
 import { PageCacheMark } from "@/components/page-cache";
+import { PaperMark } from "@/components/paper-mark";
 import { ProfileMenu } from "@/components/profile-menu";
 import { ScanBarGate } from "@/components/scan-bar-gate";
 import { ChatToggle } from "@/components/side-chat/chat-toggle";
@@ -73,6 +74,11 @@ export function AppHeader({
         </div>
       </div>
       {!bare && <SideChatUser userId={user.id} />}
+      {!bare && (
+        <Suspense>
+          <PaperMark userId={user.id} />
+        </Suspense>
+      )}
       {/* A server component: this runs once for each time the page is made. */}
       {/* eslint-disable-next-line react-hooks/purity */}
       <PageCacheMark userId={user.id} renderedAt={Date.now()} opened={opened} />
