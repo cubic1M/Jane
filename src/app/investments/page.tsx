@@ -16,6 +16,7 @@ import { RuleReplaySection } from "@/components/rule-replay";
 import { SimulatedBanner } from "@/components/simulated-banner";
 import { ViewTracker } from "@/components/view-tracker";
 import { PAGES, itemId } from "@/lib/area-pages/investing";
+import { linksHere } from "@/lib/area-pages/landing";
 import { RETURNS_NOTE } from "@/config/returns";
 import { strategyTreeFor } from "@/lib/investments/strategy-board-load";
 import { loadPaperView, strategyLabel, strategyOf } from "@/lib/paper/account";
@@ -253,7 +254,10 @@ async function InvestmentsContent({
 
   for (const s of mine) {
     const id = itemId("ideas", s.key);
-    details[id] = s.actionHref ? go(s.actionHref as Route, s.actionLabel ?? "Open it") : null;
+    details[id] =
+      s.actionHref && !linksHere(s.actionHref, "/investments", id)
+        ? go(s.actionHref as Route, s.actionLabel ?? "Open it")
+        : null;
     if (s.why) more[id] = <p>{s.why}</p>;
   }
 
