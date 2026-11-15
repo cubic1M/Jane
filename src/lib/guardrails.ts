@@ -173,7 +173,7 @@ const INVESTMENT = [
   // Investments posted Nov 2").
   /(?<!\b(?:sofi|ally|cash app|merrill|stash|m1|firstrade|public\.com|fidelity|edward jones|vanguard|ameriprise|raymond james|t\. rowe price) )\binvest(?!igat)|\b(?:sofi|ally|cash app|merrill|stash|m1|firstrade|public\.com|fidelity|edward jones|vanguard|ameriprise|raymond james|t\. rowe price) invest(?:ing|ments)?\b(?! (?:transfers?|deposits?|withdrawals?|charges?|fees?|payments?|debits?|credits?|pulls?|round[- ]ups?|charged|took|pulled|sent|deposited|withdrew|debited|credited|refunded|posted|landed)\b)/i,
   // Round 39 (11-15): a Motley Fool Stock Advisor subscription is a charge to cancel or keep.
-  /(?<!\b(?:in|of) )(?<!\bmotley fool )\bstocks?\b(?! up\b)(?! yards\b)/i,
+  /(?<!\b(?:in|of) )(?<!\b(?:motley fool|adobe) )\bstocks?\b(?! up\b)(?! yards\b)/i,
   /\bshares\b(?!\s+(?:the|your|my|a|an|this|that|their|his|her|its|it|with)\b)/i,
   /(?<!\bhome )\bequit(y|ies)\b(?! (?:line|loan)s?\b)(?! (?:residential|lifestyle)\b)(?! in (?:your|the|my|their) (?:home|house|condo|car)\b)/i,
   /(?<!\b(?:bail|surety|security|performance|fidelity) )\bbonds?\b(?! (?:street|st|vet)\b)/i,
@@ -189,7 +189,8 @@ const INVESTMENT = [
   // bonus to Vanguard"). "You moved $90.00 to Fidelity on Nov 2" is a fact and passes.
   /(?:^|[.!?:;]\s+|\n\s*)(?:(?:just|maybe|so|then|now)\s+)?(?:put|move|transfer|send|park|deposit|stash)\s+(?:it|this|that|them|the (?:money|rest|cash|extra|difference)|your (?:savings|bonus|refund|cash|paycheck|raise)|\$[\d,.]+k?)\b(?:[^.!?]|\.\d){0,20}\b(?:in|into|to|at|with)\s+(?:your\s+|an?\s+)?(?:fidelity|vanguard|schwab|robinhood|e\*?trade|webull|betterment|wealthfront|acorns|stash|m1|sofi invest|ally invest|public\.com|merrill(?: edge)?|coinbase)\b/i,
   // Round 38 (11-15): Portfolio Recovery Associates is a debt collector.
-  /\bportfolio(?! recovery\b)/i,
+  // Round 42 (11-15): a portfolio site (Squarespace, Adobe Portfolio) is a designer's subscription.
+  /(?<!\badobe )\bportfolio(?! (?:recovery|site|website|web site|page|plan)\b)/i,
   // Round 38 (11-15): a credit union pays its savings interest as a dividend ("A dividend of $5.00
   // posted to Share Savings on Nov 1"). Said with a savings, share, checking or certificate account it's
   // that interest when it's said as an amount paid; "Dividends grow your savings", "high-dividend" and
@@ -656,7 +657,8 @@ const LEGAL = [
   // protects you here", "Federal law limits your liability to $50", "By law they must investigate
   // within 30 days", "You have 30 days to dispute the debt", "You qualify for SNAP"). "You may
   // qualify" is the hint's own wording (src/config/utility-assistance.ts) and passes.
-  /\b(?:under|per|according to) (?:the )?(?:fcba|fair credit billing act|efta|electronic fund transfer act|reg(?:ulation)? [ez]|ecoa|equal credit opportunity act|fdcpa|fcra|card act|tila)\b|\b(?:the )?(?:fcba|fair credit billing act|efta|electronic fund transfer act|reg(?:ulation)? [ez]|fdcpa|fcra|card act|tila)\b[^.!?]{0,15}\b(?:protects|covers|gives|lets|requires|says|limits|caps|entitles)\b/i,
+  // Round 42 (11-15): the acts' full names ("The Fair Debt Collection Practices Act says they must stop").
+  /\b(?:under|per|according to) (?:the )?(?:fcba|fair credit billing act|efta|electronic fund transfer act|reg(?:ulation)? [ez]|ecoa|equal credit opportunity act|fdcpa|fair debt collection practices act|fcra|fair credit reporting act|card act|tila|truth in lending act)\b|\b(?:the )?(?:fcba|fair credit billing act|efta|electronic fund transfer act|reg(?:ulation)? [ez]|fdcpa|fair debt collection practices act|fcra|fair credit reporting act|card act|tila|truth in lending act)\b[^.!?]{0,15}\b(?:protects|covers|gives|lets|requires|says|limits|caps|entitles)\b/i,
   /\b(?:federal|state) law (?:limits|caps|protects|requires|says|gives|lets|entitles|makes)\b|\bby law,? (?:they|you|the (?:bank|lender|collector|landlord|company|card company|issuer)|it) (?:must|have to|has to|can(?:'|’)?t|cannot|are required to|is required to)\b/i,
   /\byou have \d+ (?:business )?days to (?:dispute|contest|challenge|request (?:validation|verification)|cancel|rescind|send)\b/i,
   /\byou(?:(?:'|’)re| are) (?:definitely )?eligible for (?:snap|food stamps|medicaid|medicare|wic|liheap|ssi|ssdi|unemployment|section 8|housing assistance|chip|tanf|disability|lifeline)\b|\byou (?:definitely )?qualify for (?:snap|food stamps|medicaid|medicare|wic|liheap|ssi|ssdi|unemployment|section 8|housing assistance|chip|tanf|disability|lifeline)\b/i,
@@ -720,6 +722,11 @@ const LEGAL = [
   // the package never arrived", "Say it was fraud even though you got it"). Saying what happened
   // when it's true ("If you didn't make the charge, say so when you call") passes.
   /\b(?:(?:just|simply) (?:say|tell (?:them|the bank|the merchant|the card company|your bank|support))|pretend|act like|claim)\b(?:\s+that)?\s+(?:you (?:didn(?:'|’)?t|did not|never) (?:authori[sz]e|make|order|receive|get|buy)|(?:it|the (?:package|order|item|card|charge|purchase)) (?:never (?:arrived|came|showed up)|didn(?:'|’)?t (?:arrive|come|show up)|was (?:stolen|lost|fraud|unauthori[sz]ed))|it was fraud)\b|\b(?:say|claim|report|dispute)\b(?:[^.!?]|\.\d){0,40}\beven (?:though|if) you (?:got|received|made|authori[sz]ed|ordered|used|have)\b/i,
+  // Round 42 (11-15): consumer-law claims ("Gift cards can't expire", "They can't charge a restocking
+  // fee", "Your security deposit has to be returned with interest", "Your bank has to refund
+  // unauthorized charges").
+  /\bgift cards? (?:legally )?(?:can(?:'|’)?t|cannot|don(?:'|’)?t|do not|never) expire\b|\b(?:they|the (?:store|merchant|seller|company|retailer|landlord|gym|airline|hotel))\s+(?:legally )?(?:can(?:'|’)?t|cannot|aren(?:'|’)?t allowed to|isn(?:'|’)?t allowed to)\s+charge (?:you )?(?:a |an )?(?:restocking|cancellation|early termination|reactivation|change|resort|cleaning) fee\b/i,
+  /\b(?:your |the )?(?:security )?deposit (?:has to|must|needs to|is required to) be (?:returned|refunded|paid back)\b|\b(?:your |the )(?:insurer|insurance company|bank|card issuer|issuer|landlord|employer|lender|merchant|store|airline)\s+(?:legally )?(?:has to|must|is required to) (?:pay|refund|reimburse|return|cover|credit)\b/i,
   // Round 31 (11-14): "Don't show up to court", "You don't have to pay that debt", "The judge will
   // side with you", "They're violating your rights".
   /\b(?:don(?:'|’)?t|do not|no need to|you don(?:'|’)?t (?:have|need) to) (?:bother )?(?:show(?:ing)? up|appear(?:ing)?|go(?:ing)?) (?:to|in|at|for) (?:court|the hearing|your hearing|the trial|your court date)\b/i,
@@ -864,6 +871,11 @@ const GUARANTEE = [
   /\b(?:interest |mortgage )?rates (?:will|are going to) (?:drop|fall|go down|come down|rise|go up|climb|increase|keep (?:rising|falling))\b/i,
   /\b(?:housing|the housing market|real estate|the economy|the job market) (?:will|is going to|(?:'|’)ll) (?:crash|collapse|tank|boom|recover|rebound)\b|\ba recession is (?:coming|going to happen|on the way)\b/i,
   /\b(?:medical |hospital )?bills? (?:will|is going to|are going to) be (?:forgiven|wiped out|erased|written off|discharged)\b/i,
+  // Round 42 (11-15): "Your warranty covers that"; "The price will drop on Black Friday", "Airfare
+  // will go down next month". Hedged ("Prices will probably drop") or announced ("Spotify's price
+  // will go up to $12.99 on Dec 1", "Your rent will go up $90.00") passes.
+  /\b(?:your |the )(?:extended )?(?:warranty|home warranty|protection plan|applecare)\b (?:covers|should cover)\b/i,
+  /\b(?:(?:the )?prices? (?:will|is going to|are going to|(?:'|’)ll) (?:definitely |surely )?(?:drop|go down|fall|be (?:lower|cheaper)|get cheaper)\b(?! (?:to|by) \$)|(?:airfares?|fares|gas prices|flights?|plane tickets|hotel rates) (?:will|is going to|are going to|(?:'|’)ll) (?:definitely |surely )?(?:drop|go down|go up|rise|fall|climb|spike|be (?:lower|higher|cheaper)|get (?:cheaper|pricier))\b)/i,
   // Round 36 (11-14): "Insurance will cover it", "Your claim will be paid", "The hospital will lower
   // the bill", "Your premium won't go up", "The CFPB will make them refund you".
   /\b(?:insurance|your (?:insurer|policy|coverage|warranty)|the (?:insurer|policy|warranty)|medicaid|medicare)\b (?:will|is going to|(?:'|’)ll) (?:definitely |surely |fully )?(?:cover|pay for|reimburse)\b/i,
