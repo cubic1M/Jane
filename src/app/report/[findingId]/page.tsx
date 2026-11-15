@@ -18,6 +18,7 @@ import { scopedDb } from "@/lib/db-scoped";
 import { UNDO_WINDOW_SECONDS } from "@/lib/decisions";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { localDate, timezoneOf } from "@/lib/today";
 import { buildKit, hasKit, selfServe } from "@/lib/diy";
 import { cancelsFromOwnAccountOnly, companyFacts } from "@/lib/merchants";
 import { comparisonFor } from "@/lib/compare";
@@ -239,7 +240,12 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
             switchLink={switchLink}
             usually={outcome?.medianMinutes ?? null}
             decisionId={diyDecision.id}
-            doneOn={diyDecision.diyDoneAt?.toISOString().slice(0, 10) ?? null}
+            // The person's own day (debugger 11-15: UTC's read tomorrow in a US evening).
+            doneOn={
+              diyDecision.diyDoneAt
+                ? localDate(diyDecision.diyDoneAt, await timezoneOf(user.id))
+                : null
+            }
           />
         ) : (
           <p className="rounded-xl bg-zinc-100 p-4 dark:bg-zinc-900">
