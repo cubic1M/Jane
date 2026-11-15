@@ -1,4 +1,4 @@
-import { onlyDemoBank } from "@/lib/advice-mode";
+import { onlyDemoBank } from "@/lib/only-demo-bank";
 import { randomUUID } from "node:crypto";
 import {
   HSA_FUND,

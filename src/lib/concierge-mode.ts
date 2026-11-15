@@ -1,12 +1,10 @@
 import { cache } from "react";
 import { CONCIERGE_ACTIONS } from "@/config/concierge";
-import { NOT_FROM_A_BANK } from "@/data-sources/types";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
-import { scopedFor } from "@/lib/db-scoped";
-import { isDemoItemId } from "@/lib/plaid/demo-ids";
 import { isStatementTrialUser, isTrialUser } from "@/lib/trial-ids";
 import { cachedRead } from "@/lib/read-cache";
+import { onlyDemoBank } from "@/lib/only-demo-bank";
 
 // Read-only mode: whether Jane (its agent, and the queue behind it) acts for this person, or
 // shows them how to do it themselves. Like demo advice (src/lib/advice-mode.ts), the demo
@@ -40,10 +38,5 @@ export async function onSampleDataOnly(
   // Someone's own statement is real data, even in a temporary person.
   if (isStatementTrialUser(userId)) return false;
   if (isTrialUser(userId)) return true;
-  const db = scopedFor(userId, client);
-  const [items, ownAccounts] = await Promise.all([
-    db.plaidItems.findMany({ select: { plaidItemId: true } }),
-    db.accounts.count({ where: { source: { in: [...NOT_FROM_A_BANK] } } }),
-  ]);
-  return items.length > 0 && ownAccounts === 0 && items.every((i) => isDemoItemId(i.plaidItemId));
+  return onlyDemoBank(userId, client);
 }

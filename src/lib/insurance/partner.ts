@@ -1,4 +1,5 @@
-import { onlyDemoBank, hasOwnDocument } from "@/lib/advice-mode";
+import { hasOwnDocument } from "@/lib/advice-mode";
+import { onlyDemoBank } from "@/lib/only-demo-bank";
 import {
   INSURANCE_PARTNER_ENV,
   QUOTABLE_KINDS,

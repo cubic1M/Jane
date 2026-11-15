@@ -12,7 +12,7 @@ import type { AlertType, PrismaClient } from "@/generated/prisma/client";
 import { renderAlertEmail } from "@/lib/alert-email";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
-import { onlyDemoBank } from "@/lib/advice-mode";
+import { onlyDemoBank } from "@/lib/only-demo-bank";
 import { scopedFor } from "@/lib/db-scoped";
 import { appBase } from "@/lib/digest/links";
 import { unsubscribeToken } from "@/lib/digest/unsubscribe";

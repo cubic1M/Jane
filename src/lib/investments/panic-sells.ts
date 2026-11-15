@@ -1,6 +1,6 @@
 import { PANIC_HISTORY_DAYS } from "@/config/panic-sells";
 import type { PrismaClient } from "@/generated/prisma/client";
-import { onlyDemoBank } from "@/lib/advice-mode";
+import { onlyDemoBank } from "@/lib/only-demo-bank";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { marketData, type MarketData } from "@/lib/market";

@@ -1,13 +1,12 @@
 import { SAMPLE_DRAFT_NAME } from "@/config/documents";
-import { NOT_FROM_A_BANK } from "@/data-sources/types";
 import { cache } from "react";
 import { REAL_ACCOUNT_ADVICE } from "@/config/advice";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { isDemoOnly } from "@/lib/digest/recipients";
 import { isSampleTrialUser, isStatementTrialUser } from "@/lib/trial-ids";
 import { cachedRead } from "@/lib/read-cache";
+import { onlyDemoBank } from "@/lib/only-demo-bank";
 
 // Demo advice mode (spec step 98): whether Jane may give this person recommendations on
 // investments, taxes, insurance and loans. Only when every account they have comes from the
@@ -32,19 +31,6 @@ export async function adviceMode(
 // Worked out once per server render (React's cache): a page's parts each ask (speed pass,
 // 2026-10-24: /home asked 81 times).
 const adviceModeOnce = cache((userId: string) => adviceModeFrom(userId, defaultClient));
-
-// Every account this person has comes from the demo bank, so all they see is sample data.
-export async function onlyDemoBank(userId: string, client: PrismaClient): Promise<boolean> {
-  const db = scopedFor(userId, client);
-  const [items, ownAccounts] = await Promise.all([
-    db.plaidItems.findMany({ select: { plaidItemId: true } }),
-    db.accounts.count({ where: { source: { in: [...NOT_FROM_A_BANK] } } }),
-  ]);
-  return isDemoOnly(
-    items.map((i) => i.plaidItemId),
-    ownAccounts,
-  );
-}
 
 export async function hasOwnDocument(userId: string, client: PrismaClient): Promise<boolean> {
   const own = await scopedFor(userId, client).documents.count({
