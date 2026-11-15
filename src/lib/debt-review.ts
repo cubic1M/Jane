@@ -17,7 +17,7 @@ import { autopilotFor } from "@/lib/sector-autopilot";
 import { upsertOnce } from "@/lib/unique-race";
 import { rateStep } from "@/planning/card-interest";
 import { reviewReason } from "@/planning/debt-review";
-import { DAY_MS, isoDay } from "@/lib/dates";
+import { DAY_MS, dayStartUtc, isoDay } from "@/lib/dates";
 
 // Debt on autopilot, round two (spec step 230): the yearly debt review. Once a year, and early
 // after a raise, a new loan or a missed payment, Jane goes over everything about debts and
@@ -297,7 +297,7 @@ export async function runDebtReview(
   if (asked) did.push(`a lower-rate request to ${asked}`);
   const owing = book.debts.filter((d) => (d.balanceCents ?? 0) > 0);
   const data = {
-    reviewOn: new Date(`${isoDay(now)}T00:00:00Z`),
+    reviewOn: dayStartUtc(now),
     reviewReason: review.due,
     reviewKeys: owing.map((d) => d.key),
     reviewPayCents: await latestPaycheck(userId, client, now),

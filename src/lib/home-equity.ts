@@ -16,7 +16,7 @@ import {
   type PmiTimeline,
   type ProjectOption,
 } from "@/planning/home-equity";
-import { isoDay } from "@/lib/dates";
+import { dayStartUtc, isoDay } from "@/lib/dates";
 
 // A home's equity, used well (spec step 228), for one person: PMI against the home's original
 // value (the request letter at 80%, the automatic end at 78%), the escrow in the payment
@@ -196,8 +196,8 @@ export async function markHomeRequestSent(
 ): Promise<void> {
   const data =
     which === "pmi"
-      ? { pmiLetterSentOn: new Date(`${isoDay(now)}T00:00:00Z`) }
-      : { escrowRequestSentOn: new Date(`${isoDay(now)}T00:00:00Z`) };
+      ? { pmiLetterSentOn: dayStartUtc(now) }
+      : { escrowRequestSentOn: dayStartUtc(now) };
   await scopedFor(userId, client).homeEquityFacts.upsert({
     where: { userId },
     create: { userId, ...data },

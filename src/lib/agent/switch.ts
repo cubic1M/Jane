@@ -11,7 +11,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
 import { handOff, loadAction, merchantOf, note, setStatus, type LoadedAction } from "./action";
-import { isoDay } from "@/lib/dates";
+import { dayStartUtc, isoDay } from "@/lib/dates";
 import { ownedBy, type OnlyPeople } from "@/lib/only-people";
 import { systemDb } from "@/lib/system-db";
 
@@ -123,7 +123,7 @@ async function lookFor(
   client: PrismaClient,
 ): Promise<Seen> {
   const rows = await scopedFor(userId, client).transactions.findMany({
-    where: { date: { gt: new Date(`${isoDay(since)}T00:00:00Z`) } },
+    where: { date: { gt: dayStartUtc(since) } },
     select: {
       date: true,
       amountCents: true,

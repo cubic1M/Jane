@@ -10,7 +10,7 @@ import type { DebtBook } from "@/insights/debts";
 import { autopilotFor, mayAct, recordAct } from "@/lib/sector-autopilot";
 import { dueMoves, paydaysOf, type DueMove } from "@/planning/due-dates";
 import { rateChanges, type RateChange } from "@/planning/rate-watch";
-import { DAY_MS, isoDay } from "@/lib/dates";
+import { DAY_MS, dayStartUtc, isoDay } from "@/lib/dates";
 
 export { type RateChange };
 
@@ -58,7 +58,7 @@ export async function runDebtAutopilot(
   const data = {
     rates: rates as Prisma.InputJsonObject,
     changes: kept as unknown as Prisma.InputJsonArray,
-    ...(planStarted ? { planStartedOn: new Date(`${isoDay(now)}T00:00:00Z`) } : {}),
+    ...(planStarted ? { planStartedOn: dayStartUtc(now) } : {}),
   };
   await upsertOnce(() =>
     db.debtWatches.upsert({ where: { userId }, create: { userId, ...data }, update: data }),
