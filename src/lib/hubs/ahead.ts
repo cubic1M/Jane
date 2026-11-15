@@ -32,7 +32,7 @@ export type AheadData = {
   // The newest open checklist, and how many are open.
   lifeEvents: { open: number; newest: { title: string; done: number; total: number } | null };
   // Every date in the next HUB_DEADLINE_DAYS, soonest first, for the Plans & goals tree.
-  dates?: Pick<Deadline, "key" | "title" | "date" | "amountCents" | "href" | "detail">[];
+  dates?: Pick<Deadline, "key" | "title" | "date" | "kind" | "amountCents" | "href" | "detail">[];
 };
 
 const until = (asOf: string) =>
@@ -186,10 +186,11 @@ export async function loadAheadHub(
     dates: deadlines
       .filter((d) => d.date >= asOf && d.date <= until(asOf))
       .sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title))
-      .map(({ key, title, date, amountCents, href, detail }) => ({
+      .map(({ key, title, date, kind, amountCents, href, detail }) => ({
         key,
         title,
         date,
+        kind,
         amountCents,
         href,
         detail,
