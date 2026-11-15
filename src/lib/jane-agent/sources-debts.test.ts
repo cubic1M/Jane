@@ -5,7 +5,7 @@ import { debtBook, type DebtAccountInput } from "@/insights/debts";
 import type { Payoff, StoredPlan } from "@/lib/debt-plan";
 import { payoffSummary } from "@/planning/payoff";
 import { gather, plan, type BrainSettings } from "./brain";
-import { debtsToolOutput } from "./debt-tools";
+import { debtsToolOutput } from "./debt-tool-outputs";
 import type { Snapshot } from "./snapshot";
 
 // Spec step 109: Jane brings up a buy now, pay later plan it found and a debt with no

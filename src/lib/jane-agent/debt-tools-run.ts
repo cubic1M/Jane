@@ -42,10 +42,9 @@ import { ensureChecked, loadRefinance } from "@/lib/refinance";
 import { log } from "@/lib/log";
 import { scrub } from "@/lib/scrub";
 import { chatToday } from "@/lib/today";
+import { DEBT_TOOLS, extraFromInput } from "./debt-tools";
 import {
-  DEBT_TOOLS,
   debtsToolOutput,
-  extraFromInput,
   payoffToolOutput,
   refinanceToolOutput,
   applicationsToolOutput,
@@ -77,7 +76,7 @@ import {
   creditMonthlyToolOutput,
   familyCreditToolOutput,
   loanFitToolOutput,
-} from "./debt-tools";
+} from "./debt-tool-outputs";
 import { toolAnswer } from "@/lib/ask/tools";
 
 // Runs Claude's debt tools (./debt-tools.ts) for one person: read-only but for a first check (see
