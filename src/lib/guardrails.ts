@@ -156,7 +156,10 @@ const STOCK_PICKS = [
 ];
 
 const INVESTMENT = [
-  /\binvest(?!igat)/i,
+  // Round 37 (11-14): a brand with "Invest" in its name, as a line on a statement ("Your SoFi Invest
+  // transfer of $90.00 posted Nov 2"), is a fact, as "a transfer to Fidelity" already was. The brand
+  // with anything else after it ("Open a SoFi Invest account") is still stopped.
+  /(?<!\b(?:sofi|ally|cash app|merrill|stash|m1|firstrade|public\.com) )\binvest(?!igat)|\b(?:sofi|ally|cash app|merrill|stash|m1|firstrade|public\.com) invest(?:ing)?\b(?! (?:transfers?|deposits?|withdrawals?|charges?|fees?|payments?|debits?|credits?|pulls?|round[- ]ups?|charged|took|pulled|sent|deposited|withdrew|debited|credited|refunded)\b)/i,
   /(?<!\b(?:in|of) )\bstocks?\b(?! up\b)/i,
   /\bshares\b(?!\s+(?:the|your|my|a|an|this|that|their|his|her|its|it|with)\b)/i,
   /(?<!\bhome )\bequit(y|ies)\b(?! (?:line|loan)s?\b)(?! in (?:your|the|my|their) (?:home|house|condo|car)\b)/i,
@@ -171,7 +174,8 @@ const INVESTMENT = [
   /\bbrokerage\b/i,
   /\bportfolio/i,
   /\bdividends?\b/i,
-  /\bcrypto/i,
+  // Round 37 (11-14): "Venmo crypto purchase of $5.00 on Nov 2" is a line on a statement.
+  /(?<!\b(?:venmo|paypal|cash app|robinhood) )\bcrypto|\b(?:venmo|paypal|cash app|robinhood) crypto\b(?! (?:purchases?|sales?|transfers?|charges?|fees?|debits?|credits?|deposits?|withdrawals?|charged|took|pulled|sent|deposited|withdrew|debited|credited|refunded)\b)/i,
   /\b(bitcoin|ethereum|btc|eth|solana|dogecoin|stablecoins?)\b/i,
   // Chat policy round 10 (11-12): "Stack some sats every payday", "Buy puts on Tesla before
   // earnings", "Gold is a good hedge right now; get some". Gold's Gym and a Gold card are bills.
