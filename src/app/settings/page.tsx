@@ -15,7 +15,7 @@ import { conciergeMode } from "@/lib/concierge-mode";
 import { requireUser } from "@/lib/session";
 import { isStatementTrialUser, isTrialUser } from "@/lib/trial-ids";
 import { formatCents } from "@/lib/money";
-import { vapidPublicKey } from "@/lib/push";
+import { pushEnabled, vapidPublicKey } from "@/lib/push";
 import { US_STATES } from "@/config/referrals";
 import { AlertsForm } from "./alerts-form";
 import { AccountantLinksForm } from "./accountant-links-form";
@@ -76,6 +76,9 @@ const CHANNEL_WORDS: Record<string, string> = {
   both: "Phone and email",
   off: "Off",
 };
+// With no phone to send to, Jane's messages go by email (src/lib/jane-agent/notify.ts), and the
+// branch says so (debugger 11-15: "Phone" for a new person, whose messages came by email).
+const WITHOUT_PHONE: Record<string, string> = { push: "Email for now", both: "Email" };
 
 async function SettingsContent({
   searchParams,
@@ -162,6 +165,7 @@ async function SettingsContent({
   const csvUpdated = new Map(lastCsv.map((row) => [row.accountId, row.createdAt]));
   const alerts = alertPrefs(prefs.alertPrefs);
   const chatNotify = chatNotifyPrefs(prefs.chatNotifyPrefs);
+  const phoneOn = pushEnabled() && (await mine.pushSubscriptions.count()) > 0;
   // A last sync, a last import, two-factor turned on: moments, so the person's own day (debugger
   // 11-14: a file imported at 10:40pm in Los Angeles read "Last import Nov 14").
   const timezone = validTimezone(prefs.timezone);
@@ -199,7 +203,9 @@ async function SettingsContent({
     sectorsOn: sectors.filter((s) => s.level !== "ask").length,
     sectors: sectors.length,
     rulesOn: rules.filter((r) => r.enabled).length,
-    channel: CHANNEL_WORDS[chatNotify.channel] ?? chatNotify.channel,
+    channel:
+      (!phoneOn && WITHOUT_PHONE[chatNotify.channel]) ||
+      (CHANNEL_WORDS[chatNotify.channel] ?? chatNotify.channel),
     alertsOn: ALERT_TYPES.filter((type) => alerts[type] !== "off").length,
     alerts: ALERT_TYPES.length,
     digest: prefs.digestEnabled,
