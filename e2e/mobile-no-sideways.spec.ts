@@ -4,7 +4,7 @@ import { signInWith } from "./session";
 
 // An upload from a phone with long names, as phones save them: the page stays the screen's width
 // and the import goes through. (Round 14 of the new-user passes: the chat's waiting sheet made
-// /import wider than a 412px phone; globals.css clips that. Playwright's "is anything over the
+// /import wider than a 412px phone; globals.css clips that, for someone who has the chat there. Playwright's "is anything over the
 // button" check, used before, failed in CI's headless Chrome whether or not the page was wide, so
 // the import's outcome is what's judged.)
 
@@ -43,8 +43,12 @@ test("a phone uploads with long names: no sideways scroll, and the import goes t
   await page
     .locator('[name="new.name"]')
     .fill("My everyday checking account at the credit union downtown by the park");
-  // The page settled: the chat's sheet is in place (closed, it waits with its loading bar).
-  await expect(page.locator(".side-chat-sheet")).toBeAttached({ timeout: 30_000 });
+  // The page settled: the preview's import button is in place. (The chat's sheet was the sign
+  // before #1643; a first upload has nothing around the page now, so it never came: debugger
+  // 11-15, the nightly phone runs of 11-13 and 11-14.)
+  await expect(page.getByRole("button", { name: "Import 1 transaction" })).toBeVisible({
+    timeout: 30_000,
+  });
   await page.waitForLoadState("networkidle").catch(() => {});
   // What the person feels: the page doesn't scroll sideways and isn't zoomed out. Asked until
   // it holds, not read once while the page may still be moving (scrollWidth isn't asked: a
