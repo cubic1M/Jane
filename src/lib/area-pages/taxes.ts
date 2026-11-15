@@ -45,6 +45,13 @@ const PLAN_LABELS: Record<PlanMoveKey, string> = {
   file: "File your return",
 };
 
+// A saving and the dated move that is the same act.
+const SAME_AS_MOVE: Partial<Record<SavingKey, PlanMoveKey>> = {
+  retirement: "workplace_retirement",
+  ira: "ira",
+  hsa: "hsa",
+};
+
 const SAVING_LABELS: Record<SavingKey, string> = {
   retirement: "Save more for retirement",
   ira: "Put money in an IRA",
@@ -288,16 +295,27 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
     });
   });
 
-  const savings = (input.savings ?? []).map((s) =>
-    item("savings", s.key, {
-      label: SAVING_LABELS[s.key],
-      status: "look",
-      figure: `${shortMoney(s.estimateCents)}/yr`,
-      cents: s.estimateCents,
-      // The one thing to do; why is behind "More".
-      summary: `${s.title}.`,
-    }),
+  // A saving that is also a dated move still open under Due soon is said once, there, with its
+  // date and its saving (debugger 11-15: "Add to your 401(k), by Dec 31" and "Save more for
+  // retirement, $1.9k/yr", both "Put about $1,975 more a paycheck into your 401(k)").
+  const openMoves = new Set(
+    input.moves.filter((m) => m.handled === null && m.opensOn <= input.asOf).map((m) => m.key),
   );
+  const savings = (input.savings ?? [])
+    .filter((s) => {
+      const move = SAME_AS_MOVE[s.key];
+      return !(move && openMoves.has(move));
+    })
+    .map((s) =>
+      item("savings", s.key, {
+        label: SAVING_LABELS[s.key],
+        status: "look",
+        figure: `${shortMoney(s.estimateCents)}/yr`,
+        cents: s.estimateCents,
+        // The one thing to do; why is behind "More".
+        summary: `${s.title}.`,
+      }),
+    );
 
   const r = input.estimate.refundCents;
   const aside = input.setAside;
