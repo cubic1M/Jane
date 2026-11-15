@@ -16,7 +16,7 @@ import {
 import { QUESTIONS } from "../insurance/benefit-words";
 import { ClaimError, closeClaim, markStepDone, nextStep, startClaim } from "@/lib/insurance/claims";
 import { trackerActions, trackerBody } from "../insurance/claim-words";
-import { declineShop } from "@/lib/insurance/shop";
+import { declineShop, SWITCH_STARTED_NOTE } from "@/lib/insurance/shop";
 import { quotesReply } from "../insurance/quotes";
 import { ReadingError, confirmReading, dismissReading, getReading } from "@/lib/insurance/readings";
 import {
@@ -117,7 +117,7 @@ export const insuranceShopYes: ActionHandler = {
       });
       return {
         answeredWith: action.label,
-        note: "Done. I'm switching you now: your current policy stays in place until the new one's first payment goes through, then I cancel it from the same day.",
+        note: SWITCH_STARTED_NOTE,
         refs: { ...message.refs, actionId },
         agentJobIds: [agentJobId],
       };

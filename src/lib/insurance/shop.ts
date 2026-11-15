@@ -378,6 +378,27 @@ export async function openShops(
   return (await adviceMode(userId, { client })) ? rows.map(toShop) : [];
 }
 
+// What a yes to a shop's pick says, wherever it's given (the chat's card, the comparison cards,
+// and the quotes page after it): Jane's agent starts the switch at once.
+export const SWITCH_STARTED_NOTE =
+  "Done. I'm switching you now: your current policy stays in place until the new one's first payment goes through, then I cancel it from the same day.";
+
+// The policy's newest shop the person said yes to, while the policy is still theirs: the quotes
+// page says what was chosen. A post refreshes the page, and the open pick's cards went with it,
+// so "Chosen: Lighthouse Insurance (demo)" vanished a moment after the tap (debugger 11-15).
+export async function acceptedShop(
+  userId: string,
+  policyId: string,
+  { client = defaultClient }: Pick<Options, "client"> = {},
+): Promise<Shop | null> {
+  const row = await scopedFor(userId, client).insuranceShops.findFirst({
+    where: { policyId, status: "accepted" },
+    select: SHOP_SELECT,
+    orderBy: { answeredAt: "desc" },
+  });
+  return row ? toShop(row) : null;
+}
+
 // The newest shop of each policy that found nothing better, from the last few days, for
 // "I checked: nothing better" in the chat.
 export async function recentNoBetter(
