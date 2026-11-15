@@ -206,7 +206,7 @@ async function factsFor(
           })
         : null,
       withPlan ? planNow(userId, client) : null,
-      findingIds.length > 0
+      findingIds.length > 0 || proposalKeys.some((k) => k.startsWith("goal:"))
         ? scopedFor(userId, client).suggestions.findMany({
             where: {
               status: { in: ["selected", "yes", "no"] },
@@ -300,6 +300,11 @@ function asNow(m: ChatMessage, facts: Facts): ChatMessage | null {
       body: [sentence(finding.title), sentence(finding.savings), rest].filter(Boolean).join(" "),
       refs: { ...m.refs, fingerprint: finding.fingerprint },
     };
+  }
+  // Nor a set-up goal one of them already brings up (debugger 11-15: "Build an emergency cushion,
+  // protect $1,674" and, three cards on, "I could start an 'Emergency fund' goal: $5,700.00").
+  if (proposalKey?.startsWith("goal:") && facts.suggestionTopics?.has(proposalKey.slice(5))) {
+    return null;
   }
   // A set-up card is said from its proposal as it is now (night debugger, 10-30: after a second
   // file the dock kept the first file's "$1,180 budget for Food and drink"); one no longer open
