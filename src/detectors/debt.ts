@@ -255,7 +255,9 @@ const balanceTransfer: Detector = {
     return suggestion("debt", "balance_transfer", {
       title: "See if a 0% transfer card would cut your interest",
       headline: headlineOf("Try a 0% balance transfer card", saving, "saves"),
-      short: `You owe ${formatCents(debt.value)} on cards and paid ${formatCents(interest)} in interest.`,
+      // Its own saving, not a second interest figure beside card_interest's year at today's
+      // rates (debugger 11-15: "$554.17 a year" above "paid $385.75"); the charges are in why.
+      short: `A 0% transfer of the ${formatCents(debt.value)} you owe on cards could save about ${formatCents(saving)} after its fee.`,
       worthCents: saving,
       worthKind: "saves",
       confidence: weakest([
