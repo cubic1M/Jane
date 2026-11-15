@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -25,6 +24,7 @@ import { takeChatAction } from "./actions";
 import { loadSnapshot } from "./snapshot";
 import { taxesSource } from "./sources/taxes";
 import { sendToJane } from "./typing";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 const url = process.env.TEST_DATABASE_URL;
 const LINKED = new Date("2026-10-18T15:00:00Z");
@@ -53,10 +53,7 @@ describe.runIf(url)(
       return user.id;
     }
     beforeAll(() => {
-      vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-      vi.stubEnv("ANTHROPIC_API_KEY", "");
-      vi.stubEnv("PLAID_CLIENT_ID", "");
-      vi.stubEnv("PLAID_SECRET", "");
+      stubTestKeys();
       vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
       client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     });

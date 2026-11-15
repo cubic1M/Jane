@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -16,6 +15,7 @@ import { runJaneAgent } from "./run";
 import { stillTrue } from "./still-true";
 import { MESSAGE_SELECT, toChatMessage } from "./types";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Debugger 11-13, a new student's first minutes: the week's plan card, posted by the first scan's
 // early run, said "22 things, worth up to $3,560.81 a year" while Home and /plan said 23 and
@@ -38,10 +38,7 @@ describe.runIf(url)("the week's plan card", () => {
   };
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     vi.stubEnv("DEMO_BANK", "1");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     const user = await client.user.create({

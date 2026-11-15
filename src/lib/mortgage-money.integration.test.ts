@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -14,6 +13,7 @@ import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { MortgageMoneyError, loadMortgageMoney } from "./mortgage-money";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 246 against a real, migrated Postgres, on the demo bank (a $312,400 mortgage at
 // 3.99%): a lump sum or extra money compared as extra principal, a recast and a refinance,
@@ -35,10 +35,7 @@ describe.runIf(url)(
     const opts = (now = LINKED) => ({ client, now });
 
     beforeAll(async () => {
-      vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-      vi.stubEnv("ANTHROPIC_API_KEY", "");
-      vi.stubEnv("PLAID_CLIENT_ID", "");
-      vi.stubEnv("PLAID_SECRET", "");
+      stubTestKeys();
       client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
       const user = await client.user.create({
         data: { email: `mm-${crypto.randomUUID()}@example.com` },

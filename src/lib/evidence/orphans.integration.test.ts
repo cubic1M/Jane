@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -28,6 +27,7 @@ import { SAMPLE_WIN_KEY } from "@/lib/sample-wins";
 import { verifiedSavings } from "@/lib/savings-proof";
 import { forgetSince, removeAllOrphans } from "./orphans";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Derived data never outlives its evidence, against a real, migrated Postgres. The founder asked
 // "how much money did Jane save me" and the chat listed the demo bank's Comcast, Verizon and
@@ -79,10 +79,7 @@ describe.runIf(url)("derived data never outlives its evidence", { timeout: 240_0
     );
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     vi.stubEnv("DEMO_BANK", "1");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });

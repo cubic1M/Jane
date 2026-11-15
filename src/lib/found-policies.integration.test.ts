@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -19,6 +18,7 @@ import { foundPoliciesSource } from "@/lib/jane-agent/sources/found-policies";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { policiesFromPayments } from "./found-policies";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 99 against a real, migrated Postgres: someone renting who pays Progressive and
 // Lemonade every month gets both added as "found from your payments", with estimated
@@ -114,10 +114,7 @@ describe.runIf(url)("insurance found from payments", { timeout: 120_000 }, () =>
   }
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });
   afterAll(async () => {

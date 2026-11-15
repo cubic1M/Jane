@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -19,6 +18,7 @@ import { unusualSource } from "@/lib/jane-agent/sources/unusual";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { loadTaught, missingRefundAlerts } from "./unusual";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 208 against a real, migrated Postgres, with the demo bank: an unusually large
 // first charge becomes one alert with two buttons in the chat; "this was me" teaches the
@@ -84,11 +84,8 @@ describe.runIf(url)("spotting the unusual", { timeout: 120_000 }, () => {
   }
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
+    stubTestKeys();
     vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });
   afterAll(async () => {

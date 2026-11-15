@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -13,6 +12,7 @@ import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
 import { sendToJane } from "./typing";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Taxes QA (2026-10-22): before they said how they file, the Reyes family and Dan and Lena were
 // estimated as single (a bill, and a W-4 to withhold more); and late in the year Maya was told to
@@ -46,10 +46,7 @@ describe.runIf(url)(
     }
 
     beforeAll(() => {
-      vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-      vi.stubEnv("ANTHROPIC_API_KEY", "");
-      vi.stubEnv("PLAID_CLIENT_ID", "");
-      vi.stubEnv("PLAID_SECRET", "");
+      stubTestKeys();
       vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
       client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     });

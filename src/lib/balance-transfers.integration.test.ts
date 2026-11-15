@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -25,6 +24,7 @@ import {
 import { cardInterestSource } from "./jane-agent/sources/card-interest";
 import { loadDebts } from "./debts";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 113 against a real, migrated Postgres, on the demo bank: 0% transfer offers for
 // the card from Jane's monthly check, compared with the fee counted; "I've moved it" puts
@@ -48,10 +48,7 @@ describe.runIf(url)("balance transfers against a real database", () => {
   };
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     const user = await client.user.create({
       data: { email: `bt-${crypto.randomUUID()}@example.com` },

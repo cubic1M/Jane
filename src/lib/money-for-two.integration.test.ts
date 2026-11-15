@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -34,6 +33,7 @@ import {
   setSplitRule,
   splitShareFor,
 } from "./money-for-two";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 242 against a real, migrated Postgres: two partners, each with the demo bank, in
 // one household. Private accounts and goals never reach the partner; bills split evenly or by
@@ -78,11 +78,8 @@ describe.runIf(url)("money for two", { timeout: 120_000 }, () => {
   }
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
+    stubTestKeys();
     vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });
   afterAll(async () => {

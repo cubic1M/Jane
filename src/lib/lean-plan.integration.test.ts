@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -19,6 +18,7 @@ import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { loadChanges } from "./changes";
 import { leanActive, loadLeanPlan, openLean, runLeanCheck } from "./lean-plan";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 204 against a real, migrated Postgres, with the demo bank: a paycheck late only
 // inside its window asks nothing; one that's really late gets one question; a yes pauses
@@ -51,11 +51,8 @@ describe.runIf(url)("when income stops", { timeout: 120_000 }, () => {
   ) as PlaidApi;
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
+    stubTestKeys();
     vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     const user = await client.user.create({
       data: { email: `lean-${crypto.randomUUID()}@example.com`, state: "CA" },

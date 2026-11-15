@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -12,6 +11,7 @@ import { linkDemoBank } from "./demo";
 import { ensureDemoAssets } from "./demo-assets";
 import { syncItem } from "./sync";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // The demo bank's home and car against a real, migrated Postgres: its sample person's net
 // worth counts what the mortgage and the car loan are against, instead of showing only debts.
@@ -24,10 +24,7 @@ describe.runIf(url)("the demo bank's home and car", () => {
   const created: string[] = [];
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });
   afterAll(async () => {

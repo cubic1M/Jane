@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -12,6 +11,7 @@ import { findingFingerprint } from "@/lib/jane-agent/snapshot";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { fingerprint, rowOf, rowsOf } from "./sync-snapshots";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // The demo-sync snapshots (src/test-setup/sync-snapshots.ts) give a person exactly what their own
 // sync would have written: a person synced for real and one given a copy hold the same rows in
@@ -46,10 +46,7 @@ describe.runIf(url)("demo-sync snapshots", { timeout: 600_000 }, () => {
   ) as PlaidApi;
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url! }) });
   });
   afterAll(async () => {

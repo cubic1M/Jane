@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -13,6 +12,7 @@ import { sendToJane } from "@/lib/jane-agent/typing";
 import { syncItem } from "@/lib/plaid/sync";
 import { startTrial } from "@/lib/trial";
 import { loadRetirementIncome } from "./retirement-income";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Gap audit (spec steps 129-132, 157 and 212) against a real, migrated Postgres: each sample
 // person comes with their investor profile, so the portfolio review, rebalance plan, goal
@@ -40,10 +40,7 @@ describe.runIf(url)(
       ).reply.body;
 
     beforeAll(async () => {
-      vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-      vi.stubEnv("ANTHROPIC_API_KEY", "");
-      vi.stubEnv("PLAID_CLIENT_ID", "");
-      vi.stubEnv("PLAID_SECRET", "");
+      stubTestKeys();
       client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
       for (const p of PEOPLE) {
         const trial = await startTrial({ client, now: NOW, defer: true, person: p.id });

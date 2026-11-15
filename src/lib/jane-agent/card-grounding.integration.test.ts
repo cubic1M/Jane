@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { FORECAST_SUBTYPES } from "@/config/detection";
@@ -22,6 +21,7 @@ import { loadFacts } from "./checks/facts";
 import { runChatTool } from "./claude-tools";
 import { loadPopupStack } from "./popup-stack";
 import { runJaneAgent } from "./run";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // The dock and the chat agree (card-chat mismatch), for each of the eight sample people against
 // a real, migrated Postgres, with no Claude call (free, so it runs on every PR):
@@ -50,10 +50,7 @@ describe.runIf(url)("the dock and the chat agree for every sample person", () =>
   const made = new Map<string, string>();
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     for (const p of PEOPLE) {
       const trial = await startTrial({ client, now: NOW, defer: true, person: p.id });

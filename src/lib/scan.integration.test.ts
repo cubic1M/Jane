@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -79,6 +78,7 @@ import { openChat } from "@/lib/jane-agent/open";
 import { scanInProgress, scanProgress, scanReady } from "@/lib/scan";
 import { startTrial } from "@/lib/trial";
 import { syncItem } from "@/lib/plaid/sync";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // The chat opens early during the first scan (the sample person's too): once the accounts and
 // transactions are in it shows at once with Jane saying it's still looking, before the slow
@@ -95,11 +95,8 @@ describe.runIf(url)("the chat opens during the first scan", { timeout: 120_000 }
   const created: string[] = [];
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
+    stubTestKeys();
     vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });
   afterAll(async () => {

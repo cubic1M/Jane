@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -18,6 +17,7 @@ import { taxesSource } from "./sources/taxes";
 import { parseActions, parseRefs } from "./types";
 import { sendToJane } from "./typing";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 125 against a real, migrated Postgres: a federal refund lands in the demo
 // checking account; it's matched to the estimate for its year; in demo advice mode the plan
@@ -37,10 +37,7 @@ describe.runIf(url)("tax refunds against a real database", () => {
   const later = () => new Date(LINKED.getTime() + ++tick * MINUTE);
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     const user = await client.user.create({

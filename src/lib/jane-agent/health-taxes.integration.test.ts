@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -17,6 +16,7 @@ import { parseTaxIntent } from "./tax-intents";
 import { loadSnapshot } from "./snapshot";
 import { taxesSource } from "./sources/taxes";
 import { sendToJane } from "./typing";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 269 against a real, migrated Postgres: a Marketplace plan's credit checked against
 // the person's income (repaid in full over 400% of the poverty line, no cap from 2026), HSA
@@ -95,10 +95,7 @@ describe.runIf(url)("health cover and taxes against a real database", { timeout:
     taxesSource.gather((await loadSnapshot(userId, { client, now: LINKED }))!, context);
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });

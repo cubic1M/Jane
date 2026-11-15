@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -14,6 +13,7 @@ import { syncItem } from "@/lib/plaid/sync";
 import { loadSelfEmployed } from "@/lib/self-employed";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
 import { sendToJane } from "./typing";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Taxes QA (2026-10-22): Jo's shop sales come from her card processor as "SQUARE DEPOSIT", other
 // income. The estimate, the self-employed and business pages and the chat all counted nothing,
@@ -36,10 +36,7 @@ describe.runIf(url)("a shop owner's taxes against a real database", { timeout: 1
   ) as PlaidApi;
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     const user = await client.user.create({

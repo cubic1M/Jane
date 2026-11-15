@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -26,6 +25,7 @@ import {
   withdrawApplication,
 } from "./loan-applications";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 112 against a real, migrated Postgres, on the demo bank: "Apply" on Jane's
 // refinance pick prepares the application from what it knows, the terms are reviewed
@@ -56,10 +56,7 @@ describe.runIf(url)("one-tap apply against a real database", () => {
   }
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     userId = await person("apply-demo");
     ({ itemId } = await linkDemoBank(userId, { client, now: LINKED }));

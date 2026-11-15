@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -27,6 +26,7 @@ import { TRADEOFF_DETECTORS } from "@/detectors/tradeoffs";
 import { buildProfile } from "@/profile/build";
 import { fund, roomFromPlan } from "@/planning/goal-tradeoffs";
 import { TradeoffError, chooseGoalOrder, loadTradeoffs } from "./goal-tradeoffs";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 241 against a real, migrated Postgres: Dan and Lena's demo bank comes with a
 // trip to Japan and a kitchen remodel that can't both be on time. Each order's dates come from the year
@@ -59,11 +59,8 @@ describe.runIf(url)("goals that trade off openly", { timeout: 120_000 }, () => {
   }
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
+    stubTestKeys();
     vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });
   afterAll(async () => {

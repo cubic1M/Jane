@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -18,6 +17,7 @@ import { loadMortgage } from "./mortgage";
 import { ensureChecked, loadRefinance } from "./refinance";
 import { loadStudentLoans } from "./student-loans";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Loans QA against a real database, for the eight sample people and the default demo person:
 // "your payment" on a loan is one figure. The sample loans agree with themselves (the payoff
@@ -37,10 +37,7 @@ describe.runIf(url)("one payment for each loan, everywhere", () => {
   const created: string[] = [];
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });
   afterAll(async () => {

@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -10,6 +9,7 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 import { LIVE_NOTICE_MIN_ANNUAL_CENTS } from "@/config/detection";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { recordArrivals } from "./arrivals";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // The 24/7 engine's notice rules, one by one, against a real Postgres (test pass 11-13): the $100
 // floor and medium confidence exactly at their edges, quiet hours on the person's own clock on both
@@ -24,10 +24,7 @@ describe.runIf(url)("when the 24/7 engine tells someone", () => {
   const made: string[] = [];
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });
   afterAll(async () => {

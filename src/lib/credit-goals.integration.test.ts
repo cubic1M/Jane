@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -27,6 +26,7 @@ import {
 import { pullCredit } from "./credit";
 import { demoCredit } from "./credit/demo";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 227 against a real, migrated Postgres, on the demo bank (a stand-in score of 705
 // with $2,410.50 on an $8,000 card limit): a plan for a target score and date from the
@@ -63,10 +63,7 @@ describe.runIf(url)(
     }
 
     beforeAll(async () => {
-      vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-      vi.stubEnv("ANTHROPIC_API_KEY", "");
-      vi.stubEnv("PLAID_CLIENT_ID", "");
-      vi.stubEnv("PLAID_SECRET", "");
+      stubTestKeys();
       client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     }, 120_000);
     afterAll(async () => {

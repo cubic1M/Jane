@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -21,6 +20,7 @@ import { priceRisesSource } from "@/lib/jane-agent/sources/price-rises";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { loadPriceRises } from "./price-rises";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 243 against a real, migrated Postgres: Priya's demo bank has a fibre bill on an
 // intro price and a yearly plan paid once; both raise a deadline at least 30 days ahead, with
@@ -55,11 +55,8 @@ describe.runIf(url)("price rises seen before they land", { timeout: 120_000 }, (
   }
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
+    stubTestKeys();
     vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });
   afterAll(async () => {

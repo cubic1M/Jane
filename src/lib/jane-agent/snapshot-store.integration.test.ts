@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -13,6 +12,7 @@ import { wholePictureReply } from "./whole-picture";
 import { rankedFor } from "./priorities";
 import { loadSnapshot } from "./snapshot";
 import { loadSnapshotFast, markSnapshotStale, reviveDates } from "./snapshot-store";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Jane's snapshot, saved after the first scan and read back in one query by the agenda and the
 // chat's tools, instead of every sector being looked up again for each question.
@@ -36,10 +36,7 @@ describe.runIf(url)("the saved snapshot", { timeout: 120_000 }, () => {
   let userId: string;
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     const trial = await startTrial({ client, now: NOW, defer: true, person: "family" });
     userId = trial.userId;

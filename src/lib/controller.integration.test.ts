@@ -1,5 +1,4 @@
 import { TRIAL_ID_PREFIX } from "@/config/trial";
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -19,6 +18,7 @@ import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { lastControllerRun } from "./controller-log";
 import { queueNightlyRuns, retryControllerStep, runController } from "./controller";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 142 against a real, migrated Postgres: one run per person each night, every
 // sector in order through its own code, a failing sector never stopping the others and
@@ -53,10 +53,7 @@ describe.runIf(url)("the nightly controller run", { timeout: 120_000 }, () => {
   }
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });

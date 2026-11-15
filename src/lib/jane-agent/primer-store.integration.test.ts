@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -12,6 +11,7 @@ import { startTrial } from "@/lib/trial";
 import { chatPrimer } from "./claude-tools";
 import { forgetPrimer } from "./primer-cache";
 import { markPrimerStale, readStoredPrimer, usablePrimer } from "./primer-store";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // The person's numbers for Claude are saved after the scan and read back in one query, so the
 // chat doesn't look every sector up while someone waits.
@@ -24,10 +24,7 @@ describe.runIf(url)("the numbers for Claude, saved", { timeout: 120_000 }, () =>
   let userId: string;
 
   beforeAll(async () => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     const trial = await startTrial({ client, now: NOW, defer: true, person: "family" });
     userId = trial.userId;

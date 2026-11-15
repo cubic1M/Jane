@@ -1,5 +1,4 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient, type Prisma } from "@/generated/prisma/client";
@@ -24,6 +23,7 @@ import { AS_THEY_COME } from "./preferences";
 import { deliverChatNotifications, queueChatNotifications } from "./notify";
 import { runJaneAgent } from "./run";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 85 against a real, migrated Postgres (see
 // src/lib/jane-agent/agent.integration.test.ts): Jane's brain posts, a notification job is
@@ -121,11 +121,8 @@ describe.runIf(url)("Jane's messages as notifications, against a real database",
     [...email.text.matchAll(/^\[ (.+) \] (\S+)$/gm)].map((m) => ({ label: m[1], url: m[2] }));
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
+    stubTestKeys();
     vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
     vi.stubEnv("RESEND_API_KEY", "");
     vi.stubEnv("VAPID_PUBLIC_KEY", "test-public");
     vi.stubEnv("VAPID_PRIVATE_KEY", "test-private");

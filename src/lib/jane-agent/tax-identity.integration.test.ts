@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -20,6 +19,7 @@ import { taxesSource } from "./sources/taxes";
 import { parseActions } from "./types";
 import { sendToJane } from "./typing";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Spec step 218 against a real, migrated Postgres: the January IP PIN reminder, and each
 // sign of tax identity theft opening a case whose steps are tracked to done.
@@ -69,10 +69,7 @@ describe.runIf(url)(
     }
 
     beforeAll(() => {
-      vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-      vi.stubEnv("ANTHROPIC_API_KEY", "");
-      vi.stubEnv("PLAID_CLIENT_ID", "");
-      vi.stubEnv("PLAID_SECRET", "");
+      stubTestKeys();
       vi.stubEnv("AUTH_SECRET", "test-secret-for-unsubscribe-links");
       client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     });

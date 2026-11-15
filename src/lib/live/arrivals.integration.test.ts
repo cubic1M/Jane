@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient, type FindingType } from "@/generated/prisma/client";
@@ -13,6 +12,7 @@ import { firstDelivery, syncFromWebhook } from "@/lib/plaid/webhooks";
 import { syncItem } from "@/lib/plaid/sync";
 import { recordArrivals, whatSetOffSync } from "./arrivals";
 import { NO_PLAID as plaid } from "@/lib/__fixtures__/plaid";
+import { stubTestKeys } from "@/lib/__fixtures__/env";
 
 // Jane's 24/7 engine, step one, against a real, migrated Postgres: findings a change created are
 // recorded once with what set them off and how long it took, and the best one that clears the bar
@@ -29,10 +29,7 @@ describe.runIf(url)("new findings told the moment they're found", () => {
   const made: string[] = [];
 
   beforeAll(() => {
-    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
-    vi.stubEnv("PLAID_CLIENT_ID", "");
-    vi.stubEnv("PLAID_SECRET", "");
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    stubTestKeys();
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });
   afterAll(async () => {
