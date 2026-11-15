@@ -8,7 +8,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { addDeadline } from "@/lib/deadlines";
 import { addGoal, listGoals } from "@/lib/goals";
-import { formatCents } from "@/lib/money";
+import { centsToInput, formatCents } from "@/lib/money";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
 import {
   findRefunds,
@@ -162,7 +162,7 @@ export async function applyRefundPlan(
         userId,
         {
           name: EMERGENCY_GOAL,
-          target: (inputs.emergency.targetCents / 100).toFixed(2),
+          target: centsToInput(inputs.emergency.targetCents),
           targetDate: iso(new Date(now.getTime() + 365 * DAY_MS)),
           accountId: "",
           saved: "",

@@ -21,7 +21,7 @@ import {
   spendingInsights,
   type InsightTransaction,
 } from "@/insights/spending";
-import { formatCents } from "@/lib/money";
+import { centsToInput, formatCents } from "@/lib/money";
 import type { JaneDid } from "@/lib/what-jane-did";
 import {
   AFFORD_COPY,
@@ -363,7 +363,7 @@ export function affordReply(
     ? [verdict, ...(second ? [second] : [])]
     : [...effects, ...about].slice(0, 2);
 
-  const amount = (intent.amountCents / 100).toFixed(2);
+  const amount = centsToInput(intent.amountCents);
   const actions: MessageAction[] = [];
   const refs: MessageRefs = {};
   // Spec step 90: one suggestion, with its button. Later on, or when it doesn't fit before
@@ -443,7 +443,7 @@ function monthlyAffordReply(
     if (verdict) lines.unshift(verdict);
     lines.push(...effectLines(result, verdict !== null));
     const kind = extraCents > 0 ? "more" : "less";
-    const amount = (Math.abs(extraCents) / 100).toFixed(2);
+    const amount = centsToInput(Math.abs(extraCents));
     actions.push(
       openLink("See the full check", `/afford?kind=${kind}&amount=${amount}&month=${month}`),
     );
