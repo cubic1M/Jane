@@ -164,36 +164,6 @@ test("a demo-bank person sees the sample policy, like-for-like quotes and Jane's
   expect(overflow).toBeLessThanOrEqual(0);
 });
 
-test("a demo-bank person says yes to Jane's pick (step 104)", async ({
-  context,
-  page,
-  baseURL,
-}) => {
-  const user = await signedInUser("user");
-  userId = user.userId;
-  await signInWith(context, user.sessionToken, baseURL);
-  await page.goto("/connect");
-  await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await landInChat(page, 60_000);
-  // The chat opens once the first brief is in; Jane shops the insurance in the work after it.
-  await waitForFullScan(userId!);
-  // Jane's pick is made by the first scan's work after the brief, which can finish a little
-  // after the chat opens on a busy machine: look again until the pick is there.
-  await expect(async () => {
-    await page.goto("/insurance");
-    await pickItem(page, "Insurance", "Your policies", "GEICO car");
-    await page.getByRole("link", { name: "Compare quotes" }).click({ timeout: 10_000 });
-    await expect(page.getByText("JANE'S PICK")).toBeVisible({ timeout: 10_000 });
-  }).toPass({ timeout: 90_000 });
-  // Jane's pick and the other cheaper quotes side by side; choosing its pick starts the switch.
-  const pick = page.locator("li[data-option-id]").filter({ hasText: "JANE'S PICK" });
-  await pick.getByRole("button", { name: /^Choose / }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Chosen:" })).toContainText(
-    "I'm switching you now",
-    { timeout: 30_000 },
-  );
-});
-
 test("a person starts a claim tracker and ticks off a step (step 107)", async ({
   context,
   page,

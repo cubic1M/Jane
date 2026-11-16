@@ -8,7 +8,8 @@ import { signInWith } from "./session";
 // (src/lib/page-cache.ts). The pick's cards then went, as the shop was answered, and with them
 // "Chosen: Lighthouse Insurance (demo)": a moment after the tap the page showed nothing was
 // chosen, and main's e2e (insurance.spec.ts:167) failed when the refresh came first. The quotes
-// page now says what was chosen, however often it's loaded.
+// page now says what was chosen, however often it's loaded. This test replaced that one: it takes
+// the same steps and checks the same "I'm switching you now", after a reload.
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 test.setTimeout(240_000);
