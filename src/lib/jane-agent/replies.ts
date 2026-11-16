@@ -661,7 +661,17 @@ export function safeReply(
     setAsideCents?: number;
   } | null,
   asOf: string | null = null,
+  // Why there's no figure, when Jane knows: statements too old to say what's in checking today.
+  { statementsEnd = null }: { statementsEnd?: string | null } = {},
 ): Reply {
+  if (!safe && statementsEnd) {
+    // Debugger 11-16: a statement ending Sep 29, balance and all, heard "Jane needs your checking
+    // balance for this… add its balance on the import page", a balance it had given.
+    return reply(
+      `Your statements end ${dayLabel(statementsEnd, { year: true })}, so I can't say what's safe to spend today. Upload newer statements and I'll work it out.`,
+      [openLink("Upload newer statements", "/import")],
+    );
+  }
   if (!safe) {
     return reply(AFFORD_COPY.noChecking, [openLink("Add your accounts", "/connect")]);
   }

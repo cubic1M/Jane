@@ -16,6 +16,7 @@ import { loadAffordNumbers } from "@/lib/afford";
 import { loadChanges } from "@/lib/changes";
 import { verifiedSavings } from "@/lib/savings-proof";
 import { scopedFor } from "@/lib/db-scoped";
+import { staleStatementsEnd } from "@/lib/report-state";
 import { homeSummary } from "@/lib/home";
 import { matchCategory } from "../intents";
 import { listGoals } from "@/lib/goals";
@@ -148,7 +149,11 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     }
     case "safe_to_spend": {
       const home = await homeSummary(userId, { client, now });
-      return safeReply(home?.safeToSpend ?? null, asOf);
+      if (home?.safeToSpend) return safeReply(home.safeToSpend, asOf);
+      const read = await scopedFor(userId, client).transactions.aggregate({
+        _max: { date: true },
+      });
+      return safeReply(null, asOf, { statementsEnd: staleStatementsEnd(read._max.date, now) });
     }
     case "paycheck": {
       const plan = await latestPaycheckPlan(userId, { client, now });
