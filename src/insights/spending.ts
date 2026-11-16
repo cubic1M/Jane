@@ -1,3 +1,4 @@
+import { FULL_MONTH_START_SLACK_DAYS } from "@/config/budgets";
 import { NON_SPENDING_CATEGORIES, NON_SPENDING_PRIMARIES } from "@/config/detection";
 import { normalizeMerchant } from "@/data-sources/merchant";
 import { categoryLabel } from "./labels";
@@ -160,7 +161,20 @@ export function spendingInsights(
   // category "down" by all of last month (debugger 11-01).
   const newest = months.findLastIndex((m) => totals.get(m)!.spendingCents > 0);
   const end = newest >= 1 ? newest + 1 : months.length;
-  const [before, after] = end >= 2 ? months.slice(end - 2, end) : [];
+  const [compared, after] = end >= 2 ? months.slice(end - 2, end) : [];
+  // Only against a month the data covers (nearly) whole, as typical-month.ts's fullMonths: a
+  // statement from Oct 17 has no October rent, so November's read "Rent and utilities is up +$935"
+  // (debug 2, 11-16).
+  const first = transactions.reduce<string | null>(
+    (min, t) => (min === null || t.date < min ? t.date : min),
+    null,
+  );
+  const covered = (month: string) => {
+    const start = new Date(`${month}-01T00:00:00Z`);
+    start.setUTCDate(start.getUTCDate() + FULL_MONTH_START_SLACK_DAYS);
+    return first !== null && first <= start.toISOString().slice(0, 10);
+  };
+  const before = compared && covered(compared) ? compared : undefined;
   const changes = before
     ? [...new Set([...byCategory.get(before)!.keys(), ...byCategory.get(after)!.keys()])]
         .map((category) => {
