@@ -1,3 +1,4 @@
+import { accountCopies, withoutCopies } from "@/lib/account-copies";
 import { INVESTMENT_MONTHS } from "@/config/funds";
 import { ROBINHOOD_NAME } from "@/config/robinhood";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -28,7 +29,7 @@ export async function loadInvestments(
   const db = scopedFor(userId, client);
   const asOf = now.toISOString().slice(0, 10);
   const [first] = monthsEnding(asOf, INVESTMENT_MONTHS);
-  const [accounts, securities, holdings] = await Promise.all([
+  const [listedAccounts, securities, listedHoldings, copies] = await Promise.all([
     db.accounts.findMany({
       where: { type: "investment" },
       select: {
@@ -56,7 +57,12 @@ export async function loadInvestments(
         costBasisCents: true,
       },
     }),
+    accountCopies(db),
   ]);
+  // An account linked twice counts once, as in net worth, whose figure the Investing page's total
+  // says it is (gate B: a brokerage linked again counted twice here and once there).
+  const accounts = withoutCopies(listedAccounts, copies, (a) => a.id);
+  const holdings = withoutCopies(listedHoldings, copies, (h) => h.accountId);
   const snapshots =
     accounts.length === 0
       ? []
