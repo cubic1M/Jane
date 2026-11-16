@@ -1,3 +1,4 @@
+import { withoutAchDetails } from "@/data-sources/merchant";
 import { SOCIAL_SECURITY_PAYEE } from "@/config/retirement-taxes";
 import {
   INCOME_KINDS,
@@ -74,7 +75,11 @@ export const TUITION_CATEGORY = "GENERAL_SERVICES_EDUCATION";
 // Payroll"). For display only: forms are matched to documents and checks by `from` as it is.
 const HOW_IT_CAME =
   / (?:payroll|payouts?|transfers?|deposits?|direct dep(?:osit)?|dir dep|driver pay|(?:student )?wages|ui benefits|401\(?k\)? (?:dist(?:rib(?:ution)?)?|withdrawal|payout))$/i;
-export const formPayer = (name: string) => name.replace(HOW_IT_CAME, "").trim() || name;
+// An ACH line's entry code and id after the payer (debug 2, 11-16: "W-2 from UC DAVIS PAYROLL PPD
+// ID: 9460001234", and Plaid's "Sweetgreen inc payroll ppd id"), and Bank of America's " DES:…".
+const ACH_TAIL = /\s+(?:PPD|CCD|WEB|TEL)(?:\s+ID\b:?\s*\S*)?\s*$/i;
+export const formPayer = (name: string) =>
+  withoutAchDetails(name).replace(ACH_TAIL, "").replace(HOW_IT_CAME, "").trim() || name;
 
 const PAYER_FORMS: readonly [IncomeKind, TaxFormKey][] = [
   ["w2", "w2"],
