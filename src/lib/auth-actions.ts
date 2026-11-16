@@ -148,7 +148,8 @@ export async function signInWithGoogle(formData?: FormData): Promise<void> {
     const result = await checkCode(invite);
     if (result !== "ok") {
       await recordFailedSignIn(`invite_${result}`);
-      redirect(`/signup?error=${INVITE_ERRORS[result]}`);
+      // What they typed comes back with the error, as for the email button (debug 3, 11-16).
+      await backToSignup(formData, INVITE_ERRORS[result]);
     }
     (await cookies()).set(INVITE_COOKIE, normalizeCode(invite) as string, SHORT_COOKIE);
   }
