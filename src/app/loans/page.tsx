@@ -283,10 +283,14 @@ const TOPIC_PAGE: Record<string, string> = {
   rent_increase: "/loans/renting",
 };
 
-function PageLink({ href }: { href: string }) {
+// Refinance offers need a lending partner; without one (every real account) the page only says so.
+const REFINANCE_HREF = "/loans/refinance";
+
+function PageLink({ href, shut = false }: { href: string; shut?: boolean }) {
   const page = PAGE[href];
-  // A page the read-only beta hides (src/config/hidden-pages.ts) gets no link.
-  if (!page || isHiddenPage(href)) return null;
+  // A page the read-only beta hides (src/config/hidden-pages.ts) gets no link, nor one that has
+  // nothing for this person (shut).
+  if (!page || isHiddenPage(href) || shut) return null;
   return (
     <Link href={href} className={`self-start text-sm ${LINK}`}>
       {page.label} ›
@@ -306,7 +310,9 @@ async function LoansContent({
     const v = params[key];
     return typeof v === "string" ? v : "";
   };
-  const { book, bnpl, prompts, mine, accounts, plans, area } = await loadLoansArea(user.id);
+  const { book, bnpl, prompts, mine, accounts, plans, refinanceOpen, area } = await loadLoansArea(
+    user.id,
+  );
   const saved = SAVED[one("saved")];
   const openKey = one("terms");
   const error = one("error");
@@ -329,7 +335,9 @@ async function LoansContent({
     const id = itemId(branch.id as LoansBranch, sug.topic);
     const page = TOPIC_PAGE[sug.topic];
     const comparable = advice && (COMPARE_TOPICS as readonly string[]).includes(sug.topic);
-    const here = linksHere(sug.actionHref, "/loans", id);
+    // Its own page is this item when there's nothing on it for them (refinance with no partner).
+    const shut = (href: string) => !refinanceOpen && href.split(/[?#]/)[0] === REFINANCE_HREF;
+    const here = linksHere(sug.actionHref, "/loans", id) || shut(sug.actionHref);
     details[id] = (
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap gap-x-4 gap-y-1">
@@ -338,7 +346,7 @@ async function LoansContent({
               {sug.actionLabel} ›
             </Link>
           )}
-          {page && page !== sug.actionHref && <PageLink href={page} />}
+          {page && page !== sug.actionHref && <PageLink href={page} shut={shut(page)} />}
           {comparable && compareTopic !== sug.topic && (
             <Link
               href={`/loans?compare=${sug.topic}&focus=${encodeURIComponent(id)}#compare`}
@@ -396,7 +404,7 @@ async function LoansContent({
   );
   details[itemId("cheaper", "checked")] = (
     <div className="flex flex-col gap-1">
-      <PageLink href="/loans/refinance" />
+      <PageLink href={REFINANCE_HREF} shut={!refinanceOpen} />
       {hasKind("student") && <PageLink href="/loans/student" />}
       {hasKind("mortgage") && <PageLink href="/loans/mortgage" />}
       {hasKind("auto") && <PageLink href="/loans/auto" />}
@@ -409,7 +417,7 @@ async function LoansContent({
     details[id] = (
       <div className="flex flex-col gap-1">
         {details[id]}
-        {topic !== "refinance" && <PageLink href="/loans/refinance" />}
+        {topic !== "refinance" && <PageLink href={REFINANCE_HREF} shut={!refinanceOpen} />}
         {hasKind("student") && !topic.startsWith("student") && <PageLink href="/loans/student" />}
         {hasKind("mortgage") && topic !== "pmi_removal" && <PageLink href="/loans/mortgage" />}
       </div>
@@ -439,9 +447,11 @@ async function LoansContent({
           <Link prefetch={false} href="/debt" className={LINK}>
             Payoff plan
           </Link>
-          <Link prefetch={false} href="/loans/refinance" className={LINK}>
-            Refinance
-          </Link>
+          {refinanceOpen && (
+            <Link prefetch={false} href={REFINANCE_HREF} className={LINK}>
+              Refinance
+            </Link>
+          )}
         </nav>
       </div>
 
