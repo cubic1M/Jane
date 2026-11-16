@@ -340,7 +340,9 @@ const emergencyFund: Detector = {
         : gap
           ? `You spend about ${formatCents(spend)} a month against ${formatCents(Number(incomeFact.value))} coming in, a gap of ${formatCents(spend - Number(incomeFact.value))}; ${target.months} months of it is ${formatCents(target.targetCents)}. ${cashLine(liquidCents(data))}.`
           : `You spend about ${formatCents(spend)} a month. ${cashLine(liquidCents(data))}; ${target.months} months is ${formatCents(target.targetCents)}.`,
-      action: { label: "Set a savings goal", href: "/goals" },
+      // The goal form opens drafted with this cushion (src/app/goals/page.tsx); the address names
+      // the draft, never an amount (debug 2, 11-16: Yes opened an empty form).
+      action: { label: "Set a savings goal", href: "/goals?draft=emergency_fund" },
     });
   },
 };
