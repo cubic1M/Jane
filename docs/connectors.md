@@ -243,13 +243,6 @@ policy now renews in 25 days, inside its window.
 
 Not built yet from round 14: the postback receiver and the banned-phrase check on card copy.
 
-`src/lib/referral-links.ts` builds an affiliate-network link (Impact, CJ, Awin, FlexOffers) that
-carries nothing about the person: the only thing added is a sub-ID, the first 16 hex of an HMAC of
-the action's id; a template or deep link with a parameter that could carry the person (Impact's
-`p.*`, `sharedid`, email, name, phone, zip, date of birth, VIN, user id, or a value that looks like
-an email or phone number) is refused, and a deep link may only point at the partner's allowed
-domain. Not wired to `/admin/partners` yet: partners don't record their network.
-
 ## A person's federal student loans
 
 `my_aid_upload` (`src/lib/connectors/my-aid/`, roadmap round 15) is read only, with no vendor: the
@@ -263,32 +256,3 @@ never the servicer and no date finer than a month. Off until its switch; reading
 `read_accounts` consent and is audited with the number of loans only. Not built yet: saving the
 loans into the student-loan lane's tables and the upload page.
 
-## Loan links
-
-`src/config/loan-links.ts` (roadmap rounds 14 and 15) is the one list of links Jane gives for a
-loan: studentaid.gov's own tools (reused from `STUDENT_STEPS`), the home pages of the private
-student refinance lenders round 15 names (demo advice mode only: naming lenders is a pick, and
-`REAL_ACCOUNT_ADVICE` stays false), and Engine's hosted page, empty until Engine gives its address.
-Every one is unpaid (`paid: false`): the beta takes no pay for any loan product. A test holds every
-link, and every URL written anywhere in `src/config`, to carrying no affiliate tag (`subid`,
-`clickref`, `irclickid`, `utm_*`, Impact's `p.*` and the like) and nothing about the person.
-
-## Card offers (mock)
-
-`src/lib/connectors/card-offers/offer.ts` (roadmap round 15) reads card offers shaped like Engine's
-marketplace and shows them the way Regulation Z wants a card's terms shown. Mock only: no partner,
-no pay, and named offers stay in demo advice mode.
-
-- `parseCardOffer`: tolerant of Engine's shapes (rates as numbers or "21.99%", both spellings of
-  the credit-rating disclaimer, the balance-transfer fee as a bare percent with its minimum read
-  from the fee's disclaimer). An offer with no name or no https Rates & Fees page is refused.
-- `offerBlock`: one block of same-size lines. Every intro rate says "intro", with its end, the APR
-  after and, for a transfer, the fee; the regular APR and whether it varies; the annual fee; the
-  Rates & Fees link; "pre-approved" only when the issuer says so.
-- `regZProblems`: what's wrong with a block under those rules, for any screen that shows an offer.
-- `cardSuggestionExcluded`: no new-credit suggestion while overdue, after a late fee in 12 months,
-  within 6 months of a new card, with hardship flagged, or under 21 without independent income; an
-  age band is asked once, never a date of birth.
-
-Not built yet: the disclosure component, balance-transfer and rewards-fit maths, the CFPB card-terms
-importer, and wiring offers into a card.

@@ -193,45 +193,6 @@ export const QBI = {
   } satisfies Record<FilingStatus, number>,
 } as const;
 
-// The One Big Beautiful Bill Act's deductions for tax years 2025 through 2028, taken whether or
-// not the person itemizes (connectors roadmap round 16). Tips, overtime and the senior deduction
-// need a joint return when married. Each is cut as modified AGI passes its line: tips and overtime
-// by $100, car-loan interest by $200, for each $1,000 over; the senior deduction by 6% of what's
-// over, for each person who's 65 or older.
-export const OBBBA_DEDUCTIONS = {
-  firstYear: 2025,
-  lastYear: 2028,
-  tips: {
-    max: { normal: $(25_000), marriedJoint: $(25_000) },
-    phaseOutFrom: { normal: $(150_000), marriedJoint: $(300_000) },
-    cutPerStep: $(100),
-    joint: true,
-    rule: "26 USC 224 (qualified tips)",
-  },
-  overtime: {
-    max: { normal: $(12_500), marriedJoint: $(25_000) },
-    phaseOutFrom: { normal: $(150_000), marriedJoint: $(300_000) },
-    cutPerStep: $(100),
-    joint: true,
-    rule: "26 USC 225 (qualified overtime: the FLSA premium only)",
-  },
-  carLoanInterest: {
-    max: { normal: $(10_000), marriedJoint: $(10_000) },
-    phaseOutFrom: { normal: $(100_000), marriedJoint: $(200_000) },
-    cutPerStep: $(200),
-    joint: false,
-    rule: "26 USC 163(h)(4) (new US-assembled car, loan after 2024, VIN on the return)",
-  },
-  step: $(1_000),
-  senior: {
-    perPerson: $(6_000),
-    minAge: 65,
-    phaseOutFrom: { normal: $(75_000), marriedJoint: $(150_000) },
-    phaseOutRate: 0.06,
-    rule: "26 USC 151(d)(5)(C) (age 65 or older)",
-  },
-} as const;
-
 // The Saver's Credit's last year (connectors roadmap round 17; from 2027 the Saver's Match replaces
 // it): a nonrefundable credit (Form 8880) on IRA and workplace-plan money put in for 2026, for
 // anyone 18 or older who isn't a full-time student or someone's dependent, with AGI at or under the
@@ -269,14 +230,6 @@ export const SAVERS_MATCH = {
     married_joint: [$(41_000), $(71_000)],
   } satisfies Record<FilingStatus, [number, number]>,
   rule: "IRS Notice 2026-48 (proposed)",
-} as const;
-
-// Catch-up contributions must go to Roth for anyone whose FICA wages the year before were over
-// this (SECURE 2.0; final regulations T.D. 10033 apply from 2027, good-faith use in 2026).
-export const ROTH_CATCH_UP = {
-  priorYearFicaWagesOver: $(150_000),
-  requiredFrom: 2027,
-  rule: "26 USC 414(v)(7); T.D. 10033",
 } as const;
 
 // Student loan interest: up to $2,500, phased out over the range of modified AGI; not for
