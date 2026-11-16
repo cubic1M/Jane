@@ -7,7 +7,8 @@ import type { DetectionInput } from "@/detection/types";
 import type { Confidence, FindingType, PrismaClient } from "@/generated/prisma/client";
 import { detectChanges, type SureChange } from "@/insights/changes";
 import { loadCheckup } from "@/lib/checkup";
-import { DAY_MS, isoDay } from "@/lib/dates";
+import { DAY_MS } from "@/lib/dates";
+import { findingSureFacts } from "@/lib/finding-sures";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { withEvidence } from "@/lib/evidence/gate";
@@ -15,7 +16,6 @@ import { evidenceRefs } from "@/lib/finding-accounts";
 import { savingsLedger, type LedgerEntry } from "@/lib/ledger";
 import { localDate, todayOf } from "@/lib/today";
 import { closeOf, type CloseChange, type MonthClose } from "@/planning/close";
-import { monthsCovered, statementsEnd } from "@/profile/build";
 import { REFUND_FINDING_TYPES } from "@/config/detection";
 
 // The monthly close for one person and month (src/planning/close.ts): the savings ledger, the
@@ -98,7 +98,7 @@ export async function loadMonthClose(
   // The person's day (debugger 11-02): a finding from a US evening is already tomorrow in UTC, so
   // comparing UTC times with their "today" left it out. A day each side, then each by their day.
   const dayOf = (at: Date) => localDate(at, timezone);
-  const [ledger, input, acks, found, open, waiting, sures, read] = await Promise.all([
+  const [ledger, input, acks, found, open, waiting, { sures, months }] = await Promise.all([
     savingsLedger(userId, { client, now }),
     loadDetectionInput(userId, { client, now: new Date(`${end}T12:00:00Z`) }),
     db.changeAcks.findMany({ select: { key: true } }),
@@ -143,11 +143,7 @@ export async function loadMonthClose(
         evidence: true,
       },
     }),
-    db.suggestions.findMany({
-      select: { topic: true, confidencePercent: true, confidenceReason: true },
-      orderBy: { lastSeenAt: "desc" },
-    }),
-    db.transactions.aggregate({ _min: { date: true }, _max: { date: true } }),
+    findingSureFacts(db, now),
   ]);
   const expected = new Set(acks.map((a) => a.key));
   // Only findings still standing on the person's data (the evidence gate): never a removed bank's.
@@ -158,10 +154,6 @@ export async function loadMonthClose(
   const findings = await withEvidence(userId, inClose, (f) => evidenceRefs(f.evidence), {
     client,
   });
-  const months =
-    read._min.date && read._max.date
-      ? monthsCovered(isoDay(read._min.date), statementsEnd(isoDay(read._max.date), isoDay(now)))
-      : 0;
   // A suggestion on the record can be the same money as these findings: "Stop paying bank fees"
   // adds up the fee findings. It's listed once, as /saved lists it (debugger 11-02). Its key ends
   // in the topic, and a topic with the name of a finding type is that finding's money.

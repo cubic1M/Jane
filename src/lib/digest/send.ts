@@ -15,12 +15,11 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { loadChanges } from "@/lib/changes";
 import { loadCheckup } from "@/lib/checkup";
-import { isoDay } from "@/lib/dates";
+import { findingSureFacts } from "@/lib/finding-sures";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { offerFor, savedToDate } from "@/lib/membership/service";
 import { findingSure } from "@/lib/report-state";
-import { monthsCovered, statementsEnd } from "@/profile/build";
 import { sendEmail } from "@/lib/email";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { budgetSummary } from "@/insights/budgets";
@@ -79,7 +78,7 @@ const titleOf = (snapshot: unknown) => {
 
 async function payloadFor(userId: string, now: Date, client: PrismaClient) {
   const db = scopedFor(userId, client);
-  const [actions, openFindings, sures, read, found, saved, last, offer, user] = await Promise.all([
+  const [actions, openFindings, facts, found, saved, last, offer, user] = await Promise.all([
     db.actions.findMany({
       select: {
         status: true,
@@ -102,11 +101,7 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
       },
     }),
     // For each finding's "% sure", as /report and /close say it.
-    db.suggestions.findMany({
-      select: { topic: true, confidencePercent: true, confidenceReason: true },
-      orderBy: { lastSeenAt: "desc" },
-    }),
-    db.transactions.aggregate({ _min: { date: true }, _max: { date: true } }),
+    findingSureFacts(db, now),
     moneyFoundParts(userId, { client }),
     savedToDate(userId, { client }),
     db.digests.findFirst({
@@ -120,10 +115,7 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
       select: { alertPrefs: true },
     }),
   ]);
-  const months =
-    read._min.date && read._max.date
-      ? monthsCovered(isoDay(read._min.date), statementsEnd(isoDay(read._max.date), isoDay(now)))
-      : 0;
+  const { sures, months } = facts;
   const findings = openFindings.map(({ evidence, ...f }) => ({
     ...f,
     percent: findingSure(
