@@ -465,7 +465,10 @@ export function spendingReply(
   budgets: readonly Budget[] | null = null,
   // drawn: the month's categories go under the answer as bars (spec step 94), so the words don't
   // name the biggest again (debug 2, 11-16: three categories said, then the same three drawn).
-  { drawn = false }: { drawn?: boolean } = {},
+  // declined: categories whose budget the person turned down on the plan or in the dock, never
+  // offered again here (debug 2, 11-16: No on "$160.00 monthly budget for Food and drink", then
+  // "A $160.00 budget would match a usual month" with the button, a minute later).
+  { drawn = false, declined = [] }: { drawn?: boolean; declined?: readonly string[] } = {},
 ): Reply {
   const open = [openLink("See insights", "/insights")];
   // Nothing to read isn't nothing spent.
@@ -598,7 +601,12 @@ export function spendingReply(
     const usual = budgets
       ? (budgetSummary(transactions, [...budgets], asOf).suggestions[category] ?? 0)
       : 0;
-    if (budgets && !budgets.some((b) => b.category === category) && usual > 0) {
+    if (
+      budgets &&
+      !budgets.some((b) => b.category === category) &&
+      !declined.includes(category) &&
+      usual > 0
+    ) {
       const refs = { budget: { category, amountCents: usual } };
       return reply(
         `${body} A ${fmt(refs.budget.amountCents)} budget would match a usual month.`,

@@ -128,13 +128,21 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     }
     case "spending": {
       const db = scopedFor(userId, client);
-      const [transactions, budgets] = await Promise.all([
+      const [transactions, budgets, declined] = await Promise.all([
         loadInsightTransactions(db, asOf, INSIGHT_MONTHS),
         db.budgets.findMany({ select: { category: true, amountCents: true } }),
+        // Budgets the person said No to ("budget:<category>", src/planning/proposals.ts).
+        db.planProposals.findMany({
+          where: { kind: "budget", status: "dismissed" },
+          select: { key: true },
+        }),
       ]);
       // Spec step 94: where it went, as a chart, when no one category was asked about.
       const block = intent.category ? null : spendingBlock(transactions, asOf, intent.month);
-      const answer = spendingReply(intent, transactions, asOf, budgets, { drawn: block !== null });
+      const answer = spendingReply(intent, transactions, asOf, budgets, {
+        drawn: block !== null,
+        declined: declined.map((p) => p.key.replace(/^budget:/, "")),
+      });
       return block ? { ...answer, refs: { ...answer.refs, block } } : answer;
     }
     case "coming_up": {
