@@ -19,7 +19,9 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { cachedCopy } from "@/lib/read-cache";
+import { dataReach } from "@/lib/data-reach";
 import { scopedFor } from "@/lib/db-scoped";
+import { todayOf } from "@/lib/today";
 import { runsBusiness, type SelfEmployment } from "./business-rules";
 import { partnerFor } from "./partner";
 
@@ -141,8 +143,13 @@ async function loadHouseholdFrom(
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<Household> {
   const db = scopedFor(userId, client);
-  const since = new Date(now.getTime() - RENT_LOOKBACK_DAYS * 86_400_000);
-  const days = (n: number) => new Date(now.getTime() - n * 86_400_000);
+  // Each look back counts the person's days from where their data reaches (src/lib/data-reach.ts):
+  // from the moment, a rent payment fell out at 7pm, not at their midnight, and an old upload's
+  // rent was forgotten a day at a time, taking the renters gap with it (gate C, 11-15).
+  const today = await todayOf(userId, { client, now });
+  const reach = Date.parse(`${await dataReach(db, today)}T00:00:00Z`);
+  const days = (n: number) => new Date(reach - n * 86_400_000);
+  const since = days(RENT_LOOKBACK_DAYS);
   const [
     saved,
     loans,
@@ -275,7 +282,7 @@ async function loadHouseholdFrom(
         sumOf(sideWork, "TRANSPORTATION_GAS") / (BUSINESS_LOOKBACK_DAYS / (365 / 12)),
       ),
       miles:
-        taxProfile?.businessMilesYear === now.getUTCFullYear()
+        taxProfile?.businessMilesYear === Number(today.slice(0, 4))
           ? (taxProfile.businessMiles ?? 0)
           : 0,
       equipmentCents: sumOf(sideWork, "GENERAL_MERCHANDISE_ELECTRONICS"),
