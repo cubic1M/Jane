@@ -20,7 +20,6 @@ import { deliverChatNotifications } from "@/lib/jane-agent/notify";
 import { retryControllerStep, runController } from "@/lib/controller";
 import type { OnlyPeople } from "@/lib/only-people";
 import { systemDb } from "@/lib/system-db";
-import { executeAction } from "@/lib/connectors/pipeline";
 
 const WHY = "The job queue works across people";
 
@@ -41,9 +40,7 @@ export type JobKind =
   | "controller_run"
   | "controller_step"
   // An upload's work after its rows are saved (src/lib/import/background.ts).
-  | "import_finish"
-  // A connector action the person said yes to, once its hold is over (src/lib/connectors/).
-  | "connector_execute";
+  | "import_finish";
 export type JobPayload = { userId: string; actionId?: string; step?: string; importRunId?: string };
 // Tests pass only the handlers they need; a job with no handler fails like any error.
 export type Handlers = Partial<Record<JobKind, (payload: JobPayload) => Promise<unknown>>>;
@@ -65,7 +62,6 @@ const HANDLERS: Required<Handlers> = {
   chat_notify: ({ userId }) => deliverChatNotifications(userId),
   controller_run: ({ userId }) => runController(userId),
   controller_step: ({ userId, step }) => retryControllerStep(userId, step ?? ""),
-  connector_execute: (payload) => executeAction(payload.userId, actionIdOf(payload)),
   import_finish: async (payload) => {
     if (!payload.importRunId) throw new Error("This job needs an importRunId");
     const finished = await finishImport(payload.userId, payload.importRunId);
