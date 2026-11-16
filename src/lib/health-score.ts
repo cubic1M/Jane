@@ -5,6 +5,7 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { loadDetectionInput } from "@/detection/input";
 import type { DetectionInput } from "@/detection/types";
 import { addDays } from "@/detection/units";
+import { previousMonth } from "@/insights/check-in";
 import { spendingInsights } from "@/insights/spending";
 import {
   oneOffCharges,
@@ -48,10 +49,6 @@ export type HealthView = HealthScore & {
 };
 
 const monthOf = (day: string) => day.slice(0, 7);
-const previousMonth = (month: string) => {
-  const [y, m] = month.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 2, 1)).toISOString().slice(0, 7);
-};
 
 // The inputs, from the bank data and goals.
 export async function healthInput(

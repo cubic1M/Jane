@@ -6,6 +6,7 @@ import {
   type TaxTagKind,
 } from "@/config/tax";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { previousMonth } from "@/insights/check-in";
 import { adviceMode } from "@/lib/advice-mode";
 import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
 import { checkFrom } from "@/lib/tax-withholding";
@@ -127,11 +128,6 @@ export type TaxSnapshot = {
     priorReturns?: PriorReturnView[];
     returnReviews?: ReturnReview[];
   } | null;
-};
-
-const previousMonth = (date: string) => {
-  const [y, m] = date.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 2, 1)).toISOString().slice(0, 7);
 };
 
 export async function loadTaxSnapshot(
