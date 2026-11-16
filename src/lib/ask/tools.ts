@@ -257,7 +257,11 @@ export async function runAskTool(
         (last, t) => (last === null || t.date > last ? t.date : last),
         null,
       );
-      const ended = endedOn(historyEnds, today);
+      // A month after the last one with anything in it isn't $0 either, however recent that was:
+      // October's statement asked about on Nov 3 (gate E, 11-16).
+      const ended =
+        endedOn(historyEnds, today) ??
+        (historyEnds !== null && historyEnds.slice(0, 7) < today.slice(0, 7) ? historyEnds : null);
       const seen = (month: string) =>
         historyStarts !== null &&
         month >= historyStarts.slice(0, 7) &&
