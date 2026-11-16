@@ -1,4 +1,5 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
+import type { RentTransfer } from "@/detection/rent-transfers";
 import { formatCents } from "@/lib/money";
 import type { MessageSource } from "./source";
 
@@ -6,6 +7,17 @@ import type { MessageSource } from "./source";
 // Venmo near the start of each month, filed as a transfer. A yes files those payments as rent
 // (spending, bills, the idle-cash cushion), past and future; a no keeps them as transfers. Asked
 // once per payee (src/lib/rent-question.ts).
+// The question, its buttons and the payee they answer for: the message, and the answer to "how much
+// do I pay in rent?" while it waits (src/lib/jane-agent/recurring-replies.ts).
+export const rentAsk = (rent: RentTransfer) => ({
+  body: `You send ${rent.name} ${formatCents(rent.amountCents)} near the start of each month (${rent.months} months so far). Is this your rent? If it is, I'll count it as rent in your spending, your bills and your cushion.`,
+  refs: { rentKey: rent.merchantKey },
+  actions: [
+    { id: "rent.yes" as const, label: "Yes, it's rent", kind: "secondary" as const },
+    { id: "rent.no" as const, label: "No", kind: "secondary" as const },
+  ],
+});
+
 export const rentQuestionSource: MessageSource = {
   key: "rent_question",
   gather(snapshot) {
@@ -14,12 +26,7 @@ export const rentQuestionSource: MessageSource = {
     return [
       {
         kind: "decision" as const,
-        body: `You send ${rent.name} ${formatCents(rent.amountCents)} near the start of each month (${rent.months} months so far). Is this your rent? If it is, I'll count it as rent in your spending, your bills and your cushion.`,
-        refs: { rentKey: rent.merchantKey },
-        actions: [
-          { id: "rent.yes" as const, label: "Yes, it's rent", kind: "secondary" as const },
-          { id: "rent.no" as const, label: "No", kind: "secondary" as const },
-        ],
+        ...rentAsk(rent),
         dedupeKey: rent.merchantKey,
         priority: MESSAGE_PRIORITY.rent_question,
       },

@@ -4,6 +4,7 @@ import { nameMatches } from "./names";
 import type { Charge, Recurring } from "./recurring";
 import { clarifyReply, findingReply, type Reply } from "./replies";
 import type { Snapshot } from "./snapshot";
+import { rentAsk } from "./sources/rent-question";
 import { dateAndDays } from "./sources/source";
 import { type MessageAction, openLink } from "./types";
 
@@ -60,6 +61,11 @@ export function costReply(
   asOf: string,
 ): Reply | null {
   const matches = matchCharges(recurring.charges, intent.target);
+  // Rent sent to a person reads as a transfer until they answer "Is this your rent?", so the month's
+  // rent spending would say $0.00 (debugger 11-16: $900 by Zelle on each 1st): the question instead.
+  if (matches.length === 0 && /\brent\b/i.test(intent.target) && snapshot?.rentQuestion) {
+    return rentAsk(snapshot.rentQuestion);
+  }
   if (matches.length === 0) return null;
   if (matches.length > 1) {
     return clarifyReply(
