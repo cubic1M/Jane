@@ -217,7 +217,7 @@ async function HubContent({ searchParams }: { searchParams: PageProps<"/home">["
     ]);
   if (!top) redirect("/connect");
   // Too old to say what's due or what's current: not "Nothing due", not "updated just now".
-  const oldStatements = staleStatementsEnd(read._max.date, new Date());
+  const oldStatements = staleStatementsEnd(read._max.date, top.hero.asOf);
   const { home } = top;
   const todayCents = top.hero.netWorth?.todayCents ?? 0;
 

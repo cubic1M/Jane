@@ -156,7 +156,7 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
       const read = await scopedFor(userId, client).transactions.aggregate({
         _max: { date: true },
       });
-      return safeReply(null, asOf, { statementsEnd: staleStatementsEnd(read._max.date, now) });
+      return safeReply(null, asOf, { statementsEnd: staleStatementsEnd(read._max.date, asOf) });
     }
     case "paycheck": {
       const plan = await latestPaycheckPlan(userId, { client, now });

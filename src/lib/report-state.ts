@@ -48,13 +48,19 @@ export function shortUploadDays(
 
 // The last day the statements reach (YYYY-MM-DD) when that's over STALE_UPLOAD_DAYS ago, so the
 // report can say its findings describe then; null when they're recent or there are none.
+// Counted in the person's days (`today`, src/lib/today.ts), not hours since UTC midnight: the
+// calendar sweep (11-16) saw the chat say the statements were old at 7pm Pacific and ask for a
+// balance at 3pm the same day.
 export function staleStatementsEnd(
   last: Date | null,
-  now: Date,
+  today: string,
   after = STALE_UPLOAD_DAYS,
 ): string | null {
   if (!last) return null;
-  return now.getTime() - last.getTime() > after * DAY_MS ? last.toISOString().slice(0, 10) : null;
+  const end = last.toISOString().slice(0, 10);
+  return Date.parse(`${today}T00:00:00Z`) - Date.parse(`${end}T00:00:00Z`) > after * DAY_MS
+    ? end
+    : null;
 }
 
 // With nothing found in statements this old, "Nothing to fix right now" says more than Jane knows.

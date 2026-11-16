@@ -207,13 +207,13 @@ describe("nothingHeading", () => {
 });
 
 describe("staleStatementsEnd", () => {
-  const now = new Date("2026-10-31T12:00:00Z");
+  const today = "2026-10-31";
   it("names the last day when the newest statement line is over STALE_UPLOAD_DAYS old", () => {
-    expect(staleStatementsEnd(new Date("2026-04-23T00:00:00Z"), now)).toBe("2026-04-23");
+    expect(staleStatementsEnd(new Date("2026-04-23T00:00:00Z"), today)).toBe("2026-04-23");
   });
   it("says nothing for statements reaching this month, or none at all", () => {
-    expect(staleStatementsEnd(new Date("2026-10-20T00:00:00Z"), now)).toBeNull();
-    expect(staleStatementsEnd(null, now)).toBeNull();
+    expect(staleStatementsEnd(new Date("2026-10-20T00:00:00Z"), today)).toBeNull();
+    expect(staleStatementsEnd(null, today)).toBeNull();
   });
 });
 
