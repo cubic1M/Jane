@@ -1,5 +1,6 @@
 import { conciergeMode } from "@/lib/concierge-mode";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { scopedFor } from "@/lib/db-scoped";
 import { loadPayoff } from "@/lib/debt-plan";
 import { loadDebts } from "@/lib/debts";
 import { loadTransfers } from "@/lib/balance-transfers";
@@ -209,8 +210,22 @@ export async function answerDebt(
       return familyLoansReply(await loadFamilyLoans(userId, { client, now }));
     case "student_long":
       return longGameReply(await loadStudentLongGame(userId, { client, now }));
-    case "card_interest":
-      return cardInterestReply(await loadCardInterest(userId, { client, now }));
+    case "card_interest": {
+      const data = await loadCardInterest(userId, { client, now });
+      const finding = data.available
+        ? null
+        : await scopedFor(userId, client).findings.findFirst({
+            where: { type: "card_interest", status: { in: ["new", "shown"] } },
+            orderBy: { createdAt: "desc" },
+            select: { id: true, title: true, annualSavingsCents: true },
+          });
+      return cardInterestReply(
+        data,
+        finding
+          ? { findingId: finding.id, title: finding.title, yearlyCents: finding.annualSavingsCents }
+          : null,
+      );
+    }
     case "report_fixes":
       return reportFixReply(await loadReportFixes(userId, { client, now }));
     case "medical_bills":

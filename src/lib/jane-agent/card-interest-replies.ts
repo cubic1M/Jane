@@ -21,11 +21,29 @@ export function firstAsk(data: CardInterest) {
   return data.cards.find((c) => c.rate && !c.rate.sent) ?? null;
 }
 
-export function cardInterestReply(data: CardInterest): Reply {
+// The card interest Jane found in the person's transactions: its finding (the title says what was
+// paid, on which card and over how long: "$84.81 in interest on Chase card in the last 3 months")
+// and what that comes to a year.
+export type InterestSeen = { findingId: string; title: string; yearlyCents: number | null };
+
+// Without a lending partner (every real account) there are no rate requests or promotions to
+// track, but the interest is still in the transactions (debugger 11-16: "how much interest am I
+// paying on my credit card?" got "Cutting card interest needs a lending partner" from someone who
+// had paid $84.81 in three months). The answer is what was paid, and the finding's own steps.
+export function cardInterestReply(data: CardInterest, seen: InterestSeen | null = null): Reply {
   if (!data.available) {
+    if (!seen) {
+      return {
+        body: "I don't see any card interest in your accounts. Paying each card in full every month keeps it that way.",
+        actions: [],
+        refs: {},
+      };
+    }
+    const yearly =
+      seen.yearlyCents === null ? "" : `, about ${formatCents(seen.yearlyCents)} a year`;
     return {
-      body: "Cutting card interest needs a lending partner, and there isn't one for your accounts yet.",
-      actions: [],
+      body: `You paid ${seen.title}${yearly}. Paying the balance off ends it; until then, asking the card company for a lower rate cuts it.`,
+      actions: [openLink("Show me how", `/report/${seen.findingId}`)],
       refs: {},
     };
   }
