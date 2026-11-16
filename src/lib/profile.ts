@@ -303,7 +303,7 @@ async function loadProfileInputFrom(
     },
     extras: {
       householdMembers,
-      ...(await sectorFigures(userId, client, now)),
+      ...(await sectorFigures(userId, client, now, today)),
       practiceIdeas: await import("@/lib/practice/ideas").then((m) =>
         m.openPracticeIdeas(userId, { client, now }),
       ),
@@ -319,7 +319,10 @@ async function loadProfileInputFrom(
 // tools use (so the two cannot differ): the employer match left on the table, and the RSU
 // withholding that falls short. The insurance shop's saving and the practice ideas are loaded
 // late: they reach this file again.
-async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
+// `today` is the person's own day (src/lib/today.ts): this month, last month and this year are
+// theirs, not UTC's (gate C's calendar sweep, 11-15: at 7pm on Oct 31 in Los Angeles it was
+// already November in UTC, and the goals' room this month changed).
+async function sectorFigures(userId: string, client: PrismaClient, now: Date, today: string) {
   const db = scopedFor(userId, client);
   const hasStock =
     (await db.accounts.count({ where: { subtype: "stock plan" } })) > 0 ||
@@ -364,13 +367,13 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     db.yearPlans.findFirst({ orderBy: { startMonth: "desc" }, select: { months: true } }),
     // Spec step 244: last month's close, if it's begun.
     db.monthCloses.findFirst({
-      where: { month: previousMonthOf(now) },
+      where: { month: previousMonthOf(today) },
       select: { status: true },
     }),
     // The tax left to cover, as Safe to spend holds it back.
     taxSetAsideForDetector(userId, { client, now }),
   ]);
-  const month = now.toISOString().slice(0, 7);
+  const month = today.slice(0, 7);
   const planMonths = Array.isArray(plan?.months)
     ? (plan.months as unknown as Parameters<typeof roomFromPlan>[0])
     : [];
@@ -410,7 +413,7 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     // Spec step 272: the latest checked draft return.
     draftReturn: draft,
     // Taxes QA: what an HSA's bank reports going into it this year.
-    hsaContributions: await hsaContributionsOf(db, now),
+    hsaContributions: await hsaContributionsOf(db, today),
     hasPracticePortfolio: practice > 0,
   };
 }
@@ -431,21 +434,26 @@ function healthPlanOf(
 
 // This year's contributions on the person's HSA accounts, as the bank reports them on the
 // account (taxes QA). Null without an HSA.
-async function hsaContributionsOf(db: ReturnType<typeof scopedFor>, now: Date) {
+async function hsaContributionsOf(db: ReturnType<typeof scopedFor>, today: string) {
   const hsas = await db.accounts.findMany({ where: { subtype: "hsa" }, select: { id: true } });
   if (hsas.length === 0) return null;
   const rows = await db.investmentTransactions.findMany({
     where: {
       accountId: { in: hsas.map((a) => a.id) },
       subtype: "contribution",
-      date: { gte: new Date(Date.UTC(now.getUTCFullYear(), 0, 1)), lte: now },
+      date: {
+        gte: new Date(`${today.slice(0, 4)}-01-01T00:00:00Z`),
+        lte: new Date(`${today}T00:00:00Z`),
+      },
     },
     select: { amountCents: true },
   });
   return { cents: rows.reduce((s, r) => s + Math.abs(r.amountCents), 0), count: rows.length };
 }
-const previousMonthOf = (now: Date) =>
-  new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)).toISOString().slice(0, 7);
+const previousMonthOf = (today: string) =>
+  new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 2, 1))
+    .toISOString()
+    .slice(0, 7);
 
 export async function loadProfile(userId: string, options: Options = {}): Promise<Profile> {
   return buildProfile(await loadProfileInput(userId, options));
