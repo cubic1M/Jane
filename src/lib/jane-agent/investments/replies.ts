@@ -137,6 +137,11 @@ export function matchAccounts(
 const line = (h: HoldingView) =>
   `- ${h.name}${h.ticker ? ` (${h.ticker})` : ""}: ${formatCents(h.valueCents)}`;
 
+// Where the figures came from, mid-sentence: an upload is labelled "Your upload" elsewhere
+// (debugger 11-16: "From Your upload.").
+const fromWhere = (institution: string | null) =>
+  institution === null ? "your bank" : institution.replace(/^Your /, "your ");
+
 export function holdingsReply(data: Investments, named: string | null): Reply {
   if (data.accounts.length === 0) {
     return {

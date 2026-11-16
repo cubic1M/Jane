@@ -496,7 +496,10 @@ async function InvestmentsContent({
         <BrokerageAsks user={user} />
       </Suspense>
 
-      {!backtests.advice && (
+      {/* Only for someone with nothing here yet: with their own holdings on the page, "use a private
+          window to stay signed in" was one more thing to read (debugger 11-16, a student with a
+          Fidelity upload). */}
+      {!backtests.advice && !facts && (
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Jane can also run a practice portfolio on made-up money.{" "}
           <Link href="/" target="_blank" rel="noopener" className={LINK}>
