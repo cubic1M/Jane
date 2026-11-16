@@ -107,8 +107,9 @@ async function ReportContent({
         )
       : 0;
   const uploadDays = shortUploadDays(uploaded._min.date, uploaded._max.date);
-  const toUnseenCards = await unseenCardPaymentsMonthly(db, await todayOf(user.id));
-  const oldStatements = staleStatementsEnd(read._max.date, new Date());
+  const today = await todayOf(user.id);
+  const toUnseenCards = await unseenCardPaymentsMonthly(db, today);
+  const oldStatements = staleStatementsEnd(read._max.date, today);
   const transactions = accounts.reduce((sum, a) => sum + a.transactionCount, 0);
   const state = reportState({
     transactions,
