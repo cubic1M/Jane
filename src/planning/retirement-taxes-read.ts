@@ -1,3 +1,4 @@
+import { dataEnd } from "@/detection/helpers";
 import { DETECTOR_RATES } from "@/config/detectors";
 import { TAXABLE_GAINS_SHARE } from "@/config/retirement-income";
 import { IRA_DISTRIBUTION, IRMAA_WATCH, SOCIAL_SECURITY_PAYEE } from "@/config/retirement-taxes";
@@ -59,7 +60,12 @@ export function readRetirementTaxes(profile: Profile, data: ProfileInput): Retir
   const year = Number(profile.today.slice(0, 4));
   const status: Status =
     f.household.value === "couple" || f.household.value === "family" ? "married_joint" : "single";
-  const since = new Date(Date.parse(profile.today) - 365 * 86_400_000).toISOString().slice(0, 10);
+  // The last 12 months back from where the data ends (gate C's calendar sweep, 11-16: from today,
+  // a bank that hadn't synced lost a month of income each month and the taxable part of Social
+  // Security fell by itself).
+  const since = new Date(Date.parse(dataEnd(data.transactions, profile.today)) - 365 * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
   const recent = data.transactions.filter((t) => t.date > since && t.amountCents < 0);
   const ssRows = recent.filter((t) => SOCIAL_SECURITY_PAYEE.test(t.description));
   // Social Security is filed as a pension too (INCOME_RETIREMENT_PENSION): never counted twice.

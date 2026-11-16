@@ -1,3 +1,4 @@
+import { dataEnd } from "@/detection/helpers";
 import { DETECTOR_RATES } from "@/config/detectors";
 import { HEALTH_PREMIUM, HSA_DEPOSIT, MARKETPLACE_PAYEE } from "@/config/health-taxes";
 import { PROPERTY_TAX_PAYEE } from "@/config/home-taxes";
@@ -77,7 +78,11 @@ const statusOf = (household: unknown) =>
 export function readHealthTaxes(profile: Profile, data: ProfileInput): HealthTaxes {
   const f = profile.facts;
   const year = Number(profile.today.slice(0, 4));
-  const month = Number(profile.today.slice(5, 7));
+  // The month the data reaches, not today's (gate C's calendar sweep, 11-16: with a bank that
+  // hadn't synced, each new month counted as one more with no pay and no HSA deposits, so the
+  // year's pace sagged on the 1st). Before this year's data, no month of it is complete.
+  const through = dataEnd(data.transactions, profile.today);
+  const month = through.startsWith(String(year)) ? Number(through.slice(5, 7)) : 1;
   const inYear = (t: { date: string; amountCents: number }) =>
     t.amountCents > 0 && t.date.startsWith(String(year));
   const pattern = f.income_pattern.value;
