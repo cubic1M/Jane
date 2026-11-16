@@ -1,7 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { categorizeByRules, payoutByRules } from "./rules";
+import { categorizeByRules, payFiledAsBought, payoutByRules } from "./rules";
 
 const CARD_PAYMENT = "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT";
 
@@ -39,7 +39,9 @@ export async function reapplyRules(
     const input = { description: t.description, amountCents: t.amountCents, hints: {} };
     const placedByOthers = t.categorySource === "plaid" || t.categorySource === "llm";
     if (placedByOthers && t.pfcPrimary === "INCOME") continue;
-    const category = placedByOthers ? payoutByRules(input) : categorizeByRules(input);
+    const category = placedByOthers
+      ? (payoutByRules(input) ?? payFiledAsBought(input, t.pfcPrimary))
+      : categorizeByRules(input);
     if (!category || category.detailed === t.pfcDetailed) continue;
     // Regular money by Zelle that regular-payers.ts made income: the rules only see a transfer, and
     // moving it back would re-sort it, and run detection again, every night (debugger 11-02).

@@ -54,6 +54,26 @@ export function payoutByRules(t: RuleInput): Category | null {
   return category && PAYOUTS.includes(category.detailed) ? category : null;
 }
 
+// Pay the bank filed under something bought: Plaid files "Sweetgreen inc payroll ppd id" under
+// restaurants, so a student's weekly $810 netted against what they spent as a refund, and the
+// money health score read about 12 cents a month of income (debugger 11-16, a Plaid sandbox
+// walk). Money in filed as a transfer, a loan or income stays as filed. Null for anything else.
+const FILED_NOT_BOUGHT: readonly string[] = [
+  "INCOME",
+  "TRANSFER_IN",
+  "TRANSFER_OUT",
+  "LOAN_DISBURSEMENTS",
+  "LOAN_PAYMENTS",
+];
+
+export function payFiledAsBought(t: RuleInput, filedPrimary: string | null): Category | null {
+  if (t.amountCents >= 0 || filedPrimary === null || FILED_NOT_BOUGHT.includes(filedPrimary)) {
+    return null;
+  }
+  const category = categorizeByRules({ ...t, hints: {} });
+  return category?.detailed === "INCOME_SALARY" ? category : null;
+}
+
 export function categorizeByRules({ description, amountCents, hints }: RuleInput): Category | null {
   // Bank of America's ACH lines put "DES:" between the company and the entry ("STRIPE
   // DES:TRANSFER", "IRS DES:USATAXPYMT"): read as one phrase, so "STRIPE TRANSFER" is the payout
