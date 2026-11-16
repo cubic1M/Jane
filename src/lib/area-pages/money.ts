@@ -108,6 +108,9 @@ export type MoneyTreeInput = {
     name: string;
     startCents: number;
     estimated?: boolean;
+    // The statement's balance and its day, when today's is walked forward from it.
+    fromCents?: number;
+    fromOn?: string;
     lowCents: number;
     date: string;
   }[];
@@ -235,7 +238,13 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
         line: `${l.name}, ${dayLabel(l.date)}`,
         status: under ? "act" : "good",
         figure: shortMoney(l.lowCents),
-        summary: `${l.estimated ? "About " : ""}${formatCents(l.startCents)} today. Lowest point about ${formatCents(l.lowCents)} on ${dayLabel(l.date)}.`,
+        // An old statement's balance is said with its day, then today's estimate: "About $12,511.09
+        // today" alone read as a second balance beside net worth's $10,597.07 (debug 2, 11-16).
+        summary: `${
+          l.estimated && l.fromOn !== undefined && l.fromCents !== undefined
+            ? `${formatCents(l.fromCents)} on ${dayLabel(l.fromOn)}, about ${formatCents(l.startCents)} today`
+            : `${l.estimated ? "About " : ""}${formatCents(l.startCents)} today`
+        }. Lowest point about ${formatCents(l.lowCents)} on ${dayLabel(l.date)}.`,
         cents: under ? input.cushionCents - l.lowCents : undefined,
       }),
     );
