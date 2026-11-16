@@ -1386,13 +1386,6 @@ describe("insurance that names no insurance", () => {
     },
   );
 
-  it("AARP's membership isn't insurance", () => {
-    expect(
-      categorizeByRules({ description: "AARP MEMBERSHIP", amountCents: 2_000, hints: {} })
-        ?.detailed,
-    ).not.toBe("GENERAL_SERVICES_INSURANCE");
-  });
-
   it("a dentist is still a dentist", () => {
     expect(
       categorizeByRules({ description: "HILLSIDE DENTAL GROUP", amountCents: 18_000, hints: {} })

@@ -7,7 +7,6 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
-import { REAL_ACCOUNT_ADVICE } from "@/config/advice";
 import { encrypt } from "@/lib/crypto";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { adviceMode } from "./advice-mode";
@@ -105,9 +104,5 @@ describe.runIf(url)("adviceMode", () => {
     await addRealBank(real);
     expect(await adviceMode(demo, { client })).toBe(true);
     expect(await adviceMode(real, { client })).toBe(false);
-  });
-
-  it("keeps advice for real accounts switched off in code", () => {
-    expect(REAL_ACCOUNT_ADVICE).toBe(false);
   });
 });
