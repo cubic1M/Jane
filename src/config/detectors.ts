@@ -164,6 +164,10 @@ export const DETECTOR_RATES = {
   tax: {
     // Pay on deposits is take-home; gross is about this many times it.
     netToGross: 1.3,
+    // Near the top of its phase-out the Saver's Match is a few dollars a year: below this it isn't
+    // one of the day's cards (debugger 11-16: "Check the 2027 Saver's Match, earn $6/yr", 45%
+    // sure). The same floor as a tax saving worth a message (src/config/location.ts).
+    saversMatchMinCents: 5_000,
     // Company stock paid as RSUs is withheld at this flat federal rate (supplemental wages).
     rsuFlatWithholding: 0.22,
     // Without a vest schedule: one year's vesting is about this share of the stock plan.

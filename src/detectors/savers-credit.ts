@@ -104,7 +104,7 @@ const saversMatch: Detector = {
     const people = status === "married_joint" ? 2 : 1;
     const share = agi <= from ? 1 : (to - agi) / (to - from);
     const match = Math.round(SAVERS_MATCH.maxContribution * SAVERS_MATCH.rate * share) * people;
-    if (match <= 0) return null;
+    if (match < DETECTOR_RATES.tax.saversMatchMinCents) return null;
     const subtypes = data.accounts.map((a) => (a.subtype ?? "").toLowerCase());
     const has = (list: readonly string[]) => subtypes.some((s) => list.includes(s));
     const lines = [
