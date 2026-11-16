@@ -2,6 +2,7 @@ import { FALLBACK_AMOUNT_TOLERANCE, NEXT_CHARGE_WINDOW_DAYS } from "@/config/det
 import {
   IRREGULAR_ACTIVE_WITHIN_INTERVALS,
   IRREGULAR_EXCLUDED_ACCOUNT_TYPES,
+  IRREGULAR_EXCLUDED_DETAILED,
   IRREGULAR_EXCLUDED_PRIMARIES,
   IRREGULAR_STREAM_FREQUENCIES,
   SEASONAL_MIN_EXTRA_CENTS,
@@ -95,7 +96,8 @@ function eligible(input: DetectionInput): DetectionTransaction[] {
     (t) =>
       t.amountCents > 0 &&
       !excluded.has(t.accountId) &&
-      !IRREGULAR_EXCLUDED_PRIMARIES.includes(t.pfcPrimary ?? ""),
+      !IRREGULAR_EXCLUDED_PRIMARIES.includes(t.pfcPrimary ?? "") &&
+      !IRREGULAR_EXCLUDED_DETAILED.includes(t.pfcDetailed ?? ""),
   );
 }
 
@@ -111,6 +113,7 @@ function fromStreams(input: DetectionInput, transactions: DetectionTransaction[]
   const items = streams.flatMap((s) => {
     if (!s.active || !s.frequency || !IRREGULAR_STREAM_FREQUENCIES.includes(s.frequency)) return [];
     if (IRREGULAR_EXCLUDED_PRIMARIES.includes(s.pfcPrimary ?? "")) return [];
+    if (IRREGULAR_EXCLUDED_DETAILED.includes(s.pfcDetailed ?? "")) return [];
     if (s.accountId !== null && excluded.has(s.accountId)) return [];
     const next = expectedDates(s, input.asOf, until)[0];
     if (!next) return [];
