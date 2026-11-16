@@ -225,6 +225,7 @@ async function InvestmentsContent({
     byHerself,
     profile,
     max,
+    months,
     hasMonths,
     area,
   } = await loadInvestingArea(user.id);
@@ -371,7 +372,7 @@ async function InvestmentsContent({
   details[itemId("done", "months")] = hasMonths ? (
     <>
       <ul className="flex flex-col gap-2 text-sm">
-        {data.months.map((m) => (
+        {months.map((m) => (
           <li key={m.month} className="grid grid-cols-[5.5rem_1fr_7rem] items-center gap-2">
             <span className="text-zinc-500">{monthLabel(m.month)}</span>
             <span className="flex h-3 overflow-hidden bg-zinc-100 dark:bg-zinc-900" aria-hidden>

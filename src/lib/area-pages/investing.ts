@@ -16,6 +16,18 @@ import {
 // news alerts, the plan, kinds of accounts, costs and care) → their items. Pure: the page loads
 // the same records it always did; the practice logic stays in src/lib/practice.
 
+// The page "How your money really did" opens.
+const PERFORMANCE_HREF = "/investments/performance";
+
+// The months the Month by month list shows: from the first with a balance, and only once two have
+// one (debug 2, 11-16: one positions upload listed Dec 2025 to Oct 2026 as eleven dashes, then
+// November's total, the same figure as "In total" above it).
+export function monthsToShow<T extends { totalCents: number | null }>(months: readonly T[]): T[] {
+  const first = months.findIndex((m) => m.totalCents !== null);
+  const shown = first === -1 ? [] : months.slice(first);
+  return shown.filter((m) => m.totalCents !== null).length >= 2 ? shown : [];
+}
+
 export const INVESTING_BRANCHES = {
   ideas: "Jane's ideas",
   owned: "What you own",
@@ -329,7 +341,8 @@ export function investingTree(input: InvestingTreeInput): AreaTree {
         summary: "Retirement and other investing, at each month's end.",
       }),
     );
-  if (input.accounts.length > 0)
+  // Its page, not one the beta hides: the item would only reopen itself (debug 2, 11-16).
+  if (input.accounts.length > 0 && !isHiddenPage(PERFORMANCE_HREF))
     done.push(
       item("done", "performance", {
         label: "How your money really did",
