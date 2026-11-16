@@ -101,8 +101,24 @@ export type PlansTreeInput = {
   year: number;
   yearly: { monthlyCents: number; bills: number };
   // known: how many have a balance (uploaded card statements carry none).
-  debt: { accounts: number; owedCents: number; known?: number };
+  debt: { accounts: number; owedCents: number; known?: number; cards?: number; mortgage?: boolean };
 };
+
+// "On 2 loans.", "On 1 card.", "On 3 cards and loans, not the mortgage.": what the payoff plan
+// covers, saying the mortgage is left out only when there is one (debug 2, 11-16: "On 2 cards and
+// loans, not the mortgage." for a student with a car loan and a student loan).
+function debtLine(debt: PlansTreeInput["debt"]): string {
+  const { accounts, cards } = debt;
+  const what =
+    cards === undefined
+      ? plural(accounts, "card or loan", "cards and loans")
+      : cards === accounts
+        ? plural(accounts, "card")
+        : cards === 0
+          ? plural(accounts, "loan")
+          : `${accounts} cards and loans`;
+  return `On ${what}${debt.mortgage === false ? "" : ", not the mortgage"}.`;
+}
 
 // When a date comes, in the words for what it is: a bill is due, a return window or a trial
 // ends, a renewal is just a day (debugger 11-15: "Return window for West Marine: Due today.",
@@ -259,7 +275,7 @@ export function plansTree(input: PlansTreeInput): AreaTree {
           item("money", "debt", {
             label: "Paying off cards and loans",
             figure: input.debt.known === 0 ? "Not known" : shortMoney(input.debt.owedCents),
-            summary: `On ${plural(input.debt.accounts, "card or loan", "cards and loans")}, not the mortgage.`,
+            summary: debtLine(input.debt),
           }),
         ]
       : []),

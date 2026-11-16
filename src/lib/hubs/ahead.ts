@@ -27,7 +27,9 @@ export type AheadData = {
   yearly: { monthlyCents: number; bills: number };
   deadlines: { next: Pick<Deadline, "title" | "date"> | null; soon: number };
   // known: how many of the accounts have a balance (uploaded card statements carry none).
-  debt: { accounts: number; owedCents: number; known?: number };
+  // cards: how many of them are cards; mortgage: whether a mortgage was left out (both absent:
+  // not known, as before).
+  debt: { accounts: number; owedCents: number; known?: number; cards?: number; mortgage?: boolean };
   // The newest open checklist, and how many are open.
   lifeEvents: { open: number; newest: { title: string; done: number; total: number } | null };
   // Every date in the next HUB_DEADLINE_DAYS, soonest first, for the Plans & goals tree.
@@ -192,6 +194,8 @@ export async function loadAheadHub(
         accounts: debts.length,
         owedCents: debts.reduce((sum, d) => sum + (d.balanceCents ?? 0), 0),
         known: debts.filter((d) => d.balanceCents !== null).length,
+        cards: debts.filter((d) => d.kind === "card").length,
+        mortgage: debts.length < book.debts.length,
       };
     })(),
     lifeEvents: {
