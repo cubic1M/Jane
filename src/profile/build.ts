@@ -341,6 +341,20 @@ export function monthsForRate(txs: readonly ProfileTx[], today: string): number 
 // that runs to yesterday (a bank's usual) left out last year's payday on the day this year's is
 // due and not in yet, so pay read 23 paychecks a year, not 24 (debugger 11-15: the demo person's
 // income fell 4% at midnight and the car refinance was turned down, over the debt limit).
+// A payment that says a car: its loan, gas, or car words, parking, tolls, cover and upkeep
+// (src/config/life-facts.ts).
+const isCarSign = (t: ProfileTx) =>
+  t.pfc === "LOAN_PAYMENTS_CAR_PAYMENT" ||
+  t.pfc === "TRANSPORTATION_GAS" ||
+  CAR_WORDS.test(t.description) ||
+  hitsOf([t], CAR_SIGNAL).matches > 0;
+
+// How many of the year's payments say a car, as has_car counts them: what a card resting on
+// that guess can weigh (debugger 11-16: one Shell charge made "Check your car is insured").
+export function carSignCount(input: Pick<ProfileInput, "transactions" | "today">): number {
+  return inYear(input.transactions, input.today).filter(isCarSign).length;
+}
+
 const inYear = (txs: readonly ProfileTx[], today: string) => {
   const end = txs.reduce((a, t) => (t.date > a && t.date <= today ? t.date : a), "") || today;
   const cutoff = `${Number(end.slice(0, 4)) - 1}${end.slice(4)}`;
@@ -594,15 +608,7 @@ function householdFacts(b: Builder, { income, earners }: { income: ProfileTx[]; 
     set("has_pmi", mortgageLiab.hasPmi, "seen", "mortgage records", 1);
   else unknown("has_pmi");
 
-  const carSigns =
-    count(
-      (t) =>
-        t.pfc === "LOAN_PAYMENTS_CAR_PAYMENT" ||
-        t.pfc === "TRANSPORTATION_GAS" ||
-        CAR_WORDS.test(t.description) ||
-        // Parking, tolls, cover and upkeep (src/config/life-facts.ts).
-        hitsOf([t], CAR_SIGNAL).matches > 0,
-    ) + accounts.filter((a) => a.subtype === "auto").length;
+  const carSigns = count(isCarSign) + accounts.filter((a) => a.subtype === "auto").length;
   // Still a guess however many signs: gas can be a borrowed or rented car, and the cover
   // suggestions read this as "probably" (the insurance lane's tests rest on it).
   set("has_car", carSigns > 0, "guessed", "car payments, gas, tolls or auto cover", carSigns);
