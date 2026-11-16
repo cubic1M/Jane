@@ -1,3 +1,5 @@
+import type { BrokerageAsks } from "@/lib/investing/brokerage-balance";
+import { listOf } from "@/planning/tax-profile";
 import { GOALS, INVESTMENT_AUTOPILOT, PROFILE_QUESTIONS, RISK_LEVELS } from "@/config/investing";
 import { portfolioNote } from "@/insights/portfolio-note";
 import { RETURNS_NOTE } from "@/config/returns";
@@ -142,7 +144,23 @@ export function matchAccounts(
 const line = (h: HoldingView) =>
   `- ${h.name}${h.ticker ? ` (${h.ticker})` : ""}: ${formatCents(h.valueCents)}`;
 
-export function holdingsReply(data: Investments, named: string | null): Reply {
+// sent: what went to investing apps lately (brokerageAsks, as the Investments page shows it), so
+// money sent to Fidelity isn't answered "I don't see any investment accounts" alone (debug 2,
+// 11-16: "how much have I invested?" beside the page's "You put $1,500.00 into investing").
+export function holdingsReply(
+  data: Investments,
+  named: string | null,
+  sent: BrokerageAsks | null = null,
+): Reply {
+  if (data.accounts.length === 0 && sent && sent.inLast3MonthsCents > 0) {
+    const apps = sent.asks.map((a) => a.app);
+    const where = apps.length === 0 ? "investing apps" : listOf(apps);
+    return {
+      body: `You sent ${formatCents(sent.inLast3MonthsCents)} to ${where} in the last 3 months. Your bank shows money going in, not what it's worth now, so I can't say what you have there. Tell me on the Investments page, or ${ADD_ONE.charAt(0).toLowerCase()}${ADD_ONE.slice(1)} and I'll show what's in it.`,
+      actions: [openLink("Say what's in it", "/investments"), CONNECT],
+      refs: {},
+    };
+  }
   if (data.accounts.length === 0) {
     return {
       body: `I don't see any investment or retirement accounts yet. ${ADD_ONE} and I'll show what's in it, with where every number comes from.`,
