@@ -1,5 +1,6 @@
 import type { TreeStatus } from "@/components/tree/interactive-tree";
 import { shortMoney } from "@/lib/hub/view";
+import { owedAcross } from "@/insights/debts";
 import { notCounting, owedIsKnown, type Unbalanced } from "@/insights/net-worth";
 import { formatCents } from "@/lib/money";
 import { monthLabel, dayLabel } from "@/lib/day-label";
@@ -166,7 +167,7 @@ export type MoneyTreeInput = {
     assetPrompt: "home" | "vehicle" | null;
     goals: { total: number; onTrack: number };
     // known: how many have a balance (uploaded card statements carry none).
-    debt: { accounts: number; owedCents: number; known?: number };
+    debt: { accounts: number; others?: number; owedCents: number; known?: number };
     // Accounts net worth leaves out for having no balance (an uploaded card, say).
     missing?: Unbalanced[];
   };
@@ -449,7 +450,7 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
           : "Set a goal to save toward.",
     }),
   );
-  if (h.debt.accounts > 0) {
+  if (h.debt.accounts + (h.debt.others ?? 0) > 0) {
     items.have.push(
       item("have", "loans", {
         label: "Loans and cards",
@@ -457,7 +458,7 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
         summary:
           h.debt.known === 0
             ? "Your files don't say what you owe yet. Add a balance on the import page."
-            : `Owed across ${plural(h.debt.accounts, "account")}.`,
+            : `${owedAcross({ accounts: h.debt.accounts, others: h.debt.others ?? 0 })}.`,
       }),
     );
   }

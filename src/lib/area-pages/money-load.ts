@@ -9,7 +9,8 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { budgetSummary } from "@/insights/budgets";
 import { irregularCosts } from "@/insights/irregular";
 import { loadInsightTransactions } from "@/insights/load";
-import { debtSummary } from "@/insights/loans";
+import { owedSummary } from "@/insights/debts";
+import { loadDebts } from "@/lib/debts";
 import { netWorth } from "@/insights/net-worth";
 import { spendingInsights } from "@/insights/spending";
 import { openBooks } from "@/lib/books";
@@ -67,6 +68,7 @@ export async function loadMoneyArea(
     transfers,
     rules,
     copies,
+    book,
   ] = await Promise.all([
     loadDetectionInput(userId, { client, now }),
     db.accounts.findMany({
@@ -129,6 +131,8 @@ export async function loadMoneyArea(
     listTransfers(userId, { client, now }),
     listMerchantRules(userId, { client }),
     accountCopies(db),
+    // What's owed, from the one book Home's tile, the loans page and the chat read (gate B).
+    loadDebts(userId, { client, now }),
   ]);
   // An account linked twice counts once (src/lib/account-copies.ts).
   const accounts = withoutCopies(listedAccounts, copies, (a) => a.id);
@@ -151,7 +155,6 @@ export async function loadMoneyArea(
     owned.map((o) => o.loanAccountId),
   );
   const prompt = prompts.find((p) => p.kind === "home") ?? prompts[0];
-  const debt = debtSummary(accounts, asOf);
   const budget = budgetSummary(transactions, budgets, asOf);
   // This month against last, as the hub counts it.
   const insights = spendingInsights(transactions, { asOf, monthCount: 2 });
@@ -244,11 +247,7 @@ export async function loadMoneyArea(
         total: goals.length,
         onTrack: goals.filter((g) => g.progress.status !== "date_passed").length,
       },
-      debt: {
-        accounts: debt.lines.length,
-        owedCents: debt.totalOwedCents,
-        known: debt.lines.filter((l) => l.balanceCents !== null).length,
-      },
+      debt: owedSummary(book),
     },
     rules: rules.length,
     actions: Object.fromEntries(

@@ -13,6 +13,7 @@ import { savedToDate } from "@/lib/membership/service";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { planFor, planTotalCents } from "@/lib/plan";
 import { syncItem } from "@/lib/plaid/sync";
+import { loadDebts } from "@/lib/debts";
 import { aheadTiles, loadAheadHub } from "./ahead";
 import { loadJaneHub } from "./jane";
 import { loadMoneyHub, moneyTiles } from "./money";
@@ -167,7 +168,11 @@ describe.runIf(url)("the hubs against a real database", () => {
     // The demo bank has its home and car, so nothing to add.
     expect(data.assetPrompt).toBeFalsy();
     expect(data.debt.accounts).toBe(4);
-    expect(data.debt.owedCents).toBe(balance(debt));
+    // What the loans page says is owed, pay-later plans and all (gate B).
+    expect(data.debt.owedCents).toBe(
+      (await loadDebts(userId, { client, now: NOW })).totalOwedCents,
+    );
+    expect(data.debt.owedCents).toBeGreaterThanOrEqual(balance(debt));
     expect(data.spendingCents).toBeGreaterThan(0);
     expect(data.recurring.count).toBeGreaterThan(0);
     expect(data.documents).toBe(0);
@@ -246,17 +251,12 @@ describe.runIf(url)("the hubs against a real database", () => {
     expect(data.deadlines.next).not.toBeNull();
     expect(data.deadlines.next!.date >= "2026-10-18").toBe(true);
     expect(data.deadlines.soon).toBeGreaterThan(0);
-    // Cards and loans, without the mortgage, as on the debt planner.
-    const debts = await client.account.findMany({
-      where: {
-        userId,
-        OR: [{ type: "credit" }, { type: "loan", NOT: { subtype: "mortgage" } }],
-      },
-    });
-    expect(data.debt.accounts).toBe(debts.length);
-    expect(data.debt.owedCents).toBe(
-      debts.reduce((sum, a) => sum + Math.max(0, a.currentBalanceCents ?? 0), 0),
+    // What the debt planner pays off: the loans page's book without the mortgage (gate B).
+    const debts = (await loadDebts(userId, { client, now: NOW })).debts.filter(
+      (d) => d.kind !== "mortgage",
     );
+    expect(data.debt.accounts).toBe(debts.length);
+    expect(data.debt.owedCents).toBe(debts.reduce((sum, d) => sum + (d.balanceCents ?? 0), 0));
     expect(data.lifeEvents).toEqual({ open: 0, newest: null });
 
     await client.lifeEvent.create({

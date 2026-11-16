@@ -1,9 +1,7 @@
 import { SPENDING_MONTHS } from "@/config/areas";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { loadInsightTransactions } from "@/insights/load";
-import { debtSummary, DEBT_ACCOUNT_SELECT } from "@/insights/loans";
 import { spendingInsights } from "@/insights/spending";
-import { accountCopies, withoutCopies } from "@/lib/account-copies";
 import { db as defaultClient } from "@/lib/db";
 import { loadDebts } from "@/lib/debts";
 import { scopedFor } from "@/lib/db-scoped";
@@ -93,19 +91,10 @@ export async function loadHubAreas(
         return spendingInsights(rows, { asOf, monthCount: SPENDING_MONTHS }).months;
       }),
       quietly("insurance", () => loadInsurance(userId, { client, now })),
-      quietly("loans", async () => {
-        const [listed, book, copies] = await Promise.all([
-          db.accounts.findMany({ select: DEBT_ACCOUNT_SELECT }),
-          loadDebts(userId, { client, now }),
-          accountCopies(db),
-        ]);
-        // An account linked twice counts once (src/lib/account-copies.ts).
-        const accounts = withoutCopies(listed, copies, (a) => a.id);
-        // Loans seen only in payments from checking count too (night QA 10-30: the tile said
-        // "No loans or cards linked" while /loans listed a car loan and a student loan).
-        const seen = book.debts.filter((d) => d.key.startsWith("paid:"));
-        return { summary: debtSummary(accounts, asOf), seen };
-      }),
+      // What's owed, from the one book the loans page and the chat read (gate B: this tile summed
+      // the linked accounts and loans seen in payments, and left out pay-later plans the loans page
+      // counts: $16,140.20 here, $16,215.20 there).
+      quietly("loans", () => loadDebts(userId, { client, now })),
       quietly("taxes", () => loadTaxEstimate(userId, { client, now })),
       quietly("practice", async () => {
         const view = await loadPractice(userId, { client, now });
@@ -132,10 +121,8 @@ export async function loadHubAreas(
       : null,
     loans: loans
       ? {
-          owedCents:
-            loans.summary.totalOwedCents +
-            loans.seen.reduce((sum, d) => sum + (d.balanceCents ?? 0), 0),
-          lines: [...loans.summary.lines, ...loans.seen].map((l) => ({
+          owedCents: loans.totalOwedCents,
+          lines: loans.debts.map((l) => ({
             name: l.name,
             balanceCents: l.balanceCents,
             overdue: l.overdue,
