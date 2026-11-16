@@ -515,6 +515,8 @@ const TAX_ADVICE = [
   // Round 36 (11-14): "Medical bills over 7.5% of your income are deductible". "None of it is
   // deductible" says what isn't, as the casualty-loss line does, and passes.
   /(?<!\b(?:none of (?:it|them|this|that|these|those)|nothing|neither (?:one|of them)?)\s)\b(?:are|is) (?:fully |partly |partially |also |only )?deductible\b/i,
+  // Round 52 (11-16): "You won't owe anything on that gift".
+  /\bwon(?:'|’)?t owe (?:anything|any tax(?:es)?|taxes|a (?:thing|dime|penny)) on (?:that|the|this|a|your) (?:gift|inheritance|scholarship|settlement|winnings|bonus|sale|payout|refund)\b/i,
   // Round 17 (11-13): Italian, Japanese, Korean, Vietnamese ("税金を払わなくていいです").
   /\bnon (?:dichiarare|dichiarate|devi dichiarare)\b|\b(?:puoi|potete) (?:detrarre|dedurre|scaricare)\b|\bdetrazione fiscale\b|税金を払わなくて|申告しなくて(?:いい|よい|大丈夫)|確定申告は(?:不要|いらない)|控除できます|経費にできます|세금(?:을)? 안 내도|신고(?:하지)? 않아도|신고 안 해도|공제받을 수 있|không cần (?:nộp|khai|đóng) thuế|được khấu trừ/i,
 ];
@@ -648,6 +650,14 @@ const LEGAL = [
   /\b(?:landlord|lender|servicer|collector|creditor|employer|insurer|they|he|she) (?:is|are) (?:legally )?(?:required|obligated) to\b/i,
   // Round 20 (11-13): "Your employer has to pay you for that time".
   /\b(?:employer|boss|landlord|lender|servicer|collector|creditor|insurer|company|bank|store|they|he|she) (?:has|have) to (?:pay|refund|reimburse|give|return|cover)(?: you| it| the| your)\b/i,
+  // Round 52 (11-16): what a dealer, gym or bank has to do ("The dealer has to show you the invoice
+  // price", "The gym has to let you cancel online", "Your bank has to waive the overdraft fee"), a
+  // right said to come from the law ("You have 30 days to return it by law"; a credit "$500 by law"
+  // written for counsel passes), rent control, what a
+  // collector can take ("They can garnish your wages") and a debt too old to collect.
+  /\b(?:dealers?|dealerships?|gyms?|clubs?|sellers?|landlords?|lenders?|banks?|card issuers?|issuers?|airlines?|hotels?|schools?|colleges?|employers?|insurers?|compan(?:y|ies)|stores?|providers?|servicers?|they|he|she)\s+(?:legally )?(?:has to|have to|must|is required to|are required to|is obligated to|are obligated to) (?:let|show|give|tell|waive|refund|cancel|accept|allow|offer|return|honor|stop|reverse|match)\b/i,
+  /\b(?:you|your)\b(?:[^.!?]|\.\d){0,50}\b(?:by|under(?: the)?|according to(?: the)?) (?:federal |state )?law\b|(?<!\b(?:if|whether)\s)\brent (?:control|stabili[sz]ation) (?:applies|covers|protects|limits|caps|doesn(?:'|’)?t apply)\b|\b(?:apartment|unit|place|building|lease) is rent[- ](?:controlled|stabili[sz]ed)\b/i,
+  /\b(?:they|the (?:collector|creditor|lender|irs|bank|court|state|card company)|collectors|creditors|lenders)\s+(?:can|could|will|are allowed to|is allowed to|(?:'|’)ll) (?:legally )?(?:garnish|levy|seize|repossess|foreclose on|freeze|take)\b(?:[^.!?]|\.\d){0,15}\b(?:wages|paychecks?|accounts?|car|house|home|refund|benefits|savings)\b|\btoo old (?:for (?:them|anyone|a collector) )?to (?:be )?(?:collect(?:ed)?|sue|sued|report(?:ed)?)\b/i,
   // Round 51 (11-16): what a visa lets someone do ("On an F-1 visa you can work 20 hours a week", "F-1
   // students can work on campus"). A Visa card is written with a capital and passes.
   /\b(?:[Oo]n|[Ww]ith|[Uu]nder) (?:an? |[Yy]our |the )?(?:F-1|H-1B|J-1|OPT|DACA|TPS|EAD|[Gg]reen card|(?:[Ss]tudent|[Ww]ork|[Tt]ourist|[Ss]pousal) visa|visa|[Ww]ork permit)\b(?:[^.!?]|\.\d){0,20}\b(?:you|students?) (?:can|can(?:'|’)?t|cannot|are allowed to|aren(?:'|’)?t allowed to|may|may not|are able to)\b|\b(?:F-1|H-1B|J-1|OPT|DACA|international) (?:students?|workers?|holders?)\b(?:[^.!?]|\.\d){0,20}\b(?:can|can(?:'|’)?t|cannot|are allowed to|aren(?:'|’)?t allowed to|may|may not)\b/,
@@ -909,6 +919,12 @@ const GUARANTEE = [
   // "Filing a claim won't raise your rate"). A change the insurer announced ("Your premium will go up
   // $15.49 on Dec 1") passes.
   /\bpremiums? (?:will|is going to|won(?:'|’)?t|should) (?:\w+ )?(?:go (?:up|down)|drop|rise|increase|decrease|fall)\b(?! (?:to |by )?\$)|\b(?:filing|file|a claim|the claim|one claim|claims)\b[^.!?]{0,20}\b(?:will|won(?:'|’)?t|is going to|isn(?:'|’)?t going to|would(?:n(?:'|’)?t)?|shouldn(?:'|’)?t) (?:raise|increase|affect|hurt|change|spike) your (?:rate|premium|insurance)\b|\b(?:rate|premium)s? (?:will|would|is going to) (?:go up|rise|increase|spike|jump)\b[^.!?]{0,15}\bif you (?:file|make|submit|put in) (?:a |the |one )?claim\b|\b(?:your )?(?:insurance|car insurance|auto insurance|home insurance|renters insurance) (?:rate|premium)s? (?:will|is going to) (?:go (?:up|down)|drop|rise|increase|decrease|fall)\b(?! (?:to |by )?\$)/i,
+  // Round 52 (11-16): a company's waiver predicted ("Chase will waive the fee if you call", "They'll
+  // lower your APR if you ask"), a car or wages said to be taken, a refund's timing, pay predicted
+  // and a raise said to be due. What Jane's own suggestion would save ("This will lower your bill by
+  // $15.49") and pay that changed ("Your paycheck went up $90.00") pass.
+  /(?:\b[Tt]hey|\b[Tt]he (?:bank|issuer|card company|lender|company|gym|provider|servicer)|\b(?!(?:This|That|It|These|Those|Switching|Calling|Paying|Moving|Doing|Asking|Canceling|Cancelling|Dropping|Refinancing|Autopay|Bundling|Jane|You)\b)[A-Z][A-Za-z&.]+(?: [A-Z][A-Za-z&.]+)?)(?:(?:'|’)ll| will| is going to| are going to) (?:definitely |surely |usually |always )?(?:waive|forgive|lower|reduce|cut|drop)\b(?:[^.!?]|\.\d){0,20}\b(?:fees?|APR|apr|rate|interest|bill|balance|charges?)\b(?! (?:by|to) \$)/,
+  /\b(?:car|truck|house|home|wages?|paycheck|account|savings)s? (?:will|is going to|are going to|(?:'|’)ll) (?:definitely |surely |automatically )?(?:be|get) (?:repossessed|repo(?:'|’)?d|foreclosed(?: on)?|garnished|seized|levied|frozen|taken)\b|\b(?:tax )?refund (?:will|should|is going to|(?:'|’)ll) (?:\w+ )?(?:arrive|come|hit|land|show up|be (?:here|deposited|issued))\b(?:[^.!?]|\.\d){0,10}\b(?:in|within) \d+ (?:days?|weeks?)\b|\b(?:paycheck|pay|salary|wages?|income|take-home(?: pay)?) (?:will|is going to|(?:'|’)ll) (?:definitely |surely |probably )?(?:go up|go down|rise|increase|drop|fall|grow|shrink|be (?:higher|bigger|lower|smaller))(?=\s*(?:[.!?]|$| next (?:year|month)| soon| eventually| over time| this year))|\byou(?:'|’)re (?:due|owed|overdue) (?:for )?an? (?:raise|promotion|bonus)\b/i,
   // Round 51 (11-16): a named company's refund promised ("Venmo will refund you for the scam"), Social
   // Security said to run out, medical debt said to stay off a report and safety stated ("Your
   // identity is protected now"). A refund that posted, "safe to spend" and "protected from fraud with the
