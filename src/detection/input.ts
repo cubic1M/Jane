@@ -10,6 +10,7 @@ import { isDemoItemId } from "@/lib/plaid/demo-ids";
 import { cachedRead } from "@/lib/read-cache";
 import { systemDb } from "@/lib/system-db";
 import { todayOf } from "@/lib/today";
+import { dataReach } from "@/lib/data-reach";
 import { copiesToLeaveOut } from "@/planning/books";
 import { namedByDirectory, withDirectory } from "./merchants";
 import type { DetectionInput, DetectionTransaction } from "./types";
@@ -40,7 +41,9 @@ export async function loadInput(
   asOf: string,
   client: PrismaClient,
 ): Promise<DetectionInput> {
-  const cutoff = monthsBefore(asOf, LOOKBACK_MONTHS);
+  // Counted back from where the data reaches (src/lib/data-reach.ts): today for a current bank,
+  // the end of an old upload's statements, so the history doesn't lose a day each day it sits.
+  const cutoff = monthsBefore(await dataReach(db, asOf), LOOKBACK_MONTHS);
   const [allAccounts, allTransactions, allStreams, cancelled, directory, first, balanceDays] =
     await Promise.all([
       db.accounts.findMany({

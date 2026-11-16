@@ -3,6 +3,7 @@ import { roomFromPlan, tradeGoalOf } from "@/planning/goal-tradeoffs";
 import { PAY_PERIODS } from "@/config/benefits";
 import { profileHistoryStart } from "@/config/profile";
 import { db as defaultClient } from "@/lib/db";
+import { dataReach } from "@/lib/data-reach";
 import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { copiesToLeaveOut } from "@/planning/books";
@@ -80,7 +81,9 @@ async function loadProfileInputFrom(
   // The person's day, and the year of data counted back from its start: from the clock, a payment
   // made a year ago today fell out at 7pm (night round 11-06: "23 gym payments" became 22).
   const today = await todayOf(userId, { client, now });
-  const since = profileHistoryStart(new Date(`${today}T00:00:00Z`));
+  // Counted back from where the data reaches (src/lib/data-reach.ts): today for a current bank,
+  // the end of an old upload's statements, so its year doesn't shrink a day at a time.
+  const since = profileHistoryStart(new Date(`${await dataReach(db, today)}T00:00:00Z`));
   const [
     allTransactions,
     allAccounts,
@@ -102,7 +105,7 @@ async function loadProfileInputFrom(
     known,
   ] = await Promise.all([
     db.transactions.findMany({
-      where: { date: { gt: since, lte: now } },
+      where: { date: { gt: since, lte: new Date(`${today}T00:00:00Z`) } },
       select: {
         date: true,
         amountCents: true,
