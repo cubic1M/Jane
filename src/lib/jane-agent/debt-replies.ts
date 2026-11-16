@@ -79,6 +79,14 @@ export function debtsReply(book: DebtBook): Reply {
       `You owe ${formatCents(book.accountsOwedCents)} on ${whatOwed(accounts)}, the same as your net worth counts.`,
     );
   }
+  // Loans seen only in a statement's payments (debug 2, 11-16: the answer opened on a bullet,
+  // with nothing said about what's owed).
+  const seen = book.debts.filter((d) => d.key.startsWith("paid:"));
+  if (accounts.length === 0 && seen.length > 0) {
+    lines.push(
+      `I see your payments to ${plural(seen.length, "loan")}, not what's left on ${seen.length === 1 ? "it" : "them"}.`,
+    );
+  }
   if (plans.length > 0) {
     const known = book.bnplOwedCents > 0 ? `${formatCents(book.bnplOwedCents)} left on ` : "";
     lines.push(
@@ -94,8 +102,12 @@ export function debtsReply(book: DebtBook): Reply {
   }
   lines.push(...book.debts.map(line));
   if (book.missingRate.length > 0) {
+    // Loans known only from their payments: what's left is missing too.
+    const what = book.missingRate.every((d) => d.key.startsWith("paid:") && d.balanceCents === null)
+      ? "what's left on or the rate of"
+      : "a rate for";
     lines.push(
-      `I don't have a rate for ${book.missingRate.map((d) => d.name).join(" or ")}. Add it on the loans page and I'll count it.`,
+      `I don't have ${what} ${book.missingRate.map((d) => d.name).join(" or ")}. Add it on the loans page and I'll count it.`,
     );
   }
   return { body: lines.join("\n"), actions: [SEE_DEBTS], refs: {} };
