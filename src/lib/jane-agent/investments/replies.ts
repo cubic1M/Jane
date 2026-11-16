@@ -111,8 +111,14 @@ const CONNECT: MessageAction = openLink("Link an account", "/connect");
 
 const holdingsWord = (n: number) => `${n} ${n === 1 ? "holding" : "holdings"}`;
 
+// Where an account's figures come from, mid-sentence: "From your upload.", not "From Your upload."
+// (debug 2, 11-16); a bank's name as it is.
+const fromWhere = (institution: string | null) =>
+  institution === null ? "your bank" : institution.replace(/^Your\b/, "your");
+
 // The account the person named: "401k" finds a 401(k), "ira" an IRA or Roth IRA,
 // "retirement" the retirement accounts, "brokerage" the rest.
+
 export function matchAccounts(
   accounts: InvestmentAccountView[],
   named: string | null,
@@ -158,7 +164,7 @@ export function holdingsReply(data: Investments, named: string | null): Reply {
       };
     }
     return {
-      body: `Your ${a.name} has ${balance} in ${holdingsWord(a.holdings.length)}. Biggest first:\n${a.holdings.map(line).join("\n")}\nFrom ${a.institution ?? "your bank"}.`,
+      body: `Your ${a.name} has ${balance} in ${holdingsWord(a.holdings.length)}. Biggest first:\n${a.holdings.map(line).join("\n")}\nFrom ${fromWhere(a.institution)}.`,
       actions: [SEE],
       refs: {},
     };
