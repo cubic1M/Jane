@@ -104,9 +104,11 @@ function question(view: TaxProfileView, field: ProfileField): Omit<Question, "re
   }
 }
 
-// The intro the first message starts with.
+// What the first message says after its question. The question comes first: a card shows its
+// first sentence above the answers (debug 2, 11-16: "Let's get your taxes ready." sat above "That's
+// all of it", with the question it answered behind More details).
 export const PROFILE_INTRO =
-  "Let's get your taxes ready. I've worked out what I can from your accounts; I need a few answers for the rest, and you can change any of them later.";
+  "I'm getting your taxes ready: I've worked out what I can from your accounts and need a few answers for the rest. You can change any of them later.";
 
 // One line on the finished profile.
 function profileSummary(view: TaxProfileView): string {
