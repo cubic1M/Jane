@@ -123,7 +123,7 @@ import { backtestsFor, longDate } from "@/lib/investments/backtest";
 import { loadRuleReplays } from "@/lib/investments/rule-replay";
 import { RISK_LEVELS, type RiskLevel } from "@/config/investing";
 import { formatReturn } from "@/insights/returns";
-import { chatToday } from "@/lib/today";
+import { chatToday, timezoneOf } from "@/lib/today";
 
 // The tools Claude gets in Jane's chat (spec step 84). Read-only tools over the person's
 // own data, wrapping the same loaders as the pages (and Ask's own tools, src/lib/ask), each
@@ -1681,11 +1681,12 @@ export async function chatPrimer(
 ): Promise<{ text: string; cents: number[] }> {
   const cached = cachedPrimer(userId, now);
   if (cached) return cached;
-  const [stored, stamp] = await Promise.all([
+  const [stored, stamp, timezone] = await Promise.all([
     readStoredPrimer(userId, { client }),
     dataStamp(userId, client),
+    timezoneOf(userId, { client }).catch(() => null),
   ]);
-  if (stored && stored.primer.text !== "" && usablePrimer(stored, stamp, now)) {
+  if (stored && stored.primer.text !== "" && usablePrimer(stored, stamp, now, timezone)) {
     keepPrimer(userId, now, stored.primer);
     if (isStale(stored.at, now) && !refreshing.has(userId)) {
       refreshing.add(userId);
