@@ -1,6 +1,8 @@
 import { READ_ONLY_INVESTMENTS } from "@/config/read-only-beta";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { loadInvestments } from "@/lib/investments/holdings";
+import { scopedFor } from "@/lib/db-scoped";
+import { brokerageAsks } from "@/lib/investing/brokerage-balance";
 import type { Reply } from "../replies";
 import type { InvestmentIntent } from "./intents";
 import { profileOf } from "@/lib/investments/profile";
@@ -145,8 +147,13 @@ export async function answerInvestments(
       const data = await ruleReplaysFor(userId, { client, now }, [level]);
       return ruleReplayReply(data, level, intent.level === undefined);
     }
-    case "holdings":
-      return holdingsReply(await loadInvestments(userId, { client, now }), intent.account);
+    case "holdings": {
+      const [data, sent] = await Promise.all([
+        loadInvestments(userId, { client, now }),
+        brokerageAsks(scopedFor(userId, client), now),
+      ]);
+      return holdingsReply(data, intent.account, sent);
+    }
     case "profile":
       return profileReply(await profileOf(userId, { client }), asOf);
     case "fees": {

@@ -29,9 +29,16 @@ const withRents = (cents: number[]) => (d: ProfileInput) => ({
   ],
 });
 
+const owingMore = (d: ProfileInput): ProfileInput => ({
+  ...d,
+  accounts: d.accounts.map((a) => (a.type === "credit" ? { ...a, balanceCents: 3_000_000 } : a)),
+});
+
 describe("rent reporting", () => {
-  it("is offered to Maya, who rents and owes on a card, with a reason and a confidence below certain", () => {
-    const [s] = fire("renter");
+  // Maya's card alone ($16,140) is worth less than reporting's fee (./rent-reporting-fee.test.ts):
+  // owing more, it pays.
+  it("is offered to Maya owing more on her card, with a reason and a confidence below certain", () => {
+    const [s] = fire("renter", owingMore);
     expect(s).toMatchObject({
       topic: "rent_reporting",
       worthKind: "saves",
@@ -53,7 +60,7 @@ describe("rent reporting", () => {
       expect(found, p.name).toBe(p.should.includes("rent_reporting"));
     }
     expect(
-      fire("renter", (d) => ({ ...d, rentReportingOn: true })).filter(
+      fire("renter", (d) => ({ ...owingMore(d), rentReportingOn: true })).filter(
         (s) => s.topic === "rent_reporting",
       ),
     ).toEqual([]);

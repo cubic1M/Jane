@@ -22,6 +22,8 @@ import { loadComingUp } from "@/lib/coming-up";
 import { conciergeMode } from "@/lib/concierge-mode";
 import { loadInsurance } from "@/lib/insurance/profile";
 import { findingFingerprint } from "./fingerprint";
+import { findingSureFacts } from "@/lib/finding-sures";
+import { findingSure } from "@/lib/report-state";
 
 // Jane's cards say what was true when they were posted, and stay open for days. Before one
 // shows again (the dock, Home, the chat's cards) it is checked against the person's data now
@@ -70,7 +72,14 @@ type Facts = {
   // The open findings behind finding cards, by id, as they are now.
   findings: Map<
     string,
-    { type: string; title: string; savings: string; fingerprint: string }
+    {
+      type: string;
+      title: string;
+      savings: string;
+      fingerprint: string;
+      // How sure, as the finding's card says it now (findingSure, as the snapshot works it out).
+      sure: { percent: number; reason: string };
+    }
   > | null;
   // The topics of the suggestions the last scans offered (answered or not), when a card here is
   // about a finding: a suggestion on a finding's type already brings that finding up.
@@ -198,11 +207,23 @@ async function factsFor(
           })
         : null,
       withGaps ? loadInsurance(userId, { client, now }) : null,
+      // Every open finding, for how many of each kind there are (findingSure reads it), with what
+      // its "% sure" is worked out from.
       findingIds.length > 0
-        ? scopedFor(userId, client).findings.findMany({
-            where: { id: { in: findingIds }, status: { in: ["new", "shown"] } },
-            select: { id: true, type: true, title: true, annualSavingsCents: true, evidence: true },
-          })
+        ? Promise.all([
+            scopedFor(userId, client).findings.findMany({
+              where: { status: { in: ["new", "shown"] } },
+              select: {
+                id: true,
+                type: true,
+                title: true,
+                annualSavingsCents: true,
+                evidence: true,
+                confidence: true,
+              },
+            }),
+            findingSureFacts(scopedFor(userId, client), now, { client }),
+          ])
         : null,
       withPlan ? planNow(userId, client) : null,
       findingIds.length > 0 || proposalKeys.some((k) => k.startsWith("goal:"))
@@ -228,15 +249,23 @@ async function factsFor(
     findings:
       findings &&
       new Map(
-        findings.map((f) => [
-          f.id,
-          {
-            type: f.type,
-            title: f.title,
-            savings: savingsLine(f.type, f.annualSavingsCents),
-            fingerprint: findingFingerprint(f),
-          },
-        ]),
+        findings[0]
+          .filter((f) => findingIds.includes(f.id))
+          .map((f) => [
+            f.id,
+            {
+              type: f.type,
+              title: f.title,
+              savings: savingsLine(f.type, f.annualSavingsCents),
+              fingerprint: findingFingerprint(f),
+              sure: findingSure(
+                f,
+                findings[1].sures,
+                findings[1].months,
+                findings[0].filter((o) => o.type === f.type).length,
+              ),
+            },
+          ]),
       ),
     suggestionTopics: offered,
     plan,
@@ -305,13 +334,29 @@ function asNow(m: ChatMessage, facts: Facts): ChatMessage | null {
   // and, ten cards on, "$36.00 in fees on Chase checking", the same $12 a month; idle cash twice
   // too).
   if (finding && facts.suggestionTopics?.has(finding.type)) return null;
-  if (finding && m.refs.fingerprint && finding.fingerprint !== m.refs.fingerprint) {
-    // How sure, its pick and its question stay as they were.
-    const rest = /(?:\d{1,3}% sure: [^.]*\. )?(?:My pick: .*)?Want [^?]*\?$/.exec(m.body)?.[0];
+  const said = m.refs.confidence as { percent: number; reason: string } | undefined;
+  const sureNow = finding?.sure;
+  const sureMoved =
+    said !== undefined &&
+    sureNow !== undefined &&
+    (said.percent !== sureNow.percent || said.reason !== sureNow.reason);
+  if (finding && m.refs.fingerprint && (finding.fingerprint !== m.refs.fingerprint || sureMoved)) {
+    // Its pick and its question stay as they were; how sure is said as it is now (debug 2, 11-16:
+    // after a bank's older history came in, "50% sure: 1 charge in 1 month of data" stayed on a
+    // Netflix card with three charges in three months).
+    const rest = /(?:My pick: .*)?Want [^?]*\?$/.exec(m.body)?.[0];
+    const sure =
+      said !== undefined ? `${finding.sure.percent}% sure: ${finding.sure.reason}.` : null;
     return {
       ...m,
-      body: [sentence(finding.title), sentence(finding.savings), rest].filter(Boolean).join(" "),
-      refs: { ...m.refs, fingerprint: finding.fingerprint },
+      body: [sentence(finding.title), sentence(finding.savings), sure, rest]
+        .filter(Boolean)
+        .join(" "),
+      refs: {
+        ...m.refs,
+        fingerprint: finding.fingerprint,
+        ...(said !== undefined ? { confidence: finding.sure } : {}),
+      },
     };
   }
   // Nor a set-up goal one of them already brings up (debugger 11-15: "Build an emergency cushion,
