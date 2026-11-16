@@ -6,15 +6,20 @@ import type { Candidate, DetectionAccount, DetectionInput, DetectionTransaction 
 import { DAYS_PER_MONTH, MONTHS_PER_YEAR, daysBetween } from "../units";
 
 // Days of history: from the person's first transaction to where their statements end (today,
-// unless the newest line is old: statementsEnd). The person's, not the account's, as the dock's
-// bank-fee suggestion counts months (rateMonthsOf), so the report and the dock agree (debugger
-// 11-14: two $12 fees in an upload read 46 days on paced 2 months on the report, 1 on the dock).
-function historyDays(input: DetectionInput): number {
+// unless the newest line is old: statementsEnd). The person's, not the account's (debugger 11-14:
+// two $12 fees in an upload read 46 days on paced 2 months on the report, 1 on the dock).
+type History = { transactions: readonly { date: string }[]; asOf: string; historyFrom?: string };
+function historyDays(input: History): number {
   const first =
     input.historyFrom ??
     input.transactions.reduce((min, t) => (t.date < min ? t.date : min), input.asOf);
   return daysBetween(first, dataEnd(input.transactions, input.asOf));
 }
+
+// The months bank fees are paced over, the one count the report's finding, the dock's suggestion
+// and the chat's answer use (gate B: the dock counted the profile's months, the chat calendar
+// months, and the report its own, so one fee read three yearly figures).
+export const feeMonthsOf = (input: History): number => paceMonths(historyDays(input)).months;
 
 // Where the statements reach: today, or a few days past an old upload's newest line.
 export const dataEnd = (transactions: readonly { date: string }[], asOf: string) =>

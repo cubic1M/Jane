@@ -116,9 +116,13 @@ describe("a fee's limits", () => {
       }),
     )[0]?.annualSavingsCents;
 
-  it("is at a year's pace under the short-history limit, and as seen from it", () => {
-    expect(worth(ago(SHORT_HISTORY_DAYS))).toBe(6_000);
-    expect(worth(ago(SHORT_HISTORY_DAYS - 1))).toBeGreaterThan(6_000);
+  // Under a year of history, at a year's pace; from a year, as seen. The dock's and the chat's
+  // limit too (gate B: the report stopped pacing at SHORT_HISTORY_DAYS, 200 days, and the dock at a
+  // year, so seven months of fees read two yearly figures).
+  it("is at a year's pace under a year of history, and as seen from it", () => {
+    expect(worth(ago(365))).toBe(6_000);
+    expect(worth(ago(330))).toBe(Math.round((6_000 * 12) / 11));
+    expect(worth(ago(SHORT_HISTORY_DAYS))).toBe(Math.round((6_000 * 12) / 7));
   });
 
   it("is less sure when Claude sorted any of its rows", () => {
