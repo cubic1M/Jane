@@ -25,6 +25,17 @@ const subscribe = (listener: () => void) => {
   return () => void listeners.delete(listener);
 };
 
+// The accounts whose question the upload's result is showing now, so a line over the list counts
+// only the ones still waiting there.
+export function useAskedAbove(): ReadonlySet<string> {
+  const ids = useSyncExternalStore(
+    subscribe,
+    () => [...askedAbove.keys()].sort().join("\n"),
+    () => "",
+  );
+  return new Set(ids ? ids.split("\n") : []);
+}
+
 export function BalanceAskForm({
   ask,
   skippable = true,

@@ -8,7 +8,7 @@ import {
   startOverAction,
   type ActionResult,
 } from "./actions";
-import { BalanceAskForm } from "./balance-ask";
+import { BalanceAskForm, useAskedAbove } from "./balance-ask";
 import { IMPORT_STARTED_EVENT } from "@/config/import";
 import { dayLabel, momentLabel } from "@/lib/day-label";
 import type { BalanceAsk } from "@/lib/import/balance-question";
@@ -142,6 +142,9 @@ export function UploadHistory({
   asks?: BalanceAsk[];
   canStartOver?: boolean;
 }) {
+  // "Add it below" only while the question is below: the upload's result asks it first.
+  const above = useAskedAbove();
+  const waiting = asks.filter((ask) => !above.has(ask.accountId));
   if (accounts.length === 0) return null;
   return (
     <section data-upload-history="" className="flex flex-col gap-4">
@@ -182,11 +185,11 @@ export function UploadHistory({
       </ul>
 
       <h3 className="font-semibold">Your accounts</h3>
-      {asks.length > 0 && (
+      {waiting.length > 0 && (
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          {asks.length === 1
+          {waiting.length === 1
             ? "One account has no balance yet. Add it below and net worth counts it."
-            : `${asks.length} accounts have no balance yet. Add them below and net worth counts them.`}
+            : `${waiting.length} accounts have no balance yet. Add them below and net worth counts them.`}
         </p>
       )}
       <ul className="flex flex-col gap-3">
