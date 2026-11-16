@@ -154,6 +154,17 @@ export function listOf(names: readonly string[]): string {
 
 // A headline: the verb phrase, then what it is worth ("Cancel Hulu, save $216 a year").
 // `once` is for a one-off amount rather than a yearly one. Without a value, the phrase alone.
+// What the report's open findings of `type` are worth a year, added up: the figure a suggestion on
+// the same topic says, so the dock and the report never price one thing twice (gate B: a price
+// rise read $156 a year on the report and $174 in the dock, a trial $13.99 and $168 a year). Null
+// when the report has none, or none with a figure: the detector's own is then the only one shown.
+export function reportsWorth(data: Pick<ProfileInput, "findings">, type: string): number | null {
+  const worths = (data.findings ?? [])
+    .filter((f) => f.type === type && f.annualSavingsCents !== null)
+    .map((f) => f.annualSavingsCents!);
+  return worths.length === 0 ? null : worths.reduce((s, c) => s + c, 0);
+}
+
 export function headlineOf(
   phrase: string,
   worthCents: number,

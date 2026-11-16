@@ -331,6 +331,9 @@ export const PEOPLE: readonly Person[] = [
       "emergency_fund",
       "duplicate_subscription",
       "duplicate_charge",
+      // Their internet bill runs above its typical price: the report's finding, and the dock's
+      // suggestion priced as the report prices it (gate B), so it ranks to be offered.
+      "bill_negotiation",
       "car_addons",
       "budget_overrun",
       "insurance_shopping",

@@ -127,6 +127,16 @@ export type SuggestionSure = { topic: string; confidencePercent: number; confide
 // `sameType` is how many findings share this one's topic: the suggestion speaks for all of them
 // (debugger 10-30: fees on two accounts, "5 bank fees" on the card whose own finding rests on 1),
 // so with more than one each counts its own charges.
+// The most a finding's % can say inside its own level ("low" stays under the medium band), for
+// the report's line and for the dock's suggestion on the same topic (src/lib/suggestions.ts), so
+// the two say one % (gate B).
+export const bandCeiling = (confidence: "high" | "medium" | "low" | undefined): number =>
+  confidence === "low"
+    ? SUGGESTION_CONFIDENCE_FROM.medium - 1
+    : confidence === "medium"
+      ? SUGGESTION_CONFIDENCE_FROM.high - 1
+      : 100;
+
 export function findingSure(
   finding: { type: string; evidence: unknown; confidence?: "high" | "medium" | "low" },
   suggestions: readonly SuggestionSure[],
@@ -136,12 +146,7 @@ export function findingSure(
   // Inside the band of the finding's own level, which decides whether it counts in money found
   // and what the weekly email says (debugger 10-31: a trial stored "low", not counted and "under
   // 50% sure" in the email, read "83% sure" here from its suggestion).
-  const ceiling =
-    finding.confidence === "low"
-      ? SUGGESTION_CONFIDENCE_FROM.medium - 1
-      : finding.confidence === "medium"
-        ? SUGGESTION_CONFIDENCE_FROM.high - 1
-        : 100;
+  const ceiling = bandCeiling(finding.confidence);
   const inBand = (sure: { percent: number; reason: string }) => ({
     ...sure,
     percent: Math.min(sure.percent, ceiling),

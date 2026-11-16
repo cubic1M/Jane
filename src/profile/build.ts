@@ -110,6 +110,13 @@ export type Told = Partial<Record<FactKey, string | number | boolean>>;
 
 export type ProfileInput = {
   today: string;
+  // The report's open findings (src/detection/engine.ts), for the figure a suggestion on the same
+  // topic shares with it (src/detectors/helpers.ts reportsWorth). Absent when not read.
+  findings?: readonly {
+    type: string;
+    annualSavingsCents: number | null;
+    confidence: "high" | "medium" | "low";
+  }[];
   transactions: readonly ProfileTx[];
   accounts: readonly ProfileAccount[];
   liabilities: readonly ProfileLiability[];

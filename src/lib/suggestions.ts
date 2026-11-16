@@ -1,3 +1,4 @@
+import { bandCeiling } from "@/lib/report-state";
 import { landing } from "@/lib/area-pages/landing";
 import { STRATEGIST_CAPABILITY, STRATEGIST_IDEA_DAYS, STRATEGIST_TOPIC } from "@/config/strategist";
 import { promisesHiddenPage } from "@/config/hidden-pages";
@@ -110,8 +111,22 @@ async function detectForWork(
       detector: `${d.capability}:${d.topic}`,
       error: scrub(String(error)),
     }),
-  ).filter((s) => advice || forRealAccount(s));
+  )
+    .filter((s) => advice || forRealAccount(s))
+    .map((s) => inReportsBand(s, input));
   return { suggestions: forTheBeta(suggestions), advice, today: input.today, profile, input };
+}
+
+// A suggestion the report has one finding for says the report's % for it: its own, kept inside
+// that finding's level, as the report's line does (findingSure; gate B: a trial stored "low" read
+// 85% sure in the dock and under 50% on the report).
+function inReportsBand(s: Suggestion, input: ProfileInput): Suggestion {
+  const same = (input.findings ?? []).filter((f) => f.type === s.topic);
+  if (same.length !== 1) return s;
+  const ceiling = bandCeiling(same[0].confidence);
+  return s.confidence.percent <= ceiling
+    ? s
+    : { ...s, confidence: { ...s.confidence, percent: ceiling } };
 }
 
 // What a real account may see: no advice topic, and no card telling them what to do with their
