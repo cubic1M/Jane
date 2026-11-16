@@ -23,6 +23,7 @@ import {
   tx,
   weakest,
   headlineOf,
+  reportsWorth,
   clip,
 } from "./helpers";
 
@@ -70,7 +71,11 @@ const duplicateSubscription: Detector = {
     if (groups.length === 0) return null;
     // Drop the cheapest of each group: the one you'd least miss, a conservative saving.
     const cheapest = groups.map((g) => g.sort((a, b) => last(a) - last(b))[0]);
-    const worth = cheapest.reduce((s, c) => s + last(c) * 12, 0);
+    // What the report's findings say when it has them: each group at its own frequency, a yearly
+    // plan once a year, not twelve times (gate B).
+    const worth =
+      reportsWorth(data, "duplicate_subscription") ??
+      cheapest.reduce((s, c) => s + last(c) * 12, 0);
     // Named as the subscriptions list names them ("Spotify", not the statement's "Spotify Usa").
     const names = groups.flat().map((s) => {
       const t = s.txs[s.txs.length - 1]!;
@@ -135,7 +140,11 @@ const priceIncrease: Detector = {
           : [];
       });
     if (rises.length === 0) return null;
-    const worth = rises.reduce((n, r) => n + (r.now - r.before) * 12, 0);
+    // The report's figure when it has one: the rise against the earlier average, as often as the
+    // charge comes (gate B).
+    const worth =
+      reportsWorth(data, "price_increase") ??
+      rises.reduce((n, r) => n + (r.now - r.before) * 12, 0);
     const top = rises.sort((a, b) => b.now - b.before - (a.now - a.before))[0];
     return suggestion("subscriptions", "price_increase", {
       title: "A charge went up: check it, and ask for the old price or switch",
@@ -185,19 +194,18 @@ const billNegotiation: Detector = {
       .map((s) => ({ s, yearly: last(s) * 12 }));
     if (bills.length === 0) return null;
     const yearly = bills.reduce((n, b) => n + b.yearly, 0);
+    // The report's figure when it has one: the bill above its typical price (gate B: $576 on the
+    // report against this detector's share of the whole bill, $343).
+    const worth = reportsWorth(data, "bill_negotiation") ?? Math.round(yearly * S.negotiationShare);
     return suggestion("cost", "bill_negotiation", {
       // Worth asking, never "too high": the checkup may call the same bill a typical price
       // (manager decision 10-30).
       title: "Worth asking for a lower rate on your internet or phone bill",
-      headline: headlineOf(
-        "Ask for a lower bill rate",
-        Math.round(yearly * S.negotiationShare),
-        "saves",
-      ),
+      headline: headlineOf("Ask for a lower bill rate", worth, "saves"),
       short: clip(
         `You pay ${formatCents(yearly)} a year on ${bills.map((b) => nice(b.s.description)).join(" and ")}.`,
       ),
-      worthCents: Math.round(yearly * S.negotiationShare),
+      worthCents: worth,
       worthKind: "saves",
       confidence: evidence(
         "seen",
@@ -334,8 +342,11 @@ const trialConversion: Detector = {
       ];
     });
     if (converted.length === 0) return null;
-    const worth = converted.reduce((s, c) => s + c.price * c.perYear, 0);
-    const yearly = converted.every((c) => c.paced);
+    // The report's figure when it has one: the charge to ask back, once (gate B: $13.99 on the
+    // report, "$168 a year" here).
+    const reported = reportsWorth(data, "trial_conversion");
+    const worth = reported ?? converted.reduce((s, c) => s + c.price * c.perYear, 0);
+    const yearly = reported === null && converted.every((c) => c.paced);
     const total = `${formatCents(worth)}${yearly ? " a year" : ""}`;
     return suggestion("subscriptions", "trial_conversion", {
       title: "A free trial turned into a paid subscription: keep it or cancel it",

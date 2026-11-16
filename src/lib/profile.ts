@@ -103,6 +103,7 @@ async function loadProfileInputFrom(
     healthPolicy,
     fsa,
     known,
+    found,
   ] = await Promise.all([
     db.transactions.findMany({
       where: { date: { gt: since, lte: new Date(`${today}T00:00:00Z`) } },
@@ -189,6 +190,11 @@ async function loadProfileInputFrom(
     }),
     // What the person said or showed, remembered (src/lib/memory/): "I rent" in the chat.
     listFacts(userId, { client }),
+    // What the report shows, so a suggestion on the same topic says the same figure (gate B).
+    db.findings.findMany({
+      where: { status: { in: ["new", "shown"] } },
+      select: { type: true, annualSavingsCents: true, confidence: true },
+    }),
   ]);
   // Books QA: an account linked twice (through two logins) counts once.
   const copies = copiesToLeaveOut(allAccounts);
@@ -291,6 +297,7 @@ async function loadProfileInputFrom(
     creditScore: report?.score ?? null,
     valuesExcludes: values?.excludes ?? [],
     namedAccountIds: [...new Set(named.map((n) => n.accountId))],
+    findings: found,
     told,
     unreadPolicyDocuments: unread,
     rentReportingOn: reporting !== null,
