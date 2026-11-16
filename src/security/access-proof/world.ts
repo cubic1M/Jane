@@ -279,6 +279,10 @@ async function createPerson(who: Person, { role }: { role?: "admin" } = {}) {
       sessionToken: who.sessionToken,
       userId: who.userId,
       expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      // Seen just now, as a session in use is: otherwise the first call that reads it notes it seen
+      // (noteSessionSeen, once per SESSION_SEEN_EVERY_MINUTES), and that write lands on whichever
+      // surface happens to come first.
+      lastSeenAt: new Date(),
       ...(role ? { mfaVerifiedAt: new Date() } : {}),
     },
   });
@@ -396,8 +400,8 @@ export async function restorePerson(who: Person, plant: () => Promise<unknown>) 
   await asSystem(async (sql) => {
     await sql(`UPDATE users SET mfa_enabled_at = NULL, role = 'user' WHERE id = $1`, [who.userId]);
     await sql(
-      `INSERT INTO sessions (id, session_token, user_id, expires)
-       VALUES ($1, $2, $3, now() + interval '7 days')
+      `INSERT INTO sessions (id, session_token, user_id, expires, last_seen_at)
+       VALUES ($1, $2, $3, now() + interval '7 days', now())
        ON CONFLICT (session_token) DO UPDATE SET expires = EXCLUDED.expires`,
       [who.rowId, who.sessionToken, who.userId],
     );
