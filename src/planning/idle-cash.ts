@@ -19,6 +19,7 @@ import { categoryOf } from "@/categorize/taxonomy";
 import { ANNUAL_FEE_WORDS } from "@/config/found-policies";
 import { ESTIMATED_TAX_DATES } from "@/config/tax-pack";
 import { normalizeMerchant } from "@/data-sources/merchant";
+import { lookbackEnd } from "@/detection/helpers";
 import { addDays, monthsBefore } from "@/detection/units";
 import { oneOffCharges, withoutOneOffs } from "@/insights/typical-month";
 import { daysBetween } from "@/lib/dates";
@@ -74,8 +75,10 @@ export function cashCushionOf(input: IdleInput): Omit<IdleCash, "earnsCents"> | 
         a.balanceCents > 0,
     )
     .sort((a, b) => a.id.localeCompare(b.id));
-  // Spending in the lookback window only, the same twelve months wherever the data came from.
-  const cutoff = monthsBefore(input.asOf, LOOKBACK_MONTHS);
+  // Spending in the lookback window only, the same twelve months wherever the data came from,
+  // ending where the data reaches: an old upload's months don't lose a day each day it sits
+  // (gate C, 11-15: the cushion moved daily with nothing new).
+  const cutoff = monthsBefore(lookbackEnd(input.transactions, input.asOf), LOOKBACK_MONTHS);
   // Refunds (money back in a spending category) net against it, as on the Money page: a fully
   // returned order isn't a month's spending (beta accuracy: "You spend about $1,247 a month" where
   // the Money page's months averaged $1,189). Money in with no category, or as income, isn't one.

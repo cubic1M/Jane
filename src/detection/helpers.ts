@@ -6,6 +6,7 @@ import {
   type ConfidenceLevel,
 } from "@/config/detection";
 import type { DetectionInput, DetectionTransaction, EvidenceTransaction } from "./types";
+import { statementsEnd } from "@/profile/build";
 import { monthsBefore } from "./units";
 
 const ORDER: readonly ConfidenceLevel[] = ["low", "medium", "high"];
@@ -19,9 +20,28 @@ export function lowest(...levels: ConfidenceLevel[]): ConfidenceLevel {
   return levels.reduce((low, level) => (rank(level) < rank(low) ? level : low));
 }
 
+// Where the statements reach: today, or a few days past an old upload's newest line.
+export const dataEnd = (transactions: readonly { date: string }[], asOf: string) =>
+  statementsEnd(
+    transactions.reduce((max, t) => (t.date > max && t.date <= asOf ? t.date : max), ""),
+    asOf,
+  );
+
+// Where the last LOOKBACK_MONTHS end: where the data reaches (dataEnd), so an old upload's year
+// doesn't lose a day each day it sits ("10 interest charges" became 9; gate C, 11-15). Today for
+// current data, and today too when every line is older than the window: data that old says
+// nothing about now, and nothing is in it.
+export function lookbackEnd(transactions: readonly { date: string }[], asOf: string): string {
+  const newest = transactions.reduce(
+    (max, t) => (t.date > max && t.date <= asOf ? t.date : max),
+    "",
+  );
+  return newest > monthsBefore(asOf, LOOKBACK_MONTHS) ? dataEnd(transactions, asOf) : asOf;
+}
+
 // Transactions strictly inside the last LOOKBACK_MONTHS, so a yearly fee isn't counted twice.
 export function inLookback(input: DetectionInput): DetectionTransaction[] {
-  const cutoff = monthsBefore(input.asOf, LOOKBACK_MONTHS);
+  const cutoff = monthsBefore(lookbackEnd(input.transactions, input.asOf), LOOKBACK_MONTHS);
   return input.transactions.filter((t) => t.date > cutoff && t.date <= input.asOf);
 }
 
