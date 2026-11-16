@@ -64,7 +64,7 @@ const RECONNECT =
   "inline-flex h-11 items-center justify-center self-start rounded-full border border-zinc-300 px-5 text-sm font-semibold hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900";
 const BOX = "flex scroll-mt-8 flex-col gap-3";
 
-// A bank that needs a sign-in now, or by a date Plaid gave (PENDING_DISCONNECT): both get Reconnect.
+// A bank that needs a sign-in now, or by a date Plaid gave (PENDING_DISCONNECT): both get Sign in again.
 const needsSignIn = (item: { status: string; reconnectBy: Date | null }) =>
   item.status === ITEM_STATUS.loginRequired ||
   (item.reconnectBy !== null && item.reconnectBy.getTime() > Date.now());
@@ -224,15 +224,16 @@ async function SettingsContent({
   const details: Record<string, ReactNode> = {};
   const more: Record<string, ReactNode> = {};
 
-  // Banks and files: each bank's Refresh and Disconnect (and Reconnect when it needs a sign-in),
+  // Banks and files: each bank's Refresh and Disconnect (and Sign in again when it needs one),
   // its accounts behind More.
   for (const item of items) {
     const id = itemId("banks", `item-${item.id}`);
     details[id] = (
       <div className={BOX}>
         {needsSignIn(item) && (
-          // The same Reconnect as /connect: Plaid Link in update mode.
-          <LinkButton itemId={item.id} label="Reconnect" className={RECONNECT} />
+          // The same Sign in again as Home and /connect: Plaid Link in update mode. It said
+          // "Reconnect" here alone (debug 3, 11-16).
+          <LinkButton itemId={item.id} label="Sign in again" className={RECONNECT} />
         )}
         <div className="flex flex-col gap-2 sm:flex-row">
           <RefreshForm itemId={item.id} />
