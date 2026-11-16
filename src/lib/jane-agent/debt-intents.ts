@@ -233,6 +233,13 @@ const ON = /\b(?:on|for) (?:my |the |our )?(.+)$/;
 // Every debt, not one named "loans" (debugger 11-16: "I can't find "loans" among your debts").
 const ALL_DEBTS =
   /^(?:everything|all|total|in total|(?:all )?(?:(?:my|our|the) )?(?:loans|debts|cards|credit cards))$/;
+// "What's my credit card balance?", "how much is on my card?": that debt (debugger 11-16: "I can't
+// answer that one yet" beside Loans' "You owe $1,890.00"). Only debts' words, so checking's
+// balance stays checking's.
+const DEBT_WORDS = "(?:credit )?cards?|car loan|auto loan|student loans?|loans?|mortgage";
+const BALANCE = new RegExp(
+  `\\b(?:what(?:'s| is) (?:my|our|the) (${DEBT_WORDS})(?:'s)? balance|what(?:'s| is) the balance (?:on|of) (?:my |our |the )?(${DEBT_WORDS})|how much is (?:left )?on (?:my|our|the) (${DEBT_WORDS}))\\b`,
+);
 // "How much is my car payment?": that loan, not what was spent on Transportation (debugger 11-16).
 const PAYMENT =
   /\b(?:how much (?:is|are)|what(?:'s| is| are)) (?:my|our|the) (car|auto|truck|student loan)(?: loan)? payments?\b/;
@@ -615,6 +622,8 @@ export function parseDebtIntent(
   }
   const payment = PAYMENT.exec(text);
   if (payment) return { kind: "debt_detail", target: payment[1] };
+  const balance = BALANCE.exec(text);
+  if (balance) return { kind: "debt_detail", target: balance[1] ?? balance[2] ?? balance[3] };
   const rate = RATE.exec(text);
   if (rate && clean(rate[1])) return { kind: "debt_detail", target: clean(rate[1]) };
   if (OWE.test(text)) {
