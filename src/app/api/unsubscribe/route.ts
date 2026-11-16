@@ -20,9 +20,15 @@ export async function POST(request: Request) {
   if (limited) return limited;
   const url = new URL(request.url);
   const userId = userFromUnsubscribeToken(url.searchParams.get("token"));
-  if (!userId) return NextResponse.json({ error: "Invalid link" }, { status: 400 });
   const asked = url.searchParams.get("what");
   const what = asked === "alerts" || asked === "chat" ? asked : "digest";
+  const fromPage = url.searchParams.get("from") === "page";
+  if (!userId) {
+    // From the page, back to it to say so in words; a mail app gets the error.
+    return fromPage
+      ? NextResponse.redirect(new URL(`/unsubscribe?what=${what}`, url.origin), 303)
+      : NextResponse.json({ error: "Invalid link" }, { status: 400 });
+  }
 
   if (what === "chat") {
     // Jane's emails of chat messages (spec step 85): email off, phone notifications kept.
@@ -68,7 +74,7 @@ export async function POST(request: Request) {
     }
   }
 
-  if (url.searchParams.get("from") === "page") {
+  if (fromPage) {
     return NextResponse.redirect(new URL(`/unsubscribe?done=1&what=${what}`, url.origin), 303);
   }
   return NextResponse.json({ unsubscribed: true });
