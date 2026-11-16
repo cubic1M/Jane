@@ -107,7 +107,12 @@ import { formatRate } from "@/lib/percent";
 // steps' answers, and only in demo advice mode.
 
 const SEE: MessageAction = openLink("See what you own", "/investments");
-const CONNECT: MessageAction = openLink("Link an account", "/connect");
+// Where investments get in: a positions download. A linked bank's brokerage isn't read in the beta
+// (Plaid Investments is off, src/lib/plaid/client.ts), so "Link one" led back to nothing (debug 2,
+// 11-16: a student sending $500 a month to Fidelity was told to link it).
+const CONNECT: MessageAction = openLink("Upload your investments", "/import/investments");
+const ADD_ONE =
+  "Upload a positions download from your brokerage (Fidelity, Schwab, Vanguard or Robinhood)";
 
 const holdingsWord = (n: number) => `${n} ${n === 1 ? "holding" : "holdings"}`;
 
@@ -140,7 +145,7 @@ const line = (h: HoldingView) =>
 export function holdingsReply(data: Investments, named: string | null): Reply {
   if (data.accounts.length === 0) {
     return {
-      body: "I don't see any investment or retirement accounts yet. Link one and I'll show what's in it, with where every number comes from.",
+      body: `I don't see any investment or retirement accounts yet. ${ADD_ONE} and I'll show what's in it, with where every number comes from.`,
       actions: [CONNECT],
       refs: {},
     };
@@ -301,7 +306,7 @@ export function retirementReply(
   const link: MessageAction = openLink("See your retirement plan", "/investments/retirement");
   if (data.accounts.length === 0) {
     return {
-      body: "I don't see a retirement account yet. Link your 401(k) or IRA and I'll show where you're headed.",
+      body: `I don't see a retirement account yet. ${ADD_ONE} for your 401(k) or IRA and I'll show where you're headed.`,
       actions: [CONNECT],
       refs: {},
     };
@@ -490,7 +495,7 @@ export function accountsReply(plan: AccountPlan): Reply {
 export function overviewReply(snapshot: InvestmentSnapshot): Reply {
   if (snapshot.accounts.length === 0) {
     return {
-      body: "I don't see any investment or retirement accounts yet. Link one and I'll tell you each month how it's going.",
+      body: `I don't see any investment or retirement accounts yet. ${ADD_ONE} and I'll tell you each month how it's going.`,
       actions: [CONNECT],
       refs: {},
     };
