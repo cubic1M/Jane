@@ -27,6 +27,10 @@ const BOILERPLATE = [
   // and how a payment went (debugger 11-14: "Verizon Wireless Payments Ach Debit"). Saved keys
   // moved in prisma/migrations/20270517000000_merchant_without_pos_debit: keep them in step.
   /(?<=\S)\s+ACH (?:CREDIT|DEPOSIT|DEBIT)$/,
+  // A fee for one item says the item's amount: "OVERDRAFT FEE FOR A $14.50 ITEM" read "Overdraft Fee
+  // For A 14 50 Item", a new merchant for every amount (debug 2, 11-16). Each saved key had its own
+  // amount, so no later line could match one: nothing to move.
+  /(?<=\bFEE)\s+FOR AN?\s+\$?[\d,]+(?:[. ]\d{2})?\s+ITEM\b.*$/,
   // An ACH line's entry words (debugger 11-05: "Uber Technologies Inc Edi Paymnt").
   /(?<=\S)\s+EDI (?:PAYMNTS?|PYMNTS?|PMTS?|PAYMENTS?)$/,
   // A brokerage cash account's "DIRECT DEBIT ALTA APARTMENTS RENT (Cash)" (debugger 11-04).
