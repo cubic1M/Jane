@@ -5,7 +5,7 @@ import {
   NET_WORTH_MONTHS,
 } from "@/config/net-worth";
 import type { PrismaClient } from "@/generated/prisma/client";
-import { netWorth, netWorthLine, type Unbalanced } from "@/insights/net-worth";
+import { netWorth, netWorthLine, type NetWorth, type Unbalanced } from "@/insights/net-worth";
 import { monthsEnding } from "@/insights/spending";
 import { withoutCopies } from "@/lib/account-copies";
 import { cryptoTotal } from "@/lib/crypto/crypto";
@@ -14,6 +14,60 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { todayOf } from "@/lib/today";
 import { copiesToLeaveOut } from "@/planning/books";
+
+// What net worth is worked out from, read one way for every surface that shows it (gate B: the
+// weekly email left out what the person owns and their crypto, the month close and Home's line
+// counted an account linked twice): each account once (src/lib/account-copies.ts), its balances
+// since `since` (all of them without), what the person owns at their values, and crypto.
+export async function loadNetWorthInputs(
+  userId: string,
+  { client = defaultClient, since }: { client?: PrismaClient; since?: string } = {},
+) {
+  const db = scopedFor(userId, client);
+  const [allAccounts, allSnapshots, ownedRows, crypto] = await Promise.all([
+    db.accounts.findMany({
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        subtype: true,
+        currentBalanceCents: true,
+        itemId: true,
+        mask: true,
+        createdAt: true,
+      },
+    }),
+    db.balanceSnapshots.findMany({
+      ...(since ? { where: { date: { gte: new Date(`${since}T00:00:00Z`) } } } : {}),
+      select: { accountId: true, date: true, balanceCents: true },
+    }),
+    db.ownedAssets.findMany({
+      select: { id: true, name: true, valueCents: true, valuedOn: true, loanAccountId: true },
+    }),
+    cryptoTotal(userId, { client }),
+  ]);
+  const copies = copiesToLeaveOut(allAccounts);
+  const accounts = withoutCopies(allAccounts, copies, (a) => a.id);
+  return {
+    accounts,
+    snapshots: withoutCopies(allSnapshots, copies, (s) => s.accountId).map((s) => ({
+      ...s,
+      date: s.date.toISOString().slice(0, 10),
+    })),
+    owned: ownedRows.map((o) => ({ ...o, valuedOn: o.valuedOn.toISOString().slice(0, 10) })),
+    crypto,
+    // Net worth today, the figure every surface shows.
+    worth: netWorth(
+      accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })),
+      ownedRows.map((o) => ({
+        id: o.id,
+        valueCents: o.valueCents,
+        valuedOn: o.valuedOn.toISOString().slice(0, 10),
+      })),
+      crypto,
+    ),
+  };
+}
 
 // Net worth today and at the end of each month before it, worked out one way for the home hub,
 // /net-worth and the monthly report (src/insights/net-worth.ts, netWorthLine), so they never
@@ -34,54 +88,22 @@ export async function loadNetWorthHistory(
   known: boolean;
   // The accounts it can't count yet for want of a balance, for notCounting's words.
   unbalanced: Unbalanced[];
+  // Today's figure in parts (what's held, owed, invested, owned, crypto), for the chat and emails.
+  worth: NetWorth;
 } | null> {
-  const db = scopedFor(userId, client);
   const asOf = await todayOf(userId, { client, now });
   const [first] = monthsEnding(asOf, months);
-  const [allAccounts, allSnapshots, ownedRows, crypto] = await Promise.all([
-    db.accounts.findMany({
-      select: {
-        id: true,
-        name: true,
-        type: true,
-        subtype: true,
-        currentBalanceCents: true,
-        itemId: true,
-        mask: true,
-      },
-    }),
-    db.balanceSnapshots.findMany({
-      where: { date: { gte: new Date(`${first}-01T00:00:00Z`) } },
-      select: { accountId: true, date: true, balanceCents: true },
-    }),
-    db.ownedAssets.findMany({
-      select: { id: true, valueCents: true, valuedOn: true, loanAccountId: true },
-    }),
-    cryptoTotal(userId, { client }),
-  ]);
-  if (allAccounts.length === 0) return null;
-  // An account linked twice counts once (src/lib/account-copies.ts).
-  const copies = copiesToLeaveOut(allAccounts);
-  const accounts = withoutCopies(allAccounts, copies, (a) => a.id);
-  const snapshots = withoutCopies(allSnapshots, copies, (s) => s.accountId);
-  const owned = ownedRows.map((o) => ({ ...o, valuedOn: o.valuedOn.toISOString().slice(0, 10) }));
-  const today = netWorth(
-    accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })),
-    owned,
-    crypto,
-  );
+  const { accounts, snapshots, owned, worth } = await loadNetWorthInputs(userId, {
+    client,
+    since: `${first}-01`,
+  });
+  if (accounts.length === 0) return null;
   return {
-    todayCents: today.netCents,
-    known: today.known,
-    unbalanced: today.unbalanced,
-    months: netWorthLine(
-      accounts,
-      snapshots.map((s) => ({ ...s, date: s.date.toISOString().slice(0, 10) })),
-      owned,
-      asOf,
-      months,
-      today.netCents,
-    ),
+    todayCents: worth.netCents,
+    known: worth.known,
+    unbalanced: worth.unbalanced,
+    worth,
+    months: netWorthLine(accounts, snapshots, owned, asOf, months, worth.netCents),
   };
 }
 

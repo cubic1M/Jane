@@ -6,7 +6,7 @@ import { previousMonth } from "@/insights/check-in";
 
 import { track } from "@/lib/analytics";
 import { openBooks } from "@/lib/books";
-import { cryptoTotal } from "@/lib/crypto/crypto";
+import { loadNetWorthInputs } from "@/lib/net-worth-history";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { localDate } from "@/lib/digest/week";
@@ -74,19 +74,13 @@ async function figuresFor(
   client: PrismaClient,
   keep?: Pick<CloseFigures, "netWorthCents" | "netWorthNotCounting" | "booksOpen">,
 ): Promise<CloseFigures> {
-  const db = scopedFor(userId, client);
-  const [txns, accounts, books, report, owned, crypto] = await Promise.all([
+  const [txns, worth, books, report] = await Promise.all([
     monthTxns(userId, month, client),
-    keep
-      ? null
-      : db.accounts.findMany({
-          select: { id: true, name: true, type: true, currentBalanceCents: true },
-        }),
+    // What net worth is read from on every page and in the chat: each account once (gate B: the
+    // close counted an account linked twice), what they own and their crypto.
+    keep ? null : loadNetWorthInputs(userId, { client }),
     keep ? null : openBooks(userId, { client }),
     storedReport(userId, month, { client }),
-    // What they own and their crypto, as the net worth page and the chat count them.
-    keep ? [] : db.ownedAssets.findMany({ select: { id: true, valueCents: true, valuedOn: true } }),
-    keep ? 0 : cryptoTotal(userId, { client }),
   ]);
   const r = report?.report;
   return {
@@ -96,7 +90,7 @@ async function figuresFor(
     // and what it leaves out said beside it.
     ...(keep
       ? { netWorthCents: keep.netWorthCents, netWorthNotCounting: keep.netWorthNotCounting ?? null }
-      : closeNetWorth(accounts!, owned, crypto)),
+      : closeNetWorth(worth!.accounts, worth!.owned, worth!.crypto)),
     booksOpen: keep
       ? keep.booksOpen
       : books!.open.filter((o) => BOOKS_WORRYING_KINDS.includes(o.kind)).length,

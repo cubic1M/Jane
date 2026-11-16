@@ -1,4 +1,3 @@
-import { accountCopies, withoutCopies } from "@/lib/account-copies";
 import { oneLine } from "@/lib/untrusted-text";
 import { adviceMode } from "@/lib/advice-mode";
 import { log } from "@/lib/log";
@@ -19,8 +18,8 @@ import { LIFE_EVENTS } from "@/config/life-events";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { budgetSummary } from "@/insights/budgets";
 import { loadInsightTransactions } from "@/insights/load";
-import { loansNotCounted, netWorth, notCounting, owedIsKnown } from "@/insights/net-worth";
-import { loansSeenWithoutBalance } from "@/lib/net-worth-history";
+import { loansNotCounted, notCounting, owedIsKnown } from "@/insights/net-worth";
+import { loadNetWorthInputs, loansSeenWithoutBalance } from "@/lib/net-worth-history";
 import { ASK_TOOLS, runAskTool, type ToolOutput, toolAnswer, noInput } from "@/lib/ask/tools";
 import { CARD_SELECT, buildCard } from "@/lib/cards";
 import { conciergeMode } from "@/lib/concierge-mode";
@@ -111,7 +110,6 @@ import { findingCandidate } from "./sources/findings";
 import { TAX_TOOLS, isTaxTool } from "./tax-tools";
 import { runTaxTool } from "./tax-tools-run";
 import { ACTION_IDS, type ActionId, type MessageAction, openLink } from "./types";
-import { cryptoTotal } from "@/lib/crypto/crypto";
 import { RULE_REPLAY_STRATEGY_LABELS } from "@/config/backtest";
 import {
   RISK_BUDGETS,
@@ -1406,22 +1404,8 @@ async function runChatToolWork(
       });
     }
     case "net_worth": {
-      const db = scopedFor(userId, client);
-      const [listedAccounts, owned, crypto, copies] = await Promise.all([
-        db.accounts.findMany({
-          select: { id: true, name: true, type: true, subtype: true, currentBalanceCents: true },
-        }),
-        db.ownedAssets.findMany({ select: { id: true, valueCents: true, valuedOn: true } }),
-        cryptoTotal(userId, { client }),
-        accountCopies(db),
-      ]);
-      // An account linked twice counts once (src/lib/account-copies.ts).
-      const accounts = withoutCopies(listedAccounts, copies, (a) => a.id);
-      const worth = netWorth(
-        accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })),
-        owned.map((o) => ({ ...o, valuedOn: o.valuedOn.toISOString().slice(0, 10) })),
-        crypto,
-      );
+      // The figure Home and /net-worth show, from the one place they read it (gate B).
+      const { worth } = await loadNetWorthInputs(userId, { client });
       const loansSeen = await loansSeenWithoutBalance(userId, { client, now });
       return out({
         has: money(worth.assetsCents),

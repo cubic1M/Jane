@@ -10,6 +10,7 @@ import {
   type EventGroup,
   type NetWorthEvent,
 } from "@/insights/net-worth-events";
+import { accountCopies, withoutCopies } from "@/lib/account-copies";
 import { accountLabels } from "@/lib/account-labels";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -47,7 +48,7 @@ async function loadEvents(
 ): Promise<NetWorthEvent[]> {
   const db = scopedFor(userId, client);
   const since = new Date(`${from}T00:00:00Z`);
-  const [accounts, transactions, snapshots, actions] = await Promise.all([
+  const [listedAccounts, listedTransactions, listedSnapshots, actions, copies] = await Promise.all([
     db.accounts.findMany({
       select: { id: true, name: true, type: true, mask: true, createdAt: true },
     }),
@@ -79,7 +80,13 @@ async function loadEvents(
         decision: { select: { finding: { select: { title: true } } } },
       },
     }),
+    accountCopies(db),
   ]);
+  // An account linked twice counts once, as on the line these dots sit on (gate B: the copy's
+  // charges showed twice in a day's box, beside a line that counts them once).
+  const accounts = withoutCopies(listedAccounts, copies, (a) => a.id);
+  const transactions = withoutCopies(listedTransactions, copies, (t) => t.accountId);
+  const snapshots = withoutCopies(listedSnapshots, copies, (s) => s.accountId);
   const typeOf = new Map(accounts.map((a) => [a.id, a.type]));
   // Each account as the loan pages name it, so two that read the same are told apart.
   const labelOf = accountLabels(accounts);

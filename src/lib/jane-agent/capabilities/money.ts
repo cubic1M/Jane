@@ -1,13 +1,10 @@
-import { accountCopies, withoutCopies } from "@/lib/account-copies";
 import { FORECAST_DAYS } from "@/config/detection";
 import { loadSnapshotFast } from "../snapshot-store";
 import { loadDetectionInput } from "@/detection/input";
 import { forecastAccounts } from "@/detection/forecast";
 import { forecastReply } from "../replies-forecast";
 import { saveMoreReply } from "../replies-savemore";
-import { netWorth } from "@/insights/net-worth";
-import { cryptoTotal } from "@/lib/crypto/crypto";
-import { loansSeenWithoutBalance } from "@/lib/net-worth-history";
+import { loadNetWorthInputs, loansSeenWithoutBalance } from "@/lib/net-worth-history";
 import { netWorthReply } from "../replies-networth";
 import { storedReport } from "@/lib/monthly-report-store";
 import { reportReply } from "../replies-report";
@@ -186,23 +183,9 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
       return reportReply(await storedReport(userId, null, { client }));
     // What they own and owe, from the net worth page's own math.
     case "net_worth": {
-      const db = scopedFor(userId, client);
-      const [listedAccounts, owned, crypto, copies] = await Promise.all([
-        db.accounts.findMany({
-          select: { id: true, name: true, type: true, subtype: true, currentBalanceCents: true },
-        }),
-        db.ownedAssets.findMany({ select: { id: true, valueCents: true, valuedOn: true } }),
-        cryptoTotal(userId, { client }),
-        accountCopies(db),
-      ]);
-      // An account linked twice counts once (src/lib/account-copies.ts).
-      const accounts = withoutCopies(listedAccounts, copies, (a) => a.id);
+      // The figure Home and /net-worth show, from the one place they read it (gate B).
       return netWorthReply(
-        netWorth(
-          accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })),
-          owned.map((o) => ({ ...o, valuedOn: o.valuedOn.toISOString().slice(0, 10) })),
-          crypto,
-        ),
+        (await loadNetWorthInputs(userId, { client })).worth,
         await loansSeenWithoutBalance(userId, { client }),
       );
     }

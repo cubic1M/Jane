@@ -1,41 +1,36 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { dailyNetWorth, type SeriesPoint } from "@/insights/net-worth-series";
-import { cryptoTotal } from "@/lib/crypto/crypto";
 import { db as defaultClient } from "@/lib/db";
-import { scopedFor } from "@/lib/db-scoped";
 import { isoDay as day } from "@/lib/dates";
+import { loadNetWorthInputs } from "@/lib/net-worth-history";
 import { todayOf } from "@/lib/today";
 
 // The home hub's net worth chart (docs/design/home-hub.md): net worth every day from the
 // person's first day with Jane (their first account link, or their first balance if that's
 // earlier, as a sample person's year of demo-bank balances is) to today. It ends at the hub's
-// own headline figure, which the caller passes in, so the two never disagree.
+// own headline figure, which the caller passes in, so the two never disagree; and it reads what
+// the headline reads (loadNetWorthInputs), so a bank linked twice counts once on every day too,
+// not only today (gate B: the line dropped by the copy's balance on its last day).
 
 export async function netWorthHistory(
   userId: string,
   todayCents: number,
   { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
 ): Promise<SeriesPoint[]> {
-  const db = scopedFor(userId, client);
-  const [accounts, snapshots, owned, crypto] = await Promise.all([
-    db.accounts.findMany({
-      select: { id: true, type: true, currentBalanceCents: true, createdAt: true },
-    }),
-    db.balanceSnapshots.findMany({ select: { accountId: true, date: true, balanceCents: true } }),
-    db.ownedAssets.findMany({ select: { id: true, valueCents: true, valuedOn: true } }),
-    cryptoTotal(userId, { client }),
-  ]);
   // The person's own day (src/lib/today.ts): at 7pm in Los Angeles UTC's date is tomorrow, and the
   // chart grew a point for a day that hadn't started (gate C's calendar sweep, 11-15).
-  const asOf = await todayOf(userId, { client, now });
+  const [{ accounts, snapshots, owned, crypto }, asOf] = await Promise.all([
+    loadNetWorthInputs(userId, { client }),
+    todayOf(userId, { client, now }),
+  ]);
   const firstDay = [
     ...accounts.map((a) => day(a.createdAt)),
-    ...snapshots.map((s) => day(s.date)),
+    ...snapshots.map((s) => s.date),
   ].reduce((first, d) => (d < first ? d : first), asOf);
   return dailyNetWorth({
     accounts,
-    snapshots: snapshots.map((s) => ({ ...s, date: day(s.date) })),
-    owned: owned.map((o) => ({ ...o, valuedOn: day(o.valuedOn) })),
+    snapshots,
+    owned,
     cryptoCents: crypto,
     firstDay,
     asOf,

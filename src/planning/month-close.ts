@@ -97,7 +97,7 @@ export const categoryWords = (primary: string) => {
 // out for want of a balance said beside it (the CSV bench's skipped-balance path). Pure.
 export function closeNetWorth(
   accounts: { id: string; name: string; type: string; currentBalanceCents: number | null }[],
-  owned: { id: string; valueCents: number; valuedOn: Date }[],
+  owned: { id: string; valueCents: number; valuedOn: string }[],
   crypto: number,
 ): Pick<CloseFigures, "netWorthCents" | "netWorthNotCounting"> {
   if (accounts.length === 0) return { netWorthCents: null, netWorthNotCounting: null };
@@ -108,7 +108,7 @@ export function closeNetWorth(
       type: a.type,
       balanceCents: a.currentBalanceCents,
     })),
-    owned.map((o) => ({ ...o, valuedOn: o.valuedOn.toISOString().slice(0, 10) })),
+    owned,
     crypto,
   );
   return {
