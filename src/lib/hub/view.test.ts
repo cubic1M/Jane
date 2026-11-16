@@ -443,8 +443,9 @@ describe("the area tiles", () => {
     expect(tileOf(areas({ investments: null }), "investments").caption).toBe(
       "Start with practice money",
     );
+    // Nor told it's demo only (gate A crawl, 11-15): what the area holds for them.
     expect(tileOf(areas({ investments: null, practiceOpen: false }), "investments").caption).toBe(
-      "Demo only for now",
+      "Holdings and fees",
     );
   });
 
