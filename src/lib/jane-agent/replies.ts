@@ -718,9 +718,13 @@ export function safeReply(
   const after =
     parts.length > 0
       ? ` That's after ${parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}` : parts[0]}${tax}.`
-      : safe.taxHeldCents
-        ? ` That's your checking balance${tax}: I don't see any bills coming up, budgets or goals yet.`
-        : " That's your whole checking balance: I don't see any bills coming up, budgets or goals yet.";
+      : // Until payday, only bills due before it count (debugger 11-16: "I don't see any bills coming
+        // up" with rent due four days after payday).
+        ` That's your ${safe.taxHeldCents ? "checking balance" : "whole checking balance"}${tax}: ${
+          payday
+            ? "no bills are due before then, and I don't see budgets or goals yet."
+            : "I don't see any bills coming up, budgets or goals yet."
+        }`;
   return reply(
     `You have ${fmt(safe.safeCents)} safe to spend${payday ? ` until your next payday, ${payday}` : ""}.${after}${leftOut}`,
     [openLink("See today", "/home")],
