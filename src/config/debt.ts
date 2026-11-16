@@ -602,7 +602,7 @@ export const DEBT_AUTOPILOT: Readonly<
 // --- Step 110: payoff plans ----------------------------------------------------------
 
 // Debts the payoff plan leaves out: a mortgage runs for decades on its own schedule and
-// would swamp the plan (step 115 watches it). Same as the planner (PLANNER_LEFT_OUT_SUBTYPES).
+// would swamp the plan (step 115 watches it).
 export const PAYOFF_LEFT_OUT_KINDS: readonly string[] = ["mortgage"];
 // A Pay in 4 plan's payment comes every two weeks: this many count toward a month.
 export const BNPL_PAYMENTS_PER_MONTH = 2;

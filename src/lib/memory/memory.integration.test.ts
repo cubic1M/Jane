@@ -10,7 +10,7 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 // A profile correction refreshes the chat's numbers in the background: not needed here.
 vi.mock("@/lib/jane-agent/primer-store", () => ({ markPrimerStale: vi.fn() }));
 
-import { CORRECTED_CONFIDENCE, START_CONFIDENCE } from "@/config/memory";
+import { MAX_CONFIDENCE, START_CONFIDENCE } from "@/config/memory";
 import { TRIAL_ID_PREFIX } from "@/config/trial";
 import { logAudit } from "@/lib/audit";
 import { deleteAllData } from "@/lib/account-deletion";
@@ -169,7 +169,7 @@ describe.runIf(url)("what Jane knows, against a real database", () => {
       value: "a used car by spring",
       label: "Your goal: a used car by spring",
       source: "answer",
-      confidence: CORRECTED_CONFIDENCE,
+      confidence: MAX_CONFIDENCE,
     });
     expect(logAudit).toHaveBeenCalledWith(
       { type: "user", id: userId },
@@ -193,7 +193,7 @@ describe.runIf(url)("what Jane knows, against a real database", () => {
     expect((await listFacts(userId, { client })).find((f) => f.key === "housing")).toMatchObject({
       value: "own",
       source: "answer",
-      confidence: CORRECTED_CONFIDENCE,
+      confidence: MAX_CONFIDENCE,
     });
     expect(
       await client.insuranceProfile.findUnique({ where: { userId }, select: { housing: true } }),

@@ -16,9 +16,6 @@ export const CLASS_WORDS: readonly [MenuClass, RegExp][] = [
   ],
 ];
 
-// A fund is flagged as costly above this (basis points) when a cheaper one of the same kind
-// is on the menu.
-export const MENU_COSTLY_BPS = 40;
 // A saving under this a year (cents) isn't worth a message.
 export const MENU_MIN_SAVING_CENTS = 2_500;
 // The account subtypes a plan menu applies to.

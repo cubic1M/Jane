@@ -94,6 +94,6 @@ export function agentFeed(
   client: PrismaClient = defaultClient,
 ): AgentFeed {
   if (env.PAPER_SAMPLE_PRICES === "1") return sampleFeed;
-  if (env.NODE_ENV === "production" || env.AGENT_LIVE_BARS === "1") return liveFeed(client, env);
+  if (env.NODE_ENV === "production") return liveFeed(client, env);
   return sampleFeed;
 }

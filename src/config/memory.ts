@@ -36,8 +36,6 @@ export const CONTRADICT_STEP = 25;
 export const SUPERSEDE_BELOW = 40;
 // What the person answered never falls below this from data alone: only they can change it.
 export const ANSWER_FLOOR = 50;
-// A correction on /settings/memory.
-export const CORRECTED_CONFIDENCE = 99;
 
 // Jane's chat and the detectors use facts at least this sure.
 export const USE_FROM_CONFIDENCE = 60;

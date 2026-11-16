@@ -8,8 +8,10 @@ import type { CatalogId } from "@/config/strategy-catalog";
 
 export type RegimeMove = { label: string; strategy: number | null; mix: number | null };
 
-export const CATALOG_REGIMES_SOURCE =
-  "Yahoo Finance adjusted daily closes, 2005-01-03 to 2026-10-23, each younger fund read through an older look-alike before it began (VEU through EFA, VXUS through VEU, BIL through SHY, BND through AGG, HYG through LQD, VWO through EEM, SCZ through EFA, GSG through DBC, REM through VNQ, DLS through EFA, DGS through EEM)";
+// Source: Yahoo Finance adjusted daily closes, 2005-01-03 to 2026-10-23, each younger fund read
+// through an older look-alike before it began (VEU through EFA, VXUS through VEU, BIL through SHY,
+// BND through AGG, HYG through LQD, VWO through EEM, SCZ through EFA, GSG through DBC, REM through
+// VNQ, DLS through EFA, DGS through EEM).
 
 export const CATALOG_REGIME_EVIDENCE: Readonly<
   Partial<Record<CatalogId, Partial<Record<RiskLevel, RegimeMove[]>>>>
