@@ -1,4 +1,5 @@
 import { PLAN_SOON_DAYS, type PlanMoveKey } from "@/config/tax-plan";
+import { estimateState } from "@/lib/tax-estimate-state";
 import { isHiddenPage } from "@/config/hidden-pages";
 import type { Route } from "next";
 import type { TreeStatus } from "@/components/tree/interactive-tree";
@@ -241,7 +242,13 @@ export type TaxesTreeInput = {
   }[];
   // Null when savings suggestions are off (real accounts, outside demo advice).
   savings: { key: SavingKey; title: string; estimateCents: number }[] | null;
-  estimate: { refundCents: number; withholdingKnown: boolean };
+  estimate: {
+    refundCents: number;
+    withholdingKnown: boolean;
+    // What the Home tile reads too, so the two say the same (estimateState).
+    totalTaxCents?: number;
+    incomeCents?: number | null;
+  };
   // The tax left to cover (src/planning/tax-set-aside.ts).
   setAside: {
     keptApartCents?: number;
@@ -318,6 +325,20 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
     );
 
   const r = input.estimate.refundCents;
+  // Older callers without the totals keep the old reading: a known refund or amount owed.
+  const state =
+    input.estimate.totalTaxCents === undefined
+      ? input.estimate.withholdingKnown
+        ? r >= 0
+          ? "refund"
+          : "owed"
+        : "tax"
+      : estimateState({
+          totalTaxCents: input.estimate.totalTaxCents,
+          incomeCents: input.estimate.incomeCents ?? null,
+          withholdingKnown: input.estimate.withholdingKnown,
+          refundCents: r,
+        });
   const aside = input.setAside;
   const kept = (aside.keptApartCents ?? 0) > 0;
   const estimate = [
@@ -354,13 +375,21 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
         ]),
     item("estimate", "estimate", {
       label: `Your ${input.year} estimate`,
-      status: r >= 0 ? "good" : "look",
-      figure: input.estimate.withholdingKnown
-        ? r >= 0
+      status: state === "unknown" ? undefined : r >= 0 ? "good" : "look",
+      figure:
+        state === "refund"
           ? `${shortMoney(r)} back`
-          : `${shortMoney(-r)} owed`
-        : undefined,
-      summary: "Worked out from your pay and accounts. Every figure is an estimate.",
+          : state === "owed"
+            ? `${shortMoney(-r)} owed`
+            : state === "no_tax"
+              ? "No tax"
+              : undefined,
+      summary:
+        state === "unknown"
+          ? "Not enough to estimate yet: Jane works it out once it sees your pay."
+          : state === "no_tax"
+            ? "No income tax expected on what you've earned so far."
+            : "Worked out from your pay and accounts. Every figure is an estimate.",
     }),
     item("estimate", "withholding", {
       label: "Withholding",
