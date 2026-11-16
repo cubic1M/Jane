@@ -30,6 +30,8 @@ import { savingsLine } from "@/lib/savings-text";
 import { policyForMerchant, policyLines } from "@/lib/documents/dates";
 import { CHOICE_WORDS, messageAboutFinding } from "@/lib/jane-agent/messages";
 import { CARD_TIGHT } from "@/components/card";
+import { findingSureFacts } from "@/lib/finding-sures";
+import { findingSure } from "@/lib/report-state";
 
 async function Card({ params }: { params: PageProps<"/report/[findingId]">["params"] }) {
   const user = await requireUser();
@@ -37,7 +39,7 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
   const db = await scopedDb();
   const finding = await db.findings.findFirst({
     where: { id: findingId },
-    select: { ...CARD_SELECT, status: true },
+    select: { ...CARD_SELECT, status: true, confidence: true },
   });
   if (!finding) notFound();
   if (finding.status === "new") {
@@ -48,6 +50,12 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
   }
   const card = buildCard(finding, await partnerForUser(user.id, ACTION_FOR_FINDING[finding.type]));
   const open = finding.status === "new" || finding.status === "shown";
+  // How sure Jane is, as /report and the chat's card say it (gate D: this page said nothing).
+  const [sureFacts, sameType] = await Promise.all([
+    findingSureFacts(db, new Date()),
+    db.findings.count({ where: { type: finding.type, status: { in: ["new", "shown"] } } }),
+  ]);
+  const sure = findingSure(finding, sureFacts.sures, sureFacts.months, Math.max(1, sameType));
   // A do-it-yourself answer shows the kit instead of the buttons.
   const diyDecision = open
     ? null
@@ -156,6 +164,9 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
           <p className="mt-1">{shown.whatChanges}</p>
           <p className="mt-3 text-lg font-semibold">
             {savingsLine(card.findingType, card.annualSavingsCents, finding.evidence)}
+          </p>
+          <p data-finding-sure="" className="text-sm text-zinc-700 dark:text-zinc-300">
+            {sure.percent}% sure: {sure.reason}
           </p>
           <p className="text-xs text-zinc-600 dark:text-zinc-400">
             An estimate from your transactions so far, not a promise.

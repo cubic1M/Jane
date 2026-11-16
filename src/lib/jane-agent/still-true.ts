@@ -307,8 +307,8 @@ function asNow(m: ChatMessage, facts: Facts): ChatMessage | null {
   // too).
   if (finding && facts.suggestionTopics?.has(finding.type)) return null;
   if (finding && m.refs.fingerprint && finding.fingerprint !== m.refs.fingerprint) {
-    // Its pick and its question stay as they were.
-    const rest = /(?:My pick: .*)?Want [^?]*\?$/.exec(m.body)?.[0];
+    // How sure, its pick and its question stay as they were.
+    const rest = /(?:\d{1,3}% sure: [^.]*\. )?(?:My pick: .*)?Want [^?]*\?$/.exec(m.body)?.[0];
     return {
       ...m,
       body: [sentence(finding.title), sentence(finding.savings), rest].filter(Boolean).join(" "),
