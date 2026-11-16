@@ -66,6 +66,8 @@ export type ProfileTx = {
   accountId: string;
   // The cleaned merchant name, where one was read; messages name a charge by it.
   merchantName?: string | null;
+  // From an uploaded statement, not a linked bank: the person's day it was uploaded (reachOf).
+  uploadedOn?: string;
 };
 type ProfileAccount = {
   id: string;
@@ -310,20 +312,47 @@ export function monthsCovered(first: string, today: string): number {
 const STALE_AFTER_DAYS = 35;
 const STATEMENT_TAIL_DAYS = 7;
 function lastDayOf(txs: readonly ProfileTx[], today: string): string {
-  return statementsEnd(
-    txs.reduce((a, t) => (t.date > a && t.date <= today ? t.date : a), ""),
-    today,
-  );
+  return reachOf(txs, today);
 }
 
-// Where statements whose newest line is `last` reach. Also the report page's (one count).
+// Where these lines reach, to count a window back from. A linked bank's while its newest line is
+// recent reach today (statementsEnd). An uploaded statement closes a few days after its last line,
+// however recent, as an old one does: counted to today instead, an upload's history grew a day
+// each day it sat, so its paced figures drifted with nothing new (debug 2, 11-16: five $12 fees
+// from Jun 1 to Oct 20 read "$120/yr" on Nov 16, $144 really, falling a little each day until
+// day 35). Never past the day it was uploaded, nor today: days still to come hold nothing (a Jan to
+// Mar upload read on Mar 30 isn't four months).
+export function reachOf(
+  txs: readonly { date: string; uploadedOn?: string }[],
+  today: string,
+): string {
+  let linked = "";
+  let upload: { date: string; uploadedOn: string } | null = null;
+  for (const t of txs) {
+    if (t.date > today) continue;
+    if (t.uploadedOn) {
+      if (!upload || t.date > upload.date) upload = { date: t.date, uploadedOn: t.uploadedOn };
+    } else if (t.date > linked) linked = t.date;
+  }
+  if (!upload) return statementsEnd(linked, today);
+  const bank = linked ? statementsEnd(linked, today) : "";
+  const closed = [statementClose(upload.date), upload.uploadedOn, today].reduce((a, b) =>
+    b < a ? b : a,
+  );
+  return bank > closed ? bank : closed;
+}
+
+const statementClose = (last: string) =>
+  new Date(Date.parse(`${last}T00:00:00Z`) + STATEMENT_TAIL_DAYS * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+
+// Where a linked bank's statements whose newest line is `last` reach.
 export function statementsEnd(last: string, today: string): string {
   if (!last || last >= today) return today;
   const gap = (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${last}T00:00:00Z`)) / 86_400_000;
   if (gap <= STALE_AFTER_DAYS) return today;
-  return new Date(Date.parse(`${last}T00:00:00Z`) + STATEMENT_TAIL_DAYS * 86_400_000)
-    .toISOString()
-    .slice(0, 10);
+  return statementClose(last);
 }
 
 export function monthsOfData(txs: readonly ProfileTx[], today: string): number {
@@ -397,6 +426,7 @@ function detectionInputOf(input: ProfileInput, txs: readonly ProfileTx[]): Detec
       pfcPrimary: null,
       pfcDetailed: t.pfc,
       categorySource: null,
+      ...(t.uploadedOn ? { uploadedOn: t.uploadedOn } : {}),
     })),
     recurringStreams: [],
   };

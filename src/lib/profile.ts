@@ -4,7 +4,7 @@ import { PAY_PERIODS } from "@/config/benefits";
 import { profileHistoryStart } from "@/config/profile";
 import { db as defaultClient } from "@/lib/db";
 import { dataReach } from "@/lib/data-reach";
-import { todayOf } from "@/lib/today";
+import { localDate, timezoneOf, todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { copiesToLeaveOut } from "@/planning/books";
 import { markPrimerStale } from "@/lib/jane-agent/primer-store";
@@ -80,10 +80,13 @@ async function loadProfileInputFrom(
   const db = scopedFor(userId, client);
   // The person's day, and the year of data counted back from its start: from the clock, a payment
   // made a year ago today fell out at 7pm (night round 11-06: "23 gym payments" became 22).
-  const today = await todayOf(userId, { client, now });
+  const [today, timezone] = await Promise.all([
+    todayOf(userId, { client, now }),
+    timezoneOf(userId, { client }),
+  ]);
   // Counted back from where the data reaches (src/lib/data-reach.ts): today for a current bank,
   // the end of an old upload's statements, so its year doesn't shrink a day at a time.
-  const since = profileHistoryStart(new Date(`${await dataReach(db, today)}T00:00:00Z`));
+  const since = profileHistoryStart(new Date(`${await dataReach(db, today, timezone)}T00:00:00Z`));
   const [
     allTransactions,
     allAccounts,
@@ -114,6 +117,8 @@ async function loadProfileInputFrom(
         merchantName: true,
         pfcDetailed: true,
         accountId: true,
+        source: true,
+        createdAt: true,
       },
     }),
     db.accounts.findMany({
@@ -255,6 +260,7 @@ async function loadProfileInputFrom(
       pfc: t.pfcDetailed,
       accountId: t.accountId,
       merchantName: t.merchantName,
+      ...(t.source === "csv" ? { uploadedOn: localDate(t.createdAt, timezone) } : {}),
     })),
     accounts: accounts.map((a) => ({
       id: a.id,

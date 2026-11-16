@@ -9,7 +9,7 @@ import { cardProducts } from "@/lib/insurance/card-benefits";
 import { isDemoItemId } from "@/lib/plaid/demo-ids";
 import { cachedRead } from "@/lib/read-cache";
 import { systemDb } from "@/lib/system-db";
-import { todayOf } from "@/lib/today";
+import { localDate, timezoneOf, todayOf } from "@/lib/today";
 import { dataReach } from "@/lib/data-reach";
 import { copiesToLeaveOut } from "@/planning/books";
 import { namedByDirectory, withDirectory } from "./merchants";
@@ -34,7 +34,19 @@ const TRANSACTION_SELECT = {
   pfcPrimary: true,
   pfcDetailed: true,
   categorySource: true,
+  source: true,
+  createdAt: true,
 } as const;
+
+// A row as detection reads it: its day as YYYY-MM-DD, and from an upload, the person's day it was
+// uploaded (where the data reaches: src/profile/build.ts reachOf).
+const asDetectionTransaction =
+  (timezone: string) =>
+  <T extends { date: Date; source: string; createdAt: Date }>({ source, createdAt, ...t }: T) => ({
+    ...t,
+    date: isoDate(t.date),
+    ...(source === "csv" ? { uploadedOn: localDate(createdAt, timezone) } : {}),
+  });
 
 export async function loadInput(
   db: ScopedDb,
@@ -43,7 +55,8 @@ export async function loadInput(
 ): Promise<DetectionInput> {
   // Counted back from where the data reaches (src/lib/data-reach.ts): today for a current bank,
   // the end of an old upload's statements, so the history doesn't lose a day each day it sits.
-  const cutoff = monthsBefore(await dataReach(db, asOf), LOOKBACK_MONTHS);
+  const timezone = await timezoneOf(db.userId, { client });
+  const cutoff = monthsBefore(await dataReach(db, asOf, timezone), LOOKBACK_MONTHS);
   const [allAccounts, allTransactions, allStreams, cancelled, directory, first, balanceDays] =
     await Promise.all([
       db.accounts.findMany({
@@ -138,7 +151,7 @@ export async function loadInput(
           demo: !!a.item && isDemoItemId(a.item.plaidItemId),
         })),
       ),
-      transactions: transactions.map((t) => ({ ...t, date: isoDate(t.date) })),
+      transactions: transactions.map(asDetectionTransaction(timezone)),
       recurringStreams: streams.map((s) => ({
         ...s,
         lastDate: s.lastDate ? isoDate(s.lastDate) : null,
@@ -169,7 +182,7 @@ export async function loadTransactionsBetween(
   { client = defaultClient, from, to }: { client?: PrismaClient; from: string; to: string },
 ): Promise<DetectionTransaction[]> {
   const db = scopedFor(userId, client);
-  const [accounts, rows, directory] = await Promise.all([
+  const [accounts, rows, directory, timezone] = await Promise.all([
     db.accounts.findMany({
       select: { id: true, name: true, type: true, subtype: true, mask: true, itemId: true },
       orderBy: { id: "asc" },
@@ -185,10 +198,11 @@ export async function loadTransactionsBetween(
     systemDb("Merchants are shared reference data, no one's own", client).merchant.findMany({
       select: { key: true, name: true, aliases: true, category: true },
     }),
+    timezoneOf(userId, { client }),
   ]);
   const copies = copiesToLeaveOut(accounts);
   return namedByDirectory(
-    rows.filter((t) => !copies.has(t.accountId)).map((t) => ({ ...t, date: isoDate(t.date) })),
+    rows.filter((t) => !copies.has(t.accountId)).map(asDetectionTransaction(timezone)),
     directory,
   );
 }

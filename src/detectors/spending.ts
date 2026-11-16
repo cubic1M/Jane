@@ -253,6 +253,7 @@ function asDetectionInput(data: ProfileInput): DetectionInput {
       pfcPrimary: t.pfc ? (categoryOf(t.pfc)?.primary ?? null) : null,
       pfcDetailed: t.pfc,
       categorySource: null,
+      ...(t.uploadedOn ? { uploadedOn: t.uploadedOn } : {}),
     })),
   };
 }
