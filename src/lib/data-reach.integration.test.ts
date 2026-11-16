@@ -65,6 +65,8 @@ describe.runIf(url)("a year of data counted back from where it reaches", () => {
     const db = scopedFor(userId, client);
     expect(await dataReach(db, "2026-12-10")).toBe("2026-10-31");
     expect(await dataReach(db, "2026-11-20")).toBe("2026-11-20");
+    // A year and more on, it's all older than the window: today, and none of it is read.
+    expect(await dataReach(db, "2027-12-01")).toBe("2027-12-01");
   });
 
   it("keeps the same history on Dec 12 as on Dec 10", async () => {

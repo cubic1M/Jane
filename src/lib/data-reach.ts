@@ -1,3 +1,4 @@
+import { profileHistoryStart } from "@/config/profile";
 import { isoDay } from "@/lib/dates";
 import type { ScopedDb } from "@/lib/db-scoped";
 import { statementsEnd } from "@/profile/build";
@@ -16,5 +17,9 @@ export async function dataReach(
     orderBy: { date: "desc" },
     select: { date: true },
   });
-  return statementsEnd(newest ? isoDay(newest.date) : "", today);
+  const last = newest ? isoDay(newest.date) : "";
+  // Data all older than the year says nothing about now: counted from today, as before, and
+  // none of it is in (the detection window's rule too: src/detection/helpers.ts lookbackEnd).
+  if (last <= isoDay(profileHistoryStart(new Date(`${today}T00:00:00Z`)))) return today;
+  return statementsEnd(last, today);
 }

@@ -1,7 +1,6 @@
 import { LOOKBACK_MONTHS, SHORT_HISTORY_DAYS } from "@/config/detection";
 import { ANNUAL_FEE_WORDS } from "@/config/found-policies";
-import { statementsEnd } from "@/profile/build";
-import { byDate, evidenceOf, sumCents } from "../helpers";
+import { byDate, dataEnd, evidenceOf, sumCents } from "../helpers";
 import type { Candidate, DetectionAccount, DetectionInput, DetectionTransaction } from "../types";
 import { DAYS_PER_MONTH, MONTHS_PER_YEAR, daysBetween } from "../units";
 
@@ -21,12 +20,8 @@ function historyDays(input: History): number {
 // months, and the report its own, so one fee read three yearly figures).
 export const feeMonthsOf = (input: History): number => paceMonths(historyDays(input)).months;
 
-// Where the statements reach: today, or a few days past an old upload's newest line.
-export const dataEnd = (transactions: readonly { date: string }[], asOf: string) =>
-  statementsEnd(
-    transactions.reduce((max, t) => (t.date > max && t.date <= asOf ? t.date : max), ""),
-    asOf,
-  );
+// Where the statements reach (../helpers), kept here too for the detectors that read it.
+export { dataEnd };
 
 // The months a fee or interest total covers, given the days of history, at most the
 // LOOKBACK_MONTHS window. Under SHORT_HISTORY_DAYS the total is also counted at a year's pace.
