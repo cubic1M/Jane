@@ -14,6 +14,7 @@ import type { FindingType } from "@/generated/prisma/client";
 import type { ComingUpRow } from "@/insights/coming-up";
 import { CATEGORY_LABELS, UNCATEGORIZED, categoryLabel } from "@/insights/labels";
 import { matchSubcategory, primaryOf, subcategorySpending } from "@/insights/subcategories";
+import { fullMonths } from "@/insights/typical-month";
 import {
   kindOf,
   monthsEnding,
@@ -462,6 +463,9 @@ export function spendingReply(
   asOf: string,
   // Spec step 90: given, a category with no budget gets "Set a budget".
   budgets: readonly Budget[] | null = null,
+  // drawn: the month's categories go under the answer as bars (spec step 94), so the words don't
+  // name the biggest again (debug 2, 11-16: three categories said, then the same three drawn).
+  { drawn = false }: { drawn?: boolean } = {},
 ): Reply {
   const open = [openLink("See insights", "/insights")];
   // Nothing to read isn't nothing spent.
@@ -526,8 +530,10 @@ export function spendingReply(
   // Spec step 89: the answer, then the reason: the month before, for comparison.
   const before = months[months.indexOf(intent.month) - 1];
   const versus = (now: number, then: number | undefined) => {
-    // Nothing to compare with (no spending then, or the same).
-    if (!before || !then || then === now) return "";
+    // Nothing to compare with (no spending then, or the same), nor a month the data starts
+    // halfway through (debug 2, 11-16: "In all of October it was $292.31" from Oct 17 on).
+    if (!before || !then || then === now || fullMonths([before], transactions).length === 0)
+      return "";
     const diff = now - then;
     const month = monthLabel(before).split(" ")[0];
     return current
@@ -541,7 +547,7 @@ export function spendingReply(
   if (!intent.category) {
     const previous = insights.months.find((m) => m.month === before)?.spendingCents;
     return reply(
-      `You spent ${fmt(totals.spendingCents)} ${when}.${versus(totals.spendingCents, previous)}${top ? ` The most went to: ${top}.` : ""}`,
+      `You spent ${fmt(totals.spendingCents)} ${when}.${versus(totals.spendingCents, previous)}${top && !drawn ? ` The most went to: ${top}.` : ""}`,
       open,
     );
   }

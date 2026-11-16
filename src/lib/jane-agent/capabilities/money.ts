@@ -132,9 +132,9 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
         loadInsightTransactions(db, asOf, INSIGHT_MONTHS),
         db.budgets.findMany({ select: { category: true, amountCents: true } }),
       ]);
-      const answer = spendingReply(intent, transactions, asOf, budgets);
       // Spec step 94: where it went, as a chart, when no one category was asked about.
       const block = intent.category ? null : spendingBlock(transactions, asOf, intent.month);
+      const answer = spendingReply(intent, transactions, asOf, budgets, { drawn: block !== null });
       return block ? { ...answer, refs: { ...answer.refs, block } } : answer;
     }
     case "coming_up": {
