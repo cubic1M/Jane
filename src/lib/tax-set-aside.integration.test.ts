@@ -233,9 +233,10 @@ describe.runIf(url)("the tax left to cover", { timeout: 120_000 }, () => {
     await scanSuggestions(userId, options());
     expect(await hold(userId)).toBe(corrected);
 
-    // Another deposit from them later on isn't income either.
+    // Another deposit from them later on isn't income either. Inside the statements' dates: a line
+    // past their end is more data, and the year's pace runs to it (src/lib/tax-estimate.ts).
     await client.transaction.create({
-      data: row(userId, checkingId, "2026-10-30", -2_000_000, "AUNT ROSE", "INCOME_CONTRACTOR"),
+      data: row(userId, checkingId, "2026-10-14", -2_000_000, "AUNT ROSE", "INCOME_CONTRACTOR"),
     });
     expect(await hold(userId)).toBe(corrected);
   });
