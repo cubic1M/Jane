@@ -16,6 +16,14 @@ import { SubmitButton } from "@/components/submit-button";
 import { dayLabel } from "@/lib/day-label";
 import { formatRate } from "@/lib/percent";
 import { PageShell } from "@/components/page-shell";
+import { redirect } from "next/navigation";
+import { scopedDb } from "@/lib/db-scoped";
+import { lenderPartnerFor } from "@/lib/lender-partner";
+import { loansTopicNode } from "@/lib/area-pages/loans";
+import { SAID_YES } from "@/lib/area-pages/tree";
+
+// The suggestions whose button opens this page.
+const PARTNER_TOPICS = ["balance_transfer", "consolidation", "refinance"] as const;
 
 // Refinance offers (spec step 111): for each loan and card, the offers Jane checked, each over
 // the debt's own remaining months, compared with keeping it (paying what you pay now until it's
@@ -245,6 +253,19 @@ async function RefinanceContent({
   const user = await requireUser();
   await connection();
   const params = await searchParams;
+  // Offers need a lending partner, which no real account has yet (only the demo bank's). "See
+  // transfer offers" and the like then open their own item on Loans, with what the person can do
+  // themselves, or the payoff plan (debug 2, 11-16: the page said only that there's no partner).
+  if (!(await lenderPartnerFor(user.id))) {
+    const open = await (
+      await scopedDb()
+    ).suggestions.findFirst({
+      where: { topic: { in: [...PARTNER_TOPICS] }, status: { in: [...SAID_YES] } },
+      orderBy: { score: "desc" },
+      select: { topic: true },
+    });
+    redirect(open ? `/loans?focus=${loansTopicNode(open.topic)}` : "/debt");
+  }
   // Opened before Jane's first monthly check: it checks now.
   await ensureChecked(user.id);
   const [refi, apps, transfers] = await Promise.all([

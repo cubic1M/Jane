@@ -145,6 +145,9 @@ export type LoansTreeInput = {
   payoff: { debtFreeMonth: string | null } | null;
   credit: { score: number; share: number | null; toUnderHighCents: number } | null;
   review: { needYou: number; on: string | null } | null;
+  // Whether a lending partner checks rates for this person (only the demo bank has one). Absent:
+  // as before, yes.
+  refinance?: boolean;
 };
 
 const cut = (text: string, n = 6) => text.split(/\s+/).slice(0, n).join(" ");
@@ -222,7 +225,9 @@ export function loansTree(input: LoansTreeInput): AreaTree {
     );
   }
 
-  if (by.cheaper.length === 0 && input.debts.length > 0) {
+  // "Jane checks rates … every month" is true only with a lending partner (debug 2, 11-16: every
+  // real account read it, and its page said there's no partner yet).
+  if (by.cheaper.length === 0 && input.debts.length > 0 && input.refinance !== false) {
     by.cheaper.push(
       item("cheaper", "checked", {
         label: "Refinance offers",

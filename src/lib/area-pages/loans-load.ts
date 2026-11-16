@@ -9,6 +9,7 @@ import { loadDebts } from "@/lib/debts";
 import { assetPrompts } from "@/lib/owned-assets";
 import { SAID_YES } from "./tree";
 import { todayOf } from "@/lib/today";
+import { lenderPartnerFor } from "@/lib/lender-partner";
 
 // Everything the Loans & credit tree is built from (docs/design/area-pages.md), loaded once for
 // the Loans page and for the home tree, so both show the same statuses.
@@ -55,6 +56,7 @@ export async function loadLoansArea(userId: string, { now = new Date() }: { now?
   const plans = book.debts.filter((d) => !d.inNetWorth);
   const latest = credit.available ? credit.latest : null;
 
+  const refinanceOpen = (await lenderPartnerFor(userId)) !== null;
   const area = loansTree({
     // The person's own day, not UTC's (debugger 11-13: evening in Los Angeles is tomorrow in UTC).
     asOf: await todayOf(userId, { now }),
@@ -62,6 +64,7 @@ export async function loadLoansArea(userId: string, { now = new Date() }: { now?
     suggestions: mine,
     installments: bnpl.installments.length,
     payoff: book.debts.length > 0 ? { debtFreeMonth: payoff.debtFreeMonth } : null,
+    refinance: refinanceOpen,
     credit: latest
       ? {
           score: latest.score,
@@ -76,5 +79,5 @@ export async function loadLoansArea(userId: string, { now = new Date() }: { now?
         }
       : null,
   });
-  return { book, bnpl, prompts, mine, accounts, plans, area };
+  return { book, bnpl, prompts, mine, accounts, plans, refinanceOpen, area };
 }
