@@ -1,10 +1,5 @@
 [
  {
-  "task": "gate-a-crawl",
-  "lane": "lane:beta-journey",
-  "expires": "2026-11-16T08:32:52.221Z"
- },
- {
   "task": "gate-b-debt-owed",
   "lane": "lane:beta-accuracy",
   "expires": "2026-11-16T05:12:20.126Z"
