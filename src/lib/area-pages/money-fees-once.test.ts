@@ -40,8 +40,20 @@ const input: MoneyTreeInput = {
   // Best first, as the page loads them.
   suggestions: [
     { ...fees, summary: "You paid $139.00 in 7 bank fees in a year.", worthCents: 13_900 },
-    { ...fees, id: "s-late", topic: "late_fees", summary: "You paid $29.00 in 1 late fees.", worthCents: 2_900 },
-    { ...fees, id: "s-subs", topic: "subscriptions", summary: "You pay about $713.76 a year.", worthCents: 17_800 },
+    {
+      ...fees,
+      id: "s-late",
+      topic: "late_fees",
+      summary: "You paid $29.00 in 1 late fees.",
+      worthCents: 2_900,
+    },
+    {
+      ...fees,
+      id: "s-subs",
+      topic: "subscriptions",
+      summary: "You pay about $713.76 a year.",
+      worthCents: 17_800,
+    },
   ],
 };
 
