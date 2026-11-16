@@ -70,6 +70,15 @@ export function kindOf(t: Kinded): Kind {
   return "spending";
 }
 
+// The month a "spent this month" figure shows: the newest with spending, so on the 1st (nothing
+// spent yet, maybe a paycheck in) or for an old upload it's the last month there was any, said by
+// name. The one rule for Home's Money tile, the Money page's tree and the money hub (gate B: the
+// tile went back a month only when the one before had spending, the tree to the newest month with a
+// paycheck, the hub never, so the 1st showed three different months).
+export const shownSpendingMonth = <T extends { spendingCents: number }>(
+  months: readonly T[],
+): T | undefined => months.findLast((m) => m.spendingCents > 0) ?? months.at(-1);
+
 // The `count` months ending with the month of `asOf`, oldest first, as YYYY-MM.
 export function monthsEnding(asOf: string, count: number): string[] {
   const [year, month] = asOf.split("-").map(Number);

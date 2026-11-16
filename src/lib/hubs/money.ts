@@ -1,3 +1,4 @@
+import { SPENDING_MONTHS } from "@/config/areas";
 import { accountCopies, withoutCopies } from "@/lib/account-copies";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { loadDetectionInput } from "@/detection/input";
@@ -9,7 +10,7 @@ import { owedAcross, owedSummary } from "@/insights/debts";
 import { DEBT_ACCOUNT_SELECT } from "@/insights/loans";
 import { loadDebts } from "@/lib/debts";
 import { netWorth, type NetWorth } from "@/insights/net-worth";
-import { spendingInsights } from "@/insights/spending";
+import { spendingInsights, shownSpendingMonth } from "@/insights/spending";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { todayOf } from "@/lib/today";
@@ -31,6 +32,8 @@ export type MoneyData = {
   hasAccounts: boolean;
   // YYYY-MM, this month.
   month: string;
+  // The month spendingCents is for: this month, or the last one with spending (shownSpendingMonth).
+  spendingMonth?: string;
   netWorth: NetWorth;
   hasInvestmentAccounts: boolean;
   owned: { count: number };
@@ -108,7 +111,9 @@ export function moneyTiles(d: MoneyData): HubGroup[] {
       href: "/insights",
       value: d.hasAccounts ? formatCents(d.spendingCents) : null,
       status: d.hasAccounts
-        ? `So far in ${monthLabel(d.month, { long: true, year: false })}`
+        ? (d.spendingMonth ?? d.month) === d.month
+          ? `So far in ${monthLabel(d.month, { long: true, year: false })}`
+          : `Spent in ${monthLabel(d.spendingMonth!, { long: true, year: false })}`
         : NO_BANK,
     },
     d.budgets.total > 0
@@ -213,7 +218,7 @@ export async function loadMoneyHub(
     }),
     listGoals(userId, { client, now }),
     db.budgets.findMany({ select: { category: true, amountCents: true } }),
-    loadInsightTransactions(db, asOf, BUDGET_SUGGESTION_MONTHS + 1),
+    loadInsightTransactions(db, asOf, Math.max(BUDGET_SUGGESTION_MONTHS + 1, SPENDING_MONTHS)),
     loadDetectionInput(userId, { client, now }),
     db.subscriptionChecks.findMany({
       where: { isSubscription: true },
@@ -243,8 +248,10 @@ export async function loadMoneyHub(
   );
   const prompt = prompts.find((p) => p.kind === "home") ?? prompts[0];
   const month = asOf.slice(0, 7);
-  // This month, as /insights counts it (it compares months, so it needs two).
-  const spending = spendingInsights(transactions, { asOf, monthCount: 2 }).months.at(-1);
+  // The month Home's Money tile and the Money page show (gate B), as /insights counts it.
+  const spending = shownSpendingMonth(
+    spendingInsights(transactions, { asOf, monthCount: SPENDING_MONTHS }).months,
+  );
   const budget = budgets.length > 0 ? budgetSummary(transactions, budgets, asOf) : null;
   input.subscriptionMerchantKeys = confirmed.map((c) => c.merchantKey);
   const charges = recurringCharges(input);
@@ -261,6 +268,7 @@ export async function loadMoneyHub(
       onTrack: goals.filter((g) => g.progress.status !== "date_passed").length,
     },
     spendingCents: spending?.spendingCents ?? 0,
+    spendingMonth: spending?.month ?? month,
     budgets: {
       total: budgets.length,
       over: budget?.progress.filter((p) => p.over).length ?? 0,
