@@ -22,7 +22,6 @@ import {
   importCsvFiles,
   previewCsvFiles,
   type ImportCounts,
-  type ImportStage,
 } from "@/lib/import/import-csv";
 import { enqueueJob } from "@/lib/jobs";
 import { parseMoneyToCents } from "@/lib/money";
@@ -159,8 +158,6 @@ export async function createCsvAccountRow(db: ScopedDb, { name, kind, balance }:
   return account;
 }
 
-export type UploadStage = { stage: "reading" } | ImportStage;
-
 export type UploadResult =
   | {
       ok: true;
@@ -175,7 +172,7 @@ export type UploadResult =
 // Saves an upload from the /import form and queues the rest: reads the files, makes the account
 // for a first upload (once every file reads, so a failed upload leaves no empty account), sorts
 // the rows by the rules and saves them with the statement's balances, records it, and queues
-// the import_finish job that does everything else. `onStage` hears each step as it starts.
+// the import_finish job that does everything else.
 // The person's account that already holds most of these files' rows (same dedupe keys), or
 // null. Rows are keyed by date, amount and description, whatever account they go to.
 async function accountHoldingRows(
@@ -214,9 +211,8 @@ async function accountHoldingRows(
 export async function saveUpload(
   db: ScopedDb,
   formData: FormData,
-  { onStage, client }: { onStage?: (stage: UploadStage) => void; client?: PrismaClient } = {},
+  { client }: { client?: PrismaClient } = {},
 ): Promise<UploadResult> {
-  onStage?.({ stage: "reading" });
   let accountId = String(formData.get("accountId") ?? "");
   const files = await readUploadFiles(formData);
   if (!Array.isArray(files)) {
@@ -259,7 +255,7 @@ export async function saveUpload(
   });
   let result;
   try {
-    result = await importCsvFiles(db, accountId, files, { onStage, importRunId: run.id });
+    result = await importCsvFiles(db, accountId, files, { importRunId: run.id });
   } catch (error) {
     if (created) await db.accounts.delete({ where: { id: accountId } });
     await db.importRuns.deleteMany({ where: { id: run.id } });

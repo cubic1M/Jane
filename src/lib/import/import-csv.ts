@@ -104,9 +104,6 @@ export type ImportCounts = {
 // Each file's format and transaction count, for the upload_succeeded event.
 export type ImportedFile = { format: string; rows: number };
 
-// The steps of an upload after the files are read, for the progress bar on /import.
-export type ImportStage = { stage: "sorting"; rows: number } | { stage: "saving" };
-
 // Reads, sorts by the rules and saves an upload, and nothing more, so the tap answers at once:
 // Claude's sorting of merchants no rule knows, card payments and everything worked out from the
 // rows run afterwards, in the background (src/lib/import/background.ts).
@@ -115,10 +112,8 @@ export async function importCsvFiles(
   accountId: string,
   files: CsvFile[],
   {
-    onStage,
     importRunId,
   }: {
-    onStage?: (stage: ImportStage) => void;
     // The upload's record (import_runs), kept on each row it adds so removing it removes them.
     importRunId?: string;
   } = {},
@@ -157,10 +152,8 @@ export async function importCsvFiles(
   // The same rows from the account's statement in the other format (a CSV, then its QFX) are
   // already there under other keys: dropped too (src/lib/import/cross-format.ts).
   const fresh = await withoutCrossFormatTwins(db, account.id, unique);
-  onStage?.({ stage: "sorting", rows: fresh.length });
   const categorized = await categorizeTransactions(fresh, db, { askClaude: false });
 
-  onStage?.({ stage: "saving" });
   const { corrections, rekeyed } = await correctStoredRows(db, account.id, categorized);
   const { count } = await db.transactions.createMany({
     data: categorized
