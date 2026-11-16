@@ -653,6 +653,12 @@ export function safeReply(
     payday: string | null;
     taxHeldCents?: number;
     leftOut?: string[];
+    // What was taken off the balance. Gate E (11-16): one October statement finds no bills yet, so
+    // "after upcoming bills" said of the whole balance (rent of $1,200 still to come) was wrong.
+    billsCents?: number;
+    budgetsLeftCents?: number;
+    goalsCents?: number;
+    setAsideCents?: number;
   } | null,
   asOf: string | null = null,
 ): Reply {
@@ -663,8 +669,26 @@ export function safeReply(
   const leftOut = safe.leftOut?.length
     ? ` That leaves out ${safe.leftOut.join(" and ")}: I don't have a balance for it, so its money and bills aren't counted.`
     : "";
+  const tax = safe.taxHeldCents
+    ? `, with ${fmt(safe.taxHeldCents)} held back for tax not yet withheld or paid (an estimate)`
+    : "";
+  const known = safe.billsCents !== undefined;
+  const parts = known
+    ? [
+        safe.billsCents ? "upcoming bills" : null,
+        safe.setAsideCents ? "what's set aside for yearly bills" : null,
+        safe.budgetsLeftCents ? "what's left in your budgets" : null,
+        safe.goalsCents ? "what goes to your goals" : null,
+      ].filter((p): p is string => p !== null)
+    : ["upcoming bills", "what's left in your budgets", "what goes to your goals"];
+  const after =
+    parts.length > 0
+      ? ` That's after ${parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}` : parts[0]}${tax}.`
+      : safe.taxHeldCents
+        ? ` That's your checking balance${tax}: I don't see any bills coming up, budgets or goals yet.`
+        : " That's your whole checking balance: I don't see any bills coming up, budgets or goals yet.";
   return reply(
-    `You have ${fmt(safe.safeCents)} safe to spend${payday ? ` until your next payday, ${payday}` : ""}. That's after upcoming bills, what's left in your budgets and what goes to your goals${safe.taxHeldCents ? `, with ${fmt(safe.taxHeldCents)} held back for tax not yet withheld or paid (an estimate)` : ""}.${leftOut}`,
+    `You have ${fmt(safe.safeCents)} safe to spend${payday ? ` until your next payday, ${payday}` : ""}.${after}${leftOut}`,
     [openLink("See today", "/home")],
   );
 }
