@@ -28,28 +28,34 @@ const byClaude = (key: string) => key.startsWith(`${STRATEGIST_CAPABILITY}:`);
 export const suggestionsSource: MessageSource = {
   key: "suggestions",
   gather(snapshot) {
-    return (snapshot.suggestions ?? []).map((s) => ({
-      kind: "decision" as const,
-      body: suggestionCard(s).join("\n"),
-      refs: {
-        suggestion: s.key,
-        suggestionWhy: s.why,
-        ...(s.people ? { suggestionPeople: s.people } : {}),
-        ...(s.advice ? { advice: true as const } : {}),
-        ...(byClaude(s.key) ? { aiWritten: true as const } : {}),
-        ...(s.cardDetails ? { cardDetails: s.cardDetails } : {}),
-      },
-      actions: [
-        { id: "suggestion.yes" as const, label: s.actionLabel, kind: "primary" as const },
-        { id: "snooze" as const, label: "Not now", kind: "secondary" as const },
-        { id: "suggestion.no" as const, label: "Not for me", kind: "secondary" as const },
-        { id: "suggestion.why" as const, label: "Why?", kind: "quick" as const },
-        openLink("Open", s.actionHref),
-        ...s.more.map((m) => openLink(m.label, m.href)),
-      ],
-      // The day it was chosen, not today: an unanswered pick stays offered, and isn't posted twice.
-      dedupeKey: `${s.key}:${s.chosenOn}`,
-      priority: MESSAGE_PRIORITY.suggestions,
-    }));
+    // While last month's close waits, its own message asks about the same charges with "Looks
+    // right": the suggestion's Yes only opens the month's transactions, where nothing confirms them
+    // (debug 2 re-walk, 11-16: with #1911 the dock kept that card and lost the one that closes).
+    const closing = snapshot.close?.status === "waiting";
+    return (snapshot.suggestions ?? [])
+      .filter((s) => !(closing && s.topic === "month_close"))
+      .map((s) => ({
+        kind: "decision" as const,
+        body: suggestionCard(s).join("\n"),
+        refs: {
+          suggestion: s.key,
+          suggestionWhy: s.why,
+          ...(s.people ? { suggestionPeople: s.people } : {}),
+          ...(s.advice ? { advice: true as const } : {}),
+          ...(byClaude(s.key) ? { aiWritten: true as const } : {}),
+          ...(s.cardDetails ? { cardDetails: s.cardDetails } : {}),
+        },
+        actions: [
+          { id: "suggestion.yes" as const, label: s.actionLabel, kind: "primary" as const },
+          { id: "snooze" as const, label: "Not now", kind: "secondary" as const },
+          { id: "suggestion.no" as const, label: "Not for me", kind: "secondary" as const },
+          { id: "suggestion.why" as const, label: "Why?", kind: "quick" as const },
+          openLink("Open", s.actionHref),
+          ...s.more.map((m) => openLink(m.label, m.href)),
+        ],
+        // The day it was chosen, not today: an unanswered pick stays offered, and isn't posted twice.
+        dedupeKey: `${s.key}:${s.chosenOn}`,
+        priority: MESSAGE_PRIORITY.suggestions,
+      }));
   },
 };
