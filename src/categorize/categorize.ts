@@ -1,7 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { NOT_A_REFUND_MIN_CENTS } from "@/config/detection";
 import { classifyMerchants } from "./llm";
-import { categorizeByRules, payoutByRules } from "./rules";
+import { categorizeByRules, payFiledAsBought, payoutByRules } from "./rules";
 import { categoryOf, type Category } from "./taxonomy";
 import { normalizeMerchant } from "@/data-sources/merchant";
 import type { NormalizedTransaction } from "@/data-sources/types";
@@ -52,7 +52,12 @@ export async function categorizeTransactions<T extends NormalizedTransaction>(
       ? categoryOf(transaction.categoryDetailed)
       : null;
     // A payout the bank filed as a transfer (or anything but income) is income (./rules.ts).
-    const payout = fromSource?.primary === "INCOME" ? null : payoutByRules(transaction);
+    // So is pay it filed under something bought.
+    const payout =
+      fromSource?.primary === "INCOME"
+        ? null
+        : (payoutByRules(transaction) ??
+          payFiledAsBought(transaction, fromSource?.primary ?? null));
     if (fromSource && payout) return { ...transaction, category: payout, categorySource: "rule" };
     if (fromSource) return { ...transaction, category: fromSource, categorySource: "plaid" };
     const fromRules = categorizeByRules(transaction);
