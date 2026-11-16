@@ -149,6 +149,17 @@ export const RENT_TRANSFERS_EVERYDAY: readonly Rule[] = [
     direction: "in",
   },
 
+  // A bank transfer to a landlord company is rent, however the bank words the transfer (debugger
+  // 11-16: "ONLINE TRANSFER TO OAKWOOD RESIDENTIAL" every month read as a move between the
+  // person's own accounts, so rent was in no bill and the books asked them to "add that account").
+  // Before the transfer words below, which would take it first.
+  {
+    category: "RENT_AND_UTILITIES_RENT",
+    pattern:
+      /(?:TRANSFER TO|TRF TO|XFER TO)(?![A-Z0-9]).*(?<![A-Z0-9])(?:RESIDENTIAL|LEASING|REALTY|COMMUNITIES|PROPERTIES|APARTMENTS|APTS)(?![A-Z0-9])/,
+    direction: "out",
+  },
+
   // Transfers between people and accounts
   // Own-account moves as the banks word them (CSV bench: Bank of America's "Online Banking
   // transfer to SAV", Capital One's "Withdrawal to 360 Performance Savings").
