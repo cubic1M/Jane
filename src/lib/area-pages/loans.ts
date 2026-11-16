@@ -356,7 +356,7 @@ export function compareWant(
 // itself (debugger 11-13, a $124.50 pay-in-4 plan). No "$0.00 due each month" when no payment is
 // known (uploaded cards: round-2 pass).
 export function loansIntro(book: {
-  debts: readonly { balanceCents: number | null; inNetWorth: boolean }[];
+  debts: readonly { key?: string; balanceCents: number | null; inNetWorth: boolean }[];
   totalOwedCents: number;
   monthlyCents: number;
   cardPaidNotOnFile?: boolean;
@@ -369,7 +369,11 @@ export function loansIntro(book: {
       : "No loans, cards or plans yet.";
   }
   if (book.debts.every((d) => d.balanceCents === null)) {
-    return "Your files don't say what you owe yet. Add a balance on the import page. Open a branch to see more.";
+    // A loan seen only in payments takes its balance on its own card, not the import page, which
+    // only asks an uploaded account's (debugger 11-16: Nelnet and Toyota paid from checking).
+    return book.debts.every((d) => d.key?.startsWith("paid:"))
+      ? "Jane sees your loan payments, not what you owe. Open a loan below to add what's left."
+      : "Your files don't say what you owe yet. Add a balance on the import page. Open a branch to see more.";
   }
   const plans = book.debts
     .filter((d) => !d.inNetWorth)

@@ -479,7 +479,10 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
         figure: h.debt.known === 0 ? "Not known" : shortMoney(h.debt.owedCents),
         summary:
           h.debt.known === 0
-            ? "Your files don't say what you owe yet. Add a balance on the import page."
+            ? // Only loans seen in payments: their balance is added on Loans, not the import page.
+              h.debt.accounts === 0
+              ? "Jane sees your loan payments, not what you owe. Add it on Loans and credit."
+              : "Your files don't say what you owe yet. Add a balance on the import page."
             : `${owedAcross({ accounts: h.debt.accounts, others: h.debt.others ?? 0 })}.`,
       }),
     );
