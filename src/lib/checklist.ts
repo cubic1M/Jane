@@ -54,22 +54,29 @@ export async function firstWeekChecklist(
   if (now.getTime() - user.createdAt.getTime() > CHECKLIST_DAYS * DAY_MS) return null;
 
   const db = scopedFor(userId, client);
-  const [accounts, decisions, findings, budgets, goals, devices] = await Promise.all([
-    db.accounts.count(),
-    db.decisions.count({ where: { undoneAt: null } }),
-    db.findings.count(),
-    db.budgets.count(),
-    db.savingsGoals.count(),
-    db.pushSubscriptions.count(),
-  ]);
+  const [accounts, decisions, findings, suggestions, answered, budgets, goals, devices] =
+    await Promise.all([
+      db.accounts.count(),
+      db.decisions.count({ where: { undoneAt: null } }),
+      db.findings.count(),
+      // The scan's suggestions are cards in the same dock: a Yes or No on one is an answer too
+      // (debug 2, 11-16: every card answered, and "Answer 2 of Jane's suggestions · 1 of 2").
+      db.suggestions.count(),
+      db.suggestions.count({ where: { answeredAt: { not: null } } }),
+      db.budgets.count(),
+      db.savingsGoals.count(),
+      db.pushSubscriptions.count(),
+    ]);
   // Alert preferences start empty ({}) and are saved whole from /settings.
   const alertsChosen = Object.keys(progressOf(user.alertPrefs)).length > 0 || devices > 0;
   // As many cards as there are to decide, up to CHECKLIST_CARDS_TO_REVIEW: someone with two
   // findings can't decide on three (night QA 10-30: "Decide on 3 of your cards" beside a report
   // saying "Nothing to fix right now"). Before any data, the usual three.
   const toReview =
-    accounts === 0 ? CHECKLIST_CARDS_TO_REVIEW : Math.min(CHECKLIST_CARDS_TO_REVIEW, findings);
-  const reviewed = Math.min(decisions, toReview);
+    accounts === 0
+      ? CHECKLIST_CARDS_TO_REVIEW
+      : Math.min(CHECKLIST_CARDS_TO_REVIEW, findings + suggestions);
+  const reviewed = Math.min(decisions + answered, toReview);
 
   const items: ChecklistItem[] = [
     {
@@ -85,7 +92,7 @@ export async function firstWeekChecklist(
       label:
         toReview === 1 ? "Answer Jane's suggestion" : `Answer ${toReview} of Jane's suggestions`,
       href: "/report",
-      done: decisions >= toReview,
+      done: reviewed >= toReview,
       progress: reviewed > 0 && reviewed < toReview ? `${reviewed} of ${toReview}` : undefined,
     },
     {
