@@ -239,8 +239,8 @@ describe("unmatched transfers worth saying (books QA)", () => {
   it("says the same payee once, by its latest transfer", () => {
     const said = unmatchedToSay(
       [
-        out("a", "2026-09-15", "ZELLE TO ALEX"),
-        out("b", "2026-10-15", "ZELLE TO ALEX"),
+        out("a", "2026-09-15", "ONLINE TRANSFER TO ALLY SAVINGS"),
+        out("b", "2026-10-15", "ONLINE TRANSFER TO ALLY SAVINGS"),
         out("c", "2026-10-02", "WIRE TO TITLE CO"),
       ],
       [],

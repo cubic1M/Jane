@@ -6,6 +6,7 @@ import {
   BOOKS_TOLERANCE_CENTS,
   TRANSFER_IN,
   TRANSFER_MATCH_DAYS,
+  PAID_TO_A_PERSON,
   TRANSFER_OUT,
   TRANSFER_TO_LINKED,
   UNMATCHED_TRANSFER_MIN_CENTS,
@@ -202,7 +203,7 @@ export function unmatchedToSay(unmatched: readonly Tx[], accounts: readonly Acct
     );
   const latest = new Map<string, Tx>();
   for (const t of unmatched) {
-    if (toLinked(t)) continue;
+    if (toLinked(t) || PAID_TO_A_PERSON.test(t.description)) continue;
     const payee = t.description.trim().toLowerCase();
     const seen = latest.get(payee);
     if (!seen || t.date > seen.date) latest.set(payee, t);
