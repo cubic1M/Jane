@@ -98,7 +98,7 @@ test("lists this device and signs another one out at once", async ({
 });
 
 // A bank that needs a fresh sign-in can be reconnected from Settings, not only from /connect.
-test("offers Reconnect for a bank that needs you to sign in again", async ({
+test("offers Sign in again for a bank that needs you to sign in again", async ({
   context,
   page,
   baseURL,
@@ -116,5 +116,5 @@ test("offers Reconnect for a bank that needs you to sign in again", async ({
   ).toBeVisible();
   const bank = await pickItem(page, "Settings", "Banks and files", "Lapsed Bank");
   await expect(bank.getByText("needs you to sign in again")).toBeVisible();
-  await expect(bank.getByRole("button", { name: "Reconnect" })).toBeVisible();
+  await expect(bank.getByRole("button", { name: "Sign in again" })).toBeVisible();
 });
