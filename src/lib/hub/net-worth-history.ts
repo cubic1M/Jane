@@ -4,6 +4,7 @@ import { cryptoTotal } from "@/lib/crypto/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { isoDay as day } from "@/lib/dates";
+import { todayOf } from "@/lib/today";
 
 // The home hub's net worth chart (docs/design/home-hub.md): net worth every day from the
 // person's first day with Jane (their first account link, or their first balance if that's
@@ -24,7 +25,9 @@ export async function netWorthHistory(
     db.ownedAssets.findMany({ select: { id: true, valueCents: true, valuedOn: true } }),
     cryptoTotal(userId, { client }),
   ]);
-  const asOf = day(now);
+  // The person's own day (src/lib/today.ts): at 7pm in Los Angeles UTC's date is tomorrow, and the
+  // chart grew a point for a day that hadn't started (gate C's calendar sweep, 11-15).
+  const asOf = await todayOf(userId, { client, now });
   const firstDay = [
     ...accounts.map((a) => day(a.createdAt)),
     ...snapshots.map((s) => day(s.date)),
