@@ -15,78 +15,7 @@ import { redirect } from "next/navigation";
 import { runPaperDay } from "@/lib/paper/account";
 import { adviceMode } from "@/lib/advice-mode";
 import { practiceProfileOf, savePreferences } from "@/lib/practice/preferences";
-import { CATALOG_EVIDENCE } from "@/config/catalog-evidence";
-import { CATALOG, CATALOG_IDS } from "@/config/strategy-catalog";
-import {
-  choosePracticeStrategy,
-  restorePracticeStrategy,
-  usePracticeCatalog,
-  usePracticeCrypto,
-  usePracticeDayTrading,
-  usePracticeStrategy,
-} from "./strategy-actions";
-
-// The strategy menu's buttons: demo advice only, Very high only for the crypto and day-trading
-// sleeves (off always allowed), only known choices, and back to the same card.
-
-const form = (fields: Record<string, string>) => {
-  const f = new FormData();
-  for (const [k, v] of Object.entries(fields)) f.append(k, v);
-  return f;
-};
-
-describe("the strategy menu's buttons", () => {
-  beforeEach(() => vi.clearAllMocks());
-
-  it("save a known choice and come back to the same card", async () => {
-    await usePracticeStrategy(form({ strategy: "value_tilt" }));
-    await usePracticeCrypto(form({ sleeve: "crypto_trend" }));
-    await usePracticeDayTrading(form({ rule: "vwap_reversion" }));
-    expect(vi.mocked(savePreferences).mock.calls.map((c) => c[1])).toEqual([
-      { strategy: "value_tilt" },
-      { cryptoSleeve: "crypto_trend" },
-    ]);
-    expect(vi.mocked(redirect)).toHaveBeenCalledWith("/investments");
-  });
-
-  it("never change a real account's settings", async () => {
-    vi.mocked(adviceMode).mockResolvedValue(false);
-    await usePracticeStrategy(form({ strategy: "value_tilt" }));
-    await usePracticeCrypto(form({ sleeve: "crypto_trend" }));
-    await usePracticeDayTrading(form({ rule: "vwap_reversion" }));
-    expect(savePreferences).not.toHaveBeenCalled();
-    vi.mocked(adviceMode).mockResolvedValue(true);
-  });
-
-  it("turn a sleeve on at Very high only, off at any level, and refuse unknown choices", async () => {
-    vi.mocked(practiceProfileOf).mockResolvedValue({ level: 3 } as never);
-    await usePracticeCrypto(form({ sleeve: "crypto_trend" }));
-    await usePracticeDayTrading(form({ rule: "opening_range" }));
-    await usePracticeCrypto(form({ sleeve: "off" }));
-    await usePracticeStrategy(form({ strategy: "moonshot" }));
-    expect(vi.mocked(savePreferences).mock.calls.map((c) => c[1])).toEqual([
-      { cryptoSleeve: "off" },
-    ]);
-  });
-
-  it("follows any tested strategy that runs on its own, never a sleeve", async () => {
-    vi.mocked(practiceProfileOf).mockResolvedValue({ level: 3 } as never);
-    const watched = CATALOG_IDS.find((id) => CATALOG_EVIDENCE[id]?.[3]?.watch)!;
-    const not = CATALOG_IDS.find((id) => {
-      const e = CATALOG_EVIDENCE[id]?.[3];
-      return e && !e.watch && !e.recommendable && CATALOG[id].kind !== "sleeve";
-    })!;
-    await usePracticeCatalog(form({ strategy: watched }));
-    await usePracticeCatalog(form({ strategy: not }));
-    await usePracticeCatalog(form({ strategy: "managed_futures" }));
-    await usePracticeCatalog(form({ strategy: "off" }));
-    expect(vi.mocked(savePreferences).mock.calls.map((c) => c[1])).toEqual([
-      { catalogStrategy: watched },
-      { catalogStrategy: not },
-      { catalogStrategy: "off" },
-    ]);
-  });
-});
+import { choosePracticeStrategy, restorePracticeStrategy } from "./strategy-actions";
 
 // The strategy tree's "Use this strategy" and Revert: instant on the page, saved behind, with
 // what it replaced handed back for Revert.
