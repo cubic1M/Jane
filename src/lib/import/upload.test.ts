@@ -87,10 +87,7 @@ describe("saveUpload", () => {
   });
 
   it("saves into the chosen account with the file's balances, records it and queues the rest", async () => {
-    const stages: unknown[] = [];
-    const result = await saveUpload(db, form({ accountId: "acct_1", files: [csv("card.csv")] }), {
-      onStage: (stage) => stages.push(stage),
-    });
+    const result = await saveUpload(db, form({ accountId: "acct_1", files: [csv("card.csv")] }));
 
     expect(result).toEqual({
       ok: true,
@@ -116,12 +113,11 @@ describe("saveUpload", () => {
         controlWarnings: [],
       },
     });
-    expect(stages[0]).toEqual({ stage: "reading" });
     expect(importCsvFiles).toHaveBeenCalledWith(
       db,
       "acct_1",
       [{ name: "card.csv", text: CHASE_CARD }],
-      expect.objectContaining({ onStage: expect.any(Function), importRunId: "run_1" }),
+      { importRunId: "run_1" },
     );
     expect(logAudit).toHaveBeenCalledWith(
       { type: "user", id: "user_1" },
@@ -234,7 +230,6 @@ describe("saveUpload into a new account", () => {
       },
     });
     expect(importCsvFiles).toHaveBeenCalledWith(db, "acct_new", expect.any(Array), {
-      onStage: undefined,
       importRunId: "run_1",
     });
   });

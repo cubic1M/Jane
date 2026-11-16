@@ -114,13 +114,9 @@ describe("importCsvFiles", () => {
     expect(data.every((row: { importRunId: string }) => row.importRunId === "run_7")).toBe(true);
   });
 
-  it("says each step as it starts, and never waits on Claude", async () => {
+  it("never waits on Claude", async () => {
     vi.mocked(classifyMerchants).mockClear();
-    const stages: unknown[] = [];
-    await importCsvFiles(db, "acct_1", [fixture("chase-checking.csv")], {
-      onStage: (stage) => stages.push(stage),
-    });
-    expect(stages).toEqual([{ stage: "sorting", rows: 9 }, { stage: "saving" }]);
+    await importCsvFiles(db, "acct_1", [fixture("chase-checking.csv")]);
     // Merchants no rule knows are sorted after the response (categorizeLeftovers).
     expect(vi.mocked(classifyMerchants).mock.calls.every(([asked]) => asked.length === 0)).toBe(
       true,

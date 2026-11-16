@@ -17,10 +17,10 @@ import { scopedFor } from "@/lib/db-scoped";
 import { marketData } from "@/lib/market";
 import { positionValue } from "@/planning/practice-autopilot";
 import { refusedByPreferences } from "@/planning/practice-profile";
+import { heldBy } from "@/planning/practice-scan";
 import type { PracticeIdea } from "@/profile/build";
 import { loadLedger, NoPracticePortfolio, practiceBroker } from "./broker";
 import { practiceProfileOf } from "./preferences";
-import { tradesHeldBy } from "./limits";
 import { DAY_MS } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
 
@@ -192,7 +192,7 @@ export async function answerPracticeIdea(
     trades
       .map((t) => refusedByPreferences({ ...profile, trades: true }, t))
       .find((r) => r !== null) ??
-    tradesHeldBy(trades, ledger.state, prices, tradesToday, profile.limits);
+    heldBy({ trades }, ledger.state, prices, tradesToday, profile.limits);
   if (held) {
     await db.practiceOpportunities.updateMany({ where: { id: row.id }, data: { status: "held" } });
     return { note: `A cap stopped it (${held}), so nothing was done.`, href: PRACTICE_HREF };

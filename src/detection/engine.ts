@@ -172,10 +172,6 @@ type Options = {
   client?: PrismaClient;
   now?: Date;
   checkSubscriptions?: typeof checkSubscriptions;
-  raiseAlerts?: typeof raiseAlerts;
-  applyStandingRules?: typeof applyStandingRules;
-  confirmRefunds?: typeof confirmRefunds;
-  refundChargesAfterCancel?: typeof refundChargesAfterCancel;
 };
 
 // Merchant keys Claude has called subscriptions. Recurring charges whose category doesn't
@@ -232,10 +228,6 @@ export async function runDetection(
     client = defaultClient,
     now = new Date(),
     checkSubscriptions: check = checkSubscriptions,
-    raiseAlerts: raise = raiseAlerts,
-    applyStandingRules: applyRules = applyStandingRules,
-    confirmRefunds: confirm = confirmRefunds,
-    refundChargesAfterCancel: refundAfterCancel = refundChargesAfterCancel,
   }: Options = {},
 ): Promise<DetectionSummary> {
   const db = scopedFor(userId, client);
@@ -347,7 +339,7 @@ export async function runDetection(
           );
     // Spec step 208: refunds that never arrived come from the team's actions.
     const refunds = await missingRefundAlerts(userId, { client, now });
-    await raise(userId, [...alerts, ...overBudget, ...refunds], { client, now });
+    await raiseAlerts(userId, [...alerts, ...overBudget, ...refunds], { client, now });
   } catch (error) {
     log.error("Alerts failed", { userId, error: String(error) });
   }
@@ -355,14 +347,14 @@ export async function runDetection(
   // The person's standing rules approve matching findings. Like alerts, a failure here
   // never stops the scan.
   try {
-    await applyRules(userId, { client, now });
+    await applyStandingRules(userId, { client, now });
   } catch (error) {
     log.error("Standing rules failed", { userId, error: String(error) });
   }
 
   // A charge after a cancellation Jane did gets its refund asked for (spec step 53).
   try {
-    await refundAfterCancel(userId, { client });
+    await refundChargesAfterCancel(userId, { client });
   } catch (error) {
     log.error("Refund after cancel failed", { userId, error: String(error) });
   }
@@ -376,7 +368,7 @@ export async function runDetection(
 
   // Refunds coming back in the transactions close their actions (spec step 52).
   try {
-    await confirm(userId, { client, now });
+    await confirmRefunds(userId, { client, now });
   } catch (error) {
     log.error("Refund check failed", { userId, error: String(error) });
   }
