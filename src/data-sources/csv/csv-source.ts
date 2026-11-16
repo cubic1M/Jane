@@ -77,13 +77,15 @@ const SNIFF_CHARS = 8192;
 // UTF-8. More than this share of them means a binary file.
 const MAX_BINARY_SHARE = 0.01;
 
+// A web page: one that starts as one, or has a page's tags anywhere in it.
+const STARTS_AS_A_PAGE = /^\s*(?:<!doctype html|<html|<head|<body)/i;
+const HAS_PAGE_TAGS = /<html[\s>]|<\/(?:div|table|script)>/i;
+
 // Something saved or renamed as .csv that isn't one: a web page (a sign-in page saved by
 // mistake), a PDF, an Excel file, an image.
 export function notAStatement(text: string): boolean {
   const head = text.slice(0, SNIFF_CHARS);
-  if (/^\s*(?:<!doctype html|<html|<head|<body)|<html[\s>]|<\/(?:div|table|script)>/i.test(head)) {
-    return true;
-  }
+  if (STARTS_AS_A_PAGE.test(head) || HAS_PAGE_TAGS.test(head)) return true;
   if (head.startsWith("%PDF") || head.startsWith("PK\u0003\u0004")) return true;
   if (head.includes("\u0000")) return true;
   const odd = head.match(/[\u0001-\u0008\u000e-\u001f\ufffd]/g)?.length ?? 0;
