@@ -58,12 +58,15 @@ const PRIVATE_WORDS = STUDENT_BILLERS.filter((b) => !b.biller.endsWith("(federal
   (b) => b.matchTokens,
 );
 
-type ServicerPaid = { name: string | null; url: string | null; payments: number };
+export type ServicerPaid = { name: string | null; url: string | null; payments: number };
+
+// Still time to enrol: December 31, 2026 or before, in the person's own day.
+export const autopayStillOpen = (today: string) => daysTo(today, FED_AUTOPAY.lastDay) >= 0;
 
 // With no loan account on file (an upload person's usual case), what their statement shows: a
 // federal servicer paid at least twice lately, not on autopay as far as the line says, and never a
 // private lender's line (debugger 11-16: a student paying Nelnet saw no autopay card at all).
-function servicersPaid(data: Parameters<Detector["detect"]>[0]["data"]): ServicerPaid[] {
+export function servicersPaid(data: Parameters<Detector["detect"]>[0]["data"]): ServicerPaid[] {
   const since = addDays(data.today, -PAID_LOAN_RECENT_DAYS);
   const found = new Map<string, ServicerPaid & { autopay: boolean; last: string }>();
   for (const t of data.transactions) {
