@@ -2,7 +2,10 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
-import { STUDENT_SOURCES, STUDENT_STEPS } from "@/config/student-loans";
+import { FED_AUTOPAY, STUDENT_SOURCES, STUDENT_STEPS } from "@/config/student-loans";
+import { autopayStillOpen, servicersPaid, type ServicerPaid } from "@/detectors/student-aid";
+import { dayLabel } from "@/lib/day-label";
+import { loadProfileInput } from "@/lib/profile";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { loadStudentLoans } from "@/lib/student-loans";
@@ -22,6 +25,55 @@ const LINK = "font-medium text-emerald-700 hover:underline";
 const INPUT =
   "h-11 w-full rounded-lg border border-zinc-300 bg-transparent px-3 text-base dark:border-zinc-700";
 
+// The autopay cut's steps for someone Jane sees paying a federal servicer: Jane can't turn it on.
+function AutopayFromPayments({ paid }: { paid: ServicerPaid[] }) {
+  const deadline = dayLabel(FED_AUTOPAY.lastDay, { long: true, year: true });
+  const named = paid.filter((p) => p.name);
+  const see = STUDENT_STEPS.find((s) => s.key === "see_loans")!;
+  return (
+    <section aria-labelledby="autopay" data-autopay-steps="" className="flex flex-col gap-2">
+      <h2 id="autopay" className="text-xl font-semibold">
+        Autopay by {deadline}
+      </h2>
+      <p className="text-sm">
+        You pay{" "}
+        {named.length > 0 ? named.map((p) => p.name).join(" and ") : "a federal loan servicer"} from
+        checking. Federal Direct Loans first paid out after July 1, 2012 get 1% off their rate
+        through June 30, 2028 for anyone on autopay with their servicer by 11:59 p.m. Eastern on{" "}
+        {deadline}: about $10 a year for every $1,000 owed. Private loans don&apos;t get it.
+      </p>
+      <ol className="list-decimal pl-5 text-sm">
+        <li>
+          {named.length > 0 ? (
+            named.map((p, i) => (
+              <span key={p.name}>
+                {i > 0 && " or "}
+                {p.url ? (
+                  <a href={p.url} className={LINK}>
+                    Sign in to {p.name}
+                  </a>
+                ) : (
+                  `Sign in to ${p.name}`
+                )}
+              </span>
+            ))
+          ) : (
+            <a href={see.url} className={LINK}>
+              Find your servicer on studentaid.gov
+            </a>
+          )}
+          .
+        </li>
+        <li>Turn on Auto Pay from your checking account.</li>
+        <li>Check that it shows as on. If it already was, there&apos;s nothing to do.</li>
+      </ol>
+      <a href={see.url} className={`text-sm ${LINK}`}>
+        {see.title} on studentaid.gov
+      </a>
+    </section>
+  );
+}
+
 async function StudentContent({
   searchParams,
 }: {
@@ -33,6 +85,10 @@ async function StudentContent({
   const [data, game] = await Promise.all([loadStudentLoans(user.id), loadStudentLongGame(user.id)]);
   const error = typeof params.error === "string" ? params.error : "";
   const { loan, comparison, profile } = data;
+  // No loan account on file (an upload person's usual case): the autopay card's steps, from the
+  // federal servicer they pay (debugger 11-16: the card's button led to "No federal student loan").
+  const input = !loan || !comparison ? await loadProfileInput(user.id) : null;
+  const paid = input && autopayStillOpen(input.today) ? servicersPaid(input) : [];
 
   return (
     <>
@@ -54,12 +110,15 @@ async function StudentContent({
       )}
 
       {!loan || !comparison ? (
-        <p className="text-zinc-600 dark:text-zinc-400">
-          No federal student loan with a balance and rate yet.{" "}
-          <Link href="/loans" className={LINK}>
-            See every debt
-          </Link>
-        </p>
+        <>
+          {paid.length > 0 && <AutopayFromPayments paid={paid} />}
+          <p className="text-zinc-600 dark:text-zinc-400">
+            No federal student loan with a balance and rate yet.{" "}
+            <Link href="/loans" className={LINK}>
+              See every debt
+            </Link>
+          </p>
+        </>
       ) : (
         <>
           <section aria-labelledby="plans" className="flex flex-col gap-3">

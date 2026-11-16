@@ -1,4 +1,13 @@
-import { FED_AUTOPAY, SAVE_ENDING, STUDENT_STEPS } from "@/config/student-loans";
+import { BILLERS } from "@/config/billers";
+import { PAID_LOAN_MIN_PAYMENTS, PAID_LOAN_RECENT_DAYS } from "@/config/debt";
+import {
+  AUTOPAY_WORDS,
+  FED_AUTOPAY,
+  FEDERAL_PAYMENT_WORDS,
+  SAVE_ENDING,
+  STUDENT_STEPS,
+} from "@/config/student-loans";
+import { addDays } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
 import { levelPaymentCents } from "@/planning/refinance";
 import { confidenceOf } from "@/profile/confidence";
@@ -36,6 +45,54 @@ const repaying = (l: ProfileLiability) =>
 const daysTo = (today: string, day: string) =>
   Math.round((Date.parse(`${day}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / DAY);
 
+// Federal servicers and private lenders, as a payment line names them (billers.ts).
+const STUDENT_BILLERS = BILLERS.filter((b) => b.type === "student_loan");
+const FEDERAL_SERVICERS = STUDENT_BILLERS.filter((b) => b.biller.endsWith("(federal)")).map(
+  (b) => ({
+    name: b.biller.replace(/\s*\(federal\)$/, ""),
+    words: b.matchTokens,
+    url: b.payUrl,
+  }),
+);
+const PRIVATE_WORDS = STUDENT_BILLERS.filter((b) => !b.biller.endsWith("(federal)")).flatMap(
+  (b) => b.matchTokens,
+);
+
+export type ServicerPaid = { name: string | null; url: string | null; payments: number };
+
+// Still time to enrol: December 31, 2026 or before, in the person's own day.
+export const autopayStillOpen = (today: string) => daysTo(today, FED_AUTOPAY.lastDay) >= 0;
+
+// With no loan account on file (an upload person's usual case), what their statement shows: a
+// federal servicer paid at least twice lately, not on autopay as far as the line says, and never a
+// private lender's line (debugger 11-16: a student paying Nelnet saw no autopay card at all).
+export function servicersPaid(data: Parameters<Detector["detect"]>[0]["data"]): ServicerPaid[] {
+  const since = addDays(data.today, -PAID_LOAN_RECENT_DAYS);
+  const found = new Map<string, ServicerPaid & { autopay: boolean; last: string }>();
+  for (const t of data.transactions) {
+    if (t.amountCents <= 0 || t.date > data.today) continue;
+    const line = `${t.merchantName ?? ""} ${t.description}`.toUpperCase();
+    if (PRIVATE_WORDS.some((w) => line.includes(w))) continue;
+    const servicer = FEDERAL_SERVICERS.find((s) => s.words.some((w) => line.includes(w)));
+    if (!servicer && !FEDERAL_PAYMENT_WORDS.some((w) => line.includes(w))) continue;
+    const key = servicer?.name ?? "federal";
+    const seen = found.get(key) ?? {
+      name: servicer?.name ?? null,
+      url: servicer?.url ?? null,
+      payments: 0,
+      autopay: false,
+      last: "",
+    };
+    seen.payments += 1;
+    seen.autopay ||= AUTOPAY_WORDS.test(line);
+    if (t.date > seen.last) seen.last = t.date;
+    found.set(key, seen);
+  }
+  return [...found.values()]
+    .filter((s) => s.payments >= PAID_LOAN_MIN_PAYMENTS && s.last >= since && !s.autopay)
+    .map(({ name, url, payments }) => ({ name, url, payments }));
+}
+
 // The autopay rate cut: 1% off a federal Direct Loan's rate through June 2028 for anyone enrolled
 // by December 31, 2026. Jane can't see whether autopay is on, so it asks the person to check, and
 // says nothing once the day has passed.
@@ -47,6 +104,9 @@ const studentAutopay: Detector = {
   detect({ profile, data }) {
     const left = daysTo(data.today, FED_AUTOPAY.lastDay);
     if (left < 0) return null;
+    // A loan account on file says more than a payment line does: only without one.
+    if (!data.liabilities.some((l) => l.kind === "student"))
+      return fromPayments(profile, data, left);
     const loans = data.liabilities.filter((l) => federalDirect(l) && repaying(l) && !tooOld(l));
     if (loans.length === 0) return null;
     const owed = loans
@@ -82,6 +142,43 @@ const studentAutopay: Detector = {
     });
   },
 };
+
+// The same card from the statement alone: what's owed isn't known, so the saving is the rate
+// cut itself, and the steps are the servicer's own page (Jane can't turn autopay on).
+function fromPayments(
+  profile: Parameters<Detector["detect"]>[0]["profile"],
+  data: Parameters<Detector["detect"]>[0]["data"],
+  left: number,
+) {
+  const paid = servicersPaid(data);
+  if (paid.length === 0) return null;
+  const deadline = dayLabel(FED_AUTOPAY.lastDay, { long: true, year: true });
+  const see = STUDENT_STEPS.find((s) => s.key === "see_loans")!;
+  const named = paid.filter((p) => p.name);
+  const who = named.length > 0 ? named.map((p) => p.name).join(" and ") : "your loan servicer";
+  return suggestion("debt", "student_autopay", {
+    title: `Make sure autopay is on for your federal student loans by ${deadline}`,
+    headline: "Turn on student loan autopay",
+    short: `Autopay with ${who} by ${deadline} takes 1% off a federal loan's rate.`,
+    // What's owed isn't on file: no figure rather than a guessed one.
+    worthCents: 0,
+    worthKind: "saves",
+    confidence: {
+      percent: confidenceOf("guessed", {
+        months: profile.months,
+        matches: paid.reduce((n, p) => n + p.payments, 0),
+      }),
+      reason: `you pay ${who} from checking; I can't see the loans, or whether autopay is on`,
+    },
+    urgency: left <= FED_AUTOPAY.urgentDays ? "now" : "soon",
+    why: `You pay ${who}, a federal student loan servicer. Federal Direct Loans first paid out after July 1, 2012 get 1% off their rate through June 30, 2028 for anyone signed up for autopay with their servicer by 11:59 p.m. Eastern on ${deadline}: about $10 a year for every $1,000 owed. To do it: sign in at ${who}'s site, turn on Auto Pay from your checking account, and check it shows as on. Private loans ${named.some((p) => p.name === "MOHELA") ? "(MOHELA also services some) " : ""}don't get this cut. If autopay is already on, nothing to do.`,
+    action: { label: "See your loans and servicer", href: "/loans/student" },
+    more: [
+      ...named.flatMap((p) => (p.url ? [{ label: `Sign in to ${p.name}`, href: p.url }] : [])),
+      { label: see.title, href: see.url },
+    ],
+  });
+}
 
 // Standard's term: ten years, or for a Direct Consolidation Loan a term set by what's owed.
 function standardMonths(l: ProfileLiability, balanceCents: number): number {
