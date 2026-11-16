@@ -1,10 +1,10 @@
 import { CHAT_SNAPSHOT_STORED_MINUTES } from "@/config/agent-chat";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { Snapshot } from "./snapshot";
-import { isoDay as day } from "@/lib/dates";
 import { dataStamp, sameData } from "@/lib/data-stamp";
 import { log } from "@/lib/log";
 import { scopedFor } from "@/lib/db-scoped";
+import { localDate, timezoneOf } from "@/lib/today";
 
 // Jane's snapshot of a person (everything the agenda, the whole-picture and priorities answers
 // and the chat's tools read), kept in the database (depth first): building it looks up every
@@ -94,11 +94,18 @@ const refreshing = new Set<string>();
 
 // The saved snapshot, in one query. A copy from today that is old is still returned at once and
 // refreshed behind; with none saved, one from another day, or one built from other data (a bank
-// disconnected, a file uploaded since), it is built here, once.
+// disconnected, a file uploaded since), it is built here, once. "Today" is the person's day
+// (gate C's calendar sweep, 11-16): by UTC's, last evening's copy, with yesterday's "due in 4
+// days", answered until 4pm in Los Angeles, and this afternoon's was thrown away at 4pm.
 export async function loadSnapshotFast(userId: string, options: Options): Promise<Snapshot | null> {
   const { client, now } = options;
-  const [stored, stamp] = await Promise.all([read(userId, client), dataStamp(userId, client)]);
-  if (stored && day(stored.at) === day(now) && sameData(stored.stamp, stamp)) {
+  const [stored, stamp, timezone] = await Promise.all([
+    read(userId, client),
+    dataStamp(userId, client),
+    timezoneOf(userId, { client }).catch(() => null),
+  ]);
+  const sameDay = (at: Date) => localDate(at, timezone) === localDate(now, timezone);
+  if (stored && sameDay(stored.at) && sameData(stored.stamp, stamp)) {
     const old = now.getTime() - stored.at.getTime() >= CHAT_SNAPSHOT_STORED_MINUTES * 60_000;
     if ((old || now.getTime() < stored.at.getTime()) && !refreshing.has(userId)) {
       refreshing.add(userId);
