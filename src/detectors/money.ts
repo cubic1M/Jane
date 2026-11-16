@@ -122,8 +122,9 @@ const bankFees: Detector = {
   detect({ profile, data }) {
     // A year of fees, the one definition (src/planning/bank-fees.ts) over the one count of months
     // (feeMonthsOf) the report's findings and the chat's answer use too (gate B).
+    const cash = new Set(data.accounts.filter((a) => a.type === "depository").map((a) => a.id));
     const fees = bankFeesYear(
-      data.transactions,
+      data.transactions.map((t) => ({ ...t, onCash: cash.has(t.accountId) })),
       feeMonthsOf({ transactions: data.transactions, asOf: data.today }),
     );
     if (!fees || fees.count < R.feesMin) return null;

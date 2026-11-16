@@ -63,16 +63,18 @@ describe("bank_fees", () => {
 
   // Night QA 10-30: a $95 annual fee in 3 months of statements counted as $380 a year.
   it("counts a card's annual fee once a year, not scaled up with the rest", () => {
+    // On the card: a late fee paid from checking is a loan's or a bill's, not the bank's.
     const transactions = [
-      fee("BANK_FEES_LATE_FEES", 4000, "2026-07-28"),
+      fee("BANK_FEES_LATE_FEES", 4000, "2026-07-28", CARD.id),
       tx({
+        accountId: CARD.id,
         date: "2026-09-03",
         amountCents: 9500,
         description: "ANNUAL MEMBERSHIP FEE",
         pfcPrimary: "BANK_FEES",
         pfcDetailed: "BANK_FEES_OTHER_BANK_FEES",
       }),
-      fee("BANK_FEES_OTHER_BANK_FEES", 1200, "2026-09-17"),
+      fee("BANK_FEES_OTHER_BANK_FEES", 1200, "2026-09-17", CARD.id),
     ];
 
     const [finding] = bankFees(input({ transactions }), []);

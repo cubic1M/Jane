@@ -14,6 +14,7 @@ export async function loadBankFees(
   { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
 ): Promise<BankFees | null> {
   const input = await loadDetectionInput(userId, { client, now });
+  const cash = new Set(input.accounts.filter((a) => a.type === "depository").map((a) => a.id));
   return bankFeesYear(
     inLookback(input).map((t) => ({
       date: t.date,
@@ -21,6 +22,7 @@ export async function loadBankFees(
       description: t.description,
       pfc: t.pfcDetailed,
       accountId: t.accountId,
+      onCash: cash.has(t.accountId),
     })),
     feeMonthsOf(input),
   );
