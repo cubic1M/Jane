@@ -168,7 +168,13 @@ export function popupCard(m: MessageView): PopupCard {
   const headline = firstSentence(m.body);
   const full = m.body.trim();
   // Its lines kept: each is a paragraph behind More details.
-  const more = full.slice(full.indexOf(headline) + headline.length).replace(/[ \t]+/g, " ");
+  const after = full.slice(full.indexOf(headline) + headline.length);
+  // How sure is said once, by the card's own line, not again in the words behind it.
+  const more = (
+    m.confidence
+      ? after.replace(`${m.confidence.percent}% sure: ${m.confidence.reason}.`, "")
+      : after
+  ).replace(/[ \t]+/g, " ");
   return {
     id: m.id,
     headline,
