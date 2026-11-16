@@ -66,6 +66,9 @@ type Signals = {
   // The demo bank's sample health plan stands in for one (src/lib/insurance/health-year.ts): its
   // year is shown, so it isn't also "no health insurance on file".
   sampleHealthPlan?: boolean;
+  // A car loan on file: its lender requires the car to be insured, so cover not seen is likely
+  // paid somewhere Jane can't see, as a mortgage's home cover is from escrow.
+  carLoan?: boolean;
 };
 
 // What the accounts say, for the facts not typed.
@@ -118,6 +121,7 @@ export function resolveHousehold(
       medicalCents: signs.medicalCents ?? null,
       ...(signs.selfEmployment ? { selfEmployment: signs.selfEmployment } : {}),
       ...(signs.sampleHealthPlan ? { sampleHealthPlan: true } : {}),
+      ...(signs.carLoan ? { carLoan: true } : {}),
     },
   };
 }
@@ -241,6 +245,7 @@ async function loadHouseholdFrom(
     homeOwned: owned.some((o) => o.kind === "home"),
     rentPaid: rent > 0,
     cars,
+    carLoan: carLoans.length > 0,
     paycheck: paychecks > 0,
     militaryPay: militaryPay > 0,
     assetsCents:
