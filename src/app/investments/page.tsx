@@ -458,7 +458,8 @@ async function InvestmentsContent({
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Investments</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
-          Your accounts, as your bank reports them.
+          {/* A positions upload isn't the bank's report (debug 2, 11-16). */}
+          Your accounts, from your bank and your uploads.
         </p>
         {leak.totalCents > 0 && (
           <section
