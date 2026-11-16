@@ -1,1 +1,7 @@
-[]
+[
+ {
+  "task": "gate-a-crawl",
+  "lane": "lane:beta-journey",
+  "expires": "2026-11-16T08:32:52.221Z"
+ }
+]
