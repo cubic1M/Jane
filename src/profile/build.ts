@@ -508,14 +508,15 @@ function incomeFacts(b: Builder) {
   else set("income_pattern", pattern, "seen", "deposits", patternMatches);
 
   // Employers still paying: an old one that stopped is a job change, not another earner.
-  // One payer per key (./stopped-payers.ts), named from its latest paycheck.
+  // One payer per key (./stopped-payers.ts), named from its latest paycheck. Counted back from
+  // where the data ends, as above (gate C's calendar sweep, 11-16: from today, the employer and
+  // the earners became "not known yet" six weeks after the last sync).
   const employers = new Map<string, number>();
-  const activeSince = addDays(today, -EARNER_ACTIVE_DAYS);
   const latestPaid = latestByPayer(salary);
   for (const t of salary) {
     const latest = latestPaid.get(payKeyOf(t.description))!;
     const name = employerName(latest.description);
-    if (latest.date >= activeSince) employers.set(name, (employers.get(name) ?? 0) + 1);
+    if (latest.date >= stillPaidSince) employers.set(name, (employers.get(name) ?? 0) + 1);
   }
   // A payroll service still counts as a job below, but it isn't who they work for.
   const topEmployer = [...employers.entries()]
