@@ -1,10 +1,10 @@
 [
  {
-  "on": 1622,
-  "lane": "lane:beta-accuracy",
-  "task": "claude/beta-accuracy-checks-81dc2f",
+  "on": 1838,
+  "lane": "lane:beta-journey",
+  "task": "claude/dead-end-crawl",
   "when": "merged",
-  "since": "2026-11-12T10:09:30.970Z",
-  "expires": "2026-11-15T10:09:30.970Z"
+  "since": "2026-11-16T03:11:50.504Z",
+  "expires": "2026-11-19T03:11:50.504Z"
  }
 ]
