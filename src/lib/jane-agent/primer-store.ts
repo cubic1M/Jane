@@ -1,7 +1,7 @@
 import { CHAT_PRIMER_STORED_MINUTES } from "@/config/agent-chat";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { sameData } from "@/lib/data-stamp";
-import { isoDay } from "@/lib/dates";
+import { localDate } from "@/lib/today";
 import { staleAndRefreshSnapshot } from "./snapshot-store";
 import { log } from "@/lib/log";
 import { scopedFor } from "@/lib/db-scoped";
@@ -79,12 +79,16 @@ export const isStale = (at: Date, now: Date) =>
 // Whether saved numbers may be said at all (card-chat mismatch): only ones worked out today, from
 // the data as it is now. Otherwise the chat would repeat a disconnected bank's purchase or
 // yesterday's "in 3 days". Old within the day (or after a tap) is still fine: it is used at once
-// and refreshed behind (isStale).
+// and refreshed behind (isStale). Today is the person's (US Pacific when unknown), as for the
+// snapshot (gate C): by UTC's, last evening's numbers were said until 4pm in Los Angeles, and
+// this morning's were thrown away at 4pm.
 export const usablePrimer = (
   stored: { builtAt: Date; stamp: string | null },
   stamp: string | null,
   now: Date,
-) => isoDay(stored.builtAt) === isoDay(now) && sameData(stored.stamp, stamp);
+  timezone?: string | null,
+) =>
+  localDate(stored.builtAt, timezone) === localDate(now, timezone) && sameData(stored.stamp, stamp);
 
 // Something changed (a tap, a correction): the saved numbers are old; the next question
 // refreshes them. Cheap, and it never fails the change.
