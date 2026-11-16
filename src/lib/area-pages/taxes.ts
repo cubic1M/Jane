@@ -273,7 +273,8 @@ export type TaxesTreeInput = {
   refunds: number;
   investments: { washSales: number; harvest: number } | null;
   forms: { total: number; received: number; toCheck: number };
-  tags: { checks: number };
+  // tagged: how many of the year's payments carry a tag (absent: not counted).
+  tags: { checks: number; tagged?: number };
   records: { items: number; needs: number; gaps: number; canGo: number };
   sideIncome: { differs: number; waiting: number } | null;
   home: boolean;
@@ -521,7 +522,11 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
       label: `Tagged for ${input.year}`,
       status: input.tags.checks > 0 ? "look" : "good",
       figure: input.tags.checks > 0 ? `${input.tags.checks} to check` : undefined,
-      summary: "Donations, work and medical costs, and more, tagged from your accounts.",
+      // Nothing tagged yet is said here once, not as a list of $0.00 (debug 2, 11-15).
+      summary:
+        input.tags.tagged === 0 && input.tags.checks === 0
+          ? `Nothing tagged for ${input.year} yet.`
+          : "Donations, work and medical costs, and more, tagged from your accounts.",
     }),
     item("records", "audit", {
       label: "Audit-ready records",
