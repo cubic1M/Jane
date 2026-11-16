@@ -141,15 +141,17 @@ const surfacesToAttack = () =>
 
 // How many calls must get the victim's id as far as a database query. Set a little under what a run
 // reaches, so a change that stops the attacks at validation fails instead of quietly proving less.
+// (Lowered when the hidden pages' code was deleted: a run reached 50, 47, 50 and 62 actions, 12 of
+// the partner's pages, and the owner's marker on 48 pages.)
 const FLOORS: Record<string, Record<string, number>> = {
-  stranger: { action: 75, route: 5 },
-  trial: { action: 70, route: 5 },
-  "real-on-trial": { action: 75, route: 5 },
-  partner: { action: 90, route: 5, page: 20 },
+  stranger: { action: 45, route: 5 },
+  trial: { action: 42, route: 5 },
+  "real-on-trial": { action: 45, route: 5 },
+  partner: { action: 55, route: 5, page: 10 },
 };
 
 // How many of a person's own pages must show their marker when they look.
-const OWNER_SEES_FLOOR = 100;
+const OWNER_SEES_FLOOR = 44;
 
 function expectFloors(label: string, tally: Tally) {
   if (only) return;

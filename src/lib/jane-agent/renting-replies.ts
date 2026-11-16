@@ -16,7 +16,7 @@ export const reportOnButton = (): MessageAction => ({
   kind: "primary",
 });
 
-export function depositLines(d: Renting): string[] {
+function depositLines(d: Renting): string[] {
   return d.deposits.map((x) => {
     const v = x.view;
     const head = `${formatCents(x.amountCents)} deposit (${x.state})`;

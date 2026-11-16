@@ -79,7 +79,7 @@ export async function listApplications(
   return rows.map(toView);
 }
 
-export async function getApplication(
+async function getApplication(
   userId: string,
   id: string,
   { client = defaultClient }: Options = {},

@@ -90,9 +90,3 @@ export const STEPS: readonly {
     url: IP_PIN.url,
   },
 ];
-
-export const CREDIT_FREEZE_URLS = {
-  Equifax: "https://www.equifax.com/personal/credit-report-services/credit-freeze/",
-  Experian: "https://www.experian.com/freeze/center.html",
-  TransUnion: "https://www.transunion.com/credit-freeze",
-} as const;

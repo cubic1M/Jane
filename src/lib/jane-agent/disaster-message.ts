@@ -9,7 +9,7 @@ import { type MessageAction, openLink, type MessageParts } from "./types";
 // get more time on my taxes after the storm", "can I deduct storm damage". Facts: what the IRS
 // postponed and the loss rules; nothing is filed.
 
-export const DISASTER_HREF = "/deadlines";
+const DISASTER_HREF = "/deadlines";
 
 const day = (d: string) => dayLabel(d, { year: true });
 const sample = (r: ReliefView) =>
@@ -55,7 +55,7 @@ export function reliefMessage(v: DisasterView, r: ReliefView): MessageParts {
 }
 
 // One relief's lines, shared with /taxes/disasters so the page and the chat say the same.
-export function reliefLines(r: ReliefView): string[] {
+function reliefLines(r: ReliefView): string[] {
   return [
     `${r.relief.title.replace(/ \(sample declaration\)$/, "")} from ${day(r.relief.incidentFrom)}: federal tax deadlines from then move to ${day(r.relief.postponedTo)}${r.computed.length ? ` (${r.computed.map((m) => `${m.title}, ${day(m.from)}`).join("; ")})` : ""}.${r.applied ? " I've moved the ones on your list." : r.moves.length ? ` ${r.moves.length} on your list can move.` : ""}`,
     lossLine(r) + (r.recorded ? " It's recorded with your insurance claim, once." : "") + sample(r),

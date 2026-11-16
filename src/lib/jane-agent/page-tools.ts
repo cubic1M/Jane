@@ -6,12 +6,10 @@
 
 export const PAGE_TOOLS: Readonly<Record<string, readonly string[]>> = {
   accountant: ["tax_return", "tax_forms"],
-  actions: ["list_actions", "open_findings"],
   afford: ["safe_to_spend"],
   ahead: ["coming_up", "tax_plan"],
   bills: ["coming_up", "balance_forecast", "subscriptions"],
   budgets: ["budgets"],
-  "check-in": ["plan_upkeep"],
   close: ["month_close", "proven_savings", "monthly_report"],
   connect: ["explainer"],
   deadlines: ["coming_up", "price_rises"],
@@ -19,7 +17,6 @@ export const PAGE_TOOLS: Readonly<Record<string, readonly string[]>> = {
   documents: ["tax_forms", "insurance_documents"],
   // Spec step 239: how a figure was worked out.
   figures: ["explain_figure"],
-  gift: ["family_investing"],
   goals: ["goals", "goal_buckets", "college_plan", "goal_tradeoffs"],
   home: ["safe_to_spend", "whole_picture", "priorities", "health_score"],
   household: ["household"],
@@ -28,8 +25,6 @@ export const PAGE_TOOLS: Readonly<Record<string, readonly string[]>> = {
   insurance: ["insurance_policies", "insurance_quotes", "insurance_checkup", "insurance_claims"],
   investments: ["investments_overview", "holdings", "hsa", "crypto", "retirement_plan"],
   jane: ["nightly_log", "whole_picture"],
-  "long-view": ["long_view"],
-  "life-events": ["life_events"],
   loans: [
     "debts",
     "mortgage",
@@ -38,7 +33,6 @@ export const PAGE_TOOLS: Readonly<Record<string, readonly string[]>> = {
     "student_loans",
     "credit_score",
   ],
-  monthly: ["monthly_report", "plan_upkeep", "month_close"],
   money: ["net_worth"],
   "net-worth": ["net_worth"],
   plan: ["open_findings"],
@@ -50,7 +44,4 @@ export const PAGE_TOOLS: Readonly<Record<string, readonly string[]>> = {
   taxes: ["tax_estimate", "tax_forms", "tax_giving", "tax_withholding"],
   things: ["net_worth"],
   transactions: ["search_transactions", "spending_by_category", "show_block"],
-  transfers: ["money_moves"],
-  "what-if": ["what_if"],
-  year: ["monthly_totals", "spending_by_category", "show_block"],
 };

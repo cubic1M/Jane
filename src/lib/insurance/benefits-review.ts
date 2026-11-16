@@ -164,24 +164,3 @@ export async function enrollmentReview(
   await track(userId, "benefits_review_ready", { benefits: comparisons.length });
   return true;
 }
-
-// "Compare with buying privately" on the benefits page: the same review, now, whatever the
-// date (demo advice only). Returns whether one was made.
-export async function reviewBenefitsNow(
-  userId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
-): Promise<boolean> {
-  if (!(await adviceMode(userId, { client }))) return false;
-  const comparisons = await compareBenefits(userId, { client, now });
-  if (comparisons.length === 0) return false;
-  await scopedFor(userId, client).insuranceCheckups.create({
-    data: {
-      userId,
-      reason: "enrollment",
-      recommendations: reviewRecommendations(comparisons) as unknown as Prisma.InputJsonArray,
-      createdAt: now,
-    },
-  });
-  await track(userId, "benefits_review_ready", { benefits: comparisons.length, asked: true });
-  return true;
-}

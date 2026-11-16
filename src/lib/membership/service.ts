@@ -35,21 +35,6 @@ export async function offerFor(
   );
 }
 
-// Called when the offer is on screen; counts it once per snooze period.
-export async function markOfferShown(
-  userId: string,
-  offer: Offer,
-  savedToDateCents: number,
-  { client = defaultClient, now = new Date() }: Options = {},
-) {
-  if (!offer.show || !offer.countAsShown) return;
-  await systemDb("A person's own row: jane_rls only reads users", client).user.update({
-    where: { id: userId },
-    data: { membershipOfferShownAt: now },
-  });
-  await track(userId, "membership_offer_shown", { saved_to_date_cents: savedToDateCents });
-}
-
 export async function dismissOffer(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},

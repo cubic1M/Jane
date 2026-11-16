@@ -223,16 +223,3 @@ export async function investHsaCash(
   if (item?.itemId) await syncDemoInvestments(item.itemId, { client, now });
   return { amountCents: view.plan.toInvestCents, confirmation };
 }
-
-export async function markReimbursed(
-  userId: string,
-  receiptId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
-) {
-  const { count } = await scopedFor(userId, client).hsaReceipts.updateMany({
-    where: { id: receiptId, status: "saved" },
-    data: { status: "reimbursed", reimbursedAt: now },
-  });
-  if (count === 0)
-    throw new HsaError("That receipt isn't in your vault, or it's already paid back.");
-}

@@ -103,30 +103,3 @@ export async function placeRebalance(
   }
   return { confirmations, plan };
 }
-
-// The person's orders, newest first, for the page and the chat.
-export async function recentOrders(
-  userId: string,
-  { client = defaultClient, limit = 20 }: { client?: PrismaClient; limit?: number } = {},
-) {
-  return scopedFor(userId, client).brokerageOrders.findMany({
-    select: {
-      id: true,
-      batchId: true,
-      reason: true,
-      partner: true,
-      ticker: true,
-      securityName: true,
-      side: true,
-      amountCents: true,
-      quantity: true,
-      priceCents: true,
-      status: true,
-      confirmation: true,
-      placedAt: true,
-      account: { select: { name: true } },
-    },
-    orderBy: [{ placedAt: "desc" }, { id: "asc" }],
-    take: limit,
-  });
-}

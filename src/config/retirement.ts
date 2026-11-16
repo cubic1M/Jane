@@ -31,18 +31,14 @@ export const STAGE_AGES: Readonly<Record<string, number>> = {
   peak: 46,
   approaching: 58,
 };
-export const RETIREMENT_AGE_SOURCE =
-  "Social Security's full retirement age for people born in 1960 or later";
 
 // The target: about ten times your yearly pay saved by 67 (Fidelity's savings guideline),
 // in today's dollars.
 export const TARGET_TIMES_PAY = 10;
-export const TARGET_SOURCE = "Fidelity's guideline: about 10 times your pay saved by 67";
 
 // What a nest egg could pay out each year: 4% of it, the usual starting rate from studies
 // of past markets (Bengen, 1994; the Trinity study, 1998). A rule of thumb, not a promise.
 export const WITHDRAWAL_RATE = 0.04;
-export const WITHDRAWAL_SOURCE = "The 4% rule of thumb (Bengen 1994; Trinity study 1998)";
 
 // Roth or traditional, by yearly pay, for a single filer: below the first line the person
 // is likely in the 10% or 12% federal bracket, where paying the tax now (Roth) usually

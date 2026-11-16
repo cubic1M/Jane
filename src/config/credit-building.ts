@@ -20,7 +20,3 @@ export const THIN_FILE_AGE_MONTHS = 24;
 
 // The score simulator's new card, for "what if I open a card?": a typical first limit.
 export const SIMULATED_NEW_CARD_LIMIT_CENTS = 500_000;
-
-// Where the rules about what moves a score come from, for the page.
-export const CREDIT_SCORE_SOURCE =
-  "https://www.consumerfinance.gov/ask-cfpb/what-is-a-credit-score-en-315/";

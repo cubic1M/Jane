@@ -31,8 +31,6 @@ export const SS_COMPARE_TO_AGE = 85;
 // Security's formula (90% / 32% / 15% of average monthly earnings), assuming their pay held
 // for a career. ESTIMATE TO VERIFY; their statement at ssa.gov is better.
 export const SS_BEND_POINTS_CENTS = [128_600, 774_900] as const;
-export const SS_ESTIMATE_SOURCE =
-  "Social Security's benefit formula with 2026 bend points; ESTIMATE TO VERIFY. Their statement at ssa.gov is better.";
 
 // Required minimum distributions: they start at 73 for people born 1951 to 1959, and 75
 // for people born in 1960 or later (SECURE 2.0 Act). IRS Uniform Lifetime Table: the
@@ -75,16 +73,12 @@ export const RMD_LAST_AGE = 100;
 // What to spend each year as a share of retirement pay when the person hasn't said:
 // a common target is about 80% of working pay.
 export const SPEND_SHARE_OF_PAY = 0.8;
-export const SPEND_SOURCE = "A common planning target: about 80% of working pay";
 // Without their own figure or pay from an employer plan: what they spend in a typical month
 // now (one-off costs left out), over this many complete months.
 export const SPEND_HISTORY_MONTHS = 3;
-export const SPEND_FROM_SPENDING_SOURCE =
-  "What you spend in a typical month now, one-off costs left out";
 // Social Security already coming in: at least this many deposits in the last year make it the
 // person's benefit, a year of them divided by twelve.
 export const SS_DEPOSITS_MIN = 3;
-export const SS_DEPOSITS_SOURCE = "From the Social Security deposits in your account";
 
 // The share of a withdrawal from a pre-tax account that is taxed as ordinary income is
 // all of it; Roth and (mostly) taxable-account withdrawals are not. Taxable accounts: only

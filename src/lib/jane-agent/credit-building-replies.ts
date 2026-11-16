@@ -9,7 +9,7 @@ import type { MessageAction, MessageRefs } from "./types";
 // Jane's answers about building credit (spec step 175), from src/lib/credit-building.ts.
 // Pure. The simulator's figures are always called estimates.
 
-export const ESTIMATE_LABEL =
+const ESTIMATE_LABEL =
   "These are estimates from the stand-in score's simulator, and nothing changes until you act.";
 
 const months = (n: number) => `${n} ${n === 1 ? "month" : "months"}`;
@@ -42,7 +42,7 @@ export function statementLine(data: CreditBuilding): string | null {
   return `Pay ${formatCents(s.suggested.amountCents)} on your ${s.cardName} by ${dayLabel(s.payOn)}, before its statement closes on ${dayLabel(s.closesOn)}. Then the balance reported to the bureaus is under ${under} of your limits, which helps your score.`;
 }
 
-export function streakLine(data: CreditBuilding): string | null {
+function streakLine(data: CreditBuilding): string | null {
   const st = data.streak;
   if (!st) return null;
   if (st.months === 0) {

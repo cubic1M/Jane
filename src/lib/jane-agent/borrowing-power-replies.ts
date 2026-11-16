@@ -24,7 +24,7 @@ function figureLine(f: Figure): string {
   return `- ${label}: up to about ${formatCents(f.amountCents)} at about ${formatRate(f.aprBps!)} over ${years(f.termMonths)} (${f.lender}), ${formatCents(f.paymentCents)} a month${f.feeCents > 0 ? `, ${formatCents(f.feeCents)} in fees` : ""}.`;
 }
 
-export function scoreLine(d: BorrowingPower): string {
+function scoreLine(d: BorrowingPower): string {
   return d.score !== null && d.scoreOn !== null
     ? `Priced by your score of ${d.score} from ${dayLabel(d.scoreOn, { year: true })}.`
     : "I haven't pulled your score yet, so these assume a middling one.";

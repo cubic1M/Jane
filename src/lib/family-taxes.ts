@@ -44,7 +44,7 @@ export type FamilyDetails = {
   student: Student | null;
 };
 
-export function parseChildren(value: unknown): Child[] {
+function parseChildren(value: unknown): Child[] {
   if (!Array.isArray(value)) return [];
   return value.filter(
     (c): c is Child =>

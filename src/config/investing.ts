@@ -82,7 +82,7 @@ export type DropReaction = keyof typeof DROP_REACTIONS;
 export type Goal = keyof typeof GOALS;
 
 // How big a drop the "how would it feel" question describes.
-export const DROP_QUESTION_PERCENT = 20;
+const DROP_QUESTION_PERCENT = 20;
 
 // The questions in the order Jane asks them in the chat (at most five answers each, the
 // chat's answer buttons).

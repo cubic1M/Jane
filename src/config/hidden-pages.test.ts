@@ -43,11 +43,10 @@ function pages(dir = APP, out: string[] = []): string[] {
 }
 
 describe("the hidden pages", () => {
-  it("are real pages, each listed once, each going to a page that isn't hidden", () => {
+  it("are each listed once, each going to a real page that isn't hidden", () => {
     const paths = HIDDEN_PAGES.map((p) => p.path);
     expect(new Set(paths).size).toBe(paths.length);
     for (const p of HIDDEN_PAGES) {
-      expect(existsSync(pageFile(p.path)), p.path).toBe(true);
       expect(existsSync(pageFile(p.to)), p.to).toBe(true);
       expect(isHiddenPage(p.to), p.to).toBe(false);
     }

@@ -1,10 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { isHiddenPage } from "./hidden-pages";
 
 // Every internal path written in the source opens a real page or route (debugger 11-04: every
 // urgent alert email linked to /alerts, deleted three weeks before, and nothing noticed). A hidden
-// page counts: it redirects. A path built with a value counts as that value's segment.
+// page counts: it redirects (src/config/hidden-pages.ts). A path built with a value counts as that
+// value's segment.
 
 const SRC = path.join(process.cwd(), "src");
 const APP = path.join(SRC, "app");
@@ -61,7 +63,9 @@ describe("internal links", () => {
           // ".../${id}": the value is one more segment. "/${x}" right after a word joins it.
           if (m[2] && m[1].endsWith("/")) segments.push("value");
           else if (m[2]) return [];
-          return opens(segments) ? [] : [`/${m[1]} in ${path.relative(SRC, file)}`];
+          return opens(segments) || isHiddenPage(`/${segments.join("/")}`)
+            ? []
+            : [`/${m[1]} in ${path.relative(SRC, file)}`];
         }),
       );
     });

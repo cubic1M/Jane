@@ -9,7 +9,7 @@
 // PMI cancelled (80%) and at which it must end by itself (78%, when payments are current).
 // The same numbers as step 115's (src/config/debt.ts), measured against the value the loan
 // began with rather than today's.
-export { PMI_ASK_LTV, PMI_AUTO_LTV, PMI_SOURCE } from "./debt";
+export { PMI_ASK_LTV, PMI_AUTO_LTV } from "./debt";
 // The conditions for asking, in the CFPB's words, for the drafted request to state.
 export const PMI_ASK_CONDITIONS: readonly string[] = [
   "You are current on your payments and have a good payment history.",
@@ -25,9 +25,6 @@ export const PMI_FOLLOW_UP_DAYS = 30;
 export const ESCROW_CUSHION_MONTHS = 2;
 // A surplus of this much or more is refunded to the borrower within 30 days of the analysis.
 export const ESCROW_REFUND_MIN_CENTS = 5_000;
-export const ESCROW_SOURCE = "https://www.consumerfinance.gov/rules-policy/regulations/1024/17/";
-export const ESCROW_EXPLAINER =
-  "https://www.consumerfinance.gov/ask-cfpb/what-is-an-escrow-or-impound-account-en-140/";
 // A loan term is read from the bank's description ("Conventional 30 year fixed"); this is used
 // when it doesn't say.
 export const DEFAULT_TERM_YEARS = 30;
@@ -82,5 +79,3 @@ export const PROJECT_NOTES: Readonly<Record<ProjectProduct, string>> = {
   personal:
     "Nothing is pledged, so the rate is higher and the term shorter; the home is not at risk.",
 };
-export const HOME_EQUITY_SOURCE =
-  "stand-in lender terms in src/config/home-equity.ts, until a real lending partner is connected";
