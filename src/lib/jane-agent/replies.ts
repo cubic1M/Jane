@@ -521,7 +521,14 @@ export function spendingReply(
       body: `I don't see anything from ${monthLabel(intent.month)} yet: what I have ends on ${dayLabel(lastDate)}. ${had.body}`,
     };
   }
-  const when = `in ${monthLabel(intent.month)}${current ? " so far" : ""}`;
+  // A month the data starts partway through says from when (debug 2, 11-16: "You spent $114.87 on
+  // Food and drink in October 2026" over Oct 17 to 31 only).
+  const firstDate = transactions.reduce((first, t) => (t.date < first ? t.date : first), lastDate);
+  const partway =
+    intent.month === firstMonth && fullMonths([intent.month], transactions).length === 0;
+  const when = `in ${monthLabel(intent.month)}${current ? " so far" : ""}${
+    partway ? ` (from ${dayLabel(firstDate)}, where what I have starts)` : ""
+  }`;
   const insights = spendingInsights(transactions, { asOf, monthCount: INSIGHT_MONTHS });
   const totals = insights.months.find((m) => m.month === intent.month)!;
   const categories = insights.categoriesByMonth[intent.month] ?? [];
