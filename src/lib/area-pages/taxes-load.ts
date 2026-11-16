@@ -1,4 +1,7 @@
+import { areaOfCapability } from "@/config/areas";
 import { FILING_STATUSES, INCOME_KINDS } from "@/config/tax";
+import { scopedFor } from "@/lib/db-scoped";
+import { SAID_YES } from "./tree";
 import { taxesTree } from "@/lib/area-pages/taxes";
 import { loadTaxTags } from "@/lib/tax-organizer";
 import { adviceMode } from "@/lib/advice-mode";
@@ -40,7 +43,7 @@ export async function loadTaxesArea(userId: string, { now = new Date() }: { now?
   const today = await todayOf(userId, { now });
   // The year being gathered: last year until the end of April, then this one.
   const year = defaultTaxYear(today);
-  const [{ view, taxes }, tags, forms, estimate, advice, setAside] = await Promise.all([
+  const [{ view, taxes }, tags, forms, estimate, advice, setAside, suggested] = await Promise.all([
     loadWorkingProfile(userId, { now }),
     loadTaxTags(userId, year),
     // Spec step 166: with what Jane collected and how each checked.
@@ -48,7 +51,26 @@ export async function loadTaxesArea(userId: string, { now = new Date() }: { now?
     loadTaxEstimate(userId, { now }),
     adviceMode(userId),
     loadTaxSetAside(userId, { now }),
+    // Jane's open suggestions about taxes, listed on the page as Money's and Loans' are.
+    scopedFor(userId).suggestions.findMany({
+      where: { status: { in: [...SAID_YES] } },
+      select: {
+        status: true,
+        capability: true,
+        topic: true,
+        headline: true,
+        short: true,
+        why: true,
+        worthCents: true,
+        worthKind: true,
+        urgency: true,
+        actionLabel: true,
+        actionHref: true,
+      },
+      orderBy: { score: "desc" },
+    }),
   ]);
+  const suggestions = suggested.filter((s) => areaOfCapability(s.capability) === "taxes");
   // The audit records are built from the page's own estimate, tags, forms, gifts and home (#687).
   const homeLoad = loadHomeTaxes(userId, { now, loaded: { estimate } });
   const givingLoad = loadGiving(userId, { now, loaded: { estimate, advice } });
@@ -168,6 +190,16 @@ export async function loadTaxesArea(userId: string, { now = new Date() }: { now?
       options: giving.advice && !giving.dismissed ? giving.options.length : 0,
     },
     profile: { complete: view.complete, newIncome: newIncome.length, fields },
+    suggestions: suggestions.map((s) => ({
+      topic: s.topic,
+      summary: s.short || s.headline || "",
+      worthCents: s.worthCents,
+      worthKind: s.worthKind,
+      headline: s.headline,
+      urgency: s.urgency,
+      status: s.status,
+      actionHref: s.actionHref,
+    })),
   });
   return {
     today,
@@ -192,6 +224,7 @@ export async function loadTaxesArea(userId: string, { now = new Date() }: { now?
     kids,
     fields,
     newIncome,
+    suggestions,
     area,
   };
 }

@@ -6,7 +6,16 @@ import type { TreeStatus } from "@/components/tree/interactive-tree";
 import { shortMoney } from "@/lib/hub/view";
 import type { SavingKey } from "@/planning/tax-savings";
 import type { FieldStatus } from "@/planning/tax-profile";
-import { buildAreaTree, firstSentences, type AreaItem, type AreaTree, urgentLine } from "./tree";
+import {
+  answeredYes,
+  buildAreaTree,
+  firstSentences,
+  shortLabel,
+  type AreaItem,
+  type AreaTree,
+  urgentLine,
+  worthFigure,
+} from "./tree";
 import { daysBetween } from "@/lib/dates";
 import { dayLabel } from "@/lib/day-label";
 import { plural } from "@/lib/plural";
@@ -275,7 +284,46 @@ export type TaxesTreeInput = {
     newIncome: number;
     fields: { key: string; label: string; value: string; status: FieldStatus; note?: string }[];
   };
+  // Jane's open suggestions about taxes, best first (absent: none loaded).
+  suggestions?: TaxSuggestion[];
 };
+
+type TaxSuggestion = {
+  topic: string;
+  summary: string;
+  worthCents: number;
+  worthKind?: string;
+  headline?: string;
+  urgency: string;
+  status?: string;
+  actionHref: string;
+};
+
+// Where a tax suggestion is listed, and its label. Every open one is on this page, as Money's and
+// Loans' are on theirs: its button says "See your tax plan" or opens a page the beta hides, and
+// both land here (debug 2, 11-15: Yes on "Check the 2027 Saver's Match" opened Taxes, which never
+// mentioned it).
+const SUGGESTION_BRANCH: Readonly<Record<string, TaxesBranch>> = {
+  tax_not_yet_paid: "estimate",
+  draft_return_check: "filing",
+  file_return: "filing",
+  identity_ip_pin: "filing",
+  disaster_relief: "soon",
+};
+const SUGGESTION_LABELS: Readonly<Record<string, string>> = {
+  savers_credit: "The Saver's Credit",
+  savers_match: "The 2027 Saver's Match",
+  medical_deduction: "Medical costs to deduct",
+  vehicle_deduction: "A car to deduct",
+  hsa_over_limit: "Too much in your HSA",
+  ptc_repayment: "Health cover credit to repay",
+  draft_return_check: "Check your draft return",
+  identity_ip_pin: "An IP PIN for your return",
+  disaster_relief: "Disaster tax relief",
+  inherited_ira: "An inherited IRA",
+};
+export const suggestionItemId = (topic: string) =>
+  itemId(SUGGESTION_BRANCH[topic] ?? "savings", `suggestion:${topic}`);
 
 export function taxesTree(input: TaxesTreeInput): AreaTree {
   const item = (branch: TaxesBranch, key: string, rest: Omit<AreaItem, "id">): AreaItem => ({
@@ -323,6 +371,28 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
         summary: `${s.title}.`,
       }),
     );
+
+  // A suggestion whose button already opens one of this page's own items is said there.
+  const listed = (input.suggestions ?? []).filter((x) => {
+    const focus = /[?&]focus=([^&#]+)/.exec(x.actionHref)?.[1];
+    return !focus || decodeURIComponent(focus) === suggestionItemId(x.topic);
+  });
+  const suggested = listed.map((x) => {
+    const branch = SUGGESTION_BRANCH[x.topic] ?? "savings";
+    return {
+      branch,
+      item: item(branch, `suggestion:${x.topic}`, {
+        label: SUGGESTION_LABELS[x.topic] ?? shortLabel(x.headline || x.summary),
+        status: x.urgency === "now" ? "act" : "look",
+        ...answeredYes(x),
+        figure: worthFigure(x),
+        cents: x.worthCents,
+        summary: x.summary,
+      }),
+    };
+  });
+  const suggestedIn = (b: TaxesBranch) =>
+    suggested.filter((x) => x.branch === b).map((x) => x.item);
 
   const r = input.estimate.refundCents;
   // Older callers without the totals keep the old reading: a known refund or amount owed.
@@ -532,13 +602,14 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
       .map((t) => item(branch, t.key, { label: t.label, summary: t.what }));
 
   const branches: { id: TaxesBranch; items: AreaItem[] }[] = [
-    { id: "soon", items: soon },
-    { id: "savings", items: savings },
-    { id: "estimate", items: estimate },
+    // Jane's suggestions first in their branch: they're what Jane brings up.
+    { id: "soon", items: [...suggestedIn("soon"), ...soon] },
+    { id: "savings", items: [...suggestedIn("savings"), ...savings] },
+    { id: "estimate", items: [...suggestedIn("estimate"), ...estimate] },
     { id: "records", items: records },
     { id: "life", items: life },
     { id: "profile", items: profile },
-    { id: "filing", items: links("filing") },
+    { id: "filing", items: [...suggestedIn("filing"), ...links("filing")] },
     { id: "topics", items: links("topics") },
   ];
   return buildAreaTree({

@@ -15,7 +15,7 @@ import {
 import { AREA_ANCHORS, isAreaRoot, landing, type AreaRoot } from "./landing";
 import { LOANS_BRANCHES, loansTree } from "./loans";
 import { DECISIONS, PLANS_BRANCHES } from "./plans";
-import { TAXES_ANCHORS, TAXES_BRANCHES, TOPICS } from "./taxes";
+import { TAXES_ANCHORS, TAXES_BRANCHES, TOPICS, taxesTree } from "./taxes";
 
 // Every link Jane gives lands on something that exists (docs/design/area-pages.md): a page in
 // src/app, and on an area page a node of its tree. Checked for the 8 sample people's
@@ -129,6 +129,36 @@ function suggestionItems(root: AreaRoot, s: Suggestion): string[] {
       returns: { periods: 0 },
       months: false,
       practice: null,
+    }).tree.branches.flatMap((b) => b.items.map((i) => i.id));
+  if (root === "/taxes")
+    return taxesTree({
+      asOf: "2026-10-17",
+      year: 2026,
+      moves: [],
+      savings: null,
+      estimate: { refundCents: 0, withholdingKnown: false },
+      setAside: { status: "unknown", advice: false, holdCents: 0, percent: 0 },
+      withholding: "unknown",
+      w4Sent: false,
+      refunds: 0,
+      investments: null,
+      forms: { total: 0, received: 0, toCheck: 0 },
+      tags: { checks: 0 },
+      records: { items: 0, needs: 0, gaps: 0, canGo: 0 },
+      sideIncome: null,
+      home: false,
+      family: null,
+      giving: null,
+      profile: { complete: true, newIncome: 0, fields: [] },
+      suggestions: [
+        {
+          topic: s.topic,
+          summary: s.short,
+          worthCents: s.worthCents,
+          urgency: "soon",
+          actionHref: landing("/taxes", { key: s.id, topic: s.topic }),
+        },
+      ],
     }).tree.branches.flatMap((b) => b.items.map((i) => i.id));
   return [];
 }

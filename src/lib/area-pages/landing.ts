@@ -1,7 +1,7 @@
 import { hiddenPage } from "@/config/hidden-pages";
 import { INVESTING_ANCHORS } from "./investing";
 import { loansTopicNode } from "./loans";
-import { HIDDEN_TAX_ITEMS, TAXES_ANCHORS } from "./taxes";
+import { HIDDEN_TAX_ITEMS, TAXES_ANCHORS, suggestionItemId } from "./taxes";
 
 // Where a link Jane gives lands (docs/design/area-pages.md): every area page is a tree, so a
 // link to an area opens the node it's about. Messages already sent and suggestions already
@@ -21,7 +21,7 @@ export const AREA_ANCHORS: Readonly<Partial<Record<AreaRoot, Readonly<Record<str
 };
 
 // A suggestion whose button opens its area page lands on its own node: its item where the
-// tree draws suggestions (loans, investing), else the branch it belongs in.
+// tree draws suggestions (loans, investing, taxes), else the branch it belongs in.
 const INSURANCE_TOPIC_BRANCH: Readonly<Record<string, string>> = {
   auto_insurance: "missing",
   renters_insurance: "missing",
@@ -51,7 +51,8 @@ function topicNode(root: AreaRoot, s: Suggested): string | null {
     case "/insurance":
       return INSURANCE_TOPIC_BRANCH[s.topic] ?? null;
     case "/taxes": {
-      const node = TAXES_TOPIC_NODE[s.topic] ?? null;
+      // Else its own item: the Taxes tree lists every open tax suggestion (debug 2, 11-15).
+      const node = TAXES_TOPIC_NODE[s.topic] ?? suggestionItemId(s.topic);
       return node && HIDDEN_TAX_ITEMS.has(node) ? null : node;
     }
     case "/ahead":

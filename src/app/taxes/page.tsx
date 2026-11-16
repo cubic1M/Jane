@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { isHiddenPage } from "@/config/hidden-pages";
+import { isHiddenPage, shownHref } from "@/config/hidden-pages";
 import { connection } from "next/server";
 import { type ReactNode } from "react";
 import { AppHeader } from "@/components/app-header";
@@ -8,7 +8,7 @@ import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { ViewTracker } from "@/components/view-tracker";
 import { READ_ONLY_TAXES } from "@/config/read-only-beta";
 import { TAX_TAG_ORDER, TAX_TAGS, TAX_YEAR, whatJaneDoes } from "@/config/tax";
-import { TAXES_ANCHORS, TOPICS, itemId } from "@/lib/area-pages/taxes";
+import { TAXES_ANCHORS, TOPICS, itemId, suggestionItemId } from "@/lib/area-pages/taxes";
 import { firstSentences } from "@/lib/area-pages/tree";
 import { formatCents } from "@/lib/money";
 import { conciergeMode } from "@/lib/concierge-mode";
@@ -238,6 +238,7 @@ async function TaxesContent({
     kids,
     fields,
     newIncome,
+    suggestions,
     area,
   } = await loadTaxesArea(user.id, { now });
   // Debugger 11-01: a real account read that Jane starts its return and acts within caps.
@@ -270,6 +271,21 @@ async function TaxesContent({
         </>
       );
     }
+
+  // Jane's suggestions: why, and their page when it's another one (a hidden page's is this one).
+  for (const x of suggestions) {
+    const href = shownHref(x.actionHref);
+    details[suggestionItemId(x.topic)] = (
+      <>
+        {x.why && <p className="text-sm">{x.why}</p>}
+        {href.split(/[?#]/)[0] !== "/taxes" && (
+          <Link href={href} className={`self-start text-sm ${LINK}`}>
+            {x.actionLabel || "Open it"}
+          </Link>
+        )}
+      </>
+    );
+  }
 
   details[itemId("estimate", "set-aside")] = <SetAsideSection view={setAside} />;
   details[itemId("estimate", "estimate")] = <EstimateSection view={estimate} />;
