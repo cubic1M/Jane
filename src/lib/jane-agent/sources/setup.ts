@@ -1,5 +1,5 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
-import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
+import { completeMonthsWords } from "@/insights/budgets";
 import { formatCents } from "@/lib/money";
 import { goalBasis, type BudgetProposal, type GoalProposal } from "@/planning/proposals";
 import { type MessageAction, openLink } from "../types";
@@ -15,7 +15,7 @@ const monthYear = (iso: string) => monthLabel(iso, { long: true });
 
 function describe(p: BudgetProposal | GoalProposal): string {
   if (p.kind === "budget") {
-    return `I could set a ${formatCents(p.amountCents)} monthly budget for ${p.category}. That's your own average over the last ${BUDGET_SUGGESTION_MONTHS} complete months, rounded up: math from your data, not advice.`;
+    return `I could set a ${formatCents(p.amountCents)} monthly budget for ${p.category}. That's your own average over the last ${completeMonthsWords(p.months)}, rounded up: math from your data, not advice.`;
   }
   if (p.monthlySetAsideCents !== undefined) {
     return `I could start a "${p.name}" goal: ${formatCents(p.targetCents)} by ${monthYear(p.targetDate)}. Your yearly and irregular bills come to ${formatCents(p.monthlySetAsideCents)} a month, so that's a year of it: math from your data, not advice.`;

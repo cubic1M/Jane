@@ -62,6 +62,7 @@ export async function currentProposals(
   return proposals({
     asOf,
     suggestions: summary.suggestions,
+    suggestionMonths: summary.months,
     budgetedCategories: budgets.map((b) => b.category),
     goalNames: goals.map((g) => g.name),
     monthlySpendingCents,
