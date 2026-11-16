@@ -159,23 +159,26 @@ async function TagsContent({
             Nothing matches that in {year}.
           </p>
         )}
-        <ul className="flex flex-col gap-3">
-          {found.map((t) => (
-            <li key={t.id} className="flex flex-col gap-1">
-              <div className="flex flex-wrap justify-between gap-x-3">
-                <span className="[overflow-wrap:anywhere]">
-                  {dayLabel(t.date)} · {t.payee}
-                </span>
-                <span className="whitespace-nowrap">{formatCents(t.amountCents)}</span>
-              </div>
-              <TagForm
-                target={{ transactionId: t.id }}
-                current={t.tag}
-                label={`Tax tag for ${t.payee}, ${dayLabel(t.date)}`}
-              />
-            </li>
-          ))}
-        </ul>
+        {/* Only with results: an empty list before a search is a list of nothing (gate A crawl). */}
+        {found.length > 0 && (
+          <ul className="flex flex-col gap-3">
+            {found.map((t) => (
+              <li key={t.id} className="flex flex-col gap-1">
+                <div className="flex flex-wrap justify-between gap-x-3">
+                  <span className="[overflow-wrap:anywhere]">
+                    {dayLabel(t.date)} · {t.payee}
+                  </span>
+                  <span className="whitespace-nowrap">{formatCents(t.amountCents)}</span>
+                </div>
+                <TagForm
+                  target={{ transactionId: t.id }}
+                  current={t.tag}
+                  label={`Tax tag for ${t.payee}, ${dayLabel(t.date)}`}
+                />
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </>
   );

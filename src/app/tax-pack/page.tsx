@@ -1,3 +1,4 @@
+import { scopedFor } from "@/lib/db-scoped";
 import Link from "next/link";
 import { isHiddenPage } from "@/config/hidden-pages";
 import { connection } from "next/server";
@@ -78,7 +79,11 @@ async function TaxPackContent({
   const today = await todayOf(user.id, { now });
   const { year: asked } = await searchParams;
   const year = taxYearFrom(typeof asked === "string" ? asked : undefined, today);
-  const pack = await loadTaxPack(user.id, year, { now });
+  const [pack, first] = await Promise.all([
+    loadTaxPack(user.id, year, { now }),
+    scopedFor(user.id).transactions.aggregate({ _min: { date: true } }),
+  ]);
+  const firstYear = first._min.date ? first._min.date.getUTCFullYear() : null;
   const groups = Object.keys(pack.preparer) as PreparerGroup[];
   const summary: (readonly [string, number])[] = [
     [COPY.charityHeading, pack.charity.totalCents],
@@ -100,7 +105,7 @@ async function TaxPackContent({
       </p>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <nav aria-label={COPY.yearsLabel} className="flex flex-wrap gap-3 text-sm">
-          {selectableYears(today).map((yr) => (
+          {selectableYears(today, firstYear).map((yr) => (
             <Link
               key={yr}
               href={`/tax-pack?year=${yr}`}
