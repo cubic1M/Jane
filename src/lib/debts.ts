@@ -15,6 +15,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { parseMoneyToCents } from "@/lib/money";
 import { parseApr } from "@/planning/debt";
 import { DAY_MS, isoDay } from "@/lib/dates";
+import { todayOf } from "@/lib/today";
 import { cachedCopy } from "@/lib/read-cache";
 
 // Every debt in one place (spec step 109), loaded for one person with the same code the
@@ -38,7 +39,9 @@ async function loadDebtsFrom(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<DebtBook> {
   const db = scopedFor(userId, client);
-  const asOf = isoDay(now);
+  // The person's own day (src/lib/today.ts): at 7pm in Los Angeles UTC's is tomorrow, and the
+  // Loans tree's "in the next month" lost a payment due today (gate C's calendar sweep, 11-15).
+  const asOf = await todayOf(userId, { client, now });
   const since = new Date(Date.parse(`${asOf}T00:00:00Z`) - BNPL_LOOKBACK_DAYS * DAY_MS);
   const words = BNPL_PROVIDERS.flatMap((p) => p.words);
   const [listedAccounts, payments, typed, newLoans, transfers, loanPayments, copies, cardPayments] =
@@ -280,7 +283,8 @@ export async function saveDebtTerms(
   input: DebtTermsInput,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<void> {
-  const checked = checkDebtTerms(input, isoDay(now));
+  // Their day: in the evening, UTC's date refused a payoff date of today as in the past.
+  const checked = checkDebtTerms(input, await todayOf(userId, { client, now }));
   const book = await loadDebts(userId, { client, now });
   const debt = book.debts.find((d) => d.key === input.debtKey);
   if (!debt) throw new DebtTermsError("That isn't one of your debts.");
