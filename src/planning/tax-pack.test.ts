@@ -38,6 +38,15 @@ describe("which year the pack opens on", () => {
     expect(taxYearFrom(undefined, "2026-02-01")).toBe(2025);
     expect(selectableYears("2026-10-18")[0]).toBe(2026);
   });
+
+  // Gate A crawl (11-15): years before the person's first transaction are pages with nothing in them.
+  it("offers the years the person has data for, back no further than the pack goes", () => {
+    expect(selectableYears("2026-10-18", 2026)).toEqual([2026]);
+    expect(selectableYears("2026-10-18", 2024)).toEqual([2026, 2025, 2024]);
+    expect(selectableYears("2026-10-18", 1999)).toEqual(selectableYears("2026-10-18"));
+    // Nothing yet: this year.
+    expect(selectableYears("2026-10-18", 2027)).toEqual([2026]);
+  });
 });
 
 // Night QA 10-30: a $9,500 IRS estimated payment and $2,800 to the state were in the tax

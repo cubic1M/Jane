@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
 import { FORECAST_DAYS, LOW_BALANCE_CUSHION_CENTS } from "@/config/detection";
@@ -7,6 +8,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { EmptyState } from "@/components/empty-state";
 import { balanceLine, otherMoneyLine, unevenPayLine } from "./balance-line";
+import { BillsOnward } from "./onward";
 import { PageShell } from "@/components/page-shell";
 
 const dayLabel = (iso: string) =>
@@ -60,8 +62,11 @@ async function Bills() {
             )}
             {low && (
               <p className="text-sm">
-                That&apos;s below {formatCents(LOW_BALANCE_CUSHION_CENTS)}, so check your report for
-                ways to avoid it.
+                That&apos;s below {formatCents(LOW_BALANCE_CUSHION_CENTS)}, so check{" "}
+                <Link href="/report" className="font-medium underline underline-offset-2">
+                  your report
+                </Link>{" "}
+                for ways to avoid it.
               </p>
             )}
             {uneven && <p className="text-sm">{uneven}</p>}
@@ -94,6 +99,7 @@ async function Bills() {
           ))}
         </ol>
       )}
+      {bills.length > 0 && <BillsOnward />}
     </>
   );
 }

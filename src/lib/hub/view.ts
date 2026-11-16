@@ -747,7 +747,8 @@ export function tilesView(input: AreasInput): AreaTile[] {
             ? "Practice money, up"
             : "Practice money, down"
           : input.practiceOpen === false
-            ? "Demo only for now"
+            ? // What the area is for them: no "demo only" (gate A, the dead-end crawl, 11-15).
+              "Holdings and fees"
             : "Start with practice money",
         chart:
           p && total > 0

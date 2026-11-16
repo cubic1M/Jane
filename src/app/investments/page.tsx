@@ -8,6 +8,7 @@ import { AppHeader } from "@/components/app-header";
 import { AreaPage } from "@/components/area-page/area-page";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { BacktestsSection } from "@/components/backtests";
+import { investingPageLinks } from "./page-links";
 import { LevelStrategiesSection } from "@/components/level-strategies";
 import { NewsThemesSection } from "@/components/news-themes";
 import { StrategyTree } from "@/components/strategy-tree";
@@ -60,13 +61,6 @@ import { PageShell } from "@/components/page-shell";
 // (docs/design/area-pages.md): Jane's ideas, what's owned, how it's done, the practice
 // portfolio with its strategies and news alerts, then the sub-pages; each section is the
 // detail of its item.
-
-// The investing pages linked under the heading, besides the practice portfolio.
-const NAV: readonly { href: Route; label: string }[] = [
-  { href: "/investments/review", label: "Portfolio review" },
-  { href: "/investments/fees", label: "Fees" },
-  { href: "/investments/profile", label: "Investor profile" },
-];
 
 const LINK = "font-medium underline underline-offset-2 hover:no-underline";
 const CARD = "flex flex-col gap-1 border border-zinc-200 p-4 dark:border-zinc-800";
@@ -453,6 +447,7 @@ async function InvestmentsContent({
         go(pg.href, pg.label)
       );
 
+  const pageLinks = investingPageLinks(backtests.advice);
   return (
     <>
       {/* Opening it sets off the practice scan, the paper account and the events. */}
@@ -485,16 +480,15 @@ async function InvestmentsContent({
             </p>
           </section>
         )}
-        <nav aria-label="Investing pages" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-          <Link prefetch={false} href="/investments/practice" className={LINK}>
-            Practice portfolio
-          </Link>
-          {NAV.filter((n) => !isHiddenPage(n.href)).map((n) => (
-            <Link key={n.href} prefetch={false} href={n.href} className={LINK}>
-              {n.label}
-            </Link>
-          ))}
-        </nav>
+        {pageLinks.length > 0 && (
+          <nav aria-label="Investing pages" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+            {pageLinks.map((n) => (
+              <Link key={n.href} prefetch={false} href={n.href} className={LINK}>
+                {n.label}
+              </Link>
+            ))}
+          </nav>
+        )}
       </div>
 
       <Suspense fallback={null}>

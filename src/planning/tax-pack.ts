@@ -145,9 +145,14 @@ export function taxYearFrom(param: string | undefined, today: string): number {
   return defaultTaxYear(today);
 }
 
-export function selectableYears(today: string): number[] {
+// The years to pick from, newest first: back to the person's first transaction, never further than
+// the pack goes (gate A crawl, 11-15: a student with this year's statements was offered six earlier
+// years, each a page saying "Nothing for 2022 yet").
+export function selectableYears(today: string, firstYear: number | null = null): number[] {
   const current = yearOf(today);
-  return Array.from({ length: TAX_PACK_YEARS_BACK + 1 }, (_, i) => current - i);
+  const back =
+    firstYear === null ? TAX_PACK_YEARS_BACK : Math.min(TAX_PACK_YEARS_BACK, current - firstYear);
+  return Array.from({ length: Math.max(0, back) + 1 }, (_, i) => current - i);
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
