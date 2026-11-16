@@ -32,7 +32,10 @@ const rentReporting: Detector = {
     const owed = data.accounts
       .filter((a) => a.type === "credit" || a.type === "loan")
       .reduce((s, a) => s + Math.max(0, a.balanceCents), 0);
-    const worth = Math.round((owed * RENT_REPORTING_RATE_BENEFIT_BPS) / 10_000);
+    // What it saves after its own fee: a gross $9 a year was offered though reporting costs about
+    // $83 (debug 2, 11-16: "Get your rent reported, save $9/yr"). Not offered unless it pays.
+    const gross = Math.round((owed * RENT_REPORTING_RATE_BENEFIT_BPS) / 10_000);
+    const worth = gross - RENT_REPORTING.monthlyFeeCents * 12;
     if (worth <= 0) return null;
     const rent = payments[payments.length - 1].cents;
     return suggestion("debt", "rent_reporting", {
@@ -47,7 +50,7 @@ const rentReporting: Detector = {
         { percent: 65, reason: "I can't tell whether your lenders count rent history" },
       ]),
       urgency: "later",
-      why: `You pay ${formatCents(rent)} in rent every month and it isn't on your credit file. Reporting it can help your score, and on the ${formatCents(owed)} you owe a slightly better rate is worth about ${formatCents(worth)} a year. It costs about ${formatCents(RENT_REPORTING.monthlyFeeCents)} a month and only starts when you say yes.`,
+      why: `You pay ${formatCents(rent)} in rent every month and it isn't on your credit file. Reporting it can help your score, and on the ${formatCents(owed)} you owe a slightly better rate is worth about ${formatCents(gross)} a year, ${formatCents(worth)} after its fee of about ${formatCents(RENT_REPORTING.monthlyFeeCents)} a month. It only starts when you say yes.`,
       action: { label: "See rent reporting", href: "/loans/renting" },
     });
   },

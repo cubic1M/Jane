@@ -251,7 +251,6 @@ export const PEOPLE: readonly Person[] = [
       "cover_change",
       "credit_building",
       "bnpl",
-      "rent_reporting",
       "liability_levels",
       "consolidation",
       // Detector coverage: the lease renewed at $1,450, up from $1,320.
