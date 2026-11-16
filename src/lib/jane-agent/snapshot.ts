@@ -1,3 +1,4 @@
+import { dataEndedOn } from "@/lib/data-ended";
 import { conciergeMode } from "@/lib/concierge-mode";
 import { PLAN_URGENT_FINDING_TYPES } from "@/config/plan";
 import { loadDetectionInput } from "@/detection/input";
@@ -86,6 +87,10 @@ export type Snapshot = {
   // The Monday of the person's week, for the weekly plan.
   weekStart: string;
   safeToSpend: { safeCents: number; payday: string | null; taxHeldCents?: number } | null;
+  // The day the person's transactions end, when that's long enough ago that the figures may be out
+  // of date (src/lib/data-ended.ts): an upload not followed by a newer one, a bank not updating.
+  // Optional, like changes.
+  dataEnded?: string | null;
   comingUp: ComingUpRow[];
   waitingOnYou: { id: string; title: string; todo: string | null }[];
   // Open findings, in the plan's order.
@@ -363,6 +368,7 @@ async function loadSnapshotWork(
     close,
     rentQuestion,
     rentInQuestion,
+    dataEnded,
   ] = await Promise.all([
     light ? NO_MORE : loadMore(userId, { client, now, input }),
     light ? {} : loadTaxSnapshot(userId, { client, now }),
@@ -386,6 +392,7 @@ async function loadSnapshotWork(
     loadClose(userId, { client }),
     light ? null : loadRentQuestion(userId, { client, now, input }),
     light ? null : loadRentInQuestion(userId, { client, now, input }),
+    dataEndedOn(userId, { client, today: localDate(now, user?.timezone) }),
   ]);
 
   return {
@@ -394,6 +401,7 @@ async function loadSnapshotWork(
     // The person's own day (src/lib/today.ts).
     asOf: localDate(now, user?.timezone),
     weekStart: weekStart(now, user?.timezone).toISOString().slice(0, 10),
+    dataEnded,
     safeToSpend: home.safeToSpend
       ? {
           safeCents: home.safeToSpend.safeCents,

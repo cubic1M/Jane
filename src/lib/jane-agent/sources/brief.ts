@@ -1,5 +1,7 @@
 import { personIsThere } from "../quiet-hours";
 import { BRIEF_BILL_DAYS, BRIEF_FROM_HOUR, MESSAGE_PRIORITY } from "@/config/agent-chat";
+import { DATA_ENDED_LINE } from "@/lib/data-ended";
+import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import { dateAndDays, inDays, things, type MessageSource } from "./source";
 import { rankedFor } from "../priorities";
@@ -17,8 +19,16 @@ export function greeting(hour: number): string {
   return hour < 17 ? "Good afternoon!" : "Good evening!";
 }
 
-// Safe to spend until payday, as the brief and the day's agenda (spec step 184) say it.
+// Safe to spend until payday, as the brief and the day's agenda (spec step 184) say it. After
+// statements that ended weeks ago, first that it may be out of date, as the chat says it (debug 3,
+// 11-16: an upload ending Oct 14 gave "Good morning! You have $5,468.72 safe to spend" each day).
 export function safeLine(snapshot: Snapshot, date: string): string | null {
+  const line = safeAmountLine(snapshot, date);
+  if (!line || !snapshot.dataEnded) return line;
+  return `${DATA_ENDED_LINE(dayLabel(snapshot.dataEnded))} ${line}`;
+}
+
+function safeAmountLine(snapshot: Snapshot, date: string): string | null {
   const safe = snapshot.safeToSpend;
   if (!safe) return null;
   const until = safe.payday ? ` until payday, ${dateAndDays(safe.payday, date)}` : " this month";
