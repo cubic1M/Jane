@@ -203,7 +203,9 @@ describe("previewImport", () => {
   });
 
   it("tracks upload_started, and upload_failed with only the reason", async () => {
-    await previewImport(form({ files: [csv("other.csv", "Date,Payee,Debit\nx,Coffee,1\n")] }));
+    await previewImport(
+      form({ files: [csv("other.csv", "Date,Payee,Debit\n10/01/2026,Coffee,1\n")] }),
+    );
 
     expect(track).toHaveBeenCalledWith("user_1", "upload_started");
     expect(track).toHaveBeenCalledWith("user_1", "upload_failed", { reason: "unknown_format" });

@@ -2,9 +2,11 @@ import {
   CUSTOM_FORMAT,
   mappedLayout,
   mappingChoices,
+  parseAmount,
   type ColumnMapping,
   type MappingChoices,
 } from "./column-mapping";
+import { looksLikeDate } from "./dates";
 import { PICK_COLUMNS } from "./messages";
 import {
   closingBalances,
@@ -53,6 +55,20 @@ const RECORDS_NOT_ROWS = 20;
 
 export const NOT_A_STATEMENT =
   "This isn't a CSV statement. Download the CSV from your bank's website.";
+
+export const NO_DATES_OR_AMOUNTS =
+  "This doesn't look like a statement: nothing in it reads as a date and an amount. Download the transactions CSV from your bank's website.";
+// How many of a file's first rows are looked at for a date and an amount.
+const LOOK_AT_ROWS = 50;
+
+// Whether any of the first rows has a date in one field and an amount in another: a statement
+// in any layout has both, and the column picker reads them with these same rules.
+function hasDatesAndAmounts(records: readonly { fields: string[] }[]): boolean {
+  return records.slice(0, LOOK_AT_ROWS).some(({ fields }) => {
+    const date = fields.findIndex((v) => looksLikeDate(v.trim()));
+    return date !== -1 && fields.some((v, i) => i !== date && parseAmount(v.trim()) !== null);
+  });
+}
 
 // Fewer columns than a date, a description and an amount: not a statement either.
 const MIN_COLUMNS = 3;
@@ -203,6 +219,11 @@ export function readCsvFile(
         error: `This file has ${width === 1 ? "one column" : `${width} columns`}, and a statement needs at least a date, a description and an amount. Download the CSV from your bank's website.`,
         reason: "unreadable",
       };
+    }
+    // No date or no amount anywhere: no choice of columns could read it, so the picker would be a
+    // dead end (debug 3, 11-16: a contacts list offered "First Name (Ana)" as the date).
+    if (!hasDatesAndAmounts(records)) {
+      return { ok: false, file: file.name, error: NO_DATES_OR_AMOUNTS, reason: "not_csv" };
     }
     return {
       ok: false,
