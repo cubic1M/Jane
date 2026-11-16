@@ -4,8 +4,9 @@ import { cashCushionOf, type IdleTx } from "./idle-cash";
 // Gate C's calendar sweep (src/sweep/), 11-16: a statement through Oct 22, uploaded Oct 25. Its
 // spending was averaged to today until the account had been quiet for two weeks, so "spend about
 // $2,075 a month" became $2,061 the next day and $2,047 the day after, with nothing new: the
-// cushion shrank and the idle cash grew by itself. An upload's statement is over at its last line,
-// however recent; a linked account's quiet days are real and still count.
+// cushion shrank and the idle cash grew by itself. An upload's statement ends where it closes (a
+// week past its last line, never past the day it was uploaded), however recent; a linked account's
+// quiet days are real and still count.
 
 const lines = (uploadedOn?: string): IdleTx[] =>
   ["08", "09", "10"].flatMap((m) =>

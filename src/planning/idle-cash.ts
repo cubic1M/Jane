@@ -119,14 +119,16 @@ export function cashCushionOf(input: IdleInput): Omit<IdleCash, "earnsCents"> | 
     // To where this account's data ended, when it ended a while ago: an upload that ended three
     // weeks ago spread its 26 days of spending over 46, so cash looked idle that the next rent
     // check would take (debugger 11-14: "spend about $1,826.14 a month" for $2,759.83 in 26 days).
-    // A linked account's quiet days are real, so to today otherwise. An upload's are not: its
-    // statement is over at its last line however recent, or its months grew a day each day it
-    // sat and the cushion shrank with nothing new (gate C's sweep, 11-16: "spend about $2,075 a
-    // month" became $2,061 the next day).
+    // A linked account's quiet days are real, so to today otherwise. An upload's statement ends
+    // where it closes, a week past its last line and never past the day it was uploaded, however
+    // recent, as every figure counts it (dataEnd): to today instead, its months grew a day each
+    // day it sat and the cushion shrank with nothing new (gate C's sweep, 11-16: "spend about
+    // $2,075 a month" became $2,061 the next day).
     const own = input.transactions.filter((t) => t.accountId === accountId && t.date <= input.asOf);
     const last = own.reduce((max, t) => (t.date > max ? t.date : max), earliest);
-    const ends =
-      own.some((t) => t.uploadedOn) || daysBetween(last, input.asOf) > IDLE_CASH_DATA_ENDED_DAYS
+    const ends = own.some((t) => t.uploadedOn)
+      ? dataEnd(own, input.asOf)
+      : daysBetween(last, input.asOf) > IDLE_CASH_DATA_ENDED_DAYS
         ? last
         : input.asOf;
     const months = Math.max(1, daysBetween(earliest, ends) / DAYS_PER_MONTH);
