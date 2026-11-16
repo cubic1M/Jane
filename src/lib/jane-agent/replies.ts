@@ -488,10 +488,11 @@ export function spendingReply(
     );
   }
   // Nor is one after it ends: someone who uploaded a statement and came back.
-  const ended = endedOn(
-    transactions.reduce((last, t) => (t.date > last ? t.date : last), transactions[0].date),
-    asOf,
+  const lastDate = transactions.reduce(
+    (last, t) => (t.date > last ? t.date : last),
+    transactions[0].date,
   );
+  const ended = endedOn(lastDate, asOf);
   if (ended && intent.month > ended.slice(0, 7)) {
     return reply(
       `I can't see ${monthLabel(intent.month)}: what I have ends on ${dayLabel(ended)}.`,
@@ -499,6 +500,21 @@ export function spendingReply(
     );
   }
   const current = intent.month === monthOf(asOf);
+  // Nor is this month before anything from it has come in (gate E, 11-16): with only an October
+  // statement uploaded, "You spent $0.00 on Food and drink in November so far" read as nothing
+  // spent. The month the data does have answers instead.
+  if (current && intent.month > lastDate.slice(0, 7)) {
+    const had = spendingReply(
+      { ...intent, month: lastDate.slice(0, 7) },
+      transactions,
+      asOf,
+      budgets,
+    );
+    return {
+      ...had,
+      body: `I don't see anything from ${monthLabel(intent.month)} yet: what I have ends on ${dayLabel(lastDate)}. ${had.body}`,
+    };
+  }
   const when = `in ${monthLabel(intent.month)}${current ? " so far" : ""}`;
   const insights = spendingInsights(transactions, { asOf, monthCount: INSIGHT_MONTHS });
   const totals = insights.months.find((m) => m.month === intent.month)!;
