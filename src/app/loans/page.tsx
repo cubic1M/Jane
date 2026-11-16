@@ -525,7 +525,10 @@ async function LoansContent({
         <details className="border-t border-zinc-200 pt-2 dark:border-zinc-800">
           <summary className={`cursor-pointer text-sm ${LINK}`}>All loans and credit pages</summary>
           <ul aria-label="All loans and credit pages" className="mt-2 flex flex-col gap-1 text-sm">
-            {PAGES.filter((p) => !isHiddenPage(p.href)).map((p) => (
+            {/* Refinance has nothing without a lending partner, and sends the person back here. */}
+            {PAGES.filter(
+              (p) => !isHiddenPage(p.href) && (refinanceOpen || p.href !== REFINANCE_HREF),
+            ).map((p) => (
               <li key={p.href}>
                 {p.what}:{" "}
                 <Link href={p.href} className={LINK}>
