@@ -12,6 +12,7 @@ import { CHAT_SENT_EVENT } from "@/config/side-chat";
 import { PixelIcon } from "@/components/pixel-icon";
 import {
   answer,
+  bringBack,
   restore,
   counter,
   currentCard,
@@ -25,6 +26,7 @@ import {
   type FloatingCardData,
 } from "@/lib/floating-cards";
 import { MOTION } from "@/config/motion";
+import { BRING_BACK_LABEL, PUT_AWAY_WORDS } from "@/config/put-away";
 
 // A reason as one sentence: some end with a full stop already (the practice scan's), some don't.
 const sentence = (text: string) => (/[.!?]$/.test(text.trim()) ? text.trim() : `${text.trim()}.`);
@@ -227,6 +229,8 @@ export function FloatingCards({
   onDetails,
   onFollow,
   unsent = NONE,
+  putAway = null,
+  onBringBack,
 }: {
   cards: FloatingCardData[];
   mode?: CardMode;
@@ -263,6 +267,10 @@ export function FloatingCards({
   // Cards whose answer never reached the server (the network dropped): they come back, showing,
   // with a line saying so, until the person answers again.
   unsent?: readonly string[];
+  // The card just put away, whose line in its place brings it back (founder, 11-16), and what to
+  // do when it's tapped (the caller undoes the put-away on the server).
+  putAway?: string | null;
+  onBringBack?: (id: string) => void;
 }) {
   const [state, setState] = useState(initialState);
   // A revertable card that was just chosen (founder, 2026-10-25): it stays on screen with its
@@ -352,6 +360,13 @@ export function FloatingCards({
     onAnswer(card.id, how, choice);
   }
 
+  // The line put away leaves is brought into view: in the dock the person may be scrolled down to
+  // the details they just answered from, under its sticky header.
+  const putAwayLine = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (putAway) putAwayLine.current?.scrollIntoView({ block: "nearest" });
+  }, [putAway]);
+
   const showingId = current?.id ?? null;
   // Each card seen with its details open is told once (the verified savings record), whether it
   // was opened or came in open.
@@ -415,7 +430,7 @@ export function FloatingCards({
     // respond closes over the set it needs; it is rebuilt each render, so listen again.
   });
 
-  if (!current && leaving.length === 0) return null;
+  if (!current && leaving.length === 0 && !putAway) return null;
   const accent =
     mode === "pick"
       ? "border-emerald-700 bg-white dark:bg-zinc-950"
@@ -489,266 +504,296 @@ export function FloatingCards({
               `floating-card-width ${open || (current?.choices?.length ?? 0) > 0 ? "max-w-2xl" : "max-w-md"}`
         }`}
       >
-        {/* The cards waiting behind, as edges under this one. */}
-        {current &&
-          [1, 2].slice(0, Math.min(2, behind)).map((n) => (
-            <span
-              key={`edge-${n}`}
-              aria-hidden="true"
-              className={`floating-card-edge absolute inset-x-0 bottom-0 h-full border border-l-4 ${accent} shadow-sm`}
-              style={{
-                transform: `translateY(${n * 6}px) scaleX(${1 - n * 0.04})`,
-                opacity: 1 - n * 0.25,
+        {/* Where the card put away was: a way to bring it back, until another card is answered or
+            the page is left. Announced, and the first stop for the keyboard. */}
+        {putAway && onBringBack && (
+          <div
+            ref={putAwayLine}
+            role="status"
+            data-card-put-away=""
+            className="pointer-events-auto mb-2 scroll-mt-14 flex items-center justify-between gap-3 border border-zinc-400 bg-[var(--background)] pl-3 text-sm shadow-sm dark:border-zinc-600"
+          >
+            <span>{PUT_AWAY_WORDS}</span>
+            <button
+              type="button"
+              onClick={() => {
+                setHeld(null);
+                setSlide(null);
+                setState((s) => bringBack(s, putAway));
+                onBringBack(putAway);
               }}
-            />
-          ))}
-        {leaving.map((card) => (
-          <article
-            key={`leaving-${card.id}`}
-            aria-hidden="true"
-            data-card-state="leaving"
-            className={`${card.way === "yes" ? "floating-card-out-yes" : "floating-card-out"} pointer-events-none absolute inset-x-0 bottom-0 flex items-start gap-2 border border-l-4 p-3 shadow-lg ${accent}`}
-          >
-            <h3 className="text-sm font-semibold">{card.headline}</h3>
-          </article>
-        ))}
-        {current && (
-          <article
-            key={current.id}
-            aria-label={current.headline}
-            data-card-state="showing"
-            className={`${slide ? `floating-card-slide-${slide}` : "floating-card-in"} pointer-events-auto relative flex flex-col border border-l-4 shadow-lg ${accent}`}
-          >
-            <div className="flex items-start gap-2 pt-3 pl-3">
-              <span
-                aria-hidden="true"
-                className={`mt-0.5 shrink-0 text-xs font-semibold tracking-wider ${mode === "pick" ? "text-emerald-700" : ""}`}
-              >
-                {mode === "pick" ? "◆" : "[JANE]"}
-              </span>
-              <div className="min-w-0 flex-1">
-                {current.badge && (
-                  <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-400">
-                    {current.badge}
-                  </p>
-                )}
-                <h3
-                  className={`${docked ? "text-base" : "text-sm"} font-semibold [overflow-wrap:anywhere]`}
-                >
-                  {current.headline}
-                </h3>
-                {current.summary && (
-                  <p className="text-xs text-zinc-700 [overflow-wrap:anywhere] dark:text-zinc-300">
-                    {current.summary}
-                  </p>
-                )}
-                {/* How sure, in view without opening (demo-video list: docked, the details'
-                    "N% sure" line was below the dock's fold); the reason is in the details. */}
-                {current.details.confidence && !open && (
-                  <p data-card-sure="" className="text-xs font-medium tabular-nums">
-                    {current.details.confidence.percent}% sure
-                  </p>
-                )}
-              </div>
-              <button
-                type="button"
-                aria-label="More details"
-                aria-expanded={open}
-                aria-controls={`details-${current.id}`}
-                onClick={() => setExpanded((e) => !e)}
-                className="-mt-2 inline-flex size-11 shrink-0 items-center justify-center text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50"
-              >
-                <PixelIcon
-                  name="chevronDown"
-                  className={`size-4 transition-transform duration-200 motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
-                />
-              </button>
-              {/* X puts it off, as Not now does. */}
-              <button
-                type="button"
-                aria-label="Close card"
-                onClick={() => respond(current, "not_now")}
-                className="-mt-2 -ml-2 inline-flex size-11 shrink-0 items-center justify-center text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50"
-              >
-                <span aria-hidden="true" className="text-base leading-none">
-                  ×
-                </span>
-              </button>
-            </div>
-            {/* Already here, only hidden: opening it is a toggle, not a fetch. */}
-            <Expanding id={`details-${current.id}`} open={open}>
-              <div
-                className={`mx-3 mt-2 flex flex-col gap-3 border-t border-zinc-300 pt-3 pb-1 text-sm leading-relaxed tabular-nums dark:border-zinc-700 ${
-                  // Docked, the details take their full height and the dock is the one scroller,
-                  // so the wheel or a trackpad moves them from anywhere over the card (founder:
-                  // "you can't scroll down with mouse wheel"; a 24vh box inside the dock only
-                  // moved with the pointer right over it). The buttons stay in view below.
-                  // Floating, the card keeps its own scroller.
-                  docked ? "" : "max-h-[55vh] overflow-y-auto overscroll-contain"
-                }`}
-              >
-                {current.details.about && <Prose text={current.details.about} />}
-                {current.details.why && <Prose text={current.details.why} lead="Why you:" />}
-                {current.details.figures && current.details.figures.length > 0 && (
-                  <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
-                    {current.details.figures.map((f) => (
-                      <div key={f.label} className="contents">
-                        <dt className="text-zinc-700 dark:text-zinc-300">{f.label}</dt>
-                        <dd className="text-right font-medium tabular-nums">{f.value}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                )}
-                {current.details.whatYesDoes && (
-                  <Prose text={current.details.whatYesDoes} lead="What Yes does:" />
-                )}
-                {current.details.notes?.map((note) => (
-                  <p key={note} className="text-xs text-zinc-600 dark:text-zinc-400">
-                    {note}
-                  </p>
-                ))}
-                {/* Details already open here: a link that only leads to them isn't shown, nor the
-                    page the main button below opens (debug 2, 11-15: "Your costly borrowing ›"
-                    right above a "Your costly borrowing" button). */}
-                {(links?.[current.id] ?? [])
-                  .filter(
-                    (link) => linkOpens(link.label) === "page" && link.href !== current.yesHref,
-                  )
-                  .map((link) => (
-                    <a
-                      key={link.href + link.label}
-                      href={link.href}
-                      onClick={(event) => onLink(event, current, link.href)}
-                      className="inline-flex min-h-11 items-center text-sm font-medium text-emerald-700 hover:underline"
-                    >
-                      {link.label} ›
-                    </a>
-                  ))}
-                {neverLabel && mode === "queue" && !current.noNever && (
-                  <button
-                    type="button"
-                    onClick={() => respond(current, "never")}
-                    className="inline-flex min-h-11 items-center self-start text-sm text-zinc-700 underline dark:text-zinc-300"
-                  >
-                    {neverLabel}
-                  </button>
-                )}
-                {/* How sure Jane is, last and on its own line. */}
-                {current.details.confidence && (
-                  <p data-card-confidence="">
-                    <span className="font-medium">{current.details.confidence.percent}% sure:</span>{" "}
-                    {sentence(current.details.confidence.reason)}
-                  </p>
-                )}
-              </div>
-            </Expanding>
-            <div
-              className={`flex flex-wrap items-center gap-2 p-3 ${
-                // Docked, the choices stay in sight at the dock's foot while the details scroll
-                // (QA round 12: the buttons keep their room).
-                docked ? "sticky bottom-0 z-10 bg-[var(--background)]" : ""
-              }`}
+              className="inline-flex min-h-11 items-center px-3 font-semibold underline underline-offset-2"
             >
-              {/* Every choice always in view, labels whole (founder: "not all the choices are
-                  shown"): one line when they fit (compact buttons), wrapping onto another
-                  rather than ever being cut off or scrolled out of sight. */}
-              {(held?.chosen && held.card.id === current.id) ||
-              (current.chosen && !(held?.card.id === current.id && held.chosen === null)) ? (
-                <ChosenActions
-                  card={current}
-                  chosen={
-                    held?.card.id === current.id && held.chosen ? held.chosen : current.chosen!
-                  }
-                  onRevert={
-                    onRevert
-                      ? () => {
-                          onRevert(current.id);
-                          setState((s) => restore(cards, s, current.id));
-                          setHeld({ card: current, chosen: null });
-                        }
-                      : undefined
-                  }
-                  onDone={() => {
-                    setHeld(null);
-                    setState((s) => answer(cards, s, mode, current.id));
-                    onSettle?.(current.id);
-                  }}
-                />
-              ) : (
-                <div data-card-actions="" className="flex min-w-0 flex-wrap gap-2">
-                  {unsent.includes(current.id) && (
-                    <p role="status" data-card-unsent="" className="w-full text-sm font-medium">
-                      {UNSENT_WORDS}
-                    </p>
-                  )}
-                  {current.yesHref && linkOpens(current.yesLabel) === "details" ? (
-                    // Its details, here in the card: never a page, never an answer.
-                    <button
-                      type="button"
-                      aria-expanded={open}
-                      aria-controls={`details-${current.id}`}
-                      onClick={() => setExpanded(true)}
-                      className={`${PRIMARY} ${COMPACT}`}
-                    >
-                      {current.yesLabel}
-                    </button>
-                  ) : current.yesHref ? (
-                    <a
-                      href={current.yesHref}
-                      onClick={(event) => onLink(event, current, current.yesHref!)}
-                      className={`${PRIMARY} ${COMPACT}`}
-                    >
-                      {current.yesLabel}
-                    </a>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => respond(current, "yes")}
-                      className={`${PRIMARY} ${COMPACT}`}
-                    >
-                      {current.yesLabel}
-                    </button>
-                  )}
-                  {current.choices?.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => respond(current, "yes", c.id)}
-                      className={`${SECONDARY} ${COMPACT}`}
-                    >
-                      {c.label}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => respond(current, "not_now")}
-                    className={`${SECONDARY} ${COMPACT}`}
-                  >
-                    {current.notNowLabel ?? "Not now"}
-                  </button>
-                </div>
-              )}
-              <p
-                aria-live="polite"
-                className={
-                  mode === "pick"
-                    ? "ml-auto text-xs text-zinc-600 tabular-nums dark:text-zinc-400"
-                    : "sr-only"
-                }
-              >
-                {counter(cards, state, mode)}
-              </p>
-              {mode === "queue" && !docked && behind > 0 && (
+              {BRING_BACK_LABEL}
+            </button>
+          </div>
+        )}
+        {/* The card and the edges of those behind it, in a box of their own: the edges fill it,
+            and must not cover the line above. */}
+        <div className="relative">
+          {/* The cards waiting behind, as edges under this one. */}
+          {current &&
+            [1, 2].slice(0, Math.min(2, behind)).map((n) => (
+              <span
+                key={`edge-${n}`}
+                aria-hidden="true"
+                className={`floating-card-edge absolute inset-x-0 bottom-0 h-full border border-l-4 ${accent} shadow-sm`}
+                style={{
+                  transform: `translateY(${n * 6}px) scaleX(${1 - n * 0.04})`,
+                  opacity: 1 - n * 0.25,
+                }}
+              />
+            ))}
+          {leaving.map((card) => (
+            <article
+              key={`leaving-${card.id}`}
+              aria-hidden="true"
+              data-card-state="leaving"
+              className={`${card.way === "yes" ? "floating-card-out-yes" : "floating-card-out"} pointer-events-none absolute inset-x-0 bottom-0 flex items-start gap-2 border border-l-4 p-3 shadow-lg ${accent}`}
+            >
+              <h3 className="text-sm font-semibold">{card.headline}</h3>
+            </article>
+          ))}
+          {current && (
+            <article
+              key={current.id}
+              aria-label={current.headline}
+              data-card-state="showing"
+              className={`${slide ? `floating-card-slide-${slide}` : "floating-card-in"} pointer-events-auto relative flex flex-col border border-l-4 shadow-lg ${accent}`}
+            >
+              <div className="flex items-start gap-2 pt-3 pl-3">
                 <span
                   aria-hidden="true"
-                  className="ml-auto pl-1 text-xs font-semibold text-zinc-600 tabular-nums dark:text-zinc-400"
+                  className={`mt-0.5 shrink-0 text-xs font-semibold tracking-wider ${mode === "pick" ? "text-emerald-700" : ""}`}
                 >
-                  +{behind}
+                  {mode === "pick" ? "◆" : "[JANE]"}
                 </span>
-              )}
-            </div>
-          </article>
-        )}
+                <div className="min-w-0 flex-1">
+                  {current.badge && (
+                    <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-400">
+                      {current.badge}
+                    </p>
+                  )}
+                  <h3
+                    className={`${docked ? "text-base" : "text-sm"} font-semibold [overflow-wrap:anywhere]`}
+                  >
+                    {current.headline}
+                  </h3>
+                  {current.summary && (
+                    <p className="text-xs text-zinc-700 [overflow-wrap:anywhere] dark:text-zinc-300">
+                      {current.summary}
+                    </p>
+                  )}
+                  {/* How sure, in view without opening (demo-video list: docked, the details'
+                    "N% sure" line was below the dock's fold); the reason is in the details. */}
+                  {current.details.confidence && !open && (
+                    <p data-card-sure="" className="text-xs font-medium tabular-nums">
+                      {current.details.confidence.percent}% sure
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  aria-label="More details"
+                  aria-expanded={open}
+                  aria-controls={`details-${current.id}`}
+                  onClick={() => setExpanded((e) => !e)}
+                  className="-mt-2 inline-flex size-11 shrink-0 items-center justify-center text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50"
+                >
+                  <PixelIcon
+                    name="chevronDown"
+                    className={`size-4 transition-transform duration-200 motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
+                  />
+                </button>
+                {/* X puts it off, as Not now does. */}
+                <button
+                  type="button"
+                  aria-label="Close card"
+                  onClick={() => respond(current, "not_now")}
+                  className="-mt-2 -ml-2 inline-flex size-11 shrink-0 items-center justify-center text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50"
+                >
+                  <span aria-hidden="true" className="text-base leading-none">
+                    ×
+                  </span>
+                </button>
+              </div>
+              {/* Already here, only hidden: opening it is a toggle, not a fetch. */}
+              <Expanding id={`details-${current.id}`} open={open}>
+                <div
+                  className={`mx-3 mt-2 flex flex-col gap-3 border-t border-zinc-300 pt-3 pb-1 text-sm leading-relaxed tabular-nums dark:border-zinc-700 ${
+                    // Docked, the details take their full height and the dock is the one scroller,
+                    // so the wheel or a trackpad moves them from anywhere over the card (founder:
+                    // "you can't scroll down with mouse wheel"; a 24vh box inside the dock only
+                    // moved with the pointer right over it). The buttons stay in view below.
+                    // Floating, the card keeps its own scroller.
+                    docked ? "" : "max-h-[55vh] overflow-y-auto overscroll-contain"
+                  }`}
+                >
+                  {current.details.about && <Prose text={current.details.about} />}
+                  {current.details.why && <Prose text={current.details.why} lead="Why you:" />}
+                  {current.details.figures && current.details.figures.length > 0 && (
+                    <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
+                      {current.details.figures.map((f) => (
+                        <div key={f.label} className="contents">
+                          <dt className="text-zinc-700 dark:text-zinc-300">{f.label}</dt>
+                          <dd className="text-right font-medium tabular-nums">{f.value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
+                  {current.details.whatYesDoes && (
+                    <Prose text={current.details.whatYesDoes} lead="What Yes does:" />
+                  )}
+                  {current.details.notes?.map((note) => (
+                    <p key={note} className="text-xs text-zinc-600 dark:text-zinc-400">
+                      {note}
+                    </p>
+                  ))}
+                  {/* Details already open here: a link that only leads to them isn't shown, nor the
+                    page the main button below opens (debug 2, 11-15: "Your costly borrowing ›"
+                    right above a "Your costly borrowing" button). */}
+                  {(links?.[current.id] ?? [])
+                    .filter(
+                      (link) => linkOpens(link.label) === "page" && link.href !== current.yesHref,
+                    )
+                    .map((link) => (
+                      <a
+                        key={link.href + link.label}
+                        href={link.href}
+                        onClick={(event) => onLink(event, current, link.href)}
+                        className="inline-flex min-h-11 items-center text-sm font-medium text-emerald-700 hover:underline"
+                      >
+                        {link.label} ›
+                      </a>
+                    ))}
+                  {neverLabel && mode === "queue" && !current.noNever && (
+                    <button
+                      type="button"
+                      onClick={() => respond(current, "never")}
+                      className="inline-flex min-h-11 items-center self-start text-sm text-zinc-700 underline dark:text-zinc-300"
+                    >
+                      {neverLabel}
+                    </button>
+                  )}
+                  {/* How sure Jane is, last and on its own line. */}
+                  {current.details.confidence && (
+                    <p data-card-confidence="">
+                      <span className="font-medium">
+                        {current.details.confidence.percent}% sure:
+                      </span>{" "}
+                      {sentence(current.details.confidence.reason)}
+                    </p>
+                  )}
+                </div>
+              </Expanding>
+              <div
+                className={`flex flex-wrap items-center gap-2 p-3 ${
+                  // Docked, the choices stay in sight at the dock's foot while the details scroll
+                  // (QA round 12: the buttons keep their room).
+                  docked ? "sticky bottom-0 z-10 bg-[var(--background)]" : ""
+                }`}
+              >
+                {/* Every choice always in view, labels whole (founder: "not all the choices are
+                  shown"): one line when they fit (compact buttons), wrapping onto another
+                  rather than ever being cut off or scrolled out of sight. */}
+                {(held?.chosen && held.card.id === current.id) ||
+                (current.chosen && !(held?.card.id === current.id && held.chosen === null)) ? (
+                  <ChosenActions
+                    card={current}
+                    chosen={
+                      held?.card.id === current.id && held.chosen ? held.chosen : current.chosen!
+                    }
+                    onRevert={
+                      onRevert
+                        ? () => {
+                            onRevert(current.id);
+                            setState((s) => restore(cards, s, current.id));
+                            setHeld({ card: current, chosen: null });
+                          }
+                        : undefined
+                    }
+                    onDone={() => {
+                      setHeld(null);
+                      setState((s) => answer(cards, s, mode, current.id));
+                      onSettle?.(current.id);
+                    }}
+                  />
+                ) : (
+                  <div data-card-actions="" className="flex min-w-0 flex-wrap gap-2">
+                    {unsent.includes(current.id) && (
+                      <p role="status" data-card-unsent="" className="w-full text-sm font-medium">
+                        {UNSENT_WORDS}
+                      </p>
+                    )}
+                    {current.yesHref && linkOpens(current.yesLabel) === "details" ? (
+                      // Its details, here in the card: never a page, never an answer.
+                      <button
+                        type="button"
+                        aria-expanded={open}
+                        aria-controls={`details-${current.id}`}
+                        onClick={() => setExpanded(true)}
+                        className={`${PRIMARY} ${COMPACT}`}
+                      >
+                        {current.yesLabel}
+                      </button>
+                    ) : current.yesHref ? (
+                      <a
+                        href={current.yesHref}
+                        onClick={(event) => onLink(event, current, current.yesHref!)}
+                        className={`${PRIMARY} ${COMPACT}`}
+                      >
+                        {current.yesLabel}
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => respond(current, "yes")}
+                        className={`${PRIMARY} ${COMPACT}`}
+                      >
+                        {current.yesLabel}
+                      </button>
+                    )}
+                    {current.choices?.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => respond(current, "yes", c.id)}
+                        className={`${SECONDARY} ${COMPACT}`}
+                      >
+                        {c.label}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => respond(current, "not_now")}
+                      className={`${SECONDARY} ${COMPACT}`}
+                    >
+                      {current.notNowLabel ?? "Not now"}
+                    </button>
+                  </div>
+                )}
+                <p
+                  aria-live="polite"
+                  className={
+                    mode === "pick"
+                      ? "ml-auto text-xs text-zinc-600 tabular-nums dark:text-zinc-400"
+                      : "sr-only"
+                  }
+                >
+                  {counter(cards, state, mode)}
+                </p>
+                {mode === "queue" && !docked && behind > 0 && (
+                  <span
+                    aria-hidden="true"
+                    className="ml-auto pl-1 text-xs font-semibold text-zinc-600 tabular-nums dark:text-zinc-400"
+                  >
+                    +{behind}
+                  </span>
+                )}
+              </div>
+            </article>
+          )}
+        </div>
       </div>
     </section>
   );

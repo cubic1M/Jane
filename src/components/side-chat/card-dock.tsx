@@ -143,6 +143,9 @@ export function CardDock({ userId }: { userId: string }) {
   // One dealt with goes from the dock at once, and from the kept copy.
   const gone = useSyncExternalStore(subscribeGone, goneSnapshot, goneServerSnapshot);
   const shown = withoutGone(cards, gone.split(","));
+  // A card just put away leaves a line that brings it back: the dock stays while it shows, even
+  // with no card left.
+  const [putAway, setPutAway] = useState<string | null>(null);
   useEffect(() => {
     if (gone) keepCards(cards, userId);
   }, [gone, cards, userId]);
@@ -157,7 +160,7 @@ export function CardDock({ userId }: { userId: string }) {
     return keepWheel(box);
   }, [hasCards]);
 
-  if (shown.length === 0 || !code) return null;
+  if ((shown.length === 0 && !putAway) || !code) return null;
   const { SuggestionCards } = code;
   return (
     <FollowHeight
@@ -180,6 +183,8 @@ export function CardDock({ userId }: { userId: string }) {
           docked
           onAnswered={() => void load()}
           onShowing={onShowing}
+          page={pathname}
+          onPutAway={setPutAway}
         />
       </div>
     </FollowHeight>

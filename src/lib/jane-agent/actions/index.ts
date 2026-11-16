@@ -54,7 +54,7 @@ import { ChatActionError, linksOf, type ActionHandler } from "./handler";
 import { markPrimerStale } from "../primer-store";
 import { forgetPrimer } from "../primer-cache";
 import { planApproveSafe } from "./plan";
-import { undoNo, undoRule } from "./undo";
+import { undoNever, undoNo, undoRule, undoSnooze } from "./undo";
 import { autopilotAll, autopilotAsk, autopilotPause, autopilotSafe } from "./autopilot";
 import { choiceDone, choiceRevert } from "./choice";
 import { practicePrefsSave } from "./practice";
@@ -249,6 +249,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "plan.approve_safe": planApproveSafe,
   "undo.rule": undoRule,
   "undo.no": undoNo,
+  "undo.snooze": undoSnooze,
+  "undo.never": undoNever,
   "choice.revert": choiceRevert,
   "choice.done": choiceDone,
   // Spec step 83.

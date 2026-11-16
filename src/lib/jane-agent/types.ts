@@ -85,6 +85,9 @@ export const ACTION_IDS = [
   "plan.approve_safe",
   "undo.rule",
   "undo.no",
+  // Founder, 11-16: a card put away, brought back from the line left in its place.
+  "undo.snooze",
+  "undo.never",
   // Founder, 2026-10-25: a pick-one choice stays on the message, with Revert.
   "choice.revert",
   "choice.done",
@@ -411,6 +414,26 @@ export type CardExtras = {
   whatYesDoes: string;
 };
 
+// A suggestion's state just before a no: the suggestion, its savings record and the habit it
+// counted toward (src/lib/suggestion-take-back.ts).
+export type SuggestionAnswerSnapshot = {
+  key: string;
+  topic: string;
+  suggestion: { status: string; answeredAt: string | null };
+  outcome: { status: string; answer: string | null; answeredAt: string | null } | null;
+  habit: {
+    id: string;
+    // { value: string | number | boolean }, as user_facts keeps it.
+    value: { value: string | number | boolean };
+    label: string;
+    source: string;
+    sourceRef: string | null;
+    confidence: number;
+    evidenceCount: number;
+    lastConfirmed: string;
+  } | null;
+};
+
 export type MessageRefs = {
   findingId?: string;
   // Spec step 110: the extra a month the payoff plan's buttons start it with, in cents.
@@ -511,6 +534,9 @@ export type MessageRefs = {
   undoUntil?: string;
   // The buttons to bring back when an answer is undone.
   previousActions?: MessageAction[];
+  // What "Don't suggest this again" changed, so "Bring it back" can put it back
+  // (src/lib/suggestion-take-back.ts).
+  undoNo?: SuggestionAnswerSnapshot;
   // A pick-one choice that was made and stays on the message (founder, 2026-10-25): the
   // choices greyed, this one marked, and Revert, which puts back what's kept here.
   chosen?: ChosenRef;

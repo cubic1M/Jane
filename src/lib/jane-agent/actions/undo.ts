@@ -1,5 +1,8 @@
 import { DecisionError, undoDecision } from "@/lib/decisions";
 import { undoRuleApproval } from "@/lib/standing-rules";
+import { UNDO_NEVER, UNDO_SNOOZE } from "@/config/put-away";
+import { asSnapshot, takeBackNo } from "@/lib/suggestion-take-back";
+import type { ChatMessage } from "../types";
 import type { MessageRefs } from "../types";
 import { ChatActionError, type ActionHandler } from "./handler";
 
@@ -34,5 +37,38 @@ export const undoNo: ActionHandler = {
     delete refs.undoUntil;
     delete refs.note;
     return { status: "open", answeredWith: null, refs, actions: previousActions ?? [] };
+  },
+};
+
+// A card put away, brought back from the line left in its place (founder, 11-16): open again with
+// its buttons, as if it had never gone. What the putting away kept is dropped.
+function reopened(message: ChatMessage) {
+  const { previousActions, ...rest } = message.refs;
+  const refs: MessageRefs = { ...rest };
+  delete refs.undoUntil;
+  delete refs.note;
+  delete refs.undoNo;
+  return { status: "open" as const, answeredWith: null, refs, actions: previousActions ?? [] };
+}
+
+// Not now: it was only hidden until tomorrow.
+export const undoSnooze: ActionHandler = {
+  id: UNDO_SNOOZE,
+  on: "dismissed",
+  async run({ message }) {
+    return reopened(message);
+  },
+};
+
+// "Don't suggest this again": the suggestion, its savings record and the habit it counted toward
+// go back to what they were.
+export const undoNever: ActionHandler = {
+  id: UNDO_NEVER,
+  on: "answered",
+  async run({ userId, message, client, now }) {
+    const before = asSnapshot(message.refs.undoNo);
+    if (!before) throw new ChatActionError("failed", "Something went wrong. Open it instead.");
+    await takeBackNo(userId, before, { client, now });
+    return reopened(message);
   },
 };
