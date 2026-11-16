@@ -156,7 +156,7 @@ export async function look(page: Page) {
 }
 
 // Settled: hydrated, and no page-loading bar left.
-async function settle(page: Page) {
+export async function settle(page: Page) {
   await page
     .locator('html[data-taps="ready"]')
     .waitFor({ state: "attached", timeout: 60_000 })

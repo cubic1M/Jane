@@ -514,10 +514,10 @@ body {
 
 /* The feature map (src/components/tree/interactive-tree.tsx): the view zooms and pans with a spring,
    edges draw themselves, and nodes pop in as a branch opens. Still for reduced motion. */
-.map-view {
+.map-view[data-framed] {
   transition: height var(--motion-slow) var(--ease-spring);
 }
-.map-world {
+.map-view[data-framed] .map-world {
   transition: transform var(--motion-slow) var(--ease-spring);
 }
 .map-edge {
@@ -534,8 +534,8 @@ body {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .map-view,
-  .map-world {
+  .map-view[data-framed],
+  .map-view[data-framed] .map-world {
     transition: none;
   }
   .map-edge,
@@ -1351,5 +1351,26 @@ body:has([data-loading-bar]) > footer {
     width: 100%;
     opacity: 0.35;
     animation: none;
+  }
+}
+
+/* The area tabs on a phone or tablet (src/components/area-tabs.tsx): the row scrolls sideways, and
+   an edge with more of it beyond fades out rather than cutting a label mid-word (mobile pass 11-16). */
+@media (max-width: 1023.98px) {
+  .area-tabs-row {
+    -webkit-mask-image: linear-gradient(
+      to right,
+      var(--fade-before, #000) 0,
+      #000 2.5rem,
+      #000 calc(100% - 2.5rem),
+      var(--fade-after, #000) 100%
+    );
+    mask-image: linear-gradient(
+      to right,
+      var(--fade-before, #000) 0,
+      #000 2.5rem,
+      #000 calc(100% - 2.5rem),
+      var(--fade-after, #000) 100%
+    );
   }
 }
