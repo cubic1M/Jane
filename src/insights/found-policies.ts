@@ -66,9 +66,11 @@ export function estimatedRenewal(from: string, asOf: string, termMonths: number)
 const PAID_PER_TERM: Partial<Record<PremiumFrequency, number>> = { yearly: 12, semiannual: 6 };
 
 export function policiesFromStreams(input: DetectionInput, streams: Stream[]): FoundPolicy[] {
-  const dataFrom =
-    input.historyFrom ??
-    input.transactions.reduce((min, t) => (t.date < min ? t.date : min), input.asOf);
+  // Where the streams' charges can begin: the lookback window's first transaction, not the
+  // person's first ever (historyFrom). With more history than the window, a payment that ran all
+  // along looked like it began inside the statements (debug 2, 11-15: "GEICO car insurance renews
+  // (estimate)" next month, every month).
+  const dataFrom = input.transactions.reduce((min, t) => (t.date < min ? t.date : min), input.asOf);
   return streams.flatMap((s): FoundPolicy[] => {
     const frequency = s.frequency && PREMIUM_FREQUENCY_OF[s.frequency];
     const first = s.charges[0];
