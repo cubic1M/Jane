@@ -11,10 +11,8 @@ export const closeSource: MessageSource = {
     // A closed month is said in the month's report message (./report.ts), which has the same
     // figures: only a close that needs the person's tap is a message of its own.
     if (!view || view.status !== "waiting") return [];
-    // The scan's month-close suggestion asks about the same charges with its button: one card
-    // (debug 2, 11-16: "Confirm 1 charge to close October: $20" and "Closing October 2026: I
-    // wasn't sure what this charge was", both OpenAI's $20, in one day's dock).
-    if ((snapshot.suggestions ?? []).some((s) => s.topic === "month_close")) return [];
+    // The one card for it: the scan's month-close suggestion isn't raised beside it
+    // (./suggestions.ts), since only this one can say "Looks right" (debug 2, 11-16).
     const reply = closeReply(view);
     return [
       {

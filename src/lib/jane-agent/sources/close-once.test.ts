@@ -4,7 +4,9 @@ import { closeSource } from "./close";
 // Debug 2 (11-16, one month of Wells Fargo checking, the dock at 1280 light): the dock had
 // "Confirm 1 charge to close October: $20" (the scan's month-close suggestion) and "Closing
 // October 2026: I wasn't sure what this charge was. … Openai on Oct 25: $20.00" (this message),
-// the same charge twice. While the suggestion is one of the day's, the message isn't raised.
+// the same charge twice. The re-walk found the suggestion's Yes can't close the month in the beta
+// (it opens the month's transactions), so this message is the one kept, and the suggestion card
+// goes (close-suggestion-once.test.ts).
 
 type Gather = Parameters<typeof closeSource.gather>;
 
@@ -33,8 +35,8 @@ const gather = (suggestions: { topic: string }[]) =>
   );
 
 describe("the month close's question", () => {
-  it("isn't asked twice when the day's suggestions already ask it", () => {
-    expect(gather([{ topic: "month_close" }])).toEqual([]);
+  it("is asked even when the day's suggestions include the close, whose card then goes", () => {
+    expect(gather([{ topic: "month_close" }])).toHaveLength(1);
   });
 
   it("is asked when they don't", () => {
