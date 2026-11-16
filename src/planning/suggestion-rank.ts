@@ -176,15 +176,19 @@ export function rankSuggestions(
 // Suggestions that touch the same money count it once (spec step 255): of those that share a
 // money group (MONEY_GROUPS) only the highest-ranked stays. `ranked` must be best first.
 export function mergeOverlaps(ranked: readonly Ranked[]): Ranked[] {
+  return oncePerMoney(ranked, (r) => r.suggestion.topic);
+}
+
+// The same for any list of suggestions, best first: an area page lists the money once too (debug
+// 2, 11-15: "Bank fees you can stop $139/yr" held the $29 that "Late fees to stop" said again).
+export function oncePerMoney<T>(bestFirst: readonly T[], topicOf: (t: T) => string): T[] {
   const taken = new Set<string>();
-  const out: Ranked[] = [];
-  for (const r of ranked) {
-    const groups = MONEY_GROUPS[r.suggestion.topic] ?? [];
-    if (groups.some((g) => taken.has(g))) continue;
+  return bestFirst.filter((t) => {
+    const groups = MONEY_GROUPS[topicOf(t)] ?? [];
+    if (groups.some((g) => taken.has(g))) return false;
     for (const g of groups) taken.add(g);
-    out.push(r);
-  }
-  return out;
+    return true;
+  });
 }
 
 // What a list of suggestions is worth a year, each piece of money counted once.
