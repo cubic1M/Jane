@@ -6,6 +6,7 @@ import { logAudit, SYSTEM_ACTOR } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor, personTransaction } from "@/lib/db-scoped";
 import { marketData } from "@/lib/market";
+import { todayOf } from "@/lib/today";
 import { value, type LedgerState } from "@/planning/practice-ledger";
 import { loadLedger, NoPracticePortfolio } from "./broker";
 import { loadPreferences } from "./preferences";
@@ -98,7 +99,9 @@ export async function loadPractice(
     throw error;
   }
   const { portfolio, state } = ledger;
-  const asOf = now.toISOString().slice(0, 10);
+  // The latest close on the person's own day: at 7pm in Los Angeles UTC's date is tomorrow, and
+  // the sample feed has a bar for it (gate C's calendar sweep, 11-15).
+  const asOf = await todayOf(userId, { client, now });
   const feed = marketData();
   const prices: Record<string, number> = {};
   for (const ticker of Object.keys(state.positions)) {
