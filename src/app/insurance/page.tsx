@@ -69,6 +69,7 @@ import { HouseholdForm, PolicyForm } from "./forms";
 import { SubmitButton } from "@/components/submit-button";
 import { dayLabel } from "@/lib/day-label";
 import { PageShell } from "@/components/page-shell";
+import { householdHasMore } from "./household-more";
 
 // Insurance (spec step 102): every policy in one place, the household facts that matter
 // and the gaps, in plain words. Every figure comes from a policy record. Laid out as the area
@@ -509,50 +510,53 @@ async function InsuranceContent({
       </form>
     </div>
   );
-  more[itemId("household", "add")] = (
-    <ul className="flex flex-col gap-2">
-      {family.healthPlans.length > 1 && (
-        <li>
-          Health plans for the whole household, a year:{" "}
-          {family.healthPlans
-            .map((r) => `${r.label}: about ${formatCents(r.familyYearlyCents)}`)
-            .join("; ")}
-        </li>
-      )}
-      {policies
-        .filter((p) => p.status === "active")
-        .map((p) => {
-          const mine = family.policies.find((f) => f.id === p.id);
-          return (
-            <li key={p.id}>
-              <span className="font-medium">
-                {p.carrier} {kindName(p.kind)}
-              </span>
-              <form action={setSharedForm} className="inline-block pl-3">
-                <input type="hidden" name="policyId" value={p.id} />
-                <input type="hidden" name="shared" value={p.sharedWithHousehold ? "no" : "yes"} />
-                <SubmitButton className={LINK}>
-                  {p.sharedWithHousehold ? "Shared: stop sharing" : "Share with my household"}
-                </SubmitButton>
-              </form>
-              {family.people.map((person) => {
-                const covers = (mine?.covered ?? []).some((c) => c.name === person.name);
-                return (
-                  <form key={person.name} action={setCoveredForm} className="inline-block pl-3">
-                    <input type="hidden" name="policyId" value={p.id} />
-                    <input type="hidden" name="name" value={person.name} />
-                    <input type="hidden" name="covered" value={covers ? "no" : "yes"} />
-                    <SubmitButton className={LINK}>
-                      {covers ? `Covers ${person.name}: remove` : `Add ${person.name}`}
-                    </SubmitButton>
-                  </form>
-                );
-              })}
-            </li>
-          );
-        })}
-    </ul>
-  );
+  // Only with something in it: no health plans to compare and no policy to share was an empty list
+  // under More (gate A crawl, 11-15).
+  if (householdHasMore(family.healthPlans.length, policies))
+    more[itemId("household", "add")] = (
+      <ul className="flex flex-col gap-2">
+        {family.healthPlans.length > 1 && (
+          <li>
+            Health plans for the whole household, a year:{" "}
+            {family.healthPlans
+              .map((r) => `${r.label}: about ${formatCents(r.familyYearlyCents)}`)
+              .join("; ")}
+          </li>
+        )}
+        {policies
+          .filter((p) => p.status === "active")
+          .map((p) => {
+            const mine = family.policies.find((f) => f.id === p.id);
+            return (
+              <li key={p.id}>
+                <span className="font-medium">
+                  {p.carrier} {kindName(p.kind)}
+                </span>
+                <form action={setSharedForm} className="inline-block pl-3">
+                  <input type="hidden" name="policyId" value={p.id} />
+                  <input type="hidden" name="shared" value={p.sharedWithHousehold ? "no" : "yes"} />
+                  <SubmitButton className={LINK}>
+                    {p.sharedWithHousehold ? "Shared: stop sharing" : "Share with my household"}
+                  </SubmitButton>
+                </form>
+                {family.people.map((person) => {
+                  const covers = (mine?.covered ?? []).some((c) => c.name === person.name);
+                  return (
+                    <form key={person.name} action={setCoveredForm} className="inline-block pl-3">
+                      <input type="hidden" name="policyId" value={p.id} />
+                      <input type="hidden" name="name" value={person.name} />
+                      <input type="hidden" name="covered" value={covers ? "no" : "yes"} />
+                      <SubmitButton className={LINK}>
+                        {covers ? `Covers ${person.name}: remove` : `Add ${person.name}`}
+                      </SubmitButton>
+                    </form>
+                  );
+                })}
+              </li>
+            );
+          })}
+      </ul>
+    );
   if (healthYear) {
     const id = itemId("health", "deductible");
     details[id] = (
