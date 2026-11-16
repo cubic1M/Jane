@@ -418,8 +418,9 @@ const RECURRING = /(?<!\bin )\b(?:a|per|each|every) month\b|\bmonthly\b/;
 const WEEK = /\b(?:this|a|per|each|every|next) week\b|\bweekly\b/;
 const CATEGORY_LIST = [...new Set([...Object.values(CATEGORY_LABELS), UNCATEGORIZED])];
 
+// "How much can I safely spend?" too (debugger 11-16: it read as the month's spending).
 const SAFE =
-  /\bsafe to spend\b|\bhow much (?:can|could) i (?:still )?spend\b|\bwhat can i (?:still )?spend\b|\bspending money left\b|\bhow much (?:money )?(?:do )?i (?:have|got) (?:left|to spend|left to spend)\b|\bhow much (?:money )?(?:is|do i have) left\b/;
+  /\bsafe (?:for me )?to spend\b|\bhow much (?:can|could) i (?:still |safely )?spend\b|\bwhat can i (?:still |safely )?spend\b|\bspending money left\b|\bhow much (?:money )?(?:do )?i (?:have|got) (?:left|to spend|left to spend)\b|\bhow much (?:money )?(?:is|do i have) left\b/;
 const SPENDING = /\b(?:spent|spend|spending)\b|\bwhere (?:does|did) (?:all )?my money go\b/;
 const COMING_UP =
   /\bwhat'?s (?:due|coming(?: up)?|next)\b|\bcoming up\b|\bupcoming\b|\bbills? (?:are |is )?(?:due|coming)\b|\bwhen (?:are|is) (?:my )?(?:bills?|payments?) due\b|\bwhat do i (?:owe|have to pay)\b|\bdue (?:this|next) week\b/;
