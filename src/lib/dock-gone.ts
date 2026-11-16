@@ -39,6 +39,19 @@ export function markGone(id: string): void {
   window.dispatchEvent(new CustomEvent(GONE_EVENT, { detail: id }));
 }
 
+// An answer that never reached the server (the network dropped): the card is the person's again,
+// in every stack and after a reload, and a load no longer asks the server to skip it.
+export function unmarkGone(id: string): void {
+  if (!goneIds().includes(id)) return;
+  memory = memory.filter((m) => m !== id);
+  try {
+    window.sessionStorage.setItem(KEY, JSON.stringify(stored().filter((s) => s !== id)));
+  } catch {
+    // Storage blocked: only this page had it.
+  }
+  window.dispatchEvent(new CustomEvent(GONE_EVENT, { detail: id }));
+}
+
 // For useSyncExternalStore: told when one goes here or in the frame (the storage event).
 export function subscribeGone(onChange: () => void): () => void {
   window.addEventListener(GONE_EVENT, onChange);

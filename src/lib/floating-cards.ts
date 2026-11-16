@@ -124,6 +124,23 @@ export function restore(
   return { gone, index };
 }
 
+// Answers that never reached the server: those cards are waiting again, and the first of them is
+// the one showing, so the person sees it came back.
+export function putBack(
+  cards: readonly FloatingCardData[],
+  state: CardsState,
+  ids: readonly string[],
+): CardsState {
+  const back = ids.filter((id) => state.gone.includes(id));
+  if (back.length === 0) return state;
+  const gone = state.gone.filter((g) => !back.includes(g));
+  const index = Math.max(
+    0,
+    cards.filter((c) => !gone.includes(c.id)).findIndex((c) => c.id === back[0]),
+  );
+  return { gone, index, current: back[0] };
+}
+
 export function move(
   cards: readonly FloatingCardData[],
   state: CardsState,
