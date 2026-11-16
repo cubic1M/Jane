@@ -309,7 +309,7 @@ export function monthsCovered(first: string, today: string): number {
 // Statements whose newest line is within STALE_AFTER_DAYS of today still reach today (a quiet
 // week isn't missing data); older ones end a few days after their last line, where a statement
 // period closes.
-const STALE_AFTER_DAYS = 35;
+export const STALE_AFTER_DAYS = 35;
 const STATEMENT_TAIL_DAYS = 7;
 function lastDayOf(txs: readonly ProfileTx[], today: string): string {
   return reachOf(txs, today);
