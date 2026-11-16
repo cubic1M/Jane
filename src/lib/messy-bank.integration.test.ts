@@ -169,10 +169,11 @@ describe.runIf(url)("a messy real bank, through the CSV import", { timeout: 120_
   it("suggests nothing the data doesn't show, and is modest about three months", async () => {
     const { suggestions } = await detectFor(userId, { client, now: NOW });
     const topics = suggestions.map((s) => s.topic);
-    // No car ("CRD AUTOPAY" isn't a car), no fee habit (one fee was reversed), and one big
-    // purchase isn't a month running over.
+    // No car ("CRD AUTOPAY" isn't a car), and one big purchase isn't a month running over.
     expect(topics).not.toContain("auto_insurance");
-    expect(topics).not.toContain("bank_fees");
+    // No fee habit: the overdraft was given back, and the trip's one foreign fee is the report's
+    // $1.28, counted once, as the report says it (gate B: the dock and the report read one rule).
+    expect(suggestions.find((s) => s.topic === "bank_fees")?.worthCents).toBe(128);
     expect(topics).not.toContain("budget_overrun");
     expect(topics).toContain("subscriptions");
     for (const s of suggestions) {
