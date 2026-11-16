@@ -15,6 +15,8 @@ import { logAudit } from "@/lib/audit";
 import { brokeragePartner } from "@/lib/brokerage/partner";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { dataThrough, yearStart } from "@/lib/investments/match-pace";
+import { todayOf } from "@/lib/today";
 import { payrollPartner } from "@/lib/payroll/partner";
 import { addDemoExtra } from "@/lib/plaid/demo";
 import { syncDemoInvestments } from "@/lib/plaid/sync";
@@ -67,7 +69,8 @@ export async function loadRetirementAccounts(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<RetirementAccountsView> {
   const db = scopedFor(userId, client);
-  const year = now.getUTCFullYear();
+  // The person's own day and year (src/lib/today.ts), not UTC's.
+  const today = await todayOf(userId, { client, now });
   const [advice, answers, plan, accounts, estimate, change, demoItem] = await Promise.all([
     adviceMode(userId, { client }),
     profileOf(userId, { client }),
@@ -83,7 +86,7 @@ export async function loadRetirementAccounts(
       select: { id: true },
     }),
   ]);
-  const age = currentAge(answers, now.toISOString().slice(0, 10));
+  const age = currentAge(answers, today);
   const sub = (a: { subtype: string | null }) => (a.subtype ?? "").toLowerCase();
   const workplace = accounts.filter((a) => WORKPLACE_SUBTYPES.includes(sub(a)));
   const iras = accounts.filter((a) => IRA_SUBTYPES.includes(sub(a)));
@@ -95,7 +98,7 @@ export async function loadRetirementAccounts(
           where: {
             accountId: { in: ids },
             subtype: { in: [...CONTRIBUTION_TX_SUBTYPES] },
-            date: { gte: new Date(Date.UTC(year, 0, 1)), lte: now },
+            date: { gte: yearStart(today), lte: new Date(`${today}T00:00:00Z`) },
           },
           select: { accountId: true, name: true, amountCents: true },
         });
@@ -115,7 +118,17 @@ export async function loadRetirementAccounts(
   });
   const employeeYtd = Math.max(0, paidIn(workplace, false));
   // The match: this year's pace of the person's own contributions against full-year pay.
-  const match = plan && employeeYtd >= 0 ? matchPaceGap(plan, employeeYtd, now) : null;
+  const match =
+    plan && employeeYtd >= 0
+      ? matchPaceGap(plan, employeeYtd, {
+          today,
+          through: await dataThrough(
+            db,
+            workplace.map((a) => a.id),
+            today,
+          ),
+        })
+      : null;
   const marginalRate = estimate?.estimate.marginalRate ?? null;
   const filing: FilingStatus = estimate?.estimate.filingStatus ?? "single";
   const magi = estimate?.estimate.agiCents ?? null;
