@@ -2,7 +2,7 @@ import { bandCeiling } from "@/lib/report-state";
 import { landing } from "@/lib/area-pages/landing";
 import { STRATEGIST_CAPABILITY, STRATEGIST_IDEA_DAYS, STRATEGIST_TOPIC } from "@/config/strategist";
 import { promisesHiddenPage } from "@/config/hidden-pages";
-import { ADVICE_TOPICS, RESELECT_AFTER_DAYS, rankValue } from "@/config/suggestions";
+import { ADVICE_TOPICS, rankValue } from "@/config/suggestions";
 import { tellsThemToAct } from "@/lib/real-account-text";
 import { runDetectors } from "@/detectors";
 import type { MarketPrices, Suggestion } from "@/detectors/contract";
@@ -31,6 +31,8 @@ import {
   type TopicHistory,
 } from "@/planning/suggestion-rank";
 import { DAY_MS, isoDay as dayOf } from "@/lib/dates";
+import { picksSince } from "@/lib/picks-since";
+import { todayOf } from "@/lib/today";
 import { withReadCache } from "@/lib/read-cache";
 import { suggestionCard } from "@/lib/jane-agent/sources/suggestions";
 
@@ -44,7 +46,7 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export type OfferedSuggestion = {
   id: string;
-  // The day the scan chose it (YYYY-MM-DD, UTC).
+  // The person's day the scan chose it on (YYYY-MM-DD).
   chosenOn: string;
   key: string;
   topic: string;
@@ -325,7 +327,9 @@ async function scanSuggestionsWork(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<ScanResult> {
   const db = scopedFor(userId, client);
-  const today = dayOf(now);
+  // The person's day, not UTC's (debug 3, 11-16: at 4pm in Los Angeles a scan chose tomorrow's
+  // picks, dated a day after their brief, and "Not now" woke them a day apart).
+  const today = await todayOf(userId, { client, now });
   const [{ suggestions: detected, advice, profile, input }, stored, answered] = await Promise.all([
     detectFor(userId, { client, now }),
     db.suggestions.findMany(),
@@ -413,10 +417,7 @@ async function scanSuggestionsWork(
   const blocked = new Set<string>();
   for (const e of existing) {
     if (e.status === "yes" || e.status === "no") blocked.add(e.key);
-    else if (
-      e.selectedOn &&
-      now.getTime() - e.selectedOn.getTime() < RESELECT_AFTER_DAYS * DAY_MS
-    ) {
+    else if (e.selectedOn && e.selectedOn >= picksSince(today)) {
       blocked.add(e.key);
     }
   }
@@ -511,8 +512,9 @@ export async function offeredToday(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<OfferedSuggestion[]> {
   const db = scopedFor(userId, client);
+  const today = await todayOf(userId, { client, now });
   const latest = await db.suggestions.findFirst({
-    where: { selectedOn: { gt: new Date(now.getTime() - RESELECT_AFTER_DAYS * DAY_MS) } },
+    where: { selectedOn: { gte: picksSince(today) } },
     orderBy: { selectedOn: "desc" },
     select: { selectedOn: true },
   });

@@ -4,11 +4,10 @@ import { parseKey } from "@/detection/unusual";
 import { daysBetween } from "@/detection/units";
 import type { Deadline } from "@/insights/deadlines";
 import type { BudgetProposal, GoalProposal } from "@/planning/proposals";
-import { RESELECT_AFTER_DAYS } from "@/config/suggestions";
-import { DAY_MS } from "@/lib/dates";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { openGaps } from "@/lib/insurance/gaps";
+import { picksSince } from "@/lib/picks-since";
 import { savingsLine } from "@/lib/savings-text";
 import { chatToday, todayOf } from "@/lib/today";
 import { deadlineHeadsUp } from "./sources/heads-ups";
@@ -279,7 +278,7 @@ export async function offeredTopics(
   const rows = await scopedFor(userId, client).suggestions.findMany({
     where: {
       status: { in: ["selected", "yes", "no"] },
-      selectedOn: { gt: new Date(now.getTime() - RESELECT_AFTER_DAYS * DAY_MS) },
+      selectedOn: { gte: picksSince(await todayOf(userId, { client, now })) },
     },
     select: { topic: true },
   });
