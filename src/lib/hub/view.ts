@@ -122,7 +122,7 @@ export type AreasInput = {
     parts: { label: string; valueCents: number }[];
   } | null;
   ahead: {
-    goals: { name: string; percent: number; onTrack: boolean }[];
+    goals: { name: string; percent: number; onTrack: boolean; reached?: boolean }[];
   } | null;
 };
 
@@ -763,13 +763,15 @@ export function tilesView(input: AreasInput): AreaTile[] {
     })(),
     ahead: (() => {
       const g = input.ahead?.goals ?? [];
+      // Of the goals not reached yet, as the Plans tree counts them (goalsOnTrack, gate B).
+      const open = g.filter((x) => !x.reached).length;
       const onTrack = g.filter((x) => x.onTrack).length;
       return tile(
         "ahead",
         input,
         g.length > 0,
         {
-          value: g.length > 0 ? `${onTrack} of ${g.length}` : null,
+          value: open > 0 ? `${onTrack} of ${open}` : g.length > 0 ? "All reached" : null,
           caption: g.length > 0 ? "Goals on track" : "Set a goal",
           chart:
             g.length > 0
@@ -783,7 +785,7 @@ export function tilesView(input: AreasInput): AreaTile[] {
                 }
               : { kind: "none" },
         },
-        { look: g.length > onTrack ? `${plural(g.length - onTrack, "goal")} behind` : null },
+        { look: open > onTrack ? `${plural(open - onTrack, "goal")} behind` : null },
       );
     })(),
   };

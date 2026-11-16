@@ -1,4 +1,6 @@
 import { SPENDING_MONTHS } from "@/config/areas";
+import { goalsLate } from "@/lib/goals-late";
+import { goalsOnTrack } from "@/planning/goals";
 import { accountCopies, withoutCopies } from "@/lib/account-copies";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { loadDetectionInput } from "@/detection/input";
@@ -39,7 +41,7 @@ export type MoneyData = {
   owned: { count: number };
   // A mortgage or car loan with nothing linked to it, if any.
   assetPrompt: Pick<AssetPrompt, "kind" | "loanId"> | null;
-  goals: { total: number; onTrack: number };
+  goals: { total: number; onTrack: number; reached?: number };
   spendingCents: number;
   budgets: { total: number; over: number; daysLeft: number };
   recurring: { count: number; yearlyCents: number };
@@ -102,7 +104,9 @@ export function moneyTiles(d: MoneyData): HubGroup[] {
           value: `${d.goals.onTrack} on track`,
           status: `Of ${plural(d.goals.total, "goal")}`,
         }
-      : { label: "Goals", href: "/goals", value: null, status: "Set one to save toward" },
+      : (d.goals.reached ?? 0) > 0
+        ? { label: "Goals", href: "/goals", value: "All reached", status: "Every goal reached" }
+        : { label: "Goals", href: "/goals", value: null, status: "Set one to save toward" },
   );
 
   const goesOut: HubTileData[] = [
@@ -256,6 +260,7 @@ export async function loadMoneyHub(
   input.subscriptionMerchantKeys = confirmed.map((c) => c.merchantKey);
   const charges = recurringCharges(input);
 
+  const late = await goalsLate(userId, goals, { client, now });
   return {
     hasAccounts: accounts.length > 0,
     month,
@@ -263,10 +268,11 @@ export async function loadMoneyHub(
     hasInvestmentAccounts: accounts.some((a) => a.type === "investment"),
     owned: { count: owned.length },
     assetPrompt: prompt ? { kind: prompt.kind, loanId: prompt.loanId } : null,
-    goals: {
-      total: goals.length,
-      onTrack: goals.filter((g) => g.progress.status !== "date_passed").length,
-    },
+    // Of the goals not reached yet, on the way and in time with the others counted, as on Home and
+    // the Plans tree (goalsOnTrack, gate B).
+    goals: goalsOnTrack(
+      goals.map((g) => ({ status: g.progress.status, lateMonths: late.get(g.id) })),
+    ),
     spendingCents: spending?.spendingCents ?? 0,
     spendingMonth: spending?.month ?? month,
     budgets: {

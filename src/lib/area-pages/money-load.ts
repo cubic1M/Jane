@@ -1,4 +1,6 @@
 import { SPENDING_MONTHS } from "@/config/areas";
+import { goalsLate } from "@/lib/goals-late";
+import { goalsOnTrack } from "@/planning/goals";
 import { accountCopies, withoutCopies } from "@/lib/account-copies";
 import { areaOfCapability } from "@/config/areas";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
@@ -166,6 +168,7 @@ export async function loadMoneyArea(
   const mine = suggestions.filter((s) => areaOfCapability(s.capability) === "money");
   const open = books.open.filter((o) => o.kind !== "transfer");
 
+  const late = await goalsLate(userId, goals, { client, now });
   return {
     hasAccounts: accounts.length > 0,
     cushionCents: LOW_BALANCE_CUSHION_CENTS,
@@ -242,10 +245,11 @@ export async function loadMoneyArea(
       owned: owned.length,
       missing: worth.unbalanced,
       assetPrompt: prompt ? (prompt.kind === "vehicle" ? "vehicle" : "home") : null,
-      goals: {
-        total: goals.length,
-        onTrack: goals.filter((g) => g.progress.status !== "date_passed").length,
-      },
+      // Of the goals not reached yet, on the way and in time with the others counted, as on Home and
+      // the Plans tree (goalsOnTrack, gate B).
+      goals: goalsOnTrack(
+        goals.map((g) => ({ status: g.progress.status, lateMonths: late.get(g.id) })),
+      ),
       debt: owedSummary(book),
     },
     rules: rules.length,

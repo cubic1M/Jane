@@ -1,3 +1,4 @@
+import { goalsOnTrack } from "@/planning/goals";
 import type { Route } from "next";
 import { isHiddenPage } from "@/config/hidden-pages";
 import { AHEAD_DATES_DAYS, AHEAD_URGENT_DAYS, HUB_DEADLINE_DAYS } from "@/config/hubs";
@@ -278,15 +279,15 @@ export function plansTree(input: PlansTreeInput): AreaTree {
     ...b,
     items: b.items.filter((i) => !isHiddenPage(ITEM_PAGE[i.id] ?? "")),
   }));
-  const real = input.goals.filter((g) => g.status !== "reached");
+  const counted = goalsOnTrack(input.goals);
   return buildAreaTree({
     key: "ahead",
     label: "Plans & goals",
     sub: ({ urgent, look }) =>
       urgent > 0
         ? urgentLine(urgent, look)
-        : real.length > 0
-          ? `${real.filter((g) => g.status === "on_the_way" && !(g.lateMonths ?? 0)).length} of ${plural(real.length, "goal")} on track`
+        : counted.total > 0
+          ? `${counted.onTrack} of ${plural(counted.total, "goal")} on track`
           : look > 0
             ? `${look} to look at`
             : "All good",
