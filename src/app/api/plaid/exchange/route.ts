@@ -6,7 +6,7 @@ import { limitOrNull } from "@/lib/rate-limit";
 import { freshSwitches } from "@/lib/ops-switches";
 import { PlaidRequestError, plaidEnabled } from "@/lib/plaid/client";
 import { LinkingClosedError, linkClosedAnswer } from "@/lib/plaid/item-slots";
-import { exchangePublicToken } from "@/lib/plaid/link";
+import { AlreadyLinkedError, exchangePublicToken } from "@/lib/plaid/link";
 import { syncItem } from "@/lib/plaid/sync";
 import { syncFromWebhook } from "@/lib/plaid/webhooks";
 import { getCurrentUser } from "@/lib/session";
@@ -50,6 +50,9 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof LinkingClosedError) {
       return NextResponse.json(linkClosedAnswer(error.reason), { status: 409 });
+    }
+    if (error instanceof AlreadyLinkedError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
     }
     if (!(error instanceof PlaidRequestError)) throw error;
     log.error("Plaid token exchange failed", { code: error.code });

@@ -35,6 +35,14 @@ export class ItemNotFoundError extends Error {
   }
 }
 
+// The bank was linked again with accounts that are all linked already (debug 3, 11-16: a second
+// link of the same bank made every account twice and doubled every charge on them).
+export class AlreadyLinkedError extends Error {
+  constructor(institutionName: string) {
+    super(`You've already linked ${institutionName}, so nothing new was added.`);
+  }
+}
+
 // A link token for a new item, or, given an item id, for Link's update mode so the person
 // can sign in to their bank again.
 export async function createLinkToken(
@@ -142,6 +150,47 @@ async function dropUnsavedItem(
   if (slot) await releaseItemClaim(slot, { client }).catch(() => undefined);
 }
 
+// An account is the same one when the bank gives it the same type and last four digits (its name,
+// when there are none).
+const accountKey = (a: { type: string; mask: string | null; name: string }) =>
+  a.mask ? `${a.type}|${a.mask}` : `${a.type}|name:${a.name}`;
+
+// Whether every account a new link shares is already linked from a bank of the same name. Only
+// ever a guard: if Plaid can't list them, the link goes ahead as before.
+async function sameAccountsLinked(
+  db: ReturnType<typeof scopedFor>,
+  api: PlaidApi,
+  accessToken: string,
+  institutionName: string,
+): Promise<boolean> {
+  const sameBank = { equals: institutionName, mode: "insensitive" as const };
+  const before = await db.plaidItems.findFirst({
+    where: { institutionName: sameBank },
+    select: { id: true },
+  });
+  if (!before) return false;
+  const [shared, linked] = await Promise.all([
+    Promise.resolve()
+      .then(() => plaidCall(api.accountsGet({ access_token: accessToken })))
+      .then(
+        (data) => data.accounts,
+        (error) => {
+          log.error("Couldn't list a new link's accounts", { error });
+          return [];
+        },
+      ),
+    db.accounts.findMany({
+      where: { source: "plaid", item: { institutionName: sameBank } },
+      select: { type: true, mask: true, name: true },
+    }),
+  ]);
+  const have = new Set(linked.map(accountKey));
+  return (
+    shared.length > 0 &&
+    shared.every((a) => have.has(accountKey({ type: String(a.type), mask: a.mask, name: a.name })))
+  );
+}
+
 // Saves a newly linked item and returns its id. The first sync is the caller's job. Every
 // Production access token counts for good, so the slot is taken before asking Plaid for one.
 export async function exchangePublicToken(
@@ -186,6 +235,20 @@ export async function exchangePublicToken(
   });
   if (slot && (saved || isDemoItemId(data.item_id))) await releaseItemSlot(slot, { client });
   if (saved) return saved.id;
+  // Every account Plaid shares from this link is one already linked from the same bank: the new
+  // Item goes again at Plaid, and nothing is saved, so nothing is counted twice.
+  if (
+    institutionName &&
+    !isDemoItemId(data.item_id) &&
+    (await sameAccountsLinked(db, api, data.access_token, institutionName))
+  ) {
+    await plaidCall(api.itemRemove({ access_token: data.access_token })).catch((error) =>
+      log.error("Couldn't remove a bank linked twice", { error }),
+    );
+    if (slot) await releaseItemClaim(slot, { client }).catch(() => undefined);
+    await track(userId, "link_refused", { reason: "already_linked", at: "exchange" });
+    throw new AlreadyLinkedError(institutionName);
+  }
   let item: { id: string };
   try {
     item = await db.plaidItems.create({
