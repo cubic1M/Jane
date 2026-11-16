@@ -430,10 +430,11 @@ const PAYDAY = /\b(?:pay ?days?|pay ?checks?|get(?:ting)? paid|salary|wages|next
 // when the next paycheck comes (11-03).
 const NOT_WHEN_PAID =
   /\b(?:before|until|till|til|by|after|b4) (?:my |the |next )*pay ?(?:day|check)\b|\bpay(?:ing)? myself\b/;
+// "What do I pay for?" is the list; "what do I pay for rent?" is the rent (debugger 11-16).
 const SUBSCRIPTIONS =
-  /\bsubscriptions\b|\bsubscription list\b|\bwhat (?:am i|do i) pay(?:ing)? for\b|\b(?:recurring|regular|monthly) (?:charges|payments|bills)\b|\bwhat (?:charges|bills) me\b/;
+  /\bsubscriptions\b|\bsubscription list\b|\bwhat (?:am i|do i) pay(?:ing)? for(?: (?:each|every|a) month| monthly)?$|\b(?:recurring|regular|monthly) (?:charges|payments|bills)\b|\bwhat (?:charges|bills) me\b/;
 const ALL_RECURRING =
-  /\bwhat (?:am i|do i) pay(?:ing)? for\b|\b(?:recurring|regular|monthly) (?:charges|payments|bills)\b|\bwhat (?:charges|bills) me\b/;
+  /\bwhat (?:am i|do i) pay(?:ing)? for(?: (?:each|every|a) month| monthly)?$|\b(?:recurring|regular|monthly) (?:charges|payments|bills)\b|\bwhat (?:charges|bills) me\b/;
 // Spec step 95: what starts each guided flow, and picks one up again.
 const FLOW_STARTS: readonly [FlowId | "resume", RegExp][] = [
   [
