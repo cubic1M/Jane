@@ -4,6 +4,7 @@ import type {
   TreeLeaf,
   TreeStatus,
 } from "@/components/tree/interactive-tree";
+import type { Prisma } from "@/generated/prisma/client";
 import { shortMoney } from "@/lib/hub/view";
 import { plural } from "@/lib/plural";
 
@@ -89,6 +90,13 @@ export function worthFigure(s: {
 // opened). It's theirs to do now: "good", not one more thing to look at.
 const ON_YOUR_LIST = "On your list";
 export const SAID_YES = ["waiting", "selected", "yes"] as const;
+// An area's suggestions, best first. Scores are whole numbers and often tie; without the key the
+// tie came back in the index's order, which follows the status, so two ideas swapped places on
+// the tree overnight and at 4pm (gate C's calendar sweep, 11-16).
+export const BEST_FIRST = [
+  { score: "desc" },
+  { key: "asc" },
+] as const satisfies Prisma.SuggestionOrderByWithRelationInput[];
 export function answeredYes(s: { status?: string }): { status: TreeStatus; badge: string } | null {
   return s.status === "yes" ? { status: "good", badge: ON_YOUR_LIST } : null;
 }

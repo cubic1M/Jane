@@ -7,7 +7,7 @@ import { loadPayoff } from "@/lib/debt-plan";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadDebts } from "@/lib/debts";
 import { assetPrompts } from "@/lib/owned-assets";
-import { SAID_YES } from "./tree";
+import { BEST_FIRST, SAID_YES } from "./tree";
 import { todayOf } from "@/lib/today";
 import { lenderPartnerFor } from "@/lib/lender-partner";
 
@@ -41,7 +41,7 @@ export async function loadLoansArea(userId: string, { now = new Date() }: { now?
         actionLabel: true,
         actionHref: true,
       },
-      orderBy: { score: "desc" },
+      orderBy: [...BEST_FIRST],
     }),
     loadPayoff(userId, { book }),
     loadCredit(userId, { book }),
