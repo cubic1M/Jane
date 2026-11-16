@@ -127,7 +127,12 @@ const bankFees: Detector = {
       data.transactions.map((t) => ({ ...t, onCash: cash.has(t.accountId) })),
       feeMonthsOf({ transactions: data.transactions, asOf: data.today }),
     );
-    if (!fees || fees.count < R.feesMin) return null;
+    // Any fee the report finds, as the report finds it (gate B, 11-16: one $35 overdraft was a
+    // report finding and "Money found $35/yr" but under this card's old two-fee floor, so the
+    // Spending tree, which lists the dock's cards, said nothing). The report's rule is the right one:
+    // one fee is money lost, often given back for the asking, and it counts once, not at a pace
+    // (FEE_PACE_MIN_CHARGES), so a single fee never reads as a yearly habit.
+    if (!fees) return null;
     const total = fees.yearCents;
     // Night QA 10-30: a traveller's foreign-transaction and annual card fees read as "Stop paying
     // overdraft and bank fees" though nothing was ever overdrawn.
@@ -295,7 +300,7 @@ const emergencyFund: Detector = {
   topic: "emergency_fund",
   needs: ["income_pattern"],
   detect({ profile, data }) {
-    const spend = cushionSpendCents(data, profile.months);
+    const spend = cushionSpendCents(data);
     const pattern = profile.facts.income_pattern;
     const trouble = profile.facts.debt_trouble;
     const incomeFact = profile.facts.monthly_income;

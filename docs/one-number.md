@@ -23,6 +23,8 @@ people don't have. They hold each figure equal. Each failed on main before its f
 | "Spent this month" | Home's Money tile, the Money page's tree, the money hub | `shownSpendingMonth`: the newest month with spending, by name | `one-number-this-month` |
 | A finding's worth and % | the report and the dock, for a topic both show | `Finding.annualSavingsCents` (`reportsWorth` in the detectors); the finding's band (`bandCeiling`) | `one-number-worth` |
 | Goals on track | Home's Plans tile, the Money page, the money hub, the Plans tree | `goalsOnTrack`: of the goals not reached, on the way and in time with the others (`goalsLate`) | `one-number-goals` |
+| A month of spending ("you spend about $X a month") | the idle cash card and finding, the emergency cushion card, the goal Jane drafts, the chat's cushion answers, the refund plan, the cash page | `spendingMonthOf` (src/planning/idle-cash.ts) through `cushionSpendCents` and `loadCushionSpendCents`: spending counted by days, each account to where its data ends | `one-number-cushion` |
+| Whether bank fees show | the report's finding, the dock's card, the Spending & bills tree (which lists the dock's cards) | `bankFeesByAccount`: any fee found, one counted once | `one-number-fee-shown` |
 | Safe to spend and its parts | Home tile, its Why and How pop-ups, /figures, chat | `safeToSpend` via `homeSummary` | |
 | Coming-up bills | Home strip, Plans, chat | `comingUpBills` via `loadComingUp` | |
 | Pay and the next payday | Home cash flow, safe to spend, chat | `expectedPaydays` / `nextPayday` | |
@@ -46,3 +48,8 @@ parts of a sum that adds up in cents so they add up to the rounded total.
   amounts and, on their own line, what's expected and not confirmed yet.
 - **A subscription's yearly cost, against the dock's "cancel the ones you don't use".** The report
   lists each subscription at its full cost. The dock's figure is the share people usually cancel.
+- **A typical calendar month, against a month of spending.** The chat's monthly totals and
+  budgets average whole calendar months (`typicalMonthlySpending`), to compare one month with
+  another. Every "you spend about $X a month" counts days instead (`spendingMonthOf`). That way an
+  old statement's empty weeks aren't read as a quiet month, and the figure doesn't move when every
+  date does.

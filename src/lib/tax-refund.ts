@@ -1,6 +1,6 @@
+import { loadCushionSpendCents } from "@/lib/cushion-spend";
 import { REFUND } from "@/config/tax";
 import type { PrismaClient } from "@/generated/prisma/client";
-import { loadTypicalMonthlySpending } from "@/insights/load";
 import { fundProfile, fundTarget } from "@/lib/emergency-fund";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
@@ -40,9 +40,8 @@ const EMERGENCY_GOAL = "Emergency fund";
 
 async function planInputs(userId: string, client: PrismaClient, now: Date) {
   const db = scopedFor(userId, client);
-  const asOf = iso(now);
   const [monthly, savings, cards, goals] = await Promise.all([
-    loadTypicalMonthlySpending(db, asOf, now),
+    loadCushionSpendCents(userId, { client, now }),
     db.accounts.findMany({
       where: { type: "depository", subtype: { in: ["savings", "money market", "cd"] } },
       select: { currentBalanceCents: true },

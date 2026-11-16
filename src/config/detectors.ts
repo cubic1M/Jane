@@ -11,8 +11,6 @@ export const DETECTOR_RATES = {
   subscriptionMinCharges: 3,
   subscriptionMaxCents: 10_000,
   subscriptionTrimShare: 0.25,
-  // Fees: this many overdraft, late or insufficient-funds fees in the year.
-  feesMin: 2,
   // Card interest: this much interest charged in the year.
   interestMinCents: 20_000,
   // Idle cash: keep this many months of spending, and count only more than this over it.

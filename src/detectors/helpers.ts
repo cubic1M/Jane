@@ -1,8 +1,8 @@
-import { PFC_TAXONOMY, categoryOf } from "@/categorize/taxonomy";
+import { categoryOf } from "@/categorize/taxonomy";
 import type { InsightTransaction } from "@/insights/spending";
-import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
-import { oneOffCharges, typicalMonthlySpending, withoutOneOffs } from "@/insights/typical-month";
+import { oneOffCharges, withoutOneOffs } from "@/insights/typical-month";
 import { confidenceOf, counted, type Source } from "@/profile/confidence";
+import { spendingMonthOf } from "@/planning/idle-cash";
 import { monthsForRate, type Fact, type ProfileInput, type ProfileTx } from "@/profile/build";
 import { HEADLINE_MAX, SHORT_MAX, type Confidence, type WorthKind } from "./contract";
 import { withoutAchDetails } from "@/data-sources/merchant";
@@ -10,14 +10,18 @@ import { formatCents, formatWholeDollars } from "@/lib/money";
 
 // What detectors share. Pure.
 
-export const tx = (data: ProfileInput, f: (t: ProfileTx) => boolean) => data.transactions.filter(f);
+export const tx = (data: Pick<ProfileInput, "transactions">, f: (t: ProfileTx) => boolean) =>
+  data.transactions.filter(f);
 export const outCents = (list: readonly ProfileTx[]) =>
   list.filter((t) => t.amountCents > 0).reduce((s, t) => s + t.amountCents, 0);
+
+// The rows and day a monthly spending figure is read from: a profile, or anything shaped like one.
+type Spending = Pick<ProfileInput, "transactions" | "today">;
 
 // Books QA: the person's one-off costs (a flood's repairs), found once per profile and left out
 // of the typical month (src/insights/typical-month.ts).
 const oneOffCache = new WeakMap<readonly ProfileTx[], Set<ProfileTx>>();
-function oneOffsOf(data: ProfileInput): Set<ProfileTx> {
+function oneOffsOf(data: Spending): Set<ProfileTx> {
   const cached = oneOffCache.get(data.transactions);
   if (cached) return cached;
   const rows = data.transactions.map((t) => ({
@@ -40,7 +44,7 @@ function oneOffsOf(data: ProfileInput): Set<ProfileTx> {
 // Jane's) and one-off costs. Spread over the real span of a short history, as income is
 // (monthsForRate): the calendar count made Aug 1 to Oct 26 "2 months", and a freelancer's
 // spending read 40% high beside their income (night QA 10-30: a $51,771 cushion).
-export function monthlySpendCents(data: ProfileInput, months: number): number {
+export function monthlySpendCents(data: Spending, months: number): number {
   const oneOffs = oneOffsOf(data);
   const spent = tx(
     data,
@@ -54,32 +58,15 @@ export function monthlySpendCents(data: ProfileInput, months: number): number {
   return Math.round(spent / monthsForRate(data.transactions, data.today));
 }
 
-// A category the taxonomy no longer lists (Plaid's v1 INCOME_WAGES, now INCOME_SALARY) keeps
-// its primary from its name, so pay is never counted as negative spending.
-const PRIMARIES = Object.keys(PFC_TAXONOMY).sort((a, b) => b.length - a.length);
-const primaryPrefix = (detailed: string) =>
-  PRIMARIES.find((p) => detailed.startsWith(`${p}_`)) ?? null;
-
-// A typical month's spending, the one the emergency fund is sized from everywhere: the cushion
-// card, the chat's cushion answers and the goal Jane offers (src/lib/proposals.ts) all use
-// typicalMonthlySpending, so they name one figure (night QA 10-30: "a cushion for you is
-// $11,604.78" beside an "Emergency fund" goal of 3 months at $2,151.16). Falls back to the
-// plain average when no month is covered in full yet.
-export function cushionSpendCents(data: ProfileInput, months: number): number {
-  const rows = data.transactions.map((t) => ({
-    date: t.date,
-    amountCents: t.amountCents,
-    description: t.description,
-    merchantName: null,
-    pfcPrimary: t.pfc ? (categoryOf(t.pfc)?.primary ?? primaryPrefix(t.pfc)) : null,
-    pfcDetailed: t.pfc,
-    pending: false,
-  })) satisfies InsightTransaction[];
-  return (
-    typicalMonthlySpending(rows, data.today, BUDGET_SUGGESTION_MONTHS) ||
-    monthlySpendCents(data, months)
-  );
-}
+// A month of spending, the one the emergency fund is sized from everywhere: the cushion card, the
+// idle cash card and finding, the chat's cushion answers, the goal Jane drafts, the refund plan and
+// the cash page (src/lib/cushion-spend.ts) all read spendingMonthOf (src/planning/idle-cash.ts), so
+// they name one figure (night QA 10-30: "a cushion for you is $11,604.78" beside an "Emergency
+// fund" goal of 3 months at $2,151.16; gate B, 11-16: one dock said "spend about $1,423.98 a
+// month" on its idle cash card and $1,273.14 on its emergency goal, the typical calendar month to
+// today against idle cash's days to where an old statement ends).
+export const cushionSpendCents = (data: Spending): number =>
+  spendingMonthOf({ asOf: data.today, transactions: data.transactions }).monthlyCents;
 
 export const liquidCents = (data: ProfileInput) =>
   data.accounts.filter((a) => a.type === "depository").reduce((s, a) => s + a.balanceCents, 0);

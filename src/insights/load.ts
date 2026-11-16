@@ -1,9 +1,6 @@
-import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
-import { profileHistoryStart } from "@/config/profile";
 import { accountCopies, withoutCopies } from "@/lib/account-copies";
 import type { ScopedDb } from "@/lib/db-scoped";
 import { monthsEnding, type InsightTransaction } from "./spending";
-import { typicalMonthlySpending } from "./typical-month";
 
 // The transactions insights and budgets read: everything from the start of the first
 // month, as stored, an account linked twice counted once. One loader, so the two pages (and
@@ -15,17 +12,6 @@ export async function loadInsightTransactions(
 ): Promise<InsightTransaction[]> {
   const [first] = monthsEnding(asOf, monthCount);
   return transactionsSince(db, new Date(`${first}-01T00:00:00Z`));
-}
-
-// A typical month's spending for the emergency fund, from the year the cushion card reads (profile
-// history, cushionSpendCents): whether a bill is rare can't be told from the few months averaged.
-export async function loadTypicalMonthlySpending(
-  db: Pick<ScopedDb, "transactions" | "accounts">,
-  asOf: string,
-  now: Date,
-): Promise<number> {
-  const rows = await transactionsSince(db, profileHistoryStart(now));
-  return typicalMonthlySpending(rows, asOf, BUDGET_SUGGESTION_MONTHS);
 }
 
 async function transactionsSince(

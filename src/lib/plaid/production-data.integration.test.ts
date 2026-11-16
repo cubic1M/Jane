@@ -15,7 +15,12 @@ import {
   type ProductionBank,
   type SyncResponse,
 } from "@/data-sources/plaid/__fixtures__/production";
-import { loadInsightTransactions, loadTypicalMonthlySpending } from "@/insights/load";
+import { loadInsightTransactions } from "@/insights/load";
+import { cushionSpendCents } from "@/detectors/helpers";
+import { typicalMonthlySpending } from "@/insights/typical-month";
+import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
+import { loadCushionSpendCents } from "@/lib/cushion-spend";
+import { loadProfileInput } from "@/lib/profile";
 import { spendingInsights } from "@/insights/spending";
 import { loadMoneyArea } from "@/lib/area-pages/money-load";
 import { encrypt } from "@/lib/crypto";
@@ -178,9 +183,17 @@ describe.runIf(url)("Plaid production data", { timeout: 120_000 }, () => {
       PRODUCTION_EXPECTED.netWorthCents,
     );
     // August, September and October are full months: their average, refunds netted.
-    expect(await loadTypicalMonthlySpending(scopedFor(userId, client), ASOF, PRODUCTION_NOW)).toBe(
-      Math.round((118404 + 124097 + 114180) / 3),
-    );
+    expect(
+      typicalMonthlySpending(
+        await loadInsightTransactions(
+          scopedFor(userId, client),
+          ASOF,
+          BUDGET_SUGGESTION_MONTHS + 1,
+        ),
+        ASOF,
+        BUDGET_SUGGESTION_MONTHS,
+      ),
+    ).toBe(Math.round((118404 + 124097 + 114180) / 3));
   });
 
   it("finds what the detectors should, at the right figures, and nothing from one charge", async () => {
@@ -277,9 +290,11 @@ describe.runIf(url)("Plaid production data", { timeout: 120_000 }, () => {
       "2026-10": 1199,
       "2026-11": 4510 + 965,
     });
-    // No full month yet: no typical month, rather than three weeks read as one.
-    expect(await loadTypicalMonthlySpending(scopedFor(userId, client), ASOF, PRODUCTION_NOW)).toBe(
-      0,
+    // No full month yet: the month every cushion figure reads (cushionSpendCents) is three weeks'
+    // spending as at least a month, never three weeks read as a quiet month.
+    const input = await loadProfileInput(userId, { client, now: PRODUCTION_NOW });
+    expect(await loadCushionSpendCents(userId, { client, now: PRODUCTION_NOW })).toBe(
+      cushionSpendCents(input),
     );
     // One Spotify charge isn't a subscription yet, and the money moved in isn't pay.
     expect(await client.finding.count({ where: { userId } })).toBe(0);
