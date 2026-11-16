@@ -930,6 +930,14 @@ async function syncItemWork(
     await markScanDone(item.userId, { client, now }).catch((error) =>
       log.error("Marking the scan done failed", { error: String(error) }),
     );
+  } else if (result.added + result.updated + result.removed > 0) {
+    // A later sync that changed transactions rescans the suggestions, as an upload does
+    // (src/lib/import/background.ts): Plaid sends a new link's older history after its first 30
+    // days, and the day's cards kept "3 accounts in 1 month of data" and "could drop to -$272.26
+    // … if no pay comes in" until the night's run, though the paydays had come in (debug 2, 11-16).
+    await scanSuggestions(item.userId, { client, now }).catch((error) =>
+      log.error("Rescanning the suggestions after a sync failed", { error: String(error) }),
+    );
   }
   // After detection these don't depend on each other, so they run together; the sample
   // person's first screen is waiting on this sync.
