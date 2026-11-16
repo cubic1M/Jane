@@ -372,15 +372,22 @@ async function loadTaxEstimateFrom(
 
   // The share of the year the data covers: income from 3 months of statements counts at its
   // pace from the first day seen, not from Jan 1.
-  const first = await db.transactions.findFirst({
-    where: { pending: false },
-    orderBy: { date: "asc" },
-    select: { date: true },
-  });
-  const firstSeen = first ? iso(first.date) : null;
   // Where the data ends: an old statement's pace is to its end, and it isn't a lost job either.
-  const dataEnds = rows.reduce((latest, t) => (t.date > latest ? t.date : latest), "");
-  const elapsed = yearCovered(year, today, firstSeen, dataEnds || null);
+  // The newest line of any kind, as the profile reads it (src/profile/stopped-employer.ts), not the
+  // newest pay (gate C's sweep, 11-16: two weeks after a paycheck the data read as ended, so the
+  // estimate jumped $2,300 overnight; pay on the 1st and the 15th leaves 17-day gaps).
+  const [first, last] = await Promise.all(
+    (["asc", "desc"] as const).map((order) =>
+      db.transactions.findFirst({
+        where: { pending: false, date: { lte: new Date(`${today}T00:00:00Z`) } },
+        orderBy: { date: order },
+        select: { date: true, source: true },
+      }),
+    ),
+  );
+  const firstSeen = first ? iso(first.date) : null;
+  const dataEnds = last ? iso(last.date) : "";
+  const elapsed = yearCovered(year, today, firstSeen, dataEnds || null, last?.source === "csv");
   // With paychecks but no pay stub: take-home pay stands in for wages, and withholding is
   // unknown.
   // A bonus marked as other income (src/categorize/regular-payers.ts) is still wages.

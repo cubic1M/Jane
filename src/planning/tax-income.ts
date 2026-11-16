@@ -69,15 +69,18 @@ export function yearElapsed(year: number, today: string): number {
 // over Jul 28 to Oct 27 is a quarter year's pay, not ten months' (overnight upload QA: a $69k
 // salary estimated at $321 of tax).
 // To where the data ends when it ended a while ago (debugger 11-14: one statement to Oct 24, read on
-// Nov 14, spread its 26 days of pay over 46, and a $62,000 pace was taxed as $35,000).
+// Nov 14, spread its 26 days of pay over 46, and a $62,000 pace was taxed as $35,000). An upload's
+// data ends at its last line from the start: counted to today until then, its pace sank a little
+// each day it sat (gate C's sweep, 11-16).
 export function yearCovered(
   year: number,
   today: string,
   firstSeen: string | null,
   dataEnds: string | null = null,
+  uploaded = false,
 ): number {
   const until =
-    dataEnds && dataEnds < today && daysBetween(dataEnds, today) > DATA_ENDED_DAYS
+    dataEnds && dataEnds < today && (uploaded || daysBetween(dataEnds, today) > DATA_ENDED_DAYS)
       ? dataEnds
       : today;
   const elapsed = yearElapsed(year, until);
