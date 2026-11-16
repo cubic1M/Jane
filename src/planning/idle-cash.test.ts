@@ -215,7 +215,9 @@ describe("payingCardInterest", () => {
 
   it("says yes to interest lately, no once it has stopped, and no to a stray few cents", () => {
     expect(paying([interest("2026-10-05", 17_093)])).toBe(true);
-    expect(paying([interest("2026-07-30", 17_093)])).toBe(false);
+    // Stopped: the statements go on to October with no interest after July. (A statement that
+    // ends in July is an old one, not a card that stopped: windows end where the data does.)
+    expect(paying([...usual(), interest("2026-07-30", 17_093)])).toBe(false);
     expect(paying([interest("2026-10-05", 37)])).toBe(false);
     expect(paying(usual())).toBe(false);
   });

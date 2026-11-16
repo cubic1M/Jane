@@ -19,7 +19,7 @@ import { categoryOf } from "@/categorize/taxonomy";
 import { ANNUAL_FEE_WORDS } from "@/config/found-policies";
 import { ESTIMATED_TAX_DATES } from "@/config/tax-pack";
 import { normalizeMerchant } from "@/data-sources/merchant";
-import { lookbackEnd } from "@/detection/helpers";
+import { dataEnd, lookbackEnd } from "@/detection/helpers";
 import { addDays, monthsBefore } from "@/detection/units";
 import { oneOffCharges, withoutOneOffs } from "@/insights/typical-month";
 import { daysBetween } from "@/lib/dates";
@@ -159,7 +159,10 @@ export function payingCardInterest({
   asOf,
   transactions,
 }: Pick<IdleInput, "asOf" | "transactions">): boolean {
-  const since = addDays(asOf, -IDLE_CASH_CARD_INTEREST_DAYS);
+  // Back from where the data ends (gate C's calendar sweep, 11-16: from today, a bank that hadn't
+  // synced for two months read as a card no longer charging interest, and the idle cash card
+  // turned into "earn $489 a year" by itself).
+  const since = addDays(dataEnd(transactions, asOf), -IDLE_CASH_CARD_INTEREST_DAYS);
   const interest = transactions
     .filter(
       (t) =>
