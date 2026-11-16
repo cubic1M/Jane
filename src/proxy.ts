@@ -32,6 +32,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   const limited = await edgeLimit({
     method: request.method,
     pathname,
+    url: request.url,
     headers: request.headers,
     cookies: request.cookies,
   });

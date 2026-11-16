@@ -97,7 +97,9 @@ Two layers:
   that checks `CRON_SECRET`.
 - **Over the limit:** status 429, a `Retry-After` header, and "Too many requests. Please wait a
   moment and try again." API callers get it as JSON. Server actions get plain text, which the
-  page shows as the error.
+  page shows as the error. A sign-in link or Google's way back is a page the person opened, so it
+  goes (303, with `Retry-After`) to `/login?error=TooManyRequests`, which says to wait and try
+  again; the link isn't used up.
 - **Privacy:** counters are keyed by a hash of the IP or session, never the IP or token itself,
   and are deleted after a day.
 - **Sample people** are recognised by their session token's `trial_` prefix, so the proxy needs
