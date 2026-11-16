@@ -6,7 +6,8 @@ import { askQuestion } from "@/lib/investing/apps";
 import { setBrokerageBalanceAction } from "./brokerage-actions";
 
 // "What's in your Robinhood account today?": one field for an investing app money went to, so net
-// worth can count it. Skipping is fine (src/lib/investing/brokerage-balance.ts).
+// worth can count it. Skipping is fine (src/lib/investing/brokerage-balance.ts). It says "your bank
+// account", not "your statements": a linked bank has none (debug 2, 11-16).
 
 const FIELD =
   "h-11 w-40 rounded-lg border border-zinc-300 bg-transparent px-3 text-base dark:border-zinc-700";
@@ -46,7 +47,7 @@ export function BrokerageAskForm({ app, sentText }: { app: string; sentText: str
       <label className="flex flex-col gap-1 text-sm font-semibold">
         {question}
         <span className="text-xs font-normal text-zinc-600 dark:text-zinc-400">
-          {sentText} Your statements show money going in, not what it grew to, so net worth
+          {sentText} Your bank account shows money going in, not what it grew to, so net worth
           can&apos;t count it until you say.
         </span>
       </label>
