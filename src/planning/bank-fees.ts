@@ -5,7 +5,7 @@ import { ANNUAL_FEE_WORDS, FEE_PACE_MIN_CHARGES } from "@/config/found-policies"
 // Bank fees in a year, the one definition (the brief's suggestion, the Today card's fees and
 // Jane's answer all use it): fees in the bank-fee categories over the last twelve months, not
 // a payment processor's. With under twelve months of data the figure is scaled up to a year and
-// said to be an estimate. A fee the bank gave back (the same amount, in the same category,
+// said to be an estimate. A fee the bank gave back (the same amount, on the same account,
 // within FEE_REVERSAL_DAYS) doesn't count; other fee refunds come off the total. Pure.
 
 export type FeeTx = {
@@ -54,7 +54,10 @@ export function bankFeesByAccount(
       (r) =>
         !used.has(r) &&
         r.amountCents === -fee.amountCents &&
-        r.pfc === fee.pfc &&
+        // On the same account, in any bank-fee category: a bank files its "FEE REVERSAL" line under
+        // its own category, not always the fee's, so pairing by category made one upload's $34 fee
+        // given back read $102 a year in one bank's layout and $34 in another (gate B).
+        r.accountId === fee.accountId &&
         daysApart(fee.date, r.date) <= FEE_REVERSAL_DAYS,
     );
     if (back) used.add(back);
