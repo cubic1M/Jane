@@ -53,6 +53,10 @@ function whatOwed(accounts: readonly { kind: string }[]): string {
   return `${accounts.length} loans and cards`;
 }
 
+// "A, B or C" (debug 2, 11-16: "a rate for A or B or C or D").
+const eitherOf = (names: readonly string[]) =>
+  names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} or ${names.at(-1)}`;
+
 // "How much do I owe?": the total (the same as net worth counts), buy now, pay later plans
 // on their own line, then every debt.
 
@@ -73,7 +77,7 @@ export function debtsReply(book: DebtBook): Reply {
   const unread = accounts.filter((d) => d.balanceCents === null);
   if (accounts.length > 0 && unread.length === accounts.length) {
     // A file with no balance on it isn't "You owe $0.00".
-    lines.push(`I can't see what you owe on ${unread.map((d) => d.name).join(" or ")} yet.`);
+    lines.push(`I can't see what you owe on ${eitherOf(unread.map((d) => d.name))} yet.`);
   } else if (accounts.length > 0) {
     lines.push(
       `You owe ${formatCents(book.accountsOwedCents)} on ${whatOwed(accounts)}, the same as your net worth counts.`,
@@ -107,7 +111,7 @@ export function debtsReply(book: DebtBook): Reply {
       ? "what's left on or the rate of"
       : "a rate for";
     lines.push(
-      `I don't have ${what} ${book.missingRate.map((d) => d.name).join(" or ")}. Add it on the loans page and I'll count it.`,
+      `I don't have ${what} ${eitherOf(book.missingRate.map((d) => d.name))}. Add it on the loans page and I'll count it.`,
     );
   }
   return { body: lines.join("\n"), actions: [SEE_DEBTS], refs: {} };
