@@ -5,7 +5,7 @@ import type { TreeStatus } from "@/components/tree/interactive-tree";
 import { shortMoney } from "@/lib/hub/view";
 import type { SavingKey } from "@/planning/tax-savings";
 import type { FieldStatus } from "@/planning/tax-profile";
-import { buildAreaTree, firstSentences, type AreaItem, type AreaTree } from "./tree";
+import { buildAreaTree, firstSentences, type AreaItem, type AreaTree, urgentLine } from "./tree";
 import { daysBetween } from "@/lib/dates";
 import { dayLabel } from "@/lib/day-label";
 import { plural } from "@/lib/plural";
@@ -516,11 +516,7 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
     key: "taxes",
     label: "Taxes",
     sub: ({ urgent, look }) =>
-      urgent > 0
-        ? `${urgent} urgent · ${look} to look at`
-        : look > 0
-          ? `${look} to look at`
-          : "All good",
+      urgent > 0 ? urgentLine(urgent, look) : look > 0 ? `${look} to look at` : "All good",
     branches: branches.map((b) => ({ id: b.id, label: TAXES_BRANCHES[b.id], items: b.items })),
   });
 }

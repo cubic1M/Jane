@@ -2,7 +2,14 @@ import type { Route } from "next";
 import { isHiddenPage } from "@/config/hidden-pages";
 import type { TreeStatus } from "@/components/tree/interactive-tree";
 import { shortMoney } from "@/lib/hub/view";
-import { answeredYes, type AreaItem, type AreaTree, buildAreaTree, worthFigure } from "./tree";
+import {
+  answeredYes,
+  type AreaItem,
+  type AreaTree,
+  buildAreaTree,
+  worthFigure,
+  urgentLine,
+} from "./tree";
 
 // The Investing page as a tree (docs/design/area-pages.md): Investing → its branches (Jane's
 // ideas on real money, what's owned, how it's done, the practice portfolio, its strategies and
@@ -439,7 +446,7 @@ export function investingTree(input: InvestingTreeInput): AreaTree {
     label: "Investing",
     sub: ({ urgent, look }) =>
       urgent > 0
-        ? `${urgent} urgent · ${look} to look at`
+        ? urgentLine(urgent, look)
         : look > 0
           ? `${look} to look at`
           : (input.toAnswer ?? 0) > 0

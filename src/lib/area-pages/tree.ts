@@ -51,6 +51,11 @@ export const sentences = (text: string) =>
     .split(/(?<=[.!?])\s+(?=[A-Z0-9$"“])/)
     .filter(Boolean).length;
 
+// A tree's line when something is urgent: "2 urgent · 3 to look at", or "1 urgent" alone, not
+// "1 urgent · 0 to look at" (debugger 11-16: Loans & credit and Plans & goals on a linked bank).
+export const urgentLine = (urgent: number, look: number): string =>
+  look > 0 ? `${urgent} urgent · ${look} to look at` : `${urgent} urgent`;
+
 // The first `n` sentences of a text: a detail's summary before "More".
 export function firstSentences(text: string, n = SUMMARY_MAX_SENTENCES): string {
   const parts = text.trim().split(/(?<=[.!?])\s+(?=[A-Z0-9$"“])/);

@@ -5,7 +5,7 @@ import type { TreeStatus } from "@/components/tree/interactive-tree";
 import type { DeadlineKind } from "@/insights/deadlines";
 import { notCounting, type Unbalanced } from "@/insights/net-worth";
 import { shortMoney } from "@/lib/hub/view";
-import { type AreaItem, type AreaTree, buildAreaTree, shortLabel } from "./tree";
+import { type AreaItem, type AreaTree, buildAreaTree, shortLabel, urgentLine } from "./tree";
 import { daysBetween } from "@/lib/dates";
 import { dayLabel } from "@/lib/day-label";
 import { plural } from "@/lib/plural";
@@ -284,7 +284,7 @@ export function plansTree(input: PlansTreeInput): AreaTree {
     label: "Plans & goals",
     sub: ({ urgent, look }) =>
       urgent > 0
-        ? `${urgent} urgent · ${look} to look at`
+        ? urgentLine(urgent, look)
         : real.length > 0
           ? `${real.filter((g) => g.status === "on_the_way" && !(g.lateMonths ?? 0)).length} of ${plural(real.length, "goal")} on track`
           : look > 0
