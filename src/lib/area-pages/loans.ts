@@ -354,11 +354,13 @@ export function compareWant(
 // out (worked out from their payments, not reported by a bank), so their part is said: "You owe
 // $351,300.00" here and "owe $351,175.50" in the chat's net worth read as Jane disagreeing with
 // itself (debugger 11-13, a $124.50 pay-in-4 plan). No "$0.00 due each month" when no payment is
-// known (uploaded cards: round-2 pass).
+// known (uploaded cards: round-2 pass), and "at least" while some payments aren't (debug 2, 11-16:
+// "$25.00 due each month" for six debts, five of them with no payment known).
 export function loansIntro(book: {
   debts: readonly { balanceCents: number | null; inNetWorth: boolean }[];
   totalOwedCents: number;
   monthlyCents: number;
+  missingMonthly?: number;
   cardPaidNotOnFile?: boolean;
 }): string {
   // A card paid from checking isn't "no cards" (debugger 11-14: a student paying a Chase card $1,304.41
@@ -378,6 +380,9 @@ export function loansIntro(book: {
     plans > 0 && plans < book.totalOwedCents
       ? `, ${formatCents(plans)} of it on pay-later plans`
       : "";
-  const monthly = book.monthlyCents > 0 ? `, ${formatCents(book.monthlyCents)} due each month` : "";
+  const monthly =
+    book.monthlyCents > 0
+      ? `, ${(book.missingMonthly ?? 0) > 0 ? "at least " : ""}${formatCents(book.monthlyCents)} due each month`
+      : "";
   return `You owe ${formatCents(book.totalOwedCents)}${ofIt}${monthly}. Open a branch to see more.`;
 }
