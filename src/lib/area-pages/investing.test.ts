@@ -81,7 +81,9 @@ describe("the investing tree", () => {
     const real = investingTree(input({ practice: null })).tree.branches.map((b) => b.id);
     expect(real).not.toContain("strategies");
     expect(real).not.toContain("news");
-    expect(real).toContain("practice");
+    // Nor a practice branch: its page isn't open to them, and the page's own line offers it on
+    // sample data (investing-practice-entry.test.ts).
+    expect(real).not.toContain("practice");
   });
 
   it("sorts practice ideas from news alerts, each with how sure Jane is", () => {

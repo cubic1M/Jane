@@ -348,12 +348,10 @@ export function investingTree(input: InvestingTreeInput): AreaTree {
           summary: "Jane runs a paper portfolio on practice money, with every trade explained.",
         }),
       ]
-    : [
-        item("practice", "portfolio", {
-          label: "Practice portfolio",
-          summary: "Jane runs a paper portfolio on practice money, with every trade explained.",
-        }),
-      ];
+    : // Without demo advice the practice page only says it isn't available yet; the page's own
+      // line above the tree already offers it on sample data (debugger 11-15: a student's
+      // "Practice portfolio" opened "only available in demo advice mode for now").
+      [];
 
   const strategies: AreaItem[] = p
     ? [
