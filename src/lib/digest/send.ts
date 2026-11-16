@@ -1,4 +1,4 @@
-import { accountCopies, withoutCopies } from "@/lib/account-copies";
+import { addDays } from "@/detection/units";
 import { log } from "@/lib/log";
 import { actionWorthCents } from "@/lib/saved-amount";
 import { conciergeMode } from "@/lib/concierge-mode";
@@ -25,7 +25,10 @@ import { sendEmail } from "@/lib/email";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { budgetSummary } from "@/insights/budgets";
 import { loadInsightTransactions } from "@/insights/load";
-import { netWorth, netWorthOn, notCounting } from "@/insights/net-worth";
+import { notCounting } from "@/insights/net-worth";
+import { netWorthHistory } from "@/lib/hub/net-worth-history";
+import { loadNetWorthInputs } from "@/lib/net-worth-history";
+import { todayOf } from "@/lib/today";
 import { listGoals } from "@/lib/goals";
 import { sendPush } from "@/lib/push";
 import { whatJaneDid } from "@/lib/what-jane-did";
@@ -224,27 +227,23 @@ async function changesAndCheckup(
   }
 }
 
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-
-// Budgets, goals and net worth, from the same functions as their pages.
-async function plansFor(userId: string, now: Date, client: PrismaClient): Promise<DigestPlans> {
+// Budgets, goals and net worth for the weekly email, from the same functions as their pages, on
+// the person's own day (exported for the cross-surface test, src/lib/one-number.integration.test.ts).
+export async function plansFor(
+  userId: string,
+  now: Date,
+  client: PrismaClient,
+): Promise<DigestPlans> {
   const db = scopedFor(userId, client);
-  const asOf = now.toISOString().slice(0, 10);
-  const weekAgo = new Date(now.getTime() - WEEK_MS).toISOString().slice(0, 10);
-  const [budgetRows, goals, listedAccounts, snapshots, copies] = await Promise.all([
+  const asOf = await todayOf(userId, { client, now });
+  const weekAgo = addDays(asOf, -7);
+  const [budgetRows, goals, worth] = await Promise.all([
     db.budgets.findMany({ select: { category: true, amountCents: true } }),
     listGoals(userId, { client, now }),
-    db.accounts.findMany({
-      select: { id: true, name: true, type: true, currentBalanceCents: true },
-    }),
-    db.balanceSnapshots.findMany({
-      where: { date: { lte: new Date(`${weekAgo}T00:00:00Z`) } },
-      select: { accountId: true, date: true, balanceCents: true },
-    }),
-    accountCopies(db),
+    // Net worth as Home and /net-worth read it: each account once, what they own, their crypto
+    // (gate B: the email counted accounts only, so anyone with a car or crypto read another figure).
+    loadNetWorthInputs(userId, { client }),
   ]);
-  // An account linked twice counts once (src/lib/account-copies.ts).
-  const accounts = withoutCopies(listedAccounts, copies, (a) => a.id);
   const summary =
     budgetRows.length === 0
       ? null
@@ -253,7 +252,7 @@ async function plansFor(userId: string, now: Date, client: PrismaClient): Promis
           budgetRows,
           asOf,
         );
-  const snaps = snapshots.map((s) => ({ ...s, date: s.date.toISOString().slice(0, 10) }));
+  const snaps = worth.snapshots.filter((s) => s.date <= weekAgo);
   const balanceThen = (accountId: string) =>
     snaps
       .filter((s) => s.accountId === accountId)
@@ -274,23 +273,18 @@ async function plansFor(userId: string, now: Date, client: PrismaClient): Promis
         savedChangeCents: then === undefined ? null : g.progress.savedCents - Math.max(0, then),
       };
     }),
-    netWorth: usesNetWorth ? digestNetWorth(accounts, snaps, weekAgo) : null,
-  };
-}
-
-// Net worth for the digest: none when no balance is known (never a silent $0), and what it
-// leaves out said beside the figure.
-function digestNetWorth(
-  accounts: { id: string; name: string; type: string; currentBalanceCents: number | null }[],
-  snaps: Parameters<typeof netWorthOn>[1],
-  weekAgo: string,
-) {
-  const worth = netWorth(accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })));
-  if (!worth.known) return null;
-  return {
-    nowCents: worth.netCents,
-    weekAgoCents: netWorthOn(accounts, snaps, weekAgo),
-    notCounting: notCounting(worth.unbalanced)?.short ?? null,
+    netWorth:
+      usesNetWorth && worth.worth.known
+        ? {
+            nowCents: worth.worth.netCents,
+            // A week ago on Home's own line, so the email's change is the chart's.
+            weekAgoCents:
+              (await netWorthHistory(userId, worth.worth.netCents, { client, now })).find(
+                (p) => p.date === weekAgo,
+              )?.cents ?? null,
+            notCounting: notCounting(worth.worth.unbalanced)?.short ?? null,
+          }
+        : null,
   };
 }
 

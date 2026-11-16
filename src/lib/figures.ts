@@ -1,4 +1,3 @@
-import { accountCopies, withoutCopies } from "@/lib/account-copies";
 import {
   FIGURE_CORRECTIONS,
   FIGURE_LABELS,
@@ -27,8 +26,8 @@ import { categoryLabel } from "@/insights/labels";
 import { categoryOf } from "@/categorize/taxonomy";
 import { detailedLabel } from "@/lib/categories";
 import { dayLabel } from "@/lib/day-label";
-import { loansNotCounted, netWorth, notCounting } from "@/insights/net-worth";
-import { loansSeenWithoutBalance } from "@/lib/net-worth-history";
+import { loansNotCounted, notCounting } from "@/insights/net-worth";
+import { loadNetWorthInputs, loansSeenWithoutBalance } from "@/lib/net-worth-history";
 import { oneOffNote } from "@/insights/typical-month";
 import { kindOf } from "@/insights/spending";
 import { db as defaultClient } from "@/lib/db";
@@ -261,22 +260,10 @@ async function monthly({ userId, id, input, db, client, now }: Ctx): Promise<Par
   };
 }
 
-async function netWorthWorking({ userId, db, client, now }: Ctx): Promise<Part> {
-  const [listedAccounts, owned, copies] = await Promise.all([
-    db.accounts.findMany({
-      select: { id: true, name: true, type: true, currentBalanceCents: true },
-    }),
-    db.ownedAssets.findMany({
-      select: { id: true, name: true, valueCents: true, valuedOn: true },
-    }),
-    accountCopies(db),
-  ]);
-  // An account linked twice counts once (src/lib/account-copies.ts).
-  const accounts = withoutCopies(listedAccounts, copies, (a) => a.id);
-  const worth = netWorth(
-    accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })),
-    owned.map((o) => ({ id: o.id, valueCents: o.valueCents, valuedOn: iso(o.valuedOn) })),
-  );
+async function netWorthWorking({ userId, client, now }: Ctx): Promise<Part> {
+  // What Home and /net-worth show, read from the one place they read it: each account once and
+  // crypto too (gate B: this page left crypto out, so its net worth wasn't the headline's).
+  const { accounts, owned, worth } = await loadNetWorthInputs(userId, { client });
   return {
     ...noLists(),
     // Never a silent $0: "Not known yet" when no balance is known, and what's left out said.
@@ -305,6 +292,9 @@ async function netWorthWorking({ userId, db, client, now }: Ctx): Promise<Part> 
         value: formatCents(o.valueCents),
         note: `valued ${dayLabel(o.valuedOn, { year: true })}`,
       })),
+      ...(worth.cryptoCents > 0
+        ? [{ label: "Crypto (read only)", value: formatCents(worth.cryptoCents) }]
+        : []),
       { label: "Net worth", value: formatCents(worth.netCents) },
     ],
   };
