@@ -120,6 +120,8 @@ export async function loadTaxesArea(userId: string, { now = new Date() }: { now?
     estimate: {
       refundCents: estimate.estimate.refundCents,
       withholdingKnown: estimate.withholdingKnown,
+      totalTaxCents: estimate.estimate.totalTaxCents,
+      incomeCents: estimate.estimate.totalIncomeCents,
     },
     setAside: {
       status: setAside.status,

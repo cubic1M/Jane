@@ -1,4 +1,5 @@
 import type { SavedItem } from "@/lib/membership/service";
+import { estimateState } from "@/lib/tax-estimate-state";
 import {
   AREA_HEALTH_PARTS,
   AREA_KEYS,
@@ -702,16 +703,15 @@ export function tilesView(input: AreasInput): AreaTile[] {
       // Income under the standard deduction owes nothing, or less than nothing with a refundable
       // credit: say so, not "not enough to estimate" (overnight upload QA: a student with a
       // part-time job came out at -$528).
-      const noTax =
-        t !== null && t.totalTaxCents <= 0 && (t.incomeCents ?? 0) > 0 && !t.withholdingKnown;
-      if (noTax) {
+      const state = t ? estimateState(t) : "unknown";
+      if (state === "no_tax") {
         return tile("taxes", input, true, {
           value: shortMoney(0),
           caption: "No income tax expected",
           chart: { kind: "none" },
         });
       }
-      const known = t !== null && t.totalTaxCents > 0;
+      const known = t !== null && state !== "unknown";
       const refund = t?.refundCents ?? 0;
       return tile("taxes", input, known, {
         value: known
