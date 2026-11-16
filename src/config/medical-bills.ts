@@ -28,7 +28,6 @@ export const MEDICAL_RULES = {
     "Nonprofit hospitals must have a written financial assistance policy and limit what they charge people who qualify (IRS section 501(r)).",
   plan: "Many providers offer payment plans with no interest; you may ask for one in writing before the bill goes to collections.",
 } as const;
-export const MEDICAL_SOURCE = "https://www.consumerfinance.gov/consumer-tools/medical-debt/";
 
 export const MEDICAL_PARTNER = "demo";
 export const MEDICAL_ANSWER_DAYS = 2;

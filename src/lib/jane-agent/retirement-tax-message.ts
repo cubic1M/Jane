@@ -9,7 +9,7 @@ import { formatPercent as pct } from "@/lib/percent";
 // Security taxed", "what's IRMAA", "which account should I take money from". Facts for everyone;
 // the tuned order to draw is demo advice.
 
-export const RETIREMENT_PAYCHECK_HREF = "/investments/retirement-income";
+const RETIREMENT_PAYCHECK_HREF = "/investments/retirement-income";
 
 const paycheck: MessageAction = openLink("See my retirement paycheck", RETIREMENT_PAYCHECK_HREF);
 
@@ -44,7 +44,7 @@ export function irmaaMessage(v: RetirementTaxView): MessageParts | null {
 }
 
 // The answer's lines, shared with /taxes/retirement so the page and the chat say the same.
-export function retirementLines(
+function retirementLines(
   v: RetirementTaxView,
   { medicare = false }: { medicare?: boolean } = {},
 ): { lines: string[]; tuned: boolean } {

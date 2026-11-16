@@ -4,7 +4,6 @@
 // has a bad year, your job and your savings are hit at once.
 
 export const EMPLOYER_STOCK_LIMIT = 0.1;
-export const EMPLOYER_STOCK_SOURCE = "FINRA, Concentrate on the Concentration";
 // The diversify plan sells in up to this many parts, this many months apart, so the gains
 // (and their tax) spread over time instead of landing at once.
 export const DIVERSIFY_PARTS = 4;

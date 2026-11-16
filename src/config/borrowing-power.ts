@@ -82,14 +82,3 @@ export const BORROW_UNEVEN_EVIDENCE = {
   percent: 60,
   reason: "lenders want two years of tax returns for uneven pay",
 } as const;
-
-export const BORROW_SOURCES = [
-  {
-    label: "CFPB: what is a debt-to-income ratio",
-    url: "https://www.consumerfinance.gov/ask-cfpb/what-is-a-debt-to-income-ratio-why-is-the-43-debt-to-income-ratio-important-en-1791/",
-  },
-  {
-    label: "CFPB: what's the difference between a prequalification and a preapproval",
-    url: "https://www.consumerfinance.gov/ask-cfpb/whats-the-difference-between-a-prequalification-letter-and-a-preapproval-letter-en-127/",
-  },
-] as const;

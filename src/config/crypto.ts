@@ -18,16 +18,12 @@ export const isCryptoTicker = (ticker: string | null | undefined) =>
 // Above this share of everything invested (crypto included), Jane says so. A rule of thumb
 // planners use for a speculative holding; FOR REVIEW with counsel and an adviser.
 export const CRYPTO_SHARE_FLAG = 0.05;
-export const CRYPTO_SHARE_SOURCE =
-  "A planners' rule of thumb for speculative holdings (no more than about 5%); FOR REVIEW";
 
 // An exchange's fees, as a share of what was traded over the last year, above which Jane
 // flags them; and what low-cost exchanges charge (published fee schedules, ESTIMATE TO
 // VERIFY), in basis points.
 export const CRYPTO_FEE_FLAG_BPS = 100;
 export const LOW_COST_CRYPTO_FEE_BPS = { low: 10, high: 60 } as const;
-export const CRYPTO_FEE_SOURCE =
-  "Published fee schedules of large exchanges (0.1% to 0.6% a trade); ESTIMATE TO VERIFY";
 export const CRYPTO_FEE_DAYS = 365;
 
 // A balance older than this is labelled as out of date.
@@ -35,8 +31,4 @@ export const CRYPTO_STALE_HOURS = 36;
 
 // The kinds of connection: an exchange account, or a public wallet address (read-only:
 // Jane never holds keys).
-export const CRYPTO_CONNECTION_KINDS = {
-  exchange: "Exchange",
-  wallet: "Wallet",
-} as const;
-export type CryptoConnectionKind = keyof typeof CRYPTO_CONNECTION_KINDS;
+export type CryptoConnectionKind = "exchange" | "wallet";

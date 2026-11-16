@@ -27,8 +27,5 @@ export const LATE_FEE_LOOKBACK_DAYS = 60;
 // How long the stand-in lender takes to answer a request, in days.
 export const TIGHT_ANSWER_DAYS = 2;
 export const TIGHT_PARTNER = "demo";
-// Where the hardship rights are explained.
-export const HARDSHIP_SOURCE =
-  "https://www.consumerfinance.gov/ask-cfpb/what-can-i-do-if-i-cant-pay-my-credit-card-bill-en-1943/";
 // The stand-in lender grants this share of requests (out of 10); the rest are declined.
 export const DEMO_GRANT_TENTHS = 7;

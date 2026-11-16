@@ -52,10 +52,6 @@ export const HARDSHIP_PROGRAMS: Readonly<Record<DebtKind, { name: string; ask: s
     ask: "Contact the provider before a due date; many will agree to a new one.",
   },
 };
-export const HARDSHIP_FINDER = {
-  label: "Find a HUD-approved housing counselor (CFPB)",
-  url: "https://www.consumerfinance.gov/find-a-housing-counselor/",
-};
 
 // A debt management plan runs through a nonprofit credit counselor: one monthly payment to the
 // counselor, who negotiates lower rates with the card issuers.

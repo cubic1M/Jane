@@ -6,7 +6,6 @@
 export const HOME_MAX_HOUSING_SHARE = 0.28;
 export const HOME_MAX_DEBT_SHARE = 0.36;
 export const HOME_NET_TO_GROSS = 0.78;
-export const HOME_RULES_SOURCE = "https://www.consumerfinance.gov/owning-a-home/";
 
 export const HOME_TERM_MONTHS = 360;
 // A typical 30-year fixed rate, used to work out affordability when no lender partner gives a

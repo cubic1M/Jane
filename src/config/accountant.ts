@@ -9,7 +9,6 @@
 // File a Return?" and the "What's New" notes).
 
 export const LINK_DAYS_CHOICES = [7, 14, 30] as const;
-export const DEFAULT_LINK_DAYS = 14;
 export const MAX_ACTIVE_LINKS = 3;
 export const LABEL_MAX = 80;
 export const NAME_MAX = 80;

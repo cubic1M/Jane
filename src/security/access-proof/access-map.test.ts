@@ -14,10 +14,11 @@ const files = new Set(surfaces.map((s) => s.file));
 describe("the route inventory", () => {
   it("finds the app's routes, actions and pages", () => {
     const count = (kind: string) => surfaces.filter((s) => s.kind === kind).length;
-    // Fewer than this means the walk broke, not that the app shrank.
+    // Fewer than this means the walk broke, not that the app shrank (the hidden pages' deletion
+    // took the actions from about 115 to 74 and the pages from 168 to 93).
     expect(count("route")).toBeGreaterThanOrEqual(50);
-    expect(count("action")).toBeGreaterThanOrEqual(110);
-    expect(count("page")).toBeGreaterThanOrEqual(150);
+    expect(count("action")).toBeGreaterThanOrEqual(70);
+    expect(count("page")).toBeGreaterThanOrEqual(90);
   });
 
   it("every one is declared in src/config/access-map.ts", () => {

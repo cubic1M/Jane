@@ -7,9 +7,7 @@ export const CAR_COST_MAX_SHARE = 0.2;
 // What Jane suggests aiming for: the all-in cost around this share of income, well under the
 // ceiling above, so a car doesn't squeeze the rest of the month.
 export const CAR_COMFORT_SHARE = 0.12;
-export const CAR_COST_SOURCE = "https://www.consumerfinance.gov/consumer-tools/auto-loans/";
 
-export const CAR_TERMS_MONTHS = [36, 48, 60, 72] as const;
 export const CAR_DEFAULT_TERM_MONTHS = 60;
 // A down payment of this share of the price unless the person says otherwise.
 export const CAR_DOWN_PAYMENT_SHARE = 0.1;

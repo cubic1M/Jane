@@ -20,13 +20,7 @@ export const CREDIT_RULES = {
     text: `Under section 611 of the Fair Credit Reporting Act (15 U.S.C. 1681i), I dispute the item below as inaccurate or unverifiable. Please investigate within ${BUREAU_INVESTIGATION_DAYS} days, send me the results in writing, and delete or correct the item if it can't be verified.`,
   },
 } as const;
-export const CREDIT_FIX_SOURCE =
-  "https://www.consumerfinance.gov/ask-cfpb/how-do-i-dispute-an-error-on-my-credit-report-en-314/";
 
-// The medical collection policy the three bureaus follow: unpaid medical collections under
-// $500 aren't reported, and paid ones are removed.
-export const MEDICAL_COLLECTION_NOTE =
-  "The three credit bureaus don't report medical collections under $500, and remove ones that have been paid.";
 export const MEDICAL_COLLECTION_FLOOR_CENTS = 50_000;
 
 export const CREDIT_FIX_PARTNER = "demo";

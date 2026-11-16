@@ -9,7 +9,7 @@ import { type MessageAction, openLink } from "./types";
 
 export const GOAL_PAGE: MessageAction = openLink("See your credit plan", "/loans/goal");
 
-export const ESTIMATE_NOTE =
+const ESTIMATE_NOTE =
   "These scores are estimates from the stand-in score's simulator, and nothing changes until you act.";
 
 const startButton = (): MessageAction => ({

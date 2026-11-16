@@ -12,7 +12,7 @@ const FAMILY_CREDIT_PAGE: MessageAction = openLink("Helping with credit", "/loan
 
 const pct = (share: number | null) => (share === null ? null : `${Math.round(share * 100)}%`);
 
-export function cosignLines(d: FamilyCredit): string[] {
+function cosignLines(d: FamilyCredit): string[] {
   const c = d.cosign;
   const lines = [...d.cosigning.facts.map((f) => `- ${f}`)];
   if (d.entries.some((e) => e.kind === "cosigned")) {
@@ -34,7 +34,7 @@ export function cosignLines(d: FamilyCredit): string[] {
   return lines;
 }
 
-export function adviceLines(d: FamilyCredit): string[] {
+function adviceLines(d: FamilyCredit): string[] {
   const out: string[] = [];
   const best = d.bestCard;
   if (best) {

@@ -8,7 +8,7 @@ import { openLink, type MessageParts } from "./types";
 // spread it (demo advice), gifts over the annual exclusion, and the answer to "I inherited
 // an IRA", "step-up in basis", "gift tax". Facts, with a pointer to counsel: no legal advice.
 
-export const INHERITED_HREF = "/profile";
+const INHERITED_HREF = "/profile";
 
 // The heirs the 10-year rule doesn't apply to, in a line (ELIGIBLE_BENEFICIARIES has them in full).
 const RULE_EXCEPTIONS =
@@ -40,7 +40,7 @@ export function giftsMessage(v: InheritanceView): MessageParts | null {
 }
 
 // The answer's lines, shared with /taxes/inherited so the page and the chat say the same.
-export function inheritanceLines(v: InheritanceView): string[] {
+function inheritanceLines(v: InheritanceView): string[] {
   const lines: string[] = [];
   for (const i of v.inherited) {
     lines.push(

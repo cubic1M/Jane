@@ -15,14 +15,12 @@ export const ROTH_IRA_PHASEOUT: Readonly<
   married_separate: { fromCents: 0, toCents: 1_000_000 },
   head_of_household: { fromCents: 15_300_000, toCents: 16_800_000 },
 };
-export const ROTH_IRA_PHASEOUT_SOURCE = "IRS Notice 2025-67 (2026 Roth IRA income limits)";
 
 // Roth or traditional by the federal bracket on the next dollar (step 120's estimate): at or
 // below this rate paying the tax now usually wins; at or above the second, the deduction now
 // usually wins; between, a mix. A rule of thumb, not a promise.
 export const ROTH_AT_OR_BELOW_RATE = 0.12;
 export const TRADITIONAL_AT_OR_ABOVE_RATE = 0.24;
-export const ROTH_RULE_SOURCE = "Common planner rule of thumb by federal bracket";
 
 // The steps of a backdoor Roth, in plain words.
 export const BACKDOOR_STEPS = [

@@ -17,10 +17,6 @@ import { addDays } from "@/lib/dates";
 
 export type Fields = Partial<Record<NoticeFieldKey, string>>;
 export type Source = "document" | "you";
-export const SOURCE_WORDS: Record<Source, string> = {
-  document: "from the notice",
-  you: "as you typed it",
-};
 export type CheckedNotice = {
   fields: Fields;
   sources: Partial<Record<NoticeFieldKey, Source>>;

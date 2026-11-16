@@ -48,7 +48,7 @@ async function sourceFor(
 }
 
 // Reads every connection's balances (and an exchange's last year of fees) and stores them.
-export async function syncCrypto(
+async function syncCrypto(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<number> {

@@ -31,9 +31,3 @@ export const HONEST_PERIODS = [
   { key: "3y", label: "3 years", days: 1096 },
   { key: "5y", label: "5 years", days: 1826 },
 ] as const;
-export const BENCHMARK_SOURCE =
-  "The person's target mix for their risk level (src/config/investing.ts TARGET_MIXES) held in the low-cost index funds in src/config/funds.ts (CORE_FUNDS), at those funds' own expense ratios";
-// Where Jane doesn't know a fund's yield or taxes, the tax drag assumes no tax in
-// tax-advantaged accounts and the person's rates on payouts in taxable ones.
-export const HONEST_NOTE =
-  "Returns before you linked your accounts use what you hold today at past prices. Fees and taxes are estimates from fund costs and payouts. This is what happened, not what will.";

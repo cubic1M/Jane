@@ -90,7 +90,7 @@ export function residencyFrom(formData: FormData): ResidencyEntry {
 // Spec step 169: family details. Up to FAMILY_FORM_CHILDREN children (a row with no age is
 // left out), a spouse's wages, whether the person pays over half the home's costs, and a
 // student's years of college before this one.
-export const FAMILY_FORM_CHILDREN = 4;
+const FAMILY_FORM_CHILDREN = 4;
 
 export function familyFrom(formData: FormData): FamilyDetails {
   const children: FamilyDetails["children"] = [];

@@ -16,8 +16,6 @@ export const CURRENT_CASH_RATE_BPS = {
   sweep: 50,
 } as const;
 export type CashPlaceKind = keyof typeof CURRENT_CASH_RATE_BPS;
-export const CURRENT_CASH_RATE_SOURCE =
-  "FDIC national rates for checking and savings; typical brokerage cash sweep; ESTIMATE TO VERIFY";
 
 // Where cash could sit: what it earns, how many days to reach it, and whether the
 // emergency fund may go there (only when it can be reached in days).
@@ -63,8 +61,6 @@ export const CASH_HOMES: readonly CashHome[] = [
     note: "Backed by the US government, not FDIC insured; no state income tax; each rung is only cash at maturity",
   },
 ];
-export const CASH_HOMES_SOURCE =
-  "Published rates of large online banks, money market funds and Treasury bill auctions; ESTIMATE TO VERIFY";
 
 // The emergency fund only goes where it can be reached within this many days.
 export const EMERGENCY_MAX_REACH_DAYS = 3;

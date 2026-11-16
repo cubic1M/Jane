@@ -14,8 +14,6 @@ export const COLLEGE_TYPES: Readonly<Record<CollegeType, string>> = {
   public: "A public college in your state",
   private: "A private college",
 };
-export const COLLEGE_COST_SOURCE =
-  "College Board, Trends in College Pricing (2024–25 average published prices, before aid)";
 
 // How fast college prices rise a year: the range Jane projects with. Published prices rose
 // faster than inflation for decades and closer to it lately (College Board).
@@ -59,7 +57,6 @@ export const PLANS_529: readonly Plan529[] = [
     note: "Sold through an adviser, with a sales charge",
   },
 ];
-export const PLANS_529_SOURCE = "Demo 529 plans (sample data, not real plans)";
 
 // The state tax break for saving in a 529, a year: a deduction up to this much (per
 // return; joint filers often double it), or a credit. anyPlan: the break works with any
@@ -92,7 +89,5 @@ export const STATE_529: Readonly<
   KS: { deductionCents: 300_000, jointDeductionCents: 600_000, anyPlan: true },
   IN: { creditRate: 0.2, creditCapCents: 150_000 },
 };
-export const STATE_529_SOURCE =
-  "Each state's 529 plan site; ESTIMATE TO VERIFY before relying on it";
 // Without the person's pay, the state rate is read at this taxable income.
 export const STATE_RATE_DEFAULT_INCOME_CENTS = 8_000_000;

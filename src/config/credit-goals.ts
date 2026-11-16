@@ -19,5 +19,3 @@ export const GOAL_MAX_MONTHS = 24;
 // balances have been paid down. Only a lender can ask; it's offered for a mortgage.
 export const RAPID_RESCORE_NOTE =
   "A rapid rescore is when your lender asks the credit bureaus to update your report within a few days after you've paid balances down, so the new score is used for your application. Only a lender can ask; ask yours once your balances are paid.";
-export const CREDIT_GOAL_SOURCE =
-  "https://www.consumerfinance.gov/ask-cfpb/what-is-a-credit-score-en-315/";

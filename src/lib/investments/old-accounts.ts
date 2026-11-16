@@ -123,19 +123,6 @@ async function syncPastEmployers(userId: string, { client = defaultClient }: Opt
   }
 }
 
-export async function addPastEmployer(
-  userId: string,
-  employer: string,
-  { client = defaultClient }: Options = {},
-) {
-  const name = employer.trim().slice(0, 80);
-  if (!name) throw new OldAccountsError("Enter the employer's name.");
-  const db = scopedFor(userId, client);
-  if ((await db.oldPlans.count({ where: { employer: name } })) > 0)
-    throw new OldAccountsError("You've already told me about that employer.");
-  await db.oldPlans.create({ data: { userId, employer: name, source: "you" } });
-}
-
 export async function loadOldAccounts(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},

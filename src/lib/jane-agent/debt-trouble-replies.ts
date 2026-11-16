@@ -47,7 +47,7 @@ function hardshipLines(data: DebtTrouble): string[] {
     );
 }
 
-export function dmpLines(data: DebtTrouble): string[] {
+function dmpLines(data: DebtTrouble): string[] {
   const lines = [DMP_NOTE];
   const d = data.dmp;
   if (d) {

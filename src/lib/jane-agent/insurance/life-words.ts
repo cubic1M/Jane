@@ -27,7 +27,7 @@ export const DEPENDANTS_QUESTION: { body: string; actions: MessageAction[] } = {
   ],
 };
 
-export const bestQuote = (application: Pick<LifeApplication, "quotes">, asOf: string) =>
+const bestQuote = (application: Pick<LifeApplication, "quotes">, asOf: string) =>
   application.quotes.find((q) => q.expiresAt > asOf) ?? null;
 
 const chosenQuote = (application: Pick<LifeApplication, "quotes" | "quoteId">) =>

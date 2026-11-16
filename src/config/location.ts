@@ -26,8 +26,6 @@ export const PLACEMENT: Readonly<
   us_stocks: ["roth", "taxable", "pre_tax"],
   intl_stocks: ["taxable", "roth", "pre_tax"],
 };
-export const PLACEMENT_SOURCE =
-  "Common asset-location guidance (Bogleheads, Vanguard): interest where it is deferred, growth where it is free";
 
 // A swap smaller than this isn't worth the trouble (cents).
 export const MIN_SWAP_CENTS = 20_000;

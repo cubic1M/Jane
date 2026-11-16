@@ -312,12 +312,3 @@ export async function addEquityEvent(
   await track(userId, "equity_event_added", { kind: input.kind, via });
   return row.id;
 }
-
-export async function removeEquityEvent(
-  userId: string,
-  id: string,
-  { client = defaultClient }: Options = {},
-): Promise<void> {
-  const res = await scopedFor(userId, client).equityEvents.deleteMany({ where: { id } });
-  if (res.count === 0) throw new EquityTaxError("That one's already gone.");
-}

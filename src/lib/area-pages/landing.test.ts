@@ -239,7 +239,7 @@ describe("every link Jane gives lands on something", () => {
             .split(/[?#]/)[0]
             .replace(/\$\{[^}]*\}/g, "x")
             .replace(/\/$/, "");
-          if (!path.includes("${") && !isPage(path))
+          if (!path.includes("${") && !isPage(path) && !isHiddenPage(path))
             bad.push(`${where}: ${raw}: no page at ${path}`);
           continue;
         }

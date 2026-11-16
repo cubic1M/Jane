@@ -23,12 +23,5 @@ export const ROLLOVER_DAYS = 3;
 export const ROLLOVER_NOTE =
   "A direct rollover to a traditional IRA isn't a withdrawal and isn't taxed. Moving it to a Roth IRA would be taxed, so Jane never does that for you.";
 
-// Where to look for a plan the locator can't find.
-export const LOOKUP_HELP = [
-  "Ask the old employer's HR or benefits team who ran the plan.",
-  "Search the Department of Labor's Retirement Savings Lost and Found (savings.dol.gov).",
-  "Check old statements or tax forms (Form 1099-R) for the plan's name.",
-] as const;
-
 // Jane brings an old plan up only when the fees saved are at least this much a year (cents).
 export const OLD_PLAN_MIN_SAVING_CENTS = 2_500;

@@ -1,7 +1,8 @@
-// Pages the read-only closed beta can't use (founder, 2026-10-26): hidden, with their code and
-// data kept. A hidden page redirects to its area page (next.config.ts), and nothing links to
-// it: Jane's links land on the area page instead (src/lib/area-pages/landing.ts), and the
-// trees, tiles and menus leave it out. To bring a page back, delete its line.
+// Pages the read-only closed beta can't use (founder, 2026-10-26). Their page files were deleted
+// (founder decision); their data and the src/lib code other pages share are kept. A hidden page
+// redirects to its area page (next.config.ts), so old links and bookmarks still land, and nothing
+// links to it: Jane's links land on the area page instead (src/lib/area-pages/landing.ts), and the
+// trees, tiles and menus leave it out. To bring a page back, restore it from git and delete its line.
 // ":name" is one path segment (a token or an id).
 
 export type HiddenPage = { path: string; to: string };

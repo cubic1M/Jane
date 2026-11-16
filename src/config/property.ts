@@ -25,5 +25,3 @@ export const DEMO_RENTAL = {
 
 // Mortgage paydown against investing: years compared.
 export const PAYDOWN_YEARS = 10;
-export const PAYDOWN_NOTE =
-  "Paying down a mortgage earns its interest rate with no risk; investing can earn more or less. Mortgage interest may also be deductible, which this doesn't count.";

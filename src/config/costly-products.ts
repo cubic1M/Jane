@@ -7,7 +7,6 @@ export type ProductKind = "annuity" | "whole_life" | "advisory";
 
 // What the same money costs in a low-cost index fund, a year (basis points).
 export const LOW_COST_BPS = 4;
-export const LOW_COST_SOURCE = "A broad index fund like the demo's (src/config/funds.ts)";
 
 // How long the comparison runs.
 export const COMPARE_YEARS = 20;
