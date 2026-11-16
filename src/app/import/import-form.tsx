@@ -112,10 +112,9 @@ export function ImportForm({
   // Files past what one request takes never reach the server: said here instead. And a request
   // that fails says so in the page, never "This page couldn't load" (round 4).
   function tooMuch(data: FormData): string | null {
-    const bytes = data
-      .getAll("files")
-      .reduce((sum, f) => sum + (f instanceof File ? f.size : 0), 0);
-    return bytes > MAX_UPLOAD_BYTES ? uploadTooBig(bytes) : null;
+    const files = data.getAll("files").filter((f) => f instanceof File);
+    const bytes = files.reduce((sum, f) => sum + f.size, 0);
+    return bytes > MAX_UPLOAD_BYTES ? uploadTooBig(bytes, files.length) : null;
   }
   const FAILED = "Jane couldn't read these files just now. Try again, or fewer at a time.";
 

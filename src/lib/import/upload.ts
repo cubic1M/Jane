@@ -89,7 +89,9 @@ export async function readUploadFiles(formData: FormData): Promise<CsvFile[] | R
     };
   }
   const bytes = files.reduce((sum, f) => sum + f.size, 0);
-  if (bytes > MAX_UPLOAD_BYTES) return { error: uploadTooBig(bytes), reason: "too_big" };
+  if (bytes > MAX_UPLOAD_BYTES) {
+    return { error: uploadTooBig(bytes, files.length), reason: "too_big" };
+  }
   const read: CsvFile[] = [];
   for (const [i, f] of files.entries()) {
     const mapping = mappingFromForm(formData, i);
