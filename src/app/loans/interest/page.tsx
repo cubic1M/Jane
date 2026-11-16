@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
@@ -7,6 +8,8 @@ import { dayLabel } from "@/lib/day-label";
 import { loadCardInterest } from "@/lib/card-interest";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { scopedDb } from "@/lib/db-scoped";
+import { FROM_PARAM } from "@/lib/jane-agent/back-link";
 import { promoLine } from "@/planning/card-interest";
 import { addPromoAction, removePromoAction, sendRateAction } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
@@ -30,6 +33,22 @@ async function InterestContent({
   const raw = await searchParams;
   const p = (k: string) => (Array.isArray(raw[k]) ? raw[k]?.[0] : (raw[k] as string | undefined));
   const data = await loadCardInterest(user.id);
+  // The rate requests and promotions here need a lending partner, which no real account has yet.
+  // "Cut your card interest" (the suggestion, the Loans tree, the chat) then opens the card
+  // interest finding, whose steps and call script the person follows themselves (debugger 11-16:
+  // a student with $339 a year in card interest was told only that there's no partner yet), or
+  // the payoff plan.
+  if (!data.available) {
+    const db = await scopedDb();
+    const finding = await db.findings.findFirst({
+      where: { type: "card_interest", status: { in: ["new", "shown"] } },
+      orderBy: { createdAt: "desc" },
+      select: { id: true },
+    });
+    const from = p(FROM_PARAM);
+    const back = from ? `?${FROM_PARAM}=${encodeURIComponent(from)}` : "";
+    redirect(finding ? `/report/${finding.id}${back}` : `/debt${back}`);
+  }
   return (
     <>
       <AppHeader user={user} />
@@ -40,14 +59,7 @@ async function InterestContent({
           lower rate. Nothing is sent until you tap.
         </p>
       </div>
-      {!data.available ? (
-        <p className="text-zinc-600 dark:text-zinc-400">
-          This needs a lending partner, and there isn&apos;t one for your accounts yet.{" "}
-          <Link href="/loans" className={LINK}>
-            See every debt
-          </Link>
-        </p>
-      ) : (
+      {data.available && (
         <>
           <DemoAdviceLabel />
           {p("sent") && (
