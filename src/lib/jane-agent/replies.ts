@@ -14,7 +14,6 @@ import type { FindingType } from "@/generated/prisma/client";
 import type { ComingUpRow } from "@/insights/coming-up";
 import { CATEGORY_LABELS, UNCATEGORIZED, categoryLabel } from "@/insights/labels";
 import { matchSubcategory, primaryOf, subcategorySpending } from "@/insights/subcategories";
-import { fullMonths } from "@/insights/typical-month";
 import {
   kindOf,
   monthsEnding,
@@ -30,7 +29,7 @@ import {
   safeLine,
   shortLine,
 } from "@/planning/afford-copy";
-import type { Budget } from "@/insights/budgets";
+import { budgetSummary, type Budget } from "@/insights/budgets";
 import {
   affordCheck,
   affordWindow,
@@ -584,15 +583,15 @@ export function spendingReply(
   if (category) {
     const cents = categories.find((c) => c.category === category)?.cents ?? 0;
     const body = `You spent ${fmt(cents)} on ${category} ${when}.${versus(cents, spentIn(before, category))}`;
-    // A usual month: the complete months before this one, each one the data covers in full (night
-    // QA 10-30: a statement starting Jul 28 made July's $20 of food a month, so "a $185.00
-    // budget would match a usual month" beside $268 and $263).
-    const past = fullMonths(months.slice(-1 - AFFORD_USUAL_MONTHS, -1), transactions);
-    const usual = Math.round(
-      past.reduce((sum, m) => sum + (spentIn(m, category) ?? 0), 0) / Math.max(1, past.length),
-    );
+    // A usual month: the Budgets page's own suggestion for the category (the complete months the
+    // data covers in full, one-offs aside, rounded up), so the chat and the dock offer one figure
+    // (debug 2, 11-15: "A $239.00 budget would match a usual month" beside the dock's "$240.00
+    // monthly budget for Food and drink").
+    const usual = budgets
+      ? (budgetSummary(transactions, [...budgets], asOf).suggestions[category] ?? 0)
+      : 0;
     if (budgets && !budgets.some((b) => b.category === category) && usual > 0) {
-      const refs = budgetSuggestion(category, usual);
+      const refs = { budget: { category, amountCents: usual } };
       return reply(
         `${body} A ${fmt(refs.budget.amountCents)} budget would match a usual month.`,
         [budgetButton(refs.budget), ...open],

@@ -285,7 +285,9 @@ describe("spendingReply", () => {
       "2026-10-30",
       [],
     );
-    expect(reply.body).toMatch(/A \$266\.00 budget would match a usual month\.$/);
+    // August and September only ($265.50), rounded up as the Budgets page rounds; with July's 4
+    // days it would be $190.00.
+    expect(reply.body).toMatch(/A \$270\.00 budget would match a usual month\.$/);
   });
 
   it("tries a merchant when the word isn't a category", () => {
