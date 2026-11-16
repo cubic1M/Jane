@@ -12,7 +12,7 @@ import { planFor, type PlanItem } from "@/lib/plan";
 import { undoApproval } from "@/lib/standing-rules";
 import { DAY_MS } from "@/lib/dates";
 import { sha256Hex } from "@/lib/hash";
-import { localDate } from "@/lib/today";
+import { localDate, timezoneOf } from "@/lib/today";
 import { systemDb } from "@/lib/system-db";
 
 const WHY = "A link's token is the key: nobody is signed in";
@@ -87,19 +87,16 @@ export async function viewPlanLink(
   if (!link) return { state: "invalid" };
   if (link.usedAt) {
     // Still on: approved by the link and not taken back since.
-    const [approved, owner] = await Promise.all([
+    const [approved, timezone] = await Promise.all([
       scopedFor(link.userId, client).decisions.count({
         where: { id: { in: link.decisionIds }, userId: link.userId, undoneAt: null },
       }),
-      scopedFor(link.userId, client).me.findUnique({
-        where: { id: link.userId },
-        select: { timezone: true },
-      }),
+      timezoneOf(link.userId, { client }),
     ]);
     return {
       state: "used",
       approved,
-      usedOn: localDate(link.usedAt, owner?.timezone),
+      usedOn: localDate(link.usedAt, timezone),
       canTakeBack:
         approved > 0 && now.getTime() - link.usedAt.getTime() < LINK_UNDO_HOURS * 3_600_000,
     };

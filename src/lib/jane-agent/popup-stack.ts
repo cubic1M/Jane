@@ -3,7 +3,7 @@ import { adviceMode } from "@/lib/advice-mode";
 import { conciergeMode } from "@/lib/concierge-mode";
 import { db as defaultClient } from "@/lib/db";
 import { openPopupMessages, POPUP_LIMIT, stackedSuggestions } from "./messages";
-import { timezoneOf } from "./open";
+import { timezoneOf } from "@/lib/today";
 import { popupStack } from "./popups";
 import { stillTrue } from "./still-true";
 import { toView, type MessageView } from "./view";

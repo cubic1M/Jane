@@ -9,7 +9,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { appBase } from "@/lib/digest/links";
 import { unsubscribeToken } from "@/lib/digest/unsubscribe";
-import { localDate } from "@/lib/digest/week";
+import { todayOf } from "@/lib/today";
 import { sendEmail } from "@/lib/email";
 import { healthFor } from "@/lib/health-score";
 import { rankedFor } from "@/lib/jane-agent/priorities";
@@ -166,11 +166,7 @@ export async function monthlyReportFor(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<StoredReport | null> {
-  const user = await scopedFor(userId, client).me.findUnique({
-    where: { id: userId },
-    select: { timezone: true },
-  });
-  const today = localDate(now, user?.timezone);
+  const today = await todayOf(userId, { client, now });
   if (Number(today.slice(8, 10)) > MONTHLY_REPORT_DAYS) return null;
   const month = previousMonth(today);
   const kept = await storedReport(userId, month, { client });

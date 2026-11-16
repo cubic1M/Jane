@@ -47,7 +47,7 @@ import { MESSAGE_SELECT, parseRefs, toChatMessage, type ChatMessage } from "./ty
 import { withReadCache } from "@/lib/read-cache";
 import { listFacts, memoryForChat } from "@/lib/memory/facts";
 import { learnFromChat } from "@/lib/memory/learn";
-import { chatToday } from "@/lib/today";
+import { chatToday, timezoneOf } from "@/lib/today";
 import { DATA_ENDED_LINE, dataEndedOn } from "@/lib/data-ended";
 import { dayLabel } from "@/lib/day-label";
 
@@ -93,7 +93,7 @@ export async function lastTopic(
     since,
   }: { client?: PrismaClient; now?: Date; since?: Date } = {},
 ): Promise<Topic | null> {
-  const [last, user] = await Promise.all([
+  const [last, timezone] = await Promise.all([
     scopedFor(userId, client).janeMessages.findFirst({
       where: {
         kind: "reply",
@@ -103,13 +103,10 @@ export async function lastTopic(
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       select: { refs: true, createdAt: true },
     }),
-    scopedFor(userId, client).me.findUnique({ where: { id: userId }, select: { timezone: true } }),
+    timezoneOf(userId, { client }),
   ]);
   if (!last) return null;
-  if (
-    localTime(last.createdAt, user?.timezone ?? null).date !==
-    localTime(now, user?.timezone ?? null).date
-  ) {
+  if (localTime(last.createdAt, timezone).date !== localTime(now, timezone).date) {
     return null;
   }
   return parseRefs(last.refs).topic ?? null;
@@ -126,7 +123,7 @@ async function lastCardTopic(
     since,
   }: { client?: PrismaClient; now?: Date; since?: Date } = {},
 ): Promise<Topic | null> {
-  const [rows, user] = await Promise.all([
+  const [rows, timezone] = await Promise.all([
     scopedFor(userId, client).janeMessages.findMany({
       where: {
         kind: "reply",
@@ -137,11 +134,11 @@ async function lastCardTopic(
       take: CARD_TOPIC_LOOKBACK,
       select: { refs: true, createdAt: true },
     }),
-    scopedFor(userId, client).me.findUnique({ where: { id: userId }, select: { timezone: true } }),
+    timezoneOf(userId, { client }),
   ]);
-  const today = localTime(now, user?.timezone ?? null).date;
+  const today = localTime(now, timezone).date;
   for (const row of rows) {
-    if (localTime(row.createdAt, user?.timezone ?? null).date !== today) return null;
+    if (localTime(row.createdAt, timezone).date !== today) return null;
     const topic = parseRefs(row.refs).topic;
     if (topic?.findingId) return topic;
   }

@@ -7,7 +7,7 @@ import { listLifeEvents } from "@/lib/life-events";
 import { homeSummary } from "@/lib/home";
 import { whatJaneDid } from "@/lib/what-jane-did";
 import { flowReply } from "../flows/chat";
-import { timezoneOf } from "../open";
+import { timezoneOf } from "@/lib/today";
 import { searchChat } from "../search";
 import { searchReply } from "../search-reply";
 import { learnReply } from "../learn";

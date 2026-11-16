@@ -4,7 +4,7 @@ import { isId } from "@/lib/action-args";
 import { after } from "next/server";
 import { runAgentNow, runQueuedFor } from "@/lib/agent/run";
 import { ChatActionError, takeChatAction } from "@/lib/jane-agent/actions";
-import { timezoneOf } from "@/lib/jane-agent/open";
+import { timezoneOf } from "@/lib/today";
 import { conciergeMode } from "@/lib/concierge-mode";
 import { toView, type MessageView } from "@/lib/jane-agent/view";
 import { log } from "@/lib/log";

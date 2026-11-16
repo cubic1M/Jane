@@ -5,6 +5,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { chatFeed, closeSettled, postedToday } from "./messages";
 import { SCANNING_HELLO } from "@/config/scan";
 import { scanInProgress } from "@/lib/scan";
+import { timezoneOf } from "@/lib/today";
 import { runJaneAgentSafely } from "./run";
 import { toView, type MessageView } from "./view";
 
@@ -12,19 +13,6 @@ import { toView, type MessageView } from "./view";
 // posted yet today, Jane's brain runs first (quiet hours don't apply, the person is
 // looking). Null when the person has no accounts yet, like Today. With `since`, only what came
 // after this sign-in (src/lib/chat-start.ts).
-
-// The person's timezone, for "today" and the times shown. Users have their own helpers,
-// so a read of this one column by id.
-export async function timezoneOf(
-  userId: string,
-  { client = defaultClient }: { client?: PrismaClient } = {},
-): Promise<string | null> {
-  const user = await scopedFor(userId, client).me.findUnique({
-    where: { id: userId },
-    select: { timezone: true },
-  });
-  return user?.timezone ?? null;
-}
 
 // Spec step 92: whether the person typed since Jane last posted on its own.
 async function talkedSince(userId: string, { client }: { client: PrismaClient }) {
