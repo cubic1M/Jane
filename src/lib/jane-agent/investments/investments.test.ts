@@ -155,7 +155,8 @@ describe("holdingsReply", () => {
     expect(holdingsReply(data, "ira").body).toMatch(/^I don't see a ira among your accounts/);
     expect(holdingsReply(noInvestments(), null)).toMatchObject({
       body: expect.stringMatching(/^I don't see any investment/),
-      actions: [{ href: "/connect" }],
+      // The positions upload: a linked brokerage isn't read in the beta (no-accounts-upload.test.ts).
+      actions: [{ href: "/import/investments" }],
     });
   });
 
@@ -672,7 +673,7 @@ describe("retirementReply", () => {
     );
     expect(ask.refs.investQuestion).toBe("age");
     expect(retirementReply({ ...data, accounts: [] }, true).actions[0]).toMatchObject({
-      href: "/connect",
+      href: "/import/investments",
     });
   });
 });
@@ -1278,7 +1279,7 @@ describe("overviewReply and autopilotReply", () => {
     const reply = overviewReply(demoInvestmentSnapshot({ advice: false }));
     expect(reply.body).toMatch(/^Your investments start October at \$96,730\.55\./);
     expect(overviewReply(demoInvestmentSnapshot({ accounts: [] })).actions[0]).toMatchObject({
-      href: "/connect",
+      href: "/import/investments",
     });
   });
 
