@@ -9,7 +9,7 @@ import { POLICY_KINDS } from "@/config/insurance";
 import { loadDetectionInput } from "@/detection/input";
 import { buildStreams } from "@/detection/streams";
 import type { DetectionInput } from "@/detection/types";
-import { addDays, isoDate } from "@/detection/units";
+import { addDays } from "@/detection/units";
 import type { PrismaClient } from "@/generated/prisma/client";
 import {
   deadlineAlerts,
@@ -38,6 +38,7 @@ import { priceRiseDeadlines } from "@/lib/price-rises";
 import { stayingPeople, type OnlyPeople } from "@/lib/only-people";
 import { DEBT_ACCOUNT_SELECT } from "@/insights/loans";
 import { systemDb } from "@/lib/system-db";
+import { todayOf } from "@/lib/today";
 
 // Deadlines (spec step 71): loads each source's data, keeps the deadlines the person types
 // in, and raises the deadline_soon reminders (src/insights/deadlines.ts decides which).
@@ -93,7 +94,7 @@ const loanDeadlines: DeadlineSource = async (userId, { client, now }) => {
   // An account linked twice is due once (src/lib/account-copies.ts).
   return paymentDeadlines(
     withoutCopies(accounts, copies, (a) => a.id),
-    isoDate(now),
+    await todayOf(userId, { client, now }),
   );
 };
 
@@ -115,7 +116,7 @@ export const documentDeadlines: DeadlineSource = async (userId, { client }) =>
 // (an estimate until confirmed). A policy read from a document has its date from the
 // document already.
 const insuranceDeadlines: DeadlineSource = async (userId, { client, now }) => {
-  const asOf = isoDate(now);
+  const asOf = await todayOf(userId, { client, now });
   const until = addDays(asOf, DEADLINE_HORIZON_DAYS);
   const policies = await listPolicies(userId, { client });
   return policies.flatMap((p): Deadline[] => {
@@ -147,7 +148,7 @@ const insuranceDeadlines: DeadlineSource = async (userId, { client, now }) => {
 // policies on file and no health cover (a health gap): when it opens and its last day,
 // within the horizon.
 export const openEnrollmentDeadlines: DeadlineSource = async (userId, { client, now }) => {
-  const asOf = isoDate(now);
+  const asOf = await todayOf(userId, { client, now });
   const until = addDays(asOf, DEADLINE_HORIZON_DAYS);
   const { policies, gaps } = await loadInsurance(userId, { client, now });
   const health = policies.some((p) => p.kind === "health" && p.status === "active");
@@ -182,7 +183,7 @@ export const openEnrollmentDeadlines: DeadlineSource = async (userId, { client, 
 
 // Spec step 150: the employer's open enrollment, for people with benefits through work on file.
 export const workEnrollmentDeadlines: DeadlineSource = async (userId, { client, now }) => {
-  const asOf = isoDate(now);
+  const asOf = await todayOf(userId, { client, now });
   const until = addDays(asOf, DEADLINE_HORIZON_DAYS);
   const window = await openEnrollmentAtWork(userId, { client, now });
   if (!window) return [];
@@ -241,8 +242,11 @@ export async function listDeadlines(
 ): Promise<Deadline[]> {
   // Dates the person added beyond the list's horizon, soonest first: a warranty can be years out,
   // and what they just added has to be somewhere they can see, finish or delete it.
+  // The person's own day (src/lib/today.ts): at 7pm in Los Angeles UTC is already tomorrow, and a
+  // return window's last day dropped off the list while it was still today for them.
+  const today = await todayOf(userId, { client, now });
   if (furtherOut) {
-    const until = addDays(isoDate(now), DEADLINE_HORIZON_DAYS);
+    const until = addDays(today, DEADLINE_HORIZON_DAYS);
     const entered = await handEnteredDeadlines(userId, { client, now });
     return entered.filter((d) => d.date > until).sort((a, b) => a.date.localeCompare(b.date));
   }
@@ -254,7 +258,7 @@ export async function listDeadlines(
     log.error("Deadline source failed", { userId, index, error: String(result.reason) });
     return [];
   });
-  return upcomingDeadlines(deadlines, isoDate(now));
+  return upcomingDeadlines(deadlines, today);
 }
 
 // Raises a reminder for each deadline coming up soon. Each is raised once (its key), and
@@ -270,7 +274,7 @@ export async function remindDeadlines(
 ): Promise<number> {
   const alerts = deadlineAlerts(
     await listDeadlines(userId, { client, now, sources }),
-    isoDate(now),
+    await todayOf(userId, { client, now }),
   );
   if (alerts.length === 0) return 0;
   const { raised } = await raise(userId, alerts, { client, now });
@@ -324,10 +328,10 @@ export type DeadlineForm = { title: string; dueOn: string; kind: string; note: s
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-function checkedData(form: DeadlineForm, now: Date) {
+// `today` is the person's own day: at 7pm in Los Angeles, UTC's date would refuse their today.
+function checkedData(form: DeadlineForm, today: string) {
   const title = form.title.trim().slice(0, DEADLINE_TITLE_MAX);
   if (!title) throw new DeadlineError("Say what the deadline is for.");
-  const today = isoDate(now);
   const latest = `${Number(today.slice(0, 4)) + DEADLINE_MAX_YEARS_AHEAD}${today.slice(4)}`;
   if (!DATE.test(form.dueOn) || Number.isNaN(Date.parse(`${form.dueOn}T00:00:00Z`))) {
     throw new DeadlineError("Pick a date.");
@@ -346,7 +350,7 @@ export async function addDeadline(
   form: DeadlineForm,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<void> {
-  const data = checkedData(form, now);
+  const data = checkedData(form, await todayOf(userId, { client, now }));
   await scopedFor(userId, client).deadlines.create({ data: { userId, ...data } });
   await track(userId, "deadline_added", { kind: data.kind });
 }
