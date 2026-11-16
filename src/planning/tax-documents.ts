@@ -121,7 +121,21 @@ export function expectedForms(input: {
     }
     return [...byPayer.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   };
-  const payer = (t: FormTransaction) => (t.merchantName ?? t.description).trim();
+  // A bank's name for a payer can arrive partway through the year: paychecks with the same words
+  // and no name are the same payer (debug 2, 11-16: "W-2 from Sweetgreen inc payroll ppd id" beside
+  // "W-2 from Sweetgreen", one employer, named only from October).
+  // Only one name for the same words and kind of income: two payers that share them stay apart.
+  const wordsOf = (t: FormTransaction) => `${t.pfcDetailed}|${t.description.trim()}`;
+  const names = new Map<string, Set<string>>();
+  for (const t of inYear) {
+    if (t.merchantName)
+      names.set(wordsOf(t), (names.get(wordsOf(t)) ?? new Set()).add(t.merchantName));
+  }
+  const named = (t: FormTransaction) => {
+    const found = names.get(wordsOf(t));
+    return found?.size === 1 ? [...found][0] : null;
+  };
+  const payer = (t: FormTransaction) => (t.merchantName ?? named(t) ?? t.description).trim();
 
   for (const [kind, formKey] of PAYER_FORMS) {
     // A seller's customers don't send 1099s; the payment app does (debugger 11-02: "1099 from Jo

@@ -46,6 +46,7 @@ import {
   taxPaymentsFor,
   propertyTaxFor,
   yearCovered,
+  yearElapsed,
   type PayPicture,
 } from "@/planning/tax-income";
 import { defaultTaxYear } from "@/planning/tax-pack";
@@ -602,11 +603,15 @@ async function loadTaxEstimateFrom(
     federalCents: seen.federalCents + typed.federalCents + fixes.paid.federalCents,
     stateCents: seen.stateCents + typed.stateCents + fixes.paid.stateCents,
   };
+  // The lender's year to date runs from January 1, whenever the linked data starts: paced by the
+  // calendar, not by the accounts (debug 2, 11-16: $3,119.50 paid by Nov 16 read as $6,432.87 for
+  // the year, paced over the 177 days since the data's first line).
+  const yearSoFar = yearElapsed(year, today);
   const loanInterest = (kind: string) => {
     const ytd = loans
       .filter((l) => l.kind === kind)
       .reduce((s, l) => s + (l.ytdInterestPaidCents ?? 0), 0);
-    return paceOf(ytd);
+    return yearSoFar > 0 && yearSoFar < 1 ? Math.round(ytd / yearSoFar) : ytd;
   };
 
   // Taxes QA: a couple's signs (a joint account, two employers) mean married filing jointly.
