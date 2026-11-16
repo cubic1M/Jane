@@ -1,7 +1,7 @@
 import { PRACTICE_TOPIC } from "@/config/practice-suggestions";
 import { areaOfCapability } from "@/config/areas";
 import { SIMULATED_PARTNER } from "@/config/brokerage";
-import { investingTree } from "@/lib/area-pages/investing";
+import { investingTree, monthsToShow } from "@/lib/area-pages/investing";
 import { cryptoTotal } from "@/lib/crypto/crypto";
 import { loadReturns } from "@/lib/investments/returns";
 import { backtestsFor } from "@/lib/investments/backtest";
@@ -68,8 +68,9 @@ export async function loadInvestingArea(userId: string) {
   );
   const byHerself = investmentsByHerself(level, investing);
   const profile = profileSummary(answers, data.asOf);
-  const max = Math.max(1, ...data.months.map((m) => m.totalCents ?? 0));
-  const hasMonths = data.months.some((m) => m.totalCents !== null);
+  const months = monthsToShow(data.months);
+  const max = Math.max(1, ...months.map((m) => m.totalCents ?? 0));
+  const hasMonths = months.length > 0;
 
   const { asks } = await brokerageAsks(db);
   const area = investingTree({
@@ -86,7 +87,7 @@ export async function loadInvestingArea(userId: string) {
     cryptoCents: crypto,
     profile: { complete: profile.complete, label: profile.complete ? profile.label : null },
     returns: { periods: returns.periods.length },
-    months: data.accounts.length > 0,
+    months: hasMonths,
     practice: backtests.advice
       ? {
           started,
@@ -113,6 +114,7 @@ export async function loadInvestingArea(userId: string) {
     byHerself,
     profile,
     max,
+    months,
     hasMonths,
     area,
   };
