@@ -586,9 +586,13 @@ export function FloatingCards({
                     {note}
                   </p>
                 ))}
-                {/* Details already open here: a link that only leads to them isn't shown. */}
+                {/* Details already open here: a link that only leads to them isn't shown, nor the
+                    page the main button below opens (debug 2, 11-15: "Your costly borrowing ›"
+                    right above a "Your costly borrowing" button). */}
                 {(links?.[current.id] ?? [])
-                  .filter((link) => linkOpens(link.label) === "page")
+                  .filter(
+                    (link) => linkOpens(link.label) === "page" && link.href !== current.yesHref,
+                  )
                   .map((link) => (
                     <a
                       key={link.href + link.label}
