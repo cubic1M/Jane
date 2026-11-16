@@ -27,14 +27,14 @@ export type Paystub = {
 export interface PayrollSource {
   readonly name: string;
   readonly demo: boolean;
-  // Newest first.
-  paystubs(userId: string, options: { now: Date }): Promise<Paystub[]>;
+  // Newest first, as of the person's day.
+  paystubs(userId: string, options: { today: string }): Promise<Paystub[]>;
 }
 
 const demoPayroll: PayrollSource = {
   name: "demo",
   demo: true,
-  paystubs: async (_userId, { now }) => demoPaystubs(now),
+  paystubs: async (_userId, { today }) => demoPaystubs(today),
 };
 
 export async function payrollFor(

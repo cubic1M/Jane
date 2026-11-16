@@ -44,7 +44,7 @@ describe("reading the pay stub", () => {
   });
 
   it("gives the demo bank's paydays with the demo bank's net pay", () => {
-    const [latest, before] = demoPaystubs(new Date("2026-10-19T12:00:00Z"));
+    const [latest, before] = demoPaystubs("2026-10-19");
     expect([latest.payDate, before.payDate]).toEqual(["2026-10-15", "2026-10-01"]);
     expect(latest).toMatchObject({
       employer: DEMO_EMPLOYER,
@@ -52,9 +52,7 @@ describe("reading the pay stub", () => {
       payFrequency: "semimonthly",
     });
     expect(latest.openEnrollment).toEqual({ start: "2026-11-02", end: "2026-11-13" });
-    expect(demoPaystubs(new Date("2026-12-01T12:00:00Z"))[0].openEnrollment?.end).toBe(
-      "2027-11-13",
-    );
+    expect(demoPaystubs("2026-12-01")[0].openEnrollment?.end).toBe("2027-11-13");
     expect(yearlyPay(latest)).toBe(8_640_000);
   });
 

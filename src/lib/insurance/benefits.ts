@@ -12,6 +12,7 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { todayOf } from "@/lib/today";
 import { payrollFor, type Paystub } from "./payroll";
 
 // Benefits through work (spec step 150): found from the person's pay-stub deductions, and
@@ -88,7 +89,7 @@ export async function benefitsFromPayroll(
 ): Promise<number> {
   const payroll = await payrollFor(userId, { client });
   if (!payroll) return 0;
-  const [stub] = await payroll.paystubs(userId, { now });
+  const [stub] = await payroll.paystubs(userId, { today: await todayOf(userId, { client, now }) });
   if (!stub) return 0;
   const db = scopedFor(userId, client);
   const known = await db.employerBenefits.findMany({
@@ -258,7 +259,9 @@ export async function answerQuestion(
   if (nextQuestion(benefits) !== question)
     throw new BenefitError("That one's already been answered.");
   const payroll = await payrollFor(userId, { client });
-  const [stub] = payroll ? await payroll.paystubs(userId, { now }) : [];
+  const [stub] = payroll
+    ? await payroll.paystubs(userId, { today: await todayOf(userId, { client, now }) })
+    : [];
   const employer = stub?.employer ?? benefits[0]?.employer ?? "Your employer";
   const pay = stub ? yearlyPay(stub) : null;
   const yes = answer === "1x" || answer === "2x" || answer === "yes";
@@ -300,6 +303,8 @@ export async function openEnrollmentAtWork(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<{ employer: string; start: string; end: string } | null> {
   const payroll = await payrollFor(userId, { client });
-  const [stub] = payroll ? await payroll.paystubs(userId, { now }) : [];
+  const [stub] = payroll
+    ? await payroll.paystubs(userId, { today: await todayOf(userId, { client, now }) })
+    : [];
   return stub?.openEnrollment ? { employer: stub.employer, ...stub.openEnrollment } : null;
 }
