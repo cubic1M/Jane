@@ -288,6 +288,10 @@ export function ImportForm({
           onChange={() => {
             setPreview(null);
             setPickers({});
+            // New files start the next upload: the last one's "Saved 58 transactions" goes, so the
+            // page doesn't speak of two uploads at once (debugger 11-16, a card then checking on a
+            // phone). A balance it still asked for is asked again under "Your accounts".
+            setSaved(null);
           }}
           className="text-sm file:mr-3 file:rounded-full file:border-0 file:bg-zinc-100 file:px-4 file:py-2 file:font-semibold dark:file:bg-zinc-800"
         />
