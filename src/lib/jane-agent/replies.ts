@@ -610,9 +610,13 @@ export function spendingReply(
 }
 
 // "What's due?": the coming-up list from Today, bills and deadlines together.
+// drawn: the rows go under the answer as a timeline too (spec step 94), so the words give how many
+// and how much, not the same list again (debug 2, 11-16: four bills listed, then the same four
+// drawn below them).
 export function comingUpReply(
   intent: Extract<Intent, { kind: "coming_up" }>,
   rows: ComingUpRow[],
+  { drawn = false }: { drawn?: boolean } = {},
 ): Reply {
   const shown = intent.days === null ? rows : rows.filter((r) => r.daysLeft <= intent.days!);
   const open = [openLink("See bills", "/bills")];
@@ -624,10 +628,8 @@ export function comingUpReply(
     (r) =>
       `- ${dayLabel(r.date)} (${inDays(r.daysLeft)}): ${r.label}${r.amountCents !== null ? `, ${fmt(r.amountCents)}` : ""}`,
   );
-  return reply(
-    `${things(shown.length)} ${shown.length === 1 ? "is" : "are"} ${span}${total > 0 ? `, ${fmt(total)} in all` : ""}.\n${lines.join("\n")}`,
-    open,
-  );
+  const head = `${things(shown.length)} ${shown.length === 1 ? "is" : "are"} ${span}${total > 0 ? `, ${fmt(total)} in all` : ""}.`;
+  return reply(drawn ? head : `${head}\n${lines.join("\n")}`, open);
 }
 
 // "Safe to spend": the number on Today.
