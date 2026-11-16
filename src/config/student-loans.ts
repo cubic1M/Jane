@@ -235,3 +235,15 @@ export const FORGIVEN_TAX = {
     text: "Forgiveness under an income-driven plan is generally taxed as income federally from 2026, and some states tax it too.",
   },
 } as const;
+
+// Who a federal loan payment goes to, read from the person's own statement when no loan account
+// is on file (an upload person's usual case). The four Direct Loan servicers are billers.ts's
+// "(federal)" rows; Education's servicer page (edfinancial.studentaid.gov/Finding-Your-Student-Loans,
+// checked 2026-11-16) also names ECSI (Perkins) and Default Resolution Group (defaulted loans),
+// neither a Direct Loan in repayment, so neither gets the cut. Third-party lists add CRI, which
+// that page doesn't name: left out until studentaid.gov does. "DEPT EDUCATION" is how some banks
+// print a federal servicer's pull (billers.ts's match notes). MOHELA also services private loans
+// (SoFi, ex-Navient), so a payment says "a federal servicer", never "a federal loan".
+export const FEDERAL_PAYMENT_WORDS = ["DEPT EDUCATION", "DEPT OF ED", "US DEPT ED"] as const;
+// A payment line that already says autopay: the person is enrolled.
+export const AUTOPAY_WORDS = /\bAUTO[ -]?(?:PAY(?:MENT)?|PYMT|PMT|DEBIT)\b/i;
