@@ -29,7 +29,7 @@ import { listTransfers } from "@/lib/money-movement/transfers";
 import { assetPrompts, promptHref } from "@/lib/owned-assets";
 import { loansSeenWithoutBalance } from "@/lib/net-worth-history";
 import type { MoneyTreeInput } from "./money";
-import { SAID_YES } from "./tree";
+import { BEST_FIRST, SAID_YES } from "./tree";
 
 // What the Spending & bills tree reads (docs/design/area-pages.md), from the same code as each
 // page it gathers: the bills forecast (/bills), recurring charges (/subscriptions), budgets and
@@ -128,7 +128,7 @@ export async function loadMoneyArea(
         actionLabel: true,
         actionHref: true,
       },
-      orderBy: { score: "desc" },
+      orderBy: [...BEST_FIRST],
     }),
     openBooks(userId, { client }),
     listTransfers(userId, { client, now }),

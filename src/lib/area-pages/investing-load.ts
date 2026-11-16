@@ -14,7 +14,7 @@ import { brokerageAsks } from "@/lib/investing/brokerage-balance";
 import { loadInvestments } from "@/lib/investments/holdings";
 import { profileOf } from "@/lib/investments/profile";
 import { profileSummary } from "@/planning/investor-profile";
-import { SAID_YES } from "./tree";
+import { BEST_FIRST, SAID_YES } from "./tree";
 
 const PRACTICE_TOPICS: readonly string[] = Object.values(PRACTICE_TOPIC);
 
@@ -55,7 +55,7 @@ export async function loadInvestingArea(userId: string) {
           actionLabel: true,
           actionHref: true,
         },
-        orderBy: { score: "desc" },
+        orderBy: [...BEST_FIRST],
       }),
     ]);
   // The practice portfolio and its ideas: demo advice only.
