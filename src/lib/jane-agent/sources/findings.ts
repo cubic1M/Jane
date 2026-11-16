@@ -1,4 +1,5 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
+import { FINDING_KIND_OF_TOPIC } from "@/config/suggestions";
 import { WORKED_MIN_SAMPLE, WORKED_QUIET_PER_RUN } from "@/config/worked";
 import { formatCents } from "@/lib/money";
 import { type Candidate, type MessageAction, openLink } from "../types";
@@ -122,8 +123,18 @@ export const findingsSource: MessageSource = {
         .map((k) => k.type),
     );
     const askedQuiet = new Map<string, number>();
+    // A kind of finding one of the day's suggestions is about (FINDING_KIND_OF_TOPIC) is said by
+    // that suggestion: one card, not four (debug 2, 11-16: "Cancel subscriptions you don't use,
+    // save $178/yr" and "Review your Spotify / Netflix / Planet Fitness subscription" together).
+    const suggested = new Set(
+      (snapshot.suggestions ?? []).flatMap((s) => {
+        const kind = FINDING_KIND_OF_TOPIC[s.topic as keyof typeof FINDING_KIND_OF_TOPIC];
+        return kind ? [kind] : [];
+      }),
+    );
     return [...snapshot.findings]
       .filter((finding) => !askedByChange.has(finding.findingId))
+      .filter((finding) => !suggested.has(finding.type))
       .filter((finding) => !(shopsInsurance && finding.type === "insurance_reshop"))
       .sort(byPriority(snapshot))
       .filter((finding) => {
