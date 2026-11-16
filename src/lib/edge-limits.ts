@@ -22,6 +22,8 @@ import {
 type EdgeRequest = {
   method: string;
   pathname: string;
+  // The whole address, for a redirect: Next.js refuses a relative one from the proxy.
+  url?: string;
   headers: Headers;
   cookies: { get(name: string): { value: string } | undefined };
 };
@@ -81,8 +83,16 @@ export function edgeChecks(request: EdgeRequest): Check[] {
 
 // The 429 for this kind of request. A server action's caller shows a text/plain body as the
 // error's message; API callers get JSON, like every other route's refusal.
-export function refusal(kind: EdgeKind, result: RateResult): NextResponse {
+export function refusal(kind: EdgeKind, result: RateResult, url?: string): NextResponse {
   const headers = { "Retry-After": String(result.retryAfterSeconds) };
+  // A sign-in link or Google's way back is a page the person opened: the sign-in page says why,
+  // not a JSON body (debug 3, 11-16). The link isn't used up, so it still works after the wait.
+  if (kind === "authCallback" && url) {
+    return NextResponse.redirect(new URL("/login?error=TooManyRequests", url), {
+      status: 303,
+      headers,
+    });
+  }
   if (kind === "action" || kind === "page") {
     return new NextResponse(TOO_MANY_MESSAGE, {
       status: 429,
@@ -138,5 +148,5 @@ export async function edgeLimit(
     });
     return null;
   }
-  return result.ok ? null : refusal(edgeKind(request)!, result);
+  return result.ok ? null : refusal(edgeKind(request)!, result, request.url);
 }
