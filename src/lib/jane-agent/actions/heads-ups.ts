@@ -1,7 +1,8 @@
 import { markAlertRead } from "@/lib/alerts";
 import { markDeadlineDone } from "@/lib/deadlines";
 import { startOfTomorrow } from "../snooze";
-import { ChatActionError, answeredElsewhere, type ActionHandler } from "./handler";
+import { UNDO_SNOOZE } from "@/config/put-away";
+import { ChatActionError, answeredElsewhere, putAwayUndo, type ActionHandler } from "./handler";
 import { timezoneOf } from "@/lib/today";
 
 // Buttons on Jane's heads-ups (spec step 83), through the pages' own code: "Mark done" on a
@@ -39,10 +40,11 @@ export const alertGotIt: ActionHandler = {
 
 // Hidden until the start of the person's tomorrow; Jane's brain brings it back then if it
 // still applies (src/lib/jane-agent/brain.ts), never before.
+// It can be brought back at once from the line left where its card was (undo.snooze).
 export const snooze: ActionHandler = {
   id: "snooze",
   on: "open",
-  async run({ userId, action, client, now }) {
+  async run({ userId, message, action, client, now }) {
     // Users have their own helpers, so a read of this one column by id.
     const timezone = await timezoneOf(userId, { client });
     return {
@@ -50,6 +52,7 @@ export const snooze: ActionHandler = {
       answeredWith: action.label,
       note: "OK. I'll bring it up again tomorrow.",
       snoozedUntil: startOfTomorrow(now, timezone),
+      ...putAwayUndo(message, UNDO_SNOOZE, now),
     };
   },
 };

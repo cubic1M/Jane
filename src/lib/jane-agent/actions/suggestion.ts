@@ -2,9 +2,12 @@ import { parsePracticeIdeaId } from "@/config/practice-suggestions";
 import { PRACTICE_STEP_LABEL, STEP_LINK_LABEL } from "@/config/suggestion-step";
 import { answerIdeaHere } from "@/lib/practice/ideas-view";
 import { SuggestionError, answerSuggestion, explainSuggestion } from "@/lib/suggestions";
+import { snapshotBeforeNo } from "@/lib/suggestion-take-back";
+import { UNDO_NEVER } from "@/config/put-away";
 import {
   ChatActionError,
   answeredElsewhere,
+  putAwayUndo,
   type ActionContext,
   type ActionHandler,
 } from "./handler";
@@ -36,6 +39,12 @@ function handler(id: "suggestion.yes" | "suggestion.no", answer: "yes" | "no"): 
           : null;
         if (parsePracticeIdeaId(key) && !practice)
           throw answeredElsewhere("That practice idea has already moved on.");
+        // A no can be taken back from the line left where its card was: what it changes is
+        // read first (src/lib/suggestion-take-back.ts).
+        const before =
+          !practice && answer === "no"
+            ? await snapshotBeforeNo(context.userId, key, { client: context.client })
+            : null;
         const out = practice
           ? { actionHref: practice.href }
           : await answerSuggestion(context.userId, key, answer, options);
@@ -59,6 +68,9 @@ function handler(id: "suggestion.yes" | "suggestion.no", answer: "yes" | "no"): 
           : {
               answeredWith: context.action.label,
               note: "OK, I won't bring that up again.",
+              ...(before
+                ? putAwayUndo(context.message, UNDO_NEVER, context.now, { undoNo: before })
+                : {}),
             };
       } catch (error) {
         if (error instanceof SuggestionError) throw answeredElsewhere(error.message);

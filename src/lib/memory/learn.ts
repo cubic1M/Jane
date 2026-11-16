@@ -94,6 +94,9 @@ const topicWords = (topic: string) =>
     .join(" ")
     .slice(0, 40);
 
+// The habit a suggestion's answer is evidence for (src/lib/suggestion-take-back.ts reads it too).
+export const habitKey = (topic: string) => `habit:${topic.slice(0, 60)}`;
+
 // What the person did with a suggestion or a card: over time, which kinds they act on and which
 // they pass on. Each answer is one piece of evidence; a habit flips only when the answers do.
 export async function learnFromAnswer(
@@ -108,7 +111,7 @@ export async function learnFromAnswer(
       userId,
       [
         {
-          key: `habit:${topic.slice(0, 60)}`,
+          key: habitKey(topic),
           value: acted ? "acts" : "passes",
           label: acted
             ? `You tend to act on ${words} suggestions`

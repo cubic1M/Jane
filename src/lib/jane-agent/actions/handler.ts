@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma/client";
+import { BRING_BACK_LABEL, PUT_AWAY_UNDO_MINUTES } from "@/config/put-away";
 import type { ActionId, ChatMessage, MessageAction, MessageRefs, MessageStatus } from "../types";
 
 // A button action (spec step 81): what one button on one of Jane's messages does. Each
@@ -61,6 +62,28 @@ export class ChatActionError extends Error {
 }
 
 export const linksOf = (actions: MessageAction[]) => actions.filter((a) => a.kind === "link");
+
+// A message put away (Not now, "Don't suggest this again") keeps the way back: its buttons, and
+// the one that brings it back as it was, for PUT_AWAY_UNDO_MINUTES (founder, 11-16).
+export function putAwayUndo(
+  message: ChatMessage,
+  undo: "undo.snooze" | "undo.never",
+  now: Date,
+  refs: Partial<MessageRefs> = {},
+): Pick<ActionOutcome, "refs" | "actions"> {
+  return {
+    refs: {
+      ...message.refs,
+      ...refs,
+      previousActions: message.actions,
+      undoUntil: new Date(now.getTime() + PUT_AWAY_UNDO_MINUTES * 60_000).toISOString(),
+    },
+    actions: [
+      { id: undo, label: BRING_BACK_LABEL, kind: "secondary" },
+      ...linksOf(message.actions),
+    ],
+  };
+}
 
 // Spec step 83: what a feature's own check says when the thing was already answered on its
 // page (or changed since the message), as a refusal that changes nothing.

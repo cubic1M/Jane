@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState, useSyncExternalStore, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { FloatingCards, type CardAnswer } from "@/components/floating-cards";
 import type { FloatingCardData } from "@/lib/floating-cards";
 import type { MessageView } from "@/lib/jane-agent/view";
@@ -16,6 +16,7 @@ import {
   withoutGone,
 } from "@/lib/dock-gone";
 import { AI_WRITTEN_LABEL, DEMO_ADVICE_LABEL } from "@/config/advice";
+import { afterAnswer, undoOf, withReturned, type Away } from "@/lib/put-away";
 import { STEP_LINK_LABELS } from "@/config/suggestion-step";
 import { noteDetailsOpened, tapButton, type MessageState } from "./actions";
 
@@ -156,6 +157,8 @@ export function SuggestionCards({
   docked = false,
   onAnswered,
   onShowing,
+  page,
+  onPutAway,
 }: {
   messages: MessageView[];
   // Home: start folded on a small phone, so the net worth shows first.
@@ -168,13 +171,32 @@ export function SuggestionCards({
   onAnswered?: () => void;
   // Told which card is showing.
   onShowing?: (id: string | null) => void;
+  // The page the stack is on, where it outlives a page (the dock): a new one takes the line away.
+  page?: string;
+  // Told when a put-away card's line shows or goes (the dock stays while it shows).
+  onPutAway?: (id: string | null) => void;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   // Never one the person dealt with in this tab, even if a load brought it back before its
   // answer reached the server (src/lib/dock-gone.ts).
   const gone = useSyncExternalStore(subscribeGone, goneSnapshot, goneServerSnapshot);
-  const messages = useMemo(() => withoutGone(given, gone.split(",")), [given, gone]);
+  // The card put away last, whose line brings it back (founder, 11-16), and those brought back:
+  // each at the place it had, even once a reload has left it out (src/lib/put-away.ts).
+  const [away, setAway] = useState<Away<MessageView> | null>(null);
+  const [returned, setReturned] = useState<readonly Away<MessageView>[]>([]);
+  const [pageSeen, setPageSeen] = useState(page);
+  if (page !== pageSeen) {
+    setPageSeen(page);
+    setAway(null);
+  }
+  useEffect(() => {
+    onPutAway?.(away?.item.id ?? null);
+  }, [away, onPutAway]);
+  const messages = useMemo(() => {
+    const ids = gone.split(",");
+    return withReturned(withoutGone(given, ids), returned, new Set(ids));
+  }, [given, gone, returned]);
   const [open, setOpen] = useState(messages.length);
   // Each card's last tap still on its way to the server, so a Revert follows its choice.
   const sending = useRef(new Map<string, Promise<unknown>>());
@@ -193,7 +215,7 @@ export function SuggestionCards({
     [messages],
   );
 
-  if (messages.length === 0) return null;
+  if (messages.length === 0 && !away) return null;
   return (
     <>
       <FloatingCards
@@ -206,6 +228,16 @@ export function SuggestionCards({
         docked={docked}
         onShowing={onShowing}
         unsent={unsent}
+        putAway={away?.item.id ?? null}
+        onBringBack={(id) => {
+          if (away?.item.id !== id) return;
+          const back = away;
+          setAway(null);
+          setReturned((now) => [...now.filter((r) => r.item.id !== id), back]);
+          unmarkGone(id);
+          setOpen((n) => n + 1);
+          if (back.undo) send(id, back.undo, back);
+        }}
         onDetails={(id) => {
           // A suggestion looked at: kept for its outcome, after the screen has opened it.
           if (messages.find((m) => m.id === id)?.suggestion) {
@@ -242,6 +274,15 @@ export function SuggestionCards({
             : how === "yes"
               ? (choice ?? card.yesAction)
               : card.notNowAction;
+          // Put away: a line in its place brings it back. Any other answer takes the last line.
+          setAway(
+            afterAnswer(
+              messages,
+              id,
+              how,
+              how === "yes" ? false : undoOf(actionId, { practice: !!message.cardDetails }),
+            ),
+          );
           if (!actionId) return;
           // The server work follows the screen: the card is already gone (or, for a choice,
           // already marked).
@@ -270,21 +311,37 @@ export function SuggestionCards({
     return sent;
   }
 
-  // An answer, or Revert or Done on a chosen card: then the page and the dock catch up.
-  function send(id: string, actionId: string) {
-    const message = messages.find((m) => m.id === id);
+  // An answer, Revert or Done on a chosen card, or bringing back a card put away (`back`): then
+  // the page and the dock catch up.
+  function send(id: string, actionId: string, back?: Away<MessageView>) {
+    const message = messages.find((m) => m.id === id) ?? back?.item;
     if (!message) return;
     const sent = queue(message, actionId);
     startTransition(async () => {
       const result = await sent.catch(() => null);
       // Never reached the server (debug 3: the network dropped): the card is the person's again,
       // in every stack, and says so; nothing was answered, so nothing reloads.
+      if (result === null && back) {
+        // Bringing it back never reached the server, where it is still put away: so it is here
+        // too, with its line to try again.
+        if (leaving) return;
+        markGone(id);
+        setReturned((now) => now.filter((r) => r.item.id !== id));
+        setAway(back);
+        return;
+      }
       if (result === null) {
         if (leaving) return;
         unmarkGone(id);
+        setAway((now) => (now?.item.id === id ? null : now));
         setUnsent((now) => (now.includes(id) ? now : [...now, id]));
         setOpen((n) => n + 1);
         return;
+      }
+      // The server wouldn't bring it back (too late): it stays put away, as the server has it.
+      if (back && result?.error) {
+        markGone(id);
+        setReturned((now) => now.filter((r) => r.item.id !== id));
       }
       // Yes ends on the step Jane prepared, not on the next card (find → prefill → yes).
       const step = actionId === ACTION_FOR.yes ? stepAfterYes(result) : null;

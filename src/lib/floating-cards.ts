@@ -141,6 +141,12 @@ export function putBack(
   return { gone, index, current: back[0] };
 }
 
+// Brought back from the line left where it was put away: waiting again and the one showing, even
+// if this stack never had it gone (it went from another stack, or came back in a reload).
+export function bringBack(state: CardsState, id: string): CardsState {
+  return { gone: state.gone.filter((g) => g !== id), index: state.index, current: id };
+}
+
 export function move(
   cards: readonly FloatingCardData[],
   state: CardsState,
