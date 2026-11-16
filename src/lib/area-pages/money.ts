@@ -3,6 +3,7 @@ import { shortMoney } from "@/lib/hub/view";
 import { owedAcross } from "@/insights/debts";
 import { notCounting, owedIsKnown, type Unbalanced } from "@/insights/net-worth";
 import { formatCents } from "@/lib/money";
+import { oncePerMoney } from "@/planning/suggestion-rank";
 import { monthLabel, dayLabel } from "@/lib/day-label";
 import { CATEGORY_UP_MIN_CENTS, CATEGORY_UP_MIN_SHARE } from "@/config/insights";
 import {
@@ -199,8 +200,9 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
     transactions: [],
   };
 
-  // Suggestions first in their branch: they're what Jane brings up.
-  for (const s of input.suggestions) {
+  // Suggestions first in their branch: they're what Jane brings up. Money two of them share (bank
+  // fees and the late fees among them) is listed once, as in the dock.
+  for (const s of oncePerMoney(input.suggestions, (x) => x.topic)) {
     const node = SUGGESTION_NODES[s.topic];
     if (!node) continue;
     // The books branch lists each problem itself.
