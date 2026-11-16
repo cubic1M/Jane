@@ -27,6 +27,9 @@ export type DetectionTransaction = {
   pfcPrimary: string | null;
   pfcDetailed: string | null;
   categorySource: "rule" | "llm" | "plaid" | "user" | "cash_income" | null;
+  // From an uploaded statement: the person's day it was uploaded, which bounds where the data
+  // reaches (src/profile/build.ts reachOf). Left out for a linked bank's.
+  uploadedOn?: string;
 };
 
 // A row from recurring_streams (Plaid's /transactions/recurring/get, from step 7).

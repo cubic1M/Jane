@@ -22,6 +22,8 @@ const GYM = Array.from({ length: 11 }, (_, i) => {
   const month = new Date(Date.UTC(2025, 11 + i, 2));
   return month.toISOString().slice(0, 10);
 });
+// Uploaded at 10am on Nov 2 in Los Angeles.
+const UPLOADED = new Date("2026-11-02T18:00:00Z");
 // 3pm on Dec 10 and on Dec 12 in Los Angeles: well past the data's end.
 const DEC_10 = new Date("2026-12-10T23:00:00Z");
 const DEC_12 = new Date("2026-12-12T23:00:00Z");
@@ -48,6 +50,7 @@ describe.runIf(url)("a year of data counted back from where it reaches", () => {
       description,
       amountCents,
       source: "csv" as const,
+      createdAt: UPLOADED,
     });
     await client.transaction.createMany({
       data: [
@@ -61,12 +64,14 @@ describe.runIf(url)("a year of data counted back from where it reaches", () => {
     await client.$disconnect();
   });
 
-  it("reaches a week past an old upload's newest line, and today for current data", async () => {
+  it("reaches where an upload's statement closes, a week past its newest line, however recent", async () => {
     const db = scopedFor(userId, client);
-    expect(await dataReach(db, "2026-12-10")).toBe("2026-10-31");
-    expect(await dataReach(db, "2026-11-20")).toBe("2026-11-20");
+    const LA = "America/Los_Angeles";
+    expect(await dataReach(db, "2026-12-10", LA)).toBe("2026-10-31");
+    // However recent (debug 2, 11-16): counted to today, its history grew a day each day.
+    expect(await dataReach(db, "2026-11-20", LA)).toBe("2026-10-31");
     // A year and more on, it's all older than the window: today, and none of it is read.
-    expect(await dataReach(db, "2027-12-01")).toBe("2027-12-01");
+    expect(await dataReach(db, "2027-12-01", LA)).toBe("2027-12-01");
   });
 
   it("keeps the same history on Dec 12 as on Dec 10", async () => {
