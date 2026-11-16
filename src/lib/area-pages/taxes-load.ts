@@ -169,7 +169,7 @@ export async function loadTaxesArea(userId: string, { now = new Date() }: { now?
       toCheck: forms.forms.filter((f) => f.document && !f.usable && f.document.decision === null)
         .length,
     },
-    tags: { checks: tags.checks.length },
+    tags: { checks: tags.checks.length, tagged: tags.tagged.length },
     records: {
       items: records.items.length,
       needs: records.items.reduce((n, i) => n + i.needs.length, 0),

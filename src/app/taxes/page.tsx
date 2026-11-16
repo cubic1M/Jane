@@ -7,14 +7,13 @@ import { AreaPage } from "@/components/area-page/area-page";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { ViewTracker } from "@/components/view-tracker";
 import { READ_ONLY_TAXES } from "@/config/read-only-beta";
-import { TAX_TAG_ORDER, TAX_TAGS, TAX_YEAR, whatJaneDoes } from "@/config/tax";
+import { TAX_YEAR, whatJaneDoes } from "@/config/tax";
 import { TAXES_ANCHORS, TOPICS, itemId, suggestionItemId } from "@/lib/area-pages/taxes";
 import { firstSentences } from "@/lib/area-pages/tree";
 import { formatCents } from "@/lib/money";
 import { conciergeMode } from "@/lib/concierge-mode";
 import { requireUser } from "@/lib/session";
 import { loadTaxesArea, type ProfileField } from "@/lib/area-pages/taxes-load";
-import { type TaxTagsView } from "@/lib/tax-organizer";
 import { byHerself } from "@/lib/jane-agent/replies-autopilot";
 import { type FieldStatus } from "@/planning/tax-profile";
 import { EstimateSection } from "./estimate-section";
@@ -31,6 +30,7 @@ import { GivingSection } from "./giving-section";
 import { FamilySection } from "./family-section";
 import { SideIncomeSection } from "./side-income-section";
 import { RecordsSection } from "./records-section";
+import { TagsSection } from "./tags-section";
 import { HomeSection } from "./home-section";
 import { type TaxDocumentsView } from "@/lib/tax-documents";
 import { COMPARED } from "@/planning/tax-document-check";
@@ -109,38 +109,6 @@ function ProfileCard({
               </Link>
             </>
           )}
-        </p>
-      )}
-    </section>
-  );
-}
-
-function TagsCard({ tags, year }: { tags: TaxTagsView; year: number }) {
-  return (
-    <section aria-labelledby="organised" className={CARD}>
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="organised" className="text-xl font-semibold">
-          Tagged for {year}
-        </h2>
-        <Link href="/taxes/tags" className={LINK}>
-          See and change tags
-        </Link>
-      </div>
-      <dl className="grid grid-cols-1 gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
-        {TAX_TAG_ORDER.map((tag) => (
-          <div key={tag} className="flex justify-between gap-2">
-            <dt className="text-zinc-600 dark:text-zinc-400">{TAX_TAGS[tag].label}</dt>
-            <dd className="whitespace-nowrap">{formatCents(tags.totals[tag].totalCents)}</dd>
-          </div>
-        ))}
-      </dl>
-      {tags.checks.length > 0 && (
-        <p className="text-sm font-medium">
-          Jane isn&apos;t sure about {tags.checks.length}{" "}
-          {tags.checks.length === 1 ? "merchant" : "merchants"}.{" "}
-          <Link href="/taxes/tags#checks" className={LINK}>
-            Check them
-          </Link>
         </p>
       )}
     </section>
@@ -298,7 +266,7 @@ async function TaxesContent({
   );
 
   details[itemId("records", "forms")] = <FormsCard forms={forms} year={year} />;
-  details[itemId("records", "tags")] = <TagsCard tags={tags} year={year} />;
+  details[itemId("records", "tags")] = <TagsSection tags={tags} year={year} />;
   details[itemId("records", "audit")] = <RecordsSection view={records} />;
 
   details[itemId("life", "side-income")] = <SideIncomeSection view={sideIncome} advice={advice} />;
