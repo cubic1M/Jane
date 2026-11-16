@@ -187,7 +187,10 @@ export async function loadMoneyArea(
       name: f.accountName,
       // Today's balance: a statement's is walked forward to today, so it's an estimate.
       startCents: f.todayCents,
-      ...(f.startOn !== input.asOf ? { estimated: true } : {}),
+      // With the statement's own balance and day, as /bills says it (balanceLine).
+      ...(f.startOn !== input.asOf
+        ? { estimated: true, fromCents: f.startCents, fromOn: f.startOn }
+        : {}),
       lowCents: f.lowest.balanceCents,
       date: f.lowest.date,
     })),
