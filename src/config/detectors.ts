@@ -114,6 +114,10 @@ export const DETECTOR_RATES = {
   // a liability claim a car can face.
   rentersContentsCents: 3_000_000,
   autoLiabilityCents: 10_000_000,
+  // Asking whether a car is insured needs this many car signs in a year (gas, parking, tolls,
+  // upkeep), unless they told Jane they have one: a single gas-station charge can be a snack, or
+  // a borrowed or rented car (debugger 11-16: one Shell charge, "$100,000 risk at 19%").
+  autoCoverMinCarSigns: 3,
   // A hospital stay with no health cover.
   uninsuredStayCents: 2_700_000,
   // Long-term care: a typical year in a care home, and the years a couple near retirement

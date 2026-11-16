@@ -2,7 +2,7 @@ import { DETECTOR_RATES as R } from "@/config/detectors";
 import { RISK_ANNUAL_PROBABILITY as CHANCE } from "@/config/suggestions";
 import { formatCents } from "@/lib/money";
 import type { ProfileInput } from "@/profile/build";
-import { rateMonthsOf } from "@/profile/build";
+import { carSignCount, rateMonthsOf } from "@/profile/build";
 import { computeNeeds } from "@/lib/insurance/need/calculators";
 import { needInputFromProfile } from "@/lib/insurance/need/from-profile";
 import { HEALTH_YEAR_DETECTORS } from "./health-year";
@@ -97,6 +97,7 @@ const autoInsurance: Detector = {
     const car = profile.facts.has_car;
     const cover = profile.facts.insurance_auto;
     if (car.value !== true || cover.value !== false) return null;
+    if (car.source !== "told" && carSignCount(data) < R.autoCoverMinCarSigns) return null;
     // A car loan means the lender requires cover, so it exists somewhere Jane can't see: a
     // linked loan, or its payments in the statements (debugger 11-01: "ACH ALLY AUTO PAYMENT").
     if (data.accounts.some((a) => a.subtype === "auto")) return null;
