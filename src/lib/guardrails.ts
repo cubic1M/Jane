@@ -648,6 +648,11 @@ const LEGAL = [
   /\b(?:landlord|lender|servicer|collector|creditor|employer|insurer|they|he|she) (?:is|are) (?:legally )?(?:required|obligated) to\b/i,
   // Round 20 (11-13): "Your employer has to pay you for that time".
   /\b(?:employer|boss|landlord|lender|servicer|collector|creditor|insurer|company|bank|store|they|he|she) (?:has|have) to (?:pay|refund|reimburse|give|return|cover)(?: you| it| the| your)\b/i,
+  // Round 49 (11-15): fault and the other side's insurer ("You weren't at fault, so their insurance
+  // pays", "Their insurance has to cover your rental"), workers' comp, fraud charges said not owed,
+  // an LLC said to shield savings, and what a contractor has to do. A Geico payment or a reversed
+  // charge passes.
+  /\b(?:you|they|he|she|the other (?:driver|person|party|guy)|the driver)\s?(?:were|was|are|is|(?:'|’)re)(?:n(?:'|’)?t| not)? (?:\w+ )?at fault\b|\b(?:their|the other (?:driver|person|party|guy)(?:(?:'|’)s)?|his|her) (?:insurance|insurer|insurance company|carrier)\s+(?:(?:will|has to|must|should|is going to|needs to|(?:'|’)ll) )?(?:pays?|covers?|reimburses?)\b|\b(?:should|will|can|could|would|definitely) (?:\w+ )?(?:get|receive|collect|qualify for) workers(?:'|’)?\s?comp\w*\b|\b(?:won(?:'|’)?t|will not|don(?:'|’)?t|do not) (?:have to |need to )?(?:pay|owe|be (?:charged|responsible|liable)) (?:for )?(?:the |any |those |these )?(?:fraud(?:ulent)?|unauthori[sz]ed|scam) (?:charges?|transactions?|purchases?)\b|\b(?:llcs?|corporations?|s-?corps?)\b[^.!?]{0,15}\b(?:protects?|shields?|keeps? safe)\b[^.!?]{0,20}\b(?:assets|savings|house|home|money)\b|\b(?:contractor|builder|plumber|electrician|roofer|mechanic|repair shop|body shop|mover|moving company)s?\s+(?:legally )?(?:has to|have to|must|is required to) (?:finish|complete|redo|fix|repair|refund|honor|return|pay|cover|give)\b/i,
   // Round 48 (11-15): who inherits ("Your spouse will inherit everything automatically"), changing
   // child support ("You can lower your child support by asking the court"), what a company owes
   // ("The airline owes you compensation for the delay", "Airbnb has to refund you"), collecting
@@ -897,6 +902,9 @@ const GUARANTEE = [
   // "Filing a claim won't raise your rate"). A change the insurer announced ("Your premium will go up
   // $15.49 on Dec 1") passes.
   /\bpremiums? (?:will|is going to|won(?:'|’)?t|should) (?:\w+ )?(?:go (?:up|down)|drop|rise|increase|decrease|fall)\b(?! (?:to |by )?\$)|\b(?:filing|file|a claim|the claim|one claim|claims)\b[^.!?]{0,20}\b(?:will|won(?:'|’)?t|is going to|isn(?:'|’)?t going to|would(?:n(?:'|’)?t)?|shouldn(?:'|’)?t) (?:raise|increase|affect|hurt|change|spike) your (?:rate|premium|insurance)\b|\b(?:rate|premium)s? (?:will|would|is going to) (?:go up|rise|increase|spike|jump)\b[^.!?]{0,15}\bif you (?:file|make|submit|put in) (?:a |the |one )?claim\b|\b(?:your )?(?:insurance|car insurance|auto insurance|home insurance|renters insurance) (?:rate|premium)s? (?:will|is going to) (?:go (?:up|down)|drop|rise|increase|decrease|fall)\b(?! (?:to |by )?\$)/i,
+  // Round 49 (11-15): rates and a refund predicted ("Rates are going down in the spring", "Your
+  // refund will be bigger this year"). A rate the bank announced ("will go up to 29.99%") passes.
+  /\b(?:interest |mortgage |savings |cd |loan )?rates (?:are|is) (?:going|headed|set) (?:to )?(?:go )?(?:down|up|drop|fall|rise|climb)\b(?! (?:to |by )?(?:\$|\d))|\b(?:interest|mortgage) rates (?:will|should|(?:'|’)ll) (?:\w+ )?(?:fall|drop|go down|go up|rise|come down)\b(?! (?:to |by )?(?:\$|\d))|\brefund (?:will|is going to|(?:'|’)ll|should) be (?:a lot |much |way )?(?:bigger|larger|smaller|higher|lower|more|less)\b/i,
   // Round 48 (11-15): a mark said not to count ("Paid collections won't hurt your score anymore").
   // "This won't affect your credit score" and "Checking your score won't hurt your credit" pass.
   /\b(?:collections?|late payments?|charge-?offs?|medical debts?|the (?:collection|late payment|charge-?off|inquiry)|closing (?:it|the card|the account))\s+(?:won(?:'|’)?t|will not|doesn(?:'|’)?t|does not|don(?:'|’)?t|do not|no longer|can(?:'|’)?t)\s+(?:\w+\s+)?(?:hurt|affect|ding|lower|count against|matter (?:to|for))\s+(?:your )?(?:credit(?: score| report)?|score|report)\b/i,
