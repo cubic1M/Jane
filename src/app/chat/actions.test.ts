@@ -10,7 +10,10 @@ vi.mock("@/lib/session", () => ({
   requireUser: vi.fn(async () => ({ id: "u1", email: "alex@example.com" })),
 }));
 vi.mock("@/lib/agent/run", () => ({ runAgentNow: vi.fn(), runQueuedFor: vi.fn() }));
-vi.mock("@/lib/jane-agent/open", () => ({ timezoneOf: vi.fn(async () => "America/New_York") }));
+vi.mock("@/lib/today", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/today")>()),
+  timezoneOf: vi.fn(async () => "America/New_York"),
+}));
 vi.mock("@/lib/concierge-mode", () => ({
   conciergeMode: vi.fn(async () => true),
   onSampleDataOnly: vi.fn(async () => false),

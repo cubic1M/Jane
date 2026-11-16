@@ -17,7 +17,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { dayLabel } from "@/lib/day-label";
 import { appBase } from "@/lib/digest/links";
-import { localDate } from "@/lib/today";
+import { localDate, timezoneOf } from "@/lib/today";
 import { formatCents } from "@/lib/money";
 import { loadAuditRecords } from "@/lib/audit-records";
 import { loadEquityTax, type EquityTaxView } from "@/lib/equity-tax";
@@ -173,14 +173,14 @@ export async function loadAccountantPage(
 ): Promise<AccountantPageView> {
   const estimate = loaded?.estimate ?? (await loadTaxEstimate(userId, { client, now }));
   const db = scopedFor(userId, client);
-  const [links, notes, comp, questions, user] = await Promise.all([
+  const [links, notes, comp, questions, timezone] = await Promise.all([
     db.accountantLinks.findMany({ orderBy: [{ createdAt: "desc" }, { id: "asc" }] }),
     db.accountantNotes.findMany({ orderBy: [{ createdAt: "desc" }, { id: "asc" }] }),
     loadComplexity(userId, { client, now, loaded: loaded && { ...loaded, estimate } }),
     withQuestions ? loadQuestions(userId, estimate.year, { client, now }) : Promise.resolve([]),
-    scopedFor(userId, client).me.findUnique({ where: { id: userId }, select: { timezone: true } }),
+    timezoneOf(userId, { client }),
   ]);
-  const dayOf = (at: Date) => localDate(at, user?.timezone);
+  const dayOf = (at: Date) => localDate(at, timezone);
   const views = links.map((l) => ({
     id: l.id,
     label: l.label,
@@ -354,11 +354,8 @@ export async function viewByToken(
   const userId = link.userId;
   // A note's day is the client's own, as on their accountant page (not UTC's): only the day
   // reaches the accountant, not the timezone.
-  const owner = await scopedFor(userId, client).me.findUnique({
-    where: { id: userId },
-    select: { timezone: true },
-  });
-  const noteDay = (at: Date) => localDate(at, owner?.timezone);
+  const timezone = await timezoneOf(userId, { client });
+  const noteDay = (at: Date) => localDate(at, timezone);
   const estimate = await loadTaxEstimate(userId, { client, now });
   const year = estimate.year;
   const [pack, docs, records, questions, comp, notes] = await Promise.all([

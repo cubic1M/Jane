@@ -10,7 +10,7 @@ import { openBooks } from "@/lib/books";
 import { loadNetWorthInputs } from "@/lib/net-worth-history";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { localDate } from "@/lib/digest/week";
+import { todayOf } from "@/lib/today";
 import { monthlyReportFor } from "@/lib/monthly-report";
 import { storedReport } from "@/lib/monthly-report-store";
 import {
@@ -136,11 +136,7 @@ export async function runMonthClose(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<"closed" | "waiting" | "none"> {
-  const user = await scopedFor(userId, client).me.findUnique({
-    where: { id: userId },
-    select: { timezone: true },
-  });
-  const today = localDate(now, user?.timezone);
+  const today = await todayOf(userId, { client, now });
   if (Number(today.slice(8, 10)) < MONTH_CLOSE_DAY) return "none";
   const month = previousMonth(today);
   const db = scopedFor(userId, client);

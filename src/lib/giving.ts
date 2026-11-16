@@ -10,7 +10,7 @@ import { donorFundPartnerFor } from "@/lib/donor-fund";
 import { loadInvestmentTaxes } from "@/lib/investment-taxes";
 import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
 import { loadTaxTags } from "@/lib/tax-organizer";
-import { localDate } from "@/lib/today";
+import { localDate, timezoneOf } from "@/lib/today";
 import { givingOptions, needsReceipt, type GivingOption } from "@/planning/giving";
 import { DAY_MS, isoDay as iso } from "@/lib/dates";
 
@@ -64,7 +64,7 @@ export async function loadGiving(
     : await Promise.all([loadTaxEstimate(userId, { client, now }), adviceMode(userId, { client })]);
   const year = estimate.year;
   const db = scopedFor(userId, client);
-  const [tags, lastYear, profile, investments, user] = await Promise.all([
+  const [tags, lastYear, profile, investments, timezone] = await Promise.all([
     loadTaxTags(userId, year, { client }),
     loadTaxTags(userId, year - 1, { client }),
     db.taxProfiles.findFirst({
@@ -77,7 +77,7 @@ export async function loadGiving(
       },
     }),
     advice ? loadInvestmentTaxes(userId, year, { client, now }) : null,
-    scopedFor(userId, client).me.findUnique({ where: { id: userId }, select: { timezone: true } }),
+    timezoneOf(userId, { client }),
   ]);
   const receipts = new Set(profile?.givingReceipts ?? []);
   const gifts: Gift[] = tags.tagged
@@ -121,7 +121,7 @@ export async function loadGiving(
         ? {
             name: profile.donorFundName,
             partner: profile.donorFundPartner,
-            openedOn: localDate(profile.donorFundOpenedAt, user?.timezone),
+            openedOn: localDate(profile.donorFundOpenedAt, timezone),
           }
         : null,
     dismissed: profile?.givingDismissedYear === year,
