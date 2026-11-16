@@ -1,10 +1,1 @@
-[
- {
-  "on": 1838,
-  "lane": "lane:beta-journey",
-  "task": "claude/dead-end-crawl",
-  "when": "merged",
-  "since": "2026-11-16T03:11:50.504Z",
-  "expires": "2026-11-19T03:11:50.504Z"
- }
-]
+[]
