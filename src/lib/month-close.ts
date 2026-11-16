@@ -1,3 +1,4 @@
+import { accountCopies, withoutCopies } from "@/lib/account-copies";
 import { MONTH_CLOSE_DAY } from "@/config/month-close";
 import { BOOKS_WORRYING_KINDS } from "@/config/books";
 import { nice } from "@/detectors/helpers";
@@ -45,25 +46,34 @@ const nextMonth = (month: string) => {
 };
 
 async function monthTxns(userId: string, month: string, client: PrismaClient): Promise<CloseTx[]> {
-  const rows = await scopedFor(userId, client).transactions.findMany({
-    where: {
-      date: {
-        gte: new Date(`${month}-01T00:00:00Z`),
-        lt: new Date(`${nextMonth(month)}-01T00:00:00Z`),
+  const db = scopedFor(userId, client);
+  // An account linked twice counts once (src/lib/account-copies.ts), as on the monthly report.
+  const [rows, copies] = await Promise.all([
+    db.transactions.findMany({
+      where: {
+        date: {
+          gte: new Date(`${month}-01T00:00:00Z`),
+          lt: new Date(`${nextMonth(month)}-01T00:00:00Z`),
+        },
+        pending: false,
       },
-      pending: false,
-    },
-    select: {
-      id: true,
-      date: true,
-      amountCents: true,
-      description: true,
-      pfcPrimary: true,
-      pfcDetailed: true,
-      categorySource: true,
-    },
-  });
-  return rows.map((r) => ({ ...r, date: r.date.toISOString().slice(0, 10) }));
+      select: {
+        id: true,
+        date: true,
+        amountCents: true,
+        description: true,
+        pfcPrimary: true,
+        pfcDetailed: true,
+        categorySource: true,
+        accountId: true,
+      },
+    }),
+    accountCopies(db),
+  ]);
+  return withoutCopies(rows, copies, (r) => r.accountId).map(({ accountId: _, ...r }) => ({
+    ...r,
+    date: r.date.toISOString().slice(0, 10),
+  }));
 }
 
 // The month's figures as they stand: the transactions, the books, net worth now and the report.

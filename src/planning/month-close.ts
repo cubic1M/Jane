@@ -1,4 +1,5 @@
 import { netWorth, notCounting } from "@/insights/net-worth";
+import { kindOf } from "@/insights/spending";
 import {
   CLOSE_TOP_CATEGORIES,
   UNCERTAIN_CATEGORIES,
@@ -56,31 +57,32 @@ export function uncertainOf(txns: readonly CloseTx[], month: string): CloseTx[] 
     .slice(0, UNCERTAIN_MAX);
 }
 
-const isSpending = (t: CloseTx) =>
-  t.amountCents > 0 &&
-  !(t.pfcPrimary ?? "").startsWith("TRANSFER") &&
-  t.pfcDetailed !== "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT";
-
-// What the month came to, from its transactions.
+// What the month came to, from its transactions, counted as the Money page, Insights and the
+// monthly report count a month (kindOf, src/insights/spending.ts): refunds net against spending,
+// money moved between the person's own accounts is neither, and a month never goes below $0 (gate
+// B: the close counted refunds as nothing and income-tagged outflows as spending, so its "went
+// out" wasn't the monthly report's "spent" for the same month).
 export function monthFigures(
   txns: readonly CloseTx[],
   month: string,
 ): Pick<CloseFigures, "month" | "incomeCents" | "spendingCents" | "topCategories"> {
   const these = txns.filter((t) => inMonth(t, month));
-  const income = these
-    .filter((t) => t.amountCents < 0 && t.pfcPrimary === "INCOME")
-    .reduce((s, t) => s - t.amountCents, 0);
-  const spent = these.filter(isSpending);
+  const kinded = these.map((t) => ({ t, kind: kindOf({ ...t, pending: false }) }));
+  const income = kinded.filter((k) => k.kind === "income").reduce((s, k) => s - k.t.amountCents, 0);
   const byCategory = new Map<string, number>();
-  for (const t of spent) {
+  for (const { t } of kinded.filter((k) => k.kind === "spending")) {
     const c = t.pfcPrimary ?? "OTHER";
     byCategory.set(c, (byCategory.get(c) ?? 0) + t.amountCents);
   }
   return {
     month,
     incomeCents: income,
-    spendingCents: spent.reduce((s, t) => s + t.amountCents, 0),
+    spendingCents: Math.max(
+      0,
+      [...byCategory.values()].reduce((s, cents) => s + cents, 0),
+    ),
     topCategories: [...byCategory.entries()]
+      .filter(([, cents]) => cents > 0)
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
       .slice(0, CLOSE_TOP_CATEGORIES)
       .map(([category, cents]) => ({ category, cents })),
