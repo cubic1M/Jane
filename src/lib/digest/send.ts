@@ -101,7 +101,7 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
       },
     }),
     // For each finding's "% sure", as /report and /close say it.
-    findingSureFacts(db, now),
+    findingSureFacts(db, now, { client }),
     moneyFoundParts(userId, { client }),
     savedToDate(userId, { client }),
     db.digests.findFirst({

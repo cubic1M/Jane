@@ -33,11 +33,12 @@ import {
 } from "@/lib/report-state";
 import { isoDay } from "@/lib/dates";
 import { dayLabel } from "@/lib/day-label";
-import { monthsCovered, statementsEnd } from "@/profile/build";
+import { monthsCovered } from "@/profile/build";
 import { ShareButton } from "./share-button";
 import { cardFor } from "@/lib/share-card";
 import { isTrialUser } from "@/lib/trial-ids";
-import { todayOf } from "@/lib/today";
+import { timezoneOf, todayOf } from "@/lib/today";
+import { statementsReach } from "@/lib/data-reach";
 import { formatCents } from "@/lib/money";
 import { unseenCardPaymentsMonthly } from "@/lib/unseen-cards";
 import { SUGGESTED_UPLOAD_MONTHS } from "@/config/import";
@@ -97,17 +98,14 @@ async function ReportContent({
     orderBy: { createdAt: "desc" },
   });
   const found = parts.cents;
-  // The profile's own count (src/profile/build.ts), so every "N months of data" agrees.
-  // To the last day the statements reach, never past today, as the profile counts.
+  const [today, timezone] = await Promise.all([todayOf(user.id), timezoneOf(user.id)]);
+  // The profile's own count (src/profile/build.ts), so every "N months of data" agrees: on the
+  // person's day, to the last day the statements reach, never past today.
   const months =
     read._min.date && read._max.date
-      ? monthsCovered(
-          isoDay(read._min.date),
-          statementsEnd(isoDay(read._max.date), isoDay(new Date())),
-        )
+      ? monthsCovered(isoDay(read._min.date), await statementsReach(db, today, timezone))
       : 0;
   const uploadDays = shortUploadDays(uploaded._min.date, uploaded._max.date);
-  const today = await todayOf(user.id);
   const toUnseenCards = await unseenCardPaymentsMonthly(db, today);
   const oldStatements = staleStatementsEnd(read._max.date, today);
   const transactions = accounts.reduce((sum, a) => sum + a.transactionCount, 0);
