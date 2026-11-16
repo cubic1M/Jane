@@ -559,12 +559,18 @@ export function spendingReply(
       `You spent ${fmt(matching.reduce((sum, t) => sum + t.amountCents, 0))} at ${merchantOf(matching[0])} ${when}.`,
       open,
     );
-  // Spec step 88: a merchant named word for word ("Uber") before the category it's in.
-  const byName = spentAt((name) => name.split(/[^a-z0-9&+']+/).includes(q));
+  const sub = matchSubcategory(intent.category);
+  const labels = [...new Set([...Object.values(CATEGORY_LABELS), UNCATEGORIZED])];
+  const category = matchCategory(intent.category, labels);
+  // Spec step 88: a merchant named word for word ("Uber") before the category it's in. A word
+  // that names a category is the category, unless it's the merchant's whole name (debugger 11-16:
+  // "how much did I spend on food" answered "$40.00 at Food S", a school lunch account).
+  const byName = spentAt((name) =>
+    sub || category ? name === q : name.split(/[^a-z0-9&+']+/).includes(q),
+  );
   if (byName.length > 0) return atMerchant(byName);
   // A part of a category by its own name ("groceries", "gas", "rent"), with the whole beside it,
   // when the data says which part each charge is.
-  const sub = matchSubcategory(intent.category);
   const subCents = sub && subcategorySpending(transactions, intent.month, sub);
   if (sub && subCents !== null) {
     const label = categoryLabel(primaryOf(sub));
@@ -575,8 +581,6 @@ export function spendingReply(
       open,
     );
   }
-  const labels = [...new Set([...Object.values(CATEGORY_LABELS), UNCATEGORIZED])];
-  const category = matchCategory(intent.category, labels);
   if (category) {
     const cents = categories.find((c) => c.category === category)?.cents ?? 0;
     const body = `You spent ${fmt(cents)} on ${category} ${when}.${versus(cents, spentIn(before, category))}`;
