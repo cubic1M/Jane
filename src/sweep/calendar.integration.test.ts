@@ -27,6 +27,8 @@ import { finishImport } from "@/lib/import/background";
 import { saveUpload } from "@/lib/import/upload";
 import { DEMO_TOKEN_PREFIX, linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
+import { refreshPrimer } from "@/lib/jane-agent/claude-tools";
+import { scanSuggestions } from "@/lib/suggestions";
 import { addDays } from "@/detection/units";
 import { STALE_AFTER_DAYS } from "@/profile/build";
 import { atLocal, changes, daysFrom, unexplained, type Change, type Flat } from "./diff";
@@ -41,7 +43,8 @@ import { snapshotAt } from "./snapshot";
 //   next must have a reason the sweep names (src/sweep/reasons.ts); 7pm must equal 3pm. An upload
 //   is frozen only, and compared from its first day: no new line can come, so nothing waits.
 // - daily: a sync each morning (data through yesterday, as for anyone with a bank), so paydays
-//   and month ends land in the data. 7pm must equal 3pm.
+//   and month ends land in the data, the nightly scan for suggestions after it, and a scan again
+//   at 7pm, as a sync landing then runs. 7pm must equal 3pm.
 // Slow (about a second a moment), so it runs nightly, not on each pull request:
 //   CALENDAR_SWEEP=1 npx vitest run src/sweep/calendar.integration.test.ts
 // Narrow it with SWEEP_PEOPLE=demo,renter SWEEP_WINDOWS=main SWEEP_MODES=frozen SWEEP_FROM=2026-11-30 SWEEP_DAYS=7, and
@@ -224,8 +227,19 @@ describe.runIf(on)("the calendar sweep (gate C)", () => {
                 const morning = atLocal(day, 8, ZONE);
                 vi.setSystemTime(morning);
                 await syncItem(itemId, { client, api: NO_PLAID, now: morning });
+                // The nightly scan, which runs before the person's day starts, and the chat's
+                // numbers saved after it (src/lib/controller.ts, its suggestions step).
+                await scanSuggestions(userId, { client, now: morning });
+                await refreshPrimer(userId, { client, now: morning });
               }
               const afternoon = await read(userId, atLocal(day, 15, ZONE));
+              // The day's picks stay the day's (debug 3, 11-16: on UTC's day a scan at 4pm in Los
+              // Angeles chose tomorrow's).
+              if (mode === "daily" && itemId) {
+                const scanned = atLocal(day, 19, ZONE);
+                vi.setSystemTime(scanned);
+                await scanSuggestions(userId, { client, now: scanned });
+              }
               const evening = await read(userId, atLocal(day, 19, ZONE));
               // For looking into a finding: every value at both hours, one file a day.
               if (process.env.SWEEP_DUMP === "1") {
