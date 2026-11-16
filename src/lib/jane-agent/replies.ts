@@ -576,7 +576,9 @@ export function spendingReply(
     const whole = categories.find((c) => c.category === label)?.cents ?? 0;
     const then = before === undefined ? undefined : subcategorySpending(transactions, before, sub);
     return reply(
-      `You spent ${fmt(subCents)} on ${sub.name} ${when}, of ${fmt(whole)} on ${label} in all.${versus(subCents, then ?? undefined)}`,
+      // The whole only when it's more than the part (debug 2, 11-16: "$147.36 on gas … of $147.36
+      // on Transportation in all").
+      `You spent ${fmt(subCents)} on ${sub.name} ${when}${whole > subCents ? `, of ${fmt(whole)} on ${label} in all` : ""}.${versus(subCents, then ?? undefined)}`,
       open,
     );
   }
