@@ -20,7 +20,8 @@ import {
   type Installment,
   type PlanSchedule,
 } from "@/planning/bnpl";
-import { isoDay, addDays } from "@/lib/dates";
+import { addDays } from "@/lib/dates";
+import { todayOf } from "@/lib/today";
 
 // Buy now, pay later under control (spec step 176). Every plan with its next installments
 // from the plan's own schedule, the ones the checking forecast doesn't count yet, a
@@ -70,7 +71,8 @@ export async function loadBnpl(
   userId: string,
   { client = defaultClient, now = new Date(), input: given, book: givenBook }: Options = {},
 ): Promise<Bnpl> {
-  const asOf = isoDay(now);
+  // The person's own day (src/lib/today.ts), not UTC's.
+  const asOf = await todayOf(userId, { client, now });
   const [book, input, advice] = await Promise.all([
     debtsOr(givenBook, userId, { client, now }),
     given ? Promise.resolve(given) : loadDetectionInput(userId, { client, now }),

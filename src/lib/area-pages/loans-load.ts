@@ -14,7 +14,7 @@ import { todayOf } from "@/lib/today";
 // the Loans page and for the home tree, so both show the same statuses.
 export async function loadLoansArea(userId: string, { now = new Date() }: { now?: Date } = {}) {
   const db = scopedFor(userId);
-  const book = await loadDebts(userId);
+  const book = await loadDebts(userId, { now });
   const [loans, linked, bnpl, suggestions, payoff, credit, review] = await Promise.all([
     db.accounts.findMany({
       where: { type: "loan" },
@@ -23,7 +23,7 @@ export async function loadLoansArea(userId: string, { now = new Date() }: { now?
     // Mortgages and car loans with a home or car linked (spec step 67).
     db.ownedAssets.findMany({ select: { loanAccountId: true } }),
     // Spec step 176: the plans' installments over the next month.
-    loadBnpl(userId, { book }),
+    loadBnpl(userId, { now, book }),
     db.suggestions.findMany({
       where: { status: { in: [...SAID_YES] } },
       select: {
