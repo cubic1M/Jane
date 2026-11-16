@@ -1,8 +1,6 @@
-import { PAY_APP_NAMES } from "@/config/costly-borrowing";
-import { BANK_FEE_CATEGORIES } from "@/config/detection";
 import { formatCents } from "@/lib/money";
-import { bankFeesByAccount } from "@/planning/bank-fees";
-import { byDate, evidenceOf, inList, inLookback, isProcessorFee } from "../helpers";
+import { bankFeesByAccount, isBankFee } from "@/planning/bank-fees";
+import { byDate, evidenceOf, inLookback } from "../helpers";
 import { feeMonthsOf, lastMonths } from "./fee-totals";
 import type { Candidate } from "../types";
 import type { Rule } from "./rule";
@@ -13,22 +11,22 @@ import type { Rule } from "./rule";
 // (gate B: the report paced fees only under 200 days of history and the dock under a year, so
 // eight months of $12 fees read $96 a year here and $144 there).
 export const bankFees: Rule = (input) => {
-  const fees = inLookback(input).filter(
-    (t) =>
-      inList(t.pfcDetailed, BANK_FEE_CATEGORIES) &&
-      !isProcessorFee(t.description) &&
-      // A pay advance app's tip is the advance's cost (costly borrowing), not a bank fee.
-      !PAY_APP_NAMES.test(t.description),
-  );
-  const months = feeMonthsOf(input);
-  const counted = bankFeesByAccount(
-    fees.map((t) => ({
+  const cash = new Set(input.accounts.filter((a) => a.type === "depository").map((a) => a.id));
+  const rows = inLookback(input).map((t) => ({
+    t,
+    fee: {
       date: t.date,
       amountCents: t.amountCents,
       description: t.description,
       pfc: t.pfcDetailed,
       accountId: t.accountId,
-    })),
+      onCash: cash.has(t.accountId),
+    },
+  }));
+  const fees = rows.filter((r) => isBankFee(r.fee)).map((r) => r.t);
+  const months = feeMonthsOf(input);
+  const counted = bankFeesByAccount(
+    rows.map((r) => r.fee),
     months,
   );
   return counted.flatMap(({ accountId, seenCents, yearCents }): Candidate[] => {

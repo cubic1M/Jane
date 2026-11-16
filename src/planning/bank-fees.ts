@@ -15,7 +15,22 @@ export type FeeTx = {
   pfc: string | null;
   // Fees are paced per account, as the report's findings are (src/detection/rules/fee-totals.ts).
   accountId?: string;
+  // On a checking or savings account, which charges no late fee of its own: one paid from it is a
+  // loan's or a bill's (debugger 11-16: Nelnet's $14 read "fees on Chase checking"), the late-fee
+  // suggestion's to say. A card's own late fee is a fee on the card.
+  onCash?: boolean;
 };
+
+// A fee the bank itself charged, of the bank-fee categories.
+export function isBankFee(t: Pick<FeeTx, "description" | "pfc" | "onCash">): boolean {
+  return (
+    BANK_FEE_CATEGORIES.includes(t.pfc as never) &&
+    !PROCESSOR_FEE_PAYEE.test(t.description) &&
+    // A pay advance app's tip is the advance's cost (costly borrowing), not a bank fee.
+    !PAY_APP_NAMES.test(t.description) &&
+    !(t.onCash && t.pfc === "BANK_FEES_LATE_FEES")
+  );
+}
 export type BankFees = {
   // The fees seen, and a year's worth of them (equal with twelve months of data).
   seenCents: number;
@@ -40,13 +55,7 @@ export function bankFeesByAccount(
   transactions: readonly FeeTx[],
   monthsOfData: number,
 ): AccountFees[] {
-  const inFees = transactions.filter(
-    (t) =>
-      BANK_FEE_CATEGORIES.includes(t.pfc as never) &&
-      !PROCESSOR_FEE_PAYEE.test(t.description) &&
-      // A pay advance app's tip is the advance's cost (costly borrowing), not a bank fee.
-      !PAY_APP_NAMES.test(t.description),
-  );
+  const inFees = transactions.filter(isBankFee);
   const refunds = inFees.filter((t) => t.amountCents < 0);
   const used = new Set<FeeTx>();
   const reversed = (fee: FeeTx) => {

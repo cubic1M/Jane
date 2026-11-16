@@ -230,6 +230,12 @@ const OWE =
   /\bhow much (?:do|does|did) (?:i|we) (?:still )?owe\b|\bhow much debt\b|\bwhat do (?:i|we) owe (?:in total|altogether|overall)\b|\b(?:my )?total (?:debt|owed)\b|\bwhat (?:are|is) (?:all )?my (?:debts?|loans)\b|\b(?:list|show)(?: me)? (?:all )?my (?:debts|loans)\b|\ball my debts?\b/;
 // "… on my car", after a question about what's owed.
 const ON = /\b(?:on|for) (?:my |the |our )?(.+)$/;
+// Every debt, not one named "loans" (debugger 11-16: "I can't find "loans" among your debts").
+const ALL_DEBTS =
+  /^(?:everything|all|total|in total|(?:all )?(?:(?:my|our|the) )?(?:loans|debts|cards|credit cards))$/;
+// "How much is my car payment?": that loan, not what was spent on Transportation (debugger 11-16).
+const PAYMENT =
+  /\b(?:how much (?:is|are)|what(?:'s| is| are)) (?:my|our|the) (car|auto|truck|student loan)(?: loan)? payments?\b/;
 const PAID_OFF =
   /\bwhen (?:is|will|does|do|'s|are) (?:my |the |our )?(.+?) (?:be )?(?:paid off|paid down|paid for|done|finished|over)\b|\bwhen (?:do|will|can) (?:i|we) (?:finish paying|pay off|be done (?:with|paying)|be done paying off) (?:off )?(?:my |the |our )?(.+)$|\bpay ?off date (?:of|for|on) (?:my |the |our )?(.+)$/;
 const RATE =
@@ -605,16 +611,16 @@ export function parseDebtIntent(
   const paid = PAID_OFF.exec(text);
   if (paid) {
     const target = clean(paid[1] ?? paid[2] ?? paid[3] ?? "");
-    return target ? { kind: "debt_detail", target } : { kind: "debts" };
+    return target && !ALL_DEBTS.test(target) ? { kind: "debt_detail", target } : { kind: "debts" };
   }
+  const payment = PAYMENT.exec(text);
+  if (payment) return { kind: "debt_detail", target: payment[1] };
   const rate = RATE.exec(text);
   if (rate && clean(rate[1])) return { kind: "debt_detail", target: clean(rate[1]) };
   if (OWE.test(text)) {
     const on = ON.exec(text.slice(OWE.exec(text)!.index));
     const target = on ? clean(on[1]) : "";
-    return target && !/^(?:everything|all|total|in total)$/.test(target)
-      ? { kind: "debt_detail", target }
-      : { kind: "debts" };
+    return target && !ALL_DEBTS.test(target) ? { kind: "debt_detail", target } : { kind: "debts" };
   }
   return null;
 }
