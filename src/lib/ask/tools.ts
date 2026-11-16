@@ -10,11 +10,12 @@ import { CARD_PAYMENT_NAME, NON_SPENDING_PRIMARIES } from "@/config/detection";
 import { normalizeMerchant } from "@/data-sources/merchant";
 import { loadDetectionInput, loadTransactionsBetween } from "@/detection/input";
 import { comingUpBills } from "@/detection/forecast";
-import { addDays, isoDate } from "@/detection/units";
+import { addDays } from "@/detection/units";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { categoryLabel } from "@/insights/labels";
 import { primaryOf, SUBCATEGORIES, subcategorySpending } from "@/insights/subcategories";
-import { monthsEnding, spendingInsights } from "@/insights/spending";
+import { loadInsightTransactions } from "@/insights/load";
+import { spendingInsights } from "@/insights/spending";
 import { oneOffCharges, typicalMonthlySpending } from "@/insights/typical-month";
 import { ACTION_STATUS_LABELS } from "@/lib/action-status";
 import { db as defaultClient } from "@/lib/db";
@@ -233,20 +234,9 @@ export async function runAskTool(
 
     case "spending_by_category":
     case "monthly_totals": {
-      const months = monthsEnding(today, INSIGHT_MONTHS);
-      const rows = await db.transactions.findMany({
-        where: { date: { gte: new Date(`${months[0]}-01T00:00:00Z`) } },
-        select: {
-          date: true,
-          amountCents: true,
-          description: true,
-          merchantName: true,
-          pfcPrimary: true,
-          pfcDetailed: true,
-          pending: true,
-        },
-      });
-      const dated = rows.map((t) => ({ ...t, date: isoDate(t.date) }));
+      // The rows the Money page and Insights read: an account linked twice counted once (gate B:
+      // these read every row, so a bank linked again doubled the chat's spending and income).
+      const dated = await loadInsightTransactions(db, today, INSIGHT_MONTHS);
       const insights = spendingInsights(dated, { asOf: today, monthCount: INSIGHT_MONTHS });
       // Books QA: one-off costs, so an unusual month is said as one, not as the usual.
       const oneOffs = oneOffCharges(dated, today);

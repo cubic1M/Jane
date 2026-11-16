@@ -47,7 +47,9 @@ export type SpendingInsights = {
 const TOP_MERCHANTS = 10;
 const TOP_CHANGES = 5;
 
-function isMovingMoney(t: InsightTransaction): boolean {
+type Kinded = Pick<InsightTransaction, "pending" | "pfcPrimary" | "pfcDetailed" | "amountCents">;
+
+function isMovingMoney(t: Kinded): boolean {
   return (
     (t.pfcPrimary !== null &&
       (NON_SPENDING_PRIMARIES as readonly string[]).includes(t.pfcPrimary)) ||
@@ -58,7 +60,7 @@ function isMovingMoney(t: InsightTransaction): boolean {
 
 export type Kind = "income" | "spending" | "ignored";
 
-export function kindOf(t: InsightTransaction): Kind {
+export function kindOf(t: Kinded): Kind {
   if (t.pending || isMovingMoney(t)) return "ignored";
   if (t.pfcPrimary === "INCOME") return t.amountCents < 0 ? "income" : "ignored";
   // Money in with no category isn't a refund: an unknown deposit (pay the rules don't know, a
