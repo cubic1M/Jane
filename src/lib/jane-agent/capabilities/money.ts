@@ -9,7 +9,7 @@ import { netWorthReply } from "../replies-networth";
 import { storedReport } from "@/lib/monthly-report-store";
 import { reportReply } from "../replies-report";
 import type { Reply } from "../replies";
-import { AFFORD_USUAL_MONTHS } from "@/config/agent-chat";
+import { AFFORD_USUAL_MONTHS, CHAT_BLOCK_ROWS } from "@/config/agent-chat";
 import { INSIGHT_MONTHS } from "@/config/insights";
 import { loadInsightTransactions } from "@/insights/load";
 import { loadAffordNumbers } from "@/lib/afford";
@@ -138,12 +138,15 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     }
     case "coming_up": {
       const home = await homeSummary(userId, { client, now });
-      const answer = comingUpReply(intent, home?.comingUp ?? []);
-      // Spec step 94: the same rows, as a timeline.
+      // Spec step 94: the same rows, as a timeline; when it holds them all, the words don't list
+      // them again.
       const rows = (home?.comingUp ?? []).filter(
         (r) => intent.days === null || r.daysLeft <= intent.days,
       );
       const block = comingUpBlock(rows, intent.days === null ? "Coming up" : "Due this week");
+      const answer = comingUpReply(intent, home?.comingUp ?? [], {
+        drawn: block !== null && rows.length <= CHAT_BLOCK_ROWS,
+      });
       return block ? { ...answer, refs: { ...answer.refs, block } } : answer;
     }
     case "safe_to_spend": {
