@@ -96,7 +96,7 @@ function profileCards({ tax }: In): Candidate[] {
           card(
             "decision",
             {
-              body: `${PROFILE_INTRO} ${question.body}`,
+              body: `${question.body}\n${PROFILE_INTRO}`,
               refs: question.refs,
               actions: [...question.actions, snoozeButton()],
             },

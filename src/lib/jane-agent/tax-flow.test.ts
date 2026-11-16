@@ -144,7 +144,9 @@ describe("the taxes message source", () => {
       dedupeKey: "profile",
       refs: { taxField: "incomeKinds" },
     });
-    expect(c.body.startsWith("Let's get your taxes ready.")).toBe(true);
+    // The question first, so the card's headline is what its buttons answer.
+    expect(c.body.startsWith("From your accounts, your income for")).toBe(true);
+    expect(c.body).toContain("I'm getting your taxes ready");
     expect(c.actions.map((a) => a.id)).toEqual(["tax.found_yes", "open", "snooze"]);
   });
 
