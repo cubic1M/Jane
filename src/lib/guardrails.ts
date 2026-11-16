@@ -648,6 +648,10 @@ const LEGAL = [
   /\b(?:landlord|lender|servicer|collector|creditor|employer|insurer|they|he|she) (?:is|are) (?:legally )?(?:required|obligated) to\b/i,
   // Round 20 (11-13): "Your employer has to pay you for that time".
   /\b(?:employer|boss|landlord|lender|servicer|collector|creditor|insurer|company|bank|store|they|he|she) (?:has|have) to (?:pay|refund|reimburse|give|return|cover)(?: you| it| the| your)\b/i,
+  // Round 50 (11-16): what a utility or a store has to do ("Your utility can't shut off your power in
+  // winter", "Best Buy has to price-match", "The store has to take it back") and loans said forgivable
+  // ("You can get your loans forgiven by working for a nonprofit"). A bill or a return that posted passes.
+  /\b(?:utility|utilities|power company|electric company|gas company|water company|internet provider|phone company|store|retailer|seller)\s+(?:legally )?(?:can(?:'|’)?t|cannot|isn(?:'|’)?t allowed to|has to|have to|must|is required to)\s+(?:shut|cut|turn|disconnect|set up|offer|give|take|accept|honor|price-?match|refund|let)\b|\b(?:has|have) to price-?match\b|\b(?:has|have) to (?:take|accept) (?:it|them|this|that|the \w+) back\b|\b(?:get|have) (?:your |the |all |some of your )?(?:student )?loans? (?:forgiven|discharged|cancel(?:l)?ed|wiped (?:out|away))\b/i,
   // Round 49 (11-15): fault and the other side's insurer ("You weren't at fault, so their insurance
   // pays", "Their insurance has to cover your rental"), workers' comp, fraud charges said not owed,
   // an LLC said to shield savings, and what a contractor has to do. A Geico payment or a reversed
@@ -702,7 +706,7 @@ const LEGAL = [
   /\b(?:under|per|according to) (?:the )?(?:fcba|fair credit billing act|efta|electronic fund transfer act|reg(?:ulation)? [ez]|ecoa|equal credit opportunity act|fdcpa|fair debt collection practices act|fcra|fair credit reporting act|card act|tila|truth in lending act)\b|\b(?:the )?(?:fcba|fair credit billing act|efta|electronic fund transfer act|reg(?:ulation)? [ez]|fdcpa|fair debt collection practices act|fcra|fair credit reporting act|card act|tila|truth in lending act)\b[^.!?]{0,15}\b(?:protects|covers|gives|lets|requires|says|limits|caps|entitles)\b/i,
   /\b(?:federal|state) law (?:limits|caps|protects|requires|says|gives|lets|entitles|makes)\b|\bby law,? (?:they|you|the (?:bank|lender|collector|landlord|company|card company|issuer)|it) (?:must|have to|has to|can(?:'|’)?t|cannot|are required to|is required to)\b/i,
   /\byou have \d+ (?:business )?days to (?:dispute|contest|challenge|request (?:validation|verification)|cancel|rescind|send)\b/i,
-  /\byou(?:(?:'|’)re| are) (?:definitely )?eligible for (?:snap|food stamps|medicaid|medicare|wic|liheap|ssi|ssdi|unemployment|section 8|housing assistance|chip|tanf|disability|lifeline)\b|\byou (?:definitely )?qualify for (?:snap|food stamps|medicaid|medicare|wic|liheap|ssi|ssdi|unemployment|section 8|housing assistance|chip|tanf|disability|lifeline)\b/i,
+  /\byou(?:(?:'|’)re| are) (?:definitely )?eligible for (?:snap|food stamps|medicaid|medicare|wic|liheap|ssi|ssdi|unemployment|section 8|housing assistance|chip|tanf|disability|lifeline)\b|\byou (?:definitely )?qualify for (?:pslf|public service loan forgiveness|loan forgiveness|forgiveness|idr|income-driven repayment|snap|food stamps|medicaid|medicare|wic|liheap|ssi|ssdi|unemployment|section 8|housing assistance|chip|tanf|disability|lifeline)\b/i,
   // Round 18 (11-13): what someone can't do to you by law ("They can't garnish your wages", "Your
   // landlord can't evict you for that", "They can't take your car"), and money called a gift to
   // dodge tax ("Call it a gift so it isn't taxed").
@@ -902,6 +906,9 @@ const GUARANTEE = [
   // "Filing a claim won't raise your rate"). A change the insurer announced ("Your premium will go up
   // $15.49 on Dec 1") passes.
   /\bpremiums? (?:will|is going to|won(?:'|’)?t|should) (?:\w+ )?(?:go (?:up|down)|drop|rise|increase|decrease|fall)\b(?! (?:to |by )?\$)|\b(?:filing|file|a claim|the claim|one claim|claims)\b[^.!?]{0,20}\b(?:will|won(?:'|’)?t|is going to|isn(?:'|’)?t going to|would(?:n(?:'|’)?t)?|shouldn(?:'|’)?t) (?:raise|increase|affect|hurt|change|spike) your (?:rate|premium|insurance)\b|\b(?:rate|premium)s? (?:will|would|is going to) (?:go up|rise|increase|spike|jump)\b[^.!?]{0,15}\bif you (?:file|make|submit|put in) (?:a |the |one )?claim\b|\b(?:your )?(?:insurance|car insurance|auto insurance|home insurance|renters insurance) (?:rate|premium)s? (?:will|is going to) (?:go (?:up|down)|drop|rise|increase|decrease|fall)\b(?! (?:to |by )?\$)/i,
+  // Round 50 (11-16): coverage stated ("Your plan covers that") and a scam called genuine ("This text
+  // from your bank is legit", "That caller is really from the IRS", "It's safe to wire the money").
+  /(?<!\b(?:if|whether|what|how much|ask|see)\s(?:your |the |my )?(?:\w+ )?)\b(?:plan|policy|insurance|coverage|warranty|insurer)\s+(?:definitely |fully |probably |should )?covers? (?:that|it|this|the (?:surgery|visit|procedure|repair|damage|er|bill|claim|rental|accident))\b|\b(?:texts?|emails?|calls?|callers?|messages?|links?|sites?|websites?|letters?|voicemails?|invoices?|offers?|sellers?|buyers?)\b[^.!?]{0,30}\b(?:is|are|looks|seems|was) (?:totally |definitely |probably |100% )?(?:legit|legitimate|genuine|authentic|safe to (?:open|click|answer|trust))\b|\b(?:texts?|emails?|calls?|callers?|messages?|letters?|voicemails?)\b[^.!?]{0,15}\b(?:is|was|are|were) (?:really|actually|definitely|probably|truly) from\b|\b(?:it(?:'|’)s|it is|that(?:'|’)s|this is) (?:safe|fine|okay|ok) to (?:wire|zelle|send (?:them|the money|it)|give (?:them|out)|share|click|deposit (?:the|their|that) check)\b/i,
   // Round 49 (11-15): rates and a refund predicted ("Rates are going down in the spring", "Your
   // refund will be bigger this year"). A rate the bank announced ("will go up to 29.99%") passes.
   /\b(?:interest |mortgage |savings |cd |loan )?rates (?:are|is) (?:going|headed|set) (?:to )?(?:go )?(?:down|up|drop|fall|rise|climb)\b(?! (?:to |by )?(?:\$|\d))|\b(?:interest|mortgage) rates (?:will|should|(?:'|’)ll) (?:\w+ )?(?:fall|drop|go down|go up|rise|come down)\b(?! (?:to |by )?(?:\$|\d))|\brefund (?:will|is going to|(?:'|’)ll|should) be (?:a lot |much |way )?(?:bigger|larger|smaller|higher|lower|more|less)\b/i,
@@ -1125,17 +1132,28 @@ const CREDENTIAL_ASK =
   /\b(?:enter|give|send|share|provide|confirm|verify|type|tell|reply with|text|email|read out)\b(?:[^.!?\n]|\.\d){0,60}\b(?:passwords?|passcodes?|social security|ssn|one[- ]time (?:codes?|passwords?)|verification codes?|security codes?|cvv|cvc|pin|full (?:card|account) numbers?|seed phrases?|recovery phrases?)\b/i;
 const GIFT_CARD_PAYMENT =
   /\b(?:buy|pay|paying|send|purchase)\b(?:[^.!?\n]|\.\d){0,40}\bgift cards?\b/i;
+// The "not" has to come just before the ask, in the same clause ("Never share your PIN", "No real
+// bank will ask you to send your PIN"). Round 50 (11-16): a "not" anywhere in the sentence let "Send
+// your PIN to verify, it's not a scam" and "Buy gift cards so you don't get arrested" through.
 const SAYS_NOT_TO =
-  /\b(?:never|don'?t|do not|not|won'?t|shouldn'?t|nobody|no one|can'?t|cannot)\b/i;
+  /\b(?:never|(?:don|doesn|didn|won|wouldn|shouldn|isn|aren)(?:'|’)?t|do not|does not|will not|should not|not|nobody|no one|no (?:real |legit\w* |actual )?(?:bank|company|agency|business|one)|can(?:'|’)?t|cannot)\b[^,;:.!?\n]{0,45}$/i;
+
+// Every ask in the sentence, each judged by the words just before it.
+const asksIn = (sentence: string, ask: RegExp): boolean => {
+  for (let from = 0; from < sentence.length;) {
+    const found = ask.exec(sentence.slice(from));
+    if (!found) return false;
+    const at = from + found.index;
+    if (!SAYS_NOT_TO.test(sentence.slice(0, at))) return true;
+    from = at + 1;
+  }
+  return false;
+};
 
 export const asksForCredentials = (text: string): boolean =>
   text
     .split(/(?<=[.!?])\s+|\n+/)
-    .some(
-      (sentence) =>
-        !SAYS_NOT_TO.test(sentence) &&
-        (CREDENTIAL_ASK.test(sentence) || GIFT_CARD_PAYMENT.test(sentence)),
-    );
+    .some((sentence) => asksIn(sentence, CREDENTIAL_ASK) || asksIn(sentence, GIFT_CARD_PAYMENT));
 
 // Saying Jane did or will do something for someone. Nobody acts for a real account, and a person told
 // "I've cancelled it" stops looking. The prompt says so too; what's allowed mustn't depend on that.
