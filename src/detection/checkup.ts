@@ -127,6 +127,7 @@ const cashFacts = (f: Facts) => ({
     accountId: t.accountId,
     pfc: t.pfcDetailed,
     description: t.description,
+    ...(t.uploadedOn ? { uploadedOn: t.uploadedOn } : {}),
   })),
 });
 const cushion = (f: Facts) => cashCushionOf(cashFacts(f));
