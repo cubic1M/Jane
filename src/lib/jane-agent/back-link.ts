@@ -12,6 +12,11 @@ export function withFrom(href: string, messageId: string): string {
   if (!href.startsWith("/") || href.startsWith("//") || !MESSAGE_ID.test(messageId)) return href;
   const [path, hash] = href.split("#", 2);
   if (path === "/chat" || path.startsWith("/chat?") || path.startsWith("/chat/")) return href;
+  // A page that already uses ?from= for itself keeps it (debugger 11-16: the month close's
+  // "/transactions?from=2026-10-01&to=2026-10-31" got a second from=<message id>, and the page
+  // lost October and listed everything). It goes without the way back to the chat instead.
+  const query = path.split("?", 2)[1] ?? "";
+  if (new URLSearchParams(query).has(FROM_PARAM)) return href;
   const joined = `${path}${path.includes("?") ? "&" : "?"}${FROM_PARAM}=${messageId}`;
   return hash === undefined ? joined : `${joined}#${hash}`;
 }
