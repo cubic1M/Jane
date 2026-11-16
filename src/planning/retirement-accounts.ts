@@ -116,13 +116,15 @@ export function matchGap(input: {
 
 // The match left on the table at this year's pace: what the person has put in so far, scaled to
 // a full year, against full-year pay. The one calculation behind the brief's suggestion and
-// the chat's answer.
+// the chat's answer. "So far" is on the person's own calendar and ends at the newest day the
+// account's data covers (`through`), never past today: an account read weeks ago, or 7pm in Los
+// Angeles (already tomorrow in UTC), isn't a slower pace (gate C's calendar sweep, 11-15).
 export function matchPaceGap(
   plan: { payCents: number; matchRate: number; matchUpTo: number },
   employeeYtdCents: number,
-  now: Date,
+  { today, through }: { today: string; through: string | null },
 ) {
-  const monthsIn = now.getUTCMonth() + now.getUTCDate() / 31;
+  const monthsIn = yearShare(today, through) * 12;
   return {
     ...matchGap({
       payCents: plan.payCents,
@@ -132,4 +134,16 @@ export function matchPaceGap(
     }),
     matchRate: plan.matchRate,
   };
+}
+
+const DAY_MS = 86_400_000;
+
+// The share of `today`'s year gone by its end, or by `through` when the data ends earlier in the
+// same year. Pure.
+export function yearShare(today: string, through: string | null): number {
+  const year = Number(today.slice(0, 4));
+  const end = through && through < today && through.startsWith(`${year}-`) ? through : today;
+  const start = Date.UTC(year, 0, 1);
+  const days = (Date.parse(`${end}T00:00:00Z`) - start) / DAY_MS + 1;
+  return days / ((Date.UTC(year + 1, 0, 1) - start) / DAY_MS);
 }
