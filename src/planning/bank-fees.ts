@@ -49,11 +49,16 @@ export type AccountFees = {
   seenCents: number;
   yearCents: number;
   count: number;
+  // The months its own data covers, which its fees are paced over.
+  months: number;
 };
+
+// The months of data: one count for every account, or each account's own (feeMonthsOf).
+type Months = number | ((accountId: string | undefined) => number);
 
 export function bankFeesByAccount(
   transactions: readonly FeeTx[],
-  monthsOfData: number,
+  monthsOfData: Months,
 ): AccountFees[] {
   const inFees = transactions.filter(isBankFee);
   const refunds = inFees.filter((t) => t.amountCents < 0);
@@ -75,8 +80,11 @@ export function bankFeesByAccount(
   const fees = inFees.filter((t) => t.amountCents > 0).filter((fee) => !reversed(fee));
   // Other refunds of fees (part of one, or one we can't pair) still come off.
   const unpaired = refunds.filter((r) => !used.has(r));
-  const months = Math.min(12, Math.max(1, monthsOfData));
   return [...new Set(fees.map((t) => t.accountId))].sort().flatMap((account) => {
+    const months = Math.min(
+      12,
+      Math.max(1, typeof monthsOfData === "number" ? monthsOfData : monthsOfData(account)),
+    );
     const own = fees.filter((t) => t.accountId === account);
     const back = unpaired
       .filter((r) => r.accountId === account)
@@ -99,6 +107,7 @@ export function bankFeesByAccount(
         seenCents: seen,
         yearCents: paced ? Math.round((seen - yearly) * (12 / months)) + yearly : seen,
         count: own.length,
+        months,
       },
     ];
   });
@@ -106,11 +115,12 @@ export function bankFeesByAccount(
 
 export function bankFeesYear(
   transactions: readonly FeeTx[],
-  monthsOfData: number,
+  monthsOfData: Months,
 ): BankFees | null {
   const accounts = bankFeesByAccount(transactions, monthsOfData);
   if (accounts.length === 0) return null;
-  const months = Math.min(12, Math.max(1, monthsOfData));
+  // The months the fees were seen in: the longest of the accounts' own.
+  const months = Math.max(...accounts.map((a) => a.months));
   return {
     seenCents: accounts.reduce((s, a) => s + a.seenCents, 0),
     yearCents: accounts.reduce((s, a) => s + a.yearCents, 0),

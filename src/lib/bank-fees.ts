@@ -24,6 +24,6 @@ export async function loadBankFees(
       accountId: t.accountId,
       onCash: cash.has(t.accountId),
     })),
-    feeMonthsOf(input),
+    (accountId) => feeMonthsOf(input, [accountId]),
   );
 }

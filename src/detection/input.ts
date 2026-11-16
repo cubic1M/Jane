@@ -96,8 +96,12 @@ export async function loadInput(
       systemDb("Merchants are shared reference data, no one's own", client).merchant.findMany({
         select: { key: true, name: true, aliases: true, category: true },
       }),
-      // How far back the person's data goes, before the lookback window too.
-      db.transactions.aggregate({ where: { pending: false }, _min: { date: true } }),
+      // How far back each account's data goes, before the lookback window too.
+      db.transactions.groupBy({
+        by: ["accountId"],
+        where: { pending: false },
+        _min: { date: true },
+      }),
       // The day each uploaded account's balance is from: its statement's or the person's
       // (src/lib/import/balances.ts), so the forecast walks it forward to today.
       db.balanceSnapshots.groupBy({
@@ -128,12 +132,20 @@ export async function loadInput(
   const accounts = allAccounts.filter((a) => !copies.has(a.id));
   const transactions = allTransactions.filter((t) => !copies.has(t.accountId));
   const streams = allStreams.filter((s) => !copies.has(s.accountId));
+  const firstDays = first.flatMap((f): [string, string][] =>
+    f._min.date ? [[f.accountId, isoDate(f._min.date)]] : [],
+  );
 
   // Company names and categories from the merchant directory (detection/merchants.ts).
   return withDirectory(
     {
       asOf,
-      ...(first._min.date ? { historyFrom: isoDate(first._min.date) } : {}),
+      ...(firstDays.length > 0
+        ? {
+            historyFrom: firstDays.reduce((min, [, d]) => (d < min ? d : min), "9999-12-31"),
+            accountsFrom: Object.fromEntries(firstDays),
+          }
+        : {}),
       accounts: accounts.map((a) => ({
         id: a.id,
         name: a.name,

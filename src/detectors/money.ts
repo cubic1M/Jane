@@ -3,9 +3,9 @@ import { rateMonthsOf } from "@/profile/build";
 import { BANK_FEE_CATEGORIES, IDLE_CASH_MONTHS_OF_SPENDING } from "@/config/detection";
 import { bankFeesYear } from "@/planning/bank-fees";
 import { LOOKBACK_MONTHS } from "@/config/detection";
-import { dataEnd, feeMonthsOf, paceMonths } from "@/detection/rules/fee-totals";
+import { feeMonthsOf, paceOf } from "@/detection/rules/fee-totals";
 import { lookbackEnd } from "@/detection/helpers";
-import { daysBetween, monthsBefore } from "@/detection/units";
+import { monthsBefore } from "@/detection/units";
 import { idleCashOf, payingCardInterest } from "@/planning/idle-cash";
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { emergencyTarget } from "@/planning/emergency-fund";
@@ -125,7 +125,8 @@ const bankFees: Detector = {
     const cash = new Set(data.accounts.filter((a) => a.type === "depository").map((a) => a.id));
     const fees = bankFeesYear(
       data.transactions.map((t) => ({ ...t, onCash: cash.has(t.accountId) })),
-      feeMonthsOf({ transactions: data.transactions, asOf: data.today }),
+      (accountId) =>
+        feeMonthsOf({ transactions: data.transactions, asOf: data.today }, [accountId]),
     );
     // Any fee the report finds, as the report finds it (gate B, 11-16: one $35 overdraft was a
     // report finding and "Money found $35/yr" but under this card's old two-fee floor, so the
@@ -207,10 +208,6 @@ const cardInterest: Detector = {
     // the last LOOKBACK_MONTHS, at a year's pace when the history is short (debugger 10-30:
     // $141 in four months is the report's "$423 a year", but compared as $141 against a yearly
     // minimum it was no suggestion at all).
-    const first = data.transactions.reduce((min, t) => (t.date < min ? t.date : min), data.today);
-    const { short, months } = paceMonths(
-      daysBetween(first, dataEnd(data.transactions, data.today)),
-    );
     // The same year the pace and the report count: ending where the data does (gate C's calendar
     // sweep, 11-16: from today, "10 interest charges" became 9 as weeks passed with no sync).
     const cutoff = monthsBefore(lookbackEnd(data.transactions, data.today), LOOKBACK_MONTHS);
@@ -220,15 +217,25 @@ const cardInterest: Detector = {
     );
     const known = data.extras?.cardInterestYearCents;
     const unknown = new Set(data.extras?.cardInterestUnknownCards ?? []);
-    const pace = (cents: number) => (short ? Math.round((cents * 12) / months) : cents);
+    // Each card's charges at the pace of its own months, as the report's finding on it (debug 3,
+    // 11-16: a card's were spread over months only another account's statement covered).
+    const history = { transactions: data.transactions, asOf: data.today };
+    const pace = (list: typeof charges) =>
+      [...new Set(list.map((c) => c.accountId))].reduce((sum, card) => {
+        const own = paceOf(history, [card]);
+        const cents = outCents(list.filter((c) => c.accountId === card));
+        return sum + (own.short ? Math.round((cents * 12) / own.months) : cents);
+      }, 0);
+    // In words: the months the cards charging it cover.
+    const { short, months } = paceOf(history, new Set(charges.map((c) => c.accountId)));
     // Known cards from their balances and rates, plus the unknown ones' charges at their pace
     // (review 10-31: one unknown card made the known ones' $1,500 fall back to $490 seen).
     const yearly =
       typeof known === "number"
-        ? known + pace(outCents(charges.filter((c) => unknown.has(c.accountId))))
+        ? known + pace(charges.filter((c) => unknown.has(c.accountId)))
         : null;
     const seen = outCents(charges);
-    const total = yearly ?? pace(seen);
+    const total = yearly ?? pace(charges);
     if (total < R.interestMinCents) return null;
     return suggestion("debt", "card_interest", {
       title: "Pay down the card that is charging you interest",
@@ -381,10 +388,12 @@ const highCostLoans: Detector = {
     const count = kinds.reduce((s, k) => s + k.count, 0);
     if (count === 0 || cost <= 0) return null;
     // A year's worth, as the card shows it: at a year's pace when the history is short, as card
-    // interest does (debugger 11-16: "$5/yr" from "$4.89 in fees in 6 months").
-    const first = data.transactions.reduce((min, t) => (t.date < min ? t.date : min), data.today);
-    const { short, months } = paceMonths(
-      daysBetween(first, dataEnd(data.transactions, data.today)),
+    // interest does (debugger 11-16: "$5/yr" from "$4.89 in fees in 6 months). Over the months the
+    // cash accounts cover, where advances land and are paid back, not a card's (debug 3, 11-16).
+    const cash = data.accounts.filter((a) => !cards.has(a.id)).map((a) => a.id);
+    const { short, months } = paceOf(
+      { transactions: data.transactions, asOf: data.today },
+      cash.length > 0 ? cash : undefined,
     );
     const yearly = short ? Math.round((cost * 12) / months) : cost;
     const seen = `${formatCents(cost)} in fees in ${months === 1 ? "a month" : `${months} months`}`;

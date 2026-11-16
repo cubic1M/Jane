@@ -9,6 +9,7 @@ const { scoped } = vi.hoisted(() => ({
       // Where the data reaches (src/lib/data-reach.ts): nothing older, so it's today.
       findFirst: vi.fn(async () => null),
       aggregate: vi.fn(async () => ({ _min: { date: null } })),
+      groupBy: vi.fn(async () => []),
     },
     me: { findUnique: vi.fn(async () => ({ timezone: null })) },
     recurringStreams: { findMany: vi.fn() },
