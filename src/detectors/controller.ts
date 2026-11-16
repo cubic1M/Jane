@@ -1,7 +1,7 @@
 import { BOOKS_URGENT_KINDS, BOOKS_WORRYING_KINDS } from "@/config/books";
 import { previousMonth } from "@/insights/check-in";
 import { formatCents, formatWholeDollars } from "@/lib/money";
-import { uncertainOf } from "@/planning/month-close";
+import { selfEmployedFrom, uncertainOf } from "@/planning/month-close";
 
 import { isHiddenPage } from "@/config/hidden-pages";
 import { SHORT_MAX, type Detector, suggestion } from "./contract";
@@ -67,6 +67,10 @@ const monthClose: Detector = {
   detect({ profile, data }) {
     if (data.extras?.lastCloseStatus === "closed") return null;
     const month = previousMonth(profile.today);
+    // The detector sees deposits, not the tax profile: the deposits half of the signal.
+    const selfEmployed = selfEmployedFrom(
+      data.transactions.map((t) => ({ amountCents: t.amountCents, pfcDetailed: t.pfc })),
+    );
     const unsure = uncertainOf(
       data.transactions.map((t, i) => ({
         id: String(i),
@@ -78,6 +82,7 @@ const monthClose: Detector = {
         categorySource: null,
       })),
       month,
+      { selfEmployed },
     );
     if (unsure.length === 0) return null;
     const total = unsure.reduce((s, t) => s + t.amountCents, 0);
@@ -94,7 +99,7 @@ const monthClose: Detector = {
       worthKind: "risk",
       confidence: evidence("seen", Math.max(profile.months, 1), unsure.length, "unsure charges"),
       urgency: "soon",
-      why: `I close each month on the first of the next. In ${monthLabel(month, { long: true })}, ${names.join(" and ")} sit in a catch-all category, so I can't tell if ${unsure.length === 1 ? "it's" : "they're"} personal or a business cost. Confirm or fix ${unsure.length === 1 ? "it" : "them"} and the month closes, its figures kept.`,
+      why: `I close each month on the first of the next. In ${monthLabel(month, { long: true })}, ${names.join(" and ")} sit in a catch-all category, so I can't tell ${selfEmployed ? `if ${unsure.length === 1 ? "it's" : "they're"} personal or a business cost` : `what ${unsure.length === 1 ? "it was" : "they were"}`}. Confirm or fix ${unsure.length === 1 ? "it" : "them"} and the month closes, its figures kept.`,
       action: { label: "Confirm the charges", href: closeHref(month, unsure) },
     });
   },

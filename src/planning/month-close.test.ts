@@ -28,10 +28,11 @@ describe("the monthly close", () => {
         tx({ id: "f" }),
       ],
       "2026-09",
+      { selfEmployed: true },
     );
     expect(unsure.map((t) => t.id)).toEqual(["a", "b"]);
     const many = Array.from({ length: 9 }, (_, i) => tx({ id: `m${i}`, pfcDetailed: OTHER }));
-    expect(uncertainOf(many, "2026-09")).toHaveLength(UNCERTAIN_MAX);
+    expect(uncertainOf(many, "2026-09", { selfEmployed: true })).toHaveLength(UNCERTAIN_MAX);
   });
 
   it("counts what came in and went out, without transfers or card payments", () => {

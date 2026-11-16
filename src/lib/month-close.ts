@@ -1,3 +1,4 @@
+import { INCOME_KINDS } from "@/config/tax";
 import { accountCopies, withoutCopies } from "@/lib/account-copies";
 import { MONTH_CLOSE_DAY } from "@/config/month-close";
 import { BOOKS_WORRYING_KINDS } from "@/config/books";
@@ -15,6 +16,7 @@ import { monthlyReportFor } from "@/lib/monthly-report";
 import { storedReport } from "@/lib/monthly-report-store";
 import {
   monthFigures,
+  selfEmployedFrom,
   uncertainOf,
   type CloseFigures,
   type CloseTx,
@@ -130,6 +132,23 @@ const viewOf = (
   correctedAt: row.correctedAt?.toISOString() ?? null,
 });
 
+// Whether the close asks "personal or a business cost?": the freelancer tax path's signal, freelance
+// or gig money in or a tax profile that says so (src/planning/month-close.ts selfEmployedFrom).
+async function selfEmployedPerson(userId: string, client: PrismaClient): Promise<boolean> {
+  const db = scopedFor(userId, client);
+  const [freelance, profile] = await Promise.all([
+    db.transactions.findFirst({
+      where: {
+        amountCents: { lt: 0 },
+        pfcDetailed: { in: [...INCOME_KINDS.self_employed.categories] },
+      },
+      select: { amountCents: true, pfcDetailed: true },
+    }),
+    db.taxProfiles.findFirst({ select: { incomeKinds: true } }),
+  ]);
+  return selfEmployedFrom(freelance ? [freelance] : [], profile?.incomeKinds ?? []);
+}
+
 // Run with the day's agent run: closes last month once its first day has come. Returns what
 // happened: closed (with no taps), waiting (a question was needed) or none.
 export async function runMonthClose(
@@ -150,7 +169,9 @@ export async function runMonthClose(
   if (txns.length === 0) return "none";
   // The report carries plan against actual and what worked; make it now if it isn't yet.
   await monthlyReportFor(userId, { client, now }).catch(() => null);
-  const uncertain = uncertainOf(txns, month);
+  const uncertain = uncertainOf(txns, month, {
+    selfEmployed: await selfEmployedPerson(userId, client),
+  });
   if (uncertain.length > 0) {
     const figures = await figuresFor(userId, month, 0, client);
     const data = {

@@ -1,5 +1,7 @@
 import { netWorth, notCounting } from "@/insights/net-worth";
 import { kindOf } from "@/insights/spending";
+import { categorizeByRules } from "@/categorize/rules";
+import { INCOME_KINDS } from "@/config/tax";
 import {
   CLOSE_TOP_CATEGORIES,
   UNCERTAIN_CATEGORIES,
@@ -43,15 +45,43 @@ export type CloseFigures = {
 
 const inMonth = (t: CloseTx, month: string) => t.date.startsWith(month);
 
-// Charges in a catch-all category (or none) the person hasn't set, biggest first.
-export function uncertainOf(txns: readonly CloseTx[], month: string): CloseTx[] {
+// Someone paid for work done on their own, by the freelancer tax path's signal
+// (src/lib/self-employed.ts): freelance or gig money in, or their tax profile says so. Only they
+// are asked whether a charge was personal or a business cost.
+export function selfEmployedFrom(
+  txns: readonly Pick<CloseTx, "amountCents" | "pfcDetailed">[],
+  incomeKinds: readonly string[] = [],
+): boolean {
+  const freelance: readonly string[] = INCOME_KINDS.self_employed.categories;
+  return (
+    incomeKinds.includes("self_employed") ||
+    txns.some(
+      (t) => t.amountCents < 0 && t.pfcDetailed !== null && freelance.includes(t.pfcDetailed),
+    )
+  );
+}
+
+// A charge Jane's own rules name by its merchant (OpenAI, Adobe): Jane knows what it was.
+const namedByRules = (t: CloseTx) =>
+  categorizeByRules({ description: t.description, amountCents: t.amountCents, hints: {} }) !== null;
+
+// Charges in a catch-all category (or none) the person hasn't set, biggest first. For someone
+// self-employed, every one: the close asks whether each was personal or a business cost. For
+// anyone else, only what Jane can't name (manager 11-16, from the debugger's one-month walk: a
+// student with only a paycheck was asked "Openai $20.00: I'm not sure what it was").
+export function uncertainOf(
+  txns: readonly CloseTx[],
+  month: string,
+  { selfEmployed }: { selfEmployed: boolean },
+): CloseTx[] {
   return txns
     .filter(
       (t) =>
         inMonth(t, month) &&
         t.amountCents >= UNCERTAIN_MIN_CENTS &&
         t.categorySource !== "user" &&
-        (t.pfcDetailed === null || UNCERTAIN_CATEGORIES.includes(t.pfcDetailed)),
+        (t.pfcDetailed === null || UNCERTAIN_CATEGORIES.includes(t.pfcDetailed)) &&
+        (selfEmployed || !namedByRules(t)),
     )
     .sort((a, b) => b.amountCents - a.amountCents || a.id.localeCompare(b.id))
     .slice(0, UNCERTAIN_MAX);
