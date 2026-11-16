@@ -224,20 +224,32 @@ export function feesReply(fees: FeeSummary, advice: boolean): Reply {
       refs: {},
     };
   }
-  const parts = [
-    `Your investments cost about ${formatCents(fees.totalYearlyCents)} a year: ${formatCents(fees.fundsYearlyCents)} in fund costs`,
+  // Each figure once (debug 2, 11-16: "about $0.51 a year: $0.51 in fund costs", then "The
+  // costliest: … $0.51 a year" for one fund): the split only when there's more than fund costs,
+  // the list only with more than one fund.
+  const others = [
+    ...(fees.advisoryCents > 0 ? [`${formatCents(fees.advisoryCents)} in advisory fees`] : []),
+    ...(fees.accountFeesCents > 0 ? [`${formatCents(fees.accountFeesCents)} in account fees`] : []),
   ];
-  if (fees.advisoryCents > 0) parts.push(`${formatCents(fees.advisoryCents)} in advisory fees`);
-  if (fees.accountFeesCents > 0)
-    parts.push(`${formatCents(fees.accountFeesCents)} in account fees`);
-  const top = fees.funds
-    .slice(0, 3)
-    .map(
-      (f) =>
-        `- ${f.holding.name}: ${formatRate(f.expenseRatioBps)}, ${formatCents(f.yearlyCents)} a year`,
-    )
-    .join("\n");
-  let body = `${parts.join(", ")}. Over ${fees.years} years that's roughly ${feeRange(fees.overYears)} with growth, depending on returns.\nThe costliest:\n${top}`;
+  const total = `Your investments cost about ${formatCents(fees.totalYearlyCents)} a year`;
+  const first =
+    others.length > 0
+      ? `${total}: ${[`${formatCents(fees.fundsYearlyCents)} in fund costs`, ...others].join(", ")}`
+      : `${total} in fund costs`;
+  const [only] = fees.funds;
+  const funds =
+    fees.funds.length === 1 && only
+      ? `\nThat's ${only.holding.name}, at ${formatRate(only.expenseRatioBps)} a year.`
+      : fees.funds.length > 1
+        ? `\nThe costliest:\n${fees.funds
+            .slice(0, 3)
+            .map(
+              (f) =>
+                `- ${f.holding.name}: ${formatRate(f.expenseRatioBps)}, ${formatCents(f.yearlyCents)} a year`,
+            )
+            .join("\n")}`
+        : "";
+  let body = `${first}. Over ${fees.years} years that's roughly ${feeRange(fees.overYears)} with growth, depending on returns.${funds}`;
   if (!advice || fees.equivalents.length === 0) {
     return { body, actions: [link], refs: {} };
   }
