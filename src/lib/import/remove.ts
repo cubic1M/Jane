@@ -2,7 +2,7 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { ScopedDb } from "@/lib/db-scoped";
-import { FILE_SOURCE } from "@/lib/import/balances";
+import { FILE_SOURCE, GIVEN_SOURCE } from "@/lib/import/balances";
 import { forgetSince } from "@/lib/evidence/orphans";
 import { markFreshStartIfEmpty } from "@/lib/jane-agent/fresh-start";
 import { enqueueJob } from "@/lib/jobs";
@@ -44,8 +44,10 @@ export async function listUploads(
   db: Pick<ScopedDb, "importRuns" | "accounts" | "transactions">,
 ): Promise<{ uploads: UploadView[]; earlier: EarlierRows[] }> {
   const [runs, accounts, earlier] = await Promise.all([
+    // An upload that added nothing (the same file again) isn't listed: removing it would take
+    // nothing back, and it read as the file uploaded twice (debug 3, 11-16).
     db.importRuns.findMany({
-      where: { kind: "upload", accountId: { not: null } },
+      where: { kind: "upload", accountId: { not: null }, rows: { gt: 0 } },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -142,6 +144,53 @@ type RemoveDb = ScopedDb;
 // The database the person's own row is on, when nothing is left (src/lib/jane-agent/fresh-start.ts).
 type FreshStartOptions = { client?: PrismaClient };
 
+// The statement balances an upload kept for the days it covered, less the days another upload of
+// the account still covers: an overlapping statement gave those days too, and only one copy is
+// kept. Then, if the removed statement had the newest balance, the account's balance today goes
+// back to the newest one left (debug 3, 11-16: after the newer of two overlapping statements was
+// removed, the account kept its closing balance, $6,907 where the older file ended at $4,630, and
+// the older file's balances for the overlap were gone).
+async function forgetFileBalances(
+  db: RemoveDb,
+  runId: string,
+  accountId: string,
+  from: Date,
+  to: Date,
+): Promise<void> {
+  const others = await db.importRuns.findMany({
+    where: {
+      kind: "upload",
+      accountId,
+      id: { not: runId },
+      rows: { gt: 0 },
+      fromDate: { not: null },
+      toDate: { not: null },
+    },
+    select: { fromDate: true, toDate: true },
+  });
+  await db.balanceSnapshots.deleteMany({
+    where: {
+      accountId,
+      source: FILE_SOURCE,
+      date: { gte: from, lte: to },
+      ...(others.length > 0 && {
+        NOT: others.map((o) => ({ date: { gte: o.fromDate!, lte: o.toDate! } })),
+      }),
+    },
+  });
+  const newest = await db.balanceSnapshots.findFirst({
+    where: { accountId, source: { in: [FILE_SOURCE, GIVEN_SOURCE] } },
+    orderBy: { date: "desc" },
+    select: { date: true, balanceCents: true },
+  });
+  if (newest && newest.date < to) {
+    await db.accounts.updateMany({
+      where: { id: accountId },
+      data: { currentBalanceCents: newest.balanceCents },
+    });
+  }
+}
+
 // Exactly the rows one upload added (rows it found already there stay with the upload that
 // added them), and the statement balances kept for the days it covered.
 export async function removeUpload(db: RemoveDb, runId: string): Promise<Removed> {
@@ -152,13 +201,7 @@ export async function removeUpload(db: RemoveDb, runId: string): Promise<Removed
   if (!run) return null;
   const { count } = await db.transactions.deleteMany({ where: { importRunId: run.id } });
   if (run.accountId && run.fromDate && run.toDate) {
-    await db.balanceSnapshots.deleteMany({
-      where: {
-        accountId: run.accountId,
-        source: FILE_SOURCE,
-        date: { gte: run.fromDate, lte: run.toDate },
-      },
-    });
+    await forgetFileBalances(db, run.id, run.accountId, run.fromDate, run.toDate);
   }
   await db.importRuns.deleteMany({ where: { id: run.id } });
   await record(db.userId, "upload_removed", { rows: count, accounts: 0 });
