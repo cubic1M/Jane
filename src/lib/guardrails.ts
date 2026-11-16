@@ -455,6 +455,8 @@ const TAX_ADVICE = [
   /(?:^|[.!?:]\s+|\b(?:you|to|and|then|just|never|don(?:'|’)?t|do not|no need to|needn(?:'|’)?t)\s+)(?:report|declare)\b(?! (?:it|this|that|them) to (?:your|the) (?:bank|card|issuer|police|ftc|lender))[^.!?]{0,50}\b(?:income|earnings|tips|wages|gains?|winnings|side money|cash (?:pay|payments|tips))\b/i,
   /\bfil(?:e|ing) as\b/i,
   /\bhead of household\b/i,
+  // Round 53 (11-16): "You should file single". "Filing single" said of last year's return passes.
+  /\bfile (?:single|jointly|separately|together|separate returns|a joint return)\b/i,
   /\bmarried filing (?:jointly|separately)\b/i,
   /\b(?:put|enter|list|include|show|claim|report|take)\b[^.!?]{0,40}\bon your (?:\d{4} )?(?:tax |federal |state )?return\b/i,
   /\bclaim(?:ing)? (?:your|my|their|her|his|the) (?:daughter|son|kids?|children|child|parents?|mom|dad|mother|father|niece|nephew|grand\w+|girlfriend|boyfriend|partner)\b(?!['’]s)/i,
@@ -607,6 +609,9 @@ const LEGAL = [
   /\b(?:have|has) a (?:strong |good |solid |winning |real )?(?:legal )?case\b(?! (?:open|number|id|with|about|on file|in progress|of|for (?:saving|keeping|cutting|paying)))/i,
   /\bwin\b[^.!?]{0,20}\b(?:small claims|in court|at trial)\b/i,
   /\b(?:has|have) no (?:legal )?right to\b/i,
+  // Round 53 (11-16): "You have the right to dispute it". A right to see a bill or a copy
+  // ("You have the right to an itemized bill", src/config/medical-bills.ts) passes.
+  /\byou(?: have|(?:'|’)ve(?: got)?) (?:the |a )?(?:legal |full )?rights? to\b(?! (?:an? |the |your )?(?:itemized|copy|copies|free copy|ask|know|see|request|look)\b)/i,
   /\bentitled to\b[^.!?]{0,40}\b(?:by|under(?: the)?) law\b|\bthe law (?:says|requires|entitles|gives) you\b/i,
   /\b(?:take|took|taken|drag|dragged) (?:you |them |him |her |it |the \w+ )?to (?:small claims )?court\b/i,
   /\bfile (?:for (?:probate|divorce|custody)|(?:in|with) (?:the |a )?court)\b/i,
@@ -924,7 +929,12 @@ const GUARANTEE = [
   // and a raise said to be due. What Jane's own suggestion would save ("This will lower your bill by
   // $15.49") and pay that changed ("Your paycheck went up $90.00") pass.
   /(?:\b[Tt]hey|\b[Tt]he (?:bank|issuer|card company|lender|company|gym|provider|servicer)|\b(?!(?:This|That|It|These|Those|Switching|Calling|Paying|Moving|Doing|Asking|Canceling|Cancelling|Dropping|Refinancing|Autopay|Bundling|Jane|You)\b)[A-Z][A-Za-z&.]+(?: [A-Z][A-Za-z&.]+)?)(?:(?:'|’)ll| will| is going to| are going to) (?:definitely |surely |usually |always )?(?:waive|forgive|lower|reduce|cut|drop)\b(?:[^.!?]|\.\d){0,20}\b(?:fees?|APR|apr|rate|interest|bill|balance|charges?)\b(?! (?:by|to) \$)/,
-  /\b(?:car|truck|house|home|wages?|paycheck|account|savings)s? (?:will|is going to|are going to|(?:'|’)ll) (?:definitely |surely |automatically )?(?:be|get) (?:repossessed|repo(?:'|’)?d|foreclosed(?: on)?|garnished|seized|levied|frozen|taken)\b|\b(?:tax )?refund (?:will|should|is going to|(?:'|’)ll) (?:\w+ )?(?:arrive|come|hit|land|show up|be (?:here|deposited|issued))\b(?:[^.!?]|\.\d){0,10}\b(?:in|within) \d+ (?:days?|weeks?)\b|\b(?:paycheck|pay|salary|wages?|income|take-home(?: pay)?) (?:will|is going to|(?:'|’)ll) (?:definitely |surely |probably )?(?:go up|go down|rise|increase|drop|fall|grow|shrink|be (?:higher|bigger|lower|smaller))(?=\s*(?:[.!?]|$| next (?:year|month)| soon| eventually| over time| this year))|\byou(?:'|’)re (?:due|owed|overdue) (?:for )?an? (?:raise|promotion|bonus)\b/i,
+  /\b(?:car|truck|house|home|wages?|paycheck|account|savings)s? (?:will|is going to|are going to|(?:'|’)ll) (?:definitely |surely |automatically )?(?:be|get) (?:repossessed|repo(?:'|’)?d|foreclosed(?: on)?|garnished|seized|levied|frozen|taken)\b|\b(?:tax )?refund (?:will|should|is going to|(?:'|’)ll) (?:\w+ )?(?:arrive|come|hit|land|show up|be (?:here|deposited|issued))\b(?:[^.!?]|\.\d){0,10}\b(?:in|within) \d+ (?:days?|weeks?)\b|\b(?:paycheck|pay|salary|wages?|income|take-home(?: pay)?|(?:credit )?limit) (?:will|is going to|(?:'|’)ll) (?:definitely |surely |probably )?(?:go up|go down|rise|increase|drop|fall|grow|shrink|be (?:higher|bigger|lower|smaller))(?=\s*(?:[.!?]|$| next (?:year|month)| soon| eventually| over time| this year))|\byou(?:'|’)re (?:due|owed|overdue) (?:for )?an? (?:raise|promotion|bonus)\b/i,
+  // Round 53 (11-16): the person's own bank said to refund or waive a fee ("Your bank will refund the
+  // overdraft fee") and a company said not to report to the bureaus ("Affirm won't report it to the
+  // credit bureaus"). "They'll remove the charge once the refund posts" and "Jane doesn't report
+  // anything to the bureaus" pass.
+  /\b(?:[Yy]our|[Tt]he) (?:bank|card issuer|issuer|card company|credit union|lender|servicer|landlord|gym|provider|insurer|merchant|store)(?:(?:'|’)ll| will| is going to) (?:definitely |surely |usually |always |probably )?(?:refund|reverse|credit back|waive|forgive|drop|lower|reduce|cut)\b(?:[^.!?]|\.\d){0,20}\b(?:fees?|APR|apr|rate|interest|late charges?)\b(?! (?:by|to) \$)|(?<!\b(?:Jane|I|[Ww]e)\s)\b(?:won(?:'|’)?t|will not|never|doesn(?:'|’)?t|does not|don(?:'|’)?t|do not) (?:\w+ )?report (?:it|this|that|them|anything|(?:the|your) (?:\w+ )?(?:loan|plan|purchase|payments?|balance|debt|account)|(?:late|missed) payments?) to (?:the )?(?:credit )?bureaus?\b/,
   // Round 51 (11-16): a named company's refund promised ("Venmo will refund you for the scam"), Social
   // Security said to run out, medical debt said to stay off a report and safety stated ("Your
   // identity is protected now"). A refund that posted, "safe to spend" and "protected from fraud with the
@@ -938,7 +948,7 @@ const GUARANTEE = [
   /\b(?:interest |mortgage |savings |cd |loan )?rates (?:are|is) (?:going|headed|set) (?:to )?(?:go )?(?:down|up|drop|fall|rise|climb)\b(?! (?:to |by )?(?:\$|\d))|\b(?:interest|mortgage) rates (?:will|should|(?:'|’)ll) (?:\w+ )?(?:fall|drop|go down|go up|rise|come down)\b(?! (?:to |by )?(?:\$|\d))|\brefund (?:will|is going to|(?:'|’)ll|should) be (?:a lot |much |way )?(?:bigger|larger|smaller|higher|lower|more|less)\b/i,
   // Round 48 (11-15): a mark said not to count ("Paid collections won't hurt your score anymore").
   // "This won't affect your credit score" and "Checking your score won't hurt your credit" pass.
-  /\b(?:collections?|late payments?|charge-?offs?|medical debts?|the (?:collection|late payment|charge-?off|inquiry)|closing (?:it|the card|the account))\s+(?:won(?:'|’)?t|will not|doesn(?:'|’)?t|does not|don(?:'|’)?t|do not|no longer|can(?:'|’)?t)\s+(?:\w+\s+)?(?:hurt|affect|ding|lower|count against|matter (?:to|for))\s+(?:your )?(?:credit(?: score| report)?|score|report)\b/i,
+  /\b(?:collections?|late payments?|charge-?offs?|medical debts?|the (?:collection|late payment|charge-?off|inquiry)|closing (?:it|the card|the account)|(?:a |the |one |another )?hard (?:credit )?(?:inquir(?:y|ies)|pulls?|checks?)|(?:applying for|opening) (?:a |another |the |one more )?(?:new )?(?:card|credit card|loan|account|line of credit))\s+(?:won(?:'|’)?t|will not|doesn(?:'|’)?t|does not|don(?:'|’)?t|do not|no longer|can(?:'|’)?t)\s+(?:\w+\s+)?(?:hurt|affect|ding|lower|count against|matter (?:to|for))\s+(?:your )?(?:credit(?: score| report)?|score|report)\b/i,
   // Round 44 (11-15): the score falling by a number ("Your score will drop 100 points if you close
   // it"), what a collector will settle for ("The collector will accept 30%") and a mark promised
   // gone ("Send a goodwill letter and they'll remove the late payment").
