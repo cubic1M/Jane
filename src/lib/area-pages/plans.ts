@@ -138,17 +138,17 @@ export function plansTree(input: PlansTreeInput): AreaTree {
       summary: whenLine(d.kind, left),
     });
   });
-  coming.push(
-    item("coming", "all", {
-      label: "All your dates",
-      status: "good",
-      figure: `${input.deadlines.length} in ${HUB_DEADLINE_DAYS} days`,
-      summary:
-        input.deadlines.length === 0
-          ? "Nothing dated in the next month."
-          : "Payments, renewals and return windows, by date.",
-    }),
-  );
+  // A list with nothing in it isn't a node: a student with one checking account read "0 in 30
+  // days", "No yearly bills found yet" and "No cards or loans to pay off" (debugger 11-15).
+  if (input.deadlines.length > 0)
+    coming.push(
+      item("coming", "all", {
+        label: "All your dates",
+        status: "good",
+        figure: `${input.deadlines.length} in ${HUB_DEADLINE_DAYS} days`,
+        summary: "Payments, renewals and return windows, by date.",
+      }),
+    );
 
   const goals = input.goals.map((g) => {
     const behind = g.status === "date_passed" || (g.lateMonths ?? 0) > 0;
@@ -244,27 +244,24 @@ export function plansTree(input: PlansTreeInput): AreaTree {
   ];
 
   const money = [
-    item("money", "yearly", {
-      label: "Yearly bills",
-      figure: input.yearly.bills > 0 ? `${shortMoney(input.yearly.monthlyCents)}/mo` : undefined,
-      summary:
-        input.yearly.bills > 0
-          ? "Set aside each month for yearly and irregular bills."
-          : "No yearly bills found yet.",
-    }),
-    item("money", "debt", {
-      label: "Paying off cards and loans",
-      figure:
-        input.debt.accounts > 0
-          ? input.debt.known === 0
-            ? "Not known"
-            : shortMoney(input.debt.owedCents)
-          : undefined,
-      summary:
-        input.debt.accounts > 0
-          ? `On ${plural(input.debt.accounts, "card or loan", "cards and loans")}, not the mortgage.`
-          : "No cards or loans to pay off.",
-    }),
+    ...(input.yearly.bills > 0
+      ? [
+          item("money", "yearly", {
+            label: "Yearly bills",
+            figure: `${shortMoney(input.yearly.monthlyCents)}/mo`,
+            summary: "Set aside each month for yearly and irregular bills.",
+          }),
+        ]
+      : []),
+    ...(input.debt.accounts > 0
+      ? [
+          item("money", "debt", {
+            label: "Paying off cards and loans",
+            figure: input.debt.known === 0 ? "Not known" : shortMoney(input.debt.owedCents),
+            summary: `On ${plural(input.debt.accounts, "card or loan", "cards and loans")}, not the mortgage.`,
+          }),
+        ]
+      : []),
   ];
 
   const all: { id: PlansBranch; items: AreaItem[] }[] = [
