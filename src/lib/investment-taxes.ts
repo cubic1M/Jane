@@ -16,6 +16,7 @@ import {
   type Unrealised,
 } from "@/planning/investment-taxes";
 import { DAY_MS, isoDay as iso } from "@/lib/dates";
+import { todayOf } from "@/lib/today";
 
 // Investment taxes (spec step 124), from what's in the person's taxable investment accounts
 // (step 128's holdings and investment transactions). Retirement and health accounts aren't
@@ -80,7 +81,9 @@ export async function loadInvestmentTaxes(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<InvestmentTaxesView> {
   const db = scopedFor(userId, client);
-  const today = iso(now);
+  // The person's own day (src/lib/today.ts): at 7pm in Los Angeles UTC's is tomorrow, and a wash
+  // sale fell out of the Taxes page's count while still inside its window (gate C, 11-15).
+  const today = await todayOf(userId, { client, now });
   const accounts = await db.accounts.findMany({
     where: { type: "investment" },
     select: { id: true, subtype: true },
@@ -146,7 +149,7 @@ export async function loadInvestmentTaxes(
       !heldKeys.has(`${t.accountId}:${t.securityId}`),
   ).length;
   const inYear = allRealised.filter((r) => r.date.startsWith(String(year)));
-  const since = iso(new Date(now.getTime() - (WASH_SALE_DAYS + 31) * DAY_MS));
+  const since = iso(new Date(Date.parse(`${today}T00:00:00Z`) - (WASH_SALE_DAYS + 31) * DAY_MS));
   return {
     ...empty,
     unrealised: allUnrealised,
