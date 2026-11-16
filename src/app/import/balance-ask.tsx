@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { setBalanceAction } from "./actions";
 import { IMPORT_STARTED_EVENT } from "@/config/import";
 import { balanceQuestion, type BalanceAsk } from "@/lib/import/balance-question";
@@ -13,6 +13,17 @@ const FIELD =
   "h-11 w-40 rounded-lg border border-zinc-300 bg-transparent px-3 text-base dark:border-zinc-700";
 const BUTTON =
   "inline-flex h-11 items-center rounded-full border border-zinc-300 px-5 text-sm font-semibold hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900";
+
+// The accounts asked about right after their upload, in the upload's result. The list of accounts
+// further down the page doesn't ask the same question beside it (debugger 11-16: "What's in Wells
+// Fargo checking today?" twice on one phone screen). Skipped above, it's asked in the list again.
+const askedAbove = new Map<string, number>();
+const listeners = new Set<() => void>();
+const changed = () => listeners.forEach((listener) => listener());
+const subscribe = (listener: () => void) => {
+  listeners.add(listener);
+  return () => void listeners.delete(listener);
+};
 
 export function BalanceAskForm({
   ask,
@@ -28,7 +39,26 @@ export function BalanceAskForm({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const field = useRef<HTMLInputElement>(null);
-  if (state === "skipped") return null;
+  // The upload's own question is the one shown; the list's waits while it's there.
+  const inList = !skippable;
+  const asking = !inList && state === "asking";
+  useEffect(() => {
+    if (!asking) return;
+    askedAbove.set(ask.accountId, (askedAbove.get(ask.accountId) ?? 0) + 1);
+    changed();
+    return () => {
+      const left = (askedAbove.get(ask.accountId) ?? 1) - 1;
+      if (left > 0) askedAbove.set(ask.accountId, left);
+      else askedAbove.delete(ask.accountId);
+      changed();
+    };
+  }, [asking, ask.accountId]);
+  const shownAbove = useSyncExternalStore(
+    subscribe,
+    () => inList && askedAbove.has(ask.accountId),
+    () => false,
+  );
+  if (state === "skipped" || shownAbove) return null;
   if (state === "saved") {
     return (
       <p role="status" className="text-sm">
