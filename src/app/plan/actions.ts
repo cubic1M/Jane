@@ -68,18 +68,6 @@ export async function revertItem(decisionId: string, choice: "yes" | "no"): Prom
   return { kind: "undone" };
 }
 
-// Takes back a No within the undo window.
-export async function undoItem(_previous: ItemState, formData: FormData): Promise<ItemState> {
-  const user = await requireUser();
-  try {
-    await undoDecision(user.id, String(formData.get("decisionId") ?? ""));
-  } catch (error) {
-    if (!(error instanceof DecisionError)) throw error;
-    return { kind: "error", message: error.message };
-  }
-  return { kind: "undone" };
-}
-
 // "Yes to all": the items as shown, each checked against its card hash. Back to the plan
 // with the counts, so the confirmation shows above whatever is left.
 export async function answerAll(formData: FormData): Promise<void> {

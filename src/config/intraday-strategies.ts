@@ -1,5 +1,3 @@
-import type { RiskLevel } from "@/config/investing";
-
 // Day trading for the practice portfolio (Phase AW, Stage A, demo advice only, Very high only):
 // public, well-known intraday rules, long only (the practice ledger never shorts), on 5-minute
 // bars of the S&P 500 fund. Two families: ICT-style price action (an opening-range break, a sweep
@@ -79,7 +77,5 @@ export const VWAP_LAST_ENTRY_MINUTE = 14 * 60;
 export const INTRADAY_SLIPPAGE = 0.0003;
 // Chosen on the years to the end of this one, scored on the years after.
 export const INTRADAY_TRAIN_END = "2023-12-31";
-// The sleeve: the most of the practice portfolio, by level. Very high only.
-export const INTRADAY_SLEEVE_BY_LEVEL: Readonly<Partial<Record<RiskLevel, number>>> = { 5: 0.05 };
 export const INTRADAY_WARNING =
   "Most people who day trade lose money, and the costs alone eat most small edges. This is practice money, to see how a rule would have done, not a way to earn.";

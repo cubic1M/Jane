@@ -153,8 +153,8 @@ export const CRYPTO_SLEEVE_CHOICES = {
 export type CryptoSleeveChoice = keyof typeof CRYPTO_SLEEVE_CHOICES;
 
 // The day-trading sleeve (src/config/intraday-strategies.ts): off, or one of the intraday rules,
-// in and out of the fund the same day. Very high only (INTRADAY_SLEEVE_BY_LEVEL); most day
-// trading loses money, and every rule here did worse than holding.
+// in and out of the fund the same day. Very high only, at most 5% of the practice portfolio; most
+// day trading loses money, and every rule here did worse than holding, so it can only be turned off.
 export const DAY_TRADING_CHOICES = {
   off: { label: "Off" },
   opening_range: { label: "Opening-range break" },

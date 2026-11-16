@@ -1,18 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { runPaperDay } from "@/lib/paper/account";
 import { CATALOG_EVIDENCE } from "@/config/catalog-evidence";
 import { CRYPTO_SLEEVE_BY_LEVEL } from "@/config/crypto-strategies";
 import { CATALOG, type CatalogId } from "@/config/strategy-catalog";
-import { INTRADAY_SLEEVE_BY_LEVEL } from "@/config/intraday-strategies";
-import {
-  CRYPTO_SLEEVE_CHOICES,
-  DAY_TRADING_CHOICES,
-  STRATEGY_CHOICES,
-} from "@/config/practice-preferences";
+import { CRYPTO_SLEEVE_CHOICES } from "@/config/practice-preferences";
 import { adviceMode } from "@/lib/advice-mode";
 import { practiceProfileOf, savePreferences } from "@/lib/practice/preferences";
 import { requireUser } from "@/lib/session";
@@ -21,65 +15,6 @@ import { requireUser } from "@/lib/session";
 async function demoUser() {
   const user = await requireUser();
   return (await adviceMode(user.id)) ? user : null;
-}
-
-// "Use in practice" on a strategy menu card (Phase AW, Stage A): the practice portfolio's
-// strategy, saved through the same check as the settings page. Practice money only.
-export async function usePracticeStrategy(formData: FormData): Promise<void> {
-  const user = await demoUser();
-  const strategy = String(formData.get("strategy") ?? "");
-  if (user && Object.hasOwn(STRATEGY_CHOICES, strategy)) {
-    await savePreferences(user.id, { strategy }, "page");
-  }
-  // Back to the same list, drawn afresh.
-  revalidatePath("/investments");
-  redirect("/investments");
-}
-
-// "Use in practice" on a crypto card, and "Turn the sleeve off" (Very high only): the crypto
-// sleeve, through the same check. A sleeve is turned on only at a level that has one.
-export async function usePracticeCrypto(formData: FormData): Promise<void> {
-  const user = await demoUser();
-  const sleeve = String(formData.get("sleeve") ?? "");
-  if (user && Object.hasOwn(CRYPTO_SLEEVE_CHOICES, sleeve)) {
-    const { level } = await practiceProfileOf(user.id);
-    if (sleeve === "off" || CRYPTO_SLEEVE_BY_LEVEL[level] !== undefined) {
-      await savePreferences(user.id, { cryptoSleeve: sleeve }, "page");
-    }
-  }
-  revalidatePath("/investments");
-  redirect("/investments");
-}
-
-// "Use in practice" on a day-trading card, and "Stop day trading" (Very high only): the
-// day-trading sleeve, through the same check, turned on only at a level that has one.
-export async function usePracticeDayTrading(formData: FormData): Promise<void> {
-  const user = await demoUser();
-  const rule = String(formData.get("rule") ?? "");
-  if (user && Object.hasOwn(DAY_TRADING_CHOICES, rule)) {
-    const { level } = await practiceProfileOf(user.id);
-    // Every rule lost money after costs (src/config/intraday-evidence.ts): turning it off only.
-    if (rule === "off") await savePreferences(user.id, { dayTrading: rule }, "page");
-    void level;
-    void INTRADAY_SLEEVE_BY_LEVEL;
-  }
-  revalidatePath("/investments");
-  redirect("/investments");
-}
-
-// "Use in practice" on a tested strategy, and "Back to your mix": any the research tested at the
-// person's level (src/config/catalog-evidence.ts) that runs on its own (not a sleeve).
-export async function usePracticeCatalog(formData: FormData): Promise<void> {
-  const user = await demoUser();
-  const strategy = String(formData.get("strategy") ?? "");
-  if (user && (strategy === "off" || Object.hasOwn(CATALOG, strategy))) {
-    const { level } = await practiceProfileOf(user.id);
-    const e = strategy === "off" ? null : CATALOG_EVIDENCE[strategy as CatalogId]?.[level];
-    if (strategy === "off" || (e && CATALOG[strategy as CatalogId].kind !== "sleeve"))
-      await savePreferences(user.id, { catalogStrategy: strategy }, "page");
-  }
-  revalidatePath("/investments");
-  redirect("/investments");
 }
 
 // The strategy tree's "Use this strategy" (founder: instant, with Revert, as #732): a leaf's key

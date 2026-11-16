@@ -33,7 +33,7 @@ import {
   answerAll,
   answerItem,
   answerSetup,
-  undoItem,
+  revertItem,
   undoRule,
 } from "./actions";
 
@@ -94,7 +94,7 @@ describe("plan actions", () => {
         form({ findingId: "f1", cardHash: HASH, actionType: "card_interest", choice: "no" }),
       ),
     ).toEqual({ kind: "declined", decisionId: "d9" });
-    expect(await undoItem(null, form({ decisionId: "d9" }))).toEqual({ kind: "undone" });
+    expect(await revertItem("d9", "no")).toEqual({ kind: "undone" });
     expect(undoDecision).toHaveBeenCalledWith("u1", "d9");
   });
 
