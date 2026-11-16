@@ -116,6 +116,9 @@ export const MONEY_GROUPS: Readonly<Record<string, readonly string[]>> = {
   short_term_cash: ["cash"],
   card_interest: ["interest"],
   debt_plan: ["interest"],
+  // A 0% transfer saves the same card interest paying it down does (debug 2, 11-16: "save
+  // $353/yr" and "save $298/yr" for one $1,850 card balance, side by side in the dock).
+  balance_transfer: ["interest"],
   hardship_plan: ["interest", "fees"],
   bank_fees: ["fees"],
   late_fees: ["fees"],
