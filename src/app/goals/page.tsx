@@ -8,17 +8,21 @@ import { GOALS_COPY, monthlyLine } from "@/planning/goals-copy";
 import { removeGoal } from "./actions";
 import { accountLabels } from "@/lib/account-labels";
 import { GoalForm } from "./goal-form";
+import { EMPTY_GOAL, draftedGoal } from "./draft";
+import { currentProposals } from "@/lib/proposals";
 import { GoalTradeoffs } from "./tradeoffs";
 import { SubmitButton } from "@/components/submit-button";
 import { ProgressBar } from "@/components/progress-bar";
 import { PageShell } from "@/components/page-shell";
 import { dayLabel } from "@/lib/day-label";
 
-const EMPTY = { goalId: "", name: "", target: "", targetDate: "", accountId: "", saved: "" };
+type Search = Promise<{ draft?: string | string[] }>;
 
-async function Goals() {
+async function Goals({ searchParams }: { searchParams: Search }) {
   const user = await requireUser();
   const db = await scopedDb();
+  // A suggestion's Yes can ask for a drafted goal (./draft.ts): Jane's own proposal for it.
+  const { draft } = await searchParams;
   const [goals, accounts, tradeoffs] = await Promise.all([
     listGoals(user.id),
     db.accounts
@@ -35,6 +39,7 @@ async function Goals() {
     // Spec step 241: only worth the year plan's work with two goals or more.
     db.savingsGoals.count().then((n) => (n >= 2 ? loadTradeoffs(user.id) : null)),
   ]);
+  const drafted = draft ? draftedGoal(await currentProposals(user.id), draft) : EMPTY_GOAL;
 
   return (
     <>
@@ -104,7 +109,7 @@ async function Goals() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-xl font-semibold">Add a goal</h2>
-        <GoalForm values={EMPTY} accounts={accounts} />
+        <GoalForm values={drafted} accounts={accounts} />
       </section>
 
       <p className="rounded-xl bg-zinc-100 p-4 text-sm text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
@@ -114,10 +119,10 @@ async function Goals() {
   );
 }
 
-export default function GoalsPage() {
+export default function GoalsPage({ searchParams }: { searchParams: Search }) {
   return (
     <PageShell>
-      <Goals />
+      <Goals searchParams={searchParams} />
     </PageShell>
   );
 }
