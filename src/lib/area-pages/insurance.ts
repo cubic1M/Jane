@@ -358,7 +358,11 @@ export function insuranceTree(input: InsuranceTreeInput): AreaTree {
       status: h.policies === 0 ? "look" : "good",
       figure:
         h.policies === 0 ? "None" : `${h.policies} ${h.policies === 1 ? "policy" : "policies"}`,
-      summary: h.policies === 0 ? "No policy on file covers them." : "Who covers them is below.",
+      // The person's own row is "You": "covers you", not "covers them" (debugger 11-16).
+      summary:
+        h.policies === 0
+          ? `No policy on file covers ${h.name === "You" ? "you" : "them"}.`
+          : `Who covers ${h.name === "You" ? "you" : "them"} is below.`,
     }),
   );
 
