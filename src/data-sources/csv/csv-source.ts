@@ -2,9 +2,11 @@ import {
   CUSTOM_FORMAT,
   mappedLayout,
   mappingChoices,
+  parseAmount,
   type ColumnMapping,
   type MappingChoices,
 } from "./column-mapping";
+import { looksLikeDate } from "./dates";
 import { PICK_COLUMNS } from "./messages";
 import {
   closingBalances,
@@ -54,6 +56,20 @@ const RECORDS_NOT_ROWS = 20;
 export const NOT_A_STATEMENT =
   "This isn't a CSV statement. Download the CSV from your bank's website.";
 
+export const NO_DATES_OR_AMOUNTS =
+  "This doesn't look like a statement: nothing in it reads as a date and an amount. Download the transactions CSV from your bank's website.";
+// How many of a file's first rows are looked at for a date and an amount.
+const LOOK_AT_ROWS = 50;
+
+// Whether any of the first rows has a date in one field and an amount in another: a statement
+// in any layout has both, and the column picker reads them with these same rules.
+function hasDatesAndAmounts(records: readonly { fields: string[] }[]): boolean {
+  return records.slice(0, LOOK_AT_ROWS).some(({ fields }) => {
+    const date = fields.findIndex((v) => looksLikeDate(v.trim()));
+    return date !== -1 && fields.some((v, i) => i !== date && parseAmount(v.trim()) !== null);
+  });
+}
+
 // Fewer columns than a date, a description and an amount: not a statement either.
 const MIN_COLUMNS = 3;
 const SNIFF_CHARS = 8192;
@@ -61,13 +77,15 @@ const SNIFF_CHARS = 8192;
 // UTF-8. More than this share of them means a binary file.
 const MAX_BINARY_SHARE = 0.01;
 
+// A web page: one that starts as one, or has a page's tags anywhere in it.
+const STARTS_AS_A_PAGE = /^\s*(?:<!doctype html|<html|<head|<body)/i;
+const HAS_PAGE_TAGS = /<html[\s>]|<\/(?:div|table|script)>/i;
+
 // Something saved or renamed as .csv that isn't one: a web page (a sign-in page saved by
 // mistake), a PDF, an Excel file, an image.
 export function notAStatement(text: string): boolean {
   const head = text.slice(0, SNIFF_CHARS);
-  if (/^\s*(?:<!doctype html|<html|<head|<body)|<html[\s>]|<\/(?:div|table|script)>/i.test(head)) {
-    return true;
-  }
+  if (STARTS_AS_A_PAGE.test(head) || HAS_PAGE_TAGS.test(head)) return true;
   if (head.startsWith("%PDF") || head.startsWith("PK\u0003\u0004")) return true;
   if (head.includes("\u0000")) return true;
   const odd = head.match(/[\u0001-\u0008\u000e-\u001f\ufffd]/g)?.length ?? 0;
@@ -203,6 +221,11 @@ export function readCsvFile(
         error: `This file has ${width === 1 ? "one column" : `${width} columns`}, and a statement needs at least a date, a description and an amount. Download the CSV from your bank's website.`,
         reason: "unreadable",
       };
+    }
+    // No date or no amount anywhere: no choice of columns could read it, so the picker would be a
+    // dead end (debug 3, 11-16: a contacts list offered "First Name (Ana)" as the date).
+    if (!hasDatesAndAmounts(records)) {
+      return { ok: false, file: file.name, error: NO_DATES_OR_AMOUNTS, reason: "not_csv" };
     }
     return {
       ok: false,
