@@ -572,15 +572,19 @@ async function InvestmentsContent({
         </p>
       )}
 
-      <AreaPage
-        tree={area.tree}
-        label="Investing"
-        chips={area.chips}
-        summaries={area.summaries}
-        details={details}
-        more={more}
-        focus={focus}
-      />
+      {/* Nothing in it (no accounts, and no practice portfolio outside demo advice): the line
+          above says so, without an empty tree under it. */}
+      {area.tree.branches.length > 0 && (
+        <AreaPage
+          tree={area.tree}
+          label="Investing"
+          chips={area.chips}
+          summaries={area.summaries}
+          details={details}
+          more={more}
+          focus={focus}
+        />
+      )}
 
       {/* Below the tree: nothing open by default (docs/design/area-pages.md). */}
       <div className="flex flex-col gap-2">
