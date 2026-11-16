@@ -144,11 +144,12 @@ export async function signInWithGoogle(formData?: FormData): Promise<void> {
   // short-lived cookie for the signIn callback to redeem.
   if (formData) await requireConsent(formData);
   const invite = formData ? inviteFrom(formData) : null;
-  if (invite) {
+  if (formData && invite) {
     const result = await checkCode(invite);
     if (result !== "ok") {
       await recordFailedSignIn(`invite_${result}`);
-      redirect(`/signup?error=${INVITE_ERRORS[result]}`);
+      // What they typed comes back with the error, as for the email button (debug 3, 11-16).
+      await backToSignup(formData, INVITE_ERRORS[result]);
     }
     (await cookies()).set(INVITE_COOKIE, normalizeCode(invite) as string, SHORT_COOKIE);
   }
