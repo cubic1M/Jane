@@ -52,9 +52,7 @@ describe("reading the pay stub", () => {
       payFrequency: "semimonthly",
     });
     expect(latest.openEnrollment).toEqual({ start: "2026-11-02", end: "2026-11-13" });
-    expect(demoPaystubs("2026-12-01")[0].openEnrollment?.end).toBe(
-      "2027-11-13",
-    );
+    expect(demoPaystubs("2026-12-01")[0].openEnrollment?.end).toBe("2027-11-13");
     expect(yearlyPay(latest)).toBe(8_640_000);
   });
 
