@@ -12,6 +12,7 @@ import {
   firstSentences,
   shortLabel,
   worthFigure,
+  urgentLine,
 } from "./tree";
 import { plural } from "@/lib/plural";
 
@@ -484,11 +485,7 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
     key: "money",
     label: "Spending & bills",
     sub: ({ urgent, look }) =>
-      urgent > 0
-        ? `${urgent} urgent · ${look} to look at`
-        : look > 0
-          ? `${look} to look at`
-          : "All good",
+      urgent > 0 ? urgentLine(urgent, look) : look > 0 ? `${look} to look at` : "All good",
     branches: (Object.keys(MONEY_BRANCHES) as MoneyBranch[]).map((id) => ({
       id,
       label: MONEY_BRANCHES[id],

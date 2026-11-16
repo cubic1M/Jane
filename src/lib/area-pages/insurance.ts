@@ -4,7 +4,14 @@ import type { TreeStatus } from "@/components/tree/interactive-tree";
 import { coverKindOf } from "@/config/found-policies";
 import { shortMoney } from "@/lib/hub/view";
 import { formatCents } from "@/lib/money";
-import { type AreaItem, type AreaTree, buildAreaTree, firstSentences, shortLabel } from "./tree";
+import {
+  type AreaItem,
+  type AreaTree,
+  buildAreaTree,
+  firstSentences,
+  shortLabel,
+  urgentLine,
+} from "./tree";
 import { daysBetween } from "@/lib/dates";
 import { dayLabel } from "@/lib/day-label";
 
@@ -407,11 +414,7 @@ export function insuranceTree(input: InsuranceTreeInput): AreaTree {
     key: "insurance",
     label: "Insurance",
     sub: ({ urgent, look }) =>
-      urgent > 0
-        ? `${urgent} urgent · ${look} to look at`
-        : look > 0
-          ? `${look} to look at`
-          : "All good",
+      urgent > 0 ? urgentLine(urgent, look) : look > 0 ? `${look} to look at` : "All good",
     branches: branches.map((b) => ({ id: b.id, label: INSURANCE_BRANCHES[b.id], items: b.items })),
   });
 }

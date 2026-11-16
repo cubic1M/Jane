@@ -8,6 +8,7 @@ import {
   buildAreaTree,
   firstSentences,
   worthFigure,
+  urgentLine,
 } from "./tree";
 import { dayLabel } from "@/lib/day-label";
 import { formatRate } from "@/lib/percent";
@@ -317,11 +318,7 @@ export function loansTree(input: LoansTreeInput): AreaTree {
     key: "loans",
     label: "Loans & credit",
     sub: ({ urgent, look }) =>
-      urgent > 0
-        ? `${urgent} urgent · ${look} to look at`
-        : look > 0
-          ? `${look} to look at`
-          : "All good",
+      urgent > 0 ? urgentLine(urgent, look) : look > 0 ? `${look} to look at` : "All good",
     branches: (Object.keys(LOANS_BRANCHES) as LoansBranch[]).map((id) => ({
       id,
       label: LOANS_BRANCHES[id],

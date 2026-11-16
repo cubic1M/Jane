@@ -1,4 +1,11 @@
-import { type AreaItem, type AreaTree, buildAreaTree, firstSentences, shortLabel } from "./tree";
+import {
+  type AreaItem,
+  type AreaTree,
+  buildAreaTree,
+  firstSentences,
+  shortLabel,
+  urgentLine,
+} from "./tree";
 import { isHiddenPage } from "@/config/hidden-pages";
 import { plural } from "@/lib/plural";
 
@@ -271,11 +278,7 @@ export function settingsTree(input: SettingsTreeInput): AreaTree {
     key: "settings",
     label: "Settings",
     sub: ({ urgent, look }) =>
-      urgent > 0
-        ? `${urgent} urgent · ${look} to look at`
-        : look > 0
-          ? `${look} to look at`
-          : "All good",
+      urgent > 0 ? urgentLine(urgent, look) : look > 0 ? `${look} to look at` : "All good",
     branches: (Object.keys(SETTINGS_BRANCHES) as SettingsBranch[]).map((id) => ({
       id,
       label: SETTINGS_BRANCHES[id],
