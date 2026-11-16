@@ -143,7 +143,7 @@ export async function loadMonthClose(
         evidence: true,
       },
     }),
-    findingSureFacts(db, now),
+    findingSureFacts(db, now, { client }),
   ]);
   const expected = new Set(acks.map((a) => a.key));
   // Only findings still standing on the person's data (the evidence gate): never a removed bank's.

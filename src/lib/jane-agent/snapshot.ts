@@ -313,7 +313,7 @@ async function loadSnapshotWork(
       db.janeMessages.count({ where: { NOT: { dedupeKey: "scanning:hello" } } }),
       listPreferences(userId, { client }),
       conciergeMode(userId, { client }),
-      findingSureFacts(db, now),
+      findingSureFacts(db, now, { client }),
     ]);
   const findings = await db.findings.findMany({
     where: { id: { in: plan.map((i) => i.card.findingId) } },
