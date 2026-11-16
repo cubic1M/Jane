@@ -4,6 +4,7 @@ import { BANK_FEE_CATEGORIES, IDLE_CASH_MONTHS_OF_SPENDING } from "@/config/dete
 import { bankFeesYear } from "@/planning/bank-fees";
 import { LOOKBACK_MONTHS } from "@/config/detection";
 import { dataEnd, feeMonthsOf, paceMonths } from "@/detection/rules/fee-totals";
+import { lookbackEnd } from "@/detection/helpers";
 import { daysBetween, monthsBefore } from "@/detection/units";
 import { idleCashOf, payingCardInterest } from "@/planning/idle-cash";
 import { DETECTOR_RATES as R } from "@/config/detectors";
@@ -204,7 +205,9 @@ const cardInterest: Detector = {
     const { short, months } = paceMonths(
       daysBetween(first, dataEnd(data.transactions, data.today)),
     );
-    const cutoff = monthsBefore(data.today, LOOKBACK_MONTHS);
+    // The same year the pace and the report count: ending where the data does (gate C's calendar
+    // sweep, 11-16: from today, "10 interest charges" became 9 as weeks passed with no sync).
+    const cutoff = monthsBefore(lookbackEnd(data.transactions, data.today), LOOKBACK_MONTHS);
     const charges = tx(
       data,
       (t) => t.pfc === "BANK_FEES_INTEREST_CHARGE" && t.date > cutoff && t.date <= data.today,

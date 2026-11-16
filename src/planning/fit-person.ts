@@ -4,6 +4,7 @@ import { buildProfile, type ProfileInput } from "@/profile/build";
 import { personalPay } from "@/profile/pay";
 import { cashCushionCents } from "./emergency-fund";
 import type { FitPerson } from "./fit";
+import { dataEnd } from "@/detection/helpers";
 import { monthsBefore } from "@/detection/units";
 
 // The person the fit engine (./fit.ts) works for, read from what the profile already holds:
@@ -16,8 +17,10 @@ export function fitPersonFrom(input: ProfileInput, creditScore: number | null = 
   const profile = buildProfile(input);
   const income = profile.facts.monthly_income.value;
   // Three calendar months back, not 93 days: on the 1st, that took in four payments made on the
-  // 1st (debugger 11-01).
-  const since = monthsBefore(input.today, MONTHS);
+  // 1st (debugger 11-01). Back from where the data ends (gate C's calendar sweep, 11-16: from
+  // today, a bank that hadn't synced lost a month of loan payments on each 1st, and what they
+  // could borrow went up).
+  const since = monthsBefore(dataEnd(input.transactions, input.today), MONTHS);
   // Debt service: loan payments seen, and a card's minimum, not the statement paid in full (a
   // card cleared each month is spending, not a debt payment a lender counts).
   const paid = input.transactions
