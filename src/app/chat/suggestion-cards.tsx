@@ -12,6 +12,7 @@ import {
   goneSnapshot,
   markGone,
   subscribeGone,
+  unmarkGone,
   withoutGone,
 } from "@/lib/dock-gone";
 import { AI_WRITTEN_LABEL, DEMO_ADVICE_LABEL } from "@/config/advice";
@@ -42,6 +43,20 @@ export function cardParts(body: string): {
     };
   }
   return { headline: lines[0], why: lines.slice(1).join(" ") || null, percent: null, reason: null };
+}
+
+// The page is being left (a reload, closing the tab): the browser cuts its sends off right after
+// beforeunload, with the same error as a dropped network, and they may well have reached the
+// server, so a card is never put back for one of those. A page that stays (a mailto: link fires
+// beforeunload too) is itself again a moment later.
+let leaving = false;
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeunload", () => {
+    leaving = true;
+    window.setTimeout(() => {
+      leaving = false;
+    }, 1_000);
+  });
 }
 
 const ACTION_FOR: Record<CardAnswer, string> = {
@@ -163,6 +178,8 @@ export function SuggestionCards({
   const [open, setOpen] = useState(messages.length);
   // Each card's last tap still on its way to the server, so a Revert follows its choice.
   const sending = useRef(new Map<string, Promise<unknown>>());
+  // Cards whose last answer never reached the server: back on the stack, saying so.
+  const [unsent, setUnsent] = useState<readonly string[]>([]);
   const cards = useMemo(
     () =>
       messages.map((m): FloatingCardData | PopupCard => (m.suggestion ? cardOf(m) : popupCard(m))),
@@ -188,6 +205,7 @@ export function SuggestionCards({
         foldOnSend={foldOnSend}
         docked={docked}
         onShowing={onShowing}
+        unsent={unsent}
         onDetails={(id) => {
           // A suggestion looked at: kept for its outcome, after the screen has opened it.
           if (messages.find((m) => m.id === id)?.suggestion) {
@@ -211,6 +229,7 @@ export function SuggestionCards({
         }
         onAnswer={(id, how, choice) => {
           setOpen((n) => Math.max(0, n - 1));
+          if (unsent.includes(id)) setUnsent((now) => now.filter((u) => u !== id));
           const message = messages.find((m) => m.id === id)!;
           const card = cards.find((c) => c.id === id) as PopupCard;
           // Gone from every stack in this tab at once, unless it stays on screen chosen (with
@@ -258,6 +277,15 @@ export function SuggestionCards({
     const sent = queue(message, actionId);
     startTransition(async () => {
       const result = await sent.catch(() => null);
+      // Never reached the server (debug 3: the network dropped): the card is the person's again,
+      // in every stack, and says so; nothing was answered, so nothing reloads.
+      if (result === null) {
+        if (leaving) return;
+        unmarkGone(id);
+        setUnsent((now) => (now.includes(id) ? now : [...now, id]));
+        setOpen((n) => n + 1);
+        return;
+      }
       // Yes ends on the step Jane prepared, not on the next card (find → prefill → yes).
       const step = actionId === ACTION_FOR.yes ? stepAfterYes(result) : null;
       if (!step || !openStep(step, router.push)) router.refresh();

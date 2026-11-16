@@ -19,6 +19,7 @@ import {
   linkOpens,
   move,
   paragraphs,
+  putBack,
   waiting,
   type CardMode,
   type FloatingCardData,
@@ -58,6 +59,10 @@ const STEP =
   "inline-flex min-h-11 items-center px-1 text-xs font-semibold text-zinc-700 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-zinc-50";
 
 export type CardAnswer = "yes" | "not_now" | "never";
+
+const NONE: readonly string[] = [];
+// On a card whose answer never reached the server.
+const UNSENT_WORDS = "That didn't reach me. Try again.";
 
 // A small phone: there, Home's cards start folded into one line at the bottom (QA round 6: the
 // card covered the net-worth figure on a 375 x 812 phone), and a tap opens them.
@@ -221,6 +226,7 @@ export function FloatingCards({
   onShowing,
   onDetails,
   onFollow,
+  unsent = NONE,
 }: {
   cards: FloatingCardData[];
   mode?: CardMode;
@@ -254,6 +260,9 @@ export function FloatingCards({
   // the caller opens the page. True when the caller opened it itself (a client navigation);
   // otherwise the link goes as links do.
   onFollow?: (id: string, href: string) => boolean;
+  // Cards whose answer never reached the server (the network dropped): they come back, showing,
+  // with a line saying so, until the person answers again.
+  unsent?: readonly string[];
 }) {
   const [state, setState] = useState(initialState);
   // A revertable card that was just chosen (founder, 2026-10-25): it stays on screen with its
@@ -284,6 +293,18 @@ export function FloatingCards({
     window.addEventListener(CHAT_SENT_EVENT, fold);
     return () => window.removeEventListener(CHAT_SENT_EVENT, fold);
   }, [foldOnSend]);
+  // One more that didn't go through: back on the stack in this render, not after a paint.
+  const [unsentSeen, setUnsentSeen] = useState(unsent);
+  if (unsent !== unsentSeen) {
+    setUnsentSeen(unsent);
+    const back = unsent.filter((id) => !unsentSeen.includes(id));
+    if (back.length > 0) {
+      setState((s) => putBack(cards, s, back));
+      if (held && back.includes(held.card.id)) setHeld(null);
+      setLeaving((now) => now.filter((n) => !back.includes(n.id)));
+      setSlide(null);
+    }
+  }
   const current = held?.card ?? currentCard(cards, state);
   const left = waiting(cards, state);
   const open = current !== null && expanded;
@@ -655,6 +676,11 @@ export function FloatingCards({
                 />
               ) : (
                 <div data-card-actions="" className="flex min-w-0 flex-wrap gap-2">
+                  {unsent.includes(current.id) && (
+                    <p role="status" data-card-unsent="" className="w-full text-sm font-medium">
+                      {UNSENT_WORDS}
+                    </p>
+                  )}
                   {current.yesHref && linkOpens(current.yesLabel) === "details" ? (
                     // Its details, here in the card: never a page, never an answer.
                     <button
