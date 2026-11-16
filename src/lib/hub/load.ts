@@ -8,6 +8,8 @@ import { scopedFor } from "@/lib/db-scoped";
 import { log } from "@/lib/log";
 import { todayOf } from "@/lib/today";
 import { listGoals } from "@/lib/goals";
+import { goalsLate } from "@/lib/goals-late";
+import { goalOnTrack } from "@/planning/goals";
 import { loadNetWorthHistory } from "@/lib/net-worth-history";
 import { healthFor } from "@/lib/health-score";
 import { homeSummary, type HomeSummary } from "@/lib/home";
@@ -100,7 +102,10 @@ export async function loadHubAreas(
         const view = await loadPractice(userId, { client, now });
         return view && { ...view, paidInCents: await practicePaidIn(userId, { client }) };
       }),
-      quietly("goals", () => listGoals(userId, { client, now })),
+      quietly("goals", async () => {
+        const goals = await listGoals(userId, { client, now });
+        return { goals, late: await goalsLate(userId, goals, { client, now }) };
+      }),
       // The practice portfolio runs in demo advice mode only.
       quietly("advice mode", () => adviceMode(userId, { client })),
     ]);
@@ -150,10 +155,12 @@ export async function loadHubAreas(
       : null,
     ahead: goals
       ? {
-          goals: goals.map((g) => ({
+          goals: goals.goals.map((g) => ({
             name: g.name,
             percent: g.progress.percent,
-            onTrack: g.progress.status !== "date_passed",
+            // The one rule (goalOnTrack): on the way and not late with the other goals counted.
+            onTrack: goalOnTrack({ status: g.progress.status, lateMonths: goals.late.get(g.id) }),
+            reached: g.progress.status === "reached",
           })),
         }
       : null,

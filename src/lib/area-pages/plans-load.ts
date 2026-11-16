@@ -1,3 +1,5 @@
+import type { PrismaClient } from "@/generated/prisma/client";
+import { db as defaultClient } from "@/lib/db";
 import { previousMonth } from "@/insights/check-in";
 import { plansTree } from "@/lib/area-pages/plans";
 import { loadTradeoffs } from "@/lib/goal-tradeoffs";
@@ -8,17 +10,22 @@ import { scopedFor } from "@/lib/db-scoped";
 
 // Everything the Plans & goals tree is built from (docs/design/area-pages.md), loaded once for
 // the page and for the home tree, so both show the same statuses.
-export async function loadPlansArea(userId: string) {
-  const db = scopedFor(userId);
+export async function loadPlansArea(
+  userId: string,
+  { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
+) {
+  const db = scopedFor(userId, client);
   const [data, accounts, goals, worth] = await Promise.all([
-    loadAheadHub(userId),
+    loadAheadHub(userId, { client, now }),
     db.accounts.count(),
-    listGoals(userId),
-    loadNetWorthHistory(userId),
+    listGoals(userId, { client, now }),
+    loadNetWorthHistory(userId, { client, now }),
   ]);
   // Spec step 241: only worth the year plan's work with two goals or more.
-  const tradeoffs = goals.length >= 2 ? await loadTradeoffs(userId) : null;
-  const late = new Map((tradeoffs?.current?.dates ?? []).map((d) => [d.id, d.lateMonths]));
+  const tradeoffs = goals.length >= 2 ? await loadTradeoffs(userId, { client, now }) : null;
+  const late = new Map(
+    tradeoffs?.competing ? (tradeoffs.current?.dates ?? []).map((d) => [d.id, d.lateMonths]) : [],
+  );
   const dates = data.dates ?? [];
 
   const area = plansTree({
@@ -32,7 +39,7 @@ export async function loadPlansArea(userId: string) {
       status: g.progress.status,
       savedCents: g.progress.savedCents,
       monthlyCents: g.progress.status === "on_the_way" ? g.progress.monthlyCents : null,
-      lateMonths: tradeoffs?.competing ? (late.get(g.id) ?? null) : null,
+      lateMonths: late.get(g.id) ?? null,
     })),
     competing: !!tradeoffs?.competing,
     netWorth: worth

@@ -166,7 +166,7 @@ export type MoneyTreeInput = {
     owned: number;
     // A home or car loan with nothing linked to it, if any.
     assetPrompt: "home" | "vehicle" | null;
-    goals: { total: number; onTrack: number };
+    goals: { total: number; onTrack: number; reached?: number };
     // known: how many have a balance (uploaded card statements carry none).
     debt: { accounts: number; others?: number; owedCents: number; known?: number };
     // Accounts net worth leaves out for having no balance (an uploaded card, say).
@@ -448,7 +448,9 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
       summary:
         h.goals.total > 0
           ? `${h.goals.onTrack} of your ${plural(h.goals.total, "goal")} on track.`
-          : "Set a goal to save toward.",
+          : (h.goals.reached ?? 0) > 0
+            ? "Every goal reached."
+            : "Set a goal to save toward.",
     }),
   );
   if (h.debt.accounts + (h.debt.others ?? 0) > 0) {

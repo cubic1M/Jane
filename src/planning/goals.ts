@@ -45,3 +45,22 @@ export function goalProgress(goal: GoalInput, asOf: string): GoalProgress {
     monthlyCents: Math.ceil(left / monthsLeft),
   };
 }
+
+// Whether a goal is on track, the one rule for Home's Plans tile, the Money page, the money hub and
+// the Plans tree (gate B: the first three counted any goal whose date hadn't passed, late or not,
+// and a reached one too, where the tree counted only goals on the way and in time): on the way, and
+// not running late once the person's other goals are counted (goal trade-offs' late months).
+export const goalOnTrack = (g: { status: GoalProgress["status"]; lateMonths?: number | null }) =>
+  g.status === "on_the_way" && !((g.lateMonths ?? 0) > 0);
+
+// "N of M goals on track": of the goals not reached yet.
+export function goalsOnTrack(
+  goals: readonly { status: GoalProgress["status"]; lateMonths?: number | null }[],
+): { onTrack: number; total: number; reached: number } {
+  const open = goals.filter((g) => g.status !== "reached");
+  return {
+    onTrack: open.filter(goalOnTrack).length,
+    total: open.length,
+    reached: goals.length - open.length,
+  };
+}
