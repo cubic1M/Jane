@@ -6,8 +6,8 @@ import type { Candidate } from "../types";
 import type { Rule } from "./rule";
 
 // Fees in Plaid's bank-fee categories over the lookback window, one finding per account. What
-// each is worth a year is bankFeesByAccount's (src/planning/bank-fees.ts), over feeMonthsOf's
-// months: the figure the dock's suggestion and the chat add up, so the report says the same
+// each is worth a year is bankFeesByAccount's (src/planning/bank-fees.ts), over the account's own
+// months (feeMonthsOf): the figure the dock's suggestion and the chat add up, so the report says the same
 // (gate B: the report paced fees only under 200 days of history and the dock under a year, so
 // eight months of $12 fees read $96 a year here and $144 there).
 export const bankFees: Rule = (input) => {
@@ -24,12 +24,11 @@ export const bankFees: Rule = (input) => {
     },
   }));
   const fees = rows.filter((r) => isBankFee(r.fee)).map((r) => r.t);
-  const months = feeMonthsOf(input);
   const counted = bankFeesByAccount(
     rows.map((r) => r.fee),
-    months,
+    (accountId) => feeMonthsOf(input, [accountId]),
   );
-  return counted.flatMap(({ accountId, seenCents, yearCents }): Candidate[] => {
+  return counted.flatMap(({ accountId, seenCents, yearCents, months }): Candidate[] => {
     const account = input.accounts.find((a) => a.id === accountId);
     const charges = fees.filter((t) => t.accountId === accountId).sort(byDate);
     // Keyword rules and Plaid are reliable on fee lines; an LLM guess is less certain.

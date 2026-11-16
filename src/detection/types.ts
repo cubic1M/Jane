@@ -57,6 +57,8 @@ export type DetectionInput = {
   // The person's first posted transaction, ever (YYYY-MM-DD): how much history there is, even
   // before the lookback window. Absent: the earliest transaction below.
   historyFrom?: string;
+  // Each account's first posted transaction, ever: an uploaded statement's own history (fee pace).
+  accountsFrom?: Readonly<Record<string, string>>;
   accounts: DetectionAccount[];
   // Posted (not pending) transactions inside the lookback window.
   transactions: DetectionTransaction[];

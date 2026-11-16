@@ -78,13 +78,16 @@ const listed = (name: string) =>
 // "upload": a made-up Chase statement (src/lib/__fixtures__/made-up-statement.ts), uploaded.
 // "two-uploads": a checking statement that ended 25 days before and a card's to the day, uploaded
 // together (debug 3, 11-16: one account's old data beside another's recent).
-type Who = PersonId | "demo" | "upload" | "two-uploads";
-const UPLOADS = new Set<Who>(["upload", "two-uploads"]);
+// "mid-start": a statement that starts 50 days before, mid-month (debug 3, 11-16: a window that
+// starts before the data does).
+type Who = PersonId | "demo" | "upload" | "two-uploads" | "mid-start";
+const UPLOADS = new Set<Who>(["upload", "two-uploads", "mid-start"]);
 const people: Who[] = (listed("SWEEP_PEOPLE") as Who[]) ?? [
   "demo",
   ...PERSON_IDS,
   "upload",
   "two-uploads",
+  "mid-start",
 ];
 const windows = WINDOWS.filter((w) => listed("SWEEP_WINDOWS")?.includes(w.name) ?? true);
 const modes = (listed("SWEEP_MODES") as Mode[]) ?? ["frozen", "daily"];
@@ -134,14 +137,25 @@ describe.runIf(on)("the calendar sweep (gate C)", () => {
       const statements: [string, "checking" | "credit_card", string][] =
         who === "upload"
           ? [["Made-up checking", "checking", madeUpChaseCsv("ZZCHECKING", linked)]]
-          : [
-              ["Made-up checking", "checking", madeUpChaseCsv("ZZCHECKING", checkingEnds)],
-              [
-                "Made-up card",
-                "credit_card",
-                postedAfter(madeUpChaseCsv("ZZCARD", linked), checkingEnds),
-              ],
-            ];
+          : who === "mid-start"
+            ? [
+                [
+                  "Made-up checking",
+                  "checking",
+                  postedAfter(
+                    madeUpChaseCsv("ZZCHECKING", linked),
+                    new Date(linked.getTime() - 50 * 86_400_000),
+                  ),
+                ],
+              ]
+            : [
+                ["Made-up checking", "checking", madeUpChaseCsv("ZZCHECKING", checkingEnds)],
+                [
+                  "Made-up card",
+                  "credit_card",
+                  postedAfter(madeUpChaseCsv("ZZCARD", linked), checkingEnds),
+                ],
+              ];
       for (const [name, kind, csv] of statements) {
         const form = new FormData();
         form.set("accountId", "new");
