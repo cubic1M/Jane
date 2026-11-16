@@ -39,8 +39,12 @@ export function cardInterestReply(data: CardInterest, seen: InterestSeen | null 
         refs: {},
       };
     }
+    // A year of interest seen is already the year's figure: said once (debug 2, 11-15: "$353.31 in
+    // interest on Capital One card in the last 12 months, about $353.31 a year").
     const yearly =
-      seen.yearlyCents === null ? "" : `, about ${formatCents(seen.yearlyCents)} a year`;
+      seen.yearlyCents === null || seen.title.includes(formatCents(seen.yearlyCents))
+        ? ""
+        : `, about ${formatCents(seen.yearlyCents)} a year`;
     return {
       body: `You paid ${seen.title}${yearly}. Paying the balance off ends it; until then, asking the card company for a lower rate cuts it.`,
       actions: [openLink("Show me how", `/report/${seen.findingId}`)],
