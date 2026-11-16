@@ -36,6 +36,7 @@ export const idleCash: Rule = (input) => {
       accountId: t.accountId,
       pfc: t.pfcDetailed,
       description: t.description,
+      ...(t.uploadedOn ? { uploadedOn: t.uploadedOn } : {}),
     })),
   };
   // None of it is "more than you need" just after a paycheck stopped (debugger 11-05: the first thing
