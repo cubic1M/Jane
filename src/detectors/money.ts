@@ -365,6 +365,14 @@ const highCostLoans: Detector = {
     const cost = kinds.reduce((s, k) => s + k.costCents, 0);
     const count = kinds.reduce((s, k) => s + k.count, 0);
     if (count === 0 || cost <= 0) return null;
+    // A year's worth, as the card shows it: at a year's pace when the history is short, as card
+    // interest does (debugger 11-16: "$5/yr" from "$4.89 in fees in 6 months").
+    const first = data.transactions.reduce((min, t) => (t.date < min ? t.date : min), data.today);
+    const { short, months } = paceMonths(
+      daysBetween(first, dataEnd(data.transactions, data.today)),
+    );
+    const yearly = short ? Math.round((cost * 12) / months) : cost;
+    const seen = `${formatCents(cost)} in fees in ${months === 1 ? "a month" : `${months} months`}`;
     const payday = kinds.some((k) => k.kind === "payday");
     const titleLoan = data.transactions.some(
       (t) => t.amountCents > 0 && TITLE_LOAN_NAMES.test(t.description),
@@ -377,11 +385,11 @@ const highCostLoans: Detector = {
         : "Replace the pay advance app with something cheaper",
       headline: headlineOf(
         payday ? `Replace your ${loan}` : "Replace your pay advances",
-        cost,
+        yearly,
         "saves",
       ),
-      short: `Your ${what} cost about ${formatCents(cost)} in fees in ${profile.months} months.`,
-      worthCents: cost,
+      short: `Your ${what} cost about ${seen}${short ? `, about ${formatCents(yearly)} a year` : ""}.`,
+      worthCents: yearly,
       worthKind: "saves",
       // A title loan's count is its payments: "7 costly loans" was one loan and one payday loan.
       confidence: evidence(
@@ -391,7 +399,7 @@ const highCostLoans: Detector = {
         titleLoan ? "costly loan payments" : what,
       ),
       urgency: "now",
-      why: `Your ${what} cost about ${formatCents(cost)} in fees in ${profile.months} months${costly.cycle ? ", taken again and again" : ""}. A credit union small loan or a pay advance from work costs far less.`,
+      why: `Your ${what} cost about ${seen}${short ? ` (about ${formatCents(yearly)} a year at that pace)` : ""}${costly.cycle ? ", taken again and again" : ""}. A credit union small loan or a pay advance from work costs far less.`,
       action: { label: "See cheaper options", href: "/loans/costly" },
     });
   },
