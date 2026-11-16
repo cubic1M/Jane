@@ -130,9 +130,13 @@ export function subscriptionsReply(
     .sort((a, b) => (b.annualSavingsCents ?? -1) - (a.annualSavingsCents ?? -1))[0];
   if (best && snapshot) {
     const decision = findingReply(best, null, snapshot.concierge);
-    // The finding's own words are "Review X. Could save about $Y a year. Want me to handle
-    // it?": joined into two sentences, so the whole answer stays at three.
-    const said = decision.body.split(/(?<=[.!?])\s+/);
+    // The finding's own words are "Review X. Could save about $Y a year. N% sure: reason. Want me
+    // to handle it?": joined into two sentences, how sure folded into the saving, so the whole
+    // answer stays at three.
+    const sentences = decision.body.split(/(?<=[.!?])\s+/);
+    const sure = sentences.map((s) => /^(\d{1,3})% sure: /.exec(s)?.[1]).find(Boolean);
+    const said = sentences.filter((s) => !/^\d{1,3}% sure: /.test(s));
+    if (sure && said.length >= 2) said[1] = said[1].replace(/\.$/, ` (${sure}% sure).`);
     const tail =
       said.length >= 3
         ? `${said[0].replace(/\.$/, "")}: ${said[1].charAt(0).toLowerCase()}${said[1].slice(1)} ${said.slice(2).join(" ")}`
