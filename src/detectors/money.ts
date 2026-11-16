@@ -295,7 +295,7 @@ const emergencyFund: Detector = {
   topic: "emergency_fund",
   needs: ["income_pattern"],
   detect({ profile, data }) {
-    const spend = cushionSpendCents(data, profile.months);
+    const spend = cushionSpendCents(data);
     const pattern = profile.facts.income_pattern;
     const trouble = profile.facts.debt_trouble;
     const incomeFact = profile.facts.monthly_income;

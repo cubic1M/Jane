@@ -159,7 +159,7 @@ describe.runIf(url)("set-up proposals against a real database", () => {
       (p) => p.key === "goal:emergency_fund",
     );
     const data = await loadProfileInput(user.id, { client, now: NOW });
-    expect(goal).toMatchObject({ monthlySpendingCents: cushionSpendCents(data, 12) });
+    expect(goal).toMatchObject({ monthlySpendingCents: cushionSpendCents(data) });
   });
 
   it("proposes from the person's numbers and creates nothing until they say yes", async () => {

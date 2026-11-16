@@ -65,18 +65,21 @@ type IdleInput = {
   transactions: readonly IdleTx[];
 };
 
-// The cushion figures whatever the excess, so a checkup can say how near the line cash is.
-// Null with no checking or savings balance, or no spending to measure months by.
-export function cashCushionOf(input: IdleInput): Omit<IdleCash, "earnsCents"> | null {
-  const accounts = input.accounts
-    .filter(
-      (a) =>
-        a.type === "depository" &&
-        IDLE_CASH_SUBTYPES.includes((a.subtype ?? "").toLowerCase()) &&
-        a.balanceCents !== null &&
-        a.balanceCents > 0,
-    )
-    .sort((a, b) => a.id.localeCompare(b.id));
+// A month of spending, the one figure "you spend about $X a month" means everywhere: the idle cash
+// card and finding, the emergency cushion card, the goal Jane drafts, the chat's cushion answers,
+// the refund plan and the cash page (cushionSpendCents, src/detectors/helpers.ts). Gate B, 11-16:
+// the cushion's figure was the typical calendar month to today, so an old statement's empty weeks
+// read as a quiet month and one dock said $1,273.14 on its goal and $1,423.98 here. This one counts
+// days, so it holds when every date moves (the metamorphic bench), and ends where each account's
+// data does. Also what it holds back: estimated tax payments and yearly bills due within the
+// months, which aren't monthly spending and come on top of it (setAsideCents).
+export function spendingMonthOf(input: Pick<IdleInput, "asOf" | "transactions">): {
+  monthlyCents: number;
+  shortestHistoryMonths: number;
+  estimated: Set<IdleTx>;
+  yearly: IdleTx[];
+  until: string;
+} {
   // Spending in the lookback window only, the same twelve months wherever the data came from,
   // ending where the data reaches: an old upload's months don't lose a day each day it sits
   // (gate C, 11-15: the cushion moved daily with nothing new).
@@ -140,6 +143,28 @@ export function cashCushionOf(input: IdleInput): Omit<IdleCash, "earnsCents"> | 
     shortest = Math.min(shortest, months);
   }
   const monthlyCents = Math.round(monthly);
+  return { monthlyCents, shortestHistoryMonths: shortest, estimated, yearly, until };
+}
+
+// The cushion figures whatever the excess, so a checkup can say how near the line cash is.
+// Null with no checking or savings balance, or no spending to measure months by.
+export function cashCushionOf(input: IdleInput): Omit<IdleCash, "earnsCents"> | null {
+  const accounts = input.accounts
+    .filter(
+      (a) =>
+        a.type === "depository" &&
+        IDLE_CASH_SUBTYPES.includes((a.subtype ?? "").toLowerCase()) &&
+        a.balanceCents !== null &&
+        a.balanceCents > 0,
+    )
+    .sort((a, b) => a.id.localeCompare(b.id));
+  const {
+    monthlyCents,
+    shortestHistoryMonths: shortest,
+    estimated,
+    yearly,
+    until,
+  } = spendingMonthOf(input);
   if (accounts.length === 0 || monthlyCents <= 0) return null;
   const balanceCents = accounts.reduce((sum, a) => sum + (a.balanceCents ?? 0), 0);
   const cushionCents = monthlyCents * IDLE_CASH_MONTHS_OF_SPENDING;

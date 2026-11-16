@@ -41,7 +41,7 @@ export async function loadDecisionFacts(
 ): Promise<DecisionFacts> {
   const data = await loadProfileInput(userId, { client, now });
   const profile = buildProfile(data);
-  const spend = cushionSpendCents(data, profile.months);
+  const spend = cushionSpendCents(data);
   const cash = cashKnown(data) ? liquidCents(data) : null;
   const income = profile.facts.monthly_income;
   const pattern = profile.facts.income_pattern;

@@ -1,3 +1,4 @@
+import { loadCushionSpendCents } from "@/lib/cushion-spend";
 import { createHash, randomUUID } from "node:crypto";
 import {
   CASH_MOVE_DAYS,
@@ -7,7 +8,6 @@ import {
 } from "@/config/cash";
 import { FUND_NAMES } from "@/config/funds";
 import type { PrismaClient } from "@/generated/prisma/client";
-import { loadTypicalMonthlySpending } from "@/insights/load";
 import { fundProfile, fundTarget } from "@/lib/emergency-fund";
 import { fundBasis } from "@/planning/emergency-fund";
 import { adviceMode } from "@/lib/advice-mode";
@@ -15,7 +15,6 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { brokeragePartner } from "@/lib/brokerage/partner";
 import { db as defaultClient } from "@/lib/db";
-import { todayOf } from "@/lib/today";
 import { scopedFor } from "@/lib/db-scoped";
 import { scheduleTransfer, TransferError } from "@/lib/money-movement/transfers";
 import { syncDemoInvestments } from "@/lib/plaid/sync";
@@ -52,7 +51,6 @@ export async function loadCash(
   }: Options & { investments?: Investments } = {},
 ): Promise<CashView> {
   const db = scopedFor(userId, client);
-  const asOf = await todayOf(userId, { client, now });
   const [advice, accounts, investments, monthlySpendingCents, goals, moved] = await Promise.all([
     adviceMode(userId, { client }),
     db.accounts.findMany({
@@ -61,7 +59,7 @@ export async function loadCash(
       orderBy: { name: "asc" },
     }),
     loaded ?? loadInvestments(userId, { client, now }),
-    loadTypicalMonthlySpending(db, asOf, now),
+    loadCushionSpendCents(userId, { client, now }),
     db.savingsGoals.findMany({ select: { name: true, targetCents: true } }),
     // Cash Jane moved lately: the demo bank's balances don't show stand-in transfers.
     db.moneyTransfers.findMany({
