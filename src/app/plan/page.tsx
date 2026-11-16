@@ -14,7 +14,7 @@ import { selfServe } from "@/lib/diy";
 import { recentRuleApprovals } from "@/lib/standing-rules";
 import { openProposals, recentAutoCategories, refreshProposals } from "@/lib/proposals";
 import { categoryOptions } from "@/lib/categories";
-import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
+import { completeMonthsWords } from "@/insights/budgets";
 
 const sentenceStart = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 import { goalBasis, type Proposal } from "@/planning/proposals";
@@ -250,7 +250,7 @@ function setupView(p: Proposal): SetupView {
     return {
       key: p.key,
       title: `Set a ${formatCents(p.amountCents)} monthly budget for ${p.category}`,
-      basis: `Your own average over the last ${BUDGET_SUGGESTION_MONTHS} complete months, rounded up. Math from your data, not advice.`,
+      basis: `Your own average over the last ${completeMonthsWords(p.months)}, rounded up. Math from your data, not advice.`,
       fields: [{ kind: "amount", label: "Monthly budget ($)", value: String(p.amountCents / 100) }],
     };
   }

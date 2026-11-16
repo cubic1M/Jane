@@ -23,6 +23,9 @@ export type BudgetProposal = {
   category: string;
   // The proposed monthly budget: their own average, rounded up.
   amountCents: number;
+  // How many complete months that average is over (budgetSummary's months); absent on one stored
+  // before 11-16, which was over the full BUDGET_SUGGESTION_MONTHS.
+  months?: number;
 };
 
 export type GoalProposal = {
@@ -59,6 +62,8 @@ export type ProposalInput = {
   asOf: string;
   // Average monthly spending per category, rounded up (from budgetSummary).
   suggestions: Record<string, number>;
+  // How many complete months those averages are over (budgetSummary's months).
+  suggestionMonths: number;
   budgetedCategories: string[];
   goalNames: string[];
   monthlySpendingCents: number;
@@ -93,7 +98,13 @@ export function proposals(input: ProposalInput): Proposal[] {
     .sort(([a, x], [b, y]) => y - x || a.localeCompare(b))
     .slice(0, PROPOSAL_BUDGET_COUNT)
     .forEach(([category, amountCents]) =>
-      out.push({ kind: "budget", key: `budget:${category}`, category, amountCents }),
+      out.push({
+        kind: "budget",
+        key: `budget:${category}`,
+        category,
+        amountCents,
+        months: input.suggestionMonths,
+      }),
     );
 
   const fund = emergencyTarget({

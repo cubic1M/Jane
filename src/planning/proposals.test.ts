@@ -14,6 +14,7 @@ const input = (over: Partial<ProposalInput> = {}): ProposalInput => ({
   budgetedCategories: [],
   goalNames: [],
   monthlySpendingCents: 320_000,
+  suggestionMonths: 3,
   uncategorized: [],
   ...over,
 });
@@ -29,12 +30,14 @@ describe("set-up proposals", () => {
         key: "budget:Food and drink",
         category: "Food and drink",
         amountCents: 50_000,
+        months: 3,
       },
       {
         kind: "budget",
         key: "budget:Entertainment",
         category: "Entertainment",
         amountCents: 3_000,
+        months: 3,
       },
     ]);
   });

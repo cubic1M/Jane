@@ -1,7 +1,7 @@
 import { connection } from "next/server";
 import { AppHeader } from "@/components/app-header";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
-import { budgetSummary, daysLeftWords } from "@/insights/budgets";
+import { budgetSummary, completeMonthsWords, daysLeftWords } from "@/insights/budgets";
 import type { IrregularItem } from "@/insights/irregular";
 import { loadInsightTransactions } from "@/insights/load";
 import { BUDGET_CATEGORIES } from "@/lib/budgets";
@@ -124,8 +124,8 @@ async function Budgets() {
           {summary.progress.length > 0 ? "Add or change a budget" : "Set a budget"}
         </h2>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          The averages in brackets are your own spending over the last {BUDGET_SUGGESTION_MONTHS}{" "}
-          months, as a starting point; pick whatever suits you.
+          The averages in brackets are your own spending over the last{" "}
+          {completeMonthsWords(summary.months)}, as a starting point; pick whatever suits you.
         </p>
         <BudgetForm categories={BUDGET_CATEGORIES} suggestions={summary.suggestions} />
       </section>

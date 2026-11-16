@@ -30,6 +30,9 @@ export type BudgetSummary = {
   // Average monthly spending per category over the last complete months, rounded up:
   // the starting point offered when setting a budget. Not a recommendation.
   suggestions: Record<string, number>;
+  // How many complete months those averages are over: fewer than BUDGET_SUGGESTION_MONTHS when the
+  // data starts later (debug 2, 11-16: "the last 3 complete months" over data from Aug 18).
+  months: number;
   // Every category with spending this month or in the suggestion window.
   categories: string[];
 };
@@ -94,9 +97,14 @@ export function budgetSummary(
       })
       .sort((a, b) => a.category.localeCompare(b.category)),
     suggestions,
+    months: past.length,
     categories,
   };
 }
+
+// "2 complete months", "complete month": how the averages' months are said (after "the last").
+export const completeMonthsWords = (months: number = BUDGET_SUGGESTION_MONTHS) =>
+  months === 1 ? "complete month" : `${months} complete months`;
 
 export type BudgetAlert = {
   type: "over_budget";

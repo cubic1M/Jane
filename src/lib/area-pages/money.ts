@@ -240,11 +240,19 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
         figure: shortMoney(l.lowCents),
         // An old statement's balance is said with its day, then today's estimate: "About $12,511.09
         // today" alone read as a second balance beside net worth's $10,597.07 (debug 2, 11-16).
+        // Each figure once: "$2,073.20 on Nov 13, about $2,073.20 today. Lowest point about
+        // $2,073.20 on Nov 16." said one balance three times (debug 2, 11-16).
         summary: `${
           l.estimated && l.fromOn !== undefined && l.fromCents !== undefined
-            ? `${formatCents(l.fromCents)} on ${dayLabel(l.fromOn)}, about ${formatCents(l.startCents)} today`
+            ? `${formatCents(l.fromCents)} on ${dayLabel(l.fromOn)}${
+                l.fromCents === l.startCents ? "" : `, about ${formatCents(l.startCents)} today`
+              }`
             : `${l.estimated ? "About " : ""}${formatCents(l.startCents)} today`
-        }. Lowest point about ${formatCents(l.lowCents)} on ${dayLabel(l.date)}.`,
+        }. ${
+          l.lowCents >= l.startCents
+            ? "Nothing coming up takes it lower."
+            : `Lowest point about ${formatCents(l.lowCents)} on ${dayLabel(l.date)}.`
+        }`,
         cents: under ? input.cushionCents - l.lowCents : undefined,
       }),
     );
