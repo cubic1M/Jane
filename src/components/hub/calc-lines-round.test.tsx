@@ -17,6 +17,25 @@ describe("a sum's lines", () => {
     expect(render(251_949)).toContain("$2,519");
   });
 
+  // Gate B: and the parts add up to it, as the tile's total rounds: $1,120.40 − $305.60 read
+  // "$1,120 − $306 = $815".
+  it("add up to the total they show", () => {
+    const html = renderToStaticMarkup(
+      <CalcLines
+        label="Why this number"
+        lines={[
+          { label: "In checking", sign: "", cents: 112_040 },
+          { label: "Bills before payday", sign: "−", cents: 30_560 },
+          { label: "Safe to spend", sign: "=", cents: 81_480 },
+        ]}
+      />,
+    );
+    expect(html).toContain("$1,120");
+    expect(html).toContain("$305");
+    expect(html).not.toContain("$306");
+    expect(html).toContain("$815");
+  });
+
   it("keep the minus sign on a shortfall", () => {
     expect(render(-12_350)).toContain("−$124");
   });

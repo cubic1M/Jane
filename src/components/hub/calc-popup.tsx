@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import type { Route } from "next";
 import type { CalcLine } from "@/lib/hub/view";
 import { formatWholeDollars } from "@/lib/money";
+import { wholeDollarParts } from "@/lib/round-parts";
 import { placePopup, popupLine, type Box } from "./place-popup";
 import { MarchingPath } from "@/components/marching-path";
 
@@ -31,6 +32,8 @@ const rectOf = (el: Element): Box => {
 const AVOID = '[data-net-worth-chart], [data-side-chat], [data-sheet]:not([data-sheet="closed"])';
 
 export function CalcLines({ lines, label }: { lines: CalcLine[]; label: string }) {
+  // Each line in whole dollars, the parts adding up to the total the tile shows (src/lib/round-parts.ts).
+  const shown = wholeDollarParts(lines);
   return (
     <dl aria-label={label} data-calc-lines="" className="flex flex-col gap-1 text-sm tabular-nums">
       {lines.map((l, k) => (
@@ -48,7 +51,7 @@ export function CalcLines({ lines, label }: { lines: CalcLine[]; label: string }
             {l.label}
             {l.note && <span className="text-zinc-500"> · {l.note}</span>}
           </dt>
-          <dd className="shrink-0">{l.unknown ? "Not known" : dollars(l.cents)}</dd>
+          <dd className="shrink-0">{l.unknown ? "Not known" : dollars(shown[k]!)}</dd>
         </div>
       ))}
     </dl>
