@@ -5,7 +5,7 @@ import { ANNUAL_FEE_WORDS, FEE_PACE_MIN_CHARGES } from "@/config/found-policies"
 // Bank fees in a year, the one definition (the brief's suggestion, the Today card's fees and
 // Jane's answer all use it): fees in the bank-fee categories over the last twelve months, not
 // a payment processor's. With under twelve months of data the figure is scaled up to a year and
-// said to be an estimate. A fee the bank gave back (the same amount, in the same category,
+// said to be an estimate. A fee the bank gave back (the same amount, on the same account,
 // within FEE_REVERSAL_DAYS) doesn't count; other fee refunds come off the total. Pure.
 
 export type FeeTx = {
@@ -25,10 +25,21 @@ export type BankFees = {
   estimated: boolean;
 };
 
-export function bankFeesYear(
+// Each account's fees, on its own (debugger 11-01: a card's one late fee was paced along with
+// checking's monthly fees, "about $200.00/yr" where the report said $77): what was seen, and a
+// year's worth. The report's finding on each account is this (src/detection/rules/bank-fees.ts),
+// and the dock and the chat add them up (bankFeesYear), so the three say one figure (gate B).
+export type AccountFees = {
+  accountId: string | undefined;
+  seenCents: number;
+  yearCents: number;
+  count: number;
+};
+
+export function bankFeesByAccount(
   transactions: readonly FeeTx[],
   monthsOfData: number,
-): BankFees | null {
+): AccountFees[] {
   const inFees = transactions.filter(
     (t) =>
       BANK_FEE_CATEGORIES.includes(t.pfc as never) &&
@@ -43,25 +54,26 @@ export function bankFeesYear(
       (r) =>
         !used.has(r) &&
         r.amountCents === -fee.amountCents &&
-        r.pfc === fee.pfc &&
+        // On the same account, in any bank-fee category: a bank files its "FEE REVERSAL" line under
+        // its own category, not always the fee's, so pairing by category made one upload's $34 fee
+        // given back read $102 a year in one bank's layout and $34 in another (gate B).
+        r.accountId === fee.accountId &&
         daysApart(fee.date, r.date) <= FEE_REVERSAL_DAYS,
     );
     if (back) used.add(back);
     return Boolean(back);
   };
   const fees = inFees.filter((t) => t.amountCents > 0).filter((fee) => !reversed(fee));
-  if (fees.length === 0) return null;
   // Other refunds of fees (part of one, or one we can't pair) still come off.
   const unpaired = refunds.filter((r) => !used.has(r));
   const months = Math.min(12, Math.max(1, monthsOfData));
-  // Each account on its own, as the report's findings are (debugger 11-01: a card's one late fee
-  // was paced along with checking's monthly fees, "about $200.00/yr" where the report said $77).
-  const perAccount = [...new Set(fees.map((t) => t.accountId))].map((account) => {
+  return [...new Set(fees.map((t) => t.accountId))].sort().flatMap((account) => {
     const own = fees.filter((t) => t.accountId === account);
     const back = unpaired
       .filter((r) => r.accountId === account)
       .reduce((s, r) => s - r.amountCents, 0);
     const seen = Math.max(0, own.reduce((s, t) => s + t.amountCents, 0) - back);
+    if (seen === 0) return [];
     // A card's annual fee comes once a year, so it counts once, not scaled up with the rest.
     const yearly = Math.min(
       seen,
@@ -69,17 +81,31 @@ export function bankFeesYear(
         .filter((t) => ANNUAL_FEE_WORDS.test(t.description))
         .reduce((s, t) => s + t.amountCents, 0),
     );
-    // One fee isn't a pace: it counts once (FEE_PACE_MIN_CHARGES), as the report's finding does.
+    // One fee isn't a pace: it counts once (FEE_PACE_MIN_CHARGES).
     const paced =
       own.filter((t) => !ANNUAL_FEE_WORDS.test(t.description)).length >= FEE_PACE_MIN_CHARGES;
-    return { seen, year: paced ? Math.round((seen - yearly) * (12 / months)) + yearly : seen };
+    return [
+      {
+        accountId: account,
+        seenCents: seen,
+        yearCents: paced ? Math.round((seen - yearly) * (12 / months)) + yearly : seen,
+        count: own.length,
+      },
+    ];
   });
-  const seenCents = perAccount.reduce((s, a) => s + a.seen, 0);
-  if (seenCents === 0) return null;
+}
+
+export function bankFeesYear(
+  transactions: readonly FeeTx[],
+  monthsOfData: number,
+): BankFees | null {
+  const accounts = bankFeesByAccount(transactions, monthsOfData);
+  if (accounts.length === 0) return null;
+  const months = Math.min(12, Math.max(1, monthsOfData));
   return {
-    seenCents,
-    yearCents: perAccount.reduce((s, a) => s + a.year, 0),
-    count: fees.length,
+    seenCents: accounts.reduce((s, a) => s + a.seenCents, 0),
+    yearCents: accounts.reduce((s, a) => s + a.yearCents, 0),
+    count: accounts.reduce((s, a) => s + a.count, 0),
     monthsOfData: months,
     estimated: months < 12,
   };

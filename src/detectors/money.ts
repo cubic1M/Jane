@@ -3,7 +3,7 @@ import { rateMonthsOf } from "@/profile/build";
 import { BANK_FEE_CATEGORIES, IDLE_CASH_MONTHS_OF_SPENDING } from "@/config/detection";
 import { bankFeesYear } from "@/planning/bank-fees";
 import { LOOKBACK_MONTHS } from "@/config/detection";
-import { dataEnd, paceMonths } from "@/detection/rules/fee-totals";
+import { dataEnd, feeMonthsOf, paceMonths } from "@/detection/rules/fee-totals";
 import { daysBetween, monthsBefore } from "@/detection/units";
 import { idleCashOf, payingCardInterest } from "@/planning/idle-cash";
 import { DETECTOR_RATES as R } from "@/config/detectors";
@@ -119,8 +119,12 @@ const bankFees: Detector = {
   topic: "bank_fees",
   needs: [],
   detect({ profile, data }) {
-    // A year of fees, the one definition (src/planning/bank-fees.ts) the chat's answer uses too.
-    const fees = bankFeesYear(data.transactions, Math.round(rateMonthsOf(profile)));
+    // A year of fees, the one definition (src/planning/bank-fees.ts) over the one count of months
+    // (feeMonthsOf) the report's findings and the chat's answer use too (gate B).
+    const fees = bankFeesYear(
+      data.transactions,
+      feeMonthsOf({ transactions: data.transactions, asOf: data.today }),
+    );
     if (!fees || fees.count < R.feesMin) return null;
     const total = fees.yearCents;
     // Night QA 10-30: a traveller's foreign-transaction and annual card fees read as "Stop paying
