@@ -144,7 +144,7 @@ export async function signInWithGoogle(formData?: FormData): Promise<void> {
   // short-lived cookie for the signIn callback to redeem.
   if (formData) await requireConsent(formData);
   const invite = formData ? inviteFrom(formData) : null;
-  if (invite) {
+  if (formData && invite) {
     const result = await checkCode(invite);
     if (result !== "ok") {
       await recordFailedSignIn(`invite_${result}`);
