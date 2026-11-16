@@ -84,6 +84,9 @@ export function findingCandidate(finding: SnapshotFinding, concierge = true): Ca
       findingId: finding.findingId,
       fingerprint: finding.fingerprint,
       ...(finding.pick ? { pickOptionId: finding.pick.optionId } : {}),
+      // On a pop-up's face too, as the heads-ups carry theirs (debugger 11-16: "Review your Amazon
+      // Prime subscription." said it only behind More details).
+      ...(finding.sure ? { confidence: finding.sure } : {}),
     },
     actions,
     dedupeKey: finding.findingId,
