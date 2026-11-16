@@ -2,7 +2,9 @@
 // of its services, and each service also has its own "review your X" item with its whole yearly
 // cost. Counting both in a total counts the same dollars twice (spec step 263, from the QA
 // sweep). Both stay on the plan, since the cancel flow works from the single review; the
-// total counts the group's dollars only when some service in it has no review of its own.
+// total counts the group's dollars only when some service in it has no review of its own. A price
+// rise on a service with its own review is the same: the review's yearly cost is at the new price,
+// so cancelling saves the rise too (debugger 11-16: Hulu's $24 rise beside its $143.88 review).
 
 type Row = { type: string; evidence: unknown };
 
@@ -17,7 +19,7 @@ const merchantsOf = (evidence: unknown): string[] => {
     : [];
 };
 
-// The group rows whose dollars are already in the single reviews beside them.
+// The group and price-rise rows whose dollars are already in the single reviews beside them.
 export function groupsCountedElsewhere<T extends Row>(rows: readonly T[]): Set<T> {
   const reviewed = new Set(
     rows
@@ -27,6 +29,9 @@ export function groupsCountedElsewhere<T extends Row>(rows: readonly T[]): Set<T
   );
   return new Set(
     rows.filter((r) => {
+      if (r.type === "price_increase") {
+        return reviewed.has((r.evidence as { merchant?: unknown } | null)?.merchant as string);
+      }
       if (r.type !== "duplicate_subscription") return false;
       const members = merchantsOf(r.evidence);
       return members.length > 0 && members.every((m) => reviewed.has(m));
