@@ -44,8 +44,18 @@ function line(debt: Debt): string {
   return `- ${parts.join(", ")}${debt.overdue ? ". Your bank shows it as overdue" : ""}`;
 }
 
+// "2 loans", "1 card", "3 loans and cards": what is owed on, by what it is (debug 2, 11-16: "on 2
+// loans and cards" for a student loan and a car loan).
+function whatOwed(accounts: readonly { kind: string }[]): string {
+  const cards = accounts.filter((d) => d.kind === "card").length;
+  if (cards === accounts.length) return plural(cards, "card");
+  if (cards === 0) return plural(accounts.length, "loan");
+  return `${accounts.length} loans and cards`;
+}
+
 // "How much do I owe?": the total (the same as net worth counts), buy now, pay later plans
 // on their own line, then every debt.
+
 export function debtsReply(book: DebtBook): Reply {
   const accounts = book.debts.filter((d) => d.inNetWorth);
   const plans = book.debts.filter((d) => d.kind === "bnpl");
@@ -66,7 +76,7 @@ export function debtsReply(book: DebtBook): Reply {
     lines.push(`I can't see what you owe on ${unread.map((d) => d.name).join(" or ")} yet.`);
   } else if (accounts.length > 0) {
     lines.push(
-      `You owe ${formatCents(book.accountsOwedCents)} on ${plural(accounts.length, "loan or card", "loans and cards")}, the same as your net worth counts.`,
+      `You owe ${formatCents(book.accountsOwedCents)} on ${whatOwed(accounts)}, the same as your net worth counts.`,
     );
   }
   if (plans.length > 0) {
