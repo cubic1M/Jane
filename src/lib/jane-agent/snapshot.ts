@@ -50,6 +50,8 @@ import { loadTaxSnapshot, type TaxSnapshot } from "./snapshot-tax";
 import { nameMatches } from "./names";
 import { keeps, listPreferences, neverKeys } from "./preferences";
 import { findingFingerprint } from "./fingerprint";
+import { findingSureFacts } from "@/lib/finding-sures";
+import { findingSure } from "@/lib/report-state";
 
 // Everything Jane's brain looks at for one person (spec step 82), loaded with the same
 // code as the pages that show it: Today (src/lib/home.ts), the plan, the comparisons, the
@@ -70,6 +72,8 @@ export type SnapshotFinding = {
   // Spec step 143: how sure detection is, for the priority engine. Optional for snapshots
   // built by hand.
   confidence?: "high" | "medium" | "low";
+  // How sure Jane is, in the words /report uses (findingSure). Optional for snapshots built by hand.
+  sure?: { percent: number; reason: string };
 };
 
 export type Snapshot = {
@@ -291,16 +295,21 @@ async function loadSnapshotWork(
   if (!home) return null;
   const db = scopedFor(userId, client);
   // The person's own timezone: users have their own helpers, so a direct read by id.
-  const [user, plan, ruleApprovals, alerts, said, preferences, concierge] = await Promise.all([
-    scopedFor(userId, client).me.findUnique({ where: { id: userId }, select: { timezone: true } }),
-    planFor(userId, { client }),
-    recentRuleApprovals(userId, { client, now }),
-    newestUnreadAlerts(userId, { client, limit: ALERTS_LOOKED_AT }),
-    // The "still looking" line doesn't count as Jane having said hello.
-    db.janeMessages.count({ where: { NOT: { dedupeKey: "scanning:hello" } } }),
-    listPreferences(userId, { client }),
-    conciergeMode(userId, { client }),
-  ]);
+  const [user, plan, ruleApprovals, alerts, said, preferences, concierge, sureFacts] =
+    await Promise.all([
+      scopedFor(userId, client).me.findUnique({
+        where: { id: userId },
+        select: { timezone: true },
+      }),
+      planFor(userId, { client }),
+      recentRuleApprovals(userId, { client, now }),
+      newestUnreadAlerts(userId, { client, limit: ALERTS_LOOKED_AT }),
+      // The "still looking" line doesn't count as Jane having said hello.
+      db.janeMessages.count({ where: { NOT: { dedupeKey: "scanning:hello" } } }),
+      listPreferences(userId, { client }),
+      conciergeMode(userId, { client }),
+      findingSureFacts(db, now),
+    ]);
   const findings = await db.findings.findMany({
     where: { id: { in: plan.map((i) => i.card.findingId) } },
     select: {
@@ -405,6 +414,12 @@ async function loadSnapshotWork(
         fingerprint: findingFingerprint(finding),
         urgent: PLAN_URGENT_FINDING_TYPES.includes(finding.type),
         confidence: finding.confidence,
+        sure: findingSure(
+          finding,
+          sureFacts.sures,
+          sureFacts.months,
+          open.filter((o) => o.finding.type === finding.type).length,
+        ),
         pick: comparison
           ? {
               optionId: comparison.pick.option.id,

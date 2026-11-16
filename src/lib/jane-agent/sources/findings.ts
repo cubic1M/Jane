@@ -72,6 +72,8 @@ export function findingCandidate(finding: SnapshotFinding, concierge = true): Ca
     body: [
       sentence(finding.title),
       sentence(finding.savings),
+      // How sure, as every suggestion says it (gate D: the cards for findings said nothing).
+      finding.sure ? `${finding.sure.percent}% sure: ${finding.sure.reason}.` : null,
       finding.pick ? pickSentence(finding.pick) : null,
       concierge ? ASK_TO_HANDLE : ASK_FOR_STEPS,
     ]
