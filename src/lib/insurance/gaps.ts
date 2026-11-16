@@ -88,7 +88,12 @@ export function coverageGaps(
       kind: "auto",
       policyId: null,
       title: "No car insurance on file",
-      why: `${from(vehicles, "You told me you have a car", "You have a car loan or a car on your profile")}, and there's no car policy on file. Almost every state requires car insurance to drive.`,
+      why: household.signals.carLoan
+        ? "You have a car loan, and there's no car policy on file. The lender requires cover, so it's likely paid somewhere I can't see: add it here so I can keep an eye on it too."
+        : `${from(vehicles, "You told me you have a car", "You have a car loan or a car on your profile")}, and there's no car policy on file. Almost every state requires car insurance to drive.`,
+      // A financed car is insured by the loan's terms (debugger 11-16: "Car insurance, Missing",
+      // urgent, beside a car loan; the auto_insurance card already stays quiet then).
+      ...(household.signals.carLoan && { likelyElsewhere: true as const }),
     });
   }
   if ((dependants.value ?? 0) > 0 && !has(everyone, "life")) {
