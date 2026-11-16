@@ -1,10 +1,19 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { SubmitButton } from "@/components/submit-button";
+import { userFromUnsubscribeToken } from "@/lib/digest/unsubscribe";
 
 // Reached from an email's unsubscribe link (the weekly digest and the monthly report, which
 // share one setting, or with what=alerts, alert emails); works without signing in. The change only
 // happens on the button press, so mail scanners that open links don't unsubscribe anyone.
+
+// Where each email's own setting is, for a link that doesn't work (cut short by a mail app, or
+// from an old email).
+const SETTING = {
+  alerts: "/settings#alerts",
+  chat: "/settings#jane-messages",
+  digest: "/settings#email",
+};
 
 async function Content({
   searchParams,
@@ -34,8 +43,22 @@ async function Content({
       </>
     );
   }
-  if (typeof token !== "string" || !token) {
-    return <p>This unsubscribe link is incomplete. Use the link from your email.</p>;
+  if (typeof token !== "string" || !userFromUnsubscribeToken(token)) {
+    return (
+      <>
+        <h1 className="text-3xl font-semibold tracking-tight">This link doesn&apos;t work</h1>
+        <p className="text-zinc-600 dark:text-zinc-400">
+          It may have been cut short, or be from an old email. You can turn these emails off in{" "}
+          <Link
+            href={SETTING[chat ? "chat" : alerts ? "alerts" : "digest"]}
+            className="font-medium text-emerald-700 hover:underline"
+          >
+            settings
+          </Link>
+          .
+        </p>
+      </>
+    );
   }
   return (
     <>
