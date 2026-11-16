@@ -94,16 +94,18 @@ describe("spendingInsights", () => {
   });
 
   it("ranks merchants and shows the biggest month-over-month changes", () => {
+    // September from its start: a month the data starts halfway through isn't compared
+    // (spending-changes-full-month.test.ts).
     const insights = run([
       t({ merchantName: "Grocer", amountCents: 9000, pfcPrimary: "FOOD_AND_DRINK" }),
       t({
         merchantName: "Grocer",
         amountCents: 1000,
-        date: "2026-09-10",
+        date: "2026-09-02",
         pfcPrimary: "FOOD_AND_DRINK",
       }),
       t({ merchantName: "Shop", amountCents: 3000 }),
-      t({ merchantName: "Shop", amountCents: 3000, date: "2026-09-10" }),
+      t({ merchantName: "Shop", amountCents: 3000, date: "2026-09-02" }),
     ]);
 
     expect(insights.topMerchants.map((m) => [m.merchant, m.cents, m.count])).toEqual([
