@@ -51,7 +51,7 @@ async function Content({
           It may have been cut short, or be from an old email. You can turn these emails off in{" "}
           <Link
             href={SETTING[chat ? "chat" : alerts ? "alerts" : "digest"]}
-            className="font-medium text-emerald-700 hover:underline"
+            className="font-medium underline hover:no-underline"
           >
             settings
           </Link>
