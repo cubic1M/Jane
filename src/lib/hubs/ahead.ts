@@ -1,12 +1,11 @@
 import { HUB_DEADLINE_DAYS } from "@/config/hubs";
 import { LIFE_EVENTS } from "@/config/life-events";
-import { PLANNER_LEFT_OUT_SUBTYPES } from "@/config/planning";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { previousMonth } from "@/insights/check-in";
 import { dueIn, type Deadline } from "@/insights/deadlines";
 import { irregularCosts } from "@/insights/irregular";
 import { db as defaultClient } from "@/lib/db";
-import { scopedFor } from "@/lib/db-scoped";
+import { loadDebts } from "@/lib/debts";
 import { loadComingUp } from "@/lib/coming-up";
 import { listLifeEvents } from "@/lib/life-events";
 import { formatCents } from "@/lib/money";
@@ -156,22 +155,14 @@ export async function loadAheadHub(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<AheadData> {
-  const db = scopedFor(userId, client);
   // The person's own day, as the coming-up list it reads (debugger 11-13).
   const asOf = await todayOf(userId, { client, now });
-  const [{ input, deadlines }, debts, events] = await Promise.all([
+  const [{ input, deadlines }, book, events] = await Promise.all([
     // Bills and deadlines from the one coming-up source (src/lib/coming-up.ts).
     loadComingUp(userId, { client, now, days: HUB_DEADLINE_DAYS }),
-    // The same cards and loans as the debt planner.
-    db.accounts.findMany({
-      where: {
-        OR: [
-          { type: "credit" },
-          { type: "loan", NOT: { subtype: { in: [...PLANNER_LEFT_OUT_SUBTYPES] } } },
-        ],
-      },
-      select: { currentBalanceCents: true },
-    }),
+    // What's owed, from the one book the loans page reads (gate B: this summed the accounts
+    // itself and counted an account linked twice), less the mortgage, as the debt planner.
+    loadDebts(userId, { client, now }),
     listLifeEvents(userId, { client }),
   ]);
   const yearly = irregularCosts(input);
@@ -195,11 +186,14 @@ export async function loadAheadHub(
         href,
         detail,
       })),
-    debt: {
-      accounts: debts.length,
-      owedCents: debts.reduce((sum, a) => sum + Math.max(0, a.currentBalanceCents ?? 0), 0),
-      known: debts.filter((a) => a.currentBalanceCents !== null).length,
-    },
+    debt: (() => {
+      const debts = book.debts.filter((d) => d.kind !== "mortgage");
+      return {
+        accounts: debts.length,
+        owedCents: debts.reduce((sum, d) => sum + (d.balanceCents ?? 0), 0),
+        known: debts.filter((d) => d.balanceCents !== null).length,
+      };
+    })(),
     lifeEvents: {
       open: open.length,
       newest: newest

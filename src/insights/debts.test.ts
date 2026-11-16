@@ -99,8 +99,18 @@ const AFFIRM: BnplPlan = {
 };
 
 describe("every debt in one place", () => {
-  it("adds up loans and cards to exactly what net worth counts as owed", () => {
+  it("adds up to exactly its own lines: a card in credit owes nothing", () => {
     const book = debtBook({ accounts: ACCOUNTS, plans: [KLARNA], typed: [] }, AS_OF);
+    const lines = (accounts: boolean) =>
+      book.debts
+        .filter((d) => (d.accountId !== null) === accounts)
+        .reduce((sum, d) => sum + (d.balanceCents ?? 0), 0);
+    // Gate B: the total read $25 under the lines the loans page lists, a card in credit taking
+    // its credit off what the other cards owe. Net worth still counts that credit as the
+    // person's (it's theirs), so what's owed is net worth's debts less it.
+    expect(book.accountsOwedCents).toBe(lines(true));
+    expect(book.bnplOwedCents).toBe(12_450);
+    expect(book.totalOwedCents).toBe(lines(true) + lines(false));
     const worth = netWorth(
       ACCOUNTS.map((a) => ({
         id: a.id,
@@ -109,9 +119,9 @@ describe("every debt in one place", () => {
         balanceCents: a.currentBalanceCents,
       })),
     );
-    expect(book.accountsOwedCents).toBe(worth.debtsCents);
-    expect(book.bnplOwedCents).toBe(12_450);
-    expect(book.totalOwedCents).toBe(worth.debtsCents + 12_450);
+    const credit = ACCOUNTS.find((a) => a.id === "spare")!.currentBalanceCents!;
+    expect(credit).toBeLessThan(0);
+    expect(book.accountsOwedCents).toBe(worth.debtsCents - credit);
     // The checking account isn't a debt; a card in credit owes nothing.
     expect(book.debts.map((d) => d.accountId)).not.toContain("checking");
     expect(book.debts.find((d) => d.accountId === "spare")?.balanceCents).toBe(0);

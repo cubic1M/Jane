@@ -5,9 +5,9 @@ import type { BnplPlan } from "./bnpl";
 import type { PaidLoan } from "./paid-loans";
 import { monthlyInterest } from "@/planning/debt";
 import { mortgagePi, mortgageTermYears } from "@/planning/home-equity";
-import { netWorth } from "./net-worth";
 import { DAY_MS } from "@/lib/dates";
 import { dayLabel } from "@/lib/day-label";
+import { plural } from "@/lib/plural";
 
 // Every debt in one place (spec step 109): loans and cards from the bank (Plaid
 // Liabilities, or the demo bank's Plaid-shaped details), buy now, pay later plans found
@@ -425,14 +425,11 @@ export function debtBook(
       (a.nextDue ?? "9999").localeCompare(b.nextDue ?? "9999") ||
       a.name.localeCompare(b.name),
   );
-  const accountsOwedCents = netWorth(
-    accounts.map((a) => ({
-      id: a.id,
-      name: a.name,
-      type: a.type,
-      balanceCents: a.currentBalanceCents,
-    })),
-  ).debtsCents;
+  // What the accounts' own lines say is owed: a card in credit owes nothing, it doesn't take from
+  // what the other cards owe (gate B: the total read less than its lines added up to).
+  const accountsOwedCents = debts
+    .filter((d) => d.key.startsWith("account:"))
+    .reduce((sum, d) => sum + (d.balanceCents ?? 0), 0);
   const plans = debts.filter((d) => d.kind === "bnpl");
   const bnplOwedCents = plans.reduce((sum, d) => sum + (d.balanceCents ?? 0), 0);
   const newLoansOwedCents = debts
@@ -455,6 +452,22 @@ export function debtBook(
     missingRate: debts.filter((d) => d.aprBps === null && (d.balanceCents ?? 1) > 0),
   };
 }
+
+// What's owed, as the Money page and the money hub show it: the book's total, how many linked
+// cards and loans it's on, how many other debts (pay-later plans, loans seen in payments or typed
+// in), and how many say a balance. One summary of the one book (gate B, docs/one-number.md).
+export type OwedSummary = { accounts: number; others: number; owedCents: number; known: number };
+
+export const owedSummary = (book: Pick<DebtBook, "debts" | "totalOwedCents">): OwedSummary => ({
+  accounts: book.debts.filter((d) => d.accountId !== null).length,
+  others: book.debts.filter((d) => d.accountId === null).length,
+  owedCents: book.totalOwedCents,
+  known: book.debts.filter((d) => d.balanceCents !== null).length,
+});
+
+// "Owed across 2 accounts", "Owed across 2 accounts and 1 other debt".
+export const owedAcross = (o: Pick<OwedSummary, "accounts" | "others">): string =>
+  `Owed across ${plural(o.accounts, "account")}${o.others > 0 ? ` and ${plural(o.others, "other debt")}` : ""}`;
 
 // "Your bank reports it", "You typed it on Oct 3, 2026": where a figure came from.
 export function sourceLabel(from: DebtSource | null, typedOn: string | null = null): string {

@@ -5,7 +5,9 @@ import { recurringCharges } from "@/detection/subscriptions";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { budgetSummary } from "@/insights/budgets";
 import { loadInsightTransactions } from "@/insights/load";
-import { debtSummary, DEBT_ACCOUNT_SELECT } from "@/insights/loans";
+import { owedAcross, owedSummary } from "@/insights/debts";
+import { DEBT_ACCOUNT_SELECT } from "@/insights/loans";
+import { loadDebts } from "@/lib/debts";
 import { netWorth, type NetWorth } from "@/insights/net-worth";
 import { spendingInsights } from "@/insights/spending";
 import { db as defaultClient } from "@/lib/db";
@@ -39,7 +41,7 @@ export type MoneyData = {
   budgets: { total: number; over: number; daysLeft: number };
   recurring: { count: number; yearlyCents: number };
   // known: how many of the accounts have a balance (uploaded card statements carry none).
-  debt: { accounts: number; owedCents: number; known?: number };
+  debt: { accounts: number; others?: number; owedCents: number; known?: number };
   documents: number;
   // Spec step 102: policies on the insurance profile and gaps in the cover.
   insurance: { policies: number; gaps: number };
@@ -141,12 +143,15 @@ export function moneyTiles(d: MoneyData): HubGroup[] {
     {
       label: "Loans and cards",
       href: "/loans",
-      value: d.debt.accounts > 0 && d.debt.known !== 0 ? formatCents(d.debt.owedCents) : null,
+      value:
+        d.debt.accounts + (d.debt.others ?? 0) > 0 && d.debt.known !== 0
+          ? formatCents(d.debt.owedCents)
+          : null,
       status:
-        d.debt.accounts > 0
+        d.debt.accounts + (d.debt.others ?? 0) > 0
           ? d.debt.known === 0
             ? `${plural(d.debt.accounts, "account")}, balance not known`
-            : `Owed across ${plural(d.debt.accounts, "account")}`
+            : owedAcross({ accounts: d.debt.accounts, others: d.debt.others ?? 0 })
           : "No loans or cards linked",
     },
   ];
@@ -198,6 +203,7 @@ export async function loadMoneyHub(
     insurance,
     crypto,
     copies,
+    book,
   ] = await Promise.all([
     db.accounts.findMany({
       select: DEBT_ACCOUNT_SELECT,
@@ -218,6 +224,8 @@ export async function loadMoneyHub(
     // Crypto, read-only (spec step 161).
     cryptoTotal(userId, { client }),
     accountCopies(db),
+    // What's owed, from the one book the loans page and the chat read (gate B).
+    loadDebts(userId, { client, now }),
   ]);
   // An account linked twice counts once (src/lib/account-copies.ts).
   const accounts = withoutCopies(listedAccounts, copies, (a) => a.id);
@@ -240,7 +248,6 @@ export async function loadMoneyHub(
   const budget = budgets.length > 0 ? budgetSummary(transactions, budgets, asOf) : null;
   input.subscriptionMerchantKeys = confirmed.map((c) => c.merchantKey);
   const charges = recurringCharges(input);
-  const debt = debtSummary(accounts, asOf);
 
   return {
     hasAccounts: accounts.length > 0,
@@ -263,11 +270,7 @@ export async function loadMoneyHub(
       count: charges.length,
       yearlyCents: charges.reduce((sum, c) => sum + c.annualCostCents, 0),
     },
-    debt: {
-      accounts: debt.lines.length,
-      owedCents: debt.totalOwedCents,
-      known: debt.lines.filter((l) => l.balanceCents !== null).length,
-    },
+    debt: owedSummary(book),
     documents,
     insurance: { policies: insurance.policies.length, gaps: insurance.gaps.length },
   };
