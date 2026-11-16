@@ -32,11 +32,10 @@ export function PositionsForm() {
 
   function formData(): FormData | null {
     const data = new FormData(formRef.current ?? undefined);
-    const bytes = data
-      .getAll("files")
-      .reduce((sum, f) => sum + (f instanceof File ? f.size : 0), 0);
+    const files = data.getAll("files").filter((f) => f instanceof File);
+    const bytes = files.reduce((sum, f) => sum + f.size, 0);
     if (bytes > MAX_UPLOAD_BYTES) {
-      setError(uploadTooBig(bytes));
+      setError(uploadTooBig(bytes, files.length));
       return null;
     }
     return data;

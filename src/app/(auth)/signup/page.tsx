@@ -21,6 +21,15 @@ type Params = Promise<{
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
+const INVITE_ERRORS = new Set([
+  "InviteRequired",
+  "InvalidInvite",
+  "InviteUsedUp",
+  "InviteExpired",
+  "InviteRevoked",
+  "InviteWrongEmail",
+]);
+
 // The form, with the code from an invite link (/signup?invite=CODE) already filled in. Without
 // one, during the closed beta: who to ask, and the waitlist (stored, nothing sent).
 async function SignupForm({ searchParams }: { searchParams: Params }) {
@@ -30,8 +39,9 @@ async function SignupForm({ searchParams }: { searchParams: Params }) {
   const draft = params.error ? readDraft((await cookies()).get(SIGNUP_DRAFT_COOKIE)?.value) : {};
   const closed = invitesRequired();
   const joined = first(params.waitlist) === "joined";
-  // Sent here from sign-in without an invite: the error above already says who to ask.
-  const said = first(params.error) === "InviteRequired";
+  // Sent back over the invite (none, or one that won't work): the error above already says who to
+  // ask (debug 3, 11-16: "used up. Ask for a new one." then "Ask a founder for an invite").
+  const said = INVITE_ERRORS.has(first(params.error) ?? "");
   return (
     <>
       {closed && !invite && !said && (

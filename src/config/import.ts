@@ -11,8 +11,14 @@ export const UPLOAD_REASSURANCE =
 // gave "This page couldn't load"), so /import says so before sending.
 export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 
-export function uploadTooBig(bytes: number): string {
-  return `These files add up to ${(bytes / 1024 / 1024).toFixed(1)} MB. Upload at most ${MAX_UPLOAD_BYTES / 1024 / 1024} MB at a time: fewer files, or fewer months in each.`;
+// One file is "this file", not "these files" (debug 3, 11-16: a single 4.5 MB export read "These
+// files add up to 4.5 MB… fewer files").
+export function uploadTooBig(bytes: number, files: number): string {
+  const size = `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  const most = `Upload at most ${MAX_UPLOAD_BYTES / 1024 / 1024} MB at a time`;
+  return files === 1
+    ? `This file is ${size}. ${most}: download fewer months.`
+    : `These files add up to ${size}. ${most}: fewer files, or fewer months in each.`;
 }
 
 // A file going into a new account with this many rows already in another account, and this share of
