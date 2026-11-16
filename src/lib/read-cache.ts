@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { READ_OPERATIONS } from "@/lib/read-memo";
 import { isRoleSwitch } from "@/lib/rls";
 
 // A read cache for one piece of background work (a bank sync and everything it sets off): the
@@ -23,18 +24,6 @@ type Scope = { cache: Map<string, Entry>; client: PrismaClient };
 const scopes = new AsyncLocalStorage<Scope>();
 // The reads of the value being worked out right now, if any.
 const collecting = new AsyncLocalStorage<Reads>();
-
-// Prisma operations that only read; anything else (and every raw query) is a write.
-const READS = new Set([
-  "findUnique",
-  "findUniqueOrThrow",
-  "findFirst",
-  "findFirstOrThrow",
-  "findMany",
-  "count",
-  "aggregate",
-  "groupBy",
-]);
 
 // Each table's relations, from the client's own data model: field name to related table. Null
 // when the client doesn't carry one (Prisma's internals moved): then no read can be traced to
@@ -163,7 +152,7 @@ function tracked(client: PrismaClient, scope: () => Scope | undefined): PrismaCl
     query: {
       $allOperations({ model, operation, args, query }) {
         const params = args as Record<string, unknown> | undefined;
-        if (READS.has(operation)) {
+        if (READ_OPERATIONS.has(operation)) {
           const reads = collecting.getStore();
           if (reads) {
             if (rel && model && rel.has(model)) tablesOf(rel, model, params, reads.models);

@@ -21,9 +21,6 @@ export const DETECTOR_RATES = {
   idleMinExcessCents: 1_000_000,
   highYieldBps: HIGH_YIELD_SAVINGS_BPS,
   currentCashBps: 10,
-  // Emergency fund: months of spending to hold, by how steady the income is.
-  emergencyMonthsSteady: 3,
-  emergencyMonthsUneven: 6,
   // PMI usually costs about this much of the loan a year.
   pmiBps: 50,
   // Refinance: worth looking when today's rate is this far below the loan's.
@@ -263,8 +260,6 @@ export const DETECTOR_RATES = {
   // Urgency of the FSA deadline: now inside this many days, soon inside the next.
   fsaNowDays: 30,
   fsaSoonDays: 60,
-  // Urgency scores: now, soon, later.
-  urgency: { now: 3, soon: 2, later: 1 },
 } as const;
 
 // The first word of a suggestion's headline must be one of these (docs/detectors.md, "Short
