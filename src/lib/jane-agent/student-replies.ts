@@ -1,7 +1,7 @@
 import { STUDENT_STEPS } from "@/config/student-loans";
 import { formatCents } from "@/lib/money";
 import type { StudentLoans } from "@/lib/student-loans";
-import { PLAN_NAMES } from "@/planning/student-loans";
+import { inAll, PLAN_NAMES } from "@/planning/student-loans";
 import type { Reply } from "./replies";
 import { type MessageAction, openLink } from "./types";
 import { formatRate } from "@/lib/percent";
@@ -46,7 +46,7 @@ export function studentReply(data: StudentLoans): Reply {
     `Your ${loan.name}: ${formatCents(loan.balanceCents!)} at ${formatRate(loan.aprBps!)}. At ${data.agiFrom === "you" ? "the income you gave" : "an income estimated from your paychecks"} (${formatCents(data.agiCents)} a year):`,
     ...comparison!.results.map(
       (r) =>
-        `- ${PLAN_NAMES[r.plan]}: ${formatCents(r.monthlyNowCents)} a month, ${formatCents(r.totalPaidCents)} in all${r.forgivenCents > 0 ? `, ${formatCents(r.forgivenCents)} forgiven${r.viaPslf ? " through PSLF" : ""}` : ""}`,
+        `- ${PLAN_NAMES[r.plan]}: ${formatCents(r.monthlyNowCents)} a month, ${r.leftCents > 0 ? inAll(r).toLowerCase() : `${inAll(r)} in all`}${r.forgivenCents > 0 ? `, ${formatCents(r.forgivenCents)} forgiven${r.viaPslf ? " through PSLF" : ""}` : ""}`,
     ),
   ];
   if (comparison!.pick) {
