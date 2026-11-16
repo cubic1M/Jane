@@ -9,7 +9,7 @@ import { loadProfileInput } from "@/lib/profile";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { loadStudentLoans } from "@/lib/student-loans";
-import { PLAN_NAMES } from "@/planning/student-loans";
+import { inAll, PLAN_NAMES } from "@/planning/student-loans";
 import { loadStudentLongGame } from "@/lib/student-long-game";
 import { saveProfile, stepDone } from "./actions";
 import { LongGameSection } from "./long-game";
@@ -156,7 +156,7 @@ async function StudentContent({
                   <tr key={r.plan} className="border-t border-zinc-200 dark:border-zinc-800">
                     <td className="py-1">{PLAN_NAMES[r.plan]}</td>
                     <td className="py-1">{formatCents(r.monthlyNowCents)}</td>
-                    <td className="py-1">{formatCents(r.totalPaidCents)}</td>
+                    <td className="py-1">{inAll(r)}</td>
                     <td className="py-1">
                       {r.forgivenCents > 0
                         ? `${formatCents(r.forgivenCents)}${r.viaPslf ? " (PSLF)" : ""}`

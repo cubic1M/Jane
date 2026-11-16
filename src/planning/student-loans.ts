@@ -41,6 +41,10 @@ type PlanResult = {
   forgivenCents: number;
   // Forgiven through PSLF rather than the plan's own term.
   viaPslf: boolean;
+  // Still owed when the payments run out at LONGEST_MONTHS, neither paid off nor forgiven: a
+  // payment at or below the interest (Plaid sandbox's $25 minimum on a $14,688 loan, debugger
+  // 11-16, read "$15,000.00 in all").
+  leftCents: number;
 };
 
 export type StudentComparison = {
@@ -54,6 +58,13 @@ export const PLAN_NAMES: Record<StudentPlan, string> = {
   ibr: "Income-Based Repayment (IBR)",
   rap: "Repayment Assistance Plan (RAP)",
 };
+
+// The longest the month-by-month run goes.
+const LONGEST_MONTHS = 600;
+
+// "In all" for a plan: everything paid, or that it never gets there.
+export const inAll = (r: Pick<PlanResult, "totalPaidCents" | "leftCents">) =>
+  r.leftCents > 0 ? `Not paid off in ${LONGEST_MONTHS / 12} years` : formatCents(r.totalPaidCents);
 
 export const povertyGuidelineCents = (familySize: number) =>
   POVERTY_GUIDELINE_CENTS.first + Math.max(0, familySize - 1) * POVERTY_GUIDELINE_CENTS.eachMore;
@@ -101,7 +112,11 @@ function simulate(
     input.publicService && plan !== "current" && plan !== "standard"
       ? Math.max(0, PSLF_PAYMENTS - input.paymentsCounted)
       : null;
-  const limit = Math.min(forgivenAfterMonths ?? 600, pslfAfter ?? 600, 600);
+  const limit = Math.min(
+    forgivenAfterMonths ?? LONGEST_MONTHS,
+    pslfAfter ?? LONGEST_MONTHS,
+    LONGEST_MONTHS,
+  );
   for (let month = 1; month <= limit; month += 1) {
     const interest = monthlyInterest(principal, input.aprBps);
     const owed = principal + unpaidInterest + interest;
@@ -130,6 +145,7 @@ function simulate(
         totalPaidCents: paid,
         forgivenCents: 0,
         viaPslf: false,
+        leftCents: 0,
       };
     }
   }
@@ -139,8 +155,9 @@ function simulate(
     monthlyNowCents: payment,
     months: limit,
     totalPaidCents: paid,
-    forgivenCents: limit < 600 ? left : 0,
+    forgivenCents: limit < LONGEST_MONTHS ? left : 0,
     viaPslf: pslfAfter !== null && limit === pslfAfter,
+    leftCents: limit < LONGEST_MONTHS ? 0 : left,
   };
 }
 
@@ -182,9 +199,11 @@ export function compareStudentPlans(
     : [
         `${PLAN_NAMES[best.plan]} costs the least in all: ${formatCents(best.totalPaidCents)}${best.forgivenCents > 0 ? `, with ${formatCents(best.forgivenCents)} forgiven at the end` : ""}.`,
         now
-          ? best.totalPaidCents < now.totalPaidCents
-            ? `That's ${formatCents(now.totalPaidCents - best.totalPaidCents)} less than staying on your plan now.`
-            : "Your plan now costs about the same, so switching isn't worth the paperwork."
+          ? now.leftCents > 0
+            ? `Your plan now's ${formatCents(now.monthlyNowCents)} a month doesn't pay the loan off in ${LONGEST_MONTHS / 12} years.`
+            : best.totalPaidCents < now.totalPaidCents
+              ? `That's ${formatCents(now.totalPaidCents - best.totalPaidCents)} less than staying on your plan now.`
+              : "Your plan now costs about the same, so switching isn't worth the paperwork."
           : `It's ${formatCents(best.monthlyNowCents)} a month now.`,
       ];
   if (best.plan === "ibr" || best.plan === "rap") {

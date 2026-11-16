@@ -281,6 +281,7 @@ export function studentToolOutput(data: StudentLoans, money: (cents: number) => 
       monthlyNow: money(r.monthlyNowCents),
       totalPaid: money(r.totalPaidCents),
       forgiven: money(r.forgivenCents),
+      ...(r.leftCents > 0 && { stillOwedWhenPaymentsEnd: money(r.leftCents), paidOff: false }),
       throughPslf: r.viaPslf,
       months: r.months,
     })),
