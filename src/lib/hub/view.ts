@@ -1,3 +1,4 @@
+import { shownSpendingMonth } from "@/insights/spending";
 import type { SavedItem } from "@/lib/membership/service";
 import { estimateState } from "@/lib/tax-estimate-state";
 import {
@@ -615,9 +616,8 @@ export function tilesView(input: AreasInput): AreaTile[] {
       const m = input.money;
       // On the 1st nothing is spent yet: last month, by name (debugger 11-01: a new person's
       // three months read "$0 Spent this month").
-      const [before, latest] = m?.months.slice(-2) ?? [];
-      const shown =
-        latest && latest.spendingCents <= 0 && (before?.spendingCents ?? 0) > 0 ? before : latest;
+      const latest = m?.months.at(-1);
+      const shown = m ? shownSpendingMonth(m.months) : undefined;
       return tile(
         "money",
         input,
@@ -626,7 +626,7 @@ export function tilesView(input: AreasInput): AreaTile[] {
           value: m ? shortMoney(shown?.spendingCents ?? 0) : null,
           caption: !m
             ? "Add your accounts to see it"
-            : shown === latest
+            : shown === latest || !shown
               ? "Spent this month"
               : `Spent in ${monthLabel(shown.month, { long: true, year: false })}`,
           chart: m

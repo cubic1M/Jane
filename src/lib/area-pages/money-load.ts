@@ -1,3 +1,4 @@
+import { SPENDING_MONTHS } from "@/config/areas";
 import { accountCopies, withoutCopies } from "@/lib/account-copies";
 import { areaOfCapability } from "@/config/areas";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
@@ -12,7 +13,7 @@ import { loadInsightTransactions } from "@/insights/load";
 import { owedSummary } from "@/insights/debts";
 import { loadDebts } from "@/lib/debts";
 import { netWorth } from "@/insights/net-worth";
-import { spendingInsights } from "@/insights/spending";
+import { shownSpendingMonth, spendingInsights } from "@/insights/spending";
 import { openBooks } from "@/lib/books";
 import { booksFix, importEnded, type BooksFix } from "@/lib/books-fix";
 import { listMerchantRules } from "@/lib/categories";
@@ -100,7 +101,7 @@ export async function loadMoneyArea(
     cryptoTotal(userId, { client }),
     listGoals(userId, { client, now }),
     db.budgets.findMany({ select: { category: true, amountCents: true } }),
-    loadInsightTransactions(db, asOf, BUDGET_SUGGESTION_MONTHS + 1),
+    loadInsightTransactions(db, asOf, Math.max(BUDGET_SUGGESTION_MONTHS + 1, SPENDING_MONTHS)),
     db.subscriptionChecks.findMany({
       select: { merchantKey: true, isSubscription: true },
     }),
@@ -156,13 +157,11 @@ export async function loadMoneyArea(
   );
   const prompt = prompts.find((p) => p.kind === "home") ?? prompts[0];
   const budget = budgetSummary(transactions, budgets, asOf);
-  // This month against last, as the hub counts it.
-  const insights = spendingInsights(transactions, { asOf, monthCount: 2 });
-  // The newest month with money in or out: on the 1st, this month has none yet and the branch
-  // vanished (debugger 11-01), so it's last month, said as such.
-  const active = (m: { spendingCents: number; incomeCents: number }) =>
-    m.spendingCents > 0 || m.incomeCents > 0;
-  const latest = insights.months.findLast(active) ?? insights.months.at(-1);
+  // The months Home's Money tile reads, and the month it shows (shownSpendingMonth): on the 1st,
+  // this month has none yet and the branch vanished (debugger 11-01), so it's last month, said as
+  // such, the same month the tile and the money hub show (gate B).
+  const insights = spendingInsights(transactions, { asOf, monthCount: SPENDING_MONTHS });
+  const latest = shownSpendingMonth(insights.months);
   const current = latest === insights.months.at(-1);
   const mine = suggestions.filter((s) => areaOfCapability(s.capability) === "money");
   const open = books.open.filter((o) => o.kind !== "transfer");
