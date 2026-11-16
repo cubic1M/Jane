@@ -35,6 +35,11 @@ export const BOOKS_DEBT_TYPES: readonly string[] = ["credit", "loan"];
 // prices, and a loan's with interest, its payments often showing on the paying account instead
 // (real-user QA: a 401(k) that rose $1,227.67 in a day was "changed with no transactions").
 export const BOOKS_RECONCILED_TYPES: readonly string[] = ["depository", "credit"];
+// Money sent to someone through a payment app: rent to a roommate by Zelle, a Venmo payment. It
+// leaves as a transfer, but to another person, so there's no other side to find (debugger 11-16:
+// a student's $900 Zelle rent read "left one of your accounts with no matching deposit in
+// another… add that account").
+export const PAID_TO_A_PERSON = /\b(?:zelle|venmo|cash ?app|paypal)\b/i;
 // Plaid primary categories of transfers between accounts.
 export const TRANSFER_OUT = "TRANSFER_OUT";
 export const TRANSFER_IN = "TRANSFER_IN";
