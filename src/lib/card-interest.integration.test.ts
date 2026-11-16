@@ -189,6 +189,9 @@ describe.runIf(url)("less card interest against a real database", { timeout: 120
       client,
       now: later(),
     });
-    expect(reply.body).toMatch(/^Cutting card interest needs a lending partner/);
+    // No lending partner, so nothing to send; and with no interest in the accounts, nothing to cut.
+    expect(reply.body).toBe(
+      "I don't see any card interest in your accounts. Paying each card in full every month keeps it that way.",
+    );
   });
 });
