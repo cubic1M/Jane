@@ -67,6 +67,7 @@ import {
 } from "@/planning/tax-profile";
 import { DAY_MS, isoDay as iso } from "@/lib/dates";
 import { todayOf } from "@/lib/today";
+import { monthsCovered } from "@/profile/build";
 import { latestByPayer, stoppedPayers } from "@/profile/stopped-payers";
 
 // The tax estimate (spec step 120), loaded from the person's own accounts, pay stubs and
@@ -781,8 +782,12 @@ async function loadTaxEstimateFrom(
     fixes,
     soFar: {
       firstSeen,
-      incomeMonths: new Set(counted.filter((t) => t.date <= today).map((t) => t.date.slice(0, 7)))
-        .size,
+      // Months with income, never more than the data covers: paychecks on Oct 31 and Nov 14 are
+      // two calendar months but 28 days of data, not "2 months of income" (debug 2, 11-17).
+      incomeMonths: Math.min(
+        new Set(counted.filter((t) => t.date <= today).map((t) => t.date.slice(0, 7))).size,
+        firstSeen ? monthsCovered(firstSeen, dataEnds && dataEnds < today ? dataEnds : today) : 12,
+      ),
       payers: incomePayers(counted),
       federalWithheldCents: pay.soFar.federalWithheldCents,
       stateWithheldCents: pay.soFar.stateWithheldCents,
