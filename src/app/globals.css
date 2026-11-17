@@ -937,6 +937,21 @@ html[data-giant-picked] .floating-cards[data-floating-cards="queue"] {
   }
 }
 
+/* The net worth chart before it knows its width (src/components/hub/net-worth-chart.tsx): out of
+   sight, at the height it will have on this screen, so nothing is drawn too wide and nothing moves
+   when the page wakes (mobile pass 11-16). */
+.nw-box[data-unmeasured] {
+  visibility: hidden;
+}
+@media (max-width: 543.98px) {
+  .nw-area[data-unmeasured] {
+    min-height: 190px !important;
+  }
+  .nw-box[data-unmeasured] {
+    height: 190px !important;
+  }
+}
+
 /* The hub's net worth chart (src/components/hub/net-worth-chart.tsx): the line draws itself in
    when the range changes. Still for reduced motion. */
 /* Expanding grows the chart smoothly rather than jumping. */

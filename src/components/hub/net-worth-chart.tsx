@@ -189,6 +189,10 @@ export function NetWorthChart({
   const area = useRef<HTMLDivElement>(null);
   const dotsRef = useRef<HTMLCanvasElement>(null);
   const [width, setWidth] = useState(640);
+  // Whether the plot has its real width yet. Until then it's out of sight at the height it will
+  // have (globals.css .nw-box[data-unmeasured]): a slow phone showed a wide screen's chart, taller
+  // and past the card's edge, until the page woke (mobile pass 11-16).
+  const [measured, setMeasured] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   // A finger on the line (a drag scrubs until it lets go), and two for a pinch.
   const dragging = useRef(false);
@@ -205,13 +209,18 @@ export function NetWorthChart({
     return () => el.removeEventListener("wheel", listen);
   }, []);
 
+  const sized = (w: number) => {
+    if (w <= 0) return;
+    setWidth(w);
+    setMeasured(true);
+  };
   useLayoutEffect(() => {
-    if (box.current) setWidth(box.current.clientWidth);
+    if (box.current) sized(box.current.clientWidth);
   }, []);
   useEffect(() => {
     const el = box.current;
     if (!el || typeof ResizeObserver === "undefined") return;
-    const watch = new ResizeObserver(([e]) => setWidth(Math.round(e.contentRect.width)));
+    const watch = new ResizeObserver(([e]) => sized(Math.round(e.contentRect.width)));
     watch.observe(el);
     return () => watch.disconnect();
   }, []);
@@ -501,10 +510,16 @@ export function NetWorthChart({
 
       {!single && (
         <>
-          <div ref={area} className="relative" style={{ minHeight: place?.height ?? H }}>
+          <div
+            ref={area}
+            className="nw-area relative"
+            data-unmeasured={measured ? undefined : ""}
+            style={{ minHeight: place?.height ?? H }}
+          >
             <div
               ref={box}
               data-net-worth-plot=""
+              data-unmeasured={measured ? undefined : ""}
               // Scrubbing is choosing a day: a slider, its value the day and the net worth then.
               role="slider"
               tabIndex={0}
