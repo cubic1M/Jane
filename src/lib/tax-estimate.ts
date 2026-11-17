@@ -67,7 +67,7 @@ import {
 } from "@/planning/tax-profile";
 import { DAY_MS, isoDay as iso } from "@/lib/dates";
 import { todayOf } from "@/lib/today";
-import { monthsCovered } from "@/profile/build";
+import { monthsCovered, reachOf } from "@/profile/build";
 import { latestByPayer, stoppedPayers } from "@/profile/stopped-payers";
 
 // The tax estimate (spec step 120), loaded from the person's own accounts, pay stubs and
@@ -783,10 +783,22 @@ async function loadTaxEstimateFrom(
     soFar: {
       firstSeen,
       // Months with income, never more than the data covers: paychecks on Oct 31 and Nov 14 are
-      // two calendar months but 28 days of data, not "2 months of income" (debug 2, 11-17).
+      // two calendar months but 28 days of data, not "2 months of income" (debug 2, 11-17). The
+      // data reaches where the profile says it does ("4 months of data" for Jul 24 to a recent
+      // line), not its newest line: an upload's statement closes a week on, a bank's reaches today.
       incomeMonths: Math.min(
         new Set(counted.filter((t) => t.date <= today).map((t) => t.date.slice(0, 7))).size,
-        firstSeen ? monthsCovered(firstSeen, dataEnds && dataEnds < today ? dataEnds : today) : 12,
+        firstSeen
+          ? monthsCovered(
+              firstSeen,
+              dataEnds
+                ? reachOf(
+                    [{ date: dataEnds, ...(last?.source === "csv" ? { uploadedOn: today } : {}) }],
+                    today,
+                  )
+                : today,
+            )
+          : 12,
       ),
       payers: incomePayers(counted),
       federalWithheldCents: pay.soFar.federalWithheldCents,
