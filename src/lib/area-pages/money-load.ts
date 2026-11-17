@@ -10,6 +10,7 @@ import { loadDetectionInput } from "@/detection/input";
 import { recurringCharges } from "@/detection/subscriptions";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { budgetSummary } from "@/insights/budgets";
+import { endedOn, monthCutShortAt } from "@/lib/data-ended";
 import { irregularCosts } from "@/insights/irregular";
 import { loadInsightTransactions } from "@/insights/load";
 import { owedSummary } from "@/insights/debts";
@@ -223,6 +224,16 @@ export async function loadMoneyArea(
       ? {
           month: latest.month,
           current,
+          endsOn: monthCutShortAt(
+            latest.month,
+            endedOn(
+              transactions.reduce<string | null>(
+                (m, t) => (m === null || t.date > m ? t.date : m),
+                null,
+              ),
+              asOf,
+            ),
+          ),
           spendingCents: latest.spendingCents,
           incomeCents: latest.incomeCents,
           categories: insights.categoriesByMonth[latest.month] ?? [],

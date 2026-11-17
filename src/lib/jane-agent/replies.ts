@@ -49,8 +49,7 @@ import { type MessageAction, type MessageRefs, openLink } from "./types";
 import { shiftMonth } from "@/lib/dates";
 import { dayLabel } from "@/lib/day-label";
 import { daysBetween } from "@/detection/units";
-import { FULL_MONTH_START_SLACK_DAYS } from "@/config/budgets";
-import { endedOn } from "@/lib/data-ended";
+import { endedOn, monthCutShortAt } from "@/lib/data-ended";
 
 // Jane's answers to what the person typed (spec step 84), from the same loaders as the
 // pages. Pure: each takes the numbers and returns fixed wording in Jane's voice, with the
@@ -535,18 +534,8 @@ export function spendingReply(
   // And one it ends partway through, to when, never against a whole month (debug 2, 11-16: an old
   // statement to Oct 20 read "You spent $1,235.64 in October 2026. That's $87.67 less than in
   // September").
-  // A week's slack at the end, as at the start (FULL_MONTH_START_SLACK_DAYS): a statement to the
-  // 28th is the month.
-  const monthEnd = new Date(
-    Date.UTC(Number(intent.month.slice(0, 4)), Number(intent.month.slice(5, 7)), 0),
-  )
-    .toISOString()
-    .slice(0, 10);
-  const cutShort =
-    !current &&
-    ended !== null &&
-    ended.slice(0, 7) === intent.month &&
-    daysBetween(ended, monthEnd) > FULL_MONTH_START_SLACK_DAYS;
+  // With a week's slack at the end (monthCutShortAt): a statement to the 28th is the month.
+  const cutShort = !current && monthCutShortAt(intent.month, ended) !== null;
   const span =
     partway && cutShort
       ? ` (${dayLabel(firstDate)} to ${dayLabel(ended!)}, all I have of it)`

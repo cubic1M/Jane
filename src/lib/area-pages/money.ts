@@ -150,6 +150,8 @@ export type MoneyTreeInput = {
     month: string;
     // False when it's an earlier month: nothing has come in or gone out this month yet (the 1st).
     current?: boolean;
+    // The day the data ends at, when it ends partway through the month (monthCutShortAt).
+    endsOn?: string | null;
     spendingCents: number;
     incomeCents: number;
     categories: { category: string; cents: number }[];
@@ -352,7 +354,11 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
         status: "good",
         figure: shortMoney(spend.spendingCents),
         summary: earlier
-          ? `${formatCents(spend.spendingCents)} spent and ${formatCents(spend.incomeCents)} in, in ${name}.`
+          ? // Cut short by an old statement, as the chat says it (debug 2, 11-17: "$1,235.64 spent
+            // and $3,000.00 in, in October" for Oct 1 to 20).
+            `${formatCents(spend.spendingCents)} spent and ${formatCents(spend.incomeCents)} in, in ${name}${
+              spend.endsOn ? ` (to ${dayLabel(spend.endsOn)}, where what I have ends)` : ""
+            }.`
           : `${formatCents(spend.spendingCents)} spent and ${formatCents(spend.incomeCents)} in so far this month.`,
       }),
     );
