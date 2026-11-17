@@ -149,12 +149,17 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
       const home = await homeSummary(userId, { client, now });
       // Spec step 94: the same rows, as a timeline; when it holds them all, the words don't list
       // them again.
-      const rows = (home?.comingUp ?? []).filter(
-        (r) => intent.days === null || r.daysLeft <= intent.days,
+      const payday = intent.beforePayday ? (home?.safeToSpend?.payday ?? null) : null;
+      const rows = (home?.comingUp ?? []).filter((r) =>
+        payday ? r.date < payday : intent.days === null || r.daysLeft <= intent.days,
       );
-      const block = comingUpBlock(rows, intent.days === null ? "Coming up" : "Due this week");
+      const block = comingUpBlock(
+        rows,
+        payday ? "Before payday" : intent.days === null ? "Coming up" : "Due this week",
+      );
       const answer = comingUpReply(intent, home?.comingUp ?? [], {
         drawn: block !== null && rows.length <= CHAT_BLOCK_ROWS,
+        payday,
       });
       return block ? { ...answer, refs: { ...answer.refs, block } } : answer;
     }

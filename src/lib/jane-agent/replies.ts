@@ -687,11 +687,21 @@ export function spendingReply(
 export function comingUpReply(
   intent: Extract<Intent, { kind: "coming_up" }>,
   rows: ComingUpRow[],
-  { drawn = false }: { drawn?: boolean } = {},
+  { drawn = false, payday = null }: { drawn?: boolean; payday?: string | null } = {},
 ): Reply {
-  const shown = intent.days === null ? rows : rows.filter((r) => r.daysLeft <= intent.days!);
+  // Before payday: what's due before the next pay, when Jane knows when that is (debugger 11-17).
+  const until = intent.beforePayday ? payday : null;
+  const shown = until
+    ? rows.filter((r) => r.date < until)
+    : intent.days === null
+      ? rows
+      : rows.filter((r) => r.daysLeft <= intent.days!);
   const open = [openLink("See bills", "/bills")];
-  const span = intent.days === null ? "coming up" : "due this week";
+  const span = until
+    ? `due before payday (${dayLabel(until)})`
+    : intent.days === null
+      ? "coming up"
+      : "due this week";
   if (shown.length === 0) return reply(`Nothing is ${span} that I can see.`, open);
   // Spec step 89: how many and how much first, then the list.
   const total = shown.reduce((sum, r) => sum + (r.amountCents ?? 0), 0);
