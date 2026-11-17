@@ -45,6 +45,18 @@ export const IRREGULAR_EXCLUDED_PRIMARIES: readonly string[] = [
   "LOAN_PAYMENTS",
   "LOAN_DISBURSEMENTS",
 ];
+// Nor a fee that comes from something going wrong: Jane asks to stop those, never to save for them
+// (debug 2, 11-16: two overdrafts read "Overdraft Fee: twice a year, $70.00 a year", and a
+// "Yearly bills" goal of $72.00). A card's annual fee is filed as other bank fees and still counts.
+export const IRREGULAR_EXCLUDED_DETAILED: readonly string[] = [
+  "BANK_FEES_ATM_FEES",
+  "BANK_FEES_CASH_ADVANCE",
+  "BANK_FEES_FOREIGN_TRANSACTION_FEES",
+  "BANK_FEES_INSUFFICIENT_FUNDS",
+  "BANK_FEES_INTEREST_CHARGE",
+  "BANK_FEES_LATE_FEES",
+  "BANK_FEES_OVERDRAFT_FEES",
+];
 // Never anything from these account types.
 export const IRREGULAR_EXCLUDED_ACCOUNT_TYPES: readonly string[] = ["loan", "investment"];
 
