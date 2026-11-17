@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { AppHeaderLoading } from "@/components/app-header";
+import { ArriveAtTop } from "./arrive-at-top";
 
 // Home while it loads, on a slow phone for seconds (mobile pass 11-16: at 1.5 s a blank page under
 // the header, no sign anything was coming): the first screen's shape in plain blocks, no words.
@@ -31,6 +32,7 @@ const block = (height: number, width: number | string): CSSProperties => ({
 export function HomeLoading() {
   return (
     <>
+      <ArriveAtTop />
       <AppHeaderLoading />
       <div
         role="progressbar"
