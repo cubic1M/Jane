@@ -2,7 +2,6 @@ import { PRACTICE_UNIVERSE } from "@/config/portfolios";
 import {
   parsePracticeIdeaId,
   PRACTICE_HREF,
-  PRACTICE_IDEA_DAYS,
   PRACTICE_SETTINGS_HREF,
   PRACTICE_TOPIC,
   PRACTICE_YES_DOES,
@@ -21,7 +20,8 @@ import { heldBy } from "@/planning/practice-scan";
 import type { PracticeIdea } from "@/profile/build";
 import { loadLedger, NoPracticePortfolio, practiceBroker } from "./broker";
 import { practiceProfileOf } from "./preferences";
-import { DAY_MS } from "@/lib/dates";
+import { localDate, timezoneOf } from "@/lib/today";
+import { stillWaiting, waitingBound } from "./idea-days";
 import { formatCents } from "@/lib/money";
 
 // The practice scan's ideas as suggestions (Phase AW, Stage A). The scan keeps a flag as
@@ -46,13 +46,15 @@ export async function openPracticeIdeas(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<PracticeIdea[]> {
-  const rows = await scopedFor(userId, client).practiceOpportunities.findMany({
-    where: {
-      status: "suggested",
-      scannedAt: { gte: new Date(now.getTime() - PRACTICE_IDEA_DAYS * DAY_MS) },
-    },
-    orderBy: [{ scannedAt: "desc" }, { key: "asc" }],
-  });
+  const [found, timezone] = await Promise.all([
+    scopedFor(userId, client).practiceOpportunities.findMany({
+      where: { status: "suggested", scannedAt: { gte: waitingBound(now) } },
+      orderBy: [{ scannedAt: "desc" }, { key: "asc" }],
+    }),
+    timezoneOf(userId, { client }),
+  ]);
+  const today = localDate(now, timezone);
+  const rows = found.filter((r) => stillWaiting(r.scannedAt, today, timezone));
   return rows.flatMap((r) => {
     const d = r.details as StoredDetails;
     if (!d.ask || !(r.kind in PRACTICE_TOPIC)) return [];
