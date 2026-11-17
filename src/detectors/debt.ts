@@ -1,9 +1,9 @@
 import { DEBT_DETECTOR_RATES as D } from "@/config/detectors-debt";
-import { rateMonthsOf } from "@/profile/build";
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { ADDON_RULES } from "@/config/car-loan";
 import { formatCents } from "@/lib/money";
-import type { Profile } from "@/profile/build";
+import type { Profile, ProfileTx } from "@/profile/build";
+import { median } from "@/detection/units";
 import { addonCandidates, refundFor } from "@/planning/car-loan";
 import { type Detector, suggestion } from "./contract";
 import {
@@ -28,6 +28,18 @@ const balanceOf = (
 ) =>
   accounts.filter((a) => a.subtype === subtype).reduce((s, a) => s + Math.abs(a.balanceCents), 0);
 
+// A loan's monthly payment: the usual month's total of its payments (the median), not their sum
+// over the months of data, which ran high when the data starts mid-month (debug 2, 11-16: $217.40
+// paid each month read "You pay about $228.18 a month on student loans").
+const monthlyPaymentOf = (payments: readonly ProfileTx[]): number => {
+  const byMonth = new Map<string, number>();
+  for (const p of payments) {
+    if (p.amountCents > 0)
+      byMonth.set(p.date.slice(0, 7), (byMonth.get(p.date.slice(0, 7)) ?? 0) + p.amountCents);
+  }
+  return byMonth.size === 0 ? 0 : median([...byMonth.values()]);
+};
+
 const income = (profile: Profile) =>
   typeof profile.facts.monthly_income.value === "number" ? profile.facts.monthly_income.value : 0;
 
@@ -42,7 +54,7 @@ const studentRepayment: Detector = {
     if (payments.length < D.studentPaymentsMin || balanceOf(data.accounts, "student") <= 0) {
       return null;
     }
-    const monthly = outCents(payments) / rateMonthsOf(profile);
+    const monthly = monthlyPaymentOf(payments);
     const idr = Math.round(income(profile) * D.studentIdrShare);
     const gap = Math.round(monthly - idr);
     if (income(profile) <= 0 || gap < D.studentMinGapCents) return null;
@@ -80,7 +92,7 @@ const autoRefinance: Detector = {
     const payments = tx(data, (t) => t.pfc === "LOAN_PAYMENTS_CAR_PAYMENT");
     const balance = balanceOf(data.accounts, "auto");
     if (payments.length < D.autoPaymentsMin || balance <= 0 || income(profile) <= 0) return null;
-    const monthly = outCents(payments) / rateMonthsOf(profile);
+    const monthly = monthlyPaymentOf(payments);
     const share = monthly / income(profile);
     if (share < D.autoPaymentShare) return null;
     return suggestion("debt", "auto_refinance", {
@@ -443,7 +455,7 @@ const studentForgiveness: Detector = {
     const payments = tx(data, (t) => t.pfc === "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT");
     const balance = balanceOf(data.accounts, "student");
     if (payments.length < D.studentPaymentsMin || balance <= 0) return null;
-    const monthly = outCents(payments) / rateMonthsOf(profile);
+    const monthly = monthlyPaymentOf(payments);
     const left = Math.round(balance - monthly * D.pslfPayments);
     if (left <= 0) return null;
     return suggestion("debt", "student_forgiveness", {
