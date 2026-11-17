@@ -89,7 +89,7 @@ describe.runIf(url)("sample people's past wins", { timeout: 240_000 }, () => {
 
   it("seeds once, and never for a real account or the plain demo bank", async () => {
     const userId = made.get("renter")!;
-    expect(await seedSampleWins(userId, "renter", { client, now: NOW })).toBe(0);
+    expect(await seedSampleWins(userId, "renter", { client, anchor: "2026-10-23" })).toBe(0);
     const real = await client.user.create({
       data: { email: `wins-${crypto.randomUUID()}@example.com` },
     });

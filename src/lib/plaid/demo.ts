@@ -339,7 +339,7 @@ export async function linkDemoBank(
   if (person) {
     // Loaded late: the sample wins reach this file again (through the decisions).
     const { seedSampleWins } = await import("@/lib/sample-wins");
-    await seedSampleWins(userId, person, { client, now });
+    await seedSampleWins(userId, person, { client, anchor: today(now) });
   }
   await logAudit(
     { type: "user", id: userId },
