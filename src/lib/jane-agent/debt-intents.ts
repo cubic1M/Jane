@@ -338,8 +338,9 @@ const REPORT_FIX =
 // Spec step 224: card interest, 0% promotions and asking for a lower card rate.
 // "What's the interest rate on my card" is the card's rate, not how to cut it (11-03).
 const RATE_LOOKUP = /\bwhat(?:'s| is|s)? (?:the |my )?(?:interest rate|apr|rate)\b/;
+// "How much did I pay in interest?" too (debugger 11-17: no answer).
 const CARD_INTEREST =
-  /\b(?:how much )?interest\b.*\b(?:cards?|credit cards?)\b|\b(?:cards?|credit cards?)\b.*\binterest\b|\b(?:pay|paying) less interest\b|\b(?:cut|reduce|lower|lowering) (?:my )?(?:card |credit card )?(?:interest|apr)\b|\bdeferred interest\b|\b0 ?% (?:promo|promotion|offer|intro)\b|\bpromo(?:tional)? (?:balance|rate|period|ends)\b/;
+  /\bhow much (?:did|have|do|am) i (?:pay|paid|paying)(?: in)? interest\b|\bhow much interest (?:did|have|do|am) i (?:pay|paid|paying)\b|\b(?:how much )?interest\b.*\b(?:cards?|credit cards?)\b|\b(?:cards?|credit cards?)\b.*\binterest\b|\b(?:pay|paying) less interest\b|\b(?:cut|reduce|lower|lowering) (?:my )?(?:card |credit card )?(?:interest|apr)\b|\bdeferred interest\b|\b0 ?% (?:promo|promotion|offer|intro)\b|\bpromo(?:tional)? (?:balance|rate|period|ends)\b/;
 
 // Spec step 225: PSLF, recertifying, tax on forgiven loans, refinancing student loans.
 const STUDENT_LONG =

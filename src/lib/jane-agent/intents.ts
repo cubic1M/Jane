@@ -349,7 +349,7 @@ const HELP =
   /^(?:help|\?|commands|menu|what can (?:you|i) (?:do|ask|say|type)(?: here)?|how does this work)$/;
 const PAUSE = /\b(?:pause|stop|turn off|switch off|disable) (?:the |my )?autopilot\b/;
 const WHAT_DID =
-  /\bwhat (?:did|have) you (?:do|done|been (?:doing|up to))\b|\bwhat'?s new\b|\banything new\b|\bwhat happened\b|\bwhat are you (?:doing|working on)\b/;
+  /\bwhat (?:did|have) you (?:do|done|been (?:doing|up to))\b|\bwhat'?s new\b|\banything new\b|\bwhat happened\b(?! (?:with|at|to|on) )|\bwhat are you (?:doing|working on)\b/;
 const CHANGES =
   /\bwhat(?:'s| has| have)? changed\b|\b(?:has|have) (?:anything|something) changed\b|\bany(?:thing)? (?:changes?|different|unusual)\b|\bwhat'?s different\b|\bnoticed anything\b/;
 const LIFE: readonly [LifeEventKind, RegExp][] = [
@@ -490,7 +490,7 @@ const COST = [
   /^(?:is|was) (?:my|the) (.+?) bill (?:too (?:high|much)|a lot|normal)()$/,
 ];
 const ABOUT =
-  /^(?:tell me (?:more )?about|what(?:'s| is| was) (?:up with|going on with)|explain|what about|show me|details on|info on) (.+)$/;
+  /^(?:tell me (?:more )?about|what(?:'s| is| was) (?:up with|going on with)|what happened (?:with|at|to|on)|explain|what about|show me|details on|info on) (.+)$/;
 // "and Hulu?", "what about last month?", "same for Peacock".
 const FOLLOW =
   /^(?:and|what about|how about|same for|same with|also|ok and|and what about|and how about)(?: for| on| at| with)? (.+)$/;
