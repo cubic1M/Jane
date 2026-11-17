@@ -16,7 +16,7 @@ import {
   withoutGone,
 } from "@/lib/dock-gone";
 import { AI_WRITTEN_LABEL, DEMO_ADVICE_LABEL } from "@/config/advice";
-import { afterAnswer, undoOf, withReturned, type Away } from "@/lib/put-away";
+import { afterAnswer, putAwayBy, withReturned, type Away } from "@/lib/put-away";
 import { STEP_LINK_LABELS } from "@/config/suggestion-step";
 import { noteDetailsOpened, tapButton, type MessageState } from "./actions";
 
@@ -275,12 +275,13 @@ export function SuggestionCards({
               ? (choice ?? card.yesAction)
               : card.notNowAction;
           // Put away: a line in its place brings it back. Any other answer takes the last line.
+          // A card's own choice can put it away too ("Don't suggest again" on a finding's card).
           setAway(
             afterAnswer(
               messages,
               id,
-              how,
-              how === "yes" ? false : undoOf(actionId, { practice: !!message.cardDetails }),
+              "not_now",
+              putAwayBy(how, choice, actionId, { practice: !!message.cardDetails }),
             ),
           );
           if (!actionId) return;

@@ -1,4 +1,4 @@
-import { UNDO_NEVER, UNDO_SNOOZE } from "@/config/put-away";
+import { UNDO_NEVER, UNDO_SNOOZE, UNDO_SUGGEST_NEVER } from "@/config/put-away";
 
 // A card put away (Not now, the ✕, a swipe or Escape, or "Don't suggest this again") leaves a line
 // in its place that brings it back (founder, 11-16: "there should be an option to go back to the
@@ -16,7 +16,23 @@ export function undoOf(
   if (actionId === undefined || actionId === null) return null;
   if (actionId === "snooze") return UNDO_SNOOZE;
   if (actionId === "suggestion.no") return practice ? false : UNDO_NEVER;
+  // "Don't suggest again" on a finding's card, or another of Jane's cards.
+  if (actionId === "suggest.never") return UNDO_SUGGEST_NEVER;
   return false;
+}
+
+// What an answer on a card leaves to bring it back: Not now and "Don't suggest this again" put it
+// away, and so does a card's own choice that does ("Don't suggest again" on a finding's card);
+// Yes and other choices start something (false).
+export function putAwayBy(
+  how: "yes" | "not_now" | "never",
+  choice: string | undefined,
+  actionId: string | null | undefined,
+  options: { practice?: boolean } = {},
+): string | null | false {
+  const undo = undoOf(actionId, options);
+  if (how !== "yes") return undo;
+  return choice !== undefined && undo !== false ? undo : false;
 }
 
 // The card whose line is showing: where it was among the cards, and what brings it back.

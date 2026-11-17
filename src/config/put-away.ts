@@ -7,6 +7,8 @@ export const PUT_AWAY_UNDO_MINUTES = 60;
 // The buttons left on a message put away: they bring it back as it was.
 export const UNDO_SNOOZE = "undo.snooze";
 export const UNDO_NEVER = "undo.never";
+// "Don't suggest again" on any of Jane's cards (a finding's, or another message's).
+export const UNDO_SUGGEST_NEVER = "undo.suggest_never";
 
 // What the line says, and its button.
 export const PUT_AWAY_WORDS = "Put away.";

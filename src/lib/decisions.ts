@@ -269,10 +269,16 @@ export async function recordDecision(
   return result;
 }
 
+// `windowSeconds`: how long after the No it can be undone; a card put away keeps its way back
+// longer (PUT_AWAY_UNDO_MINUTES).
 export async function undoDecision(
   userId: string,
   decisionId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  {
+    client = defaultClient,
+    now = new Date(),
+    windowSeconds = UNDO_WINDOW_SECONDS,
+  }: Options & { windowSeconds?: number } = {},
 ): Promise<void> {
   const db = scopedFor(userId, client);
   const decision = await db.decisions.findFirst({
@@ -284,7 +290,7 @@ export async function undoDecision(
   if (
     decision.choice !== "no" ||
     decision.undoneAt ||
-    ageSeconds > UNDO_WINDOW_SECONDS + UNDO_GRACE_SECONDS
+    ageSeconds > windowSeconds + UNDO_GRACE_SECONDS
   ) {
     throw new DecisionError("cannot_undo", "This answer can't be undone anymore.");
   }

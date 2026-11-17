@@ -1,6 +1,13 @@
 import { DecisionError, undoDecision } from "@/lib/decisions";
 import { undoRuleApproval } from "@/lib/standing-rules";
-import { UNDO_NEVER, UNDO_SNOOZE } from "@/config/put-away";
+import {
+  PUT_AWAY_UNDO_MINUTES,
+  UNDO_NEVER,
+  UNDO_SNOOZE,
+  UNDO_SUGGEST_NEVER,
+} from "@/config/put-away";
+import { deletePreference } from "../preferences";
+import { scopedFor } from "@/lib/db-scoped";
 import { asSnapshot, takeBackNo } from "@/lib/suggestion-take-back";
 import type { ChatMessage } from "../types";
 import type { MessageRefs } from "../types";
@@ -48,6 +55,7 @@ function reopened(message: ChatMessage) {
   delete refs.undoUntil;
   delete refs.note;
   delete refs.undoNo;
+  delete refs.neverPreference;
   return { status: "open" as const, answeredWith: null, refs, actions: previousActions ?? [] };
 }
 
@@ -70,5 +78,34 @@ export const undoNever: ActionHandler = {
     if (!before) throw new ChatActionError("failed", "Something went wrong. Open it instead.");
     await takeBackNo(userId, before, { client, now });
     return reopened(message);
+  },
+};
+
+// "Don't suggest again" on one of Jane's cards: a finding's No is undone (within the card's longer
+// window), and the "never" it saved goes, unless the person had said so before.
+export const undoSuggestNever: ActionHandler = {
+  id: UNDO_SUGGEST_NEVER,
+  on: ["answered", "dismissed"],
+  async run({ userId, message, client, now }) {
+    const { decisionId, neverPreference } = message.refs;
+    if (!neverPreference)
+      throw new ChatActionError("failed", "Something went wrong. Open it instead.");
+    if (decisionId) {
+      await undoDecision(userId, decisionId, {
+        client,
+        now,
+        windowSeconds: PUT_AWAY_UNDO_MINUTES * 60,
+      }).catch(cannot);
+    }
+    if (!neverPreference.existed) {
+      const saved = await scopedFor(userId, client).janePreferences.findFirst({
+        where: { kind: "never", key: neverPreference.key },
+        select: { id: true },
+      });
+      if (saved) await deletePreference(userId, saved.id, { client });
+    }
+    const back = reopened(message);
+    delete back.refs.decisionId;
+    return back;
   },
 };
