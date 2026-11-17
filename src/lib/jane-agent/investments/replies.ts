@@ -157,7 +157,21 @@ export function holdingsReply(
   data: Investments,
   named: string | null,
   sent: BrokerageAsks | null = null,
+  // Asked what went in ("how much have I put into Fidelity?"), not what's there (debugger 11-17).
+  asked: { sent?: boolean } = {},
 ): Reply {
+  if (asked.sent && sent && data.accounts.length > 0) {
+    const went =
+      sent.inLast3MonthsCents > 0
+        ? `You put ${formatCents(sent.inLast3MonthsCents)} into investing in the last 3 months, from your bank.`
+        : "I don't see money going from your bank to investing in the last 3 months.";
+    const total = data.accounts.reduce((sum, a) => sum + (a.balanceCents ?? 0), 0);
+    const worth =
+      data.accounts.length === 1
+        ? `Your ${data.accounts[0].name} is worth ${formatCents(total)} now.`
+        : `Your investments are worth ${formatCents(total)} now.`;
+    return { body: `${went} ${worth}`, actions: [SEE], refs: {} };
+  }
   if (data.accounts.length === 0 && sent && sent.inLast3MonthsCents > 0) {
     const apps = sent.asks.map((a) => a.app);
     const where = apps.length === 0 ? "investing apps" : listOf(apps);

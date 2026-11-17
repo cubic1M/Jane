@@ -61,6 +61,8 @@ export type InvestmentIntent = {
   which?: "all" | "opportunities";
   level?: RiskLevel;
   year?: number;
+  // "How much have I put into Fidelity?": what went in, not only what's there (debugger 11-17).
+  sent?: true;
   // "Why?" about the practice trades: every trade's reason, not just the first.
   explain?: boolean;
 };
@@ -69,6 +71,12 @@ const ACCOUNT_WORDS =
   "401\\(?k\\)?|403\\(?b\\)?|roth ira|roth|ira|hsa|brokerage|retirement(?: account)?|investment account|portfolio";
 const ACCOUNT = new RegExp(`\\b(${ACCOUNT_WORDS})(?=\\s|$|[^\\w])`);
 
+// Where students invest: "how much did I send to Fidelity", "what's in my Fidelity account".
+const BROKERS =
+  "fidelity|schwab|vanguard|robinhood|e\\*?trade|webull|acorns|stash|betterment|wealthfront|public";
+const PUT_IN = new RegExp(
+  `\\bhow much (?:have|did|do) (?:i|we) (?:put|sen[dt]|add(?:ed)?|moved?|transferr?(?:ed)?|invest(?:ed)?) (?:in|into|to|toward|with) (?:my )?(?:${BROKERS}|${ACCOUNT_WORDS}|investing|investments?|stocks)\\b`,
+);
 const HOLDINGS = new RegExp(
   [
     "\\bwhat do i (?:own|hold|have invested)\\b",
@@ -77,6 +85,7 @@ const HOLDINGS = new RegExp(
     "\\b(?:show|list|see)(?: me)? (?:my |what'?s in my )?(?:investments|holdings|portfolio|funds|stocks)\\b",
     "\\bmy (?:investments|holdings|portfolio|funds|stocks|shares)\\b",
     `\\bwhat'?s in my (?:${ACCOUNT_WORDS}|investments?)\\b`,
+    `\\bwhat'?s in my (?:${BROKERS})\\b`,
     `\\bhow much (?:do i have |is there |money is |is |have i got )?(?:in|on) (?:my )?(?:${ACCOUNT_WORDS}|investments?)\\b`,
     `\\bhow (?:much|big) is my (?:${ACCOUNT_WORDS})\\b`,
     "\\bhow much (?:money )?(?:do i have|have i got|have i|is|i have) invested\\b",
@@ -319,11 +328,13 @@ export function parseInvestmentIntent(text: string): InvestmentIntent | null {
     return { kind: "investments", topic: "fees", account: ACCOUNT.exec(text)?.[1] ?? null };
   }
   if (PROFILE.test(text)) return { kind: "investments", topic: "profile", account: null };
-  if (!HOLDINGS.test(text)) return null;
+  const putIn = PUT_IN.test(text);
+  if (!putIn && !HOLDINGS.test(text)) return null;
   const account = ACCOUNT.exec(text)?.[1] ?? null;
   return {
     kind: "investments",
     topic: "holdings",
     account: account && !/^(?:portfolio|investment account)$/.test(account) ? account : null,
+    ...(putIn ? { sent: true as const } : {}),
   };
 }
