@@ -725,7 +725,10 @@ function usualMonthLine(
           ]
         : [0, ""];
   if (!where) return null;
-  const names = full.map((m) => monthLabel(m).split(" ")[0]);
+  // With the year when the months cross one (debug 2, 11-17: 14 months read "from December to
+  // October", meaning December 2025 to October 2026).
+  const years = new Set(full.map((m) => m.slice(0, 4))).size > 1;
+  const names = full.map((m) => (years ? monthLabel(m) : monthLabel(m).split(" ")[0]));
   const from =
     names.length <= 2 ? names.join(" and ") : `${names[0]} to ${names[names.length - 1]}`;
   return `You spend about ${fmt(Math.round(cents / full.length))} a month ${where}, from ${from}.`;
