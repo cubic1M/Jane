@@ -10,7 +10,7 @@ const parts = { billsCents: 0, budgetsLeftCents: 0, goalsCents: 0, setAsideCents
 describe("what safe to spend says it took off", () => {
   it("says it's the whole balance when nothing was taken off", () => {
     expect(safeReply({ safeCents: 216_897, payday: null, ...parts }, TODAY).body).toBe(
-      "You have $2,168.97 safe to spend. That's your whole checking balance: I don't see any bills coming up, budgets or goals yet.",
+      "You have $2,168.97 safe to spend. That's your whole checking balance: I don't see any bills coming up, and nothing is held back for budgets or goals.",
     );
   });
 
@@ -32,7 +32,7 @@ describe("what safe to spend says it took off", () => {
     expect(
       safeReply({ safeCents: 20_000, payday: null, ...parts, taxHeldCents: 40_000 }, TODAY).body,
     ).toBe(
-      "You have $200.00 safe to spend. That's your checking balance, with $400.00 held back for tax not yet withheld or paid (an estimate): I don't see any bills coming up, budgets or goals yet.",
+      "You have $200.00 safe to spend. That's your checking balance, with $400.00 held back for tax not yet withheld or paid (an estimate): I don't see any bills coming up, and nothing is held back for budgets or goals.",
     );
   });
 });
