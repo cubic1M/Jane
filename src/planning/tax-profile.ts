@@ -13,6 +13,7 @@ import {
   type IncomeKind,
 } from "@/config/tax";
 import { US_STATES } from "@/config/referrals";
+import { formPayer } from "./tax-documents";
 
 // The tax profile (spec step 118): what Jane needs to know for the person's taxes, worked
 // out from their transactions where it can be and asked where it can't. Pure.
@@ -289,7 +290,9 @@ export const stateName = (code: string | null) =>
 // "wages from ACME CORP PAYROLL (W-2)".
 export function incomeLine(found: FoundIncome): string {
   const kind = INCOME_KINDS[found.kind];
-  const from = found.from.length > 0 ? ` from ${found.from.join(" and ")}` : "";
+  // Who pays, as the forms list says it (formPayer): "wages from Campus Dining Payroll Ppd" read
+  // the bank's line, beside "W-2 from Campus Dining" (debug 2, 11-16).
+  const from = found.from.length > 0 ? ` from ${found.from.map(formPayer).join(" and ")}` : "";
   return `${kind.seen}${from} (${kind.form})`;
 }
 

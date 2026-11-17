@@ -7,6 +7,7 @@ import { requireUser } from "@/lib/session";
 import { todayOf } from "@/lib/today";
 import { loadTaxProfile } from "@/lib/tax-profile";
 import { stateName } from "@/planning/tax-profile";
+import { formPayer } from "@/planning/tax-documents";
 import { scopedDb } from "@/lib/db-scoped";
 import { hasDemoBank } from "@/lib/plaid/demo";
 import { ConfirmDependants } from "./confirm-dependants";
@@ -66,7 +67,10 @@ async function ProfileContent() {
   ]);
   const move = residency.told?.[0] ?? residency.spotted;
   const seen = new Map(
-    view.incomeKinds.found.map((f) => [f.kind, f.from.join(" and ") || "your accounts"]),
+    view.incomeKinds.found.map((f) => [
+      f.kind,
+      f.from.map(formPayer).join(" and ") || "your accounts",
+    ]),
   );
 
   return (
