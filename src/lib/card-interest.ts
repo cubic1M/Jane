@@ -355,7 +355,10 @@ export async function askNextRateHerself(
 ): Promise<string | null> {
   const may = await mayAct(userId, "debt", { needs: "all", cents: 0 }, { client, now });
   if (!may.ok) return null;
-  const step = rateStep(await loadCardInterest(userId, { client, now, book }), isoDay(now));
+  const step = rateStep(
+    await loadCardInterest(userId, { client, now, book }),
+    await todayOf(userId, { client, now }),
+  );
   if (step?.kind !== "next") return null;
   await sendRateRequest(userId, step.requestId, { client, now });
   await recordAct(userId, "debt", 0, `Asked ${step.name} for a lower rate`, { client, now });

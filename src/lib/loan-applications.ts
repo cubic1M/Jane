@@ -15,6 +15,7 @@ import {
   type LoanApplicationView,
 } from "./loan-application-status";
 import { isoDay } from "@/lib/dates";
+import { todayOf } from "@/lib/today";
 
 export { statusLine, type LoanApplicationView };
 
@@ -100,7 +101,7 @@ export async function prepareApplication(
 ): Promise<LoanApplicationView> {
   const found = await lenderPartnerFor(userId, { client });
   if (!found) throw new LoanApplicationError("There's no lending partner for your accounts yet.");
-  const asOf = isoDay(now);
+  const asOf = await todayOf(userId, { client, now });
   const book = await loadDebts(userId, { client, now });
   const debt = book.debts.find((d) => d.key === input.debtKey);
   const what = debt && refinanceable(debt, asOf);
@@ -200,7 +201,7 @@ export async function submitApplication(
       amountCents: app.amountCents,
       termMonths: app.termMonths,
       creditBand: await creditBandFor(userId, { client }),
-      month: isoDay(now).slice(0, 7),
+      month: (await todayOf(userId, { client, now })).slice(0, 7),
     },
     applicant: app.applicant,
   });

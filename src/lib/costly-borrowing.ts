@@ -13,6 +13,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { loanCost, summarize, type Costly } from "@/planning/costly-borrowing";
 import { DAY_MS } from "@/lib/dates";
+import { todayOf } from "@/lib/today";
 
 // Out of costly short-term borrowing (spec step 247), for one person: payday loans, card cash
 // advances, repeated overdrafts and pay advance apps found in the last year of payments, what
@@ -52,7 +53,7 @@ export async function loadCostlyBorrowing(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<CostlyBorrowing> {
   const db = scopedFor(userId, client);
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await todayOf(userId, { client, now });
   const since = new Date(now.getTime() - COSTLY_LOOKBACK_DAYS * DAY_MS);
   const [rows, accounts, advice] = await Promise.all([
     db.transactions.findMany({

@@ -27,6 +27,7 @@ import {
   type Refund,
 } from "@/planning/car-loan";
 import { DAY_MS, dayStartUtc, isoDay } from "@/lib/dates";
+import { todayOf } from "@/lib/today";
 
 // The car loan you already have (spec step 245). Dealer add-ons financed into the loan (GAP, an
 // extended warranty, a service contract) are found in the payments and asked about once; for
@@ -153,7 +154,7 @@ export async function loadCarLoan(
   const loan = autoLoanOf(book);
   if (!loan) return none;
   const db = scopedFor(userId, client);
-  const asOf = isoDay(now);
+  const asOf = await todayOf(userId, { client, now });
   const since = new Date(now.getTime() - ADDON_LOOKBACK_DAYS * DAY_MS);
   const [rows, txs, user, refinance, watch, advice, team] = await Promise.all([
     db.carAddons.findMany({ orderBy: { startedOn: "desc" } }),
@@ -320,7 +321,10 @@ export async function addTypedAddon(
   if (!name) throw new CarLoanError("Say who sold it, like the dealer's name.");
   check(input.paidCents, 1_000, 100_000_00, "The price");
   check(input.termMonths, 1, 120, "The term in months");
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.startedOn) || input.startedOn > isoDay(now)) {
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(input.startedOn) ||
+    input.startedOn > (await todayOf(userId, { client, now }))
+  ) {
     throw new CarLoanError("Give the day you bought it, not in the future.");
   }
   const db = scopedFor(userId, client);

@@ -22,6 +22,7 @@ import {
   type RentRise,
 } from "@/planning/renting";
 import { DAY_MS, isoDay } from "@/lib/dates";
+import { todayOf } from "@/lib/today";
 
 // Renting, counted (spec step 248), for one person. Rent found in their payments; reporting it
 // to the credit bureaus through the reporting partner stand-in only after they opt in; a rent
@@ -80,7 +81,7 @@ export async function loadRenting(
   const payments = rentPayments(
     rows.map((r) => ({ ...r, pfc: r.pfcDetailed, date: isoDay(r.date) })),
   );
-  const today = isoDay(now);
+  const today = await todayOf(userId, { client, now });
   const depositRows = deposits.map((d) => {
     const movedOutOn = d.movedOutOn ? isoDay(d.movedOutOn) : null;
     const returnedOn = d.returnedOn ? isoDay(d.returnedOn) : null;
@@ -185,7 +186,7 @@ export async function markDepositReturned(
   }
   const done = await scopedFor(userId, client).securityDeposits.updateMany({
     where: { id, userId },
-    data: { returnedOn: new Date(isoDay(now)), returnedCents },
+    data: { returnedOn: new Date(await todayOf(userId, { client, now })), returnedCents },
   });
   if (done.count === 0) throw new RentingError("I can't find that deposit.");
   await logAudit(

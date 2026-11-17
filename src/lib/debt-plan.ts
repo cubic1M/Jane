@@ -145,7 +145,7 @@ export async function startDebtPlan(
   const summary = payoffSummary(book.debts, { extraCents, advice: false });
   if (summary.cards.length === 0) throw new DebtPlanError("There are no debts to plan yet.");
   const plan = summary[input.strategy];
-  const today = isoDay(now);
+  const today = await todayOf(userId, { client, now });
   const data = {
     strategy: input.strategy,
     extraCents,
@@ -225,7 +225,7 @@ export async function refreshDebtPlan(
   );
   const summary = payoffSummary(book.debts, { extraCents: stored.extraCents, advice: false });
   const plan = summary[stored.strategy];
-  const today = isoDay(now);
+  const today = await todayOf(userId, { client, now });
   const debtFreeMonth = plan.ok ? monthAfter(today, plan.months) : null;
   await db.debtPlans.updateMany({
     data: {

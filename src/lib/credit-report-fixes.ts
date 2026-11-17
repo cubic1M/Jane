@@ -15,6 +15,7 @@ import { dayLabel } from "@/lib/day-label";
 import { fixItems, type FixItem } from "@/planning/credit-report-fixes";
 import { DAY_MS, isoDay } from "@/lib/dates";
 import { rollOf } from "@/lib/hash";
+import { todayOf } from "@/lib/today";
 
 // Collections and credit report errors (spec step 181). Jane asks the credit partner (the
 // stand-in, for the demo bank) what is on the report that may need fixing, drafts the right
@@ -81,7 +82,7 @@ export async function loadReportFixes(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<ReportFixes> {
-  const asOf = isoDay(now);
+  const asOf = await todayOf(userId, { client, now });
   const found = await creditPartnerFor(userId, { client });
   if (!found) return { available: false, asOf, fixes: [], disputes: [] };
   const db = scopedFor(userId, client);
