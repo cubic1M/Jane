@@ -317,6 +317,14 @@ function cleanTarget(text: string): string {
 // "a trip", "the new couch", "food": what the money is for, without the amount or the
 // month. "for …" or "on …".
 function purchaseOf(text: string): string | null {
+  // "a $300 flight home for thanksgiving": the flight, not what it's for (debugger 11-17).
+  const after =
+    /\bafford (?:(a|an|the|some) )?\$?\d[\d,.]*k? (?!(?:for|on|in|by|at|a|an|per|each|every|this|next|monthly|weekly|yearly|now|today|right|dollars?|bucks|grand)\b)([a-z][a-z' -]{0,40}?)(?= (?:for|in|by|next|this|on|during|until|at)\b|$)/.exec(
+      text,
+    );
+  if (after) {
+    return `${after[1] ? `${after[1]} ` : ""}${after[2].trim()}`;
+  }
   const match =
     /\b(?:for|on) ((?:a |an |the |my |our |some )?[a-z][a-z' -]{0,40}?)(?= (?:in|by|next|this|on|during|until|at|a|per|each|every|monthly|weekly)\b|$)/.exec(
       text,
