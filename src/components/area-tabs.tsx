@@ -2,17 +2,36 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { AREA_TABS, tabFor } from "@/config/navigation";
 import { panelShowsOn } from "@/lib/side-chat";
+import { moreBeyond } from "@/lib/scroll-edges";
 
 // The area tabs along the top (docs/design/home-hub.md): one link per area, the one you're on
-// lit up. On a phone the row scrolls sideways, and the current tab is scrolled into view.
+// lit up. On a phone the row scrolls sideways, the current tab is scrolled into view, and an edge
+// with more of the row beyond it fades (src/app/globals.css .area-tabs-row), so no label is cut
+// mid-word.
 // Each tab is its own page, so these are links in a navigation, not ARIA tabs.
 export function AreaTabs() {
   const pathname = usePathname();
   const active = tabFor(pathname);
   const list = useRef<HTMLUListElement>(null);
+  // Before it is measured, a phone's row runs past the end: that edge fades from the first paint.
+  const [edges, setEdges] = useState({ before: false, after: true });
+  const measure = () => {
+    const row = list.current;
+    if (row) setEdges(moreBeyond(row.scrollLeft, row.clientWidth, row.scrollWidth));
+  };
+  useEffect(() => {
+    const row = list.current;
+    if (!row || typeof ResizeObserver === "undefined") return;
+    // Told at once, and whenever the row's width changes.
+    const watch = new ResizeObserver(() => {
+      setEdges(moreBeyond(row.scrollLeft, row.clientWidth, row.scrollWidth));
+    });
+    watch.observe(row);
+    return () => watch.disconnect();
+  }, []);
 
   useEffect(() => {
     const row = list.current;
@@ -33,7 +52,14 @@ export function AreaTabs() {
     >
       <ul
         ref={list}
-        className="flex [scrollbar-width:none] gap-1 overflow-x-auto px-4 sm:px-6 lg:px-0 [&::-webkit-scrollbar]:hidden"
+        onScroll={measure}
+        style={
+          {
+            "--fade-before": edges.before ? "transparent" : "#000",
+            "--fade-after": edges.after ? "transparent" : "#000",
+          } as CSSProperties
+        }
+        className="area-tabs-row flex [scrollbar-width:none] gap-1 overflow-x-auto px-4 sm:px-6 lg:px-0 [&::-webkit-scrollbar]:hidden"
       >
         {AREA_TABS.map((tab) => {
           const current = active === tab.key;

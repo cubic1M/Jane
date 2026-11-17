@@ -90,15 +90,27 @@ export function InteractiveTree({
   );
   const [viewWidth, setViewWidth] = useState(1000);
   const view = useRef<HTMLDivElement>(null);
+  // Framed for the screen it's on: from then on its moves glide. The first framing is at once (a
+  // phone's tree was drawn for a wide screen, cut off, then zoomed out on every load: mobile pass
+  // 11-16). A page rendered ahead of time, out of sight, has no width yet: it's framed when shown.
+  const [framed, setFramed] = useState(false);
+  const glide = useRef(0);
+  const sized = (width: number) => {
+    if (width <= 0) return;
+    setViewWidth(width);
+    cancelAnimationFrame(glide.current);
+    glide.current = requestAnimationFrame(() => setFramed(true));
+  };
 
   // Its width before the first paint, so the tree opens already framed.
   useLayoutEffect(() => {
-    if (view.current) setViewWidth(view.current.clientWidth);
+    if (view.current) sized(view.current.clientWidth);
+    return () => cancelAnimationFrame(glide.current);
   }, []);
   useEffect(() => {
     const el = view.current;
     if (!el || typeof ResizeObserver === "undefined") return;
-    const watch = new ResizeObserver(([e]) => setViewWidth(Math.round(e.contentRect.width)));
+    const watch = new ResizeObserver(([e]) => sized(Math.round(e.contentRect.width)));
     watch.observe(el);
     return () => watch.disconnect();
   }, []);
@@ -215,6 +227,7 @@ export function InteractiveTree({
       )}
       <div
         ref={view}
+        data-framed={framed ? "" : undefined}
         className="map-view relative w-full overflow-hidden border border-zinc-300 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900/40"
         style={{ height: Math.round(frameH * camera.scale) + 32 }}
       >
