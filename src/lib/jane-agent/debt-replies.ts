@@ -87,8 +87,16 @@ export function debtsReply(book: DebtBook): Reply {
   // with nothing said about what's owed).
   const seen = book.debts.filter((d) => d.key.startsWith("paid:"));
   if (accounts.length === 0 && seen.length > 0) {
+    // Not "not what's left" over a balance the person typed (debugger 11-16: Nelnet's $18,400.00
+    // right under it).
+    const told = seen.filter((d) => d.balanceCents !== null).length;
+    const them = seen.length === 1 ? "it" : "them";
     lines.push(
-      `I see your payments to ${plural(seen.length, "loan")}, not what's left on ${seen.length === 1 ? "it" : "them"}.`,
+      `I see your payments to ${plural(seen.length, "loan")}, ${
+        told === 0
+          ? `not what's left on ${them}`
+          : `and you told me what's left on ${told === seen.length ? them : `${told} of them`}`
+      }.`,
     );
   }
   if (plans.length > 0) {
