@@ -249,7 +249,7 @@ const RATE =
   /\b(?:what'?s |what is )?(?:the )?(?:interest rate|rate|apr) (?:on|for|of) (?:my |the |our )?(.+)$/;
 
 const PAYOFF =
-  /\b(?:payoff|pay off|pay-off|debt) plan\b|\b(?:fastest|quickest|best|cheapest|smartest) way (?:out of|to pay off|to pay down|to get out of|to clear) (?:my |all my |our )?(?:debts?|loans|cards)\b|\bhow (?:do|can|should|could) (?:i|we) (?:pay off|pay down|get out of|get rid of|clear) (?:my |all my |our )?(?:debts?|loans|cards)\b|\bdebt[- ]free\b|\bwhich (?:debt|loan|card|one) (?:should|do|would) (?:i|we) pay(?: off| down)? first\b|\bwhat (?:order|debt) (?:should|do) (?:i|we) pay\b/;
+  /\b(?:payoff|pay off|pay-off|debt) plan\b|\b(?:fastest|quickest|best|cheapest|smartest) way (?:out of|to pay off|to pay down|to get out of|to clear) (?:my |all my |our )?(?:debts?|loans|cards)\b|\bhow (?:do|can|should|could) (?:i|we) (?:pay off|pay down|get out of|get rid of|clear) (?:my |all my |our )?(?:debts?|loans|cards)\b|\bdebt[- ]free\b|\bwhich (?:debt|loan|card|one) (?:should|do|would) (?:i|we) pay(?: off| down)? first\b|\bwhat (?:order|debt) (?:should|do) (?:i|we) pay\b|\bwhat (?:should|do) (?:i|we) pay (?:off|down) first\b/;
 // "What if I pay $200 more a month?", "paying an extra $100 toward my debts".
 const MORE =
   /\bwhat if (?:i|we) (?:pay|paid|put|added?)\b.*\b(?:more|extra)\b|\b(?:pay|paying|put|putting) (?:an )?extra\b.*\b(?:debts?|loans|cards|a month|each month|monthly)\b/;
@@ -508,7 +508,9 @@ export function parseDebtIntent(
   if (/^(?:lower|reduce|cut|negotiate|bring down|shrink|cancel|refund)\b/.test(text)) return null;
   if (
     LOAN_FIT.test(text) &&
-    !/\b(?:student)\b|\bwhich loan (?:has|is|costs?|charges?)\b/.test(text)
+    !/\b(?:student)\b|\bwhich loan (?:has|is|costs?|charges?)\b/.test(text) &&
+    // "Which loan should I pay off first?" is the payoff plan, not a new loan (debugger 11-17).
+    !/\bpay(?: off| down)? first\b/.test(text)
   ) {
     return { kind: "loan_fit", need: fitNeedOf(text), amountCents };
   }
