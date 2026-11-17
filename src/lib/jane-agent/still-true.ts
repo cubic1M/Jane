@@ -32,7 +32,7 @@ import { findingSure } from "@/lib/report-state";
 // - a deadline heads-up whose deadline is gone (its purchase was in a bank since removed, or
 //   was refunded) or has passed is put away; one that still holds is said as of today;
 // - an alert about a charge that's no longer in the accounts is put away, and so is a deadline
-//   reminder whose deadline is gone;
+//   reminder whose deadline is gone and a low balance ahead that no longer is;
 // - a coverage gap that has closed (the policy was added, or found in the payments) is put away;
 // - a finding's card whose finding changed (a later file showed a card charging interest, so the
 //   idle cash no longer "could earn" anything) is said as the finding is now, and its stored words
@@ -124,9 +124,28 @@ async function holding(
         ).map((t) => t.id)
       : [],
   );
+  // A low balance ahead (key "account:<id>:<month>") holds while its account's forecast still
+  // dips: the low-balance finding goes once it doesn't (debug 2, 11-17: the first sync's 30 days
+  // had no paycheck pattern, so "could drop to -$427.25", which four months later Money said was
+  // "$658.94 on Dec 9" while the dock kept the alert).
+  const lowKeys = alerts.flatMap((a) =>
+    a.type === "low_balance" ? [a.key.slice(0, a.key.lastIndexOf(":"))] : [],
+  );
+  const dipping = new Set(
+    lowKeys.length
+      ? (
+          await scopedFor(userId, client).findings.findMany({
+            where: { type: "low_balance_risk", key: { in: lowKeys } },
+            select: { key: true },
+          })
+        ).map((f) => f.key)
+      : [],
+  );
   return new Map(
     alerts.map((a) => {
       if (a.type === "deadline_soon") return [a.id, deadlines.has(a.key)];
+      if (a.type === "low_balance")
+        return [a.id, dipping.has(a.key.slice(0, a.key.lastIndexOf(":")))];
       const day = alertDayOf(a);
       if (day !== null) return [a.id, day >= today];
       const parsed = a.type === "unusual_activity" ? parseKey(a.key) : null;
