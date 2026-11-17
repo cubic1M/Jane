@@ -18,6 +18,7 @@ import { runTaxCalendar } from "@/lib/tax-calendar";
 import { remindDueRecords } from "@/lib/audit-records";
 import { remindReceipts } from "@/lib/giving";
 import { centsToInput } from "@/lib/money";
+import { todayOf } from "@/lib/today";
 
 // What Jane does about taxes on its own before it talks (spec steps 123–127), at the
 // autopilot levels that let it act (src/config/tax.ts TAX_AUTOPILOT). Nothing here moves
@@ -90,7 +91,7 @@ export async function runTaxAutopilot(
 // Step 126: in filing season, once the profile is answered and every expected form is in,
 // the return is started with the filing partner, ready to review. Never signed or filed.
 async function startReturnWhenReady(userId: string, client: PrismaClient, now: Date) {
-  const today = now.toISOString().slice(0, 10);
+  const today = await todayOf(userId, { client, now });
   const year = filingYear(today);
   if (!inFilingSeason(year, today)) return false;
   if (!(await filingPartnerFor(userId, { client }))) return false;

@@ -8,6 +8,7 @@ import { loadTaxEstimate } from "@/lib/tax-estimate";
 import { loadTaxTags } from "@/lib/tax-organizer";
 import { listPriorReturns } from "@/lib/prior-return";
 import { reviewReturn, type Fields, type Review } from "@/planning/prior-return";
+import { todayOf } from "@/lib/today";
 
 // Last year's return, reviewed (spec step 172): a confirmed return checked against what
 // Jane knows for that year (demo advice: it recommends amending). Only a return the
@@ -52,7 +53,7 @@ export async function loadReturnReviews(
     const student = docs.forms.find((f) => f.formKey === "student" && f.document && f.usable);
     const review = reviewReturn({
       year,
-      today: now.toISOString().slice(0, 10),
+      today: await todayOf(userId, { client, now }),
       filed: r.fields,
       input: estimate.input,
       studentLoanInterestCents:

@@ -30,6 +30,7 @@ import {
 } from "@/planning/tax-notice";
 import { readNotice } from "./read";
 import { meteredClaude } from "@/lib/claude-budget";
+import { todayOf } from "@/lib/today";
 
 // A letter from the IRS or the state (spec step 217): read from an uploaded copy for the
 // person to confirm; then a deadline, a check against what Jane knows, and a drafted
@@ -142,7 +143,7 @@ export async function readTaxNotice(
       log.warn("Reading a tax notice failed", { reason: read.reason });
     }
   }
-  const checked = checkNotice(fields, sources, { today: now.toISOString().slice(0, 10) });
+  const checked = checkNotice(fields, sources, { today: await todayOf(userId, { client, now }) });
   try {
     const row = await db.taxNotices.create({
       data: {
@@ -205,7 +206,7 @@ export async function confirmTaxNotice(
     for (const f of NOTICE_FIELDS)
       if (typed[f.key] !== reading.fields[f.key]) sources[f.key] = "you";
   }
-  const checked = checkNotice(given, sources, { today: now.toISOString().slice(0, 10) });
+  const checked = checkNotice(given, sources, { today: await todayOf(userId, { client, now }) });
   if (Object.keys(checked.notes).some((k) => !(k === "respondBy" && checked.fields.respondBy))) {
     throw new NoticeError(Object.values(checked.notes)[0] ?? "Check the notice's details.");
   }
@@ -222,7 +223,7 @@ export async function confirmTaxNotice(
     },
   });
   const view = (await getTaxNotice(userId, id, { client }))!;
-  if (view.dueOn && view.dueOn >= now.toISOString().slice(0, 10)) {
+  if (view.dueOn && view.dueOn >= (await todayOf(userId, { client, now }))) {
     await addDeadline(
       userId,
       {

@@ -5,6 +5,7 @@ import { limitOrNull } from "@/lib/rate-limit";
 import { getCurrentUser } from "@/lib/session";
 import { loadTaxPack } from "@/lib/tax-pack";
 import { taxPackCsv, taxYearFrom } from "@/planning/tax-pack";
+import { todayOf } from "@/lib/today";
 
 // The tax-time pack as a CSV (spec step 72): the signed-in person's own transactions only.
 export async function GET(request: NextRequest) {
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
   const now = new Date();
   const year = taxYearFrom(
     request.nextUrl.searchParams.get("year") ?? undefined,
-    now.toISOString().slice(0, 10),
+    await todayOf(user.id, { now }),
   );
   const pack = await loadTaxPack(user.id, year, { now });
   const csv = taxPackCsv(pack);
