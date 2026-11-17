@@ -8,7 +8,6 @@ import { scopedFor } from "@/lib/db-scoped";
 import { recordDecision } from "@/lib/decisions";
 import { partnerForUser } from "@/lib/referrals";
 import { DAY_MS } from "@/lib/dates";
-import { todayOf } from "@/lib/today";
 
 // What Jane already did for a sample person (spec step 139, gap audit): each of their past wins
 // (src/data-sources/demo/people-extras/wins.ts) goes through the real path, as it would have
@@ -19,13 +18,16 @@ import { todayOf } from "@/lib/today";
 // the same (savedToDate). No email goes out for them. Sample people only: real accounts and the
 // plain demo bank start at $0.00.
 
-type Options = { client?: PrismaClient; now?: Date };
+// anchor: the demo bank's own day (src/lib/plaid/demo.ts), the day its transactions count back
+// from. The wins count back from the same day, or a win's dates miss the lines that prove it: on
+// the person's day, at 9pm in Los Angeles the refund was looked for a day before it came.
+type Options = { client?: PrismaClient; anchor: string };
 
 export const SAMPLE_WIN_KEY = "sample-win:";
 
-// Days counted back from the person's own today.
-const dayOf = (today: string, offset: number) =>
-  new Date(Date.parse(`${today}T00:00:00Z`) + offset * DAY_MS);
+// Days counted back from the demo bank's day.
+const dayOf = (anchor: string, offset: number) =>
+  new Date(Date.parse(`${anchor}T00:00:00Z`) + offset * DAY_MS);
 const cents = (dollars: number) => Math.round(dollars * 100);
 
 function findingOf(win: SampleWin): {
@@ -61,20 +63,20 @@ function findingOf(win: SampleWin): {
 }
 
 // When each step happened: the yes, and the day the action finished.
-function datesOf(win: SampleWin, today: string) {
+function datesOf(win: SampleWin, anchor: string) {
   if (win.kind === "cancelled") {
     // Cancelled the day after the last charge's month ran out; confirmed once the next charge
     // didn't come.
-    const cancelledOn = dayOf(today, -win.stoppedDaysAgo + 1);
+    const cancelledOn = dayOf(anchor, -win.stoppedDaysAgo + 1);
     return {
-      decided: dayOf(today, -win.stoppedDaysAgo - 2),
-      finished: dayOf(today, -win.stoppedDaysAgo + 35),
+      decided: dayOf(anchor, -win.stoppedDaysAgo - 2),
+      finished: dayOf(anchor, -win.stoppedDaysAgo + 35),
       extra: { cancelledOn },
     };
   }
-  const seen = dayOf(today, -win.refundedDaysAgo);
+  const seen = dayOf(anchor, -win.refundedDaysAgo);
   return {
-    decided: dayOf(today, -win.chargedDaysAgo + 1),
+    decided: dayOf(anchor, -win.chargedDaysAgo + 1),
     finished: seen,
     extra: { refundCents: cents(win.dollars), refundSeenAt: seen },
   };
@@ -83,7 +85,7 @@ function datesOf(win: SampleWin, today: string) {
 export async function seedSampleWins(
   userId: string,
   person: PersonId,
-  { client = defaultClient, now = new Date() }: Options = {},
+  { client = defaultClient, anchor }: Options,
 ): Promise<number> {
   const wins = SAMPLE_WINS[person] ?? [];
   const db = scopedFor(userId, client);
@@ -109,7 +111,7 @@ export async function seedSampleWins(
       { client },
     );
     if (!actionId) continue;
-    const { decided, finished, extra } = datesOf(win, await todayOf(userId, { client, now }));
+    const { decided, finished, extra } = datesOf(win, anchor);
     await db.decisions.updateMany({ where: { id: decisionId }, data: { createdAt: decided } });
     await db.actions.updateMany({ where: { id: actionId }, data: { createdAt: decided } });
     const action = await loadAction(userId, actionId, client);
