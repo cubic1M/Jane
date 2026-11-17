@@ -212,7 +212,7 @@ export async function applyForCard(
   const creditBand = await creditBandFor(userId, { client });
   const catalog = await found.partner.catalog({
     creditBand,
-    month: isoDay(now).slice(0, 7),
+    month: (await todayOf(userId, { client, now })).slice(0, 7),
   });
   const product = catalog.find((c) => c.id === productId);
   if (!product) throw new CreditCardError("That card isn't offered to you right now.");

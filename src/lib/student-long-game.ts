@@ -20,6 +20,7 @@ import {
   type TaxOnForgiven,
 } from "@/planning/student-long-game";
 import { DAY_MS, isoDay } from "@/lib/dates";
+import { todayOf } from "@/lib/today";
 
 // Student loans, the long game (spec step 225), on top of the plans (src/lib/student-loans.ts):
 // PSLF counted month by month with the employer certification date, the income-driven
@@ -67,7 +68,7 @@ export async function loadStudentLongGame(
   userId: string,
   { client = defaultClient, now = new Date(), book }: Options = {},
 ): Promise<LongGame> {
-  const asOf = isoDay(now);
+  const asOf = await todayOf(userId, { client, now });
   const loans = await loadStudentLoans(userId, { client, now, book });
   if (!loans.loan) return { ...none, advice: loans.advice };
   const db = scopedFor(userId, client);
@@ -257,7 +258,7 @@ export async function syncStudentDeadlines(
   if (
     game.forgiveness &&
     game.tax &&
-    taxPlanDue(game.forgiveness.on, game.tax.taxable, isoDay(now))
+    taxPlanDue(game.forgiveness.on, game.tax.taxable, await todayOf(userId, { client, now }))
   ) {
     await put(
       "taxDeadlineId",

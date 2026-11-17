@@ -18,6 +18,7 @@ import { upsertOnce } from "@/lib/unique-race";
 import { rateStep } from "@/planning/card-interest";
 import { reviewReason } from "@/planning/debt-review";
 import { DAY_MS, dayStartUtc, isoDay } from "@/lib/dates";
+import { todayOf } from "@/lib/today";
 
 // Debt on autopilot, round two (spec step 230): the yearly debt review. Once a year, and early
 // after a raise, a new loan or a missed payment, Jane goes over everything about debts and
@@ -237,7 +238,7 @@ export async function loadDebtReview(
   const db = scopedFor(userId, client);
   const book = await debtsOr(given, userId, { client, now });
   const owing = book.debts.filter((d) => (d.balanceCents ?? 0) > 0);
-  const asOf = isoDay(now);
+  const asOf = await todayOf(userId, { client, now });
   const [watch, sector, advice, cb, ci, home, goals, pay] = await Promise.all([
     db.debtWatches.findFirst({
       select: { reviewOn: true, reviewReason: true, reviewKeys: true, reviewPayCents: true },

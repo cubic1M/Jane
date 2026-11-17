@@ -12,6 +12,7 @@ import { formatCents } from "@/lib/money";
 import { creditBandOf, creditFactors, utilisation, type Utilisation } from "@/planning/credit";
 import { dayLabel } from "@/lib/day-label";
 import { DAY_MS, dayStartUtc, isoDay } from "@/lib/dates";
+import { todayOf } from "@/lib/today";
 
 // The credit score (spec step 116). Once a month Jane asks the credit partner for the
 // person's score with a soft pull (it never affects the score), and explains what's
@@ -55,7 +56,7 @@ export async function requestFor(
     hasInstallmentLoan: book.debts.some((d) =>
       ["student", "auto", "mortgage", "loan"].includes(d.kind),
     ),
-    month: isoDay(now).slice(0, 7),
+    month: (await todayOf(userId, { client, now })).slice(0, 7),
   };
 }
 

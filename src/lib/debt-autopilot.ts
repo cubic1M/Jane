@@ -11,6 +11,7 @@ import { autopilotFor, mayAct, recordAct } from "@/lib/sector-autopilot";
 import { dueMoves, paydaysOf, type DueMove } from "@/planning/due-dates";
 import { rateChanges, type RateChange } from "@/planning/rate-watch";
 import { DAY_MS, dayStartUtc, isoDay } from "@/lib/dates";
+import { todayOf } from "@/lib/today";
 
 export { type RateChange };
 
@@ -36,7 +37,7 @@ export async function runDebtAutopilot(
     db.debtWatches.findFirst({ select: { rates: true, changes: true, planStartedOn: true } }),
   ]);
   const seen = (watch?.rates ?? {}) as Record<string, number>;
-  const { rates, changes } = rateChanges(seen, book.debts, isoDay(now));
+  const { rates, changes } = rateChanges(seen, book.debts, await todayOf(userId, { client, now }));
   const kept = [...changes, ...((watch?.changes ?? []) as RateChange[])].slice(0, CHANGES_KEPT);
 
   // The payoff plan, started by Jane when the debt sector does the safe stuff.
@@ -104,7 +105,7 @@ export async function loadDebtAutopilot(
       select: { date: true },
     }),
   ]);
-  const asOf = isoDay(now);
+  const asOf = await todayOf(userId, { client, now });
   const until = isoDay(new Date(now.getTime() + DEBT_DUE_DAYS * DAY_MS));
   return {
     level: sector.level,

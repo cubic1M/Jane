@@ -22,6 +22,7 @@ import {
   type GoalPlan,
 } from "@/planning/credit-goal";
 import { dayStartUtc, isoDay } from "@/lib/dates";
+import { todayOf } from "@/lib/today";
 
 // A credit score for a goal (spec step 227). A target score and date for a mortgage, a car or
 // another loan, and a monthly plan from the credit partner's score simulator (step 175): what
@@ -78,7 +79,7 @@ export async function planFor(
   const report = await latestReport(userId, client);
   if (!report) return null;
   const book = await debtsOr(given, userId, { client, now });
-  const asOf = isoDay(now);
+  const asOf = await todayOf(userId, { client, now });
   const months = planMonths(asOf, draft.targetDate);
   const balances = paydownBalances({
     balanceCents: report.request.cardBalanceCents,
@@ -185,7 +186,7 @@ export async function startCreditGoal(
   input: { kind: string; targetScore: number; targetDate: string },
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<GoalView> {
-  const draft = checkGoalDraft(input, isoDay(now));
+  const draft = checkGoalDraft(input, await todayOf(userId, { client, now }));
   const view = await planFor(userId, draft, { client, now });
   if (!view)
     throw new CreditGoalError("A credit goal needs a score Jane has pulled; there isn't one yet.");

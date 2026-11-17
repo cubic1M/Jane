@@ -26,6 +26,7 @@ import { upsertOnce } from "@/lib/unique-race";
 import { rateStep } from "@/planning/card-interest";
 import { isoDay } from "@/lib/dates";
 import { formatRate } from "@/lib/percent";
+import { todayOf } from "@/lib/today";
 
 // Credit on autopilot, round three (spec step 251): every month, after its soft checks, Jane
 // goes over borrowing in one pass: a cheaper rate on each loan (the fit engine's pick, the same
@@ -223,7 +224,7 @@ export async function computeCreditMonthly(
   { client = defaultClient, now = new Date(), book: given }: Options = {},
 ): Promise<CreditMonthly> {
   const book = await debtsOr(given, userId, { client, now });
-  const asOf = isoDay(now);
+  const asOf = await todayOf(userId, { client, now });
   const [sector, advice, refi, borrowing, car, costly, renting, ci] = await Promise.all([
     autopilotFor(userId, "debt", { client, now }),
     adviceMode(userId, { client }),
@@ -263,7 +264,7 @@ export async function runCreditMonthly(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<CreditMonthly | null> {
   const db = scopedFor(userId, client);
-  const asOf = isoDay(now);
+  const asOf = await todayOf(userId, { client, now });
   const watch = await db.debtWatches.findFirst({ select: { monthlyOn: true } });
   if (watch?.monthlyOn && isoDay(watch.monthlyOn).slice(0, 7) === asOf.slice(0, 7)) return null;
   const did: string[] = [];

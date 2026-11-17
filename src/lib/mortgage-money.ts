@@ -13,7 +13,7 @@ import { formatCents } from "@/lib/money";
 import { loadFit, type FitView } from "@/lib/fit";
 import { compareMortgageMoney, type MortgageMoney } from "@/planning/mortgage-money";
 import { remainingMonths } from "@/planning/refinance";
-import { isoDay } from "@/lib/dates";
+import { todayOf } from "@/lib/today";
 
 // Recast, refinance or pay extra (spec step 246), for one person's mortgage: a lump sum or extra
 // monthly money used three ways (extra principal, a recast, a refinance) and invested instead,
@@ -65,7 +65,7 @@ export async function loadMortgageMoney(
   const loan = [...book.debts]
     .filter((d) => d.kind === "mortgage" && (d.balanceCents ?? 0) > 0)
     .sort((a, b) => (b.balanceCents ?? 0) - (a.balanceCents ?? 0))[0];
-  const asOf = isoDay(now);
+  const asOf = await todayOf(userId, { client, now });
   const monthsLeft = loan ? remainingMonths(loan, asOf) : null;
   const advice = await adviceMode(userId, { client });
   const empty = {
