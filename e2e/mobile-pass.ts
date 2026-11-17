@@ -125,7 +125,11 @@ export async function phoneLook(page: Page): Promise<PhoneLook> {
           // Small, or crowded.
           for (const el of targets) {
             if (!own(el)) continue;
-            const r = el.getBoundingClientRect();
+            // A checkbox or radio in a label: the label is what a finger hits.
+            const label = /^(checkbox|radio)$/.test((el as HTMLInputElement).type ?? "")
+              ? el.closest("label")
+              : null;
+            const r = (label ?? el).getBoundingClientRect();
             const s = getComputedStyle(el);
             // A link inside a sentence is part of the text, not a button.
             const parent = el.parentElement;

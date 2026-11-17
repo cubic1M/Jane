@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { conciergeMode } from "@/lib/concierge-mode";
-import { AppHeader, PageLoading } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { AutopilotChooser } from "@/components/autopilot-chooser";
 import { TryFeedbackBox } from "@/components/try-feedback-box";
 import { isTrialUser } from "@/lib/trial-ids";
@@ -14,6 +14,7 @@ import { BankStatusNotice } from "@/components/bank-status-notice";
 import { BooksNotice } from "@/components/books-notice";
 import { CashFlowStrip } from "@/components/hub/cash-flow";
 import { HeroRow } from "@/components/hub/hub";
+import { HomeLoading } from "@/components/hub/home-loading";
 import { GiantTree } from "@/components/hub/giant-tree";
 import { loadAreaTrees } from "@/lib/hub/area-trees";
 import { readingTiles, withAreaStatus } from "@/lib/hub/area-status";
@@ -300,7 +301,7 @@ async function HubContent({ searchParams }: { searchParams: PageProps<"/home">["
 export default function HomePage({ searchParams }: PageProps<"/home">) {
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8">
-      <Suspense fallback={<PageLoading label="Loading your hub" />}>
+      <Suspense fallback={<HomeLoading />}>
         <HubContent searchParams={searchParams} />
       </Suspense>
     </main>

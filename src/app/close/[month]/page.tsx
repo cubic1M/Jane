@@ -119,7 +119,7 @@ async function CloseContent({ params }: { params: PageProps<"/close/[month]">["p
               <a
                 key={i}
                 href={chip.href}
-                className="rounded-full border border-zinc-300 px-3 py-1 font-mono text-xs dark:border-zinc-700"
+                className="inline-flex min-h-11 items-center rounded-full border border-zinc-300 px-3 font-mono text-xs dark:border-zinc-700"
               >
                 ● {chip.label} {chip.figure}
                 {chip.sure ? ` · ${chip.sure} sure` : ""}
@@ -175,7 +175,7 @@ async function CloseContent({ params }: { params: PageProps<"/close/[month]">["p
           <div className="mt-2">{checkupList}</div>
         </details>
       )}
-      <Link href="/saved" className={LINK}>
+      <Link href="/saved" className={`inline-flex min-h-11 items-center self-start ${LINK}`}>
         Every saving ›
       </Link>
     </>

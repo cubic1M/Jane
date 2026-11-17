@@ -5,6 +5,7 @@ import { useState } from "react";
 import { formatCents } from "@/lib/money";
 import { cashGroups, type CashEvent, type CashFlowView, type CashGroup } from "@/lib/hub/view";
 import { dayLabel } from "@/lib/day-label";
+import { nearestMark } from "@/lib/hub/nearest-mark";
 
 // The hub's cash-flow strip (docs/design/home-hub.md): the next 30 days on one line, paydays
 // above it, bills below it (sized by amount against the biggest), other dates on it. Hover,
@@ -84,6 +85,25 @@ export function CashFlowStrip({ view, endDate }: { view: CashFlowView; endDate: 
           aria-label={`Next 30 days: ${bills} ${bills === 1 ? "bill" : "bills"}, ${pays} ${pays === 1 ? "payday" : "paydays"}`}
           className="relative h-28 select-none"
           onMouseLeave={() => setShown(null)}
+          // A tap that misses the small markers opens the nearest within reach (mobile pass
+          // 11-16): each marker is a whole strip tall to a finger.
+          onClick={(event) => {
+            if ((event.target as HTMLElement).closest("button")) return;
+            const strip = event.currentTarget.getBoundingClientRect();
+            const centres = groups.map((_, i) => {
+              const r = document.getElementById(`cash-event-${i}`)?.getBoundingClientRect();
+              return r
+                ? { x: r.left + r.width / 2 - strip.left, y: r.top + r.height / 2 - strip.top }
+                : { x: Infinity, y: Infinity };
+            });
+            const i = nearestMark(
+              { x: event.clientX - strip.left, y: event.clientY - strip.top },
+              centres,
+            );
+            if (i === null) return;
+            setActive(i);
+            setShown(i);
+          }}
           onKeyDown={(event) => {
             if (event.key === "ArrowRight") move(active + 1);
             else if (event.key === "ArrowLeft") move(active - 1);

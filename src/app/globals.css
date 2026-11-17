@@ -337,6 +337,22 @@ body {
     align-items: center;
     min-height: 2.75rem;
   }
+  /* A form's fields and buttons (36–40 px on /transactions and /profile), and a checkbox's or a
+     radio's label, which is what a finger hits: 44 px, the box itself 24. */
+  select,
+  textarea,
+  input:not([type="checkbox"], [type="radio"], [type="hidden"], [type="file"], [type="range"]),
+  form button:not([class*="min-h-"]),
+  label:has(> input[type="checkbox"]),
+  label:has(> input[type="radio"]) {
+    min-height: 2.75rem;
+  }
+  input[type="checkbox"],
+  input[type="radio"] {
+    width: 1.5rem;
+    height: 1.5rem;
+    flex-shrink: 0;
+  }
 }
 
 /* Dark mode: the brand and status colours used for text in light mode are too dim on the
