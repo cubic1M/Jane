@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { chipRoomCookie } from "@/lib/import-chip-room";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { dismissImport } from "@/app/import/actions";
 import { IMPORT_POLL_MS, IMPORT_STARTED_EVENT } from "@/config/import";
@@ -9,7 +10,6 @@ import { DATA_CHANGED_EVENT } from "@/config/side-chat";
 import type { ImportRunView } from "@/lib/import/background";
 import { askImportStatus } from "@/lib/import/chip-status";
 import { formatWholeDollars } from "@/lib/money";
-import { panelShowsOn } from "@/lib/side-chat";
 
 // An upload finishing in the background (src/lib/import/background.ts), on every page: a small
 // chip at the top, "Importing 172 transactions… 40%", then "Done: found $360/yr". It never
@@ -19,9 +19,12 @@ import { panelShowsOn } from "@/lib/side-chat";
 
 const RUNNING = new Set(["queued", "matching", "balances", "looking", "refreshing"]);
 
-export function ImportChip() {
+// `room`: the page's HTML keeps the notice's room on a phone, because it showed on the last page
+// (src/lib/import-chip-room.ts), until the first answer says what to put in it.
+export function ImportChip({ room = false }: { room?: boolean }) {
   const router = useRouter();
   const [run, setRun] = useState<ImportRunView | null>(null);
+  const [answered, setAnswered] = useState(false);
   // The last answer, to tell when a running upload has just finished.
   const last = useRef<ImportRunView | null>(null);
 
@@ -41,6 +44,7 @@ export function ImportChip() {
     const before = last.current;
     last.current = next;
     setRun(next);
+    setAnswered(true);
     // Finished while this page was open: its numbers are loaded again.
     if (before && RUNNING.has(before.stage) && next && !RUNNING.has(next.stage)) {
       router.refresh();
@@ -67,6 +71,14 @@ export function ImportChip() {
   // navigation to /goodbye), there's no run, or no one to ask for, and it goes (it stayed,
   // "Done: found $228/yr", for a person whose account was gone).
   const pathname = usePathname();
+  // The room the page's HTML kept is this page's for as long as it's open, even if the notice
+  // turns out to be gone: the page never moves up under a tap. A new page starts without it.
+  const [keepRoom, setKeepRoom] = useState(room);
+  const [roomPage, setRoomPage] = useState(pathname);
+  if (pathname !== roomPage) {
+    setRoomPage(pathname);
+    setKeepRoom(false);
+  }
   useEffect(() => {
     if (!last.current || window.self !== window.top) return;
     const again = setTimeout(check, 0);
@@ -95,9 +107,23 @@ export function ImportChip() {
     if (arrivedRun) void dismissImport(arrivedRun);
   }, [arrivedRun]);
 
-  if (!run || arrived) return null;
-  // The phone's Jane button shows wherever the chat panel does (src/components/side-chat).
-  const besideJane = panelShowsOn(pathname);
+  // While it shows, the next page keeps its room from the start (src/lib/import-chip-room.ts).
+  const showing = run !== null && !arrived;
+  useEffect(() => {
+    if (!answered || window.self !== window.top) return;
+    document.cookie = chipRoomCookie(showing);
+  }, [answered, showing]);
+
+  if (!run || arrived) {
+    // On a phone only: a computer's notice floats.
+    return keepRoom ? (
+      <div
+        aria-hidden
+        data-import-chip-room=""
+        className="order-first mx-4 mt-2 h-[38px] lg:hidden"
+      />
+    ) : null;
+  }
   const close = () => {
     last.current = null;
     setRun(null);
@@ -113,16 +139,12 @@ export function ImportChip() {
       aria-live="polite"
       data-import-chip={run.stage}
       data-import-run={run.id}
-      // Bottom left, like a toast, never over a heading (demo-video list: on /import it sat over
-      // "# Upload statement files"). On a phone it's beside the Jane button, in the room the
-      // page keeps free for it, so the page never drops when the chip arrives after it (66px on
-      // every load). Where a phone has no Jane button (the chat's own pages, whose message box
-      // is at the bottom), the first thing on the page instead: order-first in the body column.
-      className={`z-40 flex items-center gap-3 rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm shadow-sm lg:fixed lg:bottom-4 lg:left-4 lg:order-none lg:mx-0 lg:mt-0 lg:max-w-[calc(100vw-380px-2rem)] dark:border-zinc-700 dark:bg-zinc-950 ${
-        besideJane
-          ? "fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-4 max-w-[calc(100vw-6.5rem)]"
-          : "order-first mx-4 mt-2 max-w-[calc(100vw-2rem)] self-start"
-      }`}
+      // On a computer bottom left, like a toast, never over a heading (demo-video list: on /import
+      // it sat over "# Upload statement files"). On a phone or tablet the first thing on the page,
+      // in its own room (order-first in the body column): floating beside the Jane button, it sat
+      // over Home's first screen right after an upload ("Your plan" before #1974, the chart's
+      // 1W / 1M / 3M row after: mobile pass 11-16). The page moves down for it when it arrives.
+      className="z-40 order-first mx-4 mt-2 flex min-h-[38px] max-w-[calc(100vw-2rem)] items-center gap-3 self-start rounded-full border border-zinc-300 bg-white px-4 py-2 text-xs shadow-sm lg:fixed lg:text-sm lg:bottom-4 lg:left-4 lg:order-none lg:mx-0 lg:mt-0 lg:max-w-[calc(100vw-380px-2rem)] dark:border-zinc-700 dark:bg-zinc-950"
     >
       {running ? (
         <>
