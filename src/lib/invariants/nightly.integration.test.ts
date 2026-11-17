@@ -118,20 +118,23 @@ describe.runIf(url)("the nightly invariants", () => {
       pfcPrimary: "LOAN_PAYMENTS",
       pfcDetailed: "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
     };
-    const before = (await runInvariants({ client })).cardPayments;
+    // This test's person only: other files write card payments at the same time (main 11-17: 3 legs
+    // where there was 1).
+    const count = async () => (await runInvariants({ client, only: userId })).cardPayments;
+    const before = await count();
     await row({ accountId: card, amountCents: 500, date: day(21) });
     await row({ accountId: checking, amountCents: 40_000, ...pay });
     await row({ accountId: card, amountCents: -40_000, date: day(19), ...pay });
-    let now = (await runInvariants({ client })).cardPayments;
+    let now = await count();
     expect(now.legs).toBe(before.legs + 1);
     expect(now.unmatched).toBe(before.unmatched);
 
     await row({ accountId: checking, amountCents: 41_000, ...pay });
-    now = (await runInvariants({ client })).cardPayments;
+    now = await count();
     expect(now.unmatched).toBe(before.unmatched + 1);
 
     await row({ accountId: checking, amountCents: 42_000, date: day(2), ...pay });
-    expect((await runInvariants({ client })).cardPayments.unmatched).toBe(now.unmatched);
+    expect((await count()).unmatched).toBe(now.unmatched);
   });
 
   it("counts old rows that break a NOT VALID money rule, by its name", async () => {
