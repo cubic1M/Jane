@@ -24,6 +24,11 @@ const EVERY: Record<Frequency, string> = {
 };
 
 const subscriptionsLink: MessageAction = openLink("Open subscriptions", "/subscriptions");
+// A regular bill that isn't a subscription (rent, a phone bill) opens the bills it's one of
+// (debug 2, 11-16: "how much is my rent?" ended "Open subscriptions").
+const billsLink: MessageAction = openLink("See your bills", "/bills");
+const linkFor = (charge: Charge | null) =>
+  charge && !charge.subscription && !charge.maybeSubscription ? billsLink : subscriptionsLink;
 
 // The charges a name could mean ("netflix", "my phone bill", "the gym").
 function matchCharges(charges: readonly Charge[], target: string): Charge[] {
@@ -49,7 +54,7 @@ function withFinding(
       refs: { ...decision.refs, topic: { ...topic!, findingId: finding.findingId } },
     };
   }
-  return { body, actions: [subscriptionsLink], refs: { topic } };
+  return { body, actions: [linkFor(charge)], refs: { topic } };
 }
 
 // "How much is Netflix?": the charge, how often, a year's cost and the next one. Null when
