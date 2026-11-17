@@ -1,8 +1,8 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { decrypt } from "@/lib/crypto";
 
-// The authorization code flow with PKCE (RFC 7636) and state, shared by the Robinhood connection
-// (src/lib/robinhood/oauth.ts) and connectors (src/lib/connectors/). What the browser keeps until the
+// The authorization code flow with PKCE (RFC 7636) and state, for the Robinhood connection
+// (src/lib/robinhood/oauth.ts). What the browser keeps until the
 // person comes back is encrypted, so the verifier stays secret, and names them, so it only works for
 // the person who started.
 

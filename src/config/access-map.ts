@@ -39,7 +39,6 @@ export const ACCESS_MAP: Record<string, Access> = {
   "src/app/api/client-error/route.ts": public_(
     "Browsers post errors here, signed in or not; it only stores a scrubbed report.",
   ),
-  "src/app/api/connectors/[connectorId]/webhook/route.ts": "webhook",
   "src/app/api/cron/digest/route.ts": "cron",
   "src/app/api/cron/events/route.ts": "cron",
   "src/app/api/cron/invariants/route.ts": "cron",
@@ -207,7 +206,6 @@ export const ACCESS_MAP: Record<string, Access> = {
   "src/app/saved/actions.ts": "signed-in",
   "src/app/settings/actions.ts": "signed-in",
   "src/app/settings/attention-actions.ts": "signed-in",
-  "src/app/settings/connections/actions.ts": "signed-in",
   "src/app/settings/autopilot-actions.ts": "signed-in",
   "src/app/settings/chat-notify-actions.ts": "signed-in",
   "src/app/settings/memory-actions.ts": "signed-in",
@@ -395,7 +393,6 @@ export const ACCESS_MAP: Record<string, Access> = {
   "src/app/saved/page.tsx": "signed-in",
   "src/app/scanning/page.tsx": "signed-in",
   "src/app/security/page.tsx": public_("How we keep data safe: the same for everyone."),
-  "src/app/settings/connections/page.tsx": "signed-in",
   "src/app/settings/memory/page.tsx": "signed-in",
   "src/app/settings/page.tsx": "signed-in",
   "src/app/settings/team-access/page.tsx": "signed-in",
