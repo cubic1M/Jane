@@ -207,13 +207,14 @@ describe.runIf(url)("payoff plans against a real database", () => {
     expect(payoff.advice).toBe(false);
     expect(payoff.summary.pick).toBeNull();
     const { reply } = await sendToJane(realId, "how do I pay off my debt", opts());
-    expect(reply.body).toContain("here's how two common orders would go");
+    // One card: one outcome, no orders to choose between (debugger 11-17, #2005).
+    expect(reply.body).toMatch(/^Paying \$60\.00 a month \(your minimums\), you'd be /);
+    expect(reply.body).not.toContain("two common orders");
     expect(reply.body).toContain("This is math, not a recommendation.");
     expect(reply.body).not.toContain(DEMO_ADVICE_LABEL);
     expect(reply.refs.advice).toBeUndefined();
     expect(reply.actions.map((a) => a.label)).toEqual([
-      "Track highest rate first",
-      "Track smallest balance first",
+      "Track this plan",
       "Open the payoff planner",
     ]);
     await expect(

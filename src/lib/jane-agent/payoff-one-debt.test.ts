@@ -60,6 +60,70 @@ describe("paying off one debt, in the chat", () => {
     ]);
   });
 
+  it("still sets two orders side by side for two debts", () => {
+    const two = debtBook(
+      {
+        accounts: [],
+        plans: [],
+        typed: [
+          {
+            debtKey: "paid:student:nelnet",
+            aprBps: 550,
+            minimumPaymentCents: null,
+            balanceCents: 1_468_810,
+            payoffDate: null,
+            updatedOn: ASOF,
+          },
+          {
+            debtKey: "paid:auto:toyota",
+            aprBps: 690,
+            minimumPaymentCents: null,
+            balanceCents: 900_000,
+            payoffDate: null,
+            updatedOn: ASOF,
+          },
+        ],
+        paid: [
+          {
+            key: "student:nelnet",
+            lender: "Nelnet",
+            kind: "student",
+            paymentCents: 2_500,
+            paymentsMade: 3,
+            lastDate: "2026-11-01",
+            nextDate: "2026-12-01",
+          },
+          {
+            key: "auto:toyota",
+            lender: "Toyota",
+            kind: "auto",
+            paymentCents: 33_812,
+            paymentsMade: 3,
+            lastDate: "2026-11-07",
+            nextDate: "2026-12-07",
+          },
+        ],
+      },
+      ASOF,
+    );
+    const reply = payoffReply(
+      {
+        advice: false,
+        book: two,
+        summary: payoffSummary(two.debts, { extraCents: 10_000, advice: false }),
+        debtFreeMonth: null,
+        stored: null,
+      },
+      ASOF,
+    );
+    expect(reply.body).toContain("here's how two common orders would go");
+    expect(reply.actions.map((a) => a.label)).toEqual([
+      "Track highest rate first",
+      "Track smallest balance first",
+      "Open the payoff planner",
+    ]);
+  });
+
   it("has no order to pick in demo advice either", () => {
     const reply = payoffReply(payoff(true), ASOF);
     expect(reply.body).not.toMatch(/Here's how I'd pay them off|^1\. /m);
