@@ -45,7 +45,8 @@ test("a choice shows at once, greys the others, and Revert puts the previous lev
     : page.locator('.floating-cards[data-floating-cards="queue"]');
   const openHome = async () => {
     await page.goto("/home");
-    if (isMobile) await page.locator('[data-card-state="folded"]').click({ timeout: 60_000 });
+    // On a phone Home's top card is in the page, not folded (founder's choice, 11-16).
+    if (isMobile) await page.locator('[data-card-state="showing"]').waitFor({ timeout: 60_000 });
     return scope;
   };
   const card = await walkToCard(page, openHome, HEADLINE, { docked });

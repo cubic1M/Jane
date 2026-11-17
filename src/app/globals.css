@@ -1248,6 +1248,17 @@ textarea {
     display: none;
   }
 }
+/* Home on a phone (src/app/home/page.tsx): the top card is in the page, above the net worth, not
+   floating over it, so the first screen shows it and covers nothing (draft for the founder). */
+@media (width < 640px) {
+  [data-home-cards-top] .floating-cards {
+    position: static;
+    padding-inline: 0;
+  }
+  [data-home-cards-top] [data-card-room] {
+    display: none;
+  }
+}
 /* In the chat the cards sit just above its pinned message box (src/app/chat/composer.tsx sets
    --chat-composer-h), never over it, and need no room of their own at the page's end. */
 body:has([data-chat-composer]) .floating-cards {
