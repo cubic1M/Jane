@@ -14,8 +14,18 @@ describe("Home while it loads", () => {
   it("is the first screen's shape, with no words on screen", () => {
     expect(html.replace(/<[^>]*>/g, "").trim()).toBe("");
     // The net worth card's chart room, as the chart has it: 190 px on a phone, 260 wider.
-    expect(html).toContain("h-[190px]");
+    expect(html).toContain("min-height:190px");
     expect(html).toContain("sm:h-[260px]");
+  });
+
+  // A slow phone drew it before the stylesheet came (none at 1.5 s and 3 s): every block is sized
+  // and filled in its own style, or it's a blank page again.
+  it("keeps its shape before the stylesheet arrives", () => {
+    const blocks = html.match(/<div class="[^"]*animate-pulse[^"]*"[^>]*>/g) ?? [];
+    expect(blocks.length).toBeGreaterThanOrEqual(7);
+    for (const b of blocks) {
+      expect(b).toMatch(/style="[^"]*min-height:\d+px[^"]*background:rgba/);
+    }
   });
 
   it("is still a loading bar, named for a screen reader", () => {
