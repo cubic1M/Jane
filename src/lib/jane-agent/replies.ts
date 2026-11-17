@@ -480,6 +480,10 @@ export function spendingReply(
       [openLink("Add your accounts", "/connect")],
     );
   }
+  if (intent.perMonth && intent.category) {
+    const usual = usualMonthLine(intent.category, transactions, asOf);
+    if (usual) return reply(usual, open);
+  }
   const months = monthsEnding(asOf, INSIGHT_MONTHS);
   if (!months.includes(intent.month)) {
     return reply(`I can only see the last ${INSIGHT_MONTHS} months of spending.`, open);
@@ -678,6 +682,53 @@ export function spendingReply(
     `${SPENDING_NOT_FOUND} "${intent.category}" ${when}.${top ? ` The most went to: ${top}.` : ""}`,
     open,
   );
+}
+
+// "How much do I spend on Amazon a month?": a usual month, the full months the data covers on
+// average, at the merchant named or in the category (debugger 11-17: "amazon a month" was looked
+// up as a name). Null when there's no full month, or nothing by that name.
+function usualMonthLine(
+  target: string,
+  transactions: InsightTransaction[],
+  asOf: string,
+): string | null {
+  const last = transactions.reduce((max, t) => (t.date > max ? t.date : max), "");
+  const full = fullMonths(
+    monthsEnding(asOf, INSIGHT_MONTHS).filter((m) => m < monthOf(asOf) && m < last.slice(0, 7)),
+    transactions,
+  );
+  if (full.length === 0) return null;
+  const q = target.toLowerCase();
+  const sub = matchSubcategory(target);
+  const category = matchCategory(target, [
+    ...new Set([...Object.values(CATEGORY_LABELS), UNCATEGORIZED]),
+  ]);
+  const named = transactions.filter((t) => {
+    if (!full.includes(t.date.slice(0, 7)) || kindOf(t) !== "spending") return false;
+    const name = merchantOf(t).toLowerCase();
+    return sub || category ? name === q : name.split(/[^a-z0-9&+']+/).includes(q);
+  });
+  const byMonth = spendingInsights(transactions, {
+    asOf,
+    monthCount: INSIGHT_MONTHS,
+  }).categoriesByMonth;
+  const [cents, where] =
+    named.length > 0
+      ? [named.reduce((sum, t) => sum + t.amountCents, 0), `at ${merchantOf(named[0])}`]
+      : category && !sub
+        ? [
+            full.reduce(
+              (sum, m) => sum + (byMonth[m]?.find((c) => c.category === category)?.cents ?? 0),
+              0,
+            ),
+            `on ${category}`,
+          ]
+        : [0, ""];
+  if (!where) return null;
+  const names = full.map((m) => monthLabel(m).split(" ")[0]);
+  const from =
+    names.length <= 2 ? names.join(" and ") : `${names[0]} to ${names[names.length - 1]}`;
+  return `You spend about ${fmt(Math.round(cents / full.length))} a month ${where}, from ${from}.`;
 }
 
 // "What's due?": the coming-up list from Today, bills and deadlines together.
