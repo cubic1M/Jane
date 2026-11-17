@@ -4,9 +4,12 @@ import { db as defaultClient } from "@/lib/db";
 import { ownedBy, ownedByStaying, type OnlyPeople } from "@/lib/only-people";
 import { scopedFor } from "@/lib/db-scoped";
 import { systemDb } from "@/lib/system-db";
+import { localDate } from "@/lib/today";
 
 // The daily balance snapshot, run by the daily job: today's balance for every account
 // that has one. Safe to run more than once a day: each account gets one row per day.
+// "Today" is the owner's day (gate C): on UTC's, an upload saved at 9pm in Los Angeles left a
+// snapshot dated tomorrow (debug 3, 11-17).
 export async function takeSnapshots({
   client = defaultClient,
   now = new Date(),
@@ -27,18 +30,24 @@ export async function takeSnapshots({
       user: { deletedAt: null },
       ...ownedByStaying(userIds),
     },
-    select: { id: true, userId: true, currentBalanceCents: true },
+    select: {
+      id: true,
+      userId: true,
+      currentBalanceCents: true,
+      user: { select: { timezone: true } },
+    },
   });
   let saved = 0;
   let skipped = 0;
   for (const a of accounts) {
     try {
+      const day = new Date(`${localDate(now, a.user.timezone)}T00:00:00Z`);
       await scopedFor(a.userId, client).balanceSnapshots.upsert({
-        where: { accountId_date: { accountId: a.id, date: today } },
+        where: { accountId_date: { accountId: a.id, date: day } },
         create: {
           userId: a.userId,
           accountId: a.id,
-          date: today,
+          date: day,
           balanceCents: a.currentBalanceCents ?? 0,
         },
         update: { balanceCents: a.currentBalanceCents ?? 0 },

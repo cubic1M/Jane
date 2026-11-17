@@ -21,7 +21,12 @@ describe("takeSnapshots", () => {
       $extends: () => client,
       account: {
         findMany: vi.fn(async () =>
-          ["a", "b", "c"].map((id) => ({ id, userId: "u", currentBalanceCents: 100 })),
+          ["a", "b", "c"].map((id) => ({
+            id,
+            userId: "u",
+            currentBalanceCents: 100,
+            user: { timezone: null },
+          })),
         ),
       },
       balanceSnapshot: { upsert, deleteMany: vi.fn(async () => ({ count: 0 })) },
@@ -37,7 +42,11 @@ describe("takeSnapshots", () => {
   it("still fails on other errors", async () => {
     const client = {
       $extends: () => client,
-      account: { findMany: vi.fn(async () => [{ id: "a", userId: "u", currentBalanceCents: 1 }]) },
+      account: {
+        findMany: vi.fn(async () => [
+          { id: "a", userId: "u", currentBalanceCents: 1, user: { timezone: null } },
+        ]),
+      },
       balanceSnapshot: { upsert: vi.fn().mockRejectedValue(new Error("database down")) },
     } as unknown as PrismaClient;
     await expect(takeSnapshots({ client })).rejects.toThrow("database down");
