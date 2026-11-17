@@ -10,6 +10,7 @@ import { isPositionsSubtype } from "@/config/positions-import";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import type { ScopedDb } from "@/lib/db-scoped";
+import { todayFor } from "@/lib/today";
 
 // Uploading a brokerage's positions download on /import (src/data-sources/csv/positions.ts):
 // the preview, then the accounts, securities and holdings it makes, which the investments
@@ -138,7 +139,9 @@ export async function importPositionsFiles(
     if ("error" in result) return { ok: false, error: `${file.name}: ${result.error}` };
     read.push(result);
   }
-  const today = now.toISOString().slice(0, 10);
+  // The person's day (gate C): on UTC's, a download with no date of its own (Vanguard's) taken
+  // at 10pm in Los Angeles was priced, and its balance dated, tomorrow (debug 3, 11-17).
+  const today = await todayFor(db, now);
   let holdings = 0;
   let valueCents = 0;
   let accounts = 0;
