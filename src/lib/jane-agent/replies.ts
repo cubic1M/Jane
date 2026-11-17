@@ -48,6 +48,8 @@ import type { PreferenceDraft } from "./preferences";
 import { type MessageAction, type MessageRefs, openLink } from "./types";
 import { shiftMonth } from "@/lib/dates";
 import { dayLabel } from "@/lib/day-label";
+import { daysBetween } from "@/detection/units";
+import { FULL_MONTH_START_SLACK_DAYS } from "@/config/budgets";
 import { endedOn } from "@/lib/data-ended";
 
 // Jane's answers to what the person typed (spec step 84), from the same loaders as the
@@ -526,9 +528,30 @@ export function spendingReply(
   const firstDate = transactions.reduce((first, t) => (t.date < first ? t.date : first), lastDate);
   const partway =
     intent.month === firstMonth && fullMonths([intent.month], transactions).length === 0;
-  const when = `in ${monthLabel(intent.month)}${current ? " so far" : ""}${
-    partway ? ` (from ${dayLabel(firstDate)}, where what I have starts)` : ""
-  }`;
+  // And one it ends partway through, to when, never against a whole month (debug 2, 11-16: an old
+  // statement to Oct 20 read "You spent $1,235.64 in October 2026. That's $87.67 less than in
+  // September").
+  // A week's slack at the end, as at the start (FULL_MONTH_START_SLACK_DAYS): a statement to the
+  // 28th is the month.
+  const monthEnd = new Date(
+    Date.UTC(Number(intent.month.slice(0, 4)), Number(intent.month.slice(5, 7)), 0),
+  )
+    .toISOString()
+    .slice(0, 10);
+  const cutShort =
+    !current &&
+    ended !== null &&
+    ended.slice(0, 7) === intent.month &&
+    daysBetween(ended, monthEnd) > FULL_MONTH_START_SLACK_DAYS;
+  const span =
+    partway && cutShort
+      ? ` (${dayLabel(firstDate)} to ${dayLabel(ended!)}, all I have of it)`
+      : partway
+        ? ` (from ${dayLabel(firstDate)}, where what I have starts)`
+        : cutShort
+          ? ` (to ${dayLabel(ended!)}, where what I have ends)`
+          : "";
+  const when = `in ${monthLabel(intent.month)}${current ? " so far" : ""}${span}`;
   const insights = spendingInsights(transactions, { asOf, monthCount: INSIGHT_MONTHS });
   const totals = insights.months.find((m) => m.month === intent.month)!;
   const categories = insights.categoriesByMonth[intent.month] ?? [];
@@ -542,7 +565,13 @@ export function spendingReply(
   const versus = (now: number, then: number | undefined) => {
     // Nothing to compare with (no spending then, or the same), nor a month the data starts
     // halfway through (debug 2, 11-16: "In all of October it was $292.31" from Oct 17 on).
-    if (!before || !then || then === now || fullMonths([before], transactions).length === 0)
+    if (
+      !before ||
+      !then ||
+      then === now ||
+      cutShort ||
+      fullMonths([before], transactions).length === 0
+    )
       return "";
     const diff = now - then;
     const month = monthLabel(before).split(" ")[0];

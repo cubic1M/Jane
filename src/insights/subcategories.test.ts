@@ -60,7 +60,9 @@ describe("the parts of a category asked for by name", () => {
       "2026-11-05",
     );
     expect(reply.body).toBe(
-      "You spent $240.00 on groceries in October 2026, of $366.00 on Food and drink in all. That's $40.00 more than in September.",
+      // The data ends Oct 16, weeks before Nov 5: said as such, and not held against September
+      // (debug 2, 11-16).
+      "You spent $240.00 on groceries in October 2026 (to Oct 16, where what I have ends), of $366.00 on Food and drink in all.",
     );
   });
 
@@ -70,7 +72,9 @@ describe("the parts of a category asked for by name", () => {
       DATA.map((x) => ({ ...x, pfcDetailed: null })),
       "2026-11-05",
     );
-    expect(reply.body).toMatch(/^You spent \$366\.00 on Food and drink in October 2026\./);
+    expect(reply.body).toMatch(
+      /^You spent \$366\.00 on Food and drink in October 2026 \(to Oct 16, where what I have ends\)\./,
+    );
   });
 });
 

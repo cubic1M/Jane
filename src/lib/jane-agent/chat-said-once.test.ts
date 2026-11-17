@@ -26,7 +26,9 @@ describe("chat answers that say a figure once", () => {
       rows,
       "2026-11-16",
     );
-    expect(reply.body).toMatch(/^You spent \$147\.36 on gas in October 2026\./);
+    expect(reply.body).toMatch(
+      /^You spent \$147\.36 on gas in October 2026 \(to Oct 19, where what I have ends\)\./,
+    );
     expect(reply.body).not.toContain("in all");
   });
 
