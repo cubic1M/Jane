@@ -685,7 +685,7 @@ export function spendingReply(
 }
 
 // "How much do I spend on Amazon a month?": a usual month, the full months the data covers on
-// average, at the merchant named or in the category (debugger 11-17: "amazon a month" was looked
+// average, at the merchant named, on the part or in the category (debugger 11-17: "amazon a month" was looked
 // up as a name). Null when there's no full month, or nothing by that name.
 function usualMonthLine(
   target: string,
@@ -712,18 +712,22 @@ function usualMonthLine(
     asOf,
     monthCount: INSIGHT_MONTHS,
   }).categoriesByMonth;
+  // A part of a category ("gas") when the data says which part each charge is (debugger 11-17).
+  const parts = sub ? full.map((m) => subcategorySpending(transactions, m, sub)) : [];
   const [cents, where] =
     named.length > 0
       ? [named.reduce((sum, t) => sum + t.amountCents, 0), `at ${merchantOf(named[0])}`]
-      : category && !sub
-        ? [
-            full.reduce(
-              (sum, m) => sum + (byMonth[m]?.find((c) => c.category === category)?.cents ?? 0),
-              0,
-            ),
-            `on ${category}`,
-          ]
-        : [0, ""];
+      : sub && parts.every((c) => c !== null)
+        ? [parts.reduce<number>((sum, c) => sum + (c ?? 0), 0), `on ${sub.name}`]
+        : category && !sub
+          ? [
+              full.reduce(
+                (sum, m) => sum + (byMonth[m]?.find((c) => c.category === category)?.cents ?? 0),
+                0,
+              ),
+              `on ${category}`,
+            ]
+          : [0, ""];
   if (!where) return null;
   const names = full.map((m) => monthLabel(m).split(" ")[0]);
   const from =
