@@ -654,6 +654,26 @@ export function spendingReply(
   }
   const matching = spentAt((name) => name.includes(q));
   if (matching.length > 0) return atMerchant(matching);
+  // Nothing there this month isn't nothing there at all (debugger 11-17: "how much is Hulu right
+  // now?" read as not found, with Hulu $9.99 on Oct 20): when and how much it was last.
+  const last = transactions
+    .filter(
+      (t) =>
+        t.date < intent.month &&
+        kindOf(t) === "spending" &&
+        t.amountCents > 0 &&
+        merchantOf(t).toLowerCase().includes(q),
+    )
+    .reduce<InsightTransaction | null>(
+      (latest, t) => (!latest || t.date > latest.date ? t : latest),
+      null,
+    );
+  if (last) {
+    return reply(
+      `Nothing at ${merchantOf(last)} ${when}. The last was ${fmt(last.amountCents)} on ${dayLabel(last.date)}.`,
+      open,
+    );
+  }
   return reply(
     `${SPENDING_NOT_FOUND} "${intent.category}" ${when}.${top ? ` The most went to: ${top}.` : ""}`,
     open,
