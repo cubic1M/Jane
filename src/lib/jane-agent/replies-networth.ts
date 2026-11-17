@@ -1,3 +1,4 @@
+import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import { loansNotCounted, notCounting, owedIsKnown, type netWorth } from "@/insights/net-worth";
 import type { Reply } from "./replies";
@@ -7,6 +8,8 @@ import { openLink } from "./types";
 export function netWorthReply(
   worth: ReturnType<typeof netWorth>,
   loansSeen: readonly string[] = [],
+  // When the statements end weeks ago: the figure is from then (debugger 11-17).
+  { statementsEnd = null }: { statementsEnd?: string | null } = {},
 ): Reply {
   const link = openLink("See net worth", "/net-worth");
   const left = notCounting(worth.unbalanced);
@@ -37,8 +40,11 @@ export function netWorthReply(
     : worth.debtsCents === 0
       ? ", and I don't see any debts."
       : ` and owe ${formatCents(worth.debtsCents)}.`;
+  const when = statementsEnd
+    ? ` That's from your statements, which end on ${dayLabel(statementsEnd)}: upload newer ones for today's.`
+    : "";
   return {
-    body: `Your net worth is ${formatCents(worth.netCents)}: you have ${formatCents(worth.assetsCents)}${owed}${crypto}${missing}`,
+    body: `Your net worth is ${formatCents(worth.netCents)}: you have ${formatCents(worth.assetsCents)}${owed}${crypto}${missing}${when}`,
     actions: [link],
     refs: {},
   };

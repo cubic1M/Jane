@@ -406,8 +406,10 @@ const BUDGET_FOR =
   /^(?:set|make|create|add|start)(?: me)?(?: a| my)? budget (?:for|on) (.+)$|^budget (?:for|on) (.+)$/;
 const SAVE_MORE =
   /^(?:what if|what happens if|suppose|say) .*\b(?:save|saving|put away|set aside|stash)\b[^\d]{0,12}(\d[\d,]*(?:\.\d{1,2})?)\b.{0,12}\b(?:more|extra)\b.{0,16}\b(?:a|each|per|every) month\b/;
+// "How much money do I have?", "what's my balance": what you have, as net worth says it (debugger
+// 11-17: no answer at all). Not "… have left", which is safe to spend.
 const NET_WORTH =
-  /\bnet ?worth\b|\bhow much (?:am i|are we) worth\b|\bwhat do (?:i|we) own and owe\b|\bassets? (?:and|vs\.?|minus) (?:debts?|liabilities)\b/;
+  /\bhow much (?:money )?(?:do i have|have i got|is in my (?:checking|savings|bank|accounts?))(?: (?:right now|now|in (?:total|all)|altogether))?$|\bwhat(?:'s| is) my (?:bank |account |checking )?balance$|\bnet ?worth\b|\bhow much (?:am i|are we) worth\b|\bwhat do (?:i|we) own and owe\b|\bassets? (?:and|vs\.?|minus) (?:debts?|liabilities)\b/;
 // Spec step 187.
 const WHY_DID =
   /\bwhy did you (?:do|did) that\b|\bwhy did you (?:do|move|pay|switch|cancel|change|pick|choose)\b|\bwhy (?:did|was) (?:that|it) done\b/;

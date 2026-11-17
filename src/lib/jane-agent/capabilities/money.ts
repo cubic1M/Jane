@@ -205,9 +205,13 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     // What they own and owe, from the net worth page's own math.
     case "net_worth": {
       // The figure Home and /net-worth show, from the one place they read it (gate B).
+      const read = await scopedFor(userId, client).transactions.aggregate({
+        _max: { date: true },
+      });
       return netWorthReply(
         (await loadNetWorthInputs(userId, { client })).worth,
         await loansSeenWithoutBalance(userId, { client }),
+        { statementsEnd: staleStatementsEnd(read._max.date, asOf) },
       );
     }
     case "save_more":
