@@ -19,7 +19,15 @@ const TRIAL = `${TRIAL_ID_PREFIX.replace("_", "\\_")}%`;
 const WANTS_AN_ANSWER = ["new", "shown"];
 const OPEN = ["new", "shown", "approved", "in_progress"];
 const list = (values: readonly string[]) => Prisma.join(values.map((v) => Prisma.sql`${v}`));
-const person = (column: string) => Prisma.sql`${Prisma.raw(column)} NOT LIKE ${TRIAL}`;
+// Who's counted: everyone but sample people, or one person when a test asks (so rows other test
+// files write at the same time aren't counted in: main 11-17, a card payment test read 3 legs for 1).
+type Person = (column: string) => Prisma.Sql;
+const personFilter =
+  (only?: string): Person =>
+  (column) =>
+    only === undefined
+      ? Prisma.sql`${Prisma.raw(column)} NOT LIKE ${TRIAL}`
+      : Prisma.sql`${Prisma.raw(column)} = ${only}`;
 
 type Counted = { n: number };
 
@@ -50,7 +58,7 @@ async function one(db: SystemDb, query: Prisma.Sql): Promise<number> {
   return row?.n ?? 0;
 }
 
-async function findingCounts(db: SystemDb): Promise<InvariantSummary["findings"]> {
+async function findingCounts(db: SystemDb, person: Person): Promise<InvariantSummary["findings"]> {
   const open = Prisma.sql`status::text IN (${list(OPEN)}) AND ${person("user_id")}`;
   const openFinding = (where: Prisma.Sql) =>
     one(db, Prisma.sql`SELECT count(*)::int AS n FROM findings WHERE ${open} AND ${where}`);
@@ -104,7 +112,10 @@ async function findingCounts(db: SystemDb): Promise<InvariantSummary["findings"]
   };
 }
 
-async function categoryCounts(db: SystemDb): Promise<InvariantSummary["categories"]> {
+async function categoryCounts(
+  db: SystemDb,
+  person: Person,
+): Promise<InvariantSummary["categories"]> {
   const [row] = await db.$queryRaw<(InvariantSummary["categories"] & Counted)[]>(
     Prisma.sql`SELECT count(*)::int AS rows,
         (count(*) FILTER (WHERE pfc_detailed IS NULL))::int AS uncategorized,
@@ -124,7 +135,10 @@ async function categoryCounts(db: SystemDb): Promise<InvariantSummary["categorie
 
 // Stripe's clearing, for the one kind of money that always has two sides here: paying a card from
 // checking, for someone with both on file, should appear on the card too, at the same amount.
-async function cardPaymentCounts(db: SystemDb): Promise<InvariantSummary["cardPayments"]> {
+async function cardPaymentCounts(
+  db: SystemDb,
+  person: Person,
+): Promise<InvariantSummary["cardPayments"]> {
   const [row] = await db.$queryRaw<InvariantSummary["cardPayments"][]>(
     Prisma.sql`WITH legs AS (
         SELECT t.user_id, t.date, t.amount_cents
@@ -181,14 +195,16 @@ const MUST_BE_ZERO = ["negativeSaving", "questionWithDollars", "feeTotalOffItsRo
 
 export async function runInvariants({
   client = defaultClient,
-}: { client?: PrismaClient } = {}): Promise<InvariantSummary> {
+  only,
+}: { client?: PrismaClient; only?: string } = {}): Promise<InvariantSummary> {
   const db = systemDb(WHY, client);
+  const person = personFilter(only);
   const [people, findings, categories, cardPayments, constraints, recent, warned] =
     await Promise.all([
       one(db, Prisma.sql`SELECT count(*)::int AS n FROM users WHERE ${person("id")}`),
-      findingCounts(db),
-      categoryCounts(db),
-      cardPaymentCounts(db),
+      findingCounts(db, person),
+      categoryCounts(db, person),
+      cardPaymentCounts(db, person),
       constraintCounts(db),
       one(
         db,
