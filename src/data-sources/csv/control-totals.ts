@@ -104,6 +104,47 @@ function closingRows(day: readonly Row[], way: BalanceWay): readonly Row[] {
   return day.filter((r) => !before.has(r.balanceCents!));
 }
 
+// How many runs of rows a day's rows make. Each row runs from its balance before (its balance less
+// what it moved) to its balance after, so a day that's all there is one run from its opening to its
+// closing balance, whatever order its rows are listed in and even when they cancel out (+$20, -$20
+// back to where it started). A row taken out of the middle leaves more than one, in one of two ways
+// (main's property test, 11-17): rows that never meet (-$0.02 beside a +$0.15 and -$0.15 that only
+// lead to each other, which had one closing row, so the old check passed it), or two rows ending at
+// one balance that only one leaves. Each group of rows that meet needs as many runs as balances it
+// leaves more often than it reaches, and at least one. Linear in the rows, by joining balances: a
+// file all of one day is one day.
+function runs(day: readonly Row[], way: BalanceWay): number {
+  const parent = new Map<number, number>();
+  const find = (b: number): number => {
+    if (!parent.has(b)) parent.set(b, b);
+    let root = b;
+    while (parent.get(root) !== root) root = parent.get(root)!;
+    // Every balance on the way points straight at the root, so the next look is one step.
+    for (let at = b; at !== root;) {
+      const up = parent.get(at)!;
+      parent.set(at, root);
+      at = up;
+    }
+    return root;
+  };
+  // How many more rows leave each balance than reach it.
+  const leaves = new Map<number, number>();
+  for (const r of day) {
+    const before = r.balanceCents! - moved(r.amountCents, way);
+    const after = r.balanceCents!;
+    leaves.set(before, (leaves.get(before) ?? 0) + 1);
+    leaves.set(after, (leaves.get(after) ?? 0) - 1);
+    const [a, b] = [find(before), find(after)];
+    if (a !== b) parent.set(a, b);
+  }
+  const starts = new Map<number, number>();
+  for (const [balance, more] of leaves) {
+    const group = find(balance);
+    starts.set(group, (starts.get(group) ?? 0) + Math.max(0, more));
+  }
+  return [...starts.values()].reduce((sum, n) => sum + Math.max(1, n), 0);
+}
+
 type Walk = { steps: number; breaks: { date: string; gapCents: number }[] };
 
 // Walks the balance column a day at a time: each day's closing balance has to be the last one less
@@ -120,7 +161,8 @@ function walkBalances(rows: readonly Row[], way: BalanceWay): Walk {
     rows.every((r) => r.date !== firstDay || r.balanceCents !== undefined)
   ) {
     walk.steps += opening.length - 1;
-    const loose = closingRows(opening, way).length - 1;
+    // A row missing shows as more than one closing row, or as rows that don't make one run.
+    const loose = Math.max(closingRows(opening, way).length, runs(opening, way)) - 1;
     for (let i = 0; i < loose; i += 1) walk.breaks.push({ date: firstDay!, gapCents: 0 });
   }
   // One pass over the rows in date order, not a search of them for every day.
