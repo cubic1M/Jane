@@ -97,7 +97,7 @@ export function LedgerEntryRow({ entry: e, action }: { entry: Entry; action?: Re
             <a
               href={e.href}
               data-ledger-open=""
-              className="self-start text-sm font-medium underline underline-offset-2"
+              className="inline-flex min-h-11 items-center self-start text-sm font-medium underline underline-offset-2"
             >
               Open the page where you do it ›
             </a>
