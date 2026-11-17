@@ -357,7 +357,12 @@ export function compareWant(
 // known (uploaded cards: round-2 pass), and "at least" while some payments aren't (debug 2, 11-16:
 // "$25.00 due each month" for six debts, five of them with no payment known).
 export function loansIntro(book: {
-  debts: readonly { key?: string; balanceCents: number | null; inNetWorth: boolean }[];
+  debts: readonly {
+    key?: string;
+    name?: string;
+    balanceCents: number | null;
+    inNetWorth: boolean;
+  }[];
   totalOwedCents: number;
   monthlyCents: number;
   missingMonthly?: number;
@@ -388,5 +393,14 @@ export function loansIntro(book: {
     book.monthlyCents > 0
       ? `, ${(book.missingMonthly ?? 0) > 0 ? "at least " : ""}${formatCents(book.monthlyCents)} due each month`
       : "";
-  return `You owe ${formatCents(book.totalOwedCents)}${ofIt}${monthly}. Open a branch to see more.`;
+  // A total missing a balance isn't the whole of it (debugger 11-16: "You owe $18,400.00, $552.49
+  // due each month", the monthly counting a car loan whose balance wasn't known).
+  const unknown = book.debts.filter((d) => d.balanceCents === null);
+  const names = unknown.map((d) => d.name);
+  const which =
+    names.length <= 2 && names.every(Boolean)
+      ? names.join(" and ")
+      : `${unknown.length} debt${unknown.length === 1 ? "" : "s"}`;
+  const missing = unknown.length > 0 ? ` What's left on ${which} isn't known yet.` : "";
+  return `You owe ${unknown.length > 0 ? "at least " : ""}${formatCents(book.totalOwedCents)}${ofIt}${monthly}.${missing} Open a branch to see more.`;
 }
