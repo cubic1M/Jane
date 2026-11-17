@@ -211,10 +211,18 @@ export async function answerDebt(
     case "student_long":
       return longGameReply(await loadStudentLongGame(userId, { client, now }));
     case "card_interest": {
-      const data = await loadCardInterest(userId, { client, now });
+      const db = scopedFor(userId, client);
+      const [data, loans] = await Promise.all([
+        loadCardInterest(userId, { client, now }),
+        // What each lender reports paid this year (cards are the finding's, above).
+        db.liabilities.findMany({
+          where: { kind: { not: "credit" }, ytdInterestPaidCents: { gt: 0 } },
+          select: { ytdInterestPaidCents: true, account: { select: { name: true } } },
+        }),
+      ]);
       const finding = data.available
         ? null
-        : await scopedFor(userId, client).findings.findFirst({
+        : await db.findings.findFirst({
             where: { type: "card_interest", status: { in: ["new", "shown"] } },
             orderBy: { createdAt: "desc" },
             select: { id: true, title: true, annualSavingsCents: true },
@@ -224,6 +232,7 @@ export async function answerDebt(
         finding
           ? { findingId: finding.id, title: finding.title, yearlyCents: finding.annualSavingsCents }
           : null,
+        loans.map((l) => ({ name: l.account.name, ytdCents: l.ytdInterestPaidCents ?? 0 })),
       );
     }
     case "report_fixes":
