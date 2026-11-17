@@ -1,5 +1,6 @@
 import { FORECAST_DAYS } from "@/config/detection";
 import { loadSnapshotFast } from "../snapshot-store";
+import type { Snapshot } from "../snapshot";
 import { loadDetectionInput } from "@/detection/input";
 import { forecastAccounts } from "@/detection/forecast";
 import { forecastReply } from "../replies-forecast";
@@ -18,12 +19,12 @@ import { verifiedSavings } from "@/lib/savings-proof";
 import { scopedFor } from "@/lib/db-scoped";
 import { staleStatementsEnd } from "@/lib/report-state";
 import { homeSummary } from "@/lib/home";
-import { matchCategory } from "../intents";
+import { matchCategory, type Intent } from "../intents";
 import { listGoals } from "@/lib/goals";
 import { comingUpBlock, spendingBlock } from "../block-data";
 import { goalsReply } from "../goals-reply";
 import { listPreferences, paydayDays } from "../preferences";
-import { loadRecurring } from "../recurring";
+import { loadRecurring, type Recurring } from "../recurring";
 import { paydayLine } from "../remember";
 import { costReply, paydayReply, subscriptionsReply } from "../recurring-replies";
 import {
@@ -92,23 +93,8 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
         loadRecurring(userId, { client, now }),
         loadSnapshotFast(userId, { client, now }),
       ]);
-      const exact = intent.findingId
-        ? snapshot?.findings.find((f) => f.findingId === intent.findingId)
-        : undefined;
-      if (snapshot && exact) return findingReply(exact);
-      const cost = costReply({ target: intent.target, year: false }, recurring, snapshot, asOf);
-      if (cost) return cost;
-      const ranked = snapshot ? rankFindings(snapshot.findings, null, intent.target) : [];
-      if (snapshot && ranked.length === 1) return findingReply(ranked[0].finding);
-      if (ranked.length > 1) {
-        return clarifyReply(
-          `I found ${ranked.length} things about "${intent.target}". Which one do you mean?`,
-          ranked.map(({ finding }) => ({
-            label: finding.title,
-            intent: { kind: "about", target: finding.title, findingId: finding.findingId },
-          })),
-        );
-      }
+      const known = aboutReply(intent, recurring, snapshot, asOf);
+      if (known) return known;
       if (matchCategory(intent.target, CATEGORY_LIST)) return spendingOn(intent.target);
       return null;
     }
@@ -226,3 +212,34 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
 }
 
 export const moneyAnswer = answer;
+
+// "Tell me about X": the finding asked for, what X costs, or the one finding X names. With the
+// person's own way of acting: a read-only account gets the steps, never "Want me to handle it?"
+// (debugger 11-17: "should I move my extra cash?" offered to handle it). Pure.
+export function aboutReply(
+  intent: Extract<Intent, { kind: "about" }>,
+  recurring: Recurring,
+  snapshot: Snapshot | null,
+  asOf: string,
+): Reply | null {
+  const exact = intent.findingId
+    ? snapshot?.findings.find((f) => f.findingId === intent.findingId)
+    : undefined;
+  if (snapshot && exact) return findingReply(exact, null, snapshot.concierge);
+  const cost = costReply({ target: intent.target, year: false }, recurring, snapshot, asOf);
+  if (cost) return cost;
+  const ranked = snapshot ? rankFindings(snapshot.findings, null, intent.target) : [];
+  if (snapshot && ranked.length === 1) {
+    return findingReply(ranked[0].finding, null, snapshot.concierge);
+  }
+  if (ranked.length > 1) {
+    return clarifyReply(
+      `I found ${ranked.length} things about "${intent.target}". Which one do you mean?`,
+      ranked.map(({ finding }) => ({
+        label: finding.title,
+        intent: { kind: "about", target: finding.title, findingId: finding.findingId },
+      })),
+    );
+  }
+  return null;
+}
