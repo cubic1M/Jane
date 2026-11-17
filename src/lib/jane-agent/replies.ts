@@ -769,10 +769,13 @@ export function safeReply(
       ? ` That's after ${parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}` : parts[0]}${tax}.`
       : // Until payday, only bills due before it count (debugger 11-16: "I don't see any bills coming
         // up" with rent due four days after payday).
+        // Nothing held back for budgets or goals isn't none of them: a goal just set up holds nothing
+        // before payday (debug 2, 11-16: "I don't see budgets or goals yet" a minute after "Set it
+        // up" on an emergency fund goal).
         ` That's your ${safe.taxHeldCents ? "checking balance" : "whole checking balance"}${tax}: ${
           payday
-            ? "no bills are due before then, and I don't see budgets or goals yet."
-            : "I don't see any bills coming up, budgets or goals yet."
+            ? "no bills are due before then, and nothing is held back for budgets or goals."
+            : "I don't see any bills coming up, and nothing is held back for budgets or goals."
         }`;
   return reply(
     `You have ${fmt(safe.safeCents)} safe to spend${payday ? ` until your next payday, ${payday}` : ""}.${after}${leftOut}`,

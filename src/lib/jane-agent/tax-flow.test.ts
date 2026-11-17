@@ -44,7 +44,7 @@ describe("the tax profile questions", () => {
   it("asks about the income Jane found first, then filing, children and the state", () => {
     let q = nextQuestion(view(null));
     expect(q?.body).toBe(
-      "From your accounts, your income for 2026 looks like wages from ACME CORP PAYROLL (W-2). Is that all of it?",
+      "From your accounts, your income for 2026 looks like wages from ACME CORP (W-2). Is that all of it?",
     );
     expect(ids(q)).toEqual(["tax.found_yes", "open"]);
     expect(q?.refs).toEqual({ taxField: "incomeKinds" });

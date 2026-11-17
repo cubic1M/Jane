@@ -222,7 +222,7 @@ describe("workingProfile", () => {
 describe("wording", () => {
   it("says where income was seen and on which form", () => {
     expect(incomeLine({ kind: "w2", from: ["ACME CORP PAYROLL"], totalCents: 1 })).toBe(
-      "wages from ACME CORP PAYROLL (W-2)",
+      "wages from ACME CORP (W-2)",
     );
     expect(listOf(["a"])).toBe("a");
     expect(listOf(["a", "b", "c"])).toBe("a, b and c");

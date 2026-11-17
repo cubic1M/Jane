@@ -118,7 +118,7 @@ describe.runIf(url)("the tax profile against a real database", () => {
     await talkUntil(userId, "taxes:profile");
     let message = await profileMessage(userId);
     expect(message.body).toContain("I'm getting your taxes ready");
-    expect(message.body).toContain("wages from ACME CORP PAYROLL (W-2)");
+    expect(message.body).toContain("wages from ACME CORP (W-2)");
 
     let after = await tap(userId, message.id, "tax.found_yes");
     expect(after).toMatchObject({ status: "open", body: "How will you file for 2026?" });
