@@ -29,6 +29,7 @@ import {
   reportState,
   shortUploadDays,
   nothingHeading,
+  nothingLine,
   staleStatementsEnd,
 } from "@/lib/report-state";
 import { isoDay } from "@/lib/dates";
@@ -209,11 +210,10 @@ async function ReportContent({
         </section>
       ) : state === "nothing" ? (
         <section className="flex flex-col gap-3">
-          <h1 className="text-3xl font-semibold tracking-tight">{nothingHeading(oldStatements)}</h1>
-          <p className="text-zinc-600 dark:text-zinc-400">
-            Jane read {transactions} transactions and ran {checks.length} checks. Tap one to see
-            what it looked at.
-          </p>
+          <h1 className="text-3xl font-semibold tracking-tight">
+            {nothingHeading(oldStatements, checks)}
+          </h1>
+          <p className="text-zinc-600 dark:text-zinc-400">{nothingLine(transactions, checks)}</p>
           {uploadDays !== null && <MoreMonths days={uploadDays} />}
           {toUnseenCards !== null && <UnseenCards cents={toUnseenCards} />}
           {oldStatements && <OldStatements day={oldStatements} />}
