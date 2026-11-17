@@ -78,8 +78,15 @@ const HOW_IT_CAME =
 // An ACH line's entry code and id after the payer (debug 2, 11-16: "W-2 from UC DAVIS PAYROLL PPD
 // ID: 9460001234", and Plaid's "Sweetgreen inc payroll ppd id"), and Bank of America's " DES:…".
 const ACH_TAIL = /\s+(?:PPD|CCD|WEB|TEL)(?:\s+ID\b:?\s*\S*)?\s*$/i;
+// A lender seen in payments is named by the line its payments came on: "1098-E from Nelnet Student
+// Ln Payment" (debug 2, 11-16). The payment's words go, as the payroll's do.
+const HOW_IT_WENT = /\s+(?:student\s+(?:ln|loan)\s+)?(?:payments?|pmts?|pymts?)$/i;
 export const formPayer = (name: string) =>
-  withoutAchDetails(name).replace(ACH_TAIL, "").replace(HOW_IT_CAME, "").trim() || name;
+  withoutAchDetails(name)
+    .replace(ACH_TAIL, "")
+    .replace(HOW_IT_CAME, "")
+    .replace(HOW_IT_WENT, "")
+    .trim() || name;
 
 const PAYER_FORMS: readonly [IncomeKind, TaxFormKey][] = [
   ["w2", "w2"],
