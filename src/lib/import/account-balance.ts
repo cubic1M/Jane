@@ -30,7 +30,7 @@ export async function balancesToAsk(db: Pick<ScopedDb, "accounts">): Promise<Bal
 // background (src/lib/import/background.ts): balances over time, net worth, every area. Null
 // when it isn't the person's uploaded account.
 export async function setUploadedBalance(
-  db: Pick<ScopedDb, "userId" | "accounts" | "importRuns" | "balanceSnapshots">,
+  db: Pick<ScopedDb, "userId" | "accounts" | "importRuns" | "balanceSnapshots" | "me">,
   accountId: string,
   cents: number,
 ): Promise<{ jobId: string } | null> {

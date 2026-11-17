@@ -31,6 +31,7 @@ vi.mock("@/lib/db-scoped", () => ({
     userId: "user_1",
     accounts: { create: accountsCreate, delete: accountsDelete },
     balanceSnapshots: { upsert: vi.fn(), findFirst: vi.fn(async () => null) },
+    me: { findUnique: vi.fn(async () => ({ timezone: "America/Los_Angeles" })) },
   })),
 }));
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn(async () => ({ id: "user_1" })) }));

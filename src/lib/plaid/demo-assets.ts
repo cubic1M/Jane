@@ -3,6 +3,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { PERSON_ASSETS } from "@/data-sources/demo/demo-people";
 import { demoPersonFor } from "./demo";
+import { todayOf } from "@/lib/today";
 
 // The demo bank's home and car (spec step 67), so its sample person's net worth counts what
 // the mortgage and the car loan are against instead of only the debts. Added once, after the
@@ -24,7 +25,7 @@ export async function ensureDemoAssets(
     where: { itemId, type: "loan" },
     select: { id: true, subtype: true },
   });
-  const valuedOn = new Date(`${now.toISOString().slice(0, 10)}T00:00:00Z`);
+  const valuedOn = new Date(`${await todayOf(userId, { client, now })}T00:00:00Z`);
   // A sample person owns what their written life says (no home for someone who rents); the
   // original demo bank has the home and car above.
   const person = await demoPersonFor(userId, { client });

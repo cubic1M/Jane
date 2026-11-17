@@ -8,6 +8,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { recordDecision } from "@/lib/decisions";
 import { partnerForUser } from "@/lib/referrals";
 import { DAY_MS } from "@/lib/dates";
+import { todayOf } from "@/lib/today";
 
 // What Jane already did for a sample person (spec step 139, gap audit): each of their past wins
 // (src/data-sources/demo/people-extras/wins.ts) goes through the real path, as it would have
@@ -22,8 +23,9 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export const SAMPLE_WIN_KEY = "sample-win:";
 
-const dayOf = (now: Date, offset: number) =>
-  new Date(Date.parse(`${now.toISOString().slice(0, 10)}T00:00:00Z`) + offset * DAY_MS);
+// Days counted back from the person's own today.
+const dayOf = (today: string, offset: number) =>
+  new Date(Date.parse(`${today}T00:00:00Z`) + offset * DAY_MS);
 const cents = (dollars: number) => Math.round(dollars * 100);
 
 function findingOf(win: SampleWin): {
@@ -59,20 +61,20 @@ function findingOf(win: SampleWin): {
 }
 
 // When each step happened: the yes, and the day the action finished.
-function datesOf(win: SampleWin, now: Date) {
+function datesOf(win: SampleWin, today: string) {
   if (win.kind === "cancelled") {
     // Cancelled the day after the last charge's month ran out; confirmed once the next charge
     // didn't come.
-    const cancelledOn = dayOf(now, -win.stoppedDaysAgo + 1);
+    const cancelledOn = dayOf(today, -win.stoppedDaysAgo + 1);
     return {
-      decided: dayOf(now, -win.stoppedDaysAgo - 2),
-      finished: dayOf(now, -win.stoppedDaysAgo + 35),
+      decided: dayOf(today, -win.stoppedDaysAgo - 2),
+      finished: dayOf(today, -win.stoppedDaysAgo + 35),
       extra: { cancelledOn },
     };
   }
-  const seen = dayOf(now, -win.refundedDaysAgo);
+  const seen = dayOf(today, -win.refundedDaysAgo);
   return {
-    decided: dayOf(now, -win.chargedDaysAgo + 1),
+    decided: dayOf(today, -win.chargedDaysAgo + 1),
     finished: seen,
     extra: { refundCents: cents(win.dollars), refundSeenAt: seen },
   };
@@ -107,7 +109,7 @@ export async function seedSampleWins(
       { client },
     );
     if (!actionId) continue;
-    const { decided, finished, extra } = datesOf(win, now);
+    const { decided, finished, extra } = datesOf(win, await todayOf(userId, { client, now }));
     await db.decisions.updateMany({ where: { id: decisionId }, data: { createdAt: decided } });
     await db.actions.updateMany({ where: { id: actionId }, data: { createdAt: decided } });
     const action = await loadAction(userId, actionId, client);

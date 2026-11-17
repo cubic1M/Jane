@@ -4,7 +4,7 @@ import { db as defaultClient } from "@/lib/db";
 import { validTimezone } from "@/lib/digest/week";
 import { localTime } from "@/lib/jane-agent/quiet-hours";
 import { cachedRead } from "@/lib/read-cache";
-import { scopedFor } from "@/lib/db-scoped";
+import { scopedFor, type ScopedDb } from "@/lib/db-scoped";
 
 // The person's own "today" (founder, 2026-10-23): "due today", "as of" and the brief's and
 // agenda's dates are their day, in their timezone (users.timezone, US Pacific when unknown),
@@ -33,6 +33,12 @@ export async function todayOf(
       ? await timezoneOnce(userId)
       : await cachedRead(`timezone:${userId}`, client, () => timezoneFrom(userId, client));
   return localDate(now, timezone);
+}
+
+// The same, for code that holds the person's scoped database and no client (the upload's balances).
+export async function todayFor(db: Pick<ScopedDb, "userId" | "me">, now: Date): Promise<string> {
+  const me = await db.me.findUnique({ where: { id: db.userId }, select: { timezone: true } });
+  return localDate(now, me?.timezone);
 }
 
 // For the chat, which keeps going when this read fails: US Pacific's day, as for an unknown zone.

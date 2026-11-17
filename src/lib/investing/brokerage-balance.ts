@@ -60,7 +60,7 @@ export async function brokerageAsks(
 // that name (an upload-only person has none), and the numbers are worked out again in the
 // background like any typed balance. Null when the app isn't one Jane knows.
 export async function setBrokerageBalance(
-  db: Pick<ScopedDb, "userId" | "accounts" | "importRuns" | "balanceSnapshots">,
+  db: Pick<ScopedDb, "userId" | "accounts" | "importRuns" | "balanceSnapshots" | "me">,
   app: string,
   cents: number,
 ): Promise<{ jobId: string } | null> {

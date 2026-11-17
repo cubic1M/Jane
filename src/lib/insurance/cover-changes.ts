@@ -20,6 +20,7 @@ import { listPolicies, type Policy } from "./policies";
 import { DAY_MS as DAY } from "@/lib/dates";
 import { systemDb } from "@/lib/system-db";
 import { STAYING } from "@/lib/only-people";
+import { todayOf } from "@/lib/today";
 
 // Cover changes with life events (spec step 154). When the person buys a car, moves, has a
 // baby, marries or starts a new job (from step 100's life events, their accounts, or what
@@ -318,7 +319,7 @@ export async function tellCoverEvent(
   event: CoverEvent,
   { client = defaultClient, now = new Date(), partner }: Options = {},
 ): Promise<string> {
-  const eventKey = `told:${now.toISOString().slice(0, 10)}`;
+  const eventKey = `told:${await todayOf(userId, { client, now })}`;
   await prepareCoverChanges(userId, {
     client,
     now,

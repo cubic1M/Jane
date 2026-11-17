@@ -1,6 +1,7 @@
 import type { DayBalance } from "@/data-sources/csv/csv-source";
 import type { ScopedDb } from "@/lib/db-scoped";
 import { addDays, isoDay } from "@/lib/dates";
+import { todayFor } from "@/lib/today";
 
 // Balances over time for uploaded accounts, so net worth on /home and /net-worth isn't a flat
 // line at today's balance (founder: "the graphs are flat straight lines"). Plaid syncs write
@@ -109,12 +110,12 @@ export async function keepFileBalances(
 // A balance the person typed, kept as of the day they gave it: a later upload's balance replaces
 // it as today's only when the statement runs past that day.
 export async function keepGivenBalance(
-  db: Pick<ScopedDb, "userId" | "balanceSnapshots">,
+  db: Pick<ScopedDb, "userId" | "balanceSnapshots" | "me">,
   accountId: string,
   cents: number,
   now: Date = new Date(),
 ): Promise<void> {
-  const date = dayDate(isoDay(now));
+  const date = dayDate(await todayFor(db, now));
   await db.balanceSnapshots.upsert({
     where: { accountId_date: { accountId, date } },
     create: { userId: db.userId, accountId, date, balanceCents: cents, source: GIVEN_SOURCE },
@@ -125,10 +126,10 @@ export async function keepGivenBalance(
 // Every uploaded account's worked-back balances, made again from what's stored now (after an
 // upload, and after one is removed). Days the statement gave a balance for keep that one.
 export async function rebuildUploadedBalances(
-  db: Pick<ScopedDb, "userId" | "balanceSnapshots" | "accounts" | "transactions">,
+  db: Pick<ScopedDb, "userId" | "balanceSnapshots" | "accounts" | "transactions" | "me">,
   now: Date = new Date(),
 ): Promise<number> {
-  const today = isoDay(now);
+  const today = await todayFor(db, now);
   const accounts = await db.accounts.findMany({
     where: { source: "csv", currentBalanceCents: { not: null } },
     select: { id: true, type: true, currentBalanceCents: true },
