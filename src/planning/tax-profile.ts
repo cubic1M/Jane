@@ -287,7 +287,7 @@ export function workingProfile(view: TaxProfileView, useFound: boolean): Working
 export const stateName = (code: string | null) =>
   US_STATES.find((s) => s.code === code)?.name ?? null;
 
-// "wages from ACME CORP PAYROLL (W-2)".
+// "wages from ACME CORP (W-2)".
 export function incomeLine(found: FoundIncome): string {
   const kind = INCOME_KINDS[found.kind];
   // Who pays, as the forms list says it (formPayer): "wages from Campus Dining Payroll Ppd" read
