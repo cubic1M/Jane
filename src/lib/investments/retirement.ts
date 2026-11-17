@@ -8,6 +8,7 @@ import { retirementPlan, type RetirementPlan } from "@/planning/retirement";
 import { employerPlanFor } from "./employer-plan";
 import { loadInvestments, type Investments } from "./holdings";
 import { profileOf } from "./profile";
+import { todayOf } from "@/lib/today";
 
 // The retirement planner (spec step 132), loaded for its page, Jane's answers and its
 // tools: retirement balances, the last 12 months of contributions, the employer plan
@@ -54,7 +55,7 @@ export async function loadRetirement(
           select: { name: true, amountCents: true },
         }),
   ]);
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await todayOf(userId, { client, now });
   const profile = profileSummary(answers, asOf);
   const balanceCents = retirementAccounts.reduce((s, a) => s + (a.balanceCents ?? 0), 0);
   // Contributions are money in: negative in Plaid's sign.

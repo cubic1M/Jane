@@ -38,6 +38,7 @@ import {
   securityRef,
   type RobinhoodSecrets,
 } from "./secrets";
+import { todayFor } from "@/lib/today";
 
 // Reads a person's accounts, balances, holdings and filled orders from Robinhood and saves them in
 // the same tables Plaid's investments use, so /investments, the detectors and the tax figures all
@@ -257,7 +258,7 @@ async function saveEverything(
   reads: Read[],
   now: Date,
 ) {
-  const today = new Date(`${now.toISOString().slice(0, 10)}T00:00:00Z`);
+  const today = new Date(`${await todayFor(db, now)}T00:00:00Z`);
   const refs: string[] = [];
   for (const read of reads) {
     const ref = read.account.ref(accountKey);

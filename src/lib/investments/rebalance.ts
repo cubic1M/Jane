@@ -14,6 +14,7 @@ import { loadPrefs } from "./values";
 import { coreFundsFor } from "@/planning/values";
 import { loadInvestments, type Investments } from "./holdings";
 import { profileSummary } from "@/planning/investor-profile";
+import { todayOf } from "@/lib/today";
 
 // "Move to the recommended mix" with one tap (spec step 133). The plan is worked out from
 // the holdings and the investor profile; the tap sends its orders to the brokerage partner
@@ -37,7 +38,7 @@ export async function loadRebalance(
     adviceMode(userId, { client }),
     loadPrefs(userId, { client }),
   ]);
-  const profile = profileSummary(answers, now.toISOString().slice(0, 10));
+  const profile = profileSummary(answers, await todayOf(userId, { client, now }));
   return {
     advice,
     investments,

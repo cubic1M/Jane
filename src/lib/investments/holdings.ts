@@ -10,6 +10,7 @@ import {
 import { monthsEnding } from "@/insights/spending";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { todayOf } from "@/lib/today";
 
 // What the person owns (spec step 128), loaded once for the investments page, Jane's
 // answers and its tools, all scoped to the person. Every later investment step starts
@@ -27,7 +28,7 @@ export async function loadInvestments(
   { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
 ): Promise<Investments> {
   const db = scopedFor(userId, client);
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await todayOf(userId, { client, now });
   const [first] = monthsEnding(asOf, INVESTMENT_MONTHS);
   const [listedAccounts, securities, listedHoldings, copies] = await Promise.all([
     db.accounts.findMany({

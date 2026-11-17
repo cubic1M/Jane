@@ -21,6 +21,7 @@ import { syncDemoInvestments } from "@/lib/plaid/sync";
 import { cashPlan, type CashPlace, type CashPlan } from "@/planning/cash";
 import { loadInvestments, type Investments } from "./holdings";
 import { DAY_MS } from "@/lib/dates";
+import { todayOf } from "@/lib/today";
 
 // Cash done right (spec step 162), for its page, Jane's answers, its buttons and tools.
 // Cash in checking, savings and the brokerage's sweep, at stand-in rates; the plan from
@@ -198,5 +199,5 @@ export async function moveCash(
     select: { itemId: true },
   });
   if (account?.itemId) await syncDemoInvestments(account.itemId, { client, now });
-  return { move, runOn: now.toISOString().slice(0, 10) };
+  return { move, runOn: await todayOf(userId, { client, now }) };
 }
