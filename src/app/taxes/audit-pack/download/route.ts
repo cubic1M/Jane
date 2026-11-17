@@ -6,6 +6,7 @@ import { limitOrNull } from "@/lib/rate-limit";
 import { getCurrentUser } from "@/lib/session";
 import { auditPackCsv } from "@/planning/audit-records";
 import { taxYearFrom } from "@/planning/tax-pack";
+import { todayOf } from "@/lib/today";
 
 // The audit pack for a tax year as a CSV (spec step 171): every deduction and credit with
 // its sources. The signed-in person's own records only.
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
   const now = new Date();
   const year = taxYearFrom(
     request.nextUrl.searchParams.get("year") ?? undefined,
-    now.toISOString().slice(0, 10),
+    await todayOf(user.id, { now }),
   );
   const pack = await loadAuditRecords(user.id, year, { now });
   await logAudit(

@@ -16,6 +16,7 @@ import {
 } from "@/planning/prior-return";
 import { readReturn } from "./read";
 import { meteredClaude } from "@/lib/claude-budget";
+import { todayOf } from "@/lib/today";
 
 // A prior-year return read from an uploaded document (spec step 172), for the person to
 // confirm. Like a policy read (step 151): Claude's reading, checked by rules, each field
@@ -121,7 +122,9 @@ export async function readPriorReturn(
     fields.filingStatus = profile.filingStatus.value;
     sources.filingStatus = "profile";
   }
-  const checked = checkPriorReturn(fields, sources, { today: now.toISOString().slice(0, 10) });
+  const checked = checkPriorReturn(fields, sources, {
+    today: await todayOf(userId, { client, now }),
+  });
   try {
     const row = await db.priorReturns.create({
       data: {
@@ -187,7 +190,7 @@ export async function confirmPriorReturn(
     }
   }
   const checked: CheckedReading = checkPriorReturn(given, sources, {
-    today: now.toISOString().slice(0, 10),
+    today: await todayOf(userId, { client, now }),
   });
   const failed = Object.values(checked.notes).filter((n) => n && !n.startsWith("The deduction"));
   if (failed.length > 0 || !checked.fields.taxYear) {

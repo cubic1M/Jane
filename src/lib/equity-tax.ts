@@ -14,6 +14,7 @@ import { defaultTaxYear } from "@/planning/tax-pack";
 import { assumedRsuGap, rsuVest, worthSettingAside, type RsuResult } from "@/planning/equity-tax";
 import { estimateTaxes } from "@/planning/tax-estimate";
 import { isoDay as iso } from "@/lib/dates";
+import { todayOf } from "@/lib/today";
 
 // Crypto and equity pay, taxed right (spec step 219), for its page, the chat and Claude: the
 // crypto gains by lot, ESPP sales that lost their special treatment, ISO exercises with the
@@ -68,7 +69,7 @@ export async function loadEquityTax(
 ): Promise<EquityTaxView> {
   // The year the estimate will use is known without it, so what depends only on the year runs
   // together with the estimate instead of after it (each step is a trip to the database).
-  const guess = defaultTaxYear(now.toISOString().slice(0, 10));
+  const guess = defaultTaxYear(await todayOf(userId, { client, now }));
   const db = scopedFor(userId, client);
   const [estimate, advice, guessedIncome, guessedGoal] = await Promise.all([
     loaded ? loaded.estimate : loadTaxEstimate(userId, { client, now }),

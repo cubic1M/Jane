@@ -6,6 +6,13 @@ vi.mock("@/lib/session", () => ({ getCurrentUser: vi.fn() }));
 vi.mock("@/lib/rate-limit", () => ({ limitOrNull: vi.fn(async () => null) }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
 vi.mock("@/lib/tax-pack", () => ({ loadTaxPack: vi.fn() }));
+// The person's day, without a database (their timezone is read from it).
+vi.mock("@/lib/today", async (original) => ({
+  ...(await original<typeof import("@/lib/today")>()),
+  todayOf: vi.fn(async (_userId: string, { now = new Date() }: { now?: Date } = {}) =>
+    (await original<typeof import("@/lib/today")>()).localDate(now, "America/Los_Angeles"),
+  ),
+}));
 
 import { logAudit } from "@/lib/audit";
 import { limitOrNull } from "@/lib/rate-limit";
