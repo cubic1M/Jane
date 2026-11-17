@@ -1,1 +1,10 @@
-[]
+[
+ {
+  "on": 1984,
+  "lane": "lane:calendar",
+  "task": "claude/person-day-debt",
+  "when": "merged",
+  "since": "2026-11-17T04:26:52.055Z",
+  "expires": "2026-11-17T16:26:52.055Z"
+ }
+]
