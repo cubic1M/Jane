@@ -1,3 +1,4 @@
+import { plural } from "@/lib/plural";
 import { DEBT_DETECTOR_RATES as D } from "@/config/detectors-debt";
 import { rateMonthsOf } from "@/profile/build";
 import { BANK_FEE_CATEGORIES, IDLE_CASH_MONTHS_OF_SPENDING } from "@/config/detection";
@@ -146,14 +147,15 @@ const bankFees: Detector = {
       ? "Stop paying overdraft and bank fees"
       : "Stop paying bank and card fees";
     const span = fees.estimated
-      ? `${fees.count} bank fees in ${fees.monthsOfData} months, about ${formatCents(total)} over a year (an estimate)`
-      : `${formatCents(total)} in ${fees.count} bank fees in the last 12 months`;
+      ? `${plural(fees.count, "bank fee")} in ${plural(fees.monthsOfData, "month")}, about ${formatCents(total)} over a year (an estimate)`
+      : `${formatCents(total)} in ${plural(fees.count, "bank fee")} in the last 12 months`;
     return suggestion("cost", "bank_fees", {
       title: phrase,
       headline: headlineOf(phrase, total, "saves"),
       short: fees.estimated
-        ? `You paid ${formatCents(fees.seenCents)} in ${fees.count} bank fees in ${fees.monthsOfData} months.`
-        : `You paid ${formatCents(total)} in ${fees.count} bank fees in a year.`,
+        ? // Counted as said: "1 bank fees in 1 months" since one fee can make the card (debug 2, 11-16).
+          `You paid ${formatCents(fees.seenCents)} in ${plural(fees.count, "bank fee")} in ${plural(fees.monthsOfData, "month")}.`
+        : `You paid ${formatCents(total)} in ${plural(fees.count, "bank fee")} in a year.`,
       worthCents: total,
       worthKind: "saves",
       confidence: evidence("seen", profile.months, fees.count, "bank fees"),
