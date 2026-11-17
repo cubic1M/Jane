@@ -1,4 +1,5 @@
 import { PRACTICE_TOPIC } from "@/config/practice-suggestions";
+import { UPLOAD_INSTITUTION } from "@/config/investing";
 import { areaOfCapability } from "@/config/areas";
 import { SIMULATED_PARTNER } from "@/config/brokerage";
 import { investingTree, monthsToShow } from "@/lib/area-pages/investing";
@@ -81,6 +82,7 @@ export async function loadInvestingArea(userId: string) {
       name: a.name,
       balanceCents: a.balanceCents,
       holdings: a.holdings.length,
+      told: a.holdings.length === 0 && a.institution === UPLOAD_INSTITUTION,
     })),
     totalCents: data.totalCents,
     byType: data.byAssetClass.length,
