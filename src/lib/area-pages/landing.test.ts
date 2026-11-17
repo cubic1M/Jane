@@ -3,7 +3,7 @@ import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { PEOPLE } from "@/config/people";
 import { reportFor } from "@/detectors/harness";
-import { INSURANCE_BRANCHES } from "./insurance";
+import { INSURANCE_BRANCHES, insuranceTree } from "./insurance";
 import { isHiddenPage } from "@/config/hidden-pages";
 import {
   INVESTING_ANCHORS,
@@ -159,6 +159,24 @@ function suggestionItems(root: AreaRoot, s: Suggestion): string[] {
           actionHref: landing("/taxes", { key: s.id, topic: s.topic }),
         },
       ],
+    }).tree.branches.flatMap((b) => b.items.map((i) => i.id));
+  // A suggestion about missing cover, on a profile showing no gaps (./insurance.ts SUGGESTED_GAP).
+  if (root === "/insurance")
+    return insuranceTree({
+      asOf: "2026-10-17",
+      needs: [],
+      policies: [],
+      gaps: [],
+      savings: [],
+      renewals: [],
+      changes: [],
+      readings: [],
+      payingTwice: [],
+      cards: [],
+      household: [],
+      risks: [],
+      health: null,
+      suggested: [{ topic: s.topic, short: s.short }],
     }).tree.branches.flatMap((b) => b.items.map((i) => i.id));
   return [];
 }

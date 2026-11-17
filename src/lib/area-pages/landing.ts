@@ -1,5 +1,6 @@
 import { hiddenPage } from "@/config/hidden-pages";
 import { INVESTING_ANCHORS } from "./investing";
+import { SUGGESTED_GAP } from "./insurance";
 import { loansTopicNode } from "./loans";
 import { HIDDEN_TAX_ITEMS, TAXES_ANCHORS, suggestionItemId } from "./taxes";
 
@@ -48,8 +49,11 @@ function topicNode(root: AreaRoot, s: Suggested): string | null {
       return loansTopicNode(s.topic);
     case "/investments":
       return `ideas:${s.key}`;
-    case "/insurance":
-      return INSURANCE_TOPIC_BRANCH[s.topic] ?? null;
+    case "/insurance": {
+      // A missing cover's own item, from the profile's gap or the suggestion itself (./insurance.ts).
+      const gap = SUGGESTED_GAP[s.topic];
+      return gap ? `missing:${gap}` : (INSURANCE_TOPIC_BRANCH[s.topic] ?? null);
+    }
     case "/taxes": {
       // Else its own item: the Taxes tree lists every open tax suggestion (debug 2, 11-15).
       const node = TAXES_TOPIC_NODE[s.topic] ?? suggestionItemId(s.topic);
