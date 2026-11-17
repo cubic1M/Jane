@@ -513,6 +513,8 @@ export const PRONOUNS: readonly string[] = [
 ];
 // A name on its own is at most this many words.
 const ABOUT_MAX_WORDS = 3;
+const SPARE_CASH =
+  /\b(?:extra|idle|spare|leftover|excess) (?:cash|money)\b|\bcash (?:that'?s )?(?:just )?(?:sitting|doing nothing)\b/;
 
 const REFUND =
   /^(?:i )?(?:get|want|need|request|ask for|claim) (?:my |a |the )?(?:money back|refund) (?:from|for|on|at) (.+)$|^refund (?:from |for |my )?(.+)$/;
@@ -758,6 +760,11 @@ export function parseIntent(
     // (debugger 11-17).
     const month = parseMonth(text, asOf, "past");
     const perMonth = month === null && RECURRING.test(text);
+    // "On spotify a year": what it costs a year, the cost answer's own (debugger 11-17).
+    const yearly = / (?:(?:a|per|each|every) year|yearly|annually)$/;
+    if (month === null && yearly.test(category)) {
+      return { kind: "cost", target: category.replace(yearly, ""), year: true };
+    }
     const target = category.replace(/ (?:(?:a|per|each|every) month|monthly|on average)$/, "");
     return {
       kind: "spending",
@@ -784,6 +791,9 @@ export function parseIntent(
   const insurance = parseInsurance(text);
   if (insurance) return insurance;
 
+  // "Should I move my extra cash?": about their cash, so the idle cash finding answers when there
+  // is one (debugger 11-17: no answer).
+  if (SPARE_CASH.test(text)) return { kind: "about", target: "cash" };
   const about = ABOUT.exec(text);
   if (about) return { kind: "about", target: cleanTarget(about[1]) };
   // A name on its own ("netflix", "the bank fees").
