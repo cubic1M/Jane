@@ -5,7 +5,9 @@ import { formatRate } from "@/lib/percent";
 // Jane's words about investment fees (spec step 130), shared by its message, its rule
 // answer and the fees page. Pure.
 
-export const feeRange = (r: Range) => `${formatCents(r.lowCents)} to ${formatCents(r.highCents)}`;
+// A rough range over decades, in whole dollars: not "$1,626.09 to $3,719.68" (debugger 11-16).
+const dollars = (cents: number) => `$${Math.round(cents / 100).toLocaleString("en-US")}`;
+export const feeRange = (r: Range) => `${dollars(r.lowCents)} to ${dollars(r.highCents)}`;
 
 // "Summit Large Cap Growth Fund charges 1.02% a year; Keystone US Large Cap Index ETF does a
 // similar job for 0.04%."
