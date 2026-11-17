@@ -263,6 +263,9 @@ const VOCABULARY = [
   "approve",
   "insurance",
 ] as const;
+// Real words one letter from one above, never a typo for it: "send" isn't "spend", "pending"
+// isn't "spending" (debugger 11-17: "how much did I send to Fidelity" read as spending).
+const REAL_WORDS = new Set(["send", "sends", "sent", "sending", "pending", "lend", "lent"]);
 
 // Damerau–Levenshtein distance of at most one (one letter added, dropped, changed or two
 // swapped).
@@ -293,6 +296,7 @@ export function fixTypos(text: string): string {
       .map((word) => {
         if (Object.hasOwn(SHORT_FORMS, word)) return SHORT_FORMS[word];
         if (word.length < 4 || (VOCABULARY as readonly string[]).includes(word)) return word;
+        if (REAL_WORDS.has(word)) return word;
         return VOCABULARY.find((v) => oneSlip(word, v)) ?? word;
       })
       .join(" ")
