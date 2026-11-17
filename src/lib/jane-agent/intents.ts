@@ -304,6 +304,8 @@ function cleanTarget(text: string): string {
     text
       // "how much do I pay in fees": the fees, not "in fees" (night QA 10-30).
       .replace(/^(?:(?:in|on|for|my|the|our|a|an|that|this) )+/, "")
+      // "how much is netflix now": netflix, not "netflix now" (debugger 11-17).
+      .replace(/ (?:right now|now|currently|these days|nowadays)$/, "")
       .replace(
         /(?:^| )(?:subscriptions?|membership|bill|plan|account|charges?|service|payments?|thing)$/,
         "",
