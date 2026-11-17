@@ -213,3 +213,8 @@ export const GLIDE_PATH_SOURCE =
 export const INTL_SHARE_OF_STOCKS = 1 / 3;
 // Goals this close count as near-term: never in stocks.
 export const NEAR_TERM_YEARS = 3;
+
+// Where an investment account with no linked bank says its numbers came from: a positions
+// download, or the balance the person typed on the Investments page (src/lib/investing/
+// brokerage-balance.ts), which has no holdings.
+export const UPLOAD_INSTITUTION = "Your upload";

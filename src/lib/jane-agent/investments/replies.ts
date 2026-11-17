@@ -1,6 +1,12 @@
 import type { BrokerageAsks } from "@/lib/investing/brokerage-balance";
 import { listOf } from "@/planning/tax-profile";
-import { GOALS, INVESTMENT_AUTOPILOT, PROFILE_QUESTIONS, RISK_LEVELS } from "@/config/investing";
+import {
+  GOALS,
+  INVESTMENT_AUTOPILOT,
+  PROFILE_QUESTIONS,
+  RISK_LEVELS,
+  UPLOAD_INSTITUTION,
+} from "@/config/investing";
 import { portfolioNote } from "@/insights/portfolio-note";
 import { RETURNS_NOTE } from "@/config/returns";
 import { formatReturn } from "@/insights/returns";
@@ -181,7 +187,12 @@ export function holdingsReply(
     const balance = a.balanceCents === null ? "no balance reported" : formatCents(a.balanceCents);
     if (a.holdings.length === 0) {
       return {
-        body: `Your ${a.name} has ${balance}. Your bank reports the balance but not what's in it.`,
+        // With no bank behind it, the balance is the one they typed (debug 2, 11-17: "Your bank
+        // reports the balance" for the $1,560.00 they'd just saved).
+        body:
+          a.institution === UPLOAD_INSTITUTION
+            ? `Your ${a.name} has ${balance}, the figure you gave me. I don't know what's in it.`
+            : `Your ${a.name} has ${balance}. Your bank reports the balance but not what's in it.`,
         actions: [SEE],
         refs: {},
       };

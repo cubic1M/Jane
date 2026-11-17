@@ -253,7 +253,14 @@ export type InvestingTreeInput = {
     // "yes": the person said yes to it (answeredYes in ./tree).
     status?: string;
   }[];
-  accounts: { id: string; name: string; balanceCents: number | null; holdings: number }[];
+  accounts: {
+    id: string;
+    name: string;
+    balanceCents: number | null;
+    holdings: number;
+    // The balance the person typed, not one a bank reports.
+    told?: boolean;
+  }[];
   totalCents: number;
   // Investing apps money went to whose balance Jane still has to ask for.
   toAnswer?: number;
@@ -303,7 +310,9 @@ export function investingTree(input: InvestingTreeInput): AreaTree {
           figure: a.balanceCents === null ? undefined : shortMoney(a.balanceCents),
           summary:
             a.holdings === 0
-              ? "Your bank reports the balance but not what's in it."
+              ? a.told
+                ? "The figure you gave. Jane doesn't know what's in it."
+                : "Your bank reports the balance but not what's in it."
               : `${a.holdings} ${a.holdings === 1 ? "holding" : "holdings"}, with where each number came from.`,
         }),
       ),

@@ -1,5 +1,6 @@
 import { accountCopies, withoutCopies } from "@/lib/account-copies";
 import { INVESTMENT_MONTHS } from "@/config/funds";
+import { UPLOAD_INSTITUTION } from "@/config/investing";
 import { ROBINHOOD_NAME } from "@/config/robinhood";
 import type { PrismaClient } from "@/generated/prisma/client";
 import {
@@ -82,7 +83,7 @@ export async function loadInvestments(
     // A positions download has no linked bank: its numbers are the file's.
     institution:
       a.item?.institutionName ??
-      (a.source === "csv" ? "Your upload" : a.source === "robinhood" ? ROBINHOOD_NAME : null),
+      (a.source === "csv" ? UPLOAD_INSTITUTION : a.source === "robinhood" ? ROBINHOOD_NAME : null),
   }));
   return {
     asOf,
