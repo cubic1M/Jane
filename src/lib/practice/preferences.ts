@@ -22,6 +22,7 @@ import { profileFor, type PracticeProfile } from "@/planning/practice-profile";
 import { MODEL_PORTFOLIOS, type PracticeClass } from "@/config/portfolios";
 import { strategyToday } from "@/lib/investments/strategy-today";
 import { cachedCopy } from "@/lib/read-cache";
+import { todayOf } from "@/lib/today";
 
 // The person's practice-portfolio preferences (Phase AW, Stage A): read with the defaults filled
 // in, and changed through the one check (applyPatch) from the settings page or the chat. Every
@@ -114,7 +115,7 @@ export async function savePreferences(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<SaveResult> {
   const before = await loadPreferences(userId, { client });
-  const result = applyPatch(before, patch, now.toISOString().slice(0, 10));
+  const result = applyPatch(before, patch, await todayOf(userId, { client, now }));
   if (!result.ok) return result;
   const { preferences: p, changed } = result;
   if (changed.length === 0) return { ok: true, before, preferences: p, changed };
@@ -181,7 +182,7 @@ export async function practiceProfileOf(
         ? (portfolio.level as RiskLevel)
         : ((await questionnaireLevel(userId, { client, now })) ?? DEFAULT_LEVEL);
   }
-  return withStrategy(profileFor(prefs, { level, today: now.toISOString().slice(0, 10) }), {
+  return withStrategy(profileFor(prefs, { level, today: await todayOf(userId, { client, now }) }), {
     client,
     now,
   });

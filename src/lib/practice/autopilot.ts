@@ -37,6 +37,7 @@ import { replay, type Entry } from "@/planning/practice-ledger";
 import { practiceBroker, loadLedger, type Fill } from "./broker";
 import { addPracticeMoney, PracticeError } from "./portfolio";
 import { practiceProfileOf } from "./preferences";
+import { todayOf } from "@/lib/today";
 
 // Autopilot for the practice portfolio (spec steps 291 and 294, Phase AW, Stage A): once a level
 // is chosen Jane buys the model, rebalances past the band and adds the monthly practice money,
@@ -52,8 +53,6 @@ export type RunResult =
   | { ran: false; why: "no_portfolio" | "paused" }
   | { ran: true; deposit: boolean; fills: Fill[]; suggested: PlannedTrade[] };
 
-const monthKey = (d: Date) => d.toISOString().slice(0, 7);
-
 // The monthly practice money, once a month, on or after the chosen day. True when it went in.
 // The daily run puts it in before the scan (step 292), so a dip can use it first.
 export async function addMonthlyIfDue(
@@ -62,7 +61,9 @@ export async function addMonthlyIfDue(
 ): Promise<boolean> {
   const { portfolio } = await loadLedger(userId, client);
   if (portfolio.paused) return false;
-  const today = now.toISOString().slice(0, 10);
+  // The month's money comes on the person's own day: a tap to start at 7pm on the 31st in Los
+  // Angeles isn't next month's.
+  const today = await todayOf(userId, { client, now });
   const due = { ...portfolio, today, addedThisMonth: false };
   if (!monthlyDue(due)) return false;
   const added = await scopedFor(userId, client).practiceTrades.findFirst({
@@ -71,7 +72,7 @@ export async function addMonthlyIfDue(
       side: "deposit",
       rule: "monthly_add",
       undone: false,
-      placedAt: { gte: new Date(`${monthKey(now)}-01T00:00:00Z`) },
+      placedAt: { gte: new Date(`${today.slice(0, 7)}-01T00:00:00Z`) },
     },
     select: { id: true },
   });

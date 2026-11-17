@@ -7,6 +7,7 @@ import { listGoals } from "@/lib/goals";
 import { goalBuckets, type Bucket } from "@/planning/goal-buckets";
 import { profileSummary } from "@/planning/investor-profile";
 import { profileOf } from "./profile";
+import { todayOf } from "@/lib/today";
 
 // Every goal invested for its timeline (spec step 157), for its page, Jane's answers, its
 // tools and automatic investing: the person's savings goals and, when the money is for
@@ -20,7 +21,7 @@ export async function loadGoalBuckets(
   userId: string,
   { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
 ): Promise<{ advice: boolean; byHerself: boolean; buckets: Bucket[] | null }> {
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await todayOf(userId, { client, now });
   const [advice, answers, goals, level] = await Promise.all([
     adviceMode(userId, { client }),
     profileOf(userId, { client }),

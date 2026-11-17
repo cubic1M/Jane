@@ -11,6 +11,7 @@ import {
   parseProfileForm,
   type ProfileAnswers,
 } from "@/planning/investor-profile";
+import { todayOf } from "@/lib/today";
 
 // The person's investor profile (spec step 129): read, answered one question at a time from
 // the chat, or saved whole from /investments/profile. Scoped to the person. answeredAt is
@@ -87,7 +88,7 @@ export async function answerProfileQuestion(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<ProfileAnswers> {
   const before = await profileOf(userId, { client });
-  const answer = parseAnswer(key, value, now.toISOString().slice(0, 10));
+  const answer = parseAnswer(key, value, await todayOf(userId, { client, now }));
   const { answeredAt: _, updatedAt: __, ...rest } = before;
   return save(userId, { ...rest, ...answer }, key, { client, now });
 }
@@ -98,6 +99,6 @@ export async function saveProfileForm(
   input: { age: string; horizon: string; dropReaction: string; goals: string[] },
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<ProfileAnswers> {
-  const next = parseProfileForm(input, now.toISOString().slice(0, 10));
+  const next = parseProfileForm(input, await todayOf(userId, { client, now }));
   return save(userId, next, "all", { client, now });
 }

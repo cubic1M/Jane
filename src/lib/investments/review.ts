@@ -5,6 +5,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { profileSummary, type ProfileSummary } from "@/planning/investor-profile";
 import { loadInvestments, type Investments } from "./holdings";
 import { profileOf } from "./profile";
+import { todayOf } from "@/lib/today";
 
 // The portfolio review (spec step 131), loaded for its page, Jane's answers and its tools.
 // Null until the investor profile is complete: nothing is recommended from half an answer.
@@ -35,7 +36,7 @@ export async function loadReview(
       take: 20,
     }),
   ]);
-  const profile = profileSummary(answers, now.toISOString().slice(0, 10));
+  const profile = profileSummary(answers, await todayOf(userId, { client, now }));
   const payNames = pay.flatMap((p) => [p.description, ...(p.merchantName ? [p.merchantName] : [])]);
   return {
     investments,
