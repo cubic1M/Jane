@@ -30,11 +30,30 @@ export type InterestSeen = { findingId: string; title: string; yearlyCents: numb
 // track, but the interest is still in the transactions (debugger 11-16: "how much interest am I
 // paying on my credit card?" got "Cutting card interest needs a lending partner" from someone who
 // had paid $84.81 in three months). The answer is what was paid, and the finding's own steps.
-export function cardInterestReply(data: CardInterest, seen: InterestSeen | null = null): Reply {
+// Interest a lender reports paid this year on a loan, by the loan's name (a linked bank's).
+export type LoanInterest = { name: string; ytdCents: number };
+
+// "How much did I pay in interest?" is more than cards: the year's interest each lender reports is
+// said too (debug 2, 11-17: "I don't see any card interest in your accounts" to someone whose
+// student loan lender reported $3,119.50 paid this year).
+const loansLine = (loans: readonly LoanInterest[]) => {
+  const paid = loans.filter((l) => l.ytdCents > 0);
+  if (paid.length === 0) return "";
+  const each = paid.map((l) => `${formatCents(l.ytdCents)} on ${l.name}`);
+  return ` Your ${paid.length === 1 ? "lender reports" : "lenders report"} ${
+    each.length === 1 ? each[0] : `${each.slice(0, -1).join(", ")} and ${each.at(-1)}`
+  } in interest paid this year.`;
+};
+
+export function cardInterestReply(
+  data: CardInterest,
+  seen: InterestSeen | null = null,
+  loans: readonly LoanInterest[] = [],
+): Reply {
   if (!data.available) {
     if (!seen) {
       return {
-        body: "I don't see any card interest in your accounts. Paying each card in full every month keeps it that way.",
+        body: `I don't see any card interest in your accounts. Paying each card in full every month keeps it that way.${loansLine(loans)}`,
         actions: [],
         refs: {},
       };
@@ -46,7 +65,7 @@ export function cardInterestReply(data: CardInterest, seen: InterestSeen | null 
         ? ""
         : `, about ${formatCents(seen.yearlyCents)} a year`;
     return {
-      body: `You paid ${seen.title}${yearly}. Paying the balance off ends it; until then, asking the card company for a lower rate cuts it.`,
+      body: `You paid ${seen.title}${yearly}. Paying the balance off ends it; until then, asking the card company for a lower rate cuts it.${loansLine(loans)}`,
       actions: [openLink("Show me how", `/report/${seen.findingId}`)],
       refs: {},
     };
