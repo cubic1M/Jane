@@ -484,6 +484,8 @@ const COST = [
   /^what (?:does|do|is|are) (.+?) cost(?: me| us)?(?: (?:a|per|each|every) (month|year))?$/,
   /^what(?:'s| is) (?:the )?(?:cost|price) (?:of|for) (.+?)(?: (?:a|per|each|every) (month|year))?$/,
   /^what do i pay (?:for )?(.+?)(?: (?:a|per|each|every) (month|year))?$/,
+  // "Is my phone bill too high?": what it costs (debugger 11-17: it read as a health plan bill).
+  /^(?:is|was) (?:my|the) (.+?) bill (?:too (?:high|much)|a lot|normal)()$/,
 ];
 const ABOUT =
   /^(?:tell me (?:more )?about|what(?:'s| is| was) (?:up with|going on with)|explain|what about|show me|details on|info on) (.+)$/;

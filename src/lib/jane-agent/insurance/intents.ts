@@ -189,7 +189,7 @@ const HOUSEHOLD =
 
 // Where they are in their health plan's year (spec step 200).
 const HEALTH_YEAR =
-  /\b(?:fsa|flex(?:ible)? spending|use it or lose it)\b|\b(?:how much|how far|where am i|have i met|did i meet|when (?:will|do) i (?:hit|reach|meet))\b.{0,30}\b(?:deductible|out[- ]of[- ]pocket(?: max\w*)?)\b|\bdeductible\b.{0,20}\b(?:met|so far|left|remaining|progress)\b|\bout[- ]of[- ]pocket (?:max\w*|limit)\b|\bin[- ]network\b|\b(?:is|was) (?:my|this|that|the) (?:\w+ )?bill (?:right|correct|too (?:high|much))\b|\boverbill\w*|\bhealth plan\b.{0,20}\b(?:this year|so far)\b/;
+  /\b(?:fsa|flex(?:ible)? spending|use it or lose it)\b|\b(?:how much|how far|where am i|have i met|did i meet|when (?:will|do) i (?:hit|reach|meet))\b.{0,30}\b(?:deductible|out[- ]of[- ]pocket(?: max\w*)?)\b|\bdeductible\b.{0,20}\b(?:met|so far|left|remaining|progress)\b|\bout[- ]of[- ]pocket (?:max\w*|limit)\b|\bin[- ]network\b|\b(?:is|was) (?:my|this|that|the) (?!(?:phone|cell|mobile|internet|wifi|cable|electric|electricity|power|gas|water|utility|utilities|card|credit card|rent) bill)(?:\w+ )?bill (?:right|correct|too (?:high|much))\b|\boverbill\w*|\bhealth plan\b.{0,20}\b(?:this year|so far)\b/;
 
 const ASKS: readonly [InsuranceAsk, RegExp][] = [
   ["cards", CARD_COVER],
