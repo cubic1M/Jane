@@ -34,17 +34,22 @@ export async function currentProposals(
 ): Promise<Proposal[]> {
   const db = scopedFor(userId, client);
   const asOf = await todayOf(userId, { client, now });
-  const [transactions, budgets, goals, uncategorized, directory, irregular] = await Promise.all([
-    loadInsightTransactions(db, asOf, BUDGET_SUGGESTION_MONTHS + 1),
-    db.budgets.findMany({ select: { category: true, amountCents: true } }),
-    db.savingsGoals.findMany({ select: { name: true } }),
-    db.transactions.findMany({
-      where: { pfcPrimary: null, amountCents: { gt: 0 } },
-      select: { description: true, merchantName: true },
-    }),
-    systemDb("Merchants are shared reference data, no one's own", client).merchant.findMany(),
-    irregularCosts(userId, { client, now }),
-  ]);
+  const [transactions, budgets, goals, uncategorized, directory, irregular, cash] =
+    await Promise.all([
+      loadInsightTransactions(db, asOf, BUDGET_SUGGESTION_MONTHS + 1),
+      db.budgets.findMany({ select: { category: true, amountCents: true } }),
+      db.savingsGoals.findMany({ select: { name: true } }),
+      db.transactions.findMany({
+        where: { pfcPrimary: null, amountCents: { gt: 0 } },
+        select: { description: true, merchantName: true },
+      }),
+      systemDb("Merchants are shared reference data, no one's own", client).merchant.findMany(),
+      irregularCosts(userId, { client, now }),
+      db.accounts.findMany({
+        where: { type: "depository", currentBalanceCents: { not: null } },
+        select: { currentBalanceCents: true },
+      }),
+    ]);
   const summary = budgetSummary(transactions, budgets, asOf);
   // What the profile says about how they're paid and whether debt is a struggle; without it the
   // fund is three months of spending (src/lib/emergency-fund.ts).
@@ -67,6 +72,8 @@ export async function currentProposals(
     budgetedCategories: budgets.map((b) => b.category),
     goalNames: goals.map((g) => g.name),
     monthlySpendingCents,
+    cashCents:
+      cash.length > 0 ? cash.reduce((sum, a) => sum + (a.currentBalanceCents ?? 0), 0) : null,
     profile,
     yearlyBillsMonthlyCents: irregular.monthlyCents,
     uncategorized: [...byMerchant].map(([merchantKey, { name, count }]) => {

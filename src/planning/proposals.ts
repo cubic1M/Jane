@@ -67,6 +67,8 @@ export type ProposalInput = {
   budgetedCategories: string[];
   goalNames: string[];
   monthlySpendingCents: number;
+  // Cash in checking and savings with a known balance; null when none is known.
+  cashCents?: number | null;
   // Spec step 263: what the profile says, so the emergency fund is sized for this person.
   profile?: { pattern: string | null; debtTrouble: boolean; incomeCents: number | null };
   // The monthly set-aside for yearly and irregular bills (spec step 70).
@@ -113,7 +115,11 @@ export function proposals(input: ProposalInput): Proposal[] {
     pattern: input.profile?.pattern ?? null,
     debtTrouble: input.profile?.debtTrouble ?? false,
   });
-  if (fund && !input.goalNames.some((n) => /emergency/i.test(n))) {
+  // Not a goal to save up for what's already there: a person keeping $10,597.07 was offered an
+  // "Emergency fund" goal of $4,100.00 beside the idle cash card's "$6,529.94 is more than 3
+  // months of spending" (debug 2, 11-16). As the cushion card, only short of it.
+  const covered = fund && input.cashCents != null && input.cashCents >= fund.targetCents;
+  if (fund && !covered && !input.goalNames.some((n) => /emergency/i.test(n))) {
     out.push({
       kind: "goal",
       key: "goal:emergency_fund",
