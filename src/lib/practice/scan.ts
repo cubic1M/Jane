@@ -6,7 +6,7 @@ import {
   type PracticeClass,
 } from "@/config/portfolios";
 import { ON_OPEN_SCAN_MINUTES } from "@/config/practice-opportunities";
-import { ideaSlot, PRACTICE_IDEA_DAYS } from "@/config/practice-suggestions";
+import { ideaSlot } from "@/config/practice-suggestions";
 import { NEWS_LOOKBACK_DAYS, SCAN_HISTORY_DAYS, type ScanKind } from "@/config/practice-scan";
 import { loadDetectionInput } from "@/detection/input";
 import { paySchedules } from "@/detection/paydays";
@@ -29,6 +29,8 @@ import { scanPreferences } from "./opportunity-prefs";
 import { practiceProfileOf } from "./preferences";
 import { addDays } from "@/lib/dates";
 import { systemDb } from "@/lib/system-db";
+import { localDate, timezoneOf } from "@/lib/today";
+import { stillWaiting } from "./idea-days";
 
 // The daily scan of each practice portfolio (spec step 292, Phase AW, Stage A), run by Vercel
 // Cron (/api/cron/practice-scan). For each portfolio that isn't paused: the monthly practice
@@ -170,11 +172,13 @@ export async function scanPractice(
     where: { portfolioId: portfolio.id },
     select: { key: true, kind: true, ticker: true, scannedAt: true, status: true },
   });
-  // What the person is still being asked about: not asked again while it waits.
-  const waitingSince = new Date(now.getTime() - PRACTICE_IDEA_DAYS * 86_400_000);
+  // What the person is still being asked about: not asked again while it waits, the days
+  // openPracticeIdeas shows it.
+  const timezone = await timezoneOf(userId, { client });
+  const personToday = localDate(now, timezone);
   const waiting = new Set(
     past
-      .filter((p) => p.status === "suggested" && p.scannedAt >= waitingSince)
+      .filter((p) => p.status === "suggested" && stillWaiting(p.scannedAt, personToday, timezone))
       .map((p) => ideaSlot(p.kind, p.ticker)),
   );
   const lastDeposit = await db.practiceTrades.findFirst({
