@@ -110,7 +110,8 @@ test("it comes up unasked: the card has the figure and how sure Jane is", async 
     page,
     async () => {
       await page.goto("/home");
-      if (isMobile) await page.locator('[data-card-state="folded"]').click({ timeout: 60_000 });
+      // On a phone Home's top card is in the page, not folded (founder's choice, 11-16).
+      if (isMobile) await page.locator('[data-card-state="showing"]').waitFor({ timeout: 60_000 });
       return scope;
     },
     `Check tax not yet paid: about ${figure}`,

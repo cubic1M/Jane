@@ -230,6 +230,13 @@ async function HubContent({ searchParams }: { searchParams: PageProps<"/home">["
       <BooksNotice books={books} skipItems={banks.map((b) => b.itemId)} />
       <h1 className="sr-only">Home</h1>
 
+      {/* The top thing Jane found, first: on a phone its card is in the page above the net worth,
+          so it's on the first screen without covering anything (founder's choice, mobile pass
+          11-16); on a tablet it floats at the bottom, and on a computer the dock has the cards. */}
+      <div data-home-cards-top="">
+        <SuggestionCards messages={suggestions} />
+      </div>
+
       <HeroRow
         hero={heroView(top.hero)}
         planItems={home.plan.items}
@@ -292,8 +299,6 @@ async function HubContent({ searchParams }: { searchParams: PageProps<"/home">["
           {oldStatements ? "Upload newer statements" : "Manage accounts"}
         </Link>
       </p>
-
-      <SuggestionCards messages={suggestions} foldOnPhone />
     </>
   );
 }

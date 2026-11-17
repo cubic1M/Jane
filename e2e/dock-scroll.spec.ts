@@ -89,12 +89,12 @@ test("the wheel scrolls a long card in the dock to its end, and nothing behind i
   await expect.poll(top).toBeGreaterThan(0);
 });
 
-test("on a phone, the import chip keeps clear of the folded card bar", async ({
+test("on a phone, the import chip keeps clear of Jane's card on Home", async ({
   page,
   baseURL,
   isMobile,
 }) => {
-  test.skip(!isMobile, "the phone's folded bar");
+  test.skip(!isMobile, "the phone's layout");
   const user = await signedInUser("user");
   userId = user.userId;
   await signInWith(page.context(), user.sessionToken, baseURL);
@@ -105,18 +105,18 @@ test("on a phone, the import chip keeps clear of the folded card bar", async ({
   await expect(
     page.frameLocator('iframe[title="Chat with Jane"]').locator("[data-chat-embed]").first(),
   ).toBeAttached({ timeout: 60_000 });
-  const bar = page.locator('[data-card-state="folded"]');
+  // On a phone Home's top card is in the page, not a folded bar (founder's choice, 11-16): the
+  // chip, at the bottom, never sits on its buttons.
+  const card = page.locator('[data-card-state="showing"]');
   await expect(async () => {
     await page.goto("/home");
-    await expect(bar).toBeVisible({ timeout: 5_000 });
+    await expect(card).toBeVisible({ timeout: 5_000 });
   }).toPass({ timeout: 90_000 });
   await expect(page.locator("[data-import-chip]")).toBeVisible();
-  const b = (await bar.boundingBox())!;
+  const yes = (await card.getByRole("button", { name: "Yes", exact: true }).boundingBox())!;
   const onTop = await page.evaluate(
-    ([x, y]) => !!document.elementFromPoint(x, y)?.closest('[data-card-state="folded"]'),
-    [b.x + b.width / 2, b.y + b.height / 2],
+    ([x, y]) => !!document.elementFromPoint(x, y)?.closest('[data-card-state="showing"]'),
+    [yes.x + yes.width / 2, yes.y + yes.height / 2],
   );
   expect(onTop).toBe(true);
-  await bar.click();
-  await expect(page.locator('[data-card-state="showing"]')).toBeVisible();
 });

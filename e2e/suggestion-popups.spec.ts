@@ -38,22 +38,18 @@ test("suggestions pop up small at the bottom of the hub and open in place", asyn
   if (isMobile) await expect(page.getByRole("button", { name: /^Chat with Jane/ })).toBeVisible();
   else await expect(page.getByRole("complementary", { name: "Chat with Jane" })).toBeVisible();
 
-  // On a small phone they start folded into one line at the very bottom, beside the Jane
-  // button, so the net worth isn't covered (QA round 6); a tap opens them.
+  // On a small phone the top card is in the page, above the net worth: on the first screen,
+  // covering nothing (founder's choice on the mobile pass, 11-16; it used to fold to one line at
+  // the bottom so it wouldn't cover the net worth, QA round 6).
   if (isMobile) {
-    const fold = overlay.locator('[data-card-state="folded"]');
-    await expect(fold).toHaveText(/^\[JANE\]\d+ for you▲$/);
-    await expect(showing).toHaveCount(0);
+    await expect(overlay.locator('[data-card-state="folded"]')).toHaveCount(0);
     // The net worth streams in after the page (every page renders per request): wait for it.
     const netWorth = page.locator('[data-hub-number="net-worth"]');
     await expect(netWorth).toBeVisible();
-    const box = (await fold.boundingBox())!;
+    const card = (await showing.boundingBox())!;
     const figure = (await netWorth.boundingBox())!;
-    expect(box.y).toBeGreaterThanOrEqual(figure.y + figure.height);
-    const jane = (await page.getByRole("button", { name: /^Chat with Jane/ }).boundingBox())!;
-    expect(box.x + box.width).toBeLessThanOrEqual(jane.x + 1);
-    await fold.click();
-    await expect(fold).toHaveCount(0);
+    expect(card.y + card.height).toBeLessThanOrEqual(figure.y);
+    expect(card.y + card.height).toBeLessThanOrEqual(viewport.height);
   }
 
   // Shut: a headline, Yes and Not now, and a third of the screen at most.

@@ -93,8 +93,9 @@ test("every choice on a card is in view and clickable, shut and opened", async (
       page,
       async () => {
         await page.goto("/home");
+        // On a phone Home's top card is in the page, not folded (founder's choice, 11-16).
         if (size.width < 640) {
-          await page.locator('[data-card-state="folded"]').click({ timeout: 60_000 });
+          await page.locator('[data-card-state="showing"]').waitFor({ timeout: 60_000 });
         }
         return scope;
       },
