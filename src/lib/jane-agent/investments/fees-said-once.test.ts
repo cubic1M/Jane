@@ -30,7 +30,7 @@ const summary = (over: Partial<FeeSummary>): FeeSummary => ({
 describe("what the fund fees come to, in the chat", () => {
   it("says one fund's cost once", () => {
     expect(feesReply(summary({}), false).body).toBe(
-      "Your investments cost about $0.51 a year in fund costs. Over 30 years that's roughly $47.62 to $108.63 with growth, depending on returns.\nThat's Fidelity 500 Index, at 0.01% a year.",
+      "Your investments cost about $0.51 a year in fund costs. Over 30 years that's roughly $48 to $109 with growth, depending on returns.\nThat's Fidelity 500 Index, at 0.01% a year.",
     );
   });
 
