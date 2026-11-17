@@ -42,7 +42,7 @@ describe("the month-close suggestion card", () => {
     expect(topics({ status: "waiting" })).toEqual(["close:bank_fees"]);
   });
 
-  it("is raised otherwise", () => {
-    expect(topics(null)).toEqual(["close:month_close", "close:bank_fees"]);
+  it("isn't raised before the close is worked out either (./suggestions-before-close.test.ts)", () => {
+    expect(topics(null)).toEqual(["close:bank_fees"]);
   });
 });

@@ -28,12 +28,13 @@ const byClaude = (key: string) => key.startsWith(`${STRATEGIST_CAPABILITY}:`);
 export const suggestionsSource: MessageSource = {
   key: "suggestions",
   gather(snapshot) {
-    // While last month's close waits, its own message asks about the same charges with "Looks
-    // right": the suggestion's Yes only opens the month's transactions, where nothing confirms them
-    // (debug 2 re-walk, 11-16: with #1911 the dock kept that card and lost the one that closes).
-    const closing = snapshot.close?.status === "waiting";
+    // Last month's close asks about its charges in its own message, with "Looks right": the
+    // suggestion's Yes only opens the month's transactions, where nothing confirms them (debug 2
+    // re-walk, 11-16: with #1911 the dock kept that card and lost the one that closes). Never in the
+    // dock, not only while the close waits: a first scan's early run posts its picks before the close
+    // is worked out (debug 2, 11-17: "Confirm 1 charge to close October" was the only card for it).
     return (snapshot.suggestions ?? [])
-      .filter((s) => !(closing && s.topic === "month_close"))
+      .filter((s) => s.topic !== "month_close")
       .map((s) => ({
         kind: "decision" as const,
         body: suggestionCard(s).join("\n"),
