@@ -56,7 +56,7 @@ export function DiyKit({
           href={switchLink.url}
           target="_blank"
           rel="noreferrer"
-          className="self-start font-medium underline underline-offset-2 hover:no-underline"
+          className="inline-flex min-h-11 items-center self-start font-medium underline underline-offset-2 hover:no-underline"
         >
           {switchLink.label} ↗
         </a>
@@ -66,7 +66,7 @@ export function DiyKit({
           href={kit.link.url}
           target="_blank"
           rel="noreferrer"
-          className="self-start font-medium text-emerald-700 hover:underline"
+          className="inline-flex min-h-11 items-center self-start font-medium text-emerald-700 hover:underline"
         >
           {kit.link.label} ↗
         </a>

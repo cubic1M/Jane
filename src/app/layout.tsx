@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { connection } from "next/server";
+import { cookies } from "next/headers";
+import { CHIP_ROOM_COOKIE, hasChipRoom } from "@/lib/import-chip-room";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ActivityRecorder } from "@/components/activity-recorder";
 import { ImportChip } from "@/components/import-chip";
@@ -42,6 +44,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   // Every page renders per request, so its scripts carry that request's CSP nonce
   // (src/proxy.ts); a page prerendered at build time would have none and be blocked.
   await connection();
+  // The upload notice showed on the last page: this one keeps its room from the start.
+  const chipRoom = hasChipRoom((await cookies()).get(CHIP_ROOM_COOKIE)?.value);
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
@@ -57,7 +61,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           <TradePopupGate />
         </Suspense>
         {/* An upload finishing in the background, on every page (src/lib/import/background.ts). */}
-        <ImportChip />
+        <ImportChip room={chipRoom} />
         {/* Every link tap shows at once that the next page is on its way. */}
         <Suspense>
           <NavPending />

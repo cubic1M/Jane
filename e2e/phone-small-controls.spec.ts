@@ -1,6 +1,7 @@
 import { expect, test, type Locator } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser } from "./db";
 import { demoPerson } from "./demo-person";
+import { hydrated } from "./waits";
 
 // Mobile pass (founder, 11-16: "tap targets under 44 px or controls too close together"), the
 // rest of the list. On a 375 × 812 phone: /transactions' select, button and checkbox (its label),
@@ -56,8 +57,11 @@ test("the rest of the phone pass's small controls are 44 px, and the strip answe
   // The strip: a tap 20 px off a marker, on the strip, opens that marker's card.
   await page.goto("/home");
   const strip = page.getByRole("group", { name: /^Next 30 days/ });
-  await strip.scrollIntoViewIfNeeded();
+  // In the middle of the screen, as a person looks at it: not under the folded cards at the bottom.
+  await strip.evaluate((el) => el.scrollIntoView({ block: "center" }));
   const mark = strip.locator("button[id^=cash-event-]").first();
+  // The strip answers taps once it has woken (a tap before that does nothing).
+  await hydrated(mark);
   const m = (await mark.boundingBox())!;
   const s = (await strip.boundingBox())!;
   const below = m.y + m.height / 2 + 20 < s.y + s.height;
