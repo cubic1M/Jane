@@ -229,7 +229,12 @@ export function payoffReply(payoff: Payoff, asOf: string): Reply {
   const budget = summary.minimumsCents + summary.extraCents;
   const paying = `Paying ${formatCents(budget)} a month (your minimums${summary.extraCents > 0 ? ` plus ${formatCents(summary.extraCents)} extra` : ""})`;
   const pick = summary.pick;
-  if (pick) {
+  // One debt has no order to choose: every extra dollar goes to it (debugger 11-17: the same
+  // outcome twice, "highest rate first" and "smallest balance first", with a button each).
+  const one = summary.cards.length === 1;
+  if (one) {
+    lines.push(`${paying}, you'd be ${outcome(summary.avalanche, asOf)}.`);
+  } else if (pick) {
     lines.push(`Here's how I'd pay them off: ${STRATEGY_NAME[pick.strategy]}.`);
     lines.push(...pick.order.map((name, i) => `${i + 1}. ${name}`));
     lines.push(...pick.why);
@@ -282,13 +287,21 @@ export function payoffReply(payoff: Payoff, asOf: string): Reply {
     );
     return { body: lines.join("\n"), actions: [planner], refs: pick ? { advice: true } : {} };
   }
-  const actions = planButtons(pick?.strategy ?? "avalanche", (s) =>
-    pick
-      ? s === pick.strategy
-        ? "Start this plan"
-        : `Use ${STRATEGY_NAME[s]}`
-      : `Track ${STRATEGY_NAME[s]}`,
-  );
+  const actions: MessageAction[] = one
+    ? [
+        {
+          id: "debt_plan.avalanche",
+          label: pick ? "Start this plan" : "Track this plan",
+          kind: "primary",
+        },
+      ]
+    : planButtons(pick?.strategy ?? "avalanche", (s) =>
+        pick
+          ? s === pick.strategy
+            ? "Start this plan"
+            : `Use ${STRATEGY_NAME[s]}`
+          : `Track ${STRATEGY_NAME[s]}`,
+      );
   return {
     body: lines.join("\n"),
     actions: [...actions, planner],
