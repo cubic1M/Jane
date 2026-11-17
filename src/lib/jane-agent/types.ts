@@ -88,6 +88,7 @@ export const ACTION_IDS = [
   // Founder, 11-16: a card put away, brought back from the line left in its place.
   "undo.snooze",
   "undo.never",
+  "undo.suggest_never",
   // Founder, 2026-10-25: a pick-one choice stays on the message, with Revert.
   "choice.revert",
   "choice.done",
@@ -537,6 +538,9 @@ export type MessageRefs = {
   // What "Don't suggest this again" changed, so "Bring it back" can put it back
   // (src/lib/suggestion-take-back.ts).
   undoNo?: SuggestionAnswerSnapshot;
+  // The "never" preference "Don't suggest again" saved, and whether it was there already, so
+  // "Bring it back" deletes only one it made.
+  neverPreference?: { key: string; existed: boolean };
   // A pick-one choice that was made and stays on the message (founder, 2026-10-25): the
   // choices greyed, this one marked, and Revert, which puts back what's kept here.
   chosen?: ChosenRef;

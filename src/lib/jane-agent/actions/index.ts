@@ -54,7 +54,7 @@ import { ChatActionError, linksOf, type ActionHandler } from "./handler";
 import { markPrimerStale } from "../primer-store";
 import { forgetPrimer } from "../primer-cache";
 import { planApproveSafe } from "./plan";
-import { undoNever, undoNo, undoRule, undoSnooze } from "./undo";
+import { undoNever, undoNo, undoRule, undoSnooze, undoSuggestNever } from "./undo";
 import { autopilotAll, autopilotAsk, autopilotPause, autopilotSafe } from "./autopilot";
 import { choiceDone, choiceRevert } from "./choice";
 import { practicePrefsSave } from "./practice";
@@ -251,6 +251,7 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "undo.no": undoNo,
   "undo.snooze": undoSnooze,
   "undo.never": undoNever,
+  "undo.suggest_never": undoSuggestNever,
   "choice.revert": choiceRevert,
   "choice.done": choiceDone,
   // Spec step 83.
@@ -543,7 +544,8 @@ async function takeChatActionWork(
   const handler = Object.hasOwn(ACTION_HANDLERS, actionId)
     ? ACTION_HANDLERS[actionId as ActionId]
     : undefined;
-  if (handler && message.status !== handler.on) {
+  const on: readonly string[] = handler ? [handler.on].flat() : [];
+  if (handler && !on.includes(message.status)) {
     throw new ChatActionError("not_open", "This one's already been answered.");
   }
   const action = message.actions.find((a) => a.id === actionId && a.kind !== "link");

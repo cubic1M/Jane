@@ -45,8 +45,8 @@ export type ActionOutcome = {
 export type ActionHandler = {
   id: ActionId;
   // The message status this button works on: most need an open message; Undo after a No
-  // works on the answered one.
-  on: MessageStatus;
+  // works on the answered one, and bringing back a card put away on whichever it left.
+  on: MessageStatus | readonly MessageStatus[];
   run(context: ActionContext): Promise<ActionOutcome>;
 };
 
@@ -67,7 +67,7 @@ export const linksOf = (actions: MessageAction[]) => actions.filter((a) => a.kin
 // the one that brings it back as it was, for PUT_AWAY_UNDO_MINUTES (founder, 11-16).
 export function putAwayUndo(
   message: ChatMessage,
-  undo: "undo.snooze" | "undo.never",
+  undo: "undo.snooze" | "undo.never" | "undo.suggest_never",
   now: Date,
   refs: Partial<MessageRefs> = {},
 ): Pick<ActionOutcome, "refs" | "actions"> {
