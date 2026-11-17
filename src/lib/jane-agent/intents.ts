@@ -62,7 +62,8 @@ export type Intent =
     }
   | { kind: "safe_to_spend" }
   // category is the person's own words ("food"), matched loosely later; month YYYY-MM.
-  | { kind: "spending"; category: string | null; month: string }
+  // perMonth: "a month", a usual month rather than this one.
+  | { kind: "spending"; category: string | null; month: string; perMonth?: true }
   // days is null for the usual coming-up list; beforePayday: only what's due before the next pay.
   | { kind: "coming_up"; days: number | null; beforePayday?: true }
   // findingId: one finding exactly (a clarifying question's button, spec step 88).
@@ -746,10 +747,16 @@ export function parseIntent(
       : named && (matchSubcategory(named) || matchCategory(named, CATEGORY_LIST))
         ? named
         : "";
+    // "On amazon a month": how often, not part of the name; a usual month, when no month is named
+    // (debugger 11-17).
+    const month = parseMonth(text, asOf, "past");
+    const perMonth = month === null && RECURRING.test(text);
+    const target = category.replace(/ (?:(?:a|per|each|every) month|monthly|on average)$/, "");
     return {
       kind: "spending",
-      category: category && !/^(?:month|week|year)$/.test(category) ? category : null,
-      month: parseMonth(text, asOf, "past") ?? asOf.slice(0, 7),
+      category: target && !/^(?:month|week|year)$/.test(target) ? target : null,
+      month: month ?? asOf.slice(0, 7),
+      ...(perMonth ? { perMonth: true as const } : {}),
     };
   }
   if (COMING_UP.test(text)) {
