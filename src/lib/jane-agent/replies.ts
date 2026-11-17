@@ -697,14 +697,18 @@ function usualMonthLine(
     monthsEnding(asOf, INSIGHT_MONTHS).filter((m) => m < monthOf(asOf) && m < last.slice(0, 7)),
     transactions,
   );
-  if (full.length === 0) return null;
+  // No full month yet (one statement of 31 days, Oct 15 to Nov 14): what the days on file hold,
+  // said as that, not as a month (debugger 11-17: "November so far" read as a usual month).
+  const first = transactions.reduce((min, t) => (t.date < min ? t.date : min), last);
+  const counted =
+    full.length > 0 ? full : [...new Set(transactions.map((t) => t.date.slice(0, 7)))].sort();
   const q = target.toLowerCase();
   const sub = matchSubcategory(target);
   const category = matchCategory(target, [
     ...new Set([...Object.values(CATEGORY_LABELS), UNCATEGORIZED]),
   ]);
   const named = transactions.filter((t) => {
-    if (!full.includes(t.date.slice(0, 7)) || kindOf(t) !== "spending") return false;
+    if (!counted.includes(t.date.slice(0, 7)) || kindOf(t) !== "spending") return false;
     const name = merchantOf(t).toLowerCase();
     return sub || category ? name === q : name.split(/[^a-z0-9&+']+/).includes(q);
   });
@@ -713,7 +717,7 @@ function usualMonthLine(
     monthCount: INSIGHT_MONTHS,
   }).categoriesByMonth;
   // A part of a category ("gas") when the data says which part each charge is (debugger 11-17).
-  const parts = sub ? full.map((m) => subcategorySpending(transactions, m, sub)) : [];
+  const parts = sub ? counted.map((m) => subcategorySpending(transactions, m, sub)) : [];
   const [cents, where] =
     named.length > 0
       ? [named.reduce((sum, t) => sum + t.amountCents, 0), `at ${merchantOf(named[0])}`]
@@ -721,7 +725,7 @@ function usualMonthLine(
         ? [parts.reduce<number>((sum, c) => sum + (c ?? 0), 0), `on ${sub.name}`]
         : category && !sub
           ? [
-              full.reduce(
+              counted.reduce(
                 (sum, m) => sum + (byMonth[m]?.find((c) => c.category === category)?.cents ?? 0),
                 0,
               ),
@@ -729,6 +733,9 @@ function usualMonthLine(
             ]
           : [0, ""];
   if (!where) return null;
+  if (full.length === 0) {
+    return `I don't have a full month yet, just ${daysBetween(first, last) + 1} days (${dayLabel(first)} to ${dayLabel(last)}): you spent ${fmt(cents)} ${where} in that time.`;
+  }
   // With the year when the months cross one (debug 2, 11-17: 14 months read "from December to
   // October", meaning December 2025 to October 2026).
   const years = new Set(full.map((m) => m.slice(0, 4))).size > 1;
