@@ -11,6 +11,7 @@ import { listBenefits, openEnrollmentAtWork, yearlyCost, type Benefit } from "./
 import type { Recommendation } from "./checkup";
 import { POLICY_SELECT, toPolicy } from "./policies";
 import { requestQuotes } from "./quotes";
+import { todayOf } from "@/lib/today";
 
 // Benefits through work, compared with the same cover bought privately (spec step 150), and
 // Jane's recommendation ready before the employer's open enrollment (demo advice).
@@ -138,7 +139,7 @@ export async function enrollmentReview(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<boolean> {
   const window = await openEnrollmentAtWork(userId, { client, now });
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await todayOf(userId, { client, now });
   if (!window || asOf > window.end || daysBetween(asOf, window.end) > ENROLLMENT_NOTICE_DAYS) {
     return false;
   }

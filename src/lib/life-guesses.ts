@@ -15,6 +15,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { addDeadline } from "@/lib/deadlines";
 import { LifeEventError, startLifeEvent, toggleLifeEventItem } from "@/lib/life-events";
 import { centsToInput } from "@/lib/money";
+import { todayOf } from "@/lib/today";
 
 // Life events spotted (spec step 100): Jane's guesses (src/insights/life-signals.ts) for
 // one person, minus the kinds they answered, and what it does on its own on Yes: starts
@@ -80,7 +81,7 @@ export async function runLifeChecklist(
   await record(userId, kind, "yes", client);
   const plan = LIFE_AUTOMATION[kind];
   const db = scopedFor(userId, client);
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await todayOf(userId, { client, now });
 
   // Budgets at a usual month, for the categories that don't have one yet.
   const [existing, transactions] = await Promise.all([
