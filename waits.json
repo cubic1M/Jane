@@ -14,5 +14,13 @@
   "when": "merged",
   "since": "2026-11-17T06:22:51.215Z",
   "expires": "2026-11-20T06:22:51.215Z"
+ },
+ {
+  "on": 2000,
+  "lane": "lane:calendar",
+  "task": "claude/person-day-investing",
+  "when": "merged",
+  "since": "2026-11-17T11:20:36.027Z",
+  "expires": "2026-11-20T11:20:36.027Z"
  }
 ]
