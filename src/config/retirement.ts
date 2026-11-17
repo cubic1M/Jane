@@ -58,27 +58,6 @@ export const TRADITIONAL_ABOVE_PAY_CENTS = 21_500_000;
 // "contribution" subtype for both).
 export const EMPLOYER_CONTRIBUTION = /\b(?:match|employer|company|profit sharing|safe harbor)\b/i;
 
-// Paystub deduction lines (connectors roadmap round 17, paystub_deduction_parser), by what a payroll
-// system prints. Order matters: a Roth or loan line also says "401K". FOR REVIEW: payroll systems
-// abbreviate freely; a line none of these match stays "other", never guessed.
-export const PAYSTUB_DEDUCTIONS = {
-  loan: /\b(?:401\s?\(?k\)?|403\s?\(?b\)?|457)\b.*\bloan\b|\bloan\b.*\b(?:401\s?\(?k\)?|403\s?\(?b\)?|457)\b|\bk[- ]?loan\b/i,
-  roth: /\broth\b.*\b(?:401\s?\(?k\)?|403\s?\(?b\)?|457|tsp)\b|\b(?:401\s?\(?k\)?|403\s?\(?b\)?|457)\b.*\broth\b/i,
-  pretax: /\b(?:401\s?\(?k\)?|403\s?\(?b\)?|457\s?\(?b\)?|tsp)\b|\bdeferred comp(?:ensation)?\b/i,
-} as const;
-// State auto-IRA programmes (connectors roadmap round 17; Georgetown CRI's list), by the names a
-// paystub may carry. FOR REVIEW: only names the research or the programmes themselves use.
-export const STATE_AUTO_IRAS: readonly { state: string; name: string; match: RegExp }[] = [
-  { state: "CA", name: "CalSavers", match: /\bcal\s?savers\b/i },
-  { state: "OR", name: "OregonSaves", match: /\boregon\s?saves\b/i },
-  {
-    state: "IL",
-    name: "My Illinois Savings",
-    match: /\b(?:my illinois savings|illinois secure choice)\b/i,
-  },
-  { state: "NY", name: "New York Secure Choice", match: /\b(?:ny|new york) secure choice\b/i },
-];
-
 // The 60-day rollover clock (connectors roadmap round 17; IRS "Rollovers of retirement plan and IRA
 // distributions"): a payout from a plan or IRA can still be rolled over if it goes into an IRA or
 // plan within 60 days of being received. A plan withholds 20% from a payout it could have rolled

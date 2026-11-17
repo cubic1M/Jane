@@ -662,49 +662,6 @@ export const REFI_PREFER_FIXED = true;
 // partner is a new value here and a new implementation of LenderPartner.
 export const LENDER_PARTNER: "demo" | "none" = "demo";
 
-// --- Refinance estimates without an offer (connectors roadmap round 15, loans 8.2) ---------
-
-// With no lender's quote, an estimate is measured against a public average (src/config/
-// benchmarks.ts), always at the loan's own remaining months, never a longer term. Each number is
-// the roadmap's proposal until the founders set it.
-export const REFI_ESTIMATE = {
-  auto: {
-    series: "RIFLPBCIANM60NM",
-    // The person's rate at least this far above the average.
-    minGapBps: 200,
-    minBalanceCents: 750_000,
-    minRemainingMonths: 24,
-  },
-  // A card's balance moved to a personal loan, over REFI_CARD_TERM_MONTHS.
-  card: {
-    series: "TERMCBPER24NS",
-    minGapBps: 500,
-    minBalanceCents: 200_000,
-    // An origination fee taken from the loan, so it's borrowed too (inside Upgrade's
-    // 1.85%-9.99%).
-    feeShare: 0.05,
-  },
-  mortgage: {
-    long: "MORTGAGE30US",
-    short: "MORTGAGE15US",
-    // At or under this many months left, the 15-year average applies.
-    shortTermMonths: 180,
-    // The person's own new rate is unknown: the average plus this.
-    cushionBps: 25,
-    // And it has to come down at least this much from their rate.
-    minDropBps: 75,
-    // Closing costs as a share of the loan: lenders cite 3%-6%.
-    closingCostShare: { low: 0.03, high: 0.06 },
-    // Paid back by the lower payment within this many months, at the low end.
-    maxBreakEvenMonths: 36,
-  },
-} as const;
-// How sure an estimate is: the person's own rate and balance, a public average for the new one.
-export const REFI_ESTIMATE_CONFIDENCE = {
-  percent: 60,
-  reason: "your rate and balance against a national average, not a lender's quote",
-} as const;
-
 // --- Step 112: one-tap apply ------------------------------------------------------------
 
 // The stand-in lender funds an accepted loan this many days later (a real one says when).
@@ -726,18 +683,6 @@ export const BT_MIN_SAVING_CENTS = 10_000;
 export const BT_REMIND_DAYS: readonly number[] = [60, 30, 7];
 // The demo bank shows a moved card balance gone this many days after the transfer.
 export const DEMO_TRANSFER_DAYS = 2;
-// Round 15 (connectors roadmap, cards 7.2): a card offer is scored at what the person can pay,
-// not at whatever clears it in time. It's shown only if that pays it off within the intro months
-// plus this slack; otherwise the card says what payment it would take.
-export const BT_PROMO_SLACK_MONTHS = 2;
-// An offer that gives the fee as a percent with no minimum: the usual minimum is $5 or $10
-// (LendingTree), so the higher is assumed.
-export const BT_DEFAULT_FEE_MIN_CENTS = 1_000;
-// Past this many months a payment is taken never to clear the balance.
-export const BT_MAX_MONTHS = 600;
-// What applying does to a score, said the same way every time (myFICO).
-export const HARD_PULL_TEXT =
-  "Applying usually means a hard inquiry. For most people it takes less than five points off a FICO Score, counts for 12 months, and stays on the report up to two years.";
 
 // --- Step 115: mortgage ------------------------------------------------------------------
 
