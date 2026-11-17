@@ -63,8 +63,8 @@ export type Intent =
   | { kind: "safe_to_spend" }
   // category is the person's own words ("food"), matched loosely later; month YYYY-MM.
   | { kind: "spending"; category: string | null; month: string }
-  // days is null for the usual coming-up list.
-  | { kind: "coming_up"; days: number | null }
+  // days is null for the usual coming-up list; beforePayday: only what's due before the next pay.
+  | { kind: "coming_up"; days: number | null; beforePayday?: true }
   // findingId: one finding exactly (a clarifying question's button, spec step 88).
   | { kind: "act"; verb: ActVerb; target: string; findingId?: string }
   // Spec step 88. What one thing costs ("how much is Netflix"); a year's cost when asked.
@@ -317,6 +317,14 @@ function cleanTarget(text: string): string {
 // "a trip", "the new couch", "food": what the money is for, without the amount or the
 // month. "for …" or "on …".
 function purchaseOf(text: string): string | null {
+  // "a $300 flight home for thanksgiving": the flight, not what it's for (debugger 11-17).
+  const after =
+    /\bafford (?:(a|an|the|some) )?\$?\d[\d,.]*k? (?!(?:for|on|in|by|at|a|an|per|each|every|this|next|monthly|weekly|yearly|now|today|right|dollars?|bucks|grand)\b)([a-z][a-z' -]{0,40}?)(?= (?:for|in|by|next|this|on|during|until|at)\b|$)/.exec(
+      text,
+    );
+  if (after) {
+    return `${after[1] ? `${after[1]} ` : ""}${after[2].trim()}`;
+  }
   const match =
     /\b(?:for|on) ((?:a |an |the |my |our |some )?[a-z][a-z' -]{0,40}?)(?= (?:in|by|next|this|on|during|until|at|a|per|each|every|monthly|weekly)\b|$)/.exec(
       text,
@@ -430,6 +438,7 @@ const COMING_UP =
 const PAYDAY = /\b(?:pay ?days?|pay ?checks?|get(?:ting)? paid|salary|wages|next pay)\b/;
 // Payday as a deadline ("what bills are due before payday") or their own pay as an owner: not
 // when the next paycheck comes (11-03).
+const BEFORE_PAYDAY = /\b(?:before|until|till|til|b4) (?:my |the |next )*pay ?(?:day|check)\b/;
 const NOT_WHEN_PAID =
   /\b(?:before|until|till|til|by|after|b4) (?:my |the |next )*pay ?(?:day|check)\b|\bpay(?:ing)? myself\b/;
 // "What do I pay for?" is the list; "what do I pay for rent?" is the rent (debugger 11-16).
@@ -744,7 +753,11 @@ export function parseIntent(
     };
   }
   if (COMING_UP.test(text)) {
-    return { kind: "coming_up", days: /\bthis week\b/.test(text) ? CHAT_WEEK_DAYS : null };
+    const days = /\bthis week\b/.test(text) ? CHAT_WEEK_DAYS : null;
+    // "Due before payday" is a deadline, not the whole list (debugger 11-17).
+    return BEFORE_PAYDAY.test(text)
+      ? { kind: "coming_up", days, beforePayday: true }
+      : { kind: "coming_up", days };
   }
 
   const refund = REFUND.exec(text);
