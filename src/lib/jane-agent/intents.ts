@@ -513,6 +513,8 @@ export const PRONOUNS: readonly string[] = [
 ];
 // A name on its own is at most this many words.
 const ABOUT_MAX_WORDS = 3;
+const WHY_FEE =
+  /\bwhy\b.{0,40}\b(?:fees?|overdraft|maintenance|nsf|insufficient funds)\b|\bwhat(?:'s| is) (?:this|that|the) (?:\$[\d.,]+ )?fee\b/;
 const SPARE_CASH =
   /\b(?:extra|idle|spare|leftover|excess) (?:cash|money)\b|\bcash (?:that'?s )?(?:just )?(?:sitting|doing nothing)\b/;
 
@@ -794,6 +796,9 @@ export function parseIntent(
   // "Should I move my extra cash?": about their cash, so the idle cash finding answers when there
   // is one (debugger 11-17: no answer).
   if (SPARE_CASH.test(text)) return { kind: "about", target: "cash" };
+  // "Why is there a $6.95 fee?": about their fees, which the bank fee finding answers (debugger
+  // 11-17: no answer, three walks running).
+  if (WHY_FEE.test(text)) return { kind: "about", target: "fees" };
   const about = ABOUT.exec(text);
   if (about) return { kind: "about", target: cleanTarget(about[1]) };
   // A name on its own ("netflix", "the bank fees").
