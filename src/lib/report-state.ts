@@ -64,8 +64,26 @@ export function staleStatementsEnd(
 }
 
 // With nothing found in statements this old, "Nothing to fix right now" says more than Jane knows.
-export const nothingHeading = (oldStatements: string | null): string =>
-  oldStatements ? "Nothing found in these old statements" : "Nothing to fix right now";
+// So it does when most checks had too little to go on (debugger 11-17: one linked month, 7 of 11
+// "Not enough data yet" under "Nothing to fix right now").
+type Checked = readonly { status: string }[];
+const waitingOf = (checks: Checked) => checks.filter((c) => c.status === "not_enough_data").length;
+export const nothingHeading = (oldStatements: string | null, checks: Checked = []): string =>
+  oldStatements
+    ? "Nothing found in these old statements"
+    : waitingOf(checks) * 2 > checks.length
+      ? "Nothing found yet"
+      : "Nothing to fix right now";
+
+// What Jane read and how many checks could run.
+export function nothingLine(transactions: number, checks: Checked): string {
+  const waiting = waitingOf(checks);
+  const ran =
+    waiting === 0
+      ? `ran ${checks.length} checks.`
+      : `ran ${checks.length - waiting} of ${checks.length} checks; the rest don't have enough to go on yet.`;
+  return `Jane read ${transactions} transactions and ${ran} Tap one to see what it looked at.`;
+}
 
 // "We found $X a year", saying what comes back once as that (debugger 10-31: a $210 double
 // charge read "We found $210.00 a year").
