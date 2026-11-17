@@ -324,6 +324,21 @@ body {
   padding-right: env(safe-area-inset-right);
 }
 
+/* On a phone or any touch screen, a fold's row, a row of page links and the footer's links are
+   each a 44 px tap target, their words where they were (mobile pass 11-16: 20 px rows, stacked).
+   Ones already sized (min-h-) keep their own. */
+@media (pointer: coarse), (max-width: 639.98px) {
+  summary:not([class*="min-h-"]) {
+    padding-block: 0.75rem;
+  }
+  main nav:not(#main-nav) a:not([class*="min-h-"]),
+  footer a:not([class*="min-h-"]) {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+  }
+}
+
 /* Dark mode: the brand and status colours used for text in light mode are too dim on the
    near-black background (WCAG AA needs 4.5:1). These lighter shades replace them for text
    everywhere, so a page can't forget a dark: variant. Unlayered, so they win over the

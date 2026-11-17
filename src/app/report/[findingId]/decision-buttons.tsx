@@ -242,13 +242,16 @@ export function DecisionButtons({
           type="button"
           onClick={diyNow}
           disabled={state.kind === "sending"}
-          className="self-start text-sm font-medium text-emerald-700 hover:underline disabled:opacity-50"
+          className="inline-flex min-h-11 items-center self-start text-sm font-medium text-emerald-700 hover:underline disabled:opacity-50"
         >
           I&apos;ll do it myself: show me how
         </button>
       )}
       {!chosen && (
-        <Link href="/report" className="text-sm text-zinc-500 hover:underline">
+        <Link
+          href="/report"
+          className="inline-flex min-h-11 items-center self-start text-sm text-zinc-500 hover:underline"
+        >
           Decide later
         </Link>
       )}

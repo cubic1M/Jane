@@ -130,7 +130,10 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
     <>
       <AppHeader user={user} chatMessageId={chatMessageId} />
       <ViewTracker event="card_opened" findingId={finding.id} />
-      <Link href="/report" className="text-sm text-zinc-500 hover:underline">
+      <Link
+        href="/report"
+        className="inline-flex min-h-11 items-center self-start text-sm text-zinc-500 hover:underline"
+      >
         ‹ Back to your report
       </Link>
 
