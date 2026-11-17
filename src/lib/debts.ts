@@ -15,7 +15,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { parseMoneyToCents } from "@/lib/money";
 import { parseApr } from "@/planning/debt";
 import { DAY_MS, isoDay } from "@/lib/dates";
-import { todayOf } from "@/lib/today";
+import { localDate, timezoneOf, todayOf } from "@/lib/today";
 import { cachedCopy } from "@/lib/read-cache";
 
 // Every debt in one place (spec step 109), loaded for one person with the same code the
@@ -41,7 +41,10 @@ async function loadDebtsFrom(
   const db = scopedFor(userId, client);
   // The person's own day (src/lib/today.ts): at 7pm in Los Angeles UTC's is tomorrow, and the
   // Loans tree's "in the next month" lost a payment due today (gate C's calendar sweep, 11-15).
-  const asOf = await todayOf(userId, { client, now });
+  const [asOf, timezone] = await Promise.all([
+    todayOf(userId, { client, now }),
+    timezoneOf(userId, { client }),
+  ]);
   const since = new Date(Date.parse(`${asOf}T00:00:00Z`) - BNPL_LOOKBACK_DAYS * DAY_MS);
   const words = BNPL_PROVIDERS.flatMap((p) => p.words);
   const [listedAccounts, payments, typed, newLoans, transfers, loanPayments, copies, cardPayments] =
@@ -174,7 +177,8 @@ async function loadDebtsFrom(
         minimumPaymentCents: t.minimumPaymentCents,
         balanceCents: t.balanceCents,
         payoffDate: t.payoffDate ? isoDay(t.payoffDate) : null,
-        updatedOn: isoDay(t.updatedAt),
+        // Their day too: typed at 10pm in Los Angeles isn't "typed on" UTC's tomorrow (debugger 11-16).
+        updatedOn: localDate(t.updatedAt, timezone),
       })),
       paid: paidLoans(
         withoutCopies(loanPayments, copies, (p) => p.accountId).map(({ accountId: _, ...p }) => ({
