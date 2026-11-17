@@ -165,6 +165,15 @@ export type InsuranceTreeInput = {
   household: { name: string; policies: number }[];
   risks: { id: string; kind: RiskKind; question: string }[];
   health: { metCents: number; deductibleCents: number } | null;
+  // Jane's open suggestions about missing cover (src/detectors), by topic: one the profile's gaps
+  // don't show yet is listed beside them, where its Yes opens (./landing.ts).
+  suggested?: { topic: string; short: string }[];
+};
+
+// The suggestions about missing cover, and the gap each is about: its item's id is the gap's.
+export const SUGGESTED_GAP: Readonly<Record<string, GapKey>> = {
+  auto_insurance: "auto",
+  renters_insurance: "renters",
 };
 
 export function insuranceTree(input: InsuranceTreeInput): AreaTree {
@@ -299,6 +308,24 @@ export function insuranceTree(input: InsuranceTreeInput): AreaTree {
         summary: seen ? `${seen.carrier} is in your payments. Confirm it so it counts.` : g.why,
       });
     });
+
+  // A suggestion about missing cover that the profile doesn't show as a gap (a car guessed from
+  // gas charges): its Yes opened "Cover that looks missing" with nothing about a car there
+  // (debug 2, 11-16: "Check your car is insured, protect $100,000").
+  const listedGaps = new Set<string>(input.gaps.map((g) => g.key));
+  for (const s of input.suggested ?? []) {
+    const key = SUGGESTED_GAP[s.topic];
+    if (!key || listedGaps.has(key)) continue;
+    listedGaps.add(key);
+    missing.push(
+      item("missing", key, {
+        label: GAP_LABELS[key],
+        status: "look",
+        figure: "Check it",
+        summary: s.short,
+      }),
+    );
+  }
 
   const savings = input.savings.map((s) =>
     item("savings", s.id, {

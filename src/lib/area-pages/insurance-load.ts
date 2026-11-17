@@ -15,7 +15,8 @@ import { savingLine } from "@/lib/jane-agent/insurance/saving-words";
 import { askCallBody, callResultBody } from "@/lib/jane-agent/insurance/done-by-jane-words";
 import { coverBody, coverEventRef } from "@/lib/jane-agent/insurance/cover-words";
 import { loadCoverage, needKey } from "@/lib/area-pages/insurance-coverage";
-import { insuranceTree } from "@/lib/area-pages/insurance";
+import { SUGGESTED_GAP, insuranceTree } from "@/lib/area-pages/insurance";
+import { SAID_YES } from "@/lib/area-pages/tree";
 import { todayOf } from "@/lib/today";
 
 // Everything the Insurance tree is built from (docs/design/area-pages.md), loaded once for the
@@ -77,7 +78,13 @@ export async function loadInsuranceArea(
   ];
   const payingTwice = cards.duplicates.filter((d) => d.status === "new" || d.status === "shown");
 
-  const accounts = await scopedFor(userId).accounts.findMany({ select: { type: true } });
+  const [accounts, suggested] = await Promise.all([
+    scopedFor(userId).accounts.findMany({ select: { type: true } }),
+    scopedFor(userId).suggestions.findMany({
+      where: { topic: { in: Object.keys(SUGGESTED_GAP) }, status: { in: [...SAID_YES] } },
+      select: { topic: true, short: true, title: true },
+    }),
+  ]);
 
   // The tree: the same records, a few words and a figure each.
   const area = insuranceTree({
@@ -118,6 +125,7 @@ export async function loadInsuranceArea(
     })),
     household: family.rows.map((r) => ({ name: r.name, policies: r.policies.length })),
     risks: risks.map((r) => ({ id: r.id, kind: r.kind, question: riskQuestion(r) })),
+    suggested: suggested.map((x) => ({ topic: x.topic, short: x.short || x.title })),
     health: healthYear
       ? {
           metCents: healthYear.progress.deductibleMetCents,
