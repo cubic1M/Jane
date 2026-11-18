@@ -5,7 +5,7 @@ import { confidenceOf, counted, type Source } from "@/profile/confidence";
 import { spendingMonthOf } from "@/planning/idle-cash";
 import { monthsForRate, type Fact, type ProfileInput, type ProfileTx } from "@/profile/build";
 import { HEADLINE_MAX, SHORT_MAX, type Confidence, type WorthKind } from "./contract";
-import { withoutAchDetails } from "@/data-sources/merchant";
+import { withoutAchDetails, withoutAchEntry } from "@/data-sources/merchant";
 import { formatCents, formatWholeDollars } from "@/lib/money";
 
 // What detectors share. Pure.
@@ -117,23 +117,25 @@ export function cashLine(cents: number, verb: "keep" | "hold" = "keep"): string 
 // A payee as a person would say it: "NETFLIX.COM" is Netflix, "DISNEY PLUS" is Disney Plus,
 // "VERIZON WIRELESS DES:PAYMENTREC ID:XXXXX" is Verizon Wireless.
 export function nice(description: string): string {
-  return (
-    withoutAchDetails(description)
-      // An ACH entry's code and company ID, as the merchant names leave them out ("GEICO AUTO PPD
-      // ID: 3334445556" read "Geico Auto Ppd Id:" on a car cover card; debugger 11-18).
-      .replace(/\s+\b(?:PPD|WEB|CCD|TEL)\s+ID:?\s*\S*/g, "")
-      // A customer-service number and the state after it ("COMCAST XFINITY 800-266-2278",
-      // "DISNEY PLUS 888-905-7888 CA"; night QA 10-30).
-      .replace(/\s+\(?\d{3}\)?[-. ]?\d{3}[-. ]?\d{4}(?:\s+[A-Z]{2})?\s*$/, "")
-      // Or a toll-free one spelled in letters, and the state after it ("COMCAST CABLE COMM
-      // 800-COMCAST PA": a student's bill read "Comcast Cable Comm 800-Comcast Pa", 11-15).
-      .replace(/\s+8(?:00|33|44|55|66|77|88)-[A-Z]{4,}[A-Z0-9]*(?:\s+[A-Z]{2})?\s*$/, "")
-      .replace(/\.com$/i, "")
-      .replace(/\*.*$/, "")
-      .trim()
-      .toLowerCase()
-      .replace(/\b([a-z])/g, (c) => c.toUpperCase())
-  );
+  const line = withoutAchDetails(description)
+    // An ACH entry's code and company ID, as the merchant names leave them out ("GEICO AUTO PPD
+    // ID: 3334445556" read "Geico Auto Ppd Id:" on a car cover card; debugger 11-18).
+    .replace(/\s+\b(?:PPD|WEB|CCD|TEL)\s+ID:?\s*\S*/g, "")
+    // A customer-service number and the state after it ("COMCAST XFINITY 800-266-2278",
+    // "DISNEY PLUS 888-905-7888 CA"; night QA 10-30).
+    .replace(/\s+\(?\d{3}\)?[-. ]?\d{3}[-. ]?\d{4}(?:\s+[A-Z]{2})?\s*$/, "")
+    // Or a toll-free one spelled in letters, and the state after it ("COMCAST CABLE COMM
+    // 800-COMCAST PA": a student's bill read "Comcast Cable Comm 800-Comcast Pa", 11-15).
+    .replace(/\s+8(?:00|33|44|55|66|77|88)-[A-Z]{4,}[A-Z0-9]*(?:\s+[A-Z]{2})?\s*$/, "")
+    .replace(/\.com$/i, "")
+    .replace(/\*.*$/, "")
+    .trim();
+  // And the entry's word for what it is ("T-MOBILE AUTO PAY" read "T-Mobile Auto Pay" on a bill
+  // card; debugger 11-18), as the merchant names leave it out.
+  return withoutAchEntry(line)
+    .trim()
+    .toLowerCase()
+    .replace(/\b([a-z])/g, (c) => c.toUpperCase());
 }
 
 // "Netflix, Hulu and Disney Plus".
