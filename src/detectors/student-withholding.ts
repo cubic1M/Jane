@@ -1,6 +1,13 @@
 import { DETECTOR_RATES } from "@/config/detectors";
 import { TAX_SET_ASIDE } from "@/config/tax-set-aside";
-import { ESTIMATED_TAX, FILING, W4 } from "@/config/student-taxes";
+import {
+  ESTIMATED_TAX,
+  FILING,
+  IRS_REFUND,
+  REFUND_SHOWN_FROM_CENTS,
+  SOURCES,
+  W4,
+} from "@/config/student-taxes";
 import type { FilingStatus } from "@/config/tax";
 import { FEDERAL_BRACKETS, STANDARD_DEDUCTION } from "@/config/tax-rates";
 import { dayLabel } from "@/lib/day-label";
@@ -229,8 +236,60 @@ const extensionNotToPay: Detector = {
   },
 };
 
+// A federal refund beside a paycheck (the gap pass: an upload showed $842 from the IRS in March and a
+// steady paycheck, and Jane said nothing): last year's withholding ran ahead of the tax by about that
+// much, unless a refundable credit made it. What's withheld comes back only after filing; Form W-4
+// sets it, and the IRS's estimator fills one in.
+const refundWithholding: Detector = {
+  capability: "taxes",
+  topic: "refund_withholding",
+  covers: ["tax_withholding"],
+  needs: [],
+  detect({ profile, data }): Suggestion | null {
+    const year = Number(profile.today.slice(0, 4));
+    const refunds = data.transactions.filter(
+      (t) =>
+        t.amountCents < 0 &&
+        t.date.startsWith(`${year}-`) &&
+        t.date <= profile.today &&
+        // The IRS's own wording, or a refund the bank filed as a tax refund that names the IRS.
+        (IRS_REFUND.test(t.description.toUpperCase()) ||
+          (t.pfc === "INCOME_TAX_REFUND" && /\bIRS\b/i.test(t.description))),
+    );
+    const refund = sumCents(refunds);
+    if (refund < REFUND_SHOWN_FROM_CENTS) return null;
+    const money = studentMoney(data);
+    // Beside a paycheck, and not beside a fellowship, whose tax the refund says nothing about.
+    if (money.wages.length === 0 || money.schoolDeposits.length > 0) return null;
+    const monthly = Math.round(refund / 12);
+    const when = dayLabel(refunds[0].date, { long: true, year: true });
+    return suggestion("taxes", "refund_withholding", {
+      title: `Your ${year - 1} federal refund was ${formatCents(refund)}: about ${formatCents(monthly)} a month withheld beyond the tax`,
+      headline: `Check your withholding: last refund ${formatWholeDollars(refund)}`,
+      short: `A ${formatCents(refund)} IRS refund on ${dayLabel(refunds[0].date)} beside your pay: about ${formatCents(monthly)} a month.`,
+      worthCents: refund,
+      worthKind: "earns",
+      // It comes back at filing anyway; having it in each paycheck is worth a share of it.
+      rankCents: Math.round(refund * DETECTOR_RATES.tax.rankShareOfBill),
+      confidence: weakest([
+        evidence("seen", profile.months, refunds.length, "IRS refunds"),
+        {
+          percent: 60,
+          reason:
+            "a refund can come from a credit rather than withholding, and this year's pay may differ",
+        },
+      ]),
+      urgency: profile.today.slice(5, 7) === "01" ? "soon" : "later",
+      why: `The IRS paid you ${formatCents(refund)} on ${when}, for ${year - 1}. A refund is tax taken from pay beyond the year's tax, or a refundable credit: on withholding alone, about ${formatCents(monthly)} a month of your pay went to the IRS early. Form W-4 sets how much your employer withholds, and the IRS's Tax Withholding Estimator fills one in from your pay; what's withheld comes back only after a return. If this year's pay or credits differ from last year's, so will the refund.`,
+      action: { label: "See your taxes", href: "/taxes" },
+      more: [{ label: "IRS: Tax Withholding Estimator", href: SOURCES.withholdingEstimator.url }],
+    });
+  },
+};
+
 export const STUDENT_WITHHOLDING_DETECTORS: readonly Detector[] = [
   partYearWithholding,
   twoJobs,
   extensionNotToPay,
+  refundWithholding,
 ];

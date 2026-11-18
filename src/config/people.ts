@@ -45,6 +45,8 @@ export const SUGGESTION_TOPICS = [
   "withholding_part_year",
   "withholding_two_jobs",
   "filing_extension",
+  // A federal refund beside a paycheck (src/detectors/student-withholding.ts).
+  "refund_withholding",
   // Fact versions of advice-only cards (src/detectors/tax-facts.ts).
   "social_security_taxed",
   "company_stock_share",
