@@ -1,7 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser, waitForFullScan } from "./db";
+import { datedToToday } from "./fixture-dates";
 import { waitForImport } from "./import-wait";
 import { signInWith } from "./session";
+import { hydrated } from "./waits";
 
 // Mobile pass (manager, 11-16): right after an upload, the first thing a new student sees on Home,
 // "Done: 56 transactions read · See findings ✕", floated over the page at the bottom of the screen
@@ -29,7 +31,12 @@ test("after an upload the notice covers nothing on a phone, and a finding's link
   const user = await signedInUser("user");
   userId = user.userId;
   await signInWith(context, user.sessionToken, baseURL);
-  for (const file of ["e2e/fixtures/messy/checking.csv", "e2e/fixtures/messy/card-aug-oct.csv"]) {
+  // Dated to today, so what Jane finds in them doesn't change as the calendar moves on.
+  const statements = datedToToday([
+    "e2e/fixtures/messy/checking.csv",
+    "e2e/fixtures/messy/card-aug-oct.csv",
+  ]);
+  for (const file of statements) {
     await page.goto("/import");
     await page.locator('input[type="file"]').setInputFiles(file);
     await page.getByRole("button", { name: "Preview" }).click();
@@ -81,8 +88,14 @@ test("after an upload the notice covers nothing on a phone, and a finding's link
   for (const href of items.slice(0, 20)) {
     await page.goto(href);
     // The steps show once the person says they'll do it themselves (a real account's Yes).
+    // The buttons come a moment after the page, and a tap before they've hydrated does nothing
+    // (main 11-18: read at once, no button; or four taps and no decision sent).
     const how = page.getByRole("button", { name: /show me how/i }).first();
-    if (await how.count()) await how.click();
+    await how.waitFor({ timeout: 15_000 }).catch(() => {});
+    if (await how.count()) {
+      await hydrated(how);
+      await how.click();
+    }
     const out = page.locator("#diy a[target=_blank]").first();
     await out.waitFor({ timeout: 10_000 }).catch(() => {});
     if (!(await out.count())) continue;
