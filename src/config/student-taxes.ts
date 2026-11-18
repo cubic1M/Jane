@@ -59,6 +59,10 @@ export const SOURCES = {
     "https://www.irs.gov/businesses/small-businesses-self-employed/self-employment-tax-social-security-and-medicare-taxes",
     "Self-employment tax: 15.3% (12.4% Social Security, 2.9% Medicare); Schedule SE from $400 of net earnings; for 2026 the first $184,500 of wages and net earnings for Social Security",
   ),
+  ftb540nrCa: src(
+    "https://www.ftb.ca.gov/forms/2025/2025-540nr-ca-instructions.html",
+    "Schedule CA (540NR) instructions (2025): a part-year resident is taxed on all income while a resident and only on California-source income while a nonresident; Form 540NR is the return for a nonresident or part-year resident",
+  ),
   pub501: src(
     "https://www.irs.gov/publications/p501",
     "Pub. 501 (2025 returns): for a dependent's standard deduction, earned income includes any part of a taxable scholarship or fellowship grant",
@@ -305,3 +309,7 @@ export const SIDE_INCOME = {
   appWords: /\b(?:VENMO|CASH ?APP|PAYPAL)\b.*\b(?:CASHOUT|CASH OUT|TRANSFER|INST XFER)\b/,
   sources: ["form1099K", "seTax"],
 } as const;
+
+// Tuition paid by December 31 for an academic period that starts by the end of March counts toward
+// this year's education credits (Form 8863 instructions): said on the card from this day.
+export const TUITION_TIMING_FROM = "11-01";

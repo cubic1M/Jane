@@ -121,6 +121,7 @@ export const TAX_TOPIC_MONTH: Readonly<Record<string, number>> = {
   social_security_taxed: 1,
   stock_vest_tax: 6,
   side_income_tax: 1,
+  state_move: 2,
   charity_receipts: 1,
   social_security_tax: 1,
   s_corp_election: 2,

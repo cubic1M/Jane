@@ -214,6 +214,25 @@ export const STUDENT_SHAPES: Readonly<Record<string, () => StatementFile[]>> = {
       },
     ];
   },
+  // A first-year graduate student who moved from Austin to Stanford in late September. Three months.
+  "moved-to-stanford": () => [
+    {
+      name: "chase-moved.csv",
+      text: chaseChecking([
+        ...every("2026-08-18", "2026-09-24", 4).map((date) => ({
+          date,
+          description: "H-E-B #0412 AUSTIN TX",
+          amount: -38.2,
+        })),
+        ...every("2026-08-20", "2026-09-24", 9).map((date) => ({
+          date,
+          description: "TORCHYS TACOS AUSTIN TX",
+          amount: -14.5,
+        })),
+        ...everyday("2026-09-28", STUDENT_TODAY),
+      ]),
+    },
+  ],
   // A master's student who drives for DoorDash and repays a student loan. Two months.
   "gig-two-months": () => {
     const from = "2026-09-18";

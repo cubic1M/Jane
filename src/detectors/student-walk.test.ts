@@ -39,6 +39,7 @@ const EXPECTED: Record<string, { must: string[]; never: string[] }> = {
     must: ["student_loan_interest", "ca_renters_credit"],
     never: ["stipend_tax", "education_credit"],
   },
+  "moved-to-stanford": { must: ["state_move"], never: ["stipend_tax"] },
   // On campus (no renter's credit); RA pay from October withheld as if it ran all year.
   "ra-two-months": {
     must: ["withholding_part_year"],

@@ -449,3 +449,12 @@ before costs. Money cashed out of a payment app counts only once they say it's w
 (`app_income`, one tap, "It decides…"): the IRS doesn't count friends paying back for shared costs as
 income. A 1099-K comes only above $20,000 and 200 payments; the income counts either way. Not beside
 the engine's own `tax_not_yet_paid` (a real account whose estimate already shows the gap).
+
+### A move into or out of California (`src/detectors/state-move.ts`, gap pass)
+
+`state_move`: the months before mostly in one state and the months after mostly in another (located
+card purchases, at least two a month, `stateMove` in `src/profile/home-state.ts`), when one side is
+California: California taxes a part-year resident on all income while a resident and only
+California-source income while not, on Form 540NR (FTB's Schedule CA (540NR) instructions). No
+dollars; `required`. The education credit card also says, from November 1, that tuition paid by
+December 31 for a term starting by the end of March counts toward this year's credits (Form 8863).

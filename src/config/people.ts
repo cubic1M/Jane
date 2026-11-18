@@ -51,6 +51,8 @@ export const SUGGESTION_TOPICS = [
   "stock_vest_tax",
   // Side income beside a paycheck (src/detectors/side-income.ts).
   "side_income_tax",
+  // A move into or out of California during the year (src/detectors/state-move.ts).
+  "state_move",
   "retirement_self_employed",
   "income_smoothing",
   "health_insurance",
