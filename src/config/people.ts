@@ -81,6 +81,10 @@ export const SUGGESTION_TOPICS = [
   // Connectors roadmap round 15: the federal autopay rate cut, before its deadline.
   "student_autopay",
   "student_save_ending",
+  // Student money (suggest-money lane, 11-18; src/detectors/student-money.ts).
+  "bill_gap_ahead",
+  "stanford_bill_due",
+  "card_from_cash",
   // Spec step 263: spending, bills and cash.
   "duplicate_subscription",
   "price_increase",

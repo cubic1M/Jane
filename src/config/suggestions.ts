@@ -120,6 +120,13 @@ export const MONEY_GROUPS: Readonly<Record<string, readonly string[]>> = {
   // $353/yr" and "save $298/yr" for one $1,850 card balance, side by side in the dock).
   balance_transfer: ["interest"],
   hardship_plan: ["interest", "fees"],
+  // Card interest paid while cash sits: the same interest card_interest counts.
+  card_from_cash: ["interest"],
+  // A bill ahead the cash won't cover and the Stanford bill's date: one bill, said once; and cash
+  // short for the month's bills is the same shortfall.
+  bill_gap_ahead: ["bill_ahead", "cash_short"],
+  stanford_bill_due: ["bill_ahead"],
+  low_balance: ["cash_short"],
   bank_fees: ["fees"],
   late_fees: ["fees"],
 };
