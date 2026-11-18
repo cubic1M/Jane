@@ -23,7 +23,11 @@ export default async function ContinueSignInPage({
   if (!token || !ADDRESS.test(email)) redirect("/login");
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-3xl font-semibold tracking-tight">Sign in as {email}?</h1>
+      {/* An address is one long word: on a phone it ran off the edge, "…@stanford.e" (debugger
+          11-17), so it may break anywhere. */}
+      <h1 className="text-3xl font-semibold tracking-tight [overflow-wrap:anywhere]">
+        Sign in as {email}?
+      </h1>
       <p className="text-zinc-600 dark:text-zinc-400">
         Only continue if this is your email and you asked for this link. If someone sent it to you,
         it signs you in to their account, and anything you add would be theirs to see.
