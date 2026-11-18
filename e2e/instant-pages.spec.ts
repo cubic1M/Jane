@@ -380,9 +380,9 @@ test.describe("what a person has seen", () => {
     const netWorth = page.locator('[data-net-worth-chart] [data-hub-number="net-worth"]');
     const show = page
       .locator("[data-net-worth-chart]")
-      .getByRole("button", { name: /SHOW VALUE.* of net worth/ });
+      .getByRole("button", { name: "Show value of net worth" });
     const hidden = async () => {
-      await expect(netWorth).toContainText("*****");
+      await expect(netWorth).toContainText("•••••");
       for (const number of ["net-worth", "safe", "saved"]) {
         await expect(page.locator(`[data-hub-number="${number}"]`).first()).not.toContainText("$");
       }
@@ -410,7 +410,7 @@ test.describe("what a person has seen", () => {
   // Shows Home's net worth and says what it is.
   async function shownNetWorth(page: Page) {
     const chart = page.locator("[data-net-worth-chart]");
-    await chart.getByRole("button", { name: /SHOW VALUE.* of net worth/ }).click();
+    await chart.getByRole("button", { name: "Show value of net worth" }).click();
     const figure = chart.locator('[data-hub-number="net-worth"]');
     await expect(figure).toHaveText(/\$[\d,]+/);
     return { figure, text: await figure.innerText() };

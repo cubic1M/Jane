@@ -101,7 +101,7 @@ test("the hub shows the money at a glance, the month ahead and every area", asyn
   await tiles.nth(1).click();
   const insurance = page.locator('[data-giant-area="insurance"]');
   await expect(insurance).toBeVisible();
-  await insurance.getByRole("link", { name: "[OPEN THE PAGE ›]" }).click();
+  await insurance.getByRole("link", { name: "Open the page ›" }).click();
   await expect(page).toHaveURL("/insurance");
 });
 
@@ -160,13 +160,13 @@ test("the areas are fixed tiles that each open into their tree, and a feature's 
   await expect(tree.locator("[data-giant-area]")).toHaveCount(0);
   await taxes.click();
 
-  // A feature opens in place: what it is, [OPEN], and its Ask Jane box.
+  // A feature opens in place: what it is, Open, and its Ask Jane box.
   const feature = area.locator("[data-giant-feature]").first();
   const toggle = feature.getByRole("button").first();
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-expanded", "true");
   const detail = feature.locator("[data-giant-detail]");
-  await expect(detail.getByRole("link", { name: "[OPEN]" })).toBeVisible();
+  await expect(detail.getByRole("link", { name: "Open", exact: true })).toBeVisible();
 
   // Its Ask Jane box sends the question straight into the chat: no Send to press.
   const ask = detail.locator("[data-ask-jane]");
@@ -181,7 +181,7 @@ test("the areas are fixed tiles that each open into their tree, and a feature's 
   const messages = chat.getByRole("list", { name: "Messages" }).getByRole("listitem");
   await expect(chat.getByText(question).first()).toBeVisible({ timeout: 30_000 });
   // Jane answers, and the box says it was asked; asked again, it doesn't send twice.
-  await expect(ask).toContainText("ASKED", { timeout: 60_000 });
+  await expect(ask).toContainText("Asked ✓", { timeout: 60_000 });
   const count = await messages.count();
   // On a phone the sheet is over the page: close it to reach the box again.
   if (isMobile) await page.getByRole("button", { name: "Close chat" }).click();

@@ -183,9 +183,9 @@ export function CalcPopup({
               onClose();
               trigger.current?.focus();
             }}
-            className="text-xs font-semibold tracking-wider hover:underline"
+            className="text-sm font-medium underline underline-offset-4"
           >
-            [CLOSE]
+            Close
           </button>
         </div>
         {children}

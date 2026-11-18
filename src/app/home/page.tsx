@@ -271,9 +271,9 @@ async function HubContent({ searchParams }: { searchParams: PageProps<"/home">["
         href="/close"
         prefetch={false}
         data-home-close=""
-        className="self-start font-mono text-sm font-medium underline-offset-2 hover:underline"
+        className="self-start text-sm font-medium underline-offset-2 hover:underline"
       >
-        [CLOSE] Last month&apos;s close ›
+        Last month&apos;s close ›
       </Link>
 
       <NeedsYou waiting={home.waitingOnYou} unreadAlerts={home.unreadAlerts} />

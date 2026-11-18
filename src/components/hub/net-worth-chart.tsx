@@ -450,9 +450,9 @@ export function NetWorthChart({
               setFocusDot(null);
               shut();
             }}
-            className="inline-flex min-h-11 items-center text-xs font-semibold tracking-wider hover:underline"
+            className="inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4"
           >
-            {expanded ? "[CLOSE]" : "[EXPAND]"}
+            {expanded ? "Close" : "Expand"}
             <span className="sr-only">
               {expanded ? " the net worth chart" : " the net worth chart to see every movement"}
             </span>
@@ -983,7 +983,8 @@ function Brush({
         onClick={() => onZoom(2)}
         className="inline-flex min-h-11 min-w-11 items-center justify-center text-sm font-semibold hover:underline"
       >
-        [−]<span className="sr-only">Zoom out</span>
+        <span aria-hidden="true">−</span>
+        <span className="sr-only">Zoom out</span>
       </button>
       <div
         ref={track}
@@ -1075,7 +1076,8 @@ function Brush({
         onClick={() => onZoom(0.5)}
         className="inline-flex min-h-11 min-w-11 items-center justify-center text-sm font-semibold hover:underline"
       >
-        [+]<span className="sr-only">Zoom in</span>
+        <span aria-hidden="true">+</span>
+        <span className="sr-only">Zoom in</span>
       </button>
     </div>
   );
@@ -1195,7 +1197,8 @@ function DaySummary({
           onClick={onClose}
           className="-my-1 inline-flex min-h-8 items-center font-semibold hover:underline"
         >
-          [X]<span className="sr-only"> Close</span>
+          <span aria-hidden="true">×</span>
+          <span className="sr-only">Close</span>
         </button>
       </div>
       <ul className="flex flex-col gap-0.5">
@@ -1225,9 +1228,9 @@ function DaySummary({
         aria-expanded={details}
         aria-controls={details ? "net-worth-day-details" : undefined}
         onClick={onDetails}
-        className="self-start font-semibold tracking-wider hover:underline"
+        className="self-start font-medium underline underline-offset-4"
       >
-        {details ? "[LESS]" : "[MORE DETAILS]"}
+        {details ? "Less" : "More details"}
       </button>
     </div>
   );
@@ -1317,7 +1320,8 @@ function DetailsBody({
           onClick={onClose}
           className="-my-1 inline-flex min-h-8 items-center font-semibold hover:underline"
         >
-          [X]<span className="sr-only"> Close the details</span>
+          <span aria-hidden="true">×</span>
+          <span className="sr-only">Close the details</span>
         </button>
       </div>
       <ul className="flex flex-col gap-1.5">

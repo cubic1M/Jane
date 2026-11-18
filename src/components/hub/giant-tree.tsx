@@ -14,7 +14,7 @@ import { Blinded } from "./blinded";
 // row of six on a computer and two by three on a phone: nothing to drag, pan or zoom, and no
 // "Jane" box above them. A tile opens its area's tree below the row: the area, its branches
 // side by side (as many columns as fit), and each branch's features under it, every name in
-// full, wrapping rather than cut. A feature opens in place: what it is, [OPEN], and an "Ask
+// full, wrapping rather than cut. A feature opens in place: what it is, Open, and an "Ask
 // Jane" box that sends its question straight into the side chat, a dotted line drawn from the
 // box to the question as it lands (founder: "it directly sends the question to the chat on the
 // right, connected with an animated dotted curve, without the user having to press send").
@@ -193,8 +193,11 @@ function AreaTree({
           </li>
         ))}
       </ul>
-      <Link href={area.href} className="mt-3 self-end text-sm font-semibold hover:underline">
-        [OPEN THE PAGE ›]
+      <Link
+        href={area.href}
+        className="mt-3 self-end text-sm font-medium underline underline-offset-4"
+      >
+        Open the page ›
       </Link>
     </div>
   );
@@ -234,8 +237,8 @@ function Feature({
             </span>
           )}
           {feature.forYou && (
-            <span className="shrink-0 text-[10px] font-semibold tracking-wider">
-              <span aria-hidden="true">[YOU]</span>
+            <span className="shrink-0 text-xs font-semibold">
+              <span aria-hidden="true">You</span>
               <span className="sr-only">, for you</span>
             </span>
           )}
@@ -245,8 +248,11 @@ function Feature({
         <div data-giant-detail={id} className="ml-3 flex flex-col gap-2 pt-2 pl-2 text-sm">
           {feature.line && <p className="text-zinc-700 dark:text-zinc-300">{feature.line}</p>}
           {feature.href && (
-            <Link href={feature.href} className="self-start font-semibold hover:underline">
-              [OPEN]
+            <Link
+              href={feature.href}
+              className="self-start font-medium underline underline-offset-4"
+            >
+              Open
             </Link>
           )}
           {feature.ask && <AskBox key={id} question={feature.ask} />}
@@ -343,16 +349,14 @@ function AskBox({ question }: { question: string }) {
         disabled={busy}
         className="invert-scope flex w-full max-w-sm flex-col gap-1 border-2 border-zinc-500 bg-zinc-950 p-2 text-left text-sm text-white shadow-lg disabled:opacity-80 dark:bg-zinc-50 dark:text-zinc-950"
       >
-        <span className="text-xs font-semibold tracking-wider">
-          <span aria-hidden="true">[</span>
+        <span className="text-xs font-semibold">
           {busy
-            ? "SENDING…"
+            ? "Sending…"
             : state === "finding"
-              ? "FINDING IT…"
+              ? "Finding it…"
               : state === "done"
-                ? "ASKED ✓ · TAP TO SEE"
-                : "ASK JANE"}
-          <span aria-hidden="true">]</span>
+                ? "Asked ✓ · Tap to see"
+                : "Ask Jane"}
           <span className="sr-only">: </span>
         </span>
         <span className="[overflow-wrap:anywhere]">{question}</span>
