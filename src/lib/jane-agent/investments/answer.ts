@@ -152,7 +152,7 @@ export async function answerInvestments(
         loadInvestments(userId, { client, now }),
         brokerageAsks(scopedFor(userId, client), now),
       ]);
-      return holdingsReply(data, intent.account, sent);
+      return holdingsReply(data, intent.account, sent, { sent: intent.sent });
     }
     case "profile":
       return profileReply(await profileOf(userId, { client }), asOf);
