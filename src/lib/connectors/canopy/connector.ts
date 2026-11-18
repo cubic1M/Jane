@@ -2,6 +2,7 @@ import { CANOPY } from "@/config/connectors";
 import type { Connector, LinkEvent } from "../types";
 import { withCredential } from "../vault";
 import { canopyHttp } from "./api";
+import { todayOf } from "@/lib/today";
 import { samplePull } from "./sample";
 import { savePull } from "./save";
 
@@ -69,5 +70,6 @@ export const sandboxCanopyConnect: Connector = {
   scopes: ["read_policies"],
   sandbox: true,
   movesMoney: false,
-  read: ({ userId, client, now }) => savePull(userId, samplePull(now), { client }),
+  read: async ({ userId, client, now }) =>
+    savePull(userId, samplePull(await todayOf(userId, { client, now })), { client }),
 };

@@ -71,8 +71,7 @@ describe("a Canopy pull in Jane's insurance", () => {
   });
 
   it("moves the sample's terms so the car renews in 21 days", () => {
-    const now = new Date("2026-11-18T15:00:00Z");
-    const sampleCar = policiesFromPull(samplePull(now)).find((p) => p.kind === "auto")!;
+    const sampleCar = policiesFromPull(samplePull("2026-11-18")).find((p) => p.kind === "auto")!;
     expect(sampleCar.renewalDate).toBe("2026-12-09");
     expect(sampleCar.termMonths).toBe(6);
   });

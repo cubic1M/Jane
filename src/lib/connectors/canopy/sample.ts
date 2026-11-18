@@ -158,15 +158,16 @@ const shift = (iso: string | null, days: number) =>
 // The same pull for a sample-data person, its terms moved so the car renews in 21 days and the
 // home in 200: the car's renewal reshop window (30 days, RESHOP_DAYS_BEFORE_RENEWAL_BY_KIND)
 // catches it.
-export function samplePull(now: Date): CanopyPull {
+// `today` is the person's own day (todayOf), YYYY-MM-DD.
+export function samplePull(today: string): CanopyPull {
   const day = (iso: string) => Date.parse(iso.slice(0, 10));
-  const today = Date.parse(now.toISOString().slice(0, 10));
+  const day0 = Date.parse(`${today}T00:00:00Z`);
   return {
     ...CANOPY_DOCS_PULL,
     policies: CANOPY_DOCS_PULL.policies.map((policy) => {
       const target = policy.policy_type === "AUTO" ? 21 : 200;
       const days = policy.expiry_date
-        ? Math.round((today - day(policy.expiry_date)) / 86_400_000) + target
+        ? Math.round((day0 - day(policy.expiry_date)) / 86_400_000) + target
         : 0;
       return {
         ...policy,
