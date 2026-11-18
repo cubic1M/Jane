@@ -20,6 +20,7 @@ import { STUDENT_MONEY_DETECTORS } from "@/detectors/student-money";
 import { STUDENT_CREDIT_CASH_DETECTORS } from "@/detectors/student-credit-cash";
 import { STUDENT_LIFE_DETECTORS } from "@/detectors/student-life";
 import { STUDENT_LOANS_HELD_DETECTORS } from "@/detectors/student-loans-held";
+import { STUDENT_BENEFIT_DETECTORS } from "@/detectors/student-benefits";
 import { FAMILY_CREDIT_DETECTORS } from "@/detectors/family-credit";
 import { FIGURES_DETECTORS } from "@/detectors/figures";
 import { FIT_DETECTORS } from "@/detectors/fit";
@@ -98,6 +99,7 @@ export const DETECTOR_FAMILIES: readonly { key: FamilyKey; detectors: readonly D
       ...STUDENT_CREDIT_CASH_DETECTORS,
       ...STUDENT_LIFE_DETECTORS,
       ...STUDENT_LOANS_HELD_DETECTORS,
+      ...STUDENT_BENEFIT_DETECTORS,
     ],
   },
 ];
