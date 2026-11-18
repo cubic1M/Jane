@@ -91,6 +91,18 @@ const PAYMENT_APP_MEMO = / (?:FOR|ON|REF|CONF|MEMO)(?: .*)?$/;
 // A last word that says what the money was for, not who got it.
 const PAYMENT_APP_PURPOSE = / (?:RENT|PAYMENT|PMT)$/;
 
+// Wells Fargo's transfer to a company or person, "ONLINE TRANSFER TO OAKWOOD RESIDENTIAL REF
+// #IB0X4K2P9" (and "… REF #IBE… ON 11/01/26"): the payee, not "Online Transfer To Oakwood
+// Residential Ref" (debugger 11-17, rent in a student's bills). Only with the bank's reference after
+// it, so an own-account move written without one ("ONLINE TRANSFER TO SAVINGS") keeps its name. Run
+// on the cleaned words; prisma/migrations/20270518000000_merchant_without_online_transfer moves
+// saved keys the same way: keep them in step.
+const ONLINE_TRANSFER = /^ONLINE TRANSFER TO (.+?) REF(?: ON)?$/;
+
+function withoutOnlineTransfer(text: string): string {
+  return ONLINE_TRANSFER.exec(text)?.[1] ?? text;
+}
+
 export function withoutPaymentApp(text: string): string {
   const match = PAYMENT_APP.exec(text);
   if (!match) return text;
@@ -284,7 +296,10 @@ function merchantOf(description: string): Merchant | null {
   if (Number.isInteger(half) && words.slice(0, half).join(" ") === words.slice(half).join(" ")) {
     words = words.slice(0, half);
   }
-  text = withoutCardCity(withoutPaymentApp(words.join(" "))).replace(ACH_ENTRY, "");
+  text = withoutCardCity(withoutPaymentApp(withoutOnlineTransfer(words.join(" ")))).replace(
+    ACH_ENTRY,
+    "",
+  );
 
   if (!text) return null;
   return { name: titleCase(text), key: text.toLowerCase() };
