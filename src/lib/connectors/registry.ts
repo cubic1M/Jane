@@ -16,6 +16,7 @@ import { irsTranscriptUpload } from "./irs-transcript/connector";
 import { taxFormUpload } from "./tax-form-upload/connector";
 import { stripeFc } from "./stripe-fc/connector";
 import { canopyConnect, sandboxCanopyConnect } from "./canopy/connector";
+import { sandboxChartTranscripts } from "./chart/connector";
 import { manualOpenSavings } from "./manual-pay/savings";
 import { SANDBOX_CONNECTORS } from "./sandbox/adapters";
 import type { Connector } from "./types";
@@ -75,6 +76,8 @@ const CONNECTORS: readonly Connector[] = [
   // sandbox twin on Canopy's documented example for sample data (./canopy/).
   canopyConnect,
   sandboxCanopyConnect,
+  // Sandbox only: IRS transcripts through Chart. No real one until counsel answers (./chart/).
+  sandboxChartTranscripts,
 ];
 
 let registry: ReadonlyMap<string, Connector> = buildRegistry(CONNECTORS);

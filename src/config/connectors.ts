@@ -173,6 +173,16 @@ export const CANOPY = {
   signatureHeader: "canopy-signature",
 } as const;
 
+// Chart (read connectors, 11-18; developer.trychart.com and its OpenAPI definition, read
+// 2026-11-17): IRS account transcripts and past returns. Sandbox only until counsel answers
+// whether a person may type their IRS login into a third party (src/lib/connectors/chart/).
+export const CHART = {
+  baseUrl: "https://api.trychart.com",
+  apiVersion: "2024-01-01",
+  clientIdEnv: "CHART_CLIENT_ID",
+  clientSecretEnv: "CHART_CLIENT_SECRET",
+} as const;
+
 export const STRIPE_FC = {
   historyDays: 180,
   balanceRefreshDays: 7,
