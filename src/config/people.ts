@@ -128,6 +128,7 @@ export const SUGGESTION_TOPICS = [
   "card_rate_check",
   "cheaper_tier",
   "phone_plan_cheaper",
+  "fee_waiver_met",
   // Spec step 263: spending, bills and cash.
   "duplicate_subscription",
   "price_increase",

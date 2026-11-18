@@ -1,6 +1,7 @@
 import {
   RENT_TRANSFER_AMOUNT_TOLERANCE,
   RENT_TRANSFER_FROM_DAY,
+  RENT_TRANSFER_LANDLORD_WORDS,
   RENT_TRANSFER_MIN_CENTS,
   RENT_TRANSFER_MIN_MONTHS,
   RENT_TRANSFER_TO_DAY,
@@ -48,7 +49,10 @@ function steadyMonthly(
     const cents = direction === "out" ? t.amountCents : -t.amountCents;
     const primary = direction === "out" ? "TRANSFER_OUT" : "TRANSFER_IN";
     if (cents < RENT_TRANSFER_MIN_CENTS || t.pfcPrimary !== primary) continue;
-    if (!P2P.test(t.description.toUpperCase()) || !nearMonthStart(t.date)) continue;
+    const line = t.description.toUpperCase();
+    // A payment app, or (money out) a transfer that names a building or its manager.
+    const landlord = direction === "out" && RENT_TRANSFER_LANDLORD_WORDS.test(line);
+    if ((!P2P.test(line) && !landlord) || !nearMonthStart(t.date)) continue;
     const key = normalizeMerchant(t.description)?.key;
     if (!key || answered.has(key)) continue;
     groups.set(key, [...(groups.get(key) ?? []), { ...t, amountCents: cents }]);

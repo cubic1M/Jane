@@ -3,7 +3,13 @@ import {
   AUTO_AVERAGE,
   AUTO_PREMIUM_WORDS,
   FED_RATES,
-  NETFLIX_PLANS,
+  CHEAPER_PLAN_SEEN_DAYS,
+  DIRECT_DEPOSIT_WORDS,
+  FEE_WAIVERS,
+  MONTHLY_FEE_SEEN_DAYS,
+  MONTHLY_FEE_WORDS,
+  CHEAPER_PLAN_TAX_ROOM,
+  CHEAPER_PLANS,
   TMOBILE_PLANS,
   RENTERS_AVERAGE,
   STANFORD_HOUSING,
@@ -14,7 +20,7 @@ import { formatCents, formatWholeDollars } from "@/lib/money";
 import { formatRate } from "@/lib/percent";
 import type { ProfileTx } from "@/profile/build";
 import { type Detector, suggestion } from "./contract";
-import { evidence, factEvidence, headlineOf, nice, weakest } from "./helpers";
+import { clip, evidence, factEvidence, headlineOf, nice, weakest } from "./helpers";
 import { atStanford } from "./student-money";
 
 // Facts for real accounts where the recommendation is demo advice only (suggest-money lane, phase
@@ -178,46 +184,78 @@ const cardRateCheck: Detector = {
 export const COVER_FACT_DETECTORS: readonly Detector[] = [belongingsCover, carCoverCost];
 export const LOAN_FACT_DETECTORS: readonly Detector[] = [cardRateCheck];
 
-// A Netflix plan above the one with ads: the service's own cheaper plan, as its page prices it.
+// A service paid above its own cheaper plan (Netflix with ads, ChatGPT Go): the cheaper plan as
+// the service's page prices it, and where it's listed. One card for all of them.
 const cheaperTier: Detector = {
   capability: "subscriptions",
   topic: "cheaper_tier",
   covers: [],
   needs: [],
   detect({ profile, data }) {
-    const since = addDays(data.today, -45);
-    const charges = data.transactions
-      .filter(
-        (t) =>
-          t.amountCents > 0 &&
-          t.date <= data.today &&
-          NETFLIX_PLANS.words.test(lineOf(t)) &&
-          !(t.pfc ?? "").startsWith("TRANSFER"),
-      )
-      .sort((a, b) => b.date.localeCompare(a.date));
-    const latest = charges[0];
-    if (!latest || latest.date < since) return null;
-    const ads = NETFLIX_PLANS.withAdsCents;
-    if (latest.amountCents <= Math.round(ads * NETFLIX_PLANS.taxRoom)) return null;
-    const yearly = (latest.amountCents - ads) * 12;
+    const since = addDays(data.today, -CHEAPER_PLAN_SEEN_DAYS);
+    const found = CHEAPER_PLANS.flatMap((p) => {
+      const charges = data.transactions
+        .filter(
+          (t) =>
+            t.amountCents > 0 &&
+            t.date <= data.today &&
+            p.words.test(lineOf(t)) &&
+            !(t.pfc ?? "").startsWith("TRANSFER"),
+        )
+        .sort((a, b) => b.date.localeCompare(a.date));
+      const latest = charges[0];
+      if (!latest || latest.date < since) return [];
+      if (latest.amountCents <= Math.round(p.cents * CHEAPER_PLAN_TAX_ROOM)) return [];
+      return [{ ...p, latest, count: charges.length, yearly: (latest.amountCents - p.cents) * 12 }];
+    });
+    if (found.length === 0) return null;
+    const yearly = found.reduce((n, f) => n + f.yearly, 0);
+    const one = found.length === 1 ? found[0]! : null;
     return suggestion("subscriptions", "cheaper_tier", {
-      title: "Netflix lists a plan with ads for less than you pay",
-      headline: headlineOf("Note Netflix's plan with ads", yearly, "saves"),
-      short: `You pay Netflix ${formatCents(latest.amountCents)} a month; its plan with ads is ${formatCents(ads)}.`,
+      title: one
+        ? `${one.service} lists a cheaper plan than the one you pay for`
+        : `${found.map((f) => f.service).join(" and ")} list cheaper plans than the ones you pay for`,
+      headline: headlineOf(
+        one ? `Note ${one.service}'s ${one.plan} plan` : "Note cheaper plans of what you pay",
+        yearly,
+        "saves",
+      ),
+      short: clip(
+        found
+          .map(
+            (f) =>
+              `${f.service}: you pay ${formatCents(f.latest.amountCents)}, ${f.plan} is ${formatCents(f.cents)}`,
+          )
+          .join("; ") + ".",
+      ),
       worthCents: yearly,
       worthKind: "saves",
       confidence: weakest([
-        evidence("seen", profile.months, charges.length, "Netflix charges"),
-        // Whether ads, and one plan's screens and quality, suit them is theirs to say.
-        { percent: 60, reason: "whether ads and that plan's screens suit you is yours to say" },
+        evidence(
+          "seen",
+          profile.months,
+          found.reduce((n, f) => n + f.count, 0),
+          "charges",
+        ),
+        // Whether the cheaper plan's limits suit them is theirs to say.
+        { percent: 60, reason: "whether the cheaper plan's limits suit you is yours to say" },
       ]),
       urgency: "later",
-      why: `You paid Netflix ${formatCents(latest.amountCents)} on ${dayLabel(latest.date)}. Netflix's own page lists Standard with ads at ${formatCents(ads)} a month in the US, about ${formatCents(yearly)} a year less than you pay now; its plans differ in ads, screens at once and picture quality. Netflix's Account page lists each plan under Change plan.`,
+      why: found
+        .map(
+          (f) =>
+            `You paid ${f.service} ${formatCents(f.latest.amountCents)} on ${dayLabel(f.latest.date)}. ${f.service}'s own page lists ${f.plan} at ${formatCents(f.cents)} a month, about ${formatCents(f.yearly)} a year less than you pay now; its plans differ in ${f.differs}. ${f.where}.`,
+        )
+        .join(" "),
       action: { label: "See my subscriptions", href: "/subscriptions" },
-      more: [{ label: "Netflix's plans and prices", href: NETFLIX_PLANS.url }],
+      more: found.map((f) => ({ label: `${f.service}'s plans and prices`, href: f.url })),
       watch: {
         kind: "bill_drops",
-        payees: [{ description: latest.description, beforeCents: latest.amountCents, perYear: 12 }],
+        payees: found.map((f) => ({
+          description: f.latest.description,
+          beforeCents: f.latest.amountCents,
+          perYear: 12,
+        })),
       },
     });
   },
@@ -269,4 +307,88 @@ const phonePlanCheaper: Detector = {
   },
 };
 
-export const BILL_FACT_DETECTORS: readonly Detector[] = [cheaperTier, phonePlanCheaper];
+// A checking account's monthly fee in a month when the person's own pay, deposited there, met the
+// rule the bank's page gives for no fee: the account may be another type, or the deposit may not
+// count; the bank can say which.
+const feeWaiverMet: Detector = {
+  capability: "cost",
+  topic: "fee_waiver_met",
+  covers: [],
+  needs: [],
+  detect({ profile, data }) {
+    const since = addDays(data.today, -MONTHLY_FEE_SEEN_DAYS);
+    for (const w of FEE_WAIVERS) {
+      const ids = new Set(
+        data.accounts
+          .filter(
+            (a) =>
+              a.type === "depository" &&
+              w.words.test(`${a.institution ?? ""} ${a.name ?? ""}`.toUpperCase()),
+          )
+          .map((a) => a.id),
+      );
+      if (ids.size === 0) continue;
+      const fee = data.transactions
+        .filter(
+          (t) =>
+            ids.has(t.accountId) &&
+            t.amountCents > 0 &&
+            t.date >= since &&
+            t.date <= data.today &&
+            (t.pfc ?? "").startsWith("BANK_FEES") &&
+            MONTHLY_FEE_WORDS.test(lineOf(t)),
+        )
+        .sort((a, b) => b.date.localeCompare(a.date))[0];
+      if (!fee) continue;
+      // Pay deposited into the same account in the month before the fee.
+      const from = addDays(fee.date, -31);
+      const pay = data.transactions.filter(
+        (t) =>
+          ids.has(t.accountId) &&
+          t.amountCents < 0 &&
+          t.date > from &&
+          t.date <= fee.date &&
+          ((t.pfc ?? "").startsWith("INCOME") || DIRECT_DEPOSIT_WORDS.test(lineOf(t))),
+      );
+      const total = pay.reduce((n, t) => n - t.amountCents, 0);
+      const biggest = pay.reduce((m, t) => Math.max(m, -t.amountCents), 0);
+      const met =
+        (w.singleCents !== null && biggest >= w.singleCents) ||
+        (w.totalCents !== null && total >= w.totalCents);
+      if (!met) continue;
+      const yearly = fee.amountCents * 12;
+      return suggestion("cost", "fee_waiver_met", {
+        title: `${w.account} has no monthly fee with ${w.rule}, according to ${w.bank}'s page`,
+        headline: headlineOf("Ask about your waivable bank fee", yearly, "saves"),
+        short: clip(
+          `${w.bank} charged a ${formatCents(fee.amountCents)} monthly fee on ${dayLabel(fee.date)}; ${formatCents(total)} in pay came in that month.`,
+        ),
+        worthCents: yearly,
+        worthKind: "saves",
+        confidence: weakest([
+          evidence("seen", profile.months, pay.length, "paychecks deposited"),
+          // The account's type and what the bank counts as qualifying aren't in the statement.
+          {
+            percent: 55,
+            reason: "your account's type and what the bank counts aren't in the statement",
+          },
+        ]),
+        urgency: "soon",
+        why: `Your ${w.bank} checking charged a ${formatCents(fee.amountCents)} monthly fee on ${dayLabel(fee.date, { long: true })}, and ${formatCents(total)} in pay was deposited there in the month before. ${w.account} has no monthly fee in a statement cycle with ${w.rule}, according to ${w.bank}'s own page. Your account may be another type, or a deposit may not count as qualifying; ${w.bank} can say which applies to yours.`,
+        action: { label: `See ${w.bank}'s fee rules`, href: w.url },
+        watch: {
+          kind: "fee_stops",
+          pfcs: [fee.pfc ?? "BANK_FEES_OTHER_BANK_FEES"],
+          monthlyCents: fee.amountCents,
+        },
+      });
+    }
+    return null;
+  },
+};
+
+export const BILL_FACT_DETECTORS: readonly Detector[] = [
+  cheaperTier,
+  phonePlanCheaper,
+  feeWaiverMet,
+];

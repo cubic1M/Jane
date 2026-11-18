@@ -37,7 +37,22 @@ describe("rentTransfers", () => {
     expect(rentTransfers(input({ transactions }))).toEqual([]);
   });
 
-  it("only looks at transfers sent by Zelle, Venmo, Cash App or PayPal", () => {
+  it("asks about a bank transfer to a building or its manager (upload S6), not one to savings", () => {
+    const to = (description: string) =>
+      [zelle(3, 1, 165_000), zelle(2, 1, 165_000)].map((t) => ({ ...t, description }));
+    const [rent] = rentTransfers(
+      input({ transactions: to("ONLINE TRANSFER TO OAKWOOD RES 0042") }),
+    );
+    expect(rent).toMatchObject({ amountCents: 165_000, months: 2 });
+    expect(rentTransfers(input({ transactions: to("ONLINE TRANSFER TO ALLY BANK SAV") }))).toEqual(
+      [],
+    );
+    expect(
+      rentTransfers(input({ transactions: to("ONLINE TRANSFER TO ESSEX PROPERTY TRUST") })),
+    ).toHaveLength(1);
+  });
+
+  it("only looks at transfers sent by Zelle, Venmo, Cash App or PayPal, or to a landlord", () => {
     const transactions = [zelle(3, 1, 176_213), zelle(2, 1, 176_213)].map((t) => ({
       ...t,
       description: "ONLINE TRANSFER TO SAV 4410",
