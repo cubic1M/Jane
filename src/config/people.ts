@@ -96,6 +96,8 @@ export const SUGGESTION_TOPICS = [
   "cardinal_care_check",
   "device_cover_twice",
   "grace_ending",
+  "clipper_start",
+  "aid_priority_date",
   // Spec step 263: spending, bills and cash.
   "duplicate_subscription",
   "price_increase",

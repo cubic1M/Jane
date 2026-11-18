@@ -343,3 +343,42 @@ export const GRACE_ENDING = {
   // Standard's term, to show what a level payment would be.
   standardMonths: 120,
 } as const;
+
+// --- Clipper START ----------------------------------------------------------------------------
+// clipperstartcard.com/s/faqs (MTC, read 2026-11-18): 50% off single rides on Bay Area operators
+// (BART, Caltrain, Muni, VTA, SamTrans, AC Transit and others) for someone aged 19 to 64 living in
+// the nine Bay Area counties, with household income at or under 200% of the 2026 poverty level, and
+// no Clipper Access card. A CalFresh/EBT card qualifies on its own; proof is a tax return's AGI or a
+// benefits card.
+export const CLIPPER_START = {
+  url: "https://www.clipperstartcard.com/s/faqs",
+  applyUrl: "https://www.clipperstartcard.com/s/",
+  discount: 0.5,
+  ages: { from: 19, to: 64 },
+  // Household size: the yearly income limit.
+  incomeLimitCents: [
+    3_192_000, 4_328_000, 5_464_000, 6_600_000, 7_736_000, 8_872_000, 10_008_000, 11_144_000,
+  ],
+  fareWords:
+    /CLIPPER|CALTRAIN|\bBART\b|\bVTA\b|SFMTA|\bMUNI\b|SAMTRANS|AC TRANSIT|GOLDEN GATE (?:TRANSIT|FERRY)|SF BAY FERRY/,
+  // Fares that aren't single rides (a monthly pass) or already discounted aren't told apart: the
+  // card counts what was paid, at this many fares or more in 90 days.
+  minFares: 3,
+} as const;
+
+// --- Stanford's aid priority date -------------------------------------------------------------
+// financialaid.stanford.edu, continuing U.S. undergraduates (updated 2026-09-18): the CSS Profile
+// (code 4704) and FAFSA (code 001305) for 2027-28 open October 1, priority filing date April 30;
+// with the Profile and the tax documents done by April 30, an aid notice comes in August.
+export const AID_PRIORITY = {
+  url: "https://financialaid.stanford.edu/undergrad/apply/requirements/continuing_us.html",
+  date: "2027-04-30",
+  year: "2027-28",
+  // Told from this many days before.
+  aheadDays: 75,
+  cssCode: "4704",
+  fafsaCode: "001305",
+} as const;
+// Money from Stanford that isn't pay: an aid refund or disbursement.
+export const STANFORD_AID_WORDS =
+  /STANFORD.*(?:REFUND|FIN(?:ANCIAL)? ?AID|DISBURSE|SCHOLARSHIP)|(?:REFUND|FINANCIAL AID).*STANFORD/;

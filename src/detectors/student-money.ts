@@ -239,7 +239,7 @@ const stanfordBillDue: Detector = {
     const third = Math.round(last / 3);
     return suggestion("safe_to_spend", "stanford_bill_due", {
       title: `Split your ${plan.quarter} Stanford bill into three free payments: sign up by ${dayLabel(plan.to, { long: true })}`,
-      headline: headlineOf("Split your Stanford bill in three", late, "risk"),
+      headline: headlineOf("Pay your Stanford bill in three parts", late, "risk"),
       short: `You paid ${formatCents(last)} at once; in three parts that's about ${formatCents(third)} a month.`,
       worthCents: late,
       worthKind: "risk",

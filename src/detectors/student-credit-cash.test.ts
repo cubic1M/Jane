@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { HEADLINE_VERBS } from "@/config/detectors";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
@@ -33,6 +34,7 @@ function expectClean(s: Suggestion) {
     expect(recommendsAChoice(text), text).toBe(false);
   }
   expect(s.headline.length).toBeLessThanOrEqual(HEADLINE_MAX);
+  expect(HEADLINE_VERBS, s.headline).toContain(s.headline.split(" ")[0]);
   expect(s.short.length).toBeLessThanOrEqual(SHORT_MAX);
 }
 

@@ -126,6 +126,9 @@ export const MONEY_GROUPS: Readonly<Record<string, readonly string[]>> = {
   // short for the month's bills is the same shortfall.
   bill_gap_ahead: ["bill_ahead", "cash_short"],
   stanford_bill_due: ["bill_ahead"],
+  // The free grad Caltrain pass and half-price fares: the same fares, said once.
+  transit_pass: ["transit"],
+  clipper_start: ["transit"],
   low_balance: ["cash_short"],
   // The same bank's fee-free account for young owners stops the monthly fee bank_fees counts.
   student_checking: ["fees"],
