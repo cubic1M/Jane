@@ -125,6 +125,8 @@ describe.runIf(url)("home summary against a real database", () => {
     // No goal yet: nothing to save toward.
     expect(home?.goal).toBeNull();
     expect(home?.newToDecide).toBe(2);
+    // `kind` says what a row is, so a total of what's owed can leave a return window's purchase
+    // out (src/lib/jane-agent/replies.ts comingUpReply; debug 3, 11-18).
     expect(home?.comingUp).toEqual([
       {
         key: "bill:Netflix:2026-11-15",
@@ -133,6 +135,7 @@ describe.runIf(url)("home summary against a real database", () => {
         amountCents: 1549,
         daysLeft: 31,
         href: "/bills",
+        kind: "bill",
       },
     ]);
     expect(home?.lastUpdated).toBeInstanceOf(Date);
