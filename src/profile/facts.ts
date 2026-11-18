@@ -97,9 +97,12 @@ export const FACT_SPECS = [
   F("claimed_as_dependent", "Someone can claim you as a dependent", "choice", {
     choices: ["yes", "no", "unsure"],
   }),
+  // At least half time decides the American opportunity credit; an undergraduate is in the first
+  // four years it covers. Either is a student for the Saver's Credit.
   F("enrollment", "How you're enrolled in school", "choice", {
-    choices: ["full_time", "half_time", "less_than_half", "not_enrolled"],
+    choices: ["undergrad", "grad", "less_than_half", "not_enrolled"],
   }),
+  F("age_25_plus", "You're 25 or older", "choice", { choices: ["yes", "no", "unsure"] }),
   F("tax_residency", "Your status for US tax", "choice", {
     choices: ["citizen", "student_visa", "other_visa", "unsure"],
   }),
@@ -143,16 +146,16 @@ const CHOICE_WORDS: Readonly<Record<string, string>> = {
   under_30: "under 30",
   "73_plus": "73 or older",
   unsure: "not sure",
-  full_time: "full time",
-  half_time: "at least half time",
+  undergrad: "an undergraduate, at least half time",
+  grad: "a graduate student, at least half time",
   less_than_half: "less than half time",
   not_enrolled: "not in school",
   citizen: "US citizen or green card",
   student_visa: "an F or J student visa",
   other_visa: "another visa",
-  fellowship: "a fellowship or stipend",
+  fellowship: "a fellowship, grant or stipend",
   wage: "pay for work",
-  aid_refund: "aid or loan money",
+  aid_refund: "loan money",
   starting: "starting out",
   raising: "raising a family",
   peak: "peak earning years",

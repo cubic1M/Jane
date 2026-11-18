@@ -35,6 +35,11 @@ export const SUGGESTION_TOPICS = [
   // a student on an F or J visa files.
   "stipend_tax",
   "student_tax_residency",
+  // Credits a student commonly misses (src/detectors/student-credits.ts).
+  "education_credit",
+  "student_loan_interest",
+  "earned_income_credit",
+  "ca_renters_credit",
   "retirement_self_employed",
   "income_smoothing",
   "health_insurance",

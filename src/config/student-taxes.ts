@@ -39,6 +39,14 @@ export const SOURCES = {
     "https://www.irs.gov/credits-deductions/individuals/earned-income-tax-credit/earned-income-and-earned-income-tax-credit-eitc-tables",
     "EITC 2026: no qualifying children, up to $664, AGI under $19,540 ($26,820 joint), investment income $12,200 or less",
   ),
+  form8863Line7: src(
+    "https://www.irs.gov/instructions/i8863",
+    "Form 8863 line 7 (2025): no refundable AOTC for someone under 18, or 18 with earned income under half their support, or 18 to 23 and a full-time student, when a parent is alive and the return isn't joint; expenses are reduced by tax-free scholarships",
+  ),
+  pub596: src(
+    "https://www.irs.gov/publications/p596",
+    "Pub. 596 (2025 returns): earned income for the EITC is wages, net earnings from self-employment and statutory employee pay",
+  ),
   eitcWho: src(
     "https://www.irs.gov/credits-deductions/individuals/earned-income-tax-credit/who-qualifies-for-the-earned-income-tax-credit-eitc",
     "EITC: without a qualifying child, at least 25 and under 65 at year end; not someone else's dependent or qualifying child; a US citizen or resident alien all year",
@@ -207,7 +215,15 @@ export const AOTC_FORM = {
   sources: ["pub970", "form8863"],
 } as const;
 
-export const STUDENT_LOAN_INTEREST_LINE = "Schedule 1 line 21 (the lender's Form 1098-E shows it)";
+export const STUDENT_LOAN_INTEREST_LINE = "Schedule 1 line 21; the lender's Form 1098-E shows it";
+
+// The earned income credit without children: from 25 to 64 at the year's end (./tax-rates.ts EITC has
+// the amounts). Earned income is wages and self-employment (Pub. 596); a fellowship isn't on that
+// list, though it is in AGI.
+export const EITC_FORM = {
+  line: "Form 1040 line 27 (no Schedule EIC without children)",
+  sources: ["eitcTables", "eitcWho", "pub596"],
+} as const;
 
 // --- Withholding ----------------------------------------------------------------------------------
 

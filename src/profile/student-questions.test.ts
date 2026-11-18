@@ -128,3 +128,27 @@ describe("the state someone lives in, from where they pay", () => {
     ).toMatchObject({ value: "WA", source: "told" });
   });
 });
+
+describe("the student question and the enrollment one agree", () => {
+  it("reads an enrollment answer as the answer to whether they're a student", async () => {
+    const shape = STUDENT_SHAPES["gig-two-months"]();
+    for (const [enrollment, student] of [
+      ["undergrad", true],
+      ["grad", true],
+      ["not_enrolled", false],
+    ] as const) {
+      const data = await inputFromStatements(shape, STUDENT_TODAY, { enrollment });
+      expect(buildProfile(data).facts.is_student).toMatchObject({ value: student, source: "told" });
+    }
+  });
+
+  it("doesn't ask how someone is enrolled once they said they aren't a student", async () => {
+    const shape = STUDENT_SHAPES["gig-two-months"]();
+    const asked = async (told: Record<string, unknown>) => {
+      const data = await inputFromStatements(shape, STUDENT_TODAY, told as never);
+      return missingFacts(buildProfile(data), data).map((c) => c.spec.fact);
+    };
+    expect(await asked({})).toContain("enrollment");
+    expect(await asked({ is_student: false })).not.toContain("enrollment");
+  });
+});

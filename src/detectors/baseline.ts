@@ -30,6 +30,8 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "price_increase",
     "rent_increase",
     "renters_insurance",
+    // suggest-taxes 11-18: her federal student loan (5.5%, repaying) has deductible interest.
+    "student_loan_interest",
     "subscriptions",
     "trial_conversion",
   ],
@@ -73,6 +75,8 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "property_tax_check",
     "rebalance",
     "student_forgiveness",
+    // suggest-taxes 11-18: the parents' $62,000 of federal loans at 5.8% have deductible interest.
+    "student_loan_interest",
     "subscriptions",
   ],
   freelancer: [
@@ -92,6 +96,8 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "rent_reporting",
     "renters_insurance",
     "retirement_self_employed",
+    // suggest-taxes 11-18: Sam's $38,000 of loans at 6.2% have deductible interest.
+    "student_loan_interest",
     "student_repayment",
     "subscriptions",
     "tax_set_aside",

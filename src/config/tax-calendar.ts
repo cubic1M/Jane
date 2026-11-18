@@ -109,6 +109,11 @@ export const TAX_TOPIC_MONTH: Readonly<Record<string, number>> = {
   // forms, from January until the mid-June Form 8843 date.
   stipend_tax: 1,
   student_tax_residency: 1,
+  // Credits a student commonly misses: filing season, when they go on the return.
+  education_credit: 2,
+  student_loan_interest: 2,
+  earned_income_credit: 2,
+  ca_renters_credit: 2,
   charity_receipts: 1,
   social_security_tax: 1,
   s_corp_election: 2,

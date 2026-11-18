@@ -370,3 +370,25 @@ uploads and the Stanford ones in `src/detectors/__fixtures__/student-walk.ts`) m
   "Not sure" is an answer: asked once, read as not known.
 - **Home state:** told, else the tax profile's, else where most located card purchases are
   (`src/profile/home-state.ts`, at least 3 and 60% of them).
+
+### Credits a student commonly misses (`src/detectors/student-credits.ts`)
+
+Each is a fact (what it is, what it comes to by the published formula for this person, who can't take
+it, the form line), not in `ADVICE_TOPICS`, and returns null when it's worth nothing to them.
+
+- **`education_credit`:** tuition paid from their own account. The lifetime learning credit (20% of up
+  to $10,000) and, for an undergraduate at least half time (`enrollment`), the American opportunity
+  credit (100% of $2,000 + 25% of $2,000). Both phase out from $80,000 to $90,000. Non-refundable, so
+  it's only worth the tax owed, except the AOTC's 40%, counted only for someone known to be 25 or
+  older (Form 8863 line 7 keeps it from most full-time students under 24). A dependent's credit is
+  the whole credit, on the claimer's return.
+- **`student_loan_interest`:** student-loan payments. Interest from the lender's balance and rate when
+  Plaid has them, else bounded by the payments (confidence 45%); up to $2,500 at their top rate;
+  nothing under the standard deduction, for a dependent, or married filing separately.
+- **`earned_income_credit`:** pay and gig earnings, no children, only once they've said they're 25 or
+  older (the question asks); a fellowship counts in AGI but not as earned income (Pub. 596).
+- **`ca_renters_credit`:** rent off campus in California (campus housing is exempt property), under
+  the 2025 return's limit ($53,994 single), $60 / $120. Confidence stays at 55% until rent shows in six
+  months.
+- **The Saver's Credit and Match** are no longer offered to someone who said they're in school at least
+  half time.
