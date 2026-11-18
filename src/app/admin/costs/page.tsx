@@ -2,8 +2,10 @@ import { Suspense } from "react";
 import { logAudit } from "@/lib/audit";
 import { betaCosts } from "@/lib/beta-costs";
 import { formatCents } from "@/lib/money";
+import { plaidGranted } from "@/lib/plaid/granted";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
+import { AdminTable } from "../admin-table";
 import { LoadingBar } from "@/components/loading-bar";
 import { CARD_TIGHT } from "@/components/card";
 
@@ -78,6 +80,48 @@ async function Costs() {
   );
 }
 
+// What Plaid actually granted and bills each real bank link (src/lib/plaid/granted.ts), from Plaid
+// itself: Link asks for Liabilities and Investments, and Plaid drops one silently when the bank or
+// the plan lacks it. Its own Suspense: it asks Plaid once per link.
+async function Granted() {
+  const granted = await plaidGranted();
+  return (
+    <section className="flex flex-col gap-2" data-plaid-granted="">
+      <h2 className="text-xl font-semibold">What Plaid granted</h2>
+      {granted.checked === 0 ? (
+        <p className={MUTED}>No real banks linked yet.</p>
+      ) : (
+        <>
+          <AdminTable
+            head={["Product", "Asked for", "Granted", "Billed"]}
+            rows={granted.products.map((p) => ({
+              key: p.product,
+              cells: [
+                p.product,
+                <span key="a" className="tabular-nums">
+                  {p.asked}
+                </span>,
+                <span key="g" className="tabular-nums">
+                  {p.granted}
+                </span>,
+                <span key="b" className="tabular-nums">
+                  {p.billed}
+                </span>,
+              ],
+            }))}
+          />
+          <p className={MUTED}>
+            Of {granted.checked} real bank links, from each one&apos;s /item/get
+            {granted.unreadable > 0 ? `; Plaid didn't answer for ${granted.unreadable}` : ""}.
+            Liabilities and Investments bill each link every month from their first use until the
+            link is removed.
+          </p>
+        </>
+      )}
+    </section>
+  );
+}
+
 // Never kept in the browser's memory (src/lib/page-cache.ts). Every admin view goes on the access log, which a page kept in memory wouldn't reach.
 export const unstable_dynamicStaleTime = 0;
 
@@ -86,6 +130,9 @@ export default function CostsPage() {
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6">
       <Suspense fallback={<LoadingBar />}>
         <Costs />
+      </Suspense>
+      <Suspense fallback={<LoadingBar />}>
+        <Granted />
       </Suspense>
     </main>
   );
