@@ -20,6 +20,10 @@ const url = process.env.TEST_DATABASE_URL;
 const NOW = new Date("2026-11-17T19:00:00Z");
 // Passes every guardrail, and promises an outcome.
 const CLAIM = "Groceries will stay about where they are this month.";
+// The day's count this reply goes to. Other tests' replies count too (rules, backup, other days),
+// so the test reads only this key and day, before and after.
+const COUNTED = "claimcheck:claude:outcome";
+const DAY = new Date("2026-11-17T00:00:00.000Z");
 
 const usage = { input_tokens: 0, output_tokens: 0 } as Anthropic.Usage;
 const writes = (text: string) => () =>
@@ -70,7 +74,8 @@ describe.runIf(url)("the category check on the chat's own path", { timeout: 300_
 
   afterAll(async () => {
     await deleteCheckPerson(id, { client }).catch(() => {});
-    await client.rateLimit.deleteMany({ where: { key: { startsWith: "claimcheck:" } } });
+    // Only this test's count: the counter is everyone's, and other chat tests share the database.
+    await client.rateLimit.deleteMany({ where: { key: COUNTED, windowStart: DAY } });
     await client.$disconnect();
     vi.unstubAllEnvs();
   });
@@ -91,8 +96,16 @@ describe.runIf(url)("the category check on the chat's own path", { timeout: 300_
 
   it("changes no reply in log mode, and logs and counts what it would have flagged", async () => {
     const json = vi.spyOn(log, "json");
+    const count = async () =>
+      (
+        await client.rateLimit.findUnique({
+          where: { key_windowStart: { key: COUNTED, windowStart: DAY } },
+        })
+      )?.count ?? 0;
+    const before = await count();
     const off = await ask("off", 0);
     expect(json.mock.calls.filter(([event]) => event === "claim_check")).toEqual([]);
+    expect(await count()).toBe(before);
     const logged = await ask("log", 1);
     expect(off.source).toBe("claude");
     expect(logged.source).toBe("claude");
@@ -102,12 +115,7 @@ describe.runIf(url)("the category check on the chat's own path", { timeout: 300_
     expect(json.mock.calls.filter(([event]) => event === "claim_check")).toEqual([
       ["claim_check", { mode: "log", source: "claude", categories: ["outcome"] }],
     ]);
-    const counted = await client.rateLimit.findMany({
-      where: { key: { startsWith: "claimcheck:" } },
-    });
-    expect(counted.map((r) => [r.key, r.windowStart.toISOString(), r.count])).toEqual([
-      ["claimcheck:claude:outcome", "2026-11-17T00:00:00.000Z", 1],
-    ]);
+    expect(await count()).toBe(before + 1);
     // Stored as it was sent: the person reads the same words later.
     const stored = await client.janeMessage.findUnique({ where: { id: logged.reply.id } });
     expect(stored?.body).toBe(off.reply.body);
