@@ -3,7 +3,9 @@ import {
   AUTO_AVERAGE,
   AUTO_PREMIUM_WORDS,
   FED_RATES,
-  NETFLIX_PLANS,
+  CHEAPER_PLAN_SEEN_DAYS,
+  CHEAPER_PLAN_TAX_ROOM,
+  CHEAPER_PLANS,
   TMOBILE_PLANS,
   RENTERS_AVERAGE,
   STANFORD_HOUSING,
@@ -14,7 +16,7 @@ import { formatCents, formatWholeDollars } from "@/lib/money";
 import { formatRate } from "@/lib/percent";
 import type { ProfileTx } from "@/profile/build";
 import { type Detector, suggestion } from "./contract";
-import { evidence, factEvidence, headlineOf, nice, weakest } from "./helpers";
+import { clip, evidence, factEvidence, headlineOf, nice, weakest } from "./helpers";
 import { atStanford } from "./student-money";
 
 // Facts for real accounts where the recommendation is demo advice only (suggest-money lane, phase
@@ -178,46 +180,78 @@ const cardRateCheck: Detector = {
 export const COVER_FACT_DETECTORS: readonly Detector[] = [belongingsCover, carCoverCost];
 export const LOAN_FACT_DETECTORS: readonly Detector[] = [cardRateCheck];
 
-// A Netflix plan above the one with ads: the service's own cheaper plan, as its page prices it.
+// A service paid above its own cheaper plan (Netflix with ads, ChatGPT Go): the cheaper plan as
+// the service's page prices it, and where it's listed. One card for all of them.
 const cheaperTier: Detector = {
   capability: "subscriptions",
   topic: "cheaper_tier",
   covers: [],
   needs: [],
   detect({ profile, data }) {
-    const since = addDays(data.today, -45);
-    const charges = data.transactions
-      .filter(
-        (t) =>
-          t.amountCents > 0 &&
-          t.date <= data.today &&
-          NETFLIX_PLANS.words.test(lineOf(t)) &&
-          !(t.pfc ?? "").startsWith("TRANSFER"),
-      )
-      .sort((a, b) => b.date.localeCompare(a.date));
-    const latest = charges[0];
-    if (!latest || latest.date < since) return null;
-    const ads = NETFLIX_PLANS.withAdsCents;
-    if (latest.amountCents <= Math.round(ads * NETFLIX_PLANS.taxRoom)) return null;
-    const yearly = (latest.amountCents - ads) * 12;
+    const since = addDays(data.today, -CHEAPER_PLAN_SEEN_DAYS);
+    const found = CHEAPER_PLANS.flatMap((p) => {
+      const charges = data.transactions
+        .filter(
+          (t) =>
+            t.amountCents > 0 &&
+            t.date <= data.today &&
+            p.words.test(lineOf(t)) &&
+            !(t.pfc ?? "").startsWith("TRANSFER"),
+        )
+        .sort((a, b) => b.date.localeCompare(a.date));
+      const latest = charges[0];
+      if (!latest || latest.date < since) return [];
+      if (latest.amountCents <= Math.round(p.cents * CHEAPER_PLAN_TAX_ROOM)) return [];
+      return [{ ...p, latest, count: charges.length, yearly: (latest.amountCents - p.cents) * 12 }];
+    });
+    if (found.length === 0) return null;
+    const yearly = found.reduce((n, f) => n + f.yearly, 0);
+    const one = found.length === 1 ? found[0]! : null;
     return suggestion("subscriptions", "cheaper_tier", {
-      title: "Netflix lists a plan with ads for less than you pay",
-      headline: headlineOf("Note Netflix's plan with ads", yearly, "saves"),
-      short: `You pay Netflix ${formatCents(latest.amountCents)} a month; its plan with ads is ${formatCents(ads)}.`,
+      title: one
+        ? `${one.service} lists a cheaper plan than the one you pay for`
+        : `${found.map((f) => f.service).join(" and ")} list cheaper plans than the ones you pay for`,
+      headline: headlineOf(
+        one ? `Note ${one.service}'s ${one.plan} plan` : "Note cheaper plans of what you pay",
+        yearly,
+        "saves",
+      ),
+      short: clip(
+        found
+          .map(
+            (f) =>
+              `${f.service}: you pay ${formatCents(f.latest.amountCents)}, ${f.plan} is ${formatCents(f.cents)}`,
+          )
+          .join("; ") + ".",
+      ),
       worthCents: yearly,
       worthKind: "saves",
       confidence: weakest([
-        evidence("seen", profile.months, charges.length, "Netflix charges"),
-        // Whether ads, and one plan's screens and quality, suit them is theirs to say.
-        { percent: 60, reason: "whether ads and that plan's screens suit you is yours to say" },
+        evidence(
+          "seen",
+          profile.months,
+          found.reduce((n, f) => n + f.count, 0),
+          "charges",
+        ),
+        // Whether the cheaper plan's limits suit them is theirs to say.
+        { percent: 60, reason: "whether the cheaper plan's limits suit you is yours to say" },
       ]),
       urgency: "later",
-      why: `You paid Netflix ${formatCents(latest.amountCents)} on ${dayLabel(latest.date)}. Netflix's own page lists Standard with ads at ${formatCents(ads)} a month in the US, about ${formatCents(yearly)} a year less than you pay now; its plans differ in ads, screens at once and picture quality. Netflix's Account page lists each plan under Change plan.`,
+      why: found
+        .map(
+          (f) =>
+            `You paid ${f.service} ${formatCents(f.latest.amountCents)} on ${dayLabel(f.latest.date)}. ${f.service}'s own page lists ${f.plan} at ${formatCents(f.cents)} a month, about ${formatCents(f.yearly)} a year less than you pay now; its plans differ in ${f.differs}. ${f.where}.`,
+        )
+        .join(" "),
       action: { label: "See my subscriptions", href: "/subscriptions" },
-      more: [{ label: "Netflix's plans and prices", href: NETFLIX_PLANS.url }],
+      more: found.map((f) => ({ label: `${f.service}'s plans and prices`, href: f.url })),
       watch: {
         kind: "bill_drops",
-        payees: [{ description: latest.description, beforeCents: latest.amountCents, perYear: 12 }],
+        payees: found.map((f) => ({
+          description: f.latest.description,
+          beforeCents: f.latest.amountCents,
+          perYear: 12,
+        })),
       },
     });
   },

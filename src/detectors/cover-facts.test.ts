@@ -7,7 +7,7 @@ import { HEADLINE_VERBS } from "@/config/detectors";
 import {
   AUTO_AVERAGE,
   FED_RATES,
-  NETFLIX_PLANS,
+  CHEAPER_PLANS,
   RENTERS_AVERAGE,
   TMOBILE_PLANS,
   STANFORD_HOUSING,
@@ -185,6 +185,68 @@ describe("a card rate above the Fed's average", () => {
   });
 });
 
+describe("ChatGPT's Go plan beside Netflix's", () => {
+  it("lists each service's cheaper plan on one card, worth the two differences", () => {
+    const base = undergrad();
+    const data = {
+      ...base,
+      transactions: [
+        ...base.transactions,
+        row(
+          "2026-11-12",
+          2_000,
+          "OPENAI *CHATGPT SUBSCR",
+          "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+          "ug-checking",
+        ),
+      ],
+    };
+    const s = fire(data, "cheaper_tier")!;
+    // Netflix $17.99 against $8.99, ChatGPT $20 against $8.
+    expect(s.worthCents).toBe((1_799 - 899) * 12 + (2_000 - 800) * 12);
+    expect(s.title).toBe("Netflix and ChatGPT list cheaper plans than the ones you pay for");
+    expect(s.why).toContain("lists Go at $8.00 a month");
+    expect(s.more?.map((m) => m.href)).toEqual(CHEAPER_PLANS.map((p) => p.url));
+    expectClean(s);
+  });
+
+  it("leaves out OpenAI API usage, which isn't the subscription", () => {
+    const base = undergrad();
+    const data = {
+      ...base,
+      transactions: [
+        ...base.transactions.filter((t) => !/NETFLIX/.test(t.description)),
+        row(
+          "2026-11-12",
+          4_210,
+          "OPENAI API USAGE",
+          "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+          "ug-checking",
+        ),
+      ],
+    };
+    expect(fire(data, "cheaper_tier")).toBeNull();
+  });
+
+  it("is nothing for someone already on Go", () => {
+    const base = undergrad();
+    const data = {
+      ...base,
+      transactions: [
+        ...base.transactions.filter((t) => !/NETFLIX/.test(t.description)),
+        row(
+          "2026-11-12",
+          920,
+          "OPENAI *CHATGPT SUBSCR",
+          "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+          "ug-checking",
+        ),
+      ],
+    };
+    expect(fire(data, "cheaper_tier")).toBeNull();
+  });
+});
+
 describe("Netflix's plan with ads", () => {
   const netflix = (cents: number, date = "2026-11-16"): ProfileInput => {
     const base = undergrad();
@@ -199,10 +261,11 @@ describe("Netflix's plan with ads", () => {
 
   it("says what its own page lists, a year of the difference, and where to change it", () => {
     const s = fire(netflix(1_799), "cheaper_tier")!;
-    expect(s.worthCents).toBe((1_799 - NETFLIX_PLANS.withAdsCents) * 12);
+    expect(s.worthCents).toBe((1_799 - CHEAPER_PLANS[0].cents) * 12);
     expect(s.why).toContain("$8.99");
     expect(s.why).toContain("Change plan");
-    expect(s.more?.[0]?.href).toBe(NETFLIX_PLANS.url);
+    expect(s.title).toBe("Netflix lists a cheaper plan than the one you pay for");
+    expect(s.more?.[0]?.href).toBe(CHEAPER_PLANS[0].url);
     expectClean(s);
   });
 

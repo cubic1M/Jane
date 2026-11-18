@@ -426,15 +426,35 @@ export const FED_RATES = {
 } as const;
 
 // --- A cheaper plan of the same service -------------------------------------------------------
-// Netflix's help centre, "Plans and pricing" (help.netflix.com/en/node/24926, read 2026-11-18):
-// Standard with ads $8.99 a month, Standard $19.99, Premium $26.99, in the US.
-export const NETFLIX_PLANS = {
-  url: "https://help.netflix.com/en/node/24926",
-  withAdsCents: 899,
-  words: /NETFLIX/,
-  // Sales tax on the ad plan's price, so someone already on it isn't told to move to it.
-  taxRoom: 1.15,
-} as const;
+// A cheaper plan of the same service, as the service's own page prices it (read 2026-11-18):
+// - Netflix's help centre, "Plans and pricing" (help.netflix.com/en/node/24926): Standard with ads
+//   $8.99 a month, Standard $19.99, Premium $26.99, in the US.
+// - OpenAI's ChatGPT pricing page (chatgpt.com/pricing): Go $8 a month, Plus $20, Pro from $100.
+export const CHEAPER_PLANS = [
+  {
+    service: "Netflix",
+    words: /NETFLIX/,
+    plan: "Standard with ads",
+    cents: 899,
+    differs: "ads, screens at once and picture quality",
+    where: "Netflix's Account page lists each plan under Change plan",
+    url: "https://help.netflix.com/en/node/24926",
+  },
+  {
+    service: "ChatGPT",
+    // The subscription, not API usage billed to a developer account.
+    words: /CHATGPT|OPENAI\b.*\bSUBSCR/,
+    plan: "Go",
+    cents: 800,
+    differs: "which models and how much use each includes",
+    where: "ChatGPT's settings list each plan under your account's plan",
+    url: "https://chatgpt.com/pricing/",
+  },
+] as const;
+// Sales tax on the cheaper plan's price, so someone already on it isn't told about it.
+export const CHEAPER_PLAN_TAX_ROOM = 1.15;
+// A charge this recent says the person still pays.
+export const CHEAPER_PLAN_SEEN_DAYS = 45;
 // T-Mobile's plans page (t-mobile.com/cell-phone-plans, read 2026-11-18): for one line, T-Mix
 // Standard $55 a month, More $75 and Loaded $95 with AutoPay, each $10 more without, plus taxes
 // and fees. A bill over this many cents is likely more than one line, so nothing is said.
