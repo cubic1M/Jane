@@ -114,6 +114,10 @@ export const TAX_TOPIC_MONTH: Readonly<Record<string, number>> = {
   student_loan_interest: 2,
   earned_income_credit: 2,
   ca_renters_credit: 2,
+  // A W-4 change works on the paychecks left: as soon as it's seen.
+  withholding_part_year: 1,
+  withholding_two_jobs: 1,
+  filing_extension: 3,
   charity_receipts: 1,
   social_security_tax: 1,
   s_corp_election: 2,

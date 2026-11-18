@@ -40,6 +40,11 @@ export const SUGGESTION_TOPICS = [
   "student_loan_interest",
   "earned_income_credit",
   "ca_renters_credit",
+  // Withholding that's off, and the extension that doesn't move the payment
+  // (src/detectors/student-withholding.ts).
+  "withholding_part_year",
+  "withholding_two_jobs",
+  "filing_extension",
   "retirement_self_employed",
   "income_smoothing",
   "health_insurance",

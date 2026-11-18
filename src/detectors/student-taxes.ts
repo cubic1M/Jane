@@ -143,7 +143,7 @@ const internationalStudent: Detector = {
       isStanford(t.description),
     );
     const withheld = stanford
-      ? ` Stanford withholds ${Math.round(INTERNATIONAL.stanfordFellowshipWithholding * 100)}% from nonresidents' fellowship and award payments and reports them on Form 1042-S; a tax treaty can lower that.`
+      ? ` Stanford withholds ${Math.round(INTERNATIONAL.stanfordFellowshipWithholding * 100)}% from nonresidents' fellowship and award payments and reports them on Form 1042-S, sent in March; a tax treaty can lower that, and Stanford's page says a US return may bring some of what was withheld back.`
       : "";
     return suggestion("taxes", "student_tax_residency", {
       title: "On a student visa, the tax forms and credits are different",

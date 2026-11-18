@@ -43,6 +43,10 @@ export const SOURCES = {
     "https://www.irs.gov/instructions/i8863",
     "Form 8863 line 7 (2025): no refundable AOTC for someone under 18, or 18 with earned income under half their support, or 18 to 23 and a full-time student, when a parent is alive and the return isn't joint; expenses are reduced by tax-free scholarships",
   ),
+  pub501: src(
+    "https://www.irs.gov/publications/p501",
+    "Pub. 501 (2025 returns): for a dependent's standard deduction, earned income includes any part of a taxable scholarship or fellowship grant",
+  ),
   pub596: src(
     "https://www.irs.gov/publications/p596",
     "Pub. 596 (2025 returns): earned income for the EITC is wages, net earnings from self-employment and statutory employee pay",
@@ -78,6 +82,10 @@ export const SOURCES = {
   stanfordTaxForms: src(
     "https://studentservices.stanford.edu/my-finances/1098-t-tax-overview-faqs/other-tax-forms-and-taxable-income",
     "Stanford: an RA or TA appointment gets a W-2; international students' fellowships are reported on Form 1042-S",
+  ),
+  stanfordInternational: src(
+    "https://studentservices.stanford.edu/my-finances/taxes/tax-essentials-international-students",
+    "Stanford: international students get Form 1042-S in March with scholarship amounts and tax withheld; filing a US return may bring a refund",
   ),
   bechtelForms: src(
     "https://bechtel.stanford.edu/navigate-international-life/taxes/determine-which-us-tax-forms-use",
@@ -155,7 +163,7 @@ export const FILING = {
 export const DEPENDENT_STANDARD_DEDUCTION = {
   floorCents: 135_000,
   plusEarnedCents: 45_000,
-  sources: ["revProc2025_32"],
+  sources: ["revProc2025_32", "pub501"],
 } as const;
 
 // Money from a school that isn't pay for work: a stipend or fellowship (taxable, nothing withheld
@@ -223,8 +231,24 @@ export const EITC_FORM = {
 // --- Withholding ----------------------------------------------------------------------------------
 
 export const W4 = {
-  // Pub. 15-T's standard annual table for a single W-4 withholds nothing below this much pay a year.
+  // Pub. 15-T's standard annual table for a single W-4 takes $8,600 off the year's pay and withholds
+  // nothing on the first $7,500 after it, then the brackets: withholding on a paycheck is the year's
+  // tax on its pay times the paychecks in a year, less the standard deduction, over those paychecks.
   noWithholdingBelowCents: 1_610_000,
+  // A job seen starting when the data shows no pay for this many pay intervals from its first day.
+  startGapIntervals: 1.15,
+  // Paychecks this many days apart, at most, make a pay interval; and the paychecks a year for each.
+  intervals: [
+    { maxDays: 9, perYear: 52 },
+    { maxDays: 14, perYear: 26 },
+    { maxDays: 17, perYear: 24 },
+    { maxDays: 35, perYear: 12 },
+  ],
+  // Two jobs' paychecks: each payer seen at least this many times.
+  jobMinPaychecks: 2,
+  // The extension card is shown from this day of the year until the return is due.
+  extensionFrom: "03-01",
+  form: "Form W-4",
   partYearMaxDays: 245,
   exemptRenewBy: "2027-02-16",
   sources: ["w4", "pub15t"],
@@ -249,5 +273,5 @@ export const INTERNATIONAL = {
       href: "https://www.irs.gov/individuals/international-taxpayers/substantial-presence-test",
     },
   ],
-  sources: ["bechtelForms", "stanfordPayingStudents"],
+  sources: ["bechtelForms", "stanfordPayingStudents", "stanfordInternational"],
 } as const;

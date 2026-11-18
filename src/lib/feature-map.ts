@@ -45,6 +45,7 @@ import { TAX_DETECTORS } from "@/detectors/taxes";
 import { TAX_SET_ASIDE_DETECTORS } from "@/detectors/tax-set-aside";
 import { STUDENT_TAX_DETECTORS } from "@/detectors/student-taxes";
 import { STUDENT_CREDIT_DETECTORS } from "@/detectors/student-credits";
+import { STUDENT_WITHHOLDING_DETECTORS } from "@/detectors/student-withholding";
 import { TRADEOFF_DETECTORS } from "@/detectors/tradeoffs";
 import { TWO_DETECTORS } from "@/detectors/two";
 import { WORK_DETECTORS } from "@/detectors/work";
@@ -81,6 +82,7 @@ export const DETECTOR_FAMILIES: readonly { key: FamilyKey; detectors: readonly D
       ...SAVERS_CREDIT_DETECTORS,
       ...STUDENT_TAX_DETECTORS,
       ...STUDENT_CREDIT_DETECTORS,
+      ...STUDENT_WITHHOLDING_DETECTORS,
     ],
   },
   { key: "investing", detectors: INVESTING_DETECTORS },
