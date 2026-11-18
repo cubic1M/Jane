@@ -161,9 +161,9 @@ const twoJobs: Detector = {
     if (short < TAX_SET_ASIDE.minLeftCents) return null;
     const [a, b] = each;
     return suggestion("taxes", "withholding_two_jobs", {
-      title: `Withholding on two paychecks falls about ${formatCents(short)} short of a year's tax on both`,
+      title: `Withholding on two paychecks can fall about ${formatCents(short)} short of a year's tax on both`,
       headline: headlineOf("Check withholding on two paychecks", short, "risk"),
-      short: `Each job withholds as if it were your only one: about ${formatWholeDollars(short)} short a year.`,
+      short: `Unless a W-4 allows for the other, each withholds as if it were the only one: about ${formatWholeDollars(short)} short.`,
       worthCents: short,
       worthKind: "risk",
       rankCents: Math.round(short * DETECTOR_RATES.tax.rankShareOfBill),

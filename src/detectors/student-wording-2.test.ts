@@ -60,3 +60,41 @@ describe("the second wording read", () => {
     passes(s.title);
   });
 });
+
+describe("two paychecks", () => {
+  it("says withholding can fall short, since Jane can't see whether a W-4 allows for the other", () => {
+    const tx = (date: string, cents: number, name: string) => ({
+      date,
+      amountCents: -cents,
+      description: `${name} PAYROLL`,
+      pfc: "INCOME_SALARY",
+      accountId: "a",
+    });
+    const days = [
+      "2026-09-04",
+      "2026-09-18",
+      "2026-10-02",
+      "2026-10-16",
+      "2026-10-30",
+      "2026-11-13",
+    ];
+    const data: ProfileInput = {
+      today: STUDENT_TODAY,
+      transactions: [
+        ...days.map((d) => tx(d, 90_000, "ACME CORP")),
+        ...days.map((d) => tx(d, 70_000, "BLUE BOTTLE")),
+      ],
+      accounts: [],
+      liabilities: [],
+      told: {},
+    };
+    const s = runDetectors({ profile: buildProfile(data), data }).find(
+      (x) => x.topic === "withholding_two_jobs",
+    )!;
+    expect(s.title).toMatch(/^Withholding on two paychecks can fall about \$/);
+    expect(s.short).toMatch(/^Unless a W-4 allows for the other/);
+    expect(s.short.length).toBeLessThanOrEqual(120);
+    passes(s.title);
+    passes(s.short);
+  });
+});
