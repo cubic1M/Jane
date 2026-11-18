@@ -146,6 +146,7 @@ async function loadProfileInputFrom(
         originationDate: true,
         repaymentPlan: true,
         loanStatus: true,
+        loanStatusEndDate: true,
       },
     }),
     db.holdings.findMany({
@@ -292,6 +293,7 @@ async function loadProfileInputFrom(
       originationDate: l.originationDate ? dayOf(l.originationDate) : null,
       repaymentPlan: l.repaymentPlan,
       loanStatus: l.loanStatus,
+      loanStatusEndDate: l.loanStatusEndDate ? dayOf(l.loanStatusEndDate) : null,
     })),
     state: tax?.state ?? null,
     // The person, a spouse on a joint return, and dependants, once they've answered both.

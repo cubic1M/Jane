@@ -121,6 +121,15 @@ export const QUESTIONS: readonly QuestionSpec[] = [
     ],
     topics: ["hardship_plan", "debt_plan"],
   },
+  {
+    fact: "is_student",
+    text: "Are you a student right now? Some savings are only for students.",
+    choices: [
+      { label: "Yes, I'm a student", value: "yes" },
+      { label: "No", value: "no" },
+    ],
+    topics: ["free_through_school", "transit_pass", "cardinal_care_check", "student_checking"],
+  },
 ];
 
 // Typical rates for what an answer could unlock (cents are computed from the person's own
@@ -138,4 +147,7 @@ export const UNLOCK = {
   // contributions, required withdrawals): a typical yearly amount at stake.
   ageApproachingCents: 1_200_000,
   ageRetiredCents: 600_000,
+  // Knowing someone paid by a university is a student: a student price, a pass or a plan they
+  // may be paying for twice, at a typical yearly amount.
+  studentCents: 30_000,
 } as const;

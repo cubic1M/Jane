@@ -213,3 +213,133 @@ export const MONTHLY_FEE_WORDS =
   /MONTHLY (?:MAINTENANCE|SERVICE|ACCOUNT) (?:FEE|CHARGE)|MAINTENANCE FEE|MONTHLY FEE|SERVICE CHARGE/;
 // A monthly fee charged this recently says it's still charged.
 export const MONTHLY_FEE_SEEN_DAYS = 62;
+
+// --- What Stanford gives its people free ------------------------------------------------------
+// Stanford Libraries' newspapers guide (guides.library.stanford.edu/c.php?g=1021986, updated
+// 2026-11-17): The New York Times (not Games, Cooking, Podcasts or The Athletic; a paid subscriber
+// must cancel before activating), The Wall Street Journal, The Washington Post, The Atlantic and
+// Bloomberg.com, free with a SUNet ID. UIT (uit.stanford.edu/service/softwarelic/ms, licence
+// 11/1/23 to 10/31/28): Microsoft 365 free for faculty, staff and students on up to five
+// computers, five tablets and five phones.
+export const STANFORD_FREE = [
+  {
+    name: "The New York Times",
+    words: /NYTIMES|NEW YORK TIMES|\bNYT\b/,
+    // Games, Cooking and The Athletic aren't in Stanford's access.
+    notWords: /GAMES|COOKING|ATHLETIC|CROSSWORD|WORDLE/,
+    how: "activate it at accessnyt.com with your Stanford email (cancel the paid one first; Games, Cooking and The Athletic aren't included)",
+    url: "https://guides.library.stanford.edu/c.php?g=1021986",
+  },
+  {
+    name: "The Wall Street Journal",
+    words: /\bWSJ\b|WALL STREET JOURNAL|DOW JONES/,
+    notWords: null,
+    how: "create a WSJ account with your Stanford email through the library's WSJ page",
+    url: "https://guides.library.stanford.edu/c.php?g=1021986",
+  },
+  {
+    name: "The Washington Post",
+    words: /WASHINGTON ?POST|WAPO/,
+    notWords: null,
+    how: "sign in at washingtonpost.com with your Stanford email",
+    url: "https://guides.library.stanford.edu/c.php?g=1021986",
+  },
+  {
+    name: "The Atlantic",
+    words: /THE ATLANTIC|ATLANTIC MONTHLY|THEATLANTIC/,
+    notWords: null,
+    how: "open it through SearchWorks, signed in with your SUNet ID",
+    url: "https://guides.library.stanford.edu/c.php?g=1021986",
+  },
+  {
+    name: "Bloomberg",
+    words: /BLOOMBERG/,
+    notWords: null,
+    how: "connect through the Business Library's Bloomberg page with your Stanford email",
+    url: "https://guides.library.stanford.edu/c.php?g=1021986",
+  },
+  {
+    name: "Microsoft 365",
+    words: /MICROSOFT ?\*? ?365|MICROSOFT\*OFFICE|OFFICE ?365|MSFT ?\* ?(?:365|OFFICE)/,
+    notWords: null,
+    how: "install it free with your Stanford Microsoft 365 account (up to five computers, five tablets and five phones)",
+    url: "https://uit.stanford.edu/service/softwarelic/ms",
+  },
+  // uit.stanford.edu/service/zoom (modified 2026-09-02): free for current students, faculty and staff.
+  {
+    name: "Zoom",
+    words: /\bZOOM\.?(?:US|COM| VIDEO| COMMUNICATIONS| WORKPLACE| PRO)\b|ZOOM\.US/,
+    notWords: null,
+    how: "sign in at stanford.zoom.us with your SUNet ID",
+    url: "https://uit.stanford.edu/service/zoom",
+  },
+] as const;
+// A charge under this reads as monthly when only one is seen; at or over it, as a year's.
+export const FREE_SERVICE_YEARLY_FROM_CENTS = 5_000;
+// Charges this recent say the person still pays.
+export const FREE_SERVICE_SEEN_DAYS = 400;
+
+// Stanford Transportation, "Caltrain GoPass for Commuting Graduate Students": free for an active,
+// degree-seeking graduate student whose residence isn't in 94304, 94305 or 94309 and is within
+// commuting range; requested with a Clipper card number; scheduled through August 2027.
+export const GRAD_GOPASS = {
+  url: "https://transportation.stanford.edu/getting-stanford/public-transit/caltrain-gopass/caltrain-gopass-commuting-graduate-students",
+  formUrl: "https://transportation-forms.stanford.edu/transit-pass-grads/",
+  until: "2027-08-31",
+  words: /CALTRAIN/,
+  // At least this many Caltrain fares, in the last 90 days.
+  minFares: 2,
+} as const;
+
+// --- Cardinal Care ----------------------------------------------------------------------------
+// financialaid.stanford.edu (grad subsidy page): $8,808 for 2026-27; Stanford pays all of it
+// ($2,936 a quarter) for a graduate student on a 25%-or-more assistantship who hasn't waived it,
+// half for one under 25%. stanford.myahpcare.com/waiver: windows for 2026-27, an outside plan must
+// meet Minimum Essential Coverage, a deductible and an out-of-pocket maximum of $10,600 or less
+// for one person, and cover inpatient and outpatient care in the Bay Area; short-term, travel and
+// dental-only plans can't be used; a decision within 10 business days.
+export const CARDINAL_CARE = {
+  yearCents: 880_800,
+  quarterCents: 293_600,
+  costUrl: "https://financialaid.stanford.edu/grad/funding/programs/subsidy.html",
+  waiverUrl: "https://stanford.myahpcare.com/waiver",
+  maxDeductibleCents: 1_060_000,
+  windows: [
+    { who: "continuing and autumn students", from: "2026-08-14", to: "2026-09-15" },
+    { who: "students starting in winter", from: "2026-11-18", to: "2026-12-15" },
+    { who: "students starting in spring", from: "2027-02-24", to: "2027-03-15" },
+  ],
+} as const;
+// A health plan's premium, by its words: the insurers a student's own or family plan is with.
+export const HEALTH_PREMIUM_WORDS =
+  /BLUE SHIELD|BLUE CROSS|ANTHEM|KAISER|AETNA|CIGNA|UNITED ?HEALTH|UHC|HEALTH ?NET|OSCAR|COVERED ?CALIFORNIA|MOLINA|SUTTER HEALTH PLUS|WESTERN HEALTH/;
+// At least this many premium payments in the last 120 days.
+export const HEALTH_PREMIUM_MIN = 1;
+// One premium payment this size or more reads as a term's or a year's, not a month's.
+export const HEALTH_PREMIUM_ONCE_FROM_CENTS = 150_000;
+
+// --- Two plans protecting one phone -----------------------------------------------------------
+// A maker's plan and a carrier's or a third party's, each paid monthly.
+export const DEVICE_PLANS = [
+  { name: "AppleCare", words: /APPLECARE/ },
+  {
+    name: "your carrier's protection",
+    words:
+      /PROTECTION ?360|P360|MOBILE PROTECT|TOTAL MOBILE PROTECTION|PROTECT ADVANTAGE|DEVICE PROTECT|ASURION/,
+  },
+  { name: "Samsung Care+", words: /SAMSUNG CARE/ },
+] as const;
+
+// --- A grace period ending --------------------------------------------------------------------
+// studentaid.gov ("Subsidized and Unsubsidized Loans", read 2026-11-18): "you'll have a six-month
+// grace period before you are required to begin repayment"; the servicer tells you the first due
+// date. Plaid reports the status "in grace" and its end date.
+export const GRACE_ENDING = {
+  url: "https://studentaid.gov/understand-aid/types/loans/subsidized-unsubsidized",
+  // Told this many days before the grace period ends.
+  aheadDays: 120,
+  // "now" this close.
+  urgentDays: 30,
+  // Standard's term, to show what a level payment would be.
+  standardMonths: 120,
+} as const;

@@ -85,6 +85,10 @@ function unlockOf(fact: FactKey, profile: Profile, data: ProfileInput): number {
       return f.debt_trouble.value === true
         ? Math.round(interest(data) * UNLOCK.hardshipShareOfCosts)
         : 0;
+    case "is_student":
+      // Asked only where the data leaves it open (./build.ts: paid by a university, no campus
+      // spending), which is the only time it's unknown.
+      return UNLOCK.studentCents;
     default:
       return 0;
   }

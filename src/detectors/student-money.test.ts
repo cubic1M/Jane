@@ -184,6 +184,8 @@ describe("Stanford's bill and its payment plan", () => {
     expect(s.worthCents).toBe(4_200);
     expect(s.why).toContain("1.00% a month");
     expect(s.why).toContain("Axess");
+    // Paid by Stanford: they may be a graduate assistant, who has the payroll plan instead.
+    expect(s.why).toContain("Payroll Deduction Plan");
     expectClean(s);
   });
 

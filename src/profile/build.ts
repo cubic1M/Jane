@@ -39,7 +39,12 @@ import type { PolicyKind } from "@/config/insurance";
 import { insurerKind } from "@/insights/found-policies";
 import { lifeEventGuesses } from "@/insights/life-signals";
 import type { DetectionInput } from "@/detection/types";
-import { CAR_SIGNAL, KIDS_SIGNALS, NEW_BABY_RECENT_DAYS } from "@/config/life-facts";
+import {
+  CAR_SIGNAL,
+  KIDS_SIGNALS,
+  NEW_BABY_RECENT_DAYS,
+  UNIVERSITY_PAY,
+} from "@/config/life-facts";
 import {
   commuteReading,
   eatingReading,
@@ -109,6 +114,8 @@ export type ProfileLiability = {
   originationDate?: string | null;
   repaymentPlan?: string | null;
   loanStatus?: string | null;
+  // When the status ends (a grace period's last day), YYYY-MM-DD; absent when not loaded.
+  loanStatusEndDate?: string | null;
 };
 // What the person told Jane: corrections on the profile and answers in other places.
 export type Told = Partial<Record<FactKey, string | number | boolean>>;
@@ -671,7 +678,16 @@ function lifeFacts(b: Builder) {
     baby?.matches ?? 0,
   );
   const student = studentReading(txs);
-  set("is_student", student.value, student.source, student.what, student.matches);
+  // Paid by a university with nothing else saying school: a student or its staff, which only they
+  // can say (a graduate assistant buys nothing on campus). Left unknown, so Jane asks.
+  const paidByUniversity = txs.some(
+    (t) =>
+      t.amountCents < 0 &&
+      (t.pfc ?? "").startsWith("INCOME") &&
+      UNIVERSITY_PAY.test(t.description.toUpperCase()),
+  );
+  if (student.value === false && paidByUniversity) unknown("is_student");
+  else set("is_student", student.value, student.source, student.what, student.matches);
   const salaried = facts.income_pattern.value === "salary";
   const work = commuteReading(txs, months, salaried);
   if (work) set("work_style", work.value, work.source, work.what, work.matches);

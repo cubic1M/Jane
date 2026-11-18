@@ -91,6 +91,11 @@ export const SUGGESTION_TOPICS = [
   "card_from_cash",
   "credit_file_start",
   "student_checking",
+  "free_through_school",
+  "transit_pass",
+  "cardinal_care_check",
+  "device_cover_twice",
+  "grace_ending",
   // Spec step 263: spending, bills and cash.
   "duplicate_subscription",
   "price_increase",
