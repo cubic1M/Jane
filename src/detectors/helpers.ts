@@ -119,6 +119,9 @@ export function cashLine(cents: number, verb: "keep" | "hold" = "keep"): string 
 export function nice(description: string): string {
   return (
     withoutAchDetails(description)
+      // An ACH entry's code and company ID, as the merchant names leave them out ("GEICO AUTO PPD
+      // ID: 3334445556" read "Geico Auto Ppd Id:" on a car cover card; debugger 11-18).
+      .replace(/\s+\b(?:PPD|WEB|CCD|TEL)\s+ID:?\s*\S*/g, "")
       // A customer-service number and the state after it ("COMCAST XFINITY 800-266-2278",
       // "DISNEY PLUS 888-905-7888 CA"; night QA 10-30).
       .replace(/\s+\(?\d{3}\)?[-. ]?\d{3}[-. ]?\d{4}(?:\s+[A-Z]{2})?\s*$/, "")
