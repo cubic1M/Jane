@@ -75,7 +75,9 @@ function NeedsYou({
         ))}
         {unreadAlerts > 0 && (
           <li>
-            <Link href="/jane" className="font-medium text-emerald-800 hover:underline">
+            {/* To the alerts themselves: they're last on /jane, under its other lists (debugger
+                11-18: the link opened the list's top, "What matters now", on a phone). */}
+            <Link href="/jane#alerts" className="font-medium text-emerald-800 hover:underline">
               {unreadAlerts === 1 ? "1 new alert" : `${unreadAlerts} new alerts`}
             </Link>
           </li>
