@@ -60,6 +60,8 @@ describe("what still passes on a real account", () => {
     "Your Etsy fees of $5.00 posted Nov 1.",
     "Your Fiverr payout of $90.00 arrived Nov 1.",
     "IRS: a gift isn't income to the person who receives it",
+    "May not send one: below the reporting threshold. Your own records count.",
+    "If you only bought once, the second charge can usually be refunded, by the merchant or through your card company.",
   ])("passes %s", (text) => {
     expect(real(text)).toMatchObject({ ok: true });
   });
