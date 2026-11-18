@@ -41,4 +41,12 @@ describe("a student loan's year of payments", () => {
     )!;
     expect(s.why).toContain("about $2,608.80 a year at $217.40 a month");
   });
+
+  it("names the lender without the bank's short form for student loan", () => {
+    const s = runDetectors({ profile: buildProfile(data), data }, STUDENT_CREDIT_DETECTORS).find(
+      (x) => x.topic === "student_loan_interest",
+    )!;
+    expect(s.why).toMatch(/^You paid \$869\.60 to Nelnet in /);
+    expect(s.short).toMatch(/to Nelnet in /);
+  });
 });

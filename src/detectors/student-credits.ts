@@ -165,7 +165,9 @@ const studentLoanInterest: Detector = {
     if (worth <= 0) return null;
     const balance = loans.reduce((t, l) => t + l.balance, 0);
     const lender = nice(money.loanPayments[0].description).replace(
-      /\s+(?:Student Loan|Payment).*$/i,
+      // A bank's short form too: "NELNET STUDENT LN PAYMENT" read as "Nelnet Student Ln"
+      // (debug 2, 11-18).
+      /\s+(?:Student\s+L(?:oa)?n|Payment).*$/i,
       "",
     );
     return suggestion("taxes", "student_loan_interest", {
