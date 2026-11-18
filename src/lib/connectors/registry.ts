@@ -18,6 +18,7 @@ import { stripeFc } from "./stripe-fc/connector";
 import { canopyConnect, sandboxCanopyConnect } from "./canopy/connector";
 import { sandboxChartTranscripts } from "./chart/connector";
 import { sandboxSignwellPermission, signwellPermission } from "./signwell/connector";
+import { sandboxAlpacaAccount, sandboxAlpacaOrder } from "./alpaca/connector";
 import { manualOpenSavings } from "./manual-pay/savings";
 import { SANDBOX_CONNECTORS } from "./sandbox/adapters";
 import type { Connector } from "./types";
@@ -83,6 +84,10 @@ const CONNECTORS: readonly Connector[] = [
   // SignWell, and its sandbox twin for sample data (./signwell/).
   signwellPermission,
   sandboxSignwellPermission,
+  // Sandbox only: an account, a buy (a pick, held back for review) and the cash sweep through
+  // Alpaca's Broker API. No real one while REAL_TRADING is false (./alpaca/).
+  sandboxAlpacaAccount,
+  sandboxAlpacaOrder,
 ];
 
 let registry: ReadonlyMap<string, Connector> = buildRegistry(CONNECTORS);

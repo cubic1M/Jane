@@ -33,6 +33,12 @@ export function connectorsKilledByEnv(
 // var; sample data isn't a real person's and isn't held back.
 export const HUMAN_REVIEW_READY = false;
 
+// Whether any connector may place a real order in a real brokerage account. Code only, never an env
+// var: a broker agreement, counsel on whether suggesting and placing an order needs a broker or
+// adviser registration, and the founders' word come first. The Alpaca adapter is sandbox only
+// (src/lib/connectors/alpaca/).
+export const REAL_TRADING = false;
+
 // The real connectors that may act, by id. None until a partner is signed, counsel has answered and
 // the founders say so. Turning one on is a code change, never an env var (registry.test.ts checks).
 export const REAL_CONNECTORS: Readonly<Record<string, boolean>> = {};
@@ -198,6 +204,14 @@ export const SIGNWELL = {
   webhookIdEnv: "SIGNWELL_WEBHOOK_ID",
   // Days before an unsigned letter's request expires.
   expiresInDays: 14,
+} as const;
+
+// Alpaca's Broker API (read connectors, 11-18; docs.alpaca.markets, read 2026-11-17): sandbox only.
+// HTTP Basic auth with the correspondent's key and secret.
+export const ALPACA = {
+  sandbox: "https://broker-api.sandbox.alpaca.markets",
+  keyEnv: "ALPACA_BROKER_KEY_ID",
+  secretEnv: "ALPACA_BROKER_SECRET_KEY",
 } as const;
 
 export const STRIPE_FC = {
