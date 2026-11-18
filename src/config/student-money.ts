@@ -435,3 +435,15 @@ export const NETFLIX_PLANS = {
   // Sales tax on the ad plan's price, so someone already on it isn't told to move to it.
   taxRoom: 1.15,
 } as const;
+// T-Mobile's plans page (t-mobile.com/cell-phone-plans, read 2026-11-18): for one line, T-Mix
+// Standard $55 a month, More $75 and Loaded $95 with AutoPay, each $10 more without, plus taxes
+// and fees. A bill over this many cents is likely more than one line, so nothing is said.
+export const TMOBILE_PLANS = {
+  url: "https://www.t-mobile.com/cell-phone-plans",
+  cheapestCents: 5_500,
+  autopayCents: 1_000,
+  words: /T-?MOBILE/,
+  notWords: /PROTECTION|P360|INSURANCE|HOME INTERNET/,
+  taxRoom: 1.15,
+  oneLineMaxCents: 11_000,
+} as const;

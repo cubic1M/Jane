@@ -4,6 +4,7 @@ import {
   AUTO_PREMIUM_WORDS,
   FED_RATES,
   NETFLIX_PLANS,
+  TMOBILE_PLANS,
   RENTERS_AVERAGE,
   STANFORD_HOUSING,
 } from "@/config/student-money";
@@ -220,4 +221,50 @@ const cheaperTier: Detector = {
   },
 };
 
-export const BILL_FACT_DETECTORS: readonly Detector[] = [cheaperTier];
+// A T-Mobile bill that looks like one line on a plan above T-Mix Standard: the carrier's own
+// cheaper plan, as its plans page prices it.
+const phonePlanCheaper: Detector = {
+  capability: "cost",
+  topic: "phone_plan_cheaper",
+  covers: [],
+  needs: [],
+  detect({ profile, data }) {
+    const p = TMOBILE_PLANS;
+    const since = addDays(data.today, -45);
+    const bills = data.transactions
+      .filter((t) => {
+        const line = lineOf(t);
+        return (
+          t.amountCents > 0 && t.date <= data.today && p.words.test(line) && !p.notWords.test(line)
+        );
+      })
+      .sort((a, b) => b.date.localeCompare(a.date));
+    const latest = bills[0];
+    if (!latest || latest.date < since) return null;
+    const floor = Math.round(p.cheapestCents * p.taxRoom);
+    if (latest.amountCents <= floor || latest.amountCents > p.oneLineMaxCents) return null;
+    const yearly = (latest.amountCents - floor) * 12;
+    return suggestion("cost", "phone_plan_cheaper", {
+      title: "Look at T-Mobile's cheaper plan: one line costs less than your bill",
+      headline: headlineOf("Look at T-Mobile's cheaper plan", yearly, "saves"),
+      short: `You paid T-Mobile ${formatCents(latest.amountCents)}; its cheapest plan is ${formatCents(p.cheapestCents)} a line with AutoPay.`,
+      worthCents: yearly,
+      worthKind: "saves",
+      confidence: weakest([
+        evidence("seen", profile.months, bills.length, "T-Mobile bills"),
+        // Lines, a phone being paid off and the plan's perks aren't in the statement.
+        { percent: 55, reason: "I can't see your lines, a phone payment, or your plan's perks" },
+      ]),
+      urgency: "later",
+      why: `You paid T-Mobile ${formatCents(latest.amountCents)} on ${dayLabel(latest.date)}. T-Mobile's own plans page lists T-Mix Standard at ${formatCents(p.cheapestCents)} a month for one line with AutoPay (${formatCents(p.cheapestCents + p.autopayCents)} without), plus taxes and fees; its dearer plans add perks. Even with taxes that's about ${formatCents(yearly)} a year under your bill, if it's one line with no phone being paid off on it. To look into it: in the T-Mobile app or at t-mobile.com, open your plan, compare it with T-Mix Standard, and switch there if the perks you'd lose don't matter to you.`,
+      action: { label: "See your bills", href: "/bills" },
+      more: [{ label: "T-Mobile's plans", href: p.url }],
+      watch: {
+        kind: "bill_drops",
+        payees: [{ description: latest.description, beforeCents: latest.amountCents, perYear: 12 }],
+      },
+    });
+  },
+};
+
+export const BILL_FACT_DETECTORS: readonly Detector[] = [cheaperTier, phonePlanCheaper];

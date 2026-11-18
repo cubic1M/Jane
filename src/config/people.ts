@@ -123,6 +123,7 @@ export const SUGGESTION_TOPICS = [
   "car_cover_cost",
   "card_rate_check",
   "cheaper_tier",
+  "phone_plan_cheaper",
   // Spec step 263: spending, bills and cash.
   "duplicate_subscription",
   "price_increase",

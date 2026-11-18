@@ -8,6 +8,7 @@ import {
   FED_RATES,
   NETFLIX_PLANS,
   RENTERS_AVERAGE,
+  TMOBILE_PLANS,
   STANFORD_HOUSING,
 } from "@/config/student-money";
 import { ADVICE_TOPICS } from "@/config/suggestions";
@@ -203,5 +204,37 @@ describe("Netflix's plan with ads", () => {
     expect(fire(netflix(1_035), "cheaper_tier")).not.toBeNull();
     expect(fire(netflix(1_799, "2026-10-04"), "cheaper_tier")).not.toBeNull();
     expect(fire(netflix(1_799, "2026-10-03"), "cheaper_tier")).toBeNull();
+  });
+});
+
+describe("T-Mobile's cheaper plan", () => {
+  const bill = (cents: number, description = "T-MOBILE", date = "2026-11-10"): ProfileInput => {
+    const base = undergrad();
+    return {
+      ...base,
+      transactions: [
+        ...base.transactions.filter((t) => !/T-MOBILE/.test(t.description)),
+        row(date, cents, description, "RENT_AND_UTILITIES_TELEPHONE", "ug-checking"),
+      ],
+    };
+  };
+
+  it("says the carrier's own one-line price and a year under the bill, with taxes allowed for", () => {
+    const s = fire(bill(7_500), "phone_plan_cheaper")!;
+    // $55 with 15% for taxes is $63.25: $11.75 a month under $75.
+    expect(s.worthCents).toBe((7_500 - 6_325) * 12);
+    expect(s.why).toContain("T-Mix Standard at $55.00");
+    expect(s.why).toContain("$65.00 without");
+    expect(s.more?.[0]?.href).toBe(TMOBILE_PLANS.url);
+    expectClean(s);
+  });
+
+  it("is nothing at or under $63.25, over $110 (more than one line), for protection, or when stale", () => {
+    expect(fire(bill(6_325), "phone_plan_cheaper")).toBeNull();
+    expect(fire(bill(6_326), "phone_plan_cheaper")).not.toBeNull();
+    expect(fire(bill(11_000), "phone_plan_cheaper")).not.toBeNull();
+    expect(fire(bill(11_001), "phone_plan_cheaper")).toBeNull();
+    expect(fire(bill(7_500, "T-MOBILE PROTECTION 360"), "phone_plan_cheaper")).toBeNull();
+    expect(fire(bill(7_500, "T-MOBILE", "2026-10-03"), "phone_plan_cheaper")).toBeNull();
   });
 });

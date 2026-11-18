@@ -128,6 +128,9 @@ export const MONEY_GROUPS: Readonly<Record<string, readonly string[]>> = {
   belongings_cover: ["renters_cover"],
   insurance_shopping: ["car_cover"],
   car_cover_cost: ["car_cover"],
+  // The phone bill: asking for a lower rate or the carrier's cheaper plan, the same money.
+  bill_negotiation: ["phone_bill"],
+  phone_plan_cheaper: ["phone_bill"],
   // A bill ahead the cash won't cover and the Stanford bill's date: one bill, said once; and cash
   // short for the month's bills is the same shortfall.
   bill_gap_ahead: ["bill_ahead", "cash_short"],

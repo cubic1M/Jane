@@ -48,6 +48,7 @@ export const SUGGESTION_NODES: Readonly<Record<string, { branch: MoneyBranch; la
   student_checking: { branch: "charges", label: "A checking fee you can drop" },
   late_fees: { branch: "charges", label: "Late fees to stop" },
   bill_negotiation: { branch: "charges", label: "A bill you can lower" },
+  phone_plan_cheaper: { branch: "charges", label: "A cheaper phone plan" },
   budget_billing: { branch: "charges", label: "A bill that swings by season" },
   utility_discount: { branch: "charges", label: "An energy discount you may get" },
   lifeline: { branch: "charges", label: "Money off a phone bill" },
