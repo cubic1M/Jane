@@ -85,6 +85,8 @@ export const SUGGESTION_TOPICS = [
   "bill_gap_ahead",
   "stanford_bill_due",
   "card_from_cash",
+  "credit_file_start",
+  "student_checking",
   // Spec step 263: spending, bills and cash.
   "duplicate_subscription",
   "price_increase",

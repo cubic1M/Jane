@@ -135,3 +135,78 @@ export const CARD_VS_CASH = {
   // Only when what cash could clear is at least this much of a card balance.
   minClearCents: 20_000,
 } as const;
+
+// --- Overdraft coverage -----------------------------------------------------------------------
+// Regulation E, 12 CFR 1005.17: a bank can't charge an overdraft fee on an ATM withdrawal or a
+// one-time debit card purchase unless the person opted in, and the choice can be changed at any
+// time (the CFPB's consumer page: opted out, the card is declined instead, with no fee).
+export const OVERDRAFT_OPT_IN = {
+  url: "https://www.consumerfinance.gov/rules-policy/regulations/1005/17/",
+  // Its consumer page, in the words the card uses (archived, last modified 2026-06-25).
+  consumerUrl: "https://www.consumerfinance.gov/whats-your-status-when-it-comes-to-overdraft-coverage",
+} as const;
+
+// --- A credit file that hasn't started --------------------------------------------------------
+// The CFPB's "Building credit from scratch": a secured card's deposit ranges from $50 to $300 and
+// becomes the credit line (ask whether the issuer reports to the credit bureaus); a credit-builder
+// loan, typically at a credit union, holds $300 to $1,000 in a locked savings account repaid over
+// 6 to 24 months, and the money comes back at the end; the credit report is free at
+// annualcreditreport.com.
+export const CREDIT_START = {
+  url: "https://files.consumerfinance.gov/f/documents/201612_cfpb_credit_invisible_checklist.PDF",
+  securedDepositCents: { from: 5_000, to: 30_000 },
+  builderLoanCents: { from: 30_000, to: 100_000 },
+  builderLoanMonths: { from: 6, to: 24 },
+  reportUrl: "https://www.annualcreditreport.com",
+  // At least this much data before "no card or loan seen" means anything.
+  minDays: 30,
+} as const;
+
+// A payment to a card or a lender, by its words (a card paid from checking files as a transfer
+// at some banks).
+export const CREDIT_PAYMENT_WORDS =
+  /CREDIT CA?RD|\bCRD\b|CARD ?(?:PMT|PAYMENT|AUTOPAY)|\bAMEX\b|AMERICAN EXPRESS|DISCOVER|CAPITAL ONE|CITI ?CARD|APPLE ?CARD|SYNCHRONY|\bLOAN\b|NELNET|MOHELA|AIDVANTAGE|SALLIE MAE|NAVIENT/;
+
+// --- A student account at the same bank -------------------------------------------------------
+// Each bank's own page, read 2026-11-18:
+// - Chase Secure Banking: "$4.95 OR $0" a month, $0 for "an account owner who is 17-24 years old";
+//   "There are no overdraft fees with a Chase Secure Banking account."
+// - Bank of America Advantage SafeBalance Banking: "no monthly fee if under age 25" and "no
+//   Overdraft Item Fees".
+// - Wells Fargo Everyday Checking: a $15 monthly service fee, avoided when "The primary account
+//   owner is 17 - 24 years old".
+export const STUDENT_ACCOUNTS = [
+  {
+    bank: "Chase",
+    words: /\bCHASE\b|JPMORGAN/,
+    account: "Chase Secure Banking",
+    rule: "no monthly fee for an owner aged 17 to 24, and no overdraft fees",
+    ages: { from: 17, to: 24 },
+    noOverdraftFees: true,
+    url: "https://personal.chase.com/personal/secure-banking",
+  },
+  {
+    bank: "Bank of America",
+    words: /BANK OF AMERICA|\bBOFA\b|\bB OF A\b|ADV(?:ANTAGE)? ?PLUS|ADV(?:ANTAGE)? RELATIONSHIP/,
+    account: "Bank of America Advantage SafeBalance Banking",
+    rule: "no monthly fee for an owner under 25, and no overdraft item fees",
+    ages: { from: 0, to: 24 },
+    noOverdraftFees: true,
+    url: "https://www.bankofamerica.com/deposits/checking/advantage-banking/",
+  },
+  {
+    bank: "Wells Fargo",
+    words: /WELLS ?FARGO/,
+    account: "Wells Fargo Everyday Checking",
+    rule: "its $15 monthly fee waived for a primary owner aged 17 to 24",
+    ages: { from: 17, to: 24 },
+    noOverdraftFees: false,
+    url: "https://www.wellsfargo.com/checking/everyday/",
+  },
+] as const;
+
+// A checking account's own monthly fee, by its words.
+export const MONTHLY_FEE_WORDS =
+  /MONTHLY (?:MAINTENANCE|SERVICE|ACCOUNT) (?:FEE|CHARGE)|MAINTENANCE FEE|MONTHLY FEE|SERVICE CHARGE/;
+// A monthly fee charged this recently says it's still charged.
+export const MONTHLY_FEE_SEEN_DAYS = 62;

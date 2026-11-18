@@ -127,6 +127,8 @@ export const MONEY_GROUPS: Readonly<Record<string, readonly string[]>> = {
   bill_gap_ahead: ["bill_ahead", "cash_short"],
   stanford_bill_due: ["bill_ahead"],
   low_balance: ["cash_short"],
+  // The same bank's fee-free account for young owners stops the monthly fee bank_fees counts.
+  student_checking: ["fees"],
   bank_fees: ["fees"],
   late_fees: ["fees"],
 };

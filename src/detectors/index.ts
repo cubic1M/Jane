@@ -30,6 +30,7 @@ import { TWO_DETECTORS } from "./two";
 import { TRADEOFF_DETECTORS } from "./tradeoffs";
 import { WORK_DETECTORS } from "./work";
 import { STUDENT_MONEY_DETECTORS } from "./student-money";
+import { STUDENT_CREDIT_CASH_DETECTORS } from "./student-credit-cash";
 import type { Detector, DetectorContext, Suggestion } from "./contract";
 
 // Every detector (spec step 254). A capability's detectors are the entries with its id.
@@ -47,6 +48,7 @@ export const DETECTORS: readonly Detector[] = [
   ...DEBT_DETECTORS,
   ...STUDENT_AID_DETECTORS,
   ...STUDENT_MONEY_DETECTORS,
+  ...STUDENT_CREDIT_CASH_DETECTORS,
   ...FIT_DETECTORS,
   ...SPENDING_DETECTORS,
   ...UTILITY_DETECTORS,

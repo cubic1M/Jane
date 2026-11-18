@@ -73,6 +73,8 @@ type ProfileAccount = {
   id: string;
   // What the bank calls it ("Inherited IRA"); read for a few tax signals (step 268).
   name?: string;
+  // The bank it's at, as the link names it ("Chase"); absent for an upload or when not loaded.
+  institution?: string | null;
   type: string;
   subtype: string | null;
   balanceCents: number;

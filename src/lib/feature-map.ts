@@ -17,6 +17,7 @@ import { EFTPS_DETECTORS } from "@/detectors/eftps";
 import { SAVERS_CREDIT_DETECTORS } from "@/detectors/savers-credit";
 import { STUDENT_AID_DETECTORS } from "@/detectors/student-aid";
 import { STUDENT_MONEY_DETECTORS } from "@/detectors/student-money";
+import { STUDENT_CREDIT_CASH_DETECTORS } from "@/detectors/student-credit-cash";
 import { FAMILY_CREDIT_DETECTORS } from "@/detectors/family-credit";
 import { FIGURES_DETECTORS } from "@/detectors/figures";
 import { FIT_DETECTORS } from "@/detectors/fit";
@@ -86,7 +87,7 @@ export const DETECTOR_FAMILIES: readonly { key: FamilyKey; detectors: readonly D
   { key: "tradeoffs", detectors: TRADEOFF_DETECTORS },
   { key: "practiceIdeas", detectors: PRACTICE_IDEA_DETECTORS },
   { key: "retirement", detectors: RETIREMENT_DETECTORS },
-  { key: "student", detectors: STUDENT_MONEY_DETECTORS },
+  { key: "student", detectors: [...STUDENT_MONEY_DETECTORS, ...STUDENT_CREDIT_CASH_DETECTORS] },
 ];
 
 type FeatureNode = {
