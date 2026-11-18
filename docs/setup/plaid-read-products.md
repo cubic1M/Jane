@@ -18,20 +18,19 @@ until the Item is removed. A month is a calendar month in UTC and isn't pro-rate
 on the 2nd still pays for that month (<https://plaid.com/docs/account/billing/>). Investments has two
 subscriptions: holdings, and investment transactions.
 
-**When the bill starts depends on how Link asks** (<https://plaid.com/docs/link/initializing-products/>):
+**When the bill starts** (<https://plaid.com/docs/link/initializing-products/>, read 2026-11-17):
+Jane's Link asks for Transactions as the product, and for Liabilities and Investments as
+**`additional_consented_products`**, as Plaid recommends for a personal-finance app
+(`src/lib/plaid/link.ts`). The person agrees to them in that same Link, with no second trip, and
+Plaid bills each only from **the first time Jane reads it**. Jane reads Liabilities only for a link
+that has a card or a loan, and Investments only for one with an investment account (it asks Plaid's
+free `/accounts/get` which accounts a link holds, `src/lib/plaid/sync.ts`). So a checking-only link
+pays for neither.
 
-- A product in Link's **`optional_products`**, where Jane puts Liabilities and Investments today
-  (`src/lib/plaid/link.ts`), is billed **when the link is made**, at every bank that supports it,
-  whether or not the person has a loan, a card or a brokerage there.
-- A product in **`additional_consented_products`** is billed only from **the first time Jane reads
-  it**. Plaid recommends exactly this for personal-finance apps: Transactions as the product,
-  Liabilities and Investments as consented ones, read only for accounts of that type.
-
-Moving both to `additional_consented_products` (and reading Liabilities only when a link has a card
-or loan, Investments only when it has an investment account) would stop paying for links that have
-none. It changes what every new link costs, so it's your call; it isn't built. One thing to check
-first, in the sandbox through Link itself: whether a link made that way reads Liabilities without
-sending the person back through Link.
+**Links made before 2026-11-17 keep their subscription.** Until then Link asked for Liabilities in
+`optional_products`, which Plaid bills from the moment the link is made, at any bank that supports
+it, and a product can't be taken off an Item. Those links are billed for Liabilities until each is
+removed; nothing in code can stop it.
 
 > **PRICE GAP:** the price per Item for each product, and which banks and brokerages each covers,
 > are being checked at the source by the connector-roadmap session. Fill this in from its answer;
@@ -39,11 +38,10 @@ sending the person back through Link.
 
 Two things learned in the sandbox that change the bill:
 
-- **Reading a product adds it.** When Jane reads holdings or loans from an Item that didn't get
-  that product at Link, and the bank supports it, Plaid adds it and starts billing it (in the
-  sandbox, a link made with Transactions only came back billed for both). Where the person didn't
-  consent to it in Link, Plaid's docs say the read fails instead and needs Link's update mode.
-  Turning the setting on doesn't touch banks linked before: only banks linked while it's on are read.
+- **Reading a product adds it.** The first read of a consented product adds it to the Item and
+  starts its bill. Where the person didn't consent to it in Link, Plaid's docs say the read fails
+  instead and needs Link's update mode. Turning the setting on doesn't touch banks linked before:
+  only banks linked while it's on are read for Investments.
 - **A product can't be taken off an Item.** Only removing the Item stops its subscriptions.
 - **Recurring Transactions shows up as billed** on every Item, because Jane reads recurring
   charges. It isn't asked for in Link. It's in the admin view below, so you can see it.
@@ -76,13 +74,14 @@ Open **`/admin/costs`** and look at **What Plaid granted**. It asks Plaid about 
 link and shows, per product, how many links:
 
 - **Asked for** it (what Jane put in Link),
-- were **Granted** it (what Plaid actually turned on), and
+- **Consented** to it (what the person agreed to there, where the plan has the product),
+- were **Granted** it (added to the link: a consented product joins at Jane's first read), and
 - are **Billed** for it.
 
 Counts only: no names, no banks, no tokens. After the first new link at a brokerage, Investments
-should read 1 under each column. Asked above Granted means banks that don't offer it, or a plan that
-doesn't include it: Plaid drops an optional product without saying so. Links Plaid didn't answer for are
-counted apart.
+should read 1 under each column. Consented above Granted is links without that kind of account,
+which Jane never reads for it, so they aren't billed. Asked above Consented means a plan that
+doesn't include the product. Links Plaid didn't answer for are counted apart.
 
 ## Switch it off again
 
@@ -96,9 +95,10 @@ the person's pages until then, no longer updated.
 
 ## Liabilities
 
-Liabilities is already on and has no setting of its own. Because it's in `optional_products`, every
-new link at a bank that supports it is billed for it (see What each costs). It's checked the same
-way, in the same table. In the sandbox a student loan, a card, a car loan and a mortgage all came through to the
+Liabilities is already on and has no setting of its own. A new link is billed for it only once Jane
+reads it, which it does only for a link with a card or a loan (see What each costs); links made
+before 2026-11-17 keep the subscription they got at link time. It's checked the same way, in the
+same table. In the sandbox a student loan, a card, a car loan and a mortgage all came through to the
 Loans page and the student loan page, with their rates, minimums and the student loan's plan and
 status. Plaid doesn't read federal Direct Loans from Aidvantage, EdFinancial, MOHELA or Nelnet: it
 dropped those servicers in August 2024 (<https://plaid.com/docs/changelog/>).

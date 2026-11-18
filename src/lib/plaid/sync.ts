@@ -438,6 +438,26 @@ async function demoSwitches(db: ScopedDb): Promise<DemoSwitch[]> {
   });
 }
 
+// The kinds of account a link holds (depository, credit, loan, investment), from /accounts/get:
+// free, cached, and every account on the link. Transactions sync lists only accounts with
+// transactions in it and leaves investment accounts out, so a student loan or a 401(k) would be
+// missed. If Plaid can't say now, the accounts already saved for the link.
+async function accountKinds(
+  db: ScopedDb,
+  api: PlaidApi,
+  accessToken: string,
+  itemId: string,
+): Promise<Set<string>> {
+  try {
+    const { accounts } = await plaidCall(api.accountsGet({ access_token: accessToken }));
+    return new Set(accounts.map((a) => String(a.type)));
+  } catch (error) {
+    log.warn("Couldn't list a link's accounts", { code: plaidErrorCode(error) });
+    const saved = await db.accounts.findMany({ where: { itemId }, select: { type: true } });
+    return new Set(saved.map((a) => a.type));
+  }
+}
+
 // Investment and retirement accounts (spec step 66) and what they hold (spec step 128):
 // the balances for net worth, then the securities and holdings, replaced each time, and
 // the investment transactions since the last sync. An error only warns, like liabilities;
@@ -794,16 +814,24 @@ async function syncItemWork(
     timing.log("chat_ready");
     onReady?.();
   }
+  // Plaid bills Liabilities and Investments from Jane's first read of each (they're consented in
+  // Link, ./link.ts), so a real bank's are read only when the link has that kind of account: a
+  // checking-only link pays for neither. The demo bank's always.
+  const demoBank = isDemoToken(accessToken);
+  const investmentsOn = item.investments && (demoBank || plaidInvestmentsEnabled());
+  const kinds =
+    demoBank || !(item.liabilities || investmentsOn)
+      ? null
+      : await accountKinds(db, api, accessToken, item.id);
+  const holds = (type: string) => kinds?.has(type) === true;
+  const readsLiabilities = item.liabilities && (demoBank || holds("credit") || holds("loan"));
+  const readsInvestments = investmentsOn && (demoBank || holds("investment"));
   // Independent of each other (their own tables), so together: the investments alone were
   // five seconds on live for a person with holdings, with the brief waiting behind them.
   const [recurring, liabilities, investments] = await Promise.all([
     saveRecurringStreams(db, api, accessToken, accountIds),
-    item.liabilities ? saveLiabilities(db, api, accessToken, item.id) : ("off" as const),
-    // A real bank's only while Plaid Investments is on (PLAID_INVESTMENTS); the demo bank's
-    // always.
-    item.investments && (plaidInvestmentsEnabled() || isDemoToken(accessToken))
-      ? saveInvestments(db, api, accessToken, item.id, now)
-      : ("off" as const),
+    readsLiabilities ? saveLiabilities(db, api, accessToken, item.id) : ("off" as const),
+    readsInvestments ? saveInvestments(db, api, accessToken, item.id, now) : ("off" as const),
   ]);
   timing.mark("recurring_liabilities_investments");
   // A sample person's values list and named beneficiaries (steps 236 and 237), once their

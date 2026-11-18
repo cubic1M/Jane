@@ -33,7 +33,9 @@ describe.runIf(url)("syncItem against a real database", () => {
   const liabilitiesGet = vi.fn();
   const investmentsHoldingsGet = vi.fn();
   const investmentsTransactionsGet = vi.fn();
+  const accountsGet = vi.fn();
   const api = {
+    accountsGet,
     transactionsSync,
     transactionsRecurringGet,
     liabilitiesGet,
@@ -70,6 +72,15 @@ describe.runIf(url)("syncItem against a real database", () => {
     liabilitiesGet.mockReset();
     investmentsHoldingsGet.mockReset();
     investmentsTransactionsGet.mockReset();
+    // Every kind of account, so the reads below run (which link reads what is
+    // sync-read-products.integration.test.ts's).
+    accountsGet.mockReset().mockResolvedValue({
+      data: {
+        accounts: ["depository", "credit", "loan", "investment"].map((type) =>
+          plaidAccount({ account_id: `${suffix}-${type}`, type } as never),
+        ),
+      },
+    });
     vi.mocked(track).mockReset();
   });
 

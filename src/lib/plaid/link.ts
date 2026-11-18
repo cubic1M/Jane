@@ -87,10 +87,14 @@ export async function createLinkToken(
           }
         : {
             products: [Products.Transactions],
-            // Loans and card rates (spec step 65) and investment balances (step 66) where
-            // the bank supports them; billed only then, and it doesn't limit which banks
-            // can be picked. Investments only once it's on our Plaid plan (PLAID_INVESTMENTS).
-            optional_products: [
+            // Loans and card rates (spec step 65) and holdings (step 66): the person agrees to
+            // them in this same Link, but Plaid bills each only from Jane's first read of it, and
+            // sync reads it only for a link with that kind of account (./sync.ts). In
+            // optional_products they were billed when the link was made, at every bank that offers
+            // them, cards or not (plaid.com/docs/link/initializing-products, read 2026-11-17: this
+            // is Plaid's own advice for a personal-finance app). They don't limit which banks can
+            // be picked. Investments only once it's on our Plaid plan (PLAID_INVESTMENTS).
+            additional_consented_products: [
               Products.Liabilities,
               ...(plaidInvestmentsEnabled() ? [Products.Investments] : []),
             ],
