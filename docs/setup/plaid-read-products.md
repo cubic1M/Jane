@@ -14,10 +14,24 @@ loan pages, the chat, the suggestions, sign-out and in, and delete). Nothing her
 ## What each costs
 
 Plaid bills Liabilities and Investments as **monthly subscriptions per Item** (one bank login),
-from the first time Jane reads them until the Item is removed. A month is a calendar month in UTC
-and isn't pro-rated, so an Item removed on the 2nd still pays for that month
-(<https://plaid.com/docs/account/billing/>). Investments has two subscriptions: holdings, and
-investment transactions, which starts at the first read of the trades.
+until the Item is removed. A month is a calendar month in UTC and isn't pro-rated, so an Item removed
+on the 2nd still pays for that month (<https://plaid.com/docs/account/billing/>). Investments has two
+subscriptions: holdings, and investment transactions.
+
+**When the bill starts depends on how Link asks** (<https://plaid.com/docs/link/initializing-products/>):
+
+- A product in Link's **`optional_products`**, where Jane puts Liabilities and Investments today
+  (`src/lib/plaid/link.ts`), is billed **when the link is made**, at every bank that supports it,
+  whether or not the person has a loan, a card or a brokerage there.
+- A product in **`additional_consented_products`** is billed only from **the first time Jane reads
+  it**. Plaid recommends exactly this for personal-finance apps: Transactions as the product,
+  Liabilities and Investments as consented ones, read only for accounts of that type.
+
+Moving both to `additional_consented_products` (and reading Liabilities only when a link has a card
+or loan, Investments only when it has an investment account) would stop paying for links that have
+none. It changes what every new link costs, so it's your call; it isn't built. One thing to check
+first, in the sandbox through Link itself: whether a link made that way reads Liabilities without
+sending the person back through Link.
 
 > **PRICE GAP:** the price per Item for each product, and which banks and brokerages each covers,
 > are being checked at the source by the connector-roadmap session. Fill this in from its answer;
@@ -26,8 +40,11 @@ investment transactions, which starts at the first read of the trades.
 Two things learned in the sandbox that change the bill:
 
 - **Reading a product adds it.** When Jane reads holdings or loans from an Item that didn't get
-  that product at Link, and the bank supports it, Plaid adds it and starts billing it. Turning the
-  setting on doesn't touch banks linked before: only banks linked while it's on are read.
+  that product at Link, and the bank supports it, Plaid adds it and starts billing it (in the
+  sandbox, a link made with Transactions only came back billed for both). Where the person didn't
+  consent to it in Link, Plaid's docs say the read fails instead and needs Link's update mode.
+  Turning the setting on doesn't touch banks linked before: only banks linked while it's on are read.
+- **A product can't be taken off an Item.** Only removing the Item stops its subscriptions.
 - **Recurring Transactions shows up as billed** on every Item, because Jane reads recurring
   charges. It isn't asked for in Link. It's in the admin view below, so you can see it.
 
@@ -79,11 +96,12 @@ the person's pages until then, no longer updated.
 
 ## Liabilities
 
-Liabilities is already on and has no setting of its own. It's checked the same way, in the same
-table. In the sandbox a student loan, a card, a car loan and a mortgage all came through to the
+Liabilities is already on and has no setting of its own. Because it's in `optional_products`, every
+new link at a bank that supports it is billed for it (see What each costs). It's checked the same
+way, in the same table. In the sandbox a student loan, a card, a car loan and a mortgage all came through to the
 Loans page and the student loan page, with their rates, minimums and the student loan's plan and
-status. Plaid doesn't read most federal student loan servicers.
+status. Plaid doesn't read federal Direct Loans from Aidvantage, EdFinancial, MOHELA or Nelnet: it
+dropped those servicers in August 2024 (<https://plaid.com/docs/changelog/>).
 
-> **COVERAGE GAP:** which servicers and card issuers Liabilities covers today, and whether it should
-> move from Link's optional products to products asked for later, waits on the connector-roadmap
-> session's answer.
+> **COVERAGE GAP:** which card issuers and private lenders Liabilities covers today waits on the
+> connector-roadmap session's answer.
