@@ -27,7 +27,7 @@ test("'Try it with sample data' opens Jane's chat with a sample person @critical
   const bar = page.locator("[data-scan-bar]");
   if ((await bar.count()) > 0) {
     await expect(bar).toHaveAttribute("role", "progressbar");
-    await expect(bar).toHaveText(/^\[[█░]{16}\] \d{1,3}% · \S/);
+    await expect(bar).toHaveText(/^\d{1,3}% · \S/);
   }
   await expect(bar).toHaveCount(0, { timeout: 120_000 });
   const panelChat = page.frameLocator('iframe[title="Chat with Jane"]');

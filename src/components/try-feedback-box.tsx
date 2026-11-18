@@ -46,9 +46,9 @@ export function TryFeedbackBox({ from, state }: { from: "/home" | "/report"; sta
       )}
       <button
         type="submit"
-        className="inline-flex min-h-11 items-center self-start text-sm font-semibold hover:underline"
+        className="inline-flex min-h-11 items-center self-start text-sm font-semibold underline underline-offset-4"
       >
-        [SEND]
+        Send
       </button>
     </form>
   );

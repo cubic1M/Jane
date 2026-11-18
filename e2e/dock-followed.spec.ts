@@ -120,7 +120,7 @@ test("a card followed to its page stays and Yes still works; an answered one doe
   await page.goto("/saved");
   const said = page.locator('[data-ledger-entry="said_yes"]');
   await expect(said.first()).toBeVisible({ timeout: 30_000 });
-  await expect(said.first().locator("summary")).toContainText("[You said yes]");
+  await expect(said.first().locator("summary")).toContainText("You said yes");
   await said.first().locator("summary").click();
   const open = said.first().locator("[data-ledger-open]");
   await expect(open).toBeVisible();

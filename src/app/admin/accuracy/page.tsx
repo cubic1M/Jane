@@ -32,7 +32,7 @@ export default async function AccuracyPage() {
                 <div className="flex flex-wrap justify-between gap-2">
                   <span className="font-mono font-medium">{check.name}</span>
                   <span className={check.failed > 0 ? "font-semibold" : ""}>
-                    {check.failed > 0 ? "[FAIL] " : ""}
+                    {check.failed > 0 ? "Failed: " : ""}
                     {check.passed} passed · {check.failed} failed · {check.notApplicable} not
                     applicable
                   </span>

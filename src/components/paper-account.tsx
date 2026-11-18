@@ -72,7 +72,7 @@ function Start({ strategy }: { strategy: string }) {
       </div>
       {error && (
         <p role="alert" className="text-sm font-semibold">
-          [ERROR] {error}
+          Error: {error}
         </p>
       )}
     </form>
@@ -225,7 +225,7 @@ export function PaperAccount({ view, strategy }: { view: PaperView | null; strat
                     {t.date} {t.side === "buy" ? "Bought" : "Sold"} {dollars(t.amountCents)} of{" "}
                     {t.ticker}
                   </span>
-                  {t.reverted && <span className="ml-1 no-underline">[REVERTED]</span>}
+                  {t.reverted && <span className="ml-1 no-underline">(reverted)</span>}
                   <br />
                   <span className="text-zinc-600 dark:text-zinc-400">{t.reason}</span>
                 </li>

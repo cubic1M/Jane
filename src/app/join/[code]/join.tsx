@@ -12,7 +12,7 @@ export function JoinContent({ landing }: { landing: InviteLanding | null }) {
   const open = Boolean(landing?.open);
   return (
     <section className="flex flex-col gap-6" data-join={open ? "open" : "closed"}>
-      <p className="text-sm font-semibold tracking-widest">[JANE]</p>
+      <p className="text-sm font-semibold">Jane</p>
       <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{ONE_LINE}</h1>
       {landing && !open && (
         <p role="status" className="text-zinc-600 dark:text-zinc-400">
@@ -29,9 +29,7 @@ export function JoinContent({ landing }: { landing: InviteLanding | null }) {
           href={open && landing ? `/signup?invite=${landing.code}` : "/signup"}
           className={BUTTON}
         >
-          <span aria-hidden="true">[&nbsp;</span>
           {open ? "Join the beta" : "Join the waitlist"}
-          <span aria-hidden="true">&nbsp;]</span>
         </Link>
       </div>
     </section>

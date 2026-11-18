@@ -57,11 +57,11 @@ describe("the strategy tree", () => {
 
   it("gives every leaf a glyph, a short tag and its return a year", () => {
     expect(LEAF_TAGS).toEqual({
-      default: "DEFAULT",
-      recommended: "RECOMMENDED",
-      watch: "WORTH WATCHING",
-      tested: "NOT RECOMMENDED",
-      lost: "LOST MONEY",
+      default: "Default",
+      recommended: "Recommended",
+      watch: "Worth watching",
+      tested: "Not recommended",
+      lost: "Lost money",
     });
     expect(new Set(Object.values(LEAF_GLYPHS)).size).toBe(5);
     expect(leafFigure({ cagr: 0.0771 })).toBe("+7.7%/yr");

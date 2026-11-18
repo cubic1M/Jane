@@ -92,7 +92,7 @@ export function PlanItem({ item, readOnly = false }: { item: PlanItemView; readO
         className={chosen.choice === choice ? CHOSEN : GREYED}
       >
         {label}
-        {chosen.choice === choice && <span aria-hidden="true"> [✓ chosen]</span>}
+        {chosen.choice === choice && <span aria-hidden="true"> ✓ chosen</span>}
         <span className="sr-only">
           : {item.title}
           {chosen.choice === choice ? ", chosen" : ""}

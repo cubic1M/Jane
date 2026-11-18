@@ -32,7 +32,7 @@ function Row({
     <li className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 [overflow-wrap:anywhere] dark:border-zinc-800">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div className="flex min-w-0 flex-col">
-          <span className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
+          <span className="text-xs font-medium text-zinc-500">
             {DEADLINE_KIND_LABELS[deadline.kind]}
           </span>
           <span className="font-semibold">{deadline.title}</span>

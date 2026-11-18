@@ -100,7 +100,7 @@ async function SavedContent() {
               <a
                 key={s}
                 href={`#${s === "held" || s === "verified" ? "saved" : "estimates"}`}
-                className="rounded-full border border-zinc-300 px-3 py-1 font-mono text-xs uppercase dark:border-zinc-700"
+                className="rounded-full border border-zinc-300 px-3 py-1 text-xs dark:border-zinc-700"
               >
                 {STATE_GLYPH[s]} {CHIP[s](ledger.counts[s])}
               </a>

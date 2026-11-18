@@ -89,7 +89,7 @@ describe("reading a card back", () => {
 // The privacy rule: the drawn card is the two lines and Jane's own words. Whatever the person
 // has (merchants, accounts, balances, a name), there is no way in.
 describe("the drawn card", () => {
-  const JANE_WORDS = ["[JANE]", "An AI financial controller · invite-only beta"];
+  const JANE_WORDS = ["Jane", "An AI financial controller · invite-only beta"];
 
   it.each([
     { kind: "found" as const, dollars: 1200 },

@@ -36,7 +36,7 @@ function Part({
     <section id={id} aria-label={title} className="flex flex-col gap-2">
       <h2 className="flex items-baseline gap-2 text-xl font-semibold">
         {title}
-        <span className={`font-mono text-sm font-normal ${MUTED}`}>[{count}]</span>
+        <span className={`text-sm font-normal ${MUTED}`}>({count})</span>
       </h2>
       {count === 0 ? <p className={`text-sm ${MUTED}`}>None.</p> : children}
     </section>
@@ -58,9 +58,7 @@ function ChangeRow({ change: c }: { change: CloseChange }) {
     <li data-close-change={c.kind}>
       <details className="rounded-xl border border-zinc-200 dark:border-zinc-800">
         <summary className="flex cursor-pointer flex-wrap items-baseline gap-x-3 gap-y-1 p-3">
-          <span className="font-mono text-xs tracking-wide uppercase">
-            ▲ [{CHANGE_LABEL[c.kind]}]
-          </span>
+          <span className="text-xs font-medium">▲ {CHANGE_LABEL[c.kind]}</span>
           <span className="flex-1 font-medium">{formatCents(c.amountCents)}</span>
           <span className={`text-xs ${MUTED}`}>{c.sure} sure</span>
         </summary>
@@ -109,7 +107,7 @@ async function CloseContent({ params }: { params: PageProps<"/close/[month]">["p
         <h1 className="text-3xl font-semibold tracking-tight">
           {monthLabel(month, { long: true })} close{close.soFar ? ", so far" : ""}
         </h1>
-        <p data-close-figures="" className="font-mono text-sm">
+        <p data-close-figures="" className="text-sm tabular-nums">
           Verified {formatCents(close.verifiedCents)} · Found {close.found.length} · Open{" "}
           {close.open.length}
         </p>
@@ -119,7 +117,7 @@ async function CloseContent({ params }: { params: PageProps<"/close/[month]">["p
               <a
                 key={i}
                 href={chip.href}
-                className="inline-flex min-h-11 items-center rounded-full border border-zinc-300 px-3 font-mono text-xs dark:border-zinc-700"
+                className="inline-flex min-h-11 items-center rounded-full border border-zinc-300 px-3 text-xs dark:border-zinc-700"
               >
                 ● {chip.label} {chip.figure}
                 {chip.sure ? ` · ${chip.sure} sure` : ""}

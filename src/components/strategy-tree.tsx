@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { LoadingBar } from "@/components/loading-bar";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import {
   choosePracticeStrategy,
@@ -37,7 +38,7 @@ import { GRAPH_PAD, gappedPath, graphScale } from "./strategy-graph";
 // money and demo advice only.
 
 const BOX = "border border-zinc-400 bg-white dark:border-zinc-600 dark:bg-zinc-950";
-const LINE = "border-dashed border-zinc-400 dark:border-zinc-600";
+const LINE = "border-zinc-400 dark:border-zinc-600";
 const PRIMARY =
   "inline-flex min-h-11 items-center justify-center border-2 border-zinc-950 bg-zinc-950 px-4 text-sm font-semibold text-white hover:bg-zinc-700 dark:border-zinc-50 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-300";
 const SECONDARY =
@@ -63,9 +64,10 @@ function Stats({ row }: { row: Pick<BoardRow, "cagr" | "maxDrawdown" | "sortino"
 
 function Tag({ row, yours }: { row: BoardRow; yours: boolean }) {
   return (
-    <span className="text-[11px] font-semibold tracking-wide">
-      <span aria-hidden="true">{LEAF_GLYPHS[row.status]} </span>[{LEAF_TAGS[row.status]}]
-      {yours && <span className="ml-1">■ YOURS</span>}
+    <span className="text-xs font-semibold">
+      <span aria-hidden="true">{LEAF_GLYPHS[row.status]} </span>
+      {LEAF_TAGS[row.status]}
+      {yours && <span className="ml-1">■ Yours</span>}
     </span>
   );
 }
@@ -466,7 +468,7 @@ export function StrategyTree({
           })}
         </ul>
         {openLevel && loading === openLevel && !boards[openLevel] && (
-          <p className="text-sm">[████░░░░░░░░] loading</p>
+          <LoadingBar label="Loading the strategies" />
         )}
         {openLevel && boards[openLevel] && (
           <LevelTree
@@ -577,11 +579,11 @@ function LevelTree({
                             {leafFigure(r)}
                           </span>
                         </span>
-                        <span className="text-[11px] font-semibold tracking-wide text-zinc-600 dark:text-zinc-400">
-                          <span aria-hidden="true">{LEAF_GLYPHS[r.status]} </span>[
-                          {LEAF_TAGS[r.status]}]
+                        <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">
+                          <span aria-hidden="true">{LEAF_GLYPHS[r.status]} </span>
+                          {LEAF_TAGS[r.status]}
                           {mine && (
-                            <span className="ml-1 text-zinc-950 dark:text-zinc-50">■ YOURS</span>
+                            <span className="ml-1 text-zinc-950 dark:text-zinc-50">■ Yours</span>
                           )}
                         </span>
                       </button>

@@ -31,7 +31,7 @@ for (const size of [
   { name: "a phone", width: 375, height: 812 },
 ]) {
   // Quarantined 10-27 (failed main twice in a day, df6a544f and cd88b312: after "Use this
-  // strategy" the leaf's "■ YOURS" didn't show within 3s on CI, and once the level-5 tree was
+  // strategy" the leaf's "■ Yours" didn't show within 3s on CI, and once the level-5 tree was
   // missing; green locally and on the runs between). Put back once it's deflaked: wait for the
   // save, not a fixed 3s.
   test.fixme(`pick a strategy in the tree, see it in the graph, use it and revert, on ${size.name}`, async ({
@@ -67,10 +67,10 @@ for (const size of [
     await expect(tree.getByText("Day trading & crypto", { exact: true })).toHaveCount(0);
     const leaves = tree.locator("[data-strategy-leaf]");
     expect(await leaves.count()).toBeGreaterThan(50);
-    await expect(tree.locator('[data-strategy-leaf="default"]')).toContainText("[DEFAULT]");
-    await expect(tree.locator('[data-strategy-leaf="default"]')).toContainText("■ YOURS");
-    await expect(tree.getByText("[WORTH WATCHING]").first()).toBeVisible();
-    await expect(tree.getByText("[NOT RECOMMENDED]").first()).toBeVisible();
+    await expect(tree.locator('[data-strategy-leaf="default"]')).toContainText("Default");
+    await expect(tree.locator('[data-strategy-leaf="default"]')).toContainText("■ Yours");
+    await expect(tree.getByText("Worth watching").first()).toBeVisible();
+    await expect(tree.getByText("Not recommended").first()).toBeVisible();
     await expect(tree.locator('[data-strategy-leaf="default"]')).toContainText(/[+−]\d+\.\d%\/yr/);
 
     // The hero scrolls with the page: it never stays on top of the tree.
@@ -100,12 +100,12 @@ for (const size of [
     // Use it: marked at once, with Revert; it stays after a reload.
     await panel.getByRole("button", { name: "Use this strategy" }).click();
     await expect(page.getByRole("status")).toHaveText(`Your practice portfolio now runs ${label}.`);
-    await expect(leaf).toContainText("■ YOURS");
+    await expect(leaf).toContainText("■ Yours");
     await expect(panel.getByText("Your practice portfolio runs this")).toBeVisible();
     await expect(panel.getByRole("button", { name: "Revert" })).toBeVisible();
     await expect(async () => {
       await page.reload();
-      await expect(page.locator(`[data-strategy-leaf="${key}"]`).getByText("■ YOURS")).toBeVisible({
+      await expect(page.locator(`[data-strategy-leaf="${key}"]`).getByText("■ Yours")).toBeVisible({
         timeout: 3_000,
       });
     }).toPass({ timeout: 30_000 });
@@ -117,18 +117,18 @@ for (const size of [
     await steady.click();
     const panel2: Locator = page.locator(`[data-strategy-box="${steadyKey}"]`);
     await panel2.getByRole("button", { name: "Use this strategy" }).click();
-    await expect(steady).toContainText("■ YOURS");
+    await expect(steady).toContainText("■ Yours");
     await panel2.getByRole("button", { name: "Revert" }).click();
     await expect(page.getByRole("status")).toHaveText("Reverted.");
-    await expect(steady).not.toContainText("■ YOURS");
-    await expect(page.locator(`[data-strategy-leaf="${key}"]`)).toContainText("■ YOURS");
+    await expect(steady).not.toContainText("■ Yours");
+    await expect(page.locator(`[data-strategy-leaf="${key}"]`)).toContainText("■ Yours");
     await expect(async () => {
       await page.reload();
-      await expect(page.locator(`[data-strategy-leaf="${key}"]`).getByText("■ YOURS")).toBeVisible({
+      await expect(page.locator(`[data-strategy-leaf="${key}"]`).getByText("■ Yours")).toBeVisible({
         timeout: 3_000,
       });
       await expect(page.locator(`[data-strategy-leaf="${steadyKey}"]`)).not.toContainText(
-        "■ YOURS",
+        "■ Yours",
       );
     }).toPass({ timeout: 30_000 });
 
@@ -144,7 +144,7 @@ for (const size of [
     const high = page.locator('[data-level-tree="5"]');
     await expect(high.getByText("Day trading & crypto", { exact: true })).toBeVisible();
     const day = high.locator('[data-strategy-leaf="intraday:opening_range"]');
-    await expect(day).toContainText("[LOST MONEY]");
+    await expect(day).toContainText("Lost money");
     await day.click();
     const panel3: Locator = high.locator('[data-strategy-box="intraday:opening_range"]');
     await expect(panel3.getByText(/^Your level is /)).toBeVisible();

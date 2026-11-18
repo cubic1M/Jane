@@ -43,11 +43,11 @@ const FROM_CATALOG: Readonly<Record<CatalogFamily, FamilyKey>> = {
 
 // Short tags and a glyph per status: shape and words, never colour.
 export const LEAF_TAGS: Readonly<Record<BoardStatus, string>> = {
-  default: "DEFAULT",
-  recommended: "RECOMMENDED",
-  watch: "WORTH WATCHING",
-  tested: "NOT RECOMMENDED",
-  lost: "LOST MONEY",
+  default: "Default",
+  recommended: "Recommended",
+  watch: "Worth watching",
+  tested: "Not recommended",
+  lost: "Lost money",
 };
 export const LEAF_GLYPHS: Readonly<Record<BoardStatus, string>> = {
   default: "■",

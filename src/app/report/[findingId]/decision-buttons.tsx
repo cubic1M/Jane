@@ -171,7 +171,7 @@ export function DecisionButtons({
         className={chosen === choice ? CHOSEN_BUTTON : GREYED_BUTTON}
       >
         {label}
-        {chosen === choice && <span aria-hidden="true"> [✓ chosen]</span>}
+        {chosen === choice && <span aria-hidden="true"> ✓ chosen</span>}
         {chosen === choice && <span className="sr-only">, chosen</span>}
       </button>
     ) : (

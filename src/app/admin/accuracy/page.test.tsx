@@ -47,7 +47,7 @@ describe("/admin/accuracy", () => {
     const page = text(renderToStaticMarkup(await AccuracyPage()));
     expect(page).toContain("11 of 12 real people checked, 1 threw · run at 2026-11-12 12:01 UTC");
     for (const c of ACCURACY_CHECKS) expect(page).toContain(c.name);
-    expect(page).toContain("no_stale_pending [FAIL] 10 passed · 2 failed · 1 not applicable");
+    expect(page).toContain("no_stale_pending Failed: 10 passed · 2 failed · 1 not applicable");
     expect(page).toContain("no_future_transactions 10 passed · 0 failed · 1 not applicable");
   });
 

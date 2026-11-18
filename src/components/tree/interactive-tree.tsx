@@ -51,7 +51,7 @@ export function StatusMark({ status }: { status?: TreeStatus }) {
 
 function Badge({ text }: { text: string }) {
   return (
-    <span className="shrink-0 border border-current px-1.5 py-0.5 text-[11px] font-semibold tracking-wider uppercase">
+    <span className="shrink-0 border border-current px-1.5 py-0.5 text-xs font-semibold">
       {text}
     </span>
   );

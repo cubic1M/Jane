@@ -31,6 +31,6 @@ describe("the first scan's bar on a phone", () => {
   });
 
   it("cuts the label at its end, not both sides", () => {
-    expect(html).toMatch(/<span class="[^"]*\btruncate\b[^"]*">\[/);
+    expect(html).toMatch(/<span class="[^"]*\btruncate\b[^"]*">\d+% · /);
   });
 });

@@ -1,9 +1,9 @@
+import { barPercent, barWords } from "@/components/drawn-bar";
 import { describe, expect, it } from "vitest";
 import type { ScanProgress } from "@/lib/scan";
 import {
   monthsLabel,
   percentFor,
-  scanBarText,
   SLOW_WORDS,
   slowLink,
   stageLabel,
@@ -75,14 +75,14 @@ describe("a slow scan", () => {
 });
 
 describe("the page's loading bar", () => {
-  it("draws the share in sixteen cells, with the step in words", () => {
-    expect(scanBarText(52, "Reading 12 months of transactions")).toBe(
-      "[████████░░░░░░░░] 52% · reading 12 months of transactions",
+  it("draws the share as a bar, with the percent and the step in words", () => {
+    expect(barWords(52, "Reading 12 months of transactions")).toBe(
+      "52% · Reading 12 months of transactions",
     );
-    expect(scanBarText(0, "Linking your accounts")).toBe(
-      "[░░░░░░░░░░░░░░░░] 0% · linking your accounts",
-    );
-    expect(scanBarText(120, "Ready")).toBe("[████████████████] 100% · ready");
+    expect(barWords(0, "Linking your accounts")).toBe("0% · Linking your accounts");
+    expect(barWords(120, "Ready")).toBe("100% · Ready");
+    expect(barPercent(-5)).toBe(0);
+    expect(barPercent(51.6)).toBe(52);
   });
 
   it("names the step that's running", () => {
