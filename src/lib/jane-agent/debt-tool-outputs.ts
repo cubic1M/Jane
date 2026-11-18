@@ -143,6 +143,10 @@ export function debtsToolOutput(book: DebtBook, money: (cents: number) => string
       name: d.name,
       kind: d.kindLabel,
       balance: d.balanceCents === null ? null : money(d.balanceCents),
+      balanceFrom:
+        d.balanceCents === null && d.fromUpload
+          ? "not in their uploaded file, and none typed: they can add it on the import page"
+          : sourceLabel(d.balanceFrom, d.typedOn),
       rate: d.aprBps === null ? null : formatRate(d.aprBps),
       rateType: d.rateType,
       rateFrom: sourceLabel(d.aprFrom, d.typedOn),

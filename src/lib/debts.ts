@@ -58,6 +58,7 @@ async function loadDebtsFrom(
           type: true,
           subtype: true,
           currentBalanceCents: true,
+          source: true,
           liability: {
             select: {
               aprBps: true,

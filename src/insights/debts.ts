@@ -21,7 +21,9 @@ export type DebtKind = "card" | "mortgage" | "student" | "auto" | "loan" | "bnpl
 // bank: the bank reports it. typed: the person typed it. terms: the plan's own terms (Pay
 // in 4 is interest-free). payments: worked out from the payments made so far.
 // accepted: the terms of a new loan the person accepted through Jane (spec step 112).
-export type DebtSource = "bank" | "typed" | "terms" | "payments" | "accepted";
+// "statement": an uploaded statement's balance (walk batch 1, 11-18: an uploaded card with no
+// balance read as "Your bank hasn't given me a balance" when every balance said "bank").
+export type DebtSource = "bank" | "statement" | "typed" | "terms" | "payments" | "accepted";
 
 export type DebtAccountInput = {
   id: string;
@@ -30,6 +32,8 @@ export type DebtAccountInput = {
   type: string;
   subtype: string | null;
   currentBalanceCents: number | null;
+  // "csv" for an uploaded statement's account; a linked bank's otherwise.
+  source?: string;
   liability: {
     aprBps: number | null;
     rateType: string | null;
@@ -90,6 +94,8 @@ export type Debt = {
   inNetWorth: boolean;
   // The day typed terms were last changed, for "You typed it on …".
   typedOn: string | null;
+  // An uploaded statement's account: a missing balance is the file's, added on the import page.
+  fromUpload?: boolean;
 };
 
 export type DebtBook = {
@@ -171,7 +177,7 @@ function accountDebt(a: DebtAccountInput, typed: TypedTerms | undefined, asOf: s
   const l = a.liability;
   const [balanceCents, balanceFrom] = first<number>([
     a.currentBalanceCents === null ? null : Math.max(0, a.currentBalanceCents),
-    "bank",
+    a.source === "csv" ? "statement" : "bank",
   ]);
   const [aprBps, aprFrom] = first<number>([l?.aprBps, "bank"], [typed?.aprBps, "typed"]);
   const [paymentCents, paymentFrom] = first<number>(
@@ -185,6 +191,7 @@ function accountDebt(a: DebtAccountInput, typed: TypedTerms | undefined, asOf: s
   const nextDue = iso(l?.nextPaymentDueDate);
   return {
     key: `account:${a.id}`,
+    ...(a.source === "csv" ? { fromUpload: true } : {}),
     accountId: a.id,
     name: a.mask ? `${a.name} ····${a.mask}` : a.name,
     kind,
@@ -474,6 +481,8 @@ export function sourceLabel(from: DebtSource | null, typedOn: string | null = nu
   switch (from) {
     case "bank":
       return "from your bank";
+    case "statement":
+      return "from your uploaded statement";
     case "typed":
       return typedOn ? `you typed it on ${dayLabel(typedOn, { year: true })}` : "you typed it";
     case "terms":
