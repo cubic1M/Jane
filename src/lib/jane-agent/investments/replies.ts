@@ -260,25 +260,39 @@ export function profileReply(answers: ProfileAnswers, asOf: string): Reply {
 // Spec step 130: what investing costs; in demo advice mode, the lower-cost equivalents.
 export function feesReply(fees: FeeSummary, advice: boolean): Reply {
   const link: MessageAction = openLink("See the fees", "/investments/fees");
+  // A fund whose cost Plaid doesn't give isn't free (Plaid sandbox walk, 11-17: "$0.00 in fund
+  // costs" beside four funds of unknown cost): the total is a floor, and they're named.
+  const unknownCost = fees.unknown.length > 0;
+  const names = `${fees.unknown.slice(0, 4).join(", ")}${fees.unknown.length > 4 ? " and others" : ""}`;
+  const notKnown = unknownCost
+    ? `I don't know the yearly cost of ${names}, so ${fees.unknown.length === 1 ? "it isn't" : "they aren't"} counted.`
+    : "";
   if (fees.funds.length === 0 && fees.advisoryCents + fees.accountFeesCents === 0) {
     return {
-      body: "I don't see any investment fees yet. When your accounts report what they hold, I'll show each fund's yearly cost.",
-      actions: [SEE],
+      body: unknownCost
+        ? `I don't know the yearly cost of ${names}: your accounts don't report it, and I don't see any other investment fees.`
+        : "I don't see any investment fees yet. When your accounts report what they hold, I'll show each fund's yearly cost.",
+      actions: [unknownCost ? link : SEE],
       refs: {},
     };
   }
   // Each figure once (debug 2, 11-16: "about $0.51 a year: $0.51 in fund costs", then "The
-  // costliest: … $0.51 a year" for one fund): the split only when there's more than fund costs,
+  // costliest: … $0.51 a year" for one fund): the split only when there's more than one kind,
   // the list only with more than one fund.
-  const others = [
-    ...(fees.advisoryCents > 0 ? [`${formatCents(fees.advisoryCents)} in advisory fees`] : []),
-    ...(fees.accountFeesCents > 0 ? [`${formatCents(fees.accountFeesCents)} in account fees`] : []),
+  const parts: [number, string][] = [
+    ...(fees.funds.length > 0 || !unknownCost
+      ? [[fees.fundsYearlyCents, "fund costs"] as [number, string]]
+      : []),
+    ...(fees.advisoryCents > 0 ? [[fees.advisoryCents, "advisory fees"] as [number, string]] : []),
+    ...(fees.accountFeesCents > 0
+      ? [[fees.accountFeesCents, "account fees"] as [number, string]]
+      : []),
   ];
-  const total = `Your investments cost about ${formatCents(fees.totalYearlyCents)} a year`;
+  const total = `Your investments cost ${unknownCost ? "at least" : "about"} ${formatCents(fees.totalYearlyCents)} a year`;
   const first =
-    others.length > 0
-      ? `${total}: ${[`${formatCents(fees.fundsYearlyCents)} in fund costs`, ...others].join(", ")}`
-      : `${total} in fund costs`;
+    parts.length > 1
+      ? `${total}: ${parts.map(([cents, what]) => `${formatCents(cents)} in ${what}`).join(", ")}`
+      : `${total} in ${parts[0]![1]}`;
   const [only] = fees.funds;
   const funds =
     fees.funds.length === 1 && only
@@ -292,7 +306,7 @@ export function feesReply(fees: FeeSummary, advice: boolean): Reply {
             )
             .join("\n")}`
         : "";
-  let body = `${first}. Over ${fees.years} years that's roughly ${feeRange(fees.overYears)} with growth, depending on returns.${funds}`;
+  let body = `${first}. Over ${fees.years} years that's roughly ${feeRange(fees.overYears)} with growth, depending on returns.${funds}${notKnown ? `\n${notKnown}` : ""}`;
   if (!advice || fees.equivalents.length === 0) {
     return { body, actions: [link], refs: {} };
   }

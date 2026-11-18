@@ -22,7 +22,11 @@ export async function FeesBody({ embed }: { embed?: boolean }) {
   await connection();
   const [{ fees }, advice] = await Promise.all([loadFees(user.id), adviceMode(user.id)]);
   const saving = equivalentsSaving(fees.equivalents);
-  const empty = fees.funds.length === 0 && fees.advisoryCents + fees.accountFeesCents === 0;
+  // A fund whose cost isn't known isn't free (Plaid sandbox walk, 11-17): the total is a floor.
+  const empty =
+    fees.funds.length === 0 &&
+    fees.advisoryCents + fees.accountFeesCents === 0 &&
+    fees.unknown.length === 0;
 
   return (
     <>
@@ -53,7 +57,9 @@ export async function FeesBody({ embed }: { embed?: boolean }) {
         <>
           <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className={CARD_TIGHT}>
-              <span className="text-sm text-zinc-600 dark:text-zinc-400">About a year</span>
+              <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                {fees.unknown.length > 0 ? "A year, at least" : "About a year"}
+              </span>
               <span className="text-2xl font-semibold">{formatCents(fees.totalYearlyCents)}</span>
             </div>
             <div className={CARD_TIGHT}>
