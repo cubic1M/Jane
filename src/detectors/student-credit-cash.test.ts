@@ -118,7 +118,10 @@ describe("a checking fee the same bank's account for young owners doesn't charge
     const s = fire(undergrad(), "student_checking")!;
     expect(s).not.toBeNull();
     expect(s.worthCents).toBe(1_200 * 12);
-    expect(s.title).toContain("Chase Secure Banking");
+    expect(s.title).toContain("Chase has Chase Secure Banking");
+    // A fact about their own bank, no imperative (chat-tests wording check, 11-18).
+    expect(s.why).not.toMatch(/move you to|ask Chase/);
+    expect(s.why).toContain("Its page says how to open it");
     expect(s.why).toContain("aged 17 to 24");
     expect(s.why).toContain("which I don't have");
     expect(s.why).toContain("1 overdraft fee");
