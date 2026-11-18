@@ -25,7 +25,7 @@ describe("the short forms of a suggestion", () => {
   it("lets a fact card leave its figure out of the headline, and nothing else", () => {
     const fact = {
       worthCents: 3_000_000,
-      headline: "Note your things have no renters cover",
+      headline: "Note no renters cover shows in your accounts",
       short: "You rent and I see no renters-cover charge in 12 months.",
       factOnly: true,
     } as Suggestion;

@@ -88,11 +88,20 @@ describe("cover for belongings", () => {
     expect(s).not.toBeNull();
     expect(s.title).toBe("Stanford housing doesn't insure your things, and I see no renters cover");
     // No figure in the headline: it would read as what buying cover brings.
-    expect(s.headline).toBe("Note your things have no renters cover");
+    expect(s.headline).toBe("Note no renters cover shows in your accounts");
     expect(s.factOnly).toBe(true);
     expect(s.why).toContain("doesn't carry insurance on residents' belongings");
     expect(s.more?.[0]?.href).toBe(STANFORD_HOUSING.url);
     expectClean(s);
+  });
+
+  it("headlines what Jane sees, never that the person has no cover", () => {
+    for (const s of [fire(grad(), "belongings_cover")!, fire(undergrad(), "belongings_cover")!]) {
+      expect(s.headline).toMatch(/shows in your accounts$/);
+      expect(s.headline).not.toMatch(/\byour things have no\b|\byou have no\b/i);
+      expect(s.confidence.percent).toBeLessThan(100);
+      expectClean(s);
+    }
   });
 
   it("says the US average outside California", () => {
