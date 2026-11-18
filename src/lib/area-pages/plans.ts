@@ -4,7 +4,7 @@ import { isHiddenPage } from "@/config/hidden-pages";
 import { AHEAD_DATES_DAYS, AHEAD_URGENT_DAYS, HUB_DEADLINE_DAYS } from "@/config/hubs";
 import type { TreeStatus } from "@/components/tree/interactive-tree";
 import type { DeadlineKind } from "@/insights/deadlines";
-import { notCounting, type Unbalanced } from "@/insights/net-worth";
+import { loansNotCounted, notCounting, type Unbalanced } from "@/insights/net-worth";
 import { shortMoney } from "@/lib/hub/view";
 import { type AreaItem, type AreaTree, buildAreaTree, shortLabel, urgentLine } from "./tree";
 import { daysBetween } from "@/lib/dates";
@@ -90,11 +90,13 @@ export type PlansTreeInput = {
   competing: boolean;
   // known: false when no balance is known yet.
   // unbalanced: accounts it can't count yet (card statements carry no balance).
+  // loansSeen: loans only their payments show, so what's owed on them isn't counted.
   netWorth: {
     todayCents: number;
     lastMonthCents: number | null;
     known?: boolean;
     unbalanced?: Unbalanced[];
+    loansSeen?: string[];
   } | null;
   lifeEvents: { open: number; newest: { title: string; done: number; total: number } | null };
   lastMonth: { label: string };
@@ -203,25 +205,35 @@ export function plansTree(input: PlansTreeInput): AreaTree {
   // all, else it says what it isn't counting (QA: /ahead showed checking alone, the card left out).
   const nw = input.netWorth;
   const left = nw && nw.known !== false ? notCounting(nw.unbalanced ?? []) : null;
+  // A loan seen only in its payments is left out too (debugger 11-17: "Good: Net worth $3.4k" for a
+  // student paying Nelnet $210.40 a month, where Home said it wasn't counting the loan).
+  const loans = nw && nw.known !== false && !left ? (nw.loansSeen ?? []) : [];
+  const loansLeft = loansNotCounted(loans);
   const worth = nw
     ? [
         item("worth", "today", {
-          label: left ? `Net worth, ${left.short}` : "Net worth",
-          status: left ? "look" : "good",
+          label: left
+            ? `Net worth, ${left.short}`
+            : loansLeft
+              ? `Net worth, not counting ${loans.length === 1 ? "a loan" : `${loans.length} loans`}`
+              : "Net worth",
+          status: left || loansLeft ? "look" : "good",
           figure: nw.known === false ? "Not known" : shortMoney(nw.todayCents),
           summary:
             nw.known === false
               ? "Your files don't include a balance yet. Add one on the import page."
               : left
                 ? left.sentence
-                : nw.lastMonthCents === null
-                  ? "What you have, less what you owe."
-                  : (() => {
-                      const change = nw.todayCents - nw.lastMonthCents;
-                      return change === 0
-                        ? "The same as at the end of last month."
-                        : `${change > 0 ? "Up" : "Down"} ${shortMoney(Math.abs(change))} since the end of last month.`;
-                    })(),
+                : loansLeft
+                  ? loansLeft
+                  : nw.lastMonthCents === null
+                    ? "What you have, less what you owe."
+                    : (() => {
+                        const change = nw.todayCents - nw.lastMonthCents;
+                        return change === 0
+                          ? "The same as at the end of last month."
+                          : `${change > 0 ? "Up" : "Down"} ${shortMoney(Math.abs(change))} since the end of last month.`;
+                      })(),
         }),
       ]
     : [];
