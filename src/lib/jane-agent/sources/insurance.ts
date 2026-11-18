@@ -1,3 +1,4 @@
+import { SUGGESTED_GAP } from "@/lib/area-pages/insurance";
 import { openGaps } from "@/lib/insurance/gaps";
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { PREMIUM_FREQUENCIES } from "@/config/documents";
@@ -46,29 +47,34 @@ import { dayLabel } from "@/lib/day-label";
 
 type Policies = InsuranceSnapshot["policies"];
 
-function gapMessages(insurance: InsuranceSnapshot): Candidate[] {
-  return openGaps(insurance.gaps ?? [], insurance.policies).map((gap) => ({
-    kind: "heads_up",
-    body: `${gap.title}. ${gap.why}${insurance.advice ? `\n${gapAdvice(gap).text}` : ""}`,
-    refs: {
-      insuranceGap: gap.key,
-      ...(gap.policyId ? { policyId: gap.policyId } : {}),
-      ...(insurance.advice ? { advice: true as const } : {}),
-    },
-    actions: [
-      gap.policyId
-        ? openLink("Update the policy", `/insurance?edit=${gap.policyId}#policy-${gap.policyId}`)
-        : openLink(`I have ${kindWords(gap.kind)}`, `/insurance?add=${gap.kind}#add`),
-      // Spec step 197: sample prices for the cover a yes to a risk question opened.
-      ...(insurance.canQuote && gap.key in RISK_GAP_KINDS
-        ? [{ id: "insurance.gap_quotes" as const, label: "Get quotes", kind: "primary" as const }]
-        : []),
-      { id: "insurance.gap_no", label: "I don't need it", kind: "secondary" },
-      snoozeButton(),
-    ],
-    dedupeKey: `gap:${gap.key}`,
-    priority: MESSAGE_PRIORITY.insurance_gap,
-  }));
+// A gap one of the day's suggestions is about (SUGGESTED_GAP) is said by that suggestion: the dock
+// had "Note your things have no renters cover" and "No renters insurance on file." together
+// (debug 2, 11-18).
+function gapMessages(insurance: InsuranceSnapshot, suggested: ReadonlySet<string>): Candidate[] {
+  return openGaps(insurance.gaps ?? [], insurance.policies)
+    .filter((gap) => !suggested.has(gap.key))
+    .map((gap) => ({
+      kind: "heads_up",
+      body: `${gap.title}. ${gap.why}${insurance.advice ? `\n${gapAdvice(gap).text}` : ""}`,
+      refs: {
+        insuranceGap: gap.key,
+        ...(gap.policyId ? { policyId: gap.policyId } : {}),
+        ...(insurance.advice ? { advice: true as const } : {}),
+      },
+      actions: [
+        gap.policyId
+          ? openLink("Update the policy", `/insurance?edit=${gap.policyId}#policy-${gap.policyId}`)
+          : openLink(`I have ${kindWords(gap.kind)}`, `/insurance?add=${gap.kind}#add`),
+        // Spec step 197: sample prices for the cover a yes to a risk question opened.
+        ...(insurance.canQuote && gap.key in RISK_GAP_KINDS
+          ? [{ id: "insurance.gap_quotes" as const, label: "Get quotes", kind: "primary" as const }]
+          : []),
+        { id: "insurance.gap_no", label: "I don't need it", kind: "secondary" },
+        snoozeButton(),
+      ],
+      dedupeKey: `gap:${gap.key}`,
+      priority: MESSAGE_PRIORITY.insurance_gap,
+    }));
 }
 
 // "I found car insurance $408.00 a year cheaper for the same cover", with the pick, why in
@@ -441,11 +447,17 @@ export const insuranceSource: MessageSource = {
   gather: (snapshot) => {
     const insurance = snapshot.insurance;
     if (!insurance) return [];
+    const suggested = new Set(
+      (snapshot.suggestions ?? []).flatMap((s) => {
+        const gap = SUGGESTED_GAP[s.topic];
+        return gap ? [gap] : [];
+      }),
+    );
     return [
       ...claimReminders(insurance, snapshot.asOf),
       ...shopMessages(insurance, snapshot.autopilot),
       ...switchMessages(insurance),
-      ...gapMessages(insurance),
+      ...gapMessages(insurance, suggested),
       ...checkedMessages(insurance),
       ...checkupMessages(insurance),
       ...benefitMessages(insurance),

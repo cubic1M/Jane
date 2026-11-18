@@ -174,6 +174,8 @@ export type InsuranceTreeInput = {
 export const SUGGESTED_GAP: Readonly<Record<string, GapKey>> = {
   auto_insurance: "auto",
   renters_insurance: "renters",
+  // Its things-not-covered side: the same missing renters cover (debug 2, 11-18).
+  belongings_cover: "renters",
 };
 
 export function insuranceTree(input: InsuranceTreeInput): AreaTree {
