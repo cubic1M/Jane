@@ -18,6 +18,7 @@ import {
   uncertainOf,
   type CloseFigures,
   type CloseTx,
+  balancesAtMonthEnd,
   closeNetWorth,
 } from "@/planning/month-close";
 
@@ -76,7 +77,8 @@ async function monthTxns(userId: string, month: string, client: PrismaClient): P
   }));
 }
 
-// The month's figures as they stand: the transactions, the books, net worth now and the report.
+// The month's figures as they stand: the transactions, the books, net worth at the month's end
+// (each account's last balance by then) and the report.
 async function figuresFor(
   userId: string,
   month: string,
@@ -100,7 +102,11 @@ async function figuresFor(
     // and what it leaves out said beside it.
     ...(keep
       ? { netWorthCents: keep.netWorthCents, netWorthNotCounting: keep.netWorthNotCounting ?? null }
-      : closeNetWorth(worth!.accounts, worth!.owned, worth!.crypto)),
+      : closeNetWorth(
+          balancesAtMonthEnd(worth!.accounts, worth!.snapshots, month),
+          worth!.owned,
+          worth!.crypto,
+        )),
     booksOpen: keep
       ? keep.booksOpen
       : books!.open.filter((o) => BOOKS_WORRYING_KINDS.includes(o.kind)).length,
@@ -179,6 +185,13 @@ async function close(
   const data = { status: "closed", uncertain: [], figures, closedAt: now };
   if (id) await db.monthCloses.updateMany({ where: { id }, data });
   else await db.monthCloses.create({ data: { userId, month, ...data, createdAt: now } });
+  // The scan's "confirm the charges" for the month is done once it closes; it stopped showing
+  // only at the next scan, so Spending's tree kept "Last month's close · Openai $20.00: I'm not
+  // sure what it was" after "Looks right" (debug 2, 11-18).
+  await db.suggestions.updateMany({
+    where: { topic: "month_close", status: { in: ["waiting", "selected"] } },
+    data: { status: "gone" },
+  });
   await track(userId, "month_closed", { month, confirmed });
 }
 

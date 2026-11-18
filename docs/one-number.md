@@ -14,8 +14,8 @@ people don't have. They hold each figure equal. Each failed on main before its f
 
 | Figure | Shown on | The one source | Test |
 | --- | --- | --- | --- |
-| Net worth today | Home headline and the last day of its line, Money page, money hub, /net-worth, chat `net_worth`, "explain this figure", the weekly email, the month close, the monthly report | `loadNetWorthInputs` (src/lib/net-worth-history.ts): each account once, what the person owns at their values, crypto; `netWorth` over them | `one-number` |
-| Net worth on a past day | Home's line and its day boxes, the weekly email's change, /net-worth's months | `dailyNetWorth` / `netWorthLine` over `loadNetWorthInputs` | `one-number` |
+| Net worth today | Home headline and the last day of its line, Money page, money hub, /net-worth, chat `net_worth`, "explain this figure", the weekly email, the monthly report | `loadNetWorthInputs` (src/lib/net-worth-history.ts): each account once, what the person owns at their values, crypto; `netWorth` over them | `one-number` |
+| Net worth on a past day | Home's line and its day boxes, the weekly email's change, /net-worth's months, the month close (its month's last day) | `dailyNetWorth` / `netWorthLine` over `loadNetWorthInputs` | `one-number` |
 | What's owed | Home's Loans tile, the Money page, the money hub, the Loans page, chat `debts`, Plans (less the mortgage, as the debt planner) | `loadDebts` (the debt book): its lines' sum, a card in credit owing nothing; `owedSummary` | `one-number-owed` |
 | Investments | the Investing page's total, net worth's investments | accounts once (src/lib/account-copies.ts) in `loadInvestments` and net worth | `one-number-investments` |
 | Bank fees a year | the report's finding per account, the dock's suggestion, chat `open_findings` | `bankFeesByAccount` over `feeMonthsOf`'s months; a reversal pairs off on its account | `one-number-fees` |

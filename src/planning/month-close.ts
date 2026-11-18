@@ -97,6 +97,29 @@ export const categoryWords = (primary: string) => {
 
 // Net worth at the close: none when no balance is known (never a silent $0), and what it leaves
 // out for want of a balance said beside it (the CSV bench's skipped-balance path). Pure.
+// Each account's balance on the month's last day: its last snapshot on or before it, as the month-
+// by-month net worth reads it (src/insights/net-worth.ts). An account with none by then keeps the
+// balance it has. A close taken weeks later, as a first upload's is, said that day's balance as
+// "Net worth at the close" (debug 2, 11-18: $642.18 for an Oct 31 that Ahead had at $915.16).
+export function balancesAtMonthEnd<T extends { id: string; currentBalanceCents: number | null }>(
+  accounts: readonly T[],
+  snapshots: readonly { accountId: string; date: string; balanceCents: number }[],
+  month: string,
+): T[] {
+  const [y, m] = month.split("-").map(Number);
+  const last = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+  const latest = new Map<string, { date: string; balanceCents: number }>();
+  for (const s of snapshots) {
+    if (s.date > last) continue;
+    const known = latest.get(s.accountId);
+    if (!known || s.date > known.date) latest.set(s.accountId, s);
+  }
+  return accounts.map((a) => {
+    const s = latest.get(a.id);
+    return s ? { ...a, currentBalanceCents: s.balanceCents } : a;
+  });
+}
+
 export function closeNetWorth(
   accounts: { id: string; name: string; type: string; currentBalanceCents: number | null }[],
   owned: { id: string; valueCents: number; valuedOn: string }[],
