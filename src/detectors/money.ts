@@ -222,12 +222,12 @@ const lateFees: Detector = {
     return suggestion("cost", "late_fees", {
       title: "Set up automatic minimum payments so nothing is late",
       headline: headlineOf("Pay at least the minimum automatically", total, "saves"),
-      short: `You paid ${formatCents(total)} in ${fees.length} late fees.`,
+      short: `You paid ${formatCents(total)} in ${plural(fees.length, "late fee")}.`,
       worthCents: total,
       worthKind: "saves",
       confidence: evidence("seen", profile.months, fees.length, "late fees"),
       urgency: "soon",
-      why: `You paid ${formatCents(total)} in ${fees.length} late fees. Paying at least the minimum automatically stops them.`,
+      why: `You paid ${formatCents(total)} in ${plural(fees.length, "late fee")}. Paying at least the minimum automatically stops them.`,
       action: { label: "Set up payments", href: "/debt" },
       watch: {
         kind: "fee_stops",
