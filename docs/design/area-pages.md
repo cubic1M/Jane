@@ -214,12 +214,11 @@ opens a branch or picks an item. The detail region is `aria-live="polite"`.
 On a phone, or when a branch has many items, the canvas pans so the items fill the view and the
 branches are off to the left. An "All of <area>" button above the tree brings them back.
 
-## Visual language: monochrome terminal
+## Visual language: monochrome and readable
 
-The founder's words: "the entire design of the website should be this ascii, cool, almost spyware
-like", and "remove the green on every part of the site. I want a black and white and gray color
-scheme". Jane looks like a surveillance console, in black, white and greys only, in light and
-dark mode alike.
+The founder, 2026-11-18: Jane "looks like a terminal". It should be readable and not scary for
+first users. It was a surveillance console (10-18: "this ascii, cool, almost spyware like"); now it
+is plain black, white and greys in a sans font with plain words. The colours stay as they were:
 
 **Colour.** None. `src/app/globals.css` remaps every Tailwind palette (emerald, amber, red, sky,
 zinc and the rest, every shade from 50 to 950) to a grey of the same lightness. Existing classes
@@ -242,21 +241,29 @@ contrast, and the page, its pattern, text, borders, buttons and Try Jane form us
 | --- | --- |
 | Status | ● urgent (bold), ◐ worth a look, ○ fine, plus words for screen readers |
 | Up and down | ▲ / ▼ and a + / − sign |
-| Jane's own cards (suggestions) | Inverted (`.invert-scope`): white on black in light mode, black on white in dark mode, a heavy dashed border and a `[JANE]` tag, so they never look like an answer |
+| Jane's own cards (suggestions) | Inverted (`.invert-scope`): white on black in light mode, black on white in dark mode, with a heavy border and the word "Jane", so they never look like an answer |
 | Primary button | Inverted: the text colour as its background (any `bg-emerald-600/700/800`) |
-| Secondary button | Bracketed outline: `[Ask me first]` |
-| Error | `role="alert"` with a heavy border and an `[ERROR]` tag |
+| Secondary button | An outline, with a plain label: "Ask me first" |
+| Error | `role="alert"` with a heavy border, bold, and "Error:" in words before it |
+| Progress | A drawn bar with the percent and words beside it, never characters |
 | Net worth line | The text colour on the page background, with a dashed baseline |
 
-**Terminal details:**
-- Monospace everywhere, square corners and dashed borders (already global).
-- Bracketed labels for actions: `[OPEN]`, `[ASK]`.
-- Small uppercase tags for states: `LIVE`, `SCANNING`, `3 FLAGS`.
-- `> ` before page titles and `# ` before section headings.
-- A blinking cursor on headings.
-- Tree edges drawn as dotted lines.
-- Tabular figures for numbers.
-- Optionally, a faint scanline or grid texture, and a short "decrypting" reveal of text on first load.
+**The look, in `src/app/globals.css`:**
+- The sans font (Geist Sans) everywhere. Figures keep one width (tabular numbers), so columns of
+  money line up. Monospace only where characters must line up, set by class (`font-mono`).
+- Square corners, set by one rule (the forced `border-radius` block) that nothing else depends on.
+  New code adds no corner classes (`rounded-*` or square-only ones); the ones already in
+  components are overridden by that rule, so another shape is that rule alone.
+- Solid hairlines, not dashed.
+- Plain words for labels: "Show", "Expand", "Why this number?", "Jane". No square brackets, no
+  "> ", "# " or ">_" marks, no "J_".
+- Where a label was decoration hidden from screen readers, the name screen readers hear stays.
+- The page you're on is its tab, underlined.
+
+**The landing page keeps its own look** (`src/app/page.tsx`, `landing.css`): monospace, dashed
+lines and the "> " before its title, scoped to `.landing` in `globals.css`. `src/app/readable-style.test.ts`
+fails if monospace, dashed lines or heading marks leave that scope, if the corner shape is set
+anywhere but its one rule, or if an error says `[ERROR]`.
 
 **Never at the cost of reading:**
 - AA contrast for every grey pair (the axe tests check).
