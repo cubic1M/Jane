@@ -13,7 +13,12 @@ import {
   IDLE_CASH_YEARLY_CATEGORIES,
   NON_SPENDING_CATEGORIES,
   NON_SPENDING_PRIMARIES,
+  IDLE_CASH_PERSON_MONTHLY_GAP_DAYS,
   REFERENCE_HIGH_YIELD_RATE_BPS,
+  RENT_TRANSFER_AMOUNT_TOLERANCE,
+  RENT_TRANSFER_MIN_CENTS,
+  RENT_TRANSFER_MIN_MONTHS,
+  RENT_TRANSFER_WORDS,
 } from "@/config/detection";
 import { categoryOf } from "@/categorize/taxonomy";
 import { ANNUAL_FEE_WORDS } from "@/config/found-policies";
@@ -65,6 +70,36 @@ type IdleInput = {
   transactions: readonly IdleTx[];
 };
 
+// Rent sent to a person by Zelle or Venmo: filed as a transfer until they answer "Is this your
+// rent?" (src/detection/rent-transfers.ts), and money that goes each month all the same (debugger
+// 11-18: $900 to one person on each 1st, "spend about $200.13 a month", so $1,199.61 of the $1,800
+// that pays the next rent read as idle cash). The same amount to one payee about a month apart,
+// whatever the answer.
+const P2P = new RegExp(`(?<![A-Z0-9])(?:${RENT_TRANSFER_WORDS.join("|")})(?![A-Z0-9])`);
+function monthlyToAPerson(transactions: readonly IdleTx[]): Set<IdleTx> {
+  const [minGap, maxGap] = IDLE_CASH_PERSON_MONTHLY_GAP_DAYS;
+  const groups = new Map<string, IdleTx[]>();
+  for (const t of transactions) {
+    if (t.amountCents < RENT_TRANSFER_MIN_CENTS || !(t.pfc ?? "").startsWith("TRANSFER_OUT"))
+      continue;
+    if (!P2P.test((t.description ?? "").toUpperCase())) continue;
+    const key = normalizeMerchant(t.description ?? "")?.key;
+    if (key) groups.set(key, [...(groups.get(key) ?? []), t]);
+  }
+  const monthly = new Set<IdleTx>();
+  for (const rows of groups.values()) {
+    const sorted = [...rows].sort((a, b) => a.date.localeCompare(b.date));
+    const usual = sorted[Math.floor(sorted.length / 2)]!.amountCents;
+    const steady = sorted.filter(
+      (t) => Math.abs(t.amountCents - usual) <= usual * RENT_TRANSFER_AMOUNT_TOLERANCE,
+    );
+    const gaps = steady.slice(1).map((t, i) => daysBetween(steady[i]!.date, t.date));
+    if (steady.length >= RENT_TRANSFER_MIN_MONTHS && gaps.every((g) => g >= minGap && g <= maxGap))
+      for (const t of steady) monthly.add(t);
+  }
+  return monthly;
+}
+
 // A month of spending, the one figure "you spend about $X a month" means everywhere: the idle cash
 // card and finding, the emergency cushion card, the goal Jane drafts, the chat's cushion answers,
 // the refund plan and the cash page (cushionSpendCents, src/detectors/helpers.ts). Gate B, 11-16:
@@ -87,13 +122,15 @@ export function spendingMonthOf(input: Pick<IdleInput, "asOf" | "transactions">)
   // Refunds (money back in a spending category) net against it, as on the Money page: a fully
   // returned order isn't a month's spending (beta accuracy: "You spend about $1,247 a month" where
   // the Money page's months averaged $1,189). Money in with no category, or as income, isn't one.
+  const rent = monthlyToAPerson(input.transactions);
   const spending = input.transactions.filter(
     (t) =>
       t.date > cutoff &&
       t.date <= input.asOf &&
-      (t.amountCents > 0 || (t.pfc !== null && !t.pfc.startsWith("INCOME"))) &&
-      !NON_SPENDING_PRIMARIES.some((p) => (t.pfc ?? "").startsWith(p)) &&
-      !NON_SPENDING_CATEGORIES.includes(t.pfc as never),
+      (rent.has(t) ||
+        ((t.amountCents > 0 || (t.pfc !== null && !t.pfc.startsWith("INCOME"))) &&
+          !NON_SPENDING_PRIMARIES.some((p) => (t.pfc ?? "").startsWith(p)) &&
+          !NON_SPENDING_CATEGORIES.includes(t.pfc as never))),
   );
   // One-off charges (a car, a sofa) aren't months of spending: left out as every other monthly
   // figure leaves them out (src/insights/typical-month.ts). Night QA 10-30: $11,200 of one-offs
