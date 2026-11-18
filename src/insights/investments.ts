@@ -119,13 +119,19 @@ function sourceLine(account: { name: string; institution: string | null }, asOf:
   return `${from}, ${account.name}${asOf ? `, price as of ${dayLabel(asOf, { year: true })}` : ""}`;
 }
 
+const NEVER_CASH = new Set(["cryptocurrency", "equity", "derivative"]);
+
 function holdingView(
   holding: HoldingRow,
   security: SecurityRow,
   account: { name: string; institution: string | null },
 ): HoldingView {
   const facts = security.ticker ? FUND_FACTS[security.ticker.toUpperCase()] : undefined;
-  const isCash = security.isCashEquivalent || security.type === "cash";
+  // Plaid's cash-equivalent flag means money-market-like; a coin, a stock or an option it flags
+  // (Plaid's sandbox flags Bitcoin) is never uninvested cash.
+  const isCash =
+    security.type === "cash" ||
+    (security.isCashEquivalent && !NEVER_CASH.has((security.type ?? "").toLowerCase()));
   return {
     id: holding.id,
     accountId: holding.accountId,
@@ -143,7 +149,7 @@ function holdingView(
         : holding.valueCents - holding.costBasisCents,
     expenseRatioBps: facts?.expenseRatioBps ?? null,
     category: facts?.category ?? null,
-    mix: facts?.mix ?? mixOfType(security.type, security.isCashEquivalent),
+    mix: facts?.mix ?? mixOfType(security.type, isCash),
     source: sourceLine(account, holding.priceAsOf),
     factsSource: facts?.source ?? null,
   };
