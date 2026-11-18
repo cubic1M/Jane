@@ -466,3 +466,17 @@ by when (January 31, or the next business day: February 1, 2027): a W-2 from eac
 from a school paid tuition, a 1098-E from a loan servicer if the interest reached $600, a 1099-K from a
 payout platform only above $20,000 and 200 payments, and for a Stanford fellowship no W-2 or 1099 but
 Stanford's January letter (a nonresident's 1042-S in March). No dollars.
+
+### A federal refund beside a paycheck (`refund_withholding`, gap pass)
+
+An IRS refund this year of $500 or more ("IRS TREAS 310 TAX REF"; "TREAS 310" alone is any Treasury
+payment, FEMA's included) beside a paycheck, and no fellowship: last year's withholding ran ahead of the
+tax by about that much a year, unless a refundable credit made it. Said as a month's worth, with Form W-4
+and the IRS's Tax Withholding Estimator linked. Ranked for a share, since it comes back at filing anyway.
+
+### Unemployment pay (`unemployment_tax`, gap pass)
+
+Unemployment pay this year (`INCOME_UNEMPLOYMENT`, "CA EDD UI"): the federal tax on what's been paid,
+on top of the year's other income at its pace (IRS Topic 418); withheld only when a Form W-4V asks, at
+10% of each payment; the 1099-G in January; California doesn't tax it (FTB). Null under the standard
+deduction. Paid family leave isn't counted.

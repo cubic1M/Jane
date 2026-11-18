@@ -118,6 +118,8 @@ export const TAX_TOPIC_MONTH: Readonly<Record<string, number>> = {
   withholding_part_year: 1,
   withholding_two_jobs: 1,
   filing_extension: 3,
+  refund_withholding: 1,
+  unemployment_tax: 1,
   social_security_taxed: 1,
   stock_vest_tax: 6,
   side_income_tax: 1,
