@@ -78,6 +78,7 @@ export const loansTopicNode = (topic: string) => itemId(TOPIC_BRANCH[topic] ?? "
 
 export const TOPIC_LABELS: Record<string, string> = {
   card_interest: "Card interest you can cut",
+  card_from_cash: "Pay the card from cash",
   high_cost_loans: "Costly short-term borrowing",
   cash_advance: "Card cash advances",
   balance_transfer: "Move card debt to 0%",

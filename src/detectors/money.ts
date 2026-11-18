@@ -26,6 +26,7 @@ import {
   headlineOf,
 } from "./helpers";
 import { stoppedEmployer } from "./life";
+import { cashClearsCard } from "./student-money";
 
 // Detectors for everyday money (spec step 254): subscriptions, fees, card interest, idle
 // cash, the emergency fund and debt in trouble. Pure; see ./contract.ts.
@@ -251,6 +252,8 @@ const cardInterest: Detector = {
     const seen = outCents(charges);
     const total = yearly ?? pace(charges);
     if (total < R.interestMinCents) return null;
+    // Cash beyond a month's spending would clear it: card_from_cash says so with its steps.
+    if ((cashClearsCard(data)?.interestCents ?? 0) > 0) return null;
     return suggestion("debt", "card_interest", {
       title: "Pay down the card that is charging you interest",
       headline: headlineOf("Pay down the card charging interest", total, "saves"),

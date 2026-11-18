@@ -57,6 +57,8 @@ export const SUGGESTION_NODES: Readonly<Record<string, { branch: MoneyBranch; la
   promo_ending: { branch: "charges", label: "A promo price ending" },
   bill_split: { branch: "charges", label: "Split bills with your partner" },
   low_balance: { branch: "coming", label: "Balance running low" },
+  bill_gap_ahead: { branch: "coming", label: "A bill you'll be short for" },
+  stanford_bill_due: { branch: "coming", label: "Split your school bill" },
   emergency_fund: { branch: "coming", label: "Build a cash cushion" },
   income_smoothing: { branch: "coming", label: "Smooth out uneven pay" },
   subscriptions: { branch: "subscriptions", label: "Subscriptions to review" },

@@ -87,7 +87,10 @@ describe.runIf(url)("loans on a real account", { timeout: 120_000 }, () => {
     const topics = suggestions.map((s) => s.topic);
     expect(topics).not.toContain("consolidation");
     expect(topics).not.toContain("borrowing_power");
-    expect(topics).toContain("card_interest");
+    // The $3,000 in checking clears part of the $6,000 card, so the card's interest comes as "pay it
+    // down from cash" (src/detectors/student-money.ts), which card_interest steps aside for.
+    expect(topics).toContain("card_from_cash");
+    expect(topics).not.toContain("card_interest");
   });
 
   it("asks for the rate when asked to consolidate, with no pick, label or confidence", async () => {
