@@ -5,7 +5,7 @@ import { holds } from "./waits";
 
 // Jane's logos are only logos (founder: "you should not be able to click the top right Jane logo
 // and it does anything. It should just be the logo, and no interaction"): the "Jane" in the top
-// bar and the "J_" over the chat are no link or button, take no focus, and a click changes
+// bar and the "J" over the chat are no link or button, take no focus, and a click changes
 // nothing. The tabs and labelled buttons do the moving.
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");

@@ -78,7 +78,7 @@ test("insurance options side by side, re-ranked by preference, chosen in one tap
   expect(requests).toEqual([]);
 
   // More details: the reasoning and how sure Jane is, on its pick.
-  const pick = cards.filter({ hasText: "JANE'S PICK" });
+  const pick = cards.filter({ hasText: "Jane's pick" });
   await pick.getByRole("button", { name: /More details/ }).click();
   await expect(pick.getByText(/\d+% sure:/)).toBeVisible();
 
@@ -93,7 +93,7 @@ test("insurance options side by side, re-ranked by preference, chosen in one tap
   // The others can't be chosen as well.
   await expect(
     cards
-      .filter({ hasNotText: "JANE'S PICK" })
+      .filter({ hasNotText: "Jane's pick" })
       .first()
       .getByRole("button", {
         name: /^Choose /,

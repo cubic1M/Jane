@@ -64,7 +64,7 @@ test("the dock steps between suggestions from its header, details staying open",
   await page.goto("/home");
   const dock = page.locator("[data-card-dock]");
   const header = dock.locator("[data-dock-header]");
-  await expect(header).toHaveText(/^JANE · 1 of (\d+) suggestions/, { timeout: 60_000 });
+  await expect(header).toHaveText(/^Jane · 1 of (\d+) suggestions/, { timeout: 60_000 });
   const total = Number(/of (\d+)/.exec((await header.textContent()) ?? "")![1]);
   test.skip(total < 3, "needs a few suggestions");
   const showing = dock.locator('[data-card-state="showing"]');

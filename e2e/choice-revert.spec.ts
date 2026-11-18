@@ -60,7 +60,7 @@ test("a choice shows at once, greys the others, and Revert puts the previous lev
     "aria-pressed",
     "true",
   );
-  await expect(chosen.getByText("[✓ chosen]")).toBeVisible();
+  await expect(chosen.getByText("✓ chosen")).toBeVisible();
   for (const other of [LABELS[0], LABELS[2]]) {
     const button = chosen.getByRole("button", { name: other, exact: true });
     await expect(button).toBeVisible();

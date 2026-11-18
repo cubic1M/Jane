@@ -116,22 +116,21 @@ function DockHeader({
         e.preventDefault();
       }}
       // At the dock's top while a card's details scroll under it.
-      className="sticky top-0 z-10 mb-2 flex min-h-11 items-center gap-2 bg-white text-xs font-semibold tracking-wider dark:bg-zinc-950"
+      className="sticky top-0 z-10 mb-2 flex min-h-11 items-center gap-2 bg-white text-xs font-semibold dark:bg-zinc-950"
     >
       <p>
-        JANE · {position} of {total} {total === 1 ? "suggestion" : "suggestions"}
+        Jane · {position} of {total} {total === 1 ? "suggestion" : "suggestions"}
       </p>
       {total > 1 && (
         // Named by their words (accessibility: the name holds what's shown).
         <span className="ml-auto flex gap-1">
           <button type="button" onClick={() => onStep(-1)} className={STEP}>
-            <span aria-hidden="true">[‹&nbsp;</span>previous
+            <span aria-hidden="true">‹&nbsp;</span>previous
             <span className="sr-only"> suggestion</span>
-            <span aria-hidden="true">]</span>
           </button>
           <button type="button" onClick={() => onStep(1)} className={STEP}>
-            <span aria-hidden="true">[</span>next<span className="sr-only"> suggestion</span>
-            <span aria-hidden="true">&nbsp;›]</span>
+            next<span className="sr-only"> suggestion</span>
+            <span aria-hidden="true">&nbsp;›</span>
           </button>
         </span>
       )}
@@ -451,8 +450,8 @@ export function FloatingCards({
           onClick={() => setUnfolded(true)}
           className="floating-card-in invert-scope pointer-events-auto inline-flex min-h-11 items-center gap-2 border-2 border-zinc-500 px-3 text-sm font-semibold shadow-lg"
         >
-          <span aria-hidden="true" className="text-xs tracking-wider">
-            [JANE]
+          <span aria-hidden="true" className="text-xs">
+            Jane
           </span>
           {left.length} for you
           <span aria-hidden="true">▲</span>
@@ -564,9 +563,9 @@ export function FloatingCards({
               <div className="flex items-start gap-2 pt-3 pl-3">
                 <span
                   aria-hidden="true"
-                  className={`mt-0.5 shrink-0 text-xs font-semibold tracking-wider ${mode === "pick" ? "text-emerald-700" : ""}`}
+                  className={`mt-0.5 shrink-0 text-xs font-semibold ${mode === "pick" ? "text-emerald-700" : ""}`}
                 >
-                  {mode === "pick" ? "◆" : "[JANE]"}
+                  {mode === "pick" ? "◆" : "Jane"}
                 </span>
                 <div className="min-w-0 flex-1">
                   {current.badge && (
@@ -824,7 +823,7 @@ function ChosenActions({
             aria-pressed="true"
             className={`${COMPACT} inline-flex items-center gap-1 border-2 border-current bg-zinc-950 px-3 font-semibold text-white dark:bg-white dark:text-zinc-950`}
           >
-            {label} <span aria-hidden="true">[✓ chosen]</span>
+            {label} <span aria-hidden="true">✓ chosen</span>
             <span className="sr-only">, chosen</span>
           </button>
         ) : (

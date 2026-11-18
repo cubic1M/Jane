@@ -61,7 +61,10 @@ describe("ComparisonCards", () => {
   });
 
   it("shows each card's tags, figure, rows and who it's best for", () => {
-    expect(html).toContain("JANE&#x27;S PICK");
+    expect(html).toContain(">Jane&#x27;s pick<");
+    expect(html).toContain(
+      'data-tag="LOWEST TOTAL" class="border border-current px-1">Lowest total<',
+    );
     expect(html).toContain('data-tag="LOWEST TOTAL"');
     expect(html).toContain('data-tag="LOWEST MONTHLY"');
     expect(html).toContain("$400");

@@ -241,10 +241,7 @@ export function ChatComposer({
         data-chat-composer=""
         className="sticky bottom-0 z-30 mt-auto -mx-4 flex flex-col gap-1 bg-white px-4 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:-mx-6 sm:px-6 dark:bg-zinc-950"
       >
-        <div className="flex min-h-12 items-end gap-2 border border-zinc-400 px-3 focus-within:border-emerald-700 dark:border-zinc-600">
-          <span aria-hidden="true" className="self-start py-3 leading-6 text-emerald-700">
-            &gt;
-          </span>
+        <div className="flex min-h-12 items-end gap-2 border border-zinc-300 px-4 focus-within:border-zinc-900 dark:border-zinc-600 dark:focus-within:border-zinc-100">
           <div className="relative flex min-w-0 flex-1">
             <textarea
               ref={input}
@@ -302,9 +299,7 @@ export function ChatComposer({
             disabled={pending}
             className="inline-flex min-h-11 shrink-0 items-center px-1 text-sm font-semibold text-emerald-700 hover:underline disabled:opacity-60"
           >
-            <span aria-hidden="true">[</span>
             {pending ? "Sending…" : "Send"}
-            <span aria-hidden="true">]</span>
           </button>
         </div>
         {hint?.under && (

@@ -113,7 +113,7 @@ export function MicButton({
               </span>
             ))}
           </span>
-          <span className="mic-rec tracking-wider">● REC</span>
+          <span className="mic-rec">● Recording</span>
         </span>
       )}
     </button>

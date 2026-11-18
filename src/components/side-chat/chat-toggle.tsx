@@ -22,9 +22,6 @@ export function ChatToggle() {
       onClick={() => sideChatStore.setPanel(folded ? "open" : "rail")}
       className="relative hidden min-h-11 shrink-0 items-center gap-1.5 px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-100 lg:inline-flex dark:text-zinc-300 dark:hover:bg-zinc-900"
     >
-      <span aria-hidden className="text-xs text-emerald-700">
-        &gt;_
-      </span>
       Chat
       {folded && unread > 0 && (
         <span aria-label={`${unread} new`} className="size-2 bg-amber-500" />

@@ -42,8 +42,11 @@ const GRID: Record<number, string> = {
   4: "sm:grid-cols-2 lg:grid-cols-4",
 };
 
+// A tag in plain words ("LOWEST TOTAL" reads "Lowest total"); data-tag keeps its key.
+const asWords = (tag: string) => tag.charAt(0) + tag.slice(1).toLowerCase();
+
 const BUTTON =
-  "inline-flex min-h-11 items-center justify-center border px-3 text-sm font-semibold uppercase tracking-wide disabled:cursor-not-allowed";
+  "inline-flex min-h-11 items-center justify-center border px-3 text-sm font-semibold disabled:cursor-not-allowed";
 
 export type PickHandler = (optionId: string) => Promise<PickResult>;
 // Takes back the pick (its decision, from the pick's result).
@@ -166,13 +169,13 @@ export function ComparisonCards({
       data-testid="comparison"
       data-topic={comparison.topic}
       data-policy={comparison.policyId ?? ""}
-      className="flex flex-col gap-3 font-mono text-sm [overflow-wrap:anywhere]"
+      className="flex flex-col gap-3 text-sm [overflow-wrap:anywhere]"
     >
       <div className="flex flex-col gap-2">
         <h3 className="text-base font-semibold">{comparison.title}</h3>
         {comparison.preferences.length > 1 && (
           <fieldset className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <legend className="float-left mr-1 text-xs uppercase text-zinc-600 dark:text-zinc-400">
+            <legend className="float-left mr-1 text-xs text-zinc-600 dark:text-zinc-400">
               Sort by
             </legend>
             {comparison.preferences.map((p) => (
@@ -231,10 +234,10 @@ export function ComparisonCards({
               }`}
             >
               <p className="flex min-h-5 flex-wrap gap-1 text-[11px] font-semibold">
-                {o.isPick && <span className="border border-current px-1">JANE&apos;S PICK</span>}
+                {o.isPick && <span className="border border-current px-1">Jane&apos;s pick</span>}
                 {o.tags.map((t) => (
                   <span key={t} data-tag={t} className="border border-current px-1">
-                    {t}
+                    {asWords(t)}
                   </span>
                 ))}
               </p>
@@ -249,7 +252,7 @@ export function ComparisonCards({
                     key={r.key}
                     data-row={r.key}
                     data-differs={r.differs ? "" : undefined}
-                    className={`flex justify-between gap-2 border-t border-dashed border-current pt-1 ${r.differs ? "font-semibold" : "opacity-50"}`}
+                    className={`flex justify-between gap-2 border-t border-current pt-1 ${r.differs ? "font-semibold" : "opacity-50"}`}
                   >
                     <dt>
                       <span aria-hidden="true">{r.differs ? "▸ " : "· "}</span>
@@ -275,7 +278,7 @@ export function ComparisonCards({
                       : "border-zinc-950 bg-zinc-950 text-white hover:bg-zinc-700 disabled:opacity-40 dark:border-white dark:bg-white dark:text-zinc-950"
                   }`}
                 >
-                  {isChosen ? "[✓ chosen]" : "Choose"}
+                  {isChosen ? "✓ Chosen" : "Choose"}
                 </button>
                 <button
                   type="button"
@@ -427,7 +430,7 @@ function CompareTable({
                   onClick={() => onChoose(o)}
                   disabled={chosen !== null}
                   aria-label={chosen === o.id ? `Chosen: ${o.name}` : `Choose ${o.name}`}
-                  className="inline-flex min-h-11 w-full items-center justify-center border border-zinc-950 text-[11px] font-semibold uppercase disabled:opacity-40 dark:border-white"
+                  className="inline-flex min-h-11 w-full items-center justify-center border border-zinc-950 text-xs font-semibold disabled:opacity-40 dark:border-white"
                 >
                   {chosen === o.id ? "✓" : "Choose"}
                 </button>

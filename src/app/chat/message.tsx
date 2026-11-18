@@ -22,27 +22,17 @@ import { SubmitButton } from "@/components/submit-button";
 // own that waits on the person floats as a pop-up (src/lib/jane-agent/popups.ts) and isn't in
 // the list; once answered it's gone, unless the tap left a next step (a real account's steps and
 // Mark done), shown as one line with the steps under it. Nothing says what was chosen (founder
-// 11-11: no trace). Its briefs and answers are plain text tagged "jane>": no cards in the list.
+// 11-11: no trace). Its briefs and answers are plain text tagged "Jane": no cards in the list.
 
 const BUTTON = "inline-flex min-h-11 items-center justify-center px-3 text-sm font-semibold";
 const STYLES = {
   primary: `${BUTTON} bg-emerald-700 text-white hover:bg-emerald-800 disabled:opacity-60`,
   secondary: `${BUTTON} border border-zinc-400 hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-600 dark:hover:bg-zinc-900`,
   // Spec step 90: a quick reply ("Why?", "Show options"), lighter than a decision.
-  quick: `${BUTTON} border border-dashed border-zinc-400 font-medium text-zinc-700 hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-900`,
+  quick: `${BUTTON} border border-zinc-300 font-medium text-zinc-700 hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-900`,
 };
 const LINK =
   "inline-flex min-h-11 items-center px-1 text-sm font-medium text-emerald-700 hover:underline";
-
-function Brackets({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <span aria-hidden="true">[</span>
-      {children}
-      <span aria-hidden="true">]</span>
-    </>
-  );
-}
 
 // Hides Undo once its time is up, without a reload.
 function useUndoTimer(undoUntil: string | null): boolean {
@@ -135,9 +125,7 @@ export function ChatMessageItem({ initial }: { initial: MessageView }) {
       }`}
     >
       <p className="flex flex-wrap items-baseline gap-x-2 text-xs text-zinc-500">
-        <span className="font-semibold text-zinc-950 dark:text-zinc-50">
-          jane<span aria-hidden="true">&gt;</span>
-        </span>
+        <span className="font-semibold text-zinc-950 dark:text-zinc-50">Jane</span>
         <span>{message.tag}</span>
         <span aria-hidden="true">·</span>
         <time>{message.time}</time>
@@ -220,7 +208,7 @@ export function ChatMessageItem({ initial }: { initial: MessageView }) {
                   disabled={pending}
                   className={STYLES[b.kind]}
                 >
-                  <Brackets>{b.label}</Brackets>
+                  {b.label}
                 </button>
               ))}
             </form>

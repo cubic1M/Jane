@@ -42,7 +42,7 @@ test("suggestions pop up small at the bottom of the hub and open in place", asyn
   // button, so the net worth isn't covered (QA round 6); a tap opens them.
   if (isMobile) {
     const fold = overlay.locator('[data-card-state="folded"]');
-    await expect(fold).toHaveText(/^\[JANE\]\d+ for you▲$/);
+    await expect(fold).toHaveText(/^Jane\d+ for you▲$/);
     await expect(showing).toHaveCount(0);
     // The net worth streams in after the page (every page renders per request): wait for it.
     const netWorth = page.locator('[data-hub-number="net-worth"]');

@@ -9,7 +9,7 @@ export function JaneAvatar({ size = "md" }: { size?: "md" | "lg" }) {
         size === "lg" ? "size-11 text-base" : "size-8 text-xs"
       }`}
     >
-      J_
+      J
     </span>
   );
 }
