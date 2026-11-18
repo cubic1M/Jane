@@ -138,6 +138,20 @@ describe("a checking fee the same bank's account for young owners doesn't charge
     expectClean(s);
   });
 
+  it("knows U.S. Bank's Smartly Checking and its 13-to-24 rule (upload S1)", () => {
+    const base = undergrad();
+    const usb: ProfileInput = {
+      ...base,
+      accounts: [{ ...base.accounts[0]!, institution: null, name: "U.S. Bank checking" }],
+    };
+    const s = fire(usb, "student_checking")!;
+    expect(s.title).toBe(
+      "U.S. Bank has Smartly Checking: its $12 monthly fee waived for an owner aged 13 to 24",
+    );
+    expectClean(s);
+    expect(fire({ ...usb, told: { age: 25 } }, "student_checking")).toBeNull();
+  });
+
   it("knows the bank from an upload's account name too, and Bank of America's under-25 rule", () => {
     const base = undergrad();
     const bofa: ProfileInput = {

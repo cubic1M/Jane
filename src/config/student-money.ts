@@ -178,6 +178,8 @@ export const CREDIT_PAYMENT_WORDS =
 //   Overdraft Item Fees".
 // - Wells Fargo Everyday Checking: a $15 monthly service fee, avoided when "The primary account
 //   owner is 17 - 24 years old".
+// - U.S. Bank Smartly Checking: a $12 monthly maintenance fee, waived for customers "Age 13-24"
+//   (usbank.com bank-smartly-checking, read 2026-11-18; upload S1 pays U.S. Bank $6.95 a month).
 export const STUDENT_ACCOUNTS = [
   {
     bank: "Chase",
@@ -205,6 +207,15 @@ export const STUDENT_ACCOUNTS = [
     ages: { from: 17, to: 24 },
     noOverdraftFees: false,
     url: "https://www.wellsfargo.com/checking/everyday/",
+  },
+  {
+    bank: "U.S. Bank",
+    words: /U\.?S\.? BANK|USBANK/,
+    account: "Smartly Checking",
+    rule: "its $12 monthly fee waived for an owner aged 13 to 24",
+    ages: { from: 13, to: 24 },
+    noOverdraftFees: false,
+    url: "https://www.usbank.com/bank-accounts/checking-accounts/bank-smartly-checking.html",
   },
 ] as const;
 
