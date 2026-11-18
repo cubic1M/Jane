@@ -28,14 +28,23 @@ import { DiyKit } from "./diy-kit";
 import { conciergeMode } from "@/lib/concierge-mode";
 import { savingsLine } from "@/lib/savings-text";
 import { policyForMerchant, policyLines } from "@/lib/documents/dates";
-import { CHOICE_WORDS, messageAboutFinding } from "@/lib/jane-agent/messages";
+import { CHOICE_WORDS } from "@/lib/jane-agent/messages";
+import { FROM_PARAM, chatMessageHref } from "@/lib/jane-agent/back-link";
 import { CARD_TIGHT } from "@/components/card";
 import { findingSureFacts } from "@/lib/finding-sures";
 import { findingSure } from "@/lib/report-state";
 
-async function Card({ params }: { params: PageProps<"/report/[findingId]">["params"] }) {
+async function Card({
+  params,
+  searchParams,
+}: Pick<PageProps<"/report/[findingId]">, "params" | "searchParams">) {
   const user = await requireUser();
   const { findingId } = await params;
+  // One way back, to where the person came from (debugger 11-18: opened from a card in the dock,
+  // the page said both "Back to the chat" and "Back to your report"). A page opened from one of
+  // Jane's messages carries it (?from=…) and goes back to the chat; any other goes to the report.
+  const from = (await searchParams)[FROM_PARAM];
+  const fromChat = chatMessageHref(typeof from === "string" ? from : null) !== null;
   const db = await scopedDb();
   const finding = await db.findings.findFirst({
     where: { id: findingId },
@@ -109,18 +118,14 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
       ? await policyForMerchant(user.id, merchantName)
       : null;
   const fromPolicy = policy ? policyLines(policy) : [];
-  // Spec step 86: the chat message about this finding, to link back to, and the answer
-  // given (here or in the chat), shown the same in both.
-  const [chatMessageId, answer] = await Promise.all([
-    messageAboutFinding(user.id, finding.id),
-    open
-      ? null
-      : db.decisions.findFirst({
-          where: { findingId: finding.id, undoneAt: null },
-          orderBy: { createdAt: "desc" },
-          select: { choice: true, source: true },
-        }),
-  ]);
+  // Spec step 86: the answer given (here or in the chat), shown the same in both.
+  const answer = open
+    ? null
+    : await db.decisions.findFirst({
+        where: { findingId: finding.id, undoneAt: null },
+        orderBy: { createdAt: "desc" },
+        select: { choice: true, source: true },
+      });
   const kit =
     hasKit(card.actionType) && (open || diyDecision)
       ? buildKit(card.actionType, finding, company?.merchant ?? null)
@@ -128,14 +133,16 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
 
   return (
     <>
-      <AppHeader user={user} chatMessageId={chatMessageId} />
+      <AppHeader user={user} />
       <ViewTracker event="card_opened" findingId={finding.id} />
-      <Link
-        href="/report"
-        className="inline-flex min-h-11 items-center self-start text-sm text-zinc-500 hover:underline"
-      >
-        ‹ Back to your report
-      </Link>
+      {!fromChat && (
+        <Link
+          href="/report"
+          className="inline-flex min-h-11 items-center self-start text-sm text-zinc-500 hover:underline"
+        >
+          ‹ Back to your report
+        </Link>
+      )}
 
       <article className="flex flex-col gap-6">
         <header className="flex flex-col gap-2">
@@ -280,11 +287,11 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
 const evidenceDay = (day: string) =>
   /^\d{4}-\d{2}-\d{2}$/.test(day) ? dayLabel(day, { year: true }) : day;
 
-export default function CardPage({ params }: PageProps<"/report/[findingId]">) {
+export default function CardPage({ params, searchParams }: PageProps<"/report/[findingId]">) {
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
       <Suspense fallback={<PageLoading />}>
-        <Card params={params} />
+        <Card params={params} searchParams={searchParams} />
       </Suspense>
     </main>
   );
