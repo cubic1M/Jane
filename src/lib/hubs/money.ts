@@ -73,7 +73,7 @@ export function moneyTiles(d: MoneyData): HubGroup[] {
       label: "Investments",
       href: "/investments",
       value: formatCents(d.netWorth.investmentsCents),
-      status: "Retirement and investment accounts, at the balance they report",
+      status: "Retirement and investment accounts, at their latest balance",
     });
   }
   have.push(

@@ -20,7 +20,8 @@ export function InvestmentsSection({
   estimate: TaxEstimateView;
   advice: boolean;
 }) {
-  if (view.taxableAccounts === 0) return null;
+  // Nothing to count until what's in the account is known (a typed balance has no cost basis).
+  if (view.taxableAccounts === 0 || !view.holdingsKnown) return null;
   const r = view.realisedCents;
   return (
     <section aria-labelledby="investments-heading" id="investments" className={CARD_ROOMY}>

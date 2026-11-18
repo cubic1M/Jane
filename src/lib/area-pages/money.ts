@@ -442,7 +442,9 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
       item("have", "investments", {
         label: "Investments",
         figure: shortMoney(h.investmentsCents),
-        summary: "Retirement and investment accounts, at the balance they report.",
+        // Reported by a bank or typed by the person (debug 2, 11-17: a typed Fidelity balance read as
+        // one "they report").
+        summary: "Retirement and investment accounts, at their latest balance.",
       }),
     );
   }

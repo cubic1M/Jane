@@ -27,6 +27,10 @@ type Options = { client?: PrismaClient; now?: Date };
 export type InvestmentTaxesView = {
   year: number;
   taxableAccounts: number;
+  // Whether anything in those accounts is known: holdings or buys and sells. A balance the person
+  // typed (src/lib/investing/brokerage-balance.ts) has neither, so its gains aren't $0, they're
+  // unknown (debug 2, 11-17: "Not yet sold $0.00, from the cost basis your broker reports").
+  holdingsKnown: boolean;
   unrealised: Unrealised[];
   unrealisedCents: { total: number; shortTerm: number; longTerm: number };
   // Sales in the year.
@@ -94,6 +98,7 @@ export async function loadInvestmentTaxes(
   const empty: InvestmentTaxesView = {
     year,
     taxableAccounts: taxable.size,
+    holdingsKnown: false,
     unrealised: [],
     unrealisedCents: { total: 0, shortTerm: 0, longTerm: 0 },
     realised: [],
@@ -152,6 +157,7 @@ export async function loadInvestmentTaxes(
   const since = iso(new Date(Date.parse(`${today}T00:00:00Z`) - (WASH_SALE_DAYS + 31) * DAY_MS));
   return {
     ...empty,
+    holdingsKnown: holdings.length > 0 || transactions.some((t) => taxable.has(t.accountId)),
     unrealised: allUnrealised,
     unrealisedCents: {
       total: allUnrealised.reduce((s, u) => s + u.gainCents, 0),

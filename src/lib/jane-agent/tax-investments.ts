@@ -80,6 +80,15 @@ export function investmentsReply(
       refs: {},
     };
   }
+  // A balance with nothing known about what's in it has no cost basis to count from (debug 2,
+  // 11-17: "$0.00 … from the cost basis your broker reports" for a balance the person typed).
+  if (!view.holdingsKnown) {
+    return {
+      body: "I don't know what's in your taxable investment account yet, so I can't count its gains or losses. A positions download from your broker, on the Investments page, lets me.",
+      actions: [],
+      refs: {},
+    };
+  }
   const r = view.realisedCents;
   const u = view.unrealisedCents;
   const realisedLine = `In ${view.year} so far you've realised ${formatCents(r.shortTerm + r.longTerm)} of gains (${formatCents(r.longTerm)} long-term, ${formatCents(r.shortTerm)} short-term), from the cost basis your broker reports.`;
