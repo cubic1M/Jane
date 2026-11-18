@@ -308,3 +308,16 @@ sample-data people. Tests use a fake `fetch`, never the network.
 | --- | --- | --- | --- | --- |
 | `canopy_connect`, `sandbox_canopy_connect` | Personal policies from the person's insurer: kind, carrier, premium, term, deductible, limits, renewal date (`GET /teams/{team}/pulls/{pull}`, Basic auth; webhook `canopy-signature` `t=,s=`) | `insurance_policies`, source `canopy`, updated in place on a new pull | The renewal reshop before a car or home renews, and a price rise against the last reshop | docs.usecanopy.com/reference and its OpenAPI, 2026-11-17 |
 
+## IRS transcripts (Chart), sandbox only
+
+`sandbox_chart_transcripts` (`src/lib/connectors/chart/`, built from developer.trychart.com and its
+OpenAPI definition on 2026-11-17) is the transcript partner #1576 was shaped for
+(`TranscriptPartner`, `src/lib/tax-transcripts/`): Chart's account transcripts are rendered in the
+IRS's layout and read by Jane's one transcript reader, so the codes, Jane's words and what's never
+kept (names, TINs) stay as they are. With `CONNECTORS=1` a sample person who allows it gets their
+transcripts through Chart's shape. **There is no real Chart connector**: Chart reads the IRS through
+the person's own IRS sign-in typed into Chart's flow, and whether Jane may send a person there is
+counsel's question. A test holds that no real one is registered or switched on. Chart's client
+(`chartHttp`: the code-for-token exchange and `/records`) is built and tested, so that day is a
+registration, not a build.
+
