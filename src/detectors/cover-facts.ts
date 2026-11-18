@@ -63,7 +63,8 @@ const belongingsCover: Detector = {
       title: stanford
         ? "Stanford housing doesn't insure your things, and I see no renters cover"
         : "A landlord's policy covers the building, not your things, and I see no renters cover",
-      headline: "Note your things have no renters cover",
+      // What Jane sees, not what is true of the person: cover paid another way (a parent's policy) wouldn't show.
+      headline: "Note no renters cover shows in your accounts",
       // Ranked by what's at risk (renters_insurance's typical contents figure), never shown as one.
       factOnly: true,
       short: stanford
