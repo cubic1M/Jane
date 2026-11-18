@@ -38,5 +38,13 @@
   "when": "merged",
   "since": "2026-11-18T07:28:19.523Z",
   "expires": "2026-11-21T07:28:19.523Z"
+ },
+ {
+  "on": 2049,
+  "lane": "lane:connectors",
+  "task": "claude/chart-transcripts",
+  "when": "merged",
+  "since": "2026-11-18T07:43:38.201Z",
+  "expires": "2026-11-21T07:43:38.201Z"
  }
 ]
