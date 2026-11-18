@@ -277,6 +277,10 @@ export const CHECKS: Record<FindingType, Check> = {
   },
   trial_conversion: {
     label: "Trials turned paid",
+    // A trial counts only when its full charge is within REFUND_MAX_AGE_DAYS of today, so on old
+    // statements there's nothing it can see (debugger 11-17: "None in 60 days" on statements
+    // ending Sep 28, eleven of those days covered).
+    current: true,
     missing: shortHistory(CHECKUP_MIN_HISTORY_DAYS),
     passed: (f) => ({
       line: `None in ${spanOf(Math.min(f.covered, REFUND_MAX_AGE_DAYS))}`,

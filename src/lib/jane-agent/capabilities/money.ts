@@ -52,6 +52,16 @@ import { openLink } from "../types";
 // Money, bills, spending and goals (spec step 190): the rules' answers for these kinds of question, one registered
 // capability each in ./index.ts. Moved out of ../answer.ts unchanged.
 
+// The last day the person's statements reach, when that's weeks ago (staleStatementsEnd).
+async function statementsEndOf(
+  userId: string,
+  client: CapabilityContext["client"],
+  asOf: string,
+): Promise<string | null> {
+  const read = await scopedFor(userId, client).transactions.aggregate({ _max: { date: true } });
+  return staleStatementsEnd(read._max.date, asOf);
+}
+
 async function answer(ctx: CapabilityContext): Promise<Reply | null> {
   const { intent } = ctx;
   const { userId, client, now, asOf } = ctx;
@@ -71,7 +81,9 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
         loadRecurring(userId, { client, now }),
         loadSnapshotFast(userId, { client, now }),
       ]);
-      return subscriptionsReply(intent, recurring, snapshot);
+      return subscriptionsReply(intent, recurring, snapshot, {
+        statementsEnd: await statementsEndOf(userId, client, asOf),
+      });
     }
     case "payday": {
       // Spec step 91: what they told Jane comes first.
@@ -83,7 +95,9 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
           refs: {},
         };
       }
-      return paydayReply(await loadRecurring(userId, { client, now }), asOf);
+      return paydayReply(await loadRecurring(userId, { client, now }), asOf, {
+        statementsEnd: await statementsEndOf(userId, client, asOf),
+      });
     }
     // Spec step 94.
     case "goals":
@@ -152,10 +166,7 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     case "safe_to_spend": {
       const home = await homeSummary(userId, { client, now });
       if (home?.safeToSpend) return safeReply(home.safeToSpend, asOf);
-      const read = await scopedFor(userId, client).transactions.aggregate({
-        _max: { date: true },
-      });
-      return safeReply(null, asOf, { statementsEnd: staleStatementsEnd(read._max.date, asOf) });
+      return safeReply(null, asOf, { statementsEnd: await statementsEndOf(userId, client, asOf) });
     }
     case "paycheck": {
       const plan = await latestPaycheckPlan(userId, { client, now });
@@ -191,13 +202,10 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     // What they own and owe, from the net worth page's own math.
     case "net_worth": {
       // The figure Home and /net-worth show, from the one place they read it (gate B).
-      const read = await scopedFor(userId, client).transactions.aggregate({
-        _max: { date: true },
-      });
       return netWorthReply(
         (await loadNetWorthInputs(userId, { client })).worth,
         await loansSeenWithoutBalance(userId, { client }),
-        { statementsEnd: staleStatementsEnd(read._max.date, asOf) },
+        { statementsEnd: await statementsEndOf(userId, client, asOf) },
       );
     }
     case "save_more":
