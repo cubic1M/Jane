@@ -492,6 +492,8 @@ const COST = [
   /^what do i pay (?:for )?(.+?)(?: (?:a|per|each|every) (month|year))?$/,
   // "When is rent due?": what it costs and when it's next charged (debugger 11-17: no answer).
   /^when(?: is|'s) (?:my |the )?(?:next )?(?!(?:bills?|payments?)\b)(.+?) due()$/,
+  // "When is my next rent payment?" asks the same (debugger 11-18: no answer).
+  /^when(?: is|'s) (?!(?:my |the )?(?:next )?(?:bills?|payments?)\b)(?:my |the )?(?:next )?(.+?) (?:payment|bill)()$/,
   /^when do i pay (?:my |the )?(?!(?:bills?|payments?)\b)(.+?)()$/,
   // "Is my phone bill too high?": what it costs (debugger 11-17: it read as a health plan bill).
   /^(?:is|was) (?:my|the) (.+?) bill (?:too (?:high|much)|a lot|normal)()$/,

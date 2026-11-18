@@ -31,9 +31,11 @@ const billsLink: MessageAction = openLink("See your bills", "/bills");
 const linkFor = (charge: Charge | null) =>
   charge && !charge.subscription && !charge.maybeSubscription ? billsLink : subscriptionsLink;
 
-// The charges a name could mean ("netflix", "my phone bill", "the gym").
+// The charges a name could mean ("netflix", "my phone bill", "the gym"), and "rent" the rent,
+// whoever it's paid to.
 function matchCharges(charges: readonly Charge[], target: string): Charge[] {
-  return charges.filter((c) => nameMatches(target, c.merchant));
+  const named = charges.filter((c) => nameMatches(target, c.merchant));
+  return named.length === 0 && /^rent$/i.test(target) ? charges.filter((c) => c.rent) : named;
 }
 
 // The finding about a charge, as its buttons, or just a link to Subscriptions.

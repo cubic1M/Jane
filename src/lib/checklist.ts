@@ -54,19 +54,32 @@ export async function firstWeekChecklist(
   if (now.getTime() - user.createdAt.getTime() > CHECKLIST_DAYS * DAY_MS) return null;
 
   const db = scopedFor(userId, client);
-  const [accounts, decisions, findings, suggestions, answered, budgets, goals, devices] =
+  const [accounts, decided, findingRows, suggestionRows, budgets, goals, devices] =
     await Promise.all([
       db.accounts.count(),
-      db.decisions.count({ where: { undoneAt: null } }),
-      db.findings.count(),
+      db.decisions.findMany({ where: { undoneAt: null }, select: { findingId: true } }),
+      db.findings.findMany({ select: { id: true, type: true } }),
       // The scan's suggestions are cards in the same dock: a Yes or No on one is an answer too
       // (debug 2, 11-16: every card answered, and "Answer 2 of Jane's suggestions · 1 of 2").
-      db.suggestions.count(),
-      db.suggestions.count({ where: { answeredAt: { not: null } } }),
+      db.suggestions.findMany({ select: { topic: true, answeredAt: true } }),
       db.budgets.count(),
       db.savingsGoals.count(),
       db.pushSubscriptions.count(),
     ]);
+  // A suggestion on a finding's own topic is that finding's card in the dock: its Yes opens the
+  // finding, so one thing, answered once (debugger 11-18: a Yes on the card-interest card, then
+  // its steps, and "Answer 3 of Jane's suggestions · 2 of 3").
+  const findingTypes = new Set<string>(findingRows.map((f) => f.type));
+  const decidedIds = new Set(decided.map((d) => d.findingId));
+  const decidedTypes = new Set<string>(
+    findingRows.filter((f) => decidedIds.has(f.id)).map((f) => f.type),
+  );
+  const findings = findingRows.length;
+  const suggestions = suggestionRows.filter((s) => !findingTypes.has(s.topic)).length;
+  const decisions = decidedIds.size;
+  const answered = suggestionRows.filter(
+    (s) => s.answeredAt !== null && !decidedTypes.has(s.topic),
+  ).length;
   // Alert preferences start empty ({}) and are saved whole from /settings.
   const alertsChosen = Object.keys(progressOf(user.alertPrefs)).length > 0 || devices > 0;
   // As many cards as there are to decide, up to CHECKLIST_CARDS_TO_REVIEW: someone with two

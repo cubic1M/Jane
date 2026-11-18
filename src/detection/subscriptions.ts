@@ -32,6 +32,9 @@ export type RecurringCharge = {
   // Only its one price says it might be one: asked about on its card, and listed with the bills
   // (src/detection/rules/subscription-review.ts).
   maybeSubscription: boolean;
+  // Rent by its category: paid to a landlord or property company, its name never says "rent"
+  // (debugger 11-18: "when is rent due?" didn't find Essex Property Trust).
+  rent?: true;
 };
 
 export function recurringCharges(input: DetectionInput): RecurringCharge[] {
@@ -64,6 +67,7 @@ export function recurringCharges(input: DetectionInput): RecurringCharge[] {
           annualCostCents: s.annualCostCents as number,
           subscription: subscription && !guess,
           maybeSubscription: guess,
+          ...(s.pfcDetailed === "RENT_AND_UTILITIES_RENT" ? { rent: true as const } : {}),
         };
       })
       .sort((a, b) => b.annualCostCents - a.annualCostCents || a.merchant.localeCompare(b.merchant))
