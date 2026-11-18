@@ -82,9 +82,9 @@ test("the Events box is on by default, takes the event's trade by itself, and th
   // The trade pop-up says it was done, once: OK puts it away.
   const popup = page.getByRole("complementary", { name: "Trade alert" });
   await expect(popup).toBeVisible();
-  await expect(popup.getByText("[TRADE] EVENTS · DONE FOR YOU")).toBeVisible();
+  await expect(popup.getByText("Trade · Events · Done for you")).toBeVisible();
   await expect(popup.locator("[data-trade-headline]")).toHaveText(
-    /^\[✓\] Events: added [\d.]+% in (SMH|NVDA)$/,
+    /^✓ Events: added [\d.]+% in (SMH|NVDA)$/,
   );
   await expect(popup.getByText(/^\d+% sure$/)).toBeVisible();
   await popup.getByRole("button", { name: "OK" }).click();

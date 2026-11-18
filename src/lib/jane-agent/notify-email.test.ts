@@ -31,14 +31,16 @@ describe("renderChatEmail", () => {
   it("puts every message, with its buttons and a link to the chat, in one email", () => {
     const email = renderChatEmail(messages, links);
     expect(email.subject).toBe("Jane: 2 things for you");
-    expect(email.text).toContain("jane> to decide");
-    expect(email.text).toContain("[ Yes ] https://jane.test/chat/reply?token=a");
-    expect(email.text).toContain("[ No ] https://jane.test/chat/reply?token=b");
+    expect(email.text).toContain("Jane · to decide");
+    expect(email.text).toContain("Yes: https://jane.test/chat/reply?token=a");
+    expect(email.text).toContain("No: https://jane.test/chat/reply?token=b");
+    expect(email.text).not.toMatch(/jane>|\[ /);
     expect(email.text).toContain("Open in the chat: https://jane.test/chat#m2");
     expect(email.text).toContain(`Stop these emails: ${links.unsubscribe}`);
     expect(email.html).toContain('href="https://jane.test/chat/reply?token=a"');
-    expect(email.html).toContain("[ Yes ]");
-    expect(email.html).toContain("monospace");
+    expect(email.html).toMatch(/font-weight:bold">Yes<\/a>/);
+    expect(email.html).toContain("sans-serif");
+    expect(email.html).not.toMatch(/monospace|jane&gt;|\[ /);
   });
 
   it("escapes the message in HTML", () => {

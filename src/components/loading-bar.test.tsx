@@ -5,7 +5,8 @@ import { describe, expect, it } from "vitest";
 import { LoadingBar } from "./loading-bar";
 
 // The loading bar (founder: "it should always show a loading bar as well instead of the simple
-// 'Loading xxx....'"): the ASCII bar in the flow, and no page waiting behind plain words.
+// 'Loading xxx....'"): a drawn bar with its words in the flow (readable style, 11-18: drawn,
+// not "[████░░░░] 8% · loading taxes"), and no page waiting behind plain words.
 
 const SRC = join(__dirname, "..");
 function files(dir: string): string[] {
@@ -17,11 +18,13 @@ function files(dir: string): string[] {
 }
 
 describe("the loading bar", () => {
-  it("is an ASCII progress bar with its words, in the flow (nothing fixed over the page)", () => {
+  it("is a drawn progress bar with its words, in the flow (nothing fixed over the page)", () => {
     const html = renderToStaticMarkup(<LoadingBar label="Loading taxes" />);
     expect(html).toContain('role="progressbar"');
     expect(html).toContain('aria-label="Loading taxes"');
-    expect(html).toMatch(/\[[█░]{16}\] 8% · loading taxes/);
+    expect(html).toMatch(/<span aria-hidden="true" data-drawn-bar=""[^>]*><span[^>]*width:8%/);
+    expect(html).toContain(">8% · Loading taxes<");
+    expect(html.replace(/<[^>]+>/g, "")).not.toMatch(/[█░[\]]/);
     expect(html).not.toMatch(/\b(fixed|absolute)\b/);
   });
 

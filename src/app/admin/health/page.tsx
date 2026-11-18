@@ -64,7 +64,7 @@ async function Health() {
           role={rlsWhole ? undefined : "alert"}
           data-testid="rls-coverage"
         >
-          {rlsWhole ? "" : "[ERROR] "}
+          {rlsWhole ? "" : "Error: "}
           {report.rls.ok
             ? `On: ${report.rls.tables.length} of ${report.rls.tables.length} user-owned tables covered`
             : !report.rls.role

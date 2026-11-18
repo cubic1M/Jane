@@ -996,7 +996,7 @@ function Brush({
         aria-valuemax={last}
         aria-valuenow={view.from}
         aria-valuetext={words}
-        className="relative h-8 min-w-0 flex-1 touch-none border border-dashed border-zinc-300 outline-offset-2 select-none dark:border-zinc-700"
+        className="relative h-8 min-w-0 flex-1 touch-none border border-zinc-300 outline-offset-2 select-none dark:border-zinc-700"
         onKeyDown={(e) => {
           const span = view.to - view.from;
           const stepDays = Math.max(1, Math.round(span / 4));
@@ -1258,7 +1258,7 @@ function DayDetails({
       role="group"
       aria-label={`Every movement on ${title}`}
       data-net-worth-event-detail=""
-      className="nw-box-in pointer-events-auto absolute z-10 flex flex-col gap-2 border-2 border-dashed border-current bg-white p-2 text-xs shadow-lg dark:bg-zinc-950"
+      className="nw-box-in pointer-events-auto absolute z-10 flex flex-col gap-2 border-2 border-current bg-white p-2 text-xs shadow-lg dark:bg-zinc-950"
       style={{ left: at.left, top: at.top, width: at.width }}
     >
       <DetailsBody group={group} title={title} onClose={onClose} />
@@ -1293,7 +1293,7 @@ function DetailsSheet({
         tabIndex={-1}
         data-net-worth-event-detail=""
         data-sheet-details=""
-        className="nw-sheet-in fixed inset-x-0 bottom-0 z-[61] flex max-h-[70vh] flex-col gap-2 overflow-y-auto border-t-2 border-dashed border-current bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-sm shadow-2xl outline-none dark:bg-zinc-950"
+        className="nw-sheet-in fixed inset-x-0 bottom-0 z-[61] flex max-h-[70vh] flex-col gap-2 overflow-y-auto border-t-2 border-current bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-sm shadow-2xl outline-none dark:bg-zinc-950"
       >
         <DetailsBody group={group} title={title} onClose={onClose} />
       </div>
@@ -1328,7 +1328,7 @@ function DetailsBody({
         {group.events.map((e, k) => (
           <li
             key={k}
-            className="flex flex-col border-t border-dashed border-zinc-300 pt-1 first:border-0 first:pt-0 dark:border-zinc-700"
+            className="flex flex-col border-t border-zinc-300 pt-1 first:border-0 first:pt-0 dark:border-zinc-700"
           >
             <span className="flex items-baseline justify-between gap-2">
               <Link

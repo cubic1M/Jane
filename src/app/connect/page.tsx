@@ -153,7 +153,7 @@ async function ConnectContent() {
         {demoBankEnabled() && !uploadOnly && (
           <form
             action={linkDemo}
-            className="flex flex-col gap-2 rounded-xl border border-dashed border-zinc-300 p-4 dark:border-zinc-700"
+            className="flex flex-col gap-2 rounded-xl border border-zinc-300 p-4 dark:border-zinc-700"
           >
             <p className="font-semibold">Try Jane with a demo bank</p>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">

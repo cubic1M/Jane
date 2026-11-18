@@ -1163,7 +1163,7 @@ body {
 }
 
 /* The chat's microphone (src/app/chat/mic-button.tsx): while it listens the glyph pulses, the
-   ASCII meter's bars rise and fall and "● REC" blinks. Still for reduced motion. */
+   meter's bars rise and fall and "● Recording" blinks. Still for reduced motion. */
 .mic-button[data-listening] .mic-glyph {
   animation: mic-pulse 1s ease-in-out infinite;
 }

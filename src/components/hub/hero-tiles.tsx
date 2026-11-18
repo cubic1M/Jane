@@ -46,7 +46,7 @@ function Opens({ id, open, children }: { id: string; open: boolean; children: Re
   return (
     <div id={id} className="hub-open" data-open={open ? "" : undefined} inert={!open}>
       <div>
-        <div className="flex flex-col gap-2 border-t border-dashed border-zinc-300 pt-3 dark:border-zinc-700">
+        <div className="flex flex-col gap-2 border-t border-zinc-300 pt-3 dark:border-zinc-700">
           {children}
         </div>
       </div>

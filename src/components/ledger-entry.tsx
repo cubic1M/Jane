@@ -56,8 +56,8 @@ export function LedgerEntryRow({ entry: e, action }: { entry: Entry; action?: Re
     <li data-ledger-entry={e.state} data-ledger-key={e.key}>
       <details className="group rounded-xl border border-zinc-200 dark:border-zinc-800">
         <summary className="flex cursor-pointer flex-wrap items-baseline gap-x-3 gap-y-1 p-3">
-          <span className="font-mono text-xs tracking-wide uppercase">
-            {STATE_GLYPH[e.state]} [{tag}]
+          <span className="text-xs font-medium">
+            {STATE_GLYPH[e.state]} {tag}
           </span>
           {/* A basis, so on a phone the title takes its own line rather than shrinking to a
               letter a line ("Equino / x" in night QA 10-30); words break only when one is too

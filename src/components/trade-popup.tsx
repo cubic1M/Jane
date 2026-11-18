@@ -32,8 +32,7 @@ const useSignedIn = () =>
   );
 
 const POLL_MS = 60_000;
-const BUTTON =
-  "inline-flex min-h-10 items-center justify-center border px-3 text-xs font-semibold tracking-wide uppercase";
+const BUTTON = "inline-flex min-h-10 items-center justify-center border px-3 text-sm font-semibold";
 const dollars = (cents: number) => formatCents(cents).replace(/\.00$/, "");
 
 type Done = { signal: SignalForPopup; sent: Promise<TakeResult> };
@@ -139,16 +138,16 @@ export function TradePopup() {
     void paperSkipAction(signal.id);
   };
 
-  const sideWord = signal.side === "sell" ? "SELL" : "BUY";
+  const sideWord = signal.side === "sell" ? "Sell" : "Buy";
   return (
     <aside
       aria-label="Trade alert"
       data-trade-popup=""
       className="nw-box-in fixed right-3 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] left-3 z-[65] flex max-h-[60vh] flex-col overflow-y-auto border-2 border-zinc-950 bg-white text-sm text-zinc-950 shadow-2xl sm:right-auto sm:bottom-4 sm:left-4 sm:w-[22rem] dark:border-zinc-50 dark:bg-zinc-950 dark:text-zinc-50"
     >
-      <div className="invert-scope flex items-center justify-between gap-2 bg-zinc-950 px-3 py-1.5 text-[11px] font-semibold tracking-wider text-white dark:bg-zinc-50 dark:text-zinc-950">
+      <div className="invert-scope flex items-center justify-between gap-2 bg-zinc-950 px-3 py-1.5 text-xs font-semibold text-white dark:bg-zinc-50 dark:text-zinc-950">
         <span>
-          [TRADE] {signal.source === "news" ? "NEWS IDEA" : "STRATEGY RULE"}
+          Trade · {signal.source === "news" ? "News idea" : "Strategy rule"}
           {waiting > 0 && ` · +${waiting} waiting`}
         </span>
         <button
@@ -158,14 +157,14 @@ export function TradePopup() {
           aria-label={folded ? "Open the trade alert" : "Fold the trade alert"}
           className="min-h-8 px-1"
         >
-          [{folded ? "+" : "−"}]
+          {folded ? "+" : "−"}
         </button>
       </div>
       {!folded && (
         <div className="flex flex-col gap-2 p-3">
           {done ? (
             <p className="font-semibold" role="status" data-trade-done="">
-              [✓ PAPER TRADED] {done.signal.card.headline}
+              ✓ Paper traded: {done.signal.card.headline}
             </p>
           ) : (
             <>
@@ -221,7 +220,7 @@ export function TradePopup() {
                   type="button"
                   aria-expanded={more}
                   onClick={() => setMore((m) => !m)}
-                  className={`${BUTTON} border-dashed border-zinc-500`}
+                  className={`${BUTTON} border-zinc-500`}
                 >
                   More details
                 </button>
@@ -293,15 +292,15 @@ function EventUpdateCard({
       data-event-update={update.kind}
       className="nw-box-in fixed right-3 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] left-3 z-[65] flex max-h-[60vh] flex-col overflow-y-auto border-2 border-zinc-950 bg-white text-sm text-zinc-950 shadow-2xl sm:right-auto sm:bottom-4 sm:left-4 sm:w-[22rem] dark:border-zinc-50 dark:bg-zinc-950 dark:text-zinc-50"
     >
-      <div className="invert-scope flex items-center justify-between gap-2 bg-zinc-950 px-3 py-1.5 text-[11px] font-semibold tracking-wider text-white dark:bg-zinc-50 dark:text-zinc-950">
+      <div className="invert-scope flex items-center justify-between gap-2 bg-zinc-950 px-3 py-1.5 text-xs font-semibold text-white dark:bg-zinc-50 dark:text-zinc-950">
         <span>
-          [TRADE] EVENTS · DONE FOR YOU
+          Trade · Events · Done for you
           {waiting > 0 && ` · +${waiting} waiting`}
         </span>
       </div>
       <div className="flex flex-col gap-2 p-3">
         <p className="text-base font-semibold" data-trade-headline="">
-          [✓] {update.headline}
+          ✓ {update.headline}
         </p>
         <p className="text-zinc-700 dark:text-zinc-300">{update.reason}</p>
         <p className="text-xs font-semibold tabular-nums">{update.confidence}% sure</p>
@@ -330,7 +329,7 @@ function EventUpdateCard({
             type="button"
             aria-expanded={more}
             onClick={() => setMore((m) => !m)}
-            className={`${BUTTON} border-dashed border-zinc-500`}
+            className={`${BUTTON} border-zinc-500`}
           >
             More details
           </button>

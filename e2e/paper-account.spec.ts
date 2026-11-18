@@ -71,7 +71,7 @@ for (const size of [
     // Paper trade it: done at once, with Revert; the trade is in the log.
     await popup.getByRole("button", { name: "Paper trade it" }).click();
     await expect(popup.locator("[data-trade-done]")).toHaveText(
-      "[✓ PAPER TRADED] Sell $1,000 of VTI",
+      "✓ Paper traded: Sell $1,000 of VTI",
     );
     await expect(popup.getByRole("button", { name: "Revert" })).toBeVisible();
     await expect(async () => {
@@ -113,7 +113,7 @@ test("Revert takes a paper trade back, and Skip puts a trade away for good", asy
   // Back at once, waiting to be decided again; the log shows it taken back.
   await expect(popup.getByText("Reverted.")).toBeVisible();
   await expect(popup.getByRole("button", { name: "Paper trade it" })).toBeVisible();
-  await expect(log.filter({ hasText: "Sold $1,000 of VTI" })).toContainText("[REVERTED]", {
+  await expect(log.filter({ hasText: "Sold $1,000 of VTI" })).toContainText("(reverted)", {
     timeout: 30_000,
   });
   await page.reload();

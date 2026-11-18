@@ -66,7 +66,7 @@ export function CorrectMemoryForm({
               : "border-l-4 border-zinc-900 pl-2 text-sm font-semibold dark:border-zinc-100"
           }
         >
-          {state.ok ? state.message : `[ERROR] ${state.message}`}
+          {state.ok ? state.message : `Error: ${state.message}`}
         </span>
       )}
     </form>

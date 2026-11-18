@@ -130,7 +130,7 @@ function Picker({ choices }: { choices: AgentChoices }) {
       </div>
       {error && (
         <p role="alert" className="text-sm font-semibold">
-          [ERROR] {error}
+          Error: {error}
         </p>
       )}
     </form>

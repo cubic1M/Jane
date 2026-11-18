@@ -377,7 +377,9 @@ function CompareTable({
               >
                 {o.name}
                 {o.tags.length > 0 && (
-                  <span className="block text-[10px] font-semibold">[{o.tags.join("] [")}]</span>
+                  <span className="block text-xs font-semibold">
+                    {o.tags.map(asWords).join(" · ")}
+                  </span>
                 )}
               </th>
             ))}

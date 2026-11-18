@@ -2,13 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { percentFor, scanBarText, stageLabel, stagesDone } from "@/app/scanning/stages";
+import { percentFor, stageLabel, stagesDone } from "@/app/scanning/stages";
+import { DrawnBar } from "@/components/drawn-bar";
 import { announceScanned } from "@/lib/side-chat";
 import type { ScanProgress } from "@/lib/scan";
 
 // The first scan's loading bar (founder: "replace it with like a loading bar during the initial
 // entry of the site where data isn't fully loaded yet"), at the top of every page while Jane
-// reads a new person's accounts: "[████████░░░░░░░░] 52% · reading transactions". It's driven
+// reads a new person's accounts: a drawn bar and "52% · Reading transactions". It's driven
 // by what has really finished (/api/detection/status, the same stages as /scanning), creeps
 // toward the next stage while one runs, and fades out at 100%, when the page reloads its data.
 // In the page's flow under the top bar, so it never covers a title, the card dock or the chat;
@@ -86,11 +87,11 @@ export function ScanBar({ initial }: { initial: ScanProgress }) {
       data-scan-bar=""
       // From the left on a phone, the label cut at its end: centred, a line wider than the screen
       // lost both ends ("░░] 71% · checking insurance, taxes, investi", debugger 11-13 at 375).
-      className={`scan-bar flex h-6 items-center justify-start overflow-hidden bg-zinc-950 px-3 font-mono text-xs whitespace-nowrap text-zinc-50 tabular-nums sm:justify-center dark:bg-zinc-50 dark:text-zinc-950 ${
+      className={`scan-bar flex h-6 items-center justify-start gap-3 overflow-hidden bg-zinc-950 px-3 text-xs whitespace-nowrap text-zinc-50 tabular-nums sm:justify-center dark:bg-zinc-50 dark:text-zinc-950 ${
         done ? "scan-bar-out" : ""
       }`}
     >
-      <span className="min-w-0 truncate">{scanBarText(percent, label)}</span>
+      <DrawnBar percent={percent} label={label} />
     </div>
   );
 }

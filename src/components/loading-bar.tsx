@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { scanBarText } from "@/components/bar-text";
+import { DrawnBar } from "@/components/drawn-bar";
 
 // The loading bar (founder: "when you open a subsection, it should always show a loading bar
 // ... instead of the simple 'Loading xxx....'. The loading bar should not cover up anything"):
-// "[████░░░░░░░░░░░░] 34% · loading taxes", in the page's flow where the content will be, never
+// a drawn bar and "34% · Loading taxes", in the page's flow where the content will be, never
 // over the title, the card dock or the chat. Nobody knows how long a page takes, so it creeps
 // toward 90% and the content replaces it; still under reduced motion.
 
@@ -32,9 +32,9 @@ export function LoadingBar({ label = "Loading" }: { label?: string }) {
       aria-valuemax={100}
       aria-valuenow={shown}
       data-loading-bar=""
-      className="overflow-hidden py-1 font-mono text-xs whitespace-nowrap text-zinc-700 tabular-nums dark:text-zinc-300"
+      className="flex items-center gap-3 overflow-hidden py-1 text-xs whitespace-nowrap text-zinc-700 tabular-nums dark:text-zinc-300"
     >
-      {scanBarText(shown, label)}
+      <DrawnBar percent={shown} label={label} />
     </div>
   );
 }

@@ -14,7 +14,7 @@ export function EmptyState({
   return (
     <div
       data-empty-state=""
-      className="flex flex-col gap-2 rounded-xl border border-dashed border-zinc-300 p-4 text-sm dark:border-zinc-700"
+      className="flex flex-col gap-2 rounded-xl border border-zinc-300 p-4 text-sm dark:border-zinc-700"
     >
       <p className="text-zinc-700 dark:text-zinc-300">{words}</p>
       {next && (

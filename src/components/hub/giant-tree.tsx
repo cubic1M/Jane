@@ -31,7 +31,7 @@ function Status({ status }: { status?: TreeStatus }) {
 
 const BOX = "border border-zinc-400 bg-white dark:border-zinc-600 dark:bg-zinc-950";
 // The tree's lines: dotted, as the rest of the app draws them.
-const LINE = "border-dashed border-zinc-400 dark:border-zinc-600";
+const LINE = "border-zinc-400 dark:border-zinc-600";
 
 export function GiantTree({
   maps,

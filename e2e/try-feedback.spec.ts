@@ -79,7 +79,7 @@ test("a real upload moves the counts, and what's said outlives the try", async (
   const words = `Rent is not a bill ${tag}`;
   const box = page.locator("[data-try-feedback]");
   await box.getByLabel("What did Jane get wrong?").fill(`${words} sam@example.com`);
-  await box.getByRole("button", { name: "[SEND]" }).click();
+  await box.getByRole("button", { name: "Send" }).click();
   await expect(page.locator("[data-try-feedback-sent]")).toBeVisible({ timeout: 30_000 });
   await expect(page).toHaveURL(/\/report\?feedback=sent/);
 
@@ -118,7 +118,7 @@ test("a sample try can say what Jane got wrong, and is thanked", async ({ page }
   await expect(box).toBeVisible({ timeout: 60_000 });
   await expect(box).toContainText("isn't linked to you");
   await box.getByLabel("What did Jane get wrong?").fill("The rent looks like a subscription.");
-  await box.getByRole("button", { name: "[SEND]" }).click();
+  await box.getByRole("button", { name: "Send" }).click();
   await expect(page.locator("[data-try-feedback-sent]")).toBeVisible({ timeout: 30_000 });
   await expect(page).toHaveURL(/feedback=sent/);
 });

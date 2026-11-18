@@ -1,7 +1,7 @@
 import { cardLines, type ShareCard } from "@/lib/share-card";
 
 // The result card as next/og draws it (1200 by 630, the link-preview size): black and white,
-// Jane's [JANE] tag, the card's two lines and what Jane is. Only the card goes in, so only
+// Jane's name, the card's two lines and what Jane is. Only the card goes in, so only
 // its kind and number can come out. Inline styles, as next/og needs.
 export const CARD_WIDTH = 1200;
 export const CARD_HEIGHT = 630;
@@ -21,7 +21,7 @@ export function ShareCardArt({ card }: { card: ShareCard | null }) {
         color: "#fafafa",
       }}
     >
-      <div style={{ display: "flex", fontSize: 30, fontWeight: 700, letterSpacing: 4 }}>[JANE]</div>
+      <div style={{ display: "flex", fontSize: 30, fontWeight: 700 }}>Jane</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ display: "flex", fontSize: 52, color: "#a3a3a3" }}>{lines.small}</div>
         <div style={{ display: "flex", fontSize: 120, fontWeight: 700, letterSpacing: -3 }}>

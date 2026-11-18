@@ -122,7 +122,7 @@ export function ChatCards({
                   type="button"
                   onClick={() => closeSheet(sheet.message)}
                   aria-label="Close"
-                  className="absolute top-0 right-0 inline-flex size-11 items-center justify-center font-mono"
+                  className="absolute top-0 right-0 inline-flex size-11 items-center justify-center"
                 >
                   ×
                 </button>

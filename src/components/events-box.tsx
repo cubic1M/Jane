@@ -15,7 +15,7 @@ import type { EventsView } from "@/lib/events/view";
 
 const BOX = "border border-zinc-400 bg-white dark:border-zinc-600 dark:bg-zinc-950";
 const BUTTON =
-  "inline-flex min-h-10 items-center justify-center border-2 border-zinc-950 px-3 text-xs font-semibold tracking-wide uppercase disabled:opacity-60 dark:border-zinc-50";
+  "inline-flex min-h-10 items-center justify-center border-2 border-zinc-950 px-3 text-sm font-semibold disabled:opacity-60 dark:border-zinc-50";
 const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
 
 const KIND_WORDS: Record<string, string> = {
@@ -98,7 +98,7 @@ export function EventsBox({ view, timezone }: { view: EventsView; timezone: stri
       )}
 
       <div>
-        <h3 className="text-[11px] font-semibold tracking-wider text-zinc-500">HAPPENING NOW</h3>
+        <h3 className="text-xs font-semibold text-zinc-500">Happening now</h3>
         {view.now.length === 0 ? (
           <div className="flex flex-col gap-1">
             <p className="text-sm" data-events-now="none">
@@ -148,7 +148,7 @@ export function EventsBox({ view, timezone }: { view: EventsView; timezone: stri
 
       {view.open.length > 0 && (
         <div>
-          <h3 className="text-[11px] font-semibold tracking-wider text-zinc-500">OPEN SLICES</h3>
+          <h3 className="text-xs font-semibold text-zinc-500">Open slices</h3>
           <ul className="flex flex-col gap-1 text-xs tabular-nums" data-events-open="">
             {view.open.map((s) => (
               <li key={`${s.ticker}-${s.enteredOn}`}>
