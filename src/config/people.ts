@@ -49,6 +49,8 @@ export const SUGGESTION_TOPICS = [
   "social_security_taxed",
   "company_stock_share",
   "stock_vest_tax",
+  // Side income beside a paycheck (src/detectors/side-income.ts).
+  "side_income_tax",
   "retirement_self_employed",
   "income_smoothing",
   "health_insurance",

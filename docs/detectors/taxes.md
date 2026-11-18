@@ -439,3 +439,13 @@ contribution or a conversion is the whole content), `rebalance`, `tax_loss_harve
 appeal nobody has priced), `estimated_taxes` and `tax_set_aside` (a real account already gets
 `tax_not_yet_paid`), `home_office_deduction` (the square feet are assumed), `rmd` (the amount needs
 the person's age and the IRS's table, which Jane guesses).
+
+### Side income beside a paycheck (`src/detectors/side-income.ts`, suggest-taxes gap pass)
+
+The walk's checking-only person is paid by an employer and also takes Stripe payouts and Venmo
+cash-outs. `side_income_tax`: platform payouts (contractor and gig categories) beside wages, at the
+year's pace, with self-employment tax (15.3% from $400 of net earnings) plus income tax at their rate,
+before costs. Money cashed out of a payment app counts only once they say it's work or sales
+(`app_income`, one tap, "It decides…"): the IRS doesn't count friends paying back for shared costs as
+income. A 1099-K comes only above $20,000 and 200 payments; the income counts either way. Not beside
+the engine's own `tax_not_yet_paid` (a real account whose estimate already shows the gap).

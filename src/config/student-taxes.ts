@@ -51,6 +51,14 @@ export const SOURCES = {
     "https://www.irs.gov/pub/irs-pdf/fw4v.pdf",
     "Form W-4V: voluntary federal withholding from Social Security and other government payments, at 7%, 10%, 12% or 22%",
   ),
+  form1099K: src(
+    "https://www.irs.gov/businesses/understanding-your-form-1099-k",
+    "Form 1099-K: payment apps and online marketplaces report payments over $20,000 in more than 200 transactions; income is reported whether or not a 1099-K comes; gifts and repayments of shared personal costs aren't taxable income",
+  ),
+  seTax: src(
+    "https://www.irs.gov/businesses/small-businesses-self-employed/self-employment-tax-social-security-and-medicare-taxes",
+    "Self-employment tax: 15.3% (12.4% Social Security, 2.9% Medicare); Schedule SE from $400 of net earnings; for 2026 the first $184,500 of wages and net earnings for Social Security",
+  ),
   pub501: src(
     "https://www.irs.gov/publications/p501",
     "Pub. 501 (2025 returns): for a dependent's standard deduction, earned income includes any part of a taxable scholarship or fellowship grant",
@@ -286,3 +294,14 @@ export const INTERNATIONAL = {
 
 // The fact versions of advice-only tax and investing cards (./src/detectors/tax-facts.ts).
 export const W4V_RATES = [0.07, 0.1, 0.12, 0.22] as const;
+
+// Side income beside a paycheck (./src/detectors/side-income.ts): payouts for work or sales, and money
+// cashed out of a payment app, which only the person can say is work or friends.
+export const SIDE_INCOME = {
+  appThreshold: { cents: 2_000_000, payments: 200 },
+  seRate: 0.153,
+  seFromCents: 40_000,
+  // Cashed out of an app: friends paying back, or customers paying; asked (app_income).
+  appWords: /\b(?:VENMO|CASH ?APP|PAYPAL)\b.*\b(?:CASHOUT|CASH OUT|TRANSFER|INST XFER)\b/,
+  sources: ["form1099K", "seTax"],
+} as const;
