@@ -72,6 +72,7 @@ describe("comingUp", () => {
         amountCents: 23_988,
         daysLeft: 10,
         href: "/deadlines",
+        kind: "renewal",
       },
     ]);
   });

@@ -757,8 +757,12 @@ export function comingUpReply(
       ? "coming up"
       : "due this week";
   if (shown.length === 0) return reply(`Nothing is ${span} that I can see.`, open);
-  // Spec step 89: how many and how much first, then the list.
-  const total = shown.reduce((sum, r) => sum + (r.amountCents ?? 0), 0);
+  // Spec step 89: how many and how much first, then the list. A return window is listed with its
+  // purchase but isn't money owed, so it isn't in the total (debug 3, 11-18: "$1,053.92 in all"
+  // with $1,001.70 of it two return windows).
+  const total = shown
+    .filter((r) => r.kind !== "return")
+    .reduce((sum, r) => sum + (r.amountCents ?? 0), 0);
   const lines = shown.map(
     (r) =>
       `- ${dayLabel(r.date)} (${inDays(r.daysLeft)}): ${r.label}${r.amountCents !== null ? `, ${fmt(r.amountCents)}` : ""}`,
