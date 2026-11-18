@@ -26,7 +26,7 @@ import { goalsReply } from "../goals-reply";
 import { listPreferences, paydayDays } from "../preferences";
 import { loadRecurring, type Recurring } from "../recurring";
 import { paydayLine } from "../remember";
-import { costReply, paydayReply, subscriptionsReply } from "../recurring-replies";
+import { costReply, notRegularYet, paydayReply, subscriptionsReply } from "../recurring-replies";
 import {
   affordReply,
   clarifyReply,
@@ -73,8 +73,12 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
         loadRecurring(userId, { client, now }),
         loadSnapshotFast(userId, { client, now }),
       ]);
-      // Not a regular charge: what was spent there this month.
-      return costReply(intent, recurring, snapshot, asOf) ?? (await spendingOn(intent.target));
+      // Not a regular charge: what was spent there this month, or, asked when it's due, that
+      // there's no schedule to tell from yet.
+      return (
+        costReply(intent, recurring, snapshot, asOf) ??
+        (intent.when ? notRegularYet(intent.target) : await spendingOn(intent.target))
+      );
     }
     case "subscriptions": {
       const [recurring, snapshot] = await Promise.all([

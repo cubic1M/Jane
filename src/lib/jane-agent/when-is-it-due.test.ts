@@ -16,7 +16,7 @@ describe("when is something due", () => {
       ["when's my phone bill due", "phone"],
       ["when do i pay rent", "rent"],
     ]) {
-      expect(parseIntent(text, TODAY)).toEqual({ kind: "cost", target, year: false });
+      expect(parseIntent(text, TODAY)).toEqual({ kind: "cost", target, year: false, when: true });
     }
   });
 

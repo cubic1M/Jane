@@ -29,7 +29,7 @@ import {
   type Stream,
 } from "./streams";
 import type { DetectionAccount, DetectionInput, DetectionTransaction } from "./types";
-import { addDays, dayOfMonth, daysBetween, nextOccurrence } from "./units";
+import { addDays, daysBetween } from "./units";
 
 // Upcoming bills and income, and a day-by-day balance forecast for checking accounts.
 // Pure: built from the same recurring streams the detection rules use.
@@ -129,6 +129,17 @@ function unevenDeposits(input: DetectionInput, accountId: string) {
   );
 }
 
+// The months of this account's rows, up to the lookback and at least one: a month of history is a
+// month's pay, not a third of three months' (debugger 11-18: two $1,100 paychecks in the month a
+// new account had read "about $733 a month").
+function monthsSeen(input: DetectionInput, accountId: string): number {
+  const first = input.transactions
+    .filter((t) => t.accountId === accountId)
+    .reduce((day, t) => (t.date < day ? t.date : day), input.asOf);
+  const days = Math.min(UNEVEN_PAY_LOOKBACK_DAYS, daysBetween(first, input.asOf));
+  return Math.max(1, (days * UNEVEN_PAY_LOOKBACK_MONTHS) / UNEVEN_PAY_LOOKBACK_DAYS);
+}
+
 export function unevenPay(input: DetectionInput, accountId: string): number | null {
   if (nextPayday(input, FORECAST_DAYS)) return null;
   // Data this old expects no payday because it's old, not because the pay is uneven.
@@ -136,7 +147,7 @@ export function unevenPay(input: DetectionInput, accountId: string): number | nu
   if (account && staleBalanceFrom(account, input.asOf)) return null;
   const pay = unevenDeposits(input, accountId);
   const monthly = Math.round(
-    pay.reduce((sum, t) => sum - t.amountCents, 0) / UNEVEN_PAY_LOOKBACK_MONTHS,
+    pay.reduce((sum, t) => sum - t.amountCents, 0) / monthsSeen(input, accountId),
   );
   return pay.length >= UNEVEN_PAY_MIN_DEPOSITS && monthly >= UNEVEN_PAY_MIN_MONTHLY_CENTS
     ? monthly
@@ -160,7 +171,7 @@ export function otherMoneyIn(input: DetectionInput, accountId: string): number |
     (t) => !isPaycheck(t) && !counted.has(`${t.date}:${Math.abs(t.amountCents)}`),
   );
   const monthly = Math.round(
-    other.reduce((sum, t) => sum - t.amountCents, 0) / UNEVEN_PAY_LOOKBACK_MONTHS,
+    other.reduce((sum, t) => sum - t.amountCents, 0) / monthsSeen(input, accountId),
   );
   return other.length >= UNEVEN_PAY_MIN_DEPOSITS && monthly >= UNEVEN_PAY_MIN_MONTHLY_CENTS
     ? monthly

@@ -101,6 +101,16 @@ export function costReply(
   });
 }
 
+// "When is rent due?" with nothing paid on a schedule yet: what's missing, not a month's spending
+// (debugger 11-18: "You spent $0.00 on Rent and utilities" a month after $700 of rent by Zelle).
+export function notRegularYet(target: string): Reply {
+  return {
+    body: `I don't see a regular ${target} payment yet. Once it has gone out a few times, I'll know when the next is due.`,
+    actions: [openLink("See your transactions", `/transactions?q=${encodeURIComponent(target)}`)],
+    refs: {},
+  };
+}
+
 // "What subscriptions do I have?": the most expensive first, what they come to, and the
 // biggest saving Jane found among them. With all, every regular charge (bills too).
 // Statements that end weeks ago read every charge as stopped (debugger 11-17: "I don't see any

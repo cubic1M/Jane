@@ -118,7 +118,7 @@ describe("the hero row", () => {
     const short = { ...hero().safe!, payday: null, safeCents: -5_000 };
     const { safe } = heroView(hero({ safe: { ...short, unevenPayMonthlyCents: 297_500 } }));
     expect(safe?.why.at(-1)).toEqual({
-      label: "Not counted: your pay comes at uneven times, about this a month",
+      label: "Not counted: your pay, which has no set schedule yet, about this a month",
       sign: "",
       cents: 297_500,
     });

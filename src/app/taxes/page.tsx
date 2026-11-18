@@ -361,7 +361,9 @@ async function TaxesContent({
             )}
           </section>
         </details>
-        {!savings.advice && (
+        {/* Not beside the tree's own "Pay less tax" (debugger 11-18: the Saver's Credit listed
+            there, and this fold below said such suggestions "will come"). */}
+        {!savings.advice && !area.tree.branches.some((b) => b.id === "savings") && (
           <details className="border-t border-zinc-200 pt-2 dark:border-zinc-800">
             <summary className={`cursor-pointer text-sm ${LINK}`}>Ways to pay less</summary>
             <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">

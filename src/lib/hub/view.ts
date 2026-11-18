@@ -399,7 +399,7 @@ function safeHero(safe: SafeInput): SafeHero {
       ...(safe.unevenPayMonthlyCents
         ? [
             {
-              label: "Not counted: your pay comes at uneven times, about this a month",
+              label: "Not counted: your pay, which has no set schedule yet, about this a month",
               sign: "" as const,
               cents: safe.unevenPayMonthlyCents,
             },
@@ -563,7 +563,7 @@ export function cashFlowView(input: CashFlowInput, days = CASH_FLOW_DAYS): CashF
     days,
     events,
     empty: shortHistory
-      ? "Too little history to see your bills yet: about two months of statements shows them."
+      ? "Too little history to see your bills yet: they show once about two months of transactions are in."
       : "Nothing due in the next month.",
   };
 }

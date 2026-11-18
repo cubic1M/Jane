@@ -25,7 +25,7 @@ export function balanceLine(
 export function unevenPayLine(monthlyCents: number | null): string | null {
   return monthlyCents === null
     ? null
-    : `That counts none of your pay, because it comes at uneven times: about ${formatCents(monthlyCents)} a month lately.`;
+    : `That counts none of your pay, because it has no set schedule yet: about ${formatCents(monthlyCents)} a month lately.`;
 }
 
 // Beside a payday: what else comes in, which the low point leaves out for the same reason.

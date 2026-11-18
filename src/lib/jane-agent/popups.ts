@@ -46,6 +46,19 @@ export function hiddenBrief(m: Pick<MessageView, "kind" | "body">, on = MORNING_
   return HELLO_START.test(body) || (!on && GREETING_START.test(body));
 }
 
+// The same briefs as a filter, for a count that doesn't read each message (the chat's unread dot:
+// debugger 11-18, "Chat with Jane, 1 new" over a chat that said "Nothing new from me yet", the one
+// being the morning greeting that shows nowhere).
+export function hiddenBriefWhere(on = MORNING_BRIEF) {
+  const starts = [
+    "Hi, I'm Jane.",
+    ...(on ? [] : ["Good morning!", "Good afternoon!", "Good evening!"]),
+  ];
+  return {
+    NOT: { kind: "brief" as const, OR: starts.map((start) => ({ body: { startsWith: start } })) },
+  };
+}
+
 // One stack of cards (founder: "don't let the suggestion cards repeat"): the day's suggestions,
 // then the other pop-ups in their order, up to `limit`; one card per message and per headline,
 // so a finding a source also posted as a decision shows once.

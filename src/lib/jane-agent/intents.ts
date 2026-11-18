@@ -69,7 +69,8 @@ export type Intent =
   // findingId: one finding exactly (a clarifying question's button, spec step 88).
   | { kind: "act"; verb: ActVerb; target: string; findingId?: string }
   // Spec step 88. What one thing costs ("how much is Netflix"); a year's cost when asked.
-  | { kind: "cost"; target: string; year: boolean }
+  // when: asked when it's next paid ("when is rent due?"), not what it costs.
+  | { kind: "cost"; target: string; year: boolean; when?: true }
   // What's charged on a schedule: subscriptions, or everything (all: bills too). total:
   // "how much do I spend on subscriptions".
   | { kind: "subscriptions"; total: boolean; all: boolean }
@@ -749,7 +750,12 @@ export function parseIntent(
       !/^(?:due|coming up|left|owed?)$/.test(target) &&
       !/^(?:i|we)\b/.test(target)
     ) {
-      return { kind: "cost", target, year: cost[2] === "year" };
+      return {
+        kind: "cost",
+        target,
+        year: cost[2] === "year",
+        ...(/^when\b/.test(text) ? { when: true as const } : {}),
+      };
     }
   }
   if (SPENDING.test(text)) {
