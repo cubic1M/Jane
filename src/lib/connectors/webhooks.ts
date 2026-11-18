@@ -42,6 +42,19 @@ export function signatureValid(
   const secret = env[signing.secretEnv]?.trim();
   if (!secret) return false;
   if (signing.kind === "svix") return verifyResendSignature(rawBody, headers, secret, now);
+  if (signing.kind === "signwell_event_hash") {
+    let event: { type?: unknown; time?: unknown; hash?: unknown } | undefined;
+    try {
+      event = (JSON.parse(rawBody) as { event?: typeof event }).event;
+    } catch {
+      return false;
+    }
+    if (typeof event?.type !== "string" || typeof event.time !== "number") return false;
+    if (typeof event.hash !== "string" || !/^[0-9a-f]{64}$/i.test(event.hash)) return false;
+    if (Math.abs(now.getTime() / 1000 - event.time) > WEBHOOK_TOLERANCE_SECONDS) return false;
+    const expected = createHmac("sha256", secret).update(`${event.type}@${event.time}`).digest();
+    return sameBytes(Buffer.from(event.hash, "hex"), expected);
+  }
   let timestamp: string | null;
   let signatures: string[];
   if (signing.kind === "hmac_sha256_tv") {
