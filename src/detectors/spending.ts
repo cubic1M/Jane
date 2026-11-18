@@ -56,6 +56,11 @@ const median = (xs: number[]) => {
 };
 const last = (s: Series) => s.txs[s.txs.length - 1].amountCents;
 
+// The charges themselves, on the transactions page: the alerts list never showed them (debugger
+// 11-18: "See the charges" on a doubled Target charge opened "Alerts: none new").
+const chargesHref = (description: string, days?: { from: string; to: string }) =>
+  `/transactions?q=${encodeURIComponent(description)}${days ? `&from=${days.from}&to=${days.to}` : ""}`;
+
 const duplicateSubscription: Detector = {
   capability: "subscriptions",
   topic: "duplicate_subscription",
@@ -162,7 +167,7 @@ const priceIncrease: Detector = {
       ),
       urgency: "soon",
       why: `${nice(top.s.description)} went from ${formatCents(top.before)} to ${formatCents(top.now)} a month${rises.length > 1 ? `, and ${rises.length - 1} more went up` : ""}: ${formatCents(worth)} more a year.`,
-      action: { label: "See what changed", href: "/jane#alerts" },
+      action: { label: "See what changed", href: chargesHref(top.s.description) },
       // The charge comes in below its new price again (the old price back, or a cheaper plan).
       watch: {
         kind: "bill_drops",
@@ -269,12 +274,11 @@ const duplicateCharge: Detector = {
     // normal (food, transport, money moving), not already refunded, and recent enough to
     // dispute. Its own looser rule called a refunded double, or two lunches, a double charge
     // (accuracy bench: right 14 times in 28).
-    const doubles = duplicatePairs(asDetectionInput(data))
-      .filter(
-        ({ second }) =>
-          (Date.parse(data.today) - Date.parse(second.date)) / DAY_MS <= REFUND_MAX_AGE_DAYS,
-      )
-      .map(({ second }) => data.transactions[Number(second.id)]);
+    const pairs = duplicatePairs(asDetectionInput(data)).filter(
+      ({ second }) =>
+        (Date.parse(data.today) - Date.parse(second.date)) / DAY_MS <= REFUND_MAX_AGE_DAYS,
+    );
+    const doubles = pairs.map(({ second }) => data.transactions[Number(second.id)]);
     if (doubles.length === 0) return null;
     const total = outCents(doubles);
     return suggestion("cost", "duplicate_charge", {
@@ -291,7 +295,13 @@ const duplicateCharge: Detector = {
       ),
       urgency: "now",
       why: `${doubles.map((d) => `${nice(d.description)} ${formatCents(d.amountCents)}`).join(", ")} appeared twice within ${DUPLICATE_CHARGE_WINDOW_DAYS === 1 ? "a day" : `${DUPLICATE_CHARGE_WINDOW_DAYS} days`}.`,
-      action: { label: "See the charges", href: "/jane#alerts" },
+      action: {
+        label: "See the charges",
+        href: chargesHref(doubles[0].description, {
+          from: pairs[0].first.date,
+          to: pairs[0].second.date,
+        }),
+      },
       watch: {
         kind: "refund",
         payees: doubles.map((d) => ({ description: d.description, amountCents: d.amountCents })),
