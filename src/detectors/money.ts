@@ -5,7 +5,7 @@ import { BANK_FEE_CATEGORIES, IDLE_CASH_MONTHS_OF_SPENDING } from "@/config/dete
 import { bankFeesYear } from "@/planning/bank-fees";
 import { LOOKBACK_MONTHS } from "@/config/detection";
 import { feeMonthsOf, paceOf } from "@/detection/rules/fee-totals";
-import { lookbackEnd } from "@/detection/helpers";
+import { inList, lookbackEnd } from "@/detection/helpers";
 import { monthsBefore } from "@/detection/units";
 import { idleCashOf, payingCardInterest } from "@/planning/idle-cash";
 import { DETECTOR_RATES as R } from "@/config/detectors";
@@ -143,9 +143,21 @@ const bankFees: Detector = {
         t.amountCents > 0 &&
         (t.pfc === "BANK_FEES_OVERDRAFT_FEES" || t.pfc === "BANK_FEES_INSUFFICIENT_FUNDS"),
     );
+    // "Card" only when there's a card fee: one on a card, or a foreign-transaction or annual fee
+    // (debug 2, 11-17: a checking account's $12 monthly maintenance fee read as "bank and card fees").
+    const cardFee = data.transactions.some(
+      (t) =>
+        t.amountCents > 0 &&
+        inList(t.pfc, BANK_FEE_CATEGORIES) &&
+        (!cash.has(t.accountId) ||
+          t.pfc === "BANK_FEES_FOREIGN_TRANSACTION_FEES" ||
+          /\bANNUAL\b/i.test(t.description)),
+    );
     const phrase = overdrawn
       ? "Stop paying overdraft and bank fees"
-      : "Stop paying bank and card fees";
+      : cardFee
+        ? "Stop paying bank and card fees"
+        : "Stop paying bank fees";
     const span = fees.estimated
       ? `${plural(fees.count, "bank fee")} in ${plural(fees.monthsOfData, "month")}, about ${formatCents(total)} over a year (an estimate)`
       : `${formatCents(total)} in ${plural(fees.count, "bank fee")} in the last 12 months`;
