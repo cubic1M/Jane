@@ -142,13 +142,23 @@ export function fromPlaidStream(
   // Plaid sends "" for a stream it couldn't name (beta walk 11-12: a blank row on Bills).
   const named = stream.merchantName?.trim() || null;
   const merchant = normalizeMerchant(named ?? "");
+  // Or the bank's own line, in capitals (debugger 11-17, Plaid sandbox on a phone: Bills listed
+  // "ONLINE TRANSFER TO PARKSIDE LEASING REF #IB7Q2M" beside "Netflix"): named as Jane names an
+  // uploaded line when the cleaning takes words or codes off, not just the capitals, so "GEICO"
+  // and "PG&E" stay as Plaid wrote them. The key is the same either way.
+  const bankLine =
+    named !== null &&
+    merchant !== null &&
+    !/[a-z]/.test(named) &&
+    named.toLowerCase() !== merchant.name.toLowerCase();
+  const shown = bankLine ? merchant.name : named;
   const merchantKey = merchant?.key ?? stream.plaidStreamId;
   const lastCharge = charges.at(-1);
   const frequency = isFrequency(stream.frequency) ? stream.frequency : null;
   return {
     key: `merchant:${merchantKey}`,
     merchant:
-      named ??
+      shown ??
       merchant?.name ??
       (lastCharge && merchantOf(lastCharge)?.name) ??
       "A recurring charge",
