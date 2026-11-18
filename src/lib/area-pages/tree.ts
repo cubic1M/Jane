@@ -40,7 +40,14 @@ const LEADS_ON = new Set(
 
 // A name or title as a node's label: its first LABEL_MAX_WORDS words, without a dangling end.
 export function shortLabel(text: string, max = LABEL_MAX_WORDS): string {
-  const all = text.trim().split(/\s+/).filter(Boolean);
+  // A suggestion's headline ends with what it's worth (src/detectors/helpers.ts headlineOf), which
+  // the node shows as its figure: cut at six words, "Check the student loan interest, save $106 a
+  // year" read "Check the student loan interest, save" (debug 2, 11-18).
+  const all = text
+    .trim()
+    .replace(/,\s+(?:save|earn|get|avoid up to)\s+\$[\d,]+\b.*$/i, "")
+    .split(/\s+/)
+    .filter(Boolean);
   if (all.length <= max) return all.join(" ");
   const kept = all.slice(0, max);
   while (kept.length > 1 && LEADS_ON.has(kept[kept.length - 1]!.toLowerCase())) kept.pop();

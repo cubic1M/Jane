@@ -15,6 +15,7 @@ import {
 import { earnedIncomeCredit } from "@/planning/tax-estimate";
 import { rateMonthsOf, type Profile } from "@/profile/build";
 import { type Confidence, type Detector, type Suggestion, suggestion } from "./contract";
+import { monthlyPaymentOf } from "./debt";
 import { evidence, factEvidence, headlineOf, nice, weakest } from "./helpers";
 
 // Credits and deductions a student or first-job earner commonly leaves unclaimed (suggest-taxes,
@@ -136,7 +137,11 @@ const studentLoanInterest: Detector = {
     const money = studentMoney(data);
     if (money.loanPayments.length === 0) return null;
     const months = rateMonthsOf(profile);
-    const paidYear = Math.round((sumCents(money.loanPayments) * 12) / months);
+    // The usual month's payment, as the student-loan plan card says it (src/detectors/debt.ts), not
+    // their sum over the months of data: four $217.40 payments in 3.9 months read as $2,691.71 a
+    // year beside "$217.40 a month" (debug 2, 11-18).
+    const monthly = monthlyPaymentOf(money.loanPayments);
+    const paidYear = monthly * 12;
     const year = studentYearOf(data, facts, months);
     const left = share(year.agiCents, range);
     const rate = marginalRateFor(year.agiCents, status, false, year.earnedCents);
@@ -160,7 +165,9 @@ const studentLoanInterest: Detector = {
     if (worth <= 0) return null;
     const balance = loans.reduce((t, l) => t + l.balance, 0);
     const lender = nice(money.loanPayments[0].description).replace(
-      /\s+(?:Student Loan|Payment).*$/i,
+      // A bank's short form too: "NELNET STUDENT LN PAYMENT" read as "Nelnet Student Ln"
+      // (debug 2, 11-18).
+      /\s+(?:Student\s+L(?:oa)?n|Payment).*$/i,
       "",
     );
     return suggestion("taxes", "student_loan_interest", {
@@ -182,7 +189,7 @@ const studentLoanInterest: Detector = {
           : factEvidence(facts.claimed_as_dependent),
       ]),
       urgency: "later",
-      why: `You paid ${formatCents(sumCents(money.loanPayments))} to ${lender} in ${span(profile)}, about ${formatCents(paidYear)} a year at that pace. The interest part of student-loan payments comes off income up to ${formatWholeDollars(STUDENT_LOAN_INTEREST.max)} a year, on top of the standard amount everyone gets; the lender's Form 1098-E shows the interest. ${interest === null ? `At the ${pct(rate)} rate your income reaches, up to ${formatCents(deduct)} of interest is worth up to ${formatCents(worth)} of tax` : `On ${formatCents(balance)} owed at ${formatRate(loans[0].aprBps)}${loans.length > 1 ? " and more" : ""}, a year's interest is about ${formatCents(interest)}; at the ${pct(rate)} rate your income reaches, ${formatCents(deduct)} of it is worth about ${formatCents(worth)} of tax`}; the 1098-E's interest figure is the real one. Not for a dependent on someone else's return or a married person who files separately, and it shrinks from ${formatWholeDollars(range[0])} to ${formatWholeDollars(range[1])} of income (IRS Pub. 970, Rev. Proc. 2025-32).`,
+      why: `You paid ${formatCents(sumCents(money.loanPayments))} to ${lender} in ${span(profile)}, about ${formatCents(paidYear)} a year at ${formatCents(monthly)} a month. The interest part of student-loan payments comes off income up to ${formatWholeDollars(STUDENT_LOAN_INTEREST.max)} a year, on top of the standard amount everyone gets; the lender's Form 1098-E shows the interest. ${interest === null ? `At the ${pct(rate)} rate your income reaches, up to ${formatCents(deduct)} of interest is worth up to ${formatCents(worth)} of tax` : `On ${formatCents(balance)} owed at ${formatRate(loans[0].aprBps)}${loans.length > 1 ? " and more" : ""}, a year's interest is about ${formatCents(interest)}; at the ${pct(rate)} rate your income reaches, ${formatCents(deduct)} of it is worth about ${formatCents(worth)} of tax`}; the 1098-E's interest figure is the real one. Not for a dependent on someone else's return or a married person who files separately, and it shrinks from ${formatWholeDollars(range[0])} to ${formatWholeDollars(range[1])} of income (IRS Pub. 970, Rev. Proc. 2025-32).`,
       action: { label: "See your taxes", href: "/taxes" },
       more: [{ label: "IRS Pub. 970", href: SOURCES.pub970.url }],
     });

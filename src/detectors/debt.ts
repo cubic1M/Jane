@@ -31,7 +31,7 @@ const balanceOf = (
 // A loan's monthly payment: the usual month's total of its payments (the median), not their sum
 // over the months of data, which ran high when the data starts mid-month (debug 2, 11-16: $217.40
 // paid each month read "You pay about $228.18 a month on student loans").
-const monthlyPaymentOf = (payments: readonly ProfileTx[]): number => {
+export const monthlyPaymentOf = (payments: readonly ProfileTx[]): number => {
   const byMonth = new Map<string, number>();
   for (const p of payments) {
     if (p.amountCents > 0)
