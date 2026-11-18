@@ -6,7 +6,6 @@ import { correctFact, loadProfileInput } from "@/lib/profile";
 import { buildProfile } from "@/profile/build";
 import { bestQuestion } from "@/profile/questions";
 import { todayOf } from "@/lib/today";
-import { formatWholeDollars } from "@/lib/money";
 
 // The one question worth asking (spec step 257): when a detector could fire but needs a fact
 // the profile doesn't have, Jane asks the question whose answer unlocks the most, one at a
@@ -23,21 +22,18 @@ export type OpenQuestion = {
   text: string;
   choices: QuestionSpec["choices"];
   unlockCents: number;
-  // What an answer decides, said with the question ("It decides 3 credits and deductions worth up to
-  // $2,860 for you."), for the questions that work it out (QuestionSpec.decides).
+  // What an answer decides, said with the question ("It decides 3 credits and tax figures for
+  // you."), for the questions that work it out (QuestionSpec.decides). No dollars: a figure "for you"
+  // reads as a promise (suggestions wording check, 11-18).
   decides?: string;
 };
 
-// The sentence a question says it decides, from what planQuestion kept.
-export function decidesLine(
-  spec: QuestionSpec,
-  count?: number,
-  cents?: number,
-): string | undefined {
-  if (!spec.decides || !count || !cents) return undefined;
+// The sentence a question says it decides, from what planQuestion kept: how many suggestions an
+// answer changes, never what they're worth.
+export function decidesLine(spec: QuestionSpec, count?: number): string | undefined {
+  if (!spec.decides || !count) return undefined;
   const [one, several] = spec.decides;
-  const what = count === 1 ? `a ${one}` : `${count} ${several}`;
-  return `It decides ${what} worth up to ${formatWholeDollars(cents)} for you.`;
+  return `It decides ${count === 1 ? `a ${one}` : `${count} ${several}`} for you.`;
 }
 
 async function askedFacts(userId: string, client: PrismaClient): Promise<Set<string>> {
@@ -112,7 +108,7 @@ export async function nextQuestion(
   if (answered.has(fact) || posted.some((m) => m.dedupeKey === `questions:${fact}`)) return null;
   const spec = QUESTIONS.find((q) => q.fact === fact);
   if (!spec) return null;
-  const decides = decidesLine(spec, value.decidesCount, value.unlockCents);
+  const decides = decidesLine(spec, value.decidesCount);
   return {
     fact,
     text: spec.text,

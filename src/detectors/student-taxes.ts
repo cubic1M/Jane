@@ -1,5 +1,11 @@
 import { DETECTOR_RATES } from "@/config/detectors";
-import { CA_ESTIMATED_TAX, ESTIMATED_TAX, FILING, INTERNATIONAL } from "@/config/student-taxes";
+import {
+  CA_ESTIMATED_TAX,
+  ESTIMATED_TAX,
+  FILING,
+  INTERNATIONAL,
+  SOURCES,
+} from "@/config/student-taxes";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents, formatWholeDollars } from "@/lib/money";
 import { rateMonthsOf } from "@/profile/build";
@@ -115,14 +121,15 @@ const stipendTax: Detector = {
         },
       ]),
       urgency: urgencyForEstimated(profile.today),
-      why: `${withheld} IRS Pub. 970 puts the part of a fellowship that isn't for tuition and required books on Schedule 1 line 8r, with income. You received ${formatCents(received)} from ${payer} in ${span} (${kind}). At that pace, ${formatCents(yearly)} for the year carries about ${formatCents(tax)} of federal income tax, ${formatCents(Math.round(tax / 12))} a month, before any credits. ${penaltyRule(facts.owed_tax_last_year.value, false, tax)} ${datesLine(profile.today, facts.home_state.value)} This is arithmetic on your deposits, not tax advice.`,
+      why: `${withheld} the part of a fellowship that isn't for tuition and required books is income for federal tax (IRS Pub. 970). You received ${formatCents(received)} from ${payer} in ${span} (${kind}). At that pace, ${formatCents(yearly)} for the year carries about ${formatCents(tax)} of federal income tax, ${formatCents(Math.round(tax / 12))} a month, before any credits. ${penaltyRule(facts.owed_tax_last_year.value, false, tax)} ${datesLine(profile.today, facts.home_state.value)} This is arithmetic on your deposits, not tax advice.`,
       action: { label: "See your tax estimate", href: "/taxes" },
+      more: [{ label: "IRS Pub. 970", href: SOURCES.pub970.url }],
     });
   },
 };
 
 // An international student on an F or J visa: what they file, and that the resident credits aren't
-// theirs, with Stanford's and the IRS's own pages. No dollars: the forms are what's due.
+// theirs, with Stanford's and the IRS's own pages, which say what to file (Jane doesn't). No dollars.
 const internationalStudent: Detector = {
   capability: "taxes",
   topic: "student_tax_residency",
@@ -132,8 +139,6 @@ const internationalStudent: Detector = {
     const { facts } = profile;
     if (!onStudentVisa(facts)) return null;
     const money = studentMoney(data);
-    const fellowship = money.schoolDeposits.length > 0;
-    const pay = money.schoolPay.length > 0;
     const stanford = [...money.schoolDeposits, ...money.schoolPay].some((t) =>
       isStanford(t.description),
     );
@@ -142,17 +147,15 @@ const internationalStudent: Detector = {
       : "";
     return suggestion("taxes", "student_tax_residency", {
       title: "On a student visa, the tax forms and credits are different",
-      headline: "Note the tax forms for your student visa",
+      headline: "Note the tax pages for your student visa",
       short:
-        fellowship || pay
-          ? "Form 8843 every year, Form 1040-NR for US income; resident credits don't apply."
-          : "Form 8843 every year, even with no US income.",
+        "On an F or J visa, which forms and credits apply is on Bechtel's and the IRS's pages.",
       worthCents: 0,
       worthKind: "risk",
       required: true,
       confidence: factEvidence(facts.tax_residency),
       urgency: "later",
-      why: `You told me you're on an F or J student visa. Students on these visas are often nonresidents for US tax; the IRS's substantial presence test decides. A nonresident student files Form 8843 every year, even with no US income (Stanford's Bechtel Center: by mid-June when there's no US income), and Form 1040-NR with it when there was US income${fellowship || pay ? ", as you had" : ""}.${withheld} The American opportunity credit isn't for a nonresident alien (IRS Pub. 970), and the earned income credit is for US citizens and residents (IRS). Bechtel's pages and Sprintax, which Stanford gives its students, walk through the forms.`,
+      why: `You told me you're on an F or J student visa. Students on these visas are often nonresidents for US tax, which turns on the IRS's substantial presence test. Which forms a nonresident files, Form 8843 among them, is on Bechtel's pages and the IRS's; Stanford gives its students Sprintax for them.${withheld} The American opportunity credit isn't for a nonresident alien (IRS Pub. 970), and the earned income credit is for US citizens and residents (IRS).`,
       action: { label: "See your taxes", href: "/taxes" },
       more: INTERNATIONAL.links.map((l) => ({ label: l.label, href: l.href })),
     });

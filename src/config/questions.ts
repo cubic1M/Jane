@@ -14,9 +14,9 @@ export type QuestionSpec = {
   choices: readonly QuestionChoice[];
   // What it would unlock.
   topics: readonly SuggestionTopic[];
-  // Said with the question: "It decides 3 credits and deductions worth up to $2,860 for you", the
-  // count and dollars worked out from the detectors that need the fact (src/profile/questions.ts).
-  // The words for one and for several.
+  // Said with the question: "It decides 3 credits and tax figures for you", the count worked out
+  // from the detectors that need the fact (src/profile/questions.ts). The words for one and for
+  // several; never "deductions", which the guardrails read as tax advice on its own.
   decides?: readonly [one: string, several: string];
 };
 
@@ -87,7 +87,7 @@ export const QUESTIONS: readonly QuestionSpec[] = [
       { label: "Not sure", value: "unsure" },
     ],
     topics: ["stipend_tax"],
-    decides: ["credit or deduction", "credits and deductions"],
+    decides: ["credit or tax figure", "credits and tax figures"],
   },
   {
     fact: "tax_residency",

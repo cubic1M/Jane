@@ -65,6 +65,10 @@ const yearOf = (data: ProfileInput) => {
   return studentYearOf(data, profile.facts, rateMonthsOf(profile));
 };
 const passes = (s: Suggestion) => {
+  // Facts, not where they go on a return: the IRS's or FTB's page is linked instead (suggestions
+  // wording check, 11-18).
+  expect(s.why).not.toMatch(/\bline \d|Schedule \d/);
+  expect(s.more?.[0].href).toMatch(/^https:\/\/www\.(irs|ftb\.ca)\.gov\//);
   for (const t of [s.title, s.headline, s.short, s.why]) {
     expect(
       checkGuardrails(
@@ -294,9 +298,7 @@ describe("the questions credits need", () => {
     const data = await inputFromStatements(STUDENT_SHAPES["gig-two-months"](), STUDENT_TODAY);
     const best = bestQuestion(buildProfile(data), data, new Set())!;
     expect(best.spec.fact).toBe("enrollment");
-    expect(decidesLine(best.spec, best.decidesCount, best.unlockCents)).toMatch(
-      /^It decides 2 credits worth up to \$[\d,]+ for you\.$/,
-    );
+    expect(decidesLine(best.spec, best.decidesCount)).toBe("It decides 2 credits for you.");
     const facts = missingFacts(buildProfile(data), data).map((c) => c.spec.fact);
     expect(facts).toContain("age_25_plus");
   });
