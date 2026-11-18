@@ -141,6 +141,7 @@ export const MONEY_GROUPS: Readonly<Record<string, readonly string[]>> = {
   low_balance: ["cash_short"],
   // The same bank's fee-free account for young owners stops the monthly fee bank_fees counts.
   student_checking: ["fees"],
+  fee_waiver_met: ["fees"],
   bank_fees: ["fees"],
   late_fees: ["fees"],
 };

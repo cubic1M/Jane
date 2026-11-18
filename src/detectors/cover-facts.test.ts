@@ -8,6 +8,7 @@ import {
   AUTO_AVERAGE,
   FED_RATES,
   CHEAPER_PLANS,
+  FEE_WAIVERS,
   RENTERS_AVERAGE,
   TMOBILE_PLANS,
   STANFORD_HOUSING,
@@ -306,5 +307,78 @@ describe("T-Mobile's cheaper plan", () => {
     expect(fire(bill(11_001), "phone_plan_cheaper")).toBeNull();
     expect(fire(bill(7_500, "T-MOBILE PROTECTION 360"), "phone_plan_cheaper")).toBeNull();
     expect(fire(bill(7_500, "T-MOBILE", "2026-10-03"), "phone_plan_cheaper")).toBeNull();
+  });
+});
+
+describe("a monthly fee the person's own pay may already waive", () => {
+  // Bank of America checking with a $12 fee on Nov 30 and pay deposited in the month before.
+  const bofa = (pay: number[], fee = 1_200): ProfileInput => {
+    const base = undergrad();
+    return {
+      ...base,
+      accounts: [{ ...base.accounts[0]!, institution: null, name: "Bank of America checking" }],
+      transactions: [
+        ...base.transactions.filter(
+          (t) => t.pfc !== "INCOME_WAGES" && !/SERVICE FEE/.test(t.description),
+        ),
+        row(
+          "2026-11-16",
+          fee,
+          "MONTHLY MAINTENANCE FEE",
+          "BANK_FEES_OTHER_BANK_FEES",
+          "ug-checking",
+        ),
+        ...pay.map((cents, i) =>
+          row(`2026-11-0${i + 1}`, -cents, "ACME CORP DES:PAYROLL", "INCOME_WAGES", "ug-checking"),
+        ),
+      ],
+    };
+  };
+
+  it("sets the fee beside the bank's own rule and the pay that came in, and says the bank can say", () => {
+    const s = fire(bofa([145_000]), "fee_waiver_met")!;
+    expect(s).not.toBeNull();
+    expect(s.worthCents).toBe(1_200 * 12);
+    expect(s.title).toContain("one qualifying direct deposit of $250 or more");
+    expect(s.why).toContain("$1,450.00 in pay was deposited there");
+    expect(s.why).toContain("Bank of America can say which applies to yours");
+    expect(s.action.href).toBe(FEE_WAIVERS[0].url);
+    expectClean(s);
+  });
+
+  it("is nothing when the pay doesn't meet the rule: under $250 for BofA, under $500 at Chase", () => {
+    expect(fire(bofa([24_999]), "fee_waiver_met")).toBeNull();
+    expect(fire(bofa([25_000]), "fee_waiver_met")).not.toBeNull();
+    // The undergraduate's Chase account: $412.50 of pay in the month before its fee.
+    expect(fire(undergrad(), "fee_waiver_met")).toBeNull();
+    const chase = (cents: number): ProfileInput => {
+      const base = undergrad();
+      return {
+        ...base,
+        transactions: [
+          ...base.transactions,
+          row(
+            "2026-10-25",
+            -(cents - 41_250),
+            "STANFORD UNIVERSITY PAYROLL",
+            "INCOME_WAGES",
+            "ug-checking",
+          ),
+        ],
+      };
+    };
+    expect(fire(chase(49_999), "fee_waiver_met")).toBeNull();
+    expect(fire(chase(50_000), "fee_waiver_met")!.title).toContain("Chase Total Checking");
+  });
+
+  it("is nothing at a bank without a rule here, or with no monthly fee lately", () => {
+    const base = bofa([145_000]);
+    expect(
+      fire(
+        { ...base, accounts: [{ ...base.accounts[0]!, name: "Golden 1 checking" }] },
+        "fee_waiver_met",
+      ),
+    ).toBeNull();
+    expect(fire({ ...base, today: "2027-01-18" }, "fee_waiver_met")).toBeNull();
   });
 });

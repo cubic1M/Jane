@@ -45,7 +45,8 @@ export const itemId = (branch: MoneyBranch, key: string) => `${branch}:${key}`;
 export const SUGGESTION_NODES: Readonly<Record<string, { branch: MoneyBranch; label: string }>> = {
   duplicate_charge: { branch: "charges", label: "Charged twice" },
   bank_fees: { branch: "charges", label: "Bank fees you can stop" },
-  student_checking: { branch: "charges", label: "A checking fee you can drop" },
+  student_checking: { branch: "charges", label: "A no-fee account at your bank" },
+  fee_waiver_met: { branch: "charges", label: "A fee your pay may waive" },
   late_fees: { branch: "charges", label: "Late fees to stop" },
   bill_negotiation: { branch: "charges", label: "A bill you can lower" },
   phone_plan_cheaper: { branch: "charges", label: "A cheaper phone plan" },

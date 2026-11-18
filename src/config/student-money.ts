@@ -477,3 +477,45 @@ export const CHASE_OVERDRAFT = {
   graceCents: 5_000,
   words: /\bCHASE\b|JPMORGAN/,
 } as const;
+
+// --- A monthly fee the person's own deposits may already waive -------------------------------
+// Each bank's own page (read 2026-11-18):
+// - Bank of America Advantage Plus Banking: "$0 for each statement cycle" with "at least 1
+//   qualifying direct deposit of $250 or more" (or a $1,500 minimum daily balance); $12 now, $15
+//   from February 19, 2027.
+// - Chase Total Checking: "$15 or $0" with "$500+ in qualifying electronic deposits" (or $1,500+ at
+//   the start of each day).
+// - Wells Fargo Everyday Checking: $15, or $0 with "$500 or more in total qualifying electronic
+//   deposits".
+export const FEE_WAIVERS = [
+  {
+    bank: "Bank of America",
+    words: /BANK OF AMERICA|\bBOFA\b|\bB OF A\b|ADV(?:ANTAGE)? ?PLUS/,
+    account: "Advantage Plus Banking",
+    rule: "one qualifying direct deposit of $250 or more",
+    // One deposit at least this size in the cycle.
+    singleCents: 25_000,
+    totalCents: null,
+    url: "https://www.bankofamerica.com/deposits/checking/advantage-banking/",
+  },
+  {
+    bank: "Chase",
+    words: /\bCHASE\b|JPMORGAN/,
+    account: "Chase Total Checking",
+    rule: "$500 or more in qualifying electronic deposits",
+    singleCents: null,
+    totalCents: 50_000,
+    url: "https://www.chase.com/personal/fees/total-checking",
+  },
+  {
+    bank: "Wells Fargo",
+    words: /WELLS ?FARGO/,
+    account: "Wells Fargo Everyday Checking",
+    rule: "$500 or more in total qualifying electronic deposits",
+    singleCents: null,
+    totalCents: 50_000,
+    url: "https://www.wellsfargo.com/checking/everyday/",
+  },
+] as const;
+// Pay deposited by an employer, as a statement says it: what "direct deposit" usually means.
+export const DIRECT_DEPOSIT_WORDS = /PAYROLL|DIRECT DEP|DIR DEP|\bDES:PAYROLL|SALARY|PAYROLL PPD/;

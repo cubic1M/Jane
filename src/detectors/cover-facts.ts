@@ -4,6 +4,10 @@ import {
   AUTO_PREMIUM_WORDS,
   FED_RATES,
   CHEAPER_PLAN_SEEN_DAYS,
+  DIRECT_DEPOSIT_WORDS,
+  FEE_WAIVERS,
+  MONTHLY_FEE_SEEN_DAYS,
+  MONTHLY_FEE_WORDS,
   CHEAPER_PLAN_TAX_ROOM,
   CHEAPER_PLANS,
   TMOBILE_PLANS,
@@ -303,4 +307,88 @@ const phonePlanCheaper: Detector = {
   },
 };
 
-export const BILL_FACT_DETECTORS: readonly Detector[] = [cheaperTier, phonePlanCheaper];
+// A checking account's monthly fee in a month when the person's own pay, deposited there, met the
+// rule the bank's page gives for no fee: the account may be another type, or the deposit may not
+// count; the bank can say which.
+const feeWaiverMet: Detector = {
+  capability: "cost",
+  topic: "fee_waiver_met",
+  covers: [],
+  needs: [],
+  detect({ profile, data }) {
+    const since = addDays(data.today, -MONTHLY_FEE_SEEN_DAYS);
+    for (const w of FEE_WAIVERS) {
+      const ids = new Set(
+        data.accounts
+          .filter(
+            (a) =>
+              a.type === "depository" &&
+              w.words.test(`${a.institution ?? ""} ${a.name ?? ""}`.toUpperCase()),
+          )
+          .map((a) => a.id),
+      );
+      if (ids.size === 0) continue;
+      const fee = data.transactions
+        .filter(
+          (t) =>
+            ids.has(t.accountId) &&
+            t.amountCents > 0 &&
+            t.date >= since &&
+            t.date <= data.today &&
+            (t.pfc ?? "").startsWith("BANK_FEES") &&
+            MONTHLY_FEE_WORDS.test(lineOf(t)),
+        )
+        .sort((a, b) => b.date.localeCompare(a.date))[0];
+      if (!fee) continue;
+      // Pay deposited into the same account in the month before the fee.
+      const from = addDays(fee.date, -31);
+      const pay = data.transactions.filter(
+        (t) =>
+          ids.has(t.accountId) &&
+          t.amountCents < 0 &&
+          t.date > from &&
+          t.date <= fee.date &&
+          ((t.pfc ?? "").startsWith("INCOME") || DIRECT_DEPOSIT_WORDS.test(lineOf(t))),
+      );
+      const total = pay.reduce((n, t) => n - t.amountCents, 0);
+      const biggest = pay.reduce((m, t) => Math.max(m, -t.amountCents), 0);
+      const met =
+        (w.singleCents !== null && biggest >= w.singleCents) ||
+        (w.totalCents !== null && total >= w.totalCents);
+      if (!met) continue;
+      const yearly = fee.amountCents * 12;
+      return suggestion("cost", "fee_waiver_met", {
+        title: `${w.account} has no monthly fee with ${w.rule}, according to ${w.bank}'s page`,
+        headline: headlineOf("Ask about your waivable bank fee", yearly, "saves"),
+        short: clip(
+          `${w.bank} charged a ${formatCents(fee.amountCents)} monthly fee on ${dayLabel(fee.date)}; ${formatCents(total)} in pay came in that month.`,
+        ),
+        worthCents: yearly,
+        worthKind: "saves",
+        confidence: weakest([
+          evidence("seen", profile.months, pay.length, "paychecks deposited"),
+          // The account's type and what the bank counts as qualifying aren't in the statement.
+          {
+            percent: 55,
+            reason: "your account's type and what the bank counts aren't in the statement",
+          },
+        ]),
+        urgency: "soon",
+        why: `Your ${w.bank} checking charged a ${formatCents(fee.amountCents)} monthly fee on ${dayLabel(fee.date, { long: true })}, and ${formatCents(total)} in pay was deposited there in the month before. ${w.account} has no monthly fee in a statement cycle with ${w.rule}, according to ${w.bank}'s own page. Your account may be another type, or a deposit may not count as qualifying; ${w.bank} can say which applies to yours.`,
+        action: { label: `See ${w.bank}'s fee rules`, href: w.url },
+        watch: {
+          kind: "fee_stops",
+          pfcs: [fee.pfc ?? "BANK_FEES_OTHER_BANK_FEES"],
+          monthlyCents: fee.amountCents,
+        },
+      });
+    }
+    return null;
+  },
+};
+
+export const BILL_FACT_DETECTORS: readonly Detector[] = [
+  cheaperTier,
+  phonePlanCheaper,
+  feeWaiverMet,
+];
