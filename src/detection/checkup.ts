@@ -56,8 +56,11 @@ export type CheckLine = {
 type Facts = {
   input: DetectionInput;
   streams: Stream[];
-  // Days of statements inside the lookback window.
+  // Days of statements inside the lookback window, counted to today: whether a check has enough.
   days: number;
+  // The days the statements themselves reach, first to last, as the report's "Your statements
+  // cover 31 days" counts them: what a "None in …" line can speak for.
+  covered: number;
   transactions: number;
   // The last day statements reach, when that's too long ago to say what's being paid now.
   statementsEnd: string | null;
@@ -142,7 +145,7 @@ export const CHECKS: Record<FindingType, Check> = {
     current: true,
     missing: shortHistory(CHECKUP_MIN_RECURRING_DAYS),
     passed: (f) => ({
-      line: `None in ${spanOf(f.days)}`,
+      line: `None in ${spanOf(f.covered)}`,
       detail: `Jane looked for charges that repeat at one price, monthly or yearly, in ${plural(f.transactions, "transaction")}.`,
     }),
   },
@@ -177,7 +180,9 @@ export const CHECKS: Record<FindingType, Check> = {
       );
       return {
         line:
-          fees.length === 0 ? `None in ${spanOf(f.days)}` : `Refunded in full in ${spanOf(f.days)}`,
+          fees.length === 0
+            ? `None in ${spanOf(f.covered)}`
+            : `Refunded in full in ${spanOf(f.covered)}`,
         detail: `Jane looked at ${plural(f.transactions, "transaction")} for overdraft, ATM and account fees.`,
       };
     },
@@ -230,7 +235,7 @@ export const CHECKS: Record<FindingType, Check> = {
       credit(f).length === 0 ? "No credit card linked yet." : null,
     ),
     passed: (f) => ({
-      line: `None in ${spanOf(f.days)}`,
+      line: `None in ${spanOf(f.covered)}`,
       detail: `Jane checked ${plural(credit(f).length, "card")} for interest charges.`,
     }),
   },
@@ -257,7 +262,7 @@ export const CHECKS: Record<FindingType, Check> = {
     label: "Double charges",
     missing: shortHistory(CHECKUP_MIN_HISTORY_DAYS),
     passed: (f) => ({
-      line: `None in ${spanOf(f.days)}`,
+      line: `None in ${spanOf(f.covered)}`,
       detail: `Jane looks for the same amount at the same place within ${plural(DUPLICATE_CHARGE_WINDOW_DAYS, "day")}.`,
     }),
   },
@@ -274,7 +279,7 @@ export const CHECKS: Record<FindingType, Check> = {
     label: "Trials turned paid",
     missing: shortHistory(CHECKUP_MIN_HISTORY_DAYS),
     passed: (f) => ({
-      line: `None in ${spanOf(Math.min(f.days, REFUND_MAX_AGE_DAYS))}`,
+      line: `None in ${spanOf(Math.min(f.covered, REFUND_MAX_AGE_DAYS))}`,
       detail: `A trial is a charge of ${formatCents(TRIAL_MAX_START_CENTS)} or less, then a full charge ${TRIAL_MIN_DAYS} to ${TRIAL_MAX_DAYS} days later.`,
     }),
   },
@@ -318,6 +323,18 @@ function historyDays(input: DetectionInput): number {
   return Math.max(0, Math.min(window, daysBetween(earliest, input.asOf)));
 }
 
+// From history's start to the last row, both days counted (debugger 11-17: a month of statements
+// read "Your statements cover 31 days" above "Double charges: None in 33 days", the 33 running to
+// today, which no statement reached). Never more than `days`.
+function coveredDays(input: DetectionInput, days: number): number {
+  const newest = newestRow(input);
+  if (!newest) return 0;
+  const earliest =
+    input.historyFrom ??
+    input.transactions.reduce((min, t) => (t.date < min ? t.date : min), input.asOf);
+  return Math.max(0, Math.min(days, daysBetween(earliest, newest) + 1));
+}
+
 function foundLine(candidates: Candidate[], open: number): { line: string; detail: string } {
   const count = Math.max(candidates.length, open);
   return {
@@ -332,11 +349,15 @@ function foundLine(candidates: Candidate[], open: number): { line: string; detai
   };
 }
 
-function oldStatementsEnd(input: DetectionInput): string | null {
-  const newest = input.transactions.reduce<string | null>(
+function newestRow(input: DetectionInput): string | null {
+  return input.transactions.reduce<string | null>(
     (latest, t) => (t.date <= input.asOf && (!latest || t.date > latest) ? t.date : latest),
     null,
   );
+}
+
+function oldStatementsEnd(input: DetectionInput): string | null {
+  const newest = newestRow(input);
   return newest && daysBetween(newest, input.asOf) > STALE_UPLOAD_DAYS ? newest : null;
 }
 
@@ -348,10 +369,12 @@ export function checkup(
   open: Partial<Record<FindingType, number>> = {},
 ): CheckLine[] {
   const streams = buildStreams(input);
+  const days = historyDays(input);
   const facts: Facts = {
     input,
     streams,
-    days: historyDays(input),
+    days,
+    covered: coveredDays(input, days),
     transactions: inLookback(input).length,
     statementsEnd: oldStatementsEnd(input),
   };
