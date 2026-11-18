@@ -51,6 +51,8 @@ export type CheckQuestion = {
   person?: string;
   // Asked as someone with an account of their own (scenarios.ts): a real account, no advice.
   account?: "real";
+  // Asked as a walked cell's person, built from its uploaded files (./cell.ts): a real account.
+  cell?: string;
   judge?: { mustDo?: string[]; mustNot?: string[] };
 };
 

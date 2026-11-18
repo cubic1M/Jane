@@ -8,9 +8,22 @@ vi.hoisted(() => {
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL ?? "";
 });
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
+// While a walked cell's person is built, its upload is sorted by the rules alone, as it was on the
+// walk (no key there): its figures are the walk's and the upload spends nothing. Every other
+// person is made as before.
+const building = vi.hoisted(() => ({ cell: false }));
+vi.mock("@/categorize/llm", async (original) => {
+  const real = await original<typeof import("@/categorize/llm")>();
+  return {
+    ...real,
+    classifyMerchants: (...args: Parameters<typeof real.classifyMerchants>) =>
+      building.cell ? Promise.resolve(new Map()) : real.classifyMerchants(...args),
+  };
+});
 
 import type { PersonId } from "@/config/people";
 import { loadFacts, type Facts } from "./facts";
+import { createCellPerson } from "./cell";
 import { createCheckPerson, deleteCheckPerson } from "./person";
 import { runAnswerChecks } from "./run";
 import {
@@ -68,20 +81,24 @@ it.runIf(process.env.CHAT_EVAL === "1" && url && process.env.ANTHROPIC_API_KEY)(
     const now = new Date();
     // Each sample person the batch asks as, made once: on the demo bank alone, and with an
     // account of their own for the real-account scenarios.
-    const keyOf = (s: { person?: string; account?: "real" }) =>
-      `${s.person ?? "default"}${s.account === "real" ? ":real" : ""}`;
+    const keyOf = (s: { person?: string; account?: "real"; cell?: string }) =>
+      s.cell ? `cell=${s.cell}` : `${s.person ?? "default"}${s.account === "real" ? ":real" : ""}`;
     const people = new Map<string, { userId: string; facts: Facts }>();
     try {
       for (const key of new Set(batch.map(keyOf))) {
+        const cell = key.startsWith("cell=") ? key.slice("cell=".length) : null;
         const [person, account] = key.split(":");
-        const userId = await createCheckPerson({
-          client,
-          now,
-          person: person === "default" ? undefined : (person as PersonId),
-          ownAccount: account === "real",
-        });
+        building.cell = cell !== null;
+        const userId = cell
+          ? await createCellPerson(cell, { client, now }).finally(() => (building.cell = false))
+          : await createCheckPerson({
+              client,
+              now,
+              person: person === "default" ? undefined : (person as PersonId),
+              ownAccount: account === "real",
+            });
         const facts = await loadFacts(userId, { client, now });
-        expect(facts.advice, `${key}: advice mode`).toBe(account !== "real");
+        expect(facts.advice, `${key}: advice mode`).toBe(!cell && account !== "real");
         people.set(key, { userId, facts });
       }
       const [first] = [...people.values()];

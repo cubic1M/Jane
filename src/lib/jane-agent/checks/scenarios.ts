@@ -31,6 +31,10 @@ export type Scenario = {
   // is off and the answer is held to what a real account may hear (no investment, tax or legal
   // advice). Left out: the demo bank alone, with demo advice.
   account?: "real";
+  // A debugger's walked cell (walk-chat-questions.md): the folder, from the repo's root, of its
+  // cell.json and uploaded files (./cell.ts). Asked as that cell's own person, built through the
+  // upload path, in place of a sample life: real accounts, so no advice.
+  cell?: string;
   // Rules for the Haiku judge, beyond the fixed checks.
   judge?: { mustDo?: string[]; mustNot?: string[] };
   variantOf?: string;
@@ -55,7 +59,13 @@ function checkScenario(item: unknown, index: number): Scenario {
   if (s.account !== undefined && s.account !== "real") {
     throw new Error(`${s.id}: account is "real" or left out, not "${String(s.account)}".`);
   }
+  if (s.cell !== undefined && (typeof s.cell !== "string" || !s.cell.trim())) {
+    throw new Error(`${s.id}: cell is the folder of a walked cell's files.`);
+  }
   const profile = (item as { profile?: unknown }).profile;
+  if (s.cell !== undefined && (profile !== undefined || s.account !== undefined)) {
+    throw new Error(`${s.id}: a cell is its own person, so it takes no profile or account.`);
+  }
   if (profile !== undefined && (typeof profile !== "string" || !isPersonId(profile))) {
     throw new Error(`${s.id}: "${String(profile)}" isn't a sample person.`);
   }
@@ -130,17 +140,20 @@ export function scenarioQuestions(scenarios: readonly Scenario[]): CheckQuestion
       ...(i === 0 ? {} : { after: s.id }),
       expect: expectOf(s),
       sector: s.category,
-      // The demo bank alone gets demo advice; with an account of its own it's a real account.
-      profile: s.account === "real" ? "standard" : "demo_advice",
+      // The demo bank alone gets demo advice; with an account of its own it's a real account, and
+      // so is a walked cell's person.
+      profile: s.account === "real" || s.cell ? "standard" : "demo_advice",
       ...(s.person ? { person: s.person } : {}),
       ...(s.account ? { account: s.account } : {}),
+      ...(s.cell ? { cell: s.cell } : {}),
       ...(s.judge ? { judge: s.judge } : {}),
     })),
   );
 }
 
-// What one graded message keeps between batches: the score and why, and the start of the
-// answer for the worst-answers list. Demo-bank data only.
+// What one graded message keeps between batches: the score and why, and the answer (whole, up to
+// ANSWER_KEPT, so a walked cell's figures can be checked against it; the worst-answers list shows
+// its start). Sample data only.
 export type LiteResult = {
   id: string;
   text: string;
@@ -154,6 +167,10 @@ export type LiteResult = {
 // results, and what has been spent. Kept in docs/chat-eval-state.json on the eval branch, so
 // the next batch resumes where the last stopped.
 export type EvalState = { done: Record<string, LiteResult[]>; costCents: number };
+
+export const ANSWER_KEPT = 2000;
+// How much of an answer the worst-answers list in docs/chat-quality.md shows.
+const ANSWER_SHOWN = 300;
 
 export const emptyState = (): EvalState => ({ done: {}, costCents: 0 });
 
@@ -179,7 +196,7 @@ const liteOf = (r: CheckRun["results"][number]): LiteResult => ({
   status: r.status,
   ...(r.score === undefined ? {} : { score: r.score }),
   reason: r.reason.slice(0, 200),
-  ...(r.answer ? { answer: r.answer.slice(0, 300) } : {}),
+  ...(r.answer ? { answer: r.answer.slice(0, ANSWER_KEPT) } : {}),
 });
 
 // Adds a batch's results to the state: a scenario counts as done when all its messages were
@@ -234,7 +251,7 @@ export function reportByCategory(
           text: r.text,
           score: r.score ?? 0,
           reason: r.reason.slice(0, 200),
-          ...(r.answer ? { answer: r.answer } : {}),
+          ...(r.answer ? { answer: r.answer.slice(0, ANSWER_SHOWN) } : {}),
         }));
       return {
         category,
