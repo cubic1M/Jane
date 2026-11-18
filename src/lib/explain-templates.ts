@@ -219,7 +219,8 @@ const TEMPLATES: Record<FindingType, (input: ExplainInput) => Omit<ExplanationCo
       explanation: `You paid${total ? ` ${total}` : ""} in credit card interest${period ? ` in ${period}` : ""}. Paying the balance in full or moving it to a lower-rate card could cut that cost.`,
       giveUp: "A balance transfer usually has a one-time fee.",
       alternatives: [
-        "Ask your card issuer for a lower rate",
+        // Not asking for a lower rate: that is the step the card already gives (debugger 11-18).
+        "Transfer the balance to a cheaper card",
         "Pay more than the minimum each month",
         "Set up autopay",
       ],
