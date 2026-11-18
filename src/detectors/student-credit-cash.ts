@@ -132,8 +132,8 @@ const studentChecking: Detector = {
       const yearly = latest.amountCents * 12;
       const overdrawn = offer.noOverdraftFees && overdraft.length > 0;
       return suggestion("cost", "student_checking", {
-        title: `Ask ${offer.bank} about ${offer.account}: ${offer.rule}`,
-        headline: headlineOf(`Drop your ${offer.bank} monthly fee`, yearly, "saves"),
+        title: `${offer.bank} has ${offer.account}: ${offer.rule}`,
+        headline: headlineOf(`Look at ${offer.bank}'s no-fee account`, yearly, "saves"),
         short: `${offer.bank} charged you a ${formatCents(latest.amountCents)} monthly fee on ${dayLabel(latest.date)}.`,
         worthCents: yearly,
         worthKind: "saves",
@@ -151,7 +151,7 @@ const studentChecking: Detector = {
             : []),
         ]),
         urgency: "soon",
-        why: `Your ${offer.bank} checking charged a ${formatCents(latest.amountCents)} monthly fee on ${dayLabel(latest.date, { long: true })}, about ${formatCents(yearly)} a year. ${offer.account} has ${offer.rule}, according to ${offer.bank}'s own page.${age === null ? " That turns on your age, which I don't have." : ""}${overdrawn ? ` You also paid ${overdraft.length} overdraft fee${overdraft.length === 1 ? "" : "s"} there.` : ""} To do it: ask ${offer.bank} in its app or a branch to move you to ${offer.account}, or open it and move your direct deposit and automatic payments, then close the old account once its last charges clear.`,
+        why: `Your ${offer.bank} checking charged a ${formatCents(latest.amountCents)} monthly fee on ${dayLabel(latest.date, { long: true })}, about ${formatCents(yearly)} a year. ${offer.account} has ${offer.rule}, according to ${offer.bank}'s own page.${age === null ? " That turns on your age, which I don't have." : ""}${overdrawn ? ` You also paid ${overdraft.length} overdraft fee${overdraft.length === 1 ? "" : "s"} there.` : ""} Its page says how to open it.`,
         action: { label: `See ${offer.account}`, href: offer.url },
         watch: {
           kind: "fee_stops",

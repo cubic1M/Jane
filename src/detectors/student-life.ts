@@ -81,7 +81,7 @@ const freeThroughStanford: Detector = {
       names.length <= 1 ? names[0]! : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
     const charges = paying.reduce((n, p) => n + p.txs.length, 0);
     return suggestion("subscriptions", "free_through_school", {
-      title: `Use Stanford's free ${all} instead of paying`,
+      title: `Stanford gives ${all} free to its students, faculty and staff`,
       headline: headlineOf(
         paying.length === 1
           ? `Get ${paying[0]!.name} free via Stanford`
@@ -101,7 +101,7 @@ const freeThroughStanford: Detector = {
           : []),
       ]),
       urgency: "soon",
-      why: `${paying.map((p) => `You paid ${p.name} ${formatCents(p.latest.amountCents)} on ${dayLabel(p.latest.date)}`).join("; ")}: about ${formatCents(yearly)} a year. Stanford gives ${all} to its students, faculty and staff free. To switch: ${paying.map((p) => `for ${p.name}, ${p.how}`).join("; ")}; then cancel the paid one before its next charge.`,
+      why: `${paying.map((p) => `You paid ${p.name} ${formatCents(p.latest.amountCents)} on ${dayLabel(p.latest.date)}`).join("; ")}: about ${formatCents(yearly)} a year. Stanford gives ${all} to its students, faculty and staff free. Stanford's way to get each: ${paying.map((p) => `for ${p.name}, ${p.how}`).join("; ")}. A paid subscription keeps charging until it's cancelled in its own account.`,
       action: { label: "See Stanford's free access", href: paying[0]!.url },
       more: [...new Set(paying.map((p) => p.url))]
         .slice(1)
@@ -181,7 +181,6 @@ const cardinalCareCheck: Detector = {
     const plan = nice(latest.description);
     const monthly = premiums.length >= 2 || latest.amountCents < HEALTH_PREMIUM_ONCE_FROM_CENTS;
     const yearly = monthly ? latest.amountCents * 12 : latest.amountCents;
-    const worth = Math.min(yearly, CARDINAL_CARE.yearCents);
     const open = CARDINAL_CARE.windows.find((w) => w.from <= data.today && w.to >= data.today);
     const next = CARDINAL_CARE.windows.find((w) => w.from > data.today);
     const window = open
@@ -190,10 +189,11 @@ const cardinalCareCheck: Detector = {
         ? `The next waiver window is for ${next.who}: ${dayLabel(next.from)} to ${dayLabel(next.to)}.`
         : "";
     return suggestion("insurance", "cardinal_care_check", {
-      title: "Check you aren't paying for Cardinal Care and another health plan",
-      headline: headlineOf("Check you don't pay two health plans", worth, "saves"),
+      title: "Cardinal Care and another health plan: Stanford's waiver rules and dates",
+      headline: "Note Cardinal Care's waiver rules and dates",
       short: `You pay ${plan} ${formatCents(latest.amountCents)}${monthly ? " a month" : ""}; Cardinal Care is ${formatWholeDollars(CARDINAL_CARE.yearCents)} a year.`,
-      worthCents: worth,
+      // Facts on two health plans, not a saving: whether to keep both is the person's to decide.
+      worthCents: 0,
       worthKind: "saves",
       confidence: weakest([
         factEvidence(profile.facts.is_student),
@@ -202,7 +202,7 @@ const cardinalCareCheck: Detector = {
         { percent: 40, reason: "I can't see whether Cardinal Care is on your Stanford bill" },
       ]),
       urgency: open ? "now" : "later",
-      why: `You pay ${plan} ${formatCents(latest.amountCents)}${monthly ? " a month" : ""}, about ${formatCents(yearly)} a year. Stanford enrolls its students in Cardinal Care, ${formatWholeDollars(CARDINAL_CARE.yearCents)} for 2026-27, unless they waive it with a plan that meets its rules: Minimum Essential Coverage, a deductible and an out-of-pocket maximum of ${formatWholeDollars(CARDINAL_CARE.maxDeductibleCents)} or less for one person, and inpatient and outpatient care in the Bay Area (short-term, travel and dental-only plans don't count). Your Stanford bill shows whether Cardinal Care is on it. ${window} Continuing students waive in the autumn window, which ran ${dayLabel(CARDINAL_CARE.windows[0].from)} to ${dayLabel(CARDINAL_CARE.windows[0].to)} this year. Stanford pays all of Cardinal Care for a graduate student on an assistantship of 25% or more who hasn't waived it, and half for one under 25%.`,
+      why: `You pay ${plan} ${formatCents(latest.amountCents)}${monthly ? " a month" : ""}, about ${formatCents(yearly)} a year. Stanford enrolls its students in Cardinal Care, ${formatWholeDollars(CARDINAL_CARE.yearCents)} for 2026-27, and allows a waiver for another plan that meets its rules: Minimum Essential Coverage, a deductible and an out-of-pocket maximum of ${formatWholeDollars(CARDINAL_CARE.maxDeductibleCents)} or less for one person, and inpatient and outpatient care in the Bay Area (short-term, travel and dental-only plans don't count). Cardinal Care is charged on the Stanford bill, which isn't in your accounts. ${window} Continuing students waive in the autumn window, which ran ${dayLabel(CARDINAL_CARE.windows[0].from)} to ${dayLabel(CARDINAL_CARE.windows[0].to)} this year. Stanford pays all of Cardinal Care for a graduate student on an assistantship of 25% or more who hasn't waived it, and half for one under 25%. Whether to keep both plans is yours to decide; I can't compare what the two plans cover.`,
       action: { label: "See Cardinal Care's waiver rules", href: CARDINAL_CARE.waiverUrl },
       more: [{ label: "Cardinal Care's cost and subsidy", href: CARDINAL_CARE.costUrl }],
     });
@@ -226,14 +226,14 @@ const deviceCoverTwice: Detector = {
       return txs[0] ? [{ ...p, txs, latest: txs[0] }] : [];
     });
     if (plans.length < 2) return null;
-    const cheapest = plans.reduce((a, b) => (b.latest.amountCents < a.latest.amountCents ? b : a));
-    const yearly = cheapest.latest.amountCents * 12;
+    const total = plans.reduce((n, p) => n + p.latest.amountCents, 0) * 12;
     const named = plans.map((p) => p.latest.description);
     return suggestion("insurance", "device_cover_twice", {
-      title: "Check whether two plans protect the same phone",
-      headline: headlineOf("Drop a second phone protection plan", yearly, "saves"),
+      title: "You pay for two device protection plans",
+      headline: "Note your two device protection plans",
       short: clip(`You pay for ${listOf(named)} each month.`),
-      worthCents: yearly,
+      // What's paid, not a saving: Jane can't see either plan's terms or devices.
+      worthCents: 0,
       worthKind: "saves",
       confidence: weakest([
         evidence(
@@ -245,18 +245,8 @@ const deviceCoverTwice: Detector = {
         { percent: 60, reason: "I can't see which device each plan covers" },
       ]),
       urgency: "later",
-      why: `You pay ${plans.map((p) => `${nice(p.latest.description)} ${formatCents(p.latest.amountCents)}`).join(" and ")} a month. If both cover the same phone, you're paying twice for it: the cheaper is about ${formatCents(yearly)} a year. To check: look at each plan's account for the device it names, and if both name the same one, cancel one there; the other keeps the phone covered.`,
+      why: `You pay ${plans.map((p) => `${nice(p.latest.description)} ${formatCents(p.latest.amountCents)}`).join(" and ")} a month, about ${formatCents(total)} a year for the two. I can't see which device each covers or what its terms are. Each plan names its device and terms in the account it's billed from: Apple's for AppleCare, the carrier's or Asurion's for theirs, Samsung's for Samsung Care+.`,
       action: { label: "See your subscriptions", href: "/subscriptions" },
-      watch: {
-        kind: "charge_stops",
-        payees: [
-          {
-            description: cheapest.latest.description,
-            amountCents: cheapest.latest.amountCents,
-            perYear: 12,
-          },
-        ],
-      },
     });
   },
 };

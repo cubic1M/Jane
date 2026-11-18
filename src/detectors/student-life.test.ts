@@ -71,6 +71,9 @@ describe("what Stanford gives its people free", () => {
     expect(s.title).toContain("The New York Times and Microsoft 365");
     expect(s.why).toContain("accessnyt.com");
     expect(s.why).toContain("cancel the paid one first");
+    // A fact about the paid plan, not an instruction to drop it.
+    expect(s.why).toContain("keeps charging until it's cancelled in its own account");
+    expect(s.title).not.toMatch(/instead of paying/);
     expect(s.action.href).toBe(STANFORD_FREE[0].url);
     expect(s.watch).toMatchObject({ kind: "charge_stops" });
     expectClean(s);
@@ -156,8 +159,13 @@ describe("Cardinal Care beside another health plan", () => {
   it("says what Cardinal Care costs, the waiver rules and the window open now", () => {
     const s = fire(gradStudent(), "cardinal_care_check")!;
     expect(s).not.toBeNull();
-    // $410 a month is $4,920 a year, under Cardinal Care's $8,808.
-    expect(s.worthCents).toBe(41_000 * 12);
+    // Facts on two plans, not a saving: no figure, no nudge, and the choice left to them
+    // (chat-tests wording check, 11-18).
+    expect(s.worthCents).toBe(0);
+    expect(s.title).not.toMatch(/^Check you/);
+    expect(s.why).toContain("Whether to keep both plans is yours to decide");
+    expect(s.why).toContain("I can't compare what the two plans cover");
+    expect(s.why).toContain("allows a waiver for another plan");
     expect(s.why).toContain("$8,808");
     expect(s.why).toContain("$10,600");
     expect(s.why).toContain("students starting in winter: Nov 18 to December 15");
@@ -167,14 +175,7 @@ describe("Cardinal Care beside another health plan", () => {
     expectClean(s);
   });
 
-  it("is worth no more than Cardinal Care itself, and later once the window has closed", () => {
-    const pricey = {
-      ...gradStudent(),
-      transactions: gradStudent().transactions.map((t) =>
-        /BLUE SHIELD/.test(t.description) ? { ...t, amountCents: 90_000 } : t,
-      ),
-    };
-    expect(fire(pricey, "cardinal_care_check")!.worthCents).toBe(CARDINAL_CARE.yearCents);
+  it("is later once the window has closed, naming the next one", () => {
     const after = fire({ ...gradStudent(), today: "2026-12-20" }, "cardinal_care_check")!;
     expect(after.urgency).toBe("later");
     expect(after.why).toContain("students starting in spring");
@@ -198,7 +199,7 @@ describe("Cardinal Care beside another health plan", () => {
 });
 
 describe("two plans protecting one phone", () => {
-  it("is the cheaper plan for a year, as a check", () => {
+  it("says what's paid and where each plan is managed, with no saving and no cancel", () => {
     const data = add(
       undergrad(),
       ["2026-10-05", 1_349, "APPLECARE+ MONTHLY"],
@@ -206,8 +207,11 @@ describe("two plans protecting one phone", () => {
       ["2026-11-08", 1_800, "ASURION WIRELESS PROTECTION"],
     );
     const s = fire(data, "device_cover_twice")!;
-    expect(s.worthCents).toBe(1_349 * 12);
-    expect(s.title).toMatch(/^Check whether/);
+    expect(s.worthCents).toBe(0);
+    expect(s.watch).toBeUndefined();
+    expect(s.why).toContain("about $377.88 a year for the two");
+    expect(s.why).toContain("I can't see which device each covers");
+    expect(s.why).not.toMatch(/cancel|keeps the phone covered/i);
     expectClean(s);
   });
 
