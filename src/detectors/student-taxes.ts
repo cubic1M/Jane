@@ -89,7 +89,7 @@ const stipendTax: Detector = {
         ? "you told me these are a fellowship"
         : money.stipendNamed
           ? "they say they're a stipend or fellowship"
-          : "they come from the student account, so they may be a fellowship's stipend or aid money; which, only you know";
+          : "they come from the student account, so they may be a fellowship's stipend, a grant or loan money; which, only you know";
     return suggestion("taxes", "stipend_tax", {
       title: `Nothing is withheld from your fellowship: about ${formatCents(tax)} of ${money.year} federal tax at this pace`,
       headline: headlineOf("Check tax on your fellowship", tax, "risk"),

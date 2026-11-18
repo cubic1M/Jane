@@ -686,7 +686,14 @@ function lifeFacts(b: Builder) {
       (t.pfc ?? "").startsWith("INCOME") &&
       UNIVERSITY_PAY.test(t.description.toUpperCase()),
   );
-  if (student.value === false && paidByUniversity) unknown("is_student");
+  // How they said they're enrolled (suggest-taxes) settles it: at least half time is a student,
+  // and "not in school" is no student unless the data already shows one (tuition, the bookstore).
+  const enrolled = b.input.told.enrollment;
+  if (enrolled === "undergrad" || enrolled === "grad")
+    set("is_student", true, "told", "how you're enrolled", 0);
+  else if (enrolled === "not_enrolled" && student.value !== true)
+    set("is_student", false, "told", "how you're enrolled", 0);
+  else if (student.value === false && paidByUniversity) unknown("is_student");
   else set("is_student", student.value, student.source, student.what, student.matches);
   const salaried = facts.income_pattern.value === "salary";
   const work = commuteReading(txs, months, salaried);
@@ -887,6 +894,7 @@ function toldFacts(b: Builder) {
     "tax_residency",
     "school_deposit",
     "owed_tax_last_year",
+    "age_25_plus",
   ] as const) {
     if (told[key] === undefined) unknown(key);
     else set(key, told[key], "told", "answers", 0);

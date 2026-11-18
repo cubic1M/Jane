@@ -33,11 +33,14 @@ const saversCredit: Detector = {
   capability: "taxes",
   topic: "savers_credit",
   covers: ["tax_plan"],
-  needs: ["monthly_income"],
+  needs: ["monthly_income", "enrollment"],
   detect({ profile }) {
     const { today, facts } = profile;
     if (today < `${SAVERS_CREDIT.taxYear}-01-01` || today > SAVERS_CREDIT.iraDeadline) return null;
     if (facts.is_student.value === true) return null;
+    // Not for a full-time student: someone who said they're in school at least half time is read as
+    // one (suggest-taxes, 11-18), rather than told of a credit they likely can't take.
+    if (facts.enrollment.value === "undergrad" || facts.enrollment.value === "grad") return null;
     // Someone in debt trouble needs relief and a plan first, not a nudge to save more.
     if (facts.debt_trouble.value === true) return null;
     const monthly = facts.monthly_income.value;
@@ -90,11 +93,12 @@ const saversMatch: Detector = {
   capability: "taxes",
   topic: "savers_match",
   covers: ["tax_plan"],
-  needs: ["monthly_income"],
+  needs: ["monthly_income", "enrollment"],
   detect({ profile, data }) {
     const { today, facts } = profile;
     if (today < SAVERS_MATCH.shownFrom || today > SAVERS_MATCH.shownUntil) return null;
     if (facts.is_student.value === true || facts.debt_trouble.value === true) return null;
+    if (facts.enrollment.value === "undergrad" || facts.enrollment.value === "grad") return null;
     const monthly = facts.monthly_income.value;
     if (typeof monthly !== "number" || monthly <= 0) return null;
     const agi = Math.round(monthly * 12 * DETECTOR_RATES.tax.netToGross);

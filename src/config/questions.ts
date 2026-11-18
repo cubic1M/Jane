@@ -66,11 +66,13 @@ export const QUESTIONS: readonly QuestionSpec[] = [
   // Students' taxes (suggest-taxes, 11-18): one tap each, "Not sure" is an answer too.
   {
     fact: "school_deposit",
-    text: "Is the money from your school a fellowship or stipend, pay for work, or aid?",
+    text: "Is the money from your school a fellowship, grant or stipend, pay for work, or loan money?",
     choices: [
-      { label: "Fellowship or stipend", value: "fellowship" },
+      // A grant or scholarship beyond tuition and required books is income just as a fellowship is
+      // (Pub. 970); loan money isn't.
+      { label: "Fellowship, grant or stipend", value: "fellowship" },
       { label: "Pay for work (RA, TA)", value: "wage" },
-      { label: "Aid or loan money", value: "aid_refund" },
+      { label: "Loan money", value: "aid_refund" },
       { label: "Not sure", value: "unsure" },
     ],
     topics: ["stipend_tax"],
@@ -98,6 +100,40 @@ export const QUESTIONS: readonly QuestionSpec[] = [
     ],
     topics: ["stipend_tax", "student_tax_residency"],
     decides: ["credit or form", "credits and forms"],
+  },
+  {
+    fact: "enrollment",
+    text: "Are you in school this year, at least half time?",
+    choices: [
+      { label: "Undergrad, half time or more", value: "undergrad" },
+      { label: "Grad, half time or more", value: "grad" },
+      { label: "Less than half time", value: "less_than_half" },
+      { label: "Not in school", value: "not_enrolled" },
+    ],
+    topics: ["education_credit", "savers_credit"],
+    decides: ["credit", "credits"],
+  },
+  {
+    fact: "age_25_plus",
+    text: "Will you be 25 or older by December 31?",
+    choices: [
+      { label: "Yes", value: "yes" },
+      { label: "No", value: "no" },
+      { label: "Not sure", value: "unsure" },
+    ],
+    topics: ["earned_income_credit", "education_credit"],
+    decides: ["credit", "credits"],
+  },
+  {
+    fact: "home_state",
+    text: "Do you live in California?",
+    choices: [
+      { label: "Yes", value: "CA" },
+      { label: "Another state", value: "other" },
+      { label: "Not sure", value: "unsure" },
+    ],
+    topics: ["ca_renters_credit"],
+    decides: ["credit or date", "credits and dates"],
   },
   {
     fact: "owed_tax_last_year",

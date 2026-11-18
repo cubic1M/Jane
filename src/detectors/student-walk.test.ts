@@ -29,10 +29,14 @@ const EXPECTED: Record<string, { must: string[]; never: string[] }> = {
   "walk-old-statement": { must: [], never: ["stipend_tax", "student_tax_residency"] },
   "fellowship-one-month": { must: ["stipend_tax"], never: ["student_tax_residency"] },
   "fellowship-two-months": { must: ["stipend_tax"], never: ["student_tax_residency"] },
-  // RA pay is withheld through payroll: not a fellowship.
-  "ra-two-months": { must: [], never: ["stipend_tax"] },
   "undergrad-one-month": { must: [], never: ["stipend_tax"] },
-  "gig-two-months": { must: [], never: ["stipend_tax"] },
+  // Student-loan payments and rent off campus in California; the education credit waits on tuition.
+  "gig-two-months": {
+    must: ["student_loan_interest", "ca_renters_credit"],
+    never: ["stipend_tax", "education_credit"],
+  },
+  // On campus: no renter's credit.
+  "ra-two-months": { must: [], never: ["stipend_tax", "ca_renters_credit"] },
 };
 
 const filesOf = (paths: string[]) =>

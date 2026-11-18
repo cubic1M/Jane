@@ -99,6 +99,13 @@ function unlockOf(fact: FactKey, profile: Profile, data: ProfileInput): number {
 export function missingFacts(profile: Profile, data: ProfileInput): Candidate[] {
   return QUESTIONS.flatMap((spec): Candidate[] => {
     if (profile.facts[spec.fact].value !== null) return [];
+    // Someone who said they aren't a student isn't asked how they're enrolled.
+    if (
+      spec.fact === "enrollment" &&
+      profile.facts.is_student.source === "told" &&
+      profile.facts.is_student.value === false
+    )
+      return [];
     if (spec.decides) {
       const { cents, count } = decidedBy(spec.fact, spec, data);
       return cents > 0 ? [{ spec, unlockCents: cents, decidesCount: count }] : [];
