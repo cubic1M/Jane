@@ -13,7 +13,7 @@ describe("an empty cash-flow strip", () => {
     const strip = cashFlowView({ ...empty, asOf: "2026-11-14", historyDays: 26 });
     expect(strip.events).toEqual([]);
     expect(strip.empty).toBe(
-      "Too little history to see your bills yet: about two months of statements shows them.",
+      "Too little history to see your bills yet: they show once about two months of transactions are in.",
     );
   });
 
