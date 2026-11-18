@@ -4,13 +4,15 @@ import { isAccountKind, type AccountKind } from "@/data-sources/types";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { scopedFor } from "@/lib/db-scoped";
 import { finishImport } from "@/lib/import/background";
+import { importPositionsFiles } from "@/lib/import/positions";
 import { saveUpload } from "@/lib/import/upload";
 import { systemDb } from "@/lib/system-db";
 
 // A debugger's walked cell as a person the scenario run can ask (walk-chat-questions.md in the
 // manager's notes): the walks have no Claude key, so only the backup's answers were ever checked;
 // this asks Claude the same questions over the same data. A cell is a folder with its uploaded
-// files and a cell.json saying which account each goes to and the balance typed for it. The
+// files and a cell.json saying which account each goes to and the balance typed for it, and any
+// brokerage positions downloads uploaded on the investments page. The
 // person is built through the real upload path, as the debugger built it, and deleted after the
 // run like any check person. Sample data only.
 
@@ -21,11 +23,11 @@ type CellAccount = {
   balance?: string;
   files: string[];
 };
-type Cell = { accounts: CellAccount[] };
+type Cell = { accounts: CellAccount[]; positions?: string[] };
 
 // A cell.json, checked: throws saying what is wrong with it.
 export function parseCell(json: string, where: string): Cell {
-  const raw = JSON.parse(json) as { accounts?: unknown };
+  const raw = JSON.parse(json) as { accounts?: unknown; positions?: unknown };
   if (!Array.isArray(raw.accounts) || raw.accounts.length === 0) {
     throw new Error(`${where}: cell.json needs at least one account.`);
   }
@@ -52,14 +54,25 @@ export function parseCell(json: string, where: string): Cell {
       files: a.files,
     };
   });
-  return { accounts };
+  if (raw.positions === undefined) return { accounts };
+  if (
+    !Array.isArray(raw.positions) ||
+    raw.positions.length === 0 ||
+    raw.positions.some((f) => !f || typeof f !== "string")
+  ) {
+    throw new Error(
+      `${where}: positions are the positions files uploaded, like ["positions.csv"].`,
+    );
+  }
+  return { accounts, positions: raw.positions as string[] };
 }
 
 type Read = (path: string) => string;
 const readText: Read = (path) => readFileSync(path, "utf8");
 
-// The cell's person: a new account with each of the cell's accounts uploaded, in order, and each
-// upload finished as the background job would finish it. Returns its id.
+// The cell's person: a new account with its positions files saved as the investments page saves
+// them, then each of the cell's accounts uploaded, in order, and each upload finished as the
+// background job would finish it (which also refreshes what the holdings feed). Returns its id.
 export async function createCellPerson(
   dir: string,
   { client, now, read = readText }: { client: PrismaClient; now: Date; read?: Read },
@@ -71,6 +84,14 @@ export async function createCellPerson(
   ).user.create({
     data: { email: `answer-checks-${crypto.randomUUID()}@example.com` },
   });
+  if (cell.positions) {
+    const files = cell.positions.map((file) => ({
+      name: basename(file),
+      text: read(join(dir, file)),
+    }));
+    const saved = await importPositionsFiles(scopedFor(user.id, client), files, { now });
+    if (!saved.ok) throw new Error(`${dir}: positions: ${saved.error}`);
+  }
   for (const account of cell.accounts) {
     const form = new FormData();
     form.set("accountId", "new");
