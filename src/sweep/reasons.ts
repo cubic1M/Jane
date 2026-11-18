@@ -12,6 +12,10 @@ import type { Reason } from "./diff";
 const firstOfMonth = (day: string) => day.endsWith("-01");
 const newYear = (day: string) => day.endsWith("-01-01");
 const december = (day: string) => day.slice(5, 7) === "12";
+// A path as a pattern that matches only itself: every character a pattern reads is escaped, the
+// backslash included (code scanning, js/incomplete-sanitization: only dots were).
+const literal = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 // The one day `days` after one of the person's own dates, or after any account's newest line.
 type Dates = { linked: string; lastLine: string; accountsLast?: string[] };
 const daysAfter = (from: "linked" | "lastLine", days: number) => (day: string, p: Dates) =>
@@ -129,7 +133,6 @@ export const DATED: readonly Reason[] = [
   {
     name: "a tree's items",
     paths: /^trees\.[^.]+\.tree\.sub$/,
-    follows: (path) =>
-      new RegExp(`^${path.replace(/\.sub$/, "").replace(/\./g, "\\.")}\\.branches\\.`),
+    follows: (path) => new RegExp(`^${literal(path.replace(/\.sub$/, ""))}\\.branches\\.`),
   },
 ];
