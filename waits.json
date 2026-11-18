@@ -1,13 +1,5 @@
 [
  {
-  "on": 1984,
-  "lane": "lane:calendar",
-  "task": "claude/person-day-debt",
-  "when": "merged",
-  "since": "2026-11-17T04:26:52.055Z",
-  "expires": "2026-11-17T16:26:52.055Z"
- },
- {
   "on": 1989,
   "lane": "lane:calendar",
   "task": "claude/sample-wins-bank-day",
@@ -22,5 +14,13 @@
   "when": "merged",
   "since": "2026-11-17T11:20:36.027Z",
   "expires": "2026-11-20T11:20:36.027Z"
+ },
+ {
+  "on": 2033,
+  "lane": "lane:connectors",
+  "task": "claude/student-no-paychecks",
+  "when": "merged",
+  "since": "2026-11-18T05:26:48.885Z",
+  "expires": "2026-11-21T05:26:48.885Z"
  }
 ]
