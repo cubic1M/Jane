@@ -75,6 +75,14 @@ export const SOURCES = {
     "https://www.irs.gov/individuals/tax-withholding-estimator",
     "IRS Tax Withholding Estimator: estimates what an employer should withhold; too much withheld means a smaller paycheck now and a bigger refund later; it makes a pre-filled Form W-4 to give the employer",
   ),
+  unemploymentIrs: src(
+    "https://www.irs.gov/taxtopics/tc418",
+    "IRS Topic 418: unemployment compensation is generally income; Form 1099-G shows it (box 1) and tax withheld (box 4); withholding by Form W-4V; estimated payments may be needed",
+  ),
+  unemploymentFtb: src(
+    "https://www.ftb.ca.gov/file/personal/income-types/unemployment.html",
+    "FTB: unemployment compensation is taxable for federal purposes and nontaxable for California",
+  ),
   pub501: src(
     "https://www.irs.gov/publications/p501",
     "Pub. 501 (2025 returns): for a dependent's standard deduction, earned income includes any part of a taxable scholarship or fellowship grant",
@@ -350,3 +358,6 @@ export const REFUND_SHOWN_FROM_CENTS = 50_000;
 // A refund from the IRS, as banks write it ("IRS TREAS 310 TAX REF"). "TREAS 310" alone is any Treasury
 // payment (FEMA's disaster aid is "FEMA IHP TREAS 310 DISASTER ASSIST").
 export const IRS_REFUND = /\b(?:IRS|TREAS 310)\b.*\bTAX REF/;
+
+// Form W-4V's one rate for unemployment compensation (line 5).
+export const UNEMPLOYMENT_W4V_RATE = 0.1;

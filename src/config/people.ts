@@ -47,6 +47,8 @@ export const SUGGESTION_TOPICS = [
   "filing_extension",
   // A federal refund beside a paycheck (src/detectors/student-withholding.ts).
   "refund_withholding",
+  // Unemployment pay (src/detectors/unemployment-tax.ts).
+  "unemployment_tax",
   // Fact versions of advice-only cards (src/detectors/tax-facts.ts).
   "social_security_taxed",
   "company_stock_share",
