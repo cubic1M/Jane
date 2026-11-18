@@ -364,11 +364,11 @@ jobs:
     needs: [scope]
     if: needs.scope.outputs.mode != 'docs'
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
-    # How much to test (docs/ci.md). Every PR push: the tests tagged @critical, on a computer. Main,
-    # whatever started the run (the merge train starts main's runs with workflow_dispatch, so
-    # "push" alone skipped them; 10-27 a dock change reached main untested): every test on a
-    # computer, and the phone project runs nightly (e2e-mobile.yml). A PR labelled "e2e": every
-    # test on both.
+    # How much to test (docs/ci.md). Every PR push: the tests tagged @critical, on a computer, and
+    # the phone specs (e2e/phone-*, mobile-pass) on a phone. Main, whatever started the run (the
+    # merge train starts main's runs with workflow_dispatch, so "push" alone skipped them; 10-27 a
+    # dock change reached main untested): every test on a computer, and the phone project runs
+    # nightly (e2e-mobile.yml). A PR labelled "e2e": every test on both.
     outputs:
       shards: ${{ steps.scope.outputs.shards }}
       total: ${{ steps.scope.outputs.total }}
@@ -497,6 +497,13 @@ jobs:
         run: npm run test:e2e -- --project=chromium ${{ needs.scope.outputs.specs }}
         env:
           E2E_RESULTS_FILE: ci-results/e2e-changed.json
+      # And the phone specs on the phone project: they skip on a computer, so until 11-18 a PR never
+      # ran them and a break waited for the nightly phone run (e2e/phone-import-chip.spec.ts, 11-17).
+      # About a minute and a half.
+      - if: contains(needs.e2e-build.outputs.args, '@critical')
+        run: npm run test:e2e -- --project=mobile e2e/phone-*.spec.ts e2e/mobile-pass.spec.ts
+        env:
+          E2E_RESULTS_FILE: ci-results/e2e-phone.json
       - name: Keep the results for the flake list
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
