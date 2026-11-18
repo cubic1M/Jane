@@ -4,9 +4,7 @@
       "name": "Chase checking",
       "kind": "checking",
       "balance": "2,414.56",
-      "files": [
-        "chase-checking-2026-10.csv"
-      ]
+      "files": ["chase-checking-2026-10.csv"]
     }
   ]
 }
