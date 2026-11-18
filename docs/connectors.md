@@ -308,3 +308,16 @@ sample-data people. Tests use a fake `fetch`, never the network.
 | --- | --- | --- | --- | --- |
 | `canopy_connect`, `sandbox_canopy_connect` | Personal policies from the person's insurer: kind, carrier, premium, term, deductible, limits, renewal date (`GET /teams/{team}/pulls/{pull}`, Basic auth; webhook `canopy-signature` `t=,s=`) | `insurance_policies`, source `canopy`, updated in place on a new pull | The renewal reshop before a car or home renews, and a price rise against the last reshop | docs.usecanopy.com/reference and its OpenAPI, 2026-11-17 |
 
+## Tax forms from banks and brokers (Akoya)
+
+`akoya_tax` and its sandbox twin `sandbox_akoya_tax` (`src/lib/connectors/akoya/`, built from
+docs.akoya.com/reference on 2026-11-17; Akoya's Tax API is in beta) read a person's 1099-INT,
+1099-DIV with 1099-B, 1099-R, 1099-G, 1099-NEC, 1098 and 1098-E as box amounts, by Jane's own box
+names. They're Jane's tax document partner (spec step 166, `documentPartnerFor` in
+`src/lib/tax-docs/`): with `CONNECTORS=1` and the person's consent, the once-a-day collector in the
+season asks Akoya instead of the demo stand-in, and the documents check ticks off what agrees with
+the accounts. A form is matched to an expected one by its account's last four, or as the one form
+of its kind. W-2s aren't read: their fields weren't readable in Akoya's reference, and W-2s come
+from payroll. The real one reaches nobody until `REAL_CONNECTORS.akoya_tax`; its OAuth sign-in
+route isn't built.
+

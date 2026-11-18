@@ -173,6 +173,27 @@ export const CANOPY = {
   signatureHeader: "canopy-signature",
 } as const;
 
+// Akoya's Tax API (read connectors, 11-18; docs.akoya.com/reference, its Token, Account Information
+// and Tax pages, read 2026-11-17; Tax is in beta): a person's 1099s and 1098s as data, straight from
+// their bank or broker, over FDX. OAuth: the person agrees at their institution through Akoya, Jane
+// keeps the refresh token, and each read swaps it for a short-lived id_token, the bearer for data
+// calls. Sandbox and production are separate hosts. The production token host is the one Akoya's
+// production authorization URL names (idp.ddp.akoya.com); its token page shows only sandbox's.
+export const AKOYA = {
+  sandbox: {
+    token: "https://sandbox-idp.ddp.akoya.com/token",
+    products: "https://sandbox-products.ddp.akoya.com",
+  },
+  production: {
+    token: "https://idp.ddp.akoya.com/token",
+    products: "https://products.ddp.akoya.com",
+  },
+  version: "v3",
+  envEnv: "AKOYA_ENV",
+  clientIdEnv: "AKOYA_CLIENT_ID",
+  clientSecretEnv: "AKOYA_CLIENT_SECRET",
+} as const;
+
 export const STRIPE_FC = {
   historyDays: 180,
   balanceRefreshDays: 7,

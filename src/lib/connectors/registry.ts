@@ -16,6 +16,7 @@ import { irsTranscriptUpload } from "./irs-transcript/connector";
 import { taxFormUpload } from "./tax-form-upload/connector";
 import { stripeFc } from "./stripe-fc/connector";
 import { canopyConnect, sandboxCanopyConnect } from "./canopy/connector";
+import { akoyaTax, sandboxAkoyaTax } from "./akoya/connector";
 import { manualOpenSavings } from "./manual-pay/savings";
 import { SANDBOX_CONNECTORS } from "./sandbox/adapters";
 import type { Connector } from "./types";
@@ -75,6 +76,10 @@ const CONNECTORS: readonly Connector[] = [
   // sandbox twin on Canopy's documented example for sample data (./canopy/).
   canopyConnect,
   sandboxCanopyConnect,
+  // Real, read only, off until REAL_CONNECTORS: 1099s and 1098s through Akoya's Tax API, and its
+  // sandbox twin for sample data (./akoya/).
+  akoyaTax,
+  sandboxAkoyaTax,
 ];
 
 let registry: ReadonlyMap<string, Connector> = buildRegistry(CONNECTORS);
