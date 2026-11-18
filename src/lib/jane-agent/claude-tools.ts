@@ -40,6 +40,7 @@ import type { Profile } from "@/profile/build";
 import { isSensitivePreference, isSensitiveProfileFact } from "@/lib/memory/sensitive";
 import { whoAmI } from "./who-am-i";
 import { scopedFor } from "@/lib/db-scoped";
+import { staleStatementsEnd } from "@/lib/report-state";
 import { withReadCache } from "@/lib/read-cache";
 import { loadChanges } from "@/lib/changes";
 import { listGoals } from "@/lib/goals";
@@ -700,8 +701,8 @@ async function runChatToolWork(
     }
     case "subscriptions": {
       const { charges } = await loadRecurring(userId, { client, now });
-      return out({
-        charges: charges.map((r) => ({
+      const listed = (list: typeof charges) =>
+        list.map((r) => ({
           merchant: r.merchant,
           subscription: r.subscription,
           billed: frequencyWords(r.frequency),
@@ -710,8 +711,28 @@ async function runChatToolWork(
           nextDate: r.nextDate,
           aYear: money(r.annualCostCents),
           openFindingId: r.openFindingId,
-        })),
-      });
+        }));
+      // Statements that end weeks ago read every charge as stopped, and Claude said "I don't see
+      // any subscriptions" over three months that pay Netflix every month (walk batch 1, 11-18):
+      // when they end, and the regular charges as they stood that day.
+      const latest = charges.length
+        ? null
+        : (await scopedFor(userId, client).transactions.aggregate({ _max: { date: true } }))._max
+            .date;
+      const statementsEnd = staleStatementsEnd(latest ?? null, asOf);
+      if (statementsEnd) {
+        const then = await loadRecurring(userId, {
+          client,
+          now: new Date(`${statementsEnd}T23:59:59Z`),
+        });
+        return out({
+          charges: [],
+          statementsEnd,
+          note: `Their statements end ${statementsEnd}, so nothing here says what they pay now. These were their regular charges as of then: say so, never that they have none.`,
+          inTheirStatements: listed(then.charges),
+        });
+      }
+      return out({ charges: listed(charges) });
     }
     case "recent_changes": {
       const changes = await loadChanges(userId, { client, now });
@@ -1173,6 +1194,16 @@ async function runChatToolWork(
           depositsBeforeThen: f.income
             .filter((i) => i.date <= f.lowest.date)
             .map((i) => ({ from: i.merchant, on: i.date, amount: money(i.amountCents) })),
+          // The low point is often the day before payday, so none come before it, and Claude
+          // read that as no pay coming (walk batch 1, 11-18: "I can't tell when your next
+          // paycheck lands" over three paychecks two weeks apart).
+          nextDeposit: f.income[0]
+            ? {
+                from: f.income[0].merchant,
+                on: f.income[0].date,
+                amount: money(f.income[0].amountCents),
+              }
+            : null,
         })),
       });
     }
