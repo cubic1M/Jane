@@ -62,7 +62,8 @@ export const SUGGESTION_NODES: Readonly<Record<string, { branch: MoneyBranch; la
   subscriptions: { branch: "subscriptions", label: "Subscriptions to review" },
   student_discounts: { branch: "subscriptions", label: "Student plans for what you pay" },
   budget_overrun: { branch: "budgets", label: "Spending above your usual" },
-  month_close: { branch: "spending", label: "Last month, closed" },
+  // Only while last month waits on a charge: it closes once confirmed (debug 2, 11-17).
+  month_close: { branch: "spending", label: "Last month's close" },
   figure_check: { branch: "books", label: "A figure to check" },
   data_problems: { branch: "books", label: "Data that doesn't add up" },
 };
