@@ -29,7 +29,7 @@ describe("balanceLine", () => {
 describe("unevenPayLine", () => {
   it("says the low point counts none of their pay, and what has been coming in", () => {
     expect(unevenPayLine(271_333)).toBe(
-      "That counts none of your pay, because it comes at uneven times: about $2,713.33 a month lately.",
+      "That counts none of your pay, because it has no set schedule yet: about $2,713.33 a month lately.",
     );
   });
 

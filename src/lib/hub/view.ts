@@ -399,7 +399,7 @@ function safeHero(safe: SafeInput): SafeHero {
       ...(safe.unevenPayMonthlyCents
         ? [
             {
-              label: "Not counted: your pay comes at uneven times, about this a month",
+              label: "Not counted: your pay, which has no set schedule yet, about this a month",
               sign: "" as const,
               cents: safe.unevenPayMonthlyCents,
             },

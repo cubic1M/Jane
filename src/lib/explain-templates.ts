@@ -137,7 +137,7 @@ const TEMPLATES: Record<FindingType, (input: ExplainInput) => Omit<ExplanationCo
       explanation: other
         ? `Your upcoming bills could take your checking account down to about ${lowest ?? "a low balance"}${around ? ` around ${around}` : ""} if nothing else comes in. That counts your paychecks but not the money that comes in on no set day, like cash deposits; about ${other} a month has been coming in lately. Moving a due date or two could help if it runs late.`
         : uneven
-          ? `Your upcoming bills could take your checking account down to about ${lowest ?? "a low balance"}${around ? ` around ${around}` : ""} if no pay comes in. That counts none of your pay, because it comes at uneven times; about ${uneven} a month has been coming in lately. Moving a due date or two could help if a payment runs late.`
+          ? `Your upcoming bills could take your checking account down to about ${lowest ?? "a low balance"}${around ? ` around ${around}` : ""} if no pay comes in. That counts none of your pay, because it has no set schedule yet; about ${uneven} a month has been coming in lately. Moving a due date or two could help if a payment runs late.`
           : `Your upcoming bills could take your checking account down to about ${lowest ?? "a low balance"}${around ? ` around ${around}` : ""}, before more money comes in. Moving a due date or two could keep you clear of overdraft fees.`,
       giveUp: "Nothing, though a biller may need a few days to move a due date.",
       alternatives: [
