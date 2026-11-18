@@ -115,6 +115,8 @@ export const BILL_GAP = {
   billSeenDays: 130,
   // The smallest payment that reads as a bill, not a fee or a printing charge.
   billMinCents: 50_000,
+  // Two bill payments this close together are a quarter paid in parts, not at once.
+  monthlyGapDays: 40,
 } as const;
 
 // A line paying Stanford's student bill, and lines that name Stanford but aren't the university
@@ -143,7 +145,8 @@ export const CARD_VS_CASH = {
 export const OVERDRAFT_OPT_IN = {
   url: "https://www.consumerfinance.gov/rules-policy/regulations/1005/17/",
   // Its consumer page, in the words the card uses (archived, last modified 2026-06-25).
-  consumerUrl: "https://www.consumerfinance.gov/whats-your-status-when-it-comes-to-overdraft-coverage",
+  consumerUrl:
+    "https://www.consumerfinance.gov/whats-your-status-when-it-comes-to-overdraft-coverage",
 } as const;
 
 // --- A credit file that hasn't started --------------------------------------------------------

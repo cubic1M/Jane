@@ -194,6 +194,28 @@ describe("Stanford's bill and its payment plan", () => {
     expect(fire(payingBill(600_000, 420_000, "2027-03-20"), "stanford_bill_due")).toBeNull();
   });
 
+  it("is nothing for someone already paying the bill in monthly parts", () => {
+    const inParts = (gapStart: string) => {
+      const data = payingBill(600_000, 140_000, "2026-11-20");
+      return {
+        ...data,
+        transactions: [
+          ...data.transactions,
+          {
+            date: gapStart,
+            amountCents: 140_000,
+            description: "STANFORD UNIV STUDENT ACCT EPAY",
+            pfc: "GENERAL_SERVICES_EDUCATION",
+            accountId: "ug-checking",
+          },
+        ],
+      };
+    };
+    // Oct 19 and Nov 18 are 30 days apart: in parts. Oct 19 and Sep 8 are 41: a quarter apart.
+    expect(fire(inParts("2026-11-18"), "stanford_bill_due")).toBeNull();
+    expect(fire(inParts("2026-09-08"), "stanford_bill_due")).not.toBeNull();
+  });
+
   it("is nothing without a bill payment of the person's own, or a small one", () => {
     expect(fire({ ...undergrad(), told: { is_student: true } }, "stanford_bill_due")).toBeNull();
     expect(
