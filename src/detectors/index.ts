@@ -26,6 +26,7 @@ import { STUDENT_AID_DETECTORS } from "./student-aid";
 import { PRICE_RISE_DETECTORS } from "./price-rises";
 import { TAX_DETECTORS } from "./taxes";
 import { TAX_SET_ASIDE_DETECTORS } from "./tax-set-aside";
+import { STUDENT_TAX_DETECTORS } from "./student-taxes";
 import { TWO_DETECTORS } from "./two";
 import { TRADEOFF_DETECTORS } from "./tradeoffs";
 import { WORK_DETECTORS } from "./work";
@@ -57,6 +58,7 @@ export const DETECTORS: readonly Detector[] = [
   ...FAMILY_CREDIT_DETECTORS,
   ...TAX_DETECTORS,
   ...TAX_SET_ASIDE_DETECTORS,
+  ...STUDENT_TAX_DETECTORS,
   ...EFTPS_DETECTORS,
   ...SAVERS_CREDIT_DETECTORS,
   ...INVESTING_DETECTORS,

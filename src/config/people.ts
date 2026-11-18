@@ -31,6 +31,10 @@ export const SUGGESTION_TOPICS = [
   // only in demo advice.
   "tax_not_yet_paid",
   "tax_set_aside",
+  // Students' taxes (src/detectors/student-taxes.ts): a fellowship with nothing withheld, and what
+  // a student on an F or J visa files.
+  "stipend_tax",
+  "student_tax_residency",
   "retirement_self_employed",
   "income_smoothing",
   "health_insurance",
