@@ -18,7 +18,8 @@ export type Facts = {
   asOf: string;
   safeCents: number | null;
   payday: string | null;
-  // Every dollar figure any of the chat's own lookups gives: what an answer may use.
+  // Every dollar figure any of the chat's own lookups gives, finding details and transaction
+  // searches included: what an answer may use.
   allowedCents: number[];
   // What charges on a schedule: the last charge and a year's cost.
   recurring: { merchant: string; lastCents: number; yearCents: number; subscription: boolean }[];
@@ -66,6 +67,15 @@ async function loadFactsWork(
       runChatTool(userId, "spending_by_category", { month: m.month }, { client, now }),
     ),
   );
+  // The lookups that take an input, as the chat runs them: each open finding's details (their
+  // evidence quotes the bank's own line, "OVERDRAFT FEE FOR A $6.20 ITEM") and a transaction
+  // search, which can give any row's amount. Without them a right answer that used them read as
+  // made up (walk batch 2, 11-18: "$6.20 item" and a $35.00 fee).
+  const details = await Promise.all(
+    (snapshot?.findings ?? []).map((f) =>
+      runChatTool(userId, "finding_details", { finding_id: f.findingId }, { client, now }),
+    ),
+  );
   const months: Facts["months"] = {};
   for (const m of insights.months) {
     months[m.month] = {
@@ -79,10 +89,13 @@ async function loadFactsWork(
     asOf,
     safeCents: snapshot?.safeToSpend?.safeCents ?? null,
     payday: snapshot?.safeToSpend?.payday ?? null,
-    allowedCents: [...lookups, ...earlierMonths].flatMap((out) => [
-      ...out.cents,
-      ...dollarFigures(out.content).map((f) => f.cents),
-    ]),
+    allowedCents: [
+      ...[...lookups, ...earlierMonths, ...details].flatMap((out) => [
+        ...out.cents,
+        ...dollarFigures(out.content).map((f) => f.cents),
+      ]),
+      ...transactions.map((t) => t.amountCents),
+    ],
     recurring: recurringCharges(input).map((r) => ({
       merchant: r.merchant,
       lastCents: r.lastAmountCents,
