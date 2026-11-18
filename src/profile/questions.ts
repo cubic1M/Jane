@@ -1,5 +1,6 @@
 import { QUESTIONS, UNLOCK, type QuestionSpec } from "@/config/questions";
 import { DETECTORS, runDetectors } from "@/detectors";
+import { payingBillUnknown } from "@/detectors/student-money";
 import { buildProfile, type Profile, type ProfileInput, type ProfileTx } from "./build";
 import type { FactKey } from "./facts";
 
@@ -87,6 +88,9 @@ function unlockOf(fact: FactKey, profile: Profile, data: ProfileInput): number {
       return f.debt_trouble.value === true
         ? Math.round(interest(data) * UNLOCK.hardshipShareOfCosts)
         : 0;
+    case "pays_school_bill":
+      // A Stanford student with no bill payment in these accounts, while the plan's sign-up is near.
+      return payingBillUnknown(profile, data) ? UNLOCK.schoolBillCents : 0;
     case "is_student":
       // Asked only where the data leaves it open (./build.ts: paid by a university, no campus
       // spending), which is the only time it's unknown.

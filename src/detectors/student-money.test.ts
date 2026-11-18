@@ -11,6 +11,7 @@ import {
 } from "@/config/student-money";
 import { checkGuardrails, dollarFigures, recommendsAChoice } from "@/lib/guardrails";
 import { buildProfile, type ProfileInput, type ProfileTx } from "@/profile/build";
+import { missingFacts } from "@/profile/questions";
 import { PEOPLE } from "@/config/people";
 import { inputFor } from "@/profile/sample";
 import { HEADLINE_MAX, SHORT_MAX, type Suggestion } from "./contract";
@@ -218,6 +219,34 @@ describe("Stanford's bill and its payment plan", () => {
     // Oct 19 and Nov 18 are 30 days apart: in parts. Oct 19 and Sep 8 are 41: a quarter apart.
     expect(fire(inParts("2026-11-18"), "stanford_bill_due")).toBeNull();
     expect(fire(inParts("2026-09-08"), "stanford_bill_due")).not.toBeNull();
+  });
+
+  it("with no bill payment seen, comes only to someone who says they pay the bill, and asks first", () => {
+    const base = { ...undergrad(), today: "2026-11-20", told: { is_student: true } };
+    expect(fire(base, "stanford_bill_due")).toBeNull();
+    // The question is asked while sign-up is near, of a Stanford student with no bill payment.
+    expect(missingFacts(buildProfile(base), base).map((c) => c.spec.fact)).toContain(
+      "pays_school_bill",
+    );
+    const yes = { ...base, told: { ...base.told, pays_school_bill: true } };
+    const s = fire(yes, "stanford_bill_due")!;
+    expect(s).not.toBeNull();
+    expect(s.short).toContain("You pay your Stanford bill");
+    expect(s.why).toContain("You told me you pay your Stanford bill");
+    expect(s.worthCents).toBe(0);
+    expectClean(s);
+    expect(
+      fire({ ...base, told: { ...base.told, pays_school_bill: false } }, "stanford_bill_due"),
+    ).toBeNull();
+    // Not asked once sign-up is over two weeks off, or of someone whose bill payments are seen.
+    const early = { ...base, today: "2026-11-05" };
+    expect(missingFacts(buildProfile(early), early).map((c) => c.spec.fact)).not.toContain(
+      "pays_school_bill",
+    );
+    const paying = payingBill(600_000, 420_000, "2026-11-20");
+    expect(missingFacts(buildProfile(paying), paying).map((c) => c.spec.fact)).not.toContain(
+      "pays_school_bill",
+    );
   });
 
   it("is nothing without a bill payment of the person's own, or a small one", () => {
