@@ -101,6 +101,31 @@ const STORES: Store[] = [
     },
   },
   {
+    name: "Gmail mailboxes",
+    async scan(client, after, take, userIds) {
+      const rows = await systemDb(WHY, client).gmailMailbox.findMany({
+        where: { ...afterId(after), ...(userIds && { userId: { in: userIds } }) },
+        orderBy: { id: "asc" },
+        take,
+        select: { id: true, secretsEncrypted: true },
+      });
+      return rows.map((r) => ({ id: r.id, keyId: labelOf(() => keyIdOf(r.secretsEncrypted)) }));
+    },
+    async rotateOne(client, id) {
+      const row = await systemDb(WHY, client).gmailMailbox.findUnique({
+        where: { id },
+        select: { secretsEncrypted: true },
+      });
+      const next = row && rotate(row.secretsEncrypted);
+      if (!row || !next) return false;
+      const { count } = await systemDb(WHY, client).gmailMailbox.updateMany({
+        where: { id, secretsEncrypted: row.secretsEncrypted },
+        data: { secretsEncrypted: next },
+      });
+      return count === 1;
+    },
+  },
+  {
     name: "Connector credentials",
     async scan(client, after, take, userIds) {
       const rows = await systemDb(WHY, client).connectorCredential.findMany({

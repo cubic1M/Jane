@@ -1,7 +1,9 @@
 # Encryption keys: adding, rotating and retiring them
 
 Jane encrypts four things before they're saved: Robinhood connection tokens (when that's on), bank connection tokens (from Plaid),
-two-factor secrets, and uploaded files. A key is what locks and unlocks them. This page is how
+two-factor secrets, and uploaded files. The tokens of each connected Gmail mailbox (when that's
+on) are encrypted the same way, and re-encrypting moves them with the rest. A key is what locks
+and unlocks them. This page is how
 you, the founder, change that key safely. **Only you ever handle a key.** Nobody else, no
 Claude session and no script, generates, sees, copies or moves one.
 

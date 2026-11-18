@@ -18,6 +18,20 @@ export const OPS_EVENT_KINDS = {
   },
   // Plaid will disconnect a bank in about 7 days unless the person signs in again.
   bank_disconnect_pending: { label: "bank connections will end in 7 days", urgent: false },
+  // A notice about a Gmail mailbox without Google's signed token for us: an attacker, or
+  // verification itself broken.
+  gmail_webhook_unverified: {
+    label: "Gmail notices refused (not signed by Google for us)",
+    urgent: false,
+  },
+  // A mailbox couldn't be read (Google down, a limit, or our bug), or Google wouldn't renew its
+  // notices for it (code WATCH_FAILED: the read itself went on). Tried again by itself.
+  gmail_read_failed: { label: "Gmail reads failed", urgent: false },
+  // Claude couldn't be asked in the middle of a read (down, a wrong key or model, a limit), so the
+  // read stopped where it was and tries again later.
+  gmail_reader_down: { label: "Gmail reads stopped (Claude couldn't be asked)", urgent: false },
+  // Reading lost its place in a mailbox and skipped ahead: some emails weren't read.
+  gmail_history_gap: { label: "Gmail mailboxes missed some emails", urgent: false },
 } as const;
 
 export type OpsEventKind = keyof typeof OPS_EVENT_KINDS;

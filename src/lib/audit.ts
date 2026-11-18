@@ -109,6 +109,15 @@ export type AuditEvent =
   | "robinhood_connect_failed"
   | "robinhood_refresh_failed"
   | "robinhood_reconnect_needed"
+  // Read-only Gmail mailboxes (src/lib/gmail/): ids, a code or reason of ours, a count, yes or no.
+  // Never the mailbox's address, a token, Google's words or anything from an email.
+  | "gmail_connected"
+  | "gmail_disconnected"
+  | "gmail_connect_failed"
+  | "gmail_read_failed"
+  | "gmail_reconnect_needed"
+  // The mailbox was connected to another Jane account, so reading stopped for this person.
+  | "gmail_taken_over"
   // Connectors (src/lib/connectors/): consent and the vault. Scopes and ids only, never a secret.
   | "connector_consent_granted"
   | "connector_consent_revoked"

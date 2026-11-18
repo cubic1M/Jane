@@ -33,6 +33,19 @@ export const RATE_LIMITS = {
   robinhood: { limit: 20, windowSeconds: 60 * 60 },
   // Answers at Robinhood's way back that aren't their sign-in: the most that write a security record.
   robinhoodForgedBack: { limit: 20, windowSeconds: 60 * 60 },
+  // Connecting a Gmail mailbox, per person: done a few times, not dozens.
+  gmail: { limit: 20, windowSeconds: 60 * 60 },
+  // Answers at Google's way back that aren't their sign-in: the most that write a security record.
+  gmailForgedBack: { limit: 20, windowSeconds: 60 * 60 },
+  // Emails Claude reads for one person in a day, across their mailboxes: past it the rest wait for
+  // a later read (src/lib/gmail/limits.ts).
+  gmailReads: { limit: 60, windowSeconds: 24 * 60 * 60 },
+  // The same over 30 days: ten full days use it up, and the rest wait for the next 30. Its counter
+  // is kept past the cleanup's one day (KEEP_RATE_LIMIT_PREFIXES below).
+  gmailReadsMonth: { limit: 600, windowSeconds: 30 * 24 * 60 * 60 },
+  // Emails from one sender Claude reads for one person in a day: past it that sender's are skipped,
+  // so one company's flood can't use up the day's count for the rest of their mail.
+  gmailSenderReads: { limit: 15, windowSeconds: 24 * 60 * 60 },
   // Server actions (forms and buttons that change something).
   actions: { limit: 120, windowSeconds: 60 },
   actionsSession: { limit: 60, windowSeconds: 60 },
@@ -183,4 +196,7 @@ export const KEEP_RATE_LIMIT_PREFIXES = [
   "chatspendmonth:",
   // Gate E's category check, a count per day of replies by kind of claim (src/config/claim-check.ts).
   "claimcheck:",
+  // A person's 30 days of emails read by Claude (gmailReadsMonth above): its window starts up to 30
+  // days back, so from its second day any cleanup would take it and the count would start again.
+  "gmailReadsMonth:",
 ] as const;

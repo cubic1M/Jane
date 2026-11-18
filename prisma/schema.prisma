@@ -450,6 +450,8 @@ model User {
   userFacts            UserFact[]
   findingArrivals      FindingArrival[]
   offerWatches         OfferWatch[]
+  gmailMailboxes       GmailMailbox[]
+  gmailReadings        GmailReading[]
 
   @@map("users")
 }
@@ -574,6 +576,77 @@ model RobinhoodConnection {
   accounts Account[]
 
   @@map("robinhood_connections")
+}
+
+// A Gmail mailbox a person connected for Jane to watch, read-only (src/lib/gmail/,
+// docs/setup/gmail.md). A person may connect several; one mailbox belongs to one person at a
+// time. Deleting the row deletes what was read through it.
+model GmailMailbox {
+  id                String    @id @default(cuid())
+  userId            String    @map("user_id")
+  // The mailbox's own address, lowercase, as Google gave it after they signed in there. Never
+  // in a log, an audit record, a job, a rate-limit key or an ops event.
+  address           String
+  // AES-256-GCM via src/lib/crypto.ts: the access and refresh tokens, as one value
+  // (src/lib/gmail/secrets.ts). Never log or return it.
+  secretsEncrypted  String    @map("secrets_encrypted")
+  accessExpiresAt   DateTime? @map("access_expires_at") @db.Timestamptz(3)
+  // active; reconnect: Google stopped accepting it, and its tokens have been wiped;
+  // elsewhere: the mailbox was connected to another Jane account, and these tokens were wiped.
+  status            String    @default("active")
+  // Which words the person was shown before connecting (src/config/gmail-disclosure.ts), and when.
+  disclosureVersion String    @map("disclosure_version")
+  agreedAt          DateTime  @default(now()) @map("agreed_at") @db.Timestamptz(3)
+  // Where reading carries on from (Gmail's history id), saved when they connect.
+  historyCursor     String    @map("history_cursor")
+  // Google stops sending notices then, unless asked again (any read asks when it is near).
+  watchExpiresAt    DateTime? @map("watch_expires_at") @db.Timestamptz(3)
+  lastCheckedAt     DateTime? @map("last_checked_at") @db.Timestamptz(3)
+  // When reading found it had lost its place and skipped ahead: some emails before then
+  // weren't read.
+  missedAt          DateTime? @map("missed_at") @db.Timestamptz(3)
+  // A short code of ours, never Google's words. Cleared by the next good read.
+  lastErrorCode     String?   @map("last_error_code")
+  // Failures in a row, and when to try again (src/config/gmail.ts).
+  failures          Int       @default(0)
+  nextTryAt         DateTime? @map("next_try_at") @db.Timestamptz(3)
+  // Held while a read runs, so two can't read one mailbox at once.
+  syncingSince      DateTime? @map("syncing_since") @db.Timestamptz(3)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readings GmailReading[]
+
+  @@unique([userId, address])
+  @@index([address])
+  @@map("gmail_mailboxes")
+}
+
+// One email in a connected mailbox that Jane read and found to be about the person's money:
+// what it said, never its text (src/lib/gmail/read-mail.ts). Listed on /settings/mailboxes.
+model GmailReading {
+  id           String    @id @default(cuid())
+  userId       String    @map("user_id")
+  mailboxId    String    @map("mailbox_id")
+  // Gmail's id for the message, so one email is read once.
+  messageRef   String    @map("message_ref")
+  receivedAt   DateTime  @map("received_at") @db.Timestamptz(3)
+  // Who sent it, as Google checked it: the registrable part of the From address's domain.
+  senderDomain String    @map("sender_domain")
+  // receipt, bill, renewal, price_change or refund (GMAIL_KINDS in src/config/gmail.ts).
+  kind         String
+  amountCents  Int?      @map("amount_cents")
+  // The day the email is about: paid, due, charging, changing or refunded.
+  occursOn     DateTime? @map("occurs_on") @db.Date
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mailbox GmailMailbox @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
+
+  @@unique([mailboxId, messageRef])
+  @@index([userId, receivedAt])
+  @@map("gmail_readings")
 }
 
 // A person's consent to one connector (src/lib/connectors/consent.ts, docs/connectors.md): the

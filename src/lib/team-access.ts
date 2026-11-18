@@ -146,6 +146,14 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   robinhood_connect_failed: own,
   robinhood_refresh_failed: automatic,
   robinhood_reconnect_needed: automatic,
+  // The person's own Gmail mailboxes, and Jane's reads of them. A take-over is someone else
+  // connecting the same mailbox: no one on the team looked at anything.
+  gmail_connected: own,
+  gmail_disconnected: own,
+  gmail_connect_failed: own,
+  gmail_read_failed: automatic,
+  gmail_reconnect_needed: automatic,
+  gmail_taken_over: automatic,
   connector_consent_granted: own,
   connector_consent_revoked: own,
   connector_data_forgotten: own,

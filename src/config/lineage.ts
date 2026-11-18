@@ -50,6 +50,9 @@ export const LINEAGE: Readonly<Record<string, Lineage>> = {
   // From the data sources.
   PlaidItem: "source",
   RobinhoodConnection: "source",
+  // A connected Gmail mailbox, and what was read in it: both go when it is disconnected.
+  GmailMailbox: "source",
+  GmailReading: "source",
   ConnectorConsent: "entered",
   ConnectorCredential: "system",
   ConnectorAction: "record",

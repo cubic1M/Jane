@@ -187,6 +187,9 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     plaidItems: scoped.plaidItem,
     plaidItemClaims: scoped.plaidItemClaim,
     robinhoodConnections: scoped.robinhoodConnection,
+    // Gmail mailboxes a person connected, and the money emails read in them (src/lib/gmail/).
+    gmailMailboxes: scoped.gmailMailbox,
+    gmailReadings: scoped.gmailReading,
     // Connectors (src/lib/connectors/): consent, and the vault of encrypted credentials.
     connectorConsents: scoped.connectorConsent,
     connectorCredentials: scoped.connectorCredential,
