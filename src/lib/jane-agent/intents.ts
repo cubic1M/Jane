@@ -440,7 +440,7 @@ const SAFE =
   /\bsafe (?:for me )?to spend\b|\bhow much (?:can|could) i (?:still |safely )?spend\b|\bwhat can i (?:still |safely )?spend\b|\bspending money left\b|\bhow much (?:money )?(?:do )?i (?:have|got) (?:left|to spend|left to spend)\b|\bhow much (?:money )?(?:is|do i have) left\b/;
 const SPENDING = /\b(?:spent|spend|spending)\b|\bwhere (?:does|did) (?:all )?my money go\b/;
 const COMING_UP =
-  /\bwhat'?s (?:due|coming(?: up)?|next)\b|\bcoming up\b|\bupcoming\b|\bbills? (?:are |is )?(?:due|coming)\b|\bwhen (?:are|is) (?:my )?(?:bills?|payments?) due\b|\bwhat do i (?:owe|have to pay)\b|\bdue (?:this|next) week\b/;
+  /\bwhat'?s (?:due|coming(?: up)?|next)\b|\bcoming up\b|\bupcoming\b|\bbills? (?:are |is )?(?:due|coming)\b|\bwhen (?:are|is) (?:my )?(?:bills?|payments?) due\b|\bwhat do i (?:owe|have to pay)\b|\bdue (?:this|next) week\b|\bwhat (?:are|r) (?:my|the) bills\b|\bwhat bills do i (?:have|pay)\b/;
 // Spec step 88.
 const PAYDAY = /\b(?:pay ?days?|pay ?checks?|get(?:ting)? paid|salary|wages|next pay)\b/;
 // Payday as a deadline ("what bills are due before payday") or their own pay as an owner: not
@@ -496,8 +496,9 @@ const COST = [
   // "Is my phone bill too high?": what it costs (debugger 11-17: it read as a health plan bill).
   /^(?:is|was) (?:my|the) (.+?) bill (?:too (?:high|much)|a lot|normal)()$/,
 ];
+// "Should I cancel Spotify?" is about Spotify, which its finding answers (debugger 11-17: no answer).
 const ABOUT =
-  /^(?:tell me (?:more )?about|what(?:'s| is| was) (?:up with|going on with)|what happened (?:with|at|to|on)|explain|what about|show me|details on|info on) (.+)$/;
+  /^(?:should i (?:cancel|keep|drop|stop paying for)|tell me (?:more )?about|what(?:'s| is| was) (?:up with|going on with)|what happened (?:with|at|to|on)|explain|what about|show me|details on|info on) (.+)$/;
 // "and Hulu?", "what about last month?", "same for Peacock".
 const FOLLOW =
   /^(?:and|what about|how about|same for|same with|also|ok and|and what about|and how about)(?: for| on| at| with)? (.+)$/;
