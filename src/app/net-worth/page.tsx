@@ -166,7 +166,7 @@ async function NetWorthContent() {
       {today.investmentsCents > 0 && (
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           What you have includes {formatCents(today.investmentsCents)} in retirement and investment
-          accounts, at the balance they report.{" "}
+          accounts, at their latest balance.{" "}
           <Link href="/investments" className="font-medium text-emerald-700 hover:underline">
             See what&apos;s in them
           </Link>
