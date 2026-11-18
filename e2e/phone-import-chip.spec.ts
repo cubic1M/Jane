@@ -71,9 +71,12 @@ test("after an upload the notice covers nothing on a phone, and a finding's link
   // A finding's own page: its do-it-yourself link out is a tap target (once the scan has run).
   await waitForFullScan(user.userId);
   await page.goto("/report");
-  const items = await page
-    .locator('main a[href^="/report/c"]')
-    .evaluateAll((as) => [...new Set(as.map((a) => a.getAttribute("href")!))]);
+  // The report's findings stream in after the page (main 11-17: read at once, there were none).
+  const links = page.locator('main a[href^="/report/c"]');
+  await expect(links.first()).toBeAttached({ timeout: 30_000 });
+  const items = await links.evaluateAll((as) => [
+    ...new Set(as.map((a) => a.getAttribute("href")!)),
+  ]);
   let checked = false;
   for (const href of items.slice(0, 20)) {
     await page.goto(href);
