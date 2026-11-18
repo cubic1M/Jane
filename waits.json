@@ -30,5 +30,13 @@
   "when": "merged",
   "since": "2026-11-18T05:26:51.303Z",
   "expires": "2026-11-21T05:26:51.303Z"
+ },
+ {
+  "on": 2046,
+  "lane": "lane:connectors",
+  "task": "claude/akoya-tax",
+  "when": "merged",
+  "since": "2026-11-18T07:28:19.523Z",
+  "expires": "2026-11-21T07:28:19.523Z"
  }
 ]
